@@ -54,7 +54,7 @@ export default function Customers() {
 
       <form
         onSubmit={handleSubmit}
-        className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-3"
+        className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3"
       >
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-600">
@@ -104,9 +104,9 @@ export default function Customers() {
       )}
 
       {!loading && !error && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <table className="w-full text-right">
-            <thead className="bg-brand-900 text-white">
+            <thead className="bg-gradient-to-l from-brand-700 to-brand-600 text-white">
               <tr>
                 <th className="px-4 py-3 text-sm font-semibold">الكود</th>
                 <th className="px-4 py-3 text-sm font-semibold">الاسم</th>
@@ -117,7 +117,7 @@ export default function Customers() {
             <tbody className="divide-y divide-slate-100">
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-4 py-3 font-mono text-sm font-semibold text-gold-600">
+                  <td className="px-4 py-3 font-mono text-sm font-semibold text-brand-600">
                     {c.code}
                   </td>
                   <td className="px-4 py-3">{c.name}</td>

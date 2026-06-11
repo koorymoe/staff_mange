@@ -10,9 +10,9 @@ const navItems = [
 export default function Layout() {
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <aside className="flex w-64 flex-col bg-brand-900 text-white">
+      <aside className="flex w-64 flex-col bg-gradient-to-b from-brand-800 to-brand-900 text-white shadow-xl">
         <div className="border-b border-white/10 px-6 py-6">
-          <h1 className="text-xl font-extrabold text-gold-400">شركة الأماني</h1>
+          <h1 className="text-xl font-extrabold text-white">شركة الأماني</h1>
           <p className="mt-1 text-sm text-brand-200">نظام الإدارة المتكامل</p>
         </div>
         <nav className="flex flex-col gap-1 p-4">
@@ -22,10 +22,10 @@ export default function Layout() {
               to={item.to}
               end={item.end}
               className={({ isActive }) =>
-                `rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                `rounded-lg px-4 py-3 text-sm font-medium transition-all ${
                   isActive
-                    ? 'bg-gold-500 text-brand-900'
-                    : 'text-brand-100 hover:bg-brand-800'
+                    ? 'bg-white text-brand-900 shadow-lg shadow-black/10'
+                    : 'text-brand-100 hover:bg-white/10'
                 }`
               }
             >

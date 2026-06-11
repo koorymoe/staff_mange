@@ -75,7 +75,7 @@ export default function Employees() {
 
       <form
         onSubmit={handleAddEmployee}
-        className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-4"
+        className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-4"
       >
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-600">الاسم</label>
@@ -130,9 +130,9 @@ export default function Employees() {
 
       {!loading && !error && (
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm lg:col-span-1">
+          <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] lg:col-span-1">
             <table className="w-full text-right">
-              <thead className="bg-brand-900 text-white">
+              <thead className="bg-gradient-to-l from-brand-700 to-brand-600 text-white">
                 <tr>
                   <th className="px-4 py-3 text-sm font-semibold">الاسم</th>
                   <th className="px-4 py-3 text-sm font-semibold">المنصب</th>
@@ -144,7 +144,7 @@ export default function Employees() {
                     key={emp.id}
                     onClick={() => setSelectedId(emp.id)}
                     className={`cursor-pointer transition-colors ${
-                      selectedId === emp.id ? 'bg-gold-400/20' : 'hover:bg-slate-50'
+                      selectedId === emp.id ? 'bg-brand-50' : 'hover:bg-slate-50'
                     }`}
                   >
                     <td className="px-4 py-3 font-medium">{emp.name}</td>
@@ -162,7 +162,7 @@ export default function Employees() {
             </table>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] lg:col-span-2">
             {!selectedEmployee && (
               <p className="text-slate-400">اختر موظفاً من القائمة لعرض/تعديل مهاراته.</p>
             )}

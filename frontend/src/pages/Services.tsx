@@ -31,7 +31,7 @@ export default function Services() {
           {services.map((service) => (
             <div
               key={service.id}
-              className="rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm"
+              className="rounded-lg border border-white bg-white px-4 py-3 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
             >
               <span className="font-medium text-brand-800">{service.name}</span>
             </div>
