@@ -97,6 +97,8 @@ model Employee {
   status      EmployeeStatus @default(ACTIVE)
   role        EmployeeRole   @default(TECHNICIAN)
   onDuty      Boolean        @default(true) // هل الموظف بالدوام حالياً ومتاح للتكليف
+  username    String?        @unique // اسم المستخدم لتسجيل الدخول
+  password    String? // كلمة المرور (مشفرة)
   createdAt   DateTime       @default(now())
 
   skills EmployeeSkill[]

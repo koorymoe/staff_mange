@@ -7,12 +7,17 @@ export default function Employees() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [credUsername, setCredUsername] = useState('')
+  const [credPassword, setCredPassword] = useState('')
+  const [savingCreds, setSavingCreds] = useState(false)
 
   // New employee form
   const [name, setName] = useState('')
   const [certificate, setCertificate] = useState('')
   const [position, setPosition] = useState('')
   const [phone, setPhone] = useState('')
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
   const load = () => {
@@ -37,11 +42,15 @@ export default function Employees() {
         certificate: certificate || null,
         position: position || null,
         phone: phone || null,
+        username: username || undefined,
+        password: password || undefined,
       })
       setName('')
       setCertificate('')
       setPosition('')
       setPhone('')
+      setUsername('')
+      setPassword('')
       load()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'حدث خطأ')
@@ -51,6 +60,28 @@ export default function Employees() {
   }
 
   const selectedEmployee = employees.find((emp) => emp.id === selectedId) || null
+
+  useEffect(() => {
+    setCredUsername(selectedEmployee?.username || '')
+    setCredPassword('')
+  }, [selectedId])
+
+  const handleSaveCredentials = async () => {
+    if (!selectedEmployee) return
+    setSavingCreds(true)
+    try {
+      const updated = await api.updateEmployee(selectedEmployee.id, {
+        username: credUsername,
+        ...(credPassword ? { password: credPassword } : {}),
+      })
+      setEmployees((prev) => prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)))
+      setCredPassword('')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'حدث خطأ')
+    } finally {
+      setSavingCreds(false)
+    }
+  }
 
   const toggleSkill = async (employee: Employee, serviceId: string) => {
     const current = new Map(employee.skills.map((s) => [s.serviceId, s.canPerform]))
@@ -107,6 +138,23 @@ export default function Employees() {
           <input
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-600">اسم المستخدم</label>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+          />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-slate-600">كلمة المرور</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
           />
         </div>
@@ -216,6 +264,44 @@ export default function Employees() {
                       />
                       متاح للتكليف حالياً (بالدوام)
                     </label>
+                  </div>
+                </div>
+
+                <h4 className="mt-5 font-bold text-brand-800">بيانات تسجيل الدخول</h4>
+                <p className="mt-1 text-sm text-slate-500">
+                  حدد اسم مستخدم وكلمة مرور حتى يدخل هذا الموظف لحسابه الخاص بالنظام.
+                </p>
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      اسم المستخدم
+                    </label>
+                    <input
+                      value={credUsername}
+                      onChange={(e) => setCredUsername(e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      كلمة مرور جديدة
+                    </label>
+                    <input
+                      type="password"
+                      value={credPassword}
+                      onChange={(e) => setCredPassword(e.target.value)}
+                      placeholder="اتركه فارغاً للإبقاء على القديمة"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    />
+                  </div>
+                  <div className="flex items-end">
+                    <button
+                      onClick={handleSaveCredentials}
+                      disabled={savingCreds}
+                      className="w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg disabled:opacity-50"
+                    >
+                      {savingCreds ? 'جاري الحفظ...' : 'حفظ بيانات الدخول'}
+                    </button>
                   </div>
                 </div>
 

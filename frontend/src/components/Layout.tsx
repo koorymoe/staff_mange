@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { api, type Employee, type EmployeeRole } from '../api'
+import { type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels } from '../session'
+import Login from '../pages/Login'
 
 interface NavItem {
   to: string
@@ -20,23 +21,31 @@ const navItems: NavItem[] = [
   { to: '/services', label: 'الخدمات' },
 ]
 
-export default function Layout() {
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [employee, setEmployeeState] = useState<Employee | null>(null)
+const loadStoredEmployee = (): Employee | null => {
+  const raw = localStorage.getItem('currentEmployee')
+  if (!raw) return null
+  try {
+    return JSON.parse(raw) as Employee
+  } catch {
+    return null
+  }
+}
 
-  useEffect(() => {
-    api.getEmployees().then((emps) => {
-      setEmployees(emps)
-      const savedId = localStorage.getItem('currentEmployeeId')
-      const found = emps.find((e) => e.id === savedId)
-      setEmployeeState(found || null)
-    })
-  }, [])
+export default function Layout() {
+  const [employee, setEmployeeState] = useState<Employee | null>(loadStoredEmployee)
 
   const setEmployee = (emp: Employee | null) => {
     setEmployeeState(emp)
-    if (emp) localStorage.setItem('currentEmployeeId', emp.id)
-    else localStorage.removeItem('currentEmployeeId')
+    if (emp) localStorage.setItem('currentEmployee', JSON.stringify(emp))
+    else localStorage.removeItem('currentEmployee')
+  }
+
+  if (!employee) {
+    return (
+      <SessionContext.Provider value={{ employee, setEmployee }}>
+        <Login />
+      </SessionContext.Provider>
+    )
   }
 
   const role = employee?.role
@@ -52,19 +61,14 @@ export default function Layout() {
           </div>
 
           <div className="border-b border-white/10 px-4 py-4">
-            <label className="mb-1 block text-xs font-medium text-brand-200">أنا الآن:</label>
-            <select
-              value={employee?.id || ''}
-              onChange={(e) => setEmployee(employees.find((emp) => emp.id === e.target.value) || null)}
-              className="w-full rounded-lg border border-white/20 bg-white/10 px-2 py-2 text-sm text-white outline-none [&>option]:text-brand-900"
+            <p className="text-sm font-bold text-white">{employee.name}</p>
+            <p className="text-xs text-brand-200">{roleLabels[employee.role]}</p>
+            <button
+              onClick={() => setEmployee(null)}
+              className="mt-2 w-full rounded-lg border border-white/20 bg-white/10 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-white/20"
             >
-              <option value="">-- اختر اسمك --</option>
-              {employees.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({roleLabels[emp.role]})
-                </option>
-              ))}
-            </select>
+              تسجيل الخروج
+            </button>
           </div>
 
           <nav className="flex flex-col gap-1 p-4">

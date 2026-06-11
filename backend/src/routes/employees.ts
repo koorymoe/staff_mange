@@ -1,7 +1,13 @@
 import { Router } from 'express'
+import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma'
 
 const router = Router()
+
+const stripPassword = <T extends { password?: string | null }>(employee: T) => {
+  const { password, ...rest } = employee
+  return rest
+}
 
 // GET /api/employees - list employees with their skills
 router.get('/', async (_req, res) => {
@@ -9,7 +15,7 @@ router.get('/', async (_req, res) => {
     include: { skills: { include: { service: true } } },
     orderBy: { name: 'asc' },
   })
-  res.json(employees)
+  res.json(employees.map(stripPassword))
 })
 
 // GET /api/employees/match?serviceId=xxx - employees able to perform a given service
@@ -28,7 +34,7 @@ router.get('/match', async (req, res) => {
     include: { skills: { include: { service: true } } },
     orderBy: { name: 'asc' },
   })
-  res.json(employees)
+  res.json(employees.map(stripPassword))
 })
 
 // GET /api/employees/:id
@@ -38,28 +44,58 @@ router.get('/:id', async (req, res) => {
     include: { skills: { include: { service: true } } },
   })
   if (!employee) return res.status(404).json({ error: 'Employee not found' })
-  res.json(employee)
+  res.json(stripPassword(employee))
 })
 
 // POST /api/employees - create employee
 router.post('/', async (req, res) => {
-  const { name, certificate, position, phone } = req.body
+  const { name, certificate, position, phone, username, password } = req.body
   if (!name) return res.status(400).json({ error: 'name is required' })
 
+  if (username) {
+    const existing = await prisma.employee.findUnique({ where: { username } })
+    if (existing) return res.status(409).json({ error: 'اسم المستخدم مستخدم من قبل' })
+  }
+
   const employee = await prisma.employee.create({
-    data: { name, certificate, position, phone },
+    data: {
+      name,
+      certificate,
+      position,
+      phone,
+      username: username || null,
+      password: password ? bcrypt.hashSync(password, 10) : null,
+    },
   })
-  res.status(201).json(employee)
+  res.status(201).json(stripPassword(employee))
 })
 
 // PUT /api/employees/:id - update employee basic info
 router.put('/:id', async (req, res) => {
-  const { name, certificate, position, phone, status, role, onDuty } = req.body
+  const { name, certificate, position, phone, status, role, onDuty, username, password } = req.body
+
+  if (username) {
+    const existing = await prisma.employee.findUnique({ where: { username } })
+    if (existing && existing.id !== req.params.id) {
+      return res.status(409).json({ error: 'اسم المستخدم مستخدم من قبل' })
+    }
+  }
+
   const employee = await prisma.employee.update({
     where: { id: req.params.id },
-    data: { name, certificate, position, phone, status, role, onDuty },
+    data: {
+      name,
+      certificate,
+      position,
+      phone,
+      status,
+      role,
+      onDuty,
+      username: username === undefined ? undefined : username || null,
+      password: password ? bcrypt.hashSync(password, 10) : undefined,
+    },
   })
-  res.json(employee)
+  res.json(stripPassword(employee))
 })
 
 // PUT /api/employees/:id/skills - replace employee skill set
@@ -87,7 +123,7 @@ router.put('/:id/skills', async (req, res) => {
     where: { id },
     include: { skills: { include: { service: true } } },
   })
-  res.json(employee)
+  res.json(stripPassword(employee!))
 })
 
 export default router

@@ -24,6 +24,7 @@ export interface Employee {
   status: 'ACTIVE' | 'INACTIVE'
   role: EmployeeRole
   onDuty: boolean
+  username: string | null
   skills: EmployeeSkill[]
 }
 
@@ -74,8 +75,14 @@ export const api = {
   getServices: () => request<Service[]>('/services'),
 
   getEmployees: () => request<Employee[]>('/employees'),
-  createEmployee: (data: Pick<Employee, 'name' | 'certificate' | 'position' | 'phone'>) =>
-    request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
+  createEmployee: (
+    data: Pick<Employee, 'name' | 'certificate' | 'position' | 'phone'> & {
+      username?: string
+      password?: string
+    },
+  ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
+  login: (username: string, password: string) =>
+    request<Employee>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
   updateEmployeeSkills: (id: string, skills: { serviceId: string; canPerform: boolean }[]) =>
     request<Employee>(`/employees/${id}/skills`, {
       method: 'PUT',
@@ -110,6 +117,9 @@ export const api = {
 
   updateEmployee: (
     id: string,
-    data: Partial<Pick<Employee, 'role' | 'onDuty' | 'status' | 'name' | 'position'>>,
+    data: Partial<Pick<Employee, 'role' | 'onDuty' | 'status' | 'name' | 'position'>> & {
+      username?: string
+      password?: string
+    },
   ) => request<Employee>(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 }
