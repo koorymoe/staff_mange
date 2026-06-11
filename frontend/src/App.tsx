@@ -4,6 +4,9 @@ import Dashboard from './pages/Dashboard'
 import Employees from './pages/Employees'
 import Customers from './pages/Customers'
 import Services from './pages/Services'
+import SalesBooking from './pages/SalesBooking'
+import Coordinator from './pages/Coordinator'
+import MyTasks from './pages/MyTasks'
 
 function App() {
   return (
@@ -13,6 +16,9 @@ function App() {
         <Route path="employees" element={<Employees />} />
         <Route path="customers" element={<Customers />} />
         <Route path="services" element={<Services />} />
+        <Route path="sales" element={<SalesBooking />} />
+        <Route path="coordinator" element={<Coordinator />} />
+        <Route path="my-tasks" element={<MyTasks />} />
       </Route>
     </Routes>
   )

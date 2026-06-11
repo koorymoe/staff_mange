@@ -46,6 +46,15 @@ enum EmployeeStatus {
   INACTIVE
 }
 
+// Determines which views/screens an employee can access in the app (no separate login)
+enum EmployeeRole {
+  ADMIN // يصل لكل الواجهات
+  SALES // يسجل حجوزات جديدة (ما قبل الحجز)
+  HR_COORDINATOR // الإداري: يثبت الحجز ويوجهه لكادر الشد أو إدارة المشاريع
+  TECHNICIAN // الفني: يشوف مهامه، تقييمه، إنجازاته
+  PROJECT_MANAGER
+}
+
 // ---------------------------------------------------------------------------
 // Services offered by the company (نوع العمل)
 // ---------------------------------------------------------------------------
@@ -86,6 +95,8 @@ model Employee {
   position    String? // الترتيب / المنصب
   phone       String?
   status      EmployeeStatus @default(ACTIVE)
+  role        EmployeeRole   @default(TECHNICIAN)
+  onDuty      Boolean        @default(true) // هل الموظف بالدوام حالياً ومتاح للتكليف
   createdAt   DateTime       @default(now())
 
   skills EmployeeSkill[]

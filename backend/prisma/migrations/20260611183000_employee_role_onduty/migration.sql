@@ -1,0 +1,7 @@
+-- CreateEnum
+CREATE TYPE "EmployeeRole" AS ENUM ('ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'PROJECT_MANAGER');
+
+-- AlterTable
+ALTER TABLE "Employee" ADD COLUMN     "onDuty" BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN     "role" "EmployeeRole" NOT NULL DEFAULT 'TECHNICIAN';
+

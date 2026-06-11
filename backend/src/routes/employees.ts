@@ -22,6 +22,7 @@ router.get('/match', async (req, res) => {
   const employees = await prisma.employee.findMany({
     where: {
       status: 'ACTIVE',
+      onDuty: true,
       skills: { some: { serviceId, canPerform: true } },
     },
     include: { skills: { include: { service: true } } },
@@ -53,10 +54,10 @@ router.post('/', async (req, res) => {
 
 // PUT /api/employees/:id - update employee basic info
 router.put('/:id', async (req, res) => {
-  const { name, certificate, position, phone, status } = req.body
+  const { name, certificate, position, phone, status, role, onDuty } = req.body
   const employee = await prisma.employee.update({
     where: { id: req.params.id },
-    data: { name, certificate, position, phone, status },
+    data: { name, certificate, position, phone, status, role, onDuty },
   })
   res.json(employee)
 })

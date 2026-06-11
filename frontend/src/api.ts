@@ -13,6 +13,8 @@ export interface EmployeeSkill {
   service: Service
 }
 
+export type EmployeeRole = 'ADMIN' | 'SALES' | 'HR_COORDINATOR' | 'TECHNICIAN' | 'PROJECT_MANAGER'
+
 export interface Employee {
   id: string
   name: string
@@ -20,7 +22,31 @@ export interface Employee {
   position: string | null
   phone: string | null
   status: 'ACTIVE' | 'INACTIVE'
+  role: EmployeeRole
+  onDuty: boolean
   skills: EmployeeSkill[]
+}
+
+export interface BookingAssignment {
+  id: string
+  role: 'TECH_1' | 'TECH_2' | 'TECH_3'
+  employee: Employee
+}
+
+export interface Booking {
+  id: string
+  code: string
+  customer: Customer
+  service: Service | null
+  notes: string | null
+  vehicleType: string | null
+  priority: 'NORMAL' | 'URGENT'
+  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED'
+  transferToProjects: boolean
+  confirmedByName: string | null
+  adminNotes: string | null
+  assignments: BookingAssignment[]
+  createdAt: string
 }
 
 export interface Customer {
@@ -64,4 +90,26 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  getBookings: (status?: Booking['status']) =>
+    request<Booking[]>(`/bookings${status ? `?status=${status}` : ''}`),
+  createBooking: (data: {
+    customerId: string
+    serviceId?: string
+    notes?: string
+    vehicleType?: string
+    priority?: 'NORMAL' | 'URGENT'
+    transferEmployeeId?: string
+  }) => request<Booking>('/bookings', { method: 'POST', body: JSON.stringify(data) }),
+  confirmBooking: (
+    id: string,
+    data: { confirmedByName: string; adminNotes?: string; transferToProjects: boolean },
+  ) => request<Booking>(`/bookings/${id}/confirm`, { method: 'PUT', body: JSON.stringify(data) }),
+  assignTechnician: (id: string, data: { employeeId: string; role: 'TECH_1' | 'TECH_2' | 'TECH_3' }) =>
+    request<Booking>(`/bookings/${id}/assign`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  updateEmployee: (
+    id: string,
+    data: Partial<Pick<Employee, 'role' | 'onDuty' | 'status' | 'name' | 'position'>>,
+  ) => request<Employee>(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 }

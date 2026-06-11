@@ -169,8 +169,57 @@ export default function Employees() {
             {selectedEmployee && (
               <div>
                 <h3 className="text-lg font-bold text-brand-800">
-                  مهارات: {selectedEmployee.name}
+                  بيانات: {selectedEmployee.name}
                 </h3>
+
+                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      الصلاحية / الدور
+                    </label>
+                    <select
+                      value={selectedEmployee.role}
+                      onChange={async (e) => {
+                        const updated = await api.updateEmployee(selectedEmployee.id, {
+                          role: e.target.value as Employee['role'],
+                        })
+                        setEmployees((prev) =>
+                          prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)),
+                        )
+                      }}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    >
+                      <option value="ADMIN">مدير النظام</option>
+                      <option value="SALES">موظف مبيعات</option>
+                      <option value="HR_COORDINATOR">إداري الكوادر</option>
+                      <option value="TECHNICIAN">فني</option>
+                      <option value="PROJECT_MANAGER">مدير مشاريع</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      حالة الدوام
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedEmployee.onDuty}
+                        onChange={async (e) => {
+                          const updated = await api.updateEmployee(selectedEmployee.id, {
+                            onDuty: e.target.checked,
+                          })
+                          setEmployees((prev) =>
+                            prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)),
+                          )
+                        }}
+                        className="h-4 w-4 accent-brand-700"
+                      />
+                      متاح للتكليف حالياً (بالدوام)
+                    </label>
+                  </div>
+                </div>
+
+                <h4 className="mt-5 font-bold text-brand-800">المهارات</h4>
                 <p className="mt-1 text-sm text-slate-500">
                   حدد الخدمات التي يستطيع هذا الموظف تنفيذها. يستخدم النظام هذه القائمة
                   لاقتراح الموظف تلقائياً عند إنشاء حجز جديد.
