@@ -3,6 +3,7 @@ import cors from 'cors'
 import dotenv from 'dotenv'
 import employeesRouter from './routes/employees'
 import servicesRouter from './routes/services'
+import customersRouter from './routes/customers'
 
 dotenv.config()
 
@@ -16,6 +17,7 @@ app.get('/api/health', (_req, res) => {
 
 app.use('/api/employees', employeesRouter)
 app.use('/api/services', servicesRouter)
+app.use('/api/customers', customersRouter)
 
 const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {

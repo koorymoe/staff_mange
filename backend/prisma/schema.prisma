@@ -66,8 +66,9 @@ model Service {
 
 model Customer {
   id           String   @id @default(cuid())
+  customerCode Int      @unique @default(autoincrement()) // رقم الزبون الثابت (CUST-00001)
   name         String // اسم الزبون / المؤسسة
-  phone        String // رقم الهاتف
+  phone        String   @unique // رقم الهاتف
   location     String? // موقع الزبون / المؤسسة
   createdAt    DateTime @default(now())
 
