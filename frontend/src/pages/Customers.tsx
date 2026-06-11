@@ -88,7 +88,7 @@ export default function Customers() {
           <button
             type="submit"
             disabled={submitting}
-            className="rounded-lg bg-brand-700 px-6 py-2 font-medium text-white transition-colors hover:bg-brand-800 disabled:opacity-50"
+            className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
           >
             {submitting ? 'جاري الحفظ...' : 'حفظ الزبون'}
           </button>
@@ -106,7 +106,7 @@ export default function Customers() {
       {!loading && !error && (
         <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <table className="w-full text-right">
-            <thead className="bg-gradient-to-l from-brand-700 to-brand-600 text-white">
+            <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
               <tr>
                 <th className="px-4 py-3 text-sm font-semibold">الكود</th>
                 <th className="px-4 py-3 text-sm font-semibold">الاسم</th>

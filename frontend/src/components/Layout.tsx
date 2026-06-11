@@ -10,7 +10,7 @@ const navItems = [
 export default function Layout() {
   return (
     <div className="flex min-h-screen bg-slate-100">
-      <aside className="flex w-64 flex-col bg-gradient-to-b from-brand-800 to-brand-900 text-white shadow-xl">
+      <aside className="flex w-64 flex-col bg-gradient-to-b from-brand-500 via-brand-700 to-brand-900 text-white shadow-xl">
         <div className="border-b border-white/10 px-6 py-6">
           <h1 className="text-xl font-extrabold text-white">شركة الأماني</h1>
           <p className="mt-1 text-sm text-brand-200">نظام الإدارة المتكامل</p>

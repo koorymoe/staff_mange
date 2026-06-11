@@ -22,5 +22,7 @@ html {
 
 body {
   margin: 0;
-  background-color: #f4f6fb;
+  background: linear-gradient(180deg, #eef2fa 0%, #dde6f5 100%);
+  min-height: 100vh;
 }
+
