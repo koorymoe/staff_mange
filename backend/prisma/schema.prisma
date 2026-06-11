@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// Prisma schema for staff_mange
+// Core domain: Customers, Bookings (appointments), Employees, Services, Skill matching
 
 generator client {
   provider = "prisma-client-js"
@@ -12,33 +10,173 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Customer
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum ProjectPriority {
+  NORMAL
+  URGENT
+}
+
+enum BookingStatus {
+  PENDING // قبل الحجز - بانتظار التأكيد
+  CONFIRMED // تم الحجز
+  CANCELLED
+}
+
+enum EquipmentStatus {
+  NOT_READY // لم يتم التجهيز
+  READY // تم التجهيز
+}
+
+enum Shift {
+  MORNING // صباحي
+  EVENING // مسائي
+}
+
+enum TechnicianRole {
+  TECH_1 // الفني الأول
+  TECH_2 // الفني الثاني
+  TECH_3 // الفني الثالث
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  INACTIVE
+}
+
+// ---------------------------------------------------------------------------
+// Services offered by the company (نوع العمل)
+// ---------------------------------------------------------------------------
+
+model Service {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  category  String?
+  createdAt DateTime @default(now())
+
+  bookings       Booking[]
+  employeeSkills EmployeeSkill[]
+}
+
+// ---------------------------------------------------------------------------
+// Customers
+// ---------------------------------------------------------------------------
+
 model Customer {
-  id        String     @id @default(cuid())
-  name      String
-  phone     String
-  createdAt DateTime   @default(now())
-  bookings  Booking[]
+  id           String   @id @default(cuid())
+  name         String // اسم الزبون / المؤسسة
+  phone        String // رقم الهاتف
+  location     String? // موقع الزبون / المؤسسة
+  createdAt    DateTime @default(now())
+
+  bookings Booking[]
 }
 
-// Staff member
-model Staff {
-  id        String     @id @default(cuid())
-  name      String
-  role      String
-  createdAt DateTime   @default(now())
-  bookings  Booking[]
+// ---------------------------------------------------------------------------
+// Employees & Skills (إدارة الكوادر)
+// ---------------------------------------------------------------------------
+
+model Employee {
+  id          String         @id @default(cuid())
+  name        String
+  certificate String? // الشهادة
+  position    String? // الترتيب / المنصب
+  phone       String?
+  status      EmployeeStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now())
+
+  skills EmployeeSkill[]
+
+  // Bookings where this employee handled intake / transfer
+  transferredBookings Booking[] @relation("TransferEmployee")
+  // Bookings where this employee is the inspection supervisor
+  inspectedBookings   Booking[] @relation("InspectionSupervisor")
+  // Bookings where this employee is the project supervisor
+  supervisedBookings  Booking[] @relation("ProjectSupervisor")
+
+  assignments BookingAssignment[]
 }
 
-// Appointment / booking linking a customer to staff
-model Booking {
+// Many-to-many: which services an employee can perform
+model EmployeeSkill {
   id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId  String
+  canPerform Boolean  @default(true)
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, serviceId])
+  @@index([serviceId])
+}
+
+// ---------------------------------------------------------------------------
+// Bookings (قاعدة بيانات ما قبل الحجز + حجوزات المواعيد)
+// ---------------------------------------------------------------------------
+
+model Booking {
+  id   String @id @default(cuid())
+  code String @unique // الكود
+
+  sequenceNumber Int? // تسلسل الحجز
+  scheduledAt    DateTime? // التاريخ والوقت
+
   customer   Customer @relation(fields: [customerId], references: [id])
   customerId String
-  staff      Staff?   @relation(fields: [staffId], references: [id])
-  staffId    String?
-  scheduledAt DateTime
-  status     String   @default("pending")
-  notes      String?
-  createdAt  DateTime @default(now())
+
+  service   Service? @relation(fields: [serviceId], references: [id])
+  serviceId String? // نوع العمل
+
+  notes           String? // الملاحظات
+  vehicleType     String? // نوع المركبة
+  priority        ProjectPriority @default(NORMAL) // حالة المشروع: اعتيادي / عاجل
+  status          BookingStatus   @default(PENDING) // حالة الحجز
+
+  // Pre-booking stage (قاعدة بيانات ما قبل الحجز)
+  transferEmployee   Employee? @relation("TransferEmployee", fields: [transferEmployeeId], references: [id])
+  transferEmployeeId String?
+  transferToProjects Boolean   @default(false) // التحويل إلى إدارة المشاريع
+  confirmedByName    String? // اسم مثبت الحجز
+  adminNotes         String? // ملاحظات الإدارة
+
+  // Scheduling stage (حجوزات المواعيد)
+  equipmentStatus EquipmentStatus @default(NOT_READY) // حالة تجهيز المواد
+  shift           Shift? // الشفت
+  deviceCount     Int? // عدد الأجهزة
+
+  inspectionSupervisor   Employee? @relation("InspectionSupervisor", fields: [inspectionSupervisorId], references: [id])
+  inspectionSupervisorId String?
+
+  projectSupervisor   Employee? @relation("ProjectSupervisor", fields: [projectSupervisorId], references: [id])
+  projectSupervisorId String?
+
+  projectCar    String? // سيارة المشروع
+  crewNotes     String? // ملاحظات الكادر
+  mapLocation   String? // الموقع على الخريطة
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments BookingAssignment[]
+
+  @@index([customerId])
+  @@index([serviceId])
+  @@index([status])
+}
+
+// Technicians assigned to a booking (الفني الأول / الثاني / الثالث)
+model BookingAssignment {
+  id         String         @id @default(cuid())
+  booking    Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId  String
+  employee   Employee       @relation(fields: [employeeId], references: [id])
+  employeeId String
+  role       TechnicianRole
+  createdAt  DateTime       @default(now())
+
+  @@unique([bookingId, role])
+  @@index([employeeId])
 }
