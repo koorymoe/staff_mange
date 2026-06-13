@@ -83,15 +83,17 @@ export default function Employees() {
     }
   }
 
-  const toggleSkill = async (employee: Employee, serviceId: string) => {
-    const current = new Map(employee.skills.map((s) => [s.serviceId, s.canPerform]))
-    const newValue = !current.get(serviceId)
-    current.set(serviceId, newValue)
+  const toggleSkill = async (employee: Employee, skillId: string) => {
+    const current = new Map(employee.skills.map((s) => [s.skillId, s.canPerform]))
+    const newValue = !current.get(skillId)
+    current.set(skillId, newValue)
 
-    const skills = services.map((svc) => ({
-      serviceId: svc.id,
-      canPerform: current.get(svc.id) ?? false,
-    }))
+    const skills = services.flatMap((svc) =>
+      svc.skills.map((sk) => ({
+        skillId: sk.id,
+        canPerform: current.get(sk.id) ?? false,
+      })),
+    )
 
     const updated = await api.updateEmployeeSkills(employee.id, skills)
     setEmployees((prev) => prev.map((emp) => (emp.id === employee.id ? updated : emp)))
@@ -267,6 +269,48 @@ export default function Employees() {
                       متاح للتكليف حالياً (بالدوام)
                     </label>
                   </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      رخصة القيادة
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedEmployee.hasDrivingLicense}
+                        onChange={async (e) => {
+                          const updated = await api.updateEmployee(selectedEmployee.id, {
+                            hasDrivingLicense: e.target.checked,
+                          })
+                          setEmployees((prev) =>
+                            prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)),
+                          )
+                        }}
+                        className="h-4 w-4 accent-brand-700"
+                      />
+                      يملك رخصة قيادة
+                    </label>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      السلامة المهنية
+                    </label>
+                    <label className="flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={selectedEmployee.hasSafetyCertificate}
+                        onChange={async (e) => {
+                          const updated = await api.updateEmployee(selectedEmployee.id, {
+                            hasSafetyCertificate: e.target.checked,
+                          })
+                          setEmployees((prev) =>
+                            prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)),
+                          )
+                        }}
+                        className="h-4 w-4 accent-brand-700"
+                      />
+                      يملك شهادة السلامة المهنية
+                    </label>
+                  </div>
                 </div>
 
                 <h4 className="mt-5 font-bold text-brand-800">بيانات تسجيل الدخول</h4>
@@ -309,34 +353,42 @@ export default function Employees() {
 
                 <h4 className="mt-5 font-bold text-brand-800">المهارات</h4>
                 <p className="mt-1 text-sm text-slate-500">
-                  حدد الخدمات التي يستطيع هذا الموظف تنفيذها. يستخدم النظام هذه القائمة
-                  لاقتراح الموظف تلقائياً عند إنشاء حجز جديد.
+                  حدد المهارات الدقيقة التي يستطيع هذا الموظف تنفيذها ضمن كل خدمة. يستخدم
+                  النظام هذه القائمة لاقتراح الموظف تلقائياً عند إنشاء حجز جديد.
                 </p>
-                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {services.map((service) => {
-                    const skill = selectedEmployee.skills.find(
-                      (s) => s.serviceId === service.id,
-                    )
-                    const canPerform = skill?.canPerform ?? false
-                    return (
-                      <label
-                        key={service.id}
-                        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
-                          canPerform
-                            ? 'border-brand-500 bg-brand-50 text-brand-800'
-                            : 'border-slate-200 text-slate-500'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={canPerform}
-                          onChange={() => toggleSkill(selectedEmployee, service.id)}
-                          className="h-4 w-4 accent-brand-700"
-                        />
-                        {service.name}
-                      </label>
-                    )
-                  })}
+                <div className="mt-4 flex flex-col gap-4">
+                  {services.map((service) => (
+                    <div key={service.id}>
+                      <h5 className="mb-2 text-sm font-bold text-brand-700">{service.name}</h5>
+                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {service.skills.map((sk) => {
+                          const skill = selectedEmployee.skills.find((s) => s.skillId === sk.id)
+                          const canPerform = skill?.canPerform ?? false
+                          return (
+                            <label
+                              key={sk.id}
+                              className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-colors ${
+                                canPerform
+                                  ? 'border-brand-500 bg-brand-50 text-brand-800'
+                                  : 'border-slate-200 text-slate-500'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={canPerform}
+                                onChange={() => toggleSkill(selectedEmployee, sk.id)}
+                                className="h-4 w-4 accent-brand-700"
+                              />
+                              {sk.name}
+                            </label>
+                          )
+                        })}
+                        {service.skills.length === 0 && (
+                          <p className="text-sm text-slate-400">لا توجد مهارات محددة لهذه الخدمة.</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}

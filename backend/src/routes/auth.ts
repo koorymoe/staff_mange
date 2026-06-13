@@ -13,7 +13,7 @@ router.post('/login', async (req, res) => {
 
   const employee = await prisma.employee.findUnique({
     where: { username },
-    include: { skills: { include: { service: true } } },
+    include: { skills: { include: { skill: { include: { service: true } } } } },
   })
 
   if (!employee || !employee.password || !bcrypt.compareSync(password, employee.password)) {

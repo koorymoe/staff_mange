@@ -68,8 +68,22 @@ model Service {
   category  String?
   createdAt DateTime @default(now())
 
-  bookings       Booking[]
+  bookings Booking[]
+  skills   Skill[]
+}
+
+// Specific skill/task within a service (e.g. تسليك كيبل كهرباء under الطاقة الشمسية)
+model Skill {
+  id        String   @id @default(cuid())
+  name      String
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId String
+  createdAt DateTime @default(now())
+
   employeeSkills EmployeeSkill[]
+
+  @@unique([serviceId, name])
+  @@index([serviceId])
 }
 
 // ---------------------------------------------------------------------------
@@ -102,6 +116,8 @@ model Employee {
   onDuty      Boolean        @default(true) // هل الموظف بالدوام حالياً ومتاح للتكليف
   username    String?        @unique // اسم المستخدم لتسجيل الدخول
   password    String? // كلمة المرور (مشفرة)
+  hasDrivingLicense   Boolean @default(false) // يملك رخصة قيادة
+  hasSafetyCertificate Boolean @default(false) // يملك شهادة السلامة المهنية
   createdAt   DateTime       @default(now())
 
   skills EmployeeSkill[]
@@ -116,18 +132,18 @@ model Employee {
   assignments BookingAssignment[]
 }
 
-// Many-to-many: which services an employee can perform
+// Many-to-many: which specific skills an employee can perform
 model EmployeeSkill {
   id         String   @id @default(cuid())
   employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   employeeId String
-  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  serviceId  String
+  skill      Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  skillId    String
   canPerform Boolean  @default(true)
   createdAt  DateTime @default(now())
 
-  @@unique([employeeId, serviceId])
-  @@index([serviceId])
+  @@unique([employeeId, skillId])
+  @@index([skillId])
 }
 
 // ---------------------------------------------------------------------------

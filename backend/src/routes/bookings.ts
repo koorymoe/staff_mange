@@ -85,10 +85,10 @@ router.put('/:id/assign', async (req, res) => {
   if (!booking) return res.status(404).json({ error: 'Booking not found' })
 
   if (booking.serviceId) {
-    const skill = await prisma.employeeSkill.findUnique({
-      where: { employeeId_serviceId: { employeeId, serviceId: booking.serviceId } },
+    const matchingSkill = await prisma.employeeSkill.findFirst({
+      where: { employeeId, canPerform: true, skill: { serviceId: booking.serviceId } },
     })
-    if (!skill?.canPerform) {
+    if (!matchingSkill) {
       return res.status(400).json({ error: 'هذا الموظف لا يمتلك المهارة اللازمة لهذه المهمة' })
     }
   }

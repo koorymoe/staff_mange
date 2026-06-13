@@ -3,9 +3,12 @@ import { prisma } from '../prisma'
 
 const router = Router()
 
-// GET /api/services - list all services
+// GET /api/services - list all services with their skills
 router.get('/', async (_req, res) => {
-  const services = await prisma.service.findMany({ orderBy: { name: 'asc' } })
+  const services = await prisma.service.findMany({
+    include: { skills: { orderBy: { name: 'asc' } } },
+    orderBy: { name: 'asc' },
+  })
   res.json(services)
 })
 

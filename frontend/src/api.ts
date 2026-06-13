@@ -1,16 +1,23 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
+export interface Skill {
+  id: string
+  name: string
+  serviceId: string
+}
+
 export interface Service {
   id: string
   name: string
   category: string | null
+  skills: Skill[]
 }
 
 export interface EmployeeSkill {
   id: string
-  serviceId: string
+  skillId: string
   canPerform: boolean
-  service: Service
+  skill: Skill & { service: Service }
 }
 
 export type EmployeeRole =
@@ -32,6 +39,8 @@ export interface Employee {
   role: EmployeeRole
   onDuty: boolean
   username: string | null
+  hasDrivingLicense: boolean
+  hasSafetyCertificate: boolean
   skills: EmployeeSkill[]
 }
 
@@ -108,7 +117,7 @@ export const api = {
   ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
   login: (username: string, password: string) =>
     request<Employee>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
-  updateEmployeeSkills: (id: string, skills: { serviceId: string; canPerform: boolean }[]) =>
+  updateEmployeeSkills: (id: string, skills: { skillId: string; canPerform: boolean }[]) =>
     request<Employee>(`/employees/${id}/skills`, {
       method: 'PUT',
       body: JSON.stringify({ skills }),
@@ -149,7 +158,12 @@ export const api = {
 
   updateEmployee: (
     id: string,
-    data: Partial<Pick<Employee, 'role' | 'onDuty' | 'status' | 'name' | 'position'>> & {
+    data: Partial<
+      Pick<
+        Employee,
+        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'hasDrivingLicense' | 'hasSafetyCertificate'
+      >
+    > & {
       username?: string
       password?: string
     },

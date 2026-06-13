@@ -12,7 +12,7 @@ const stripPassword = <T extends { password?: string | null }>(employee: T) => {
 // GET /api/employees - list employees with their skills
 router.get('/', async (_req, res) => {
   const employees = await prisma.employee.findMany({
-    include: { skills: { include: { service: true } } },
+    include: { skills: { include: { skill: { include: { service: true } } } } },
     orderBy: { name: 'asc' },
   })
   res.json(employees.map(stripPassword))
@@ -29,9 +29,9 @@ router.get('/match', async (req, res) => {
     where: {
       status: 'ACTIVE',
       onDuty: true,
-      skills: { some: { serviceId, canPerform: true } },
+      skills: { some: { canPerform: true, skill: { serviceId } } },
     },
-    include: { skills: { include: { service: true } } },
+    include: { skills: { include: { skill: { include: { service: true } } } } },
     orderBy: { name: 'asc' },
   })
   res.json(employees.map(stripPassword))
@@ -41,7 +41,7 @@ router.get('/match', async (req, res) => {
 router.get('/:id', async (req, res) => {
   const employee = await prisma.employee.findUnique({
     where: { id: req.params.id },
-    include: { skills: { include: { service: true } } },
+    include: { skills: { include: { skill: { include: { service: true } } } } },
   })
   if (!employee) return res.status(404).json({ error: 'Employee not found' })
   res.json(stripPassword(employee))
@@ -72,7 +72,19 @@ router.post('/', async (req, res) => {
 
 // PUT /api/employees/:id - update employee basic info
 router.put('/:id', async (req, res) => {
-  const { name, certificate, position, phone, status, role, onDuty, username, password } = req.body
+  const {
+    name,
+    certificate,
+    position,
+    phone,
+    status,
+    role,
+    onDuty,
+    username,
+    password,
+    hasDrivingLicense,
+    hasSafetyCertificate,
+  } = req.body
 
   if (username) {
     const existing = await prisma.employee.findUnique({ where: { username } })
@@ -93,16 +105,18 @@ router.put('/:id', async (req, res) => {
       onDuty,
       username: username === undefined ? undefined : username || null,
       password: password ? bcrypt.hashSync(password, 10) : undefined,
+      hasDrivingLicense,
+      hasSafetyCertificate,
     },
   })
   res.json(stripPassword(employee))
 })
 
 // PUT /api/employees/:id/skills - replace employee skill set
-// body: { skills: [{ serviceId: string, canPerform: boolean }] }
+// body: { skills: [{ skillId: string, canPerform: boolean }] }
 router.put('/:id/skills', async (req, res) => {
   const { id } = req.params
-  const { skills } = req.body as { skills: { serviceId: string; canPerform: boolean }[] }
+  const { skills } = req.body as { skills: { skillId: string; canPerform: boolean }[] }
 
   if (!Array.isArray(skills)) {
     return res.status(400).json({ error: 'skills must be an array' })
@@ -113,7 +127,7 @@ router.put('/:id/skills', async (req, res) => {
     prisma.employeeSkill.createMany({
       data: skills.map((s) => ({
         employeeId: id,
-        serviceId: s.serviceId,
+        skillId: s.skillId,
         canPerform: s.canPerform,
       })),
     }),
@@ -121,7 +135,7 @@ router.put('/:id/skills', async (req, res) => {
 
   const employee = await prisma.employee.findUnique({
     where: { id },
-    include: { skills: { include: { service: true } } },
+    include: { skills: { include: { skill: { include: { service: true } } } } },
   })
   res.json(stripPassword(employee!))
 })
