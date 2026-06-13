@@ -130,6 +130,26 @@ model Employee {
   supervisedBookings  Booking[] @relation("ProjectSupervisor")
 
   assignments BookingAssignment[]
+  expenses    Expense[]
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// مصاريف يدفعها الموظف من جيبه ويحتاج استرجاعها/استقطاعها
+model Expense {
+  id          String        @id @default(cuid())
+  employee    Employee      @relation(fields: [employeeId], references: [id])
+  employeeId  String
+  amount      Float
+  description String?
+  status      ExpenseStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+
+  @@index([employeeId])
 }
 
 // Many-to-many: which specific skills an employee can perform

@@ -7,6 +7,7 @@ import customersRouter from './routes/customers'
 import bookingsRouter from './routes/bookings'
 import authRouter from './routes/auth'
 import statsRouter from './routes/stats'
+import expensesRouter from './routes/expenses'
 
 dotenv.config()
 
@@ -24,6 +25,7 @@ app.use('/api/customers', customersRouter)
 app.use('/api/bookings', bookingsRouter)
 app.use('/api/auth', authRouter)
 app.use('/api/stats', statsRouter)
+app.use('/api/expenses', expensesRouter)
 
 const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {

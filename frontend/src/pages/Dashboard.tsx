@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type Stats } from '../api'
+import { api, type Stats, type Booking, type Expense } from '../api'
 import { useSession } from '../session'
 import { roleLabels } from '../session'
 
@@ -31,6 +31,121 @@ export default function Dashboard() {
     if (!isCommandCenter) return
     api.getStats().then(setStats).catch((e) => setError(e.message))
   }, [isCommandCenter])
+
+  const [unverifiedBookings, setUnverifiedBookings] = useState<Booking[]>([])
+  const [pendingExpenses, setPendingExpenses] = useState<Expense[]>([])
+
+  useEffect(() => {
+    if (employee?.role !== 'FINANCE') return
+    api.getBookings({ status: 'COMPLETED' }).then((bs) => setUnverifiedBookings(bs.filter((b) => !b.amountVerified)))
+    api.getExpenses().then((es) => setPendingExpenses(es.filter((e) => e.status === 'PENDING')))
+  }, [employee?.role])
+
+  const handleExpenseStatus = async (expenseId: string, status: 'APPROVED' | 'REJECTED') => {
+    await api.updateExpenseStatus(expenseId, status)
+    setPendingExpenses((prev) => prev.filter((e) => e.id !== expenseId))
+  }
+
+  if (employee?.role === 'FINANCE') {
+    const totalUnverified = unverifiedBookings.reduce((sum, b) => sum + (b.amountCollected || 0), 0)
+    const totalPendingExpenses = pendingExpenses.reduce((sum, e) => sum + e.amount, 0)
+
+    return (
+      <div>
+        <h2 className="text-2xl font-bold text-brand-900">لوحة تحكم المحاسب</h2>
+        <p className="mt-2 text-slate-500">
+          الحسابات التي بانتظار التدقيق، ومصاريف الموظفين التي تحتاج اعتماد.
+        </p>
+
+        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-xl bg-gradient-to-br from-brand-500 to-brand-800 p-5 text-white shadow-lg shadow-brand-900/20">
+            <p className="text-sm text-brand-100">حجوزات بانتظار التدقيق</p>
+            <p className="mt-2 text-3xl font-extrabold">{unverifiedBookings.length}</p>
+          </div>
+          <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <p className="text-sm text-slate-500">مجموع المبالغ بانتظار التدقيق</p>
+            <p className="mt-2 text-3xl font-extrabold text-brand-800">{totalUnverified.toLocaleString()}</p>
+          </div>
+          <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <p className="text-sm text-slate-500">مصاريف بانتظار الاعتماد</p>
+            <p className="mt-2 text-3xl font-extrabold text-amber-600">{pendingExpenses.length}</p>
+          </div>
+          <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <p className="text-sm text-slate-500">مجموع المصاريف بانتظار الاعتماد</p>
+            <p className="mt-2 text-3xl font-extrabold text-brand-800">{totalPendingExpenses.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
+              💰 حجوزات بانتظار تدقيق المبلغ
+            </h3>
+            <div className="divide-y divide-slate-100">
+              {unverifiedBookings.map((b) => (
+                <div key={b.id} className="flex items-center justify-between px-4 py-3 text-sm">
+                  <div>
+                    <span className="font-mono font-semibold text-brand-600">{b.code}</span>
+                    <span className="mr-2 text-slate-600">{b.customer.name}</span>
+                  </div>
+                  <span className="font-bold text-brand-800">
+                    {b.amountCollected != null ? b.amountCollected.toLocaleString() : '-'}
+                  </span>
+                </div>
+              ))}
+              {unverifiedBookings.length === 0 && (
+                <p className="px-4 py-4 text-center text-slate-400">لا توجد حجوزات بانتظار التدقيق</p>
+              )}
+            </div>
+            <div className="border-t border-slate-100 px-4 py-3 text-center">
+              <Link to="/finance" className="text-sm font-medium text-brand-700 hover:underline">
+                الذهاب لتدقيق الحسابات ←
+              </Link>
+            </div>
+          </div>
+
+          <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
+              🧾 مصاريف الموظفين بانتظار الاعتماد
+            </h3>
+            <div className="divide-y divide-slate-100">
+              {pendingExpenses.map((e) => (
+                <div key={e.id} className="px-4 py-3 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-brand-800">{e.employee.name}</span>
+                    <span className="font-bold text-brand-800">{e.amount.toLocaleString()}</span>
+                  </div>
+                  {e.description && <p className="mt-1 text-slate-500">{e.description}</p>}
+                  <div className="mt-2 flex gap-2">
+                    <button
+                      onClick={() => handleExpenseStatus(e.id, 'APPROVED')}
+                      className="rounded-lg bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-200"
+                    >
+                      اعتماد
+                    </button>
+                    <button
+                      onClick={() => handleExpenseStatus(e.id, 'REJECTED')}
+                      className="rounded-lg bg-red-100 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-200"
+                    >
+                      رفض
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {pendingExpenses.length === 0 && (
+                <p className="px-4 py-4 text-center text-slate-400">لا توجد مصاريف بانتظار الاعتماد</p>
+              )}
+            </div>
+            <div className="border-t border-slate-100 px-4 py-3 text-center">
+              <Link to="/bookings" className="text-sm font-medium text-brand-700 hover:underline">
+                مراجعة كل الحجوزات ←
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (employee?.role === 'HR_COORDINATOR') {
     return (

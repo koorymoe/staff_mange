@@ -9,6 +9,7 @@ import Coordinator from './pages/Coordinator'
 import BookingsList from './pages/BookingsList'
 import MyTasks from './pages/MyTasks'
 import MyRanking from './pages/MyRanking'
+import MyExpenses from './pages/MyExpenses'
 import Finance from './pages/Finance'
 
 function App() {
@@ -24,6 +25,7 @@ function App() {
         <Route path="bookings" element={<BookingsList />} />
         <Route path="my-tasks" element={<MyTasks />} />
         <Route path="my-ranking" element={<MyRanking />} />
+        <Route path="my-expenses" element={<MyExpenses />} />
         <Route path="finance" element={<Finance />} />
       </Route>
     </Routes>

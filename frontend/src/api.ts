@@ -107,6 +107,16 @@ export interface Stats {
   }[]
 }
 
+export interface Expense {
+  id: string
+  employeeId: string
+  employee: { id: string; name: string; position: string | null }
+  amount: number
+  description: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+}
+
 export interface Customer {
   id: string
   customerCode: number
@@ -185,6 +195,16 @@ export const api = {
   verifyAmount: (id: string) =>
     request<Booking>(`/bookings/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
   getStats: () => request<Stats>('/stats'),
+
+  getExpenses: (employeeId?: string) =>
+    request<Expense[]>(`/expenses${employeeId ? `?employeeId=${employeeId}` : ''}`),
+  createExpense: (data: { employeeId: string; amount: number; description?: string }) =>
+    request<Expense>('/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  updateExpenseStatus: (id: string, status: 'APPROVED' | 'REJECTED') =>
+    request<Expense>(`/expenses/${id}/status`, {
+      method: 'PUT',
+      body: JSON.stringify({ status }),
+    }),
 
   updateEmployee: (
     id: string,
