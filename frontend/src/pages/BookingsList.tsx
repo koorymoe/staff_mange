@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { api, type Booking } from '../api'
 
 const statusLabels: Record<string, string> = {
@@ -15,11 +15,18 @@ const statusColors: Record<string, string> = {
   CANCELLED: 'bg-red-100 text-red-700',
 }
 
+const techRoleLabels: Record<string, string> = {
+  TECH_1: 'الفني الأول',
+  TECH_2: 'الفني الثاني',
+  TECH_3: 'الفني الثالث',
+}
+
 export default function BookingsList() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     api
@@ -108,32 +115,105 @@ export default function BookingsList() {
                 <th className="px-4 py-3 text-sm font-semibold">السيارة</th>
                 <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
                 <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
+                <th className="px-4 py-3 text-sm font-semibold"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {filtered.map((b) => (
-                <tr key={b.id}>
-                  <td className="px-4 py-3 font-mono text-sm font-semibold text-brand-600">
-                    {b.code}
-                  </td>
-                  <td className="px-4 py-3">{b.customer.name}</td>
-                  <td className="px-4 py-3 font-mono text-sm text-slate-500">{b.customer.code}</td>
-                  <td className="px-4 py-3 text-slate-600">{b.service?.name || '-'}</td>
-                  <td className="px-4 py-3 text-slate-600">{b.transferEmployee?.name || '-'}</td>
-                  <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>
-                  <td className="px-4 py-3 text-slate-500">
-                    {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[b.status]}`}>
-                      {statusLabels[b.status] || b.status}
-                    </span>
-                  </td>
-                </tr>
+                <Fragment key={b.id}>
+                  <tr>
+                    <td className="px-4 py-3 font-mono text-sm font-semibold text-brand-600">
+                      {b.code}
+                    </td>
+                    <td className="px-4 py-3">{b.customer.name}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-slate-500">{b.customer.code}</td>
+                    <td className="px-4 py-3 text-slate-600">{b.service?.name || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600">{b.transferEmployee?.name || '-'}</td>
+                    <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[b.status]}`}>
+                        {statusLabels[b.status] || b.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => setExpandedId(expandedId === b.id ? null : b.id)}
+                        className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-50"
+                      >
+                        {expandedId === b.id ? 'إخفاء' : 'التفاصيل'}
+                      </button>
+                    </td>
+                  </tr>
+                  {expandedId === b.id && (
+                    <tr>
+                      <td colSpan={9} className="bg-slate-50 px-4 py-4">
+                        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                          <div>
+                            <p className="text-slate-400">الكادر الذي تم تكليفه</p>
+                            {b.assignments.length > 0 ? (
+                              <ul className="mt-1 list-inside list-disc text-slate-700">
+                                {b.assignments.map((a) => (
+                                  <li key={a.id}>
+                                    {a.employee.name}
+                                    <span className="text-slate-400"> ({techRoleLabels[a.role] || a.role})</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="mt-1 text-slate-400">لم يتم تكليف أحد بعد</p>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-slate-400">السيارة المخصصة</p>
+                            <p className="mt-1 text-slate-700">{b.assignedVehicle || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">وقت تسجيل الحجز</p>
+                            <p className="mt-1 text-slate-700">
+                              {new Date(b.createdAt).toLocaleString('ar-IQ')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">وقت إنجاز الحجز</p>
+                            <p className="mt-1 text-slate-700">
+                              {b.completedAt ? new Date(b.completedAt).toLocaleString('ar-IQ') : 'لم يُنجز بعد'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">المبلغ المستلم</p>
+                            <p className="mt-1 text-slate-700">
+                              {b.amountCollected != null ? b.amountCollected.toLocaleString() : '-'}
+                              {b.amountCollected != null && (
+                                <span className="mr-2 text-xs text-slate-400">
+                                  ({b.amountVerified ? 'مدقق' : 'بانتظار التدقيق'})
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">ملاحظات الإنجاز</p>
+                            <p className="mt-1 text-slate-700">{b.completionNotes || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">ملاحظات الحجز</p>
+                            <p className="mt-1 text-slate-700">{b.notes || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">من أكد الحجز</p>
+                            <p className="mt-1 text-slate-700">{b.confirmedByName || '-'}</p>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                     لا توجد حجوزات
                   </td>
                 </tr>
