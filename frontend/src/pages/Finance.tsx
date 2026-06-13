@@ -9,7 +9,7 @@ export default function Finance() {
   const load = () => {
     setLoading(true)
     api
-      .getBookings('COMPLETED')
+      .getBookings({ status: 'COMPLETED' })
       .then(setBookings)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))

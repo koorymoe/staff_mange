@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, type Stats } from '../api'
 import { useSession } from '../session'
 import { roleLabels } from '../session'
@@ -31,6 +32,56 @@ export default function Dashboard() {
     api.getStats().then(setStats).catch((e) => setError(e.message))
   }, [isCommandCenter])
 
+  if (employee?.role === 'HR_COORDINATOR') {
+    return (
+      <div>
+        <h2 className="text-2xl font-bold text-brand-900">لوحة تحكم إداري الكوادر</h2>
+        <p className="mt-2 text-slate-500">
+          من هنا تقدر توجه الموظفين للحجوزات، تدير مهاراتهم، وتتابع بيانات الزبائن.
+        </p>
+
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Link
+            to="/coordinator"
+            className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:shadow-lg hover:-translate-y-0.5"
+          >
+            <h3 className="font-bold text-brand-800">تنسيق الحجوزات</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              تابع الحجوزات الجديدة، ثبتها، ووجه الفنيين والموظفين المناسبين لها.
+            </p>
+          </Link>
+          <Link
+            to="/employees"
+            className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:shadow-lg hover:-translate-y-0.5"
+          >
+            <h3 className="font-bold text-brand-800">إدارة الكوادر</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              إدارة مهارات الموظفين وحالة الدوام لكل واحد منهم.
+            </p>
+          </Link>
+          <Link
+            to="/customers"
+            className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:shadow-lg hover:-translate-y-0.5"
+          >
+            <h3 className="font-bold text-brand-800">الزبائن</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              قاعدة بيانات الزبائن وسجل طلباتهم وحجوزاتهم السابقة.
+            </p>
+          </Link>
+          <Link
+            to="/services"
+            className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:shadow-lg hover:-translate-y-0.5"
+          >
+            <h3 className="font-bold text-brand-800">الخدمات</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              قائمة الخدمات التي تقدمها الشركة وربطها بمهارات الموظفين.
+            </p>
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
   if (!isCommandCenter) {
     return (
       <div>
@@ -38,27 +89,6 @@ export default function Dashboard() {
         <p className="mt-2 text-slate-500">
           مرحباً بك في نظام إدارة شركة الأماني المتكامل. اختر وحدة من القائمة الجانبية للبدء.
         </p>
-
-        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <h3 className="font-bold text-brand-800">إدارة الكوادر</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              إدارة الموظفين، الشهادات، والمهارات الفنية لكل خدمة.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <h3 className="font-bold text-brand-800">الزبائن</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              قاعدة بيانات الزبائن مع كود ثابت لكل زبون.
-            </p>
-          </div>
-          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <h3 className="font-bold text-brand-800">الخدمات</h3>
-            <p className="mt-1 text-sm text-slate-500">
-              قائمة الخدمات التي تقدمها الشركة وربطها بمهارات الموظفين.
-            </p>
-          </div>
-        </div>
       </div>
     )
   }

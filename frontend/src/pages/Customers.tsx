@@ -1,10 +1,28 @@
 import { useEffect, useState } from 'react'
-import { api, type Customer } from '../api'
+import { api, type Customer, type Booking } from '../api'
+
+const statusLabels: Record<string, string> = {
+  PENDING: 'بانتظار التثبيت',
+  CONFIRMED: 'مثبت',
+  COMPLETED: 'منجز',
+  CANCELLED: 'ملغى',
+}
+
+const statusColors: Record<string, string> = {
+  PENDING: 'bg-amber-100 text-amber-700',
+  CONFIRMED: 'bg-blue-100 text-blue-700',
+  COMPLETED: 'bg-emerald-100 text-emerald-700',
+  CANCELLED: 'bg-red-100 text-red-700',
+}
 
 export default function Customers() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [history, setHistory] = useState<Booking[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -22,6 +40,20 @@ export default function Customers() {
   }
 
   useEffect(load, [])
+
+  useEffect(() => {
+    if (!selectedId) {
+      setHistory([])
+      return
+    }
+    setHistoryLoading(true)
+    api
+      .getBookings({ customerId: selectedId })
+      .then(setHistory)
+      .finally(() => setHistoryLoading(false))
+  }, [selectedId])
+
+  const selectedCustomer = customers.find((c) => c.id === selectedId) || null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -104,36 +136,109 @@ export default function Customers() {
       )}
 
       {!loading && !error && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <table className="w-full text-right">
-            <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
-              <tr>
-                <th className="px-4 py-3 text-sm font-semibold">الكود</th>
-                <th className="px-4 py-3 text-sm font-semibold">الاسم</th>
-                <th className="px-4 py-3 text-sm font-semibold">الهاتف</th>
-                <th className="px-4 py-3 text-sm font-semibold">الموقع</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {customers.map((c) => (
-                <tr key={c.id}>
-                  <td className="px-4 py-3 font-mono text-sm font-semibold text-brand-600">
-                    {c.code}
-                  </td>
-                  <td className="px-4 py-3">{c.name}</td>
-                  <td className="px-4 py-3">{c.phone}</td>
-                  <td className="px-4 py-3 text-slate-500">{c.location || '-'}</td>
-                </tr>
-              ))}
-              {customers.length === 0 && (
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] lg:col-span-1">
+            <table className="w-full text-right">
+              <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                 <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
-                    لا يوجد زبائن بعد
-                  </td>
+                  <th className="px-4 py-3 text-sm font-semibold">الكود</th>
+                  <th className="px-4 py-3 text-sm font-semibold">الاسم</th>
+                  <th className="px-4 py-3 text-sm font-semibold">الهاتف</th>
                 </tr>
-              )}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {customers.map((c) => (
+                  <tr
+                    key={c.id}
+                    onClick={() => setSelectedId(c.id)}
+                    className={`cursor-pointer transition-colors ${
+                      selectedId === c.id ? 'bg-brand-50' : 'hover:bg-slate-50'
+                    }`}
+                  >
+                    <td className="px-4 py-3 font-mono text-sm font-semibold text-brand-600">
+                      {c.code}
+                    </td>
+                    <td className="px-4 py-3">{c.name}</td>
+                    <td className="px-4 py-3 text-slate-500">{c.phone}</td>
+                  </tr>
+                ))}
+                {customers.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                      لا يوجد زبائن بعد
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] lg:col-span-2">
+            {!selectedCustomer && (
+              <p className="text-slate-400">اختر زبوناً من القائمة لعرض بياناته وسجل طلباته.</p>
+            )}
+            {selectedCustomer && (
+              <div>
+                <h3 className="text-lg font-bold text-brand-800">{selectedCustomer.name}</h3>
+                <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
+                  <p>
+                    <span className="text-slate-500">الكود: </span>
+                    <span className="font-mono font-semibold text-brand-600">
+                      {selectedCustomer.code}
+                    </span>
+                  </p>
+                  <p>
+                    <span className="text-slate-500">الهاتف: </span>
+                    {selectedCustomer.phone}
+                  </p>
+                  <p>
+                    <span className="text-slate-500">الموقع: </span>
+                    {selectedCustomer.location || '-'}
+                  </p>
+                </div>
+
+                <h4 className="mt-5 font-bold text-brand-800">طلبات وحجوزات الزبون</h4>
+                {historyLoading && <p className="mt-2 text-slate-400">جاري التحميل...</p>}
+                {!historyLoading && (
+                  <div className="mt-3 divide-y divide-slate-100">
+                    {history.map((b) => (
+                      <div key={b.id} className="py-3 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono font-semibold text-brand-600">{b.code}</span>
+                          <span
+                            className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[b.status]}`}
+                          >
+                            {statusLabels[b.status] || b.status}
+                          </span>
+                        </div>
+                        <div className="mt-1 grid grid-cols-1 gap-1 text-slate-600 sm:grid-cols-2">
+                          <p>
+                            <span className="text-slate-400">الخدمة المطلوبة: </span>
+                            {b.service?.name || '-'}
+                          </p>
+                          <p>
+                            <span className="text-slate-400">الموظف الذي سجل الطلب: </span>
+                            {b.transferEmployee?.name || '-'}
+                          </p>
+                          <p>
+                            <span className="text-slate-400">السيارة المخصصة: </span>
+                            {b.assignedVehicle || '-'}
+                          </p>
+                          <p>
+                            <span className="text-slate-400">التاريخ: </span>
+                            {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                    {history.length === 0 && (
+                      <p className="py-4 text-center text-slate-400">لا توجد طلبات لهذا الزبون</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Service } from '../api'
+import { useSession } from '../session'
 
 export default function Employees() {
+  const { employee: currentUser } = useSession()
+  const isAdmin = currentUser?.role === 'ADMIN'
   const [employees, setEmployees] = useState<Employee[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
@@ -106,6 +109,7 @@ export default function Employees() {
         إدارة بيانات الموظفين وتحديد المهارات (الخدمات) التي يستطيع كل موظف تنفيذها.
       </p>
 
+      {isAdmin && (
       <form
         onSubmit={handleAddEmployee}
         className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-4"
@@ -170,6 +174,7 @@ export default function Employees() {
           </button>
         </div>
       </form>
+      )}
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && (
@@ -223,6 +228,7 @@ export default function Employees() {
                 </h3>
 
                 <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {isAdmin && (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
                       الصلاحية / الدور
@@ -248,6 +254,7 @@ export default function Employees() {
                       <option value="FINANCE">محاسب</option>
                     </select>
                   </div>
+                  )}
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
                       حالة الدوام
@@ -269,6 +276,7 @@ export default function Employees() {
                       متاح للتكليف حالياً (بالدوام)
                     </label>
                   </div>
+                  {isAdmin && (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
                       رخصة القيادة
@@ -290,6 +298,8 @@ export default function Employees() {
                       يملك رخصة قيادة
                     </label>
                   </div>
+                  )}
+                  {isAdmin && (
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
                       السلامة المهنية
@@ -311,8 +321,11 @@ export default function Employees() {
                       يملك شهادة السلامة المهنية
                     </label>
                   </div>
+                  )}
                 </div>
 
+                {isAdmin && (
+                <>
                 <h4 className="mt-5 font-bold text-brand-800">بيانات تسجيل الدخول</h4>
                 <p className="mt-1 text-sm text-slate-500">
                   حدد اسم مستخدم وكلمة مرور حتى يدخل هذا الموظف لحسابه الخاص بالنظام.
@@ -350,6 +363,8 @@ export default function Employees() {
                     </button>
                   </div>
                 </div>
+                </>
+                )}
 
                 <h4 className="mt-5 font-bold text-brand-800">المهارات</h4>
                 <p className="mt-1 text-sm text-slate-500">

@@ -11,7 +11,7 @@ export default function MyTasks() {
 
   const load = () => {
     api
-      .getBookings('CONFIRMED')
+      .getBookings({ status: 'CONFIRMED' })
       .then(setBookings)
       .finally(() => setLoading(false))
   }

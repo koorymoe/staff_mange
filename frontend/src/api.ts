@@ -56,6 +56,7 @@ export interface Booking {
   sequenceNumber: number | null
   customer: Customer
   service: Service | null
+  transferEmployee: Employee | null
   notes: string | null
   vehicleType: string | null
   priority: 'NORMAL' | 'URGENT'
@@ -156,8 +157,13 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getBookings: (status?: Booking['status']) =>
-    request<Booking[]>(`/bookings${status ? `?status=${status}` : ''}`),
+  getBookings: (params?: { status?: Booking['status']; customerId?: string }) => {
+    const query = new URLSearchParams()
+    if (params?.status) query.set('status', params.status)
+    if (params?.customerId) query.set('customerId', params.customerId)
+    const qs = query.toString()
+    return request<Booking[]>(`/bookings${qs ? `?${qs}` : ''}`)
+  },
   createBooking: (data: {
     customerId: string
     serviceId?: string

@@ -12,11 +12,12 @@ const bookingInclude = {
 
 // GET /api/bookings?status=PENDING - list bookings, optionally filtered by status
 router.get('/', async (req, res) => {
-  const { status } = req.query
+  const { status, customerId } = req.query
   const bookings = await prisma.booking.findMany({
-    where: status
-      ? { status: status as 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' }
-      : undefined,
+    where: {
+      ...(status ? { status: status as 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' } : {}),
+      ...(customerId ? { customerId: customerId as string } : {}),
+    },
     include: bookingInclude,
     orderBy: { createdAt: 'desc' },
   })
