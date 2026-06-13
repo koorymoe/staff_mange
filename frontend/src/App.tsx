@@ -6,6 +6,7 @@ import Customers from './pages/Customers'
 import Services from './pages/Services'
 import SalesBooking from './pages/SalesBooking'
 import Coordinator from './pages/Coordinator'
+import BookingsList from './pages/BookingsList'
 import MyTasks from './pages/MyTasks'
 import Finance from './pages/Finance'
 
@@ -19,6 +20,7 @@ function App() {
         <Route path="services" element={<Services />} />
         <Route path="sales" element={<SalesBooking />} />
         <Route path="coordinator" element={<Coordinator />} />
+        <Route path="bookings" element={<BookingsList />} />
         <Route path="my-tasks" element={<MyTasks />} />
         <Route path="finance" element={<Finance />} />
       </Route>

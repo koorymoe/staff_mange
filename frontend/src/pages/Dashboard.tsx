@@ -60,6 +60,15 @@ export default function Dashboard() {
             </p>
           </Link>
           <Link
+            to="/bookings"
+            className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:shadow-lg hover:-translate-y-0.5"
+          >
+            <h3 className="font-bold text-brand-800">الحجوزات</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              سجل كامل بكل الحجوزات السابقة وأكثر الخدمات طلباً من الزبائن.
+            </p>
+          </Link>
+          <Link
             to="/customers"
             className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:shadow-lg hover:-translate-y-0.5"
           >
