@@ -10,14 +10,6 @@ const levels = [
   { level: 5, label: 'فني خبير', min: 15 },
 ]
 
-const ranks = [
-  { label: 'برونزي', min: 0 },
-  { label: 'فضي', min: 5 },
-  { label: 'ذهبي', min: 15 },
-  { label: 'بلاتيني', min: 30 },
-  { label: 'أسطوري', min: 50 },
-]
-
 export default function MyTasks() {
   const { employee } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -50,8 +42,6 @@ export default function MyTasks() {
 
   const myTechStat = stats?.technicianStats.find((s) => s.employeeId === employee?.id)
   const completedCount = myTechStat?.completed || 0
-  const currentRank = [...ranks].reverse().find((r) => completedCount >= r.min) || ranks[0]
-  const nextRank = ranks.find((r) => r.min > completedCount)
 
   const sortedTechs = stats
     ? [...stats.technicianStats].sort((a, b) => b.completed - a.completed)
@@ -175,14 +165,8 @@ export default function MyTasks() {
                 </div>
 
                 <div className="mt-3 rounded-lg bg-emerald-50 p-4">
-                  <p className="text-sm text-slate-500">الرتبة (حسب الحجوزات المنجزة)</p>
-                  <p className="mt-1 text-2xl font-extrabold text-emerald-700">{currentRank.label}</p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {completedCount} حجز منجز
-                    {nextRank
-                      ? ` - يحتاج ${nextRank.min - completedCount} حجز إضافي للترقي إلى "${nextRank.label}"`
-                      : ' - أعلى رتبة ممكنة!'}
-                  </p>
+                  <p className="text-sm text-slate-500">الرانك (عدد الحجوزات المنجزة)</p>
+                  <p className="mt-1 text-2xl font-extrabold text-emerald-700">{completedCount}</p>
                   {myPosition >= 0 && (
                     <p className="mt-1 text-xs text-slate-500">
                       ترتيبك بين الفنيين: <span className="font-bold text-brand-700">#{myPosition + 1}</span> من{' '}
