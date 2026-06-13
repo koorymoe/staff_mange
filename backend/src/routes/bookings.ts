@@ -7,6 +7,7 @@ const bookingInclude = {
   customer: true,
   service: true,
   transferEmployee: true,
+  projectSupervisor: true,
   assignments: { include: { employee: true } },
 } as const
 
@@ -114,6 +115,27 @@ router.put('/:id/assign', async (req, res) => {
 
   const updated = await prisma.booking.findUnique({
     where: { id },
+    include: bookingInclude,
+  })
+  res.json(updated)
+})
+
+// PUT /api/bookings/:id/supervisor - HR coordinator optionally assigns a supervisor to the dispatch
+// body: { employeeId: string | null }
+router.put('/:id/supervisor', async (req, res) => {
+  const { id } = req.params
+  const { employeeId } = req.body
+
+  if (employeeId) {
+    const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
+    if (!employee || employee.role !== 'PROJECT_MANAGER') {
+      return res.status(400).json({ error: 'يجب أن يكون المشرف من مديري المشاريع' })
+    }
+  }
+
+  const updated = await prisma.booking.update({
+    where: { id },
+    data: { projectSupervisorId: employeeId || null },
     include: bookingInclude,
   })
   res.json(updated)

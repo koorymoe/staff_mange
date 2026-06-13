@@ -62,7 +62,7 @@ router.get('/', async (_req, res) => {
     .sort((a, b) => b.confirmed - a.confirmed)
 
   const technicianStats = employees
-    .filter((e) => e.role === 'TECHNICIAN' || e.role === 'PROJECT_MANAGER')
+    .filter((e) => e.role === 'TECHNICIAN')
     .map((e) => ({
       employeeId: e.id,
       name: e.name,

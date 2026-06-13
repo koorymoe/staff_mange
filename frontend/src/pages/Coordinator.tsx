@@ -10,6 +10,7 @@ const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
 export default function Coordinator() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
+  const [supervisors, setSupervisors] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -23,6 +24,14 @@ export default function Coordinator() {
   }
 
   useEffect(load, [])
+  useEffect(() => {
+    api.getSupervisors().then(setSupervisors)
+  }, [])
+
+  const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
+    const updated = await api.assignSupervisor(booking.id, employeeId || null)
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
 
   const loadMatches = async (booking: Booking) => {
     if (!booking.service) return
@@ -150,6 +159,25 @@ export default function Coordinator() {
             {booking.status === 'CONFIRMED' && !booking.transferToProjects && (
               <div className="mt-4">
                 <h4 className="text-sm font-bold text-brand-800">توجيه كادر الشد</h4>
+
+                <div className="mt-2 sm:w-1/3">
+                  <label className="mb-1 block text-sm font-medium text-slate-600">
+                    المشرف المرافق (اختياري)
+                  </label>
+                  <select
+                    value={booking.projectSupervisor?.id || ''}
+                    onChange={(e) => handleSupervisorChange(booking, e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                  >
+                    <option value="">-- بدون مشرف --</option>
+                    {supervisors.map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 {!matches[booking.id] && (
                   <button
                     onClick={() => loadMatches(booking)}

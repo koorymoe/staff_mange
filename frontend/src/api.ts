@@ -57,6 +57,7 @@ export interface Booking {
   customer: Customer
   service: Service | null
   transferEmployee: Employee | null
+  projectSupervisor: Employee | null
   notes: string | null
   vehicleType: string | null
   priority: 'NORMAL' | 'URGENT'
@@ -159,6 +160,7 @@ export const api = {
     }),
   matchEmployees: (serviceId: string) =>
     request<Employee[]>(`/employees/match?serviceId=${serviceId}`),
+  getSupervisors: () => request<Employee[]>('/employees/supervisors'),
 
   getCustomers: () => request<Customer[]>('/customers'),
   createCustomer: (data: { name: string; phone: string; location?: string }) =>
@@ -190,6 +192,11 @@ export const api = {
     id: string,
     data: { employeeId: string; role: 'TECH_1' | 'TECH_2' | 'TECH_3'; assignedVehicle?: string },
   ) => request<Booking>(`/bookings/${id}/assign`, { method: 'PUT', body: JSON.stringify(data) }),
+  assignSupervisor: (id: string, employeeId: string | null) =>
+    request<Booking>(`/bookings/${id}/supervisor`, {
+      method: 'PUT',
+      body: JSON.stringify({ employeeId }),
+    }),
   completeBooking: (id: string, data: { completionNotes?: string; amountCollected?: number }) =>
     request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
   verifyAmount: (id: string) =>

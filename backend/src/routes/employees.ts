@@ -18,6 +18,15 @@ router.get('/', async (_req, res) => {
   res.json(employees.map(stripPassword))
 })
 
+// GET /api/employees/supervisors - active project managers eligible to supervise a dispatch
+router.get('/supervisors', async (_req, res) => {
+  const employees = await prisma.employee.findMany({
+    where: { status: 'ACTIVE', role: 'PROJECT_MANAGER' },
+    orderBy: { name: 'asc' },
+  })
+  res.json(employees.map(stripPassword))
+})
+
 // GET /api/employees/match?serviceId=xxx - employees able to perform a given service
 router.get('/match', async (req, res) => {
   const { serviceId } = req.query
@@ -29,6 +38,7 @@ router.get('/match', async (req, res) => {
     where: {
       status: 'ACTIVE',
       onDuty: true,
+      role: 'TECHNICIAN',
       skills: { some: { canPerform: true, skill: { serviceId } } },
     },
     include: { skills: { include: { skill: { include: { service: true } } } } },
