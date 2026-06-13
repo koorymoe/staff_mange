@@ -19,4 +19,6 @@ export const roleLabels: Record<string, string> = {
   HR_COORDINATOR: 'إداري الكوادر',
   TECHNICIAN: 'فني',
   PROJECT_MANAGER: 'مدير مشاريع',
+  MONITOR: 'مراقب',
+  FINANCE: 'محاسب',
 }

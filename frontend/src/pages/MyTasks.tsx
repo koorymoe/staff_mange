@@ -6,17 +6,30 @@ export default function MyTasks() {
   const { employee } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
+  const [amounts, setAmounts] = useState<Record<string, string>>({})
+  const [notes, setNotes] = useState<Record<string, string>>({})
 
-  useEffect(() => {
+  const load = () => {
     api
       .getBookings('CONFIRMED')
       .then(setBookings)
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(load, [])
 
   const myTasks = bookings.filter((b) =>
     b.assignments.some((a) => a.employee.id === employee?.id),
   )
+
+  const handleComplete = async (booking: Booking) => {
+    const amountCollected = amounts[booking.id] ? Number(amounts[booking.id]) : undefined
+    await api.completeBooking(booking.id, {
+      completionNotes: notes[booking.id] || undefined,
+      amountCollected,
+    })
+    setBookings((prev) => prev.filter((b) => b.id !== booking.id))
+  }
 
   return (
     <div>
@@ -52,9 +65,52 @@ export default function MyTasks() {
                       </span>
                     </div>
                     <p className="mt-2 text-sm font-medium text-brand-800">{b.service?.name}</p>
-                    <p className="text-sm text-slate-500">
-                      {b.customer.name} - {b.customer.location || 'بدون موقع محدد'}
-                    </p>
+                    <div className="mt-1 grid grid-cols-1 gap-1 text-sm text-slate-500 sm:grid-cols-2">
+                      <p>
+                        <span className="text-slate-400">الزبون: </span>
+                        {b.customer.name}
+                      </p>
+                      <p>
+                        <span className="text-slate-400">الهاتف: </span>
+                        {b.customer.phone}
+                      </p>
+                      <p>
+                        <span className="text-slate-400">الموقع: </span>
+                        {b.customer.location || 'بدون موقع محدد'}
+                      </p>
+                      <p>
+                        <span className="text-slate-400">السيارة: </span>
+                        {b.assignedVehicle || 'لم تحدد'}
+                      </p>
+                    </div>
+                    {b.notes && (
+                      <p className="mt-1 text-sm text-slate-500">
+                        <span className="text-slate-400">ملاحظات: </span>
+                        {b.notes}
+                      </p>
+                    )}
+
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <input
+                        type="number"
+                        placeholder="المبلغ المستلم"
+                        value={amounts[b.id] || ''}
+                        onChange={(e) => setAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                      />
+                      <input
+                        placeholder="ملاحظات الإنجاز"
+                        value={notes[b.id] || ''}
+                        onChange={(e) => setNotes((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 sm:col-span-1"
+                      />
+                      <button
+                        onClick={() => handleComplete(b)}
+                        className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
+                      >
+                        تم الإنجاز
+                      </button>
+                    </div>
                   </div>
                 )
               })}

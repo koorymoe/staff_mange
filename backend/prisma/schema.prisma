@@ -22,6 +22,7 @@ enum ProjectPriority {
 enum BookingStatus {
   PENDING // قبل الحجز - بانتظار التأكيد
   CONFIRMED // تم الحجز
+  COMPLETED // تم إنجاز المهمة
   CANCELLED
 }
 
@@ -53,6 +54,8 @@ enum EmployeeRole {
   HR_COORDINATOR // الإداري: يثبت الحجز ويوجهه لكادر الشد أو إدارة المشاريع
   TECHNICIAN // الفني: يشوف مهامه، تقييمه، إنجازاته
   PROJECT_MANAGER
+  MONITOR // مراقب: يشوف الإحصائيات فقط
+  FINANCE // المحاسب: يراجع المبالغ المستلمة من الحجوزات المنجزة
 }
 
 // ---------------------------------------------------------------------------
@@ -170,6 +173,14 @@ model Booking {
   projectCar    String? // سيارة المشروع
   crewNotes     String? // ملاحظات الكادر
   mapLocation   String? // الموقع على الخريطة
+
+  assignedVehicle String? // السيارة المخصصة لتنفيذ المهمة
+
+  // Completion / finance handoff
+  completedAt     DateTime? // وقت إنجاز المهمة من الفني
+  completionNotes String? // ملاحظات الفني عند الإنجاز
+  amountCollected Float? // المبلغ المستلم من الزبون
+  amountVerified  Boolean @default(false) // تدقيق المحاسب على المبلغ
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

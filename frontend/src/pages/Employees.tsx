@@ -242,6 +242,8 @@ export default function Employees() {
                       <option value="HR_COORDINATOR">إداري الكوادر</option>
                       <option value="TECHNICIAN">فني</option>
                       <option value="PROJECT_MANAGER">مدير مشاريع</option>
+                      <option value="MONITOR">مراقب</option>
+                      <option value="FINANCE">محاسب</option>
                     </select>
                   </div>
                   <div>

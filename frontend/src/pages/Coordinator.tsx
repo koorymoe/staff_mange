@@ -49,6 +49,17 @@ export default function Coordinator() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
+  const handleVehicleChange = async (booking: Booking, assignedVehicle: string) => {
+    const firstAssignment = booking.assignments[0]
+    if (!firstAssignment) return
+    const updated = await api.assignTechnician(booking.id, {
+      employeeId: firstAssignment.employee.id,
+      role: firstAssignment.role,
+      assignedVehicle,
+    })
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-brand-900">تنسيق الحجوزات (الإداري)</h2>
@@ -178,6 +189,19 @@ export default function Coordinator() {
                         </div>
                       )
                     })}
+                  </div>
+                )}
+                {matches[booking.id] && booking.assignments.length > 0 && (
+                  <div className="mt-3">
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      السيارة المخصصة للمهمة
+                    </label>
+                    <input
+                      defaultValue={booking.assignedVehicle || ''}
+                      onBlur={(e) => handleVehicleChange(booking, e.target.value)}
+                      placeholder="مثال: تويوتا هايلوكس - أبيض - 12345"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 sm:w-1/3"
+                    />
                   </div>
                 )}
                 {matches[booking.id]?.length === 0 && (
