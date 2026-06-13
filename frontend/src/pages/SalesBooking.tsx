@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Service } from '../api'
 import { useSession } from '../session'
+import { validateCustomerName, validateCustomerPhone } from '../validation'
 
 export default function SalesBooking() {
   const { employee } = useSession()
@@ -18,8 +19,20 @@ export default function SalesBooking() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitting(true)
     setMessage(null)
+
+    const nameError = validateCustomerName(name)
+    if (nameError) {
+      setMessage(nameError)
+      return
+    }
+    const phoneError = validateCustomerPhone(phone)
+    if (phoneError) {
+      setMessage(phoneError)
+      return
+    }
+
+    setSubmitting(true)
     try {
       const customer = await api.createCustomer({ name, phone })
       const booking = await api.createBooking({
@@ -52,18 +65,21 @@ export default function SalesBooking() {
         className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-2"
       >
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">اسم الزبون</label>
+          <label className="mb-1 block text-sm font-medium text-slate-600">اسم الزبون (الاسم الرباعي)</label>
           <input
             required
+            placeholder="مثال: محمد علي حسن جاسم"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">رقم الهاتف</label>
+          <label className="mb-1 block text-sm font-medium text-slate-600">رقم الهاتف (11 رقم)</label>
           <input
             required
+            placeholder="07XXXXXXXXX"
+            maxLength={11}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"

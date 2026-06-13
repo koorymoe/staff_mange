@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Customer, type Booking } from '../api'
+import { validateCustomerName, validateCustomerPhone } from '../validation'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التثبيت',
@@ -57,8 +58,20 @@ export default function Customers() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitting(true)
     setMessage(null)
+
+    const nameError = validateCustomerName(name)
+    if (nameError) {
+      setMessage(nameError)
+      return
+    }
+    const phoneError = validateCustomerPhone(phone)
+    if (phoneError) {
+      setMessage(phoneError)
+      return
+    }
+
+    setSubmitting(true)
     try {
       const result = await api.createCustomer({ name, phone, location: location || undefined })
       setMessage(
@@ -90,19 +103,22 @@ export default function Customers() {
       >
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-600">
-            اسم الزبون / المؤسسة
+            اسم الزبون / المؤسسة (الاسم الرباعي)
           </label>
           <input
             required
+            placeholder="مثال: محمد علي حسن جاسم"
             value={name}
             onChange={(e) => setName(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
           />
         </div>
         <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">رقم الهاتف</label>
+          <label className="mb-1 block text-sm font-medium text-slate-600">رقم الهاتف (11 رقم)</label>
           <input
             required
+            placeholder="07XXXXXXXXX"
+            maxLength={11}
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
