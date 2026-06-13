@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { api, type Service } from '../api'
+import { useSession } from '../session'
 
 export default function Services() {
+  const { employee } = useSession()
   const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,6 +42,7 @@ export default function Services() {
       <h2 className="text-2xl font-bold text-brand-900">الخدمات</h2>
       <p className="mt-1 text-slate-500">قائمة الخدمات التي تقدمها الشركة.</p>
 
+      {employee?.role === 'ADMIN' && (
       <form
         onSubmit={handleAdd}
         className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3"
@@ -71,6 +74,7 @@ export default function Services() {
           </button>
         </div>
       </form>
+      )}
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && (
