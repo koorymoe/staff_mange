@@ -96,6 +96,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 
 export const api = {
   getServices: () => request<Service[]>('/services'),
+  createService: (data: { name: string; category?: string }) =>
+    request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
 
   getEmployees: () => request<Employee[]>('/employees'),
   createEmployee: (
