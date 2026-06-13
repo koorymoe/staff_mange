@@ -7,7 +7,6 @@ import Services from './pages/Services'
 import SalesBooking from './pages/SalesBooking'
 import Coordinator from './pages/Coordinator'
 import MyTasks from './pages/MyTasks'
-import StatsPage from './pages/Stats'
 import Finance from './pages/Finance'
 
 function App() {
@@ -21,7 +20,6 @@ function App() {
         <Route path="sales" element={<SalesBooking />} />
         <Route path="coordinator" element={<Coordinator />} />
         <Route path="my-tasks" element={<MyTasks />} />
-        <Route path="stats" element={<StatsPage />} />
         <Route path="finance" element={<Finance />} />
       </Route>
     </Routes>

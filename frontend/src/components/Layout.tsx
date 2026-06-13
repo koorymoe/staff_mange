@@ -19,7 +19,6 @@ const navItems: NavItem[] = [
   { to: '/employees', label: 'إدارة الكوادر', roles: ['ADMIN', 'HR_COORDINATOR'] },
   { to: '/customers', label: 'الزبائن', roles: ['ADMIN', 'SALES', 'HR_COORDINATOR'] },
   { to: '/services', label: 'الخدمات' },
-  { to: '/stats', label: 'الإحصائيات', roles: ['ADMIN', 'MONITOR'] },
   { to: '/finance', label: 'تدقيق الحسابات', roles: ['ADMIN', 'FINANCE'] },
 ]
 

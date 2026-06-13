@@ -73,13 +73,37 @@ export interface Booking {
 }
 
 export interface Stats {
-  totalCustomers: number
-  totalBookings: number
-  confirmedBookings: number
-  completedBookings: number
-  totalRevenue: number
+  totals: {
+    totalCustomers: number
+    totalBookings: number
+    pendingBookings: number
+    confirmedBookings: number
+    completedBookings: number
+    cancelledBookings: number
+    urgentPending: number
+    totalRevenue: number
+    unverifiedRevenue: number
+  }
   salesStats: { employeeId: string; name: string; totalTransferred: number; confirmed: number }[]
-  technicianStats: { employeeId: string; name: string; totalAssigned: number; completed: number }[]
+  technicianStats: {
+    employeeId: string
+    name: string
+    onDuty: boolean
+    totalAssigned: number
+    completed: number
+    revenueHandled: number
+  }[]
+  serviceBreakdown: { serviceId: string | null; name: string; count: number }[]
+  roleCounts: { role: EmployeeRole; count: number }[]
+  recentBookings: {
+    id: string
+    code: string
+    status: string
+    priority: string
+    customerName: string
+    serviceName: string | null
+    createdAt: string
+  }[]
 }
 
 export interface Customer {
