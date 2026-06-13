@@ -1,14 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, type Booking, type Stats } from '../api'
+import { api, type Booking } from '../api'
 import { useSession } from '../session'
-
-const levels = [
-  { level: 1, label: 'متدرب', min: 0 },
-  { level: 2, label: 'فني مبتدئ', min: 3 },
-  { level: 3, label: 'فني', min: 6 },
-  { level: 4, label: 'فني متمرس', min: 10 },
-  { level: 5, label: 'فني خبير', min: 15 },
-]
 
 export default function MyTasks() {
   const { employee } = useSession()
@@ -16,7 +8,6 @@ export default function MyTasks() {
   const [loading, setLoading] = useState(true)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
-  const [stats, setStats] = useState<Stats | null>(null)
 
   const load = () => {
     api
@@ -26,27 +17,10 @@ export default function MyTasks() {
   }
 
   useEffect(load, [])
-  useEffect(() => {
-    if (employee?.role === 'TECHNICIAN') {
-      api.getStats().then(setStats).catch(() => setStats(null))
-    }
-  }, [employee?.role])
 
   const myTasks = bookings.filter((b) =>
     b.assignments.some((a) => a.employee.id === employee?.id),
   )
-
-  const skillCount = employee?.skills.filter((s) => s.canPerform).length || 0
-  const currentLevel = [...levels].reverse().find((l) => skillCount >= l.min) || levels[0]
-  const nextLevel = levels.find((l) => l.min > skillCount)
-
-  const myTechStat = stats?.technicianStats.find((s) => s.employeeId === employee?.id)
-  const completedCount = myTechStat?.completed || 0
-
-  const sortedTechs = stats
-    ? [...stats.technicianStats].sort((a, b) => b.completed - a.completed)
-    : []
-  const myPosition = sortedTechs.findIndex((s) => s.employeeId === employee?.id)
 
   const handleComplete = async (booking: Booking) => {
     const amountCollected = amounts[booking.id] ? Number(amounts[booking.id]) : undefined
@@ -147,36 +121,6 @@ export default function MyTasks() {
           </div>
 
           <div>
-            {employee?.role === 'TECHNICIAN' && (
-              <div className="mb-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                <h3 className="mb-3 font-bold text-brand-800">مستواي وترتيبي</h3>
-
-                <div className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 p-4 text-white">
-                  <p className="text-sm text-brand-100">المستوى (حسب المهارات المعتمدة)</p>
-                  <p className="mt-1 text-2xl font-extrabold">
-                    {currentLevel.level} - {currentLevel.label}
-                  </p>
-                  <p className="mt-1 text-xs text-brand-100">
-                    {skillCount} مهارة معتمدة
-                    {nextLevel
-                      ? ` - يحتاج ${nextLevel.min - skillCount} مهارة إضافية للترقي إلى "${nextLevel.label}"`
-                      : ' - وصلت لأعلى مستوى!'}
-                  </p>
-                </div>
-
-                <div className="mt-3 rounded-lg bg-emerald-50 p-4">
-                  <p className="text-sm text-slate-500">الرانك (عدد الحجوزات المنجزة)</p>
-                  <p className="mt-1 text-2xl font-extrabold text-emerald-700">{completedCount}</p>
-                  {myPosition >= 0 && (
-                    <p className="mt-1 text-xs text-slate-500">
-                      ترتيبك بين الفنيين: <span className="font-bold text-brand-700">#{myPosition + 1}</span> من{' '}
-                      {sortedTechs.length}
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-
             <h3 className="mb-3 font-bold text-brand-800">مهاراتي المعتمدة</h3>
             <div className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
               <div className="flex flex-wrap gap-2">
