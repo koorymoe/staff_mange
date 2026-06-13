@@ -8,10 +8,7 @@ export default function SalesBooking() {
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
-  const [location, setLocation] = useState('')
   const [serviceId, setServiceId] = useState('')
-  const [notes, setNotes] = useState('')
-  const [priority, setPriority] = useState<'NORMAL' | 'URGENT'>('NORMAL')
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
@@ -24,12 +21,10 @@ export default function SalesBooking() {
     setSubmitting(true)
     setMessage(null)
     try {
-      const customer = await api.createCustomer({ name, phone, location: location || undefined })
+      const customer = await api.createCustomer({ name, phone })
       const booking = await api.createBooking({
         customerId: customer.id,
         serviceId: serviceId || undefined,
-        notes: notes || undefined,
-        priority,
         transferEmployeeId: employee?.id,
       })
       setMessage(
@@ -37,10 +32,7 @@ export default function SalesBooking() {
       )
       setName('')
       setPhone('')
-      setLocation('')
       setServiceId('')
-      setNotes('')
-      setPriority('NORMAL')
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
@@ -52,7 +44,7 @@ export default function SalesBooking() {
     <div>
       <h2 className="text-2xl font-bold text-brand-900">حجز جديد (موظف المبيعات)</h2>
       <p className="mt-1 text-slate-500">
-        سجل بيانات الزبون وطلبه، وراح يصل تلقائياً للإداري لتثبيته وتوجيهه.
+        سجل اسم الزبون، رقم هاتفه، والخدمة التي يطلبها. الإداري راح يكمل باقي البيانات ويثبت الحجز.
       </p>
 
       <form
@@ -77,48 +69,22 @@ export default function SalesBooking() {
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
           />
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">الموقع</label>
-          <input
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">نوع العمل المطلوب</label>
+        <div className="sm:col-span-2">
+          <label className="mb-1 block text-sm font-medium text-slate-600">
+            هل يوجد خدمة محددة يطلبها الزبون؟
+          </label>
           <select
             value={serviceId}
             onChange={(e) => setServiceId(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
           >
-            <option value="">-- اختر الخدمة --</option>
+            <option value="">-- بدون خدمة محددة --</option>
             {services.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.name}
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">حالة المشروع</label>
-          <select
-            value={priority}
-            onChange={(e) => setPriority(e.target.value as 'NORMAL' | 'URGENT')}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-          >
-            <option value="NORMAL">اعتيادي</option>
-            <option value="URGENT">عاجل</option>
-          </select>
-        </div>
-        <div className="sm:col-span-2">
-          <label className="mb-1 block text-sm font-medium text-slate-600">ملاحظات</label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            rows={3}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-          />
         </div>
         <div className="sm:col-span-2">
           <button
