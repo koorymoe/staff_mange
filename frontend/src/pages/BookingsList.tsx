@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import { api, type Booking } from '../api'
+import { useSession } from '../session'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التثبيت',
@@ -22,6 +23,8 @@ const techRoleLabels: Record<string, string> = {
 }
 
 export default function BookingsList() {
+  const { employee } = useSession()
+  const canSeeStats = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +65,7 @@ export default function BookingsList() {
         سجل كامل بجميع الحجوزات السابقة مع تفاصيلها، وأكثر الخدمات التي يطلبها الزبائن.
       </p>
 
-      {!loading && !error && topServices.length > 0 && (
+      {!loading && !error && canSeeStats && topServices.length > 0 && (
         <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
             📊 أكثر الخدمات التي طلبها الزبائن

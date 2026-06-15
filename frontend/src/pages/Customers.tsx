@@ -152,14 +152,15 @@ export default function Customers() {
       )}
 
       {!loading && !error && (
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
-          <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] lg:col-span-1">
+        <div className="mt-6 flex flex-col gap-6">
+          <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <table className="w-full text-right">
               <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                 <tr>
                   <th className="px-4 py-3 text-sm font-semibold">الكود</th>
                   <th className="px-4 py-3 text-sm font-semibold">الاسم</th>
                   <th className="px-4 py-3 text-sm font-semibold">الهاتف</th>
+                  <th className="px-4 py-3 text-sm font-semibold">الموقع</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -176,11 +177,12 @@ export default function Customers() {
                     </td>
                     <td className="px-4 py-3">{c.name}</td>
                     <td className="px-4 py-3 text-slate-500">{c.phone}</td>
+                    <td className="px-4 py-3 text-slate-500">{c.location || '-'}</td>
                   </tr>
                 ))}
                 {customers.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
                       لا يوجد زبائن بعد
                     </td>
                   </tr>
@@ -189,7 +191,7 @@ export default function Customers() {
             </table>
           </div>
 
-          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] lg:col-span-2">
+          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             {!selectedCustomer && (
               <p className="text-slate-400">اختر زبوناً من القائمة لعرض بياناته وسجل طلباته.</p>
             )}
