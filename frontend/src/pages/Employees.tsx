@@ -1,12 +1,24 @@
 import { useEffect, useState } from 'react'
-import { api, type Employee, type Service } from '../api'
+import { api, type Employee, type Service, type Stats } from '../api'
 import { useSession } from '../session'
+
+const levels = [
+  { level: 1, label: 'متدرب', min: 0 },
+  { level: 2, label: 'فني مبتدئ', min: 3 },
+  { level: 3, label: 'فني', min: 6 },
+  { level: 4, label: 'فني متمرس', min: 10 },
+  { level: 5, label: 'فني خبير', min: 15 },
+]
+
+const BOOKINGS_PER_RANK = 10
 
 export default function Employees() {
   const { employee: currentUser } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
+  const isHR = currentUser?.role === 'HR_COORDINATOR'
   const [employees, setEmployees] = useState<Employee[]>([])
   const [services, setServices] = useState<Service[]>([])
+  const [stats, setStats] = useState<Stats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -35,6 +47,9 @@ export default function Employees() {
   }
 
   useEffect(load, [])
+  useEffect(() => {
+    if (isHR) api.getStats().then(setStats).catch(() => setStats(null))
+  }, [isHR])
 
   const handleAddEmployee = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -61,6 +76,8 @@ export default function Employees() {
       setSubmitting(false)
     }
   }
+
+  const visibleEmployees = isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees
 
   const selectedEmployee = employees.find((emp) => emp.id === selectedId) || null
 
@@ -194,7 +211,7 @@ export default function Employees() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {employees.map((emp) => (
+                {visibleEmployees.map((emp) => (
                   <tr
                     key={emp.id}
                     onClick={() => setSelectedId(emp.id)}
@@ -206,7 +223,7 @@ export default function Employees() {
                     <td className="px-4 py-3 text-slate-500">{emp.position || '-'}</td>
                   </tr>
                 ))}
-                {employees.length === 0 && (
+                {visibleEmployees.length === 0 && (
                   <tr>
                     <td colSpan={2} className="px-4 py-6 text-center text-slate-400">
                       لا يوجد موظفين بعد
@@ -221,7 +238,87 @@ export default function Employees() {
             {!selectedEmployee && (
               <p className="text-slate-400">اختر موظفاً من القائمة لعرض/تعديل مهاراته.</p>
             )}
-            {selectedEmployee && (
+            {selectedEmployee && isHR && (
+              <div>
+                <h3 className="text-lg font-bold text-brand-800">
+                  بيانات: {selectedEmployee.name}
+                </h3>
+                <p className="text-sm text-slate-500">{selectedEmployee.position || 'فني'}</p>
+
+                {(() => {
+                  const skillCount = selectedEmployee.skills.filter((s) => s.canPerform).length
+                  const currentLevel =
+                    [...levels].reverse().find((l) => skillCount >= l.min) || levels[0]
+                  const nextLevel = levels.find((l) => l.min > skillCount)
+                  const techStat = stats?.technicianStats.find(
+                    (s) => s.employeeId === selectedEmployee.id,
+                  )
+                  const completedCount = techStat?.completed || 0
+                  const rank = Math.floor(completedCount / BOOKINGS_PER_RANK) + 1
+                  const sortedTechs = stats
+                    ? [...stats.technicianStats].sort((a, b) => b.completed - a.completed)
+                    : []
+                  const position = sortedTechs.findIndex((s) => s.employeeId === selectedEmployee.id)
+
+                  return (
+                    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-4">
+                      <div className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 p-4 text-white shadow-lg shadow-brand-900/20">
+                        <p className="text-xs text-brand-100">المستوى</p>
+                        <p className="mt-1 text-xl font-extrabold">
+                          {currentLevel.level} - {currentLevel.label}
+                        </p>
+                        <p className="mt-1 text-xs text-brand-100">
+                          {skillCount} مهارة معتمدة
+                          {nextLevel ? ` - يحتاج ${nextLevel.min - skillCount} للترقي` : ' - أعلى مستوى'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs text-slate-500">الرانك</p>
+                        <p className="mt-1 text-xl font-extrabold text-emerald-700">{rank}</p>
+                        <p className="mt-1 text-xs text-slate-500">{completedCount} حجز منجز</p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs text-slate-500">الترتيب بين الفنيين</p>
+                        <p className="mt-1 text-xl font-extrabold text-brand-700">
+                          {position >= 0 ? `#${position + 1}` : '-'}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {sortedTechs.length > 0 ? `من ${sortedTechs.length}` : '-'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <p className="text-xs text-slate-500">حالة الدوام</p>
+                        <p
+                          className={`mt-1 text-xl font-extrabold ${
+                            selectedEmployee.onDuty ? 'text-emerald-700' : 'text-slate-400'
+                          }`}
+                        >
+                          {selectedEmployee.onDuty ? 'بالدوام' : 'خارج الدوام'}
+                        </p>
+                      </div>
+                    </div>
+                  )
+                })()}
+
+                <h4 className="mt-5 font-bold text-brand-800">المهارات المتقنة</h4>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {selectedEmployee.skills
+                    .filter((s) => s.canPerform)
+                    .map((s) => (
+                      <span
+                        key={s.id}
+                        className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700"
+                      >
+                        {s.skill.name}
+                      </span>
+                    ))}
+                  {selectedEmployee.skills.filter((s) => s.canPerform).length === 0 && (
+                    <p className="text-sm text-slate-400">لم يتم تحديد مهارات بعد.</p>
+                  )}
+                </div>
+              </div>
+            )}
+            {selectedEmployee && !isHR && (
               <div>
                 <h3 className="text-lg font-bold text-brand-800">
                   بيانات: {selectedEmployee.name}
