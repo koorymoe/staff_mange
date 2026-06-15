@@ -175,7 +175,8 @@ model Booking {
   code String @unique // الكود
 
   sequenceNumber Int? // تسلسل الحجز
-  scheduledAt    DateTime? // التاريخ والوقت
+  scheduledAt    DateTime? // الموعد المحدد لتنفيذ المهمة
+  pendingScheduledAt DateTime? // موعد جديد مطلوب تعديله بانتظار موافقة المدقق
 
   customer   Customer @relation(fields: [customerId], references: [id])
   customerId String

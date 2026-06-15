@@ -32,6 +32,21 @@ export default function Dashboard() {
     api.getStats().then(setStats).catch((e) => setError(e.message))
   }, [isCommandCenter])
 
+  const showTodayBookings = isCommandCenter || employee?.role === 'HR_COORDINATOR'
+  const [todayBookings, setTodayBookings] = useState<Booking[]>([])
+
+  useEffect(() => {
+    if (!showTodayBookings) return
+    api.getBookings().then((all) => {
+      const now = new Date()
+      const todayStr = now.toDateString()
+      const todays = all
+        .filter((b) => b.scheduledAt && new Date(b.scheduledAt).toDateString() === todayStr)
+        .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+      setTodayBookings(todays)
+    })
+  }, [showTodayBookings])
+
   const [unverifiedBookings, setUnverifiedBookings] = useState<Booking[]>([])
   const [pendingExpenses, setPendingExpenses] = useState<Expense[]>([])
 
@@ -154,6 +169,29 @@ export default function Dashboard() {
         <p className="mt-2 text-slate-500">
           من هنا تقدر توجه الموظفين للحجوزات، تدير مهاراتهم، وتتابع بيانات الزبائن.
         </p>
+
+        {todayBookings.length > 0 && (
+          <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
+              📅 حجوزات اليوم حسب الموعد المحدد
+            </h3>
+            <div className="flex flex-col divide-y divide-slate-100">
+              {todayBookings.map((b) => (
+                <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
+                  <span className="font-mono font-semibold text-brand-600">{b.code}</span>
+                  <span className="text-slate-600">{b.customer.name}</span>
+                  <span className="text-slate-500">{b.service?.name || '-'}</span>
+                  <span className="font-bold text-brand-800">
+                    {new Date(b.scheduledAt!).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[b.status]}`}>
+                    {statusLabels[b.status] || b.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link

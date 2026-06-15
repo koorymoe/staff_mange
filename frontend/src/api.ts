@@ -54,6 +54,8 @@ export interface Booking {
   id: string
   code: string
   sequenceNumber: number | null
+  scheduledAt: string | null
+  pendingScheduledAt: string | null
   customer: Customer
   service: Service | null
   transferEmployee: Employee | null
@@ -197,8 +199,15 @@ export const api = {
       transferToProjects: boolean
       quotedPrice?: number
       address?: string
+      scheduledAt?: string
     },
   ) => request<Booking>(`/bookings/${id}/confirm`, { method: 'PUT', body: JSON.stringify(data) }),
+  scheduleBooking: (id: string, scheduledAt: string) =>
+    request<Booking>(`/bookings/${id}/schedule`, { method: 'PUT', body: JSON.stringify({ scheduledAt }) }),
+  approveReschedule: (id: string) =>
+    request<Booking>(`/bookings/${id}/schedule/approve`, { method: 'PUT', body: JSON.stringify({}) }),
+  rejectReschedule: (id: string) =>
+    request<Booking>(`/bookings/${id}/schedule/reject`, { method: 'PUT', body: JSON.stringify({}) }),
   updateBookingDetails: (
     id: string,
     data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string },

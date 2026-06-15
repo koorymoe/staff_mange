@@ -1,6 +1,13 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Employee } from '../api'
 
+// Convert an ISO date string to the local "YYYY-MM-DDTHH:mm" format expected by datetime-local inputs
+const toLocalInput = (iso: string) => {
+  const d = new Date(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
   { key: 'TECH_1', label: 'الفني الأول' },
   { key: 'TECH_2', label: 'الفني الثاني' },
@@ -14,9 +21,10 @@ export default function Coordinator() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // قيم التثبيت (التكلفة المقدرة + العنوان) قبل الضغط على تثبيت
+  // قيم التثبيت (التكلفة المقدرة + العنوان + الموعد) قبل الضغط على تثبيت
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({})
   const [addressDrafts, setAddressDrafts] = useState<Record<string, string>>({})
+  const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({})
 
   const load = () => {
     setLoading(true)
@@ -51,14 +59,22 @@ export default function Coordinator() {
   const handleConfirm = async (booking: Booking, transferToProjects: boolean) => {
     const priceValue = priceDrafts[booking.id]
     const addressValue = addressDrafts[booking.id]
+    const scheduleValue = scheduleDrafts[booking.id]
     const updated = await api.confirmBooking(booking.id, {
       confirmedByName: 'الإداري',
       transferToProjects,
       quotedPrice: priceValue ? Number(priceValue) : undefined,
       address: addressValue || undefined,
+      scheduledAt: scheduleValue || undefined,
     })
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     if (!transferToProjects) loadMatches(updated)
+  }
+
+  const handleScheduleChange = async (booking: Booking, value: string) => {
+    if (!value) return
+    const updated = await api.scheduleBooking(booking.id, value)
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
   const handleDetailsBlur = async (
@@ -96,6 +112,9 @@ export default function Coordinator() {
 
   const pendingBookings = bookings.filter((b) => b.status === 'PENDING')
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED')
+  const upcomingAppointments = bookings
+    .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING') && new Date(b.scheduledAt) > new Date())
+    .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
 
   return (
     <div>
@@ -112,6 +131,33 @@ export default function Coordinator() {
 
       {!loading && !error && (
         <>
+          {/* المواعيد المحجوزة مسبقاً - حتى لا يتم تحديد موعد متعارض */}
+          {upcomingAppointments.length > 0 && (
+            <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+              <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
+                🗓️ المواعيد المحجوزة (تجنب تحديد نفس الوقت لزبون آخر)
+              </h3>
+              <div className="flex flex-col divide-y divide-slate-100">
+                {upcomingAppointments.map((b) => (
+                  <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
+                    <span className="font-mono font-semibold text-brand-600">{b.code}</span>
+                    <span className="text-slate-600">{b.customer.name}</span>
+                    <span className="text-slate-600">{b.service?.name || 'بدون خدمة محددة'}</span>
+                    <span className="font-bold text-brand-800">
+                      {new Date(b.scheduledAt!).toLocaleString('ar-IQ', {
+                        weekday: 'long',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        day: 'numeric',
+                        month: 'numeric',
+                      })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* بانتظار التثبيت */}
           <h3 className="mt-6 mb-3 text-lg font-bold text-brand-800">
             بانتظار التثبيت ({pendingBookings.length})
@@ -166,7 +212,7 @@ export default function Coordinator() {
                   <h4 className="text-sm font-bold text-brand-800">
                     بعد الاتفاق مع الزبون، حدد التفاصيل قبل التثبيت
                   </h4>
-                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-600">
                         التكلفة المقدرة (اختياري)
@@ -190,6 +236,19 @@ export default function Coordinator() {
                         value={addressDrafts[booking.id] || ''}
                         onChange={(e) =>
                           setAddressDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
+                        }
+                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-600">
+                        الموعد المحدد للزبون (اختياري)
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={scheduleDrafts[booking.id] || ''}
+                        onChange={(e) =>
+                          setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
                         }
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
                       />
@@ -262,7 +321,7 @@ export default function Coordinator() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
+                <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-3">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
                       التكلفة المقدرة
@@ -285,6 +344,23 @@ export default function Coordinator() {
                       onBlur={(e) => handleDetailsBlur(booking, 'address', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
                     />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      الموعد المحدد {booking.scheduledAt ? '(تعديله يحتاج موافقة المدقق)' : ''}
+                    </label>
+                    <input
+                      type="datetime-local"
+                      defaultValue={booking.scheduledAt ? toLocalInput(booking.scheduledAt) : ''}
+                      onBlur={(e) => handleScheduleChange(booking, e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    />
+                    {booking.pendingScheduledAt && (
+                      <p className="mt-1 text-xs font-bold text-amber-600">
+                        طلب تعديل بانتظار موافقة المدقق:{' '}
+                        {new Date(booking.pendingScheduledAt).toLocaleString('ar-IQ')}
+                      </p>
+                    )}
                   </div>
                 </div>
 
