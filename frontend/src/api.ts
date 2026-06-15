@@ -163,6 +163,8 @@ export const api = {
   getSupervisors: () => request<Employee[]>('/employees/supervisors'),
 
   getCustomers: () => request<Customer[]>('/customers'),
+  lookupCustomer: (phone: string) =>
+    request<Customer | null>(`/customers/lookup?phone=${phone}`).catch(() => null),
   createCustomer: (data: { name: string; phone: string; location?: string }) =>
     request<Customer & { existed: boolean }>('/customers', {
       method: 'POST',
