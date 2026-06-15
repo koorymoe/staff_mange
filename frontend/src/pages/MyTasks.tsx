@@ -7,6 +7,7 @@ export default function MyTasks() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
+  const [advances, setAdvances] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
 
   const load = () => {
@@ -24,9 +25,11 @@ export default function MyTasks() {
 
   const handleComplete = async (booking: Booking) => {
     const amountCollected = amounts[booking.id] ? Number(amounts[booking.id]) : undefined
+    const advancePaid = advances[booking.id] ? Number(advances[booking.id]) : undefined
     await api.completeBooking(booking.id, {
       completionNotes: notes[booking.id] || undefined,
       amountCollected,
+      advancePaid,
     })
     setBookings((prev) => prev.filter((b) => b.id !== booking.id))
   }
@@ -75,12 +78,16 @@ export default function MyTasks() {
                         {b.customer.phone}
                       </p>
                       <p>
-                        <span className="text-slate-400">الموقع: </span>
-                        {b.customer.location || 'بدون موقع محدد'}
+                        <span className="text-slate-400">العنوان: </span>
+                        {b.address || b.customer.location || 'بدون موقع محدد'}
                       </p>
                       <p>
                         <span className="text-slate-400">السيارة: </span>
                         {b.assignedVehicle || 'لم تحدد'}
+                      </p>
+                      <p>
+                        <span className="text-slate-400">التكلفة المقدرة: </span>
+                        {b.quotedPrice != null ? b.quotedPrice.toLocaleString() : 'غير محددة'}
                       </p>
                     </div>
                     {b.notes && (
@@ -90,12 +97,19 @@ export default function MyTasks() {
                       </p>
                     )}
 
-                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
                       <input
                         type="number"
                         placeholder="المبلغ المستلم"
                         value={amounts[b.id] || ''}
                         onChange={(e) => setAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                      />
+                      <input
+                        type="number"
+                        placeholder="دفعة مقدمة (إن وجدت)"
+                        value={advances[b.id] || ''}
+                        onChange={(e) => setAdvances((prev) => ({ ...prev, [b.id]: e.target.value }))}
                         className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                       />
                       <input

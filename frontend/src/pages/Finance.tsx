@@ -53,10 +53,39 @@ export default function Finance() {
                 {b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}
               </span>
             </div>
-            <p className="mt-2 text-sm text-slate-500">
-              <span className="text-slate-400">المبلغ المستلم: </span>
-              {b.amountCollected != null ? b.amountCollected.toLocaleString() : 'غير مسجل'}
-            </p>
+            <div className="mt-2 grid grid-cols-1 gap-1 text-sm text-slate-500 sm:grid-cols-3">
+              <p>
+                <span className="text-slate-400">التكلفة المقدرة (الإداري): </span>
+                {b.quotedPrice != null ? b.quotedPrice.toLocaleString() : 'غير محددة'}
+              </p>
+              <p>
+                <span className="text-slate-400">الدفعة المقدمة: </span>
+                {b.advancePaid != null ? b.advancePaid.toLocaleString() : '0'}
+              </p>
+              <p>
+                <span className="text-slate-400">المبلغ المستلم (الفني): </span>
+                {b.amountCollected != null ? b.amountCollected.toLocaleString() : 'غير مسجل'}
+              </p>
+            </div>
+            {b.quotedPrice != null &&
+              (() => {
+                const total = (b.amountCollected || 0) + (b.advancePaid || 0)
+                const diff = total - b.quotedPrice!
+                if (diff === 0) {
+                  return (
+                    <p className="mt-1 text-sm font-medium text-emerald-600">
+                      المبلغ مطابق للتكلفة المقدرة ✓
+                    </p>
+                  )
+                }
+                return (
+                  <p className="mt-1 text-sm font-bold text-red-600">
+                    {diff > 0
+                      ? `يوجد فرق زيادة بمقدار ${diff.toLocaleString()}`
+                      : `يوجد نقص بمقدار ${Math.abs(diff).toLocaleString()} عن التكلفة المقدرة`}
+                  </p>
+                )
+              })()}
             {b.completionNotes && (
               <p className="text-sm text-slate-500">
                 <span className="text-slate-400">ملاحظات الفني: </span>

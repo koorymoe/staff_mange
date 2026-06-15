@@ -55,9 +55,9 @@ router.post('/', async (req, res) => {
 })
 
 // PUT /api/bookings/:id/confirm - HR coordinator confirms the booking with the customer
-// body: { confirmedByName, adminNotes?, transferToProjects }
+// body: { confirmedByName, adminNotes?, transferToProjects, quotedPrice?, address? }
 router.put('/:id/confirm', async (req, res) => {
-  const { confirmedByName, adminNotes, transferToProjects } = req.body
+  const { confirmedByName, adminNotes, transferToProjects, quotedPrice, address } = req.body
 
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
@@ -66,6 +66,25 @@ router.put('/:id/confirm', async (req, res) => {
       confirmedByName,
       adminNotes,
       transferToProjects: Boolean(transferToProjects),
+      quotedPrice: quotedPrice !== undefined && quotedPrice !== '' ? Number(quotedPrice) : undefined,
+      address: address !== undefined ? address : undefined,
+    },
+    include: bookingInclude,
+  })
+  res.json(booking)
+})
+
+// PUT /api/bookings/:id/details - HR coordinator updates price/address/vehicle after confirmation
+// body: { quotedPrice?, address?, assignedVehicle? }
+router.put('/:id/details', async (req, res) => {
+  const { quotedPrice, address, assignedVehicle } = req.body
+
+  const booking = await prisma.booking.update({
+    where: { id: req.params.id },
+    data: {
+      quotedPrice: quotedPrice !== undefined && quotedPrice !== '' ? Number(quotedPrice) : null,
+      address: address !== undefined ? address : undefined,
+      assignedVehicle: assignedVehicle !== undefined ? assignedVehicle : undefined,
     },
     include: bookingInclude,
   })
@@ -142,9 +161,9 @@ router.put('/:id/supervisor', async (req, res) => {
 })
 
 // PUT /api/bookings/:id/complete - technician marks the booking as done
-// body: { completionNotes?, amountCollected? }
+// body: { completionNotes?, amountCollected?, advancePaid? }
 router.put('/:id/complete', async (req, res) => {
-  const { completionNotes, amountCollected } = req.body
+  const { completionNotes, amountCollected, advancePaid } = req.body
 
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
@@ -152,7 +171,8 @@ router.put('/:id/complete', async (req, res) => {
       status: 'COMPLETED',
       completedAt: new Date(),
       completionNotes,
-      amountCollected: amountCollected !== undefined ? Number(amountCollected) : undefined,
+      amountCollected: amountCollected !== undefined && amountCollected !== '' ? Number(amountCollected) : undefined,
+      advancePaid: advancePaid !== undefined && advancePaid !== '' ? Number(advancePaid) : undefined,
     },
     include: bookingInclude,
   })

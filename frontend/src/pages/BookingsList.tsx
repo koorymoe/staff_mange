@@ -171,6 +171,22 @@ export default function BookingsList() {
                             <p className="mt-1 text-slate-700">{b.assignedVehicle || '-'}</p>
                           </div>
                           <div>
+                            <p className="text-slate-400">عنوان تنفيذ المهمة</p>
+                            <p className="mt-1 text-slate-700">{b.address || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">التكلفة المقدرة</p>
+                            <p className="mt-1 text-slate-700">
+                              {b.quotedPrice != null ? b.quotedPrice.toLocaleString() : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">الدفعة المقدمة</p>
+                            <p className="mt-1 text-slate-700">
+                              {b.advancePaid != null ? b.advancePaid.toLocaleString() : '-'}
+                            </p>
+                          </div>
+                          <div>
                             <p className="text-slate-400">وقت تسجيل الحجز</p>
                             <p className="mt-1 text-slate-700">
                               {new Date(b.createdAt).toLocaleString('ar-IQ')}

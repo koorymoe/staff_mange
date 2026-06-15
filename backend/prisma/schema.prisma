@@ -212,10 +212,15 @@ model Booking {
 
   assignedVehicle String? // السيارة المخصصة لتنفيذ المهمة
 
+  // Confirmation stage pricing/address (يضبطها الإداري عند التثبيت)
+  quotedPrice Float? // التكلفة المقدرة للحجز
+  address     String? // عنوان تنفيذ المهمة
+
   // Completion / finance handoff
   completedAt     DateTime? // وقت إنجاز المهمة من الفني
   completionNotes String? // ملاحظات الفني عند الإنجاز
   amountCollected Float? // المبلغ المستلم من الزبون
+  advancePaid     Float? // دفعة مقدمة من الزبون
   amountVerified  Boolean @default(false) // تدقيق المحاسب على المبلغ
 
   createdAt DateTime @default(now())

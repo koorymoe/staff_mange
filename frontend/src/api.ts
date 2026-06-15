@@ -66,9 +66,12 @@ export interface Booking {
   confirmedByName: string | null
   adminNotes: string | null
   assignedVehicle: string | null
+  quotedPrice: number | null
+  address: string | null
   completedAt: string | null
   completionNotes: string | null
   amountCollected: number | null
+  advancePaid: number | null
   amountVerified: boolean
   assignments: BookingAssignment[]
   createdAt: string
@@ -188,8 +191,18 @@ export const api = {
   }) => request<Booking>('/bookings', { method: 'POST', body: JSON.stringify(data) }),
   confirmBooking: (
     id: string,
-    data: { confirmedByName: string; adminNotes?: string; transferToProjects: boolean },
+    data: {
+      confirmedByName: string
+      adminNotes?: string
+      transferToProjects: boolean
+      quotedPrice?: number
+      address?: string
+    },
   ) => request<Booking>(`/bookings/${id}/confirm`, { method: 'PUT', body: JSON.stringify(data) }),
+  updateBookingDetails: (
+    id: string,
+    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string },
+  ) => request<Booking>(`/bookings/${id}/details`, { method: 'PUT', body: JSON.stringify(data) }),
   assignTechnician: (
     id: string,
     data: { employeeId: string; role: 'TECH_1' | 'TECH_2' | 'TECH_3'; assignedVehicle?: string },
@@ -199,8 +212,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ employeeId }),
     }),
-  completeBooking: (id: string, data: { completionNotes?: string; amountCollected?: number }) =>
-    request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
+  completeBooking: (
+    id: string,
+    data: { completionNotes?: string; amountCollected?: number; advancePaid?: number },
+  ) => request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
   verifyAmount: (id: string) =>
     request<Booking>(`/bookings/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
   getStats: () => request<Stats>('/stats'),
