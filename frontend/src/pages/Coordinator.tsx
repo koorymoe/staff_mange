@@ -8,6 +8,52 @@ const toLocalInput = (iso: string) => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// ساعات العمل وطول كل موعد (بالساعات) - تستخدم لاقتراح أقرب موعد فاضي
+const WORK_START_HOUR = 9
+const WORK_END_HOUR = 17
+const SLOT_HOURS = 2
+
+// يقترح أقرب موعد فاضي (تاريخ + ساعة) بناءً على المواعيد المحجوزة حالياً
+const suggestNextSlot = (bookings: Booking[]) => {
+  const taken = new Set(
+    bookings
+      .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING'))
+      .map((b) => {
+        const d = new Date(b.scheduledAt!)
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`
+      }),
+  )
+
+  const slot = new Date()
+  slot.setMinutes(0, 0, 0)
+  if (slot.getHours() < WORK_START_HOUR) {
+    slot.setHours(WORK_START_HOUR)
+  } else if (slot.getHours() >= WORK_END_HOUR) {
+    slot.setDate(slot.getDate() + 1)
+    slot.setHours(WORK_START_HOUR)
+  } else {
+    // تقريب للساعة القادمة
+    slot.setHours(slot.getHours() + 1)
+    if (slot.getHours() >= WORK_END_HOUR) {
+      slot.setDate(slot.getDate() + 1)
+      slot.setHours(WORK_START_HOUR)
+    }
+  }
+
+  for (let i = 0; i < 200; i++) {
+    const key = `${slot.getFullYear()}-${slot.getMonth()}-${slot.getDate()}-${slot.getHours()}`
+    if (!taken.has(key)) break
+    slot.setHours(slot.getHours() + SLOT_HOURS)
+    if (slot.getHours() >= WORK_END_HOUR) {
+      slot.setDate(slot.getDate() + 1)
+      slot.setHours(WORK_START_HOUR)
+    }
+  }
+
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${slot.getFullYear()}-${pad(slot.getMonth() + 1)}-${pad(slot.getDate())}T${pad(slot.getHours())}:00`
+}
+
 const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
   { key: 'TECH_1', label: 'الفني الأول' },
   { key: 'TECH_2', label: 'الفني الثاني' },
@@ -242,16 +288,19 @@ export default function Coordinator() {
                     </div>
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-600">
-                        الموعد المحدد للزبون (اختياري)
+                        الموعد المحدد للزبون
                       </label>
                       <input
                         type="datetime-local"
-                        value={scheduleDrafts[booking.id] || ''}
+                        value={scheduleDrafts[booking.id] ?? suggestNextSlot(bookings)}
                         onChange={(e) =>
                           setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
                         }
                         className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
                       />
+                      <p className="mt-1 text-xs text-slate-400">
+                        مقترح تلقائياً أقرب موعد فاضي - تكدر تغيره حسب اتفاقك مع الزبون
+                      </p>
                     </div>
                   </div>
                 </div>
