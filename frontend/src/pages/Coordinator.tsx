@@ -10,7 +10,7 @@ const toLocalInput = (iso: string) => {
 
 // ساعات العمل وطول كل موعد (بالساعات) - تستخدم لاقتراح أقرب موعد فاضي
 const WORK_START_HOUR = 9
-const WORK_END_HOUR = 17
+const WORK_END_HOUR = 23
 const SLOT_HOURS = 2
 
 // يقترح أقرب موعد فاضي (تاريخ + ساعة) بناءً على المواعيد المحجوزة حالياً
