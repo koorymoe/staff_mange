@@ -14,16 +14,21 @@ const WORK_START_HOUR = 9
 const WORK_END_HOUR = 23
 const SLOT_HOURS = 2
 
-// يقترح أقرب موعد فاضي (تاريخ + ساعة) بناءً على المواعيد المحجوزة حالياً
-const suggestNextSlot = (bookings: Booking[]) => {
-  const taken = new Set(
-    bookings
-      .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING'))
-      .map((b) => {
-        const d = new Date(b.scheduledAt!)
-        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`
-      }),
-  )
+// يقترح أقرب موعد فاضي (تاريخ + ساعة) بناءً على المواعيد المحجوزة + المسودات الحالية
+const suggestNextSlot = (bookings: Booking[], drafts: Record<string, string>, excludeId?: string) => {
+  const toKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`
+
+  const taken = new Set<string>()
+
+  // مواعيد محفوظة بقاعدة البيانات
+  bookings
+    .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'IN_PROGRESS'))
+    .forEach((b) => taken.add(toKey(new Date(b.scheduledAt!))))
+
+  // مسودات الإداري لهذه الجلسة (الحجوزات اللي حدد لها موعد بس لم يثبتها بعد)
+  Object.entries(drafts).forEach(([id, val]) => {
+    if (id !== excludeId && val) taken.add(toKey(new Date(val)))
+  })
 
   const slot = new Date()
   slot.setMinutes(0, 0, 0)
@@ -295,7 +300,7 @@ export default function Coordinator() {
                       </label>
                       <input
                         type="datetime-local"
-                        value={scheduleDrafts[booking.id] ?? suggestNextSlot(bookings)}
+                        value={scheduleDrafts[booking.id] ?? suggestNextSlot(bookings, scheduleDrafts, booking.id)}
                         onChange={(e) =>
                           setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
                         }
