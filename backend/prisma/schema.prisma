@@ -129,6 +129,8 @@ model Employee {
   inspectedBookings   Booking[] @relation("InspectionSupervisor")
   // Bookings where this employee is the project supervisor
   supervisedBookings  Booking[] @relation("ProjectSupervisor")
+  // Bookings this employee confirmed (as coordinator/admin)
+  confirmedBookings   Booking[] @relation("ConfirmedByEmployee")
 
   assignments BookingAssignment[]
   expenses    Expense[]
@@ -193,9 +195,11 @@ model Booking {
   // Pre-booking stage (قاعدة بيانات ما قبل الحجز)
   transferEmployee   Employee? @relation("TransferEmployee", fields: [transferEmployeeId], references: [id])
   transferEmployeeId String?
-  transferToProjects Boolean   @default(false) // التحويل إلى إدارة المشاريع
-  confirmedByName    String? // اسم مثبت الحجز
-  adminNotes         String? // ملاحظات الإدارة
+  transferToProjects    Boolean   @default(false) // التحويل إلى إدارة المشاريع
+  confirmedByName       String? // اسم مثبت الحجز (نص احتياطي)
+  confirmedByEmployee   Employee? @relation("ConfirmedByEmployee", fields: [confirmedByEmployeeId], references: [id])
+  confirmedByEmployeeId String? // الإداري الذي ثبّت الحجز (FK)
+  adminNotes            String? // ملاحظات الإدارة
 
   // Scheduling stage (حجوزات المواعيد)
   equipmentStatus EquipmentStatus @default(NOT_READY) // حالة تجهيز المواد

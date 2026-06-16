@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Employee } from '../api'
+import { useSession } from '../session'
 
 // Convert an ISO date string to the local "YYYY-MM-DDTHH:mm" format expected by datetime-local inputs
 const toLocalInput = (iso: string) => {
@@ -61,6 +62,7 @@ const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
 ]
 
 export default function Coordinator() {
+  const { employee: currentUser } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
   const [supervisors, setSupervisors] = useState<Employee[]>([])
@@ -107,7 +109,8 @@ export default function Coordinator() {
     const addressValue = addressDrafts[booking.id]
     const scheduleValue = scheduleDrafts[booking.id]
     const updated = await api.confirmBooking(booking.id, {
-      confirmedByName: 'الإداري',
+      confirmedByName: currentUser?.name || 'الإداري',
+      confirmedByEmployeeId: currentUser?.id,
       transferToProjects,
       quotedPrice: priceValue ? Number(priceValue) : undefined,
       address: addressValue || undefined,

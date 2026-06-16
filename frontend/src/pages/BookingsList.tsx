@@ -278,7 +278,11 @@ export default function BookingsList() {
                           </div>
                           <div>
                             <p className="text-slate-400">من أكد الحجز</p>
-                            <p className="mt-1 text-slate-700">{b.confirmedByName || '-'}</p>
+                            <p className="mt-1 text-slate-700">{b.confirmedByEmployee?.name || b.confirmedByName || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">موظف المبيعات (مصدر الزبون)</p>
+                            <p className="mt-1 text-slate-700">{b.transferEmployee?.name || '-'}</p>
                           </div>
                         </div>
                       </td>

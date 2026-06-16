@@ -328,22 +328,53 @@ export default function Dashboard() {
         {/* Sales leaderboard */}
         <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
-            🏆 ترتيب موظفي المبيعات (حسب الحجوزات المثبتة)
+            🏆 إنجازات موظفي المبيعات (الزبائن المجلوبين)
           </h3>
           <div className="divide-y divide-slate-100">
             {stats.salesStats.map((s, i) => (
-              <div key={s.employeeId} className="flex items-center justify-between px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">{medals[i] || `#${i + 1}`}</span>
-                  <span className="font-medium text-brand-800">{s.name}</span>
+              <div key={s.employeeId} className="px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{medals[i] || `#${i + 1}`}</span>
+                    <span className="font-medium text-brand-800">{s.name}</span>
+                  </div>
+                  <span className="text-sm font-bold text-emerald-600">{s.confirmed} مثبت</span>
                 </div>
-                <div className="text-sm text-slate-500">
-                  <span className="font-bold text-emerald-600">{s.confirmed}</span> مثبت من{' '}
-                  {s.totalTransferred}
+                <div className="mt-1 flex gap-4 text-xs text-slate-400">
+                  <span>اليوم: <b className="text-brand-700">{s.today}</b></span>
+                  <span>هذا الشهر: <b className="text-brand-700">{s.thisMonth}</b></span>
+                  <span>الإجمالي: {s.totalTransferred}</span>
                 </div>
               </div>
             ))}
             {stats.salesStats.length === 0 && (
+              <p className="px-4 py-4 text-center text-slate-400">لا توجد بيانات</p>
+            )}
+          </div>
+        </div>
+
+        {/* Coordinator stats */}
+        <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
+            📋 إنجازات الإداريين (الحجوزات المثبتة والمرتّبة)
+          </h3>
+          <div className="divide-y divide-slate-100">
+            {stats.coordinatorStats.map((s, i) => (
+              <div key={s.employeeId} className="px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-lg">{medals[i] || `#${i + 1}`}</span>
+                    <span className="font-medium text-brand-800">{s.name}</span>
+                  </div>
+                  <span className="text-sm font-bold text-brand-600">{s.totalConfirmed} حجز</span>
+                </div>
+                <div className="mt-1 flex gap-4 text-xs text-slate-400">
+                  <span>اليوم: <b className="text-brand-700">{s.today}</b></span>
+                  <span>هذا الشهر: <b className="text-brand-700">{s.thisMonth}</b></span>
+                </div>
+              </div>
+            ))}
+            {stats.coordinatorStats.length === 0 && (
               <p className="px-4 py-4 text-center text-slate-400">لا توجد بيانات</p>
             )}
           </div>

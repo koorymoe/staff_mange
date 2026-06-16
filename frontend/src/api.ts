@@ -60,6 +60,7 @@ export interface Booking {
   service: Service | null
   transferEmployee: Employee | null
   projectSupervisor: Employee | null
+  confirmedByEmployee: Employee | null
   notes: string | null
   vehicleType: string | null
   priority: 'NORMAL' | 'URGENT'
@@ -91,7 +92,8 @@ export interface Stats {
     totalRevenue: number
     unverifiedRevenue: number
   }
-  salesStats: { employeeId: string; name: string; totalTransferred: number; confirmed: number }[]
+  salesStats: { employeeId: string; name: string; totalTransferred: number; confirmed: number; today: number; thisMonth: number }[]
+  coordinatorStats: { employeeId: string; name: string; totalConfirmed: number; today: number; thisMonth: number }[]
   technicianStats: {
     employeeId: string
     name: string
@@ -195,6 +197,7 @@ export const api = {
     id: string,
     data: {
       confirmedByName: string
+      confirmedByEmployeeId?: string
       adminNotes?: string
       transferToProjects: boolean
       quotedPrice?: number

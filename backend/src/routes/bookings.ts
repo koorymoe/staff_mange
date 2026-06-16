@@ -8,6 +8,7 @@ const bookingInclude = {
   service: true,
   transferEmployee: true,
   projectSupervisor: true,
+  confirmedByEmployee: true,
   assignments: { include: { employee: true } },
 } as const
 
@@ -57,13 +58,14 @@ router.post('/', async (req, res) => {
 // PUT /api/bookings/:id/confirm - HR coordinator confirms the booking with the customer
 // body: { confirmedByName, adminNotes?, transferToProjects, quotedPrice?, address?, scheduledAt? }
 router.put('/:id/confirm', async (req, res) => {
-  const { confirmedByName, adminNotes, transferToProjects, quotedPrice, address, scheduledAt } = req.body
+  const { confirmedByName, confirmedByEmployeeId, adminNotes, transferToProjects, quotedPrice, address, scheduledAt } = req.body
 
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
     data: {
       status: 'CONFIRMED',
       confirmedByName,
+      confirmedByEmployeeId: confirmedByEmployeeId || undefined,
       adminNotes,
       transferToProjects: Boolean(transferToProjects),
       quotedPrice: quotedPrice !== undefined && quotedPrice !== '' ? Number(quotedPrice) : undefined,

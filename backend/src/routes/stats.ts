@@ -39,11 +39,18 @@ router.get('/', async (_req, res) => {
     }),
   ])
 
-  // Per sales employee: how many bookings they transferred / got confirmed
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+  // Per sales employee: how many bookings they transferred / got confirmed (total, today, this month)
   const employees = await prisma.employee.findMany({
     include: {
       transferredBookings: {
-        select: { id: true, status: true },
+        select: { id: true, status: true, createdAt: true },
+      },
+      confirmedBookings: {
+        select: { id: true, transferEmployeeId: true, createdAt: true },
       },
       assignments: {
         select: { booking: { select: { id: true, status: true, amountCollected: true } } },
@@ -58,8 +65,21 @@ router.get('/', async (_req, res) => {
       name: e.name,
       totalTransferred: e.transferredBookings.length,
       confirmed: e.transferredBookings.filter((b) => b.status !== 'PENDING' && b.status !== 'CANCELLED').length,
+      today: e.transferredBookings.filter((b) => new Date(b.createdAt) >= startOfToday).length,
+      thisMonth: e.transferredBookings.filter((b) => new Date(b.createdAt) >= startOfMonth).length,
     }))
     .sort((a, b) => b.confirmed - a.confirmed)
+
+  const coordinatorStats = employees
+    .filter((e) => e.role === 'HR_COORDINATOR' || e.role === 'ADMIN')
+    .map((e) => ({
+      employeeId: e.id,
+      name: e.name,
+      totalConfirmed: e.confirmedBookings.length,
+      today: e.confirmedBookings.filter((b) => new Date(b.createdAt) >= startOfToday).length,
+      thisMonth: e.confirmedBookings.filter((b) => new Date(b.createdAt) >= startOfMonth).length,
+    }))
+    .sort((a, b) => b.totalConfirmed - a.totalConfirmed)
 
   const technicianStats = employees
     .filter((e) => e.role === 'TECHNICIAN')
@@ -110,6 +130,7 @@ router.get('/', async (_req, res) => {
       unverifiedRevenue: unverifiedRevenue._sum.amountCollected || 0,
     },
     salesStats,
+    coordinatorStats,
     technicianStats,
     serviceBreakdown,
     roleCounts: roleCounts.map((r) => ({ role: r.role, count: r._count._all })),
