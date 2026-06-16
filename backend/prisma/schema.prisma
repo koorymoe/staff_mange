@@ -20,6 +20,7 @@ enum ProjectPriority {
 }
 
 enum BookingStatus {
+  IN_PROGRESS // جاري التنفيذ
   PENDING // قبل الحجز - بانتظار التأكيد
   CONFIRMED // تم الحجز
   COMPLETED // تم إنجاز المهمة

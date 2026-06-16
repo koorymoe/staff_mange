@@ -63,7 +63,7 @@ export interface Booking {
   notes: string | null
   vehicleType: string | null
   priority: 'NORMAL' | 'URGENT'
-  status: 'PENDING' | 'CONFIRMED' | 'COMPLETED' | 'CANCELLED'
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
   transferToProjects: boolean
   confirmedByName: string | null
   adminNotes: string | null
@@ -225,6 +225,8 @@ export const api = {
     id: string,
     data: { completionNotes?: string; amountCollected?: number; advancePaid?: number },
   ) => request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
+  startBooking: (id: string) =>
+    request<Booking>(`/bookings/${id}/start`, { method: 'PUT', body: JSON.stringify({}) }),
   verifyAmount: (id: string) =>
     request<Booking>(`/bookings/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
   getStats: () => request<Stats>('/stats'),

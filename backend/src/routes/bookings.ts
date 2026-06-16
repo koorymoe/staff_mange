@@ -211,6 +211,16 @@ router.put('/:id/supervisor', async (req, res) => {
   res.json(updated)
 })
 
+// PUT /api/bookings/:id/start - technician acknowledges receipt and starts the booking
+router.put('/:id/start', async (req, res) => {
+  const booking = await prisma.booking.update({
+    where: { id: req.params.id },
+    data: { status: 'IN_PROGRESS' },
+    include: bookingInclude,
+  })
+  res.json(booking)
+})
+
 // PUT /api/bookings/:id/complete - technician marks the booking as done
 // body: { completionNotes?, amountCollected?, advancePaid? }
 router.put('/:id/complete', async (req, res) => {

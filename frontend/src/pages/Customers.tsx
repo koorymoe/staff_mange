@@ -5,6 +5,7 @@ import { validateCustomerName, validateCustomerPhone } from '../validation'
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التثبيت',
   CONFIRMED: 'مثبت',
+  IN_PROGRESS: 'جاري التنفيذ',
   COMPLETED: 'منجز',
   CANCELLED: 'ملغى',
 }
@@ -12,6 +13,7 @@ const statusLabels: Record<string, string> = {
 const statusColors: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
   CONFIRMED: 'bg-blue-100 text-blue-700',
+  IN_PROGRESS: 'bg-orange-100 text-orange-700',
   COMPLETED: 'bg-emerald-100 text-emerald-700',
   CANCELLED: 'bg-red-100 text-red-700',
 }

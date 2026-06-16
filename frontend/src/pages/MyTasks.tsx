@@ -11,9 +11,8 @@ export default function MyTasks() {
   const [notes, setNotes] = useState<Record<string, string>>({})
 
   const load = () => {
-    api
-      .getBookings({ status: 'CONFIRMED' })
-      .then(setBookings)
+    Promise.all([api.getBookings({ status: 'CONFIRMED' }), api.getBookings({ status: 'IN_PROGRESS' })])
+      .then(([confirmed, inProgress]) => setBookings([...confirmed, ...inProgress]))
       .finally(() => setLoading(false))
   }
 
@@ -22,6 +21,11 @@ export default function MyTasks() {
   const myTasks = bookings.filter((b) =>
     b.assignments.some((a) => a.employee.id === employee?.id),
   )
+
+  const handleStart = async (booking: Booking) => {
+    const updated = await api.startBooking(booking.id)
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
 
   const handleComplete = async (booking: Booking) => {
     const amountCollected = amounts[booking.id] ? Number(amounts[booking.id]) : undefined
@@ -97,34 +101,50 @@ export default function MyTasks() {
                       </p>
                     )}
 
-                    <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-4">
-                      <input
-                        type="number"
-                        placeholder="المبلغ المستلم"
-                        value={amounts[b.id] || ''}
-                        onChange={(e) => setAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      />
-                      <input
-                        type="number"
-                        placeholder="دفعة مقدمة (إن وجدت)"
-                        value={advances[b.id] || ''}
-                        onChange={(e) => setAdvances((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      />
-                      <input
-                        placeholder="ملاحظات الإنجاز"
-                        value={notes[b.id] || ''}
-                        onChange={(e) => setNotes((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 sm:col-span-1"
-                      />
-                      <button
-                        onClick={() => handleComplete(b)}
-                        className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
-                      >
-                        تم الإنجاز
-                      </button>
-                    </div>
+                    {b.status === 'CONFIRMED' ? (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => handleStart(b)}
+                          className="w-full rounded-lg bg-gradient-to-l from-amber-500 to-amber-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                        >
+                          ✅ تم الاستلام — بدأت بالعمل
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-3">
+                        <div className="mb-2 rounded-lg bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                          🔄 جاري التنفيذ
+                        </div>
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+                          <input
+                            type="number"
+                            placeholder="المبلغ المستلم"
+                            value={amounts[b.id] || ''}
+                            onChange={(e) => setAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          />
+                          <input
+                            type="number"
+                            placeholder="دفعة مقدمة (إن وجدت)"
+                            value={advances[b.id] || ''}
+                            onChange={(e) => setAdvances((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          />
+                          <input
+                            placeholder="ملاحظات الإنجاز"
+                            value={notes[b.id] || ''}
+                            onChange={(e) => setNotes((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          />
+                          <button
+                            onClick={() => handleComplete(b)}
+                            className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
+                          >
+                            تم الإنجاز
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}
