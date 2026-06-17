@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
-import { type Employee, type EmployeeRole } from '../api'
+import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels } from '../session'
 import Login from '../pages/Login'
 
@@ -9,6 +9,7 @@ interface NavItem {
   label: string
   end?: boolean
   roles?: EmployeeRole[] // undefined = visible to everyone
+  permission?: string
 }
 
 const navItems: NavItem[] = [
@@ -23,6 +24,19 @@ const navItems: NavItem[] = [
   { to: '/bookings', label: 'الحجوزات', roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'] },
   { to: '/services', label: 'الخدمات', roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
   { to: '/finance', label: 'تدقيق الحسابات', roles: ['ADMIN', 'FINANCE'] },
+  { to: '/kpi', label: 'تقييم الأداء', roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
+  { to: '/complaints', label: 'الشكاوى', roles: ['ADMIN', 'SALES', 'HR_COORDINATOR'], permission: 'complaints' },
+  { to: '/inventory', label: 'جرد الأدوات', roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'inventory' },
+  { to: '/permissions', label: 'الصلاحيات', roles: ['ADMIN'] },
+  { to: '/quotations', label: 'عروض الأسعار', roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
+  { to: '/products', label: 'المنتجات', roles: ['ADMIN'], permission: 'quotation_system' },
+  { to: '/gps', label: 'نظام GPS', roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
+  { to: '/gps/customers', label: 'زبائن GPS', roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
+  { to: '/gps/devices', label: 'أجهزة GPS', roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
+  { to: '/gps/sims', label: 'شرائح SIM', roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
+  { to: '/gps/renewals', label: 'تجديد الاشتراكات', roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
+  { to: '/gps/maintenance', label: 'صيانة GPS', roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
+  { to: '/gps/employee', label: 'لوحة موظف GPS', roles: ['GPS_ENGINEER'] },
 ]
 
 const loadStoredEmployee = (): Employee | null => {
@@ -37,12 +51,23 @@ const loadStoredEmployee = (): Employee | null => {
 
 export default function Layout() {
   const [employee, setEmployeeState] = useState<Employee | null>(loadStoredEmployee)
+  const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
 
   const setEmployee = (emp: Employee | null) => {
     setEmployeeState(emp)
     if (emp) localStorage.setItem('currentEmployee', JSON.stringify(emp))
     else localStorage.removeItem('currentEmployee')
   }
+
+  useEffect(() => {
+    if (!employee) {
+      setEmployeePermissions([])
+      return
+    }
+    api.getEmployeePermissions(employee.id)
+      .then((perms) => setEmployeePermissions(perms.map((p: any) => p.name)))
+      .catch(() => setEmployeePermissions([]))
+  }, [employee?.id])
 
   if (!employee) {
     return (
@@ -53,7 +78,12 @@ export default function Layout() {
   }
 
   const role = employee?.role
-  const visibleItems = navItems.filter((item) => !item.roles || (role && item.roles.includes(role)))
+  const visibleItems = navItems.filter((item) => {
+    if (role === 'ADMIN') return true
+    if (item.roles && role && !item.roles.includes(role)) return false
+    if (item.permission && !employeePermissions.includes(item.permission)) return false
+    return true
+  })
 
   return (
     <SessionContext.Provider value={{ employee, setEmployee }}>

@@ -28,6 +28,9 @@ export type EmployeeRole =
   | 'PROJECT_MANAGER'
   | 'MONITOR'
   | 'FINANCE'
+  | 'GPS_ADMIN'
+  | 'GPS_ENGINEER'
+  | 'QUALITY_ENGINEER'
 
 export interface Employee {
   id: string
@@ -146,6 +149,124 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   return res.json()
 }
 
+export interface Product {
+  id: string
+  name: string
+  unit: string
+  defaultPrice: number
+}
+
+export interface QuotationItem {
+  id?: string
+  productName: string
+  unit: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+}
+
+export interface Quotation {
+  id: string
+  quotationNumber: string
+  customerName: string
+  customerPhone: string | null
+  customerAddress: string | null
+  projectName: string | null
+  items: QuotationItem[]
+  grandTotal: number
+  discountPercent: number
+  discountValue: number
+  netTotal: number
+  duration: string | null
+  notes: string | null
+  status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
+  createdAt: string
+}
+
+export interface Permission {
+  id: string
+  name: string
+  label: string
+}
+
+export interface KpiEvaluation {
+  id: string
+  employeeId: string
+  employee: { id: string; name: string }
+  evaluatorId: string
+  evaluator: { id: string; name: string }
+  points: number
+  reason: string
+  deductionAmount: number
+  createdAt: string
+}
+
+export interface CartItem {
+  id: string
+  bookingId: string
+  productName: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  notes: string | null
+  createdAt: string
+}
+
+export interface PersonalTool {
+  id: string
+  employeeId: string
+  employee?: { id: string; name: string }
+  name: string
+  barcode: string
+  status: 'AVAILABLE' | 'CHECKED_OUT' | 'DAMAGED'
+  checkedOut: boolean
+}
+
+export interface VehicleTool {
+  id: string
+  name: string
+  barcode: string
+  vehicleId: string
+  status: 'AVAILABLE' | 'CHECKED_OUT' | 'DAMAGED'
+}
+
+export interface OnDemandTool {
+  id: string
+  name: string
+  barcode: string
+  totalQuantity: number
+  availableQuantity: number
+  status: 'AVAILABLE' | 'CHECKED_OUT' | 'DAMAGED'
+}
+
+export interface ToolRequestItem {
+  id: string
+  employeeId: string
+  employee?: { id: string; name: string }
+  toolId: string
+  tool?: OnDemandTool
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RETURNED'
+  approvedById: string | null
+  requestedAt: string
+  returnedAt: string | null
+}
+
+export interface Complaint {
+  id: string
+  customerId: string
+  customer: { id: string; name: string; phone: string }
+  bookingId: string | null
+  description: string
+  status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
+  createdByEmployeeId: string
+  createdByEmployee: { id: string; name: string }
+  assignedToEmployeeId: string | null
+  assignedToEmployee: { id: string; name: string } | null
+  resolution: string | null
+  createdAt: string
+  resolvedAt: string | null
+}
+
 export const api = {
   getServices: () => request<Service[]>('/services'),
   createService: (data: { name: string; category?: string }) =>
@@ -256,4 +377,129 @@ export const api = {
       password?: string
     },
   ) => request<Employee>(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // GPS
+  getGpsStats: () => request<any>('/gps/stats'),
+  getGpsCustomers: () => request<any[]>('/gps/customers'),
+  createGpsCustomer: (data: any) =>
+    request<any>('/gps/customers', { method: 'POST', body: JSON.stringify(data) }),
+  getGpsDevices: () => request<any[]>('/gps/devices'),
+  createGpsDevice: (data: any) =>
+    request<any>('/gps/devices', { method: 'POST', body: JSON.stringify(data) }),
+  updateGpsDevice: (id: string, data: any) =>
+    request<any>(`/gps/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getSimCards: () => request<any[]>('/gps/sims'),
+  createSimCard: (data: any) =>
+    request<any>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),
+  updateSimCard: (id: string, data: any) =>
+    request<any>(`/gps/sims/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getGpsRenewals: () => request<any[]>('/gps/renewals'),
+  createGpsRenewal: (data: any) =>
+    request<any>('/gps/renewals', { method: 'POST', body: JSON.stringify(data) }),
+  updateGpsRenewal: (id: string, data: any) =>
+    request<any>(`/gps/renewals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getGpsMaintenance: () => request<any[]>('/gps/maintenance'),
+  createGpsMaintenance: (data: any) =>
+    request<any>('/gps/maintenance', { method: 'POST', body: JSON.stringify(data) }),
+  updateGpsMaintenance: (id: string, data: any) =>
+    request<any>(`/gps/maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Products
+  getProducts: () => request<Product[]>('/products'),
+  createProduct: (data: Omit<Product, 'id'>) =>
+    request<Product>('/products', { method: 'POST', body: JSON.stringify(data) }),
+  updateProduct: (id: string, data: Partial<Omit<Product, 'id'>>) =>
+    request<Product>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteProduct: (id: string) =>
+    request<void>(`/products/${id}`, { method: 'DELETE' }),
+
+  // Quotations
+  getQuotations: () => request<Quotation[]>('/quotations'),
+  createQuotation: (data: {
+    customerName: string
+    customerPhone?: string
+    customerAddress?: string
+    projectName?: string
+    items: Omit<QuotationItem, 'id'>[]
+    grandTotal: number
+    discountPercent: number
+    discountValue: number
+    netTotal: number
+    duration?: string
+    notes?: string
+  }) => request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
+  deleteQuotation: (id: string) =>
+    request<void>(`/quotations/${id}`, { method: 'DELETE' }),
+
+  // Permissions
+  getPermissions: () => request<Permission[]>('/permissions'),
+  getEmployeePermissions: (employeeId: string) =>
+    request<Permission[]>(`/permissions/employee/${employeeId}`),
+  setEmployeePermissions: (employeeId: string, permissionIds: string[]) =>
+    request<Permission[]>(`/permissions/employee/${employeeId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ permissionIds }),
+    }),
+
+  // KPI
+  getKpiEvaluations: () => request<KpiEvaluation[]>('/kpi'),
+  getEmployeeKpi: (employeeId: string) => request<KpiEvaluation[]>(`/kpi/employee/${employeeId}`),
+  createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string }) =>
+    request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
+  deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
+
+  // Cart
+  getCartItems: (bookingId: string) => request<CartItem[]>(`/cart/booking/${bookingId}`),
+  addCartItem: (bookingId: string, data: { productName: string; quantity: number; unitPrice: number; notes?: string }) =>
+    request<CartItem>(`/cart/booking/${bookingId}`, { method: 'POST', body: JSON.stringify(data) }),
+  updateCartItem: (id: string, data: Partial<CartItem>) =>
+    request<CartItem>(`/cart/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCartItem: (id: string) => request<void>(`/cart/${id}`, { method: 'DELETE' }),
+
+  // Inventory
+  getPersonalTools: (employeeId?: string) =>
+    request<PersonalTool[]>(`/inventory/personal${employeeId ? `?employeeId=${employeeId}` : ''}`),
+  createPersonalTool: (data: { employeeId: string; name: string; barcode: string }) =>
+    request<PersonalTool>('/inventory/personal', { method: 'POST', body: JSON.stringify(data) }),
+  updatePersonalTool: (id: string, data: Partial<PersonalTool>) =>
+    request<PersonalTool>(`/inventory/personal/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePersonalTool: (id: string) => request<void>(`/inventory/personal/${id}`, { method: 'DELETE' }),
+  getVehicleTools: (vehicleId?: string) =>
+    request<VehicleTool[]>(`/inventory/vehicle${vehicleId ? `?vehicleId=${vehicleId}` : ''}`),
+  createVehicleTool: (data: { name: string; barcode: string; vehicleId: string }) =>
+    request<VehicleTool>('/inventory/vehicle', { method: 'POST', body: JSON.stringify(data) }),
+  updateVehicleTool: (id: string, data: Partial<VehicleTool>) =>
+    request<VehicleTool>(`/inventory/vehicle/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteVehicleTool: (id: string) => request<void>(`/inventory/vehicle/${id}`, { method: 'DELETE' }),
+  getOnDemandTools: () => request<OnDemandTool[]>('/inventory/ondemand'),
+  createOnDemandTool: (data: { name: string; barcode: string; totalQuantity: number }) =>
+    request<OnDemandTool>('/inventory/ondemand', { method: 'POST', body: JSON.stringify(data) }),
+  updateOnDemandTool: (id: string, data: Partial<OnDemandTool>) =>
+    request<OnDemandTool>(`/inventory/ondemand/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getToolRequests: (employeeId?: string) =>
+    request<ToolRequestItem[]>(`/inventory/requests${employeeId ? `?employeeId=${employeeId}` : ''}`),
+  createToolRequest: (data: { employeeId: string; toolId: string }) =>
+    request<ToolRequestItem>('/inventory/requests', { method: 'POST', body: JSON.stringify(data) }),
+  approveToolRequest: (id: string, approvedById: string) =>
+    request<ToolRequestItem>(`/inventory/requests/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedById }) }),
+  rejectToolRequest: (id: string) =>
+    request<ToolRequestItem>(`/inventory/requests/${id}/reject`, { method: 'PUT', body: JSON.stringify({}) }),
+  returnToolRequest: (id: string) =>
+    request<ToolRequestItem>(`/inventory/requests/${id}/return`, { method: 'PUT', body: JSON.stringify({}) }),
+
+  // Complaints
+  getComplaints: () => request<Complaint[]>('/complaints'),
+  createComplaint: (data: { customerId: string; bookingId?: string; description: string; createdByEmployeeId: string }) =>
+    request<Complaint>('/complaints', { method: 'POST', body: JSON.stringify(data) }),
+  updateComplaint: (id: string, data: { status?: string; assignedToEmployeeId?: string; resolution?: string }) =>
+    request<Complaint>(`/complaints/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  resolveComplaint: (id: string, resolution: string) =>
+    request<Complaint>(`/complaints/${id}/resolve`, { method: 'PUT', body: JSON.stringify({ resolution }) }),
+
+  // GPS Settings
+  getGpsSettings: () => request<any[]>('/gps/settings'),
+  updateGpsSettings: (data: any) =>
+    request<any>('/gps/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  updateGpsCustomer: (id: string, data: any) =>
+    request<any>(`/gps/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 }

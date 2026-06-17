@@ -11,6 +11,20 @@ import MyTasks from './pages/MyTasks'
 import MyRanking from './pages/MyRanking'
 import MyExpenses from './pages/MyExpenses'
 import Finance from './pages/Finance'
+import KpiPage from './pages/KpiPage'
+import ComplaintsPage from './pages/ComplaintsPage'
+import InventoryPage from './pages/InventoryPage'
+import PermissionsPage from './pages/PermissionsPage'
+import QuotationsPage from './pages/QuotationsPage'
+import QuotationNew from './pages/QuotationNew'
+import ProductsPage from './pages/ProductsPage'
+import GpsDashboard from './pages/gps/GpsDashboard'
+import GpsCustomers from './pages/gps/GpsCustomers'
+import GpsDevices from './pages/gps/GpsDevices'
+import GpsSims from './pages/gps/GpsSims'
+import GpsRenewals from './pages/gps/GpsRenewals'
+import GpsMaintenance from './pages/gps/GpsMaintenance'
+import GpsEmployee from './pages/gps/GpsEmployee'
 
 function App() {
   return (
@@ -27,6 +41,20 @@ function App() {
         <Route path="my-ranking" element={<MyRanking />} />
         <Route path="my-expenses" element={<MyExpenses />} />
         <Route path="finance" element={<Finance />} />
+        <Route path="kpi" element={<KpiPage />} />
+        <Route path="complaints" element={<ComplaintsPage />} />
+        <Route path="inventory" element={<InventoryPage />} />
+        <Route path="permissions" element={<PermissionsPage />} />
+        <Route path="quotations" element={<QuotationsPage />} />
+        <Route path="quotations/new" element={<QuotationNew />} />
+        <Route path="products" element={<ProductsPage />} />
+        <Route path="gps" element={<GpsDashboard />} />
+        <Route path="gps/customers" element={<GpsCustomers />} />
+        <Route path="gps/devices" element={<GpsDevices />} />
+        <Route path="gps/sims" element={<GpsSims />} />
+        <Route path="gps/renewals" element={<GpsRenewals />} />
+        <Route path="gps/maintenance" element={<GpsMaintenance />} />
+        <Route path="gps/employee" element={<GpsEmployee />} />
       </Route>
     </Routes>
   )

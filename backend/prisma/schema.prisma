@@ -57,6 +57,84 @@ enum EmployeeRole {
   PROJECT_MANAGER
   MONITOR // مراقب: يشوف الإحصائيات فقط
   FINANCE // المحاسب: يراجع المبالغ المستلمة من الحجوزات المنجزة
+  GPS_ADMIN
+  GPS_ENGINEER
+  QUALITY_ENGINEER
+}
+
+enum ExpenseStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ToolStatus {
+  AVAILABLE
+  CHECKED_OUT
+  DAMAGED
+}
+
+enum ToolRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  RETURNED
+}
+
+enum ComplaintStatus {
+  NEW
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum SimOperator {
+  ZAIN
+  ASIACELL
+  KOREK
+  OTHER
+}
+
+enum SimStatus {
+  AVAILABLE
+  IN_USE
+}
+
+enum GpsRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  DELIVERED
+}
+
+enum GpsPurchaseType {
+  DEVICE_SIM
+  DEVICE_ONLY
+}
+
+enum GpsSubscriptionType {
+  THREE_MONTHS
+  SIX_MONTHS
+  YEARLY
+}
+
+enum GpsSubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum GpsMaintenanceStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum QuotationStatus {
+  NEW
+  SENT
+  ACCEPTED
+  REJECTED
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +177,8 @@ model Customer {
   location     String? // موقع الزبون / المؤسسة
   createdAt    DateTime @default(now())
 
-  bookings Booking[]
+  bookings   Booking[]
+  complaints Complaint[]
 }
 
 // ---------------------------------------------------------------------------
@@ -134,12 +213,22 @@ model Employee {
 
   assignments BookingAssignment[]
   expenses    Expense[]
-}
 
-enum ExpenseStatus {
-  PENDING
-  APPROVED
-  REJECTED
+  permissions         EmployeePermission[]
+  kpiEvaluations      KpiEvaluation[] @relation("KpiEmployee")
+  kpiEvaluationsGiven KpiEvaluation[] @relation("KpiEvaluator")
+  personalTools       PersonalTool[]
+  toolRequests        ToolRequest[]
+  toolApprovals       ToolRequest[] @relation("ToolApprover")
+  complaintsCreated   Complaint[] @relation("ComplaintCreator")
+  complaintsAssigned  Complaint[] @relation("ComplaintAssignee")
+  gpsDeviceRequests   GpsDeviceRequest[] @relation("GpsDeviceEmployee")
+  gpsDeviceAdmin      GpsDeviceRequest[] @relation("GpsDeviceAdmin")
+  gpsRenewalRequests  GpsRenewalRequest[] @relation("GpsRenewalEmployee")
+  gpsRenewalAdmin     GpsRenewalRequest[] @relation("GpsRenewalAdmin")
+  gpsMaintenanceRequests GpsMaintenanceRequest[] @relation("GpsMaintenanceEmployee")
+  gpsMaintenanceAdmin    GpsMaintenanceRequest[] @relation("GpsMaintenanceAdmin")
+  quotations          Quotation[] @relation("QuotationCreator")
 }
 
 // مصاريف يدفعها الموظف من جيبه ويحتاج استرجاعها/استقطاعها
@@ -233,6 +322,8 @@ model Booking {
   updatedAt DateTime @updatedAt
 
   assignments BookingAssignment[]
+  cartItems   CartItem[]
+  complaints  Complaint[]
 
   @@index([customerId])
   @@index([serviceId])
@@ -251,4 +342,287 @@ model BookingAssignment {
 
   @@unique([bookingId, role])
   @@index([employeeId])
+}
+
+// ---------------------------------------------------------------------------
+// Permissions
+// ---------------------------------------------------------------------------
+
+model Permission {
+  id    String @id @default(cuid())
+  name  String @unique // e.g. "staff_management", "gps_system", etc.
+  label String // Arabic label
+  employees EmployeePermission[]
+}
+
+model EmployeePermission {
+  id           String     @id @default(cuid())
+  employee     Employee   @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId   String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  permissionId String
+  createdAt    DateTime   @default(now())
+  @@unique([employeeId, permissionId])
+}
+
+// ---------------------------------------------------------------------------
+// KPI Evaluations
+// ---------------------------------------------------------------------------
+
+model KpiEvaluation {
+  id              String   @id @default(cuid())
+  employee        Employee @relation("KpiEmployee", fields: [employeeId], references: [id])
+  employeeId      String
+  evaluator       Employee @relation("KpiEvaluator", fields: [evaluatorId], references: [id])
+  evaluatorId     String
+  points          Int
+  reason          String
+  deductionAmount Float    // points * 10000
+  createdAt       DateTime @default(now())
+  @@index([employeeId])
+}
+
+// ---------------------------------------------------------------------------
+// Cart Items
+// ---------------------------------------------------------------------------
+
+model CartItem {
+  id          String   @id @default(cuid())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId   String
+  productName String
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  @@index([bookingId])
+}
+
+// ---------------------------------------------------------------------------
+// Tools Management
+// ---------------------------------------------------------------------------
+
+model PersonalTool {
+  id         String     @id @default(cuid())
+  employee   Employee   @relation(fields: [employeeId], references: [id])
+  employeeId String
+  name       String
+  barcode    String     @unique
+  status     ToolStatus @default(AVAILABLE)
+  checkedOut Boolean    @default(false)
+  createdAt  DateTime   @default(now())
+  @@index([employeeId])
+}
+
+model VehicleTool {
+  id        String     @id @default(cuid())
+  name      String
+  barcode   String     @unique
+  vehicleId String
+  status    ToolStatus @default(AVAILABLE)
+  createdAt DateTime   @default(now())
+  @@index([vehicleId])
+}
+
+model OnDemandTool {
+  id                String     @id @default(cuid())
+  name              String
+  barcode           String     @unique
+  totalQuantity     Int
+  availableQuantity Int
+  status            ToolStatus @default(AVAILABLE)
+  createdAt         DateTime   @default(now())
+  requests          ToolRequest[]
+}
+
+model ToolRequest {
+  id           String            @id @default(cuid())
+  employee     Employee          @relation(fields: [employeeId], references: [id])
+  employeeId   String
+  tool         OnDemandTool      @relation(fields: [toolId], references: [id])
+  toolId       String
+  status       ToolRequestStatus @default(PENDING)
+  approvedBy   Employee?         @relation("ToolApprover", fields: [approvedById], references: [id])
+  approvedById String?
+  requestedAt  DateTime          @default(now())
+  returnedAt   DateTime?
+  @@index([employeeId])
+  @@index([toolId])
+}
+
+// ---------------------------------------------------------------------------
+// Complaints
+// ---------------------------------------------------------------------------
+
+model Complaint {
+  id                    String          @id @default(cuid())
+  customer              Customer        @relation(fields: [customerId], references: [id])
+  customerId            String
+  booking               Booking?        @relation(fields: [bookingId], references: [id])
+  bookingId             String?
+  description           String
+  status                ComplaintStatus  @default(NEW)
+  createdByEmployee     Employee        @relation("ComplaintCreator", fields: [createdByEmployeeId], references: [id])
+  createdByEmployeeId   String
+  assignedToEmployee    Employee?       @relation("ComplaintAssignee", fields: [assignedToEmployeeId], references: [id])
+  assignedToEmployeeId  String?
+  resolution            String?
+  createdAt             DateTime        @default(now())
+  resolvedAt            DateTime?
+  @@index([customerId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// GPS System
+// ---------------------------------------------------------------------------
+
+model GpsCustomer {
+  id                    String   @id @default(cuid())
+  fullName              String
+  fatherName            String?
+  grandfatherName       String?
+  phone                 String
+  address               String?
+  governorate           String?
+  idCardFrontUrl        String?
+  idCardBackUrl         String?
+  residenceCardFrontUrl String?
+  residenceCardBackUrl  String?
+  createdAt             DateTime @default(now())
+  simCards              SimCard[]
+  deviceRequests        GpsDeviceRequest[]
+  renewalRequests       GpsRenewalRequest[]
+  maintenanceRequests   GpsMaintenanceRequest[]
+}
+
+model SimCard {
+  id         String    @id @default(cuid())
+  simNumber  String    @unique
+  iccid      String?
+  operator   SimOperator
+  status     SimStatus @default(AVAILABLE)
+  customer   GpsCustomer? @relation(fields: [customerId], references: [id])
+  customerId String?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  deviceRequests GpsDeviceRequest[]
+  @@index([status])
+}
+
+model GpsDeviceRequest {
+  id                 String              @id @default(cuid())
+  customer           GpsCustomer         @relation(fields: [customerId], references: [id])
+  customerId         String
+  employee           Employee            @relation("GpsDeviceEmployee", fields: [employeeId], references: [id])
+  employeeId         String
+  admin              Employee?           @relation("GpsDeviceAdmin", fields: [adminId], references: [id])
+  adminId            String?
+  purchaseType       GpsPurchaseType
+  subscriptionType   GpsSubscriptionType
+  subscriptionStart  DateTime?
+  subscriptionEnd    DateTime?
+  subscriptionStatus GpsSubscriptionStatus @default(ACTIVE)
+  status             GpsRequestStatus    @default(PENDING)
+  simCard            SimCard?            @relation(fields: [simCardId], references: [id])
+  simCardId          String?
+  notes              String?
+  isChecked          Boolean             @default(false)
+  isActivated        Boolean             @default(false)
+  isDelivered        Boolean             @default(false)
+  invoicePhotoUrl    String?
+  activationDate     DateTime?
+  deliveredAt        DateTime?
+  createdAt          DateTime            @default(now())
+  renewals           GpsRenewalRequest[]
+  @@index([customerId])
+  @@index([status])
+}
+
+model GpsRenewalRequest {
+  id               String              @id @default(cuid())
+  customer         GpsCustomer         @relation(fields: [customerId], references: [id])
+  customerId       String
+  deviceRequest    GpsDeviceRequest    @relation(fields: [deviceRequestId], references: [id])
+  deviceRequestId  String
+  employee         Employee            @relation("GpsRenewalEmployee", fields: [employeeId], references: [id])
+  employeeId       String
+  admin            Employee?           @relation("GpsRenewalAdmin", fields: [adminId], references: [id])
+  adminId          String?
+  subscriptionType GpsSubscriptionType
+  newEndDate       DateTime?
+  status           GpsRequestStatus    @default(PENDING)
+  createdAt        DateTime            @default(now())
+  @@index([customerId])
+}
+
+model GpsMaintenanceRequest {
+  id                 String               @id @default(cuid())
+  customer           GpsCustomer          @relation(fields: [customerId], references: [id])
+  customerId         String
+  employee           Employee             @relation("GpsMaintenanceEmployee", fields: [employeeId], references: [id])
+  employeeId         String
+  admin              Employee?            @relation("GpsMaintenanceAdmin", fields: [adminId], references: [id])
+  adminId            String?
+  problemDescription String
+  status             GpsMaintenanceStatus @default(PENDING)
+  adminNotes         String?
+  createdAt          DateTime             @default(now())
+  resolvedAt         DateTime?
+  @@index([customerId])
+}
+
+model GpsSubscriptionPrice {
+  id               String              @id @default(cuid())
+  subscriptionType GpsSubscriptionType @unique
+  price            Float
+  createdAt        DateTime            @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Products & Quotations
+// ---------------------------------------------------------------------------
+
+model Product {
+  id           String   @id @default(cuid())
+  name         String   @unique
+  unit         String?
+  defaultPrice Float?
+  imageBase64  String?  @db.Text
+  createdAt    DateTime @default(now())
+}
+
+model Quotation {
+  id               String          @id @default(cuid())
+  quotationNumber  String          @unique
+  customerName     String
+  customerPhone    String?
+  customerAddress  String?
+  projectName      String?
+  grandTotal       Float           @default(0)
+  discountPercent  Float           @default(0)
+  discountValue    Float           @default(0)
+  netTotal         Float           @default(0)
+  notes            String?
+  duration         String?
+  status           QuotationStatus @default(NEW)
+  createdByEmployee Employee       @relation("QuotationCreator", fields: [createdByEmployeeId], references: [id])
+  createdByEmployeeId String
+  createdAt        DateTime        @default(now())
+  items            QuotationItem[]
+  @@index([status])
+}
+
+model QuotationItem {
+  id          String    @id @default(cuid())
+  quotation   Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  quotationId String
+  productName String
+  unit        String?
+  quantity    Int
+  unitPrice   Float
+  totalPrice  Float
+  @@index([quotationId])
 }
