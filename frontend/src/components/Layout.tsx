@@ -105,7 +105,7 @@ export default function Layout() {
             </button>
           </div>
 
-          <nav className="flex flex-col gap-1 p-4">
+          <nav className="flex flex-col gap-1 p-4 overflow-y-auto flex-1">
             {visibleItems.map((item) => (
               <NavLink
                 key={item.to}
