@@ -6,9 +6,11 @@ export default function PermissionsPage() {
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [employeePerms, setEmployeePerms] = useState<string[]>([])
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -27,7 +29,7 @@ export default function PermissionsPage() {
       return
     }
     api.getEmployeePermissions(selectedEmployeeId)
-      .then((perms) => setEmployeePerms(perms.map((p) => p.permissionName)))
+      .then((perms) => setEmployeePerms(perms.map((p) => p.name)))
       .catch(() => setEmployeePerms([]))
   }, [selectedEmployeeId])
 
@@ -35,44 +37,70 @@ export default function PermissionsPage() {
     setEmployeePerms((prev) =>
       prev.includes(permName) ? prev.filter((p) => p !== permName) : [...prev, permName],
     )
+    setSuccessMsg(null)
   }
 
   const handleSave = async () => {
     if (!selectedEmployeeId) return
     setSaving(true)
+    setSuccessMsg(null)
+    setError(null)
     try {
-      await api.setEmployeePermissions(selectedEmployeeId, employeePerms)
-      alert('تم حفظ الصلاحيات بنجاح')
+      const permIds = permissions
+        .filter((p) => employeePerms.includes(p.name))
+        .map((p) => p.id)
+      await api.setEmployeePermissions(selectedEmployeeId, permIds)
+      setSuccessMsg('تم حفظ الصلاحيات بنجاح')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      setError(e instanceof Error ? e.message : 'حدث خطأ أثناء الحفظ')
     } finally {
       setSaving(false)
     }
   }
 
+  const filteredEmployees = employees.filter((emp) =>
+    emp.name.toLowerCase().includes(search.toLowerCase()),
+  )
+
+  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)
+
   return (
-    <div>
+    <div dir="rtl">
       <h2 className="text-2xl font-bold text-brand-900">إدارة الصلاحيات</h2>
       <p className="mt-1 text-slate-500">تحديد صلاحيات الوصول لكل موظف في الأنظمة المختلفة.</p>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && (
-        <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
-          تعذر الاتصال بالخادم: {error}
-        </p>
+        <p className="mt-4 rounded-lg bg-red-50 p-4 text-red-600">{error}</p>
       )}
 
-      {!loading && !error && (
-        <div className="mt-6 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <div className="mb-6">
+      {!loading && (
+        <div className="mt-6 space-y-6">
+          {/* Employee search and select */}
+          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <label className="mb-2 block text-sm font-medium text-slate-600">
+              البحث عن موظف
+            </label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="اكتب اسم الموظف..."
+              className="mb-4 w-full max-w-md rounded-lg border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+            />
+
             <label className="mb-1 block text-sm font-medium text-slate-600">اختر الموظف</label>
             <select
               value={selectedEmployeeId}
-              onChange={(e) => setSelectedEmployeeId(e.target.value)}
-              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+              onChange={(e) => {
+                setSelectedEmployeeId(e.target.value)
+                setSuccessMsg(null)
+                setError(null)
+              }}
+              className="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-brand-500"
             >
               <option value="">-- اختر موظف --</option>
-              {employees.map((emp) => (
+              {filteredEmployees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
                   {emp.name}
                 </option>
@@ -80,40 +108,67 @@ export default function PermissionsPage() {
             </select>
           </div>
 
+          {/* Permission toggles */}
           {selectedEmployeeId && (
-            <>
-              <h3 className="mb-4 text-lg font-bold text-brand-800">الصلاحيات</h3>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {permissions.map((perm) => (
-                  <label
-                    key={perm.id}
-                    className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors ${
-                      employeePerms.includes(perm.name)
-                        ? 'border-brand-500 bg-brand-50 text-brand-800'
-                        : 'border-slate-200 text-slate-500'
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={employeePerms.includes(perm.name)}
-                      onChange={() => togglePermission(perm.name)}
-                      className="h-4 w-4 accent-brand-700"
-                    />
-                    {perm.label}
-                  </label>
-                ))}
+            <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+              <h3 className="mb-2 text-lg font-bold text-brand-800">
+                صلاحيات: {selectedEmployee?.name}
+              </h3>
+              <p className="mb-6 text-sm text-slate-400">
+                فعّل أو عطّل الصلاحيات لكل نظام فرعي
+              </p>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {permissions.map((perm) => {
+                  const isActive = employeePerms.includes(perm.name)
+                  return (
+                    <div
+                      key={perm.id}
+                      className={`flex items-center justify-between rounded-lg border px-5 py-4 transition-colors ${
+                        isActive
+                          ? 'border-brand-500 bg-brand-50'
+                          : 'border-slate-200 bg-white'
+                      }`}
+                    >
+                      <span className={`text-sm font-medium ${isActive ? 'text-brand-800' : 'text-slate-500'}`}>
+                        {perm.label}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isActive}
+                        onClick={() => togglePermission(perm.name)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                          isActive ? 'bg-brand-600' : 'bg-slate-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 translate-y-0.5 transform rounded-full bg-white shadow ring-0 transition-transform ${
+                            isActive ? '-translate-x-5' : '-translate-x-0.5'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  )
+                })}
               </div>
+
+              {successMsg && (
+                <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
+                  {successMsg}
+                </p>
+              )}
 
               <div className="mt-6">
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-8 py-2.5 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
+                  className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-10 py-2.5 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
                 >
                   {saving ? 'جاري الحفظ...' : 'حفظ الصلاحيات'}
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       )}

@@ -154,6 +154,7 @@ export interface Product {
   name: string
   unit: string
   defaultPrice: number
+  imageBase64?: string
 }
 
 export interface QuotationItem {
@@ -406,9 +407,9 @@ export const api = {
 
   // Products
   getProducts: () => request<Product[]>('/products'),
-  createProduct: (data: Omit<Product, 'id'>) =>
+  createProduct: (data: Omit<Product, 'id'> & { imageBase64?: string }) =>
     request<Product>('/products', { method: 'POST', body: JSON.stringify(data) }),
-  updateProduct: (id: string, data: Partial<Omit<Product, 'id'>>) =>
+  updateProduct: (id: string, data: Partial<Omit<Product, 'id'>> & { imageBase64?: string }) =>
     request<Product>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteProduct: (id: string) =>
     request<void>(`/products/${id}`, { method: 'DELETE' }),
@@ -427,6 +428,7 @@ export const api = {
     netTotal: number
     duration?: string
     notes?: string
+    createdByEmployeeId?: string
   }) => request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
   deleteQuotation: (id: string) =>
     request<void>(`/quotations/${id}`, { method: 'DELETE' }),

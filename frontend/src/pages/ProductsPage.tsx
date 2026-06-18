@@ -1,66 +1,74 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { api, type Product } from '../api'
+
+const BLUE = '#1a237e'
+const BLUE2 = '#283593'
 
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
-  const [unit, setUnit] = useState('')
+  const [unit, setUnit] = useState('قطعة')
   const [defaultPrice, setDefaultPrice] = useState(0)
+  const [imageBase64, setImageBase64] = useState('')
+  const [imgPreview, setImgPreview] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editName, setEditName] = useState('')
-  const [editUnit, setEditUnit] = useState('')
-  const [editPrice, setEditPrice] = useState(0)
+  const [statusMsg, setStatusMsg] = useState('')
+  const fileRef = useRef<HTMLInputElement>(null)
 
   const load = () => {
     setLoading(true)
-    api.getProducts()
-      .then(setProducts)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
+    api.getProducts().then(setProducts).catch(() => {}).finally(() => setLoading(false))
   }
 
   useEffect(load, [])
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name.trim()) return
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (!f) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const img = new Image()
+      img.onload = () => {
+        const MAX = 220
+        let w = img.width, h = img.height
+        if (w > h) { if (w > MAX) { h = Math.round(h * MAX / w); w = MAX } }
+        else { if (h > MAX) { w = Math.round(w * MAX / h); h = MAX } }
+        const cv = document.createElement('canvas')
+        cv.width = w; cv.height = h
+        cv.getContext('2d')!.drawImage(img, 0, 0, w, h)
+        const b64 = cv.toDataURL('image/jpeg', 0.75)
+        setImageBase64(b64)
+        setImgPreview(b64)
+      }
+      img.src = ev.target?.result as string
+    }
+    reader.readAsDataURL(f)
+  }
+
+  const resetForm = () => {
+    setName(''); setDefaultPrice(0); setUnit('قطعة'); setImageBase64(''); setImgPreview('')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  const handleAdd = async () => {
+    if (!name.trim()) { setStatusMsg('أدخل اسم المنتج'); return }
     setSubmitting(true)
+    setStatusMsg('جاري الحفظ...')
     try {
-      await api.createProduct({ name, unit, defaultPrice })
-      setName('')
-      setUnit('')
-      setDefaultPrice(0)
+      await api.createProduct({ name, unit, defaultPrice, imageBase64: imageBase64 || undefined })
+      resetForm()
       load()
+      setStatusMsg('تم حفظ المنتج بنجاح')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      setStatusMsg(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const startEdit = (product: Product) => {
-    setEditingId(product.id)
-    setEditName(product.name)
-    setEditUnit(product.unit)
-    setEditPrice(product.defaultPrice)
-  }
-
-  const handleUpdate = async () => {
-    if (!editingId) return
-    try {
-      await api.updateProduct(editingId, { name: editName, unit: editUnit, defaultPrice: editPrice })
-      setEditingId(null)
-      load()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
-    }
-  }
-
   const handleDelete = async (id: string) => {
-    if (!confirm('هل أنت متأكد من حذف المنتج؟')) return
+    if (!confirm('حذف المنتج؟')) return
     try {
       await api.deleteProduct(id)
       load()
@@ -69,148 +77,90 @@ export default function ProductsPage() {
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '11px 13px', border: '1.5px solid #e0e0e0', borderRadius: 8,
+    fontSize: 14, fontFamily: 'inherit', background: '#fff', outline: 'none', boxSizing: 'border-box',
+  }
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">إدارة المنتجات</h2>
-      <p className="mt-1 text-slate-500">إدارة قائمة المنتجات والأسعار الافتراضية لعروض الأسعار.</p>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      {/* Header */}
+      <div style={{ background: `linear-gradient(135deg, ${BLUE}, ${BLUE2})`, color: '#fff', padding: '20px 26px', borderRadius: '14px 14px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>&#128230; إدارة قاعدة بيانات المنتجات</h3>
+      </div>
 
-      <form
-        onSubmit={handleAdd}
-        className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-4"
-      >
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">اسم المنتج</label>
-          <input
-            required
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">الوحدة</label>
-          <input
-            value={unit}
-            onChange={(e) => setUnit(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-            placeholder="متر، قطعة، ..."
-          />
-        </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-slate-600">السعر الافتراضي</label>
-          <input
-            type="number"
-            min="0"
-            value={defaultPrice}
-            onChange={(e) => setDefaultPrice(Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-          />
-        </div>
-        <div className="flex items-end">
-          <button
-            type="submit"
-            disabled={submitting}
-            className="w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
-          >
-            {submitting ? 'جاري الإضافة...' : 'إضافة منتج'}
+      <div style={{ background: '#fff', borderRadius: '0 0 14px 14px', padding: 24, boxShadow: '0 20px 60px rgba(0,0,0,.08)' }}>
+        {/* Add Form */}
+        <div style={{ background: '#f5f7ff', border: '1px solid #e8eaf6', borderRadius: 10, padding: 20, marginBottom: 24 }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: BLUE, marginBottom: 14, paddingBottom: 10, borderBottom: '2px solid #e8eaf6' }}>+ إضافة منتج جديد</div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontWeight: 700, color: '#424242', fontSize: 13 }}>اسم المنتج *</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="مثال: لوح شمسي 400 واط" style={inputStyle} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontWeight: 700, color: '#424242', fontSize: 13 }}>وحدة القياس</label>
+              <input type="text" value={unit} onChange={(e) => setUnit(e.target.value)} style={inputStyle} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontWeight: 700, color: '#424242', fontSize: 13 }}>السعر الافتراضي (د.ع)</label>
+              <input type="number" min="0" value={defaultPrice} onChange={(e) => setDefaultPrice(Number(e.target.value))} style={inputStyle} />
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <label style={{ fontWeight: 700, color: '#424242', fontSize: 13 }}>صورة المنتج</label>
+              <input type="file" accept="image/*" ref={fileRef} onChange={handleImageChange}
+                style={{ ...inputStyle, border: `1.5px dashed ${BLUE}`, cursor: 'pointer', fontSize: 13 }} />
+            </div>
+          </div>
+          {imgPreview && (
+            <div style={{ textAlign: 'center', marginTop: 10 }}>
+              <img src={imgPreview} alt="" style={{ width: 80, height: 80, objectFit: 'contain', border: '1.5px solid #e0e0e0', borderRadius: 8 }} />
+            </div>
+          )}
+          <button onClick={handleAdd} disabled={submitting}
+            style={{ width: '100%', padding: 13, marginTop: 14, background: `linear-gradient(135deg, ${BLUE}, ${BLUE2})`, color: '#fff', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', opacity: submitting ? 0.6 : 1 }}>
+            &#128190; حفظ المنتج في القاعدة
           </button>
+          {statusMsg && <div style={{ textAlign: 'center', fontSize: 13, fontWeight: 600, marginTop: 10, color: statusMsg.includes('خطأ') || statusMsg.includes('أدخل') ? '#c62828' : statusMsg.includes('جاري') ? BLUE : '#2e7d32' }}>{statusMsg}</div>}
         </div>
-      </form>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
-      {error && (
-        <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
-          تعذر الاتصال بالخادم: {error}
-        </p>
-      )}
+        {/* Products Grid */}
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: BLUE, marginBottom: 14, paddingBottom: 10, borderBottom: '2px solid #e8eaf6', display: 'flex', alignItems: 'center', gap: 10 }}>
+            المنتجات المخزونة
+            <span style={{ background: BLUE, color: '#fff', padding: '2px 12px', borderRadius: 20, fontSize: 12 }}>{products.length}</span>
+          </div>
 
-      {!loading && !error && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <table className="w-full text-right">
-            <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
-              <tr>
-                <th className="px-4 py-3 text-sm font-semibold">اسم المنتج</th>
-                <th className="px-4 py-3 text-sm font-semibold">الوحدة</th>
-                <th className="px-4 py-3 text-sm font-semibold">السعر الافتراضي</th>
-                <th className="px-4 py-3 text-sm font-semibold">إجراءات</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {products.map((product) => (
-                <tr key={product.id} className="hover:bg-slate-50">
-                  {editingId === product.id ? (
-                    <>
-                      <td className="px-4 py-3">
-                        <input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          value={editUnit}
-                          onChange={(e) => setEditUnit(e.target.value)}
-                          className="w-24 rounded border border-slate-300 px-2 py-1 text-sm"
-                        />
-                      </td>
-                      <td className="px-4 py-3">
-                        <input
-                          type="number"
-                          value={editPrice}
-                          onChange={(e) => setEditPrice(Number(e.target.value))}
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
-                        />
-                      </td>
-                      <td className="px-4 py-3 flex gap-2">
-                        <button
-                          onClick={handleUpdate}
-                          className="text-sm text-brand-700 hover:text-brand-900"
-                        >
-                          حفظ
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="text-sm text-slate-500 hover:text-slate-700"
-                        >
-                          إلغاء
-                        </button>
-                      </td>
-                    </>
+          {loading ? (
+            <div style={{ textAlign: 'center', color: '#9e9e9e', padding: 30 }}>جاري التحميل...</div>
+          ) : products.length === 0 ? (
+            <div style={{ textAlign: 'center', color: '#9e9e9e', padding: 30 }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>&#128230;</div>لا توجد منتجات بعد!
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 12 }}>
+              {products.map((p) => (
+                <div key={p.id} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: 10, overflow: 'hidden', textAlign: 'center' }}>
+                  {p.imageBase64 ? (
+                    <img src={p.imageBase64} alt="" style={{ width: '100%', height: 90, objectFit: 'contain', background: '#f9f9f9', padding: 5, boxSizing: 'border-box', display: 'block' }} />
                   ) : (
-                    <>
-                      <td className="px-4 py-3 font-medium">{product.name}</td>
-                      <td className="px-4 py-3">{product.unit}</td>
-                      <td className="px-4 py-3">{product.defaultPrice.toLocaleString()} د.ع</td>
-                      <td className="px-4 py-3 flex gap-3">
-                        <button
-                          onClick={() => startEdit(product)}
-                          className="text-sm text-brand-700 hover:text-brand-900"
-                        >
-                          تعديل
-                        </button>
-                        <button
-                          onClick={() => handleDelete(product.id)}
-                          className="text-sm text-red-600 hover:text-red-800"
-                        >
-                          حذف
-                        </button>
-                      </td>
-                    </>
+                    <div style={{ width: '100%', height: 90, background: 'linear-gradient(135deg, #e8eaf6, #f5f7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 32 }}>&#128230;</div>
                   )}
-                </tr>
+                  <div style={{ padding: '8px 6px' }}>
+                    <div style={{ fontWeight: 700, fontSize: 12, color: BLUE }}>{p.name}</div>
+                    <div style={{ fontSize: 10, color: '#757575' }}>{p.unit}</div>
+                    <div style={{ fontSize: 11, color: '#2e7d32', fontWeight: 700, marginTop: 2 }}>{p.defaultPrice.toLocaleString('en-IQ')} د.ع</div>
+                    <button onClick={() => handleDelete(p.id)}
+                      style={{ background: '#c62828', color: '#fff', border: 'none', padding: '5px 0', borderRadius: 5, cursor: 'pointer', fontSize: 11, fontFamily: 'inherit', marginTop: 6, width: 'calc(100% - 12px)' }}>
+                      &#128465; حذف
+                    </button>
+                  </div>
+                </div>
               ))}
-              {products.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
-                    لا توجد منتجات بعد
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   )
 }
