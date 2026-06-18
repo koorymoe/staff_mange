@@ -1,137 +1,188 @@
 import { useState, useEffect } from 'react'
 import { api } from '../../api'
 
-function formatDate(d: string) {
-  if (!d) return '-'
-  try { return new Date(d).toLocaleDateString('ar-IQ') } catch { return d }
-}
-
-const statusMap: Record<string, { label: string; color: string; bg: string }> = {
+const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'معلق', color: '#d97706', bg: '#fffbeb' },
-  pending: { label: 'معلق', color: '#d97706', bg: '#fffbeb' },
   IN_PROGRESS: { label: 'قيد المعالجة', color: '#7c3aed', bg: '#f5f3ff' },
-  in_progress: { label: 'قيد المعالجة', color: '#7c3aed', bg: '#f5f3ff' },
   COMPLETED: { label: 'مكتمل', color: '#16a34a', bg: '#f0fdf4' },
-  completed: { label: 'مكتمل', color: '#16a34a', bg: '#f0fdf4' },
 }
 
 export default function GpsMaintenance() {
-  const [reqs, setReqs] = useState<any[]>([])
+  const [requests, setRequests] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<any>(null)
-  const [notes, setNotes] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedRequest, setSelectedRequest] = useState<any>(null)
+  const [adminNotes, setAdminNotes] = useState('')
 
-  async function load() {
-    try {
-      const data = await api.getGpsMaintenance()
-      setReqs(data || [])
-    } catch (e) { console.error(e) }
-    setLoading(false)
-  }
-  useEffect(() => { load() }, [])
-
-  async function handleUpdate(newStatus: string) {
-    if (!selected) return
-    setSaving(true)
-    try {
-      await api.updateGpsMaintenance(selected.id, { status: newStatus, adminNotes: notes })
-      setSelected(null); load()
-    } catch (e) { console.error(e); alert('حدث خطأ') }
-    setSaving(false)
+  const load = () => {
+    setLoading(true)
+    api.getGpsMaintenance()
+      .then(setRequests)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false))
   }
 
-  const pending = reqs.filter(r => r.status === 'PENDING' || r.status === 'pending').length
-  const inProgress = reqs.filter(r => r.status === 'IN_PROGRESS' || r.status === 'in_progress').length
-  const completed = reqs.filter(r => r.status === 'COMPLETED' || r.status === 'completed').length
+  useEffect(load, [])
+
+  const handleUpdateStatus = async (id: string, status: string) => {
+    try {
+      await api.updateGpsMaintenance(id, { status, adminNotes })
+      setSelectedRequest(null)
+      setAdminNotes('')
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'حدث خطأ')
+    }
+  }
+
+  if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>
+  if (error) return <div className="rounded-2xl bg-red-50 p-6 text-red-600 shadow-sm">{error}</div>
 
   return (
     <div dir="rtl">
-      <h1 className="text-2xl font-bold mb-6" style={{ color: '#1a3a5c' }}>طلبات الصيانة 🔧</h1>
-
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="rounded-2xl p-4 text-center" style={{ background: '#fffbeb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div className="text-2xl font-bold" style={{ color: '#d97706' }}>{pending}</div>
-          <div className="text-sm mt-1" style={{ color: '#92400e' }}>معلق</div>
-        </div>
-        <div className="rounded-2xl p-4 text-center" style={{ background: '#f5f3ff', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div className="text-2xl font-bold" style={{ color: '#7c3aed' }}>{inProgress}</div>
-          <div className="text-sm mt-1" style={{ color: '#5b21b6' }}>قيد المعالجة</div>
-        </div>
-        <div className="rounded-2xl p-4 text-center" style={{ background: '#f0fdf4', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div className="text-2xl font-bold" style={{ color: '#16a34a' }}>{completed}</div>
-          <div className="text-sm mt-1" style={{ color: '#166534' }}>مكتمل</div>
-        </div>
+      {/* Header */}
+      <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+        <h1 className="text-2xl font-bold text-white">🔧 طلبات الصيانة</h1>
+        <p className="mt-1 text-blue-200 text-sm">إدارة طلبات صيانة أجهزة التتبع</p>
       </div>
 
-      {loading ? <div className="text-center py-20" style={{ color: '#9ca3af' }}>جارٍ التحميل...</div> : reqs.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl" style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <p className="text-lg" style={{ color: '#9ca3af' }}>لا توجد طلبات صيانة</p>
-        </div>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          {reqs.map(req => {
-            const s = statusMap[req.status] || statusMap.PENDING
-            return (
-              <div key={req.id} className="rounded-xl p-5 flex items-center justify-between"
-                style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                <div style={{ flex: 1 }}>
-                  <div className="flex items-center gap-3 mb-1">
-                    <span className="font-bold" style={{ color: '#1f2937' }}>{req.customer ? `${req.customer.fullName} ${req.customer.fatherName}` : '-'}</span>
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ color: s.color, background: s.bg }}>{s.label}</span>
-                  </div>
-                  <p className="text-sm mb-1" style={{ color: '#6b7280' }}>🔧 {req.problemDescription}</p>
-                  <div className="flex gap-4 text-xs" style={{ color: '#9ca3af' }}>
-                    <span>📞 {req.customer?.phone}</span>
-                    <span>👤 {req.employee?.name || req.employee?.fullName || '-'}</span>
-                    <span>📅 {req.createdAt ? formatDate(req.createdAt) : '-'}</span>
+      {/* Request Cards */}
+      <div className="space-y-4">
+        {requests.map((r) => {
+          const sc = statusConfig[r.status] || { label: r.status, color: '#64748b', bg: '#f8fafc' }
+          return (
+            <div key={r.id} className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">🔧</span>
+                  <div>
+                    <h3 className="font-bold" style={{ color: '#1a3a5c' }}>{r.customer?.fullName || 'غير معروف'}</h3>
+                    <p className="text-sm text-slate-500">📞 {r.customer?.phone || '-'}</p>
                   </div>
                 </div>
-                <button onClick={() => { setSelected(req); setNotes(req.adminNotes || '') }}
-                  className="text-sm px-4 py-2 mr-4 rounded-lg font-medium"
-                  style={{ background: '#f8fafc', color: '#1a3a5c', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
-                  تفاصيل ←
+                <span
+                  className="rounded-full px-4 py-1 text-xs font-bold"
+                  style={{ backgroundColor: sc.bg, color: sc.color }}
+                >
+                  {sc.label}
+                </span>
+              </div>
+
+              <div className="mb-3 rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">وصف المشكلة</span>
+                <p className="text-sm font-medium">{r.problemDescription || '-'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 mb-3">
+                <div>
+                  <span className="text-xs text-slate-500">الموظف</span>
+                  <p className="text-sm font-medium">{r.employee?.name || '-'}</p>
+                </div>
+                <div>
+                  <span className="text-xs text-slate-500">التاريخ</span>
+                  <p className="text-sm font-medium">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('ar-IQ') : '-'}</p>
+                </div>
+                {r.adminNotes && (
+                  <div>
+                    <span className="text-xs text-slate-500">ملاحظات الإدارة</span>
+                    <p className="text-sm font-medium">{r.adminNotes}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t border-slate-100 pt-3">
+                <button
+                  onClick={() => { setSelectedRequest(r); setAdminNotes(r.adminNotes || '') }}
+                  className="rounded-2xl px-5 py-2 text-sm font-bold text-white"
+                  style={{ backgroundColor: '#1a3a5c' }}
+                >
+                  📋 تفاصيل
                 </button>
               </div>
-            )
-          })}
-        </div>
-      )}
+            </div>
+          )
+        })}
+        {requests.length === 0 && (
+          <div className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm">لا يوجد طلبات صيانة</div>
+        )}
+      </div>
 
-      {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-xl m-4" style={{ background: 'white', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <h2 className="text-xl font-bold" style={{ color: '#1a3a5c' }}>تفاصيل طلب الصيانة</h2>
-              <button onClick={() => setSelected(null)} style={{ color: '#9ca3af', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+      {/* Detail Modal */}
+      {selectedRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold" style={{ color: '#1a3a5c' }}>🔧 تفاصيل طلب الصيانة</h3>
+              <button onClick={() => setSelectedRequest(null)} className="text-2xl text-slate-400 hover:text-slate-600">&times;</button>
             </div>
-            <div className="p-6" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="grid grid-cols-2 gap-3 text-sm p-4 rounded-xl" style={{ background: '#f9fafb' }}>
-                <div><span style={{ color: '#6b7280' }}>الاسم: </span><span className="font-semibold">{selected.customer?.fullName} {selected.customer?.fatherName} {selected.customer?.grandfatherName}</span></div>
-                <div><span style={{ color: '#6b7280' }}>الهاتف: </span><span className="font-semibold">{selected.customer?.phone}</span></div>
-                <div><span style={{ color: '#6b7280' }}>العنوان: </span><span className="font-semibold">{selected.customer?.address}</span></div>
-                <div><span style={{ color: '#6b7280' }}>التاريخ: </span><span className="font-semibold">{selected.createdAt ? formatDate(selected.createdAt) : '-'}</span></div>
+
+            {/* Customer Info Grid */}
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">الزبون</span>
+                <p className="font-bold">{selectedRequest.customer?.fullName}</p>
               </div>
-              <div>
-                <p className="text-sm font-semibold mb-1" style={{ color: '#374151' }}>وصف المشكلة</p>
-                <p className="text-sm p-3 rounded-lg" style={{ background: '#f9fafb', color: '#374151' }}>{selected.problemDescription}</p>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">الهاتف</span>
+                <p className="font-bold">{selectedRequest.customer?.phone || '-'}</p>
               </div>
-              <div>
-                <label className="block text-sm font-semibold mb-1" style={{ color: '#374151' }}>ملاحظات الإداري</label>
-                <textarea className="w-full text-sm rounded-xl px-4 py-2.5" style={{ border: '1px solid #e5e7eb', outline: 'none', minHeight: '5rem' }}
-                  value={notes} onChange={e => setNotes(e.target.value)} placeholder="أضف ملاحظاتك..." />
+              <div className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">الموظف</span>
+                <p className="font-bold">{selectedRequest.employee?.name || '-'}</p>
+              </div>
+              <div className="rounded-xl bg-slate-50 p-3">
+                <span className="text-xs text-slate-500">التاريخ</span>
+                <p className="font-bold">{selectedRequest.createdAt ? new Date(selectedRequest.createdAt).toLocaleDateString('ar-IQ') : '-'}</p>
               </div>
             </div>
-            <div className="p-5 flex gap-3" style={{ borderTop: '1px solid #e5e7eb' }}>
-              <button onClick={() => handleUpdate('IN_PROGRESS')} disabled={saving}
-                className="flex-1 py-2.5 rounded-lg font-semibold text-sm"
-                style={{ background: '#7c3aed15', color: '#7c3aed', border: 'none', cursor: 'pointer' }}>
-                قيد المعالجة
-              </button>
-              <button onClick={() => handleUpdate('COMPLETED')} disabled={saving}
-                className="flex-1 py-2.5 rounded-lg font-semibold text-sm"
-                style={{ background: '#16a34a15', color: '#16a34a', border: 'none', cursor: 'pointer' }}>
-                ✅ مكتمل
+
+            {/* Problem Description */}
+            <div className="mb-4 rounded-xl bg-slate-50 p-4">
+              <span className="text-xs text-slate-500">وصف المشكلة</span>
+              <p className="mt-1 font-medium">{selectedRequest.problemDescription}</p>
+            </div>
+
+            {/* Admin Notes */}
+            <div className="mb-4">
+              <label className="mb-1 block text-sm font-medium text-slate-600">ملاحظات المسؤول</label>
+              <textarea
+                value={adminNotes}
+                onChange={(e) => setAdminNotes(e.target.value)}
+                rows={3}
+                className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none focus:border-blue-400"
+                placeholder="أضف ملاحظاتك هنا..."
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              {selectedRequest.status !== 'COMPLETED' && (
+                <>
+                  {selectedRequest.status === 'PENDING' && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedRequest.id, 'IN_PROGRESS')}
+                      className="flex-1 rounded-2xl px-5 py-3 text-sm font-bold text-white"
+                      style={{ backgroundColor: '#7c3aed' }}
+                    >
+                      ⚙️ قيد المعالجة
+                    </button>
+                  )}
+                  {(selectedRequest.status === 'PENDING' || selectedRequest.status === 'IN_PROGRESS') && (
+                    <button
+                      onClick={() => handleUpdateStatus(selectedRequest.id, 'COMPLETED')}
+                      className="flex-1 rounded-2xl px-5 py-3 text-sm font-bold text-white"
+                      style={{ backgroundColor: '#16a34a' }}
+                    >
+                      ✅ مكتمل
+                    </button>
+                  )}
+                </>
+              )}
+              <button
+                onClick={() => setSelectedRequest(null)}
+                className="rounded-2xl bg-slate-200 px-5 py-3 text-sm font-bold text-slate-600"
+              >
+                إغلاق
               </button>
             </div>
           </div>
