@@ -75,7 +75,7 @@ router.get('/requests', async (req, res) => {
   const requests = await prisma.toolRequest.findMany({
     where,
     include: { employee: true, tool: true, approvedBy: true },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { requestedAt: 'desc' },
   })
   res.json(requests)
 })

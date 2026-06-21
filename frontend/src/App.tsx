@@ -14,6 +14,7 @@ import Finance from './pages/Finance'
 import KpiPage from './pages/KpiPage'
 import ComplaintsPage from './pages/ComplaintsPage'
 import InventoryPage from './pages/InventoryPage'
+import MyInventory from './pages/MyInventory'
 import PermissionsPage from './pages/PermissionsPage'
 import QuotationsPage from './pages/QuotationsPage'
 import QuotationNew from './pages/QuotationNew'
@@ -44,6 +45,7 @@ function App() {
         <Route path="kpi" element={<KpiPage />} />
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="inventory" element={<InventoryPage />} />
+        <Route path="my-inventory" element={<MyInventory />} />
         <Route path="permissions" element={<PermissionsPage />} />
         <Route path="quotations" element={<QuotationsPage />} />
         <Route path="quotations/new" element={<QuotationNew />} />

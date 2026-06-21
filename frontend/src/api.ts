@@ -240,6 +240,7 @@ export interface OnDemandTool {
   status: 'AVAILABLE' | 'CHECKED_OUT' | 'DAMAGED'
 }
 
+export type ToolRequest = ToolRequestItem
 export interface ToolRequestItem {
   id: string
   employeeId: string
