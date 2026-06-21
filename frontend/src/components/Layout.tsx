@@ -107,9 +107,8 @@ export default function Layout() {
 
   const role = employee?.role
   const isVisible = (item: NavItem): boolean => {
-    if (role === 'ADMIN') return true
     if (item.roles && role && !item.roles.includes(role)) return false
-    if (item.permission && !employeePermissions.includes(item.permission)) return false
+    if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
     return true
   }
 
