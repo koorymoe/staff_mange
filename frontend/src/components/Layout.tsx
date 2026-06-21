@@ -122,7 +122,49 @@ export default function Layout() {
 
   return (
     <SessionContext.Provider value={{ employee, setEmployee }}>
-      <div className="flex min-h-screen flex-row-reverse bg-[#f0f4f9]">
+      <div className="flex min-h-screen bg-[#f0f4f9]">
+
+        {/* ===== Main Area ===== */}
+        <div className="flex flex-1 flex-col">
+          {/* Top Header */}
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white px-8 shadow-sm">
+            {/* Right side: company name */}
+            <div className="flex items-center gap-3">
+              <span className="text-lg font-extrabold text-[#0f2040]">نظام شركة الأماني</span>
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef3fb]">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2c5aad" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                  <line x1="12" y1="22.08" x2="12" y2="12"/>
+                </svg>
+              </div>
+            </div>
+            {/* Left side: user + bell */}
+            <div className="flex items-center gap-4">
+              {/* Bell */}
+              <button className="relative rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+              </button>
+              {/* User */}
+              <div className="flex items-center gap-2">
+                <div className="text-left">
+                  <p className="text-sm font-bold text-slate-700">{employee.name}</p>
+                  <p className="text-xs text-slate-400">{roleLabels[employee.role]}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2c5aad] text-sm font-bold text-white">
+                  {employee.name.charAt(0)}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Content */}
+          <main className="flex-1 overflow-y-auto p-8">
+            <Outlet />
+          </main>
+        </div>
 
         {/* ===== Right Sidebar ===== */}
         <aside className="sticky top-0 flex h-screen w-[260px] flex-col bg-[#0f2040]" style={{ minWidth: 260 }}>
@@ -216,48 +258,6 @@ export default function Layout() {
             </button>
           </div>
         </aside>
-
-        {/* ===== Main Area ===== */}
-        <div className="flex flex-1 flex-col">
-          {/* Top Header */}
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white px-8 shadow-sm">
-            {/* Right side: company name */}
-            <div className="flex items-center gap-3">
-              <span className="text-lg font-extrabold text-[#0f2040]">نظام شركة الأماني</span>
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef3fb]">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2c5aad" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-                  <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-                  <line x1="12" y1="22.08" x2="12" y2="12"/>
-                </svg>
-              </div>
-            </div>
-            {/* Left side: user + bell */}
-            <div className="flex items-center gap-4">
-              {/* Bell */}
-              <button className="relative rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-              </button>
-              {/* User */}
-              <div className="flex items-center gap-2">
-                <div className="text-left">
-                  <p className="text-sm font-bold text-slate-700">{employee.name}</p>
-                  <p className="text-xs text-slate-400">{roleLabels[employee.role]}</p>
-                </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#2c5aad] text-sm font-bold text-white">
-                  {employee.name.charAt(0)}
-                </div>
-              </div>
-            </div>
-          </header>
-
-          {/* Content */}
-          <main className="flex-1 overflow-y-auto p-8">
-            <Outlet />
-          </main>
-        </div>
       </div>
     </SessionContext.Provider>
   )
