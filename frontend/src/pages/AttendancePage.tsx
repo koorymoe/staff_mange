@@ -28,8 +28,12 @@ function saveRecords(records: AttendanceRecord[]) {
 
 function getMyRecord(employeeId: string): AttendanceRecord | undefined {
   return getRecords().find(
-    (r) => r.employeeId === employeeId && r.date === todayKey(),
+    (r) => r.employeeId === employeeId && r.date === todayKey() && !r.checkOutTime,
   )
+}
+
+function getMyTodayRecords(employeeId: string): AttendanceRecord[] {
+  return getRecords().filter(r => r.employeeId === employeeId && r.date === todayKey())
 }
 
 function checkIn(employeeId: string, employeeName: string): AttendanceRecord {
@@ -50,7 +54,7 @@ function checkIn(employeeId: string, employeeName: string): AttendanceRecord {
 function checkOut(employeeId: string): AttendanceRecord | undefined {
   const records = getRecords()
   const rec = records.find(
-    (r) => r.employeeId === employeeId && r.date === todayKey(),
+    (r) => r.employeeId === employeeId && r.date === todayKey() && !r.checkOutTime,
   )
   if (rec) {
     rec.checkOutTime = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
@@ -93,6 +97,7 @@ export default function AttendancePage() {
   const [justCheckedOut, setJustCheckedOut] = useState(false)
   const [elapsed, setElapsed] = useState('')
   const [todayAll, setTodayAll] = useState<AttendanceRecord[]>([])
+  const [myTodaySessions, setMyTodaySessions] = useState<AttendanceRecord[]>([])
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
 
@@ -101,6 +106,7 @@ export default function AttendancePage() {
     if (!employee) return
     const existing = getMyRecord(employee.id)
     setRecord(existing)
+    setMyTodaySessions(getMyTodayRecords(employee.id))
     if (isAdmin) setTodayAll(getTodayRecords())
   }, [employee, isAdmin])
 
@@ -119,6 +125,7 @@ export default function AttendancePage() {
     const rec = checkIn(employee.id, employee.name)
     setRecord(rec)
     setJustCheckedIn(true)
+    setMyTodaySessions(getMyTodayRecords(employee.id))
     if (isAdmin) setTodayAll(getTodayRecords())
     setTimeout(() => navigate('/'), 2000)
   }, [employee, navigate, isAdmin])
@@ -128,6 +135,7 @@ export default function AttendancePage() {
     const rec = checkOut(employee.id)
     setRecord(rec)
     setJustCheckedOut(true)
+    setMyTodaySessions(getMyTodayRecords(employee.id))
     if (isAdmin) setTodayAll(getTodayRecords())
   }, [employee, isAdmin])
 
@@ -197,13 +205,32 @@ export default function AttendancePage() {
                   </svg>
                 </div>
                 <p className="text-xl font-bold text-gray-800">تم تسجيل الانصراف</p>
-                <div className="mt-4 inline-block rounded-xl bg-gray-50 px-8 py-4">
-                  <p className="text-gray-600">الحضور: <span className="font-bold text-[#2c5aad]">{record.checkInTime}</span></p>
-                  <p className="text-gray-600">الانصراف: <span className="font-bold text-[#2c5aad]">{record.checkOutTime}</span></p>
-                </div>
                 {justCheckedOut && (
-                  <p className="mt-4 text-lg font-semibold text-green-600">شكراً لك، أحسنت العمل اليوم!</p>
+                  <p className="mt-2 text-lg font-semibold text-green-600">شكراً لك، أحسنت العمل اليوم!</p>
                 )}
+
+                {/* All today's sessions */}
+                <div className="mx-auto mt-6 max-w-md space-y-2">
+                  <p className="mb-2 text-sm font-bold text-gray-500">جلسات اليوم:</p>
+                  {myTodaySessions.map((s, i) => (
+                    <div key={i} className="flex items-center justify-center gap-4 rounded-xl bg-gray-50 px-6 py-3 text-sm">
+                      <span className="font-medium text-gray-500">الجلسة {i + 1}</span>
+                      <span className="text-gray-600">الحضور: <span className="font-bold text-[#2c5aad]">{s.checkInTime}</span></span>
+                      <span className="text-gray-600">الانصراف: <span className="font-bold text-[#2c5aad]">{s.checkOutTime || '—'}</span></span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* New check-in button */}
+                <button
+                  onClick={handleCheckIn}
+                  className="mt-6 inline-flex items-center gap-3 rounded-full bg-gradient-to-l from-green-500 to-emerald-600 px-10 py-4 text-lg font-bold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
+                >
+                  <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  تسجيل حضور جديد
+                </button>
               </>
             )}
           </div>

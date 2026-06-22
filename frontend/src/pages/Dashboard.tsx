@@ -1,7 +1,50 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useSession } from '../session'
+
+/* ───── Attendance localStorage helpers ───── */
+
+const todayKey = () => new Date().toISOString().slice(0, 10)
+
+interface AttendanceRecord {
+  employeeId: string
+  employeeName: string
+  date: string
+  checkInTime: string | null
+  checkOutTime: string | null
+}
+
+function getAttendanceRecords(): AttendanceRecord[] {
+  try { return JSON.parse(localStorage.getItem('attendance_records') || '[]') } catch { return [] }
+}
+function saveAttendanceRecords(records: AttendanceRecord[]) {
+  localStorage.setItem('attendance_records', JSON.stringify(records))
+}
+function getMyTodayRecord(employeeId: string): AttendanceRecord | undefined {
+  return getAttendanceRecords().find(r => r.employeeId === employeeId && r.date === todayKey() && !r.checkOutTime)
+}
+function getMyTodayRecords(employeeId: string): AttendanceRecord[] {
+  return getAttendanceRecords().filter(r => r.employeeId === employeeId && r.date === todayKey())
+}
+
+function elapsedSince(timeStr: string): string {
+  const digits = timeStr.replace(/[^\d:]/g, '')
+  const [h, m] = digits.split(':').map(Number)
+  if (isNaN(h) || isNaN(m)) return '--'
+  const now = new Date()
+  const checkInDate = new Date()
+  checkInDate.setHours(h, m, 0, 0)
+  const diffMs = now.getTime() - checkInDate.getTime()
+  if (diffMs < 0) return '٠ دقائق'
+  const diffMin = Math.floor(diffMs / 60000)
+  const hours = Math.floor(diffMin / 60)
+  const mins = diffMin % 60
+  if (hours === 0) return `${mins} دقيقة`
+  return `${hours} ساعة و ${mins} دقيقة`
+}
+
+/* ───── Types ───── */
 
 interface GpsStats {
   totalDevices: number
@@ -13,7 +56,7 @@ interface GpsStats {
 }
 
 export default function Dashboard() {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const navigate = useNavigate()
   const [gpsStats, setGpsStats] = useState<GpsStats | null>(null)
   const [bookingCount, setBookingCount] = useState(0)
@@ -36,10 +79,86 @@ export default function Dashboard() {
     }).finally(() => setLoading(false))
   }, [employee])
 
+  /* ── Attendance widget state ── */
+  const [activeRecord, setActiveRecord] = useState<AttendanceRecord | undefined>(undefined)
+  const [allTodayRecords, setAllTodayRecords] = useState<AttendanceRecord[]>([])
+  const [elapsed, setElapsed] = useState('')
+  const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false)
+
+  useEffect(() => {
+    if (!employee) return
+    setActiveRecord(getMyTodayRecord(employee.id))
+    setAllTodayRecords(getMyTodayRecords(employee.id))
+  }, [employee])
+
+  // Elapsed time ticker
+  useEffect(() => {
+    if (!activeRecord?.checkInTime || activeRecord.checkOutTime) return
+    setElapsed(elapsedSince(activeRecord.checkInTime))
+    const interval = setInterval(() => {
+      setElapsed(elapsedSince(activeRecord.checkInTime!))
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [activeRecord])
+
+  const handleAttCheckIn = useCallback(() => {
+    if (!employee) return
+    const records = getAttendanceRecords()
+    const now = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+    const rec: AttendanceRecord = { employeeId: employee.id, employeeName: employee.name, date: todayKey(), checkInTime: now, checkOutTime: null }
+    records.push(rec)
+    saveAttendanceRecords(records)
+    setActiveRecord(rec)
+    setAllTodayRecords(getMyTodayRecords(employee.id))
+  }, [employee])
+
+  const handleAttCheckOut = useCallback(() => {
+    if (!employee || !activeRecord) return
+    const records = getAttendanceRecords()
+    const rec = records.find(r => r.employeeId === employee.id && r.date === todayKey() && !r.checkOutTime)
+    if (rec) {
+      rec.checkOutTime = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+      saveAttendanceRecords(records)
+      setActiveRecord(undefined)
+      setAllTodayRecords(getMyTodayRecords(employee.id))
+    }
+    setShowCheckoutConfirm(false)
+  }, [employee, activeRecord])
+
   if (!employee) return null
 
   const isAdmin = employee.role === 'ADMIN'
   const pendingMaintenance = gpsStats?.devicesByStatus?.find((d) => d.status === 'MAINTENANCE')?.count || 0
+
+  /* ── Quick access cards with permission filtering ── */
+  const quickCards = [
+    {
+      title: 'حجز جديد',
+      desc: 'إنشاء حجز خدمة جديد للعميل',
+      color: 'from-blue-500 to-blue-600',
+      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>,
+      path: '/sales',
+      visible: ['ADMIN', 'SALES', 'HR_COORDINATOR'].includes(employee.role),
+    },
+    {
+      title: 'عرض سعر جديد',
+      desc: 'إنشاء عرض سعر احترافي للعميل',
+      color: 'from-emerald-500 to-emerald-600',
+      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
+      path: '/quotations/new',
+      visible: isAdmin || permissions.includes('quotation_system'),
+    },
+    {
+      title: 'إضافة عميل',
+      desc: 'تسجيل عميل جديد في النظام',
+      color: 'from-violet-500 to-violet-600',
+      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>,
+      path: '/customers',
+      visible: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'MONITOR'].includes(employee.role),
+    },
+  ].filter(c => c.visible)
+
+  const completedSessions = allTodayRecords.filter(r => r.checkOutTime)
 
   return (
     <div dir="rtl">
@@ -108,36 +227,98 @@ export default function Dashboard() {
       </div>
       )}
 
+      {/* Attendance Widget */}
+      <div className="mt-8">
+        <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <div className="flex items-center gap-2 bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-6 py-3 text-white">
+            <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-400"></span>
+            <h3 className="text-base font-bold">الحضور والانصراف</h3>
+          </div>
+          <div className="p-5">
+            {activeRecord ? (
+              /* State B: Checked in */
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <span className="relative flex h-3 w-3">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
+                  </span>
+                  <span className="font-bold text-green-700">متواجد</span>
+                  <span className="text-sm text-gray-500">منذ {activeRecord.checkInTime}</span>
+                  <span className="text-sm text-gray-400">({elapsed})</span>
+                </div>
+                <div className="relative">
+                  <button
+                    onClick={() => setShowCheckoutConfirm(true)}
+                    className="rounded-lg bg-red-500 px-5 py-2 text-sm font-bold text-white transition hover:bg-red-600"
+                  >
+                    تسجيل انصراف
+                  </button>
+                  {showCheckoutConfirm && (
+                    <div className="absolute left-0 top-full z-20 mt-2 w-72 rounded-xl border bg-white p-4 shadow-xl">
+                      <p className="mb-3 text-sm font-semibold text-gray-800">هل تود تسجيل الانصراف وإغلاق الحساب؟</p>
+                      <div className="flex gap-2">
+                        <button onClick={handleAttCheckOut} className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-bold text-white hover:bg-red-600">نعم، انصراف</button>
+                        <button onClick={() => setShowCheckoutConfirm(false)} className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50">إلغاء</button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : completedSessions.length > 0 ? (
+              /* State C: Checked out, show sessions */
+              <div>
+                <div className="mb-3 space-y-2">
+                  {completedSessions.map((s, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-lg bg-gray-50 px-4 py-2 text-sm">
+                      <span className="font-medium text-gray-600">الجلسة {i + 1}:</span>
+                      <span className="text-[#2c5aad] font-bold">{s.checkInTime}</span>
+                      <span className="text-gray-400">←</span>
+                      <span className="text-[#2c5aad] font-bold">{s.checkOutTime}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={handleAttCheckIn}
+                  className="rounded-lg bg-green-500 px-5 py-2 text-sm font-bold text-white transition hover:bg-green-600"
+                >
+                  تسجيل حضور جديد
+                </button>
+              </div>
+            ) : (
+              /* State A: Not checked in */
+              <button
+                onClick={handleAttCheckIn}
+                className="rounded-lg bg-green-500 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-green-600"
+              >
+                تسجيل حضور
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Quick Access Cards */}
+      {quickCards.length > 0 && (
       <div className="mt-8">
         <h2 className="mb-4 text-right text-lg font-bold text-slate-700">
           <span className="ml-2 inline-block h-2 w-2 rounded-full bg-brand-500"></span>
           وصول سريع
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <QuickCard
-            title="حجز جديد"
-            desc="إنشاء حجز خدمة جديد للعميل"
-            color="from-blue-500 to-blue-600"
-            icon={<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>}
-            onClick={() => navigate('/sales')}
-          />
-          <QuickCard
-            title="عرض سعر جديد"
-            desc="إنشاء عرض سعر احترافي للعميل"
-            color="from-emerald-500 to-emerald-600"
-            icon={<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>}
-            onClick={() => navigate('/quotations/new')}
-          />
-          <QuickCard
-            title="إضافة عميل"
-            desc="تسجيل عميل جديد في النظام"
-            color="from-violet-500 to-violet-600"
-            icon={<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>}
-            onClick={() => navigate('/customers')}
-          />
+          {quickCards.map((card) => (
+            <QuickCard
+              key={card.path}
+              title={card.title}
+              desc={card.desc}
+              color={card.color}
+              icon={card.icon}
+              onClick={() => navigate(card.path)}
+            />
+          ))}
         </div>
       </div>
+      )}
 
       {/* Systems Overview - ADMIN ONLY */}
       {isAdmin && (
