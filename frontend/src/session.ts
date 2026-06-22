@@ -4,11 +4,13 @@ import type { Employee } from './api'
 export interface Session {
   employee: Employee | null
   setEmployee: (emp: Employee | null) => void
+  permissions: string[]
 }
 
 export const SessionContext = createContext<Session>({
   employee: null,
   setEmployee: () => {},
+  permissions: [],
 })
 
 export const useSession = () => useContext(SessionContext)

@@ -45,6 +45,7 @@ export interface Employee {
   hasDrivingLicense: boolean
   hasSafetyCertificate: boolean
   skills: EmployeeSkill[]
+  hasRequiredSkill?: boolean
 }
 
 export interface BookingAssignment {

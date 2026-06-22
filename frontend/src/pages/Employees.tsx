@@ -26,7 +26,7 @@ const roleLabels: Record<string, string> = {
 }
 
 export default function Employees() {
-  const { employee: currentUser } = useSession()
+  const { employee: currentUser, permissions: userPermissions } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
   const isHR = currentUser?.role === 'HR_COORDINATOR'
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -343,61 +343,6 @@ export default function Employees() {
                   )}
                 </div>
 
-                {/* Editable Info Fields */}
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-600">الراتب</label>
-                    <input
-                      type="number"
-                      value={editSalary}
-                      onChange={(e) => setEditSalary(e.target.value)}
-                      onBlur={() => handleFieldBlur('salary', Number(editSalary) || 0)}
-                      placeholder="0"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-600">الدوام</label>
-                    <div className="flex rounded-lg border border-slate-300 overflow-hidden">
-                      <button
-                        type="button"
-                        onClick={() => { setEditShift('morning'); handleFieldBlur('shift', 'morning') }}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${editShift === 'morning' ? 'bg-brand-500 text-white' : 'bg-white text-slate-600'}`}
-                      >
-                        صباحي
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEditShift('evening'); handleFieldBlur('shift', 'evening') }}
-                        className={`flex-1 px-3 py-2 text-sm font-medium transition-colors ${editShift === 'evening' ? 'bg-brand-500 text-white' : 'bg-white text-slate-600'}`}
-                      >
-                        مسائي
-                      </button>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-600">الإجازات الشهرية</label>
-                    <input
-                      type="number"
-                      value={editMonthlyLeaves}
-                      onChange={(e) => setEditMonthlyLeaves(e.target.value)}
-                      onBlur={() => handleFieldBlur('monthlyLeaves', Number(editMonthlyLeaves) || 0)}
-                      placeholder="0"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-600">العنوان الوظيفي</label>
-                    <input
-                      value={editJobTitle}
-                      onChange={(e) => setEditJobTitle(e.target.value)}
-                      onBlur={() => handleFieldBlur('jobTitle', editJobTitle)}
-                      placeholder="العنوان الوظيفي"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                    />
-                  </div>
-                </div>
-
                 {(() => {
                   const skillCount = selectedEmployee.skills.filter((s) => s.canPerform).length
                   const currentLevel =
@@ -636,7 +581,7 @@ export default function Employees() {
                   )}
                 </div>
 
-                {/* Editable Info Fields */}
+                {(isAdmin || userPermissions.includes('edit_employee_profile')) ? (
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">الراتب</label>
@@ -690,6 +635,26 @@ export default function Employees() {
                     />
                   </div>
                 </div>
+                ) : (
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">الراتب</label>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{(selectedEmployee as any).salary ?? '-'}</p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">الدوام</label>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{(selectedEmployee as any).shift === 'evening' ? 'مسائي' : 'صباحي'}</p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">الإجازات الشهرية</label>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{(selectedEmployee as any).monthlyLeaves ?? '-'}</p>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">العنوان الوظيفي</label>
+                    <p className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{(selectedEmployee as any).jobTitle || '-'}</p>
+                  </div>
+                </div>
+                )}
 
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {isAdmin && (

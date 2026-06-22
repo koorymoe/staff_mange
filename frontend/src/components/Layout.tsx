@@ -101,7 +101,7 @@ export default function Layout() {
 
   if (!employee) {
     return (
-      <SessionContext.Provider value={{ employee, setEmployee }}>
+      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
         <Login />
       </SessionContext.Provider>
     )
@@ -123,7 +123,7 @@ export default function Layout() {
   const toggle = (label: string) => setExpandedGroups((p) => ({ ...p, [label]: !p[label] }))
 
   return (
-    <SessionContext.Provider value={{ employee, setEmployee }}>
+    <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
       <div dir="ltr" className="flex min-h-screen bg-[#f0f4f9]">
 
         {/* ===== Main Area ===== */}

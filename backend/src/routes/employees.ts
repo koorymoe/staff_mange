@@ -39,12 +39,15 @@ router.get('/match', async (req, res) => {
       status: 'ACTIVE',
       onDuty: true,
       role: 'TECHNICIAN',
-      skills: { some: { canPerform: true, skill: { serviceId } } },
     },
     include: { skills: { include: { skill: { include: { service: true } } } } },
     orderBy: { name: 'asc' },
   })
-  res.json(employees.map(stripPassword))
+
+  res.json(employees.map(emp => ({
+    ...stripPassword(emp),
+    hasRequiredSkill: emp.skills.some(s => s.canPerform && s.skill.serviceId === serviceId),
+  })))
 })
 
 // GET /api/employees/:id

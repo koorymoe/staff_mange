@@ -468,12 +468,12 @@ export default function Coordinator() {
                                 <option value="">-- اختر فني --</option>
                                 {candidates.length === 0 && (
                                   <option value="" disabled>
-                                    لا يوجد موظف متاح يمتلك هذه المهارة
+                                    لا يوجد موظف متاح
                                   </option>
                                 )}
                                 {candidates.map((c) => (
                                   <option key={c.id} value={c.id}>
-                                    {c.name} ({c.position || 'فني'})
+                                    {c.hasRequiredSkill === false ? `⚠️ ${c.name} (لا يمتلك المهارة المطلوبة)` : `${c.name} (${c.position || 'فني'})`}
                                   </option>
                                 ))}
                               </select>
@@ -493,10 +493,12 @@ export default function Coordinator() {
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                       />
                     </div>
-                    {matches[booking.id]?.length === 0 && (
-                      <p className="mt-2 text-sm text-red-600">
-                        لا يوجد حالياً أي موظف بالدوام يمتلك مهارة "{booking.service?.name}". يرجى
-                        التواصل مع إدارة الكوادر.
+                    {booking.assignments.some((a) => {
+                      const candidate = matches[booking.id]?.find((c) => c.id === a.employee.id)
+                      return candidate && candidate.hasRequiredSkill === false
+                    }) && (
+                      <p className="mt-2 rounded-lg bg-amber-50 border border-amber-200 px-4 py-2 text-sm text-amber-700">
+                        ⚠️ تحذير: الفني المختار لا يمتلك المهارة المطلوبة لهذه الخدمة
                       </p>
                     )}
                   </div>
