@@ -38,6 +38,7 @@ export default function Dashboard() {
 
   if (!employee) return null
 
+  const isAdmin = employee.role === 'ADMIN'
   const pendingMaintenance = gpsStats?.devicesByStatus?.find((d) => d.status === 'MAINTENANCE')?.count || 0
 
   return (
@@ -59,7 +60,8 @@ export default function Dashboard() {
         <div className="absolute left-32 top-6 text-6xl font-extrabold opacity-5">الأماني</div>
       </div>
 
-      {/* Quick Stats - All Systems */}
+      {/* Quick Stats - ADMIN ONLY */}
+      {isAdmin && (
       <div className="mt-8">
         <h2 className="mb-4 text-right text-lg font-bold text-slate-700">
           <span className="ml-2 inline-block h-2 w-2 rounded-full bg-brand-500"></span>
@@ -104,6 +106,7 @@ export default function Dashboard() {
           />
         </div>
       </div>
+      )}
 
       {/* Quick Access Cards */}
       <div className="mt-8">
@@ -136,7 +139,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Systems Overview */}
+      {/* Systems Overview - ADMIN ONLY */}
+      {isAdmin && (
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
         {/* GPS Summary */}
         <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -192,8 +196,10 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      )}
 
-      {/* HR & Admin Summary */}
+      {/* HR & Admin Summary - ADMIN ONLY */}
+      {isAdmin && (
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <div className="mb-4 flex items-center justify-between">
@@ -231,6 +237,7 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }
