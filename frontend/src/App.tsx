@@ -26,6 +26,8 @@ import GpsSims from './pages/gps/GpsSims'
 import GpsRenewals from './pages/gps/GpsRenewals'
 import GpsMaintenance from './pages/gps/GpsMaintenance'
 import GpsEmployee from './pages/gps/GpsEmployee'
+import AttendancePage from './pages/AttendancePage'
+import WorkReportPage from './pages/WorkReportPage'
 
 function App() {
   return (
@@ -50,6 +52,8 @@ function App() {
         <Route path="quotations" element={<QuotationsPage />} />
         <Route path="quotations/new" element={<QuotationNew />} />
         <Route path="products" element={<ProductsPage />} />
+        <Route path="attendance" element={<AttendancePage />} />
+        <Route path="work-reports" element={<WorkReportPage />} />
         <Route path="gps" element={<GpsDashboard />} />
         <Route path="gps/customers" element={<GpsCustomers />} />
         <Route path="gps/devices" element={<GpsDevices />} />

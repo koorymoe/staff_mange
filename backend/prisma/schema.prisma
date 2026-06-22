@@ -137,6 +137,39 @@ enum QuotationStatus {
   REJECTED
 }
 
+enum BookingType {
+  REGULAR     // حجز عادي
+  MAINTENANCE // حجز صيانة
+}
+
+enum BookingUrgency {
+  ASAP          // أسرع وقت ممكن
+  BY_PRIORITY   // حسب الأولوية
+  SPECIFIC_DATE // تاريخ محدد
+}
+
+enum MaintenanceType {
+  EXECUTION_ERROR // خطأ تنفيذ
+  DEVICE_ISSUE    // مشكلة جهاز
+}
+
+enum WorkStatus {
+  COMPLETED // مكتمل
+  STOPPED   // متوقف
+}
+
+enum ProjectSpeed {
+  URGENT        // مستعجل
+  INTERNAL      // داخل الشركة
+  REGULAR       // حجز اعتيادي
+  DIRECTOR_REQ  // من طرف المدير
+}
+
+enum WorkType {
+  FREE_MAINTENANCE // صيانة مجانية
+  PAID             // تكلفة
+}
+
 // ---------------------------------------------------------------------------
 // Services offered by the company (نوع العمل)
 // ---------------------------------------------------------------------------
@@ -198,9 +231,16 @@ model Employee {
   password    String? // كلمة المرور (مشفرة)
   hasDrivingLicense   Boolean @default(false) // يملك رخصة قيادة
   hasSafetyCertificate Boolean @default(false) // يملك شهادة السلامة المهنية
+  salary          Float?         // الراتب
+  shift           Shift?         @default(MORNING) // دوام صباحي/مسائي
+  monthlyLeaves   Int            @default(2) // إجازات شهرية
+  jobTitle        String?        // العنوان الوظيفي
+  leaderSkillLevel Int           @default(0) // مستوى المهارة كليدر (0-10)
   createdAt   DateTime       @default(now())
 
   skills EmployeeSkill[]
+  attendances  Attendance[]
+  workReports  WorkReport[]
 
   // Bookings where this employee handled intake / transfer
   transferredBookings Booking[] @relation("TransferEmployee")
@@ -318,12 +358,25 @@ model Booking {
   advancePaid     Float? // دفعة مقدمة من الزبون
   amountVerified  Boolean @default(false) // تدقيق المحاسب على المبلغ
 
+  bookingType          BookingType      @default(REGULAR)
+  urgency              BookingUrgency?
+  maintenanceType      MaintenanceType?
+  remembersExecutionCrew Boolean        @default(false) // هل يتذكر الكادر المنفذ
+  systemCount          Int?             // عدد المنظومات
+  systemType           String?          // نوع المنظومات
+  projectSpeed         ProjectSpeed?
+  workType             WorkType?
+  addressDescription   String?          // وصف مكان الموقع وأقرب نقطة دالة
+  mapLatitude          Float?
+  mapLongitude         Float?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   assignments BookingAssignment[]
   cartItems   CartItem[]
   complaints  Complaint[]
+  workReports WorkReport[]
 
   @@index([customerId])
   @@index([serviceId])
@@ -625,4 +678,57 @@ model QuotationItem {
   unitPrice   Float
   totalPrice  Float
   @@index([quotationId])
+}
+
+// ---------------------------------------------------------------------------
+// Attendance
+// ---------------------------------------------------------------------------
+
+model Attendance {
+  id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  employeeId String
+  checkIn    DateTime @default(now())
+  checkOut   DateTime?
+  date       DateTime @default(now()) // just the date portion for uniqueness
+  @@unique([employeeId, date])
+  @@index([employeeId])
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Work Reports
+// ---------------------------------------------------------------------------
+
+model WorkReport {
+  id              String     @id @default(cuid())
+  booking         Booking    @relation(fields: [bookingId], references: [id])
+  bookingId       String
+  employee        Employee   @relation(fields: [employeeId], references: [id])
+  employeeId      String
+  workStatus      WorkStatus
+  events          String?    // الأحداث والمشاكل
+  extraRequests   String?    // طلبات الزبون الإضافية
+  cleanedSite     Boolean    @default(false) // هل نظف المكان
+  gaveInfo        Boolean    @default(false) // هل أعطى المعلومات للزبون
+  tookPhotos      Boolean    @default(false) // هل صور العمل
+  stopReason      String?    // سبب التوقف (في حال WorkStatus = STOPPED)
+  notes           String?
+  createdAt       DateTime   @default(now())
+  @@index([bookingId])
+  @@index([employeeId])
+}
+
+// ---------------------------------------------------------------------------
+// Vehicles
+// ---------------------------------------------------------------------------
+
+model Vehicle {
+  id          String   @id @default(cuid())
+  name        String   // مثال: تويوتا هايلوكس
+  plateNumber String   @unique
+  color       String?
+  type        String?  // نوع السيارة
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
 }
