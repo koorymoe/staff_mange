@@ -122,10 +122,10 @@ export default function Layout() {
 
   return (
     <SessionContext.Provider value={{ employee, setEmployee }}>
-      <div className="flex min-h-screen bg-[#f0f4f9]">
+      <div dir="ltr" className="flex min-h-screen bg-[#f0f4f9]">
 
         {/* ===== Main Area ===== */}
-        <div className="flex flex-1 flex-col">
+        <div dir="rtl" className="flex flex-1 flex-col">
           {/* Top Header */}
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white px-8 shadow-sm">
             {/* Right side: company name */}
@@ -167,7 +167,7 @@ export default function Layout() {
         </div>
 
         {/* ===== Right Sidebar ===== */}
-        <aside className="sticky top-0 flex h-screen w-[260px] flex-col bg-[#0f2040]" style={{ minWidth: 260 }}>
+        <aside dir="rtl" className="sticky top-0 flex h-screen w-[260px] flex-col bg-[#0f2040]" style={{ minWidth: 260 }}>
           {/* Logo */}
           <div className="flex items-center justify-center gap-3 px-5 py-6">
             <span className="text-lg font-extrabold text-white">نظام شركة الأماني</span>
