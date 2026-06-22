@@ -222,6 +222,30 @@ async function main() {
     }
   }
   console.log(`Seeded ${services.length} services with skills`)
+
+  const defaultPermissions = [
+    { name: 'gps_system', label: 'نظام GPS' },
+    { name: 'quotation_system', label: 'نظام عروض الأسعار' },
+    { name: 'kpi_management', label: 'تقييم الأداء (KPI)' },
+    { name: 'inventory', label: 'جرد الأدوات' },
+    { name: 'complaints', label: 'الشكاوى' },
+    { name: 'edit_employee_profile', label: 'تعديل ملف الموظف (الراتب/الدوام/الإجازات)' },
+    { name: 'view_bookings', label: 'عرض الحجوزات' },
+    { name: 'manage_customers', label: 'إدارة العملاء' },
+    { name: 'sales_booking', label: 'إنشاء حجز جديد' },
+    { name: 'coordinator', label: 'تنسيق الحجوزات' },
+    { name: 'finance', label: 'المالية' },
+    { name: 'expenses', label: 'المصاريف' },
+  ]
+
+  for (const perm of defaultPermissions) {
+    await prisma.permission.upsert({
+      where: { name: perm.name },
+      update: { label: perm.label },
+      create: perm,
+    })
+  }
+  console.log(`Seeded ${defaultPermissions.length} permissions`)
 }
 
 main()
