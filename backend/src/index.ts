@@ -16,6 +16,7 @@ import complaintsRouter from './routes/complaints'
 import gpsRouter from './routes/gps'
 import quotationsRouter from './routes/quotations'
 import productsRouter from './routes/products'
+import suppliersRouter from './routes/suppliers'
 
 dotenv.config()
 
@@ -42,6 +43,7 @@ app.use('/api/complaints', complaintsRouter)
 app.use('/api/gps', gpsRouter)
 app.use('/api/quotations', quotationsRouter)
 app.use('/api/products', productsRouter)
+app.use('/api/suppliers', suppliersRouter)
 
 const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {

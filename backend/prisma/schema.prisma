@@ -269,6 +269,7 @@ model Employee {
   gpsMaintenanceRequests GpsMaintenanceRequest[] @relation("GpsMaintenanceEmployee")
   gpsMaintenanceAdmin    GpsMaintenanceRequest[] @relation("GpsMaintenanceAdmin")
   quotations          Quotation[] @relation("QuotationCreator")
+  supplierRatings     SupplierRating[]
 }
 
 // مصاريف يدفعها الموظف من جيبه ويحتاج استرجاعها/استقطاعها
@@ -731,4 +732,54 @@ model Vehicle {
   type        String?  // نوع السيارة
   isActive    Boolean  @default(true)
   createdAt   DateTime @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Suppliers (الموردون)
+// ---------------------------------------------------------------------------
+
+model SupplierSpecialty {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  order     Int        @default(0)
+  createdAt DateTime   @default(now())
+  suppliers SupplierSpecialtyLink[]
+}
+
+model Supplier {
+  id          String    @id @default(cuid())
+  companyName String
+  ownerName   String
+  phone       String
+  lat         Float?
+  lng         Float?
+  isMaterialSupplier  Boolean @default(false)
+  isContractor        Boolean @default(false)
+  traderTypes String[] // ["وكيل", "موزع", "تاجر"]
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  specialties SupplierSpecialtyLink[]
+  ratings     SupplierRating[]
+}
+
+model SupplierSpecialtyLink {
+  supplier    Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId  String
+  specialty   SupplierSpecialty @relation(fields: [specialtyId], references: [id], onDelete: Cascade)
+  specialtyId String
+  @@id([supplierId, specialtyId])
+}
+
+model SupplierRating {
+  id         String   @id @default(cuid())
+  supplier   Supplier @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  supplierId String
+  value      Int      // 1-5
+  note       String?
+  ratedBy    Employee @relation(fields: [ratedById], references: [id])
+  ratedById  String
+  ratedByName String
+  createdAt  DateTime @default(now())
+  @@index([supplierId])
 }
