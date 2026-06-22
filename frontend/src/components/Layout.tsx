@@ -26,12 +26,14 @@ const navItems: NavItem[] = [
   { to: '/bookings', label: 'الحجوزات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
   {
     to: '/gps', label: 'GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-    roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system',
+    roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system',
     children: [
+      { to: '/gps', label: 'لوحة GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system', end: true },
       { to: '/gps/devices', label: 'الأجهزة', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
       { to: '/gps/customers', label: 'الزبائن', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
       { to: '/gps/renewals', label: 'الاشتراكات', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
       { to: '/gps/maintenance', label: 'الصيانة', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
+      { to: '/gps/employee', label: 'لوحتي', icon: <></>, roles: ['GPS_ENGINEER'] },
     ],
   },
   {
@@ -43,6 +45,15 @@ const navItems: NavItem[] = [
     ],
   },
   {
+    to: '/procurement-group', label: 'المشتريات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
+    roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'],
+    children: [
+      { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
+      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
+      { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
+    ],
+  },
+  {
     to: '/admin-group', label: 'الإدارة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
     roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'],
     children: [
@@ -50,20 +61,17 @@ const navItems: NavItem[] = [
       { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
       { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'coordinator' },
+      { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
       { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'inventory' },
       { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR'], permission: 'complaints' },
-      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
-      { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
     ],
   },
-  { to: '/suppliers', label: 'الموردون', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg>, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
   { to: '/work-reports', label: 'تقارير العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-tasks', label: 'مهامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, roles: ['TECHNICIAN'] },
   { to: '/my-expenses', label: 'مصاريفي', icon: <I d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-inventory', label: 'جرد أدواتي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>, roles: ['TECHNICIAN'] },
-  { to: '/gps/employee', label: 'لوحة GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/></svg>, roles: ['GPS_ENGINEER'] },
 ]
 
 const loadStoredEmployee = (): Employee | null => {
@@ -110,10 +118,8 @@ export default function Layout() {
 
   const role = employee?.role
   const isVisible = (item: NavItem): boolean => {
-    if (role === 'ADMIN') return true
-    if (item.permission && employeePermissions.includes(item.permission)) return true
     if (item.roles && role && !item.roles.includes(role)) return false
-    if (item.permission && !employeePermissions.includes(item.permission)) return false
+    if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
     return true
   }
 
