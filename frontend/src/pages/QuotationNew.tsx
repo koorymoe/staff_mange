@@ -141,12 +141,15 @@ export default function QuotationNew() {
     const validItems = items.filter((it) => it.productName.trim())
     const qdate = today
 
-    const itemsRowsHtml = validItems.map((item, i) => {
+    const MAX_ITEMS_PAGE1 = 6
+    const MAX_ITEMS_CONT = 10
+
+    const makeItemRow = (item: typeof validItems[number], idx: number) => {
       const imgCell = item.imageBase64
         ? `<img src="${item.imageBase64}" style="width:55px;height:55px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;display:block;margin:0 auto;">`
         : `<div style="width:55px;height:55px;background:#f0f2f8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto;">📦</div>`
       return `<tr>
-        <td class="col-no">${i + 1}</td>
+        <td class="col-no">${idx + 1}</td>
         <td class="col-img">${imgCell}</td>
         <td class="col-item">${item.productName}</td>
         <td class="col-unit">${item.unit || '-'}</td>
@@ -154,12 +157,63 @@ export default function QuotationNew() {
         <td class="col-price">${fmt(item.unitPrice)}</td>
         <td class="col-total">${fmt(item.totalPrice)}</td>
       </tr>`
-    }).join('')
+    }
+
+    const tableHead = `<thead><tr>
+        <th class="col-no">NO.</th>
+        <th class="col-img">الصورة</th>
+        <th class="col-item">البيان/المنتج/الخدمة</th>
+        <th class="col-unit">الوحدة</th>
+        <th class="col-qty">العدد</th>
+        <th class="col-price">السعر (د.ع)</th>
+        <th class="col-total">الاجمالي (د.ع)</th>
+      </tr></thead>`
 
     const grandRowHtml = `<tr class="grand-total-row">
       <td colspan="6" class="grand-total-label">المجموع الكلي</td>
       <td class="col-total">${fmt(grandTotal)}</td>
     </tr>`
+
+    const page1Items = validItems.slice(0, MAX_ITEMS_PAGE1)
+    const remainingItems = validItems.slice(MAX_ITEMS_PAGE1)
+    const contPages: (typeof validItems)[] = []
+    for (let i = 0; i < remainingItems.length; i += MAX_ITEMS_CONT) {
+      contPages.push(remainingItems.slice(i, i + MAX_ITEMS_CONT))
+    }
+
+    const isLastProductPage = contPages.length === 0
+    const page1RowsHtml = page1Items.map((item, i) => makeItemRow(item, i)).join('')
+
+    const headerHtml = `<div class="header">
+      <div class="header-right">
+        <div class="header-company-ar">شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</div>
+        <div class="header-company-en">Al-Amani for General Trading, Real Estate & Commercial Agencies LLC</div>
+      </div>
+      <div class="header-left">
+        <div class="header-left-text">متخصصون في منظومات<br>الطاقة الشمسية والشبكات</div>
+      </div>
+    </div>`
+
+    const pageShell = (inner: string) => `<div class="page">
+  <div class="vstrip"><img src="${_IMG_VSTRIP}" alt=""></div>
+  <div class="fbanner"><img src="${_IMG_FBANNER}" alt=""></div>
+  <div class="content">${inner}</div>
+</div>`
+
+    const contPagesHtml = contPages.map((chunk, ci) => {
+      const startIdx = MAX_ITEMS_PAGE1 + ci * MAX_ITEMS_CONT
+      const isLast = ci === contPages.length - 1
+      const rows = chunk.map((item, i) => makeItemRow(item, startIdx + i)).join('')
+      return pageShell(`
+    ${headerHtml}
+    <div class="info-row-p2">
+      <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${customerName}</div></div>
+      <div class="info-item"><div class="label">التاريخ:</div><div class="value">${qdate}</div></div>
+      <div class="info-item"><div class="label">تكملة المنتجات</div><div class="value">صفحة ${ci + 2}</div></div>
+    </div>
+    <hr class="hr">
+    <table class="data-table">${tableHead}<tbody>${rows}${isLast ? grandRowHtml : ''}</tbody></table>`)
+    }).join('\n')
 
     const termsHtml = [
       'الأسعار المذكورة أعلاه لا تشمل أجور النقل والتركيب ما لم يُذكر خلاف ذلك.',
@@ -238,20 +292,9 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
 }
 </style></head><body>
 
-<!-- PAGE 1 -->
-<div class="page">
-  <div class="vstrip"><img src="${_IMG_VSTRIP}" alt=""></div>
-  <div class="fbanner"><img src="${_IMG_FBANNER}" alt=""></div>
-  <div class="content">
-    <div class="header">
-      <div class="header-right">
-        <div class="header-company-ar">شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</div>
-        <div class="header-company-en">Al-Amani for General Trading, Real Estate & Commercial Agencies LLC</div>
-      </div>
-      <div class="header-left">
-        <div class="header-left-text">متخصصون في منظومات<br>الطاقة الشمسية والشبكات</div>
-      </div>
-    </div>
+<!-- PAGE 1: Products -->
+${pageShell(`
+    ${headerHtml}
     <div class="info-row-p1">
       <div class="info-item"><div class="label">اسم المشروع والموقع:</div><div class="value">${projectName || '---'}</div></div>
       <div class="info-item"><div class="label">اسم الزبون:</div><div class="value">${customerName}</div></div>
@@ -261,35 +304,15 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
     <div class="title-right">عرض السعر الاولي</div>
     <hr class="hr">
     <div class="title-right">تفاصيل المنتجات والخدمات</div>
-    <table class="data-table">
-      <thead><tr>
-        <th class="col-no">NO.</th>
-        <th class="col-img">الصورة</th>
-        <th class="col-item">البيان/المنتج/الخدمة</th>
-        <th class="col-unit">الوحدة</th>
-        <th class="col-qty">العدد</th>
-        <th class="col-price">السعر (د.ع)</th>
-        <th class="col-total">الاجمالي (د.ع)</th>
-      </tr></thead>
-      <tbody>${itemsRowsHtml}${grandRowHtml}</tbody>
-    </table>
-  </div>
-</div>
+    <table class="data-table">${tableHead}<tbody>${page1RowsHtml}${isLastProductPage ? grandRowHtml : ''}</tbody></table>
+`)}
 
-<!-- PAGE 2 -->
-<div class="page">
-  <div class="vstrip"><img src="${_IMG_VSTRIP}" alt=""></div>
-  <div class="fbanner"><img src="${_IMG_FBANNER}" alt=""></div>
-  <div class="content">
-    <div class="header">
-      <div class="header-right">
-        <div class="header-company-ar">شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</div>
-        <div class="header-company-en">Al-Amani for General Trading, Real Estate & Commercial Agencies LLC</div>
-      </div>
-      <div class="header-left">
-        <div class="header-left-text">متخصصون في منظومات<br>الطاقة الشمسية والشبكات</div>
-      </div>
-    </div>
+<!-- CONTINUATION PAGES -->
+${contPagesHtml}
+
+<!-- SUMMARY PAGE -->
+${pageShell(`
+    ${headerHtml}
     <div class="info-row-p2">
       <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${customerName}</div></div>
       <div class="info-item"><div class="label">رقم العرض:</div><div class="value">---</div></div>
@@ -315,8 +338,7 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
       <div class="thank-text">تتقدم شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية بخالص الشكر والتقدير على ثقتكم الكريمة، ونتطلع إلى أن نكون عند حسن ظنكم في تقديم أفضل الحلول التقنية والخدمات الهندسية المتخصصة. نؤكد لكم أننا نضع رضاكم في مقدمة أولوياتنا.</div>
       <div class="signature">مع خالص التحية والاحترام - إدارة شركة الأماني</div>
     </div>
-  </div>
-</div>
+`)}
 
 </body></html>`
 
