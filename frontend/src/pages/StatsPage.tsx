@@ -1,7 +1,20 @@
 import { useEffect, useState } from 'react'
-import { api, type Employee } from '../api'
-import { useSession } from '../session'
-import { roleLabels } from '../session'
+import type { Employee } from '../api'
+import { useSession, roleLabels } from '../session'
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
+
+async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || `Request failed: ${res.status}`)
+  }
+  return res.json()
+}
 
 interface StatsData {
   totals: {
@@ -29,14 +42,9 @@ interface InventoryItem {
   employee?: { name: string }
 }
 
-interface Complaint {
-  id: string
-  status: string
-  employeeId?: string
-}
-
 export default function StatsPage() {
-  const { role } = useSession()
+  const { employee } = useSession()
+  const role = employee?.role
   const [stats, setStats] = useState<StatsData | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [inventory, setInventory] = useState<InventoryItem[]>([])
@@ -44,9 +52,9 @@ export default function StatsPage() {
 
   useEffect(() => {
     if (role !== 'ADMIN') return
-    api.get('/stats').then(r => setStats(r.data))
-    api.get('/employees').then(r => setEmployees(r.data))
-    api.get('/inventory').then(r => setInventory(r.data)).catch(() => {})
+    request<StatsData>('/stats').then(setStats).catch(() => {})
+    request<Employee[]>('/employees').then(setEmployees).catch(() => {})
+    request<InventoryItem[]>('/inventory/personal').then(setInventory).catch(() => {})
   }, [role])
 
   if (role !== 'ADMIN') return <div className="p-8 text-center text-gray-500">غير مصرح</div>

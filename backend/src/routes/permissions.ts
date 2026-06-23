@@ -16,6 +16,7 @@ const defaultPermissions = [
   { name: 'coordinator', label: 'تنسيق الحجوزات' },
   { name: 'finance', label: 'المالية' },
   { name: 'expenses', label: 'المصاريف' },
+  { name: 'project_management', label: 'إدارة المشاريع' },
 ]
 
 let seeded = false

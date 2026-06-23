@@ -783,3 +783,32 @@ model SupplierRating {
   createdAt  DateTime @default(now())
   @@index([supplierId])
 }
+
+// ---------------------------------------------------------------------------
+// Project Management (إدارة وأرشفة المشاريع)
+// Pipeline: اتصال → كشف → سعر → تنفيذ → مكتمل / مرفوض
+// ---------------------------------------------------------------------------
+
+model Project {
+  id           String   @id @default(cuid())
+  code         String   @unique // PRJ-xxxx
+  name         String   // المؤسسة
+  rep          String?  // الممثل
+  phone        String?  // الهاتف
+  location     String?  // الموقع
+  workType     String?  // نوع العمل (طاقة شمسية / كاميرات / ...)
+  refPerson    String?  // الطرف الوسيط
+  stage        String   @default("1. اتصال بالزبون") // المرحلة
+  price        String?  // المبلغ التخميني
+  staff        String?  // الموظفين / فريق العمل
+  time         String?  // الوقت / الموعد
+  task         String?  // المهمة / الملاحظات / سبب الرفض
+  priority     String   @default("عادي") // عادي / عاجل جداً
+  deliveryDate String?  // تاريخ التسليم
+  survey       Json?    // مصفوفة 17 إجابة لاستمارة الكشف
+  sentToGroup  Boolean  @default(false) // أُرسلت البيانات للجروب؟
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([stage])
+}

@@ -26,3 +26,18 @@ body {
   min-height: 100vh;
 }
 
+@layer components {
+  .inp {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+    background: #fff;
+  }
+  .inp:focus {
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 2px rgba(44, 90, 173, 0.15);
+  }
+}

@@ -30,6 +30,7 @@ import AttendancePage from './pages/AttendancePage'
 import WorkReportPage from './pages/WorkReportPage'
 import SuppliersPage from './pages/SuppliersPage'
 import StatsPage from './pages/StatsPage'
+import ProjectsPage from './pages/ProjectsPage'
 
 function App() {
   return (
@@ -58,6 +59,7 @@ function App() {
         <Route path="work-reports" element={<WorkReportPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="stats" element={<StatsPage />} />
+        <Route path="projects" element={<ProjectsPage />} />
         <Route path="gps" element={<GpsDashboard />} />
         <Route path="gps/customers" element={<GpsCustomers />} />
         <Route path="gps/devices" element={<GpsDevices />} />
