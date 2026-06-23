@@ -37,7 +37,8 @@ router.get('/', async (_req, res) => {
 router.post('/', async (req, res) => {
   const { name, rep, phone, location, workType, refPerson, priority, deliveryDate } = req.body
   if (!name) return res.status(400).json({ error: 'اسم المؤسسة مطلوب' })
-  const code = 'PRJ-' + Math.floor(1000 + Math.random() * 9000)
+  const count = await prisma.project.count()
+  const code = 'PRJ-' + String(count + 1).padStart(4, '0')
   const project = await prisma.project.create({
     data: {
       code,

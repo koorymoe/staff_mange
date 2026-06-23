@@ -150,6 +150,7 @@ export default function ProjectsPage() {
 
   // modals
   const [showAdd, setShowAdd] = useState(false)
+  const [editProject, setEditProject] = useState<Project | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ project: Project; nextStage: string } | null>(null)
   const [report, setReport] = useState<{ type: 'survey' | 'visit'; project: Project } | null>(null)
 
@@ -170,8 +171,10 @@ export default function ProjectsPage() {
     return projects.filter(p => {
       const matchSearch = !s ||
         (p.name?.toLowerCase().includes(s)) ||
+        (p.code?.toLowerCase().includes(s)) ||
         (p.phone?.toLowerCase().includes(s)) ||
         (p.location?.toLowerCase().includes(s)) ||
+        (p.rep?.toLowerCase().includes(s)) ||
         (p.stage?.toLowerCase().includes(s))
       const matchWork = !filterWorkType || p.workType === filterWorkType
       const matchStage = !filterStage || p.stage.includes(filterStage)
@@ -219,6 +222,7 @@ export default function ProjectsPage() {
           filterWorkType={filterWorkType} setFilterWorkType={setFilterWorkType}
           filterStage={filterStage} setFilterStage={setFilterStage}
           onAdd={() => setShowAdd(true)}
+          onEdit={(p) => setEditProject(p)}
           onMove={(project, nextStage) => setMoveTarget({ project, nextStage })}
           onReport={(type, project) => setReport({ type, project })}
           onDelete={del}
@@ -228,6 +232,7 @@ export default function ProjectsPage() {
       )}
 
       {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); load() }} />}
+      {editProject && <EditModal project={editProject} onClose={() => setEditProject(null)} onSaved={() => { setEditProject(null); load() }} />}
       {moveTarget && (
         <MoveModal
           project={moveTarget.project}
@@ -253,6 +258,7 @@ function MainView(props: {
   filterWorkType: string; setFilterWorkType: (v: string) => void
   filterStage: string; setFilterStage: (v: string) => void
   onAdd: () => void
+  onEdit: (p: Project) => void
   onMove: (p: Project, nextStage: string) => void
   onReport: (type: 'survey' | 'visit', p: Project) => void
   onDelete: (id: string) => void
@@ -336,15 +342,16 @@ function MainView(props: {
         {projects.length === 0 && <p className="text-center text-gray-400 py-12 text-lg">لا توجد مشاريع</p>}
         {projects.map(p => (
           <ProjectCard key={p.id} p={p} canManage={canManage}
-            onMove={props.onMove} onReport={props.onReport} onDelete={props.onDelete} />
+            onEdit={props.onEdit} onMove={props.onMove} onReport={props.onReport} onDelete={props.onDelete} />
         ))}
       </div>
     </>
   )
 }
 
-function ProjectCard({ p, canManage, onMove, onReport, onDelete }: {
+function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete }: {
   p: Project; canManage: boolean
+  onEdit: (p: Project) => void
   onMove: (p: Project, nextStage: string) => void
   onReport: (type: 'survey' | 'visit', p: Project) => void
   onDelete: (id: string) => void
@@ -352,7 +359,7 @@ function ProjectCard({ p, canManage, onMove, onReport, onDelete }: {
   const isRejected = p.stage.includes('مرفوض')
   const isCompleted = p.stage.includes('مكتمل')
   const stageIdx = STAGES.indexOf(p.stage)
-  const nextStage = STAGES[stageIdx + 1] && stageIdx < 3 ? STAGES[stageIdx + 1] : null
+  const nextStage = STAGES[stageIdx + 1] && stageIdx <= 3 ? STAGES[stageIdx + 1] : null
   const borderColor = isRejected ? '#6b7280' : isCompleted ? '#16a34a' : 'var(--color-brand-500)'
   const addedDate = p.createdAt ? new Date(p.createdAt).toLocaleString('ar-IQ') : '---'
 
@@ -380,8 +387,12 @@ function ProjectCard({ p, canManage, onMove, onReport, onDelete }: {
 
       <div className="mt-4 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
         {canManage && (
-          <button onClick={() => onDelete(p.id)}
-            className="text-sm px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">حذف</button>
+          <div className="flex gap-2">
+            <button onClick={() => onEdit(p)}
+              className="text-sm px-3 py-1.5 rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50">تعديل ✏️</button>
+            <button onClick={() => onDelete(p.id)}
+              className="text-sm px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">حذف</button>
+          </div>
         )}
         <div className="flex gap-2 flex-wrap">
           {stageIdx >= 1 && (
@@ -461,6 +472,56 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
       <button onClick={save} disabled={saving}
         className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
         {saving ? 'جارٍ الحفظ...' : 'حفظ ✅'}
+      </button>
+    </Modal>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Edit project modal
+// ---------------------------------------------------------------------------
+function EditModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
+  const [form, setForm] = useState({
+    name: project.name, rep: project.rep || '', phone: project.phone || '',
+    location: project.location || '', workType: project.workType || 'طاقة شمسية',
+    refPerson: project.refPerson || '', priority: project.priority, deliveryDate: project.deliveryDate || '',
+  })
+  const [saving, setSaving] = useState(false)
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const save = async () => {
+    if (!form.name.trim()) { alert('اسم المؤسسة مطلوب'); return }
+    setSaving(true)
+    try {
+      await request(`/projects/${project.id}`, { method: 'PUT', body: JSON.stringify(form) })
+      onSaved()
+    } catch (e) { alert((e as Error).message); setSaving(false) }
+  }
+
+  return (
+    <Modal onClose={onClose} title={`تعديل: ${project.name}`} wide>
+      <div className="grid sm:grid-cols-2 gap-3">
+        <Field label="المؤسسة *"><input className="inp" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
+        <Field label="الممثل"><input className="inp" value={form.rep} onChange={e => set('rep', e.target.value)} /></Field>
+        <Field label="الهاتف"><input className="inp" value={form.phone} onChange={e => set('phone', e.target.value)} /></Field>
+        <Field label="الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
+        <Field label="نوع العمل">
+          <select className="inp" value={form.workType} onChange={e => set('workType', e.target.value)}>
+            {WORK_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
+          </select>
+        </Field>
+        <Field label="الطرف الوسيط"><input className="inp" value={form.refPerson} onChange={e => set('refPerson', e.target.value)} /></Field>
+        <Field label="الأولوية">
+          <select className="inp" value={form.priority} onChange={e => set('priority', e.target.value)}>
+            <option value="عادي">عادي</option>
+            <option value="عاجل جداً">عاجل جداً 🔥</option>
+          </select>
+        </Field>
+        <Field label="تاريخ التسليم"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
+      </div>
+      <button onClick={save} disabled={saving}
+        className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
+        {saving ? 'جارٍ الحفظ...' : 'حفظ التعديلات ✅'}
       </button>
     </Modal>
   )
@@ -594,9 +655,23 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       )}
 
       {needsGroupSend && (
-        <button onClick={() => setSent(s => !s)}
+        <button onClick={() => {
+          const msg = `📋 *بيانات كشف ميداني*\n` +
+            `▪️ المؤسسة: ${project.name}\n` +
+            `▪️ الممثل: ${project.rep || '---'}\n` +
+            `▪️ الهاتف: ${project.phone || '---'}\n` +
+            `▪️ الموقع: ${location || project.location || '---'}\n` +
+            `▪️ نوع العمل: ${project.workType || '---'}\n` +
+            `▪️ فريق الكشف: ${staff || '---'}\n` +
+            `▪️ الموعد: ${time || '---'}\n` +
+            `▪️ ملاحظات: ${task || 'لا يوجد'}`
+          navigator.clipboard.writeText(msg).then(() => {
+            setSent(true)
+            alert('تم نسخ البيانات! الصقها في جروب الواتساب')
+          })
+        }}
           className={`w-full my-3 py-2.5 rounded-lg font-bold border-2 ${sent ? 'bg-green-600 text-white border-green-600' : 'border-amber-400 text-amber-600'}`}>
-          {sent ? '✅ تم الإرسال للجروب' : 'إرسال البيانات للجروب؟'}
+          {sent ? '✅ تم النسخ - الصقها بالجروب' : '📋 نسخ البيانات للجروب'}
         </button>
       )}
 
