@@ -12,6 +12,7 @@ interface NavItem {
   roles?: EmployeeRole[]
   permission?: string
   children?: NavItem[]
+  isSection?: boolean
 }
 
 const I = ({ d }: { d: string }) => (
@@ -21,58 +22,57 @@ const I = ({ d }: { d: string }) => (
 const navItems: NavItem[] = [
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
   { to: '/attendance', label: 'الحضور', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
-  { to: '/sales', label: 'حجز جديد', icon: <I d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />, roles: ['ADMIN', 'SALES'], permission: 'sales_booking' },
-  { to: '/customers', label: 'العملاء', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
-  { to: '/bookings', label: 'الحجوزات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
-  {
-    to: '/gps', label: 'GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-    roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system',
-    children: [
-      { to: '/gps', label: 'لوحة GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system', end: true },
-      { to: '/gps/devices', label: 'الأجهزة', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
-      { to: '/gps/customers', label: 'الزبائن', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
-      { to: '/gps/renewals', label: 'الاشتراكات', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
-      { to: '/gps/maintenance', label: 'الصيانة', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
-      { to: '/gps/employee', label: 'لوحتي', icon: <></>, roles: ['GPS_ENGINEER'] },
-    ],
-  },
-  {
-    to: '/finance-group', label: 'المالية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2"/><path d="M1 10h22"/></svg>,
-    roles: ['ADMIN', 'FINANCE', 'TECHNICIAN', 'PROJECT_MANAGER'],
-    children: [
-      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'finance', end: true },
-      { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN', 'TECHNICIAN', 'PROJECT_MANAGER'], permission: 'expenses' },
-    ],
-  },
-  {
-    to: '/procurement-group', label: 'المشتريات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>,
-    roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'],
-    children: [
-      { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
-      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
-      { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
-    ],
-  },
-  { to: '/projects', label: 'إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>, roles: ['ADMIN', 'PROJECT_MANAGER'], permission: 'project_management' },
+
+  // ── الإدارة ──
   {
     to: '/admin-group', label: 'الإدارة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
-    roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'],
+    roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR', 'FINANCE', 'PROJECT_MANAGER', 'GPS_ADMIN'],
     children: [
+      // إدارة الموظفين
+      { to: '/_sec_emp', label: 'إدارة الموظفين', icon: <></>, isSection: true, roles: ['ADMIN', 'HR_COORDINATOR'] },
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'] },
       { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
-      { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
-      { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'coordinator' },
-      { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
       { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'inventory' },
+      { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
       { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR'], permission: 'complaints' },
+
+      // إدارة العمل والحجوزات
+      { to: '/_sec_work', label: 'إدارة العمل', icon: <></>, isSection: true, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
+      { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'sales_booking' },
+      { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+      { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
+      { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'coordinator' },
+      { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
+
+      // إدارة الخدمات
+      { to: '/_sec_svc', label: 'إدارة الخدمات', icon: <></>, isSection: true, roles: ['ADMIN', 'GPS_ADMIN'] },
+      { to: '/gps', label: 'نظام GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system' },
+
+      // إدارة المشاريع
+      { to: '/_sec_proj', label: 'إدارة المشاريع', icon: <></>, isSection: true, roles: ['ADMIN', 'PROJECT_MANAGER', 'SALES'] },
+      { to: '/projects', label: 'المشاريع', icon: <></>, roles: ['ADMIN', 'PROJECT_MANAGER'], permission: 'project_management' },
+      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
+      { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
+
+      // إدارة الحسابات
+      { to: '/_sec_fin', label: 'إدارة الحسابات', icon: <></>, isSection: true, roles: ['ADMIN', 'FINANCE'] },
+      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'finance' },
+      { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN', 'TECHNICIAN', 'PROJECT_MANAGER'], permission: 'expenses' },
+
+      // إدارة المشتريات
+      { to: '/_sec_proc', label: 'إدارة المشتريات', icon: <></>, isSection: true, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES'] },
+      { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
     ],
   },
+
+  // عناصر الفنيين
   { to: '/work-reports', label: 'تقارير العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-tasks', label: 'مهامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, roles: ['TECHNICIAN'] },
   { to: '/my-expenses', label: 'مصاريفي', icon: <I d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-inventory', label: 'جرد أدواتي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>, roles: ['TECHNICIAN'] },
+  { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['GPS_ENGINEER'] },
 ]
 
 const loadStoredEmployee = (): Employee | null => {
@@ -103,7 +103,7 @@ export default function Layout() {
   useEffect(() => {
     navItems.forEach((item) => {
       if (item.children) {
-        const match = item.children.some((c) => location.pathname === c.to || location.pathname.startsWith(c.to + '/'))
+        const match = item.children.some((c) => !c.isSection && (location.pathname === c.to || location.pathname.startsWith(c.to + '/')))
         if (match) setExpandedGroups((prev) => ({ ...prev, [item.label]: true }))
       }
     })
@@ -119,9 +119,20 @@ export default function Layout() {
 
   const role = employee?.role
   const isVisible = (item: NavItem): boolean => {
+    if (item.isSection) return false
     if (item.roles && role && !item.roles.includes(role)) return false
     if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
     return true
+  }
+
+  const isSectionVisible = (item: NavItem, allChildren: NavItem[], idx: number): boolean => {
+    if (!item.isSection) return false
+    if (item.roles && role && !item.roles.includes(role)) return false
+    for (let j = idx + 1; j < allChildren.length; j++) {
+      if (allChildren[j].isSection) break
+      if (isVisible(allChildren[j])) return true
+    }
+    return false
   }
 
   const visibleItems = navItems.filter((item) => {
@@ -140,7 +151,6 @@ export default function Layout() {
         <div dir="rtl" className="flex flex-1 flex-col">
           {/* Top Header */}
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/80 bg-white px-8 shadow-sm">
-            {/* Right side: company name */}
             <div className="flex items-center gap-3">
               <span className="text-lg font-extrabold text-[#0f2040]">نظام شركة الأماني</span>
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#eef3fb]">
@@ -151,15 +161,12 @@ export default function Layout() {
                 </svg>
               </div>
             </div>
-            {/* Left side: user + bell */}
             <div className="flex items-center gap-4">
-              {/* Bell */}
               <button className="relative rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
               </button>
-              {/* User */}
               <div className="flex items-center gap-2">
                 <div className="text-left">
                   <p className="text-sm font-bold text-slate-700">{employee.name}</p>
@@ -207,10 +214,11 @@ export default function Layout() {
           <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3">
             {visibleItems.map((item) => {
               if (item.children) {
-                const kids = item.children.filter(isVisible)
+                const allChildren = item.children
+                const kids = allChildren.filter((c, i) => c.isSection ? isSectionVisible(c, allChildren, i) : isVisible(c))
                 if (!kids.length) return null
                 const open = expandedGroups[item.label]
-                const active = kids.some((c) => location.pathname === c.to || location.pathname.startsWith(c.to + '/'))
+                const active = kids.some((c) => !c.isSection && (location.pathname === c.to || location.pathname.startsWith(c.to + '/')))
                 return (
                   <div key={item.label}>
                     <button
@@ -228,16 +236,25 @@ export default function Layout() {
                     </button>
                     {open && (
                       <div className="mt-1 mr-5 flex flex-col gap-0.5 border-r border-white/10 pr-4">
-                        {kids.map((child) => (
-                          <NavLink key={child.to} to={child.to} end={child.end}
-                            className={({ isActive }) =>
-                              `rounded-lg px-4 py-2 text-right text-[13px] font-medium transition-all ${
-                                isActive ? 'bg-white/10 text-white' : 'text-blue-300/60 hover:bg-white/5 hover:text-white'
-                              }`
-                            }>
-                            {child.label}
-                          </NavLink>
-                        ))}
+                        {kids.map((child) => {
+                          if (child.isSection) {
+                            return (
+                              <div key={child.to} className="mt-3 mb-1 px-4 text-[11px] font-bold uppercase tracking-wider text-blue-400/70">
+                                {child.label}
+                              </div>
+                            )
+                          }
+                          return (
+                            <NavLink key={child.to} to={child.to} end={child.end}
+                              className={({ isActive }) =>
+                                `rounded-lg px-4 py-2 text-right text-[13px] font-medium transition-all ${
+                                  isActive ? 'bg-white/10 text-white' : 'text-blue-300/60 hover:bg-white/5 hover:text-white'
+                                }`
+                              }>
+                              {child.label}
+                            </NavLink>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
