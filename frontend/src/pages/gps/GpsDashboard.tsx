@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../../api'
 
 export default function GpsDashboard() {
+  const navigate = useNavigate()
   const [stats, setStats] = useState<any>(null)
   const [devices, setDevices] = useState<any[]>([])
   const [sims, setSims] = useState<any[]>([])
@@ -133,7 +135,7 @@ export default function GpsDashboard() {
               ].map(action => (
                 <button
                   key={action.label}
-                  onClick={() => window.location.hash = action.href}
+                  onClick={() => navigate(action.href)}
                   className="rounded-2xl border-2 p-4 text-center transition-all hover:shadow-md"
                   style={{ borderColor: '#1a3a5c' }}
                 >
