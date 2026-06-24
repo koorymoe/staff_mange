@@ -236,6 +236,7 @@ model Employee {
   monthlyLeaves   Int            @default(2) // إجازات شهرية
   jobTitle        String?        // العنوان الوظيفي
   leaderSkillLevel Int           @default(0) // مستوى المهارة كليدر (0-10)
+  isLeader    Boolean        @default(false)
   createdAt   DateTime       @default(now())
 
   skills EmployeeSkill[]

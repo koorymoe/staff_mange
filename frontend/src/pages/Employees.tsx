@@ -58,6 +58,7 @@ export default function Employees() {
   const [editShift, setEditShift] = useState<'morning' | 'evening'>('morning')
   const [editMonthlyLeaves, setEditMonthlyLeaves] = useState('')
   const [editJobTitle, setEditJobTitle] = useState('')
+  const [editIsLeader, setEditIsLeader] = useState(false)
 
   // Compare
   const [showCompare, setShowCompare] = useState(false)
@@ -123,6 +124,7 @@ export default function Employees() {
     setEditShift('morning')
     setEditMonthlyLeaves('')
     setEditJobTitle('')
+    setEditIsLeader((selectedEmployee as any)?.isLeader || false)
     setShowCompare(false)
     setCompareId(null)
     setSkillTab('technical')
@@ -633,6 +635,15 @@ export default function Employees() {
                       placeholder="العنوان الوظيفي"
                       className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                     />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm font-medium text-slate-600">ليدر فريق</label>
+                    <button
+                      onClick={() => { const v = !editIsLeader; setEditIsLeader(v); handleFieldBlur('isLeader', v) }}
+                      className={`relative h-6 w-11 rounded-full transition-colors ${editIsLeader ? 'bg-emerald-500' : 'bg-slate-300'}`}
+                    >
+                      <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${editIsLeader ? 'right-0.5' : 'right-[22px]'}`} />
+                    </button>
                   </div>
                 </div>
                 ) : (
