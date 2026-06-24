@@ -12,7 +12,6 @@ interface NavItem {
   roles?: EmployeeRole[]
   permission?: string
   children?: NavItem[]
-  isSection?: boolean
 }
 
 const I = ({ d }: { d: string }) => (
@@ -29,40 +28,65 @@ const navItems: NavItem[] = [
     roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR', 'FINANCE', 'PROJECT_MANAGER', 'GPS_ADMIN'],
     children: [
       // إدارة الموظفين
-      { to: '/_sec_emp', label: 'إدارة الموظفين', icon: <></>, isSection: true, roles: ['ADMIN', 'HR_COORDINATOR'] },
-      { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'] },
-      { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
-      { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
-      { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'inventory' },
-      { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
-      { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR'], permission: 'complaints' },
-
-      // إدارة العمل والحجوزات
-      { to: '/_sec_work', label: 'إدارة العمل', icon: <></>, isSection: true, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
-      { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'sales_booking' },
-      { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
-      { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
-      { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'coordinator' },
-      { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
-
+      {
+        to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
+        roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'],
+        children: [
+          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'] },
+          { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
+          { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
+          { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'inventory' },
+          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
+          { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR'], permission: 'complaints' },
+        ],
+      },
+      // إدارة العمل
+      {
+        to: '/mgmt-work', label: 'إدارة العمل', icon: <></>,
+        roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR', 'FINANCE'],
+        children: [
+          { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'sales_booking' },
+          { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+          { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
+          { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'coordinator' },
+          { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
+        ],
+      },
       // إدارة الخدمات
-      { to: '/_sec_svc', label: 'إدارة الخدمات', icon: <></>, isSection: true, roles: ['ADMIN', 'GPS_ADMIN'] },
-      { to: '/gps', label: 'نظام GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system' },
-
+      {
+        to: '/mgmt-services', label: 'إدارة الخدمات', icon: <></>,
+        roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'],
+        children: [
+          { to: '/gps', label: 'نظام GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system' },
+        ],
+      },
       // إدارة المشاريع
-      { to: '/_sec_proj', label: 'إدارة المشاريع', icon: <></>, isSection: true, roles: ['ADMIN', 'PROJECT_MANAGER', 'SALES'] },
-      { to: '/projects', label: 'المشاريع', icon: <></>, roles: ['ADMIN', 'PROJECT_MANAGER'], permission: 'project_management' },
-      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
-      { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
-
+      {
+        to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
+        roles: ['ADMIN', 'PROJECT_MANAGER', 'SALES'],
+        children: [
+          { to: '/projects', label: 'المشاريع', icon: <></>, roles: ['ADMIN', 'PROJECT_MANAGER'], permission: 'project_management' },
+          { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
+          { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
+        ],
+      },
       // إدارة الحسابات
-      { to: '/_sec_fin', label: 'إدارة الحسابات', icon: <></>, isSection: true, roles: ['ADMIN', 'FINANCE'] },
-      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'finance' },
-      { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN', 'TECHNICIAN', 'PROJECT_MANAGER'], permission: 'expenses' },
-
+      {
+        to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
+        roles: ['ADMIN', 'FINANCE'],
+        children: [
+          { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'finance' },
+          { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN', 'TECHNICIAN', 'PROJECT_MANAGER'], permission: 'expenses' },
+        ],
+      },
       // إدارة المشتريات
-      { to: '/_sec_proc', label: 'إدارة المشتريات', icon: <></>, isSection: true, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES'] },
-      { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
+      {
+        to: '/mgmt-procurement', label: 'إدارة المشتريات', icon: <></>,
+        roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'],
+        children: [
+          { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR'] },
+        ],
+      },
     ],
   },
 
@@ -79,6 +103,11 @@ const loadStoredEmployee = (): Employee | null => {
   const raw = localStorage.getItem('currentEmployee')
   if (!raw) return null
   try { return JSON.parse(raw) as Employee } catch { return null }
+}
+
+function hasActiveChild(item: NavItem, pathname: string): boolean {
+  if (!item.children) return pathname === item.to || pathname.startsWith(item.to + '/')
+  return item.children.some(c => hasActiveChild(c, pathname))
 }
 
 export default function Layout() {
@@ -101,12 +130,15 @@ export default function Layout() {
   }, [employee?.id])
 
   useEffect(() => {
-    navItems.forEach((item) => {
-      if (item.children) {
-        const match = item.children.some((c) => !c.isSection && (location.pathname === c.to || location.pathname.startsWith(c.to + '/')))
-        if (match) setExpandedGroups((prev) => ({ ...prev, [item.label]: true }))
-      }
-    })
+    const autoExpand = (items: NavItem[]) => {
+      items.forEach((item) => {
+        if (item.children && hasActiveChild(item, location.pathname)) {
+          setExpandedGroups((prev) => ({ ...prev, [item.label]: true }))
+          autoExpand(item.children)
+        }
+      })
+    }
+    autoExpand(navItems)
   }, [location.pathname])
 
   if (!employee) {
@@ -119,29 +151,104 @@ export default function Layout() {
 
   const role = employee?.role
   const isVisible = (item: NavItem): boolean => {
-    if (item.isSection) return false
     if (item.roles && role && !item.roles.includes(role)) return false
     if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
+    if (item.children) return item.children.some(isVisible)
     return true
   }
 
-  const isSectionVisible = (item: NavItem, allChildren: NavItem[], idx: number): boolean => {
-    if (!item.isSection) return false
-    if (item.roles && role && !item.roles.includes(role)) return false
-    for (let j = idx + 1; j < allChildren.length; j++) {
-      if (allChildren[j].isSection) break
-      if (isVisible(allChildren[j])) return true
-    }
-    return false
-  }
-
-  const visibleItems = navItems.filter((item) => {
-    if (isVisible(item)) return true
-    if (item.children && item.children.some(isVisible)) return true
-    return false
-  })
+  const visibleItems = navItems.filter(isVisible)
 
   const toggle = (label: string) => setExpandedGroups((p) => ({ ...p, [label]: !p[label] }))
+
+  const renderNavItem = (item: NavItem, depth: number = 0): React.ReactNode => {
+    if (!isVisible(item)) return null
+
+    if (item.children) {
+      const kids = item.children.filter(isVisible)
+      if (!kids.length) return null
+      const open = expandedGroups[item.label]
+      const active = hasActiveChild(item, location.pathname)
+
+      if (depth === 0) {
+        // Top-level dropdown (الإدارة)
+        return (
+          <div key={item.label}>
+            <button
+              onClick={() => toggle(item.label)}
+              className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+                active ? 'bg-[#2c5aad] text-white' : 'text-blue-200/80 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} style={{ flexShrink: 0 }}>
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+              <span className="flex-1 text-right">{item.label}</span>
+              <span style={{ flexShrink: 0 }}>{item.icon}</span>
+            </button>
+            {open && (
+              <div className="mt-1 mr-3 flex flex-col gap-0.5 border-r border-white/10 pr-2">
+                {kids.map(child => renderNavItem(child, 1))}
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      // Sub-dropdown (إدارة الموظفين، إدارة العمل، الخ)
+      return (
+        <div key={item.label}>
+          <button
+            onClick={() => toggle(item.label)}
+            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold transition-all ${
+              active ? 'text-white' : 'text-blue-300/80 hover:text-white'
+            }`}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} style={{ flexShrink: 0 }}>
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+            <span className="flex-1 text-right">{item.label}</span>
+            {active && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" style={{ flexShrink: 0 }}/>}
+          </button>
+          {open && (
+            <div className="mr-3 flex flex-col gap-0.5 border-r border-white/5 pr-2">
+              {kids.map(child => renderNavItem(child, 2))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Leaf item (link)
+    if (depth === 0) {
+      return (
+        <NavLink key={item.to} to={item.to} end={item.end}
+          className={({ isActive }) =>
+            `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
+              isActive
+                ? 'bg-[#2c5aad] text-white shadow-lg shadow-blue-900/40'
+                : 'text-blue-200/80 hover:bg-white/5 hover:text-white'
+            }`
+          }>
+          <span className="flex-1 text-right">{item.label}</span>
+          <span style={{ flexShrink: 0 }}>{item.icon}</span>
+        </NavLink>
+      )
+    }
+
+    return (
+      <NavLink key={item.to} to={item.to} end={item.end}
+        className={({ isActive }) =>
+          `rounded-lg px-4 py-1.5 text-right text-[12.5px] font-medium transition-all ${
+            isActive ? 'bg-white/10 text-white' : 'text-blue-300/60 hover:bg-white/5 hover:text-white'
+          }`
+        }>
+        {item.label}
+      </NavLink>
+    )
+  }
 
   return (
     <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
@@ -212,68 +319,7 @@ export default function Layout() {
 
           {/* Nav */}
           <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-3 pb-3">
-            {visibleItems.map((item) => {
-              if (item.children) {
-                const allChildren = item.children
-                const kids = allChildren.filter((c, i) => c.isSection ? isSectionVisible(c, allChildren, i) : isVisible(c))
-                if (!kids.length) return null
-                const open = expandedGroups[item.label]
-                const active = kids.some((c) => !c.isSection && (location.pathname === c.to || location.pathname.startsWith(c.to + '/')))
-                return (
-                  <div key={item.label}>
-                    <button
-                      onClick={() => toggle(item.label)}
-                      className={`flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
-                        active ? 'bg-[#2c5aad] text-white' : 'text-blue-200/80 hover:bg-white/5 hover:text-white'
-                      }`}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                        className={`transition-transform duration-200 ${open ? 'rotate-180' : ''}`} style={{ flexShrink: 0 }}>
-                        <polyline points="6 9 12 15 18 9"/>
-                      </svg>
-                      <span className="flex-1 text-right">{item.label}</span>
-                      <span style={{ flexShrink: 0 }}>{item.icon}</span>
-                    </button>
-                    {open && (
-                      <div className="mt-1 mr-5 flex flex-col gap-0.5 border-r border-white/10 pr-4">
-                        {kids.map((child) => {
-                          if (child.isSection) {
-                            return (
-                              <div key={child.to} className="mt-3 mb-1 px-4 text-[11px] font-bold uppercase tracking-wider text-blue-400/70">
-                                {child.label}
-                              </div>
-                            )
-                          }
-                          return (
-                            <NavLink key={child.to} to={child.to} end={child.end}
-                              className={({ isActive }) =>
-                                `rounded-lg px-4 py-2 text-right text-[13px] font-medium transition-all ${
-                                  isActive ? 'bg-white/10 text-white' : 'text-blue-300/60 hover:bg-white/5 hover:text-white'
-                                }`
-                              }>
-                              {child.label}
-                            </NavLink>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-                )
-              }
-              return (
-                <NavLink key={item.to} to={item.to} end={item.end}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all ${
-                      isActive
-                        ? 'bg-[#2c5aad] text-white shadow-lg shadow-blue-900/40'
-                        : 'text-blue-200/80 hover:bg-white/5 hover:text-white'
-                    }`
-                  }>
-                  <span className="flex-1 text-right">{item.label}</span>
-                  <span style={{ flexShrink: 0 }}>{item.icon}</span>
-                </NavLink>
-              )
-            })}
+            {visibleItems.map(item => renderNavItem(item, 0))}
           </nav>
 
           {/* Logout */}
@@ -282,7 +328,7 @@ export default function Layout() {
               className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium text-blue-300/60 transition-all hover:bg-white/5 hover:text-white">
               <span className="flex-1 text-right">تسجيل الخروج</span>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1-2-2h4M16 17l5-5-5-5M21 12H9"/>
               </svg>
             </button>
           </div>
