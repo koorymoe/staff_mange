@@ -378,6 +378,7 @@ model Booking {
   cartItems   CartItem[]
   complaints  Complaint[]
   workReports WorkReport[]
+  missions    Mission[]
 
   @@index([customerId])
   @@index([serviceId])
@@ -782,6 +783,83 @@ model SupplierRating {
   ratedByName String
   createdAt  DateTime @default(now())
   @@index([supplierId])
+}
+
+// ---------------------------------------------------------------------------
+// Mission Tracking (نظام تتبع المهام الميدانية)
+// ---------------------------------------------------------------------------
+
+enum MissionStage {
+  ASSIGNED         // تم الإسناد — بانتظار استلام الليدر
+  MATERIALS_PREP   // الليدر يجهز المواد
+  MATERIALS_READY  // المواد جاهزة — عداد الموظف بدأ
+  EN_ROUTE         // بالطريق — الفريق انطلق
+  ARRIVED          // وصلو للموقع
+  WORK_STARTED     // بدأ العمل
+  COMPLETED        // تم الإنجاز
+  STOPPED          // متوقف
+}
+
+model Mission {
+  id              String       @id @default(cuid())
+  code            String       @unique // MSN-0001
+  booking         Booking      @relation(fields: [bookingId], references: [id])
+  bookingId       String
+  stage           MissionStage @default(ASSIGNED)
+
+  // الفريق
+  leaderId        String       // الليدر
+  memberIds       String[]     // باقي الأعضاء
+
+  // موقع الزبون
+  customerLat     Float?
+  customerLng     Float?
+  customerAddress String?
+
+  // أوقات كل مرحلة
+  assignedAt        DateTime   @default(now())
+  materialsReadyAt  DateTime?  // الليدر أكد جهوزية المواد
+  departedAt        DateTime?  // الفريق انطلق
+  arrivedAt         DateTime?  // وصلو
+  workStartedAt     DateTime?  // بدأ العمل
+  completedAt       DateTime?  // تم الإنجاز
+  stoppedAt         DateTime?  // توقف
+
+  // معلومات التنقل
+  departureLat      Float?     // موقع الانطلاق
+  departureLng      Float?
+  arrivalLat        Float?     // موقع الوصول (GPS يؤكد)
+  arrivalLng        Float?
+  estimatedMinutes  Int?       // الوقت المتوقع للوصول بالدقائق
+  actualMinutes     Int?       // الوقت الفعلي للوصول
+  distanceKm        Float?     // المسافة بالكيلومتر
+
+  // نتيجة
+  stopReason        String?    // سبب التوقف
+  notes             String?
+
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  events            MissionEvent[]
+
+  @@index([bookingId])
+  @@index([stage])
+  @@index([leaderId])
+}
+
+model MissionEvent {
+  id          String   @id @default(cuid())
+  mission     Mission  @relation(fields: [missionId], references: [id], onDelete: Cascade)
+  missionId   String
+  employeeId  String   // من سوا الحدث
+  action      String   // MATERIALS_READY, DEPARTED, ARRIVED, WORK_STARTED, COMPLETED, STOPPED
+  lat         Float?
+  lng         Float?
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([missionId])
 }
 
 // ---------------------------------------------------------------------------
