@@ -201,8 +201,8 @@ export default function Layout() {
         <div key={item.label}>
           <button
             onClick={() => toggle(item.label)}
-            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold transition-all ${
-              active ? 'text-white' : 'text-blue-300/80 hover:text-white'
+            className={`flex w-full items-center gap-2 rounded-lg px-3 py-2.5 text-[13px] font-bold transition-all ${
+              active ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
@@ -210,10 +210,10 @@ export default function Layout() {
               <polyline points="6 9 12 15 18 9"/>
             </svg>
             <span className="flex-1 text-right">{item.label}</span>
-            {active && <span className="h-1.5 w-1.5 rounded-full bg-blue-400" style={{ flexShrink: 0 }}/>}
+            {active && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" style={{ flexShrink: 0 }}/>}
           </button>
           {open && (
-            <div className="mr-3 flex flex-col gap-0.5 border-r border-white/5 pr-2">
+            <div className="mr-3 flex flex-col gap-0.5 border-r border-white/10 pr-2">
               {kids.map(child => renderNavItem(child, 2))}
             </div>
           )}
@@ -242,7 +242,7 @@ export default function Layout() {
       <NavLink key={item.to} to={item.to} end={item.end}
         className={({ isActive }) =>
           `rounded-lg px-4 py-1.5 text-right text-[12.5px] font-medium transition-all ${
-            isActive ? 'bg-white/10 text-white' : 'text-blue-300/60 hover:bg-white/5 hover:text-white'
+            isActive ? 'bg-white/15 text-white font-semibold' : 'text-gray-400 hover:bg-white/5 hover:text-gray-200'
           }`
         }>
         {item.label}
