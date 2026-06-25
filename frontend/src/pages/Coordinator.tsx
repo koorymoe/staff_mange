@@ -67,7 +67,7 @@ export default function Coordinator() {
         slots.push({ value, label })
       }
       slot.setHours(slot.getHours() + SLOT_HOURS)
-      if (slot.getHours() > LAST_SLOT_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
+      if (slot.getHours() > LAST_SLOT_HOUR || slot.getHours() < WORK_START_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
     }
     return slots
   }
