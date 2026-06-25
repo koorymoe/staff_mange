@@ -226,6 +226,11 @@ export default function BookingsList() {
                           <div>
                             <p className="text-slate-400">عنوان تنفيذ المهمة</p>
                             <p className="mt-1 text-slate-700">{b.address || '-'}</p>
+                            {b.mapLocation && (
+                              <a href={b.mapLocation} target="_blank" rel="noreferrer" className="text-xs text-brand-500 hover:underline">
+                                فتح على الخريطة
+                              </a>
+                            )}
                           </div>
                           <div>
                             <p className="text-slate-400">التكلفة المقدرة</p>
@@ -284,6 +289,12 @@ export default function BookingsList() {
                             <p className="text-slate-400">موظف المبيعات (مصدر الزبون)</p>
                             <p className="mt-1 text-slate-700">{b.transferEmployee?.name || '-'}</p>
                           </div>
+                          {b.adminNotes && (
+                            <div className="col-span-full">
+                              <p className="text-slate-400">ملاحظات الإدارة</p>
+                              <p className="mt-1 whitespace-pre-line rounded-lg bg-amber-50 border border-amber-200 p-2 text-sm text-amber-800">{b.adminNotes}</p>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

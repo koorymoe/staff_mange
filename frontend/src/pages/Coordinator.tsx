@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Booking, type Employee, type CartItem } from '../api'
+import { api, type Booking, type Employee, type CartItem, type Product } from '../api'
 import { useSession } from '../session'
 
 // Convert an ISO date string to the local "YYYY-MM-DDTHH:mm" format expected by datetime-local inputs
@@ -14,51 +14,6 @@ const WORK_START_HOUR = 9
 const WORK_END_HOUR = 23
 const SLOT_HOURS = 2
 
-// يقترح أقرب موعد فاضي (تاريخ + ساعة) بناءً على المواعيد المحجوزة + المسودات الحالية
-const suggestNextSlot = (bookings: Booking[], drafts: Record<string, string>, excludeId?: string) => {
-  const toKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`
-
-  const taken = new Set<string>()
-
-  // مواعيد محفوظة بقاعدة البيانات
-  bookings
-    .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'IN_PROGRESS'))
-    .forEach((b) => taken.add(toKey(new Date(b.scheduledAt!))))
-
-  // مسودات الإداري لهذه الجلسة (الحجوزات اللي حدد لها موعد بس لم يثبتها بعد)
-  Object.entries(drafts).forEach(([id, val]) => {
-    if (id !== excludeId && val) taken.add(toKey(new Date(val)))
-  })
-
-  const slot = new Date()
-  slot.setMinutes(0, 0, 0)
-  if (slot.getHours() < WORK_START_HOUR) {
-    slot.setHours(WORK_START_HOUR)
-  } else if (slot.getHours() >= WORK_END_HOUR) {
-    slot.setDate(slot.getDate() + 1)
-    slot.setHours(WORK_START_HOUR)
-  } else {
-    // تقريب للساعة القادمة
-    slot.setHours(slot.getHours() + 1)
-    if (slot.getHours() >= WORK_END_HOUR) {
-      slot.setDate(slot.getDate() + 1)
-      slot.setHours(WORK_START_HOUR)
-    }
-  }
-
-  for (let i = 0; i < 200; i++) {
-    const key = `${slot.getFullYear()}-${slot.getMonth()}-${slot.getDate()}-${slot.getHours()}`
-    if (!taken.has(key)) break
-    slot.setHours(slot.getHours() + SLOT_HOURS)
-    if (slot.getHours() >= WORK_END_HOUR) {
-      slot.setDate(slot.getDate() + 1)
-      slot.setHours(WORK_START_HOUR)
-    }
-  }
-
-  const pad = (n: number) => String(n).padStart(2, '0')
-  return `${slot.getFullYear()}-${pad(slot.getMonth() + 1)}-${pad(slot.getDate())}T${pad(slot.getHours())}:00`
-}
 
 const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
   { key: 'TECH_1', label: 'الفني الأول' },
@@ -83,6 +38,41 @@ export default function Coordinator() {
   const [cartItems, setCartItems] = useState<Record<string, CartItem[]>>({})
   const [cartOpen, setCartOpen] = useState<Record<string, boolean>>({})
   const [cartForm, setCartForm] = useState<Record<string, { productName: string; quantity: string; unitPrice: string; notes: string }>>({})
+  const [products, setProducts] = useState<Product[]>([])
+  const [scheduleMode, setScheduleMode] = useState<Record<string, 'slots' | 'manual'>>({})
+
+  const getAvailableSlots = (excludeId?: string) => {
+    const taken = new Set<string>()
+    bookings
+      .filter(b => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'IN_PROGRESS'))
+      .forEach(b => taken.add(new Date(b.scheduledAt!).toISOString()))
+    Object.entries(scheduleDrafts).forEach(([id, val]) => {
+      if (id !== excludeId && val) taken.add(new Date(val).toISOString())
+    })
+
+    const slots: { value: string; label: string }[] = []
+    const slot = new Date()
+    slot.setMinutes(0, 0, 0)
+    if (slot.getHours() < WORK_START_HOUR) slot.setHours(WORK_START_HOUR)
+    else if (slot.getHours() >= WORK_END_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
+    else { slot.setHours(slot.getHours() + 1); if (slot.getHours() >= WORK_END_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) } }
+
+    for (let i = 0; i < 30; i++) {
+      const key = `${slot.getFullYear()}-${slot.getMonth()}-${slot.getDate()}-${slot.getHours()}`
+      const isoKey = new Date(slot).toISOString()
+      const pad = (n: number) => String(n).padStart(2, '0')
+      const value = `${slot.getFullYear()}-${pad(slot.getMonth() + 1)}-${pad(slot.getDate())}T${pad(slot.getHours())}:00`
+      const label = slot.toLocaleString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+      const isTaken = taken.has(isoKey) || Array.from(taken).some(t => {
+        const d = new Date(t)
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}` === key
+      })
+      slots.push({ value, label: isTaken ? `${label} (محجوز)` : label })
+      slot.setHours(slot.getHours() + SLOT_HOURS)
+      if (slot.getHours() >= WORK_END_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
+    }
+    return slots
+  }
 
   const loadCart = async (bookingId: string) => {
     const items = await api.getCartItems(bookingId)
@@ -130,6 +120,7 @@ export default function Coordinator() {
   useEffect(load, [])
   useEffect(() => {
     api.getSupervisors().then(setSupervisors)
+    api.getProducts().then(setProducts)
   }, [])
 
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
@@ -167,13 +158,17 @@ export default function Coordinator() {
 
   const handleDetailsBlur = async (
     booking: Booking,
-    field: 'quotedPrice' | 'address',
+    field: 'quotedPrice' | 'address' | 'mapLocation',
     value: string,
   ) => {
     if (field === 'quotedPrice') {
       const num = value === '' ? null : Number(value)
       if (num === booking.quotedPrice) return
       const updated = await api.updateBookingDetails(booking.id, { quotedPrice: num })
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    } else if (field === 'mapLocation') {
+      if (value === (booking.mapLocation || '')) return
+      const updated = await api.updateBookingDetails(booking.id, { mapLocation: value })
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } else {
       if (value === (booking.address || '')) return
@@ -332,16 +327,42 @@ export default function Coordinator() {
                       <label className="mb-1 block text-sm font-medium text-slate-600">
                         الموعد المحدد للزبون
                       </label>
-                      <input
-                        type="datetime-local"
-                        value={scheduleDrafts[booking.id] ?? suggestNextSlot(bookings, scheduleDrafts, booking.id)}
-                        onChange={(e) =>
-                          setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
-                        }
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      />
+                      <div className="flex gap-2">
+                        {scheduleMode[booking.id] === 'manual' ? (
+                          <input
+                            type="datetime-local"
+                            value={scheduleDrafts[booking.id] || ''}
+                            onChange={(e) =>
+                              setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
+                            }
+                            className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          />
+                        ) : (
+                          <select
+                            value={scheduleDrafts[booking.id] || ''}
+                            onChange={(e) =>
+                              setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
+                            }
+                            className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          >
+                            <option value="">-- اختر موعد --</option>
+                            {getAvailableSlots(booking.id).map(s => (
+                              <option key={s.value} value={s.value} disabled={s.label.includes('محجوز')}>
+                                {s.label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setScheduleMode(prev => ({ ...prev, [booking.id]: prev[booking.id] === 'manual' ? 'slots' : 'manual' }))}
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-50"
+                        >
+                          {scheduleMode[booking.id] === 'manual' ? 'المواعيد' : 'يدوي'}
+                        </button>
+                      </div>
                       <p className="mt-1 text-xs text-slate-400">
-                        مقترح تلقائياً أقرب موعد فاضي - تكدر تغيره حسب اتفاقك مع الزبون
+                        اختر من المواعيد المتاحة أو اكتب يدوياً
                       </p>
                     </div>
                   </div>
@@ -412,7 +433,7 @@ export default function Coordinator() {
                   </div>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-3">
+                <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
                       التكلفة المقدرة
@@ -435,6 +456,22 @@ export default function Coordinator() {
                       onBlur={(e) => handleDetailsBlur(booking, 'address', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
                     />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">
+                      رابط الخريطة (Google Maps)
+                    </label>
+                    <input
+                      placeholder="https://maps.google.com/..."
+                      defaultValue={booking.mapLocation || ''}
+                      onBlur={(e) => handleDetailsBlur(booking, 'mapLocation', e.target.value)}
+                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    />
+                    {booking.mapLocation && (
+                      <a href={booking.mapLocation} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-brand-500 hover:underline">
+                        فتح على الخريطة
+                      </a>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
@@ -468,14 +505,14 @@ export default function Coordinator() {
 
                     <div className="mt-2 sm:w-1/3">
                       <label className="mb-1 block text-sm font-medium text-slate-600">
-                        المشرف المرافق (اختياري)
+                        تيم ليدر (اختياري)
                       </label>
                       <select
                         value={booking.projectSupervisor?.id || ''}
                         onChange={(e) => handleSupervisorChange(booking, e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                       >
-                        <option value="">-- بدون مشرف --</option>
+                        <option value="">-- بدون تيم ليدر --</option>
                         {supervisors.map((s) => (
                           <option key={s.id} value={s.id}>
                             {s.name}
@@ -599,12 +636,26 @@ export default function Coordinator() {
 
                       {/* إضافة عنصر جديد */}
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                        <input
-                          placeholder="اسم المنتج"
+                        <select
                           value={cartForm[booking.id]?.productName || ''}
-                          onChange={e => setCartForm(prev => ({ ...prev, [booking.id]: { ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' }, productName: e.target.value } }))}
+                          onChange={e => {
+                            const prod = products.find(p => p.name === e.target.value)
+                            setCartForm(prev => ({
+                              ...prev,
+                              [booking.id]: {
+                                ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' },
+                                productName: e.target.value,
+                                unitPrice: prod?.defaultPrice ? String(prod.defaultPrice) : prev[booking.id]?.unitPrice || '',
+                              },
+                            }))
+                          }}
                           className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
-                        />
+                        >
+                          <option value="">-- اختر منتج --</option>
+                          {products.map(p => (
+                            <option key={p.id} value={p.name}>{p.name} {p.defaultPrice ? `(${p.defaultPrice.toLocaleString()})` : ''}</option>
+                          ))}
+                        </select>
                         <input
                           type="number"
                           placeholder="الكمية"

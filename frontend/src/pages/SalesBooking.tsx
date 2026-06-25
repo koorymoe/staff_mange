@@ -112,10 +112,6 @@ export default function SalesBooking() {
       setMessage('يرجى إدخال وصف الموقع')
       return
     }
-    if (!mapLink.trim()) {
-      setMessage('يرجى إدخال رابط موقع الخريطة')
-      return
-    }
 
     if (bookingType === 'REGULAR' && !urgency) {
       setMessage('يرجى اختيار مستوى الأولوية')
@@ -275,12 +271,11 @@ export default function SalesBooking() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">رابط موقع الخريطة</label>
+              <label className="mb-1 block text-sm font-medium text-slate-600">رابط موقع الخريطة (اختياري)</label>
               <input
-                required
                 value={mapLink}
                 onChange={(e) => setMapLink(e.target.value)}
-                placeholder="https://maps.google.com/..."
+                placeholder="https://maps.google.com/... (يمكن إضافته لاحقاً من قبل الإداري)"
                 className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
               />
             </div>

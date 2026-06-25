@@ -80,7 +80,7 @@ router.put('/:id/confirm', async (req, res) => {
 // PUT /api/bookings/:id/details - HR coordinator updates price/address/vehicle after confirmation
 // body: { quotedPrice?, address?, assignedVehicle? }
 router.put('/:id/details', async (req, res) => {
-  const { quotedPrice, address, assignedVehicle } = req.body
+  const { quotedPrice, address, assignedVehicle, mapLocation } = req.body
 
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
@@ -88,6 +88,7 @@ router.put('/:id/details', async (req, res) => {
       quotedPrice: quotedPrice !== undefined && quotedPrice !== '' ? Number(quotedPrice) : null,
       address: address !== undefined ? address : undefined,
       assignedVehicle: assignedVehicle !== undefined ? assignedVehicle : undefined,
+      mapLocation: mapLocation !== undefined ? mapLocation : undefined,
     },
     include: bookingInclude,
   })
@@ -158,12 +159,13 @@ router.put('/:id/assign', async (req, res) => {
   const booking = await prisma.booking.findUnique({ where: { id } })
   if (!booking) return res.status(404).json({ error: 'Booking not found' })
 
+  let skillWarning = false
   if (booking.serviceId) {
     const matchingSkill = await prisma.employeeSkill.findFirst({
       where: { employeeId, canPerform: true, skill: { serviceId: booking.serviceId } },
     })
     if (!matchingSkill) {
-      return res.status(400).json({ error: 'هذا الموظف لا يمتلك المهارة اللازمة لهذه المهمة' })
+      skillWarning = true
     }
   }
 
@@ -178,11 +180,17 @@ router.put('/:id/assign', async (req, res) => {
     create: { bookingId: id, employeeId, role },
   })
 
-  if (assignedVehicle !== undefined) {
-    await prisma.booking.update({
-      where: { id },
-      data: { assignedVehicle },
-    })
+  const updateData: Record<string, unknown> = {}
+  if (assignedVehicle !== undefined) updateData.assignedVehicle = assignedVehicle
+  if (skillWarning) {
+    const warning = `⚠️ تنبيه: الموظف ${employee.name} لا يمتلك المهارة اللازمة لهذه الخدمة`
+    const existing = booking.adminNotes || ''
+    if (!existing.includes(warning)) {
+      updateData.adminNotes = existing ? `${existing}\n${warning}` : warning
+    }
+  }
+  if (Object.keys(updateData).length > 0) {
+    await prisma.booking.update({ where: { id }, data: updateData })
   }
 
   const updated = await prisma.booking.findUnique({
@@ -200,8 +208,8 @@ router.put('/:id/supervisor', async (req, res) => {
 
   if (employeeId) {
     const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
-    if (!employee || employee.role !== 'PROJECT_MANAGER') {
-      return res.status(400).json({ error: 'يجب أن يكون المشرف من مديري المشاريع' })
+    if (!employee || (employee.role !== 'PROJECT_MANAGER' && !employee.isLeader)) {
+      return res.status(400).json({ error: 'يجب أن يكون تيم ليدر أو مدير مشاريع' })
     }
   }
 
