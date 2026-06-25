@@ -44,6 +44,14 @@ function elapsedSince(timeStr: string): string {
   return `${hours} ساعة و ${mins} دقيقة`
 }
 
+function formatTime(): string {
+  return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatDate(): string {
+  return new Date().toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+}
+
 /* ───── Types ───── */
 
 interface GpsStats {
@@ -55,6 +63,40 @@ interface GpsStats {
   inUseSims: number
 }
 
+/* ───── Animated Counter ───── */
+function AnimatedNumber({ value, loading }: { value: number; loading: boolean }) {
+  const [display, setDisplay] = useState(0)
+  useEffect(() => {
+    if (loading) return
+    let start = 0
+    const duration = 800
+    const step = Math.ceil(value / (duration / 16))
+    const timer = setInterval(() => {
+      start += step
+      if (start >= value) { setDisplay(value); clearInterval(timer) }
+      else setDisplay(start)
+    }, 16)
+    return () => clearInterval(timer)
+  }, [value, loading])
+  if (loading) return <span className="inline-block h-8 w-16 animate-pulse rounded-lg bg-slate-200" />
+  return <>{display.toLocaleString('ar-SA')}</>
+}
+
+/* ───── Progress Ring ───── */
+function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: number; size?: number; stroke?: number; color: string }) {
+  const r = (size - stroke) / 2
+  const circ = 2 * Math.PI * r
+  const offset = circ - (percent / 100) * circ
+  return (
+    <svg width={size} height={size} className="-rotate-90">
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="currentColor" strokeWidth={stroke} className="text-slate-100" />
+      <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={stroke}
+        strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+        className="transition-all duration-1000 ease-out" />
+    </svg>
+  )
+}
+
 export default function Dashboard() {
   const { employee, permissions } = useSession()
   const navigate = useNavigate()
@@ -63,6 +105,12 @@ export default function Dashboard() {
   const [employeeCount, setEmployeeCount] = useState(0)
   const [customerCount, setCustomerCount] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [currentTime, setCurrentTime] = useState(formatTime())
+
+  useEffect(() => {
+    const t = setInterval(() => setCurrentTime(formatTime()), 60000)
+    return () => clearInterval(t)
+  }, [])
 
   useEffect(() => {
     if (!employee) return
@@ -91,7 +139,6 @@ export default function Dashboard() {
     setAllTodayRecords(getMyTodayRecords(employee.id))
   }, [employee])
 
-  // Elapsed time ticker
   useEffect(() => {
     if (!activeRecord?.checkInTime || activeRecord.checkOutTime) return
     setElapsed(elapsedSince(activeRecord.checkInTime))
@@ -130,338 +177,302 @@ export default function Dashboard() {
   const isAdmin = employee.role === 'ADMIN'
   const pendingMaintenance = gpsStats?.devicesByStatus?.find((d) => d.status === 'MAINTENANCE')?.count || 0
 
-  /* ── Quick access cards with permission filtering ── */
   const quickCards = [
     {
       title: 'حجز جديد',
       desc: 'إنشاء حجز خدمة جديد للعميل',
-      color: 'from-blue-500 to-blue-600',
-      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="16" /><line x1="8" y1="12" x2="16" y2="12" /></svg>,
+      gradient: 'from-blue-500 via-blue-600 to-blue-700',
+      iconPath: 'M12 4v16m8-8H4',
       path: '/sales',
       visible: ['ADMIN', 'SALES', 'HR_COORDINATOR'].includes(employee.role),
     },
     {
       title: 'عرض سعر جديد',
       desc: 'إنشاء عرض سعر احترافي للعميل',
-      color: 'from-emerald-500 to-emerald-600',
-      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /></svg>,
+      gradient: 'from-emerald-500 via-emerald-600 to-emerald-700',
+      iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
       path: '/quotations/new',
       visible: isAdmin || permissions.includes('quotation_system'),
     },
     {
       title: 'إضافة عميل',
       desc: 'تسجيل عميل جديد في النظام',
-      color: 'from-violet-500 to-violet-600',
-      icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>,
+      gradient: 'from-violet-500 via-violet-600 to-violet-700',
+      iconPath: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
       path: '/customers',
       visible: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'MONITOR'].includes(employee.role),
+    },
+    {
+      title: 'تتبع المهام',
+      desc: 'متابعة المهام الميدانية والفرق',
+      gradient: 'from-amber-500 via-amber-600 to-amber-700',
+      iconPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+      path: '/missions',
+      visible: isAdmin || ['HR_COORDINATOR', 'MONITOR'].includes(employee.role),
     },
   ].filter(c => c.visible)
 
   const completedSessions = allTodayRecords.filter(r => r.checkOutTime)
 
+  const kpiCards = [
+    { title: 'الموظفين', value: employeeCount, color: '#3b82f6', bg: 'from-blue-500/10 to-blue-500/5', ring: 75, path: '/employees',
+      icon: <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /> },
+    { title: 'العملاء', value: customerCount, color: '#10b981', bg: 'from-emerald-500/10 to-emerald-500/5', ring: 60, path: '/customers',
+      icon: <><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></> },
+    { title: 'الحجوزات', value: bookingCount, color: '#8b5cf6', bg: 'from-violet-500/10 to-violet-500/5', ring: 45, path: '/bookings',
+      icon: <><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></> },
+    { title: 'أجهزة GPS', value: gpsStats?.totalDevices || 0, color: '#f59e0b', bg: 'from-amber-500/10 to-amber-500/5', ring: 85, path: '/gps',
+      icon: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></> },
+  ]
+
   return (
-    <div dir="rtl">
-      {/* Hero Banner */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-l from-[#0f2040] to-[#2c5aad] p-8 text-white shadow-xl">
-        <div className="relative z-10 max-w-2xl">
-          <h1 className="text-3xl font-bold">مرحباً، {employee.name}</h1>
-          <p className="mt-2 text-sm text-blue-200">نظام إدارة شامل لجميع أقسام وخدمات شركة الأماني</p>
-          <p className="mt-1 text-sm text-blue-200">المبيعات • العملاء • الحجوزات • GPS • المالية • الموارد البشرية</p>
+    <div dir="rtl" className="space-y-6">
+      {/* ═══ Hero Section ═══ */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-[#0a1628] via-[#1a3a6e] to-[#2c5aad] p-8 text-white">
+        {/* Decorative elements */}
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+          <div className="absolute -bottom-10 left-1/3 h-48 w-48 rounded-full bg-blue-400/10 blur-2xl" />
+          <div className="absolute right-10 top-10 h-32 w-32 rounded-full bg-blue-300/5 blur-xl" />
+          {/* Grid pattern */}
+          <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} />
         </div>
-        <div className="absolute left-8 top-1/2 -translate-y-1/2 opacity-10">
-          <svg width="180" height="180" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="0.5">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
-            <line x1="12" y1="22.08" x2="12" y2="12"/>
-          </svg>
+
+        <div className="relative z-10 flex flex-wrap items-center justify-between gap-6">
+          <div className="flex-1">
+            <div className="mb-1 flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1 text-xs font-medium backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                متصل
+              </span>
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">مرحباً، {employee.name}</h1>
+            <p className="mt-2 text-sm text-blue-200/80">{formatDate()}</p>
+            <p className="mt-1 text-xs text-blue-300/60">نظام إدارة شامل — شركة الأماني</p>
+          </div>
+
+          {/* Time display */}
+          <div className="flex flex-col items-center rounded-2xl bg-white/10 px-6 py-4 backdrop-blur-md">
+            <span className="text-4xl font-bold tracking-wider tabular-nums">{currentTime}</span>
+            <span className="mt-1 text-xs text-blue-200/70">التوقيت المحلي</span>
+          </div>
         </div>
-        <div className="absolute left-32 top-6 text-6xl font-extrabold opacity-5">الأماني</div>
       </div>
 
-      {/* Quick Stats - ADMIN ONLY */}
+      {/* ═══ KPI Cards - ADMIN ═══ */}
       {isAdmin && (
-      <div className="mt-8">
-        <h2 className="mb-4 text-right text-lg font-bold text-slate-700">
-          <span className="ml-2 inline-block h-2 w-2 rounded-full bg-brand-500"></span>
-          نظرة عامة على النظام
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="الموظفين"
-            value={employeeCount}
-            subtitle="إجمالي الموظفين"
-            icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
-            iconBg="bg-blue-50"
-            loading={loading}
-            onClick={() => navigate('/employees')}
-          />
-          <StatCard
-            title="العملاء"
-            value={customerCount}
-            subtitle="إجمالي العملاء"
-            icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>}
-            iconBg="bg-emerald-50"
-            loading={loading}
-            onClick={() => navigate('/customers')}
-          />
-          <StatCard
-            title="الحجوزات"
-            value={bookingCount}
-            subtitle="إجمالي الحجوزات"
-            icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>}
-            iconBg="bg-violet-50"
-            loading={loading}
-            onClick={() => navigate('/bookings')}
-          />
-          <StatCard
-            title="أجهزة GPS"
-            value={gpsStats?.totalDevices || 0}
-            subtitle="إجمالي الأجهزة"
-            icon={<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>}
-            iconBg="bg-amber-50"
-            loading={loading}
-            onClick={() => navigate('/gps')}
-          />
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {kpiCards.map((kpi) => (
+            <button key={kpi.title} onClick={() => navigate(kpi.path)}
+              className="group relative overflow-hidden rounded-2xl bg-white p-5 text-right shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)] transition-all duration-300 hover:shadow-[0_8px_32px_rgba(44,90,173,0.12)] hover:-translate-y-0.5">
+              {/* Gradient background */}
+              <div className={`absolute inset-0 bg-gradient-to-bl ${kpi.bg} opacity-0 transition-opacity group-hover:opacity-100`} />
+              <div className="relative flex items-start justify-between">
+                <div className="relative">
+                  <ProgressRing percent={kpi.ring} color={kpi.color} />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={kpi.color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {kpi.icon}
+                    </svg>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-slate-400">{kpi.title}</p>
+                  <p className="mt-1 text-3xl font-black text-slate-800">
+                    <AnimatedNumber value={kpi.value} loading={loading} />
+                  </p>
+                </div>
+              </div>
+              {/* Hover arrow */}
+              <div className="absolute bottom-3 left-3 opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0 translate-x-2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={kpi.color} strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+              </div>
+            </button>
+          ))}
         </div>
-      </div>
       )}
 
-      {/* Attendance Widget */}
-      <div className="mt-8">
-        <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <div className="flex items-center gap-2 bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-6 py-3 text-white">
-            <span className="inline-block h-2.5 w-2.5 rounded-full bg-green-400"></span>
-            <h3 className="text-base font-bold">الحضور والانصراف</h3>
+      {/* ═══ Attendance + Quick Access Row ═══ */}
+      <div className={`grid gap-4 ${quickCards.length > 0 ? 'grid-cols-1 lg:grid-cols-5' : 'grid-cols-1'}`}>
+        {/* Attendance Widget */}
+        <div className={`${quickCards.length > 0 ? 'lg:col-span-2' : ''} overflow-hidden rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]`}>
+          <div className="flex items-center justify-between bg-gradient-to-l from-[#0f2040] to-[#1e4276] px-5 py-3">
+            <div className="flex items-center gap-2 text-white">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+              </div>
+              <h3 className="text-sm font-bold">الحضور والانصراف</h3>
+            </div>
+            {activeRecord && (
+              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs text-emerald-300">
+                <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>
+                متواجد
+              </span>
+            )}
           </div>
           <div className="p-5">
             {activeRecord ? (
-              /* State B: Checked in */
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="relative flex h-3 w-3">
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex h-3 w-3 rounded-full bg-green-500"></span>
-                  </span>
-                  <span className="font-bold text-green-700">متواجد</span>
-                  <span className="text-sm text-gray-500">منذ {activeRecord.checkInTime}</span>
-                  <span className="text-sm text-gray-400">({elapsed})</span>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-xl bg-emerald-50 px-4 py-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-emerald-800">تم تسجيل الحضور</p>
+                    <p className="text-xs text-emerald-600">منذ {activeRecord.checkInTime} • {elapsed}</p>
+                  </div>
                 </div>
                 <div className="relative">
-                  <button
-                    onClick={() => setShowCheckoutConfirm(true)}
-                    className="rounded-lg bg-red-500 px-5 py-2 text-sm font-bold text-white transition hover:bg-red-600"
-                  >
+                  <button onClick={() => setShowCheckoutConfirm(true)}
+                    className="w-full rounded-xl bg-gradient-to-l from-red-500 to-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-500/20 transition-all hover:shadow-xl hover:shadow-red-500/30">
                     تسجيل انصراف
                   </button>
                   {showCheckoutConfirm && (
-                    <div className="absolute left-0 top-full z-20 mt-2 w-72 rounded-xl border bg-white p-4 shadow-xl">
-                      <p className="mb-3 text-sm font-semibold text-gray-800">هل تود تسجيل الانصراف وإغلاق الحساب؟</p>
+                    <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-xl border border-slate-100 bg-white p-4 shadow-2xl">
+                      <p className="mb-3 text-sm font-semibold text-gray-800">هل تود تسجيل الانصراف؟</p>
                       <div className="flex gap-2">
-                        <button onClick={handleAttCheckOut} className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-bold text-white hover:bg-red-600">نعم، انصراف</button>
-                        <button onClick={() => setShowCheckoutConfirm(false)} className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm font-bold text-gray-600 hover:bg-gray-50">إلغاء</button>
+                        <button onClick={handleAttCheckOut} className="flex-1 rounded-xl bg-red-500 px-3 py-2 text-sm font-bold text-white">نعم</button>
+                        <button onClick={() => setShowCheckoutConfirm(false)} className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600">إلغاء</button>
                       </div>
                     </div>
                   )}
                 </div>
               </div>
             ) : completedSessions.length > 0 ? (
-              /* State C: Checked out, show sessions */
-              <div>
-                <div className="mb-3 space-y-2">
-                  {completedSessions.map((s, i) => (
-                    <div key={i} className="flex items-center gap-3 rounded-lg bg-gray-50 px-4 py-2 text-sm">
-                      <span className="font-medium text-gray-600">الجلسة {i + 1}:</span>
-                      <span className="text-[#2c5aad] font-bold">{s.checkInTime}</span>
-                      <span className="text-gray-400">←</span>
-                      <span className="text-[#2c5aad] font-bold">{s.checkOutTime}</span>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={handleAttCheckIn}
-                  className="rounded-lg bg-green-500 px-5 py-2 text-sm font-bold text-white transition hover:bg-green-600"
-                >
+              <div className="space-y-2">
+                {completedSessions.map((s, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm">
+                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">{i + 1}</div>
+                    <span className="font-bold text-[#2c5aad]">{s.checkInTime}</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    <span className="font-bold text-[#2c5aad]">{s.checkOutTime}</span>
+                  </div>
+                ))}
+                <button onClick={handleAttCheckIn}
+                  className="w-full rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-xl">
                   تسجيل حضور جديد
                 </button>
               </div>
             ) : (
-              /* State A: Not checked in */
-              <button
-                onClick={handleAttCheckIn}
-                className="rounded-lg bg-green-500 px-6 py-2.5 text-sm font-bold text-white transition hover:bg-green-600"
-              >
-                تسجيل حضور
-              </button>
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+                </div>
+                <p className="mb-3 text-sm text-slate-400">لم تسجل حضورك بعد</p>
+                <button onClick={handleAttCheckIn}
+                  className="w-full rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5">
+                  تسجيل حضور
+                </button>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Quick Access */}
+        {quickCards.length > 0 && (
+          <div className="lg:col-span-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {quickCards.map((card) => (
+              <button key={card.path} onClick={() => navigate(card.path)}
+                className={`group relative overflow-hidden rounded-2xl bg-gradient-to-bl ${card.gradient} p-5 text-right text-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
+                {/* Shine effect */}
+                <div className="absolute inset-0 bg-gradient-to-l from-white/0 via-white/10 to-white/0 translate-x-full transition-transform duration-700 group-hover:-translate-x-full" />
+                <div className="relative flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={card.iconPath} /></svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-base font-bold">{card.title}</p>
+                    <p className="mt-0.5 text-xs text-white/70">{card.desc}</p>
+                  </div>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" className="opacity-40 transition-all group-hover:opacity-100 group-hover:-translate-x-1"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Quick Access Cards */}
-      {quickCards.length > 0 && (
-      <div className="mt-8">
-        <h2 className="mb-4 text-right text-lg font-bold text-slate-700">
-          <span className="ml-2 inline-block h-2 w-2 rounded-full bg-brand-500"></span>
-          وصول سريع
-        </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {quickCards.map((card) => (
-            <QuickCard
-              key={card.path}
-              title={card.title}
-              desc={card.desc}
-              color={card.color}
-              icon={card.icon}
-              onClick={() => navigate(card.path)}
-            />
-          ))}
-        </div>
-      </div>
-      )}
-
-      {/* Systems Overview - ADMIN ONLY */}
+      {/* ═══ System Panels - ADMIN ═══ */}
       {isAdmin && (
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* GPS Summary */}
-        <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <div className="mb-4 flex items-center justify-between">
-            <button onClick={() => navigate('/gps')} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-600 transition hover:bg-brand-100">
-              عرض الكل
-            </button>
-            <h3 className="text-base font-bold text-slate-700">
-              <span className="ml-2 inline-block h-2 w-2 rounded-full bg-amber-400"></span>
-              نظام GPS
-            </h3>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <MiniStatCard title="الأجهزة" value={gpsStats?.totalDevices || 0}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>}
-              iconBg="bg-emerald-50" />
-            <MiniStatCard title="المشتركين" value={gpsStats?.totalCustomers || 0}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /></svg>}
-              iconBg="bg-blue-50" />
-            <MiniStatCard title="شرائح SIM" value={gpsStats?.totalSims || 0}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2" /><path d="M8 21h8 M12 17v4" /></svg>}
-              iconBg="bg-violet-50" />
-            <MiniStatCard title="صيانة معلقة" value={pendingMaintenance}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>}
-              iconBg="bg-amber-50" />
-          </div>
-        </div>
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* GPS Panel */}
+          <SystemPanel title="نظام GPS" color="#f59e0b" dotColor="bg-amber-400" actionLabel="عرض الكل" onAction={() => navigate('/gps')}>
+            <div className="grid grid-cols-2 gap-3">
+              <MiniKPI label="الأجهزة" value={gpsStats?.totalDevices || 0} color="#10b981" />
+              <MiniKPI label="المشتركين" value={gpsStats?.totalCustomers || 0} color="#3b82f6" />
+              <MiniKPI label="شرائح SIM" value={gpsStats?.totalSims || 0} color="#8b5cf6" />
+              <MiniKPI label="صيانة معلقة" value={pendingMaintenance} color={pendingMaintenance > 0 ? '#ef4444' : '#f59e0b'} />
+            </div>
+          </SystemPanel>
 
-        {/* Sales & Finance Summary */}
-        <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <div className="mb-4 flex items-center justify-between">
-            <button onClick={() => navigate('/finance')} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-600 transition hover:bg-brand-100">
-              عرض الكل
-            </button>
-            <h3 className="text-base font-bold text-slate-700">
-              <span className="ml-2 inline-block h-2 w-2 rounded-full bg-blue-400"></span>
-              المبيعات والمالية
-            </h3>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <MiniStatCard title="الحجوزات" value={bookingCount}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>}
-              iconBg="bg-blue-50" />
-            <MiniStatCard title="العملاء" value={customerCount}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /></svg>}
-              iconBg="bg-emerald-50" />
-            <MiniStatCard title="عروض الأسعار" value={0}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>}
-              iconBg="bg-violet-50" />
-            <MiniStatCard title="المعاملات المالية" value={0}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><circle cx="12" cy="12" r="10" /><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 0 1 0 4H8 M12 18V6" /></svg>}
-              iconBg="bg-amber-50" />
-          </div>
-        </div>
-      </div>
-      )}
+          {/* Sales Panel */}
+          <SystemPanel title="المبيعات والمالية" color="#3b82f6" dotColor="bg-blue-400" actionLabel="عرض الكل" onAction={() => navigate('/finance')}>
+            <div className="grid grid-cols-2 gap-3">
+              <MiniKPI label="الحجوزات" value={bookingCount} color="#3b82f6" />
+              <MiniKPI label="العملاء" value={customerCount} color="#10b981" />
+              <MiniKPI label="عروض الأسعار" value={0} color="#8b5cf6" />
+              <MiniKPI label="المعاملات" value={0} color="#f59e0b" />
+            </div>
+          </SystemPanel>
 
-      {/* HR & Admin Summary - ADMIN ONLY */}
-      {isAdmin && (
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <div className="mb-4 flex items-center justify-between">
-            <button onClick={() => navigate('/employees')} className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-600 transition hover:bg-brand-100">
-              عرض الكل
-            </button>
-            <h3 className="text-base font-bold text-slate-700">
-              <span className="ml-2 inline-block h-2 w-2 rounded-full bg-emerald-400"></span>
-              الموارد البشرية
-            </h3>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <MiniStatCard title="الموظفين" value={employeeCount}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>}
-              iconBg="bg-blue-50" />
-            <MiniStatCard title="الشكاوى" value={0}
-              icon={<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>}
-              iconBg="bg-red-50" />
-          </div>
-        </div>
+          {/* HR Panel */}
+          <SystemPanel title="الموارد البشرية" color="#10b981" dotColor="bg-emerald-400" actionLabel="عرض الكل" onAction={() => navigate('/employees')}>
+            <div className="grid grid-cols-2 gap-3">
+              <MiniKPI label="الموظفين" value={employeeCount} color="#3b82f6" />
+              <MiniKPI label="الشكاوى" value={0} color="#ef4444" />
+            </div>
+          </SystemPanel>
 
-        {/* Activity / Alerts */}
-        <div className="rounded-2xl bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <h3 className="mb-4 text-right text-base font-bold text-slate-700">
-            <span className="ml-2 inline-block h-2 w-2 rounded-full bg-red-400"></span>
-            آخر النشاطات
-          </h3>
-          <div className="flex h-32 items-center justify-center rounded-xl bg-slate-50 text-slate-300">
-            <div className="text-center">
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="mx-auto mb-2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
-              <p className="text-sm">لا توجد نشاطات حديثة</p>
+          {/* Activity Panel */}
+          <div className="rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]">
+            <h3 className="mb-4 flex items-center gap-2 text-right text-sm font-bold text-slate-700">
+              <span className="h-2 w-2 rounded-full bg-red-400" />
+              آخر النشاطات
+            </h3>
+            <div className="flex h-28 items-center justify-center rounded-xl border-2 border-dashed border-slate-100">
+              <div className="text-center">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-2">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+                </svg>
+                <p className="text-xs text-slate-300">لا توجد نشاطات حديثة</p>
+              </div>
             </div>
           </div>
         </div>
-      </div>
       )}
     </div>
   )
 }
 
-function StatCard({ title, value, subtitle, icon, iconBg, loading, onClick }: {
-  title: string; value: number; subtitle: string; icon: React.ReactNode; iconBg: string; loading: boolean; onClick?: () => void
+/* ═══ Sub-components ═══ */
+
+function SystemPanel({ title, color: _color, dotColor, actionLabel, onAction, children }: {
+  title: string; color: string; dotColor: string; actionLabel: string; onAction: () => void; children: React.ReactNode
 }) {
   return (
-    <div onClick={onClick} className={`flex items-center justify-between rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] ${onClick ? 'cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5' : ''}`}>
-      <div className={`flex h-14 w-14 items-center justify-center rounded-xl ${iconBg}`}>{icon}</div>
-      <div className="text-right">
-        <p className="text-xs font-medium text-slate-400">{title}</p>
-        <p className="mt-1 text-3xl font-extrabold text-slate-800">{loading ? '...' : value}</p>
-        <p className="text-xs text-slate-400">{subtitle}</p>
+    <div className="rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]">
+      <div className="mb-4 flex items-center justify-between">
+        <button onClick={onAction}
+          className="rounded-lg bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:bg-brand-50 hover:text-brand-600">
+          {actionLabel} ←
+        </button>
+        <h3 className="flex items-center gap-2 text-sm font-bold text-slate-700">
+          <span className={`h-2 w-2 rounded-full ${dotColor}`} />
+          {title}
+        </h3>
       </div>
+      {children}
     </div>
   )
 }
 
-function MiniStatCard({ title, value, icon, iconBg }: {
-  title: string; value: number; icon: React.ReactNode; iconBg: string
-}) {
+function MiniKPI({ label, value, color }: { label: string; value: number; color: string }) {
   return (
-    <div className="flex items-center justify-between rounded-xl border border-slate-100 p-4">
-      <div className={`flex h-11 w-11 items-center justify-center rounded-xl ${iconBg}`}>{icon}</div>
-      <div className="text-right">
-        <p className="text-xs text-slate-400">{title}</p>
-        <p className="mt-0.5 text-2xl font-extrabold text-slate-800">{value}</p>
+    <div className="group flex items-center justify-between rounded-xl border border-slate-100 p-3.5 transition-colors hover:border-slate-200 hover:bg-slate-50/50">
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: color + '12' }}>
+        <span className="text-lg font-black" style={{ color }}>{value}</span>
       </div>
+      <p className="text-xs font-medium text-slate-500">{label}</p>
     </div>
-  )
-}
-
-function QuickCard({ title, desc, color, icon, onClick }: {
-  title: string; desc: string; color: string; icon: React.ReactNode; onClick: () => void
-}) {
-  return (
-    <button onClick={onClick} className={`flex items-center gap-4 rounded-2xl bg-gradient-to-l ${color} p-5 text-right text-white shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5`}>
-      <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20">{icon}</div>
-      <div className="flex-1">
-        <p className="text-base font-bold">{title}</p>
-        <p className="mt-1 text-xs text-white/80">{desc}</p>
-      </div>
-    </button>
   )
 }
