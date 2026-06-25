@@ -200,7 +200,7 @@ export default function Dashboard() {
       gradient: 'from-violet-500 via-violet-600 to-violet-700',
       iconPath: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
       path: '/customers',
-      visible: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'MONITOR'].includes(employee.role),
+      visible: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'].includes(employee.role),
     },
     {
       title: 'تتبع المهام',
@@ -289,6 +289,34 @@ export default function Dashboard() {
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ═══ Sales Level Card ═══ */}
+      {employee.role === 'SALES' && (
+        <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]">
+          <div className="flex items-center gap-4">
+            <div className="relative">
+              <ProgressRing percent={Math.min(100, (bookingCount % 10) * 10)} color="#10b981" />
+              <div className="absolute inset-0 flex items-center justify-center">
+                <span className="text-lg font-extrabold text-emerald-600">{Math.floor(bookingCount / 10) + 1}</span>
+              </div>
+            </div>
+            <div className="flex-1">
+              <h3 className="text-sm font-bold text-[#0f2040]">مستوى المبيعات</h3>
+              <p className="text-xs text-slate-400 mt-0.5">كل 10 حجوزات = مستوى جديد</p>
+              <div className="mt-2 flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500"/>
+                  <span className="text-xs text-slate-500"><span className="font-bold text-[#0f2040]">{bookingCount}</span> حجز</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-full bg-blue-500"/>
+                  <span className="text-xs text-slate-500"><span className="font-bold text-[#0f2040]">{10 - (bookingCount % 10)}</span> للمستوى التالي</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
