@@ -32,7 +32,7 @@ const navItems: NavItem[] = [
         to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
         roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'],
         children: [
-          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'] },
+          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'staff_management' },
           { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
           { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
           { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'inventory' },
@@ -48,7 +48,7 @@ const navItems: NavItem[] = [
           { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
           { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
           { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'coordinator' },
-          { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
+          { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_services' },
           { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
         ],
       },
@@ -162,7 +162,7 @@ export default function Layout() {
   const isVisible = (item: NavItem): boolean => {
     if (item.roles && role && !item.roles.includes(role)) return false
     if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
-    if (item.leaderOnly && !(employee as any)?.isLeader && role !== 'ADMIN') return false
+    if (item.leaderOnly && !employee?.isLeader && role !== 'ADMIN') return false
     if (item.children) return item.children.some(isVisible)
     return true
   }

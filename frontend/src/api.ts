@@ -448,6 +448,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ permissionIds }),
     }),
+  applyDefaultPermissions: (employeeId: string) =>
+    request<Permission[]>(`/permissions/employee/${employeeId}/apply-defaults`, { method: 'POST' }),
+  getRoleDefaults: () =>
+    request<Record<string, string[]>>('/permissions/role-defaults'),
 
   // KPI
   getKpiEvaluations: () => request<KpiEvaluation[]>('/kpi'),

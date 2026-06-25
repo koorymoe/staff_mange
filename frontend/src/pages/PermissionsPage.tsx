@@ -1,23 +1,27 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Permission } from '../api'
+import { roleLabels } from '../session'
 
 export default function PermissionsPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [employeePerms, setEmployeePerms] = useState<string[]>([])
+  const [roleDefaults, setRoleDefaults] = useState<Record<string, string[]>>({})
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [applyingDefaults, setApplyingDefaults] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   useEffect(() => {
     setLoading(true)
-    Promise.all([api.getEmployees(), api.getPermissions()])
-      .then(([emps, perms]) => {
+    Promise.all([api.getEmployees(), api.getPermissions(), api.getRoleDefaults()])
+      .then(([emps, perms, defaults]) => {
         setEmployees(emps)
         setPermissions(perms)
+        setRoleDefaults(defaults)
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -32,6 +36,9 @@ export default function PermissionsPage() {
       .then((perms) => setEmployeePerms(perms.map((p) => p.name)))
       .catch(() => setEmployeePerms([]))
   }, [selectedEmployeeId])
+
+  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)
+  const defaults = selectedEmployee ? (roleDefaults[selectedEmployee.role] || []) : []
 
   const togglePermission = (permName: string) => {
     setEmployeePerms((prev) =>
@@ -58,11 +65,44 @@ export default function PermissionsPage() {
     }
   }
 
+  const handleApplyDefaults = async () => {
+    if (!selectedEmployeeId) return
+    setApplyingDefaults(true)
+    setSuccessMsg(null)
+    setError(null)
+    try {
+      const result = await api.applyDefaultPermissions(selectedEmployeeId)
+      setEmployeePerms(result.map(p => p.name))
+      setSuccessMsg('تم تطبيق الصلاحيات الافتراضية بنجاح')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ')
+    } finally {
+      setApplyingDefaults(false)
+    }
+  }
+
   const filteredEmployees = employees.filter((emp) =>
     emp.name.toLowerCase().includes(search.toLowerCase()),
   )
 
-  const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)
+  const permissionGroups = [
+    {
+      title: 'إدارة الموظفين',
+      perms: ['staff_management', 'edit_employee_profile', 'kpi_management', 'inventory'],
+    },
+    {
+      title: 'إدارة العمل',
+      perms: ['sales_booking', 'manage_customers', 'view_bookings', 'coordinator', 'manage_services', 'mission_tracking'],
+    },
+    {
+      title: 'إدارة المشاريع والخدمات',
+      perms: ['project_management', 'quotation_system', 'gps_system'],
+    },
+    {
+      title: 'الحسابات',
+      perms: ['finance', 'expenses', 'complaints'],
+    },
+  ]
 
   return (
     <div dir="rtl">
@@ -76,7 +116,6 @@ export default function PermissionsPage() {
 
       {!loading && (
         <div className="mt-6 space-y-6">
-          {/* Employee search and select */}
           <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <label className="mb-2 block text-sm font-medium text-slate-600">
               البحث عن موظف
@@ -102,56 +141,85 @@ export default function PermissionsPage() {
               <option value="">-- اختر موظف --</option>
               {filteredEmployees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.name}
+                  {emp.name} — {roleLabels[emp.role] || emp.role}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Permission toggles */}
-          {selectedEmployeeId && (
+          {selectedEmployeeId && selectedEmployee && (
             <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-              <h3 className="mb-2 text-lg font-bold text-brand-800">
-                صلاحيات: {selectedEmployee?.name}
-              </h3>
-              <p className="mb-6 text-sm text-slate-400">
-                فعّل أو عطّل الصلاحيات لكل نظام فرعي
-              </p>
-
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {permissions.map((perm) => {
-                  const isActive = employeePerms.includes(perm.name)
-                  return (
-                    <div
-                      key={perm.id}
-                      className={`flex items-center justify-between rounded-lg border px-5 py-4 transition-colors ${
-                        isActive
-                          ? 'border-brand-500 bg-brand-50'
-                          : 'border-slate-200 bg-white'
-                      }`}
-                    >
-                      <span className={`text-sm font-medium ${isActive ? 'text-brand-800' : 'text-slate-500'}`}>
-                        {perm.label}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isActive}
-                        onClick={() => togglePermission(perm.name)}
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
-                          isActive ? 'bg-brand-600' : 'bg-slate-300'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 translate-y-0.5 transform rounded-full bg-white shadow ring-0 transition-transform ${
-                            isActive ? '-translate-x-5' : '-translate-x-0.5'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  )
-                })}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                <div>
+                  <h3 className="text-lg font-bold text-brand-800">
+                    صلاحيات: {selectedEmployee.name}
+                  </h3>
+                  <p className="text-sm text-slate-400">
+                    الدور: {roleLabels[selectedEmployee.role] || selectedEmployee.role}
+                  </p>
+                </div>
+                {defaults.length > 0 && (
+                  <button
+                    onClick={handleApplyDefaults}
+                    disabled={applyingDefaults}
+                    className="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 transition-all hover:bg-brand-100 disabled:opacity-50"
+                  >
+                    {applyingDefaults ? 'جاري التطبيق...' : 'تطبيق الصلاحيات الافتراضية للدور'}
+                  </button>
+                )}
               </div>
+
+              {permissionGroups.map((group) => {
+                const groupPerms = permissions.filter(p => group.perms.includes(p.name))
+                if (!groupPerms.length) return null
+                return (
+                  <div key={group.title} className="mb-6">
+                    <h4 className="mb-3 text-sm font-bold text-slate-500 border-b border-slate-100 pb-2">
+                      {group.title}
+                    </h4>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {groupPerms.map((perm) => {
+                        const isActive = employeePerms.includes(perm.name)
+                        const isDefault = defaults.includes(perm.name)
+                        return (
+                          <div
+                            key={perm.id}
+                            className={`flex items-center justify-between rounded-lg border px-5 py-4 transition-colors ${
+                              isActive
+                                ? 'border-brand-500 bg-brand-50'
+                                : 'border-slate-200 bg-white'
+                            }`}
+                          >
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-medium ${isActive ? 'text-brand-800' : 'text-slate-500'}`}>
+                                {perm.label}
+                              </span>
+                              {isDefault && !isActive && (
+                                <span className="text-[10px] text-amber-500 mt-0.5">افتراضية لهذا الدور</span>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isActive}
+                              onClick={() => togglePermission(perm.name)}
+                              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full transition-colors ${
+                                isActive ? 'bg-brand-600' : 'bg-slate-300'
+                              }`}
+                            >
+                              <span
+                                className={`pointer-events-none inline-block h-5 w-5 translate-y-0.5 transform rounded-full bg-white shadow ring-0 transition-transform ${
+                                  isActive ? '-translate-x-5' : '-translate-x-0.5'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
 
               {successMsg && (
                 <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
