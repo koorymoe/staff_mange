@@ -477,12 +477,40 @@ export default function Coordinator() {
                     <label className="mb-1 block text-sm font-medium text-slate-600">
                       الموعد المحدد {booking.scheduledAt ? '(تعديله يحتاج موافقة المدقق)' : ''}
                     </label>
-                    <input
-                      type="datetime-local"
-                      defaultValue={booking.scheduledAt ? toLocalInput(booking.scheduledAt) : ''}
-                      onBlur={(e) => handleScheduleChange(booking, e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                    />
+                    <div className="flex gap-2">
+                      {scheduleMode[`c_${booking.id}`] === 'manual' ? (
+                        <input
+                          type="datetime-local"
+                          defaultValue={booking.scheduledAt ? toLocalInput(booking.scheduledAt) : ''}
+                          onBlur={(e) => handleScheduleChange(booking, e.target.value)}
+                          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                        />
+                      ) : (
+                        <select
+                          defaultValue=""
+                          onChange={(e) => { if (e.target.value) handleScheduleChange(booking, e.target.value) }}
+                          className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                        >
+                          <option value="">
+                            {booking.scheduledAt
+                              ? `الحالي: ${new Date(booking.scheduledAt).toLocaleString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                              : '-- اختر موعد --'}
+                          </option>
+                          {getAvailableSlots(booking.id).map(s => (
+                            <option key={s.value} value={s.value} disabled={s.label.includes('محجوز')}>
+                              {s.label}
+                            </option>
+                          ))}
+                        </select>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => setScheduleMode(prev => ({ ...prev, [`c_${booking.id}`]: prev[`c_${booking.id}`] === 'manual' ? 'slots' : 'manual' }))}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-50"
+                      >
+                        {scheduleMode[`c_${booking.id}`] === 'manual' ? 'المواعيد' : 'يدوي'}
+                      </button>
+                    </div>
                     {booking.pendingScheduledAt && (
                       <p className="mt-1 text-xs font-bold text-amber-600">
                         طلب تعديل بانتظار موافقة المدقق:{' '}
