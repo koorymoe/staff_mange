@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Booking, type Employee } from '../api'
+import { api, type Booking, type Employee, type CartItem } from '../api'
 import { useSession } from '../session'
 
 // Convert an ISO date string to the local "YYYY-MM-DDTHH:mm" format expected by datetime-local inputs
@@ -78,6 +78,40 @@ export default function Coordinator() {
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({})
   const [addressDrafts, setAddressDrafts] = useState<Record<string, string>>({})
   const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({})
+
+  // سلة المنتجات
+  const [cartItems, setCartItems] = useState<Record<string, CartItem[]>>({})
+  const [cartOpen, setCartOpen] = useState<Record<string, boolean>>({})
+  const [cartForm, setCartForm] = useState<Record<string, { productName: string; quantity: string; unitPrice: string; notes: string }>>({})
+
+  const loadCart = async (bookingId: string) => {
+    const items = await api.getCartItems(bookingId)
+    setCartItems(prev => ({ ...prev, [bookingId]: items }))
+  }
+
+  const addCartItem = async (bookingId: string) => {
+    const form = cartForm[bookingId]
+    if (!form?.productName || !form?.quantity || !form?.unitPrice) return
+    await api.addCartItem(bookingId, {
+      productName: form.productName,
+      quantity: Number(form.quantity),
+      unitPrice: Number(form.unitPrice),
+      notes: form.notes || undefined,
+    })
+    setCartForm(prev => ({ ...prev, [bookingId]: { productName: '', quantity: '', unitPrice: '', notes: '' } }))
+    loadCart(bookingId)
+  }
+
+  const removeCartItem = async (bookingId: string, itemId: string) => {
+    await api.deleteCartItem(itemId)
+    loadCart(bookingId)
+  }
+
+  const toggleCart = (bookingId: string) => {
+    const isOpen = !cartOpen[bookingId]
+    setCartOpen(prev => ({ ...prev, [bookingId]: isOpen }))
+    if (isOpen && !cartItems[bookingId]) loadCart(bookingId)
+  }
 
   const load = () => {
     setLoading(true)
@@ -503,6 +537,104 @@ export default function Coordinator() {
                     )}
                   </div>
                 )}
+
+                {/* سلة المنتجات */}
+                <div className="mt-4 border-t border-slate-100 pt-4">
+                  <button
+                    onClick={() => toggleCart(booking.id)}
+                    className="flex items-center gap-2 rounded-lg bg-gradient-to-l from-violet-500 to-violet-700 px-4 py-2 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+                    سلة الزبون
+                    {cartItems[booking.id]?.length ? (
+                      <span className="rounded-full bg-white/30 px-2 py-0.5 text-xs">{cartItems[booking.id].length}</span>
+                    ) : null}
+                  </button>
+
+                  {cartOpen[booking.id] && (
+                    <div className="mt-3 rounded-xl border border-violet-100 bg-violet-50/50 p-4">
+                      {/* قائمة العناصر */}
+                      {(cartItems[booking.id] || []).length > 0 && (
+                        <div className="mb-4 overflow-x-auto">
+                          <table className="w-full text-sm">
+                            <thead>
+                              <tr className="border-b border-violet-200 text-right text-xs text-violet-600">
+                                <th className="pb-2 pr-2">المنتج</th>
+                                <th className="pb-2 pr-2">الكمية</th>
+                                <th className="pb-2 pr-2">سعر الوحدة</th>
+                                <th className="pb-2 pr-2">المجموع</th>
+                                <th className="pb-2 pr-2">ملاحظات</th>
+                                <th className="pb-2"></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {(cartItems[booking.id] || []).map(item => (
+                                <tr key={item.id} className="border-b border-violet-100">
+                                  <td className="py-2 pr-2 font-medium text-brand-800">{item.productName}</td>
+                                  <td className="py-2 pr-2">{item.quantity}</td>
+                                  <td className="py-2 pr-2">{item.unitPrice.toLocaleString()}</td>
+                                  <td className="py-2 pr-2 font-bold text-violet-700">{item.totalPrice.toLocaleString()}</td>
+                                  <td className="py-2 pr-2 text-xs text-slate-500">{item.notes || '-'}</td>
+                                  <td className="py-2">
+                                    <button
+                                      onClick={() => removeCartItem(booking.id, item.id)}
+                                      className="rounded p-1 text-red-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                                    >
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                            <tfoot>
+                              <tr className="font-bold text-violet-800">
+                                <td colSpan={3} className="pt-3 pr-2">التكلفة الكلية</td>
+                                <td className="pt-3 pr-2">{(cartItems[booking.id] || []).reduce((sum, i) => sum + i.totalPrice, 0).toLocaleString()}</td>
+                                <td colSpan={2}></td>
+                              </tr>
+                            </tfoot>
+                          </table>
+                        </div>
+                      )}
+
+                      {/* إضافة عنصر جديد */}
+                      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                        <input
+                          placeholder="اسم المنتج"
+                          value={cartForm[booking.id]?.productName || ''}
+                          onChange={e => setCartForm(prev => ({ ...prev, [booking.id]: { ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' }, productName: e.target.value } }))}
+                          className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
+                        />
+                        <input
+                          type="number"
+                          placeholder="الكمية"
+                          value={cartForm[booking.id]?.quantity || ''}
+                          onChange={e => setCartForm(prev => ({ ...prev, [booking.id]: { ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' }, quantity: e.target.value } }))}
+                          className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
+                        />
+                        <input
+                          type="number"
+                          placeholder="سعر الوحدة"
+                          value={cartForm[booking.id]?.unitPrice || ''}
+                          onChange={e => setCartForm(prev => ({ ...prev, [booking.id]: { ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' }, unitPrice: e.target.value } }))}
+                          className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
+                        />
+                        <input
+                          placeholder="ملاحظات (اختياري)"
+                          value={cartForm[booking.id]?.notes || ''}
+                          onChange={e => setCartForm(prev => ({ ...prev, [booking.id]: { ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' }, notes: e.target.value } }))}
+                          className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
+                        />
+                        <button
+                          onClick={() => addCartItem(booking.id)}
+                          className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-violet-700"
+                        >
+                          إضافة
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
             {confirmedBookings.length === 0 && (
