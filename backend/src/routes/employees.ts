@@ -21,7 +21,7 @@ router.get('/', async (_req, res) => {
 // GET /api/employees/supervisors - team leaders eligible to supervise a dispatch
 router.get('/supervisors', async (_req, res) => {
   const employees = await prisma.employee.findMany({
-    where: { status: 'ACTIVE', OR: [{ role: 'PROJECT_MANAGER' }, { isLeader: true }] },
+    where: { AND: [{ status: 'ACTIVE' }, { OR: [{ role: 'PROJECT_MANAGER' }, { isLeader: true }] }] },
     orderBy: { name: 'asc' },
   })
   res.json(employees.map(stripPassword))
