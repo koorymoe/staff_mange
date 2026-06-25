@@ -32,12 +32,12 @@ const navItems: NavItem[] = [
         to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
         roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'],
         children: [
-          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'staff_management' },
+          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
           { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
           { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
-          { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'inventory' },
-          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
-          { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR'], permission: 'complaints' },
+          { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'inventory' },
+          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
+          { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
         ],
       },
       {
@@ -70,9 +70,9 @@ const navItems: NavItem[] = [
       },
       {
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
-        roles: ['ADMIN', 'FINANCE'],
+        roles: ['ADMIN', 'FINANCE', 'MONITOR'],
         children: [
-          { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'finance' },
+          { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
           { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN', 'TECHNICIAN', 'PROJECT_MANAGER'], permission: 'expenses' },
         ],
       },
