@@ -97,6 +97,7 @@ router.put('/:id', async (req, res) => {
     password,
     hasDrivingLicense,
     hasSafetyCertificate,
+    isLeader,
   } = req.body
 
   if (username) {
@@ -120,6 +121,7 @@ router.put('/:id', async (req, res) => {
       password: password ? bcrypt.hashSync(password, 10) : undefined,
       hasDrivingLicense,
       hasSafetyCertificate,
+      isLeader,
     },
   })
   res.json(stripPassword(employee))
