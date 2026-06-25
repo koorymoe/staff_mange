@@ -137,6 +137,13 @@ enum QuotationStatus {
   REJECTED
 }
 
+enum ProcurementRequestStatus {
+  PENDING      // بانتظار التوفير
+  IN_PROGRESS  // جاري التوفير
+  FULFILLED    // تم التوفير
+  REJECTED     // مرفوض
+}
+
 enum BookingType {
   REGULAR     // حجز عادي
   MAINTENANCE // حجز صيانة
@@ -273,6 +280,8 @@ model Employee {
   gpsMaintenanceAdmin    GpsMaintenanceRequest[] @relation("GpsMaintenanceAdmin")
   quotations          Quotation[] @relation("QuotationCreator")
   supplierRatings     SupplierRating[]
+  procurementRequests    ProcurementRequest[] @relation("ProcurementRequester")
+  procurementFulfilled   ProcurementRequest[] @relation("ProcurementFulfiller")
 }
 
 // مصاريف يدفعها الموظف من جيبه ويحتاج استرجاعها/استقطاعها
@@ -385,6 +394,7 @@ model Booking {
   complaints  Complaint[]
   workReports WorkReport[]
   missions    Mission[]
+  procurementRequests    ProcurementRequest[]
 
   @@index([customerId])
   @@index([serviceId])
@@ -895,4 +905,40 @@ model Project {
   updatedAt    DateTime @updatedAt
 
   @@index([stage])
+}
+
+// ---------------------------------------------------------------------------
+// Procurement / Material Requests (نظام المشتريات)
+// ---------------------------------------------------------------------------
+
+model ProcurementRequest {
+  id              String   @id @default(cuid())
+  code            String   @unique // PR-0001
+  requestedBy     Employee @relation("ProcurementRequester", fields: [requestedById], references: [id])
+  requestedById   String
+  booking         Booking? @relation(fields: [bookingId], references: [id])
+  bookingId       String?
+  notes           String?
+  status          ProcurementRequestStatus @default(PENDING)
+  fulfilledBy     Employee? @relation("ProcurementFulfiller", fields: [fulfilledById], references: [id])
+  fulfilledById   String?
+  totalCost       Float?
+  fulfillmentNotes String?
+  createdAt       DateTime @default(now())
+  fulfilledAt     DateTime?
+  items           ProcurementItem[]
+  @@index([requestedById])
+  @@index([status])
+}
+
+model ProcurementItem {
+  id          String   @id @default(cuid())
+  request     ProcurementRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  requestId   String
+  productName String
+  quantity    Int
+  unitPrice   Float?
+  totalPrice  Float?
+  fulfilled   Boolean @default(false)
+  @@index([requestId])
 }

@@ -207,6 +207,21 @@ export interface KpiEvaluation {
   createdAt: string
 }
 
+export interface TechnicianKpi {
+  employeeId: string
+  employeeName: string
+  period: string
+  breakdown: {
+    completedBookings: { count: number; points: number }
+    completionSpeed: { avgMinutes: number; points: number }
+    workReports: { count: number; fullReports: number; points: number }
+    attendance: { daysPresent: number; totalDays: number; points: number }
+    complaints: { count: number; points: number }
+    manualDeductions: { count: number; points: number }
+  }
+  totalPoints: number
+}
+
 export interface CartItem {
   id: string
   bookingId: string
@@ -272,6 +287,43 @@ export interface Complaint {
   resolution: string | null
   createdAt: string
   resolvedAt: string | null
+}
+
+export interface ProcurementItem {
+  id: string
+  requestId: string
+  productName: string
+  quantity: number
+  unitPrice: number | null
+  totalPrice: number | null
+  fulfilled: boolean
+}
+
+export interface ProcurementRequest {
+  id: string
+  code: string
+  requestedBy: { id: string; name: string; role: string }
+  requestedById: string
+  booking: (Booking & { customer: Customer }) | null
+  bookingId: string | null
+  notes: string | null
+  status: 'PENDING' | 'IN_PROGRESS' | 'FULFILLED' | 'REJECTED'
+  fulfilledBy: { id: string; name: string } | null
+  fulfilledById: string | null
+  totalCost: number | null
+  fulfillmentNotes: string | null
+  createdAt: string
+  fulfilledAt: string | null
+  items: ProcurementItem[]
+}
+
+export interface ProcurementStats {
+  totalSpent: number
+  totalItems: number
+  pendingCount: number
+  monthlySpent: number
+  fulfilledCount: number
+  byMonth: Record<string, number>
 }
 
 export const api = {
@@ -460,6 +512,12 @@ export const api = {
     request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
   deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
 
+  // Smart KPI
+  getTechnicianKpi: (employeeId: string, month?: string) =>
+    request<TechnicianKpi>(`/smart-kpi/technician/${employeeId}${month ? `?month=${month}` : ''}`),
+  getKpiLeaderboard: (month?: string) =>
+    request<TechnicianKpi[]>(`/smart-kpi/leaderboard${month ? `?month=${month}` : ''}`),
+
   // Cart
   getCartItems: (bookingId: string) => request<CartItem[]>(`/cart/booking/${bookingId}`),
   addCartItem: (bookingId: string, data: { productName: string; quantity: number; unitPrice: number; notes?: string }) =>
@@ -514,4 +572,14 @@ export const api = {
     request<any>('/gps/settings', { method: 'PUT', body: JSON.stringify(data) }),
   updateGpsCustomer: (id: string, data: any) =>
     request<any>(`/gps/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // Procurement
+  getProcurementRequests: () => request<ProcurementRequest[]>('/procurement'),
+  getProcurementStats: () => request<ProcurementStats>('/procurement/stats'),
+  createProcurementRequest: (data: { requestedById: string; bookingId?: string; notes?: string; items: { productName: string; quantity: number }[] }) =>
+    request<ProcurementRequest>('/procurement', { method: 'POST', body: JSON.stringify(data) }),
+  updateProcurementStatus: (id: string, status: string) =>
+    request<ProcurementRequest>(`/procurement/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  fulfillProcurementRequest: (id: string, data: { fulfilledById: string; totalCost?: number; fulfillmentNotes?: string; items?: { id: string; unitPrice?: number; totalPrice?: number; fulfilled?: boolean }[] }) =>
+    request<ProcurementRequest>(`/procurement/${id}/fulfill`, { method: 'PUT', body: JSON.stringify(data) }),
 }

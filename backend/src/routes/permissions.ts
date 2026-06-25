@@ -20,6 +20,7 @@ const defaultPermissions = [
   { name: 'quotation_system', label: 'نظام عروض الأسعار' },
   { name: 'finance', label: 'المالية' },
   { name: 'expenses', label: 'المصاريف' },
+  { name: 'procurement', label: 'المشتريات' },
 ]
 
 const roleDefaultPermissions: Record<string, string[]> = {

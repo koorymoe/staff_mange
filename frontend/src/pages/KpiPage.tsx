@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type KpiEvaluation, type Employee } from '../api'
+import { api, type KpiEvaluation, type Employee, type TechnicianKpi } from '../api'
 import { useSession } from '../session'
 
 const KPI_CRITERIA = [
@@ -32,14 +32,216 @@ function isThisWeek(dateStr: string): boolean {
   return d >= weekStart
 }
 
-export default function KpiPage() {
+function getCurrentMonth(): string {
+  const now = new Date()
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+}
+
+const BREAKDOWN_LABELS: Record<string, string> = {
+  completedBookings: 'الحجوزات المنجزة',
+  completionSpeed: 'سرعة الإنجاز',
+  workReports: 'تقارير العمل',
+  attendance: 'الحضور',
+  complaints: 'الشكاوى',
+  manualDeductions: 'خصومات يدوية',
+}
+
+// ─── Technician Tab ───────────────────────────────────────────────────────────
+
+function TechnicianTab() {
+  const [leaderboard, setLeaderboard] = useState<TechnicianKpi[]>([])
+  const [month, setMonth] = useState(getCurrentMonth)
+  const [loading, setLoading] = useState(true)
+  const [selectedTech, setSelectedTech] = useState<TechnicianKpi | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    api
+      .getKpiLeaderboard(month)
+      .then(setLeaderboard)
+      .catch(() => setLeaderboard([]))
+      .finally(() => setLoading(false))
+  }, [month])
+
+  const rankBadge = (index: number) => {
+    if (index === 0)
+      return (
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-yellow-300 to-yellow-500 text-sm font-extrabold text-yellow-900 shadow">
+          1
+        </span>
+      )
+    if (index === 1)
+      return (
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-gray-200 to-gray-400 text-sm font-extrabold text-gray-800 shadow">
+          2
+        </span>
+      )
+    if (index === 2)
+      return (
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-amber-700 text-sm font-extrabold text-white shadow">
+          3
+        </span>
+      )
+    return (
+      <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-bold text-slate-500">
+        {index + 1}
+      </span>
+    )
+  }
+
+  return (
+    <div>
+      {/* Month selector */}
+      <div className="mb-6 flex items-center gap-3">
+        <label className="text-sm font-medium text-slate-600">الشهر:</label>
+        <input
+          type="month"
+          value={month}
+          onChange={(e) => setMonth(e.target.value)}
+          className="rounded-xl border border-gray-300 px-4 py-2 text-right outline-none focus:border-brand-500"
+        />
+      </div>
+
+      {loading ? (
+        <p className="mt-6 text-slate-400">جاري التحميل...</p>
+      ) : leaderboard.length === 0 ? (
+        <p className="mt-6 text-center text-slate-400">لا يوجد فنيون لعرض النتائج</p>
+      ) : (
+        <>
+          {/* Leaderboard table */}
+          <div className="overflow-hidden rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-right">
+                <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
+                  <tr>
+                    <th className="px-4 py-3 text-sm font-semibold">الترتيب</th>
+                    <th className="px-4 py-3 text-sm font-semibold">الفني</th>
+                    <th className="px-4 py-3 text-sm font-semibold">الحجوزات</th>
+                    <th className="px-4 py-3 text-sm font-semibold">التقارير</th>
+                    <th className="px-4 py-3 text-sm font-semibold">الحضور</th>
+                    <th className="px-4 py-3 text-sm font-semibold">إجمالي النقاط</th>
+                    <th className="px-4 py-3 text-sm font-semibold">تفاصيل</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {leaderboard.map((tech, i) => (
+                    <tr
+                      key={tech.employeeId}
+                      className={`transition-colors hover:bg-slate-50 ${i < 3 ? 'bg-slate-50/50' : ''}`}
+                    >
+                      <td className="px-4 py-3">{rankBadge(i)}</td>
+                      <td className="px-4 py-3 font-medium">{tech.employeeName}</td>
+                      <td className="px-4 py-3 text-sm">
+                        {tech.breakdown.completedBookings.count}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {tech.breakdown.workReports.count}
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {tech.breakdown.attendance.daysPresent}/{tech.breakdown.attendance.totalDays}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`rounded-full px-3 py-1 text-sm font-bold ${
+                            tech.totalPoints >= 100
+                              ? 'bg-green-100 text-green-700'
+                              : tech.totalPoints >= 50
+                                ? 'bg-amber-100 text-amber-700'
+                                : 'bg-red-100 text-red-700'
+                          }`}
+                        >
+                          {tech.totalPoints}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <button
+                          onClick={() =>
+                            setSelectedTech(
+                              selectedTech?.employeeId === tech.employeeId ? null : tech,
+                            )
+                          }
+                          className="rounded-lg bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-100"
+                        >
+                          {selectedTech?.employeeId === tech.employeeId ? 'إخفاء' : 'عرض'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Detail card */}
+          {selectedTech && (
+            <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+              <h3 className="mb-4 text-lg font-bold text-brand-800">
+                تفاصيل نقاط: {selectedTech.employeeName}
+              </h3>
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                {(
+                  Object.keys(selectedTech.breakdown) as Array<
+                    keyof TechnicianKpi['breakdown']
+                  >
+                ).map((key) => {
+                  const item = selectedTech.breakdown[key]
+                  return (
+                    <div
+                      key={key}
+                      className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center"
+                    >
+                      <p className="text-sm font-medium text-slate-500">
+                        {BREAKDOWN_LABELS[key]}
+                      </p>
+                      <p
+                        className={`mt-2 text-2xl font-extrabold ${
+                          item.points >= 0 ? 'text-brand-700' : 'text-red-600'
+                        }`}
+                      >
+                        {item.points > 0 ? `+${item.points}` : item.points}
+                      </p>
+                      {'count' in item && (
+                        <p className="mt-1 text-xs text-slate-400">
+                          العدد: {item.count}
+                        </p>
+                      )}
+                      {'avgMinutes' in item && (item as any).avgMinutes > 0 && (
+                        <p className="mt-1 text-xs text-slate-400">
+                          متوسط: {(item as any).avgMinutes} دقيقة
+                        </p>
+                      )}
+                      {'daysPresent' in item && (
+                        <p className="mt-1 text-xs text-slate-400">
+                          {(item as any).daysPresent}/{(item as any).totalDays} يوم
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-4 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 p-4 text-center">
+                <p className="text-sm text-white/80">إجمالي النقاط</p>
+                <p className="text-3xl font-extrabold text-white">
+                  {selectedTech.totalPoints}
+                </p>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ─── Administrative Tab ───────────────────────────────────────────────────────
+
+function AdministrativeTab() {
   const { employee: currentUser } = useSession()
   const [evaluations, setEvaluations] = useState<KpiEvaluation[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Evaluator form state
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [deductCriteria, setDeductCriteria] = useState<string | null>(null)
   const [deductPoints, setDeductPoints] = useState(1)
@@ -53,7 +255,7 @@ export default function KpiPage() {
     Promise.all([api.getKpiEvaluations(), api.getEmployees()])
       .then(([evals, emps]) => {
         setEvaluations(evals)
-        setEmployees(emps)
+        setEmployees(emps.filter((e) => e.role !== 'TECHNICIAN'))
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -63,7 +265,6 @@ export default function KpiPage() {
 
   const weeklyEvals = evaluations.filter((ev) => isThisWeek(ev.createdAt))
 
-  // Per-employee weekly deductions
   const weeklyByEmployee = weeklyEvals.reduce<
     Record<string, { name: string; totalPoints: number; totalIQD: number; deductions: KpiEvaluation[] }>
   >((acc, ev) => {
@@ -76,10 +277,21 @@ export default function KpiPage() {
     return acc
   }, {})
 
-  // Current user's weekly data
   const myWeekly = currentUser ? weeklyByEmployee[currentUser.id] : null
   const myDeductedPoints = myWeekly?.totalPoints || 0
   const myRemainingPoints = POINTS_PER_WEEK - myDeductedPoints
+
+  const getPointColor = (deducted: number) => {
+    if (deducted === 0) return 'text-green-600'
+    if (deducted <= 3) return 'text-amber-600'
+    return 'text-red-600'
+  }
+
+  const getBarColor = (deducted: number) => {
+    if (deducted === 0) return 'bg-green-500'
+    if (deducted <= 3) return 'bg-amber-500'
+    return 'bg-red-500'
+  }
 
   const handleDeduct = async () => {
     if (!currentUser || !selectedEmployeeId || !deductCriteria) return
@@ -114,18 +326,6 @@ export default function KpiPage() {
     }
   }
 
-  const getPointColor = (deducted: number) => {
-    if (deducted === 0) return 'text-green-600'
-    if (deducted <= 3) return 'text-amber-600'
-    return 'text-red-600'
-  }
-
-  const getBarColor = (deducted: number) => {
-    if (deducted === 0) return 'bg-green-500'
-    if (deducted <= 3) return 'bg-amber-500'
-    return 'bg-red-500'
-  }
-
   if (loading) return <p className="mt-6 text-slate-400">جاري التحميل...</p>
   if (error)
     return (
@@ -136,16 +336,9 @@ export default function KpiPage() {
 
   return (
     <div>
-      <div>
-        <h2 className="text-2xl font-bold text-brand-900">تقييم الأداء (KPI)</h2>
-        <p className="mt-1 text-slate-500">
-          نظام النقاط الأسبوعي - {POINTS_PER_WEEK} نقاط بقيمة {IQD_PER_POINT.toLocaleString()} د.ع لكل نقطة
-        </p>
-      </div>
-
-      {/* My weekly points (all employees see this) */}
-      {currentUser && (
-        <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+      {/* My weekly points */}
+      {currentUser && currentUser.role !== 'TECHNICIAN' && (
+        <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-slate-500">نقاطك هذا الأسبوع</p>
@@ -156,7 +349,7 @@ export default function KpiPage() {
             <div className="text-left">
               <p className="text-sm text-slate-500">إجمالي الخصم</p>
               <p className="mt-1 text-2xl font-bold text-red-600">
-                {((myWeekly?.totalIQD || 0)).toLocaleString()} د.ع
+                {(myWeekly?.totalIQD || 0).toLocaleString()} د.ع
               </p>
             </div>
           </div>
@@ -166,7 +359,6 @@ export default function KpiPage() {
               style={{ width: `${(myRemainingPoints / POINTS_PER_WEEK) * 100}%` }}
             />
           </div>
-          {/* My deduction history */}
           {myWeekly && myWeekly.deductions.length > 0 && (
             <div className="mt-4 space-y-2">
               <p className="text-sm font-medium text-slate-600">سجل الخصومات</p>
@@ -192,7 +384,6 @@ export default function KpiPage() {
       {/* Evaluator section */}
       {isEvaluator && (
         <>
-          {/* Employee selector */}
           <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <h3 className="mb-4 text-lg font-bold text-brand-800">خصم نقاط موظف</h3>
             <div className="mb-4">
@@ -219,7 +410,6 @@ export default function KpiPage() {
 
             {selectedEmployeeId && (
               <>
-                {/* Selected employee weekly summary */}
                 {(() => {
                   const empW = weeklyByEmployee[selectedEmployeeId]
                   const deducted = empW?.totalPoints || 0
@@ -241,7 +431,6 @@ export default function KpiPage() {
                   )
                 })()}
 
-                {/* KPI criteria cards */}
                 <p className="mb-3 text-sm font-medium text-slate-600">اختر معيار الخصم</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {KPI_CRITERIA.map((c) => (
@@ -263,7 +452,6 @@ export default function KpiPage() {
                   ))}
                 </div>
 
-                {/* Deduction form */}
                 {deductCriteria && (
                   <div className="mt-4 rounded-xl border border-red-100 bg-red-50/50 p-4">
                     <p className="mb-3 font-medium text-red-800">
@@ -311,8 +499,8 @@ export default function KpiPage() {
             )}
           </div>
 
-          {/* Weekly overview table */}
-          <div className="mt-6 rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] overflow-hidden">
+          {/* Weekly overview */}
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <div className="p-5">
               <h3 className="text-lg font-bold text-brand-800">ملخص الأسبوع</h3>
             </div>
@@ -392,8 +580,8 @@ export default function KpiPage() {
             </div>
           </div>
 
-          {/* Full deduction history */}
-          <div className="mt-6 rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] overflow-hidden">
+          {/* Full history */}
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <div className="p-5">
               <h3 className="text-lg font-bold text-brand-800">سجل التقييمات</h3>
             </div>
@@ -450,6 +638,50 @@ export default function KpiPage() {
           </div>
         </>
       )}
+    </div>
+  )
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function KpiPage() {
+  const [activeTab, setActiveTab] = useState<'technician' | 'admin'>('technician')
+
+  return (
+    <div>
+      <div>
+        <h2 className="text-2xl font-bold text-brand-900">تقييم الأداء (KPI)</h2>
+        <p className="mt-1 text-slate-500">نظام النقاط الذكي للفنيين والنقاط الإدارية</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="mt-6 flex gap-2">
+        <button
+          onClick={() => setActiveTab('technician')}
+          className={`rounded-xl px-6 py-3 text-sm font-bold transition-all ${
+            activeTab === 'technician'
+              ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow'
+              : 'border bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          نقاط الفنيين
+        </button>
+        <button
+          onClick={() => setActiveTab('admin')}
+          className={`rounded-xl px-6 py-3 text-sm font-bold transition-all ${
+            activeTab === 'admin'
+              ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow'
+              : 'border bg-white text-slate-600 hover:bg-slate-50'
+          }`}
+        >
+          نقاط إدارية
+        </button>
+      </div>
+
+      {/* Tab content */}
+      <div className="mt-6">
+        {activeTab === 'technician' ? <TechnicianTab /> : <AdministrativeTab />}
+      </div>
     </div>
   )
 }

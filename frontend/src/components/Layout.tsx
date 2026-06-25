@@ -78,8 +78,9 @@ const navItems: NavItem[] = [
       },
       {
         to: '/mgmt-procurement', label: 'إدارة المشتريات', icon: <></>,
-        roles: ['ADMIN', 'MONITOR'],
+        roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN'],
         children: [
+          { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN'], permission: 'procurement' },
           { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'MONITOR'] },
         ],
       },
