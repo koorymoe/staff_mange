@@ -1,5 +1,4 @@
 import { useEffect, useState, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { api, type Product } from '../api'
 import { useSession } from '../session'
 import { _IMG_VSTRIP, _IMG_FBANNER } from '../printImages'
@@ -25,7 +24,6 @@ const emptyItem = (): ItemRow => ({
 const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 export default function QuotationNew() {
-  const navigate = useNavigate()
   const { employee } = useSession()
   const [products, setProducts] = useState<Product[]>([])
   const [customerName, setCustomerName] = useState('')
@@ -115,11 +113,15 @@ export default function QuotationNew() {
         customerAddress: customerAddress || undefined,
         projectName: projectName || undefined,
         items: validItems.map(it => ({
-          description: it.productName,
+          productName: it.productName,
           unit: it.unit,
           quantity: it.quantity,
           unitPrice: it.unitPrice,
+          totalPrice: it.quantity * it.unitPrice,
         })),
+        grandTotal,
+        discountValue,
+        netTotal,
         discountPercent,
         duration: duration || undefined,
         notes: notes || undefined,

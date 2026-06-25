@@ -173,7 +173,7 @@ export default function Employees() {
 
   const getEmployeeStats = (empId: string) => {
     const techStat = stats?.technicianStats.find((s) => s.employeeId === empId)
-    return { completed: techStat?.completed || 0, inProgress: techStat?.today || 0, overtime: 0 }
+    return { completed: techStat?.completed || 0, inProgress: techStat?.totalAssigned || 0, overtime: 0 }
   }
 
   const getAvatarGradient = (idx: number) => avatarGradients[idx % avatarGradients.length]
@@ -345,7 +345,6 @@ export default function Employees() {
               const currentLevel = [...levels].reverse().find(l => skillCount >= l.min) || levels[0]
               const nextLevel = levels.find(l => l.min > skillCount)
               const empIdx = employees.findIndex(e => e.id === selectedEmployee.id)
-              const rc = roleColors[selectedEmployee.role] || { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-500' }
 
               return (
                 <div>

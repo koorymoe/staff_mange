@@ -126,12 +126,6 @@ export default function KpiPage() {
     return 'bg-red-500'
   }
 
-  const getCardBorder = (deducted: number) => {
-    if (deducted === 0) return 'border-green-200'
-    if (deducted <= 3) return 'border-amber-200'
-    return 'border-red-200'
-  }
-
   if (loading) return <p className="mt-6 text-slate-400">جاري التحميل...</p>
   if (error)
     return (

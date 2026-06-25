@@ -60,7 +60,6 @@ export default function MissionsPage() {
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR'
-  const isTech = employee?.role === 'TECHNICIAN' || employee?.role === 'PROJECT_MANAGER'
 
   const load = useCallback(async () => {
     try {

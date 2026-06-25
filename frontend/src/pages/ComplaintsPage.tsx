@@ -19,7 +19,7 @@ const statusColors: Record<Complaint['status'], string> = {
 export default function ComplaintsPage() {
   const { employee: currentUser } = useSession()
   const [complaints, setComplaints] = useState<Complaint[]>([])
-  const [customers, setCustomers] = useState<Customer[]>([])
+  const [, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

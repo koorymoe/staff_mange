@@ -223,7 +223,7 @@ export default function GpsDashboard() {
                     className={`cursor-pointer rounded-2xl bg-white p-4 shadow-sm transition-all hover:shadow-md ${
                       selectedDevice?.id === d.id ? 'ring-2' : ''
                     }`}
-                    style={selectedDevice?.id === d.id ? { ringColor: '#1a3a5c' } : {}}
+                    style={selectedDevice?.id === d.id ? { '--tw-ring-color': '#1a3a5c' } as React.CSSProperties : {}}
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold" style={{ color: '#1a3a5c' }}>{d.customer?.fullName || 'غير معروف'}</span>
