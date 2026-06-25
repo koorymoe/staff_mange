@@ -10,8 +10,8 @@ const toLocalInput = (iso: string) => {
 }
 
 // ساعات العمل وطول كل موعد (بالساعات) - تستخدم لاقتراح أقرب موعد فاضي
-const WORK_START_HOUR = 9
-const WORK_END_HOUR = 23
+const WORK_START_HOUR = 8
+const LAST_SLOT_HOUR = 22
 const SLOT_HOURS = 2
 
 
@@ -42,34 +42,32 @@ export default function Coordinator() {
   const [scheduleMode, setScheduleMode] = useState<Record<string, 'slots' | 'manual'>>({})
 
   const getAvailableSlots = (excludeId?: string) => {
-    const taken = new Set<string>()
+    const takenKeys = new Set<string>()
+    const toKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}`
     bookings
       .filter(b => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING' || b.status === 'IN_PROGRESS'))
-      .forEach(b => taken.add(new Date(b.scheduledAt!).toISOString()))
+      .forEach(b => takenKeys.add(toKey(new Date(b.scheduledAt!))))
     Object.entries(scheduleDrafts).forEach(([id, val]) => {
-      if (id !== excludeId && val) taken.add(new Date(val).toISOString())
+      if (id !== excludeId && val) takenKeys.add(toKey(new Date(val)))
     })
 
     const slots: { value: string; label: string }[] = []
     const slot = new Date()
     slot.setMinutes(0, 0, 0)
     if (slot.getHours() < WORK_START_HOUR) slot.setHours(WORK_START_HOUR)
-    else if (slot.getHours() >= WORK_END_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
-    else { slot.setHours(slot.getHours() + 1); if (slot.getHours() >= WORK_END_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) } }
+    else if (slot.getHours() > LAST_SLOT_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
+    else { slot.setHours(slot.getHours() + 1); if (slot.getHours() > LAST_SLOT_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) } }
 
-    for (let i = 0; i < 30; i++) {
-      const key = `${slot.getFullYear()}-${slot.getMonth()}-${slot.getDate()}-${slot.getHours()}`
-      const isoKey = new Date(slot).toISOString()
-      const pad = (n: number) => String(n).padStart(2, '0')
-      const value = `${slot.getFullYear()}-${pad(slot.getMonth() + 1)}-${pad(slot.getDate())}T${pad(slot.getHours())}:00`
-      const label = slot.toLocaleString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
-      const isTaken = taken.has(isoKey) || Array.from(taken).some(t => {
-        const d = new Date(t)
-        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}` === key
-      })
-      slots.push({ value, label: isTaken ? `${label} (محجوز)` : label })
+    for (let i = 0; i < 200 && slots.length < 30; i++) {
+      const key = toKey(slot)
+      if (!takenKeys.has(key)) {
+        const pad = (n: number) => String(n).padStart(2, '0')
+        const value = `${slot.getFullYear()}-${pad(slot.getMonth() + 1)}-${pad(slot.getDate())}T${pad(slot.getHours())}:00`
+        const label = slot.toLocaleString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+        slots.push({ value, label })
+      }
       slot.setHours(slot.getHours() + SLOT_HOURS)
-      if (slot.getHours() >= WORK_END_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
+      if (slot.getHours() > LAST_SLOT_HOUR) { slot.setDate(slot.getDate() + 1); slot.setHours(WORK_START_HOUR) }
     }
     return slots
   }
