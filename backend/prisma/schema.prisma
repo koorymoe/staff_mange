@@ -251,6 +251,8 @@ model Employee {
   supervisedBookings  Booking[] @relation("ProjectSupervisor")
   // Bookings this employee confirmed (as coordinator/admin)
   confirmedBookings   Booking[] @relation("ConfirmedByEmployee")
+  // Bookings where this employee is responsible for expenses
+  expenseBookings     Booking[] @relation("ExpenseResponsible")
 
   assignments BookingAssignment[]
   expenses    Expense[]
@@ -346,6 +348,9 @@ model Booking {
   projectCar    String? // سيارة المشروع
   crewNotes     String? // ملاحظات الكادر
   mapLocation   String? // الموقع على الخريطة
+
+  expenseResponsible   Employee? @relation("ExpenseResponsible", fields: [expenseResponsibleId], references: [id])
+  expenseResponsibleId String? // المسؤول عن المصاريف في هذا الحجز
 
   assignedVehicle String? // السيارة المخصصة لتنفيذ المهمة
 

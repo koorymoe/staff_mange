@@ -44,6 +44,7 @@ export interface Employee {
   username: string | null
   hasDrivingLicense: boolean
   hasSafetyCertificate: boolean
+  isLeader: boolean
   skills: EmployeeSkill[]
   hasRequiredSkill?: boolean
 }
@@ -64,6 +65,8 @@ export interface Booking {
   service: Service | null
   transferEmployee: Employee | null
   projectSupervisor: Employee | null
+  expenseResponsible: Employee | null
+  expenseResponsibleId: string | null
   confirmedByEmployee: Employee | null
   notes: string | null
   vehicleType: string | null
@@ -338,7 +341,7 @@ export const api = {
     request<Booking>(`/bookings/${id}/schedule/reject`, { method: 'PUT', body: JSON.stringify({}) }),
   updateBookingDetails: (
     id: string,
-    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string },
+    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; expenseResponsibleId?: string | null },
   ) => request<Booking>(`/bookings/${id}/details`, { method: 'PUT', body: JSON.stringify(data) }),
   assignTechnician: (
     id: string,

@@ -191,6 +191,11 @@ export default function Coordinator() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
+  const handleExpenseResponsible = async (booking: Booking, employeeId: string) => {
+    const updated = await api.updateBookingDetails(booking.id, { expenseResponsibleId: employeeId || null })
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
+
   const pendingBookings = bookings.filter((b) => b.status === 'PENDING')
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED')
   const upcomingAppointments = bookings
@@ -529,22 +534,60 @@ export default function Coordinator() {
                       تحديد الكادر والسيارة اختياري - يمكن تثبيت الحجز وتحديدهم لاحقاً.
                     </p>
 
-                    <div className="mt-2 sm:w-1/3">
-                      <label className="mb-1 block text-sm font-medium text-slate-600">
-                        تيم ليدر (اختياري)
-                      </label>
-                      <select
-                        value={booking.projectSupervisor?.id || ''}
-                        onChange={(e) => handleSupervisorChange(booking, e.target.value)}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      >
-                        <option value="">-- بدون تيم ليدر --</option>
-                        {supervisors.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.name}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-600">
+                          تيم ليدر (اختياري)
+                        </label>
+                        <select
+                          value={booking.projectSupervisor?.id || ''}
+                          onChange={(e) => handleSupervisorChange(booking, e.target.value)}
+                          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                        >
+                          <option value="">-- بدون تيم ليدر --</option>
+                          {supervisors.map((s) => (
+                            <option key={s.id} value={s.id}>
+                              {s.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-600">
+                          المسؤول عن المصاريف
+                        </label>
+                        <select
+                          value={booking.expenseResponsibleId || ''}
+                          onChange={(e) => handleExpenseResponsible(booking, e.target.value)}
+                          className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm outline-none focus:border-emerald-500"
+                        >
+                          <option value="">-- تلقائي --</option>
+                          {booking.assignments.map((a) => (
+                            <option key={a.employee.id} value={a.employee.id}>
+                              {a.employee.name} {a.employee.isLeader ? '(ليدر)' : '(فني)'}
+                            </option>
+                          ))}
+                          {booking.projectSupervisor && !booking.assignments.some(a => a.employee.id === booking.projectSupervisor!.id) && (
+                            <option value={booking.projectSupervisor.id}>
+                              {booking.projectSupervisor.name} (تيم ليدر)
+                            </option>
+                          )}
+                        </select>
+                        {booking.expenseResponsible && (
+                          <p className="mt-1 text-xs text-emerald-600">
+                            {booking.expenseResponsible.name} هو المسؤول عن الصرف لهذا الحجز
+                          </p>
+                        )}
+                        {!booking.expenseResponsibleId && booking.assignments.length > 0 && (
+                          <p className="mt-1 text-xs text-slate-400">
+                            {booking.assignments.length === 1 && !booking.projectSupervisor
+                              ? `تلقائي: ${booking.assignments[0].employee.name} (فني وحده)`
+                              : booking.projectSupervisor
+                                ? `تلقائي: التيم ليدر هو المسؤول`
+                                : 'حدد المسؤول عن المصاريف'}
+                          </p>
+                        )}
+                      </div>
                     </div>
 
                     {matches[booking.id] && (

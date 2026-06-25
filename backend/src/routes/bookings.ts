@@ -9,6 +9,7 @@ const bookingInclude = {
   transferEmployee: true,
   projectSupervisor: true,
   confirmedByEmployee: true,
+  expenseResponsible: true,
   assignments: { include: { employee: true } },
 } as const
 
@@ -80,7 +81,7 @@ router.put('/:id/confirm', async (req, res) => {
 // PUT /api/bookings/:id/details - HR coordinator updates price/address/vehicle after confirmation
 // body: { quotedPrice?, address?, assignedVehicle? }
 router.put('/:id/details', async (req, res) => {
-  const { quotedPrice, address, assignedVehicle, mapLocation } = req.body
+  const { quotedPrice, address, assignedVehicle, mapLocation, expenseResponsibleId } = req.body
 
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
@@ -89,6 +90,7 @@ router.put('/:id/details', async (req, res) => {
       address: address !== undefined ? address : undefined,
       assignedVehicle: assignedVehicle !== undefined ? assignedVehicle : undefined,
       mapLocation: mapLocation !== undefined ? mapLocation : undefined,
+      expenseResponsibleId: expenseResponsibleId !== undefined ? expenseResponsibleId || null : undefined,
     },
     include: bookingInclude,
   })
@@ -189,6 +191,24 @@ router.put('/:id/assign', async (req, res) => {
       updateData.adminNotes = existing ? `${existing}\n${warning}` : warning
     }
   }
+
+  // تعيين المسؤول عن المصاريف تلقائياً
+  if (!booking.expenseResponsibleId) {
+    if (employee.isLeader) {
+      updateData.expenseResponsibleId = employeeId
+    } else {
+      // إذا فني واحد فقط بدون تيم ليدر → هو المسؤول
+      const allAssignments = await prisma.bookingAssignment.findMany({
+        where: { bookingId: id },
+        include: { employee: true },
+      })
+      const hasLeader = allAssignments.some(a => a.employee.isLeader)
+      if (!hasLeader && allAssignments.length === 1) {
+        updateData.expenseResponsibleId = allAssignments[0].employeeId
+      }
+    }
+  }
+
   if (Object.keys(updateData).length > 0) {
     await prisma.booking.update({ where: { id }, data: updateData })
   }
