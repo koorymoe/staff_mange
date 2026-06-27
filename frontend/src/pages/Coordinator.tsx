@@ -191,11 +191,6 @@ export default function Coordinator() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
-  const handleExpenseResponsible = async (booking: Booking, employeeId: string) => {
-    const updated = await api.updateBookingDetails(booking.id, { expenseResponsibleId: employeeId || null })
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
-  }
-
   const pendingBookings = bookings.filter((b) => b.status === 'PENDING')
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED')
   const upcomingAppointments = bookings
@@ -552,42 +547,12 @@ export default function Coordinator() {
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="mb-1 block text-sm font-medium text-slate-600">
-                          المسؤول عن المصاريف
-                        </label>
-                        <select
-                          value={booking.expenseResponsibleId || ''}
-                          onChange={(e) => handleExpenseResponsible(booking, e.target.value)}
-                          className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm outline-none focus:border-emerald-500"
-                        >
-                          <option value="">-- تلقائي --</option>
-                          {booking.assignments.map((a) => (
-                            <option key={a.employee.id} value={a.employee.id}>
-                              {a.employee.name} {a.employee.isLeader ? '(ليدر)' : '(فني)'}
-                            </option>
-                          ))}
-                          {booking.projectSupervisor && !booking.assignments.some(a => a.employee.id === booking.projectSupervisor!.id) && (
-                            <option value={booking.projectSupervisor.id}>
-                              {booking.projectSupervisor.name} (تيم ليدر)
-                            </option>
-                          )}
-                        </select>
-                        {booking.expenseResponsible && (
-                          <p className="mt-1 text-xs text-emerald-600">
-                            {booking.expenseResponsible.name} هو المسؤول عن الصرف لهذا الحجز
-                          </p>
-                        )}
-                        {!booking.expenseResponsibleId && booking.assignments.length > 0 && (
-                          <p className="mt-1 text-xs text-slate-400">
-                            {booking.assignments.length === 1 && !booking.projectSupervisor
-                              ? `تلقائي: ${booking.assignments[0].employee.name} (فني وحده)`
-                              : booking.projectSupervisor
-                                ? `تلقائي: التيم ليدر هو المسؤول`
-                                : 'حدد المسؤول عن المصاريف'}
-                          </p>
-                        )}
-                      </div>
+                      {booking.expenseResponsible && (
+                        <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 self-end">
+                          <span className="text-xs text-emerald-700">المسؤول عن المصاريف:</span>
+                          <span className="text-xs font-bold text-emerald-800">{booking.expenseResponsible.name}</span>
+                        </div>
+                      )}
                     </div>
 
                     {matches[booking.id] && (

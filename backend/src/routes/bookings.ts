@@ -235,7 +235,10 @@ router.put('/:id/supervisor', async (req, res) => {
 
   const updated = await prisma.booking.update({
     where: { id },
-    data: { projectSupervisorId: employeeId || null },
+    data: {
+      projectSupervisorId: employeeId || null,
+      expenseResponsibleId: employeeId || null,
+    },
     include: bookingInclude,
   })
   res.json(updated)
