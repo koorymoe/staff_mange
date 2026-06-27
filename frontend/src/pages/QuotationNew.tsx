@@ -41,6 +41,7 @@ export default function QuotationNew() {
   const [pmName, setPmName] = useState('')
   const [pmUnit, setPmUnit] = useState('قطعة')
   const [pmPrice, setPmPrice] = useState(0)
+  const [pmImage, setPmImage] = useState('')
   const [pmStatus, setPmStatus] = useState('')
   const autocompleteRefs = useRef<(HTMLDivElement | null)[]>([])
 
@@ -81,6 +82,7 @@ export default function QuotationNew() {
       productName: product.name,
       unit: product.unit,
       unitPrice: product.defaultPrice,
+      imageBase64: product.imageBase64 || '',
     })
     setActiveAutocomplete(null)
   }
@@ -135,7 +137,7 @@ export default function QuotationNew() {
     }
   }
 
-  const handlePrint = () => {
+  const handlePrint = (withImages = true) => {
     if (!customerName.trim()) {
       showStatus('الرجاء إدخال اسم الزبون قبل الطباعة', 'err')
       return
@@ -147,12 +149,14 @@ export default function QuotationNew() {
     const MAX_ITEMS_CONT = 10
 
     const makeItemRow = (item: typeof validItems[number], idx: number) => {
-      const imgCell = item.imageBase64
-        ? `<img src="${item.imageBase64}" style="width:55px;height:55px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;display:block;margin:0 auto;">`
-        : `<div style="width:55px;height:55px;background:#f0f2f8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto;">📦</div>`
+      const imgCell = withImages
+        ? (item.imageBase64
+          ? `<img src="${item.imageBase64}" style="width:55px;height:55px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;display:block;margin:0 auto;">`
+          : `<div style="width:55px;height:55px;background:#f0f2f8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto;">📦</div>`)
+        : ''
       return `<tr>
         <td class="col-no">${idx + 1}</td>
-        <td class="col-img">${imgCell}</td>
+        ${withImages ? `<td class="col-img">${imgCell}</td>` : ''}
         <td class="col-item">${item.productName}</td>
         <td class="col-unit">${item.unit || '-'}</td>
         <td class="col-qty">${item.quantity}</td>
@@ -163,7 +167,7 @@ export default function QuotationNew() {
 
     const tableHead = `<thead><tr>
         <th class="col-no">NO.</th>
-        <th class="col-img">الصورة</th>
+        ${withImages ? '<th class="col-img">الصورة</th>' : ''}
         <th class="col-item">البيان/المنتج/الخدمة</th>
         <th class="col-unit">الوحدة</th>
         <th class="col-qty">العدد</th>
@@ -171,8 +175,9 @@ export default function QuotationNew() {
         <th class="col-total">الاجمالي (د.ع)</th>
       </tr></thead>`
 
+    const colSpan = withImages ? 6 : 5
     const grandRowHtml = `<tr class="grand-total-row">
-      <td colspan="6" class="grand-total-label">المجموع الكلي</td>
+      <td colspan="${colSpan}" class="grand-total-label">المجموع الكلي</td>
       <td class="col-total">${fmt(grandTotal)}</td>
     </tr>`
 
@@ -263,7 +268,7 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
 .data-table tbody td { padding: 8px 6px; text-align: center; color: #47528f; border: none; font-weight: 600; font-size: 14px; font-family: 'Tajawal', sans-serif; }
 .data-table .col-no { width: 6%; }
 .data-table .col-img { width: 60px; text-align: center; padding: 4px; }
-.data-table .col-item { width: 30%; text-align: right; padding-right: 12px; font-family: 'Amiri', serif; font-size: 15px; }
+.data-table .col-item { width: ${withImages ? '30%' : '40%'}; text-align: right; padding-right: 12px; font-family: 'Amiri', serif; font-size: 15px; }
 .data-table .col-unit { width: 11%; }
 .data-table .col-qty { width: 9%; }
 .data-table .col-price { width: 14%; }
@@ -355,12 +360,20 @@ ${pageShell(`
     activeAutocomplete !== null ? p.name.includes(items[activeAutocomplete]?.productName || '') : false
   )
 
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = () => setPmImage(reader.result as string)
+    reader.readAsDataURL(file)
+  }
+
   const handlePmSave = async () => {
     if (!pmName.trim()) { setPmStatus('⚠ أدخل اسم المنتج'); return }
     setPmStatus('⏳ جاري الحفظ...')
     try {
-      await api.createProduct({ name: pmName, unit: pmUnit, defaultPrice: pmPrice })
-      setPmName(''); setPmUnit('قطعة'); setPmPrice(0)
+      await api.createProduct({ name: pmName, unit: pmUnit, defaultPrice: pmPrice, imageBase64: pmImage || undefined })
+      setPmName(''); setPmUnit('قطعة'); setPmPrice(0); setPmImage('')
       setPmStatus('✓ تم الحفظ بنجاح')
       const prods = await api.getProducts()
       setProducts(prods)
@@ -503,6 +516,11 @@ ${pageShell(`
                               onMouseEnter={(e) => { e.currentTarget.style.background = '#f5f7ff' }}
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                             >
+                              {p.imageBase64 ? (
+                                <img src={p.imageBase64} style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid #e0e0e0', background: '#fafafa' }} />
+                              ) : (
+                                <div style={{ width: 40, height: 40, background: '#f0f2f8', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📦</div>
+                              )}
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700, color: '#1a237e', fontSize: '13px' }}>{p.name}</div>
                                 <div style={{ fontSize: '11px', color: '#757575' }}>{fmt(p.defaultPrice)} د.ع  {p.unit}</div>
@@ -591,11 +609,16 @@ ${pageShell(`
           fontWeight: 700, fontSize: '14px', fontFamily: 'inherit', flex: 1, opacity: submitting ? 0.6 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
         }}>💾 حفظ العرض</button>
-        <button onClick={handlePrint} style={{
+        <button onClick={() => handlePrint(true)} style={{
           background: 'linear-gradient(135deg, #e65100, #ef6c00)', color: 'white', border: 'none',
           padding: '14px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', fontFamily: 'inherit',
           flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-        }}>🖨️ طباعة العرض الرسمي</button>
+        }}>🖨️ طباعة مع صور</button>
+        <button onClick={() => handlePrint(false)} style={{
+          background: 'linear-gradient(135deg, #546e7a, #78909c)', color: 'white', border: 'none',
+          padding: '14px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', fontFamily: 'inherit',
+          flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+        }}>🖨️ طباعة بدون صور</button>
       </div>
 
       {/* ===== Status Message ===== */}
@@ -645,6 +668,13 @@ ${pageShell(`
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>السعر الافتراضي (د.ع)</label>
                     <input type="number" min={0} value={pmPrice} onChange={(e) => setPmPrice(Number(e.target.value))} style={inputStyle({})} />
                   </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>صورة المنتج (اختياري)</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: 13 }} />
+                      {pmImage && <img src={pmImage} style={{ width: 60, height: 60, objectFit: 'contain', borderRadius: 8, border: '1px solid #e0e0e0' }} />}
+                    </div>
+                  </div>
                 </div>
                 <button onClick={handlePmSave} style={{
                   width: '100%', padding: '13px', marginTop: '14px',
@@ -666,7 +696,11 @@ ${pageShell(`
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
                     {products.map((p) => (
                       <div key={p.id} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden', textAlign: 'center' }}>
-                        <div style={{ width: '100%', height: '90px', background: 'linear-gradient(135deg, #e8eaf6, #f5f7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>📦</div>
+                        {p.imageBase64 ? (
+                          <img src={p.imageBase64} style={{ width: '100%', height: 90, objectFit: 'contain', background: '#fafafa' }} />
+                        ) : (
+                          <div style={{ width: '100%', height: '90px', background: 'linear-gradient(135deg, #e8eaf6, #f5f7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>📦</div>
+                        )}
                         <div style={{ padding: '8px 6px' }}>
                           <div style={{ fontWeight: 700, fontSize: '12px', color: '#1a237e' }}>{p.name}</div>
                           <div style={{ fontSize: '10px', color: '#757575' }}>{p.unit}</div>

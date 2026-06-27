@@ -680,26 +680,34 @@ export default function Coordinator() {
 
                       {/* إضافة عنصر جديد */}
                       <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-                        <select
-                          value={cartForm[booking.id]?.productName || ''}
-                          onChange={e => {
-                            const prod = products.find(p => p.name === e.target.value)
-                            setCartForm(prev => ({
-                              ...prev,
-                              [booking.id]: {
-                                ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' },
-                                productName: e.target.value,
-                                unitPrice: prod?.defaultPrice ? String(prod.defaultPrice) : prev[booking.id]?.unitPrice || '',
-                              },
-                            }))
-                          }}
-                          className="rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
-                        >
-                          <option value="">-- اختر منتج --</option>
-                          {products.map(p => (
-                            <option key={p.id} value={p.name}>{p.name} {p.defaultPrice ? `(${p.defaultPrice.toLocaleString()})` : ''}</option>
-                          ))}
-                        </select>
+                        <div className="relative">
+                          <select
+                            value={cartForm[booking.id]?.productName || ''}
+                            onChange={e => {
+                              const prod = products.find(p => p.name === e.target.value)
+                              setCartForm(prev => ({
+                                ...prev,
+                                [booking.id]: {
+                                  ...prev[booking.id] || { productName: '', quantity: '', unitPrice: '', notes: '' },
+                                  productName: e.target.value,
+                                  unitPrice: prod?.defaultPrice ? String(prod.defaultPrice) : prev[booking.id]?.unitPrice || '',
+                                },
+                              }))
+                            }}
+                            className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm outline-none focus:border-violet-500"
+                          >
+                            <option value="">-- اختر منتج --</option>
+                            {products.map(p => (
+                              <option key={p.id} value={p.name}>{p.name} {p.defaultPrice ? `(${p.defaultPrice.toLocaleString()})` : ''}</option>
+                            ))}
+                          </select>
+                          {(() => {
+                            const selProd = products.find(p => p.name === cartForm[booking.id]?.productName)
+                            return selProd?.imageBase64 ? (
+                              <img src={selProd.imageBase64} className="mt-1 h-12 w-12 rounded border border-violet-200 object-contain bg-white" />
+                            ) : null
+                          })()}
+                        </div>
                         <input
                           type="number"
                           placeholder="الكمية"
