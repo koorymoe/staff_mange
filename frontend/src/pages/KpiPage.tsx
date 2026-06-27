@@ -16,7 +16,7 @@ const KPI_CRITERIA = [
 const POINTS_PER_WEEK = 8
 const IQD_PER_POINT = 10_000
 
-const EVALUATOR_ROLES = ['ADMIN', 'MONITOR', 'HR_COORDINATOR']
+const EVALUATOR_ROLES = ['MONITOR', 'HR_COORDINATOR']
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date)
