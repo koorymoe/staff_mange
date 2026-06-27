@@ -11,6 +11,7 @@ const bookingInclude = {
   confirmedByEmployee: true,
   expenseResponsible: true,
   assignments: { include: { employee: true } },
+  cartItems: { orderBy: { createdAt: 'asc' as const } },
   scheduleLogs: { include: { changedBy: { select: { id: true, name: true, role: true } } }, orderBy: { createdAt: 'desc' as const } },
 } as const
 

@@ -399,6 +399,88 @@ export default function Dashboard() {
         )
       })()}
 
+      {/* ═══ Monitor Overview Panel ═══ */}
+      {permissions.includes('monitoring') && !isAdmin && (() => {
+        const inProgress = bookings.filter(b => b.status === 'IN_PROGRESS')
+        const completed = bookings.filter(b => b.status === 'COMPLETED')
+        const unverified = completed.filter(b => !b.amountVerified)
+        const todayCompleted = completed.filter(b => b.completedAt && new Date(b.completedAt).toDateString() === new Date().toDateString())
+        const activeTechs = new Set(inProgress.flatMap(b => b.assignments.map(a => a.employee.id)))
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <button onClick={() => navigate('/monitor')} className="text-xs font-medium text-brand-500 hover:underline">لوحة المراقبة الكاملة ←</button>
+              <h3 className="flex items-center gap-2 text-base font-extrabold text-brand-900">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                نظرة عامة للمراقب
+              </h3>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-b from-violet-50 to-white p-4 text-center">
+                <p className="text-3xl font-black text-violet-600">{inProgress.length}</p>
+                <p className="mt-1 text-xs font-medium text-violet-500">مهام قيد التنفيذ</p>
+              </div>
+              <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-b from-blue-50 to-white p-4 text-center">
+                <p className="text-3xl font-black text-blue-600">{activeTechs.size}</p>
+                <p className="mt-1 text-xs font-medium text-blue-500">فنيين في الميدان</p>
+              </div>
+              <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white p-4 text-center">
+                <p className="text-3xl font-black text-amber-600">{unverified.length}</p>
+                <p className="mt-1 text-xs font-medium text-amber-500">بانتظار تدقيق مالي</p>
+              </div>
+              <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-4 text-center">
+                <p className="text-3xl font-black text-emerald-600">{todayCompleted.length}</p>
+                <p className="mt-1 text-xs font-medium text-emerald-500">أنجزت اليوم</p>
+              </div>
+            </div>
+
+            {/* Active crews list */}
+            {inProgress.length > 0 && (
+              <div className="rounded-2xl bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-brand-900">
+                  <span className="relative flex h-2.5 w-2.5"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" /><span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-violet-500" /></span>
+                  الكوادر النشطة الآن
+                </h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {inProgress.map(b => (
+                    <div key={b.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
+                      <div className="flex items-center gap-2">
+                        {b.assignments.map(a => (
+                          <span key={a.id} className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">{a.employee.name}</span>
+                        ))}
+                      </div>
+                      <div className="flex items-center gap-3 text-right">
+                        <span className="text-sm font-bold text-brand-700">{b.code}</span>
+                        <span className="text-xs text-slate-500">{b.customer.name}</span>
+                        {b.service && <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] text-brand-600">{b.service.name}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Unverified amounts alert */}
+            {unverified.length > 0 && (
+              <button onClick={() => navigate('/finance')} className="w-full rounded-2xl border-2 border-amber-300 bg-gradient-to-l from-amber-50 to-orange-50 p-4 text-right transition hover:shadow-lg">
+                <div className="flex items-center justify-between">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <span className="text-sm font-extrabold text-amber-800">{unverified.length} حجز بحاجة تدقيق مالي</span>
+                      <p className="text-xs text-amber-600 mt-0.5">مبالغ لم يتم التحقق منها بعد</p>
+                    </div>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-200">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    </div>
+                  </div>
+                </div>
+              </button>
+            )}
+          </div>
+        )
+      })()}
+
       {/* ═══ Sales Level Card ═══ */}
       {employee.role === 'SALES' && (
         <div className="rounded-2xl bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]">

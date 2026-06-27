@@ -87,6 +87,7 @@ export interface Booking {
   advancePaid: number | null
   amountVerified: boolean
   assignments: BookingAssignment[]
+  cartItems: CartItem[]
   createdAt: string
 }
 

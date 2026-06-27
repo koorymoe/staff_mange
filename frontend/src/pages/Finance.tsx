@@ -1,16 +1,24 @@
 import { useEffect, useState } from 'react'
-import { api, type Booking } from '../api'
+import { api, type Booking, type Expense } from '../api'
 
 export default function Finance() {
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [filter, setFilter] = useState<'all' | 'pending' | 'verified'>('all')
 
   const load = () => {
     setLoading(true)
-    api
-      .getBookings({ status: 'COMPLETED' })
-      .then(setBookings)
+    Promise.all([
+      api.getBookings({ status: 'COMPLETED' }),
+      api.getExpenses(),
+    ])
+      .then(([b, e]) => {
+        setBookings(b)
+        setExpenses(e)
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
@@ -22,90 +30,390 @@ export default function Finance() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
+  const toggle = (id: string) =>
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+
+  const filtered = bookings.filter((b) => {
+    if (filter === 'pending') return !b.amountVerified
+    if (filter === 'verified') return b.amountVerified
+    return true
+  })
+
+  const pendingCount = bookings.filter((b) => !b.amountVerified).length
+  const verifiedCount = bookings.filter((b) => b.amountVerified).length
+
+  // Get expenses for the expense-responsible employee of a booking
+  const getBookingExpenses = (b: Booking): Expense[] => {
+    if (!b.expenseResponsibleId) return []
+    return expenses.filter(
+      (e) => e.employeeId === b.expenseResponsibleId && e.status === 'APPROVED',
+    )
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-brand-900">تدقيق الحسابات</h2>
-      <p className="mt-1 text-slate-500">مراجعة المبالغ المستلمة من الحجوزات المنجزة وتدقيقها.</p>
+      <p className="mt-1 text-slate-500">
+        مراجعة المبالغ المستلمة من الحجوزات المنجزة وتدقيقها.
+      </p>
+
+      {/* Stats bar */}
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <button
+          onClick={() => setFilter('all')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'all'
+              ? 'border-brand-500 bg-brand-50 shadow-sm'
+              : 'border-slate-200 bg-white'
+          }`}
+        >
+          <p className="text-2xl font-bold text-brand-900">{bookings.length}</p>
+          <p className="text-xs text-slate-500">الكل</p>
+        </button>
+        <button
+          onClick={() => setFilter('pending')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'pending'
+              ? 'border-amber-400 bg-amber-50 shadow-sm'
+              : 'border-slate-200 bg-white'
+          }`}
+        >
+          <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+          <p className="text-xs text-slate-500">بانتظار التدقيق</p>
+        </button>
+        <button
+          onClick={() => setFilter('verified')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'verified'
+              ? 'border-emerald-400 bg-emerald-50 shadow-sm'
+              : 'border-slate-200 bg-white'
+          }`}
+        >
+          <p className="text-2xl font-bold text-emerald-600">{verifiedCount}</p>
+          <p className="text-xs text-slate-500">تم التدقيق</p>
+        </button>
+      </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && (
-        <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>
+        <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
+          تعذر الاتصال بالخادم: {error}
+        </p>
       )}
 
       <div className="mt-6 flex flex-col gap-4">
-        {bookings.map((b) => (
-          <div
-            key={b.id}
-            className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div>
-                <span className="font-mono text-sm font-semibold text-brand-600">{b.code}</span>
-                <span className="mr-3 text-sm font-medium text-brand-800">{b.customer.name}</span>
-              </div>
-              <span
-                className={`rounded-full px-3 py-1 text-xs font-bold ${
-                  b.amountVerified
-                    ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-amber-100 text-amber-700'
-                }`}
-              >
-                {b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}
-              </span>
-            </div>
-            <div className="mt-2 grid grid-cols-1 gap-1 text-sm text-slate-500 sm:grid-cols-3">
-              <p>
-                <span className="text-slate-400">التكلفة المقدرة (الإداري): </span>
-                {b.quotedPrice != null ? b.quotedPrice.toLocaleString() : 'غير محددة'}
-              </p>
-              <p>
-                <span className="text-slate-400">الدفعة المقدمة: </span>
-                {b.advancePaid != null ? b.advancePaid.toLocaleString() : '0'}
-              </p>
-              <p>
-                <span className="text-slate-400">المبلغ المستلم (الفني): </span>
-                {b.amountCollected != null ? b.amountCollected.toLocaleString() : 'غير مسجل'}
-              </p>
-            </div>
-            {b.quotedPrice != null &&
-              (() => {
-                const total = (b.amountCollected || 0) + (b.advancePaid || 0)
-                const diff = total - b.quotedPrice!
-                if (diff === 0) {
-                  return (
-                    <p className="mt-1 text-sm font-medium text-emerald-600">
-                      المبلغ مطابق للتكلفة المقدرة ✓
-                    </p>
-                  )
-                }
-                return (
-                  <p className="mt-1 text-sm font-bold text-red-600">
-                    {diff > 0
-                      ? `يوجد فرق زيادة بمقدار ${diff.toLocaleString()}`
-                      : `يوجد نقص بمقدار ${Math.abs(diff).toLocaleString()} عن التكلفة المقدرة`}
-                  </p>
-                )
-              })()}
-            {b.completionNotes && (
-              <p className="text-sm text-slate-500">
-                <span className="text-slate-400">ملاحظات الفني: </span>
-                {b.completionNotes}
-              </p>
-            )}
-            {!b.amountVerified && (
+        {filtered.map((b) => {
+          const isOpen = expanded[b.id] ?? false
+          const cartTotal = (b.cartItems ?? []).reduce(
+            (sum, c) => sum + c.totalPrice,
+            0,
+          )
+          const bookingExpenses = getBookingExpenses(b)
+          const expensesTotal = bookingExpenses.reduce(
+            (sum, e) => sum + e.amount,
+            0,
+          )
+          const totalCollected =
+            (b.amountCollected || 0) + (b.advancePaid || 0)
+          const expectedTotal =
+            (b.quotedPrice || 0) + cartTotal + expensesTotal
+          const diff = totalCollected - expectedTotal
+
+          return (
+            <div
+              key={b.id}
+              className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
+            >
+              {/* Header - always visible */}
               <button
-                onClick={() => handleVerify(b)}
-                className="mt-3 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
+                onClick={() => toggle(b.id)}
+                className="flex w-full items-center justify-between p-4 text-start transition-colors hover:bg-slate-50"
               >
-                تأكيد التدقيق
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-sm font-semibold text-brand-600">
+                    {b.code}
+                  </span>
+                  <span className="text-sm font-medium text-brand-800">
+                    {b.customer.name}
+                  </span>
+                  {b.service && (
+                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      {b.service.name}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`rounded-full px-3 py-1 text-xs font-bold ${
+                      b.amountVerified
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}
+                  >
+                    {b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}
+                  </span>
+                  <svg
+                    className={`h-5 w-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
               </button>
-            )}
-          </div>
-        ))}
+
+              {/* Expanded details */}
+              {isOpen && (
+                <div className="border-t border-slate-100 p-4">
+                  {/* Booking info */}
+                  <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                    <InfoRow label="رقم الزبون" value={`CUST-${String(b.customer.customerCode).padStart(5, '0')}`} />
+                    <InfoRow label="هاتف الزبون" value={b.customer.phone} />
+                    <InfoRow
+                      label="تاريخ الإنجاز"
+                      value={
+                        b.completedAt
+                          ? new Date(b.completedAt).toLocaleDateString('ar-IQ', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })
+                          : 'غير محدد'
+                      }
+                    />
+                    <InfoRow label="العنوان" value={b.address || 'غير محدد'} />
+                    {b.completionNotes && (
+                      <div className="col-span-full">
+                        <InfoRow label="ملاحظات الفني" value={b.completionNotes} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cart Items */}
+                  {(b.cartItems ?? []).length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="mb-2 text-sm font-bold text-brand-900">
+                        المواد المستخدمة
+                      </h4>
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-50 text-slate-600">
+                            <tr>
+                              <th className="p-2 text-start font-medium">المنتج</th>
+                              <th className="p-2 text-center font-medium">الكمية</th>
+                              <th className="p-2 text-center font-medium">سعر الوحدة</th>
+                              <th className="p-2 text-center font-medium">المجموع</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(b.cartItems ?? []).map((item) => (
+                              <tr
+                                key={item.id}
+                                className="border-t border-slate-100"
+                              >
+                                <td className="p-2 text-slate-700">
+                                  {item.productName}
+                                  {item.notes && (
+                                    <span className="mr-1 text-xs text-slate-400">
+                                      ({item.notes})
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-center text-slate-600">
+                                  {item.quantity}
+                                </td>
+                                <td className="p-2 text-center text-slate-600">
+                                  {item.unitPrice.toLocaleString()}
+                                </td>
+                                <td className="p-2 text-center font-medium text-slate-800">
+                                  {item.totalPrice.toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t-2 border-slate-300 bg-slate-50">
+                              <td
+                                colSpan={3}
+                                className="p-2 text-start font-bold text-slate-700"
+                              >
+                                مجموع المواد
+                              </td>
+                              <td className="p-2 text-center font-bold text-brand-700">
+                                {cartTotal.toLocaleString()}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Leader Expenses */}
+                  {bookingExpenses.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="mb-2 text-sm font-bold text-brand-900">
+                        مصاريف الليدر
+                        {b.expenseResponsible && (
+                          <span className="mr-2 text-xs font-normal text-slate-500">
+                            ({b.expenseResponsible.name})
+                          </span>
+                        )}
+                      </h4>
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-50 text-slate-600">
+                            <tr>
+                              <th className="p-2 text-start font-medium">الوصف</th>
+                              <th className="p-2 text-center font-medium">المبلغ</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bookingExpenses.map((exp) => (
+                              <tr
+                                key={exp.id}
+                                className="border-t border-slate-100"
+                              >
+                                <td className="p-2 text-slate-700">
+                                  {exp.description || 'بدون وصف'}
+                                </td>
+                                <td className="p-2 text-center text-slate-600">
+                                  {exp.amount.toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t-2 border-slate-300 bg-slate-50">
+                              <td className="p-2 text-start font-bold text-slate-700">
+                                مجموع المصاريف
+                              </td>
+                              <td className="p-2 text-center font-bold text-brand-700">
+                                {expensesTotal.toLocaleString()}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cost Breakdown */}
+                  <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/50 p-4">
+                    <h4 className="mb-3 text-sm font-bold text-brand-900">
+                      ملخص التكاليف
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <SummaryRow
+                        label="التكلفة المقدرة (الإداري)"
+                        value={b.quotedPrice}
+                      />
+                      {cartTotal > 0 && (
+                        <SummaryRow
+                          label="مجموع المواد المستخدمة"
+                          value={cartTotal}
+                        />
+                      )}
+                      {expensesTotal > 0 && (
+                        <SummaryRow
+                          label="مصاريف الليدر"
+                          value={expensesTotal}
+                        />
+                      )}
+                      <div className="border-t border-brand-200 pt-2">
+                        <SummaryRow
+                          label="الإجمالي المتوقع"
+                          value={expectedTotal}
+                          bold
+                        />
+                      </div>
+                      <div className="border-t border-brand-200 pt-2">
+                        <SummaryRow
+                          label="الدفعة المقدمة"
+                          value={b.advancePaid ?? 0}
+                        />
+                        <SummaryRow
+                          label="المبلغ المستلم (الفني)"
+                          value={b.amountCollected}
+                        />
+                        <SummaryRow
+                          label="إجمالي المحصّل"
+                          value={totalCollected}
+                          bold
+                        />
+                      </div>
+                      {expectedTotal > 0 && (
+                        <div className="border-t border-brand-200 pt-2">
+                          {diff === 0 ? (
+                            <p className="text-sm font-medium text-emerald-600">
+                              المبلغ مطابق للتكلفة المتوقعة
+                            </p>
+                          ) : diff > 0 ? (
+                            <p className="text-sm font-bold text-emerald-600">
+                              زيادة بمقدار {diff.toLocaleString()}
+                            </p>
+                          ) : (
+                            <p className="text-sm font-bold text-red-600">
+                              نقص بمقدار {Math.abs(diff).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Verify button */}
+                  {!b.amountVerified && (
+                    <button
+                      onClick={() => handleVerify(b)}
+                      className="mt-4 w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
+                    >
+                      تأكيد التدقيق
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
         {!loading && bookings.length === 0 && (
           <p className="text-slate-400">لا توجد حجوزات منجزة بعد.</p>
         )}
       </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <p className="text-slate-600">
+      <span className="text-slate-400">{label}: </span>
+      {value}
+    </p>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  bold,
+}: {
+  label: string
+  value: number | null | undefined
+  bold?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className={`text-slate-600 ${bold ? 'font-bold' : ''}`}>
+        {label}
+      </span>
+      <span
+        className={`font-mono ${bold ? 'text-base font-bold text-brand-900' : 'text-slate-800'}`}
+      >
+        {value != null ? value.toLocaleString() : 'غير محدد'}
+      </span>
     </div>
   )
 }
