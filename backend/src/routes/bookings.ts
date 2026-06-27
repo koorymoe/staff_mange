@@ -81,7 +81,7 @@ router.put('/:id/confirm', async (req, res) => {
 // PUT /api/bookings/:id/details - HR coordinator updates price/address/vehicle after confirmation
 // body: { quotedPrice?, address?, assignedVehicle? }
 router.put('/:id/details', async (req, res) => {
-  const { quotedPrice, address, assignedVehicle, mapLocation, expenseResponsibleId } = req.body
+  const { quotedPrice, address, assignedVehicle, mapLocation, mapLatitude, mapLongitude, expenseResponsibleId } = req.body
 
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
@@ -90,6 +90,8 @@ router.put('/:id/details', async (req, res) => {
       address: address !== undefined ? address : undefined,
       assignedVehicle: assignedVehicle !== undefined ? assignedVehicle : undefined,
       mapLocation: mapLocation !== undefined ? mapLocation : undefined,
+      mapLatitude: mapLatitude !== undefined ? (mapLatitude !== null ? Number(mapLatitude) : null) : undefined,
+      mapLongitude: mapLongitude !== undefined ? (mapLongitude !== null ? Number(mapLongitude) : null) : undefined,
       expenseResponsibleId: expenseResponsibleId !== undefined ? expenseResponsibleId || null : undefined,
     },
     include: bookingInclude,

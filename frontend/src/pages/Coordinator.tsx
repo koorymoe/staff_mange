@@ -166,7 +166,17 @@ export default function Coordinator() {
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } else if (field === 'mapLocation') {
       if (value === (booking.mapLocation || '')) return
-      const updated = await api.updateBookingDetails(booking.id, { mapLocation: value })
+      let lat: number | null = null, lng: number | null = null
+      let m = value.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+      if (!m) m = value.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+      if (!m) m = value.match(/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+      if (!m) m = value.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
+      if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]) }
+      const updated = await api.updateBookingDetails(booking.id, {
+        mapLocation: value,
+        mapLatitude: lat,
+        mapLongitude: lng,
+      })
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } else {
       if (value === (booking.address || '')) return

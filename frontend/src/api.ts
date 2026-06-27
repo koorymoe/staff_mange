@@ -79,6 +79,8 @@ export interface Booking {
   quotedPrice: number | null
   address: string | null
   mapLocation: string | null
+  mapLatitude: number | null
+  mapLongitude: number | null
   completedAt: string | null
   completionNotes: string | null
   amountCollected: number | null
@@ -393,7 +395,7 @@ export const api = {
     request<Booking>(`/bookings/${id}/schedule/reject`, { method: 'PUT', body: JSON.stringify({}) }),
   updateBookingDetails: (
     id: string,
-    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; expenseResponsibleId?: string | null },
+    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; mapLatitude?: number | null; mapLongitude?: number | null; expenseResponsibleId?: string | null },
   ) => request<Booking>(`/bookings/${id}/details`, { method: 'PUT', body: JSON.stringify(data) }),
   assignTechnician: (
     id: string,
