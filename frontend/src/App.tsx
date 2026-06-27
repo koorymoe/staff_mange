@@ -11,6 +11,7 @@ import MyTasks from './pages/MyTasks'
 import MyRanking from './pages/MyRanking'
 import MyExpenses from './pages/MyExpenses'
 import Finance from './pages/Finance'
+import ExpensesReview from './pages/ExpensesReview'
 import KpiPage from './pages/KpiPage'
 import ComplaintsPage from './pages/ComplaintsPage'
 import InventoryPage from './pages/InventoryPage'
@@ -51,6 +52,7 @@ function App() {
         <Route path="my-ranking" element={<MyRanking />} />
         <Route path="my-expenses" element={<MyExpenses />} />
         <Route path="finance" element={<Finance />} />
+        <Route path="expenses" element={<ExpensesReview />} />
         <Route path="kpi" element={<KpiPage />} />
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="inventory" element={<InventoryPage />} />

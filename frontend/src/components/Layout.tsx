@@ -73,6 +73,7 @@ const navItems: NavItem[] = [
         roles: ['ADMIN', 'FINANCE', 'MONITOR'],
         children: [
           { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
+          { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
           { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN', 'TECHNICIAN', 'PROJECT_MANAGER'], permission: 'expenses' },
         ],
       },
