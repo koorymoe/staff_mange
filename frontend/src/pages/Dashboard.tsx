@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import type { Booking } from '../api'
+import type { Booking, Expense } from '../api'
 import { useSession } from '../session'
 
 /* ───── Attendance localStorage helpers ───── */
@@ -110,6 +110,8 @@ export default function Dashboard() {
   const [taskAmounts, setTaskAmounts] = useState<Record<string, string>>({})
   const [taskAdvances, setTaskAdvances] = useState<Record<string, string>>({})
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({})
+  const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
 
@@ -121,18 +123,23 @@ export default function Dashboard() {
   useEffect(() => {
     if (!employee) return
     const isTech = ['TECHNICIAN', 'PROJECT_MANAGER'].includes(employee.role) || employee.isLeader
+    const needsFinance = employee.role === 'FINANCE' || permissions.includes('monitoring')
     Promise.all([
       api.getGpsStats().catch(() => null),
       api.getBookings().catch(() => [] as Booking[]),
       api.getEmployees().then((e) => e.length).catch(() => 0),
       api.getCustomers().then((c) => c.length).catch(() => 0),
       isTech ? api.getBookings().catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
-    ]).then(([gps, bk, emp, cust, allBookings]) => {
+      needsFinance ? api.getBookings({ status: 'COMPLETED' }).catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
+      needsFinance ? api.getExpenses().catch(() => [] as Expense[]) : Promise.resolve([] as Expense[]),
+    ]).then(([gps, bk, emp, cust, allBookings, cb, exp]) => {
       setGpsStats(gps as GpsStats | null)
       setBookings(bk as Booking[])
       setBookingCount((bk as Booking[]).length)
       setEmployeeCount(emp)
       setCustomerCount(cust)
+      setCompletedBookings(cb as Booking[])
+      setExpenses(exp as Expense[])
       const taskList = (allBookings as Booking[]).filter(b =>
         b.status !== 'COMPLETED' && b.status !== 'CANCELLED' &&
         b.assignments.some(a => a.employee.id === employee.id)
@@ -401,11 +408,17 @@ export default function Dashboard() {
 
       {/* ═══ Monitor Overview Panel ═══ */}
       {permissions.includes('monitoring') && !isAdmin && (() => {
+        const pending = bookings.filter(b => b.status === 'PENDING')
+        const confirmed = bookings.filter(b => b.status === 'CONFIRMED')
         const inProgress = bookings.filter(b => b.status === 'IN_PROGRESS')
-        const completed = bookings.filter(b => b.status === 'COMPLETED')
+        const completed = completedBookings
         const unverified = completed.filter(b => !b.amountVerified)
+        const verified = completed.filter(b => b.amountVerified)
         const todayCompleted = completed.filter(b => b.completedAt && new Date(b.completedAt).toDateString() === new Date().toDateString())
         const activeTechs = new Set(inProgress.flatMap(b => b.assignments.map(a => a.employee.id)))
+        const totalCollected = completed.reduce((s, b) => s + (b.amountCollected || 0) + (b.advancePaid || 0), 0)
+        const pendingExpenses = expenses.filter(e => e.status === 'PENDING')
+
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -415,6 +428,8 @@ export default function Dashboard() {
                 نظرة عامة للمراقب
               </h3>
             </div>
+
+            {/* Stats grid */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-b from-violet-50 to-white p-4 text-center">
                 <p className="text-3xl font-black text-violet-600">{inProgress.length}</p>
@@ -434,6 +449,26 @@ export default function Dashboard() {
               </div>
             </div>
 
+            {/* Secondary stats */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-brand-700">{pending.length}</p>
+                <p className="text-[10px] text-slate-400">بانتظار التثبيت</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-brand-700">{confirmed.length}</p>
+                <p className="text-[10px] text-slate-400">مثبتة (بحاجة تنسيق)</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-emerald-600">{verified.length}</p>
+                <p className="text-[10px] text-slate-400">تم تدقيقها</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-brand-700">{totalCollected.toLocaleString()}</p>
+                <p className="text-[10px] text-slate-400">إجمالي المحصّل (د.ع)</p>
+              </div>
+            </div>
+
             {/* Active crews list */}
             {inProgress.length > 0 && (
               <div className="rounded-2xl bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
@@ -444,7 +479,7 @@ export default function Dashboard() {
                 <div className="space-y-2 max-h-48 overflow-y-auto">
                   {inProgress.map(b => (
                     <div key={b.id} className="flex items-center justify-between rounded-xl bg-slate-50 px-4 py-2.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1">
                         {b.assignments.map(a => (
                           <span key={a.id} className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold text-violet-700">{a.employee.name}</span>
                         ))}
@@ -460,22 +495,190 @@ export default function Dashboard() {
               </div>
             )}
 
-            {/* Unverified amounts alert */}
-            {unverified.length > 0 && (
-              <button onClick={() => navigate('/finance')} className="w-full rounded-2xl border-2 border-amber-300 bg-gradient-to-l from-amber-50 to-orange-50 p-4 text-right transition hover:shadow-lg">
+            {/* Recent completed */}
+            {todayCompleted.length > 0 && (
+              <div className="rounded-2xl bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                <h4 className="mb-3 text-sm font-bold text-brand-900">المهام المنجزة اليوم</h4>
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {todayCompleted.map(b => {
+                    const cartTotal = (b.cartItems ?? []).reduce((s, c) => s + c.totalPrice, 0)
+                    return (
+                      <div key={b.id} className="flex items-center justify-between rounded-xl bg-emerald-50 px-4 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="rounded-full bg-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-700">
+                            {b.amountVerified ? 'مدقق' : 'غير مدقق'}
+                          </span>
+                          {(b.amountCollected || 0) > 0 && (
+                            <span className="text-xs font-bold text-emerald-700">{((b.amountCollected || 0) + (b.advancePaid || 0)).toLocaleString()} د.ع</span>
+                          )}
+                          {cartTotal > 0 && <span className="text-[10px] text-slate-400">مواد: {cartTotal.toLocaleString()}</span>}
+                        </div>
+                        <div className="flex items-center gap-2 text-right">
+                          <span className="text-sm font-bold text-emerald-700">{b.code}</span>
+                          <span className="text-xs text-slate-600">{b.customer.name}</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Alerts row */}
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {unverified.length > 0 && (
+                <button onClick={() => navigate('/finance')} className="rounded-2xl border-2 border-amber-300 bg-gradient-to-l from-amber-50 to-orange-50 p-4 text-right transition hover:shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <span className="text-sm font-extrabold text-amber-800">{unverified.length} حجز بحاجة تدقيق</span>
+                        <p className="text-xs text-amber-600 mt-0.5">مبالغ لم يتم التحقق منها</p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-200">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              )}
+              {pendingExpenses.length > 0 && (
+                <button onClick={() => navigate('/expenses')} className="rounded-2xl border-2 border-red-200 bg-gradient-to-l from-red-50 to-rose-50 p-4 text-right transition hover:shadow-lg">
+                  <div className="flex items-center justify-between">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <span className="text-sm font-extrabold text-red-800">{pendingExpenses.length} مصروف بانتظار الموافقة</span>
+                        <p className="text-xs text-red-600 mt-0.5">طلبات استرجاع من الفنيين</p>
+                      </div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-200">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ═══ Accountant Dashboard Panel ═══ */}
+      {employee.role === 'FINANCE' && (() => {
+        const completed = completedBookings
+        const unverified = completed.filter(b => !b.amountVerified)
+        const verified = completed.filter(b => b.amountVerified)
+        const totalCollected = completed.reduce((s, b) => s + (b.amountCollected || 0) + (b.advancePaid || 0), 0)
+        const totalQuoted = completed.reduce((s, b) => s + (b.quotedPrice || 0), 0)
+        const totalCartValue = completed.reduce((s, b) => s + (b.cartItems ?? []).reduce((cs, c) => cs + c.totalPrice, 0), 0)
+        const pendingExpenses = expenses.filter(e => e.status === 'PENDING')
+        const approvedExpenses = expenses.filter(e => e.status === 'APPROVED')
+        const totalExpenses = approvedExpenses.reduce((s, e) => s + e.amount, 0)
+        const recentCompleted = [...completed].sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime()).slice(0, 8)
+
+        return (
+          <div className="space-y-4">
+            <h3 className="flex items-center gap-2 text-base font-extrabold text-brand-900">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>
+              لوحة المحاسب
+            </h3>
+
+            {/* Financial KPIs */}
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-4 text-center">
+                <p className="text-2xl font-black text-emerald-600">{totalCollected.toLocaleString()}</p>
+                <p className="mt-1 text-xs font-medium text-emerald-500">إجمالي المحصّل</p>
+              </div>
+              <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-b from-blue-50 to-white p-4 text-center">
+                <p className="text-2xl font-black text-blue-600">{totalQuoted.toLocaleString()}</p>
+                <p className="mt-1 text-xs font-medium text-blue-500">إجمالي التكاليف المقدرة</p>
+              </div>
+              <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-b from-violet-50 to-white p-4 text-center">
+                <p className="text-2xl font-black text-violet-600">{totalCartValue.toLocaleString()}</p>
+                <p className="mt-1 text-xs font-medium text-violet-500">قيمة المواد المستخدمة</p>
+              </div>
+              <div className="rounded-2xl border-2 border-rose-200 bg-gradient-to-b from-rose-50 to-white p-4 text-center">
+                <p className="text-2xl font-black text-rose-600">{totalExpenses.toLocaleString()}</p>
+                <p className="mt-1 text-xs font-medium text-rose-500">مصاريف الليدر المعتمدة</p>
+              </div>
+            </div>
+
+            {/* Audit status */}
+            <div className="grid grid-cols-3 gap-3">
+              <button onClick={() => navigate('/finance')} className="rounded-xl bg-white p-3 text-center shadow-sm transition hover:shadow-md">
+                <p className="text-xl font-bold text-brand-700">{completed.length}</p>
+                <p className="text-[10px] text-slate-400">إجمالي المنجزة</p>
+              </button>
+              <button onClick={() => navigate('/finance')} className="rounded-xl bg-amber-50 p-3 text-center shadow-sm transition hover:shadow-md">
+                <p className="text-xl font-bold text-amber-600">{unverified.length}</p>
+                <p className="text-[10px] text-amber-500">بانتظار التدقيق</p>
+              </button>
+              <button onClick={() => navigate('/finance')} className="rounded-xl bg-emerald-50 p-3 text-center shadow-sm transition hover:shadow-md">
+                <p className="text-xl font-bold text-emerald-600">{verified.length}</p>
+                <p className="text-[10px] text-emerald-500">تم التدقيق</p>
+              </button>
+            </div>
+
+            {/* Pending expenses alert */}
+            {pendingExpenses.length > 0 && (
+              <button onClick={() => navigate('/expenses')} className="w-full rounded-2xl border-2 border-red-200 bg-gradient-to-l from-red-50 to-rose-50 p-4 text-right transition hover:shadow-lg">
                 <div className="flex items-center justify-between">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                   <div className="flex items-center gap-3">
                     <div>
-                      <span className="text-sm font-extrabold text-amber-800">{unverified.length} حجز بحاجة تدقيق مالي</span>
-                      <p className="text-xs text-amber-600 mt-0.5">مبالغ لم يتم التحقق منها بعد</p>
+                      <span className="text-sm font-extrabold text-red-800">{pendingExpenses.length} طلب استرجاع بانتظار الموافقة</span>
+                      <p className="text-xs text-red-600 mt-0.5">مصاريف من الفنيين تحتاج مراجعة</p>
                     </div>
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-200">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2" strokeLinecap="round"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-200">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2" strokeLinecap="round"><path d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                     </div>
                   </div>
                 </div>
               </button>
+            )}
+
+            {/* Recent completed bookings with amounts */}
+            {recentCompleted.length > 0 && (
+              <div className="rounded-2xl bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                <div className="mb-3 flex items-center justify-between">
+                  <button onClick={() => navigate('/finance')} className="text-xs font-medium text-brand-500 hover:underline">عرض الكل ←</button>
+                  <h4 className="text-sm font-bold text-brand-900">آخر الحجوزات المنجزة</h4>
+                </div>
+                <div className="overflow-hidden rounded-lg border border-slate-200">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="p-2 text-center font-medium">الحالة</th>
+                        <th className="p-2 text-center font-medium">المواد</th>
+                        <th className="p-2 text-center font-medium">المحصّل</th>
+                        <th className="p-2 text-center font-medium">التكلفة</th>
+                        <th className="p-2 text-start font-medium">الزبون</th>
+                        <th className="p-2 text-start font-medium">الكود</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentCompleted.map(b => {
+                        const cartTotal = (b.cartItems ?? []).reduce((s, c) => s + c.totalPrice, 0)
+                        const collected = (b.amountCollected || 0) + (b.advancePaid || 0)
+                        return (
+                          <tr key={b.id} className="border-t border-slate-100 hover:bg-slate-50">
+                            <td className="p-2 text-center">
+                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${b.amountVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                                {b.amountVerified ? 'مدقق' : 'بانتظار'}
+                              </span>
+                            </td>
+                            <td className="p-2 text-center text-slate-600">{cartTotal > 0 ? cartTotal.toLocaleString() : '—'}</td>
+                            <td className="p-2 text-center font-bold text-emerald-700">{collected > 0 ? collected.toLocaleString() : '—'}</td>
+                            <td className="p-2 text-center text-slate-600">{b.quotedPrice ? b.quotedPrice.toLocaleString() : '—'}</td>
+                            <td className="p-2 text-slate-700">{b.customer.name}</td>
+                            <td className="p-2 font-mono font-bold text-brand-600">{b.code}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
           </div>
         )
