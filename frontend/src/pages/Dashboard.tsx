@@ -370,26 +370,26 @@ export default function Dashboard() {
             {(confirmed.length > 0 || inProgress.length > 0) && (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {confirmed.length > 0 && (
-                  <button onClick={() => navigate('/coordinator')} className="group flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-4 text-right transition hover:bg-blue-100 hover:shadow-md">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" className="opacity-40 group-hover:opacity-100"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-                    <div className="flex items-center gap-3">
+                  <button onClick={() => navigate('/coordinator')} className="group flex items-center justify-between rounded-2xl border-2 border-blue-400 bg-gradient-to-l from-blue-600 to-blue-500 p-5 text-right shadow-lg shadow-blue-200 transition hover:shadow-xl hover:shadow-blue-300">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" className="opacity-60 group-hover:opacity-100"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    <div className="flex items-center gap-4">
                       <div>
-                        <span className="text-sm font-bold text-blue-800">حجوزات مثبتة بحاجة تنسيق</span>
-                        <p className="text-xs text-blue-500 mt-0.5">تعيين كوادر وموعد ومركبة</p>
+                        <span className="text-sm font-extrabold text-white">حجوزات مثبتة بحاجة تنسيق</span>
+                        <p className="text-xs text-blue-100 mt-0.5">تعيين كوادر وموعد ومركبة</p>
                       </div>
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 text-lg font-black text-white shadow-lg shadow-blue-200">{confirmed.length}</div>
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-xl font-black text-blue-600 shadow-lg">{confirmed.length}</div>
                     </div>
                   </button>
                 )}
                 {inProgress.length > 0 && (
-                  <button onClick={() => navigate('/bookings')} className="group flex items-center justify-between rounded-2xl border border-violet-200 bg-violet-50 p-4 text-right transition hover:bg-violet-100 hover:shadow-md">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" className="opacity-40 group-hover:opacity-100"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-                    <div className="flex items-center gap-3">
+                  <button onClick={() => navigate('/bookings')} className="group flex items-center justify-between rounded-2xl border-2 border-violet-400 bg-gradient-to-l from-violet-600 to-violet-500 p-5 text-right shadow-lg shadow-violet-200 transition hover:shadow-xl hover:shadow-violet-300">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" className="opacity-60 group-hover:opacity-100"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    <div className="flex items-center gap-4">
                       <div>
-                        <span className="text-sm font-bold text-violet-800">حجوزات جاري تنفيذها</span>
-                        <p className="text-xs text-violet-500 mt-0.5">متابعة الكوادر الميدانية</p>
+                        <span className="text-sm font-extrabold text-white">حجوزات جاري تنفيذها</span>
+                        <p className="text-xs text-violet-100 mt-0.5">متابعة الكوادر الميدانية</p>
                       </div>
-                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500 text-lg font-black text-white shadow-lg shadow-violet-200">{inProgress.length}</div>
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-xl font-black text-violet-600 shadow-lg">{inProgress.length}</div>
                     </div>
                   </button>
                 )}
