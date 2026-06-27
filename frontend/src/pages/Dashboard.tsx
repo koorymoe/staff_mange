@@ -106,6 +106,10 @@ export default function Dashboard() {
   const [employeeCount, setEmployeeCount] = useState(0)
   const [customerCount, setCustomerCount] = useState(0)
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [myTasks, setMyTasks] = useState<Booking[]>([])
+  const [taskAmounts, setTaskAmounts] = useState<Record<string, string>>({})
+  const [taskAdvances, setTaskAdvances] = useState<Record<string, string>>({})
+  const [taskNotes, setTaskNotes] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
 
@@ -116,23 +120,30 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!employee) return
+    const isTech = ['TECHNICIAN', 'PROJECT_MANAGER'].includes(employee.role) || employee.isLeader
     Promise.all([
       api.getGpsStats().catch(() => null),
       api.getBookings().catch(() => [] as Booking[]),
       api.getEmployees().then((e) => e.length).catch(() => 0),
       api.getCustomers().then((c) => c.length).catch(() => 0),
-    ]).then(([gps, bk, emp, cust]) => {
+      isTech ? Promise.all([
+        api.getBookings({ status: 'CONFIRMED' }).catch(() => []),
+        api.getBookings({ status: 'IN_PROGRESS' }).catch(() => []),
+      ]).then(([c, p]) => [...c, ...p]) : Promise.resolve([]),
+    ]).then(([gps, bk, emp, cust, tasks]) => {
       setGpsStats(gps as GpsStats | null)
       setBookings(bk as Booking[])
       setBookingCount((bk as Booking[]).length)
       setEmployeeCount(emp)
       setCustomerCount(cust)
+      const taskList = (tasks as Booking[]).filter(b => b.assignments.some(a => a.employee.id === employee.id))
+      setMyTasks(taskList)
     }).finally(() => setLoading(false))
   }, [employee])
 
   /* ── Attendance widget state ── */
   const [activeRecord, setActiveRecord] = useState<AttendanceRecord | undefined>(undefined)
-  const [allTodayRecords, setAllTodayRecords] = useState<AttendanceRecord[]>([])
+  const [, setAllTodayRecords] = useState<AttendanceRecord[]>([])
   const [elapsed, setElapsed] = useState('')
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false)
 
@@ -175,6 +186,20 @@ export default function Dashboard() {
     setShowCheckoutConfirm(false)
   }, [employee, activeRecord])
 
+  const handleTaskStart = async (b: Booking) => {
+    const updated = await api.startBooking(b.id)
+    setMyTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
+  }
+
+  const handleTaskComplete = async (b: Booking) => {
+    await api.completeBooking(b.id, {
+      completionNotes: taskNotes[b.id] || undefined,
+      amountCollected: taskAmounts[b.id] ? Number(taskAmounts[b.id]) : undefined,
+      advancePaid: taskAdvances[b.id] ? Number(taskAdvances[b.id]) : undefined,
+    })
+    setMyTasks(prev => prev.filter(t => t.id !== b.id))
+  }
+
   if (!employee) return null
 
   const isAdmin = employee.role === 'ADMIN'
@@ -215,7 +240,7 @@ export default function Dashboard() {
     },
   ].filter(c => c.visible)
 
-  const completedSessions = allTodayRecords.filter(r => r.checkOutTime)
+
 
   const kpiCards = [
     { title: 'الموظفين', value: employeeCount, color: '#3b82f6', bg: 'from-blue-500/10 to-blue-500/5', ring: 75, path: '/employees',
@@ -402,105 +427,185 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ═══ Attendance + Quick Access Row ═══ */}
-      <div className={`grid gap-4 ${quickCards.length > 0 ? 'grid-cols-1 lg:grid-cols-5' : 'grid-cols-1'}`}>
-        {/* Attendance Widget */}
-        <div className={`${quickCards.length > 0 ? 'lg:col-span-2' : ''} overflow-hidden rounded-2xl bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.04)]`}>
-          <div className="flex items-center justify-between bg-gradient-to-l from-[#0f2040] to-[#1e4276] px-5 py-3">
-            <div className="flex items-center gap-2 text-white">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/15">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+      {/* ═══ Compact Attendance Bar ═══ */}
+      <div className="flex items-center justify-between rounded-xl bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="flex items-center gap-2">
+          {activeRecord ? (
+            <>
+              <div className="relative">
+                <button onClick={() => setShowCheckoutConfirm(!showCheckoutConfirm)}
+                  className="rounded-lg bg-red-500 px-3 py-1 text-xs font-bold text-white hover:bg-red-600">
+                  انصراف
+                </button>
+                {showCheckoutConfirm && (
+                  <div className="absolute left-0 top-full z-20 mt-2 w-48 rounded-xl border border-slate-100 bg-white p-3 shadow-2xl">
+                    <p className="mb-2 text-xs font-semibold text-gray-800">تسجيل انصراف؟</p>
+                    <div className="flex gap-2">
+                      <button onClick={handleAttCheckOut} className="flex-1 rounded-lg bg-red-500 px-2 py-1 text-xs font-bold text-white">نعم</button>
+                      <button onClick={() => setShowCheckoutConfirm(false)} className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600">إلغاء</button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <h3 className="text-sm font-bold">الحضور والانصراف</h3>
-            </div>
-            {activeRecord && (
-              <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-xs text-emerald-300">
-                <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>
-                متواجد
-              </span>
-            )}
+            </>
+          ) : (
+            <button onClick={handleAttCheckIn}
+              className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-600">
+              تسجيل حضور
+            </button>
+          )}
+        </div>
+        <div className="flex items-center gap-3 text-right">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+          {activeRecord ? (
+            <span className="flex items-center gap-2 text-xs">
+              <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>
+              <span className="font-bold text-emerald-700">متواجد</span>
+              <span className="text-slate-400">منذ {activeRecord.checkInTime} • {elapsed}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-slate-400">لم تسجل حضورك بعد</span>
+          )}
+        </div>
+      </div>
+
+      {/* ═══ My Tasks Panel (Technician/Leader) ═══ */}
+      {(['TECHNICIAN', 'PROJECT_MANAGER'].includes(employee.role) || employee.isLeader) && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <button onClick={() => navigate('/my-tasks')} className="text-xs font-medium text-brand-500 hover:underline">عرض الكل ←</button>
+            <h3 className="flex items-center gap-2 text-base font-extrabold text-brand-900">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>
+              مهامي
+              {myTasks.length > 0 && <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-black text-white">{myTasks.length}</span>}
+            </h3>
           </div>
-          <div className="p-5">
-            {activeRecord ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 rounded-xl bg-emerald-50 px-4 py-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-emerald-800">تم تسجيل الحضور</p>
-                    <p className="text-xs text-emerald-600">منذ {activeRecord.checkInTime} • {elapsed}</p>
-                  </div>
-                </div>
-                <div className="relative">
-                  <button onClick={() => setShowCheckoutConfirm(true)}
-                    className="w-full rounded-xl bg-gradient-to-l from-red-500 to-red-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-red-500/20 transition-all hover:shadow-xl hover:shadow-red-500/30">
-                    تسجيل انصراف
-                  </button>
-                  {showCheckoutConfirm && (
-                    <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-xl border border-slate-100 bg-white p-4 shadow-2xl">
-                      <p className="mb-3 text-sm font-semibold text-gray-800">هل تود تسجيل الانصراف؟</p>
-                      <div className="flex gap-2">
-                        <button onClick={handleAttCheckOut} className="flex-1 rounded-xl bg-red-500 px-3 py-2 text-sm font-bold text-white">نعم</button>
-                        <button onClick={() => setShowCheckoutConfirm(false)} className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-bold text-slate-600">إلغاء</button>
+
+          {myTasks.length === 0 ? (
+            <div className="rounded-2xl bg-white p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-3">
+                <path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+              </svg>
+              <p className="text-sm text-slate-400">لا توجد مهام حالياً — أحسنت!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {myTasks.map(b => {
+                const myRole = b.assignments.find(a => a.employee.id === employee?.id)?.role
+                return (
+                  <div key={b.id} className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
+                    {/* Task header */}
+                    <div className={`flex items-center justify-between px-5 py-3 ${b.status === 'IN_PROGRESS' ? 'bg-gradient-to-l from-violet-600 to-violet-700' : 'bg-gradient-to-l from-amber-500 to-amber-600'}`}>
+                      <div className="flex items-center gap-2">
+                        {b.priority === 'URGENT' && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">عاجل</span>}
+                        <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-bold text-white">
+                          {myRole === 'TECH_1' ? 'الفني الأول' : myRole === 'TECH_2' ? 'الفني الثاني' : 'الفني الثالث'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 text-white">
+                        <span className="text-sm font-bold">{b.code}</span>
+                        <span className="text-xs">{b.status === 'IN_PROGRESS' ? '🔄 جاري التنفيذ' : '📋 بانتظار الاستلام'}</span>
                       </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            ) : completedSessions.length > 0 ? (
-              <div className="space-y-2">
-                {completedSessions.map((s, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-xl bg-slate-50 px-4 py-2.5 text-sm">
-                    <div className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">{i + 1}</div>
-                    <span className="font-bold text-[#2c5aad]">{s.checkInTime}</span>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
-                    <span className="font-bold text-[#2c5aad]">{s.checkOutTime}</span>
-                  </div>
-                ))}
-                <button onClick={handleAttCheckIn}
-                  className="w-full rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-600 px-4 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-xl">
-                  تسجيل حضور جديد
-                </button>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-                </div>
-                <p className="mb-3 text-sm text-slate-400">لم تسجل حضورك بعد</p>
-                <button onClick={handleAttCheckIn}
-                  className="w-full rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all hover:shadow-xl hover:shadow-emerald-500/30 hover:-translate-y-0.5">
-                  تسجيل حضور
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
 
-        {/* Quick Access */}
-        {quickCards.length > 0 && (
-          <div className="lg:col-span-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {quickCards.map((card) => (
-              <button key={card.path} onClick={() => navigate(card.path)}
-                className={`group relative overflow-hidden rounded-2xl bg-gradient-to-bl ${card.gradient} p-5 text-right text-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
-                {/* Shine effect */}
-                <div className="absolute inset-0 bg-gradient-to-l from-white/0 via-white/10 to-white/0 translate-x-full transition-transform duration-700 group-hover:-translate-x-full" />
-                <div className="relative flex items-center gap-4">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={card.iconPath} /></svg>
+                    <div className="p-5">
+                      {/* Customer & service info */}
+                      <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                        <div className="text-right">
+                          <span className="text-xs text-slate-400">الزبون</span>
+                          <p className="font-bold text-brand-900">{b.customer.name}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-400">الخدمة</span>
+                          <p className="font-medium text-brand-800">{b.service?.name || '—'}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-400">الهاتف</span>
+                          <p className="font-medium text-slate-700" dir="ltr">{b.customer.phone}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs text-slate-400">العنوان</span>
+                          <p className="font-medium text-slate-700">{b.address || b.customer.location || '—'}</p>
+                        </div>
+                        {b.assignedVehicle && (
+                          <div className="text-right">
+                            <span className="text-xs text-slate-400">السيارة</span>
+                            <p className="font-medium text-slate-700">{b.assignedVehicle}</p>
+                          </div>
+                        )}
+                        {b.quotedPrice != null && (
+                          <div className="text-right">
+                            <span className="text-xs text-slate-400">التكلفة</span>
+                            <p className="font-bold text-emerald-700">{b.quotedPrice.toLocaleString()} د.ع</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {b.notes && <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">{b.notes}</p>}
+
+                      {/* Map link */}
+                      {b.mapLatitude && b.mapLongitude && (
+                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${b.mapLatitude},${b.mapLongitude}`} target="_blank" rel="noreferrer"
+                          className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-100">
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                          فتح الموقع على الخريطة
+                        </a>
+                      )}
+
+                      {/* Actions */}
+                      {b.status === 'CONFIRMED' ? (
+                        <button onClick={() => handleTaskStart(b)}
+                          className="w-full rounded-xl bg-gradient-to-l from-amber-500 to-amber-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-amber-500/20 hover:shadow-xl">
+                          ✅ تم الاستلام — بدأت بالعمل
+                        </button>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            <input type="number" placeholder="المبلغ المستلم" value={taskAmounts[b.id] || ''}
+                              onChange={e => setTaskAmounts(p => ({ ...p, [b.id]: e.target.value }))}
+                              className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+                            <input type="number" placeholder="دفعة مقدمة" value={taskAdvances[b.id] || ''}
+                              onChange={e => setTaskAdvances(p => ({ ...p, [b.id]: e.target.value }))}
+                              className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+                            <input placeholder="ملاحظات" value={taskNotes[b.id] || ''}
+                              onChange={e => setTaskNotes(p => ({ ...p, [b.id]: e.target.value }))}
+                              className="rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+                            <button onClick={() => handleTaskComplete(b)}
+                              className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-bold text-white shadow-md hover:shadow-lg">
+                              تم الإنجاز
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-base font-bold">{card.title}</p>
-                    <p className="mt-0.5 text-xs text-white/70">{card.desc}</p>
-                  </div>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" className="opacity-40 transition-all group-hover:opacity-100 group-hover:-translate-x-1"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ═══ Quick Access ═══ */}
+      {quickCards.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {quickCards.map((card) => (
+            <button key={card.path} onClick={() => navigate(card.path)}
+              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-bl ${card.gradient} p-5 text-right text-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
+              <div className="absolute inset-0 bg-gradient-to-l from-white/0 via-white/10 to-white/0 translate-x-full transition-transform duration-700 group-hover:-translate-x-full" />
+              <div className="relative flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={card.iconPath} /></svg>
                 </div>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
+                <div className="flex-1">
+                  <p className="text-base font-bold">{card.title}</p>
+                  <p className="mt-0.5 text-xs text-white/70">{card.desc}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ═══ System Panels - ADMIN ═══ */}
       {isAdmin && (
