@@ -126,17 +126,17 @@ export default function Dashboard() {
       api.getBookings().catch(() => [] as Booking[]),
       api.getEmployees().then((e) => e.length).catch(() => 0),
       api.getCustomers().then((c) => c.length).catch(() => 0),
-      isTech ? Promise.all([
-        api.getBookings({ status: 'CONFIRMED' }).catch(() => []),
-        api.getBookings({ status: 'IN_PROGRESS' }).catch(() => []),
-      ]).then(([c, p]) => [...c, ...p]) : Promise.resolve([]),
-    ]).then(([gps, bk, emp, cust, tasks]) => {
+      isTech ? api.getBookings().catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
+    ]).then(([gps, bk, emp, cust, allBookings]) => {
       setGpsStats(gps as GpsStats | null)
       setBookings(bk as Booking[])
       setBookingCount((bk as Booking[]).length)
       setEmployeeCount(emp)
       setCustomerCount(cust)
-      const taskList = (tasks as Booking[]).filter(b => b.assignments.some(a => a.employee.id === employee.id))
+      const taskList = (allBookings as Booking[]).filter(b =>
+        b.status !== 'COMPLETED' && b.status !== 'CANCELLED' &&
+        b.assignments.some(a => a.employee.id === employee.id)
+      )
       setMyTasks(taskList)
     }).finally(() => setLoading(false))
   }, [employee])
