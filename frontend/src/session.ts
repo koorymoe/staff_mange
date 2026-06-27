@@ -15,6 +15,12 @@ export const SessionContext = createContext<Session>({
 
 export const useSession = () => useContext(SessionContext)
 
+export const hasMonitorAccess = (role?: string, permissions: string[] = []) =>
+  role === 'ADMIN' || role === 'MONITOR' || permissions.includes('monitoring')
+
+export const hasAuditAccess = (role?: string, permissions: string[] = []) =>
+  role === 'ADMIN' || role === 'MONITOR' || permissions.includes('auditing')
+
 export const roleLabels: Record<string, string> = {
   ADMIN: 'مدير النظام',
   SALES: 'موظف مبيعات',

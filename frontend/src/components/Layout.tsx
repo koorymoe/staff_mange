@@ -161,8 +161,12 @@ export default function Layout() {
   }
 
   const role = employee?.role
+  const hasMonitor = role === 'MONITOR' || employeePermissions.includes('monitoring')
+  const hasAudit = employeePermissions.includes('auditing')
   const isVisible = (item: NavItem): boolean => {
-    if (item.roles && role && !item.roles.includes(role)) return false
+    if (item.roles && role && !item.roles.includes(role)) {
+      if (!((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
+    }
     if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
     if (item.leaderOnly && !employee?.isLeader && role !== 'ADMIN') return false
     if (item.children) return item.children.some(isVisible)

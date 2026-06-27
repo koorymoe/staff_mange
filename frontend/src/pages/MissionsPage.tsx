@@ -53,13 +53,13 @@ function timeStr(dateStr: string | null) {
 }
 
 export default function MissionsPage() {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const [missions, setMissions] = useState<Mission[]>([])
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'active' | 'completed' | 'monitor'>('active')
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
 
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR'
+  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
   const load = useCallback(async () => {
     try {

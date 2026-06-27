@@ -89,7 +89,7 @@ function elapsedSince(timeStr: string): string {
 /* ───── Component ───── */
 
 export default function AttendancePage() {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const navigate = useNavigate()
 
   const [record, setRecord] = useState<AttendanceRecord | undefined>(undefined)
@@ -99,7 +99,7 @@ export default function AttendancePage() {
   const [todayAll, setTodayAll] = useState<AttendanceRecord[]>([])
   const [myTodaySessions, setMyTodaySessions] = useState<AttendanceRecord[]>([])
 
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
+  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
   // Load existing record
   useEffect(() => {

@@ -25,8 +25,8 @@ const techRoleLabels: Record<string, string> = {
 }
 
 export default function BookingsList() {
-  const { employee } = useSession()
-  const canSeeStats = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
+  const { employee, permissions } = useSession()
+  const canSeeStats = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

@@ -236,7 +236,7 @@ function TechnicianTab() {
 // ─── Administrative Tab ───────────────────────────────────────────────────────
 
 function AdministrativeTab() {
-  const { employee: currentUser } = useSession()
+  const { employee: currentUser, permissions } = useSession()
   const [evaluations, setEvaluations] = useState<KpiEvaluation[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
@@ -248,7 +248,7 @@ function AdministrativeTab() {
   const [deductNotes, setDeductNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
-  const isEvaluator = currentUser && EVALUATOR_ROLES.includes(currentUser.role)
+  const isEvaluator = currentUser && (EVALUATOR_ROLES.includes(currentUser.role) || permissions.includes('auditing'))
 
   const load = () => {
     setLoading(true)

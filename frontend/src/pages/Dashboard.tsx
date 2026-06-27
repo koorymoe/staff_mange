@@ -236,7 +236,7 @@ export default function Dashboard() {
       gradient: 'from-amber-500 via-amber-600 to-amber-700',
       iconPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
       path: '/missions',
-      visible: isAdmin || ['HR_COORDINATOR', 'MONITOR'].includes(employee.role),
+      visible: isAdmin || employee.role === 'HR_COORDINATOR' || permissions.includes('monitoring'),
     },
   ].filter(c => c.visible)
 
@@ -321,7 +321,7 @@ export default function Dashboard() {
       )}
 
       {/* ═══ Bookings Notification Panel ═══ */}
-      {['ADMIN', 'HR_COORDINATOR', 'MONITOR'].includes(employee.role) && (() => {
+      {(['ADMIN', 'HR_COORDINATOR'].includes(employee.role) || permissions.includes('monitoring')) && (() => {
         const pending = bookings.filter(b => b.status === 'PENDING')
         const confirmed = bookings.filter(b => b.status === 'CONFIRMED')
         const inProgress = bookings.filter(b => b.status === 'IN_PROGRESS')

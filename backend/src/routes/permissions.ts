@@ -21,6 +21,8 @@ const defaultPermissions = [
   { name: 'finance', label: 'المالية' },
   { name: 'expenses', label: 'المصاريف' },
   { name: 'procurement', label: 'المشتريات' },
+  { name: 'monitoring', label: 'مراقبة (متابعة المهام والحجوزات والموظفين)' },
+  { name: 'auditing', label: 'تدقيق (التحقق من جودة العمل والتقارير والحسابات)' },
 ]
 
 const roleDefaultPermissions: Record<string, string[]> = {
@@ -29,7 +31,7 @@ const roleDefaultPermissions: Record<string, string[]> = {
   HR_COORDINATOR: ['staff_management', 'edit_employee_profile', 'coordinator', 'manage_customers', 'view_bookings', 'manage_services', 'inventory', 'complaints', 'mission_tracking'],
   TECHNICIAN: ['expenses'],
   PROJECT_MANAGER: ['project_management', 'expenses', 'mission_tracking'],
-  MONITOR: ['staff_management', 'kpi_management', 'view_bookings', 'manage_customers', 'manage_services', 'mission_tracking', 'inventory', 'complaints', 'finance'],
+  MONITOR: ['staff_management', 'kpi_management', 'view_bookings', 'manage_customers', 'manage_services', 'mission_tracking', 'inventory', 'complaints', 'finance', 'monitoring', 'auditing'],
   FINANCE: ['finance', 'view_bookings'],
   GPS_ADMIN: ['gps_system'],
   GPS_ENGINEER: ['gps_system'],
