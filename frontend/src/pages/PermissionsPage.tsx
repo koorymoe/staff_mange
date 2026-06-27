@@ -102,6 +102,10 @@ export default function PermissionsPage() {
       title: 'الحسابات',
       perms: ['finance', 'expenses', 'complaints'],
     },
+    {
+      title: 'المراقبة والتدقيق',
+      perms: ['monitoring', 'auditing'],
+    },
   ]
 
   return (
