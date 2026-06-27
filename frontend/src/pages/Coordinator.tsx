@@ -150,7 +150,7 @@ export default function Coordinator() {
 
   const handleScheduleChange = async (booking: Booking, value: string) => {
     if (!value) return
-    const updated = await api.scheduleBooking(booking.id, value)
+    const updated = await api.scheduleBooking(booking.id, value, currentUser?.id)
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
@@ -483,7 +483,7 @@ export default function Coordinator() {
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
-                      الموعد المحدد {booking.scheduledAt ? '(تعديله يحتاج موافقة المدقق)' : ''}
+                      الموعد المحدد
                     </label>
                     <div className="flex gap-2">
                       {scheduleMode[`c_${booking.id}`] === 'manual' ? (
@@ -519,11 +519,23 @@ export default function Coordinator() {
                         {scheduleMode[`c_${booking.id}`] === 'manual' ? 'المواعيد' : 'يدوي'}
                       </button>
                     </div>
-                    {booking.pendingScheduledAt && (
-                      <p className="mt-1 text-xs font-bold text-amber-600">
-                        طلب تعديل بانتظار موافقة المدقق:{' '}
-                        {new Date(booking.pendingScheduledAt).toLocaleString('ar-IQ')}
-                      </p>
+                    {booking.scheduleLogs?.length > 0 && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600">سجل التعديلات ({booking.scheduleLogs.length})</summary>
+                        <div className="mt-1 max-h-32 space-y-1 overflow-y-auto rounded-lg bg-slate-50 p-2">
+                          {booking.scheduleLogs.map(log => (
+                            <p key={log.id} className="text-[11px] text-slate-500">
+                              <span className="font-bold text-slate-700">{log.changedBy.name}</span>
+                              {' غيّر من '}
+                              <span className="text-red-500">{log.oldTime ? new Date(log.oldTime).toLocaleString('ar-IQ') : 'بدون موعد'}</span>
+                              {' إلى '}
+                              <span className="text-emerald-600">{new Date(log.newTime).toLocaleString('ar-IQ')}</span>
+                              {' — '}
+                              <span className="text-slate-400">{new Date(log.createdAt).toLocaleString('ar-IQ')}</span>
+                            </p>
+                          ))}
+                        </div>
+                      </details>
                     )}
                   </div>
                 </div>

@@ -11,6 +11,7 @@ const bookingInclude = {
   confirmedByEmployee: true,
   expenseResponsible: true,
   assignments: { include: { employee: true } },
+  scheduleLogs: { include: { changedBy: { select: { id: true, name: true, role: true } } }, orderBy: { createdAt: 'desc' as const } },
 } as const
 
 // GET /api/bookings?status=PENDING - list bookings, optionally filtered by status
@@ -100,53 +101,42 @@ router.put('/:id/details', async (req, res) => {
 })
 
 // PUT /api/bookings/:id/schedule - HR coordinator sets/changes the appointment time
-// If the booking already has a scheduled time, the new time becomes a pending request
-// that requires the monitor's approval before it takes effect.
-// body: { scheduledAt }
+// body: { scheduledAt, changedById }
 router.put('/:id/schedule', async (req, res) => {
   const { id } = req.params
-  const { scheduledAt } = req.body
+  const { scheduledAt, changedById } = req.body
 
   if (!scheduledAt) return res.status(400).json({ error: 'scheduledAt is required' })
 
   const existing = await prisma.booking.findUnique({ where: { id } })
   if (!existing) return res.status(404).json({ error: 'Booking not found' })
 
-  const booking = await prisma.booking.update({
-    where: { id },
-    data: existing.scheduledAt
-      ? { pendingScheduledAt: new Date(scheduledAt) }
-      : { scheduledAt: new Date(scheduledAt) },
-    include: bookingInclude,
-  })
+  const [booking] = await prisma.$transaction([
+    prisma.booking.update({
+      where: { id },
+      data: { scheduledAt: new Date(scheduledAt) },
+      include: bookingInclude,
+    }),
+    ...(changedById ? [prisma.scheduleChangeLog.create({
+      data: {
+        bookingId: id,
+        changedById,
+        oldTime: existing.scheduledAt,
+        newTime: new Date(scheduledAt),
+      },
+    })] : []),
+  ])
   res.json(booking)
 })
 
-// PUT /api/bookings/:id/schedule/approve - monitor approves a pending reschedule request
-router.put('/:id/schedule/approve', async (req, res) => {
-  const { id } = req.params
-  const existing = await prisma.booking.findUnique({ where: { id } })
-  if (!existing?.pendingScheduledAt) {
-    return res.status(400).json({ error: 'لا يوجد طلب تعديل موعد بانتظار الموافقة' })
-  }
-
-  const booking = await prisma.booking.update({
-    where: { id },
-    data: { scheduledAt: existing.pendingScheduledAt, pendingScheduledAt: null },
-    include: bookingInclude,
+// GET /api/bookings/:id/schedule-log - view schedule change history
+router.get('/:id/schedule-log', async (req, res) => {
+  const logs = await prisma.scheduleChangeLog.findMany({
+    where: { bookingId: req.params.id },
+    include: { changedBy: { select: { id: true, name: true, role: true } } },
+    orderBy: { createdAt: 'desc' },
   })
-  res.json(booking)
-})
-
-// PUT /api/bookings/:id/schedule/reject - monitor rejects a pending reschedule request
-router.put('/:id/schedule/reject', async (req, res) => {
-  const { id } = req.params
-  const booking = await prisma.booking.update({
-    where: { id },
-    data: { pendingScheduledAt: null },
-    include: bookingInclude,
-  })
-  res.json(booking)
+  res.json(logs)
 })
 
 // PUT /api/bookings/:id/assign - HR coordinator assigns a technician to the crew dispatch

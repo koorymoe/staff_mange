@@ -41,18 +41,6 @@ export default function BookingsList() {
       .finally(() => setLoading(false))
   }, [])
 
-  const isMonitor = employee?.role === 'MONITOR'
-  const pendingReschedules = bookings.filter((b) => b.pendingScheduledAt)
-
-  const handleApproveReschedule = async (b: Booking) => {
-    const updated = await api.approveReschedule(b.id)
-    setBookings((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
-  }
-  const handleRejectReschedule = async (b: Booking) => {
-    const updated = await api.rejectReschedule(b.id)
-    setBookings((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
-  }
-
   const filtered = bookings.filter((b) => {
     const q = search.trim().toLowerCase()
     if (!q) return true
@@ -79,41 +67,6 @@ export default function BookingsList() {
         سجل كامل بجميع الحجوزات السابقة مع تفاصيلها، وأكثر الخدمات التي يطلبها الزبائن.
       </p>
 
-      {!loading && !error && isMonitor && pendingReschedules.length > 0 && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-amber-200 bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <h3 className="bg-gradient-to-l from-amber-500 to-amber-700 px-4 py-3 font-bold text-white">
-            ⏳ طلبات تعديل المواعيد بانتظار الموافقة
-          </h3>
-          <div className="flex flex-col divide-y divide-slate-100">
-            {pendingReschedules.map((b) => (
-              <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
-                <span className="font-mono font-semibold text-brand-600">{b.code}</span>
-                <span className="text-slate-600">{b.customer.name}</span>
-                <span className="text-slate-500">
-                  من: {b.scheduledAt ? new Date(b.scheduledAt).toLocaleString('ar-IQ') : '-'}
-                </span>
-                <span className="font-bold text-brand-800">
-                  إلى: {new Date(b.pendingScheduledAt!).toLocaleString('ar-IQ')}
-                </span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleApproveReschedule(b)}
-                    className="rounded-lg bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
-                  >
-                    موافقة
-                  </button>
-                  <button
-                    onClick={() => handleRejectReschedule(b)}
-                    className="rounded-lg bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
-                  >
-                    رفض
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {!loading && !error && canSeeStats && topServices.length > 0 && (
         <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

@@ -282,6 +282,7 @@ model Employee {
   supplierRatings     SupplierRating[]
   procurementRequests    ProcurementRequest[] @relation("ProcurementRequester")
   procurementFulfilled   ProcurementRequest[] @relation("ProcurementFulfiller")
+  scheduleChangeLogs     ScheduleChangeLog[]
 }
 
 // مصاريف يدفعها الموظف من جيبه ويحتاج استرجاعها/استقطاعها
@@ -321,7 +322,7 @@ model Booking {
 
   sequenceNumber Int? // تسلسل الحجز
   scheduledAt    DateTime? // الموعد المحدد لتنفيذ المهمة
-  pendingScheduledAt DateTime? // موعد جديد مطلوب تعديله بانتظار موافقة المدقق
+  scheduleLogs   ScheduleChangeLog[]
 
   customer   Customer @relation(fields: [customerId], references: [id])
   customerId String
@@ -413,6 +414,21 @@ model BookingAssignment {
 
   @@unique([bookingId, role])
   @@index([employeeId])
+}
+
+// سجل تغييرات المواعيد
+model ScheduleChangeLog {
+  id          String   @id @default(cuid())
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  bookingId   String
+  changedBy   Employee @relation(fields: [changedById], references: [id])
+  changedById String
+  oldTime     DateTime?
+  newTime     DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+  @@index([changedById])
 }
 
 // ---------------------------------------------------------------------------

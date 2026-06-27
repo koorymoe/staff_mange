@@ -60,7 +60,7 @@ export interface Booking {
   code: string
   sequenceNumber: number | null
   scheduledAt: string | null
-  pendingScheduledAt: string | null
+  scheduleLogs: { id: string; changedById: string; changedBy: { id: string; name: string; role: string }; oldTime: string | null; newTime: string; createdAt: string }[]
   customer: Customer
   service: Service | null
   transferEmployee: Employee | null
@@ -387,12 +387,8 @@ export const api = {
       scheduledAt?: string
     },
   ) => request<Booking>(`/bookings/${id}/confirm`, { method: 'PUT', body: JSON.stringify(data) }),
-  scheduleBooking: (id: string, scheduledAt: string) =>
-    request<Booking>(`/bookings/${id}/schedule`, { method: 'PUT', body: JSON.stringify({ scheduledAt }) }),
-  approveReschedule: (id: string) =>
-    request<Booking>(`/bookings/${id}/schedule/approve`, { method: 'PUT', body: JSON.stringify({}) }),
-  rejectReschedule: (id: string) =>
-    request<Booking>(`/bookings/${id}/schedule/reject`, { method: 'PUT', body: JSON.stringify({}) }),
+  scheduleBooking: (id: string, scheduledAt: string, changedById?: string) =>
+    request<Booking>(`/bookings/${id}/schedule`, { method: 'PUT', body: JSON.stringify({ scheduledAt, changedById }) }),
   updateBookingDetails: (
     id: string,
     data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; mapLatitude?: number | null; mapLongitude?: number | null; expenseResponsibleId?: string | null },
