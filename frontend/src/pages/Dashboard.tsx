@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
+import type { Booking } from '../api'
 import { useSession } from '../session'
 
 /* ───── Attendance localStorage helpers ───── */
@@ -104,6 +105,7 @@ export default function Dashboard() {
   const [bookingCount, setBookingCount] = useState(0)
   const [employeeCount, setEmployeeCount] = useState(0)
   const [customerCount, setCustomerCount] = useState(0)
+  const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
 
@@ -116,12 +118,13 @@ export default function Dashboard() {
     if (!employee) return
     Promise.all([
       api.getGpsStats().catch(() => null),
-      api.getBookings().then((b) => b.length).catch(() => 0),
+      api.getBookings().catch(() => [] as Booking[]),
       api.getEmployees().then((e) => e.length).catch(() => 0),
       api.getCustomers().then((c) => c.length).catch(() => 0),
     ]).then(([gps, bk, emp, cust]) => {
       setGpsStats(gps as GpsStats | null)
-      setBookingCount(bk)
+      setBookings(bk as Booking[])
+      setBookingCount((bk as Booking[]).length)
       setEmployeeCount(emp)
       setCustomerCount(cust)
     }).finally(() => setLoading(false))
@@ -291,6 +294,85 @@ export default function Dashboard() {
           ))}
         </div>
       )}
+
+      {/* ═══ Bookings Notification Panel ═══ */}
+      {['ADMIN', 'HR_COORDINATOR', 'MONITOR'].includes(employee.role) && (() => {
+        const pending = bookings.filter(b => b.status === 'PENDING')
+        const confirmed = bookings.filter(b => b.status === 'CONFIRMED')
+        const inProgress = bookings.filter(b => b.status === 'IN_PROGRESS')
+        if (pending.length === 0 && confirmed.length === 0 && inProgress.length === 0) return null
+        return (
+          <div className="space-y-4">
+            {/* Pending - urgent notification */}
+            {pending.length > 0 && (
+              <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-l from-amber-50 to-orange-50 p-5 shadow-lg shadow-amber-100/50">
+                <div className="mb-4 flex items-center justify-between">
+                  <button onClick={() => navigate('/coordinator')} className="rounded-lg bg-amber-500 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-amber-600">
+                    تنسيق الحجوزات ←
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <span className="relative flex h-3 w-3">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-amber-400 opacity-75" />
+                      <span className="relative inline-flex h-3 w-3 rounded-full bg-amber-500" />
+                    </span>
+                    <h3 className="text-base font-extrabold text-amber-800">
+                      حجوزات بانتظار التثبيت
+                      <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-amber-500 text-sm font-black text-white">{pending.length}</span>
+                    </h3>
+                  </div>
+                </div>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {pending.map(b => (
+                    <div key={b.id} onClick={() => navigate('/coordinator')} className="flex cursor-pointer items-center justify-between rounded-xl bg-white/80 px-4 py-3 transition hover:bg-white hover:shadow-md">
+                      <div className="flex items-center gap-2">
+                        {b.priority === 'URGENT' && <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">عاجل</span>}
+                        <span className="text-xs text-slate-400">{new Date(b.createdAt).toLocaleDateString('ar-IQ')}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-right">
+                        <div>
+                          <span className="text-sm font-bold text-amber-700">{b.code}</span>
+                          <span className="mr-2 text-sm font-medium text-slate-700">{b.customer.name}</span>
+                        </div>
+                        {b.service && <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">{b.service.name}</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Confirmed + In Progress - summary row */}
+            {(confirmed.length > 0 || inProgress.length > 0) && (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {confirmed.length > 0 && (
+                  <button onClick={() => navigate('/coordinator')} className="group flex items-center justify-between rounded-2xl border border-blue-200 bg-blue-50 p-4 text-right transition hover:bg-blue-100 hover:shadow-md">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" className="opacity-40 group-hover:opacity-100"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <span className="text-sm font-bold text-blue-800">حجوزات مثبتة بحاجة تنسيق</span>
+                        <p className="text-xs text-blue-500 mt-0.5">تعيين كوادر وموعد ومركبة</p>
+                      </div>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500 text-lg font-black text-white shadow-lg shadow-blue-200">{confirmed.length}</div>
+                    </div>
+                  </button>
+                )}
+                {inProgress.length > 0 && (
+                  <button onClick={() => navigate('/bookings')} className="group flex items-center justify-between rounded-2xl border border-violet-200 bg-violet-50 p-4 text-right transition hover:bg-violet-100 hover:shadow-md">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="2" strokeLinecap="round" className="opacity-40 group-hover:opacity-100"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
+                    <div className="flex items-center gap-3">
+                      <div>
+                        <span className="text-sm font-bold text-violet-800">حجوزات جاري تنفيذها</span>
+                        <p className="text-xs text-violet-500 mt-0.5">متابعة الكوادر الميدانية</p>
+                      </div>
+                      <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500 text-lg font-black text-white shadow-lg shadow-violet-200">{inProgress.length}</div>
+                    </div>
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })()}
 
       {/* ═══ Sales Level Card ═══ */}
       {employee.role === 'SALES' && (
