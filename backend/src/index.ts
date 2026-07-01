@@ -21,6 +21,7 @@ import projectsRouter from './routes/projects'
 import missionsRouter from './routes/missions'
 import procurementRouter from './routes/procurement'
 import smartKpiRouter from './routes/smart-kpi'
+import trainingRouter from './routes/training'
 
 dotenv.config()
 
@@ -52,6 +53,7 @@ app.use('/api/projects', projectsRouter)
 app.use('/api/missions', missionsRouter)
 app.use('/api/procurement', procurementRouter)
 app.use('/api/smart-kpi', smartKpiRouter)
+app.use('/api/training', trainingRouter)
 
 const PORT = process.env.PORT || 4000
 app.listen(PORT, () => {

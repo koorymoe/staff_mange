@@ -45,8 +45,20 @@ export interface Employee {
   hasDrivingLicense: boolean
   hasSafetyCertificate: boolean
   isLeader: boolean
+  isTrainee: boolean
   skills: EmployeeSkill[]
   hasRequiredSkill?: boolean
+}
+
+export interface TrainingMaterial {
+  id: string
+  serviceId: string
+  service: Service
+  title: string
+  url: string
+  type: 'VIDEO' | 'DOCUMENT'
+  order: number
+  createdAt: string
 }
 
 export interface BookingAssignment {
@@ -428,7 +440,7 @@ export const api = {
     data: Partial<
       Pick<
         Employee,
-        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'hasDrivingLicense' | 'hasSafetyCertificate'
+        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
       >
     > & {
       username?: string
@@ -510,6 +522,25 @@ export const api = {
   createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string }) =>
     request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
   deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
+
+  // Training
+  getMyTraining: (employeeId: string) =>
+    request<{ services: Service[]; materials: TrainingMaterial[] }>(`/training/materials/mine?employeeId=${employeeId}`),
+  getTrainingAssignments: (employeeId: string) =>
+    request<Service[]>(`/training/assignments/${employeeId}`),
+  setTrainingAssignments: (employeeId: string, serviceIds: string[]) =>
+    request<Service[]>(`/training/assignments/${employeeId}`, {
+      method: 'PUT',
+      body: JSON.stringify({ serviceIds }),
+    }),
+  getTrainingMaterials: (serviceId?: string) =>
+    request<TrainingMaterial[]>(`/training/materials${serviceId ? `?serviceId=${serviceId}` : ''}`),
+  createTrainingMaterial: (data: { serviceId: string; title: string; url: string; type?: string; order?: number }) =>
+    request<TrainingMaterial>('/training/materials', { method: 'POST', body: JSON.stringify(data) }),
+  updateTrainingMaterial: (id: string, data: { title: string; url: string; type?: string; order?: number }) =>
+    request<TrainingMaterial>(`/training/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTrainingMaterial: (id: string) =>
+    request<void>(`/training/materials/${id}`, { method: 'DELETE' }),
 
   // Smart KPI
   getTechnicianKpi: (employeeId: string, month?: string) =>

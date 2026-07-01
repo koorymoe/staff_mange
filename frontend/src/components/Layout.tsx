@@ -3,6 +3,7 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels } from '../session'
 import Login from '../pages/Login'
+import TrainingPage from '../pages/TrainingPage'
 
 interface NavItem {
   to: string
@@ -38,6 +39,7 @@ const navItems: NavItem[] = [
           { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'inventory' },
           { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
           { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+          { to: '/training-management', label: 'إدارة التدريب', icon: <></>, roles: ['ADMIN'] },
         ],
       },
       {
@@ -158,6 +160,26 @@ export default function Layout() {
     return (
       <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
         <Login />
+      </SessionContext.Provider>
+    )
+  }
+
+  // موظف قيد التدريب: يشوف صفحة التدريب فقط، بدون أي وصول لباقي النظام
+  if (employee.isTrainee) {
+    return (
+      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
+        <div dir="rtl" className="min-h-screen bg-[#f0f4f9]">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-8">
+            <span className="text-lg font-extrabold text-[#0f2040] tracking-tight">نظام شركة الأماني — التدريب</span>
+            <button onClick={() => setEmployee(null)}
+              className="rounded-lg px-3 py-1.5 text-sm font-bold text-red-500 hover:bg-red-50">
+              تسجيل الخروج
+            </button>
+          </header>
+          <main className="p-8">
+            <TrainingPage />
+          </main>
+        </div>
       </SessionContext.Provider>
     )
   }

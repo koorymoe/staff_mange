@@ -98,6 +98,7 @@ router.put('/:id', async (req, res) => {
     hasDrivingLicense,
     hasSafetyCertificate,
     isLeader,
+    isTrainee,
   } = req.body
 
   if (username) {
@@ -122,6 +123,7 @@ router.put('/:id', async (req, res) => {
       hasDrivingLicense,
       hasSafetyCertificate,
       isLeader,
+      isTrainee,
     },
   })
   res.json(stripPassword(employee))

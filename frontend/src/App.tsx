@@ -36,6 +36,8 @@ import MissionsPage from './pages/MissionsPage'
 import ProcurementPage from './pages/ProcurementPage'
 import MapPage from './pages/MapPage'
 import MonitorDashboard from './pages/MonitorDashboard'
+import TrainingPage from './pages/TrainingPage'
+import TrainingManagement from './pages/TrainingManagement'
 
 function App() {
   return (
@@ -77,6 +79,8 @@ function App() {
         <Route path="gps/renewals" element={<GpsRenewals />} />
         <Route path="gps/maintenance" element={<GpsMaintenance />} />
         <Route path="gps/employee" element={<GpsEmployee />} />
+        <Route path="training" element={<TrainingPage />} />
+        <Route path="training-management" element={<TrainingManagement />} />
       </Route>
     </Routes>
   )

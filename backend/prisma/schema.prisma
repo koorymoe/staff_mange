@@ -190,6 +190,36 @@ model Service {
 
   bookings Booking[]
   skills   Skill[]
+  trainingMaterials   TrainingMaterial[]
+  trainingAssignments EmployeeTrainingAssignment[]
+}
+
+// ---------------------------------------------------------------------------
+// Training (التدريب)
+// ---------------------------------------------------------------------------
+
+// مادة تدريبية (فيديو/مستند) مرتبطة بخدمة معينة
+model TrainingMaterial {
+  id        String   @id @default(cuid())
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId String
+  title     String
+  url       String
+  type      String   @default("VIDEO") // VIDEO | DOCUMENT
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+// تعيين موظف متدرب على خدمة معينة (يحدد شنو المواد التدريبية التي يشوفها)
+model EmployeeTrainingAssignment {
+  id         String   @id @default(cuid())
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  employeeId String
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  serviceId  String
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, serviceId])
 }
 
 // Specific skill/task within a service (e.g. تسليك كيبل كهرباء under الطاقة الشمسية)
@@ -245,6 +275,7 @@ model Employee {
   jobTitle        String?        // العنوان الوظيفي
   leaderSkillLevel Int           @default(0) // مستوى المهارة كليدر (0-10)
   isLeader    Boolean        @default(false)
+  isTrainee   Boolean        @default(false) // موظف قيد التدريب: يشوف صفحة التدريب فقط بدون أي صلاحيات أخرى
   createdAt   DateTime       @default(now())
 
   skills EmployeeSkill[]
@@ -284,6 +315,7 @@ model Employee {
   procurementRequests    ProcurementRequest[] @relation("ProcurementRequester")
   procurementFulfilled   ProcurementRequest[] @relation("ProcurementFulfiller")
   scheduleChangeLogs     ScheduleChangeLog[]
+  trainingAssignments    EmployeeTrainingAssignment[]
 }
 
 // مصاريف يدفعها الموظف من جيبه ويحتاج استرجاعها/استقطاعها
