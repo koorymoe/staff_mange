@@ -157,9 +157,22 @@ export interface Customer {
   location: string | null
 }
 
+function currentEmployeeId(): string | null {
+  try {
+    const raw = localStorage.getItem('currentEmployee')
+    return raw ? (JSON.parse(raw).id as string) : null
+  } catch {
+    return null
+  }
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const employeeId = currentEmployeeId()
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(employeeId ? { 'x-employee-id': employeeId } : {}),
+    },
     ...options,
   })
   if (!res.ok) {

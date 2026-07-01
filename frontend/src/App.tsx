@@ -38,6 +38,7 @@ import MapPage from './pages/MapPage'
 import MonitorDashboard from './pages/MonitorDashboard'
 import TrainingPage from './pages/TrainingPage'
 import TrainingManagement from './pages/TrainingManagement'
+import RequireAdmin from './components/RequireAdmin'
 
 function App() {
   return (
@@ -59,7 +60,7 @@ function App() {
         <Route path="complaints" element={<ComplaintsPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="my-inventory" element={<MyInventory />} />
-        <Route path="permissions" element={<PermissionsPage />} />
+        <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />
         <Route path="quotations" element={<QuotationsPage />} />
         <Route path="quotations/new" element={<QuotationNew />} />
         <Route path="products" element={<ProductsPage />} />
@@ -80,7 +81,7 @@ function App() {
         <Route path="gps/maintenance" element={<GpsMaintenance />} />
         <Route path="gps/employee" element={<GpsEmployee />} />
         <Route path="training" element={<TrainingPage />} />
-        <Route path="training-management" element={<TrainingManagement />} />
+        <Route path="training-management" element={<RequireAdmin><TrainingManagement /></RequireAdmin>} />
       </Route>
     </Routes>
   )

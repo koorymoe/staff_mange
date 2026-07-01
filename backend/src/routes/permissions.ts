@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireAdmin } from '../middleware/requireAdmin'
 
 const router = Router()
 
@@ -69,7 +70,7 @@ router.get('/employee/:employeeId', async (req, res) => {
 
 // PUT /employee/:employeeId - set permissions for an employee (replace all)
 // body: { permissionIds: string[] }
-router.put('/employee/:employeeId', async (req, res) => {
+router.put('/employee/:employeeId', requireAdmin, async (req, res) => {
   const { employeeId } = req.params
   const { permissionIds } = req.body as { permissionIds: string[] }
 
@@ -88,7 +89,7 @@ router.put('/employee/:employeeId', async (req, res) => {
 })
 
 // POST /employee/:employeeId/apply-defaults - apply default permissions for employee's role
-router.post('/employee/:employeeId/apply-defaults', async (req, res) => {
+router.post('/employee/:employeeId/apply-defaults', requireAdmin, async (req, res) => {
   const { employeeId } = req.params
   const employee = await prisma.employee.findUnique({ where: { id: employeeId } })
   if (!employee) return res.status(404).json({ error: 'Employee not found' })

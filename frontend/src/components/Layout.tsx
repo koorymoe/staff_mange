@@ -129,7 +129,15 @@ export default function Layout() {
   const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
   const location = useLocation()
+
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  const toggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) setMobileOpen((o) => !o)
+    else setCollapsed((c) => !c)
+  }
 
   const setEmployee = (emp: Employee | null) => {
     setEmployeeState(emp)
@@ -176,7 +184,7 @@ export default function Layout() {
               تسجيل الخروج
             </button>
           </header>
-          <main className="p-8">
+          <main className="p-3 sm:p-5 lg:p-8">
             <TrainingPage />
           </main>
         </div>
@@ -313,31 +321,31 @@ export default function Layout() {
         {/* ===== Main Area ===== */}
         <div dir="rtl" className="flex flex-1 flex-col">
           {/* Top Header — Glass effect */}
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-8">
-            <div className="flex items-center gap-3">
+          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-3 sm:px-5 lg:px-8">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
-                onClick={() => setCollapsed(!collapsed)}
-                className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+                onClick={toggleSidebar}
+                className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
               >
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
                 </svg>
               </button>
-              <div className="h-8 w-px bg-slate-200"/>
-              <span className="text-lg font-extrabold text-[#0f2040] tracking-tight">نظام شركة الأماني</span>
+              <div className="hidden h-8 w-px bg-slate-200 sm:block"/>
+              <span className="truncate text-sm font-extrabold text-[#0f2040] tracking-tight sm:text-lg">نظام شركة الأماني</span>
             </div>
-            <div className="flex items-center gap-3">
-              <button className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button className="relative hidden h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 sm:flex">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
                 </svg>
               </button>
-              <div className="flex items-center gap-3 rounded-xl bg-slate-50/80 px-3 py-1.5 transition-colors hover:bg-slate-100">
-                <div className="text-left">
+              <div className="flex items-center gap-2 rounded-xl bg-slate-50/80 px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-3 sm:px-3">
+                <div className="hidden text-left sm:block">
                   <p className="text-sm font-bold text-slate-800">{employee.name}</p>
                   <p className="text-[11px] text-slate-400">{roleLabels[employee.role]}</p>
                 </div>
-                <div className={`relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-md`}>
+                <div className={`relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-md sm:h-10 sm:w-10`}>
                   {employee.name.charAt(0)}
                   <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500"/>
                 </div>
@@ -346,15 +354,22 @@ export default function Layout() {
           </header>
 
           {/* Content */}
-          <main className="flex-1 overflow-y-auto p-8">
+          <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-8">
             <Outlet />
           </main>
         </div>
 
+        {/* Mobile backdrop */}
+        {mobileOpen && (
+          <div onClick={() => setMobileOpen(false)} className="fixed inset-0 z-40 bg-black/40 lg:hidden" />
+        )}
+
         {/* ===== Right Sidebar — Premium ===== */}
         <aside
           dir="rtl"
-          className="sticky top-0 flex h-screen flex-col bg-[#0f2040] transition-all duration-300 ease-in-out"
+          className={`fixed inset-y-0 right-0 z-50 flex h-screen flex-col bg-[#0f2040] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
+            mobileOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
           style={{ width: collapsed ? 72 : 270, minWidth: collapsed ? 72 : 270 }}
         >
           {/* Logo */}

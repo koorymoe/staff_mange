@@ -255,7 +255,7 @@ function AdministrativeTab() {
     Promise.all([api.getKpiEvaluations(), api.getEmployees()])
       .then(([evals, emps]) => {
         setEvaluations(evals)
-        setEmployees(emps.filter((e) => e.role !== 'TECHNICIAN'))
+        setEmployees(emps.filter((e) => e.role !== 'TECHNICIAN' && e.role !== 'ADMIN'))
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
