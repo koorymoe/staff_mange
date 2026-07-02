@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: staffuser
+      POSTGRES_PASSWORD: staffpass
+      POSTGRES_DB: staff_mange
+    ports:
+      - "5432:5432"
+    volumes:
+      - staff_mange_pgdata:/var/lib/postgresql/data
+
+volumes:
+  staff_mange_pgdata:
