@@ -25,18 +25,21 @@ func main() {
 	employeeRepo := repository.NewEmployeeRepository(db)
 	permissionRepo := repository.NewPermissionRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
+	customerRepo := repository.NewCustomerRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
 	employeeService := service.NewEmployeeService(employeeRepo)
 	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
 	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
+	customerService := service.NewCustomerService(customerRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
 	permissionHandler := handler.NewPermissionHandler(permissionService)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
+	customerHandler := handler.NewCustomerHandler(customerService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -65,6 +68,11 @@ func main() {
 	// الخدمات والمهارات — القراءة لأي مسجل دخول، الإضافة لمدير النظام فقط
 	mux.Handle("GET /api/v1/services", middleware.Chain(http.HandlerFunc(serviceHandler.List), requireAuth))
 	mux.Handle("POST /api/v1/services", middleware.Chain(http.HandlerFunc(serviceHandler.Create), requireAuth, requireAdmin))
+
+	// العملاء — أي مسجل دخول يقدر يبحث وينشئ عميل (يطابق سلوك المبيعات بالباك إند القديم)
+	mux.Handle("GET /api/v1/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth))
+	mux.Handle("GET /api/v1/customers/lookup", middleware.Chain(http.HandlerFunc(customerHandler.Lookup), requireAuth))
+	mux.Handle("POST /api/v1/customers", middleware.Chain(http.HandlerFunc(customerHandler.FindOrCreate), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
