@@ -24,16 +24,19 @@ func main() {
 	// Repositories
 	employeeRepo := repository.NewEmployeeRepository(db)
 	permissionRepo := repository.NewPermissionRepository(db)
+	serviceRepo := repository.NewServiceRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
 	employeeService := service.NewEmployeeService(employeeRepo)
 	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
+	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
 	permissionHandler := handler.NewPermissionHandler(permissionService)
+	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -58,6 +61,10 @@ func main() {
 	mux.Handle("GET /api/v1/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.ListForEmployee), requireAuth))
 	mux.Handle("PUT /api/v1/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.SetForEmployee), requireAuth, requireAdmin))
 	mux.Handle("POST /api/v1/permissions/employee/{id}/apply-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaults), requireAuth, requireAdmin))
+
+	// الخدمات والمهارات — القراءة لأي مسجل دخول، الإضافة لمدير النظام فقط
+	mux.Handle("GET /api/v1/services", middleware.Chain(http.HandlerFunc(serviceHandler.List), requireAuth))
+	mux.Handle("POST /api/v1/services", middleware.Chain(http.HandlerFunc(serviceHandler.Create), requireAuth, requireAdmin))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
