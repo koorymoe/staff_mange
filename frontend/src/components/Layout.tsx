@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
     children: [
       {
         to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
-        roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'],
+        roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'SALES'],
         children: [
           { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
           { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
