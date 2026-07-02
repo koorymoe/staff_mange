@@ -26,6 +26,7 @@ func main() {
 	permissionRepo := repository.NewPermissionRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
+	bookingRepo := repository.NewBookingRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -33,6 +34,7 @@ func main() {
 	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
 	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
 	customerService := service.NewCustomerService(customerRepo)
+	bookingService := service.NewBookingService(bookingRepo, employeeRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -40,6 +42,7 @@ func main() {
 	permissionHandler := handler.NewPermissionHandler(permissionService)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
+	bookingHandler := handler.NewBookingHandler(bookingService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -73,6 +76,19 @@ func main() {
 	mux.Handle("GET /api/v1/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth))
 	mux.Handle("GET /api/v1/customers/lookup", middleware.Chain(http.HandlerFunc(customerHandler.Lookup), requireAuth))
 	mux.Handle("POST /api/v1/customers", middleware.Chain(http.HandlerFunc(customerHandler.FindOrCreate), requireAuth))
+
+	// الحجوزات — دورة حياة الحجز الكاملة، كل خطوة تتطلب تسجيل دخول فقط (الصلاحية الدقيقة تُفرض بالواجهة حالياً)
+	mux.Handle("GET /api/v1/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.List), requireAuth))
+	mux.Handle("POST /api/v1/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/confirm", middleware.Chain(http.HandlerFunc(bookingHandler.Confirm), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/details", middleware.Chain(http.HandlerFunc(bookingHandler.UpdateDetails), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/schedule", middleware.Chain(http.HandlerFunc(bookingHandler.Schedule), requireAuth))
+	mux.Handle("GET /api/v1/bookings/{id}/schedule-log", middleware.Chain(http.HandlerFunc(bookingHandler.ScheduleLog), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
