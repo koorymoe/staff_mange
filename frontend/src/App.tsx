@@ -30,6 +30,10 @@ import GpsEmployee from './pages/gps/GpsEmployee'
 import GpsPurchase from './pages/gps/GpsPurchase'
 import GpsRequestsReview from './pages/gps/GpsRequestsReview'
 import GpsDelivery from './pages/gps/GpsDelivery'
+import GpsRenewal from './pages/gps/GpsRenewal'
+import GpsRenewalsReview from './pages/gps/GpsRenewalsReview'
+import GpsMaintenanceRequestPage from './pages/gps/GpsMaintenanceRequestPage'
+import GpsMaintenanceReview from './pages/gps/GpsMaintenanceReview'
 import AttendancePage from './pages/AttendancePage'
 import WorkReportPage from './pages/WorkReportPage'
 import SuppliersPage from './pages/SuppliersPage'
@@ -86,6 +90,10 @@ function App() {
         <Route path="gps/purchase" element={<GpsPurchase />} />
         <Route path="gps/requests" element={<GpsRequestsReview />} />
         <Route path="gps/delivery" element={<GpsDelivery />} />
+        <Route path="gps/renewal" element={<GpsRenewal />} />
+        <Route path="gps/renewals-review" element={<GpsRenewalsReview />} />
+        <Route path="gps/maintenance-request" element={<GpsMaintenanceRequestPage />} />
+        <Route path="gps/maintenance-review" element={<GpsMaintenanceReview />} />
         <Route path="training" element={<TrainingPage />} />
         <Route path="training-management" element={<RequireAdmin><TrainingManagement /></RequireAdmin>} />
       </Route>

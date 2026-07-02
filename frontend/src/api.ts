@@ -97,6 +97,34 @@ export interface GpsDeviceRequest {
   createdAt: string
 }
 
+export interface GpsRenewalRequest {
+  id: string
+  customerId: string
+  customer: GpsCustomer
+  deviceRequestId: string
+  deviceRequest: GpsDeviceRequest
+  employeeId: string
+  adminId: string | null
+  subscriptionType: 'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY'
+  newEndDate: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DELIVERED'
+  createdAt: string
+}
+
+export interface GpsMaintenanceRequest {
+  id: string
+  customerId: string
+  customer: GpsCustomer
+  employeeId: string
+  employee: { id: string; name: string }
+  adminId: string | null
+  problemDescription: string
+  status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED'
+  adminNotes: string | null
+  createdAt: string
+  resolvedAt: string | null
+}
+
 export interface TrainingMaterial {
   id: string
   serviceId: string
@@ -530,16 +558,16 @@ export const api = {
     request<any>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),
   updateSimCard: (id: string, data: any) =>
     request<any>(`/gps/sims/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  getGpsRenewals: () => request<any[]>('/gps/renewals'),
-  createGpsRenewal: (data: any) =>
-    request<any>('/gps/renewals', { method: 'POST', body: JSON.stringify(data) }),
-  updateGpsRenewal: (id: string, data: any) =>
-    request<any>(`/gps/renewals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  getGpsMaintenance: () => request<any[]>('/gps/maintenance'),
-  createGpsMaintenance: (data: any) =>
-    request<any>('/gps/maintenance', { method: 'POST', body: JSON.stringify(data) }),
-  updateGpsMaintenance: (id: string, data: any) =>
-    request<any>(`/gps/maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getGpsRenewals: () => request<GpsRenewalRequest[]>('/gps/renewals'),
+  createGpsRenewal: (data: { customerId: string; deviceRequestId: string; employeeId: string; subscriptionType: string }) =>
+    request<GpsRenewalRequest>('/gps/renewals', { method: 'POST', body: JSON.stringify(data) }),
+  updateGpsRenewal: (id: string, data: Partial<GpsRenewalRequest>) =>
+    request<GpsRenewalRequest>(`/gps/renewals/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getGpsMaintenance: () => request<GpsMaintenanceRequest[]>('/gps/maintenance'),
+  createGpsMaintenance: (data: { customerId: string; employeeId: string; problemDescription: string }) =>
+    request<GpsMaintenanceRequest>('/gps/maintenance', { method: 'POST', body: JSON.stringify(data) }),
+  updateGpsMaintenance: (id: string, data: Partial<GpsMaintenanceRequest>) =>
+    request<GpsMaintenanceRequest>(`/gps/maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Products
   getProducts: () => request<Product[]>('/products'),

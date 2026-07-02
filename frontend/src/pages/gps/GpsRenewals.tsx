@@ -48,7 +48,7 @@ export default function GpsRenewals() {
 
       await api.updateGpsRenewal(renewal.id, {
         status: 'APPROVED',
-        newSubscriptionEnd: newEnd.toISOString().split('T')[0],
+        newEndDate: newEnd.toISOString(),
       })
       // Also update the device request if available
       if (renewal.deviceRequestId) {

@@ -24,7 +24,7 @@ export default function GpsMaintenance() {
 
   useEffect(load, [])
 
-  const handleUpdateStatus = async (id: string, status: string) => {
+  const handleUpdateStatus = async (id: string, status: 'PENDING' | 'IN_PROGRESS' | 'COMPLETED') => {
     try {
       await api.updateGpsMaintenance(id, { status, adminNotes })
       setSelectedRequest(null)
