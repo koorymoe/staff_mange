@@ -270,7 +270,9 @@ model Employee {
   hasDrivingLicense   Boolean @default(false) // يملك رخصة قيادة
   hasSafetyCertificate Boolean @default(false) // يملك شهادة السلامة المهنية
   salary          Float?         // الراتب
-  shift           Shift?         @default(MORNING) // دوام صباحي/مسائي
+  shift           Shift?         @default(MORNING) // دوام صباحي/مسائي (يُشتق تلقائياً من shiftStart إن وُجد)
+  shiftStart      String? // بداية الدوام المخصص "HH:mm"
+  shiftEnd        String? // نهاية الدوام المخصص "HH:mm" (يمكن أن يمتد لليوم التالي)
   monthlyLeaves   Int            @default(2) // إجازات شهرية
   jobTitle        String?        // العنوان الوظيفي
   leaderSkillLevel Int           @default(0) // مستوى المهارة كليدر (0-10)

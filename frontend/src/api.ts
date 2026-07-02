@@ -46,6 +46,12 @@ export interface Employee {
   hasSafetyCertificate: boolean
   isLeader: boolean
   isTrainee: boolean
+  salary: number | null
+  shift: 'MORNING' | 'EVENING' | null
+  shiftStart: string | null
+  shiftEnd: string | null
+  monthlyLeaves: number
+  jobTitle: string | null
   skills: EmployeeSkill[]
   hasRequiredSkill?: boolean
 }
@@ -364,6 +370,12 @@ export const api = {
     data: Pick<Employee, 'name' | 'certificate' | 'position' | 'phone'> & {
       username?: string
       password?: string
+      jobTitle?: string
+      salary?: number
+      shift?: 'MORNING' | 'EVENING'
+      shiftStart?: string
+      shiftEnd?: string
+      role?: EmployeeRole
     },
   ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
   login: (username: string, password: string) =>
@@ -454,6 +466,7 @@ export const api = {
       Pick<
         Employee,
         'role' | 'onDuty' | 'status' | 'name' | 'position' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
+        | 'isLeader' | 'salary' | 'shift' | 'shiftStart' | 'shiftEnd' | 'monthlyLeaves' | 'jobTitle'
       >
     > & {
       username?: string

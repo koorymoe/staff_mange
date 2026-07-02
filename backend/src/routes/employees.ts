@@ -62,7 +62,7 @@ router.get('/:id', async (req, res) => {
 
 // POST /api/employees - create employee
 router.post('/', async (req, res) => {
-  const { name, certificate, position, phone, username, password } = req.body
+  const { name, certificate, position, phone, username, password, jobTitle, salary, shift, shiftStart, shiftEnd, role } = req.body
   if (!name) return res.status(400).json({ error: 'name is required' })
 
   if (username) {
@@ -78,6 +78,12 @@ router.post('/', async (req, res) => {
       phone,
       username: username || null,
       password: password ? bcrypt.hashSync(password, 10) : null,
+      jobTitle: jobTitle || null,
+      salary: salary !== undefined ? Number(salary) : null,
+      shift: shift || 'MORNING',
+      shiftStart: shiftStart || null,
+      shiftEnd: shiftEnd || null,
+      role: role || undefined,
     },
   })
   res.status(201).json(stripPassword(employee))
@@ -99,6 +105,12 @@ router.put('/:id', async (req, res) => {
     hasSafetyCertificate,
     isLeader,
     isTrainee,
+    salary,
+    shift,
+    shiftStart,
+    shiftEnd,
+    monthlyLeaves,
+    jobTitle,
   } = req.body
 
   if (username) {
@@ -124,6 +136,12 @@ router.put('/:id', async (req, res) => {
       hasSafetyCertificate,
       isLeader,
       isTrainee,
+      salary: salary === undefined ? undefined : Number(salary),
+      shift,
+      shiftStart: shiftStart === undefined ? undefined : shiftStart || null,
+      shiftEnd: shiftEnd === undefined ? undefined : shiftEnd || null,
+      monthlyLeaves: monthlyLeaves === undefined ? undefined : Number(monthlyLeaves),
+      jobTitle,
     },
   })
   res.json(stripPassword(employee))

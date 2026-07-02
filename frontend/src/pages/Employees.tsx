@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type Stats } from '../api'
 import { useSession } from '../session'
+import AddEmployeeWizard from '../components/AddEmployeeWizard'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -65,22 +66,13 @@ export default function Employees() {
   const [searchQuery, setSearchQuery] = useState('')
   const [filterRole, setFilterRole] = useState<string>('')
 
-  const [name, setName] = useState('')
-  const [certificate, setCertificate] = useState('')
-  const [position, setPosition] = useState('')
-  const [phone, setPhone] = useState('')
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
-  const [formSalary, setFormSalary] = useState('')
-  const [formShift, setFormShift] = useState<'morning' | 'evening'>('morning')
-  const [formJobTitle, setFormJobTitle] = useState('')
-  const [submitting, setSubmitting] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
 
   const [skillTab, setSkillTab] = useState<'technical' | 'leader'>('technical')
   const [leaderRatings, setLeaderRatings] = useState<Record<string, number>>({})
   const [editSalary, setEditSalary] = useState('')
-  const [editShift, setEditShift] = useState<'morning' | 'evening'>('morning')
+  const [editShiftStart, setEditShiftStart] = useState('')
+  const [editShiftEnd, setEditShiftEnd] = useState('')
   const [editMonthlyLeaves, setEditMonthlyLeaves] = useState('')
   const [editJobTitle, setEditJobTitle] = useState('')
   const [editIsLeader, setEditIsLeader] = useState(false)
@@ -101,24 +93,6 @@ export default function Employees() {
     if (isHR) api.getStats().then(setStats).catch(() => setStats(null))
   }, [isHR])
 
-  const handleAddEmployee = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    try {
-      await api.createEmployee({
-        name, certificate: certificate || null, position: position || null, phone: phone || null,
-        username: username || undefined, password: password || undefined,
-        salary: formSalary ? Number(formSalary) : undefined, shift: formShift, jobTitle: formJobTitle || undefined,
-      } as any)
-      setName(''); setCertificate(''); setPosition(''); setPhone('')
-      setUsername(''); setPassword(''); setFormSalary(''); setFormShift('morning'); setFormJobTitle('')
-      setShowAddForm(false)
-      load()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
-    } finally { setSubmitting(false) }
-  }
-
   const baseEmployees = isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees
   const visibleEmployees = baseEmployees.filter(emp => {
     if (searchQuery && !emp.name.includes(searchQuery) && !(emp.position || '').includes(searchQuery)) return false
@@ -133,7 +107,8 @@ export default function Employees() {
     setCredUsername(selectedEmployee?.username || '')
     setCredPassword('')
     setEditSalary('')
-    setEditShift('morning')
+    setEditShiftStart('')
+    setEditShiftEnd('')
     setEditMonthlyLeaves('')
     setEditJobTitle('')
     setEditIsLeader((selectedEmployee as any)?.isLeader || false)
@@ -220,63 +195,9 @@ export default function Employees() {
         </div>
       </div>
 
-      {/* Add Employee Form — Collapsible */}
+      {/* Add Employee Wizard */}
       {isAdmin && showAddForm && (
-        <form
-          onSubmit={handleAddEmployee}
-          className="mb-6 rounded-2xl bg-white p-6 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_8px_24px_rgba(0,0,0,0.06)]"
-        >
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2c5aad" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></svg>
-            </div>
-            <h3 className="font-bold text-[#0f2040]">إضافة موظف جديد</h3>
-          </div>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {[
-              { label: 'الاسم', value: name, set: setName, required: true },
-              { label: 'الشهادة', value: certificate, set: setCertificate },
-              { label: 'المنصب', value: position, set: setPosition },
-              { label: 'الهاتف', value: phone, set: setPhone },
-              { label: 'اسم المستخدم', value: username, set: setUsername },
-              { label: 'العنوان الوظيفي', value: formJobTitle, set: setFormJobTitle },
-              { label: 'الراتب', value: formSalary, set: setFormSalary, type: 'number' },
-            ].map(f => (
-              <div key={f.label}>
-                <label className="mb-1 block text-xs font-medium text-slate-500">{f.label}</label>
-                <input
-                  required={f.required}
-                  type={f.type || 'text'}
-                  value={f.value}
-                  onChange={(e) => f.set(e.target.value)}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white"
-                />
-              </div>
-            ))}
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">كلمة المرور</label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
-            </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">الدوام</label>
-              <div className="flex rounded-xl border border-slate-200 overflow-hidden">
-                <button type="button" onClick={() => setFormShift('morning')}
-                  className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${formShift === 'morning' ? 'bg-[#2c5aad] text-white' : 'bg-slate-50/50 text-slate-600'}`}>صباحي</button>
-                <button type="button" onClick={() => setFormShift('evening')}
-                  className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${formShift === 'evening' ? 'bg-[#2c5aad] text-white' : 'bg-slate-50/50 text-slate-600'}`}>مسائي</button>
-              </div>
-            </div>
-          </div>
-          <div className="mt-4 flex gap-3">
-            <button type="submit" disabled={submitting}
-              className="rounded-xl bg-gradient-to-l from-[#2c5aad] to-[#1e3f7a] px-6 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition-all hover:shadow-xl disabled:opacity-50">
-              {submitting ? 'جاري الحفظ...' : 'حفظ الموظف'}
-            </button>
-            <button type="button" onClick={() => setShowAddForm(false)}
-              className="rounded-xl px-6 py-2.5 text-sm font-medium text-slate-500 hover:bg-slate-100 transition-colors">إلغاء</button>
-          </div>
-        </form>
+        <AddEmployeeWizard onClose={() => setShowAddForm(false)} onCreated={load} />
       )}
 
       {loading && <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#2c5aad] border-t-transparent"/></div>}
@@ -415,7 +336,11 @@ export default function Employees() {
                       <>
                         <div className="rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 p-4 text-center ring-1 ring-amber-100/50">
                           <p className="text-[10px] font-medium text-amber-400">الدوام</p>
-                          <p className="mt-1 text-lg font-extrabold text-[#0f2040]">{(selectedEmployee as any).shift === 'evening' ? 'مسائي' : 'صباحي'}</p>
+                          <p className="mt-1 text-sm font-extrabold text-[#0f2040]">
+                            {selectedEmployee.shiftStart && selectedEmployee.shiftEnd
+                              ? `${selectedEmployee.shiftStart} - ${selectedEmployee.shiftEnd}`
+                              : (selectedEmployee.shift === 'EVENING' ? 'مسائي' : 'صباحي')}
+                          </p>
                         </div>
                         <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50 p-4 text-center ring-1 ring-violet-100/50">
                           <p className="text-[10px] font-medium text-violet-400">الإجازات</p>
@@ -440,13 +365,20 @@ export default function Employees() {
                             onBlur={() => handleFieldBlur('salary', Number(editSalary) || 0)} placeholder="0"
                             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
                         </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-slate-400">الدوام</label>
-                          <div className="flex rounded-xl border border-slate-200 overflow-hidden">
-                            <button type="button" onClick={() => { setEditShift('morning'); handleFieldBlur('shift', 'morning') }}
-                              className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${editShift === 'morning' ? 'bg-[#2c5aad] text-white' : 'bg-slate-50/50 text-slate-600'}`}>صباحي</button>
-                            <button type="button" onClick={() => { setEditShift('evening'); handleFieldBlur('shift', 'evening') }}
-                              className={`flex-1 px-3 py-2.5 text-sm font-medium transition-colors ${editShift === 'evening' ? 'bg-[#2c5aad] text-white' : 'bg-slate-50/50 text-slate-600'}`}>مسائي</button>
+                        <div className="sm:col-span-2">
+                          <label className="mb-1 block text-xs font-medium text-slate-400">الدوام (من - إلى)</label>
+                          <div className="flex items-center gap-2">
+                            <input type="time"
+                              value={editShiftStart || selectedEmployee.shiftStart || '08:00'}
+                              onChange={(e) => setEditShiftStart(e.target.value)}
+                              onBlur={() => handleFieldBlur('shiftStart', editShiftStart || selectedEmployee.shiftStart || '08:00')}
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                            <span className="text-xs text-slate-400">إلى</span>
+                            <input type="time"
+                              value={editShiftEnd || selectedEmployee.shiftEnd || '16:00'}
+                              onChange={(e) => setEditShiftEnd(e.target.value)}
+                              onBlur={() => handleFieldBlur('shiftEnd', editShiftEnd || selectedEmployee.shiftEnd || '16:00')}
+                              className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
                           </div>
                         </div>
                         <div>
@@ -480,9 +412,9 @@ export default function Employees() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         {[
-                          { label: 'الراتب', value: (selectedEmployee as any).salary ?? '-' },
-                          { label: 'الدوام', value: (selectedEmployee as any).shift === 'evening' ? 'مسائي' : 'صباحي' },
-                          { label: 'الإجازات الشهرية', value: (selectedEmployee as any).monthlyLeaves ?? '-' },
+                          { label: 'الراتب', value: selectedEmployee.salary ?? '-' },
+                          { label: 'الدوام', value: selectedEmployee.shiftStart && selectedEmployee.shiftEnd ? `${selectedEmployee.shiftStart} - ${selectedEmployee.shiftEnd}` : '-' },
+                          { label: 'الإجازات الشهرية', value: selectedEmployee.monthlyLeaves ?? '-' },
                           { label: 'العنوان الوظيفي', value: (selectedEmployee as any).jobTitle || '-' },
                         ].map(f => (
                           <div key={f.label}>
