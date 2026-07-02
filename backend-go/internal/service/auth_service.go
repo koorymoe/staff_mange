@@ -1,0 +1,76 @@
+package service
+
+import (
+	"errors"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/crypto/bcrypt"
+
+	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
+)
+
+var ErrInvalidCredentials = errors.New("اسم المستخدم أو كلمة المرور غير صحيحة")
+
+type AuthService struct {
+	employees *repository.EmployeeRepository
+	jwtSecret []byte
+}
+
+func NewAuthService(employees *repository.EmployeeRepository, jwtSecret string) *AuthService {
+	return &AuthService{employees: employees, jwtSecret: []byte(jwtSecret)}
+}
+
+type Claims struct {
+	EmployeeID string `json:"employeeId"`
+	Role       string `json:"role"`
+	jwt.RegisteredClaims
+}
+
+func (s *AuthService) Login(username, password string) (*model.Employee, string, error) {
+	employee, err := s.employees.FindByUsername(username)
+	if err != nil || employee == nil || employee.Password == nil {
+		return nil, "", ErrInvalidCredentials
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(password)); err != nil {
+		return nil, "", ErrInvalidCredentials
+	}
+
+	token, err := s.GenerateToken(employee)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return employee, token, nil
+}
+
+func (s *AuthService) GenerateToken(employee *model.Employee) (string, error) {
+	claims := Claims{
+		EmployeeID: employee.ID,
+		Role:       employee.Role,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(s.jwtSecret)
+}
+
+func (s *AuthService) ParseToken(tokenString string) (*Claims, error) {
+	claims := &Claims{}
+	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
+		return s.jwtSecret, nil
+	})
+	if err != nil || !token.Valid {
+		return nil, errors.New("رمز الدخول غير صالح")
+	}
+	return claims, nil
+}
+
+func HashPassword(password string) (string, error) {
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	return string(hashed), err
+}
