@@ -23,14 +23,17 @@ func main() {
 
 	// Repositories
 	employeeRepo := repository.NewEmployeeRepository(db)
+	permissionRepo := repository.NewPermissionRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
 	employeeService := service.NewEmployeeService(employeeRepo)
+	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
+	permissionHandler := handler.NewPermissionHandler(permissionService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -48,6 +51,13 @@ func main() {
 	mux.Handle("GET /api/v1/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Get), requireAuth))
 	mux.Handle("POST /api/v1/employees", middleware.Chain(http.HandlerFunc(employeeHandler.Create), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/v1/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Update), requireAuth, requireAdmin))
+
+	// الصلاحيات — العرض متاح لأي مسجل دخول، التعديل والتطبيق التلقائي محصور بمدير النظام فقط
+	mux.Handle("GET /api/v1/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth))
+	mux.Handle("GET /api/v1/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
+	mux.Handle("GET /api/v1/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.ListForEmployee), requireAuth))
+	mux.Handle("PUT /api/v1/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.SetForEmployee), requireAuth, requireAdmin))
+	mux.Handle("POST /api/v1/permissions/employee/{id}/apply-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaults), requireAuth, requireAdmin))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
