@@ -36,7 +36,7 @@ var DefaultPermissions = []Permission{
 // RoleDefaultPermissions هي الصلاحيات الافتراضية لكل دور وظيفي
 var RoleDefaultPermissions = map[string][]string{
 	"ADMIN":            {},
-	"SALES":            {"sales_booking", "manage_customers", "complaints", "quotation_system"},
+	"SALES":            {"sales_booking", "complaints"},
 	"HR_COORDINATOR":   {"staff_management", "edit_employee_profile", "coordinator", "manage_customers", "view_bookings", "manage_services", "inventory", "complaints", "mission_tracking"},
 	"TECHNICIAN":       {"expenses"},
 	"PROJECT_MANAGER":  {"project_management", "expenses", "mission_tracking"},

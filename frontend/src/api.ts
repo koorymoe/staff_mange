@@ -56,6 +56,47 @@ export interface Employee {
   hasRequiredSkill?: boolean
 }
 
+export interface GpsCustomer {
+  id: string
+  fullName: string
+  fatherName: string | null
+  grandfatherName: string | null
+  phone: string
+  address: string | null
+  governorate: string | null
+  idCardFrontUrl: string | null
+  idCardBackUrl: string | null
+  residenceCardFrontUrl: string | null
+  residenceCardBackUrl: string | null
+  createdAt: string
+}
+
+export interface GpsDeviceRequest {
+  id: string
+  customerId: string
+  customer: GpsCustomer
+  employeeId: string
+  employee: { id: string; name: string }
+  adminId: string | null
+  purchaseType: 'DEVICE_SIM' | 'DEVICE_ONLY'
+  subscriptionType: 'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY'
+  subscriptionStart: string | null
+  subscriptionEnd: string | null
+  subscriptionStatus: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DELIVERED'
+  simCardId: string | null
+  notes: string | null
+  isChecked: boolean
+  isActivated: boolean
+  isDelivered: boolean
+  invoicePhotoUrl: string | null
+  gpsNumber: string | null
+  residenceCardNumber: string | null
+  activationDate: string | null
+  deliveredAt: string | null
+  createdAt: string
+}
+
 export interface TrainingMaterial {
   id: string
   serviceId: string
@@ -476,14 +517,14 @@ export const api = {
 
   // GPS
   getGpsStats: () => request<any>('/gps/stats'),
-  getGpsCustomers: () => request<any[]>('/gps/customers'),
-  createGpsCustomer: (data: any) =>
-    request<any>('/gps/customers', { method: 'POST', body: JSON.stringify(data) }),
-  getGpsDevices: () => request<any[]>('/gps/devices'),
-  createGpsDevice: (data: any) =>
-    request<any>('/gps/devices', { method: 'POST', body: JSON.stringify(data) }),
-  updateGpsDevice: (id: string, data: any) =>
-    request<any>(`/gps/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getGpsCustomers: () => request<GpsCustomer[]>('/gps/customers'),
+  createGpsCustomer: (data: Partial<GpsCustomer>) =>
+    request<GpsCustomer>('/gps/customers', { method: 'POST', body: JSON.stringify(data) }),
+  getGpsDevices: () => request<GpsDeviceRequest[]>('/gps/devices'),
+  createGpsDevice: (data: Partial<GpsDeviceRequest>) =>
+    request<GpsDeviceRequest>('/gps/devices', { method: 'POST', body: JSON.stringify(data) }),
+  updateGpsDevice: (id: string, data: Partial<GpsDeviceRequest>) =>
+    request<GpsDeviceRequest>(`/gps/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   getSimCards: () => request<any[]>('/gps/sims'),
   createSimCard: (data: any) =>
     request<any>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),

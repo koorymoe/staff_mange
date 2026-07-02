@@ -27,6 +27,9 @@ import GpsSims from './pages/gps/GpsSims'
 import GpsRenewals from './pages/gps/GpsRenewals'
 import GpsMaintenance from './pages/gps/GpsMaintenance'
 import GpsEmployee from './pages/gps/GpsEmployee'
+import GpsPurchase from './pages/gps/GpsPurchase'
+import GpsRequestsReview from './pages/gps/GpsRequestsReview'
+import GpsDelivery from './pages/gps/GpsDelivery'
 import AttendancePage from './pages/AttendancePage'
 import WorkReportPage from './pages/WorkReportPage'
 import SuppliersPage from './pages/SuppliersPage'
@@ -80,6 +83,9 @@ function App() {
         <Route path="gps/renewals" element={<GpsRenewals />} />
         <Route path="gps/maintenance" element={<GpsMaintenance />} />
         <Route path="gps/employee" element={<GpsEmployee />} />
+        <Route path="gps/purchase" element={<GpsPurchase />} />
+        <Route path="gps/requests" element={<GpsRequestsReview />} />
+        <Route path="gps/delivery" element={<GpsDelivery />} />
         <Route path="training" element={<TrainingPage />} />
         <Route path="training-management" element={<RequireAdmin><TrainingManagement /></RequireAdmin>} />
       </Route>

@@ -41,7 +41,7 @@ router.put('/sims/:id', async (req, res) => {
 
 router.get('/devices', async (_req, res) => {
   const devices = await prisma.gpsDeviceRequest.findMany({
-    include: { customer: true, employee: true, simCard: true },
+    include: { customer: true, employee: { select: { id: true, name: true } }, simCard: true },
     orderBy: { createdAt: 'desc' },
   })
   res.json(devices)
@@ -50,7 +50,7 @@ router.get('/devices', async (_req, res) => {
 router.post('/devices', async (req, res) => {
   const device = await prisma.gpsDeviceRequest.create({
     data: req.body,
-    include: { customer: true, employee: true, simCard: true },
+    include: { customer: true, employee: { select: { id: true, name: true } }, simCard: true },
   })
   res.status(201).json(device)
 })
@@ -59,7 +59,7 @@ router.put('/devices/:id', async (req, res) => {
   const device = await prisma.gpsDeviceRequest.update({
     where: { id: req.params.id },
     data: req.body,
-    include: { customer: true, employee: true, simCard: true },
+    include: { customer: true, employee: { select: { id: true, name: true } }, simCard: true },
   })
   res.json(device)
 })
@@ -95,7 +95,7 @@ router.put('/renewals/:id', async (req, res) => {
 
 router.get('/maintenance', async (_req, res) => {
   const records = await prisma.gpsMaintenanceRequest.findMany({
-    include: { customer: true, employee: true },
+    include: { customer: true, employee: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' },
   })
   res.json(records)
@@ -104,7 +104,7 @@ router.get('/maintenance', async (_req, res) => {
 router.post('/maintenance', async (req, res) => {
   const record = await prisma.gpsMaintenanceRequest.create({
     data: req.body,
-    include: { customer: true, employee: true },
+    include: { customer: true, employee: { select: { id: true, name: true } } },
   })
   res.status(201).json(record)
 })
@@ -113,7 +113,7 @@ router.put('/maintenance/:id', async (req, res) => {
   const record = await prisma.gpsMaintenanceRequest.update({
     where: { id: req.params.id },
     data: req.body,
-    include: { customer: true, employee: true },
+    include: { customer: true, employee: { select: { id: true, name: true } } },
   })
   res.json(record)
 })
