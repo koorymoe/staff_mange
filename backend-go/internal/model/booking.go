@@ -98,6 +98,20 @@ type AssignBookingRequest struct {
 	AssignedVehicle *string `json:"assignedVehicle"`
 }
 
+type CreateCartItemRequest struct {
+	ProductName string   `json:"productName"`
+	Quantity    *float64 `json:"quantity"`
+	UnitPrice   *float64 `json:"unitPrice"`
+	Notes       *string  `json:"notes"`
+}
+
+type UpdateCartItemRequest struct {
+	ProductName *string  `json:"productName"`
+	Quantity    *float64 `json:"quantity"`
+	UnitPrice   *float64 `json:"unitPrice"`
+	Notes       *string  `json:"notes"`
+}
+
 type UpdateBookingDetailsRequest struct {
 	QuotedPrice          *float64 `json:"quotedPrice"`
 	Address              *string  `json:"address"`

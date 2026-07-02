@@ -27,6 +27,7 @@ func main() {
 	serviceRepo := repository.NewServiceRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
 	bookingRepo := repository.NewBookingRepository(db)
+	cartRepo := repository.NewCartRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -35,6 +36,7 @@ func main() {
 	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
 	customerService := service.NewCustomerService(customerRepo)
 	bookingService := service.NewBookingService(bookingRepo, employeeRepo)
+	cartService := service.NewCartService(cartRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -43,6 +45,7 @@ func main() {
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
 	bookingHandler := handler.NewBookingHandler(bookingService)
+	cartHandler := handler.NewCartHandler(cartService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -89,6 +92,12 @@ func main() {
 	mux.Handle("PUT /api/v1/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth))
 	mux.Handle("PUT /api/v1/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth))
 	mux.Handle("PUT /api/v1/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth))
+
+	// سلة الحجز
+	mux.Handle("GET /api/v1/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.ListForBooking), requireAuth))
+	mux.Handle("POST /api/v1/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/cart/{id}", middleware.Chain(http.HandlerFunc(cartHandler.Update), requireAuth))
+	mux.Handle("DELETE /api/v1/cart/{id}", middleware.Chain(http.HandlerFunc(cartHandler.Delete), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
