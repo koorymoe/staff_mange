@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client'
+import bcrypt from 'bcryptjs'
 
 const prisma = new PrismaClient()
 
@@ -246,6 +247,21 @@ async function main() {
     })
   }
   console.log(`Seeded ${defaultPermissions.length} permissions`)
+
+  await prisma.employee.upsert({
+    where: { username: 'عمار' },
+    update: { password: bcrypt.hashSync('171001', 10), role: 'ADMIN', status: 'ACTIVE' },
+    create: {
+      name: 'عمار',
+      username: 'عمار',
+      password: bcrypt.hashSync('171001', 10),
+      role: 'ADMIN',
+      status: 'ACTIVE',
+      position: 'مدير',
+      jobTitle: 'مدير النظام',
+    },
+  })
+  console.log('Seeded admin account (username: عمار)')
 }
 
 main()
