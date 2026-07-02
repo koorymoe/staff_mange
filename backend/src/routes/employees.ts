@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import { prisma } from '../prisma'
+import { requireRole, type AuthedRequest } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -60,8 +61,8 @@ router.get('/:id', async (req, res) => {
   res.json(stripPassword(employee))
 })
 
-// POST /api/employees - create employee
-router.post('/', async (req, res) => {
+// POST /api/employees - create employee (ADMIN فقط)
+router.post('/', requireRole('ADMIN'), async (req, res) => {
   const { name, certificate, position, phone, username, password, jobTitle, salary, shift, shiftStart, shiftEnd, role } = req.body
   if (!name) return res.status(400).json({ error: 'name is required' })
 
@@ -90,7 +91,7 @@ router.post('/', async (req, res) => {
 })
 
 // PUT /api/employees/:id - update employee basic info
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req: AuthedRequest, res) => {
   const {
     name,
     certificate,
@@ -112,6 +113,12 @@ router.put('/:id', async (req, res) => {
     monthlyLeaves,
     jobTitle,
   } = req.body
+
+  // تغيير الدور/اسم الدخول/كلمة المرور/وضع التدريب حساس جداً (تصعيد صلاحيات محتمل) — لمدير النظام فقط
+  const sensitiveFieldsRequested = role !== undefined || username !== undefined || password || isTrainee !== undefined
+  if (sensitiveFieldsRequested && req.auth?.role !== 'ADMIN') {
+    return res.status(403).json({ error: 'لا تملك صلاحية تعديل هذه الحقول' })
+  }
 
   if (username) {
     const existing = await prisma.employee.findUnique({ where: { username } })
