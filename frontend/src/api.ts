@@ -232,24 +232,24 @@ export interface Customer {
   location: string | null
 }
 
-function currentEmployeeId(): string | null {
-  try {
-    const raw = localStorage.getItem('currentEmployee')
-    return raw ? (JSON.parse(raw).id as string) : null
-  } catch {
-    return null
-  }
+function currentToken(): string | null {
+  return localStorage.getItem('authToken')
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const employeeId = currentEmployeeId()
+  const token = currentToken()
   const res = await fetch(`${API_URL}${path}`, {
     headers: {
       'Content-Type': 'application/json',
-      ...(employeeId ? { 'x-employee-id': employeeId } : {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     ...options,
   })
+  if (res.status === 401) {
+    localStorage.removeItem('authToken')
+    localStorage.removeItem('currentEmployee')
+    if (!path.startsWith('/auth/login')) window.location.reload()
+  }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || `Request failed: ${res.status}`)
@@ -447,8 +447,15 @@ export const api = {
       role?: EmployeeRole
     },
   ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
-  login: (username: string, password: string) =>
-    request<Employee>('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) }),
+  login: async (username: string, password: string) => {
+    const result = await request<Employee & { token: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password }),
+    })
+    const { token, ...employee } = result
+    localStorage.setItem('authToken', token)
+    return employee
+  },
   updateEmployeeSkills: (id: string, skills: { skillId: string; canPerform: boolean }[]) =>
     request<Employee>(`/employees/${id}/skills`, {
       method: 'PUT',

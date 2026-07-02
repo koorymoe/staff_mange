@@ -148,8 +148,12 @@ export default function Layout() {
 
   const setEmployee = (emp: Employee | null) => {
     setEmployeeState(emp)
-    if (emp) localStorage.setItem('currentEmployee', JSON.stringify(emp))
-    else localStorage.removeItem('currentEmployee')
+    if (emp) {
+      localStorage.setItem('currentEmployee', JSON.stringify(emp))
+    } else {
+      localStorage.removeItem('currentEmployee')
+      localStorage.removeItem('authToken')
+    }
   }
 
   useEffect(() => {

@@ -22,6 +22,7 @@ import missionsRouter from './routes/missions'
 import procurementRouter from './routes/procurement'
 import smartKpiRouter from './routes/smart-kpi'
 import trainingRouter from './routes/training'
+import { requireAuth } from './middleware/requireAuth'
 
 dotenv.config()
 
@@ -33,11 +34,16 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
 
+// تسجيل الدخول متاح بدون توثيق مسبق (هو نفسه المصدر الوحيد للتوكن)
+app.use('/api/auth', authRouter)
+
+// كل شي بعد هذا السطر يتطلب توكن دخول صالح
+app.use('/api', requireAuth)
+
 app.use('/api/employees', employeesRouter)
 app.use('/api/services', servicesRouter)
 app.use('/api/customers', customersRouter)
 app.use('/api/bookings', bookingsRouter)
-app.use('/api/auth', authRouter)
 app.use('/api/stats', statsRouter)
 app.use('/api/expenses', expensesRouter)
 app.use('/api/permissions', permissionsRouter)

@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
-import { requireAdmin } from '../middleware/requireAdmin'
+import { requireAuth, requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -37,7 +37,7 @@ router.get('/assignments/:employeeId', async (req, res) => {
 
 // PUT /training/assignments/:employeeId - replace training service assignments
 // body: { serviceIds: string[] }
-router.put('/assignments/:employeeId', requireAdmin, async (req, res) => {
+router.put('/assignments/:employeeId', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const { employeeId } = req.params
   const { serviceIds } = req.body as { serviceIds: string[] }
   if (!Array.isArray(serviceIds)) return res.status(400).json({ error: 'serviceIds must be an array' })
@@ -68,7 +68,7 @@ router.get('/materials', async (req, res) => {
 })
 
 // POST /training/materials - add a training material
-router.post('/materials', requireAdmin, async (req, res) => {
+router.post('/materials', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const { serviceId, title, url, type, order } = req.body
   if (!serviceId || !title || !url) return res.status(400).json({ error: 'serviceId, title and url are required' })
 
@@ -80,7 +80,7 @@ router.post('/materials', requireAdmin, async (req, res) => {
 })
 
 // PUT /training/materials/:id
-router.put('/materials/:id', requireAdmin, async (req, res) => {
+router.put('/materials/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
   const { title, url, type, order } = req.body
   const material = await prisma.trainingMaterial.update({
     where: { id: req.params.id },
@@ -91,7 +91,7 @@ router.put('/materials/:id', requireAdmin, async (req, res) => {
 })
 
 // DELETE /training/materials/:id
-router.delete('/materials/:id', requireAdmin, async (req, res) => {
+router.delete('/materials/:id', requireAuth, requireRole('ADMIN'), async (req, res) => {
   await prisma.trainingMaterial.delete({ where: { id: req.params.id } })
   res.status(204).end()
 })
