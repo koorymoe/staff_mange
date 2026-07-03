@@ -40,6 +40,7 @@ func main() {
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
 	productRepo := repository.NewProductRepository(db)
+	gpsRepo := repository.NewGpsRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -61,6 +62,7 @@ func main() {
 	supplierService := service.NewSupplierService(supplierRepo)
 	quotationService := service.NewQuotationService(quotationRepo)
 	productService := service.NewProductService(productRepo)
+	gpsService := service.NewGpsService(gpsRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -82,6 +84,7 @@ func main() {
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	productHandler := handler.NewProductHandler(productService)
+	gpsHandler := handler.NewGpsHandler(gpsService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -231,6 +234,32 @@ func main() {
 	mux.Handle("POST /api/v1/products", middleware.Chain(http.HandlerFunc(productHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Update), requireAuth))
 	mux.Handle("DELETE /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Delete), requireAuth))
+
+	// نظام GPS — عملاء / شرائح SIM / طلبات الأجهزة / التجديد / الصيانة / الأسعار / الإحصائيات
+	mux.Handle("GET /api/v1/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.ListCustomers), requireAuth))
+	mux.Handle("POST /api/v1/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.CreateCustomer), requireAuth))
+	mux.Handle("PUT /api/v1/gps/customers/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateCustomer), requireAuth))
+
+	mux.Handle("GET /api/v1/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth))
+	mux.Handle("POST /api/v1/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.CreateSim), requireAuth))
+	mux.Handle("PUT /api/v1/gps/sims/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateSim), requireAuth))
+
+	mux.Handle("GET /api/v1/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.ListDevices), requireAuth))
+	mux.Handle("POST /api/v1/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.CreateDevice), requireAuth))
+	mux.Handle("PUT /api/v1/gps/devices/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateDevice), requireAuth))
+
+	mux.Handle("GET /api/v1/gps/renewals", middleware.Chain(http.HandlerFunc(gpsHandler.ListRenewals), requireAuth))
+	mux.Handle("POST /api/v1/gps/renewals", middleware.Chain(http.HandlerFunc(gpsHandler.CreateRenewal), requireAuth))
+	mux.Handle("PUT /api/v1/gps/renewals/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateRenewal), requireAuth))
+
+	mux.Handle("GET /api/v1/gps/maintenance", middleware.Chain(http.HandlerFunc(gpsHandler.ListMaintenance), requireAuth))
+	mux.Handle("POST /api/v1/gps/maintenance", middleware.Chain(http.HandlerFunc(gpsHandler.CreateMaintenance), requireAuth))
+	mux.Handle("PUT /api/v1/gps/maintenance/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateMaintenance), requireAuth))
+
+	mux.Handle("GET /api/v1/gps/settings", middleware.Chain(http.HandlerFunc(gpsHandler.ListSettings), requireAuth))
+	mux.Handle("PUT /api/v1/gps/settings", middleware.Chain(http.HandlerFunc(gpsHandler.UpsertSettings), requireAuth))
+
+	mux.Handle("GET /api/v1/gps/stats", middleware.Chain(http.HandlerFunc(gpsHandler.Stats), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
