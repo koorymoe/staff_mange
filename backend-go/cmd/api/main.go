@@ -37,6 +37,7 @@ func main() {
 	missionRepo := repository.NewMissionRepository(db, bookingRepo)
 	projectRepo := repository.NewProjectRepository(db)
 	procurementRepo := repository.NewProcurementRepository(db)
+	supplierRepo := repository.NewSupplierRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -55,6 +56,7 @@ func main() {
 	missionService := service.NewMissionService(missionRepo)
 	projectService := service.NewProjectService(projectRepo)
 	procurementService := service.NewProcurementService(procurementRepo)
+	supplierService := service.NewSupplierService(supplierRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -73,6 +75,7 @@ func main() {
 	missionHandler := handler.NewMissionHandler(missionService)
 	projectHandler := handler.NewProjectHandler(projectService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
+	supplierHandler := handler.NewSupplierHandler(supplierService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -199,6 +202,16 @@ func main() {
 	mux.Handle("POST /api/v1/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth))
 	mux.Handle("PUT /api/v1/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth))
+
+	// الموردون (suppliers)
+	mux.Handle("GET /api/v1/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.ListSpecialties), requireAuth))
+	mux.Handle("POST /api/v1/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.CreateSpecialty), requireAuth))
+	mux.Handle("DELETE /api/v1/suppliers/specialties/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.DeleteSpecialty), requireAuth))
+	mux.Handle("GET /api/v1/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.List), requireAuth))
+	mux.Handle("POST /api/v1/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Update), requireAuth))
+	mux.Handle("DELETE /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Delete), requireAuth))
+	mux.Handle("POST /api/v1/suppliers/{id}/rate", middleware.Chain(http.HandlerFunc(supplierHandler.Rate), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
