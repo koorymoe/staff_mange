@@ -41,6 +41,7 @@ func main() {
 	quotationRepo := repository.NewQuotationRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	gpsRepo := repository.NewGpsRepository(db)
+	statsRepo := repository.NewStatsRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -63,6 +64,7 @@ func main() {
 	quotationService := service.NewQuotationService(quotationRepo)
 	productService := service.NewProductService(productRepo)
 	gpsService := service.NewGpsService(gpsRepo)
+	statsService := service.NewStatsService(statsRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -85,6 +87,7 @@ func main() {
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	productHandler := handler.NewProductHandler(productService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
+	statsHandler := handler.NewStatsHandler(statsService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -260,6 +263,9 @@ func main() {
 	mux.Handle("PUT /api/v1/gps/settings", middleware.Chain(http.HandlerFunc(gpsHandler.UpsertSettings), requireAuth))
 
 	mux.Handle("GET /api/v1/gps/stats", middleware.Chain(http.HandlerFunc(gpsHandler.Stats), requireAuth))
+
+	// الإحصائيات العامة (stats) — لوحة معلومات المدير/المشرف
+	mux.Handle("GET /api/v1/stats", middleware.Chain(http.HandlerFunc(statsHandler.Overview), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
