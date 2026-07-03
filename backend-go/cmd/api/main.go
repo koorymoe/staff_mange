@@ -39,6 +39,7 @@ func main() {
 	procurementRepo := repository.NewProcurementRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
+	productRepo := repository.NewProductRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -59,6 +60,7 @@ func main() {
 	procurementService := service.NewProcurementService(procurementRepo)
 	supplierService := service.NewSupplierService(supplierRepo)
 	quotationService := service.NewQuotationService(quotationRepo)
+	productService := service.NewProductService(productRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -79,6 +81,7 @@ func main() {
 	procurementHandler := handler.NewProcurementHandler(procurementService)
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	quotationHandler := handler.NewQuotationHandler(quotationService)
+	productHandler := handler.NewProductHandler(productService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -222,6 +225,12 @@ func main() {
 	mux.Handle("POST /api/v1/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth))
 	mux.Handle("DELETE /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth))
+
+	// المنتجات (products)
+	mux.Handle("GET /api/v1/products", middleware.Chain(http.HandlerFunc(productHandler.List), requireAuth))
+	mux.Handle("POST /api/v1/products", middleware.Chain(http.HandlerFunc(productHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Update), requireAuth))
+	mux.Handle("DELETE /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Delete), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
