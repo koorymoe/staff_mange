@@ -33,6 +33,7 @@ func main() {
 	kpiRepo := repository.NewKpiRepository(db)
 	smartKpiRepo := repository.NewSmartKpiRepository(db)
 	complaintRepo := repository.NewComplaintRepository(db)
+	trainingRepo := repository.NewTrainingRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -47,6 +48,7 @@ func main() {
 	kpiService := service.NewKpiService(kpiRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
+	trainingService := service.NewTrainingService(trainingRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -61,6 +63,7 @@ func main() {
 	kpiHandler := handler.NewKpiHandler(kpiService)
 	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)
 	complaintHandler := handler.NewComplaintHandler(complaintService)
+	trainingHandler := handler.NewTrainingHandler(trainingService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -156,6 +159,15 @@ func main() {
 	mux.Handle("POST /api/v1/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/complaints/{id}", middleware.Chain(http.HandlerFunc(complaintHandler.Update), requireAuth))
 	mux.Handle("PUT /api/v1/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth))
+
+	// التدريب — عرض متاح لأي مسجل دخول، التعيين وإدارة المواد لمدير النظام فقط
+	mux.Handle("GET /api/v1/training/materials/mine", middleware.Chain(http.HandlerFunc(trainingHandler.MaterialsMine), requireAuth))
+	mux.Handle("GET /api/v1/training/assignments/{employeeId}", middleware.Chain(http.HandlerFunc(trainingHandler.Assignments), requireAuth))
+	mux.Handle("PUT /api/v1/training/assignments/{employeeId}", middleware.Chain(http.HandlerFunc(trainingHandler.SetAssignments), requireAuth, requireAdmin))
+	mux.Handle("GET /api/v1/training/materials", middleware.Chain(http.HandlerFunc(trainingHandler.ListMaterials), requireAuth))
+	mux.Handle("POST /api/v1/training/materials", middleware.Chain(http.HandlerFunc(trainingHandler.CreateMaterial), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/v1/training/materials/{id}", middleware.Chain(http.HandlerFunc(trainingHandler.UpdateMaterial), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/v1/training/materials/{id}", middleware.Chain(http.HandlerFunc(trainingHandler.DeleteMaterial), requireAuth, requireAdmin))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
