@@ -1,0 +1,65 @@
+package handler
+
+import (
+	"net/http"
+
+	"staffmange-api/internal/model"
+	"staffmange-api/internal/service"
+)
+
+type ProjectHandler struct {
+	service *service.ProjectService
+}
+
+func NewProjectHandler(s *service.ProjectService) *ProjectHandler {
+	return &ProjectHandler{service: s}
+}
+
+// GET /api/v1/projects
+func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
+	result, err := h.service.List()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المشاريع")
+		return
+	}
+	WriteJSON(w, http.StatusOK, result)
+}
+
+// POST /api/v1/projects
+func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateProjectRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	project, err := h.service.Create(req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, project)
+}
+
+// PUT /api/v1/projects/{id}
+func (h *ProjectHandler) Update(w http.ResponseWriter, r *http.Request) {
+	var req model.UpdateProjectRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	project, err := h.service.Update(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, project)
+}
+
+// DELETE /api/v1/projects/{id}
+func (h *ProjectHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.Delete(r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

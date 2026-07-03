@@ -35,6 +35,7 @@ func main() {
 	complaintRepo := repository.NewComplaintRepository(db)
 	trainingRepo := repository.NewTrainingRepository(db)
 	missionRepo := repository.NewMissionRepository(db, bookingRepo)
+	projectRepo := repository.NewProjectRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -51,6 +52,7 @@ func main() {
 	complaintService := service.NewComplaintService(complaintRepo)
 	trainingService := service.NewTrainingService(trainingRepo)
 	missionService := service.NewMissionService(missionRepo)
+	projectService := service.NewProjectService(projectRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -67,6 +69,7 @@ func main() {
 	complaintHandler := handler.NewComplaintHandler(complaintService)
 	trainingHandler := handler.NewTrainingHandler(trainingService)
 	missionHandler := handler.NewMissionHandler(missionService)
+	projectHandler := handler.NewProjectHandler(projectService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -180,6 +183,12 @@ func main() {
 	mux.Handle("GET /api/v1/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth))
 	mux.Handle("POST /api/v1/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/missions/{id}/stage", middleware.Chain(http.HandlerFunc(missionHandler.UpdateStage), requireAuth))
+
+	// إدارة المشاريع (projects)
+	mux.Handle("GET /api/v1/projects", middleware.Chain(http.HandlerFunc(projectHandler.List), requireAuth))
+	mux.Handle("POST /api/v1/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth))
+	mux.Handle("DELETE /api/v1/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
