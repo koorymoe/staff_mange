@@ -5,9 +5,14 @@ import { useSession, roleLabels } from '../session'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem('authToken')
   const res = await fetch(`${API_URL}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(options?.headers || {}),
+    },
   })
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
