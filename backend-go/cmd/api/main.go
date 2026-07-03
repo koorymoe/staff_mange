@@ -4,6 +4,8 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/joho/godotenv"
+
 	"staffmange-api/internal/config"
 	"staffmange-api/internal/database"
 	"staffmange-api/internal/handler"
@@ -13,6 +15,9 @@ import (
 )
 
 func main() {
+	// تحميل ملف .env إذا موجود (بالإنتاج المتغيرات تنجي مباشرة من النظام، فما مشكلة لو الملف مو موجود)
+	_ = godotenv.Load()
+
 	cfg := config.Load()
 
 	db, err := database.Connect(cfg.DatabaseURL)
