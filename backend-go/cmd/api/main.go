@@ -34,6 +34,7 @@ func main() {
 	smartKpiRepo := repository.NewSmartKpiRepository(db)
 	complaintRepo := repository.NewComplaintRepository(db)
 	trainingRepo := repository.NewTrainingRepository(db)
+	missionRepo := repository.NewMissionRepository(db, bookingRepo)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -49,6 +50,7 @@ func main() {
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
 	trainingService := service.NewTrainingService(trainingRepo)
+	missionService := service.NewMissionService(missionRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -64,6 +66,7 @@ func main() {
 	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)
 	complaintHandler := handler.NewComplaintHandler(complaintService)
 	trainingHandler := handler.NewTrainingHandler(trainingService)
+	missionHandler := handler.NewMissionHandler(missionService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -168,6 +171,15 @@ func main() {
 	mux.Handle("POST /api/v1/training/materials", middleware.Chain(http.HandlerFunc(trainingHandler.CreateMaterial), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/v1/training/materials/{id}", middleware.Chain(http.HandlerFunc(trainingHandler.UpdateMaterial), requireAuth, requireAdmin))
 	mux.Handle("DELETE /api/v1/training/materials/{id}", middleware.Chain(http.HandlerFunc(trainingHandler.DeleteMaterial), requireAuth, requireAdmin))
+
+	// تتبع المهام (missions)
+	mux.Handle("GET /api/v1/missions", middleware.Chain(http.HandlerFunc(missionHandler.List), requireAuth))
+	mux.Handle("GET /api/v1/missions/monitor/live", middleware.Chain(http.HandlerFunc(missionHandler.MonitorLive), requireAuth))
+	mux.Handle("GET /api/v1/missions/reports/performance", middleware.Chain(http.HandlerFunc(missionHandler.PerformanceReport), requireAuth))
+	mux.Handle("GET /api/v1/missions/my/{employeeId}", middleware.Chain(http.HandlerFunc(missionHandler.ListForEmployee), requireAuth))
+	mux.Handle("GET /api/v1/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth))
+	mux.Handle("POST /api/v1/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/missions/{id}/stage", middleware.Chain(http.HandlerFunc(missionHandler.UpdateStage), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
