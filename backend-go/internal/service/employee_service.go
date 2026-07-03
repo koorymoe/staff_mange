@@ -30,6 +30,15 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 		return nil, errors.New("الاسم مطلوب")
 	}
 
+	role := "TECHNICIAN"
+	if req.Role != nil && *req.Role != "" {
+		role = *req.Role
+	}
+	shift := "MORNING"
+	if req.Shift != nil && *req.Shift != "" {
+		shift = *req.Shift
+	}
+
 	employee := &model.Employee{
 		ID:          uuid.NewString(),
 		Name:        req.Name,
@@ -37,6 +46,12 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 		Position:    req.Position,
 		Phone:       req.Phone,
 		Username:    req.Username,
+		JobTitle:    req.JobTitle,
+		Salary:      req.Salary,
+		Shift:       &shift,
+		ShiftStart:  req.ShiftStart,
+		ShiftEnd:    req.ShiftEnd,
+		Role:        role,
 	}
 
 	if req.Password != nil && *req.Password != "" {
@@ -95,6 +110,24 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 	if req.IsTrainee != nil {
 		employee.IsTrainee = *req.IsTrainee
 	}
+	if req.Salary != nil {
+		employee.Salary = req.Salary
+	}
+	if req.Shift != nil {
+		employee.Shift = req.Shift
+	}
+	if req.ShiftStart != nil {
+		employee.ShiftStart = req.ShiftStart
+	}
+	if req.ShiftEnd != nil {
+		employee.ShiftEnd = req.ShiftEnd
+	}
+	if req.MonthlyLeaves != nil {
+		employee.MonthlyLeaves = *req.MonthlyLeaves
+	}
+	if req.JobTitle != nil {
+		employee.JobTitle = req.JobTitle
+	}
 
 	if req.Password != nil && *req.Password != "" {
 		hashed, err := HashPassword(*req.Password)
@@ -111,4 +144,31 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		return nil, err
 	}
 	return s.repo.FindByID(id)
+}
+
+func (s *EmployeeService) Supervisors() ([]model.Employee, error) {
+	return s.repo.Supervisors()
+}
+
+func (s *EmployeeService) Match(serviceID string) ([]model.Employee, error) {
+	if serviceID == "" {
+		return nil, errors.New("serviceId is required")
+	}
+	return s.repo.MatchForService(serviceID)
+}
+
+func (s *EmployeeService) SetSkills(employeeID string, req model.SetEmployeeSkillsRequest) (*model.Employee, error) {
+	if err := s.repo.SetSkills(employeeID, req.Skills); err != nil {
+		return nil, err
+	}
+	employee, err := s.repo.FindByID(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	skills, err := s.repo.SkillsForEmployee(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	employee.Skills = skills
+	return employee, nil
 }

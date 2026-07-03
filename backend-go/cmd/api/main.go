@@ -107,9 +107,12 @@ func main() {
 
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
 	mux.Handle("GET /api/v1/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
+	mux.Handle("GET /api/v1/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
+	mux.Handle("GET /api/v1/employees/match", middleware.Chain(http.HandlerFunc(employeeHandler.Match), requireAuth))
 	mux.Handle("GET /api/v1/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Get), requireAuth))
 	mux.Handle("POST /api/v1/employees", middleware.Chain(http.HandlerFunc(employeeHandler.Create), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/v1/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/v1/employees/{id}/skills", middleware.Chain(http.HandlerFunc(employeeHandler.SetSkills), requireAuth, requireHR))
 
 	// الصلاحيات — العرض متاح لأي مسجل دخول، التعديل والتطبيق التلقائي محصور بمدير النظام فقط
 	mux.Handle("GET /api/v1/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth))

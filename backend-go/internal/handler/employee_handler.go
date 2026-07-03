@@ -80,3 +80,38 @@ func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 func extractID(path, prefix string) string {
 	return strings.TrimSuffix(strings.TrimPrefix(path, prefix), "/")
 }
+
+// GET /api/v1/employees/supervisors
+func (h *EmployeeHandler) Supervisors(w http.ResponseWriter, r *http.Request) {
+	employees, err := h.service.Supervisors()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المشرفين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, employees)
+}
+
+// GET /api/v1/employees/match?serviceId=
+func (h *EmployeeHandler) Match(w http.ResponseWriter, r *http.Request) {
+	employees, err := h.service.Match(r.URL.Query().Get("serviceId"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, employees)
+}
+
+// PUT /api/v1/employees/{id}/skills
+func (h *EmployeeHandler) SetSkills(w http.ResponseWriter, r *http.Request) {
+	var req model.SetEmployeeSkillsRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	employee, err := h.service.SetSkills(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, employee)
+}

@@ -17,37 +17,71 @@ type Employee struct {
 	HasSafetyCertificate bool      `db:"hasSafetyCertificate" json:"hasSafetyCertificate"`
 	Salary               *float64  `db:"salary" json:"salary"`
 	Shift                *string   `db:"shift" json:"shift"`
+	ShiftStart           *string   `db:"shiftStart" json:"shiftStart"`
+	ShiftEnd             *string   `db:"shiftEnd" json:"shiftEnd"`
 	MonthlyLeaves        int       `db:"monthlyLeaves" json:"monthlyLeaves"`
 	JobTitle             *string   `db:"jobTitle" json:"jobTitle"`
 	LeaderSkillLevel     int       `db:"leaderSkillLevel" json:"leaderSkillLevel"`
 	IsLeader             bool      `db:"isLeader" json:"isLeader"`
 	IsTrainee            bool      `db:"isTrainee" json:"isTrainee"`
 	CreatedAt            time.Time `db:"createdAt" json:"createdAt"`
+
+	Skills           []EmployeeSkillDetail `db:"-" json:"skills,omitempty"`
+	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
+}
+
+type EmployeeSkillDetail struct {
+	ID         string `db:"id" json:"id"`
+	EmployeeID string `db:"employeeId" json:"employeeId"`
+	SkillID    string `db:"skillId" json:"skillId"`
+	CanPerform bool   `db:"canPerform" json:"canPerform"`
+	Skill      *Skill `db:"-" json:"skill"`
+}
+
+type SetEmployeeSkillsRequest struct {
+	Skills []EmployeeSkillInput `json:"skills"`
+}
+
+type EmployeeSkillInput struct {
+	SkillID    string `json:"skillId"`
+	CanPerform bool   `json:"canPerform"`
 }
 
 type CreateEmployeeRequest struct {
-	Name        string  `json:"name"`
-	Certificate *string `json:"certificate"`
-	Position    *string `json:"position"`
-	Phone       *string `json:"phone"`
-	Username    *string `json:"username"`
-	Password    *string `json:"password"`
+	Name        string   `json:"name"`
+	Certificate *string  `json:"certificate"`
+	Position    *string  `json:"position"`
+	Phone       *string  `json:"phone"`
+	Username    *string  `json:"username"`
+	Password    *string  `json:"password"`
+	JobTitle    *string  `json:"jobTitle"`
+	Salary      *float64 `json:"salary"`
+	Shift       *string  `json:"shift"`
+	ShiftStart  *string  `json:"shiftStart"`
+	ShiftEnd    *string  `json:"shiftEnd"`
+	Role        *string  `json:"role"`
 }
 
 type UpdateEmployeeRequest struct {
-	Name                 *string `json:"name"`
-	Certificate          *string `json:"certificate"`
-	Position             *string `json:"position"`
-	Phone                *string `json:"phone"`
-	Status               *string `json:"status"`
-	Role                 *string `json:"role"`
-	OnDuty               *bool   `json:"onDuty"`
-	Username             *string `json:"username"`
-	Password             *string `json:"password"`
-	HasDrivingLicense    *bool   `json:"hasDrivingLicense"`
-	HasSafetyCertificate *bool   `json:"hasSafetyCertificate"`
-	IsLeader             *bool   `json:"isLeader"`
-	IsTrainee            *bool   `json:"isTrainee"`
+	Name                 *string  `json:"name"`
+	Certificate          *string  `json:"certificate"`
+	Position             *string  `json:"position"`
+	Phone                *string  `json:"phone"`
+	Status               *string  `json:"status"`
+	Role                 *string  `json:"role"`
+	OnDuty               *bool    `json:"onDuty"`
+	Username             *string  `json:"username"`
+	Password             *string  `json:"password"`
+	HasDrivingLicense    *bool    `json:"hasDrivingLicense"`
+	HasSafetyCertificate *bool    `json:"hasSafetyCertificate"`
+	IsLeader             *bool    `json:"isLeader"`
+	IsTrainee            *bool    `json:"isTrainee"`
+	Salary               *float64 `json:"salary"`
+	Shift                *string  `json:"shift"`
+	ShiftStart           *string  `json:"shiftStart"`
+	ShiftEnd             *string  `json:"shiftEnd"`
+	MonthlyLeaves        *int     `json:"monthlyLeaves"`
+	JobTitle             *string  `json:"jobTitle"`
 }
 
 type LoginRequest struct {
