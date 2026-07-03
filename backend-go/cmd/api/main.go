@@ -32,6 +32,7 @@ func main() {
 	inventoryRepo := repository.NewInventoryRepository(db)
 	kpiRepo := repository.NewKpiRepository(db)
 	smartKpiRepo := repository.NewSmartKpiRepository(db)
+	complaintRepo := repository.NewComplaintRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -45,6 +46,7 @@ func main() {
 	inventoryService := service.NewInventoryService(inventoryRepo)
 	kpiService := service.NewKpiService(kpiRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
+	complaintService := service.NewComplaintService(complaintRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -58,6 +60,7 @@ func main() {
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	kpiHandler := handler.NewKpiHandler(kpiService)
 	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)
+	complaintHandler := handler.NewComplaintHandler(complaintService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -147,6 +150,12 @@ func main() {
 	// تقييم الأداء التلقائي (Smart KPI) — الرانك الأسبوعي/الشهري للفنيين
 	mux.Handle("GET /api/v1/smart-kpi/technician/{employeeId}", middleware.Chain(http.HandlerFunc(smartKpiHandler.Technician), requireAuth))
 	mux.Handle("GET /api/v1/smart-kpi/leaderboard", middleware.Chain(http.HandlerFunc(smartKpiHandler.Leaderboard), requireAuth))
+
+	// الشكاوى
+	mux.Handle("GET /api/v1/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.List), requireAuth))
+	mux.Handle("POST /api/v1/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/complaints/{id}", middleware.Chain(http.HandlerFunc(complaintHandler.Update), requireAuth))
+	mux.Handle("PUT /api/v1/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
