@@ -16,25 +16,42 @@ func NewEmployeeRepository(db *sqlx.DB) *EmployeeRepository {
 
 func (r *EmployeeRepository) List() ([]model.Employee, error) {
 	employees := []model.Employee{}
-	err := r.db.Select(&employees, `SELECT * FROM "Employee" ORDER BY name ASC`)
-	return employees, err
+	if err := r.db.Select(&employees, `SELECT * FROM "Employee" ORDER BY name ASC`); err != nil {
+		return nil, err
+	}
+	for i := range employees {
+		skills, err := r.SkillsForEmployee(employees[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		employees[i].Skills = skills
+	}
+	return employees, nil
 }
 
 func (r *EmployeeRepository) FindByID(id string) (*model.Employee, error) {
 	var e model.Employee
-	err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE id = $1`, id)
+	if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	skills, err := r.SkillsForEmployee(e.ID)
 	if err != nil {
 		return nil, err
 	}
+	e.Skills = skills
 	return &e, nil
 }
 
 func (r *EmployeeRepository) FindByUsername(username string) (*model.Employee, error) {
 	var e model.Employee
-	err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE username = $1`, username)
+	if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE username = $1`, username); err != nil {
+		return nil, err
+	}
+	skills, err := r.SkillsForEmployee(e.ID)
 	if err != nil {
 		return nil, err
 	}
+	e.Skills = skills
 	return &e, nil
 }
 

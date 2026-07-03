@@ -52,6 +52,7 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 		ShiftStart:  req.ShiftStart,
 		ShiftEnd:    req.ShiftEnd,
 		Role:        role,
+		Skills:      []model.EmployeeSkillDetail{},
 	}
 
 	if req.Password != nil && *req.Password != "" {

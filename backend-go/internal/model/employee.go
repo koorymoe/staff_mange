@@ -26,7 +26,7 @@ type Employee struct {
 	IsTrainee            bool      `db:"isTrainee" json:"isTrainee"`
 	CreatedAt            time.Time `db:"createdAt" json:"createdAt"`
 
-	Skills           []EmployeeSkillDetail `db:"-" json:"skills,omitempty"`
+	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
 	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
 }
 
