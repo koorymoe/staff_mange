@@ -36,9 +36,9 @@ type Mission struct {
 	UpdatedAt        time.Time      `db:"updatedAt" json:"updatedAt"`
 
 	Booking *Booking        `db:"-" json:"booking,omitempty"`
-	Events  []MissionEvent  `db:"-" json:"events,omitempty"`
+	Events  []MissionEvent  `db:"-" json:"events"`
 	Leader  *EmployeeBrief  `db:"-" json:"leader,omitempty"`
-	Members []EmployeeBrief `db:"-" json:"members,omitempty"`
+	Members []EmployeeBrief `db:"-" json:"members"`
 }
 
 type MissionEvent struct {
