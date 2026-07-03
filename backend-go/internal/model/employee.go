@@ -89,3 +89,11 @@ type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+
+// LoginResponse يدمج حقول الموظف مع التوكن بنفس مستوى واحد (flatten) مطابقاً
+// لـ `{ ...rest, token }` بالباك إند القديم — لا يحتاج الفرونت إند أي تعديل
+// عند القراءة من أي من الباك إندين.
+type LoginResponse struct {
+	Employee
+	Token string `json:"token"`
+}

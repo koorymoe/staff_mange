@@ -5,25 +5,23 @@ import (
 	"net/http"
 )
 
-type successEnvelope struct {
-	Data any `json:"data"`
-}
-
 type errorEnvelope struct {
 	Error string `json:"error"`
-	Code  int    `json:"code"`
 }
 
+// WriteJSON يرجّع الجسم مباشرة بدون أي غلاف — يطابق شكل استجابات الباك إند
+// القديم (TypeScript/Express) بالضبط حتى يقدر الفرونت إند يتعامل مع الاثنين
+// بدون أي تعديل.
 func WriteJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(successEnvelope{Data: data})
+	_ = json.NewEncoder(w).Encode(data)
 }
 
 func WriteError(w http.ResponseWriter, status int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(errorEnvelope{Error: message, Code: status})
+	_ = json.NewEncoder(w).Encode(errorEnvelope{Error: message})
 }
 
 func DecodeJSON(r *http.Request, dst any) error {

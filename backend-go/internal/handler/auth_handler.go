@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
@@ -33,8 +34,20 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{
-		"employee": employee,
-		"token":    token,
-	})
+	WriteJSON(w, http.StatusOK, model.LoginResponse{Employee: *employee, Token: token})
+}
+
+// GET /api/v1/auth/me
+func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
+	employeeID := middleware.EmployeeIDFromContext(r)
+	if employeeID == "" {
+		WriteError(w, http.StatusUnauthorized, "غير مسجل الدخول")
+		return
+	}
+	employee, err := h.auth.Me(employeeID)
+	if err != nil || employee == nil {
+		WriteError(w, http.StatusUnauthorized, "الحساب غير موجود")
+		return
+	}
+	WriteJSON(w, http.StatusOK, employee)
 }

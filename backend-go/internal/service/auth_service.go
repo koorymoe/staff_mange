@@ -46,12 +46,16 @@ func (s *AuthService) Login(username, password string) (*model.Employee, string,
 	return employee, token, nil
 }
 
+func (s *AuthService) Me(employeeID string) (*model.Employee, error) {
+	return s.employees.FindByID(employeeID)
+}
+
 func (s *AuthService) GenerateToken(employee *model.Employee) (string, error) {
 	claims := Claims{
 		EmployeeID: employee.ID,
 		Role:       employee.Role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}

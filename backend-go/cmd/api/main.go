@@ -104,6 +104,7 @@ func main() {
 	})
 
 	mux.HandleFunc("POST /api/v1/auth/login", authHandler.Login)
+	mux.Handle("GET /api/v1/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
 
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
 	mux.Handle("GET /api/v1/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
@@ -274,7 +275,7 @@ func main() {
 	// الإحصائيات العامة (stats) — لوحة معلومات المدير/المشرف
 	mux.Handle("GET /api/v1/stats", middleware.Chain(http.HandlerFunc(statsHandler.Overview), requireAuth))
 
-	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
+	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS(cfg.CORSOrigins))
 
 	log.Printf("staffmange-api listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, handlerChain); err != nil {
