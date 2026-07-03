@@ -29,6 +29,7 @@ func main() {
 	bookingRepo := repository.NewBookingRepository(db)
 	cartRepo := repository.NewCartRepository(db)
 	expenseRepo := repository.NewExpenseRepository(db)
+	inventoryRepo := repository.NewInventoryRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -39,6 +40,7 @@ func main() {
 	bookingService := service.NewBookingService(bookingRepo, employeeRepo)
 	cartService := service.NewCartService(cartRepo)
 	expenseService := service.NewExpenseService(expenseRepo)
+	inventoryService := service.NewInventoryService(inventoryRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -49,6 +51,7 @@ func main() {
 	bookingHandler := handler.NewBookingHandler(bookingService)
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService)
+	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -107,6 +110,27 @@ func main() {
 	mux.Handle("GET /api/v1/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.List), requireAuth))
 	mux.Handle("POST /api/v1/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/expenses/{id}/status", middleware.Chain(http.HandlerFunc(expenseHandler.UpdateStatus), requireAuth, requireFinance))
+
+	// المخزون — أدوات شخصية / مركبات / أدوات مشتركة / طلبات الأدوات
+	mux.Handle("GET /api/v1/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalTools), requireAuth))
+	mux.Handle("POST /api/v1/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalTool), requireAuth))
+	mux.Handle("PUT /api/v1/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdatePersonalTool), requireAuth))
+	mux.Handle("DELETE /api/v1/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalTool), requireAuth))
+
+	mux.Handle("GET /api/v1/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.ListVehicleTools), requireAuth))
+	mux.Handle("POST /api/v1/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateVehicleTool), requireAuth))
+	mux.Handle("PUT /api/v1/inventory/vehicle/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateVehicleTool), requireAuth))
+	mux.Handle("DELETE /api/v1/inventory/vehicle/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteVehicleTool), requireAuth))
+
+	mux.Handle("GET /api/v1/inventory/ondemand", middleware.Chain(http.HandlerFunc(inventoryHandler.ListOnDemandTools), requireAuth))
+	mux.Handle("POST /api/v1/inventory/ondemand", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateOnDemandTool), requireAuth))
+	mux.Handle("PUT /api/v1/inventory/ondemand/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateOnDemandTool), requireAuth))
+
+	mux.Handle("GET /api/v1/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.ListToolRequests), requireAuth))
+	mux.Handle("POST /api/v1/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth))
+	mux.Handle("PUT /api/v1/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth))
+	mux.Handle("PUT /api/v1/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth))
+	mux.Handle("PUT /api/v1/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
