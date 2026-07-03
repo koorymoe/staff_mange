@@ -156,7 +156,7 @@ router.put('/:id', async (req: AuthedRequest, res) => {
 
 // PUT /api/employees/:id/skills - replace employee skill set
 // body: { skills: [{ skillId: string, canPerform: boolean }] }
-router.put('/:id/skills', async (req, res) => {
+router.put('/:id/skills', requireRole('ADMIN', 'HR_COORDINATOR'), async (req, res) => {
   const { id } = req.params
   const { skills } = req.body as { skills: { skillId: string; canPerform: boolean }[] }
 

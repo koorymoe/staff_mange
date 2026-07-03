@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -80,7 +81,7 @@ router.put('/:id', async (req, res) => {
 })
 
 // DELETE /:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireRole('ADMIN', 'PROJECT_MANAGER'), async (req, res) => {
   await prisma.project.delete({ where: { id: req.params.id } })
   res.json({ ok: true })
 })

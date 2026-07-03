@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -125,7 +126,7 @@ router.get('/settings', async (_req, res) => {
   res.json(settings)
 })
 
-router.put('/settings', async (req, res) => {
+router.put('/settings', requireRole('ADMIN', 'GPS_ADMIN'), async (req, res) => {
   const { id, ...data } = req.body
   const settings = await prisma.gpsSubscriptionPrice.upsert({
     where: { id: id || 'default' },

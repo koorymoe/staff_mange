@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -23,7 +24,7 @@ router.put('/personal/:id', async (req, res) => {
   res.json(tool)
 })
 
-router.delete('/personal/:id', async (req, res) => {
+router.delete('/personal/:id', requireRole('ADMIN', 'HR_COORDINATOR'), async (req, res) => {
   await prisma.personalTool.delete({ where: { id: req.params.id } })
   res.json({ success: true })
 })
@@ -89,7 +90,7 @@ router.post('/requests', async (req, res) => {
   res.status(201).json(request)
 })
 
-router.put('/requests/:id/approve', async (req, res) => {
+router.put('/requests/:id/approve', requireRole('ADMIN', 'HR_COORDINATOR'), async (req, res) => {
   const { approvedById } = req.body
   const request = await prisma.toolRequest.update({
     where: { id: req.params.id },
@@ -99,7 +100,7 @@ router.put('/requests/:id/approve', async (req, res) => {
   res.json(request)
 })
 
-router.put('/requests/:id/reject', async (req, res) => {
+router.put('/requests/:id/reject', requireRole('ADMIN', 'HR_COORDINATOR'), async (req, res) => {
   const request = await prisma.toolRequest.update({
     where: { id: req.params.id },
     data: { status: 'REJECTED' },

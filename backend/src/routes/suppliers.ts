@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -10,7 +11,7 @@ router.get('/specialties', async (_req, res) => {
 })
 
 // POST /specialties
-router.post('/specialties', async (req, res) => {
+router.post('/specialties', requireRole('ADMIN'), async (req, res) => {
   const { name } = req.body
   const existing = await prisma.supplierSpecialty.findUnique({ where: { name } })
   if (existing) return res.status(400).json({ error: 'التخصص موجود مسبقاً' })
@@ -20,7 +21,7 @@ router.post('/specialties', async (req, res) => {
 })
 
 // DELETE /specialties/:id
-router.delete('/specialties/:id', async (req, res) => {
+router.delete('/specialties/:id', requireRole('ADMIN'), async (req, res) => {
   await prisma.supplierSpecialty.delete({ where: { id: req.params.id } })
   res.json({ ok: true })
 })
@@ -45,7 +46,7 @@ router.get('/', async (_req, res) => {
 })
 
 // POST / - create supplier
-router.post('/', async (req, res) => {
+router.post('/', requireRole('ADMIN'), async (req, res) => {
   const { companyName, ownerName, phone, lat, lng, isMaterialSupplier, isContractor, traderTypes, notes, specialtyIds } = req.body
   const supplier = await prisma.supplier.create({
     data: {
@@ -68,7 +69,7 @@ router.post('/', async (req, res) => {
 })
 
 // PUT /:id - update supplier
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireRole('ADMIN'), async (req, res) => {
   const { companyName, ownerName, phone, lat, lng, isMaterialSupplier, isContractor, traderTypes, notes, specialtyIds } = req.body
   await prisma.supplierSpecialtyLink.deleteMany({ where: { supplierId: req.params.id } })
   const supplier = await prisma.supplier.update({
@@ -98,7 +99,7 @@ router.put('/:id', async (req, res) => {
 })
 
 // DELETE /:id
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireRole('ADMIN'), async (req, res) => {
   await prisma.supplier.delete({ where: { id: req.params.id } })
   res.json({ ok: true })
 })

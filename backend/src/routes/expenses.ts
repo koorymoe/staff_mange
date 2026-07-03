@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -32,7 +33,7 @@ router.post('/', async (req, res) => {
 })
 
 // PUT /api/expenses/:id/status - finance approves or rejects the expense
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', requireRole('ADMIN', 'FINANCE'), async (req, res) => {
   const { status } = req.body
   if (!['APPROVED', 'REJECTED'].includes(status)) {
     return res.status(400).json({ error: 'status must be APPROVED or REJECTED' })

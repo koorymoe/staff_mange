@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -13,7 +14,7 @@ router.get('/', async (_req, res) => {
 })
 
 // POST /api/services - add a new service
-router.post('/', async (req, res) => {
+router.post('/', requireRole('ADMIN'), async (req, res) => {
   const { name, category } = req.body
   if (!name) return res.status(400).json({ error: 'name is required' })
 

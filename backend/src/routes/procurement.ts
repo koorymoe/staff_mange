@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -101,7 +102,7 @@ router.post('/', async (req, res) => {
 })
 
 // PUT /:id/status - update status
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', requireRole('ADMIN', 'FINANCE'), async (req, res) => {
   const { id } = req.params
   const { status } = req.body
 
@@ -119,7 +120,7 @@ router.put('/:id/status', async (req, res) => {
 })
 
 // PUT /:id/fulfill - mark as fulfilled with costs
-router.put('/:id/fulfill', async (req, res) => {
+router.put('/:id/fulfill', requireRole('ADMIN', 'FINANCE'), async (req, res) => {
   const { id } = req.params
   const { fulfilledById, totalCost, fulfillmentNotes, items } = req.body
 

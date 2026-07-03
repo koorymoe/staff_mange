@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -269,7 +270,7 @@ router.put('/:id/complete', async (req, res) => {
 })
 
 // PUT /api/bookings/:id/verify - finance employee verifies the collected amount
-router.put('/:id/verify', async (req, res) => {
+router.put('/:id/verify', requireRole('ADMIN', 'FINANCE'), async (req, res) => {
   const booking = await prisma.booking.update({
     where: { id: req.params.id },
     data: { amountVerified: true },

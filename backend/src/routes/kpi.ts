@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { prisma } from '../prisma'
+import { requireRole } from '../middleware/requireAuth'
 
 const router = Router()
 
@@ -23,7 +24,7 @@ router.get('/employee/:employeeId', async (req, res) => {
 })
 
 // POST / - create evaluation
-router.post('/', async (req, res) => {
+router.post('/', requireRole('ADMIN', 'MONITOR'), async (req, res) => {
   const { employeeId, evaluatorId, points, reason } = req.body
   if (!employeeId || !evaluatorId || points === undefined) {
     return res.status(400).json({ error: 'employeeId, evaluatorId, and points are required' })
@@ -39,7 +40,7 @@ router.post('/', async (req, res) => {
 })
 
 // DELETE /:id - delete evaluation
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireRole('ADMIN'), async (req, res) => {
   await prisma.kpiEvaluation.delete({ where: { id: req.params.id } })
   res.json({ success: true })
 })
