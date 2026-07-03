@@ -26,7 +26,7 @@ import smartKpiRouter from './routes/smart-kpi'
 import trainingRouter from './routes/training'
 import { requireAuth } from './middleware/requireAuth'
 
-dotenv.config()
+dotenv.config({ quiet: true })
 
 const app = express()
 
