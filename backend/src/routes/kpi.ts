@@ -6,7 +6,7 @@ const router = Router()
 // GET / - list all evaluations with employee and evaluator names
 router.get('/', async (_req, res) => {
   const evaluations = await prisma.kpiEvaluation.findMany({
-    include: { employee: true, evaluator: true },
+    include: { employee: { select: { id: true, name: true } }, evaluator: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' },
   })
   res.json(evaluations)
@@ -16,7 +16,7 @@ router.get('/', async (_req, res) => {
 router.get('/employee/:employeeId', async (req, res) => {
   const evaluations = await prisma.kpiEvaluation.findMany({
     where: { employeeId: req.params.employeeId },
-    include: { employee: true, evaluator: true },
+    include: { employee: { select: { id: true, name: true } }, evaluator: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' },
   })
   res.json(evaluations)
@@ -33,7 +33,7 @@ router.post('/', async (req, res) => {
 
   const evaluation = await prisma.kpiEvaluation.create({
     data: { employeeId, evaluatorId, points, reason, deductionAmount },
-    include: { employee: true, evaluator: true },
+    include: { employee: { select: { id: true, name: true } }, evaluator: { select: { id: true, name: true } } },
   })
   res.status(201).json(evaluation)
 })

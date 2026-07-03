@@ -6,7 +6,7 @@ const router = Router()
 // GET / - list all quotations with items and creator
 router.get('/', async (_req, res) => {
   const quotations = await prisma.quotation.findMany({
-    include: { items: true, createdByEmployee: true },
+    include: { items: true, createdByEmployee: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' },
   })
   res.json(quotations)
@@ -16,7 +16,7 @@ router.get('/', async (_req, res) => {
 router.get('/:id', async (req, res) => {
   const quotation = await prisma.quotation.findUnique({
     where: { id: req.params.id },
-    include: { items: true, createdByEmployee: true },
+    include: { items: true, createdByEmployee: { select: { id: true, name: true } } },
   })
   if (!quotation) return res.status(404).json({ error: 'Quotation not found' })
   res.json(quotation)
@@ -82,7 +82,7 @@ router.post('/', async (req, res) => {
         })),
       },
     },
-    include: { items: true, createdByEmployee: true },
+    include: { items: true, createdByEmployee: { select: { id: true, name: true } } },
   })
   res.status(201).json(quotation)
 })
@@ -119,7 +119,7 @@ router.put('/:id', async (req, res) => {
             })),
           },
         },
-        include: { items: true, createdByEmployee: true },
+        include: { items: true, createdByEmployee: { select: { id: true, name: true } } },
       })
     })
     return res.json(quotation)
@@ -128,7 +128,7 @@ router.put('/:id', async (req, res) => {
   const quotation = await prisma.quotation.update({
     where: { id: req.params.id },
     data,
-    include: { items: true, createdByEmployee: true },
+    include: { items: true, createdByEmployee: { select: { id: true, name: true } } },
   })
   res.json(quotation)
 })

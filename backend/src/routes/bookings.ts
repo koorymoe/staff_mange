@@ -3,14 +3,16 @@ import { prisma } from '../prisma'
 
 const router = Router()
 
+const employeeBrief = { select: { id: true, name: true, position: true, role: true } } as const
+
 const bookingInclude = {
   customer: true,
   service: true,
-  transferEmployee: true,
-  projectSupervisor: true,
-  confirmedByEmployee: true,
-  expenseResponsible: true,
-  assignments: { include: { employee: true } },
+  transferEmployee: employeeBrief,
+  projectSupervisor: employeeBrief,
+  confirmedByEmployee: employeeBrief,
+  expenseResponsible: employeeBrief,
+  assignments: { include: { employee: employeeBrief } },
   cartItems: { orderBy: { createdAt: 'asc' as const } },
   scheduleLogs: { include: { changedBy: { select: { id: true, name: true, role: true } } }, orderBy: { createdAt: 'desc' as const } },
 } as const
@@ -193,7 +195,7 @@ router.put('/:id/assign', async (req, res) => {
       // إذا فني واحد فقط بدون تيم ليدر → هو المسؤول
       const allAssignments = await prisma.bookingAssignment.findMany({
         where: { bookingId: id },
-        include: { employee: true },
+        include: { employee: { select: { id: true, isLeader: true } } },
       })
       const hasLeader = allAssignments.some(a => a.employee.isLeader)
       if (!hasLeader && allAssignments.length === 1) {

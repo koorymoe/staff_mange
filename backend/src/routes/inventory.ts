@@ -7,7 +7,7 @@ const router = Router()
 
 router.get('/personal', async (req, res) => {
   const where = req.query.employeeId ? { employeeId: req.query.employeeId as string } : {}
-  const tools = await prisma.personalTool.findMany({ where, include: { employee: true }, orderBy: { createdAt: 'desc' } })
+  const tools = await prisma.personalTool.findMany({ where, include: { employee: { select: { id: true, name: true, position: true } } }, orderBy: { createdAt: 'desc' } })
   res.json(tools)
 })
 
@@ -74,7 +74,7 @@ router.get('/requests', async (req, res) => {
   const where = req.query.employeeId ? { employeeId: req.query.employeeId as string } : {}
   const requests = await prisma.toolRequest.findMany({
     where,
-    include: { employee: true, tool: true, approvedBy: true },
+    include: { employee: { select: { id: true, name: true, position: true } }, tool: true, approvedBy: { select: { id: true, name: true } } },
     orderBy: { requestedAt: 'desc' },
   })
   res.json(requests)
@@ -84,7 +84,7 @@ router.post('/requests', async (req, res) => {
   const { employeeId, toolId } = req.body
   const request = await prisma.toolRequest.create({
     data: { employeeId, toolId },
-    include: { employee: true, tool: true },
+    include: { employee: { select: { id: true, name: true, position: true } }, tool: true },
   })
   res.status(201).json(request)
 })
@@ -94,7 +94,7 @@ router.put('/requests/:id/approve', async (req, res) => {
   const request = await prisma.toolRequest.update({
     where: { id: req.params.id },
     data: { status: 'APPROVED', approvedById },
-    include: { employee: true, tool: true, approvedBy: true },
+    include: { employee: { select: { id: true, name: true, position: true } }, tool: true, approvedBy: { select: { id: true, name: true } } },
   })
   res.json(request)
 })
@@ -103,7 +103,7 @@ router.put('/requests/:id/reject', async (req, res) => {
   const request = await prisma.toolRequest.update({
     where: { id: req.params.id },
     data: { status: 'REJECTED' },
-    include: { employee: true, tool: true },
+    include: { employee: { select: { id: true, name: true, position: true } }, tool: true },
   })
   res.json(request)
 })

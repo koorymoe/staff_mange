@@ -5,7 +5,7 @@ const router = Router()
 
 router.get('/', async (_req, res) => {
   const complaints = await prisma.complaint.findMany({
-    include: { customer: true, booking: true, createdByEmployee: true, assignedToEmployee: true },
+    include: { customer: true, booking: true, createdByEmployee: { select: { id: true, name: true } }, assignedToEmployee: { select: { id: true, name: true } } },
     orderBy: { createdAt: 'desc' },
   })
   res.json(complaints)
@@ -19,7 +19,7 @@ router.post('/', async (req, res) => {
 
   const complaint = await prisma.complaint.create({
     data: { customerId, bookingId: bookingId || undefined, description, createdByEmployeeId },
-    include: { customer: true, booking: true, createdByEmployee: true },
+    include: { customer: true, booking: true, createdByEmployee: { select: { id: true, name: true } } },
   })
   res.status(201).json(complaint)
 })
@@ -29,7 +29,7 @@ router.put('/:id', async (req, res) => {
   const complaint = await prisma.complaint.update({
     where: { id: req.params.id },
     data: { status, assignedToEmployeeId, resolution },
-    include: { customer: true, booking: true, createdByEmployee: true, assignedToEmployee: true },
+    include: { customer: true, booking: true, createdByEmployee: { select: { id: true, name: true } }, assignedToEmployee: { select: { id: true, name: true } } },
   })
   res.json(complaint)
 })
@@ -39,7 +39,7 @@ router.put('/:id/resolve', async (req, res) => {
   const complaint = await prisma.complaint.update({
     where: { id: req.params.id },
     data: { status: 'RESOLVED', resolution, resolvedAt: new Date() },
-    include: { customer: true, booking: true, createdByEmployee: true, assignedToEmployee: true },
+    include: { customer: true, booking: true, createdByEmployee: { select: { id: true, name: true } }, assignedToEmployee: { select: { id: true, name: true } } },
   })
   res.json(complaint)
 })

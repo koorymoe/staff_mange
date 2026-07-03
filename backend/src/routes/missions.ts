@@ -22,7 +22,7 @@ router.get('/', async (req, res) => {
         include: {
           customer: true,
           service: true,
-          assignments: { include: { employee: true } },
+          assignments: { include: { employee: { select: { id: true, name: true } } } },
         },
       },
       events: { orderBy: { createdAt: 'asc' } },
@@ -51,7 +51,7 @@ router.get('/:id', async (req, res) => {
   const mission = await prisma.mission.findUnique({
     where: { id: req.params.id },
     include: {
-      booking: { include: { customer: true, service: true, assignments: { include: { employee: true } } } },
+      booking: { include: { customer: true, service: true, assignments: { include: { employee: { select: { id: true, name: true } } } } } },
       events: { orderBy: { createdAt: 'asc' } },
     },
   })
