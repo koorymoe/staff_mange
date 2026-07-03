@@ -15,10 +15,23 @@ type ProcurementRequest struct {
 	CreatedAt        time.Time  `db:"createdAt" json:"createdAt"`
 	FulfilledAt      *time.Time `db:"fulfilledAt" json:"fulfilledAt"`
 
-	Items       []ProcurementItem        `db:"-" json:"items"`
-	RequestedBy *EmployeeBrief           `db:"-" json:"requestedBy"`
-	FulfilledBy *EmployeeBrief           `db:"-" json:"fulfilledBy"`
-	Booking     *ProcurementBookingBrief `db:"-" json:"booking"`
+	Items       []ProcurementItem          `db:"-" json:"items"`
+	RequestedBy *ProcurementRequesterBrief `db:"-" json:"requestedBy"`
+	FulfilledBy *EmployeeIDNameBrief       `db:"-" json:"fulfilledBy"`
+	Booking     *ProcurementBookingBrief   `db:"-" json:"booking"`
+}
+
+// ProcurementRequesterBrief يماثل { select: { id: true, name: true, role: true } } بالباك إند القديم
+type ProcurementRequesterBrief struct {
+	ID   string `db:"id" json:"id"`
+	Name string `db:"name" json:"name"`
+	Role string `db:"role" json:"role"`
+}
+
+// EmployeeIDNameBrief يماثل { select: { id: true, name: true } } بالباك إند القديم
+type EmployeeIDNameBrief struct {
+	ID   string `db:"id" json:"id"`
+	Name string `db:"name" json:"name"`
 }
 
 // ProcurementBookingBrief يماثل include: { booking: { include: { customer: { select ... } } } } بالباك إند القديم

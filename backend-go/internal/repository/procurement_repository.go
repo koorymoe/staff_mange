@@ -20,9 +20,17 @@ func NewProcurementRepository(db *sqlx.DB) *ProcurementRepository {
 	return &ProcurementRepository{db: db}
 }
 
-func (r *ProcurementRepository) loadEmployeeBrief(id string) *model.EmployeeBrief {
-	var brief model.EmployeeBrief
+func (r *ProcurementRepository) loadRequesterBrief(id string) *model.ProcurementRequesterBrief {
+	var brief model.ProcurementRequesterBrief
 	if err := r.db.Get(&brief, `SELECT id, name, role FROM "Employee" WHERE id = $1`, id); err != nil {
+		return nil
+	}
+	return &brief
+}
+
+func (r *ProcurementRepository) loadEmployeeIDName(id string) *model.EmployeeIDNameBrief {
+	var brief model.EmployeeIDNameBrief
+	if err := r.db.Get(&brief, `SELECT id, name FROM "Employee" WHERE id = $1`, id); err != nil {
 		return nil
 	}
 	return &brief
@@ -47,9 +55,9 @@ func (r *ProcurementRepository) hydrate(req *model.ProcurementRequest, withFulfi
 	if err := r.db.Select(&items, `SELECT * FROM "ProcurementItem" WHERE "requestId" = $1`, req.ID); err == nil {
 		req.Items = items
 	}
-	req.RequestedBy = r.loadEmployeeBrief(req.RequestedByID)
+	req.RequestedBy = r.loadRequesterBrief(req.RequestedByID)
 	if withFulfilledBy && req.FulfilledByID != nil {
-		req.FulfilledBy = r.loadEmployeeBrief(*req.FulfilledByID)
+		req.FulfilledBy = r.loadEmployeeIDName(*req.FulfilledByID)
 	}
 	if req.BookingID != nil {
 		req.Booking = r.loadBookingBrief(*req.BookingID)
