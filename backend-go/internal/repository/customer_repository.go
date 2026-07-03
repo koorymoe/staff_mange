@@ -18,7 +18,7 @@ func NewCustomerRepository(db *sqlx.DB) *CustomerRepository {
 }
 
 func (r *CustomerRepository) List() ([]model.Customer, error) {
-	var customers []model.Customer
+	customers := []model.Customer{}
 	err := r.db.Select(&customers, `SELECT * FROM "Customer" ORDER BY "customerCode" ASC`)
 	return customers, err
 }

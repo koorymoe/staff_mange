@@ -25,7 +25,7 @@ func (r *InventoryRepository) loadEmployeeBrief(id string) *model.EmployeeBrief 
 // ── Personal Tools ──────────────────────────────────────────────────────────
 
 func (r *InventoryRepository) ListPersonalTools(employeeID string) ([]model.PersonalTool, error) {
-	var tools []model.PersonalTool
+	tools := []model.PersonalTool{}
 	var err error
 	if employeeID != "" {
 		err = r.db.Select(&tools, `SELECT * FROM "PersonalTool" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC`, employeeID)
@@ -77,7 +77,7 @@ func (r *InventoryRepository) DeletePersonalTool(id string) error {
 // ── Vehicle Tools ───────────────────────────────────────────────────────────
 
 func (r *InventoryRepository) ListVehicleTools(vehicleID string) ([]model.VehicleTool, error) {
-	var tools []model.VehicleTool
+	tools := []model.VehicleTool{}
 	var err error
 	if vehicleID != "" {
 		err = r.db.Select(&tools, `SELECT * FROM "VehicleTool" WHERE "vehicleId" = $1 ORDER BY "createdAt" DESC`, vehicleID)
@@ -124,7 +124,7 @@ func (r *InventoryRepository) DeleteVehicleTool(id string) error {
 // ── On-demand Tools ─────────────────────────────────────────────────────────
 
 func (r *InventoryRepository) ListOnDemandTools() ([]model.OnDemandTool, error) {
-	var tools []model.OnDemandTool
+	tools := []model.OnDemandTool{}
 	err := r.db.Select(&tools, `SELECT * FROM "OnDemandTool" ORDER BY name ASC`)
 	return tools, err
 }
@@ -186,7 +186,7 @@ func (r *InventoryRepository) hydrateRequest(req *model.ToolRequest) {
 }
 
 func (r *InventoryRepository) ListToolRequests(employeeID string) ([]model.ToolRequest, error) {
-	var requests []model.ToolRequest
+	requests := []model.ToolRequest{}
 	var err error
 	if employeeID != "" {
 		err = r.db.Select(&requests, `SELECT * FROM "ToolRequest" WHERE "employeeId" = $1 ORDER BY "requestedAt" DESC`, employeeID)

@@ -17,7 +17,7 @@ func NewProjectRepository(db *sqlx.DB) *ProjectRepository {
 }
 
 func (r *ProjectRepository) List() ([]model.Project, error) {
-	var projects []model.Project
+	projects := []model.Project{}
 	err := r.db.Select(&projects, `SELECT * FROM "Project" ORDER BY "createdAt" DESC`)
 	return projects, err
 }
@@ -31,8 +31,8 @@ func (r *ProjectRepository) CountAll() (int, error) {
 func (r *ProjectRepository) Create(code, name string, rep, phone, location, workType, refPerson *string, priority string, deliveryDate *string) (*model.Project, error) {
 	var p model.Project
 	err := r.db.Get(&p, `
-		INSERT INTO "Project" (id, code, name, rep, phone, location, "workType", "refPerson", priority, "deliveryDate", stage)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		INSERT INTO "Project" (id, code, name, rep, phone, location, "workType", "refPerson", priority, "deliveryDate", stage, "updatedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
 		RETURNING *
 	`, code, name, rep, phone, location, workType, refPerson, priority, deliveryDate, firstStage)
 	if err != nil {
@@ -59,7 +59,8 @@ func (r *ProjectRepository) Update(id string, req model.UpdateProjectRequest) (*
 			priority = COALESCE($13, priority),
 			"deliveryDate" = COALESCE($14, "deliveryDate"),
 			survey = COALESCE($15::jsonb, survey),
-			"sentToGroup" = COALESCE($16, "sentToGroup")
+			"sentToGroup" = COALESCE($16, "sentToGroup"),
+			"updatedAt" = now()
 		WHERE id = $1
 		RETURNING *
 	`, id, req.Name, req.Rep, req.Phone, req.Location, req.WorkType, req.RefPerson, req.Stage,

@@ -40,7 +40,7 @@ func (r *ComplaintRepository) hydrate(c *model.Complaint) {
 }
 
 func (r *ComplaintRepository) List() ([]model.Complaint, error) {
-	var complaints []model.Complaint
+	complaints := []model.Complaint{}
 	if err := r.db.Select(&complaints, `SELECT * FROM "Complaint" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}

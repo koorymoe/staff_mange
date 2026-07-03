@@ -15,13 +15,13 @@ func NewServiceRepository(db *sqlx.DB) *ServiceRepository {
 }
 
 func (r *ServiceRepository) List() ([]model.Service, error) {
-	var services []model.Service
+	services := []model.Service{}
 	if err := r.db.Select(&services, `SELECT * FROM "Service" ORDER BY name ASC`); err != nil {
 		return nil, err
 	}
 
 	for i := range services {
-		var skills []model.Skill
+		skills := []model.Skill{}
 		if err := r.db.Select(&skills, `SELECT * FROM "Skill" WHERE "serviceId" = $1 ORDER BY name ASC`, services[i].ID); err != nil {
 			return nil, err
 		}

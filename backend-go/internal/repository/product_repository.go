@@ -15,7 +15,7 @@ func NewProductRepository(db *sqlx.DB) *ProductRepository {
 }
 
 func (r *ProductRepository) List() ([]model.Product, error) {
-	var products []model.Product
+	products := []model.Product{}
 	err := r.db.Select(&products, `SELECT * FROM "Product" ORDER BY name ASC`)
 	return products, err
 }

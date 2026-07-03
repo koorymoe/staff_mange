@@ -29,7 +29,7 @@ func (r *TrainingRepository) AssignedServiceIDs(employeeID string) ([]string, er
 }
 
 func (r *TrainingRepository) AssignedServices(employeeID string) ([]model.Service, error) {
-	var services []model.Service
+	services := []model.Service{}
 	err := r.db.Select(&services, `
 		SELECT s.id, s.name, s.category, s."createdAt"
 		FROM "EmployeeTrainingAssignment" a
@@ -43,7 +43,7 @@ func (r *TrainingRepository) MaterialsForServices(serviceIDs []string) ([]model.
 	if len(serviceIDs) == 0 {
 		return []model.TrainingMaterial{}, nil
 	}
-	var materials []model.TrainingMaterial
+	materials := []model.TrainingMaterial{}
 	query, args, err := sqlx.In(`SELECT * FROM "TrainingMaterial" WHERE "serviceId" IN (?) ORDER BY "serviceId" ASC, "order" ASC`, serviceIDs)
 	if err != nil {
 		return nil, err
@@ -80,7 +80,7 @@ func (r *TrainingRepository) SetAssignments(employeeID string, serviceIDs []stri
 }
 
 func (r *TrainingRepository) ListMaterials(serviceID string) ([]model.TrainingMaterial, error) {
-	var materials []model.TrainingMaterial
+	materials := []model.TrainingMaterial{}
 	var err error
 	if serviceID != "" {
 		err = r.db.Select(&materials, `SELECT * FROM "TrainingMaterial" WHERE "serviceId" = $1 ORDER BY "serviceId" ASC, "order" ASC`, serviceID)

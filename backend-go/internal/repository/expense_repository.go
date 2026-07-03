@@ -15,7 +15,7 @@ func NewExpenseRepository(db *sqlx.DB) *ExpenseRepository {
 }
 
 func (r *ExpenseRepository) List(employeeID string) ([]model.Expense, error) {
-	var expenses []model.Expense
+	expenses := []model.Expense{}
 	var err error
 	if employeeID != "" {
 		err = r.db.Select(&expenses, `SELECT * FROM "Expense" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC`, employeeID)

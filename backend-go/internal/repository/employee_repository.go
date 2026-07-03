@@ -15,7 +15,7 @@ func NewEmployeeRepository(db *sqlx.DB) *EmployeeRepository {
 }
 
 func (r *EmployeeRepository) List() ([]model.Employee, error) {
-	var employees []model.Employee
+	employees := []model.Employee{}
 	err := r.db.Select(&employees, `SELECT * FROM "Employee" ORDER BY name ASC`)
 	return employees, err
 }
@@ -75,7 +75,7 @@ func (r *EmployeeRepository) Update(e *model.Employee) error {
 
 // Supervisors يرجّع تيم ليدرز ومدراء المشاريع النشطين المؤهلين للإشراف على تكليف الفنيين
 func (r *EmployeeRepository) Supervisors() ([]model.Employee, error) {
-	var employees []model.Employee
+	employees := []model.Employee{}
 	err := r.db.Select(&employees, `
 		SELECT * FROM "Employee"
 		WHERE status = 'ACTIVE' AND (role = 'PROJECT_MANAGER' OR "isLeader" = true)
@@ -86,7 +86,7 @@ func (r *EmployeeRepository) Supervisors() ([]model.Employee, error) {
 
 // MatchForService يرجّع الفنيين النشطين والمتاحين حالياً مع علامة إذا يمتلكون مهارة الخدمة المطلوبة
 func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee, error) {
-	var employees []model.Employee
+	employees := []model.Employee{}
 	if err := r.db.Select(&employees, `
 		SELECT * FROM "Employee"
 		WHERE status = 'ACTIVE' AND "onDuty" = true AND role = 'TECHNICIAN'
@@ -114,7 +114,7 @@ func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee
 
 // SkillsForEmployee يجلب كل مهارات موظف مع تفاصيل المهارة والخدمة المرتبطة بيها
 func (r *EmployeeRepository) SkillsForEmployee(employeeID string) ([]model.EmployeeSkillDetail, error) {
-	var skills []model.EmployeeSkillDetail
+	skills := []model.EmployeeSkillDetail{}
 	if err := r.db.Select(&skills, `SELECT * FROM "EmployeeSkill" WHERE "employeeId" = $1`, employeeID); err != nil {
 		return nil, err
 	}

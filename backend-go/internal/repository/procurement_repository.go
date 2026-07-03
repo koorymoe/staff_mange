@@ -43,7 +43,7 @@ func (r *ProcurementRepository) loadBookingBrief(id string) *model.ProcurementBo
 }
 
 func (r *ProcurementRepository) hydrate(req *model.ProcurementRequest, withFulfilledBy bool) {
-	var items []model.ProcurementItem
+	items := []model.ProcurementItem{}
 	if err := r.db.Select(&items, `SELECT * FROM "ProcurementItem" WHERE "requestId" = $1`, req.ID); err == nil {
 		req.Items = items
 	}
@@ -57,7 +57,7 @@ func (r *ProcurementRepository) hydrate(req *model.ProcurementRequest, withFulfi
 }
 
 func (r *ProcurementRepository) List() ([]model.ProcurementRequest, error) {
-	var requests []model.ProcurementRequest
+	requests := []model.ProcurementRequest{}
 	if err := r.db.Select(&requests, `SELECT * FROM "ProcurementRequest" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}

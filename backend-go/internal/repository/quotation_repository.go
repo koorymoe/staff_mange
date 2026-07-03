@@ -29,7 +29,7 @@ func (r *QuotationRepository) loadEmployeeBrief(id string) *model.EmployeeBrief 
 }
 
 func (r *QuotationRepository) hydrate(q *model.Quotation) error {
-	var items []model.QuotationItem
+	items := []model.QuotationItem{}
 	if err := r.db.Select(&items, `SELECT * FROM "QuotationItem" WHERE "quotationId" = $1`, q.ID); err != nil {
 		return err
 	}
@@ -39,7 +39,7 @@ func (r *QuotationRepository) hydrate(q *model.Quotation) error {
 }
 
 func (r *QuotationRepository) List() ([]model.Quotation, error) {
-	var quotations []model.Quotation
+	quotations := []model.Quotation{}
 	if err := r.db.Select(&quotations, `SELECT * FROM "Quotation" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}

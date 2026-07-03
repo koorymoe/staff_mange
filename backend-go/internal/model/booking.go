@@ -3,35 +3,51 @@ package model
 import "time"
 
 type Booking struct {
-	ID                    string     `db:"id" json:"id"`
-	Code                  string     `db:"code" json:"code"`
-	SequenceNumber        *int       `db:"sequenceNumber" json:"sequenceNumber"`
-	ScheduledAt           *time.Time `db:"scheduledAt" json:"scheduledAt"`
-	CustomerID            string     `db:"customerId" json:"-"`
-	ServiceID             *string    `db:"serviceId" json:"-"`
-	TransferEmployeeID    *string    `db:"transferEmployeeId" json:"-"`
-	ProjectSupervisorID   *string    `db:"projectSupervisorId" json:"-"`
-	ExpenseResponsibleID  *string    `db:"expenseResponsibleId" json:"expenseResponsibleId"`
-	ConfirmedByEmployeeID *string    `db:"confirmedByEmployeeId" json:"-"`
-	Notes                 *string    `db:"notes" json:"notes"`
-	VehicleType           *string    `db:"vehicleType" json:"vehicleType"`
-	Priority              string     `db:"priority" json:"priority"`
-	Status                string     `db:"status" json:"status"`
-	TransferToProjects    bool       `db:"transferToProjects" json:"transferToProjects"`
-	ConfirmedByName       *string    `db:"confirmedByName" json:"confirmedByName"`
-	AdminNotes            *string    `db:"adminNotes" json:"adminNotes"`
-	AssignedVehicle       *string    `db:"assignedVehicle" json:"assignedVehicle"`
-	QuotedPrice           *float64   `db:"quotedPrice" json:"quotedPrice"`
-	Address               *string    `db:"address" json:"address"`
-	MapLocation           *string    `db:"mapLocation" json:"mapLocation"`
-	MapLatitude           *float64   `db:"mapLatitude" json:"mapLatitude"`
-	MapLongitude          *float64   `db:"mapLongitude" json:"mapLongitude"`
-	CompletedAt           *time.Time `db:"completedAt" json:"completedAt"`
-	CompletionNotes       *string    `db:"completionNotes" json:"completionNotes"`
-	AmountCollected       *float64   `db:"amountCollected" json:"amountCollected"`
-	AdvancePaid           *float64   `db:"advancePaid" json:"advancePaid"`
-	AmountVerified        bool       `db:"amountVerified" json:"amountVerified"`
-	CreatedAt             time.Time  `db:"createdAt" json:"createdAt"`
+	ID                     string     `db:"id" json:"id"`
+	Code                   string     `db:"code" json:"code"`
+	SequenceNumber         *int       `db:"sequenceNumber" json:"sequenceNumber"`
+	ScheduledAt            *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	CustomerID             string     `db:"customerId" json:"-"`
+	ServiceID              *string    `db:"serviceId" json:"-"`
+	TransferEmployeeID     *string    `db:"transferEmployeeId" json:"-"`
+	ProjectSupervisorID    *string    `db:"projectSupervisorId" json:"-"`
+	ExpenseResponsibleID   *string    `db:"expenseResponsibleId" json:"expenseResponsibleId"`
+	ConfirmedByEmployeeID  *string    `db:"confirmedByEmployeeId" json:"-"`
+	Notes                  *string    `db:"notes" json:"notes"`
+	VehicleType            *string    `db:"vehicleType" json:"vehicleType"`
+	Priority               string     `db:"priority" json:"priority"`
+	Status                 string     `db:"status" json:"status"`
+	TransferToProjects     bool       `db:"transferToProjects" json:"transferToProjects"`
+	ConfirmedByName        *string    `db:"confirmedByName" json:"confirmedByName"`
+	AdminNotes             *string    `db:"adminNotes" json:"adminNotes"`
+	AssignedVehicle        *string    `db:"assignedVehicle" json:"assignedVehicle"`
+	QuotedPrice            *float64   `db:"quotedPrice" json:"quotedPrice"`
+	Address                *string    `db:"address" json:"address"`
+	MapLocation            *string    `db:"mapLocation" json:"mapLocation"`
+	MapLatitude            *float64   `db:"mapLatitude" json:"mapLatitude"`
+	MapLongitude           *float64   `db:"mapLongitude" json:"mapLongitude"`
+	CompletedAt            *time.Time `db:"completedAt" json:"completedAt"`
+	CompletionNotes        *string    `db:"completionNotes" json:"completionNotes"`
+	AmountCollected        *float64   `db:"amountCollected" json:"amountCollected"`
+	AdvancePaid            *float64   `db:"advancePaid" json:"advancePaid"`
+	AmountVerified         bool       `db:"amountVerified" json:"amountVerified"`
+	EquipmentStatus        string     `db:"equipmentStatus" json:"equipmentStatus"`
+	Shift                  *string    `db:"shift" json:"shift"`
+	DeviceCount            *int       `db:"deviceCount" json:"deviceCount"`
+	InspectionSupervisorID *string    `db:"inspectionSupervisorId" json:"inspectionSupervisorId"`
+	ProjectCar             *string    `db:"projectCar" json:"projectCar"`
+	CrewNotes              *string    `db:"crewNotes" json:"crewNotes"`
+	BookingType            string     `db:"bookingType" json:"bookingType"`
+	Urgency                *string    `db:"urgency" json:"urgency"`
+	MaintenanceType        *string    `db:"maintenanceType" json:"maintenanceType"`
+	RemembersExecutionCrew bool       `db:"remembersExecutionCrew" json:"remembersExecutionCrew"`
+	SystemCount            *int       `db:"systemCount" json:"systemCount"`
+	SystemType             *string    `db:"systemType" json:"systemType"`
+	ProjectSpeed           *string    `db:"projectSpeed" json:"projectSpeed"`
+	WorkType               *string    `db:"workType" json:"workType"`
+	AddressDescription     *string    `db:"addressDescription" json:"addressDescription"`
+	CreatedAt              time.Time  `db:"createdAt" json:"createdAt"`
+	UpdatedAt              time.Time  `db:"updatedAt" json:"updatedAt"`
 
 	Customer            *Customer           `db:"-" json:"customer"`
 	Service             *Service            `db:"-" json:"service"`
@@ -45,11 +61,12 @@ type Booking struct {
 }
 
 type BookingAssignment struct {
-	ID         string   `db:"id" json:"id"`
-	BookingID  string   `db:"bookingId" json:"-"`
-	EmployeeID string   `db:"employeeId" json:"-"`
-	Role       string   `db:"role" json:"role"`
-	Employee   Employee `db:"-" json:"employee"`
+	ID         string    `db:"id" json:"id"`
+	BookingID  string    `db:"bookingId" json:"-"`
+	EmployeeID string    `db:"employeeId" json:"-"`
+	Role       string    `db:"role" json:"role"`
+	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
+	Employee   Employee  `db:"-" json:"employee"`
 }
 
 type CartItem struct {
@@ -61,6 +78,7 @@ type CartItem struct {
 	TotalPrice  float64   `db:"totalPrice" json:"totalPrice"`
 	Notes       *string   `db:"notes" json:"notes"`
 	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
+	UpdatedAt   time.Time `db:"updatedAt" json:"updatedAt"`
 }
 
 type ScheduleChangeLog struct {

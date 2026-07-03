@@ -21,7 +21,7 @@ func NewSupplierRepository(db *sqlx.DB) *SupplierRepository {
 // ── Specialties ─────────────────────────────────────────────────────────────
 
 func (r *SupplierRepository) ListSpecialties() ([]model.SupplierSpecialty, error) {
-	var specs []model.SupplierSpecialty
+	specs := []model.SupplierSpecialty{}
 	err := r.db.Select(&specs, `SELECT * FROM "SupplierSpecialty" ORDER BY "order" ASC`)
 	return specs, err
 }
@@ -65,7 +65,7 @@ func (r *SupplierRepository) DeleteSpecialty(id string) error {
 // ── Suppliers ───────────────────────────────────────────────────────────────
 
 func (r *SupplierRepository) hydrate(s *model.Supplier) error {
-	var specialties []model.SupplierSpecialty
+	specialties := []model.SupplierSpecialty{}
 	err := r.db.Select(&specialties, `
 		SELECT sp.* FROM "SupplierSpecialtyLink" l
 		JOIN "SupplierSpecialty" sp ON sp.id = l."specialtyId"
@@ -76,7 +76,7 @@ func (r *SupplierRepository) hydrate(s *model.Supplier) error {
 	}
 	s.Specialties = specialties
 
-	var ratings []model.SupplierRating
+	ratings := []model.SupplierRating{}
 	if err := r.db.Select(&ratings, `SELECT * FROM "SupplierRating" WHERE "supplierId" = $1 ORDER BY "createdAt" DESC`, s.ID); err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (r *SupplierRepository) hydrate(s *model.Supplier) error {
 }
 
 func (r *SupplierRepository) List() ([]model.Supplier, error) {
-	var suppliers []model.Supplier
+	suppliers := []model.Supplier{}
 	if err := r.db.Select(&suppliers, `SELECT * FROM "Supplier" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
@@ -122,8 +122,8 @@ func (r *SupplierRepository) Create(req model.UpsertSupplierRequest) (*model.Sup
 	}
 	var s model.Supplier
 	err := r.db.Get(&s, `
-		INSERT INTO "Supplier" (id, "companyName", "ownerName", phone, lat, lng, "isMaterialSupplier", "isContractor", "traderTypes", notes)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9)
+		INSERT INTO "Supplier" (id, "companyName", "ownerName", phone, lat, lng, "isMaterialSupplier", "isContractor", "traderTypes", notes, "updatedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, now())
 		RETURNING *
 	`, req.CompanyName, req.OwnerName, req.Phone, req.Lat, req.Lng, req.IsMaterialSupplier, req.IsContractor, pq.Array(traderTypes), req.Notes)
 	if err != nil {
@@ -157,7 +157,8 @@ func (r *SupplierRepository) Update(id string, req model.UpsertSupplierRequest) 
 			"isMaterialSupplier" = $7,
 			"isContractor" = $8,
 			"traderTypes" = $9,
-			notes = $10
+			notes = $10,
+			"updatedAt" = now()
 		WHERE id = $1
 		RETURNING *
 	`, id, req.CompanyName, req.OwnerName, req.Phone, req.Lat, req.Lng, req.IsMaterialSupplier, req.IsContractor, pq.Array(traderTypes), req.Notes)

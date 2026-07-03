@@ -28,7 +28,7 @@ func (r *KpiRepository) hydrate(e *model.KpiEvaluation) {
 }
 
 func (r *KpiRepository) List() ([]model.KpiEvaluation, error) {
-	var evals []model.KpiEvaluation
+	evals := []model.KpiEvaluation{}
 	if err := r.db.Select(&evals, `SELECT * FROM "KpiEvaluation" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (r *KpiRepository) List() ([]model.KpiEvaluation, error) {
 }
 
 func (r *KpiRepository) ListForEmployee(employeeID string) ([]model.KpiEvaluation, error) {
-	var evals []model.KpiEvaluation
+	evals := []model.KpiEvaluation{}
 	if err := r.db.Select(&evals, `SELECT * FROM "KpiEvaluation" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC`, employeeID); err != nil {
 		return nil, err
 	}

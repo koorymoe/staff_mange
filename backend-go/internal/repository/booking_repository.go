@@ -31,7 +31,7 @@ func (r *BookingRepository) List(status, customerID string) ([]model.Booking, er
 	}
 	query += ` ORDER BY "createdAt" DESC`
 
-	var bookings []model.Booking
+	bookings := []model.Booking{}
 	if err := r.db.Select(&bookings, query, args...); err != nil {
 		return nil, err
 	}
@@ -87,7 +87,7 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 	b.ConfirmedByEmployee = loadEmployee(b.ConfirmedByEmployeeID)
 	b.ExpenseResponsible = loadEmployee(b.ExpenseResponsibleID)
 
-	var assignments []model.BookingAssignment
+	assignments := []model.BookingAssignment{}
 	if err := r.db.Select(&assignments, `SELECT * FROM "BookingAssignment" WHERE "bookingId" = $1`, b.ID); err == nil {
 		for i := range assignments {
 			if e := loadEmployee(&assignments[i].EmployeeID); e != nil {
@@ -100,7 +100,7 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 		b.Assignments = []model.BookingAssignment{}
 	}
 
-	var cartItems []model.CartItem
+	cartItems := []model.CartItem{}
 	if err := r.db.Select(&cartItems, `SELECT * FROM "CartItem" WHERE "bookingId" = $1 ORDER BY "createdAt" ASC`, b.ID); err == nil {
 		b.CartItems = cartItems
 	}
@@ -108,7 +108,7 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 		b.CartItems = []model.CartItem{}
 	}
 
-	var logs []model.ScheduleChangeLog
+	logs := []model.ScheduleChangeLog{}
 	if err := r.db.Select(&logs, `SELECT * FROM "ScheduleChangeLog" WHERE "bookingId" = $1 ORDER BY "createdAt" DESC`, b.ID); err == nil {
 		for i := range logs {
 			logs[i].ChangedBy = loadEmployee(&logs[i].ChangedByID)
@@ -136,8 +136,8 @@ func (r *BookingRepository) NextSequenceNumber() (int, error) {
 
 func (r *BookingRepository) Create(b *model.Booking) error {
 	_, err := r.db.NamedExec(`
-		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId")
-		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId)
+		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId", "updatedAt")
+		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId, now())
 	`, b)
 	return err
 }
@@ -174,7 +174,7 @@ func (r *BookingRepository) UpdateDetails(id string, req model.UpdateBookingDeta
 }
 
 func (r *BookingRepository) ScheduleLog(bookingID string) ([]model.ScheduleChangeLog, error) {
-	var logs []model.ScheduleChangeLog
+	logs := []model.ScheduleChangeLog{}
 	err := r.db.Select(&logs, `SELECT * FROM "ScheduleChangeLog" WHERE "bookingId" = $1 ORDER BY "createdAt" DESC`, bookingID)
 	if err != nil {
 		return nil, err
@@ -254,7 +254,7 @@ func (r *BookingRepository) UpsertAssignment(bookingID, employeeID, role string)
 }
 
 func (r *BookingRepository) ListAssignments(bookingID string) ([]model.BookingAssignment, error) {
-	var assignments []model.BookingAssignment
+	assignments := []model.BookingAssignment{}
 	err := r.db.Select(&assignments, `SELECT * FROM "BookingAssignment" WHERE "bookingId" = $1`, bookingID)
 	return assignments, err
 }

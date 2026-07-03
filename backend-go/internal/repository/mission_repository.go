@@ -36,7 +36,7 @@ func (r *MissionRepository) hydrate(m *model.Mission, withBooking, withEvents bo
 		}
 	}
 	if withEvents {
-		var events []model.MissionEvent
+		events := []model.MissionEvent{}
 		if err := r.db.Select(&events, `SELECT * FROM "MissionEvent" WHERE "missionId" = $1 ORDER BY "createdAt" ASC`, m.ID); err == nil {
 			m.Events = events
 		}
@@ -91,7 +91,7 @@ func (r *MissionRepository) List(stage, leaderID, employeeID string) ([]model.Mi
 	}
 	query += ` ORDER BY "createdAt" DESC`
 
-	var missions []model.Mission
+	missions := []model.Mission{}
 	if err := r.db.Select(&missions, query, args...); err != nil {
 		return nil, err
 	}
@@ -128,8 +128,8 @@ func (r *MissionRepository) CountAll() (int, error) {
 func (r *MissionRepository) Create(code, bookingID, leaderID string, memberIDs []string, customerLat, customerLng *float64, customerAddress *string) (*model.Mission, error) {
 	var m model.Mission
 	err := r.db.Get(&m, `
-		INSERT INTO "Mission" (id, code, "bookingId", "leaderId", "memberIds", "customerLat", "customerLng", "customerAddress", stage)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, 'ASSIGNED')
+		INSERT INTO "Mission" (id, code, "bookingId", "leaderId", "memberIds", "customerLat", "customerLng", "customerAddress", stage, "updatedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, 'ASSIGNED', now())
 		RETURNING *
 	`, code, bookingID, leaderID, pq.Array(memberIDs), customerLat, customerLng, customerAddress)
 	if err != nil {
@@ -142,7 +142,7 @@ func (r *MissionRepository) Create(code, bookingID, leaderID string, memberIDs [
 }
 
 func (r *MissionRepository) UpdateStage(id, stage string, fields map[string]any) (*model.Mission, error) {
-	setClauses := []string{`stage = $1`}
+	setClauses := []string{`stage = $1`, `"updatedAt" = now()`}
 	args := []any{stage}
 	for col, val := range fields {
 		args = append(args, val)
@@ -174,7 +174,7 @@ func (r *MissionRepository) CreateEvent(missionID, employeeID, action string, la
 }
 
 func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission, error) {
-	var missions []model.Mission
+	missions := []model.Mission{}
 	err := r.db.Select(&missions, `
 		SELECT * FROM "Mission"
 		WHERE ("leaderId" = $1 OR $1 = ANY("memberIds")) AND stage NOT IN ('COMPLETED', 'STOPPED')
@@ -192,7 +192,7 @@ func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission,
 }
 
 func (r *MissionRepository) ListActive() ([]model.Mission, error) {
-	var missions []model.Mission
+	missions := []model.Mission{}
 	err := r.db.Select(&missions, `
 		SELECT * FROM "Mission" WHERE stage NOT IN ('COMPLETED', 'STOPPED') ORDER BY "createdAt" DESC
 	`)
@@ -203,7 +203,7 @@ func (r *MissionRepository) ListActive() ([]model.Mission, error) {
 		if err := r.hydrate(&missions[i], true, false); err != nil {
 			return nil, err
 		}
-		var events []model.MissionEvent
+		events := []model.MissionEvent{}
 		if err := r.db.Select(&events, `SELECT * FROM "MissionEvent" WHERE "missionId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, missions[i].ID); err == nil {
 			missions[i].Events = events
 		}
@@ -223,7 +223,7 @@ func (r *MissionRepository) ListForPerformanceReport(from, to *string) ([]model.
 		args = append(args, *to)
 		query += fmt.Sprintf(` AND "createdAt" <= $%d`, len(args))
 	}
-	var missions []model.Mission
+	missions := []model.Mission{}
 	err := r.db.Select(&missions, query, args...)
 	return missions, err
 }
@@ -233,7 +233,7 @@ func (r *MissionRepository) LoadEmployeeBriefsByIDs(ids []string) (map[string]mo
 	if len(ids) == 0 {
 		return briefs, nil
 	}
-	var rows []model.EmployeeBrief
+	rows := []model.EmployeeBrief{}
 	query, args, err := sqlx.In(`SELECT id, name FROM "Employee" WHERE id IN (?)`, ids)
 	if err != nil {
 		return nil, err

@@ -15,7 +15,7 @@ func NewCartRepository(db *sqlx.DB) *CartRepository {
 }
 
 func (r *CartRepository) ListForBooking(bookingID string) ([]model.CartItem, error) {
-	var items []model.CartItem
+	items := []model.CartItem{}
 	err := r.db.Select(&items, `SELECT * FROM "CartItem" WHERE "bookingId" = $1 ORDER BY "createdAt" ASC`, bookingID)
 	return items, err
 }
@@ -23,8 +23,8 @@ func (r *CartRepository) ListForBooking(bookingID string) ([]model.CartItem, err
 func (r *CartRepository) Create(bookingID, productName string, quantity, unitPrice float64, notes *string) (*model.CartItem, error) {
 	var item model.CartItem
 	err := r.db.Get(&item, `
-		INSERT INTO "CartItem" (id, "bookingId", "productName", quantity, "unitPrice", "totalPrice", notes)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
+		INSERT INTO "CartItem" (id, "bookingId", "productName", quantity, "unitPrice", "totalPrice", notes, "updatedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, now())
 		RETURNING *
 	`, bookingID, productName, quantity, unitPrice, quantity*unitPrice, notes)
 	return &item, err

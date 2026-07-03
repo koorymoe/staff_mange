@@ -49,7 +49,7 @@ func (r *GpsRepository) loadDeviceRequestBare(id string) *model.GpsDeviceRequest
 // ── GPS Customers ────────────────────────────────────────────────────────────
 
 func (r *GpsRepository) ListCustomers() ([]model.GpsCustomer, error) {
-	var customers []model.GpsCustomer
+	customers := []model.GpsCustomer{}
 	err := r.db.Select(&customers, `SELECT * FROM "GpsCustomer" ORDER BY "fullName" ASC`)
 	return customers, err
 }
@@ -93,7 +93,7 @@ func (r *GpsRepository) UpdateCustomer(id string, req model.UpsertGpsCustomerReq
 // ── SIM Cards ────────────────────────────────────────────────────────────────
 
 func (r *GpsRepository) ListSims() ([]model.SimCard, error) {
-	var sims []model.SimCard
+	sims := []model.SimCard{}
 	err := r.db.Select(&sims, `SELECT * FROM "SimCard" ORDER BY "createdAt" DESC`)
 	return sims, err
 }
@@ -145,7 +145,7 @@ func (r *GpsRepository) hydrateDevice(d *model.GpsDeviceRequest) {
 }
 
 func (r *GpsRepository) ListDevices() ([]model.GpsDeviceRequest, error) {
-	var devices []model.GpsDeviceRequest
+	devices := []model.GpsDeviceRequest{}
 	if err := r.db.Select(&devices, `SELECT * FROM "GpsDeviceRequest" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
@@ -217,7 +217,7 @@ func (r *GpsRepository) hydrateRenewal(rn *model.GpsRenewalRequest) {
 }
 
 func (r *GpsRepository) ListRenewals() ([]model.GpsRenewalRequest, error) {
-	var renewals []model.GpsRenewalRequest
+	renewals := []model.GpsRenewalRequest{}
 	if err := r.db.Select(&renewals, `SELECT * FROM "GpsRenewalRequest" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
@@ -270,7 +270,7 @@ func (r *GpsRepository) hydrateMaintenance(m *model.GpsMaintenanceRequest) {
 }
 
 func (r *GpsRepository) ListMaintenance() ([]model.GpsMaintenanceRequest, error) {
-	var records []model.GpsMaintenanceRequest
+	records := []model.GpsMaintenanceRequest{}
 	if err := r.db.Select(&records, `SELECT * FROM "GpsMaintenanceRequest" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
@@ -318,7 +318,7 @@ func (r *GpsRepository) UpdateMaintenance(id string, req model.UpsertGpsMaintena
 // ── Settings (prices) ────────────────────────────────────────────────────────
 
 func (r *GpsRepository) ListSettings() ([]model.GpsSubscriptionPrice, error) {
-	var prices []model.GpsSubscriptionPrice
+	prices := []model.GpsSubscriptionPrice{}
 	err := r.db.Select(&prices, `SELECT * FROM "GpsSubscriptionPrice"`)
 	return prices, err
 }
@@ -340,7 +340,7 @@ func (r *GpsRepository) UpsertSetting(id, subscriptionType string, price float64
 // ── Stats ────────────────────────────────────────────────────────────────────
 
 func (r *GpsRepository) Stats() (*model.GpsStats, error) {
-	var byStatus []model.GpsStatusCount
+	byStatus := []model.GpsStatusCount{}
 	if err := r.db.Select(&byStatus, `SELECT status, COUNT(id) as count FROM "GpsDeviceRequest" GROUP BY status`); err != nil {
 		return nil, err
 	}

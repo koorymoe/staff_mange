@@ -31,11 +31,12 @@ type Employee struct {
 }
 
 type EmployeeSkillDetail struct {
-	ID         string `db:"id" json:"id"`
-	EmployeeID string `db:"employeeId" json:"employeeId"`
-	SkillID    string `db:"skillId" json:"skillId"`
-	CanPerform bool   `db:"canPerform" json:"canPerform"`
-	Skill      *Skill `db:"-" json:"skill"`
+	ID         string    `db:"id" json:"id"`
+	EmployeeID string    `db:"employeeId" json:"employeeId"`
+	SkillID    string    `db:"skillId" json:"skillId"`
+	CanPerform bool      `db:"canPerform" json:"canPerform"`
+	CreatedAt  time.Time `db:"createdAt" json:"-"`
+	Skill      *Skill    `db:"-" json:"skill"`
 }
 
 type SetEmployeeSkillsRequest struct {

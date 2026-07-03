@@ -30,13 +30,13 @@ func (r *PermissionRepository) EnsureSeeded() error {
 }
 
 func (r *PermissionRepository) ListAll() ([]model.Permission, error) {
-	var perms []model.Permission
+	perms := []model.Permission{}
 	err := r.db.Select(&perms, `SELECT id, name, label FROM "Permission" ORDER BY name ASC`)
 	return perms, err
 }
 
 func (r *PermissionRepository) ListForEmployee(employeeID string) ([]model.Permission, error) {
-	var perms []model.Permission
+	perms := []model.Permission{}
 	err := r.db.Select(&perms, `
 		SELECT p.id, p.name, p.label
 		FROM "EmployeePermission" ep

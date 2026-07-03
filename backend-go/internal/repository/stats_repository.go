@@ -227,7 +227,7 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 }
 
 func (r *StatsRepository) RoleCounts() ([]model.RoleCount, error) {
-	var counts []model.RoleCount
+	counts := []model.RoleCount{}
 	err := r.db.Select(&counts, `SELECT role, COUNT(*) as count FROM "Employee" GROUP BY role`)
 	return counts, err
 }
