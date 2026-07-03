@@ -31,6 +31,7 @@ func main() {
 	expenseRepo := repository.NewExpenseRepository(db)
 	inventoryRepo := repository.NewInventoryRepository(db)
 	kpiRepo := repository.NewKpiRepository(db)
+	smartKpiRepo := repository.NewSmartKpiRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -43,6 +44,7 @@ func main() {
 	expenseService := service.NewExpenseService(expenseRepo)
 	inventoryService := service.NewInventoryService(inventoryRepo)
 	kpiService := service.NewKpiService(kpiRepo)
+	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -55,6 +57,7 @@ func main() {
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	kpiHandler := handler.NewKpiHandler(kpiService)
+	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -140,6 +143,10 @@ func main() {
 	mux.Handle("GET /api/v1/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
 	mux.Handle("POST /api/v1/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth))
 	mux.Handle("DELETE /api/v1/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth))
+
+	// تقييم الأداء التلقائي (Smart KPI) — الرانك الأسبوعي/الشهري للفنيين
+	mux.Handle("GET /api/v1/smart-kpi/technician/{employeeId}", middleware.Chain(http.HandlerFunc(smartKpiHandler.Technician), requireAuth))
+	mux.Handle("GET /api/v1/smart-kpi/leaderboard", middleware.Chain(http.HandlerFunc(smartKpiHandler.Leaderboard), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
