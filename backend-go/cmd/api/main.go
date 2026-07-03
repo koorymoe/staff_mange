@@ -38,6 +38,7 @@ func main() {
 	projectRepo := repository.NewProjectRepository(db)
 	procurementRepo := repository.NewProcurementRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
+	quotationRepo := repository.NewQuotationRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -57,6 +58,7 @@ func main() {
 	projectService := service.NewProjectService(projectRepo)
 	procurementService := service.NewProcurementService(procurementRepo)
 	supplierService := service.NewSupplierService(supplierRepo)
+	quotationService := service.NewQuotationService(quotationRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -76,6 +78,7 @@ func main() {
 	projectHandler := handler.NewProjectHandler(projectService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
 	supplierHandler := handler.NewSupplierHandler(supplierService)
+	quotationHandler := handler.NewQuotationHandler(quotationService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -212,6 +215,13 @@ func main() {
 	mux.Handle("PUT /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Update), requireAuth))
 	mux.Handle("DELETE /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Delete), requireAuth))
 	mux.Handle("POST /api/v1/suppliers/{id}/rate", middleware.Chain(http.HandlerFunc(supplierHandler.Rate), requireAuth))
+
+	// عروض الأسعار (quotations)
+	mux.Handle("GET /api/v1/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.List), requireAuth))
+	mux.Handle("GET /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Get), requireAuth))
+	mux.Handle("POST /api/v1/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth))
+	mux.Handle("PUT /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth))
+	mux.Handle("DELETE /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
