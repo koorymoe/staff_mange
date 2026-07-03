@@ -92,6 +92,10 @@ func main() {
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
 	requireFinance := middleware.RequireRole("ADMIN", "FINANCE")
+	requireHR := middleware.RequireRole("ADMIN", "HR_COORDINATOR")
+	requireMonitor := middleware.RequireRole("ADMIN", "MONITOR")
+	requireProjectManager := middleware.RequireRole("ADMIN", "PROJECT_MANAGER")
+	requireGpsAdmin := middleware.RequireRole("ADMIN", "GPS_ADMIN")
 
 	mux := http.NewServeMux()
 
@@ -134,7 +138,7 @@ func main() {
 	mux.Handle("PUT /api/v1/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth))
 	mux.Handle("PUT /api/v1/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth))
 	mux.Handle("PUT /api/v1/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth))
-	mux.Handle("PUT /api/v1/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth))
+	mux.Handle("PUT /api/v1/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireFinance))
 
 	// سلة الحجز
 	mux.Handle("GET /api/v1/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.ListForBooking), requireAuth))
@@ -151,7 +155,7 @@ func main() {
 	mux.Handle("GET /api/v1/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalTools), requireAuth))
 	mux.Handle("POST /api/v1/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalTool), requireAuth))
 	mux.Handle("PUT /api/v1/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdatePersonalTool), requireAuth))
-	mux.Handle("DELETE /api/v1/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalTool), requireAuth))
+	mux.Handle("DELETE /api/v1/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalTool), requireAuth, requireHR))
 
 	mux.Handle("GET /api/v1/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.ListVehicleTools), requireAuth))
 	mux.Handle("POST /api/v1/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateVehicleTool), requireAuth))
@@ -164,15 +168,15 @@ func main() {
 
 	mux.Handle("GET /api/v1/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.ListToolRequests), requireAuth))
 	mux.Handle("POST /api/v1/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth))
-	mux.Handle("PUT /api/v1/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth))
-	mux.Handle("PUT /api/v1/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth))
+	mux.Handle("PUT /api/v1/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth, requireHR))
+	mux.Handle("PUT /api/v1/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth, requireHR))
 	mux.Handle("PUT /api/v1/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth))
 
 	// تقييم الأداء اليدوي (KPI)
 	mux.Handle("GET /api/v1/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth))
 	mux.Handle("GET /api/v1/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
-	mux.Handle("POST /api/v1/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth))
-	mux.Handle("DELETE /api/v1/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth))
+	mux.Handle("POST /api/v1/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireMonitor))
+	mux.Handle("DELETE /api/v1/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth, requireAdmin))
 
 	// تقييم الأداء التلقائي (Smart KPI) — الرانك الأسبوعي/الشهري للفنيين
 	mux.Handle("GET /api/v1/smart-kpi/technician/{employeeId}", middleware.Chain(http.HandlerFunc(smartKpiHandler.Technician), requireAuth))
@@ -206,23 +210,23 @@ func main() {
 	mux.Handle("GET /api/v1/projects", middleware.Chain(http.HandlerFunc(projectHandler.List), requireAuth))
 	mux.Handle("POST /api/v1/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth))
-	mux.Handle("DELETE /api/v1/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth))
+	mux.Handle("DELETE /api/v1/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 
 	// المشتريات (procurement)
 	mux.Handle("GET /api/v1/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth))
 	mux.Handle("GET /api/v1/procurement/stats", middleware.Chain(http.HandlerFunc(procurementHandler.Stats), requireAuth))
 	mux.Handle("POST /api/v1/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth))
-	mux.Handle("PUT /api/v1/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth))
-	mux.Handle("PUT /api/v1/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth))
+	mux.Handle("PUT /api/v1/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireFinance))
+	mux.Handle("PUT /api/v1/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireFinance))
 
 	// الموردون (suppliers)
 	mux.Handle("GET /api/v1/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.ListSpecialties), requireAuth))
-	mux.Handle("POST /api/v1/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.CreateSpecialty), requireAuth))
-	mux.Handle("DELETE /api/v1/suppliers/specialties/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.DeleteSpecialty), requireAuth))
+	mux.Handle("POST /api/v1/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.CreateSpecialty), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/v1/suppliers/specialties/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.DeleteSpecialty), requireAuth, requireAdmin))
 	mux.Handle("GET /api/v1/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.List), requireAuth))
-	mux.Handle("POST /api/v1/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.Create), requireAuth))
-	mux.Handle("PUT /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Update), requireAuth))
-	mux.Handle("DELETE /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Delete), requireAuth))
+	mux.Handle("POST /api/v1/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.Create), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/v1/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Delete), requireAuth, requireAdmin))
 	mux.Handle("POST /api/v1/suppliers/{id}/rate", middleware.Chain(http.HandlerFunc(supplierHandler.Rate), requireAuth))
 
 	// عروض الأسعار (quotations)
@@ -230,13 +234,13 @@ func main() {
 	mux.Handle("GET /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Get), requireAuth))
 	mux.Handle("POST /api/v1/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth))
 	mux.Handle("PUT /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth))
-	mux.Handle("DELETE /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth))
+	mux.Handle("DELETE /api/v1/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth, requireAdmin))
 
 	// المنتجات (products)
 	mux.Handle("GET /api/v1/products", middleware.Chain(http.HandlerFunc(productHandler.List), requireAuth))
 	mux.Handle("POST /api/v1/products", middleware.Chain(http.HandlerFunc(productHandler.Create), requireAuth))
-	mux.Handle("PUT /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Update), requireAuth))
-	mux.Handle("DELETE /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Delete), requireAuth))
+	mux.Handle("PUT /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/v1/products/{id}", middleware.Chain(http.HandlerFunc(productHandler.Delete), requireAuth, requireAdmin))
 
 	// نظام GPS — عملاء / شرائح SIM / طلبات الأجهزة / التجديد / الصيانة / الأسعار / الإحصائيات
 	mux.Handle("GET /api/v1/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.ListCustomers), requireAuth))
@@ -260,7 +264,7 @@ func main() {
 	mux.Handle("PUT /api/v1/gps/maintenance/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateMaintenance), requireAuth))
 
 	mux.Handle("GET /api/v1/gps/settings", middleware.Chain(http.HandlerFunc(gpsHandler.ListSettings), requireAuth))
-	mux.Handle("PUT /api/v1/gps/settings", middleware.Chain(http.HandlerFunc(gpsHandler.UpsertSettings), requireAuth))
+	mux.Handle("PUT /api/v1/gps/settings", middleware.Chain(http.HandlerFunc(gpsHandler.UpsertSettings), requireAuth, requireGpsAdmin))
 
 	mux.Handle("GET /api/v1/gps/stats", middleware.Chain(http.HandlerFunc(gpsHandler.Stats), requireAuth))
 
