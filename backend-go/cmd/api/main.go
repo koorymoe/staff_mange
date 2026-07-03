@@ -30,6 +30,7 @@ func main() {
 	cartRepo := repository.NewCartRepository(db)
 	expenseRepo := repository.NewExpenseRepository(db)
 	inventoryRepo := repository.NewInventoryRepository(db)
+	kpiRepo := repository.NewKpiRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -41,6 +42,7 @@ func main() {
 	cartService := service.NewCartService(cartRepo)
 	expenseService := service.NewExpenseService(expenseRepo)
 	inventoryService := service.NewInventoryService(inventoryRepo)
+	kpiService := service.NewKpiService(kpiRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -52,6 +54,7 @@ func main() {
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
+	kpiHandler := handler.NewKpiHandler(kpiService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -131,6 +134,12 @@ func main() {
 	mux.Handle("PUT /api/v1/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth))
 	mux.Handle("PUT /api/v1/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth))
 	mux.Handle("PUT /api/v1/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth))
+
+	// تقييم الأداء اليدوي (KPI)
+	mux.Handle("GET /api/v1/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth))
+	mux.Handle("GET /api/v1/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
+	mux.Handle("POST /api/v1/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth))
+	mux.Handle("DELETE /api/v1/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth))
 
 	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS)
 
