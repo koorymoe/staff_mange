@@ -1,5 +1,7 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import employeesRouter from './routes/employees'
 import servicesRouter from './routes/services'
@@ -27,12 +29,35 @@ import { requireAuth } from './middleware/requireAuth'
 dotenv.config()
 
 const app = express()
-app.use(cors())
+
+// رؤوس أمان قياسية (Helmet) — تمنع هجمات clickjacking / MIME-sniffing / إلخ
+app.use(helmet())
+
+// CORS مقيّد بالأصل المسموح فقط (الفرونت إند المحلي أو دومين الإنتاج)، مو مفتوح لأي موقع
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean)
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true,
+}))
+
 app.use(express.json({ limit: '10mb' }))
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok' })
 })
+
+// حماية من هجمات تخمين كلمة المرور: حد أقصى 10 محاولات كل 15 دقيقة لكل IP على مسار الدخول فقط
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'محاولات دخول كثيرة جداً، حاول مرة أخرى بعد قليل' },
+})
+app.use('/api/auth/login', loginLimiter)
 
 // تسجيل الدخول متاح بدون توثيق مسبق (هو نفسه المصدر الوحيد للتوكن)
 app.use('/api/auth', authRouter)
