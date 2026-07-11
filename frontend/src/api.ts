@@ -1,5 +1,22 @@
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
+export interface AttendanceRecord {
+  id: string
+  employeeId: string
+  checkIn: string
+  checkOut: string | null
+  date: string
+  employee: { id: string; name: string } | null
+}
+
+export interface MonthlyAttendanceReport {
+  employeeId: string
+  month: string
+  days: AttendanceRecord[]
+  daysPresent: number
+  totalMinutes: number
+}
+
 export interface Skill {
   id: string
   name: string
@@ -617,6 +634,16 @@ export const api = {
     request<Permission[]>(`/permissions/employee/${employeeId}/apply-defaults`, { method: 'POST' }),
   getRoleDefaults: () =>
     request<Record<string, string[]>>('/permissions/role-defaults'),
+
+  // Attendance
+  checkIn: () => request<AttendanceRecord>('/attendance/checkin', { method: 'POST' }),
+  checkOut: () => request<AttendanceRecord>('/attendance/checkout', { method: 'POST' }),
+  getMyAttendanceToday: () => request<AttendanceRecord | null>('/attendance/mine'),
+  getTodayAttendance: () => request<AttendanceRecord[]>('/attendance/today'),
+  getMonthlyAttendance: (employeeId: string, month: string) =>
+    request<MonthlyAttendanceReport>(`/attendance/employee/${employeeId}?month=${month}`),
+  correctAttendance: (id: string, data: { checkIn?: string; checkOut?: string }) =>
+    request<AttendanceRecord>(`/attendance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // KPI
   getKpiEvaluations: () => request<KpiEvaluation[]>('/kpi'),

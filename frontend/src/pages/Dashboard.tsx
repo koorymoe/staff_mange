@@ -1,48 +1,23 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import type { Booking, Expense } from '../api'
+import type { Booking, Expense, AttendanceRecord } from '../api'
 import { useSession } from '../session'
 
-/* ───── Attendance localStorage helpers ───── */
+/* ───── Attendance helpers ───── */
 
-const todayKey = () => new Date().toISOString().slice(0, 10)
-
-interface AttendanceRecord {
-  employeeId: string
-  employeeName: string
-  date: string
-  checkInTime: string | null
-  checkOutTime: string | null
-}
-
-function getAttendanceRecords(): AttendanceRecord[] {
-  try { return JSON.parse(localStorage.getItem('attendance_records') || '[]') } catch { return [] }
-}
-function saveAttendanceRecords(records: AttendanceRecord[]) {
-  localStorage.setItem('attendance_records', JSON.stringify(records))
-}
-function getMyTodayRecord(employeeId: string): AttendanceRecord | undefined {
-  return getAttendanceRecords().find(r => r.employeeId === employeeId && r.date === todayKey() && !r.checkOutTime)
-}
-function getMyTodayRecords(employeeId: string): AttendanceRecord[] {
-  return getAttendanceRecords().filter(r => r.employeeId === employeeId && r.date === todayKey())
-}
-
-function elapsedSince(timeStr: string): string {
-  const digits = timeStr.replace(/[^\d:]/g, '')
-  const [h, m] = digits.split(':').map(Number)
-  if (isNaN(h) || isNaN(m)) return '--'
-  const now = new Date()
-  const checkInDate = new Date()
-  checkInDate.setHours(h, m, 0, 0)
-  const diffMs = now.getTime() - checkInDate.getTime()
+function elapsedSince(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime()
   if (diffMs < 0) return '٠ دقائق'
   const diffMin = Math.floor(diffMs / 60000)
   const hours = Math.floor(diffMin / 60)
   const mins = diffMin % 60
   if (hours === 0) return `${mins} دقيقة`
   return `${hours} ساعة و ${mins} دقيقة`
+}
+
+function fmtTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
 }
 
 function formatTime(): string {
@@ -149,47 +124,34 @@ export default function Dashboard() {
   }, [employee])
 
   /* ── Attendance widget state ── */
-  const [activeRecord, setActiveRecord] = useState<AttendanceRecord | undefined>(undefined)
-  const [, setAllTodayRecords] = useState<AttendanceRecord[]>([])
+  const [activeRecord, setActiveRecord] = useState<AttendanceRecord | null>(null)
   const [elapsed, setElapsed] = useState('')
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false)
 
   useEffect(() => {
     if (!employee) return
-    setActiveRecord(getMyTodayRecord(employee.id))
-    setAllTodayRecords(getMyTodayRecords(employee.id))
+    api.getMyAttendanceToday().then(rec => setActiveRecord(rec && !rec.checkOut ? rec : null)).catch(() => setActiveRecord(null))
   }, [employee])
 
   useEffect(() => {
-    if (!activeRecord?.checkInTime || activeRecord.checkOutTime) return
-    setElapsed(elapsedSince(activeRecord.checkInTime))
+    if (!activeRecord?.checkIn || activeRecord.checkOut) return
+    setElapsed(elapsedSince(activeRecord.checkIn))
     const interval = setInterval(() => {
-      setElapsed(elapsedSince(activeRecord.checkInTime!))
+      setElapsed(elapsedSince(activeRecord.checkIn))
     }, 60000)
     return () => clearInterval(interval)
   }, [activeRecord])
 
-  const handleAttCheckIn = useCallback(() => {
+  const handleAttCheckIn = useCallback(async () => {
     if (!employee) return
-    const records = getAttendanceRecords()
-    const now = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-    const rec: AttendanceRecord = { employeeId: employee.id, employeeName: employee.name, date: todayKey(), checkInTime: now, checkOutTime: null }
-    records.push(rec)
-    saveAttendanceRecords(records)
+    const rec = await api.checkIn()
     setActiveRecord(rec)
-    setAllTodayRecords(getMyTodayRecords(employee.id))
   }, [employee])
 
-  const handleAttCheckOut = useCallback(() => {
+  const handleAttCheckOut = useCallback(async () => {
     if (!employee || !activeRecord) return
-    const records = getAttendanceRecords()
-    const rec = records.find(r => r.employeeId === employee.id && r.date === todayKey() && !r.checkOutTime)
-    if (rec) {
-      rec.checkOutTime = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
-      saveAttendanceRecords(records)
-      setActiveRecord(undefined)
-      setAllTodayRecords(getMyTodayRecords(employee.id))
-    }
+    await api.checkOut()
+    setActiveRecord(null)
     setShowCheckoutConfirm(false)
   }, [employee, activeRecord])
 
@@ -746,7 +708,7 @@ export default function Dashboard() {
             <span className="flex items-center gap-2 text-xs">
               <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>
               <span className="font-bold text-emerald-700">متواجد</span>
-              <span className="text-slate-400">منذ {activeRecord.checkInTime} • {elapsed}</span>
+              <span className="text-slate-400">منذ {fmtTime(activeRecord.checkIn)} • {elapsed}</span>
             </span>
           ) : (
             <span className="text-xs text-slate-400">لم تسجل حضورك بعد</span>
