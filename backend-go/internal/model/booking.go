@@ -7,6 +7,7 @@ type Booking struct {
 	Code                   string     `db:"code" json:"code"`
 	SequenceNumber         *int       `db:"sequenceNumber" json:"sequenceNumber"`
 	ScheduledAt            *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	PendingScheduledAt     *time.Time `db:"pendingScheduledAt" json:"pendingScheduledAt"`
 	CustomerID             string     `db:"customerId" json:"-"`
 	ServiceID              *string    `db:"serviceId" json:"-"`
 	TransferEmployeeID     *string    `db:"transferEmployeeId" json:"-"`
