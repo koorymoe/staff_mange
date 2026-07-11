@@ -93,12 +93,15 @@ type ScheduleChangeLog struct {
 }
 
 type CreateBookingRequest struct {
-	CustomerID         string  `json:"customerId"`
-	ServiceID          *string `json:"serviceId"`
-	Notes              *string `json:"notes"`
-	VehicleType        *string `json:"vehicleType"`
-	Priority           *string `json:"priority"`
-	TransferEmployeeID *string `json:"transferEmployeeId"`
+	CustomerID         string   `json:"customerId"`
+	ServiceID          *string  `json:"serviceId"`
+	Notes              *string  `json:"notes"`
+	VehicleType        *string  `json:"vehicleType"`
+	Priority           *string  `json:"priority"`
+	TransferEmployeeID *string  `json:"transferEmployeeId"`
+	Address            *string  `json:"address"`
+	MapLatitude        *float64 `json:"mapLatitude"`
+	MapLongitude       *float64 `json:"mapLongitude"`
 }
 
 type ConfirmBookingRequest struct {

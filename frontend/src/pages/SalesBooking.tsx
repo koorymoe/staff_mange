@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Customer, type Service } from '../api'
 import { useSession } from '../session'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
+import LocationPicker from '../components/LocationPicker'
 
 type BookingType = 'REGULAR' | 'MAINTENANCE'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
@@ -17,7 +18,7 @@ export default function SalesBooking() {
   const [serviceId, setServiceId] = useState('')
   const [notes, setNotes] = useState('')
   const [addressDesc, setAddressDesc] = useState('')
-  const [mapLink, setMapLink] = useState('')
+  const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [urgency, setUrgency] = useState<Urgency | null>(null)
   const [specificDate, setSpecificDate] = useState('')
   const [maintenanceType, setMaintenanceType] = useState<MaintenanceType | null>(null)
@@ -78,8 +79,6 @@ export default function SalesBooking() {
       parts.push(`[نوع الصيانة: ${mtExtra}]`)
     }
 
-    if (addressDesc.trim()) parts.push(`[العنوان: ${addressDesc.trim()}]`)
-    if (mapLink.trim()) parts.push(`[الموقع: ${mapLink.trim()}]`)
     if (notes.trim()) parts.push(notes.trim())
 
     return parts.join(' ')
@@ -112,6 +111,10 @@ export default function SalesBooking() {
       setMessage('يرجى إدخال وصف الموقع')
       return
     }
+    if (!mapPoint) {
+      setMessage('يرجى تحديد موقع الزبون على الخريطة')
+      return
+    }
 
     if (bookingType === 'REGULAR' && !urgency) {
       setMessage('يرجى اختيار مستوى الأولوية')
@@ -134,6 +137,9 @@ export default function SalesBooking() {
         serviceId: serviceId || undefined,
         transferEmployeeId: employee?.id,
         notes: buildNotesString() || undefined,
+        address: addressDesc.trim(),
+        mapLatitude: mapPoint.lat,
+        mapLongitude: mapPoint.lng,
       })
       setSuccess({ customerCode: customer.code, bookingCode: booking.code })
       setName('')
@@ -141,7 +147,7 @@ export default function SalesBooking() {
       setServiceId('')
       setNotes('')
       setAddressDesc('')
-      setMapLink('')
+      setMapPoint(null)
       setBookingType(null)
       setUrgency(null)
       setSpecificDate('')
@@ -271,13 +277,8 @@ export default function SalesBooking() {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">رابط موقع الخريطة (اختياري)</label>
-              <input
-                value={mapLink}
-                onChange={(e) => setMapLink(e.target.value)}
-                placeholder="https://maps.google.com/... (يمكن إضافته لاحقاً من قبل الإداري)"
-                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
-              />
+              <label className="mb-1 block text-sm font-medium text-slate-600">تحديد الموقع على الخريطة</label>
+              <LocationPicker value={mapPoint} onChange={setMapPoint} />
             </div>
           </div>
         </div>

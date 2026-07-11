@@ -505,6 +505,9 @@ export const api = {
     vehicleType?: string
     priority?: 'NORMAL' | 'URGENT'
     transferEmployeeId?: string
+    address?: string
+    mapLatitude?: number
+    mapLongitude?: number
   }) => request<Booking>('/bookings', { method: 'POST', body: JSON.stringify(data) }),
   confirmBooking: (
     id: string,

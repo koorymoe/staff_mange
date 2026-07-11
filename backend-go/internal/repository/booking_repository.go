@@ -136,8 +136,8 @@ func (r *BookingRepository) NextSequenceNumber() (int, error) {
 
 func (r *BookingRepository) Create(b *model.Booking) error {
 	_, err := r.db.NamedExec(`
-		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId", "updatedAt")
-		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId, now())
+		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId", address, "mapLatitude", "mapLongitude", "updatedAt")
+		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId, :address, :mapLatitude, :mapLongitude, now())
 	`, b)
 	return err
 }

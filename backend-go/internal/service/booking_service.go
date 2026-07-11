@@ -49,6 +49,9 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		VehicleType:        req.VehicleType,
 		Priority:           priority,
 		TransferEmployeeID: req.TransferEmployeeID,
+		Address:            req.Address,
+		MapLatitude:        req.MapLatitude,
+		MapLongitude:       req.MapLongitude,
 	}
 
 	if err := s.repo.Create(b); err != nil {
