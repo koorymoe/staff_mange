@@ -28,7 +28,7 @@ func (h *PermissionHandler) ListAll(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/permissions/employee/{id}
 func (h *PermissionHandler) ListForEmployee(w http.ResponseWriter, r *http.Request) {
-	employeeID := extractID(r.URL.Path, "/api/v1/permissions/employee/")
+	employeeID := extractID(r.URL.Path, "/api/permissions/employee/")
 	perms, err := h.service.ListForEmployee(employeeID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب صلاحيات الموظف")
@@ -39,7 +39,7 @@ func (h *PermissionHandler) ListForEmployee(w http.ResponseWriter, r *http.Reque
 
 // PUT /api/v1/permissions/employee/{id} — ADMIN فقط (يُطبَّق بالـ middleware بالراوتر)
 func (h *PermissionHandler) SetForEmployee(w http.ResponseWriter, r *http.Request) {
-	employeeID := extractID(r.URL.Path, "/api/v1/permissions/employee/")
+	employeeID := extractID(r.URL.Path, "/api/permissions/employee/")
 
 	var req model.SetPermissionsRequest
 	if err := DecodeJSON(r, &req); err != nil {
@@ -57,7 +57,7 @@ func (h *PermissionHandler) SetForEmployee(w http.ResponseWriter, r *http.Reques
 
 // POST /api/v1/permissions/employee/{id}/apply-defaults — ADMIN فقط
 func (h *PermissionHandler) ApplyDefaults(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimPrefix(r.URL.Path, "/api/v1/permissions/employee/")
+	path := strings.TrimPrefix(r.URL.Path, "/api/permissions/employee/")
 	employeeID := strings.TrimSuffix(path, "/apply-defaults")
 
 	perms, err := h.service.ApplyDefaults(employeeID)

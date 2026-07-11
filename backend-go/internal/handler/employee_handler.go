@@ -30,7 +30,7 @@ func (h *EmployeeHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/employees/{id}
 func (h *EmployeeHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "/api/v1/employees/")
+	id := extractID(r.URL.Path, "/api/employees/")
 	employee, err := h.service.Get(id)
 	if errors.Is(err, sql.ErrNoRows) {
 		WriteError(w, http.StatusNotFound, "الموظف غير موجود")
@@ -61,7 +61,7 @@ func (h *EmployeeHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/v1/employees/{id}
 func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id := extractID(r.URL.Path, "/api/v1/employees/")
+	id := extractID(r.URL.Path, "/api/employees/")
 
 	var req model.UpdateEmployeeRequest
 	if err := DecodeJSON(r, &req); err != nil {
