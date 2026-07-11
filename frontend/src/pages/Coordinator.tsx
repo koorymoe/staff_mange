@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Employee, type CartItem, type Product } from '../api'
 import { useSession } from '../session'
+import LocationPicker from '../components/LocationPicker'
 
 // Convert an ISO date string to the local "YYYY-MM-DDTHH:mm" format expected by datetime-local inputs
 const toLocalInput = (iso: string) => {
@@ -40,6 +41,7 @@ export default function Coordinator() {
   const [cartForm, setCartForm] = useState<Record<string, { productName: string; quantity: string; unitPrice: string; notes: string }>>({})
   const [products, setProducts] = useState<Product[]>([])
   const [scheduleMode, setScheduleMode] = useState<Record<string, 'slots' | 'manual'>>({})
+  const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
 
   const getAvailableSlots = (excludeId?: string) => {
     const takenKeys = new Set<string>()
@@ -183,6 +185,17 @@ export default function Coordinator() {
       const updated = await api.updateBookingDetails(booking.id, { address: value })
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     }
+  }
+
+  // تحديد الموقع مباشرة من الخريطة بدل الاعتماد على تحليل رابط ملصوق (اللي يفشل بكثير من روابط
+  // خرائط كوكل المختصرة لأنها ما تحمل الإحداثيات أصلاً بالرابط نفسه)
+  const handleMapPointChange = async (booking: Booking, point: { lat: number; lng: number } | null) => {
+    if (!point) return
+    const updated = await api.updateBookingDetails(booking.id, {
+      mapLatitude: point.lat,
+      mapLongitude: point.lng,
+    })
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
   const handleAssign = async (
@@ -465,20 +478,38 @@ export default function Coordinator() {
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-slate-600">
-                      رابط الخريطة (Google Maps)
-                    </label>
-                    <input
-                      placeholder="https://maps.google.com/..."
-                      defaultValue={booking.mapLocation || ''}
-                      onBlur={(e) => handleDetailsBlur(booking, 'mapLocation', e.target.value)}
-                      className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                    />
-                    {booking.mapLocation && (
-                      <a href={booking.mapLocation} target="_blank" rel="noreferrer" className="mt-1 inline-block text-xs text-brand-500 hover:underline">
-                        فتح على الخريطة
+                  <div className="sm:col-span-2">
+                    <div className="mb-1 flex items-center justify-between">
+                      <label className="block text-sm font-medium text-slate-600">موقع تنفيذ المهمة على الخريطة</label>
+                      <button
+                        type="button"
+                        onClick={() => setEditingLocationId(editingLocationId === booking.id ? null : booking.id)}
+                        className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100"
+                      >
+                        {editingLocationId === booking.id ? 'إخفاء الخريطة' : 'تعديل الموقع على الخريطة'}
+                      </button>
+                    </div>
+                    {booking.mapLatitude != null && booking.mapLongitude != null ? (
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${booking.mapLatitude}&mlon=${booking.mapLongitude}#map=17/${booking.mapLatitude}/${booking.mapLongitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-block text-xs text-brand-500 hover:underline"
+                      >
+                        فتح الموقع المحدد حالياً على الخريطة
                       </a>
+                    ) : (
+                      <p className="text-xs text-slate-400">ما تحدد موقع لهذا الحجز بعد</p>
+                    )}
+                    {editingLocationId === booking.id && (
+                      <div className="mt-2">
+                        <LocationPicker
+                          value={booking.mapLatitude != null && booking.mapLongitude != null
+                            ? { lat: booking.mapLatitude, lng: booking.mapLongitude }
+                            : null}
+                          onChange={(point) => handleMapPointChange(booking, point)}
+                        />
+                      </div>
                     )}
                   </div>
                   <div>
