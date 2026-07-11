@@ -184,6 +184,22 @@ export default function Dashboard() {
       visible: ['ADMIN', 'SALES', 'HR_COORDINATOR'].includes(employee.role),
     },
     {
+      title: 'حجز شكوى',
+      desc: 'تسجيل شكوى عميل جديدة',
+      gradient: 'from-red-500 via-red-600 to-rose-700',
+      iconPath: 'M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
+      path: '/complaints',
+      visible: employee.role === 'SALES',
+    },
+    {
+      title: 'طلب GPS جديد',
+      desc: 'تسجيل طلب اشتراك GPS جديد للعميل',
+      gradient: 'from-indigo-500 via-indigo-600 to-blue-700',
+      iconPath: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z',
+      path: '/gps/purchase',
+      visible: employee.role === 'SALES',
+    },
+    {
       title: 'عرض سعر جديد',
       desc: 'إنشاء عرض سعر احترافي للعميل',
       gradient: 'from-emerald-500 via-emerald-600 to-emerald-700',
