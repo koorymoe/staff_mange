@@ -52,6 +52,7 @@ export default function LocationPicker({ value, onChange }: Props) {
   const [results, setResults] = useState<SearchResult[]>([])
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
+  const [myLocation, setMyLocation] = useState<[number, number] | null>(null)
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -81,6 +82,7 @@ export default function LocationPicker({ value, onChange }: Props) {
           const here: [number, number] = [pos.coords.latitude, pos.coords.longitude]
           m.setView(here, 13)
           myMarkerRef.current = L.marker(here, { icon: createMyLocationIcon(), interactive: false }).addTo(m)
+          setMyLocation(here)
         },
         () => {},
         { timeout: 5000 }
@@ -114,15 +116,33 @@ export default function LocationPicker({ value, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
 
+  // مربع تقريبي (~130 كم) حوالين موقع الموظف الحالي (أو كربلاء افتراضياً)، يستخدم لحصر
+  // الاقتراحات الفورية بنفس المحافظة/المنطقة القريبة بدل ما تطلع نتائج من محافظات بعيدة
+  const nearbyViewbox = useCallback(() => {
+    const [lat, lng] = myLocation || KARBALA
+    const d = 0.6
+    return `${lng - d},${lat + d},${lng + d},${lat - d}`
+  }, [myLocation])
+
   const runSearch = useCallback(async (q: string, limit: number, silent: boolean) => {
     if (!q.trim()) { setResults([]); return }
     if (!silent) { setSearching(true); setSearchError('') }
     try {
+      // البحث الفوري (أثناء الكتابة): محصور بمنطقة الموظف حتى تطلع نتائج قريبة أول شي.
+      // البحث الشامل (زر "بحث"): بدون حصر، يدور بكل العراق.
+      const proximityParams = silent ? `&viewbox=${nearbyViewbox()}&bounded=1` : ''
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&countrycodes=iq&q=${encodeURIComponent(q.trim())}`
+        `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&countrycodes=iq${proximityParams}&q=${encodeURIComponent(q.trim())}`
       )
       if (!res.ok) throw new Error('تعذر البحث')
-      const data: SearchResult[] = await res.json()
+      let data: SearchResult[] = await res.json()
+      // إذا ما لكينا نتائج قريبة، نوسع البحث لكل العراق بدل ما نرجع فاضي
+      if (silent && data.length === 0) {
+        const fallback = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&countrycodes=iq&q=${encodeURIComponent(q.trim())}`
+        )
+        if (fallback.ok) data = await fallback.json()
+      }
       setResults(data)
       if (!silent && data.length === 0) setSearchError('لم يتم العثور على نتائج')
     } catch {
@@ -130,9 +150,9 @@ export default function LocationPicker({ value, onChange }: Props) {
     } finally {
       if (!silent) setSearching(false)
     }
-  }, [])
+  }, [nearbyViewbox])
 
-  // بحث فوري أثناء الكتابة (بدون ما يحتاج يضغط زر "بحث") — يطلع اقتراحات تلقائياً بعد توقف قصير عن الكتابة
+  // بحث فوري أثناء الكتابة (بدون ما يحتاج يضغط زر "بحث") — يطلع اقتراحات قريبة من موقعك تلقائياً بعد توقف قصير عن الكتابة
   useEffect(() => {
     setSearchError('')
     if (query.trim().length < 2) { setResults([]); return }
@@ -153,7 +173,11 @@ export default function LocationPicker({ value, onChange }: Props) {
   const useMyLocation = () => {
     if (!navigator.geolocation) return
     navigator.geolocation.getCurrentPosition(
-      (pos) => onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      (pos) => {
+        const here: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+        setMyLocation(here)
+        onChange({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+      },
       () => setSearchError('تعذر تحديد موقعك الحالي')
     )
   }
