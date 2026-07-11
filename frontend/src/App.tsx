@@ -45,7 +45,10 @@ import MapPage from './pages/MapPage'
 import MonitorDashboard from './pages/MonitorDashboard'
 import TrainingPage from './pages/TrainingPage'
 import TrainingManagement from './pages/TrainingManagement'
+import VehiclesPage from './pages/VehiclesPage'
+import QualityPage from './pages/QualityPage'
 import RequireAdmin from './components/RequireAdmin'
+import RequirePermission from './components/RequirePermission'
 
 function App() {
   return (
@@ -95,7 +98,9 @@ function App() {
         <Route path="gps/maintenance-request" element={<GpsMaintenanceRequestPage />} />
         <Route path="gps/maintenance-review" element={<GpsMaintenanceReview />} />
         <Route path="training" element={<TrainingPage />} />
-        <Route path="training-management" element={<RequireAdmin><TrainingManagement /></RequireAdmin>} />
+        <Route path="training-management" element={<RequirePermission permission="content_technician"><TrainingManagement /></RequirePermission>} />
+        <Route path="vehicles" element={<RequirePermission permission="vehicle_management"><VehiclesPage /></RequirePermission>} />
+        <Route path="quality" element={<RequirePermission permission="quality_control"><QualityPage /></RequirePermission>} />
       </Route>
     </Routes>
   )

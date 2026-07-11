@@ -48,7 +48,12 @@ export default function TrainingManagement() {
 
   const toggleTraineeMode = async (isTrainee: boolean) => {
     if (!selectedEmployeeId) return
-    await api.updateEmployee(selectedEmployeeId, { isTrainee })
+    if (isTrainee) {
+      await api.updateEmployee(selectedEmployeeId, { isTrainee: true })
+    } else {
+      // إنهاء التدريب يسجل تلقائياً تقييم إيجابي يعكس اجتيازه، بدل تعطيل الوضع بس
+      await api.completeTraining(selectedEmployeeId)
+    }
     setEmployees(prev => prev.map(e => e.id === selectedEmployeeId ? { ...e, isTrainee } : e))
   }
 

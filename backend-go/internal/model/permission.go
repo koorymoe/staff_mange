@@ -31,6 +31,9 @@ var DefaultPermissions = []Permission{
 	{Name: "procurement", Label: "المشتريات"},
 	{Name: "monitoring", Label: "مراقبة (متابعة المهام والحجوزات والموظفين)"},
 	{Name: "auditing", Label: "تدقيق (التحقق من جودة العمل والتقارير والحسابات)"},
+	{Name: "content_technician", Label: "صلاحية التقني (إدارة المحتوى التدريبي والخدمات والموردين والمواد)"},
+	{Name: "vehicle_management", Label: "إدارة المركبات"},
+	{Name: "quality_control", Label: "الجودة (متابعة مشاكل التنفيذ والرقابة)"},
 }
 
 // RoleDefaultPermissions هي الصلاحيات الافتراضية لكل دور وظيفي
@@ -44,5 +47,5 @@ var RoleDefaultPermissions = map[string][]string{
 	"FINANCE":          {"finance", "view_bookings"},
 	"GPS_ADMIN":        {"gps_system"},
 	"GPS_ENGINEER":     {"gps_system"},
-	"QUALITY_ENGINEER": {"auditing", "complaints"},
+	"QUALITY_ENGINEER": {"auditing", "complaints", "quality_control"},
 }

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
@@ -48,6 +49,16 @@ func (h *KpiHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusCreated, eval)
+}
+
+// POST /api/v1/employees/{id}/complete-training
+func (h *KpiHandler) CompleteTraining(w http.ResponseWriter, r *http.Request) {
+	eval, err := h.service.CompleteTraining(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, eval)
 }
 
 // DELETE /api/v1/kpi/{id}

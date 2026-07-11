@@ -317,6 +317,66 @@ export interface Permission {
   label: string
 }
 
+export interface Vehicle {
+  id: string
+  name: string
+  plateNumber: string
+  color: string | null
+  type: string | null
+  isActive: boolean
+  createdAt: string
+}
+
+export interface VehicleLog {
+  id: string
+  vehicleId: string
+  type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE'
+  performedAt: string
+  nextDueAt: string | null
+  odometer: number | null
+  cost: number | null
+  notes: string | null
+  createdAt: string
+  recordedBy: { id: string; name: string } | null
+}
+
+export interface VehicleIncident {
+  id: string
+  vehicleId: string
+  type: 'FAULT' | 'DAMAGE'
+  description: string
+  cost: number | null
+  status: 'OPEN' | 'RESOLVED'
+  createdAt: string
+  resolvedAt: string | null
+  responsibleEmployee: { id: string; name: string } | null
+  reportedBy: { id: string; name: string } | null
+}
+
+export interface VehicleMonthlyStatus {
+  id: string
+  vehicleId: string
+  month: string
+  hasIssue: boolean
+  issueDescription: string | null
+  resolved: boolean
+  notes: string | null
+  createdAt: string
+}
+
+export interface QualityIssue {
+  id: string
+  category: 'EXECUTION' | 'OVERSIGHT'
+  title: string
+  description: string | null
+  bookingId: string | null
+  status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'
+  createdAt: string
+  resolvedAt: string | null
+  responsibleEmployee: { id: string; name: string } | null
+  reportedBy: { id: string; name: string } | null
+}
+
 export interface KpiEvaluation {
   id: string
   employeeId: string
@@ -656,6 +716,32 @@ export const api = {
   createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string }) =>
     request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
   deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
+  completeTraining: (employeeId: string) =>
+    request<KpiEvaluation>(`/employees/${employeeId}/complete-training`, { method: 'POST' }),
+
+  // Vehicles
+  getVehicles: () => request<Vehicle[]>('/vehicles'),
+  createVehicle: (data: { name: string; plateNumber: string; color?: string; type?: string }) =>
+    request<Vehicle>('/vehicles', { method: 'POST', body: JSON.stringify(data) }),
+  getVehicleLogs: (vehicleId: string) => request<VehicleLog[]>(`/vehicles/${vehicleId}/logs`),
+  createVehicleLog: (vehicleId: string, data: { type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE'; performedAt?: string; nextDueAt?: string; odometer?: number; cost?: number; notes?: string }) =>
+    request<VehicleLog>(`/vehicles/${vehicleId}/logs`, { method: 'POST', body: JSON.stringify(data) }),
+  getVehicleIncidents: (vehicleId: string) => request<VehicleIncident[]>(`/vehicles/${vehicleId}/incidents`),
+  createVehicleIncident: (vehicleId: string, data: { type: 'FAULT' | 'DAMAGE'; description: string; responsibleEmployeeId?: string; cost?: number }) =>
+    request<VehicleIncident>(`/vehicles/${vehicleId}/incidents`, { method: 'POST', body: JSON.stringify(data) }),
+  updateVehicleIncident: (id: string, data: { status?: 'OPEN' | 'RESOLVED'; cost?: number }) =>
+    request<VehicleIncident>(`/vehicle-incidents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getVehicleMonthlyStatus: (vehicleId: string) => request<VehicleMonthlyStatus[]>(`/vehicles/${vehicleId}/monthly-status`),
+  setVehicleMonthlyStatus: (vehicleId: string, data: { month: string; hasIssue: boolean; issueDescription?: string; resolved: boolean; notes?: string }) =>
+    request<VehicleMonthlyStatus>(`/vehicles/${vehicleId}/monthly-status`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // Quality
+  getQualityIssues: (category?: 'EXECUTION' | 'OVERSIGHT') =>
+    request<QualityIssue[]>(`/quality/issues${category ? `?category=${category}` : ''}`),
+  createQualityIssue: (data: { category: 'EXECUTION' | 'OVERSIGHT'; title: string; description?: string; responsibleEmployeeId?: string; bookingId?: string }) =>
+    request<QualityIssue>('/quality/issues', { method: 'POST', body: JSON.stringify(data) }),
+  updateQualityIssue: (id: string, data: { status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' }) =>
+    request<QualityIssue>(`/quality/issues/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Training
   getMyTraining: (employeeId: string) =>

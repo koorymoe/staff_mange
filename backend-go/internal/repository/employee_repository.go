@@ -55,6 +55,11 @@ func (r *EmployeeRepository) FindByUsername(username string) (*model.Employee, e
 	return &e, nil
 }
 
+func (r *EmployeeRepository) SetTrainee(id string, isTrainee bool) error {
+	_, err := r.db.Exec(`UPDATE "Employee" SET "isTrainee" = $2 WHERE id = $1`, id, isTrainee)
+	return err
+}
+
 func (r *EmployeeRepository) Create(e *model.Employee) error {
 	_, err := r.db.NamedExec(`
 		INSERT INTO "Employee" (id, name, certificate, position, phone, username, password, "jobTitle", salary, shift, "shiftStart", "shiftEnd", role)

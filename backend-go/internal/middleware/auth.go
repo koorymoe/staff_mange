@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
@@ -63,6 +64,33 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 				return
 			}
 			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequirePermission يسمح بالوصول لـ ADMIN دائماً، أو لأي موظف عنده الصلاحية المذكورة
+// من جدول الصلاحيات المخصصة (يُستخدم بعد RequireAuth)
+func RequirePermission(permissions *repository.PermissionRepository, permissionName string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID, _ := r.Context().Value(ContextEmployeeID).(string)
+			perms, err := permissions.ListForEmployee(employeeID)
+			if err != nil {
+				writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
+				return
+			}
+			for _, p := range perms {
+				if p.Name == permissionName {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
 		})
 	}
 }
