@@ -29,6 +29,7 @@ export default function SalesBooking() {
   const [nameTouched, setNameTouched] = useState(false)
   const [phoneTouched, setPhoneTouched] = useState(false)
   const [existingCustomer, setExistingCustomer] = useState<Customer | null>(null)
+  const [usedSavedLocation, setUsedSavedLocation] = useState(false)
 
   useEffect(() => {
     api.getServices().then(setServices)
@@ -47,6 +48,19 @@ export default function SalesBooking() {
       active = false
     }
   }, [phone])
+
+  // إذا الزبون موجود مسبقاً وعنده موقع محفوظ من حجز سابق، نحمّله تلقائياً
+  // (بس إذا الموظف لسه ما بدأ يعبي الموقع بنفسه) حتى ما يعيد نفس الشغل، مع خيار تغييره.
+  useEffect(() => {
+    if (!existingCustomer) return
+    if (addressDesc.trim() || mapPoint) return
+    if (existingCustomer.location) setAddressDesc(existingCustomer.location)
+    if (existingCustomer.mapLatitude != null && existingCustomer.mapLongitude != null) {
+      setMapPoint({ lat: existingCustomer.mapLatitude, lng: existingCustomer.mapLongitude })
+    }
+    if (existingCustomer.location || existingCustomer.mapLatitude != null) setUsedSavedLocation(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingCustomer])
 
   const nameError = nameTouched ? validateCustomerName(name) : null
   const phoneError = phoneTouched ? validateCustomerPhone(phone) : null
@@ -148,6 +162,7 @@ export default function SalesBooking() {
       setNotes('')
       setAddressDesc('')
       setMapPoint(null)
+      setUsedSavedLocation(false)
       setBookingType(null)
       setUrgency(null)
       setSpecificDate('')
@@ -264,6 +279,20 @@ export default function SalesBooking() {
         {/* Step 3: Address */}
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <SectionHeader num={3} title="العنوان والموقع" />
+          {usedSavedLocation && (
+            <div className="mb-4 flex items-center justify-between rounded-xl border border-blue-200 bg-blue-50 px-4 py-2.5">
+              <p className="text-xs font-semibold text-blue-700">
+                تم تحميل آخر موقع محفوظ لهذا الزبون من حجز سابق — عدّله إذا تغير عنوانه
+              </p>
+              <button
+                type="button"
+                onClick={() => { setAddressDesc(''); setMapPoint(null); setUsedSavedLocation(false) }}
+                className="shrink-0 rounded-lg bg-white px-3 py-1 text-xs font-bold text-blue-700 shadow-sm hover:bg-blue-100"
+              >
+                تغيير الموقع
+              </button>
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-4">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">وصف الموقع وأقرب نقطة دالة</label>

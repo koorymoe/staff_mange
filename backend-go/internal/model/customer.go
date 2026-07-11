@@ -11,6 +11,8 @@ type Customer struct {
 	Name         string    `db:"name" json:"name"`
 	Phone        string    `db:"phone" json:"phone"`
 	Location     *string   `db:"location" json:"location"`
+	MapLatitude  *float64  `db:"mapLatitude" json:"mapLatitude"`
+	MapLongitude *float64  `db:"mapLongitude" json:"mapLongitude"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
 }
 
@@ -30,7 +32,9 @@ func (c Customer) ToResponse() CustomerResponse {
 }
 
 type CreateCustomerRequest struct {
-	Name     string  `json:"name"`
-	Phone    string  `json:"phone"`
-	Location *string `json:"location"`
+	Name         string   `json:"name"`
+	Phone        string   `json:"phone"`
+	Location     *string  `json:"location"`
+	MapLatitude  *float64 `json:"mapLatitude"`
+	MapLongitude *float64 `json:"mapLongitude"`
 }

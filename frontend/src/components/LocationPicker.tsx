@@ -24,6 +24,19 @@ function createPinIcon() {
   })
 }
 
+function createMyLocationIcon() {
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:14px;height:14px;border-radius:50%;
+      background:#2c5aad;border:3px solid white;
+      box-shadow:0 0 0 3px rgba(44,90,173,0.3), 0 2px 6px rgba(0,0,0,0.3);
+    "></div>`,
+    iconSize: [20, 20],
+    iconAnchor: [10, 10],
+  })
+}
+
 interface Props {
   value: { lat: number; lng: number } | null
   onChange: (point: { lat: number; lng: number } | null) => void
@@ -33,6 +46,7 @@ export default function LocationPicker({ value, onChange }: Props) {
   const mapRef = useRef<L.Map | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const markerRef = useRef<L.Marker | null>(null)
+  const myMarkerRef = useRef<L.Marker | null>(null)
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
@@ -57,6 +71,22 @@ export default function LocationPicker({ value, onChange }: Props) {
     })
 
     mapRef.current = map
+
+    // مركز الخريطة أول ما تفتح على موقع الموظف الحالي، حتى ما يحتاج يدور يدوياً
+    if (!value && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const m = mapRef.current
+          if (!m) return
+          const here: [number, number] = [pos.coords.latitude, pos.coords.longitude]
+          m.setView(here, 13)
+          myMarkerRef.current = L.marker(here, { icon: createMyLocationIcon(), interactive: false }).addTo(m)
+        },
+        () => {},
+        { timeout: 5000 }
+      )
+    }
+
     return () => { map.remove(); mapRef.current = null }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -65,15 +95,23 @@ export default function LocationPicker({ value, onChange }: Props) {
     const map = mapRef.current
     if (!map) return
 
-    if (markerRef.current) {
+    if (value) {
+      if (myMarkerRef.current) { myMarkerRef.current.remove(); myMarkerRef.current = null }
+      if (markerRef.current) {
+        markerRef.current.setLatLng([value.lat, value.lng])
+      } else {
+        markerRef.current = L.marker([value.lat, value.lng], { icon: createPinIcon(), draggable: true }).addTo(map)
+        markerRef.current.on('dragend', () => {
+          const pos = markerRef.current!.getLatLng()
+          onChange({ lat: pos.lat, lng: pos.lng })
+        })
+      }
+      map.setView([value.lat, value.lng], Math.max(map.getZoom(), 15))
+    } else if (markerRef.current) {
       markerRef.current.remove()
       markerRef.current = null
     }
-
-    if (value) {
-      markerRef.current = L.marker([value.lat, value.lng], { icon: createPinIcon() }).addTo(map)
-      map.setView([value.lat, value.lng], Math.max(map.getZoom(), 15))
-    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
 
   const handleSearch = useCallback(async () => {
@@ -159,7 +197,7 @@ export default function LocationPicker({ value, onChange }: Props) {
       <div ref={containerRef} className="h-72 w-full overflow-hidden rounded-xl border border-slate-200" />
 
       <p className="text-xs text-slate-500">
-        اضغط على الخريطة لتحديد الموقع بدقة، أو دور بالاسم واختر من النتائج.
+        اضغط على الخريطة لتحديد الموقع، أو دور بالاسم واختر من النتائج. بعد التحديد تكدر تسحب العلامة الحمراء لتثبيت الموقع بدقة أكثر.
         {value && (
           <span className="mr-2 font-semibold text-brand-700">
             تم تحديد نقطة ✓ ({value.lat.toFixed(5)}, {value.lng.toFixed(5)})

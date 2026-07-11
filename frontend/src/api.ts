@@ -247,6 +247,8 @@ export interface Customer {
   name: string
   phone: string
   location: string | null
+  mapLatitude: number | null
+  mapLongitude: number | null
 }
 
 function currentToken(): string | null {

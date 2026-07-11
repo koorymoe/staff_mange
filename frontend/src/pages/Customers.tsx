@@ -26,6 +26,7 @@ export default function Customers() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [history, setHistory] = useState<Booking[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [search, setSearch] = useState('')
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -57,6 +58,15 @@ export default function Customers() {
   }, [selectedId])
 
   const selectedCustomer = customers.find((c) => c.id === selectedId) || null
+
+  const normalizedSearch = search.trim().toLowerCase()
+  const filteredCustomers = normalizedSearch
+    ? customers.filter((c) =>
+        c.code.toLowerCase().includes(normalizedSearch) ||
+        c.name.toLowerCase().includes(normalizedSearch) ||
+        c.phone.includes(normalizedSearch)
+      )
+    : customers
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -155,6 +165,15 @@ export default function Customers() {
 
       {!loading && !error && (
         <div className="mt-6 flex flex-col gap-6">
+          <div className="relative">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="دور بكود الزبون (CUST-00001)، الاسم، أو رقم الهاتف..."
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
+            />
+          </div>
+
           <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <table className="w-full text-right">
               <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
@@ -166,7 +185,7 @@ export default function Customers() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {customers.map((c) => (
+                {filteredCustomers.map((c) => (
                   <tr
                     key={c.id}
                     onClick={() => setSelectedId(c.id)}
@@ -182,10 +201,10 @@ export default function Customers() {
                     <td className="px-4 py-3 text-slate-500">{c.location || '-'}</td>
                   </tr>
                 ))}
-                {customers.length === 0 && (
+                {filteredCustomers.length === 0 && (
                   <tr>
                     <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
-                      لا يوجد زبائن بعد
+                      {customers.length === 0 ? 'لا يوجد زبائن بعد' : 'لا توجد نتائج مطابقة للبحث'}
                     </td>
                   </tr>
                 )}
@@ -212,12 +231,49 @@ export default function Customers() {
                     {selectedCustomer.phone}
                   </p>
                   <p>
-                    <span className="text-slate-500">الموقع: </span>
+                    <span className="text-slate-500">آخر موقع محفوظ: </span>
                     {selectedCustomer.location || '-'}
+                    {selectedCustomer.mapLatitude != null && selectedCustomer.mapLongitude != null && (
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${selectedCustomer.mapLatitude}&mlon=${selectedCustomer.mapLongitude}#map=17/${selectedCustomer.mapLatitude}/${selectedCustomer.mapLongitude}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mr-2 font-semibold text-brand-600 underline"
+                      >
+                        عرض على الخريطة
+                      </a>
+                    )}
                   </p>
                 </div>
 
-                <h4 className="mt-5 font-bold text-brand-800">طلبات وحجوزات الزبون</h4>
+                {!historyLoading && (
+                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-xl bg-slate-50 p-3 text-center">
+                      <p className="text-xl font-bold text-brand-700">{history.length}</p>
+                      <p className="text-xs text-slate-500">إجمالي الحجوزات</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-3 text-center">
+                      <p className="text-xl font-bold text-emerald-600">
+                        {history.filter((b) => b.status === 'COMPLETED').length}
+                      </p>
+                      <p className="text-xs text-slate-500">زيارات مكتملة</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-3 text-center">
+                      <p className="text-xl font-bold text-blue-600">
+                        {history.filter((b) => b.status === 'IN_PROGRESS').length}
+                      </p>
+                      <p className="text-xs text-slate-500">قيد التنفيذ</p>
+                    </div>
+                    <div className="rounded-xl bg-slate-50 p-3 text-center">
+                      <p className="text-xl font-bold text-amber-600">
+                        {history.filter((b) => b.status === 'PENDING').length}
+                      </p>
+                      <p className="text-xs text-slate-500">بانتظار التثبيت</p>
+                    </div>
+                  </div>
+                )}
+
+                <h4 className="mt-5 font-bold text-brand-800">أرشيف طلبات وعناوين الزبون</h4>
                 {historyLoading && <p className="mt-2 text-slate-400">جاري التحميل...</p>}
                 {!historyLoading && (
                   <div className="mt-3 divide-y divide-slate-100">
@@ -247,6 +303,20 @@ export default function Customers() {
                           <p>
                             <span className="text-slate-400">التاريخ: </span>
                             {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                          </p>
+                          <p className="sm:col-span-2">
+                            <span className="text-slate-400">العنوان: </span>
+                            {b.address || '-'}
+                            {b.mapLatitude != null && b.mapLongitude != null && (
+                              <a
+                                href={`https://www.openstreetmap.org/?mlat=${b.mapLatitude}&mlon=${b.mapLongitude}#map=17/${b.mapLatitude}/${b.mapLongitude}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="mr-2 font-semibold text-brand-600 underline"
+                              >
+                                عرض على الخريطة
+                              </a>
+                            )}
                           </p>
                         </div>
                       </div>

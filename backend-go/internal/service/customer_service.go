@@ -56,7 +56,7 @@ func (s *CustomerService) FindOrCreate(req model.CreateCustomerRequest) (*model.
 		return &resp, nil
 	}
 
-	created, err := s.repo.Create(req.Name, req.Phone, req.Location)
+	created, err := s.repo.Create(req.Name, req.Phone, req.Location, req.MapLatitude, req.MapLongitude)
 	if err != nil {
 		return nil, err
 	}

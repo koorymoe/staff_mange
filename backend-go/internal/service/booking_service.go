@@ -14,10 +14,11 @@ import (
 type BookingService struct {
 	repo      *repository.BookingRepository
 	employees *repository.EmployeeRepository
+	customers *repository.CustomerRepository
 }
 
-func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository) *BookingService {
-	return &BookingService{repo: repo, employees: employees}
+func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository) *BookingService {
+	return &BookingService{repo: repo, employees: employees, customers: customers}
 }
 
 func (s *BookingService) List(status, customerID string) ([]model.Booking, error) {
@@ -57,6 +58,11 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 	if err := s.repo.Create(b); err != nil {
 		return nil, err
 	}
+
+	if req.Address != nil || req.MapLatitude != nil || req.MapLongitude != nil {
+		_ = s.customers.UpdateLocation(req.CustomerID, req.Address, req.MapLatitude, req.MapLongitude)
+	}
+
 	return s.repo.FindByID(b.ID)
 }
 
