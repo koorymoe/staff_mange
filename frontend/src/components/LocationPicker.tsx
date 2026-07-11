@@ -114,24 +114,33 @@ export default function LocationPicker({ value, onChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value])
 
-  const handleSearch = useCallback(async () => {
-    if (!query.trim()) return
-    setSearching(true)
-    setSearchError('')
+  const runSearch = useCallback(async (q: string, limit: number, silent: boolean) => {
+    if (!q.trim()) { setResults([]); return }
+    if (!silent) { setSearching(true); setSearchError('') }
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=5&countrycodes=iq&q=${encodeURIComponent(query.trim())}`
+        `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&countrycodes=iq&q=${encodeURIComponent(q.trim())}`
       )
       if (!res.ok) throw new Error('تعذر البحث')
       const data: SearchResult[] = await res.json()
       setResults(data)
-      if (data.length === 0) setSearchError('لم يتم العثور على نتائج')
+      if (!silent && data.length === 0) setSearchError('لم يتم العثور على نتائج')
     } catch {
-      setSearchError('تعذر البحث عن المنطقة، حدد الموقع يدوياً من الخريطة')
+      if (!silent) setSearchError('تعذر البحث عن المنطقة، حدد الموقع يدوياً من الخريطة')
     } finally {
-      setSearching(false)
+      if (!silent) setSearching(false)
     }
-  }, [query])
+  }, [])
+
+  // بحث فوري أثناء الكتابة (بدون ما يحتاج يضغط زر "بحث") — يطلع اقتراحات تلقائياً بعد توقف قصير عن الكتابة
+  useEffect(() => {
+    setSearchError('')
+    if (query.trim().length < 2) { setResults([]); return }
+    const timer = setTimeout(() => { runSearch(query, 6, true) }, 350)
+    return () => clearTimeout(timer)
+  }, [query, runSearch])
+
+  const handleSearch = useCallback(() => runSearch(query, 10, false), [query, runSearch])
 
   const pickResult = (r: SearchResult) => {
     const lat = parseFloat(r.lat)
