@@ -26,6 +26,10 @@ func main() {
 	}
 	defer db.Close()
 
+	if err := database.Migrate(db); err != nil {
+		log.Fatalf("failed to run database migrations: %v", err)
+	}
+
 	// Repositories
 	employeeRepo := repository.NewEmployeeRepository(db)
 	permissionRepo := repository.NewPermissionRepository(db)
