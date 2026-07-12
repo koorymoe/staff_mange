@@ -200,6 +200,22 @@ export default function Dashboard() {
       visible: employee.role === 'SALES',
     },
     {
+      title: 'تسجيل مشكلة جودة',
+      desc: 'مشكلة تنفيذية ميدانية أو مشكلة رقابية جديدة',
+      gradient: 'from-purple-500 via-purple-600 to-fuchsia-700',
+      iconPath: 'M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9',
+      path: '/quality',
+      visible: employee.role === 'QUALITY_ENGINEER',
+    },
+    {
+      title: 'طلبات GPS المعلقة',
+      desc: 'طلبات الأجهزة والتجديد والصيانة بانتظار المراجعة',
+      gradient: 'from-amber-500 via-amber-600 to-orange-700',
+      iconPath: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z',
+      path: '/gps/requests',
+      visible: employee.role === 'GPS_ADMIN',
+    },
+    {
       title: 'عرض سعر جديد',
       desc: 'إنشاء عرض سعر احترافي للعميل',
       gradient: 'from-emerald-500 via-emerald-600 to-emerald-700',
@@ -867,6 +883,20 @@ export default function Dashboard() {
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ═══ GPS Panel — GPS_ADMIN / GPS_ENGINEER (بدون باقي لوحات الأدمن اللي ما تخصهم) ═══ */}
+      {!isAdmin && ['GPS_ADMIN', 'GPS_ENGINEER'].includes(employee.role) && (
+        <div className="grid grid-cols-1 gap-4">
+          <SystemPanel title="نظام GPS" color="#f59e0b" dotColor="bg-amber-400" actionLabel="عرض الكل" onAction={() => navigate('/gps')}>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <MiniKPI label="الأجهزة" value={gpsStats?.totalDevices || 0} color="#10b981" />
+              <MiniKPI label="المشتركين" value={gpsStats?.totalCustomers || 0} color="#3b82f6" />
+              <MiniKPI label="شرائح SIM" value={gpsStats?.totalSims || 0} color="#8b5cf6" />
+              <MiniKPI label="صيانة معلقة" value={pendingMaintenance} color={pendingMaintenance > 0 ? '#ef4444' : '#f59e0b'} />
+            </div>
+          </SystemPanel>
         </div>
       )}
 
