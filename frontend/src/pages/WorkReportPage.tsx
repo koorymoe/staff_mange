@@ -62,7 +62,7 @@ export default function WorkReportPage() {
     setExpandedId(expandedId === id ? null : id)
   }
 
-  const handleSubmit = (bookingId: string) => {
+  const handleSubmit = async (bookingId: string) => {
     const form = getForm(bookingId)
     if (form.workStatus === 'COMPLETED' && !form.events.trim()) {
       alert('يرجى كتابة تقرير الأحداث والمشاكل')
@@ -73,17 +73,18 @@ export default function WorkReportPage() {
       return
     }
     setSubmitting(true)
-    // Backend endpoint doesn't exist yet - store locally
-    const reports = JSON.parse(localStorage.getItem('work_reports') || '[]')
-    reports.push({
-      bookingId,
-      employeeId: currentUser?.id,
-      ...form,
-      submittedAt: new Date().toISOString(),
-    })
-    localStorage.setItem('work_reports', JSON.stringify(reports))
-    setTimeout(() => {
-      setSubmitting(false)
+    try {
+      await api.createWorkReport({
+        bookingId,
+        workStatus: form.workStatus!,
+        events: form.events || undefined,
+        extraRequests: form.customerRequests || undefined,
+        cleanedSite: form.cleanedPlace,
+        gaveInfo: form.gaveInfo,
+        tookPhotos: form.tookPhotos,
+        stopReason: form.stopReason || undefined,
+        notes: form.additionalNotes || form.stopNotes || undefined,
+      })
       setExpandedId(null)
       setForms((prev) => {
         const next = { ...prev }
@@ -91,7 +92,11 @@ export default function WorkReportPage() {
         return next
       })
       alert('تم إرسال التقرير بنجاح ✓')
-    }, 500)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر إرسال التقرير')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   if (loading) return <p className="mt-6 text-slate-400">جاري التحميل...</p>

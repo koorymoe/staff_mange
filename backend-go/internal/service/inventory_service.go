@@ -15,6 +15,14 @@ func NewInventoryService(repo *repository.InventoryRepository) *InventoryService
 	return &InventoryService{repo: repo}
 }
 
+func (s *InventoryService) CreateInventoryCheck(employeeID string, req model.CreateInventoryCheckRequest) (*model.InventoryCheck, error) {
+	return s.repo.CreateInventoryCheck(employeeID, req)
+}
+
+func (s *InventoryService) TodaysInventoryChecks() ([]model.InventoryCheck, error) {
+	return s.repo.TodaysInventoryChecks()
+}
+
 func (s *InventoryService) ListPersonalTools(employeeID string) ([]model.PersonalTool, error) {
 	return s.repo.ListPersonalTools(employeeID)
 }

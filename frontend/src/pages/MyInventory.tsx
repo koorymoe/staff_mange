@@ -67,14 +67,30 @@ export default function MyInventory() {
 
   useEffect(() => { load() }, [employee?.id])
 
+  const [submittingCheck, setSubmittingCheck] = useState(false)
+
   const toggleCheck = (id: string) => {
     setCheckMap((prev) => ({ ...prev, [id]: !prev[id] }))
   }
 
   const allChecked = personalTools.length > 0 && personalTools.every((t) => checkMap[t.id])
 
-  const confirmChecklist = () => {
-    setCheckDone(true)
+  // تسجل نتيجة الجرد للإداري حتى لو اكو نقص، بدل ما تكون كتلة على تحديد كل الأدوات —
+  // الهدف إنه الإداري يعرف بالنقص قبل الخروج للحجز ويوفر البديل، مو يمنع الفني من الإرسال
+  const confirmChecklist = async () => {
+    const missing = personalTools.filter((t) => !checkMap[t.id]).map((t) => t.name)
+    setSubmittingCheck(true)
+    try {
+      await api.createInventoryCheck({
+        complete: missing.length === 0,
+        missingItems: missing.length > 0 ? missing.join('، ') : undefined,
+      })
+      setCheckDone(true)
+    } catch (e: any) {
+      alert(e.message || 'تعذر تسجيل الجرد')
+    } finally {
+      setSubmittingCheck(false)
+    }
   }
 
   const handleRequestTool = async (toolId: string) => {
@@ -176,20 +192,28 @@ export default function MyInventory() {
                   {!checkDone ? (
                     <button
                       onClick={confirmChecklist}
-                      disabled={!allChecked}
-                      className={`mt-6 w-full rounded-xl py-4 text-lg font-bold shadow-lg transition-all ${
+                      disabled={submittingCheck || personalTools.length === 0}
+                      className={`mt-6 w-full rounded-xl py-4 text-lg font-bold shadow-lg transition-all disabled:opacity-50 ${
                         allChecked
                           ? 'bg-gradient-to-l from-green-500 to-green-700 text-white hover:shadow-xl cursor-pointer'
-                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                          : 'bg-gradient-to-l from-amber-500 to-amber-600 text-white hover:shadow-xl cursor-pointer'
                       }`}
                     >
-                      {allChecked ? '✅ تأكيد الجرد - جاهز للخروج' : `حدد جميع الأدوات (${personalTools.length - checkedCount} متبقية)`}
+                      {submittingCheck
+                        ? 'جارٍ الإرسال...'
+                        : allChecked
+                          ? '✅ تأكيد الجرد - جاهز للخروج'
+                          : `⚠️ إرسال الجرد بوجود نقص (${personalTools.length - checkedCount} أداة ناقصة)`}
                     </button>
                   ) : (
-                    <div className="mt-6 rounded-xl bg-green-50 border-2 border-green-300 p-6 text-center">
-                      <div className="text-3xl mb-2">✅</div>
-                      <p className="text-green-800 font-bold text-lg">تم تأكيد الجرد بنجاح</p>
-                      <p className="text-green-600 text-sm mt-1">جميع الأدوات متوفرة - يمكنك الخروج</p>
+                    <div className={`mt-6 rounded-xl border-2 p-6 text-center ${allChecked ? 'bg-green-50 border-green-300' : 'bg-amber-50 border-amber-300'}`}>
+                      <div className="text-3xl mb-2">{allChecked ? '✅' : '⚠️'}</div>
+                      <p className={`font-bold text-lg ${allChecked ? 'text-green-800' : 'text-amber-800'}`}>
+                        {allChecked ? 'تم تأكيد الجرد بنجاح' : 'تم إرسال الجرد — فيه نقص'}
+                      </p>
+                      <p className={`text-sm mt-1 ${allChecked ? 'text-green-600' : 'text-amber-700'}`}>
+                        {allChecked ? 'جميع الأدوات متوفرة - يمكنك الخروج' : 'تم إبلاغ الإدارة بالنقص لتوفير البديل قبل الخروج'}
+                      </p>
                     </div>
                   )}
                 </>

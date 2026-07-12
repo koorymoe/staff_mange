@@ -61,6 +61,16 @@ func (h *KpiHandler) CompleteTraining(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, eval)
 }
 
+// GET /api/kpi/leaderboard/{role}
+func (h *KpiHandler) RoleLeaderboard(w http.ResponseWriter, r *http.Request) {
+	board, err := h.service.RoleLeaderboard(r.PathValue("role"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب لوحة الترتيب")
+		return
+	}
+	WriteJSON(w, http.StatusOK, board)
+}
+
 // DELETE /api/v1/kpi/{id}
 func (h *KpiHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Delete(r.PathValue("id")); err != nil {

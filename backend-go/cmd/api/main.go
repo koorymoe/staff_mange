@@ -51,6 +51,7 @@ func main() {
 	quotationRepo := repository.NewQuotationRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	gpsRepo := repository.NewGpsRepository(db)
+	workReportRepo := repository.NewWorkReportRepository(db)
 	statsRepo := repository.NewStatsRepository(db)
 	vehicleRepo := repository.NewVehicleRepository(db)
 	qualityRepo := repository.NewQualityRepository(db)
@@ -77,6 +78,7 @@ func main() {
 	quotationService := service.NewQuotationService(quotationRepo)
 	productService := service.NewProductService(productRepo)
 	gpsService := service.NewGpsService(gpsRepo)
+	workReportService := service.NewWorkReportService(workReportRepo)
 	statsService := service.NewStatsService(statsRepo)
 	vehicleService := service.NewVehicleService(vehicleRepo)
 	qualityService := service.NewQualityService(qualityRepo)
@@ -103,6 +105,7 @@ func main() {
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	productHandler := handler.NewProductHandler(productService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
+	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	statsHandler := handler.NewStatsHandler(statsService)
 	vehicleHandler := handler.NewVehicleHandler(vehicleService)
 	qualityHandler := handler.NewQualityHandler(qualityService)
@@ -178,9 +181,13 @@ func main() {
 
 	// المخزون — أدوات شخصية / مركبات / أدوات مشتركة / طلبات الأدوات
 	mux.Handle("GET /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalTools), requireAuth))
-	mux.Handle("POST /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalTool), requireAuth))
-	mux.Handle("PUT /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdatePersonalTool), requireAuth))
+	mux.Handle("POST /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalTool), requireAuth, requireHR))
+	mux.Handle("PUT /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdatePersonalTool), requireAuth, requireHR))
 	mux.Handle("DELETE /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalTool), requireAuth, requireHR))
+
+	// جرد يومي: الموظف يؤكد جرد عدته الخاصة، الإداري يشوف نتائج اليوم لكل الموظفين
+	mux.Handle("POST /api/inventory/checks", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateInventoryCheck), requireAuth))
+	mux.Handle("GET /api/inventory/checks/today", middleware.Chain(http.HandlerFunc(inventoryHandler.TodaysInventoryChecks), requireAuth))
 
 	mux.Handle("GET /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.ListVehicleTools), requireAuth))
 	mux.Handle("POST /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateVehicleTool), requireAuth))
@@ -207,6 +214,7 @@ func main() {
 
 	mux.Handle("GET /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth))
 	mux.Handle("GET /api/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
+	mux.Handle("GET /api/kpi/leaderboard/{role}", middleware.Chain(http.HandlerFunc(kpiHandler.RoleLeaderboard), requireAuth))
 	mux.Handle("POST /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireMonitor))
 	mux.Handle("DELETE /api/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth, requireAdmin))
 	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireMonitor))
@@ -316,6 +324,10 @@ func main() {
 	mux.Handle("POST /api/vehicles/{id}/monthly-status", middleware.Chain(http.HandlerFunc(vehicleHandler.SetMonthlyStatus), requireAuth, requireVehicleMgmt))
 
 	// الجودة — مشاكل تنفيذية ميدانية + مشاكل رقابية/إدارية
+	// تقارير العمل — الفني يرسل تقرير عن حجزه، المراقب/الجودة يشوفون كل التقارير
+	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
+	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
+
 	mux.Handle("GET /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.List), requireAuth, requireQuality))
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))
 	mux.Handle("PUT /api/quality/issues/{id}", middleware.Chain(http.HandlerFunc(qualityHandler.Update), requireAuth, requireQuality))

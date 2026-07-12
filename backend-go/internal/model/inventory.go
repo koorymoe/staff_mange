@@ -2,6 +2,21 @@ package model
 
 import "time"
 
+type InventoryCheck struct {
+	ID           string    `db:"id" json:"id"`
+	EmployeeID   string    `db:"employeeId" json:"employeeId"`
+	Complete     bool      `db:"complete" json:"complete"`
+	MissingItems *string   `db:"missingItems" json:"missingItems"`
+	CheckedAt    time.Time `db:"checkedAt" json:"checkedAt"`
+
+	Employee *EmployeeBrief `db:"-" json:"employee"`
+}
+
+type CreateInventoryCheckRequest struct {
+	Complete     bool    `json:"complete"`
+	MissingItems *string `json:"missingItems"`
+}
+
 type PersonalTool struct {
 	ID         string    `db:"id" json:"id"`
 	EmployeeID string    `db:"employeeId" json:"employeeId"`

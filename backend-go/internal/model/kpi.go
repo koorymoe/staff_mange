@@ -21,3 +21,17 @@ type CreateKpiEvaluationRequest struct {
 	Points      *int   `json:"points"`
 	Reason      string `json:"reason"`
 }
+
+type KpiLeaderboardEntry struct {
+	EmployeeID        string `db:"employeeId" json:"employeeId"`
+	EmployeeName      string `db:"employeeName" json:"employeeName"`
+	Points            int    `db:"points" json:"points"`
+	EvaluationCount   int    `db:"evaluationCount" json:"evaluationCount"`
+	CompletedBookings int    `db:"completedBookings" json:"completedBookings"`
+}
+
+type RoleKpiLeaderboard struct {
+	Role    string                 `json:"role"`
+	Weekly  []KpiLeaderboardEntry  `json:"weekly"`
+	Monthly []KpiLeaderboardEntry  `json:"monthly"`
+}

@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type Employee } from '../api'
+import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type Employee, type InventoryCheck } from '../api'
 import { useSession } from '../session'
 
-type TabKey = 'personal' | 'vehicle' | 'ondemand' | 'requests'
+type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests'
 
 const tabs: { key: TabKey; label: string }[] = [
+  { key: 'todaychecks', label: 'نتائج جرد اليوم' },
   { key: 'personal', label: 'أدوات خاصة' },
   { key: 'vehicle', label: 'أدوات المركبات' },
   { key: 'ondemand', label: 'أدوات حسب الحاجة' },
@@ -28,10 +29,14 @@ const requestStatusColors: Record<ToolRequest['status'], string> = {
 export default function InventoryPage() {
   const { employee: currentUser } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
-  const [activeTab, setActiveTab] = useState<TabKey>('personal')
+  const [activeTab, setActiveTab] = useState<TabKey>('todaychecks')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  // Today's inventory checks
+  const [todaysChecks, setTodaysChecks] = useState<InventoryCheck[]>([])
+  useEffect(() => { api.getTodaysInventoryChecks().then(setTodaysChecks).catch(() => setTodaysChecks([])) }, [])
 
   // Personal tools
   const [personalTools, setPersonalTools] = useState<PersonalTool[]>([])
@@ -185,6 +190,34 @@ export default function InventoryPage() {
 
       {!loading && !error && (
         <div className="mt-6">
+          {/* Today's Inventory Checks Tab */}
+          {activeTab === 'todaychecks' && (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-500">
+                نتائج جرد الفنيين لهذا اليوم — لمين اكو نقص، وفرلهم البديل قبل ما يطلعون للحجز.
+              </p>
+              {todaysChecks.length === 0 && (
+                <div className="rounded-xl border border-white bg-white p-8 text-center text-slate-400 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                  لا يوجد أي فني سجّل جرد أدواته اليوم بعد
+                </div>
+              )}
+              {todaysChecks.map((c) => (
+                <div key={c.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-800">{c.employee?.name || '-'}</span>
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${c.complete ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {c.complete ? 'العدة كاملة' : 'فيه نقص'}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-slate-400">{new Date(c.checkedAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}</p>
+                  {!c.complete && c.missingItems && (
+                    <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">الناقص: {c.missingItems}</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Personal Tools Tab */}
           {activeTab === 'personal' && (
             <div>

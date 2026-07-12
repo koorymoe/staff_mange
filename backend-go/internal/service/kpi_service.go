@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"time"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -54,4 +55,21 @@ func (s *KpiService) CompleteTraining(employeeID, evaluatorID string) (*model.Kp
 
 func (s *KpiService) Delete(id string) error {
 	return s.repo.Delete(id)
+}
+
+// RoleLeaderboard يرجع ترتيب موظفي دور معيّن أسبوعياً وشهرياً معاً
+func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, error) {
+	now := time.Now()
+	weekAgo := now.AddDate(0, 0, -7).Format("2006-01-02")
+	monthAgo := now.AddDate(0, -1, 0).Format("2006-01-02")
+
+	weekly, err := s.repo.RoleLeaderboard(role, weekAgo)
+	if err != nil {
+		return nil, err
+	}
+	monthly, err := s.repo.RoleLeaderboard(role, monthAgo)
+	if err != nil {
+		return nil, err
+	}
+	return &model.RoleKpiLeaderboard{Role: role, Weekly: weekly, Monthly: monthly}, nil
 }

@@ -377,6 +377,20 @@ export interface QualityIssue {
   reportedBy: { id: string; name: string } | null
 }
 
+export interface KpiLeaderboardEntry {
+  employeeId: string
+  employeeName: string
+  points: number
+  evaluationCount: number
+  completedBookings: number
+}
+
+export interface RoleKpiLeaderboard {
+  role: string
+  weekly: KpiLeaderboardEntry[]
+  monthly: KpiLeaderboardEntry[]
+}
+
 export interface KpiEvaluation {
   id: string
   employeeId: string
@@ -387,6 +401,23 @@ export interface KpiEvaluation {
   reason: string
   deductionAmount: number
   createdAt: string
+}
+
+export interface WorkReport {
+  id: string
+  bookingId: string
+  employeeId: string
+  workStatus: 'COMPLETED' | 'STOPPED'
+  events: string | null
+  extraRequests: string | null
+  cleanedSite: boolean
+  gaveInfo: boolean
+  tookPhotos: boolean
+  stopReason: string | null
+  notes: string | null
+  createdAt: string
+  employee: { id: string; name: string } | null
+  booking: { id: string; code: string; customerName: string } | null
 }
 
 export interface TechnicianKpi {
@@ -413,6 +444,15 @@ export interface CartItem {
   totalPrice: number
   notes: string | null
   createdAt: string
+}
+
+export interface InventoryCheck {
+  id: string
+  employeeId: string
+  complete: boolean
+  missingItems: string | null
+  checkedAt: string
+  employee: { id: string; name: string } | null
 }
 
 export interface PersonalTool {
@@ -762,11 +802,27 @@ export const api = {
   deleteTrainingMaterial: (id: string) =>
     request<void>(`/training/materials/${id}`, { method: 'DELETE' }),
 
+  // Work Reports
+  createWorkReport: (data: {
+    bookingId: string
+    workStatus: 'COMPLETED' | 'STOPPED'
+    events?: string
+    extraRequests?: string
+    cleanedSite: boolean
+    gaveInfo: boolean
+    tookPhotos: boolean
+    stopReason?: string
+    notes?: string
+  }) => request<WorkReport>('/work-reports', { method: 'POST', body: JSON.stringify(data) }),
+  getWorkReports: (employeeId?: string) =>
+    request<WorkReport[]>(`/work-reports${employeeId ? `?employeeId=${employeeId}` : ''}`),
+
   // Smart KPI
   getTechnicianKpi: (employeeId: string, month?: string) =>
     request<TechnicianKpi>(`/smart-kpi/technician/${employeeId}${month ? `?month=${month}` : ''}`),
   getKpiLeaderboard: (month?: string) =>
     request<TechnicianKpi[]>(`/smart-kpi/leaderboard${month ? `?month=${month}` : ''}`),
+  getRoleKpiLeaderboard: (role: string) => request<RoleKpiLeaderboard>(`/kpi/leaderboard/${role}`),
 
   // Cart
   getCartItems: (bookingId: string) => request<CartItem[]>(`/cart/booking/${bookingId}`),
@@ -777,6 +833,9 @@ export const api = {
   deleteCartItem: (id: string) => request<void>(`/cart/${id}`, { method: 'DELETE' }),
 
   // Inventory
+  createInventoryCheck: (data: { complete: boolean; missingItems?: string }) =>
+    request<InventoryCheck>('/inventory/checks', { method: 'POST', body: JSON.stringify(data) }),
+  getTodaysInventoryChecks: () => request<InventoryCheck[]>('/inventory/checks/today'),
   getPersonalTools: (employeeId?: string) =>
     request<PersonalTool[]>(`/inventory/personal${employeeId ? `?employeeId=${employeeId}` : ''}`),
   createPersonalTool: (data: { employeeId: string; name: string; barcode: string }) =>

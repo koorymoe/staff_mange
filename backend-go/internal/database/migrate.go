@@ -57,6 +57,18 @@ var migrations = []string{
 		UNIQUE ("vehicleId", month)
 	)`,
 
+	// جرد الأدوات اليومي: الفني يؤكد جرد عدته الخاصة قبل ما يطلع للحجز، والإداري يشوف
+	// نتائج كل الفنيين بيوم واحد حتى يوفر البديل بحال اكو نقص.
+	`CREATE TABLE IF NOT EXISTS "InventoryCheck" (
+		id TEXT PRIMARY KEY,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		complete BOOLEAN NOT NULL,
+		"missingItems" TEXT,
+		"checkedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "InventoryCheck_employeeId_idx" ON "InventoryCheck"("employeeId")`,
+	`CREATE INDEX IF NOT EXISTS "InventoryCheck_checkedAt_idx" ON "InventoryCheck"("checkedAt")`,
+
 	// وحدة الجودة: مشاكل تنفيذية ميدانية + مشاكل رقابية/إدارية، مع تحديد المسؤول.
 	`CREATE TABLE IF NOT EXISTS "QualityIssue" (
 		id TEXT PRIMARY KEY,

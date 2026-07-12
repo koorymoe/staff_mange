@@ -67,3 +67,27 @@ func (r *KpiRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "KpiEvaluation" WHERE id = $1`, id)
 	return err
 }
+
+// RoleLeaderboard يرجع ترتيب موظفي دور معيّن حسب مجموع نقاط الـKPI ضمن فترة زمنية،
+// حتى يشوف كل موظف ترتيبه بين نظرائه بنفس الدور (فني مع الفنيين، إداري مع الإداريين).
+func (r *KpiRepository) RoleLeaderboard(role string, since string) ([]model.KpiLeaderboardEntry, error) {
+	entries := []model.KpiLeaderboardEntry{}
+	err := r.db.Select(&entries, `
+		SELECT
+			e.id AS "employeeId",
+			e.name AS "employeeName",
+			COALESCE(SUM(k.points), 0) AS points,
+			COUNT(k.id) AS "evaluationCount",
+			COALESCE((
+				SELECT COUNT(*) FROM "BookingAssignment" ba
+				JOIN "Booking" b ON b.id = ba."bookingId"
+				WHERE ba."employeeId" = e.id AND b.status = 'COMPLETED' AND b."completedAt" >= $2::timestamp
+			), 0) AS "completedBookings"
+		FROM "Employee" e
+		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = e.id AND k."createdAt" >= $2::timestamp
+		WHERE e.role = $1 AND e.status = 'ACTIVE'
+		GROUP BY e.id, e.name
+		ORDER BY points DESC, "completedBookings" DESC
+	`, role, since)
+	return entries, err
+}

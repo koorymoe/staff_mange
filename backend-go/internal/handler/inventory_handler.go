@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
@@ -13,6 +14,31 @@ type InventoryHandler struct {
 
 func NewInventoryHandler(s *service.InventoryService) *InventoryHandler {
 	return &InventoryHandler{service: s}
+}
+
+// ── Inventory Checks ──────────────────────────────────────────────────────────
+
+func (h *InventoryHandler) CreateInventoryCheck(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateInventoryCheckRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	check, err := h.service.CreateInventoryCheck(middleware.EmployeeIDFromContext(r), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, check)
+}
+
+func (h *InventoryHandler) TodaysInventoryChecks(w http.ResponseWriter, r *http.Request) {
+	checks, err := h.service.TodaysInventoryChecks()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب نتائج الجرد")
+		return
+	}
+	WriteJSON(w, http.StatusOK, checks)
 }
 
 // ── Personal Tools ──────────────────────────────────────────────────────────

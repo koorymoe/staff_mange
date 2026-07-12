@@ -22,6 +22,39 @@ func (r *InventoryRepository) loadEmployeeBrief(id string) *model.EmployeeBrief 
 	return &brief
 }
 
+// ── Inventory Checks (جرد يومي) ──────────────────────────────────────────────
+
+func (r *InventoryRepository) CreateInventoryCheck(employeeID string, req model.CreateInventoryCheckRequest) (*model.InventoryCheck, error) {
+	var c model.InventoryCheck
+	err := r.db.Get(&c, `
+		INSERT INTO "InventoryCheck" (id, "employeeId", complete, "missingItems")
+		VALUES (gen_random_uuid()::text, $1, $2, $3)
+		RETURNING *
+	`, employeeID, req.Complete, req.MissingItems)
+	if err != nil {
+		return nil, err
+	}
+	c.Employee = r.loadEmployeeBrief(c.EmployeeID)
+	return &c, nil
+}
+
+// TodaysInventoryChecks يرجع آخر سجل جرد لكل موظف سجّل اليوم (للإداري يشوف مين ناقصه شي)
+func (r *InventoryRepository) TodaysInventoryChecks() ([]model.InventoryCheck, error) {
+	checks := []model.InventoryCheck{}
+	if err := r.db.Select(&checks, `
+		SELECT DISTINCT ON ("employeeId") *
+		FROM "InventoryCheck"
+		WHERE "checkedAt" >= CURRENT_DATE
+		ORDER BY "employeeId", "checkedAt" DESC
+	`); err != nil {
+		return nil, err
+	}
+	for i := range checks {
+		checks[i].Employee = r.loadEmployeeBrief(checks[i].EmployeeID)
+	}
+	return checks, nil
+}
+
 // ── Personal Tools ──────────────────────────────────────────────────────────
 
 func (r *InventoryRepository) ListPersonalTools(employeeID string) ([]model.PersonalTool, error) {
