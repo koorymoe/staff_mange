@@ -165,6 +165,9 @@ export interface Booking {
   sequenceNumber: number | null
   scheduledAt: string | null
   scheduleLogs: { id: string; changedById: string; changedBy: { id: string; name: string; role: string }; oldTime: string | null; newTime: string; createdAt: string }[]
+  materialsReadyAt: string | null
+  materialsReadyBy: { id: string; name: string } | null
+  responseMinutes: number | null
   customer: Customer
   service: Service | null
   transferEmployee: Employee | null
@@ -644,6 +647,8 @@ export const api = {
   ) => request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
   startBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/start`, { method: 'PUT', body: JSON.stringify({}) }),
+  setMaterialsReady: (id: string) =>
+    request<Booking>(`/bookings/${id}/materials-ready`, { method: 'PUT', body: JSON.stringify({}) }),
   verifyAmount: (id: string) =>
     request<Booking>(`/bookings/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
   getStats: () => request<Stats>('/stats'),

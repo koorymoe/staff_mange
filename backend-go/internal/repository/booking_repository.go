@@ -86,6 +86,12 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 	b.ProjectSupervisor = loadEmployee(b.ProjectSupervisorID)
 	b.ConfirmedByEmployee = loadEmployee(b.ConfirmedByEmployeeID)
 	b.ExpenseResponsible = loadEmployee(b.ExpenseResponsibleID)
+	if b.MaterialsReadyByID != nil {
+		var brief model.EmployeeBrief
+		if err := r.db.Get(&brief, `SELECT id, name FROM "Employee" WHERE id = $1`, *b.MaterialsReadyByID); err == nil {
+			b.MaterialsReadyBy = &brief
+		}
+	}
 
 	assignments := []model.BookingAssignment{}
 	if err := r.db.Select(&assignments, `SELECT * FROM "BookingAssignment" WHERE "bookingId" = $1`, b.ID); err == nil {
@@ -190,6 +196,31 @@ func (r *BookingRepository) ScheduleLog(bookingID string) ([]model.ScheduleChang
 
 func (r *BookingRepository) SetStatus(id, status string) error {
 	_, err := r.db.Exec(`UPDATE "Booking" SET status = $2 WHERE id = $1`, id, status)
+	return err
+}
+
+// StartWithResponseTime يبدأ العمل ويحسب كم دقيقة أخذ الفنيون بعد ما تيم ليدر جهّز
+// المواد ولحد ما فعلاً بدأوا الشغل — حتى نعرف مين ضيّع وقت.
+func (r *BookingRepository) StartWithResponseTime(id string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking" SET
+			status = 'IN_PROGRESS',
+			"responseMinutes" = CASE
+				WHEN "materialsReadyAt" IS NOT NULL AND "responseMinutes" IS NULL
+				THEN GREATEST(0, EXTRACT(EPOCH FROM (now() - "materialsReadyAt"))::int / 60)
+				ELSE "responseMinutes"
+			END
+		WHERE id = $1
+	`, id)
+	return err
+}
+
+// SetMaterialsReady يسجّل لحظة تجهيز المواد من تيم ليدر الفريق، ويبدأ عدّاد الاستجابة
+func (r *BookingRepository) SetMaterialsReady(id, byEmployeeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking" SET "materialsReadyAt" = now(), "materialsReadyById" = $2
+		WHERE id = $1
+	`, id, byEmployeeID)
 	return err
 }
 

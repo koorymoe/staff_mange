@@ -2,6 +2,13 @@ import { useEffect, useState } from 'react'
 import { api, type Booking } from '../api'
 import { useSession } from '../session'
 
+function elapsedSince(iso: string): string {
+  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
+  const h = Math.floor(diffMin / 60)
+  const m = diffMin % 60
+  return h > 0 ? `${h} ساعة و ${m} دقيقة` : `${m} دقيقة`
+}
+
 export default function MyTasks() {
   const { employee } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -9,6 +16,12 @@ export default function MyTasks() {
   const [amounts, setAmounts] = useState<Record<string, string>>({})
   const [advances, setAdvances] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
+  const [, setTick] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => setTick((v) => v + 1), 30000)
+    return () => clearInterval(t)
+  }, [])
 
   const load = () => {
     Promise.all([api.getBookings({ status: 'CONFIRMED' }), api.getBookings({ status: 'IN_PROGRESS' })])
@@ -24,6 +37,11 @@ export default function MyTasks() {
 
   const handleStart = async (booking: Booking) => {
     const updated = await api.startBooking(booking.id)
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
+
+  const handleMaterialsReady = async (booking: Booking) => {
+    const updated = await api.setMaterialsReady(booking.id)
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
@@ -102,7 +120,22 @@ export default function MyTasks() {
                     )}
 
                     {b.status === 'CONFIRMED' ? (
-                      <div className="mt-3">
+                      <div className="mt-3 space-y-2">
+                        {b.materialsReadyAt ? (
+                          <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-center">
+                            <p className="font-bold text-red-700">⏰ المواد جاهزة — انطلق الآن!</p>
+                            <p className="mt-1 text-xs text-red-600">
+                              جهّزها {b.materialsReadyBy?.name || 'تيم ليدر الفريق'} من {elapsedSince(b.materialsReadyAt)}
+                            </p>
+                          </div>
+                        ) : employee?.isLeader ? (
+                          <button
+                            onClick={() => handleMaterialsReady(b)}
+                            className="w-full rounded-lg bg-gradient-to-l from-purple-500 to-purple-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                          >
+                            📦 تم تجهيز المواد — أبلغ الفريق
+                          </button>
+                        ) : null}
                         <button
                           onClick={() => handleStart(b)}
                           className="w-full rounded-lg bg-gradient-to-l from-amber-500 to-amber-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"

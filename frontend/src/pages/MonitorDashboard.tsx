@@ -214,6 +214,16 @@ export default function MonitorDashboard() {
                             <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${
                               b.status === 'IN_PROGRESS' ? 'bg-violet-500 text-white' : 'bg-blue-500 text-white'
                             }`}>{b.status === 'IN_PROGRESS' ? 'جاري التنفيذ' : 'مثبت'}</span>
+                            {b.status === 'IN_PROGRESS' && b.responseMinutes != null && (
+                              <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${b.responseMinutes > 15 ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                                استجابة الفريق: {b.responseMinutes} د
+                              </span>
+                            )}
+                            {b.status === 'CONFIRMED' && b.materialsReadyAt && (
+                              <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-700">
+                                ⏰ بانتظار انطلاق الفريق
+                              </span>
+                            )}
                             {b.scheduledAt && (
                               <span className="text-xs text-slate-500">
                                 {new Date(b.scheduledAt).toLocaleString('ar-IQ', { weekday: 'short', hour: '2-digit', minute: '2-digit' })}

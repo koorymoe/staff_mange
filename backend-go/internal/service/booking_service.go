@@ -211,7 +211,26 @@ func (s *BookingService) SetSupervisor(id string, employeeID *string) (*model.Bo
 }
 
 func (s *BookingService) Start(id string) (*model.Booking, error) {
-	if err := s.repo.SetStatus(id, "IN_PROGRESS"); err != nil {
+	if err := s.repo.StartWithResponseTime(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// SetMaterialsReady يسمح فقط لتيم ليدر مسند لهذا الحجز (أو أدمن/مراقب) بتأكيد تجهيز
+// المواد — لحظة الضغط تصير بداية عدّاد استجابة الفنيين.
+func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Booking, error) {
+	employee, err := s.employees.FindByID(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	if employee == nil {
+		return nil, errors.New("الموظف غير موجود")
+	}
+	if !employee.IsLeader && employee.Role != "ADMIN" && employee.Role != "MONITOR" {
+		return nil, errors.New("هذا الإجراء يقتصر على تيم ليدر الفريق أو الإدارة")
+	}
+	if err := s.repo.SetMaterialsReady(id, employeeID); err != nil {
 		return nil, err
 	}
 	return s.repo.FindByID(id)

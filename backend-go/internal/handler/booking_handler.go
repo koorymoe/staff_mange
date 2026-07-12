@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
@@ -133,6 +134,16 @@ func (h *BookingHandler) Supervisor(w http.ResponseWriter, r *http.Request) {
 // PUT /api/v1/bookings/{id}/start
 func (h *BookingHandler) Start(w http.ResponseWriter, r *http.Request) {
 	booking, err := h.service.Start(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
+// PUT /api/bookings/{id}/materials-ready
+func (h *BookingHandler) SetMaterialsReady(w http.ResponseWriter, r *http.Request) {
+	booking, err := h.service.SetMaterialsReady(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

@@ -49,6 +49,9 @@ type Booking struct {
 	AddressDescription     *string    `db:"addressDescription" json:"addressDescription"`
 	CreatedAt              time.Time  `db:"createdAt" json:"createdAt"`
 	UpdatedAt              time.Time  `db:"updatedAt" json:"updatedAt"`
+	MaterialsReadyAt       *time.Time `db:"materialsReadyAt" json:"materialsReadyAt"`
+	MaterialsReadyByID     *string    `db:"materialsReadyById" json:"-"`
+	ResponseMinutes        *int       `db:"responseMinutes" json:"responseMinutes"`
 
 	Customer            *Customer           `db:"-" json:"customer"`
 	Service             *Service            `db:"-" json:"service"`
@@ -56,6 +59,7 @@ type Booking struct {
 	ProjectSupervisor   *Employee           `db:"-" json:"projectSupervisor"`
 	ConfirmedByEmployee *Employee           `db:"-" json:"confirmedByEmployee"`
 	ExpenseResponsible  *Employee           `db:"-" json:"expenseResponsible"`
+	MaterialsReadyBy    *EmployeeBrief      `db:"-" json:"materialsReadyBy"`
 	Assignments         []BookingAssignment `db:"-" json:"assignments"`
 	CartItems           []CartItem          `db:"-" json:"cartItems"`
 	ScheduleLogs        []ScheduleChangeLog `db:"-" json:"scheduleLogs"`

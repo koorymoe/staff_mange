@@ -433,6 +433,11 @@ export default function Coordinator() {
                         عاجل
                       </span>
                     )}
+                    {booking.status === 'CONFIRMED' && booking.materialsReadyAt && (
+                      <span className="mr-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
+                        ⏰ المواد جاهزة، بانتظار انطلاق الفريق ({booking.materialsReadyBy?.name || '-'})
+                      </span>
+                    )}
                   </div>
                   <div className="text-sm text-slate-500">
                     {booking.service?.name || 'بدون خدمة محددة'}
