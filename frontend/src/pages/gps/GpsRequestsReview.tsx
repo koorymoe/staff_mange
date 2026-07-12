@@ -1,25 +1,36 @@
 import { useEffect, useState } from 'react'
-import { api, type GpsDeviceRequest } from '../../api'
+import { api, type Employee, type GpsDeviceRequest } from '../../api'
+import { useSession, hasGpsSkill } from '../../session'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
 
 export default function GpsRequestsReview() {
+  const { gpsServiceId } = useSession()
   const [requests, setRequests] = useState<GpsDeviceRequest[]>([])
+  const [gpsTechnicians, setGpsTechnicians] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<GpsDeviceRequest | null>(null)
   const [activationDate, setActivationDate] = useState('')
   const [checks, setChecks] = useState({ checked: false, activated: false, delivered: false })
+  const [scheduledAt, setScheduledAt] = useState('')
+  const [assignedTechnicianId, setAssignedTechnicianId] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = () => {
     setLoading(true)
-    api.getGpsDevices().then(all => setRequests(all.filter(r => r.status === 'PENDING'))).finally(() => setLoading(false))
+    Promise.all([
+      api.getGpsDevices().then(all => setRequests(all.filter(r => r.status === 'PENDING'))),
+      api.getEmployees().then(all => setGpsTechnicians(
+        all.filter(e => e.role === 'TECHNICIAN' && hasGpsSkill(e, gpsServiceId))
+      )),
+    ]).finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(load, [gpsServiceId])
 
   const openReview = (req: GpsDeviceRequest) => {
     setSelected(req); setActivationDate(''); setChecks({ checked: false, activated: false, delivered: false })
+    setScheduledAt(''); setAssignedTechnicianId('')
   }
 
   const activate = async () => {
@@ -39,6 +50,8 @@ export default function GpsRequestsReview() {
         subscriptionStart: start ? start.toISOString() : undefined,
         subscriptionEnd: end ? end.toISOString() : undefined,
         activationDate: start ? start.toISOString() : undefined,
+        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+        assignedTechnicianId: assignedTechnicianId || undefined,
       })
       setSelected(null)
       load()
@@ -121,6 +134,25 @@ export default function GpsRequestsReview() {
                   )}
                 </div>
               )}
+
+              <div className="rounded-xl bg-amber-50 p-4">
+                <p className="mb-3 text-sm font-bold text-amber-800">📅 جدولة موعد التركيب (اختياري)</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-500">موعد الزيارة</label>
+                    <input type="datetime-local" value={scheduledAt} onChange={e => setScheduledAt(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-500">الفني المكلّف</label>
+                    <select value={assignedTechnicianId} onChange={e => setAssignedTechnicianId(e.target.value)}
+                      className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                      <option value="">— اختر فني —</option>
+                      {gpsTechnicians.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
 
               {selected.invoicePhotoUrl && (
                 <div>

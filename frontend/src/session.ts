@@ -5,13 +5,19 @@ export interface Session {
   employee: Employee | null
   setEmployee: (emp: Employee | null) => void
   permissions: string[]
+  gpsServiceId: string | null
 }
 
 export const SessionContext = createContext<Session>({
   employee: null,
   setEmployee: () => {},
   permissions: [],
+  gpsServiceId: null,
 })
+
+// موظف يشد مهارة GPS = عنده مهارة فعالة (canPerform) تحت خدمة GPS، بغض النظر عن دوره الوظيفي
+export const hasGpsSkill = (employee: Employee | null, gpsServiceId: string | null) =>
+  !!employee && !!gpsServiceId && employee.skills?.some(s => s.canPerform && s.skill.serviceId === gpsServiceId)
 
 export const useSession = () => useContext(SessionContext)
 
@@ -30,6 +36,5 @@ export const roleLabels: Record<string, string> = {
   MONITOR: 'مدقق / مراقب',
   FINANCE: 'محاسب',
   GPS_ADMIN: 'مسؤول GPS',
-  GPS_ENGINEER: 'مهندس GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
 }

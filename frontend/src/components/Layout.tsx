@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
-import { SessionContext, roleLabels } from '../session'
+import { SessionContext, roleLabels, hasGpsSkill } from '../session'
 import Login from '../pages/Login'
 import TrainingPage from '../pages/TrainingPage'
 
@@ -14,6 +14,7 @@ interface NavItem {
   permission?: string
   anyPermission?: string[]
   leaderOnly?: boolean
+  gpsSkillOnly?: boolean
   children?: NavItem[]
 }
 
@@ -56,9 +57,9 @@ const navItems: NavItem[] = [
       },
       {
         to: '/mgmt-services', label: 'إدارة الخدمات', icon: <></>,
-        roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'],
+        roles: ['ADMIN', 'GPS_ADMIN'],
         children: [
-          { to: '/gps', label: 'نظام GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN', 'GPS_ENGINEER'], permission: 'gps_system' },
+          { to: '/gps', label: 'نظام GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
           { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
           { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
           { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
@@ -100,7 +101,7 @@ const navItems: NavItem[] = [
   { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> },
   { to: '/my-expenses', label: 'مصاريفي', icon: <I d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-inventory', label: 'جرد أدواتي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>, roles: ['TECHNICIAN'] },
-  { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['GPS_ENGINEER'] },
+  { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
 
   // ── صلاحية "التقني" ومركبات وجودة — تطلع لأي موظف عنده الصلاحية المخصصة بغض النظر عن دوره ──
   { to: '/training-management', label: 'صلاحية التقني (محتوى)', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>, permission: 'content_technician' },
@@ -145,13 +146,13 @@ const roleColors: Record<string, string> = {
   MONITOR: 'from-cyan-500 to-teal-600',
   FINANCE: 'from-lime-500 to-green-600',
   GPS_ADMIN: 'from-indigo-500 to-blue-600',
-  GPS_ENGINEER: 'from-blue-500 to-indigo-600',
   QUALITY_ENGINEER: 'from-fuchsia-500 to-purple-600',
 }
 
 export default function Layout() {
   const [employee, setEmployeeState] = useState<Employee | null>(loadStoredEmployee)
   const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
+  const [gpsServiceId, setGpsServiceId] = useState<string | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -182,6 +183,13 @@ export default function Layout() {
   }, [employee?.id])
 
   useEffect(() => {
+    if (!employee) { setGpsServiceId(null); return }
+    api.getServices()
+      .then((services) => setGpsServiceId(services.find((s) => s.name === 'GPS')?.id || null))
+      .catch(() => setGpsServiceId(null))
+  }, [employee?.id])
+
+  useEffect(() => {
     const autoExpand = (items: NavItem[]) => {
       items.forEach((item) => {
         if (item.children && hasActiveChild(item, location.pathname)) {
@@ -195,7 +203,7 @@ export default function Layout() {
 
   if (!employee) {
     return (
-      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
+      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
         <Login />
       </SessionContext.Provider>
     )
@@ -204,7 +212,7 @@ export default function Layout() {
   // موظف قيد التدريب: يشوف صفحة التدريب فقط، بدون أي وصول لباقي النظام
   if (employee.isTrainee) {
     return (
-      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
+      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
         <div dir="rtl" className="min-h-screen bg-[#f0f4f9]">
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-8">
             <span className="text-lg font-extrabold text-[#0f2040] tracking-tight">نظام شركة الأماني — التدريب</span>
@@ -231,6 +239,7 @@ export default function Layout() {
     if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
     if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => employeePermissions.includes(p))) return false
     if (item.leaderOnly && !employee?.isLeader && role !== 'ADMIN') return false
+    if (item.gpsSkillOnly && role !== 'ADMIN' && !hasGpsSkill(employee, gpsServiceId)) return false
     if (item.children) return item.children.some(isVisible)
     return true
   }
@@ -345,7 +354,7 @@ export default function Layout() {
   }
 
   return (
-    <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions }}>
+    <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
       <div dir="ltr" className="flex min-h-screen bg-[#f0f4f9]">
 
         {/* ===== Main Area ===== */}

@@ -34,7 +34,7 @@ export interface EmployeeSkill {
   id: string
   skillId: string
   canPerform: boolean
-  skill: Skill & { service: Service }
+  skill: Skill
 }
 
 export type EmployeeRole =
@@ -46,7 +46,6 @@ export type EmployeeRole =
   | 'MONITOR'
   | 'FINANCE'
   | 'GPS_ADMIN'
-  | 'GPS_ENGINEER'
   | 'QUALITY_ENGINEER'
 
 export interface Employee {
@@ -112,6 +111,9 @@ export interface GpsDeviceRequest {
   activationDate: string | null
   deliveredAt: string | null
   createdAt: string
+  scheduledAt: string | null
+  assignedTechnician: { id: string; name: string } | null
+  assignedTechnicianId?: string | null
 }
 
 export interface GpsRenewalRequest {

@@ -51,53 +51,58 @@ type UpsertSimCardRequest struct {
 }
 
 type GpsDeviceRequest struct {
-	ID                  string     `db:"id" json:"id"`
-	CustomerID          string     `db:"customerId" json:"-"`
-	EmployeeID          string     `db:"employeeId" json:"-"`
-	AdminID             *string    `db:"adminId" json:"adminId"`
-	PurchaseType        string     `db:"purchaseType" json:"purchaseType"`
-	SubscriptionType    string     `db:"subscriptionType" json:"subscriptionType"`
-	SubscriptionStart   *time.Time `db:"subscriptionStart" json:"subscriptionStart"`
-	SubscriptionEnd     *time.Time `db:"subscriptionEnd" json:"subscriptionEnd"`
-	SubscriptionStatus  string     `db:"subscriptionStatus" json:"subscriptionStatus"`
-	Status              string     `db:"status" json:"status"`
-	SimCardID           *string    `db:"simCardId" json:"-"`
-	Notes               *string    `db:"notes" json:"notes"`
-	IsChecked           bool       `db:"isChecked" json:"isChecked"`
-	IsActivated         bool       `db:"isActivated" json:"isActivated"`
-	IsDelivered         bool       `db:"isDelivered" json:"isDelivered"`
-	InvoicePhotoURL     *string    `db:"invoicePhotoUrl" json:"invoicePhotoUrl"`
-	GpsNumber           *string    `db:"gpsNumber" json:"gpsNumber"`
-	ResidenceCardNumber *string    `db:"residenceCardNumber" json:"residenceCardNumber"`
-	ActivationDate      *time.Time `db:"activationDate" json:"activationDate"`
-	DeliveredAt         *time.Time `db:"deliveredAt" json:"deliveredAt"`
-	CreatedAt           time.Time  `db:"createdAt" json:"createdAt"`
+	ID                   string     `db:"id" json:"id"`
+	CustomerID           string     `db:"customerId" json:"-"`
+	EmployeeID           string     `db:"employeeId" json:"-"`
+	AdminID              *string    `db:"adminId" json:"adminId"`
+	PurchaseType         string     `db:"purchaseType" json:"purchaseType"`
+	SubscriptionType     string     `db:"subscriptionType" json:"subscriptionType"`
+	SubscriptionStart    *time.Time `db:"subscriptionStart" json:"subscriptionStart"`
+	SubscriptionEnd      *time.Time `db:"subscriptionEnd" json:"subscriptionEnd"`
+	SubscriptionStatus   string     `db:"subscriptionStatus" json:"subscriptionStatus"`
+	Status               string     `db:"status" json:"status"`
+	SimCardID            *string    `db:"simCardId" json:"-"`
+	Notes                *string    `db:"notes" json:"notes"`
+	IsChecked            bool       `db:"isChecked" json:"isChecked"`
+	IsActivated          bool       `db:"isActivated" json:"isActivated"`
+	IsDelivered          bool       `db:"isDelivered" json:"isDelivered"`
+	InvoicePhotoURL      *string    `db:"invoicePhotoUrl" json:"invoicePhotoUrl"`
+	GpsNumber            *string    `db:"gpsNumber" json:"gpsNumber"`
+	ResidenceCardNumber  *string    `db:"residenceCardNumber" json:"residenceCardNumber"`
+	ActivationDate       *time.Time `db:"activationDate" json:"activationDate"`
+	DeliveredAt          *time.Time `db:"deliveredAt" json:"deliveredAt"`
+	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
+	ScheduledAt          *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	AssignedTechnicianID *string    `db:"assignedTechnicianId" json:"-"`
 
-	Customer *GpsCustomer   `db:"-" json:"customer"`
-	Employee *EmployeeBrief `db:"-" json:"employee"`
-	SimCard  *SimCard       `db:"-" json:"simCard"`
+	Customer           *GpsCustomer   `db:"-" json:"customer"`
+	Employee           *EmployeeBrief `db:"-" json:"employee"`
+	SimCard            *SimCard       `db:"-" json:"simCard"`
+	AssignedTechnician *EmployeeBrief `db:"-" json:"assignedTechnician"`
 }
 
 type UpsertGpsDeviceRequest struct {
-	CustomerID          *string    `json:"customerId"`
-	EmployeeID          *string    `json:"employeeId"`
-	AdminID             *string    `json:"adminId"`
-	PurchaseType        *string    `json:"purchaseType"`
-	SubscriptionType    *string    `json:"subscriptionType"`
-	SubscriptionStart   *time.Time `json:"subscriptionStart"`
-	SubscriptionEnd     *time.Time `json:"subscriptionEnd"`
-	SubscriptionStatus  *string    `json:"subscriptionStatus"`
-	Status              *string    `json:"status"`
-	SimCardID           *string    `json:"simCardId"`
-	Notes               *string    `json:"notes"`
-	IsChecked           *bool      `json:"isChecked"`
-	IsActivated         *bool      `json:"isActivated"`
-	IsDelivered         *bool      `json:"isDelivered"`
-	InvoicePhotoURL     *string    `json:"invoicePhotoUrl"`
-	GpsNumber           *string    `json:"gpsNumber"`
-	ResidenceCardNumber *string    `json:"residenceCardNumber"`
-	ActivationDate      *time.Time `json:"activationDate"`
-	DeliveredAt         *time.Time `json:"deliveredAt"`
+	CustomerID           *string    `json:"customerId"`
+	EmployeeID           *string    `json:"employeeId"`
+	AdminID              *string    `json:"adminId"`
+	PurchaseType         *string    `json:"purchaseType"`
+	SubscriptionType     *string    `json:"subscriptionType"`
+	SubscriptionStart    *time.Time `json:"subscriptionStart"`
+	SubscriptionEnd      *time.Time `json:"subscriptionEnd"`
+	SubscriptionStatus   *string    `json:"subscriptionStatus"`
+	Status               *string    `json:"status"`
+	SimCardID            *string    `json:"simCardId"`
+	Notes                *string    `json:"notes"`
+	IsChecked            *bool      `json:"isChecked"`
+	IsActivated          *bool      `json:"isActivated"`
+	IsDelivered          *bool      `json:"isDelivered"`
+	InvoicePhotoURL      *string    `json:"invoicePhotoUrl"`
+	GpsNumber            *string    `json:"gpsNumber"`
+	ResidenceCardNumber  *string    `json:"residenceCardNumber"`
+	ActivationDate       *time.Time `json:"activationDate"`
+	DeliveredAt          *time.Time `json:"deliveredAt"`
+	ScheduledAt          *time.Time `json:"scheduledAt"`
+	AssignedTechnicianID *string    `json:"assignedTechnicianId"`
 }
 
 type GpsRenewalRequest struct {

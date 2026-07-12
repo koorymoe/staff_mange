@@ -89,12 +89,53 @@ var migrations = []string{
 		"resolvedAt" TIMESTAMP
 	)`,
 	`CREATE INDEX IF NOT EXISTS "QualityIssue_status_idx" ON "QualityIssue"(status)`,
+
+	// دور GPS_ENGINEER اتلغى — تركيب GPS صار مهارة عادية (مثل باقي الخدمات) يمنحها
+	// الأدمن لأي فني عادي بدل ما يكون دور مستقل. "أبو الجي بي اس" (GPS_ADMIN) هو
+	// الدور الوحيد الخاص بـGPS اللي بقى، ويرتب موعد الزبون لطلبات GPS الجديدة.
+	`ALTER TABLE "GpsDeviceRequest" ADD COLUMN IF NOT EXISTS "scheduledAt" TIMESTAMP`,
+	`ALTER TABLE "GpsDeviceRequest" ADD COLUMN IF NOT EXISTS "assignedTechnicianId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
 }
 
 func Migrate(db *sqlx.DB) error {
 	for _, stmt := range migrations {
 		if _, err := db.Exec(stmt); err != nil {
 			return err
+		}
+	}
+	return migrateGpsEngineersToSkill(db)
+}
+
+// migrateGpsEngineersToSkill يحول أي موظف لسه بدور GPS_ENGINEER (القديم) إلى TECHNICIAN
+// عادي، ويمنحه كل مهارات تركيب GPS تلقائياً حتى يضل يقدر يستلم نفس شغله بالضبط.
+func migrateGpsEngineersToSkill(db *sqlx.DB) error {
+	var ids []string
+	if err := db.Select(&ids, `SELECT id FROM "Employee" WHERE role = 'GPS_ENGINEER'`); err != nil {
+		return err
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+
+	var gpsSkillIDs []string
+	if err := db.Select(&gpsSkillIDs, `
+		SELECT sk.id FROM "Skill" sk JOIN "Service" sv ON sv.id = sk."serviceId" WHERE sv.name = 'GPS'
+	`); err != nil {
+		return err
+	}
+
+	for _, empID := range ids {
+		if _, err := db.Exec(`UPDATE "Employee" SET role = 'TECHNICIAN' WHERE id = $1`, empID); err != nil {
+			return err
+		}
+		for _, skillID := range gpsSkillIDs {
+			if _, err := db.Exec(`
+				INSERT INTO "EmployeeSkill" (id, "employeeId", "skillId", "canPerform")
+				VALUES (gen_random_uuid()::text, $1, $2, true)
+				ON CONFLICT ("employeeId", "skillId") DO UPDATE SET "canPerform" = true
+			`, empID, skillID); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

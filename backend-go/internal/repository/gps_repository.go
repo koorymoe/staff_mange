@@ -142,6 +142,9 @@ func (r *GpsRepository) hydrateDevice(d *model.GpsDeviceRequest) {
 	if d.SimCardID != nil {
 		d.SimCard = r.loadSimCard(*d.SimCardID)
 	}
+	if d.AssignedTechnicianID != nil {
+		d.AssignedTechnician = r.loadEmployeeBrief(*d.AssignedTechnicianID)
+	}
 }
 
 func (r *GpsRepository) ListDevices() ([]model.GpsDeviceRequest, error) {
@@ -191,13 +194,15 @@ func (r *GpsRepository) UpdateDevice(id string, req model.UpsertGpsDeviceRequest
 			"gpsNumber" = COALESCE($17, "gpsNumber"),
 			"residenceCardNumber" = COALESCE($18, "residenceCardNumber"),
 			"activationDate" = COALESCE($19, "activationDate"),
-			"deliveredAt" = COALESCE($20, "deliveredAt")
+			"deliveredAt" = COALESCE($20, "deliveredAt"),
+			"scheduledAt" = COALESCE($21, "scheduledAt"),
+			"assignedTechnicianId" = COALESCE($22, "assignedTechnicianId")
 		WHERE id = $1
 		RETURNING *
 	`, id, req.CustomerID, req.EmployeeID, req.AdminID, req.PurchaseType, req.SubscriptionType,
 		req.SubscriptionStart, req.SubscriptionEnd, req.SubscriptionStatus, req.Status, req.SimCardID, req.Notes,
 		req.IsChecked, req.IsActivated, req.IsDelivered, req.InvoicePhotoURL, req.GpsNumber, req.ResidenceCardNumber,
-		req.ActivationDate, req.DeliveredAt)
+		req.ActivationDate, req.DeliveredAt, req.ScheduledAt, req.AssignedTechnicianID)
 	if err != nil {
 		return nil, err
 	}

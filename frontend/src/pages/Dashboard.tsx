@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import type { Booking, Expense, AttendanceRecord } from '../api'
-import { useSession } from '../session'
+import { useSession, hasGpsSkill } from '../session'
 
 /* ───── Attendance helpers ───── */
 
@@ -74,7 +74,7 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 }
 
 export default function Dashboard() {
-  const { employee, permissions } = useSession()
+  const { employee, permissions, gpsServiceId } = useSession()
   const navigate = useNavigate()
   const [gpsStats, setGpsStats] = useState<GpsStats | null>(null)
   const [bookingCount, setBookingCount] = useState(0)
@@ -886,8 +886,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ═══ GPS Panel — GPS_ADMIN / GPS_ENGINEER (بدون باقي لوحات الأدمن اللي ما تخصهم) ═══ */}
-      {!isAdmin && ['GPS_ADMIN', 'GPS_ENGINEER'].includes(employee.role) && (
+      {/* ═══ GPS Panel — GPS_ADMIN أو فني عنده مهارة GPS (بدون باقي لوحات الأدمن اللي ما تخصهم) ═══ */}
+      {!isAdmin && (employee.role === 'GPS_ADMIN' || (employee.role === 'TECHNICIAN' && hasGpsSkill(employee, gpsServiceId))) && (
         <div className="grid grid-cols-1 gap-4">
           <SystemPanel title="نظام GPS" color="#f59e0b" dotColor="bg-amber-400" actionLabel="عرض الكل" onAction={() => navigate('/gps')}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

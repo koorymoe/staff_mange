@@ -22,7 +22,6 @@ const roleLabels: Record<string, string> = {
   MONITOR: 'مراقب',
   FINANCE: 'محاسب',
   GPS_ADMIN: 'مسؤول GPS',
-  GPS_ENGINEER: 'مهندس GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
 }
 
@@ -35,7 +34,6 @@ const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
   MONITOR: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
   FINANCE: { bg: 'bg-lime-50', text: 'text-lime-700', dot: 'bg-lime-500' },
   GPS_ADMIN: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
-  GPS_ENGINEER: { bg: 'bg-blue-50', text: 'text-blue-700', dot: 'bg-blue-500' },
   QUALITY_ENGINEER: { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', dot: 'bg-fuchsia-500' },
 }
 

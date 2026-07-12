@@ -9,6 +9,7 @@ export default function GpsEmployee() {
   const [customers, setCustomers] = useState<any[]>([])
   const [devices, setDevices] = useState<any[]>([])
   const [recentRequests, setRecentRequests] = useState<any[]>([])
+  const [assignedInstalls, setAssignedInstalls] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [activeForm, setActiveForm] = useState<ActiveForm>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -40,6 +41,10 @@ export default function GpsEmployee() {
       setCustomers(c)
       setDevices(d)
       const myId = employee?.id
+      setAssignedInstalls(
+        d.filter((x: any) => x.assignedTechnician?.id === myId && x.status !== 'REJECTED')
+          .sort((a: any, b: any) => new Date(a.scheduledAt || a.createdAt).getTime() - new Date(b.scheduledAt || b.createdAt).getTime())
+      )
       const allRequests = [
         ...d.filter((x: any) => x.employeeId === myId).map((x: any) => ({ ...x, type: 'device' })),
         ...r.filter((x: any) => x.employeeId === myId).map((x: any) => ({ ...x, type: 'renewal' })),
@@ -112,6 +117,31 @@ export default function GpsEmployee() {
         <h1 className="text-2xl font-bold text-white">👋 مرحباً {employee?.name || ''}</h1>
         <p className="mt-1 text-blue-200 text-sm">لوحة موظف GPS - اختر الخدمة المطلوبة</p>
       </div>
+
+      {/* Assigned Installs */}
+      {assignedInstalls.length > 0 && (
+        <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
+          <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>🛠️ تركيباتي المجدولة</h3>
+          <div className="flex flex-col gap-3">
+            {assignedInstalls.map(d => (
+              <div key={d.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-4">
+                <div>
+                  <p className="font-bold text-slate-800">{d.customer?.fullName}</p>
+                  <p className="text-sm text-slate-500">📞 {d.customer?.phone} · 📍 {d.customer?.address}</p>
+                </div>
+                <div className="text-left">
+                  <span className="rounded-full px-3 py-1 text-xs font-bold" style={{ backgroundColor: statusColor[d.status]?.bg, color: statusColor[d.status]?.color }}>
+                    {statusLabel[d.status] || d.status}
+                  </span>
+                  <p className="mt-1 text-sm font-bold text-amber-700">
+                    {d.scheduledAt ? new Date(d.scheduledAt).toLocaleString('ar-IQ') : 'بدون موعد محدد'}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Service Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
