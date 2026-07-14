@@ -89,6 +89,7 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
+  const [projectStats, setProjectStats] = useState<Record<string, number> | null>(null)
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(formatTime()), 60000)
@@ -121,6 +122,17 @@ export default function Dashboard() {
       )
       setMyTasks(taskList)
     }).finally(() => setLoading(false))
+
+    // إحصائيات المشاريع للوحة مدير المشاريع (أو الأدمن)
+    if (employee.role === 'PROJECT_MANAGER' || employee.role === 'ADMIN' || permissions.includes('project_management')) {
+      const token = localStorage.getItem('authToken')
+      fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/projects`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => setProjectStats(d?.stats || null))
+        .catch(() => setProjectStats(null))
+    }
   }, [employee])
 
   /* ── Attendance widget state ── */
@@ -883,6 +895,22 @@ export default function Dashboard() {
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ═══ Projects Panel — مدير المشاريع (نظرة سريعة على مراحل المشاريع من دون فتح الصفحة) ═══ */}
+      {!isAdmin && employee.role === 'PROJECT_MANAGER' && projectStats && (
+        <div className="grid grid-cols-1 gap-4">
+          <SystemPanel title="المشاريع" color="#8b5cf6" dotColor="bg-violet-400" actionLabel="عرض الكل" onAction={() => navigate('/projects')}>
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+              <MiniKPI label="اتصال" value={projectStats['اتصال'] || 0} color="#3b82f6" />
+              <MiniKPI label="كشف" value={projectStats['كشف'] || 0} color="#10b981" />
+              <MiniKPI label="سعر" value={projectStats['سعر'] || 0} color="#f59e0b" />
+              <MiniKPI label="تنفيذ" value={projectStats['تنفيذ'] || 0} color="#ef4444" />
+              <MiniKPI label="مكتمل" value={projectStats['مكتمل'] || 0} color="#2563eb" />
+              <MiniKPI label="مرفوض" value={projectStats['مرفوض'] || 0} color="#6b7280" />
+            </div>
+          </SystemPanel>
         </div>
       )}
 
