@@ -20,6 +20,7 @@ type Project struct {
 	DeliveryDate *string   `db:"deliveryDate" json:"deliveryDate"`
 	Survey       *string   `db:"survey" json:"survey"`
 	SentToGroup  bool      `db:"sentToGroup" json:"sentToGroup"`
+	BookingID    *string   `db:"bookingId" json:"bookingId"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
 	UpdatedAt    time.Time `db:"updatedAt" json:"updatedAt"`
 }
@@ -48,6 +49,7 @@ type CreateProjectRequest struct {
 	RefPerson    *string `json:"refPerson"`
 	Priority     *string `json:"priority"`
 	DeliveryDate *string `json:"deliveryDate"`
+	BookingID    *string `json:"bookingId"`
 }
 
 type UpdateProjectRequest struct {

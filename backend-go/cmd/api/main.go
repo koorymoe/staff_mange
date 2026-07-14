@@ -55,6 +55,7 @@ func main() {
 	statsRepo := repository.NewStatsRepository(db)
 	vehicleRepo := repository.NewVehicleRepository(db)
 	qualityRepo := repository.NewQualityRepository(db)
+	staffRequestRepo := repository.NewStaffRequestRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -109,6 +110,7 @@ func main() {
 	statsHandler := handler.NewStatsHandler(statsService)
 	vehicleHandler := handler.NewVehicleHandler(vehicleService)
 	qualityHandler := handler.NewQualityHandler(qualityService)
+	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -120,6 +122,7 @@ func main() {
 	requireContentTech := middleware.RequirePermission(permissionRepo, "content_technician")
 	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, "vehicle_management")
 	requireQuality := middleware.RequirePermission(permissionRepo, "quality_control")
+	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, "project_management")
 
 	mux := http.NewServeMux()
 
@@ -253,6 +256,11 @@ func main() {
 	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth))
 	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
+
+	// طلبات الكادر — مدير المشاريع (أو صاحب صلاحية إدارة المشاريع) يطلب، وإدارة الكوادر تلبي
+	mux.Handle("POST /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.Create), requireAuth, requireProjectMgmtPerm))
+	mux.Handle("GET /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.List), requireAuth))
+	mux.Handle("PUT /api/staff-requests/{id}/status", middleware.Chain(http.HandlerFunc(staffRequestHandler.UpdateStatus), requireAuth, requireHR))
 
 	// المشتريات (procurement)
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth))

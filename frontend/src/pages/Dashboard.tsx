@@ -98,7 +98,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!employee) return
-    const isTech = ['TECHNICIAN', 'PROJECT_MANAGER'].includes(employee.role) || employee.isLeader
+    // مدير المشاريع مدير مو فني — ما ينستلم مهام مثل الفنيين
+    const isTech = employee.role === 'TECHNICIAN' || employee.isLeader
     const needsFinance = employee.role === 'FINANCE' || permissions.includes('monitoring')
     Promise.all([
       api.getGpsStats().catch(() => null),
@@ -761,7 +762,7 @@ export default function Dashboard() {
       </div>
 
       {/* ═══ My Tasks Panel (Technician/Leader) ═══ */}
-      {(['TECHNICIAN', 'PROJECT_MANAGER'].includes(employee.role) || employee.isLeader) && (
+      {(employee.role === 'TECHNICIAN' || employee.isLeader) && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <button onClick={() => navigate('/my-tasks')} className="text-xs font-medium text-brand-500 hover:underline">عرض الكل ←</button>
@@ -902,13 +903,14 @@ export default function Dashboard() {
       {!isAdmin && employee.role === 'PROJECT_MANAGER' && projectStats && (
         <div className="grid grid-cols-1 gap-4">
           <SystemPanel title="المشاريع" color="#8b5cf6" dotColor="bg-violet-400" actionLabel="عرض الكل" onAction={() => navigate('/projects')}>
-            <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
               <MiniKPI label="اتصال" value={projectStats['اتصال'] || 0} color="#3b82f6" />
               <MiniKPI label="كشف" value={projectStats['كشف'] || 0} color="#10b981" />
               <MiniKPI label="سعر" value={projectStats['سعر'] || 0} color="#f59e0b" />
               <MiniKPI label="تنفيذ" value={projectStats['تنفيذ'] || 0} color="#ef4444" />
               <MiniKPI label="مكتمل" value={projectStats['مكتمل'] || 0} color="#2563eb" />
               <MiniKPI label="مرفوض" value={projectStats['مرفوض'] || 0} color="#6b7280" />
+              <MiniKPI label="حجوزات محولة" value={bookings.filter(b => b.transferToProjects && b.status !== 'COMPLETED' && b.status !== 'CANCELLED').length} color="#8b5cf6" />
             </div>
           </SystemPanel>
         </div>

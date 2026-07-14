@@ -116,6 +116,21 @@ export interface GpsDeviceRequest {
   assignedTechnicianId?: string | null
 }
 
+export interface StaffRequest {
+  id: string
+  projectId: string | null
+  projectName: string | null
+  neededAt: string
+  durationHours: number
+  notes: string | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'FULFILLED'
+  handledAt: string | null
+  createdAt: string
+  requester: { id: string; name: string; position: string | null } | null
+  handledBy: { id: string; name: string; position: string | null } | null
+  employees: { id: string; name: string; position: string | null }[]
+}
+
 export interface GpsRenewalRequest {
   id: string
   customerId: string
@@ -704,6 +719,13 @@ export const api = {
     request<GpsMaintenanceRequest>('/gps/maintenance', { method: 'POST', body: JSON.stringify(data) }),
   updateGpsMaintenance: (id: string, data: Partial<GpsMaintenanceRequest>) =>
     request<GpsMaintenanceRequest>(`/gps/maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // طلبات الكادر (مدير المشاريع يطلب، إدارة الكوادر تلبي)
+  getStaffRequests: (mine?: boolean) => request<StaffRequest[]>(`/staff-requests${mine ? '?mine=1' : ''}`),
+  createStaffRequest: (data: { projectId?: string | null; neededAt: string; durationHours: number; notes?: string | null; employeeIds: string[] }) =>
+    request<StaffRequest>('/staff-requests', { method: 'POST', body: JSON.stringify(data) }),
+  updateStaffRequestStatus: (id: string, status: 'APPROVED' | 'REJECTED' | 'FULFILLED') =>
+    request<StaffRequest>(`/staff-requests/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 
   // Products
   getProducts: () => request<Product[]>('/products'),

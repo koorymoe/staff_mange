@@ -41,6 +41,20 @@ interface Project {
   deliveryDate: string | null
   survey: (string | null)[] | null
   sentToGroup: boolean
+  bookingId: string | null
+  createdAt: string
+}
+
+// حجز محول من إدارة الكوادر (الحجوزات الكبيرة تعتبر مشاريع)
+interface TransferredBooking {
+  id: string
+  code: string
+  customer: { name: string; phone: string }
+  service: { name: string } | null
+  address: string | null
+  quotedPrice: number | null
+  transferToProjects: boolean
+  status: string
   createdAt: string
 }
 
@@ -158,6 +172,7 @@ export default function ProjectsPage() {
   const [editProject, setEditProject] = useState<Project | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ project: Project; nextStage: string } | null>(null)
   const [report, setReport] = useState<{ type: 'survey' | 'visit'; project: Project } | null>(null)
+  const [transferred, setTransferred] = useState<TransferredBooking[]>([])
 
   const load = async () => {
     setLoading(true)
@@ -165,8 +180,34 @@ export default function ProjectsPage() {
       const data = await request<{ projects: Project[]; stats: Stats }>('/projects')
       setProjects(data.projects)
       setStats(data.stats)
+      // الحجوزات المحولة لإدارة المشاريع واللي لسه ما انعمل منها مشروع
+      const linked = new Set(data.projects.map(p => p.bookingId).filter(Boolean))
+      const bookings = await request<TransferredBooking[]>('/bookings')
+      setTransferred(bookings.filter(b =>
+        b.transferToProjects && b.status !== 'COMPLETED' && b.status !== 'CANCELLED' && !linked.has(b.id)
+      ))
     } catch { /* ignore */ }
     setLoading(false)
+  }
+
+  const receiveBooking = async (b: TransferredBooking) => {
+    if (!confirm(`استلام حجز ${b.customer.name} كمشروع جديد؟`)) return
+    try {
+      await request('/projects', {
+        method: 'POST',
+        body: JSON.stringify({
+          name: b.customer.name,
+          rep: b.customer.name,
+          phone: b.customer.phone,
+          location: b.address,
+          workType: b.service?.name || null,
+          bookingId: b.id,
+        }),
+      })
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر استلام الحجز')
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -212,6 +253,35 @@ export default function ProjectsPage() {
           </button>
         </div>
       </div>
+
+      {/* حجوزات محولة من إدارة الكوادر — بانتظار الاستلام كمشاريع */}
+      {transferred.length > 0 && (
+        <div className="rounded-2xl border-2 border-violet-200 bg-violet-50 p-5">
+          <h3 className="mb-3 flex items-center gap-2 text-base font-extrabold text-violet-900">
+            📥 حجوزات محولة للمشاريع
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-violet-600 text-xs font-black text-white">{transferred.length}</span>
+          </h3>
+          <div className="flex flex-col gap-2">
+            {transferred.map(b => (
+              <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
+                <div>
+                  <p className="font-bold text-slate-800">{b.customer.name} <span className="text-xs font-normal text-slate-400">({b.code})</span></p>
+                  <p className="text-sm text-slate-500">
+                    📞 {b.customer.phone}
+                    {b.service ? ` · 🛠️ ${b.service.name}` : ''}
+                    {b.address ? ` · 📍 ${b.address}` : ''}
+                    {b.quotedPrice ? ` · 💰 ${b.quotedPrice.toLocaleString('ar-IQ')} د.ع` : ''}
+                  </p>
+                </div>
+                <button onClick={() => receiveBooking(b)}
+                  className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-700">
+                  استلام كمشروع ←
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center h-64">

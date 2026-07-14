@@ -28,13 +28,13 @@ func (r *ProjectRepository) CountAll() (int, error) {
 	return count, err
 }
 
-func (r *ProjectRepository) Create(code, name string, rep, phone, location, workType, refPerson *string, priority string, deliveryDate *string) (*model.Project, error) {
+func (r *ProjectRepository) Create(code, name string, rep, phone, location, workType, refPerson *string, priority string, deliveryDate, bookingID *string) (*model.Project, error) {
 	var p model.Project
 	err := r.db.Get(&p, `
-		INSERT INTO "Project" (id, code, name, rep, phone, location, "workType", "refPerson", priority, "deliveryDate", stage, "updatedAt")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+		INSERT INTO "Project" (id, code, name, rep, phone, location, "workType", "refPerson", priority, "deliveryDate", stage, "bookingId", "updatedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
 		RETURNING *
-	`, code, name, rep, phone, location, workType, refPerson, priority, deliveryDate, firstStage)
+	`, code, name, rep, phone, location, workType, refPerson, priority, deliveryDate, firstStage, bookingID)
 	if err != nil {
 		return nil, err
 	}

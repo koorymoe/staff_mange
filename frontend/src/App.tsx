@@ -39,6 +39,7 @@ import WorkReportPage from './pages/WorkReportPage'
 import SuppliersPage from './pages/SuppliersPage'
 import StatsPage from './pages/StatsPage'
 import ProjectsPage from './pages/ProjectsPage'
+import StaffRequestsPage from './pages/StaffRequestsPage'
 import MissionsPage from './pages/MissionsPage'
 import ProcurementPage from './pages/ProcurementPage'
 import MapPage from './pages/MapPage'
@@ -80,6 +81,7 @@ function App() {
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="stats" element={<StatsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
+        <Route path="staff-requests" element={<StaffRequestsPage />} />
         <Route path="missions" element={<MissionsPage />} />
         <Route path="procurement" element={<ProcurementPage />} />
         <Route path="map" element={<MapPage />} />

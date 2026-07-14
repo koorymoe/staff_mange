@@ -73,7 +73,7 @@ func (s *ProjectService) Create(req model.CreateProjectRequest) (*model.Project,
 	if req.Priority != nil {
 		priority = *req.Priority
 	}
-	return s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.WorkType, req.RefPerson, priority, req.DeliveryDate)
+	return s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.WorkType, req.RefPerson, priority, req.DeliveryDate, req.BookingID)
 }
 
 func (s *ProjectService) Update(id string, req model.UpdateProjectRequest) (*model.Project, error) {

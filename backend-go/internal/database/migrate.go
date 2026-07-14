@@ -95,6 +95,33 @@ var migrations = []string{
 	// الدور الوحيد الخاص بـGPS اللي بقى، ويرتب موعد الزبون لطلبات GPS الجديدة.
 	`ALTER TABLE "GpsDeviceRequest" ADD COLUMN IF NOT EXISTS "scheduledAt" TIMESTAMP`,
 	`ALTER TABLE "GpsDeviceRequest" ADD COLUMN IF NOT EXISTS "assignedTechnicianId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+
+	// طلبات الكادر: مدير المشاريع يطلب موظفين محددين من كادر الشد بوقت ومدة محددة،
+	// والطلب يروح لإدارة الكوادر (HR) حتى تلبيه — هو الأعلى صلاحية عليهم.
+	`CREATE TABLE IF NOT EXISTS "StaffRequest" (
+		id TEXT PRIMARY KEY,
+		"requesterId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		"projectId" TEXT REFERENCES "Project"(id) ON DELETE SET NULL,
+		"neededAt" TIMESTAMP NOT NULL,
+		"durationHours" DOUBLE PRECISION NOT NULL DEFAULT 8,
+		notes TEXT,
+		status TEXT NOT NULL DEFAULT 'PENDING',
+		"handledById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+		"handledAt" TIMESTAMP,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE TABLE IF NOT EXISTS "StaffRequestEmployee" (
+		id TEXT PRIMARY KEY,
+		"requestId" TEXT NOT NULL REFERENCES "StaffRequest"(id) ON DELETE CASCADE,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		UNIQUE ("requestId", "employeeId")
+	)`,
+	`CREATE INDEX IF NOT EXISTS "StaffRequest_status_idx" ON "StaffRequest"(status)`,
+	`CREATE INDEX IF NOT EXISTS "StaffRequest_requesterId_idx" ON "StaffRequest"("requesterId")`,
+
+	// ربط المشروع بالحجز الأصلي: الحجوزات الكبيرة اللي يحولها إداري الكوادر لإدارة
+	// المشاريع تنشأ منها مشاريع، وهذا العمود يمنع عرض نفس الحجز مرتين كمقترح مشروع.
+	`ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "bookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL`,
 }
 
 func Migrate(db *sqlx.DB) error {
