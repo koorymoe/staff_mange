@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord } from '../api'
+import type { Booking, Expense, AttendanceRecord, StaffRequest } from '../api'
 import { useSession, hasGpsSkill } from '../session'
 
 /* ───── Attendance helpers ───── */
@@ -90,6 +90,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
   const [projectStats, setProjectStats] = useState<Record<string, number> | null>(null)
+  const [pendingStaffReqs, setPendingStaffReqs] = useState<StaffRequest[]>([])
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(formatTime()), 60000)
@@ -123,6 +124,13 @@ export default function Dashboard() {
       )
       setMyTasks(taskList)
     }).finally(() => setLoading(false))
+
+    // طلبات الكادر المعلقة — تنبيه لإداري الكوادر والأدمن
+    if (employee.role === 'ADMIN' || employee.role === 'HR_COORDINATOR') {
+      api.getStaffRequests()
+        .then(reqs => setPendingStaffReqs(reqs.filter(r => r.status === 'PENDING' || r.status === 'APPROVED')))
+        .catch(() => setPendingStaffReqs([]))
+    }
 
     // إحصائيات المشاريع للوحة مدير المشاريع (أو الأدمن)
     if (employee.role === 'PROJECT_MANAGER' || employee.role === 'ADMIN' || permissions.includes('project_management')) {
@@ -331,6 +339,38 @@ export default function Dashboard() {
               </div>
             </button>
           ))}
+        </div>
+      )}
+
+      {/* ═══ طلبات كادر معلقة — تنبيه لإداري الكوادر حتى ما يفوته طلب من إدارة المشاريع ═══ */}
+      {['ADMIN', 'HR_COORDINATOR'].includes(employee.role) && pendingStaffReqs.length > 0 && (
+        <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-l from-violet-50 to-purple-50 p-5 shadow-lg shadow-violet-100/50">
+          <div className="mb-3 flex items-center justify-between">
+            <button onClick={() => navigate('/staff-requests')} className="rounded-lg bg-violet-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-violet-700">
+              عرض الطلبات ←
+            </button>
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-violet-500" />
+              </span>
+              <h3 className="text-base font-extrabold text-violet-800">
+                طلبات كادر بانتظار التلبية
+                <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-sm font-black text-white">{pendingStaffReqs.length}</span>
+              </h3>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {pendingStaffReqs.slice(0, 3).map(r => (
+              <div key={r.id} onClick={() => navigate('/staff-requests')} className="flex cursor-pointer items-center justify-between rounded-xl bg-white/80 px-4 py-3 transition hover:bg-white hover:shadow-md">
+                <span className="text-xs text-slate-400">{new Date(r.neededAt).toLocaleString('ar-IQ')}</span>
+                <div className="text-right text-sm">
+                  <span className="font-bold text-violet-700">{r.requester?.name || '—'}</span>
+                  <span className="mr-2 text-slate-600">يطلب {r.employees.length} موظف · {r.durationHours} ساعة</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
