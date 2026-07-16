@@ -1,6 +1,50 @@
 package model
 
-import "time"
+import (
+	"database/sql/driver"
+	"fmt"
+	"time"
+)
+
+// RawJSON يمرر بيانات jsonb كما هي (بدون تحويلها لسترنغ Go عادي)، يستخدم لعمود
+// survey اللي يخزن مصفوفة إجابات استمارة الكشف الفني الـ17 سؤال بصيغة JSON array.
+type RawJSON []byte
+
+func (r *RawJSON) Scan(src any) error {
+	if src == nil {
+		*r = nil
+		return nil
+	}
+	switch v := src.(type) {
+	case []byte:
+		*r = append(RawJSON{}, v...)
+		return nil
+	case string:
+		*r = RawJSON(v)
+		return nil
+	default:
+		return fmt.Errorf("unsupported Scan type %T for RawJSON", src)
+	}
+}
+
+func (r RawJSON) Value() (driver.Value, error) {
+	if len(r) == 0 {
+		return nil, nil
+	}
+	return []byte(r), nil
+}
+
+func (r RawJSON) MarshalJSON() ([]byte, error) {
+	if len(r) == 0 {
+		return []byte("null"), nil
+	}
+	return r, nil
+}
+
+func (r *RawJSON) UnmarshalJSON(data []byte) error {
+	*r = append((*r)[0:0], data...)
+	return nil
+}
 
 type Project struct {
 	ID           string    `db:"id" json:"id"`
@@ -18,7 +62,7 @@ type Project struct {
 	Task         *string   `db:"task" json:"task"`
 	Priority     string    `db:"priority" json:"priority"`
 	DeliveryDate *string   `db:"deliveryDate" json:"deliveryDate"`
-	Survey       *string   `db:"survey" json:"survey"`
+	Survey       *RawJSON  `db:"survey" json:"survey"`
 	SentToGroup  bool      `db:"sentToGroup" json:"sentToGroup"`
 	BookingID    *string   `db:"bookingId" json:"bookingId"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
@@ -66,6 +110,6 @@ type UpdateProjectRequest struct {
 	Task         *string `json:"task"`
 	Priority     *string `json:"priority"`
 	DeliveryDate *string `json:"deliveryDate"`
-	Survey       *string `json:"survey"`
-	SentToGroup  *bool   `json:"sentToGroup"`
+	Survey       *RawJSON `json:"survey"`
+	SentToGroup  *bool    `json:"sentToGroup"`
 }
