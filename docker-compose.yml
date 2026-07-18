@@ -22,7 +22,7 @@ services:
         condition: service_healthy
     environment:
       PORT: 4000
-      DATABASE_URL: postgresql://staffmange:${DB_PASSWORD}@db:5432/staffmange
+      DATABASE_URL: postgresql://staffmange:${DB_PASSWORD}@db:5432/staffmange?sslmode=disable
       JWT_SECRET: ${JWT_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
       R2_BUCKET: ${R2_BUCKET:-}
