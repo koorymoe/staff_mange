@@ -2,6 +2,10 @@ package model
 
 import "time"
 
+// EngineeringSkillNames هي المهارات الأربع المشروطة قبل ما ينعطى موظف دور "مهندس"
+// (ENGINEER) — يشتغل عليها كل من زرع بيانات الهندسة الأولية والتحقق وقت تغيير الدور.
+var EngineeringSkillNames = []string{"تصميم", "تخطيط", "تنفيذ", "إشراف"}
+
 type Employee struct {
 	ID                   string    `db:"id" json:"id"`
 	Name                 string    `db:"name" json:"name"`

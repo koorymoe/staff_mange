@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -33,6 +34,9 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 	role := "TECHNICIAN"
 	if req.Role != nil && *req.Role != "" {
 		role = *req.Role
+	}
+	if role == "ENGINEER" {
+		return nil, errors.New("لازم تنشئ الموظف كفني أول وتمنحه مهارات الهندسة (تصميم/تخطيط/تنفيذ/إشراف)، وبعدها ترفعه لدور مهندس")
 	}
 	shift := "MORNING"
 	if req.Shift != nil && *req.Shift != "" {
@@ -91,6 +95,11 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		employee.Status = *req.Status
 	}
 	if req.Role != nil {
+		if *req.Role == "ENGINEER" && employee.Role != "ENGINEER" {
+			if err := requireEngineeringSkills(employee); err != nil {
+				return nil, err
+			}
+		}
 		employee.Role = *req.Role
 	}
 	if req.OnDuty != nil {
@@ -172,4 +181,25 @@ func (s *EmployeeService) SetSkills(employeeID string, req model.SetEmployeeSkil
 	}
 	employee.Skills = skills
 	return employee, nil
+}
+
+// requireEngineeringSkills يتأكد إن الموظف عنده المهارات الأربع الأساسية (تصميم/تخطيط/
+// تنفيذ/إشراف) فعّالة قبل ما نسمح نرفعه لدور "مهندس".
+func requireEngineeringSkills(employee *model.Employee) error {
+	has := make(map[string]bool, len(model.EngineeringSkillNames))
+	for _, s := range employee.Skills {
+		if s.CanPerform && s.Skill != nil {
+			has[s.Skill.Name] = true
+		}
+	}
+	var missing []string
+	for _, name := range model.EngineeringSkillNames {
+		if !has[name] {
+			missing = append(missing, name)
+		}
+	}
+	if len(missing) > 0 {
+		return errors.New("الموظف ما عنده مهارات الهندسة المطلوبة بعد: " + strings.Join(missing, "، "))
+	}
+	return nil
 }

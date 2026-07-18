@@ -1,6 +1,10 @@
 package database
 
-import "github.com/jmoiron/sqlx"
+import (
+	"github.com/jmoiron/sqlx"
+
+	"staffmange-api/internal/model"
+)
 
 // migrations هي تعديلات بسيطة وآمنة على البنية (ADD COLUMN IF NOT EXISTS فقط) تُطبَّق
 // تلقائياً كل مرة يشتغل فيها السيرفر، حتى ما يحتاج أي شخص يشغّل ملفات SQL يدوياً بعد
@@ -122,6 +126,34 @@ var migrations = []string{
 	// ربط المشروع بالحجز الأصلي: الحجوزات الكبيرة اللي يحولها إداري الكوادر لإدارة
 	// المشاريع تنشأ منها مشاريع، وهذا العمود يمنع عرض نفس الحجز مرتين كمقترح مشروع.
 	`ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "bookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL`,
+
+	// دور "مهندس" (ENGINEER) الجديد — يشترط أربع مهارات هندسية أساسية قبل ما ينعطى
+	// له الدور (تصميم/تخطيط/تنفيذ/إشراف)، التحقق نفسه بمنطق Go لأنه شرط عمل مو بنية جدول.
+	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'ENGINEER'`,
+
+	// "مسؤول خدمة" عام: تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات — جدول يربط موظف
+	// بمجموعة خدمات هو المسؤول الوحيد عن تفعيلها/جدولتها (مثال: GPS + صوتيات + حريق سوا).
+	`CREATE TABLE IF NOT EXISTS "ServiceManager" (
+		id TEXT PRIMARY KEY,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		"serviceId" TEXT NOT NULL REFERENCES "Service"(id) ON DELETE CASCADE,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE ("employeeId", "serviceId")
+	)`,
+	`CREATE INDEX IF NOT EXISTS "ServiceManager_employeeId_idx" ON "ServiceManager"("employeeId")`,
+	`CREATE INDEX IF NOT EXISTS "ServiceManager_serviceId_idx" ON "ServiceManager"("serviceId")`,
+
+	// تتبع موقع الفني الحي وهو ماشي للزبون — يلتقط المتصفح موقعه دورياً أثناء فتح
+	// الصفحة، ونخزن آخر نقطة + سجل المسار (لعرضه على الخريطة بمتابعة الفرق الميدانية).
+	`CREATE TABLE IF NOT EXISTS "LocationPing" (
+		id TEXT PRIMARY KEY,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		"bookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL,
+		latitude DOUBLE PRECISION NOT NULL,
+		longitude DOUBLE PRECISION NOT NULL,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "LocationPing_employeeId_idx" ON "LocationPing"("employeeId", "createdAt")`,
 }
 
 func Migrate(db *sqlx.DB) error {
@@ -130,7 +162,32 @@ func Migrate(db *sqlx.DB) error {
 			return err
 		}
 	}
-	return migrateGpsEngineersToSkill(db)
+	if err := migrateGpsEngineersToSkill(db); err != nil {
+		return err
+	}
+	return seedEngineeringSkills(db)
+}
+
+// seedEngineeringSkills يزرع خدمة "الهندسة" ومهاراتها الأربع مرة وحدة (idempotent) —
+// نفس هالمهارات تنشرط بالموظف قبل ما يوصل دور "مهندس".
+func seedEngineeringSkills(db *sqlx.DB) error {
+	if _, err := db.Exec(`
+		INSERT INTO "Service" (id, name, category)
+		VALUES ('svc_engineering', 'الهندسة', 'إدارية')
+		ON CONFLICT (id) DO NOTHING
+	`); err != nil {
+		return err
+	}
+	for _, name := range model.EngineeringSkillNames {
+		if _, err := db.Exec(`
+			INSERT INTO "Skill" (id, name, "serviceId")
+			VALUES ('sk_eng_' || $1, $1, 'svc_engineering')
+			ON CONFLICT (id) DO NOTHING
+		`, name); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // migrateGpsEngineersToSkill يحول أي موظف لسه بدور GPS_ENGINEER (القديم) إلى TECHNICIAN

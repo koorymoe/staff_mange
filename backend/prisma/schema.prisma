@@ -61,6 +61,7 @@ enum EmployeeRole {
   GPS_ADMIN
   GPS_ENGINEER
   QUALITY_ENGINEER
+  ENGINEER
 }
 
 enum ExpenseStatus {
