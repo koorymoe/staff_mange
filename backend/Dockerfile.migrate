@@ -1,0 +1,9 @@
+# حاوية تشتغل مرة وحدة بس: تطبق مخطط قاعدة البيانات الأساسي (Prisma) قبل
+# ما يشتغل الباك إند الحقيقي (Go) — الباك إند الجديد يبني فوق هذا المخطط
+# بس (migrations إضافية)، ما يصنعه من الصفر.
+FROM node:22-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY prisma ./prisma
+CMD ["npx", "prisma", "migrate", "deploy"]
