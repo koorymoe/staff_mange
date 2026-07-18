@@ -54,6 +54,9 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 }
 
 func authorizeReview(evaluator, target *model.Employee) error {
+	if evaluator.ID == target.ID {
+		return errors.New("ما تكدر تقيّم نفسك")
+	}
 	if evaluator.Role == "ADMIN" {
 		return nil
 	}

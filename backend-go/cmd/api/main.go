@@ -19,6 +19,9 @@ func main() {
 	_ = godotenv.Load()
 
 	cfg := config.Load()
+	if len(cfg.JWTSecret) < 16 {
+		log.Fatal("JWT_SECRET غير معرّف أو قصير جداً — السيرفر يرفض يشتغل بدون سر تواقيع قوي (16 حرف على الأقل)")
+	}
 
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
@@ -125,6 +128,7 @@ func main() {
 	requireHR := middleware.RequireRole("ADMIN", "HR_COORDINATOR")
 	requireMonitor := middleware.RequireRole("ADMIN", "MONITOR")
 	requireProjectManager := middleware.RequireRole("ADMIN", "PROJECT_MANAGER")
+	requireFieldMonitor := middleware.RequireRole("ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
 	requireGpsAdmin := middleware.RequireRole("ADMIN", "GPS_ADMIN")
 	requireContentTech := middleware.RequirePermission(permissionRepo, "content_technician")
 	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, "vehicle_management")
@@ -274,9 +278,12 @@ func main() {
 	mux.Handle("PUT /api/service-managers", middleware.Chain(http.HandlerFunc(serviceManagerHandler.Set), requireAuth, requireAdmin))
 
 	// تتبع الموقع الحي للفرق الميدانية
+	// إرسال نقطة موقع مفتوح لأي موظف مسجل دخول (يرسل موقعه هو بس، محمي داخل الهاندلر
+	// عبر EmployeeIDFromContext). القراءة (مين وين الحين، مسار أي موظف) محصورة بمن
+	// يدير الفرق الميدانية فعلاً — حتى ما يقدر أي فني يتتبع مواقع زملائه.
 	mux.Handle("POST /api/location-pings", middleware.Chain(http.HandlerFunc(locationPingHandler.Create), requireAuth))
-	mux.Handle("GET /api/location-pings/latest", middleware.Chain(http.HandlerFunc(locationPingHandler.Latest), requireAuth))
-	mux.Handle("GET /api/location-pings/path", middleware.Chain(http.HandlerFunc(locationPingHandler.Path), requireAuth))
+	mux.Handle("GET /api/location-pings/latest", middleware.Chain(http.HandlerFunc(locationPingHandler.Latest), requireAuth, requireFieldMonitor))
+	mux.Handle("GET /api/location-pings/path", middleware.Chain(http.HandlerFunc(locationPingHandler.Path), requireAuth, requireFieldMonitor))
 
 	// تقييم الأداء (منفصل عن KPI مال الغرامات) — الليدر يقيّم فنييه، الإداري يقيّم الليدرات
 	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth))

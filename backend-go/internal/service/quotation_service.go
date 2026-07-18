@@ -34,6 +34,11 @@ func (s *QuotationService) Create(req model.CreateQuotationRequest) (*model.Quot
 	if req.CustomerName == "" || req.CreatedByEmployeeID == "" {
 		return nil, errors.New("customerName and createdByEmployeeId are required")
 	}
+	for _, item := range req.Items {
+		if item.UnitPrice < 0 {
+			return nil, errors.New("سعر الوحدة ما يصير يكون بالسالب")
+		}
+	}
 	return s.repo.Create(req)
 }
 

@@ -67,6 +67,9 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 }
 
 func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*model.Booking, error) {
+	if req.QuotedPrice != nil && *req.QuotedPrice < 0 {
+		return nil, errors.New("المبلغ المقدّر ما يصير يكون بالسالب")
+	}
 	if err := s.repo.Confirm(id, req, req.ScheduledAt); err != nil {
 		return nil, err
 	}
@@ -74,6 +77,9 @@ func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*m
 }
 
 func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetailsRequest) (*model.Booking, error) {
+	if req.QuotedPrice != nil && *req.QuotedPrice < 0 {
+		return nil, errors.New("المبلغ المقدّر ما يصير يكون بالسالب")
+	}
 	if err := s.repo.UpdateDetails(id, req); err != nil {
 		return nil, err
 	}
@@ -237,6 +243,12 @@ func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Bookin
 }
 
 func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (*model.Booking, error) {
+	if req.AmountCollected != nil && *req.AmountCollected < 0 {
+		return nil, errors.New("المبلغ المحصّل ما يصير يكون بالسالب")
+	}
+	if req.AdvancePaid != nil && *req.AdvancePaid < 0 {
+		return nil, errors.New("الدفعة المقدمة ما يصير تكون بالسالب")
+	}
 	if err := s.repo.Complete(id, req); err != nil {
 		return nil, err
 	}

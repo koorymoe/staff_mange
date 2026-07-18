@@ -6,9 +6,33 @@ import (
 	"net/http"
 	"strings"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
+
+// canSeeSalaries يحدد مين يشوف رواتب باقي الموظفين — الرواتب بيانات حساسة، مو كل
+// موظف مسجل دخول يحتاج يشوفها لبقية الكادر.
+func canSeeSalaries(role string) bool {
+	switch role {
+	case "ADMIN", "HR_COORDINATOR", "MONITOR", "FINANCE":
+		return true
+	default:
+		return false
+	}
+}
+
+// redactSalaries يشيل الراتب من أي موظف غير الشخص نفسه إذا الطالب ما عنده صلاحية يشوف الرواتب
+func redactSalaries(employees []model.Employee, role, selfID string) {
+	if canSeeSalaries(role) {
+		return
+	}
+	for i := range employees {
+		if employees[i].ID != selfID {
+			employees[i].Salary = nil
+		}
+	}
+}
 
 type EmployeeHandler struct {
 	service *service.EmployeeService
@@ -25,6 +49,7 @@ func (h *EmployeeHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة الموظفين")
 		return
 	}
+	redactSalaries(employees, middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r))
 	WriteJSON(w, http.StatusOK, employees)
 }
 
@@ -39,6 +64,9 @@ func (h *EmployeeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب بيانات الموظف")
 		return
+	}
+	if !canSeeSalaries(middleware.RoleFromContext(r)) && employee.ID != middleware.EmployeeIDFromContext(r) {
+		employee.Salary = nil
 	}
 	WriteJSON(w, http.StatusOK, employee)
 }

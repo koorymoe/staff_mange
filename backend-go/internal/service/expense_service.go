@@ -23,6 +23,9 @@ func (s *ExpenseService) Create(req model.CreateExpenseRequest) (*model.Expense,
 	if req.EmployeeID == "" || req.Amount == nil {
 		return nil, errors.New("employeeId and amount are required")
 	}
+	if *req.Amount < 0 {
+		return nil, errors.New("مبلغ المصروف ما يصير يكون بالسالب")
+	}
 	return s.repo.Create(req.EmployeeID, *req.Amount, req.Description)
 }
 

@@ -23,6 +23,9 @@ func (s *ProductService) Create(req model.CreateProductRequest) (*model.Product,
 	if req.Name == "" {
 		return nil, errors.New("name is required")
 	}
+	if req.DefaultPrice != nil && *req.DefaultPrice < 0 {
+		return nil, errors.New("السعر الافتراضي ما يصير يكون بالسالب")
+	}
 	return s.repo.Create(req.Name, req.Unit, req.DefaultPrice, req.ImageBase64)
 }
 

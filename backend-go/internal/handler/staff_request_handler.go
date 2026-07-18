@@ -69,7 +69,29 @@ func (h *StaffRequestHandler) UpdateStatus(w http.ResponseWriter, r *http.Reques
 		WriteError(w, http.StatusBadRequest, "حالة غير معروفة")
 		return
 	}
-	sr, err := h.repo.UpdateStatus(r.PathValue("id"), req.Status, middleware.EmployeeIDFromContext(r))
+
+	current, err := h.repo.Get(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "الطلب غير موجود")
+		return
+	}
+	handlerID := middleware.EmployeeIDFromContext(r)
+	if current.RequesterID == handlerID {
+		WriteError(w, http.StatusForbidden, "ما تكدر توافق على طلب الكادر الي طلبته انت نفسك")
+		return
+	}
+	allowedTransitions := map[string]map[string]bool{
+		"PENDING":   {"APPROVED": true, "REJECTED": true},
+		"APPROVED":  {"FULFILLED": true, "REJECTED": true},
+		"REJECTED":  {},
+		"FULFILLED": {},
+	}
+	if !allowedTransitions[current.Status][req.Status] {
+		WriteError(w, http.StatusBadRequest, "تغيير الحالة هذا غير مسموح من الحالة الحالية")
+		return
+	}
+
+	sr, err := h.repo.UpdateStatus(r.PathValue("id"), req.Status, handlerID)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر تحديث حالة الطلب")
 		return
