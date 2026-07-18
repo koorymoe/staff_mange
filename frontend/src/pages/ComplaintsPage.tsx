@@ -16,8 +16,14 @@ const statusColors: Record<Complaint['status'], string> = {
   CLOSED: 'bg-gray-100 text-gray-800',
 }
 
+// أبو الجودة والمراقب المدقق (والأدمن) يشوفون متابعة/إدارة الشكاوى بس —
+// باقي الأدوار الي عندها صلاحية الشكاوى (مثلاً المبيعات) تشوف تسجيل شكوى
+// جديدة بس، بدون واجهة المتابعة والإدارة.
+const trackingRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN']
+
 export default function ComplaintsPage() {
   const { employee: currentUser } = useSession()
+  const canTrack = !!currentUser && trackingRoles.includes(currentUser.role)
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -49,6 +55,10 @@ export default function ComplaintsPage() {
   }
 
   useEffect(load, [])
+  // الأدوار الي بس تسجل شكوى (بدون متابعة) تشوف الفورم مباشرة بدون زر تبديل
+  useEffect(() => {
+    if (currentUser && !canTrack) setShowForm(true)
+  }, [currentUser, canTrack])
 
   const handleLookup = async () => {
     if (!phone.trim()) return
@@ -123,16 +133,18 @@ export default function ComplaintsPage() {
           <h2 className="text-2xl font-bold text-brand-900">شكاوى الصيانة</h2>
           <p className="mt-1 text-slate-500">إدارة شكاوى العملاء ومتابعة حالتها.</p>
         </div>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30"
-        >
-          شكوى جديدة
-        </button>
+        {!canTrack && (
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30"
+          >
+            شكوى جديدة
+          </button>
+        )}
       </div>
 
       {/* New complaint form */}
-      {showForm && (
+      {!canTrack && showForm && (
         <form
           onSubmit={handleSubmit}
           className="mt-6 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
@@ -187,7 +199,7 @@ export default function ComplaintsPage() {
       )}
 
       {/* Resolution modal */}
-      {resolvingId && (
+      {canTrack && resolvingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
             <h3 className="mb-4 text-lg font-bold text-brand-800">حل الشكوى</h3>
@@ -223,7 +235,7 @@ export default function ComplaintsPage() {
         </p>
       )}
 
-      {!loading && !error && (
+      {canTrack && !loading && !error && (
         <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-right">
