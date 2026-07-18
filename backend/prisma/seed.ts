@@ -249,11 +249,11 @@ async function main() {
   console.log(`Seeded ${defaultPermissions.length} permissions`)
 
   await prisma.employee.upsert({
-    where: { username: 'عمار' },
+    where: { username: 'ع' },
     update: { password: bcrypt.hashSync('171001', 10), role: 'ADMIN', status: 'ACTIVE' },
     create: {
       name: 'عمار',
-      username: 'عمار',
+      username: 'ع',
       password: bcrypt.hashSync('171001', 10),
       role: 'ADMIN',
       status: 'ACTIVE',
@@ -261,7 +261,7 @@ async function main() {
       jobTitle: 'مدير النظام',
     },
   })
-  console.log('Seeded admin account (username: عمار)')
+  console.log('Seeded admin account (username: ع)')
 }
 
 main()
