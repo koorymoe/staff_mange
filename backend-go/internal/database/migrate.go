@@ -154,6 +154,18 @@ var migrations = []string{
 		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
 	`CREATE INDEX IF NOT EXISTS "LocationPing_employeeId_idx" ON "LocationPing"("employeeId", "createdAt")`,
+
+	// تقييم الأداء (منفصل تماماً عن KPI مال الغرامات المالية) — يحدد هل الموظف يستحق
+	// تدريب أو لا. التيم ليدر يقيّم فنييه، والإداري يقيّم التيم ليدر نفسه.
+	`CREATE TABLE IF NOT EXISTS "PerformanceReview" (
+		id TEXT PRIMARY KEY,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		"evaluatorId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		rating TEXT NOT NULL,
+		reason TEXT NOT NULL,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "PerformanceReview_employeeId_idx" ON "PerformanceReview"("employeeId")`,
 }
 
 func Migrate(db *sqlx.DB) error {

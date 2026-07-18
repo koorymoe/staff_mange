@@ -44,6 +44,8 @@ const navItems: NavItem[] = [
           { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
           // طلبات الكادر الواردة من إدارة المشاريع — إداري الكوادر يلبيها
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'] },
+          // تقييم الأداء (منفصل عن KPI) — إداري الكوادر يقيّم تيم ليدرات الفرق
+          { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'] },
         ],
       },
       {
@@ -107,6 +109,8 @@ const navItems: NavItem[] = [
   { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER'] },
   { to: '/my-expenses', label: 'مصاريفي', icon: <I d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
   { to: '/my-inventory', label: 'جرد أدواتي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>, roles: ['TECHNICIAN'] },
+  // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
+  { to: '/performance-review', label: 'تقييم فريقي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
   { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
 
   // ── صلاحية "التقني" ومركبات وجودة — تطلع لأي موظف عنده الصلاحية المخصصة بغض النظر عن دوره ──

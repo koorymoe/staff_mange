@@ -58,6 +58,7 @@ func main() {
 	staffRequestRepo := repository.NewStaffRequestRepository(db)
 	serviceManagerRepo := repository.NewServiceManagerRepository(db)
 	locationPingRepo := repository.NewLocationPingRepository(db)
+	performanceReviewRepo := repository.NewPerformanceReviewRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
@@ -115,6 +116,8 @@ func main() {
 	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
 	serviceManagerHandler := handler.NewServiceManagerHandler(serviceManagerRepo)
 	locationPingHandler := handler.NewLocationPingHandler(locationPingRepo)
+	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo)
+	performanceReviewHandler := handler.NewPerformanceReviewHandler(performanceReviewService)
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
@@ -274,6 +277,11 @@ func main() {
 	mux.Handle("POST /api/location-pings", middleware.Chain(http.HandlerFunc(locationPingHandler.Create), requireAuth))
 	mux.Handle("GET /api/location-pings/latest", middleware.Chain(http.HandlerFunc(locationPingHandler.Latest), requireAuth))
 	mux.Handle("GET /api/location-pings/path", middleware.Chain(http.HandlerFunc(locationPingHandler.Path), requireAuth))
+
+	// تقييم الأداء (منفصل عن KPI مال الغرامات) — الليدر يقيّم فنييه، الإداري يقيّم الليدرات
+	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth))
+	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth))
+	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))
 
 	// المشتريات (procurement)
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth))

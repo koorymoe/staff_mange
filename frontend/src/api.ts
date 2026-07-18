@@ -148,6 +148,17 @@ export interface StaffRequest {
   employees: { id: string; name: string; position: string | null }[]
 }
 
+export interface PerformanceReview {
+  id: string
+  employeeId: string
+  evaluatorId: string
+  rating: 'POSITIVE' | 'NEGATIVE'
+  reason: string
+  createdAt: string
+  employee: { id: string; name: string; position: string | null } | null
+  evaluator: { id: string; name: string; position: string | null } | null
+}
+
 export interface GpsRenewalRequest {
   id: string
   customerId: string
@@ -755,6 +766,12 @@ export const api = {
     request<StaffRequest>('/staff-requests', { method: 'POST', body: JSON.stringify(data) }),
   updateStaffRequestStatus: (id: string, status: 'APPROVED' | 'REJECTED' | 'FULFILLED') =>
     request<StaffRequest>(`/staff-requests/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
+
+  // تقييم الأداء (منفصل عن KPI مال الغرامات) — يحدد استحقاق التدريب فقط
+  createPerformanceReview: (data: { employeeId: string; rating: 'POSITIVE' | 'NEGATIVE'; reason: string }) =>
+    request<PerformanceReview>('/performance-reviews', { method: 'POST', body: JSON.stringify(data) }),
+  getPerformanceReviews: () => request<PerformanceReview[]>('/performance-reviews'),
+  getPerformanceReviewsForEmployee: (employeeId: string) => request<PerformanceReview[]>(`/performance-reviews/employee/${employeeId}`),
 
   // Products
   getProducts: () => request<Product[]>('/products'),
