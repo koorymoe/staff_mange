@@ -37,4 +37,5 @@ export const roleLabels: Record<string, string> = {
   FINANCE: 'محاسب',
   GPS_ADMIN: 'مسؤول GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
+  ENGINEER: 'مهندس',
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '../session'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
@@ -66,6 +66,7 @@ export default function MissionsPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'active' | 'completed' | 'monitor'>('active')
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
+  const [pathMission, setPathMission] = useState<Mission | null>(null)
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
@@ -91,6 +92,29 @@ export default function MissionsPage() {
     const iv = setInterval(load, 30000)
     return () => clearInterval(iv)
   }, [load])
+
+  // تتبع موقع حي: أي مهمة أنا قائدها أو عضو فيها وحالتها "بالطريق" — نرسل موقعنا كل 20 ثانية
+  useEffect(() => {
+    if (!employee || !('geolocation' in navigator)) return
+    const myEnRoute = missions.find(m => m.stage === 'EN_ROUTE' && (m.leaderId === employee.id || m.memberIds.includes(employee.id)))
+    if (!myEnRoute) return
+
+    const sendPing = () => {
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          request('/location-pings', {
+            method: 'POST',
+            body: JSON.stringify({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, bookingId: myEnRoute.bookingId }),
+          }).catch(() => {})
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10000 }
+      )
+    }
+    sendPing()
+    const iv = setInterval(sendPing, 20000)
+    return () => clearInterval(iv)
+  }, [missions, employee])
 
   const advanceStage = async (mission: Mission, newStage: string, extra?: Record<string, unknown>) => {
     if (!employee) return
@@ -257,6 +281,11 @@ export default function MissionsPage() {
                   <div className="mb-3 rounded-lg bg-purple-50 border border-purple-200 p-3 text-center">
                     <p className="text-xs text-purple-600">🚗 بالطريق منذ</p>
                     <p className="text-lg font-bold text-purple-700">{timeSince(m.departedAt)}</p>
+                    {isAdmin && (
+                      <button onClick={() => setPathMission(m)} className="mt-2 rounded-lg bg-purple-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-purple-700">
+                        🗺️ شوف المسار الحي
+                      </button>
+                    )}
                   </div>
                 )}
                 {m.stage === 'WORK_STARTED' && m.workStartedAt && (
@@ -407,6 +436,68 @@ export default function MissionsPage() {
           </div>
         </div>
       )}
+
+      {pathMission && <LivePathModal mission={pathMission} onClose={() => setPathMission(null)} />}
+    </div>
+  )
+}
+
+// ═══ خريطة المسار الحي — تجيب نقاط الموقع المرسلة من متصفح الفني وترسمها كخط متحرك ═══
+function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => void }) {
+  const [points, setPoints] = useState<{ latitude: number; longitude: number; createdAt: string }[]>([])
+  const mapRef = useRef<HTMLDivElement | null>(null)
+  const leafletRef = useRef<{ map: any; line: any; marker: any }>({ map: null, line: null, marker: null })
+
+  const load = useCallback(async () => {
+    try {
+      const memberId = mission.leaderId
+      const data = await request<{ latitude: number; longitude: number; createdAt: string }[]>(
+        `/location-pings/path?employeeId=${memberId}&bookingId=${mission.bookingId}`
+      )
+      setPoints(data)
+    } catch { /* ignore */ }
+  }, [mission])
+
+  useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv) }, [load])
+
+  useEffect(() => {
+    let disposed = false
+    import('leaflet').then(L => {
+      if (disposed || !mapRef.current || leafletRef.current.map) return
+      const center = points[points.length - 1] || { latitude: 33.3152, longitude: 44.3661 }
+      const map = L.map(mapRef.current).setView([center.latitude, center.longitude], 13)
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map)
+      leafletRef.current.map = map
+    })
+    return () => { disposed = true; if (leafletRef.current.map) { leafletRef.current.map.remove(); leafletRef.current.map = null } }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!leafletRef.current.map || points.length === 0) return
+    import('leaflet').then(L => {
+      const ref = leafletRef.current
+      const latlngs = points.map(p => [p.latitude, p.longitude]) as [number, number][]
+      if (ref.line) ref.map.removeLayer(ref.line)
+      if (ref.marker) ref.map.removeLayer(ref.marker)
+      ref.line = L.polyline(latlngs, { color: '#7c3aed', weight: 4 }).addTo(ref.map)
+      ref.marker = L.marker(latlngs[latlngs.length - 1]).addTo(ref.map)
+      ref.map.fitBounds(ref.line.getBounds(), { padding: [30, 30] })
+    })
+  }, [points])
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4" onClick={onClose}>
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl bg-white shadow-xl" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-slate-100 p-4">
+          <h3 className="text-lg font-bold text-purple-700">🗺️ المسار الحي — {mission.leader?.name || 'الفريق'}</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600">✕</button>
+        </div>
+        <div ref={el => { mapRef.current = el }} style={{ height: 420 }} />
+        <div className="p-3 text-center text-xs text-slate-400">
+          {points.length > 0 ? `${points.length} نقطة موقع مسجلة — يتحدث تلقائياً كل 15 ثانية` : 'ما وصلت أي نقطة موقع بعد — تأكد إن الفني فاتح النظام بموبايله'}
+        </div>
+      </div>
     </div>
   )
 }

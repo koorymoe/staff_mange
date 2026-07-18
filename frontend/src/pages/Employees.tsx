@@ -23,6 +23,7 @@ const roleLabels: Record<string, string> = {
   FINANCE: 'محاسب',
   GPS_ADMIN: 'مسؤول GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
+  ENGINEER: 'مهندس',
 }
 
 const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
@@ -35,6 +36,7 @@ const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
   FINANCE: { bg: 'bg-lime-50', text: 'text-lime-700', dot: 'bg-lime-500' },
   GPS_ADMIN: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
   QUALITY_ENGINEER: { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', dot: 'bg-fuchsia-500' },
+  ENGINEER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
 }
 
 const avatarGradients: string[] = [
@@ -431,8 +433,13 @@ export default function Employees() {
                         <label className="mb-1 block text-xs font-medium text-slate-400">الصلاحية / الدور</label>
                         <select value={selectedEmployee.role}
                           onChange={async (e) => {
-                            const updated = await api.updateEmployee(selectedEmployee.id, { role: e.target.value as Employee['role'] })
-                            setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
+                            const nextRole = e.target.value as Employee['role']
+                            try {
+                              const updated = await api.updateEmployee(selectedEmployee.id, { role: nextRole })
+                              setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
+                            } catch (err) {
+                              alert(err instanceof Error ? err.message : 'تعذر تغيير الدور')
+                            }
                           }}
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white">
                           {Object.entries(roleLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

@@ -30,6 +30,22 @@ export interface Service {
   skills: Skill[]
 }
 
+export interface ServiceManager {
+  id: string
+  createdAt: string
+  employee: { id: string; name: string; position: string | null } | null
+  service: Service | null
+}
+
+export interface LocationPing {
+  id: string
+  employeeId: string
+  bookingId: string | null
+  latitude: number
+  longitude: number
+  createdAt: string
+}
+
 export interface EmployeeSkill {
   id: string
   skillId: string
@@ -47,6 +63,7 @@ export type EmployeeRole =
   | 'FINANCE'
   | 'GPS_ADMIN'
   | 'QUALITY_ENGINEER'
+  | 'ENGINEER'
 
 export interface Employee {
   id: string
@@ -572,6 +589,18 @@ export const api = {
   getServices: () => request<Service[]>('/services'),
   createService: (data: { name: string; category?: string }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
+
+  // مسؤول خدمة عام (تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات)
+  getServiceManagers: () => request<ServiceManager[]>('/service-managers'),
+  setServiceManagers: (employeeId: string, serviceIds: string[]) =>
+    request<ServiceManager[]>('/service-managers', { method: 'PUT', body: JSON.stringify({ employeeId, serviceIds }) }),
+
+  // تتبع الموقع الحي
+  createLocationPing: (data: { latitude: number; longitude: number; bookingId?: string | null }) =>
+    request<LocationPing>('/location-pings', { method: 'POST', body: JSON.stringify(data) }),
+  getLatestLocations: () => request<LocationPing[]>('/location-pings/latest'),
+  getLocationPath: (employeeId: string, bookingId?: string) =>
+    request<LocationPing[]>(`/location-pings/path?employeeId=${employeeId}${bookingId ? `&bookingId=${bookingId}` : ''}`),
 
   getEmployees: () => request<Employee[]>('/employees'),
   createEmployee: (

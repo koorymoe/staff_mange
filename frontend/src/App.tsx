@@ -40,6 +40,7 @@ import SuppliersPage from './pages/SuppliersPage'
 import StatsPage from './pages/StatsPage'
 import ProjectsPage from './pages/ProjectsPage'
 import StaffRequestsPage from './pages/StaffRequestsPage'
+import ServiceManagersPage from './pages/ServiceManagersPage'
 import MissionsPage from './pages/MissionsPage'
 import ProcurementPage from './pages/ProcurementPage'
 import MapPage from './pages/MapPage'
@@ -82,6 +83,7 @@ function App() {
         <Route path="stats" element={<StatsPage />} />
         <Route path="projects" element={<ProjectsPage />} />
         <Route path="staff-requests" element={<StaffRequestsPage />} />
+        <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />
         <Route path="missions" element={<MissionsPage />} />
         <Route path="procurement" element={<ProcurementPage />} />
         <Route path="map" element={<MapPage />} />

@@ -11,7 +11,12 @@ const roleLabels: Record<EmployeeRole, string> = {
   FINANCE: 'محاسب',
   GPS_ADMIN: 'مسؤول GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
+  ENGINEER: 'مهندس',
 }
+
+// دور "مهندس" ما ينعطى وقت إنشاء موظف جديد — لازم الموظف يصير فني أول وتنعطى له
+// مهارات الهندسة (تصميم/تخطيط/تنفيذ/إشراف)، وبعدها يترفّع من صفحة إدارة الكوادر.
+const creatableRoles = (Object.keys(roleLabels) as EmployeeRole[]).filter(r => r !== 'ENGINEER')
 
 function calcHours(start: string, end: string): number | null {
   if (!start || !end) return null
@@ -189,14 +194,17 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
             <div className="flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-500">الدور الوظيفي بالنظام</label>
               <div className="grid grid-cols-2 gap-2">
-                {(Object.entries(roleLabels) as [EmployeeRole, string][]).map(([key, label]) => (
-                  <button key={key} type="button" onClick={() => setRole(key)}
-                    className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
-                      role === key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                    }`}>
-                    {label}
-                  </button>
-                ))}
+                {creatableRoles.map(key => {
+                  const label = roleLabels[key]
+                  return (
+                    <button key={key} type="button" onClick={() => setRole(key)}
+                      className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
+                        role === key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                      }`}>
+                      {label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           )}

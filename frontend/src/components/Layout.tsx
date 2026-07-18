@@ -66,6 +66,7 @@ const navItems: NavItem[] = [
           { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
           { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
           { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
+          { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'] },
         ],
       },
       {
@@ -152,6 +153,7 @@ const roleColors: Record<string, string> = {
   FINANCE: 'from-lime-500 to-green-600',
   GPS_ADMIN: 'from-indigo-500 to-blue-600',
   QUALITY_ENGINEER: 'from-fuchsia-500 to-purple-600',
+  ENGINEER: 'from-teal-500 to-cyan-700',
 }
 
 export default function Layout() {
