@@ -17,4 +17,4 @@ COPY prisma ./prisma
 # db push يصنع الجداول الناقصة، بعدها نولد Prisma Client (لازم لسكربت
 # البذر)، وبعدها سكربت البذر يزرع بيانات أساسية (خدمات، مهارات، وحساب
 # أدمن افتراضي) — السكربت idempotent (upsert) فما مشكلة لو تكرر بكل تشغيل.
-CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && npx prisma generate && npm run seed"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate --accept-data-loss && npx prisma generate && npx prisma db seed"]
