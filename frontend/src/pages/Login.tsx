@@ -24,7 +24,7 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-500 via-brand-700 to-brand-900 p-4">
+    <div className="glossy-dark flex min-h-screen items-center justify-center bg-gradient-to-b from-brand-500 via-brand-700 to-brand-900 p-4">
       <form
         onSubmit={handleSubmit}
         className="w-full max-w-sm rounded-xl border border-white bg-white p-8 shadow-[0_4px_20px_rgba(15,32,64,0.2)]"
@@ -58,7 +58,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={submitting}
-          className="mt-6 w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
+          className="glossy-btn mt-6 w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2 font-medium text-white transition-all disabled:opacity-50"
         >
           {submitting ? 'جاري الدخول...' : 'تسجيل الدخول'}
         </button>

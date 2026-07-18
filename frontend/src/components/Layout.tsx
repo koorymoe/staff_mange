@@ -330,7 +330,7 @@ export default function Layout() {
           className={({ isActive }) =>
             `group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
               isActive
-                ? 'bg-gradient-to-l from-[#2c5aad]/90 to-[#1e3f7a] text-white shadow-lg shadow-blue-900/30'
+                ? 'glossy-btn bg-gradient-to-l from-[#2c5aad]/90 to-[#1e3f7a] text-white shadow-lg shadow-blue-900/30'
                 : 'text-blue-200/70 hover:bg-white/[0.06] hover:text-white'
             }`
           }>
@@ -417,7 +417,7 @@ export default function Layout() {
         {/* ===== Right Sidebar — Premium ===== */}
         <aside
           dir="rtl"
-          className={`fixed inset-y-0 right-0 z-50 flex h-screen flex-col bg-[#0f2040] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
+          className={`glossy-dark fixed inset-y-0 right-0 z-50 flex h-screen flex-col bg-[#0f2040] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
             mobileOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
           style={{ width: collapsed ? 72 : 270, minWidth: collapsed ? 72 : 270 }}
