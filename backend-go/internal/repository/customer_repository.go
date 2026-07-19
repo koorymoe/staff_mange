@@ -57,6 +57,14 @@ func (r *CustomerRepository) FindByID(id string) (*model.Customer, error) {
 	return &c, nil
 }
 
+// CountBookings يرجع عدد الحجوزات السابقة لزبون معيّن — يستخدم لتمييز "زبون جديد" عن
+// "زبون قديم" وقت تسجيل حجز جديد له.
+func (r *CustomerRepository) CountBookings(customerID string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1`, customerID)
+	return count, err
+}
+
 // UpdateLocation يحدّث موقع الزبون المحفوظ كلما ثبّت موظف المبيعات موقعاً جديداً بحجز،
 // حتى تنترحل آخر نقطة معروفة تلقائياً بالمرة الجاية.
 func (r *CustomerRepository) UpdateLocation(id string, location *string, lat, lng *float64) error {

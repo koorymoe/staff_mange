@@ -81,6 +81,25 @@ func (r *ComplaintRepository) Update(id string, status, assignedToEmployeeID, re
 	return &c, nil
 }
 
+// StatsByCustomer يرجع عدد الشكاوى لكل زبون اشتكى (مرة واحدة على الأقل)، مرتبة من
+// الأكثر شكاوى — تقرير منفصل تماماً عن إحصائيات الحجوزات.
+func (r *ComplaintRepository) StatsByCustomer() ([]model.ComplaintCustomerStat, error) {
+	stats := []model.ComplaintCustomerStat{}
+	err := r.db.Select(&stats, `
+		SELECT
+			cu.id AS "customerId",
+			cu.name AS "customerName",
+			cu.phone AS "customerPhone",
+			COUNT(c.id) AS "complaintCount",
+			COUNT(*) FILTER (WHERE c.status IN ('NEW', 'IN_PROGRESS')) AS "openCount"
+		FROM "Complaint" c
+		JOIN "Customer" cu ON cu.id = c."customerId"
+		GROUP BY cu.id, cu.name, cu.phone
+		ORDER BY "complaintCount" DESC
+	`)
+	return stats, err
+}
+
 func (r *ComplaintRepository) Resolve(id string, resolution *string) (*model.Complaint, error) {
 	var c model.Complaint
 	err := r.db.Get(&c, `

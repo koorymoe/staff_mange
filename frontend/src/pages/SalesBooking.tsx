@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api, type Customer, type Service } from '../api'
 import { useSession } from '../session'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
@@ -31,8 +32,24 @@ export default function SalesBooking() {
   const [existingCustomer, setExistingCustomer] = useState<Customer | null>(null)
   const [usedSavedLocation, setUsedSavedLocation] = useState(false)
 
+  const [searchParams] = useSearchParams()
+
   useEffect(() => {
     api.getServices().then(setServices)
+  }, [])
+
+  // إذا وصلنا من "تحويل شكوى/متابعة جودة لحجز جديد" نعبّي بيانات الزبون تلقائياً
+  useEffect(() => {
+    const customerId = searchParams.get('customerId')
+    if (!customerId) return
+    api.getCustomers().then((customers) => {
+      const c = customers.find((cust) => cust.id === customerId)
+      if (c) {
+        setPhone(c.phone)
+        setName(c.name)
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -268,9 +285,21 @@ export default function SalesBooking() {
               />
               {phoneError && <p className="mt-1 text-xs text-red-600">{phoneError}</p>}
               {!phoneError && existingCustomer && (
-                <p className="mt-1 text-xs text-brand-700">
-                  هذا الزبون مسجل مسبقاً: {existingCustomer.name} (كود: {existingCustomer.code})
-                </p>
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">
+                    زبون قديم
+                    {existingCustomer.previousBookingsCount != null &&
+                      ` — له ${existingCustomer.previousBookingsCount} حجز سابق`}
+                  </span>
+                  <span className="text-xs text-brand-700">
+                    {existingCustomer.name} (كود: {existingCustomer.code})
+                  </span>
+                </div>
+              )}
+              {!phoneError && !existingCustomer && /^\d{11}$/.test(phone.trim()) && (
+                <span className="mt-1.5 inline-block rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800">
+                  زبون جديد
+                </span>
               )}
             </div>
           </div>

@@ -166,6 +166,22 @@ var migrations = []string{
 		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
 	`CREATE INDEX IF NOT EXISTS "PerformanceReview_employeeId_idx" ON "PerformanceReview"("employeeId")`,
+
+	// متابعة الجودة: كل حجز يكتمل (COMPLETED) ينشئ سطر هنا تلقائياً حتى مهندس الجودة
+	// يتواصل مع الزبون ويتأكد ما اكو مشاكل. "status" يتحول من PENDING إلى CONTACTED_OK
+	// أو CONTACTED_ISSUE بعد التواصل، أو CONVERTED إذا حوّلها المهندس لحجز جديد.
+	`CREATE TABLE IF NOT EXISTS "QualityFollowUp" (
+		id TEXT PRIMARY KEY,
+		"bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+		"customerId" TEXT NOT NULL REFERENCES "Customer"(id) ON DELETE CASCADE,
+		status TEXT NOT NULL DEFAULT 'PENDING',
+		"contactNotes" TEXT,
+		"contactedByEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+		"contactedAt" TIMESTAMP,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE UNIQUE INDEX IF NOT EXISTS "QualityFollowUp_bookingId_key" ON "QualityFollowUp"("bookingId")`,
+	`CREATE INDEX IF NOT EXISTS "QualityFollowUp_status_idx" ON "QualityFollowUp"(status)`,
 }
 
 func Migrate(db *sqlx.DB) error {

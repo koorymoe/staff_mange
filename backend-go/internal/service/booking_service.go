@@ -12,13 +12,14 @@ import (
 )
 
 type BookingService struct {
-	repo      *repository.BookingRepository
-	employees *repository.EmployeeRepository
-	customers *repository.CustomerRepository
+	repo             *repository.BookingRepository
+	employees        *repository.EmployeeRepository
+	customers        *repository.CustomerRepository
+	qualityFollowUps *repository.QualityFollowUpRepository
 }
 
-func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository) *BookingService {
-	return &BookingService{repo: repo, employees: employees, customers: customers}
+func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository, qualityFollowUps *repository.QualityFollowUpRepository) *BookingService {
+	return &BookingService{repo: repo, employees: employees, customers: customers, qualityFollowUps: qualityFollowUps}
 }
 
 func (s *BookingService) List(status, customerID string) ([]model.Booking, error) {
@@ -252,7 +253,16 @@ func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (
 	if err := s.repo.Complete(id, req); err != nil {
 		return nil, err
 	}
-	return s.repo.FindByID(id)
+	booking, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	// يترحل الحجز تلقائياً لمهندس الجودة يتواصل مع الزبون ويتأكد ما اكو مشاكل —
+	// فشل هذا الترحيل ما يوقف إكمال الحجز نفسه (ثانوي).
+	if booking != nil {
+		_ = s.qualityFollowUps.CreateForBooking(booking.ID, booking.CustomerID)
+	}
+	return booking, nil
 }
 
 func (s *BookingService) Verify(id string) (*model.Booking, error) {

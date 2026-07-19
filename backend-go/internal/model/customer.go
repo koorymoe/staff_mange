@@ -19,8 +19,9 @@ type Customer struct {
 // CustomerResponse يضيف حقل "code" المنسّق (CUST-00001) مثل الباك إند القديم بالضبط
 type CustomerResponse struct {
 	Customer
-	Code    string `json:"code"`
-	Existed *bool  `json:"existed,omitempty"`
+	Code                  string `json:"code"`
+	Existed               *bool  `json:"existed,omitempty"`
+	PreviousBookingsCount *int   `json:"previousBookingsCount,omitempty"`
 }
 
 func (c Customer) FormatCode() string {

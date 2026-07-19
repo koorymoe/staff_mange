@@ -19,6 +19,10 @@ func (s *ComplaintService) List() ([]model.Complaint, error) {
 	return s.repo.List()
 }
 
+func (s *ComplaintService) StatsByCustomer() ([]model.ComplaintCustomerStat, error) {
+	return s.repo.StatsByCustomer()
+}
+
 func (s *ComplaintService) Create(req model.CreateComplaintRequest) (*model.Complaint, error) {
 	if req.CustomerID == "" || req.Description == "" || req.CreatedByEmployeeID == "" {
 		return nil, errors.New("customerId, description, and createdByEmployeeId are required")

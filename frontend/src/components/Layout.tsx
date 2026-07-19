@@ -42,6 +42,7 @@ const navItems: NavItem[] = [
           { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'inventory' },
           { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
           { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+          { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control' },
           // طلبات الكادر الواردة من إدارة المشاريع — إداري الكوادر يلبيها
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'] },
           // تقييم الأداء (منفصل عن KPI) — إداري الكوادر يقيّم تيم ليدرات الفرق
@@ -52,7 +53,7 @@ const navItems: NavItem[] = [
         to: '/mgmt-work', label: 'إدارة العمل', icon: <></>,
         roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR', 'FINANCE'],
         children: [
-          { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking' },
+          { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'sales_booking' },
           { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
           { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
           { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'coordinator' },

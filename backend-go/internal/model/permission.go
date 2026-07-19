@@ -40,10 +40,10 @@ var DefaultPermissions = []Permission{
 var RoleDefaultPermissions = map[string][]string{
 	"ADMIN":            {},
 	"SALES":            {"sales_booking", "complaints"},
-	"HR_COORDINATOR":   {"staff_management", "edit_employee_profile", "coordinator", "manage_customers", "view_bookings", "manage_services", "inventory", "complaints", "mission_tracking"},
+	"HR_COORDINATOR":   {"staff_management", "edit_employee_profile", "coordinator", "manage_customers", "view_bookings", "manage_services", "inventory", "complaints", "mission_tracking", "sales_booking"},
 	"TECHNICIAN":       {"expenses"},
 	"PROJECT_MANAGER":  {"project_management", "expenses", "mission_tracking"},
-	"MONITOR":          {"staff_management", "kpi_management", "view_bookings", "manage_customers", "manage_services", "mission_tracking", "inventory", "complaints", "finance", "monitoring", "auditing"},
+	"MONITOR":          {"staff_management", "kpi_management", "view_bookings", "manage_customers", "manage_services", "mission_tracking", "inventory", "complaints", "finance", "monitoring", "auditing", "quality_control"},
 	"FINANCE":          {"finance", "view_bookings"},
 	"GPS_ADMIN":        {"gps_system"},
 	"QUALITY_ENGINEER": {"auditing", "complaints", "quality_control"},

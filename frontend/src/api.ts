@@ -297,6 +297,26 @@ export interface Customer {
   location: string | null
   mapLatitude: number | null
   mapLongitude: number | null
+  previousBookingsCount?: number
+}
+
+export interface ComplaintCustomerStat {
+  customerId: string
+  customerName: string
+  customerPhone: string
+  complaintCount: number
+  openCount: number
+}
+
+export interface QualityFollowUp {
+  id: string
+  status: 'PENDING' | 'CONTACTED_OK' | 'CONTACTED_ISSUE' | 'CONVERTED' | 'CLOSED'
+  contactNotes: string | null
+  contactedAt: string | null
+  createdAt: string
+  booking: Booking
+  customer: Customer
+  contactedByEmployee: { id: string; name: string } | null
 }
 
 function currentToken(): string | null {
@@ -650,6 +670,18 @@ export const api = {
   createCustomer: (data: { name: string; phone: string; location?: string }) =>
     request<Customer & { existed: boolean }>('/customers', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getComplaintStats: () => request<ComplaintCustomerStat[]>('/complaints/stats'),
+
+  getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
+  updateQualityFollowUp: (
+    id: string,
+    data: { status: QualityFollowUp['status']; contactNotes?: string },
+  ) =>
+    request<QualityFollowUp>(`/quality-follow-ups/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     }),
 

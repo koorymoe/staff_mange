@@ -25,6 +25,16 @@ func (h *ComplaintHandler) List(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, complaints)
 }
 
+// GET /api/v1/complaints/stats
+func (h *ComplaintHandler) Stats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.service.StatsByCustomer()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب إحصائيات الشكاوى")
+		return
+	}
+	WriteJSON(w, http.StatusOK, stats)
+}
+
 // POST /api/v1/complaints
 func (h *ComplaintHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateComplaintRequest

@@ -36,3 +36,12 @@ type UpdateComplaintRequest struct {
 type ResolveComplaintRequest struct {
 	Resolution *string `json:"resolution"`
 }
+
+// ComplaintCustomerStat يلخص كم مرة اشتكى زبون معيّن — تقرير منفصل عن إحصائيات الحجوزات.
+type ComplaintCustomerStat struct {
+	CustomerID     string `db:"customerId" json:"customerId"`
+	CustomerName   string `db:"customerName" json:"customerName"`
+	CustomerPhone  string `db:"customerPhone" json:"customerPhone"`
+	ComplaintCount int    `db:"complaintCount" json:"complaintCount"`
+	OpenCount      int    `db:"openCount" json:"openCount"`
+}

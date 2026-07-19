@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Complaint, type Customer, type Employee } from '../api'
+import { api, type Complaint, type ComplaintCustomerStat, type Customer, type Employee } from '../api'
 import { useSession } from '../session'
 
 const statusLabels: Record<Complaint['status'], string> = {
@@ -20,13 +20,19 @@ const statusColors: Record<Complaint['status'], string> = {
 // باقي الأدوار الي عندها صلاحية الشكاوى (مثلاً المبيعات) تشوف تسجيل شكوى
 // جديدة بس، بدون واجهة المتابعة والإدارة.
 const trackingRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN']
+// مهندس الجودة (والأدمن) يشوف تفاصيل الزبون كاملة ويتواصل معه مباشرة.
+// المراقب المدقق يشوف بس "إنذار" إنه اكو شكوى تحتاج متابعة، بدون تفاصيل
+// الزبون — دوره رقابي بس، مو التواصل المباشر.
+const fullDetailRoles = ['QUALITY_ENGINEER', 'ADMIN']
 
 export default function ComplaintsPage() {
   const { employee: currentUser } = useSession()
   const canTrack = !!currentUser && trackingRoles.includes(currentUser.role)
+  const canSeeFullDetail = !!currentUser && fullDetailRoles.includes(currentUser.role)
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [stats, setStats] = useState<ComplaintCustomerStat[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -55,6 +61,10 @@ export default function ComplaintsPage() {
   }
 
   useEffect(load, [])
+  // تقرير عدد شكاوى كل زبون — منفصل تماماً عن إحصائيات الحجوزات
+  useEffect(() => {
+    if (canTrack) api.getComplaintStats().then(setStats).catch(() => {})
+  }, [canTrack])
   // الأدوار الي بس تسجل شكوى (بدون متابعة) تشوف الفورم مباشرة بدون زر تبديل
   useEffect(() => {
     if (currentUser && !canTrack) setShowForm(true)
@@ -235,7 +245,77 @@ export default function ComplaintsPage() {
         </p>
       )}
 
-      {canTrack && !loading && !error && (
+      {canTrack && stats.length > 0 && (
+        <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <h3 className="border-b border-slate-100 px-4 py-3 text-sm font-bold text-brand-800">
+            تقرير الشكاوى حسب الزبون
+          </h3>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-right text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-4 py-2 font-semibold text-slate-600">الزبون</th>
+                  <th className="px-4 py-2 font-semibold text-slate-600">الهاتف</th>
+                  <th className="px-4 py-2 font-semibold text-slate-600">عدد الشكاوى</th>
+                  <th className="px-4 py-2 font-semibold text-slate-600">مفتوحة حالياً</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {stats.map((s) => (
+                  <tr key={s.customerId}>
+                    <td className="px-4 py-2 font-medium">{s.customerName}</td>
+                    <td className="px-4 py-2 text-slate-500">{s.customerPhone}</td>
+                    <td className="px-4 py-2 font-bold text-brand-700">{s.complaintCount}</td>
+                    <td className="px-4 py-2">{s.openCount > 0 ? `${s.openCount} ⚠️` : '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {canTrack && !loading && !error && !canSeeFullDetail && (
+        <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-right">
+              <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
+                <tr>
+                  <th className="px-4 py-3 text-sm font-semibold">تنبيه</th>
+                  <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
+                  <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {complaints.map((c) => (
+                  <tr key={c.id} className="transition-colors hover:bg-slate-50">
+                    <td className="px-4 py-3 font-medium text-amber-700">
+                      ⚠️ شكوى تحتاج متابعة من مهندس الجودة
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[c.status]}`}>
+                        {statusLabels[c.status]}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">
+                      {new Date(c.createdAt).toLocaleDateString('ar-IQ')}
+                    </td>
+                  </tr>
+                ))}
+                {complaints.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                      لا توجد شكاوى بعد
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {canSeeFullDetail && !loading && !error && (
         <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-right">
@@ -253,7 +333,10 @@ export default function ComplaintsPage() {
               <tbody className="divide-y divide-slate-100">
                 {complaints.map((c) => (
                   <tr key={c.id} className="transition-colors hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium">{c.customer.name}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {c.customer.name}
+                      <div className="text-xs font-normal text-slate-400">{c.customer.phone}</div>
+                    </td>
                     <td className="max-w-xs truncate px-4 py-3 text-slate-600">{c.description}</td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[c.status]}`}>
