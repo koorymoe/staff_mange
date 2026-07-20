@@ -2,22 +2,57 @@ import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
 
+type DashboardData = Awaited<ReturnType<typeof api.getSecurityDashboard>>
+type LoginRow = DashboardData['recentLogins'][number]
+
 function formatUptime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
-  return `${h} ساعة و${m} دقيقة`
+  return `${h}h ${m}m`
 }
 
-type DashboardData = Awaited<ReturnType<typeof api.getSecurityDashboard>>
+// يفكك User-Agent البسيط لمتصفح/نظام تشغيل مقروء — تحليل نصي عادي على
+// الجهاز، ما يحتاج مكتبة خارجية ولا يرسل بيانات لأي مكان.
+function parseUserAgent(ua: string | null): { browser: string; os: string } {
+  if (!ua) return { browser: 'غير معروف', os: 'غير معروف' }
+  let browser = 'غير معروف'
+  if (ua.includes('Edg/')) browser = 'Edge'
+  else if (ua.includes('Chrome/') && !ua.includes('OPR/')) browser = 'Chrome'
+  else if (ua.includes('Firefox/')) browser = 'Firefox'
+  else if (ua.includes('Safari/') && !ua.includes('Chrome')) browser = 'Safari'
+  else if (ua.includes('OPR/')) browser = 'Opera'
+  else if (ua.includes('curl/')) browser = 'curl (أداة سطر أوامر)'
+
+  let os = 'غير معروف'
+  if (ua.includes('Windows NT 10.0')) os = 'Windows 10/11'
+  else if (ua.includes('Windows')) os = 'Windows'
+  else if (ua.includes('Mac OS X')) os = 'macOS'
+  else if (ua.includes('Android')) os = 'Android'
+  else if (ua.includes('iPhone') || ua.includes('iPad')) os = 'iOS'
+  else if (ua.includes('Linux')) os = 'Linux'
+
+  return { browser, os }
+}
+
+function StatCard({ label, value, sub, danger }: { label: string; value: string; sub?: string; danger?: boolean }) {
+  return (
+    <div className={`rounded-xl border p-5 text-center font-mono ${danger ? 'border-red-500/40 bg-red-950/40' : 'border-emerald-500/20 bg-black/40'}`}>
+      <p className={`text-2xl font-bold ${danger ? 'text-red-400' : 'text-emerald-400'}`} dir="ltr">{value}</p>
+      <p className="mt-1 text-xs text-emerald-200/50">{label}</p>
+      {sub && <p className="mt-0.5 text-[10px] text-emerald-200/30" dir="ltr">{sub}</p>}
+    </div>
+  )
+}
 
 export default function SecurityDashboardPage() {
   const { employee } = useSession()
   const isOwner = employee?.actualRole === 'OWNER'
   const [data, setData] = useState<DashboardData | null>(null)
-  const [history, setHistory] = useState<number[]>([]) // آخر عينات "طلبات/دقيقة" لرسم شريط حي بسيط
+  const [history, setHistory] = useState<number[]>([])
   const [error, setError] = useState<string | null>(null)
+  const [freeing, setFreeing] = useState(false)
+  const [selectedLogin, setSelectedLogin] = useState<LoginRow | null>(null)
 
-  // شريط ضغط حي — يتحدث تلقائياً كل 5 ثواني بدون ما يحتاج المالك يحدث الصفحة
   useEffect(() => {
     if (!isOwner) return
     const fetchData = () => {
@@ -33,6 +68,18 @@ export default function SecurityDashboardPage() {
     return () => clearInterval(interval)
   }, [isOwner])
 
+  const handleFreeMemory = async () => {
+    setFreeing(true)
+    try {
+      const res = await api.freeServerMemory()
+      setData((prev) => (prev ? { ...prev, memoryUsedMB: res.memoryUsedMB } : prev))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر تحرير الذاكرة')
+    } finally {
+      setFreeing(false)
+    }
+  }
+
   if (!isOwner) {
     return (
       <div className="rounded-xl border border-white bg-white p-10 text-center text-slate-400 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -41,73 +88,88 @@ export default function SecurityDashboardPage() {
     )
   }
 
+  const diskPct = data && data.diskTotalGB > 0 ? (data.diskUsedGB / data.diskTotalGB) * 100 : 0
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">لوحة المراقبة الخلفية 👁️</h2>
-      <p className="mt-1 text-slate-500">
-        صحة السيرفر وسجل محاولات تسجيل الدخول — حصرية لحسابك.
-      </p>
+    <div className="-m-3 min-h-screen rounded-2xl bg-black p-4 font-mono sm:-m-5 sm:p-6 lg:-m-8 lg:p-8">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-emerald-400">root@al-amani-server:~# monitor</h2>
+          <p className="mt-1 text-sm text-emerald-200/40">
+            صحة السيرفر وسجل تسجيل الدخول — حصري لحسابك، يتحدث تلقائياً كل 5 ثواني.
+          </p>
+        </div>
+        <button
+          onClick={handleFreeMemory}
+          disabled={freeing}
+          className="rounded-lg border border-emerald-500/30 bg-emerald-950/40 px-4 py-2 text-xs font-bold text-emerald-300 transition-colors hover:bg-emerald-900/40 disabled:opacity-50"
+        >
+          {freeing ? '...جاري' : '🧹 تحرير الذاكرة (Clear Cache)'}
+        </button>
+      </div>
 
       {error && (
-        <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر جلب البيانات: {error}</p>
+        <p className="mt-6 rounded-lg border border-red-500/30 bg-red-950/40 p-4 text-red-400">
+          تعذر جلب البيانات: {error}
+        </p>
       )}
 
       {data && (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-            <div className="rounded-xl border border-white bg-white p-5 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-              <p className="text-xl font-bold text-brand-900">{formatUptime(data.serverUptimeSeconds)}</p>
-              <p className="mt-1 text-xs text-slate-500">مدة تشغيل السيرفر</p>
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard label="UPTIME" value={formatUptime(data.serverUptimeSeconds)} />
+            <StatCard label="MEMORY" value={`${data.memoryUsedMB.toFixed(1)} MB`} />
+            <StatCard label="GOROUTINES" value={`${data.goroutineCount}`} sub={`${data.cpuCount} CPU cores`} />
+            <StatCard
+              label="FAILED LOGINS (1H)"
+              value={`${data.failedLoginsLastHour}`}
+              danger={data.failedLoginsLastHour > 5}
+            />
+            <StatCard label="ONLINE NOW" value={`${data.onlineEmployees}`} sub="last 15 min" />
+            <StatCard label="DB SIZE" value={`${data.dbSizeMB.toFixed(1)} MB`} />
+            <StatCard label="DB CONNECTIONS" value={`${data.dbConnectionsInUse}/${data.dbConnectionsOpen}`} sub="in use / open" />
+            <StatCard label="TOTAL REQUESTS" value={`${data.totalRequests}`} />
+          </div>
+
+          {/* مساحة القرص */}
+          <div className="mt-4 rounded-xl border border-emerald-500/20 bg-black/40 p-5">
+            <div className="flex items-center justify-between text-xs text-emerald-200/60">
+              <span>DISK USAGE</span>
+              <span dir="ltr">
+                {data.diskUsedGB.toFixed(1)} GB / {data.diskTotalGB.toFixed(1)} GB used ({data.diskFreeGB.toFixed(1)} GB free)
+              </span>
             </div>
-            <div className="rounded-xl border border-white bg-white p-5 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-              <p className="text-xl font-bold text-brand-900">{data.memoryUsedMB.toFixed(1)} MB</p>
-              <p className="mt-1 text-xs text-slate-500">الذاكرة المستخدمة</p>
-            </div>
-            <div className="rounded-xl border border-white bg-white p-5 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-              <p className="text-xl font-bold text-brand-900">{data.goroutineCount}</p>
-              <p className="mt-1 text-xs text-slate-500">مهام السيرفر النشطة</p>
-            </div>
-            <div className={`rounded-xl border border-white p-5 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)] ${data.failedLoginsLastHour > 5 ? 'bg-red-50' : 'bg-white'}`}>
-              <p className={`text-xl font-bold ${data.failedLoginsLastHour > 5 ? 'text-red-600' : 'text-brand-900'}`}>
-                {data.failedLoginsLastHour}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">محاولات دخول فاشلة (آخر ساعة)</p>
+            <div className="mt-2 h-3 w-full overflow-hidden rounded-full bg-emerald-950/60">
+              <div
+                className={`h-full rounded-full transition-all ${diskPct > 85 ? 'bg-red-500' : diskPct > 60 ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                style={{ width: `${Math.min(diskPct, 100)}%` }}
+              />
             </div>
           </div>
 
-          {/* شريط الضغط الحي — يتحدث تلقائياً كل 5 ثواني */}
-          <div className="mt-6 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          {/* شريط الضغط الحي */}
+          <div className="mt-4 rounded-xl border border-emerald-500/20 bg-black/40 p-5">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-bold text-brand-800">📊 الضغط الحي على السيرفر</h3>
-              <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+              <h3 className="text-xs text-emerald-200/60">LIVE REQUEST LOAD</h3>
+              <span className="flex items-center gap-1.5 text-xs text-emerald-400">
                 <span className="relative flex h-2 w-2">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 </span>
-                مباشر
+                LIVE
               </span>
             </div>
-            <div className="mt-3 flex items-end gap-4">
-              <div>
-                <p className="text-2xl font-bold text-brand-900">{data.requestsLastMinute}</p>
-                <p className="text-xs text-slate-500">طلب/دقيقة تقريباً</p>
-              </div>
-              <div className="text-slate-300">|</div>
-              <div>
-                <p className="text-lg font-bold text-slate-600">{data.totalRequests.toLocaleString('ar-IQ')}</p>
-                <p className="text-xs text-slate-500">إجمالي الطلبات منذ إقلاع السيرفر</p>
-              </div>
-            </div>
+            <p className="mt-2 text-2xl font-bold text-emerald-400" dir="ltr">{data.requestsLastMinute} req/min</p>
             {history.length > 1 && (
-              <div className="mt-4 flex h-16 items-end gap-1">
+              <div className="mt-3 flex h-14 items-end gap-1">
                 {history.map((v, i) => {
                   const max = Math.max(...history, 1)
                   return (
                     <div
                       key={i}
-                      className="flex-1 rounded-t bg-gradient-to-t from-brand-500 to-brand-300 transition-all"
+                      className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-emerald-400"
                       style={{ height: `${Math.max((v / max) * 100, 4)}%` }}
-                      title={`${v} طلب`}
+                      title={`${v} req`}
                     />
                   )
                 })}
@@ -115,42 +177,85 @@ export default function SecurityDashboardPage() {
             )}
           </div>
 
-          <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <h3 className="border-b border-slate-100 px-4 py-3 text-sm font-bold text-brand-800">
-              سجل محاولات تسجيل الدخول (آخر 100)
+          {/* سجل الدخول */}
+          <div className="mt-4 overflow-hidden rounded-xl border border-emerald-500/20 bg-black/40">
+            <h3 className="border-b border-emerald-500/20 px-4 py-3 text-xs text-emerald-200/60">
+              LOGIN AUDIT LOG (LAST 100) — اضغط على أي سطر لتفاصيل الجهاز
             </h3>
             <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-right text-sm">
-                <thead className="sticky top-0 bg-slate-50">
-                  <tr>
-                    <th className="px-4 py-2 font-semibold text-slate-600">المستخدم</th>
-                    <th className="px-4 py-2 font-semibold text-slate-600">النتيجة</th>
-                    <th className="px-4 py-2 font-semibold text-slate-600">عنوان IP</th>
-                    <th className="px-4 py-2 font-semibold text-slate-600">الجهاز/المتصفح</th>
-                    <th className="px-4 py-2 font-semibold text-slate-600">الوقت</th>
+              <table className="min-w-full divide-y divide-emerald-500/10 text-right text-xs text-emerald-100">
+                <thead className="sticky top-0 bg-black">
+                  <tr className="text-emerald-200/50">
+                    <th className="px-4 py-2 font-normal">USER</th>
+                    <th className="px-4 py-2 font-normal">RESULT</th>
+                    <th className="px-4 py-2 font-normal">IP</th>
+                    <th className="px-4 py-2 font-normal">DEVICE</th>
+                    <th className="px-4 py-2 font-normal">TIME</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {data.recentLogins.map((l) => (
-                    <tr key={l.id}>
-                      <td className="px-4 py-2 font-medium">{l.employee?.name || l.username}</td>
-                      <td className="px-4 py-2">
-                        {l.success ? (
-                          <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-bold text-green-800">نجح</span>
-                        ) : (
-                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-800">فشل</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2 text-slate-500">{l.ipAddress || '—'}</td>
-                      <td className="max-w-xs truncate px-4 py-2 text-xs text-slate-400">{l.userAgent || '—'}</td>
-                      <td className="px-4 py-2 text-slate-500">{new Date(l.createdAt).toLocaleString('ar-IQ')}</td>
-                    </tr>
-                  ))}
+                <tbody className="divide-y divide-emerald-500/10">
+                  {data.recentLogins.map((l) => {
+                    const { browser, os } = parseUserAgent(l.userAgent)
+                    return (
+                      <tr
+                        key={l.id}
+                        onClick={() => setSelectedLogin(l)}
+                        className="cursor-pointer transition-colors hover:bg-emerald-950/40"
+                      >
+                        <td className="px-4 py-2 font-medium">{l.employee?.name || l.username}</td>
+                        <td className="px-4 py-2">
+                          {l.success ? (
+                            <span className="rounded-full bg-emerald-900/60 px-2 py-0.5 font-bold text-emerald-300">OK</span>
+                          ) : (
+                            <span className="rounded-full bg-red-900/60 px-2 py-0.5 font-bold text-red-300">FAIL</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2 text-emerald-200/60">{l.ipAddress || '—'}</td>
+                        <td className="px-4 py-2 text-emerald-200/60">{browser} / {os}</td>
+                        <td className="px-4 py-2 text-emerald-200/40">
+                          {new Date(l.createdAt).toISOString().replace('T', ' ').slice(0, 19)}
+                        </td>
+                      </tr>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
         </>
+      )}
+
+      {/* تفاصيل الجهاز */}
+      {selectedLogin && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setSelectedLogin(null)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-lg rounded-xl border border-emerald-500/30 bg-black p-6 font-mono text-emerald-100"
+          >
+            <h3 className="text-sm font-bold text-emerald-400">DEVICE DETAILS</h3>
+            <div className="mt-4 space-y-2 text-xs">
+              <p><span className="text-emerald-200/40">User:</span> {selectedLogin.employee?.name || selectedLogin.username}</p>
+              <p><span className="text-emerald-200/40">Result:</span> {selectedLogin.success ? 'SUCCESS' : 'FAILED'}</p>
+              <p><span className="text-emerald-200/40">IP Address:</span> {selectedLogin.ipAddress || '—'}</p>
+              <p><span className="text-emerald-200/40">Browser:</span> {parseUserAgent(selectedLogin.userAgent).browser}</p>
+              <p><span className="text-emerald-200/40">OS:</span> {parseUserAgent(selectedLogin.userAgent).os}</p>
+              <p><span className="text-emerald-200/40">Time:</span> {new Date(selectedLogin.createdAt).toISOString().replace('T', ' ').slice(0, 19)}</p>
+              <p className="break-all"><span className="text-emerald-200/40">Full User-Agent:</span> {selectedLogin.userAgent || '—'}</p>
+              <p className="mt-3 text-[10px] text-emerald-200/30">
+                ملاحظة: عنوان MAC الحقيقي للجهاز غير متاح تقنياً عبر المتصفح — قيد أمان بكل المتصفحات الحديثة.
+              </p>
+            </div>
+            <button
+              onClick={() => setSelectedLogin(null)}
+              className="mt-5 w-full rounded-lg border border-emerald-500/30 py-2 text-xs text-emerald-300 hover:bg-emerald-950/40"
+            >
+              إغلاق
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

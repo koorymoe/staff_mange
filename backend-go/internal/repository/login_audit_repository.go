@@ -45,3 +45,14 @@ func (r *LoginAuditRepository) FailedAttemptsCount() (int, error) {
 	err := r.db.Get(&count, `SELECT COUNT(*) FROM "LoginAudit" WHERE success = false AND "createdAt" > now() - interval '1 hour'`)
 	return count, err
 }
+
+// OnlineEmployeesCount يرجع عدد الموظفين المميزين اللي دخلوا خلال آخر 15 دقيقة —
+// تقدير بسيط لعدد "المتواجدين حالياً" بدون الحاجة لنظام جلسات حي منفصل.
+func (r *LoginAuditRepository) OnlineEmployeesCount() (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT "employeeId") FROM "LoginAudit"
+		WHERE success = true AND "employeeId" IS NOT NULL AND "createdAt" > now() - interval '15 minutes'
+	`)
+	return count, err
+}

@@ -701,6 +701,14 @@ export const api = {
       failedLoginsLastHour: number
       totalRequests: number
       requestsLastMinute: number
+      cpuCount: number
+      diskTotalGB: number
+      diskUsedGB: number
+      diskFreeGB: number
+      dbSizeMB: number
+      dbConnectionsOpen: number
+      dbConnectionsInUse: number
+      onlineEmployees: number
       recentLogins: {
         id: string
         username: string
@@ -711,6 +719,7 @@ export const api = {
         employee: { id: string; name: string } | null
       }[]
     }>('/security/dashboard'),
+  freeServerMemory: () => request<{ memoryUsedMB: number }>('/security/free-memory', { method: 'POST' }),
 
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
   updateQualityFollowUp: (
