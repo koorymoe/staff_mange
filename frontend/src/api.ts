@@ -699,6 +699,8 @@ export const api = {
       goroutineCount: number
       memoryUsedMB: number
       failedLoginsLastHour: number
+      totalRequests: number
+      requestsLastMinute: number
       recentLogins: {
         id: string
         username: string

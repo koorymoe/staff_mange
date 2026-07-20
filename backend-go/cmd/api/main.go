@@ -383,7 +383,7 @@ func main() {
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))
 	mux.Handle("PUT /api/quality/issues/{id}", middleware.Chain(http.HandlerFunc(qualityHandler.Update), requireAuth, requireQuality))
 
-	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.CORS(cfg.CORSOrigins))
+	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins))
 
 	log.Printf("staffmange-api listening on :%s", cfg.Port)
 	if err := http.ListenAndServe(":"+cfg.Port, handlerChain); err != nil {

@@ -8,15 +8,29 @@ function formatUptime(seconds: number): string {
   return `${h} ساعة و${m} دقيقة`
 }
 
+type DashboardData = Awaited<ReturnType<typeof api.getSecurityDashboard>>
+
 export default function SecurityDashboardPage() {
   const { employee } = useSession()
   const isOwner = employee?.actualRole === 'OWNER'
-  const [data, setData] = useState<Awaited<ReturnType<typeof api.getSecurityDashboard>> | null>(null)
+  const [data, setData] = useState<DashboardData | null>(null)
+  const [history, setHistory] = useState<number[]>([]) // آخر عينات "طلبات/دقيقة" لرسم شريط حي بسيط
   const [error, setError] = useState<string | null>(null)
 
+  // شريط ضغط حي — يتحدث تلقائياً كل 5 ثواني بدون ما يحتاج المالك يحدث الصفحة
   useEffect(() => {
     if (!isOwner) return
-    api.getSecurityDashboard().then(setData).catch((e) => setError(e.message))
+    const fetchData = () => {
+      api.getSecurityDashboard()
+        .then((d) => {
+          setData(d)
+          setHistory((prev) => [...prev.slice(-19), d.requestsLastMinute])
+        })
+        .catch((e) => setError(e.message))
+    }
+    fetchData()
+    const interval = setInterval(fetchData, 5000)
+    return () => clearInterval(interval)
   }, [isOwner])
 
   if (!isOwner) {
@@ -59,6 +73,46 @@ export default function SecurityDashboardPage() {
               </p>
               <p className="mt-1 text-xs text-slate-500">محاولات دخول فاشلة (آخر ساعة)</p>
             </div>
+          </div>
+
+          {/* شريط الضغط الحي — يتحدث تلقائياً كل 5 ثواني */}
+          <div className="mt-6 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-brand-800">📊 الضغط الحي على السيرفر</h3>
+              <span className="flex items-center gap-1.5 text-xs text-emerald-600">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                مباشر
+              </span>
+            </div>
+            <div className="mt-3 flex items-end gap-4">
+              <div>
+                <p className="text-2xl font-bold text-brand-900">{data.requestsLastMinute}</p>
+                <p className="text-xs text-slate-500">طلب/دقيقة تقريباً</p>
+              </div>
+              <div className="text-slate-300">|</div>
+              <div>
+                <p className="text-lg font-bold text-slate-600">{data.totalRequests.toLocaleString('ar-IQ')}</p>
+                <p className="text-xs text-slate-500">إجمالي الطلبات منذ إقلاع السيرفر</p>
+              </div>
+            </div>
+            {history.length > 1 && (
+              <div className="mt-4 flex h-16 items-end gap-1">
+                {history.map((v, i) => {
+                  const max = Math.max(...history, 1)
+                  return (
+                    <div
+                      key={i}
+                      className="flex-1 rounded-t bg-gradient-to-t from-brand-500 to-brand-300 transition-all"
+                      style={{ height: `${Math.max((v / max) * 100, 4)}%` }}
+                      title={`${v} طلب`}
+                    />
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

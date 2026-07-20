@@ -5,6 +5,7 @@ import (
 	"runtime"
 	"time"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
 )
 
@@ -22,6 +23,8 @@ type SecurityDashboardResponse struct {
 	GoroutineCount       int     `json:"goroutineCount"`
 	MemoryUsedMB         float64 `json:"memoryUsedMB"`
 	FailedLoginsLastHour int     `json:"failedLoginsLastHour"`
+	TotalRequests        int64   `json:"totalRequests"`
+	RequestsLastMinute   int64   `json:"requestsLastMinute"`
 	RecentLogins         any     `json:"recentLogins"`
 }
 
@@ -46,6 +49,8 @@ func (h *SecurityHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		GoroutineCount:       runtime.NumGoroutine(),
 		MemoryUsedMB:         float64(mem.Alloc) / 1024 / 1024,
 		FailedLoginsLastHour: failedCount,
+		TotalRequests:        middleware.TotalRequests(),
+		RequestsLastMinute:   middleware.RequestsLastMinute(),
 		RecentLogins:         recent,
 	})
 }
