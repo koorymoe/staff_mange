@@ -334,8 +334,8 @@ export default function ComplaintsPage() {
                 {complaints.map((c) => (
                   <tr key={c.id} className="transition-colors hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium">
-                      {c.customer.name}
-                      <div className="text-xs font-normal text-slate-400">{c.customer.phone}</div>
+                      {c.customer?.name || '—'}
+                      <div className="text-xs font-normal text-slate-400">{c.customer?.phone}</div>
                     </td>
                     <td className="max-w-xs truncate px-4 py-3 text-slate-600">{c.description}</td>
                     <td className="px-4 py-3">

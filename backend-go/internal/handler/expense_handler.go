@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
@@ -32,6 +33,9 @@ func (h *ExpenseHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	// المصروف دايماً باسم صاحب الجلسة الحالي — ما نثق بـ employeeId المرسل
+	// بالطلب حتى ما يقدر موظف يسجل مصروف باسم زميله.
+	req.EmployeeID = middleware.EmployeeIDFromContext(r)
 	expense, err := h.service.Create(req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

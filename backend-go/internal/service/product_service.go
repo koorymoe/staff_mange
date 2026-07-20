@@ -30,6 +30,9 @@ func (s *ProductService) Create(req model.CreateProductRequest) (*model.Product,
 }
 
 func (s *ProductService) Update(id string, req model.UpdateProductRequest) (*model.Product, error) {
+	if req.DefaultPrice != nil && *req.DefaultPrice < 0 {
+		return nil, errors.New("السعر الافتراضي ما يصير يكون بالسالب")
+	}
 	return s.repo.Update(id, req.Name, req.Unit, req.DefaultPrice, req.ImageBase64)
 }
 

@@ -49,8 +49,7 @@ export default function SalesBooking() {
         setName(c.name)
       }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [searchParams])
 
   useEffect(() => {
     if (!/^\d{11}$/.test(phone.trim())) {
