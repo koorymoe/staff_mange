@@ -14,9 +14,29 @@ func NewEmployeeRepository(db *sqlx.DB) *EmployeeRepository {
 	return &EmployeeRepository{db: db}
 }
 
+// List يرجع الموظفين النشطين فقط (يستثني المؤرشفين والمحذوفين) — هذا افتراضي
+// لكل واجهات النظام العادية.
 func (r *EmployeeRepository) List() ([]model.Employee, error) {
 	employees := []model.Employee{}
-	if err := r.db.Select(&employees, `SELECT * FROM "Employee" ORDER BY name ASC`); err != nil {
+	// حساب المالك (OWNER) ما يطلع بأي قائمة موظفين عادية أبداً — حساب مخفي تماماً
+	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status NOT IN ('ARCHIVED', 'DELETED') AND role != 'OWNER' ORDER BY name ASC`); err != nil {
+		return nil, err
+	}
+	for i := range employees {
+		skills, err := r.SkillsForEmployee(employees[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		employees[i].Skills = skills
+	}
+	return employees, nil
+}
+
+// ListArchived يرجع المؤرشفين والمحذوفين فقط — للأدمن/المالك حصراً، لمراجعة
+// تاريخهم عند الحاجة.
+func (r *EmployeeRepository) ListArchived() ([]model.Employee, error) {
+	employees := []model.Employee{}
+	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status IN ('ARCHIVED', 'DELETED') ORDER BY name ASC`); err != nil {
 		return nil, err
 	}
 	for i := range employees {

@@ -178,9 +178,14 @@ export default function Layout() {
   }
 
   const setEmployee = (emp: Employee | null) => {
-    setEmployeeState(emp)
-    if (emp) {
-      localStorage.setItem('currentEmployee', JSON.stringify(emp))
+    // المالك (OWNER) لازم يشوف ويسوي كل شي مدير النظام (ADMIN) يسويه، وأكثر —
+    // نطبّع role إلى 'ADMIN' حتى كل شرط role === 'ADMIN' بالواجهة يشتغل له
+    // تلقائياً بدون تعديل كل مكان، ونحفظ الدور الحقيقي بـ actualRole للعرض
+    // وللتحقق الحصري بصفحة المراقبة الخلفية.
+    const normalized = emp && emp.role === 'OWNER' ? { ...emp, actualRole: 'OWNER' as const, role: 'ADMIN' as const } : emp
+    setEmployeeState(normalized)
+    if (normalized) {
+      localStorage.setItem('currentEmployee', JSON.stringify(normalized))
     } else {
       localStorage.removeItem('currentEmployee')
       localStorage.removeItem('authToken')
@@ -394,7 +399,7 @@ export default function Layout() {
               <div className="flex items-center gap-2 rounded-xl bg-slate-50/80 px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-3 sm:px-3">
                 <div className="hidden text-left sm:block">
                   <p className="text-sm font-bold text-slate-800">{employee.name}</p>
-                  <p className="text-[11px] text-slate-400">{roleLabels[employee.role]}</p>
+                  <p className="text-[11px] text-slate-400">{roleLabels[employee.actualRole || employee.role]}</p>
                 </div>
                 <div className={`relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-md sm:h-10 sm:w-10`}>
                   {employee.name.charAt(0)}
@@ -447,7 +452,7 @@ export default function Layout() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 text-right">
                   <p className="text-sm font-bold text-white">{employee.name}</p>
-                  <p className="text-[11px] text-blue-300/60">{roleLabels[employee.role]}</p>
+                  <p className="text-[11px] text-blue-300/60">{roleLabels[employee.actualRole || employee.role]}</p>
                 </div>
                 <div className={`relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-lg`}>
                   {employee.name.charAt(0)}
@@ -458,7 +463,7 @@ export default function Layout() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"/>
                 <span className="text-[10px] text-emerald-400/80 font-medium">متصل الآن</span>
                 <span className={`mr-auto rounded-full bg-gradient-to-l ${gradientClass} px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm`}>
-                  {roleLabels[employee.role]}
+                  {roleLabels[employee.actualRole || employee.role]}
                 </span>
               </div>
             </div>
@@ -477,6 +482,18 @@ export default function Layout() {
           {/* Nav */}
           <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3 scrollbar-thin">
             {visibleItems.map(item => renderNavItem(item, 0))}
+            {employee.actualRole === 'OWNER' && (
+              <NavLink
+                to="/owner-security"
+                className={({ isActive }) =>
+                  `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                👁️ لوحة المراقبة الخلفية
+              </NavLink>
+            )}
           </nav>
 
           {/* Logout */}

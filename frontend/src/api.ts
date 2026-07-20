@@ -64,6 +64,7 @@ export type EmployeeRole =
   | 'GPS_ADMIN'
   | 'QUALITY_ENGINEER'
   | 'ENGINEER'
+  | 'OWNER'
 
 export interface Employee {
   id: string
@@ -71,8 +72,12 @@ export interface Employee {
   certificate: string | null
   position: string | null
   phone: string | null
-  status: 'ACTIVE' | 'INACTIVE'
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DELETED'
   role: EmployeeRole
+  // الدور الحقيقي للمالك (OWNER) — نطبّع role إلى 'ADMIN' بجلسة الواجهة حتى
+  // يشتغل كل شي مبني على role === 'ADMIN' تلقائياً، ونخزن الدور الأصلي هنا
+  // للعرض وللتحقق الحصري بصفحة المراقبة الخلفية.
+  actualRole?: EmployeeRole
   onDuty: boolean
   username: string | null
   hasDrivingLicense: boolean
@@ -634,6 +639,7 @@ export const api = {
     request<LocationPing[]>(`/location-pings/path?employeeId=${employeeId}${bookingId ? `&bookingId=${bookingId}` : ''}`),
 
   getEmployees: () => request<Employee[]>('/employees'),
+  getArchivedEmployees: () => request<Employee[]>('/employees/archived'),
   createEmployee: (
     data: Pick<Employee, 'name' | 'certificate' | 'position' | 'phone'> & {
       username?: string
@@ -674,6 +680,23 @@ export const api = {
     }),
 
   getComplaintStats: () => request<ComplaintCustomerStat[]>('/complaints/stats'),
+
+  getSecurityDashboard: () =>
+    request<{
+      serverUptimeSeconds: number
+      goroutineCount: number
+      memoryUsedMB: number
+      failedLoginsLastHour: number
+      recentLogins: {
+        id: string
+        username: string
+        success: boolean
+        ipAddress: string | null
+        userAgent: string | null
+        createdAt: string
+        employee: { id: string; name: string } | null
+      }[]
+    }>('/security/dashboard'),
 
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
   updateQualityFollowUp: (

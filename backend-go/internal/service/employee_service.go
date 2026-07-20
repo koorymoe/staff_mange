@@ -22,6 +22,10 @@ func (s *EmployeeService) List() ([]model.Employee, error) {
 	return s.repo.List()
 }
 
+func (s *EmployeeService) ListArchived() ([]model.Employee, error) {
+	return s.repo.ListArchived()
+}
+
 func (s *EmployeeService) Get(id string) (*model.Employee, error) {
 	return s.repo.FindByID(id)
 }
@@ -37,6 +41,9 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 	}
 	if role == "ENGINEER" {
 		return nil, errors.New("لازم تنشئ الموظف كفني أول وتمنحه مهارات الهندسة (تصميم/تخطيط/تنفيذ/إشراف)، وبعدها ترفعه لدور مهندس")
+	}
+	if role == "OWNER" {
+		return nil, errors.New("دور المالك محجوز لحساب واحد بس، ما ينمنح من الواجهة")
 	}
 	shift := "MORNING"
 	if req.Shift != nil && *req.Shift != "" {
@@ -95,6 +102,9 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		employee.Status = *req.Status
 	}
 	if req.Role != nil {
+		if *req.Role == "OWNER" && employee.Role != "OWNER" {
+			return nil, errors.New("دور المالك محجوز لحساب واحد بس، ما ينمنح من الواجهة")
+		}
 		if *req.Role == "ENGINEER" && employee.Role != "ENGINEER" {
 			if err := requireEngineeringSkills(employee); err != nil {
 				return nil, err

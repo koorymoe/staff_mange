@@ -59,7 +59,8 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if !allowed[role] {
+			// OWNER يتخطى أي قيد أدوار — حساب المالك الأساسي، أقوى من أي دور ثاني بما فيه ADMIN
+			if role != "OWNER" && !allowed[role] {
 				writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
 				return
 			}
@@ -74,7 +75,7 @@ func RequirePermission(permissions *repository.PermissionRepository, permissionN
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
-			if role == "ADMIN" {
+			if role == "ADMIN" || role == "OWNER" {
 				next.ServeHTTP(w, r)
 				return
 			}

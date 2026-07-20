@@ -38,4 +38,5 @@ export const roleLabels: Record<string, string> = {
   GPS_ADMIN: 'مسؤول GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
   ENGINEER: 'مهندس',
+  OWNER: 'مالك النظام 👑',
 }

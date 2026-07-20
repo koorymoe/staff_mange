@@ -80,6 +80,10 @@ export default function Employees() {
   const [showCompare, setShowCompare] = useState(false)
   const [compareId, setCompareId] = useState<string | null>(null)
 
+  // أرشفة/حذف الموظفين — الأدمن بس يقدر يشوف قائمة المؤرشفين/المحذوفين وتاريخهم
+  const [showArchived, setShowArchived] = useState(false)
+  const [archivedEmployees, setArchivedEmployees] = useState<Employee[]>([])
+
   const load = () => {
     setLoading(true)
     Promise.all([api.getEmployees(), api.getServices()])
@@ -92,15 +96,32 @@ export default function Employees() {
   useEffect(() => {
     if (isHR) api.getStats().then(setStats).catch(() => setStats(null))
   }, [isHR])
+  useEffect(() => {
+    if (isAdmin && showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(() => setArchivedEmployees([]))
+  }, [isAdmin, showArchived])
 
-  const baseEmployees = isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees
+  const baseEmployees = showArchived ? archivedEmployees : (isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees)
   const visibleEmployees = baseEmployees.filter(emp => {
     if (searchQuery && !emp.name.includes(searchQuery) && !(emp.position || '').includes(searchQuery)) return false
     if (filterRole && emp.role !== filterRole) return false
     return true
   })
 
-  const selectedEmployee = employees.find((emp) => emp.id === selectedId) || null
+  const selectedEmployee = [...employees, ...archivedEmployees].find((emp) => emp.id === selectedId) || null
+
+  const handleArchive = async (status: 'ARCHIVED' | 'DELETED' | 'ACTIVE') => {
+    if (!selectedEmployee) return
+    const label = status === 'ARCHIVED' ? 'أرشفة' : status === 'DELETED' ? 'حذف' : 'استرجاع'
+    if (!confirm(`متأكد تريد ${label} الموظف "${selectedEmployee.name}"؟`)) return
+    try {
+      await api.updateEmployee(selectedEmployee.id, { status })
+      setSelectedId(null)
+      load()
+      if (showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(() => {})
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر تنفيذ العملية')
+    }
+  }
   const compareEmployee = employees.find((emp) => emp.id === compareId) || null
 
   useEffect(() => {
@@ -184,6 +205,16 @@ export default function Employees() {
             </select>
           )}
           {isAdmin && (
+            <button
+              onClick={() => { setShowArchived(!showArchived); setSelectedId(null) }}
+              className={`rounded-xl px-4 py-2.5 text-sm font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.04)] transition-all ${
+                showArchived ? 'bg-slate-700 text-white' : 'bg-white text-slate-600'
+              }`}
+            >
+              {showArchived ? '↩ رجوع للنشطين' : '🗄️ المؤرشفون/المحذوفون'}
+            </button>
+          )}
+          {isAdmin && !showArchived && (
             <button
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#2c5aad] to-[#1e3f7a] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition-all hover:shadow-xl hover:shadow-blue-900/30"
@@ -297,6 +328,33 @@ export default function Employees() {
                         <span className="mt-1 text-[10px] font-medium">{selectedEmployee.onDuty ? 'بالدوام' : 'خارج'}</span>
                       </div>
                     </div>
+                    {isAdmin && (
+                      <div className="relative mt-4 flex flex-wrap gap-2">
+                        {selectedEmployee.status === 'ARCHIVED' || selectedEmployee.status === 'DELETED' ? (
+                          <button
+                            onClick={() => handleArchive('ACTIVE')}
+                            className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/30"
+                          >
+                            ↩ استرجاع للنشطين
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => handleArchive('ARCHIVED')}
+                              className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-500/30"
+                            >
+                              🗄️ أرشفة
+                            </button>
+                            <button
+                              onClick={() => handleArchive('DELETED')}
+                              className="rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-bold text-red-200 hover:bg-red-500/30"
+                            >
+                              🗑️ حذف
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Stats Row */}
@@ -442,7 +500,7 @@ export default function Employees() {
                             }
                           }}
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white">
-                          {Object.entries(roleLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                          {Object.entries(roleLabels).filter(([k]) => k !== 'OWNER').map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
                       </div>
                     )}

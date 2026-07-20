@@ -14,12 +14,13 @@ import (
 var ErrInvalidCredentials = errors.New("اسم المستخدم أو كلمة المرور غير صحيحة")
 
 type AuthService struct {
-	employees *repository.EmployeeRepository
-	jwtSecret []byte
+	employees  *repository.EmployeeRepository
+	loginAudit *repository.LoginAuditRepository
+	jwtSecret  []byte
 }
 
-func NewAuthService(employees *repository.EmployeeRepository, jwtSecret string) *AuthService {
-	return &AuthService{employees: employees, jwtSecret: []byte(jwtSecret)}
+func NewAuthService(employees *repository.EmployeeRepository, loginAudit *repository.LoginAuditRepository, jwtSecret string) *AuthService {
+	return &AuthService{employees: employees, loginAudit: loginAudit, jwtSecret: []byte(jwtSecret)}
 }
 
 type Claims struct {
@@ -28,13 +29,15 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-func (s *AuthService) Login(username, password string) (*model.Employee, string, error) {
+func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Employee, string, error) {
 	employee, err := s.employees.FindByUsername(username)
 	if err != nil || employee == nil || employee.Password == nil {
+		_ = s.loginAudit.Record(username, nil, false, ip, userAgent)
 		return nil, "", ErrInvalidCredentials
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(password)); err != nil {
+		_ = s.loginAudit.Record(username, &employee.ID, false, ip, userAgent)
 		return nil, "", ErrInvalidCredentials
 	}
 
@@ -43,6 +46,7 @@ func (s *AuthService) Login(username, password string) (*model.Employee, string,
 		return nil, "", err
 	}
 
+	_ = s.loginAudit.Record(username, &employee.ID, true, ip, userAgent)
 	return employee, token, nil
 }
 

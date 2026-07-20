@@ -12,11 +12,14 @@ const roleLabels: Record<EmployeeRole, string> = {
   GPS_ADMIN: 'مسؤول GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
   ENGINEER: 'مهندس',
+  OWNER: 'مالك النظام',
 }
 
 // دور "مهندس" ما ينعطى وقت إنشاء موظف جديد — لازم الموظف يصير فني أول وتنعطى له
 // مهارات الهندسة (تصميم/تخطيط/تنفيذ/إشراف)، وبعدها يترفّع من صفحة إدارة الكوادر.
-const creatableRoles = (Object.keys(roleLabels) as EmployeeRole[]).filter(r => r !== 'ENGINEER')
+// دور OWNER محجوز لحساب مالك النظام الوحيد المزروع مباشرة بقاعدة البيانات —
+// محد يقدر يمنحه لموظف من الواجهة، حتى الأدمن نفسه.
+const creatableRoles = (Object.keys(roleLabels) as EmployeeRole[]).filter(r => r !== 'ENGINEER' && r !== 'OWNER')
 
 function calcHours(start: string, end: string): number | null {
   if (!start || !end) return null

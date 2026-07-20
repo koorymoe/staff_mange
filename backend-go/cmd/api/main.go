@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/joho/godotenv"
 
@@ -15,6 +16,7 @@ import (
 )
 
 func main() {
+	startedAt := time.Now()
 	// تحميل ملف .env إذا موجود (بالإنتاج المتغيرات تنجي مباشرة من النظام، فما مشكلة لو الملف مو موجود)
 	_ = godotenv.Load()
 
@@ -35,6 +37,7 @@ func main() {
 
 	// Repositories
 	employeeRepo := repository.NewEmployeeRepository(db)
+	loginAuditRepo := repository.NewLoginAuditRepository(db)
 	permissionRepo := repository.NewPermissionRepository(db)
 	serviceRepo := repository.NewServiceRepository(db)
 	customerRepo := repository.NewCustomerRepository(db)
@@ -65,7 +68,7 @@ func main() {
 	performanceReviewRepo := repository.NewPerformanceReviewRepository(db)
 
 	// Services
-	authService := service.NewAuthService(employeeRepo, cfg.JWTSecret)
+	authService := service.NewAuthService(employeeRepo, loginAuditRepo, cfg.JWTSecret)
 	employeeService := service.NewEmployeeService(employeeRepo)
 	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
 	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
@@ -100,6 +103,7 @@ func main() {
 	customerHandler := handler.NewCustomerHandler(customerService)
 	bookingHandler := handler.NewBookingHandler(bookingService)
 	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService)
+	securityHandler := handler.NewSecurityHandler(loginAuditRepo, startedAt)
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
@@ -127,6 +131,8 @@ func main() {
 
 	requireAuth := middleware.RequireAuth(authService)
 	requireAdmin := middleware.RequireRole("ADMIN")
+	// حصراً لحساب المالك (OWNER) — أقوى من الأدمن العادي، ما يشوفها إلا هو
+	requireOwner := middleware.RequireRole("OWNER")
 	requireFinance := middleware.RequireRole("ADMIN", "FINANCE")
 	requireHR := middleware.RequireRole("ADMIN", "HR_COORDINATOR")
 	requireMonitor := middleware.RequireRole("ADMIN", "MONITOR")
@@ -150,6 +156,8 @@ func main() {
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
 	mux.Handle("GET /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
 	mux.Handle("GET /api/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
+	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
+	mux.Handle("GET /api/security/dashboard", middleware.Chain(http.HandlerFunc(securityHandler.Dashboard), requireAuth, requireOwner))
 	mux.Handle("GET /api/employees/match", middleware.Chain(http.HandlerFunc(employeeHandler.Match), requireAuth))
 	mux.Handle("GET /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Get), requireAuth))
 	mux.Handle("POST /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.Create), requireAuth, requireAdmin))

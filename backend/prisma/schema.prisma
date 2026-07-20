@@ -47,6 +47,8 @@ enum TechnicianRole {
 enum EmployeeStatus {
   ACTIVE
   INACTIVE
+  ARCHIVED // مؤرشف: مختفي من كل الواجهات العادية، قابل للاسترجاع، تاريخه يظل يشوفه الأدمن بس
+  DELETED // محذوف: نفس اختفاء الأرشفة، بس معاملته أكثر نهائية (سجل ناعم يحفظ كل التاريخ المرتبط بيه)
 }
 
 // Determines which views/screens an employee can access in the app (no separate login)
@@ -62,6 +64,7 @@ enum EmployeeRole {
   GPS_ENGINEER
   QUALITY_ENGINEER
   ENGINEER
+  OWNER // مالك النظام — حساب واحد فقط، أقوى من ADMIN، يتخطى كل قيود الأدوار والصلاحيات
 }
 
 enum ExpenseStatus {

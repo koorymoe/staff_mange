@@ -2,11 +2,25 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
+
+// clientIP يفضّل X-Forwarded-For (اللي يحطه nginx وراه) وإلا يرجع لعنوان الاتصال
+// المباشر. المتصفح لا يقدر تقنياً يكشف عنوان MAC الفعلي لأي جهاز — قيد أمان
+// بكل المتصفحات الحديثة — فـIP + بصمة المتصفح (User-Agent) هي أقصى ما يمكن تتبعه.
+func clientIP(r *http.Request) string {
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		return strings.TrimSpace(strings.Split(fwd, ",")[0])
+	}
+	if real := r.Header.Get("X-Real-IP"); real != "" {
+		return real
+	}
+	return r.RemoteAddr
+}
 
 type AuthHandler struct {
 	auth *service.AuthService
@@ -28,7 +42,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	employee, token, err := h.auth.Login(req.Username, req.Password)
+	employee, token, err := h.auth.Login(req.Username, req.Password, clientIP(r), r.UserAgent())
 	if err != nil {
 		WriteError(w, http.StatusUnauthorized, err.Error())
 		return

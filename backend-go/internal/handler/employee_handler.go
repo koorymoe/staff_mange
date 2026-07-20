@@ -53,6 +53,16 @@ func (h *EmployeeHandler) List(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, employees)
 }
 
+// GET /api/v1/employees/archived — الأدمن/المالك فقط، يشوفون الموظفين المؤرشفين والمحذوفين
+func (h *EmployeeHandler) ListArchived(w http.ResponseWriter, r *http.Request) {
+	employees, err := h.service.ListArchived()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الموظفين المؤرشفين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, employees)
+}
+
 // GET /api/v1/employees/{id}
 func (h *EmployeeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id := extractID(r.URL.Path, "/api/employees/")
