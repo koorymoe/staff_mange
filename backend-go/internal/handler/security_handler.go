@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"runtime"
 	"runtime/debug"
-	"syscall"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -39,19 +38,6 @@ type SecurityDashboardResponse struct {
 	DBConnectionsInUse   int     `json:"dbConnectionsInUse"`
 	OnlineEmployees      int     `json:"onlineEmployees"`
 	RecentLogins         any     `json:"recentLogins"`
-}
-
-// diskUsage يقرأ مساحة القرص الفعلية (Linux فقط، وهذا السيرفر Linux دايماً) —
-// المجلد "/" يمثل القرص كامل بحاوية Docker.
-func diskUsage() (totalGB, usedGB, freeGB float64) {
-	var stat syscall.Statfs_t
-	if err := syscall.Statfs("/", &stat); err != nil {
-		return 0, 0, 0
-	}
-	total := float64(stat.Blocks) * float64(stat.Bsize)
-	free := float64(stat.Bfree) * float64(stat.Bsize)
-	const gb = 1024 * 1024 * 1024
-	return total / gb, (total - free) / gb, free / gb
 }
 
 // GET /api/security/dashboard — حصري لمدير النظام/المالك: مؤشرات صحة السيرفر
