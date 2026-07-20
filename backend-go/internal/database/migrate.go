@@ -155,6 +155,10 @@ var migrations = []string{
 	`CREATE INDEX IF NOT EXISTS "LoginAudit_employeeId_idx" ON "LoginAudit"("employeeId", "createdAt")`,
 	`CREATE INDEX IF NOT EXISTS "LoginAudit_createdAt_idx" ON "LoginAudit"("createdAt")`,
 
+	// نوع الشكوى (قائمة منسدلة ثابتة بدل وصف حر) + الموظف المتسبب (اختياري)
+	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "type" TEXT NOT NULL DEFAULT 'OTHER'`,
+	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "relatedEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+
 	// "مسؤول خدمة" عام: تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات — جدول يربط موظف
 	// بمجموعة خدمات هو المسؤول الوحيد عن تفعيلها/جدولتها (مثال: GPS + صوتيات + حريق سوا).
 	`CREATE TABLE IF NOT EXISTS "ServiceManager" (

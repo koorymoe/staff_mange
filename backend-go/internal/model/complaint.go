@@ -2,11 +2,22 @@ package model
 
 import "time"
 
+// ComplaintTypeLabels هي أنواع الشكاوى الثابتة المسموحة — قائمة منسدلة بدل وصف حر.
+var ComplaintTypeLabels = map[string]string{
+	"DELAY":        "تأخير بالتنفيذ",
+	"DISORGANIZED": "عمل غير منظم",
+	"TECHNICAL":    "مشكلة فنية",
+	"INCOMPLETE":   "لم يتم إكمال العمل",
+	"OTHER":        "أخرى",
+}
+
 type Complaint struct {
 	ID                   string     `db:"id" json:"id"`
 	CustomerID           string     `db:"customerId" json:"-"`
 	BookingID            *string    `db:"bookingId" json:"-"`
+	Type                 string     `db:"type" json:"type"`
 	Description          string     `db:"description" json:"description"`
+	RelatedEmployeeID    *string    `db:"relatedEmployeeId" json:"-"`
 	Status               string     `db:"status" json:"status"`
 	CreatedByEmployeeID  string     `db:"createdByEmployeeId" json:"-"`
 	AssignedToEmployeeID *string    `db:"assignedToEmployeeId" json:"-"`
@@ -18,12 +29,15 @@ type Complaint struct {
 	Booking            *Booking       `db:"-" json:"booking"`
 	CreatedByEmployee  *EmployeeBrief `db:"-" json:"createdByEmployee"`
 	AssignedToEmployee *EmployeeBrief `db:"-" json:"assignedToEmployee"`
+	RelatedEmployee    *EmployeeBrief `db:"-" json:"relatedEmployee"`
 }
 
 type CreateComplaintRequest struct {
 	CustomerID          string  `json:"customerId"`
 	BookingID           *string `json:"bookingId"`
+	Type                string  `json:"type"`
 	Description         string  `json:"description"`
+	RelatedEmployeeID   *string `json:"relatedEmployeeId"`
 	CreatedByEmployeeID string  `json:"createdByEmployeeId"`
 }
 

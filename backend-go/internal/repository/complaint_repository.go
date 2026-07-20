@@ -37,6 +37,9 @@ func (r *ComplaintRepository) hydrate(c *model.Complaint) {
 	if c.AssignedToEmployeeID != nil {
 		c.AssignedToEmployee = r.loadEmployeeBrief(*c.AssignedToEmployeeID)
 	}
+	if c.RelatedEmployeeID != nil {
+		c.RelatedEmployee = r.loadEmployeeBrief(*c.RelatedEmployeeID)
+	}
 }
 
 func (r *ComplaintRepository) List() ([]model.Complaint, error) {
@@ -50,13 +53,13 @@ func (r *ComplaintRepository) List() ([]model.Complaint, error) {
 	return complaints, nil
 }
 
-func (r *ComplaintRepository) Create(customerID string, bookingID *string, description, createdByEmployeeID string) (*model.Complaint, error) {
+func (r *ComplaintRepository) Create(customerID string, bookingID *string, complaintType, description, createdByEmployeeID string, relatedEmployeeID *string) (*model.Complaint, error) {
 	var c model.Complaint
 	err := r.db.Get(&c, `
-		INSERT INTO "Complaint" (id, "customerId", "bookingId", description, "createdByEmployeeId")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+		INSERT INTO "Complaint" (id, "customerId", "bookingId", type, description, "createdByEmployeeId", "relatedEmployeeId")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
 		RETURNING *
-	`, customerID, bookingID, description, createdByEmployeeID)
+	`, customerID, bookingID, complaintType, description, createdByEmployeeID, relatedEmployeeID)
 	if err != nil {
 		return nil, err
 	}

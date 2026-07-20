@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Complaint, type ComplaintCustomerStat, type Customer, type Employee } from '../api'
+import { api, complaintTypeLabels, type Complaint, type ComplaintCustomerStat, type ComplaintType, type Customer, type Employee } from '../api'
 import { useSession } from '../session'
 
 const statusLabels: Record<Complaint['status'], string> = {
@@ -30,17 +30,22 @@ export default function ComplaintsPage() {
   const canTrack = !!currentUser && trackingRoles.includes(currentUser.role)
   const canSeeFullDetail = !!currentUser && fullDetailRoles.includes(currentUser.role)
   const [complaints, setComplaints] = useState<Complaint[]>([])
-  const [, setCustomers] = useState<Customer[]>([])
+  const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [stats, setStats] = useState<ComplaintCustomerStat[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
 
-  // Form state
+  // Form state — رقم الهاتف والاسم حقلين منفصلين، وترابطهم ثنائي الاتجاه:
+  // اكتب رقم صحيح يعبّي الاسم تلقائياً، واكتب اسم موجود يعبّي الرقم تلقائياً،
+  // وبنفس الوقت الاثنين قابلين للتعديل اليدوي بأي وقت.
   const [phone, setPhone] = useState('')
+  const [name, setName] = useState('')
   const [foundCustomer, setFoundCustomer] = useState<Customer | null>(null)
   const [searchingCustomer, setSearchingCustomer] = useState(false)
+  const [complaintType, setComplaintType] = useState<ComplaintType | ''>('')
+  const [relatedEmployeeId, setRelatedEmployeeId] = useState('')
   const [description, setDescription] = useState('')
   const [submitting, setSubmitting] = useState(false)
 
@@ -70,32 +75,61 @@ export default function ComplaintsPage() {
     if (currentUser && !canTrack) setShowForm(true)
   }, [currentUser, canTrack])
 
-  const handleLookup = async () => {
-    if (!phone.trim()) return
+  // رقم الهاتف → يعبّي الاسم تلقائياً (بحث بالباك إند لأنه أدق من القائمة المحلية)
+  const handlePhoneChange = async (value: string) => {
+    setPhone(value)
+    setFoundCustomer(null)
+    if (!/^\d{11}$/.test(value.trim())) return
     setSearchingCustomer(true)
     try {
-      const c = await api.lookupCustomer(phone.trim())
-      setFoundCustomer(c)
-      if (!c) alert('لم يتم العثور على زبون بهذا الرقم')
-    } catch {
-      setFoundCustomer(null)
+      const c = await api.lookupCustomer(value.trim())
+      if (c) {
+        setFoundCustomer(c)
+        setName(c.name)
+      }
     } finally {
       setSearchingCustomer(false)
     }
   }
 
+  // الاسم → يعبّي رقم الهاتف تلقائياً إذا طابق زبون موجود بالضبط
+  const handleNameChange = (value: string) => {
+    setName(value)
+    const match = customers.find((c) => c.name.trim() === value.trim())
+    if (match) {
+      setFoundCustomer(match)
+      setPhone(match.phone)
+    } else {
+      setFoundCustomer(null)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!foundCustomer || !currentUser) return
+    if (!currentUser || !complaintType) return
+    // نتأكد من تطابق الزبون بلحظة الإرسال (مو بس الاعتماد على آخر بحث)، لأنه
+    // ممكن المستخدم يعدل الحقلين يدوياً بعد آخر تطابق تلقائي.
+    const matched =
+      foundCustomer ||
+      customers.find((c) => c.phone.trim() === phone.trim() || c.name.trim() === name.trim())
+    if (!matched) {
+      alert('تعذر تحديد الزبون — تأكد من رقم الهاتف أو الاسم مطابق لزبون مسجل بالنظام')
+      return
+    }
     setSubmitting(true)
     try {
       await api.createComplaint({
-        customerId: foundCustomer.id,
+        customerId: matched.id,
+        type: complaintType,
         description,
+        relatedEmployeeId: relatedEmployeeId || undefined,
         createdByEmployeeId: currentUser.id,
       })
       setPhone('')
+      setName('')
       setFoundCustomer(null)
+      setComplaintType('')
+      setRelatedEmployeeId('')
       setDescription('')
       setShowForm(false)
       load()
@@ -163,43 +197,82 @@ export default function ComplaintsPage() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">رقم هاتف الزبون</label>
-              <div className="flex gap-2">
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="أدخل رقم الهاتف"
-                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleLookup}
-                  disabled={searchingCustomer}
-                  className="whitespace-nowrap rounded-lg bg-brand-100 px-4 py-3 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-200 disabled:opacity-50"
-                >
-                  {searchingCustomer ? 'جاري البحث...' : 'بحث'}
-                </button>
-              </div>
-              {foundCustomer && (
-                <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
-                  الزبون: {foundCustomer.name} - {foundCustomer.phone}
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">وصف الشكوى</label>
-              <textarea
-                required
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
+              <input
+                value={phone}
+                onChange={(e) => handlePhoneChange(e.target.value)}
+                placeholder="أدخل رقم الهاتف"
                 className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
               />
+              {searchingCustomer && <p className="mt-1 text-xs text-slate-400">جاري البحث...</p>}
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-600">اسم الزبون</label>
+              <input
+                value={name}
+                onChange={(e) => handleNameChange(e.target.value)}
+                placeholder="أدخل اسم الزبون"
+                list="complaint-customer-names"
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
+              />
+              <datalist id="complaint-customer-names">
+                {customers.map((c) => <option key={c.id} value={c.name} />)}
+              </datalist>
             </div>
           </div>
+          {foundCustomer && (
+            <p className="mt-2 rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+              الزبون: {foundCustomer.name} - {foundCustomer.phone} (كود: {foundCustomer.code})
+            </p>
+          )}
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-600">نوع الشكوى</label>
+              <select
+                required
+                value={complaintType}
+                onChange={(e) => setComplaintType(e.target.value as ComplaintType)}
+                className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
+              >
+                <option value="">اختر نوع الشكوى</option>
+                {Object.entries(complaintTypeLabels).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            {complaintType && complaintType !== 'OTHER' && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">
+                  الموظف المتسبب (اختياري)
+                </label>
+                <select
+                  value={relatedEmployeeId}
+                  onChange={(e) => setRelatedEmployeeId(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
+                >
+                  <option value="">غير محدد / لا يتذكر</option>
+                  {employees.map((emp) => (
+                    <option key={emp.id} value={emp.id}>{emp.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4">
+            <label className="mb-1 block text-sm font-medium text-slate-600">تفاصيل إضافية (اختياري)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
+            />
+          </div>
+
           <div className="mt-4">
             <button
               type="submit"
-              disabled={submitting || !foundCustomer}
+              disabled={submitting || !complaintType}
               className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
             >
               {submitting ? 'جاري الحفظ...' : 'تسجيل الشكوى'}
@@ -337,7 +410,13 @@ export default function ComplaintsPage() {
                       {c.customer?.name || '—'}
                       <div className="text-xs font-normal text-slate-400">{c.customer?.phone}</div>
                     </td>
-                    <td className="max-w-xs truncate px-4 py-3 text-slate-600">{c.description}</td>
+                    <td className="max-w-xs px-4 py-3 text-slate-600">
+                      <span className="font-medium text-brand-800">{complaintTypeLabels[c.type] || c.type}</span>
+                      {c.relatedEmployee && (
+                        <div className="text-xs text-amber-600">الموظف المتسبب: {c.relatedEmployee.name}</div>
+                      )}
+                      {c.description && <div className="truncate text-xs text-slate-400">{c.description}</div>}
+                    </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[c.status]}`}>
                         {statusLabels[c.status]}

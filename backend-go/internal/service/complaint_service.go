@@ -24,10 +24,16 @@ func (s *ComplaintService) StatsByCustomer() ([]model.ComplaintCustomerStat, err
 }
 
 func (s *ComplaintService) Create(req model.CreateComplaintRequest) (*model.Complaint, error) {
-	if req.CustomerID == "" || req.Description == "" || req.CreatedByEmployeeID == "" {
-		return nil, errors.New("customerId, description, and createdByEmployeeId are required")
+	if req.CustomerID == "" || req.CreatedByEmployeeID == "" {
+		return nil, errors.New("customerId و createdByEmployeeId مطلوبين")
 	}
-	return s.repo.Create(req.CustomerID, req.BookingID, req.Description, req.CreatedByEmployeeID)
+	if req.Type == "" {
+		req.Type = "OTHER"
+	}
+	if _, ok := model.ComplaintTypeLabels[req.Type]; !ok {
+		return nil, errors.New("نوع شكوى غير معروف")
+	}
+	return s.repo.Create(req.CustomerID, req.BookingID, req.Type, req.Description, req.CreatedByEmployeeID, req.RelatedEmployeeID)
 }
 
 func (s *ComplaintService) Update(id string, req model.UpdateComplaintRequest) (*model.Complaint, error) {

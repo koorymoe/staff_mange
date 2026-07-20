@@ -310,6 +310,7 @@ model Employee {
   toolApprovals       ToolRequest[] @relation("ToolApprover")
   complaintsCreated   Complaint[] @relation("ComplaintCreator")
   complaintsAssigned  Complaint[] @relation("ComplaintAssignee")
+  complaintsRelated   Complaint[] @relation("ComplaintRelatedEmployee")
   gpsDeviceRequests   GpsDeviceRequest[] @relation("GpsDeviceEmployee")
   gpsDeviceAdmin      GpsDeviceRequest[] @relation("GpsDeviceAdmin")
   gpsRenewalRequests  GpsRenewalRequest[] @relation("GpsRenewalEmployee")
@@ -588,12 +589,15 @@ model Complaint {
   customerId            String
   booking               Booking?        @relation(fields: [bookingId], references: [id])
   bookingId             String?
+  type                  String          @default("OTHER") // نوع الشكوى: قائمة منسدلة ثابتة (DELAY/DISORGANIZED/TECHNICAL/INCOMPLETE/OTHER)
   description           String
   status                ComplaintStatus  @default(NEW)
   createdByEmployee     Employee        @relation("ComplaintCreator", fields: [createdByEmployeeId], references: [id])
   createdByEmployeeId   String
   assignedToEmployee    Employee?       @relation("ComplaintAssignee", fields: [assignedToEmployeeId], references: [id])
   assignedToEmployeeId  String?
+  relatedEmployee       Employee?       @relation("ComplaintRelatedEmployee", fields: [relatedEmployeeId], references: [id])
+  relatedEmployeeId     String?         // الموظف المتسبب بالمشكلة حسب الزبون (اختياري)
   resolution            String?
   createdAt             DateTime        @default(now())
   resolvedAt            DateTime?

@@ -568,17 +568,29 @@ export interface ToolRequestItem {
   returnedAt: string | null
 }
 
+export type ComplaintType = 'DELAY' | 'DISORGANIZED' | 'TECHNICAL' | 'INCOMPLETE' | 'OTHER'
+
+export const complaintTypeLabels: Record<ComplaintType, string> = {
+  DELAY: 'تأخير بالتنفيذ',
+  DISORGANIZED: 'عمل غير منظم',
+  TECHNICAL: 'مشكلة فنية',
+  INCOMPLETE: 'لم يتم إكمال العمل',
+  OTHER: 'أخرى',
+}
+
 export interface Complaint {
   id: string
   customerId: string
   customer: { id: string; name: string; phone: string }
   bookingId: string | null
+  type: ComplaintType
   description: string
   status: 'NEW' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED'
   createdByEmployeeId: string
   createdByEmployee: { id: string; name: string }
   assignedToEmployeeId: string | null
   assignedToEmployee: { id: string; name: string } | null
+  relatedEmployee: { id: string; name: string } | null
   resolution: string | null
   createdAt: string
   resolvedAt: string | null
@@ -998,8 +1010,14 @@ export const api = {
 
   // Complaints
   getComplaints: () => request<Complaint[]>('/complaints'),
-  createComplaint: (data: { customerId: string; bookingId?: string; description: string; createdByEmployeeId: string }) =>
-    request<Complaint>('/complaints', { method: 'POST', body: JSON.stringify(data) }),
+  createComplaint: (data: {
+    customerId: string
+    bookingId?: string
+    type: ComplaintType
+    description?: string
+    relatedEmployeeId?: string
+    createdByEmployeeId: string
+  }) => request<Complaint>('/complaints', { method: 'POST', body: JSON.stringify(data) }),
   updateComplaint: (id: string, data: { status?: string; assignedToEmployeeId?: string; resolution?: string }) =>
     request<Complaint>(`/complaints/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   resolveComplaint: (id: string, resolution: string) =>
