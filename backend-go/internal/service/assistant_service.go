@@ -7,11 +7,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
+	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 )
+
+// ChatTurn دور واحد بمحادثة سابقة (سؤال الموظف أو جواب المساعد) — نرسلها
+// للذكاء الاصطناعي كسياق حتى المحادثة تكون مترابطة وليست أسئلة منفصلة.
+type ChatTurn struct {
+	Role string `json:"role"` // "user" أو "assistant"
+	Text string `json:"text"`
+}
 
 // AssistantService يوصل مساعد ذكي (Gemini المجاني من Google) بمعلومات الموظف
 // نفسه بس (راتبه، مهاراته، تقييماته) — يجاوب أسئلة شخصية بأسلوب طبيعي بدون
@@ -101,23 +110,12 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 	return s.callGemini(systemContext)
 }
 
-// GenerateEmployeeReport يبني تقرير شامل عن موظف معيّن (مهاراته، تاريخ الكي بي
-// اي، تقييمات الأداء) — يستخدمه المراقب/المدير وقت يحتاج ملخص كامل عن أداء
-// موظف. النتيجة نص عربي منسّق تعرضه الواجهة وتقدر تطبعه PDF من المتصفح مباشرة.
-func (s *AssistantService) GenerateEmployeeReport(targetEmployeeID string) (string, error) {
-	if s.apiKey == "" {
-		return "", ErrAssistantNotConfigured
-	}
-	if err := s.checkAndIncrementQuota(); err != nil {
-		return "", err
-	}
-
-	employee, err := s.employees.FindByID(targetEmployeeID)
-	if err != nil || employee == nil {
-		return "", errors.New("الموظف غير موجود")
-	}
-	kpiEvals, _ := s.kpi.ListForEmployee(targetEmployeeID)
-	reviews, _ := s.perfReviews.ListForEmployee(targetEmployeeID)
+// buildEmployeeProfileBlock يبني كتلة نصية عربية تلخص كل بيانات موظف معيّن
+// (مهارات، سجل كي بي اي، تقييمات أداء) — تستخدمها كل من GenerateEmployeeReport
+// و ManagerChat حتى ما نكرر نفس منطق التجميع بمكانين.
+func (s *AssistantService) buildEmployeeProfileBlock(employee *model.Employee) string {
+	kpiEvals, _ := s.kpi.ListForEmployee(employee.ID)
+	reviews, _ := s.perfReviews.ListForEmployee(employee.ID)
 
 	skillLines := "لا توجد مهارات مسجلة"
 	if len(employee.Skills) > 0 {
@@ -163,9 +161,7 @@ func (s *AssistantService) GenerateEmployeeReport(targetEmployeeID string) (stri
 		reviewLines = b.String()
 	}
 
-	prompt := fmt.Sprintf(`أنت محلل موارد بشرية داخلي لشركة الأماني. اكتب تقرير أداء شامل ومنظم بالعربي الفصيح البسيط عن الموظف أدناه، بصيغة نقاط وعناوين واضحة (نظرة عامة، تقييم المهارات، سجل الكي بي اي، تقييمات الأداء والتدريب، توصية ختامية). لا تختلق معلومات غير موجودة بالبيانات أدناه.
-
-بيانات الموظف:
+	return fmt.Sprintf(`بيانات الموظف:
 - الاسم: %s
 - الدور الوظيفي: %s
 - الحالة: %s
@@ -178,6 +174,70 @@ func (s *AssistantService) GenerateEmployeeReport(targetEmployeeID string) (stri
 
 تقييمات الأداء (التدريب):
 %s`, employee.Name, employee.Role, employee.Status, skillLines, kpiLines, reviewLines)
+}
+
+// ManagerChat محادثة حرة للمراقب/المدير — يقدر يسأل عن أي موظف بالاسم
+// ويطلب تقرير أو تفاصيل، والمساعد يجاوب بالسياق نفسه بدون ما يحتاج يفتح
+// صفحة جديدة لكل سؤال. نطابق اسم الموظف المذكور بالرسالة مع قائمة الموظفين
+// ونجيب بياناته الكاملة إذا انطابق الاسم.
+func (s *AssistantService) ManagerChat(message string, history []ChatTurn) (string, error) {
+	if s.apiKey == "" {
+		return "", ErrAssistantNotConfigured
+	}
+	if err := s.checkAndIncrementQuota(); err != nil {
+		return "", err
+	}
+
+	employees, _ := s.employees.List()
+
+	var roster bytes.Buffer
+	for _, e := range employees {
+		fmt.Fprintf(&roster, "- %s (%s)\n", e.Name, e.Role)
+	}
+
+	var matchedBlocks bytes.Buffer
+	matchedCount := 0
+	for i := range employees {
+		if matchedCount >= 3 {
+			break
+		}
+		if employees[i].Name != "" && strings.Contains(message, employees[i].Name) {
+			matchedBlocks.WriteString(s.buildEmployeeProfileBlock(&employees[i]))
+			matchedBlocks.WriteString("\n\n")
+			matchedCount++
+		}
+	}
+
+	var historyText bytes.Buffer
+	start := 0
+	if len(history) > 8 {
+		start = len(history) - 8
+	}
+	for _, turn := range history[start:] {
+		label := "الموظف/المدير"
+		if turn.Role == "assistant" {
+			label = "المساعد"
+		}
+		fmt.Fprintf(&historyText, "%s: %s\n", label, turn.Text)
+	}
+
+	matchedText := matchedBlocks.String()
+	if matchedText == "" {
+		matchedText = "(ما انذكر اسم موظف مطابق بالرسالة الحالية — إذا احتجت بيانات موظف معيّن اطلب منه يذكر الاسم بوضوح)"
+	}
+
+	prompt := fmt.Sprintf(`أنت مساعد ذكي داخلي لمدراء ومراقبي شركة الأماني. تكدر تجاوب عن أي موظف بالشركة (رواتب، مهارات، كي بي اي، تقييمات أداء) وتسوي تقارير مفصلة إذا طلب منك المدير/المراقب. جاوب بالعربي (لهجة عراقية بسيطة إذا مناسب)، بأسلوب محادثة طبيعي مو تقرير جامد إلا إذا طلب المستخدم "تقرير شامل" صراحة. لا تختلق معلومات غير موجودة بالبيانات المعطاة لك.
+
+قائمة كل الموظفين بالشركة (للمرجعية، ما عندك تفاصيلهم الكاملة إلا اللي مذكورين أدناه):
+%s
+
+بيانات تفصيلية للموظفين المذكورين بالرسالة الحالية (إذا وجدت):
+%s
+
+سياق المحادثة السابقة:
+%s
+
+رسالة المدير/المراقب الحالية: %s`, roster.String(), matchedText, historyText.String(), message)
 
 	return s.callGemini(prompt)
 }

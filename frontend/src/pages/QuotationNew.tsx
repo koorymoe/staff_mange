@@ -369,7 +369,7 @@ ${pageShell(`
     ${headerHtml}
     <div class="info-row-p2">
       <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${customerName}</div></div>
-      <div class="info-item"><div class="label">رقم العرض:</div><div class="value">---</div></div>
+      <div class="info-item"><div class="label">رقم العرض:</div><div class="value">${quotationNumber || '---'}</div></div>
       <div class="info-item"><div class="label">التاريخ:</div><div class="value">${qdate}</div></div>
     </div>
     <hr class="hr">

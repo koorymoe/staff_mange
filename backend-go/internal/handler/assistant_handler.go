@@ -34,17 +34,22 @@ func (h *AssistantHandler) Ask(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"reply": reply})
 }
 
-// GET /api/assistant/employee-report/{employeeId} — تقرير أداء شامل لموظف معيّن، للمراقب/الأدمن فقط
-func (h *AssistantHandler) EmployeeReport(w http.ResponseWriter, r *http.Request) {
-	employeeID := r.PathValue("employeeId")
-	if employeeID == "" {
-		WriteError(w, http.StatusBadRequest, "الموظف غير محدد")
+type ManagerChatRequest struct {
+	Message string             `json:"message"`
+	History []service.ChatTurn `json:"history"`
+}
+
+// POST /api/assistant/manager-chat — محادثة حرة للمراقب/الأدمن، يسأل عن أي موظف بالاسم
+func (h *AssistantHandler) ManagerChat(w http.ResponseWriter, r *http.Request) {
+	var req ManagerChatRequest
+	if err := DecodeJSON(r, &req); err != nil || req.Message == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب سؤالك أول")
 		return
 	}
-	report, err := h.service.GenerateEmployeeReport(employeeID)
+	reply, err := h.service.ManagerChat(req.Message, req.History)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, map[string]string{"report": report})
+	WriteJSON(w, http.StatusOK, map[string]string{"reply": reply})
 }

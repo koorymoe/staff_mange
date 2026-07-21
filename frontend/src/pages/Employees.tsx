@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type Stats } from '../api'
 import { useSession } from '../session'
 import AddEmployeeWizard from '../components/AddEmployeeWizard'
+import { openManagerChat } from '../components/ManagerAssistantChat'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -84,10 +85,6 @@ export default function Employees() {
   const [showArchived, setShowArchived] = useState(false)
   const [archivedEmployees, setArchivedEmployees] = useState<Employee[]>([])
 
-  const [aiReport, setAiReport] = useState<string | null>(null)
-  const [aiReportLoading, setAiReportLoading] = useState(false)
-  const [aiReportError, setAiReportError] = useState<string | null>(null)
-
   const load = () => {
     setLoading(true)
     Promise.all([api.getEmployees(), api.getServices()])
@@ -132,17 +129,7 @@ export default function Employees() {
 
   const handleGenerateAiReport = async () => {
     if (!selectedEmployee) return
-    setAiReport(null)
-    setAiReportError(null)
-    setAiReportLoading(true)
-    try {
-      const res = await api.getEmployeeAiReport(selectedEmployee.id)
-      setAiReport(res.report)
-    } catch (err) {
-      setAiReportError(err instanceof Error ? err.message : 'تعذر توليد التقرير')
-    } finally {
-      setAiReportLoading(false)
-    }
+    openManagerChat(`أعطني تقرير شامل عن الموظف ${selectedEmployee.name}`)
   }
 
   useEffect(() => {
@@ -352,11 +339,10 @@ export default function Employees() {
                     {canGenerateAiReport && selectedEmployee.status !== 'ARCHIVED' && selectedEmployee.status !== 'DELETED' && (
                       <div className="relative mt-4 flex flex-wrap gap-2">
                         <button
-                          onClick={() => { setAiReport(null); setAiReportError(null); handleGenerateAiReport() }}
-                          disabled={aiReportLoading}
-                          className="rounded-lg bg-indigo-500/20 px-3 py-1.5 text-xs font-bold text-indigo-200 hover:bg-indigo-500/30 disabled:opacity-50"
+                          onClick={handleGenerateAiReport}
+                          className="rounded-lg bg-indigo-500/20 px-3 py-1.5 text-xs font-bold text-indigo-200 hover:bg-indigo-500/30"
                         >
-                          {aiReportLoading ? '⏳ جارِ التوليد...' : '🧠 تقرير ذكاء اصطناعي شامل'}
+                          🧑‍💼🤖 اسأل الذكاء الاصطناعي عن هذا الموظف
                         </button>
                       </div>
                     )}
@@ -766,34 +752,6 @@ export default function Employees() {
                 </div>
               )
             })()}
-          </div>
-        </div>
-      )}
-
-      {(aiReportLoading || aiReport || aiReportError) && selectedEmployee && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
-          <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl">
-            <div className="mb-4 flex items-center justify-between print:hidden">
-              <h3 className="text-lg font-extrabold text-[#0f2040]">🧠 تقرير الذكاء الاصطناعي — {selectedEmployee.name}</h3>
-              <div className="flex items-center gap-2">
-                {aiReport && (
-                  <button onClick={() => window.print()} className="rounded-lg bg-[#2c5aad] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#234a91]">
-                    🖨️ طباعة / PDF
-                  </button>
-                )}
-                <button
-                  onClick={() => { setAiReport(null); setAiReportError(null) }}
-                  className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200"
-                >
-                  إغلاق
-                </button>
-              </div>
-            </div>
-            {aiReportLoading && <p className="py-8 text-center text-sm text-slate-400">جارِ توليد التقرير عن طريق الذكاء الاصطناعي...</p>}
-            {aiReportError && <p className="rounded-xl bg-red-50 p-4 text-sm font-medium text-red-600">{aiReportError}</p>}
-            {aiReport && (
-              <div className="whitespace-pre-wrap text-sm leading-7 text-slate-700">{aiReport}</div>
-            )}
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ import { SessionContext, roleLabels, hasGpsSkill } from '../session'
 import Login from '../pages/Login'
 import TrainingPage from '../pages/TrainingPage'
 import AssistantWidget from './AssistantWidget'
+import ManagerAssistantChat from './ManagerAssistantChat'
 
 interface NavItem {
   to: string
@@ -511,6 +512,7 @@ export default function Layout() {
         </aside>
       </div>
       <AssistantWidget />
+      {(employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || employee?.actualRole === 'OWNER') && <ManagerAssistantChat />}
     </SessionContext.Provider>
   )
 }

@@ -732,8 +732,8 @@ export const api = {
 
   askAssistant: (message: string) =>
     request<{ reply: string }>('/assistant/ask', { method: 'POST', body: JSON.stringify({ message }) }),
-  getEmployeeAiReport: (employeeId: string) =>
-    request<{ report: string }>(`/assistant/employee-report/${employeeId}`),
+  managerChatAssistant: (message: string, history: { role: 'user' | 'assistant'; text: string }[]) =>
+    request<{ reply: string }>('/assistant/manager-chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
 
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
   updateQualityFollowUp: (
