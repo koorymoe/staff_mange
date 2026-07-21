@@ -42,7 +42,7 @@ export default function ManagerAssistantChat() {
   }
 
   return (
-    <div className="fixed bottom-5 right-5 z-[65]">
+    <div className="fixed bottom-5 left-5 z-[65]">
       {open && (
         <div className="mb-3 flex h-[560px] w-96 flex-col overflow-hidden rounded-2xl border border-white bg-white shadow-2xl">
           <div className="flex items-center justify-between bg-gradient-to-l from-indigo-600 to-indigo-900 px-4 py-3 text-white">
@@ -52,7 +52,7 @@ export default function ManagerAssistantChat() {
           <div className="flex-1 space-y-2 overflow-y-auto p-3">
             {messages.length === 0 && (
               <p className="p-3 text-center text-xs text-slate-400">
-                اسأل عن أي موظف بالاسم — راتبه، مهاراته، سجل الكي بي اي، تقييمات الأداء — أو اطلب "تقرير شامل عن الموظف فلان".
+                اسألني عن نفسك أو عن أي موظف بالاسم — راتب، مهارات، سجل الكي بي اي، تقييمات الأداء — أو اطلب "تقرير شامل عن الموظف فلان".
               </p>
             )}
             {messages.map((m, i) => (

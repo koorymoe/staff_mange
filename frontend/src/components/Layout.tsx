@@ -511,8 +511,9 @@ export default function Layout() {
           </div>
         </aside>
       </div>
-      <AssistantWidget />
-      {(employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || employee?.actualRole === 'OWNER') && <ManagerAssistantChat />}
+      {(employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || employee?.actualRole === 'OWNER')
+        ? <ManagerAssistantChat />
+        : <AssistantWidget />}
     </SessionContext.Provider>
   )
 }

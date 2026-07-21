@@ -46,7 +46,7 @@ func (h *AssistantHandler) ManagerChat(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "اكتب سؤالك أول")
 		return
 	}
-	reply, err := h.service.ManagerChat(req.Message, req.History)
+	reply, err := h.service.ManagerChat(middleware.EmployeeIDFromContext(r), req.Message, req.History)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

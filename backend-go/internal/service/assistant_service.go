@@ -180,7 +180,7 @@ func (s *AssistantService) buildEmployeeProfileBlock(employee *model.Employee) s
 // ويطلب تقرير أو تفاصيل، والمساعد يجاوب بالسياق نفسه بدون ما يحتاج يفتح
 // صفحة جديدة لكل سؤال. نطابق اسم الموظف المذكور بالرسالة مع قائمة الموظفين
 // ونجيب بياناته الكاملة إذا انطابق الاسم.
-func (s *AssistantService) ManagerChat(message string, history []ChatTurn) (string, error) {
+func (s *AssistantService) ManagerChat(askerEmployeeID, message string, history []ChatTurn) (string, error) {
 	if s.apiKey == "" {
 		return "", ErrAssistantNotConfigured
 	}
@@ -197,13 +197,25 @@ func (s *AssistantService) ManagerChat(message string, history []ChatTurn) (stri
 
 	var matchedBlocks bytes.Buffer
 	matchedCount := 0
+	matchedIDs := map[string]bool{}
+	if asker, err := s.employees.FindByID(askerEmployeeID); err == nil && asker != nil {
+		matchedBlocks.WriteString("(هذا هو السائل نفسه، إذا سأل عن نفسه بصيغة \"راتبي\"/\"مهاراتي\" استخدم هالبيانات)\n")
+		matchedBlocks.WriteString(s.buildEmployeeProfileBlock(asker))
+		matchedBlocks.WriteString("\n\n")
+		matchedIDs[asker.ID] = true
+		matchedCount++
+	}
 	for i := range employees {
-		if matchedCount >= 3 {
+		if matchedCount >= 4 {
 			break
+		}
+		if matchedIDs[employees[i].ID] {
+			continue
 		}
 		if employees[i].Name != "" && strings.Contains(message, employees[i].Name) {
 			matchedBlocks.WriteString(s.buildEmployeeProfileBlock(&employees[i]))
 			matchedBlocks.WriteString("\n\n")
+			matchedIDs[employees[i].ID] = true
 			matchedCount++
 		}
 	}
