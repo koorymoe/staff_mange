@@ -32,14 +32,35 @@ type AssistantService struct {
 	employees   *repository.EmployeeRepository
 	kpi         *repository.KpiRepository
 	perfReviews *repository.PerformanceReviewRepository
+	bookings    *repository.BookingRepository
+	missions    *repository.MissionRepository
+	expenses    *repository.ExpenseRepository
+	gps         *repository.GpsRepository
+	qualityFUs  *repository.QualityFollowUpRepository
+	complaints  *repository.ComplaintRepository
 
 	mu        sync.Mutex
 	usedToday int
 	resetDate string
 }
 
-func NewAssistantService(apiKey string, dailyCap int, employees *repository.EmployeeRepository, kpi *repository.KpiRepository, perfReviews *repository.PerformanceReviewRepository) *AssistantService {
-	return &AssistantService{apiKey: apiKey, dailyCap: dailyCap, employees: employees, kpi: kpi, perfReviews: perfReviews, resetDate: time.Now().Format("2006-01-02")}
+func NewAssistantService(
+	apiKey string, dailyCap int,
+	employees *repository.EmployeeRepository,
+	kpi *repository.KpiRepository,
+	perfReviews *repository.PerformanceReviewRepository,
+	bookings *repository.BookingRepository,
+	missions *repository.MissionRepository,
+	expenses *repository.ExpenseRepository,
+	gps *repository.GpsRepository,
+	qualityFUs *repository.QualityFollowUpRepository,
+	complaints *repository.ComplaintRepository,
+) *AssistantService {
+	return &AssistantService{
+		apiKey: apiKey, dailyCap: dailyCap, employees: employees, kpi: kpi, perfReviews: perfReviews,
+		bookings: bookings, missions: missions, expenses: expenses, gps: gps, qualityFUs: qualityFUs, complaints: complaints,
+		resetDate: time.Now().Format("2006-01-02"),
+	}
 }
 
 var ErrAssistantNotConfigured = errors.New("المساعد الذكي غير مفعّل حالياً — لازم تضاف مفتاح Gemini بإعدادات السيرفر")
@@ -96,7 +117,9 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 		salaryLine = fmt.Sprintf("راتبه الشهري: %.0f دينار عراقي", *employee.Salary)
 	}
 
-	systemContext := fmt.Sprintf(`أنت مساعد ذكي داخلي بسيط لنظام إدارة موظفين شركة الأماني. جاوب بس عن بيانات الموظف الحالي أدناه، بأسلوب ودود ومختصر بالعربي (لهجة عراقية بسيطة إذا مناسب). لا تختلق معلومات غير موجودة هنا، وإذا السؤال خارج نطاق بياناته الشخصية اعتذر بأدب وقول تراجع الإدارة.
+	domainBlock := s.buildRoleScopedBlock(employee)
+
+	systemContext := fmt.Sprintf(`أنت مساعد ذكي داخلي لنظام إدارة موظفين شركة الأماني. جاوب بس عن بيانات الموظف الحالي أدناه (بياناته الشخصية + بيانات شغله المرتبطة بدوره الوظيفي المذكورة أدناه)، بأسلوب ودود ومختصر بالعربي (لهجة عراقية بسيطة إذا مناسب). لا تختلق معلومات غير موجودة هنا، وإذا السؤال خارج نطاق بياناته الشخصية أو شغله اعتذر بأدب وقول تراجع الإدارة. إذا سألك يشرحلك شلون يسوي شي بالنظام (مثلاً "شلون أنسق حجز؟")، اشرحله خطوة بخطوة بأسلوب تعليمي بسيط.
 
 بيانات الموظف السائل:
 - الاسم: %s
@@ -105,9 +128,120 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 - عدد المهارات المتقنة: %d من أصل %d
 - مجموع نقاط الكي بي اي هذا الشهر: %d
 
-سؤال الموظف: %s`, employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, message)
+بيانات شغله الحالية (حسب دوره الوظيفي):
+%s
+
+سؤال الموظف: %s`, employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, message)
 
 	return s.callGemini(systemContext)
+}
+
+// buildRoleScopedBlock يبني كتلة بيانات "شغل الموظف" حسب دوره الوظيفي —
+// كل دور يشوف بس المعلومات المرتبطة بشغله (حجوزات، طلبات GPS، مصاريف...)
+// بدون ما يوصل لبيانات موظفين ثانيين أو مجالات خارج دوره.
+func (s *AssistantService) buildRoleScopedBlock(employee *model.Employee) string {
+	var b bytes.Buffer
+
+	switch employee.Role {
+	case "GPS_ADMIN":
+		devices, _ := s.gps.ListDevices()
+		pendingDevices := 0
+		for _, d := range devices {
+			if d.Status == "PENDING" {
+				pendingDevices++
+			}
+		}
+		renewals, _ := s.gps.ListRenewals()
+		pendingRenewals := 0
+		for _, rn := range renewals {
+			if rn.Status == "PENDING" {
+				pendingRenewals++
+			}
+		}
+		maint, _ := s.gps.ListMaintenance()
+		pendingMaint := 0
+		for _, m := range maint {
+			if m.Status == "PENDING" {
+				pendingMaint++
+			}
+		}
+		fmt.Fprintf(&b, "- طلبات أجهزة GPS المعلقة: %d\n- طلبات تجديد الاشتراك المعلقة: %d\n- طلبات الصيانة المفتوحة: %d\n", pendingDevices, pendingRenewals, pendingMaint)
+
+	case "HR_COORDINATOR":
+		pending, _ := s.bookings.List("PENDING", "")
+		fmt.Fprintf(&b, "- عدد الحجوزات بانتظار التنسيق حالياً: %d\n", len(pending))
+		shown := 0
+		for _, bk := range pending {
+			if shown >= 10 {
+				break
+			}
+			customerName := "-"
+			if bk.Customer != nil {
+				customerName = bk.Customer.Name
+			}
+			fmt.Fprintf(&b, "  * %s — الزبون: %s\n", bk.Code, customerName)
+			shown++
+		}
+
+	case "SALES":
+		myBookings, _ := s.bookings.ListForAssignedEmployee(employee.ID, 15)
+		fmt.Fprintf(&b, "- عدد حجوزاتي المسجلة: %d\n", len(myBookings))
+		for _, bk := range myBookings {
+			customerName := "-"
+			if bk.Customer != nil {
+				customerName = bk.Customer.Name
+			}
+			fmt.Fprintf(&b, "  * %s — الزبون: %s — الحالة: %s\n", bk.Code, customerName, bk.Status)
+		}
+
+	case "TECHNICIAN", "ENGINEER":
+		missions, _ := s.missions.ListForEmployee(employee.ID)
+		fmt.Fprintf(&b, "- عدد المهام المسندة إلي: %d\n", len(missions))
+		shown := 0
+		for _, m := range missions {
+			if shown >= 10 {
+				break
+			}
+			status := "منجزة"
+			if m.CompletedAt == nil {
+				status = "قيد التنفيذ"
+			}
+			fmt.Fprintf(&b, "  * مهمة %s — الحالة: %s\n", m.Code, status)
+			shown++
+		}
+
+	case "FINANCE":
+		allExpenses, _ := s.expenses.List("")
+		pendingCount := 0
+		for _, e := range allExpenses {
+			if e.Status == "PENDING" {
+				pendingCount++
+			}
+		}
+		fmt.Fprintf(&b, "- عدد المصاريف بانتظار المراجعة حالياً: %d\n", pendingCount)
+
+	case "QUALITY_ENGINEER":
+		followUps, _ := s.qualityFUs.List()
+		openFUs := 0
+		for _, f := range followUps {
+			if f.Status == "PENDING" {
+				openFUs++
+			}
+		}
+		complaints, _ := s.complaints.List()
+		openComplaints := 0
+		for _, c := range complaints {
+			if c.Status != "RESOLVED" && c.Status != "CLOSED" {
+				openComplaints++
+			}
+		}
+		fmt.Fprintf(&b, "- متابعات جودة مفتوحة: %d\n- شكاوى مفتوحة غير محلولة: %d\n", openFUs, openComplaints)
+	}
+
+	if b.Len() == 0 {
+		return "(ماكو بيانات شغل خاصة مرتبطة بهذا الدور الوظيفي حالياً)"
+	}
+	return b.String()
 }
 
 // buildEmployeeProfileBlock يبني كتلة نصية عربية تلخص كل بيانات موظف معيّن

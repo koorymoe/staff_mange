@@ -43,6 +43,28 @@ func (r *BookingRepository) List(status, customerID string) ([]model.Booking, er
 	return bookings, nil
 }
 
+// ListForAssignedEmployee يرجّع الحجوزات اللي الموظف معيّن عليها بـ BookingAssignment
+// (مثلاً موظف مبيعات أو فني مرتبط بيها) — يستخدمها المساعد الذكي لعرض "حجوزاتي".
+func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int) ([]model.Booking, error) {
+	bookings := []model.Booking{}
+	err := r.db.Select(&bookings, `
+		SELECT b.* FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1
+		ORDER BY b."createdAt" DESC
+		LIMIT $2
+	`, employeeID, limit)
+	if err != nil {
+		return nil, err
+	}
+	for i := range bookings {
+		if err := r.hydrate(&bookings[i]); err != nil {
+			return nil, err
+		}
+	}
+	return bookings, nil
+}
+
 func (r *BookingRepository) FindByID(id string) (*model.Booking, error) {
 	var b model.Booking
 	err := r.db.Get(&b, `SELECT * FROM "Booking" WHERE id = $1`, id)
