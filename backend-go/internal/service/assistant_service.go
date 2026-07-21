@@ -18,18 +18,19 @@ import (
 // ما يكشف بيانات موظفين ثانيين. مصمم على حد استخدام يومي (GEMINI_DAILY_CAP)
 // حتى نضل بالخطة المجانية ولا نتفاجئ بفاتورة.
 type AssistantService struct {
-	apiKey    string
-	dailyCap  int
-	employees *repository.EmployeeRepository
-	kpi       *repository.KpiRepository
+	apiKey      string
+	dailyCap    int
+	employees   *repository.EmployeeRepository
+	kpi         *repository.KpiRepository
+	perfReviews *repository.PerformanceReviewRepository
 
 	mu        sync.Mutex
 	usedToday int
 	resetDate string
 }
 
-func NewAssistantService(apiKey string, dailyCap int, employees *repository.EmployeeRepository, kpi *repository.KpiRepository) *AssistantService {
-	return &AssistantService{apiKey: apiKey, dailyCap: dailyCap, employees: employees, kpi: kpi, resetDate: time.Now().Format("2006-01-02")}
+func NewAssistantService(apiKey string, dailyCap int, employees *repository.EmployeeRepository, kpi *repository.KpiRepository, perfReviews *repository.PerformanceReviewRepository) *AssistantService {
+	return &AssistantService{apiKey: apiKey, dailyCap: dailyCap, employees: employees, kpi: kpi, perfReviews: perfReviews, resetDate: time.Now().Format("2006-01-02")}
 }
 
 var ErrAssistantNotConfigured = errors.New("المساعد الذكي غير مفعّل حالياً — لازم تضاف مفتاح Gemini بإعدادات السيرفر")
@@ -98,6 +99,87 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 سؤال الموظف: %s`, employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, message)
 
 	return s.callGemini(systemContext)
+}
+
+// GenerateEmployeeReport يبني تقرير شامل عن موظف معيّن (مهاراته، تاريخ الكي بي
+// اي، تقييمات الأداء) — يستخدمه المراقب/المدير وقت يحتاج ملخص كامل عن أداء
+// موظف. النتيجة نص عربي منسّق تعرضه الواجهة وتقدر تطبعه PDF من المتصفح مباشرة.
+func (s *AssistantService) GenerateEmployeeReport(targetEmployeeID string) (string, error) {
+	if s.apiKey == "" {
+		return "", ErrAssistantNotConfigured
+	}
+	if err := s.checkAndIncrementQuota(); err != nil {
+		return "", err
+	}
+
+	employee, err := s.employees.FindByID(targetEmployeeID)
+	if err != nil || employee == nil {
+		return "", errors.New("الموظف غير موجود")
+	}
+	kpiEvals, _ := s.kpi.ListForEmployee(targetEmployeeID)
+	reviews, _ := s.perfReviews.ListForEmployee(targetEmployeeID)
+
+	skillLines := "لا توجد مهارات مسجلة"
+	if len(employee.Skills) > 0 {
+		var b bytes.Buffer
+		for _, sk := range employee.Skills {
+			status := "لا يتقنها"
+			if sk.CanPerform {
+				status = "يتقنها"
+			}
+			name := sk.SkillID
+			if sk.Skill != nil {
+				name = sk.Skill.Name
+			}
+			fmt.Fprintf(&b, "- %s: %s\n", name, status)
+		}
+		skillLines = b.String()
+	}
+
+	kpiLines := "لا توجد تقييمات كي بي اي مسجلة"
+	if len(kpiEvals) > 0 {
+		var b bytes.Buffer
+		shown := 0
+		for _, ev := range kpiEvals {
+			if shown >= 15 {
+				break
+			}
+			status := ""
+			if ev.Cancelled {
+				status = " (ملغاة)"
+			}
+			fmt.Fprintf(&b, "- %s: %d نقطة — %s%s (خصم %.0f د.ع)\n", ev.CreatedAt.Format("2006-01-02"), ev.Points, ev.Reason, status, ev.DeductionAmount)
+			shown++
+		}
+		kpiLines = b.String()
+	}
+
+	reviewLines := "لا توجد تقييمات أداء (تدريب) مسجلة"
+	if len(reviews) > 0 {
+		var b bytes.Buffer
+		for _, r := range reviews {
+			fmt.Fprintf(&b, "- %s: %s — %s\n", r.CreatedAt.Format("2006-01-02"), r.Rating, r.Reason)
+		}
+		reviewLines = b.String()
+	}
+
+	prompt := fmt.Sprintf(`أنت محلل موارد بشرية داخلي لشركة الأماني. اكتب تقرير أداء شامل ومنظم بالعربي الفصيح البسيط عن الموظف أدناه، بصيغة نقاط وعناوين واضحة (نظرة عامة، تقييم المهارات، سجل الكي بي اي، تقييمات الأداء والتدريب، توصية ختامية). لا تختلق معلومات غير موجودة بالبيانات أدناه.
+
+بيانات الموظف:
+- الاسم: %s
+- الدور الوظيفي: %s
+- الحالة: %s
+
+المهارات:
+%s
+
+سجل تقييمات الكي بي اي (آخر 15):
+%s
+
+تقييمات الأداء (التدريب):
+%s`, employee.Name, employee.Role, employee.Status, skillLines, kpiLines, reviewLines)
+
+	return s.callGemini(prompt)
 }
 
 type geminiRequest struct {

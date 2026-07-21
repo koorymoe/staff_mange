@@ -111,7 +111,7 @@ func main() {
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	kpiHandler := handler.NewKpiHandler(kpiService)
-	assistantService := service.NewAssistantService(cfg.GeminiAPIKey, cfg.GeminiDailyCap, employeeRepo, kpiRepo)
+	assistantService := service.NewAssistantService(cfg.GeminiAPIKey, cfg.GeminiDailyCap, employeeRepo, kpiRepo, performanceReviewRepo)
 	assistantHandler := handler.NewAssistantHandler(assistantService)
 	kpiCriterionHandler := handler.NewKpiCriterionHandler(kpiCriterionService)
 	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)
@@ -255,6 +255,7 @@ func main() {
 	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireMonitor))
 	mux.Handle("GET /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.List), requireAuth))
 	mux.Handle("POST /api/assistant/ask", middleware.Chain(http.HandlerFunc(assistantHandler.Ask), requireAuth))
+	mux.Handle("GET /api/assistant/employee-report/{employeeId}", middleware.Chain(http.HandlerFunc(assistantHandler.EmployeeReport), requireAuth, requireMonitor))
 	mux.Handle("POST /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Create), requireAuth, requireKpiCriteria))
 	mux.Handle("DELETE /api/kpi-criteria/{id}", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Delete), requireAuth, requireKpiCriteria))
 

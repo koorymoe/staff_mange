@@ -33,3 +33,18 @@ func (h *AssistantHandler) Ask(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]string{"reply": reply})
 }
+
+// GET /api/assistant/employee-report/{employeeId} — تقرير أداء شامل لموظف معيّن، للمراقب/الأدمن فقط
+func (h *AssistantHandler) EmployeeReport(w http.ResponseWriter, r *http.Request) {
+	employeeID := r.PathValue("employeeId")
+	if employeeID == "" {
+		WriteError(w, http.StatusBadRequest, "الموظف غير محدد")
+		return
+	}
+	report, err := h.service.GenerateEmployeeReport(employeeID)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"report": report})
+}
