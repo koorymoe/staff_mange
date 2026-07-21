@@ -127,7 +127,10 @@ func (s *AssistantService) callGemini(prompt string) (string, error) {
 		return "", err
 	}
 
-	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + s.apiKey
+	// نستخدم alias "gemini-flash-latest" بدل اسم نسخة ثابت (مثل gemini-2.5-flash)
+	// حتى ما نتعلق بمشكلة "الموديل صار قديم" كل ما جوجل تصدر نسخة جديدة —
+	// الـalias يتابع تلقائياً أحدث نسخة Flash متوفرة.
+	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + s.apiKey
 	client := &http.Client{Timeout: 20 * time.Second}
 	resp, err := client.Post(url, "application/json", bytes.NewReader(reqBody))
 	if err != nil {
