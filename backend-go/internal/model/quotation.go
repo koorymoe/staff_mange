@@ -34,7 +34,7 @@ type QuotationItem struct {
 }
 
 type QuotationItemInput struct {
-	Description string  `json:"description"`
+	ProductName string  `json:"productName"`
 	Unit        *string `json:"unit"`
 	Quantity    int     `json:"quantity"`
 	UnitPrice   float64 `json:"unitPrice"`

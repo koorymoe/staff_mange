@@ -129,16 +129,28 @@ export default function QuotationsPage() {
                       {new Date(q.createdAt).toLocaleDateString('ar-IQ')}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
-                      <button
-                        onClick={() => handleDelete(q.id)}
-                        style={{
-                          background: '#fee2e2', color: '#dc2626', border: 'none',
-                          padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-                          fontSize: '12px', fontWeight: 'bold',
-                        }}
-                      >
-                        حذف
-                      </button>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                        <button
+                          onClick={() => navigate(`/quotations/${q.id}/edit`)}
+                          style={{
+                            background: '#e3f2fd', color: '#1565c0', border: 'none',
+                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: 'bold',
+                          }}
+                        >
+                          تعديل
+                        </button>
+                        <button
+                          onClick={() => handleDelete(q.id)}
+                          style={{
+                            background: '#fee2e2', color: '#dc2626', border: 'none',
+                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: 'bold',
+                          }}
+                        >
+                          حذف
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )

@@ -876,6 +876,7 @@ export const api = {
 
   // Quotations
   getQuotations: () => request<Quotation[]>('/quotations'),
+  getQuotation: (id: string) => request<Quotation>(`/quotations/${id}`),
   createQuotation: (data: {
     customerName: string
     customerPhone?: string
@@ -890,6 +891,17 @@ export const api = {
     notes?: string
     createdByEmployeeId?: string
   }) => request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
+  updateQuotation: (id: string, data: {
+    customerName?: string
+    customerPhone?: string
+    customerAddress?: string
+    projectName?: string
+    items?: Omit<QuotationItem, 'id'>[]
+    discountPercent?: number
+    duration?: string
+    notes?: string
+    status?: Quotation['status']
+  }) => request<Quotation>(`/quotations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteQuotation: (id: string) =>
     request<void>(`/quotations/${id}`, { method: 'DELETE' }),
 

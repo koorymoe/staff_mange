@@ -81,6 +81,7 @@ function App() {
         <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />
         <Route path="quotations" element={<QuotationsPage />} />
         <Route path="quotations/new" element={<QuotationNew />} />
+        <Route path="quotations/:id/edit" element={<QuotationNew />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="attendance" element={<AttendancePage />} />
         <Route path="work-reports" element={<WorkReportPage />} />

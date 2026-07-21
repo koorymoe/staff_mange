@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { api, type Product } from '../api'
 import { useSession } from '../session'
 import { _IMG_VSTRIP, _IMG_FBANNER } from '../printImages'
@@ -25,6 +26,9 @@ const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 export default function QuotationNew() {
   const { employee } = useSession()
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const isEdit = !!id
   const [products, setProducts] = useState<Product[]>([])
   const [customerName, setCustomerName] = useState('')
   const [customerPhone, setCustomerPhone] = useState('')
@@ -34,6 +38,8 @@ export default function QuotationNew() {
   const [discountPercent, setDiscountPercent] = useState(0)
   const [duration, setDuration] = useState('')
   const [notes, setNotes] = useState('')
+  const [quotationNumber, setQuotationNumber] = useState('')
+  const [loadingQuotation, setLoadingQuotation] = useState(isEdit)
   const [submitting, setSubmitting] = useState(false)
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'ok' | 'err' } | null>(null)
   const [activeAutocomplete, setActiveAutocomplete] = useState<number | null>(null)
@@ -48,6 +54,32 @@ export default function QuotationNew() {
   useEffect(() => {
     api.getProducts().then(setProducts).catch(() => {})
   }, [])
+
+  useEffect(() => {
+    if (!id) return
+    setLoadingQuotation(true)
+    api.getQuotation(id)
+      .then((q) => {
+        setCustomerName(q.customerName)
+        setCustomerPhone(q.customerPhone || '')
+        setCustomerAddress(q.customerAddress || '')
+        setProjectName(q.projectName || '')
+        setQuotationNumber(q.quotationNumber)
+        setDiscountPercent(q.discountPercent)
+        setDuration(q.duration || '')
+        setNotes(q.notes || '')
+        setItems(q.items.length > 0 ? q.items.map((it) => ({
+          productName: it.productName,
+          unit: it.unit,
+          quantity: it.quantity,
+          unitPrice: it.unitPrice,
+          totalPrice: it.totalPrice,
+        })) : [emptyItem()])
+      })
+      .catch((err) => showStatus('تعذر تحميل عرض السعر: ' + (err instanceof Error ? err.message : ''), 'err'))
+      .finally(() => setLoadingQuotation(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -109,27 +141,42 @@ export default function QuotationNew() {
     setSubmitting(true)
     showStatus('جاري الحفظ...', 'ok')
     try {
-      await api.createQuotation({
-        customerName,
-        customerPhone: customerPhone || undefined,
-        customerAddress: customerAddress || undefined,
-        projectName: projectName || undefined,
-        items: validItems.map(it => ({
-          productName: it.productName,
-          unit: it.unit,
-          quantity: it.quantity,
-          unitPrice: it.unitPrice,
-          totalPrice: it.quantity * it.unitPrice,
-        })),
-        grandTotal,
-        discountValue,
-        netTotal,
-        discountPercent,
-        duration: duration || undefined,
-        notes: notes || undefined,
-        createdByEmployeeId: employee?.id,
-      })
-      showStatus('تم الحفظ بنجاح ✓', 'ok')
+      const itemsPayload = validItems.map(it => ({
+        productName: it.productName,
+        unit: it.unit,
+        quantity: it.quantity,
+        unitPrice: it.unitPrice,
+        totalPrice: it.quantity * it.unitPrice,
+      }))
+      if (isEdit && id) {
+        await api.updateQuotation(id, {
+          customerName,
+          customerPhone: customerPhone || undefined,
+          customerAddress: customerAddress || undefined,
+          projectName: projectName || undefined,
+          items: itemsPayload,
+          discountPercent,
+          duration: duration || undefined,
+          notes: notes || undefined,
+        })
+        showStatus('تم حفظ التعديلات بنجاح ✓', 'ok')
+      } else {
+        await api.createQuotation({
+          customerName,
+          customerPhone: customerPhone || undefined,
+          customerAddress: customerAddress || undefined,
+          projectName: projectName || undefined,
+          items: itemsPayload,
+          grandTotal,
+          discountValue,
+          netTotal,
+          discountPercent,
+          duration: duration || undefined,
+          notes: notes || undefined,
+          createdByEmployeeId: employee?.id,
+        })
+        showStatus('تم الحفظ بنجاح ✓', 'ok')
+      }
     } catch (err) {
       showStatus('خطأ: ' + (err instanceof Error ? err.message : 'حدث خطأ'), 'err')
     } finally {
@@ -405,9 +452,17 @@ ${pageShell(`
       }}>
         <div style={{ fontSize: '32px', fontWeight: 800, marginBottom: '6px' }}>شركة الأماني</div>
         <div style={{ fontSize: '13px', color: '#ffecb3', marginBottom: '4px' }}>للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</div>
-        <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '10px', color: '#ffd54f' }}>نظام إصدار عروض الأسعار الرسمية</div>
+        <div style={{ fontSize: '16px', fontWeight: 700, marginTop: '10px', color: '#ffd54f' }}>
+          {isEdit ? `تعديل عرض السعر ${quotationNumber ? '— ' + quotationNumber : ''}` : 'نظام إصدار عروض الأسعار الرسمية'}
+        </div>
       </div>
 
+      {loadingQuotation && (
+        <div style={{ textAlign: 'center', color: '#999', padding: '30px' }}>جاري تحميل بيانات العرض...</div>
+      )}
+
+      {!loadingQuotation && (
+      <>
       {/* ===== Quote Info Section ===== */}
       <div style={{ background: 'white', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
         <div style={{ fontSize: '15px', fontWeight: 700, color: '#1a237e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid #e8eaf6' }}>
@@ -418,7 +473,7 @@ ${pageShell(`
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>
               <span style={{ color: '#c62828' }}>*</span> رقم العرض
             </label>
-            <input readOnly style={inputStyle({ bg: '#eceff1', fw: 700, color: '#1a237e' })} placeholder="تلقائي" />
+            <input readOnly value={quotationNumber} style={inputStyle({ bg: '#eceff1', fw: 700, color: '#1a237e' })} placeholder="تلقائي" />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>التاريخ</label>
@@ -608,7 +663,14 @@ ${pageShell(`
           padding: '14px 24px', borderRadius: '10px', cursor: submitting ? 'not-allowed' : 'pointer',
           fontWeight: 700, fontSize: '14px', fontFamily: 'inherit', flex: 1, opacity: submitting ? 0.6 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-        }}>💾 حفظ العرض</button>
+        }}>💾 {isEdit ? 'حفظ التعديلات' : 'حفظ العرض'}</button>
+        {isEdit && (
+          <button onClick={() => navigate('/quotations')} style={{
+            background: '#607d8b', color: 'white', border: 'none',
+            padding: '14px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', fontFamily: 'inherit',
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          }}>↩ رجوع لقائمة العروض</button>
+        )}
         <button onClick={() => handlePrint(true)} style={{
           background: 'linear-gradient(135deg, #e65100, #ef6c00)', color: 'white', border: 'none',
           padding: '14px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', fontFamily: 'inherit',
@@ -719,6 +781,8 @@ ${pageShell(`
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   )
