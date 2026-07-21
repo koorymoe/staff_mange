@@ -643,6 +643,7 @@ export interface ProcurementStats {
 }
 
 export const api = {
+  getMe: () => request<Employee>('/auth/me'),
   getServices: () => request<Service[]>('/services'),
   createService: (data: { name: string; category?: string }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),

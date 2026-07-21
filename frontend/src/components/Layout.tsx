@@ -194,6 +194,18 @@ export default function Layout() {
     }
   }
 
+  // نتحقق من هوية الموظف الحقيقية من السيرفر مرة وحدة عند فتح النظام —
+  // هذا يصحح تلقائياً أي بيانات جلسة قديمة/معدَّلة (مثلاً بأدوات المطورين
+  // بالمتصفح) بقيت محفوظة بذاكرة المتصفح المحلية من قبل، ويسجل خروج
+  // الحساب تلقائياً إذا صار موقوف (SUSPENDED) بينما الجلسة القديمة لسه مفتوحة
+  useEffect(() => {
+    if (!employee) return
+    api.getMe()
+      .then((fresh) => setEmployee(fresh))
+      .catch(() => setEmployee(null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (!employee) { setEmployeePermissions([]); return }
     api.getEmployeePermissions(employee.id)
