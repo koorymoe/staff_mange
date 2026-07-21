@@ -48,6 +48,7 @@ func main() {
 	inventoryRepo := repository.NewInventoryRepository(db)
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	kpiRepo := repository.NewKpiRepository(db)
+	kpiCriterionRepo := repository.NewKpiCriterionRepository(db)
 	smartKpiRepo := repository.NewSmartKpiRepository(db)
 	complaintRepo := repository.NewComplaintRepository(db)
 	trainingRepo := repository.NewTrainingRepository(db)
@@ -80,6 +81,7 @@ func main() {
 	inventoryService := service.NewInventoryService(inventoryRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	kpiService := service.NewKpiService(kpiRepo, employeeRepo)
+	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
 	trainingService := service.NewTrainingService(trainingRepo)
@@ -109,6 +111,7 @@ func main() {
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	kpiHandler := handler.NewKpiHandler(kpiService)
+	kpiCriterionHandler := handler.NewKpiCriterionHandler(kpiCriterionService)
 	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)
 	complaintHandler := handler.NewComplaintHandler(complaintService)
 	trainingHandler := handler.NewTrainingHandler(trainingService)
@@ -143,6 +146,8 @@ func main() {
 	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, "vehicle_management")
 	requireQuality := middleware.RequirePermission(permissionRepo, "quality_control")
 	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, "project_management")
+	requireKpi := middleware.RequirePermission(permissionRepo, "kpi_management")
+	requireKpiCriteria := middleware.RequirePermission(permissionRepo, "kpi_criteria_management")
 
 	mux := http.NewServeMux()
 
@@ -242,9 +247,13 @@ func main() {
 	mux.Handle("GET /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth))
 	mux.Handle("GET /api/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/kpi/leaderboard/{role}", middleware.Chain(http.HandlerFunc(kpiHandler.RoleLeaderboard), requireAuth))
-	mux.Handle("POST /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireMonitor))
+	mux.Handle("POST /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireKpi))
 	mux.Handle("DELETE /api/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/kpi/{id}/cancel", middleware.Chain(http.HandlerFunc(kpiHandler.Cancel), requireAuth, requireKpi))
 	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireMonitor))
+	mux.Handle("GET /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.List), requireAuth))
+	mux.Handle("POST /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Create), requireAuth, requireKpiCriteria))
+	mux.Handle("DELETE /api/kpi-criteria/{id}", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Delete), requireAuth, requireKpiCriteria))
 
 	// تقييم الأداء التلقائي (Smart KPI) — الرانك الأسبوعي/الشهري للفنيين
 	mux.Handle("GET /api/smart-kpi/technician/{employeeId}", middleware.Chain(http.HandlerFunc(smartKpiHandler.Technician), requireAuth))

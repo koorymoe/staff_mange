@@ -79,3 +79,13 @@ func (h *KpiHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
+
+// PUT /api/kpi/{id}/cancel — إرجاع نقطة كي بي اي (يحتفظ بالسجل، يوقف تأثيرها)
+func (h *KpiHandler) Cancel(w http.ResponseWriter, r *http.Request) {
+	eval, err := h.service.Cancel(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, eval)
+}

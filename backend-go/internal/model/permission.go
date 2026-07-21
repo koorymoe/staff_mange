@@ -15,6 +15,7 @@ var DefaultPermissions = []Permission{
 	{Name: "staff_management", Label: "إدارة الكوادر"},
 	{Name: "edit_employee_profile", Label: "تعديل ملف الموظف (الراتب/الدوام/الإجازات)"},
 	{Name: "kpi_management", Label: "تقييم الأداء (KPI)"},
+	{Name: "kpi_criteria_management", Label: "إدارة نقاط الكي بي اي (إضافة/حذف)"},
 	{Name: "inventory", Label: "جرد الأدوات"},
 	{Name: "complaints", Label: "الشكاوى"},
 	{Name: "sales_booking", Label: "إنشاء حجز جديد"},
@@ -46,6 +47,6 @@ var RoleDefaultPermissions = map[string][]string{
 	"MONITOR":          {"staff_management", "kpi_management", "view_bookings", "manage_customers", "manage_services", "mission_tracking", "inventory", "complaints", "finance", "monitoring", "auditing", "quality_control"},
 	"FINANCE":          {"finance", "view_bookings"},
 	"GPS_ADMIN":        {"gps_system"},
-	"QUALITY_ENGINEER": {"auditing", "complaints", "quality_control", "sales_booking"},
+	"QUALITY_ENGINEER": {"auditing", "complaints", "quality_control", "sales_booking", "kpi_management"},
 	"ENGINEER":         {"expenses", "quotation_system", "project_management"},
 }

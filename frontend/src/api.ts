@@ -473,6 +473,15 @@ export interface KpiEvaluation {
   points: number
   reason: string
   deductionAmount: number
+  cancelled: boolean
+  cancelledAt: string | null
+  cancelledByEmployee: { id: string; name: string } | null
+  createdAt: string
+}
+
+export interface KpiCriterion {
+  id: string
+  label: string
   createdAt: string
 }
 
@@ -909,6 +918,12 @@ export const api = {
   createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string }) =>
     request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
   deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
+  cancelKpiEvaluation: (id: string) => request<KpiEvaluation>(`/kpi/${id}/cancel`, { method: 'PUT' }),
+
+  getKpiCriteria: () => request<KpiCriterion[]>('/kpi-criteria'),
+  createKpiCriterion: (label: string) =>
+    request<KpiCriterion>('/kpi-criteria', { method: 'POST', body: JSON.stringify({ label }) }),
+  deleteKpiCriterion: (id: string) => request<void>(`/kpi-criteria/${id}`, { method: 'DELETE' }),
   completeTraining: (employeeId: string) =>
     request<KpiEvaluation>(`/employees/${employeeId}/complete-training`, { method: 'POST' }),
 

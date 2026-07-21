@@ -159,6 +159,20 @@ var migrations = []string{
 	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "type" TEXT NOT NULL DEFAULT 'OTHER'`,
 	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "relatedEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
 
+	// إرجاع نقطة كي بي اي: ما نحذفها نهائياً — نعلّمها "ملغاة" حتى يضل تاريخها
+	// موجود ويشوفه المراقب، بس تأثيرها المالي (deductionAmount) يوقف يحسب.
+	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS cancelled BOOLEAN NOT NULL DEFAULT false`,
+	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS "cancelledAt" TIMESTAMP`,
+	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS "cancelledByEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+
+	// نقاط الكي بي اي صارت قابلة للإضافة والحذف من الواجهة (صلاحية منفصلة)
+	// بدل ما تكون مثبتة بالكود.
+	`CREATE TABLE IF NOT EXISTS "KpiCriterion" (
+		id TEXT PRIMARY KEY,
+		label TEXT NOT NULL UNIQUE,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+
 	// "مسؤول خدمة" عام: تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات — جدول يربط موظف
 	// بمجموعة خدمات هو المسؤول الوحيد عن تفعيلها/جدولتها (مثال: GPS + صوتيات + حريق سوا).
 	`CREATE TABLE IF NOT EXISTS "ServiceManager" (
@@ -224,7 +238,35 @@ func Migrate(db *sqlx.DB) error {
 	if err := seedEngineeringSkills(db); err != nil {
 		return err
 	}
-	return seedOwnerAccount(db)
+	if err := seedOwnerAccount(db); err != nil {
+		return err
+	}
+	return seedKpiCriteria(db)
+}
+
+// seedKpiCriteria يزرع نقاط الكي بي اي الثمانية الأصلية مرة وحدة (idempotent) —
+// بعدها تصير قابلة للإضافة والحذف من واجهة إدارة النقاط (صلاحية منفصلة).
+func seedKpiCriteria(db *sqlx.DB) error {
+	criteria := []string{
+		"العلاقة مع الزملاء",
+		"تنفيذ المهام الموكلة إليه",
+		"استطيع ولا استطيع",
+		"الالتزام بالآليات وتوجيهات المسؤول",
+		"تنظيف السيارة",
+		"سرعة الاستجابة بالمهام",
+		"ترتيب العدد",
+		"شكوى الزبائن",
+	}
+	for _, label := range criteria {
+		if _, err := db.Exec(`
+			INSERT INTO "KpiCriterion" (id, label)
+			VALUES (gen_random_uuid()::text, $1)
+			ON CONFLICT (label) DO NOTHING
+		`, label); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // seedOwnerAccount يزرع حساب مالك النظام مرة وحدة (idempotent — upsert بالـ username)،
