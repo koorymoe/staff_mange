@@ -13,6 +13,7 @@ type Employee struct {
 	Position             *string   `db:"position" json:"position"`
 	Phone                *string   `db:"phone" json:"phone"`
 	Status               string    `db:"status" json:"status"`
+	AuthzViolations      int       `db:"authzViolations" json:"-"`
 	Role                 string    `db:"role" json:"role"`
 	OnDuty               bool      `db:"onDuty" json:"onDuty"`
 	Username             *string   `db:"username" json:"username"`

@@ -138,6 +138,14 @@ var migrations = []string{
 	// يختفون من كل واجهات النظام العادية، الأدمن/المالك بس يشوف تاريخهم.
 	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED'`,
 	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'DELETED'`,
+	// حماية من التلاعب بجلسة تسجيل الدخول من أدوات المطورين بالمتصفح: لو حساب
+	// عادي حاول يوصل لعملية أو مسار مو مسموحله بيه (بعد تعديل بيانات الجلسة
+	// بالمتصفح مثلاً)، الباك إند يرفضه دائماً (الدور الحقيقي من التوكن الموقّع
+	// وليس من أي شي يرسله المتصفح) ويسجل "محاولة اختراق" — إذا تكررت 3 مرات
+	// نوقف الحساب تلقائياً (status = SUSPENDED) ويصير ميكدر يستخدم النظام
+	// حتى لو رجع يسجل دخول بكلمة سره الصحيحة.
+	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'SUSPENDED'`,
+	`ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "authzViolations" INT NOT NULL DEFAULT 0`,
 
 	// سجل تدقيق تسجيل الدخول: كل محاولة دخول (ناجحة أو فاشلة) تنسجل هنا مع
 	// عنوان IP والمتصفح/الجهاز — أساس لوحة المراقبة الأمنية الخلفية.

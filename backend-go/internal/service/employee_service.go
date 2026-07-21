@@ -100,6 +100,11 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 	}
 	if req.Status != nil {
 		employee.Status = *req.Status
+		// استرجاع حساب موقوف (SUSPENDED) يصفّر عداد محاولات الاختراق —
+		// نعطيه بداية جديدة بعد ما الأدمن راجع الموضوع ووافق يرجّعه
+		if *req.Status == "ACTIVE" {
+			employee.AuthzViolations = 0
+		}
 	}
 	if req.Role != nil {
 		if *req.Role == "OWNER" && employee.Role != "OWNER" {

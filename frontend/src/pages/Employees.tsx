@@ -219,7 +219,7 @@ export default function Employees() {
                 showArchived ? 'bg-slate-700 text-white' : 'bg-white text-slate-600'
               }`}
             >
-              {showArchived ? '↩ رجوع للنشطين' : '🗄️ المؤرشفون/المحذوفون'}
+              {showArchived ? '↩ رجوع للنشطين' : '🗄️ المؤرشفون/المحذوفون/الموقوفين'}
             </button>
           )}
           {isAdmin && !showArchived && (
@@ -326,6 +326,9 @@ export default function Employees() {
                           {(selectedEmployee as any)?.isLeader && (
                             <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300">ليدر</span>
                           )}
+                          {selectedEmployee.status === 'SUSPENDED' && (
+                            <span className="rounded-full bg-red-500/30 px-2.5 py-0.5 text-[10px] font-bold text-red-200">⚠ موقوف تلقائياً — محاولات وصول غير مخوّلة</span>
+                          )}
                         </div>
                         {selectedEmployee.phone && (
                           <p className="mt-2 text-sm text-blue-200/60">{selectedEmployee.phone}</p>
@@ -336,7 +339,7 @@ export default function Employees() {
                         <span className="mt-1 text-[10px] font-medium">{selectedEmployee.onDuty ? 'بالدوام' : 'خارج'}</span>
                       </div>
                     </div>
-                    {canGenerateAiReport && selectedEmployee.status !== 'ARCHIVED' && selectedEmployee.status !== 'DELETED' && (
+                    {canGenerateAiReport && selectedEmployee.status !== 'ARCHIVED' && selectedEmployee.status !== 'DELETED' && selectedEmployee.status !== 'SUSPENDED' && (
                       <div className="relative mt-4 flex flex-wrap gap-2">
                         <button
                           onClick={handleGenerateAiReport}
@@ -348,7 +351,7 @@ export default function Employees() {
                     )}
                     {isAdmin && (
                       <div className="relative mt-4 flex flex-wrap gap-2">
-                        {selectedEmployee.status === 'ARCHIVED' || selectedEmployee.status === 'DELETED' ? (
+                        {selectedEmployee.status === 'ARCHIVED' || selectedEmployee.status === 'DELETED' || selectedEmployee.status === 'SUSPENDED' ? (
                           <button
                             onClick={() => handleArchive('ACTIVE')}
                             className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/30"

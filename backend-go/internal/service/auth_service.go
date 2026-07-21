@@ -12,6 +12,7 @@ import (
 )
 
 var ErrInvalidCredentials = errors.New("اسم المستخدم أو كلمة المرور غير صحيحة")
+var ErrAccountSuspended = errors.New("تم إيقاف هذا الحساب — راجع إدارة النظام")
 
 type AuthService struct {
 	employees  *repository.EmployeeRepository
@@ -39,6 +40,11 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Em
 	if err := bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(password)); err != nil {
 		_ = s.loginAudit.Record(username, &employee.ID, false, ip, userAgent)
 		return nil, "", ErrInvalidCredentials
+	}
+
+	if employee.Status != "ACTIVE" {
+		_ = s.loginAudit.Record(username, &employee.ID, false, ip, userAgent)
+		return nil, "", ErrAccountSuspended
 	}
 
 	token, err := s.GenerateToken(employee)

@@ -72,7 +72,7 @@ export interface Employee {
   certificate: string | null
   position: string | null
   phone: string | null
-  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DELETED'
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DELETED' | 'SUSPENDED'
   role: EmployeeRole
   // الدور الحقيقي للمالك (OWNER) — نطبّع role إلى 'ADMIN' بجلسة الواجهة حتى
   // يشتغل كل شي مبني على role === 'ADMIN' تلقائياً، ونخزن الدور الأصلي هنا

@@ -25,8 +25,11 @@ func writeError(w http.ResponseWriter, status int, message string) {
 	_ = json.NewEncoder(w).Encode(map[string]string{"error": message})
 }
 
-// RequireAuth يتحقق من وجود JWT صالح بالطلب ويرفض أي طلب بدونه
-func RequireAuth(auth *service.AuthService) func(http.Handler) http.Handler {
+// RequireAuth يتحقق من وجود JWT صالح بالطلب ويرفض أي طلب بدونه. كمان يتحقق
+// من حالة الحساب الحقيقية بقاعدة البيانات بكل طلب (مو بس وقت تسجيل الدخول) —
+// حتى لو التوكن نفسه لسه صالح تقنياً، حساب موقوف (SUSPENDED) أو محذوف ما
+// يقدر يستخدم النظام أبداً بعدها.
+func RequireAuth(auth *service.AuthService, employees *repository.EmployeeRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			header := r.Header.Get("Authorization")
@@ -42,6 +45,12 @@ func RequireAuth(auth *service.AuthService) func(http.Handler) http.Handler {
 				return
 			}
 
+			status, err := employees.StatusByID(claims.EmployeeID)
+			if err != nil || status != "ACTIVE" {
+				writeError(w, http.StatusUnauthorized, "تم إيقاف هذا الحساب — راجع إدارة النظام")
+				return
+			}
+
 			ctx := context.WithValue(r.Context(), ContextEmployeeID, claims.EmployeeID)
 			ctx = context.WithValue(ctx, ContextRole, claims.Role)
 			next.ServeHTTP(w, r.WithContext(ctx))
@@ -49,8 +58,21 @@ func RequireAuth(auth *service.AuthService) func(http.Handler) http.Handler {
 	}
 }
 
-// RequireRole يمنع الوصول إلا لأصحاب الأدوار المذكورة (يُستخدم بعد RequireAuth)
-func RequireRole(roles ...string) func(http.Handler) http.Handler {
+// recordViolationAndBlock تسجل محاولة وصول مرفوضة وترجع رسالة الخطأ المناسبة —
+// إذا الحساب انوقف تلقائياً بعد هالمحاولة نوضح هذا برسالة الرفض.
+func recordViolationAndBlock(w http.ResponseWriter, employees *repository.EmployeeRepository, employeeID string) {
+	if employeeID != "" && employees != nil {
+		if _, suspended, err := employees.RecordAuthzViolation(employeeID); err == nil && suspended {
+			writeError(w, http.StatusForbidden, "تم إيقاف حسابك تلقائياً بسبب محاولات وصول متكررة غير مخوّلة — راجع إدارة النظام")
+			return
+		}
+	}
+	writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
+}
+
+// RequireRole يمنع الوصول إلا لأصحاب الأدوار المذكورة (يُستخدم بعد RequireAuth).
+// أي محاولة وصول مرفوضة تُسجَّل كـ"خرق صلاحيات" — تكرارها 3 مرات يوقف الحساب تلقائياً.
+func RequireRole(employees *repository.EmployeeRepository, roles ...string) func(http.Handler) http.Handler {
 	allowed := make(map[string]bool, len(roles))
 	for _, role := range roles {
 		allowed[role] = true
@@ -61,7 +83,7 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 			role, _ := r.Context().Value(ContextRole).(string)
 			// OWNER يتخطى أي قيد أدوار — حساب المالك الأساسي، أقوى من أي دور ثاني بما فيه ADMIN
 			if role != "OWNER" && !allowed[role] {
-				writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
+				recordViolationAndBlock(w, employees, EmployeeIDFromContext(r))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -70,8 +92,9 @@ func RequireRole(roles ...string) func(http.Handler) http.Handler {
 }
 
 // RequirePermission يسمح بالوصول لـ ADMIN دائماً، أو لأي موظف عنده الصلاحية المذكورة
-// من جدول الصلاحيات المخصصة (يُستخدم بعد RequireAuth)
-func RequirePermission(permissions *repository.PermissionRepository, permissionName string) func(http.Handler) http.Handler {
+// من جدول الصلاحيات المخصصة (يُستخدم بعد RequireAuth). أي محاولة وصول مرفوضة
+// تُسجَّل كـ"خرق صلاحيات" — تكرارها 3 مرات يوقف الحساب تلقائياً.
+func RequirePermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, permissionName string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
@@ -82,7 +105,7 @@ func RequirePermission(permissions *repository.PermissionRepository, permissionN
 			employeeID, _ := r.Context().Value(ContextEmployeeID).(string)
 			perms, err := permissions.ListForEmployee(employeeID)
 			if err != nil {
-				writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
+				recordViolationAndBlock(w, employees, employeeID)
 				return
 			}
 			for _, p := range perms {
@@ -91,7 +114,7 @@ func RequirePermission(permissions *repository.PermissionRepository, permissionN
 					return
 				}
 			}
-			writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
+			recordViolationAndBlock(w, employees, employeeID)
 		})
 	}
 }
