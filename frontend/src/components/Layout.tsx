@@ -4,6 +4,7 @@ import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
 import Login from '../pages/Login'
 import TrainingPage from '../pages/TrainingPage'
+import AssistantWidget from './AssistantWidget'
 
 interface NavItem {
   to: string
@@ -509,6 +510,7 @@ export default function Layout() {
           </div>
         </aside>
       </div>
+      <AssistantWidget />
     </SessionContext.Provider>
   )
 }

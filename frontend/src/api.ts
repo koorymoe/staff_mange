@@ -730,6 +730,9 @@ export const api = {
     }>('/security/dashboard'),
   freeServerMemory: () => request<{ memoryUsedMB: number }>('/security/free-memory', { method: 'POST' }),
 
+  askAssistant: (message: string) =>
+    request<{ reply: string }>('/assistant/ask', { method: 'POST', body: JSON.stringify({ message }) }),
+
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
   updateQualityFollowUp: (
     id: string,
