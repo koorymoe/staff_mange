@@ -14,25 +14,12 @@ services:
       timeout: 5s
       retries: 10
 
-  migrate:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.migrate
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgresql://staffmange:${DB_PASSWORD}@db:5432/staffmange?sslmode=disable
-      DIRECT_URL: postgresql://staffmange:${DB_PASSWORD}@db:5432/staffmange?sslmode=disable
-
   backend:
     build: ./backend-go
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
     environment:
       PORT: 4000
       DATABASE_URL: postgresql://staffmange:${DB_PASSWORD}@db:5432/staffmange?sslmode=disable
@@ -49,7 +36,7 @@ services:
     depends_on:
       - backend
     ports:
-      - "80:80"
+      - "8081:80"
 
 volumes:
   db_data:
