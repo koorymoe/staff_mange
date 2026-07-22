@@ -5,7 +5,7 @@
 set -e
 
 echo "==> سحب آخر تحديثات الكود"
-git pull prod
+git pull
 
 echo "==> بناء وتشغيل الحاويات (قد تاخذ وكت أول مرة)"
 docker compose build
