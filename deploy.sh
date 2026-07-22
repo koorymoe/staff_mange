@@ -5,7 +5,7 @@
 set -e
 
 echo "==> سحب آخر تحديثات الكود"
-git pull origin claude/zen-mendel-70b9j2
+git pull prod
 
 echo "==> بناء وتشغيل الحاويات (قد تاخذ وكت أول مرة)"
 docker compose build
