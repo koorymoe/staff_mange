@@ -121,3 +121,58 @@ func (h *VehicleHandler) SetMonthlyStatus(w http.ResponseWriter, r *http.Request
 	}
 	WriteJSON(w, http.StatusOK, status)
 }
+
+// ── VehicleDailyRating (تقييم يومي + جودة غسيل الفنيين) ──
+
+func (h *VehicleHandler) CreateDailyRating(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateVehicleDailyRatingRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	rating, err := h.service.CreateDailyRating(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, rating)
+}
+
+func (h *VehicleHandler) ListDailyRatings(w http.ResponseWriter, r *http.Request) {
+	since := r.URL.Query().Get("since")
+	if since == "" {
+		since = "1900-01-01"
+	}
+	ratings, err := h.service.ListDailyRatings(r.PathValue("id"), since)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب تقييمات السيارة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, ratings)
+}
+
+func (h *VehicleHandler) VehicleScoreSummaries(w http.ResponseWriter, r *http.Request) {
+	since := r.URL.Query().Get("since")
+	if since == "" {
+		since = "1900-01-01"
+	}
+	summaries, err := h.service.VehicleScoreSummaries(since)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب ملخص تقييم السيارات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, summaries)
+}
+
+func (h *VehicleHandler) TechnicianWashSummaries(w http.ResponseWriter, r *http.Request) {
+	since := r.URL.Query().Get("since")
+	if since == "" {
+		since = "1900-01-01"
+	}
+	summaries, err := h.service.TechnicianWashSummaries(since)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب ملخص تقييم الفنيين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, summaries)
+}

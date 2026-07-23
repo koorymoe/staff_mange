@@ -414,6 +414,52 @@ export interface VehicleLog {
   recordedBy: { id: string; name: string } | null
 }
 
+export interface VehicleWashRating {
+  id: string
+  dailyRatingId: string
+  employeeId: string
+  score: number
+  employee: { id: string; name: string } | null
+}
+
+export interface VehicleDailyRating {
+  id: string
+  vehicleId: string
+  ratedDate: string
+  wash: number | null
+  exteriorClean: number | null
+  exteriorCondition: number | null
+  tireCondition: number | null
+  glassClean: number | null
+  lightsCondition: number | null
+  technicalFaults: number | null
+  faultDescription: string | null
+  interiorClean: number | null
+  seatsCondition: number | null
+  interiorDirt: number | null
+  smell: number | null
+  notes: string | null
+  weightedScore: number | null
+  recordedBy: { id: string; name: string } | null
+  washRatings: VehicleWashRating[]
+}
+
+export interface VehicleScoreSummary {
+  vehicleId: string
+  vehicleName: string
+  ratingsCount: number
+  averageScore: number
+}
+
+export interface TechnicianWashSummary {
+  employeeId: string
+  employeeName: string
+  vehiclesWashed: number
+  totalPoints: number
+  suggestedWage: number
+  monthlyCap: number
+}
+
 export interface VehicleIncident {
   id: string
   vehicleId: string
@@ -974,6 +1020,18 @@ export const api = {
   getVehicleMonthlyStatus: (vehicleId: string) => request<VehicleMonthlyStatus[]>(`/vehicles/${vehicleId}/monthly-status`),
   setVehicleMonthlyStatus: (vehicleId: string, data: { month: string; hasIssue: boolean; issueDescription?: string; resolved: boolean; notes?: string }) =>
     request<VehicleMonthlyStatus>(`/vehicles/${vehicleId}/monthly-status`, { method: 'POST', body: JSON.stringify(data) }),
+  createVehicleDailyRating: (vehicleId: string, data: {
+    ratedDate?: string; wash?: number; exteriorClean?: number; exteriorCondition?: number; tireCondition?: number
+    glassClean?: number; lightsCondition?: number; technicalFaults?: number; faultDescription?: string
+    interiorClean?: number; seatsCondition?: number; interiorDirt?: number; smell?: number; notes?: string
+    technicianRatings?: { employeeId: string; score: number }[]
+  }) => request<VehicleDailyRating>(`/vehicles/${vehicleId}/ratings`, { method: 'POST', body: JSON.stringify({ vehicleId, ...data }) }),
+  getVehicleDailyRatings: (vehicleId: string, since?: string) =>
+    request<VehicleDailyRating[]>(`/vehicles/${vehicleId}/ratings${since ? `?since=${since}` : ''}`),
+  getVehicleScoreSummaries: (since?: string) =>
+    request<VehicleScoreSummary[]>(`/vehicles/ratings/vehicle-summary${since ? `?since=${since}` : ''}`),
+  getTechnicianWashSummaries: (since?: string) =>
+    request<TechnicianWashSummary[]>(`/vehicles/ratings/technician-summary${since ? `?since=${since}` : ''}`),
 
   // Quality
   getQualityIssues: (category?: 'EXECUTION' | 'OVERSIGHT') =>

@@ -1,10 +1,40 @@
 import { useEffect, useState } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type Employee } from '../api'
+import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee } from '../api'
 
 const LOG_TYPE_LABELS: Record<string, string> = {
   FUEL: 'تعبئة وقود',
   CLEANING: 'تنظيف',
   OIL_CHANGE: 'تبديل زيت',
+}
+
+const RATING_FIELDS: { key: keyof typeof EMPTY_RATING_FORM; label: string }[] = [
+  { key: 'wash', label: 'غسل السيارة' },
+  { key: 'exteriorClean', label: 'نظافة الهيكل الخارجي' },
+  { key: 'exteriorCondition', label: 'حالة الهيكل الخارجي' },
+  { key: 'tireCondition', label: 'حالة الإطارات' },
+  { key: 'glassClean', label: 'تنظيف الزجاج' },
+  { key: 'lightsCondition', label: 'حالة اللايتات' },
+  { key: 'technicalFaults', label: 'الأعطال الفنية' },
+  { key: 'interiorClean', label: 'التنظيف الداخلي' },
+  { key: 'seatsCondition', label: 'حالة الكراسي' },
+  { key: 'interiorDirt', label: 'الأوساخ الداخلية' },
+  { key: 'smell', label: 'الرائحة' },
+]
+
+const RATING_GRADE_LABELS: Record<number, string> = { 0: '0 - سيئ جداً', 1: '1 - ضعيف', 2: '2 - متوسط', 3: '3 - جيد', 4: '4 - ممتاز' }
+
+function scoreGrade(score: number): { label: string; color: string } {
+  if (score >= 0.85) return { label: 'ممتاز', color: 'bg-emerald-100 text-emerald-700' }
+  if (score >= 0.7) return { label: 'جيد', color: 'bg-lime-100 text-lime-700' }
+  if (score >= 0.5) return { label: 'مقبول', color: 'bg-amber-100 text-amber-700' }
+  return { label: 'ضعيف', color: 'bg-red-100 text-red-700' }
+}
+
+const EMPTY_RATING_FORM = {
+  wash: '' as number | '', exteriorClean: '' as number | '', exteriorCondition: '' as number | '',
+  tireCondition: '' as number | '', glassClean: '' as number | '', lightsCondition: '' as number | '',
+  technicalFaults: '' as number | '', interiorClean: '' as number | '', seatsCondition: '' as number | '',
+  interiorDirt: '' as number | '', smell: '' as number | '',
 }
 
 const currentMonth = () => {
@@ -19,7 +49,8 @@ export default function VehiclesPage() {
   const [logs, setLogs] = useState<VehicleLog[]>([])
   const [incidents, setIncidents] = useState<VehicleIncident[]>([])
   const [monthlyStatus, setMonthlyStatus] = useState<VehicleMonthlyStatus[]>([])
-  const [tab, setTab] = useState<'logs' | 'incidents' | 'monthly'>('logs')
+  const [dailyRatings, setDailyRatings] = useState<VehicleDailyRating[]>([])
+  const [tab, setTab] = useState<'logs' | 'incidents' | 'monthly' | 'rating'>('logs')
 
   // add-vehicle form
   const [showAddVehicle, setShowAddVehicle] = useState(false)
@@ -48,6 +79,14 @@ export default function VehiclesPage() {
   const [monResolved, setMonResolved] = useState(false)
   const [monNotes, setMonNotes] = useState('')
 
+  // daily rating form
+  const [ratingForm, setRatingForm] = useState(EMPTY_RATING_FORM)
+  const [faultDesc, setFaultDesc] = useState('')
+  const [ratingNotes, setRatingNotes] = useState('')
+  const [washTechId, setWashTechId] = useState('')
+  const [washScore, setWashScore] = useState<0 | 1 | 2 | ''>('')
+  const [savingRating, setSavingRating] = useState(false)
+
   const loadVehicles = () => api.getVehicles().then(setVehicles)
 
   useEffect(() => {
@@ -60,6 +99,7 @@ export default function VehiclesPage() {
     api.getVehicleLogs(selectedId).then(setLogs)
     api.getVehicleIncidents(selectedId).then(setIncidents)
     api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
+    api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
   }, [selectedId])
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedId) || null
@@ -112,6 +152,36 @@ export default function VehiclesPage() {
     })
     setMonDesc(''); setMonNotes('')
     api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
+  }
+
+  const handleAddRating = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedId) return
+    setSavingRating(true)
+    try {
+      await api.createVehicleDailyRating(selectedId, {
+        wash: ratingForm.wash === '' ? undefined : ratingForm.wash,
+        exteriorClean: ratingForm.exteriorClean === '' ? undefined : ratingForm.exteriorClean,
+        exteriorCondition: ratingForm.exteriorCondition === '' ? undefined : ratingForm.exteriorCondition,
+        tireCondition: ratingForm.tireCondition === '' ? undefined : ratingForm.tireCondition,
+        glassClean: ratingForm.glassClean === '' ? undefined : ratingForm.glassClean,
+        lightsCondition: ratingForm.lightsCondition === '' ? undefined : ratingForm.lightsCondition,
+        technicalFaults: ratingForm.technicalFaults === '' ? undefined : ratingForm.technicalFaults,
+        faultDescription: faultDesc || undefined,
+        interiorClean: ratingForm.interiorClean === '' ? undefined : ratingForm.interiorClean,
+        seatsCondition: ratingForm.seatsCondition === '' ? undefined : ratingForm.seatsCondition,
+        interiorDirt: ratingForm.interiorDirt === '' ? undefined : ratingForm.interiorDirt,
+        smell: ratingForm.smell === '' ? undefined : ratingForm.smell,
+        notes: ratingNotes || undefined,
+        technicianRatings: washTechId && washScore !== '' ? [{ employeeId: washTechId, score: washScore }] : undefined,
+      })
+      setRatingForm(EMPTY_RATING_FORM); setFaultDesc(''); setRatingNotes(''); setWashTechId(''); setWashScore('')
+      api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر حفظ التقييم')
+    } finally {
+      setSavingRating(false)
+    }
   }
 
   return (
@@ -176,6 +246,7 @@ export default function VehiclesPage() {
                   { key: 'logs', label: 'وقود / تنظيف / زيت' },
                   { key: 'incidents', label: 'أعطال وأضرار' },
                   { key: 'monthly', label: 'الحالة الشهرية' },
+                  { key: 'rating', label: 'التقييم اليومي' },
                 ] as const).map((t) => (
                   <button
                     key={t.key}
@@ -322,6 +393,81 @@ export default function VehiclesPage() {
                         {monthlyStatus.length === 0 && <tr><td colSpan={4} className="p-4 text-center text-slate-400">لا توجد تقارير شهرية</td></tr>}
                       </tbody>
                     </table>
+                  </div>
+                </div>
+              )}
+
+              {tab === 'rating' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleAddRating} className="space-y-4 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                    <p className="text-sm text-slate-500">قيّم كل بند من 0 (سيئ جداً) إلى 4 (ممتاز) — تكدر تترك أي بند فاضي إذا ما تكدر تقيّمه اليوم.</p>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                      {RATING_FIELDS.map((f) => (
+                        <div key={f.key}>
+                          <label className="mb-1 block text-xs font-medium text-slate-500">{f.label}</label>
+                          <select
+                            value={ratingForm[f.key]}
+                            onChange={(e) => setRatingForm((prev) => ({ ...prev, [f.key]: e.target.value === '' ? '' : Number(e.target.value) }))}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                          >
+                            <option value="">-- بدون تقييم --</option>
+                            {[0, 1, 2, 3, 4].map((n) => <option key={n} value={n}>{RATING_GRADE_LABELS[n]}</option>)}
+                          </select>
+                        </div>
+                      ))}
+                    </div>
+                    <input placeholder="وصف العطل (إذا اكو عطل فني)" value={faultDesc} onChange={(e) => setFaultDesc(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    <input placeholder="ملاحظات إضافية" value={ratingNotes} onChange={(e) => setRatingNotes(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                      <p className="mb-2 text-sm font-bold text-slate-700">تقييم جودة الغسيل (اختياري) — مين غسل السيارة اليوم؟</p>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        <select value={washTechId} onChange={(e) => setWashTechId(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                          <option value="">-- اختر الفني --</option>
+                          {employees.filter((e) => e.role === 'TECHNICIAN').map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                        <select value={washScore} onChange={(e) => setWashScore(e.target.value === '' ? '' : (Number(e.target.value) as 0 | 1 | 2))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                          <option value="">-- تقييم الغسيل --</option>
+                          <option value="0">0 - لم يغسل</option>
+                          <option value="1">1 - غسل غير جيد</option>
+                          <option value="2">2 - غسل جيد</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button type="submit" disabled={savingRating} className="w-full rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+                      {savingRating ? 'جاري الحفظ...' : 'حفظ تقييم اليوم'}
+                    </button>
+                  </form>
+
+                  <div className="space-y-3">
+                    {dailyRatings.map((r) => {
+                      const grade = r.weightedScore !== null ? scoreGrade(r.weightedScore) : null
+                      return (
+                        <div key={r.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-bold text-slate-700">{new Date(r.ratedDate).toLocaleDateString('ar-IQ')}</span>
+                            {grade && (
+                              <span className={`rounded-full px-3 py-1 text-xs font-bold ${grade.color}`}>
+                                {grade.label} — {Math.round(r.weightedScore! * 100)}%
+                              </span>
+                            )}
+                          </div>
+                          {r.faultDescription && <p className="mt-2 text-sm text-red-700">عطل: {r.faultDescription}</p>}
+                          {r.notes && <p className="mt-1 text-sm text-slate-500">{r.notes}</p>}
+                          {r.washRatings.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {r.washRatings.map((wr) => (
+                                <span key={wr.id} className="rounded-full bg-sky-50 px-3 py-1 text-xs font-bold text-sky-700">
+                                  {wr.employee?.name || '-'}: غسيل {wr.score}/2
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                    {dailyRatings.length === 0 && <p className="p-4 text-center text-slate-400">لا توجد تقييمات مسجلة لهذي السيارة</p>}
                   </div>
                 </div>
               )}

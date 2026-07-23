@@ -797,6 +797,39 @@ var migrations = []string{
 		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
 	`CREATE INDEX IF NOT EXISTS "Notification_employeeId_idx" ON "Notification"("employeeId", "createdAt" DESC)`,
+
+	// تقييم يومي لنظافة/حالة السيارة (11 بند 0-4) + جودة غسيل الفني (0-2) — مقتبس
+	// من ملف إكسل الشركة. النتائج تذكير للمراقب بس، بدون أي ربط تلقائي بالراتب.
+	`CREATE TABLE IF NOT EXISTS "VehicleDailyRating" (
+		id TEXT PRIMARY KEY,
+		"vehicleId" TEXT NOT NULL REFERENCES "Vehicle"(id) ON DELETE CASCADE,
+		"ratedDate" DATE NOT NULL DEFAULT CURRENT_DATE,
+		wash INT,
+		"exteriorClean" INT,
+		"exteriorCondition" INT,
+		"tireCondition" INT,
+		"glassClean" INT,
+		"lightsCondition" INT,
+		"technicalFaults" INT,
+		"faultDescription" TEXT,
+		"interiorClean" INT,
+		"seatsCondition" INT,
+		"interiorDirt" INT,
+		smell INT,
+		notes TEXT,
+		"recordedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehicleDailyRating_vehicleId_idx" ON "VehicleDailyRating"("vehicleId", "ratedDate" DESC)`,
+	`CREATE TABLE IF NOT EXISTS "VehicleWashRating" (
+		id TEXT PRIMARY KEY,
+		"dailyRatingId" TEXT NOT NULL REFERENCES "VehicleDailyRating"(id) ON DELETE CASCADE,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		score INT NOT NULL,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehicleWashRating_dailyRatingId_idx" ON "VehicleWashRating"("dailyRatingId")`,
+	`CREATE INDEX IF NOT EXISTS "VehicleWashRating_employeeId_idx" ON "VehicleWashRating"("employeeId")`,
 }
 
 func Migrate(db *sqlx.DB) error {

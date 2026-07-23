@@ -146,3 +146,195 @@ func (r *VehicleRepository) SetMonthlyStatus(vehicleID string, req model.SetVehi
 	`, vehicleID, req.Month, req.HasIssue, req.IssueDescription, req.Resolved, req.Notes, recordedByID)
 	return &s, err
 }
+
+// ── VehicleDailyRating (تقييم يومي للسيارة + جودة غسيل الفنيين) ──
+
+var vehicleRatingWeights = []struct {
+	get    func(*model.VehicleDailyRating) *int
+	weight float64
+}{
+	{func(r *model.VehicleDailyRating) *int { return r.Wash }, 0.08},
+	{func(r *model.VehicleDailyRating) *int { return r.ExteriorClean }, 0.07},
+	{func(r *model.VehicleDailyRating) *int { return r.ExteriorCondition }, 0.10},
+	{func(r *model.VehicleDailyRating) *int { return r.TireCondition }, 0.10},
+	{func(r *model.VehicleDailyRating) *int { return r.GlassClean }, 0.05},
+	{func(r *model.VehicleDailyRating) *int { return r.LightsCondition }, 0.05},
+	{func(r *model.VehicleDailyRating) *int { return r.TechnicalFaults }, 0.25},
+	{func(r *model.VehicleDailyRating) *int { return r.InteriorClean }, 0.10},
+	{func(r *model.VehicleDailyRating) *int { return r.SeatsCondition }, 0.07},
+	{func(r *model.VehicleDailyRating) *int { return r.InteriorDirt }, 0.08},
+	{func(r *model.VehicleDailyRating) *int { return r.Smell }, 0.05},
+}
+
+// computeWeightedScore يحسب النتيجة الموزونة % لتقييم سيارة — نفس معادلة ملف
+// الإكسل: الخلايا الفارغة ما تُحتسب لا بالبسط ولا بالمقام.
+func computeWeightedScore(r *model.VehicleDailyRating) *float64 {
+	var num, den float64
+	any := false
+	for _, item := range vehicleRatingWeights {
+		if v := item.get(r); v != nil {
+			num += float64(*v) * item.weight
+			den += 4 * item.weight
+			any = true
+		}
+	}
+	if !any || den == 0 {
+		return nil
+	}
+	score := num / den
+	return &score
+}
+
+func (r *VehicleRepository) CreateDailyRating(req model.CreateVehicleDailyRatingRequest, recordedByID string) (*model.VehicleDailyRating, error) {
+	ratedDate := "CURRENT_DATE"
+	var args []any
+	args = append(args, req.VehicleID, req.Wash, req.ExteriorClean, req.ExteriorCondition, req.TireCondition,
+		req.GlassClean, req.LightsCondition, req.TechnicalFaults, req.FaultDescription, req.InteriorClean,
+		req.SeatsCondition, req.InteriorDirt, req.Smell, req.Notes, recordedByID)
+	dateClause := ratedDate
+	if req.RatedDate != nil && *req.RatedDate != "" {
+		dateClause = "$16"
+		args = append(args, *req.RatedDate)
+	}
+
+	var rating model.VehicleDailyRating
+	err := r.db.Get(&rating, `
+		INSERT INTO "VehicleDailyRating" (
+			id, "vehicleId", "ratedDate", wash, "exteriorClean", "exteriorCondition", "tireCondition",
+			"glassClean", "lightsCondition", "technicalFaults", "faultDescription", "interiorClean",
+			"seatsCondition", "interiorDirt", smell, notes, "recordedById"
+		)
+		VALUES (gen_random_uuid()::text, $1, `+dateClause+`, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+		RETURNING *
+	`, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, tr := range req.TechnicianRatings {
+		var wr model.VehicleWashRating
+		if err := r.db.Get(&wr, `
+			INSERT INTO "VehicleWashRating" (id, "dailyRatingId", "employeeId", score)
+			VALUES (gen_random_uuid()::text, $1, $2, $3)
+			RETURNING *
+		`, rating.ID, tr.EmployeeID, tr.Score); err == nil {
+			wr.Employee = r.loadEmployeeBrief(&wr.EmployeeID)
+			rating.WashRatings = append(rating.WashRatings, wr)
+		}
+	}
+
+	rating.RecordedBy = r.loadEmployeeBrief(rating.RecordedByID)
+	rating.WeightedScore = computeWeightedScore(&rating)
+	return &rating, nil
+}
+
+func (r *VehicleRepository) ListDailyRatings(vehicleID string, since string) ([]model.VehicleDailyRating, error) {
+	ratings := []model.VehicleDailyRating{}
+	err := r.db.Select(&ratings, `
+		SELECT * FROM "VehicleDailyRating"
+		WHERE "vehicleId" = $1 AND "ratedDate" >= $2::date
+		ORDER BY "ratedDate" DESC
+	`, vehicleID, since)
+	if err != nil {
+		return nil, err
+	}
+	for i := range ratings {
+		ratings[i].RecordedBy = r.loadEmployeeBrief(ratings[i].RecordedByID)
+		ratings[i].WeightedScore = computeWeightedScore(&ratings[i])
+		washRatings := []model.VehicleWashRating{}
+		if err := r.db.Select(&washRatings, `SELECT * FROM "VehicleWashRating" WHERE "dailyRatingId" = $1`, ratings[i].ID); err == nil {
+			for j := range washRatings {
+				washRatings[j].Employee = r.loadEmployeeBrief(&washRatings[j].EmployeeID)
+			}
+			ratings[i].WashRatings = washRatings
+		}
+	}
+	return ratings, nil
+}
+
+// VehicleScoreSummaries متوسط النتيجة الموزونة لكل سيارة خلال فترة — للوحة تذكير المراقب.
+func (r *VehicleRepository) VehicleScoreSummaries(since string) ([]model.VehicleScoreSummary, error) {
+	ratings := []model.VehicleDailyRating{}
+	if err := r.db.Select(&ratings, `SELECT * FROM "VehicleDailyRating" WHERE "ratedDate" >= $1::date`, since); err != nil {
+		return nil, err
+	}
+	type acc struct {
+		sum   float64
+		count int
+	}
+	byVehicle := map[string]*acc{}
+	for i := range ratings {
+		score := computeWeightedScore(&ratings[i])
+		if score == nil {
+			continue
+		}
+		a, ok := byVehicle[ratings[i].VehicleID]
+		if !ok {
+			a = &acc{}
+			byVehicle[ratings[i].VehicleID] = a
+		}
+		a.sum += *score
+		a.count++
+	}
+
+	vehicles := []model.Vehicle{}
+	if err := r.db.Select(&vehicles, `SELECT * FROM "Vehicle"`); err != nil {
+		return nil, err
+	}
+	summaries := []model.VehicleScoreSummary{}
+	for _, v := range vehicles {
+		a, ok := byVehicle[v.ID]
+		if !ok || a.count == 0 {
+			continue
+		}
+		summaries = append(summaries, model.VehicleScoreSummary{
+			VehicleID:    v.ID,
+			VehicleName:  v.Name,
+			RatingsCount: a.count,
+			AverageScore: a.sum / float64(a.count),
+		})
+	}
+	return summaries, nil
+}
+
+// TechnicianWashSummaries مجموع نقاط الغسيل لكل فني خلال فترة، والراتب المقترح
+// (نقطة الفني × قيمة النقطة، بحد أعلى شهري) — تذكير للمراقب بدون أي تعديل تلقائي.
+func (r *VehicleRepository) TechnicianWashSummaries(since string, pointValue, monthlyCap float64) ([]model.TechnicianWashSummary, error) {
+	type row struct {
+		EmployeeID     string `db:"employeeId"`
+		EmployeeName   string `db:"employeeName"`
+		TotalPoints    int    `db:"totalPoints"`
+		VehiclesWashed int    `db:"vehiclesWashed"`
+	}
+	rows := []row{}
+	err := r.db.Select(&rows, `
+		SELECT e.id AS "employeeId", e.name AS "employeeName",
+			COALESCE(SUM(w.score), 0) AS "totalPoints",
+			COUNT(DISTINCT w."dailyRatingId") AS "vehiclesWashed"
+		FROM "VehicleWashRating" w
+		JOIN "Employee" e ON e.id = w."employeeId"
+		JOIN "VehicleDailyRating" d ON d.id = w."dailyRatingId"
+		WHERE d."ratedDate" >= $1::date
+		GROUP BY e.id, e.name
+		ORDER BY "totalPoints" DESC
+	`, since)
+	if err != nil {
+		return nil, err
+	}
+	summaries := make([]model.TechnicianWashSummary, len(rows))
+	for i, rr := range rows {
+		wage := float64(rr.TotalPoints) * pointValue
+		if wage > monthlyCap {
+			wage = monthlyCap
+		}
+		summaries[i] = model.TechnicianWashSummary{
+			EmployeeID:     rr.EmployeeID,
+			EmployeeName:   rr.EmployeeName,
+			VehiclesWashed: rr.VehiclesWashed,
+			TotalPoints:    rr.TotalPoints,
+			SuggestedWage:  wage,
+			MonthlyCap:     monthlyCap,
+		}
+	}
+	return summaries, nil
+}

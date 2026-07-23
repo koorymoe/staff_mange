@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react'
-import { api, type Booking, type Employee, type Stats } from '../api'
+import { api, type Booking, type Employee, type Stats, type VehicleScoreSummary, type TechnicianWashSummary } from '../api'
 import { useSession } from '../session'
 import { useNavigate } from 'react-router-dom'
 
-type Tab = 'overview' | 'crews' | 'audit' | 'finance'
+type Tab = 'overview' | 'crews' | 'audit' | 'finance' | 'vehicles'
 
 export default function MonitorDashboard() {
   const { employee: currentUser } = useSession()
@@ -13,17 +13,26 @@ export default function MonitorDashboard() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
+  const [vehicleScores, setVehicleScores] = useState<VehicleScoreSummary[]>([])
+  const [techWashSummaries, setTechWashSummaries] = useState<TechnicianWashSummary[]>([])
 
   const load = useCallback(() => {
     setLoading(true)
+    const monthAgo = new Date()
+    monthAgo.setMonth(monthAgo.getMonth() - 1)
+    const since = monthAgo.toISOString().slice(0, 10)
     Promise.all([
       api.getStats().catch(() => null),
       api.getBookings().catch(() => []),
       api.getEmployees().catch(() => []),
-    ]).then(([s, b, e]) => {
+      api.getVehicleScoreSummaries(since).catch(() => []),
+      api.getTechnicianWashSummaries(since).catch(() => []),
+    ]).then(([s, b, e, vs, tw]) => {
       setStats(s as Stats | null)
       setBookings(b as Booking[])
       setEmployees(e as Employee[])
+      setVehicleScores(vs as VehicleScoreSummary[])
+      setTechWashSummaries(tw as TechnicianWashSummary[])
     }).finally(() => setLoading(false))
   }, [])
 
@@ -47,6 +56,7 @@ export default function MonitorDashboard() {
     { key: 'crews', label: 'الكوادر الميدانية', count: activeBookings.length },
     { key: 'audit', label: 'التدقيق', count: unverifiedBookings.length },
     { key: 'finance', label: 'المالية' },
+    { key: 'vehicles', label: 'تقييم السيارات والفنيين' },
   ]
 
   return (
@@ -523,6 +533,80 @@ export default function MonitorDashboard() {
                     </table>
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ Vehicles & Technician Wash Rating Tab (تذكير بس — بدون تعديل تلقائي للراتب) ═══ */}
+          {tab === 'vehicles' && (
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                ⚠️ هذا تذكير فقط لآخر 30 يوم — النتائج والرواتب المقترحة هنا معلوماتية بس، ماكو أي تعديل تلقائي براتب أي موظف. لو تريد تزيد راتب فني، سوّيها يدوياً من صفحة إدارة الكوادر.
+              </div>
+
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+                <h3 className="mb-4 font-bold text-slate-800">متوسط تقييم السيارات (آخر 30 يوم)</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-sm">
+                    <thead className="text-slate-500">
+                      <tr>
+                        <th className="pb-2">السيارة</th>
+                        <th className="pb-2">عدد التقييمات</th>
+                        <th className="pb-2">متوسط النتيجة</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {vehicleScores.map(v => (
+                        <tr key={v.vehicleId} className="border-b border-slate-50">
+                          <td className="py-2 font-bold text-slate-800">{v.vehicleName}</td>
+                          <td className="text-slate-600">{v.ratingsCount}</td>
+                          <td>
+                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                              v.averageScore >= 0.85 ? 'bg-emerald-100 text-emerald-700' :
+                              v.averageScore >= 0.7 ? 'bg-lime-100 text-lime-700' :
+                              v.averageScore >= 0.5 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                            }`}>{Math.round(v.averageScore * 100)}%</span>
+                          </td>
+                        </tr>
+                      ))}
+                      {vehicleScores.length === 0 && (
+                        <tr><td colSpan={3} className="py-6 text-center text-slate-400">لا توجد تقييمات مسجلة آخر 30 يوم</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.06)]">
+                <h3 className="mb-4 font-bold text-slate-800">الراتب المقترح للفنيين حسب جودة الغسيل (آخر 30 يوم)</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-right text-sm">
+                    <thead className="text-slate-500">
+                      <tr>
+                        <th className="pb-2">الفني</th>
+                        <th className="pb-2">سيارات غسلها</th>
+                        <th className="pb-2">مجموع النقاط</th>
+                        <th className="pb-2">الراتب المقترح</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {techWashSummaries.map(t => (
+                        <tr key={t.employeeId} className="border-b border-slate-50">
+                          <td className="py-2 font-bold text-slate-800">{t.employeeName}</td>
+                          <td className="text-slate-600">{t.vehiclesWashed}</td>
+                          <td className="text-slate-600">{t.totalPoints}</td>
+                          <td className="font-bold text-brand-700">
+                            {t.suggestedWage.toLocaleString('ar-IQ')} د.ع
+                            {t.suggestedWage >= t.monthlyCap && <span className="mr-1 text-[10px] text-amber-600">(بلغ الحد الأعلى)</span>}
+                          </td>
+                        </tr>
+                      ))}
+                      {techWashSummaries.length === 0 && (
+                        <tr><td colSpan={4} className="py-6 text-center text-slate-400">لا توجد تقييمات غسيل مسجلة آخر 30 يوم</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}

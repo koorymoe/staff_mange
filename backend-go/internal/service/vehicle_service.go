@@ -63,3 +63,35 @@ func (s *VehicleService) SetMonthlyStatus(vehicleID string, req model.SetVehicle
 	}
 	return s.repo.SetMonthlyStatus(vehicleID, req, recordedByID)
 }
+
+// قيمة نقطة الفني والحد الأعلى الشهري — نفس القيم الافتراضية بملف إكسل الشركة
+// (200 د.ع للنقطة، 60000 د.ع حد أعلى شهري). للتعديل لاحقاً إذا تغيرت سياسة الشركة.
+const (
+	VehicleWashPointValue = 200.0
+	VehicleWashMonthlyCap = 60000.0
+)
+
+func (s *VehicleService) CreateDailyRating(vehicleID string, req model.CreateVehicleDailyRatingRequest, recordedByID string) (*model.VehicleDailyRating, error) {
+	if vehicleID == "" {
+		return nil, errors.New("السيارة مطلوبة")
+	}
+	for _, tr := range req.TechnicianRatings {
+		if tr.Score < 0 || tr.Score > 2 {
+			return nil, errors.New("تقييم الفني لازم يكون بين 0 و 2")
+		}
+	}
+	req.VehicleID = vehicleID
+	return s.repo.CreateDailyRating(req, recordedByID)
+}
+
+func (s *VehicleService) ListDailyRatings(vehicleID, since string) ([]model.VehicleDailyRating, error) {
+	return s.repo.ListDailyRatings(vehicleID, since)
+}
+
+func (s *VehicleService) VehicleScoreSummaries(since string) ([]model.VehicleScoreSummary, error) {
+	return s.repo.VehicleScoreSummaries(since)
+}
+
+func (s *VehicleService) TechnicianWashSummaries(since string) ([]model.TechnicianWashSummary, error) {
+	return s.repo.TechnicianWashSummaries(since, VehicleWashPointValue, VehicleWashMonthlyCap)
+}
