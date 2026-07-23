@@ -154,8 +154,14 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
               <input value={certificate} onChange={e => setCertificate(e.target.value)} placeholder="مثال: بكالوريوس هندسة"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-500" />
               <label className="text-xs font-bold text-slate-500 mt-2">المنصب / التخصص</label>
-              <input value={position} onChange={e => setPosition(e.target.value)} placeholder="مثال: كاميرات مراقبة"
+              <input value={position} onChange={e => setPosition(e.target.value)} placeholder="مثال: كاميرات مراقبة" list="position-options"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-500" />
+              <datalist id="position-options">
+                <option value="إداري كوادر" />
+                <option value="تقني" />
+                <option value="مهندس" />
+                <option value="مصمم" />
+              </datalist>
               <label className="text-xs font-bold text-slate-500 mt-2">العنوان الوظيفي</label>
               <input value={jobTitle} onChange={e => setJobTitle(e.target.value)} placeholder="مثال: فني أول"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-500" />
