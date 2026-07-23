@@ -153,3 +153,17 @@ func (h *EmployeeHandler) SetSkills(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, employee)
 }
+
+// LinkHistoricalRecords يربط سجلات تاريخية (حجوزات/شكاوى مستوردة بالاسم) بحساب موظف
+// حالي بنفس الاسم — للموظفين القدامى الي رجعوا للشركة وصار عندهم حساب من جديد.
+func (h *EmployeeHandler) LinkHistoricalRecords(w http.ResponseWriter, r *http.Request) {
+	bookingsLinked, complaintsLinked, err := h.service.LinkHistoricalRecords(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{
+		"bookingsLinked":   bookingsLinked,
+		"complaintsLinked": complaintsLinked,
+	})
+}

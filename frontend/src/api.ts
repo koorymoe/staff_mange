@@ -878,7 +878,7 @@ export const api = {
     data: Partial<
       Pick<
         Employee,
-        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
+        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'phone' | 'certificate' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
         | 'isLeader' | 'salary' | 'shift' | 'shiftStart' | 'shiftEnd' | 'monthlyLeaves' | 'jobTitle'
       >
     > & {
@@ -886,6 +886,8 @@ export const api = {
       password?: string
     },
   ) => request<Employee>(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  linkHistoricalRecords: (id: string) =>
+    request<{ bookingsLinked: number; complaintsLinked: number }>(`/employees/${id}/link-historical`, { method: 'POST' }),
 
   // GPS
   getGpsStats: () => request<any>('/gps/stats'),

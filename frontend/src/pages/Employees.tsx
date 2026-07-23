@@ -138,6 +138,24 @@ export default function Employees() {
     openManagerChat(`أعطني تقرير شامل عن الموظف ${selectedEmployee.name}`)
   }
 
+  const [linkingHistorical, setLinkingHistorical] = useState(false)
+  const handleLinkHistorical = async () => {
+    if (!selectedEmployee) return
+    setLinkingHistorical(true)
+    try {
+      const result = await api.linkHistoricalRecords(selectedEmployee.id)
+      if (result.bookingsLinked === 0 && result.complaintsLinked === 0) {
+        alert('ماكو سجلات تاريخية بنفس اسم هذا الموظف بالضبط')
+      } else {
+        alert(`تم ربط ${result.bookingsLinked} حجز و ${result.complaintsLinked} شكوى بحساب هذا الموظف`)
+      }
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر ربط السجلات التاريخية')
+    } finally {
+      setLinkingHistorical(false)
+    }
+  }
+
   useEffect(() => {
     setCredUsername(selectedEmployee?.username || '')
     setCredPassword('')
@@ -357,6 +375,15 @@ export default function Employees() {
                         >
                           🧑‍💼🤖 اسأل الذكاء الاصطناعي عن هذا الموظف
                         </button>
+                        {isAdmin && (
+                          <button
+                            onClick={handleLinkHistorical}
+                            disabled={linkingHistorical}
+                            className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50"
+                          >
+                            {linkingHistorical ? 'جاري الربط...' : '🔗 ربط السجلات التاريخية'}
+                          </button>
+                        )}
                       </div>
                     )}
                     {isAdmin && (

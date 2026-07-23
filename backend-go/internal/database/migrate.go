@@ -714,6 +714,9 @@ var migrations = []string{
 	// نوع الشكوى (قائمة منسدلة ثابتة بدل وصف حر) + الموظف المتسبب (اختياري)
 	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "type" TEXT NOT NULL DEFAULT 'OTHER'`,
 	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "relatedEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+	// اسم احتياطي (نص) للموظف المتسبب لما يكون سجل تاريخي مستورد من نظام قديم
+	// وما عنده حساب فعلي بالنظام الجديد بعد — نفس فكرة "confirmedByName" بجدول الحجوزات.
+	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "relatedEmployeeName" TEXT`,
 
 	// إرجاع نقطة كي بي اي: ما نحذفها نهائياً — نعلّمها "ملغاة" حتى يضل تاريخها
 	// موجود ويشوفه المراقب، بس تأثيرها المالي (deductionAmount) يوقف يحسب.

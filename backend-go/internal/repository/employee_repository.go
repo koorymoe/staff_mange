@@ -221,3 +221,32 @@ func (r *EmployeeRepository) SetSkills(employeeID string, skills []model.Employe
 	}
 	return tx.Commit()
 }
+
+// LinkHistoricalRecords يربط سجلات تاريخية (حجوزات/شكاوى مستوردة من نظام قديم بس
+// بالاسم النصي، بدون حساب فعلي وقتها) بحساب موظف حالي بنفس الاسم — يستخدمها الأدمن
+// يدوياً لما موظف قديم يرجع ويصير له حساب جديد بنفس اسمه بالضبط.
+func (r *EmployeeRepository) LinkHistoricalRecords(employeeID, employeeName string) (bookingsLinked int, complaintsLinked int, err error) {
+	res, err := r.db.Exec(`
+		UPDATE "Booking" SET "confirmedByEmployeeId" = $1
+		WHERE "confirmedByName" = $2 AND "confirmedByEmployeeId" IS NULL
+	`, employeeID, employeeName)
+	if err != nil {
+		return 0, 0, err
+	}
+	if n, e := res.RowsAffected(); e == nil {
+		bookingsLinked = int(n)
+	}
+
+	res, err = r.db.Exec(`
+		UPDATE "Complaint" SET "relatedEmployeeId" = $1
+		WHERE "relatedEmployeeName" = $2 AND "relatedEmployeeId" IS NULL
+	`, employeeID, employeeName)
+	if err != nil {
+		return bookingsLinked, 0, err
+	}
+	if n, e := res.RowsAffected(); e == nil {
+		complaintsLinked = int(n)
+	}
+
+	return bookingsLinked, complaintsLinked, nil
+}

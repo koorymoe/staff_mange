@@ -18,6 +18,7 @@ type Complaint struct {
 	Type                 string     `db:"type" json:"type"`
 	Description          string     `db:"description" json:"description"`
 	RelatedEmployeeID    *string    `db:"relatedEmployeeId" json:"-"`
+	RelatedEmployeeName  *string    `db:"relatedEmployeeName" json:"relatedEmployeeName"`
 	Status               string     `db:"status" json:"status"`
 	CreatedByEmployeeID  string     `db:"createdByEmployeeId" json:"-"`
 	AssignedToEmployeeID *string    `db:"assignedToEmployeeId" json:"-"`

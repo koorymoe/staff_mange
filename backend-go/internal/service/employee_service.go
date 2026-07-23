@@ -218,3 +218,13 @@ func requireEngineeringSkills(employee *model.Employee) error {
 	}
 	return nil
 }
+
+// LinkHistoricalRecords يربط سجلات تاريخية (حجوزات/شكاوى مستوردة بالاسم بس) بحساب
+// الموظف هذا — يستخدمها الأدمن لما يسوي حساب لموظف قديم رجع للشركة.
+func (s *EmployeeService) LinkHistoricalRecords(id string) (bookingsLinked int, complaintsLinked int, err error) {
+	emp, err := s.repo.FindByID(id)
+	if err != nil {
+		return 0, 0, err
+	}
+	return s.repo.LinkHistoricalRecords(id, emp.Name)
+}
