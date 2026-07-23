@@ -4,6 +4,8 @@ import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
 import Login from '../pages/Login'
 import TrainingPage from '../pages/TrainingPage'
+import AssistantWidget from './AssistantWidget'
+import ManagerAssistantChat from './ManagerAssistantChat'
 
 interface NavItem {
   to: string
@@ -191,6 +193,18 @@ export default function Layout() {
       localStorage.removeItem('authToken')
     }
   }
+
+  // نتحقق من هوية الموظف الحقيقية من السيرفر مرة وحدة عند فتح النظام —
+  // هذا يصحح تلقائياً أي بيانات جلسة قديمة/معدَّلة (مثلاً بأدوات المطورين
+  // بالمتصفح) بقيت محفوظة بذاكرة المتصفح المحلية من قبل، ويسجل خروج
+  // الحساب تلقائياً إذا صار موقوف (SUSPENDED) بينما الجلسة القديمة لسه مفتوحة
+  useEffect(() => {
+    if (!employee) return
+    api.getMe()
+      .then((fresh) => setEmployee(fresh))
+      .catch(() => setEmployee(null))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (!employee) { setEmployeePermissions([]); return }
@@ -509,6 +523,9 @@ export default function Layout() {
           </div>
         </aside>
       </div>
+      {(employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || employee?.actualRole === 'OWNER')
+        ? <ManagerAssistantChat />
+        : <AssistantWidget />}
     </SessionContext.Provider>
   )
 }

@@ -14,12 +14,12 @@ func NewEmployeeRepository(db *sqlx.DB) *EmployeeRepository {
 	return &EmployeeRepository{db: db}
 }
 
-// List يرجع الموظفين النشطين فقط (يستثني المؤرشفين والمحذوفين) — هذا افتراضي
-// لكل واجهات النظام العادية.
+// List يرجع الموظفين النشطين فقط (يستثني المؤرشفين والمحذوفين والموقوفين) —
+// هذا افتراضي لكل واجهات النظام العادية.
 func (r *EmployeeRepository) List() ([]model.Employee, error) {
 	employees := []model.Employee{}
 	// حساب المالك (OWNER) ما يطلع بأي قائمة موظفين عادية أبداً — حساب مخفي تماماً
-	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status NOT IN ('ARCHIVED', 'DELETED') AND role != 'OWNER' ORDER BY name ASC`); err != nil {
+	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status NOT IN ('ARCHIVED', 'DELETED', 'SUSPENDED') AND role != 'OWNER' ORDER BY name ASC`); err != nil {
 		return nil, err
 	}
 	for i := range employees {
@@ -32,11 +32,11 @@ func (r *EmployeeRepository) List() ([]model.Employee, error) {
 	return employees, nil
 }
 
-// ListArchived يرجع المؤرشفين والمحذوفين فقط — للأدمن/المالك حصراً، لمراجعة
-// تاريخهم عند الحاجة.
+// ListArchived يرجع المؤرشفين والمحذوفين والموقوفين تلقائياً (بسبب محاولات
+// اختراق) — للأدمن/المالك حصراً، لمراجعة تاريخهم أو استرجاعهم عند الحاجة.
 func (r *EmployeeRepository) ListArchived() ([]model.Employee, error) {
 	employees := []model.Employee{}
-	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status IN ('ARCHIVED', 'DELETED') ORDER BY name ASC`); err != nil {
+	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status IN ('ARCHIVED', 'DELETED', 'SUSPENDED') ORDER BY name ASC`); err != nil {
 		return nil, err
 	}
 	for i := range employees {
@@ -60,6 +60,36 @@ func (r *EmployeeRepository) FindByID(id string) (*model.Employee, error) {
 	}
 	e.Skills = skills
 	return &e, nil
+}
+
+// StatusByID استعلام خفيف يرجع حالة الموظف بس (بدون بقية بياناته) — يستخدمه
+// RequireAuth بكل طلب يتحقق الحساب لسه فعّال (مو موقوف SUSPENDED) حتى لو
+// التوكن نفسه لسه صالح.
+func (r *EmployeeRepository) StatusByID(id string) (string, error) {
+	var status string
+	err := r.db.Get(&status, `SELECT status FROM "Employee" WHERE id = $1`, id)
+	return status, err
+}
+
+// RecordAuthzViolation تسجل محاولة وصول مرفوضة (طلب عملية الموظف مو مخوّل
+// لها فعلياً حسب دوره الحقيقي بالتوكن) — إذا تكررت 3 مرات نوقف الحساب
+// تلقائياً (SUSPENDED) حماية من محاولات التلاعب بجلسة المتصفح.
+func (r *EmployeeRepository) RecordAuthzViolation(id string) (violations int, suspended bool, err error) {
+	err = r.db.Get(&violations, `
+		UPDATE "Employee" SET "authzViolations" = "authzViolations" + 1
+		WHERE id = $1
+		RETURNING "authzViolations"
+	`, id)
+	if err != nil {
+		return 0, false, err
+	}
+	if violations >= 3 {
+		if _, execErr := r.db.Exec(`UPDATE "Employee" SET status = 'SUSPENDED' WHERE id = $1 AND status = 'ACTIVE'`, id); execErr != nil {
+			return violations, false, execErr
+		}
+		suspended = true
+	}
+	return violations, suspended, nil
 }
 
 func (r *EmployeeRepository) FindByUsername(username string) (*model.Employee, error) {
@@ -109,7 +139,8 @@ func (r *EmployeeRepository) Update(e *model.Employee) error {
 			"shiftStart" = :shiftStart,
 			"shiftEnd" = :shiftEnd,
 			"monthlyLeaves" = :monthlyLeaves,
-			"jobTitle" = :jobTitle
+			"jobTitle" = :jobTitle,
+			"authzViolations" = :authzViolations
 		WHERE id = :id
 	`, e)
 	return err

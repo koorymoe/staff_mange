@@ -1,18 +1,9 @@
 import { useEffect, useState } from 'react'
-import { api, type KpiEvaluation, type Employee, type TechnicianKpi } from '../api'
+import { api, type KpiCriterion, type KpiEvaluation, type Employee, type TechnicianKpi } from '../api'
 import { useSession } from '../session'
 
-const KPI_CRITERIA = [
-  { id: 'colleagues', label: 'العلاقة مع الزملاء', icon: '🤝' },
-  { id: 'tasks', label: 'تنفيذ المهام الموكلة إليه', icon: '📋' },
-  { id: 'skills', label: 'استطيع ولا استطيع', icon: '🎯' },
-  { id: 'compliance', label: 'الالتزام بالآليات وتوجيهات المسؤول', icon: '📐' },
-  { id: 'vehicle', label: 'تنظيف السيارة', icon: '🚗' },
-  { id: 'response', label: 'سرعة الاستجابة بالمهام', icon: '⚡' },
-  { id: 'tools', label: 'ترتيب العدد', icon: '🔧' },
-  { id: 'complaints', label: 'شكوى الزبائن', icon: '📞' },
-]
-
+// نقاط الكي بي اي صارت تتحمّل من الباك إند (قابلة للإضافة والحذف من الواجهة
+// بدل ما تكون مثبتة هنا بالكود) — راجع KpiCriterion بـ api.ts.
 const POINTS_PER_WEEK = 8
 const IQD_PER_POINT = 10_000
 
@@ -239,6 +230,7 @@ function AdministrativeTab() {
   const { employee: currentUser, permissions } = useSession()
   const [evaluations, setEvaluations] = useState<KpiEvaluation[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [criteria, setCriteria] = useState<KpiCriterion[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -247,15 +239,18 @@ function AdministrativeTab() {
   const [deductPoints, setDeductPoints] = useState(1)
   const [deductNotes, setDeductNotes] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [newCriterionLabel, setNewCriterionLabel] = useState('')
 
   const isEvaluator = currentUser && (EVALUATOR_ROLES.includes(currentUser.role) || permissions.includes('auditing'))
+  const canManageCriteria = currentUser?.role === 'ADMIN' || permissions.includes('kpi_criteria_management')
 
   const load = () => {
     setLoading(true)
-    Promise.all([api.getKpiEvaluations(), api.getEmployees()])
-      .then(([evals, emps]) => {
+    Promise.all([api.getKpiEvaluations(), api.getEmployees(), api.getKpiCriteria()])
+      .then(([evals, emps, crit]) => {
         setEvaluations(evals)
         setEmployees(emps.filter((e) => e.role !== 'TECHNICIAN' && e.role !== 'ADMIN'))
+        setCriteria(crit)
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -263,7 +258,8 @@ function AdministrativeTab() {
 
   useEffect(load, [])
 
-  const weeklyEvals = evaluations.filter((ev) => isThisWeek(ev.createdAt))
+  // التقييمات الملغاة (المسترجعة) ما تدخل بحساب النقاط المتبقية ولا الخصم المالي
+  const weeklyEvals = evaluations.filter((ev) => isThisWeek(ev.createdAt) && !ev.cancelled)
 
   const weeklyByEmployee = weeklyEvals.reduce<
     Record<string, { name: string; totalPoints: number; totalIQD: number; deductions: KpiEvaluation[] }>
@@ -295,7 +291,7 @@ function AdministrativeTab() {
 
   const handleDeduct = async () => {
     if (!currentUser || !selectedEmployeeId || !deductCriteria) return
-    const criteriaLabel = KPI_CRITERIA.find((c) => c.id === deductCriteria)?.label || ''
+    const criteriaLabel = criteria.find((c) => c.id === deductCriteria)?.label || ''
     const reason = deductNotes ? `${criteriaLabel}: ${deductNotes}` : criteriaLabel
     setSubmitting(true)
     try {
@@ -320,6 +316,38 @@ function AdministrativeTab() {
     if (!confirm('هل أنت متأكد من حذف هذا التقييم؟')) return
     try {
       await api.deleteKpiEvaluation(id)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
+    }
+  }
+
+  // إرجاع نقطة: ما تنحذف — تضل بالسجل معلّمة "ملغاة" حتى المراقب يشوف تاريخها
+  const handleCancel = async (id: string) => {
+    if (!confirm('استرجاع هذي النقطة؟ راح توقف تأثيرها المالي بس تضل بالسجل.')) return
+    try {
+      await api.cancelKpiEvaluation(id)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
+    }
+  }
+
+  const handleAddCriterion = async () => {
+    if (!newCriterionLabel.trim()) return
+    try {
+      await api.createKpiCriterion(newCriterionLabel.trim())
+      setNewCriterionLabel('')
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
+    }
+  }
+
+  const handleDeleteCriterion = async (id: string) => {
+    if (!confirm('حذف نقطة الكي بي اي هذي نهائياً؟')) return
+    try {
+      await api.deleteKpiCriterion(id)
       load()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'حدث خطأ')
@@ -381,6 +409,44 @@ function AdministrativeTab() {
         </div>
       )}
 
+      {/* إدارة نقاط الكي بي اي — إضافة/حذف (صلاحية kpi_criteria_management) */}
+      {canManageCriteria && (
+        <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <h3 className="mb-4 text-lg font-bold text-brand-800">إدارة نقاط الكي بي اي</h3>
+          <div className="flex gap-2">
+            <input
+              value={newCriterionLabel}
+              onChange={(e) => setNewCriterionLabel(e.target.value)}
+              placeholder="عنوان نقطة جديدة..."
+              className="flex-1 rounded-xl border border-gray-300 px-4 py-2.5 text-right outline-none focus:border-brand-500"
+            />
+            <button
+              onClick={handleAddCriterion}
+              className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2.5 font-medium text-white"
+            >
+              إضافة
+            </button>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {criteria.map((c) => (
+              <span
+                key={c.id}
+                className="flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+              >
+                {c.label}
+                <button
+                  onClick={() => handleDeleteCriterion(c.id)}
+                  className="text-red-500 hover:text-red-700"
+                  title="حذف"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Evaluator section */}
       {isEvaluator && (
         <>
@@ -433,7 +499,7 @@ function AdministrativeTab() {
 
                 <p className="mb-3 text-sm font-medium text-slate-600">اختر معيار الخصم</p>
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  {KPI_CRITERIA.map((c) => (
+                  {criteria.map((c) => (
                     <button
                       key={c.id}
                       type="button"
@@ -444,18 +510,20 @@ function AdministrativeTab() {
                           : 'border-slate-200 bg-white hover:border-red-200 hover:bg-red-50/50'
                       }`}
                     >
-                      <span className="block text-2xl">{c.icon}</span>
                       <span className="mt-1 block text-xs font-medium text-slate-700">
                         {c.label}
                       </span>
                     </button>
                   ))}
+                  {criteria.length === 0 && (
+                    <p className="col-span-full text-center text-sm text-slate-400">لا توجد نقاط كي بي اي بعد</p>
+                  )}
                 </div>
 
                 {deductCriteria && (
                   <div className="mt-4 rounded-xl border border-red-100 bg-red-50/50 p-4">
                     <p className="mb-3 font-medium text-red-800">
-                      خصم: {KPI_CRITERIA.find((c) => c.id === deductCriteria)?.label}
+                      خصم: {criteria.find((c) => c.id === deductCriteria)?.label}
                     </p>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -600,28 +668,46 @@ function AdministrativeTab() {
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {evaluations.map((ev) => (
-                    <tr key={ev.id} className="transition-colors hover:bg-slate-50">
+                    <tr key={ev.id} className={`transition-colors hover:bg-slate-50 ${ev.cancelled ? 'opacity-50' : ''}`}>
                       <td className="px-4 py-3 font-medium">{ev.employee.name}</td>
                       <td className="px-4 py-3 text-slate-500">{ev.evaluator.name}</td>
                       <td className="px-4 py-3">
-                        <span className="rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700">
+                        <span className={`rounded-full px-3 py-1 text-sm font-bold ${ev.cancelled ? 'bg-slate-100 text-slate-400 line-through' : 'bg-brand-50 text-brand-700'}`}>
                           {ev.points}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-slate-600">{ev.reason || '-'}</td>
-                      <td className="px-4 py-3 font-bold text-red-600">
+                      <td className="px-4 py-3 text-slate-600">
+                        {ev.reason || '-'}
+                        {ev.cancelled && (
+                          <div className="mt-1 text-xs font-bold text-amber-600">
+                            ⚠ ملغاة {ev.cancelledByEmployee ? `(بواسطة ${ev.cancelledByEmployee.name})` : ''}
+                            {ev.cancelledAt && ` — ${new Date(ev.cancelledAt).toLocaleDateString('ar-IQ')}`}
+                          </div>
+                        )}
+                      </td>
+                      <td className={`px-4 py-3 font-bold ${ev.cancelled ? 'text-slate-300 line-through' : 'text-red-600'}`}>
                         {ev.deductionAmount.toLocaleString()} د.ع
                       </td>
                       <td className="px-4 py-3 text-slate-500">
                         {new Date(ev.createdAt).toLocaleDateString('ar-IQ')}
                       </td>
                       <td className="px-4 py-3">
-                        <button
-                          onClick={() => handleDelete(ev.id)}
-                          className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 transition-colors hover:bg-red-200"
-                        >
-                          حذف
-                        </button>
+                        <div className="flex gap-2">
+                          {!ev.cancelled && (
+                            <button
+                              onClick={() => handleCancel(ev.id)}
+                              className="rounded-lg bg-amber-100 px-3 py-1 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-200"
+                            >
+                              استرجاع
+                            </button>
+                          )}
+                          <button
+                            onClick={() => handleDelete(ev.id)}
+                            className="rounded-lg bg-red-100 px-3 py-1 text-sm font-medium text-red-700 transition-colors hover:bg-red-200"
+                          >
+                            حذف
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

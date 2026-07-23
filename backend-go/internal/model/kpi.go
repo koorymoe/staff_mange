@@ -3,16 +3,32 @@ package model
 import "time"
 
 type KpiEvaluation struct {
-	ID              string    `db:"id" json:"id"`
-	EmployeeID      string    `db:"employeeId" json:"employeeId"`
-	EvaluatorID     string    `db:"evaluatorId" json:"evaluatorId"`
-	Points          int       `db:"points" json:"points"`
-	Reason          string    `db:"reason" json:"reason"`
-	DeductionAmount float64   `db:"deductionAmount" json:"deductionAmount"`
-	CreatedAt       time.Time `db:"createdAt" json:"createdAt"`
+	ID                    string     `db:"id" json:"id"`
+	EmployeeID            string     `db:"employeeId" json:"employeeId"`
+	EvaluatorID           string     `db:"evaluatorId" json:"evaluatorId"`
+	Points                int        `db:"points" json:"points"`
+	Reason                string     `db:"reason" json:"reason"`
+	DeductionAmount       float64    `db:"deductionAmount" json:"deductionAmount"`
+	Cancelled             bool       `db:"cancelled" json:"cancelled"`
+	CancelledAt           *time.Time `db:"cancelledAt" json:"cancelledAt"`
+	CancelledByEmployeeID *string    `db:"cancelledByEmployeeId" json:"-"`
+	CreatedAt             time.Time  `db:"createdAt" json:"createdAt"`
 
-	Employee  *EmployeeBrief `db:"-" json:"employee"`
-	Evaluator *EmployeeBrief `db:"-" json:"evaluator"`
+	Employee            *EmployeeBrief `db:"-" json:"employee"`
+	Evaluator           *EmployeeBrief `db:"-" json:"evaluator"`
+	CancelledByEmployee *EmployeeBrief `db:"-" json:"cancelledByEmployee"`
+}
+
+// KpiCriterion هي نقاط الكي بي اي القابلة للإضافة والحذف من الواجهة (صلاحية
+// kpi_criteria_management منفصلة عن صلاحية تسجيل التقييمات نفسها).
+type KpiCriterion struct {
+	ID        string    `db:"id" json:"id"`
+	Label     string    `db:"label" json:"label"`
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+}
+
+type CreateKpiCriterionRequest struct {
+	Label string `json:"label"`
 }
 
 type CreateKpiEvaluationRequest struct {
@@ -31,7 +47,7 @@ type KpiLeaderboardEntry struct {
 }
 
 type RoleKpiLeaderboard struct {
-	Role    string                 `json:"role"`
-	Weekly  []KpiLeaderboardEntry  `json:"weekly"`
-	Monthly []KpiLeaderboardEntry  `json:"monthly"`
+	Role    string                `json:"role"`
+	Weekly  []KpiLeaderboardEntry `json:"weekly"`
+	Monthly []KpiLeaderboardEntry `json:"monthly"`
 }

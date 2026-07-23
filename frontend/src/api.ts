@@ -72,7 +72,7 @@ export interface Employee {
   certificate: string | null
   position: string | null
   phone: string | null
-  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DELETED'
+  status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DELETED' | 'SUSPENDED'
   role: EmployeeRole
   // الدور الحقيقي للمالك (OWNER) — نطبّع role إلى 'ADMIN' بجلسة الواجهة حتى
   // يشتغل كل شي مبني على role === 'ADMIN' تلقائياً، ونخزن الدور الأصلي هنا
@@ -473,6 +473,15 @@ export interface KpiEvaluation {
   points: number
   reason: string
   deductionAmount: number
+  cancelled: boolean
+  cancelledAt: string | null
+  cancelledByEmployee: { id: string; name: string } | null
+  createdAt: string
+}
+
+export interface KpiCriterion {
+  id: string
+  label: string
   createdAt: string
 }
 
@@ -634,6 +643,7 @@ export interface ProcurementStats {
 }
 
 export const api = {
+  getMe: () => request<Employee>('/auth/me'),
   getServices: () => request<Service[]>('/services'),
   createService: (data: { name: string; category?: string }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
@@ -720,6 +730,11 @@ export const api = {
       }[]
     }>('/security/dashboard'),
   freeServerMemory: () => request<{ memoryUsedMB: number }>('/security/free-memory', { method: 'POST' }),
+
+  askAssistant: (message: string) =>
+    request<{ reply: string }>('/assistant/ask', { method: 'POST', body: JSON.stringify({ message }) }),
+  managerChatAssistant: (message: string, history: { role: 'user' | 'assistant'; text: string }[]) =>
+    request<{ reply: string }>('/assistant/manager-chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
 
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
   updateQualityFollowUp: (
@@ -862,6 +877,7 @@ export const api = {
 
   // Quotations
   getQuotations: () => request<Quotation[]>('/quotations'),
+  getQuotation: (id: string) => request<Quotation>(`/quotations/${id}`),
   createQuotation: (data: {
     customerName: string
     customerPhone?: string
@@ -876,6 +892,17 @@ export const api = {
     notes?: string
     createdByEmployeeId?: string
   }) => request<Quotation>('/quotations', { method: 'POST', body: JSON.stringify(data) }),
+  updateQuotation: (id: string, data: {
+    customerName?: string
+    customerPhone?: string
+    customerAddress?: string
+    projectName?: string
+    items?: Omit<QuotationItem, 'id'>[]
+    discountPercent?: number
+    duration?: string
+    notes?: string
+    status?: Quotation['status']
+  }) => request<Quotation>(`/quotations/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteQuotation: (id: string) =>
     request<void>(`/quotations/${id}`, { method: 'DELETE' }),
 
@@ -909,6 +936,12 @@ export const api = {
   createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string }) =>
     request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
   deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
+  cancelKpiEvaluation: (id: string) => request<KpiEvaluation>(`/kpi/${id}/cancel`, { method: 'PUT' }),
+
+  getKpiCriteria: () => request<KpiCriterion[]>('/kpi-criteria'),
+  createKpiCriterion: (label: string) =>
+    request<KpiCriterion>('/kpi-criteria', { method: 'POST', body: JSON.stringify({ label }) }),
+  deleteKpiCriterion: (id: string) => request<void>(`/kpi-criteria/${id}`, { method: 'DELETE' }),
   completeTraining: (employeeId: string) =>
     request<KpiEvaluation>(`/employees/${employeeId}/complete-training`, { method: 'POST' }),
 

@@ -770,7 +770,7 @@ export default function Dashboard() {
                   انصراف
                 </button>
                 {showCheckoutConfirm && (
-                  <div className="absolute left-0 top-full z-[60] mt-2 w-48 rounded-xl border border-slate-100 bg-white p-3 shadow-2xl">
+                  <div className="absolute right-4 top-full z-[60] mt-2 w-44 rounded-xl border border-slate-100 bg-white p-3 shadow-2xl">
                     <p className="mb-2 text-xs font-semibold text-gray-800">تسجيل انصراف؟</p>
                     <div className="flex gap-2">
                       <button onClick={handleAttCheckOut} className="flex-1 rounded-lg bg-red-500 px-2 py-1 text-xs font-bold text-white">نعم</button>

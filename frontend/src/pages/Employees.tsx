@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type Stats } from '../api'
 import { useSession } from '../session'
 import AddEmployeeWizard from '../components/AddEmployeeWizard'
+import { openManagerChat } from '../components/ManagerAssistantChat'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -124,6 +125,13 @@ export default function Employees() {
   }
   const compareEmployee = employees.find((emp) => emp.id === compareId) || null
 
+  const canGenerateAiReport = isAdmin || currentUser?.role === 'MONITOR'
+
+  const handleGenerateAiReport = async () => {
+    if (!selectedEmployee) return
+    openManagerChat(`أعطني تقرير شامل عن الموظف ${selectedEmployee.name}`)
+  }
+
   useEffect(() => {
     setCredUsername(selectedEmployee?.username || '')
     setCredPassword('')
@@ -211,7 +219,7 @@ export default function Employees() {
                 showArchived ? 'bg-slate-700 text-white' : 'bg-white text-slate-600'
               }`}
             >
-              {showArchived ? '↩ رجوع للنشطين' : '🗄️ المؤرشفون/المحذوفون'}
+              {showArchived ? '↩ رجوع للنشطين' : '🗄️ المؤرشفون/المحذوفون/الموقوفين'}
             </button>
           )}
           {isAdmin && !showArchived && (
@@ -318,6 +326,9 @@ export default function Employees() {
                           {(selectedEmployee as any)?.isLeader && (
                             <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300">ليدر</span>
                           )}
+                          {selectedEmployee.status === 'SUSPENDED' && (
+                            <span className="rounded-full bg-red-500/30 px-2.5 py-0.5 text-[10px] font-bold text-red-200">⚠ موقوف تلقائياً — محاولات وصول غير مخوّلة</span>
+                          )}
                         </div>
                         {selectedEmployee.phone && (
                           <p className="mt-2 text-sm text-blue-200/60">{selectedEmployee.phone}</p>
@@ -328,9 +339,19 @@ export default function Employees() {
                         <span className="mt-1 text-[10px] font-medium">{selectedEmployee.onDuty ? 'بالدوام' : 'خارج'}</span>
                       </div>
                     </div>
+                    {canGenerateAiReport && selectedEmployee.status !== 'ARCHIVED' && selectedEmployee.status !== 'DELETED' && selectedEmployee.status !== 'SUSPENDED' && (
+                      <div className="relative mt-4 flex flex-wrap gap-2">
+                        <button
+                          onClick={handleGenerateAiReport}
+                          className="rounded-lg bg-indigo-500/20 px-3 py-1.5 text-xs font-bold text-indigo-200 hover:bg-indigo-500/30"
+                        >
+                          🧑‍💼🤖 اسأل الذكاء الاصطناعي عن هذا الموظف
+                        </button>
+                      </div>
+                    )}
                     {isAdmin && (
                       <div className="relative mt-4 flex flex-wrap gap-2">
-                        {selectedEmployee.status === 'ARCHIVED' || selectedEmployee.status === 'DELETED' ? (
+                        {selectedEmployee.status === 'ARCHIVED' || selectedEmployee.status === 'DELETED' || selectedEmployee.status === 'SUSPENDED' ? (
                           <button
                             onClick={() => handleArchive('ACTIVE')}
                             className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/30"

@@ -462,7 +462,7 @@ export default function Coordinator() {
                 <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">
-                      التكلفة المقدرة
+                      كلفة العمل التقديرية (بدون المواد)
                     </label>
                     <input
                       type="number"
@@ -471,6 +471,11 @@ export default function Coordinator() {
                       onBlur={(e) => handleDetailsBlur(booking, 'quotedPrice', e.target.value)}
                       className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
                     />
+                    {(cartItems[booking.id]?.length ?? 0) > 0 && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        + كلفة المواد من السلة: {(cartItems[booking.id] || []).reduce((sum, i) => sum + i.totalPrice, 0).toLocaleString()} د.ع (تلقائي)
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="mb-1 block text-sm font-medium text-slate-600">

@@ -48,6 +48,7 @@ func main() {
 	inventoryRepo := repository.NewInventoryRepository(db)
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	kpiRepo := repository.NewKpiRepository(db)
+	kpiCriterionRepo := repository.NewKpiCriterionRepository(db)
 	smartKpiRepo := repository.NewSmartKpiRepository(db)
 	complaintRepo := repository.NewComplaintRepository(db)
 	trainingRepo := repository.NewTrainingRepository(db)
@@ -80,6 +81,7 @@ func main() {
 	inventoryService := service.NewInventoryService(inventoryRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	kpiService := service.NewKpiService(kpiRepo, employeeRepo)
+	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
 	trainingService := service.NewTrainingService(trainingRepo)
@@ -109,6 +111,9 @@ func main() {
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	kpiHandler := handler.NewKpiHandler(kpiService)
+	assistantService := service.NewAssistantService(cfg.GeminiAPIKey, cfg.GeminiDailyCap, employeeRepo, kpiRepo, performanceReviewRepo, bookingRepo, missionRepo, expenseRepo, gpsRepo, qualityFollowUpRepo, complaintRepo)
+	assistantHandler := handler.NewAssistantHandler(assistantService)
+	kpiCriterionHandler := handler.NewKpiCriterionHandler(kpiCriterionService)
 	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)
 	complaintHandler := handler.NewComplaintHandler(complaintService)
 	trainingHandler := handler.NewTrainingHandler(trainingService)
@@ -129,20 +134,22 @@ func main() {
 	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo)
 	performanceReviewHandler := handler.NewPerformanceReviewHandler(performanceReviewService)
 
-	requireAuth := middleware.RequireAuth(authService)
-	requireAdmin := middleware.RequireRole("ADMIN")
+	requireAuth := middleware.RequireAuth(authService, employeeRepo)
+	requireAdmin := middleware.RequireRole(employeeRepo, "ADMIN")
 	// حصراً لحساب المالك (OWNER) — أقوى من الأدمن العادي، ما يشوفها إلا هو
-	requireOwner := middleware.RequireRole("OWNER")
-	requireFinance := middleware.RequireRole("ADMIN", "FINANCE")
-	requireHR := middleware.RequireRole("ADMIN", "HR_COORDINATOR")
-	requireMonitor := middleware.RequireRole("ADMIN", "MONITOR")
-	requireProjectManager := middleware.RequireRole("ADMIN", "PROJECT_MANAGER")
-	requireFieldMonitor := middleware.RequireRole("ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
-	requireGpsAdmin := middleware.RequireRole("ADMIN", "GPS_ADMIN")
-	requireContentTech := middleware.RequirePermission(permissionRepo, "content_technician")
-	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, "vehicle_management")
-	requireQuality := middleware.RequirePermission(permissionRepo, "quality_control")
-	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, "project_management")
+	requireOwner := middleware.RequireRole(employeeRepo, "OWNER")
+	requireFinance := middleware.RequireRole(employeeRepo, "ADMIN", "FINANCE")
+	requireHR := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR")
+	requireMonitor := middleware.RequireRole(employeeRepo, "ADMIN", "MONITOR")
+	requireProjectManager := middleware.RequireRole(employeeRepo, "ADMIN", "PROJECT_MANAGER")
+	requireFieldMonitor := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
+	requireGpsAdmin := middleware.RequireRole(employeeRepo, "ADMIN", "GPS_ADMIN")
+	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, "content_technician")
+	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, "vehicle_management")
+	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, "quality_control")
+	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, "project_management")
+	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, "kpi_management")
+	requireKpiCriteria := middleware.RequirePermission(permissionRepo, employeeRepo, "kpi_criteria_management")
 
 	mux := http.NewServeMux()
 
@@ -150,7 +157,11 @@ func main() {
 		handler.WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 
-	mux.HandleFunc("POST /api/auth/login", authHandler.Login)
+	// حماية ضد محاولات تخمين كلمة السر المتكررة: أقصى 8 محاولات دخول بالدقيقة
+	// من نفس عنوان IP — هذا بالضبط النوع اللي سبب حظر IP السيرفر من Hetzner
+	// كإجراء حماية تلقائي ضدهم لما شافوا محاولات دخول متكررة سريعة.
+	requireLoginRateLimit := middleware.RateLimit(8, time.Minute)
+	mux.Handle("POST /api/auth/login", requireLoginRateLimit(http.HandlerFunc(authHandler.Login)))
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
 
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
@@ -242,9 +253,15 @@ func main() {
 	mux.Handle("GET /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth))
 	mux.Handle("GET /api/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/kpi/leaderboard/{role}", middleware.Chain(http.HandlerFunc(kpiHandler.RoleLeaderboard), requireAuth))
-	mux.Handle("POST /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireMonitor))
+	mux.Handle("POST /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireKpi))
 	mux.Handle("DELETE /api/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/kpi/{id}/cancel", middleware.Chain(http.HandlerFunc(kpiHandler.Cancel), requireAuth, requireKpi))
 	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireMonitor))
+	mux.Handle("GET /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.List), requireAuth))
+	mux.Handle("POST /api/assistant/ask", middleware.Chain(http.HandlerFunc(assistantHandler.Ask), requireAuth))
+	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMonitor))
+	mux.Handle("POST /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Create), requireAuth, requireKpiCriteria))
+	mux.Handle("DELETE /api/kpi-criteria/{id}", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Delete), requireAuth, requireKpiCriteria))
 
 	// تقييم الأداء التلقائي (Smart KPI) — الرانك الأسبوعي/الشهري للفنيين
 	mux.Handle("GET /api/smart-kpi/technician/{employeeId}", middleware.Chain(http.HandlerFunc(smartKpiHandler.Technician), requireAuth))

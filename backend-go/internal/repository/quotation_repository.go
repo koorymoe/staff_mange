@@ -99,7 +99,7 @@ func (r *QuotationRepository) insertItems(tx *sqlx.Tx, quotationID string, items
 		if _, err := tx.Exec(`
 			INSERT INTO "QuotationItem" (id, "quotationId", "productName", unit, quantity, "unitPrice", "totalPrice")
 			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
-		`, quotationID, item.Description, item.Unit, item.Quantity, item.UnitPrice, totalPrice); err != nil {
+		`, quotationID, item.ProductName, item.Unit, item.Quantity, item.UnitPrice, totalPrice); err != nil {
 			return err
 		}
 	}

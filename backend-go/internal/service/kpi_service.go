@@ -57,6 +57,12 @@ func (s *KpiService) Delete(id string) error {
 	return s.repo.Delete(id)
 }
 
+// Cancel "يرجّع" نقطة كي بي اي تم تسجيلها بالغلط أو بعد ما الموظف عدّل سلوكه —
+// يحتفظ بالسجل بدل الحذف حتى يضل تاريخه واضح للمراقب.
+func (s *KpiService) Cancel(id, cancelledByEmployeeID string) (*model.KpiEvaluation, error) {
+	return s.repo.Cancel(id, cancelledByEmployeeID)
+}
+
 // RoleLeaderboard يرجع ترتيب موظفي دور معيّن أسبوعياً وشهرياً معاً
 func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, error) {
 	now := time.Now()

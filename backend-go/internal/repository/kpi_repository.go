@@ -25,6 +25,9 @@ func (r *KpiRepository) loadEmployeeBrief(id string) *model.EmployeeBrief {
 func (r *KpiRepository) hydrate(e *model.KpiEvaluation) {
 	e.Employee = r.loadEmployeeBrief(e.EmployeeID)
 	e.Evaluator = r.loadEmployeeBrief(e.EvaluatorID)
+	if e.CancelledByEmployeeID != nil {
+		e.CancelledByEmployee = r.loadEmployeeBrief(*e.CancelledByEmployeeID)
+	}
 }
 
 func (r *KpiRepository) List() ([]model.KpiEvaluation, error) {
@@ -68,6 +71,25 @@ func (r *KpiRepository) Delete(id string) error {
 	return err
 }
 
+// Cancel "يرجّع" نقطة كي بي اي — ما تنحذف نهائياً، تنعلّم "ملغاة" حتى يضل
+// تاريخها موجود ويشوفه المراقب، بس تأثيرها المالي يوقف يحسب بالمجاميع.
+func (r *KpiRepository) Cancel(id, cancelledByEmployeeID string) (*model.KpiEvaluation, error) {
+	var e model.KpiEvaluation
+	err := r.db.Get(&e, `
+		UPDATE "KpiEvaluation" SET
+			cancelled = true,
+			"cancelledAt" = now(),
+			"cancelledByEmployeeId" = $2
+		WHERE id = $1
+		RETURNING *
+	`, id, cancelledByEmployeeID)
+	if err != nil {
+		return nil, err
+	}
+	r.hydrate(&e)
+	return &e, nil
+}
+
 // RoleLeaderboard يرجع ترتيب موظفي دور معيّن حسب مجموع نقاط الـKPI ضمن فترة زمنية،
 // حتى يشوف كل موظف ترتيبه بين نظرائه بنفس الدور (فني مع الفنيين، إداري مع الإداريين).
 func (r *KpiRepository) RoleLeaderboard(role string, since string) ([]model.KpiLeaderboardEntry, error) {
@@ -84,7 +106,7 @@ func (r *KpiRepository) RoleLeaderboard(role string, since string) ([]model.KpiL
 				WHERE ba."employeeId" = e.id AND b.status = 'COMPLETED' AND b."completedAt" >= $2::timestamp
 			), 0) AS "completedBookings"
 		FROM "Employee" e
-		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = e.id AND k."createdAt" >= $2::timestamp
+		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = e.id AND k."createdAt" >= $2::timestamp AND k.cancelled = false
 		WHERE e.role = $1 AND e.status = 'ACTIVE'
 		GROUP BY e.id, e.name
 		ORDER BY points DESC, "completedBookings" DESC

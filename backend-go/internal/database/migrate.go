@@ -682,6 +682,14 @@ var migrations = []string{
 	// يختفون من كل واجهات النظام العادية، الأدمن/المالك بس يشوف تاريخهم.
 	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED'`,
 	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'DELETED'`,
+	// حماية من التلاعب بجلسة تسجيل الدخول من أدوات المطورين بالمتصفح: لو حساب
+	// عادي حاول يوصل لعملية أو مسار مو مسموحله بيه (بعد تعديل بيانات الجلسة
+	// بالمتصفح مثلاً)، الباك إند يرفضه دائماً (الدور الحقيقي من التوكن الموقّع
+	// وليس من أي شي يرسله المتصفح) ويسجل "محاولة اختراق" — إذا تكررت 3 مرات
+	// نوقف الحساب تلقائياً (status = SUSPENDED) ويصير ميكدر يستخدم النظام
+	// حتى لو رجع يسجل دخول بكلمة سره الصحيحة.
+	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'SUSPENDED'`,
+	`ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "authzViolations" INT NOT NULL DEFAULT 0`,
 
 	// سجل تدقيق تسجيل الدخول: كل محاولة دخول (ناجحة أو فاشلة) تنسجل هنا مع
 	// عنوان IP والمتصفح/الجهاز — أساس لوحة المراقبة الأمنية الخلفية.
@@ -702,6 +710,20 @@ var migrations = []string{
 	// نوع الشكوى (قائمة منسدلة ثابتة بدل وصف حر) + الموظف المتسبب (اختياري)
 	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "type" TEXT NOT NULL DEFAULT 'OTHER'`,
 	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "relatedEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+
+	// إرجاع نقطة كي بي اي: ما نحذفها نهائياً — نعلّمها "ملغاة" حتى يضل تاريخها
+	// موجود ويشوفه المراقب، بس تأثيرها المالي (deductionAmount) يوقف يحسب.
+	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS cancelled BOOLEAN NOT NULL DEFAULT false`,
+	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS "cancelledAt" TIMESTAMP`,
+	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS "cancelledByEmployeeId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+
+	// نقاط الكي بي اي صارت قابلة للإضافة والحذف من الواجهة (صلاحية منفصلة)
+	// بدل ما تكون مثبتة بالكود.
+	`CREATE TABLE IF NOT EXISTS "KpiCriterion" (
+		id TEXT PRIMARY KEY,
+		label TEXT NOT NULL UNIQUE,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
 
 	// "مسؤول خدمة" عام: تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات — جدول يربط موظف
 	// بمجموعة خدمات هو المسؤول الوحيد عن تفعيلها/جدولتها (مثال: GPS + صوتيات + حريق سوا).
@@ -773,7 +795,35 @@ func Migrate(db *sqlx.DB) error {
 	if err := seedEngineeringSkills(db); err != nil {
 		return err
 	}
-	return seedOwnerAccount(db)
+	if err := seedOwnerAccount(db); err != nil {
+		return err
+	}
+	return seedKpiCriteria(db)
+}
+
+// seedKpiCriteria يزرع نقاط الكي بي اي الثمانية الأصلية مرة وحدة (idempotent) —
+// بعدها تصير قابلة للإضافة والحذف من واجهة إدارة النقاط (صلاحية منفصلة).
+func seedKpiCriteria(db *sqlx.DB) error {
+	criteria := []string{
+		"العلاقة مع الزملاء",
+		"تنفيذ المهام الموكلة إليه",
+		"استطيع ولا استطيع",
+		"الالتزام بالآليات وتوجيهات المسؤول",
+		"تنظيف السيارة",
+		"سرعة الاستجابة بالمهام",
+		"ترتيب العدد",
+		"شكوى الزبائن",
+	}
+	for _, label := range criteria {
+		if _, err := db.Exec(`
+			INSERT INTO "KpiCriterion" (id, label)
+			VALUES (gen_random_uuid()::text, $1)
+			ON CONFLICT (label) DO NOTHING
+		`, label); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // seedOwnerAccount يزرع حساب مالك النظام مرة وحدة (idempotent — upsert بالـ username)،

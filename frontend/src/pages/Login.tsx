@@ -36,9 +36,13 @@ export default function Login() {
           <label className="mb-1 block text-sm font-medium text-slate-600">اسم المستخدم</label>
           <input
             required
+            dir="ltr"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
             value={username}
             onChange={(e) => setUsername(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right outline-none focus:border-brand-500"
           />
         </div>
 
@@ -47,9 +51,10 @@ export default function Login() {
           <input
             required
             type="password"
+            dir="ltr"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-right outline-none focus:border-brand-500"
           />
         </div>
 
