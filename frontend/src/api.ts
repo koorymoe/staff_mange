@@ -64,6 +64,7 @@ export type EmployeeRole =
   | 'GPS_ADMIN'
   | 'QUALITY_ENGINEER'
   | 'ENGINEER'
+  | 'PROCUREMENT_ADMIN'
   | 'OWNER'
 
 export interface Employee {
@@ -534,7 +535,11 @@ export interface InventoryCheck {
   complete: boolean
   missingItems: string | null
   checkedAt: string
+  resolved: boolean
+  resolvedById: string | null
+  resolvedAt: string | null
   employee: { id: string; name: string } | null
+  resolvedBy: { id: string; name: string } | null
 }
 
 export interface PersonalTool {
@@ -1022,6 +1027,7 @@ export const api = {
   createInventoryCheck: (data: { complete: boolean; missingItems?: string }) =>
     request<InventoryCheck>('/inventory/checks', { method: 'POST', body: JSON.stringify(data) }),
   getTodaysInventoryChecks: () => request<InventoryCheck[]>('/inventory/checks/today'),
+  resolveInventoryCheck: (id: string) => request<InventoryCheck>(`/inventory/checks/${id}/resolve`, { method: 'POST' }),
   getPersonalTools: (employeeId?: string) =>
     request<PersonalTool[]>(`/inventory/personal${employeeId ? `?employeeId=${employeeId}` : ''}`),
   createPersonalTool: (data: { employeeId: string; name: string; barcode: string }) =>

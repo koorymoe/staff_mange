@@ -678,6 +678,10 @@ var migrations = []string{
 	// دور "المالك" (OWNER) — حساب واحد فقط، أقوى من ADMIN، يتخطى كل قيود
 	// الأدوار والصلاحيات (middleware.RequireRole/RequirePermission).
 	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'OWNER'`,
+	// دور "إداري الكميات" (PROCUREMENT_ADMIN) — يستلم طلبات المواد الناقصة من الموظفين
+	// ويوفرها ويسجل كلفتها (نظام المشتريات الموجود أصلاً)، بدون صلاحيات إضافية افتراضية —
+	// تُمنح له لاحقاً من صفحة الصلاحيات حسب الحاجة.
+	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'PROCUREMENT_ADMIN'`,
 	// حالتين جديدتين للموظف: أرشفة (قابلة للاسترجاع) وحذف (سجل ناعم) — الاثنين
 	// يختفون من كل واجهات النظام العادية، الأدمن/المالك بس يشوف تاريخهم.
 	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED'`,
@@ -776,6 +780,12 @@ var migrations = []string{
 	)`,
 	`CREATE UNIQUE INDEX IF NOT EXISTS "QualityFollowUp_bookingId_key" ON "QualityFollowUp"("bookingId")`,
 	`CREATE INDEX IF NOT EXISTS "QualityFollowUp_status_idx" ON "QualityFollowUp"(status)`,
+
+	// تأشير "تم" على نقص جرد الفني — يسويها الإداري/الأدمن بعد ما يوفر البديل، حتى
+	// المراقب يشوف مين وفّر الاحتياج ومتى (بدون صلاحية تعديل، عرض بس).
+	`ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "resolved" BOOLEAN NOT NULL DEFAULT false`,
+	`ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "resolvedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+	`ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "resolvedAt" TIMESTAMP`,
 }
 
 func Migrate(db *sqlx.DB) error {

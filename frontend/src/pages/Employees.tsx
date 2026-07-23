@@ -25,6 +25,7 @@ const roleLabels: Record<string, string> = {
   GPS_ADMIN: 'مسؤول GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
   ENGINEER: 'مهندس',
+  PROCUREMENT_ADMIN: 'إداري الكميات',
 }
 
 const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
@@ -38,6 +39,7 @@ const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
   GPS_ADMIN: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
   QUALITY_ENGINEER: { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', dot: 'bg-fuchsia-500' },
   ENGINEER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
+  PROCUREMENT_ADMIN: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
 }
 
 const avatarGradients: string[] = [
@@ -77,6 +79,10 @@ export default function Employees() {
   const [editMonthlyLeaves, setEditMonthlyLeaves] = useState('')
   const [editJobTitle, setEditJobTitle] = useState('')
   const [editIsLeader, setEditIsLeader] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editPosition, setEditPosition] = useState('')
+  const [editCertificate, setEditCertificate] = useState('')
 
   const [showCompare, setShowCompare] = useState(false)
   const [compareId, setCompareId] = useState<string | null>(null)
@@ -141,6 +147,10 @@ export default function Employees() {
     setEditMonthlyLeaves('')
     setEditJobTitle('')
     setEditIsLeader((selectedEmployee as any)?.isLeader || false)
+    setEditName('')
+    setEditPhone('')
+    setEditPosition('')
+    setEditCertificate('')
     setShowCompare(false)
     setCompareId(null)
     setSkillTab('technical')
@@ -439,6 +449,36 @@ export default function Employees() {
                       </div>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-400">الاسم</label>
+                          <input value={editName || selectedEmployee.name} onChange={(e) => setEditName(e.target.value)}
+                            onBlur={() => handleFieldBlur('name', editName || selectedEmployee.name)} placeholder="اسم الموظف"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-400">الهاتف</label>
+                          <input value={editPhone || selectedEmployee.phone || ''} onChange={(e) => setEditPhone(e.target.value)}
+                            onBlur={() => handleFieldBlur('phone', editPhone || selectedEmployee.phone || '')} placeholder="07XXXXXXXXX"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-400">المنصب / التخصص</label>
+                          <input value={editPosition || selectedEmployee.position || ''} onChange={(e) => setEditPosition(e.target.value)}
+                            onBlur={() => handleFieldBlur('position', editPosition || selectedEmployee.position || '')} placeholder="مثال: كاميرات مراقبة" list="position-options-edit"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                          <datalist id="position-options-edit">
+                            <option value="إداري كوادر" />
+                            <option value="تقني" />
+                            <option value="مهندس" />
+                            <option value="مصمم" />
+                          </datalist>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-slate-400">الشهادة</label>
+                          <input value={editCertificate || selectedEmployee.certificate || ''} onChange={(e) => setEditCertificate(e.target.value)}
+                            onBlur={() => handleFieldBlur('certificate', editCertificate || selectedEmployee.certificate || '')} placeholder="مثال: بكالوريوس هندسة"
+                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                        </div>
+                        <div>
                           <label className="mb-1 block text-xs font-medium text-slate-400">الراتب</label>
                           <input type="number" value={editSalary} onChange={(e) => setEditSalary(e.target.value)}
                             onBlur={() => handleFieldBlur('salary', Number(editSalary) || 0)} placeholder="0"
@@ -491,6 +531,10 @@ export default function Employees() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         {[
+                          { label: 'الاسم', value: selectedEmployee.name },
+                          { label: 'الهاتف', value: selectedEmployee.phone || '-' },
+                          { label: 'المنصب / التخصص', value: selectedEmployee.position || '-' },
+                          { label: 'الشهادة', value: selectedEmployee.certificate || '-' },
                           { label: 'الراتب', value: selectedEmployee.salary ?? '-' },
                           { label: 'الدوام', value: selectedEmployee.shiftStart && selectedEmployee.shiftEnd ? `${selectedEmployee.shiftStart} - ${selectedEmployee.shiftEnd}` : '-' },
                           { label: 'الإجازات الشهرية', value: selectedEmployee.monthlyLeaves ?? '-' },

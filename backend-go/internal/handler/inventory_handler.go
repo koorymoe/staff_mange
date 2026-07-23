@@ -41,6 +41,15 @@ func (h *InventoryHandler) TodaysInventoryChecks(w http.ResponseWriter, r *http.
 	WriteJSON(w, http.StatusOK, checks)
 }
 
+func (h *InventoryHandler) ResolveInventoryCheck(w http.ResponseWriter, r *http.Request) {
+	check, err := h.service.ResolveInventoryCheck(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, check)
+}
+
 // ── Personal Tools ──────────────────────────────────────────────────────────
 
 func (h *InventoryHandler) ListPersonalTools(w http.ResponseWriter, r *http.Request) {

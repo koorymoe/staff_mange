@@ -29,6 +29,16 @@ const requestStatusColors: Record<ToolRequest['status'], string> = {
 export default function InventoryPage() {
   const { employee: currentUser } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
+  const canManageInventory = isAdmin || currentUser?.role === 'HR_COORDINATOR'
+  const [resolvingId, setResolvingId] = useState<string | null>(null)
+  const handleResolveCheck = async (id: string) => {
+    setResolvingId(id)
+    try {
+      const updated = await api.resolveInventoryCheck(id)
+      setTodaysChecks((prev) => prev.map((c) => (c.id === updated.id ? updated : c)))
+    } catch { /* ignore */ }
+    finally { setResolvingId(null) }
+  }
   const [activeTab, setActiveTab] = useState<TabKey>('todaychecks')
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
@@ -212,6 +222,26 @@ export default function InventoryPage() {
                   <p className="mt-1 text-xs text-slate-400">{new Date(c.checkedAt).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })}</p>
                   {!c.complete && c.missingItems && (
                     <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">الناقص: {c.missingItems}</p>
+                  )}
+                  {!c.complete && (
+                    <div className="mt-2 flex items-center justify-between">
+                      {c.resolved ? (
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                          ✓ تم التوفير{c.resolvedBy ? ` بواسطة ${c.resolvedBy.name}` : ''}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">لسه ماتوفر</span>
+                      )}
+                      {canManageInventory && !c.resolved && (
+                        <button
+                          onClick={() => handleResolveCheck(c.id)}
+                          disabled={resolvingId === c.id}
+                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          {resolvingId === c.id ? 'جاري...' : 'تم توفير الاحتياج ✓'}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               ))}

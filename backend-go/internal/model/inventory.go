@@ -3,13 +3,17 @@ package model
 import "time"
 
 type InventoryCheck struct {
-	ID           string    `db:"id" json:"id"`
-	EmployeeID   string    `db:"employeeId" json:"employeeId"`
-	Complete     bool      `db:"complete" json:"complete"`
-	MissingItems *string   `db:"missingItems" json:"missingItems"`
-	CheckedAt    time.Time `db:"checkedAt" json:"checkedAt"`
+	ID           string     `db:"id" json:"id"`
+	EmployeeID   string     `db:"employeeId" json:"employeeId"`
+	Complete     bool       `db:"complete" json:"complete"`
+	MissingItems *string    `db:"missingItems" json:"missingItems"`
+	CheckedAt    time.Time  `db:"checkedAt" json:"checkedAt"`
+	Resolved     bool       `db:"resolved" json:"resolved"`
+	ResolvedByID *string    `db:"resolvedById" json:"resolvedById"`
+	ResolvedAt   *time.Time `db:"resolvedAt" json:"resolvedAt"`
 
-	Employee *EmployeeBrief `db:"-" json:"employee"`
+	Employee   *EmployeeBrief `db:"-" json:"employee"`
+	ResolvedBy *EmployeeBrief `db:"-" json:"resolvedBy"`
 }
 
 type CreateInventoryCheckRequest struct {

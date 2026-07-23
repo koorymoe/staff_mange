@@ -12,6 +12,7 @@ const roleLabels: Record<EmployeeRole, string> = {
   GPS_ADMIN: 'مسؤول GPS',
   QUALITY_ENGINEER: 'مهندس جودة',
   ENGINEER: 'مهندس',
+  PROCUREMENT_ADMIN: 'إداري الكميات',
   OWNER: 'مالك النظام',
 }
 

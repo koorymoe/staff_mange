@@ -51,8 +51,28 @@ func (r *InventoryRepository) TodaysInventoryChecks() ([]model.InventoryCheck, e
 	}
 	for i := range checks {
 		checks[i].Employee = r.loadEmployeeBrief(checks[i].EmployeeID)
+		if checks[i].ResolvedByID != nil {
+			checks[i].ResolvedBy = r.loadEmployeeBrief(*checks[i].ResolvedByID)
+		}
 	}
 	return checks, nil
+}
+
+// ResolveInventoryCheck يؤشر إنو الإداري/الأدمن وفّر النقص المسجّل بهذا الجرد.
+func (r *InventoryRepository) ResolveInventoryCheck(id string, resolvedByID string) (*model.InventoryCheck, error) {
+	var c model.InventoryCheck
+	err := r.db.Get(&c, `
+		UPDATE "InventoryCheck"
+		SET resolved = true, "resolvedById" = $2, "resolvedAt" = CURRENT_TIMESTAMP
+		WHERE id = $1
+		RETURNING *
+	`, id, resolvedByID)
+	if err != nil {
+		return nil, err
+	}
+	c.Employee = r.loadEmployeeBrief(c.EmployeeID)
+	c.ResolvedBy = r.loadEmployeeBrief(resolvedByID)
+	return &c, nil
 }
 
 // ── Personal Tools ──────────────────────────────────────────────────────────

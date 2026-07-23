@@ -23,6 +23,10 @@ func (s *InventoryService) TodaysInventoryChecks() ([]model.InventoryCheck, erro
 	return s.repo.TodaysInventoryChecks()
 }
 
+func (s *InventoryService) ResolveInventoryCheck(id string, resolvedByID string) (*model.InventoryCheck, error) {
+	return s.repo.ResolveInventoryCheck(id, resolvedByID)
+}
+
 func (s *InventoryService) ListPersonalTools(employeeID string) ([]model.PersonalTool, error) {
 	return s.repo.ListPersonalTools(employeeID)
 }
