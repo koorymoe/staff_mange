@@ -415,7 +415,7 @@ export default function Layout() {
 
   return (
     <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
-      <div dir="ltr" className="flex min-h-screen bg-[#f0f4f9]">
+      <div dir="ltr" className="app-shell flex bg-[#f0f4f9]">
 
         {/* ===== Main Area ===== */}
         <div dir="rtl" className="flex min-w-0 flex-1 flex-col">
@@ -504,7 +504,7 @@ export default function Layout() {
         {/* ===== Right Sidebar — Premium ===== */}
         <aside
           dir="rtl"
-          className={`glossy-dark fixed inset-y-0 right-0 z-50 flex h-screen flex-col bg-[#0f2040] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:translate-x-0 ${
+          className={`app-sidebar glossy-dark fixed inset-y-0 right-0 z-50 flex flex-col bg-[#0f2040] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:h-auto lg:translate-x-0 ${
             mobileOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
           style={{ width: collapsed ? 72 : 270, minWidth: collapsed ? 72 : 270 }}
