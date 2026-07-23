@@ -67,6 +67,7 @@ func main() {
 	serviceManagerRepo := repository.NewServiceManagerRepository(db)
 	locationPingRepo := repository.NewLocationPingRepository(db)
 	performanceReviewRepo := repository.NewPerformanceReviewRepository(db)
+	notificationRepo := repository.NewNotificationRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, loginAuditRepo, cfg.JWTSecret)
@@ -80,7 +81,8 @@ func main() {
 	expenseService := service.NewExpenseService(expenseRepo)
 	inventoryService := service.NewInventoryService(inventoryRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo)
-	kpiService := service.NewKpiService(kpiRepo, employeeRepo)
+	notificationService := service.NewNotificationService(notificationRepo)
+	kpiService := service.NewKpiService(kpiRepo, employeeRepo, notificationRepo)
 	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
@@ -111,6 +113,7 @@ func main() {
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService)
 	kpiHandler := handler.NewKpiHandler(kpiService)
+	notificationHandler := handler.NewNotificationHandler(notificationService)
 	assistantService := service.NewAssistantService(cfg.GeminiAPIKey, cfg.GeminiDailyCap, employeeRepo, kpiRepo, performanceReviewRepo, bookingRepo, missionRepo, expenseRepo, gpsRepo, qualityFollowUpRepo, complaintRepo)
 	assistantHandler := handler.NewAssistantHandler(assistantService)
 	kpiCriterionHandler := handler.NewKpiCriterionHandler(kpiCriterionService)
@@ -258,6 +261,10 @@ func main() {
 	mux.Handle("DELETE /api/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/kpi/{id}/cancel", middleware.Chain(http.HandlerFunc(kpiHandler.Cancel), requireAuth, requireKpi))
 	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireMonitor))
+
+	mux.Handle("GET /api/notifications", middleware.Chain(http.HandlerFunc(notificationHandler.List), requireAuth))
+	mux.Handle("POST /api/notifications/{id}/read", middleware.Chain(http.HandlerFunc(notificationHandler.MarkRead), requireAuth))
+	mux.Handle("POST /api/notifications/read-all", middleware.Chain(http.HandlerFunc(notificationHandler.MarkAllRead), requireAuth))
 	mux.Handle("GET /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.List), requireAuth))
 	mux.Handle("POST /api/assistant/ask", middleware.Chain(http.HandlerFunc(assistantHandler.Ask), requireAuth))
 	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMonitor))

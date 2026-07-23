@@ -170,6 +170,9 @@ export default function Layout() {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [notifications, setNotifications] = useState<import('../api').Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [notifOpen, setNotifOpen] = useState(false)
   const location = useLocation()
 
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
@@ -205,6 +208,32 @@ export default function Layout() {
       .catch(() => setEmployee(null))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  useEffect(() => {
+    if (!employee) { setNotifications([]); setUnreadCount(0); return }
+    const load = () => api.getNotifications().then((r) => { setNotifications(r.notifications); setUnreadCount(r.unreadCount) }).catch(() => {})
+    load()
+    const interval = setInterval(load, 30000)
+    return () => clearInterval(interval)
+  }, [employee])
+
+  const handleNotifClick = async (n: import('../api').Notification) => {
+    if (!n.read) {
+      try {
+        await api.markNotificationRead(n.id)
+        setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
+        setUnreadCount((c) => Math.max(0, c - 1))
+      } catch { /* ignore */ }
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    try {
+      await api.markAllNotificationsRead()
+      setNotifications((prev) => prev.map((x) => ({ ...x, read: true })))
+      setUnreadCount(0)
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
     if (!employee) { setEmployeePermissions([]); return }
@@ -405,11 +434,49 @@ export default function Layout() {
               <span className="truncate text-sm font-extrabold text-[#0f2040] tracking-tight sm:text-lg">نظام شركة الأماني</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3">
-              <button className="relative hidden h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600 sm:flex">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
-                </svg>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setNotifOpen((o) => !o)}
+                  className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0"/>
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -left-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <>
+                    <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
+                    <div className="absolute left-0 top-12 z-50 w-80 max-w-[90vw] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                        <span className="text-sm font-bold text-slate-800">الإشعارات</span>
+                        {unreadCount > 0 && (
+                          <button onClick={handleMarkAllRead} className="text-xs font-medium text-brand-600 hover:underline">تحديد الكل كمقروء</button>
+                        )}
+                      </div>
+                      <div className="max-h-96 overflow-y-auto">
+                        {notifications.length === 0 && (
+                          <p className="px-4 py-6 text-center text-sm text-slate-400">ماكو إشعارات</p>
+                        )}
+                        {notifications.map((n) => (
+                          <button
+                            key={n.id}
+                            onClick={() => handleNotifClick(n)}
+                            className={`block w-full border-b border-slate-50 px-4 py-3 text-right text-sm transition-colors hover:bg-slate-50 ${n.read ? 'text-slate-500' : 'bg-brand-50/50 font-medium text-slate-800'}`}
+                          >
+                            <p>{n.message}</p>
+                            <p className="mt-1 text-[11px] text-slate-400">{new Date(n.createdAt).toLocaleString('ar-IQ')}</p>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
               <div className="flex items-center gap-2 rounded-xl bg-slate-50/80 px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-3 sm:px-3">
                 <div className="hidden text-left sm:block">
                   <p className="text-sm font-bold text-slate-800">{employee.name}</p>

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -9,12 +10,13 @@ import (
 )
 
 type KpiService struct {
-	repo      *repository.KpiRepository
-	employees *repository.EmployeeRepository
+	repo          *repository.KpiRepository
+	employees     *repository.EmployeeRepository
+	notifications *repository.NotificationRepository
 }
 
-func NewKpiService(repo *repository.KpiRepository, employees *repository.EmployeeRepository) *KpiService {
-	return &KpiService{repo: repo, employees: employees}
+func NewKpiService(repo *repository.KpiRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository) *KpiService {
+	return &KpiService{repo: repo, employees: employees, notifications: notifications}
 }
 
 func (s *KpiService) List() ([]model.KpiEvaluation, error) {
@@ -27,10 +29,24 @@ func (s *KpiService) ListForEmployee(employeeID string) ([]model.KpiEvaluation, 
 
 // Create ينشئ تقييماً جديداً. إذا كان التقييم سلبياً، يرجّع الموظف تلقائياً لوضع
 // "متدرب" (isTrainee) حتى يكمل التدريب المطلوب قبل ما يرجع لباقي شاشات النظام.
+// كذلك يرسل إشعارات: للموظف نفسه عند خصم نقطة، ولكل زملائه بنفس الدور إذا تغيّر
+// المتصدر بالترتيب الشهري بعد هذا التقييم — إعلام بس، بدون أي تغيير تلقائي بالراتب.
 func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEvaluation, error) {
 	if req.EmployeeID == "" || req.EvaluatorID == "" || req.Points == nil {
 		return nil, errors.New("employeeId, evaluatorId, and points are required")
 	}
+
+	employee, empErr := s.employees.FindByID(req.EmployeeID)
+
+	var monthAgo string
+	var oldTopID string
+	if empErr == nil && employee != nil {
+		monthAgo = time.Now().AddDate(0, -1, 0).Format("2006-01-02")
+		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo); err == nil && len(board) > 0 {
+			oldTopID = board[0].EmployeeID
+		}
+	}
+
 	deductionAmount := float64(*req.Points) * 10000
 	eval, err := s.repo.Create(req.EmployeeID, req.EvaluatorID, *req.Points, req.Reason, deductionAmount)
 	if err != nil {
@@ -38,7 +54,26 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 	}
 	if *req.Points < 0 {
 		_ = s.employees.SetTrainee(req.EmployeeID, true)
+		if s.notifications != nil {
+			reason := req.Reason
+			if reason == "" {
+				reason = "بدون سبب مذكور"
+			}
+			_ = s.notifications.Create(req.EmployeeID, "kpi_deduction",
+				"⚠️ تم خصم "+strconv.Itoa(-*req.Points)+" نقطة من رصيدك (السبب: "+reason+")")
+		}
 	}
+
+	if empErr == nil && employee != nil && s.notifications != nil {
+		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo); err == nil && len(board) > 0 {
+			newTop := board[0]
+			if newTop.EmployeeID != oldTopID {
+				_ = s.notifications.CreateForRole(employee.Role, "kpi_leaderboard",
+					"🏆 "+newTop.EmployeeName+" تصدر التصنيف الشهري بالمركز الأول!")
+			}
+		}
+	}
+
 	return eval, nil
 }
 

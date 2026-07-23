@@ -786,6 +786,17 @@ var migrations = []string{
 	`ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "resolved" BOOLEAN NOT NULL DEFAULT false`,
 	`ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "resolvedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
 	`ALTER TABLE "InventoryCheck" ADD COLUMN IF NOT EXISTS "resolvedAt" TIMESTAMP`,
+
+	// إشعارات الموظفين — تصدر الترتيب، خصم نقاط الكي بي اي، وأي تنبيهات مستقبلية.
+	`CREATE TABLE IF NOT EXISTS "Notification" (
+		id TEXT PRIMARY KEY,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+		type TEXT NOT NULL,
+		message TEXT NOT NULL,
+		read BOOLEAN NOT NULL DEFAULT false,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "Notification_employeeId_idx" ON "Notification"("employeeId", "createdAt" DESC)`,
 }
 
 func Migrate(db *sqlx.DB) error {

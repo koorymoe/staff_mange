@@ -542,6 +542,15 @@ export interface InventoryCheck {
   resolvedBy: { id: string; name: string } | null
 }
 
+export interface Notification {
+  id: string
+  employeeId: string
+  type: string
+  message: string
+  read: boolean
+  createdAt: string
+}
+
 export interface PersonalTool {
   id: string
   employeeId: string
@@ -1022,6 +1031,11 @@ export const api = {
   updateCartItem: (id: string, data: Partial<CartItem>) =>
     request<CartItem>(`/cart/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteCartItem: (id: string) => request<void>(`/cart/${id}`, { method: 'DELETE' }),
+
+  // Notifications
+  getNotifications: () => request<{ notifications: Notification[]; unreadCount: number }>('/notifications'),
+  markNotificationRead: (id: string) => request<{ success: boolean }>(`/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () => request<{ success: boolean }>('/notifications/read-all', { method: 'POST' }),
 
   // Inventory
   createInventoryCheck: (data: { complete: boolean; missingItems?: string }) =>
