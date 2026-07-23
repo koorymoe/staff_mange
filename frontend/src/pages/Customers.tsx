@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
-import { api, type Customer, type Booking } from '../api'
+import { api, type Customer, type GpsCustomerListItem, type Booking } from '../api'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
+
+const serviceLabels: Record<string, string> = {
+  GPS: 'جي بي اس',
+}
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التثبيت',
@@ -19,7 +23,9 @@ const statusColors: Record<string, string> = {
 }
 
 export default function Customers() {
+  const [tab, setTab] = useState<'all' | 'gps'>('all')
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [gpsCustomers, setGpsCustomers] = useState<GpsCustomerListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -34,16 +40,59 @@ export default function Customers() {
   const [submitting, setSubmitting] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editMessage, setEditMessage] = useState<string | null>(null)
+
   const load = () => {
     setLoading(true)
-    api
-      .getCustomers()
-      .then(setCustomers)
+    Promise.all([api.getCustomers(), api.getCustomersByGpsService()])
+      .then(([all, gps]) => {
+        setCustomers(all)
+        setGpsCustomers(gps)
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
+
+  const openEdit = (c: Customer) => {
+    setEditingCustomer(c)
+    setEditName(c.name)
+    setEditPhone(c.phone)
+    setEditMessage(null)
+  }
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingCustomer) return
+    setEditMessage(null)
+
+    const nameError = validateCustomerName(editName)
+    if (nameError) {
+      setEditMessage(nameError)
+      return
+    }
+    const phoneError = validateCustomerPhone(editPhone)
+    if (phoneError) {
+      setEditMessage(phoneError)
+      return
+    }
+
+    setEditSubmitting(true)
+    try {
+      await api.updateCustomer(editingCustomer.id, { name: editName, phone: editPhone })
+      setEditingCustomer(null)
+      load()
+    } catch (e) {
+      setEditMessage(e instanceof Error ? e.message : 'حدث خطأ')
+    } finally {
+      setEditSubmitting(false)
+    }
+  }
 
   useEffect(() => {
     if (!selectedId) {
@@ -59,14 +108,15 @@ export default function Customers() {
 
   const selectedCustomer = customers.find((c) => c.id === selectedId) || null
 
+  const activeList: Customer[] = tab === 'gps' ? gpsCustomers : customers
   const normalizedSearch = search.trim().toLowerCase()
   const filteredCustomers = normalizedSearch
-    ? customers.filter((c) =>
+    ? activeList.filter((c) =>
         c.code.toLowerCase().includes(normalizedSearch) ||
         c.name.toLowerCase().includes(normalizedSearch) ||
         c.phone.includes(normalizedSearch)
       )
-    : customers
+    : activeList
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -165,6 +215,25 @@ export default function Customers() {
 
       {!loading && !error && (
         <div className="mt-6 flex flex-col gap-6">
+          <div className="flex gap-2">
+            <button
+              onClick={() => setTab('all')}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                tab === 'all' ? 'bg-brand-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              كل الزبائن ({customers.length})
+            </button>
+            <button
+              onClick={() => setTab('gps')}
+              className={`rounded-lg px-4 py-2 text-sm font-bold transition-colors ${
+                tab === 'gps' ? 'bg-brand-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
+              }`}
+            >
+              زبائن الجي بي اس ({gpsCustomers.length})
+            </button>
+          </div>
+
           <div className="relative">
             <input
               value={search}
@@ -182,7 +251,11 @@ export default function Customers() {
                   <th className="px-4 py-3 text-sm font-semibold">الكود</th>
                   <th className="px-4 py-3 text-sm font-semibold">الاسم</th>
                   <th className="px-4 py-3 text-sm font-semibold">الهاتف</th>
-                  <th className="px-4 py-3 text-sm font-semibold">الموقع</th>
+                  {tab === 'all' && <th className="px-4 py-3 text-sm font-semibold">الخدمات</th>}
+                  {tab === 'all' && <th className="px-4 py-3 text-sm font-semibold">الموقع</th>}
+                  {tab === 'gps' && <th className="px-4 py-3 text-sm font-semibold">رقم الجهاز</th>}
+                  {tab === 'gps' && <th className="px-4 py-3 text-sm font-semibold">انتهاء الاشتراك</th>}
+                  <th className="px-4 py-3 text-sm font-semibold">تعديل</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -199,13 +272,46 @@ export default function Customers() {
                     </td>
                     <td className="px-4 py-3">{c.name}</td>
                     <td className="px-4 py-3 text-slate-500">{c.phone}</td>
-                    <td className="px-4 py-3 text-slate-500">{c.location || '-'}</td>
+                    {tab === 'all' && (
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap gap-1">
+                          {c.services.length === 0 && <span className="text-slate-400">-</span>}
+                          {c.services.map((s) => (
+                            <span key={s} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
+                              {serviceLabels[s] || s}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                    )}
+                    {tab === 'all' && <td className="px-4 py-3 text-slate-500">{c.location || '-'}</td>}
+                    {tab === 'gps' && (
+                      <td className="px-4 py-3 text-slate-500">{(c as GpsCustomerListItem).deviceId || '-'}</td>
+                    )}
+                    {tab === 'gps' && (
+                      <td className="px-4 py-3 text-slate-500">
+                        {(c as GpsCustomerListItem).subscriptionEnd
+                          ? new Date((c as GpsCustomerListItem).subscriptionEnd as string).toLocaleDateString('ar-IQ')
+                          : '-'}
+                      </td>
+                    )}
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          openEdit(c)
+                        }}
+                        className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200"
+                      >
+                        تعديل
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {filteredCustomers.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-4 py-6 text-center text-slate-400">
-                      {customers.length === 0 ? 'لا يوجد زبائن بعد' : 'لا توجد نتائج مطابقة للبحث'}
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                      {activeList.length === 0 ? 'لا يوجد زبائن بعد' : 'لا توجد نتائج مطابقة للبحث'}
                     </td>
                   </tr>
                 )}
@@ -331,6 +437,55 @@ export default function Customers() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {editingCustomer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form
+            onSubmit={handleEditSubmit}
+            className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl"
+          >
+            <h3 className="text-lg font-bold text-brand-900">تعديل بيانات الزبون {editingCustomer.code}</h3>
+            <div className="mt-4 flex flex-col gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">الاسم الرباعي</label>
+                <input
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">رقم الهاتف</label>
+                <input
+                  required
+                  maxLength={11}
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+                />
+              </div>
+              {editMessage && <p className="text-sm text-red-600">{editMessage}</p>}
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="flex-1 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 font-medium text-white shadow-md disabled:opacity-50"
+                >
+                  {editSubmitting ? 'جاري الحفظ...' : 'حفظ التعديل'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingCustomer(null)}
+                  className="rounded-lg bg-slate-100 px-4 py-2 font-medium text-slate-600 hover:bg-slate-200"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
       )}
     </div>

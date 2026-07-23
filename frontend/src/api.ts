@@ -303,7 +303,14 @@ export interface Customer {
   location: string | null
   mapLatitude: number | null
   mapLongitude: number | null
+  services: string[]
   previousBookingsCount?: number
+}
+
+export interface GpsCustomerListItem extends Customer {
+  gpsNumber: string | null
+  deviceId: string | null
+  subscriptionEnd: string | null
 }
 
 export interface ComplaintCustomerStat {
@@ -753,11 +760,17 @@ export const api = {
   getSupervisors: () => request<Employee[]>('/employees/supervisors'),
 
   getCustomers: () => request<Customer[]>('/customers'),
+  getCustomersByGpsService: () => request<GpsCustomerListItem[]>('/customers/gps'),
   lookupCustomer: (phone: string) =>
     request<Customer | null>(`/customers/lookup?phone=${phone}`).catch(() => null),
   createCustomer: (data: { name: string; phone: string; location?: string }) =>
     request<Customer & { existed: boolean }>('/customers', {
       method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  updateCustomer: (id: string, data: { name: string; phone: string }) =>
+    request<Customer>(`/customers/${id}`, {
+      method: 'PUT',
       body: JSON.stringify(data),
     }),
 

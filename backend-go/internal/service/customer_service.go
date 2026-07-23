@@ -20,11 +20,38 @@ func (s *CustomerService) List() ([]model.CustomerResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	tags, err := s.repo.ServiceTagsByCustomer()
+	if err != nil {
+		return nil, err
+	}
 	out := make([]model.CustomerResponse, len(customers))
 	for i, c := range customers {
-		out[i] = c.ToResponse()
+		resp := c.ToResponse()
+		if svc, ok := tags[c.ID]; ok {
+			resp.Services = svc
+		}
+		out[i] = resp
 	}
 	return out, nil
+}
+
+func (s *CustomerService) ListGpsCustomers() ([]model.CustomerGpsResponse, error) {
+	return s.repo.ListGpsCustomers()
+}
+
+func (s *CustomerService) Update(id string, req model.UpdateCustomerRequest) (*model.CustomerResponse, error) {
+	if req.Name == "" || req.Phone == "" {
+		return nil, errors.New("الاسم ورقم الهاتف مطلوبان")
+	}
+	c, err := s.repo.Update(id, req.Name, req.Phone)
+	if err != nil {
+		return nil, err
+	}
+	if c == nil {
+		return nil, nil
+	}
+	resp := c.ToResponse()
+	return &resp, nil
 }
 
 func (s *CustomerService) Lookup(phone string) (*model.CustomerResponse, error) {

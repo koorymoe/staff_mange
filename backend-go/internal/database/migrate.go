@@ -724,6 +724,30 @@ var migrations = []string{
 	`CREATE INDEX IF NOT EXISTS "Booking_customerId_idx" ON "Booking"("customerId")`,
 	`CREATE INDEX IF NOT EXISTS "Booking_status_idx" ON "Booking"(status)`,
 
+	// وسم الخدمة على الزبون — نفس الزبون (بنفس الكود الموحّد CUST-xxxxx) ممكن يكون
+	// عنده أكثر من وسم (جي بي اس، كاميرات، طاقة شمسية...) حسب الخدمات الي طلبها،
+	// يستخدم لعرض "زبائن الجي بي اس" وحدهم من ضمن قائمة الزبائن الكلية بدون أي كود منفصل.
+	`CREATE TABLE IF NOT EXISTS "CustomerServiceTag" (
+		id TEXT PRIMARY KEY,
+		"customerId" TEXT NOT NULL REFERENCES "Customer"(id) ON DELETE CASCADE,
+		service TEXT NOT NULL,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		UNIQUE ("customerId", service)
+	)`,
+	`CREATE INDEX IF NOT EXISTS "CustomerServiceTag_customerId_idx" ON "CustomerServiceTag"("customerId")`,
+	`CREATE INDEX IF NOT EXISTS "CustomerServiceTag_service_idx" ON "CustomerServiceTag"(service)`,
+
+	// معلومات إضافية خاصة بزبائن الجي بي اس فقط (مستوردة من نظام التتبع القديم) —
+	// جدول منفصل حتى ما نثقل جدول Customer العام بحقول ما تخص كل الزبائن.
+	`CREATE TABLE IF NOT EXISTS "CustomerGpsInfo" (
+		id TEXT PRIMARY KEY,
+		"customerId" TEXT NOT NULL UNIQUE REFERENCES "Customer"(id) ON DELETE CASCADE,
+		"gpsNumber" TEXT,
+		"deviceId" TEXT,
+		"subscriptionEnd" TIMESTAMP,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+
 	// إرجاع نقطة كي بي اي: ما نحذفها نهائياً — نعلّمها "ملغاة" حتى يضل تاريخها
 	// موجود ويشوفه المراقب، بس تأثيرها المالي (deductionAmount) يوقف يحسب.
 	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS cancelled BOOLEAN NOT NULL DEFAULT false`,

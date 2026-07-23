@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
@@ -76,4 +77,78 @@ func (r *CustomerRepository) UpdateLocation(id string, location *string, lat, ln
 		WHERE id = $1
 	`, id, location, lat, lng)
 	return err
+}
+
+// Update يعدّل اسم ورقم هاتف الزبون — لتصحيح السجلات الخاطئة (اسم مو رباعي، رقم غلط...)
+func (r *CustomerRepository) Update(id, name, phone string) (*model.Customer, error) {
+	var c model.Customer
+	err := r.db.Get(&c, `
+		UPDATE "Customer" SET name = $2, phone = $3 WHERE id = $1
+		RETURNING *
+	`, id, name, phone)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &c, err
+}
+
+// ServiceTagsByCustomer يرجع خارطة customerId -> أسماء الخدمات الي طلبها، لتلوين قائمة الزبائن الكلية
+func (r *CustomerRepository) ServiceTagsByCustomer() (map[string][]string, error) {
+	rows := []struct {
+		CustomerID string `db:"customerId"`
+		Service    string `db:"service"`
+	}{}
+	if err := r.db.Select(&rows, `SELECT "customerId", service FROM "CustomerServiceTag"`); err != nil {
+		return nil, err
+	}
+	out := map[string][]string{}
+	for _, row := range rows {
+		out[row.CustomerID] = append(out[row.CustomerID], row.Service)
+	}
+	return out, nil
+}
+
+// EnsureServiceTag يضيف وسم خدمة للزبون (جي بي اس، كاميرات...) إذا ما كان موجود أصلاً —
+// يستدعى تلقائياً كل ما يسجل حجز بخدمة معينة لزبون، حتى نعرف بعدين شنو الخدمات الي طلبها كلها.
+func (r *CustomerRepository) EnsureServiceTag(customerID string, serviceID *string) error {
+	if serviceID == nil {
+		return nil
+	}
+	_, err := r.db.Exec(`
+		INSERT INTO "CustomerServiceTag" (id, "customerId", service, "createdAt")
+		SELECT gen_random_uuid()::text, $1, s.name, now()
+		FROM "Service" s WHERE s.id = $2
+		ON CONFLICT ("customerId", service) DO NOTHING
+	`, customerID, *serviceID)
+	return err
+}
+
+// ListGpsCustomers يرجع كل زبون موسوم بـ"GPS" مع معلوماته الخاصة (رقم الجهاز، تاريخ انتهاء الاشتراك)
+func (r *CustomerRepository) ListGpsCustomers() ([]model.CustomerGpsResponse, error) {
+	rows := []struct {
+		model.Customer
+		GpsNumber       *string    `db:"gpsNumber"`
+		DeviceID        *string    `db:"deviceId"`
+		SubscriptionEnd *time.Time `db:"subscriptionEnd"`
+	}{}
+	err := r.db.Select(&rows, `
+		SELECT c.*, gi."gpsNumber", gi."deviceId", gi."subscriptionEnd"
+		FROM "Customer" c
+		JOIN "CustomerServiceTag" t ON t."customerId" = c.id AND t.service = 'GPS'
+		LEFT JOIN "CustomerGpsInfo" gi ON gi."customerId" = c.id
+		ORDER BY c."customerCode" ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]model.CustomerGpsResponse, len(rows))
+	for i, row := range rows {
+		out[i] = model.CustomerGpsResponse{
+			CustomerResponse: row.Customer.ToResponse(),
+			GpsNumber:        row.GpsNumber,
+			DeviceID:         row.DeviceID,
+			SubscriptionEnd:  row.SubscriptionEnd,
+		}
+	}
+	return out, nil
 }

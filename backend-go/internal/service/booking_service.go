@@ -64,6 +64,10 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		_ = s.customers.UpdateLocation(req.CustomerID, req.Address, req.MapLatitude, req.MapLongitude)
 	}
 
+	// نوسم الزبون تلقائياً بالخدمة الي طلبها (جي بي اس، كاميرات...) حتى يظهر
+	// بقائمة "زبائن هذي الخدمة" لاحقاً، بدون أي كود منفصل — نفس كود الزبون الموحّد.
+	_ = s.customers.EnsureServiceTag(req.CustomerID, req.ServiceID)
+
 	return s.repo.FindByID(b.ID)
 }
 
