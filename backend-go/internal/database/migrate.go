@@ -718,6 +718,12 @@ var migrations = []string{
 	// وما عنده حساب فعلي بالنظام الجديد بعد — نفس فكرة "confirmedByName" بجدول الحجوزات.
 	`ALTER TABLE "Complaint" ADD COLUMN IF NOT EXISTS "relatedEmployeeName" TEXT`,
 
+	// فهرس على تاريخ إنشاء الحجز — الصفحة الرئيسية للحجوزات تفرز حسب هذا العمود،
+	// وبدون فهرس الفرز يصير بطيء جداً مع زيادة عدد الحجوزات (خصوصاً بعد استيراد البيانات التاريخية).
+	`CREATE INDEX IF NOT EXISTS "Booking_createdAt_idx" ON "Booking"("createdAt" DESC)`,
+	`CREATE INDEX IF NOT EXISTS "Booking_customerId_idx" ON "Booking"("customerId")`,
+	`CREATE INDEX IF NOT EXISTS "Booking_status_idx" ON "Booking"(status)`,
+
 	// إرجاع نقطة كي بي اي: ما نحذفها نهائياً — نعلّمها "ملغاة" حتى يضل تاريخها
 	// موجود ويشوفه المراقب، بس تأثيرها المالي (deductionAmount) يوقف يحسب.
 	`ALTER TABLE "KpiEvaluation" ADD COLUMN IF NOT EXISTS cancelled BOOLEAN NOT NULL DEFAULT false`,

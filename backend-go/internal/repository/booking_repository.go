@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -35,10 +36,8 @@ func (r *BookingRepository) List(status, customerID string) ([]model.Booking, er
 	if err := r.db.Select(&bookings, query, args...); err != nil {
 		return nil, err
 	}
-	for i := range bookings {
-		if err := r.hydrate(&bookings[i]); err != nil {
-			return nil, err
-		}
+	if err := r.hydrateAll(bookings); err != nil {
+		return nil, err
 	}
 	return bookings, nil
 }
@@ -57,10 +56,8 @@ func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int
 	if err != nil {
 		return nil, err
 	}
-	for i := range bookings {
-		if err := r.hydrate(&bookings[i]); err != nil {
-			return nil, err
-		}
+	if err := r.hydrateAll(bookings); err != nil {
+		return nil, err
 	}
 	return bookings, nil
 }
@@ -74,77 +71,174 @@ func (r *BookingRepository) FindByID(id string) (*model.Booking, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := r.hydrate(&b); err != nil {
+	if err := r.hydrateAll([]model.Booking{b}); err != nil {
 		return nil, err
 	}
 	return &b, nil
 }
 
-// hydrate يجلب كل العلاقات المرتبطة بالحجز (زبون، خدمة، موظفين، تعيينات، مواد السلة، سجل التعديلات)
+// hydrate يجلب علاقات حجز واحد — يلف hydrateAll تفادياً لتكرار المنطق.
 func (r *BookingRepository) hydrate(b *model.Booking) error {
-	var customer model.Customer
-	if err := r.db.Get(&customer, `SELECT * FROM "Customer" WHERE id = $1`, b.CustomerID); err == nil {
-		b.Customer = &customer
+	return r.hydrateAll([]model.Booking{*b})
+}
+
+// hydrateAll يجلب كل العلاقات المرتبطة بمجموعة حجوزات دفعة وحدة (batch) بدل استعلام
+// منفصل لكل حجز — قبل هذا التعديل كل حجز كان يسوي 8-15+ استعلام لحاله (N+1)، فلما
+// صار عدد الحجوزات بالآلاف بعد استيراد البيانات القديمة، صفحة الحجوزات صارت تسوي
+// عشرات الآلاف من الاستعلامات المتسلسلة وتعلق. الحل: نجمع كل الـ IDs المطلوبة أول
+// وبعدين نجيبهم بدفعة وحدة لكل نوع (WHERE id = ANY(...))، ونوزعهم بالذاكرة.
+func (r *BookingRepository) hydrateAll(bookings []model.Booking) error {
+	if len(bookings) == 0 {
+		return nil
 	}
 
-	if b.ServiceID != nil {
-		var svc model.Service
-		if err := r.db.Get(&svc, `SELECT * FROM "Service" WHERE id = $1`, *b.ServiceID); err == nil {
-			b.Service = &svc
+	customerIDs := make([]string, 0, len(bookings))
+	serviceIDs := make([]string, 0)
+	bookingIDs := make([]string, 0, len(bookings))
+	empIDSet := map[string]bool{}
+	addEmp := func(id *string) {
+		if id != nil && *id != "" {
+			empIDSet[*id] = true
+		}
+	}
+	for _, b := range bookings {
+		customerIDs = append(customerIDs, b.CustomerID)
+		if b.ServiceID != nil {
+			serviceIDs = append(serviceIDs, *b.ServiceID)
+		}
+		bookingIDs = append(bookingIDs, b.ID)
+		addEmp(b.TransferEmployeeID)
+		addEmp(b.ProjectSupervisorID)
+		addEmp(b.ConfirmedByEmployeeID)
+		addEmp(b.ExpenseResponsibleID)
+		addEmp(b.MaterialsReadyByID)
+	}
+
+	customers := map[string]model.Customer{}
+	if len(customerIDs) > 0 {
+		rows := []model.Customer{}
+		if err := r.db.Select(&rows, `SELECT * FROM "Customer" WHERE id = ANY($1)`, pq.Array(customerIDs)); err == nil {
+			for _, c := range rows {
+				customers[c.ID] = c
+			}
 		}
 	}
 
-	loadEmployee := func(id *string) *model.Employee {
+	services := map[string]model.Service{}
+	if len(serviceIDs) > 0 {
+		rows := []model.Service{}
+		if err := r.db.Select(&rows, `SELECT * FROM "Service" WHERE id = ANY($1)`, pq.Array(serviceIDs)); err == nil {
+			for _, s := range rows {
+				services[s.ID] = s
+			}
+		}
+	}
+
+	assignmentsByBooking := map[string][]model.BookingAssignment{}
+	if len(bookingIDs) > 0 {
+		rows := []model.BookingAssignment{}
+		if err := r.db.Select(&rows, `SELECT * FROM "BookingAssignment" WHERE "bookingId" = ANY($1)`, pq.Array(bookingIDs)); err == nil {
+			for _, a := range rows {
+				addEmp(&a.EmployeeID)
+				assignmentsByBooking[a.BookingID] = append(assignmentsByBooking[a.BookingID], a)
+			}
+		}
+	}
+
+	cartItemsByBooking := map[string][]model.CartItem{}
+	if len(bookingIDs) > 0 {
+		rows := []model.CartItem{}
+		if err := r.db.Select(&rows, `SELECT * FROM "CartItem" WHERE "bookingId" = ANY($1) ORDER BY "createdAt" ASC`, pq.Array(bookingIDs)); err == nil {
+			for _, c := range rows {
+				cartItemsByBooking[c.BookingID] = append(cartItemsByBooking[c.BookingID], c)
+			}
+		}
+	}
+
+	logsByBooking := map[string][]model.ScheduleChangeLog{}
+	if len(bookingIDs) > 0 {
+		rows := []model.ScheduleChangeLog{}
+		if err := r.db.Select(&rows, `SELECT * FROM "ScheduleChangeLog" WHERE "bookingId" = ANY($1) ORDER BY "createdAt" DESC`, pq.Array(bookingIDs)); err == nil {
+			for _, l := range rows {
+				addEmp(&l.ChangedByID)
+				logsByBooking[l.BookingID] = append(logsByBooking[l.BookingID], l)
+			}
+		}
+	}
+
+	employees := map[string]model.Employee{}
+	if len(empIDSet) > 0 {
+		empIDs := make([]string, 0, len(empIDSet))
+		for id := range empIDSet {
+			empIDs = append(empIDs, id)
+		}
+		rows := []model.Employee{}
+		if err := r.db.Select(&rows, `SELECT * FROM "Employee" WHERE id = ANY($1)`, pq.Array(empIDs)); err == nil {
+			for _, e := range rows {
+				employees[e.ID] = e
+			}
+		}
+	}
+	getEmp := func(id *string) *model.Employee {
 		if id == nil {
 			return nil
 		}
-		var e model.Employee
-		if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE id = $1`, *id); err != nil {
+		if e, ok := employees[*id]; ok {
+			return &e
+		}
+		return nil
+	}
+	getEmpBrief := func(id *string) *model.EmployeeBrief {
+		e := getEmp(id)
+		if e == nil {
 			return nil
 		}
-		return &e
-	}
-	b.TransferEmployee = loadEmployee(b.TransferEmployeeID)
-	b.ProjectSupervisor = loadEmployee(b.ProjectSupervisorID)
-	b.ConfirmedByEmployee = loadEmployee(b.ConfirmedByEmployeeID)
-	b.ExpenseResponsible = loadEmployee(b.ExpenseResponsibleID)
-	if b.MaterialsReadyByID != nil {
-		var brief model.EmployeeBrief
-		if err := r.db.Get(&brief, `SELECT id, name FROM "Employee" WHERE id = $1`, *b.MaterialsReadyByID); err == nil {
-			b.MaterialsReadyBy = &brief
-		}
+		return &model.EmployeeBrief{ID: e.ID, Name: e.Name}
 	}
 
-	assignments := []model.BookingAssignment{}
-	if err := r.db.Select(&assignments, `SELECT * FROM "BookingAssignment" WHERE "bookingId" = $1`, b.ID); err == nil {
-		for i := range assignments {
-			if e := loadEmployee(&assignments[i].EmployeeID); e != nil {
-				assignments[i].Employee = *e
+	for i := range bookings {
+		b := &bookings[i]
+		if c, ok := customers[b.CustomerID]; ok {
+			cc := c
+			b.Customer = &cc
+		}
+		if b.ServiceID != nil {
+			if s, ok := services[*b.ServiceID]; ok {
+				ss := s
+				b.Service = &ss
 			}
 		}
+		b.TransferEmployee = getEmp(b.TransferEmployeeID)
+		b.ProjectSupervisor = getEmp(b.ProjectSupervisorID)
+		b.ConfirmedByEmployee = getEmp(b.ConfirmedByEmployeeID)
+		b.ExpenseResponsible = getEmp(b.ExpenseResponsibleID)
+		b.MaterialsReadyBy = getEmpBrief(b.MaterialsReadyByID)
+
+		assignments := assignmentsByBooking[b.ID]
+		for j := range assignments {
+			if e := getEmp(&assignments[j].EmployeeID); e != nil {
+				assignments[j].Employee = *e
+			}
+		}
+		if assignments == nil {
+			assignments = []model.BookingAssignment{}
+		}
 		b.Assignments = assignments
-	}
-	if b.Assignments == nil {
-		b.Assignments = []model.BookingAssignment{}
-	}
 
-	cartItems := []model.CartItem{}
-	if err := r.db.Select(&cartItems, `SELECT * FROM "CartItem" WHERE "bookingId" = $1 ORDER BY "createdAt" ASC`, b.ID); err == nil {
+		cartItems := cartItemsByBooking[b.ID]
+		if cartItems == nil {
+			cartItems = []model.CartItem{}
+		}
 		b.CartItems = cartItems
-	}
-	if b.CartItems == nil {
-		b.CartItems = []model.CartItem{}
-	}
 
-	logs := []model.ScheduleChangeLog{}
-	if err := r.db.Select(&logs, `SELECT * FROM "ScheduleChangeLog" WHERE "bookingId" = $1 ORDER BY "createdAt" DESC`, b.ID); err == nil {
-		for i := range logs {
-			logs[i].ChangedBy = loadEmployee(&logs[i].ChangedByID)
+		logs := logsByBooking[b.ID]
+		for j := range logs {
+			logs[j].ChangedBy = getEmp(&logs[j].ChangedByID)
+		}
+		if logs == nil {
+			logs = []model.ScheduleChangeLog{}
 		}
 		b.ScheduleLogs = logs
-	}
-	if b.ScheduleLogs == nil {
-		b.ScheduleLogs = []model.ScheduleChangeLog{}
 	}
 
 	return nil
