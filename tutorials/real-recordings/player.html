@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تسجيل حقيقي</title>
+<style>
+  body {
+    font-family: 'Tajawal', sans-serif;
+    background: #111827;
+    color: #fff;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+  h1 { font-size: 1.4rem; margin-bottom: .3rem; }
+  p.sub { color: #9ca3af; margin-bottom: 1.5rem; }
+  video {
+    width: 100%;
+    max-width: 1100px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.5);
+  }
+  a.back {
+    display: inline-block;
+    margin-top: 1.5rem;
+    color: #93c5fd;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+  <h1 id="title">تسجيل حقيقي لواجهة النظام</h1>
+  <p class="sub">تسجيل فعلي بالكاميرا الآلية للنظام الحقيقي</p>
+  <video id="vid" controls autoplay muted>
+    متصفحك لا يدعم تشغيل الفيديو.
+  </video>
+  <a class="back" href="index.html">← رجوع لكل الأدوار</a>
+  <script>
+    const params = new URLSearchParams(location.search);
+    const role = params.get('role') || 'sales';
+    const title = params.get('title') || 'موظف المبيعات';
+    document.getElementById('title').textContent = 'تسجيل حقيقي — ' + title;
+    document.getElementById('vid').innerHTML = '<source src="' + role + '-recording.webm" type="video/webm">';
+  </script>
+</body>
+</html>
