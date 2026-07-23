@@ -359,6 +359,7 @@ export default function SuppliersPage() {
             </button>
           </div>
           <div className="mt-4 overflow-hidden rounded-lg border border-slate-200">
+            <div className="overflow-x-auto">
             <table className="w-full text-right">
               <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                 <tr>
@@ -380,6 +381,7 @@ export default function SuppliersPage() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

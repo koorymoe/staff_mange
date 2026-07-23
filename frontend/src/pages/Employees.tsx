@@ -713,6 +713,7 @@ export default function Employees() {
                           const skillCountB = compareEmployee.skills.filter(s => s.canPerform).length
                           return (
                             <div className="overflow-hidden rounded-xl ring-1 ring-slate-200">
+                              <div className="overflow-x-auto">
                               <table className="w-full text-right text-sm">
                                 <thead className="bg-gradient-to-l from-[#2c5aad] to-[#1e3f7a] text-white">
                                   <tr>
@@ -736,6 +737,7 @@ export default function Employees() {
                                   ))}
                                 </tbody>
                               </table>
+                              </div>
                             </div>
                           )
                         })()}

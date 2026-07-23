@@ -159,6 +159,7 @@ export default function StatsPage() {
 
       {tab === 'sales' && (
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -190,11 +191,13 @@ export default function StatsPage() {
               {stats.salesStats.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-gray-400">لا توجد بيانات</td></tr>}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {tab === 'technicians' && (
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -231,11 +234,13 @@ export default function StatsPage() {
               {stats.technicianStats.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-gray-400">لا توجد بيانات</td></tr>}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
       {tab === 'coordinators' && (
         <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50">
               <tr>
@@ -259,6 +264,7 @@ export default function StatsPage() {
               {stats.coordinatorStats.length === 0 && <tr><td colSpan={5} className="p-8 text-center text-gray-400">لا توجد بيانات</td></tr>}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

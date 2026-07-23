@@ -202,6 +202,7 @@ export default function Finance() {
                         المواد المستخدمة
                       </h4>
                       <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-slate-50 text-slate-600">
                             <tr>
@@ -249,6 +250,7 @@ export default function Finance() {
                             </tr>
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -265,6 +267,7 @@ export default function Finance() {
                         )}
                       </h4>
                       <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead className="bg-slate-50 text-slate-600">
                             <tr>
@@ -296,6 +299,7 @@ export default function Finance() {
                             </tr>
                           </tbody>
                         </table>
+                        </div>
                       </div>
                     </div>
                   )}

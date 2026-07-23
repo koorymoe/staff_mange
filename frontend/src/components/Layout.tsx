@@ -418,7 +418,7 @@ export default function Layout() {
       <div dir="ltr" className="flex min-h-screen bg-[#f0f4f9]">
 
         {/* ===== Main Area ===== */}
-        <div dir="rtl" className="flex flex-1 flex-col">
+        <div dir="rtl" className="flex min-w-0 flex-1 flex-col">
           {/* Top Header — Glass effect */}
           <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-3 sm:px-5 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-3">
@@ -491,7 +491,7 @@ export default function Layout() {
           </header>
 
           {/* Content */}
-          <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-8">
+          <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">
             <Outlet />
           </main>
         </div>

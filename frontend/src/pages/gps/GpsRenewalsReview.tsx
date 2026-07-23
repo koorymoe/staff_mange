@@ -92,6 +92,7 @@ export default function GpsRenewalsReview() {
 
       {!loading && renewals.length > 0 && (
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-slate-50">
@@ -114,6 +115,7 @@ export default function GpsRenewalsReview() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

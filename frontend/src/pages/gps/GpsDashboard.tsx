@@ -317,6 +317,7 @@ export default function GpsDashboard() {
 
           {/* SIM Table */}
           <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
+            <div className="overflow-x-auto">
             <table className="w-full text-right">
               <thead>
                 <tr style={{ backgroundColor: '#1a3a5c' }}>
@@ -344,6 +345,7 @@ export default function GpsDashboard() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

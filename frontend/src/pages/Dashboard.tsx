@@ -692,6 +692,7 @@ export default function Dashboard() {
                   <h4 className="text-sm font-bold text-brand-900">آخر الحجوزات المنجزة</h4>
                 </div>
                 <div className="overflow-hidden rounded-lg border border-slate-200">
+                  <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead className="bg-slate-50 text-slate-600">
                       <tr>
@@ -724,6 +725,7 @@ export default function Dashboard() {
                       })}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               </div>
             )}

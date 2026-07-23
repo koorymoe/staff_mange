@@ -175,6 +175,7 @@ export default function Customers() {
           </div>
 
           <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <div className="overflow-x-auto">
             <table className="w-full text-right">
               <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                 <tr>
@@ -210,6 +211,7 @@ export default function Customers() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

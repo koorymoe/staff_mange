@@ -231,6 +231,7 @@ export default function MyInventory() {
                 </div>
               ) : (
                 <div className="overflow-hidden rounded-xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                  <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 text-right">
                     <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                       <tr>
@@ -255,6 +256,7 @@ export default function MyInventory() {
                       ))}
                     </tbody>
                   </table>
+                  </div>
                 </div>
               )}
             </div>

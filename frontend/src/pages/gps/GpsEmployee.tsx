@@ -265,6 +265,7 @@ export default function GpsEmployee() {
         <div className="p-5 border-b border-slate-100">
           <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>📋 آخر الطلبات</h3>
         </div>
+        <div className="overflow-x-auto">
         <table className="w-full text-right">
           <thead>
             <tr style={{ backgroundColor: '#1a3a5c' }}>
@@ -301,6 +302,7 @@ export default function GpsEmployee() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

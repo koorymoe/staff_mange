@@ -772,6 +772,7 @@ function ReportModal({ type, project, onClose }: { type: 'survey' | 'visit'; pro
           <div><b>الممثل:</b> {project.rep || '---'}</div>
         </div>
         {type === 'survey' ? (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm border-collapse">
             <thead><tr className="bg-gray-100">
               <th className="border border-gray-800 p-2">#</th>
@@ -788,6 +789,7 @@ function ReportModal({ type, project, onClose }: { type: 'survey' | 'visit'; pro
               ))}
             </tbody>
           </table>
+          </div>
         ) : (
           <div className="border border-gray-800 p-3 mt-2">
             <div className="grid grid-cols-2 gap-2 text-sm mb-3">

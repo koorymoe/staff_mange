@@ -126,6 +126,7 @@ export default function GpsRenewals() {
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr style={{ background: '#f8fafc' }}>
@@ -158,6 +159,7 @@ export default function GpsRenewals() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

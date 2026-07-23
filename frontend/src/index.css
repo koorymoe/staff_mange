@@ -18,12 +18,23 @@
 
 html {
   font-family: var(--font-sans);
+  overflow-x: hidden;
 }
 
 body {
   margin: 0;
   background: linear-gradient(180deg, #eef2fa 0%, #dde6f5 100%);
   min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* أي جدول بأي صفحة ينلف بحاوية قابلة للتمرير الأفقي بمكانها فقط،
+   بدل ما تتحرك الصفحة كلها يمين ويسار بالموبايل (خصوصاً لو الجدول عريض). */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 @layer components {
