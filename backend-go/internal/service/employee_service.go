@@ -39,9 +39,6 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 	if req.Role != nil && *req.Role != "" {
 		role = *req.Role
 	}
-	if role == "ENGINEER" {
-		return nil, errors.New("لازم تنشئ الموظف كفني أول وتمنحه مهارات الهندسة (تصميم/تخطيط/تنفيذ/إشراف)، وبعدها ترفعه لدور مهندس")
-	}
 	if role == "OWNER" {
 		return nil, errors.New("دور المالك محجوز لحساب واحد بس، ما ينمنح من الواجهة")
 	}

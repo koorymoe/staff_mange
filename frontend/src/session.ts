@@ -39,5 +39,6 @@ export const roleLabels: Record<string, string> = {
   QUALITY_ENGINEER: 'مهندس جودة',
   ENGINEER: 'مهندس',
   PROCUREMENT_ADMIN: 'إداري الكميات',
+  DESIGNER: 'مصمم',
   OWNER: 'مالك النظام 👑',
 }

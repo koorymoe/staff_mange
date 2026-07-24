@@ -63,6 +63,7 @@ export default function MapPage() {
   const [loading, setLoading] = useState(true)
   const [locatingMe, setLocatingMe] = useState(false)
   const [showLinkInput, setShowLinkInput] = useState<string | null>(null)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [linkValue, setLinkValue] = useState('')
 
   const mapRef = useRef<L.Map | null>(null)
@@ -103,6 +104,19 @@ export default function MapPage() {
     mapRef.current = map
 
     return () => { map.remove(); mapRef.current = null }
+  }, [])
+
+  // خرائط Leaflet لازم تتحدّث حجمها يدوياً كل ما يتغير حجم/ظهور الحاوية
+  // الي بيها (فتح/سكر قائمة الحجوزات بالموبايل، أو تغيير حجم الشاشة)
+  useEffect(() => {
+    const timer = setTimeout(() => mapRef.current?.invalidateSize(), 320)
+    return () => clearTimeout(timer)
+  }, [sidebarOpen])
+
+  useEffect(() => {
+    const onResize = () => mapRef.current?.invalidateSize()
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   const filteredBookings = bookings.filter(b => {
@@ -249,9 +263,18 @@ export default function MapPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-80px)]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3">
-        <div className="flex items-center gap-3">
-          <h2 className="text-xl font-bold text-brand-900">خريطة المواقع</h2>
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* زر إظهار/إخفاء قائمة الحجوزات — يطلع بس بالموبايل */}
+          <button
+            onClick={() => setSidebarOpen(o => !o)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 text-slate-600 lg:hidden"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="15" y2="12" /><line x1="3" y1="18" x2="21" y2="18" />
+            </svg>
+          </button>
+          <h2 className="text-lg font-bold text-brand-900 sm:text-xl">خريطة المواقع</h2>
           <span className="rounded-full bg-brand-100 px-2.5 py-0.5 text-xs font-medium text-brand-700">
             {allWithLocation.length} موقع
           </span>
@@ -262,7 +285,7 @@ export default function MapPage() {
           <select
             value={statusFilter}
             onChange={e => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs sm:px-3 sm:text-sm"
           >
             <option value="active">النشطة</option>
             <option value="all">الكل</option>
@@ -276,19 +299,28 @@ export default function MapPage() {
           <button
             onClick={locateMe}
             disabled={locatingMe}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-lg bg-brand-600 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50 sm:px-3 sm:text-sm"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <circle cx="12" cy="12" r="3" /><path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
             </svg>
-            {locatingMe ? 'جاري التحديد...' : 'موقعي'}
+            <span className="hidden sm:inline">{locatingMe ? 'جاري التحديد...' : 'موقعي'}</span>
           </button>
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-80 border-l border-slate-200 bg-white overflow-y-auto">
+      <div className="relative flex flex-1 overflow-hidden">
+        {/* خلفية شفافة تسكر قائمة الحجوزات بالموبايل لما تكون مفتوحة */}
+        {sidebarOpen && (
+          <div onClick={() => setSidebarOpen(false)} className="absolute inset-0 z-30 bg-black/40 lg:hidden" />
+        )}
+
+        {/* Sidebar — بالموبايل: لوحة منزلقة فوق الخريطة. بسطح المكتب: عمود ثابت بجنب الخريطة */}
+        <div
+          className={`absolute inset-y-0 right-0 z-40 w-[85%] max-w-sm transform overflow-y-auto border-l border-slate-200 bg-white transition-transform duration-300 ease-in-out sm:w-80 lg:static lg:z-auto lg:w-80 lg:translate-x-0 lg:transform-none ${
+            sidebarOpen ? 'translate-x-0' : 'translate-x-full'
+          }`}
+        >
           {/* Route info */}
           {routeInfo && selectedBooking && (
             <div className="border-b border-blue-200 bg-blue-50 p-3">

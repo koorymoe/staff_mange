@@ -16,10 +16,11 @@ type BookingService struct {
 	employees        *repository.EmployeeRepository
 	customers        *repository.CustomerRepository
 	qualityFollowUps *repository.QualityFollowUpRepository
+	notifications    *repository.NotificationRepository
 }
 
-func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository, qualityFollowUps *repository.QualityFollowUpRepository) *BookingService {
-	return &BookingService{repo: repo, employees: employees, customers: customers, qualityFollowUps: qualityFollowUps}
+func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository, qualityFollowUps *repository.QualityFollowUpRepository, notifications *repository.NotificationRepository) *BookingService {
+	return &BookingService{repo: repo, employees: employees, customers: customers, qualityFollowUps: qualityFollowUps, notifications: notifications}
 }
 
 func (s *BookingService) List(status, customerID string) ([]model.Booking, error) {
@@ -78,7 +79,21 @@ func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*m
 	if err := s.repo.Confirm(id, req, req.ScheduledAt); err != nil {
 		return nil, err
 	}
-	return s.repo.FindByID(id)
+	booking, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	// نذكّر إداري الكوادر بالحجز المثبّت حديثاً حتى يوجّه الكادر المناسب له —
+	// نفس فكرة تذكير الكي بي اي، بس هذا يخص تنسيق العمل مو تقييم الأداء.
+	if booking != nil && s.notifications != nil {
+		customerName := ""
+		if booking.Customer != nil {
+			customerName = booking.Customer.Name
+		}
+		_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_confirmed",
+			fmt.Sprintf("📌 حجز جديد مثبّت (%s) للزبون %s — يحتاج تحديد الكادر المناسب له", booking.Code, customerName))
+	}
+	return booking, nil
 }
 
 func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetailsRequest) (*model.Booking, error) {

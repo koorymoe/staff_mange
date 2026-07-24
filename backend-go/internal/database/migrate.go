@@ -683,6 +683,9 @@ var migrations = []string{
 	// ويوفرها ويسجل كلفتها (نظام المشتريات الموجود أصلاً)، بدون صلاحيات إضافية افتراضية —
 	// تُمنح له لاحقاً من صفحة الصلاحيات حسب الحاجة.
 	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'PROCUREMENT_ADMIN'`,
+	// دور "مصمم" (DESIGNER) — بدون صلاحيات إضافية افتراضية، تُمنح له لاحقاً من صفحة
+	// الصلاحيات حسب الحاجة، نفس نمط "إداري الكميات".
+	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'DESIGNER'`,
 	// حالتين جديدتين للموظف: أرشفة (قابلة للاسترجاع) وحذف (سجل ناعم) — الاثنين
 	// يختفون من كل واجهات النظام العادية، الأدمن/المالك بس يشوف تاريخهم.
 	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED'`,
@@ -892,6 +895,12 @@ func Migrate(db *sqlx.DB) error {
 	if err := grantGpsSystemToMonitors(db); err != nil {
 		return err
 	}
+	if err := grantRolePermission(db, "PROCUREMENT_ADMIN", "procurement", "المشتريات"); err != nil {
+		return err
+	}
+	if err := grantRolePermission(db, "PROCUREMENT_ADMIN", "inventory", "جرد الأدوات"); err != nil {
+		return err
+	}
 	if err := seedOwnerAccount(db); err != nil {
 		return err
 	}
@@ -968,20 +977,27 @@ func seedEngineeringSkills(db *sqlx.DB) error {
 // (مراقبة قسم الجي بي اس) — الجي بي اس صارت خدمة بصلاحية مو دور وظيفي منفصل،
 // والمراقب المفروض يشوف ويتدخل بيها متل باقي الخدمات. idempotent بالكامل.
 func grantGpsSystemToMonitors(db *sqlx.DB) error {
+	return grantRolePermission(db, "MONITOR", "gps_system", "نظام GPS")
+}
+
+// grantRolePermission يضمن كل موظف بدور معيّن عنده صلاحية معيّنة — يستخدم
+// لتحديث RoleDefaultPermissions بأثر رجعي على الموظفين الموجودين فعلاً
+// (تغيير خارطة الصلاحيات بالكود لحاله ما يوصل تلقائياً لحسابات منشأة سابقاً).
+func grantRolePermission(db *sqlx.DB, role, permissionName, permissionLabel string) error {
 	if _, err := db.Exec(`
 		INSERT INTO "Permission" (id, name, label)
-		VALUES (gen_random_uuid()::text, 'gps_system', 'نظام GPS')
+		VALUES (gen_random_uuid()::text, $1, $2)
 		ON CONFLICT (name) DO NOTHING
-	`); err != nil {
+	`, permissionName, permissionLabel); err != nil {
 		return err
 	}
 	_, err := db.Exec(`
 		INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
 		SELECT gen_random_uuid()::text, e.id, p.id
 		FROM "Employee" e, "Permission" p
-		WHERE e.role = 'MONITOR' AND p.name = 'gps_system'
+		WHERE e.role = $1 AND p.name = $2
 		ON CONFLICT ("employeeId", "permissionId") DO NOTHING
-	`)
+	`, role, permissionName)
 	return err
 }
 

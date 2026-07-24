@@ -75,7 +75,7 @@ func main() {
 	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
 	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
 	customerService := service.NewCustomerService(customerRepo)
-	bookingService := service.NewBookingService(bookingRepo, employeeRepo, customerRepo, qualityFollowUpRepo)
+	bookingService := service.NewBookingService(bookingRepo, employeeRepo, customerRepo, qualityFollowUpRepo, notificationRepo)
 	qualityFollowUpService := service.NewQualityFollowUpService(qualityFollowUpRepo)
 	cartService := service.NewCartService(cartRepo)
 	expenseService := service.NewExpenseService(expenseRepo)

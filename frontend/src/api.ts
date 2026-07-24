@@ -65,6 +65,7 @@ export type EmployeeRole =
   | 'QUALITY_ENGINEER'
   | 'ENGINEER'
   | 'PROCUREMENT_ADMIN'
+  | 'DESIGNER'
   | 'OWNER'
 
 export interface Employee {

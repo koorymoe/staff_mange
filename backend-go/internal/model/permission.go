@@ -49,5 +49,6 @@ var RoleDefaultPermissions = map[string][]string{
 	"GPS_ADMIN":         {"gps_system"},
 	"QUALITY_ENGINEER":  {"auditing", "complaints", "quality_control", "sales_booking", "kpi_management"},
 	"ENGINEER":          {"expenses", "quotation_system", "project_management"},
-	"PROCUREMENT_ADMIN": {},
+	"PROCUREMENT_ADMIN": {"procurement", "inventory"},
+	"DESIGNER":          {},
 }

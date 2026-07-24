@@ -30,6 +30,9 @@ export default function InventoryPage() {
   const { employee: currentUser } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
   const canManageInventory = isAdmin || currentUser?.role === 'HR_COORDINATOR'
+  // إداري الكميات مسؤول عن توفير وإضافة "أدوات حسب الحاجة" (نفس مسؤوليته
+  // بطلبات المواد الناقصة من الموظفين) — بالإضافة للأدمن.
+  const canManageOnDemand = isAdmin || currentUser?.role === 'PROCUREMENT_ADMIN'
   // موافقة/رفض طلبات الأدوات: الأدمن، إداري الكوادر، وكمان المراقب (على عكس
   // "جرد الأدوات" الي المراقب بيه اطلاع فقط — هذي طلبات موافقة منفصلة).
   const canApproveRequests = canManageInventory || currentUser?.role === 'MONITOR'
@@ -429,7 +432,7 @@ export default function InventoryPage() {
                         <th className="px-4 py-3 text-sm font-semibold">الباركود</th>
                         <th className="px-4 py-3 text-sm font-semibold">الكمية الإجمالية</th>
                         <th className="px-4 py-3 text-sm font-semibold">الكمية المتاحة</th>
-                        {isAdmin && <th className="px-4 py-3 text-sm font-semibold">تعديل</th>}
+                        {canManageOnDemand && <th className="px-4 py-3 text-sm font-semibold">تعديل</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -443,7 +446,7 @@ export default function InventoryPage() {
                               {t.availableQuantity}
                             </span>
                           </td>
-                          {isAdmin && (
+                          {canManageOnDemand && (
                             <td className="px-4 py-3">
                               <button
                                 type="button"
@@ -468,7 +471,7 @@ export default function InventoryPage() {
                         </tr>
                       ))}
                       {onDemandTools.length === 0 && (
-                        <tr><td colSpan={isAdmin ? 5 : 4} className="px-4 py-6 text-center text-slate-400">لا توجد أدوات حسب الحاجة</td></tr>
+                        <tr><td colSpan={canManageOnDemand ? 5 : 4} className="px-4 py-6 text-center text-slate-400">لا توجد أدوات حسب الحاجة</td></tr>
                       )}
                     </tbody>
                   </table>
