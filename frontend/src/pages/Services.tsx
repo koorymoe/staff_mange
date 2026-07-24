@@ -10,6 +10,8 @@ export default function Services() {
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [skillDraft, setSkillDraft] = useState<Record<string, string>>({})
+  const [skillSubmitting, setSkillSubmitting] = useState<string | null>(null)
 
   const load = () => {
     setLoading(true)
@@ -21,6 +23,21 @@ export default function Services() {
   }
 
   useEffect(load, [])
+
+  const handleAddSkill = async (serviceId: string) => {
+    const value = (skillDraft[serviceId] || '').trim()
+    if (!value) return
+    setSkillSubmitting(serviceId)
+    try {
+      await api.createSkill(serviceId, value)
+      setSkillDraft((prev) => ({ ...prev, [serviceId]: '' }))
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'حدث خطأ')
+    } finally {
+      setSkillSubmitting(null)
+    }
+  }
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -93,6 +110,42 @@ export default function Services() {
               <span className="font-medium text-brand-800">{service.name}</span>
               {service.category && (
                 <span className="mr-2 text-sm text-slate-400">({service.category})</span>
+              )}
+
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {service.skills.length === 0 && (
+                  <span className="text-xs text-slate-400">لا توجد مهارات محددة لهذي الخدمة بعد</span>
+                )}
+                {service.skills.map((sk) => (
+                  <span key={sk.id} className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-700">
+                    {sk.name}
+                  </span>
+                ))}
+              </div>
+
+              {employee?.role === 'ADMIN' && (
+                <div className="mt-3 flex gap-2">
+                  <input
+                    value={skillDraft[service.id] || ''}
+                    onChange={(e) => setSkillDraft((prev) => ({ ...prev, [service.id]: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        handleAddSkill(service.id)
+                      }
+                    }}
+                    placeholder="مهارة جديدة..."
+                    className="w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm outline-none focus:border-brand-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleAddSkill(service.id)}
+                    disabled={skillSubmitting === service.id}
+                    className="shrink-0 rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 disabled:opacity-50"
+                  >
+                    إضافة
+                  </button>
+                </div>
               )}
             </div>
           ))}

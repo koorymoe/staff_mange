@@ -21,3 +21,7 @@ type CreateServiceRequest struct {
 	Name     string  `json:"name"`
 	Category *string `json:"category"`
 }
+
+type CreateSkillRequest struct {
+	Name string `json:"name"`
+}

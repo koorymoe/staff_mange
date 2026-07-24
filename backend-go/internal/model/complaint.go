@@ -4,11 +4,12 @@ import "time"
 
 // ComplaintTypeLabels هي أنواع الشكاوى الثابتة المسموحة — قائمة منسدلة بدل وصف حر.
 var ComplaintTypeLabels = map[string]string{
-	"DELAY":        "تأخير بالتنفيذ",
-	"DISORGANIZED": "عمل غير منظم",
-	"TECHNICAL":    "مشكلة فنية",
-	"INCOMPLETE":   "لم يتم إكمال العمل",
-	"OTHER":        "أخرى",
+	"DELAY":           "تأخير بالتنفيذ",
+	"DISORGANIZED":    "عمل غير منظم",
+	"TECHNICAL":       "مشكلة فنية",
+	"EXECUTION_ERROR": "خطأ تنفيذي",
+	"INCOMPLETE":      "لم يتم إكمال العمل",
+	"OTHER":           "أخرى",
 }
 
 type Complaint struct {

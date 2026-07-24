@@ -40,3 +40,19 @@ func (h *ServiceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusCreated, svc)
 }
+
+// POST /api/v1/services/{id}/skills
+func (h *ServiceHandler) CreateSkill(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateSkillRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+
+	skill, err := h.service.CreateSkill(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, skill)
+}

@@ -38,3 +38,14 @@ func (r *ServiceRepository) Create(s *model.Service) error {
 	`, s)
 	return err
 }
+
+// CreateSkill يضيف مهارة جديدة لخدمة معيّنة — حتى الإداري يقدر يعرّف مهارات كل خدمة
+// (بدل ما تكون بس خدمة "الهندسة" هي الوحيدة الي عندها مهارات جاهزة بالنظام).
+func (r *ServiceRepository) CreateSkill(sk *model.Skill) error {
+	_, err := r.db.NamedExec(`
+		INSERT INTO "Skill" (id, name, "serviceId")
+		VALUES (:id, :name, :serviceId)
+		ON CONFLICT ("serviceId", name) DO NOTHING
+	`, sk)
+	return err
+}

@@ -644,12 +644,13 @@ export interface ToolRequestItem {
   returnedAt: string | null
 }
 
-export type ComplaintType = 'DELAY' | 'DISORGANIZED' | 'TECHNICAL' | 'INCOMPLETE' | 'OTHER'
+export type ComplaintType = 'DELAY' | 'DISORGANIZED' | 'TECHNICAL' | 'EXECUTION_ERROR' | 'INCOMPLETE' | 'OTHER'
 
 export const complaintTypeLabels: Record<ComplaintType, string> = {
   DELAY: 'تأخير بالتنفيذ',
   DISORGANIZED: 'عمل غير منظم',
   TECHNICAL: 'مشكلة فنية',
+  EXECUTION_ERROR: 'خطأ تنفيذي',
   INCOMPLETE: 'لم يتم إكمال العمل',
   OTHER: 'أخرى',
 }
@@ -714,6 +715,8 @@ export const api = {
   getServices: () => request<Service[]>('/services'),
   createService: (data: { name: string; category?: string }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
+  createSkill: (serviceId: string, name: string) =>
+    request<Skill>(`/services/${serviceId}/skills`, { method: 'POST', body: JSON.stringify({ name }) }),
 
   // مسؤول خدمة عام (تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات)
   getServiceManagers: () => request<ServiceManager[]>('/service-managers'),

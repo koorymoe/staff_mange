@@ -33,3 +33,14 @@ func (s *ServiceCatalogService) Create(req model.CreateServiceRequest) (*model.S
 	svc.Skills = []model.Skill{}
 	return svc, nil
 }
+
+func (s *ServiceCatalogService) CreateSkill(serviceID string, req model.CreateSkillRequest) (*model.Skill, error) {
+	if req.Name == "" {
+		return nil, errors.New("اسم المهارة مطلوب")
+	}
+	sk := &model.Skill{ID: uuid.NewString(), Name: req.Name, ServiceID: serviceID}
+	if err := s.repo.CreateSkill(sk); err != nil {
+		return nil, err
+	}
+	return sk, nil
+}
