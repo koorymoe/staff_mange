@@ -648,6 +648,7 @@ export interface ToolRequestItem {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RETURNED'
   approvedById: string | null
   requestedAt: string
+  approvedAt: string | null
   returnedAt: string | null
 }
 

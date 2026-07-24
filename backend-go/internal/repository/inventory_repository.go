@@ -272,7 +272,7 @@ func (r *InventoryRepository) CreateToolRequest(employeeID, toolID string) (*mod
 func (r *InventoryRepository) ApproveToolRequest(id, approvedByID string) (*model.ToolRequest, error) {
 	var req model.ToolRequest
 	err := r.db.Get(&req, `
-		UPDATE "ToolRequest" SET status = 'APPROVED', "approvedById" = $2
+		UPDATE "ToolRequest" SET status = 'APPROVED', "approvedById" = $2, "approvedAt" = now()
 		WHERE id = $1
 		RETURNING *
 	`, id, approvedByID)

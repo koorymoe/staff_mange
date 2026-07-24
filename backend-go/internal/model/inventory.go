@@ -97,6 +97,7 @@ type ToolRequest struct {
 	Status       string     `db:"status" json:"status"`
 	ApprovedByID *string    `db:"approvedById" json:"approvedById"`
 	RequestedAt  time.Time  `db:"requestedAt" json:"requestedAt"`
+	ApprovedAt   *time.Time `db:"approvedAt" json:"approvedAt"`
 	ReturnedAt   *time.Time `db:"returnedAt" json:"returnedAt"`
 
 	Employee   *EmployeeBrief `db:"-" json:"employee"`

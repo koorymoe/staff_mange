@@ -30,6 +30,9 @@ export default function InventoryPage() {
   const { employee: currentUser } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
   const canManageInventory = isAdmin || currentUser?.role === 'HR_COORDINATOR'
+  // موافقة/رفض طلبات الأدوات: الأدمن، إداري الكوادر، وكمان المراقب (على عكس
+  // "جرد الأدوات" الي المراقب بيه اطلاع فقط — هذي طلبات موافقة منفصلة).
+  const canApproveRequests = canManageInventory || currentUser?.role === 'MONITOR'
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const handleResolveCheck = async (id: string) => {
     setResolvingId(id)
@@ -484,8 +487,10 @@ export default function InventoryPage() {
                       <th className="px-4 py-3 text-sm font-semibold">الموظف</th>
                       <th className="px-4 py-3 text-sm font-semibold">الأداة</th>
                       <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
-                      <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
-                      {isAdmin && <th className="px-4 py-3 text-sm font-semibold">إجراءات</th>}
+                      <th className="px-4 py-3 text-sm font-semibold">تاريخ الطلب</th>
+                      <th className="px-4 py-3 text-sm font-semibold">تاريخ الاستلام</th>
+                      <th className="px-4 py-3 text-sm font-semibold">تاريخ الإرجاع</th>
+                      {canApproveRequests && <th className="px-4 py-3 text-sm font-semibold">إجراءات</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -501,7 +506,13 @@ export default function InventoryPage() {
                         <td className="px-4 py-3 text-slate-500">
                           {new Date(r.requestedAt).toLocaleDateString('ar-IQ')}
                         </td>
-                        {isAdmin && (
+                        <td className="px-4 py-3 text-slate-500">
+                          {r.approvedAt ? new Date(r.approvedAt).toLocaleDateString('ar-IQ') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-500">
+                          {r.returnedAt ? new Date(r.returnedAt).toLocaleDateString('ar-IQ') : '-'}
+                        </td>
+                        {canApproveRequests && (
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
                               {r.status === 'PENDING' && (
@@ -535,7 +546,7 @@ export default function InventoryPage() {
                     ))}
                     {toolRequests.length === 0 && (
                       <tr>
-                        <td colSpan={isAdmin ? 5 : 4} className="px-4 py-6 text-center text-slate-400">
+                        <td colSpan={canApproveRequests ? 7 : 6} className="px-4 py-6 text-center text-slate-400">
                           لا توجد طلبات أدوات
                         </td>
                       </tr>

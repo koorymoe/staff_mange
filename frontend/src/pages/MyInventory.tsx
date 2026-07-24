@@ -339,8 +339,10 @@ export default function MyInventory() {
                       </div>
                       <div className="flex-1">
                         <div className="font-bold text-brand-900">{req.tool?.name || '-'}</div>
-                        <div className="text-xs text-slate-400 mt-0.5">
-                          {new Date(req.requestedAt).toLocaleDateString('ar-IQ')}
+                        <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-slate-400">
+                          <span>تاريخ الطلب: {new Date(req.requestedAt).toLocaleDateString('ar-IQ')}</span>
+                          {req.approvedAt && <span>تاريخ الاستلام: {new Date(req.approvedAt).toLocaleDateString('ar-IQ')}</span>}
+                          {req.returnedAt && <span>تاريخ الإرجاع: {new Date(req.returnedAt).toLocaleDateString('ar-IQ')}</span>}
                         </div>
                       </div>
                       <span className={`rounded-full px-4 py-1.5 text-xs font-bold ${statusColors[req.status]}`}>

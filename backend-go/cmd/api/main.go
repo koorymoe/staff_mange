@@ -148,6 +148,7 @@ func main() {
 	// بإيقاف حساب الموظف تلقائياً بعد 3 محاولات (حماية أمنية ضد التلاعب بالجلسة).
 	requireVerifyBooking := middleware.RequirePermission(permissionRepo, employeeRepo, "finance")
 	requireHR := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR")
+	requireInventoryApprove := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR", "MONITOR")
 	// تعديل مهارات موظف يعتمد على صلاحية "staff_management" الممنوحة فعلياً (نفس
 	// الصلاحية الي تفتح صفحة "إدارة الكوادر" بالواجهة للمراقب أيضاً) — مو دور
 	// وظيفي صارم، وإلا نفس بگ "تدقيق الحسابات" يتكرر: زر يطلع بالواجهة، السيرفر
@@ -257,8 +258,8 @@ func main() {
 
 	mux.Handle("GET /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.ListToolRequests), requireAuth))
 	mux.Handle("POST /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth))
-	mux.Handle("PUT /api/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth, requireHR))
-	mux.Handle("PUT /api/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth, requireHR))
+	mux.Handle("PUT /api/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth, requireInventoryApprove))
+	mux.Handle("PUT /api/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth, requireInventoryApprove))
 	mux.Handle("PUT /api/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth))
 
 	// تقييم الأداء اليدوي (KPI)

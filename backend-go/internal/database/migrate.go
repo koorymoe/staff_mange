@@ -258,6 +258,7 @@ var baseSchema = []string{
 		"requestedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		"returnedAt" TIMESTAMP
 	)`,
+	`ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "approvedAt" TIMESTAMP`,
 	`CREATE INDEX IF NOT EXISTS "ToolRequest_employeeId_idx" ON "ToolRequest"("employeeId")`,
 	`CREATE INDEX IF NOT EXISTS "ToolRequest_toolId_idx" ON "ToolRequest"("toolId")`,
 	`CREATE TABLE IF NOT EXISTS "Complaint" (
