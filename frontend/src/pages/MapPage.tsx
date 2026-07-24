@@ -481,7 +481,10 @@ export default function MapPage() {
         </div>
 
         {/* Map */}
-        <div className="flex-1 relative">
+        {/* isolate تحصر طبقات Leaflet الداخلية (z-index عالي جداً افتراضياً بمكتبة
+            الخرائط) جوة هذا العنصر بس، حتى ما تطلع فوق القائمة الجانبية الرئيسية
+            ولا فوق قائمة الحجوزات المنزلقة بالموبايل. */}
+        <div className="isolate relative flex-1">
           <div ref={mapContainerRef} className="absolute inset-0" />
 
           {/* Legend */}
