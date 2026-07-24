@@ -36,7 +36,7 @@ func (r *BookingRepository) List(status, customerID string) ([]model.Booking, er
 	if err := r.db.Select(&bookings, query, args...); err != nil {
 		return nil, err
 	}
-	if err := r.hydrateAll(bookings); err != nil {
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
 		return nil, err
 	}
 	return bookings, nil
@@ -56,10 +56,21 @@ func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int
 	if err != nil {
 		return nil, err
 	}
-	if err := r.hydrateAll(bookings); err != nil {
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
 		return nil, err
 	}
 	return bookings, nil
+}
+
+// toPointers تحول []model.Booking إلى []*model.Booking تشاور نفس عناصر المصفوفة
+// الأصلية — لازم نمرر مؤشرات لـ hydrateAll حتى التعديلات (Customer, Service...)
+// توصل فعلاً للسلايس الي يرجعه الكولر، مو لنسخة مؤقتة تنرمى بعد ما تخلص الدالة.
+func toPointers(bookings []model.Booking) []*model.Booking {
+	ptrs := make([]*model.Booking, len(bookings))
+	for i := range bookings {
+		ptrs[i] = &bookings[i]
+	}
+	return ptrs
 }
 
 func (r *BookingRepository) FindByID(id string) (*model.Booking, error) {
@@ -71,7 +82,7 @@ func (r *BookingRepository) FindByID(id string) (*model.Booking, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := r.hydrateAll([]model.Booking{b}); err != nil {
+	if err := r.hydrateAll([]*model.Booking{&b}); err != nil {
 		return nil, err
 	}
 	return &b, nil
@@ -79,7 +90,7 @@ func (r *BookingRepository) FindByID(id string) (*model.Booking, error) {
 
 // hydrate يجلب علاقات حجز واحد — يلف hydrateAll تفادياً لتكرار المنطق.
 func (r *BookingRepository) hydrate(b *model.Booking) error {
-	return r.hydrateAll([]model.Booking{*b})
+	return r.hydrateAll([]*model.Booking{b})
 }
 
 // hydrateAll يجلب كل العلاقات المرتبطة بمجموعة حجوزات دفعة وحدة (batch) بدل استعلام
@@ -87,7 +98,7 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 // صار عدد الحجوزات بالآلاف بعد استيراد البيانات القديمة، صفحة الحجوزات صارت تسوي
 // عشرات الآلاف من الاستعلامات المتسلسلة وتعلق. الحل: نجمع كل الـ IDs المطلوبة أول
 // وبعدين نجيبهم بدفعة وحدة لكل نوع (WHERE id = ANY(...))، ونوزعهم بالذاكرة.
-func (r *BookingRepository) hydrateAll(bookings []model.Booking) error {
+func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 	if len(bookings) == 0 {
 		return nil
 	}
@@ -197,7 +208,7 @@ func (r *BookingRepository) hydrateAll(bookings []model.Booking) error {
 	}
 
 	for i := range bookings {
-		b := &bookings[i]
+		b := bookings[i]
 		if c, ok := customers[b.CustomerID]; ok {
 			cc := c
 			b.Customer = &cc
