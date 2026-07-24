@@ -142,6 +142,11 @@ func main() {
 	// حصراً لحساب المالك (OWNER) — أقوى من الأدمن العادي، ما يشوفها إلا هو
 	requireOwner := middleware.RequireRole(employeeRepo, "OWNER")
 	requireFinance := middleware.RequireRole(employeeRepo, "ADMIN", "FINANCE")
+	// تدقيق مبلغ الحجز يعتمد على صلاحية "finance" الممنوحة فعلياً للموظف (مو بس دوره
+	// الوظيفي) — المراقب مثلاً عنده هذي الصلاحية افتراضياً ويشوف زر "تدقيق" بالواجهة،
+	// فلازم الباك إند يتحقق من نفس الصلاحية بدل دور صارم، وإلا يترفض الطلب ويتسبب
+	// بإيقاف حساب الموظف تلقائياً بعد 3 محاولات (حماية أمنية ضد التلاعب بالجلسة).
+	requireVerifyBooking := middleware.RequirePermission(permissionRepo, employeeRepo, "finance")
 	requireHR := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR")
 	requireMonitor := middleware.RequireRole(employeeRepo, "ADMIN", "MONITOR")
 	requireProjectManager := middleware.RequireRole(employeeRepo, "ADMIN", "PROJECT_MANAGER")
@@ -211,7 +216,7 @@ func main() {
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireFinance))
+	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 
 	// سلة الحجز
 	mux.Handle("GET /api/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.ListForBooking), requireAuth))
