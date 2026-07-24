@@ -20,7 +20,10 @@ const roleLabels: Record<EmployeeRole, string> = {
 // مهارات الهندسة (تصميم/تخطيط/تنفيذ/إشراف)، وبعدها يترفّع من صفحة إدارة الكوادر.
 // دور OWNER محجوز لحساب مالك النظام الوحيد المزروع مباشرة بقاعدة البيانات —
 // محد يقدر يمنحه لموظف من الواجهة، حتى الأدمن نفسه.
-const creatableRoles = (Object.keys(roleLabels) as EmployeeRole[]).filter(r => r !== 'ENGINEER' && r !== 'OWNER')
+// دور "مسؤول GPS" ما ينعطى بعد الآن لموظف جديد — الجي بي اس صارت خدمة وحدة
+// بين عدة خدمات، والمسؤولية عنها تنعطى عن طريق "مسؤولو الخدمات" (صلاحية
+// gps_system) مو دور وظيفي منفصل، حتى تنسجم مع "مسؤول خدمة" العام.
+const creatableRoles = (Object.keys(roleLabels) as EmployeeRole[]).filter(r => r !== 'ENGINEER' && r !== 'OWNER' && r !== 'GPS_ADMIN')
 
 function calcHours(start: string, end: string): number | null {
   if (!start || !end) return null

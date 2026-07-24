@@ -64,13 +64,14 @@ const navItems: NavItem[] = [
         ],
       },
       {
+        // الجي بي اس صارت خدمة بتحكم صلاحية "gps_system" — مو دور وظيفي منفصل،
+        // فأي موظف عنده هذي الصلاحية (مسؤول خدمة الجي بي اس أو المراقب) يشوفها.
         to: '/mgmt-services', label: 'إدارة الخدمات', icon: <></>,
-        roles: ['ADMIN', 'GPS_ADMIN'],
         children: [
-          { to: '/gps', label: 'نظام GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'], permission: 'gps_system' },
-          { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
-          { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
-          { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, roles: ['ADMIN', 'GPS_ADMIN'] },
+          { to: '/gps', label: 'نظام GPS', icon: <></>, permission: 'gps_system' },
+          { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, permission: 'gps_system' },
+          { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, permission: 'gps_system' },
+          { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, permission: 'gps_system' },
           { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'] },
         ],
       },

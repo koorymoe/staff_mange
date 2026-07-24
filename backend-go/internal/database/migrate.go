@@ -889,6 +889,9 @@ func Migrate(db *sqlx.DB) error {
 	if err := seedDefaultSkillForServices(db); err != nil {
 		return err
 	}
+	if err := grantGpsSystemToMonitors(db); err != nil {
+		return err
+	}
 	if err := seedOwnerAccount(db); err != nil {
 		return err
 	}
@@ -959,6 +962,27 @@ func seedEngineeringSkills(db *sqlx.DB) error {
 		}
 	}
 	return nil
+}
+
+// grantGpsSystemToMonitors تضمن كل موظف بدور "مراقب" عنده صلاحية "gps_system"
+// (مراقبة قسم الجي بي اس) — الجي بي اس صارت خدمة بصلاحية مو دور وظيفي منفصل،
+// والمراقب المفروض يشوف ويتدخل بيها متل باقي الخدمات. idempotent بالكامل.
+func grantGpsSystemToMonitors(db *sqlx.DB) error {
+	if _, err := db.Exec(`
+		INSERT INTO "Permission" (id, name, label)
+		VALUES (gen_random_uuid()::text, 'gps_system', 'نظام GPS')
+		ON CONFLICT (name) DO NOTHING
+	`); err != nil {
+		return err
+	}
+	_, err := db.Exec(`
+		INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
+		SELECT gen_random_uuid()::text, e.id, p.id
+		FROM "Employee" e, "Permission" p
+		WHERE e.role = 'MONITOR' AND p.name = 'gps_system'
+		ON CONFLICT ("employeeId", "permissionId") DO NOTHING
+	`)
+	return err
 }
 
 // legacySkillsByService هي نفس مصفوفة المهارات التفصيلية الي كانت موجودة بالنظام

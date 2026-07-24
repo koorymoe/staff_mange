@@ -592,7 +592,7 @@ export default function Employees() {
                             }
                           }}
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white">
-                          {Object.entries(roleLabels).filter(([k]) => k !== 'OWNER').map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                          {Object.entries(roleLabels).filter(([k]) => k !== 'OWNER' && (k !== 'GPS_ADMIN' || selectedEmployee.role === 'GPS_ADMIN')).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                         </select>
                       </div>
                     )}
