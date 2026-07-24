@@ -51,15 +51,15 @@ SELECT
   gen_random_uuid()::text,
   c.id,
   (SELECT id FROM "Employee" WHERE role = 'OWNER' LIMIT 1),
-  'DEVICE_SIM',
-  'YEARLY',
+  'DEVICE_SIM'::"GpsPurchaseType",
+  'YEARLY'::"GpsSubscriptionType",
   NULLIF(btrim(gi.subscriptionend), '')::timestamp,
-  CASE
+  (CASE
     WHEN NULLIF(btrim(gi.subscriptionend), '')::timestamp IS NULL THEN 'ACTIVE'
     WHEN NULLIF(btrim(gi.subscriptionend), '')::timestamp < now() THEN 'EXPIRED'
     ELSE 'ACTIVE'
-  END,
-  'DELIVERED',
+  END)::"GpsSubscriptionStatus",
+  'DELIVERED'::"GpsRequestStatus",
   NULLIF(btrim(gi.gpsnumber), ''),
   'استيراد تاريخي من النظام القديم — رقم الجهاز: ' || COALESCE(NULLIF(btrim(gi.deviceid), ''), 'غير معروف'),
   true, true, true,
