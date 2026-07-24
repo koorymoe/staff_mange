@@ -261,7 +261,7 @@ export default function MapPage() {
   )
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)]">
+    <div className="-m-3 flex h-[calc(100%+1.5rem)] flex-col sm:-m-5 sm:h-[calc(100%+2.5rem)] lg:-m-8 lg:h-[calc(100%+4rem)]">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
         <div className="flex items-center gap-2 sm:gap-3">
