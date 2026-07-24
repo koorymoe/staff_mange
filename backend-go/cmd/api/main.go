@@ -159,6 +159,7 @@ func main() {
 	requireGpsAdmin := middleware.RequireRole(employeeRepo, "ADMIN", "GPS_ADMIN")
 	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, "content_technician")
 	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, "vehicle_management")
+	requireProcurement := middleware.RequirePermission(permissionRepo, employeeRepo, "procurement")
 	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, "quality_control")
 	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, "project_management")
 	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, "kpi_management")
@@ -274,7 +275,7 @@ func main() {
 	mux.Handle("POST /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.Create), requireAuth, requireKpi))
 	mux.Handle("DELETE /api/kpi/{id}", middleware.Chain(http.HandlerFunc(kpiHandler.Delete), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/kpi/{id}/cancel", middleware.Chain(http.HandlerFunc(kpiHandler.Cancel), requireAuth, requireKpi))
-	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireMonitor))
+	mux.Handle("POST /api/employees/{id}/complete-training", middleware.Chain(http.HandlerFunc(kpiHandler.CompleteTraining), requireAuth, requireContentTech))
 
 	mux.Handle("GET /api/notifications", middleware.Chain(http.HandlerFunc(notificationHandler.List), requireAuth))
 	mux.Handle("POST /api/notifications/{id}/read", middleware.Chain(http.HandlerFunc(notificationHandler.MarkRead), requireAuth))
@@ -348,8 +349,8 @@ func main() {
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth))
 	mux.Handle("GET /api/procurement/stats", middleware.Chain(http.HandlerFunc(procurementHandler.Stats), requireAuth))
 	mux.Handle("POST /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth))
-	mux.Handle("PUT /api/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireFinance))
-	mux.Handle("PUT /api/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireFinance))
+	mux.Handle("PUT /api/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireProcurement))
+	mux.Handle("PUT /api/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireProcurement))
 
 	// الموردون (suppliers)
 	mux.Handle("GET /api/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.ListSpecialties), requireAuth))
@@ -416,6 +417,10 @@ func main() {
 	mux.Handle("POST /api/vehicles/{id}/ratings", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateDailyRating), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/{id}/ratings", middleware.Chain(http.HandlerFunc(vehicleHandler.ListDailyRatings), requireAuth, requireVehicleMgmt))
 	// ملخصات التذكير — للمراقب بس (نظرة شاملة على كل السيارات والفنيين)
+	// ملاحظة: هذولا فقط لوحة المراقبة (MonitorDashboard) تستدعيهم — عمداً مقيدين
+	// بدور المراقب/الأدمن حصراً، لأنهم يعرضون راتب مقترح للفنيين (بيانات حساسة
+	// ماريد الفني نفسه يشوفها). لا تحولها لصلاحية "vehicle_management" العامة —
+	// هذي الصلاحية ممكن تنمنح لفنيين لتسجيل صيانة مركبات عادية بدون قصد كشف رواتب.
 	mux.Handle("GET /api/vehicles/ratings/vehicle-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleScoreSummaries), requireAuth, requireMonitor))
 	mux.Handle("GET /api/vehicles/ratings/technician-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.TechnicianWashSummaries), requireAuth, requireMonitor))
 
