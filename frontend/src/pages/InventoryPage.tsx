@@ -426,6 +426,7 @@ export default function InventoryPage() {
                         <th className="px-4 py-3 text-sm font-semibold">الباركود</th>
                         <th className="px-4 py-3 text-sm font-semibold">الكمية الإجمالية</th>
                         <th className="px-4 py-3 text-sm font-semibold">الكمية المتاحة</th>
+                        {isAdmin && <th className="px-4 py-3 text-sm font-semibold">تعديل</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -439,10 +440,32 @@ export default function InventoryPage() {
                               {t.availableQuantity}
                             </span>
                           </td>
+                          {isAdmin && (
+                            <td className="px-4 py-3">
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  const input = prompt(`عدّل الكمية المتاحة لأداة "${t.name}" (الإجمالية: ${t.totalQuantity})`, String(t.availableQuantity))
+                                  if (input === null) return
+                                  const num = Number(input)
+                                  if (Number.isNaN(num) || num < 0) { alert('رقم غير صحيح'); return }
+                                  try {
+                                    const updated = await api.updateOnDemandTool(t.id, { availableQuantity: num })
+                                    setOnDemandTools((prev) => prev.map((x) => (x.id === updated.id ? updated : x)))
+                                  } catch (e) {
+                                    alert(e instanceof Error ? e.message : 'تعذر التعديل')
+                                  }
+                                }}
+                                className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200"
+                              >
+                                تعديل
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                       {onDemandTools.length === 0 && (
-                        <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">لا توجد أدوات حسب الحاجة</td></tr>
+                        <tr><td colSpan={isAdmin ? 5 : 4} className="px-4 py-6 text-center text-slate-400">لا توجد أدوات حسب الحاجة</td></tr>
                       )}
                     </tbody>
                   </table>

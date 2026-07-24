@@ -73,7 +73,11 @@ func (s *InventoryService) CreateOnDemandTool(req model.CreateOnDemandToolReques
 	if req.Name == "" || req.Barcode == "" {
 		return nil, errors.New("name and barcode are required")
 	}
-	return s.repo.CreateOnDemandTool(req.Name, req.Barcode, req.TotalQuantity, req.AvailableQuantity)
+	// أداة جديدة توها ننضافت مو مسحوبة من قبل أي موظف بعد — لازم كل الكمية
+	// تكون متوفرة فوراً. الواجهة ما ترسل availableQuantity وقت الإضافة أصلاً
+	// (تطلب بس الكمية الإجمالية)، فلو اعتمدنا القيمة المرسلة تضل 0 دائماً
+	// ويصير الموظفين ما يكدرون يطلبون الأداة إطلاقاً حتى لو أضفناها بكمية.
+	return s.repo.CreateOnDemandTool(req.Name, req.Barcode, req.TotalQuantity, req.TotalQuantity)
 }
 
 func (s *InventoryService) UpdateOnDemandTool(id string, req model.UpdateOnDemandToolRequest) (*model.OnDemandTool, error) {
