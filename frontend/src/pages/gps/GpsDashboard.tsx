@@ -28,7 +28,7 @@ export default function GpsDashboard() {
   }
 
   const getSubscriptionStatus = (device: any) => {
-    const days = getDaysRemaining(device.subscriptionEndDate)
+    const days = getDaysRemaining(device.subscriptionEnd)
     if (days === null) return 'unknown'
     if (days > 40) return 'active'
     if (days > 0) return 'expiring'
@@ -42,9 +42,9 @@ export default function GpsDashboard() {
   })
 
   const getProgressPercent = (device: any) => {
-    if (!device.activationDate || !device.subscriptionEndDate) return 0
+    if (!device.activationDate || !device.subscriptionEnd) return 0
     const start = new Date(device.activationDate).getTime()
-    const end = new Date(device.subscriptionEndDate).getTime()
+    const end = new Date(device.subscriptionEnd).getTime()
     const now = Date.now()
     const total = end - start
     const elapsed = now - start
@@ -71,9 +71,15 @@ export default function GpsDashboard() {
   ]
 
   const expiringSoon = devices.filter(d => {
-    const days = getDaysRemaining(d.subscriptionEndDate)
+    const days = getDaysRemaining(d.subscriptionEnd)
     return days !== null && days > 0 && days <= 40
   })
+
+  // نحسب هذي الأعداد من قائمة الأجهزة نفسها بدل الاعتماد على حقول من السيرفر
+  // (السيرفر ما يرجع activeSubscriptions/expiringSoon/expired40/expired80 أصلاً).
+  const activeCount = devices.filter(d => getSubscriptionStatus(d) === 'active').length
+  const expired40Count = devices.filter(d => getSubscriptionStatus(d) === 'expired40').length
+  const expired80Count = devices.filter(d => getSubscriptionStatus(d) === 'expired80').length
 
   return (
     <div dir="rtl">
@@ -108,10 +114,10 @@ export default function GpsDashboard() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
               { label: 'إجمالي الزبائن', value: stats.totalCustomers ?? 0, icon: '👥', color: '#1a3a5c' },
-              { label: 'اشتراكات فعالة', value: stats.activeSubscriptions ?? 0, icon: '✅', color: '#16a34a' },
-              { label: 'تنتهي قريباً', value: stats.expiringSoon ?? 0, icon: '⚠️', color: '#d97706' },
-              { label: 'منتهي +40 يوم', value: stats.expired40 ?? 0, icon: '🔴', color: '#dc2626' },
-              { label: 'منتهي +80 يوم', value: stats.expired80 ?? 0, icon: '⛔', color: '#7c2d12' },
+              { label: 'اشتراكات فعالة', value: activeCount, icon: '✅', color: '#16a34a' },
+              { label: 'تنتهي قريباً', value: expiringSoon.length, icon: '⚠️', color: '#d97706' },
+              { label: 'منتهي +40 يوم', value: expired40Count, icon: '🔴', color: '#dc2626' },
+              { label: 'منتهي +80 يوم', value: expired80Count, icon: '⛔', color: '#7c2d12' },
             ].map(card => (
               <div key={card.label} className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between">
@@ -155,7 +161,7 @@ export default function GpsDashboard() {
                   <div key={d.id} className="flex items-center justify-between rounded-xl bg-white p-3">
                     <span className="font-medium">{d.customer?.fullName || 'غير معروف'}</span>
                     <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-bold text-yellow-800">
-                      {getDaysRemaining(d.subscriptionEndDate)} يوم متبقي
+                      {getDaysRemaining(d.subscriptionEnd)} يوم متبقي
                     </span>
                   </div>
                 ))}
@@ -166,9 +172,9 @@ export default function GpsDashboard() {
           {/* SIM Quick Stats */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[
-              { label: 'إجمالي الشرائح', value: stats.simStats?.total ?? sims.length, icon: '📱', color: '#1a3a5c' },
-              { label: 'شرائح متوفرة', value: stats.simStats?.available ?? sims.filter((s: any) => s.status !== 'ACTIVE').length, icon: '🟢', color: '#16a34a' },
-              { label: 'شرائح مستخدمة', value: stats.simStats?.inUse ?? sims.filter((s: any) => s.status === 'ACTIVE').length, icon: '🔵', color: '#2563eb' },
+              { label: 'إجمالي الشرائح', value: stats.totalSims ?? sims.length, icon: '📱', color: '#1a3a5c' },
+              { label: 'شرائح متوفرة', value: stats.availableSims ?? sims.filter((s: any) => s.status === 'AVAILABLE').length, icon: '🟢', color: '#16a34a' },
+              { label: 'شرائح مستخدمة', value: stats.inUseSims ?? sims.filter((s: any) => s.status === 'IN_USE').length, icon: '🔵', color: '#2563eb' },
             ].map(card => (
               <div key={card.label} className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -213,7 +219,7 @@ export default function GpsDashboard() {
             {/* Device List */}
             <div className="flex-1 space-y-3">
               {filteredDevices.map(d => {
-                const days = getDaysRemaining(d.subscriptionEndDate)
+                const days = getDaysRemaining(d.subscriptionEnd)
                 const progress = getProgressPercent(d)
                 const progressColor = getProgressColor(d)
                 return (
@@ -274,7 +280,7 @@ export default function GpsDashboard() {
                   </div>
                   <div>
                     <span className="text-xs text-slate-500">تاريخ الانتهاء</span>
-                    <p>{selectedDevice.subscriptionEndDate ? new Date(selectedDevice.subscriptionEndDate).toLocaleDateString('ar-IQ') : '-'}</p>
+                    <p>{selectedDevice.subscriptionEnd ? new Date(selectedDevice.subscriptionEnd).toLocaleDateString('ar-IQ') : '-'}</p>
                   </div>
                   <div>
                     <span className="text-xs text-slate-500">الحالة</span>
