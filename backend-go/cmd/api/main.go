@@ -148,6 +148,11 @@ func main() {
 	// بإيقاف حساب الموظف تلقائياً بعد 3 محاولات (حماية أمنية ضد التلاعب بالجلسة).
 	requireVerifyBooking := middleware.RequirePermission(permissionRepo, employeeRepo, "finance")
 	requireHR := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR")
+	// تعديل مهارات موظف يعتمد على صلاحية "staff_management" الممنوحة فعلياً (نفس
+	// الصلاحية الي تفتح صفحة "إدارة الكوادر" بالواجهة للمراقب أيضاً) — مو دور
+	// وظيفي صارم، وإلا نفس بگ "تدقيق الحسابات" يتكرر: زر يطلع بالواجهة، السيرفر
+	// يرفضه، وبعد 3 محاولات ينوقف حساب الموظف تلقائياً.
+	requireStaffManagement := middleware.RequirePermission(permissionRepo, employeeRepo, "staff_management")
 	requireMonitor := middleware.RequireRole(employeeRepo, "ADMIN", "MONITOR")
 	requireProjectManager := middleware.RequireRole(employeeRepo, "ADMIN", "PROJECT_MANAGER")
 	requireFieldMonitor := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
@@ -183,7 +188,7 @@ func main() {
 	mux.Handle("POST /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.Create), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Update), requireAuth, requireAdmin))
 	mux.Handle("POST /api/employees/{id}/link-historical", middleware.Chain(http.HandlerFunc(employeeHandler.LinkHistoricalRecords), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/employees/{id}/skills", middleware.Chain(http.HandlerFunc(employeeHandler.SetSkills), requireAuth, requireHR))
+	mux.Handle("PUT /api/employees/{id}/skills", middleware.Chain(http.HandlerFunc(employeeHandler.SetSkills), requireAuth, requireStaffManagement))
 
 	// الصلاحيات — العرض متاح لأي مسجل دخول، التعديل والتطبيق التلقائي محصور بمدير النظام فقط
 	mux.Handle("GET /api/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth))
