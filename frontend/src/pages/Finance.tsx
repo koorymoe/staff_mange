@@ -26,8 +26,12 @@ export default function Finance() {
   useEffect(load, [])
 
   const handleVerify = async (booking: Booking) => {
-    const updated = await api.verifyAmount(booking.id)
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    try {
+      const updated = await api.verifyAmount(booking.id)
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر تدقيق الحجز')
+    }
   }
 
   const toggle = (id: string) =>

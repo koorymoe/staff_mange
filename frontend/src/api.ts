@@ -346,9 +346,16 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     ...options,
   })
   if (res.status === 401) {
+    const body = await res.json().catch(() => ({}))
     localStorage.removeItem('authToken')
     localStorage.removeItem('currentEmployee')
-    if (!path.startsWith('/auth/login')) window.location.reload()
+    if (!path.startsWith('/auth/login')) {
+      // نوريه سبب رجوعه لتسجيل الدخول قبل ما نحدّث الصفحة — بدون هذا كانت
+      // الشاشة تطلع بيضاء فجأة بدون أي تفسير (يحس المستخدم إنه "خطأ بالنظام").
+      alert(body.error || 'انتهت صلاحية الجلسة، الرجاء تسجيل الدخول مجدداً')
+      window.location.reload()
+    }
+    throw new Error(body.error || 'يجب تسجيل الدخول')
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))

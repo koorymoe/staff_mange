@@ -882,6 +882,9 @@ func Migrate(db *sqlx.DB) error {
 	if err := seedEngineeringSkills(db); err != nil {
 		return err
 	}
+	if err := seedDefaultSkillForServices(db); err != nil {
+		return err
+	}
 	if err := seedOwnerAccount(db); err != nil {
 		return err
 	}
@@ -948,6 +951,34 @@ func seedEngineeringSkills(db *sqlx.DB) error {
 			VALUES ('sk_eng_' || $1, $1, 'svc_engineering')
 			ON CONFLICT (id) DO NOTHING
 		`, name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// seedDefaultSkillForServices تضمن أي خدمة موجودة بدون أي مهارة محددة إلها تاخذ
+// مهارة افتراضية وحدة بنفس اسم الخدمة — حتى تصير مطابقة الفني بالحجز (matching)
+// شغالة فوراً من غير ما ننتظر الإداري يضيف مهارات تفصيلية لكل خدمة يدوياً.
+// idempotent: ما تلمس أي خدمة عندها مهارات أصلاً (حتى لو مهارة وحدة بس).
+func seedDefaultSkillForServices(db *sqlx.DB) error {
+	type svcRow struct {
+		ID   string `db:"id"`
+		Name string `db:"name"`
+	}
+	var services []svcRow
+	if err := db.Select(&services, `
+		SELECT s.id, s.name FROM "Service" s
+		WHERE NOT EXISTS (SELECT 1 FROM "Skill" sk WHERE sk."serviceId" = s.id)
+	`); err != nil {
+		return err
+	}
+	for _, s := range services {
+		if _, err := db.Exec(`
+			INSERT INTO "Skill" (id, name, "serviceId")
+			VALUES (gen_random_uuid()::text, $1, $2)
+			ON CONFLICT ("serviceId", name) DO NOTHING
+		`, s.Name, s.ID); err != nil {
 			return err
 		}
 	}
