@@ -72,8 +72,16 @@ export default function MapPage() {
   const routeLayerRef = useRef<L.Polyline | null>(null)
 
   useEffect(() => {
-    api.getBookings().then(b => { setBookings(b); setLoading(false) }).catch(() => setLoading(false))
-  }, [])
+    api.getBookings().then(b => {
+      // الفني يشوف بس الحجوزات المسندة له تحديداً من قبل الإداري/المنسق — مو كل حجوزات الشركة
+      const visible = employee?.role === 'TECHNICIAN'
+        ? b.filter((booking) => booking.assignments?.some((a) => a.employee.id === employee.id))
+        : b
+      setBookings(visible)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.id])
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return
