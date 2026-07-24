@@ -157,7 +157,18 @@ export default function MapPage() {
   }, [filteredBookings, selectedBooking])
 
   const locateMe = useCallback(() => {
-    if (!navigator.geolocation) return
+    // متصفحات الموبايل ما تسمح بتحديد الموقع الجغرافي إلا على اتصال آمن
+    // (HTTPS) — النظام حالياً شغال على HTTP عادي، فهذا السبب الرئيسي يخلي
+    // الزر "ميتفاعل" بصمت بدون أي رسالة توضح ليش. لازم دومين + شهادة SSL
+    // حتى يشتغل تحديد الموقع.
+    if (!window.isSecureContext) {
+      alert('تحديد الموقع الجغرافي يحتاج اتصال آمن (HTTPS) — هذا النظام لسه شغال بدون HTTPS. لازم نربط دومين ونضيف شهادة أمان حتى تشتغل هذي الميزة.')
+      return
+    }
+    if (!navigator.geolocation) {
+      alert('المتصفح ما يدعم تحديد الموقع الجغرافي')
+      return
+    }
     setLocatingMe(true)
     navigator.geolocation.getCurrentPosition(
       pos => {
@@ -173,7 +184,15 @@ export default function MapPage() {
           mapRef.current.setView(coords, 14)
         }
       },
-      () => setLocatingMe(false),
+      (err) => {
+        setLocatingMe(false)
+        const reasons: Record<number, string> = {
+          1: 'رفضت السماح بالوصول لموقعك — فعّل صلاحية الموقع للمتصفح من إعدادات الجهاز',
+          2: 'تعذر تحديد موقعك حالياً — تأكد خدمة تحديد الموقع مفعّلة بجهازك',
+          3: 'انتهت مهلة تحديد الموقع — جرب مرة ثانية',
+        }
+        alert(reasons[err.code] || 'تعذر تحديد موقعك')
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }, [])
