@@ -578,6 +578,18 @@ export default function Layout() {
                 👁️ لوحة المراقبة الخلفية
               </NavLink>
             )}
+            {employee.actualRole === 'OWNER' && (
+              <NavLink
+                to="/assistant-conversations"
+                className={({ isActive }) =>
+                  `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                💬 محادثات المساعد الذكي
+              </NavLink>
+            )}
           </nav>
 
           {/* Logout */}

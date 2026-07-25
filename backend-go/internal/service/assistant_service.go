@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -41,6 +42,7 @@ type AssistantService struct {
 	gps         *repository.GpsRepository
 	qualityFUs  *repository.QualityFollowUpRepository
 	complaints  *repository.ComplaintRepository
+	conversations *repository.AssistantConversationRepository
 
 	// roleGuides: خريطة "الدور الوظيفي → نص دليل الاستخدام" — تُحمَّل مرة وحدة عند
 	// إنشاء الخدمة (مو بكل طلب) حتى ما نعيد قراءة الملفات وتنظيف الـHTML بكل رسالة.
@@ -132,13 +134,15 @@ func NewAssistantService(
 	gps *repository.GpsRepository,
 	qualityFUs *repository.QualityFollowUpRepository,
 	complaints *repository.ComplaintRepository,
+	conversations *repository.AssistantConversationRepository,
 	tutorialsDir string,
 ) *AssistantService {
 	return &AssistantService{
 		apiKey: apiKey, dailyCap: dailyCap, employees: employees, kpi: kpi, perfReviews: perfReviews,
 		bookings: bookings, missions: missions, expenses: expenses, gps: gps, qualityFUs: qualityFUs, complaints: complaints,
-		roleGuides: loadRoleGuides(tutorialsDir),
-		resetDate:  time.Now().Format("2006-01-02"),
+		conversations: conversations,
+		roleGuides:    loadRoleGuides(tutorialsDir),
+		resetDate:     time.Now().Format("2006-01-02"),
 	}
 }
 
@@ -204,7 +208,20 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 
 	systemContext := buildSystemPrompt(employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, guideBlock, message)
 
-	return s.callGemini(systemContext)
+	reply, err := s.callGemini(systemContext)
+	if err != nil {
+		return "", err
+	}
+
+	// نسجل كل تبادل رسالة/جواب حتى يقدر المالك يراجع محادثات كل الموظفين مع
+	// المساعد لاحقاً. فشل التسجيل ما يوقف الرد للموظف — بس نطبع خطأ باللوغ.
+	if s.conversations != nil {
+		if logErr := s.conversations.Create(employeeID, message, reply); logErr != nil {
+			log.Printf("assistant: تعذر تسجيل المحادثة للموظف %s: %v", employeeID, logErr)
+		}
+	}
+
+	return reply, nil
 }
 
 // buildSystemPrompt يبني نص البرومبت الكامل اللي نبعته لـGemini لكل سؤال موظف عادي.
@@ -220,6 +237,7 @@ func buildSystemPrompt(name, role, salaryLine string, skillsKnown, skillsTotal, 
 2. الرد الافتراضي قصير — جملة وحدة أو جملتين إذا السؤال بسيط أو محادثة عادية. لا تكرر السؤال، لا تحشي كلام زايد، لا تضيف تحذيرات أو ملاحظات ماكو داعي إلها.
 3. الأسلوب المرقّم بخطوات (1، 2، 3...) يجي بس إذا الموظف يطلب "تعليم" فعلي — يعني يسأل بصيغة "علّمني"، "شلون أسوي...؟"، "وريني الخطوات"، أو أي طلب واضح يبين يريد يتعلم عملية. حتى بهاي الحالة خلي الخطوات مختصرة وعملية، وسمّي الصفحات والأزرار بأسمائها الحقيقية المذكورة بدليل الاستخدام أدناه — لا تستخدم وصف عام مثل "روح لصفحة الطلبات"، قول اسمها بالضبط.
 4. لا تختلق معلومات أو أسماء صفحات/أزرار غير موجودة ببيانات الموظف أو بدليل الاستخدام أدناه. إذا السؤال خارج بياناته الشخصية أو شغله، اعتذر بجملة وحدة وقول تراجع الإدارة.
+5. اقرأ مزاج المحادثة. إذا الموظف واضح يريد يدردش أو يفشّ خلقه أو زهقان أو يحچي حچي عادي بلا علاقة بالشغل (مثلاً "زهقان اليوم"، "شلونك؟"، نكتة، كلام مسلي) — احجي وياه طبيعي ودافي متل صديق، اطلع بروح خفيفة وتفاعل معه، سولف شوي ولو لازم قول نكتة عراقية خفيفة. لا تحوّل الحچي هذا لسؤال شغل ولا ترجعه "أنا بس لأسئلة الشغل" — هذا رد بارد وممنوع. خلي الرد الودّي قصير برضو (سطر أو سطرين) إلا إذا الموقف يستاهل أكثر.
 
 أمثلة على الأسلوب المطلوب (بس للتوضيح، مو نص جاهز تكرره):
 
@@ -239,6 +257,14 @@ func buildSystemPrompt(name, role, salaryLine string, skillsKnown, skillsTotal, 
 3. إذا لسه بانتظار التوفير، اضغط "جاري التوفير" أول لو تريد تبلغ إنك شغال عليه.
 4. لما توفر المواد فعلياً اضغط "تم التوفير"، علّم كل مادة وفّرتها، سجل السعر والتكلفة الكلية، واضغط "تأكيد التوفير".
 خلص، الطلب ينكتب "تم التوفير" ويشوفه الموظف.
+
+مثال 4 — موظف زهقان يريد يدردش (مو سؤال شغل):
+الموظف: زهقان اليوم والله
+المساعد: هواي؟ 😄 خلي أسولف وياك شوي إذا تريد، لو تحب نطلع بنكتة نفش خلقك — وإذا طلع سؤال شغل بالطريق أنا حاضر.
+
+مثال 5 — سمول توك عابر:
+الموظف: شكو ماكو، شنو أخبارك؟
+المساعد: هلا وغلا، تمام الحال والحمدلله، بس اليوم الجو حر شوي 😅 شكو عندك، شغل لو بس مرور؟
 
 بيانات الموظف السائل:
 - الاسم: %s

@@ -7,6 +7,7 @@ import Services from './pages/Services'
 import SalesBooking from './pages/SalesBooking'
 import QualityFollowUpsPage from './pages/QualityFollowUpsPage'
 import SecurityDashboardPage from './pages/SecurityDashboardPage'
+import AssistantConversationsPage from './pages/AssistantConversationsPage'
 import Coordinator from './pages/Coordinator'
 import BookingsList from './pages/BookingsList'
 import MyTasks from './pages/MyTasks'
@@ -69,6 +70,7 @@ function App() {
         <Route path="sales" element={<SalesBooking />} />
         <Route path="quality-follow-ups" element={<QualityFollowUpsPage />} />
         <Route path="owner-security" element={<SecurityDashboardPage />} />
+        <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
         <Route path="coordinator" element={<Coordinator />} />
         <Route path="bookings" element={<BookingsList />} />
         <Route path="my-tasks" element={<MyTasks />} />

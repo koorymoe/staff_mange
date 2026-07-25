@@ -2,17 +2,21 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
+	"time"
 
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
 type AssistantHandler struct {
-	service *service.AssistantService
+	service       *service.AssistantService
+	conversations *repository.AssistantConversationRepository
 }
 
-func NewAssistantHandler(s *service.AssistantService) *AssistantHandler {
-	return &AssistantHandler{service: s}
+func NewAssistantHandler(s *service.AssistantService, conversations *repository.AssistantConversationRepository) *AssistantHandler {
+	return &AssistantHandler{service: s, conversations: conversations}
 }
 
 type AskAssistantRequest struct {
@@ -52,4 +56,53 @@ func (h *AssistantHandler) ManagerChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]string{"reply": reply})
+}
+
+// GET /api/assistant/conversations — حصري للمالك: قائمة كل محادثات الموظفين
+// مع المساعد الذكي، مع فلترة اختيارية بالموظف والتاريخ وتقسيم صفحات (limit/offset).
+func (h *AssistantHandler) ListConversations(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+
+	filter := repository.AssistantConversationFilter{
+		EmployeeID: q.Get("employeeId"),
+	}
+	if v := q.Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			filter.Limit = n
+		}
+	}
+	if v := q.Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil {
+			filter.Offset = n
+		}
+	}
+	if v := q.Get("from"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
+			filter.From = &t
+		}
+	}
+	if v := q.Get("to"); v != "" {
+		if t, err := time.Parse("2006-01-02", v); err == nil {
+			end := t.Add(24*time.Hour - time.Second)
+			filter.To = &end
+		}
+	}
+
+	rows, total, err := h.conversations.ListAll(filter)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المحادثات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"conversations": rows, "total": total})
+}
+
+// GET /api/assistant/conversations/employees — حصري للمالك: قائمة الموظفين
+// المميزين اللي عندهم محادثة وحدة عالأقل، لتعبئة قائمة الفلتر بالواجهة.
+func (h *AssistantHandler) ListConversationEmployees(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.conversations.ListEmployeesWithConversations()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة الموظفين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"employees": rows})
 }

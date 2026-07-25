@@ -1055,6 +1055,28 @@ export const api = {
   managerChatAssistant: (message: string, history: { role: 'user' | 'assistant'; text: string }[]) =>
     request<{ reply: string }>('/assistant/manager-chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
 
+  getAssistantConversations: (params: { employeeId?: string; from?: string; to?: string; limit?: number; offset?: number }) => {
+    const q = new URLSearchParams()
+    if (params.employeeId) q.set('employeeId', params.employeeId)
+    if (params.from) q.set('from', params.from)
+    if (params.to) q.set('to', params.to)
+    if (params.limit) q.set('limit', String(params.limit))
+    if (params.offset) q.set('offset', String(params.offset))
+    return request<{
+      conversations: {
+        id: string
+        employeeId: string
+        message: string
+        reply: string
+        createdAt: string
+        employee: { id: string; name: string; position: string | null } | null
+      }[]
+      total: number
+    }>(`/assistant/conversations?${q.toString()}`)
+  },
+  getAssistantConversationEmployees: () =>
+    request<{ employees: { id: string; name: string; position: string | null }[] }>('/assistant/conversations/employees'),
+
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
   updateQualityFollowUp: (
     id: string,

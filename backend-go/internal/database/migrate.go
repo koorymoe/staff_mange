@@ -1011,6 +1011,14 @@ var migrations = []string{
 		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
 	`CREATE INDEX IF NOT EXISTS "VehicleMissionRating_missionId_idx" ON "VehicleMissionRating"("missionId")`,
+	`CREATE TABLE IF NOT EXISTS "AssistantConversation" (
+		id TEXT PRIMARY KEY,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+		message TEXT NOT NULL,
+		reply TEXT NOT NULL,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "AssistantConversation_employeeId_createdAt_idx" ON "AssistantConversation"("employeeId", "createdAt")`,
 }
 
 func Migrate(db *sqlx.DB) error {
