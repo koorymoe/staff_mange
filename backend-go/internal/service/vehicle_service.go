@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"sort"
 	"strconv"
 	"time"
 
@@ -490,6 +491,158 @@ func (s *VehicleService) ExpenseSummary(vehicleID, month, year string) (*model.V
 		avg := total / float64(*summary.DistanceKm)
 		summary.AvgCostPerKm = &avg
 	}
+
+	return summary, nil
+}
+
+// ── لوحة التحكم الشاملة للأسطول ──
+
+// FleetDashboard يجمع كل مؤشرات لوحة التحكم الشاملة (GET /api/vehicles/dashboard)
+// بنداء واحد، معتمداً على الاستعلامات والدوال الموجودة أصلاً (التنبيهات وملخص المصاريف)
+// بدل تكرار منطقها.
+func (s *VehicleService) FleetDashboard() (*model.FleetDashboardSummary, error) {
+	now := time.Now()
+	period := now.Format("2006-01")
+	from := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
+	to := from.AddDate(0, 1, 0)
+
+	vehicles, err := s.repo.List()
+	if err != nil {
+		return nil, err
+	}
+
+	maintenanceIDs, err := s.repo.VehicleIDsWithOpenIncidentType("FAULT")
+	if err != nil {
+		return nil, err
+	}
+	inMaintenance := map[string]bool{}
+	for _, id := range maintenanceIDs {
+		inMaintenance[id] = true
+	}
+
+	onMissionIDs, err := s.repo.VehicleIDsWithInProgressMission()
+	if err != nil {
+		return nil, err
+	}
+	onMission := map[string]bool{}
+	for _, id := range onMissionIDs {
+		onMission[id] = true
+	}
+
+	alerts, err := s.VehicleAlerts()
+	if err != nil {
+		return nil, err
+	}
+	needsService := map[string]bool{}
+	expiringDocs := map[string]bool{}
+	for _, a := range alerts {
+		switch a.AlertType {
+		case "MAINTENANCE", "PART":
+			needsService[a.VehicleID] = true
+		case "DOCUMENT":
+			expiringDocs[a.VehicleID] = true
+		}
+	}
+
+	summary := &model.FleetDashboardSummary{
+		Period:            period,
+		TotalVehicles:     len(vehicles),
+		Alerts:            alerts,
+		NeedsServiceCount: len(needsService),
+		ExpiringDocsCount: len(expiringDocs),
+		VehicleExpenses:   []model.VehicleExpenseRow{},
+		TopByUsage:        []model.VehicleUsageRankRow{},
+		TopByCost:         []model.VehicleUsageRankRow{},
+	}
+
+	activeCount := 0
+	maintenanceCount := 0
+	onMissionCount := 0
+
+	usageRows, err := s.repo.MissionUsageInPeriod(from, to)
+	if err != nil {
+		return nil, err
+	}
+	usageByVehicle := map[string]repository.VehicleUsageRow{}
+	for _, u := range usageRows {
+		usageByVehicle[u.VehicleID] = u
+	}
+
+	var fleetFuelCost, fleetTotalCost float64
+	rankRows := make([]model.VehicleUsageRankRow, 0, len(vehicles))
+
+	for _, v := range vehicles {
+		if inMaintenance[v.ID] {
+			maintenanceCount++
+		} else if v.IsActive {
+			activeCount++
+		}
+		if onMission[v.ID] {
+			onMissionCount++
+		}
+
+		expSummary, err := s.ExpenseSummary(v.ID, period, "")
+		if err != nil {
+			continue
+		}
+		fleetFuelCost += expSummary.FuelCost
+		fleetTotalCost += expSummary.TotalCost
+
+		if expSummary.TotalCost > 0 {
+			summary.VehicleExpenses = append(summary.VehicleExpenses, model.VehicleExpenseRow{
+				VehicleID:   v.ID,
+				VehicleName: v.Name,
+				PlateNumber: v.PlateNumber,
+				TotalCost:   expSummary.TotalCost,
+				FuelCost:    expSummary.FuelCost,
+			})
+		}
+
+		usage := usageByVehicle[v.ID]
+		if usage.MissionCount > 0 || expSummary.TotalCost > 0 {
+			rankRows = append(rankRows, model.VehicleUsageRankRow{
+				VehicleID:    v.ID,
+				VehicleName:  v.Name,
+				PlateNumber:  v.PlateNumber,
+				MissionCount: usage.MissionCount,
+				DistanceKm:   usage.DistanceKm,
+				TotalCost:    expSummary.TotalCost,
+			})
+		}
+	}
+
+	summary.ActiveVehiclesCount = activeCount
+	summary.InMaintenanceCount = maintenanceCount
+	summary.OnMissionCount = onMissionCount
+	summary.FleetFuelCostThisMonth = fleetFuelCost
+	summary.FleetTotalCostThisMonth = fleetTotalCost
+
+	sort.Slice(summary.VehicleExpenses, func(i, j int) bool {
+		return summary.VehicleExpenses[i].TotalCost > summary.VehicleExpenses[j].TotalCost
+	})
+
+	byUsage := make([]model.VehicleUsageRankRow, len(rankRows))
+	copy(byUsage, rankRows)
+	sort.Slice(byUsage, func(i, j int) bool {
+		if byUsage[i].MissionCount != byUsage[j].MissionCount {
+			return byUsage[i].MissionCount > byUsage[j].MissionCount
+		}
+		return byUsage[i].DistanceKm > byUsage[j].DistanceKm
+	})
+	if len(byUsage) > 5 {
+		byUsage = byUsage[:5]
+	}
+	summary.TopByUsage = byUsage
+
+	byCost := make([]model.VehicleUsageRankRow, len(rankRows))
+	copy(byCost, rankRows)
+	sort.Slice(byCost, func(i, j int) bool {
+		return byCost[i].TotalCost > byCost[j].TotalCost
+	})
+	if len(byCost) > 5 {
+		byCost = byCost[:5]
+	}
+	summary.TopByCost = byCost
 
 	return summary, nil
 }

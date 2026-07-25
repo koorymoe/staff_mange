@@ -52,6 +52,7 @@ import TrainingPage from './pages/TrainingPage'
 import TrainingManagement from './pages/TrainingManagement'
 import VehiclesPage from './pages/VehiclesPage'
 import VehicleMissionsPage from './pages/VehicleMissionsPage'
+import FleetDashboardPage from './pages/FleetDashboardPage'
 import QualityPage from './pages/QualityPage'
 import WorkReportsReview from './pages/WorkReportsReview'
 import RequireAdmin from './components/RequireAdmin'
@@ -114,6 +115,7 @@ function App() {
         <Route path="training-management" element={<RequirePermission permission="content_technician"><TrainingManagement /></RequirePermission>} />
         <Route path="vehicles" element={<RequirePermission permission="vehicle_management"><VehiclesPage /></RequirePermission>} />
         <Route path="vehicle-missions" element={<RequirePermission permission="vehicle_management"><VehicleMissionsPage /></RequirePermission>} />
+        <Route path="fleet-dashboard" element={<RequirePermission permission="vehicle_management"><FleetDashboardPage /></RequirePermission>} />
         <Route path="quality" element={<RequirePermission permission="quality_control"><QualityPage /></RequirePermission>} />
         <Route path="work-reports-review" element={<WorkReportsReview />} />
       </Route>

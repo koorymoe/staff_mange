@@ -601,3 +601,43 @@ func (r *VehicleRepository) LastFuelLogCosts(vehicleID string, limit int) ([]flo
 	`, vehicleID, limit)
 	return costs, err
 }
+
+// VehicleIDsWithOpenIncidentType معرفات السيارات التي لديها حادثة/عطل بحالة OPEN من نوع
+// معيّن — تُستخدم لتقدير "السيارات بالصيانة حالياً" (عطل مفتوح لم يُحل بعد).
+func (r *VehicleRepository) VehicleIDsWithOpenIncidentType(incidentType string) ([]string, error) {
+	ids := []string{}
+	err := r.db.Select(&ids, `
+		SELECT DISTINCT "vehicleId" FROM "VehicleIncident"
+		WHERE status = 'OPEN' AND type = $1
+	`, incidentType)
+	return ids, err
+}
+
+// VehicleIDsWithInProgressMission معرفات السيارات التي لديها مهمة قيد التنفيذ حالياً.
+func (r *VehicleRepository) VehicleIDsWithInProgressMission() ([]string, error) {
+	ids := []string{}
+	err := r.db.Select(&ids, `
+		SELECT DISTINCT "vehicleId" FROM "VehicleMission" WHERE status = 'IN_PROGRESS'
+	`)
+	return ids, err
+}
+
+// MissionCountInPeriod عدد المهام المبدوءة لكل سيارة ضمن فترة (لترتيب الأكثر استخداماً).
+type VehicleUsageRow struct {
+	VehicleID    string `db:"vehicleId"`
+	MissionCount int    `db:"missionCount"`
+	DistanceKm   int    `db:"distanceKm"`
+}
+
+func (r *VehicleRepository) MissionUsageInPeriod(from, to time.Time) ([]VehicleUsageRow, error) {
+	rows := []VehicleUsageRow{}
+	err := r.db.Select(&rows, `
+		SELECT "vehicleId",
+		       COUNT(*) AS "missionCount",
+		       COALESCE(SUM(COALESCE("distanceKm", 0)), 0) AS "distanceKm"
+		FROM "VehicleMission"
+		WHERE "startedAt" >= $1 AND "startedAt" < $2
+		GROUP BY "vehicleId"
+	`, from, to)
+	return rows, err
+}

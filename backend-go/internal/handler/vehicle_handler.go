@@ -349,3 +349,14 @@ func (h *VehicleHandler) ExpenseSummary(w http.ResponseWriter, r *http.Request) 
 	}
 	WriteJSON(w, http.StatusOK, summary)
 }
+
+// ── لوحة التحكم الشاملة للأسطول ──
+
+func (h *VehicleHandler) FleetDashboard(w http.ResponseWriter, r *http.Request) {
+	summary, err := h.service.FleetDashboard()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب لوحة تحكم الأسطول")
+		return
+	}
+	WriteJSON(w, http.StatusOK, summary)
+}

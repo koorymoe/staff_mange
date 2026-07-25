@@ -461,3 +461,46 @@ type TechnicianWashSummary struct {
 	SuggestedWage  float64 `json:"suggestedWage"`
 	MonthlyCap     float64 `json:"monthlyCap"`
 }
+
+// VehicleExpenseRow مصروف سيارة واحدة ضمن ملخص لوحة التحكم الشاملة (اسم السيارة +
+// إجمالي التكلفة للفترة الحالية).
+type VehicleExpenseRow struct {
+	VehicleID   string  `json:"vehicleId"`
+	VehicleName string  `json:"vehicleName"`
+	PlateNumber string  `json:"plateNumber"`
+	TotalCost   float64 `json:"totalCost"`
+	FuelCost    float64 `json:"fuelCost"`
+}
+
+// VehicleUsageRankRow ترتيب سيارة ضمن قائمة "الأكثر استخداماً أو تكلفة".
+type VehicleUsageRankRow struct {
+	VehicleID    string  `json:"vehicleId"`
+	VehicleName  string  `json:"vehicleName"`
+	PlateNumber  string  `json:"plateNumber"`
+	MissionCount int     `json:"missionCount"`
+	DistanceKm   int     `json:"distanceKm"`
+	TotalCost    float64 `json:"totalCost"`
+}
+
+// FleetDashboardSummary لوحة التحكم الشاملة للأسطول — تجميع كل المؤشرات المطلوبة
+// بنداء واحد (GET /api/vehicles/dashboard) بدل جلبها من عدة نقاط.
+type FleetDashboardSummary struct {
+	Period string `json:"period"` // الشهر الحالي بصيغة YYYY-MM
+
+	TotalVehicles       int `json:"totalVehicles"`
+	ActiveVehiclesCount int `json:"activeVehiclesCount"`       // عاملة (isActive وبدون عطل مفتوح)
+	InMaintenanceCount  int `json:"inMaintenanceCount"`        // بها عطل مفتوح (FAULT)
+	OnMissionCount      int `json:"onMissionCount"`            // بمهمة قيد التنفيذ حالياً
+	NeedsServiceCount   int `json:"needsServiceCount"`         // تنبيه صيانة/قطعة مستحقة
+	ExpiringDocsCount   int `json:"expiringDocsCount"`         // وثيقة قريبة/منتهية الصلاحية
+
+	Alerts []VehicleAlert `json:"alerts"`
+
+	FleetFuelCostThisMonth  float64 `json:"fleetFuelCostThisMonth"`
+	FleetTotalCostThisMonth float64 `json:"fleetTotalCostThisMonth"`
+
+	VehicleExpenses []VehicleExpenseRow `json:"vehicleExpenses"` // مصاريف كل سيارة هذا الشهر
+
+	TopByUsage []VehicleUsageRankRow `json:"topByUsage"` // أعلى 5 حسب عدد المهام/المسافة
+	TopByCost  []VehicleUsageRankRow `json:"topByCost"`  // أعلى 5 حسب التكلفة
+}
