@@ -521,14 +521,45 @@ export interface VehicleMission {
 export interface VehicleLog {
   id: string
   vehicleId: string
-  type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE'
+  type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'
   performedAt: string
   nextDueAt: string | null
+  nextDueOdometer: number | null
   odometer: number | null
   cost: number | null
   notes: string | null
   createdAt: string
   recordedBy: { id: string; name: string } | null
+}
+
+export interface VehicleIncidentAttachment {
+  id: string
+  incidentId: string
+  url: string
+  mediaType: 'IMAGE' | 'VIDEO'
+  createdAt: string
+}
+
+export interface VehiclePart {
+  id: string
+  vehicleId: string
+  partType: 'TIRE' | 'BATTERY'
+  installedAt: string
+  installedOdometer: number
+  expectedLifespanKm: number | null
+  expectedLifespanMonths: number | null
+  notes: string | null
+  replacedAt: string | null
+  createdAt: string
+  dueSoon: boolean
+}
+
+export interface VehicleAlert {
+  vehicleId: string
+  vehicleName: string
+  alertType: 'MAINTENANCE' | 'PART' | 'DOCUMENT'
+  message: string
+  severity: 'warning' | 'danger'
 }
 
 export interface VehicleWashRating {
@@ -1146,13 +1177,23 @@ export const api = {
   createVehicle: (data: { name: string; plateNumber: string; color?: string; type?: string }) =>
     request<Vehicle>('/vehicles', { method: 'POST', body: JSON.stringify(data) }),
   getVehicleLogs: (vehicleId: string) => request<VehicleLog[]>(`/vehicles/${vehicleId}/logs`),
-  createVehicleLog: (vehicleId: string, data: { type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE'; performedAt?: string; nextDueAt?: string; odometer?: number; cost?: number; notes?: string }) =>
+  createVehicleLog: (vehicleId: string, data: { type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'; performedAt?: string; nextDueAt?: string; nextDueOdometer?: number; odometer?: number; cost?: number; notes?: string }) =>
     request<VehicleLog>(`/vehicles/${vehicleId}/logs`, { method: 'POST', body: JSON.stringify(data) }),
   getVehicleIncidents: (vehicleId: string) => request<VehicleIncident[]>(`/vehicles/${vehicleId}/incidents`),
   createVehicleIncident: (vehicleId: string, data: { type: 'FAULT' | 'DAMAGE'; description: string; responsibleEmployeeId?: string; cost?: number }) =>
     request<VehicleIncident>(`/vehicles/${vehicleId}/incidents`, { method: 'POST', body: JSON.stringify(data) }),
   updateVehicleIncident: (id: string, data: { status?: 'OPEN' | 'RESOLVED'; cost?: number }) =>
     request<VehicleIncident>(`/vehicle-incidents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getVehicleIncidentAttachments: (incidentId: string) => request<VehicleIncidentAttachment[]>(`/vehicle-incidents/${incidentId}/attachments`),
+  createVehicleIncidentAttachment: (incidentId: string, data: { url: string; mediaType: 'IMAGE' | 'VIDEO' }) =>
+    request<VehicleIncidentAttachment>(`/vehicle-incidents/${incidentId}/attachments`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteVehicleIncidentAttachment: (incidentId: string, attachmentId: string) =>
+    request<{ ok: boolean }>(`/vehicle-incidents/${incidentId}/attachments/${attachmentId}`, { method: 'DELETE' }),
+  getVehicleParts: (vehicleId: string) => request<VehiclePart[]>(`/vehicles/${vehicleId}/parts`),
+  createVehiclePart: (vehicleId: string, data: { partType: 'TIRE' | 'BATTERY'; installedAt?: string; installedOdometer: number; expectedLifespanKm?: number; expectedLifespanMonths?: number; notes?: string }) =>
+    request<VehiclePart>(`/vehicles/${vehicleId}/parts`, { method: 'POST', body: JSON.stringify(data) }),
+  replaceVehiclePart: (partId: string) => request<VehiclePart>(`/vehicle-parts/${partId}/replace`, { method: 'PUT' }),
+  getVehicleAlerts: () => request<VehicleAlert[]>('/vehicles/alerts'),
   getVehicleMonthlyStatus: (vehicleId: string) => request<VehicleMonthlyStatus[]>(`/vehicles/${vehicleId}/monthly-status`),
   setVehicleMonthlyStatus: (vehicleId: string, data: { month: string; hasIssue: boolean; issueDescription?: string; resolved: boolean; notes?: string }) =>
     request<VehicleMonthlyStatus>(`/vehicles/${vehicleId}/monthly-status`, { method: 'POST', body: JSON.stringify(data) }),

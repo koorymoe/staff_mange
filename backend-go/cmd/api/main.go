@@ -452,6 +452,15 @@ func main() {
 	mux.Handle("GET /api/vehicles/ratings/vehicle-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleScoreSummaries), requireAuth, requireMonitor))
 	mux.Handle("GET /api/vehicles/ratings/technician-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.TechnicianWashSummaries), requireAuth, requireMonitor))
 
+	// المرحلة 2: مرفقات الأعطال/الأضرار، متابعة الإطارات والبطاريات، تنبيهات الاستحقاق
+	mux.Handle("GET /api/vehicle-incidents/{id}/attachments", middleware.Chain(http.HandlerFunc(vehicleHandler.ListIncidentAttachments), requireAuth, requireVehicleMgmt))
+	mux.Handle("POST /api/vehicle-incidents/{id}/attachments", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateIncidentAttachment), requireAuth, requireVehicleMgmt))
+	mux.Handle("DELETE /api/vehicle-incidents/{id}/attachments/{attachmentId}", middleware.Chain(http.HandlerFunc(vehicleHandler.DeleteIncidentAttachment), requireAuth, requireVehicleMgmt))
+	mux.Handle("GET /api/vehicles/{id}/parts", middleware.Chain(http.HandlerFunc(vehicleHandler.ListParts), requireAuth, requireVehicleMgmt))
+	mux.Handle("POST /api/vehicles/{id}/parts", middleware.Chain(http.HandlerFunc(vehicleHandler.CreatePart), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/vehicle-parts/{id}/replace", middleware.Chain(http.HandlerFunc(vehicleHandler.ReplacePart), requireAuth, requireVehicleMgmt))
+	mux.Handle("GET /api/vehicles/alerts", middleware.Chain(http.HandlerFunc(vehicleHandler.Alerts), requireAuth, requireVehicleMgmt))
+
 	// الجودة — مشاكل تنفيذية ميدانية + مشاكل رقابية/إدارية
 	// تقارير العمل — الفني يرسل تقرير عن حجزه، المراقب/الجودة يشوفون كل التقارير
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))

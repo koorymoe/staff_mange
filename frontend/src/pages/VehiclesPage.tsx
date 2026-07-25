@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleDocument, type VehiclePhoto } from '../api'
+import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleDocument, type VehiclePhoto, type VehicleIncidentAttachment, type VehiclePart, type VehicleAlert } from '../api'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -29,6 +29,18 @@ const LOG_TYPE_LABELS: Record<string, string> = {
   FUEL: 'تعبئة وقود',
   CLEANING: 'تنظيف',
   OIL_CHANGE: 'تبديل زيت',
+  MAINTENANCE: 'صيانة عامة',
+}
+
+const PART_TYPE_LABELS: Record<string, string> = {
+  TIRE: 'إطار',
+  BATTERY: 'بطارية',
+}
+
+const ALERT_TYPE_LABELS: Record<string, string> = {
+  MAINTENANCE: 'صيانة',
+  PART: 'قطعة',
+  DOCUMENT: 'وثيقة',
 }
 
 const RATING_FIELDS: { key: keyof typeof EMPTY_RATING_FORM; label: string }[] = [
@@ -76,7 +88,11 @@ export default function VehiclesPage() {
   const [dailyRatings, setDailyRatings] = useState<VehicleDailyRating[]>([])
   const [documents, setDocuments] = useState<VehicleDocument[]>([])
   const [photos, setPhotos] = useState<VehiclePhoto[]>([])
-  const [tab, setTab] = useState<'logs' | 'incidents' | 'monthly' | 'rating' | 'documents' | 'photos'>('logs')
+  const [parts, setParts] = useState<VehiclePart[]>([])
+  const [incidentAttachments, setIncidentAttachments] = useState<Record<string, VehicleIncidentAttachment[]>>({})
+  const [alerts, setAlerts] = useState<VehicleAlert[]>([])
+  const [alertsOpen, setAlertsOpen] = useState(false)
+  const [tab, setTab] = useState<'logs' | 'incidents' | 'monthly' | 'rating' | 'documents' | 'photos' | 'parts'>('logs')
 
   // add-vehicle form
   const [showAddVehicle, setShowAddVehicle] = useState(false)
@@ -104,10 +120,11 @@ export default function VehiclesPage() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   // log form
-  const [logType, setLogType] = useState<'FUEL' | 'CLEANING' | 'OIL_CHANGE'>('FUEL')
+  const [logType, setLogType] = useState<'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'>('FUEL')
   const [logOdometer, setLogOdometer] = useState('')
   const [logCost, setLogCost] = useState('')
   const [logNextDue, setLogNextDue] = useState('')
+  const [logNextDueOdometer, setLogNextDueOdometer] = useState('')
   const [logNotes, setLogNotes] = useState('')
 
   // incident form
@@ -115,6 +132,16 @@ export default function VehiclesPage() {
   const [incDesc, setIncDesc] = useState('')
   const [incResponsible, setIncResponsible] = useState('')
   const [incCost, setIncCost] = useState('')
+  const [uploadingAttachmentFor, setUploadingAttachmentFor] = useState<string | null>(null)
+
+  // part form
+  const [partType, setPartType] = useState<'TIRE' | 'BATTERY'>('TIRE')
+  const [partInstalledAt, setPartInstalledAt] = useState('')
+  const [partInstalledOdometer, setPartInstalledOdometer] = useState('')
+  const [partLifespanKm, setPartLifespanKm] = useState('')
+  const [partLifespanMonths, setPartLifespanMonths] = useState('')
+  const [partNotes, setPartNotes] = useState('')
+  const [savingPart, setSavingPart] = useState(false)
 
   // monthly form
   const [monMonth, setMonMonth] = useState(currentMonth())
@@ -133,19 +160,34 @@ export default function VehiclesPage() {
 
   const loadVehicles = () => api.getVehicles().then(setVehicles)
 
+  const loadAlerts = () => api.getVehicleAlerts().then(setAlerts)
+
   useEffect(() => {
     loadVehicles()
     api.getEmployees().then(setEmployees)
+    loadAlerts()
   }, [])
+
+  const loadIncidentsWithAttachments = (vehicleId: string) => {
+    api.getVehicleIncidents(vehicleId).then((list) => {
+      setIncidents(list)
+      list.forEach((inc) => {
+        api.getVehicleIncidentAttachments(inc.id).then((atts) =>
+          setIncidentAttachments((prev) => ({ ...prev, [inc.id]: atts }))
+        )
+      })
+    })
+  }
 
   useEffect(() => {
     if (!selectedId) return
     api.getVehicleLogs(selectedId).then(setLogs)
-    api.getVehicleIncidents(selectedId).then(setIncidents)
+    loadIncidentsWithAttachments(selectedId)
     api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
     api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
     api.getVehicleDocuments(selectedId).then(setDocuments)
     api.getVehiclePhotos(selectedId).then(setPhotos)
+    api.getVehicleParts(selectedId).then(setParts)
   }, [selectedId])
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedId) || null
@@ -221,10 +263,12 @@ export default function VehiclesPage() {
       odometer: logOdometer ? Number(logOdometer) : undefined,
       cost: logCost ? Number(logCost) : undefined,
       nextDueAt: logNextDue || undefined,
+      nextDueOdometer: logNextDueOdometer ? Number(logNextDueOdometer) : undefined,
       notes: logNotes || undefined,
     })
-    setLogOdometer(''); setLogCost(''); setLogNextDue(''); setLogNotes('')
+    setLogOdometer(''); setLogCost(''); setLogNextDue(''); setLogNextDueOdometer(''); setLogNotes('')
     api.getVehicleLogs(selectedId).then(setLogs)
+    loadAlerts()
   }
 
   const handleAddIncident = async (e: React.FormEvent) => {
@@ -237,13 +281,65 @@ export default function VehiclesPage() {
       cost: incCost ? Number(incCost) : undefined,
     })
     setIncDesc(''); setIncResponsible(''); setIncCost('')
-    api.getVehicleIncidents(selectedId).then(setIncidents)
+    loadIncidentsWithAttachments(selectedId)
   }
 
   const handleResolveIncident = async (id: string) => {
     if (!selectedId) return
     await api.updateVehicleIncident(id, { status: 'RESOLVED' })
-    api.getVehicleIncidents(selectedId).then(setIncidents)
+    loadIncidentsWithAttachments(selectedId)
+  }
+
+  const handleUploadIncidentAttachment = async (incidentId: string, file: File | null) => {
+    if (!file) return
+    setUploadingAttachmentFor(incidentId)
+    try {
+      const base64 = await fileToBase64(file)
+      const mediaType = file.type.startsWith('video/') ? 'VIDEO' : 'IMAGE'
+      await api.createVehicleIncidentAttachment(incidentId, { url: base64, mediaType })
+      const atts = await api.getVehicleIncidentAttachments(incidentId)
+      setIncidentAttachments((prev) => ({ ...prev, [incidentId]: atts }))
+    } finally {
+      setUploadingAttachmentFor(null)
+    }
+  }
+
+  const handleDeleteIncidentAttachment = async (incidentId: string, attachmentId: string) => {
+    await api.deleteVehicleIncidentAttachment(incidentId, attachmentId)
+    const atts = await api.getVehicleIncidentAttachments(incidentId)
+    setIncidentAttachments((prev) => ({ ...prev, [incidentId]: atts }))
+  }
+
+  const handleAddPart = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedId || !partInstalledOdometer) return
+    setSavingPart(true)
+    try {
+      await api.createVehiclePart(selectedId, {
+        partType,
+        installedAt: partInstalledAt || undefined,
+        installedOdometer: Number(partInstalledOdometer),
+        expectedLifespanKm: partLifespanKm ? Number(partLifespanKm) : undefined,
+        expectedLifespanMonths: partLifespanMonths ? Number(partLifespanMonths) : undefined,
+        notes: partNotes || undefined,
+      })
+      setPartInstalledAt(''); setPartInstalledOdometer(''); setPartLifespanKm(''); setPartLifespanMonths(''); setPartNotes('')
+      api.getVehicleParts(selectedId).then(setParts)
+      loadAlerts()
+    } finally {
+      setSavingPart(false)
+    }
+  }
+
+  const handleReplacePart = async (partId: string, type: 'TIRE' | 'BATTERY') => {
+    if (!selectedId) return
+    await api.replaceVehiclePart(partId)
+    api.getVehicleParts(selectedId).then(setParts)
+    loadAlerts()
+    // تحضير نموذج إضافة قطعة جديدة بنفس النوع كتذكير للمراقب لتسجيل التبديل فوراً
+    setPartType(type)
+    setPartInstalledAt(new Date().toISOString().slice(0, 10))
+    setPartInstalledOdometer(String(selectedVehicle?.currentOdometer ?? ''))
   }
 
   const handleSetMonthly = async (e: React.FormEvent) => {
@@ -300,6 +396,39 @@ export default function VehiclesPage() {
           {showAddVehicle ? 'إلغاء' : '+ إضافة سيارة'}
         </button>
       </div>
+
+      {alerts.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <button
+            onClick={() => setAlertsOpen((v) => !v)}
+            className="flex w-full items-center justify-between px-5 py-3"
+          >
+            <span className="flex items-center gap-2 font-bold text-slate-800">
+              تنبيهات الصيانة والوثائق
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${alerts.some((a) => a.severity === 'danger') ? 'bg-red-600' : 'bg-amber-500'}`}>
+                {alerts.length}
+              </span>
+            </span>
+            <span className="text-slate-400">{alertsOpen ? '▲' : '▼'}</span>
+          </button>
+          {alertsOpen && (
+            <div className="divide-y divide-slate-100 border-t border-slate-100">
+              {alerts.map((a, i) => (
+                <div key={i} className="flex items-center justify-between px-5 py-2 text-sm">
+                  <div>
+                    <span className="font-bold text-slate-700">{a.vehicleName}</span>
+                    <span className="mx-2 text-slate-400">·</span>
+                    <span className="text-slate-500">{ALERT_TYPE_LABELS[a.alertType]}: {a.message}</span>
+                  </div>
+                  <span className={`rounded-full px-2 py-1 text-xs font-bold ${a.severity === 'danger' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {a.severity === 'danger' ? 'عاجل' : 'قريب'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showAddVehicle && (
         <form onSubmit={handleAddVehicle} className="grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-4">
@@ -373,6 +502,7 @@ export default function VehiclesPage() {
                   { key: 'rating', label: 'التقييم اليومي' },
                   { key: 'documents', label: 'الوثائق' },
                   { key: 'photos', label: 'الصور' },
+                  { key: 'parts', label: 'الإطارات والبطاريات' },
                 ] as const).map((t) => (
                   <button
                     key={t.key}
@@ -391,12 +521,17 @@ export default function VehiclesPage() {
                       <option value="FUEL">تعبئة وقود</option>
                       <option value="CLEANING">تنظيف</option>
                       <option value="OIL_CHANGE">تبديل زيت</option>
+                      <option value="MAINTENANCE">صيانة عامة</option>
                     </select>
                     <input type="number" placeholder="عداد المسافة" value={logOdometer} onChange={(e) => setLogOdometer(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <input type="number" placeholder="التكلفة" value={logCost} onChange={(e) => setLogCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <div>
-                      <label className="mb-1 block text-xs text-slate-500">الموعد القادم (اختياري)</label>
+                      <label className="mb-1 block text-xs text-slate-500">تاريخ الصيانة القادمة (اختياري)</label>
                       <input type="date" value={logNextDue} onChange={(e) => setLogNextDue(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-500">العداد القادم للصيانة (اختياري)</label>
+                      <input type="number" placeholder="العداد القادم للصيانة" value={logNextDueOdometer} onChange={(e) => setLogNextDueOdometer(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
                     </div>
                     <input placeholder="ملاحظات" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
                     <button type="submit" className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
@@ -411,6 +546,7 @@ export default function VehiclesPage() {
                           <th className="px-4 py-2">العداد</th>
                           <th className="px-4 py-2">التكلفة</th>
                           <th className="px-4 py-2">الموعد القادم</th>
+                          <th className="px-4 py-2">العداد القادم</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -421,9 +557,10 @@ export default function VehiclesPage() {
                             <td className="px-4 py-2 text-slate-500">{l.odometer ?? '-'}</td>
                             <td className="px-4 py-2 text-slate-500">{l.cost ?? '-'}</td>
                             <td className="px-4 py-2 text-slate-500">{l.nextDueAt ? new Date(l.nextDueAt).toLocaleDateString('ar-IQ') : '-'}</td>
+                            <td className="px-4 py-2 text-slate-500">{l.nextDueOdometer ?? '-'}</td>
                           </tr>
                         ))}
-                        {logs.length === 0 && <tr><td colSpan={5} className="p-4 text-center text-slate-400">لا توجد سجلات</td></tr>}
+                        {logs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">لا توجد سجلات</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -467,6 +604,38 @@ export default function VehiclesPage() {
                             تمت المعالجة
                           </button>
                         )}
+
+                        <div className="mt-3 border-t border-slate-100 pt-3">
+                          <label className="mb-1 block text-xs text-slate-500">إرفاق صورة/فيديو للعطل أو الضرر</label>
+                          <input
+                            type="file"
+                            accept="image/*,video/*"
+                            disabled={uploadingAttachmentFor === inc.id}
+                            onChange={(e) => handleUploadIncidentAttachment(inc.id, e.target.files?.[0] || null)}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs"
+                          />
+                          {(incidentAttachments[inc.id]?.length ?? 0) > 0 && (
+                            <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-4">
+                              {incidentAttachments[inc.id].map((att) => (
+                                <div key={att.id} className="group relative overflow-hidden rounded-lg border border-slate-200">
+                                  {att.mediaType === 'VIDEO' ? (
+                                    <video src={att.url} className="h-20 w-full object-cover" muted />
+                                  ) : (
+                                    <a href={att.url} target="_blank" rel="noreferrer">
+                                      <img src={att.url} alt="مرفق" className="h-20 w-full object-cover" />
+                                    </a>
+                                  )}
+                                  <button
+                                    onClick={() => handleDeleteIncidentAttachment(inc.id, att.id)}
+                                    className="absolute left-1 top-1 rounded-lg bg-red-600/90 px-1.5 py-0.5 text-[10px] font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
+                                  >
+                                    حذف
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     ))}
                     {incidents.length === 0 && <p className="p-4 text-center text-slate-400">لا توجد أعطال أو أضرار مسجلة</p>}
@@ -683,6 +852,66 @@ export default function VehiclesPage() {
                       </div>
                     ))}
                     {photos.length === 0 && <p className="col-span-full p-4 text-center text-slate-400">لا توجد صور مسجلة لهذي السيارة</p>}
+                  </div>
+                </div>
+              )}
+
+              {tab === 'parts' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleAddPart} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3">
+                    <select value={partType} onChange={(e) => setPartType(e.target.value as typeof partType)} className="rounded-lg border border-slate-300 px-3 py-2">
+                      <option value="TIRE">إطار</option>
+                      <option value="BATTERY">بطارية</option>
+                    </select>
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-500">تاريخ التركيب</label>
+                      <input type="date" value={partInstalledAt} onChange={(e) => setPartInstalledAt(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                    </div>
+                    <input required type="number" placeholder="عداد التركيب" value={partInstalledOdometer} onChange={(e) => setPartInstalledOdometer(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                    <input type="number" placeholder="العمر المتوقع (كم)" value={partLifespanKm} onChange={(e) => setPartLifespanKm(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                    <input type="number" placeholder="العمر المتوقع (شهور)" value={partLifespanMonths} onChange={(e) => setPartLifespanMonths(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                    <input placeholder="ملاحظات" value={partNotes} onChange={(e) => setPartNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                    <button type="submit" disabled={savingPart} className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+                      {savingPart ? 'جاري الحفظ...' : 'إضافة قطعة'}
+                    </button>
+                  </form>
+
+                  <div className="space-y-3">
+                    {parts.map((p) => {
+                      const distanceSince = selectedVehicle ? selectedVehicle.currentOdometer - p.installedOdometer : null
+                      const daysSince = Math.floor((Date.now() - new Date(p.installedAt).getTime()) / (1000 * 60 * 60 * 24))
+                      return (
+                        <div key={p.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-slate-700">{PART_TYPE_LABELS[p.partType]}</span>
+                            <div className="flex items-center gap-2">
+                              {p.replacedAt ? (
+                                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">تم الاستبدال</span>
+                              ) : p.dueSoon ? (
+                                <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-700">قريب الاستحقاق</span>
+                              ) : (
+                                <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">سليم</span>
+                              )}
+                              {!p.replacedAt && (
+                                <button onClick={() => handleReplacePart(p.id, p.partType)} className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700 hover:bg-amber-100">
+                                  تم الاستبدال
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-500 sm:grid-cols-4">
+                            <p>تاريخ التركيب: {new Date(p.installedAt).toLocaleDateString('ar-IQ')}</p>
+                            <p>عداد التركيب: {p.installedOdometer}</p>
+                            <p>المسافة منذ التركيب: {distanceSince ?? '-'} كم</p>
+                            <p>الزمن منذ التركيب: {daysSince} يوم</p>
+                            {p.expectedLifespanKm != null && <p>العمر المتوقع: {p.expectedLifespanKm} كم</p>}
+                            {p.expectedLifespanMonths != null && <p>العمر المتوقع: {p.expectedLifespanMonths} شهر</p>}
+                            {p.notes && <p className="sm:col-span-2">ملاحظات: {p.notes}</p>}
+                          </div>
+                        </div>
+                      )
+                    })}
+                    {parts.length === 0 && <p className="p-4 text-center text-slate-400">لا توجد إطارات أو بطاريات مسجلة لهذي السيارة</p>}
                   </div>
                 </div>
               )}

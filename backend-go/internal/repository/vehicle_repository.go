@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -134,10 +136,10 @@ func (r *VehicleRepository) ListLogs(vehicleID string) ([]model.VehicleLog, erro
 func (r *VehicleRepository) CreateLog(vehicleID string, req model.CreateVehicleLogRequest, recordedByID string) (*model.VehicleLog, error) {
 	var l model.VehicleLog
 	err := r.db.Get(&l, `
-		INSERT INTO "VehicleLog" (id, "vehicleId", type, "performedAt", "nextDueAt", odometer, cost, notes, "recordedById")
-		VALUES (gen_random_uuid()::text, $1, $2, COALESCE($3::timestamp, now()), $4::timestamp, $5, $6, $7, $8)
+		INSERT INTO "VehicleLog" (id, "vehicleId", type, "performedAt", "nextDueAt", "nextDueOdometer", odometer, cost, notes, "recordedById")
+		VALUES (gen_random_uuid()::text, $1, $2, COALESCE($3::timestamp, now()), $4::timestamp, $5, $6, $7, $8, $9)
 		RETURNING *
-	`, vehicleID, req.Type, req.PerformedAt, req.NextDueAt, req.Odometer, req.Cost, req.Notes, recordedByID)
+	`, vehicleID, req.Type, req.PerformedAt, req.NextDueAt, req.NextDueOdometer, req.Odometer, req.Cost, req.Notes, recordedByID)
 	if err != nil {
 		return nil, err
 	}
@@ -412,4 +414,110 @@ func (r *VehicleRepository) TechnicianWashSummaries(since string, pointValue, mo
 		}
 	}
 	return summaries, nil
+}
+
+// ── VehicleIncidentAttachment ──
+
+func (r *VehicleRepository) ListIncidentAttachments(incidentID string) ([]model.VehicleIncidentAttachment, error) {
+	attachments := []model.VehicleIncidentAttachment{}
+	err := r.db.Select(&attachments, `SELECT * FROM "VehicleIncidentAttachment" WHERE "incidentId" = $1 ORDER BY "createdAt" DESC`, incidentID)
+	return attachments, err
+}
+
+func (r *VehicleRepository) CreateIncidentAttachment(incidentID string, req model.CreateVehicleIncidentAttachmentRequest) (*model.VehicleIncidentAttachment, error) {
+	mediaType := req.MediaType
+	if mediaType == "" {
+		mediaType = "IMAGE"
+	}
+	var a model.VehicleIncidentAttachment
+	err := r.db.Get(&a, `
+		INSERT INTO "VehicleIncidentAttachment" (id, "incidentId", url, "mediaType")
+		VALUES (gen_random_uuid()::text, $1, $2, $3)
+		RETURNING *
+	`, incidentID, req.URL, mediaType)
+	return &a, err
+}
+
+func (r *VehicleRepository) DeleteIncidentAttachment(incidentID, attachmentID string) error {
+	_, err := r.db.Exec(`DELETE FROM "VehicleIncidentAttachment" WHERE id = $1 AND "incidentId" = $2`, attachmentID, incidentID)
+	return err
+}
+
+// ── VehiclePart (إطارات وبطاريات) ──
+
+func (r *VehicleRepository) ListParts(vehicleID string) ([]model.VehiclePart, error) {
+	parts := []model.VehiclePart{}
+	err := r.db.Select(&parts, `SELECT * FROM "VehiclePart" WHERE "vehicleId" = $1 ORDER BY "installedAt" DESC`, vehicleID)
+	return parts, err
+}
+
+func (r *VehicleRepository) GetPart(id string) (*model.VehiclePart, error) {
+	var p model.VehiclePart
+	err := r.db.Get(&p, `SELECT * FROM "VehiclePart" WHERE id = $1`, id)
+	return &p, err
+}
+
+func (r *VehicleRepository) CreatePart(vehicleID string, req model.CreateVehiclePartRequest) (*model.VehiclePart, error) {
+	var p model.VehiclePart
+	err := r.db.Get(&p, `
+		INSERT INTO "VehiclePart" (id, "vehicleId", "partType", "installedAt", "installedOdometer", "expectedLifespanKm", "expectedLifespanMonths", notes)
+		VALUES (gen_random_uuid()::text, $1, $2, COALESCE($3::timestamp, now()), $4, $5, $6, $7)
+		RETURNING *
+	`, vehicleID, req.PartType, req.InstalledAt, req.InstalledOdometer, req.ExpectedLifespanKm, req.ExpectedLifespanMonths, req.Notes)
+	return &p, err
+}
+
+func (r *VehicleRepository) MarkPartReplaced(id string) (*model.VehiclePart, error) {
+	var p model.VehiclePart
+	err := r.db.Get(&p, `UPDATE "VehiclePart" SET "replacedAt" = now() WHERE id = $1 RETURNING *`, id)
+	return &p, err
+}
+
+// ── Alerts (استحقاق صيانة/قطع/وثائق قريبة) ──
+
+func (r *VehicleRepository) VehiclesByID() (map[string]model.Vehicle, error) {
+	vehicles := []model.Vehicle{}
+	if err := r.db.Select(&vehicles, `SELECT * FROM "Vehicle" WHERE "isActive" = true`); err != nil {
+		return nil, err
+	}
+	m := make(map[string]model.Vehicle, len(vehicles))
+	for _, v := range vehicles {
+		m[v.ID] = v
+	}
+	return m, nil
+}
+
+type dueMaintenanceLogRow struct {
+	VehicleID       string     `db:"vehicleId"`
+	Type            string     `db:"type"`
+	NextDueAt       *time.Time `db:"nextDueAt"`
+	NextDueOdometer *int       `db:"nextDueOdometer"`
+}
+
+// DueSoonLogs يجيب أحدث سجل لكل (سيارة، نوع) له استحقاق تاريخ أو عداد قادم لم يُتجاوز بعد.
+func (r *VehicleRepository) DueSoonLogs() ([]dueMaintenanceLogRow, error) {
+	rows := []dueMaintenanceLogRow{}
+	err := r.db.Select(&rows, `
+		SELECT DISTINCT ON ("vehicleId", type) "vehicleId", type, "nextDueAt", "nextDueOdometer"
+		FROM "VehicleLog"
+		WHERE "nextDueAt" IS NOT NULL OR "nextDueOdometer" IS NOT NULL
+		ORDER BY "vehicleId", type, "performedAt" DESC
+	`)
+	return rows, err
+}
+
+func (r *VehicleRepository) AllActivePartsInUse() ([]model.VehiclePart, error) {
+	parts := []model.VehiclePart{}
+	err := r.db.Select(&parts, `SELECT * FROM "VehiclePart" WHERE "replacedAt" IS NULL`)
+	return parts, err
+}
+
+func (r *VehicleRepository) DocumentsExpiringWithin(days int) ([]model.VehicleDocument, error) {
+	docs := []model.VehicleDocument{}
+	err := r.db.Select(&docs, `
+		SELECT * FROM "VehicleDocument"
+		WHERE "expiryDate" IS NOT NULL AND "expiryDate" <= now() + ($1 || ' days')::interval
+		ORDER BY "expiryDate" ASC
+	`, days)
+	return docs, err
 }

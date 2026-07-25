@@ -252,3 +252,87 @@ func (h *VehicleHandler) TechnicianWashSummaries(w http.ResponseWriter, r *http.
 	}
 	WriteJSON(w, http.StatusOK, summaries)
 }
+
+// ── VehicleIncidentAttachment ──
+
+func (h *VehicleHandler) ListIncidentAttachments(w http.ResponseWriter, r *http.Request) {
+	attachments, err := h.service.ListIncidentAttachments(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب مرفقات العطل/الضرر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, attachments)
+}
+
+func (h *VehicleHandler) CreateIncidentAttachment(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateVehicleIncidentAttachmentRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	attachment, err := h.service.CreateIncidentAttachment(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, attachment)
+}
+
+func (h *VehicleHandler) DeleteIncidentAttachment(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.DeleteIncidentAttachment(r.PathValue("id"), r.PathValue("attachmentId")); err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر حذف المرفق")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// ── VehiclePart (إطارات وبطاريات) ──
+
+func (h *VehicleHandler) ListParts(w http.ResponseWriter, r *http.Request) {
+	vehicleID := r.PathValue("id")
+	vehicle, err := h.service.Get(vehicleID)
+	currentOdometer := 0
+	if err == nil && vehicle != nil {
+		currentOdometer = vehicle.CurrentOdometer
+	}
+	parts, err := h.service.ListParts(vehicleID, currentOdometer)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب قطع السيارة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, parts)
+}
+
+func (h *VehicleHandler) CreatePart(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateVehiclePartRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	part, err := h.service.CreatePart(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, part)
+}
+
+func (h *VehicleHandler) ReplacePart(w http.ResponseWriter, r *http.Request) {
+	part, err := h.service.MarkPartReplaced(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر تحديث القطعة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, part)
+}
+
+// ── تنبيهات الصيانة والوثائق ──
+
+func (h *VehicleHandler) Alerts(w http.ResponseWriter, r *http.Request) {
+	alerts, err := h.service.VehicleAlerts()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب تنبيهات السيارات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, alerts)
+}

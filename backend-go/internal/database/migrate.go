@@ -940,6 +940,35 @@ var migrations = []string{
 		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
 		UNIQUE("missionId", "employeeId")
 	)`,
+
+	// المرحلة 2: صيانة عامة (نوع إضافي لسجل السيارة) + استحقاق الصيانة حسب العداد
+	// بالإضافة لاستحقاقها حسب التاريخ (الموجود مسبقاً).
+	`ALTER TABLE "VehicleLog" ADD COLUMN IF NOT EXISTS "nextDueOdometer" INTEGER`,
+
+	// مرفقات الأعطال/الأضرار (صور/فيديو) — نفس أسلوب تخزين base64 المستخدم بالوثائق والصور.
+	`CREATE TABLE IF NOT EXISTS "VehicleIncidentAttachment" (
+		id TEXT PRIMARY KEY,
+		"incidentId" TEXT NOT NULL REFERENCES "VehicleIncident"(id) ON DELETE CASCADE,
+		url TEXT NOT NULL,
+		"mediaType" TEXT NOT NULL DEFAULT 'IMAGE',
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehicleIncidentAttachment_incidentId_idx" ON "VehicleIncidentAttachment"("incidentId")`,
+
+	// متابعة قطع الاستهلاك (إطارات وبطاريات) — استحقاق التبديل حسب المسافة أو الزمن أيهما أقرب.
+	`CREATE TABLE IF NOT EXISTS "VehiclePart" (
+		id TEXT PRIMARY KEY,
+		"vehicleId" TEXT NOT NULL REFERENCES "Vehicle"(id) ON DELETE CASCADE,
+		"partType" TEXT NOT NULL,
+		"installedAt" TIMESTAMP NOT NULL,
+		"installedOdometer" INTEGER NOT NULL,
+		"expectedLifespanKm" INTEGER,
+		"expectedLifespanMonths" INTEGER,
+		notes TEXT,
+		"replacedAt" TIMESTAMP,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehiclePart_vehicleId_idx" ON "VehiclePart"("vehicleId")`,
 }
 
 func Migrate(db *sqlx.DB) error {

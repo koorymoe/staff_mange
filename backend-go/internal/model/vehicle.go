@@ -129,28 +129,30 @@ type VehicleMissionFilters struct {
 	To        *string
 }
 
-// VehicleLog يغطي وقود/تنظيف/تبديل زيت — سجل واحد بنوع محدد لكل حدث
+// VehicleLog يغطي وقود/تنظيف/تبديل زيت/صيانة عامة — سجل واحد بنوع محدد لكل حدث
 type VehicleLog struct {
-	ID           string         `db:"id" json:"id"`
-	VehicleID    string         `db:"vehicleId" json:"vehicleId"`
-	Type         string         `db:"type" json:"type"` // FUEL | CLEANING | OIL_CHANGE
-	PerformedAt  time.Time      `db:"performedAt" json:"performedAt"`
-	NextDueAt    *time.Time     `db:"nextDueAt" json:"nextDueAt"`
-	Odometer     *int           `db:"odometer" json:"odometer"`
-	Cost         *float64       `db:"cost" json:"cost"`
-	Notes        *string        `db:"notes" json:"notes"`
-	RecordedByID *string        `db:"recordedById" json:"-"`
-	CreatedAt    time.Time      `db:"createdAt" json:"createdAt"`
-	RecordedBy   *EmployeeBrief `db:"-" json:"recordedBy"`
+	ID              string         `db:"id" json:"id"`
+	VehicleID       string         `db:"vehicleId" json:"vehicleId"`
+	Type            string         `db:"type" json:"type"` // FUEL | CLEANING | OIL_CHANGE | MAINTENANCE
+	PerformedAt     time.Time      `db:"performedAt" json:"performedAt"`
+	NextDueAt       *time.Time     `db:"nextDueAt" json:"nextDueAt"`
+	NextDueOdometer *int           `db:"nextDueOdometer" json:"nextDueOdometer"`
+	Odometer        *int           `db:"odometer" json:"odometer"`
+	Cost            *float64       `db:"cost" json:"cost"`
+	Notes           *string        `db:"notes" json:"notes"`
+	RecordedByID    *string        `db:"recordedById" json:"-"`
+	CreatedAt       time.Time      `db:"createdAt" json:"createdAt"`
+	RecordedBy      *EmployeeBrief `db:"-" json:"recordedBy"`
 }
 
 type CreateVehicleLogRequest struct {
-	Type        string   `json:"type"`
-	PerformedAt *string  `json:"performedAt"`
-	NextDueAt   *string  `json:"nextDueAt"`
-	Odometer    *int     `json:"odometer"`
-	Cost        *float64 `json:"cost"`
-	Notes       *string  `json:"notes"`
+	Type            string   `json:"type"`
+	PerformedAt     *string  `json:"performedAt"`
+	NextDueAt       *string  `json:"nextDueAt"`
+	NextDueOdometer *int     `json:"nextDueOdometer"`
+	Odometer        *int     `json:"odometer"`
+	Cost            *float64 `json:"cost"`
+	Notes           *string  `json:"notes"`
 }
 
 // VehicleIncident يغطي الأعطال والأضرار (صدمات) مع تحديد المسبب والتكلفة
@@ -180,6 +182,55 @@ type CreateVehicleIncidentRequest struct {
 type UpdateVehicleIncidentRequest struct {
 	Status *string  `json:"status"`
 	Cost   *float64 `json:"cost"`
+}
+
+// VehicleIncidentAttachment صور/فيديو مرفقة بعطل أو ضرر (تُخزَّن base64 مثل الوثائق والصور).
+type VehicleIncidentAttachment struct {
+	ID         string    `db:"id" json:"id"`
+	IncidentID string    `db:"incidentId" json:"incidentId"`
+	URL        string    `db:"url" json:"url"`
+	MediaType  string    `db:"mediaType" json:"mediaType"` // IMAGE | VIDEO
+	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
+}
+
+type CreateVehicleIncidentAttachmentRequest struct {
+	URL       string `json:"url"`
+	MediaType string `json:"mediaType"`
+}
+
+// VehiclePart قطعة استهلاك (إطار/بطارية) مع تاريخ وعداد التركيب وعمر متوقع
+// بالمسافة و/أو الزمن — أيهما أقرب يحدد الاستحقاق.
+type VehiclePart struct {
+	ID                     string     `db:"id" json:"id"`
+	VehicleID              string     `db:"vehicleId" json:"vehicleId"`
+	PartType               string     `db:"partType" json:"partType"` // TIRE | BATTERY
+	InstalledAt            time.Time  `db:"installedAt" json:"installedAt"`
+	InstalledOdometer      int        `db:"installedOdometer" json:"installedOdometer"`
+	ExpectedLifespanKm     *int       `db:"expectedLifespanKm" json:"expectedLifespanKm"`
+	ExpectedLifespanMonths *int       `db:"expectedLifespanMonths" json:"expectedLifespanMonths"`
+	Notes                  *string    `db:"notes" json:"notes"`
+	ReplacedAt             *time.Time `db:"replacedAt" json:"replacedAt"`
+	CreatedAt              time.Time  `db:"createdAt" json:"createdAt"`
+
+	DueSoon bool `db:"-" json:"dueSoon"`
+}
+
+type CreateVehiclePartRequest struct {
+	PartType               string  `json:"partType"`
+	InstalledAt            *string `json:"installedAt"`
+	InstalledOdometer      int     `json:"installedOdometer"`
+	ExpectedLifespanKm     *int    `json:"expectedLifespanKm"`
+	ExpectedLifespanMonths *int    `json:"expectedLifespanMonths"`
+	Notes                  *string `json:"notes"`
+}
+
+// VehicleAlert تنبيه استحقاق صيانة/وثيقة/قطعة — لوحة تذكير سريعة أعلى صفحة السيارات.
+type VehicleAlert struct {
+	VehicleID   string `json:"vehicleId"`
+	VehicleName string `json:"vehicleName"`
+	AlertType   string `json:"alertType"` // MAINTENANCE | PART | DOCUMENT
+	Message     string `json:"message"`
+	Severity    string `json:"severity"` // warning | danger
 }
 
 // VehicleMonthlyStatus يوثّق حالة كل سيارة شهرياً
