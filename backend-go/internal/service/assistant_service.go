@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -39,9 +42,83 @@ type AssistantService struct {
 	qualityFUs  *repository.QualityFollowUpRepository
 	complaints  *repository.ComplaintRepository
 
+	// roleGuides: خريطة "الدور الوظيفي → نص دليل الاستخدام" — تُحمَّل مرة وحدة عند
+	// إنشاء الخدمة (مو بكل طلب) حتى ما نعيد قراءة الملفات وتنظيف الـHTML بكل رسالة.
+	roleGuides map[string]string
+
 	mu        sync.Mutex
 	usedToday int
 	resetDate string
+}
+
+// roleGuideFiles تربط كل دور وظيفي بملف دليله (بدون امتداد) — الأدوار التسعة
+// القديمة لها ملفات HTML مصممة (tutorial-*.html)، والأدوار الخمسة الجديدة
+// (اللي ماكانت موثقة سابقاً) لها ملفات نصية بسيطة (guide-*.txt) كتبناها اعتماداً
+// على قراءة فعلية للكود عشان ما نختلق ميزات غير موجودة.
+var roleGuideFiles = map[string]string{
+	"ADMIN":             "tutorial-admin.html",
+	"FINANCE":           "tutorial-finance.html",
+	"GPS_ADMIN":         "tutorial-gps-admin.html",
+	"HR_COORDINATOR":    "tutorial-hr.html",
+	"MONITOR":           "tutorial-monitor.html",
+	"OWNER":             "tutorial-owner.html",
+	"QUALITY_ENGINEER":  "tutorial-quality.html",
+	"SALES":             "tutorial-sales.html",
+	"TECHNICIAN":        "tutorial-technician.html",
+	"ENGINEER":          "guide-engineer.txt",
+	"PROJECT_MANAGER":   "guide-project_manager.txt",
+	"PROCUREMENT_ADMIN": "guide-procurement_admin.txt",
+	"DESIGNER":          "guide-designer.txt",
+	"SERVICE_MANAGER":   "guide-service_manager.txt",
+}
+
+// htmlTagRe و htmlWhitespaceRe يشيلون وسوم الـHTML والمسافات الزايدة من أدلة
+// الاستخدام القديمة (tutorial-*.html) حتى نبعت للموديل نص عربي مقروء بدل
+// ماركب HTML يبذّر توكنز بلا فايدة. تنظيف بسيط بالـregex كافي هنا (مو محتاج
+// parser حقيقي) لأنه الهدف نص مفهوم للذكاء الاصطناعي مو عرض دقيق بالمتصفح.
+var (
+	htmlTagRe        = regexp.MustCompile(`(?is)<(script|style)[^>]*>.*?</(script|style)>|<[^>]+>`)
+	htmlEntityRe     = regexp.MustCompile(`&[a-zA-Z#0-9]+;`)
+	htmlWhitespaceRe = regexp.MustCompile(`[ \t]+`)
+	htmlBlankLinesRe = regexp.MustCompile(`\n{3,}`)
+)
+
+func stripHTML(s string) string {
+	s = htmlTagRe.ReplaceAllString(s, "\n")
+	s = htmlEntityRe.ReplaceAllString(s, " ")
+	s = htmlWhitespaceRe.ReplaceAllString(s, " ")
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimSpace(l)
+	}
+	s = strings.Join(lines, "\n")
+	s = htmlBlankLinesRe.ReplaceAllString(s, "\n\n")
+	return strings.TrimSpace(s)
+}
+
+// loadRoleGuides يقرأ كل ملفات أدلة الاستخدام (HTML القديمة + النصية الجديدة)
+// من القرص مرة وحدة، وينضّفها، ويرجّع خريطة جاهزة للاستخدام بالسياق. إذا ملف
+// مفقود أو المجلد مو موجود (مثلاً بيئة اختبار) نتجاهله بهدوء بدل ما نكسر تشغيل
+// الخدمة كلها — المساعد بس يشتغل بدون دليل ذاك الدور.
+func loadRoleGuides(tutorialsDir string) map[string]string {
+	out := make(map[string]string, len(roleGuideFiles))
+	for role, filename := range roleGuideFiles {
+		path := filepath.Join(tutorialsDir, filename)
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			continue
+		}
+		text := string(raw)
+		if strings.HasSuffix(filename, ".html") {
+			text = stripHTML(text)
+		} else {
+			text = strings.TrimSpace(text)
+		}
+		if text != "" {
+			out[role] = text
+		}
+	}
+	return out
 }
 
 func NewAssistantService(
@@ -55,11 +132,13 @@ func NewAssistantService(
 	gps *repository.GpsRepository,
 	qualityFUs *repository.QualityFollowUpRepository,
 	complaints *repository.ComplaintRepository,
+	tutorialsDir string,
 ) *AssistantService {
 	return &AssistantService{
 		apiKey: apiKey, dailyCap: dailyCap, employees: employees, kpi: kpi, perfReviews: perfReviews,
 		bookings: bookings, missions: missions, expenses: expenses, gps: gps, qualityFUs: qualityFUs, complaints: complaints,
-		resetDate: time.Now().Format("2006-01-02"),
+		roleGuides: loadRoleGuides(tutorialsDir),
+		resetDate:  time.Now().Format("2006-01-02"),
 	}
 }
 
@@ -118,8 +197,48 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 	}
 
 	domainBlock := s.buildRoleScopedBlock(employee)
+	guideBlock := s.roleGuides[employee.Role]
+	if guideBlock == "" {
+		guideBlock = "(ماكو دليل استخدام مفصل لهذا الدور محمّل حالياً — اعتمد على معرفتك العامة بالنظام من بيانات شغله أعلاه بس، ولا تختلق أسماء صفحات أو أزرار غير مذكورة)"
+	}
 
-	systemContext := fmt.Sprintf(`أنت مساعد ذكي داخلي لنظام إدارة موظفين شركة الأماني. جاوب بس عن بيانات الموظف الحالي أدناه (بياناته الشخصية + بيانات شغله المرتبطة بدوره الوظيفي المذكورة أدناه)، بأسلوب ودود ومختصر بالعربي (لهجة عراقية بسيطة إذا مناسب). لا تختلق معلومات غير موجودة هنا، وإذا السؤال خارج نطاق بياناته الشخصية أو شغله اعتذر بأدب وقول تراجع الإدارة. إذا سألك يشرحلك شلون يسوي شي بالنظام (مثلاً "شلون أنسق حجز؟")، اشرحله خطوة بخطوة بأسلوب تعليمي بسيط.
+	systemContext := buildSystemPrompt(employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, guideBlock, message)
+
+	return s.callGemini(systemContext)
+}
+
+// buildSystemPrompt يبني نص البرومبت الكامل اللي نبعته لـGemini لكل سؤال موظف عادي.
+// مستخرجة كدالة مستقلة (بدل ما تكون مطبوخة جوة Ask) حتى نقدر نختبرها مباشرة
+// بدون ما نحتاج نتصل فعلياً بـGemini أو نجهز قاعدة بيانات — يكفي نمرر قيم جاهزة
+// ونتأكد النص المبني فيه كل العناصر المطلوبة (تعليمات اللهجة، الاختصار، الأمثلة،
+// ومحتوى دليل الدور).
+func buildSystemPrompt(name, role, salaryLine string, skillsKnown, skillsTotal, kpiPointsThisMonth int, domainBlock, guideBlock, message string) string {
+	return fmt.Sprintf(`أنت مساعد ذكي داخلي لنظام إدارة موظفين شركة الأماني. تحجي مع الموظف مثل زميل عراقي متعاون بالشغل، مو مثل بوت رسمي أو خدمة عملاء.
+
+قواعد الأسلوب — التزم فيها دايماً وبدون استثناء:
+1. اللهجة العراقية إجبارية بكل رد — ممنوع العربية الفصحى الرسمية أو أسلوب "التقرير". احجي متل ما تحجي بالشارع أو بالمكتب مع زميلك.
+2. الرد الافتراضي قصير — جملة وحدة أو جملتين إذا السؤال بسيط أو محادثة عادية. لا تكرر السؤال، لا تحشي كلام زايد، لا تضيف تحذيرات أو ملاحظات ماكو داعي إلها.
+3. الأسلوب المرقّم بخطوات (1، 2، 3...) يجي بس إذا الموظف يطلب "تعليم" فعلي — يعني يسأل بصيغة "علّمني"، "شلون أسوي...؟"، "وريني الخطوات"، أو أي طلب واضح يبين يريد يتعلم عملية. حتى بهاي الحالة خلي الخطوات مختصرة وعملية، وسمّي الصفحات والأزرار بأسمائها الحقيقية المذكورة بدليل الاستخدام أدناه — لا تستخدم وصف عام مثل "روح لصفحة الطلبات"، قول اسمها بالضبط.
+4. لا تختلق معلومات أو أسماء صفحات/أزرار غير موجودة ببيانات الموظف أو بدليل الاستخدام أدناه. إذا السؤال خارج بياناته الشخصية أو شغله، اعتذر بجملة وحدة وقول تراجع الإدارة.
+
+أمثلة على الأسلوب المطلوب (بس للتوضيح، مو نص جاهز تكرره):
+
+مثال 1 — سؤال قصير عادي:
+الموظف: شكد نقاطي هذا الشهر؟
+المساعد: عدك [كذا] نقطة هذا الشهر، زين ماشي.
+
+مثال 2 — دردشة عابرة:
+الموظف: شلونك اليوم؟
+المساعد: تمام الحمدلله، شغلتك جاهزة إذا عدك سؤال ✌️
+
+مثال 3 — طلب تعليم (إداري كميات يسأل شلون يوفر طلب مادة):
+الموظف: علمني شلون أوفر طلب مادة وصلني
+المساعد: خلي أوريك:
+1. افتح "طلبات المواد" من الإدارة ← إدارة المشتريات.
+2. لكيت الطلب بالجدول واضغط عليه يفتحلك تفاصيل المواد.
+3. إذا لسه بانتظار التوفير، اضغط "جاري التوفير" أول لو تريد تبلغ إنك شغال عليه.
+4. لما توفر المواد فعلياً اضغط "تم التوفير"، علّم كل مادة وفّرتها، سجل السعر والتكلفة الكلية، واضغط "تأكيد التوفير".
+خلص، الطلب ينكتب "تم التوفير" ويشوفه الموظف.
 
 بيانات الموظف السائل:
 - الاسم: %s
@@ -131,9 +250,10 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 بيانات شغله الحالية (حسب دوره الوظيفي):
 %s
 
-سؤال الموظف: %s`, employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, message)
+دليل استخدام النظام الخاص بدوره الوظيفي (اعتمد عليه بالضبط لو سألك عن خطوات استخدام النظام):
+%s
 
-	return s.callGemini(systemContext)
+سؤال الموظف: %s`, name, role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, guideBlock, message)
 }
 
 // buildRoleScopedBlock يبني كتلة بيانات "شغل الموظف" حسب دوره الوظيفي —
@@ -372,7 +492,9 @@ func (s *AssistantService) ManagerChat(askerEmployeeID, message string, history 
 		matchedText = "(ما انذكر اسم موظف مطابق بالرسالة الحالية — إذا احتجت بيانات موظف معيّن اطلب منه يذكر الاسم بوضوح)"
 	}
 
-	prompt := fmt.Sprintf(`أنت مساعد ذكي داخلي لمدراء ومراقبي شركة الأماني. تكدر تجاوب عن أي موظف بالشركة (رواتب، مهارات، كي بي اي، تقييمات أداء) وتسوي تقارير مفصلة إذا طلب منك المدير/المراقب. جاوب بالعربي (لهجة عراقية بسيطة إذا مناسب)، بأسلوب محادثة طبيعي مو تقرير جامد إلا إذا طلب المستخدم "تقرير شامل" صراحة. لا تختلق معلومات غير موجودة بالبيانات المعطاة لك.
+	prompt := fmt.Sprintf(`أنت مساعد ذكي داخلي لمدراء ومراقبي شركة الأماني. تكدر تجاوب عن أي موظف بالشركة (رواتب، مهارات، كي بي اي، تقييمات أداء) وتسوي تقارير مفصلة إذا طلب منك المدير/المراقب.
+
+قواعد الأسلوب: احجي لهجة عراقية دايماً (مو فصحى رسمية)، متل زميل يحجي وياك مو بوت. الرد الافتراضي قصير ومباشر — جملة أو جملتين إذا السؤال بسيط. لا تكرر السؤال ولا تحشي كلام زايد. استخدم تقرير مفصل أو نقاط مرقّمة بس إذا طلب المستخدم "تقرير شامل" صراحة أو سأل يتعلم خطوات عملية معينة. لا تختلق معلومات غير موجودة بالبيانات المعطاة لك.
 
 قائمة كل الموظفين بالشركة (للمرجعية، ما عندك تفاصيلهم الكاملة إلا اللي مذكورين أدناه):
 %s

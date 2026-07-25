@@ -120,7 +120,7 @@ func main() {
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService, permissionRepo)
 	kpiHandler := handler.NewKpiHandler(kpiService)
 	notificationHandler := handler.NewNotificationHandler(notificationService)
-	assistantService := service.NewAssistantService(cfg.GeminiAPIKey, cfg.GeminiDailyCap, employeeRepo, kpiRepo, performanceReviewRepo, bookingRepo, missionRepo, expenseRepo, gpsRepo, qualityFollowUpRepo, complaintRepo)
+	assistantService := service.NewAssistantService(cfg.GeminiAPIKey, cfg.GeminiDailyCap, employeeRepo, kpiRepo, performanceReviewRepo, bookingRepo, missionRepo, expenseRepo, gpsRepo, qualityFollowUpRepo, complaintRepo, cfg.TutorialsDir)
 	assistantHandler := handler.NewAssistantHandler(assistantService)
 	kpiCriterionHandler := handler.NewKpiCriterionHandler(kpiCriterionService)
 	smartKpiHandler := handler.NewSmartKpiHandler(smartKpiService)

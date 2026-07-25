@@ -31,6 +31,12 @@ services:
       R2_ENDPOINT: ${R2_ENDPOINT:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
+      TUTORIALS_DIR: /app/tutorials
+    volumes:
+      # المساعد الذكي يقرأ أدلة الاستخدام (tutorial-*.html و guide-*.txt) وقت التشغيل
+      # حتى يشرح للموظفين شلون يستخدمون النظام — bind-mount بدل نسخها بالصورة حتى
+      # نقدر نحدّث محتوى الأدلة بدون إعادة بناء صورة الباك اند.
+      - ./tutorials:/app/tutorials:ro
 
   frontend:
     build: ./frontend
