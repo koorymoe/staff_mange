@@ -499,6 +499,19 @@ export interface VehicleMissionPassenger {
   employee: { id: string; name: string } | null
 }
 
+export interface VehicleMissionRating {
+  id: string
+  missionId: string
+  ratedById: string
+  commitment: number
+  vehicleCare: number
+  driving: number
+  cleanliness: number
+  notes: string | null
+  createdAt: string
+  ratedBy: { id: string; name: string } | null
+}
+
 export interface VehicleMission {
   id: string
   vehicleId: string
@@ -516,6 +529,34 @@ export interface VehicleMission {
   vehicle: Vehicle | null
   driver: { id: string; name: string } | null
   passengers: VehicleMissionPassenger[]
+  rating?: VehicleMissionRating | null
+}
+
+export interface DriverRatingSummary {
+  employeeId: string
+  ratingsCount: number
+  avgCommitment: number
+  avgVehicleCare: number
+  avgDriving: number
+  avgCleanliness: number
+  avgOverall: number
+}
+
+export interface VehicleBooking {
+  id: string
+  vehicleId: string
+  requestedById: string
+  purpose: string
+  startAt: string
+  endAt: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+  approvedById: string | null
+  rejectionReason: string | null
+  createdAt: string
+  decidedAt: string | null
+  vehicle: Vehicle | null
+  requestedBy: { id: string; name: string } | null
+  approvedBy: { id: string; name: string } | null
 }
 
 export interface VehicleLog {
@@ -1260,7 +1301,7 @@ export const api = {
   startVehicleMission: (data: {
     vehicleId: string; driverId?: string; purpose: string; destination: string
     startOdometer: number; passengerIds?: string[]
-  }) => request<VehicleMission>('/vehicle-missions', { method: 'POST', body: JSON.stringify(data) }),
+  }) => request<VehicleMission & { bookingWarning?: string }>('/vehicle-missions', { method: 'POST', body: JSON.stringify(data) }),
   endVehicleMission: (id: string, data: { endOdometer: number; notes?: string }) =>
     request<VehicleMission>(`/vehicle-missions/${id}/end`, { method: 'PUT', body: JSON.stringify(data) }),
   getVehicleMissions: (filters?: { vehicleId?: string; driverId?: string; status?: 'IN_PROGRESS' | 'COMPLETED'; from?: string; to?: string }) => {
@@ -1274,6 +1315,28 @@ export const api = {
     return request<VehicleMission[]>(`/vehicle-missions${qs ? `?${qs}` : ''}`)
   },
   getVehicleMission: (id: string) => request<VehicleMission>(`/vehicle-missions/${id}`),
+  createVehicleMissionRating: (missionId: string, data: {
+    commitment: number; vehicleCare: number; driving: number; cleanliness: number; notes?: string
+  }) => request<VehicleMissionRating>(`/vehicle-missions/${missionId}/rating`, { method: 'POST', body: JSON.stringify(data) }),
+  getDriverRatingSummary: (employeeId: string) =>
+    request<DriverRatingSummary>(`/employees/${employeeId}/driver-rating-summary`),
+
+  createVehicleBooking: (data: { vehicleId: string; purpose: string; startAt: string; endAt: string }) =>
+    request<VehicleBooking>('/vehicle-bookings', { method: 'POST', body: JSON.stringify(data) }),
+  decideVehicleBooking: (id: string, data: { approve: boolean; rejectionReason?: string }) =>
+    request<VehicleBooking>(`/vehicle-bookings/${id}/decide`, { method: 'PUT', body: JSON.stringify(data) }),
+  cancelVehicleBooking: (id: string) =>
+    request<VehicleBooking>(`/vehicle-bookings/${id}/cancel`, { method: 'PUT' }),
+  getVehicleBookings: (filters?: { vehicleId?: string; requestedById?: string; status?: string; from?: string; to?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.vehicleId) params.set('vehicleId', filters.vehicleId)
+    if (filters?.requestedById) params.set('requestedById', filters.requestedById)
+    if (filters?.status) params.set('status', filters.status)
+    if (filters?.from) params.set('from', filters.from)
+    if (filters?.to) params.set('to', filters.to)
+    const qs = params.toString()
+    return request<VehicleBooking[]>(`/vehicle-bookings${qs ? `?${qs}` : ''}`)
+  },
   getTechnicianWashSummaries: (since?: string) =>
     request<TechnicianWashSummary[]>(`/vehicles/ratings/technician-summary${since ? `?since=${since}` : ''}`),
 

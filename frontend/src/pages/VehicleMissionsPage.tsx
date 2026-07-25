@@ -1,6 +1,26 @@
 import { useEffect, useState } from 'react'
-import { api, type Vehicle, type VehicleMission, type Employee } from '../api'
-import { useSession } from '../session'
+import { api, type Vehicle, type VehicleMission, type Employee, type VehicleBooking } from '../api'
+import { useSession, hasMonitorAccess } from '../session'
+
+const STAR_FIELDS: { key: 'commitment' | 'vehicleCare' | 'driving' | 'cleanliness'; label: string }[] = [
+  { key: 'commitment', label: 'الالتزام' },
+  { key: 'vehicleCare', label: 'المحافظة على السيارة' },
+  { key: 'driving', label: 'القيادة' },
+  { key: 'cleanliness', label: 'النظافة' },
+]
+
+const bookingStatusLabel: Record<string, string> = {
+  PENDING: 'معلّق',
+  APPROVED: 'معتمد',
+  REJECTED: 'مرفوض',
+  CANCELLED: 'ملغى',
+}
+const bookingStatusClass: Record<string, string> = {
+  PENDING: 'bg-amber-50 text-amber-700',
+  APPROVED: 'bg-emerald-50 text-emerald-700',
+  REJECTED: 'bg-red-50 text-red-700',
+  CANCELLED: 'bg-slate-100 text-slate-500',
+}
 
 function elapsedSince(iso: string): string {
   const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
@@ -38,6 +58,35 @@ export default function VehicleMissionsPage() {
   const [fFrom, setFFrom] = useState('')
   const [fTo, setFTo] = useState('')
 
+  const [startWarning, setStartWarning] = useState('')
+
+  // rating modal
+  const [ratingMissionId, setRatingMissionId] = useState<string | null>(null)
+  const [ratingScores, setRatingScores] = useState<Record<string, number>>({ commitment: 5, vehicleCare: 5, driving: 5, cleanliness: 5 })
+  const [ratingNotes, setRatingNotes] = useState('')
+  const [ratingSaving, setRatingSaving] = useState(false)
+  const [ratingError, setRatingError] = useState('')
+
+  // bookings
+  const isManager = hasMonitorAccess(employee?.role)
+  const [bookVehicleId, setBookVehicleId] = useState('')
+  const [bookPurpose, setBookPurpose] = useState('')
+  const [bookStartAt, setBookStartAt] = useState('')
+  const [bookEndAt, setBookEndAt] = useState('')
+  const [bookSaving, setBookSaving] = useState(false)
+  const [bookError, setBookError] = useState('')
+  const [pendingBookings, setPendingBookings] = useState<VehicleBooking[]>([])
+  const [myBookings, setMyBookings] = useState<VehicleBooking[]>([])
+  const [rejectingId, setRejectingId] = useState<string | null>(null)
+  const [rejectReason, setRejectReason] = useState('')
+
+  const loadPendingBookings = () => {
+    if (isManager) api.getVehicleBookings({ status: 'PENDING' }).then(setPendingBookings)
+  }
+  const loadMyBookings = () => {
+    if (employee) api.getVehicleBookings({ requestedById: employee.id }).then(setMyBookings)
+  }
+
   const loadActive = () => api.getVehicleMissions({ status: 'IN_PROGRESS' }).then(setActiveMissions)
   const loadHistory = () => api.getVehicleMissions({
     status: 'COMPLETED',
@@ -52,6 +101,9 @@ export default function VehicleMissionsPage() {
     api.getEmployees().then(setEmployees)
     loadActive()
     loadHistory()
+    loadPendingBookings()
+    loadMyBookings()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -85,8 +137,9 @@ export default function VehicleMissionsPage() {
       return
     }
     setSaving(true)
+    setStartWarning('')
     try {
-      await api.startVehicleMission({
+      const result = await api.startVehicleMission({
         vehicleId: selVehicleId,
         driverId: employee?.id,
         purpose,
@@ -94,12 +147,85 @@ export default function VehicleMissionsPage() {
         startOdometer: Number(startOdometer),
         passengerIds,
       })
+      if (result.bookingWarning) setStartWarning(result.bookingWarning)
       setSelVehicleId(''); setPurpose(''); setDestination(''); setStartOdometer(''); setPassengerIds([])
       loadActive()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر بدء المهمة')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleCreateBooking = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBookError('')
+    if (!bookVehicleId || !bookPurpose.trim() || !bookStartAt || !bookEndAt) {
+      setBookError('يرجى تعبئة جميع الحقول المطلوبة')
+      return
+    }
+    setBookSaving(true)
+    try {
+      await api.createVehicleBooking({ vehicleId: bookVehicleId, purpose: bookPurpose, startAt: bookStartAt, endAt: bookEndAt })
+      setBookVehicleId(''); setBookPurpose(''); setBookStartAt(''); setBookEndAt('')
+      loadMyBookings()
+      loadPendingBookings()
+    } catch (err) {
+      setBookError(err instanceof Error ? err.message : 'تعذر إنشاء الحجز')
+    } finally {
+      setBookSaving(false)
+    }
+  }
+
+  const handleApproveBooking = async (id: string) => {
+    try {
+      await api.decideVehicleBooking(id, { approve: true })
+      loadPendingBookings(); loadMyBookings()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر اعتماد الحجز')
+    }
+  }
+
+  const handleRejectBooking = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!rejectingId) return
+    try {
+      await api.decideVehicleBooking(rejectingId, { approve: false, rejectionReason: rejectReason || 'بدون سبب' })
+      setRejectingId(null); setRejectReason('')
+      loadPendingBookings(); loadMyBookings()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر رفض الحجز')
+    }
+  }
+
+  const handleCancelBooking = async (id: string) => {
+    try {
+      await api.cancelVehicleBooking(id)
+      loadMyBookings(); loadPendingBookings()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر إلغاء الحجز')
+    }
+  }
+
+  const handleSubmitRating = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!ratingMissionId) return
+    setRatingSaving(true)
+    setRatingError('')
+    try {
+      await api.createVehicleMissionRating(ratingMissionId, {
+        commitment: ratingScores.commitment,
+        vehicleCare: ratingScores.vehicleCare,
+        driving: ratingScores.driving,
+        cleanliness: ratingScores.cleanliness,
+        notes: ratingNotes || undefined,
+      })
+      setRatingMissionId(null); setRatingNotes(''); setRatingScores({ commitment: 5, vehicleCare: 5, driving: 5, cleanliness: 5 })
+      loadHistory()
+    } catch (err) {
+      setRatingError(err instanceof Error ? err.message : 'تعذر حفظ التقييم')
+    } finally {
+      setRatingSaving(false)
     }
   }
 
@@ -125,6 +251,13 @@ export default function VehicleMissionsPage() {
         <h2 className="text-2xl font-bold text-brand-900">مهام المركبات</h2>
         <p className="mt-1 text-slate-500">بدء مهمة، متابعة المهام النشطة، وسجل المهام المكتملة</p>
       </div>
+
+      {startWarning && (
+        <div className="rounded-lg bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 border border-amber-200">
+          {startWarning}
+          <button onClick={() => setStartWarning('')} className="mr-3 text-xs underline">إغلاق</button>
+        </div>
+      )}
 
       {/* Start mission form */}
       <form onSubmit={handleStart} className="grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-2">
@@ -242,6 +375,123 @@ export default function VehicleMissionsPage() {
         </div>
       )}
 
+      {/* Vehicle bookings */}
+      <div className="space-y-4">
+        <h3 className="text-lg font-bold text-brand-800">حجوزات المركبات</h3>
+
+        <form onSubmit={handleCreateBooking} className="grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-2">
+          <h4 className="sm:col-span-2 font-bold text-brand-700">حجز سيارة</h4>
+          {bookError && <p className="sm:col-span-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{bookError}</p>}
+          <select value={bookVehicleId} onChange={(e) => setBookVehicleId(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2">
+            <option value="">-- اختر سيارة --</option>
+            {vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} - {v.plateNumber}</option>)}
+          </select>
+          <input required placeholder="سبب الحجز" value={bookPurpose} onChange={(e) => setBookPurpose(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">من</label>
+            <input required type="datetime-local" value={bookStartAt} onChange={(e) => setBookStartAt(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs text-slate-500">إلى</label>
+            <input required type="datetime-local" value={bookEndAt} onChange={(e) => setBookEndAt(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+          </div>
+          <button type="submit" disabled={bookSaving} className="sm:col-span-2 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2 font-medium text-white shadow-md disabled:opacity-50">
+            {bookSaving ? 'جاري الإرسال...' : 'إرسال طلب الحجز'}
+          </button>
+        </form>
+
+        {isManager && (
+          <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <div className="bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-3 text-white font-bold">الحجوزات المعلقة ({pendingBookings.length})</div>
+            <table className="w-full text-right text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="px-4 py-2">السيارة</th>
+                  <th className="px-4 py-2">مقدم الطلب</th>
+                  <th className="px-4 py-2">السبب</th>
+                  <th className="px-4 py-2">من</th>
+                  <th className="px-4 py-2">إلى</th>
+                  <th className="px-4 py-2"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pendingBookings.map((b) => (
+                  <tr key={b.id}>
+                    <td className="px-4 py-2 font-medium">{b.vehicle?.name || '-'}</td>
+                    <td className="px-4 py-2 text-slate-500">{b.requestedBy?.name || '-'}</td>
+                    <td className="px-4 py-2 text-slate-500">{b.purpose}</td>
+                    <td className="px-4 py-2 text-slate-500">{new Date(b.startAt).toLocaleString('ar-IQ')}</td>
+                    <td className="px-4 py-2 text-slate-500">{new Date(b.endAt).toLocaleString('ar-IQ')}</td>
+                    <td className="px-4 py-2">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleApproveBooking(b.id)} className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100">اعتماد</button>
+                        <button onClick={() => { setRejectingId(b.id); setRejectReason('') }} className="rounded-lg bg-red-50 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-100">رفض</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {pendingBookings.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">لا توجد حجوزات معلقة</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <div className="bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-3 text-white font-bold">حجوزاتي ({myBookings.length})</div>
+          <table className="w-full text-right text-sm">
+            <thead className="bg-slate-50 text-slate-600">
+              <tr>
+                <th className="px-4 py-2">السيارة</th>
+                <th className="px-4 py-2">السبب</th>
+                <th className="px-4 py-2">من</th>
+                <th className="px-4 py-2">إلى</th>
+                <th className="px-4 py-2">الحالة</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {myBookings.map((b) => (
+                <tr key={b.id}>
+                  <td className="px-4 py-2 font-medium">{b.vehicle?.name || '-'}</td>
+                  <td className="px-4 py-2 text-slate-500">{b.purpose}</td>
+                  <td className="px-4 py-2 text-slate-500">{new Date(b.startAt).toLocaleString('ar-IQ')}</td>
+                  <td className="px-4 py-2 text-slate-500">{new Date(b.endAt).toLocaleString('ar-IQ')}</td>
+                  <td className="px-4 py-2">
+                    <span className={`rounded-full px-2 py-1 text-xs font-bold ${bookingStatusClass[b.status]}`}>{bookingStatusLabel[b.status]}</span>
+                    {b.status === 'REJECTED' && b.rejectionReason && <p className="mt-1 text-xs text-slate-400">{b.rejectionReason}</p>}
+                  </td>
+                  <td className="px-4 py-2">
+                    {(b.status === 'PENDING' || b.status === 'APPROVED') && new Date(b.startAt) > new Date() && (
+                      <button onClick={() => handleCancelBooking(b.id)} className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200">إلغاء</button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {myBookings.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">لا توجد حجوزات</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Reject booking modal */}
+      {rejectingId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleRejectBooking} dir="rtl" className="w-full max-w-md space-y-3 rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-brand-800">رفض الحجز</h3>
+            <input
+              placeholder="سبب الرفض"
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+            <div className="flex gap-2">
+              <button type="submit" className="flex-1 rounded-lg bg-red-600 px-5 py-2 font-medium text-white">تأكيد الرفض</button>
+              <button type="button" onClick={() => setRejectingId(null)} className="rounded-lg border border-slate-300 px-5 py-2 font-medium text-slate-600">إلغاء</button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {/* History */}
       <div className="space-y-3">
         <h3 className="text-lg font-bold text-brand-800">سجل المهام</h3>
@@ -272,6 +522,7 @@ export default function VehicleMissionsPage() {
                 <th className="px-4 py-2">المسافة</th>
                 <th className="px-4 py-2">المرافقون</th>
                 <th className="px-4 py-2">ملاحظات</th>
+                <th className="px-4 py-2">تقييم السائق</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -287,13 +538,64 @@ export default function VehicleMissionsPage() {
                   <td className="px-4 py-2 font-bold text-brand-700">{m.distanceKm != null ? `${m.distanceKm} كم` : '-'}</td>
                   <td className="px-4 py-2 text-slate-500">{m.passengers.map((p) => p.employee?.name).filter(Boolean).join(', ') || '-'}</td>
                   <td className="px-4 py-2 text-slate-500">{m.notes || '-'}</td>
+                  <td className="px-4 py-2 text-slate-500">
+                    {m.rating ? (
+                      <div className="text-xs">
+                        <div>التزام: {m.rating.commitment} | سيارة: {m.rating.vehicleCare}</div>
+                        <div>قيادة: {m.rating.driving} | نظافة: {m.rating.cleanliness}</div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setRatingMissionId(m.id); setRatingScores({ commitment: 5, vehicleCare: 5, driving: 5, cleanliness: 5 }); setRatingNotes(''); setRatingError('') }}
+                        className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100"
+                      >
+                        تقييم
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
-              {historyMissions.length === 0 && <tr><td colSpan={10} className="p-4 text-center text-slate-400">لا توجد مهام مكتملة مطابقة</td></tr>}
+              {historyMissions.length === 0 && <tr><td colSpan={11} className="p-4 text-center text-slate-400">لا توجد مهام مكتملة مطابقة</td></tr>}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* Rating modal */}
+      {ratingMissionId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <form onSubmit={handleSubmitRating} dir="rtl" className="w-full max-w-md space-y-3 rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-brand-800">تقييم السائق</h3>
+            {ratingError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{ratingError}</p>}
+            {STAR_FIELDS.map((f) => (
+              <div key={f.key} className="flex items-center justify-between">
+                <label className="text-sm text-slate-600">{f.label}</label>
+                <select
+                  value={ratingScores[f.key]}
+                  onChange={(e) => setRatingScores((prev) => ({ ...prev, [f.key]: Number(e.target.value) }))}
+                  className="rounded-lg border border-slate-300 px-3 py-1"
+                >
+                  {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+            ))}
+            <input
+              placeholder="ملاحظات (اختياري)"
+              value={ratingNotes}
+              onChange={(e) => setRatingNotes(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2"
+            />
+            <div className="flex gap-2">
+              <button type="submit" disabled={ratingSaving} className="flex-1 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+                {ratingSaving ? 'جاري الحفظ...' : 'حفظ التقييم'}
+              </button>
+              <button type="button" onClick={() => setRatingMissionId(null)} className="rounded-lg border border-slate-300 px-5 py-2 font-medium text-slate-600">
+                إلغاء
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
     </div>
   )
 }

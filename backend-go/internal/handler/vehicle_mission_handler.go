@@ -9,11 +9,43 @@ import (
 )
 
 type VehicleMissionHandler struct {
-	service *service.VehicleMissionService
+	service        *service.VehicleMissionService
+	ratingService  *service.VehicleMissionRatingService
+	bookingService *service.VehicleBookingService
 }
 
-func NewVehicleMissionHandler(s *service.VehicleMissionService) *VehicleMissionHandler {
-	return &VehicleMissionHandler{service: s}
+func NewVehicleMissionHandler(s *service.VehicleMissionService, ratingService *service.VehicleMissionRatingService, bookingService *service.VehicleBookingService) *VehicleMissionHandler {
+	return &VehicleMissionHandler{service: s, ratingService: ratingService, bookingService: bookingService}
+}
+
+// StartMissionResponse نتيجة بدء مهمة، مع تحذير اختياري لو السيارة محجوزة حالياً لموظف آخر.
+type StartMissionResponse struct {
+	*model.VehicleMission
+	BookingWarning *string `json:"bookingWarning,omitempty"`
+}
+
+func (h *VehicleMissionHandler) CreateRating(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateVehicleMissionRatingRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	actorID := middleware.EmployeeIDFromContext(r)
+	rating, err := h.ratingService.CreateRating(r.PathValue("id"), actorID, req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, rating)
+}
+
+func (h *VehicleMissionHandler) DriverRatingSummary(w http.ResponseWriter, r *http.Request) {
+	summary, err := h.ratingService.GetDriverRatingSummary(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب ملخص تقييم السائق")
+		return
+	}
+	WriteJSON(w, http.StatusOK, summary)
 }
 
 func isAdminOrMonitor(role string) bool {
@@ -37,7 +69,13 @@ func (h *VehicleMissionHandler) Start(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusCreated, mission)
+	resp := StartMissionResponse{VehicleMission: mission}
+	if h.bookingService != nil {
+		if warning, wErr := h.bookingService.CheckApprovedBookingConflict(mission.VehicleID, mission.DriverID); wErr == nil && warning != "" {
+			resp.BookingWarning = &warning
+		}
+	}
+	WriteJSON(w, http.StatusCreated, resp)
 }
 
 func (h *VehicleMissionHandler) End(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +126,13 @@ func (h *VehicleMissionHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة المهام")
 		return
 	}
+	if h.ratingService != nil {
+		for i := range missions {
+			if missions[i].Status == "COMPLETED" {
+				missions[i].Rating, _ = h.ratingService.GetByMission(missions[i].ID)
+			}
+		}
+	}
 	WriteJSON(w, http.StatusOK, missions)
 }
 
@@ -96,6 +141,9 @@ func (h *VehicleMissionHandler) Get(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, http.StatusNotFound, "المهمة غير موجودة")
 		return
+	}
+	if h.ratingService != nil && mission.Status == "COMPLETED" {
+		mission.Rating, _ = h.ratingService.GetByMission(mission.ID)
 	}
 	WriteJSON(w, http.StatusOK, mission)
 }

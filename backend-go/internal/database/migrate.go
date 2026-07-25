@@ -979,6 +979,38 @@ var migrations = []string{
 
 	// المرحلة 3: تكلفة استبدال القطعة (إطار/بطارية) — تدخل بحساب مصاريف السيارة.
 	`ALTER TABLE "VehiclePart" ADD COLUMN IF NOT EXISTS cost DOUBLE PRECISION`,
+
+	// المرحلة 4-أ: نظام حجز المركبات (مسبق) — منفصل عن بدء المهمة الفعلي (VehicleMission).
+	`CREATE TABLE IF NOT EXISTS "VehicleBooking" (
+		id TEXT PRIMARY KEY,
+		"vehicleId" TEXT NOT NULL REFERENCES "Vehicle"(id),
+		"requestedById" TEXT NOT NULL REFERENCES "Employee"(id),
+		purpose TEXT NOT NULL,
+		"startAt" TIMESTAMP NOT NULL,
+		"endAt" TIMESTAMP NOT NULL,
+		status TEXT NOT NULL DEFAULT 'PENDING',
+		"approvedById" TEXT REFERENCES "Employee"(id),
+		"rejectionReason" TEXT,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		"decidedAt" TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehicleBooking_vehicleId_idx" ON "VehicleBooking"("vehicleId")`,
+	`CREATE INDEX IF NOT EXISTS "VehicleBooking_requestedById_idx" ON "VehicleBooking"("requestedById")`,
+	`CREATE INDEX IF NOT EXISTS "VehicleBooking_status_idx" ON "VehicleBooking"("status")`,
+
+	// المرحلة 4-ب: تقييم السائق بعد كل مهمة مكتملة.
+	`CREATE TABLE IF NOT EXISTS "VehicleMissionRating" (
+		id TEXT PRIMARY KEY,
+		"missionId" TEXT NOT NULL UNIQUE REFERENCES "VehicleMission"(id) ON DELETE CASCADE,
+		"ratedById" TEXT NOT NULL REFERENCES "Employee"(id),
+		commitment INTEGER NOT NULL,
+		"vehicleCare" INTEGER NOT NULL,
+		driving INTEGER NOT NULL,
+		cleanliness INTEGER NOT NULL,
+		notes TEXT,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehicleMissionRating_missionId_idx" ON "VehicleMissionRating"("missionId")`,
 }
 
 func Migrate(db *sqlx.DB) error {

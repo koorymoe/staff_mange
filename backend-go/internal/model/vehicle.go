@@ -96,6 +96,7 @@ type VehicleMission struct {
 	Vehicle    *Vehicle                  `db:"-" json:"vehicle,omitempty"`
 	Driver     *EmployeeBrief            `db:"-" json:"driver,omitempty"`
 	Passengers []VehicleMissionPassenger `db:"-" json:"passengers,omitempty"`
+	Rating     *VehicleMissionRating     `db:"-" json:"rating,omitempty"`
 }
 
 // VehicleMissionPassenger الموظفين المرافقين بالمهمة (يُعلَنون عند بدء المهمة).
@@ -374,6 +375,80 @@ type VehicleScoreSummary struct {
 	VehicleName  string  `db:"vehicleName" json:"vehicleName"`
 	RatingsCount int     `db:"ratingsCount" json:"ratingsCount"`
 	AverageScore float64 `db:"averageScore" json:"averageScore"`
+}
+
+// VehicleBooking حجز مسبق لسيارة بفترة زمنية مستقبلية — منفصل عن VehicleMission
+// (الذي يمثل بدء استخدام فعلي حالاً). يحتاج اعتماد من مسؤول قبل التنفيذ.
+type VehicleBooking struct {
+	ID              string     `db:"id" json:"id"`
+	VehicleID       string     `db:"vehicleId" json:"vehicleId"`
+	RequestedByID   string     `db:"requestedById" json:"requestedById"`
+	Purpose         string     `db:"purpose" json:"purpose"`
+	StartAt         time.Time  `db:"startAt" json:"startAt"`
+	EndAt           time.Time  `db:"endAt" json:"endAt"`
+	Status          string     `db:"status" json:"status"` // PENDING | APPROVED | REJECTED | CANCELLED
+	ApprovedByID    *string    `db:"approvedById" json:"approvedById"`
+	RejectionReason *string    `db:"rejectionReason" json:"rejectionReason"`
+	CreatedAt       time.Time  `db:"createdAt" json:"createdAt"`
+	DecidedAt       *time.Time `db:"decidedAt" json:"decidedAt"`
+
+	Vehicle     *Vehicle       `db:"-" json:"vehicle,omitempty"`
+	RequestedBy *EmployeeBrief `db:"-" json:"requestedBy,omitempty"`
+	ApprovedBy  *EmployeeBrief `db:"-" json:"approvedBy,omitempty"`
+}
+
+type CreateVehicleBookingRequest struct {
+	VehicleID string `json:"vehicleId"`
+	Purpose   string `json:"purpose"`
+	StartAt   string `json:"startAt"`
+	EndAt     string `json:"endAt"`
+}
+
+type DecideVehicleBookingRequest struct {
+	Approve         bool    `json:"approve"`
+	RejectionReason *string `json:"rejectionReason"`
+}
+
+type VehicleBookingFilters struct {
+	VehicleID     *string
+	RequestedByID *string
+	Status        *string
+	From          *string
+	To            *string
+}
+
+// VehicleMissionRating تقييم السائق بعد إنهاء المهمة (تقييم واحد لكل مهمة).
+type VehicleMissionRating struct {
+	ID          string    `db:"id" json:"id"`
+	MissionID   string    `db:"missionId" json:"missionId"`
+	RatedByID   string    `db:"ratedById" json:"ratedById"`
+	Commitment  int       `db:"commitment" json:"commitment"`
+	VehicleCare int       `db:"vehicleCare" json:"vehicleCare"`
+	Driving     int       `db:"driving" json:"driving"`
+	Cleanliness int       `db:"cleanliness" json:"cleanliness"`
+	Notes       *string   `db:"notes" json:"notes"`
+	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
+
+	RatedBy *EmployeeBrief `db:"-" json:"ratedBy,omitempty"`
+}
+
+type CreateVehicleMissionRatingRequest struct {
+	Commitment  int     `json:"commitment"`
+	VehicleCare int     `json:"vehicleCare"`
+	Driving     int     `json:"driving"`
+	Cleanliness int     `json:"cleanliness"`
+	Notes       *string `json:"notes"`
+}
+
+// DriverRatingSummary متوسط تقييمات سائق عبر كل مهامه المقيَّمة.
+type DriverRatingSummary struct {
+	EmployeeID     string  `db:"-" json:"employeeId"`
+	RatingsCount   int     `db:"ratingsCount" json:"ratingsCount"`
+	AvgCommitment  float64 `db:"avgCommitment" json:"avgCommitment"`
+	AvgVehicleCare float64 `db:"avgVehicleCare" json:"avgVehicleCare"`
+	AvgDriving     float64 `db:"avgDriving" json:"avgDriving"`
+	AvgCleanliness float64 `db:"avgCleanliness" json:"avgCleanliness"`
+	AvgOverall     float64 `db:"avgOverall" json:"avgOverall"`
 }
 
 // TechnicianWashSummary مجموع نقاط غسيل الفني خلال فترة، والراتب المقترح (تذكير

@@ -63,6 +63,8 @@ func main() {
 	statsRepo := repository.NewStatsRepository(db)
 	vehicleRepo := repository.NewVehicleRepository(db)
 	vehicleMissionRepo := repository.NewVehicleMissionRepository(db)
+	vehicleBookingRepo := repository.NewVehicleBookingRepository(db)
+	vehicleMissionRatingRepo := repository.NewVehicleMissionRatingRepository(db)
 	qualityRepo := repository.NewQualityRepository(db)
 	staffRequestRepo := repository.NewStaffRequestRepository(db)
 	serviceManagerRepo := repository.NewServiceManagerRepository(db)
@@ -99,6 +101,8 @@ func main() {
 	statsService := service.NewStatsService(statsRepo)
 	vehicleService := service.NewVehicleService(vehicleRepo)
 	vehicleMissionService := service.NewVehicleMissionService(vehicleMissionRepo, vehicleRepo)
+	vehicleBookingService := service.NewVehicleBookingService(vehicleBookingRepo)
+	vehicleMissionRatingService := service.NewVehicleMissionRatingService(vehicleMissionRatingRepo, vehicleMissionRepo)
 	qualityService := service.NewQualityService(qualityRepo)
 
 	// Handlers
@@ -132,7 +136,8 @@ func main() {
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	statsHandler := handler.NewStatsHandler(statsService)
 	vehicleHandler := handler.NewVehicleHandler(vehicleService)
-	vehicleMissionHandler := handler.NewVehicleMissionHandler(vehicleMissionService)
+	vehicleMissionHandler := handler.NewVehicleMissionHandler(vehicleMissionService, vehicleMissionRatingService, vehicleBookingService)
+	vehicleBookingHandler := handler.NewVehicleBookingHandler(vehicleBookingService)
 	qualityHandler := handler.NewQualityHandler(qualityService)
 	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
 	serviceManagerHandler := handler.NewServiceManagerHandler(serviceManagerRepo)
@@ -444,6 +449,14 @@ func main() {
 	mux.Handle("PUT /api/vehicle-missions/{id}/end", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.End), requireAuth))
 	mux.Handle("GET /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.List), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicle-missions/{id}", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Get), requireAuth))
+	mux.Handle("POST /api/vehicle-missions/{id}/rating", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.CreateRating), requireAuth, requireVehicleMgmt))
+	mux.Handle("GET /api/employees/{id}/driver-rating-summary", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.DriverRatingSummary), requireAuth))
+
+	// نظام حجز المركبات (مسبق) — منفصل عن بدء المهمة الفعلي أعلاه.
+	mux.Handle("POST /api/vehicle-bookings", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Create), requireAuth))
+	mux.Handle("PUT /api/vehicle-bookings/{id}/decide", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Decide), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/vehicle-bookings/{id}/cancel", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Cancel), requireAuth))
+	mux.Handle("GET /api/vehicle-bookings", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.List), requireAuth))
 	// ملخصات التذكير — للمراقب بس (نظرة شاملة على كل السيارات والفنيين)
 	// ملاحظة: هذولا فقط لوحة المراقبة (MonitorDashboard) تستدعيهم — عمداً مقيدين
 	// بدور المراقب/الأدمن حصراً، لأنهم يعرضون راتب مقترح للفنيين (بيانات حساسة
