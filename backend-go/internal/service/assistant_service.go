@@ -31,18 +31,19 @@ type ChatTurn struct {
 // ما يكشف بيانات موظفين ثانيين. مصمم على حد استخدام يومي (GEMINI_DAILY_CAP)
 // حتى نضل بالخطة المجانية ولا نتفاجئ بفاتورة.
 type AssistantService struct {
-	apiKey      string
-	dailyCap    int
-	employees   *repository.EmployeeRepository
-	kpi         *repository.KpiRepository
-	perfReviews *repository.PerformanceReviewRepository
-	bookings    *repository.BookingRepository
-	missions    *repository.MissionRepository
-	expenses    *repository.ExpenseRepository
-	gps         *repository.GpsRepository
-	qualityFUs  *repository.QualityFollowUpRepository
-	complaints  *repository.ComplaintRepository
+	apiKey        string
+	dailyCap      int
+	employees     *repository.EmployeeRepository
+	kpi           *repository.KpiRepository
+	perfReviews   *repository.PerformanceReviewRepository
+	bookings      *repository.BookingRepository
+	missions      *repository.MissionRepository
+	expenses      *repository.ExpenseRepository
+	gps           *repository.GpsRepository
+	qualityFUs    *repository.QualityFollowUpRepository
+	complaints    *repository.ComplaintRepository
 	conversations *repository.AssistantConversationRepository
+	knowledge     *repository.AssistantKnowledgeRepository
 
 	// roleGuides: خريطة "الدور الوظيفي → نص دليل الاستخدام" — تُحمَّل مرة وحدة عند
 	// إنشاء الخدمة (مو بكل طلب) حتى ما نعيد قراءة الملفات وتنظيف الـHTML بكل رسالة.
@@ -135,12 +136,14 @@ func NewAssistantService(
 	qualityFUs *repository.QualityFollowUpRepository,
 	complaints *repository.ComplaintRepository,
 	conversations *repository.AssistantConversationRepository,
+	knowledge *repository.AssistantKnowledgeRepository,
 	tutorialsDir string,
 ) *AssistantService {
 	return &AssistantService{
 		apiKey: apiKey, dailyCap: dailyCap, employees: employees, kpi: kpi, perfReviews: perfReviews,
 		bookings: bookings, missions: missions, expenses: expenses, gps: gps, qualityFUs: qualityFUs, complaints: complaints,
 		conversations: conversations,
+		knowledge:     knowledge,
 		roleGuides:    loadRoleGuides(tutorialsDir),
 		resetDate:     time.Now().Format("2006-01-02"),
 	}
@@ -206,12 +209,16 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 		guideBlock = "(ماكو دليل استخدام مفصل لهذا الدور محمّل حالياً — اعتمد على معرفتك العامة بالنظام من بيانات شغله أعلاه بس، ولا تختلق أسماء صفحات أو أزرار غير مذكورة)"
 	}
 
-	systemContext := buildSystemPrompt(employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, guideBlock, message)
+	knowledgeBlock := s.buildKnowledgeBlock(message)
 
-	reply, err := s.callGemini(systemContext)
+	systemContext := buildSystemPrompt(employee.Name, employee.Role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, guideBlock, knowledgeBlock, message)
+
+	rawReply, err := s.callGeminiWithTools(systemContext, true)
 	if err != nil {
 		return "", err
 	}
+
+	reply, learned := extractLearnedKnowledge(rawReply)
 
 	// نسجل كل تبادل رسالة/جواب حتى يقدر المالك يراجع محادثات كل الموظفين مع
 	// المساعد لاحقاً. فشل التسجيل ما يوقف الرد للموظف — بس نطبع خطأ باللوغ.
@@ -221,7 +228,71 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 		}
 	}
 
+	// نخزن أي معرفة استخرجها المساعد من هذا التبادل (بدون طلب إضافي لـGemini —
+	// نستخدم نفس الرد). فشل التخزين ما يوقف الرد للموظف — بس نطبع خطأ باللوغ.
+	if s.knowledge != nil {
+		for _, item := range learned {
+			if err := s.knowledge.Create(item.Topic, item.Content, employeeID); err != nil {
+				log.Printf("assistant: تعذر تخزين معرفة متعلّمة للموظف %s: %v", employeeID, err)
+			}
+		}
+	}
+
 	return reply, nil
+}
+
+// learnedItem سطر معرفة وحد استخرجناه من علامة <<LEARN>> برد الموديل.
+type learnedItem struct {
+	Topic   string
+	Content string
+}
+
+// learnMarkerRe يطابق علامة <<LEARN topic="...">>محتوى<<END_LEARN>> اللي
+// نطلب من الموديل يضيفها بآخر رده لو تعلم شي يستاهل يتذكره — راجع تعليمات
+// نص البرومبت بـbuildSystemPrompt لشرح الصيغة كاملة.
+var learnMarkerRe = regexp.MustCompile(`(?s)\n?<<LEARN topic="([^"]*)">>(.*?)<<END_LEARN>>`)
+
+// extractLearnedKnowledge يشيل كل علامات <<LEARN>>...<<END_LEARN>> من رد الموديل
+// (حتى الموظف ما يشوفها بالرد المعروض له) ويرجّع النص النظيف مع قائمة سطور
+// المعرفة المستخرجة لتخزينها. رد بدون أي علامة يرجع كما هو بدون تغيير.
+func extractLearnedKnowledge(reply string) (string, []learnedItem) {
+	matches := learnMarkerRe.FindAllStringSubmatch(reply, -1)
+	if len(matches) == 0 {
+		return reply, nil
+	}
+	items := make([]learnedItem, 0, len(matches))
+	for _, m := range matches {
+		topic := strings.TrimSpace(m[1])
+		content := strings.TrimSpace(m[2])
+		if topic == "" || content == "" {
+			continue
+		}
+		items = append(items, learnedItem{Topic: topic, Content: content})
+	}
+	cleaned := strings.TrimSpace(learnMarkerRe.ReplaceAllString(reply, ""))
+	return cleaned, items
+}
+
+// buildKnowledgeBlock يستخرج كلمات مفتاحية من رسالة الموظف ويبحث بجدول
+// AssistantKnowledge عن سطور معرفة سابقة تقاطع معها (RAG بسيط) — هذا اللي
+// يخلي المساعد "يتذكر" معلومات تعلمها من محادثات أو بحث سابق بدل ما ينساها.
+func (s *AssistantService) buildKnowledgeBlock(message string) string {
+	if s.knowledge == nil {
+		return "(ماكو معرفة سابقة مخزّنة ذات علاقة)"
+	}
+	keywords := repository.ExtractKeywords(message)
+	if len(keywords) == 0 {
+		return "(ماكو كلمات مفتاحية كافية بالسؤال للبحث بالمعرفة السابقة)"
+	}
+	rows, err := s.knowledge.SearchRelevant(keywords, 8)
+	if err != nil || len(rows) == 0 {
+		return "(ماكو معرفة سابقة مخزّنة ذات علاقة)"
+	}
+	var b bytes.Buffer
+	for _, r := range rows {
+		fmt.Fprintf(&b, "- [%s]: %s\n", r.Topic, r.Content)
+	}
+	return b.String()
 }
 
 // buildSystemPrompt يبني نص البرومبت الكامل اللي نبعته لـGemini لكل سؤال موظف عادي.
@@ -229,8 +300,14 @@ func (s *AssistantService) Ask(employeeID, message string) (string, error) {
 // بدون ما نحتاج نتصل فعلياً بـGemini أو نجهز قاعدة بيانات — يكفي نمرر قيم جاهزة
 // ونتأكد النص المبني فيه كل العناصر المطلوبة (تعليمات اللهجة، الاختصار، الأمثلة،
 // ومحتوى دليل الدور).
-func buildSystemPrompt(name, role, salaryLine string, skillsKnown, skillsTotal, kpiPointsThisMonth int, domainBlock, guideBlock, message string) string {
-	return fmt.Sprintf(`أنت مساعد ذكي داخلي لنظام إدارة موظفين شركة الأماني. تحجي مع الموظف مثل زميل عراقي متعاون بالشغل، مو مثل بوت رسمي أو خدمة عملاء.
+func buildSystemPrompt(name, role, salaryLine string, skillsKnown, skillsTotal, kpiPointsThisMonth int, domainBlock, guideBlock, knowledgeBlock, message string) string {
+	return fmt.Sprintf(`أنت مساعد ذكي داخلي لنظام إدارة موظفين شركة الأماني (شركة تشتغل بمجالات منها الطاقة الشمسية). تحجي مع الموظف مثل زميل عراقي متعاون بالشغل، مو مثل بوت رسمي أو خدمة عملاء.
+
+نطاق حجيك — مهم توضحه لنفسك: انت مو مقيّد بس بأسئلة النظام أو الشغل. الموظف يقدر يسولف وياك عن أي موضوع — معلومات عامة، سوالف شخصية، مواضيع تخص شغل الشركة متل معدات وتركيب الطاقة الشمسية، أو أي شي يريد يسأل عنه أو يبحث عنه. عندك خاصية بحث حقيقي بجوجل مفعّلة — استخدمها بحرية أي وقت تحس المعلومة تفيد (سعر منتج، مواصفات جهاز، معلومة تقنية، خبر...). الشي الوحيد الممنوع قطعياً: تكشف بيانات إدارية أو سرية تخص موظفين ثانيين (رواتبهم، تقييمات أدائهم، تقارير مالية...) لموظف دوره ما يخوله يشوفها — وهذا أصلاً محقق تلقائياً لأن بيانات الشغل المعطاة لك أدناه هي بيانات هذا الموظف السائل بس. غير هيچ، ما عندك داعي ترفض أي سؤال أو تقول "أنا بس لأسئلة النظام" — هذا رد ممنوع تماماً لأي سؤال خارج الشغل، جاوب طبيعي وساعد.
+
+ذاكرة تتعلم منها: إذا بمحادثتك الحالية تعلمت شي حقيقي يستاهل يتذكره لمحادثات جاية (معلومة عامة مفيدة، شي علّمك إياه الموظف، نتيجة بحث جوجل مفيدة) — ضيف بآخر ردك بالضبط هالصيغة (بدون أي نص إضافي حولها):
+<<LEARN topic="عنوان قصير للموضوع">>الحقيقة أو المعلومة المختصرة اللي تريد تتذكرها<<END_LEARN>>
+لا تضيف هذي العلامة إطلاقاً إذا ماكو شي حقيقي يستاهل التذكر (أغلب الردود العادية أو السمول توك ما تحتاجها) — لا تخزن بيانات شخصية خاصة بالموظف (راتبه، بياناته) ولا حچي عابر بلا فايدة. الموظف ما لازم يشوف هذي العلامة إطلاقاً بردك المقروء — بس هي جزء تقني بآخر النص.
 
 قواعد الأسلوب — التزم فيها دايماً وبدون استثناء:
 1. اللهجة العراقية إجبارية بكل رد — ممنوع العربية الفصحى الرسمية أو أسلوب "التقرير". احجي متل ما تحجي بالشارع أو بالمكتب مع زميلك.
@@ -266,6 +343,11 @@ func buildSystemPrompt(name, role, salaryLine string, skillsKnown, skillsTotal, 
 الموظف: شكو ماكو، شنو أخبارك؟
 المساعد: هلا وغلا، تمام الحال والحمدلله، بس اليوم الجو حر شوي 😅 شكو عندك، شغل لو بس مرور؟
 
+مثال 6 — سؤال خارج نطاق النظام تماماً (تقني يخص مجال الشركة) — لازم تجاوب طبيعي بلا رفض:
+الموظف: اني فني ألواح شمسية، شنو أحسن نوع إنفرتر للاستخدام المنزلي هسه؟
+المساعد: أكو خيارات زينة هسه، الإنفرترات الهجينة صارت الأفضل للاستخدام المنزلي لأنها تدعم البطاريات وتتوافق مع الشبكة سوا، دور على ماركات موثوقة وشوف الضمان المحلي. تريد أبحثلك بمواصفات نوع معين؟
+<<LEARN topic="إنفرترات الطاقة الشمسية">>الإنفرترات الهجينة (Hybrid) هي الأفضل للاستخدام المنزلي لأنها تدعم البطاريات وتعمل مع الشبكة الكهربائية سوا<<END_LEARN>>
+
 بيانات الموظف السائل:
 - الاسم: %s
 - الدور الوظيفي: %s
@@ -279,7 +361,10 @@ func buildSystemPrompt(name, role, salaryLine string, skillsKnown, skillsTotal, 
 دليل استخدام النظام الخاص بدوره الوظيفي (اعتمد عليه بالضبط لو سألك عن خطوات استخدام النظام):
 %s
 
-سؤال الموظف: %s`, name, role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, guideBlock, message)
+معلومات تعلمتها من محادثات سابقة قد تفيدك هسه:
+%s
+
+سؤال الموظف: %s`, name, role, salaryLine, skillsKnown, skillsTotal, kpiPointsThisMonth, domainBlock, guideBlock, knowledgeBlock, message)
 }
 
 // buildRoleScopedBlock يبني كتلة بيانات "شغل الموظف" حسب دوره الوظيفي —
@@ -538,6 +623,7 @@ func (s *AssistantService) ManagerChat(askerEmployeeID, message string, history 
 
 type geminiRequest struct {
 	Contents []geminiContent `json:"contents"`
+	Tools    []geminiTool    `json:"tools,omitempty"`
 }
 
 type geminiContent struct {
@@ -548,9 +634,21 @@ type geminiPart struct {
 	Text string `json:"text"`
 }
 
+// geminiTool يفعّل بحث جوجل الحقيقي المدمج بـGemini (Google Search grounding) —
+// مو سكرابر مخصص، هذا الشكل اللي توثقه واجهة Gemini الرسمية REST API. لما مفعّل،
+// الموديل يقدر يسوي بحث فعلي بجوجل ويرجع بمعلومات حديثة بدل ما يعتمد بس عالمعرفة
+// المدرّب عليها.
+type geminiTool struct {
+	GoogleSearch struct{} `json:"google_search"`
+}
+
 type geminiResponse struct {
 	Candidates []struct {
 		Content geminiContent `json:"content"`
+		// GroundingMetadata يوصل بس لما نفعّل google_search — ما نستخدمه حالياً
+		// (ما نعرض مصادر البحث للموظف)، بس نعرّفه صراحة حتى نتأكد
+		// json.Unmarshal ما "يختنق" أو يفقد بيانات إذا الحقل موجود بالرد.
+		GroundingMetadata *json.RawMessage `json:"groundingMetadata,omitempty"`
 	} `json:"candidates"`
 	Error *struct {
 		Message string `json:"message"`
@@ -558,7 +656,15 @@ type geminiResponse struct {
 }
 
 func (s *AssistantService) callGemini(prompt string) (string, error) {
-	reqBody, err := json.Marshal(geminiRequest{Contents: []geminiContent{{Parts: []geminiPart{{Text: prompt}}}}})
+	return s.callGeminiWithTools(prompt, false)
+}
+
+func (s *AssistantService) callGeminiWithTools(prompt string, enableSearch bool) (string, error) {
+	req := geminiRequest{Contents: []geminiContent{{Parts: []geminiPart{{Text: prompt}}}}}
+	if enableSearch {
+		req.Tools = []geminiTool{{}}
+	}
+	reqBody, err := json.Marshal(req)
 	if err != nil {
 		return "", err
 	}

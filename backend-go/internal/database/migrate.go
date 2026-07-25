@@ -1019,6 +1019,19 @@ var migrations = []string{
 		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
 	`CREATE INDEX IF NOT EXISTS "AssistantConversation_employeeId_createdAt_idx" ON "AssistantConversation"("employeeId", "createdAt")`,
+
+	// معرفة تعلمها المساعد الذكي من محادثاته مع الموظفين (بحث ويب، معلومات
+	// علّمه إياها موظف، حقائق عامة مفيدة) — يخزنها ويرجّعها بمحادثات لاحقة
+	// حتى يصير "أذكى" مع الاستخدام بدل ما ينسى كل شي بعد كل رد.
+	`CREATE TABLE IF NOT EXISTS "AssistantKnowledge" (
+		id TEXT PRIMARY KEY,
+		topic TEXT NOT NULL,
+		content TEXT NOT NULL,
+		"learnedFromEmployeeId" TEXT REFERENCES "Employee"(id),
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "AssistantKnowledge_topic_idx" ON "AssistantKnowledge"(topic)`,
+	`CREATE INDEX IF NOT EXISTS "AssistantKnowledge_createdAt_idx" ON "AssistantKnowledge"("createdAt")`,
 }
 
 func Migrate(db *sqlx.DB) error {
