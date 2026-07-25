@@ -161,6 +161,9 @@ func main() {
 	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, "content_technician")
 	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, "vehicle_management")
 	requireProcurement := middleware.RequirePermission(permissionRepo, employeeRepo, "procurement")
+	// توفير المواد وتحديد حالتها يقتصر على إداري الكميات فعلياً (أو الأدمن) — مو أي
+	// موظف عنده صلاحية "procurement" العامة (زي الفني/مدير المشاريع الي بس يطلبون مواد).
+	requireProcurementAdmin := middleware.RequireRole(employeeRepo, "ADMIN", "PROCUREMENT_ADMIN")
 	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, "quality_control")
 	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, "project_management")
 	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, "kpi_management")
@@ -351,11 +354,11 @@ func main() {
 	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))
 
 	// المشتريات (procurement)
-	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth))
-	mux.Handle("GET /api/procurement/stats", middleware.Chain(http.HandlerFunc(procurementHandler.Stats), requireAuth))
-	mux.Handle("POST /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth))
-	mux.Handle("PUT /api/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireProcurement))
-	mux.Handle("PUT /api/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireProcurement))
+	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth, requireProcurement))
+	mux.Handle("GET /api/procurement/stats", middleware.Chain(http.HandlerFunc(procurementHandler.Stats), requireAuth, requireProcurement))
+	mux.Handle("POST /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth, requireProcurement))
+	mux.Handle("PUT /api/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireProcurementAdmin))
+	mux.Handle("PUT /api/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireProcurementAdmin))
 
 	// الموردون (suppliers)
 	mux.Handle("GET /api/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.ListSpecialties), requireAuth))

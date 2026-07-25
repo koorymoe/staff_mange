@@ -1,4 +1,5 @@
 import { useState, useEffect, useContext } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api, type ProcurementRequest, type ProcurementStats, type Booking } from '../api'
 import { SessionContext } from '../session'
 
@@ -17,6 +18,10 @@ const statusColors: Record<string, string> = {
 
 export default function ProcurementPage() {
   const { employee } = useContext(SessionContext)
+  // توفير المواد وتحديد حالتها (توفير/رفض) يقتصر على إداري الكميات والأدمن فقط —
+  // أي موظف ثاني (فني، مدير مشاريع، مراقب...) يشوف الطلبات وحالتها بس بدون تحكم.
+  const canManageProcurement = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'PROCUREMENT_ADMIN'
+  const [searchParams] = useSearchParams()
 
   const [requests, setRequests] = useState<ProcurementRequest[]>([])
   const [stats, setStats] = useState<ProcurementStats | null>(null)
@@ -63,6 +68,16 @@ export default function ProcurementPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // إذا وصلنا من زر "اطلب مادة" بشاشة الحجز (?bookingId=...) نفتح فورم الطلب
+  // ونعبّي الحجز تلقائياً بدل ما يدوّر عليه المستخدم من القائمة المنسدلة.
+  useEffect(() => {
+    const bookingId = searchParams.get('bookingId')
+    if (bookingId) {
+      setFormBookingId(bookingId)
+      setShowForm(true)
+    }
+  }, [searchParams])
 
   const handleSubmit = async () => {
     if (formItems.some(i => !i.productName.trim() || i.quantity < 1)) {
@@ -308,17 +323,21 @@ export default function ProcurementPage() {
                     <td className="px-4 py-3">{fmt(req.totalCost)}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">{new Date(req.createdAt).toLocaleDateString('ar-SA')}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
-                        {req.status === 'PENDING' && (
-                          <>
-                            <button onClick={() => handleStatusUpdate(req.id, 'IN_PROGRESS')} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">جاري التوفير</button>
-                            <button onClick={() => handleStatusUpdate(req.id, 'REJECTED')} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition">رفض</button>
-                          </>
-                        )}
-                        {(req.status === 'PENDING' || req.status === 'IN_PROGRESS') && (
-                          <button onClick={() => openFulfillModal(req)} className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition">تم التوفير</button>
-                        )}
-                      </div>
+                      {canManageProcurement ? (
+                        <div className="flex gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
+                          {req.status === 'PENDING' && (
+                            <>
+                              <button onClick={() => handleStatusUpdate(req.id, 'IN_PROGRESS')} className="px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">جاري التوفير</button>
+                              <button onClick={() => handleStatusUpdate(req.id, 'REJECTED')} className="px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200 transition">رفض</button>
+                            </>
+                          )}
+                          {(req.status === 'PENDING' || req.status === 'IN_PROGRESS') && (
+                            <button onClick={() => openFulfillModal(req)} className="px-2 py-1 text-xs bg-emerald-100 text-emerald-700 rounded hover:bg-emerald-200 transition">تم التوفير</button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-slate-400">للاطّلاع فقط</span>
+                      )}
                     </td>
                   </tr>
                   {expandedRows.has(req.id) && (

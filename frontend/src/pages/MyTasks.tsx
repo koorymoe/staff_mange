@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api, type Booking } from '../api'
 import { useSession } from '../session'
 
@@ -11,6 +12,7 @@ function elapsedSince(iso: string): string {
 
 export default function MyTasks() {
   const { employee } = useSession()
+  const navigate = useNavigate()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
@@ -177,6 +179,15 @@ export default function MyTasks() {
                           </button>
                         </div>
                       </div>
+                    )}
+
+                    {(b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') && (
+                      <button
+                        onClick={() => navigate(`/procurement?bookingId=${b.id}`)}
+                        className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50"
+                      >
+                        🧰 اطلب مادة ناقصة لهذا الحجز
+                      </button>
                     )}
                   </div>
                 )
