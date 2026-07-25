@@ -88,7 +88,7 @@ export default function PermissionsPage() {
   const permissionGroups = [
     {
       title: 'إدارة الموظفين',
-      perms: ['staff_management', 'edit_employee_profile', 'kpi_management', 'inventory'],
+      perms: ['staff_management', 'edit_employee_profile', 'kpi_management', 'kpi_criteria_management', 'inventory'],
     },
     {
       title: 'إدارة العمل',
@@ -96,7 +96,15 @@ export default function PermissionsPage() {
     },
     {
       title: 'إدارة المشاريع والخدمات',
-      perms: ['project_management', 'quotation_system', 'gps_system'],
+      perms: ['project_management', 'quotation_system', 'gps_system', 'content_technician'],
+    },
+    {
+      title: 'المركبات',
+      perms: ['vehicle_management'],
+    },
+    {
+      title: 'المشتريات والمواد',
+      perms: ['procurement', 'procurement_personal', 'procurement_customer'],
     },
     {
       title: 'الحسابات',
@@ -104,7 +112,7 @@ export default function PermissionsPage() {
     },
     {
       title: 'المراقبة والتدقيق',
-      perms: ['monitoring', 'auditing'],
+      perms: ['monitoring', 'auditing', 'quality_control'],
     },
   ]
 
@@ -173,7 +181,17 @@ export default function PermissionsPage() {
                 )}
               </div>
 
-              {permissionGroups.map((group) => {
+              {[
+                ...permissionGroups,
+                {
+                  title: 'أخرى',
+                  // شبكة أمان: أي صلاحية جديدة تُضاف بالباك اند وننسى نحطها بمجموعة
+                  // فوق تظهر هنا تلقائياً، بدل ما تختفي بصمت من الصفحة.
+                  perms: permissions
+                    .map(p => p.name)
+                    .filter(name => !permissionGroups.some(g => g.perms.includes(name))),
+                },
+              ].map((group) => {
                 const groupPerms = permissions.filter(p => group.perms.includes(p.name))
                 if (!groupPerms.length) return null
                 return (
