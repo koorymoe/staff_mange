@@ -32,6 +32,9 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
       TUTORIALS_DIR: /app/tutorials
+      # بيانات دخول حساب المالك — تنقرأ من .env بالسيرفر فقط، أبداً من الكود.
+      OWNER_USERNAME: ${OWNER_USERNAME:-}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-}
     volumes:
       # المساعد الذكي يقرأ أدلة الاستخدام (tutorial-*.html و guide-*.txt) وقت التشغيل
       # حتى يشرح للموظفين شلون يستخدمون النظام — bind-mount بدل نسخها بالصورة حتى

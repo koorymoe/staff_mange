@@ -31,7 +31,7 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := database.Migrate(db); err != nil {
+	if err := database.Migrate(db, cfg.OwnerUsername, cfg.OwnerPassword); err != nil {
 		log.Fatalf("failed to run database migrations: %v", err)
 	}
 

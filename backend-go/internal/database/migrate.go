@@ -1034,7 +1034,7 @@ var migrations = []string{
 	`CREATE INDEX IF NOT EXISTS "AssistantKnowledge_createdAt_idx" ON "AssistantKnowledge"("createdAt")`,
 }
 
-func Migrate(db *sqlx.DB) error {
+func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	for _, stmt := range baseSchema {
 		if _, err := db.Exec(stmt); err != nil {
 			return err
@@ -1066,7 +1066,7 @@ func Migrate(db *sqlx.DB) error {
 	if err := grantRolePermission(db, "PROCUREMENT_ADMIN", "inventory", "جرد الأدوات"); err != nil {
 		return err
 	}
-	if err := seedOwnerAccount(db); err != nil {
+	if err := seedOwnerAccount(db, ownerUsername, ownerPassword); err != nil {
 		return err
 	}
 	if err := seedKpiCriteria(db); err != nil {
@@ -1159,13 +1159,19 @@ func seedKpiCriteria(db *sqlx.DB) error {
 	return nil
 }
 
-// seedOwnerAccount يزرع حساب مالك النظام مرة وحدة (idempotent — upsert بالـ username)،
-// حساب واحد فوق كل شي حتى فوق ADMIN (يشوف كل شي بما فيه لوحة المراقبة الخلفية
-// الحصرية)، ما يطلع بأي قائمة موظفين عادية، ومحد يقدر يمنح هذا الدور لغيره من
-// الواجهة (مقفول بـ employee_service.go).
-func seedOwnerAccount(db *sqlx.DB) error {
-	const username = "q.7si_"
-	const password = "X994ddopvsa"
+// seedOwnerAccount يزرع/يحدّث حساب مالك النظام، حساب واحد فوق كل شي حتى فوق ADMIN
+// (يشوف كل شي بما فيه لوحة المراقبة الخلفية الحصرية)، ما يطلع بأي قائمة موظفين
+// عادية، ومحد يقدر يمنح هذا الدور لغيره من الواجهة (مقفول بـ employee_service.go).
+//
+// بيانات الدخول تنجي حصراً من متغيرات البيئة OWNER_USERNAME/OWNER_PASSWORD —
+// ممنوع أي قيمة افتراضية ثابتة بالكود (كانت هذي ثغرة أمنية حرجة سابقاً: حساب
+// المالك الحقيقي بكلمة مرور مكتوبة نص صريح بالكود ومرفوعة لتاريخ Git للأبد).
+// لو المتغيرين غير معرّفين، ما نلمس الحساب الموجود إطلاقاً (نتجنب قفل وصول
+// المالك الحالي بالغلط لو نسى أحد يضيف المتغيرات وقت الترقية لهذا الإصدار).
+func seedOwnerAccount(db *sqlx.DB, username, password string) error {
+	if username == "" || password == "" {
+		return nil
+	}
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -1173,7 +1179,7 @@ func seedOwnerAccount(db *sqlx.DB) error {
 	_, err = db.Exec(`
 		INSERT INTO "Employee" (id, name, username, password, role, status, "jobTitle")
 		VALUES ('owner_root', 'المالك', $1, $2, 'OWNER', 'ACTIVE', 'مالك النظام')
-		ON CONFLICT (id) DO UPDATE SET username = $1, role = 'OWNER', status = 'ACTIVE'
+		ON CONFLICT (id) DO UPDATE SET username = $1, password = $2, role = 'OWNER', status = 'ACTIVE'
 	`, username, string(hashed))
 	return err
 }

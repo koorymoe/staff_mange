@@ -19,6 +19,12 @@ type Config struct {
 	GeminiAPIKey   string
 	GeminiDailyCap int
 	TutorialsDir   string
+	// بيانات دخول حساب المالك (OWNER) — لازم تنقرأ من البيئة، ممنوع أي قيمة افتراضية
+	// ثابتة بالكود (كانت هذي ثغرة حرجة: username/password مكتوبين نص صريح بالكود
+	// ومرفوعين لتاريخ Git). لو غير معرّفتين، seedOwnerAccount ما يغيّر شي — الحساب
+	// الموجود بقاعدة البيانات يبقى كما هو (ما ينقفل الوصول للمالك الحالي بالغلط).
+	OwnerUsername string
+	OwnerPassword string
 }
 
 func Load() *Config {
@@ -39,7 +45,9 @@ func Load() *Config {
 		// حيث مجلد tutorials أخو backend-go بجذر المستودع). بالإنتاج نضبط
 		// TUTORIALS_DIR=/app/tutorials صراحة بـ docker-compose.yml مع bind-mount
 		// (شوف backend service بـ docker-compose.yml).
-		TutorialsDir: getEnv("TUTORIALS_DIR", "../tutorials"),
+		TutorialsDir:  getEnv("TUTORIALS_DIR", "../tutorials"),
+		OwnerUsername: getEnv("OWNER_USERNAME", ""),
+		OwnerPassword: getEnv("OWNER_PASSWORD", ""),
 	}
 }
 
