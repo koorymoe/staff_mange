@@ -550,6 +550,7 @@ export interface VehiclePart {
   expectedLifespanMonths: number | null
   notes: string | null
   replacedAt: string | null
+  cost: number | null
   createdAt: string
   dueSoon: boolean
 }
@@ -557,9 +558,29 @@ export interface VehiclePart {
 export interface VehicleAlert {
   vehicleId: string
   vehicleName: string
-  alertType: 'MAINTENANCE' | 'PART' | 'DOCUMENT'
+  alertType: 'MAINTENANCE' | 'PART' | 'DOCUMENT' | 'FUEL_ANOMALY'
   message: string
   severity: 'warning' | 'danger'
+}
+
+export interface FuelAnomalyResult {
+  isAnomaly: boolean
+  averageCost: number
+  newCost: number
+  percentAboveAvg: number
+}
+
+export interface VehicleExpenseSummary {
+  vehicleId: string
+  period: string
+  fuelCost: number
+  maintenanceCost: number
+  partsCost: number
+  incidentCost: number
+  cleaningCost: number
+  totalCost: number
+  distanceKm: number | null
+  avgCostPerKm: number | null
 }
 
 export interface VehicleWashRating {
@@ -611,7 +632,7 @@ export interface TechnicianWashSummary {
 export interface VehicleIncident {
   id: string
   vehicleId: string
-  type: 'FAULT' | 'DAMAGE'
+  type: 'FAULT' | 'DAMAGE' | 'ACCIDENT'
   description: string
   cost: number | null
   status: 'OPEN' | 'RESOLVED'
@@ -619,6 +640,11 @@ export interface VehicleIncident {
   resolvedAt: string | null
   responsibleEmployee: { id: string; name: string } | null
   reportedBy: { id: string; name: string } | null
+  location: string | null
+  peoplePresent: string | null
+  policeReportNumber: string | null
+  repairCost: number | null
+  driver: { id: string; name: string } | null
 }
 
 export interface VehicleMonthlyStatus {
@@ -1178,9 +1204,13 @@ export const api = {
     request<Vehicle>('/vehicles', { method: 'POST', body: JSON.stringify(data) }),
   getVehicleLogs: (vehicleId: string) => request<VehicleLog[]>(`/vehicles/${vehicleId}/logs`),
   createVehicleLog: (vehicleId: string, data: { type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'; performedAt?: string; nextDueAt?: string; nextDueOdometer?: number; odometer?: number; cost?: number; notes?: string }) =>
-    request<VehicleLog>(`/vehicles/${vehicleId}/logs`, { method: 'POST', body: JSON.stringify(data) }),
+    request<VehicleLog & { fuelAnomaly?: FuelAnomalyResult }>(`/vehicles/${vehicleId}/logs`, { method: 'POST', body: JSON.stringify(data) }),
+  getVehicleExpenseSummary: (vehicleId: string, params?: { month?: string; year?: string }) => {
+    const qs = params?.year ? `?year=${params.year}` : params?.month ? `?month=${params.month}` : ''
+    return request<VehicleExpenseSummary>(`/vehicles/${vehicleId}/expense-summary${qs}`)
+  },
   getVehicleIncidents: (vehicleId: string) => request<VehicleIncident[]>(`/vehicles/${vehicleId}/incidents`),
-  createVehicleIncident: (vehicleId: string, data: { type: 'FAULT' | 'DAMAGE'; description: string; responsibleEmployeeId?: string; cost?: number }) =>
+  createVehicleIncident: (vehicleId: string, data: { type: 'FAULT' | 'DAMAGE' | 'ACCIDENT'; description: string; responsibleEmployeeId?: string; cost?: number; location?: string; driverId?: string; peoplePresent?: string; policeReportNumber?: string; repairCost?: number }) =>
     request<VehicleIncident>(`/vehicles/${vehicleId}/incidents`, { method: 'POST', body: JSON.stringify(data) }),
   updateVehicleIncident: (id: string, data: { status?: 'OPEN' | 'RESOLVED'; cost?: number }) =>
     request<VehicleIncident>(`/vehicle-incidents/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -1190,7 +1220,7 @@ export const api = {
   deleteVehicleIncidentAttachment: (incidentId: string, attachmentId: string) =>
     request<{ ok: boolean }>(`/vehicle-incidents/${incidentId}/attachments/${attachmentId}`, { method: 'DELETE' }),
   getVehicleParts: (vehicleId: string) => request<VehiclePart[]>(`/vehicles/${vehicleId}/parts`),
-  createVehiclePart: (vehicleId: string, data: { partType: 'TIRE' | 'BATTERY'; installedAt?: string; installedOdometer: number; expectedLifespanKm?: number; expectedLifespanMonths?: number; notes?: string }) =>
+  createVehiclePart: (vehicleId: string, data: { partType: 'TIRE' | 'BATTERY'; installedAt?: string; installedOdometer: number; expectedLifespanKm?: number; expectedLifespanMonths?: number; notes?: string; cost?: number }) =>
     request<VehiclePart>(`/vehicles/${vehicleId}/parts`, { method: 'POST', body: JSON.stringify(data) }),
   replaceVehiclePart: (partId: string) => request<VehiclePart>(`/vehicle-parts/${partId}/replace`, { method: 'PUT' }),
   getVehicleAlerts: () => request<VehicleAlert[]>('/vehicles/alerts'),

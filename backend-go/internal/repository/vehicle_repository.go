@@ -157,6 +157,7 @@ func (r *VehicleRepository) ListIncidents(vehicleID string) ([]model.VehicleInci
 	for i := range incidents {
 		incidents[i].ResponsibleEmployee = r.loadEmployeeBrief(incidents[i].ResponsibleEmployeeID)
 		incidents[i].ReportedBy = r.loadEmployeeBrief(incidents[i].ReportedByID)
+		incidents[i].Driver = r.loadEmployeeBrief(incidents[i].DriverID)
 	}
 	return incidents, nil
 }
@@ -164,15 +165,20 @@ func (r *VehicleRepository) ListIncidents(vehicleID string) ([]model.VehicleInci
 func (r *VehicleRepository) CreateIncident(vehicleID string, req model.CreateVehicleIncidentRequest, reportedByID string) (*model.VehicleIncident, error) {
 	var inc model.VehicleIncident
 	err := r.db.Get(&inc, `
-		INSERT INTO "VehicleIncident" (id, "vehicleId", type, description, "responsibleEmployeeId", cost, "reportedById")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
+		INSERT INTO "VehicleIncident" (
+			id, "vehicleId", type, description, "responsibleEmployeeId", cost, "reportedById",
+			location, "driverId", "peoplePresent", "policeReportNumber", "repairCost"
+		)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING *
-	`, vehicleID, req.Type, req.Description, req.ResponsibleEmployeeID, req.Cost, reportedByID)
+	`, vehicleID, req.Type, req.Description, req.ResponsibleEmployeeID, req.Cost, reportedByID,
+		req.Location, req.DriverID, req.PeoplePresent, req.PoliceReportNumber, req.RepairCost)
 	if err != nil {
 		return nil, err
 	}
 	inc.ResponsibleEmployee = r.loadEmployeeBrief(inc.ResponsibleEmployeeID)
 	inc.ReportedBy = r.loadEmployeeBrief(inc.ReportedByID)
+	inc.Driver = r.loadEmployeeBrief(inc.DriverID)
 	return &inc, nil
 }
 
@@ -197,6 +203,7 @@ func (r *VehicleRepository) UpdateIncident(id string, req model.UpdateVehicleInc
 	}
 	inc.ResponsibleEmployee = r.loadEmployeeBrief(inc.ResponsibleEmployeeID)
 	inc.ReportedBy = r.loadEmployeeBrief(inc.ReportedByID)
+	inc.Driver = r.loadEmployeeBrief(inc.DriverID)
 	return &inc, nil
 }
 
@@ -460,10 +467,10 @@ func (r *VehicleRepository) GetPart(id string) (*model.VehiclePart, error) {
 func (r *VehicleRepository) CreatePart(vehicleID string, req model.CreateVehiclePartRequest) (*model.VehiclePart, error) {
 	var p model.VehiclePart
 	err := r.db.Get(&p, `
-		INSERT INTO "VehiclePart" (id, "vehicleId", "partType", "installedAt", "installedOdometer", "expectedLifespanKm", "expectedLifespanMonths", notes)
-		VALUES (gen_random_uuid()::text, $1, $2, COALESCE($3::timestamp, now()), $4, $5, $6, $7)
+		INSERT INTO "VehiclePart" (id, "vehicleId", "partType", "installedAt", "installedOdometer", "expectedLifespanKm", "expectedLifespanMonths", notes, cost)
+		VALUES (gen_random_uuid()::text, $1, $2, COALESCE($3::timestamp, now()), $4, $5, $6, $7, $8)
 		RETURNING *
-	`, vehicleID, req.PartType, req.InstalledAt, req.InstalledOdometer, req.ExpectedLifespanKm, req.ExpectedLifespanMonths, req.Notes)
+	`, vehicleID, req.PartType, req.InstalledAt, req.InstalledOdometer, req.ExpectedLifespanKm, req.ExpectedLifespanMonths, req.Notes, req.Cost)
 	return &p, err
 }
 
@@ -520,4 +527,77 @@ func (r *VehicleRepository) DocumentsExpiringWithin(days int) ([]model.VehicleDo
 		ORDER BY "expiryDate" ASC
 	`, days)
 	return docs, err
+}
+
+// ── مصاريف السيارة (المرحلة 3) ──
+
+// SumLogCostByType مجموع تكلفة سجلات السيارة من نوع معيّن ضمن فترة [from, to).
+func (r *VehicleRepository) SumLogCostByType(vehicleID, logType string, from, to time.Time) (float64, error) {
+	var total float64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM(cost), 0) FROM "VehicleLog"
+		WHERE "vehicleId" = $1 AND type = $2 AND "performedAt" >= $3 AND "performedAt" < $4
+	`, vehicleID, logType, from, to)
+	return total, err
+}
+
+// SumIncidentCost مجموع تكلفة الحوادث/الأعطال/الأضرار (cost + repairCost) ضمن فترة.
+func (r *VehicleRepository) SumIncidentCost(vehicleID string, from, to time.Time) (float64, error) {
+	var total float64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM(COALESCE(cost, 0) + COALESCE("repairCost", 0)), 0) FROM "VehicleIncident"
+		WHERE "vehicleId" = $1 AND "createdAt" >= $2 AND "createdAt" < $3
+	`, vehicleID, from, to)
+	return total, err
+}
+
+// SumPartsCost مجموع تكلفة قطع (إطارات/بطاريات) رُكّبت ضمن فترة.
+func (r *VehicleRepository) SumPartsCost(vehicleID string, from, to time.Time) (float64, error) {
+	var total float64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM(cost), 0) FROM "VehiclePart"
+		WHERE "vehicleId" = $1 AND "installedAt" >= $2 AND "installedAt" < $3
+	`, vehicleID, from, to)
+	return total, err
+}
+
+// OdometerRangeInPeriod يجيب أقل وأكبر قراءة عداد مسجّلة (من سجلات السيارة) ضمن فترة،
+// لتقدير المسافة المقطوعة بالفترة إن كانت متوفرة.
+func (r *VehicleRepository) OdometerRangeInPeriod(vehicleID string, from, to time.Time) (min, max *int, err error) {
+	var row struct {
+		Min *int `db:"min"`
+		Max *int `db:"max"`
+	}
+	err = r.db.Get(&row, `
+		SELECT MIN(odometer) AS min, MAX(odometer) AS max FROM "VehicleLog"
+		WHERE "vehicleId" = $1 AND "performedAt" >= $2 AND "performedAt" < $3 AND odometer IS NOT NULL
+	`, vehicleID, from, to)
+	if err != nil {
+		return nil, nil, err
+	}
+	return row.Min, row.Max, nil
+}
+
+// DistanceFromMissionsInPeriod مجموع مسافات مهمات السيارة المكتملة ضمن فترة (بديل احتياطي
+// لتقدير المسافة إن ما توفرت قراءات عداد بسجلات الوقود بنفس الفترة).
+func (r *VehicleRepository) DistanceFromMissionsInPeriod(vehicleID string, from, to time.Time) (*int, error) {
+	var total *int
+	err := r.db.Get(&total, `
+		SELECT SUM("distanceKm") FROM "VehicleMission"
+		WHERE "vehicleId" = $1 AND "startedAt" >= $2 AND "startedAt" < $3 AND "distanceKm" IS NOT NULL
+	`, vehicleID, from, to)
+	return total, err
+}
+
+// LastFuelLogCosts آخر N تكلفة لسجلات وقود السيارة (الأحدث أولاً) — تُستخدم لحساب متوسط
+// شذوذ تكلفة تعبئة الوقود.
+func (r *VehicleRepository) LastFuelLogCosts(vehicleID string, limit int) ([]float64, error) {
+	costs := []float64{}
+	err := r.db.Select(&costs, `
+		SELECT cost FROM "VehicleLog"
+		WHERE "vehicleId" = $1 AND type = 'FUEL' AND cost IS NOT NULL
+		ORDER BY "performedAt" DESC, "createdAt" DESC
+		LIMIT $2
+	`, vehicleID, limit)
+	return costs, err
 }

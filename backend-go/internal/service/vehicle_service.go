@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strconv"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -74,11 +75,55 @@ func (s *VehicleService) ListLogs(vehicleID string) ([]model.VehicleLog, error) 
 	return s.repo.ListLogs(vehicleID)
 }
 
-func (s *VehicleService) CreateLog(vehicleID string, req model.CreateVehicleLogRequest, recordedByID string) (*model.VehicleLog, error) {
+func (s *VehicleService) CreateLog(vehicleID string, req model.CreateVehicleLogRequest, recordedByID string) (*model.VehicleLogCreateResult, error) {
 	if req.Type != "FUEL" && req.Type != "CLEANING" && req.Type != "OIL_CHANGE" && req.Type != "MAINTENANCE" {
 		return nil, errors.New("نوع السجل غير صحيح")
 	}
-	return s.repo.CreateLog(vehicleID, req, recordedByID)
+	// نحسب الشذوذ من تاريخ التعبئات القديم *قبل* إدخال السجل الجديد، وإلا صار السجل
+	// الجديد يدخل بحساب متوسطه هو نفسه ويشوّه النتيجة.
+	var anomaly *model.FuelAnomalyResult
+	if req.Type == "FUEL" && req.Cost != nil {
+		anomaly, _ = s.CheckFuelAnomaly(vehicleID, *req.Cost)
+	}
+
+	log, err := s.repo.CreateLog(vehicleID, req, recordedByID)
+	if err != nil {
+		return nil, err
+	}
+	result := &model.VehicleLogCreateResult{VehicleLog: log, FuelAnomaly: anomaly}
+	return result, nil
+}
+
+// ── شذوذ تكلفة الوقود ──
+
+// FuelAnomalyThresholdPercent نسبة الزيادة عن متوسط آخر 5 تعبئات وقود للسيارة التي تُعتبر شذوذاً.
+const FuelAnomalyThresholdPercent = 40.0
+
+// CheckFuelAnomaly يقارن تكلفة تعبئة وقود جديدة بمتوسط آخر 5 تعبئات للسيارة نفسها؛
+// يعتبرها شذوذاً لو تجاوزت المتوسط بأكثر من FuelAnomalyThresholdPercent%.
+func (s *VehicleService) CheckFuelAnomaly(vehicleID string, newCost float64) (*model.FuelAnomalyResult, error) {
+	costs, err := s.repo.LastFuelLogCosts(vehicleID, 5)
+	if err != nil {
+		return nil, err
+	}
+	if len(costs) == 0 {
+		return &model.FuelAnomalyResult{IsAnomaly: false, AverageCost: 0, NewCost: newCost}, nil
+	}
+	var sum float64
+	for _, c := range costs {
+		sum += c
+	}
+	avg := sum / float64(len(costs))
+	if avg <= 0 {
+		return &model.FuelAnomalyResult{IsAnomaly: false, AverageCost: avg, NewCost: newCost}, nil
+	}
+	percentAbove := ((newCost - avg) / avg) * 100
+	return &model.FuelAnomalyResult{
+		IsAnomaly:       percentAbove > FuelAnomalyThresholdPercent,
+		AverageCost:     avg,
+		NewCost:         newCost,
+		PercentAboveAvg: percentAbove,
+	}, nil
 }
 
 func (s *VehicleService) ListIncidents(vehicleID string) ([]model.VehicleIncident, error) {
@@ -86,11 +131,11 @@ func (s *VehicleService) ListIncidents(vehicleID string) ([]model.VehicleInciden
 }
 
 func (s *VehicleService) CreateIncident(vehicleID string, req model.CreateVehicleIncidentRequest, reportedByID string) (*model.VehicleIncident, error) {
-	if req.Type != "FAULT" && req.Type != "DAMAGE" {
+	if req.Type != "FAULT" && req.Type != "DAMAGE" && req.Type != "ACCIDENT" {
 		return nil, errors.New("نوع الحادثة غير صحيح")
 	}
 	if req.Description == "" {
-		return nil, errors.New("وصف العطل/الضرر مطلوب")
+		return nil, errors.New("وصف العطل/الضرر/الحادث مطلوب")
 	}
 	return s.repo.CreateIncident(vehicleID, req, reportedByID)
 }
@@ -309,5 +354,142 @@ func (s *VehicleService) VehicleAlerts() ([]model.VehicleAlert, error) {
 		})
 	}
 
+	// شذوذ تكلفة آخر تعبئة وقود لكل سيارة نشطة (مقارنة بمتوسط آخر 5 تعبئات)
+	for vehicleID, v := range vehiclesByID {
+		costs, err := s.repo.LastFuelLogCosts(vehicleID, 5)
+		if err != nil || len(costs) < 2 {
+			continue
+		}
+		latest := costs[0]
+		anomaly, err := s.checkFuelAnomalyAgainstHistory(costs[1:], latest)
+		if err != nil || anomaly == nil || !anomaly.IsAnomaly {
+			continue
+		}
+		alerts = append(alerts, model.VehicleAlert{
+			VehicleID:   v.ID,
+			VehicleName: v.Name,
+			AlertType:   "FUEL_ANOMALY",
+			Message:     "آخر تعبئة وقود أعلى من المعدل المعتاد بنسبة تقارب " + formatPercent(anomaly.PercentAboveAvg) + "%",
+			Severity:    "warning",
+		})
+	}
+
 	return alerts, nil
+}
+
+// checkFuelAnomalyAgainstHistory نسخة مساعدة تحسب الشذوذ من قائمة تكاليف تاريخية جاهزة
+// (بدون استعلام قاعدة بيانات إضافي) — تُستخدم من VehicleAlerts لتفادي جلب البيانات مرتين.
+func (s *VehicleService) checkFuelAnomalyAgainstHistory(historyCosts []float64, newCost float64) (*model.FuelAnomalyResult, error) {
+	if len(historyCosts) == 0 {
+		return &model.FuelAnomalyResult{IsAnomaly: false, NewCost: newCost}, nil
+	}
+	var sum float64
+	for _, c := range historyCosts {
+		sum += c
+	}
+	avg := sum / float64(len(historyCosts))
+	if avg <= 0 {
+		return &model.FuelAnomalyResult{IsAnomaly: false, AverageCost: avg, NewCost: newCost}, nil
+	}
+	percentAbove := ((newCost - avg) / avg) * 100
+	return &model.FuelAnomalyResult{
+		IsAnomaly:       percentAbove > FuelAnomalyThresholdPercent,
+		AverageCost:     avg,
+		NewCost:         newCost,
+		PercentAboveAvg: percentAbove,
+	}, nil
+}
+
+func formatPercent(p float64) string {
+	if p < 0 {
+		p = 0
+	}
+	return strconv.Itoa(int(p + 0.5))
+}
+
+// ── ملخص مصاريف السيارة (وقود/صيانة/قطع/حوادث/تنظيف) ──
+
+// ExpenseSummary يجمع مصاريف سيارة خلال فترة شهرية (YYYY-MM) أو سنوية (YYYY).
+// لو ما انمرر أي منهما يُستخدم الشهر الحالي افتراضياً.
+func (s *VehicleService) ExpenseSummary(vehicleID, month, year string) (*model.VehicleExpenseSummary, error) {
+	var from, to time.Time
+	var period string
+	if year != "" {
+		y, err := strconv.Atoi(year)
+		if err != nil {
+			return nil, errors.New("سنة غير صحيحة")
+		}
+		from = time.Date(y, 1, 1, 0, 0, 0, 0, time.UTC)
+		to = time.Date(y+1, 1, 1, 0, 0, 0, 0, time.UTC)
+		period = year
+	} else {
+		m := month
+		if m == "" {
+			m = time.Now().Format("2006-01")
+		}
+		t, err := time.Parse("2006-01", m)
+		if err != nil {
+			return nil, errors.New("شهر غير صحيح (الصيغة المطلوبة YYYY-MM)")
+		}
+		from = time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, time.UTC)
+		to = from.AddDate(0, 1, 0)
+		period = m
+	}
+
+	fuelCost, err := s.repo.SumLogCostByType(vehicleID, "FUEL", from, to)
+	if err != nil {
+		return nil, err
+	}
+	oilCost, err := s.repo.SumLogCostByType(vehicleID, "OIL_CHANGE", from, to)
+	if err != nil {
+		return nil, err
+	}
+	maintCost, err := s.repo.SumLogCostByType(vehicleID, "MAINTENANCE", from, to)
+	if err != nil {
+		return nil, err
+	}
+	cleaningCost, err := s.repo.SumLogCostByType(vehicleID, "CLEANING", from, to)
+	if err != nil {
+		return nil, err
+	}
+	incidentCost, err := s.repo.SumIncidentCost(vehicleID, from, to)
+	if err != nil {
+		return nil, err
+	}
+	partsCost, err := s.repo.SumPartsCost(vehicleID, from, to)
+	if err != nil {
+		return nil, err
+	}
+
+	maintenanceTotal := oilCost + maintCost
+	total := fuelCost + maintenanceTotal + partsCost + incidentCost + cleaningCost
+
+	summary := &model.VehicleExpenseSummary{
+		VehicleID:       vehicleID,
+		Period:          period,
+		FuelCost:        fuelCost,
+		MaintenanceCost: maintenanceTotal,
+		PartsCost:       partsCost,
+		IncidentCost:    incidentCost,
+		CleaningCost:    cleaningCost,
+		TotalCost:       total,
+	}
+
+	// تقدير المسافة المقطوعة بالفترة: أولاً من فرق قراءات العداد بسجلات الفترة،
+	// وإلا من مجموع مسافات المهمات المكتملة بنفس الفترة.
+	minOdo, maxOdo, err := s.repo.OdometerRangeInPeriod(vehicleID, from, to)
+	if err == nil && minOdo != nil && maxOdo != nil && *maxOdo > *minOdo {
+		distance := *maxOdo - *minOdo
+		summary.DistanceKm = &distance
+	} else {
+		if dist, err := s.repo.DistanceFromMissionsInPeriod(vehicleID, from, to); err == nil && dist != nil && *dist > 0 {
+			summary.DistanceKm = dist
+		}
+	}
+	if summary.DistanceKm != nil && *summary.DistanceKm > 0 && total > 0 {
+		avg := total / float64(*summary.DistanceKm)
+		summary.AvgCostPerKm = &avg
+	}
+
+	return summary, nil
 }

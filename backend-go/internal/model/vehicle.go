@@ -145,6 +145,12 @@ type VehicleLog struct {
 	RecordedBy      *EmployeeBrief `db:"-" json:"recordedBy"`
 }
 
+// VehicleLogCreateResult نتيجة إنشاء سجل سيارة، مع نتيجة فحص شذوذ الوقود إن كان النوع FUEL.
+type VehicleLogCreateResult struct {
+	*VehicleLog
+	FuelAnomaly *FuelAnomalyResult `json:"fuelAnomaly,omitempty"`
+}
+
 type CreateVehicleLogRequest struct {
 	Type            string   `json:"type"`
 	PerformedAt     *string  `json:"performedAt"`
@@ -155,11 +161,13 @@ type CreateVehicleLogRequest struct {
 	Notes           *string  `json:"notes"`
 }
 
-// VehicleIncident يغطي الأعطال والأضرار (صدمات) مع تحديد المسبب والتكلفة
+// VehicleIncident يغطي الأعطال والأضرار (صدمات) والحوادث الموثّقة بالكامل مع تحديد
+// المسبب والتكلفة. الحقول الإضافية (location..repairCost) اختيارية وتُستخدم عملياً
+// فقط لنوع ACCIDENT (حادث) — تبقى فارغة لأنواع FAULT/DAMAGE البسيطة.
 type VehicleIncident struct {
 	ID                    string     `db:"id" json:"id"`
 	VehicleID             string     `db:"vehicleId" json:"vehicleId"`
-	Type                  string     `db:"type" json:"type"` // FAULT | DAMAGE
+	Type                  string     `db:"type" json:"type"` // FAULT | DAMAGE | ACCIDENT
 	Description           string     `db:"description" json:"description"`
 	ResponsibleEmployeeID *string    `db:"responsibleEmployeeId" json:"-"`
 	Cost                  *float64   `db:"cost" json:"cost"`
@@ -168,8 +176,16 @@ type VehicleIncident struct {
 	CreatedAt             time.Time  `db:"createdAt" json:"createdAt"`
 	ResolvedAt            *time.Time `db:"resolvedAt" json:"resolvedAt"`
 
+	// حقول توثيق الحوادث (ACCIDENT) فقط
+	Location           *string  `db:"location" json:"location"`
+	DriverID           *string  `db:"driverId" json:"-"`
+	PeoplePresent      *string  `db:"peoplePresent" json:"peoplePresent"`
+	PoliceReportNumber *string  `db:"policeReportNumber" json:"policeReportNumber"`
+	RepairCost         *float64 `db:"repairCost" json:"repairCost"`
+
 	ResponsibleEmployee *EmployeeBrief `db:"-" json:"responsibleEmployee"`
 	ReportedBy          *EmployeeBrief `db:"-" json:"reportedBy"`
+	Driver              *EmployeeBrief `db:"-" json:"driver"`
 }
 
 type CreateVehicleIncidentRequest struct {
@@ -177,6 +193,13 @@ type CreateVehicleIncidentRequest struct {
 	Description           string   `json:"description"`
 	ResponsibleEmployeeID *string  `json:"responsibleEmployeeId"`
 	Cost                  *float64 `json:"cost"`
+
+	// حقول اختيارية لنوع ACCIDENT
+	Location           *string  `json:"location"`
+	DriverID           *string  `json:"driverId"`
+	PeoplePresent      *string  `json:"peoplePresent"`
+	PoliceReportNumber *string  `json:"policeReportNumber"`
+	RepairCost         *float64 `json:"repairCost"`
 }
 
 type UpdateVehicleIncidentRequest struct {
@@ -210,27 +233,53 @@ type VehiclePart struct {
 	ExpectedLifespanMonths *int       `db:"expectedLifespanMonths" json:"expectedLifespanMonths"`
 	Notes                  *string    `db:"notes" json:"notes"`
 	ReplacedAt             *time.Time `db:"replacedAt" json:"replacedAt"`
+	Cost                   *float64   `db:"cost" json:"cost"`
 	CreatedAt              time.Time  `db:"createdAt" json:"createdAt"`
 
 	DueSoon bool `db:"-" json:"dueSoon"`
 }
 
 type CreateVehiclePartRequest struct {
-	PartType               string  `json:"partType"`
-	InstalledAt            *string `json:"installedAt"`
-	InstalledOdometer      int     `json:"installedOdometer"`
-	ExpectedLifespanKm     *int    `json:"expectedLifespanKm"`
-	ExpectedLifespanMonths *int    `json:"expectedLifespanMonths"`
-	Notes                  *string `json:"notes"`
+	PartType               string   `json:"partType"`
+	InstalledAt            *string  `json:"installedAt"`
+	InstalledOdometer      int      `json:"installedOdometer"`
+	ExpectedLifespanKm     *int     `json:"expectedLifespanKm"`
+	ExpectedLifespanMonths *int     `json:"expectedLifespanMonths"`
+	Notes                  *string  `json:"notes"`
+	Cost                   *float64 `json:"cost"`
 }
 
-// VehicleAlert تنبيه استحقاق صيانة/وثيقة/قطعة — لوحة تذكير سريعة أعلى صفحة السيارات.
+// VehicleAlert تنبيه استحقاق صيانة/وثيقة/قطعة أو شذوذ بمصروف الوقود — لوحة تذكير
+// سريعة أعلى صفحة السيارات.
 type VehicleAlert struct {
 	VehicleID   string `json:"vehicleId"`
 	VehicleName string `json:"vehicleName"`
-	AlertType   string `json:"alertType"` // MAINTENANCE | PART | DOCUMENT
+	AlertType   string `json:"alertType"` // MAINTENANCE | PART | DOCUMENT | FUEL_ANOMALY
 	Message     string `json:"message"`
 	Severity    string `json:"severity"` // warning | danger
+}
+
+// VehicleExpenseSummary تجميع كل مصاريف سيارة (وقود/صيانة/قطع/حوادث/تنظيف) خلال
+// فترة (شهر أو سنة)، مع متوسط التكلفة لكل كم إن أمكن حساب المسافة المقطوعة بالفترة.
+type VehicleExpenseSummary struct {
+	VehicleID       string  `json:"vehicleId"`
+	Period          string  `json:"period"` // مثلاً "2026-07" أو "2026"
+	FuelCost        float64 `json:"fuelCost"`
+	MaintenanceCost float64 `json:"maintenanceCost"`
+	PartsCost       float64 `json:"partsCost"`
+	IncidentCost    float64 `json:"incidentCost"`
+	CleaningCost    float64 `json:"cleaningCost"`
+	TotalCost       float64 `json:"totalCost"`
+	DistanceKm      *int    `json:"distanceKm"`
+	AvgCostPerKm    *float64 `json:"avgCostPerKm"`
+}
+
+// FuelAnomalyResult نتيجة فحص شذوذ تكلفة تعبئة وقود جديدة مقارنة بمتوسط السيارة.
+type FuelAnomalyResult struct {
+	IsAnomaly      bool    `json:"isAnomaly"`
+	AverageCost    float64 `json:"averageCost"`
+	NewCost        float64 `json:"newCost"`
+	PercentAboveAvg float64 `json:"percentAboveAvg"`
 }
 
 // VehicleMonthlyStatus يوثّق حالة كل سيارة شهرياً

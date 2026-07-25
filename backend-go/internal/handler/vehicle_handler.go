@@ -336,3 +336,16 @@ func (h *VehicleHandler) Alerts(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, alerts)
 }
+
+// ── ملخص مصاريف السيارة (المرحلة 3) ──
+
+func (h *VehicleHandler) ExpenseSummary(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	year := r.URL.Query().Get("year")
+	summary, err := h.service.ExpenseSummary(r.PathValue("id"), month, year)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, summary)
+}

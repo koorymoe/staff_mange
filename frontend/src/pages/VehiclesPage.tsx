@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleDocument, type VehiclePhoto, type VehicleIncidentAttachment, type VehiclePart, type VehicleAlert } from '../api'
+import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleDocument, type VehiclePhoto, type VehicleIncidentAttachment, type VehiclePart, type VehicleAlert, type VehicleExpenseSummary } from '../api'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -41,6 +41,13 @@ const ALERT_TYPE_LABELS: Record<string, string> = {
   MAINTENANCE: 'صيانة',
   PART: 'قطعة',
   DOCUMENT: 'وثيقة',
+  FUEL_ANOMALY: 'شذوذ وقود',
+}
+
+const INCIDENT_TYPE_LABELS: Record<string, string> = {
+  FAULT: 'عطل',
+  DAMAGE: 'ضرر',
+  ACCIDENT: 'حادث',
 }
 
 const RATING_FIELDS: { key: keyof typeof EMPTY_RATING_FORM; label: string }[] = [
@@ -128,11 +135,21 @@ export default function VehiclesPage() {
   const [logNotes, setLogNotes] = useState('')
 
   // incident form
-  const [incType, setIncType] = useState<'FAULT' | 'DAMAGE'>('FAULT')
+  const [incType, setIncType] = useState<'FAULT' | 'DAMAGE' | 'ACCIDENT'>('FAULT')
   const [incDesc, setIncDesc] = useState('')
   const [incResponsible, setIncResponsible] = useState('')
   const [incCost, setIncCost] = useState('')
+  const [incLocation, setIncLocation] = useState('')
+  const [incDriver, setIncDriver] = useState('')
+  const [incPeoplePresent, setIncPeoplePresent] = useState('')
+  const [incPoliceReport, setIncPoliceReport] = useState('')
+  const [incRepairCost, setIncRepairCost] = useState('')
   const [uploadingAttachmentFor, setUploadingAttachmentFor] = useState<string | null>(null)
+
+  // expense summary
+  const [expenseMonth, setExpenseMonth] = useState(currentMonth())
+  const [expenseSummary, setExpenseSummary] = useState<VehicleExpenseSummary | null>(null)
+  const [fuelAnomalyWarning, setFuelAnomalyWarning] = useState<string | null>(null)
 
   // part form
   const [partType, setPartType] = useState<'TIRE' | 'BATTERY'>('TIRE')
@@ -141,6 +158,7 @@ export default function VehiclesPage() {
   const [partLifespanKm, setPartLifespanKm] = useState('')
   const [partLifespanMonths, setPartLifespanMonths] = useState('')
   const [partNotes, setPartNotes] = useState('')
+  const [partCost, setPartCost] = useState('')
   const [savingPart, setSavingPart] = useState(false)
 
   // monthly form
@@ -189,6 +207,11 @@ export default function VehiclesPage() {
     api.getVehiclePhotos(selectedId).then(setPhotos)
     api.getVehicleParts(selectedId).then(setParts)
   }, [selectedId])
+
+  useEffect(() => {
+    if (!selectedId) return
+    api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+  }, [selectedId, expenseMonth])
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedId) || null
 
@@ -258,7 +281,8 @@ export default function VehiclesPage() {
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedId) return
-    await api.createVehicleLog(selectedId, {
+    setFuelAnomalyWarning(null)
+    const result = await api.createVehicleLog(selectedId, {
       type: logType,
       odometer: logOdometer ? Number(logOdometer) : undefined,
       cost: logCost ? Number(logCost) : undefined,
@@ -266,8 +290,14 @@ export default function VehiclesPage() {
       nextDueOdometer: logNextDueOdometer ? Number(logNextDueOdometer) : undefined,
       notes: logNotes || undefined,
     })
+    if (result.fuelAnomaly?.isAnomaly) {
+      setFuelAnomalyWarning(
+        `⚠️ هذا المبلغ أعلى من المعدل المعتاد لهذي السيارة بـ ${Math.round(result.fuelAnomaly.percentAboveAvg)}%`
+      )
+    }
     setLogOdometer(''); setLogCost(''); setLogNextDue(''); setLogNextDueOdometer(''); setLogNotes('')
     api.getVehicleLogs(selectedId).then(setLogs)
+    api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
     loadAlerts()
   }
 
@@ -279,9 +309,16 @@ export default function VehiclesPage() {
       description: incDesc,
       responsibleEmployeeId: incResponsible || undefined,
       cost: incCost ? Number(incCost) : undefined,
+      location: incType === 'ACCIDENT' ? (incLocation || undefined) : undefined,
+      driverId: incType === 'ACCIDENT' ? (incDriver || undefined) : undefined,
+      peoplePresent: incType === 'ACCIDENT' ? (incPeoplePresent || undefined) : undefined,
+      policeReportNumber: incType === 'ACCIDENT' ? (incPoliceReport || undefined) : undefined,
+      repairCost: incType === 'ACCIDENT' && incRepairCost ? Number(incRepairCost) : undefined,
     })
     setIncDesc(''); setIncResponsible(''); setIncCost('')
+    setIncLocation(''); setIncDriver(''); setIncPeoplePresent(''); setIncPoliceReport(''); setIncRepairCost('')
     loadIncidentsWithAttachments(selectedId)
+    if (selectedId) api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
   }
 
   const handleResolveIncident = async (id: string) => {
@@ -322,8 +359,9 @@ export default function VehiclesPage() {
         expectedLifespanKm: partLifespanKm ? Number(partLifespanKm) : undefined,
         expectedLifespanMonths: partLifespanMonths ? Number(partLifespanMonths) : undefined,
         notes: partNotes || undefined,
+        cost: partCost ? Number(partCost) : undefined,
       })
-      setPartInstalledAt(''); setPartInstalledOdometer(''); setPartLifespanKm(''); setPartLifespanMonths(''); setPartNotes('')
+      setPartInstalledAt(''); setPartInstalledOdometer(''); setPartLifespanKm(''); setPartLifespanMonths(''); setPartNotes(''); setPartCost('')
       api.getVehicleParts(selectedId).then(setParts)
       loadAlerts()
     } finally {
@@ -418,7 +456,7 @@ export default function VehiclesPage() {
                   <div>
                     <span className="font-bold text-slate-700">{a.vehicleName}</span>
                     <span className="mx-2 text-slate-400">·</span>
-                    <span className="text-slate-500">{ALERT_TYPE_LABELS[a.alertType]}: {a.message}</span>
+                    <span className="text-slate-500">{ALERT_TYPE_LABELS[a.alertType] || a.alertType}: {a.message}</span>
                   </div>
                   <span className={`rounded-full px-2 py-1 text-xs font-bold ${a.severity === 'danger' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                     {a.severity === 'danger' ? 'عاجل' : 'قريب'}
@@ -535,7 +573,32 @@ export default function VehiclesPage() {
                     </div>
                     <input placeholder="ملاحظات" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
                     <button type="submit" className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
+                    {fuelAnomalyWarning && (
+                      <p className="sm:col-span-3 rounded-lg bg-amber-50 px-3 py-2 text-sm font-bold text-amber-700">{fuelAnomalyWarning}</p>
+                    )}
                   </form>
+
+                  <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                    <div className="mb-3 flex items-center justify-between">
+                      <h4 className="font-bold text-slate-700">ملخص مصاريف السيارة</h4>
+                      <input type="month" value={expenseMonth} onChange={(e) => setExpenseMonth(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1 text-sm" />
+                    </div>
+                    {expenseSummary ? (
+                      <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
+                        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">وقود</p><p className="font-bold text-slate-800">{expenseSummary.fuelCost.toLocaleString()}</p></div>
+                        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">صيانة</p><p className="font-bold text-slate-800">{expenseSummary.maintenanceCost.toLocaleString()}</p></div>
+                        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">قطع (إطارات/بطاريات)</p><p className="font-bold text-slate-800">{expenseSummary.partsCost.toLocaleString()}</p></div>
+                        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">حوادث/أعطال</p><p className="font-bold text-slate-800">{expenseSummary.incidentCost.toLocaleString()}</p></div>
+                        <div className="rounded-lg bg-slate-50 p-3"><p className="text-xs text-slate-500">تنظيف</p><p className="font-bold text-slate-800">{expenseSummary.cleaningCost.toLocaleString()}</p></div>
+                        <div className="rounded-lg bg-brand-50 p-3"><p className="text-xs text-brand-700">الإجمالي</p><p className="font-bold text-brand-800">{expenseSummary.totalCost.toLocaleString()}</p></div>
+                        {expenseSummary.avgCostPerKm != null && (
+                          <div className="rounded-lg bg-slate-50 p-3 sm:col-span-3"><p className="text-xs text-slate-500">متوسط التكلفة لكل كم ({expenseSummary.distanceKm} كم بهذي الفترة)</p><p className="font-bold text-slate-800">{expenseSummary.avgCostPerKm.toFixed(1)}</p></div>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-slate-400">جاري التحميل...</p>
+                    )}
+                  </div>
 
                   <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                     <table className="w-full text-right text-sm">
@@ -573,6 +636,7 @@ export default function VehiclesPage() {
                     <select value={incType} onChange={(e) => setIncType(e.target.value as typeof incType)} className="rounded-lg border border-slate-300 px-3 py-2">
                       <option value="FAULT">عطل</option>
                       <option value="DAMAGE">ضرر (صدمة)</option>
+                      <option value="ACCIDENT">حادث</option>
                     </select>
                     <select value={incResponsible} onChange={(e) => setIncResponsible(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2">
                       <option value="">-- المسبب (اختياري) --</option>
@@ -580,6 +644,18 @@ export default function VehiclesPage() {
                     </select>
                     <input required placeholder="الوصف" value={incDesc} onChange={(e) => setIncDesc(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
                     <input type="number" placeholder="التكلفة (اختياري)" value={incCost} onChange={(e) => setIncCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                    {incType === 'ACCIDENT' && (
+                      <>
+                        <input placeholder="موقع الحادث" value={incLocation} onChange={(e) => setIncLocation(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                        <select value={incDriver} onChange={(e) => setIncDriver(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2">
+                          <option value="">-- السائق وقت الحادث (اختياري) --</option>
+                          {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                        <input placeholder="الأشخاص الموجودين" value={incPeoplePresent} onChange={(e) => setIncPeoplePresent(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
+                        <input placeholder="رقم تقرير الشرطة (اختياري)" value={incPoliceReport} onChange={(e) => setIncPoliceReport(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                        <input type="number" placeholder="تكلفة الإصلاح (اختياري)" value={incRepairCost} onChange={(e) => setIncRepairCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                      </>
+                    )}
                     <button type="submit" className="rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
                   </form>
 
@@ -587,8 +663,8 @@ export default function VehiclesPage() {
                     {incidents.map((inc) => (
                       <div key={inc.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                         <div className="flex items-center justify-between">
-                          <span className={`rounded-full px-2 py-1 text-xs font-bold ${inc.type === 'FAULT' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                            {inc.type === 'FAULT' ? 'عطل' : 'ضرر'}
+                          <span className={`rounded-full px-2 py-1 text-xs font-bold ${inc.type === 'FAULT' ? 'bg-amber-100 text-amber-700' : inc.type === 'ACCIDENT' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700'}`}>
+                            {INCIDENT_TYPE_LABELS[inc.type] || inc.type}
                           </span>
                           <span className={`rounded-full px-2 py-1 text-xs font-bold ${inc.status === 'RESOLVED' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
                             {inc.status === 'RESOLVED' ? 'تمت المعالجة' : 'مفتوح'}
@@ -599,6 +675,15 @@ export default function VehiclesPage() {
                           <p>المسبب: {inc.responsibleEmployee?.name || '-'}</p>
                           <p>التكلفة: {inc.cost ?? '-'}</p>
                         </div>
+                        {inc.type === 'ACCIDENT' && (
+                          <div className="mt-2 grid grid-cols-2 gap-1 rounded-lg bg-purple-50/50 p-2 text-xs text-slate-600">
+                            {inc.location && <p>موقع الحادث: {inc.location}</p>}
+                            {inc.driver && <p>السائق: {inc.driver.name}</p>}
+                            {inc.peoplePresent && <p className="col-span-2">الأشخاص الموجودين: {inc.peoplePresent}</p>}
+                            {inc.policeReportNumber && <p>رقم تقرير الشرطة: {inc.policeReportNumber}</p>}
+                            {inc.repairCost != null && <p>تكلفة الإصلاح: {inc.repairCost}</p>}
+                          </div>
+                        )}
                         {inc.status === 'OPEN' && (
                           <button onClick={() => handleResolveIncident(inc.id)} className="mt-2 rounded-lg bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-100">
                             تمت المعالجة
@@ -871,6 +956,7 @@ export default function VehiclesPage() {
                     <input type="number" placeholder="العمر المتوقع (كم)" value={partLifespanKm} onChange={(e) => setPartLifespanKm(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <input type="number" placeholder="العمر المتوقع (شهور)" value={partLifespanMonths} onChange={(e) => setPartLifespanMonths(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <input placeholder="ملاحظات" value={partNotes} onChange={(e) => setPartNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                    <input type="number" placeholder="التكلفة (اختياري)" value={partCost} onChange={(e) => setPartCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <button type="submit" disabled={savingPart} className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
                       {savingPart ? 'جاري الحفظ...' : 'إضافة قطعة'}
                     </button>

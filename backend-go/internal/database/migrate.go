@@ -969,6 +969,16 @@ var migrations = []string{
 		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,
 	`CREATE INDEX IF NOT EXISTS "VehiclePart_vehicleId_idx" ON "VehiclePart"("vehicleId")`,
+
+	// المرحلة 3: توثيق كامل للحوادث (نوع ACCIDENT) + حقول تفصيلية اختيارية تظهر فقط لهذا النوع.
+	`ALTER TABLE "VehicleIncident" ADD COLUMN IF NOT EXISTS "location" TEXT`,
+	`ALTER TABLE "VehicleIncident" ADD COLUMN IF NOT EXISTS "driverId" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL`,
+	`ALTER TABLE "VehicleIncident" ADD COLUMN IF NOT EXISTS "peoplePresent" TEXT`,
+	`ALTER TABLE "VehicleIncident" ADD COLUMN IF NOT EXISTS "policeReportNumber" TEXT`,
+	`ALTER TABLE "VehicleIncident" ADD COLUMN IF NOT EXISTS "repairCost" DOUBLE PRECISION`,
+
+	// المرحلة 3: تكلفة استبدال القطعة (إطار/بطارية) — تدخل بحساب مصاريف السيارة.
+	`ALTER TABLE "VehiclePart" ADD COLUMN IF NOT EXISTS cost DOUBLE PRECISION`,
 }
 
 func Migrate(db *sqlx.DB) error {

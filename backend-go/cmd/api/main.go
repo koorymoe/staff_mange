@@ -460,6 +460,7 @@ func main() {
 	mux.Handle("POST /api/vehicles/{id}/parts", middleware.Chain(http.HandlerFunc(vehicleHandler.CreatePart), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicle-parts/{id}/replace", middleware.Chain(http.HandlerFunc(vehicleHandler.ReplacePart), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/alerts", middleware.Chain(http.HandlerFunc(vehicleHandler.Alerts), requireAuth, requireVehicleMgmt))
+	mux.Handle("GET /api/vehicles/{id}/expense-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.ExpenseSummary), requireAuth, requireVehicleMgmt))
 
 	// الجودة — مشاكل تنفيذية ميدانية + مشاكل رقابية/إدارية
 	// تقارير العمل — الفني يرسل تقرير عن حجزه، المراقب/الجودة يشوفون كل التقارير
