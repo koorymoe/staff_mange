@@ -9,11 +9,37 @@ export interface AttendanceRecord {
   employee: { id: string; name: string } | null
 }
 
+export interface DailyAttendance {
+  date: string
+  sessions: AttendanceRecord[]
+  firstCheckIn: string
+  lastCheckOut: string | null
+  stillOpen: boolean
+  totalMinutes: number
+}
+
 export interface MonthlyAttendanceReport {
   employeeId: string
   month: string
-  days: AttendanceRecord[]
+  days: DailyAttendance[]
   daysPresent: number
+  totalMinutes: number
+}
+
+export interface OpenSessionResponse {
+  open: AttendanceRecord | null
+  sessions: AttendanceRecord[]
+  totalMinutes: number
+  isOpen: boolean
+}
+
+export interface EmployeeDailyAttendanceSummary {
+  employeeId: string
+  employee: { id: string; name: string } | null
+  sessionsCount: number
+  firstCheckIn: string
+  lastCheckOut: string | null
+  currentlyActive: boolean
   totalMinutes: number
 }
 
@@ -363,6 +389,28 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     throw new Error(body.error || `Request failed: ${res.status}`)
   }
   return res.json()
+}
+
+// downloadFile يجيب ملف (إكسل مثلاً) من الـ API ويحفزّ تنزيله بالمتصفح عبر
+// رابط <a download> مصطنع — يستخدم توكن التوثيق متل باقي الطلبات.
+async function downloadFile(path: string, filename: string): Promise<void> {
+  const token = currentToken()
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error || `Request failed: ${res.status}`)
+  }
+  const blob = await res.blob()
+  const url = window.URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  window.URL.revokeObjectURL(url)
 }
 
 export interface Product {
@@ -1011,11 +1059,17 @@ export const api = {
   checkIn: () => request<AttendanceRecord>('/attendance/checkin', { method: 'POST' }),
   checkOut: () => request<AttendanceRecord>('/attendance/checkout', { method: 'POST' }),
   getMyAttendanceToday: () => request<AttendanceRecord | null>('/attendance/mine'),
+  getMyOpenSession: () => request<OpenSessionResponse>('/attendance/open'),
   getTodayAttendance: () => request<AttendanceRecord[]>('/attendance/today'),
+  getTodaySummary: () => request<EmployeeDailyAttendanceSummary[]>('/attendance/today-summary'),
   getMonthlyAttendance: (employeeId: string, month: string) =>
     request<MonthlyAttendanceReport>(`/attendance/employee/${employeeId}?month=${month}`),
   correctAttendance: (id: string, data: { checkIn?: string; checkOut?: string }) =>
     request<AttendanceRecord>(`/attendance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  exportEmployeeAttendance: (employeeId: string, month: string) =>
+    downloadFile(`/attendance/export/employee/${employeeId}?month=${month}`, `attendance-${employeeId}-${month}.xlsx`),
+  exportTodayAttendance: (date?: string) =>
+    downloadFile(`/attendance/export/today${date ? `?date=${date}` : ''}`, `attendance-today-${date || 'now'}.xlsx`),
 
   // KPI
   getKpiEvaluations: () => request<KpiEvaluation[]>('/kpi'),

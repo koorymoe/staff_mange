@@ -46,17 +46,54 @@ func (r *AttendanceRepository) FindToday(employeeID string) (*model.Attendance, 
 	return &a, nil
 }
 
-func (r *AttendanceRepository) CheckIn(employeeID string) (*model.Attendance, error) {
+func (r *AttendanceRepository) FindOpenSession(employeeID string) (*model.Attendance, error) {
 	var a model.Attendance
 	err := r.db.Get(&a, `
-		INSERT INTO "Attendance" (id, "employeeId", "checkIn", date)
-		VALUES (gen_random_uuid()::text, $1, now(), CURRENT_DATE)
-		ON CONFLICT ("employeeId", date) DO NOTHING
-		RETURNING *
+		SELECT * FROM "Attendance"
+		WHERE "employeeId" = $1 AND "checkOut" IS NULL
+		ORDER BY "checkIn" DESC LIMIT 1
 	`, employeeID)
 	if errors.Is(err, sql.ErrNoRows) {
-		return r.FindToday(employeeID)
+		return nil, nil
 	}
+	if err != nil {
+		return nil, err
+	}
+	r.hydrate(&a)
+	return &a, nil
+}
+
+// TodaySessions ترجع كل جلسات حضور الموظف باليوم الحالي، مرتبة بوقت الدخول.
+func (r *AttendanceRepository) TodaySessions(employeeID string) ([]model.Attendance, error) {
+	records := []model.Attendance{}
+	if err := r.db.Select(&records, `
+		SELECT * FROM "Attendance"
+		WHERE "employeeId" = $1 AND date = CURRENT_DATE
+		ORDER BY "checkIn" ASC
+	`, employeeID); err != nil {
+		return nil, err
+	}
+	for i := range records {
+		r.hydrate(&records[i])
+	}
+	return records, nil
+}
+
+func (r *AttendanceRepository) CheckIn(employeeID string) (*model.Attendance, error) {
+	open, err := r.FindOpenSession(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	if open != nil {
+		return nil, errors.New("عندك تسجيل حضور مفتوح، سجل انصراف أول")
+	}
+
+	var a model.Attendance
+	err = r.db.Get(&a, `
+		INSERT INTO "Attendance" (id, "employeeId", "checkIn", date)
+		VALUES (gen_random_uuid()::text, $1, now(), CURRENT_DATE)
+		RETURNING *
+	`, employeeID)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +105,11 @@ func (r *AttendanceRepository) CheckOut(employeeID string) (*model.Attendance, e
 	var a model.Attendance
 	err := r.db.Get(&a, `
 		UPDATE "Attendance" SET "checkOut" = now()
-		WHERE "employeeId" = $1 AND date = CURRENT_DATE AND "checkOut" IS NULL
+		WHERE id = (
+			SELECT id FROM "Attendance"
+			WHERE "employeeId" = $1 AND "checkOut" IS NULL
+			ORDER BY "checkIn" DESC LIMIT 1
+		)
 		RETURNING *
 	`, employeeID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -92,6 +133,63 @@ func (r *AttendanceRepository) Today() ([]model.Attendance, error) {
 		r.hydrate(&records[i])
 	}
 	return records, nil
+}
+
+// TodaySummary ترجع ملخص حضور كل موظف عنده جلسة (أو أكثر) باليوم الحالي —
+// مجمّعة بـ GROUP BY لتفادي N+1، وتستخدم بجدول المراقب.
+func (r *AttendanceRepository) TodaySummary() ([]model.EmployeeDailyAttendanceSummary, error) {
+	return r.daySummary("CURRENT_DATE")
+}
+
+// DaySummary نفس TodaySummary لكن بتاريخ محدد (لدعم ?date= بتصدير الإكسل).
+func (r *AttendanceRepository) DaySummary(date string) ([]model.EmployeeDailyAttendanceSummary, error) {
+	rows := []model.EmployeeDailyAttendanceSummary{}
+	if err := r.db.Select(&rows, `
+		SELECT
+			"employeeId",
+			COUNT(*)::int AS "sessionsCount",
+			MIN("checkIn") AS "firstCheckIn",
+			CASE WHEN bool_or("checkOut" IS NULL) THEN NULL ELSE MAX("checkOut") END AS "lastCheckOut",
+			bool_or("checkOut" IS NULL) AS "currentlyActive",
+			SUM(
+				EXTRACT(EPOCH FROM (COALESCE("checkOut", now()) - "checkIn")) / 60
+			)::int AS "totalMinutes"
+		FROM "Attendance"
+		WHERE date = $1::date
+		GROUP BY "employeeId"
+		ORDER BY MIN("checkIn") ASC
+	`, date); err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		rows[i].Employee = r.loadEmployeeBrief(rows[i].EmployeeID)
+	}
+	return rows, nil
+}
+
+func (r *AttendanceRepository) daySummary(dateExpr string) ([]model.EmployeeDailyAttendanceSummary, error) {
+	rows := []model.EmployeeDailyAttendanceSummary{}
+	if err := r.db.Select(&rows, `
+		SELECT
+			"employeeId",
+			COUNT(*)::int AS "sessionsCount",
+			MIN("checkIn") AS "firstCheckIn",
+			CASE WHEN bool_or("checkOut" IS NULL) THEN NULL ELSE MAX("checkOut") END AS "lastCheckOut",
+			bool_or("checkOut" IS NULL) AS "currentlyActive",
+			SUM(
+				EXTRACT(EPOCH FROM (COALESCE("checkOut", now()) - "checkIn")) / 60
+			)::int AS "totalMinutes"
+		FROM "Attendance"
+		WHERE date = `+dateExpr+`
+		GROUP BY "employeeId"
+		ORDER BY MIN("checkIn") ASC
+	`); err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		rows[i].Employee = r.loadEmployeeBrief(rows[i].EmployeeID)
+	}
+	return rows, nil
 }
 
 func (r *AttendanceRepository) ForEmployeeInRange(employeeID string, from, to string) ([]model.Attendance, error) {

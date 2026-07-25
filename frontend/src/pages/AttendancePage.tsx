@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
-import { api, type AttendanceRecord, type MonthlyAttendanceReport } from '../api'
+import { api, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse } from '../api'
 
 /* ───── helpers ───── */
 
@@ -51,36 +51,41 @@ export default function AttendancePage() {
   const { employee, permissions } = useSession()
   const navigate = useNavigate()
 
-  const [today, setToday] = useState<AttendanceRecord | null>(null)
+  const [openSession, setOpenSession] = useState<OpenSessionResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [justCheckedIn, setJustCheckedIn] = useState(false)
   const [justCheckedOut, setJustCheckedOut] = useState(false)
   const [elapsed, setElapsed] = useState('')
   const [month, setMonth] = useState(currentMonthKey())
   const [report, setReport] = useState<MonthlyAttendanceReport | null>(null)
-  const [todayAll, setTodayAll] = useState<AttendanceRecord[]>([])
+  const [todaySummary, setTodaySummary] = useState<EmployeeDailyAttendanceSummary[]>([])
   const [error, setError] = useState('')
+  const [viewedEmployeeId, setViewedEmployeeId] = useState<string>('')
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
-  const loadToday = useCallback(() => {
+  const loadOpenSession = useCallback(() => {
     if (!employee) return
-    api.getMyAttendanceToday().then(setToday).catch(() => setToday(null)).finally(() => setLoading(false))
+    api.getMyOpenSession().then(setOpenSession).catch(() => setOpenSession(null)).finally(() => setLoading(false))
   }, [employee])
 
-  const loadReport = useCallback(() => {
-    if (!employee) return
-    api.getMonthlyAttendance(employee.id, month).then(setReport).catch(() => setReport(null))
-  }, [employee, month])
+  const targetEmployeeId = viewedEmployeeId || employee?.id || ''
 
-  useEffect(() => { loadToday() }, [loadToday])
+  const loadReport = useCallback(() => {
+    if (!targetEmployeeId) return
+    api.getMonthlyAttendance(targetEmployeeId, month).then(setReport).catch(() => setReport(null))
+  }, [targetEmployeeId, month])
+
+  useEffect(() => { loadOpenSession() }, [loadOpenSession])
   useEffect(() => { loadReport() }, [loadReport])
   useEffect(() => {
-    if (isAdmin) api.getTodayAttendance().then(setTodayAll).catch(() => setTodayAll([]))
+    if (isAdmin) api.getTodaySummary().then(setTodaySummary).catch(() => setTodaySummary([]))
   }, [isAdmin])
 
+  const today = openSession?.open ?? null
+
   useEffect(() => {
-    if (!today?.checkIn || today.checkOut) return
+    if (!today?.checkIn) return
     setElapsed(elapsedSince(today.checkIn))
     const interval = setInterval(() => setElapsed(elapsedSince(today.checkIn)), 60000)
     return () => clearInterval(interval)
@@ -89,27 +94,27 @@ export default function AttendancePage() {
   const handleCheckIn = useCallback(async () => {
     try {
       setError('')
-      const rec = await api.checkIn()
-      setToday(rec)
-      setJustCheckedIn(true)
+      await api.checkIn()
+      loadOpenSession()
       loadReport()
+      setJustCheckedIn(true)
       setTimeout(() => navigate('/'), 2000)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'تعذر تسجيل الحضور')
     }
-  }, [navigate, loadReport])
+  }, [navigate, loadReport, loadOpenSession])
 
   const handleCheckOut = useCallback(async () => {
     try {
       setError('')
-      const rec = await api.checkOut()
-      setToday(rec)
-      setJustCheckedOut(true)
+      await api.checkOut()
+      loadOpenSession()
       loadReport()
+      setJustCheckedOut(true)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'تعذر تسجيل الانصراف')
     }
-  }, [loadReport])
+  }, [loadReport, loadOpenSession])
 
   if (!employee || loading) return null
 
@@ -159,8 +164,11 @@ export default function AttendancePage() {
               </button>
               <span className="text-2xl font-bold text-gray-800">متواجد بالشركة</span>
               <p className="text-gray-500">اضغط لتسجيل حضورك</p>
+              {openSession && openSession.totalMinutes > 0 && (
+                <p className="text-sm font-semibold text-[#2c5aad]">دوامك اليوم لحد الحين: {fmtHours(openSession.totalMinutes)}</p>
+              )}
             </div>
-          ) : !today.checkOut ? (
+          ) : (
             <>
               <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
                 <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -170,7 +178,13 @@ export default function AttendancePage() {
               <p className="mb-1 text-xl font-bold text-gray-800">
                 أنت متواجد منذ الساعة {fmtTime(today.checkIn)}
               </p>
-              <p className="mb-8 text-lg text-gray-500">المدة: {elapsed}</p>
+              <p className="mb-2 text-lg text-gray-500">مدة هذي الجلسة: {elapsed}</p>
+              {openSession && (
+                <p className="mb-8 text-sm font-semibold text-[#2c5aad]">مجموع دوامك اليوم: {fmtHours(openSession.totalMinutes)}</p>
+              )}
+              {justCheckedOut && (
+                <p className="mb-4 text-lg font-semibold text-green-600">شكراً لك، أحسنت العمل اليوم!</p>
+              )}
               <button
                 onClick={handleCheckOut}
                 className="inline-flex items-center gap-3 rounded-full bg-gradient-to-l from-red-600 to-amber-500 px-10 py-4 text-lg font-bold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
@@ -178,47 +192,59 @@ export default function AttendancePage() {
                 <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
                 </svg>
-                انصرفت
+                انصراف
               </button>
-            </>
-          ) : (
-            <>
-              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-amber-100">
-                <svg className="h-10 w-10 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-xl font-bold text-gray-800">تم تسجيل الانصراف</p>
-              {justCheckedOut && (
-                <p className="mt-2 text-lg font-semibold text-green-600">شكراً لك، أحسنت العمل اليوم!</p>
-              )}
-              <div className="mx-auto mt-6 max-w-md rounded-xl bg-gray-50 px-6 py-3 text-sm">
-                <span className="text-gray-600">الحضور: <span className="font-bold text-[#2c5aad]">{fmtTime(today.checkIn)}</span></span>
-                <span className="mx-3 text-gray-300">|</span>
-                <span className="text-gray-600">الانصراف: <span className="font-bold text-[#2c5aad]">{fmtTime(today.checkOut)}</span></span>
-              </div>
             </>
           )}
         </div>
       </div>
 
+      {/* Employee picker for admins */}
+      {isAdmin && (
+        <div className="flex items-center gap-3 rounded-2xl bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <label className="text-sm font-semibold text-gray-600">عرض سجل موظف آخر:</label>
+          <select
+            value={viewedEmployeeId}
+            onChange={(e) => setViewedEmployeeId(e.target.value)}
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm"
+          >
+            <option value="">أنا ({employee.name})</option>
+            {todaySummary.filter(s => s.employeeId !== employee.id).map(s => (
+              <option key={s.employeeId} value={s.employeeId}>{s.employee?.name || s.employeeId}</option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Monthly attendance record */}
-      <MonthlyView month={month} setMonth={setMonth} report={report} />
+      <MonthlyView month={month} setMonth={setMonth} report={report} employeeId={targetEmployeeId} />
 
       {/* Admin table */}
-      {isAdmin && <AdminTable records={todayAll} onCorrected={() => api.getTodayAttendance().then(setTodayAll)} />}
+      {isAdmin && <AdminTable records={todaySummary} />}
     </div>
   )
 }
 
 /* ───── Monthly attendance table ───── */
 
-function MonthlyView({ month, setMonth, report }: {
+function MonthlyView({ month, setMonth, report, employeeId }: {
   month: string
   setMonth: (m: string) => void
   report: MonthlyAttendanceReport | null
+  employeeId: string
 }) {
   const canGoForward = month < currentMonthKey()
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = async () => {
+    if (!employeeId) return
+    setExporting(true)
+    try {
+      await api.exportEmployeeAttendance(employeeId, month)
+    } finally {
+      setExporting(false)
+    }
+  }
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -237,6 +263,16 @@ function MonthlyView({ month, setMonth, report }: {
           aria-label="الشهر التالي"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between border-b border-gray-100 px-8 py-3">
+        <button
+          onClick={handleExport}
+          disabled={exporting || !report || report.days.length === 0}
+          className="rounded-lg bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-40"
+        >
+          {exporting ? 'جارٍ التصدير...' : 'تصدير Excel'}
         </button>
       </div>
 
@@ -264,25 +300,22 @@ function MonthlyView({ month, setMonth, report }: {
                 <th className="px-6 py-3 font-semibold">اليوم</th>
                 <th className="px-6 py-3 font-semibold">وقت الحضور</th>
                 <th className="px-6 py-3 font-semibold">وقت الانصراف</th>
+                <th className="px-6 py-3 font-semibold">عدد الجلسات</th>
                 <th className="px-6 py-3 font-semibold">عدد الساعات</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {report.days.map((d) => {
-                const minutes = d.checkOut
-                  ? Math.round((new Date(d.checkOut).getTime() - new Date(d.checkIn).getTime()) / 60000)
-                  : null
-                return (
-                  <tr key={d.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-800">{dayLabel(d.date)}</td>
-                    <td className="px-6 py-4 text-gray-600">{fmtTime(d.checkIn)}</td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {d.checkOut ? fmtTime(d.checkOut) : <span className="text-amber-600 font-semibold">لم يسجل انصراف</span>}
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{minutes !== null ? fmtHours(minutes) : '—'}</td>
-                  </tr>
-                )
-              })}
+              {report.days.map((d) => (
+                <tr key={d.date} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 font-medium text-gray-800">{dayLabel(d.firstCheckIn)}</td>
+                  <td className="px-6 py-4 text-gray-600">{fmtTime(d.firstCheckIn)}</td>
+                  <td className="px-6 py-4 text-gray-600">
+                    {d.stillOpen ? <span className="text-amber-600 font-semibold">لم يسجل انصراف بعد</span> : fmtTime(d.lastCheckOut)}
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{d.sessions.length > 1 ? d.sessions.length : '—'}</td>
+                  <td className="px-6 py-4 text-gray-600">{fmtHours(d.totalMinutes)}</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>
@@ -291,38 +324,34 @@ function MonthlyView({ month, setMonth, report }: {
   )
 }
 
-/* ───── Admin attendance table (today + correction) ───── */
+/* ───── Admin attendance table (today summary + correction) ───── */
 
-function AdminTable({ records, onCorrected }: { records: AttendanceRecord[]; onCorrected: () => void }) {
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editValue, setEditValue] = useState('')
-  const [saving, setSaving] = useState(false)
+function AdminTable({ records }: { records: EmployeeDailyAttendanceSummary[] }) {
+  const [exporting, setExporting] = useState(false)
 
-  const startEdit = (rec: AttendanceRecord) => {
-    setEditingId(rec.id)
-    setEditValue(new Date().toTimeString().slice(0, 5))
-  }
-
-  const saveCorrection = async (rec: AttendanceRecord) => {
-    if (!editValue) return
-    setSaving(true)
+  const handleExport = async () => {
+    setExporting(true)
     try {
-      const [h, m] = editValue.split(':').map(Number)
-      const checkOutDate = new Date(rec.checkIn)
-      checkOutDate.setHours(h, m, 0, 0)
-      await api.correctAttendance(rec.id, { checkOut: checkOutDate.toISOString() })
-      setEditingId(null)
-      onCorrected()
+      await api.exportTodayAttendance()
     } finally {
-      setSaving(false)
+      setExporting(false)
     }
   }
 
   return (
     <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-      <div className="bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-8 py-5 text-white">
-        <h2 className="text-xl font-bold">حضور الموظفين اليوم</h2>
-        <p className="mt-1 text-sm text-blue-200">إذا نسي موظف يسجل انصرافه، تكدر تصحح وقت الانصراف يدوياً</p>
+      <div className="flex items-center justify-between bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-8 py-5 text-white">
+        <div>
+          <h2 className="text-xl font-bold">حضور الموظفين اليوم</h2>
+          <p className="mt-1 text-sm text-blue-200">ملخص كل جلسات كل موظف باليوم الحالي</p>
+        </div>
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="rounded-lg bg-white/10 px-4 py-1.5 text-xs font-bold text-white hover:bg-white/20 disabled:opacity-40"
+        >
+          {exporting ? 'جارٍ التصدير...' : 'تصدير إكسل لكل الموظفين'}
+        </button>
       </div>
 
       {records.length === 0 ? (
@@ -332,58 +361,27 @@ function AdminTable({ records, onCorrected }: { records: AttendanceRecord[]; onC
           <table className="w-full text-right text-sm">
             <thead className="bg-gray-50 text-gray-600">
               <tr>
-                <th className="px-6 py-3 font-semibold">الموظف</th>
-                <th className="px-6 py-3 font-semibold">وقت الحضور</th>
-                <th className="px-6 py-3 font-semibold">وقت الانصراف</th>
+                <th className="px-6 py-3 font-semibold">اسم الموظف</th>
+                <th className="px-6 py-3 font-semibold">وقت الدخول الأول</th>
+                <th className="px-6 py-3 font-semibold">وقت الخروج الأخير</th>
+                <th className="px-6 py-3 font-semibold">عدد الجلسات</th>
+                <th className="px-6 py-3 font-semibold">مجموع الساعات اليوم</th>
                 <th className="px-6 py-3 font-semibold">الحالة</th>
-                <th className="px-6 py-3 font-semibold">تصحيح</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {records.map((r) => {
-                const status = r.checkOut ? 'انصرف' : 'متواجد'
-                const color = r.checkOut ? 'text-amber-600 bg-amber-50' : 'text-green-600 bg-green-50'
+                const status = r.currentlyActive ? 'نشط الآن' : 'منتهي'
+                const color = r.currentlyActive ? 'text-green-600 bg-green-50' : 'text-amber-600 bg-amber-50'
                 return (
-                  <tr key={r.id} className="hover:bg-gray-50">
+                  <tr key={r.employeeId} className="hover:bg-gray-50">
                     <td className="px-6 py-4 font-medium text-gray-800">{r.employee?.name || '—'}</td>
-                    <td className="px-6 py-4 text-gray-600">{fmtTime(r.checkIn)}</td>
-                    <td className="px-6 py-4 text-gray-600">{fmtTime(r.checkOut)}</td>
+                    <td className="px-6 py-4 text-gray-600">{fmtTime(r.firstCheckIn)}</td>
+                    <td className="px-6 py-4 text-gray-600">{fmtTime(r.lastCheckOut)}</td>
+                    <td className="px-6 py-4 text-gray-600">{r.sessionsCount}</td>
+                    <td className="px-6 py-4 text-gray-600">{fmtHours(r.totalMinutes)}</td>
                     <td className="px-6 py-4">
                       <span className={`inline-block rounded-full px-3 py-1 text-xs font-bold ${color}`}>{status}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {!r.checkOut && (
-                        editingId === r.id ? (
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="time"
-                              value={editValue}
-                              onChange={(e) => setEditValue(e.target.value)}
-                              className="rounded-lg border border-gray-200 px-2 py-1 text-sm"
-                            />
-                            <button
-                              onClick={() => saveCorrection(r)}
-                              disabled={saving}
-                              className="rounded-lg bg-[#2c5aad] px-3 py-1 text-xs font-bold text-white hover:bg-[#1e3f7a] disabled:opacity-50"
-                            >
-                              حفظ
-                            </button>
-                            <button
-                              onClick={() => setEditingId(null)}
-                              className="rounded-lg bg-gray-100 px-3 py-1 text-xs font-bold text-gray-600 hover:bg-gray-200"
-                            >
-                              إلغاء
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => startEdit(r)}
-                            className="rounded-lg bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700 hover:bg-amber-100"
-                          >
-                            تسجيل انصراف يدوي
-                          </button>
-                        )
-                      )}
                     </td>
                   </tr>
                 )

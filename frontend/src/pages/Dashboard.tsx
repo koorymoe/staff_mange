@@ -146,19 +146,30 @@ export default function Dashboard() {
 
   /* ── Attendance widget state ── */
   const [activeRecord, setActiveRecord] = useState<AttendanceRecord | null>(null)
+  const [todayTotalMinutes, setTodayTotalMinutes] = useState(0)
   const [elapsed, setElapsed] = useState('')
   const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false)
 
-  useEffect(() => {
+  const refreshOpenSession = useCallback(() => {
     if (!employee) return
-    api.getMyAttendanceToday().then(rec => setActiveRecord(rec && !rec.checkOut ? rec : null)).catch(() => setActiveRecord(null))
+    api.getMyOpenSession()
+      .then(res => {
+        setActiveRecord(res.open)
+        setTodayTotalMinutes(res.totalMinutes)
+      })
+      .catch(() => setActiveRecord(null))
   }, [employee])
+
+  useEffect(() => {
+    refreshOpenSession()
+  }, [refreshOpenSession])
 
   useEffect(() => {
     if (!activeRecord?.checkIn || activeRecord.checkOut) return
     setElapsed(elapsedSince(activeRecord.checkIn))
     const interval = setInterval(() => {
       setElapsed(elapsedSince(activeRecord.checkIn))
+      setTodayTotalMinutes(m => m + 1)
     }, 60000)
     return () => clearInterval(interval)
   }, [activeRecord])
@@ -167,14 +178,17 @@ export default function Dashboard() {
     if (!employee) return
     const rec = await api.checkIn()
     setActiveRecord(rec)
-  }, [employee])
+    refreshOpenSession()
+  }, [employee, refreshOpenSession])
 
   const handleAttCheckOut = useCallback(async () => {
     if (!employee || !activeRecord) return
     await api.checkOut()
     setActiveRecord(null)
     setShowCheckoutConfirm(false)
-  }, [employee, activeRecord])
+    refreshOpenSession()
+  }, [employee, activeRecord, refreshOpenSession])
+
 
   const handleTaskStart = async (b: Booking) => {
     const updated = await api.startBooking(b.id)
@@ -798,7 +812,12 @@ export default function Dashboard() {
               <span className="text-slate-400">منذ {fmtTime(activeRecord.checkIn)} • {elapsed}</span>
             </span>
           ) : (
-            <span className="text-xs text-slate-400">لم تسجل حضورك بعد</span>
+            <span className="text-xs text-slate-400">{todayTotalMinutes > 0 ? 'خارج الدوام حالياً' : 'لم تسجل حضورك بعد'}</span>
+          )}
+          {todayTotalMinutes > 0 && (
+            <span className="text-xs font-semibold text-[#0f2040]">
+              دوامك اليوم: {Math.floor(todayTotalMinutes / 60)} ساعة و{todayTotalMinutes % 60} دقيقة
+            </span>
           )}
         </div>
       </div>
