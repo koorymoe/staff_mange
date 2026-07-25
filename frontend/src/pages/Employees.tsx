@@ -27,6 +27,7 @@ const roleLabels: Record<string, string> = {
   ENGINEER: 'مهندس',
   PROCUREMENT_ADMIN: 'إداري الكميات',
   DESIGNER: 'مصمم',
+  SERVICE_MANAGER: 'مسؤول خدمة',
 }
 
 const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
@@ -42,6 +43,7 @@ const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
   ENGINEER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
   PROCUREMENT_ADMIN: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
   DESIGNER: { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-500' },
+  SERVICE_MANAGER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
 }
 
 const avatarGradients: string[] = [

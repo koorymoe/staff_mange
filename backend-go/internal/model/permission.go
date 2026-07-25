@@ -51,4 +51,5 @@ var RoleDefaultPermissions = map[string][]string{
 	"ENGINEER":          {"expenses", "quotation_system", "project_management"},
 	"PROCUREMENT_ADMIN": {"procurement", "inventory"},
 	"DESIGNER":          {},
+	"SERVICE_MANAGER":   {},
 }

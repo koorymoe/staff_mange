@@ -686,6 +686,10 @@ var migrations = []string{
 	// دور "مصمم" (DESIGNER) — بدون صلاحيات إضافية افتراضية، تُمنح له لاحقاً من صفحة
 	// الصلاحيات حسب الحاجة، نفس نمط "إداري الكميات".
 	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'DESIGNER'`,
+	// دور "مسؤول خدمة" (SERVICE_MANAGER) — المسؤول عن متابعة خدمة معينة (جي بي اس،
+	// كاميرات...) وتوجيه كوادرها، بدون صلاحيات إضافية افتراضية — تُمنح له لاحقاً من
+	// صفحة الصلاحيات حسب الخدمة الي يديرها.
+	`ALTER TYPE "EmployeeRole" ADD VALUE IF NOT EXISTS 'SERVICE_MANAGER'`,
 	// حالتين جديدتين للموظف: أرشفة (قابلة للاسترجاع) وحذف (سجل ناعم) — الاثنين
 	// يختفون من كل واجهات النظام العادية، الأدمن/المالك بس يشوف تاريخهم.
 	`ALTER TYPE "EmployeeStatus" ADD VALUE IF NOT EXISTS 'ARCHIVED'`,
