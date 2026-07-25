@@ -19,11 +19,15 @@ export default function TrainingManagement() {
   }, [])
 
   useEffect(() => {
+    // Guard-clause reset when selection is cleared.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedEmployeeId) { setAssignedServiceIds([]); return }
     api.getTrainingAssignments(selectedEmployeeId).then(list => setAssignedServiceIds(list.map(s => s.id)))
   }, [selectedEmployeeId])
 
   useEffect(() => {
+    // Guard-clause reset when selection is cleared.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedServiceId) { setMaterials([]); return }
     api.getTrainingMaterials(selectedServiceId).then(setMaterials)
   }, [selectedServiceId])

@@ -166,6 +166,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (!activeRecord?.checkIn || activeRecord.checkOut) return
+    // Same intentional immediate-init as AttendancePage's elapsed timer.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setElapsed(elapsedSince(activeRecord.checkIn))
     const interval = setInterval(() => {
       setElapsed(elapsedSince(activeRecord.checkIn))
@@ -1045,7 +1047,7 @@ export default function Dashboard() {
 
 /* ═══ Sub-components ═══ */
 
-function SystemPanel({ title, color: _color, dotColor, actionLabel, onAction, children }: {
+function SystemPanel({ title, dotColor, actionLabel, onAction, children }: {
   title: string; color: string; dotColor: string; actionLabel: string; onAction: () => void; children: React.ReactNode
 }) {
   return (

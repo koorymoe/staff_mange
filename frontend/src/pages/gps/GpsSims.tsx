@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { api } from '../../api'
+import { api, type GpsSimCard } from '../../api'
 
 export default function GpsSims() {
-  const [sims, setSims] = useState<any[]>([])
+  const [sims, setSims] = useState<GpsSimCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -13,10 +13,9 @@ export default function GpsSims() {
   const [operator, setOperator] = useState('ZAIN')
 
   const load = () => {
-    setLoading(true)
     api.getSimCards()
       .then(setSims)
-      .catch((e) => setError(e.message))
+      .catch((e) => setError(e instanceof Error ? e.message : 'حدث خطأ'))
       .finally(() => setLoading(false))
   }
 
@@ -37,7 +36,7 @@ export default function GpsSims() {
     }
   }
 
-  const toggleStatus = async (sim: any) => {
+  const toggleStatus = async (sim: GpsSimCard) => {
     try {
       await api.updateSimCard(sim.id, { status: sim.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE' })
       load()

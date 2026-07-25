@@ -31,7 +31,6 @@ export default function QualityFollowUpsPage() {
   const [notesDraft, setNotesDraft] = useState<Record<string, string>>({})
 
   const load = () => {
-    setLoading(true)
     api.getQualityFollowUps()
       .then(setItems)
       .catch((e) => setError(e.message))

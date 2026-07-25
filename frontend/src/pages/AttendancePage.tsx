@@ -86,6 +86,9 @@ export default function AttendancePage() {
 
   useEffect(() => {
     if (!today?.checkIn) return
+    // Initializing the elapsed-time display synchronously (before the 60s tick) so the
+    // timer doesn't show a stale/blank value for a minute is intentional here.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setElapsed(elapsedSince(today.checkIn))
     const interval = setInterval(() => setElapsed(elapsedSince(today.checkIn)), 60000)
     return () => clearInterval(interval)

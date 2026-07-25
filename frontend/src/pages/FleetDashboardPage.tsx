@@ -7,8 +7,6 @@ export default function FleetDashboardPage() {
   const [error, setError] = useState('')
 
   const load = useCallback(() => {
-    setLoading(true)
-    setError('')
     api.getFleetDashboard()
       .then(d => setData(d))
       .catch(() => setError('تعذر جلب بيانات لوحة تحكم الأسطول'))

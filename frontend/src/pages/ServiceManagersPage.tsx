@@ -14,7 +14,6 @@ export default function ServiceManagersPage() {
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
 
   const load = () => {
-    setLoading(true)
     Promise.all([api.getServiceManagers(), api.getEmployees(), api.getServices()])
       .then(([m, e, s]) => { setManagers(m); setEmployees(e); setServices(s) })
       .finally(() => setLoading(false))

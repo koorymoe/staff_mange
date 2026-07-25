@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api } from '../../api'
+import { api, type GpsMaintenanceRequest } from '../../api'
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'معلق', color: '#d97706', bg: '#fffbeb' },
@@ -8,17 +8,16 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
 }
 
 export default function GpsMaintenance() {
-  const [requests, setRequests] = useState<any[]>([])
+  const [requests, setRequests] = useState<GpsMaintenanceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [selectedRequest, setSelectedRequest] = useState<any>(null)
+  const [selectedRequest, setSelectedRequest] = useState<GpsMaintenanceRequest | null>(null)
   const [adminNotes, setAdminNotes] = useState('')
 
   const load = () => {
-    setLoading(true)
     api.getGpsMaintenance()
       .then(setRequests)
-      .catch((e) => setError(e.message))
+      .catch((e) => setError(e instanceof Error ? e.message : 'حدث خطأ'))
       .finally(() => setLoading(false))
   }
 

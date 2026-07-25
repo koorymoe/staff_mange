@@ -92,7 +92,6 @@ export default function GpsDelivery() {
   const [deliveringId, setDeliveringId] = useState<string | null>(null)
 
   const load = () => {
-    setLoading(true)
     api.getGpsDevices().then(all => {
       setPending(all.filter(r => r.status === 'APPROVED' && !r.isDelivered))
       setDelivered(all.filter(r => r.isDelivered).slice(0, 20))

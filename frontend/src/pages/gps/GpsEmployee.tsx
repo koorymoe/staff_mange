@@ -1,23 +1,27 @@
 import { useState, useEffect } from 'react'
-import { api } from '../../api'
+import { api, type GpsCustomer, type GpsDeviceRequest, type GpsRenewalRequest, type GpsMaintenanceRequest } from '../../api'
 import { useSession } from '../../session'
 
 type ActiveForm = null | 'purchase' | 'renewal' | 'maintenance'
+type RecentRequest =
+  | (GpsDeviceRequest & { type: 'device' })
+  | (GpsRenewalRequest & { type: 'renewal' })
+  | (GpsMaintenanceRequest & { type: 'maintenance' })
 
 export default function GpsEmployee() {
   const { employee } = useSession()
-  const [customers, setCustomers] = useState<any[]>([])
-  const [devices, setDevices] = useState<any[]>([])
-  const [recentRequests, setRecentRequests] = useState<any[]>([])
-  const [assignedInstalls, setAssignedInstalls] = useState<any[]>([])
+  const [customers, setCustomers] = useState<GpsCustomer[]>([])
+  const [devices, setDevices] = useState<GpsDeviceRequest[]>([])
+  const [recentRequests, setRecentRequests] = useState<RecentRequest[]>([])
+  const [assignedInstalls, setAssignedInstalls] = useState<GpsDeviceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [activeForm, setActiveForm] = useState<ActiveForm>(null)
   const [submitting, setSubmitting] = useState(false)
 
   // Purchase form
   const [customerId, setCustomerId] = useState('')
-  const [purchaseType, setPurchaseType] = useState('DEVICE_SIM')
-  const [subscriptionType, setSubscriptionType] = useState('THREE_MONTHS')
+  const [purchaseType, setPurchaseType] = useState<'DEVICE_SIM' | 'DEVICE_ONLY'>('DEVICE_SIM')
+  const [subscriptionType, setSubscriptionType] = useState<'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY'>('THREE_MONTHS')
   const [notes, setNotes] = useState('')
 
   // Renewal form
@@ -30,7 +34,6 @@ export default function GpsEmployee() {
   const [problemDescription, setProblemDescription] = useState('')
 
   const load = async () => {
-    setLoading(true)
     try {
       const [c, d, r, m] = await Promise.all([
         api.getGpsCustomers(),
@@ -42,31 +45,33 @@ export default function GpsEmployee() {
       setDevices(d)
       const myId = employee?.id
       setAssignedInstalls(
-        d.filter((x: any) => x.assignedTechnician?.id === myId && x.status !== 'REJECTED')
-          .sort((a: any, b: any) => new Date(a.scheduledAt || a.createdAt).getTime() - new Date(b.scheduledAt || b.createdAt).getTime())
+        d.filter((x) => x.assignedTechnician?.id === myId && x.status !== 'REJECTED')
+          .sort((a, b) => new Date(a.scheduledAt || a.createdAt).getTime() - new Date(b.scheduledAt || b.createdAt).getTime())
       )
-      const allRequests = [
-        ...d.filter((x: any) => x.employeeId === myId).map((x: any) => ({ ...x, type: 'device' })),
-        ...r.filter((x: any) => x.employeeId === myId).map((x: any) => ({ ...x, type: 'renewal' })),
-        ...m.filter((x: any) => x.employeeId === myId).map((x: any) => ({ ...x, type: 'maintenance' })),
+      const allRequests: RecentRequest[] = [
+        ...d.filter((x) => x.employeeId === myId).map((x): RecentRequest => ({ ...x, type: 'device' })),
+        ...r.filter((x) => x.employeeId === myId).map((x): RecentRequest => ({ ...x, type: 'renewal' })),
+        ...m.filter((x) => x.employeeId === myId).map((x): RecentRequest => ({ ...x, type: 'maintenance' })),
       ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).slice(0, 10)
       setRecentRequests(allRequests)
-    } catch (e: any) {
-      alert(e.message)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'حدث خطأ')
     }
     setLoading(false)
   }
 
+  // `load` is async and only sets state after its awaits resolve; false positive.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [])
 
   const handlePurchase = async () => {
     if (!customerId || !employee) return alert('اختر الزبون')
     setSubmitting(true)
     try {
-      await api.createGpsDevice({ customerId, employeeId: employee.id, purchaseType, subscriptionType, notes } as any)
+      await api.createGpsDevice({ customerId, employeeId: employee.id, purchaseType, subscriptionType, notes })
       setCustomerId(''); setNotes(''); setActiveForm(null)
       load()
-    } catch (e: any) { alert(e.message) }
+    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
     setSubmitting(false)
   }
 
@@ -74,10 +79,10 @@ export default function GpsEmployee() {
     if (!renewCustomerId || !renewDeviceId || !employee) return alert('اختر الزبون والجهاز')
     setSubmitting(true)
     try {
-      await api.createGpsRenewal({ customerId: renewCustomerId, deviceRequestId: renewDeviceId, employeeId: employee.id, subscriptionType: renewSubType } as any)
+      await api.createGpsRenewal({ customerId: renewCustomerId, deviceRequestId: renewDeviceId, employeeId: employee.id, subscriptionType: renewSubType })
       setRenewCustomerId(''); setRenewDeviceId(''); setActiveForm(null)
       load()
-    } catch (e: any) { alert(e.message) }
+    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
     setSubmitting(false)
   }
 
@@ -86,10 +91,10 @@ export default function GpsEmployee() {
     if (!problemDescription) return alert('اكتب وصف المشكلة')
     setSubmitting(true)
     try {
-      await api.createGpsMaintenance({ customerId: maintCustomerId, employeeId: employee.id, problemDescription } as any)
+      await api.createGpsMaintenance({ customerId: maintCustomerId, employeeId: employee.id, problemDescription })
       setMaintCustomerId(''); setProblemDescription(''); setActiveForm(null)
       load()
-    } catch (e: any) { alert(e.message) }
+    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
     setSubmitting(false)
   }
 
@@ -177,14 +182,14 @@ export default function GpsEmployee() {
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">نوع الشراء</label>
-              <select value={purchaseType} onChange={e => setPurchaseType(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none">
+              <select value={purchaseType} onChange={e => setPurchaseType(e.target.value as 'DEVICE_SIM' | 'DEVICE_ONLY')} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none">
                 <option value="DEVICE_SIM">جهاز + شريحة</option>
                 <option value="DEVICE_ONLY">جهاز فقط</option>
               </select>
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">نوع الاشتراك</label>
-              <select value={subscriptionType} onChange={e => setSubscriptionType(e.target.value)} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none">
+              <select value={subscriptionType} onChange={e => setSubscriptionType(e.target.value as 'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY')} className="w-full rounded-xl border border-slate-200 px-4 py-3 outline-none">
                 <option value="THREE_MONTHS">3 أشهر</option>
                 <option value="SIX_MONTHS">6 أشهر</option>
                 <option value="YEARLY">سنوي</option>

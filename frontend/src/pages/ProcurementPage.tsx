@@ -54,8 +54,6 @@ export default function ProcurementPage() {
   const [fulfilling, setFulfilling] = useState(false)
 
   const loadData = async () => {
-    setLoading(true)
-    setError('')
     try {
       const [reqs, st, bks] = await Promise.all([
         api.getProcurementRequests(),
@@ -65,14 +63,16 @@ export default function ProcurementPage() {
       setRequests(reqs)
       setStats(st)
       setBookings(bks)
-    } catch (e: any) {
-      setError(e.message || 'حدث خطأ في تحميل البيانات')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ في تحميل البيانات')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
+    // `loadData` is async and only sets state after its awaits resolve; false positive.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadData()
   }, [])
 
@@ -81,7 +81,10 @@ export default function ProcurementPage() {
   // ونحدد النوع تلقائياً "طلب للزبون" لأنه مربوط بحجز.
   useEffect(() => {
     const bookingId = searchParams.get('bookingId')
+    // Pre-filling the request form from the ?bookingId= URL param is a derived-state
+    // sync from the router, not a fetch.
     if (bookingId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormBookingId(bookingId)
       setFormRequestType('CUSTOMER_PRODUCT')
       setActiveTab('CUSTOMER_PRODUCT')
@@ -92,6 +95,9 @@ export default function ProcurementPage() {
   // عند فتح الفورم أول مرة، إذا الموظف عنده صلاحية وحدة بس، نحددها تلقائياً.
   useEffect(() => {
     if (!showForm) return
+    // Auto-selecting the request type when the employee only has one permission is a
+    // derived-state sync from props, not a fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (canCreatePersonal && !canCreateCustomer) setFormRequestType('PERSONAL_SUPPLY')
     else if (canCreateCustomer && !canCreatePersonal) setFormRequestType('CUSTOMER_PRODUCT')
   }, [showForm, canCreatePersonal, canCreateCustomer])
@@ -117,8 +123,8 @@ export default function ProcurementPage() {
       setFormItems([{ productName: '', quantity: 1 }])
       setShowForm(false)
       await loadData()
-    } catch (e: any) {
-      setError(e.message || 'حدث خطأ في إنشاء الطلب')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ في إنشاء الطلب')
     } finally {
       setSubmitting(false)
     }
@@ -128,8 +134,8 @@ export default function ProcurementPage() {
     try {
       await api.updateProcurementStatus(id, status)
       await loadData()
-    } catch (e: any) {
-      setError(e.message || 'حدث خطأ في تحديث الحالة')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ في تحديث الحالة')
     }
   }
 
@@ -165,8 +171,8 @@ export default function ProcurementPage() {
       })
       setFulfillModal(null)
       await loadData()
-    } catch (e: any) {
-      setError(e.message || 'حدث خطأ في تنفيذ الطلب')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ في تنفيذ الطلب')
     } finally {
       setFulfilling(false)
     }

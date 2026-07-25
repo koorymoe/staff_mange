@@ -57,7 +57,9 @@ export default function QuotationNew() {
 
   useEffect(() => {
     if (!id) return
-    setLoadingQuotation(true)
+    // id is a route param but could theoretically change without remount; re-arm the
+    // loading flag via a microtask to avoid a synchronous setState in the effect body.
+    queueMicrotask(() => setLoadingQuotation(true))
     api.getQuotation(id)
       .then((q) => {
         setCustomerName(q.customerName)
@@ -78,7 +80,6 @@ export default function QuotationNew() {
       })
       .catch((err) => showStatus('تعذر تحميل عرض السعر: ' + (err instanceof Error ? err.message : ''), 'err'))
       .finally(() => setLoadingQuotation(false))
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   useEffect(() => {
@@ -435,7 +436,9 @@ ${pageShell(`
       await api.deleteProduct(id)
       const prods = await api.getProducts()
       setProducts(prods)
-    } catch {}
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   return (
@@ -788,12 +791,12 @@ ${pageShell(`
   )
 }
 
-function inputStyle(opts: { bg?: string; fw?: number; color?: string; ta?: string }): React.CSSProperties {
+function inputStyle(opts: { bg?: string; fw?: number; color?: string; ta?: React.CSSProperties['textAlign'] }): React.CSSProperties {
   return {
     width: '100%', padding: '11px 13px', border: '1.5px solid #e0e0e0', borderRadius: '8px',
     fontSize: '14px', fontFamily: 'inherit', background: opts.bg || '#fff',
     boxSizing: 'border-box', outline: 'none',
-    fontWeight: opts.fw, color: opts.color, textAlign: (opts.ta as any),
+    fontWeight: opts.fw, color: opts.color, textAlign: opts.ta,
   }
 }
 

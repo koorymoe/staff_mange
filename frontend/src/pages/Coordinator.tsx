@@ -104,7 +104,6 @@ export default function Coordinator() {
   }
 
   const load = () => {
-    setLoading(true)
     api
       .getBookings()
       .then((data) => {

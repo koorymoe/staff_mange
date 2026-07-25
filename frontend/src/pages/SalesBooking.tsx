@@ -52,7 +52,9 @@ export default function SalesBooking() {
   }, [searchParams])
 
   useEffect(() => {
+    // Guard-clause reset when the typed phone isn't a valid lookup key yet.
     if (!/^\d{11}$/.test(phone.trim())) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setExistingCustomer(null)
       return
     }
@@ -70,6 +72,9 @@ export default function SalesBooking() {
   useEffect(() => {
     if (!existingCustomer) return
     if (addressDesc.trim() || mapPoint) return
+    // Pre-filling the address form from the looked-up customer's saved location is a
+    // derived-state sync from a prop (existingCustomer), not a fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (existingCustomer.location) setAddressDesc(existingCustomer.location)
     if (existingCustomer.mapLatitude != null && existingCustomer.mapLongitude != null) {
       setMapPoint({ lat: existingCustomer.mapLatitude, lng: existingCustomer.mapLongitude })

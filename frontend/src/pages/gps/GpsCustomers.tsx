@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
-import { api } from '../../api'
+import { api, type GpsCustomer } from '../../api'
 
 export default function GpsCustomers() {
-  const [customers, setCustomers] = useState<any[]>([])
+  const [customers, setCustomers] = useState<GpsCustomer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -17,10 +17,9 @@ export default function GpsCustomers() {
   const [governorate, setGovernorate] = useState('')
 
   const load = () => {
-    setLoading(true)
     api.getGpsCustomers()
       .then(setCustomers)
-      .catch((e) => setError(e.message))
+      .catch((e) => setError(e instanceof Error ? e.message : 'حدث خطأ'))
       .finally(() => setLoading(false))
   }
 

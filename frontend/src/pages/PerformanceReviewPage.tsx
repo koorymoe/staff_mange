@@ -18,7 +18,6 @@ export default function PerformanceReviewPage() {
   const isLeader = !!employee?.isLeader && employee.role === 'TECHNICIAN'
 
   const load = () => {
-    setLoading(true)
     Promise.all([api.getEmployees(), api.getPerformanceReviews()])
       .then(([e, r]) => { setEmployees(e); setReviews(r) })
       .finally(() => setLoading(false))

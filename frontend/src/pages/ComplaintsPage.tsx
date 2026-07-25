@@ -54,7 +54,6 @@ export default function ComplaintsPage() {
   const [resolution, setResolution] = useState('')
 
   const load = () => {
-    setLoading(true)
     Promise.all([api.getComplaints(), api.getCustomers(), api.getEmployees()])
       .then(([comps, custs, emps]) => {
         setComplaints(comps)
@@ -72,6 +71,9 @@ export default function ComplaintsPage() {
   }, [canTrack])
   // الأدوار الي بس تسجل شكوى (بدون متابعة) تشوف الفورم مباشرة بدون زر تبديل
   useEffect(() => {
+    // Auto-opening the complaint form for roles without a tracking view is a
+    // derived-state sync from the session role, not a fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (currentUser && !canTrack) setShowForm(true)
   }, [currentUser, canTrack])
 

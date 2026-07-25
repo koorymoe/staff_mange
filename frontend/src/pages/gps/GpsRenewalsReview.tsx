@@ -49,7 +49,6 @@ export default function GpsRenewalsReview() {
   const [approving, setApproving] = useState(false)
 
   const load = () => {
-    setLoading(true)
     api.getGpsRenewals().then(all => setRenewals(all.filter(r => r.status === 'PENDING'))).finally(() => setLoading(false))
   }
   useEffect(load, [])
@@ -64,7 +63,7 @@ export default function GpsRenewalsReview() {
       await api.updateGpsRenewal(renewal.id, { status: 'APPROVED', newEndDate: newEnd.toISOString() })
       await api.updateGpsDevice(renewal.deviceRequestId, {
         subscriptionEnd: newEnd.toISOString(),
-        subscriptionType: renewal.subscriptionType,
+        subscriptionType: renewal.subscriptionType as 'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY',
         subscriptionStatus: 'ACTIVE',
       })
 

@@ -18,7 +18,10 @@ export default function GpsRequestsReview() {
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    setLoading(true)
+    // gpsServiceId can change after mount, so re-arm the loading flag outside the
+    // effect's synchronous body (avoids react-hooks/set-state-in-effect) while still
+    // showing the spinner before the network calls resolve.
+    queueMicrotask(() => setLoading(true))
     Promise.all([
       api.getGpsDevices().then(all => setRequests(all.filter(r => r.status === 'PENDING'))),
       api.getEmployees().then(all => setGpsTechnicians(

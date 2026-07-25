@@ -39,7 +39,6 @@ export default function WorkReportPage() {
 
   useEffect(() => {
     if (!currentUser) return
-    setLoading(true)
     api
       .getBookings({ status: 'IN_PROGRESS' })
       .then((all) => {

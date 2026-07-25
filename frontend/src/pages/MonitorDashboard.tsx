@@ -17,7 +17,6 @@ export default function MonitorDashboard() {
   const [techWashSummaries, setTechWashSummaries] = useState<TechnicianWashSummary[]>([])
 
   const load = useCallback(() => {
-    setLoading(true)
     const monthAgo = new Date()
     monthAgo.setMonth(monthAgo.getMonth() - 1)
     const since = monthAgo.toISOString().slice(0, 10)

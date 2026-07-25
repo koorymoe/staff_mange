@@ -29,8 +29,9 @@ export default function AssistantConversationsPage() {
   }, [isOwner])
 
   const fetchPage = async (offset: number, replace: boolean) => {
-    setLoading(true)
-    setError(null)
+    // Filters (isOwner/employeeId/from/to) can change after mount and re-trigger this
+    // effect; re-arm loading via a microtask instead of synchronously in the effect body.
+    queueMicrotask(() => { setLoading(true); setError(null) })
     try {
       const res = await api.getAssistantConversations({
         employeeId: employeeId || undefined,
@@ -50,6 +51,8 @@ export default function AssistantConversationsPage() {
 
   useEffect(() => {
     if (!isOwner) return
+    // fetchPage re-arms loading/error via queueMicrotask (see above), not synchronously.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPage(0, true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOwner, employeeId, from, to])

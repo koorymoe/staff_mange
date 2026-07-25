@@ -10,7 +10,6 @@ export default function Finance() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'verified'>('all')
 
   const load = () => {
-    setLoading(true)
     Promise.all([
       api.getBookings({ status: 'COMPLETED' }),
       api.getExpenses(),

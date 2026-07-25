@@ -21,7 +21,6 @@ export default function QuotationsPage() {
   const [error, setError] = useState<string | null>(null)
 
   const load = () => {
-    setLoading(true)
     api.getQuotations()
       .then(setQuotations)
       .catch((e) => setError(e.message))

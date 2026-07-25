@@ -14,7 +14,6 @@ export default function Services() {
   const [skillSubmitting, setSkillSubmitting] = useState<string | null>(null)
 
   const load = () => {
-    setLoading(true)
     api
       .getServices()
       .then(setServices)

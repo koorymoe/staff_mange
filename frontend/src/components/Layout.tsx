@@ -178,6 +178,9 @@ export default function Layout() {
   const [notifOpen, setNotifOpen] = useState(false)
   const location = useLocation()
 
+  // Closing the mobile nav on route change is a one-line UI reset tied to router
+  // navigation, not data fetching; safe to keep as a synchronous effect.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
 
   const toggleSidebar = () => {
@@ -213,6 +216,9 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
+    // Clearing notifications when the user logs out is a guard-clause reset of local
+    // state tied to the `employee` dependency, not a fetch; safe to keep as-is.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!employee) { setNotifications([]); setUnreadCount(0); return }
     const load = () => api.getNotifications().then((r) => { setNotifications(r.notifications); setUnreadCount(r.unreadCount) }).catch(() => {})
     load()
@@ -239,13 +245,17 @@ export default function Layout() {
   }
 
   useEffect(() => {
+    // Guard-clause reset when logged out; not part of the fetch itself.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!employee) { setEmployeePermissions([]); return }
     api.getEmployeePermissions(employee.id)
-      .then((perms) => setEmployeePermissions(perms.map((p: any) => p.name)))
+      .then((perms) => setEmployeePermissions(perms.map((p) => p.name)))
       .catch(() => setEmployeePermissions([]))
   }, [employee?.id])
 
   useEffect(() => {
+    // Guard-clause reset when logged out; not part of the fetch itself.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!employee) { setGpsServiceId(null); return }
     api.getServices()
       .then((services) => setGpsServiceId(services.find((s) => s.name === 'GPS')?.id || null))

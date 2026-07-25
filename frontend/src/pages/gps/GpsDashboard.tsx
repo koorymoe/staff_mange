@@ -1,33 +1,35 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api } from '../../api'
+import { api, type GpsStats, type GpsDeviceRequest, type GpsSimCard } from '../../api'
+
+type SubscriptionStatus = 'unknown' | 'active' | 'expiring' | 'expired40' | 'expired80'
 
 export default function GpsDashboard() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState<any>(null)
-  const [devices, setDevices] = useState<any[]>([])
-  const [sims, setSims] = useState<any[]>([])
+  const [stats, setStats] = useState<GpsStats | null>(null)
+  const [devices, setDevices] = useState<GpsDeviceRequest[]>([])
+  const [sims, setSims] = useState<GpsSimCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [tab, setTab] = useState<'overview' | 'subscriptions' | 'assets'>('overview')
   const [filter, setFilter] = useState('all')
-  const [selectedDevice, setSelectedDevice] = useState<any>(null)
+  const [selectedDevice, setSelectedDevice] = useState<GpsDeviceRequest | null>(null)
 
   useEffect(() => {
     Promise.all([api.getGpsStats(), api.getGpsDevices(), api.getSimCards()])
       .then(([s, d, sim]) => { setStats(s); setDevices(d); setSims(sim) })
-      .catch((e) => setError(e.message))
+      .catch((e) => setError(e instanceof Error ? e.message : 'حدث خطأ'))
       .finally(() => setLoading(false))
   }, [])
 
-  const getDaysRemaining = (endDate: string) => {
+  const getDaysRemaining = (endDate: string | null) => {
     if (!endDate) return null
     const end = new Date(endDate)
     const now = new Date()
     return Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
   }
 
-  const getSubscriptionStatus = (device: any) => {
+  const getSubscriptionStatus = (device: GpsDeviceRequest): SubscriptionStatus => {
     const days = getDaysRemaining(device.subscriptionEnd)
     if (days === null) return 'unknown'
     if (days > 40) return 'active'
@@ -41,7 +43,7 @@ export default function GpsDashboard() {
     return getSubscriptionStatus(d) === filter
   })
 
-  const getProgressPercent = (device: any) => {
+  const getProgressPercent = (device: GpsDeviceRequest) => {
     if (!device.activationDate || !device.subscriptionEnd) return 0
     const start = new Date(device.activationDate).getTime()
     const end = new Date(device.subscriptionEnd).getTime()
@@ -51,7 +53,7 @@ export default function GpsDashboard() {
     return Math.min(100, Math.max(0, (elapsed / total) * 100))
   }
 
-  const getProgressColor = (device: any) => {
+  const getProgressColor = (device: GpsDeviceRequest) => {
     const status = getSubscriptionStatus(device)
     if (status === 'active') return '#16a34a'
     if (status === 'expiring') return '#d97706'
@@ -94,7 +96,7 @@ export default function GpsDashboard() {
         {tabs.map(t => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key as any)}
+            onClick={() => setTab(t.key as typeof tab)}
             className={`rounded-2xl px-6 py-3 text-sm font-bold transition-all ${
               tab === t.key
                 ? 'text-white shadow-sm'
@@ -173,8 +175,8 @@ export default function GpsDashboard() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[
               { label: 'إجمالي الشرائح', value: stats.totalSims ?? sims.length, icon: '📱', color: '#1a3a5c' },
-              { label: 'شرائح متوفرة', value: stats.availableSims ?? sims.filter((s: any) => s.status === 'AVAILABLE').length, icon: '🟢', color: '#16a34a' },
-              { label: 'شرائح مستخدمة', value: stats.inUseSims ?? sims.filter((s: any) => s.status === 'IN_USE').length, icon: '🔵', color: '#2563eb' },
+              { label: 'شرائح متوفرة', value: stats.availableSims ?? sims.filter((s) => s.status === 'AVAILABLE').length, icon: '🟢', color: '#16a34a' },
+              { label: 'شرائح مستخدمة', value: stats.inUseSims ?? sims.filter((s) => s.status === 'IN_USE').length, icon: '🔵', color: '#2563eb' },
             ].map(card => (
               <div key={card.label} className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3">

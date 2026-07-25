@@ -16,7 +16,6 @@ export default function PermissionsPage() {
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    setLoading(true)
     Promise.all([api.getEmployees(), api.getPermissions(), api.getRoleDefaults()])
       .then(([emps, perms, defaults]) => {
         setEmployees(emps)
@@ -28,7 +27,9 @@ export default function PermissionsPage() {
   }, [])
 
   useEffect(() => {
+    // Guard-clause reset when selection is cleared, not part of the fetch itself.
     if (!selectedEmployeeId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmployeePerms([])
       return
     }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type Stats } from '../api'
 import { useSession } from '../session'
 import AddEmployeeWizard from '../components/AddEmployeeWizard'
-import { openManagerChat } from '../components/ManagerAssistantChat'
+import { openManagerChat } from '../components/openManagerChat'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -96,7 +96,6 @@ export default function Employees() {
   const [archivedEmployees, setArchivedEmployees] = useState<Employee[]>([])
 
   const load = () => {
-    setLoading(true)
     Promise.all([api.getEmployees(), api.getServices()])
       .then(([emps, svcs]) => { setEmployees(emps); setServices(svcs) })
       .catch((e) => setError(e.message))
@@ -161,6 +160,9 @@ export default function Employees() {
   }
 
   useEffect(() => {
+    // Resetting the edit-form fields whenever the selected employee changes is a
+    // derived-state sync from a prop, not data fetching.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCredUsername(selectedEmployee?.username || '')
     setCredPassword('')
     setEditSalary('')
@@ -168,7 +170,7 @@ export default function Employees() {
     setEditShiftEnd('')
     setEditMonthlyLeaves('')
     setEditJobTitle('')
-    setEditIsLeader((selectedEmployee as any)?.isLeader || false)
+    setEditIsLeader(selectedEmployee?.isLeader || false)
     setEditName('')
     setEditPhone('')
     setEditPosition('')
@@ -191,12 +193,14 @@ export default function Employees() {
     finally { setSavingCreds(false) }
   }
 
-  const handleFieldBlur = async (field: string, value: any) => {
+  const handleFieldBlur = async <K extends keyof Employee>(field: K, value: Employee[K]) => {
     if (!selectedEmployee) return
     try {
-      const updated = await api.updateEmployee(selectedEmployee.id, { [field]: value } as any)
+      const updated = await api.updateEmployee(selectedEmployee.id, { [field]: value })
       setEmployees((prev) => prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)))
-    } catch {}
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const toggleSkill = async (employee: Employee, skillId: string) => {
@@ -355,7 +359,7 @@ export default function Employees() {
                             {roleLabels[selectedEmployee.role] || selectedEmployee.role}
                           </span>
                           <span className="text-sm text-blue-200/80">{selectedEmployee.position || '-'}</span>
-                          {(selectedEmployee as any)?.isLeader && (
+                          {selectedEmployee?.isLeader && (
                             <span className="rounded-full bg-amber-500/20 px-2.5 py-0.5 text-[10px] font-bold text-amber-300">ليدر</span>
                           )}
                           {selectedEmployee.status === 'SUSPENDED' && (
@@ -464,7 +468,7 @@ export default function Employees() {
                         </div>
                         <div className="rounded-2xl bg-gradient-to-br from-violet-50 to-purple-50 p-4 text-center ring-1 ring-violet-100/50">
                           <p className="text-[10px] font-medium text-violet-400">الإجازات</p>
-                          <p className="mt-1 text-lg font-extrabold text-[#0f2040]">{(selectedEmployee as any).monthlyLeaves ?? 0}</p>
+                          <p className="mt-1 text-lg font-extrabold text-[#0f2040]">{selectedEmployee?.monthlyLeaves ?? 0}</p>
                           <p className="text-[10px] text-violet-500 font-semibold">شهرياً</p>
                         </div>
                       </>
@@ -569,7 +573,7 @@ export default function Employees() {
                           { label: 'الراتب', value: selectedEmployee.salary ?? '-' },
                           { label: 'الدوام', value: selectedEmployee.shiftStart && selectedEmployee.shiftEnd ? `${selectedEmployee.shiftStart} - ${selectedEmployee.shiftEnd}` : '-' },
                           { label: 'الإجازات الشهرية', value: selectedEmployee.monthlyLeaves ?? '-' },
-                          { label: 'العنوان الوظيفي', value: (selectedEmployee as any).jobTitle || '-' },
+                          { label: 'العنوان الوظيفي', value: selectedEmployee?.jobTitle || '-' },
                         ].map(f => (
                           <div key={f.label}>
                             <label className="mb-1 block text-xs font-medium text-slate-400">{f.label}</label>

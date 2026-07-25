@@ -35,7 +35,6 @@ export default function StaffRequestsPage() {
   const [projectId, setProjectId] = useState('')
 
   const load = () => {
-    setLoading(true)
     const jobs: Promise<unknown>[] = [api.getStaffRequests().then(setRequests)]
     if (canRequest) {
       jobs.push(api.getEmployees().then(all => setTechnicians(all.filter(e => e.role === 'TECHNICIAN' && e.status === 'ACTIVE'))))

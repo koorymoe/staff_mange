@@ -121,7 +121,6 @@ export default function SuppliersPage() {
   const [newSpecialtyName, setNewSpecialtyName] = useState('')
 
   const loadData = useCallback(() => {
-    setLoading(true)
     Promise.all([
       request<Supplier[]>('/suppliers'),
       request<Specialty[]>('/suppliers/specialties'),

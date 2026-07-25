@@ -138,6 +138,25 @@ export interface GpsCustomer {
   createdAt: string
 }
 
+export interface GpsStats {
+  totalCustomers?: number
+  totalSims?: number
+  availableSims?: number
+  inUseSims?: number
+}
+
+export interface GpsSimCard {
+  id: string
+  simNumber: string
+  iccid: string
+  operator: string
+  // Some legacy records use 'AVAILABLE'/'IN_USE' instead of 'ACTIVE'/'INACTIVE'.
+  status: string
+  customerId?: string | null
+  customer?: GpsCustomer | null
+  createdAt?: string
+}
+
 export interface GpsDeviceRequest {
   id: string
   customerId: string
@@ -165,6 +184,7 @@ export interface GpsDeviceRequest {
   scheduledAt: string | null
   assignedTechnician: { id: string; name: string } | null
   assignedTechnicianId?: string | null
+  price?: number | null
 }
 
 export interface StaffRequest {
@@ -201,9 +221,10 @@ export interface GpsRenewalRequest {
   deviceRequest: GpsDeviceRequest
   employeeId: string
   adminId: string | null
-  subscriptionType: 'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY'
+  subscriptionType: string
   newEndDate: string | null
-  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DELIVERED'
+  currentEnd?: string | null
+  status: string
   createdAt: string
 }
 
@@ -1171,7 +1192,7 @@ export const api = {
     request<{ bookingsLinked: number; complaintsLinked: number }>(`/employees/${id}/link-historical`, { method: 'POST' }),
 
   // GPS
-  getGpsStats: () => request<any>('/gps/stats'),
+  getGpsStats: () => request<GpsStats>('/gps/stats'),
   getGpsCustomers: () => request<GpsCustomer[]>('/gps/customers'),
   createGpsCustomer: (data: Partial<GpsCustomer>) =>
     request<GpsCustomer>('/gps/customers', { method: 'POST', body: JSON.stringify(data) }),
@@ -1180,11 +1201,11 @@ export const api = {
     request<GpsDeviceRequest>('/gps/devices', { method: 'POST', body: JSON.stringify(data) }),
   updateGpsDevice: (id: string, data: Partial<GpsDeviceRequest>) =>
     request<GpsDeviceRequest>(`/gps/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  getSimCards: () => request<any[]>('/gps/sims'),
-  createSimCard: (data: any) =>
-    request<any>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),
-  updateSimCard: (id: string, data: any) =>
-    request<any>(`/gps/sims/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getSimCards: () => request<GpsSimCard[]>('/gps/sims'),
+  createSimCard: (data: Partial<GpsSimCard>) =>
+    request<GpsSimCard>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),
+  updateSimCard: (id: string, data: Partial<GpsSimCard>) =>
+    request<GpsSimCard>(`/gps/sims/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   getGpsRenewals: () => request<GpsRenewalRequest[]>('/gps/renewals'),
   createGpsRenewal: (data: { customerId: string; deviceRequestId: string; employeeId: string; subscriptionType: string }) =>
     request<GpsRenewalRequest>('/gps/renewals', { method: 'POST', body: JSON.stringify(data) }),
@@ -1509,11 +1530,11 @@ export const api = {
     request<Complaint>(`/complaints/${id}/resolve`, { method: 'PUT', body: JSON.stringify({ resolution }) }),
 
   // GPS Settings
-  getGpsSettings: () => request<any[]>('/gps/settings'),
-  updateGpsSettings: (data: any) =>
-    request<any>('/gps/settings', { method: 'PUT', body: JSON.stringify(data) }),
-  updateGpsCustomer: (id: string, data: any) =>
-    request<any>(`/gps/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  getGpsSettings: () => request<Record<string, unknown>[]>('/gps/settings'),
+  updateGpsSettings: (data: Record<string, unknown>) =>
+    request<Record<string, unknown>>('/gps/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  updateGpsCustomer: (id: string, data: Partial<GpsCustomer>) =>
+    request<GpsCustomer>(`/gps/customers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Procurement
   getProcurementRequests: () => request<ProcurementRequest[]>('/procurement'),

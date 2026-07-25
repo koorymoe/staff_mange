@@ -18,7 +18,6 @@ export default function ProductsPage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = () => {
-    setLoading(true)
     api.getProducts()
       .then(setProducts)
       .catch((e) => setError(e.message))

@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef } from 'react'
-import { api } from '../../api'
+import { api, type GpsDeviceRequest } from '../../api'
+
+// Some legacy records store purchaseType/subscriptionType in lowercase, so we widen
+// those two fields to `string` here rather than reusing the strict literal unions.
+type DeviceRequest = Omit<GpsDeviceRequest, 'purchaseType' | 'subscriptionType'> & {
+  purchaseType: string
+  subscriptionType: string
+}
 
 function formatDate(d: string) {
   if (!d) return '-'
@@ -22,9 +29,9 @@ function getSubDays(t: string) {
 }
 
 export default function GpsDevices() {
-  const [requests, setRequests] = useState<any[]>([])
+  const [requests, setRequests] = useState<DeviceRequest[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<any>(null)
+  const [selected, setSelected] = useState<DeviceRequest | null>(null)
   const [delivering, setDelivering] = useState(false)
   const [activationDate, setActivationDate] = useState('')
   const [deviceChecks, setDeviceChecks] = useState({ checked: false, activated: false, delivered: false })
@@ -33,13 +40,15 @@ export default function GpsDevices() {
   async function load() {
     try {
       const data = await api.getGpsDevices()
-      setRequests((data || []).filter((d: any) => d.status === 'PENDING'))
+      setRequests(((data || []) as DeviceRequest[]).filter((d) => d.status === 'PENDING'))
     } catch (e) { console.error(e) }
     setLoading(false)
   }
+  // `load` is async and only sets state after its awaits resolve; false positive.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [])
 
-  async function handleDeliver(req: any) {
+  async function handleDeliver(req: DeviceRequest) {
     if (req.purchaseType === 'DEVICE_ONLY') {
       if (!deviceChecks.checked || !deviceChecks.activated || !deviceChecks.delivered) {
         alert('يرجى تأكيد جميع الخطوات أولاً'); return
@@ -65,7 +74,7 @@ export default function GpsDevices() {
     } finally { setDelivering(false) }
   }
 
-  function handlePrint(req: any) {
+  function handlePrint(req: DeviceRequest) {
     const customerName = req.customer ? `${req.customer.fullName} ${req.customer.fatherName} ${req.customer.grandfatherName}` : '-'
     const subLabel = req.subscriptionType ? getSubscriptionLabel(req.subscriptionType) : 'لا يوجد'
     const purchaseDate = formatDate(req.createdAt)
@@ -140,7 +149,7 @@ export default function GpsDevices() {
                 <div className="flex gap-4 text-sm" style={{ color: '#6b7280' }}>
                   <span>📞 {req.customer?.phone}</span>
                   <span>📍 {req.customer?.address}</span>
-                  <span>👤 {req.employee?.name || req.employee?.fullName || '-'}</span>
+                  <span>👤 {req.employee?.name || '-'}</span>
                   <span>📅 {formatDate(req.createdAt)}</span>
                 </div>
               </div>

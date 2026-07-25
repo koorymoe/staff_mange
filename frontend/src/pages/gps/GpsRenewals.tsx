@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { api } from '../../api'
+import { api, type GpsRenewalRequest } from '../../api'
 
 function formatDate(d: string) {
   if (!d) return '-'
@@ -22,21 +22,23 @@ function getSubDays(t: string) {
 }
 
 export default function GpsRenewals() {
-  const [renewals, setRenewals] = useState<any[]>([])
+  const [renewals, setRenewals] = useState<GpsRenewalRequest[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<any>(null)
+  const [selected, setSelected] = useState<GpsRenewalRequest | null>(null)
   const [approving, setApproving] = useState(false)
 
   async function load() {
     try {
       const data = await api.getGpsRenewals()
-      setRenewals((data || []).filter((r: any) => r.status === 'PENDING' || r.status === 'pending'))
+      setRenewals((data || []).filter((r) => r.status === 'PENDING' || r.status === 'pending'))
     } catch (e) { console.error(e) }
     setLoading(false)
   }
+  // `load` is async and only sets state after its awaits resolve; false positive.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [])
 
-  async function handleApprove(renewal: any) {
+  async function handleApprove(renewal: GpsRenewalRequest) {
     setApproving(true)
     try {
       const days = getSubDays(renewal.subscriptionType)
@@ -63,7 +65,7 @@ export default function GpsRenewals() {
     setApproving(false)
   }
 
-  function printRenewalInvoice(renewal: any) {
+  function printRenewalInvoice(renewal: GpsRenewalRequest) {
     const customerName = renewal.customer
       ? `${renewal.customer.fullName} ${renewal.customer.fatherName} ${renewal.customer.grandfatherName}`
       : '-'

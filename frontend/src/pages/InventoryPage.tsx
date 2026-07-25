@@ -81,7 +81,6 @@ export default function InventoryPage() {
   const [submitting, setSubmitting] = useState(false)
 
   const load = () => {
-    setLoading(true)
     Promise.all([
       api.getPersonalTools(),
       api.getVehicleTools(),

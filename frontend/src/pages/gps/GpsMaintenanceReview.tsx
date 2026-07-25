@@ -15,7 +15,6 @@ export default function GpsMaintenanceReview() {
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    setLoading(true)
     api.getGpsMaintenance().then(setRequests).finally(() => setLoading(false))
   }
   useEffect(load, [])

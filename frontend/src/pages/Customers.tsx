@@ -47,7 +47,6 @@ export default function Customers() {
   const [editMessage, setEditMessage] = useState<string | null>(null)
 
   const load = () => {
-    setLoading(true)
     Promise.all([api.getCustomers(), api.getCustomersByGpsService()])
       .then(([all, gps]) => {
         setCustomers(all)
@@ -95,7 +94,9 @@ export default function Customers() {
   }
 
   useEffect(() => {
+    // Guard-clause reset of the booking-history panel when selection is cleared.
     if (!selectedId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHistory([])
       return
     }

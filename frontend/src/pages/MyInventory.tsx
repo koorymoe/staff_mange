@@ -46,7 +46,6 @@ export default function MyInventory() {
 
   const load = async () => {
     if (!employee) return
-    setLoading(true)
     try {
       const [pt, vt, od, tr] = await Promise.all([
         api.getPersonalTools(employee.id),
@@ -58,13 +57,15 @@ export default function MyInventory() {
       setVehicleTools(vt)
       setOnDemandTools(od)
       setMyRequests(tr)
-    } catch (e: any) {
-      setError(e.message)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setLoading(false)
     }
   }
 
+  // `load` is async and only sets state after its awaits resolve; false positive.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [employee?.id])
 
   const [submittingCheck, setSubmittingCheck] = useState(false)
@@ -86,8 +87,8 @@ export default function MyInventory() {
         missingItems: missing.length > 0 ? missing.join('، ') : undefined,
       })
       setCheckDone(true)
-    } catch (e: any) {
-      alert(e.message || 'تعذر تسجيل الجرد')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تسجيل الجرد')
     } finally {
       setSubmittingCheck(false)
     }
@@ -100,8 +101,8 @@ export default function MyInventory() {
       await api.createToolRequest({ employeeId: employee.id, toolId })
       await load()
       setActiveTab('my-requests')
-    } catch (e: any) {
-      alert(e.message || 'حدث خطأ')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setRequesting(false)
     }

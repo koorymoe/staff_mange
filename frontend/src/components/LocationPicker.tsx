@@ -154,6 +154,9 @@ export default function LocationPicker({ value, onChange }: Props) {
 
   // بحث فوري أثناء الكتابة (بدون ما يحتاج يضغط زر "بحث") — يطلع اقتراحات قريبة من موقعك تلقائياً بعد توقف قصير عن الكتابة
   useEffect(() => {
+    // Clearing the previous error/results when the query changes is a debounce-input
+    // reset, not data fetching; the actual network call is deferred via setTimeout.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSearchError('')
     if (query.trim().length < 2) { setResults([]); return }
     const timer = setTimeout(() => { runSearch(query, 6, true) }, 350)

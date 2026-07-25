@@ -85,6 +85,10 @@ export default function MissionsPage() {
     finally { setLoading(false) }
   }, [employee, isAdmin])
 
+  // `load` is async and only calls setState after its awaits resolve (never
+  // synchronously in the effect body), so this isn't the cascading-render pattern the
+  // rule targets; it's a false positive for async fetch-on-mount effects.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [load])
 
   // Auto-refresh every 30s
@@ -446,7 +450,7 @@ export default function MissionsPage() {
 function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => void }) {
   const [points, setPoints] = useState<{ latitude: number; longitude: number; createdAt: string }[]>([])
   const mapRef = useRef<HTMLDivElement | null>(null)
-  const leafletRef = useRef<{ map: any; line: any; marker: any }>({ map: null, line: null, marker: null })
+  const leafletRef = useRef<{ map: import('leaflet').Map | null; line: import('leaflet').Polyline | null; marker: import('leaflet').Marker | null }>({ map: null, line: null, marker: null })
 
   const load = useCallback(async () => {
     try {
@@ -458,6 +462,8 @@ function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => 
     } catch { /* ignore */ }
   }, [mission])
 
+  // Same as above: `load` is async and only sets state after awaiting the request.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); const iv = setInterval(load, 15000); return () => clearInterval(iv) }, [load])
 
   useEffect(() => {
@@ -477,12 +483,14 @@ function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => 
     if (!leafletRef.current.map || points.length === 0) return
     import('leaflet').then(L => {
       const ref = leafletRef.current
+      const map = ref.map
+      if (!map) return
       const latlngs = points.map(p => [p.latitude, p.longitude]) as [number, number][]
-      if (ref.line) ref.map.removeLayer(ref.line)
-      if (ref.marker) ref.map.removeLayer(ref.marker)
-      ref.line = L.polyline(latlngs, { color: '#7c3aed', weight: 4 }).addTo(ref.map)
-      ref.marker = L.marker(latlngs[latlngs.length - 1]).addTo(ref.map)
-      ref.map.fitBounds(ref.line.getBounds(), { padding: [30, 30] })
+      if (ref.line) map.removeLayer(ref.line)
+      if (ref.marker) map.removeLayer(ref.marker)
+      ref.line = L.polyline(latlngs, { color: '#7c3aed', weight: 4 }).addTo(map)
+      ref.marker = L.marker(latlngs[latlngs.length - 1]).addTo(map)
+      map.fitBounds(ref.line.getBounds(), { padding: [30, 30] })
     })
   }, [points])
 

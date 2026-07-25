@@ -175,7 +175,6 @@ export default function ProjectsPage() {
   const [transferred, setTransferred] = useState<TransferredBooking[]>([])
 
   const load = async () => {
-    setLoading(true)
     try {
       const data = await request<{ projects: Project[]; stats: Stats }>('/projects')
       setProjects(data.projects)
@@ -210,6 +209,8 @@ export default function ProjectsPage() {
     }
   }
 
+  // `load` is async and only sets state after its awaits resolve; false positive.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load() }, [])
 
   const filtered = useMemo(() => {

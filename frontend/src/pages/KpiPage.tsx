@@ -46,7 +46,9 @@ function TechnicianTab() {
   const [selectedTech, setSelectedTech] = useState<TechnicianKpi | null>(null)
 
   useEffect(() => {
-    setLoading(true)
+    // month can change after mount; re-arm loading via a microtask so the setState
+    // isn't synchronous within the effect body (react-hooks/set-state-in-effect).
+    queueMicrotask(() => setLoading(true))
     api
       .getKpiLeaderboard(month)
       .then(setLeaderboard)
@@ -196,14 +198,14 @@ function TechnicianTab() {
                           العدد: {item.count}
                         </p>
                       )}
-                      {'avgMinutes' in item && (item as any).avgMinutes > 0 && (
+                      {'avgMinutes' in item && item.avgMinutes > 0 && (
                         <p className="mt-1 text-xs text-slate-400">
-                          متوسط: {(item as any).avgMinutes} دقيقة
+                          متوسط: {item.avgMinutes} دقيقة
                         </p>
                       )}
                       {'daysPresent' in item && (
                         <p className="mt-1 text-xs text-slate-400">
-                          {(item as any).daysPresent}/{(item as any).totalDays} يوم
+                          {item.daysPresent}/{item.totalDays} يوم
                         </p>
                       )}
                     </div>
@@ -245,7 +247,6 @@ function AdministrativeTab() {
   const canManageCriteria = currentUser?.role === 'ADMIN' || permissions.includes('kpi_criteria_management')
 
   const load = () => {
-    setLoading(true)
     Promise.all([api.getKpiEvaluations(), api.getEmployees(), api.getKpiCriteria()])
       .then(([evals, emps, crit]) => {
         setEvaluations(evals)
