@@ -112,8 +112,8 @@ export default function QuotationNew() {
   const handleProductSelect = (index: number, product: Product) => {
     updateItem(index, {
       productName: product.name,
-      unit: product.unit,
-      unitPrice: product.defaultPrice,
+      unit: product.unit || 'قطعة',
+      unitPrice: product.defaultPrice ?? 0,
       imageBase64: product.imageBase64 || '',
     })
     setActiveAutocomplete(null)
@@ -578,7 +578,7 @@ ${pageShell(`
                               )}
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontWeight: 700, color: '#1a237e', fontSize: '13px' }}>{p.name}</div>
-                                <div style={{ fontSize: '11px', color: '#757575' }}>{fmt(p.defaultPrice)} د.ع  {p.unit}</div>
+                                <div style={{ fontSize: '11px', color: '#757575' }}>{fmt(p.defaultPrice ?? 0)} د.ع  {p.unit || 'قطعة'}</div>
                               </div>
                             </div>
                           ))}
@@ -765,8 +765,8 @@ ${pageShell(`
                         )}
                         <div style={{ padding: '8px 6px' }}>
                           <div style={{ fontWeight: 700, fontSize: '12px', color: '#1a237e' }}>{p.name}</div>
-                          <div style={{ fontSize: '10px', color: '#757575' }}>{p.unit}</div>
-                          <div style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 700, marginTop: '2px' }}>{fmt(p.defaultPrice)} د.ع</div>
+                          <div style={{ fontSize: '10px', color: '#757575' }}>{p.unit || 'قطعة'}</div>
+                          <div style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 700, marginTop: '2px' }}>{fmt(p.defaultPrice ?? 0)} د.ع</div>
                           <button onClick={() => handlePmDelete(p.id)} style={{
                             background: '#c62828', color: '#fff', border: 'none', padding: '5px 0',
                             borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit',

@@ -417,8 +417,8 @@ async function downloadFile(path: string, filename: string): Promise<void> {
 export interface Product {
   id: string
   name: string
-  unit: string
-  defaultPrice: number
+  unit: string | null
+  defaultPrice: number | null
   imageBase64?: string
 }
 
@@ -622,6 +622,39 @@ export interface VehicleExpenseSummary {
   totalCost: number
   distanceKm: number | null
   avgCostPerKm: number | null
+}
+
+export interface VehicleExpenseRow {
+  vehicleId: string
+  vehicleName: string
+  plateNumber: string
+  totalCost: number
+  fuelCost: number
+}
+
+export interface VehicleUsageRankRow {
+  vehicleId: string
+  vehicleName: string
+  plateNumber: string
+  missionCount: number
+  distanceKm: number
+  totalCost: number
+}
+
+export interface FleetDashboardSummary {
+  period: string
+  totalVehicles: number
+  activeVehiclesCount: number
+  inMaintenanceCount: number
+  onMissionCount: number
+  needsServiceCount: number
+  expiringDocsCount: number
+  alerts: VehicleAlert[]
+  fleetFuelCostThisMonth: number
+  fleetTotalCostThisMonth: number
+  vehicleExpenses: VehicleExpenseRow[]
+  topByUsage: VehicleUsageRankRow[]
+  topByCost: VehicleUsageRankRow[]
 }
 
 export interface VehicleWashRating {
@@ -1265,6 +1298,7 @@ export const api = {
     request<VehiclePart>(`/vehicles/${vehicleId}/parts`, { method: 'POST', body: JSON.stringify(data) }),
   replaceVehiclePart: (partId: string) => request<VehiclePart>(`/vehicle-parts/${partId}/replace`, { method: 'PUT' }),
   getVehicleAlerts: () => request<VehicleAlert[]>('/vehicles/alerts'),
+  getFleetDashboard: () => request<FleetDashboardSummary>('/vehicles/dashboard'),
   getVehicleMonthlyStatus: (vehicleId: string) => request<VehicleMonthlyStatus[]>(`/vehicles/${vehicleId}/monthly-status`),
   setVehicleMonthlyStatus: (vehicleId: string, data: { month: string; hasIssue: boolean; issueDescription?: string; resolved: boolean; notes?: string }) =>
     request<VehicleMonthlyStatus>(`/vehicles/${vehicleId}/monthly-status`, { method: 'POST', body: JSON.stringify(data) }),
