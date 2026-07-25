@@ -1166,6 +1166,43 @@ export const api = {
     request<VehicleDailyRating[]>(`/vehicles/${vehicleId}/ratings${since ? `?since=${since}` : ''}`),
   getVehicleScoreSummaries: (since?: string) =>
     request<VehicleScoreSummary[]>(`/vehicles/ratings/vehicle-summary${since ? `?since=${since}` : ''}`),
+  updateVehicle: (id: string, data: Partial<{
+    name: string; plateNumber: string; color: string; type: string; model: string; year: number
+    chassisNumber: string; engineNumber: string; fuelType: string; currentOdometer: number
+    condition: string; isActive: boolean
+  }>) => request<Vehicle>(`/vehicles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  getVehicleDocuments: (vehicleId: string) => request<VehicleDocument[]>(`/vehicles/${vehicleId}/documents`),
+  createVehicleDocument: (vehicleId: string, data: {
+    documentType: 'INSURANCE' | 'ANNUAL_LICENSE' | 'INSPECTION' | 'OTHER'
+    documentNumber?: string; issueDate?: string; expiryDate?: string; fileUrl?: string; notes?: string
+  }) => request<VehicleDocument>(`/vehicles/${vehicleId}/documents`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteVehicleDocument: (vehicleId: string, docId: string) =>
+    request<{ ok: boolean }>(`/vehicles/${vehicleId}/documents/${docId}`, { method: 'DELETE' }),
+
+  getVehiclePhotos: (vehicleId: string) => request<VehiclePhoto[]>(`/vehicles/${vehicleId}/photos`),
+  createVehiclePhoto: (vehicleId: string, data: { url: string; caption?: string }) =>
+    request<VehiclePhoto>(`/vehicles/${vehicleId}/photos`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteVehiclePhoto: (vehicleId: string, photoId: string) =>
+    request<{ ok: boolean }>(`/vehicles/${vehicleId}/photos/${photoId}`, { method: 'DELETE' }),
+
+  startVehicleMission: (data: {
+    vehicleId: string; driverId?: string; purpose: string; destination: string
+    startOdometer: number; passengerIds?: string[]
+  }) => request<VehicleMission>('/vehicle-missions', { method: 'POST', body: JSON.stringify(data) }),
+  endVehicleMission: (id: string, data: { endOdometer: number; notes?: string }) =>
+    request<VehicleMission>(`/vehicle-missions/${id}/end`, { method: 'PUT', body: JSON.stringify(data) }),
+  getVehicleMissions: (filters?: { vehicleId?: string; driverId?: string; status?: 'IN_PROGRESS' | 'COMPLETED'; from?: string; to?: string }) => {
+    const params = new URLSearchParams()
+    if (filters?.vehicleId) params.set('vehicleId', filters.vehicleId)
+    if (filters?.driverId) params.set('driverId', filters.driverId)
+    if (filters?.status) params.set('status', filters.status)
+    if (filters?.from) params.set('from', filters.from)
+    if (filters?.to) params.set('to', filters.to)
+    const qs = params.toString()
+    return request<VehicleMission[]>(`/vehicle-missions${qs ? `?${qs}` : ''}`)
+  },
+  getVehicleMission: (id: string) => request<VehicleMission>(`/vehicle-missions/${id}`),
   getTechnicianWashSummaries: (since?: string) =>
     request<TechnicianWashSummary[]>(`/vehicles/ratings/technician-summary${since ? `?since=${since}` : ''}`),
 

@@ -1,5 +1,29 @@
 import { useEffect, useState } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee } from '../api'
+import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleDocument, type VehiclePhoto } from '../api'
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  INSURANCE: 'تأمين',
+  ANNUAL_LICENSE: 'إجازة سنوية',
+  INSPECTION: 'فحص دوري',
+  OTHER: 'أخرى',
+}
+
+function docExpiryColor(expiryDate: string | null): string {
+  if (!expiryDate) return ''
+  const diffDays = Math.floor((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (diffDays < 0) return 'bg-red-100 text-red-700'
+  if (diffDays <= 30) return 'bg-amber-100 text-amber-700'
+  return 'bg-emerald-100 text-emerald-700'
+}
 
 const LOG_TYPE_LABELS: Record<string, string> = {
   FUEL: 'تعبئة وقود',
@@ -50,7 +74,9 @@ export default function VehiclesPage() {
   const [incidents, setIncidents] = useState<VehicleIncident[]>([])
   const [monthlyStatus, setMonthlyStatus] = useState<VehicleMonthlyStatus[]>([])
   const [dailyRatings, setDailyRatings] = useState<VehicleDailyRating[]>([])
-  const [tab, setTab] = useState<'logs' | 'incidents' | 'monthly' | 'rating'>('logs')
+  const [documents, setDocuments] = useState<VehicleDocument[]>([])
+  const [photos, setPhotos] = useState<VehiclePhoto[]>([])
+  const [tab, setTab] = useState<'logs' | 'incidents' | 'monthly' | 'rating' | 'documents' | 'photos'>('logs')
 
   // add-vehicle form
   const [showAddVehicle, setShowAddVehicle] = useState(false)
@@ -58,6 +84,24 @@ export default function VehiclesPage() {
   const [vPlate, setVPlate] = useState('')
   const [vColor, setVColor] = useState('')
   const [vType, setVType] = useState('')
+  const [vModel, setVModel] = useState('')
+  const [vYear, setVYear] = useState('')
+  const [vChassis, setVChassis] = useState('')
+  const [vEngine, setVEngine] = useState('')
+  const [vFuel, setVFuel] = useState('')
+  const [vOdometer, setVOdometer] = useState('')
+  const [vCondition, setVCondition] = useState('')
+
+  // document form
+  const [docType, setDocType] = useState<'INSURANCE' | 'ANNUAL_LICENSE' | 'INSPECTION' | 'OTHER'>('INSURANCE')
+  const [docNumber, setDocNumber] = useState('')
+  const [docIssue, setDocIssue] = useState('')
+  const [docExpiry, setDocExpiry] = useState('')
+  const [docFile, setDocFile] = useState('')
+  const [savingDoc, setSavingDoc] = useState(false)
+
+  // photo upload
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   // log form
   const [logType, setLogType] = useState<'FUEL' | 'CLEANING' | 'OIL_CHANGE'>('FUEL')
@@ -100,15 +144,73 @@ export default function VehiclesPage() {
     api.getVehicleIncidents(selectedId).then(setIncidents)
     api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
     api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
+    api.getVehicleDocuments(selectedId).then(setDocuments)
+    api.getVehiclePhotos(selectedId).then(setPhotos)
   }, [selectedId])
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedId) || null
 
   const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault()
-    await api.createVehicle({ name: vName, plateNumber: vPlate, color: vColor || undefined, type: vType || undefined })
-    setVName(''); setVPlate(''); setVColor(''); setVType(''); setShowAddVehicle(false)
+    const created = await api.createVehicle({ name: vName, plateNumber: vPlate, color: vColor || undefined, type: vType || undefined })
+    const extra: Record<string, string | number> = {}
+    if (vModel) extra.model = vModel
+    if (vYear) extra.year = Number(vYear)
+    if (vChassis) extra.chassisNumber = vChassis
+    if (vEngine) extra.engineNumber = vEngine
+    if (vFuel) extra.fuelType = vFuel
+    if (vOdometer) extra.currentOdometer = Number(vOdometer)
+    if (vCondition) extra.condition = vCondition
+    if (Object.keys(extra).length > 0) {
+      await api.updateVehicle(created.id, extra)
+    }
+    setVName(''); setVPlate(''); setVColor(''); setVType('')
+    setVModel(''); setVYear(''); setVChassis(''); setVEngine(''); setVFuel(''); setVOdometer(''); setVCondition('')
+    setShowAddVehicle(false)
     loadVehicles()
+  }
+
+  const handleAddDocument = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedId) return
+    setSavingDoc(true)
+    try {
+      await api.createVehicleDocument(selectedId, {
+        documentType: docType,
+        documentNumber: docNumber || undefined,
+        issueDate: docIssue || undefined,
+        expiryDate: docExpiry || undefined,
+        fileUrl: docFile || undefined,
+      })
+      setDocNumber(''); setDocIssue(''); setDocExpiry(''); setDocFile('')
+      api.getVehicleDocuments(selectedId).then(setDocuments)
+    } finally {
+      setSavingDoc(false)
+    }
+  }
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!selectedId) return
+    await api.deleteVehicleDocument(selectedId, docId)
+    api.getVehicleDocuments(selectedId).then(setDocuments)
+  }
+
+  const handleUploadPhoto = async (file: File | null) => {
+    if (!file || !selectedId) return
+    setUploadingPhoto(true)
+    try {
+      const base64 = await fileToBase64(file)
+      await api.createVehiclePhoto(selectedId, { url: base64 })
+      api.getVehiclePhotos(selectedId).then(setPhotos)
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
+  const handleDeletePhoto = async (photoId: string) => {
+    if (!selectedId) return
+    await api.deleteVehiclePhoto(selectedId, photoId)
+    api.getVehiclePhotos(selectedId).then(setPhotos)
   }
 
   const handleAddLog = async (e: React.FormEvent) => {
@@ -205,6 +307,19 @@ export default function VehiclesPage() {
           <input required placeholder="رقم اللوحة" value={vPlate} onChange={(e) => setVPlate(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
           <input placeholder="اللون" value={vColor} onChange={(e) => setVColor(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
           <input placeholder="النوع" value={vType} onChange={(e) => setVType(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <input placeholder="الموديل" value={vModel} onChange={(e) => setVModel(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <input type="number" placeholder="سنة الصنع" value={vYear} onChange={(e) => setVYear(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <input placeholder="رقم الشاصي" value={vChassis} onChange={(e) => setVChassis(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <input placeholder="رقم المحرك" value={vEngine} onChange={(e) => setVEngine(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <input placeholder="نوع الوقود" value={vFuel} onChange={(e) => setVFuel(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <input type="number" placeholder="عداد الكيلومترات الحالي" value={vOdometer} onChange={(e) => setVOdometer(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+          <select value={vCondition} onChange={(e) => setVCondition(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2">
+            <option value="">-- حالة السيارة --</option>
+            <option value="ممتازة">ممتازة</option>
+            <option value="جيدة">جيدة</option>
+            <option value="تحتاج صيانة">تحتاج صيانة</option>
+            <option value="معطلة">معطلة</option>
+          </select>
           <button type="submit" className="sm:col-span-4 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">حفظ السيارة</button>
         </form>
       )}
@@ -239,14 +354,25 @@ export default function VehiclesPage() {
               <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 <h3 className="text-lg font-bold text-brand-800">{selectedVehicle.name}</h3>
                 <p className="text-sm text-slate-500">{selectedVehicle.plateNumber}</p>
+                <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-500 sm:grid-cols-3">
+                  {selectedVehicle.model && <p>الموديل: {selectedVehicle.model}</p>}
+                  {selectedVehicle.year && <p>سنة الصنع: {selectedVehicle.year}</p>}
+                  {selectedVehicle.chassisNumber && <p>رقم الشاصي: {selectedVehicle.chassisNumber}</p>}
+                  {selectedVehicle.engineNumber && <p>رقم المحرك: {selectedVehicle.engineNumber}</p>}
+                  {selectedVehicle.fuelType && <p>الوقود: {selectedVehicle.fuelType}</p>}
+                  <p>عداد الكيلومترات: {selectedVehicle.currentOdometer}</p>
+                  {selectedVehicle.condition && <p>الحالة: {selectedVehicle.condition}</p>}
+                </div>
               </div>
 
-              <div className="flex gap-2 rounded-xl border border-white bg-white p-2 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+              <div className="flex flex-wrap gap-2 rounded-xl border border-white bg-white p-2 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 {([
                   { key: 'logs', label: 'وقود / تنظيف / زيت' },
                   { key: 'incidents', label: 'أعطال وأضرار' },
                   { key: 'monthly', label: 'الحالة الشهرية' },
                   { key: 'rating', label: 'التقييم اليومي' },
+                  { key: 'documents', label: 'الوثائق' },
+                  { key: 'photos', label: 'الصور' },
                 ] as const).map((t) => (
                   <button
                     key={t.key}
@@ -468,6 +594,95 @@ export default function VehiclesPage() {
                       )
                     })}
                     {dailyRatings.length === 0 && <p className="p-4 text-center text-slate-400">لا توجد تقييمات مسجلة لهذي السيارة</p>}
+                  </div>
+                </div>
+              )}
+
+              {tab === 'documents' && (
+                <div className="space-y-4">
+                  <form onSubmit={handleAddDocument} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3">
+                    <select value={docType} onChange={(e) => setDocType(e.target.value as typeof docType)} className="rounded-lg border border-slate-300 px-3 py-2">
+                      <option value="INSURANCE">تأمين</option>
+                      <option value="ANNUAL_LICENSE">إجازة سنوية</option>
+                      <option value="INSPECTION">فحص دوري</option>
+                      <option value="OTHER">أخرى</option>
+                    </select>
+                    <input placeholder="رقم الوثيقة" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-500">تاريخ الإصدار</label>
+                      <input type="date" value={docIssue} onChange={(e) => setDocIssue(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs text-slate-500">تاريخ الانتهاء</label>
+                      <input type="date" value={docExpiry} onChange={(e) => setDocExpiry(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="mb-1 block text-xs text-slate-500">ملف الوثيقة (اختياري)</label>
+                      <input type="file" accept="image/*,.pdf" onChange={(e) => {
+                        const f = e.target.files?.[0] || null
+                        if (f) fileToBase64(f).then(setDocFile)
+                      }} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </div>
+                    <button type="submit" disabled={savingDoc} className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+                      {savingDoc ? 'جاري الحفظ...' : 'إضافة وثيقة'}
+                    </button>
+                  </form>
+
+                  <div className="space-y-3">
+                    {documents.map((d) => (
+                      <div key={d.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-slate-700">{DOC_TYPE_LABELS[d.documentType] || d.documentType}</span>
+                          <div className="flex items-center gap-2">
+                            {d.expiryDate && (
+                              <span className={`rounded-full px-2 py-1 text-xs font-bold ${docExpiryColor(d.expiryDate)}`}>
+                                ينتهي: {new Date(d.expiryDate).toLocaleDateString('ar-IQ')}
+                              </span>
+                            )}
+                            <button onClick={() => handleDeleteDocument(d.id)} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100">حذف</button>
+                          </div>
+                        </div>
+                        <div className="mt-1 grid grid-cols-2 gap-1 text-xs text-slate-500">
+                          <p>الرقم: {d.documentNumber || '-'}</p>
+                          <p>الإصدار: {d.issueDate ? new Date(d.issueDate).toLocaleDateString('ar-IQ') : '-'}</p>
+                        </div>
+                        {d.fileUrl && (
+                          <a href={d.fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-bold text-brand-600 hover:underline">عرض الملف</a>
+                        )}
+                      </div>
+                    ))}
+                    {documents.length === 0 && <p className="p-4 text-center text-slate-400">لا توجد وثائق مسجلة لهذي السيارة</p>}
+                  </div>
+                </div>
+              )}
+
+              {tab === 'photos' && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                    <label className="mb-1 block text-xs text-slate-500">رفع صورة جديدة</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      disabled={uploadingPhoto}
+                      onChange={(e) => handleUploadPhoto(e.target.files?.[0] || null)}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                    {photos.map((p) => (
+                      <div key={p.id} className="group relative overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                        <a href={p.url} target="_blank" rel="noreferrer">
+                          <img src={p.url} alt="صورة السيارة" className="h-32 w-full object-cover" />
+                        </a>
+                        <button
+                          onClick={() => handleDeletePhoto(p.id)}
+                          className="absolute left-1 top-1 rounded-lg bg-red-600/90 px-2 py-1 text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          حذف
+                        </button>
+                      </div>
+                    ))}
+                    {photos.length === 0 && <p className="col-span-full p-4 text-center text-slate-400">لا توجد صور مسجلة لهذي السيارة</p>}
                   </div>
                 </div>
               )}
