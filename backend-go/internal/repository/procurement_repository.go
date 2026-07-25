@@ -103,12 +103,17 @@ func (r *ProcurementRepository) Create(req model.CreateProcurementRequestRequest
 	}
 	defer tx.Rollback()
 
+	requestType := req.RequestType
+	if requestType == "" {
+		requestType = model.RequestTypeCustomerProduct
+	}
+
 	var request model.ProcurementRequest
 	err = tx.Get(&request, `
-		INSERT INTO "ProcurementRequest" (id, code, "requestedById", "bookingId", notes)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+		INSERT INTO "ProcurementRequest" (id, code, "requestedById", "bookingId", "requestType", notes)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5)
 		RETURNING *
-	`, code, req.RequestedByID, req.BookingID, req.Notes)
+	`, code, req.RequestedByID, req.BookingID, requestType, req.Notes)
 	if err != nil {
 		return nil, err
 	}

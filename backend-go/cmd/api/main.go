@@ -89,7 +89,7 @@ func main() {
 	trainingService := service.NewTrainingService(trainingRepo)
 	missionService := service.NewMissionService(missionRepo)
 	projectService := service.NewProjectService(projectRepo)
-	procurementService := service.NewProcurementService(procurementRepo)
+	procurementService := service.NewProcurementService(procurementRepo, permissionRepo)
 	supplierService := service.NewSupplierService(supplierRepo)
 	quotationService := service.NewQuotationService(quotationRepo)
 	productService := service.NewProductService(productRepo)
@@ -356,7 +356,9 @@ func main() {
 	// المشتريات (procurement)
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth, requireProcurement))
 	mux.Handle("GET /api/procurement/stats", middleware.Chain(http.HandlerFunc(procurementHandler.Stats), requireAuth, requireProcurement))
-	mux.Handle("POST /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth, requireProcurement))
+	// إنشاء الطلب مو مربوط بصلاحية "procurement" العامة (الي تفتح الاطّلاع بس) —
+	// كل نوع طلب (شخصي/زبون) له صلاحية مستقلة تُفحص داخل الهاندلر نفسه.
+	mux.Handle("POST /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.Create), requireAuth))
 	mux.Handle("PUT /api/procurement/{id}/status", middleware.Chain(http.HandlerFunc(procurementHandler.UpdateStatus), requireAuth, requireProcurementAdmin))
 	mux.Handle("PUT /api/procurement/{id}/fulfill", middleware.Chain(http.HandlerFunc(procurementHandler.Fulfill), requireAuth, requireProcurementAdmin))
 

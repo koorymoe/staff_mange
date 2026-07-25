@@ -1,8 +1,10 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
@@ -42,9 +44,15 @@ func (h *ProcurementHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	request, err := h.service.Create(req)
+	employeeID := middleware.EmployeeIDFromContext(r)
+	role := middleware.RoleFromContext(r)
+	request, err := h.service.Create(employeeID, role, req)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		status := http.StatusBadRequest
+		if errors.Is(err, service.ErrForbiddenRequestType) {
+			status = http.StatusForbidden
+		}
+		WriteError(w, status, err.Error())
 		return
 	}
 	WriteJSON(w, http.StatusCreated, request)

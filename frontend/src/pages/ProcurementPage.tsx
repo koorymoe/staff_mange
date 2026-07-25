@@ -17,10 +17,15 @@ const statusColors: Record<string, string> = {
 }
 
 export default function ProcurementPage() {
-  const { employee } = useContext(SessionContext)
+  const { employee, permissions } = useContext(SessionContext)
   // توفير المواد وتحديد حالتها (توفير/رفض) يقتصر على إداري الكميات والأدمن فقط —
   // أي موظف ثاني (فني، مدير مشاريع، مراقب...) يشوف الطلبات وحالتها بس بدون تحكم.
   const canManageProcurement = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'PROCUREMENT_ADMIN'
+  const isAdminLike = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  // كل نوع طلب له صلاحية مستقلة تُمنح يدوياً بصفحة الصلاحيات — ما تنجر مع أي دور.
+  // الأدمن/المالك يقدر ينشئ الاثنين دائماً.
+  const canCreatePersonal = isAdminLike || permissions.includes('procurement_personal')
+  const canCreateCustomer = isAdminLike || permissions.includes('procurement_customer')
   const [searchParams] = useSearchParams()
 
   const [requests, setRequests] = useState<ProcurementRequest[]>([])
@@ -28,9 +33,11 @@ export default function ProcurementPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [activeTab, setActiveTab] = useState<'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'>('CUSTOMER_PRODUCT')
 
   // Form state
   const [showForm, setShowForm] = useState(false)
+  const [formRequestType, setFormRequestType] = useState<'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'>('CUSTOMER_PRODUCT')
   const [formBookingId, setFormBookingId] = useState('')
   const [formNotes, setFormNotes] = useState('')
   const [formItems, setFormItems] = useState([{ productName: '', quantity: 1 }])
@@ -70,14 +77,24 @@ export default function ProcurementPage() {
   }, [])
 
   // إذا وصلنا من زر "اطلب مادة" بشاشة الحجز (?bookingId=...) نفتح فورم الطلب
-  // ونعبّي الحجز تلقائياً بدل ما يدوّر عليه المستخدم من القائمة المنسدلة.
+  // ونعبّي الحجز تلقائياً بدل ما يدوّر عليه المستخدم من القائمة المنسدلة،
+  // ونحدد النوع تلقائياً "طلب للزبون" لأنه مربوط بحجز.
   useEffect(() => {
     const bookingId = searchParams.get('bookingId')
     if (bookingId) {
       setFormBookingId(bookingId)
+      setFormRequestType('CUSTOMER_PRODUCT')
+      setActiveTab('CUSTOMER_PRODUCT')
       setShowForm(true)
     }
   }, [searchParams])
+
+  // عند فتح الفورم أول مرة، إذا الموظف عنده صلاحية وحدة بس، نحددها تلقائياً.
+  useEffect(() => {
+    if (!showForm) return
+    if (canCreatePersonal && !canCreateCustomer) setFormRequestType('PERSONAL_SUPPLY')
+    else if (canCreateCustomer && !canCreatePersonal) setFormRequestType('CUSTOMER_PRODUCT')
+  }, [showForm, canCreatePersonal, canCreateCustomer])
 
   const handleSubmit = async () => {
     if (formItems.some(i => !i.productName.trim() || i.quantity < 1)) {
@@ -90,7 +107,8 @@ export default function ProcurementPage() {
     try {
       await api.createProcurementRequest({
         requestedById: employee.id,
-        bookingId: formBookingId || undefined,
+        bookingId: formRequestType === 'CUSTOMER_PRODUCT' ? (formBookingId || undefined) : undefined,
+        requestType: formRequestType,
         notes: formNotes || undefined,
         items: formItems.map(i => ({ productName: i.productName.trim(), quantity: i.quantity })),
       })
@@ -164,7 +182,7 @@ export default function ProcurementPage() {
   }
 
   const fmt = (n: number | null | undefined) =>
-    n != null ? n.toLocaleString('ar-SA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
+    n != null ? n.toLocaleString('ar-IQ', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—'
 
   if (loading) {
     return (
@@ -186,10 +204,10 @@ export default function ProcurementPage() {
       {stats && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'إجمالي المصروفات', value: `${fmt(stats.totalSpent)} ر.س`, color: 'text-[#2c5aad]' },
+            { label: 'إجمالي المصروفات', value: `${fmt(stats.totalSpent)} د.ع`, color: 'text-[#2c5aad]' },
             { label: 'طلبات معلقة', value: stats.pendingCount.toString(), color: 'text-amber-600' },
             { label: 'تم التوفير', value: stats.fulfilledCount.toString(), color: 'text-emerald-600' },
-            { label: 'مصروفات الشهر', value: `${fmt(stats.monthlySpent)} ر.س`, color: 'text-[#2c5aad]' },
+            { label: 'مصروفات الشهر', value: `${fmt(stats.monthlySpent)} د.ع`, color: 'text-[#2c5aad]' },
           ].map((card, i) => (
             <div key={i} className="rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] p-5">
               <p className="text-sm text-slate-500 mb-1">{card.label}</p>
@@ -210,21 +228,52 @@ export default function ProcurementPage() {
         </button>
         {showForm && (
           <div className="p-4 pt-0 space-y-4 border-t">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">الحجز (اختياري)</label>
-              <select
-                value={formBookingId}
-                onChange={e => setFormBookingId(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
-              >
-                <option value="">بدون حجز</option>
-                {bookings.map(b => (
-                  <option key={b.id} value={b.id}>
-                    {b.code} - {b.customer?.name || ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {canCreatePersonal && canCreateCustomer && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">نوع الطلب</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-1.5 text-sm">
+                    <input
+                      type="radio"
+                      name="requestType"
+                      checked={formRequestType === 'PERSONAL_SUPPLY'}
+                      onChange={() => setFormRequestType('PERSONAL_SUPPLY')}
+                    />
+                    طلب لنفسي
+                  </label>
+                  <label className="flex items-center gap-1.5 text-sm">
+                    <input
+                      type="radio"
+                      name="requestType"
+                      checked={formRequestType === 'CUSTOMER_PRODUCT'}
+                      onChange={() => setFormRequestType('CUSTOMER_PRODUCT')}
+                    />
+                    طلب للزبون
+                  </label>
+                </div>
+              </div>
+            )}
+            {!canCreatePersonal && !canCreateCustomer && (
+              <p className="text-sm text-red-600">لا تملك صلاحية تقديم أي نوع من طلبات المشتريات.</p>
+            )}
+
+            {formRequestType === 'CUSTOMER_PRODUCT' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">الحجز (اختياري)</label>
+                <select
+                  value={formBookingId}
+                  onChange={e => setFormBookingId(e.target.value)}
+                  className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+                >
+                  <option value="">بدون حجز</option>
+                  {bookings.map(b => (
+                    <option key={b.id} value={b.id}>
+                      {b.code} - {b.customer?.name || ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">المواد المطلوبة</label>
@@ -281,13 +330,29 @@ export default function ProcurementPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={submitting}
+              disabled={submitting || (!canCreatePersonal && !canCreateCustomer)}
               className="bg-[#2c5aad] text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-[#1a3a6e] disabled:opacity-50 transition"
             >
               {submitting ? 'جاري الإرسال...' : 'إرسال الطلب'}
             </button>
           </div>
         )}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 border-b border-slate-200">
+        <button
+          onClick={() => setActiveTab('CUSTOMER_PRODUCT')}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${activeTab === 'CUSTOMER_PRODUCT' ? 'border-[#2c5aad] text-[#2c5aad]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          طلبات منتجات الزبائن
+        </button>
+        <button
+          onClick={() => setActiveTab('PERSONAL_SUPPLY')}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${activeTab === 'PERSONAL_SUPPLY' ? 'border-[#2c5aad] text-[#2c5aad]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          طلبات احتياجات شخصية
+        </button>
       </div>
 
       {/* Requests Table */}
@@ -298,7 +363,7 @@ export default function ProcurementPage() {
               <tr className="bg-gradient-to-l from-[#2c5aad] to-[#1a3a6e] text-white">
                 <th className="px-4 py-3 text-right font-medium">الكود</th>
                 <th className="px-4 py-3 text-right font-medium">مقدم الطلب</th>
-                <th className="px-4 py-3 text-right font-medium">الحجز</th>
+                {activeTab === 'CUSTOMER_PRODUCT' && <th className="px-4 py-3 text-right font-medium">الحجز</th>}
                 <th className="px-4 py-3 text-right font-medium">الحالة</th>
                 <th className="px-4 py-3 text-right font-medium">التكلفة</th>
                 <th className="px-4 py-3 text-right font-medium">التاريخ</th>
@@ -306,22 +371,24 @@ export default function ProcurementPage() {
               </tr>
             </thead>
             <tbody>
-              {requests.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-8 text-slate-400">لا توجد طلبات</td></tr>
+              {requests.filter(r => r.requestType === activeTab).length === 0 && (
+                <tr><td colSpan={activeTab === 'CUSTOMER_PRODUCT' ? 7 : 6} className="text-center py-8 text-slate-400">لا توجد طلبات</td></tr>
               )}
-              {requests.map(req => (
+              {requests.filter(r => r.requestType === activeTab).map(req => (
                 <>
                   <tr key={req.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => toggleRow(req.id)}>
                     <td className="px-4 py-3 font-mono text-xs">{req.code}</td>
                     <td className="px-4 py-3">{req.requestedBy.name}</td>
-                    <td className="px-4 py-3">{req.booking ? `${req.booking.code} - ${req.booking.customer?.name}` : '—'}</td>
+                    {activeTab === 'CUSTOMER_PRODUCT' && (
+                      <td className="px-4 py-3">{req.booking ? `${req.booking.code} - ${req.booking.customer?.name}` : '—'}</td>
+                    )}
                     <td className="px-4 py-3">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[req.status]}`}>
                         {statusLabels[req.status]}
                       </span>
                     </td>
                     <td className="px-4 py-3">{fmt(req.totalCost)}</td>
-                    <td className="px-4 py-3 text-xs text-slate-500">{new Date(req.createdAt).toLocaleDateString('ar-SA')}</td>
+                    <td className="px-4 py-3 text-xs text-slate-500">{new Date(req.createdAt).toLocaleDateString('ar-IQ')}</td>
                     <td className="px-4 py-3">
                       {canManageProcurement ? (
                         <div className="flex gap-1 flex-wrap" onClick={e => e.stopPropagation()}>
@@ -342,7 +409,7 @@ export default function ProcurementPage() {
                   </tr>
                   {expandedRows.has(req.id) && (
                     <tr key={`${req.id}-items`} className="bg-slate-50">
-                      <td colSpan={7} className="px-6 py-3">
+                      <td colSpan={activeTab === 'CUSTOMER_PRODUCT' ? 7 : 6} className="px-6 py-3">
                         <div className="space-y-1">
                           <p className="text-xs font-semibold text-slate-600 mb-2">المواد المطلوبة:</p>
                           {req.items.map(item => (

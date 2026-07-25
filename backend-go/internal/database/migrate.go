@@ -871,6 +871,11 @@ var migrations = []string{
 	)`,
 	`CREATE INDEX IF NOT EXISTS "VehicleWashRating_dailyRatingId_idx" ON "VehicleWashRating"("dailyRatingId")`,
 	`CREATE INDEX IF NOT EXISTS "VehicleWashRating_employeeId_idx" ON "VehicleWashRating"("employeeId")`,
+
+	// تقسيم طلبات المشتريات لنوعين مستقلين بالصلاحية: احتياجات شخصية للموظف
+	// نفسه (PERSONAL_SUPPLY) مقابل طلب منتج للزبون (CUSTOMER_PRODUCT، وهو النوع
+	// الأصلي القديم لذلك القيمة الافتراضية تحافظ على الصفوف الموجودة).
+	`ALTER TABLE "ProcurementRequest" ADD COLUMN IF NOT EXISTS "requestType" TEXT NOT NULL DEFAULT 'CUSTOMER_PRODUCT'`,
 }
 
 func Migrate(db *sqlx.DB) error {

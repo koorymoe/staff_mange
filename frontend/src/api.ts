@@ -748,6 +748,7 @@ export interface ProcurementRequest {
   requestedById: string
   booking: (Booking & { customer: Customer }) | null
   bookingId: string | null
+  requestType: 'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'
   notes: string | null
   status: 'PENDING' | 'IN_PROGRESS' | 'FULFILLED' | 'REJECTED'
   fulfilledBy: { id: string; name: string } | null
@@ -1237,7 +1238,7 @@ export const api = {
   // Procurement
   getProcurementRequests: () => request<ProcurementRequest[]>('/procurement'),
   getProcurementStats: () => request<ProcurementStats>('/procurement/stats'),
-  createProcurementRequest: (data: { requestedById: string; bookingId?: string; notes?: string; items: { productName: string; quantity: number }[] }) =>
+  createProcurementRequest: (data: { requestedById: string; bookingId?: string; requestType: 'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'; notes?: string; items: { productName: string; quantity: number }[] }) =>
     request<ProcurementRequest>('/procurement', { method: 'POST', body: JSON.stringify(data) }),
   updateProcurementStatus: (id: string, status: string) =>
     request<ProcurementRequest>(`/procurement/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),

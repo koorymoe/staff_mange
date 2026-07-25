@@ -70,6 +70,23 @@ func (r *PermissionRepository) ReplaceForEmployee(employeeID string, permissionI
 	return tx.Commit()
 }
 
+// HasPermission يتحقق مباشرة إذا كان الموظف عنده صلاحية معينة بالاسم — يُستخدم
+// داخل الهاندلر/السيرفس لفحوصات دقيقة إضافية غير الفحص العام بالميدلوير (مثل
+// نوع طلب المشتريات).
+func (r *PermissionRepository) HasPermission(employeeID, permissionName string) (bool, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*)
+		FROM "EmployeePermission" ep
+		JOIN "Permission" p ON p.id = ep."permissionId"
+		WHERE ep."employeeId" = $1 AND p.name = $2
+	`, employeeID, permissionName)
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}
+
 func (r *PermissionRepository) AddMissingForEmployee(employeeID string, permissionIDs []string) error {
 	tx, err := r.db.Beginx()
 	if err != nil {

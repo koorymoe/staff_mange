@@ -30,6 +30,8 @@ var DefaultPermissions = []Permission{
 	{Name: "finance", Label: "المالية"},
 	{Name: "expenses", Label: "المصاريف"},
 	{Name: "procurement", Label: "المشتريات"},
+	{Name: "procurement_personal", Label: "طلب احتياجات شخصية"},
+	{Name: "procurement_customer", Label: "طلب منتج للزبون"},
 	{Name: "monitoring", Label: "مراقبة (متابعة المهام والحجوزات والموظفين)"},
 	{Name: "auditing", Label: "تدقيق (التحقق من جودة العمل والتقارير والحسابات)"},
 	{Name: "content_technician", Label: "صلاحية التقني (إدارة المحتوى التدريبي والخدمات والموردين والمواد)"},

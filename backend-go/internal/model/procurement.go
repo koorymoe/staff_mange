@@ -2,11 +2,19 @@ package model
 
 import "time"
 
+// أنواع طلبات المشتريات — كل نوع له صلاحية مستقلة يمنحها الأدمن يدوياً للموظف
+// (procurement_personal / procurement_customer)، ما تنجر تلقائياً مع أي دور.
+const (
+	RequestTypePersonalSupply  = "PERSONAL_SUPPLY"  // طلب احتياجات شخصية للموظف نفسه
+	RequestTypeCustomerProduct = "CUSTOMER_PRODUCT" // طلب منتج للزبون (الفلو الأصلي، مربوط بحجز)
+)
+
 type ProcurementRequest struct {
 	ID               string     `db:"id" json:"id"`
 	Code             string     `db:"code" json:"code"`
 	RequestedByID    string     `db:"requestedById" json:"-"`
 	BookingID        *string    `db:"bookingId" json:"-"`
+	RequestType      string     `db:"requestType" json:"requestType"`
 	Notes            *string    `db:"notes" json:"notes"`
 	Status           string     `db:"status" json:"status"`
 	FulfilledByID    *string    `db:"fulfilledById" json:"-"`
@@ -66,6 +74,7 @@ type CreateProcurementItemRequest struct {
 type CreateProcurementRequestRequest struct {
 	RequestedByID string                         `json:"requestedById"`
 	BookingID     *string                        `json:"bookingId"`
+	RequestType   string                         `json:"requestType"`
 	Notes         *string                        `json:"notes"`
 	Items         []CreateProcurementItemRequest `json:"items"`
 }
