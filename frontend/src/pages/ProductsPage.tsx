@@ -219,12 +219,12 @@ export default function ProductsPage() {
               {/* Product Info */}
               <div style={{ padding: '12px 16px' }}>
                 <h4 style={{ margin: '0 0 6px 0', color: PRIMARY, fontSize: '15px' }}>{product.name}</h4>
-                <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#666' }}>الوحدة: {product.unit}</p>
+                <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#666' }}>الوحدة: {product.unit || 'قطعة'}</p>
                 <p style={{
                   margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold',
                   color: GOLD,
                 }}>
-                  {fmt(product.defaultPrice)} د.ع
+                  {fmt(product.defaultPrice ?? 0)} د.ع
                 </p>
                 <button
                   onClick={() => handleDelete(product.id)}
