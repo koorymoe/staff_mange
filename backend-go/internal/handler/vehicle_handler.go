@@ -39,6 +39,82 @@ func (h *VehicleHandler) Create(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, vehicle)
 }
 
+func (h *VehicleHandler) Update(w http.ResponseWriter, r *http.Request) {
+	var req model.UpdateVehicleRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	vehicle, err := h.service.Update(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, vehicle)
+}
+
+func (h *VehicleHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
+	docs, err := h.service.ListDocuments(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب وثائق السيارة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, docs)
+}
+
+func (h *VehicleHandler) CreateDocument(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateVehicleDocumentRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	doc, err := h.service.CreateDocument(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, doc)
+}
+
+func (h *VehicleHandler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.DeleteDocument(r.PathValue("id"), r.PathValue("docId")); err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر حذف الوثيقة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (h *VehicleHandler) ListPhotos(w http.ResponseWriter, r *http.Request) {
+	photos, err := h.service.ListPhotos(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب صور السيارة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, photos)
+}
+
+func (h *VehicleHandler) CreatePhoto(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateVehiclePhotoRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	photo, err := h.service.CreatePhoto(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, photo)
+}
+
+func (h *VehicleHandler) DeletePhoto(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.DeletePhoto(r.PathValue("id"), r.PathValue("photoId")); err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر حذف الصورة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func (h *VehicleHandler) ListLogs(w http.ResponseWriter, r *http.Request) {
 	logs, err := h.service.ListLogs(r.PathValue("id"))
 	if err != nil {

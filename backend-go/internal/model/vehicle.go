@@ -3,13 +3,20 @@ package model
 import "time"
 
 type Vehicle struct {
-	ID          string    `db:"id" json:"id"`
-	Name        string    `db:"name" json:"name"`
-	PlateNumber string    `db:"plateNumber" json:"plateNumber"`
-	Color       *string   `db:"color" json:"color"`
-	Type        *string   `db:"type" json:"type"`
-	IsActive    bool      `db:"isActive" json:"isActive"`
-	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
+	ID              string    `db:"id" json:"id"`
+	Name            string    `db:"name" json:"name"`
+	PlateNumber     string    `db:"plateNumber" json:"plateNumber"`
+	Color           *string   `db:"color" json:"color"`
+	Type            *string   `db:"type" json:"type"`
+	Model           *string   `db:"model" json:"model"`
+	Year            *int      `db:"year" json:"year"`
+	ChassisNumber   *string   `db:"chassisNumber" json:"chassisNumber"`
+	EngineNumber    *string   `db:"engineNumber" json:"engineNumber"`
+	FuelType        *string   `db:"fuelType" json:"fuelType"`
+	CurrentOdometer int       `db:"currentOdometer" json:"currentOdometer"`
+	Condition       *string   `db:"condition" json:"condition"`
+	IsActive        bool      `db:"isActive" json:"isActive"`
+	CreatedAt       time.Time `db:"createdAt" json:"createdAt"`
 }
 
 type CreateVehicleRequest struct {
@@ -17,6 +24,109 @@ type CreateVehicleRequest struct {
 	PlateNumber string  `json:"plateNumber"`
 	Color       *string `json:"color"`
 	Type        *string `json:"type"`
+}
+
+type UpdateVehicleRequest struct {
+	Name            *string `json:"name"`
+	PlateNumber     *string `json:"plateNumber"`
+	Color           *string `json:"color"`
+	Type            *string `json:"type"`
+	Model           *string `json:"model"`
+	Year            *int    `json:"year"`
+	ChassisNumber   *string `json:"chassisNumber"`
+	EngineNumber    *string `json:"engineNumber"`
+	FuelType        *string `json:"fuelType"`
+	CurrentOdometer *int    `json:"currentOdometer"`
+	Condition       *string `json:"condition"`
+	IsActive        *bool   `json:"isActive"`
+}
+
+// VehicleDocument وثائق السيارة: تأمين، إجازة سنوية، فحص دوري... إلخ.
+type VehicleDocument struct {
+	ID             string     `db:"id" json:"id"`
+	VehicleID      string     `db:"vehicleId" json:"vehicleId"`
+	DocumentType   string     `db:"documentType" json:"documentType"` // INSURANCE | ANNUAL_LICENSE | INSPECTION | OTHER
+	DocumentNumber *string    `db:"documentNumber" json:"documentNumber"`
+	IssueDate      *time.Time `db:"issueDate" json:"issueDate"`
+	ExpiryDate     *time.Time `db:"expiryDate" json:"expiryDate"`
+	FileURL        *string    `db:"fileUrl" json:"fileUrl"`
+	Notes          *string    `db:"notes" json:"notes"`
+	CreatedAt      time.Time  `db:"createdAt" json:"createdAt"`
+}
+
+type CreateVehicleDocumentRequest struct {
+	DocumentType   string  `json:"documentType"`
+	DocumentNumber *string `json:"documentNumber"`
+	IssueDate      *string `json:"issueDate"`
+	ExpiryDate     *string `json:"expiryDate"`
+	FileURL        *string `json:"fileUrl"`
+	Notes          *string `json:"notes"`
+}
+
+// VehiclePhoto صور السيارة (معرض عام).
+type VehiclePhoto struct {
+	ID        string    `db:"id" json:"id"`
+	VehicleID string    `db:"vehicleId" json:"vehicleId"`
+	URL       string    `db:"url" json:"url"`
+	Caption   *string   `db:"caption" json:"caption"`
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+}
+
+type CreateVehiclePhotoRequest struct {
+	URL     string  `json:"url"`
+	Caption *string `json:"caption"`
+}
+
+// VehicleMission سجل مهمة/خروج سيارة: سبب، وجهة، عداد بداية/نهاية، مسافة محسوبة.
+type VehicleMission struct {
+	ID            string     `db:"id" json:"id"`
+	VehicleID     string     `db:"vehicleId" json:"vehicleId"`
+	DriverID      string     `db:"driverId" json:"driverId"`
+	Purpose       string     `db:"purpose" json:"purpose"`
+	Destination   string     `db:"destination" json:"destination"`
+	StartedAt     time.Time  `db:"startedAt" json:"startedAt"`
+	EndedAt       *time.Time `db:"endedAt" json:"endedAt"`
+	StartOdometer int        `db:"startOdometer" json:"startOdometer"`
+	EndOdometer   *int       `db:"endOdometer" json:"endOdometer"`
+	DistanceKm    *int       `db:"distanceKm" json:"distanceKm"`
+	Notes         *string    `db:"notes" json:"notes"`
+	Status        string     `db:"status" json:"status"` // IN_PROGRESS | COMPLETED
+	CreatedAt     time.Time  `db:"createdAt" json:"createdAt"`
+
+	Vehicle    *Vehicle                  `db:"-" json:"vehicle,omitempty"`
+	Driver     *EmployeeBrief            `db:"-" json:"driver,omitempty"`
+	Passengers []VehicleMissionPassenger `db:"-" json:"passengers,omitempty"`
+}
+
+// VehicleMissionPassenger الموظفين المرافقين بالمهمة (يُعلَنون عند بدء المهمة).
+type VehicleMissionPassenger struct {
+	ID         string `db:"id" json:"id"`
+	MissionID  string `db:"missionId" json:"missionId"`
+	EmployeeID string `db:"employeeId" json:"employeeId"`
+
+	Employee *EmployeeBrief `db:"-" json:"employee,omitempty"`
+}
+
+type StartVehicleMissionRequest struct {
+	VehicleID     string   `json:"vehicleId"`
+	DriverID      *string  `json:"driverId"` // لو فاضي = الموظف الحالي نفسه
+	Purpose       string   `json:"purpose"`
+	Destination   string   `json:"destination"`
+	StartOdometer int      `json:"startOdometer"`
+	PassengerIDs  []string `json:"passengerIds"`
+}
+
+type EndVehicleMissionRequest struct {
+	EndOdometer int     `json:"endOdometer"`
+	Notes       *string `json:"notes"`
+}
+
+type VehicleMissionFilters struct {
+	VehicleID *string
+	DriverID  *string
+	Status    *string
+	From      *string
+	To        *string
 }
 
 // VehicleLog يغطي وقود/تنظيف/تبديل زيت — سجل واحد بنوع محدد لكل حدث

@@ -876,6 +876,70 @@ var migrations = []string{
 	// نفسه (PERSONAL_SUPPLY) مقابل طلب منتج للزبون (CUSTOMER_PRODUCT، وهو النوع
 	// الأصلي القديم لذلك القيمة الافتراضية تحافظ على الصفوف الموجودة).
 	`ALTER TABLE "ProcurementRequest" ADD COLUMN IF NOT EXISTS "requestType" TEXT NOT NULL DEFAULT 'CUSTOMER_PRODUCT'`,
+
+	// ملف السيارة الكامل: موديل، سنة صنع، أرقام شاصي/محرك، نوع وقود، عداد
+	// كيلومترات حالي (يتحدث تلقائياً من نظام المهمة، مع إمكانية تعديل يدوي
+	// كخيار احتياطي)، وحالة السيارة الحالية.
+	`ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS model TEXT`,
+	`ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS year INTEGER`,
+	`ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS "chassisNumber" TEXT`,
+	`ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS "engineNumber" TEXT`,
+	`ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS "fuelType" TEXT`,
+	`ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS "currentOdometer" INTEGER NOT NULL DEFAULT 0`,
+	`ALTER TABLE "Vehicle" ADD COLUMN IF NOT EXISTS condition TEXT`,
+
+	// وثائق السيارة: تأمين، إجازة سنوية، فحص دوري... إلخ.
+	`CREATE TABLE IF NOT EXISTS "VehicleDocument" (
+		id TEXT PRIMARY KEY,
+		"vehicleId" TEXT NOT NULL REFERENCES "Vehicle"(id) ON DELETE CASCADE,
+		"documentType" TEXT NOT NULL,
+		"documentNumber" TEXT,
+		"issueDate" TIMESTAMP,
+		"expiryDate" TIMESTAMP,
+		"fileUrl" TEXT,
+		notes TEXT,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehicleDocument_vehicleId_idx" ON "VehicleDocument"("vehicleId")`,
+
+	// صور السيارة (معرض صور عام للسيارة).
+	`CREATE TABLE IF NOT EXISTS "VehiclePhoto" (
+		id TEXT PRIMARY KEY,
+		"vehicleId" TEXT NOT NULL REFERENCES "Vehicle"(id) ON DELETE CASCADE,
+		url TEXT NOT NULL,
+		caption TEXT,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehiclePhoto_vehicleId_idx" ON "VehiclePhoto"("vehicleId")`,
+
+	// نظام المهمة: كل خروج سيارة يصير سجل مهمة (سبب، وجهة، عداد بداية/نهاية،
+	// مسافة محسوبة، ركاب مرافقين) بدل سجل خروج/دخول مجرد.
+	`CREATE TABLE IF NOT EXISTS "VehicleMission" (
+		id TEXT PRIMARY KEY,
+		"vehicleId" TEXT NOT NULL REFERENCES "Vehicle"(id),
+		"driverId" TEXT NOT NULL REFERENCES "Employee"(id),
+		purpose TEXT NOT NULL,
+		destination TEXT NOT NULL,
+		"startedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+		"endedAt" TIMESTAMP,
+		"startOdometer" INTEGER NOT NULL,
+		"endOdometer" INTEGER,
+		"distanceKm" INTEGER,
+		notes TEXT,
+		status TEXT NOT NULL DEFAULT 'IN_PROGRESS',
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "VehicleMission_vehicleId_idx" ON "VehicleMission"("vehicleId")`,
+	`CREATE INDEX IF NOT EXISTS "VehicleMission_driverId_idx" ON "VehicleMission"("driverId")`,
+	`CREATE INDEX IF NOT EXISTS "VehicleMission_status_idx" ON "VehicleMission"("status")`,
+
+	// الموظفين المرافقين بالمهمة (يُعلَنون عند بدء المهمة).
+	`CREATE TABLE IF NOT EXISTS "VehicleMissionPassenger" (
+		id TEXT PRIMARY KEY,
+		"missionId" TEXT NOT NULL REFERENCES "VehicleMission"(id) ON DELETE CASCADE,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+		UNIQUE("missionId", "employeeId")
+	)`,
 }
 
 func Migrate(db *sqlx.DB) error {

@@ -62,6 +62,7 @@ func main() {
 	workReportRepo := repository.NewWorkReportRepository(db)
 	statsRepo := repository.NewStatsRepository(db)
 	vehicleRepo := repository.NewVehicleRepository(db)
+	vehicleMissionRepo := repository.NewVehicleMissionRepository(db)
 	qualityRepo := repository.NewQualityRepository(db)
 	staffRequestRepo := repository.NewStaffRequestRepository(db)
 	serviceManagerRepo := repository.NewServiceManagerRepository(db)
@@ -97,6 +98,7 @@ func main() {
 	workReportService := service.NewWorkReportService(workReportRepo)
 	statsService := service.NewStatsService(statsRepo)
 	vehicleService := service.NewVehicleService(vehicleRepo)
+	vehicleMissionService := service.NewVehicleMissionService(vehicleMissionRepo, vehicleRepo)
 	qualityService := service.NewQualityService(qualityRepo)
 
 	// Handlers
@@ -130,6 +132,7 @@ func main() {
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	statsHandler := handler.NewStatsHandler(statsService)
 	vehicleHandler := handler.NewVehicleHandler(vehicleService)
+	vehicleMissionHandler := handler.NewVehicleMissionHandler(vehicleMissionService)
 	qualityHandler := handler.NewQualityHandler(qualityService)
 	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
 	serviceManagerHandler := handler.NewServiceManagerHandler(serviceManagerRepo)
@@ -426,6 +429,21 @@ func main() {
 	mux.Handle("POST /api/vehicles/{id}/monthly-status", middleware.Chain(http.HandlerFunc(vehicleHandler.SetMonthlyStatus), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/{id}/ratings", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateDailyRating), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/{id}/ratings", middleware.Chain(http.HandlerFunc(vehicleHandler.ListDailyRatings), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/vehicles/{id}", middleware.Chain(http.HandlerFunc(vehicleHandler.Update), requireAuth, requireVehicleMgmt))
+
+	// ملف السيارة الكامل: وثائق وصور
+	mux.Handle("GET /api/vehicles/{id}/documents", middleware.Chain(http.HandlerFunc(vehicleHandler.ListDocuments), requireAuth))
+	mux.Handle("POST /api/vehicles/{id}/documents", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateDocument), requireAuth, requireVehicleMgmt))
+	mux.Handle("DELETE /api/vehicles/{id}/documents/{docId}", middleware.Chain(http.HandlerFunc(vehicleHandler.DeleteDocument), requireAuth, requireMonitor))
+	mux.Handle("GET /api/vehicles/{id}/photos", middleware.Chain(http.HandlerFunc(vehicleHandler.ListPhotos), requireAuth))
+	mux.Handle("POST /api/vehicles/{id}/photos", middleware.Chain(http.HandlerFunc(vehicleHandler.CreatePhoto), requireAuth, requireVehicleMgmt))
+	mux.Handle("DELETE /api/vehicles/{id}/photos/{photoId}", middleware.Chain(http.HandlerFunc(vehicleHandler.DeletePhoto), requireAuth, requireMonitor))
+
+	// نظام المهمة: كل خروج سيارة يصير سجل مهمة متابَع (سبب، وجهة، عداد، ركاب)
+	mux.Handle("POST /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Start), requireAuth))
+	mux.Handle("PUT /api/vehicle-missions/{id}/end", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.End), requireAuth))
+	mux.Handle("GET /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.List), requireAuth, requireVehicleMgmt))
+	mux.Handle("GET /api/vehicle-missions/{id}", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Get), requireAuth))
 	// ملخصات التذكير — للمراقب بس (نظرة شاملة على كل السيارات والفنيين)
 	// ملاحظة: هذولا فقط لوحة المراقبة (MonitorDashboard) تستدعيهم — عمداً مقيدين
 	// بدور المراقب/الأدمن حصراً، لأنهم يعرضون راتب مقترح للفنيين (بيانات حساسة

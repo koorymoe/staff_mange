@@ -43,6 +43,81 @@ func (r *VehicleRepository) Create(req model.CreateVehicleRequest) (*model.Vehic
 	return &v, err
 }
 
+func (r *VehicleRepository) Get(id string) (*model.Vehicle, error) {
+	var v model.Vehicle
+	err := r.db.Get(&v, `SELECT * FROM "Vehicle" WHERE id = $1`, id)
+	return &v, err
+}
+
+func (r *VehicleRepository) Update(id string, req model.UpdateVehicleRequest) (*model.Vehicle, error) {
+	var v model.Vehicle
+	err := r.db.Get(&v, `
+		UPDATE "Vehicle" SET
+			name = COALESCE($2, name),
+			"plateNumber" = COALESCE($3, "plateNumber"),
+			color = COALESCE($4, color),
+			type = COALESCE($5, type),
+			model = COALESCE($6, model),
+			year = COALESCE($7, year),
+			"chassisNumber" = COALESCE($8, "chassisNumber"),
+			"engineNumber" = COALESCE($9, "engineNumber"),
+			"fuelType" = COALESCE($10, "fuelType"),
+			"currentOdometer" = COALESCE($11, "currentOdometer"),
+			condition = COALESCE($12, condition),
+			"isActive" = COALESCE($13, "isActive")
+		WHERE id = $1
+		RETURNING *
+	`, id, req.Name, req.PlateNumber, req.Color, req.Type, req.Model, req.Year, req.ChassisNumber,
+		req.EngineNumber, req.FuelType, req.CurrentOdometer, req.Condition, req.IsActive)
+	return &v, err
+}
+
+// ── VehicleDocument ──
+
+func (r *VehicleRepository) ListDocuments(vehicleID string) ([]model.VehicleDocument, error) {
+	docs := []model.VehicleDocument{}
+	err := r.db.Select(&docs, `SELECT * FROM "VehicleDocument" WHERE "vehicleId" = $1 ORDER BY "createdAt" DESC`, vehicleID)
+	return docs, err
+}
+
+func (r *VehicleRepository) CreateDocument(vehicleID string, req model.CreateVehicleDocumentRequest) (*model.VehicleDocument, error) {
+	var d model.VehicleDocument
+	err := r.db.Get(&d, `
+		INSERT INTO "VehicleDocument" (id, "vehicleId", "documentType", "documentNumber", "issueDate", "expiryDate", "fileUrl", notes)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4::timestamp, $5::timestamp, $6, $7)
+		RETURNING *
+	`, vehicleID, req.DocumentType, req.DocumentNumber, req.IssueDate, req.ExpiryDate, req.FileURL, req.Notes)
+	return &d, err
+}
+
+func (r *VehicleRepository) DeleteDocument(vehicleID, docID string) error {
+	_, err := r.db.Exec(`DELETE FROM "VehicleDocument" WHERE id = $1 AND "vehicleId" = $2`, docID, vehicleID)
+	return err
+}
+
+// ── VehiclePhoto ──
+
+func (r *VehicleRepository) ListPhotos(vehicleID string) ([]model.VehiclePhoto, error) {
+	photos := []model.VehiclePhoto{}
+	err := r.db.Select(&photos, `SELECT * FROM "VehiclePhoto" WHERE "vehicleId" = $1 ORDER BY "createdAt" DESC`, vehicleID)
+	return photos, err
+}
+
+func (r *VehicleRepository) CreatePhoto(vehicleID string, req model.CreateVehiclePhotoRequest) (*model.VehiclePhoto, error) {
+	var p model.VehiclePhoto
+	err := r.db.Get(&p, `
+		INSERT INTO "VehiclePhoto" (id, "vehicleId", url, caption)
+		VALUES (gen_random_uuid()::text, $1, $2, $3)
+		RETURNING *
+	`, vehicleID, req.URL, req.Caption)
+	return &p, err
+}
+
+func (r *VehicleRepository) DeletePhoto(vehicleID, photoID string) error {
+	_, err := r.db.Exec(`DELETE FROM "VehiclePhoto" WHERE id = $1 AND "vehicleId" = $2`, photoID, vehicleID)
+	return err
+}
+
 // ── VehicleLog (fuel / cleaning / oil change) ──
 
 func (r *VehicleRepository) ListLogs(vehicleID string) ([]model.VehicleLog, error) {

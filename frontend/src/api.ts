@@ -461,8 +461,61 @@ export interface Vehicle {
   plateNumber: string
   color: string | null
   type: string | null
+  model: string | null
+  year: number | null
+  chassisNumber: string | null
+  engineNumber: string | null
+  fuelType: string | null
+  currentOdometer: number
+  condition: string | null
   isActive: boolean
   createdAt: string
+}
+
+export interface VehicleDocument {
+  id: string
+  vehicleId: string
+  documentType: 'INSURANCE' | 'ANNUAL_LICENSE' | 'INSPECTION' | 'OTHER'
+  documentNumber: string | null
+  issueDate: string | null
+  expiryDate: string | null
+  fileUrl: string | null
+  notes: string | null
+  createdAt: string
+}
+
+export interface VehiclePhoto {
+  id: string
+  vehicleId: string
+  url: string
+  caption: string | null
+  createdAt: string
+}
+
+export interface VehicleMissionPassenger {
+  id: string
+  missionId: string
+  employeeId: string
+  employee: { id: string; name: string } | null
+}
+
+export interface VehicleMission {
+  id: string
+  vehicleId: string
+  driverId: string
+  purpose: string
+  destination: string
+  startedAt: string
+  endedAt: string | null
+  startOdometer: number
+  endOdometer: number | null
+  distanceKm: number | null
+  notes: string | null
+  status: 'IN_PROGRESS' | 'COMPLETED'
+  createdAt: string
+  vehicle: Vehicle | null
+  driver: { id: string; name: string } | null
+  passengers: VehicleMissionPassenger[]
 }
 
 export interface VehicleLog {

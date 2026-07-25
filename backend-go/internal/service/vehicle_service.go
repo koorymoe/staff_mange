@@ -24,6 +24,49 @@ func (s *VehicleService) Create(req model.CreateVehicleRequest) (*model.Vehicle,
 	return s.repo.Create(req)
 }
 
+func (s *VehicleService) Update(id string, req model.UpdateVehicleRequest) (*model.Vehicle, error) {
+	if req.Name != nil && *req.Name == "" {
+		return nil, errors.New("اسم السيارة لا يمكن أن يكون فارغاً")
+	}
+	if req.PlateNumber != nil && *req.PlateNumber == "" {
+		return nil, errors.New("رقم اللوحة لا يمكن أن يكون فارغاً")
+	}
+	if req.CurrentOdometer != nil && *req.CurrentOdometer < 0 {
+		return nil, errors.New("عداد الكيلومترات لا يمكن أن يكون بالسالب")
+	}
+	return s.repo.Update(id, req)
+}
+
+func (s *VehicleService) ListDocuments(vehicleID string) ([]model.VehicleDocument, error) {
+	return s.repo.ListDocuments(vehicleID)
+}
+
+func (s *VehicleService) CreateDocument(vehicleID string, req model.CreateVehicleDocumentRequest) (*model.VehicleDocument, error) {
+	if req.DocumentType == "" {
+		return nil, errors.New("نوع الوثيقة مطلوب")
+	}
+	return s.repo.CreateDocument(vehicleID, req)
+}
+
+func (s *VehicleService) DeleteDocument(vehicleID, docID string) error {
+	return s.repo.DeleteDocument(vehicleID, docID)
+}
+
+func (s *VehicleService) ListPhotos(vehicleID string) ([]model.VehiclePhoto, error) {
+	return s.repo.ListPhotos(vehicleID)
+}
+
+func (s *VehicleService) CreatePhoto(vehicleID string, req model.CreateVehiclePhotoRequest) (*model.VehiclePhoto, error) {
+	if req.URL == "" {
+		return nil, errors.New("رابط/محتوى الصورة مطلوب")
+	}
+	return s.repo.CreatePhoto(vehicleID, req)
+}
+
+func (s *VehicleService) DeletePhoto(vehicleID, photoID string) error {
+	return s.repo.DeletePhoto(vehicleID, photoID)
+}
+
 func (s *VehicleService) ListLogs(vehicleID string) ([]model.VehicleLog, error) {
 	return s.repo.ListLogs(vehicleID)
 }
