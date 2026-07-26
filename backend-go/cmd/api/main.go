@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/joho/godotenv"
 
 	"staffmange-api/internal/config"
@@ -35,6 +36,34 @@ func main() {
 		log.Fatalf("failed to run database migrations: %v", err)
 	}
 
+	handlerChain := NewHandler(cfg, db, startedAt)
+
+	// http.Server بإعدادات مهلة صريحة بدل http.ListenAndServe الخام — بدونها
+	// السيرفر يبقى بلا حماية من هجمات slow-loris (عميل يفتح اتصال ويسحب الرد
+	// أو الطلب ببطء متعمد ليشغل الاتصال للأبد). WriteTimeout=30s أكبر بمسافة
+	// أمان من أطول عملية شرعية بالسيرفر: نداء Gemini (مساعد ذكي) عنده مهلة
+	// عميل HTTP صريحة 20 ثانية بدون أي إعادة محاولة (راجع callGeminiWithTools
+	// بـassistant_service.go) — 30 ثانية تكفي 20 ثانية Gemini + وقت معالجة
+	// إضافي بدون قطع رد شرعي قيد التقدم.
+	srv := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           handlerChain,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	log.Printf("staffmange-api listening on :%s", cfg.Port)
+	if err := srv.ListenAndServe(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// NewHandler يبني كامل شجرة التوجيه (mux) والوسائط (middleware) للـ API — مستخرجة
+// من main() حتى يقدر كود الاختبار (httptest) يبنيها ضد قاعدة بيانات حية بدون تشغيل
+// السيرفر فعلياً على منفذ شبكة، ويفحص سلوك التوجيه/الصلاحيات الحقيقي عبر HTTP.
+func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handler {
 	// Repositories
 	employeeRepo := repository.NewEmployeeRepository(db)
 	loginAuditRepo := repository.NewLoginAuditRepository(db)
@@ -353,7 +382,10 @@ func main() {
 
 	// إدارة المشاريع (projects)
 	mux.Handle("GET /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.List), requireAuth))
-	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth))
+	// إنشاء مشروع جديد يتطلب نفس دور مدير المشاريع/الأدمن المطلوب للتعديل والحذف
+	// تحته مباشرة — كان مفتوح غلط لأي موظف مسجل دخول فقط (requireAuth بدون requireProjectManager)،
+	// عدم اتساق مع PUT/DELETE على نفس المورد.
+	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth, requireProjectManager))
 	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 
@@ -506,26 +538,5 @@ func main() {
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))
 	mux.Handle("PUT /api/quality/issues/{id}", middleware.Chain(http.HandlerFunc(qualityHandler.Update), requireAuth, requireQuality))
 
-	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
-
-	// http.Server بإعدادات مهلة صريحة بدل http.ListenAndServe الخام — بدونها
-	// السيرفر يبقى بلا حماية من هجمات slow-loris (عميل يفتح اتصال ويسحب الرد
-	// أو الطلب ببطء متعمد ليشغل الاتصال للأبد). WriteTimeout=30s أكبر بمسافة
-	// أمان من أطول عملية شرعية بالسيرفر: نداء Gemini (مساعد ذكي) عنده مهلة
-	// عميل HTTP صريحة 20 ثانية بدون أي إعادة محاولة (راجع callGeminiWithTools
-	// بـassistant_service.go) — 30 ثانية تكفي 20 ثانية Gemini + وقت معالجة
-	// إضافي بدون قطع رد شرعي قيد التقدم.
-	srv := &http.Server{
-		Addr:              ":" + cfg.Port,
-		Handler:           handlerChain,
-		ReadTimeout:       15 * time.Second,
-		ReadHeaderTimeout: 5 * time.Second,
-		WriteTimeout:      30 * time.Second,
-		IdleTimeout:       60 * time.Second,
-	}
-
-	log.Printf("staffmange-api listening on :%s", cfg.Port)
-	if err := srv.ListenAndServe(); err != nil {
-		log.Fatal(err)
-	}
+	return middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
 }

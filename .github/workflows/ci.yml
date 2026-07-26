@@ -1,0 +1,132 @@
+name: CI
+
+# يشتغل مباشرة على prod (طريقة الرفع الحالية بهذا المستودع: push مباشر لـ prod،
+# بدون تدفق Pull Request معتمد لحد الآن) + على أي Pull Request إذا انعتمد هذا
+# التدفق مستقبلاً (ما يكلف شي إذا ظل غير مستخدم حالياً).
+on:
+  push:
+    branches: [prod]
+  pull_request:
+
+jobs:
+  backend:
+    name: Go build + vet + test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: staffmange
+          POSTGRES_PASSWORD: ci_test_password
+          POSTGRES_DB: staffmange_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U staffmange"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://staffmange:ci_test_password@localhost:5432/staffmange_ci?sslmode=disable
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: backend-go/go.mod
+
+      - name: Go build
+        working-directory: backend-go
+        run: go build ./...
+
+      - name: Go vet
+        working-directory: backend-go
+        run: go vet ./...
+
+      # DATABASE_URL معرّف أعلاه، فهذا يشغّل فعلياً كل اختبارات "_verify_test.go"
+      # الحية (بما فيها اختبار تخفيض دور الأدمن الحرج، وبوابات الصلاحيات، وترحيل
+      # قاعدة البيانات الإصداري) ضد Postgres حقيقي بدل تخطيها.
+      - name: Go test
+        working-directory: backend-go
+        run: go test ./...
+
+  frontend-typecheck:
+    name: Frontend typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (npm ci)
+        working-directory: frontend
+        run: npm ci
+
+      - name: TypeScript typecheck
+        working-directory: frontend
+        run: npx tsc --noEmit
+
+  frontend-lint:
+    name: Frontend lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (npm ci)
+        working-directory: frontend
+        run: npm ci
+
+      # ملاحظة (2026-07-26): "npx eslint ." يرجع حالياً 15 خطأ و12 تحذير موجودين
+      # من قبل هذا الـworkflow (خطأ في تنظيف الكود سابقاً، مو انحدار جديد) —
+      # أغلبها قواعد React Compiler الجديدة (react-hooks/static-components،
+      # react-hooks/purity) بصفحات SuppliersPage.tsx وVehiclesPage.tsx وGpsDashboard.tsx،
+      # تحتاج إعادة هيكلة فعلية (نقل مكوّنات Modal خارج دالة الرندر، تفادي
+      # Date.now() المباشر بجسم الرندر) مو مجرد تعديل سطر واحد — خارج نطاق مهمة
+      # إضافة CI هذي. نخليها continue-on-error حتى لا توقف كل push على المستودع
+      # الحي بسبب مشاكل معروفة سلفاً، لكنها تبقى ظاهرة بمخرجات كل تشغيلة كتذكير
+      # صريح لإصلاحها لاحقاً كمهمة منفصلة — ثم نشيل continue-on-error ونخليها بوابة صارمة.
+      - name: ESLint (non-blocking — tracked pre-existing issues, see comment above)
+        working-directory: frontend
+        run: npx eslint .
+        continue-on-error: true
+
+  frontend-build:
+    name: Frontend production build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies (npm ci)
+        working-directory: frontend
+        run: npm ci
+
+      # يشغّل سكربت البناء الحقيقي (tsc -b && vite build) مو بس --noEmit — هذا
+      # المشروع سبق وانلدغ من خطأ نوع (type error) ما كشفه --noEmit بسبب الكاش،
+      # وما كشفه إلا البناء الفعلي.
+      - name: Production build (npm run build)
+        working-directory: frontend
+        run: npm run build
