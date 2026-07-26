@@ -132,8 +132,24 @@ func (h *BookingHandler) Supervisor(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /api/v1/bookings/{id}/start
+// يقبل جسم اختياري { missingToolIds: string[] } — لو مُرسل، تُسجَّل لقطة الأدوات
+// الشخصية الناقصة عند الموظف بلحظة الاستلام قبل ما نكمل نفس منطق الاستلام العادي.
 func (h *BookingHandler) Start(w http.ResponseWriter, r *http.Request) {
-	booking, err := h.service.Start(r.PathValue("id"))
+	var req model.AcceptBookingRequest
+	_ = DecodeJSON(r, &req) // الجسم اختياري بالكامل، تجاهل خطأ فك الترميز لو الطلب بلا جسم
+	booking, err := h.service.StartWithToolsCheck(r.PathValue("id"), middleware.EmployeeIDFromContext(r), req.MissingToolIDs)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
+// PUT /api/bookings/{id}/confirmation-contacted
+// يسجّل "تم" الإداري بعد تواصله فعلياً مع الزبون — خطوة سابقة ومنفصلة عن التثبيت
+// (Confirm) نفسه، يستخدمها المراقب (صلاحية crew_management) للتدقيق قبل التثبيت.
+func (h *BookingHandler) MarkConfirmationContacted(w http.ResponseWriter, r *http.Request) {
+	booking, err := h.service.MarkConfirmationContacted(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -174,6 +190,32 @@ func (h *BookingHandler) Complete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, booking)
+}
+
+// GET /api/bookings/pending-audit
+// نفس منطق List بحالة PENDING بالضبط، لكن بمسار مستقل يُحمى بصلاحية crew_management
+// (يستخدمه المراقب لتدقيق الحجوزات الموجّهة قبل ما يثبّتها الإداري — يشوف فيها هل
+// الإداري ضغط "تم" (تواصل مع الزبون) قبل التثبيت الفعلي أو لا، عبر حقل
+// confirmationContactedAt).
+func (h *BookingHandler) PendingAudit(w http.ResponseWriter, r *http.Request) {
+	bookings, err := h.service.List("PENDING", "")
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, bookings)
+}
+
+// GET /api/bookings/{id}/tool-checks
+// لقطات الأدوات الناقصة المسجّلة عند استلام هذا الحجز (Feature 2) — يستخدمها
+// الإداري/المراقب لمراجعة شنو كان ناقص عند كل موظف استلم هذا الحجز.
+func (h *BookingHandler) ToolChecks(w http.ResponseWriter, r *http.Request) {
+	checks, err := h.service.ListToolChecks(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب لقطات الأدوات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, checks)
 }
 
 // PUT /api/v1/bookings/{id}/verify

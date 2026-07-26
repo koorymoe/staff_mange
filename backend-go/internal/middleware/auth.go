@@ -160,6 +160,37 @@ func RequireLeader(employees *repository.EmployeeRepository, notifications *repo
 	}
 }
 
+// RequireLeaderOrPermission يسمح بالوصول لليدر (isLeader فريش من قاعدة البيانات،
+// نفس RequireLeader) أو لأي موظف عنده صلاحية مخصصة معينة (نفس RequirePermission)
+// أو ADMIN/OWNER. تُستخدم لسلة الليدر (leader_basket): افتراضياً حصراً لليدر،
+// لكن الإدارة تقدر تمنحها لموظف MONITOR أيضاً عبر صفحة الصلاحيات بدون ما يصير
+// ليدر فعلياً (isLeader=false يبقى كما هو).
+func RequireLeaderOrPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, permissionName string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" || role == "OWNER" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID := EmployeeIDFromContext(r)
+			if isLeader, err := employees.IsLeaderFreshByID(employeeID); err == nil && isLeader {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if perms, err := permissions.ListForEmployee(employeeID); err == nil {
+				for _, p := range perms {
+					if p.Name == permissionName {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+			recordViolationAndBlock(w, employees, notifications, employeeID)
+		})
+	}
+}
+
 func EmployeeIDFromContext(r *http.Request) string {
 	id, _ := r.Context().Value(ContextEmployeeID).(string)
 	return id

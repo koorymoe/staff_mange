@@ -6,6 +6,16 @@ import "time"
 // (ENGINEER) — يشتغل عليها كل من زرع بيانات الهندسة الأولية والتحقق وقت تغيير الدور.
 var EngineeringSkillNames = []string{"تصميم", "تخطيط", "تنفيذ", "إشراف"}
 
+// DivisionEngineering/DivisionDecor هما القيمتان الوحيدتان المسموحتان لحقل
+// "division" بالموظف/الخدمة — يفصلان كادر الهندسة (كاميرات/شبكات/GPS... القديم)
+// عن كادر الديكور الجديد (حدادة/نجارة/صباغة/سيراميك/لبخ/تأسيس ماء ومجاري/جبس بورد).
+// ENGINEERING هي الافتراضي دايماً حتى ينسجم مع كل الموظفين والخدمات الموجودة أصلاً
+// قبل هذا التقسيم (migration بالـ backfill، انظر schema_division.go).
+const (
+	DivisionEngineering = "ENGINEERING"
+	DivisionDecor       = "DECOR"
+)
+
 type Employee struct {
 	ID                   string    `db:"id" json:"id"`
 	Name                 string    `db:"name" json:"name"`
@@ -29,6 +39,10 @@ type Employee struct {
 	LeaderSkillLevel     int       `db:"leaderSkillLevel" json:"leaderSkillLevel"`
 	IsLeader             bool      `db:"isLeader" json:"isLeader"`
 	IsTrainee            bool      `db:"isTrainee" json:"isTrainee"`
+	// Division تفصل موظفي الشعبة الهندسية (ENGINEERING، الافتراضي) عن موظفي
+	// شعبة الديكور (DECOR) — تحدد أي كتالوج مهارات ينطبق عليهم، انظر
+	// model.DivisionEngineering / model.DivisionDecor.
+	Division             string    `db:"division" json:"division"`
 	CreatedAt            time.Time `db:"createdAt" json:"createdAt"`
 
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
@@ -66,6 +80,9 @@ type CreateEmployeeRequest struct {
 	ShiftStart  *string  `json:"shiftStart"`
 	ShiftEnd    *string  `json:"shiftEnd"`
 	Role        *string  `json:"role"`
+	// Division: "ENGINEERING" (افتراضي) أو "DECOR" — أول سؤال يظهر بفورم إضافة
+	// موظف جديد بالواجهة، قبل ما تظهر بقية الحقول.
+	Division    *string  `json:"division"`
 }
 
 type UpdateEmployeeRequest struct {

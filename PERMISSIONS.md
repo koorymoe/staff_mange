@@ -48,6 +48,8 @@
 | `content_technician` | صلاحية التقني (إدارة المحتوى التدريبي والخدمات والموردين والمواد) | مسارات إدارة المحتوى التدريبي/الخدمات/الموردين/المواد (middleware `requireContentTech`) | تحقق مباشر بـ `main.go` |
 | `vehicle_management` | إدارة المركبات | كل مسارات إدارة الأسطول (middleware `requireVehicleMgmt`) | تحقق مباشر بـ `main.go` |
 | `quality_control` | الجودة (متابعة مشاكل التنفيذ والرقابة) | مسارات الجودة (middleware `requireQuality`) | تحقق مباشر بـ `main.go` |
+| `leader_basket` | سلة الليدر (فاتورة الليدر / المواد والمنظومات المختارة) | قراءة/إدارة فواتير الليدر (middleware `requireLeaderBasket` — `RequireLeaderOrPermission`) | تُمنح تلقائياً لكل موظف `isLeader=true` (شوف `grantLeaderBasketToLeaders`)؛ الأدمن يقدر يمنحها كمان لموظف MONITOR يدوياً بدون ما يصير ليدر فعلياً |
+| `crew_management` | متابعة تنسيق الحجوزات (حجوزات موجّهة قبل التثبيت) | تدقيق المراقب على الحجوزات بحالة PENDING قبل ما يثبّتها الإداري (middleware `requireCrewManagement`، مسار `GET /api/bookings/pending-audit`) | تحقق مباشر بـ `main.go`؛ لا تُمنح افتراضياً لأي دور — تُمنح يدوياً فقط |
 
 > ملاحظة على العمود الأخير: الصلاحيات المذكور فيها middleware صريح بـ`main.go` تُفرض على مستوى
 > المسار (route) مباشرة عن طريق `RequirePermission`. البقية غالباً تُتحقق منها الواجهة/منطق الخدمة

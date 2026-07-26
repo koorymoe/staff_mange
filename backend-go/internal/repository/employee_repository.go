@@ -137,8 +137,8 @@ func (r *EmployeeRepository) SetTrainee(id string, isTrainee bool) error {
 
 func (r *EmployeeRepository) Create(e *model.Employee) error {
 	_, err := r.db.NamedExec(`
-		INSERT INTO "Employee" (id, name, certificate, position, phone, username, password, "jobTitle", salary, shift, "shiftStart", "shiftEnd", role)
-		VALUES (:id, :name, :certificate, :position, :phone, :username, :password, :jobTitle, :salary, :shift, :shiftStart, :shiftEnd, :role)
+		INSERT INTO "Employee" (id, name, certificate, position, phone, username, password, "jobTitle", salary, shift, "shiftStart", "shiftEnd", role, division)
+		VALUES (:id, :name, :certificate, :position, :phone, :username, :password, :jobTitle, :salary, :shift, :shiftStart, :shiftEnd, :role, :division)
 	`, e)
 	return err
 }
@@ -223,6 +223,36 @@ func (r *EmployeeRepository) SkillsForEmployee(employeeID string) ([]model.Emplo
 		}
 	}
 	return skills, nil
+}
+
+// SkillDivisions يرجّع "division" الخدمة (Service) المالكة لكل مهارة من قائمة
+// معرّفات المهارات المعطاة — يستخدمها EmployeeService.SetSkills حتى يتأكد إن
+// كل مهارة يراد إسنادها تنتمي لنفس شعبة الموظف (ENGINEERING/DECOR) قبل الحفظ.
+func (r *EmployeeRepository) SkillDivisions(skillIDs []string) (map[string]string, error) {
+	result := make(map[string]string, len(skillIDs))
+	if len(skillIDs) == 0 {
+		return result, nil
+	}
+	rows := []struct {
+		ID       string `db:"id"`
+		Division string `db:"division"`
+	}{}
+	query, args, err := sqlx.In(`
+		SELECT sk.id AS id, sv.division AS division
+		FROM "Skill" sk JOIN "Service" sv ON sv.id = sk."serviceId"
+		WHERE sk.id IN (?)
+	`, skillIDs)
+	if err != nil {
+		return nil, err
+	}
+	query = r.db.Rebind(query)
+	if err := r.db.Select(&rows, query, args...); err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		result[row.ID] = row.Division
+	}
+	return result, nil
 }
 
 // SetSkills يستبدل مهارات الموظف بالكامل (حذف القديم وإدخال الجديد بنفس المعاملة)

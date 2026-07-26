@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { api, type Employee, type EmployeeRole, type Permission } from '../api'
+import { api, type Division, type Employee, type EmployeeRole, type Permission } from '../api'
 
 const roleLabels: Record<EmployeeRole, string> = {
   ADMIN: 'مدير النظام',
@@ -36,13 +36,17 @@ function calcHours(start: string, end: string): number | null {
   return Math.round((minutes / 60) * 10) / 10
 }
 
-const steps = ['الاسم', 'الشهادة والمنصب', 'الراتب', 'الدوام', 'الدور الوظيفي', 'بيانات الدخول', 'الصلاحيات'] as const
+const steps = ['الشعبة', 'الاسم', 'الشهادة والمنصب', 'الراتب', 'الدوام', 'الدور الوظيفي', 'بيانات الدخول', 'الصلاحيات'] as const
 
 export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  // أول سؤال إلزامي بالفورم بالضبط متل ما طلب صاحب العمل: "شعبة هندسية" أو
+  // "ديكور" — لا تظهر بقية الحقول قبل ما تنعطى إجابة هنا (division يبدأ null
+  // عمداً، مو قيمة افتراضية، حتى "التالي" ما يشتغل بدون اختيار صريح).
+  const [division, setDivision] = useState<Division | null>(null)
   const [name, setName] = useState('')
   const [certificate, setCertificate] = useState('')
   const [position, setPosition] = useState('')
@@ -60,10 +64,12 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
   const [selectedPermIds, setSelectedPermIds] = useState<string[]>([])
 
   const hours = calcHours(shiftStart, shiftEnd)
+  const isDecor = division === 'DECOR'
 
   const canProceed = () => {
-    if (step === 0) return name.trim().length > 0
-    if (step === 5) return username.trim().length > 0 && password.trim().length >= 4
+    if (step === 0) return division !== null
+    if (step === 1) return name.trim().length > 0
+    if (step === 6) return username.trim().length > 0 && password.trim().length >= 4
     return true
   }
 
@@ -75,6 +81,10 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
     setError(null)
     try {
       const shift = hours !== null && hours <= 9 ? (Number(shiftStart.split(':')[0]) < 14 ? 'MORNING' : 'EVENING') : 'MORNING'
+      // موظفو الديكور ينعطون دور TECHNICIAN دائماً (يعيد استخدام صلاحيات الفني
+      // العادي المحدودة جداً أصلاً) بغض النظر عمن اختير بخطوة "الدور الوظيفي" —
+      // الباك إند يفرض هذا برضه (دفاع مضاعف)، هذا فقط يطابق ما سيُحفظ فعلياً.
+      const effectiveRole: EmployeeRole = isDecor ? 'TECHNICIAN' : role
       const created = await api.createEmployee({
         name,
         certificate: certificate || null,
@@ -85,7 +95,8 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
         shift,
         shiftStart,
         shiftEnd,
-        role,
+        role: effectiveRole,
+        division: division ?? 'ENGINEERING',
         username,
         password,
       })
@@ -94,7 +105,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
       setAllPermissions(perms)
       const roleNames = new Set(
         // نعرض تلقائياً الصلاحيات الافتراضية لهذا الدور كبداية مقترحة، والمدير يقدر يعدلها
-        (await api.getRoleDefaults())[role] || []
+        (await api.getRoleDefaults())[effectiveRole] || []
       )
       setSelectedPermIds(perms.filter(p => roleNames.has(p.name)).map(p => p.id))
       next()
@@ -145,6 +156,29 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
 
           {step === 0 && (
             <div className="flex flex-col gap-3">
+              <label className="text-xs font-bold text-slate-500">هل هذا الموظف من الشعبة الهندسية أم شعبة الديكور؟ *</label>
+              <p className="text-xs text-slate-400">هذا أول سؤال لازم يُجاب عليه — بقية بيانات الموظف تظهر بعده مباشرة، وكل شعبة إلها كتالوج مهارات مختلف تماماً.</p>
+              <div className="grid grid-cols-2 gap-3">
+                <button type="button" onClick={() => setDivision('ENGINEERING')}
+                  className={`rounded-xl border-2 px-4 py-5 text-sm font-bold transition-all ${
+                    division === 'ENGINEERING' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}>
+                  🛠️ شعبة هندسية
+                  <p className="mt-1 text-[11px] font-normal text-slate-400">كاميرات / شبكات / GPS وما شابه</p>
+                </button>
+                <button type="button" onClick={() => setDivision('DECOR')}
+                  className={`rounded-xl border-2 px-4 py-5 text-sm font-bold transition-all ${
+                    division === 'DECOR' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                  }`}>
+                  🎨 شعبة ديكور
+                  <p className="mt-1 text-[11px] font-normal text-slate-400">حدادة / نجارة / صباغة / سيراميك / لبخ / سباكة / جبس بورد</p>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === 1 && (
+            <div className="flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-500">اسم الموظف *</label>
               <input autoFocus value={name} onChange={e => setName(e.target.value)} placeholder="مثال: أحمد محمد"
                 className="rounded-xl border border-slate-200 px-4 py-3 text-sm outline-none focus:border-brand-500" />
@@ -154,7 +188,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
             </div>
           )}
 
-          {step === 1 && (
+          {step === 2 && (
             <div className="flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-500">الشهادة</label>
               <input value={certificate} onChange={e => setCertificate(e.target.value)} placeholder="مثال: بكالوريوس هندسة"
@@ -174,7 +208,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
             </div>
           )}
 
-          {step === 2 && (
+          {step === 3 && (
             <div className="flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-500">الراتب الشهري (د.ع)</label>
               <input type="number" value={salary} onChange={e => setSalary(e.target.value)} placeholder="0"
@@ -182,7 +216,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
             </div>
           )}
 
-          {step === 3 && (
+          {step === 4 && (
             <div className="flex flex-col gap-3">
               <p className="text-xs text-slate-400">حدد دوام الموظف الفعلي من والى — يدعم الدوام الطويل (16 ساعة مثلاً) بدون التقيد بـ"صباحي/مسائي" فقط.</p>
               <div className="grid grid-cols-2 gap-3">
@@ -205,26 +239,35 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
             </div>
           )}
 
-          {step === 4 && (
+          {step === 5 && (
             <div className="flex flex-col gap-3">
-              <label className="text-xs font-bold text-slate-500">الدور الوظيفي بالنظام</label>
-              <div className="grid grid-cols-2 gap-2">
-                {creatableRoles.map(key => {
-                  const label = roleLabels[key]
-                  return (
-                    <button key={key} type="button" onClick={() => setRole(key)}
-                      className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
-                        role === key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
-                      }`}>
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
+              {isDecor ? (
+                <div className="rounded-xl bg-blue-50 p-4 text-sm text-brand-700">
+                  موظفو شعبة الديكور يُمنحون تلقائياً دور "فني" العادي (بدون أي صلاحيات إدارية) —
+                  يستلمون فقط المهام التي يوجّهها لهم منسق الحجوزات، بالضبط متل فنيي الشعبة الهندسية.
+                </div>
+              ) : (
+                <>
+                  <label className="text-xs font-bold text-slate-500">الدور الوظيفي بالنظام</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {creatableRoles.map(key => {
+                      const label = roleLabels[key]
+                      return (
+                        <button key={key} type="button" onClick={() => setRole(key)}
+                          className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
+                            role === key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}>
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </>
+              )}
             </div>
           )}
 
-          {step === 5 && (
+          {step === 6 && (
             <div className="flex flex-col gap-3">
               <label className="text-xs font-bold text-slate-500">اسم المستخدم *</label>
               <input value={username} onChange={e => setUsername(e.target.value)} placeholder="username"
@@ -235,7 +278,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
             </div>
           )}
 
-          {step === 6 && (
+          {step === 7 && (
             <div className="flex flex-col gap-3">
               <p className="text-xs text-slate-400">حددنا صلاحيات مقترحة حسب الدور — عدّلها حسب الحاجة قبل الحفظ النهائي.</p>
               <div className="flex max-h-64 flex-col gap-1.5 overflow-y-auto">
@@ -256,19 +299,19 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
             {step === 0 ? 'إلغاء' : 'رجوع'}
           </button>
 
-          {step < 5 && (
+          {step < 6 && (
             <button onClick={next} disabled={!canProceed()}
               className="rounded-lg bg-brand-500 px-6 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-40">
               التالي
             </button>
           )}
-          {step === 5 && (
+          {step === 6 && (
             <button onClick={handleCreate} disabled={!canProceed() || submitting}
               className="rounded-lg bg-brand-500 px-6 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-40">
               {submitting ? 'جاري الإنشاء...' : 'إنشاء الموظف والمتابعة للصلاحيات'}
             </button>
           )}
-          {step === 6 && (
+          {step === 7 && (
             <button onClick={handleFinish} disabled={submitting}
               className="rounded-lg bg-emerald-500 px-6 py-2 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-40">
               {submitting ? 'جاري الحفظ...' : 'حفظ الصلاحيات وإنهاء'}

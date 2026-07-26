@@ -426,7 +426,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-3 text-right">
                         <div>
                           <span className="text-sm font-bold text-amber-700">{b.code}</span>
-                          <span className="mr-2 text-sm font-medium text-slate-700">{b.customer.name}</span>
+                          <span className="mr-2 text-sm font-medium text-slate-700">{b.customer?.name}</span>
                         </div>
                         {b.service && <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">{b.service.name}</span>}
                       </div>
@@ -549,7 +549,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center gap-3 text-right">
                         <span className="text-sm font-bold text-brand-700">{b.code}</span>
-                        <span className="text-xs text-slate-500">{b.customer.name}</span>
+                        <span className="text-xs text-slate-500">{b.customer?.name}</span>
                         {b.service && <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] text-brand-600">{b.service.name}</span>}
                       </div>
                     </div>
@@ -578,7 +578,7 @@ export default function Dashboard() {
                         </div>
                         <div className="flex items-center gap-2 text-right">
                           <span className="text-sm font-bold text-emerald-700">{b.code}</span>
-                          <span className="text-xs text-slate-600">{b.customer.name}</span>
+                          <span className="text-xs text-slate-600">{b.customer?.name}</span>
                         </div>
                       </div>
                     )
@@ -734,7 +734,7 @@ export default function Dashboard() {
                             <td className="p-2 text-center text-slate-600">{cartTotal > 0 ? cartTotal.toLocaleString() : '—'}</td>
                             <td className="p-2 text-center font-bold text-emerald-700">{collected > 0 ? collected.toLocaleString() : '—'}</td>
                             <td className="p-2 text-center text-slate-600">{b.quotedPrice ? b.quotedPrice.toLocaleString() : '—'}</td>
-                            <td className="p-2 text-slate-700">{b.customer.name}</td>
+                            <td className="p-2 text-slate-700">{b.customer?.name}</td>
                             <td className="p-2 font-mono font-bold text-brand-600">{b.code}</td>
                           </tr>
                         )
@@ -868,7 +868,7 @@ export default function Dashboard() {
                       <div className="mb-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                         <div className="text-right">
                           <span className="text-xs text-slate-400">الزبون</span>
-                          <p className="font-bold text-brand-900">{b.customer.name}</p>
+                          <p className="font-bold text-brand-900">{b.customer?.name}</p>
                         </div>
                         <div className="text-right">
                           <span className="text-xs text-slate-400">الخدمة</span>
@@ -876,11 +876,11 @@ export default function Dashboard() {
                         </div>
                         <div className="text-right">
                           <span className="text-xs text-slate-400">الهاتف</span>
-                          <p className="font-medium text-slate-700" dir="ltr">{b.customer.phone}</p>
+                          <p className="font-medium text-slate-700" dir="ltr">{b.customer?.phone}</p>
                         </div>
                         <div className="text-right">
                           <span className="text-xs text-slate-400">العنوان</span>
-                          <p className="font-medium text-slate-700">{b.address || b.customer.location || '—'}</p>
+                          <p className="font-medium text-slate-700">{b.address || b.customer?.location || '—'}</p>
                         </div>
                         {b.assignedVehicle && (
                           <div className="text-right">

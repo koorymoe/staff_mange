@@ -21,6 +21,26 @@ type CreateInventoryCheckRequest struct {
 	MissingItems *string `json:"missingItems"`
 }
 
+// BookingToolCheck لقطة (snapshot) للأدوات الشخصية الي كانت ناقصة عند الموظف
+// باللحظة الي ضغط فيها "استلام" لحجز معيّن — بديل سريع عن جرد كامل منفصل،
+// يسمح للإداري يشوف بالضبط شنو كان ناقص عند هذا الموظف بهذا الحجز بالذات.
+type BookingToolCheck struct {
+	ID           string    `db:"id" json:"id"`
+	BookingID    string    `db:"bookingId" json:"bookingId"`
+	EmployeeID   string    `db:"employeeId" json:"employeeId"`
+	MissingItems *string   `db:"missingItems" json:"missingItems"`
+	CheckedAt    time.Time `db:"checkedAt" json:"checkedAt"`
+
+	Employee *EmployeeBrief `db:"-" json:"employee"`
+}
+
+// AcceptBookingRequest جسم طلب اختياري لاستلام الحجز — لو الموظف عنده أدوات
+// شخصية مسجّلة، الواجهة ترسل هون قائمة معرّفات الأدوات الي علّمها كناقصة (كل
+// شي غير مذكور هون يُفترض إنه متوفر عنده، لأن الشيك يجي كله مؤشر افتراضياً).
+type AcceptBookingRequest struct {
+	MissingToolIDs []string `json:"missingToolIds"`
+}
+
 type PersonalTool struct {
 	ID         string    `db:"id" json:"id"`
 	EmployeeID string    `db:"employeeId" json:"employeeId"`

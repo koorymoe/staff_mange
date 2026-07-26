@@ -123,6 +123,7 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		addEmp(b.ConfirmedByEmployeeID)
 		addEmp(b.ExpenseResponsibleID)
 		addEmp(b.MaterialsReadyByID)
+		addEmp(b.ConfirmationContactedByID)
 	}
 
 	customers := map[string]model.Customer{}
@@ -224,6 +225,7 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		b.ConfirmedByEmployee = getEmp(b.ConfirmedByEmployeeID)
 		b.ExpenseResponsible = getEmp(b.ExpenseResponsibleID)
 		b.MaterialsReadyBy = getEmpBrief(b.MaterialsReadyByID)
+		b.ConfirmationContactedBy = getEmpBrief(b.ConfirmationContactedByID)
 
 		assignments := assignmentsByBooking[b.ID]
 		for j := range assignments {
@@ -288,6 +290,18 @@ func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, 
 			"scheduledAt" = COALESCE($8::timestamp, "scheduledAt")
 		WHERE id = $1
 	`, id, req.ConfirmedByName, req.ConfirmedByEmployeeID, req.AdminNotes, req.TransferToProjects, req.QuotedPrice, req.Address, scheduledAt)
+	return err
+}
+
+// MarkConfirmationContacted يسجّل لحظة "تم" الإداري بعد ما اتصل بالزبون وأكّد
+// معه الموعد/الاتفاق — قبل الضغط الفعلي على "تثبيت" (Confirm). هذا يفصل خطوة
+// "تواصلت مع الزبون وأقفلت الاتفاق" عن تغيير حالة الحجز نفسها، حتى يقدر المراقب
+// (بصلاحية crew_management) يدقق هل الإداري فعلاً تواصل قبل ما يثبّت الحجز.
+func (r *BookingRepository) MarkConfirmationContacted(id, byEmployeeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking" SET "confirmationContactedAt" = now(), "confirmationContactedById" = $2
+		WHERE id = $1
+	`, id, byEmployeeID)
 	return err
 }
 

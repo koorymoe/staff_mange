@@ -77,7 +77,13 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := seedDefaultSkillForServices(db); err != nil {
 		return err
 	}
+	if err := seedDecorSkills(db); err != nil {
+		return err
+	}
 	if err := grantGpsSystemToMonitors(db); err != nil {
+		return err
+	}
+	if err := grantLeaderBasketToLeaders(db); err != nil {
 		return err
 	}
 	if err := grantRolePermission(db, "PROCUREMENT_ADMIN", "procurement", "المشتريات"); err != nil {

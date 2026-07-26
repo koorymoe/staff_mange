@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -125,6 +126,45 @@ func (r *InventoryRepository) UpdatePersonalTool(id string, status *string, chec
 func (r *InventoryRepository) DeletePersonalTool(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "PersonalTool" WHERE id = $1`, id)
 	return err
+}
+
+// ── Booking Tool Check (لقطة الأدوات الناقصة عند استلام حجز) ────────────────
+
+// ListPersonalToolsByIDs يرجّع أدوات شخصية محددة بالمعرّفات — تستخدم لتحويل
+// missingToolIds المرسلة من الواجهة لأسماء أدوات قابلة للقراءة عند تسجيل اللقطة.
+func (r *InventoryRepository) ListPersonalToolsByIDs(ids []string) ([]model.PersonalTool, error) {
+	tools := []model.PersonalTool{}
+	if len(ids) == 0 {
+		return tools, nil
+	}
+	err := r.db.Select(&tools, `SELECT * FROM "PersonalTool" WHERE id = ANY($1)`, pq.Array(ids))
+	return tools, err
+}
+
+func (r *InventoryRepository) CreateBookingToolCheck(bookingID, employeeID string, missingItems *string) (*model.BookingToolCheck, error) {
+	var c model.BookingToolCheck
+	err := r.db.Get(&c, `
+		INSERT INTO "BookingToolCheck" (id, "bookingId", "employeeId", "missingItems")
+		VALUES (gen_random_uuid()::text, $1, $2, $3)
+		RETURNING *
+	`, bookingID, employeeID, missingItems)
+	if err != nil {
+		return nil, err
+	}
+	c.Employee = r.loadEmployeeBrief(c.EmployeeID)
+	return &c, nil
+}
+
+func (r *InventoryRepository) ListBookingToolChecks(bookingID string) ([]model.BookingToolCheck, error) {
+	checks := []model.BookingToolCheck{}
+	err := r.db.Select(&checks, `SELECT * FROM "BookingToolCheck" WHERE "bookingId" = $1 ORDER BY "checkedAt" DESC`, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range checks {
+		checks[i].Employee = r.loadEmployeeBrief(checks[i].EmployeeID)
+	}
+	return checks, nil
 }
 
 // ── Vehicle Tools ───────────────────────────────────────────────────────────

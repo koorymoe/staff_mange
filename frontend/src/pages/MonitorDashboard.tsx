@@ -216,7 +216,7 @@ export default function MonitorDashboard() {
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-3">
                             <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
-                            <span className="font-bold text-brand-800">{b.customer.name}</span>
+                            <span className="font-bold text-brand-800">{b.customer?.name}</span>
                             {b.service && <span className="rounded-lg bg-white px-2 py-0.5 text-xs text-slate-600">{b.service.name}</span>}
                           </div>
                           <div className="flex items-center gap-2">
@@ -344,7 +344,7 @@ export default function MonitorDashboard() {
                         <div key={b.id} className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
                           <div className="flex items-center gap-3">
                             <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
-                            <span className="text-sm text-slate-700">{b.customer.name}</span>
+                            <span className="text-sm text-slate-700">{b.customer?.name}</span>
                           </div>
                           <button onClick={() => navigate('/coordinator')} className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-white hover:bg-amber-600">
                             توجيه كادر
@@ -371,7 +371,7 @@ export default function MonitorDashboard() {
                       <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3">
                         <div className="flex items-center gap-3">
                           <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
-                          <span className="text-sm text-slate-700">{b.customer.name}</span>
+                          <span className="text-sm text-slate-700">{b.customer?.name}</span>
                         </div>
                         <div className="flex items-center gap-3 text-sm">
                           <span className="text-slate-500">المستلم: <strong className="text-brand-700">{(b.amountCollected || 0).toLocaleString('ar-IQ')}</strong></span>
@@ -398,7 +398,7 @@ export default function MonitorDashboard() {
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-3">
                             <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
-                            <span className="text-sm font-medium text-slate-700">{b.customer.name}</span>
+                            <span className="text-sm font-medium text-slate-700">{b.customer?.name}</span>
                             {b.service && <span className="text-xs text-slate-400">{b.service.name}</span>}
                           </div>
                           <div className="flex items-center gap-2">
@@ -517,7 +517,7 @@ export default function MonitorDashboard() {
                         {completedBookings.slice(0, 30).map(b => (
                           <tr key={b.id} className="border-b border-slate-50">
                             <td className="py-2 pr-3 font-mono font-bold text-brand-600">{b.code}</td>
-                            <td className="text-slate-700">{b.customer.name}</td>
+                            <td className="text-slate-700">{b.customer?.name}</td>
                             <td className="text-slate-600">{(b.quotedPrice || 0).toLocaleString('ar-IQ')}</td>
                             <td className="font-bold text-brand-700">{(b.amountCollected || 0).toLocaleString('ar-IQ')}</td>
                             <td className="text-slate-600">{(b.advancePaid || 0).toLocaleString('ar-IQ')}</td>

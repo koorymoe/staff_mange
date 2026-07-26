@@ -139,7 +139,7 @@ export default function WorkReportPage() {
                   </div>
                   <div>
                     <p className="font-bold text-brand-900">{booking.code}</p>
-                    <p className="text-sm text-slate-500">{booking.customer.name}</p>
+                    <p className="text-sm text-slate-500">{booking.customer?.name}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">

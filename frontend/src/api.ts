@@ -49,10 +49,13 @@ export interface Skill {
   serviceId: string
 }
 
+export type Division = 'ENGINEERING' | 'DECOR'
+
 export interface Service {
   id: string
   name: string
   category: string | null
+  division: Division
   skills: Skill[]
 }
 
@@ -119,6 +122,7 @@ export interface Employee {
   shiftEnd: string | null
   monthlyLeaves: number
   jobTitle: string | null
+  division: Division
   skills: EmployeeSkill[]
   hasRequiredSkill?: boolean
 }
@@ -270,11 +274,13 @@ export interface Booking {
   responseMinutes: number | null
   arrivedAt: string | null
   startedAt: string | null
+  confirmationContactedAt: string | null
+  confirmationContactedBy: { id: string; name: string } | null
   systemType: string | null
   systemCount: number | null
   deviceCount: number | null
   bookingType: string
-  customer: Customer
+  customer: Customer | null
   service: Service | null
   transferEmployee: Employee | null
   projectSupervisor: Employee | null
@@ -984,6 +990,15 @@ export interface PersonalTool {
   checkedOut: boolean
 }
 
+export interface BookingToolCheck {
+  id: string
+  bookingId: string
+  employeeId: string
+  employee?: { id: string; name: string } | null
+  missingItems: string | null
+  checkedAt: string
+}
+
 export interface VehicleTool {
   id: string
   name: string
@@ -1163,6 +1178,7 @@ export const api = {
       shiftStart?: string
       shiftEnd?: string
       role?: EmployeeRole
+      division?: Division
     },
   ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
   login: async (username: string, password: string) => {
@@ -1314,14 +1330,18 @@ export const api = {
     id: string,
     data: { completionNotes?: string; amountCollected?: number; advancePaid?: number },
   ) => request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
-  startBooking: (id: string) =>
-    request<Booking>(`/bookings/${id}/start`, { method: 'PUT', body: JSON.stringify({}) }),
+  startBooking: (id: string, missingToolIds?: string[]) =>
+    request<Booking>(`/bookings/${id}/start`, { method: 'PUT', body: JSON.stringify({ missingToolIds: missingToolIds || [] }) }),
   markArrived: (id: string) =>
     request<Booking>(`/bookings/${id}/arrived`, { method: 'PUT', body: JSON.stringify({}) }),
   setMaterialsReady: (id: string) =>
     request<Booking>(`/bookings/${id}/materials-ready`, { method: 'PUT', body: JSON.stringify({}) }),
   verifyAmount: (id: string) =>
     request<Booking>(`/bookings/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
+  markConfirmationContacted: (id: string) =>
+    request<Booking>(`/bookings/${id}/confirmation-contacted`, { method: 'PUT', body: JSON.stringify({}) }),
+  getPendingAudit: () => request<Booking[]>('/bookings/pending-audit'),
+  getBookingToolChecks: (id: string) => request<BookingToolCheck[]>(`/bookings/${id}/tool-checks`),
   getStats: () => request<Stats>('/stats'),
 
   getExpenses: (employeeId?: string) =>

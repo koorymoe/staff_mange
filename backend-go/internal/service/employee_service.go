@@ -47,6 +47,25 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 		shift = *req.Shift
 	}
 
+	// division: "ENGINEERING" (افتراضي، الكادر الحالي) أو "DECOR" (الكادر الجديد) —
+	// أول سؤال بفورم إضافة موظف بالواجهة. أي قيمة ثانية غير الاثنتين مرفوضة صراحة
+	// حتى ما ينزرع صف بقيمة غلط بالغلط.
+	division := model.DivisionEngineering
+	if req.Division != nil && *req.Division != "" {
+		division = *req.Division
+	}
+	if division != model.DivisionEngineering && division != model.DivisionDecor {
+		return nil, errors.New("الشعبة يجب أن تكون شعبة هندسية أو ديكور")
+	}
+	// موظفو شعبة الديكور يُمنحون دائماً دور TECHNICIAN العادي (نفس دور الفنيين
+	// الحاليين) بغض النظر عن أي دور آخر يُرسل بالطلب — هذا يعيد استخدام 100%
+	// من منطق الصلاحيات/التوجيه الحالي بدل بناء نموذج صلاحيات موازٍ، وصلاحيات
+	// TECHNICIAN الافتراضية أصلاً محدودة جداً (RoleDefaultPermissions["TECHNICIAN"]
+	// = "expenses" بس)، فيتحقق شرط "صفر صلاحيات تقريباً" مباشرة بدون كود إضافي.
+	if division == model.DivisionDecor {
+		role = "TECHNICIAN"
+	}
+
 	employee := &model.Employee{
 		ID:          uuid.NewString(),
 		Name:        req.Name,
@@ -60,6 +79,7 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 		ShiftStart:  req.ShiftStart,
 		ShiftEnd:    req.ShiftEnd,
 		Role:        role,
+		Division:    division,
 		Skills:      []model.EmployeeSkillDetail{},
 	}
 
@@ -179,11 +199,50 @@ func (s *EmployeeService) Match(serviceID string) ([]model.Employee, error) {
 	return s.repo.MatchForService(serviceID)
 }
 
+// validateSkillsDivision يتأكد إن كل مهارة يراد تفعيلها فعلياً (canPerform=true)
+// للموظف تنتمي لنفس شعبته (ENGINEERING/DECOR) — يمنع مثلاً تفعيل مهارة "حدادة"
+// (ديكور) لموظف شعبة هندسية أو العكس. الواجهة ترسل دائماً القائمة الكاملة لكل
+// خدمات النظام (كل الشُّعب) بكل طلب (استبدال كامل)، بس canPerform=false لأي
+// خدمة مو من شعبة الموظف — فالتحقق يقتصر على المهارات المفعّلة فعلاً حتى ما
+// يرفض حفظ فورم عادي يحوي مهارات كل الشعب بقيمة false.
+func (s *EmployeeService) validateSkillsDivision(employeeDivision string, skills []model.EmployeeSkillInput) error {
+	var activeIDs []string
+	for _, sk := range skills {
+		if sk.CanPerform {
+			activeIDs = append(activeIDs, sk.SkillID)
+		}
+	}
+	if len(activeIDs) == 0 {
+		return nil
+	}
+	divisions, err := s.repo.SkillDivisions(activeIDs)
+	if err != nil {
+		return err
+	}
+	for _, id := range activeIDs {
+		div, ok := divisions[id]
+		if !ok {
+			return errors.New("مهارة غير موجودة: " + id)
+		}
+		if div != employeeDivision {
+			return errors.New("لا يمكن إسناد مهارة من شعبة مختلفة عن شعبة الموظف")
+		}
+	}
+	return nil
+}
+
 func (s *EmployeeService) SetSkills(employeeID string, req model.SetEmployeeSkillsRequest) (*model.Employee, error) {
+	employee, err := s.repo.FindByID(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.validateSkillsDivision(employee.Division, req.Skills); err != nil {
+		return nil, err
+	}
 	if err := s.repo.SetSkills(employeeID, req.Skills); err != nil {
 		return nil, err
 	}
-	employee, err := s.repo.FindByID(employeeID)
+	employee, err = s.repo.FindByID(employeeID)
 	if err != nil {
 		return nil, err
 	}

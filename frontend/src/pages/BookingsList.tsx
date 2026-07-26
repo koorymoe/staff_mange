@@ -46,8 +46,8 @@ export default function BookingsList() {
     if (!q) return true
     return (
       b.code.toLowerCase().includes(q) ||
-      b.customer.name.toLowerCase().includes(q) ||
-      b.customer.code.toLowerCase().includes(q)
+      (b.customer?.name || '').toLowerCase().includes(q) ||
+      (b.customer?.code || '').toLowerCase().includes(q)
     )
   })
 
@@ -132,8 +132,8 @@ export default function BookingsList() {
                     <td className="px-4 py-3 font-mono text-sm font-semibold text-brand-600">
                       {b.code}
                     </td>
-                    <td className="px-4 py-3">{b.customer.name}</td>
-                    <td className="px-4 py-3 font-mono text-sm text-slate-500">{b.customer.code}</td>
+                    <td className="px-4 py-3">{b.customer?.name || 'زبون غير معروف'}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-slate-500">{b.customer?.code || '-'}</td>
                     <td className="px-4 py-3 text-slate-600">{b.service?.name || '-'}</td>
                     <td className="px-4 py-3 text-slate-600">{b.transferEmployee?.name || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>

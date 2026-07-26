@@ -113,7 +113,11 @@ export default function PermissionsPage() {
     },
     {
       title: 'المراقبة والتدقيق',
-      perms: ['monitoring', 'auditing', 'quality_control'],
+      perms: ['monitoring', 'auditing', 'quality_control', 'crew_management'],
+    },
+    {
+      title: 'سلة الليدر',
+      perms: ['leader_basket'],
     },
   ]
 

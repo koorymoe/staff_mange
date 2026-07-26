@@ -790,7 +790,7 @@ export default function Employees() {
                           <>
                             <p className="mb-3 text-xs text-slate-400">حدد المهارات التي يستطيع الموظف تنفيذها.</p>
                             <div className="flex flex-col gap-4">
-                              {services.map(service => (
+                              {services.filter(service => service.division === selectedEmployee.division).map(service => (
                                 <div key={service.id}>
                                   <h5 className="mb-2 text-xs font-bold text-[#0f2040]">{service.name}</h5>
                                   <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-3">

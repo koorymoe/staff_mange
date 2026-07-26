@@ -10,9 +10,13 @@ type Skill struct {
 }
 
 type Service struct {
-	ID        string    `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	Category  *string   `db:"category" json:"category"`
+	ID       string  `db:"id" json:"id"`
+	Name     string  `db:"name" json:"name"`
+	Category *string `db:"category" json:"category"`
+	// Division: "ENGINEERING" (افتراضي، كل الخدمات القديمة) أو "DECOR" (المهن
+	// السبعة الجديدة: حدادة/نجارة/صباغة/سيراميك/لبخ/تأسيس ماء ومجاري/جبس بورد) —
+	// نفس تقسيم model.Employee.Division، يحدد أي كتالوج مهارات يظهر لأي شعبة.
+	Division  string    `db:"division" json:"division"`
 	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
 	Skills    []Skill   `db:"-" json:"skills"`
 }

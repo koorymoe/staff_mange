@@ -170,6 +170,14 @@ export default function Coordinator() {
     if (!transferToProjects) loadMatches(updated)
   }
 
+  // "تم" — الإداري يضغطها بعد ما يتواصل فعلياً مع الزبون ويقفل الاتفاق، قبل
+  // الضغط على التثبيت النهائي (تثبيت وترحيل/تحويل). هذا يسجل توقيت منفصل يقدر
+  // يشوفه لاحقاً موظف مراقب بصلاحية crew_management للتدقيق.
+  const handleMarkContacted = async (booking: Booking) => {
+    const updated = await api.markConfirmationContacted(booking.id)
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
+
   const handleScheduleChange = async (booking: Booking, value: string) => {
     if (!value) return
     const updated = await api.scheduleBooking(booking.id, value, currentUser?.id)
@@ -265,7 +273,7 @@ export default function Coordinator() {
                 {upcomingAppointments.map((b) => (
                   <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
                     <span className="font-mono font-semibold text-brand-600">{b.code}</span>
-                    <span className="text-slate-600">{b.customer.name}</span>
+                    <span className="text-slate-600">{b.customer?.name || 'زبون غير معروف'}</span>
                     <span className="text-slate-600">{b.service?.name || 'بدون خدمة محددة'}</span>
                     <span className="font-bold text-brand-800">
                       {new Date(b.scheduledAt!).toLocaleString('ar-IQ', {
@@ -314,15 +322,15 @@ export default function Coordinator() {
                 <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                   <div>
                     <span className="text-slate-400">الزبون: </span>
-                    <span className="font-medium text-brand-800">{booking.customer.name}</span>
+                    <span className="font-medium text-brand-800">{booking.customer?.name || 'زبون غير معروف'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400">الهاتف: </span>
-                    {booking.customer.phone}
+                    {booking.customer?.phone || '-'}
                   </div>
                   <div>
                     <span className="text-slate-400">الموقع المسجل: </span>
-                    {booking.customer.location || '-'}
+                    {booking.customer?.location || '-'}
                   </div>
                 </div>
                 {booking.notes && (
@@ -409,6 +417,22 @@ export default function Coordinator() {
                   </div>
                 </div>
 
+                <div className="mt-3">
+                  {booking.confirmationContactedAt ? (
+                    <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
+                      ✅ تم التواصل مع الزبون وإقفال الاتفاق ({booking.confirmationContactedBy?.name || 'الإداري'}) —{' '}
+                      {new Date(booking.confirmationContactedAt).toLocaleString('ar-IQ')}
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => handleMarkContacted(booking)}
+                      className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 transition-all hover:bg-emerald-100"
+                    >
+                      تم — تواصلت مع الزبون وأقفلت الاتفاق
+                    </button>
+                  )}
+                </div>
+
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => handleConfirm(booking, false)}
@@ -467,15 +491,15 @@ export default function Coordinator() {
                 <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                   <div>
                     <span className="text-slate-400">الزبون: </span>
-                    <span className="font-medium text-brand-800">{booking.customer.name}</span>
+                    <span className="font-medium text-brand-800">{booking.customer?.name || 'زبون غير معروف'}</span>
                   </div>
                   <div>
                     <span className="text-slate-400">الهاتف: </span>
-                    {booking.customer.phone}
+                    {booking.customer?.phone || '-'}
                   </div>
                   <div>
                     <span className="text-slate-400">الموقع المسجل: </span>
-                    {booking.customer.location || '-'}
+                    {booking.customer?.location || '-'}
                   </div>
                 </div>
 

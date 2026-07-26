@@ -37,6 +37,8 @@ var DefaultPermissions = []Permission{
 	{Name: "content_technician", Label: "صلاحية التقني (إدارة المحتوى التدريبي والخدمات والموردين والمواد)"},
 	{Name: "vehicle_management", Label: "إدارة المركبات"},
 	{Name: "quality_control", Label: "الجودة (متابعة مشاكل التنفيذ والرقابة)"},
+	{Name: "leader_basket", Label: "سلة الليدر (فاتورة الليدر / المواد والمنظومات المختارة)"},
+	{Name: "crew_management", Label: "متابعة تنسيق الحجوزات (حجوزات موجّهة قبل التثبيت)"},
 }
 
 // RoleDefaultPermissions هي الصلاحيات الافتراضية لكل دور وظيفي

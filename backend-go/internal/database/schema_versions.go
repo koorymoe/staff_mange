@@ -165,6 +165,13 @@ func versionedMigrations() []Migration {
 	// 0127 وما بعدها: تعلّم زمن تنفيذ العمل (JobDurationSample) — عيّنات زمنية حقيقية
 	// من الحجوزات والمنظومات لحساب متوسط وتيرة العمل تلقائياً بدل رقم مفروض يدوياً.
 	result = append(result, jobDurationVersionedMigrations()...)
+	// 0129 وما بعدها: طابع تواصل الإداري مع الزبون قبل التثبيت (crew_management
+	// للمراقب) + لقطة الأدوات الناقصة عند استلام الحجز — أضيفتا بنفس الليلة.
+	result = append(result, nightFeaturesVersionedMigrations()...)
+	// 0131 وما بعدها: حقل "الشُّعبة" (division) على الموظف والخدمة — يفصل شعبة
+	// الديكور الجديدة (حدادة/نجارة/صباغة/سيراميك/لبخ/تأسيس ماء ومجاري/جبس بورد)
+	// عن الشعبة الهندسية الموجودة أصلاً، بدون أي تأثير رجعي (افتراضي ENGINEERING).
+	result = append(result, divisionVersionedMigrations()...)
 	return result
 }
 

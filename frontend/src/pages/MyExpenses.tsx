@@ -87,7 +87,7 @@ export default function MyExpenses() {
           <ul className="mt-2 list-inside list-disc text-sm text-emerald-700">
             {responsibleBookings.map(b => (
               <li key={b.id}>
-                {b.code} — {b.customer.name} ({b.service?.name || 'بدون خدمة'})
+                {b.code} — {b.customer?.name} ({b.service?.name || 'بدون خدمة'})
               </li>
             ))}
           </ul>

@@ -143,8 +143,8 @@ export default function MapPage() {
       marker.bindPopup(`
         <div dir="rtl" style="font-family:inherit;min-width:200px">
           <strong style="color:${color}">${booking.code}</strong> - ${STATUS_LABELS[booking.status]}<br/>
-          <b>${booking.customer.name}</b><br/>
-          ${booking.customer.phone}<br/>
+          <b>${booking.customer?.name}</b><br/>
+          ${booking.customer?.phone}<br/>
           ${booking.address || ''}<br/>
           ${booking.service ? `<small>${booking.service.name}</small>` : ''}
           ${booking.scheduledAt ? `<br/><small>📅 ${new Date(booking.scheduledAt).toLocaleDateString('ar-IQ')}</small>` : ''}
@@ -371,7 +371,7 @@ export default function MapPage() {
                   <div key={b.id} className="flex items-center justify-between bg-white rounded px-2 py-1.5 text-xs">
                     <div>
                       <span className="font-bold text-amber-700">{b.code}</span>
-                      <span className="text-slate-600 mr-1">{b.customer.name}</span>
+                      <span className="text-slate-600 mr-1">{b.customer?.name}</span>
                     </div>
                     <button
                       onClick={() => { setShowLinkInput(b.id); setLinkValue('') }}
@@ -452,8 +452,8 @@ export default function MapPage() {
                     {STATUS_LABELS[booking.status]}
                   </span>
                 </div>
-                <div className="text-sm font-medium text-slate-800">{booking.customer.name}</div>
-                <div className="text-xs text-slate-500">{booking.address || booking.customer.phone}</div>
+                <div className="text-sm font-medium text-slate-800">{booking.customer?.name}</div>
+                <div className="text-xs text-slate-500">{booking.address || booking.customer?.phone}</div>
                 {booking.service && (
                   <div className="text-xs text-slate-400 mt-0.5">{booking.service.name}</div>
                 )}

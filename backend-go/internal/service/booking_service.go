@@ -17,10 +17,11 @@ type BookingService struct {
 	customers        *repository.CustomerRepository
 	qualityFollowUps *repository.QualityFollowUpRepository
 	notifications    *repository.NotificationRepository
+	inventory        *repository.InventoryRepository
 }
 
-func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository, qualityFollowUps *repository.QualityFollowUpRepository, notifications *repository.NotificationRepository) *BookingService {
-	return &BookingService{repo: repo, employees: employees, customers: customers, qualityFollowUps: qualityFollowUps, notifications: notifications}
+func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository, qualityFollowUps *repository.QualityFollowUpRepository, notifications *repository.NotificationRepository, inventory *repository.InventoryRepository) *BookingService {
+	return &BookingService{repo: repo, employees: employees, customers: customers, qualityFollowUps: qualityFollowUps, notifications: notifications, inventory: inventory}
 }
 
 func (s *BookingService) List(status, customerID string) ([]model.Booking, error) {
@@ -238,6 +239,47 @@ func (s *BookingService) SetSupervisor(id string, employeeID *string) (*model.Bo
 
 func (s *BookingService) Start(id string) (*model.Booking, error) {
 	if err := s.repo.StartWithResponseTime(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// StartWithToolsCheck تسجّل (لو انطلبت) لقطة الأدوات الشخصية الناقصة عند الموظف
+// بلحظة استلامه الحجز، وبعدين تكمل نفس منطق Start العادي (تلف الدالة، ما تكررها).
+// لو الموظف ماله أدوات شخصية مسجّلة أصلاً بالنظام، ما نسجل أي لقطة (نتجنب صف فاضي
+// بلا فايدة) ونكمل الاستلام عادي — القرار: تخطي الفحص بالكامل بدل ما نجبر الموظف
+// يواجه واجهة فاضية أو معطلة.
+func (s *BookingService) StartWithToolsCheck(id, employeeID string, missingToolIDs []string) (*model.Booking, error) {
+	if employeeID != "" && s.inventory != nil {
+		allTools, err := s.inventory.ListPersonalTools(employeeID)
+		if err == nil && len(allTools) > 0 && len(missingToolIDs) > 0 {
+			missingTools, err := s.inventory.ListPersonalToolsByIDs(missingToolIDs)
+			if err == nil && len(missingTools) > 0 {
+				names := make([]string, 0, len(missingTools))
+				for _, t := range missingTools {
+					names = append(names, t.Name)
+				}
+				joined := strings.Join(names, "، ")
+				_, _ = s.inventory.CreateBookingToolCheck(id, employeeID, &joined)
+			}
+		}
+	}
+	return s.Start(id)
+}
+
+// ListToolChecks ترجّع لقطات الأدوات الناقصة المسجّلة عند استلام حجز معيّن.
+func (s *BookingService) ListToolChecks(bookingID string) ([]model.BookingToolCheck, error) {
+	if s.inventory == nil {
+		return []model.BookingToolCheck{}, nil
+	}
+	return s.inventory.ListBookingToolChecks(bookingID)
+}
+
+// MarkConfirmationContacted تسجّل لحظة "تم" ضغطها الإداري بعد ما تواصل فعلاً مع
+// الزبون قبل تثبيت الحجز — خطوة سابقة ومنفصلة عن Confirm نفسها، حتى يقدر المراقب
+// (صلاحية crew_management) يدقق هل صار التواصل قبل التثبيت الفعلي أو لا.
+func (s *BookingService) MarkConfirmationContacted(id, employeeID string) (*model.Booking, error) {
+	if err := s.repo.MarkConfirmationContacted(id, employeeID); err != nil {
 		return nil, err
 	}
 	return s.repo.FindByID(id)

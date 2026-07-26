@@ -37,6 +37,29 @@ func grantGpsSystemToMonitors(db *sqlx.DB) error {
 	return grantRolePermission(db, "MONITOR", "gps_system", "نظام GPS")
 }
 
+// grantLeaderBasketToLeaders تضمن كل موظف عنده isLeader=true (تيم ليدر فريق)
+// عنده صلاحية "leader_basket" (سلة الليدر/فاتورة الليدر) تلقائياً — هذي الصلاحية
+// الافتراضية لليدر بحكم دوره الفعلي (isLeader، مو دور وظيفي role عادي). الأدمن
+// يقدر لاحقاً يمنحها يدوياً لموظف MONITOR أيضاً من صفحة الصلاحيات إذا احتاج،
+// بدون ما يمس هذا الافتراضي. idempotent بالكامل.
+func grantLeaderBasketToLeaders(db *sqlx.DB) error {
+	if _, err := db.Exec(`
+		INSERT INTO "Permission" (id, name, label)
+		VALUES (gen_random_uuid()::text, 'leader_basket', 'سلة الليدر (فاتورة الليدر / المواد والمنظومات المختارة)')
+		ON CONFLICT (name) DO NOTHING
+	`); err != nil {
+		return err
+	}
+	_, err := db.Exec(`
+		INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
+		SELECT gen_random_uuid()::text, e.id, p.id
+		FROM "Employee" e, "Permission" p
+		WHERE e."isLeader" = true AND p.name = 'leader_basket'
+		ON CONFLICT ("employeeId", "permissionId") DO NOTHING
+	`)
+	return err
+}
+
 // grantRolePermission يضمن كل موظف بدور معيّن عنده صلاحية معيّنة — يستخدم
 // لتحديث RoleDefaultPermissions بأثر رجعي على الموظفين الموجودين فعلاً
 // (تغيير خارطة الصلاحيات بالكود لحاله ما يوصل تلقائياً لحسابات منشأة سابقاً).

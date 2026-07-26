@@ -137,7 +137,7 @@ export default function Finance() {
                     {b.code}
                   </span>
                   <span className="text-sm font-medium text-brand-800">
-                    {b.customer.name}
+                    {b.customer?.name}
                   </span>
                   {b.service && (
                     <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
@@ -176,8 +176,8 @@ export default function Finance() {
                 <div className="border-t border-slate-100 p-4">
                   {/* Booking info */}
                   <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
-                    <InfoRow label="رقم الزبون" value={`CUST-${String(b.customer.customerCode).padStart(5, '0')}`} />
-                    <InfoRow label="هاتف الزبون" value={b.customer.phone} />
+                    <InfoRow label="رقم الزبون" value={b.customer ? `CUST-${String(b.customer.customerCode).padStart(5, '0')}` : 'زبون غير معروف'} />
+                    <InfoRow label="هاتف الزبون" value={b.customer?.phone || '-'} />
                     <InfoRow
                       label="تاريخ الإنجاز"
                       value={

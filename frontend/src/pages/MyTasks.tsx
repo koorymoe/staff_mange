@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, type Booking } from '../api'
+import { api, type Booking, type PersonalTool } from '../api'
 import { useSession } from '../session'
 
 function elapsedSince(iso: string): string {
@@ -19,6 +19,15 @@ export default function MyTasks() {
   const [advances, setAdvances] = useState<Record<string, string>>({})
   const [notes, setNotes] = useState<Record<string, string>>({})
   const [, setTick] = useState(0)
+
+  // مودال شيك الأدوات الشخصية قبل "استلام" الحجز — كل الأدوات معلّمة تلقائياً
+  // (مؤشرة) كموجودة، والموظف يشيل التأشير فقط عن الناقص عنده (أسرع من ما يعلّم
+  // كل أداة لحالها).
+  const [toolsModalBooking, setToolsModalBooking] = useState<Booking | null>(null)
+  const [personalTools, setPersonalTools] = useState<PersonalTool[]>([])
+  const [checkedTools, setCheckedTools] = useState<Record<string, boolean>>({})
+  const [toolsLoading, setToolsLoading] = useState(false)
+  const [submittingAccept, setSubmittingAccept] = useState(false)
 
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 30000)
@@ -42,9 +51,56 @@ export default function MyTasks() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
-  const handleStart = async (booking: Booking) => {
-    const updated = await api.startBooking(booking.id)
+  // نعتبرها الاستلام الفعلي (تنفيذ startBooking) — تُستدعى مباشرة لو الموظف
+  // ما عنده أدوات شخصية مسجلة أصلاً (نتخطى المودال حتى لا يعلق بواجهة فاضية)،
+  // أو بعد ما يضغط "تم" بمودال شيك الأدوات.
+  const doStart = async (bookingId: string, missingToolIds?: string[]) => {
+    const updated = await api.startBooking(bookingId, missingToolIds)
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
+
+  const handleStart = async (booking: Booking) => {
+    if (!employee) {
+      await doStart(booking.id)
+      return
+    }
+    setToolsModalBooking(booking)
+    setToolsLoading(true)
+    try {
+      const tools = await api.getPersonalTools(employee.id)
+      if (tools.length === 0) {
+        // لا توجد أدوات مسجلة لهذا الموظف — نتخطى المودال بالكامل ونكمل الاستلام
+        // عادي، بدل ما نعلقه بشاشة فاضية بلا فايدة.
+        setToolsModalBooking(null)
+        await doStart(booking.id)
+        return
+      }
+      setPersonalTools(tools)
+      // كل الأدوات مؤشرة (موجودة) افتراضياً — الموظف يشيل التأشير فقط عن الناقص.
+      const allChecked: Record<string, boolean> = {}
+      tools.forEach((t) => { allChecked[t.id] = true })
+      setCheckedTools(allChecked)
+    } catch {
+      // تعذر جلب الأدوات — لا نمنع الاستلام، نكمل عادي بدون شيك.
+      setToolsModalBooking(null)
+      await doStart(booking.id)
+    } finally {
+      setToolsLoading(false)
+    }
+  }
+
+  const handleConfirmToolsCheck = async () => {
+    if (!toolsModalBooking) return
+    setSubmittingAccept(true)
+    try {
+      const missingToolIds = personalTools.filter((t) => !checkedTools[t.id]).map((t) => t.id)
+      await doStart(toolsModalBooking.id, missingToolIds)
+      setToolsModalBooking(null)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تأكيد الاستلام')
+    } finally {
+      setSubmittingAccept(false)
+    }
   }
 
   const handleMaterialsReady = async (booking: Booking) => {
@@ -100,15 +156,15 @@ export default function MyTasks() {
                     <div className="mt-1 grid grid-cols-1 gap-1 text-sm text-slate-500 sm:grid-cols-2">
                       <p>
                         <span className="text-slate-400">الزبون: </span>
-                        {b.customer.name}
+                        {b.customer?.name || 'زبون غير معروف'}
                       </p>
                       <p>
                         <span className="text-slate-400">الهاتف: </span>
-                        {b.customer.phone}
+                        {b.customer?.phone || '-'}
                       </p>
                       <p>
                         <span className="text-slate-400">العنوان: </span>
-                        {b.address || b.customer.location || 'بدون موقع محدد'}
+                        {b.address || b.customer?.location || 'بدون موقع محدد'}
                       </p>
                       <p>
                         <span className="text-slate-400">السيارة: </span>
@@ -241,6 +297,56 @@ export default function MyTasks() {
                   <p className="text-sm text-slate-400">لم يتم تحديد مهارات بعد.</p>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toolsModalBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-900">تأكيد استلام الحجز {toolsModalBooking.code}</h3>
+            <p className="mt-1 text-sm font-medium text-amber-700">
+              علّم فقط الأداة الناقصة عندك — الباقي مؤشر مسبقاً كموجود.
+            </p>
+
+            {toolsLoading ? (
+              <p className="mt-4 text-slate-400">جاري التحميل...</p>
+            ) : (
+              <div className="mt-4 max-h-64 space-y-2 overflow-y-auto">
+                {personalTools.map((tool) => (
+                  <label
+                    key={tool.id}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!checkedTools[tool.id]}
+                      onChange={() =>
+                        setCheckedTools((prev) => ({ ...prev, [tool.id]: !prev[tool.id] }))
+                      }
+                      className="h-5 w-5 accent-brand-600"
+                    />
+                    <span className="text-sm font-medium text-brand-900">{tool.name}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-2">
+              <button
+                onClick={() => setToolsModalBooking(null)}
+                className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50"
+              >
+                إلغاء
+              </button>
+              <button
+                onClick={handleConfirmToolsCheck}
+                disabled={submittingAccept || toolsLoading}
+                className="flex-1 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+              >
+                {submittingAccept ? 'جارٍ التأكيد...' : 'تم'}
+              </button>
             </div>
           </div>
         </div>
