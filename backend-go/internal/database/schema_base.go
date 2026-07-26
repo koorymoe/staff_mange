@@ -544,4 +544,11 @@ var baseSchema = []string{
 		fulfilled BOOLEAN NOT NULL DEFAULT false
 	)`,
 	`CREATE INDEX IF NOT EXISTS "ProcurementItem_requestId_idx" ON "ProcurementItem"("requestId")`,
+
+	// جدول تتبع نسخة البنية المطبّقة — يسجل أي ترحيل (migration) اتنفذ فعلياً على هذه
+	// القاعدة، حتى ما نعيد تنفيذ كل الترحيلات من الصفر بكل إقلاع للسيرفر (انظر migrate.go).
+	`CREATE TABLE IF NOT EXISTS "SchemaMigration" (
+		version TEXT PRIMARY KEY,
+		"appliedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
 }
