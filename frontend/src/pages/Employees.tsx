@@ -178,7 +178,7 @@ export default function Employees() {
     setShowCompare(false)
     setCompareId(null)
     setSkillTab('technical')
-  }, [selectedId])
+  }, [selectedId, selectedEmployee?.isLeader, selectedEmployee?.username])
 
   const handleSaveCredentials = async () => {
     if (!selectedEmployee) return

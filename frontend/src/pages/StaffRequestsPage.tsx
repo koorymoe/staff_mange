@@ -50,7 +50,7 @@ export default function StaffRequestsPage() {
     }
     Promise.all(jobs).finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(load, [canRequest])
 
   const toggleEmployee = (id: string) =>
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))

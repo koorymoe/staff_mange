@@ -67,6 +67,13 @@ export default function MissionsPage() {
   const [tab, setTab] = useState<'active' | 'completed' | 'monitor'>('active')
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
   const [pathMission, setPathMission] = useState<Mission | null>(null)
+  // Ticking clock so delay-status calculations stay pure during render (no Date.now() in render body)
+  // while still updating live; 30s cadence is enough for a minutes-based delay indicator.
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 30000)
+    return () => clearInterval(iv)
+  }, [])
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
 
@@ -147,7 +154,7 @@ export default function MissionsPage() {
   const getDelayStatus = (m: Mission) => {
     if (!m.estimatedMinutes) return 'normal'
     if (m.stage === 'EN_ROUTE' && m.departedAt) {
-      const elapsed = Math.floor((Date.now() - new Date(m.departedAt).getTime()) / 60000)
+      const elapsed = Math.floor((now - new Date(m.departedAt).getTime()) / 60000)
       if (elapsed > m.estimatedMinutes) return 'late'
       if (elapsed > m.estimatedMinutes * 0.8) return 'warning'
     }
@@ -468,14 +475,15 @@ function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => 
 
   useEffect(() => {
     let disposed = false
+    const leaflet = leafletRef.current
     import('leaflet').then(L => {
-      if (disposed || !mapRef.current || leafletRef.current.map) return
+      if (disposed || !mapRef.current || leaflet.map) return
       const center = points[points.length - 1] || { latitude: 33.3152, longitude: 44.3661 }
       const map = L.map(mapRef.current).setView([center.latitude, center.longitude], 13)
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map)
-      leafletRef.current.map = map
+      leaflet.map = map
     })
-    return () => { disposed = true; if (leafletRef.current.map) { leafletRef.current.map.remove(); leafletRef.current.map = null } }
+    return () => { disposed = true; if (leaflet.map) { leaflet.map.remove(); leaflet.map = null } }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

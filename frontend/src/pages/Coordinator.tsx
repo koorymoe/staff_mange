@@ -103,6 +103,12 @@ export default function Coordinator() {
     if (isOpen && !cartItems[bookingId]) loadCart(bookingId)
   }
 
+  const loadMatches = async (booking: Booking) => {
+    if (!booking.service) return
+    const employees = await api.matchEmployees(booking.service.id)
+    setMatches((prev) => ({ ...prev, [booking.id]: employees }))
+  }
+
   const load = () => {
     api
       .getBookings()
@@ -125,12 +131,6 @@ export default function Coordinator() {
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
     const updated = await api.assignSupervisor(booking.id, employeeId || null)
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
-  }
-
-  const loadMatches = async (booking: Booking) => {
-    if (!booking.service) return
-    const employees = await api.matchEmployees(booking.service.id)
-    setMatches((prev) => ({ ...prev, [booking.id]: employees }))
   }
 
   const handleConfirm = async (booking: Booking, transferToProjects: boolean) => {

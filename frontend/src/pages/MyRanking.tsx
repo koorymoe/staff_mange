@@ -28,7 +28,7 @@ export default function MyRanking() {
   useEffect(() => {
     if (!employee) return
     api.getRoleKpiLeaderboard(employee.role).then(setBoard).catch(() => setBoard(null))
-  }, [employee?.role])
+  }, [employee])
 
   const skillCount = employee?.skills.filter((s) => s.canPerform).length || 0
   const currentLevel = [...levels].reverse().find((l) => skillCount >= l.min) || levels[0]

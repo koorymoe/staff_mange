@@ -60,8 +60,10 @@ export default function GpsEmployee() {
     setLoading(false)
   }
 
-  // `load` is async and only sets state after its awaits resolve; false positive.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
+  // `load` is async and only sets state after its awaits resolve (false positive for
+  // set-state-in-effect); `load` is redefined every render (not memoized), so adding
+  // it as a dep would re-run this effect every render — we intentionally load once.
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
   useEffect(() => { load() }, [])
 
   const handlePurchase = async () => {

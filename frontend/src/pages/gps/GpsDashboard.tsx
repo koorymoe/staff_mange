@@ -6,6 +6,8 @@ type SubscriptionStatus = 'unknown' | 'active' | 'expiring' | 'expired40' | 'exp
 
 export default function GpsDashboard() {
   const navigate = useNavigate()
+  // Snapshot "now" once per mount so progress-bar math stays pure during render.
+  const [now] = useState(() => Date.now())
   const [stats, setStats] = useState<GpsStats | null>(null)
   const [devices, setDevices] = useState<GpsDeviceRequest[]>([])
   const [sims, setSims] = useState<GpsSimCard[]>([])
@@ -47,7 +49,6 @@ export default function GpsDashboard() {
     if (!device.activationDate || !device.subscriptionEnd) return 0
     const start = new Date(device.activationDate).getTime()
     const end = new Date(device.subscriptionEnd).getTime()
-    const now = Date.now()
     const total = end - start
     const elapsed = now - start
     return Math.min(100, Math.max(0, (elapsed / total) * 100))

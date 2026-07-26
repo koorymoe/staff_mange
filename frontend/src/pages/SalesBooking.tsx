@@ -9,6 +9,20 @@ type BookingType = 'REGULAR' | 'MAINTENANCE'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
 type MaintenanceType = 'EXECUTION_ERROR' | 'DEVICE_ISSUE'
 
+function SectionHeader({ num, title }: { num: number; title: string }) {
+  return (
+    <div className="flex items-center gap-3 mb-4">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-l from-brand-500 to-brand-800 text-xs font-bold text-white">
+        {num}
+      </span>
+      <div className="flex items-center gap-2">
+        <span className="h-2 w-2 rounded-full bg-brand-500" />
+        <h3 className="text-base font-semibold text-brand-900">{title}</h3>
+      </div>
+    </div>
+  )
+}
+
 export default function SalesBooking() {
   const { employee } = useSession()
   const [services, setServices] = useState<Service[]>([])
@@ -198,18 +212,6 @@ export default function SalesBooking() {
       setSubmitting(false)
     }
   }
-
-  const SectionHeader = ({ num, title }: { num: number; title: string }) => (
-    <div className="flex items-center gap-3 mb-4">
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-l from-brand-500 to-brand-800 text-xs font-bold text-white">
-        {num}
-      </span>
-      <div className="flex items-center gap-2">
-        <span className="h-2 w-2 rounded-full bg-brand-500" />
-        <h3 className="text-base font-semibold text-brand-900">{title}</h3>
-      </div>
-    </div>
-  )
 
   return (
     <div dir="rtl" className="space-y-6">

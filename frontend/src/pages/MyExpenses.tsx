@@ -46,7 +46,7 @@ export default function MyExpenses() {
     })
   }
 
-  useEffect(load, [employee?.id])
+  useEffect(load, [employee])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

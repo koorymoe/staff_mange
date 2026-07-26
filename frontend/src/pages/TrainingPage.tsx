@@ -23,7 +23,7 @@ export default function TrainingPage() {
       setMaterials(materials)
       if (services[0]) setActiveServiceId(services[0].id)
     }).finally(() => setLoading(false))
-  }, [employee?.id])
+  }, [employee])
 
   const visibleMaterials = materials.filter(m => m.serviceId === activeServiceId)
 

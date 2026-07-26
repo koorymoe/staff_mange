@@ -24,6 +24,9 @@ export default function QualityPage() {
 
   const load = () => api.getQualityIssues(filter === 'ALL' ? undefined : filter).then(setIssues)
 
+  // `load` is redefined every render (not memoized) and already reflects `filter`
+  // via closure; adding `load` itself as a dep would re-run this effect every render.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [filter])
   useEffect(() => { api.getEmployees().then(setEmployees) }, [])
 

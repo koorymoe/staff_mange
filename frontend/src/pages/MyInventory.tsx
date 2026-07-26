@@ -64,9 +64,12 @@ export default function MyInventory() {
     }
   }
 
-  // `load` is async and only sets state after its awaits resolve; false positive.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load() }, [employee?.id])
+  // `load` is async and only sets state after its awaits resolve (false positive for
+  // set-state-in-effect); `load` is also redefined every render (not memoized), so
+  // adding it as a dep would re-run this effect on every render and cause an infinite
+  // fetch loop — we only want to re-fetch when the employee changes.
+  // eslint-disable-next-line react-hooks/set-state-in-effect, react-hooks/exhaustive-deps
+  useEffect(() => { load() }, [employee])
 
   const [submittingCheck, setSubmittingCheck] = useState(false)
 

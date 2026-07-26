@@ -251,7 +251,7 @@ export default function Layout() {
     api.getEmployeePermissions(employee.id)
       .then((perms) => setEmployeePermissions(perms.map((p) => p.name)))
       .catch(() => setEmployeePermissions([]))
-  }, [employee?.id])
+  }, [employee])
 
   useEffect(() => {
     // Guard-clause reset when logged out; not part of the fetch itself.
@@ -260,7 +260,7 @@ export default function Layout() {
     api.getServices()
       .then((services) => setGpsServiceId(services.find((s) => s.name === 'GPS')?.id || null))
       .catch(() => setGpsServiceId(null))
-  }, [employee?.id])
+  }, [employee])
 
   useEffect(() => {
     const autoExpand = (items: NavItem[]) => {

@@ -142,7 +142,7 @@ export default function Dashboard() {
         .then(d => setProjectStats(d?.stats || null))
         .catch(() => setProjectStats(null))
     }
-  }, [employee])
+  }, [employee, permissions])
 
   /* ── Attendance widget state ── */
   const [activeRecord, setActiveRecord] = useState<AttendanceRecord | null>(null)

@@ -86,6 +86,9 @@ const currentMonth = () => {
 }
 
 export default function VehiclesPage() {
+  // Snapshot "now" once per mount so "days since install" is pure during render;
+  // doesn't need live ticking since it's a day-granularity display, not a countdown.
+  const [now] = useState(() => Date.now())
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -965,7 +968,7 @@ export default function VehiclesPage() {
                   <div className="space-y-3">
                     {parts.map((p) => {
                       const distanceSince = selectedVehicle ? selectedVehicle.currentOdometer - p.installedOdometer : null
-                      const daysSince = Math.floor((Date.now() - new Date(p.installedAt).getTime()) / (1000 * 60 * 60 * 24))
+                      const daysSince = Math.floor((now - new Date(p.installedAt).getTime()) / (1000 * 60 * 60 * 24))
                       return (
                         <div key={p.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                           <div className="flex items-center justify-between">

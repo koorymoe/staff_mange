@@ -58,6 +58,18 @@ const traderTypeLabels: Record<string, string> = {
 
 const traderTypeOptions = ['وكيل', 'موزع', 'تاجر']
 
+// Modal backdrop — module-level so it has a stable identity across parent re-renders
+// (a new function identity per render would remount children and drop input focus).
+function Modal({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        {children}
+      </div>
+    </div>
+  )
+}
+
 function Stars({ value, size = 'text-lg' }: { value: number; size?: string }) {
   return (
     <span className={size}>
@@ -238,15 +250,6 @@ export default function SuppliersPage() {
   const toggleSpecialty = (id: string) => {
     setFormSpecialtyIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id])
   }
-
-  // Modal backdrop
-  const Modal = ({ children, onClose }: { children: React.ReactNode; onClose: () => void }) => (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        {children}
-      </div>
-    </div>
-  )
 
   return (
     <div>

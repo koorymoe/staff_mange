@@ -51,6 +51,11 @@ export default function QuotationNew() {
   const [pmStatus, setPmStatus] = useState('')
   const autocompleteRefs = useRef<(HTMLDivElement | null)[]>([])
 
+  const showStatus = (text: string, type: 'ok' | 'err') => {
+    setStatusMsg({ text, type })
+    setTimeout(() => setStatusMsg(null), 6000)
+  }
+
   useEffect(() => {
     api.getProducts().then(setProducts).catch(() => {})
   }, [])
@@ -127,11 +132,6 @@ export default function QuotationNew() {
       return
     }
     setItems((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  const showStatus = (text: string, type: 'ok' | 'err') => {
-    setStatusMsg({ text, type })
-    setTimeout(() => setStatusMsg(null), 6000)
   }
 
   const handleSubmit = async () => {
