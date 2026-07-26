@@ -40,12 +40,20 @@ services:
       # حتى يشرح للموظفين شلون يستخدمون النظام — bind-mount بدل نسخها بالصورة حتى
       # نقدر نحدّث محتوى الأدلة بدون إعادة بناء صورة الباك اند.
       - ./tutorials:/app/tutorials:ro
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   frontend:
     build: ./frontend
     restart: unless-stopped
     depends_on:
-      - backend
+      backend:
+        # service_healthy مو مجرد service started — لازم /api/health يرد فعلاً
+        # قبل ما فرونت إند/كادي يعتمدون على الباك إند شغّال، مو بس الحاوية بدأت.
+        condition: service_healthy
     ports:
       - "8081:80"
 

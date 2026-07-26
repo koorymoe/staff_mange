@@ -506,10 +506,26 @@ func main() {
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))
 	mux.Handle("PUT /api/quality/issues/{id}", middleware.Chain(http.HandlerFunc(qualityHandler.Update), requireAuth, requireQuality))
 
-	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins))
+	handlerChain := middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
+
+	// http.Server بإعدادات مهلة صريحة بدل http.ListenAndServe الخام — بدونها
+	// السيرفر يبقى بلا حماية من هجمات slow-loris (عميل يفتح اتصال ويسحب الرد
+	// أو الطلب ببطء متعمد ليشغل الاتصال للأبد). WriteTimeout=30s أكبر بمسافة
+	// أمان من أطول عملية شرعية بالسيرفر: نداء Gemini (مساعد ذكي) عنده مهلة
+	// عميل HTTP صريحة 20 ثانية بدون أي إعادة محاولة (راجع callGeminiWithTools
+	// بـassistant_service.go) — 30 ثانية تكفي 20 ثانية Gemini + وقت معالجة
+	// إضافي بدون قطع رد شرعي قيد التقدم.
+	srv := &http.Server{
+		Addr:              ":" + cfg.Port,
+		Handler:           handlerChain,
+		ReadTimeout:       15 * time.Second,
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      30 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
 
 	log.Printf("staffmange-api listening on :%s", cfg.Port)
-	if err := http.ListenAndServe(":"+cfg.Port, handlerChain); err != nil {
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatal(err)
 	}
 }
