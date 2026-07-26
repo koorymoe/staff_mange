@@ -71,25 +71,40 @@ func (r *EmployeeRepository) StatusByID(id string) (string, error) {
 	return status, err
 }
 
-// RecordAuthzViolation تسجل محاولة وصول مرفوضة (طلب عملية الموظف مو مخوّل
-// لها فعلياً حسب دوره الحقيقي بالتوكن) — إذا تكررت 3 مرات نوقف الحساب
-// تلقائياً (SUSPENDED) حماية من محاولات التلاعب بجلسة المتصفح.
-func (r *EmployeeRepository) RecordAuthzViolation(id string) (violations int, suspended bool, err error) {
+// StatusAndRoleByID استعلام خفيف يرجع الحالة والدور الحاليين — يستخدمه RequireAuth
+// بكل طلب حتى الدور المعتمد بالفحص يكون دايماً الدور الحقيقي بقاعدة البيانات
+// الآن، مو الدور القديم المخزّن جوا التوكن وقت تسجيل الدخول (ثغرة كانت موجودة:
+// تنزيل موظف من ADMIN لدور عادي ما يبطل صلاحياته إلا بعد انتهاء التوكن، لغاية
+// ١٢ ساعة).
+func (r *EmployeeRepository) StatusAndRoleByID(id string) (status string, role string, err error) {
+	row := struct {
+		Status string `db:"status"`
+		Role   string `db:"role"`
+	}{}
+	err = r.db.Get(&row, `SELECT status, role FROM "Employee" WHERE id = $1`, id)
+	return row.Status, row.Role, err
+}
+
+// RecordAuthzViolation تسجل محاولة وصول مرفوضة (طلب عملية الموظف مو مخوّل لها
+// فعلياً حسب دوره/صلاحياته الحاليين) — بس تسجيل وعدّاد، بدون أي إيقاف تلقائي
+// للحساب. الإيقاف التلقائي (قبل هذا التعديل) كان خطر حقيقي: أي خطأ بالواجهة
+// أو صلاحية ناقصة بالخطأ يقفل حساب موظف شرعي بمنتصف شغله بدون تدخل بشري —
+// هسه بس ينبّه الإدارة (بعد grantRolePermission threshold) وتقرر هي.
+func (r *EmployeeRepository) RecordAuthzViolation(id string) (violations int, err error) {
 	err = r.db.Get(&violations, `
 		UPDATE "Employee" SET "authzViolations" = "authzViolations" + 1
 		WHERE id = $1
 		RETURNING "authzViolations"
 	`, id)
-	if err != nil {
-		return 0, false, err
-	}
-	if violations >= 3 {
-		if _, execErr := r.db.Exec(`UPDATE "Employee" SET status = 'SUSPENDED' WHERE id = $1 AND status = 'ACTIVE'`, id); execErr != nil {
-			return violations, false, execErr
-		}
-		suspended = true
-	}
-	return violations, suspended, nil
+	return violations, err
+}
+
+// NameByID استعلام خفيف يرجع اسم الموظف بس — يستخدمه تنبيه محاولات الوصول
+// المرفوضة المتكررة حتى الإدارة تعرف مين بالضبط تحتاج تراجعه.
+func (r *EmployeeRepository) NameByID(id string) (string, error) {
+	var name string
+	err := r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, id)
+	return name, err
 }
 
 func (r *EmployeeRepository) FindByUsername(username string) (*model.Employee, error) {

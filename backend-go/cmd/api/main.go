@@ -148,36 +148,36 @@ func main() {
 	performanceReviewHandler := handler.NewPerformanceReviewHandler(performanceReviewService)
 
 	requireAuth := middleware.RequireAuth(authService, employeeRepo)
-	requireAdmin := middleware.RequireRole(employeeRepo, "ADMIN")
+	requireAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN")
 	// حصراً لحساب المالك (OWNER) — أقوى من الأدمن العادي، ما يشوفها إلا هو
-	requireOwner := middleware.RequireRole(employeeRepo, "OWNER")
-	requireFinance := middleware.RequireRole(employeeRepo, "ADMIN", "FINANCE")
+	requireOwner := middleware.RequireRole(employeeRepo, notificationRepo, "OWNER")
+	requireFinance := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "FINANCE")
 	// تدقيق مبلغ الحجز يعتمد على صلاحية "finance" الممنوحة فعلياً للموظف (مو بس دوره
 	// الوظيفي) — المراقب مثلاً عنده هذي الصلاحية افتراضياً ويشوف زر "تدقيق" بالواجهة،
 	// فلازم الباك إند يتحقق من نفس الصلاحية بدل دور صارم، وإلا يترفض الطلب ويتسبب
 	// بإيقاف حساب الموظف تلقائياً بعد 3 محاولات (حماية أمنية ضد التلاعب بالجلسة).
-	requireVerifyBooking := middleware.RequirePermission(permissionRepo, employeeRepo, "finance")
-	requireHR := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR")
-	requireInventoryApprove := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR", "MONITOR")
+	requireVerifyBooking := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "finance")
+	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
+	requireInventoryApprove := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR", "MONITOR")
 	// تعديل مهارات موظف يعتمد على صلاحية "staff_management" الممنوحة فعلياً (نفس
 	// الصلاحية الي تفتح صفحة "إدارة الكوادر" بالواجهة للمراقب أيضاً) — مو دور
 	// وظيفي صارم، وإلا نفس بگ "تدقيق الحسابات" يتكرر: زر يطلع بالواجهة، السيرفر
 	// يرفضه، وبعد 3 محاولات ينوقف حساب الموظف تلقائياً.
-	requireStaffManagement := middleware.RequirePermission(permissionRepo, employeeRepo, "staff_management")
-	requireMonitor := middleware.RequireRole(employeeRepo, "ADMIN", "MONITOR")
-	requireProjectManager := middleware.RequireRole(employeeRepo, "ADMIN", "PROJECT_MANAGER")
-	requireFieldMonitor := middleware.RequireRole(employeeRepo, "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
-	requireGpsAdmin := middleware.RequireRole(employeeRepo, "ADMIN", "GPS_ADMIN")
-	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, "content_technician")
-	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, "vehicle_management")
-	requireProcurement := middleware.RequirePermission(permissionRepo, employeeRepo, "procurement")
+	requireStaffManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "staff_management")
+	requireMonitor := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "MONITOR")
+	requireProjectManager := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROJECT_MANAGER")
+	requireFieldMonitor := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
+	requireGpsAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "GPS_ADMIN")
+	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "content_technician")
+	requireVehicleMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "vehicle_management")
+	requireProcurement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "procurement")
 	// توفير المواد وتحديد حالتها يقتصر على إداري الكميات فعلياً (أو الأدمن) — مو أي
 	// موظف عنده صلاحية "procurement" العامة (زي الفني/مدير المشاريع الي بس يطلبون مواد).
-	requireProcurementAdmin := middleware.RequireRole(employeeRepo, "ADMIN", "PROCUREMENT_ADMIN")
-	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, "quality_control")
-	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, "project_management")
-	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, "kpi_management")
-	requireKpiCriteria := middleware.RequirePermission(permissionRepo, employeeRepo, "kpi_criteria_management")
+	requireProcurementAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROCUREMENT_ADMIN")
+	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "quality_control")
+	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "project_management")
+	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
+	requireKpiCriteria := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_criteria_management")
 
 	mux := http.NewServeMux()
 

@@ -3,12 +3,18 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strings"
 
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
+
+// authzViolationNotifyThreshold أول عدد محاولات وصول مرفوضة نبعث بعده تنبيه
+// للإدارة — وبعدها كل مضاعف له (3، 6, 9...) حتى ننبه لو المحاولات استمرت
+// بدون ما نغرق الإدارة برسالة كل محاولة وحدة.
+const authzViolationNotifyThreshold = 3
 
 type contextKey string
 
@@ -26,9 +32,13 @@ func writeError(w http.ResponseWriter, status int, message string) {
 }
 
 // RequireAuth يتحقق من وجود JWT صالح بالطلب ويرفض أي طلب بدونه. كمان يتحقق
-// من حالة الحساب الحقيقية بقاعدة البيانات بكل طلب (مو بس وقت تسجيل الدخول) —
-// حتى لو التوكن نفسه لسه صالح تقنياً، حساب موقوف (SUSPENDED) أو محذوف ما
-// يقدر يستخدم النظام أبداً بعدها.
+// من حالة الحساب والدور الحقيقيين بقاعدة البيانات بكل طلب (مو بس وقت تسجيل
+// الدخول) — حتى لو التوكن نفسه لسه صالح تقنياً:
+//   - حساب موقوف (SUSPENDED) أو محذوف ما يقدر يستخدم النظام أبداً بعدها.
+//   - الدور المعتمد بكل فحص صلاحيات هو دور الموظف الحالي بقاعدة البيانات،
+//     مو الدور القديم المخزّن جوا التوكن وقت تسجيل الدخول — قبل هذا التعديل،
+//     تنزيل موظف من ADMIN لدور عادي ما كان يبطل صلاحياته العملية إلا بعد
+//     انتهاء التوكن (لغاية ١٢ ساعة) أو تسجيل خروج/دخول يدوي.
 func RequireAuth(auth *service.AuthService, employees *repository.EmployeeRepository) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -45,34 +55,42 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 				return
 			}
 
-			status, err := employees.StatusByID(claims.EmployeeID)
+			status, role, err := employees.StatusAndRoleByID(claims.EmployeeID)
 			if err != nil || status != "ACTIVE" {
 				writeError(w, http.StatusUnauthorized, "تم إيقاف هذا الحساب — راجع إدارة النظام")
 				return
 			}
 
 			ctx := context.WithValue(r.Context(), ContextEmployeeID, claims.EmployeeID)
-			ctx = context.WithValue(ctx, ContextRole, claims.Role)
+			ctx = context.WithValue(ctx, ContextRole, role)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }
 
-// recordViolationAndBlock تسجل محاولة وصول مرفوضة وترجع رسالة الخطأ المناسبة —
-// إذا الحساب انوقف تلقائياً بعد هالمحاولة نوضح هذا برسالة الرفض.
-func recordViolationAndBlock(w http.ResponseWriter, employees *repository.EmployeeRepository, employeeID string) {
+// recordViolationAndBlock تسجل محاولة وصول مرفوضة وترد "ممنوع" — بدون أي
+// إيقاف تلقائي للحساب (شوف تعليق RecordAuthzViolation). إذا العدّاد وصل
+// عتبة التنبيه (وكل مضاعف لها بعدين)، نبعث تنبيه للإدارة (ADMIN) حتى تراجع
+// الموظف يدوياً وتقرر هي — قرار بشري، مو إيقاف آلي أعمى.
+func recordViolationAndBlock(w http.ResponseWriter, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, employeeID string) {
 	if employeeID != "" && employees != nil {
-		if _, suspended, err := employees.RecordAuthzViolation(employeeID); err == nil && suspended {
-			writeError(w, http.StatusForbidden, "تم إيقاف حسابك تلقائياً بسبب محاولات وصول متكررة غير مخوّلة — راجع إدارة النظام")
-			return
+		if violations, err := employees.RecordAuthzViolation(employeeID); err == nil {
+			if violations > 0 && violations%authzViolationNotifyThreshold == 0 && notifications != nil {
+				name, nameErr := employees.NameByID(employeeID)
+				if nameErr != nil || name == "" {
+					name = employeeID
+				}
+				_ = notifications.CreateForRole("ADMIN", "authz_violation",
+					fmt.Sprintf("⚠️ الموظف %s حاول %d مرة يوصل لعملية مو مخوّل لها — راجع صلاحياته/دوره", name, violations))
+			}
 		}
 	}
 	writeError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذه العملية")
 }
 
 // RequireRole يمنع الوصول إلا لأصحاب الأدوار المذكورة (يُستخدم بعد RequireAuth).
-// أي محاولة وصول مرفوضة تُسجَّل كـ"خرق صلاحيات" — تكرارها 3 مرات يوقف الحساب تلقائياً.
-func RequireRole(employees *repository.EmployeeRepository, roles ...string) func(http.Handler) http.Handler {
+// أي محاولة وصول مرفوضة تُسجَّل، وتكرارها ينبّه الإدارة (بدون إيقاف تلقائي).
+func RequireRole(employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, roles ...string) func(http.Handler) http.Handler {
 	allowed := make(map[string]bool, len(roles))
 	for _, role := range roles {
 		allowed[role] = true
@@ -83,7 +101,7 @@ func RequireRole(employees *repository.EmployeeRepository, roles ...string) func
 			role, _ := r.Context().Value(ContextRole).(string)
 			// OWNER يتخطى أي قيد أدوار — حساب المالك الأساسي، أقوى من أي دور ثاني بما فيه ADMIN
 			if role != "OWNER" && !allowed[role] {
-				recordViolationAndBlock(w, employees, EmployeeIDFromContext(r))
+				recordViolationAndBlock(w, employees, notifications, EmployeeIDFromContext(r))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -93,8 +111,8 @@ func RequireRole(employees *repository.EmployeeRepository, roles ...string) func
 
 // RequirePermission يسمح بالوصول لـ ADMIN دائماً، أو لأي موظف عنده الصلاحية المذكورة
 // من جدول الصلاحيات المخصصة (يُستخدم بعد RequireAuth). أي محاولة وصول مرفوضة
-// تُسجَّل كـ"خرق صلاحيات" — تكرارها 3 مرات يوقف الحساب تلقائياً.
-func RequirePermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, permissionName string) func(http.Handler) http.Handler {
+// تُسجَّل، وتكرارها ينبّه الإدارة (بدون إيقاف تلقائي).
+func RequirePermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, permissionName string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			role, _ := r.Context().Value(ContextRole).(string)
@@ -105,7 +123,7 @@ func RequirePermission(permissions *repository.PermissionRepository, employees *
 			employeeID, _ := r.Context().Value(ContextEmployeeID).(string)
 			perms, err := permissions.ListForEmployee(employeeID)
 			if err != nil {
-				recordViolationAndBlock(w, employees, employeeID)
+				recordViolationAndBlock(w, employees, notifications, employeeID)
 				return
 			}
 			for _, p := range perms {
@@ -114,7 +132,7 @@ func RequirePermission(permissions *repository.PermissionRepository, employees *
 					return
 				}
 			}
-			recordViolationAndBlock(w, employees, employeeID)
+			recordViolationAndBlock(w, employees, notifications, employeeID)
 		})
 	}
 }
