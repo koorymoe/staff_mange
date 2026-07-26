@@ -45,6 +45,26 @@ func (r *VehicleMissionRatingRepository) Create(missionID, ratedByID string, req
 	return &rating, nil
 }
 
+// GetCleanlinessAvgForDriverMonth يرجّع متوسط بند النظافة (cleanliness) من
+// "تقييم السائقين بعد المهمة" لسائق معيّن خلال شهر معيّن (monthPrefix بصيغة
+// "YYYY-MM")، مع عدد التقييمات — nil لو ما عنده أي مهام مقيَّمة بهذا الشهر.
+func (r *VehicleMissionRatingRepository) GetCleanlinessAvgForDriverMonth(employeeID, monthPrefix string) (avg *float64, count int, err error) {
+	var row struct {
+		Count int      `db:"count"`
+		Avg   *float64 `db:"avg"`
+	}
+	err = r.db.Get(&row, `
+		SELECT COUNT(mr.id) AS count, AVG(mr.cleanliness) AS avg
+		FROM "VehicleMission" m
+		JOIN "VehicleMissionRating" mr ON mr."missionId" = m.id
+		WHERE m."driverId" = $1 AND to_char(m."startedAt", 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	if err != nil {
+		return nil, 0, err
+	}
+	return row.Avg, row.Count, nil
+}
+
 // GetDriverRatingSummary يحسب متوسط تقييمات سائق عبر كل مهامه المقيَّمة.
 func (r *VehicleMissionRatingRepository) GetDriverRatingSummary(employeeID string) (*model.DriverRatingSummary, error) {
 	var summary model.DriverRatingSummary

@@ -159,6 +159,12 @@ func versionedMigrations() []Migration {
 	// يستخدمه الليدر لحساب تكاليف التنفيذ وفواتير الزبائن. كل عنصر جديد يُضاف هنا
 	// بالنهاية برقمه التالي مباشرة (لا يجوز تعديل ما قبله).
 	result = append(result, leaderInvoiceVersionedMigrations()...)
+	// 0124 وما بعدها: عمولات الليدر/الفنيين + سعر الجملة على المنتجات/المواد —
+	// كل عنصر جديد يُضاف بالنهاية برقمه التالي مباشرة.
+	result = append(result, commissionVersionedMigrations()...)
+	// 0127 وما بعدها: تعلّم زمن تنفيذ العمل (JobDurationSample) — عيّنات زمنية حقيقية
+	// من الحجوزات والمنظومات لحساب متوسط وتيرة العمل تلقائياً بدل رقم مفروض يدوياً.
+	result = append(result, jobDurationVersionedMigrations()...)
 	return result
 }
 

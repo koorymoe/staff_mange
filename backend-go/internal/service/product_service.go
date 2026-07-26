@@ -26,14 +26,20 @@ func (s *ProductService) Create(req model.CreateProductRequest) (*model.Product,
 	if req.DefaultPrice != nil && *req.DefaultPrice < 0 {
 		return nil, errors.New("السعر الافتراضي ما يصير يكون بالسالب")
 	}
-	return s.repo.Create(req.Name, req.Unit, req.DefaultPrice, req.ImageBase64)
+	if req.WholesalePrice != nil && *req.WholesalePrice < 0 {
+		return nil, errors.New("سعر الجملة ما يصير يكون بالسالب")
+	}
+	return s.repo.Create(req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64)
 }
 
 func (s *ProductService) Update(id string, req model.UpdateProductRequest) (*model.Product, error) {
 	if req.DefaultPrice != nil && *req.DefaultPrice < 0 {
 		return nil, errors.New("السعر الافتراضي ما يصير يكون بالسالب")
 	}
-	return s.repo.Update(id, req.Name, req.Unit, req.DefaultPrice, req.ImageBase64)
+	if req.WholesalePrice != nil && *req.WholesalePrice < 0 {
+		return nil, errors.New("سعر الجملة ما يصير يكون بالسالب")
+	}
+	return s.repo.Update(id, req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64)
 }
 
 func (s *ProductService) Delete(id string) error {

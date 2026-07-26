@@ -37,6 +37,11 @@ export default function MyTasks() {
     b.assignments.some((a) => a.employee.id === employee?.id),
   )
 
+  const handleArrive = async (booking: Booking) => {
+    const updated = await api.markArrived(booking.id)
+    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+  }
+
   const handleStart = async (booking: Booking) => {
     const updated = await api.startBooking(booking.id)
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
@@ -138,6 +143,18 @@ export default function MyTasks() {
                             📦 تم تجهيز المواد — أبلغ الفريق
                           </button>
                         ) : null}
+                        {b.arrivedAt ? (
+                          <div className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700">
+                            📍 وصلت للزبون من {elapsedSince(b.arrivedAt)}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleArrive(b)}
+                            className="w-full rounded-lg bg-gradient-to-l from-sky-500 to-sky-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                          >
+                            📍 وصلت للزبون
+                          </button>
+                        )}
                         <button
                           onClick={() => handleStart(b)}
                           className="w-full rounded-lg bg-gradient-to-l from-amber-500 to-amber-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"

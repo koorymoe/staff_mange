@@ -92,6 +92,18 @@ func (r *KpiRepository) Cancel(id, cancelledByEmployeeID string) (*model.KpiEval
 
 // RoleLeaderboard يرجع ترتيب موظفي دور معيّن حسب مجموع نقاط الـKPI ضمن فترة زمنية،
 // حتى يشوف كل موظف ترتيبه بين نظرائه بنفس الدور (فني مع الفنيين، إداري مع الإداريين).
+// SumPointsForEmployeeMonth يرجّع مجموع نقاط الكي بي اي (غير الملغاة) لموظف
+// معيّن خلال شهر معيّن (monthPrefix بصيغة "YYYY-MM") — يُستخدم بصفحة إحصائيات
+// الموظفين الشهرية لإعادة استخدام نفس آلية تسجيل النقاط الموجودة أصلاً.
+func (r *KpiRepository) SumPointsForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var total int
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation"
+		WHERE "employeeId" = $1 AND cancelled = false AND to_char("createdAt", 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return total, err
+}
+
 func (r *KpiRepository) RoleLeaderboard(role string, since string) ([]model.KpiLeaderboardEntry, error) {
 	entries := []model.KpiLeaderboardEntry{}
 	err := r.db.Select(&entries, `

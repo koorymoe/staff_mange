@@ -332,12 +332,22 @@ func (r *BookingRepository) StartWithResponseTime(id string) error {
 	_, err := r.db.Exec(`
 		UPDATE "Booking" SET
 			status = 'IN_PROGRESS',
+			"startedAt" = COALESCE("startedAt", now()),
 			"responseMinutes" = CASE
 				WHEN "materialsReadyAt" IS NOT NULL AND "responseMinutes" IS NULL
 				THEN GREATEST(0, EXTRACT(EPOCH FROM (now() - "materialsReadyAt"))::int / 60)
 				ELSE "responseMinutes"
 			END
 		WHERE id = $1
+	`, id)
+	return err
+}
+
+// MarkArrived يسجّل لحظة وصول الفنيين لموقع الزبون (قبل بدء العمل فعلياً) — يُستخدم
+// لاحقاً كبديل عن startedAt عند حساب عيّنات مدة العمل لو startedAt غير متوفر.
+func (r *BookingRepository) MarkArrived(id string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking" SET "arrivedAt" = COALESCE("arrivedAt", now()) WHERE id = $1
 	`, id)
 	return err
 }
@@ -415,6 +425,20 @@ func (r *BookingRepository) ListAssignments(bookingID string) ([]model.BookingAs
 	assignments := []model.BookingAssignment{}
 	err := r.db.Select(&assignments, `SELECT * FROM "BookingAssignment" WHERE "bookingId" = $1`, bookingID)
 	return assignments, err
+}
+
+// CountCompletedForEmployeeMonth يرجّع عدد الحجوزات المكتملة (COMPLETED) خلال
+// شهر معيّن (monthPrefix بصيغة "YYYY-MM") التي كان موظف معيّن مربوطاً بها عبر
+// "BookingAssignment" (أي دور: ليدر أو فني).
+func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL
+			AND to_char(b."completedAt", 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return count, err
 }
 
 func (r *BookingRepository) EmployeeHasSkillForService(employeeID, serviceID string) (bool, error) {

@@ -103,6 +103,17 @@ func (r *ComplaintRepository) StatsByCustomer() ([]model.ComplaintCustomerStat, 
 	return stats, err
 }
 
+// CountForEmployeeMonth يرجّع عدد الشكاوى المرتبطة بموظف معيّن (relatedEmployeeId)
+// خلال شهر معيّن (monthPrefix بصيغة "YYYY-MM").
+func (r *ComplaintRepository) CountForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM "Complaint"
+		WHERE "relatedEmployeeId" = $1 AND to_char("createdAt", 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return count, err
+}
+
 func (r *ComplaintRepository) Resolve(id string, resolution *string) (*model.Complaint, error) {
 	var c model.Complaint
 	err := r.db.Get(&c, `

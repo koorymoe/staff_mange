@@ -2,25 +2,43 @@ package service
 
 import (
 	"fmt"
+	"time"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 )
 
 // LeaderInvoiceService ينسّق حساب فاتورة الليدر كاملة: تكاليف التنفيذ (بالكتالوج)
-// + بنود المواد (بالأرشيف أو يدوي) + الخصم + كود المحاسبة، ثم يحفظها.
+// + بنود المواد (بالأرشيف أو يدوي) + الخصم + كود المحاسبة، ثم يحفظها. كما يحسب
+// ويحفظ عمولات الليدر والفنيين المشاركين تلقائياً بنفس عملية الإنشاء.
 type LeaderInvoiceService struct {
-	invoices  *repository.LeaderInvoiceRepository
-	catalog   *repository.SystemPriceCatalogRepository
-	materials *repository.MaterialRepository
+	invoices    *repository.LeaderInvoiceRepository
+	catalog     *repository.SystemPriceCatalogRepository
+	materials   *repository.MaterialRepository
+	commissions *repository.EmployeeCommissionRepository
+	bookings    *repository.BookingRepository
+	employees   *repository.EmployeeRepository
+	durations   *JobDurationEstimatorService
 }
 
 func NewLeaderInvoiceService(
 	invoices *repository.LeaderInvoiceRepository,
 	catalog *repository.SystemPriceCatalogRepository,
 	materials *repository.MaterialRepository,
+	commissions *repository.EmployeeCommissionRepository,
+	bookings *repository.BookingRepository,
+	employees *repository.EmployeeRepository,
+	durations *JobDurationEstimatorService,
 ) *LeaderInvoiceService {
-	return &LeaderInvoiceService{invoices: invoices, catalog: catalog, materials: materials}
+	return &LeaderInvoiceService{
+		invoices:    invoices,
+		catalog:     catalog,
+		materials:   materials,
+		commissions: commissions,
+		bookings:    bookings,
+		employees:   employees,
+		durations:   durations,
+	}
 }
 
 // Create يبني ويحفظ فاتورة ليدر جديدة من طلب الإنشاء، بحساب تكاليف التنفيذ
@@ -126,7 +144,128 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 	if err != nil {
 		return nil, err
 	}
+
+	s.computeAndSaveCommissions(saved)
+	s.recordDurationSample(saved)
+
 	return saved, nil
+}
+
+// recordDurationSample يسجّل عيّنة زمن تنفيذ حقيقية لهذا الحجز (لو مربوط بحجز فعلاً)
+// حتى يتعلّم النظام وتيرة العمل تلقائياً — itemCount = مجموع أعداد بنود الفاتورة،
+// crewSize = عدد الموظفين الفعليين المسندين (ليدر + فنيين)، durationMinutes = من
+// startedAt (أو arrivedAt احتياطياً) إلى لحظة إنشاء الفاتورة (نعتبرها لحظة الإنجاز
+// الفعلية لعدم توفر completedAt منفصل هنا). لو ما توفر لا startedAt ولا arrivedAt
+// نتخطى التسجيل صراحة (لا نخترع مدة) مع سطر لوق واضح بالسبب.
+func (s *LeaderInvoiceService) recordDurationSample(saved *model.LeaderInvoice) {
+	if s.durations == nil || s.bookings == nil {
+		return
+	}
+	if saved.BookingID == nil || *saved.BookingID == "" {
+		return
+	}
+	booking, err := s.bookings.FindByID(*saved.BookingID)
+	if err != nil || booking == nil {
+		return
+	}
+
+	startTime := booking.StartedAt
+	if startTime == nil {
+		startTime = booking.ArrivedAt
+	}
+	if startTime == nil {
+		fmt.Printf("job_duration_estimator: تخطي تسجيل عيّنة للحجز %s — لا يوجد startedAt ولا arrivedAt\n", booking.ID)
+		return
+	}
+
+	crewSize := 1 // الليدر نفسه
+	seen := map[string]bool{saved.EmployeeID: true}
+	for _, a := range booking.Assignments {
+		if a.Role != "TECH_1" && a.Role != "TECH_2" && a.Role != "TECH_3" {
+			continue
+		}
+		if seen[a.EmployeeID] {
+			continue
+		}
+		seen[a.EmployeeID] = true
+		crewSize++
+	}
+
+	itemCount := 0
+	for _, item := range saved.Items {
+		if item.Count > 0 {
+			itemCount += item.Count
+		}
+	}
+	if itemCount <= 0 {
+		itemCount = saved.TotalDeviceCount
+	}
+
+	durationMinutes := int(saved.CreatedAt.Sub(*startTime).Minutes())
+	if durationMinutes <= 0 {
+		durationMinutes = int(time.Since(*startTime).Minutes())
+	}
+
+	systemName := ""
+	if len(saved.Systems) > 0 {
+		systemName = saved.Systems[0]
+	}
+	if systemName == "" {
+		return
+	}
+
+	bookingID := booking.ID
+	_ = s.durations.RecordSample(model.JobDurationSample{
+		SystemName:      systemName,
+		JobType:         model.JobTypeInstall,
+		ItemCount:       itemCount,
+		CrewSize:        crewSize,
+		DurationMinutes: durationMinutes,
+		BookingID:       &bookingID,
+	})
+
+	employeeName := saved.EmployeeID
+	if s.employees != nil {
+		if emp, eerr := s.employees.FindByID(saved.EmployeeID); eerr == nil && emp != nil {
+			employeeName = emp.Name
+		}
+	}
+	_ = s.durations.CheckOverrunAndNotify(systemName, model.JobTypeInstall, itemCount, crewSize, durationMinutes, employeeName, "تركيب "+systemName, &bookingID)
+}
+
+// computeAndSaveCommissions يحسب ويحفظ عمولة الليدر (تنفيذ + مبيعات) وعمولة كل
+// فني آخر مربوط بنفس الحجز (TECH_1/TECH_2/TECH_3 غير الليدر نفسه) — تلقائياً
+// بدون أي تشغيل يدوي منفصل. أخطاء الحفظ هنا لا توقف إنشاء الفاتورة نفسها (تم
+// حفظها بنجاح فعلاً) لكنها تُسجَّل ضمنياً عبر تجاهل الخطأ بحرص — العمولة عملية
+// تابعة، لا يصح أن تفشل بها الفاتورة الأساسية.
+func (s *LeaderInvoiceService) computeAndSaveCommissions(saved *model.LeaderInvoice) {
+	if s.commissions == nil {
+		return
+	}
+
+	executionCommission, salesCommission, _ := model.CalculateLeaderCommission(saved.ExecutionCost, saved.Materials)
+	_, _ = s.commissions.Create(saved.EmployeeID, saved.ID, model.CommissionRoleLeader, executionCommission, salesCommission)
+
+	if saved.BookingID == nil || *saved.BookingID == "" || s.bookings == nil {
+		return
+	}
+
+	assignments, err := s.bookings.ListAssignments(*saved.BookingID)
+	if err != nil {
+		return
+	}
+	technicianCommission := model.CalculateTechnicianCommission(saved.ExecutionCost)
+	seen := map[string]bool{saved.EmployeeID: true}
+	for _, a := range assignments {
+		if a.Role != "TECH_1" && a.Role != "TECH_2" && a.Role != "TECH_3" {
+			continue
+		}
+		if seen[a.EmployeeID] {
+			continue // الليدر نفسه مو فني إضافي، وما نكرر نفس الموظف مرتين
+		}
+		seen[a.EmployeeID] = true
+		_, _ = s.commissions.Create(a.EmployeeID, saved.ID, model.CommissionRoleTechnician, technicianCommission, 0)
+	}
 }
 
 func (s *LeaderInvoiceService) Get(id string) (*model.LeaderInvoice, error) {

@@ -20,30 +20,31 @@ func (r *ProductRepository) List() ([]model.Product, error) {
 	return products, err
 }
 
-func (r *ProductRepository) Create(name string, unit *string, defaultPrice *float64, imageBase64 *string) (*model.Product, error) {
+func (r *ProductRepository) Create(name string, unit *string, defaultPrice, wholesalePrice *float64, imageBase64 *string) (*model.Product, error) {
 	var p model.Product
 	err := r.db.Get(&p, `
-		INSERT INTO "Product" (id, name, unit, "defaultPrice", "imageBase64")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+		INSERT INTO "Product" (id, name, unit, "defaultPrice", "wholesalePrice", "imageBase64")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5)
 		RETURNING *
-	`, name, unit, defaultPrice, imageBase64)
+	`, name, unit, defaultPrice, wholesalePrice, imageBase64)
 	if err != nil {
 		return nil, err
 	}
 	return &p, nil
 }
 
-func (r *ProductRepository) Update(id string, name, unit *string, defaultPrice *float64, imageBase64 *string) (*model.Product, error) {
+func (r *ProductRepository) Update(id string, name, unit *string, defaultPrice, wholesalePrice *float64, imageBase64 *string) (*model.Product, error) {
 	var p model.Product
 	err := r.db.Get(&p, `
 		UPDATE "Product" SET
 			name = COALESCE($2, name),
 			unit = COALESCE($3, unit),
 			"defaultPrice" = COALESCE($4, "defaultPrice"),
-			"imageBase64" = COALESCE($5, "imageBase64")
+			"wholesalePrice" = COALESCE($5, "wholesalePrice"),
+			"imageBase64" = COALESCE($6, "imageBase64")
 		WHERE id = $1
 		RETURNING *
-	`, id, name, unit, defaultPrice, imageBase64)
+	`, id, name, unit, defaultPrice, wholesalePrice, imageBase64)
 	if err != nil {
 		return nil, err
 	}

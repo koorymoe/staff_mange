@@ -88,6 +88,17 @@ func (r *LeaderInvoiceRepository) Create(inv *model.LeaderInvoice, materials []m
 	return &saved, nil
 }
 
+// CountForEmployeeMonth يرجّع عدد فواتير الليدر (المبيعات) لموظف معيّن خلال
+// شهر معيّن (monthPrefix بصيغة "YYYY-MM").
+func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM "LeaderInvoice"
+		WHERE "employeeId" = $1 AND to_char("createdAt", 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return count, err
+}
+
 func (r *LeaderInvoiceRepository) hydrate(inv *model.LeaderInvoice) error {
 	if inv.SystemsJSON != "" {
 		_ = json.Unmarshal([]byte(inv.SystemsJSON), &inv.Systems)

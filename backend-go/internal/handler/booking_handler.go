@@ -141,6 +141,16 @@ func (h *BookingHandler) Start(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, booking)
 }
 
+// PUT /api/bookings/{id}/arrived
+func (h *BookingHandler) MarkArrived(w http.ResponseWriter, r *http.Request) {
+	booking, err := h.service.MarkArrived(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
 // PUT /api/bookings/{id}/materials-ready
 func (h *BookingHandler) SetMaterialsReady(w http.ResponseWriter, r *http.Request) {
 	booking, err := h.service.SetMaterialsReady(r.PathValue("id"), middleware.EmployeeIDFromContext(r))

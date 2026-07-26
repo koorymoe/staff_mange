@@ -70,6 +70,7 @@ const VehicleMissionsPage = lazy(() => import('./pages/VehicleMissionsPage'))
 const FleetDashboardPage = lazy(() => import('./pages/FleetDashboardPage'))
 const QualityPage = lazy(() => import('./pages/QualityPage'))
 const WorkReportsReview = lazy(() => import('./pages/WorkReportsReview'))
+const EmployeeMonthlyStatsPage = lazy(() => import('./pages/EmployeeMonthlyStatsPage'))
 
 function RouteLoading() {
   return (
@@ -117,6 +118,7 @@ function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />
+          <Route path="employee-stats" element={<RequireAdmin><EmployeeMonthlyStatsPage /></RequireAdmin>} />
           <Route path="performance-review" element={<PerformanceReviewPage />} />
           <Route path="missions" element={<MissionsPage />} />
           <Route path="procurement" element={<ProcurementPage />} />

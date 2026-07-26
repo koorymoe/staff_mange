@@ -19,12 +19,13 @@ type SystemPriceCatalog struct {
 // Material مادة من أرشيف "مواد الشد" — لها كود فريد يستخدم بالفاتورة للبحث
 // السريع (مثل VLOOKUP بالشيت القديم).
 type Material struct {
-	ID            string    `db:"id" json:"id"`
-	Name          string    `db:"name" json:"name"`
-	Code          string    `db:"code" json:"code"`
-	SellPrice     float64   `db:"sellPrice" json:"sellPrice"`
-	ProfitPerUnit float64   `db:"profitPerUnit" json:"profitPerUnit"`
-	CreatedAt     time.Time `db:"createdAt" json:"createdAt"`
+	ID             string    `db:"id" json:"id"`
+	Name           string    `db:"name" json:"name"`
+	Code           string    `db:"code" json:"code"`
+	SellPrice      float64   `db:"sellPrice" json:"sellPrice"`
+	WholesalePrice float64   `db:"wholesalePrice" json:"wholesalePrice"` // سعر الجملة — profitPerUnit = sellPrice - wholesalePrice
+	ProfitPerUnit  float64   `db:"profitPerUnit" json:"profitPerUnit"`
+	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
 }
 
 // ExecutionCostItem بند تنفيذ واحد (منظومة + عنصر) يدخل بحساب تكاليف التنفيذ.

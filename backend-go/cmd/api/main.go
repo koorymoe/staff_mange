@@ -92,6 +92,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	systemPriceCatalogRepo := repository.NewSystemPriceCatalogRepository(db)
 	materialRepo := repository.NewMaterialRepository(db)
 	leaderInvoiceRepo := repository.NewLeaderInvoiceRepository(db)
+	employeeCommissionRepo := repository.NewEmployeeCommissionRepository(db)
 	gpsRepo := repository.NewGpsRepository(db)
 	workReportRepo := repository.NewWorkReportRepository(db)
 	statsRepo := repository.NewStatsRepository(db)
@@ -107,6 +108,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	notificationRepo := repository.NewNotificationRepository(db)
 	deviceMaintenanceRepo := repository.NewDeviceMaintenanceRepository(db)
 	teamInventoryCheckRepo := repository.NewTeamInventoryCheckRepository(db)
+	jobDurationSampleRepo := repository.NewJobDurationSampleRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, loginAuditRepo, cfg.JWTSecret)
@@ -140,7 +142,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	vehicleBookingService := service.NewVehicleBookingService(vehicleBookingRepo)
 	vehicleMissionRatingService := service.NewVehicleMissionRatingService(vehicleMissionRatingRepo, vehicleMissionRepo)
 	qualityService := service.NewQualityService(qualityRepo)
-	deviceMaintenanceService := service.NewDeviceMaintenanceService(deviceMaintenanceRepo, customerRepo)
+	jobDurationEstimatorService := service.NewJobDurationEstimatorService(jobDurationSampleRepo, notificationRepo, complaintRepo)
+	deviceMaintenanceService := service.NewDeviceMaintenanceService(deviceMaintenanceRepo, customerRepo, jobDurationEstimatorService)
 	teamInventoryCheckService := service.NewTeamInventoryCheckService(teamInventoryCheckRepo)
 
 	// Handlers
@@ -170,8 +173,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	productHandler := handler.NewProductHandler(productService)
-	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo)
+	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
 	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
+	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
+	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo)
+	employeeStatsHandler := handler.NewEmployeeStatsHandler(employeeMonthlyStatsService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	statsHandler := handler.NewStatsHandler(statsService)
@@ -281,6 +287,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth))
+	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
@@ -571,6 +578,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth))
 	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth))
 	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeader))
+
+	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER
+	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).
+	mux.Handle("GET /api/employee-stats/monthly", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Monthly), requireAuth, requireAdmin))
+	mux.Handle("GET /api/employee-stats/monthly/export", middleware.Chain(http.HandlerFunc(employeeStatsHandler.MonthlyExport), requireAuth, requireAdmin))
+
+	// تقدير مدة العمل المتعلَّم (learned baseline) — قراءة فقط، متاح لأي مستخدم
+	// مسجّل دخول (يحتاجها المنسق قبل تثبيت موعد/فريق).
+	mux.Handle("GET /api/job-duration-estimate", middleware.Chain(http.HandlerFunc(jobDurationHandler.Estimate), requireAuth))
 
 	return middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
 }

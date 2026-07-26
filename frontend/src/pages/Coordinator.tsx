@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Booking, type Employee, type CartItem, type Product } from '../api'
+import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate } from '../api'
 import { useSession } from '../session'
 import LocationPicker from '../components/LocationPicker'
 
@@ -42,6 +42,27 @@ export default function Coordinator() {
   const [products, setProducts] = useState<Product[]>([])
   const [scheduleMode, setScheduleMode] = useState<Record<string, 'slots' | 'manual'>>({})
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
+
+  // تقدير مدة العمل المتعلَّم تلقائياً من بيانات فعلية سابقة (بدون رقم مفروض
+  // يدوياً) — يُعرض بجانب اختيار الفنيين حتى المنسق يشوف تقدير واقعي قبل التثبيت.
+  const [durationEstimates, setDurationEstimates] = useState<Record<string, JobDurationEstimate>>({})
+
+  useEffect(() => {
+    const confirmed = bookings.filter((b) => b.status === 'CONFIRMED' && b.systemType)
+    confirmed.forEach((booking) => {
+      const crewSize = 1 + booking.assignments.filter((a) => a.role === 'TECH_1' || a.role === 'TECH_2' || a.role === 'TECH_3').length
+      const itemCount = booking.deviceCount || booking.systemCount || 1
+      api
+        .getJobDurationEstimate({
+          systemName: booking.systemType!,
+          jobType: booking.bookingType === 'MAINTENANCE' ? 'MAINTENANCE' : 'INSTALL',
+          itemCount,
+          crewSize,
+        })
+        .then((estimate) => setDurationEstimates((prev) => ({ ...prev, [booking.id]: estimate })))
+        .catch(() => undefined)
+    })
+  }, [bookings])
 
   const getAvailableSlots = (excludeId?: string) => {
     const takenKeys = new Set<string>()
@@ -616,6 +637,22 @@ export default function Coordinator() {
                         </div>
                       )}
                     </div>
+
+                    {booking.systemType && (
+                      <div className="mt-2">
+                        {durationEstimates[booking.id]?.expectedMinutes != null ? (
+                          <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-bold text-brand-700">
+                            ⏱️ الوقت المتوقع (متعلَّم من {durationEstimates[booking.id].sampleCount} عيّنة سابقة):{' '}
+                            {Math.round(durationEstimates[booking.id].expectedMinutes!)} دقيقة
+                          </div>
+                        ) : (
+                          <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                            ⏳ لا توجد بيانات كافية بعد ({durationEstimates[booking.id]?.sampleCount ?? 0}/
+                            {durationEstimates[booking.id]?.minSamples ?? 5} عينات)
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {matches[booking.id] && (
                       <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">

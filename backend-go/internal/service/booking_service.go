@@ -243,6 +243,15 @@ func (s *BookingService) Start(id string) (*model.Booking, error) {
 	return s.repo.FindByID(id)
 }
 
+// MarkArrived يسجّل وصول الفنيين لموقع الزبون — خطوة سابقة لبدء العمل، تُستخدم كبديل
+// عن startedAt عند حساب عيّنات مدة العمل التاريخية لو لم يُضغط "بدأ العمل" بشكل منفصل.
+func (s *BookingService) MarkArrived(id string) (*model.Booking, error) {
+	if err := s.repo.MarkArrived(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
 // SetMaterialsReady يسمح فقط لتيم ليدر مسند لهذا الحجز (أو أدمن/مراقب) بتأكيد تجهيز
 // المواد — لحظة الضغط تصير بداية عدّاد استجابة الفنيين.
 func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Booking, error) {

@@ -268,6 +268,12 @@ export interface Booking {
   materialsReadyAt: string | null
   materialsReadyBy: { id: string; name: string } | null
   responseMinutes: number | null
+  arrivedAt: string | null
+  startedAt: string | null
+  systemType: string | null
+  systemCount: number | null
+  deviceCount: number | null
+  bookingType: string
   customer: Customer
   service: Service | null
   transferEmployee: Employee | null
@@ -296,6 +302,12 @@ export interface Booking {
   assignments: BookingAssignment[]
   cartItems: CartItem[]
   createdAt: string
+}
+
+export interface JobDurationEstimate {
+  expectedMinutes: number | null
+  sampleCount: number
+  minSamples: number
 }
 
 export interface Stats {
@@ -440,7 +452,24 @@ export interface Product {
   name: string
   unit: string | null
   defaultPrice: number | null
+  wholesalePrice?: number | null
   imageBase64?: string
+}
+
+// EmployeeMonthlyStats صف واحد بصفحة إحصائيات الموظفين الشهرية (OWNER/ADMIN فقط).
+export interface EmployeeMonthlyStats {
+  employeeId: string
+  employeeName: string
+  role: string
+  month: string
+  kpiPoints: number
+  workSpeedScore: number | null // TODO: يُملأ بعد اكتمال ميزة تقدير مدة تنفيذ العمل
+  vehicleCleanlinessScore: number | null
+  vehicleRatingsCount: number
+  complaintsCount: number
+  salesCount: number
+  completedBookingsCount: number
+  totalCommission: number
 }
 
 export interface SystemPriceCatalog {
@@ -1287,6 +1316,8 @@ export const api = {
   ) => request<Booking>(`/bookings/${id}/complete`, { method: 'PUT', body: JSON.stringify(data) }),
   startBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/start`, { method: 'PUT', body: JSON.stringify({}) }),
+  markArrived: (id: string) =>
+    request<Booking>(`/bookings/${id}/arrived`, { method: 'PUT', body: JSON.stringify({}) }),
   setMaterialsReady: (id: string) =>
     request<Booking>(`/bookings/${id}/materials-ready`, { method: 'PUT', body: JSON.stringify({}) }),
   verifyAmount: (id: string) =>
@@ -1699,4 +1730,17 @@ export const api = {
   getTeamInventoryChecks: () => request<TeamInventoryCheck[]>('/team-inventory/checks'),
   createTeamInventoryCheck: (data: { employee1Id?: string | null; employee2Id?: string | null; items: { toolName: string; personRole: TeamInventoryPersonRole; present: boolean; reason?: TeamInventoryShortageReason | null }[] }) =>
     request<TeamInventoryCheck>('/team-inventory/checks', { method: 'POST', body: JSON.stringify(data) }),
+
+  // تقدير مدة العمل المتعلَّم تلقائياً (بدون رقم مفروض يدوياً) — يرجع expectedMinutes:
+  // null لو البيانات التاريخية غير كافية بعد (sampleCount < minSamples).
+  getJobDurationEstimate: (params: { systemName: string; jobType: 'INSTALL' | 'MAINTENANCE'; itemCount: number; crewSize: number }) =>
+    request<JobDurationEstimate>(
+      `/job-duration-estimate?systemName=${encodeURIComponent(params.systemName)}&jobType=${params.jobType}&itemCount=${params.itemCount}&crewSize=${params.crewSize}`,
+    ),
+
+  // إحصائيات الموظفين الشهرية — OWNER/ADMIN فقط
+  getEmployeeMonthlyStats: (month: string) =>
+    request<EmployeeMonthlyStats[]>(`/employee-stats/monthly?month=${encodeURIComponent(month)}`),
+  exportEmployeeMonthlyStats: (month: string) =>
+    downloadFile(`/employee-stats/monthly/export?month=${encodeURIComponent(month)}`, `employee-stats-${month}.xlsx`),
 }

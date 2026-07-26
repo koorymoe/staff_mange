@@ -13,6 +13,7 @@ export default function ProductsPage() {
   const [name, setName] = useState('')
   const [unit, setUnit] = useState('قطعة')
   const [defaultPrice, setDefaultPrice] = useState(0)
+  const [wholesalePrice, setWholesalePrice] = useState(0)
   const [imageBase64, setImageBase64] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -43,11 +44,13 @@ export default function ProductsPage() {
         name,
         unit: unit || 'قطعة',
         defaultPrice,
+        wholesalePrice: wholesalePrice || undefined,
         imageBase64: imageBase64 || undefined,
       })
       setName('')
       setUnit('قطعة')
       setDefaultPrice(0)
+      setWholesalePrice(0)
       setImageBase64('')
       if (fileRef.current) fileRef.current.value = ''
       load()
@@ -137,6 +140,18 @@ export default function ProductsPage() {
             />
           </div>
           <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>سعر الجملة</label>
+            <input
+              type="number"
+              min="0"
+              value={wholesalePrice}
+              onChange={(e) => setWholesalePrice(Number(e.target.value))}
+              style={inputStyle}
+              onFocus={(e) => { e.target.style.borderColor = PRIMARY }}
+              onBlur={(e) => { e.target.style.borderColor = '#ddd' }}
+            />
+          </div>
+          <div>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>صورة المنتج</label>
             <input
               ref={fileRef}
@@ -220,11 +235,16 @@ export default function ProductsPage() {
                 <h4 style={{ margin: '0 0 6px 0', color: PRIMARY, fontSize: '15px' }}>{product.name}</h4>
                 <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#666' }}>الوحدة: {product.unit || 'قطعة'}</p>
                 <p style={{
-                  margin: '0 0 10px 0', fontSize: '16px', fontWeight: 'bold',
+                  margin: '0 0 4px 0', fontSize: '16px', fontWeight: 'bold',
                   color: GOLD,
                 }}>
                   {fmt(product.defaultPrice ?? 0)} د.ع
                 </p>
+                {product.wholesalePrice != null && (
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#999' }}>
+                    سعر الجملة: {fmt(product.wholesalePrice)} د.ع
+                  </p>
+                )}
                 <button
                   onClick={() => handleDelete(product.id)}
                   style={{

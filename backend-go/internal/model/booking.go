@@ -52,6 +52,8 @@ type Booking struct {
 	MaterialsReadyAt       *time.Time `db:"materialsReadyAt" json:"materialsReadyAt"`
 	MaterialsReadyByID     *string    `db:"materialsReadyById" json:"-"`
 	ResponseMinutes        *int       `db:"responseMinutes" json:"responseMinutes"`
+	ArrivedAt              *time.Time `db:"arrivedAt" json:"arrivedAt"`
+	StartedAt              *time.Time `db:"startedAt" json:"startedAt"`
 
 	Customer            *Customer           `db:"-" json:"customer"`
 	Service             *Service            `db:"-" json:"service"`
