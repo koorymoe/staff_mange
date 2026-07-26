@@ -1,6 +1,21 @@
-import { Fragment, useEffect, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking } from '../api'
 import { useSession } from '../session'
+
+function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function addDays(dateStr: string, delta: number) {
+  const d = new Date(`${dateStr}T00:00:00`)
+  d.setDate(d.getDate() + delta)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function formatDateArabic(dateStr: string) {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+}
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التثبيت',
@@ -32,6 +47,8 @@ export default function BookingsList() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [selectedDate, setSelectedDate] = useState(todayStr())
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     api
@@ -42,6 +59,11 @@ export default function BookingsList() {
   }, [])
 
   const filtered = bookings.filter((b) => {
+    if (selectedDate) {
+      const bDate = new Date(b.createdAt)
+      const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`
+      if (bDateStr !== selectedDate) return false
+    }
     const q = search.trim().toLowerCase()
     if (!q) return true
     return (
@@ -92,13 +114,54 @@ export default function BookingsList() {
         </div>
       )}
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="بحث برقم الحجز، اسم الزبون، أو كود الزبون..."
           className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 sm:w-96"
         />
+
+        <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-1 py-1">
+          <button
+            onClick={() => setSelectedDate((d) => addDays(d, 1))}
+            className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
+            title="اليوم التالي"
+          >
+            ▶
+          </button>
+          <div className="relative">
+            <button
+              onClick={() => dateInputRef.current?.showPicker?.()}
+              className="min-w-[180px] rounded-md px-2 py-1 text-sm font-medium text-brand-800 hover:bg-slate-100"
+            >
+              📅 {formatDateArabic(selectedDate)}
+            </button>
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={selectedDate}
+              onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            />
+          </div>
+          <button
+            onClick={() => setSelectedDate((d) => addDays(d, -1))}
+            className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
+            title="اليوم السابق"
+          >
+            ◀
+          </button>
+        </div>
+
+        {selectedDate !== todayStr() && (
+          <button
+            onClick={() => setSelectedDate(todayStr())}
+            className="rounded-lg border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+          >
+            اليوم
+          </button>
+        )}
       </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
