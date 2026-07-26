@@ -99,19 +99,11 @@ jobs:
         working-directory: frontend
         run: npm ci
 
-      # ملاحظة (2026-07-26): "npx eslint ." يرجع حالياً 15 خطأ و12 تحذير موجودين
-      # من قبل هذا الـworkflow (خطأ في تنظيف الكود سابقاً، مو انحدار جديد) —
-      # أغلبها قواعد React Compiler الجديدة (react-hooks/static-components،
-      # react-hooks/purity) بصفحات SuppliersPage.tsx وVehiclesPage.tsx وGpsDashboard.tsx،
-      # تحتاج إعادة هيكلة فعلية (نقل مكوّنات Modal خارج دالة الرندر، تفادي
-      # Date.now() المباشر بجسم الرندر) مو مجرد تعديل سطر واحد — خارج نطاق مهمة
-      # إضافة CI هذي. نخليها continue-on-error حتى لا توقف كل push على المستودع
-      # الحي بسبب مشاكل معروفة سلفاً، لكنها تبقى ظاهرة بمخرجات كل تشغيلة كتذكير
-      # صريح لإصلاحها لاحقاً كمهمة منفصلة — ثم نشيل continue-on-error ونخليها بوابة صارمة.
-      - name: ESLint (non-blocking — tracked pre-existing issues, see comment above)
+      # ملاحظة (2026-07-26): تم إصلاح كل أخطاء/تحذيرات ESLint (0/0، كانت
+      # 15 خطأ و12 تحذير) — صارت بوابة صارمة توقف الـpush لو رجع أي خطأ جديد.
+      - name: ESLint
         working-directory: frontend
         run: npx eslint .
-        continue-on-error: true
 
   frontend-build:
     name: Frontend production build
