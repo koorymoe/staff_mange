@@ -36,6 +36,20 @@ func (r *CustomerRepository) FindByPhone(phone string) (*model.Customer, error) 
 	return &c, nil
 }
 
+// FindByCode يبحث عن زبون حسب كوده الرقمي (customerCode) — يستخدم بميزة صيانة
+// الأجهزة العامة (كود الزبون => تعبئة الاسم/الهاتف/الموقع تلقائياً مثل الشيت).
+func (r *CustomerRepository) FindByCode(code int) (*model.Customer, error) {
+	var c model.Customer
+	err := r.db.Get(&c, `SELECT * FROM "Customer" WHERE "customerCode" = $1`, code)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}
+
 func (r *CustomerRepository) Create(name, phone string, location *string, lat, lng *float64) (*model.Customer, error) {
 	var c model.Customer
 	err := r.db.Get(&c, `

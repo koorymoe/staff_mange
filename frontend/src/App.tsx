@@ -29,9 +29,13 @@ const KpiPage = lazy(() => import('./pages/KpiPage'))
 const ComplaintsPage = lazy(() => import('./pages/ComplaintsPage'))
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const MyInventory = lazy(() => import('./pages/MyInventory'))
+const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage'))
+const TeamInventoryCheckPage = lazy(() => import('./pages/TeamInventoryCheckPage'))
 const PermissionsPage = lazy(() => import('./pages/PermissionsPage'))
 const QuotationsPage = lazy(() => import('./pages/QuotationsPage'))
 const QuotationNew = lazy(() => import('./pages/QuotationNew'))
+const LeaderInvoiceNew = lazy(() => import('./pages/LeaderInvoiceNew'))
+const LeaderInvoicesListPage = lazy(() => import('./pages/LeaderInvoicesListPage'))
 const ProductsPage = lazy(() => import('./pages/ProductsPage'))
 const GpsDashboard = lazy(() => import('./pages/gps/GpsDashboard'))
 const GpsCustomers = lazy(() => import('./pages/gps/GpsCustomers'))
@@ -103,6 +107,8 @@ function App() {
           <Route path="quotations" element={<QuotationsPage />} />
           <Route path="quotations/new" element={<QuotationNew />} />
           <Route path="quotations/:id/edit" element={<QuotationNew />} />
+          <Route path="leader-invoices" element={<LeaderInvoicesListPage />} />
+          <Route path="leader-invoices/new" element={<LeaderInvoiceNew />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="work-reports" element={<WorkReportPage />} />
@@ -137,6 +143,8 @@ function App() {
           <Route path="fleet-dashboard" element={<RequirePermission permission="vehicle_management"><FleetDashboardPage /></RequirePermission>} />
           <Route path="quality" element={<RequirePermission permission="quality_control"><QualityPage /></RequirePermission>} />
           <Route path="work-reports-review" element={<WorkReportsReview />} />
+          <Route path="device-maintenance" element={<DeviceMaintenancePage />} />
+          <Route path="team-inventory" element={<TeamInventoryCheckPage />} />
         </Route>
       </Routes>
     </Suspense>

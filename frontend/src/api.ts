@@ -443,6 +443,85 @@ export interface Product {
   imageBase64?: string
 }
 
+export interface SystemPriceCatalog {
+  id: string
+  systemName: string
+  itemName: string
+  category: 'install' | 'wiring' | 'programming'
+  value: number
+  createdAt: string
+}
+
+export interface Material {
+  id: string
+  name: string
+  code: string
+  sellPrice: number
+  profitPerUnit: number
+  createdAt: string
+}
+
+export interface ExecutionCostItem {
+  systemName: string
+  itemName: string
+  count: number
+  heightMeters: number
+  wiringItemName?: string
+  cableLengthMeters?: number
+  programmingItem?: string
+}
+
+export interface LeaderInvoiceMaterialItem {
+  id: string
+  leaderInvoiceId: string
+  materialId: string | null
+  name: string
+  quantity: number
+  unitPrice: number
+  profitPerUnit: number
+  lineTotal: number
+  createdAt: string
+}
+
+export interface LeaderInvoice {
+  id: string
+  bookingId: string | null
+  employeeId: string
+  customerName: string | null
+  customerPhone: string | null
+  customerAddress: string | null
+  totalDeviceCount: number
+  executionCost: number
+  materialsTotal: number
+  discountValue: number
+  netTotal: number
+  accountingCode: string
+  status: string
+  createdAt: string
+  systems: string[]
+  items: ExecutionCostItem[]
+  materials: LeaderInvoiceMaterialItem[]
+}
+
+export interface CreateMaterialLineRequest {
+  materialCode?: string
+  name?: string
+  quantity: number
+  unitPrice?: number
+  profitPerUnit?: number
+}
+
+export interface CreateLeaderInvoiceRequest {
+  bookingId?: string
+  customerName?: string
+  customerPhone?: string
+  customerAddress?: string
+  systems: string[]
+  items: ExecutionCostItem[]
+  materials: CreateMaterialLineRequest[]
+  discountValue: number
+}
+
 export interface QuotationItem {
   id?: string
   productName: string
@@ -893,6 +972,55 @@ export interface OnDemandTool {
   status: 'AVAILABLE' | 'CHECKED_OUT' | 'DAMAGED'
 }
 
+// صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — منفصلة عن صيانة اشتراكات GPS
+export interface DeviceMaintenanceTicket {
+  id: string
+  appointmentDate: string | null
+  customerId: string
+  customer?: Customer
+  deviceTypeName: string
+  problem: string
+  deviceSerial: string | null
+  receivedAt: string | null
+  deliveredAt: string | null
+  invoiceNumber: string
+  employeeId: string
+  employee?: { id: string; name: string }
+  createdAt: string
+  status: 'NEW' | 'IN_PROGRESS' | 'DELIVERED'
+}
+
+// جرد الفريق ("جرد العدد")
+export interface TeamInventoryToolCatalogItem {
+  id: string
+  name: string
+  createdAt: string
+}
+
+export type TeamInventoryPersonRole = 'LEADER' | 'EMPLOYEE1' | 'EMPLOYEE2'
+export type TeamInventoryShortageReason = 'FORGOTTEN' | 'DAMAGED' | 'UNKNOWN'
+
+export interface TeamInventoryCheckItem {
+  id: string
+  checkId: string
+  toolName: string
+  personRole: TeamInventoryPersonRole
+  present: boolean
+  reason: TeamInventoryShortageReason | null
+}
+
+export interface TeamInventoryCheck {
+  id: string
+  leaderId: string
+  employee1Id: string | null
+  employee2Id: string | null
+  createdAt: string
+  leader?: { id: string; name: string }
+  employee1?: { id: string; name: string } | null
+  employee2?: { id: string; name: string } | null
+  items: TeamInventoryCheckItem[]
+}
+
 export type ToolRequest = ToolRequestItem
 export interface ToolRequestItem {
   id: string
@@ -1270,6 +1398,17 @@ export const api = {
   deleteQuotation: (id: string) =>
     request<void>(`/quotations/${id}`, { method: 'DELETE' }),
 
+  // Leader invoices (تحل محل شيت جوجل الليدر)
+  getSystemPriceCatalog: (systemName?: string) =>
+    request<SystemPriceCatalog[]>(`/system-price-catalog${systemName ? `?systemName=${encodeURIComponent(systemName)}` : ''}`),
+  getMaterials: (code?: string) =>
+    request<Material[]>(`/materials${code ? `?code=${encodeURIComponent(code)}` : ''}`),
+  getLeaderInvoices: (employeeId?: string) =>
+    request<LeaderInvoice[]>(`/leader-invoices${employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : ''}`),
+  getLeaderInvoice: (id: string) => request<LeaderInvoice>(`/leader-invoices/${id}`),
+  createLeaderInvoice: (data: CreateLeaderInvoiceRequest) =>
+    request<LeaderInvoice>('/leader-invoices', { method: 'POST', body: JSON.stringify(data) }),
+
   // Permissions
   getPermissions: () => request<Permission[]>('/permissions'),
   getEmployeePermissions: (employeeId: string) =>
@@ -1545,4 +1684,19 @@ export const api = {
     request<ProcurementRequest>(`/procurement/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
   fulfillProcurementRequest: (id: string, data: { fulfilledById: string; totalCost?: number; fulfillmentNotes?: string; items?: { id: string; unitPrice?: number; totalPrice?: number; fulfilled?: boolean }[] }) =>
     request<ProcurementRequest>(`/procurement/${id}/fulfill`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — ليدر فقط
+  getDeviceMaintenanceTickets: () => request<DeviceMaintenanceTicket[]>('/device-maintenance'),
+  createDeviceMaintenanceTicket: (data: { appointmentDate?: string | null; customerCode: number; deviceTypeName: string; problem: string; deviceSerial?: string | null }) =>
+    request<DeviceMaintenanceTicket>('/device-maintenance', { method: 'POST', body: JSON.stringify(data) }),
+  updateDeviceMaintenanceTicket: (id: string, data: { appointmentDate?: string | null; deviceTypeName?: string; problem?: string; deviceSerial?: string | null; markReceived?: boolean; markDelivered?: boolean }) =>
+    request<DeviceMaintenanceTicket>(`/device-maintenance/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // جرد الفريق ("جرد العدد") — ليدر فقط
+  getTeamInventoryTools: () => request<TeamInventoryToolCatalogItem[]>('/team-inventory/tools'),
+  createTeamInventoryTool: (name: string) =>
+    request<TeamInventoryToolCatalogItem>('/team-inventory/tools', { method: 'POST', body: JSON.stringify({ name }) }),
+  getTeamInventoryChecks: () => request<TeamInventoryCheck[]>('/team-inventory/checks'),
+  createTeamInventoryCheck: (data: { employee1Id?: string | null; employee2Id?: string | null; items: { toolName: string; personRole: TeamInventoryPersonRole; present: boolean; reason?: TeamInventoryShortageReason | null }[] }) =>
+    request<TeamInventoryCheck>('/team-inventory/checks', { method: 'POST', body: JSON.stringify(data) }),
 }

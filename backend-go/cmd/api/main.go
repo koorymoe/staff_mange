@@ -89,6 +89,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
 	productRepo := repository.NewProductRepository(db)
+	systemPriceCatalogRepo := repository.NewSystemPriceCatalogRepository(db)
+	materialRepo := repository.NewMaterialRepository(db)
+	leaderInvoiceRepo := repository.NewLeaderInvoiceRepository(db)
 	gpsRepo := repository.NewGpsRepository(db)
 	workReportRepo := repository.NewWorkReportRepository(db)
 	statsRepo := repository.NewStatsRepository(db)
@@ -102,6 +105,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	locationPingRepo := repository.NewLocationPingRepository(db)
 	performanceReviewRepo := repository.NewPerformanceReviewRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
+	deviceMaintenanceRepo := repository.NewDeviceMaintenanceRepository(db)
+	teamInventoryCheckRepo := repository.NewTeamInventoryCheckRepository(db)
 
 	// Services
 	authService := service.NewAuthService(employeeRepo, loginAuditRepo, cfg.JWTSecret)
@@ -135,6 +140,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	vehicleBookingService := service.NewVehicleBookingService(vehicleBookingRepo)
 	vehicleMissionRatingService := service.NewVehicleMissionRatingService(vehicleMissionRatingRepo, vehicleMissionRepo)
 	qualityService := service.NewQualityService(qualityRepo)
+	deviceMaintenanceService := service.NewDeviceMaintenanceService(deviceMaintenanceRepo, customerRepo)
+	teamInventoryCheckService := service.NewTeamInventoryCheckService(teamInventoryCheckRepo)
 
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
@@ -163,6 +170,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	productHandler := handler.NewProductHandler(productService)
+	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo)
+	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
 	gpsHandler := handler.NewGpsHandler(gpsService)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	statsHandler := handler.NewStatsHandler(statsService)
@@ -175,6 +184,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	locationPingHandler := handler.NewLocationPingHandler(locationPingRepo)
 	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo)
 	performanceReviewHandler := handler.NewPerformanceReviewHandler(performanceReviewService)
+	deviceMaintenanceHandler := handler.NewDeviceMaintenanceHandler(deviceMaintenanceService)
+	teamInventoryCheckHandler := handler.NewTeamInventoryCheckHandler(teamInventoryCheckService)
 
 	requireAuth := middleware.RequireAuth(authService, employeeRepo)
 	requireAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN")
@@ -537,6 +548,29 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.List), requireAuth, requireQuality))
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))
 	mux.Handle("PUT /api/quality/issues/{id}", middleware.Chain(http.HandlerFunc(qualityHandler.Update), requireAuth, requireQuality))
+
+	// صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — حصراً للـليدر (isLeader فريش من
+	// قاعدة البيانات بكل طلب، مو من التوكن)
+	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
+	mux.Handle("GET /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.List), requireAuth, requireLeader))
+	mux.Handle("POST /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Create), requireAuth, requireLeader))
+	mux.Handle("PUT /api/device-maintenance/{id}", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Update), requireAuth, requireLeader))
+
+	// جرد الفريق ("جرد العدد") — حصراً للـليدر أيضاً
+	mux.Handle("GET /api/team-inventory/tools", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.ListTools), requireAuth, requireLeader))
+	mux.Handle("POST /api/team-inventory/tools", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.CreateTool), requireAuth, requireLeader))
+	mux.Handle("GET /api/team-inventory/checks", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.List), requireAuth, requireLeader))
+	mux.Handle("POST /api/team-inventory/checks", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.Create), requireAuth, requireLeader))
+
+	// فوترة الليدر (تحل محل شيت جوجل) — القراءة (الكتالوج/المواد/عرض الفواتير)
+	// متاحة لأي مستخدم مسجّل دخول (يحتاجها أي مشرف/إداري يراجع الفواتير)، لكن
+	// الإنشاء حصراً لليدر (isLeader فريش من قاعدة البيانات، نفس نمط requireLeader
+	// أعلاه) لأن هذي الميزة مخصصة لعمل الليدر فقط.
+	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
+	mux.Handle("GET /api/materials", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListMaterials), requireAuth))
+	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth))
+	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth))
+	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeader))
 
 	return middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
 }

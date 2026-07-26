@@ -92,5 +92,11 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := seedKpiCriteria(db); err != nil {
 		return err
 	}
+	if err := seedSystemPriceCatalog(db); err != nil {
+		return err
+	}
+	if err := seedMaterialArchive(db); err != nil {
+		return err
+	}
 	return dropAttendanceDailyUniqueConstraint(db)
 }

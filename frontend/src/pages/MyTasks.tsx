@@ -178,6 +178,14 @@ export default function MyTasks() {
                             تم الإنجاز
                           </button>
                         </div>
+                        {employee?.isLeader && (
+                          <button
+                            onClick={() => navigate(`/leader-invoices/new?bookingId=${b.id}`)}
+                            className="mt-2 w-full rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100"
+                          >
+                            🧾 إنشاء فاتورة ليدر لهذا الحجز
+                          </button>
+                        )}
                       </div>
                     )}
 

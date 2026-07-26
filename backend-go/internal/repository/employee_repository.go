@@ -85,6 +85,16 @@ func (r *EmployeeRepository) StatusAndRoleByID(id string) (status string, role s
 	return row.Status, row.Role, err
 }
 
+// IsLeaderFreshByID استعلام خفيف يرجع "isLeader" الحالية من قاعدة البيانات مباشرة —
+// تُستخدم بگيت (middleware) صيانة الأجهزة العامة وجرد الفريق حتى القرار المعتمد
+// دايماً يكون حسب قاعدة البيانات الآن، مو أي دور/علم قديم مخزّن جوا التوكن وقت
+// تسجيل الدخول (نفس منطق StatusAndRoleByID تماماً بس لعلم isLeader).
+func (r *EmployeeRepository) IsLeaderFreshByID(id string) (bool, error) {
+	var isLeader bool
+	err := r.db.Get(&isLeader, `SELECT "isLeader" FROM "Employee" WHERE id = $1`, id)
+	return isLeader, err
+}
+
 // RecordAuthzViolation تسجل محاولة وصول مرفوضة (طلب عملية الموظف مو مخوّل لها
 // فعلياً حسب دوره/صلاحياته الحاليين) — بس تسجيل وعدّاد، بدون أي إيقاف تلقائي
 // للحساب. الإيقاف التلقائي (قبل هذا التعديل) كان خطر حقيقي: أي خطأ بالواجهة

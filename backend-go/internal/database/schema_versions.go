@@ -123,6 +123,14 @@ var migrationNames = []string{
 	"create_assistant_knowledge",
 	"index_assistant_knowledge_topic",
 	"index_assistant_knowledge_created_at",
+	"create_device_maintenance_ticket",
+	"index_device_maintenance_ticket_customer_id",
+	"create_device_maintenance_invoice_seq",
+	"create_team_inventory_tool_catalog",
+	"seed_team_inventory_tool_catalog",
+	"create_team_inventory_check",
+	"create_team_inventory_check_item",
+	"index_team_inventory_check_item_check_id",
 }
 
 // versionedMigrations يبني قائمة الترحيلات المرقّمة والمتتبَّعة من البيانات الخام
@@ -147,6 +155,10 @@ func versionedMigrations() []Migration {
 			SQL:     stmt,
 		})
 	}
+	// 0112 وما بعدها: ميزة فوترة الليدر (LeaderInvoice) — تحل محل شيت جوجل الي كان
+	// يستخدمه الليدر لحساب تكاليف التنفيذ وفواتير الزبائن. كل عنصر جديد يُضاف هنا
+	// بالنهاية برقمه التالي مباشرة (لا يجوز تعديل ما قبله).
+	result = append(result, leaderInvoiceVersionedMigrations()...)
 	return result
 }
 

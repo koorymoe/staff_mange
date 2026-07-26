@@ -137,6 +137,29 @@ func RequirePermission(permissions *repository.PermissionRepository, employees *
 	}
 }
 
+// RequireLeader يسمح بالوصول فقط للموظفين "ليدر" (isLeader=true) — يُقرأ العلم
+// طازج من قاعدة البيانات بكل طلب (مو من التوكن) لنفس سبب StatusAndRoleByID:
+// تنزيل موظف من ليدر ما لازم يبقى فعّال إلا بعد تحديث قاعدة البيانات مباشرة.
+// ADMIN وOWNER يتخطون هذا الشرط دايماً.
+func RequireLeader(employees *repository.EmployeeRepository, notifications *repository.NotificationRepository) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" || role == "OWNER" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID := EmployeeIDFromContext(r)
+			isLeader, err := employees.IsLeaderFreshByID(employeeID)
+			if err != nil || !isLeader {
+				recordViolationAndBlock(w, employees, notifications, employeeID)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 func EmployeeIDFromContext(r *http.Request) string {
 	id, _ := r.Context().Value(ContextEmployeeID).(string)
 	return id

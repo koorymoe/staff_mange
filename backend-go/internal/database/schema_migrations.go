@@ -479,4 +479,56 @@ var migrations = []string{
 	)`,
 	`CREATE INDEX IF NOT EXISTS "AssistantKnowledge_topic_idx" ON "AssistantKnowledge"(topic)`,
 	`CREATE INDEX IF NOT EXISTS "AssistantKnowledge_createdAt_idx" ON "AssistantKnowledge"("createdAt")`,
+
+	// تذكرة صيانة جهاز عام (كاميرا/إنذار/بصمة/أي جهاز) جايه من الزبون — شيت "صيانة
+	// الاجهزة"، منفصلة تماماً عن صيانة اشتراكات GPS الموجودة أصلاً.
+	`CREATE TABLE IF NOT EXISTS "DeviceMaintenanceTicket" (
+		id TEXT PRIMARY KEY,
+		"appointmentDate" TIMESTAMP,
+		"customerId" TEXT NOT NULL REFERENCES "Customer"(id),
+		"deviceTypeName" TEXT NOT NULL,
+		problem TEXT NOT NULL,
+		"deviceSerial" TEXT,
+		"receivedAt" TIMESTAMP,
+		"deliveredAt" TIMESTAMP,
+		"invoiceNumber" TEXT NOT NULL UNIQUE,
+		"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE INDEX IF NOT EXISTS "DeviceMaintenanceTicket_customerId_idx" ON "DeviceMaintenanceTicket"("customerId")`,
+	`CREATE SEQUENCE IF NOT EXISTS "DeviceMaintenanceTicket_invoiceSeq" START 1`,
+
+	// جدول جرد الفريق ("جرد العدد") — قائمة الأدوات المطلوبة الأساسية العامة
+	// (مشتركة بكل جلسات الجرد، مو خاصة بموظف وحد مثل PersonalTool الموجود أصلاً).
+	`CREATE TABLE IF NOT EXISTS "TeamInventoryToolCatalog" (
+		id TEXT PRIMARY KEY,
+		name TEXT NOT NULL UNIQUE,
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`INSERT INTO "TeamInventoryToolCatalog" (id, name) VALUES
+		(gen_random_uuid()::text, 'بريمة جدارية 10'),
+		(gen_random_uuid()::text, 'مفتاح صباغ 12'),
+		(gen_random_uuid()::text, 'مفتاح فايبر'),
+		(gen_random_uuid()::text, 'شاحن بطارية'),
+		(gen_random_uuid()::text, 'سلم')
+	ON CONFLICT (name) DO NOTHING`,
+
+	// جلسة جرد فريق: ليدر يختار موظفين (لغاية اثنين) معه لجلسة جرد واحدة —
+	// كل جلسة تحتوي حالة present/reason لكل (أداة، شخص) بجدول العناصر التالي.
+	`CREATE TABLE IF NOT EXISTS "TeamInventoryCheck" (
+		id TEXT PRIMARY KEY,
+		"leaderId" TEXT NOT NULL REFERENCES "Employee"(id),
+		"employee1Id" TEXT REFERENCES "Employee"(id),
+		"employee2Id" TEXT REFERENCES "Employee"(id),
+		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	)`,
+	`CREATE TABLE IF NOT EXISTS "TeamInventoryCheckItem" (
+		id TEXT PRIMARY KEY,
+		"checkId" TEXT NOT NULL REFERENCES "TeamInventoryCheck"(id) ON DELETE CASCADE,
+		"toolName" TEXT NOT NULL,
+		"personRole" TEXT NOT NULL,
+		present BOOLEAN NOT NULL DEFAULT true,
+		reason TEXT
+	)`,
+	`CREATE INDEX IF NOT EXISTS "TeamInventoryCheckItem_checkId_idx" ON "TeamInventoryCheckItem"("checkId")`,
 }
