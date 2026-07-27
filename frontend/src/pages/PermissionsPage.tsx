@@ -97,7 +97,11 @@ export default function PermissionsPage() {
     },
     {
       title: 'إدارة المشاريع والخدمات',
-      perms: ['project_management', 'quotation_system', 'gps_system', 'content_technician'],
+      perms: ['project_management', 'gps_system', 'content_technician'],
+    },
+    {
+      title: 'عروض الأسعار',
+      perms: ['quotation_system'],
     },
     {
       title: 'المركبات',
