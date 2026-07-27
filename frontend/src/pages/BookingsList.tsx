@@ -17,6 +17,18 @@ function formatDateArabic(dateStr: string) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
+// موعد الحجز الفعلي (الموعد المحدد للزبون) هو المعيار الصح للفلترة بالتاريخ —
+// لو ما محدد موعد بعد (لسا ما تنسّق)، نرجع لتاريخ التسجيل حتى الحجز يبقى قابل
+// للعثور عليه بدل ما يضيع من كل الفلاتر.
+function relevantDate(b: Booking): string {
+  return b.scheduledAt || b.createdAt
+}
+
+function toDateKey(iso: string): string {
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التثبيت',
   CONFIRMED: 'مثبت',
@@ -47,7 +59,7 @@ export default function BookingsList() {
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState(todayStr())
+  const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
   const dateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -58,20 +70,18 @@ export default function BookingsList() {
       .finally(() => setLoading(false))
   }, [])
 
-  const filtered = bookings.filter((b) => {
-    if (selectedDate) {
-      const bDate = new Date(b.createdAt)
-      const bDateStr = `${bDate.getFullYear()}-${String(bDate.getMonth() + 1).padStart(2, '0')}-${String(bDate.getDate()).padStart(2, '0')}`
-      if (bDateStr !== selectedDate) return false
-    }
-    const q = search.trim().toLowerCase()
-    if (!q) return true
-    return (
-      b.code.toLowerCase().includes(q) ||
-      (b.customer?.name || '').toLowerCase().includes(q) ||
-      (b.customer?.code || '').toLowerCase().includes(q)
-    )
-  })
+  const filtered = bookings
+    .filter((b) => {
+      if (selectedDate && toDateKey(relevantDate(b)) !== selectedDate) return false
+      const q = search.trim().toLowerCase()
+      if (!q) return true
+      return (
+        b.code.toLowerCase().includes(q) ||
+        (b.customer?.name || '').toLowerCase().includes(q) ||
+        (b.customer?.code || '').toLowerCase().includes(q)
+      )
+    })
+    .sort((a, b) => (selectedDate ? 0 : new Date(relevantDate(a)).getTime() - new Date(relevantDate(b)).getTime()))
 
   // Service popularity stats
   const serviceCounts = new Map<string, number>()
@@ -124,7 +134,7 @@ export default function BookingsList() {
 
         <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-1 py-1">
           <button
-            onClick={() => setSelectedDate((d) => addDays(d, 1))}
+            onClick={() => setSelectedDate((d) => addDays(d || todayStr(), 1))}
             className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
             title="اليوم التالي"
           >
@@ -135,18 +145,18 @@ export default function BookingsList() {
               onClick={() => dateInputRef.current?.showPicker?.()}
               className="min-w-[180px] rounded-md px-2 py-1 text-sm font-medium text-brand-800 hover:bg-slate-100"
             >
-              📅 {formatDateArabic(selectedDate)}
+              📅 {selectedDate ? formatDateArabic(selectedDate) : 'كل الحجوزات'}
             </button>
             <input
               ref={dateInputRef}
               type="date"
-              value={selectedDate}
+              value={selectedDate || ''}
               onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
           </div>
           <button
-            onClick={() => setSelectedDate((d) => addDays(d, -1))}
+            onClick={() => setSelectedDate((d) => addDays(d || todayStr(), -1))}
             className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
             title="اليوم السابق"
           >
@@ -162,6 +172,18 @@ export default function BookingsList() {
             اليوم
           </button>
         )}
+
+        <button
+          onClick={() => setSelectedDate((d) => (d === null ? todayStr() : null))}
+          className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+            selectedDate === null
+              ? 'border-brand-500 bg-brand-500 text-white'
+              : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+          }`}
+          title="كل الحجوزات القادمة (بدون فلتر تاريخ)، مرتبة حسب موعد التنفيذ"
+        >
+          📋 كل الحجوزات
+        </button>
       </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
@@ -183,7 +205,7 @@ export default function BookingsList() {
                 <th className="px-4 py-3 text-sm font-semibold">الخدمة</th>
                 <th className="px-4 py-3 text-sm font-semibold">الموظف الذي سجل</th>
                 <th className="px-4 py-3 text-sm font-semibold">السيارة</th>
-                <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
+                <th className="px-4 py-3 text-sm font-semibold">موعد التنفيذ</th>
                 <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
                 <th className="px-4 py-3 text-sm font-semibold"></th>
               </tr>
@@ -201,7 +223,9 @@ export default function BookingsList() {
                     <td className="px-4 py-3 text-slate-600">{b.transferEmployee?.name || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">
-                      {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                      {b.scheduledAt
+                        ? new Date(b.scheduledAt).toLocaleString('ar-IQ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        : <span className="text-amber-600">لم يُنسَّق بعد ({new Date(b.createdAt).toLocaleDateString('ar-IQ')})</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[b.status]}`}>

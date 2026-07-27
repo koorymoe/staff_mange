@@ -153,6 +153,13 @@ export default function MyTasks() {
                       </span>
                     </div>
                     <p className="mt-2 text-sm font-medium text-brand-800">{b.service?.name}</p>
+                    {b.scheduledAt && (
+                      <p className="mt-1 inline-block rounded-lg bg-amber-50 px-2 py-1 text-sm font-bold text-amber-800">
+                        🕒 الموعد: {new Date(b.scheduledAt).toLocaleString('ar-IQ', {
+                          weekday: 'long', day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+                        })}
+                      </p>
+                    )}
                     <div className="mt-1 grid grid-cols-1 gap-1 text-sm text-slate-500 sm:grid-cols-2">
                       <p>
                         <span className="text-slate-400">الزبون: </span>
