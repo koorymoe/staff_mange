@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import { api, type Customer, type GpsCustomerListItem, type Booking } from '../api'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 
+function splitFullName(fullName: string): [string, string, string, string] {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean)
+  return [parts[0] || '', parts[1] || '', parts[2] || '', parts.slice(3).join(' ')]
+}
+
 const serviceLabels: Record<string, string> = {
   GPS: 'جي بي اس',
 }
@@ -41,10 +46,14 @@ export default function Customers() {
   const [message, setMessage] = useState<string | null>(null)
 
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null)
-  const [editName, setEditName] = useState('')
+  const [editFirstName, setEditFirstName] = useState('')
+  const [editFatherName, setEditFatherName] = useState('')
+  const [editGrandfatherName, setEditGrandfatherName] = useState('')
+  const [editFamilyName, setEditFamilyName] = useState('')
   const [editPhone, setEditPhone] = useState('')
   const [editSubmitting, setEditSubmitting] = useState(false)
   const [editMessage, setEditMessage] = useState<string | null>(null)
+  const editName = [editFirstName, editFatherName, editGrandfatherName, editFamilyName].map((p) => p.trim()).filter(Boolean).join(' ')
 
   const load = () => {
     Promise.all([api.getCustomers(), api.getCustomersByGpsService()])
@@ -60,7 +69,11 @@ export default function Customers() {
 
   const openEdit = (c: Customer) => {
     setEditingCustomer(c)
-    setEditName(c.name)
+    const [f, fa, gf, fam] = splitFullName(c.name)
+    setEditFirstName(f)
+    setEditFatherName(fa)
+    setEditGrandfatherName(gf)
+    setEditFamilyName(fam)
     setEditPhone(c.phone)
     setEditMessage(null)
   }
@@ -451,12 +464,33 @@ export default function Customers() {
             <div className="mt-4 flex flex-col gap-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">الاسم الرباعي</label>
-                <input
-                  required
-                  value={editName}
-                  onChange={(e) => setEditName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
-                />
+                <div className="grid grid-cols-2 gap-2">
+                  <input
+                    required
+                    placeholder="الاسم"
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+                  />
+                  <input
+                    placeholder="اسم الأب"
+                    value={editFatherName}
+                    onChange={(e) => setEditFatherName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+                  />
+                  <input
+                    placeholder="اسم الجد"
+                    value={editGrandfatherName}
+                    onChange={(e) => setEditGrandfatherName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+                  />
+                  <input
+                    placeholder="اللقب"
+                    value={editFamilyName}
+                    onChange={(e) => setEditFamilyName(e.target.value)}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+                  />
+                </div>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">رقم الهاتف</label>

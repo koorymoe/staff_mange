@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { api, type Booking, type Employee } from '../api'
+import { api, type Booking, type Employee, type Vehicle } from '../api'
 import { useSession } from '../session'
 
 const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
@@ -64,12 +64,28 @@ export default function BookingsList() {
   const dateInputRef = useRef<HTMLInputElement>(null)
   const isAdmin = employee?.role === 'ADMIN'
   const [technicians, setTechnicians] = useState<Employee[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
-    if (isAdmin) api.getEmployees().then((all) => setTechnicians(all.filter((e) => e.role === 'TECHNICIAN')))
+    if (isAdmin) {
+      api.getEmployees().then((all) => setTechnicians(all.filter((e) => e.role === 'TECHNICIAN')))
+      api.getVehicles().then(setVehicles)
+    }
   }, [isAdmin])
+
+  const handleVehicleChange = async (booking: Booking, assignedVehicle: string) => {
+    setAssigning(true)
+    try {
+      const updated = await api.updateBookingDetails(booking.id, { assignedVehicle })
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تعديل السيارة')
+    } finally {
+      setAssigning(false)
+    }
+  }
 
   const handleReassign = async (booking: Booking, role: 'TECH_1' | 'TECH_2' | 'TECH_3', employeeId: string) => {
     if (!employeeId) return
@@ -104,7 +120,8 @@ export default function BookingsList() {
       return (
         b.code.toLowerCase().includes(q) ||
         (b.customer?.name || '').toLowerCase().includes(q) ||
-        (b.customer?.code || '').toLowerCase().includes(q)
+        (b.customer?.code || '').toLowerCase().includes(q) ||
+        (b.customer?.phone || '').includes(search.trim())
       )
     })
     .sort((a, b) => (selectedDate ? 0 : new Date(relevantDate(a)).getTime() - new Date(relevantDate(b)).getTime()))
@@ -123,7 +140,7 @@ export default function BookingsList() {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="بحث برقم الحجز، اسم الزبون، أو كود الزبون..."
+          placeholder="بحث برقم الحجز، اسم الزبون، كود الزبون، أو رقم الهاتف..."
           className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 sm:w-96"
         />
 
@@ -298,7 +315,23 @@ export default function BookingsList() {
                           </div>
                           <div>
                             <p className="text-slate-400">السيارة المخصصة</p>
-                            <p className="mt-1 text-slate-700">{b.assignedVehicle || '-'}</p>
+                            {editingId === b.id ? (
+                              <select
+                                value={b.assignedVehicle || ''}
+                                disabled={assigning}
+                                onChange={(e) => handleVehicleChange(b, e.target.value)}
+                                className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                              >
+                                <option value="">-- اختر سيارة --</option>
+                                {vehicles.map((v) => (
+                                  <option key={v.id} value={`${v.name} - ${v.plateNumber}`}>
+                                    {v.name} ({v.plateNumber}){v.color ? ` - ${v.color}` : ''}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <p className="mt-1 text-slate-700">{b.assignedVehicle || '-'}</p>
+                            )}
                           </div>
                           <div>
                             <p className="text-slate-400">عنوان تنفيذ المهمة</p>
