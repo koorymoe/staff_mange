@@ -246,6 +246,14 @@ export default function BookingsList() {
                       <td colSpan={9} className="bg-slate-50 px-4 py-4">
                         <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                           <div>
+                            <p className="text-slate-400">اسم الزبون</p>
+                            <p className="mt-1 font-bold text-slate-700">{b.customer?.name || 'زبون غير معروف'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">رقم هاتف الزبون</p>
+                            <p className="mt-1 font-bold text-brand-700" dir="ltr">{b.customer?.phone || '-'}</p>
+                          </div>
+                          <div>
                             <p className="text-slate-400">الكادر الذي تم تكليفه</p>
                             {b.assignments.length > 0 ? (
                               <ul className="mt-1 list-inside list-disc text-slate-700">
