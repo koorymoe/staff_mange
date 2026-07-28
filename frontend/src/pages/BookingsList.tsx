@@ -82,46 +82,15 @@ export default function BookingsList() {
     })
     .sort((a, b) => (selectedDate ? 0 : new Date(relevantDate(a)).getTime() - new Date(relevantDate(b)).getTime()))
 
-  // Service popularity stats
-  const serviceCounts = new Map<string, number>()
-  bookings.forEach((b) => {
-    const name = b.service?.name || 'بدون خدمة محددة'
-    serviceCounts.set(name, (serviceCounts.get(name) || 0) + 1)
-  })
-  const topServices = [...serviceCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5)
-  const maxCount = Math.max(1, ...topServices.map(([, c]) => c))
-
   return (
     <div>
       <h2 className="text-2xl font-bold text-brand-900">الحجوزات</h2>
       <p className="mt-1 text-slate-500">
-        سجل كامل بجميع الحجوزات السابقة مع تفاصيلها، وأكثر الخدمات التي يطلبها الزبائن.
+        سجل كامل بجميع الحجوزات السابقة مع تفاصيلها.
+        {canSeeStats && (
+          <> إحصائية "أكثر الخدمات طلباً" لكل الخدمات صارت بصفحة <a href="/stats" className="text-brand-600 hover:underline">إحصائيات الموظفين</a>.</>
+        )}
       </p>
-
-
-      {!loading && !error && canSeeStats && topServices.length > 0 && (
-        <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
-            📊 أكثر الخدمات التي طلبها الزبائن
-          </h3>
-          <div className="flex flex-col gap-2 p-4">
-            {topServices.map(([name, count]) => (
-              <div key={name}>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-600">{name}</span>
-                  <span className="font-bold text-brand-800">{count}</span>
-                </div>
-                <div className="mt-1 h-2 w-full rounded-full bg-slate-100">
-                  <div
-                    className="h-2 rounded-full bg-gradient-to-l from-brand-400 to-brand-700"
-                    style={{ width: `${(count / maxCount) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input
