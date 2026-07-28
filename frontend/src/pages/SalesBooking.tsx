@@ -7,7 +7,19 @@ import LocationPicker from '../components/LocationPicker'
 
 type BookingType = 'REGULAR' | 'MAINTENANCE'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
-type MaintenanceType = 'EXECUTION_ERROR' | 'DEVICE_ISSUE'
+type MaintenanceType = 'EXECUTION_ERROR' | 'DEVICE_ISSUE' | 'UPKEEP'
+
+// يوزّع اسم كامل محفوظ بحقل واحد (من زبون موجود مسبقاً) على الخانات الأربع —
+// الخانة الأخيرة تاخذ أي كلمات زايدة عن 4 حتى ما تضيع لو الاسم أطول من المتوقع.
+function splitFullName(fullName: string): [string, string, string, string] {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean)
+  return [
+    parts[0] || '',
+    parts[1] || '',
+    parts[2] || '',
+    parts.slice(3).join(' '),
+  ]
+}
 
 function SectionHeader({ num, title }: { num: number; title: string }) {
   return (
@@ -28,7 +40,11 @@ export default function SalesBooking() {
   const [services, setServices] = useState<Service[]>([])
 
   const [bookingType, setBookingType] = useState<BookingType | null>(null)
-  const [name, setName] = useState('')
+  const [firstName, setFirstName] = useState('')
+  const [fatherName, setFatherName] = useState('')
+  const [grandfatherName, setGrandfatherName] = useState('')
+  const [familyName, setFamilyName] = useState('')
+  const name = [firstName, fatherName, grandfatherName, familyName].map((p) => p.trim()).filter(Boolean).join(' ')
   const [phone, setPhone] = useState('')
   const [serviceId, setServiceId] = useState('')
   const [notes, setNotes] = useState('')
@@ -60,7 +76,11 @@ export default function SalesBooking() {
       const c = customers.find((cust) => cust.id === customerId)
       if (c) {
         setPhone(c.phone)
-        setName(c.name)
+        const [f, fa, gf, fam] = splitFullName(c.name)
+        setFirstName(f)
+        setFatherName(fa)
+        setGrandfatherName(gf)
+        setFamilyName(fam)
       }
     })
   }, [searchParams])
@@ -120,7 +140,12 @@ export default function SalesBooking() {
     }
 
     if (bookingType === 'MAINTENANCE' && maintenanceType) {
-      const mtLabel = maintenanceType === 'EXECUTION_ERROR' ? 'خطأ تنفيذ' : 'مشكلة جهاز'
+      const maintenanceTypeLabels: Record<MaintenanceType, string> = {
+        EXECUTION_ERROR: 'خطأ تنفيذ',
+        DEVICE_ISSUE: 'مشكلة جهاز',
+        UPKEEP: 'إدامة',
+      }
+      const mtLabel = maintenanceTypeLabels[maintenanceType]
       let mtExtra = mtLabel
       if (maintenanceType === 'EXECUTION_ERROR') {
         mtExtra += remembersCrew ? ' - يتذكر الكادر المنفذ' : ' - لا يتذكر الكادر المنفذ'
@@ -191,7 +216,10 @@ export default function SalesBooking() {
         mapLongitude: mapPoint.lng,
       })
       setSuccess({ customerCode: customer.code, bookingCode: booking.code })
-      setName('')
+      setFirstName('')
+      setFatherName('')
+      setGrandfatherName('')
+      setFamilyName('')
       setPhone('')
       setServiceId('')
       setNotes('')
@@ -261,18 +289,50 @@ export default function SalesBooking() {
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <SectionHeader num={2} title="معلومات الزبون" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div>
+            <div className="sm:col-span-2">
               <label className="mb-1 block text-sm font-medium text-slate-600">اسم الزبون الرباعي</label>
-              <input
-                required
-                placeholder="مثال: محمد علي حسن جاسم"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onBlur={() => setNameTouched(true)}
-                className={`w-full rounded-xl border px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 ${
-                  nameError ? 'border-red-400' : 'border-slate-300'
-                }`}
-              />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <input
+                  required
+                  placeholder="الاسم"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
+                  className={`w-full rounded-xl border px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 ${
+                    nameError ? 'border-red-400' : 'border-slate-300'
+                  }`}
+                />
+                <input
+                  required
+                  placeholder="اسم الأب"
+                  value={fatherName}
+                  onChange={(e) => setFatherName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
+                  className={`w-full rounded-xl border px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 ${
+                    nameError ? 'border-red-400' : 'border-slate-300'
+                  }`}
+                />
+                <input
+                  required
+                  placeholder="اسم الجد"
+                  value={grandfatherName}
+                  onChange={(e) => setGrandfatherName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
+                  className={`w-full rounded-xl border px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 ${
+                    nameError ? 'border-red-400' : 'border-slate-300'
+                  }`}
+                />
+                <input
+                  required
+                  placeholder="اللقب"
+                  value={familyName}
+                  onChange={(e) => setFamilyName(e.target.value)}
+                  onBlur={() => setNameTouched(true)}
+                  className={`w-full rounded-xl border px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20 ${
+                    nameError ? 'border-red-400' : 'border-slate-300'
+                  }`}
+                />
+              </div>
               {nameError && <p className="mt-1 text-xs text-red-600">{nameError}</p>}
             </div>
             <div>
@@ -414,7 +474,7 @@ export default function SalesBooking() {
         {bookingType === 'MAINTENANCE' && (
           <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <SectionHeader num={5} title="نوع الصيانة" />
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <button
                 type="button"
                 onClick={() => setMaintenanceType('EXECUTION_ERROR')}
@@ -443,6 +503,21 @@ export default function SalesBooking() {
                 <div>
                   <span className="block text-sm font-bold text-slate-800">مشكلة جهاز</span>
                   <span className="block text-xs text-slate-500">عطل في الجهاز نفسه</span>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMaintenanceType('UPKEEP'); setRemembersCrew(false) }}
+                className={`flex items-start gap-3 rounded-2xl border-2 p-5 text-right transition-all ${
+                  maintenanceType === 'UPKEEP'
+                    ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                    : 'border-slate-200 bg-white hover:border-emerald-300'
+                }`}
+              >
+                <span className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-emerald-500" />
+                <div>
+                  <span className="block text-sm font-bold text-slate-800">إدامة</span>
+                  <span className="block text-xs text-slate-500">صيانة دورية (مثل غسل الألواح الشمسية)</span>
                 </div>
               </button>
             </div>
