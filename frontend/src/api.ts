@@ -1174,8 +1174,24 @@ export interface ProcurementStats {
   byMonth: Record<string, number>
 }
 
+export interface ProjectChecklist {
+  id: string
+  projectId: string | null
+  project: { id: string; name: string; code: string } | null
+  title: string
+  createdBy: { id: string; name: string } | null
+  photoUrls: string[]
+  createdAt: string
+}
+
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
+  getChecklists: () => request<ProjectChecklist[]>('/checklists'),
+  getProjectsBrief: () => request<{ projects: { id: string; name: string; code: string }[] }>('/projects').then((d) => d.projects),
+  createChecklist: (data: { projectId?: string | null; title: string }) =>
+    request<ProjectChecklist>('/checklists', { method: 'POST', body: JSON.stringify(data) }),
+  addChecklistPhotos: (id: string, photoUrls: string[]) =>
+    request<ProjectChecklist>(`/checklists/${id}/photos`, { method: 'PUT', body: JSON.stringify({ photoUrls }) }),
   getServices: () => request<Service[]>('/services'),
   createService: (data: { name: string; category?: string }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),

@@ -41,5 +41,19 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			SQL: `ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "lastEditedById" TEXT REFERENCES "Employee"(id);
 				ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "lastEditedAt" TIMESTAMP`,
 		},
+		{
+			// الكشوفات: فورمات فارغة يطبعها المهندس، يمليها يدوياً بالموقع، وبعدين
+			// يرجع يرفع صور الفورمة المالية للنظام — مربوطة بمشروع اختياري.
+			Version: "0137_create_project_checklist",
+			SQL: `CREATE TABLE IF NOT EXISTS "ProjectChecklist" (
+				id TEXT PRIMARY KEY,
+				"projectId" TEXT REFERENCES "Project"(id),
+				title TEXT NOT NULL,
+				"createdById" TEXT NOT NULL REFERENCES "Employee"(id),
+				"photoUrls" TEXT[] NOT NULL DEFAULT '{}',
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "ProjectChecklist_projectId_idx" ON "ProjectChecklist"("projectId")`,
+		},
 	}
 }

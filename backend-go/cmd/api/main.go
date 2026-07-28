@@ -85,6 +85,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	trainingRepo := repository.NewTrainingRepository(db)
 	missionRepo := repository.NewMissionRepository(db, bookingRepo)
 	projectRepo := repository.NewProjectRepository(db)
+	checklistRepo := repository.NewChecklistRepository(db)
 	procurementRepo := repository.NewProcurementRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
@@ -131,6 +132,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	trainingService := service.NewTrainingService(trainingRepo)
 	missionService := service.NewMissionService(missionRepo)
 	projectService := service.NewProjectService(projectRepo)
+	checklistService := service.NewChecklistService(checklistRepo)
 	procurementService := service.NewProcurementService(procurementRepo, permissionRepo)
 	supplierService := service.NewSupplierService(supplierRepo)
 	quotationService := service.NewQuotationService(quotationRepo)
@@ -170,6 +172,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	trainingHandler := handler.NewTrainingHandler(trainingService)
 	missionHandler := handler.NewMissionHandler(missionService)
 	projectHandler := handler.NewProjectHandler(projectService)
+	checklistHandler := handler.NewChecklistHandler(checklistService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	quotationHandler := handler.NewQuotationHandler(quotationService)
@@ -433,6 +436,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth, requireProjectManager))
 	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
+
+	// الكشوفات: فورمات فارغة يطبعها المهندس، يمليها بالموقع، وبعدين يرفع صور
+	// الفورمة المالية — أي موظف مسجل دخول يقدر ينشئ/يرفع (مو حصراً مدير مشاريع).
+	mux.Handle("GET /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.List), requireAuth))
+	mux.Handle("POST /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.Create), requireAuth))
+	mux.Handle("PUT /api/checklists/{id}/photos", middleware.Chain(http.HandlerFunc(checklistHandler.AddPhotos), requireAuth))
 
 	// طلبات الكادر — مدير المشاريع (أو صاحب صلاحية إدارة المشاريع) يطلب، وإدارة الكوادر تلبي
 	mux.Handle("POST /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.Create), requireAuth, requireProjectMgmtPerm))

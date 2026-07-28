@@ -93,6 +93,7 @@ const navItems: NavItem[] = [
         to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
         children: [
           { to: '/projects', label: 'المشاريع', icon: <></>, permission: 'project_management' },
+          { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, permission: 'project_management' },
           { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
           { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
@@ -144,17 +145,33 @@ const navItems: NavItem[] = [
   { to: '/performance-review', label: 'تقييم فريقي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
   { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
 
-  // ── الجودة — تطلع لأي موظف عنده الصلاحية المخصصة بغض النظر عن دوره (صلاحية
-  // التقني وإدارة/مهام المركبات صارت داخل مجموعة "الإدارة" أعلاه) ──
-  { to: '/quality', label: 'الجودة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>, permission: 'quality_control' },
-  { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, anyPermission: ['monitoring', 'quality_control'] },
-  { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, permission: 'crew_management' },
-
-  // ═══ فاصل: تحته "الوحدات" — كل وحدة إدارية تجمع محتوياتها الموجودة أصلاً
-  // بالنظام (نفس الصفحات، نفس الصلاحيات) تحت باب واحد بدل ما تكون مبعثرة.
-  // ملاحظة: وحدات "الإعلام والعلاقات العامة"، "التصميم"، "التقنيات (IT)" ما
+  // ═══ فاصل: تحته "الوحدات" — كل وحدة إدارية تجمع محتوياتها تحت باب واحد.
+  // الجودة/مراجعة تقارير العمل صارت بس داخل "وحدة الجودة والسلامة المهنية"،
+  // وتدقيق تنسيق الحجوزات صار بس داخل "وحدة الرقابة" — ما ضلوا عناصر
+  // منفصلة هنا حتى ما تتكرر بالقائمة.
+  // ملاحظة: وحدات "الإعلام والعلاقات العامة" و"التصميم" و"التقنيات (IT)" ما
   // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
   { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true },
+
+  {
+    // وحدة الخدمة: استقبال وتنسيق طلبات الزبائن وتنفيذها
+    to: '/unit-service', label: 'وحدة الخدمة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    children: [
+      { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
+      { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+      { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
+      { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
+      { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_services' },
+      { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
+    ],
+  },
+  {
+    // وحدة التدريب: محتوى تدريبي/تعليمي للفنيين حسب صلاحية "التقني"
+    to: '/unit-training', label: 'وحدة التدريب', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 3 3 6 3s6-1.3 6-3v-5"/></svg>,
+    children: [
+      { to: '/training-management', label: 'صلاحية التقني (محتوى)', icon: <></>, permission: 'content_technician' },
+    ],
+  },
 
   {
     to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,
@@ -202,6 +219,7 @@ const navItems: NavItem[] = [
     to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
     children: [
       { to: '/projects', label: 'المشاريع', icon: <></>, permission: 'project_management' },
+      { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
       { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
       { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
     ],

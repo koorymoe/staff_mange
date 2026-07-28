@@ -57,6 +57,7 @@ const WorkReportPage = lazy(() => import('./pages/WorkReportPage'))
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'))
 const StatsPage = lazy(() => import('./pages/StatsPage'))
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
+const ChecklistsPage = lazy(() => import('./pages/ChecklistsPage'))
 const StaffRequestsPage = lazy(() => import('./pages/StaffRequestsPage'))
 const ServiceManagersPage = lazy(() => import('./pages/ServiceManagersPage'))
 const PerformanceReviewPage = lazy(() => import('./pages/PerformanceReviewPage'))
@@ -117,6 +118,7 @@ function App() {
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+          <Route path="checklists" element={<ChecklistsPage />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />
           <Route path="employee-stats" element={<RequireAdmin><EmployeeMonthlyStatsPage /></RequireAdmin>} />
