@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleDocument, type VehiclePhoto, type VehicleIncidentAttachment, type VehiclePart, type VehicleAlert, type VehicleExpenseSummary } from '../api'
+import { useSession } from '../session'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -86,6 +87,8 @@ const currentMonth = () => {
 }
 
 export default function VehiclesPage() {
+  const { employee } = useSession()
+  const isAdmin = employee?.role === 'ADMIN'
   // Snapshot "now" once per mount so "days since install" is pure during render;
   // doesn't need live ticking since it's a day-granularity display, not a countdown.
   const [now] = useState(() => Date.now())
@@ -236,6 +239,51 @@ export default function VehiclesPage() {
     setVModel(''); setVYear(''); setVChassis(''); setVEngine(''); setVFuel(''); setVOdometer(''); setVCondition('')
     setShowAddVehicle(false)
     loadVehicles()
+  }
+
+  const [showEditVehicle, setShowEditVehicle] = useState(false)
+  const [editDraft, setEditDraft] = useState<Partial<Vehicle>>({})
+  const [deleting, setDeleting] = useState(false)
+
+  const openEditVehicle = () => {
+    if (!selectedVehicle) return
+    setEditDraft({ ...selectedVehicle })
+    setShowEditVehicle(true)
+  }
+
+  const handleUpdateVehicle = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedId) return
+    await api.updateVehicle(selectedId, {
+      name: editDraft.name,
+      plateNumber: editDraft.plateNumber,
+      color: editDraft.color || undefined,
+      type: editDraft.type || undefined,
+      model: editDraft.model || undefined,
+      year: editDraft.year || undefined,
+      chassisNumber: editDraft.chassisNumber || undefined,
+      engineNumber: editDraft.engineNumber || undefined,
+      fuelType: editDraft.fuelType || undefined,
+      currentOdometer: editDraft.currentOdometer,
+      condition: editDraft.condition || undefined,
+    })
+    setShowEditVehicle(false)
+    loadVehicles()
+  }
+
+  const handleDeleteVehicle = async () => {
+    if (!selectedId || !selectedVehicle) return
+    if (!confirm(`حذف السيارة "${selectedVehicle.name}" (${selectedVehicle.plateNumber}) نهائياً؟ هذا الإجراء لا يمكن التراجع عنه.`)) return
+    setDeleting(true)
+    try {
+      await api.deleteVehicle(selectedId)
+      setSelectedId(null)
+      loadVehicles()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
+    } finally {
+      setDeleting(false)
+    }
   }
 
   const handleAddDocument = async (e: React.FormEvent) => {
@@ -522,8 +570,29 @@ export default function VehiclesPage() {
           ) : (
             <div className="space-y-4">
               <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                <h3 className="text-lg font-bold text-brand-800">{selectedVehicle.name}</h3>
-                <p className="text-sm text-slate-500">{selectedVehicle.plateNumber}</p>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-brand-800">{selectedVehicle.name}</h3>
+                    <p className="text-sm text-slate-500">{selectedVehicle.plateNumber}</p>
+                  </div>
+                  {isAdmin && (
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        onClick={openEditVehicle}
+                        className="rounded-lg bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100"
+                      >
+                        تعديل
+                      </button>
+                      <button
+                        onClick={handleDeleteVehicle}
+                        disabled={deleting}
+                        className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                      >
+                        {deleting ? 'جارٍ الحذف...' : 'حذف'}
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-500 sm:grid-cols-3">
                   {selectedVehicle.model && <p>الموديل: {selectedVehicle.model}</p>}
                   {selectedVehicle.year && <p>سنة الصنع: {selectedVehicle.year}</p>}
@@ -534,6 +603,26 @@ export default function VehiclesPage() {
                   {selectedVehicle.condition && <p>الحالة: {selectedVehicle.condition}</p>}
                 </div>
               </div>
+
+              {showEditVehicle && isAdmin && (
+                <form onSubmit={handleUpdateVehicle} className="grid grid-cols-1 gap-3 rounded-xl border border-brand-200 bg-brand-50/40 p-5 sm:grid-cols-3">
+                  <input required placeholder="اسم السيارة" value={editDraft.name || ''} onChange={(e) => setEditDraft((p) => ({ ...p, name: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input required placeholder="رقم اللوحة" value={editDraft.plateNumber || ''} onChange={(e) => setEditDraft((p) => ({ ...p, plateNumber: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="اللون" value={editDraft.color || ''} onChange={(e) => setEditDraft((p) => ({ ...p, color: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="النوع" value={editDraft.type || ''} onChange={(e) => setEditDraft((p) => ({ ...p, type: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="الموديل" value={editDraft.model || ''} onChange={(e) => setEditDraft((p) => ({ ...p, model: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="سنة الصنع" type="number" value={editDraft.year || ''} onChange={(e) => setEditDraft((p) => ({ ...p, year: e.target.value ? Number(e.target.value) : undefined }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="رقم الشاصي" value={editDraft.chassisNumber || ''} onChange={(e) => setEditDraft((p) => ({ ...p, chassisNumber: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="رقم المحرك" value={editDraft.engineNumber || ''} onChange={(e) => setEditDraft((p) => ({ ...p, engineNumber: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="نوع الوقود" value={editDraft.fuelType || ''} onChange={(e) => setEditDraft((p) => ({ ...p, fuelType: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="عداد الكيلومترات" type="number" value={editDraft.currentOdometer ?? ''} onChange={(e) => setEditDraft((p) => ({ ...p, currentOdometer: e.target.value ? Number(e.target.value) : undefined }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <input placeholder="الحالة" value={editDraft.condition || ''} onChange={(e) => setEditDraft((p) => ({ ...p, condition: e.target.value }))} className="rounded-lg border border-slate-300 px-3 py-2" />
+                  <div className="flex gap-2 sm:col-span-3">
+                    <button type="submit" className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">حفظ التعديلات</button>
+                    <button type="button" onClick={() => setShowEditVehicle(false)} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200">إلغاء</button>
+                  </div>
+                </form>
+              )}
 
               <div className="flex flex-wrap gap-2 rounded-xl border border-white bg-white p-2 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 {([

@@ -53,6 +53,14 @@ func (h *VehicleHandler) Update(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, vehicle)
 }
 
+func (h *VehicleHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.Delete(r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *VehicleHandler) ListDocuments(w http.ResponseWriter, r *http.Request) {
 	docs, err := h.service.ListDocuments(r.PathValue("id"))
 	if err != nil {

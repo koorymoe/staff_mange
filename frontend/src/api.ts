@@ -1576,6 +1576,7 @@ export const api = {
     chassisNumber: string; engineNumber: string; fuelType: string; currentOdometer: number
     condition: string; isActive: boolean
   }>) => request<Vehicle>(`/vehicles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteVehicle: (id: string) => request<void>(`/vehicles/${id}`, { method: 'DELETE' }),
 
   getVehicleDocuments: (vehicleId: string) => request<VehicleDocument[]>(`/vehicles/${vehicleId}/documents`),
   createVehicleDocument: (vehicleId: string, data: {

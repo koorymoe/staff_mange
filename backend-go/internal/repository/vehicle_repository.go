@@ -74,6 +74,16 @@ func (r *VehicleRepository) Update(id string, req model.UpdateVehicleRequest) (*
 	return &v, err
 }
 
+// Delete يحذف السيارة نهائياً. أغلب الجداول المرتبطة (وثائق، صور، سجلات،
+// حوادث، حالة شهرية، تقييمات، قطع، أدوات) عندها ON DELETE CASCADE بالمخطط،
+// فتنحذف تلقائياً. جداول المهام والحجوزات (VehicleMission/VehicleBooking)
+// بالعمد ما عندها cascade — نخليها تفشل بخطأ FK واضح بدل ما نحذف سجل تاريخي
+// مهم بصمت (سجل مهمة/حجز فعلي صار للسيارة).
+func (r *VehicleRepository) Delete(id string) error {
+	_, err := r.db.Exec(`DELETE FROM "Vehicle" WHERE id = $1`, id)
+	return err
+}
+
 // ── VehicleDocument ──
 
 func (r *VehicleRepository) ListDocuments(vehicleID string) ([]model.VehicleDocument, error) {

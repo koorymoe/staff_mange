@@ -538,7 +538,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/vehicles/{id}/monthly-status", middleware.Chain(http.HandlerFunc(vehicleHandler.SetMonthlyStatus), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/{id}/ratings", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateDailyRating), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/{id}/ratings", middleware.Chain(http.HandlerFunc(vehicleHandler.ListDailyRatings), requireAuth, requireVehicleMgmt))
-	mux.Handle("PUT /api/vehicles/{id}", middleware.Chain(http.HandlerFunc(vehicleHandler.Update), requireAuth, requireVehicleMgmt))
+	// تعديل/حذف بيانات السيارة الأساسية محصور بالمالك/الأدمن (requireAdmin) فقط —
+	// أضيق من صلاحية "إدارة المركبات" العامة (vehicle_management) المستخدمة لبقية
+	// عمليات السيارة (سجلات، وثائق، صور...)، بناءً على طلب صريح من مالك النظام.
+	mux.Handle("PUT /api/vehicles/{id}", middleware.Chain(http.HandlerFunc(vehicleHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/vehicles/{id}", middleware.Chain(http.HandlerFunc(vehicleHandler.Delete), requireAuth, requireAdmin))
 
 	// ملف السيارة الكامل: وثائق وصور
 	mux.Handle("GET /api/vehicles/{id}/documents", middleware.Chain(http.HandlerFunc(vehicleHandler.ListDocuments), requireAuth))

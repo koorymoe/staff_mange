@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sort"
 	"strconv"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -40,6 +41,14 @@ func (s *VehicleService) Update(id string, req model.UpdateVehicleRequest) (*mod
 		return nil, errors.New("عداد الكيلومترات لا يمكن أن يكون بالسالب")
 	}
 	return s.repo.Update(id, req)
+}
+
+func (s *VehicleService) Delete(id string) error {
+	err := s.repo.Delete(id)
+	if err != nil && strings.Contains(err.Error(), "violates foreign key constraint") {
+		return errors.New("لا يمكن حذف هذه السيارة لوجود سجلات مهام/حجوزات فعلية مرتبطة بها")
+	}
+	return err
 }
 
 func (s *VehicleService) ListDocuments(vehicleID string) ([]model.VehicleDocument, error) {
