@@ -38,6 +38,21 @@ export default function Services() {
     }
   }
 
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const handleDelete = async (service: Service) => {
+    if (!window.confirm(`متأكد تريد حذف خدمة "${service.name}"؟`)) return
+    setDeletingId(service.id)
+    try {
+      await api.deleteService(service.id)
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر حذف الخدمة')
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -106,10 +121,24 @@ export default function Services() {
               key={service.id}
               className="rounded-lg border border-white bg-white px-4 py-3 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
             >
-              <span className="font-medium text-brand-800">{service.name}</span>
-              {service.category && (
-                <span className="mr-2 text-sm text-slate-400">({service.category})</span>
-              )}
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="font-medium text-brand-800">{service.name}</span>
+                  {service.category && (
+                    <span className="mr-2 text-sm text-slate-400">({service.category})</span>
+                  )}
+                </div>
+                {employee?.role === 'ADMIN' && (
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(service)}
+                    disabled={deletingId === service.id}
+                    className="shrink-0 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    {deletingId === service.id ? '...' : 'حذف'}
+                  </button>
+                )}
+              </div>
 
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {service.skills.length === 0 && (

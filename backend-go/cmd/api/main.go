@@ -277,6 +277,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/services", middleware.Chain(http.HandlerFunc(serviceHandler.List), requireAuth))
 	mux.Handle("POST /api/services", middleware.Chain(http.HandlerFunc(serviceHandler.Create), requireAuth, requireContentTech))
 	mux.Handle("POST /api/services/{id}/skills", middleware.Chain(http.HandlerFunc(serviceHandler.CreateSkill), requireAuth, requireContentTech))
+	mux.Handle("DELETE /api/services/{id}", middleware.Chain(http.HandlerFunc(serviceHandler.Delete), requireAuth, requireAdmin))
 
 	// العملاء — أي مسجل دخول يقدر يبحث وينشئ عميل (يطابق سلوك المبيعات بالباك إند القديم)
 	mux.Handle("GET /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth))

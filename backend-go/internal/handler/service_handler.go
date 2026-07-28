@@ -56,3 +56,12 @@ func (h *ServiceHandler) CreateSkill(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusCreated, skill)
 }
+
+// DELETE /api/services/{id}
+func (h *ServiceHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.Delete(r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

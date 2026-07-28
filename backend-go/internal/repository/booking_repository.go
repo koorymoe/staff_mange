@@ -144,6 +144,7 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		addEmp(b.ExpenseResponsibleID)
 		addEmp(b.MaterialsReadyByID)
 		addEmp(b.ConfirmationContactedByID)
+		addEmp(b.LastEditedByID)
 	}
 
 	customers := map[string]model.Customer{}
@@ -246,6 +247,7 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		b.ExpenseResponsible = getEmp(b.ExpenseResponsibleID)
 		b.MaterialsReadyBy = getEmpBrief(b.MaterialsReadyByID)
 		b.ConfirmationContactedBy = getEmpBrief(b.ConfirmationContactedByID)
+		b.LastEditedBy = getEmpBrief(b.LastEditedByID)
 
 		assignments := assignmentsByBooking[b.ID]
 		for j := range assignments {
@@ -353,6 +355,15 @@ func (r *BookingRepository) ScheduleLog(bookingID string) ([]model.ScheduleChang
 		}
 	}
 	return logs, nil
+}
+
+// TouchLastEdited يسجّل مين آخر موظف عدّل تفاصيل/تكليف الحجز — منفصل عن "من أكّده".
+func (r *BookingRepository) TouchLastEdited(id, editorID string) error {
+	if editorID == "" {
+		return nil
+	}
+	_, err := r.db.Exec(`UPDATE "Booking" SET "lastEditedById" = $2, "lastEditedAt" = now() WHERE id = $1`, id, editorID)
+	return err
 }
 
 func (r *BookingRepository) SetStatus(id, status string) error {

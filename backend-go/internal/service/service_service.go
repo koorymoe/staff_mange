@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -43,4 +44,12 @@ func (s *ServiceCatalogService) CreateSkill(serviceID string, req model.CreateSk
 		return nil, err
 	}
 	return sk, nil
+}
+
+func (s *ServiceCatalogService) Delete(id string) error {
+	err := s.repo.Delete(id)
+	if err != nil && strings.Contains(err.Error(), "violates foreign key constraint") {
+		return errors.New("لا يمكن حذف هذه الخدمة لوجود حجوزات مرتبطة بها")
+	}
+	return err
 }

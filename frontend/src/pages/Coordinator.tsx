@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate } from '../api'
+import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type Vehicle } from '../api'
 import { useSession } from '../session'
 import LocationPicker from '../components/LocationPicker'
 
@@ -40,6 +40,7 @@ export default function Coordinator() {
   const [cartOpen, setCartOpen] = useState<Record<string, boolean>>({})
   const [cartForm, setCartForm] = useState<Record<string, { productName: string; quantity: string; unitPrice: string; notes: string }>>({})
   const [products, setProducts] = useState<Product[]>([])
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [scheduleMode, setScheduleMode] = useState<Record<string, 'slots' | 'manual'>>({})
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
 
@@ -159,6 +160,7 @@ export default function Coordinator() {
   useEffect(() => {
     api.getSupervisors().then(setSupervisors)
     api.getProducts().then(setProducts)
+    api.getVehicles().then(setVehicles)
   }, [])
 
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
@@ -726,12 +728,18 @@ export default function Coordinator() {
                       <label className="mb-1 block text-sm font-medium text-slate-600">
                         السيارة المخصصة للمهمة (اختياري)
                       </label>
-                      <input
-                        defaultValue={booking.assignedVehicle || ''}
-                        onBlur={(e) => handleVehicleChange(booking, e.target.value)}
-                        placeholder="مثال: تويوتا هايلوكس - أبيض - 12345"
+                      <select
+                        value={booking.assignedVehicle || ''}
+                        onChange={(e) => handleVehicleChange(booking, e.target.value)}
                         className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      />
+                      >
+                        <option value="">-- اختر سيارة --</option>
+                        {vehicles.map((v) => (
+                          <option key={v.id} value={`${v.name} - ${v.plateNumber}`}>
+                            {v.name} ({v.plateNumber}){v.color ? ` - ${v.color}` : ''}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     {booking.assignments.some((a) => {
                       const candidate = matches[booking.id]?.find((c) => c.id === a.employee.id)

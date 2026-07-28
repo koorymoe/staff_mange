@@ -288,6 +288,8 @@ export interface Booking {
   expenseResponsible: Employee | null
   expenseResponsibleId: string | null
   confirmedByEmployee: Employee | null
+  lastEditedBy: { id: string; name: string } | null
+  lastEditedAt: string | null
   notes: string | null
   vehicleType: string | null
   priority: 'NORMAL' | 'URGENT'
@@ -1179,6 +1181,7 @@ export const api = {
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
   createSkill: (serviceId: string, name: string) =>
     request<Skill>(`/services/${serviceId}/skills`, { method: 'POST', body: JSON.stringify({ name }) }),
+  deleteService: (id: string) => request<void>(`/services/${id}`, { method: 'DELETE' }),
 
   // مسؤول خدمة عام (تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات)
   getServiceManagers: () => request<ServiceManager[]>('/service-managers'),

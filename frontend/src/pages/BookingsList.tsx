@@ -1,6 +1,12 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { api, type Booking } from '../api'
+import { api, type Booking, type Employee } from '../api'
 import { useSession } from '../session'
+
+const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
+  { key: 'TECH_1', label: 'الفني الأول' },
+  { key: 'TECH_2', label: 'الفني الثاني' },
+  { key: 'TECH_3', label: 'الفني الثالث' },
+]
 
 function todayStr() {
   const d = new Date()
@@ -56,6 +62,27 @@ export default function BookingsList() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
   const dateInputRef = useRef<HTMLInputElement>(null)
+  const isAdmin = employee?.role === 'ADMIN'
+  const [technicians, setTechnicians] = useState<Employee[]>([])
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [assigning, setAssigning] = useState(false)
+
+  useEffect(() => {
+    if (isAdmin) api.getEmployees().then((all) => setTechnicians(all.filter((e) => e.role === 'TECHNICIAN')))
+  }, [isAdmin])
+
+  const handleReassign = async (booking: Booking, role: 'TECH_1' | 'TECH_2' | 'TECH_3', employeeId: string) => {
+    if (!employeeId) return
+    setAssigning(true)
+    try {
+      const updated = await api.assignTechnician(booking.id, { employeeId, role })
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تعديل التكليف')
+    } finally {
+      setAssigning(false)
+    }
+  }
 
   useEffect(() => {
     // نطلب من السيرفر يوم واحد بس (لو محدد) بدل ما نجيب كل أرشيف الحجوزات التاريخي
@@ -222,8 +249,41 @@ export default function BookingsList() {
                             <p className="mt-1 font-bold text-brand-700" dir="ltr">{b.customer?.phone || '-'}</p>
                           </div>
                           <div>
-                            <p className="text-slate-400">الكادر الذي تم تكليفه</p>
-                            {b.assignments.length > 0 ? (
+                            <div className="flex items-center justify-between">
+                              <p className="text-slate-400">الكادر الذي تم تكليفه</p>
+                              {isAdmin && (
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingId(editingId === b.id ? null : b.id)}
+                                  className="rounded-md bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-700 hover:bg-brand-100"
+                                >
+                                  {editingId === b.id ? 'إغلاق التعديل' : 'تعديل'}
+                                </button>
+                              )}
+                            </div>
+                            {editingId === b.id ? (
+                              <div className="mt-2 flex flex-col gap-2">
+                                {techRoles.map((tr) => {
+                                  const current = b.assignments.find((a) => a.role === tr.key)
+                                  return (
+                                    <div key={tr.key}>
+                                      <label className="mb-0.5 block text-xs text-slate-400">{tr.label}</label>
+                                      <select
+                                        value={current?.employee.id || ''}
+                                        disabled={assigning}
+                                        onChange={(e) => handleReassign(b, tr.key, e.target.value)}
+                                        className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
+                                      >
+                                        <option value="">-- اختر --</option>
+                                        {technicians.map((t) => (
+                                          <option key={t.id} value={t.id}>{t.name}{t.isLeader ? ' (ليدر)' : ''}</option>
+                                        ))}
+                                      </select>
+                                    </div>
+                                  )
+                                })}
+                              </div>
+                            ) : b.assignments.length > 0 ? (
                               <ul className="mt-1 list-inside list-disc text-slate-700">
                                 {b.assignments.map((a) => (
                                   <li key={a.id}>
@@ -301,6 +361,15 @@ export default function BookingsList() {
                           <div>
                             <p className="text-slate-400">من أكد الحجز</p>
                             <p className="mt-1 text-slate-700">{b.confirmedByEmployee?.name || b.confirmedByName || '-'}</p>
+                          </div>
+                          <div>
+                            <p className="text-slate-400">من عدّل الحجز</p>
+                            <p className="mt-1 text-slate-700">
+                              {b.lastEditedBy?.name || '-'}
+                              {b.lastEditedBy && b.lastEditedAt && (
+                                <span className="text-xs text-slate-400"> ({new Date(b.lastEditedAt).toLocaleString('ar-IQ')})</span>
+                              )}
+                            </p>
                           </div>
                           <div>
                             <p className="text-slate-400">موظف المبيعات (مصدر الزبون)</p>

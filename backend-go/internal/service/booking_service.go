@@ -97,13 +97,14 @@ func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*m
 	return booking, nil
 }
 
-func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetailsRequest) (*model.Booking, error) {
+func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetailsRequest, editorID string) (*model.Booking, error) {
 	if req.QuotedPrice != nil && *req.QuotedPrice < 0 {
 		return nil, errors.New("المبلغ المقدّر ما يصير يكون بالسالب")
 	}
 	if err := s.repo.UpdateDetails(id, req); err != nil {
 		return nil, err
 	}
+	_ = s.repo.TouchLastEdited(id, editorID)
 	return s.repo.FindByID(id)
 }
 
@@ -138,7 +139,7 @@ func (s *BookingService) SetSchedule(id, changedByID, scheduledAt string) (*mode
 }
 
 // Assign يعيّن فني لمهمة الحجز، يتحقق من المهارة والدوام، ويحدد المسؤول عن المصاريف تلقائياً
-func (s *BookingService) Assign(id string, req model.AssignBookingRequest) (*model.Booking, error) {
+func (s *BookingService) Assign(id string, req model.AssignBookingRequest, editorID string) (*model.Booking, error) {
 	if req.EmployeeID == "" || req.Role == "" {
 		return nil, errors.New("employeeId and role are required")
 	}
@@ -221,6 +222,7 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest) (*mod
 		}
 	}
 
+	_ = s.repo.TouchLastEdited(id, editorID)
 	return s.repo.FindByID(id)
 }
 

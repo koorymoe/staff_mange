@@ -49,3 +49,8 @@ func (r *ServiceRepository) CreateSkill(sk *model.Skill) error {
 	`, sk)
 	return err
 }
+
+func (r *ServiceRepository) Delete(id string) error {
+	_, err := r.db.Exec(`DELETE FROM "Service" WHERE id = $1`, id)
+	return err
+}

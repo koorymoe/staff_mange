@@ -63,7 +63,7 @@ func (h *BookingHandler) UpdateDetails(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	booking, err := h.service.UpdateDetails(r.PathValue("id"), req)
+	booking, err := h.service.UpdateDetails(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -106,7 +106,7 @@ func (h *BookingHandler) Assign(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	booking, err := h.service.Assign(r.PathValue("id"), req)
+	booking, err := h.service.Assign(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

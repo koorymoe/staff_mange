@@ -57,6 +57,9 @@ type Booking struct {
 	ConfirmationContactedAt   *time.Time     `db:"confirmationContactedAt" json:"confirmationContactedAt"`
 	ConfirmationContactedByID *string        `db:"confirmationContactedById" json:"-"`
 	ConfirmationContactedBy   *EmployeeBrief `db:"-" json:"confirmationContactedBy"`
+	LastEditedByID            *string        `db:"lastEditedById" json:"-"`
+	LastEditedAt              *time.Time     `db:"lastEditedAt" json:"lastEditedAt"`
+	LastEditedBy              *EmployeeBrief `db:"-" json:"lastEditedBy"`
 
 	Customer            *Customer           `db:"-" json:"customer"`
 	Service             *Service            `db:"-" json:"service"`

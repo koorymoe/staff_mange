@@ -34,5 +34,12 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			Version: "0135_add_gps_device_request_credentials_message",
 			SQL:     `ALTER TABLE "GpsDeviceRequest" ADD COLUMN IF NOT EXISTS "credentialsMessage" TEXT`,
 		},
+		{
+			// تتبع آخر موظف عدّل تفاصيل/تكليف الحجز (منفصل عن "من أكّد الحجز") —
+			// حتى يطلع بصفحة تفاصيل الحجز "من عدّله" بعد "من أكّده".
+			Version: "0136_add_booking_last_edited_by",
+			SQL: `ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "lastEditedById" TEXT REFERENCES "Employee"(id);
+				ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "lastEditedAt" TIMESTAMP`,
+		},
 	}
 }
