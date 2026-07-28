@@ -1306,9 +1306,9 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getBookings: (params?: { status?: Booking['status']; customerId?: string }) => {
+  getBookings: (params?: { status?: Booking['status'] | Booking['status'][]; customerId?: string }) => {
     const query = new URLSearchParams()
-    if (params?.status) query.set('status', params.status)
+    if (params?.status) query.set('status', Array.isArray(params.status) ? params.status.join(',') : params.status)
     if (params?.customerId) query.set('customerId', params.customerId)
     const qs = query.toString()
     return request<Booking[]>(`/bookings${qs ? `?${qs}` : ''}`)

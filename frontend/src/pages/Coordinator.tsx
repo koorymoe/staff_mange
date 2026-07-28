@@ -124,20 +124,32 @@ export default function Coordinator() {
     if (isOpen && !cartItems[bookingId]) loadCart(bookingId)
   }
 
-  const loadMatches = async (booking: Booking) => {
-    if (!booking.service) return
-    const employees = await api.matchEmployees(booking.service.id)
-    setMatches((prev) => ({ ...prev, [booking.id]: employees }))
+  const loadMatches = async (bookingsForService: Booking[], serviceId: string) => {
+    const employees = await api.matchEmployees(serviceId)
+    setMatches((prev) => {
+      const next = { ...prev }
+      for (const b of bookingsForService) next[b.id] = employees
+      return next
+    })
   }
 
   const load = () => {
     api
-      .getBookings()
+      // نجيب الحجوزات الفعّالة بس (قيد التنسيق) لا كل الأرشيف التاريخي — هذي الصفحة
+      // ما تستخدم إطلاقاً حجوزات IN_PROGRESS/COMPLETED/CANCELLED، وجلبها كلها كان يبطّئ
+      // الصفحة كثير مع تراكم آلاف الحجوزات القديمة.
+      .getBookings({ status: ['PENDING', 'CONFIRMED'] })
       .then((data) => {
         setBookings(data)
-        data
-          .filter((b) => b.status === 'CONFIRMED' && !b.transferToProjects && b.service)
-          .forEach((b) => loadMatches(b))
+        const candidates = data.filter((b) => b.status === 'CONFIRMED' && !b.transferToProjects && b.service)
+        // نجمّع الحجوزات حسب نفس الخدمة ونطلب موظفي المطابقة مرة وحدة لكل خدمة بدل
+        // طلب منفصل لكل حجز (كان يسوي طلب HTTP مستقل لكل حجز بيها نفس الخدمة).
+        const byService = new Map<string, Booking[]>()
+        for (const b of candidates) {
+          const sid = b.service!.id
+          byService.set(sid, [...(byService.get(sid) || []), b])
+        }
+        byService.forEach((bs, sid) => loadMatches(bs, sid))
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -167,7 +179,7 @@ export default function Coordinator() {
       scheduledAt: scheduleValue || undefined,
     })
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
-    if (!transferToProjects) loadMatches(updated)
+    if (!transferToProjects && updated.service) loadMatches([updated], updated.service.id)
   }
 
   // "تم" — الإداري يضغطها بعد ما يتواصل فعلياً مع الزبون ويقفل الاتفاق، قبل

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -23,8 +24,17 @@ func (r *BookingRepository) List(status, customerID string) ([]model.Booking, er
 	query := `SELECT * FROM "Booking" WHERE 1=1`
 	args := []any{}
 	if status != "" {
-		args = append(args, status)
-		query += fmt.Sprintf(` AND status = $%d`, len(args))
+		// يدعم قائمة حالات مفصولة بفاصلة (مثلاً "PENDING,CONFIRMED,IN_PROGRESS") حتى
+		// يقدر المنسق يجيب الحجوزات الفعالة بس بدل كل الأرشيف التاريخي (آلاف الحجوزات
+		// القديمة المكتملة/الملغاة) بطلب واحد بدل ما يجيب كل شي ويفلتر بالواجهة.
+		statuses := strings.Split(status, ",")
+		if len(statuses) > 1 {
+			args = append(args, pq.Array(statuses))
+			query += fmt.Sprintf(` AND status = ANY($%d)`, len(args))
+		} else {
+			args = append(args, status)
+			query += fmt.Sprintf(` AND status = $%d`, len(args))
+		}
 	}
 	if customerID != "" {
 		args = append(args, customerID)
