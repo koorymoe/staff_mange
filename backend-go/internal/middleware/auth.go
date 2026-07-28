@@ -165,6 +165,37 @@ func RequireLeader(employees *repository.EmployeeRepository, notifications *repo
 // أو ADMIN/OWNER. تُستخدم لسلة الليدر (leader_basket): افتراضياً حصراً لليدر،
 // لكن الإدارة تقدر تمنحها لموظف MONITOR أيضاً عبر صفحة الصلاحيات بدون ما يصير
 // ليدر فعلياً (isLeader=false يبقى كما هو).
+// RequireRoleOrPermission يسمح بالوصول لأي موظف دوره ضمن roles المذكورة (زي
+// RequireRole) أو لأي موظف عنده الصلاحية المخصصة permissionName (زي RequirePermission)
+// أو ADMIN/OWNER دايماً. يُستخدم لتوسيع وصول مبني على الدور (مثلاً requireHR)
+// ليشمل أيضاً أي موظف مُنح صلاحية مخصصة مكافئة من صفحة الصلاحيات، بدون ما نلغي
+// وصول الأدوار الأصلية.
+func RequireRoleOrPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, roles []string, permissionName string) func(http.Handler) http.Handler {
+	allowed := make(map[string]bool, len(roles))
+	for _, role := range roles {
+		allowed[role] = true
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" || role == "OWNER" || allowed[role] {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID := EmployeeIDFromContext(r)
+			if perms, err := permissions.ListForEmployee(employeeID); err == nil {
+				for _, p := range perms {
+					if p.Name == permissionName {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+			recordViolationAndBlock(w, employees, notifications, employeeID)
+		})
+	}
+}
+
 func RequireLeaderOrPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, permissionName string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

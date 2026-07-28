@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
-import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type Employee, type InventoryCheck } from '../api'
+import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck } from '../api'
 import { useSession } from '../session'
 
-type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests'
+type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests' | 'template' | 'reports'
 
 const tabs: { key: TabKey; label: string }[] = [
   { key: 'todaychecks', label: 'نتائج جرد اليوم' },
@@ -10,6 +10,8 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'vehicle', label: 'أدوات المركبات' },
   { key: 'ondemand', label: 'أدوات حسب الحاجة' },
   { key: 'requests', label: 'طلبات الأدوات' },
+  { key: 'template', label: 'العدة القياسية' },
+  { key: 'reports', label: 'تقارير النواقص' },
 ]
 
 const requestStatusLabels: Record<ToolRequest['status'], string> = {
@@ -27,9 +29,12 @@ const requestStatusColors: Record<ToolRequest['status'], string> = {
 }
 
 export default function InventoryPage() {
-  const { employee: currentUser } = useSession()
+  const { employee: currentUser, permissions } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
-  const canManageInventory = isAdmin || currentUser?.role === 'HR_COORDINATOR'
+  // "جرد الأدوات" الآن صلاحية مفعّلة فعلياً بالباك-إند (requireHROrInventory) —
+  // أي موظف مُنح صلاحية inventory من صفحة الصلاحيات يقدر يدير الأدوات، حتى لو
+  // دوره مختلف عن HR_COORDINATOR (مثلاً PROCUREMENT_ADMIN).
+  const canManageInventory = isAdmin || currentUser?.role === 'HR_COORDINATOR' || permissions.includes('inventory')
   // إداري الكميات مسؤول عن توفير وإضافة "أدوات حسب الحاجة" (نفس مسؤوليته
   // بطلبات المواد الناقصة من الموظفين) — بالإضافة للأدمن.
   const canManageOnDemand = isAdmin || currentUser?.role === 'PROCUREMENT_ADMIN'
@@ -78,6 +83,15 @@ export default function InventoryPage() {
   // Tool requests
   const [toolRequests, setToolRequests] = useState<ToolRequest[]>([])
 
+  // العدة القياسية (PersonalToolTemplateItem)
+  const [templateItems, setTemplateItems] = useState<PersonalToolTemplateItem[]>([])
+  const [templateName, setTemplateName] = useState('')
+  const [templateSubmitting, setTemplateSubmitting] = useState(false)
+
+  // تقارير النواقص
+  const [bookingToolChecks, setBookingToolChecks] = useState<BookingToolCheck[]>([])
+  const [vehicleToolChecks, setVehicleToolChecks] = useState<VehicleToolCheck[]>([])
+
   const [submitting, setSubmitting] = useState(false)
 
   const load = () => {
@@ -87,19 +101,45 @@ export default function InventoryPage() {
       api.getOnDemandTools(),
       api.getToolRequests(),
       api.getEmployees(),
+      api.getPersonalToolTemplate(),
     ])
-      .then(([pt, vt, od, tr, emps]) => {
+      .then(([pt, vt, od, tr, emps, tmpl]) => {
         setPersonalTools(pt)
         setVehicleTools(vt)
         setOnDemandTools(od)
         setToolRequests(tr)
         setEmployees(emps)
+        setTemplateItems(tmpl)
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
+
+  useEffect(() => {
+    if (activeTab !== 'reports') return
+    api.getVehicleToolChecks().then(setVehicleToolChecks).catch(() => setVehicleToolChecks([]))
+    api.getAllBookingToolChecks().then(setBookingToolChecks).catch(() => setBookingToolChecks([]))
+  }, [activeTab])
+
+  const handleAddTemplateItem = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setTemplateSubmitting(true)
+    try {
+      const item = await api.createPersonalToolTemplateItem(templateName)
+      setTemplateItems((prev) => [...prev, item])
+      setTemplateName('')
+    } catch { /* ignore */ }
+    finally { setTemplateSubmitting(false) }
+  }
+
+  const handleDeleteTemplateItem = async (id: string) => {
+    try {
+      await api.deletePersonalToolTemplateItem(id)
+      setTemplateItems((prev) => prev.filter((t) => t.id !== id))
+    } catch { /* ignore */ }
+  }
 
   const handleAddPersonalTool = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -555,6 +595,128 @@ export default function InventoryPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Personal Tool Standard Kit Template Tab */}
+          {activeTab === 'template' && (
+            <div>
+              {canManageInventory && (
+                <form onSubmit={handleAddTemplateItem} className="mb-6 flex gap-3 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                  <input
+                    required
+                    value={templateName}
+                    onChange={(e) => setTemplateName(e.target.value)}
+                    placeholder="اسم الأداة القياسية"
+                    className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
+                  />
+                  <button type="submit" disabled={templateSubmitting} className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3 font-medium text-white shadow-md shadow-brand-900/20 disabled:opacity-50">
+                    {templateSubmitting ? 'جاري الإضافة...' : 'إضافة للعدة القياسية'}
+                  </button>
+                </form>
+              )}
+              <p className="mb-4 text-sm text-slate-500">
+                أي أداة تُضاف هنا تنضاف فوراً لعدة كل الموظفين الحاليين، وأي موظف جديد ياخذ العدة القياسية كاملة تلقائياً وقت إنشاء حسابه.
+              </p>
+              <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200 text-right">
+                    <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
+                      <tr>
+                        <th className="px-4 py-3 text-sm font-semibold">اسم الأداة</th>
+                        {canManageInventory && <th className="px-4 py-3 text-sm font-semibold">إجراءات</th>}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {templateItems.map((item) => (
+                        <tr key={item.id} className="transition-colors hover:bg-slate-50">
+                          <td className="px-4 py-3 font-medium">{item.name}</td>
+                          {canManageInventory && (
+                            <td className="px-4 py-3">
+                              <button
+                                onClick={() => handleDeleteTemplateItem(item.id)}
+                                className="rounded-lg bg-red-100 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-200"
+                              >
+                                حذف
+                              </button>
+                            </td>
+                          )}
+                        </tr>
+                      ))}
+                      {templateItems.length === 0 && (
+                        <tr><td colSpan={canManageInventory ? 2 : 1} className="px-4 py-6 text-center text-slate-400">لا توجد عناصر بالعدة القياسية</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Missing-tool Reports Tab: booking tool checks + vehicle tool checks */}
+          {activeTab === 'reports' && (
+            <div className="space-y-8">
+              <div>
+                <h3 className="mb-3 text-lg font-bold text-slate-700">نواقص الأدوات الشخصية عند استلام الحجوزات</h3>
+                <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-right">
+                      <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
+                        <tr>
+                          <th className="px-4 py-3 text-sm font-semibold">الموظف</th>
+                          <th className="px-4 py-3 text-sm font-semibold">الحجز</th>
+                          <th className="px-4 py-3 text-sm font-semibold">الأدوات الناقصة</th>
+                          <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {bookingToolChecks.map((c) => (
+                          <tr key={c.id} className="transition-colors hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium">{c.employee?.name || '-'}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-500">{c.bookingId}</td>
+                            <td className="px-4 py-3">{c.missingItems || 'لا يوجد نقص'}</td>
+                            <td className="px-4 py-3 text-slate-500">{new Date(c.checkedAt).toLocaleDateString('ar-IQ')}</td>
+                          </tr>
+                        ))}
+                        {bookingToolChecks.length === 0 && (
+                          <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">لا توجد فحوصات مسجّلة</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="mb-3 text-lg font-bold text-slate-700">نواقص أدوات المركبات العامة عند بدء المهام (ليدر)</h3>
+                <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200 text-right">
+                      <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
+                        <tr>
+                          <th className="px-4 py-3 text-sm font-semibold">الموظف</th>
+                          <th className="px-4 py-3 text-sm font-semibold">المركبة</th>
+                          <th className="px-4 py-3 text-sm font-semibold">الأدوات الناقصة</th>
+                          <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {vehicleToolChecks.map((c) => (
+                          <tr key={c.id} className="transition-colors hover:bg-slate-50">
+                            <td className="px-4 py-3 font-medium">{c.employee?.name || '-'}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-slate-500">{c.vehicleId}</td>
+                            <td className="px-4 py-3">{c.missingToolNames || 'لا يوجد نقص'}</td>
+                            <td className="px-4 py-3 text-slate-500">{new Date(c.createdAt).toLocaleDateString('ar-IQ')}</td>
+                          </tr>
+                        ))}
+                        {vehicleToolChecks.length === 0 && (
+                          <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">لا توجد فحوصات مسجّلة</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           )}

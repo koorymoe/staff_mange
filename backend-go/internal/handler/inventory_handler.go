@@ -239,3 +239,56 @@ func (h *InventoryHandler) ReturnToolRequest(w http.ResponseWriter, r *http.Requ
 	}
 	WriteJSON(w, http.StatusOK, request)
 }
+
+// ── Personal Tool Template (العدة القياسية) ─────────────────────────────────
+
+func (h *InventoryHandler) ListPersonalToolTemplateItems(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.ListPersonalToolTemplateItems()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب العدة القياسية")
+		return
+	}
+	WriteJSON(w, http.StatusOK, items)
+}
+
+func (h *InventoryHandler) CreatePersonalToolTemplateItem(w http.ResponseWriter, r *http.Request) {
+	var req model.CreatePersonalToolTemplateItemRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	item, err := h.service.CreatePersonalToolTemplateItem(req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, item)
+}
+
+func (h *InventoryHandler) DeletePersonalToolTemplateItem(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.DeletePersonalToolTemplateItem(r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+// ── Vehicle Tool Checks ──────────────────────────────────────────────────────
+
+func (h *InventoryHandler) ListAllBookingToolChecks(w http.ResponseWriter, r *http.Request) {
+	checks, err := h.service.ListAllBookingToolChecks()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب فحوصات أدوات الحجوزات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, checks)
+}
+
+func (h *InventoryHandler) ListVehicleToolChecks(w http.ResponseWriter, r *http.Request) {
+	checks, err := h.service.ListVehicleToolChecks()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب فحوصات أدوات المركبات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, checks)
+}

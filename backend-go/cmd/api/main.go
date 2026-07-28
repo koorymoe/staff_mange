@@ -113,6 +113,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// Services
 	authService := service.NewAuthService(employeeRepo, loginAuditRepo, cfg.JWTSecret)
 	employeeService := service.NewEmployeeService(employeeRepo)
+	employeeService.SetInventoryRepository(inventoryRepo)
 	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
 	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
 	customerService := service.NewCustomerService(customerRepo)
@@ -182,7 +183,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	statsHandler := handler.NewStatsHandler(statsService)
 	vehicleHandler := handler.NewVehicleHandler(vehicleService)
-	vehicleMissionHandler := handler.NewVehicleMissionHandler(vehicleMissionService, vehicleMissionRatingService, vehicleBookingService)
+	vehicleMissionHandler := handler.NewVehicleMissionHandler(vehicleMissionService, vehicleMissionRatingService, vehicleBookingService, inventoryService, employeeRepo)
 	vehicleBookingHandler := handler.NewVehicleBookingHandler(vehicleBookingService)
 	qualityHandler := handler.NewQualityHandler(qualityService)
 	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
@@ -206,6 +207,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireCoordinator := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "coordinator")
 	requireCrewManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "crew_management")
 	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
+	// إدارة المخزون (عدة الموظفين الشخصية/أدوات المركبات/العدة القياسية) — مسموحة
+	// لأدوار HR/ADMIN كالمعتاد، أو لأي موظف عنده صلاحية "inventory" المخصصة
+	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
+	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
+	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
 	requireInventoryApprove := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR", "MONITOR")
 	// تعديل مهارات موظف يعتمد على صلاحية "staff_management" الممنوحة فعلياً (نفس
 	// الصلاحية الي تفتح صفحة "إدارة الكوادر" بالواجهة للمراقب أيضاً) — مو دور
@@ -314,9 +320,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// المخزون — أدوات شخصية / مركبات / أدوات مشتركة / طلبات الأدوات
 	mux.Handle("GET /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalTools), requireAuth))
-	mux.Handle("POST /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalTool), requireAuth, requireHR))
-	mux.Handle("PUT /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdatePersonalTool), requireAuth, requireHR))
-	mux.Handle("DELETE /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalTool), requireAuth, requireHR))
+	mux.Handle("POST /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalTool), requireAuth, requireHROrInventory))
+	mux.Handle("PUT /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdatePersonalTool), requireAuth, requireHROrInventory))
+	mux.Handle("DELETE /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalTool), requireAuth, requireHROrInventory))
+
+	// العدة القياسية (PersonalToolTemplateItem) — القراءة مفتوحة لأي موظف، الإضافة/الحذف
+	// لمن عنده صلاحية "inventory" أو HR/ADMIN (نفس requireHROrInventory).
+	mux.Handle("GET /api/inventory/personal-template", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalToolTemplateItems), requireAuth))
+	mux.Handle("POST /api/inventory/personal-template", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalToolTemplateItem), requireAuth, requireHROrInventory))
+	mux.Handle("DELETE /api/inventory/personal-template/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalToolTemplateItem), requireAuth, requireHROrInventory))
 
 	// جرد يومي: الموظف يؤكد جرد عدته الخاصة، الإداري يشوف نتائج اليوم لكل الموظفين
 	mux.Handle("POST /api/inventory/checks", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateInventoryCheck), requireAuth))
@@ -327,8 +339,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateVehicleTool), requireAuth))
 	// تعديل/حذف أداة مركبة موجودة يقتصر على إدارة الكوادر (نفس صلاحية أدوات
 	// الأدوات الشخصية requireHR) — الإنشاء يبقى مفتوح لأي موظف (نفس السلوك القديم).
-	mux.Handle("PUT /api/inventory/vehicle/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateVehicleTool), requireAuth, requireHR))
-	mux.Handle("DELETE /api/inventory/vehicle/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteVehicleTool), requireAuth, requireHR))
+	mux.Handle("PUT /api/inventory/vehicle/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateVehicleTool), requireAuth, requireHROrInventory))
+	mux.Handle("DELETE /api/inventory/vehicle/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteVehicleTool), requireAuth, requireHROrInventory))
+	mux.Handle("GET /api/inventory/vehicle-tool-checks", middleware.Chain(http.HandlerFunc(inventoryHandler.ListVehicleToolChecks), requireAuth))
+	mux.Handle("GET /api/inventory/booking-tool-checks", middleware.Chain(http.HandlerFunc(inventoryHandler.ListAllBookingToolChecks), requireAuth))
 
 	mux.Handle("GET /api/inventory/ondemand", middleware.Chain(http.HandlerFunc(inventoryHandler.ListOnDemandTools), requireAuth))
 	mux.Handle("POST /api/inventory/ondemand", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateOnDemandTool), requireAuth))
@@ -337,7 +351,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/inventory/ondemand/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateOnDemandTool), requireAuth, requireProcurementAdmin))
 
 	mux.Handle("GET /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.ListToolRequests), requireAuth))
-	mux.Handle("POST /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth))
+	// طلب أداة "حسب الحاجة" مقصور على الليدر فقط (isLeader فريش من قاعدة البيانات) —
+	// الموظف العادي يبقى يشوف حالة طلباته (GET) بس ما يقدر ينشئ طلب جديد.
+	mux.Handle("POST /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth, requireLeader))
 	mux.Handle("PUT /api/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth, requireInventoryApprove))
 	mux.Handle("PUT /api/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth, requireInventoryApprove))
 	mux.Handle("PUT /api/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth))
@@ -530,6 +546,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.List), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicle-missions/{id}", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Get), requireAuth))
 	mux.Handle("POST /api/vehicle-missions/{id}/rating", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.CreateRating), requireAuth, requireVehicleMgmt))
+	// فحص أدوات المركبة العامة عند بدء مهمة — حصراً لليدر (نفس requireLeader
+	// المستخدم بصيانة الأجهزة)، الموظف العادي ما يشوف/يستخدم هالراوت إطلاقاً.
+	mux.Handle("POST /api/vehicle-missions/{id}/tool-check", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.CreateToolCheck), requireAuth, requireLeader))
 	mux.Handle("GET /api/employees/{id}/driver-rating-summary", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.DriverRatingSummary), requireAuth))
 
 	// نظام حجز المركبات (مسبق) — منفصل عن بدء المهمة الفعلي أعلاه.
@@ -567,7 +586,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — حصراً للـليدر (isLeader فريش من
 	// قاعدة البيانات بكل طلب، مو من التوكن)
-	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
 	mux.Handle("GET /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.List), requireAuth, requireLeader))
 	mux.Handle("POST /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Create), requireAuth, requireLeader))
 	mux.Handle("PUT /api/device-maintenance/{id}", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Update), requireAuth, requireLeader))

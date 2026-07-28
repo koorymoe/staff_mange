@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Vehicle, type VehicleMission, type Employee, type VehicleBooking } from '../api'
+import { api, type Vehicle, type VehicleMission, type Employee, type VehicleBooking, type VehicleTool } from '../api'
 import { useSession, hasMonitorAccess } from '../session'
 
 const STAR_FIELDS: { key: 'commitment' | 'vehicleCare' | 'driving' | 'cleanliness'; label: string }[] = [
@@ -116,6 +116,30 @@ export default function VehicleMissionsPage() {
     return () => clearInterval(t)
   }, [])
 
+  // فحص أدوات المركبة العامة بعد بدء المهمة — يظهر فقط لما السيرفر يرجّع
+  // requiresToolCheck=true (يعني الموظف الي بادر المهمة ليدر فعلاً، isLeader
+  // فريش من قاعدة البيانات). نفس نمط مودال شيك أدوات الحجز (MyTasks.tsx):
+  // كل الأدوات مؤشرة افتراضياً كموجودة، الليدر يشيل التأشير عن الناقص بس.
+  const [toolCheckMission, setToolCheckMission] = useState<VehicleMission | null>(null)
+  const [toolCheckTools, setToolCheckTools] = useState<VehicleTool[]>([])
+  const [toolCheckChecked, setToolCheckChecked] = useState<Record<string, boolean>>({})
+  const [toolCheckLoading, setToolCheckLoading] = useState(false)
+  const [toolCheckSubmitting, setToolCheckSubmitting] = useState(false)
+
+  const handleConfirmToolCheck = async () => {
+    if (!toolCheckMission) return
+    setToolCheckSubmitting(true)
+    try {
+      const missingToolNames = toolCheckTools.filter((t) => !toolCheckChecked[t.id]).map((t) => t.name)
+      await api.createVehicleMissionToolCheck(toolCheckMission.id, missingToolNames)
+      setToolCheckMission(null)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تأكيد فحص الأدوات')
+    } finally {
+      setToolCheckSubmitting(false)
+    }
+  }
+
   const busyVehicleIds = new Set(activeMissions.map((m) => m.vehicleId))
   const selectedVehicle = vehicles.find((v) => v.id === selVehicleId) || null
 
@@ -150,6 +174,21 @@ export default function VehicleMissionsPage() {
       if (result.bookingWarning) setStartWarning(result.bookingWarning)
       setSelVehicleId(''); setPurpose(''); setDestination(''); setStartOdometer(''); setPassengerIds([])
       loadActive()
+      if (result.requiresToolCheck) {
+        setToolCheckMission(result)
+        setToolCheckLoading(true)
+        try {
+          const tools = await api.getVehicleTools(result.vehicleId)
+          setToolCheckTools(tools)
+          const allChecked: Record<string, boolean> = {}
+          tools.forEach((t) => { allChecked[t.id] = true })
+          setToolCheckChecked(allChecked)
+        } catch {
+          setToolCheckMission(null)
+        } finally {
+          setToolCheckLoading(false)
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'تعذر بدء المهمة')
     } finally {
@@ -594,6 +633,59 @@ export default function VehicleMissionsPage() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {toolCheckMission && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-900">فحص أدوات المركبة العامة</h3>
+            <p className="mt-1 text-sm font-medium text-amber-700">
+              علّم فقط الأداة الناقصة بالمركبة — الباقي مؤشر مسبقاً كموجود.
+            </p>
+
+            {toolCheckLoading ? (
+              <p className="mt-4 text-slate-400">جاري التحميل...</p>
+            ) : (
+              <div className="mt-4 max-h-64 space-y-2 overflow-y-auto">
+                {toolCheckTools.map((tool) => (
+                  <label
+                    key={tool.id}
+                    className="flex cursor-pointer items-center gap-3 rounded-lg border border-slate-200 px-3 py-2"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={!!toolCheckChecked[tool.id]}
+                      onChange={() =>
+                        setToolCheckChecked((prev) => ({ ...prev, [tool.id]: !prev[tool.id] }))
+                      }
+                      className="h-5 w-5 accent-brand-600"
+                    />
+                    <span className="text-sm font-medium text-brand-900">{tool.name}</span>
+                  </label>
+                ))}
+                {toolCheckTools.length === 0 && (
+                  <p className="text-sm text-slate-400">لا توجد أدوات عامة مسجّلة لهذه المركبة</p>
+                )}
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-2">
+              <button
+                onClick={() => setToolCheckMission(null)}
+                className="flex-1 rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-50"
+              >
+                تخطي
+              </button>
+              <button
+                onClick={handleConfirmToolCheck}
+                disabled={toolCheckSubmitting || toolCheckLoading}
+                className="flex-1 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+              >
+                {toolCheckSubmitting ? 'جارٍ التأكيد...' : 'تم'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

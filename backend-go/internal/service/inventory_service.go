@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"strings"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -108,4 +109,40 @@ func (s *InventoryService) RejectToolRequest(id string) (*model.ToolRequest, err
 
 func (s *InventoryService) ReturnToolRequest(id string) (*model.ToolRequest, error) {
 	return s.repo.ReturnToolRequest(id)
+}
+
+// ── Personal Tool Template (العدة القياسية) ─────────────────────────────────
+
+func (s *InventoryService) ListPersonalToolTemplateItems() ([]model.PersonalToolTemplateItem, error) {
+	return s.repo.ListPersonalToolTemplateItems()
+}
+
+func (s *InventoryService) CreatePersonalToolTemplateItem(req model.CreatePersonalToolTemplateItemRequest) (*model.PersonalToolTemplateItem, error) {
+	if req.Name == "" {
+		return nil, errors.New("اسم الأداة مطلوب")
+	}
+	return s.repo.CreatePersonalToolTemplateItem(req.Name)
+}
+
+func (s *InventoryService) DeletePersonalToolTemplateItem(id string) error {
+	return s.repo.DeletePersonalToolTemplateItem(id)
+}
+
+// ── Vehicle Tool Check ───────────────────────────────────────────────────────
+
+func (s *InventoryService) ListVehicleToolChecks() ([]model.VehicleToolCheck, error) {
+	return s.repo.ListVehicleToolChecks()
+}
+
+func (s *InventoryService) ListAllBookingToolChecks() ([]model.BookingToolCheck, error) {
+	return s.repo.ListAllBookingToolChecks()
+}
+
+func (s *InventoryService) CreateVehicleToolCheck(vehicleID, missionID, employeeID string, req model.CreateVehicleToolCheckRequest) (*model.VehicleToolCheck, error) {
+	var missing *string
+	if len(req.MissingToolNames) > 0 {
+		joined := strings.Join(req.MissingToolNames, "، ")
+		missing = &joined
+	}
+	return s.repo.CreateVehicleToolCheck(vehicleID, missionID, employeeID, missing)
 }

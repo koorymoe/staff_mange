@@ -155,6 +155,20 @@ func (r *InventoryRepository) CreateBookingToolCheck(bookingID, employeeID strin
 	return &c, nil
 }
 
+// ListAllBookingToolChecks يرجّع كل لقطات الأدوات الناقصة عند استلام الحجوزات
+// (بدون تصفية حسب حجز معين) — تستخدم بتبويب "تقارير النواقص" بصفحة المخزون.
+func (r *InventoryRepository) ListAllBookingToolChecks() ([]model.BookingToolCheck, error) {
+	checks := []model.BookingToolCheck{}
+	err := r.db.Select(&checks, `SELECT * FROM "BookingToolCheck" ORDER BY "checkedAt" DESC LIMIT 200`)
+	if err != nil {
+		return nil, err
+	}
+	for i := range checks {
+		checks[i].Employee = r.loadEmployeeBrief(checks[i].EmployeeID)
+	}
+	return checks, nil
+}
+
 func (r *InventoryRepository) ListBookingToolChecks(bookingID string) ([]model.BookingToolCheck, error) {
 	checks := []model.BookingToolCheck{}
 	err := r.db.Select(&checks, `SELECT * FROM "BookingToolCheck" WHERE "bookingId" = $1 ORDER BY "checkedAt" DESC`, bookingID)
@@ -335,6 +349,92 @@ func (r *InventoryRepository) RejectToolRequest(id string) (*model.ToolRequest, 
 	}
 	r.hydrateRequest(&req)
 	return &req, nil
+}
+
+// ── Personal Tool Template (العدة القياسية) ─────────────────────────────────
+
+func (r *InventoryRepository) ListPersonalToolTemplateItems() ([]model.PersonalToolTemplateItem, error) {
+	items := []model.PersonalToolTemplateItem{}
+	err := r.db.Select(&items, `SELECT * FROM "PersonalToolTemplateItem" ORDER BY "createdAt" ASC`)
+	return items, err
+}
+
+// CreatePersonalToolTemplateItem يضيف عنصر جديد للعدة القياسية، وفوراً ينشئ
+// PersonalTool مطابق لكل موظف حالي (barcode مولّد تلقائياً لأنه عمود NOT NULL
+// وما عنده معنى حقيقي هون — التتبع الفريد صار بالعدة القياسية نفسها، مو بالباركود).
+func (r *InventoryRepository) CreatePersonalToolTemplateItem(name string) (*model.PersonalToolTemplateItem, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var item model.PersonalToolTemplateItem
+	if err := tx.Get(&item, `
+		INSERT INTO "PersonalToolTemplateItem" (id, name)
+		VALUES (gen_random_uuid()::text, $1)
+		RETURNING *
+	`, name); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO "PersonalTool" (id, "employeeId", name, barcode)
+		SELECT gen_random_uuid()::text, e.id, $1, 'TPL-' || substr(gen_random_uuid()::text, 1, 12)
+		FROM "Employee" e
+	`, name); err != nil {
+		return nil, err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &item, nil
+}
+
+func (r *InventoryRepository) DeletePersonalToolTemplateItem(id string) error {
+	_, err := r.db.Exec(`DELETE FROM "PersonalToolTemplateItem" WHERE id = $1`, id)
+	return err
+}
+
+// ApplyPersonalToolTemplateToEmployee يضيف PersonalTool لكل عنصر بالعدة القياسية
+// لموظف واحد — يُستدعى فور إنشاء موظف جديد (employee_service.go) حتى ياخذ
+// القائمة كاملة تلقائياً بدون أي خطوة يدوية من الإداري.
+func (r *InventoryRepository) ApplyPersonalToolTemplateToEmployee(employeeID string) error {
+	_, err := r.db.Exec(`
+		INSERT INTO "PersonalTool" (id, "employeeId", name, barcode)
+		SELECT gen_random_uuid()::text, $1, t.name, 'TPL-' || substr(gen_random_uuid()::text, 1, 12)
+		FROM "PersonalToolTemplateItem" t
+	`, employeeID)
+	return err
+}
+
+// ── Vehicle Tool Check (لقطة أدوات المركبة الناقصة عند بدء مهمة من ليدر) ────
+
+func (r *InventoryRepository) CreateVehicleToolCheck(vehicleID, missionID, employeeID string, missingToolNames *string) (*model.VehicleToolCheck, error) {
+	var c model.VehicleToolCheck
+	err := r.db.Get(&c, `
+		INSERT INTO "VehicleToolCheck" (id, "vehicleId", "missionId", "employeeId", "missingToolNames")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+		RETURNING *
+	`, vehicleID, missionID, employeeID, missingToolNames)
+	if err != nil {
+		return nil, err
+	}
+	c.Employee = r.loadEmployeeBrief(c.EmployeeID)
+	return &c, nil
+}
+
+func (r *InventoryRepository) ListVehicleToolChecks() ([]model.VehicleToolCheck, error) {
+	checks := []model.VehicleToolCheck{}
+	err := r.db.Select(&checks, `SELECT * FROM "VehicleToolCheck" ORDER BY "createdAt" DESC`)
+	if err != nil {
+		return nil, err
+	}
+	for i := range checks {
+		checks[i].Employee = r.loadEmployeeBrief(checks[i].EmployeeID)
+	}
+	return checks, nil
 }
 
 func (r *InventoryRepository) ReturnToolRequest(id string) (*model.ToolRequest, error) {

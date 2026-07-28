@@ -172,6 +172,9 @@ func versionedMigrations() []Migration {
 	// الديكور الجديدة (حدادة/نجارة/صباغة/سيراميك/لبخ/تأسيس ماء ومجاري/جبس بورد)
 	// عن الشعبة الهندسية الموجودة أصلاً، بدون أي تأثير رجعي (افتراضي ENGINEERING).
 	result = append(result, divisionVersionedMigrations()...)
+	// 0133 وما بعدها: العدة القياسية للأدوات الشخصية (PersonalToolTemplateItem) +
+	// لقطة أدوات المركبة العامة الناقصة عند بدء مهمة من قبل ليدر (VehicleToolCheck).
+	result = append(result, inventoryFeaturesVersionedMigrations()...)
 	return result
 }
 

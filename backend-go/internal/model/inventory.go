@@ -133,3 +133,36 @@ type CreateToolRequestRequest struct {
 type ApproveToolRequestRequest struct {
 	ApprovedByID string `json:"approvedById"`
 }
+
+// PersonalToolTemplateItem هو "عدة قياسية" — قائمة رئيسية بأسماء الأدوات الشخصية
+// الي المفروض كل موظف يكون عنده إياها. أي عنصر جديد ينضاف هون يتطبق فوراً على
+// كل الموظفين الحاليين (ينشئ PersonalTool لكل واحد منهم)، وأي موظف جديد ينضاف
+// بعدين ياخذ القائمة كاملة تلقائياً وقت إنشاء حسابه (انظر employee_service.go).
+type PersonalToolTemplateItem struct {
+	ID        string    `db:"id" json:"id"`
+	Name      string    `db:"name" json:"name"`
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+}
+
+type CreatePersonalToolTemplateItemRequest struct {
+	Name string `json:"name"`
+}
+
+// VehicleToolCheck لقطة تسجّل الأدوات العامة الناقصة بمركبة معينة عند لحظة
+// بدء مهمة من قبل ليدر — نفس فكرة BookingToolCheck بس لأدوات المركبة العامة
+// وتُطلب فقط لما الموظف الي بادر المهمة يكون ليدر (isLeader=true فريش من قاعدة
+// البيانات)، الموظف العادي يقدر يبدأ مهمة بدون هالخطوة إطلاقاً.
+type VehicleToolCheck struct {
+	ID               string    `db:"id" json:"id"`
+	VehicleID        string    `db:"vehicleId" json:"vehicleId"`
+	MissionID        string    `db:"missionId" json:"missionId"`
+	EmployeeID       string    `db:"employeeId" json:"employeeId"`
+	MissingToolNames *string   `db:"missingToolNames" json:"missingToolNames"`
+	CreatedAt        time.Time `db:"createdAt" json:"createdAt"`
+
+	Employee *EmployeeBrief `db:"-" json:"employee"`
+}
+
+type CreateVehicleToolCheckRequest struct {
+	MissingToolNames []string `json:"missingToolNames"`
+}

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -11,11 +12,19 @@ import (
 )
 
 type EmployeeService struct {
-	repo *repository.EmployeeRepository
+	repo          *repository.EmployeeRepository
+	inventoryRepo *repository.InventoryRepository
 }
 
 func NewEmployeeService(repo *repository.EmployeeRepository) *EmployeeService {
 	return &EmployeeService{repo: repo}
+}
+
+// SetInventoryRepository يربط مستودع المخزون بعد الإنشاء (تجنباً لتغيير كل نقاط
+// استدعاء NewEmployeeService الحالية) — يُستخدم فقط لتطبيق العدة القياسية
+// (PersonalToolTemplateItem) تلقائياً على أي موظف جديد وقت الإنشاء.
+func (s *EmployeeService) SetInventoryRepository(inventoryRepo *repository.InventoryRepository) {
+	s.inventoryRepo = inventoryRepo
 }
 
 func (s *EmployeeService) List() ([]model.Employee, error) {
@@ -93,6 +102,14 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 
 	if err := s.repo.Create(employee); err != nil {
 		return nil, err
+	}
+	// موظف جديد ياخذ العدة القياسية (PersonalToolTemplateItem) كاملة تلقائياً —
+	// بدون أي خطوة يدوية من الإداري بعدها. فشل هالخطوة ما يوقف إنشاء الموظف
+	// نفسه (تسجيل الموظف أهم)، بس نسجّل الخطأ بالسجلات.
+	if s.inventoryRepo != nil {
+		if err := s.inventoryRepo.ApplyPersonalToolTemplateToEmployee(employee.ID); err != nil {
+			log.Printf("تحذير: تعذر تطبيق العدة القياسية على الموظف الجديد %s: %v", employee.ID, err)
+		}
 	}
 	return employee, nil
 }

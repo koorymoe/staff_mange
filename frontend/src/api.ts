@@ -665,6 +665,10 @@ export interface VehicleMission {
   driver: { id: string; name: string } | null
   passengers: VehicleMissionPassenger[]
   rating?: VehicleMissionRating | null
+  // فقط عند إرجاع استجابة بدء مهمة جديدة (startVehicleMission) — يوجّه الواجهة
+  // تعرض خطوة فحص أدوات المركبة العامة، ومقصور على الليدر (isLeader) فقط.
+  requiresToolCheck?: boolean
+  bookingWarning?: string | null
 }
 
 export interface DriverRatingSummary {
@@ -1014,6 +1018,27 @@ export interface OnDemandTool {
   totalQuantity: number
   availableQuantity: number
   status: 'AVAILABLE' | 'CHECKED_OUT' | 'DAMAGED'
+}
+
+// العدة القياسية — قائمة رئيسية بأسماء الأدوات الشخصية الي كل موظف لازم يكون
+// عنده إياها. إضافة عنصر جديد تطبّق فوراً على كل الموظفين الحاليين، وأي موظف
+// جديد ياخذها تلقائياً وقت إنشاء حسابه.
+export interface PersonalToolTemplateItem {
+  id: string
+  name: string
+  createdAt: string
+}
+
+// لقطة أدوات المركبة العامة الناقصة عند بدء مهمة من قبل ليدر (نفس فكرة
+// BookingToolCheck بس لأدوات المركبة، ومقصورة على الليدر فقط).
+export interface VehicleToolCheck {
+  id: string
+  vehicleId: string
+  missionId: string
+  employeeId: string
+  missingToolNames: string | null
+  createdAt: string
+  employee?: { id: string; name: string; position: string | null }
 }
 
 // صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — منفصلة عن صيانة اشتراكات GPS
@@ -1701,6 +1726,17 @@ export const api = {
     request<ToolRequestItem>(`/inventory/requests/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedById }) }),
   rejectToolRequest: (id: string) =>
     request<ToolRequestItem>(`/inventory/requests/${id}/reject`, { method: 'PUT', body: JSON.stringify({}) }),
+  // العدة القياسية (PersonalToolTemplateItem)
+  getPersonalToolTemplate: () => request<PersonalToolTemplateItem[]>('/inventory/personal-template'),
+  createPersonalToolTemplateItem: (name: string) =>
+    request<PersonalToolTemplateItem>('/inventory/personal-template', { method: 'POST', body: JSON.stringify({ name }) }),
+  deletePersonalToolTemplateItem: (id: string) =>
+    request<void>(`/inventory/personal-template/${id}`, { method: 'DELETE' }),
+  // فحوصات أدوات المركبات (VehicleToolCheck) + كل فحوصات الحجوزات (BookingToolCheck)
+  getVehicleToolChecks: () => request<VehicleToolCheck[]>('/inventory/vehicle-tool-checks'),
+  getAllBookingToolChecks: () => request<BookingToolCheck[]>('/inventory/booking-tool-checks'),
+  createVehicleMissionToolCheck: (missionId: string, missingToolNames: string[]) =>
+    request<VehicleToolCheck>(`/vehicle-missions/${missionId}/tool-check`, { method: 'POST', body: JSON.stringify({ missingToolNames }) }),
   returnToolRequest: (id: string) =>
     request<ToolRequestItem>(`/inventory/requests/${id}/return`, { method: 'PUT', body: JSON.stringify({}) }),
 
