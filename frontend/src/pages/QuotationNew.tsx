@@ -50,6 +50,7 @@ export default function QuotationNew() {
   const [pmImage, setPmImage] = useState('')
   const [pmStatus, setPmStatus] = useState('')
   const autocompleteRefs = useRef<(HTMLDivElement | null)[]>([])
+  const [dropdownRect, setDropdownRect] = useState<{ top: number; left: number; width: number } | null>(null)
 
   const showStatus = (text: string, type: 'ok' | 'err') => {
     setStatusMsg({ text, type })
@@ -97,6 +98,28 @@ export default function QuotationNew() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // اللستة المنسدلة تنرندر بـ position: fixed حتى ما تنقص/تنقطع داخل صندوق
+  // الجدول (اللي عنده overflowX: auto يقص أي محتوى زايد بالطول عمودياً بعد
+  // ما المتصفح يفرض overflow-y: auto تلقائياً بنفس الوقت). لازم نحسب مكانها
+  // بالنسبة للشاشة كل ما تنفتح أو تنحرك الصفحة.
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (activeAutocomplete === null) { setDropdownRect(null); return }
+    const update = () => {
+      const el = autocompleteRefs.current[activeAutocomplete]
+      if (!el) return
+      const r = el.getBoundingClientRect()
+      setDropdownRect({ top: r.bottom, left: r.left, width: r.width })
+    }
+    update()
+    window.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      window.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [activeAutocomplete])
 
   const today = new Date().toISOString().split('T')[0]
 
@@ -562,10 +585,10 @@ ${pageShell(`
                         autoComplete="off"
                         style={{ ...tableInputStyle, textAlign: 'right' }}
                       />
-                      {activeAutocomplete === index && filteredProducts.length > 0 && (
+                      {activeAutocomplete === index && filteredProducts.length > 0 && dropdownRect && (
                         <div style={{
-                          position: 'absolute', top: '100%', right: 0, left: 0,
-                          background: 'white', borderRadius: '10px', maxHeight: '200px', overflowY: 'auto',
+                          position: 'fixed', top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width,
+                          background: 'white', borderRadius: '10px', maxHeight: '260px', overflowY: 'auto',
                           zIndex: 1000, boxShadow: '0 8px 30px rgba(0,0,0,0.15)', border: '1px solid #e0e0e0',
                         }}>
                           {filteredProducts.map((p) => (
