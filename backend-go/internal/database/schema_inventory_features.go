@@ -28,5 +28,11 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "VehicleToolCheck_vehicleId_idx" ON "VehicleToolCheck"("vehicleId");
 			CREATE INDEX IF NOT EXISTS "VehicleToolCheck_missionId_idx" ON "VehicleToolCheck"("missionId")`,
 		},
+		{
+			// رسالة بيانات دخول الزبون (يوزر + باسورد بنص حر) — لازم تنكتب قبل
+			// ما يكدر الإداري يفعّل الجهاز، مع تاريخ التفعيل.
+			Version: "0135_add_gps_device_request_credentials_message",
+			SQL:     `ALTER TABLE "GpsDeviceRequest" ADD COLUMN IF NOT EXISTS "credentialsMessage" TEXT`,
+		},
 	}
 }

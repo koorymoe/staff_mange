@@ -74,6 +74,7 @@ type GpsDeviceRequest struct {
 	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
 	ScheduledAt          *time.Time `db:"scheduledAt" json:"scheduledAt"`
 	AssignedTechnicianID *string    `db:"assignedTechnicianId" json:"-"`
+	CredentialsMessage   *string    `db:"credentialsMessage" json:"credentialsMessage"`
 
 	Customer           *GpsCustomer   `db:"-" json:"customer"`
 	Employee           *EmployeeBrief `db:"-" json:"employee"`
@@ -103,6 +104,7 @@ type UpsertGpsDeviceRequest struct {
 	DeliveredAt          *time.Time `json:"deliveredAt"`
 	ScheduledAt          *time.Time `json:"scheduledAt"`
 	AssignedTechnicianID *string    `json:"assignedTechnicianId"`
+	CredentialsMessage   *string    `json:"credentialsMessage"`
 }
 
 type GpsRenewalRequest struct {

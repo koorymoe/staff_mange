@@ -196,13 +196,14 @@ func (r *GpsRepository) UpdateDevice(id string, req model.UpsertGpsDeviceRequest
 			"activationDate" = COALESCE($19, "activationDate"),
 			"deliveredAt" = COALESCE($20, "deliveredAt"),
 			"scheduledAt" = COALESCE($21, "scheduledAt"),
-			"assignedTechnicianId" = COALESCE($22, "assignedTechnicianId")
+			"assignedTechnicianId" = COALESCE($22, "assignedTechnicianId"),
+			"credentialsMessage" = COALESCE($23, "credentialsMessage")
 		WHERE id = $1
 		RETURNING *
 	`, id, req.CustomerID, req.EmployeeID, req.AdminID, req.PurchaseType, req.SubscriptionType,
 		req.SubscriptionStart, req.SubscriptionEnd, req.SubscriptionStatus, req.Status, req.SimCardID, req.Notes,
 		req.IsChecked, req.IsActivated, req.IsDelivered, req.InvoicePhotoURL, req.GpsNumber, req.ResidenceCardNumber,
-		req.ActivationDate, req.DeliveredAt, req.ScheduledAt, req.AssignedTechnicianID)
+		req.ActivationDate, req.DeliveredAt, req.ScheduledAt, req.AssignedTechnicianID, req.CredentialsMessage)
 	if err != nil {
 		return nil, err
 	}
