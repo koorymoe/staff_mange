@@ -323,6 +323,11 @@ func (r *InventoryRepository) CreateToolRequest(employeeID, toolID string) (*mod
 	return &req, nil
 }
 
+func (r *InventoryRepository) DeleteToolRequest(id string) error {
+	_, err := r.db.Exec(`DELETE FROM "ToolRequest" WHERE id = $1`, id)
+	return err
+}
+
 func (r *InventoryRepository) ApproveToolRequest(id, approvedByID string) (*model.ToolRequest, error) {
 	var req model.ToolRequest
 	err := r.db.Get(&req, `

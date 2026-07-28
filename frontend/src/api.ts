@@ -1739,6 +1739,8 @@ export const api = {
     request<VehicleToolCheck>(`/vehicle-missions/${missionId}/tool-check`, { method: 'POST', body: JSON.stringify({ missingToolNames }) }),
   returnToolRequest: (id: string) =>
     request<ToolRequestItem>(`/inventory/requests/${id}/return`, { method: 'PUT', body: JSON.stringify({}) }),
+  deleteToolRequest: (id: string) =>
+    request<void>(`/inventory/requests/${id}`, { method: 'DELETE' }),
 
   // Complaints
   getComplaints: () => request<Complaint[]>('/complaints'),

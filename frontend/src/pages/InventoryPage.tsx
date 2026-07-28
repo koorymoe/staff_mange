@@ -214,6 +214,16 @@ export default function InventoryPage() {
     }
   }
 
+  const handleDeleteRequest = async (id: string) => {
+    if (!confirm('حذف طلب الأداة هذا نهائياً؟')) return
+    try {
+      await api.deleteToolRequest(id)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
+    }
+  }
+
   return (
     <div>
       <h2 className="text-2xl font-bold text-brand-900">إدارة المخزون والأدوات</h2>
@@ -581,6 +591,12 @@ export default function InventoryPage() {
                                   استرجاع
                                 </button>
                               )}
+                              <button
+                                onClick={() => handleDeleteRequest(r.id)}
+                                className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200"
+                              >
+                                حذف
+                              </button>
                             </div>
                           </td>
                         )}

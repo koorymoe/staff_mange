@@ -96,6 +96,10 @@ func (s *InventoryService) CreateToolRequest(req model.CreateToolRequestRequest)
 	return s.repo.CreateToolRequest(req.EmployeeID, req.ToolID)
 }
 
+func (s *InventoryService) DeleteToolRequest(id string) error {
+	return s.repo.DeleteToolRequest(id)
+}
+
 func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRequestRequest) (*model.ToolRequest, error) {
 	if req.ApprovedByID == "" {
 		return nil, errors.New("approvedById is required")

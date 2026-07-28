@@ -208,6 +208,14 @@ func (h *InventoryHandler) CreateToolRequest(w http.ResponseWriter, r *http.Requ
 	WriteJSON(w, http.StatusCreated, request)
 }
 
+func (h *InventoryHandler) DeleteToolRequest(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.DeleteToolRequest(r.PathValue("id")); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حذف الطلب")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (h *InventoryHandler) ApproveToolRequest(w http.ResponseWriter, r *http.Request) {
 	var req model.ApproveToolRequestRequest
 	if err := DecodeJSON(r, &req); err != nil {
