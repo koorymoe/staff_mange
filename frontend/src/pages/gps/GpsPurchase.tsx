@@ -35,6 +35,8 @@ export default function GpsPurchase() {
     subscriptionType: '' as '' | 'THREE_MONTHS' | 'SIX_MONTHS' | 'YEARLY',
     gpsNumber: '', residenceCardNumber: '',
   })
+  const [phoneTouched, setPhoneTouched] = useState(false)
+  const phoneError = phoneTouched && form.phone.length !== 11 ? 'رقم الهاتف يجب أن يكون 11 رقماً بالضبط' : null
 
   const [files, setFiles] = useState<Record<string, string>>({})
 
@@ -46,7 +48,8 @@ export default function GpsPurchase() {
 
   const handleSubmit = async () => {
     setError('')
-    if (form.phone.length < 10) { setError('رقم الهاتف غير صحيح'); return }
+    setPhoneTouched(true)
+    if (form.phone.length !== 11) { return }
     if (purchaseType === 'DEVICE_SIM' && !form.subscriptionType) { setError('يرجى اختيار نوع الاشتراك'); return }
     if (purchaseType === 'DEVICE_SIM' && (!files.idFront || !files.idBack || !files.resFront || !files.resBack)) {
       setError('يرجى رفع جميع صور الوثائق المطلوبة'); return
@@ -81,6 +84,7 @@ export default function GpsPurchase() {
     setSuccess(false); setStep('select_type')
     setForm({ fullName: '', fatherName: '', grandfatherName: '', phone: '', governorate: '', address: '', subscriptionType: '', gpsNumber: '', residenceCardNumber: '' })
     setFiles({})
+    setPhoneTouched(false)
   }
 
   if (success) {
@@ -129,7 +133,18 @@ export default function GpsPurchase() {
               <input placeholder="اسم الجد *" value={form.grandfatherName} onChange={e => setForm(p => ({ ...p, grandfatherName: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-3">
-              <input placeholder="رقم الهاتف *" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm" />
+              <div>
+                <input
+                  placeholder="رقم الهاتف *"
+                  value={form.phone}
+                  inputMode="numeric"
+                  maxLength={11}
+                  onChange={e => setForm(p => ({ ...p, phone: e.target.value.replace(/\D/g, '').slice(0, 11) }))}
+                  onBlur={() => setPhoneTouched(true)}
+                  className={`w-full rounded-lg border px-3 py-2.5 text-sm ${phoneError ? 'border-red-400' : 'border-slate-200'}`}
+                />
+                {phoneError && <p className="mt-1 text-xs text-red-600">{phoneError}</p>}
+              </div>
               <select value={form.governorate} onChange={e => setForm(p => ({ ...p, governorate: e.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2.5 text-sm">
                 <option value="">اختر المحافظة *</option>
                 {IRAQI_GOVERNORATES.map(g => <option key={g} value={g}>{g}</option>)}
