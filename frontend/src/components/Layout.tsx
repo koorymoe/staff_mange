@@ -18,6 +18,7 @@ interface NavItem {
   leaderOnly?: boolean
   gpsSkillOnly?: boolean
   children?: NavItem[]
+  divider?: boolean
 }
 
 const I = ({ d }: { d: string }) => (
@@ -148,6 +149,63 @@ const navItems: NavItem[] = [
   { to: '/quality', label: 'الجودة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>, permission: 'quality_control' },
   { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, anyPermission: ['monitoring', 'quality_control'] },
   { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, permission: 'crew_management' },
+
+  // ═══ فاصل: تحته "الوحدات" — كل وحدة إدارية تجمع محتوياتها الموجودة أصلاً
+  // بالنظام (نفس الصفحات، نفس الصلاحيات) تحت باب واحد بدل ما تكون مبعثرة.
+  // ملاحظة: وحدات "الإعلام والعلاقات العامة"، "التصميم"، "التقنيات (IT)" ما
+  // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
+  { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true },
+
+  {
+    to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,
+    children: [
+      { to: '/quality', label: 'الجودة', icon: <></>, permission: 'quality_control' },
+      { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
+      { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control' },
+    ],
+  },
+  {
+    // وحدة الرقابة: كل أدوات المراقبة والتدقيق العام بمكان واحد
+    to: '/unit-monitoring', label: 'وحدة الرقابة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+    children: [
+      { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
+      { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+    ],
+  },
+  {
+    to: '/unit-procurement', label: 'وحدة المشتريات والمخازن', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3z"/></svg>,
+    children: [
+      { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
+      { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROCUREMENT_ADMIN'] },
+      { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
+    ],
+  },
+  {
+    to: '/unit-finance', label: 'وحدة الحسابات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    children: [
+      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
+      { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
+      { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN'], permission: 'expenses' },
+    ],
+  },
+  {
+    to: '/unit-hr', label: 'وحدة الكوادر التنفيذية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>,
+    children: [
+      { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
+      { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
+      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'] },
+      { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'] },
+    ],
+  },
+  {
+    to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
+    children: [
+      { to: '/projects', label: 'المشاريع', icon: <></>, permission: 'project_management' },
+      { to: '/quotations', label: 'عروض الأسعار', icon: <></>, roles: ['ADMIN', 'SALES'], permission: 'quotation_system' },
+      { to: '/products', label: 'المنتجات', icon: <></>, roles: ['ADMIN'], permission: 'quotation_system' },
+    ],
+  },
 
   // ── اختصارات سريعة (أهم إجراءات المبيعات) ──
   { to: '/sales', label: 'حجز جديد', icon: <I d="M12 5v14M5 12h14" />, roles: ['SALES'] },
@@ -330,6 +388,7 @@ export default function Layout() {
   const hasMonitor = role === 'MONITOR' || employeePermissions.includes('monitoring')
   const hasAudit = employeePermissions.includes('auditing')
   const isVisible = (item: NavItem): boolean => {
+    if (item.divider) return true
     if (item.roles && role && !item.roles.includes(role)) {
       if (!((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
     }
@@ -349,6 +408,16 @@ export default function Layout() {
 
   const renderNavItem = (item: NavItem, depth: number = 0): React.ReactNode => {
     if (!isVisible(item)) return null
+
+    if (item.divider) {
+      return (
+        <div key={item.label} className="my-2 flex items-center gap-2 px-1">
+          <span className="h-px flex-1 bg-white/20" />
+          {!collapsed && <span className="text-[11px] font-bold text-white/50">{item.label}</span>}
+          <span className="h-px flex-1 bg-white/20" />
+        </div>
+      )
+    }
 
     if (item.children) {
       const kids = item.children.filter(isVisible)
