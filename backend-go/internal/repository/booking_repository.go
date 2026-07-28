@@ -20,9 +20,19 @@ func NewBookingRepository(db *sqlx.DB) *BookingRepository {
 	return &BookingRepository{db: db}
 }
 
-func (r *BookingRepository) List(status, customerID string) ([]model.Booking, error) {
+func (r *BookingRepository) List(status, customerID, date string) ([]model.Booking, error) {
 	query := `SELECT * FROM "Booking" WHERE 1=1`
 	args := []any{}
+	if date != "" {
+		// نفس منطق "موعد الحجز الفعلي" بالواجهة: scheduledAt لو موجود، وإلا createdAt —
+		// حتى فلترة التاريخ تصير بالسيرفر (نجيب يوم وحد فقط) بدل ما نجيب كل أرشيف
+		// الحجوزات التاريخي ونفلتره بالواجهة، وهذا كان يبطّئ الصفحة مع تراكم البيانات.
+		args = append(args, date)
+		query += fmt.Sprintf(` AND (
+			(("scheduledAt" IS NOT NULL) AND "scheduledAt"::date = $%d::date)
+			OR (("scheduledAt" IS NULL) AND "createdAt"::date = $%d::date)
+		)`, len(args), len(args))
+	}
 	if status != "" {
 		// يدعم قائمة حالات مفصولة بفاصلة (مثلاً "PENDING,CONFIRMED,IN_PROGRESS") حتى
 		// يقدر المنسق يجيب الحجوزات الفعالة بس بدل كل الأرشيف التاريخي (آلاف الحجوزات

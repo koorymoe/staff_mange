@@ -18,7 +18,7 @@ func NewBookingHandler(s *service.BookingService) *BookingHandler {
 
 // GET /api/v1/bookings?status=&customerId=
 func (h *BookingHandler) List(w http.ResponseWriter, r *http.Request) {
-	bookings, err := h.service.List(r.URL.Query().Get("status"), r.URL.Query().Get("customerId"))
+	bookings, err := h.service.List(r.URL.Query().Get("status"), r.URL.Query().Get("customerId"), r.URL.Query().Get("date"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
 		return
@@ -198,7 +198,7 @@ func (h *BookingHandler) Complete(w http.ResponseWriter, r *http.Request) {
 // الإداري ضغط "تم" (تواصل مع الزبون) قبل التثبيت الفعلي أو لا، عبر حقل
 // confirmationContactedAt).
 func (h *BookingHandler) PendingAudit(w http.ResponseWriter, r *http.Request) {
-	bookings, err := h.service.List("PENDING", "")
+	bookings, err := h.service.List("PENDING", "", "")
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
 		return

@@ -399,7 +399,7 @@ func (s *AssistantService) buildRoleScopedBlock(employee *model.Employee) string
 		fmt.Fprintf(&b, "- طلبات أجهزة GPS المعلقة: %d\n- طلبات تجديد الاشتراك المعلقة: %d\n- طلبات الصيانة المفتوحة: %d\n", pendingDevices, pendingRenewals, pendingMaint)
 
 	case "HR_COORDINATOR":
-		pending, _ := s.bookings.List("PENDING", "")
+		pending, _ := s.bookings.List("PENDING", "", "")
 		fmt.Fprintf(&b, "- عدد الحجوزات بانتظار التنسيق حالياً: %d\n", len(pending))
 		shown := 0
 		for _, bk := range pending {

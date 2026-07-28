@@ -24,8 +24,8 @@ func NewBookingService(repo *repository.BookingRepository, employees *repository
 	return &BookingService{repo: repo, employees: employees, customers: customers, qualityFollowUps: qualityFollowUps, notifications: notifications, inventory: inventory}
 }
 
-func (s *BookingService) List(status, customerID string) ([]model.Booking, error) {
-	return s.repo.List(status, customerID)
+func (s *BookingService) List(status, customerID, date string) ([]model.Booking, error) {
+	return s.repo.List(status, customerID, date)
 }
 
 func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking, error) {

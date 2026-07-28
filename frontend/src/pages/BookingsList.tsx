@@ -24,11 +24,6 @@ function relevantDate(b: Booking): string {
   return b.scheduledAt || b.createdAt
 }
 
-function toDateKey(iso: string): string {
-  const d = new Date(iso)
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التثبيت',
   CONFIRMED: 'مثبت',
@@ -63,16 +58,20 @@ export default function BookingsList() {
   const dateInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
+    // نطلب من السيرفر يوم واحد بس (لو محدد) بدل ما نجيب كل أرشيف الحجوزات التاريخي
+    // ونفلتره بالواجهة — نفس المشكلة اللي صلحناها بصفحة تنسيق الحجوزات، وهذي الصفحة
+    // كانت أسوأ لأنها ما تفلتر بالحالة إطلاقاً (كل الحجوزات من كل الأزمنة).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
     api
-      .getBookings()
+      .getBookings(selectedDate ? { date: selectedDate } : undefined)
       .then(setBookings)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [selectedDate])
 
   const filtered = bookings
     .filter((b) => {
-      if (selectedDate && toDateKey(relevantDate(b)) !== selectedDate) return false
       const q = search.trim().toLowerCase()
       if (!q) return true
       return (
