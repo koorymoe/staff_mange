@@ -61,7 +61,9 @@ export default function BookingsList() {
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
+  const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const dateInputRef = useRef<HTMLInputElement>(null)
+  const monthInputRef = useRef<HTMLInputElement>(null)
   const isAdmin = employee?.role === 'ADMIN'
   const [technicians, setTechnicians] = useState<Employee[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -106,25 +108,29 @@ export default function BookingsList() {
     // كانت أسوأ لأنها ما تفلتر بالحالة إطلاقاً (كل الحجوزات من كل الأزمنة).
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
+    // فلتر الشهر يحتاج كل الحجوزات (نفلترها بالواجهة)، أما فلتر يوم واحد فنطلبه
+    // من السيرفر مباشرة (أخف على قاعدة البيانات) — الاثنين ما ينفعون بنفس الوقت.
     api
-      .getBookings(selectedDate ? { date: selectedDate } : undefined)
+      .getBookings(selectedMonth ? undefined : selectedDate ? { date: selectedDate } : undefined)
       .then(setBookings)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [selectedDate])
+  }, [selectedDate, selectedMonth])
 
   const filtered = bookings
     .filter((b) => {
       const q = search.trim().toLowerCase()
-      if (!q) return true
-      return (
+      if (q && !(
         b.code.toLowerCase().includes(q) ||
         (b.customer?.name || '').toLowerCase().includes(q) ||
         (b.customer?.code || '').toLowerCase().includes(q) ||
         (b.customer?.phone || '').includes(search.trim())
-      )
+      )) return false
+      if (selectedMonth && !relevantDate(b).startsWith(selectedMonth)) return false
+      return true
     })
-    .sort((a, b) => (selectedDate ? 0 : new Date(relevantDate(a)).getTime() - new Date(relevantDate(b)).getTime()))
+    // الأحدث للأقدم دايماً — هذا الترتيب الافتراضي المطلوب.
+    .sort((a, b) => new Date(relevantDate(b)).getTime() - new Date(relevantDate(a)).getTime())
 
   return (
     <div>
@@ -146,7 +152,7 @@ export default function BookingsList() {
 
         <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-1 py-1">
           <button
-            onClick={() => setSelectedDate((d) => addDays(d || todayStr(), 1))}
+            onClick={() => { setSelectedMonth(null); setSelectedDate((d) => addDays(d || todayStr(), 1)) }}
             className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
             title="اليوم التالي"
           >
@@ -157,18 +163,18 @@ export default function BookingsList() {
               onClick={() => dateInputRef.current?.showPicker?.()}
               className="min-w-[180px] rounded-md px-2 py-1 text-sm font-medium text-brand-800 hover:bg-slate-100"
             >
-              📅 {selectedDate ? formatDateArabic(selectedDate) : 'كل الحجوزات'}
+              📅 {selectedMonth ? 'فلتر شهر مفعّل' : selectedDate ? formatDateArabic(selectedDate) : 'كل الحجوزات'}
             </button>
             <input
               ref={dateInputRef}
               type="date"
               value={selectedDate || ''}
-              onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+              onChange={(e) => { if (e.target.value) { setSelectedMonth(null); setSelectedDate(e.target.value) } }}
               className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
             />
           </div>
           <button
-            onClick={() => setSelectedDate((d) => addDays(d || todayStr(), -1))}
+            onClick={() => { setSelectedMonth(null); setSelectedDate((d) => addDays(d || todayStr(), -1)) }}
             className="rounded-md px-2 py-1 text-slate-500 hover:bg-slate-100"
             title="اليوم السابق"
           >
@@ -176,7 +182,7 @@ export default function BookingsList() {
           </button>
         </div>
 
-        {selectedDate !== todayStr() && (
+        {selectedDate !== todayStr() && !selectedMonth && (
           <button
             onClick={() => setSelectedDate(todayStr())}
             className="rounded-lg border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
@@ -186,16 +192,47 @@ export default function BookingsList() {
         )}
 
         <button
-          onClick={() => setSelectedDate((d) => (d === null ? todayStr() : null))}
+          onClick={() => { setSelectedMonth(null); setSelectedDate((d) => (d === null ? todayStr() : null)) }}
           className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-            selectedDate === null
+            selectedDate === null && !selectedMonth
               ? 'border-brand-500 bg-brand-500 text-white'
               : 'border-slate-300 text-slate-600 hover:bg-slate-50'
           }`}
-          title="كل الحجوزات القادمة (بدون فلتر تاريخ)، مرتبة حسب موعد التنفيذ"
+          title="كل الحجوزات (بدون فلتر تاريخ)، مرتبة من الأحدث للأقدم"
         >
           📋 كل الحجوزات
         </button>
+
+        {/* فلتر بحث متقدم: اختيار شهر كامل بدل يوم وحد */}
+        <div className="relative">
+          <button
+            onClick={() => monthInputRef.current?.showPicker?.()}
+            className={`rounded-lg border px-3 py-2 text-sm font-medium ${
+              selectedMonth
+                ? 'border-brand-500 bg-brand-500 text-white'
+                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            🗓️ {selectedMonth
+              ? new Date(`${selectedMonth}-01T00:00:00`).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long' })
+              : 'فلتر متقدم: اختر شهر'}
+          </button>
+          <input
+            ref={monthInputRef}
+            type="month"
+            value={selectedMonth || ''}
+            onChange={(e) => { if (e.target.value) { setSelectedDate(null); setSelectedMonth(e.target.value) } }}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+          />
+        </div>
+        {selectedMonth && (
+          <button
+            onClick={() => { setSelectedMonth(null); setSelectedDate(todayStr()) }}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+          >
+            إلغاء فلتر الشهر
+          </button>
+        )}
       </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
