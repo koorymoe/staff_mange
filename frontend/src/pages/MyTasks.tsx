@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import L from 'leaflet'
+import 'leaflet/dist/leaflet.css'
 import { api, type Booking, type PersonalTool } from '../api'
 import { useSession } from '../session'
 
@@ -8,6 +10,55 @@ function elapsedSince(iso: string): string {
   const h = Math.floor(diffMin / 60)
   const m = diffMin % 60
   return h > 0 ? `${h} ساعة و ${m} دقيقة` : `${m} دقيقة`
+}
+
+// خريطة الطريق تفتح داخل بوب-أب فوق نفس الصفحة (بدون تحويل الفني لصفحة ثانية
+// جوه النظام) — وزر "فتح بتطبيق الخرائط" يفتح تطبيق خرائط خارجي للتنقل الفعلي.
+function DirectionsModal({ booking, onClose }: { booking: Booking; onClose: () => void }) {
+  const mapRef = useRef<HTMLDivElement>(null)
+  const lat = booking.mapLatitude
+  const lng = booking.mapLongitude
+
+  useEffect(() => {
+    if (!mapRef.current || lat == null || lng == null) return
+    const map = L.map(mapRef.current).setView([lat, lng], 15)
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap',
+    }).addTo(map)
+    L.marker([lat, lng]).addTo(map)
+    return () => { map.remove() }
+  }, [lat, lng])
+
+  return (
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-slate-100 p-4">
+          <h3 className="font-bold text-brand-900">🗺️ الطريق لموقع الزبون</h3>
+          <button onClick={onClose} className="text-2xl text-slate-400 hover:text-slate-600">×</button>
+        </div>
+        <div className="p-4">
+          <p className="mb-3 text-sm text-slate-500">{booking.address || booking.customer?.location || 'بدون عنوان محدد'}</p>
+          {lat != null && lng != null ? (
+            <div ref={mapRef} className="h-64 w-full rounded-xl border" />
+          ) : (
+            <p className="rounded-lg bg-amber-50 p-3 text-sm text-amber-700">ما اكو إحداثيات محددة لهذا الموقع.</p>
+          )}
+        </div>
+        <div className="flex gap-3 border-t border-slate-100 p-4">
+          {lat != null && lng != null && (
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
+              target="_blank" rel="noreferrer"
+              className="flex-1 rounded-lg bg-brand-500 py-2.5 text-center text-sm font-bold text-white hover:bg-brand-600"
+            >
+              فتح بتطبيق الخرائط للتنقل ←
+            </a>
+          )}
+          <button onClick={onClose} className="rounded-lg border border-slate-200 px-6 py-2.5 text-sm font-bold text-slate-600 hover:bg-slate-50">إغلاق</button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export default function MyTasks() {
@@ -24,6 +75,7 @@ export default function MyTasks() {
   // (مؤشرة) كموجودة، والموظف يشيل التأشير فقط عن الناقص عنده (أسرع من ما يعلّم
   // كل أداة لحالها).
   const [toolsModalBooking, setToolsModalBooking] = useState<Booking | null>(null)
+  const [directionsFor, setDirectionsFor] = useState<Booking | null>(null)
   const [personalTools, setPersonalTools] = useState<PersonalTool[]>([])
   const [checkedTools, setCheckedTools] = useState<Record<string, boolean>>({})
   const [toolsLoading, setToolsLoading] = useState(false)
@@ -172,6 +224,14 @@ export default function MyTasks() {
                       <p>
                         <span className="text-slate-400">العنوان: </span>
                         {b.address || b.customer?.location || 'بدون موقع محدد'}
+                        {' '}
+                        <button
+                          type="button"
+                          onClick={() => setDirectionsFor(b)}
+                          className="mr-1 rounded-md bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-700 hover:bg-brand-100"
+                        >
+                          🗺️ الطريق
+                        </button>
                       </p>
                       <p>
                         <span className="text-slate-400">السيارة: </span>
@@ -358,6 +418,8 @@ export default function MyTasks() {
           </div>
         </div>
       )}
+
+      {directionsFor && <DirectionsModal booking={directionsFor} onClose={() => setDirectionsFor(null)} />}
     </div>
   )
 }

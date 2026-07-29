@@ -28,6 +28,10 @@ const I = ({ d }: { d: string }) => (
 const navItems: NavItem[] = [
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
   { to: '/attendance', label: 'الحضور', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+  // تصنيفي: صفحة شخصية عامة لكل الأدوار — لازم تبقى بمستوى مستقل بره "الإدارة"،
+  // لأنه الفني/الليدر ما عندهم وصول لأي شي ثاني بالإدارة، فتضل قائمة فاضية
+  // بالنسبة الهم لو حطيناها جوه.
+  { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN'] },
 
   // ── الإدارة ──
   {
@@ -42,7 +46,6 @@ const navItems: NavItem[] = [
         to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
         children: [
           { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
-          { to: '/my-ranking', label: 'تصنيفي', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN'] },
           {
             to: '/mgmt-permissions', label: 'إدارة الصلاحيات', icon: <></>,
             children: [
@@ -132,9 +135,8 @@ const navItems: NavItem[] = [
   },
 
   { to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-  // موظف المبيعات ما يحتاجها — تحديد موقع الزبون يصير عنده مباشرة بشاشة الحجز
-  // نفسها (LocationPicker)، هذي خارطة تنسيق شاملة لكل الحجوزات مو لموظف مبيعات فردي.
-  { to: '/map', label: 'خريطة المواقع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></svg>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'] },
+  // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
+  // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
   { to: '/work-reports', label: 'تقارير العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, roles: ['TECHNICIAN'] },
   { to: '/my-tasks', label: 'مهامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN'] },
@@ -433,7 +435,13 @@ export default function Layout() {
     return true
   }
 
-  const visibleItems = navItems.filter(isVisible)
+  // نشيل أي فاصل ("── الوحدات ──") ما يتبعه ولا عنصر ظاهر — مثلاً فني عادي
+  // ما عنده صلاحية توصله لأي وحدة، فيصير الفاصل معلّق بدون شي تحته.
+  const visibleItems = navItems.filter(isVisible).filter((item, idx, arr) => {
+    if (!item.divider) return true
+    const next = arr[idx + 1]
+    return !!next && !next.divider
+  })
 
   const toggle = (label: string) => setExpandedGroups((p) => ({ ...p, [label]: !p[label] }))
 
