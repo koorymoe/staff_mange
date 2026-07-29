@@ -659,6 +659,13 @@ func (s *AssistantService) callGemini(prompt string) (string, error) {
 	return s.callGeminiWithTools(prompt, false)
 }
 
+// GenerateReport واجهة عامة مصدَّرة تعيد استخدام نفس اتصال Gemini الموجود
+// أصلاً — تستخدمها خدمات أخرى (مثل إدارة المعارض) لتوليد تقرير نصي من مُدخل
+// منظّم (prompt جاهز)، بدون تكرار منطق استدعاء الـAPI.
+func (s *AssistantService) GenerateReport(prompt string) (string, error) {
+	return s.callGemini(prompt)
+}
+
 func (s *AssistantService) callGeminiWithTools(prompt string, enableSearch bool) (string, error) {
 	req := geminiRequest{Contents: []geminiContent{{Parts: []geminiPart{{Text: prompt}}}}}
 	if enableSearch {

@@ -90,5 +90,76 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "TechShowcaseItem_employeeId_idx" ON "TechShowcaseItem"("employeeId")`,
 		},
+		{
+			// إدارة المعارض (وحدة التقنيين) — معرض تجاري تحضره الشركة: شركات
+			// حاضرة، منتجات معروضة، ترشيح المدير لمين يروح، صور كارتات بزنس،
+			// وتقرير زيارة يُولَّد بالذكاء الصناعي بعد الأرشفة.
+			Version: "0139_create_exhibition",
+			SQL: `CREATE TABLE IF NOT EXISTS "Exhibition" (
+				id TEXT PRIMARY KEY,
+				title TEXT NOT NULL,
+				location TEXT NOT NULL,
+				"startDate" TEXT NOT NULL,
+				"endDate" TEXT NOT NULL,
+				companies TEXT[] NOT NULL DEFAULT '{}',
+				"productsToShow" TEXT[] NOT NULL DEFAULT '{}',
+				"nominatedEmployeeIds" TEXT[] NOT NULL DEFAULT '{}',
+				"businessCardPhotos" TEXT[] NOT NULL DEFAULT '{}',
+				"keyFindings" TEXT,
+				"visitReport" TEXT,
+				archived BOOLEAN NOT NULL DEFAULT false,
+				"createdById" TEXT NOT NULL REFERENCES "Employee"(id),
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "Exhibition_archived_idx" ON "Exhibition"(archived)`,
+		},
+		{
+			// إدارة المنتجات (وحدة التقنيين) — اقتراح منتج جديد يُضاف للكتالوج،
+			// يفتحه المدير أو التقني أو مسؤول المشتريات، ويوافق/يرفض المدير.
+			Version: "0140_create_product_request",
+			SQL: `CREATE TABLE IF NOT EXISTS "ProductRequest" (
+				id TEXT PRIMARY KEY,
+				"requestedById" TEXT NOT NULL REFERENCES "Employee"(id),
+				"productName" TEXT NOT NULL,
+				specs TEXT,
+				source TEXT,
+				model TEXT,
+				category TEXT,
+				price DOUBLE PRECISION,
+				status TEXT NOT NULL DEFAULT 'PENDING',
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"resolvedAt" TIMESTAMP,
+				"resolvedById" TEXT REFERENCES "Employee"(id)
+			);
+			CREATE INDEX IF NOT EXISTS "ProductRequest_status_idx" ON "ProductRequest"(status)`,
+		},
+		{
+			// إدارة الخدمات (وحدة التقنيين) — خدمة جديدة مقترحة تحتاج دراسة: المدير
+			// يوكّل تقني/تقنيين محددين، وكل موكَّل يرفع تقارير/دراسات تُؤرشف.
+			Version: "0141_create_service_study",
+			SQL: `CREATE TABLE IF NOT EXISTS "ServiceStudy" (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				"createdById" TEXT NOT NULL REFERENCES "Employee"(id),
+				archived BOOLEAN NOT NULL DEFAULT false,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE TABLE IF NOT EXISTS "ServiceStudyAssignment" (
+				id TEXT PRIMARY KEY,
+				"serviceStudyId" TEXT NOT NULL REFERENCES "ServiceStudy"(id),
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				UNIQUE("serviceStudyId", "employeeId")
+			);
+			CREATE TABLE IF NOT EXISTS "ServiceStudyReport" (
+				id TEXT PRIMARY KEY,
+				"serviceStudyId" TEXT NOT NULL REFERENCES "ServiceStudy"(id),
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+				content TEXT NOT NULL,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "ServiceStudyAssignment_serviceStudyId_idx" ON "ServiceStudyAssignment"("serviceStudyId");
+			CREATE INDEX IF NOT EXISTS "ServiceStudyReport_serviceStudyId_idx" ON "ServiceStudyReport"("serviceStudyId")`,
+		},
 	}
 }

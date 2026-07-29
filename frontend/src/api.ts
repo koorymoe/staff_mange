@@ -1257,6 +1257,57 @@ export interface TechShowcaseItem {
   createdAt: string
 }
 
+export interface Exhibition {
+  id: string
+  title: string
+  location: string
+  startDate: string
+  endDate: string
+  companies: string[]
+  productsToShow: string[]
+  nominatedEmployeeIds: string[]
+  nominatedEmployees: { id: string; name: string }[]
+  businessCardPhotos: string[]
+  keyFindings: string | null
+  visitReport: string | null
+  archived: boolean
+  createdBy: { id: string; name: string } | null
+  createdAt: string
+}
+
+export interface ProductRequest {
+  id: string
+  productName: string
+  specs: string | null
+  source: string | null
+  model: string | null
+  category: string | null
+  price: number | null
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  requestedBy: { id: string; name: string } | null
+  resolvedBy: { id: string; name: string } | null
+  createdAt: string
+  resolvedAt: string | null
+}
+
+export interface ServiceStudyReport {
+  id: string
+  serviceStudyId: string
+  content: string
+  employee: { id: string; name: string } | null
+  createdAt: string
+}
+
+export interface ServiceStudy {
+  id: string
+  name: string
+  archived: boolean
+  createdBy: { id: string; name: string } | null
+  assignedEmployees: { id: string; name: string }[]
+  reports: ServiceStudyReport[]
+  createdAt: string
+}
+
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
   changePassword: (currentPassword: string, newPassword: string) =>
@@ -1272,6 +1323,35 @@ export const api = {
     request<TechShowcaseItem>('/tech-showcase', { method: 'POST', body: JSON.stringify(data) }),
   addTechShowcaseMedia: (id: string, mediaUrls: string[]) =>
     request<TechShowcaseItem>(`/tech-showcase/${id}/media`, { method: 'PUT', body: JSON.stringify({ mediaUrls }) }),
+
+  // وحدة التقنيين — إدارة المعارض
+  getExhibitions: () => request<Exhibition[]>('/exhibitions'),
+  createExhibition: (data: { title: string; location: string; startDate: string; endDate: string; companies: string[]; productsToShow: string[] }) =>
+    request<Exhibition>('/exhibitions', { method: 'POST', body: JSON.stringify(data) }),
+  nominateExhibition: (id: string, employeeIds: string[]) =>
+    request<Exhibition>(`/exhibitions/${id}/nominate`, { method: 'PUT', body: JSON.stringify({ employeeIds }) }),
+  addExhibitionPhotos: (id: string, photoUrls: string[]) =>
+    request<Exhibition>(`/exhibitions/${id}/photos`, { method: 'PUT', body: JSON.stringify({ photoUrls }) }),
+  setExhibitionFindings: (id: string, keyFindings: string) =>
+    request<Exhibition>(`/exhibitions/${id}/findings`, { method: 'PUT', body: JSON.stringify({ keyFindings }) }),
+  generateExhibitionReport: (id: string) => request<Exhibition>(`/exhibitions/${id}/report`, { method: 'POST' }),
+  archiveExhibition: (id: string) => request<Exhibition>(`/exhibitions/${id}/archive`, { method: 'PUT' }),
+
+  // وحدة التقنيين — إدارة المنتجات
+  getProductRequests: () => request<ProductRequest[]>('/product-requests'),
+  createProductRequest: (data: { productName: string; specs?: string; source?: string; model?: string; category?: string; price?: number }) =>
+    request<ProductRequest>('/product-requests', { method: 'POST', body: JSON.stringify(data) }),
+  approveProductRequest: (id: string) => request<ProductRequest>(`/product-requests/${id}/approve`, { method: 'PUT' }),
+  rejectProductRequest: (id: string) => request<ProductRequest>(`/product-requests/${id}/reject`, { method: 'PUT' }),
+
+  // وحدة التقنيين — إدارة الخدمات
+  getServiceStudies: () => request<ServiceStudy[]>('/service-studies'),
+  createServiceStudy: (name: string) => request<ServiceStudy>('/service-studies', { method: 'POST', body: JSON.stringify({ name }) }),
+  assignServiceStudy: (id: string, employeeIds: string[]) =>
+    request<ServiceStudy>(`/service-studies/${id}/assign`, { method: 'PUT', body: JSON.stringify({ employeeIds }) }),
+  addServiceStudyReport: (id: string, content: string) =>
+    request<ServiceStudyReport>(`/service-studies/${id}/reports`, { method: 'POST', body: JSON.stringify({ content }) }),
+  archiveServiceStudy: (id: string) => request<ServiceStudy>(`/service-studies/${id}/archive`, { method: 'PUT' }),
   getProjectsBrief: () => request<{ projects: { id: string; name: string; code: string }[] }>('/projects').then((d) => d.projects),
   createChecklist: (data: { projectId?: string | null; title: string }) =>
     request<ProjectChecklist>('/checklists', { method: 'POST', body: JSON.stringify(data) }),
