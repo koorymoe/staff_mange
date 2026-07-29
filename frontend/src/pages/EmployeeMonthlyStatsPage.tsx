@@ -65,6 +65,14 @@ export default function EmployeeMonthlyStatsPage() {
       </div>
 
       <div style={{
+        background: '#fff8e1', border: `1px solid ${GOLD}`, borderRadius: '10px',
+        padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#5d4a1a',
+      }}>
+        <b>معادلة حساب حجم المبيعات:</b> الليدر = (تكلفة التنفيذ × 0.4) + (ربح بيع المواد × 0.5) — الفني = تكلفة التنفيذ × 0.3 فقط (بدون أي نسبة من المبيع، وكل فني ياخذ المبلغ كامل حتى لو أكثر من فني بنفس الحجز).
+        <br /><b>قيمة نقاط الكي بي اي:</b> كل نقطة = 10,000 دينار.
+      </div>
+
+      <div style={{
         display: 'flex', gap: '12px', alignItems: 'end', marginBottom: '20px',
         background: 'white', border: `2px solid ${PRIMARY}`, borderRadius: '12px', padding: '16px',
       }}>
@@ -110,7 +118,11 @@ export default function EmployeeMonthlyStatsPage() {
                 <th style={thStyle}>الشكاوى</th>
                 <th style={thStyle}>عدد المبيعات</th>
                 <th style={thStyle}>الحجوزات المكتملة</th>
-                <th style={thStyle}>إجمالي العمولة</th>
+                <th style={thStyle}>كل الحجوزات المسندة</th>
+                <th style={thStyle}>حجوزات الصيانة</th>
+                <th style={thStyle}>صيانات مجانية</th>
+                <th style={thStyle}>قيمة نقاط الكي بي اي</th>
+                <th style={thStyle}>إجمالي العمولة (حجم المبيعات)</th>
               </tr>
             </thead>
             <tbody>
@@ -126,12 +138,16 @@ export default function EmployeeMonthlyStatsPage() {
                   <td style={tdStyle}>{r.complaintsCount}</td>
                   <td style={tdStyle}>{r.salesCount}</td>
                   <td style={tdStyle}>{r.completedBookingsCount}</td>
+                  <td style={tdStyle}>{r.totalBookingsCount}</td>
+                  <td style={tdStyle}>{r.maintenanceBookingsCount}</td>
+                  <td style={tdStyle}>{r.freeMaintenanceCount}</td>
+                  <td style={tdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: GOLD }}>{fmt(r.totalCommission)} د.ع</td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ ...tdStyle, textAlign: 'center', color: '#999', padding: '40px' }}>
+                  <td colSpan={13} style={{ ...tdStyle, textAlign: 'center', color: '#999', padding: '40px' }}>
                     لا توجد بيانات لهذا الشهر
                   </td>
                 </tr>
@@ -140,7 +156,7 @@ export default function EmployeeMonthlyStatsPage() {
             {rows.length > 0 && (
               <tfoot>
                 <tr>
-                  <td style={{ ...tdStyle, fontWeight: 'bold' }} colSpan={8}>الإجمالي</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold' }} colSpan={12}>الإجمالي</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: PRIMARY }}>{fmt(totalCommissionSum)} د.ع</td>
                 </tr>
               </tfoot>

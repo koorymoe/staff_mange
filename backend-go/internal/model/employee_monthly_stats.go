@@ -11,6 +11,8 @@ type EmployeeMonthlyStats struct {
 	// نقاط الكي بي اي — نفس آلية تسجيل النقاط الموجودة أصلاً (KpiEvaluation)،
 	// مجموع النقاط غير الملغاة خلال الشهر.
 	KpiPoints int `json:"kpiPoints"`
+	// قيمة النقاط بالدينار — كل نقطة = 10,000 دينار (تأكيد صريح من المالك).
+	KpiPointsValue float64 `json:"kpiPointsValue"`
 
 	// WorkSpeedScore: TODO — يُملأ فعلياً بعد اكتمال ميزة تقدير مدة تنفيذ العمل
 	// (job-duration-estimation) التي يبنيها فريق موازي بنفس الجلسة. حالياً
@@ -33,6 +35,15 @@ type EmployeeMonthlyStats struct {
 	// خلال الشهر.
 	CompletedBookingsCount int `json:"completedBookingsCount"`
 
-	// مجموع عمولات الموظف (ليدر أو فني) المحسوبة تلقائياً خلال الشهر.
+	// مجموع عمولات الموظف (ليدر أو فني) المحسوبة تلقائياً خلال الشهر — هذا هو
+	// "حجم المبيعات" بالمعادلة: الليدر = 0.4×تكلفة التنفيذ + 0.5×ربح المبيع،
+	// الفني = 0.3×تكلفة التنفيذ فقط (بدون أي نسبة من المبيع).
 	TotalCommission float64 `json:"totalCommission"`
+
+	// كل الحجوزات المسندة للموظف خلال الشهر (بكل الحالات — مثبت/ملغى/منجز).
+	TotalBookingsCount int `json:"totalBookingsCount"`
+	// حجوزات الصيانة (المشاكل/الأعطال) المسندة للموظف خلال الشهر.
+	MaintenanceBookingsCount int `json:"maintenanceBookingsCount"`
+	// صيانات مجانية (بدون تكلفة مقدّرة) ضمن حجوزات الصيانة أعلاه.
+	FreeMaintenanceCount int `json:"freeMaintenanceCount"`
 }

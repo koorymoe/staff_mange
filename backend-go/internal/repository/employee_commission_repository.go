@@ -49,4 +49,15 @@ func (r *EmployeeCommissionRepository) SumForEmployeeMonth(employeeID, monthPref
 	return float64(total), err
 }
 
+// SumForEmployeeLast7Days يرجّع مجموع "totalCommission" لموظف معيّن خلال آخر 7
+// أيام — يُستخدم لحساب "حجم المبيعات" الأسبوعي.
+func (r *EmployeeCommissionRepository) SumForEmployeeLast7Days(employeeID string) (float64, error) {
+	var total sql64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission"
+		WHERE "employeeId" = $1 AND "createdAt" >= now() - interval '7 days'
+	`, employeeID)
+	return float64(total), err
+}
+
 type sql64 float64

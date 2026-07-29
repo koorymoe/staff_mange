@@ -68,6 +68,7 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 
 		if points, kerr := s.kpi.SumPointsForEmployeeMonth(e.ID, month); kerr == nil {
 			stats.KpiPoints = points
+			stats.KpiPointsValue = float64(points) * 10000
 		}
 
 		if avg, count, verr := s.vehicleMissionRating.GetCleanlinessAvgForDriverMonth(e.ID, month); verr == nil {
@@ -89,6 +90,16 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 
 		if total, comErr := s.commissions.SumForEmployeeMonth(e.ID, month); comErr == nil {
 			stats.TotalCommission = total
+		}
+
+		if count, err := s.bookings.CountAssignedForEmployeeMonth(e.ID, month); err == nil {
+			stats.TotalBookingsCount = count
+		}
+		if count, err := s.bookings.CountMaintenanceForEmployeeMonth(e.ID, month); err == nil {
+			stats.MaintenanceBookingsCount = count
+		}
+		if count, err := s.bookings.CountFreeMaintenanceForEmployeeMonth(e.ID, month); err == nil {
+			stats.FreeMaintenanceCount = count
 		}
 
 		result = append(result, stats)

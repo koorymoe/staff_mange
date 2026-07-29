@@ -486,6 +486,89 @@ func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPref
 	return count, err
 }
 
+// CountAssignedForEmployeeMonth يرجّع عدد كل الحجوزات المسندة لموظف معيّن خلال
+// شهر معيّن، بكل الحالات (مثبت/ملغى/منجز...) — يُحسب حسب تاريخ الإنجاز أو
+// الإلغاء الفعلي لو موجود، وإلا تاريخ الإسناد (createdAt) — مو الموعد
+// المجدول، حتى تأجيل الموعد ما يغيّر الشهر الي تنحسب فيه.
+func (r *BookingRepository) CountAssignedForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1
+			AND to_char(COALESCE(b."completedAt", b."createdAt"), 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return count, err
+}
+
+// CountMaintenanceForEmployeeMonth يرجّع عدد حجوزات الصيانة (bookingType =
+// 'MAINTENANCE') المسندة لموظف معيّن خلال شهر معيّن.
+func (r *BookingRepository) CountMaintenanceForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
+			AND to_char(COALESCE(b."completedAt", b."createdAt"), 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return count, err
+}
+
+// CountFreeMaintenanceForEmployeeMonth يرجّع عدد حجوزات الصيانة المجانية (بدون
+// تكلفة مقدّرة) المسندة لموظف معيّن خلال شهر معيّن.
+func (r *BookingRepository) CountFreeMaintenanceForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
+			AND (b."quotedPrice" IS NULL OR b."quotedPrice" = 0)
+			AND to_char(COALESCE(b."completedAt", b."createdAt"), 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return count, err
+}
+
+// CountTodayForEmployee يرجّع عدد الحجوزات المسندة لموظف معيّن اليوم (بكل الحالات).
+func (r *BookingRepository) CountTodayForEmployee(employeeID string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND COALESCE(b."completedAt", b."createdAt")::date = CURRENT_DATE
+	`, employeeID)
+	return count, err
+}
+
+// CountTodayTotal يرجّع عدد كل الحجوزات المسجّلة اليوم بالنظام (بكل الحالات).
+func (r *BookingRepository) CountTodayTotal() (int, error) {
+	var count int
+	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Booking" WHERE "createdAt"::date = CURRENT_DATE`)
+	return count, err
+}
+
+// CountEnteredThisWeekForEmployee يرجّع عدد الحجوزات الي أدخلها موظف مبيعات
+// بالنظام (createdAt) خلال آخر 7 أيام — يُستخدم لقياس إنتاجية موظف المبيعات.
+func (r *BookingRepository) CountEnteredThisWeekForEmployee(transferEmployeeID string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM "Booking"
+		WHERE "transferEmployeeId" = $1 AND "createdAt" >= now() - interval '7 days'
+	`, transferEmployeeID)
+	return count, err
+}
+
+// CountCompletedForEmployeeLast7Days يرجّع عدد الحجوزات المكتملة لموظف معيّن
+// خلال آخر 7 أيام — يُستخدم لقياس إنتاجية الكوادر الأسبوعية.
+func (r *BookingRepository) CountCompletedForEmployeeLast7Days(employeeID string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" >= now() - interval '7 days'
+	`, employeeID)
+	return count, err
+}
+
 func (r *BookingRepository) EmployeeHasSkillForService(employeeID, serviceID string) (bool, error) {
 	var count int
 	err := r.db.Get(&count, `

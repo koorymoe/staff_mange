@@ -472,6 +472,7 @@ export interface EmployeeMonthlyStats {
   role: string
   month: string
   kpiPoints: number
+  kpiPointsValue: number
   workSpeedScore: number | null // TODO: يُملأ بعد اكتمال ميزة تقدير مدة تنفيذ العمل
   vehicleCleanlinessScore: number | null
   vehicleRatingsCount: number
@@ -479,6 +480,26 @@ export interface EmployeeMonthlyStats {
   salesCount: number
   completedBookingsCount: number
   totalCommission: number
+  totalBookingsCount: number
+  maintenanceBookingsCount: number
+  freeMaintenanceCount: number
+}
+
+export interface DailyStats {
+  date: string
+  totalBookingsToday: number
+  employees: { employeeId: string; employeeName: string; role: string; bookingsToday: number }[]
+}
+
+export interface WeeklyStats {
+  weekStart: string
+  crew: { employeeId: string; employeeName: string; role: string; completedBookings: number; salesVolume: number }[]
+  sales: { employeeId: string; employeeName: string; bookingsEntered: number }[]
+}
+
+export interface ProjectStageStats {
+  stage: string
+  count: number
 }
 
 export interface SystemPriceCatalog {
@@ -1837,4 +1858,7 @@ export const api = {
     request<EmployeeMonthlyStats[]>(`/employee-stats/monthly?month=${encodeURIComponent(month)}`),
   exportEmployeeMonthlyStats: (month: string) =>
     downloadFile(`/employee-stats/monthly/export?month=${encodeURIComponent(month)}`, `employee-stats-${month}.xlsx`),
+  getDailyStats: () => request<DailyStats>('/stats-management/daily'),
+  getWeeklyStats: () => request<WeeklyStats>('/stats-management/weekly'),
+  getProjectStageStats: () => request<ProjectStageStats[]>('/stats-management/projects'),
 }

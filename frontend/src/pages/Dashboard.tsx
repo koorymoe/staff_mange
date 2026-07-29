@@ -358,6 +358,20 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ═══ إدارة الإحصائيات — يومية/أسبوعية/شهرية/مشاريع، حصراً لمدير النظام ═══ */}
+      {isAdmin && (
+        <button
+          onClick={() => navigate('/stats-management')}
+          className="flex w-full items-center justify-between rounded-2xl bg-gradient-to-l from-[#1a237e] to-[#283593] p-5 text-right text-white shadow-lg transition hover:shadow-xl"
+        >
+          <div>
+            <h3 className="text-base font-extrabold">📊 إدارة الإحصائيات</h3>
+            <p className="mt-1 text-sm text-blue-100">حجوزات اليوم: {bookingCount} — إحصائيات يومية وأسبوعية وشهرية لكل موظف، وإحصائية المشاريع</p>
+          </div>
+          <span className="text-lg">←</span>
+        </button>
+      )}
+
       {/* ═══ طلبات كادر معلقة — تنبيه لإداري الكوادر حتى ما يفوته طلب من إدارة المشاريع ═══ */}
       {['ADMIN', 'HR_COORDINATOR'].includes(employee.role) && pendingStaffReqs.length > 0 && (
         <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-l from-violet-50 to-purple-50 p-5 shadow-lg shadow-violet-100/50">
