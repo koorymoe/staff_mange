@@ -52,7 +52,6 @@ const navItems: NavItem[] = [
               { to: '/training-management', label: 'صلاحية التقني (محتوى)', icon: <></>, permission: 'content_technician' },
             ],
           },
-          { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'] },
           { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'] },
           { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
           { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
@@ -65,6 +64,9 @@ const navItems: NavItem[] = [
           { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'] },
         ],
       },
+      // إدارة الإحصائيات — عنصر مستقل مباشر تحت "الإدارة"، مو داخل إدارة
+      // الموظفين، حصراً لمدير النظام.
+      { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'] },
       {
         to: '/mgmt-work', label: 'إدارة العمل', icon: <></>,
         roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR', 'FINANCE'],
