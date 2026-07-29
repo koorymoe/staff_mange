@@ -184,13 +184,16 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    // وحدة التقنيين: أربع فقرات (إدارة المعارض / المنتجات / الخدمات / مفردات
-    // التدريب) بالإضافة لمعرض الأعمال — كلهن تبويبات بصفحة واحدة موحدة.
-    // "مواد التدريب" ترحّلت لهنا من وحدة التدريب المستقلة السابقة (صارت
-    // فقرة "مفردات التدريب" ضمن هذي الوحدة بدل وحدة منفصلة).
+    // وحدة التقنيين: خمس فقرات منفصلة بالقائمة الجانبية (كل ضغطة تفتح صفحتها
+    // هي بس، مو كل الفقرات مع بعض) — إدارة المعارض / المنتجات / الخدمات /
+    // مفردات التدريب (ترحّلت من وحدة التدريب المستقلة السابقة) / معرض الأعمال.
     to: '/unit-technicians', label: 'وحدة التقنيين', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
     children: [
-      { to: '/tech-unit', label: 'إدارة المعارض والمنتجات والخدمات والتدريب', icon: <></>, permission: 'content_technician' },
+      { to: '/exhibitions', label: 'إدارة المعارض', icon: <></>, permission: 'content_technician' },
+      { to: '/product-requests', label: 'إدارة المنتجات', icon: <></>, permission: 'content_technician' },
+      { to: '/service-studies', label: 'إدارة الخدمات', icon: <></>, permission: 'content_technician' },
+      { to: '/training-management', label: 'مفردات التدريب', icon: <></>, permission: 'content_technician' },
+      { to: '/tech-showcase', label: 'معرض الأعمال', icon: <></>, permission: 'content_technician' },
     ],
   },
   // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل

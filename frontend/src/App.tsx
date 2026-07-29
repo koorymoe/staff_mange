@@ -59,7 +59,9 @@ const StatsPage = lazy(() => import('./pages/StatsPage'))
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
 const ChecklistsPage = lazy(() => import('./pages/ChecklistsPage'))
 const TechShowcasePage = lazy(() => import('./pages/TechShowcasePage'))
-const TechUnitPage = lazy(() => import('./pages/TechUnitPage'))
+const ExhibitionsPage = lazy(() => import('./pages/ExhibitionsPage'))
+const ProductRequestsPage = lazy(() => import('./pages/ProductRequestsPage'))
+const ServiceStudiesPage = lazy(() => import('./pages/ServiceStudiesPage'))
 const ComingSoonUnit = lazy(() => import('./pages/ComingSoonUnit'))
 const StaffRequestsPage = lazy(() => import('./pages/StaffRequestsPage'))
 const ServiceManagersPage = lazy(() => import('./pages/ServiceManagersPage'))
@@ -124,7 +126,9 @@ function App() {
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="checklists" element={<ChecklistsPage />} />
           <Route path="tech-showcase" element={<TechShowcasePage />} />
-          <Route path="tech-unit" element={<RequirePermission permission="content_technician"><TechUnitPage /></RequirePermission>} />
+          <Route path="exhibitions" element={<RequirePermission permission="content_technician"><ExhibitionsPage /></RequirePermission>} />
+          <Route path="product-requests" element={<RequirePermission permission="content_technician"><ProductRequestsPage /></RequirePermission>} />
+          <Route path="service-studies" element={<RequirePermission permission="content_technician"><ServiceStudiesPage /></RequirePermission>} />
           <Route path="unit-design" element={<ComingSoonUnit title="وحدة التصميم" />} />
           <Route path="unit-pr" element={<ComingSoonUnit title="وحدة الإعلام والعلاقات العامة" />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
