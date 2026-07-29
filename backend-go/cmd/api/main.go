@@ -188,7 +188,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
 	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo)
 	employeeStatsHandler := handler.NewEmployeeStatsHandler(employeeMonthlyStatsService)
-	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo, leaderInvoiceRepo, attendanceRepo)
+	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo, leaderInvoiceRepo, attendanceRepo, employeeMonthlyStatsService)
 	statsManagementHandler := handler.NewStatsManagementHandler(statsManagementService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
@@ -658,6 +658,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).
 	mux.Handle("GET /api/employee-stats/monthly", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Monthly), requireAuth, requireAdmin))
 	mux.Handle("GET /api/employee-stats/monthly/export", middleware.Chain(http.HandlerFunc(employeeStatsHandler.MonthlyExport), requireAuth, requireAdmin))
+	mux.Handle("GET /api/employee-stats/range", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Range), requireAuth, requireAdmin))
+	mux.Handle("GET /api/employee-stats/curve/{employeeId}", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Curve), requireAuth, requireAdmin))
 
 	// إدارة الإحصائيات: يومية/أسبوعية/مشاريع — حصراً لمدير النظام.
 	mux.Handle("GET /api/stats-management/daily", middleware.Chain(http.HandlerFunc(statsManagementHandler.Daily), requireAuth, requireAdmin))

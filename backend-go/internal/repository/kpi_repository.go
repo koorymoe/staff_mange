@@ -104,6 +104,37 @@ func (r *KpiRepository) SumPointsForEmployeeMonth(employeeID, monthPrefix string
 	return total, err
 }
 
+// SumPointsForEmployeeRange نفس SumPointsForEmployeeMonth لكن لمدى تاريخ حر
+// (from/to بصيغة "YYYY-MM-DD") — تُستخدم بالإحصائية الأسبوعية بفلتر التاريخ.
+func (r *KpiRepository) SumPointsForEmployeeRange(employeeID, from, to string) (int, error) {
+	var total int
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation"
+		WHERE "employeeId" = $1 AND cancelled = false AND "createdAt"::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return total, err
+}
+
+// MonthlyPointsSeriesForEmployee يرجّع مجموع نقاط الكي بي اي (غير الملغاة) لكل
+// شهر من آخر monthsCount شهر (بالترتيب من الأقدم للأحدث) — يُستخدم بمنحنى
+// الأداء المتحرك بصفحة إحصائيات الموظفين.
+func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, monthsCount int) ([]model.MonthlyPointsBucket, error) {
+	buckets := []model.MonthlyPointsBucket{}
+	err := r.db.Select(&buckets, `
+		SELECT to_char(m, 'YYYY-MM') AS month, COALESCE(SUM(k.points), 0) AS points
+		FROM generate_series(
+			date_trunc('month', now()) - ($2 - 1) * interval '1 month',
+			date_trunc('month', now()),
+			interval '1 month'
+		) m
+		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = $1 AND k.cancelled = false
+			AND to_char(k."createdAt", 'YYYY-MM') = to_char(m, 'YYYY-MM')
+		GROUP BY m
+		ORDER BY m
+	`, employeeID, monthsCount)
+	return buckets, err
+}
+
 func (r *KpiRepository) RoleLeaderboard(role string, since string) ([]model.KpiLeaderboardEntry, error) {
 	entries := []model.KpiLeaderboardEntry{}
 	err := r.db.Select(&entries, `

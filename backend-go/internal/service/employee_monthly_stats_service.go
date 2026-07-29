@@ -102,8 +102,96 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 			stats.FreeMaintenanceCount = count
 		}
 
+		if count, err := s.employees.CountDistinctServicesKnown(e.ID); err == nil {
+			stats.ServicesKnownCount = count
+		}
+
 		result = append(result, stats)
 	}
 
 	return result, nil
+}
+
+// Range يبني نفس صفوف Monthly (نقاط الكي بي اي، الشكاوى، المبيعات، الحجوزات،
+// العمولة...) لكن لمدى تاريخ حر (from/to بصيغة "YYYY-MM-DD") بدل شهر كامل —
+// تُستخدم بالإحصائية الأسبوعية بفلتر من/إلى. لا تحسب ServicesKnownCount عمداً
+// (التعديل الخاص بإزالة تكرار نقاط الكي بي اي يخص الشهرية فقط، مو الأسبوعية).
+func (s *EmployeeMonthlyStatsService) Range(from, to string) ([]model.EmployeeMonthlyStats, error) {
+	if _, err := time.Parse("2006-01-02", from); err != nil {
+		return nil, fmt.Errorf("صيغة تاريخ البداية يجب أن تكون YYYY-MM-DD")
+	}
+	if _, err := time.Parse("2006-01-02", to); err != nil {
+		return nil, fmt.Errorf("صيغة تاريخ النهاية يجب أن تكون YYYY-MM-DD")
+	}
+
+	employees, err := s.employees.List()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]model.EmployeeMonthlyStats, 0, len(employees))
+	for _, e := range employees {
+		stats := model.EmployeeMonthlyStats{
+			EmployeeID: e.ID, EmployeeName: e.Name, Role: e.Role,
+			From: &from, To: &to,
+		}
+
+		if points, kerr := s.kpi.SumPointsForEmployeeRange(e.ID, from, to); kerr == nil {
+			stats.KpiPoints = points
+			stats.KpiPointsValue = float64(points) * 10000
+		}
+		if avg, count, verr := s.vehicleMissionRating.GetCleanlinessAvgForDriverRange(e.ID, from, to); verr == nil {
+			stats.VehicleCleanlinessScore = avg
+			stats.VehicleRatingsCount = count
+		}
+		if count, cerr := s.complaints.CountForEmployeeRange(e.ID, from, to); cerr == nil {
+			stats.ComplaintsCount = count
+		}
+		if count, serr := s.leaderInvoices.CountForEmployeeRange(e.ID, from, to); serr == nil {
+			stats.SalesCount = count
+		}
+		if count, berr := s.bookings.CountCompletedForEmployeeRange(e.ID, from, to); berr == nil {
+			stats.CompletedBookingsCount = count
+		}
+		if total, comErr := s.commissions.SumForEmployeeRange(e.ID, from, to); comErr == nil {
+			stats.TotalCommission = total
+		}
+		if count, err := s.bookings.CountAssignedForEmployeeRange(e.ID, from, to); err == nil {
+			stats.TotalBookingsCount = count
+		}
+		if count, err := s.bookings.CountMaintenanceForEmployeeRange(e.ID, from, to); err == nil {
+			stats.MaintenanceBookingsCount = count
+		}
+		if count, err := s.bookings.CountFreeMaintenanceForEmployeeRange(e.ID, from, to); err == nil {
+			stats.FreeMaintenanceCount = count
+		}
+
+		result = append(result, stats)
+	}
+
+	return result, nil
+}
+
+// Curve يبني منحنى أداء موظف واحد — نقاط الكي بي اي والعمولات شهرياً لآخر
+// monthsCount شهر (6 افتراضياً) — يُستخدم بمنحنى الأداء المتحرك.
+func (s *EmployeeMonthlyStatsService) Curve(employeeID string, monthsCount int) (*model.EmployeePerformanceCurve, error) {
+	if monthsCount <= 0 {
+		monthsCount = 6
+	}
+	employee, err := s.employees.FindByID(employeeID)
+	if err != nil || employee == nil {
+		return nil, fmt.Errorf("الموظف غير موجود")
+	}
+	points, err := s.kpi.MonthlyPointsSeriesForEmployee(employeeID, monthsCount)
+	if err != nil {
+		return nil, err
+	}
+	commission, err := s.commissions.MonthlyCommissionSeriesForEmployee(employeeID, monthsCount)
+	if err != nil {
+		return nil, err
+	}
+	return &model.EmployeePerformanceCurve{
+		EmployeeID: employee.ID, EmployeeName: employee.Name,
+		Points: points, Commission: commission,
+	}, nil
 }

@@ -474,12 +474,15 @@ export interface Product {
   imageBase64?: string
 }
 
-// EmployeeMonthlyStats صف واحد بصفحة إحصائيات الموظفين الشهرية (OWNER/ADMIN فقط).
+// EmployeeMonthlyStats صف واحد بصفحة إحصائيات الموظفين الشهرية (OWNER/ADMIN فقط)
+// — نفس الصف يُستخدم بالإحصائية الأسبوعية (from/to بدل month).
 export interface EmployeeMonthlyStats {
   employeeId: string
   employeeName: string
   role: string
   month: string
+  from?: string
+  to?: string
   kpiPoints: number
   kpiPointsValue: number
   workSpeedScore: number | null // TODO: يُملأ بعد اكتمال ميزة تقدير مدة تنفيذ العمل
@@ -492,6 +495,24 @@ export interface EmployeeMonthlyStats {
   totalBookingsCount: number
   maintenanceBookingsCount: number
   freeMaintenanceCount: number
+  servicesKnownCount: number
+}
+
+export interface MonthlyPointsBucket {
+  month: string
+  points: number
+}
+
+export interface MonthlyCommissionBucket {
+  month: string
+  amount: number
+}
+
+export interface EmployeePerformanceCurve {
+  employeeId: string
+  employeeName: string
+  points: MonthlyPointsBucket[]
+  commission: MonthlyCommissionBucket[]
 }
 
 export interface DailyStats {
@@ -511,9 +532,12 @@ export interface DailyStats {
 }
 
 export interface WeeklyStats {
-  weekStart: string
-  crew: { employeeId: string; employeeName: string; role: string; completedBookings: number; salesVolume: number }[]
-  sales: { employeeId: string; employeeName: string; bookingsEntered: number }[]
+  from: string
+  to: string
+  morningSalesAmount: number
+  eveningSalesAmount: number
+  totalSalesAmount: number
+  employees: EmployeeMonthlyStats[]
 }
 
 export interface ProjectStageStats {
@@ -1885,6 +1909,9 @@ export const api = {
   exportEmployeeMonthlyStats: (month: string) =>
     downloadFile(`/employee-stats/monthly/export?month=${encodeURIComponent(month)}`, `employee-stats-${month}.xlsx`),
   getDailyStats: (date?: string) => request<DailyStats>(`/stats-management/daily${date ? `?date=${encodeURIComponent(date)}` : ''}`),
-  getWeeklyStats: () => request<WeeklyStats>('/stats-management/weekly'),
+  getWeeklyStats: (from: string, to: string) =>
+    request<WeeklyStats>(`/stats-management/weekly?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   getProjectStageStats: () => request<ProjectStageStats[]>('/stats-management/projects'),
+  getEmployeePerformanceCurve: (employeeId: string, months = 6) =>
+    request<EmployeePerformanceCurve>(`/employee-stats/curve/${employeeId}?months=${months}`),
 }

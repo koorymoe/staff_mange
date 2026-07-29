@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -39,6 +40,28 @@ func (h *EmployeeStatsHandler) Monthly(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, stats)
+}
+
+// GET /api/employee-stats/range?from=2026-07-01&to=2026-07-07
+func (h *EmployeeStatsHandler) Range(w http.ResponseWriter, r *http.Request) {
+	from, to := r.URL.Query().Get("from"), r.URL.Query().Get("to")
+	stats, err := h.service.Range(from, to)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, stats)
+}
+
+// GET /api/employee-stats/curve/{employeeId}?months=6
+func (h *EmployeeStatsHandler) Curve(w http.ResponseWriter, r *http.Request) {
+	months, _ := strconv.Atoi(r.URL.Query().Get("months"))
+	curve, err := h.service.Curve(r.PathValue("employeeId"), months)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, curve)
 }
 
 // GET /api/employee-stats/monthly/export?month=2026-07

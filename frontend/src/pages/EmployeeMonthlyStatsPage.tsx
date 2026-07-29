@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type EmployeeMonthlyStats } from '../api'
+import PerformanceCurveModal from '../components/PerformanceCurveModal'
 
 const PRIMARY = '#1a237e'
 const GOLD = '#c8a45a'
@@ -23,6 +24,7 @@ export default function EmployeeMonthlyStatsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [curveFor, setCurveFor] = useState<{ id: string; name: string } | null>(null)
 
   const load = useCallback(() => {
     api.getEmployeeMonthlyStats(month)
@@ -104,7 +106,7 @@ export default function EmployeeMonthlyStatsPage() {
               <tr>
                 <th style={thStyle}>الموظف</th>
                 <th style={thStyle}>الدور</th>
-                <th style={thStyle}>نقاط الكي بي اي</th>
+                <th style={thStyle}>عدد الخدمات التي يعرفها</th>
                 <th style={thStyle}>سرعة العمل</th>
                 <th style={thStyle}>نظافة السيارة</th>
                 <th style={thStyle}>الشكاوى</th>
@@ -115,6 +117,7 @@ export default function EmployeeMonthlyStatsPage() {
                 <th style={thStyle}>صيانات مجانية</th>
                 <th style={thStyle}>قيمة نقاط الكي بي اي</th>
                 <th style={thStyle}>إجمالي العمولة (حجم المبيعات)</th>
+                <th style={thStyle}>منحنى الأداء</th>
               </tr>
             </thead>
             <tbody>
@@ -122,7 +125,7 @@ export default function EmployeeMonthlyStatsPage() {
                 <tr key={r.employeeId}>
                   <td style={tdStyle}>{r.employeeName}</td>
                   <td style={tdStyle}>{r.role}</td>
-                  <td style={tdStyle}>{r.kpiPoints}</td>
+                  <td style={tdStyle}>{r.servicesKnownCount}</td>
                   <td style={tdStyle}>{r.workSpeedScore != null ? r.workSpeedScore.toFixed(2) : '—'}</td>
                   <td style={tdStyle}>
                     {r.vehicleCleanlinessScore != null ? `${r.vehicleCleanlinessScore.toFixed(2)} (${r.vehicleRatingsCount})` : '—'}
@@ -135,11 +138,19 @@ export default function EmployeeMonthlyStatsPage() {
                   <td style={tdStyle}>{r.freeMaintenanceCount}</td>
                   <td style={tdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: GOLD }}>{fmt(r.totalCommission)} د.ع</td>
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() => setCurveFor({ id: r.employeeId, name: r.employeeName })}
+                      style={{ background: PRIMARY, color: 'white', border: 'none', borderRadius: '6px', padding: '6px 10px', fontSize: '12px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      📈 عرض
+                    </button>
+                  </td>
                 </tr>
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={13} style={{ ...tdStyle, textAlign: 'center', color: '#999', padding: '40px' }}>
+                  <td colSpan={14} style={{ ...tdStyle, textAlign: 'center', color: '#999', padding: '40px' }}>
                     لا توجد بيانات لهذا الشهر
                   </td>
                 </tr>
@@ -150,11 +161,16 @@ export default function EmployeeMonthlyStatsPage() {
                 <tr>
                   <td style={{ ...tdStyle, fontWeight: 'bold' }} colSpan={12}>الإجمالي</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: PRIMARY }}>{fmt(totalCommissionSum)} د.ع</td>
+                  <td style={tdStyle} />
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
+      )}
+
+      {curveFor && (
+        <PerformanceCurveModal employeeId={curveFor.id} employeeName={curveFor.name} onClose={() => setCurveFor(null)} />
       )}
     </div>
   )

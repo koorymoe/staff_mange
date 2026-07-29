@@ -528,6 +528,59 @@ func (r *BookingRepository) CountFreeMaintenanceForEmployeeMonth(employeeID, mon
 	return count, err
 }
 
+// CountCompletedForEmployeeRange نفس CountCompletedForEmployeeMonth لكن لمدى
+// تاريخ حر (from/to بصيغة "YYYY-MM-DD").
+func (r *BookingRepository) CountCompletedForEmployeeRange(employeeID, from, to string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL
+			AND b."completedAt"::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return count, err
+}
+
+// CountAssignedForEmployeeRange نفس CountAssignedForEmployeeMonth لكن لمدى
+// تاريخ حر.
+func (r *BookingRepository) CountAssignedForEmployeeRange(employeeID, from, to string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1
+			AND COALESCE(b."completedAt", b."createdAt")::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return count, err
+}
+
+// CountMaintenanceForEmployeeRange نفس CountMaintenanceForEmployeeMonth لكن
+// لمدى تاريخ حر.
+func (r *BookingRepository) CountMaintenanceForEmployeeRange(employeeID, from, to string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
+			AND COALESCE(b."completedAt", b."createdAt")::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return count, err
+}
+
+// CountFreeMaintenanceForEmployeeRange نفس CountFreeMaintenanceForEmployeeMonth
+// لكن لمدى تاريخ حر.
+func (r *BookingRepository) CountFreeMaintenanceForEmployeeRange(employeeID, from, to string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
+			AND (b."quotedPrice" IS NULL OR b."quotedPrice" = 0)
+			AND COALESCE(b."completedAt", b."createdAt")::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return count, err
+}
+
 // dailyDateExpr هو نفس منطق "relevantDate" المعتمد بصفحة الحجوزات: الموعد
 // المحدد (scheduledAt) وإلا تاريخ التسجيل (createdAt) — حتى الإحصائية اليومية
 // تلتقط الحجز باليوم الصحيح حتى لو تأجّل موعده لاحقاً.

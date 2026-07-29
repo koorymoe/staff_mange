@@ -65,6 +65,25 @@ func (r *VehicleMissionRatingRepository) GetCleanlinessAvgForDriverMonth(employe
 	return row.Avg, row.Count, nil
 }
 
+// GetCleanlinessAvgForDriverRange نفس GetCleanlinessAvgForDriverMonth لكن لمدى
+// تاريخ حر (from/to بصيغة "YYYY-MM-DD").
+func (r *VehicleMissionRatingRepository) GetCleanlinessAvgForDriverRange(employeeID, from, to string) (avg *float64, count int, err error) {
+	var row struct {
+		Count int      `db:"count"`
+		Avg   *float64 `db:"avg"`
+	}
+	err = r.db.Get(&row, `
+		SELECT COUNT(mr.id) AS count, AVG(mr.cleanliness) AS avg
+		FROM "VehicleMission" m
+		JOIN "VehicleMissionRating" mr ON mr."missionId" = m.id
+		WHERE m."driverId" = $1 AND m."startedAt"::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	if err != nil {
+		return nil, 0, err
+	}
+	return row.Avg, row.Count, nil
+}
+
 // GetDriverRatingSummary يحسب متوسط تقييمات سائق عبر كل مهامه المقيَّمة.
 func (r *VehicleMissionRatingRepository) GetDriverRatingSummary(employeeID string) (*model.DriverRatingSummary, error) {
 	var summary model.DriverRatingSummary

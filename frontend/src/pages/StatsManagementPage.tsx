@@ -109,64 +109,103 @@ function DailyTab() {
   )
 }
 
+function defaultWeekRange() {
+  const to = todayStr()
+  const d = new Date()
+  d.setDate(d.getDate() - 7)
+  const from = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  return { from, to }
+}
+
+const weeklyThStyle: React.CSSProperties = { padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY, whiteSpace: 'nowrap' }
+const weeklyTdStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }
+
 function WeeklyTab() {
+  const initial = defaultWeekRange()
+  const [from, setFrom] = useState(initial.from)
+  const [to, setTo] = useState(initial.to)
   const [stats, setStats] = useState<WeeklyStats | null>(null)
-  useEffect(() => { api.getWeeklyStats().then(setStats) }, [])
-  if (!stats) return <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>
+
+  useEffect(() => {
+    if (!from || !to) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStats(null)
+    api.getWeeklyStats(from, to).then(setStats)
+  }, [from, to])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div>
-        <h3 style={{ color: PRIMARY, marginBottom: '10px' }}>إنتاجية الكوادر (آخر 7 أيام)</h3>
-        <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الموظف</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الدور</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>حجوزات منجزة</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>حجم المبيعات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.crew.map((c) => (
-                <tr key={c.employeeId}>
-                  <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{c.employeeName}</td>
-                  <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{roleLabels[c.role] || c.role}</td>
-                  <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{c.completedBookings}</td>
-                  <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee', color: GOLD, fontWeight: 'bold' }}>{fmt(c.salesVolume)} د.ع</td>
-                </tr>
-              ))}
-              {stats.crew.length === 0 && (
-                <tr><td colSpan={4} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا يوجد نشاط بآخر 7 أيام</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <label style={{ fontSize: '13px', color: '#666' }}>من</label>
+        <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+        <label style={{ fontSize: '13px', color: '#666' }}>إلى</label>
+        <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+        <button
+          onClick={() => { const r = defaultWeekRange(); setFrom(r.from); setTo(r.to) }}
+          style={{ padding: '8px 14px', border: `1px solid ${PRIMARY}`, background: 'white', color: PRIMARY, borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+        >
+          آخر 7 أيام
+        </button>
       </div>
-      <div>
-        <h3 style={{ color: PRIMARY, marginBottom: '10px' }}>موظفو المبيعات (حسب عدد الحجوزات المدخلة)</h3>
-        <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الموظف</th>
-                <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>حجوزات أدخلها</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.sales.map((s) => (
-                <tr key={s.employeeId}>
-                  <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{s.employeeName}</td>
-                  <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{s.bookingsEntered}</td>
-                </tr>
-              ))}
-              {stats.sales.length === 0 && (
-                <tr><td colSpan={2} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا يوجد نشاط بآخر 7 أيام</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+
+      {!stats && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+
+      {stats && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <StatCard label="مبيعات صباحية" value={`${fmt(stats.morningSalesAmount)} د.ع`} />
+            <StatCard label="مبيعات مسائية" value={`${fmt(stats.eveningSalesAmount)} د.ع`} />
+            <StatCard label="إجمالي حجم المبيعات" value={`${fmt(stats.totalSalesAmount)} د.ع`} />
+          </div>
+
+          <div>
+            <h3 style={{ color: PRIMARY, marginBottom: '10px' }}>أداء كل موظف خلال المدى المحدد</h3>
+            <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={weeklyThStyle}>الموظف</th>
+                    <th style={weeklyThStyle}>الدور</th>
+                    <th style={weeklyThStyle}>نقاط الكي بي اي</th>
+                    <th style={weeklyThStyle}>سرعة العمل</th>
+                    <th style={weeklyThStyle}>نظافة السيارة</th>
+                    <th style={weeklyThStyle}>الشكاوى</th>
+                    <th style={weeklyThStyle}>عدد المبيعات</th>
+                    <th style={weeklyThStyle}>الحجوزات المكتملة</th>
+                    <th style={weeklyThStyle}>كل الحجوزات المسندة</th>
+                    <th style={weeklyThStyle}>حجوزات الصيانة</th>
+                    <th style={weeklyThStyle}>صيانات مجانية</th>
+                    <th style={weeklyThStyle}>قيمة نقاط الكي بي اي</th>
+                    <th style={weeklyThStyle}>إجمالي العمولة (حجم المبيعات)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.employees.map((r) => (
+                    <tr key={r.employeeId}>
+                      <td style={weeklyTdStyle}>{r.employeeName}</td>
+                      <td style={weeklyTdStyle}>{roleLabels[r.role] || r.role}</td>
+                      <td style={weeklyTdStyle}>{r.kpiPoints}</td>
+                      <td style={weeklyTdStyle}>{r.workSpeedScore != null ? r.workSpeedScore.toFixed(2) : '—'}</td>
+                      <td style={weeklyTdStyle}>{r.vehicleCleanlinessScore != null ? `${r.vehicleCleanlinessScore.toFixed(2)} (${r.vehicleRatingsCount})` : '—'}</td>
+                      <td style={weeklyTdStyle}>{r.complaintsCount}</td>
+                      <td style={weeklyTdStyle}>{r.salesCount}</td>
+                      <td style={weeklyTdStyle}>{r.completedBookingsCount}</td>
+                      <td style={weeklyTdStyle}>{r.totalBookingsCount}</td>
+                      <td style={weeklyTdStyle}>{r.maintenanceBookingsCount}</td>
+                      <td style={weeklyTdStyle}>{r.freeMaintenanceCount}</td>
+                      <td style={weeklyTdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
+                      <td style={{ ...weeklyTdStyle, fontWeight: 'bold', color: GOLD }}>{fmt(r.totalCommission)} د.ع</td>
+                    </tr>
+                  ))}
+                  {stats.employees.length === 0 && (
+                    <tr><td colSpan={13} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا يوجد نشاط بهذا المدى</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   )
 }

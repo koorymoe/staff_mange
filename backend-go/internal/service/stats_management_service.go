@@ -10,12 +10,13 @@ import (
 // StatsManagementService يبني "إدارة الإحصائيات" — يومية/أسبوعية/مشاريع (مو
 // الشهرية، هذي موجودة أصلاً بـEmployeeMonthlyStatsService). OWNER/ADMIN فقط.
 type StatsManagementService struct {
-	employees      *repository.EmployeeRepository
-	bookings       *repository.BookingRepository
-	commissions    *repository.EmployeeCommissionRepository
-	projects       *repository.ProjectRepository
-	leaderInvoices *repository.LeaderInvoiceRepository
-	attendance     *repository.AttendanceRepository
+	employees       *repository.EmployeeRepository
+	bookings        *repository.BookingRepository
+	commissions     *repository.EmployeeCommissionRepository
+	projects        *repository.ProjectRepository
+	leaderInvoices  *repository.LeaderInvoiceRepository
+	attendance      *repository.AttendanceRepository
+	employeeMonthly *EmployeeMonthlyStatsService
 }
 
 func NewStatsManagementService(
@@ -25,10 +26,11 @@ func NewStatsManagementService(
 	projects *repository.ProjectRepository,
 	leaderInvoices *repository.LeaderInvoiceRepository,
 	attendance *repository.AttendanceRepository,
+	employeeMonthly *EmployeeMonthlyStatsService,
 ) *StatsManagementService {
 	return &StatsManagementService{
 		employees: employees, bookings: bookings, commissions: commissions, projects: projects,
-		leaderInvoices: leaderInvoices, attendance: attendance,
+		leaderInvoices: leaderInvoices, attendance: attendance, employeeMonthly: employeeMonthly,
 	}
 }
 
@@ -96,38 +98,34 @@ func (s *StatsManagementService) Daily(date string) (*model.DailyStats, error) {
 	return result, nil
 }
 
-func (s *StatsManagementService) Weekly() (*model.WeeklyStats, error) {
-	employees, err := s.employees.List()
+// Weekly يبني الإحصائية الأسبوعية بمدى تاريخ حر (from/to بصيغة "YYYY-MM-DD") —
+// افتراضياً آخر 7 أيام لو ما تحدد مدى. الفقرة الأولى: حجم المبيعات صباحي/
+// مسائي/مجموع. الفقرة الثانية: نفس أعمدة الإحصائية الشهرية محسوبة على مدى
+// الأسبوع (بدون تعديل "عدد الخدمات" — هذا خاص بالشهرية فقط).
+func (s *StatsManagementService) Weekly(from, to string) (*model.WeeklyStats, error) {
+	if from == "" || to == "" {
+		to = time.Now().Format("2006-01-02")
+		from = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
+	}
+
+	morning, evening, err := s.leaderInvoices.SumNetTotalMorningEveningForRange(from, to)
+	if err != nil {
+		return nil, err
+	}
+	total, err := s.leaderInvoices.SumNetTotalForRange(from, to)
+	if err != nil {
+		return nil, err
+	}
+	employees, err := s.employeeMonthly.Range(from, to)
 	if err != nil {
 		return nil, err
 	}
 
-	result := &model.WeeklyStats{
-		WeekStart: time.Now().AddDate(0, 0, -7).Format("2006-01-02"),
-		Crew:      []model.WeeklyCrewStats{},
-		Sales:     []model.WeeklySalesStats{},
-	}
-	for _, e := range employees {
-		if e.Role == "TECHNICIAN" {
-			completed, _ := s.bookings.CountCompletedForEmployeeLast7Days(e.ID)
-			volume, _ := s.commissions.SumForEmployeeLast7Days(e.ID)
-			if completed > 0 || volume > 0 {
-				result.Crew = append(result.Crew, model.WeeklyCrewStats{
-					EmployeeID: e.ID, EmployeeName: e.Name, Role: e.Role,
-					CompletedBookings: completed, SalesVolume: volume,
-				})
-			}
-		}
-		if e.Role == "SALES" {
-			entered, _ := s.bookings.CountEnteredThisWeekForEmployee(e.ID)
-			if entered > 0 {
-				result.Sales = append(result.Sales, model.WeeklySalesStats{
-					EmployeeID: e.ID, EmployeeName: e.Name, BookingsEntered: entered,
-				})
-			}
-		}
-	}
-	return result, nil
+	return &model.WeeklyStats{
+		From: from, To: to,
+		MorningSalesAmount: morning, EveningSalesAmount: evening, TotalSalesAmount: total,
+		Employees: employees,
+	}, nil
 }
 
 func (s *StatsManagementService) ProjectStages() ([]model.ProjectStageStats, error) {

@@ -239,6 +239,19 @@ func (r *EmployeeRepository) SkillsForEmployee(employeeID string) ([]model.Emplo
 	return skills, nil
 }
 
+// CountDistinctServicesKnown يرجّع عدد الخدمات المميزة الي الموظف يعرف عليها
+// مهارة واحدة على الأقل (canPerform = true) — يُستخدم بصفحة إحصائيات الموظفين
+// الشهرية بدل تكرار نقاط الكي بي اي (موجودة أصلاً بصفحة التقديرات).
+func (r *EmployeeRepository) CountDistinctServicesKnown(employeeID string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(DISTINCT sk."serviceId") FROM "EmployeeSkill" es
+		JOIN "Skill" sk ON sk.id = es."skillId"
+		WHERE es."employeeId" = $1 AND es."canPerform" = true
+	`, employeeID)
+	return count, err
+}
+
 // SkillDivisions يرجّع "division" الخدمة (Service) المالكة لكل مهارة من قائمة
 // معرّفات المهارات المعطاة — يستخدمها EmployeeService.SetSkills حتى يتأكد إن
 // كل مهارة يراد إسنادها تنتمي لنفس شعبة الموظف (ENGINEERING/DECOR) قبل الحفظ.

@@ -6,7 +6,12 @@ type EmployeeMonthlyStats struct {
 	EmployeeID   string `json:"employeeId"`
 	EmployeeName string `json:"employeeName"`
 	Role         string `json:"role"`
-	Month        string `json:"month"` // "YYYY-MM"
+	Month        string `json:"month"` // "YYYY-MM" — فارغ لو الصف مبني بمدى تاريخ حر (From/To)
+
+	// From/To: تُملأ فقط لما الصف مبني بمدى تاريخ حر (الإحصائية الأسبوعية بفلتر
+	// من/إلى) — nil بحالة الإحصائية الشهرية العادية.
+	From *string `json:"from,omitempty"`
+	To   *string `json:"to,omitempty"`
 
 	// نقاط الكي بي اي — نفس آلية تسجيل النقاط الموجودة أصلاً (KpiEvaluation)،
 	// مجموع النقاط غير الملغاة خلال الشهر.
@@ -46,4 +51,31 @@ type EmployeeMonthlyStats struct {
 	MaintenanceBookingsCount int `json:"maintenanceBookingsCount"`
 	// صيانات مجانية (بدون تكلفة مقدّرة) ضمن حجوزات الصيانة أعلاه.
 	FreeMaintenanceCount int `json:"freeMaintenanceCount"`
+
+	// عدد الخدمات المميزة التي يعرف عليها الموظف مهارة واحدة على الأقل —
+	// تُحسب فقط بالإحصائية الشهرية (بدل تكرار نقاط الكي بي اي الموجودة أصلاً
+	// بصفحة التقديرات). صفر دايماً بالإحصائية الأسبوعية (غير محسوبة عمداً).
+	ServicesKnownCount int `json:"servicesKnownCount"`
+}
+
+// MonthlyPointsBucket نقطة واحدة بمنحنى نقاط الكي بي اي الشهري لموظف معيّن.
+type MonthlyPointsBucket struct {
+	Month  string `db:"month" json:"month"`
+	Points int    `db:"points" json:"points"`
+}
+
+// MonthlyCommissionBucket نقطة واحدة بمنحنى العمولات الشهري لموظف معيّن.
+type MonthlyCommissionBucket struct {
+	Month  string  `db:"month" json:"month"`
+	Amount float64 `db:"amount" json:"amount"`
+}
+
+// EmployeePerformanceCurve منحنى أداء موظف واحد — نقاط الكي بي اي والمبالغ
+// المحصّلة شهرياً لآخر عدة أشهر — يُستخدم بمنحنى الأداء المتحرك بصفحة
+// إحصائيات الموظفين الشهرية.
+type EmployeePerformanceCurve struct {
+	EmployeeID   string                    `json:"employeeId"`
+	EmployeeName string                    `json:"employeeName"`
+	Points       []MonthlyPointsBucket     `json:"points"`
+	Commission   []MonthlyCommissionBucket `json:"commission"`
 }

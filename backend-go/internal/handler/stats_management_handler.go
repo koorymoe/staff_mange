@@ -24,9 +24,9 @@ func (h *StatsManagementHandler) Daily(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, stats)
 }
 
-// GET /api/stats-management/weekly
+// GET /api/stats-management/weekly?from=2026-07-01&to=2026-07-07
 func (h *StatsManagementHandler) Weekly(w http.ResponseWriter, r *http.Request) {
-	stats, err := h.service.Weekly()
+	stats, err := h.service.Weekly(r.URL.Query().Get("from"), r.URL.Query().Get("to"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإحصائية الأسبوعية")
 		return

@@ -114,6 +114,17 @@ func (r *ComplaintRepository) CountForEmployeeMonth(employeeID, monthPrefix stri
 	return count, err
 }
 
+// CountForEmployeeRange نفس CountForEmployeeMonth لكن لمدى تاريخ حر (from/to
+// بصيغة "YYYY-MM-DD").
+func (r *ComplaintRepository) CountForEmployeeRange(employeeID, from, to string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM "Complaint"
+		WHERE "relatedEmployeeId" = $1 AND "createdAt"::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return count, err
+}
+
 func (r *ComplaintRepository) Resolve(id string, resolution *string) (*model.Complaint, error) {
 	var c model.Complaint
 	err := r.db.Get(&c, `

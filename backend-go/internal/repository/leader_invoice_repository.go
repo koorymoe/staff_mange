@@ -99,6 +99,49 @@ func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix 
 	return count, err
 }
 
+// CountForEmployeeRange نفس CountForEmployeeMonth لكن لمدى تاريخ حر (from/to
+// بصيغة "YYYY-MM-DD").
+func (r *LeaderInvoiceRepository) CountForEmployeeRange(employeeID, from, to string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM "LeaderInvoice"
+		WHERE "employeeId" = $1 AND "createdAt"::date BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return count, err
+}
+
+// SumNetTotalForRange يرجّع مجموع "netTotal" لكل فواتير الليدر خلال مدى تاريخ
+// حر — إجمالي حجم المبيعات بالإحصائية الأسبوعية.
+func (r *LeaderInvoiceRepository) SumNetTotalForRange(from, to string) (float64, error) {
+	var total sql.NullFloat64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE "createdAt"::date BETWEEN $1::date AND $2::date
+	`, from, to)
+	if err != nil {
+		return 0, err
+	}
+	return total.Float64, nil
+}
+
+// SumNetTotalMorningEveningForRange يرجّع مجموع "netTotal" مقسوماً صباحي
+// (قبل الساعة 12 ظهراً حسب وقت إنشاء الفاتورة) ومسائي خلال مدى تاريخ حر.
+func (r *LeaderInvoiceRepository) SumNetTotalMorningEveningForRange(from, to string) (morning float64, evening float64, err error) {
+	var m, e sql.NullFloat64
+	if err = r.db.Get(&m, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
+		WHERE "createdAt"::date BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") < 12
+	`, from, to); err != nil {
+		return 0, 0, err
+	}
+	if err = r.db.Get(&e, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
+		WHERE "createdAt"::date BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") >= 12
+	`, from, to); err != nil {
+		return 0, 0, err
+	}
+	return m.Float64, e.Float64, nil
+}
+
 // SumNetTotalForDate يرجّع مجموع "netTotal" لكل فواتير الليدر المنشأة بتاريخ
 // معيّن — يُستخدم كـ"إجمالي المبيعات" اليومي.
 func (r *LeaderInvoiceRepository) SumNetTotalForDate(date string) (float64, error) {
