@@ -116,22 +116,23 @@ func (r *KpiRepository) SumPointsForEmployeeRange(employeeID, from, to string) (
 }
 
 // MonthlyPointsSeriesForEmployee يرجّع مجموع نقاط الكي بي اي (غير الملغاة) لكل
-// شهر من آخر monthsCount شهر (بالترتيب من الأقدم للأحدث) — يُستخدم بمنحنى
-// الأداء المتحرك بصفحة إحصائيات الموظفين.
-func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, monthsCount int) ([]model.MonthlyPointsBucket, error) {
+// شهر من monthsCount شهر تنتهي بشهر endMonth (بصيغة "YYYY-MM-01"، بالترتيب من
+// الأقدم للأحدث) — يُستخدم بمنحنى الأداء المتحرك بصفحة إحصائيات الموظفين،
+// يقدر المستخدم يتصفح أي شهر بالفلتر بدل ما يبقى محصور بآخر 6 أشهر ثابتة.
+func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, monthsCount int, endMonth string) ([]model.MonthlyPointsBucket, error) {
 	buckets := []model.MonthlyPointsBucket{}
 	err := r.db.Select(&buckets, `
 		SELECT to_char(m, 'YYYY-MM') AS month, COALESCE(SUM(k.points), 0) AS points
 		FROM generate_series(
-			date_trunc('month', now()) - ($2 - 1) * interval '1 month',
-			date_trunc('month', now()),
+			$3::date - ($2 - 1) * interval '1 month',
+			$3::date,
 			interval '1 month'
 		) m
 		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = $1 AND k.cancelled = false
 			AND to_char(k."createdAt", 'YYYY-MM') = to_char(m, 'YYYY-MM')
 		GROUP BY m
 		ORDER BY m
-	`, employeeID, monthsCount)
+	`, employeeID, monthsCount, endMonth)
 	return buckets, err
 }
 

@@ -53,10 +53,10 @@ func (h *EmployeeStatsHandler) Range(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, stats)
 }
 
-// GET /api/employee-stats/curve/{employeeId}?months=6
+// GET /api/employee-stats/curve/{employeeId}?months=6&month=2026-07
 func (h *EmployeeStatsHandler) Curve(w http.ResponseWriter, r *http.Request) {
 	months, _ := strconv.Atoi(r.URL.Query().Get("months"))
-	curve, err := h.service.Curve(r.PathValue("employeeId"), months)
+	curve, err := h.service.Curve(r.PathValue("employeeId"), months, r.URL.Query().Get("month"))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

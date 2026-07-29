@@ -174,19 +174,30 @@ func (s *EmployeeMonthlyStatsService) Range(from, to string) ([]model.EmployeeMo
 
 // Curve يبني منحنى أداء موظف واحد — نقاط الكي بي اي والعمولات شهرياً لآخر
 // monthsCount شهر (6 افتراضياً) — يُستخدم بمنحنى الأداء المتحرك.
-func (s *EmployeeMonthlyStatsService) Curve(employeeID string, monthsCount int) (*model.EmployeePerformanceCurve, error) {
+// Curve يبني منحنى أداء موظف واحد — نقاط الكي بي اي والعمولات لكل شهر تقويمي
+// حقيقي (بدل نافذة متحركة ثابتة) — month (بصيغة "YYYY-MM") يحدد الشهر
+// الأخير بالمنحنى، يبقى المستخدم يقدر يتصفح لأي شهر سابق يريده.
+func (s *EmployeeMonthlyStatsService) Curve(employeeID string, monthsCount int, month string) (*model.EmployeePerformanceCurve, error) {
 	if monthsCount <= 0 {
 		monthsCount = 6
 	}
+	if month == "" {
+		month = time.Now().Format("2006-01")
+	}
+	if _, err := time.Parse("2006-01", month); err != nil {
+		return nil, fmt.Errorf("صيغة الشهر يجب أن تكون YYYY-MM")
+	}
+	endMonth := month + "-01"
+
 	employee, err := s.employees.FindByID(employeeID)
 	if err != nil || employee == nil {
 		return nil, fmt.Errorf("الموظف غير موجود")
 	}
-	points, err := s.kpi.MonthlyPointsSeriesForEmployee(employeeID, monthsCount)
+	points, err := s.kpi.MonthlyPointsSeriesForEmployee(employeeID, monthsCount, endMonth)
 	if err != nil {
 		return nil, err
 	}
-	commission, err := s.commissions.MonthlyCommissionSeriesForEmployee(employeeID, monthsCount)
+	commission, err := s.commissions.MonthlyCommissionSeriesForEmployee(employeeID, monthsCount, endMonth)
 	if err != nil {
 		return nil, err
 	}

@@ -61,22 +61,22 @@ func (r *EmployeeCommissionRepository) SumForEmployeeRange(employeeID, from, to 
 }
 
 // MonthlyCommissionSeriesForEmployee يرجّع مجموع "totalCommission" لكل شهر من
-// آخر monthsCount شهر (بالترتيب من الأقدم للأحدث) — يُستخدم بمنحنى الأداء
-// المتحرك بصفحة إحصائيات الموظفين.
-func (r *EmployeeCommissionRepository) MonthlyCommissionSeriesForEmployee(employeeID string, monthsCount int) ([]model.MonthlyCommissionBucket, error) {
+// monthsCount شهر تنتهي بشهر endMonth (بصيغة "YYYY-MM-01"، بالترتيب من الأقدم
+// للأحدث) — يُستخدم بمنحنى الأداء المتحرك بصفحة إحصائيات الموظفين.
+func (r *EmployeeCommissionRepository) MonthlyCommissionSeriesForEmployee(employeeID string, monthsCount int, endMonth string) ([]model.MonthlyCommissionBucket, error) {
 	buckets := []model.MonthlyCommissionBucket{}
 	err := r.db.Select(&buckets, `
 		SELECT to_char(m, 'YYYY-MM') AS month, COALESCE(SUM(c."totalCommission"), 0) AS amount
 		FROM generate_series(
-			date_trunc('month', now()) - ($2 - 1) * interval '1 month',
-			date_trunc('month', now()),
+			$3::date - ($2 - 1) * interval '1 month',
+			$3::date,
 			interval '1 month'
 		) m
 		LEFT JOIN "EmployeeCommission" c ON c."employeeId" = $1
 			AND to_char(c."createdAt", 'YYYY-MM') = to_char(m, 'YYYY-MM')
 		GROUP BY m
 		ORDER BY m
-	`, employeeID, monthsCount)
+	`, employeeID, monthsCount, endMonth)
 	return buckets, err
 }
 

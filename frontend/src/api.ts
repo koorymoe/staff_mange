@@ -1992,6 +1992,6 @@ export const api = {
   getWeeklyStats: (from: string, to: string) =>
     request<WeeklyStats>(`/stats-management/weekly?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   getProjectStageStats: () => request<ProjectStageStats[]>('/stats-management/projects'),
-  getEmployeePerformanceCurve: (employeeId: string, months = 6) =>
-    request<EmployeePerformanceCurve>(`/employee-stats/curve/${employeeId}?months=${months}`),
+  getEmployeePerformanceCurve: (employeeId: string, month?: string, months = 6) =>
+    request<EmployeePerformanceCurve>(`/employee-stats/curve/${employeeId}?months=${months}${month ? `&month=${encodeURIComponent(month)}` : ''}`),
 }

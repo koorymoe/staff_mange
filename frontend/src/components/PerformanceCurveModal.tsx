@@ -102,10 +102,16 @@ function AnimatedLineChart({
 
 export default function PerformanceCurveModal({ employeeId, employeeName, onClose }: { employeeId: string; employeeName: string; onClose: () => void }) {
   const [curve, setCurve] = useState<EmployeePerformanceCurve | null>(null)
+  const [month, setMonth] = useState(() => {
+    const now = new Date()
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  })
 
   useEffect(() => {
-    api.getEmployeePerformanceCurve(employeeId, 6).then(setCurve).catch(() => setCurve(null))
-  }, [employeeId])
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCurve(null)
+    api.getEmployeePerformanceCurve(employeeId, month, 6).then(setCurve).catch(() => setCurve(null))
+  }, [employeeId, month])
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }} onClick={onClose}>
@@ -113,9 +119,16 @@ export default function PerformanceCurveModal({ employeeId, employeeName, onClos
         style={{ background: '#f7f7f9', borderRadius: '16px', padding: '20px', width: '100%', maxWidth: '820px', maxHeight: '90vh', overflowY: 'auto', direction: 'rtl' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
           <h3 style={{ margin: 0, color: PRIMARY, fontSize: '18px' }}>📈 منحنى أداء {employeeName}</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#999', cursor: 'pointer' }}>×</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label style={{ fontSize: '13px', color: '#666' }}>الشهر</label>
+            <input
+              type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)}
+              style={{ padding: '6px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '13px' }}
+            />
+            <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '22px', color: '#999', cursor: 'pointer' }}>×</button>
+          </div>
         </div>
 
         {!curve && <p style={{ textAlign: 'center', color: '#999', padding: '30px' }}>جاري تحميل المنحنى...</p>}
@@ -123,14 +136,14 @@ export default function PerformanceCurveModal({ employeeId, employeeName, onClos
         {curve && (
           <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
             <AnimatedLineChart
-              title="نقاط الكي بي اي (آخر 6 أشهر)"
+              title={`نقاط الكي بي اي (6 أشهر تنتهي بـ ${monthLabel(month)})`}
               unit="نقطة"
               color={BLUE}
               values={curve.points.map((p) => ({ month: p.month, value: p.points }))}
               formatValue={(n) => n.toLocaleString('en-IQ')}
             />
             <AnimatedLineChart
-              title="المبالغ المحصّلة نسبة إلى النقاط (آخر 6 أشهر)"
+              title={`المبالغ المحصّلة نسبة إلى النقاط (6 أشهر تنتهي بـ ${monthLabel(month)})`}
               unit="د.ع"
               color={ORANGE}
               values={curve.commission.map((c) => ({ month: c.month, value: c.amount }))}
