@@ -55,5 +55,19 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "ProjectChecklist_projectId_idx" ON "ProjectChecklist"("projectId")`,
 		},
+		{
+			// معرض أعمال التقنيين: نماذج أعمال وأفكار وتصاميم جديدة يرفعها الفنيون
+			// بأنفسهم (منفصل عن مواد التدريب الي يديرها الإداري للمتدربين).
+			Version: "0138_create_tech_showcase_item",
+			SQL: `CREATE TABLE IF NOT EXISTS "TechShowcaseItem" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+				title TEXT NOT NULL,
+				description TEXT,
+				"mediaUrls" TEXT[] NOT NULL DEFAULT '{}',
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "TechShowcaseItem_employeeId_idx" ON "TechShowcaseItem"("employeeId")`,
+		},
 	}
 }

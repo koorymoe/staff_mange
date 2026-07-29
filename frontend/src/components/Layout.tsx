@@ -166,12 +166,24 @@ const navItems: NavItem[] = [
     ],
   },
   {
-    // وحدة التدريب: محتوى تدريبي/تعليمي للفنيين حسب صلاحية "التقني"
+    // وحدة التدريب: تدريبات الموظفين والفيديوهات التعليمية الي تنزل للمتدربين
     to: '/unit-training', label: 'وحدة التدريب', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c0 1.7 3 3 6 3s6-1.3 6-3v-5"/></svg>,
     children: [
-      { to: '/training-management', label: 'صلاحية التقني (محتوى)', icon: <></>, permission: 'content_technician' },
+      { to: '/training-management', label: 'مواد التدريب', icon: <></>, permission: 'content_technician' },
     ],
   },
+  {
+    // وحدة التقنيين: كل الأشياء الي تخص التقني نفسه (منفصلة عن تدريب المتدربين) —
+    // معرض أعمال يعرض فيه الفنيون نماذج أعمال وأفكار جديدة، وأي إضافات مستقبلية.
+    to: '/unit-technicians', label: 'وحدة التقنيين', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+    children: [
+      { to: '/tech-showcase', label: 'معرض أعمال التقنيين', icon: <></>, permission: 'content_technician' },
+    ],
+  },
+  // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل
+  // وحدة) — تطلعان لمدير النظام بس، وتفتحان صفحة "قريباً" بدل ما تختفيان بالكامل.
+  { to: '/unit-design', label: 'وحدة التصميم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a4.5 4.5 0 0 0 0 9 4.5 4.5 0 0 1 0 9"/></svg>, roles: ['ADMIN'] },
+  { to: '/unit-pr', label: 'وحدة الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>, roles: ['ADMIN'] },
 
   {
     to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,

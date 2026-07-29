@@ -1184,9 +1184,23 @@ export interface ProjectChecklist {
   createdAt: string
 }
 
+export interface TechShowcaseItem {
+  id: string
+  title: string
+  description: string | null
+  employee: { id: string; name: string } | null
+  mediaUrls: string[]
+  createdAt: string
+}
+
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
   getChecklists: () => request<ProjectChecklist[]>('/checklists'),
+  getTechShowcase: () => request<TechShowcaseItem[]>('/tech-showcase'),
+  createTechShowcaseItem: (data: { title: string; description?: string }) =>
+    request<TechShowcaseItem>('/tech-showcase', { method: 'POST', body: JSON.stringify(data) }),
+  addTechShowcaseMedia: (id: string, mediaUrls: string[]) =>
+    request<TechShowcaseItem>(`/tech-showcase/${id}/media`, { method: 'PUT', body: JSON.stringify({ mediaUrls }) }),
   getProjectsBrief: () => request<{ projects: { id: string; name: string; code: string }[] }>('/projects').then((d) => d.projects),
   createChecklist: (data: { projectId?: string | null; title: string }) =>
     request<ProjectChecklist>('/checklists', { method: 'POST', body: JSON.stringify(data) }),

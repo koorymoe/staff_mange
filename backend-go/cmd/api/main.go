@@ -86,6 +86,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	missionRepo := repository.NewMissionRepository(db, bookingRepo)
 	projectRepo := repository.NewProjectRepository(db)
 	checklistRepo := repository.NewChecklistRepository(db)
+	techShowcaseRepo := repository.NewTechShowcaseRepository(db)
 	procurementRepo := repository.NewProcurementRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
@@ -133,6 +134,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	missionService := service.NewMissionService(missionRepo)
 	projectService := service.NewProjectService(projectRepo)
 	checklistService := service.NewChecklistService(checklistRepo)
+	techShowcaseService := service.NewTechShowcaseService(techShowcaseRepo)
 	procurementService := service.NewProcurementService(procurementRepo, permissionRepo)
 	supplierService := service.NewSupplierService(supplierRepo)
 	quotationService := service.NewQuotationService(quotationRepo)
@@ -173,6 +175,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	missionHandler := handler.NewMissionHandler(missionService)
 	projectHandler := handler.NewProjectHandler(projectService)
 	checklistHandler := handler.NewChecklistHandler(checklistService)
+	techShowcaseHandler := handler.NewTechShowcaseHandler(techShowcaseService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	quotationHandler := handler.NewQuotationHandler(quotationService)
@@ -442,6 +445,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.List), requireAuth))
 	mux.Handle("POST /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.Create), requireAuth))
 	mux.Handle("PUT /api/checklists/{id}/photos", middleware.Chain(http.HandlerFunc(checklistHandler.AddPhotos), requireAuth))
+
+	// معرض أعمال التقنيين — أي موظف مسجل دخول يتصفحه (إلهام)، بس صاحب صلاحية
+	// "التقني" (content_technician) بس يقدر يضيف عمل/يرفع وسائط.
+	mux.Handle("GET /api/tech-showcase", middleware.Chain(http.HandlerFunc(techShowcaseHandler.List), requireAuth))
+	mux.Handle("POST /api/tech-showcase", middleware.Chain(http.HandlerFunc(techShowcaseHandler.Create), requireAuth, requireContentTech))
+	mux.Handle("PUT /api/tech-showcase/{id}/media", middleware.Chain(http.HandlerFunc(techShowcaseHandler.AddMedia), requireAuth, requireContentTech))
 
 	// طلبات الكادر — مدير المشاريع (أو صاحب صلاحية إدارة المشاريع) يطلب، وإدارة الكوادر تلبي
 	mux.Handle("POST /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.Create), requireAuth, requireProjectMgmtPerm))
