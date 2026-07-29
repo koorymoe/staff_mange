@@ -135,6 +135,20 @@ func (r *EmployeeRepository) SetTrainee(id string, isTrainee bool) error {
 	return err
 }
 
+// SetPassword يحدّث كلمة مرور موظف معيّن (هاش جاهز مسبقاً) — تغيير ذاتي من
+// إعدادات الموظف نفسه.
+func (r *EmployeeRepository) SetPassword(id, hashedPassword string) error {
+	_, err := r.db.Exec(`UPDATE "Employee" SET password = $2 WHERE id = $1`, id, hashedPassword)
+	return err
+}
+
+// SetAttendanceIcon يحدّث الأيقونة الشخصية لموظف معيّن — بعد موافقة الإداري
+// على طلب تغيير الرمز.
+func (r *EmployeeRepository) SetAttendanceIcon(id, icon string) error {
+	_, err := r.db.Exec(`UPDATE "Employee" SET "attendanceIcon" = $2 WHERE id = $1`, id, icon)
+	return err
+}
+
 func (r *EmployeeRepository) Create(e *model.Employee) error {
 	_, err := r.db.NamedExec(`
 		INSERT INTO "Employee" (id, name, certificate, position, phone, username, password, "jobTitle", salary, shift, "shiftStart", "shiftEnd", role, division)

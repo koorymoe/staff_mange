@@ -56,6 +56,27 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "ProjectChecklist_projectId_idx" ON "ProjectChecklist"("projectId")`,
 		},
 		{
+			// أيقونة الحضور الشخصية لكل موظف — تبقى فاضية (يستخدم النظام أول حرف
+			// من الاسم كافتراضي) لين يطلب الموظف تغييرها ويوافق الإداري.
+			Version: "0138b_add_employee_attendance_icon",
+			SQL:     `ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "attendanceIcon" TEXT`,
+		},
+		{
+			// طلبات تغيير أيقونة الحضور — الموظف يطلب رمز جديد، ومدير النظام يوافق
+			// أو يرفض.
+			Version: "0138c_create_attendance_icon_request",
+			SQL: `CREATE TABLE IF NOT EXISTS "AttendanceIconRequest" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+				"requestedIcon" TEXT NOT NULL,
+				status TEXT NOT NULL DEFAULT 'PENDING',
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+				"resolvedAt" TIMESTAMP,
+				"resolvedById" TEXT REFERENCES "Employee"(id)
+			);
+			CREATE INDEX IF NOT EXISTS "AttendanceIconRequest_status_idx" ON "AttendanceIconRequest"(status)`,
+		},
+		{
 			// معرض أعمال التقنيين: نماذج أعمال وأفكار وتصاميم جديدة يرفعها الفنيون
 			// بأنفسهم (منفصل عن مواد التدريب الي يديرها الإداري للمتدربين).
 			Version: "0138_create_tech_showcase_item",

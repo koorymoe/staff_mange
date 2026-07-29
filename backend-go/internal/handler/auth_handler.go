@@ -65,3 +65,21 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, employee)
 }
+
+// PUT /api/v1/auth/change-password
+func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CurrentPassword string `json:"currentPassword"`
+		NewPassword     string `json:"newPassword"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	employeeID := middleware.EmployeeIDFromContext(r)
+	if err := h.auth.ChangePassword(employeeID, req.CurrentPassword, req.NewPassword); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}

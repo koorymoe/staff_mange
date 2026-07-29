@@ -56,6 +56,26 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Em
 	return employee, token, nil
 }
 
+// ChangePassword يغيّر كلمة مرور موظف بنفسه — يتحقق من كلمة المرور الحالية
+// قبل ما يخليه يحدد وحدة جديدة.
+func (s *AuthService) ChangePassword(employeeID, currentPassword, newPassword string) error {
+	if len(newPassword) < 6 {
+		return errors.New("كلمة المرور الجديدة لازم تكون 6 أحرف على الأقل")
+	}
+	employee, err := s.employees.FindByID(employeeID)
+	if err != nil || employee == nil || employee.Password == nil {
+		return errors.New("تعذر التحقق من الموظف")
+	}
+	if bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(currentPassword)) != nil {
+		return errors.New("كلمة المرور الحالية غير صحيحة")
+	}
+	hashed, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	return s.employees.SetPassword(employeeID, hashed)
+}
+
 func (s *AuthService) Me(employeeID string) (*model.Employee, error) {
 	return s.employees.FindByID(employeeID)
 }

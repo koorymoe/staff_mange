@@ -87,6 +87,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectRepo := repository.NewProjectRepository(db)
 	checklistRepo := repository.NewChecklistRepository(db)
 	techShowcaseRepo := repository.NewTechShowcaseRepository(db)
+	attendanceIconRequestRepo := repository.NewAttendanceIconRequestRepository(db)
 	procurementRepo := repository.NewProcurementRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
@@ -135,6 +136,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectService := service.NewProjectService(projectRepo)
 	checklistService := service.NewChecklistService(checklistRepo)
 	techShowcaseService := service.NewTechShowcaseService(techShowcaseRepo)
+	attendanceIconRequestService := service.NewAttendanceIconRequestService(attendanceIconRequestRepo, employeeRepo)
 	procurementService := service.NewProcurementService(procurementRepo, permissionRepo)
 	supplierService := service.NewSupplierService(supplierRepo)
 	quotationService := service.NewQuotationService(quotationRepo)
@@ -176,6 +178,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectHandler := handler.NewProjectHandler(projectService)
 	checklistHandler := handler.NewChecklistHandler(checklistService)
 	techShowcaseHandler := handler.NewTechShowcaseHandler(techShowcaseService)
+	attendanceIconRequestHandler := handler.NewAttendanceIconRequestHandler(attendanceIconRequestService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	quotationHandler := handler.NewQuotationHandler(quotationService)
@@ -260,6 +263,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireLoginRateLimit := middleware.RateLimit(8, time.Minute)
 	mux.Handle("POST /api/auth/login", requireLoginRateLimit(http.HandlerFunc(authHandler.Login)))
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
+	mux.Handle("PUT /api/auth/change-password", middleware.Chain(http.HandlerFunc(authHandler.ChangePassword), requireAuth))
 
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
 	mux.Handle("GET /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
@@ -453,6 +457,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/tech-showcase", middleware.Chain(http.HandlerFunc(techShowcaseHandler.List), requireAuth))
 	mux.Handle("POST /api/tech-showcase", middleware.Chain(http.HandlerFunc(techShowcaseHandler.Create), requireAuth, requireContentTech))
 	mux.Handle("PUT /api/tech-showcase/{id}/media", middleware.Chain(http.HandlerFunc(techShowcaseHandler.AddMedia), requireAuth, requireContentTech))
+
+	// طلبات تغيير أيقونة الحضور — أي موظف يطلب، ومدير النظام بس يوافق/يرفض
+	mux.Handle("POST /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Create), requireAuth))
+	mux.Handle("GET /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.ListPending), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/attendance-icon-requests/{id}/approve", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Approve), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/attendance-icon-requests/{id}/reject", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Reject), requireAuth, requireAdmin))
 
 	// طلبات الكادر — مدير المشاريع (أو صاحب صلاحية إدارة المشاريع) يطلب، وإدارة الكوادر تلبي
 	mux.Handle("POST /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.Create), requireAuth, requireProjectMgmtPerm))

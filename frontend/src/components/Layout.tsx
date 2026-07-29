@@ -6,6 +6,7 @@ import Login from '../pages/Login'
 import TrainingPage from '../pages/TrainingPage'
 import AssistantWidget from './AssistantWidget'
 import ManagerAssistantChat from './ManagerAssistantChat'
+import SettingsPanel from './SettingsPanel'
 
 interface NavItem {
   to: string
@@ -138,16 +139,28 @@ const navItems: NavItem[] = [
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
-  { to: '/work-reports', label: 'تقارير العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>, roles: ['TECHNICIAN'] },
-  { to: '/my-tasks', label: 'مهامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN'] },
-  { to: '/my-expenses', label: 'مصاريفي', icon: <I d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
-  { to: '/my-inventory', label: 'جرد أدواتي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>, roles: ['TECHNICIAN'] },
-  // صيانة الأجهزة العامة وجرد الفريق: حصراً للتيم ليدر (شيتات "صيانة الاجهزة" و"جرد العدد")
-  { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
-  { to: '/team-inventory', label: 'جرد الفريق', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
-  { to: '/leader-invoices', label: 'فواتير الليدر', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 13h6M9 17h6M9 9h1"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
+  {
+    // مجموعة "العمل" للفني/الليدر — مهامه اليومية ومصاريفه وتقاريره وفواتيره
+    to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
+    children: [
+      { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN'] },
+      { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
+      { to: '/work-reports', label: 'تقارير العمل', icon: <></>, roles: ['TECHNICIAN'] },
+      { to: '/leader-invoices', label: 'فواتير الليدر', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
+    ],
+  },
+  {
+    // مجموعة "الجرد" — جرد الأدوات الشخصية وجرد الفريق (تيم ليدر بس يشوف الثانية)
+    to: '/tech-inventory-group', label: 'الجرد', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+    children: [
+      { to: '/my-inventory', label: 'جرد أدواتي', icon: <></>, roles: ['TECHNICIAN'] },
+      { to: '/team-inventory', label: 'جرد الفريق', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
+    ],
+  },
   // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
   { to: '/performance-review', label: 'تقييم فريقي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
+  // صيانة الأجهزة العامة: حصراً للتيم ليدر (شيت "صيانة الاجهزة")
+  { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
   { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
 
   // ═══ فاصل: تحته "الوحدات" — كل وحدة إدارية تجمع محتوياتها تحت باب واحد.
@@ -293,6 +306,7 @@ export default function Layout() {
   const [notifications, setNotifications] = useState<import('../api').Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const location = useLocation()
 
   // Closing the mobile nav on route change is a one-line UI reset tied to router
@@ -603,6 +617,19 @@ export default function Layout() {
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="relative">
                 <button
+                  onClick={() => setSettingsOpen((o) => !o)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600"
+                  title="الإعدادات"
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 15 4.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                  </svg>
+                </button>
+                {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
+              </div>
+              <div className="relative">
+                <button
                   onClick={() => setNotifOpen((o) => !o)}
                   className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600"
                 >
@@ -650,7 +677,7 @@ export default function Layout() {
                   <p className="text-[11px] text-slate-400">{roleLabels[employee.actualRole || employee.role]}</p>
                 </div>
                 <div className={`relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-md sm:h-10 sm:w-10`}>
-                  {employee.name.charAt(0)}
+                  {employee.attendanceIcon || employee.name.charAt(0)}
                   <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-500"/>
                 </div>
               </div>
@@ -703,7 +730,7 @@ export default function Layout() {
                   <p className="text-[11px] text-blue-300/60">{roleLabels[employee.actualRole || employee.role]}</p>
                 </div>
                 <div className={`relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-lg`}>
-                  {employee.name.charAt(0)}
+                  {employee.attendanceIcon || employee.name.charAt(0)}
                   <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
                 </div>
               </div>
@@ -718,7 +745,7 @@ export default function Layout() {
           ) : (
             <div className="mx-auto mb-3">
               <div className={`relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-lg`}>
-                {employee.name.charAt(0)}
+                {employee.attendanceIcon || employee.name.charAt(0)}
                 <span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
               </div>
             </div>

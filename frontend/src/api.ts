@@ -123,8 +123,17 @@ export interface Employee {
   monthlyLeaves: number
   jobTitle: string | null
   division: Division
+  attendanceIcon?: string | null
   skills: EmployeeSkill[]
   hasRequiredSkill?: boolean
+}
+
+export interface AttendanceIconRequest {
+  id: string
+  requestedIcon: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  createdAt: string
+  employee: { id: string; name: string } | null
 }
 
 export interface GpsCustomer {
@@ -1226,6 +1235,13 @@ export interface TechShowcaseItem {
 
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>('/auth/change-password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }),
+  createAttendanceIconRequest: (requestedIcon: string) =>
+    request<AttendanceIconRequest>('/attendance-icon-requests', { method: 'POST', body: JSON.stringify({ requestedIcon }) }),
+  getPendingAttendanceIconRequests: () => request<AttendanceIconRequest[]>('/attendance-icon-requests'),
+  approveAttendanceIconRequest: (id: string) => request<void>(`/attendance-icon-requests/${id}/approve`, { method: 'PUT' }),
+  rejectAttendanceIconRequest: (id: string) => request<void>(`/attendance-icon-requests/${id}/reject`, { method: 'PUT' }),
   getChecklists: () => request<ProjectChecklist[]>('/checklists'),
   getTechShowcase: () => request<TechShowcaseItem[]>('/tech-showcase'),
   createTechShowcaseItem: (data: { title: string; description?: string }) =>

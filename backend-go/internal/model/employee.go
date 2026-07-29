@@ -43,6 +43,7 @@ type Employee struct {
 	// شعبة الديكور (DECOR) — تحدد أي كتالوج مهارات ينطبق عليهم، انظر
 	// model.DivisionEngineering / model.DivisionDecor.
 	Division             string    `db:"division" json:"division"`
+	AttendanceIcon       *string   `db:"attendanceIcon" json:"attendanceIcon"`
 	CreatedAt            time.Time `db:"createdAt" json:"createdAt"`
 
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
