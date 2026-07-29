@@ -65,14 +65,6 @@ export default function EmployeeMonthlyStatsPage() {
       </div>
 
       <div style={{
-        background: '#fff8e1', border: `1px solid ${GOLD}`, borderRadius: '10px',
-        padding: '12px 16px', marginBottom: '16px', fontSize: '13px', color: '#5d4a1a',
-      }}>
-        <b>معادلة حساب حجم المبيعات:</b> الليدر = (تكلفة التنفيذ × 0.4) + (ربح بيع المواد × 0.5) — الفني = تكلفة التنفيذ × 0.3 فقط (بدون أي نسبة من المبيع، وكل فني ياخذ المبلغ كامل حتى لو أكثر من فني بنفس الحجز).
-        <br /><b>قيمة نقاط الكي بي اي:</b> كل نقطة = 10,000 دينار.
-      </div>
-
-      <div style={{
         display: 'flex', gap: '12px', alignItems: 'end', marginBottom: '20px',
         background: 'white', border: `2px solid ${PRIMARY}`, borderRadius: '12px', padding: '16px',
       }}>
