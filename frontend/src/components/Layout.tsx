@@ -533,6 +533,26 @@ export default function Layout() {
       )
     }
 
+    // Leaf مباشرة تحت مجموعة رئيسية (زي "الإدارة") — نفس شكل عناوين المجموعات
+    // الشقيقة (بولد وأبيض) حتى ما توهم إنها ابن تابع لمجموعة ثانية فوقها.
+    if (depth === 1) {
+      return (
+        <NavLink key={item.to} to={item.to} end={item.end}
+          className={({ isActive }) =>
+            `group flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200 ${
+              isActive ? 'bg-white/[0.08] text-white' : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
+            }`
+          }>
+          {({ isActive }) => (
+            <>
+              <span className="flex-1 text-right">{item.label}</span>
+              {isActive && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ flexShrink: 0 }}/>}
+            </>
+          )}
+        </NavLink>
+      )
+    }
+
     return (
       <NavLink key={item.to} to={item.to} end={item.end}
         className={({ isActive }) =>
