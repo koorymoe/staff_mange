@@ -14,9 +14,9 @@ func NewStatsManagementHandler(s *service.StatsManagementService) *StatsManageme
 	return &StatsManagementHandler{service: s}
 }
 
-// GET /api/stats-management/daily
+// GET /api/stats-management/daily?date=2026-07-29
 func (h *StatsManagementHandler) Daily(w http.ResponseWriter, r *http.Request) {
-	stats, err := h.service.Daily()
+	stats, err := h.service.Daily(r.URL.Query().Get("date"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإحصائية اليومية")
 		return

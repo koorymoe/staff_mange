@@ -60,4 +60,14 @@ func (r *EmployeeCommissionRepository) SumForEmployeeLast7Days(employeeID string
 	return float64(total), err
 }
 
+// SumForDate يرجّع مجموع "totalCommission" لكل الموظفين بتاريخ معيّن —
+// يُستخدم كـ"إجمالي الأرباح" اليومي.
+func (r *EmployeeCommissionRepository) SumForDate(date string) (float64, error) {
+	var total sql64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission" WHERE "createdAt"::date = $1::date
+	`, date)
+	return float64(total), err
+}
+
 type sql64 float64

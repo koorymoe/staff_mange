@@ -185,7 +185,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
 	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo)
 	employeeStatsHandler := handler.NewEmployeeStatsHandler(employeeMonthlyStatsService)
-	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo)
+	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo, leaderInvoiceRepo, attendanceRepo)
 	statsManagementHandler := handler.NewStatsManagementHandler(statsManagementService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)

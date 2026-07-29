@@ -99,6 +99,16 @@ func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix 
 	return count, err
 }
 
+// SumNetTotalForDate يرجّع مجموع "netTotal" لكل فواتير الليدر المنشأة بتاريخ
+// معيّن — يُستخدم كـ"إجمالي المبيعات" اليومي.
+func (r *LeaderInvoiceRepository) SumNetTotalForDate(date string) (float64, error) {
+	var total sql.NullFloat64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE "createdAt"::date = $1::date
+	`, date)
+	return total.Float64, err
+}
+
 func (r *LeaderInvoiceRepository) hydrate(inv *model.LeaderInvoice) error {
 	if inv.SystemsJSON != "" {
 		_ = json.Unmarshal([]byte(inv.SystemsJSON), &inv.Systems)

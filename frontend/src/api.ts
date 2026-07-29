@@ -487,8 +487,18 @@ export interface EmployeeMonthlyStats {
 
 export interface DailyStats {
   date: string
-  totalBookingsToday: number
-  employees: { employeeId: string; employeeName: string; role: string; bookingsToday: number }[]
+  totalBookings: number
+  morningBookings: number
+  eveningBookings: number
+  crewOutCount: number
+  vehiclesOutCount: number
+  totalEmployeesCount: number
+  totalSalesAmount: number
+  totalProfitAmount: number
+  employees: {
+    employeeId: string; employeeName: string; role: string
+    bookingsAssigned: number; bookingsCompleted: number; checkedIn: boolean
+  }[]
 }
 
 export interface WeeklyStats {
@@ -1858,7 +1868,7 @@ export const api = {
     request<EmployeeMonthlyStats[]>(`/employee-stats/monthly?month=${encodeURIComponent(month)}`),
   exportEmployeeMonthlyStats: (month: string) =>
     downloadFile(`/employee-stats/monthly/export?month=${encodeURIComponent(month)}`, `employee-stats-${month}.xlsx`),
-  getDailyStats: () => request<DailyStats>('/stats-management/daily'),
+  getDailyStats: (date?: string) => request<DailyStats>(`/stats-management/daily${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   getWeeklyStats: () => request<WeeklyStats>('/stats-management/weekly'),
   getProjectStageStats: () => request<ProjectStageStats[]>('/stats-management/projects'),
 }

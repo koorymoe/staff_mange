@@ -12,38 +12,99 @@ const roleLabels: Record<string, string> = {
   SALES: 'مبيعات',
 }
 
+function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '14px' }}>
+      <div style={{ fontSize: '12px', color: '#888' }}>{label}</div>
+      <div style={{ fontSize: '20px', fontWeight: 'bold', color: PRIMARY, marginTop: '4px' }}>{value}</div>
+    </div>
+  )
+}
+
 function DailyTab() {
+  const [date, setDate] = useState(todayStr())
   const [stats, setStats] = useState<DailyStats | null>(null)
-  useEffect(() => { api.getDailyStats().then(setStats) }, [])
-  if (!stats) return <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStats(null)
+    api.getDailyStats(date).then(setStats)
+  }, [date])
+
   return (
     <div>
-      <div style={{ background: 'white', border: `1px solid #e0e0e0`, borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
-        <b>عدد حجوزات اليوم ({stats.date}):</b> <span style={{ color: PRIMARY, fontWeight: 'bold', fontSize: '18px' }}>{stats.totalBookingsToday}</span>
+      <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <label style={{ fontSize: '13px', color: '#666' }}>التاريخ</label>
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => e.target.value && setDate(e.target.value)}
+          style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+        />
+        {date !== todayStr() && (
+          <button
+            onClick={() => setDate(todayStr())}
+            style={{ padding: '8px 14px', border: `1px solid ${PRIMARY}`, background: 'white', color: PRIMARY, borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+          >
+            اليوم
+          </button>
+        )}
       </div>
-      <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr>
-              <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الموظف</th>
-              <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الدور</th>
-              <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>حجوزاته اليوم</th>
-            </tr>
-          </thead>
-          <tbody>
-            {stats.employees.map((e) => (
-              <tr key={e.employeeId}>
-                <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.employeeName}</td>
-                <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.role}</td>
-                <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.bookingsToday}</td>
-              </tr>
-            ))}
-            {stats.employees.length === 0 && (
-              <tr><td colSpan={3} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا يوجد كادر عنده حجوزات اليوم</td></tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+
+      {!stats && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+
+      {stats && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            <StatCard label="إجمالي الحجوزات" value={stats.totalBookings} />
+            <StatCard label="حجوزات صباحية" value={stats.morningBookings} />
+            <StatCard label="حجوزات مسائية" value={stats.eveningBookings} />
+            <StatCard label="كادر طلع للحجوزات" value={stats.crewOutCount} />
+            <StatCard label="سيارات استُخدمت" value={stats.vehiclesOutCount} />
+            <StatCard label="إجمالي عدد الموظفين" value={stats.totalEmployeesCount} />
+            <StatCard label="إجمالي المبيعات" value={`${fmt(stats.totalSalesAmount)} د.ع`} />
+            <StatCard label="إجمالي الأرباح" value={`${fmt(stats.totalProfitAmount)} د.ع`} />
+          </div>
+
+          <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الموظف</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الدور</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>حجوزات ترحّلت له</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>نفّذ منهن</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>ما نفّذ</th>
+                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>سجّل حضور؟</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.employees.map((e) => (
+                  <tr key={e.employeeId}>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.employeeName}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.role}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.bookingsAssigned}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee', color: '#2e7d32', fontWeight: 'bold' }}>{e.bookingsCompleted}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee', color: '#c62828' }}>{e.bookingsAssigned - e.bookingsCompleted}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>
+                      {e.checkedIn
+                        ? <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>✔ إي</span>
+                        : <span style={{ color: '#c62828', fontWeight: 'bold' }}>✘ لا</span>}
+                    </td>
+                  </tr>
+                ))}
+                {stats.employees.length === 0 && (
+                  <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا يوجد نشاط بهذا اليوم</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
     </div>
   )
 }

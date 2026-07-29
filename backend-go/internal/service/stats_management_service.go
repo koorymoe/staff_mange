@@ -10,10 +10,12 @@ import (
 // StatsManagementService يبني "إدارة الإحصائيات" — يومية/أسبوعية/مشاريع (مو
 // الشهرية، هذي موجودة أصلاً بـEmployeeMonthlyStatsService). OWNER/ADMIN فقط.
 type StatsManagementService struct {
-	employees   *repository.EmployeeRepository
-	bookings    *repository.BookingRepository
-	commissions *repository.EmployeeCommissionRepository
-	projects    *repository.ProjectRepository
+	employees      *repository.EmployeeRepository
+	bookings       *repository.BookingRepository
+	commissions    *repository.EmployeeCommissionRepository
+	projects       *repository.ProjectRepository
+	leaderInvoices *repository.LeaderInvoiceRepository
+	attendance     *repository.AttendanceRepository
 }
 
 func NewStatsManagementService(
@@ -21,32 +23,74 @@ func NewStatsManagementService(
 	bookings *repository.BookingRepository,
 	commissions *repository.EmployeeCommissionRepository,
 	projects *repository.ProjectRepository,
+	leaderInvoices *repository.LeaderInvoiceRepository,
+	attendance *repository.AttendanceRepository,
 ) *StatsManagementService {
-	return &StatsManagementService{employees: employees, bookings: bookings, commissions: commissions, projects: projects}
+	return &StatsManagementService{
+		employees: employees, bookings: bookings, commissions: commissions, projects: projects,
+		leaderInvoices: leaderInvoices, attendance: attendance,
+	}
 }
 
-func (s *StatsManagementService) Daily() (*model.DailyStats, error) {
+// Daily يبني إحصائية يوم معيّن (date بصيغة "YYYY-MM-DD") — اليوم افتراضياً لو
+// ما تحدد تاريخ، حتى تكدر ترجع لأي يوم سابق وتشوف نفس الإحصائية بالضبط.
+func (s *StatsManagementService) Daily(date string) (*model.DailyStats, error) {
+	if date == "" {
+		date = time.Now().Format("2006-01-02")
+	}
+
 	employees, err := s.employees.List()
 	if err != nil {
 		return nil, err
 	}
-	total, err := s.bookings.CountTodayTotal()
+
+	total, err := s.bookings.CountForDate(date)
 	if err != nil {
 		return nil, err
 	}
+	morning, evening, err := s.bookings.CountMorningEveningForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	crewOut, err := s.bookings.CountDistinctCrewForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	vehiclesOut, err := s.bookings.CountDistinctVehiclesForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	salesAmount, err := s.leaderInvoices.SumNetTotalForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	profitAmount, err := s.commissions.SumForDate(date)
+	if err != nil {
+		return nil, err
+	}
+	attendanceRows, err := s.attendance.DaySummary(date)
+	if err != nil {
+		return nil, err
+	}
+	checkedIn := map[string]bool{}
+	for _, a := range attendanceRows {
+		checkedIn[a.EmployeeID] = true
+	}
 
 	result := &model.DailyStats{
-		Date:               time.Now().Format("2006-01-02"),
-		TotalBookingsToday: total,
-		Employees:          []model.DailyEmployeeStats{},
+		Date: date, TotalBookings: total, MorningBookings: morning, EveningBookings: evening,
+		CrewOutCount: crewOut, VehiclesOutCount: vehiclesOut, TotalEmployeesCount: len(employees),
+		TotalSalesAmount: salesAmount, TotalProfitAmount: profitAmount,
+		Employees: []model.DailyEmployeeStats{},
 	}
 	for _, e := range employees {
-		count, cerr := s.bookings.CountTodayForEmployee(e.ID)
-		if cerr != nil || count == 0 {
+		assigned, completed, cerr := s.bookings.AssignedAndCompletedForEmployeeOnDate(e.ID, date)
+		if cerr != nil || (assigned == 0 && !checkedIn[e.ID]) {
 			continue
 		}
 		result.Employees = append(result.Employees, model.DailyEmployeeStats{
-			EmployeeID: e.ID, EmployeeName: e.Name, Role: e.Role, BookingsToday: count,
+			EmployeeID: e.ID, EmployeeName: e.Name, Role: e.Role,
+			BookingsAssigned: assigned, BookingsCompleted: completed, CheckedIn: checkedIn[e.ID],
 		})
 	}
 	return result, nil

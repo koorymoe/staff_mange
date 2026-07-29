@@ -1,17 +1,27 @@
 package model
 
-// DailyStats — عدد حجوزات اليوم إجمالاً، وكل كادر وإحصائيته اليوم.
+// DailyStats — الفقرة الأولى (أرقام إجمالية) والفقرة الثانية (كل موظف
+// وحجوزاته اليوم) — لتاريخ معيّن (اليوم افتراضياً، أو أي تاريخ سابق بالفلتر).
 type DailyStats struct {
-	Date              string                `json:"date"`
-	TotalBookingsToday int                  `json:"totalBookingsToday"`
-	Employees         []DailyEmployeeStats   `json:"employees"`
+	Date                 string               `json:"date"`
+	TotalBookings        int                  `json:"totalBookings"`
+	MorningBookings      int                  `json:"morningBookings"`
+	EveningBookings      int                  `json:"eveningBookings"`
+	CrewOutCount         int                  `json:"crewOutCount"`         // عدد الموظفين الي طلعوا للحجوزات
+	VehiclesOutCount     int                  `json:"vehiclesOutCount"`     // عدد السيارات المستخدمة
+	TotalEmployeesCount  int                  `json:"totalEmployeesCount"`  // إجمالي عدد الموظفين بالنظام
+	TotalSalesAmount     float64              `json:"totalSalesAmount"`     // إجمالي المبيعات (فواتير الليدر)
+	TotalProfitAmount    float64              `json:"totalProfitAmount"`    // إجمالي الأرباح (مجموع العمولات)
+	Employees            []DailyEmployeeStats `json:"employees"`
 }
 
 type DailyEmployeeStats struct {
-	EmployeeID   string `json:"employeeId"`
-	EmployeeName string `json:"employeeName"`
-	Role         string `json:"role"`
-	BookingsToday int   `json:"bookingsToday"`
+	EmployeeID        string `json:"employeeId"`
+	EmployeeName      string `json:"employeeName"`
+	Role              string `json:"role"`
+	BookingsAssigned  int    `json:"bookingsAssigned"`
+	BookingsCompleted int    `json:"bookingsCompleted"`
+	CheckedIn         bool   `json:"checkedIn"`
 }
 
 // WeeklyStats — إنتاجية الكوادر (عمل وتنفيذ فعلي) وحجم المبيعات (من فواتير
