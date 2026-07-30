@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useSession } from '../session'
+import LocationPicker from '../components/LocationPicker'
+import MapViewer from '../components/MapViewer'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -38,6 +40,7 @@ interface Supplier {
   companyName: string
   ownerName: string
   phone: string
+  address: string | null
   lat: number | null
   lng: number | null
   isMaterialSupplier: boolean
@@ -110,13 +113,14 @@ export default function SuppliersPage() {
   const [detailSupplier, setDetailSupplier] = useState<Supplier | null>(null)
   const [showRatingModal, setShowRatingModal] = useState(false)
   const [ratingTarget, setRatingTarget] = useState<Supplier | null>(null)
+  const [mapSupplier, setMapSupplier] = useState<Supplier | null>(null)
 
   // Form state
   const [formCompanyName, setFormCompanyName] = useState('')
   const [formOwnerName, setFormOwnerName] = useState('')
   const [formPhone, setFormPhone] = useState('')
-  const [formLat, setFormLat] = useState('')
-  const [formLng, setFormLng] = useState('')
+  const [formAddress, setFormAddress] = useState('')
+  const [formPoint, setFormPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [formIsMaterial, setFormIsMaterial] = useState(false)
   const [formIsContractor, setFormIsContractor] = useState(false)
   const [formTraderTypes, setFormTraderTypes] = useState<string[]>([])
@@ -160,7 +164,7 @@ export default function SuppliersPage() {
 
   const resetForm = () => {
     setFormCompanyName(''); setFormOwnerName(''); setFormPhone('')
-    setFormLat(''); setFormLng(''); setFormIsMaterial(false); setFormIsContractor(false)
+    setFormAddress(''); setFormPoint(null); setFormIsMaterial(false); setFormIsContractor(false)
     setFormTraderTypes([]); setFormNotes(''); setFormSpecialtyIds([])
   }
 
@@ -170,7 +174,8 @@ export default function SuppliersPage() {
 
   const openEdit = (s: Supplier) => {
     setFormCompanyName(s.companyName); setFormOwnerName(s.ownerName); setFormPhone(s.phone)
-    setFormLat(s.lat?.toString() || ''); setFormLng(s.lng?.toString() || '')
+    setFormAddress(s.address || '')
+    setFormPoint(s.lat != null && s.lng != null ? { lat: s.lat, lng: s.lng } : null)
     setFormIsMaterial(s.isMaterialSupplier); setFormIsContractor(s.isContractor)
     setFormTraderTypes(s.traderTypes || []); setFormNotes(s.notes || '')
     setFormSpecialtyIds(s.specialties.map((sp) => sp.id))
@@ -184,8 +189,9 @@ export default function SuppliersPage() {
       companyName: formCompanyName,
       ownerName: formOwnerName,
       phone: formPhone,
-      lat: formLat ? parseFloat(formLat) : null,
-      lng: formLng ? parseFloat(formLng) : null,
+      address: formAddress || null,
+      lat: formPoint?.lat ?? null,
+      lng: formPoint?.lng ?? null,
       isMaterialSupplier: formIsMaterial,
       isContractor: formIsContractor,
       traderTypes: formTraderTypes,
@@ -327,11 +333,11 @@ export default function SuppliersPage() {
                 ))}
               </div>
               {s.lat && s.lng && (
-                <a href={`https://www.google.com/maps?q=${s.lat},${s.lng}`} target="_blank" rel="noreferrer"
-                  onClick={(e) => e.stopPropagation()}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setMapSupplier(s) }}
                   className="mt-2 inline-block text-xs text-brand-500 hover:underline">
-                  عرض الموقع على الخريطة
-                </a>
+                  عرض الموقع على الخريطة 🗺️
+                </button>
               )}
             </div>
           ))}
@@ -409,18 +415,18 @@ export default function SuppliersPage() {
                 <input required value={formPhone} onChange={(e) => setFormPhone(e.target.value)}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500" />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-600">خط العرض</label>
-                  <input value={formLat} onChange={(e) => setFormLat(e.target.value)} placeholder="Lat"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500" />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-600">خط الطول</label>
-                  <input value={formLng} onChange={(e) => setFormLng(e.target.value)} placeholder="Lng"
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500" />
-                </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">العنوان (كلامي)</label>
+                <input value={formAddress} onChange={(e) => setFormAddress(e.target.value)}
+                  placeholder="مثال: كربلاء - شارع الجمهورية - قرب ..."
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500" />
               </div>
+            </div>
+
+            {/* نفس أسلوب إدارة الحجوزات: عنوان كلامي + خريطة نحدد عليها النقطة */}
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-600">تحديد الموقع على الخريطة</label>
+              <LocationPicker value={formPoint} onChange={setFormPoint} />
             </div>
 
             <div>
@@ -500,8 +506,14 @@ export default function SuppliersPage() {
           <div className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <p><span className="text-slate-400">المالك: </span>{detailSupplier.ownerName}</p>
             <p><span className="text-slate-400">الهاتف: </span><a href={`tel:${detailSupplier.phone}`} className="text-brand-600 hover:underline">{detailSupplier.phone}</a></p>
-            {detailSupplier.lat && detailSupplier.lng && (
-              <p><span className="text-slate-400">الموقع: </span><a href={`https://www.google.com/maps?q=${detailSupplier.lat},${detailSupplier.lng}`} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline">عرض على الخريطة</a></p>
+            {detailSupplier.address && (
+              <p className="sm:col-span-2"><span className="text-slate-400">العنوان: </span>{detailSupplier.address}</p>
+            )}
+            {detailSupplier.lat != null && detailSupplier.lng != null && (
+              <div className="sm:col-span-2">
+                <p className="mb-1 text-slate-400">الموقع على الخريطة</p>
+                <MapViewer lat={detailSupplier.lat} lng={detailSupplier.lng} height={240} />
+              </div>
             )}
             {detailSupplier.notes && <p className="sm:col-span-2"><span className="text-slate-400">ملاحظات: </span>{detailSupplier.notes}</p>}
           </div>
@@ -585,6 +597,20 @@ export default function SuppliersPage() {
               </button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {/* الخريطة تنفتح داخل النظام، مو برابط خارجي بتاب جديد */}
+      {mapSupplier && mapSupplier.lat != null && mapSupplier.lng != null && (
+        <Modal onClose={() => setMapSupplier(null)}>
+          <div className="mb-3 flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-brand-900">موقع {mapSupplier.companyName}</h3>
+              {mapSupplier.address && <p className="text-sm text-slate-500">{mapSupplier.address}</p>}
+            </div>
+            <button onClick={() => setMapSupplier(null)} className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100">✕ إغلاق</button>
+          </div>
+          <MapViewer lat={mapSupplier.lat} lng={mapSupplier.lng} height={380} />
         </Modal>
       )}
     </div>

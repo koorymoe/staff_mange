@@ -22,6 +22,7 @@ type Supplier struct {
 	CompanyName        string         `db:"companyName" json:"companyName"`
 	OwnerName          string         `db:"ownerName" json:"ownerName"`
 	Phone              string         `db:"phone" json:"phone"`
+	Address            *string        `db:"address" json:"address"`
 	Lat                *float64       `db:"lat" json:"lat"`
 	Lng                *float64       `db:"lng" json:"lng"`
 	IsMaterialSupplier bool           `db:"isMaterialSupplier" json:"isMaterialSupplier"`
@@ -50,6 +51,7 @@ type UpsertSupplierRequest struct {
 	CompanyName        string   `json:"companyName"`
 	OwnerName          string   `json:"ownerName"`
 	Phone              string   `json:"phone"`
+	Address            *string  `json:"address"`
 	Lat                *float64 `json:"lat"`
 	Lng                *float64 `json:"lng"`
 	IsMaterialSupplier bool     `json:"isMaterialSupplier"`

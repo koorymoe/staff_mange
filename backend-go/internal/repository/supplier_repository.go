@@ -122,10 +122,10 @@ func (r *SupplierRepository) Create(req model.UpsertSupplierRequest) (*model.Sup
 	}
 	var s model.Supplier
 	err := r.db.Get(&s, `
-		INSERT INTO "Supplier" (id, "companyName", "ownerName", phone, lat, lng, "isMaterialSupplier", "isContractor", "traderTypes", notes, "updatedAt")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, now())
+		INSERT INTO "Supplier" (id, "companyName", "ownerName", phone, address, lat, lng, "isMaterialSupplier", "isContractor", "traderTypes", notes, "updatedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
 		RETURNING *
-	`, req.CompanyName, req.OwnerName, req.Phone, req.Lat, req.Lng, req.IsMaterialSupplier, req.IsContractor, pq.Array(traderTypes), req.Notes)
+	`, req.CompanyName, req.OwnerName, req.Phone, req.Address, req.Lat, req.Lng, req.IsMaterialSupplier, req.IsContractor, pq.Array(traderTypes), req.Notes)
 	if err != nil {
 		return nil, err
 	}
@@ -152,16 +152,17 @@ func (r *SupplierRepository) Update(id string, req model.UpsertSupplierRequest) 
 			"companyName" = $2,
 			"ownerName" = $3,
 			phone = $4,
-			lat = $5,
-			lng = $6,
-			"isMaterialSupplier" = $7,
-			"isContractor" = $8,
-			"traderTypes" = $9,
-			notes = $10,
+			address = $5,
+			lat = $6,
+			lng = $7,
+			"isMaterialSupplier" = $8,
+			"isContractor" = $9,
+			"traderTypes" = $10,
+			notes = $11,
 			"updatedAt" = now()
 		WHERE id = $1
 		RETURNING *
-	`, id, req.CompanyName, req.OwnerName, req.Phone, req.Lat, req.Lng, req.IsMaterialSupplier, req.IsContractor, pq.Array(traderTypes), req.Notes)
+	`, id, req.CompanyName, req.OwnerName, req.Phone, req.Address, req.Lat, req.Lng, req.IsMaterialSupplier, req.IsContractor, pq.Array(traderTypes), req.Notes)
 	if err != nil {
 		return nil, err
 	}

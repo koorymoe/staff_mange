@@ -257,5 +257,11 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			Version: "0148_drop_project_sent_to_group",
 			SQL:     `ALTER TABLE "Project" DROP COLUMN IF EXISTS "sentToGroup"`,
 		},
+		{
+			// عنوان المورد كلامي بجانب إحداثيات الخريطة — نفس أسلوب الحجوزات:
+			// خانة عنوان نصي + نقطة محددة على الخريطة (lat/lng موجودين أصلاً).
+			Version: "0149_add_supplier_address",
+			SQL:     `ALTER TABLE "Supplier" ADD COLUMN IF NOT EXISTS address TEXT`,
+		},
 	}
 }
