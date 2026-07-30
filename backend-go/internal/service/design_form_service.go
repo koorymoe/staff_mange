@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -10,8 +11,10 @@ import (
 	"staffmange-api/internal/repository"
 )
 
-// DesignFormService يدير بنّاء أسئلة "وحدة التصميم" — المدير يضيف/يعدّل/يرتّب
-// الأسئلة يدوياً حسب الاستمارة الي يريدها، بدون أي محتوى ثابت مكتوب بالكود.
+// DesignFormService يدير استمارات "وحدة التصميم" — كل استمارة مستقلة بأسئلتها
+// ورابطها العام الخاص بيها، المدير يضيف/يعدّل/يرتّب الأسئلة يدوياً بدون أي
+// محتوى ثابت مكتوب بالكود، والزبون يعبّي الاستمارة عبر الرابط العام بدون
+// تسجيل دخول ولا اطلاع على أي جزء ثاني من النظام.
 type DesignFormService struct {
 	repo *repository.DesignFormRepository
 }
@@ -20,22 +23,44 @@ func NewDesignFormService(repo *repository.DesignFormRepository) *DesignFormServ
 	return &DesignFormService{repo: repo}
 }
 
-func (s *DesignFormService) List() ([]model.DesignFormQuestion, error) {
-	return s.repo.List()
+func (s *DesignFormService) ListForms() ([]model.DesignForm, error) {
+	return s.repo.ListForms()
+}
+
+func (s *DesignFormService) CreateForm(req model.CreateDesignFormRequest) (*model.DesignForm, error) {
+	if strings.TrimSpace(req.Name) == "" {
+		return nil, fmt.Errorf("اسم الاستمارة مطلوب")
+	}
+	return s.repo.CreateForm(uuid.NewString(), req.Name, uuid.NewString())
+}
+
+func (s *DesignFormService) DeleteForm(id string) error {
+	return s.repo.DeleteForm(id)
+}
+
+func (s *DesignFormService) GetFormByToken(token string) (*model.DesignForm, error) {
+	return s.repo.GetFormByToken(token)
+}
+
+func (s *DesignFormService) List(formID string) ([]model.DesignFormQuestion, error) {
+	return s.repo.List(formID)
 }
 
 func (s *DesignFormService) Create(req model.CreateDesignFormQuestionRequest) (*model.DesignFormQuestion, error) {
+	if strings.TrimSpace(req.FormID) == "" {
+		return nil, fmt.Errorf("الاستمارة مطلوبة")
+	}
 	if strings.TrimSpace(req.Label) == "" {
 		return nil, fmt.Errorf("نص السؤال مطلوب")
 	}
 	if !model.IsValidDesignFormQuestionType(req.Type) {
 		return nil, fmt.Errorf("نوع السؤال غير معروف")
 	}
-	order, err := s.repo.NextOrder()
+	order, err := s.repo.NextOrder(req.FormID)
 	if err != nil {
 		return nil, err
 	}
-	return s.repo.Create(uuid.NewString(), req.Label, req.Type, req.Options, req.Required, order)
+	return s.repo.Create(uuid.NewString(), req.FormID, req.Label, req.Type, req.Options, req.Required, order)
 }
 
 func (s *DesignFormService) Update(id string, req model.UpdateDesignFormQuestionRequest) (*model.DesignFormQuestion, error) {
@@ -51,4 +76,38 @@ func (s *DesignFormService) Delete(id string) error {
 
 func (s *DesignFormService) Reorder(questionIDs []string) error {
 	return s.repo.Reorder(questionIDs)
+}
+
+// Submit يستقبل جواب زبون عبر الرابط العام — يتأكد الاستمارة موجودة وكل سؤال
+// مطلوب (required) عنده جواب قبل الحفظ.
+func (s *DesignFormService) Submit(token string, req model.SubmitDesignFormRequest) (*model.DesignFormSubmission, error) {
+	form, err := s.repo.GetFormByToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("الاستمارة غير موجودة")
+	}
+	questions, err := s.repo.List(form.ID)
+	if err != nil {
+		return nil, err
+	}
+	if req.Answers == nil {
+		req.Answers = map[string]any{}
+	}
+	for _, q := range questions {
+		if !q.Required {
+			continue
+		}
+		v, ok := req.Answers[q.ID]
+		if !ok || v == nil || v == "" {
+			return nil, fmt.Errorf("الرجاء تعبئة السؤال: %s", q.Label)
+		}
+	}
+	answersJSON, err := json.Marshal(req.Answers)
+	if err != nil {
+		return nil, err
+	}
+	return s.repo.CreateSubmission(uuid.NewString(), form.ID, answersJSON)
+}
+
+func (s *DesignFormService) ListSubmissions(formID string) ([]model.DesignFormSubmission, error) {
+	return s.repo.ListSubmissions(formID)
 }

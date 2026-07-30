@@ -517,14 +517,29 @@ export interface EmployeePerformanceCurve {
 
 export type DesignFormQuestionType = 'TEXT' | 'TEXTAREA' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX' | 'FILE'
 
+export interface DesignForm {
+  id: string
+  name: string
+  publicToken: string
+  createdAt: string
+}
+
 export interface DesignFormQuestion {
   id: string
+  formId: string
   label: string
   type: DesignFormQuestionType
   options: string[]
   required: boolean
   order: number
   createdAt: string
+}
+
+export interface DesignFormSubmission {
+  id: string
+  formId: string
+  answers: Record<string, string | number | string[] | null>
+  submittedAt: string
 }
 
 export interface DailyStats {
@@ -2008,13 +2023,23 @@ export const api = {
   getEmployeePerformanceCurve: (employeeId: string, month?: string, months = 6) =>
     request<EmployeePerformanceCurve>(`/employee-stats/curve/${employeeId}?months=${months}${month ? `&month=${encodeURIComponent(month)}` : ''}`),
 
-  // وحدة التصميم — بنّاء أسئلة استمارة طلب التصميم
-  getDesignFormQuestions: () => request<DesignFormQuestion[]>('/design-form/questions'),
-  createDesignFormQuestion: (data: { label: string; type: DesignFormQuestionType; options?: string[]; required?: boolean }) =>
-    request<DesignFormQuestion>('/design-form/questions', { method: 'POST', body: JSON.stringify(data) }),
+  // وحدة التصميم — عدة استمارات مستقلة، كل وحدة بأسئلتها وبرابطها العام الخاص
+  getDesignForms: () => request<DesignForm[]>('/design-forms'),
+  createDesignForm: (name: string) => request<DesignForm>('/design-forms', { method: 'POST', body: JSON.stringify({ name }) }),
+  deleteDesignForm: (id: string) => request<void>(`/design-forms/${id}`, { method: 'DELETE' }),
+  getDesignFormSubmissions: (formId: string) => request<DesignFormSubmission[]>(`/design-forms/${formId}/submissions`),
+
+  getDesignFormQuestions: (formId: string) => request<DesignFormQuestion[]>(`/design-forms/${formId}/questions`),
+  createDesignFormQuestion: (formId: string, data: { label: string; type: DesignFormQuestionType; options?: string[]; required?: boolean }) =>
+    request<DesignFormQuestion>(`/design-forms/${formId}/questions`, { method: 'POST', body: JSON.stringify(data) }),
   updateDesignFormQuestion: (id: string, data: { label?: string; type?: DesignFormQuestionType; options?: string[]; required?: boolean }) =>
     request<DesignFormQuestion>(`/design-form/questions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteDesignFormQuestion: (id: string) => request<void>(`/design-form/questions/${id}`, { method: 'DELETE' }),
   reorderDesignFormQuestions: (questionIds: string[]) =>
     request<void>('/design-form/questions/reorder', { method: 'PUT', body: JSON.stringify({ questionIds }) }),
+
+  // رابط عام للزبون (بدون تسجيل دخول)
+  getPublicDesignForm: (token: string) => request<{ name: string; questions: DesignFormQuestion[] }>(`/public/design-forms/${token}`),
+  submitPublicDesignForm: (token: string, answers: Record<string, unknown>) =>
+    request<DesignFormSubmission>(`/public/design-forms/${token}/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
 }

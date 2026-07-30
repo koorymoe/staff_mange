@@ -501,12 +501,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/service-studies/{id}/reports", middleware.Chain(http.HandlerFunc(serviceStudyHandler.AddReport), requireAuth))
 	mux.Handle("PUT /api/service-studies/{id}/archive", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Archive), requireAuth, requireAdmin))
 
-	// وحدة التصميم — بنّاء أسئلة استمارة طلب التصميم (المدير يضيف الأسئلة يدوياً)
-	mux.Handle("GET /api/design-form/questions", middleware.Chain(http.HandlerFunc(designFormHandler.List), requireAuth, requireAdmin))
-	mux.Handle("POST /api/design-form/questions", middleware.Chain(http.HandlerFunc(designFormHandler.Create), requireAuth, requireAdmin))
+	// وحدة التصميم — عدة استمارات مستقلة، كل وحدة بأسئلتها وبرابطها العام الخاص
+	mux.Handle("GET /api/design-forms", middleware.Chain(http.HandlerFunc(designFormHandler.ListForms), requireAuth, requireAdmin))
+	mux.Handle("POST /api/design-forms", middleware.Chain(http.HandlerFunc(designFormHandler.CreateForm), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/design-forms/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.DeleteForm), requireAuth, requireAdmin))
+	mux.Handle("GET /api/design-forms/{formId}/submissions", middleware.Chain(http.HandlerFunc(designFormHandler.ListSubmissions), requireAuth, requireAdmin))
+	mux.Handle("GET /api/design-forms/{formId}/questions", middleware.Chain(http.HandlerFunc(designFormHandler.List), requireAuth, requireAdmin))
+	mux.Handle("POST /api/design-forms/{formId}/questions", middleware.Chain(http.HandlerFunc(designFormHandler.Create), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Update), requireAuth, requireAdmin))
 	mux.Handle("DELETE /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Delete), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/design-form/questions/reorder", middleware.Chain(http.HandlerFunc(designFormHandler.Reorder), requireAuth, requireAdmin))
+
+	// رابط عام للزبون (بدون تسجيل دخول) — يشوف الاستمارة ويرسل جوابه فقط
+	mux.Handle("GET /api/public/design-forms/{token}", http.HandlerFunc(designFormHandler.PublicGet))
+	mux.Handle("POST /api/public/design-forms/{token}/submit", http.HandlerFunc(designFormHandler.PublicSubmit))
 
 	// طلبات تغيير أيقونة الحضور — أي موظف يطلب، ومدير النظام بس يوافق/يرفض
 	mux.Handle("POST /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Create), requireAuth))

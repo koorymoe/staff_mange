@@ -63,7 +63,11 @@ const ExhibitionsPage = lazy(() => import('./pages/ExhibitionsPage'))
 const ProductRequestsPage = lazy(() => import('./pages/ProductRequestsPage'))
 const ServiceStudiesPage = lazy(() => import('./pages/ServiceStudiesPage'))
 const ComingSoonUnit = lazy(() => import('./pages/ComingSoonUnit'))
+const DesignFormsListPage = lazy(() => import('./pages/DesignFormsListPage'))
+const DesignFormQuickAddPage = lazy(() => import('./pages/DesignFormQuickAddPage'))
 const DesignFormBuilderPage = lazy(() => import('./pages/DesignFormBuilderPage'))
+const DesignFormSubmissionsPage = lazy(() => import('./pages/DesignFormSubmissionsPage'))
+const PublicDesignFormPage = lazy(() => import('./pages/PublicDesignFormPage'))
 const StaffRequestsPage = lazy(() => import('./pages/StaffRequestsPage'))
 const ServiceManagersPage = lazy(() => import('./pages/ServiceManagersPage'))
 const PerformanceReviewPage = lazy(() => import('./pages/PerformanceReviewPage'))
@@ -93,6 +97,7 @@ function App() {
   return (
     <Suspense fallback={<RouteLoading />}>
       <Routes>
+        <Route path="design-forms/public/:token" element={<PublicDesignFormPage />} />
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="employees" element={<Employees />} />
@@ -130,7 +135,11 @@ function App() {
           <Route path="exhibitions" element={<RequirePermission permission="content_technician"><ExhibitionsPage /></RequirePermission>} />
           <Route path="product-requests" element={<RequirePermission permission="content_technician"><ProductRequestsPage /></RequirePermission>} />
           <Route path="service-studies" element={<RequirePermission permission="content_technician"><ServiceStudiesPage /></RequirePermission>} />
-          <Route path="unit-design" element={<RequireAdmin><DesignFormBuilderPage /></RequireAdmin>} />
+          <Route path="unit-design" element={<RequireAdmin><DesignFormsListPage /></RequireAdmin>} />
+          <Route path="design-forms" element={<RequireAdmin><DesignFormsListPage /></RequireAdmin>} />
+          <Route path="design-forms/quick-add" element={<RequireAdmin><DesignFormQuickAddPage /></RequireAdmin>} />
+          <Route path="design-forms/:formId" element={<RequireAdmin><DesignFormBuilderPage /></RequireAdmin>} />
+          <Route path="design-forms/:formId/submissions" element={<RequireAdmin><DesignFormSubmissionsPage /></RequireAdmin>} />
           <Route path="unit-pr" element={<ComingSoonUnit title="وحدة الإعلام والعلاقات العامة" />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />

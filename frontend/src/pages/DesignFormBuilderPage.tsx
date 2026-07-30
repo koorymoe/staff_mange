@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { api, type DesignFormQuestion, type DesignFormQuestionType } from '../api'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { api, type DesignForm, type DesignFormQuestion, type DesignFormQuestionType } from '../api'
+
+const PRIMARY = '#47528f'
 
 const TYPE_LABELS: Record<DesignFormQuestionType, string> = {
   TEXT: 'نص قصير',
@@ -18,6 +21,9 @@ function emptyForm() {
 }
 
 export default function DesignFormBuilderPage() {
+  const { formId } = useParams<{ formId: string }>()
+  const navigate = useNavigate()
+  const [forms, setForms] = useState<DesignForm[]>([])
   const [questions, setQuestions] = useState<DesignFormQuestion[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -26,8 +32,19 @@ export default function DesignFormBuilderPage() {
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const load = () => { api.getDesignFormQuestions().then(setQuestions).finally(() => setLoading(false)) }
-  useEffect(load, [])
+  const load = () => {
+    if (!formId) return
+    setLoading(true)
+    Promise.all([api.getDesignForms(), api.getDesignFormQuestions(formId)])
+      .then(([allForms, qs]) => { setForms(allForms); setQuestions(qs) })
+      .finally(() => setLoading(false))
+  }
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    load()
+  }, [formId])
+
+  const currentForm = forms.find((f) => f.id === formId)
 
   const startCreate = () => { setEditingId(null); setForm(emptyForm()); setShowForm(true) }
   const startEdit = (q: DesignFormQuestion) => {
@@ -38,7 +55,7 @@ export default function DesignFormBuilderPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!form.label.trim()) return
+    if (!form.label.trim() || !formId) return
     setSaving(true)
     const options = NEEDS_OPTIONS.includes(form.type)
       ? form.options.split(',').map((s) => s.trim()).filter(Boolean)
@@ -47,7 +64,7 @@ export default function DesignFormBuilderPage() {
       if (editingId) {
         await api.updateDesignFormQuestion(editingId, { label: form.label.trim(), type: form.type, options, required: form.required })
       } else {
-        await api.createDesignFormQuestion({ label: form.label.trim(), type: form.type, options, required: form.required })
+        await api.createDesignFormQuestion(formId, { label: form.label.trim(), type: form.type, options, required: form.required })
       }
       setShowForm(false)
       setForm(emptyForm())
@@ -84,16 +101,24 @@ export default function DesignFormBuilderPage() {
     }
   }
 
+  if (!formId) return null
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">وحدة التصميم — بناء استمارة طلب التصميم</h2>
+    <div dir="rtl">
+      <Link to="/design-forms" className="text-sm font-bold" style={{ color: PRIMARY }}>← رجوع لكل الفورمات</Link>
+      <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY }}>
+        {currentForm ? `أسئلة فورمة: ${currentForm.name}` : 'جاري التحميل...'}
+      </h2>
       <p className="mt-1 text-slate-500">
-        أضف الأسئلة الي تريدها بنفسك (نص، رقم، تاريخ، اختيارات...) ورتّبها — النظام يبني لك الاستمارة تلقائياً من الأسئلة الي تضيفها.
+        أضف الأسئلة الي تريدها بنفسك (نص، رقم، تاريخ، اختيارات...) ورتّبها — هذي الأسئلة خاصة بهذي الفورمة بس، وما تنعرض بأي فورمة ثانية.
       </p>
 
       <div className="mt-4">
-        <button onClick={startCreate} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600">
+        <button onClick={startCreate} className="rounded-lg px-4 py-2 text-sm font-bold text-white" style={{ background: PRIMARY }}>
           + إضافة سؤال جديد
+        </button>
+        <button onClick={() => navigate(`/design-forms/${formId}/submissions`)} className="mr-2 rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200">
+          عرض الأجوبة المستلمة
         </button>
       </div>
 
@@ -124,7 +149,7 @@ export default function DesignFormBuilderPage() {
             />
           )}
           <div className="flex gap-2 sm:col-span-2">
-            <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+            <button type="submit" disabled={saving} className="rounded-lg px-4 py-2 text-sm font-bold text-white disabled:opacity-50" style={{ background: PRIMARY }}>
               {saving ? 'جاري الحفظ...' : editingId ? 'حفظ التعديل' : 'إضافة السؤال'}
             </button>
             <button type="button" onClick={() => { setShowForm(false); setEditingId(null) }} className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-600 hover:bg-slate-200">
@@ -137,7 +162,7 @@ export default function DesignFormBuilderPage() {
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {!loading && questions.length === 0 && (
         <div className="mt-6 rounded-xl border border-white bg-white p-8 text-center shadow-sm">
-          <p className="text-slate-400">ما أضفت أي أسئلة بعد — اضغط "+ إضافة سؤال جديد" وابدأ ببناء الاستمارة.</p>
+          <p className="text-slate-400">ما أضفت أي أسئلة بهذي الفورمة بعد — اضغط "+ إضافة سؤال جديد" وابدأ ببناء الاستمارة.</p>
         </div>
       )}
 
@@ -147,7 +172,7 @@ export default function DesignFormBuilderPage() {
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">{i + 1}</span>
               <div>
-                <p className="font-bold text-brand-900">
+                <p className="font-bold" style={{ color: PRIMARY }}>
                   {q.label} {q.required && <span className="text-red-500">*</span>}
                 </p>
                 <p className="text-xs text-slate-500">{TYPE_LABELS[q.type]}{q.options.length > 0 && ` — ${q.options.join('، ')}`}</p>

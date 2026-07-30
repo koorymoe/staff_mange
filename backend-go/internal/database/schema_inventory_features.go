@@ -178,5 +178,27 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "DesignFormQuestion_order_idx" ON "DesignFormQuestion"("order")`,
 		},
+		{
+			// عدة استمارات تصميم منفصلة (بدل استمارة وحدة عامة) — كل استمارة اسمها
+			// الخاص ورابط عام (publicToken) نرسله للزبون مباشرة بدون تسجيل دخول،
+			// وأسئلتها منفصلة عن استمارات ثانية عبر formId. الأجوبة المستلمة
+			// تنخزن بـDesignFormSubmission كـJSON (سؤال → جواب).
+			Version: "0143_create_design_form_and_submissions",
+			SQL: `CREATE TABLE IF NOT EXISTS "DesignForm" (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL,
+				"publicToken" TEXT NOT NULL UNIQUE,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			ALTER TABLE "DesignFormQuestion" ADD COLUMN IF NOT EXISTS "formId" TEXT REFERENCES "DesignForm"(id) ON DELETE CASCADE;
+			CREATE INDEX IF NOT EXISTS "DesignFormQuestion_formId_idx" ON "DesignFormQuestion"("formId");
+			CREATE TABLE IF NOT EXISTS "DesignFormSubmission" (
+				id TEXT PRIMARY KEY,
+				"formId" TEXT NOT NULL REFERENCES "DesignForm"(id) ON DELETE CASCADE,
+				answers JSONB NOT NULL DEFAULT '{}',
+				"submittedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "DesignFormSubmission_formId_idx" ON "DesignFormSubmission"("formId")`,
+		},
 	}
 }
