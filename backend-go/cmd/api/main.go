@@ -199,6 +199,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	serviceStudyRepo := repository.NewServiceStudyRepository(db)
 	serviceStudyService := service.NewServiceStudyService(serviceStudyRepo)
 	serviceStudyHandler := handler.NewServiceStudyHandler(serviceStudyService)
+	designFormRepo := repository.NewDesignFormRepository(db)
+	designFormService := service.NewDesignFormService(designFormRepo)
+	designFormHandler := handler.NewDesignFormHandler(designFormService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
 	statsHandler := handler.NewStatsHandler(statsService)
@@ -493,6 +496,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/service-studies/{id}/assign", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Assign), requireAuth, requireAdmin))
 	mux.Handle("POST /api/service-studies/{id}/reports", middleware.Chain(http.HandlerFunc(serviceStudyHandler.AddReport), requireAuth))
 	mux.Handle("PUT /api/service-studies/{id}/archive", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Archive), requireAuth, requireAdmin))
+
+	// وحدة التصميم — بنّاء أسئلة استمارة طلب التصميم (المدير يضيف الأسئلة يدوياً)
+	mux.Handle("GET /api/design-form/questions", middleware.Chain(http.HandlerFunc(designFormHandler.List), requireAuth, requireAdmin))
+	mux.Handle("POST /api/design-form/questions", middleware.Chain(http.HandlerFunc(designFormHandler.Create), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Delete), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/design-form/questions/reorder", middleware.Chain(http.HandlerFunc(designFormHandler.Reorder), requireAuth, requireAdmin))
 
 	// طلبات تغيير أيقونة الحضور — أي موظف يطلب، ومدير النظام بس يوافق/يرفض
 	mux.Handle("POST /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Create), requireAuth))

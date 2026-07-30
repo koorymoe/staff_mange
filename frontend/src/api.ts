@@ -515,6 +515,18 @@ export interface EmployeePerformanceCurve {
   commission: MonthlyCommissionBucket[]
 }
 
+export type DesignFormQuestionType = 'TEXT' | 'TEXTAREA' | 'NUMBER' | 'DATE' | 'SELECT' | 'CHECKBOX' | 'FILE'
+
+export interface DesignFormQuestion {
+  id: string
+  label: string
+  type: DesignFormQuestionType
+  options: string[]
+  required: boolean
+  order: number
+  createdAt: string
+}
+
 export interface DailyStats {
   date: string
   totalBookings: number
@@ -1995,4 +2007,14 @@ export const api = {
   getProjectStageStats: () => request<ProjectStageStats[]>('/stats-management/projects'),
   getEmployeePerformanceCurve: (employeeId: string, month?: string, months = 6) =>
     request<EmployeePerformanceCurve>(`/employee-stats/curve/${employeeId}?months=${months}${month ? `&month=${encodeURIComponent(month)}` : ''}`),
+
+  // وحدة التصميم — بنّاء أسئلة استمارة طلب التصميم
+  getDesignFormQuestions: () => request<DesignFormQuestion[]>('/design-form/questions'),
+  createDesignFormQuestion: (data: { label: string; type: DesignFormQuestionType; options?: string[]; required?: boolean }) =>
+    request<DesignFormQuestion>('/design-form/questions', { method: 'POST', body: JSON.stringify(data) }),
+  updateDesignFormQuestion: (id: string, data: { label?: string; type?: DesignFormQuestionType; options?: string[]; required?: boolean }) =>
+    request<DesignFormQuestion>(`/design-form/questions/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteDesignFormQuestion: (id: string) => request<void>(`/design-form/questions/${id}`, { method: 'DELETE' }),
+  reorderDesignFormQuestions: (questionIds: string[]) =>
+    request<void>('/design-form/questions/reorder', { method: 'PUT', body: JSON.stringify({ questionIds }) }),
 }

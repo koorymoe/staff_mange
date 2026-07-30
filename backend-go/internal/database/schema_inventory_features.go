@@ -161,5 +161,22 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "ServiceStudyAssignment_serviceStudyId_idx" ON "ServiceStudyAssignment"("serviceStudyId");
 			CREATE INDEX IF NOT EXISTS "ServiceStudyReport_serviceStudyId_idx" ON "ServiceStudyReport"("serviceStudyId")`,
 		},
+		{
+			// وحدة التصميم: بنّاء أسئلة قابل للتخصيص كلياً — المدير يضيف أسئلة
+			// استمارة طلب التصميم بنفسه يدوياً (نص/رقم/تاريخ/اختيار من متعدد/
+			// خيارات متعددة/ملف)، النظام بوفّر آلية الإضافة/الترتيب بس، مو محتوى
+			// استمارة جاهزة مكتوبة بالكود.
+			Version: "0142_create_design_form_question",
+			SQL: `CREATE TABLE IF NOT EXISTS "DesignFormQuestion" (
+				id TEXT PRIMARY KEY,
+				label TEXT NOT NULL,
+				type TEXT NOT NULL,
+				options TEXT[] NOT NULL DEFAULT '{}',
+				required BOOLEAN NOT NULL DEFAULT false,
+				"order" INT NOT NULL DEFAULT 0,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "DesignFormQuestion_order_idx" ON "DesignFormQuestion"("order")`,
+		},
 	}
 }
