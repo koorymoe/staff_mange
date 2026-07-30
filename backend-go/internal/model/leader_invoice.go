@@ -55,22 +55,24 @@ type LeaderInvoiceMaterialItem struct {
 // LeaderInvoice فاتورة الليدر الكاملة — منظومات مختارة (حتى 3)، بنود تنفيذ،
 // مواد، خصم، والمجموع الصافي. مبنية لتحل محل شيت جوجل بنفس منطق الحساب تماماً.
 type LeaderInvoice struct {
-	ID               string    `db:"id" json:"id"`
-	BookingID        *string   `db:"bookingId" json:"bookingId"`
-	EmployeeID       string    `db:"employeeId" json:"employeeId"`
-	CustomerName     *string   `db:"customerName" json:"customerName"`
-	CustomerPhone    *string   `db:"customerPhone" json:"customerPhone"`
-	CustomerAddress  *string   `db:"customerAddress" json:"customerAddress"`
-	SystemsJSON      string    `db:"systems" json:"-"`
-	ItemsJSON        string    `db:"items" json:"-"`
-	TotalDeviceCount int       `db:"totalDeviceCount" json:"totalDeviceCount"`
-	ExecutionCost    float64   `db:"executionCost" json:"executionCost"`
-	MaterialsTotal   float64   `db:"materialsTotal" json:"materialsTotal"`
-	DiscountValue    float64   `db:"discountValue" json:"discountValue"`
-	NetTotal         float64   `db:"netTotal" json:"netTotal"`
-	AccountingCode   string    `db:"accountingCode" json:"accountingCode"`
-	Status           string    `db:"status" json:"status"`
-	CreatedAt        time.Time `db:"createdAt" json:"createdAt"`
+	ID                   string     `db:"id" json:"id"`
+	BookingID            *string    `db:"bookingId" json:"bookingId"`
+	EmployeeID           string     `db:"employeeId" json:"employeeId"`
+	CustomerName         *string    `db:"customerName" json:"customerName"`
+	CustomerPhone        *string    `db:"customerPhone" json:"customerPhone"`
+	CustomerAddress      *string    `db:"customerAddress" json:"customerAddress"`
+	SystemsJSON          string     `db:"systems" json:"-"`
+	ItemsJSON            string     `db:"items" json:"-"`
+	TotalDeviceCount     int        `db:"totalDeviceCount" json:"totalDeviceCount"`
+	ExecutionCost        float64    `db:"executionCost" json:"executionCost"`
+	MaterialsTotal       float64    `db:"materialsTotal" json:"materialsTotal"`
+	DiscountValue        float64    `db:"discountValue" json:"discountValue"`
+	NetTotal             float64    `db:"netTotal" json:"netTotal"`
+	AccountingCode       string     `db:"accountingCode" json:"accountingCode"`
+	Status               string     `db:"status" json:"status"` // SUBMITTED | APPROVED
+	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
+	ApprovedByEmployeeID *string    `db:"approvedByEmployeeId" json:"approvedByEmployeeId"`
+	ApprovedAt           *time.Time `db:"approvedAt" json:"approvedAt"`
 
 	Systems   []string                    `db:"-" json:"systems"`
 	Items     []ExecutionCostItem         `db:"-" json:"items"`
@@ -87,6 +89,18 @@ type CreateLeaderInvoiceRequest struct {
 	Items           []ExecutionCostItem         `json:"items"`
 	Materials       []CreateMaterialLineRequest `json:"materials"`
 	DiscountValue   float64                     `json:"discountValue"`
+}
+
+// EstimateExecutionCostRequest طلب "حساب كلفة" سريع بدون ربط بحجز ولا حفظ —
+// يستخدمه الليدر لما زبون يستفسر عن سعر تقريبي، بنفس محرك الحساب بالضبط.
+type EstimateExecutionCostRequest struct {
+	Items []ExecutionCostItem `json:"items"`
+}
+
+// EstimateExecutionCostResponse نتيجة الحساب السريع فقط، بدون أي حفظ بقاعدة البيانات.
+type EstimateExecutionCostResponse struct {
+	ExecutionCost    int64 `json:"executionCost"`
+	TotalDeviceCount int   `json:"totalDeviceCount"`
 }
 
 // CreateMaterialLineRequest بند مادة واحد ضمن طلب إنشاء الفاتورة — إما materialCode

@@ -268,6 +268,40 @@ func (s *LeaderInvoiceService) computeAndSaveCommissions(saved *model.LeaderInvo
 	}
 }
 
+// Estimate يحسب تكلفة تنفيذ تقريبية بدون حفظ أي شي — يستخدمه الليدر لما زبون
+// يستفسر عن سعر ("حساب كلفة")، بنفس محرك CalculateExecutionCost بالضبط.
+func (s *LeaderInvoiceService) Estimate(items []model.ExecutionCostItem) (*model.EstimateExecutionCostResponse, error) {
+	if len(items) == 0 {
+		return nil, fmt.Errorf("أضف بند تنفيذ واحد على الأقل")
+	}
+	catalog, err := s.catalog.All()
+	if err != nil {
+		return nil, err
+	}
+	totalDeviceCount := 0
+	for _, item := range items {
+		totalDeviceCount += item.Count
+	}
+	executionCost, err := CalculateExecutionCost(items, catalog, totalDeviceCount)
+	if err != nil {
+		return nil, err
+	}
+	return &model.EstimateExecutionCostResponse{ExecutionCost: executionCost, TotalDeviceCount: totalDeviceCount}, nil
+}
+
+// Approve يعتمد فاتورة ليدر — محصور بمدير/محاسب (requireFinance بالراوت)، الليدر
+// نفسه ما يقدر يعتمد فاتورته حتى لو كملها، لازم طرف ثاني يراجعها.
+func (s *LeaderInvoiceService) Approve(id, approverEmployeeID string) (*model.LeaderInvoice, error) {
+	inv, err := s.invoices.Approve(id, approverEmployeeID)
+	if err != nil {
+		return nil, err
+	}
+	if inv == nil {
+		return nil, fmt.Errorf("الفاتورة غير موجودة أو معتمدة أصلاً")
+	}
+	return inv, nil
+}
+
 func (s *LeaderInvoiceService) Get(id string) (*model.LeaderInvoice, error) {
 	inv, err := s.invoices.GetByID(id)
 	if err != nil {

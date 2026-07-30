@@ -28,11 +28,6 @@ const emptyForm: ReportForm = {
   stopNotes: '',
 }
 
-function todayStr() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-}
-
 export default function WorkReportPage() {
   const { employee: currentUser } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -48,7 +43,9 @@ export default function WorkReportPage() {
     if (!currentUser) return
     Promise.all([
       api.getBookings({ status: 'IN_PROGRESS' }),
-      api.getBookings({ status: 'COMPLETED', date: todayStr() }),
+      // بدون قيد تاريخ اليوم — حتى الحجز المنجز من كم يوم ونسى الموظف يسوي
+      // تقريره يضل يطلع هنا لين يسويه، مو يختفي بس لأن اليوم تغيّر.
+      api.getBookings({ status: 'COMPLETED' }),
       api.getWorkReports(currentUser.id),
     ])
       .then(([inProgress, completed, myReports]) => {
@@ -322,15 +319,15 @@ export default function WorkReportPage() {
       <div>
         <h2 className="text-2xl font-bold text-brand-900">تقرير العمل</h2>
         <p className="mt-1 text-slate-500">
-          حجوزاتك المنجزة اليوم وبانتظار تقرير، وحجوزاتك الجارية.
+          حجوزاتك المنجزة وبانتظار تقرير (حتى لو من كم يوم)، وحجوزاتك الجارية.
         </p>
       </div>
 
       <div className="mt-6">
-        <h3 className="mb-3 text-lg font-bold text-brand-800">📋 حجوزات اليوم — بانتظار التقرير</h3>
+        <h3 className="mb-3 text-lg font-bold text-brand-800">📋 حجوزات منجزة — بانتظار التقرير</h3>
         {needsReportToday.length === 0 ? (
           <div className="rounded-2xl border border-white bg-white p-6 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <p className="text-slate-400">ما عندك حجوزات منجزة اليوم تحتاج تقرير — ممتاز!</p>
+            <p className="text-slate-400">ما عندك حجوزات منجزة تحتاج تقرير — ممتاز!</p>
           </div>
         ) : (
           <div className="space-y-4">{needsReportToday.map(renderCard)}</div>
@@ -339,7 +336,7 @@ export default function WorkReportPage() {
 
       {alreadyReportedToday.length > 0 && (
         <div className="mt-8">
-          <h3 className="mb-3 text-lg font-bold text-emerald-700">✔ حجوزات اليوم — تم رفع تقريرها</h3>
+          <h3 className="mb-3 text-lg font-bold text-emerald-700">✔ حجوزات تم رفع تقريرها</h3>
           <div className="space-y-2">
             {alreadyReportedToday.map((b) => (
               <div key={b.id} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-3">

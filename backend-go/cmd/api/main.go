@@ -85,6 +85,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	trainingRepo := repository.NewTrainingRepository(db)
 	missionRepo := repository.NewMissionRepository(db, bookingRepo)
 	projectRepo := repository.NewProjectRepository(db)
+	projectWorkTypeRepo := repository.NewProjectWorkTypeRepository(db)
 	checklistRepo := repository.NewChecklistRepository(db)
 	techShowcaseRepo := repository.NewTechShowcaseRepository(db)
 	attendanceIconRequestRepo := repository.NewAttendanceIconRequestRepository(db)
@@ -134,6 +135,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	trainingService := service.NewTrainingService(trainingRepo)
 	missionService := service.NewMissionService(missionRepo)
 	projectService := service.NewProjectService(projectRepo)
+	projectWorkTypeService := service.NewProjectWorkTypeService(projectWorkTypeRepo)
 	checklistService := service.NewChecklistService(checklistRepo)
 	techShowcaseService := service.NewTechShowcaseService(techShowcaseRepo)
 	attendanceIconRequestService := service.NewAttendanceIconRequestService(attendanceIconRequestRepo, employeeRepo)
@@ -176,6 +178,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	trainingHandler := handler.NewTrainingHandler(trainingService)
 	missionHandler := handler.NewMissionHandler(missionService)
 	projectHandler := handler.NewProjectHandler(projectService)
+	projectWorkTypeHandler := handler.NewProjectWorkTypeHandler(projectWorkTypeService)
 	checklistHandler := handler.NewChecklistHandler(checklistService)
 	techShowcaseHandler := handler.NewTechShowcaseHandler(techShowcaseService)
 	attendanceIconRequestHandler := handler.NewAttendanceIconRequestHandler(attendanceIconRequestService)
@@ -467,6 +470,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 
+	// أنواع الأعمال ("نوع العمل" بحقل المشروع) — إعدادات وحدة إدارة المشاريع:
+	// أي موظف مسجل دخول يشوف القائمة (يحتاجها بفورمة المشروع)، بس الإضافة/الحذف
+	// محصورة بنفس صلاحية مدير المشاريع المستخدمة لبقية إعدادات هذي الوحدة.
+	mux.Handle("GET /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.List), requireAuth))
+	mux.Handle("POST /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Create), requireAuth, requireProjectManager))
+	mux.Handle("DELETE /api/project-work-types/{id}", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Delete), requireAuth, requireProjectManager))
+
 	// الكشوفات: فورمات فارغة يطبعها المهندس، يمليها بالموقع، وبعدين يرفع صور
 	// الفورمة المالية — أي موظف مسجل دخول يقدر ينشئ/يرفع (مو حصراً مدير مشاريع).
 	mux.Handle("GET /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.List), requireAuth))
@@ -712,6 +722,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth, requireLeaderBasket))
 	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth, requireLeaderBasket))
 	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeader))
+	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
+	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireLeader))
+	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه
+	mux.Handle("PUT /api/leader-invoices/{id}/approve", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Approve), requireAuth, requireFinance))
 
 	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER
 	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).

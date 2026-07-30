@@ -627,9 +627,22 @@ export interface LeaderInvoice {
   accountingCode: string
   status: string
   createdAt: string
+  approvedByEmployeeId: string | null
+  approvedAt: string | null
   systems: string[]
   items: ExecutionCostItem[]
   materials: LeaderInvoiceMaterialItem[]
+}
+
+export interface ProjectWorkType {
+  id: string
+  name: string
+  createdAt: string
+}
+
+export interface EstimateExecutionCostResponse {
+  executionCost: number
+  totalDeviceCount: number
 }
 
 export interface CreateMaterialLineRequest {
@@ -1698,6 +1711,16 @@ export const api = {
   getLeaderInvoice: (id: string) => request<LeaderInvoice>(`/leader-invoices/${id}`),
   createLeaderInvoice: (data: CreateLeaderInvoiceRequest) =>
     request<LeaderInvoice>('/leader-invoices', { method: 'POST', body: JSON.stringify(data) }),
+  estimateLeaderInvoiceCost: (items: ExecutionCostItem[]) =>
+    request<EstimateExecutionCostResponse>('/leader-invoices/estimate', { method: 'POST', body: JSON.stringify({ items }) }),
+  approveLeaderInvoice: (id: string) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/approve`, { method: 'PUT' }),
+
+  // إعدادات وحدة إدارة المشاريع — أنواع الأعمال قابلة للإضافة/الحذف
+  getProjectWorkTypes: () => request<ProjectWorkType[]>('/project-work-types'),
+  createProjectWorkType: (name: string) =>
+    request<ProjectWorkType>('/project-work-types', { method: 'POST', body: JSON.stringify({ name }) }),
+  deleteProjectWorkType: (id: string) => request<void>(`/project-work-types/${id}`, { method: 'DELETE' }),
 
   // Permissions
   getPermissions: () => request<Permission[]>('/permissions'),

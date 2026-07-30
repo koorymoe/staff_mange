@@ -57,6 +57,7 @@ const WorkReportPage = lazy(() => import('./pages/WorkReportPage'))
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'))
 const StatsPage = lazy(() => import('./pages/StatsPage'))
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'))
+const ProjectWorkTypesSettingsPage = lazy(() => import('./pages/ProjectWorkTypesSettingsPage'))
 const ChecklistsPage = lazy(() => import('./pages/ChecklistsPage'))
 const TechShowcasePage = lazy(() => import('./pages/TechShowcasePage'))
 const ExhibitionsPage = lazy(() => import('./pages/ExhibitionsPage'))
@@ -130,6 +131,7 @@ function App() {
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
+          <Route path="project-work-types" element={<ProjectWorkTypesSettingsPage />} />
           <Route path="checklists" element={<ChecklistsPage />} />
           <Route path="tech-showcase" element={<TechShowcasePage />} />
           <Route path="exhibitions" element={<RequirePermission permission="content_technician"><ExhibitionsPage /></RequirePermission>} />

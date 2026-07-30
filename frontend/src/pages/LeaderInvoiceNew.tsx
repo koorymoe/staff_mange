@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import {
   api,
   type CreateMaterialLineRequest,
+  type EstimateExecutionCostResponse,
   type ExecutionCostItem,
   type LeaderInvoice,
   type SystemPriceCatalog,
@@ -25,6 +26,9 @@ export default function LeaderInvoiceNew() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const bookingId = params.get('bookingId') || undefined
+  // وضع "حساب كلفة" السريع: بدون ربط بحجز ولا زبون ولا حفظ — بس رقم تقريبي
+  // للليدر لما زبون يستفسر، بنفس محرك الحساب بالضبط.
+  const estimateOnly = params.get('mode') === 'estimate'
 
   const [catalog, setCatalog] = useState<SystemPriceCatalog[]>([])
   const [systems, setSystems] = useState<string[]>([])
@@ -37,6 +41,7 @@ export default function LeaderInvoiceNew() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<LeaderInvoice | null>(null)
+  const [estimateResult, setEstimateResult] = useState<EstimateExecutionCostResponse | null>(null)
 
   useEffect(() => {
     api.getSystemPriceCatalog().then(setCatalog)
@@ -112,13 +117,19 @@ export default function LeaderInvoiceNew() {
     }
     setSaving(true)
     try {
+      const cleanItems = items.map(({ key, ...rest }) => { void key; return rest })
+      if (estimateOnly) {
+        const est = await api.estimateLeaderInvoiceCost(cleanItems)
+        setEstimateResult(est)
+        return
+      }
       const payload = {
         bookingId,
         customerName: customerName || undefined,
         customerPhone: customerPhone || undefined,
         customerAddress: customerAddress || undefined,
         systems,
-        items: items.map(({ key, ...rest }) => { void key; return rest }),
+        items: cleanItems,
         materials: materials
           .filter((m) => m.quantity > 0 && (m.materialCode || m.name))
           .map(({ key, ...rest }) => { void key; return rest }),
@@ -127,10 +138,30 @@ export default function LeaderInvoiceNew() {
       const invoice = await api.createLeaderInvoice(payload)
       setResult(invoice)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'تعذر حفظ الفاتورة')
+      setError(e instanceof Error ? e.message : (estimateOnly ? 'تعذر حساب الكلفة' : 'تعذر حفظ الفاتورة'))
     } finally {
       setSaving(false)
     }
+  }
+
+  if (estimateResult) {
+    return (
+      <div className="mx-auto max-w-lg">
+        <h2 className="text-2xl font-bold text-brand-900">الكلفة التقريبية</h2>
+        <div className="mt-4 rounded-xl border border-white bg-white p-6 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <p className="text-sm text-slate-400">تكلفة التنفيذ التقريبية</p>
+          <p className="mt-1 text-3xl font-bold text-brand-800">{estimateResult.executionCost.toLocaleString()} د.ع</p>
+          <p className="mt-2 text-xs text-slate-400">إجمالي عدد الأجهزة: {estimateResult.totalDeviceCount}</p>
+          <p className="mt-3 text-xs text-amber-600">هذا رقم تقريبي بس للاستفسار — ما ينحفظ ولا يرتبط بأي حجز.</p>
+        </div>
+        <button
+          onClick={() => { setEstimateResult(null) }}
+          className="mt-4 w-full rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200"
+        >
+          حساب استفسار ثاني
+        </button>
+      </div>
+    )
   }
 
   if (result) {
@@ -171,31 +202,35 @@ export default function LeaderInvoiceNew() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h2 className="text-2xl font-bold text-brand-900">فاتورة ليدر جديدة</h2>
+      <h2 className="text-2xl font-bold text-brand-900">{estimateOnly ? 'حساب كلفة (استفسار زبون)' : 'فاتورة ليدر جديدة'}</h2>
       <p className="mt-1 text-slate-500">
-        تحل محل شيت "تكاليف المشروع" — اختر المنظومات، بنود التنفيذ، والمواد، والحساب النهائي يتم بالسيرفر.
+        {estimateOnly
+          ? 'لما زبون يستفسر عن سعر تقريبي — اختر المنظومات وبنود التنفيذ، والحساب نفس محرك الفاتورة بالضبط، بس بدون حفظ ولا ربط بحجز.'
+          : 'تحل محل شيت "تكاليف المشروع" — اختر المنظومات، بنود التنفيذ، والمواد، والحساب النهائي يتم بالسيرفر.'}
       </p>
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <input
-          placeholder="اسم الزبون"
-          value={customerName}
-          onChange={(e) => setCustomerName(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-        <input
-          placeholder="هاتف الزبون"
-          value={customerPhone}
-          onChange={(e) => setCustomerPhone(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-        <input
-          placeholder="العنوان"
-          value={customerAddress}
-          onChange={(e) => setCustomerAddress(e.target.value)}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-      </div>
+      {!estimateOnly && (
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <input
+            placeholder="اسم الزبون"
+            value={customerName}
+            onChange={(e) => setCustomerName(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+          <input
+            placeholder="هاتف الزبون"
+            value={customerPhone}
+            onChange={(e) => setCustomerPhone(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+          <input
+            placeholder="العنوان"
+            value={customerAddress}
+            onChange={(e) => setCustomerAddress(e.target.value)}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        </div>
+      )}
 
       <h3 className="mt-6 mb-2 font-bold text-brand-800">المنظومات (حتى 3)</h3>
       <div className="flex flex-wrap gap-2">
@@ -300,6 +335,7 @@ export default function LeaderInvoiceNew() {
         </div>
       ))}
 
+      {!estimateOnly && (
       <div className="mt-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
         <div className="flex items-center justify-between">
           <h4 className="font-bold text-brand-800">المواد</h4>
@@ -350,17 +386,20 @@ export default function LeaderInvoiceNew() {
         ))}
         {materials.length === 0 && <p className="mt-2 text-sm text-slate-400">لا توجد مواد مضافة بعد.</p>}
       </div>
+      )}
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <input
-          type="number"
-          min={0}
-          placeholder="قيمة الخصم"
-          value={discountValue}
-          onChange={(e) => setDiscountValue(Number(e.target.value))}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-      </div>
+      {!estimateOnly && (
+        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <input
+            type="number"
+            min={0}
+            placeholder="قيمة الخصم"
+            value={discountValue}
+            onChange={(e) => setDiscountValue(Number(e.target.value))}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+        </div>
+      )}
 
       {error && <p className="mt-3 text-sm font-bold text-red-600">{error}</p>}
 
@@ -369,7 +408,11 @@ export default function LeaderInvoiceNew() {
         disabled={saving}
         className="mt-6 w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 text-sm font-bold text-white shadow-md disabled:opacity-50"
       >
-        {saving ? 'جاري الحفظ...' : 'حفظ الفاتورة (يحسب السيرفر التكاليف والمجموع النهائي)'}
+        {saving
+          ? 'جاري الحساب...'
+          : estimateOnly
+            ? 'احسب الكلفة التقريبية'
+            : 'حفظ الفاتورة (يحسب السيرفر التكاليف والمجموع النهائي)'}
       </button>
     </div>
   )

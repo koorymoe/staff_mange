@@ -71,7 +71,20 @@ const STAGES = [
   '❌ مرفوض',
 ]
 
-const WORK_TYPES = ['طاقة شمسية', 'كاميرات', 'بيت ذكي', 'شبكات', 'إنذار حريق', 'أقفال وحاكيات', 'ستلايت', 'منظومة صوت', 'أخرى']
+// أنواع الأعمال كانت قائمة ثابتة بالكود — صارت تنجلب من إعدادات وحدة إدارة
+// المشاريع (/project-work-types) حتى يقدر المدير يضيف/يحذف نوع عمل براحته
+// بدون تعديل كود. القائمة القديمة تبقى fallback ريثما يوصل جواب السيرفر.
+const FALLBACK_WORK_TYPES = ['طاقة شمسية', 'كاميرات', 'بيت ذكي', 'شبكات', 'إنذار حريق', 'أقفال وحاكيات', 'ستلايت', 'منظومة صوت', 'أخرى']
+
+function useProjectWorkTypes(): string[] {
+  const [types, setTypes] = useState<string[]>(FALLBACK_WORK_TYPES)
+  useEffect(() => {
+    request<{ id: string; name: string }[]>('/project-work-types')
+      .then((rows) => { if (rows.length > 0) setTypes(rows.map((r) => r.name)) })
+      .catch(() => {})
+  }, [])
+  return types
+}
 
 const STAGE_CARDS = [
   { key: 'اتصال', label: 'اتصال', icon: '📞', color: 'bg-[var(--color-brand-500)]' },
@@ -341,6 +354,7 @@ function MainView(props: {
 }) {
   const { projects, totalCount, stats, canManage } = props
   const maxStat = Math.max(1, ...STAGE_CARDS.map(c => stats[c.key as keyof Stats]))
+  const workTypes = useProjectWorkTypes()
 
   return (
     <>
@@ -358,7 +372,7 @@ function MainView(props: {
           <select value={props.filterWorkType} onChange={e => props.setFilterWorkType(e.target.value)}
             className="w-full mt-1 border rounded-lg px-3 py-2 text-sm">
             <option value="">📋 كل أنواع العمل</option>
-            {WORK_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
+            {workTypes.map(w => <option key={w} value={w}>{w}</option>)}
           </select>
         </div>
         <div>
@@ -511,6 +525,7 @@ function Info({ icon, value }: { icon: string; value: string | null }) {
 // Add project modal
 // ---------------------------------------------------------------------------
 function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+  const workTypes = useProjectWorkTypes()
   const [form, setForm] = useState({ name: '', rep: '', phone: '', location: '', workType: 'طاقة شمسية', refPerson: '', priority: 'عادي', deliveryDate: '' })
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -533,7 +548,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
         <Field label="الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
         <Field label="نوع العمل">
           <select className="inp" value={form.workType} onChange={e => set('workType', e.target.value)}>
-            {WORK_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
+            {workTypes.map(w => <option key={w} value={w}>{w}</option>)}
           </select>
         </Field>
         <Field label="الطرف الوسيط"><input className="inp" value={form.refPerson} onChange={e => set('refPerson', e.target.value)} /></Field>
@@ -557,6 +572,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 // Edit project modal
 // ---------------------------------------------------------------------------
 function EditModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
+  const workTypes = useProjectWorkTypes()
   const [form, setForm] = useState({
     name: project.name, rep: project.rep || '', phone: project.phone || '',
     location: project.location || '', workType: project.workType || 'طاقة شمسية',
@@ -583,7 +599,7 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
         <Field label="الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
         <Field label="نوع العمل">
           <select className="inp" value={form.workType} onChange={e => set('workType', e.target.value)}>
-            {WORK_TYPES.map(w => <option key={w} value={w}>{w}</option>)}
+            {workTypes.map(w => <option key={w} value={w}>{w}</option>)}
           </select>
         </Field>
         <Field label="الطرف الوسيط"><input className="inp" value={form.refPerson} onChange={e => set('refPerson', e.target.value)} /></Field>

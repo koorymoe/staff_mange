@@ -62,6 +62,32 @@ func (h *LeaderInvoiceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, inv)
 }
 
+// POST /api/leader-invoices/estimate — حساب سريع بدون حفظ ولا ربط بحجز.
+func (h *LeaderInvoiceHandler) Estimate(w http.ResponseWriter, r *http.Request) {
+	var req model.EstimateExecutionCostRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	res, err := h.service.Estimate(req.Items)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, res)
+}
+
+// PUT /api/leader-invoices/{id}/approve — محصور بـrequireFinance بالراوت.
+func (h *LeaderInvoiceHandler) Approve(w http.ResponseWriter, r *http.Request) {
+	approverID := middleware.EmployeeIDFromContext(r)
+	inv, err := h.service.Approve(r.PathValue("id"), approverID)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}
+
 // GET /api/system-price-catalog?systemName=
 func (h *LeaderInvoiceHandler) ListCatalog(w http.ResponseWriter, r *http.Request) {
 	systemName := r.URL.Query().Get("systemName")

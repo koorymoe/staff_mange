@@ -152,6 +152,27 @@ func (r *LeaderInvoiceRepository) SumNetTotalForDate(date string) (float64, erro
 	return total.Float64, err
 }
 
+// Approve يعتمد فاتورة SUBMITTED فقط (لا يسمح باعتماد فاتورة معتمدة أصلاً
+// مرة ثانية) — يرجّع nil لو الفاتورة غير موجودة أو معتمدة أصلاً.
+func (r *LeaderInvoiceRepository) Approve(id, approverEmployeeID string) (*model.LeaderInvoice, error) {
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `
+		UPDATE "LeaderInvoice" SET status = 'APPROVED', "approvedByEmployeeId" = $2, "approvedAt" = CURRENT_TIMESTAMP
+		WHERE id = $1 AND status != 'APPROVED'
+		RETURNING *
+	`, id, approverEmployeeID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
 func (r *LeaderInvoiceRepository) hydrate(inv *model.LeaderInvoice) error {
 	if inv.SystemsJSON != "" {
 		_ = json.Unmarshal([]byte(inv.SystemsJSON), &inv.Systems)

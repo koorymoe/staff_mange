@@ -200,5 +200,36 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "DesignFormSubmission_formId_idx" ON "DesignFormSubmission"("formId")`,
 		},
+		{
+			// اعتماد فاتورة الليدر: تبقى الفاتورة ظاهرة عند الليدر بحالة SUBMITTED
+			// لين مدير/محاسب (requireFinance) يعتمدها لـAPPROVED — الليدر نفسه ما
+			// يقدر يعتمد فاتورته بنفسه (الراوت محمي بـrequireFinance بالباك اند).
+			Version: "0144_add_leader_invoice_approval",
+			SQL: `ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "approvedByEmployeeId" TEXT REFERENCES "Employee"(id);
+			ALTER TABLE "LeaderInvoice" ADD COLUMN IF NOT EXISTS "approvedAt" TIMESTAMP`,
+		},
+		{
+			// أنواع الأعمال ("نوع العمل" بحقل المشروع) كانت قائمة ثابتة مكتوبة
+			// بالكود (WORK_TYPES بـProjectsPage.tsx) — صارت جدول قابل للإضافة/الحذف
+			// من إعدادات وحدة إدارة المشاريع، مع زرع نفس القيم القديمة كبداية حتى
+			// ما ينكسر أي مشروع موجود يشاور عليهن.
+			Version: "0145_create_project_work_type",
+			SQL: `CREATE TABLE IF NOT EXISTS "ProjectWorkType" (
+				id TEXT PRIMARY KEY,
+				name TEXT NOT NULL UNIQUE,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			INSERT INTO "ProjectWorkType" (id, name) VALUES
+				(gen_random_uuid()::text, 'طاقة شمسية'),
+				(gen_random_uuid()::text, 'كاميرات'),
+				(gen_random_uuid()::text, 'بيت ذكي'),
+				(gen_random_uuid()::text, 'شبكات'),
+				(gen_random_uuid()::text, 'إنذار حريق'),
+				(gen_random_uuid()::text, 'أقفال وحاكيات'),
+				(gen_random_uuid()::text, 'ستلايت'),
+				(gen_random_uuid()::text, 'منظومة صوت'),
+				(gen_random_uuid()::text, 'أخرى')
+			ON CONFLICT (name) DO NOTHING`,
+		},
 	}
 }
