@@ -10,6 +10,34 @@ function publicUrl(token: string) {
   return `${window.location.origin}${base}/design-forms/public/${token}`
 }
 
+// معاينة مصغّرة تطابق شكل صفحة الفورمة الحقيقية الي توصل الزبون (نفس هيدر
+// الأماني الكحلي والذهبي واسم الشركة عربي/انكليزي) — حتى يشوف المدير شكل
+// كل فورمة بهويتها البصرية من نفس صفحة الإدارة، بدون ما يفتح الرابط العام.
+function FormBrandPreview({ name }: { name: string }) {
+  return (
+    <div style={{ borderRadius: '12px', overflow: 'hidden', border: '1px solid #fbede2', boxShadow: '0 2px 10px rgba(71,82,143,0.10)' }}>
+      <div style={{
+        background: `linear-gradient(135deg, ${PRIMARY}, #2f3868)`,
+        padding: '14px 16px', color: '#fff', position: 'relative', overflow: 'hidden',
+      }}>
+        <div style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: '6px', background: `linear-gradient(${GOLD}, ${PRIMARY})` }} />
+        <div style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.4 }}>
+          شركة الأماني للتجارة العامة والاستثمارات العقارية
+        </div>
+        <div style={{ fontSize: '8px', fontWeight: 600, color: GOLD, marginTop: '2px' }}>
+          Al-Amani for General Trading &amp; Real Estate
+        </div>
+        <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: 700 }}>{name || 'اسم الفورمة'}</div>
+      </div>
+      <div style={{ background: '#fff', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ height: '8px', width: '60%', background: '#eef0f8', borderRadius: '4px' }} />
+        <div style={{ height: '18px', width: '100%', background: '#f7f8fc', border: '1px solid #eef0f8', borderRadius: '6px' }} />
+        <div style={{ marginTop: '4px', height: '20px', width: '100%', background: GOLD, opacity: 0.85, borderRadius: '6px' }} />
+      </div>
+    </div>
+  )
+}
+
 export default function DesignFormsListPage() {
   const navigate = useNavigate()
   const [forms, setForms] = useState<DesignForm[]>([])
@@ -53,23 +81,27 @@ export default function DesignFormsListPage() {
     <div dir="rtl">
       <h2 className="text-2xl font-bold" style={{ color: PRIMARY }}>وحدة التصميم — فورمة التصميم</h2>
       <p className="mt-1 text-slate-500">
-        كل فورمة مستقلة بأسئلتها الخاصة ورابطها العام — ترسله للزبون مباشرة بدون ما يشوف أي شي ثاني من النظام.
+        كل فورمة مستقلة بأسئلتها الخاصة ورابطها العام — كلهن بنفس الهوية البصرية لشركة الأماني، وترسلها للزبون مباشرة بدون ما يشوف أي شي ثاني من النظام.
       </p>
 
-      <form onSubmit={handleCreate} className="mt-5 flex flex-wrap gap-2 rounded-xl border border-white bg-white p-4 shadow-sm">
-        <input
-          value={name} onChange={(e) => setName(e.target.value)}
-          placeholder="اسم الفورمة الجديدة (مثال: طلب تصميم هوية بصرية)"
-          className="min-w-[260px] flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-        />
-        <button
-          type="submit" disabled={creating}
-          style={{ background: PRIMARY }}
-          className="rounded-lg px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
-        >
-          {creating ? 'جاري الإنشاء...' : '+ فورمة جديدة'}
-        </button>
-      </form>
+      <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-[280px_1fr]">
+        <FormBrandPreview name={name} />
+        <form onSubmit={handleCreate} className="flex flex-col justify-center gap-2 rounded-xl border border-white bg-white p-4 shadow-sm">
+          <label className="text-xs font-bold text-slate-500">اسم الفورمة الجديدة — المعاينة تتحدث وأنت تكتب</label>
+          <input
+            value={name} onChange={(e) => setName(e.target.value)}
+            placeholder="مثال: طلب تصميم هوية بصرية"
+            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          />
+          <button
+            type="submit" disabled={creating}
+            style={{ background: PRIMARY }}
+            className="mt-1 rounded-lg px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
+          >
+            {creating ? 'جاري الإنشاء...' : '+ إنشاء الفورمة'}
+          </button>
+        </form>
+      </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {!loading && forms.length === 0 && (
@@ -78,17 +110,12 @@ export default function DesignFormsListPage() {
         </div>
       )}
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {forms.map((f) => (
-          <div key={f.id} className="rounded-xl border border-white bg-white p-4 shadow-sm">
-            <div className="flex items-start justify-between gap-2">
-              <div>
-                <p className="font-bold" style={{ color: PRIMARY }}>{f.name}</p>
-                <p className="mt-0.5 text-xs text-slate-400">أُنشئت: {new Date(f.createdAt).toLocaleDateString('ar-IQ')}</p>
-              </div>
-              <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: GOLD }} title="هوية الأماني البصرية" />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+          <div key={f.id} className="flex flex-col gap-3 rounded-xl border border-white bg-white p-3 shadow-sm">
+            <FormBrandPreview name={f.name} />
+            <p className="text-xs text-slate-400">أُنشئت: {new Date(f.createdAt).toLocaleDateString('ar-IQ')}</p>
+            <div className="flex flex-wrap gap-2">
               <button onClick={() => navigate(`/design-forms/${f.id}`)} className="rounded-lg px-3 py-1.5 text-xs font-bold text-white" style={{ background: PRIMARY }}>
                 الأسئلة والترتيب
               </button>
