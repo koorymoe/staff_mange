@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -36,6 +37,105 @@ func (r *GpsRepository) loadSimCard(id string) *model.SimCard {
 		return nil
 	}
 	return &s
+}
+
+// ── محمّلات دفعة واحدة (batch) ────────────────────────────────────────────────
+// القوائم كانت تسوي استعلام منفصل لكل صف (زبون + موظف + شريحة + فني)، يعني
+// قائمة 200 جهاز = 800+ رحلة لقاعدة البيانات. هذي الدوال تجيب كل المطلوب
+// باستعلام واحد لكل نوع، فالقائمة كلها تصير 3-4 استعلامات ثابتة.
+
+func uniqueIDs(ids []string) []string {
+	seen := make(map[string]bool, len(ids))
+	out := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	return out
+}
+
+func (r *GpsRepository) employeeBriefsByIDs(ids []string) map[string]*model.EmployeeBrief {
+	out := map[string]*model.EmployeeBrief{}
+	ids = uniqueIDs(ids)
+	if len(ids) == 0 {
+		return out
+	}
+	rows := []model.EmployeeBrief{}
+	if err := r.db.Select(&rows, `SELECT id, name FROM "Employee" WHERE id = ANY($1)`, pq.Array(ids)); err != nil {
+		return out
+	}
+	for i := range rows {
+		out[rows[i].ID] = &rows[i]
+	}
+	return out
+}
+
+func (r *GpsRepository) customersByIDs(ids []string) map[string]*model.GpsCustomer {
+	out := map[string]*model.GpsCustomer{}
+	ids = uniqueIDs(ids)
+	if len(ids) == 0 {
+		return out
+	}
+	rows := []model.GpsCustomer{}
+	if err := r.db.Select(&rows, `SELECT * FROM "GpsCustomer" WHERE id = ANY($1)`, pq.Array(ids)); err != nil {
+		return out
+	}
+	for i := range rows {
+		out[rows[i].ID] = &rows[i]
+	}
+	return out
+}
+
+func (r *GpsRepository) simCardsByIDs(ids []string) map[string]*model.SimCard {
+	out := map[string]*model.SimCard{}
+	ids = uniqueIDs(ids)
+	if len(ids) == 0 {
+		return out
+	}
+	rows := []model.SimCard{}
+	if err := r.db.Select(&rows, `SELECT * FROM "SimCard" WHERE id = ANY($1)`, pq.Array(ids)); err != nil {
+		return out
+	}
+	for i := range rows {
+		out[rows[i].ID] = &rows[i]
+	}
+	return out
+}
+
+// hydrateDevicesBatch يعبّي الحقول المرتبطة لكل الأجهزة دفعة وحدة.
+func (r *GpsRepository) hydrateDevicesBatch(devices []*model.GpsDeviceRequest) {
+	if len(devices) == 0 {
+		return
+	}
+	customerIDs := make([]string, 0, len(devices))
+	employeeIDs := make([]string, 0, len(devices)*2)
+	simIDs := make([]string, 0, len(devices))
+	for _, d := range devices {
+		customerIDs = append(customerIDs, d.CustomerID)
+		employeeIDs = append(employeeIDs, d.EmployeeID)
+		if d.SimCardID != nil {
+			simIDs = append(simIDs, *d.SimCardID)
+		}
+		if d.AssignedTechnicianID != nil {
+			employeeIDs = append(employeeIDs, *d.AssignedTechnicianID)
+		}
+	}
+	customers := r.customersByIDs(customerIDs)
+	employees := r.employeeBriefsByIDs(employeeIDs)
+	sims := r.simCardsByIDs(simIDs)
+	for _, d := range devices {
+		d.Customer = customers[d.CustomerID]
+		d.Employee = employees[d.EmployeeID]
+		if d.SimCardID != nil {
+			d.SimCard = sims[*d.SimCardID]
+		}
+		if d.AssignedTechnicianID != nil {
+			d.AssignedTechnician = employees[*d.AssignedTechnicianID]
+		}
+	}
 }
 
 func (r *GpsRepository) loadDeviceRequestBare(id string) *model.GpsDeviceRequest {
@@ -152,9 +252,11 @@ func (r *GpsRepository) ListDevices() ([]model.GpsDeviceRequest, error) {
 	if err := r.db.Select(&devices, `SELECT * FROM "GpsDeviceRequest" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
+	refs := make([]*model.GpsDeviceRequest, len(devices))
 	for i := range devices {
-		r.hydrateDevice(&devices[i])
+		refs[i] = &devices[i]
 	}
+	r.hydrateDevicesBatch(refs)
 	return devices, nil
 }
 
@@ -227,8 +329,33 @@ func (r *GpsRepository) ListRenewals() ([]model.GpsRenewalRequest, error) {
 	if err := r.db.Select(&renewals, `SELECT * FROM "GpsRenewalRequest" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
+	if len(renewals) == 0 {
+		return renewals, nil
+	}
+
+	customerIDs := make([]string, 0, len(renewals))
+	deviceIDs := make([]string, 0, len(renewals))
 	for i := range renewals {
-		r.hydrateRenewal(&renewals[i])
+		customerIDs = append(customerIDs, renewals[i].CustomerID)
+		deviceIDs = append(deviceIDs, renewals[i].DeviceRequestID)
+	}
+	customers := r.customersByIDs(customerIDs)
+
+	deviceRows := []model.GpsDeviceRequest{}
+	if err := r.db.Select(&deviceRows, `SELECT * FROM "GpsDeviceRequest" WHERE id = ANY($1)`, pq.Array(uniqueIDs(deviceIDs))); err != nil {
+		return nil, err
+	}
+	deviceRefs := make([]*model.GpsDeviceRequest, len(deviceRows))
+	devicesByID := make(map[string]*model.GpsDeviceRequest, len(deviceRows))
+	for i := range deviceRows {
+		deviceRefs[i] = &deviceRows[i]
+		devicesByID[deviceRows[i].ID] = &deviceRows[i]
+	}
+	r.hydrateDevicesBatch(deviceRefs)
+
+	for i := range renewals {
+		renewals[i].Customer = customers[renewals[i].CustomerID]
+		renewals[i].DeviceRequest = devicesByID[renewals[i].DeviceRequestID]
 	}
 	return renewals, nil
 }
@@ -280,8 +407,20 @@ func (r *GpsRepository) ListMaintenance() ([]model.GpsMaintenanceRequest, error)
 	if err := r.db.Select(&records, `SELECT * FROM "GpsMaintenanceRequest" ORDER BY "createdAt" DESC`); err != nil {
 		return nil, err
 	}
+	if len(records) == 0 {
+		return records, nil
+	}
+	customerIDs := make([]string, 0, len(records))
+	employeeIDs := make([]string, 0, len(records))
 	for i := range records {
-		r.hydrateMaintenance(&records[i])
+		customerIDs = append(customerIDs, records[i].CustomerID)
+		employeeIDs = append(employeeIDs, records[i].EmployeeID)
+	}
+	customers := r.customersByIDs(customerIDs)
+	employees := r.employeeBriefsByIDs(employeeIDs)
+	for i := range records {
+		records[i].Customer = customers[records[i].CustomerID]
+		records[i].Employee = employees[records[i].EmployeeID]
 	}
 	return records, nil
 }

@@ -263,5 +263,19 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			Version: "0149_add_supplier_address",
 			SQL:     `ALTER TABLE "Supplier" ADD COLUMN IF NOT EXISTS address TEXT`,
 		},
+		{
+			// فهارس ناقصة على أعمدة تُستخدم بالربط/الفلترة/الترتيب — كانت تخلي
+			// الأنظمة المدموجة (المشاريع، الجي بي اس، عروض الأسعار) تسوي مسح
+			// كامل للجدول (Seq Scan) بكل استعلام.
+			Version: "0150_perf_indexes_merged_modules",
+			SQL: `CREATE INDEX IF NOT EXISTS "Project_createdAt_idx" ON "Project"("createdAt" DESC);
+			CREATE INDEX IF NOT EXISTS "Project_bookingId_idx" ON "Project"("bookingId");
+			CREATE INDEX IF NOT EXISTS "Quotation_createdByEmployeeId_idx" ON "Quotation"("createdByEmployeeId");
+			CREATE INDEX IF NOT EXISTS "GpsRenewalRequest_deviceRequestId_idx" ON "GpsRenewalRequest"("deviceRequestId");
+			CREATE INDEX IF NOT EXISTS "GpsDeviceRequest_simCardId_idx" ON "GpsDeviceRequest"("simCardId");
+			CREATE INDEX IF NOT EXISTS "GpsDeviceRequest_employeeId_idx" ON "GpsDeviceRequest"("employeeId");
+			CREATE INDEX IF NOT EXISTS "GpsDeviceRequest_assignedTechnicianId_idx" ON "GpsDeviceRequest"("assignedTechnicianId");
+			CREATE INDEX IF NOT EXISTS "GpsMaintenanceRequest_employeeId_idx" ON "GpsMaintenanceRequest"("employeeId")`,
+		},
 	}
 }

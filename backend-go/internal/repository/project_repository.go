@@ -16,10 +16,33 @@ func NewProjectRepository(db *sqlx.DB) *ProjectRepository {
 	return &ProjectRepository{db: db}
 }
 
+// List يجيب المشاريع بدون أعمدة العقد (PDF بصيغة base64) — هذي الأعمدة ممكن
+// تكون ميغابايتات لكل مشروع، وجلبها بالقائمة كان يخلي الصفحة بطيئة جداً. بدالها
+// نرجّع علمين بس (هل اكو عقد / هل اكو عقد موقّع)، والملف نفسه ينجلب لما
+// المستخدم يفتح نافذة العقد (GET /api/projects/{id}).
+const projectListColumns = `id, code, name, rep, phone, location, "mapLatitude", "mapLongitude",
+	"workType", "refPerson", stage, price, staff, time, task, priority, "deliveryDate", survey,
+	"bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "createdAt", "updatedAt",
+	("contractPdfBase64" IS NOT NULL) AS "hasContract",
+	("signedContractPdfBase64" IS NOT NULL) AS "hasSignedContract"`
+
 func (r *ProjectRepository) List() ([]model.Project, error) {
 	projects := []model.Project{}
-	err := r.db.Select(&projects, `SELECT * FROM "Project" ORDER BY "createdAt" DESC`)
+	err := r.db.Select(&projects, `SELECT `+projectListColumns+` FROM "Project" ORDER BY "createdAt" DESC`)
 	return projects, err
+}
+
+// GetByID يرجّع المشروع كامل بما بيه ملفات العقد — يُستخدم لما تنفتح نافذة العقد.
+func (r *ProjectRepository) GetByID(id string) (*model.Project, error) {
+	var p model.Project
+	err := r.db.Get(&p, `SELECT *,
+		("contractPdfBase64" IS NOT NULL) AS "hasContract",
+		("signedContractPdfBase64" IS NOT NULL) AS "hasSignedContract"
+		FROM "Project" WHERE id = $1`, id)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
 }
 
 func (r *ProjectRepository) CountAll() (int, error) {
@@ -61,8 +84,8 @@ func (r *ProjectRepository) Update(id string, req model.UpdateProjectRequest) (*
 			priority = COALESCE($15, priority),
 			"deliveryDate" = COALESCE($16, "deliveryDate"),
 			survey = COALESCE($17::jsonb, survey),
-			"contractPdfBase64" = COALESCE($18, "contractPdfBase64"),
-			"signedContractPdfBase64" = COALESCE($19, "signedContractPdfBase64"),
+			"contractPdfBase64" = CASE WHEN $22 THEN NULL ELSE COALESCE($18, "contractPdfBase64") END,
+			"signedContractPdfBase64" = CASE WHEN $23 THEN NULL ELSE COALESCE($19, "signedContractPdfBase64") END,
 			"responsibleEmployeeId" = COALESCE($20, "responsibleEmployeeId"),
 			"surveyorEmployeeId" = COALESCE($21, "surveyorEmployeeId"),
 			"updatedAt" = now()
@@ -70,7 +93,8 @@ func (r *ProjectRepository) Update(id string, req model.UpdateProjectRequest) (*
 		RETURNING *
 	`, id, req.Name, req.Rep, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.WorkType, req.RefPerson, req.Stage,
 		req.Price, req.Staff, req.Time, req.Task, req.Priority, req.DeliveryDate, req.Survey,
-		req.ContractPdfBase64, req.SignedContractPdfBase64, req.ResponsibleEmployeeID, req.SurveyorEmployeeID)
+		req.ContractPdfBase64, req.SignedContractPdfBase64, req.ResponsibleEmployeeID, req.SurveyorEmployeeID,
+		req.ClearContract, req.ClearSignedContract)
 	if err != nil {
 		return nil, err
 	}

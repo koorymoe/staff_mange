@@ -89,6 +89,10 @@ func emptyToNil(v *string) *string {
 	return v
 }
 
+func (s *ProjectService) Get(id string) (*model.Project, error) {
+	return s.repo.GetByID(id)
+}
+
 func (s *ProjectService) Update(id string, req model.UpdateProjectRequest) (*model.Project, error) {
 	req.ResponsibleEmployeeID = emptyToNil(req.ResponsibleEmployeeID)
 	req.SurveyorEmployeeID = emptyToNil(req.SurveyorEmployeeID)

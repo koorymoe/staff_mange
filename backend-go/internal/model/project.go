@@ -68,12 +68,15 @@ type Project struct {
 	BookingID    *string  `db:"bookingId" json:"bookingId"`
 	// العقد: يترفع كـPDF (base64) قبل التوقيع وبعده — كلاهما اختياري ومرتبط
 	// بنفس المشروع.
-	ContractPdfBase64       *string   `db:"contractPdfBase64" json:"contractPdfBase64"`
-	SignedContractPdfBase64 *string   `db:"signedContractPdfBase64" json:"signedContractPdfBase64"`
-	ResponsibleEmployeeID   *string   `db:"responsibleEmployeeId" json:"responsibleEmployeeId"`
-	SurveyorEmployeeID      *string   `db:"surveyorEmployeeId" json:"surveyorEmployeeId"`
-	CreatedAt               time.Time `db:"createdAt" json:"createdAt"`
-	UpdatedAt               time.Time `db:"updatedAt" json:"updatedAt"`
+	ContractPdfBase64       *string `db:"contractPdfBase64" json:"contractPdfBase64"`
+	SignedContractPdfBase64 *string `db:"signedContractPdfBase64" json:"signedContractPdfBase64"`
+	// علمان محسوبان بالاستعلام — القائمة ترجّعهما بدل ملفات الـPDF الثقيلة نفسها.
+	HasContract           bool      `db:"hasContract" json:"hasContract"`
+	HasSignedContract     bool      `db:"hasSignedContract" json:"hasSignedContract"`
+	ResponsibleEmployeeID *string   `db:"responsibleEmployeeId" json:"responsibleEmployeeId"`
+	SurveyorEmployeeID    *string   `db:"surveyorEmployeeId" json:"surveyorEmployeeId"`
+	CreatedAt             time.Time `db:"createdAt" json:"createdAt"`
+	UpdatedAt             time.Time `db:"updatedAt" json:"updatedAt"`
 }
 
 type ProjectStats struct {
@@ -129,4 +132,8 @@ type UpdateProjectRequest struct {
 	SignedContractPdfBase64 *string  `json:"signedContractPdfBase64"`
 	ResponsibleEmployeeID   *string  `json:"responsibleEmployeeId"`
 	SurveyorEmployeeID      *string  `json:"surveyorEmployeeId"`
+	// أعلام حذف العقد — COALESCE ما يقدر يصفّر عمود، فنحتاج علم صريح.
+	// الحذف محصور بالأدمن (الراوت DELETE محمي بـrequireAdmin).
+	ClearContract       bool `json:"-"`
+	ClearSignedContract bool `json:"-"`
 }

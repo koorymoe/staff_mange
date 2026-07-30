@@ -466,6 +466,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// إدارة المشاريع (projects)
 	mux.Handle("GET /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.List), requireAuth))
+	mux.Handle("GET /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Get), requireAuth))
 	// إنشاء مشروع جديد يتطلب نفس دور مدير المشاريع/الأدمن المطلوب للتعديل والحذف
 	// تحته مباشرة — كان مفتوح غلط لأي موظف مسجل دخول فقط (requireAuth بدون requireProjectManager)،
 	// عدم اتساق مع PUT/DELETE على نفس المورد.
@@ -476,6 +477,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			[]string{"PROJECT_MANAGER"}, "project_management", "project_create_only")))
 	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
+	// حذف ملف العقد المرفوع — لمدير النظام حصراً
+	mux.Handle("DELETE /api/projects/{id}/contract", middleware.Chain(http.HandlerFunc(projectHandler.DeleteContract), requireAuth, requireAdmin))
 
 	// أنواع الأعمال ("نوع العمل" بحقل المشروع) — إعدادات وحدة إدارة المشاريع:
 	// أي موظف مسجل دخول يشوف القائمة (يحتاجها بفورمة المشروع)، بس الإضافة/الحذف

@@ -45,8 +45,10 @@ interface Project {
   deliveryDate: string | null
   survey: (string | null)[] | null
   bookingId: string | null
-  contractPdfBase64: string | null
-  signedContractPdfBase64: string | null
+  // القائمة ما ترجّع ملفات العقد نفسها (ثقيلة) — بس علمين، والملف ينجلب
+  // لما تنفتح نافذة العقد عبر GET /projects/{id}.
+  hasContract: boolean
+  hasSignedContract: boolean
   responsibleEmployeeId: string | null
   surveyorEmployeeId: string | null
   createdAt: string
@@ -241,12 +243,16 @@ export default function ProjectsPage() {
 
   const load = async () => {
     try {
-      const data = await request<{ projects: Project[]; stats: Stats }>('/projects')
+      // الطلبين بالتوازي بدل واحد يستنى الثاني — كانوا متسلسلين وهذا يضاعف
+      // زمن فتح الصفحة بلا داعي.
+      const [data, bookings] = await Promise.all([
+        request<{ projects: Project[]; stats: Stats }>('/projects'),
+        request<TransferredBooking[]>('/bookings'),
+      ])
       setProjects(data.projects)
       setStats(data.stats)
       // الحجوزات المحولة لإدارة المشاريع واللي لسه ما انعمل منها مشروع
       const linked = new Set(data.projects.map(p => p.bookingId).filter(Boolean))
-      const bookings = await request<TransferredBooking[]>('/bookings')
       setTransferred(bookings.filter(b =>
         b.transferToProjects && b.status !== 'COMPLETED' && b.status !== 'CANCELLED' && !linked.has(b.id)
       ))
@@ -532,7 +538,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   const [showContract, setShowContract] = useState(false)
 
   const handleAdvance = () => {
-    if (isContractStage && !p.contractPdfBase64) {
+    if (isContractStage && !p.hasContract) {
       alert('ارفع ملف العقد (PDF) الأول قبل الترحيل لمرحلة التنفيذ.')
       setShowContract(true)
       return
@@ -546,7 +552,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
     <div className="bg-white rounded-2xl shadow-sm p-5 relative" style={{ borderRight: `10px solid ${borderColor}`, opacity: isRejected ? 0.92 : 1 }}>
       <div className="absolute top-0 left-0 text-white text-xs px-3 py-1 rounded-bl-xl font-bold"
         style={{ background: isRejected ? '#6b7280' : '#f59e0b' }}>
-        📅 تسليم: {p.deliveryDate || '---'}
+        📅 انتهاء تقريبي: {p.deliveryDate || '---'}
       </div>
 
       <h3 className="font-bold text-lg mt-4 flex items-center gap-2" style={{ color: borderColor }}>
@@ -599,10 +605,10 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
               🧾 اعمل عرض سعر
             </button>
           )}
-          {canManage && (isContractStage || p.contractPdfBase64) && (
+          {canManage && (isContractStage || p.hasContract) && (
             <button onClick={() => setShowContract(true)}
               className="text-sm px-3 py-1.5 rounded-lg bg-purple-600 text-white font-medium hover:brightness-110">
-              📄 العقد{p.contractPdfBase64 ? (p.signedContractPdfBase64 ? ' (مرفوع وموقّع)' : ' (مرفوع)') : ''}
+              📄 العقد{p.hasContract ? (p.hasSignedContract ? ' (مرفوع وموقّع)' : ' (مرفوع)') : ''}
             </button>
           )}
           {canManage && !isRejected && !isCompleted && nextStage && (
@@ -641,8 +647,17 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 function ContractModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
+  const { employee } = useSession()
+  const isAdmin = employee?.role === 'ADMIN'
   const [saving, setSaving] = useState<'plain' | 'signed' | null>(null)
   const [error, setError] = useState('')
+  // ملفات العقد ما تجي بالقائمة (ثقيلة) — نجيبها هنا بس لما تنفتح النافذة.
+  const [files, setFiles] = useState<{ contractPdfBase64: string | null; signedContractPdfBase64: string | null } | null>(null)
+  useEffect(() => {
+    request<{ contractPdfBase64: string | null; signedContractPdfBase64: string | null }>(`/projects/${project.id}`)
+      .then(setFiles)
+      .catch(() => setFiles({ contractPdfBase64: null, signedContractPdfBase64: null }))
+  }, [project.id])
 
   const upload = async (file: File | undefined, field: 'contractPdfBase64' | 'signedContractPdfBase64') => {
     if (!file) return
@@ -660,6 +675,19 @@ function ContractModal({ project, onClose, onSaved }: { project: Project; onClos
     }
   }
 
+  // حذف العقد المرفوع — لمدير النظام حصراً (والسيرفر يفرضها كمان).
+  const removeContract = async (which: 'plain' | 'signed') => {
+    if (!confirm('حذف ملف العقد هذا نهائياً؟')) return
+    setError('')
+    try {
+      await request(`/projects/${project.id}/contract?which=${which}`, { method: 'DELETE' })
+      setFiles(f => f ? { ...f, [which === 'plain' ? 'contractPdfBase64' : 'signedContractPdfBase64']: null } : f)
+      onSaved()
+    } catch (e) {
+      setError((e as Error).message || 'تعذر حذف الملف')
+    }
+  }
+
   return (
     <Modal onClose={onClose} title={`عقد المشروع: ${project.name}`}>
       <div className="space-y-4">
@@ -670,10 +698,17 @@ function ContractModal({ project, onClose, onSaved }: { project: Project; onClos
             onChange={(e) => upload(e.target.files?.[0], 'contractPdfBase64')}
             className="mt-1 block w-full text-sm"
           />
-          {project.contractPdfBase64 && (
-            <a href={project.contractPdfBase64} download={`عقد-${project.code}.pdf`} className="mt-1 inline-block text-xs text-brand-600 hover:underline">
-              📄 تحميل الملف المرفوع حالياً
-            </a>
+          {files?.contractPdfBase64 && (
+            <div className="mt-1 flex items-center gap-3">
+              <a href={files.contractPdfBase64} download={`عقد-${project.code}.pdf`} className="text-xs text-brand-600 hover:underline">
+                📄 تحميل الملف المرفوع حالياً
+              </a>
+              {isAdmin && (
+                <button type="button" onClick={() => removeContract('plain')} className="text-xs font-bold text-red-600 hover:underline">
+                  حذف الملف
+                </button>
+              )}
+            </div>
           )}
           {saving === 'plain' && <p className="text-xs text-gray-400">جاري الرفع...</p>}
         </div>
@@ -684,10 +719,17 @@ function ContractModal({ project, onClose, onSaved }: { project: Project; onClos
             onChange={(e) => upload(e.target.files?.[0], 'signedContractPdfBase64')}
             className="mt-1 block w-full text-sm"
           />
-          {project.signedContractPdfBase64 && (
-            <a href={project.signedContractPdfBase64} download={`عقد-موقّع-${project.code}.pdf`} className="mt-1 inline-block text-xs text-brand-600 hover:underline">
-              📄 تحميل الملف الموقّع حالياً
-            </a>
+          {files?.signedContractPdfBase64 && (
+            <div className="mt-1 flex items-center gap-3">
+              <a href={files.signedContractPdfBase64} download={`عقد-موقّع-${project.code}.pdf`} className="text-xs text-brand-600 hover:underline">
+                📄 تحميل الملف الموقّع حالياً
+              </a>
+              {isAdmin && (
+                <button type="button" onClick={() => removeContract('signed')} className="text-xs font-bold text-red-600 hover:underline">
+                  حذف الملف
+                </button>
+              )}
+            </div>
           )}
           {saving === 'signed' && <p className="text-xs text-gray-400">جاري الرفع...</p>}
         </div>
@@ -752,7 +794,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
             <option value="عاجل جداً">عاجل جداً 🔥</option>
           </select>
         </Field>
-        <Field label="تاريخ التسليم"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
+        <Field label="تاريخ انتهاء المشروع التقريبي"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
         <Field label="المسؤول عن المشروع (مهندس فقط)">
           <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
             <option value="">-- اختر المهندس --</option>
@@ -827,7 +869,7 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
             <option value="عاجل جداً">عاجل جداً 🔥</option>
           </select>
         </Field>
-        <Field label="تاريخ التسليم"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
+        <Field label="تاريخ انتهاء المشروع التقريبي"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
         <Field label="المسؤول عن المشروع (مهندس فقط)">
           <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
             <option value="">-- اختر المهندس --</option>
