@@ -84,16 +84,44 @@ const STAGES = [
 // بدون تعديل كود. القائمة القديمة تبقى fallback ريثما يوصل جواب السيرفر.
 const FALLBACK_WORK_TYPES = ['طاقة شمسية', 'كاميرات', 'بيت ذكي', 'شبكات', 'إنذار حريق', 'أقفال وحاكيات', 'ستلايت', 'منظومة صوت', 'أخرى']
 
-// موظفو إدارة المشاريع — لتعبئة قوائم "المسؤول عن المشروع" و"منفّذ الكشف"
-// (نفس الشخص يجوز يكون الاثنين).
-function useProjectStaff(): { id: string; name: string }[] {
-  const [staff, setStaff] = useState<{ id: string; name: string }[]>([])
+interface ProjectCandidate {
+  id: string
+  name: string
+  role: string
+  isLeader: boolean
+  group: string
+  groupLabel: string
+  isEngineer: boolean
+}
+
+// مرشحو المشروع — "المسؤول عن المشروع" حصراً المهندسون (اللي عندهم مهارات
+// تصميم/تخطيط/تنفيذ أو دورهم مهندس)، أما "منفّذ الكشف" فأي موظف بس معروض
+// بالتسلسل: مهندسين ← تقنيين ← ليدريه ← فنيين ← إداريين ← مصممين.
+function useProjectCandidates(): ProjectCandidate[] {
+  const [staff, setStaff] = useState<ProjectCandidate[]>([])
   useEffect(() => {
-    request<{ id: string; name: string }[]>('/permissions/employees?permission=project_management&roles=PROJECT_MANAGER,ADMIN')
-      .then(setStaff)
-      .catch(() => {})
+    request<ProjectCandidate[]>('/project-candidates').then(setStaff).catch(() => {})
   }, [])
   return staff
+}
+
+// EmployeeOptions يرسم <optgroup> لكل مجموعة بنفس ترتيب وصولها من السيرفر.
+function EmployeeOptions({ candidates }: { candidates: ProjectCandidate[] }) {
+  const groups: { label: string; items: ProjectCandidate[] }[] = []
+  candidates.forEach(c => {
+    const last = groups[groups.length - 1]
+    if (last && last.label === c.groupLabel) last.items.push(c)
+    else groups.push({ label: c.groupLabel, items: [c] })
+  })
+  return (
+    <>
+      {groups.map(g => (
+        <optgroup key={g.label} label={g.label}>
+          {g.items.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+        </optgroup>
+      ))}
+    </>
+  )
 }
 
 function useProjectWorkTypes(): string[] {
@@ -683,7 +711,7 @@ function Info({ icon, value }: { icon: string; value: string | null }) {
 // ---------------------------------------------------------------------------
 function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const workTypes = useProjectWorkTypes()
-  const projectStaff = useProjectStaff()
+  const candidates = useProjectCandidates()
   const [form, setForm] = useState({ name: '', rep: '', phone: '', location: '', workType: 'طاقة شمسية', refPerson: '', priority: 'عادي', deliveryDate: '', responsibleEmployeeId: '', surveyorEmployeeId: '' })
   const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [saving, setSaving] = useState(false)
@@ -725,16 +753,16 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           </select>
         </Field>
         <Field label="تاريخ التسليم"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
-        <Field label="المسؤول عن المشروع">
+        <Field label="المسؤول عن المشروع (مهندس فقط)">
           <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
-            <option value="">-- اختر الموظف --</option>
-            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <option value="">-- اختر المهندس --</option>
+            <EmployeeOptions candidates={candidates.filter(c => c.isEngineer)} />
           </select>
         </Field>
         <Field label="منفّذ الكشف">
           <select className="inp" value={form.surveyorEmployeeId} onChange={e => set('surveyorEmployeeId', e.target.value)}>
             <option value="">-- اختر الموظف --</option>
-            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <EmployeeOptions candidates={candidates} />
           </select>
         </Field>
       </div>
@@ -751,7 +779,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 // ---------------------------------------------------------------------------
 function EditModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const workTypes = useProjectWorkTypes()
-  const projectStaff = useProjectStaff()
+  const candidates = useProjectCandidates()
   const [form, setForm] = useState({
     name: project.name, rep: project.rep || '', phone: project.phone || '',
     location: project.location || '', workType: project.workType || 'طاقة شمسية',
@@ -800,16 +828,16 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
           </select>
         </Field>
         <Field label="تاريخ التسليم"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
-        <Field label="المسؤول عن المشروع">
+        <Field label="المسؤول عن المشروع (مهندس فقط)">
           <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
-            <option value="">-- اختر الموظف --</option>
-            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <option value="">-- اختر المهندس --</option>
+            <EmployeeOptions candidates={candidates.filter(c => c.isEngineer)} />
           </select>
         </Field>
         <Field label="منفّذ الكشف">
           <select className="inp" value={form.surveyorEmployeeId} onChange={e => set('surveyorEmployeeId', e.target.value)}>
             <option value="">-- اختر الموظف --</option>
-            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <EmployeeOptions candidates={candidates} />
           </select>
         </Field>
       </div>

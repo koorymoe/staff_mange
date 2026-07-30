@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -32,4 +33,34 @@ func (r *ProjectWorkTypeRepository) Create(id, name string) (*model.ProjectWorkT
 func (r *ProjectWorkTypeRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "ProjectWorkType" WHERE id = $1`, id)
 	return err
+}
+
+// ListProjectCandidates يرجّع كل الموظفين النشطين مع علمين محسوبين: هل عنده
+// مهارات الهندسة (تصميم/تخطيط/تنفيذ بـcanPerform)، وهل عنده صلاحية التقني —
+// يُستخدمان لتصنيفه بالمجموعة الصحيحة بقوائم "المسؤول عن المشروع"/"منفّذ الكشف".
+func (r *ProjectWorkTypeRepository) ListProjectCandidates(engineeringSkills []string) ([]model.ProjectCandidate, error) {
+	candidates := []model.ProjectCandidate{}
+	err := r.db.Select(&candidates, `
+		SELECT e.id, e.name, e.role, e."isLeader",
+			EXISTS (
+				SELECT 1 FROM "EmployeeSkill" es
+				JOIN "Skill" s ON s.id = es."skillId"
+				WHERE es."employeeId" = e.id AND es."canPerform" = true AND s.name = ANY($1)
+			) AS "hasEngSkill",
+			EXISTS (
+				SELECT 1 FROM "EmployeePermission" ep
+				JOIN "Permission" p ON p.id = ep."permissionId"
+				WHERE ep."employeeId" = e.id AND p.name = 'content_technician'
+			) AS "isTechPerm"
+		FROM "Employee" e
+		WHERE e.status = 'ACTIVE' AND e."isTrainee" = false
+		ORDER BY e.name
+	`, pq.Array(engineeringSkills))
+	if err != nil {
+		return nil, err
+	}
+	for i := range candidates {
+		model.ClassifyProjectCandidate(&candidates[i])
+	}
+	return candidates, nil
 }

@@ -481,6 +481,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// أي موظف مسجل دخول يشوف القائمة (يحتاجها بفورمة المشروع)، بس الإضافة/الحذف
 	// محصورة بنفس صلاحية مدير المشاريع المستخدمة لبقية إعدادات هذي الوحدة.
 	mux.Handle("GET /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.List), requireAuth))
+	// مرشحو المشروع (المسؤول / منفّذ الكشف) مصنّفين ومرتّبين
+	mux.Handle("GET /api/project-candidates", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.ListCandidates), requireAuth))
 	mux.Handle("POST /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Create), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/project-work-types/{id}", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Delete), requireAuth, requireProjectManager))
 

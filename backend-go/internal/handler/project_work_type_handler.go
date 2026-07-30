@@ -38,6 +38,16 @@ func (h *ProjectWorkTypeHandler) Create(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusCreated, item)
 }
 
+// GET /api/project-candidates — مرشحو المشروع مع مجموعاتهم وهل هم مهندسون.
+func (h *ProjectWorkTypeHandler) ListCandidates(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.ListProjectCandidates()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الموظفين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, items)
+}
+
 func (h *ProjectWorkTypeHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Delete(r.PathValue("id")); err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر حذف نوع العمل")

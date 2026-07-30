@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/google/uuid"
@@ -32,4 +33,21 @@ func (s *ProjectWorkTypeService) Create(req model.CreateProjectWorkTypeRequest) 
 
 func (s *ProjectWorkTypeService) Delete(id string) error {
 	return s.repo.Delete(id)
+}
+
+// ListProjectCandidates يرجّع مرشحي المشروع مرتّبين بالتسلسل المطلوب:
+// مهندسين ← تقنيين ← ليدريه ← فنيين ← إداريين ← مصممين.
+func (s *ProjectWorkTypeService) ListProjectCandidates() ([]model.ProjectCandidate, error) {
+	candidates, err := s.repo.ListProjectCandidates(model.EngineeringSkillNames)
+	if err != nil {
+		return nil, err
+	}
+	rank := make(map[string]int, len(model.ProjectCandidateGroupOrder))
+	for i, g := range model.ProjectCandidateGroupOrder {
+		rank[g] = i
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return rank[candidates[i].Group] < rank[candidates[j].Group]
+	})
+	return candidates, nil
 }
