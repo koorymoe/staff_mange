@@ -99,7 +99,7 @@ const navItems: NavItem[] = [
         // إدارة المشاريع صارت صلاحية: أي موظف عنده project_management يشوفها بغض النظر عن دوره
         to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
         children: [
-          { to: '/projects', label: 'المشاريع', icon: <></>, permission: 'project_management' },
+          { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'] },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
           { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, permission: 'project_management' },
@@ -259,7 +259,7 @@ const navItems: NavItem[] = [
   {
     to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
     children: [
-      { to: '/projects', label: 'المشاريع', icon: <></>, permission: 'project_management' },
+      { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'] },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
       { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },

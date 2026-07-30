@@ -231,5 +231,31 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				(gen_random_uuid()::text, 'أخرى')
 			ON CONFLICT (name) DO NOTHING`,
 		},
+		{
+			// موقع المشروع صار نص عنوان + إحداثيات دقيقة (نفس أسلوب حجز جديد
+			// LocationPicker)، وأضفنا مرحلة "العقد" بين عرض السعر والتنفيذ — العقد
+			// يترفع كـPDF قبل التوقيع وبعده، ويتخزن مع المشروع نفسه (نفس أسلوب
+			// تخزين الصور base64 بالمشروع/المركبة).
+			Version: "0146_add_project_map_and_contract",
+			SQL: `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "mapLatitude" DOUBLE PRECISION;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "mapLongitude" DOUBLE PRECISION;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "contractPdfBase64" TEXT;
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "signedContractPdfBase64" TEXT`,
+		},
+		{
+			// تحديد المسؤول عن المشروع ومنفّذ الكشف من قائمة منسدلة (موظفين عندهم
+			// صلاحية إدارة المشاريع) بدل كتابة الأسماء يدوياً — ويجوز يكون نفس
+			// الشخص للاثنين.
+			Version: "0147_add_project_responsible_and_surveyor",
+			SQL: `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "responsibleEmployeeId" TEXT REFERENCES "Employee"(id);
+			ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "surveyorEmployeeId" TEXT REFERENCES "Employee"(id)`,
+		},
+		{
+			// إلغاء خاصية "نسخ البيانات للجروب" بالكامل — ما كانت مربوطة بأي خدمة
+			// خارجية (كانت مجرد نسخ نص للحافظة + علامة بقاعدة البيانات)، فحذفناها
+			// حتى ما تبقى قناة تسريب بيانات المشاريع خارج النظام.
+			Version: "0148_drop_project_sent_to_group",
+			SQL:     `ALTER TABLE "Project" DROP COLUMN IF EXISTS "sentToGroup"`,
+		},
 	}
 }

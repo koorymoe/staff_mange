@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
+import LocationPicker from '../components/LocationPicker'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -30,6 +32,8 @@ interface Project {
   rep: string | null
   phone: string | null
   location: string | null
+  mapLatitude: number | null
+  mapLongitude: number | null
   workType: string | null
   refPerson: string | null
   stage: string
@@ -40,8 +44,11 @@ interface Project {
   priority: string
   deliveryDate: string | null
   survey: (string | null)[] | null
-  sentToGroup: boolean
   bookingId: string | null
+  contractPdfBase64: string | null
+  signedContractPdfBase64: string | null
+  responsibleEmployeeId: string | null
+  surveyorEmployeeId: string | null
   createdAt: string
 }
 
@@ -59,14 +66,15 @@ interface TransferredBooking {
 }
 
 interface Stats {
-  اتصال: number; كشف: number; سعر: number; تنفيذ: number; مكتمل: number; مرفوض: number
+  اتصال: number; كشف: number; سعر: number; عقد: number; تنفيذ: number; مكتمل: number; مرفوض: number
 }
 
 const STAGES = [
   '1. اتصال بالزبون',
   '2. مرحلة الكشف',
   '3. عرض السعر',
-  '4. البدء بالتنفيذ',
+  '4. العقد',
+  '5. البدء بالتنفيذ',
   '✅ مكتمل',
   '❌ مرفوض',
 ]
@@ -75,6 +83,18 @@ const STAGES = [
 // المشاريع (/project-work-types) حتى يقدر المدير يضيف/يحذف نوع عمل براحته
 // بدون تعديل كود. القائمة القديمة تبقى fallback ريثما يوصل جواب السيرفر.
 const FALLBACK_WORK_TYPES = ['طاقة شمسية', 'كاميرات', 'بيت ذكي', 'شبكات', 'إنذار حريق', 'أقفال وحاكيات', 'ستلايت', 'منظومة صوت', 'أخرى']
+
+// موظفو إدارة المشاريع — لتعبئة قوائم "المسؤول عن المشروع" و"منفّذ الكشف"
+// (نفس الشخص يجوز يكون الاثنين).
+function useProjectStaff(): { id: string; name: string }[] {
+  const [staff, setStaff] = useState<{ id: string; name: string }[]>([])
+  useEffect(() => {
+    request<{ id: string; name: string }[]>('/permissions/employees?permission=project_management&roles=PROJECT_MANAGER,ADMIN')
+      .then(setStaff)
+      .catch(() => {})
+  }, [])
+  return staff
+}
 
 function useProjectWorkTypes(): string[] {
   const [types, setTypes] = useState<string[]>(FALLBACK_WORK_TYPES)
@@ -90,6 +110,7 @@ const STAGE_CARDS = [
   { key: 'اتصال', label: 'اتصال', icon: '📞', color: 'bg-[var(--color-brand-500)]' },
   { key: 'كشف', label: 'كشف', icon: '🔍', color: 'bg-green-600' },
   { key: 'سعر', label: 'سعر', icon: '💰', color: 'bg-amber-500' },
+  { key: 'عقد', label: 'عقد', icon: '📄', color: 'bg-purple-600' },
   { key: 'تنفيذ', label: 'تنفيذ', icon: '🛠️', color: 'bg-red-600' },
   { key: 'مكتمل', label: 'مكتمل', icon: '✅', color: 'bg-blue-600' },
   { key: 'مرفوض', label: 'مرفوض', icon: '❌', color: 'bg-gray-500' },
@@ -166,12 +187,15 @@ function parseRejection(task: string | null): { reason: string; notes: string; c
 // Component
 // ---------------------------------------------------------------------------
 export default function ProjectsPage() {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const role = employee?.role
-  const canManage = role === 'ADMIN' || role === 'PROJECT_MANAGER'
+  const canManage = role === 'ADMIN' || role === 'PROJECT_MANAGER' || permissions.includes('project_management')
+  // صلاحية "إضافة مشروع فقط": يشوف واجهة إضافة نظيفة بس — بدون إحصائيات ولا
+  // قائمة مشاريع ولا تقارير ولا استمارة كشف ولا ترحيل مراحل.
+  const addOnly = !canManage && permissions.includes('project_create_only')
 
   const [projects, setProjects] = useState<Project[]>([])
-  const [stats, setStats] = useState<Stats>({ اتصال: 0, كشف: 0, سعر: 0, تنفيذ: 0, مكتمل: 0, مرفوض: 0 })
+  const [stats, setStats] = useState<Stats>({ اتصال: 0, كشف: 0, سعر: 0, عقد: 0, تنفيذ: 0, مكتمل: 0, مرفوض: 0 })
   const [loading, setLoading] = useState(true)
   const [view, setView] = useState<'main' | 'rejection'>('main')
 
@@ -250,6 +274,28 @@ export default function ProjectsPage() {
     load()
   }
 
+  // واجهة "إضافة مشروع فقط" — نظيفة ومبسّطة، بلا أي إحصائيات/قوائم/تقارير
+  if (addOnly) {
+    return (
+      <div dir="rtl" className="mx-auto max-w-lg">
+        <div className="rounded-2xl bg-gradient-to-l from-[var(--color-brand-500)] to-[var(--color-brand-900)] p-6 text-white shadow-lg">
+          <h1 className="text-2xl font-bold">➕ إضافة مشروع جديد</h1>
+          <p className="mt-1 text-sm text-blue-100/90">سجّل بيانات المشروع وموقعه، وفريق إدارة المشاريع راح يتابعه من هناك.</p>
+        </div>
+
+        <button
+          onClick={() => setShowAdd(true)}
+          className="mt-6 w-full rounded-2xl border-2 border-dashed border-[var(--color-brand-500)] bg-white py-10 text-center text-lg font-bold text-[var(--color-brand-900)] transition-colors hover:bg-blue-50"
+        >
+          <span className="block text-4xl">📋</span>
+          اضغط هنا لإضافة مشروع
+        </button>
+
+        {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); alert('تم إضافة المشروع بنجاح ✅') }} />}
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-5">
       {/* Header + view tabs */}
@@ -315,6 +361,7 @@ export default function ProjectsPage() {
           onMove={(project, nextStage) => setMoveTarget({ project, nextStage })}
           onReport={(type, project) => setReport({ type, project })}
           onDelete={del}
+          onRefresh={load}
         />
       ) : (
         <RejectionView projects={projects} />
@@ -351,6 +398,7 @@ function MainView(props: {
   onMove: (p: Project, nextStage: string) => void
   onReport: (type: 'survey' | 'visit', p: Project) => void
   onDelete: (id: string) => void
+  onRefresh: () => void
 }) {
   const { projects, totalCount, stats, canManage } = props
   const maxStat = Math.max(1, ...STAGE_CARDS.map(c => stats[c.key as keyof Stats]))
@@ -432,24 +480,37 @@ function MainView(props: {
         {projects.length === 0 && <p className="text-center text-gray-400 py-12 text-lg">لا توجد مشاريع</p>}
         {projects.map(p => (
           <ProjectCard key={p.id} p={p} canManage={canManage}
-            onEdit={props.onEdit} onMove={props.onMove} onReport={props.onReport} onDelete={props.onDelete} />
+            onEdit={props.onEdit} onMove={props.onMove} onReport={props.onReport} onDelete={props.onDelete} onRefresh={props.onRefresh} />
         ))}
       </div>
     </>
   )
 }
 
-function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete }: {
+function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefresh }: {
   p: Project; canManage: boolean
   onEdit: (p: Project) => void
   onMove: (p: Project, nextStage: string) => void
   onReport: (type: 'survey' | 'visit', p: Project) => void
   onDelete: (id: string) => void
+  onRefresh: () => void
 }) {
+  const navigate = useNavigate()
   const isRejected = p.stage.includes('مرفوض')
   const isCompleted = p.stage.includes('مكتمل')
+  const isContractStage = p.stage.includes('عقد')
   const stageIdx = STAGES.indexOf(p.stage)
-  const nextStage = STAGES[stageIdx + 1] && stageIdx <= 3 ? STAGES[stageIdx + 1] : null
+  const nextStage = STAGES[stageIdx + 1] && stageIdx <= 4 ? STAGES[stageIdx + 1] : null
+  const [showContract, setShowContract] = useState(false)
+
+  const handleAdvance = () => {
+    if (isContractStage && !p.contractPdfBase64) {
+      alert('ارفع ملف العقد (PDF) الأول قبل الترحيل لمرحلة التنفيذ.')
+      setShowContract(true)
+      return
+    }
+    if (nextStage) onMove(p, nextStage)
+  }
   const borderColor = isRejected ? '#6b7280' : isCompleted ? '#16a34a' : 'var(--color-brand-500)'
   const addedDate = p.createdAt ? new Date(p.createdAt).toLocaleString('ar-IQ') : '---'
 
@@ -493,8 +554,31 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete }: {
             <button onClick={() => onReport('survey', p)}
               className="text-sm px-3 py-1.5 rounded-lg bg-green-600 text-white font-medium hover:brightness-110">استمارة الكشف</button>
           )}
+          {/* بين الكشف والسعر: يفتح نظام عرض السعر الموجود عدنا، مع تعبئة بيانات
+              الزبون والمشروع تلقائياً — بلون مميّز عن باقي الأزرار. */}
+          {canManage && (p.stage.includes('كشف') || p.stage.includes('سعر')) && (
+            <button
+              onClick={() => {
+                const q = new URLSearchParams({
+                  customerName: p.name,
+                  ...(p.phone ? { customerPhone: p.phone } : {}),
+                  ...(p.location ? { customerAddress: p.location } : {}),
+                  projectName: `${p.code} — ${p.workType || 'مشروع'}`,
+                })
+                navigate(`/quotations/new?${q.toString()}`)
+              }}
+              className="text-sm px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-bold hover:brightness-110">
+              🧾 اعمل عرض سعر
+            </button>
+          )}
+          {canManage && (isContractStage || p.contractPdfBase64) && (
+            <button onClick={() => setShowContract(true)}
+              className="text-sm px-3 py-1.5 rounded-lg bg-purple-600 text-white font-medium hover:brightness-110">
+              📄 العقد{p.contractPdfBase64 ? (p.signedContractPdfBase64 ? ' (مرفوع وموقّع)' : ' (مرفوع)') : ''}
+            </button>
+          )}
           {canManage && !isRejected && !isCompleted && nextStage && (
-            <button onClick={() => onMove(p, nextStage)}
+            <button onClick={handleAdvance}
               className="text-sm px-4 py-1.5 rounded-full bg-gray-800 text-white font-bold hover:brightness-110">ترحيل ⮕</button>
           )}
           {canManage && !isRejected && !isCompleted && (
@@ -508,7 +592,80 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete }: {
       </div>
 
       <div className="mt-3 text-center text-xs text-gray-500 bg-gray-50 rounded-lg py-2">🕐 تاريخ الإضافة: {addedDate}</div>
+
+      {showContract && (
+        <ContractModal project={p} onClose={() => setShowContract(false)} onSaved={() => { setShowContract(false); onRefresh() }} />
+      )}
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Contract modal — رفع عقد المشروع كـPDF (قبل التوقيع وبعده)
+// ---------------------------------------------------------------------------
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(reader.result as string)
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+function ContractModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
+  const [saving, setSaving] = useState<'plain' | 'signed' | null>(null)
+  const [error, setError] = useState('')
+
+  const upload = async (file: File | undefined, field: 'contractPdfBase64' | 'signedContractPdfBase64') => {
+    if (!file) return
+    if (file.type !== 'application/pdf') { setError('لازم يكون الملف بصيغة PDF'); return }
+    setError('')
+    setSaving(field === 'contractPdfBase64' ? 'plain' : 'signed')
+    try {
+      const base64 = await fileToBase64(file)
+      await request(`/projects/${project.id}`, { method: 'PUT', body: JSON.stringify({ [field]: base64 }) })
+      onSaved()
+    } catch (e) {
+      setError((e as Error).message || 'تعذر رفع الملف')
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <Modal onClose={onClose} title={`عقد المشروع: ${project.name}`}>
+      <div className="space-y-4">
+        <div>
+          <label className="text-xs font-bold text-gray-600">العقد قبل التوقيع (PDF)</label>
+          <input
+            type="file" accept="application/pdf"
+            onChange={(e) => upload(e.target.files?.[0], 'contractPdfBase64')}
+            className="mt-1 block w-full text-sm"
+          />
+          {project.contractPdfBase64 && (
+            <a href={project.contractPdfBase64} download={`عقد-${project.code}.pdf`} className="mt-1 inline-block text-xs text-brand-600 hover:underline">
+              📄 تحميل الملف المرفوع حالياً
+            </a>
+          )}
+          {saving === 'plain' && <p className="text-xs text-gray-400">جاري الرفع...</p>}
+        </div>
+        <div>
+          <label className="text-xs font-bold text-gray-600">العقد بعد التوقيع (PDF)</label>
+          <input
+            type="file" accept="application/pdf"
+            onChange={(e) => upload(e.target.files?.[0], 'signedContractPdfBase64')}
+            className="mt-1 block w-full text-sm"
+          />
+          {project.signedContractPdfBase64 && (
+            <a href={project.signedContractPdfBase64} download={`عقد-موقّع-${project.code}.pdf`} className="mt-1 inline-block text-xs text-brand-600 hover:underline">
+              📄 تحميل الملف الموقّع حالياً
+            </a>
+          )}
+          {saving === 'signed' && <p className="text-xs text-gray-400">جاري الرفع...</p>}
+        </div>
+        {error && <p className="text-sm font-bold text-red-600">{error}</p>}
+      </div>
+    </Modal>
   )
 }
 
@@ -526,7 +683,9 @@ function Info({ icon, value }: { icon: string; value: string | null }) {
 // ---------------------------------------------------------------------------
 function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const workTypes = useProjectWorkTypes()
-  const [form, setForm] = useState({ name: '', rep: '', phone: '', location: '', workType: 'طاقة شمسية', refPerson: '', priority: 'عادي', deliveryDate: '' })
+  const projectStaff = useProjectStaff()
+  const [form, setForm] = useState({ name: '', rep: '', phone: '', location: '', workType: 'طاقة شمسية', refPerson: '', priority: 'عادي', deliveryDate: '', responsibleEmployeeId: '', surveyorEmployeeId: '' })
+  const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -534,7 +693,10 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
     if (!form.name.trim()) { alert('اسم المؤسسة مطلوب'); return }
     setSaving(true)
     try {
-      await request('/projects', { method: 'POST', body: JSON.stringify(form) })
+      await request('/projects', {
+        method: 'POST',
+        body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng }),
+      })
       onSaved()
     } catch (e) { alert((e as Error).message); setSaving(false) }
   }
@@ -545,7 +707,11 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
         <Field label="المؤسسة *"><input className="inp" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
         <Field label="الممثل"><input className="inp" value={form.rep} onChange={e => set('rep', e.target.value)} /></Field>
         <Field label="الهاتف"><input className="inp" value={form.phone} onChange={e => set('phone', e.target.value)} /></Field>
-        <Field label="الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
+        <Field label="عنوان الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-bold text-gray-600">تحديد الموقع على الخريطة</label>
+          <LocationPicker value={mapPoint} onChange={setMapPoint} />
+        </div>
         <Field label="نوع العمل">
           <select className="inp" value={form.workType} onChange={e => set('workType', e.target.value)}>
             {workTypes.map(w => <option key={w} value={w}>{w}</option>)}
@@ -559,6 +725,18 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           </select>
         </Field>
         <Field label="تاريخ التسليم"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
+        <Field label="المسؤول عن المشروع">
+          <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
+            <option value="">-- اختر الموظف --</option>
+            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
+        <Field label="منفّذ الكشف">
+          <select className="inp" value={form.surveyorEmployeeId} onChange={e => set('surveyorEmployeeId', e.target.value)}>
+            <option value="">-- اختر الموظف --</option>
+            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
       </div>
       <button onClick={save} disabled={saving}
         className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
@@ -573,11 +751,16 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 // ---------------------------------------------------------------------------
 function EditModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const workTypes = useProjectWorkTypes()
+  const projectStaff = useProjectStaff()
   const [form, setForm] = useState({
     name: project.name, rep: project.rep || '', phone: project.phone || '',
     location: project.location || '', workType: project.workType || 'طاقة شمسية',
     refPerson: project.refPerson || '', priority: project.priority, deliveryDate: project.deliveryDate || '',
+    responsibleEmployeeId: project.responsibleEmployeeId || '', surveyorEmployeeId: project.surveyorEmployeeId || '',
   })
+  const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(
+    project.mapLatitude != null && project.mapLongitude != null ? { lat: project.mapLatitude, lng: project.mapLongitude } : null,
+  )
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -585,7 +768,10 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
     if (!form.name.trim()) { alert('اسم المؤسسة مطلوب'); return }
     setSaving(true)
     try {
-      await request(`/projects/${project.id}`, { method: 'PUT', body: JSON.stringify(form) })
+      await request(`/projects/${project.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng }),
+      })
       onSaved()
     } catch (e) { alert((e as Error).message); setSaving(false) }
   }
@@ -596,7 +782,11 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
         <Field label="المؤسسة *"><input className="inp" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
         <Field label="الممثل"><input className="inp" value={form.rep} onChange={e => set('rep', e.target.value)} /></Field>
         <Field label="الهاتف"><input className="inp" value={form.phone} onChange={e => set('phone', e.target.value)} /></Field>
-        <Field label="الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
+        <Field label="عنوان الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
+        <div className="sm:col-span-2">
+          <label className="text-xs font-bold text-gray-600">تحديد الموقع على الخريطة</label>
+          <LocationPicker value={mapPoint} onChange={setMapPoint} />
+        </div>
         <Field label="نوع العمل">
           <select className="inp" value={form.workType} onChange={e => set('workType', e.target.value)}>
             {workTypes.map(w => <option key={w} value={w}>{w}</option>)}
@@ -610,6 +800,18 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
           </select>
         </Field>
         <Field label="تاريخ التسليم"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
+        <Field label="المسؤول عن المشروع">
+          <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
+            <option value="">-- اختر الموظف --</option>
+            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
+        <Field label="منفّذ الكشف">
+          <select className="inp" value={form.surveyorEmployeeId} onChange={e => set('surveyorEmployeeId', e.target.value)}>
+            <option value="">-- اختر الموظف --</option>
+            {projectStaff.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </Field>
       </div>
       <button onClick={save} disabled={saving}
         className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
@@ -629,7 +831,8 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const isReject = nextStage.includes('مرفوض')
   const toKashf = cur.includes('اتصال') && nextStage.includes('كشف')
   const toSer = cur.includes('كشف') && nextStage.includes('سعر')
-  const toExec = cur.includes('سعر') && nextStage.includes('تنفيذ')
+  const toContract = cur.includes('سعر') && nextStage.includes('عقد')
+  const toExec = cur.includes('عقد') && nextStage.includes('تنفيذ')
   const toDone = cur.includes('تنفيذ') && nextStage.includes('مكتمل')
 
   const [staff, setStaff] = useState(project.staff || '')
@@ -641,12 +844,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const [reason, setReason] = useState('')
   const [otherReason, setOtherReason] = useState('')
   const [notes, setNotes] = useState('')
-  const [sent, setSent] = useState(false)
   const [saving, setSaving] = useState(false)
-
-  // زر "إرسال للجروب" يظهر فقط بانتقال اتصال→كشف ويمنع التأكيد حتى يُضغط
-  const needsGroupSend = toKashf
-  const canConfirm = !needsGroupSend || sent
 
   const save = async () => {
     if (isReject && !reason) { alert('اختر سبب الرفض!'); return }
@@ -662,7 +860,6 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       if (task) payload.task = task
       if (price) payload.price = price
       if (toSer) payload.survey = survey
-      if (needsGroupSend) payload.sentToGroup = true
     }
     setSaving(true)
     try {
@@ -722,7 +919,14 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
         </div>
       )}
 
-      {/* سعر → تنفيذ : الفني المسؤول */}
+      {/* سعر → عقد : تنبيه لازم يترفع العقد قبل ما يترحّل للتنفيذ */}
+      {!isReject && toContract && (
+        <div className="bg-purple-50 text-purple-700 rounded-lg p-3 text-center text-sm font-bold">
+          📄 بعد الترحيل، ارفع ملف العقد (PDF) من زر "العقد" بالبطاقة — ما تكدر تترحّل لمرحلة التنفيذ قبل رفعه.
+        </div>
+      )}
+
+      {/* عقد → تنفيذ : الفني المسؤول */}
       {!isReject && toExec && (
         <Field label="الفني المسؤول عن التنفيذ"><input className="inp" value={staff} onChange={e => setStaff(e.target.value)} /></Field>
       )}
@@ -746,28 +950,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
         </div>
       )}
 
-      {needsGroupSend && (
-        <button onClick={() => {
-          const msg = `📋 *بيانات كشف ميداني*\n` +
-            `▪️ المؤسسة: ${project.name}\n` +
-            `▪️ الممثل: ${project.rep || '---'}\n` +
-            `▪️ الهاتف: ${project.phone || '---'}\n` +
-            `▪️ الموقع: ${location || project.location || '---'}\n` +
-            `▪️ نوع العمل: ${project.workType || '---'}\n` +
-            `▪️ فريق الكشف: ${staff || '---'}\n` +
-            `▪️ الموعد: ${time || '---'}\n` +
-            `▪️ ملاحظات: ${task || 'لا يوجد'}`
-          navigator.clipboard.writeText(msg).then(() => {
-            setSent(true)
-            alert('تم نسخ البيانات! الصقها في جروب الواتساب')
-          })
-        }}
-          className={`w-full my-3 py-2.5 rounded-lg font-bold border-2 ${sent ? 'bg-green-600 text-white border-green-600' : 'border-amber-400 text-amber-600'}`}>
-          {sent ? '✅ تم النسخ - الصقها بالجروب' : '📋 نسخ البيانات للجروب'}
-        </button>
-      )}
-
-      <button onClick={save} disabled={saving || !canConfirm}
+      <button onClick={save} disabled={saving}
         className="w-full mt-3 py-2.5 rounded-lg bg-green-600 text-white font-bold disabled:opacity-50">
         {saving ? 'جارٍ الحفظ...' : 'تأكيد ✅'}
       </button>

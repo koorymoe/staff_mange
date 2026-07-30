@@ -25,7 +25,10 @@ var DefaultPermissions = []Permission{
 	{Name: "manage_services", Label: "الخدمات"},
 	{Name: "mission_tracking", Label: "تتبع المهام"},
 	{Name: "gps_system", Label: "نظام GPS"},
-	{Name: "project_management", Label: "إدارة المشاريع"},
+	{Name: "project_management", Label: "إدارة المشاريع (كاملة)"},
+	// صلاحية مبسّطة: يضيف مشروع وتفاصيله فقط — ما يشوف الإحصائيات ولا التقارير
+	// ولا استمارة الكشف ولا يقدر يرحّل مراحل. تُمنح لأي موظف (حتى ليدر).
+	{Name: "project_create_only", Label: "إضافة مشروع فقط (بدون إحصائيات ولا تقارير)"},
 	// عروض الأسعار: ثلاث درجات متدرجة (يُمنح واحدة منهن للموظف عادةً، مو أكثر
 	// من وحدة مع بعض) — "quotation_system" القديمة تبقى تشتغل بمفعول
 	// quotation_manage_all لأي موظف كانت ممنوحة له سابقاً، بس ما تظهر هنا

@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type Vehicle } from '../api'
 import { useSession } from '../session'
+import MapViewer from '../components/MapViewer'
 
 const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
   { key: 'TECH_1', label: 'الفني الأول' },
@@ -67,6 +68,7 @@ export default function BookingsList() {
   const isAdmin = employee?.role === 'ADMIN'
   const [technicians, setTechnicians] = useState<Employee[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [mapBooking, setMapBooking] = useState<Booking | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assigning, setAssigning] = useState(false)
 
@@ -373,7 +375,14 @@ export default function BookingsList() {
                           <div>
                             <p className="text-slate-400">عنوان تنفيذ المهمة</p>
                             <p className="mt-1 text-slate-700">{b.address || '-'}</p>
-                            {b.mapLocation && (
+                            {b.mapLatitude != null && b.mapLongitude != null ? (
+                              <button
+                                onClick={() => setMapBooking(b)}
+                                className="text-xs text-brand-500 hover:underline"
+                              >
+                                عرض الموقع على الخريطة 🗺️
+                              </button>
+                            ) : b.mapLocation && (
                               <a href={b.mapLocation} target="_blank" rel="noreferrer" className="text-xs text-brand-500 hover:underline">
                                 فتح على الخريطة
                               </a>
@@ -466,6 +475,18 @@ export default function BookingsList() {
               )}
             </tbody>
           </table>
+          </div>
+        </div>
+      )}
+
+      {mapBooking && mapBooking.mapLatitude != null && mapBooking.mapLongitude != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setMapBooking(null)}>
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-bold text-brand-900">موقع الحجز {mapBooking.code}</h3>
+              <button onClick={() => setMapBooking(null)} className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100">✕ إغلاق</button>
+            </div>
+            <MapViewer lat={mapBooking.mapLatitude} lng={mapBooking.mapLongitude} height={380} />
           </div>
         </div>
       )}

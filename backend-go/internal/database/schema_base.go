@@ -514,7 +514,6 @@ var baseSchema = []string{
 		priority TEXT NOT NULL DEFAULT 'عادي',
 		"deliveryDate" TEXT,
 		survey JSONB,
-		"sentToGroup" BOOLEAN NOT NULL DEFAULT false,
 		"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		"updatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	)`,

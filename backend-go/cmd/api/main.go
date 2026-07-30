@@ -305,6 +305,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الصلاحيات — العرض متاح لأي مسجل دخول، التعديل والتطبيق التلقائي محصور بمدير النظام فقط
 	mux.Handle("GET /api/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth))
 	mux.Handle("GET /api/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
+	// قائمة الموظفين الي يوصلون لصلاحية معيّنة — لتعبئة القوائم المنسدلة
+	// (مثلاً: مين المسؤول عن المشروع، ومين يسوي الكشف)
+	mux.Handle("GET /api/permissions/employees", middleware.Chain(http.HandlerFunc(permissionHandler.EmployeesWithPermission), requireAuth))
 	mux.Handle("GET /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.ListForEmployee), requireAuth))
 	mux.Handle("PUT /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.SetForEmployee), requireAuth, requireAdmin))
 	mux.Handle("POST /api/permissions/employee/{id}/apply-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaults), requireAuth, requireAdmin))
@@ -466,7 +469,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إنشاء مشروع جديد يتطلب نفس دور مدير المشاريع/الأدمن المطلوب للتعديل والحذف
 	// تحته مباشرة — كان مفتوح غلط لأي موظف مسجل دخول فقط (requireAuth بدون requireProjectManager)،
 	// عدم اتساق مع PUT/DELETE على نفس المورد.
-	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth, requireProjectManager))
+	// الإنشاء يقبل كذلك صلاحية "إضافة مشروع فقط" المبسّطة — بينما التعديل/الحذف
+	// والترحيل بين المراحل يبقى محصوراً بمدير المشاريع/الأدمن.
+	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"PROJECT_MANAGER"}, "project_management", "project_create_only")))
 	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 

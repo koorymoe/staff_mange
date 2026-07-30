@@ -37,6 +37,15 @@ func (s *PermissionService) ListForEmployee(employeeID string) ([]model.Permissi
 	return s.permissions.ListForEmployee(employeeID)
 }
 
+// EmployeesWithPermission يرجّع الموظفين الي يوصلون لصلاحية معيّنة (بالصلاحية
+// نفسها أو بدور يعطيها) — لتعبئة القوائم المنسدلة بالواجهة.
+func (s *PermissionService) EmployeesWithPermission(permissionName string, alsoRoles []string) ([]model.EmployeeBrief, error) {
+	if err := s.ensureSeeded(); err != nil {
+		return nil, err
+	}
+	return s.permissions.ListEmployeesWithPermission(permissionName, alsoRoles)
+}
+
 func (s *PermissionService) SetForEmployee(employeeID string, permissionIDs []string) ([]model.Permission, error) {
 	if err := s.permissions.ReplaceForEmployee(employeeID, permissionIDs); err != nil {
 		return nil, err

@@ -13,7 +13,8 @@ var projectStages = []string{
 	"1. اتصال بالزبون",
 	"2. مرحلة الكشف",
 	"3. عرض السعر",
-	"4. البدء بالتنفيذ",
+	"4. العقد",
+	"5. البدء بالتنفيذ",
 	"✅ مكتمل",
 	"❌ مرفوض",
 }
@@ -37,6 +38,8 @@ func computeProjectStats(projects []model.Project) model.ProjectStats {
 			stats.Survey++
 		case strings.Contains(s, "سعر"):
 			stats.Price++
+		case strings.Contains(s, "عقد"):
+			stats.Contract++
 		case strings.Contains(s, "تنفيذ"):
 			stats.Execute++
 		case strings.Contains(s, "مكتمل"):
@@ -73,10 +76,22 @@ func (s *ProjectService) Create(req model.CreateProjectRequest) (*model.Project,
 	if req.Priority != nil {
 		priority = *req.Priority
 	}
-	return s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.WorkType, req.RefPerson, priority, req.DeliveryDate, req.BookingID)
+	return s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.WorkType, req.RefPerson, priority, req.DeliveryDate, req.BookingID,
+		emptyToNil(req.ResponsibleEmployeeID), emptyToNil(req.SurveyorEmployeeID))
+}
+
+// emptyToNil يحوّل "" لـnil حتى لا نحاول نخزن سترنغ فاضي بعمود مفتاح أجنبي
+// (الواجهة ترسل "" لما المستخدم ما يختار موظف من القائمة المنسدلة).
+func emptyToNil(v *string) *string {
+	if v == nil || *v == "" {
+		return nil
+	}
+	return v
 }
 
 func (s *ProjectService) Update(id string, req model.UpdateProjectRequest) (*model.Project, error) {
+	req.ResponsibleEmployeeID = emptyToNil(req.ResponsibleEmployeeID)
+	req.SurveyorEmployeeID = emptyToNil(req.SurveyorEmployeeID)
 	return s.repo.Update(id, req)
 }
 

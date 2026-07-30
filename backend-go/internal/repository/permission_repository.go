@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -44,6 +45,25 @@ func (r *PermissionRepository) ListForEmployee(employeeID string) ([]model.Permi
 		WHERE ep."employeeId" = $1
 	`, employeeID)
 	return perms, err
+}
+
+// ListEmployeesWithPermission يرجّع الموظفين النشطين الي عندهم صلاحية معيّنة،
+// بالإضافة للأدوار المذكورة بـalsoRoles (لأن الدور يعطي الوصول بغض النظر عن
+// جدول الصلاحيات) — يُستخدم لتعبئة قوائم منسدلة "مين المسؤول/مين يسوي الكشف".
+func (r *PermissionRepository) ListEmployeesWithPermission(permissionName string, alsoRoles []string) ([]model.EmployeeBrief, error) {
+	employees := []model.EmployeeBrief{}
+	if alsoRoles == nil {
+		alsoRoles = []string{}
+	}
+	err := r.db.Select(&employees, `
+		SELECT DISTINCT e.id, e.name, e.position
+		FROM "Employee" e
+		LEFT JOIN "EmployeePermission" ep ON ep."employeeId" = e.id
+		LEFT JOIN "Permission" p ON p.id = ep."permissionId"
+		WHERE e.status = 'ACTIVE' AND (p.name = $1 OR e.role = ANY($2))
+		ORDER BY e.name
+	`, permissionName, pq.Array(alsoRoles))
+	return employees, err
 }
 
 func (r *PermissionRepository) ReplaceForEmployee(employeeID string, permissionIDs []string) error {

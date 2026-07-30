@@ -228,6 +228,40 @@ func RequireRoleOrPermission(permissions *repository.PermissionRepository, emplo
 	}
 }
 
+// RequireRoleOrAnyPermission نفس RequireRoleOrPermission لكن يقبل أكثر من صلاحية
+// (OR) — يُستخدم لما ميزة وحدة يقدر يوصلها دور معيّن أو أي وحدة من عدة صلاحيات
+// (مثلاً إنشاء مشروع: مدير المشاريع، أو صلاحية إدارة المشاريع الكاملة، أو صلاحية
+// "إضافة مشروع فقط" المبسّطة).
+func RequireRoleOrAnyPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, roles []string, permissionNames ...string) func(http.Handler) http.Handler {
+	allowedRoles := make(map[string]bool, len(roles))
+	for _, role := range roles {
+		allowedRoles[role] = true
+	}
+	allowedPerms := make(map[string]bool, len(permissionNames))
+	for _, name := range permissionNames {
+		allowedPerms[name] = true
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" || role == "OWNER" || allowedRoles[role] {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID := EmployeeIDFromContext(r)
+			if perms, err := permissions.ListForEmployee(employeeID); err == nil {
+				for _, p := range perms {
+					if allowedPerms[p.Name] {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+			recordViolationAndBlock(w, employees, notifications, employeeID)
+		})
+	}
+}
+
 func RequireLeaderOrPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, permissionName string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

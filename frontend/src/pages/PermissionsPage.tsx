@@ -105,7 +105,7 @@ export default function PermissionsPage() {
     },
     {
       title: 'إدارة المشاريع والخدمات',
-      perms: ['project_management', 'gps_system', 'content_technician'],
+      perms: ['project_management', 'project_create_only', 'gps_system', 'content_technician'],
     },
     {
       // ثلاث درجات متدرجة (وحدة وحدة، مو مع بعض) — تفعيل درجة يلغي الثانيتين

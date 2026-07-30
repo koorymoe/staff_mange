@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type Product } from '../api'
 import { useSession } from '../session'
 import { _IMG_VSTRIP, _IMG_FBANNER } from '../printImages'
@@ -29,11 +29,14 @@ export default function QuotationNew() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEdit = !!id
+  // تعبئة مسبقة لما يجي من صفحة إدارة المشاريع (زر "اعمل عرض سعر") — يوفّر
+  // على المستخدم إعادة كتابة بيانات الزبون والمشروع.
+  const [searchParams] = useSearchParams()
   const [products, setProducts] = useState<Product[]>([])
-  const [customerName, setCustomerName] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
-  const [customerAddress, setCustomerAddress] = useState('')
-  const [projectName, setProjectName] = useState('')
+  const [customerName, setCustomerName] = useState(searchParams.get('customerName') || '')
+  const [customerPhone, setCustomerPhone] = useState(searchParams.get('customerPhone') || '')
+  const [customerAddress, setCustomerAddress] = useState(searchParams.get('customerAddress') || '')
+  const [projectName, setProjectName] = useState(searchParams.get('projectName') || '')
   const [items, setItems] = useState<ItemRow[]>([emptyItem()])
   const [discountPercent, setDiscountPercent] = useState(0)
   const [duration, setDuration] = useState('')

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import type { Booking, Expense, AttendanceRecord, StaffRequest } from '../api'
 import { useSession, hasGpsSkill } from '../session'
+import MapViewer from '../components/MapViewer'
 
 /* ───── Attendance helpers ───── */
 
@@ -82,6 +83,7 @@ export default function Dashboard() {
   const [customerCount, setCustomerCount] = useState(0)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [myTasks, setMyTasks] = useState<Booking[]>([])
+  const [mapTask, setMapTask] = useState<Booking | null>(null)
   const [taskAmounts, setTaskAmounts] = useState<Record<string, string>>({})
   const [taskAdvances, setTaskAdvances] = useState<Record<string, string>>({})
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({})
@@ -912,13 +914,13 @@ export default function Dashboard() {
 
                       {b.notes && <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600">{b.notes}</p>}
 
-                      {/* Map link */}
+                      {/* الخريطة تنفتح داخل النظام نفسه (نافذة عرض)، مو برابط خارجي بتاب جديد */}
                       {b.mapLatitude && b.mapLongitude && (
-                        <a href={`https://www.google.com/maps/dir/?api=1&destination=${b.mapLatitude},${b.mapLongitude}`} target="_blank" rel="noreferrer"
-                          className="mb-3 flex items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-100">
+                        <button onClick={() => setMapTask(b)}
+                          className="mb-3 flex w-full items-center justify-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-blue-700 hover:bg-blue-100">
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
-                          فتح الموقع على الخريطة
-                        </a>
+                          عرض الموقع على الخريطة
+                        </button>
                       )}
 
                       {/* Actions */}
@@ -1052,6 +1054,18 @@ export default function Dashboard() {
                 <p className="text-xs text-slate-300">لا توجد نشاطات حديثة</p>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {mapTask && mapTask.mapLatitude != null && mapTask.mapLongitude != null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setMapTask(null)}>
+          <div className="w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-bold text-brand-900">موقع المهمة {mapTask.code}</h3>
+              <button onClick={() => setMapTask(null)} className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100">✕ إغلاق</button>
+            </div>
+            <MapViewer lat={mapTask.mapLatitude} lng={mapTask.mapLongitude} height={380} />
           </div>
         </div>
       )}

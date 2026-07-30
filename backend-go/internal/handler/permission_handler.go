@@ -38,6 +38,25 @@ func (h *PermissionHandler) ListForEmployee(w http.ResponseWriter, r *http.Reque
 }
 
 // PUT /api/v1/permissions/employee/{id} — ADMIN فقط (يُطبَّق بالـ middleware بالراوتر)
+// GET /api/permissions/employees?permission=project_management&roles=PROJECT_MANAGER,ADMIN
+func (h *PermissionHandler) EmployeesWithPermission(w http.ResponseWriter, r *http.Request) {
+	permission := r.URL.Query().Get("permission")
+	if permission == "" {
+		WriteError(w, http.StatusBadRequest, "اسم الصلاحية مطلوب")
+		return
+	}
+	var roles []string
+	if raw := r.URL.Query().Get("roles"); raw != "" {
+		roles = strings.Split(raw, ",")
+	}
+	employees, err := h.service.EmployeesWithPermission(permission, roles)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الموظفين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, employees)
+}
+
 func (h *PermissionHandler) SetForEmployee(w http.ResponseWriter, r *http.Request) {
 	employeeID := extractID(r.URL.Path, "/api/permissions/employee/")
 
