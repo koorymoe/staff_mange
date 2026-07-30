@@ -137,6 +137,38 @@ func RequirePermission(permissions *repository.PermissionRepository, employees *
 	}
 }
 
+// RequireAnyPermission نفس RequirePermission لكن يسمح لو الموظف عنده أي وحدة
+// من عدة صلاحيات معطاة (OR مو AND) — يُستخدم لما ميزة وحدة يقدر يوصلها أكثر
+// من مستوى صلاحية (مثلاً عروض الأسعار: إضافة فقط / إضافة وتعديل / الكل).
+func RequireAnyPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, permissionNames ...string) func(http.Handler) http.Handler {
+	allowed := make(map[string]bool, len(permissionNames))
+	for _, name := range permissionNames {
+		allowed[name] = true
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" || role == "OWNER" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID, _ := r.Context().Value(ContextEmployeeID).(string)
+			perms, err := permissions.ListForEmployee(employeeID)
+			if err != nil {
+				recordViolationAndBlock(w, employees, notifications, employeeID)
+				return
+			}
+			for _, p := range perms {
+				if allowed[p.Name] {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			recordViolationAndBlock(w, employees, notifications, employeeID)
+		})
+	}
+}
+
 // RequireLeader يسمح بالوصول فقط للموظفين "ليدر" (isLeader=true) — يُقرأ العلم
 // طازج من قاعدة البيانات بكل طلب (مو من التوكن) لنفس سبب StatusAndRoleByID:
 // تنزيل موظف من ليدر ما لازم يبقى فعّال إلا بعد تحديث قاعدة البيانات مباشرة.

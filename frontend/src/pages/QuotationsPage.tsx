@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Quotation } from '../api'
+import { useSession } from '../session'
 
 const PRIMARY = '#1a237e'
 const GOLD = '#c8a45a'
@@ -16,24 +17,32 @@ const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 export default function QuotationsPage() {
   const navigate = useNavigate()
+  const { employee } = useSession()
+  const isAdmin = employee?.role === 'ADMIN'
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
 
-  const load = () => {
-    api.getQuotations()
+  const load = (searchValue: string) => {
+    api.getQuotations(searchValue)
       .then(setQuotations)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setLoading(true)
+    const t = setTimeout(() => load(search), 300)
+    return () => clearTimeout(t)
+  }, [search])
 
   const handleDelete = async (id: string) => {
     if (!confirm('هل أنت متأكد من حذف عرض السعر؟')) return
     try {
       await api.deleteQuotation(id)
-      load()
+      load(search)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'حدث خطأ')
     }
@@ -71,6 +80,19 @@ export default function QuotationsPage() {
         >
           + عرض سعر جديد
         </button>
+      </div>
+
+      <div style={{ marginBottom: '20px' }}>
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="ابحث باسم الزبون أو المشروع أو رقم العرض..."
+          style={{
+            width: '100%', maxWidth: '420px', padding: '10px 16px',
+            border: `2px solid ${PRIMARY}`, borderRadius: '10px', fontSize: '14px', outline: 'none',
+          }}
+        />
       </div>
 
       {loading && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
@@ -139,16 +161,18 @@ export default function QuotationsPage() {
                         >
                           تعديل
                         </button>
-                        <button
-                          onClick={() => handleDelete(q.id)}
-                          style={{
-                            background: '#fee2e2', color: '#dc2626', border: 'none',
-                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
-                            fontSize: '12px', fontWeight: 'bold',
-                          }}
-                        >
-                          حذف
-                        </button>
+                        {isAdmin && (
+                          <button
+                            onClick={() => handleDelete(q.id)}
+                            style={{
+                              background: '#fee2e2', color: '#dc2626', border: 'none',
+                              padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+                              fontSize: '12px', fontWeight: 'bold',
+                            }}
+                          >
+                            حذف
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -157,7 +181,7 @@ export default function QuotationsPage() {
               {quotations.length === 0 && (
                 <tr>
                   <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
-                    لا توجد عروض أسعار بعد
+                    {search ? 'لا توجد نتائج مطابقة' : 'لا توجد عروض أسعار بعد'}
                   </td>
                 </tr>
               )}

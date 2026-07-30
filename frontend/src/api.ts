@@ -1643,7 +1643,7 @@ export const api = {
     request<void>(`/products/${id}`, { method: 'DELETE' }),
 
   // Quotations
-  getQuotations: () => request<Quotation[]>('/quotations'),
+  getQuotations: (search?: string) => request<Quotation[]>(`/quotations${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   getQuotation: (id: string) => request<Quotation>(`/quotations/${id}`),
   createQuotation: (data: {
     customerName: string

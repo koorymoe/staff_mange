@@ -139,7 +139,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	attendanceIconRequestService := service.NewAttendanceIconRequestService(attendanceIconRequestRepo, employeeRepo)
 	procurementService := service.NewProcurementService(procurementRepo, permissionRepo)
 	supplierService := service.NewSupplierService(supplierRepo)
-	quotationService := service.NewQuotationService(quotationRepo)
+	quotationService := service.NewQuotationService(quotationRepo, permissionRepo)
 	productService := service.NewProductService(productRepo)
 	gpsService := service.NewGpsService(gpsRepo)
 	workReportService := service.NewWorkReportService(workReportRepo)
@@ -260,9 +260,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "project_management")
 	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
 	requireKpiCriteria := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_criteria_management")
-	// إنشاء/تعديل عروض الأسعار يقتصر على من يملك صلاحية "quotation_system" فعلياً
-	// (نفس الصلاحية الي تفتح صفحة عروض الأسعار بالواجهة) — مو أي موظف مسجل دخول.
-	requireQuotationSystem := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "quotation_system")
+	// إنشاء/تعديل عروض الأسعار: أي مستوى من الثلاث (إضافة فقط / إضافة وتعديل
+	// عروضي / إضافة وتعديل واطلاع الكل) يقدر يوصل للـPOST/PUT — الفرز الدقيق
+	// (مين يشوف شنو، ومين يقدر يعدّل شنو) يصير داخل QuotationService نفسه.
+	// quotation_system القديمة تبقى مرادف quotation_manage_all لأي موظف
+	// كانت ممنوحة له من قبل.
+	requireQuotationAccess := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		service.QuotationPermCreate, service.QuotationPermEditOwn, service.QuotationPermManageAll, "quotation_system")
 	// إنشاء/تعديل بيانات نظام GPS (عملاء/شرائح/أجهزة/تجديد/صيانة) يقتصر على من
 	// يملك صلاحية "gps_system" فعلياً (نفس الصلاحية الي تفتح كل صفحات نظام GPS
 	// بالواجهة) — مو أي موظف مسجل دخول.
@@ -555,8 +559,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// عروض الأسعار (quotations)
 	mux.Handle("GET /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.List), requireAuth))
 	mux.Handle("GET /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Get), requireAuth))
-	mux.Handle("POST /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth, requireQuotationSystem))
-	mux.Handle("PUT /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth, requireQuotationSystem))
+	mux.Handle("POST /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth, requireQuotationAccess))
+	mux.Handle("PUT /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth, requireQuotationAccess))
 	mux.Handle("DELETE /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth, requireAdmin))
 
 	// المنتجات (products) — التعديل/الحذف محصوران بصلاحية content_technician، والإنشاء

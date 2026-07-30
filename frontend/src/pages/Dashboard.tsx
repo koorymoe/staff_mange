@@ -258,7 +258,7 @@ export default function Dashboard() {
       gradient: 'from-emerald-500 via-emerald-600 to-emerald-700',
       iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
       path: '/quotations/new',
-      visible: isAdmin || permissions.includes('quotation_system'),
+      visible: isAdmin || ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'].some((p) => permissions.includes(p)),
     },
     {
       title: 'إضافة عميل',

@@ -38,9 +38,23 @@ func (r *QuotationRepository) hydrate(q *model.Quotation) error {
 	return nil
 }
 
-func (r *QuotationRepository) List() ([]model.Quotation, error) {
+// List يرجّع كل عروض الأسعار — search (اختياري) يفلتر باسم الزبون أو المشروع
+// أو رقم العرض (بحث سلس، جزئي، case-insensitive).
+func (r *QuotationRepository) List(search string) ([]model.Quotation, error) {
 	quotations := []model.Quotation{}
-	if err := r.db.Select(&quotations, `SELECT * FROM "Quotation" ORDER BY "createdAt" DESC`); err != nil {
+	var err error
+	if search == "" {
+		err = r.db.Select(&quotations, `SELECT * FROM "Quotation" ORDER BY "createdAt" DESC`)
+	} else {
+		err = r.db.Select(&quotations, `
+			SELECT * FROM "Quotation"
+			WHERE "customerName" ILIKE '%' || $1 || '%'
+				OR "projectName" ILIKE '%' || $1 || '%'
+				OR "quotationNumber" ILIKE '%' || $1 || '%'
+			ORDER BY "createdAt" DESC
+		`, search)
+	}
+	if err != nil {
 		return nil, err
 	}
 	for i := range quotations {

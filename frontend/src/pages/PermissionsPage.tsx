@@ -41,10 +41,18 @@ export default function PermissionsPage() {
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)
   const defaults = selectedEmployee ? (roleDefaults[selectedEmployee.role] || []) : []
 
+  // درجات عروض الأسعار الثلاث متبادلة (راديو) — تفعيل وحدة يلغي البقية تلقائياً
+  // حتى ما ينمنح موظف أكثر من مستوى وحدة بالغلط.
+  const quotationTiers = ['quotation_create', 'quotation_edit_own', 'quotation_manage_all']
+
   const togglePermission = (permName: string) => {
-    setEmployeePerms((prev) =>
-      prev.includes(permName) ? prev.filter((p) => p !== permName) : [...prev, permName],
-    )
+    setEmployeePerms((prev) => {
+      if (prev.includes(permName)) return prev.filter((p) => p !== permName)
+      if (quotationTiers.includes(permName)) {
+        return [...prev.filter((p) => !quotationTiers.includes(p)), permName]
+      }
+      return [...prev, permName]
+    })
     setSuccessMsg(null)
   }
 
@@ -100,8 +108,10 @@ export default function PermissionsPage() {
       perms: ['project_management', 'gps_system', 'content_technician'],
     },
     {
-      title: 'عروض الأسعار',
-      perms: ['quotation_system'],
+      // ثلاث درجات متدرجة (وحدة وحدة، مو مع بعض) — تفعيل درجة يلغي الثانيتين
+      // تلقائياً (منطق راديو)، تطبيقه بـtogglePermission أدناه.
+      title: 'عروض الأسعار (اختر درجة وحدة فقط)',
+      perms: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all'],
     },
     {
       title: 'المركبات',

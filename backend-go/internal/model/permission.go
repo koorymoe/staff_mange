@@ -26,7 +26,13 @@ var DefaultPermissions = []Permission{
 	{Name: "mission_tracking", Label: "تتبع المهام"},
 	{Name: "gps_system", Label: "نظام GPS"},
 	{Name: "project_management", Label: "إدارة المشاريع"},
-	{Name: "quotation_system", Label: "نظام عروض الأسعار"},
+	// عروض الأسعار: ثلاث درجات متدرجة (يُمنح واحدة منهن للموظف عادةً، مو أكثر
+	// من وحدة مع بعض) — "quotation_system" القديمة تبقى تشتغل بمفعول
+	// quotation_manage_all لأي موظف كانت ممنوحة له سابقاً، بس ما تظهر هنا
+	// كخيار جديد حتى ما تختلط الدرجات على المدير.
+	{Name: "quotation_create", Label: "عروض الأسعار: إضافة فقط (بدون اطلاع على العروض القديمة)"},
+	{Name: "quotation_edit_own", Label: "عروض الأسعار: إضافة وتعديل (عروضي فقط)"},
+	{Name: "quotation_manage_all", Label: "عروض الأسعار: إضافة وتعديل واطلاع (كل العروض)"},
 	{Name: "finance", Label: "المالية"},
 	{Name: "expenses", Label: "المصاريف"},
 	{Name: "procurement", Label: "المشتريات"},
@@ -57,7 +63,7 @@ var RoleDefaultPermissions = map[string][]string{
 	"FINANCE":           {"finance", "view_bookings"},
 	"GPS_ADMIN":         {"gps_system"},
 	"QUALITY_ENGINEER":  {"auditing", "complaints", "quality_control", "sales_booking", "kpi_management"},
-	"ENGINEER":          {"expenses", "quotation_system", "project_management"},
+	"ENGINEER":          {"expenses", "quotation_manage_all", "project_management"},
 	"PROCUREMENT_ADMIN": {"procurement", "inventory"},
 	"DESIGNER":          {},
 	"SERVICE_MANAGER":   {"content_technician", "manage_services"},
