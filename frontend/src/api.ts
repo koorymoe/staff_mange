@@ -634,6 +634,20 @@ export interface LeaderInvoice {
   materials: LeaderInvoiceMaterialItem[]
 }
 
+export interface VipCustomer {
+  id: string
+  customerId: string
+  bookingId: string | null
+  requestSummary: string | null
+  note: string | null
+  markedByEmployeeId: string
+  createdAt: string
+  customerName: string
+  customerPhone: string
+  bookingCode: string | null
+  markedByName: string
+}
+
 export interface ProjectWorkType {
   id: string
   name: string
@@ -1717,6 +1731,13 @@ export const api = {
     request<LeaderInvoice>(`/leader-invoices/${id}/approve`, { method: 'PUT' }),
 
   // إعدادات وحدة إدارة المشاريع — أنواع الأعمال قابلة للإضافة/الحذف
+  // الشخصيات المهمة (VIP)
+  getVipCustomers: () => request<VipCustomer[]>('/vip-customers'),
+  getVipCustomerIds: () => request<string[]>('/vip-customers/ids'),
+  markVipCustomer: (data: { customerId: string; bookingId?: string; requestSummary?: string; note?: string }) =>
+    request<VipCustomer>('/vip-customers', { method: 'POST', body: JSON.stringify(data) }),
+  unmarkVipCustomer: (customerId: string) => request<void>(`/vip-customers/${customerId}`, { method: 'DELETE' }),
+
   getProjectWorkTypes: () => request<ProjectWorkType[]>('/project-work-types'),
   createProjectWorkType: (name: string) =>
     request<ProjectWorkType>('/project-work-types', { method: 'POST', body: JSON.stringify({ name }) }),

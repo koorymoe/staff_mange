@@ -277,5 +277,21 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "GpsDeviceRequest_assignedTechnicianId_idx" ON "GpsDeviceRequest"("assignedTechnicianId");
 			CREATE INDEX IF NOT EXISTS "GpsMaintenanceRequest_employeeId_idx" ON "GpsMaintenanceRequest"("employeeId")`,
 		},
+		{
+			// "شخصية مهمة" (VIP): أي موظف يثبّت حجز أو يتعامل مع زبون يقدر يعلّمه
+			// بضغطة زر. السجل يحفظ مين علّمه وشنو طلب الزبون، والقائمة تُعرض
+			// لمدير النظام فقط (GET محمي بـrequireAdmin).
+			Version: "0151_create_vip_customer",
+			SQL: `CREATE TABLE IF NOT EXISTS "VipCustomer" (
+				id TEXT PRIMARY KEY,
+				"customerId" TEXT NOT NULL UNIQUE REFERENCES "Customer"(id) ON DELETE CASCADE,
+				"bookingId" TEXT REFERENCES "Booking"(id) ON DELETE SET NULL,
+				"requestSummary" TEXT,
+				note TEXT,
+				"markedByEmployeeId" TEXT NOT NULL REFERENCES "Employee"(id),
+				"createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+			);
+			CREATE INDEX IF NOT EXISTS "VipCustomer_markedByEmployeeId_idx" ON "VipCustomer"("markedByEmployeeId")`,
+		},
 	}
 }

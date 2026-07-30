@@ -86,6 +86,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	missionRepo := repository.NewMissionRepository(db, bookingRepo)
 	projectRepo := repository.NewProjectRepository(db)
 	projectWorkTypeRepo := repository.NewProjectWorkTypeRepository(db)
+	vipCustomerRepo := repository.NewVipCustomerRepository(db)
 	checklistRepo := repository.NewChecklistRepository(db)
 	techShowcaseRepo := repository.NewTechShowcaseRepository(db)
 	attendanceIconRequestRepo := repository.NewAttendanceIconRequestRepository(db)
@@ -179,6 +180,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	missionHandler := handler.NewMissionHandler(missionService)
 	projectHandler := handler.NewProjectHandler(projectService)
 	projectWorkTypeHandler := handler.NewProjectWorkTypeHandler(projectWorkTypeService)
+	vipCustomerHandler := handler.NewVipCustomerHandler(vipCustomerRepo)
 	checklistHandler := handler.NewChecklistHandler(checklistService)
 	techShowcaseHandler := handler.NewTechShowcaseHandler(techShowcaseService)
 	attendanceIconRequestHandler := handler.NewAttendanceIconRequestHandler(attendanceIconRequestService)
@@ -486,6 +488,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.List), requireAuth))
 	// مرشحو المشروع (المسؤول / منفّذ الكشف) مصنّفين ومرتّبين
 	mux.Handle("GET /api/project-candidates", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.ListCandidates), requireAuth))
+
+	// الشخصيات المهمة (VIP): أي موظف يعلّم بضغطة زر، بس التفاصيل الكاملة
+	// (رقم الزبون وشنو طلب ومنو علّمه) تُعرض لمدير النظام حصراً.
+	mux.Handle("GET /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.List), requireAuth, requireAdmin))
+	mux.Handle("GET /api/vip-customers/ids", middleware.Chain(http.HandlerFunc(vipCustomerHandler.ListIDs), requireAuth))
+	mux.Handle("POST /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Mark), requireAuth))
+	mux.Handle("DELETE /api/vip-customers/{customerId}", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Unmark), requireAuth, requireAdmin))
 	mux.Handle("POST /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Create), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/project-work-types/{id}", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Delete), requireAuth, requireProjectManager))
 

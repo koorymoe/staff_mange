@@ -69,6 +69,10 @@ export default function BookingsList() {
   const [technicians, setTechnicians] = useState<Employee[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [mapBooking, setMapBooking] = useState<Booking | null>(null)
+  // الشخصيات المهمة: أي موظف يقدر يعلّم زبون بضغطة زر. نجيب المعرّفات بس
+  // (بدون تفاصيل) حتى نعرف أي زر يكون مضغوط.
+  const [vipIds, setVipIds] = useState<string[]>([])
+  const [vipBusy, setVipBusy] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [assigning, setAssigning] = useState(false)
 
@@ -78,6 +82,38 @@ export default function BookingsList() {
       api.getVehicles().then(setVehicles)
     }
   }, [isAdmin])
+
+  useEffect(() => { api.getVipCustomerIds().then(setVipIds).catch(() => {}) }, [])
+
+  // تعليم/إزالة "شخصية مهمة" — التعليم متاح لأي موظف، أما إزالة التعليم
+  // فمحصورة بمدير النظام (السيرفر يفرضها كمان).
+  const toggleVip = async (booking: Booking) => {
+    const customerId = booking.customer?.id
+    if (!customerId) return
+    const already = vipIds.includes(customerId)
+    if (already && !isAdmin) {
+      alert('إزالة التعليم متاحة لمدير النظام فقط')
+      return
+    }
+    setVipBusy(customerId)
+    try {
+      if (already) {
+        await api.unmarkVipCustomer(customerId)
+        setVipIds((prev) => prev.filter((id) => id !== customerId))
+      } else {
+        await api.markVipCustomer({
+          customerId,
+          bookingId: booking.id,
+          requestSummary: booking.service?.name || undefined,
+        })
+        setVipIds((prev) => [...prev, customerId])
+      }
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تنفيذ العملية')
+    } finally {
+      setVipBusy(null)
+    }
+  }
 
   const handleVehicleChange = async (booking: Booking, assignedVehicle: string) => {
     setAssigning(true)
@@ -299,6 +335,19 @@ export default function BookingsList() {
                           <div>
                             <p className="text-slate-400">اسم الزبون</p>
                             <p className="mt-1 font-bold text-slate-700">{b.customer?.name || 'زبون غير معروف'}</p>
+                            {b.customer?.id && (
+                              <button
+                                onClick={() => toggleVip(b)}
+                                disabled={vipBusy === b.customer?.id}
+                                className={`mt-1 rounded-full px-3 py-1 text-xs font-bold transition-colors disabled:opacity-50 ${
+                                  vipIds.includes(b.customer.id)
+                                    ? 'bg-amber-400 text-amber-950'
+                                    : 'bg-slate-100 text-slate-500 hover:bg-amber-100 hover:text-amber-700'
+                                }`}
+                              >
+                                {vipIds.includes(b.customer.id) ? '⭐ شخصية مهمة' : '☆ تعليم كشخصية مهمة'}
+                              </button>
+                            )}
                           </div>
                           <div>
                             <p className="text-slate-400">رقم هاتف الزبون</p>

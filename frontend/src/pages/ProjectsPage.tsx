@@ -753,8 +753,7 @@ function Info({ icon, value }: { icon: string; value: string | null }) {
 // ---------------------------------------------------------------------------
 function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const workTypes = useProjectWorkTypes()
-  const candidates = useProjectCandidates()
-  const [form, setForm] = useState({ name: '', rep: '', phone: '', location: '', workType: 'طاقة شمسية', refPerson: '', priority: 'عادي', deliveryDate: '', responsibleEmployeeId: '', surveyorEmployeeId: '' })
+  const [form, setForm] = useState({ name: '', rep: '', phone: '', location: '', workType: 'طاقة شمسية', refPerson: '', priority: 'عادي', deliveryDate: '' })
   const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(null)
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -795,18 +794,6 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
           </select>
         </Field>
         <Field label="تاريخ انتهاء المشروع التقريبي"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
-        <Field label="المسؤول عن المشروع (مهندس فقط)">
-          <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
-            <option value="">-- اختر المهندس --</option>
-            <EmployeeOptions candidates={candidates.filter(c => c.isEngineer)} />
-          </select>
-        </Field>
-        <Field label="منفّذ الكشف">
-          <select className="inp" value={form.surveyorEmployeeId} onChange={e => set('surveyorEmployeeId', e.target.value)}>
-            <option value="">-- اختر الموظف --</option>
-            <EmployeeOptions candidates={candidates} />
-          </select>
-        </Field>
       </div>
       <button onClick={save} disabled={saving}
         className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
@@ -821,12 +808,10 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
 // ---------------------------------------------------------------------------
 function EditModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
   const workTypes = useProjectWorkTypes()
-  const candidates = useProjectCandidates()
   const [form, setForm] = useState({
     name: project.name, rep: project.rep || '', phone: project.phone || '',
     location: project.location || '', workType: project.workType || 'طاقة شمسية',
     refPerson: project.refPerson || '', priority: project.priority, deliveryDate: project.deliveryDate || '',
-    responsibleEmployeeId: project.responsibleEmployeeId || '', surveyorEmployeeId: project.surveyorEmployeeId || '',
   })
   const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(
     project.mapLatitude != null && project.mapLongitude != null ? { lat: project.mapLatitude, lng: project.mapLongitude } : null,
@@ -870,18 +855,6 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
           </select>
         </Field>
         <Field label="تاريخ انتهاء المشروع التقريبي"><input type="date" className="inp" value={form.deliveryDate} onChange={e => set('deliveryDate', e.target.value)} /></Field>
-        <Field label="المسؤول عن المشروع (مهندس فقط)">
-          <select className="inp" value={form.responsibleEmployeeId} onChange={e => set('responsibleEmployeeId', e.target.value)}>
-            <option value="">-- اختر المهندس --</option>
-            <EmployeeOptions candidates={candidates.filter(c => c.isEngineer)} />
-          </select>
-        </Field>
-        <Field label="منفّذ الكشف">
-          <select className="inp" value={form.surveyorEmployeeId} onChange={e => set('surveyorEmployeeId', e.target.value)}>
-            <option value="">-- اختر الموظف --</option>
-            <EmployeeOptions candidates={candidates} />
-          </select>
-        </Field>
       </div>
       <button onClick={save} disabled={saving}
         className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
@@ -905,6 +878,11 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const toExec = cur.includes('عقد') && nextStage.includes('تنفيذ')
   const toDone = cur.includes('تنفيذ') && nextStage.includes('مكتمل')
 
+  const candidates = useProjectCandidates()
+  // تحديد المسؤول ومنفّذ الكشف يصير هنا (عند الترحيل لمرحلة الكشف)، مو بفورمة
+  // إضافة/تعديل المشروع — لأن هذي اللحظة الي ينعرف بيها مين راح يطلع كشف.
+  const [responsibleEmployeeId, setResponsibleEmployeeId] = useState(project.responsibleEmployeeId || '')
+  const [surveyorEmployeeId, setSurveyorEmployeeId] = useState(project.surveyorEmployeeId || '')
   const [staff, setStaff] = useState(project.staff || '')
   const [location, setLocation] = useState(project.location || '')
   const [time, setTime] = useState('')
@@ -930,6 +908,10 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       if (task) payload.task = task
       if (price) payload.price = price
       if (toSer) payload.survey = survey
+      if (toKashf) {
+        payload.responsibleEmployeeId = responsibleEmployeeId
+        payload.surveyorEmployeeId = surveyorEmployeeId
+      }
     }
     setSaving(true)
     try {
@@ -967,6 +949,18 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       {!isReject && toKashf && (
         <div className="space-y-3">
           <div className="bg-green-50 text-green-700 rounded-lg p-3 text-center text-sm font-bold">📋 تجهيز بيانات الكشف الميداني</div>
+          <Field label="المسؤول عن المشروع (مهندس فقط)">
+            <select className="inp" value={responsibleEmployeeId} onChange={e => setResponsibleEmployeeId(e.target.value)}>
+              <option value="">-- اختر المهندس --</option>
+              <EmployeeOptions candidates={candidates.filter(c => c.isEngineer)} />
+            </select>
+          </Field>
+          <Field label="منفّذ الكشف">
+            <select className="inp" value={surveyorEmployeeId} onChange={e => setSurveyorEmployeeId(e.target.value)}>
+              <option value="">-- اختر الموظف --</option>
+              <EmployeeOptions candidates={candidates} />
+            </select>
+          </Field>
           <Field label="فريق الكشف (أسماء الفنيين)"><textarea className="inp" rows={2} value={staff} onChange={e => setStaff(e.target.value)} /></Field>
           <Field label="مكان/موقع الكشف بالتفصيل"><input className="inp" value={location} onChange={e => setLocation(e.target.value)} /></Field>
           <Field label="تاريخ ووقت الكشف المقرر"><input type="datetime-local" className="inp" value={time} onChange={e => setTime(e.target.value)} /></Field>
