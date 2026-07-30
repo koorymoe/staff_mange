@@ -30,6 +30,17 @@ func (h *PerformanceReviewHandler) Create(w http.ResponseWriter, r *http.Request
 	WriteJSON(w, http.StatusCreated, review)
 }
 
+// GET /api/performance-reviews/ratable — الموظفين الي المستخدم الحالي يقدر
+// يقيّمهم (تيم ليدر: زملاء حجوزاته الفعليين بس، أدمن/إداري كوادر: كل التيم ليدرات).
+func (h *PerformanceReviewHandler) Ratable(w http.ResponseWriter, r *http.Request) {
+	list, err := h.service.RatableEmployees(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, list)
+}
+
 func (h *PerformanceReviewHandler) ListForEmployee(w http.ResponseWriter, r *http.Request) {
 	reviews, err := h.service.ListForEmployee(r.PathValue("employeeId"))
 	if err != nil {

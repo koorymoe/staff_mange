@@ -28,30 +28,41 @@ const emptyForm: ReportForm = {
   stopNotes: '',
 }
 
+function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
 export default function WorkReportPage() {
   const { employee: currentUser } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [completedToday, setCompletedToday] = useState<Booking[]>([])
+  const [reportedBookingIds, setReportedBookingIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [forms, setForms] = useState<Record<string, ReportForm>>({})
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
+  const load = () => {
     if (!currentUser) return
-    api
-      .getBookings({ status: 'IN_PROGRESS' })
-      .then((all) => {
-        const mine = all.filter(
-          (b) =>
-            b.assignments.some((a) => a.employee.id === currentUser.id) ||
-            b.projectSupervisor?.id === currentUser.id,
-        )
-        setBookings(mine)
+    Promise.all([
+      api.getBookings({ status: 'IN_PROGRESS' }),
+      api.getBookings({ status: 'COMPLETED', date: todayStr() }),
+      api.getWorkReports(currentUser.id),
+    ])
+      .then(([inProgress, completed, myReports]) => {
+        const isMine = (b: Booking) =>
+          b.assignments.some((a) => a.employee.id === currentUser.id) ||
+          b.projectSupervisor?.id === currentUser.id
+        setBookings(inProgress.filter(isMine))
+        setCompletedToday(completed.filter(isMine))
+        setReportedBookingIds(new Set(myReports.map((r) => r.bookingId)))
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
-  }, [currentUser])
+  }
+  useEffect(load, [currentUser])
 
   const getForm = (id: string) => forms[id] || emptyForm
   const updateForm = (id: string, patch: Partial<ReportForm>) =>
@@ -90,6 +101,7 @@ export default function WorkReportPage() {
         delete next[bookingId]
         return next
       })
+      setReportedBookingIds((prev) => new Set(prev).add(bookingId))
       alert('تم إرسال التقرير بنجاح ✓')
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر إرسال التقرير')
@@ -106,31 +118,18 @@ export default function WorkReportPage() {
       </p>
     )
 
-  return (
-    <div>
-      <div>
-        <h2 className="text-2xl font-bold text-brand-900">تقرير العمل</h2>
-        <p className="mt-1 text-slate-500">
-          رفع تقارير العمل للحجوزات الجارية المسندة إليك.
-        </p>
-      </div>
+  const needsReportToday = completedToday.filter((b) => !reportedBookingIds.has(b.id))
+  const alreadyReportedToday = completedToday.filter((b) => reportedBookingIds.has(b.id))
 
-      {bookings.length === 0 && (
-        <div className="mt-8 rounded-2xl border border-white bg-white p-8 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <p className="text-lg text-slate-400">لا توجد حجوزات جارية مسندة إليك حالياً</p>
-        </div>
-      )}
+  const renderCard = (booking: Booking) => {
+    const expanded = expandedId === booking.id
+    const form = getForm(booking.id)
 
-      <div className="mt-6 space-y-4">
-        {bookings.map((booking) => {
-          const expanded = expandedId === booking.id
-          const form = getForm(booking.id)
-
-          return (
-            <div
-              key={booking.id}
-              className="rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] overflow-hidden"
-            >
+    return (
+      <div
+        key={booking.id}
+        className="rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)] overflow-hidden"
+      >
               {/* Booking header */}
               <div className="flex items-center justify-between p-5">
                 <div className="flex items-center gap-4">
@@ -314,9 +313,56 @@ export default function WorkReportPage() {
                   )}
                 </div>
               )}
-            </div>
-          )
-        })}
+      </div>
+    )
+  }
+
+  return (
+    <div>
+      <div>
+        <h2 className="text-2xl font-bold text-brand-900">تقرير العمل</h2>
+        <p className="mt-1 text-slate-500">
+          حجوزاتك المنجزة اليوم وبانتظار تقرير، وحجوزاتك الجارية.
+        </p>
+      </div>
+
+      <div className="mt-6">
+        <h3 className="mb-3 text-lg font-bold text-brand-800">📋 حجوزات اليوم — بانتظار التقرير</h3>
+        {needsReportToday.length === 0 ? (
+          <div className="rounded-2xl border border-white bg-white p-6 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <p className="text-slate-400">ما عندك حجوزات منجزة اليوم تحتاج تقرير — ممتاز!</p>
+          </div>
+        ) : (
+          <div className="space-y-4">{needsReportToday.map(renderCard)}</div>
+        )}
+      </div>
+
+      {alreadyReportedToday.length > 0 && (
+        <div className="mt-8">
+          <h3 className="mb-3 text-lg font-bold text-emerald-700">✔ حجوزات اليوم — تم رفع تقريرها</h3>
+          <div className="space-y-2">
+            {alreadyReportedToday.map((b) => (
+              <div key={b.id} className="flex items-center justify-between rounded-xl border border-emerald-100 bg-emerald-50 px-5 py-3">
+                <div>
+                  <p className="font-bold text-emerald-900">{b.code}</p>
+                  <p className="text-sm text-emerald-700">{b.customer?.name}</p>
+                </div>
+                <span className="text-sm font-bold text-emerald-600">✔ تم الإرسال</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-8">
+        <h3 className="mb-3 text-lg font-bold text-brand-800">🚧 الحجوزات الجارية</h3>
+        {bookings.length === 0 ? (
+          <div className="rounded-2xl border border-white bg-white p-6 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <p className="text-slate-400">لا توجد حجوزات جارية مسندة إليك حالياً</p>
+          </div>
+        ) : (
+          <div className="space-y-4">{bookings.map(renderCard)}</div>
+        )}
       </div>
     </div>
   )

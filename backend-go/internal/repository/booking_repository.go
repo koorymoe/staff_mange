@@ -669,6 +669,20 @@ func (r *BookingRepository) CountCompletedForEmployeeLast7Days(employeeID string
 	return count, err
 }
 
+// CrewMatesForEmployee يرجّع كل الموظفين المميزين الي طلعوا مع موظف معيّن
+// بنفس الحجز (عبر BookingAssignment) — يُستخدم لتقييد "تقييم فريقي" بالليدر
+// على زملاء حجوزاته الفعليين بس، مو كل الموظفين بالنظام.
+func (r *BookingRepository) CrewMatesForEmployee(employeeID string) ([]model.EmployeeBrief, error) {
+	mates := []model.EmployeeBrief{}
+	err := r.db.Select(&mates, `
+		SELECT DISTINCT e.id, e.name FROM "BookingAssignment" ba
+		JOIN "BookingAssignment" mine ON mine."bookingId" = ba."bookingId" AND mine."employeeId" = $1
+		JOIN "Employee" e ON e.id = ba."employeeId"
+		WHERE ba."employeeId" != $1
+	`, employeeID)
+	return mates, err
+}
+
 func (r *BookingRepository) EmployeeHasSkillForService(employeeID, serviceID string) (bool, error) {
 	var count int
 	err := r.db.Get(&count, `

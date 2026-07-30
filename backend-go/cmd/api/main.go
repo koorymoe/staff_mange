@@ -209,7 +209,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
 	serviceManagerHandler := handler.NewServiceManagerHandler(serviceManagerRepo)
 	locationPingHandler := handler.NewLocationPingHandler(locationPingRepo)
-	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo)
+	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo, bookingRepo)
 	performanceReviewHandler := handler.NewPerformanceReviewHandler(performanceReviewService)
 	deviceMaintenanceHandler := handler.NewDeviceMaintenanceHandler(deviceMaintenanceService)
 	teamInventoryCheckHandler := handler.NewTeamInventoryCheckHandler(teamInventoryCheckService)
@@ -248,7 +248,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// توفير المواد وتحديد حالتها يقتصر على إداري الكميات فعلياً (أو الأدمن) — مو أي
 	// موظف عنده صلاحية "procurement" العامة (زي الفني/مدير المشاريع الي بس يطلبون مواد).
 	requireProcurementAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROCUREMENT_ADMIN")
-	requireTechUnitOrProcurement := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"PROCUREMENT_ADMIN"}, "content_technician")
+	// unit_technicians مو content_technician عمداً — صلاحية مستقلة لوحدة
+	// التقنيين تحديداً (المعارض/المنتجات/الخدمات) حتى ما تنفتح بالغلط لأي حد
+	// عنده content_technician من مكان ثاني (مواد التدريب/الموردين/المنتجات).
+	requireUnitTechnicians := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "unit_technicians")
+	requireTechUnitOrProcurement := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"PROCUREMENT_ADMIN"}, "unit_technicians")
 	requireQuality := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "quality_control")
 	requireProjectMgmtPerm := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "project_management")
 	requireKpi := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
@@ -469,12 +473,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/tech-showcase/{id}/media", middleware.Chain(http.HandlerFunc(techShowcaseHandler.AddMedia), requireAuth, requireContentTech))
 
 	// وحدة التقنيين — إدارة المعارض
-	mux.Handle("GET /api/exhibitions", middleware.Chain(http.HandlerFunc(exhibitionHandler.List), requireAuth, requireContentTech))
-	mux.Handle("POST /api/exhibitions", middleware.Chain(http.HandlerFunc(exhibitionHandler.Create), requireAuth, requireContentTech))
+	mux.Handle("GET /api/exhibitions", middleware.Chain(http.HandlerFunc(exhibitionHandler.List), requireAuth, requireUnitTechnicians))
+	mux.Handle("POST /api/exhibitions", middleware.Chain(http.HandlerFunc(exhibitionHandler.Create), requireAuth, requireUnitTechnicians))
 	mux.Handle("PUT /api/exhibitions/{id}/nominate", middleware.Chain(http.HandlerFunc(exhibitionHandler.Nominate), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/exhibitions/{id}/photos", middleware.Chain(http.HandlerFunc(exhibitionHandler.AddPhotos), requireAuth, requireContentTech))
-	mux.Handle("PUT /api/exhibitions/{id}/findings", middleware.Chain(http.HandlerFunc(exhibitionHandler.SetFindings), requireAuth, requireContentTech))
-	mux.Handle("POST /api/exhibitions/{id}/report", middleware.Chain(http.HandlerFunc(exhibitionHandler.GenerateReport), requireAuth, requireContentTech))
+	mux.Handle("PUT /api/exhibitions/{id}/photos", middleware.Chain(http.HandlerFunc(exhibitionHandler.AddPhotos), requireAuth, requireUnitTechnicians))
+	mux.Handle("PUT /api/exhibitions/{id}/findings", middleware.Chain(http.HandlerFunc(exhibitionHandler.SetFindings), requireAuth, requireUnitTechnicians))
+	mux.Handle("POST /api/exhibitions/{id}/report", middleware.Chain(http.HandlerFunc(exhibitionHandler.GenerateReport), requireAuth, requireUnitTechnicians))
 	mux.Handle("PUT /api/exhibitions/{id}/archive", middleware.Chain(http.HandlerFunc(exhibitionHandler.Archive), requireAuth, requireAdmin))
 
 	// وحدة التقنيين — إدارة المنتجات
@@ -484,8 +488,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/product-requests/{id}/reject", middleware.Chain(http.HandlerFunc(productRequestHandler.Reject), requireAuth, requireAdmin))
 
 	// وحدة التقنيين — إدارة الخدمات
-	mux.Handle("GET /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.List), requireAuth, requireContentTech))
-	mux.Handle("POST /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Create), requireAuth, requireContentTech))
+	mux.Handle("GET /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.List), requireAuth, requireUnitTechnicians))
+	mux.Handle("POST /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Create), requireAuth, requireUnitTechnicians))
 	mux.Handle("PUT /api/service-studies/{id}/assign", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Assign), requireAuth, requireAdmin))
 	mux.Handle("POST /api/service-studies/{id}/reports", middleware.Chain(http.HandlerFunc(serviceStudyHandler.AddReport), requireAuth))
 	mux.Handle("PUT /api/service-studies/{id}/archive", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Archive), requireAuth, requireAdmin))
@@ -516,6 +520,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقييم الأداء (منفصل عن KPI مال الغرامات) — الليدر يقيّم فنييه، الإداري يقيّم الليدرات
 	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth))
 	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth))
+	mux.Handle("GET /api/performance-reviews/ratable", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Ratable), requireAuth))
 	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))
 
 	// المشتريات (procurement)

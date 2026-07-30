@@ -180,7 +180,12 @@ export default function VehiclesPage() {
   const [ratingNotes, setRatingNotes] = useState('')
   const [washTechId, setWashTechId] = useState('')
   const [washScore, setWashScore] = useState<0 | 1 | 2 | ''>('')
+  const [washTechId2, setWashTechId2] = useState('')
+  const [washScore2, setWashScore2] = useState<0 | 1 | 2 | ''>('')
   const [savingRating, setSavingRating] = useState(false)
+
+  // غسيل السيارات فنيّين عاديين بس — لا تيم ليدر، لا مصمم، لا مسؤول خدمة، لا إداري.
+  const washableTechnicians = employees.filter((e) => e.role === 'TECHNICIAN' && !e.isLeader)
 
   const loadVehicles = () => api.getVehicles().then(setVehicles)
 
@@ -460,9 +465,16 @@ export default function VehiclesPage() {
         interiorDirt: ratingForm.interiorDirt === '' ? undefined : ratingForm.interiorDirt,
         smell: ratingForm.smell === '' ? undefined : ratingForm.smell,
         notes: ratingNotes || undefined,
-        technicianRatings: washTechId && washScore !== '' ? [{ employeeId: washTechId, score: washScore }] : undefined,
+        technicianRatings: (() => {
+          const ratings = [
+            washTechId && washScore !== '' ? { employeeId: washTechId, score: washScore } : null,
+            washTechId2 && washScore2 !== '' ? { employeeId: washTechId2, score: washScore2 } : null,
+          ].filter((r): r is { employeeId: string; score: 0 | 1 | 2 } => r !== null)
+          return ratings.length > 0 ? ratings : undefined
+        })(),
       })
-      setRatingForm(EMPTY_RATING_FORM); setFaultDesc(''); setRatingNotes(''); setWashTechId(''); setWashScore('')
+      setRatingForm(EMPTY_RATING_FORM); setFaultDesc(''); setRatingNotes('')
+      setWashTechId(''); setWashScore(''); setWashTechId2(''); setWashScore2('')
       api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
     } catch (err) {
       alert(err instanceof Error ? err.message : 'تعذر حفظ التقييم')
@@ -892,14 +904,24 @@ export default function VehiclesPage() {
                     <input placeholder="ملاحظات إضافية" value={ratingNotes} onChange={(e) => setRatingNotes(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
 
                     <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
-                      <p className="mb-2 text-sm font-bold text-slate-700">تقييم جودة الغسيل (اختياري) — مين غسل السيارة اليوم؟</p>
+                      <p className="mb-2 text-sm font-bold text-slate-700">تقييم جودة الغسيل (اختياري) — مين غسل السيارة اليوم؟ (يقدر يكونون فنيّين اثنين بنفس الوقت)</p>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                         <select value={washTechId} onChange={(e) => setWashTechId(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                          <option value="">-- اختر الفني --</option>
-                          {employees.filter((e) => e.role === 'TECHNICIAN').map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                          <option value="">-- اختر الفني الأول --</option>
+                          {washableTechnicians.filter((e) => e.id !== washTechId2).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                         </select>
                         <select value={washScore} onChange={(e) => setWashScore(e.target.value === '' ? '' : (Number(e.target.value) as 0 | 1 | 2))} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
-                          <option value="">-- تقييم الغسيل --</option>
+                          <option value="">-- تقييم غسيل الفني الأول --</option>
+                          <option value="0">0 - لم يغسل</option>
+                          <option value="1">1 - غسل غير جيد</option>
+                          <option value="2">2 - غسل جيد</option>
+                        </select>
+                        <select value={washTechId2} onChange={(e) => setWashTechId2(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                          <option value="">-- اختر الفني الثاني (اختياري) --</option>
+                          {washableTechnicians.filter((e) => e.id !== washTechId).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                        </select>
+                        <select value={washScore2} onChange={(e) => setWashScore2(e.target.value === '' ? '' : (Number(e.target.value) as 0 | 1 | 2))} disabled={!washTechId2} className="rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:opacity-50">
+                          <option value="">-- تقييم غسيل الفني الثاني --</option>
                           <option value="0">0 - لم يغسل</option>
                           <option value="1">1 - غسل غير جيد</option>
                           <option value="2">2 - غسل جيد</option>

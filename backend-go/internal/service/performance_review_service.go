@@ -10,16 +10,61 @@ import (
 type PerformanceReviewService struct {
 	repo      *repository.PerformanceReviewRepository
 	employees *repository.EmployeeRepository
+	bookings  *repository.BookingRepository
 }
 
-func NewPerformanceReviewService(repo *repository.PerformanceReviewRepository, employees *repository.EmployeeRepository) *PerformanceReviewService {
-	return &PerformanceReviewService{repo: repo, employees: employees}
+func NewPerformanceReviewService(repo *repository.PerformanceReviewRepository, employees *repository.EmployeeRepository, bookings *repository.BookingRepository) *PerformanceReviewService {
+	return &PerformanceReviewService{repo: repo, employees: employees, bookings: bookings}
+}
+
+// RatableEmployees يرجّع الموظفين الي المستخدم الحالي يقدر يقيّمهم حسب السلسلة
+// الهرمية — الأدمن/إداري الكوادر يشوفون كل التيم ليدرات، أما التيم ليدر فيشوف
+// بس فنيي حجوزاته الفعليين (زملاءه بالحجز، مو كل فنيي النظام).
+func (s *PerformanceReviewService) RatableEmployees(evaluatorID string) ([]model.EmployeeBrief, error) {
+	evaluator, err := s.employees.FindByID(evaluatorID)
+	if err != nil || evaluator == nil {
+		return nil, errors.New("تعذر تحديد هوية المقيّم")
+	}
+
+	if evaluator.Role == "ADMIN" || evaluator.Role == "HR_COORDINATOR" {
+		all, err := s.employees.List()
+		if err != nil {
+			return nil, err
+		}
+		result := make([]model.EmployeeBrief, 0, len(all))
+		for _, e := range all {
+			if e.IsLeader {
+				result = append(result, model.EmployeeBrief{ID: e.ID, Name: e.Name})
+			}
+		}
+		return result, nil
+	}
+
+	if evaluator.IsLeader {
+		mates, err := s.bookings.CrewMatesForEmployee(evaluatorID)
+		if err != nil {
+			return nil, err
+		}
+		// نرجّع بس الفنيين العاديين (مو ليدرات ثانية) من بين زملاء الحجز —
+		// نفس قيد authorizeReview بالضبط.
+		result := make([]model.EmployeeBrief, 0, len(mates))
+		for _, m := range mates {
+			emp, err := s.employees.FindByID(m.ID)
+			if err == nil && emp != nil && emp.Role == "TECHNICIAN" && !emp.IsLeader {
+				result = append(result, m)
+			}
+		}
+		return result, nil
+	}
+
+	return []model.EmployeeBrief{}, nil
 }
 
 // Create يسجل تقييم أداء بعد التحقق من السلسلة الهرمية:
 //   - الأدمن يقيّم أي أحد
 //   - إداري الكوادر (HR_COORDINATOR) يقيّم التيم ليدرات بس
-//   - أي تيم ليدر يقيّم الفنيين العاديين (اللي مو ليدرات) بس
+//   - أي تيم ليدر يقيّم فنيي حجوزاته الفعليين بس (زملاءه بالحجز، مو كل فنيي
+//     النظام) — يتحقق عبر BookingAssignment، مو مجرد الدور.
 //
 // تقييم سلبي يرجّع الموظف لوضع "متدرب" (نفس آلية قفل التدريب المستخدمة بـKPI).
 func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePerformanceReviewRequest) (*model.PerformanceReview, error) {
@@ -39,7 +84,7 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 		return nil, errors.New("الموظف غير موجود")
 	}
 
-	if err := authorizeReview(evaluator, target); err != nil {
+	if err := s.authorizeReview(evaluator, target); err != nil {
 		return nil, err
 	}
 
@@ -53,7 +98,7 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 	return review, nil
 }
 
-func authorizeReview(evaluator, target *model.Employee) error {
+func (s *PerformanceReviewService) authorizeReview(evaluator, target *model.Employee) error {
 	if evaluator.ID == target.ID {
 		return errors.New("ما تكدر تقيّم نفسك")
 	}
@@ -67,10 +112,19 @@ func authorizeReview(evaluator, target *model.Employee) error {
 		return errors.New("إداري الكوادر يقيّم تيم ليدرات الفرق فقط")
 	}
 	if evaluator.IsLeader {
-		if target.Role == "TECHNICIAN" && !target.IsLeader {
-			return nil
+		if target.Role != "TECHNICIAN" || target.IsLeader {
+			return errors.New("التيم ليدر يقيّم فنيي فريقه العاديين فقط")
 		}
-		return errors.New("التيم ليدر يقيّم فنيي فريقه العاديين فقط")
+		mates, err := s.bookings.CrewMatesForEmployee(evaluator.ID)
+		if err != nil {
+			return errors.New("تعذر التحقق من فريق الحجوزات")
+		}
+		for _, m := range mates {
+			if m.ID == target.ID {
+				return nil
+			}
+		}
+		return errors.New("تقدر تقيّم بس الفنيين الي طلعوا وياك بحجوزاتك")
 	}
 	return errors.New("لا تملك صلاحية تقييم الأداء")
 }

@@ -9,6 +9,7 @@ import { useSession } from '../session'
 export default function PerformanceReviewPage() {
   const { employee } = useSession()
   const [employees, setEmployees] = useState<Employee[]>([])
+  const [ratableIds, setRatableIds] = useState<Set<string>>(new Set())
   const [reviews, setReviews] = useState<PerformanceReview[]>([])
   const [loading, setLoading] = useState(true)
   const [reason, setReason] = useState<Record<string, string>>({})
@@ -18,18 +19,19 @@ export default function PerformanceReviewPage() {
   const isLeader = !!employee?.isLeader && employee.role === 'TECHNICIAN'
 
   const load = () => {
-    Promise.all([api.getEmployees(), api.getPerformanceReviews()])
-      .then(([e, r]) => { setEmployees(e); setReviews(r) })
+    Promise.all([api.getEmployees(), api.getPerformanceReviews(), api.getRatableEmployees()])
+      .then(([e, r, ratable]) => {
+        setEmployees(e)
+        setReviews(r)
+        setRatableIds(new Set(ratable.map((x) => x.id)))
+      })
       .finally(() => setLoading(false))
   }
   useEffect(load, [])
 
-  // اللي يقدر يقيمهم المستخدم الحالي حسب السلسلة الهرمية
-  const evaluatable = useMemo(() => {
-    if (isHR) return employees.filter(e => e.isLeader)
-    if (isLeader) return employees.filter(e => e.role === 'TECHNICIAN' && !e.isLeader)
-    return []
-  }, [employees, isHR, isLeader])
+  // اللي يقدر يقيمهم المستخدم الحالي حسب السلسلة الهرمية — الليدر يشوف بس
+  // زملاء حجوزاته الفعليين (مو كل فنيي النظام)، مصدر القائمة من السيرفر.
+  const evaluatable = useMemo(() => employees.filter((e) => ratableIds.has(e.id)), [employees, ratableIds])
 
   const submit = async (employeeId: string, rating: 'POSITIVE' | 'NEGATIVE') => {
     const r = (reason[employeeId] || '').trim()

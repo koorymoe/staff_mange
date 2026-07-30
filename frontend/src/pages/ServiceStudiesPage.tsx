@@ -8,7 +8,7 @@ function splitList(v: string) {
 
 export default function ServiceStudiesPage() {
   const { permissions, employee } = useSession()
-  const canAdd = employee?.role === 'ADMIN' || permissions.includes('content_technician')
+  const canAdd = employee?.role === 'ADMIN' || permissions.includes('unit_technicians')
   const isAdmin = employee?.role === 'ADMIN'
   const employeeId = employee?.id
 

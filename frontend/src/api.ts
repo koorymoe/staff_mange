@@ -1618,6 +1618,7 @@ export const api = {
   createPerformanceReview: (data: { employeeId: string; rating: 'POSITIVE' | 'NEGATIVE'; reason: string }) =>
     request<PerformanceReview>('/performance-reviews', { method: 'POST', body: JSON.stringify(data) }),
   getPerformanceReviews: () => request<PerformanceReview[]>('/performance-reviews'),
+  getRatableEmployees: () => request<{ id: string; name: string }[]>('/performance-reviews/ratable'),
   getPerformanceReviewsForEmployee: (employeeId: string) => request<PerformanceReview[]>(`/performance-reviews/employee/${employeeId}`),
 
   // Products
