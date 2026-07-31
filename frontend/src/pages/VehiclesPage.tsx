@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleDocument, type VehiclePhoto, type VehicleIncidentAttachment, type VehiclePart, type VehicleAlert, type VehicleExpenseSummary } from '../api'
+import { useEffect, useState, useMemo } from 'react'
+import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary } from '../api'
 import { useSession } from '../session'
 
 function fileToBase64(file: File): Promise<string> {
@@ -11,31 +11,11 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-const DOC_TYPE_LABELS: Record<string, string> = {
-  INSURANCE: 'تأمين',
-  ANNUAL_LICENSE: 'إجازة سنوية',
-  INSPECTION: 'فحص دوري',
-  OTHER: 'أخرى',
-}
-
-function docExpiryColor(expiryDate: string | null): string {
-  if (!expiryDate) return ''
-  const diffDays = Math.floor((new Date(expiryDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-  if (diffDays < 0) return 'bg-red-100 text-red-700'
-  if (diffDays <= 30) return 'bg-amber-100 text-amber-700'
-  return 'bg-emerald-100 text-emerald-700'
-}
-
 const LOG_TYPE_LABELS: Record<string, string> = {
   FUEL: 'تعبئة وقود',
   CLEANING: 'تنظيف',
   OIL_CHANGE: 'تبديل زيت',
   MAINTENANCE: 'صيانة عامة',
-}
-
-const PART_TYPE_LABELS: Record<string, string> = {
-  TIRE: 'إطار',
-  BATTERY: 'بطارية',
 }
 
 const ALERT_TYPE_LABELS: Record<string, string> = {
@@ -89,9 +69,6 @@ const currentMonth = () => {
 export default function VehiclesPage() {
   const { employee } = useSession()
   const isAdmin = employee?.role === 'ADMIN'
-  // Snapshot "now" once per mount so "days since install" is pure during render;
-  // doesn't need live ticking since it's a day-granularity display, not a countdown.
-  const [now] = useState(() => Date.now())
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
@@ -99,13 +76,10 @@ export default function VehiclesPage() {
   const [incidents, setIncidents] = useState<VehicleIncident[]>([])
   const [monthlyStatus, setMonthlyStatus] = useState<VehicleMonthlyStatus[]>([])
   const [dailyRatings, setDailyRatings] = useState<VehicleDailyRating[]>([])
-  const [documents, setDocuments] = useState<VehicleDocument[]>([])
-  const [photos, setPhotos] = useState<VehiclePhoto[]>([])
-  const [parts, setParts] = useState<VehiclePart[]>([])
   const [incidentAttachments, setIncidentAttachments] = useState<Record<string, VehicleIncidentAttachment[]>>({})
   const [alerts, setAlerts] = useState<VehicleAlert[]>([])
   const [alertsOpen, setAlertsOpen] = useState(false)
-  const [tab, setTab] = useState<'logs' | 'incidents' | 'monthly' | 'rating' | 'documents' | 'photos' | 'parts'>('logs')
+  const [tab, setTab] = useState<'logs' | 'oil' | 'incidents' | 'monthly' | 'rating'>('logs')
 
   // add-vehicle form
   const [showAddVehicle, setShowAddVehicle] = useState(false)
@@ -121,19 +95,18 @@ export default function VehiclesPage() {
   const [vOdometer, setVOdometer] = useState('')
   const [vCondition, setVCondition] = useState('')
 
-  // document form
-  const [docType, setDocType] = useState<'INSURANCE' | 'ANNUAL_LICENSE' | 'INSPECTION' | 'OTHER'>('INSURANCE')
-  const [docNumber, setDocNumber] = useState('')
-  const [docIssue, setDocIssue] = useState('')
-  const [docExpiry, setDocExpiry] = useState('')
-  const [docFile, setDocFile] = useState('')
-  const [savingDoc, setSavingDoc] = useState(false)
 
-  // photo upload
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
 
   // log form
   const [logType, setLogType] = useState<'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'>('FUEL')
+  // كلفة التنظيف — تنكتب بتبويب التقييم وتنحفظ كسجل CLEANING
+  const [cleaningCost, setCleaningCost] = useState('')
+  // كل تبويب يعرض سجلاته هو فقط: الوقود بتبويبه، والزيت/الصيانة بتبويب الدهن.
+  // سجلات التنظيف تظهر بتبويب الدهن كمان حتى ما تختفي من أي مكان.
+  const visibleLogs = useMemo(
+    () => logs.filter((l) => (tab === 'logs' ? l.type === 'FUEL' : l.type !== 'FUEL')),
+    [logs, tab],
+  )
   const [logOdometer, setLogOdometer] = useState('')
   const [logCost, setLogCost] = useState('')
   const [logNextDue, setLogNextDue] = useState('')
@@ -157,15 +130,6 @@ export default function VehiclesPage() {
   const [expenseSummary, setExpenseSummary] = useState<VehicleExpenseSummary | null>(null)
   const [fuelAnomalyWarning, setFuelAnomalyWarning] = useState<string | null>(null)
 
-  // part form
-  const [partType, setPartType] = useState<'TIRE' | 'BATTERY'>('TIRE')
-  const [partInstalledAt, setPartInstalledAt] = useState('')
-  const [partInstalledOdometer, setPartInstalledOdometer] = useState('')
-  const [partLifespanKm, setPartLifespanKm] = useState('')
-  const [partLifespanMonths, setPartLifespanMonths] = useState('')
-  const [partNotes, setPartNotes] = useState('')
-  const [partCost, setPartCost] = useState('')
-  const [savingPart, setSavingPart] = useState(false)
 
   // monthly form
   const [monMonth, setMonMonth] = useState(currentMonth())
@@ -214,9 +178,6 @@ export default function VehiclesPage() {
     loadIncidentsWithAttachments(selectedId)
     api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
     api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
-    api.getVehicleDocuments(selectedId).then(setDocuments)
-    api.getVehiclePhotos(selectedId).then(setPhotos)
-    api.getVehicleParts(selectedId).then(setParts)
   }, [selectedId])
 
   useEffect(() => {
@@ -291,55 +252,14 @@ export default function VehiclesPage() {
     }
   }
 
-  const handleAddDocument = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedId) return
-    setSavingDoc(true)
-    try {
-      await api.createVehicleDocument(selectedId, {
-        documentType: docType,
-        documentNumber: docNumber || undefined,
-        issueDate: docIssue || undefined,
-        expiryDate: docExpiry || undefined,
-        fileUrl: docFile || undefined,
-      })
-      setDocNumber(''); setDocIssue(''); setDocExpiry(''); setDocFile('')
-      api.getVehicleDocuments(selectedId).then(setDocuments)
-    } finally {
-      setSavingDoc(false)
-    }
-  }
-
-  const handleDeleteDocument = async (docId: string) => {
-    if (!selectedId) return
-    await api.deleteVehicleDocument(selectedId, docId)
-    api.getVehicleDocuments(selectedId).then(setDocuments)
-  }
-
-  const handleUploadPhoto = async (file: File | null) => {
-    if (!file || !selectedId) return
-    setUploadingPhoto(true)
-    try {
-      const base64 = await fileToBase64(file)
-      await api.createVehiclePhoto(selectedId, { url: base64 })
-      api.getVehiclePhotos(selectedId).then(setPhotos)
-    } finally {
-      setUploadingPhoto(false)
-    }
-  }
-
-  const handleDeletePhoto = async (photoId: string) => {
-    if (!selectedId) return
-    await api.deleteVehiclePhoto(selectedId, photoId)
-    api.getVehiclePhotos(selectedId).then(setPhotos)
-  }
-
   const handleAddLog = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedId) return
     setFuelAnomalyWarning(null)
     const result = await api.createVehicleLog(selectedId, {
-      type: logType,
+      // تبويب الوقود ما بيه اختيار نوع — النوع ثابت FUEL، وتبويب الدهن
+      // يستخدم النوع المختار (زيت أو صيانة عامة).
+      type: tab === 'logs' ? 'FUEL' : logType,
       odometer: logOdometer ? Number(logOdometer) : undefined,
       cost: logCost ? Number(logCost) : undefined,
       nextDueAt: logNextDue || undefined,
@@ -403,39 +323,6 @@ export default function VehiclesPage() {
     setIncidentAttachments((prev) => ({ ...prev, [incidentId]: atts }))
   }
 
-  const handleAddPart = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!selectedId || !partInstalledOdometer) return
-    setSavingPart(true)
-    try {
-      await api.createVehiclePart(selectedId, {
-        partType,
-        installedAt: partInstalledAt || undefined,
-        installedOdometer: Number(partInstalledOdometer),
-        expectedLifespanKm: partLifespanKm ? Number(partLifespanKm) : undefined,
-        expectedLifespanMonths: partLifespanMonths ? Number(partLifespanMonths) : undefined,
-        notes: partNotes || undefined,
-        cost: partCost ? Number(partCost) : undefined,
-      })
-      setPartInstalledAt(''); setPartInstalledOdometer(''); setPartLifespanKm(''); setPartLifespanMonths(''); setPartNotes(''); setPartCost('')
-      api.getVehicleParts(selectedId).then(setParts)
-      loadAlerts()
-    } finally {
-      setSavingPart(false)
-    }
-  }
-
-  const handleReplacePart = async (partId: string, type: 'TIRE' | 'BATTERY') => {
-    if (!selectedId) return
-    await api.replaceVehiclePart(partId)
-    api.getVehicleParts(selectedId).then(setParts)
-    loadAlerts()
-    // تحضير نموذج إضافة قطعة جديدة بنفس النوع كتذكير للمراقب لتسجيل التبديل فوراً
-    setPartType(type)
-    setPartInstalledAt(new Date().toISOString().slice(0, 10))
-    setPartInstalledOdometer(String(selectedVehicle?.currentOdometer ?? ''))
-  }
-
   const handleSetMonthly = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedId) return
@@ -473,7 +360,16 @@ export default function VehiclesPage() {
           return ratings.length > 0 ? ratings : undefined
         })(),
       })
-      setRatingForm(EMPTY_RATING_FORM); setFaultDesc(''); setRatingNotes('')
+      // كلفة التنظيف تنسجل كسجل CLEANING حتى تدخل بملخص مصاريف السيارة
+      if (cleaningCost.trim() && Number(cleaningCost) > 0) {
+        await api.createVehicleLog(selectedId, {
+          type: 'CLEANING',
+          cost: Number(cleaningCost),
+          notes: 'تنظيف مسجّل مع تقييم اليوم',
+        })
+        api.getVehicleLogs(selectedId).then(setLogs)
+      }
+      setRatingForm(EMPTY_RATING_FORM); setFaultDesc(''); setRatingNotes(''); setCleaningCost('')
       setWashTechId(''); setWashScore(''); setWashTechId2(''); setWashScore2('')
       api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
     } catch (err) {
@@ -488,7 +384,7 @@ export default function VehiclesPage() {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-brand-900">إدارة المركبات</h2>
-          <p className="mt-1 text-slate-500">وقود، تنظيف، تبديل زيت، أعطال، أضرار، وحالة شهرية لكل سيارة</p>
+          <p className="mt-1 text-slate-500">وقود، دهن، أعطال، أضرار، وتقييم يومي لكل سيارة</p>
         </div>
         <button
           onClick={() => setShowAddVehicle((v) => !v)}
@@ -637,18 +533,19 @@ export default function VehiclesPage() {
               )}
 
               <div className="flex flex-wrap gap-2 rounded-xl border border-white bg-white p-2 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                {/* الوقود انفصل عن الزيت (كانوا تبويب واحد)، والتنظيف انتقل
+                    للتقييم اليومي. الوثائق والصور والإطارات/البطاريات انشالت
+                    من الواجهة — مو مطلوبة بهذي الصفحة. */}
                 {([
-                  { key: 'logs', label: 'وقود / تنظيف / زيت' },
+                  { key: 'logs', label: 'الوقود' },
+                  { key: 'oil', label: 'الدهن (تبديل زيت)' },
                   { key: 'incidents', label: 'أعطال وأضرار' },
                   { key: 'monthly', label: 'الحالة الشهرية' },
-                  { key: 'rating', label: 'التقييم اليومي' },
-                  { key: 'documents', label: 'الوثائق' },
-                  { key: 'photos', label: 'الصور' },
-                  { key: 'parts', label: 'الإطارات والبطاريات' },
+                  { key: 'rating', label: 'التقييم اليومي والتنظيف' },
                 ] as const).map((t) => (
                   <button
                     key={t.key}
-                    onClick={() => setTab(t.key)}
+                    onClick={() => { setTab(t.key); if (t.key === 'oil') setLogType('OIL_CHANGE') }}
                     className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${tab === t.key ? 'bg-brand-600 text-white' : 'text-slate-600 hover:bg-slate-50'}`}
                   >
                     {t.label}
@@ -656,15 +553,19 @@ export default function VehiclesPage() {
                 ))}
               </div>
 
-              {tab === 'logs' && (
+              {(tab === 'logs' || tab === 'oil') && (
                 <div className="space-y-4">
                   <form onSubmit={handleAddLog} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3">
-                    <select value={logType} onChange={(e) => setLogType(e.target.value as typeof logType)} className="rounded-lg border border-slate-300 px-3 py-2">
-                      <option value="FUEL">تعبئة وقود</option>
-                      <option value="CLEANING">تنظيف</option>
-                      <option value="OIL_CHANGE">تبديل زيت</option>
-                      <option value="MAINTENANCE">صيانة عامة</option>
-                    </select>
+                    {/* الوقود تبويب لحاله، والدهن تبويبه لحاله — نوع السجل
+                        ينتحدد من التبويب بدل قائمة منسدلة تخلط الاثنين. */}
+                    {tab === 'logs' ? (
+                      <div className="rounded-lg bg-brand-50 px-3 py-2 text-sm font-bold text-brand-700">⛽ تعبئة وقود</div>
+                    ) : (
+                      <select value={logType} onChange={(e) => setLogType(e.target.value as typeof logType)} className="rounded-lg border border-slate-300 px-3 py-2">
+                        <option value="OIL_CHANGE">تبديل زيت (دهن)</option>
+                        <option value="MAINTENANCE">صيانة عامة</option>
+                      </select>
+                    )}
                     <input type="number" placeholder="عداد المسافة" value={logOdometer} onChange={(e) => setLogOdometer(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <input type="number" placeholder="التكلفة" value={logCost} onChange={(e) => setLogCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <div>
@@ -717,7 +618,7 @@ export default function VehiclesPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {logs.map((l) => (
+                        {visibleLogs.map((l) => (
                           <tr key={l.id}>
                             <td className="px-4 py-2 font-medium">{LOG_TYPE_LABELS[l.type]}</td>
                             <td className="px-4 py-2 text-slate-500">{new Date(l.performedAt).toLocaleDateString('ar-IQ')}</td>
@@ -727,7 +628,7 @@ export default function VehiclesPage() {
                             <td className="px-4 py-2 text-slate-500">{l.nextDueOdometer ?? '-'}</td>
                           </tr>
                         ))}
-                        {logs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">لا توجد سجلات</td></tr>}
+                        {visibleLogs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">لا توجد سجلات</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -929,6 +830,19 @@ export default function VehiclesPage() {
                       </div>
                     </div>
 
+                    {/* التنظيف انتقل هنا من تبويب الوقود — التقييم هو محله
+                        الطبيعي لأنه مربوط بتقييم جودة الغسيل فوق. */}
+                    <div className="rounded-xl border border-slate-100 bg-slate-50/50 p-4">
+                      <p className="mb-2 text-sm font-bold text-slate-700">تكلفة التنظيف (اختياري) — تنسجل بمصاريف السيارة</p>
+                      <input
+                        type="number" min="0"
+                        placeholder="كلفة التنظيف بالدينار"
+                        value={cleaningCost}
+                        onChange={(e) => setCleaningCost(e.target.value)}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                      />
+                    </div>
+
                     <button type="submit" disabled={savingRating} className="w-full rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
                       {savingRating ? 'جاري الحفظ...' : 'حفظ تقييم اليوم'}
                     </button>
@@ -966,155 +880,6 @@ export default function VehiclesPage() {
                 </div>
               )}
 
-              {tab === 'documents' && (
-                <div className="space-y-4">
-                  <form onSubmit={handleAddDocument} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3">
-                    <select value={docType} onChange={(e) => setDocType(e.target.value as typeof docType)} className="rounded-lg border border-slate-300 px-3 py-2">
-                      <option value="INSURANCE">تأمين</option>
-                      <option value="ANNUAL_LICENSE">إجازة سنوية</option>
-                      <option value="INSPECTION">فحص دوري</option>
-                      <option value="OTHER">أخرى</option>
-                    </select>
-                    <input placeholder="رقم الوثيقة" value={docNumber} onChange={(e) => setDocNumber(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500">تاريخ الإصدار</label>
-                      <input type="date" value={docIssue} onChange={(e) => setDocIssue(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500">تاريخ الانتهاء</label>
-                      <input type="date" value={docExpiry} onChange={(e) => setDocExpiry(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label className="mb-1 block text-xs text-slate-500">ملف الوثيقة (اختياري)</label>
-                      <input type="file" accept="image/*,.pdf" onChange={(e) => {
-                        const f = e.target.files?.[0] || null
-                        if (f) fileToBase64(f).then(setDocFile)
-                      }} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                    </div>
-                    <button type="submit" disabled={savingDoc} className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
-                      {savingDoc ? 'جاري الحفظ...' : 'إضافة وثيقة'}
-                    </button>
-                  </form>
-
-                  <div className="space-y-3">
-                    {documents.map((d) => (
-                      <div key={d.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-bold text-slate-700">{DOC_TYPE_LABELS[d.documentType] || d.documentType}</span>
-                          <div className="flex items-center gap-2">
-                            {d.expiryDate && (
-                              <span className={`rounded-full px-2 py-1 text-xs font-bold ${docExpiryColor(d.expiryDate)}`}>
-                                ينتهي: {new Date(d.expiryDate).toLocaleDateString('ar-IQ')}
-                              </span>
-                            )}
-                            <button onClick={() => handleDeleteDocument(d.id)} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-700 hover:bg-red-100">حذف</button>
-                          </div>
-                        </div>
-                        <div className="mt-1 grid grid-cols-2 gap-1 text-xs text-slate-500">
-                          <p>الرقم: {d.documentNumber || '-'}</p>
-                          <p>الإصدار: {d.issueDate ? new Date(d.issueDate).toLocaleDateString('ar-IQ') : '-'}</p>
-                        </div>
-                        {d.fileUrl && (
-                          <a href={d.fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-bold text-brand-600 hover:underline">عرض الملف</a>
-                        )}
-                      </div>
-                    ))}
-                    {documents.length === 0 && <p className="p-4 text-center text-slate-400">لا توجد وثائق مسجلة لهذي السيارة</p>}
-                  </div>
-                </div>
-              )}
-
-              {tab === 'photos' && (
-                <div className="space-y-4">
-                  <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                    <label className="mb-1 block text-xs text-slate-500">رفع صورة جديدة</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      disabled={uploadingPhoto}
-                      onChange={(e) => handleUploadPhoto(e.target.files?.[0] || null)}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                    {photos.map((p) => (
-                      <div key={p.id} className="group relative overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                        <a href={p.url} target="_blank" rel="noreferrer">
-                          <img src={p.url} alt="صورة السيارة" className="h-32 w-full object-cover" />
-                        </a>
-                        <button
-                          onClick={() => handleDeletePhoto(p.id)}
-                          className="absolute left-1 top-1 rounded-lg bg-red-600/90 px-2 py-1 text-xs font-bold text-white opacity-0 transition-opacity group-hover:opacity-100"
-                        >
-                          حذف
-                        </button>
-                      </div>
-                    ))}
-                    {photos.length === 0 && <p className="col-span-full p-4 text-center text-slate-400">لا توجد صور مسجلة لهذي السيارة</p>}
-                  </div>
-                </div>
-              )}
-
-              {tab === 'parts' && (
-                <div className="space-y-4">
-                  <form onSubmit={handleAddPart} className="grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3">
-                    <select value={partType} onChange={(e) => setPartType(e.target.value as typeof partType)} className="rounded-lg border border-slate-300 px-3 py-2">
-                      <option value="TIRE">إطار</option>
-                      <option value="BATTERY">بطارية</option>
-                    </select>
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500">تاريخ التركيب</label>
-                      <input type="date" value={partInstalledAt} onChange={(e) => setPartInstalledAt(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-                    </div>
-                    <input required type="number" placeholder="عداد التركيب" value={partInstalledOdometer} onChange={(e) => setPartInstalledOdometer(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <input type="number" placeholder="العمر المتوقع (كم)" value={partLifespanKm} onChange={(e) => setPartLifespanKm(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <input type="number" placeholder="العمر المتوقع (شهور)" value={partLifespanMonths} onChange={(e) => setPartLifespanMonths(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <input placeholder="ملاحظات" value={partNotes} onChange={(e) => setPartNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <input type="number" placeholder="التكلفة (اختياري)" value={partCost} onChange={(e) => setPartCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <button type="submit" disabled={savingPart} className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
-                      {savingPart ? 'جاري الحفظ...' : 'إضافة قطعة'}
-                    </button>
-                  </form>
-
-                  <div className="space-y-3">
-                    {parts.map((p) => {
-                      const distanceSince = selectedVehicle ? selectedVehicle.currentOdometer - p.installedOdometer : null
-                      const daysSince = Math.floor((now - new Date(p.installedAt).getTime()) / (1000 * 60 * 60 * 24))
-                      return (
-                        <div key={p.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                          <div className="flex items-center justify-between">
-                            <span className="font-bold text-slate-700">{PART_TYPE_LABELS[p.partType]}</span>
-                            <div className="flex items-center gap-2">
-                              {p.replacedAt ? (
-                                <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-bold text-slate-500">تم الاستبدال</span>
-                              ) : p.dueSoon ? (
-                                <span className="rounded-full bg-red-100 px-2 py-1 text-xs font-bold text-red-700">قريب الاستحقاق</span>
-                              ) : (
-                                <span className="rounded-full bg-emerald-100 px-2 py-1 text-xs font-bold text-emerald-700">سليم</span>
-                              )}
-                              {!p.replacedAt && (
-                                <button onClick={() => handleReplacePart(p.id, p.partType)} className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-700 hover:bg-amber-100">
-                                  تم الاستبدال
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                          <div className="mt-2 grid grid-cols-2 gap-1 text-xs text-slate-500 sm:grid-cols-4">
-                            <p>تاريخ التركيب: {new Date(p.installedAt).toLocaleDateString('ar-IQ')}</p>
-                            <p>عداد التركيب: {p.installedOdometer}</p>
-                            <p>المسافة منذ التركيب: {distanceSince ?? '-'} كم</p>
-                            <p>الزمن منذ التركيب: {daysSince} يوم</p>
-                            {p.expectedLifespanKm != null && <p>العمر المتوقع: {p.expectedLifespanKm} كم</p>}
-                            {p.expectedLifespanMonths != null && <p>العمر المتوقع: {p.expectedLifespanMonths} شهر</p>}
-                            {p.notes && <p className="sm:col-span-2">ملاحظات: {p.notes}</p>}
-                          </div>
-                        </div>
-                      )
-                    })}
-                    {parts.length === 0 && <p className="p-4 text-center text-slate-400">لا توجد إطارات أو بطاريات مسجلة لهذي السيارة</p>}
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </div>

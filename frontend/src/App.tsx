@@ -80,7 +80,6 @@ const MonitorDashboard = lazy(() => import('./pages/MonitorDashboard'))
 const MonitorCrewBookingsPage = lazy(() => import('./pages/MonitorCrewBookingsPage'))
 const TrainingManagement = lazy(() => import('./pages/TrainingManagement'))
 const VehiclesPage = lazy(() => import('./pages/VehiclesPage'))
-const VehicleMissionsPage = lazy(() => import('./pages/VehicleMissionsPage'))
 const FleetDashboardPage = lazy(() => import('./pages/FleetDashboardPage'))
 const QualityPage = lazy(() => import('./pages/QualityPage'))
 const WorkReportsReview = lazy(() => import('./pages/WorkReportsReview'))
@@ -171,7 +170,6 @@ function App() {
           <Route path="training" element={<TrainingPage />} />
           <Route path="training-management" element={<RequirePermission permission="content_technician"><TrainingManagement /></RequirePermission>} />
           <Route path="vehicles" element={<RequirePermission permission="vehicle_management"><VehiclesPage /></RequirePermission>} />
-          <Route path="vehicle-missions" element={<RequirePermission permission="vehicle_management"><VehicleMissionsPage /></RequirePermission>} />
           <Route path="fleet-dashboard" element={<RequirePermission permission="vehicle_management"><FleetDashboardPage /></RequirePermission>} />
           <Route path="quality" element={<RequirePermission permission="quality_control"><QualityPage /></RequirePermission>} />
           <Route path="crew-bookings-audit" element={<RequirePermission permission="crew_management"><MonitorCrewBookingsPage /></RequirePermission>} />

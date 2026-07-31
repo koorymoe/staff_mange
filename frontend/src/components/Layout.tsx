@@ -130,7 +130,6 @@ const navItems: NavItem[] = [
         to: '/mgmt-vehicles', label: 'إدارة المركبات', icon: <></>,
         children: [
           { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
-          { to: '/vehicle-missions', label: 'مهام المركبات', icon: <></>, permission: 'vehicle_management' },
           { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
         ],
       },
