@@ -337,5 +337,14 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			WHERE e.role IN ('PROCUREMENT_ADMIN', 'ADMIN', 'HR_COORDINATOR', 'MONITOR')
 			ON CONFLICT ("employeeId", "permissionId") DO NOTHING`,
 		},
+		{
+			// أدوات المركبات: كمية بدل باركود. مرات تكون نفس الأداة موجودة
+			// مرتين بنفس السيارة، والباركود الفريد كان يمنع هذا أصلاً — فنخليه
+			// اختياري ونشيل قيد التفرّد.
+			Version: "0156_vehicle_tool_quantity",
+			SQL: `ALTER TABLE "VehicleTool" ADD COLUMN IF NOT EXISTS quantity INTEGER NOT NULL DEFAULT 1;
+			ALTER TABLE "VehicleTool" ALTER COLUMN barcode DROP NOT NULL;
+			ALTER TABLE "VehicleTool" DROP CONSTRAINT IF EXISTS "VehicleTool_barcode_key"`,
+		},
 	}
 }

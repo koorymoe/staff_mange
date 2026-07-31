@@ -119,8 +119,11 @@ function StarSelector({ value, onChange }: { value: number; onChange: (v: number
 }
 
 export default function SuppliersPage() {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const isAdmin = employee?.role === 'ADMIN'
+  // التعديل والحذف داخل نفس صلاحية إدارة الموردين — منو يضيف يقدر يعدل ويحذف،
+  // حتى إداري الكميات ما يضطر يرجع للأدمن على كل مورد غلط.
+  const canManageSuppliers = isAdmin || permissions.includes('suppliers_management')
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [specialties, setSpecialties] = useState<Specialty[]>([])
@@ -381,6 +384,20 @@ export default function SuppliersPage() {
                   className="mt-2 inline-block text-xs text-brand-500 hover:underline">
                   عرض الموقع على الخريطة 🗺️
                 </button>
+              )}
+              {canManageSuppliers && (
+                <div className="mt-3 flex gap-2 border-t border-slate-100 pt-3">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); openEdit(s) }}
+                    className="flex-1 rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-100">
+                    ✎ تعديل
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(s.id) }}
+                    className="flex-1 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-100">
+                    🗑 حذف
+                  </button>
+                </div>
               )}
             </div>
           ))}
@@ -656,7 +673,7 @@ export default function SuppliersPage() {
               className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30">
               إضافة تقييم
             </button>
-            {isAdmin && (
+            {canManageSuppliers && (
               <>
                 <button onClick={() => { setDetailSupplier(null); openEdit(detailSupplier) }}
                   className="rounded-lg border border-brand-500 px-4 py-2 text-sm font-medium text-brand-600 transition-all hover:bg-brand-50">

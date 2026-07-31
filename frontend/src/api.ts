@@ -1127,9 +1127,14 @@ export interface BookingToolCheck {
 export interface VehicleTool {
   id: string
   name: string
-  barcode: string
+  // الباركود صار اختياري — الكمية أخذت محله لأن نفس الأداة تتكرر بنفس السيارة
+  barcode: string | null
+  quantity: number
   vehicleId: string
+  vehicleName: string
+  vehiclePlate: string
   status: 'AVAILABLE' | 'CHECKED_OUT' | 'DAMAGED'
+  createdAt: string
 }
 
 export interface OnDemandTool {
@@ -1987,7 +1992,7 @@ export const api = {
   deletePersonalTool: (id: string) => request<void>(`/inventory/personal/${id}`, { method: 'DELETE' }),
   getVehicleTools: (vehicleId?: string) =>
     request<VehicleTool[]>(`/inventory/vehicle${vehicleId ? `?vehicleId=${vehicleId}` : ''}`),
-  createVehicleTool: (data: { name: string; barcode: string; vehicleId: string }) =>
+  createVehicleTool: (data: { name: string; quantity: number; vehicleId: string; barcode?: string }) =>
     request<VehicleTool>('/inventory/vehicle', { method: 'POST', body: JSON.stringify(data) }),
   updateVehicleTool: (id: string, data: Partial<VehicleTool>) =>
     request<VehicleTool>(`/inventory/vehicle/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck } from '../api'
-import { useSession } from '../session'
+import { useEffect, useState, useMemo } from 'react'
+import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck, type Vehicle } from '../api'
+import { useSession, roleLabels } from '../session'
 
 type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests' | 'template' | 'reports'
 
@@ -19,6 +19,12 @@ const requestStatusLabels: Record<ToolRequest['status'], string> = {
   APPROVED: 'موافق عليه',
   REJECTED: 'مرفوض',
   RETURNED: 'مسترجع',
+}
+
+const vehicleToolStatusLabels: Record<string, string> = {
+  AVAILABLE: 'متوفرة',
+  CHECKED_OUT: 'مصروفة',
+  DAMAGED: 'تالفة / مفقودة',
 }
 
 const requestStatusColors: Record<ToolRequest['status'], string> = {
@@ -48,6 +54,8 @@ export default function InventoryPage() {
     currentUser?.role === 'MONITOR'
   // حذف الطلب يمحي أثره نهائياً — لمدير النظام والمالك فقط، مطابق للباك إند.
   const canDeleteRequests = isAdmin
+  // الموظف المفتوحة عدته بتبويب "أدوات خاصة" (null = عرض كل الموظفين)
+  const [selectedKitEmployeeId, setSelectedKitEmployeeId] = useState<string | null>(null)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const handleResolveCheck = async (id: string) => {
     setResolvingId(id)
@@ -78,7 +86,14 @@ export default function InventoryPage() {
   const [showVehicleForm, setShowVehicleForm] = useState(false)
   const [vtVehicleId, setVtVehicleId] = useState('')
   const [vtName, setVtName] = useState('')
-  const [vtBarcode, setVtBarcode] = useState('')
+  const [vtQuantity, setVtQuantity] = useState('1')
+  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  // تعديل أداة مركبة
+  const [vtEdit, setVtEdit] = useState<VehicleTool | null>(null)
+  const [vtEditName, setVtEditName] = useState('')
+  const [vtEditQuantity, setVtEditQuantity] = useState('1')
+  const [vtEditVehicleId, setVtEditVehicleId] = useState('')
+  const [vtEditStatus, setVtEditStatus] = useState<VehicleTool['status']>('AVAILABLE')
 
   // On-demand tools
   const [onDemandTools, setOnDemandTools] = useState<OnDemandTool[]>([])
@@ -101,6 +116,43 @@ export default function InventoryPage() {
 
   const [submitting, setSubmitting] = useState(false)
 
+  // أسماء العدة القياسية — أساس المقارنة. نطبّعها بحذف الفراغات حتى "مفتاح "
+  // و"مفتاح" ما ينحسبون أداتين مختلفتين.
+  const templateNames = useMemo(
+    () => new Set(templateItems.map((t) => t.name.trim())),
+    [templateItems],
+  )
+
+  // لكل موظف: عدته، شنو ناقص من القياسية، وشنو زايد عليها.
+  const kitSummaries = useMemo(() => {
+    const byEmployee = new Map<string, PersonalTool[]>()
+    for (const t of personalTools) {
+      const list = byEmployee.get(t.employeeId)
+      if (list) list.push(t)
+      else byEmployee.set(t.employeeId, [t])
+    }
+    return employees
+      .map((emp) => {
+        const tools = byEmployee.get(emp.id) || []
+        const owned = new Set(tools.map((t) => t.name.trim()))
+        return {
+          employee: emp,
+          tools,
+          missing: [...templateNames].filter((n) => !owned.has(n)),
+          extra: tools.filter((t) => !templateNames.has(t.name.trim())),
+        }
+      })
+      // الي عنده نقص أول القائمة — هذا الي يحتاج انتباه الإداري
+      .sort((a, b) => b.missing.length - a.missing.length || a.employee.name.localeCompare(b.employee.name, 'ar'))
+  }, [employees, personalTools, templateNames])
+
+  const vehicleToolStats = useMemo(() => ({
+    kinds: vehicleTools.length,
+    pieces: vehicleTools.reduce((s, t) => s + (t.quantity || 1), 0),
+    vehicles: new Set(vehicleTools.map((t) => t.vehicleId)).size,
+    problem: vehicleTools.filter((t) => t.status !== 'AVAILABLE').length,
+  }), [vehicleTools])
+
   const load = () => {
     Promise.all([
       api.getPersonalTools(),
@@ -109,14 +161,18 @@ export default function InventoryPage() {
       api.getToolRequests(),
       api.getEmployees(),
       api.getPersonalToolTemplate(),
+      // قائمة السيارات لازمة للقائمة المنسدلة بأدوات المركبات — لو الموظف
+      // ما عنده صلاحية المركبات نكمل بقائمة فاضية بدل ما تفشل الصفحة كلها.
+      api.getVehicles().catch(() => [] as Vehicle[]),
     ])
-      .then(([pt, vt, od, tr, emps, tmpl]) => {
+      .then(([pt, vt, od, tr, emps, tmpl, vhs]) => {
         setPersonalTools(pt)
         setVehicleTools(vt)
         setOnDemandTools(od)
         setToolRequests(tr)
         setEmployees(emps)
         setTemplateItems(tmpl)
+        setVehicles(vhs)
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -167,14 +223,51 @@ export default function InventoryPage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.createVehicleTool({ vehicleId: vtVehicleId, name: vtName, barcode: vtBarcode })
-      setVtVehicleId(''); setVtName(''); setVtBarcode('')
+      await api.createVehicleTool({ vehicleId: vtVehicleId, name: vtName, quantity: Number(vtQuantity) || 1 })
+      setVtVehicleId(''); setVtName(''); setVtQuantity('1')
       setShowVehicleForm(false)
       load()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const openVehicleToolEdit = (t: VehicleTool) => {
+    setVtEdit(t)
+    setVtEditName(t.name)
+    setVtEditQuantity(String(t.quantity))
+    setVtEditVehicleId(t.vehicleId)
+    setVtEditStatus(t.status)
+  }
+
+  const saveVehicleToolEdit = async () => {
+    if (!vtEdit) return
+    setSubmitting(true)
+    try {
+      await api.updateVehicleTool(vtEdit.id, {
+        name: vtEditName,
+        quantity: Number(vtEditQuantity) || 1,
+        vehicleId: vtEditVehicleId,
+        status: vtEditStatus,
+      })
+      setVtEdit(null)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleDeleteVehicleTool = async (id: string) => {
+    if (!confirm('حذف هذي الأداة من السيارة؟')) return
+    try {
+      await api.deleteVehicleTool(id)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
     }
   }
 
@@ -366,35 +459,121 @@ export default function InventoryPage() {
                   </div>
                 </form>
               )}
-              <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200 text-right">
-                    <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
-                      <tr>
-                        <th className="px-4 py-3 text-sm font-semibold">الموظف</th>
-                        <th className="px-4 py-3 text-sm font-semibold">اسم الأداة</th>
-                        <th className="px-4 py-3 text-sm font-semibold">الباركود</th>
-                        <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {personalTools.map((t) => (
-                        <tr key={t.id} className="transition-colors hover:bg-slate-50">
-                          <td className="px-4 py-3 font-medium">{t.employee?.name || '-'}</td>
-                          <td className="px-4 py-3">{t.name}</td>
-                          <td className="px-4 py-3 font-mono text-sm text-slate-500">{t.barcode}</td>
-                          <td className="px-4 py-3">
-                            <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">{t.status}</span>
-                          </td>
-                        </tr>
-                      ))}
-                      {personalTools.length === 0 && (
-                        <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">لا توجد أدوات خاصة</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              {/* بطاقة لكل موظف بدل جدول مسطّح بكل الأدوات مطشّرة — تضغط على
+                  الموظف تشوف عدته، والنظام يقارنها بالعدة القياسية وينبّه بالنقص. */}
+              {!selectedKitEmployeeId ? (
+                <>
+                  <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50/60 p-4 text-sm text-brand-800">
+                    المقارنة تنعمل تلقائياً بين عدة كل موظف والعدة القياسية ({templateItems.length} أداة).
+                    اضغط على أي موظف حتى تشوف عدته بالتفصيل وشنو ناقصه.
+                  </div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {kitSummaries.map((k) => (
+                      <button
+                        key={k.employee.id}
+                        onClick={() => setSelectedKitEmployeeId(k.employee.id)}
+                        className={`rounded-xl border-2 bg-white p-5 text-right shadow-[0_4px_20px_rgba(15,32,64,0.06)] transition-all hover:-translate-y-0.5 hover:shadow-lg ${
+                          k.missing.length ? 'border-red-200' : 'border-emerald-200'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <div className="font-bold text-brand-900">{k.employee.name}</div>
+                            <div className="text-xs text-slate-400">{roleLabels[k.employee.role] || k.employee.role}</div>
+                          </div>
+                          <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
+                            k.missing.length ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
+                          }`}>
+                            {k.missing.length ? `ناقص ${k.missing.length}` : 'مكتملة ✓'}
+                          </span>
+                        </div>
+                        <div className="mt-3 text-sm text-slate-600">
+                          عدته: <span className="font-bold text-brand-700">{k.tools.length}</span> أداة
+                          {k.extra.length > 0 && <span className="text-slate-400"> · زايدة {k.extra.length}</span>}
+                        </div>
+                        {k.missing.length > 0 && (
+                          <div className="mt-2 text-xs text-red-600">
+                            ⚠️ ناقص: {k.missing.slice(0, 3).join('، ')}{k.missing.length > 3 ? ` +${k.missing.length - 3}` : ''}
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                    {kitSummaries.length === 0 && (
+                      <div className="col-span-full rounded-xl bg-white p-8 text-center text-slate-400 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                        لا يوجد موظفين
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (() => {
+                const k = kitSummaries.find((x) => x.employee.id === selectedKitEmployeeId)
+                if (!k) return null
+                return (
+                  <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                    <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <h3 className="text-xl font-bold text-brand-900">عدة: {k.employee.name}</h3>
+                        <p className="text-sm text-slate-400">{roleLabels[k.employee.role] || k.employee.role}</p>
+                      </div>
+                      <button
+                        onClick={() => setSelectedKitEmployeeId(null)}
+                        className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
+                      >
+                        ← رجوع لكل الموظفين
+                      </button>
+                    </div>
+
+                    {k.missing.length > 0 ? (
+                      <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4">
+                        <div className="font-bold text-red-700">⚠️ ناقص {k.missing.length} أداة من العدة القياسية</div>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {k.missing.map((m) => (
+                            <span key={m} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-red-700">{m}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">
+                        ✓ عدة هذا الموظف مكتملة — كل العدة القياسية موجودة عنده
+                      </div>
+                    )}
+
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full divide-y divide-gray-200 text-right">
+                        <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
+                          <tr>
+                            <th className="px-4 py-3 text-sm font-semibold">اسم الأداة</th>
+                            <th className="px-4 py-3 text-sm font-semibold">النوع</th>
+                            <th className="px-4 py-3 text-sm font-semibold">الباركود</th>
+                            <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {k.tools.map((t) => (
+                            <tr key={t.id} className="hover:bg-slate-50">
+                              <td className="px-4 py-3 font-medium">{t.name}</td>
+                              <td className="px-4 py-3">
+                                {templateNames.has(t.name.trim()) ? (
+                                  <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">قياسية</span>
+                                ) : (
+                                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">زايدة</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 font-mono text-sm text-slate-500">{t.barcode}</td>
+                              <td className="px-4 py-3">
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{t.status}</span>
+                              </td>
+                            </tr>
+                          ))}
+                          {k.tools.length === 0 && (
+                            <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">ما عنده أي أداة مسجلة</td></tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           )}
 
@@ -413,16 +592,22 @@ export default function InventoryPage() {
                 <form onSubmit={handleAddVehicleTool} className="mb-6 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">رقم لوحة المركبة</label>
-                      <input required value={vtVehicleId} onChange={(e) => setVtVehicleId(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
+                      <label className="mb-1 block text-sm font-medium text-slate-600">السيارة</label>
+                      <select required value={vtVehicleId} onChange={(e) => setVtVehicleId(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500">
+                        <option value="">اختر السيارة</option>
+                        {vehicles.map((v) => (
+                          <option key={v.id} value={v.id}>{v.name} — {v.plateNumber}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-600">اسم الأداة</label>
                       <input required value={vtName} onChange={(e) => setVtName(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">الباركود</label>
-                      <input required value={vtBarcode} onChange={(e) => setVtBarcode(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
+                      {/* الكمية بدل الباركود — نفس الأداة ممكن تتكرر بنفس السيارة */}
+                      <label className="mb-1 block text-sm font-medium text-slate-600">الكمية</label>
+                      <input required type="number" min="1" value={vtQuantity} onChange={(e) => setVtQuantity(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
                     </div>
                   </div>
                   <div className="mt-4">
@@ -432,30 +617,71 @@ export default function InventoryPage() {
                   </div>
                 </form>
               )}
+              {/* إحصائيات سريعة: كم أداة، كم قطعة إجمالاً، وكم مفقودة/تالفة */}
+              <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  { label: 'أنواع الأدوات', value: vehicleToolStats.kinds, color: 'text-brand-700' },
+                  { label: 'إجمالي القطع', value: vehicleToolStats.pieces, color: 'text-brand-700' },
+                  { label: 'السيارات المجهّزة', value: vehicleToolStats.vehicles, color: 'text-emerald-600' },
+                  { label: 'مفقودة / تالفة', value: vehicleToolStats.problem, color: 'text-red-600' },
+                ].map((s) => (
+                  <div key={s.label} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                    <div className="text-xs text-slate-400">{s.label}</div>
+                    <div className={`mt-1 text-2xl font-bold ${s.color}`}>{s.value}</div>
+                  </div>
+                ))}
+              </div>
+
               <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 text-right">
                     <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                       <tr>
-                        <th className="px-4 py-3 text-sm font-semibold">لوحة المركبة</th>
+                        <th className="px-4 py-3 text-sm font-semibold">السيارة</th>
                         <th className="px-4 py-3 text-sm font-semibold">اسم الأداة</th>
-                        <th className="px-4 py-3 text-sm font-semibold">الباركود</th>
+                        <th className="px-4 py-3 text-sm font-semibold">الكمية</th>
                         <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
+                        <th className="px-4 py-3 text-sm font-semibold">تاريخ الإضافة</th>
+                        {canManageInventory && <th className="px-4 py-3 text-sm font-semibold">إجراءات</th>}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {vehicleTools.map((t) => (
                         <tr key={t.id} className="transition-colors hover:bg-slate-50">
-                          <td className="px-4 py-3 font-medium">{t.vehicleId}</td>
-                          <td className="px-4 py-3">{t.name}</td>
-                          <td className="px-4 py-3 font-mono text-sm text-slate-500">{t.barcode}</td>
-                          <td className="px-4 py-3">
-                            <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">{t.status}</span>
+                          <td className="px-4 py-3 font-medium">
+                            {t.vehicleName || '-'}
+                            {t.vehiclePlate && <span className="mr-1 text-xs text-slate-400">({t.vehiclePlate})</span>}
                           </td>
+                          <td className="px-4 py-3">{t.name}</td>
+                          <td className="px-4 py-3 font-bold text-brand-700">{t.quantity}</td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                              t.status === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
+                            }`}>{vehicleToolStatusLabels[t.status] || t.status}</span>
+                          </td>
+                          <td className="px-4 py-3 text-sm text-slate-500">{new Date(t.createdAt).toLocaleDateString('ar-IQ')}</td>
+                          {canManageInventory && (
+                            <td className="px-4 py-3">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => openVehicleToolEdit(t)}
+                                  className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100"
+                                >
+                                  ✎ تعديل
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteVehicleTool(t.id)}
+                                  className="rounded-lg bg-red-50 px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-100"
+                                >
+                                  🗑 حذف
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       ))}
                       {vehicleTools.length === 0 && (
-                        <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">لا توجد أدوات مركبات</td></tr>
+                        <tr><td colSpan={canManageInventory ? 6 : 5} className="px-4 py-6 text-center text-slate-400">لا توجد أدوات مركبات</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -780,6 +1006,70 @@ export default function InventoryPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {vtEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-900">تعديل أداة مركبة</h3>
+
+            <label className="mt-5 block text-sm font-semibold text-slate-700">السيارة</label>
+            <select
+              value={vtEditVehicleId}
+              onChange={(e) => setVtEditVehicleId(e.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+            >
+              {vehicles.map((v) => <option key={v.id} value={v.id}>{v.name} — {v.plateNumber}</option>)}
+            </select>
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">اسم الأداة</label>
+            <input
+              value={vtEditName}
+              onChange={(e) => setVtEditName(e.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+            />
+
+            <div className="mt-4 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700">الكمية</label>
+                <input
+                  type="number" min="1"
+                  value={vtEditQuantity}
+                  onChange={(e) => setVtEditQuantity(e.target.value)}
+                  className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700">الحالة</label>
+                <select
+                  value={vtEditStatus}
+                  onChange={(e) => setVtEditStatus(e.target.value as VehicleTool['status'])}
+                  className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+                >
+                  {Object.keys(vehicleToolStatusLabels).map((k) => (
+                    <option key={k} value={k}>{vehicleToolStatusLabels[k]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={saveVehicleToolEdit}
+                disabled={submitting}
+                className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-2.5 font-bold text-white disabled:opacity-50"
+              >
+                {submitting ? 'جاري الحفظ...' : 'حفظ التعديل'}
+              </button>
+              <button
+                onClick={() => setVtEdit(null)}
+                className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
         </div>
       )}
 

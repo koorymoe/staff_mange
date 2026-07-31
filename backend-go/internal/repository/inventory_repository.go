@@ -183,44 +183,59 @@ func (r *InventoryRepository) ListBookingToolChecks(bookingID string) ([]model.B
 
 // ── Vehicle Tools ───────────────────────────────────────────────────────────
 
+// vehicleToolSelect يجيب اسم ورقم لوحة السيارة مع الأداة باستعلام واحد، حتى
+// الجدول يعرض اسم السيارة بدل معرّفها بدون استعلام إضافي لكل صف.
+const vehicleToolSelect = `SELECT t.*,
+	COALESCE(v.name, '') AS "vehicleName",
+	COALESCE(v."plateNumber", '') AS "vehiclePlate"
+	FROM "VehicleTool" t LEFT JOIN "Vehicle" v ON v.id = t."vehicleId"`
+
 func (r *InventoryRepository) ListVehicleTools(vehicleID string) ([]model.VehicleTool, error) {
 	tools := []model.VehicleTool{}
 	var err error
 	if vehicleID != "" {
-		err = r.db.Select(&tools, `SELECT * FROM "VehicleTool" WHERE "vehicleId" = $1 ORDER BY "createdAt" DESC`, vehicleID)
+		err = r.db.Select(&tools, vehicleToolSelect+` WHERE t."vehicleId" = $1 ORDER BY t."createdAt" DESC`, vehicleID)
 	} else {
-		err = r.db.Select(&tools, `SELECT * FROM "VehicleTool" ORDER BY "createdAt" DESC`)
+		err = r.db.Select(&tools, vehicleToolSelect+` ORDER BY t."createdAt" DESC`)
 	}
 	return tools, err
 }
 
-func (r *InventoryRepository) CreateVehicleTool(name, barcode, vehicleID string) (*model.VehicleTool, error) {
+func (r *InventoryRepository) getVehicleTool(id string) (*model.VehicleTool, error) {
 	var t model.VehicleTool
-	err := r.db.Get(&t, `
-		INSERT INTO "VehicleTool" (id, name, barcode, "vehicleId")
-		VALUES (gen_random_uuid()::text, $1, $2, $3)
-		RETURNING *
-	`, name, barcode, vehicleID)
-	if err != nil {
+	if err := r.db.Get(&t, vehicleToolSelect+` WHERE t.id = $1`, id); err != nil {
 		return nil, err
 	}
 	return &t, nil
 }
 
-func (r *InventoryRepository) UpdateVehicleTool(id string, name, barcode, status *string) (*model.VehicleTool, error) {
-	var t model.VehicleTool
-	err := r.db.Get(&t, `
-		UPDATE "VehicleTool" SET
-			name = COALESCE($2, name),
-			barcode = COALESCE($3, barcode),
-			status = COALESCE($4, status)
-		WHERE id = $1
-		RETURNING *
-	`, id, name, barcode, status)
+func (r *InventoryRepository) CreateVehicleTool(name string, barcode *string, quantity int, vehicleID string) (*model.VehicleTool, error) {
+	var id string
+	err := r.db.Get(&id, `
+		INSERT INTO "VehicleTool" (id, name, barcode, quantity, "vehicleId")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+		RETURNING id
+	`, name, barcode, quantity, vehicleID)
 	if err != nil {
 		return nil, err
 	}
-	return &t, nil
+	return r.getVehicleTool(id)
+}
+
+func (r *InventoryRepository) UpdateVehicleTool(id string, name, barcode, status, vehicleID *string, quantity *int) (*model.VehicleTool, error) {
+	_, err := r.db.Exec(`
+		UPDATE "VehicleTool" SET
+			name = COALESCE($2, name),
+			barcode = COALESCE($3, barcode),
+			status = COALESCE($4, status),
+			"vehicleId" = COALESCE($5, "vehicleId"),
+			quantity = COALESCE($6, quantity)
+		WHERE id = $1
+	`, id, name, barcode, status, vehicleID, quantity)
+	if err != nil {
+		return nil, err
+	}
+	return r.getVehicleTool(id)
 }
 
 func (r *InventoryRepository) DeleteVehicleTool(id string) error {

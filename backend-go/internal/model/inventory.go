@@ -67,22 +67,31 @@ type UpdatePersonalToolRequest struct {
 type VehicleTool struct {
 	ID        string    `db:"id" json:"id"`
 	Name      string    `db:"name" json:"name"`
-	Barcode   string    `db:"barcode" json:"barcode"`
+	Barcode   *string   `db:"barcode" json:"barcode"`
+	Quantity  int       `db:"quantity" json:"quantity"`
 	VehicleID string    `db:"vehicleId" json:"vehicleId"`
 	Status    string    `db:"status" json:"status"`
 	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+
+	// اسم/رقم السيارة، جايين بـJOIN حتى الجدول يعرض اسم مفهوم بدل معرّف.
+	// كل استعلامات VehicleTool تمر بـvehicleToolSelect الي يجيب هذول العمودين.
+	VehicleName  string `db:"vehicleName" json:"vehicleName"`
+	VehiclePlate string `db:"vehiclePlate" json:"vehiclePlate"`
 }
 
 type CreateVehicleToolRequest struct {
-	Name      string `json:"name"`
-	Barcode   string `json:"barcode"`
-	VehicleID string `json:"vehicleId"`
+	Name      string  `json:"name"`
+	Barcode   *string `json:"barcode"`
+	Quantity  *int    `json:"quantity"`
+	VehicleID string  `json:"vehicleId"`
 }
 
 type UpdateVehicleToolRequest struct {
-	Name    *string `json:"name"`
-	Barcode *string `json:"barcode"`
-	Status  *string `json:"status"`
+	Name      *string `json:"name"`
+	Barcode   *string `json:"barcode"`
+	Quantity  *int    `json:"quantity"`
+	VehicleID *string `json:"vehicleId"`
+	Status    *string `json:"status"`
 }
 
 type OnDemandTool struct {

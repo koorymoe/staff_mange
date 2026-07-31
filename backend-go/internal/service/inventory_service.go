@@ -60,14 +60,30 @@ func (s *InventoryService) ListVehicleTools(vehicleID string) ([]model.VehicleTo
 }
 
 func (s *InventoryService) CreateVehicleTool(req model.CreateVehicleToolRequest) (*model.VehicleTool, error) {
-	if req.Name == "" || req.Barcode == "" || req.VehicleID == "" {
-		return nil, errors.New("name, barcode and vehicleId are required")
+	// الباركود صار اختياري — الكمية أخذت محله لأن نفس الأداة ممكن تتكرر
+	// بنفس السيارة، والباركود الفريد كان يمنع هذي الحالة.
+	if strings.TrimSpace(req.Name) == "" || req.VehicleID == "" {
+		return nil, errors.New("اسم الأداة والسيارة مطلوبين")
 	}
-	return s.repo.CreateVehicleTool(req.Name, req.Barcode, req.VehicleID)
+	qty := 1
+	if req.Quantity != nil {
+		if *req.Quantity < 1 {
+			return nil, errors.New("الكمية لازم تكون 1 أو أكثر")
+		}
+		qty = *req.Quantity
+	}
+	barcode := req.Barcode
+	if barcode != nil && strings.TrimSpace(*barcode) == "" {
+		barcode = nil
+	}
+	return s.repo.CreateVehicleTool(strings.TrimSpace(req.Name), barcode, qty, req.VehicleID)
 }
 
 func (s *InventoryService) UpdateVehicleTool(id string, req model.UpdateVehicleToolRequest) (*model.VehicleTool, error) {
-	return s.repo.UpdateVehicleTool(id, req.Name, req.Barcode, req.Status)
+	if req.Quantity != nil && *req.Quantity < 1 {
+		return nil, errors.New("الكمية لازم تكون 1 أو أكثر")
+	}
+	return s.repo.UpdateVehicleTool(id, req.Name, req.Barcode, req.Status, req.VehicleID, req.Quantity)
 }
 
 func (s *InventoryService) DeleteVehicleTool(id string) error {
