@@ -127,6 +127,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	cartService := service.NewCartService(cartRepo)
 	expenseService := service.NewExpenseService(expenseRepo)
 	inventoryService := service.NewInventoryService(inventoryRepo)
+	// موافقة على طلب أداة غير متوفرة تولّد طلب مشتريات يوصل للمحاسب.
+	inventoryService.SetProcurementRepository(procurementRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	notificationService := service.NewNotificationService(notificationRepo)
 	kpiService := service.NewKpiService(kpiRepo, employeeRepo, notificationRepo)
@@ -186,6 +188,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	attendanceIconRequestHandler := handler.NewAttendanceIconRequestHandler(attendanceIconRequestService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
 	supplierHandler := handler.NewSupplierHandler(supplierService)
+	mapLinkHandler := handler.NewMapLinkHandler()
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	productHandler := handler.NewProductHandler(productService)
 	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
@@ -240,7 +243,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
 	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
-	requireInventoryApprove := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR", "MONITOR")
+	// موافقة/رفض طلبات الأدوات: كانت دور صارم بدون منفذ صلاحية، فإداري الكميات
+	// — وهو صاحب الشغلة أصلاً — ما كان يقدر يوافق أبداً مهما انمنحت له
+	// صلاحيات. صارت صلاحية مستقلة تُمنح لأي موظف، مع إبقاء الأدوار القديمة.
+	requireInventoryApprove := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "tool_requests_approve")
 	// تعديل مهارات موظف يعتمد على صلاحية "staff_management" الممنوحة فعلياً (نفس
 	// الصلاحية الي تفتح صفحة "إدارة الكوادر" بالواجهة للمراقب أيضاً) — مو دور
 	// وظيفي صارم، وإلا نفس بگ "تدقيق الحسابات" يتكرر: زر يطلع بالواجهة، السيرفر
@@ -401,7 +407,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth, requireInventoryApprove))
 	mux.Handle("PUT /api/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth, requireInventoryApprove))
 	mux.Handle("PUT /api/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth))
-	mux.Handle("DELETE /api/inventory/requests/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteToolRequest), requireAuth, requireInventoryApprove))
+	// حذف طلب أداة يمحي أثر الطلب نهائياً — محصور بمدير النظام والمالك فقط،
+	// مو بكل من يقدر يوافق أو يرفض.
+	mux.Handle("DELETE /api/inventory/requests/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteToolRequest), requireAuth, requireAdmin))
 
 	// تقييم الأداء اليدوي (KPI)
 	mux.Handle("POST /api/attendance/checkin", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckIn), requireAuth))
@@ -591,6 +599,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.ListSpecialties), requireAuth))
 	mux.Handle("POST /api/suppliers/specialties", middleware.Chain(http.HandlerFunc(supplierHandler.CreateSpecialty), requireAuth, requireSuppliersMgmt))
 	mux.Handle("DELETE /api/suppliers/specialties/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.DeleteSpecialty), requireAuth, requireAdmin))
+	// حل روابط الخرائط (خصوصاً المختصرة مثل maps.app.goo.gl الي ما تحتوي
+	// إحداثيات) — لازم يمر بالسيرفر لأن المتصفح ما يقدر يتبع التحويل بسبب CORS.
+	mux.Handle("GET /api/geo/resolve-map-link", middleware.Chain(http.HandlerFunc(mapLinkHandler.Resolve), requireAuth))
+
 	mux.Handle("GET /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.List), requireAuth))
 	mux.Handle("POST /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.Create), requireAuth, requireSuppliersMgmt))
 	mux.Handle("PUT /api/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Update), requireAuth, requireSuppliersMgmt))

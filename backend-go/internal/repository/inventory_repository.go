@@ -290,6 +290,9 @@ func (r *InventoryRepository) hydrateRequest(req *model.ToolRequest) {
 	if req.ApprovedByID != nil {
 		req.ApprovedBy = r.loadEmployeeBrief(*req.ApprovedByID)
 	}
+	if req.Reason != nil {
+		req.ReasonLabel = model.ToolRequestReasonLabels[*req.Reason]
+	}
 }
 
 func (r *InventoryRepository) ListToolRequests(employeeID string) ([]model.ToolRequest, error) {
@@ -309,13 +312,13 @@ func (r *InventoryRepository) ListToolRequests(employeeID string) ([]model.ToolR
 	return requests, nil
 }
 
-func (r *InventoryRepository) CreateToolRequest(employeeID, toolID string) (*model.ToolRequest, error) {
+func (r *InventoryRepository) CreateToolRequest(employeeID, toolID, reason string, description *string) (*model.ToolRequest, error) {
 	var req model.ToolRequest
 	err := r.db.Get(&req, `
-		INSERT INTO "ToolRequest" (id, "employeeId", "toolId")
-		VALUES (gen_random_uuid()::text, $1, $2)
+		INSERT INTO "ToolRequest" (id, "employeeId", "toolId", reason, description)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
 		RETURNING *
-	`, employeeID, toolID)
+	`, employeeID, toolID, reason, description)
 	if err != nil {
 		return nil, err
 	}
@@ -328,13 +331,26 @@ func (r *InventoryRepository) DeleteToolRequest(id string) error {
 	return err
 }
 
-func (r *InventoryRepository) ApproveToolRequest(id, approvedByID string) (*model.ToolRequest, error) {
+func (r *InventoryRepository) GetToolRequest(id string) (*model.ToolRequest, error) {
+	var req model.ToolRequest
+	if err := r.db.Get(&req, `SELECT * FROM "ToolRequest" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	r.hydrateRequest(&req)
+	return &req, nil
+}
+
+// ApproveToolRequest يوافق على الطلب، ولو الأداة انشترت (مو متوفرة بالمخزن)
+// يخزن سعرها ومعرّف طلب المشتريات المتولّد حتى تنربط السلسلة كاملة.
+func (r *InventoryRepository) ApproveToolRequest(id, approvedByID string, purchasePrice *float64, procurementRequestID *string) (*model.ToolRequest, error) {
 	var req model.ToolRequest
 	err := r.db.Get(&req, `
-		UPDATE "ToolRequest" SET status = 'APPROVED', "approvedById" = $2, "approvedAt" = now()
+		UPDATE "ToolRequest" SET status = 'APPROVED', "approvedById" = $2, "approvedAt" = now(),
+			"purchasePrice" = COALESCE($3, "purchasePrice"),
+			"procurementRequestId" = COALESCE($4, "procurementRequestId")
 		WHERE id = $1
 		RETURNING *
-	`, id, approvedByID)
+	`, id, approvedByID, purchasePrice, procurementRequestID)
 	if err != nil {
 		return nil, err
 	}

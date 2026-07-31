@@ -10,10 +10,18 @@ import (
 
 type InventoryService struct {
 	repo *repository.InventoryRepository
+	// طلب أداة مو متوفرة بالمخزن يتحول لطلب مشتريات يوصل للمحاسب — نحتاج
+	// مستودع المشتريات حتى ننشئه. اختياري (SetProcurementRepository) حتى ما
+	// ينكسر أي كود ينشئ الخدمة بدونه.
+	procurement *repository.ProcurementRepository
 }
 
 func NewInventoryService(repo *repository.InventoryRepository) *InventoryService {
 	return &InventoryService{repo: repo}
+}
+
+func (s *InventoryService) SetProcurementRepository(p *repository.ProcurementRepository) {
+	s.procurement = p
 }
 
 func (s *InventoryService) CreateInventoryCheck(employeeID string, req model.CreateInventoryCheckRequest) (*model.InventoryCheck, error) {
@@ -93,7 +101,21 @@ func (s *InventoryService) CreateToolRequest(req model.CreateToolRequestRequest)
 	if req.EmployeeID == "" || req.ToolID == "" {
 		return nil, errors.New("employeeId and toolId are required")
 	}
-	return s.repo.CreateToolRequest(req.EmployeeID, req.ToolID)
+	if req.Reason == "" {
+		return nil, errors.New("لازم تختار سبب الطلب")
+	}
+	if !model.IsValidToolRequestReason(req.Reason) {
+		return nil, errors.New("سبب الطلب غير صحيح")
+	}
+	desc := req.Description
+	if desc != nil && strings.TrimSpace(*desc) == "" {
+		desc = nil
+	}
+	// "سبب آخر" بدون شرح ما ينفع الي راح يوافق — يوصله طلب بلا معلومة.
+	if req.Reason == model.ToolRequestReasonOther && desc == nil {
+		return nil, errors.New("لازم تكتب شرح للسبب لما تختار «سبب آخر»")
+	}
+	return s.repo.CreateToolRequest(req.EmployeeID, req.ToolID, req.Reason, desc)
 }
 
 func (s *InventoryService) DeleteToolRequest(id string) error {
@@ -104,7 +126,55 @@ func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRe
 	if req.ApprovedByID == "" {
 		return nil, errors.New("approvedById is required")
 	}
-	return s.repo.ApproveToolRequest(id, req.ApprovedByID)
+	existing, err := s.repo.GetToolRequest(id)
+	if err != nil {
+		return nil, errors.New("الطلب غير موجود")
+	}
+	if existing.Status != "PENDING" {
+		return nil, errors.New("هذا الطلب متعامل معه من قبل")
+	}
+
+	// الأداة موجودة بالشركة؟ إذا موجودة نوافق مباشرة. إذا ما موجودة، إداري
+	// الكميات مضطر يشتريها، فلازم يدخل سعرها، وننشئ طلب مشتريات يوصل للمحاسب
+	// حتى تنغلق الدورة المالية بدل ما يضيع سعر الشراء بلا أثر محاسبي.
+	tool, err := s.repo.GetOnDemandTool(existing.ToolID)
+	if err != nil {
+		return nil, errors.New("الأداة غير موجودة")
+	}
+	if tool.AvailableQuantity > 0 {
+		return s.repo.ApproveToolRequest(id, req.ApprovedByID, nil, nil)
+	}
+
+	if req.PurchasePrice == nil || *req.PurchasePrice <= 0 {
+		return nil, errors.New("الأداة مو متوفرة بالمخزن — لازم تدخل سعر الشراء حتى تنحول للمحاسب")
+	}
+	if s.procurement == nil {
+		return nil, errors.New("تعذر إنشاء طلب المشتريات")
+	}
+
+	price := *req.PurchasePrice
+	notes := "طلب شراء أداة «" + tool.Name + "» متولّد تلقائياً من موافقة على طلب أداة غير متوفرة بالمخزن."
+	if existing.Reason != nil {
+		notes += " السبب: " + model.ToolRequestReasonLabels[*existing.Reason] + "."
+	}
+	if existing.Description != nil {
+		notes += " الشرح: " + *existing.Description
+	}
+	pr, err := s.procurement.Create(model.CreateProcurementRequestRequest{
+		RequestedByID: existing.EmployeeID,
+		RequestType:   model.RequestTypePersonalSupply,
+		Notes:         &notes,
+		Items: []model.CreateProcurementItemRequest{{
+			ProductName: tool.Name,
+			Quantity:    1,
+			UnitPrice:   &price,
+			TotalPrice:  &price,
+		}},
+	})
+	if err != nil {
+		return nil, errors.New("تعذر إنشاء طلب المشتريات للمحاسب")
+	}
+	return s.repo.ApproveToolRequest(id, req.ApprovedByID, &price, &pr.ID)
 }
 
 func (s *InventoryService) RejectToolRequest(id string) (*model.ToolRequest, error) {

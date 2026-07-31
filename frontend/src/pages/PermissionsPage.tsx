@@ -97,7 +97,7 @@ export default function PermissionsPage() {
   const permissionGroups = [
     {
       title: 'إدارة الموظفين',
-      perms: ['staff_management', 'edit_employee_profile', 'kpi_management', 'kpi_criteria_management', 'inventory'],
+      perms: ['staff_management', 'edit_employee_profile', 'kpi_management', 'kpi_criteria_management', 'inventory', 'tool_requests_approve'],
     },
     {
       title: 'إدارة العمل',

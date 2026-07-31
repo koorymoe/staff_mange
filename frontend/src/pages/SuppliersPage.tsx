@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSession } from '../session'
 import LocationPicker from '../components/LocationPicker'
 import MapViewer from '../components/MapViewer'
@@ -150,6 +150,10 @@ export default function SuppliersPage() {
   // إحداثيات، النقطة تتحدد تلقائياً على الخريطة.
   const [formLocationUrl, setFormLocationUrl] = useState('')
   const [urlError, setUrlError] = useState('')
+  const [resolvingUrl, setResolvingUrl] = useState(false)
+  // نخزن آخر رابط انكتب بـref حتى نتجاهل رد سيرفر متأخر لرابط قديم
+  // (ينتحدّث بمعالج الكتابة، مو أثناء الرسم).
+  const urlRef = useRef('')
   const [formIsCompetitor, setFormIsCompetitor] = useState(false)
   const [formIsMaterial, setFormIsMaterial] = useState(false)
   const [formIsContractor, setFormIsContractor] = useState(false)
@@ -482,16 +486,34 @@ export default function SuppliersPage() {
                 value={formLocationUrl}
                 onChange={(e) => {
                   const url = e.target.value
+                  urlRef.current = url
                   setFormLocationUrl(url)
-                  if (!url.trim()) { setUrlError(''); setFormPoint(null); return }
+                  if (!url.trim()) { setUrlError(''); setFormPoint(null); setResolvingUrl(false); return }
                   const coords = parseCoordsFromUrl(url)
-                  if (coords) { setFormPoint(coords); setUrlError('') }
-                  else { setFormPoint(null); setUrlError('ما كدرنا نطلع الإحداثيات من هذا الرابط — الصق رابط فيه موقع، أو حدد على الخريطة.') }
+                  if (coords) { setFormPoint(coords); setUrlError(''); setResolvingUrl(false); return }
+                  // الروابط المختصرة (maps.app.goo.gl) ما بيها إحداثيات أصلاً —
+                  // لازم السيرفر يفتحها ويتبع التحويل حتى تبين النقطة.
+                  setFormPoint(null)
+                  setUrlError('')
+                  setResolvingUrl(true)
+                  const attempted = url
+                  request<{ lat: number; lng: number }>(`/geo/resolve-map-link?url=${encodeURIComponent(url)}`)
+                    .then((p: { lat: number; lng: number }) => {
+                      // ممكن المستخدم غيّر الرابط قبل ما يرد السيرفر
+                      if (attempted !== urlRef.current) return
+                      setFormPoint(p); setUrlError('')
+                    })
+                    .catch((err: unknown) => {
+                      if (attempted !== urlRef.current) return
+                      setUrlError(err instanceof Error ? err.message : 'ما كدرنا نطلع الإحداثيات من هذا الرابط — حدد على الخريطة.')
+                    })
+                    .finally(() => { if (attempted === urlRef.current) setResolvingUrl(false) })
                 }}
                 placeholder="الصق رابط الموقع من خرائط جوجل..."
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
                 dir="ltr"
               />
+              {resolvingUrl && <p className="mt-1 text-xs font-bold text-brand-600">جاري فتح الرابط واستخراج الموقع...</p>}
               {urlError && <p className="mt-1 text-xs font-bold text-red-600">{urlError}</p>}
               {formLocationUrl.trim() && formPoint && (
                 <p className="mt-1 text-xs font-bold text-emerald-700">

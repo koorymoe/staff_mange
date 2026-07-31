@@ -17,6 +17,11 @@ var DefaultPermissions = []Permission{
 	{Name: "kpi_management", Label: "تقييم الأداء (KPI)"},
 	{Name: "kpi_criteria_management", Label: "إدارة نقاط الكي بي اي (إضافة/حذف)"},
 	{Name: "inventory", Label: "جرد الأدوات"},
+	// موافقة/رفض طلبات الأدوات انفصلت بصلاحية مستقلة. قبل، كانت مربوطة بالدور
+	// الوظيفي فقط (ADMIN/HR_COORDINATOR/MONITOR) بدون أي منفذ صلاحية، فإداري
+	// الكميات — وهو صاحب الشغلة أصلاً — ما كان يقدر يوافق حتى لو انمنحت له
+	// صلاحية "جرد الأدوات". هسه تنمنح لوحدها لأي موظف.
+	{Name: "tool_requests_approve", Label: "موافقة/رفض طلبات الأدوات"},
 	{Name: "complaints", Label: "الشكاوى"},
 	{Name: "sales_booking", Label: "إنشاء حجز جديد"},
 	{Name: "manage_customers", Label: "إدارة العملاء"},
@@ -71,7 +76,7 @@ var RoleDefaultPermissions = map[string][]string{
 	"GPS_ADMIN":         {"gps_system"},
 	"QUALITY_ENGINEER":  {"auditing", "complaints", "quality_control", "sales_booking", "kpi_management"},
 	"ENGINEER":          {"expenses", "quotation_manage_all", "project_management"},
-	"PROCUREMENT_ADMIN": {"procurement", "inventory"},
+	"PROCUREMENT_ADMIN": {"procurement", "inventory", "tool_requests_approve"},
 	"DESIGNER":          {},
 	"SERVICE_MANAGER":   {"content_technician", "manage_services"},
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck } from '../api'
+import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck } from '../api'
 import { useSession } from '../session'
 
 type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests' | 'template' | 'reports'
@@ -38,9 +38,16 @@ export default function InventoryPage() {
   // إداري الكميات مسؤول عن توفير وإضافة "أدوات حسب الحاجة" (نفس مسؤوليته
   // بطلبات المواد الناقصة من الموظفين) — بالإضافة للأدمن.
   const canManageOnDemand = isAdmin || currentUser?.role === 'PROCUREMENT_ADMIN'
-  // موافقة/رفض طلبات الأدوات: الأدمن، إداري الكوادر، وكمان المراقب (على عكس
-  // "جرد الأدوات" الي المراقب بيه اطلاع فقط — هذي طلبات موافقة منفصلة).
-  const canApproveRequests = canManageInventory || currentUser?.role === 'MONITOR'
+  // موافقة/رفض طلبات الأدوات صارت صلاحية مستقلة (tool_requests_approve) بدل
+  // ما تكون مشتقة من "جرد الأدوات" أو من الدور — إداري الكميات كان ينحرم منها
+  // مهما انمنحت له صلاحيات ثانية. الأدوار القديمة باقية حتى ما ينقطع أحد.
+  const canApproveRequests =
+    isAdmin ||
+    permissions.includes('tool_requests_approve') ||
+    currentUser?.role === 'HR_COORDINATOR' ||
+    currentUser?.role === 'MONITOR'
+  // حذف الطلب يمحي أثره نهائياً — لمدير النظام والمالك فقط، مطابق للباك إند.
+  const canDeleteRequests = isAdmin
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const handleResolveCheck = async (id: string) => {
     setResolvingId(id)
@@ -186,13 +193,32 @@ export default function InventoryPage() {
     }
   }
 
-  const handleApproveRequest = async (id: string) => {
-    if (!currentUser) return
+  // الموافقة تمر بنافذة: إذا الأداة موجودة بالشركة تنوافق مباشرة، وإذا مو
+  // موجودة لازم إداري الكميات يدخل سعر شرائها وينفتح طلب مشتريات للمحاسب.
+  const [approveTarget, setApproveTarget] = useState<ToolRequestItem | null>(null)
+  const [approvePrice, setApprovePrice] = useState('')
+  const [approveError, setApproveError] = useState('')
+  const [approving, setApproving] = useState(false)
+
+  const confirmApprove = async () => {
+    if (!currentUser || !approveTarget) return
+    const inStock = (approveTarget.tool?.availableQuantity ?? 0) > 0
+    const price = parseFloat(approvePrice)
+    if (!inStock && (!approvePrice.trim() || isNaN(price) || price <= 0)) {
+      setApproveError('الأداة مو متوفرة — لازم تدخل سعر الشراء حتى يتحول الطلب للمحاسب')
+      return
+    }
+    setApproving(true)
+    setApproveError('')
     try {
-      await api.approveToolRequest(id, currentUser.id)
+      await api.approveToolRequest(approveTarget.id, currentUser.id, inStock ? undefined : price)
+      setApproveTarget(null)
+      setApprovePrice('')
       load()
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'حدث خطأ')
+      setApproveError(err instanceof Error ? err.message : 'حدث خطأ')
+    } finally {
+      setApproving(false)
     }
   }
 
@@ -538,6 +564,7 @@ export default function InventoryPage() {
                     <tr>
                       <th className="px-4 py-3 text-sm font-semibold">الموظف</th>
                       <th className="px-4 py-3 text-sm font-semibold">الأداة</th>
+                      <th className="px-4 py-3 text-sm font-semibold">السبب والشرح</th>
                       <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
                       <th className="px-4 py-3 text-sm font-semibold">تاريخ الطلب</th>
                       <th className="px-4 py-3 text-sm font-semibold">تاريخ الاستلام</th>
@@ -550,6 +577,21 @@ export default function InventoryPage() {
                       <tr key={r.id} className="transition-colors hover:bg-slate-50">
                         <td className="px-4 py-3 font-medium">{r.employee?.name || '-'}</td>
                         <td className="px-4 py-3">{r.tool?.name || '-'}</td>
+                        <td className="px-4 py-3 max-w-xs">
+                          {r.reasonLabel ? (
+                            <>
+                              <div className="font-medium text-brand-800">{r.reasonLabel}</div>
+                              {r.description && <div className="mt-0.5 text-xs text-slate-500">{r.description}</div>}
+                            </>
+                          ) : (
+                            <span className="text-slate-400">-</span>
+                          )}
+                          {r.purchasePrice != null && (
+                            <div className="mt-1 text-xs font-bold text-amber-700">
+                              انشترت بسعر {r.purchasePrice.toLocaleString('ar-IQ')} د.ع — تحوّلت للمحاسب
+                            </div>
+                          )}
+                        </td>
                         <td className="px-4 py-3">
                           <span className={`rounded-full px-3 py-1 text-xs font-bold ${requestStatusColors[r.status]}`}>
                             {requestStatusLabels[r.status]}
@@ -570,7 +612,7 @@ export default function InventoryPage() {
                               {r.status === 'PENDING' && (
                                 <>
                                   <button
-                                    onClick={() => handleApproveRequest(r.id)}
+                                    onClick={() => { setApproveTarget(r); setApprovePrice(''); setApproveError('') }}
                                     className="rounded-lg bg-green-100 px-3 py-1 text-xs font-medium text-green-700 hover:bg-green-200"
                                   >
                                     موافقة
@@ -591,12 +633,14 @@ export default function InventoryPage() {
                                   استرجاع
                                 </button>
                               )}
-                              <button
-                                onClick={() => handleDeleteRequest(r.id)}
-                                className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200"
-                              >
-                                حذف
-                              </button>
+                              {canDeleteRequests && (
+                                <button
+                                  onClick={() => handleDeleteRequest(r.id)}
+                                  className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 hover:bg-slate-200"
+                                >
+                                  حذف
+                                </button>
+                              )}
                             </div>
                           </td>
                         )}
@@ -604,7 +648,7 @@ export default function InventoryPage() {
                     ))}
                     {toolRequests.length === 0 && (
                       <tr>
-                        <td colSpan={canApproveRequests ? 7 : 6} className="px-4 py-6 text-center text-slate-400">
+                        <td colSpan={canApproveRequests ? 8 : 7} className="px-4 py-6 text-center text-slate-400">
                           لا توجد طلبات أدوات
                         </td>
                       </tr>
@@ -738,6 +782,70 @@ export default function InventoryPage() {
           )}
         </div>
       )}
+
+      {approveTarget && (() => {
+        const inStock = (approveTarget.tool?.availableQuantity ?? 0) > 0
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+            <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+              <h3 className="text-lg font-bold text-brand-900">موافقة على طلب أداة</h3>
+
+              <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
+                <div className="flex justify-between"><span className="text-slate-500">الموظف</span><span className="font-medium">{approveTarget.employee?.name || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500">الأداة</span><span className="font-medium">{approveTarget.tool?.name || '-'}</span></div>
+                {approveTarget.reasonLabel && (
+                  <div className="flex justify-between gap-4"><span className="text-slate-500">السبب</span><span className="font-medium text-left">{approveTarget.reasonLabel}</span></div>
+                )}
+                {approveTarget.description && (
+                  <div className="border-t border-slate-200 pt-2">
+                    <div className="text-slate-500">شرح الموظف</div>
+                    <div className="mt-0.5 text-slate-700">{approveTarget.description}</div>
+                  </div>
+                )}
+              </div>
+
+              {inStock ? (
+                <p className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm font-medium text-emerald-700">
+                  ✓ الأداة متوفرة بالشركة ({approveTarget.tool?.availableQuantity} قطعة) — تنصرف من المخزن مباشرة بدون شراء.
+                </p>
+              ) : (
+                <>
+                  <p className="mt-4 rounded-xl bg-amber-50 p-4 text-sm font-medium text-amber-800">
+                    ⚠️ الأداة مو متوفرة بالشركة — لازم تنشترى. اكتب سعر الشراء وراح ينفتح طلب مشتريات تلقائياً يوصل للمحاسب.
+                  </p>
+                  <label className="mt-4 block text-sm font-semibold text-slate-700">سعر الشراء (دينار عراقي)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={approvePrice}
+                    onChange={(e) => { setApprovePrice(e.target.value); setApproveError('') }}
+                    placeholder="مثال: 25000"
+                    className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+                  />
+                </>
+              )}
+
+              {approveError && <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{approveError}</p>}
+
+              <div className="mt-5 flex gap-3">
+                <button
+                  onClick={confirmApprove}
+                  disabled={approving}
+                  className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-2.5 font-bold text-white disabled:opacity-50"
+                >
+                  {approving ? 'جاري...' : inStock ? 'تأكيد الموافقة' : 'موافقة وإرسال للمحاسب'}
+                </button>
+                <button
+                  onClick={() => setApproveTarget(null)}
+                  className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50"
+                >
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

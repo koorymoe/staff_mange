@@ -314,5 +314,28 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			WHERE p.name = 'content_technician'
 			ON CONFLICT ("employeeId", "permissionId") DO NOTHING`,
 		},
+		{
+			// سبب الطلب وشرحه، وسعر الشراء + ربط طلب المشتريات المتولّد لما
+			// تكون الأداة مو متوفرة بالمخزن.
+			Version: "0154_add_tool_request_reason_and_purchase",
+			SQL: `ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS reason TEXT;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS description TEXT;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "purchasePrice" DOUBLE PRECISION;
+			ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "procurementRequestId" TEXT`,
+		},
+		{
+			// فصل موافقة طلبات الأدوات عن الدور الوظيفي الصارم. نمنحها تلقائياً
+			// لكل إداري كميات (وهو المعني بالشغلة) ولكل موظف بدور كان يقدر
+			// يوافق قبل الفصل، حتى ما ينقطع وصول أحد.
+			Version: "0155_tool_requests_approve_permission",
+			SQL: `INSERT INTO "Permission" (id, name, label)
+			VALUES (gen_random_uuid()::text, 'tool_requests_approve', 'موافقة/رفض طلبات الأدوات')
+			ON CONFLICT (name) DO NOTHING;
+			INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
+			SELECT gen_random_uuid()::text, e.id, (SELECT id FROM "Permission" WHERE name = 'tool_requests_approve')
+			FROM "Employee" e
+			WHERE e.role IN ('PROCUREMENT_ADMIN', 'ADMIN', 'HR_COORDINATOR', 'MONITOR')
+			ON CONFLICT ("employeeId", "permissionId") DO NOTHING`,
+		},
 	}
 }

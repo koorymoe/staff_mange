@@ -1219,10 +1219,30 @@ export interface ToolRequestItem {
   toolId: string
   tool?: OnDemandTool
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RETURNED'
+  reason: ToolRequestReason | null
+  reasonLabel: string
+  description: string | null
+  purchasePrice: number | null
+  procurementRequestId: string | null
   approvedById: string | null
   requestedAt: string
   approvedAt: string | null
   returnedAt: string | null
+}
+
+export type ToolRequestReason =
+  | 'DAMAGED' | 'LOST' | 'WORN' | 'STOLEN' | 'NEVER_HAD' | 'EXTRA' | 'OTHER'
+
+// نفس النصوص الموجودة بالباك إند (model/inventory.go) — أهم سببين أول القائمة
+// لأنهم الأكثر استعمالاً: الأداة تالفة أو ضايعة.
+export const toolRequestReasonLabels: Record<ToolRequestReason, string> = {
+  DAMAGED: 'الأداة الي عندي تالفة',
+  LOST: 'الأداة الي عندي ضايعة',
+  WORN: 'الأداة مستهلكة من كثر الاستعمال',
+  STOLEN: 'الأداة مسروقة',
+  NEVER_HAD: 'ما عندي هذي الأداة أصلاً',
+  EXTRA: 'أحتاج نسخة إضافية لطبيعة الشغل',
+  OTHER: 'سبب آخر',
 }
 
 export type ComplaintType = 'DELAY' | 'DISORGANIZED' | 'TECHNICAL' | 'EXECUTION_ERROR' | 'INCOMPLETE' | 'OTHER'
@@ -1977,12 +1997,18 @@ export const api = {
     request<OnDemandTool>('/inventory/ondemand', { method: 'POST', body: JSON.stringify(data) }),
   updateOnDemandTool: (id: string, data: Partial<OnDemandTool>) =>
     request<OnDemandTool>(`/inventory/ondemand/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  // يفتح رابط الخريطة بالسيرفر ويرجع النقطة — ضروري للروابط المختصرة
+  // (maps.app.goo.gl) الي ما تحتوي إحداثيات إلا بعد ما تنفتح.
+  resolveMapLink: (url: string) =>
+    request<{ lat: number; lng: number }>(`/geo/resolve-map-link?url=${encodeURIComponent(url)}`),
   getToolRequests: (employeeId?: string) =>
     request<ToolRequestItem[]>(`/inventory/requests${employeeId ? `?employeeId=${employeeId}` : ''}`),
-  createToolRequest: (data: { employeeId: string; toolId: string }) =>
+  createToolRequest: (data: { employeeId: string; toolId: string; reason: ToolRequestReason; description?: string }) =>
     request<ToolRequestItem>('/inventory/requests', { method: 'POST', body: JSON.stringify(data) }),
-  approveToolRequest: (id: string, approvedById: string) =>
-    request<ToolRequestItem>(`/inventory/requests/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedById }) }),
+  // purchasePrice يُرسل فقط لما الأداة مو متوفرة بالمخزن — السيرفر يرفض
+  // الموافقة بدونه بهذي الحالة وينشئ طلب مشتريات للمحاسب لما ينوصل.
+  approveToolRequest: (id: string, approvedById: string, purchasePrice?: number) =>
+    request<ToolRequestItem>(`/inventory/requests/${id}/approve`, { method: 'PUT', body: JSON.stringify({ approvedById, purchasePrice }) }),
   rejectToolRequest: (id: string) =>
     request<ToolRequestItem>(`/inventory/requests/${id}/reject`, { method: 'PUT', body: JSON.stringify({}) }),
   // العدة القياسية (PersonalToolTemplateItem)

@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react'
-import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest } from '../api'
+import {
+  api, toolRequestReasonLabels,
+  type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestReason,
+} from '../api'
 import { useSession } from '../session'
 
 type TabKey = 'checklist' | 'vehicle' | 'request' | 'my-requests'
@@ -43,6 +46,11 @@ export default function MyInventory() {
   const [checkMap, setCheckMap] = useState<Record<string, boolean>>({})
   const [checkDone, setCheckDone] = useState(false)
   const [requesting, setRequesting] = useState(false)
+  // نافذة سبب طلب الأداة
+  const [reasonTool, setReasonTool] = useState<OnDemandTool | null>(null)
+  const [reason, setReason] = useState<ToolRequestReason>('DAMAGED')
+  const [description, setDescription] = useState('')
+  const [reasonError, setReasonError] = useState('')
 
   const load = async () => {
     if (!employee) return
@@ -97,15 +105,30 @@ export default function MyInventory() {
     }
   }
 
-  const handleRequestTool = async (toolId: string) => {
-    if (!employee) return
+  // طلب الأداة صار يمر بنافذة سبب إجبارية — إداري الكميات لازم يقرأ ليش
+  // ينطلب حتى يقدر يوافق أو يرفض بقرار مبني على معلومة.
+  const submitToolRequest = async () => {
+    if (!employee || !reasonTool) return
+    if (reason === 'OTHER' && !description.trim()) {
+      setReasonError('لما تختار «سبب آخر» لازم تكتب شرح للمشكلة')
+      return
+    }
     setRequesting(true)
+    setReasonError('')
     try {
-      await api.createToolRequest({ employeeId: employee.id, toolId })
+      await api.createToolRequest({
+        employeeId: employee.id,
+        toolId: reasonTool.id,
+        reason,
+        description: description.trim() || undefined,
+      })
+      setReasonTool(null)
+      setDescription('')
+      setReason('DAMAGED')
       await load()
       setActiveTab('my-requests')
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'حدث خطأ')
+      setReasonError(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
       setRequesting(false)
     }
@@ -301,16 +324,19 @@ export default function MyInventory() {
                             لديك طلب نشط لهذه الأداة
                           </div>
                         ) : (
+                          // حتى لو الأداة مو متوفرة بالمخزن الموظف يقدر يطلبها —
+                          // إداري الكميات وقتها يشتريها ويدخل سعرها ويتحول
+                          // الطلب للمحاسب. منع الطلب كان يوقف هذي الدورة كاملة.
                           <button
-                            onClick={() => handleRequestTool(tool.id)}
-                            disabled={!available || requesting}
-                            className={`w-full rounded-lg py-2.5 text-sm font-bold transition-all ${
+                            onClick={() => { setReasonTool(tool); setReason('DAMAGED'); setDescription(''); setReasonError('') }}
+                            disabled={requesting}
+                            className={`w-full rounded-lg py-2.5 text-sm font-bold transition-all disabled:opacity-50 ${
                               available
-                                ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white hover:shadow-md cursor-pointer'
-                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white hover:shadow-md'
+                                : 'border border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100'
                             }`}
                           >
-                            {available ? '📋 طلب هذه الأداة' : 'غير متاحة'}
+                            {available ? '📋 طلب هذه الأداة' : '🛒 مو متوفرة — اطلب شراءها'}
                           </button>
                         )}
                       </div>
@@ -358,6 +384,59 @@ export default function MyInventory() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {reasonTool && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-900">طلب أداة: {reasonTool.name}</h3>
+            <p className="mt-1 text-sm text-slate-500">
+              {reasonTool.availableQuantity > 0
+                ? 'الأداة متوفرة بالمخزن. وضّح سبب الطلب حتى إداري الكميات يوافق.'
+                : 'الأداة مو متوفرة بالمخزن — إذا انوافق عليها راح تنشترى وينفتح طلب مشتريات للمحاسب.'}
+            </p>
+
+            <label className="mt-5 block text-sm font-semibold text-slate-700">شنو السبب؟</label>
+            <select
+              value={reason}
+              onChange={(e) => { setReason(e.target.value as ToolRequestReason); setReasonError('') }}
+              className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+            >
+              {(Object.keys(toolRequestReasonLabels) as ToolRequestReason[]).map((k) => (
+                <option key={k} value={k}>{toolRequestReasonLabels[k]}</option>
+              ))}
+            </select>
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">
+              شرح المشكلة {reason === 'OTHER' ? <span className="text-red-600">(إجباري)</span> : <span className="font-normal text-slate-400">(اختياري)</span>}
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => { setDescription(e.target.value); setReasonError('') }}
+              rows={3}
+              placeholder="اكتب تفاصيل تساعد إداري الكميات يفهم الوضع..."
+              className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+            />
+
+            {reasonError && <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-600">{reasonError}</p>}
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={submitToolRequest}
+                disabled={requesting}
+                className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-2.5 font-bold text-white disabled:opacity-50"
+              >
+                {requesting ? 'جاري الإرسال...' : 'إرسال الطلب'}
+              </button>
+              <button
+                onClick={() => setReasonTool(null)}
+                className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

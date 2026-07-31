@@ -110,28 +110,69 @@ type UpdateOnDemandToolRequest struct {
 	Status            *string `json:"status"`
 }
 
+// أسباب طلب أداة — الموظف لازم يختار وحد منها حتى إداري الكميات يعرف ليش
+// ينطلب، ويقدر يقرأ الشرح ويقرر موافقة أو رفض على أساس واضح بدل طلب أعمى.
+const (
+	ToolRequestReasonDamaged   = "DAMAGED"   // الأداة الي عنده تالفة
+	ToolRequestReasonLost      = "LOST"      // الأداة الي عنده ضايعة
+	ToolRequestReasonWorn      = "WORN"      // مستهلكة من كثر الاستعمال
+	ToolRequestReasonStolen    = "STOLEN"    // مسروقة
+	ToolRequestReasonNeverHad  = "NEVER_HAD" // ما عنده الأداة أصلاً
+	ToolRequestReasonExtraNeed = "EXTRA"     // يحتاج نسخة إضافية لطبيعة الشغل
+	ToolRequestReasonOther     = "OTHER"     // سبب ثاني (يشرحه بالوصف)
+)
+
+var ToolRequestReasonLabels = map[string]string{
+	ToolRequestReasonDamaged:   "الأداة الي عندي تالفة",
+	ToolRequestReasonLost:      "الأداة الي عندي ضايعة",
+	ToolRequestReasonWorn:      "الأداة مستهلكة من كثر الاستعمال",
+	ToolRequestReasonStolen:    "الأداة مسروقة",
+	ToolRequestReasonNeverHad:  "ما عندي هذي الأداة أصلاً",
+	ToolRequestReasonExtraNeed: "أحتاج نسخة إضافية لطبيعة الشغل",
+	ToolRequestReasonOther:     "سبب آخر",
+}
+
+func IsValidToolRequestReason(reason string) bool {
+	_, ok := ToolRequestReasonLabels[reason]
+	return ok
+}
+
 type ToolRequest struct {
 	ID           string     `db:"id" json:"id"`
 	EmployeeID   string     `db:"employeeId" json:"employeeId"`
 	ToolID       string     `db:"toolId" json:"toolId"`
 	Status       string     `db:"status" json:"status"`
+	Reason       *string    `db:"reason" json:"reason"`
+	Description  *string    `db:"description" json:"description"`
 	ApprovedByID *string    `db:"approvedById" json:"approvedById"`
 	RequestedAt  time.Time  `db:"requestedAt" json:"requestedAt"`
 	ApprovedAt   *time.Time `db:"approvedAt" json:"approvedAt"`
 	ReturnedAt   *time.Time `db:"returnedAt" json:"returnedAt"`
+	// إذا الأداة ما كانت متوفرة بالشركة وقت الموافقة، إداري الكميات لازم يدخل
+	// سعر الشراء، ويتفتح طلب مشتريات تلقائياً يوصل للمحاسب — هذول الحقلين
+	// يربطون طلب الأداة بطلب المشتريات المتولّد منه.
+	PurchasePrice        *float64 `db:"purchasePrice" json:"purchasePrice"`
+	ProcurementRequestID *string  `db:"procurementRequestId" json:"procurementRequestId"`
 
 	Employee   *EmployeeBrief `db:"-" json:"employee"`
 	Tool       *OnDemandTool  `db:"-" json:"tool"`
 	ApprovedBy *EmployeeBrief `db:"-" json:"approvedBy"`
+	// ReasonLabel نص السبب بالعربي، محسوب بالسيرفر حتى الواجهة ما تعيد
+	// تعريف نفس الخريطة وتنحرف عنها.
+	ReasonLabel string `db:"-" json:"reasonLabel"`
 }
 
 type CreateToolRequestRequest struct {
-	EmployeeID string `json:"employeeId"`
-	ToolID     string `json:"toolId"`
+	EmployeeID  string  `json:"employeeId"`
+	ToolID      string  `json:"toolId"`
+	Reason      string  `json:"reason"`
+	Description *string `json:"description"`
 }
 
 type ApproveToolRequestRequest struct {
 	ApprovedByID string `json:"approvedById"`
+	// يُطلب فقط لما الأداة مو متوفرة بالمخزن — بغير هذي الحالة ينهمل.
+	PurchasePrice *float64 `json:"purchasePrice"`
 }
 
 // PersonalToolTemplateItem هو "عدة قياسية" — قائمة رئيسية بأسماء الأدوات الشخصية
