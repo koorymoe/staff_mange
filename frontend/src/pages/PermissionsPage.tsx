@@ -119,7 +119,7 @@ export default function PermissionsPage() {
     },
     {
       title: 'المشتريات والمواد',
-      perms: ['procurement', 'procurement_personal', 'procurement_customer'],
+      perms: ['procurement', 'procurement_personal', 'procurement_customer', 'suppliers_management'],
     },
     {
       title: 'الحسابات',

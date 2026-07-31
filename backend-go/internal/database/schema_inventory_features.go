@@ -293,5 +293,26 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "VipCustomer_markedByEmployeeId_idx" ON "VipCustomer"("markedByEmployeeId")`,
 		},
+		{
+			// رابط موقع المورد (بديل عن التحديد اليدوي على الخريطة) + هل هو منافس.
+			Version: "0152_add_supplier_location_url_and_competitor",
+			SQL: `ALTER TABLE "Supplier" ADD COLUMN IF NOT EXISTS "locationUrl" TEXT;
+			ALTER TABLE "Supplier" ADD COLUMN IF NOT EXISTS "isCompetitor" BOOLEAN NOT NULL DEFAULT false`,
+		},
+		{
+			// فصل صلاحية الموردين عن صلاحية التقني: نمنح suppliers_management
+			// تلقائياً لكل موظف عنده content_technician حالياً، حتى ما يخسر أحد
+			// وصوله الي كان موجود قبل الفصل.
+			Version: "0153_split_suppliers_permission",
+			SQL: `INSERT INTO "Permission" (id, name, label)
+			VALUES (gen_random_uuid()::text, 'suppliers_management', 'إدارة الموردين (إضافة وتعديل)')
+			ON CONFLICT (name) DO NOTHING;
+			INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
+			SELECT gen_random_uuid()::text, ep."employeeId", (SELECT id FROM "Permission" WHERE name = 'suppliers_management')
+			FROM "EmployeePermission" ep
+			JOIN "Permission" p ON p.id = ep."permissionId"
+			WHERE p.name = 'content_technician'
+			ON CONFLICT ("employeeId", "permissionId") DO NOTHING`,
+		},
 	}
 }

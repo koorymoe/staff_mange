@@ -43,7 +43,11 @@ var DefaultPermissions = []Permission{
 	{Name: "procurement_customer", Label: "طلب منتج للزبون"},
 	{Name: "monitoring", Label: "مراقبة (متابعة المهام والحجوزات والموظفين)"},
 	{Name: "auditing", Label: "تدقيق (التحقق من جودة العمل والتقارير والحسابات)"},
-	{Name: "content_technician", Label: "صلاحية التقني (إدارة المحتوى التدريبي والخدمات والموردين والمواد)"},
+	{Name: "content_technician", Label: "صلاحية التقني (إدارة المحتوى التدريبي والخدمات والمواد)"},
+	// الموردون انفصلوا بصلاحية مستقلة — كانوا مربوطين بـcontent_technician
+	// الواسعة، فمنح موظف حق إضافة مورد كان يفتحله التدريب والخدمات والمنتجات
+	// كلها معاه. هسه صلاحية وحدها تُمنح لوحدها.
+	{Name: "suppliers_management", Label: "إدارة الموردين (إضافة وتعديل)"},
 	{Name: "vehicle_management", Label: "إدارة المركبات"},
 	{Name: "quality_control", Label: "الجودة (متابعة مشاكل التنفيذ والرقابة)"},
 	{Name: "leader_basket", Label: "سلة الليدر (فاتورة الليدر / المواد والمنظومات المختارة)"},

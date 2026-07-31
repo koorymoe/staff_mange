@@ -41,8 +41,10 @@ interface Supplier {
   ownerName: string
   phone: string
   address: string | null
+  locationUrl: string | null
   lat: number | null
   lng: number | null
+  isCompetitor: boolean
   isMaterialSupplier: boolean
   isContractor: boolean
   traderTypes: string[]
@@ -60,6 +62,29 @@ const traderTypeLabels: Record<string, string> = {
 }
 
 const traderTypeOptions = ['وكيل', 'موزع', 'تاجر']
+
+// parseCoordsFromUrl يستخرج الإحداثيات من رابط خرائط (جوجل/OSM) بأشكاله
+// الشائعة: @lat,lng — q=lat,lng — !3dlat!4dlng — /lat,lng.
+function parseCoordsFromUrl(url: string): { lat: number; lng: number } | null {
+  const patterns = [
+    /@(-?\d+\.\d+),(-?\d+\.\d+)/,
+    /[?&](?:q|query|ll|daddr|destination)=(-?\d+\.\d+)%2C(-?\d+\.\d+)/i,
+    /[?&](?:q|query|ll|daddr|destination)=(-?\d+\.\d+),(-?\d+\.\d+)/i,
+    /!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/,
+    /[?&]mlat=(-?\d+\.\d+)&mlon=(-?\d+\.\d+)/i,
+    /#map=\d+\/(-?\d+\.\d+)\/(-?\d+\.\d+)/,
+    /\/(-?\d+\.\d+),(-?\d+\.\d+)/,
+  ]
+  for (const re of patterns) {
+    const m = url.match(re)
+    if (m) {
+      const lat = parseFloat(m[1])
+      const lng = parseFloat(m[2])
+      if (Math.abs(lat) <= 90 && Math.abs(lng) <= 180) return { lat, lng }
+    }
+  }
+  return null
+}
 
 // Modal backdrop — module-level so it has a stable identity across parent re-renders
 // (a new function identity per render would remount children and drop input focus).
@@ -121,6 +146,11 @@ export default function SuppliersPage() {
   const [formPhone, setFormPhone] = useState('')
   const [formAddress, setFormAddress] = useState('')
   const [formPoint, setFormPoint] = useState<{ lat: number; lng: number } | null>(null)
+  // إما رابط موقع وإما تحديد على الخريطة — مو الاثنين. لو انلصق رابط فيه
+  // إحداثيات، النقطة تتحدد تلقائياً على الخريطة.
+  const [formLocationUrl, setFormLocationUrl] = useState('')
+  const [urlError, setUrlError] = useState('')
+  const [formIsCompetitor, setFormIsCompetitor] = useState(false)
   const [formIsMaterial, setFormIsMaterial] = useState(false)
   const [formIsContractor, setFormIsContractor] = useState(false)
   const [formTraderTypes, setFormTraderTypes] = useState<string[]>([])
@@ -164,7 +194,8 @@ export default function SuppliersPage() {
 
   const resetForm = () => {
     setFormCompanyName(''); setFormOwnerName(''); setFormPhone('')
-    setFormAddress(''); setFormPoint(null); setFormIsMaterial(false); setFormIsContractor(false)
+    setFormAddress(''); setFormPoint(null); setFormLocationUrl(''); setUrlError('')
+    setFormIsCompetitor(false); setFormIsMaterial(false); setFormIsContractor(false)
     setFormTraderTypes([]); setFormNotes(''); setFormSpecialtyIds([])
   }
 
@@ -175,6 +206,9 @@ export default function SuppliersPage() {
   const openEdit = (s: Supplier) => {
     setFormCompanyName(s.companyName); setFormOwnerName(s.ownerName); setFormPhone(s.phone)
     setFormAddress(s.address || '')
+    setFormLocationUrl(s.locationUrl || '')
+    setUrlError('')
+    setFormIsCompetitor(s.isCompetitor)
     setFormPoint(s.lat != null && s.lng != null ? { lat: s.lat, lng: s.lng } : null)
     setFormIsMaterial(s.isMaterialSupplier); setFormIsContractor(s.isContractor)
     setFormTraderTypes(s.traderTypes || []); setFormNotes(s.notes || '')
@@ -190,6 +224,8 @@ export default function SuppliersPage() {
       ownerName: formOwnerName,
       phone: formPhone,
       address: formAddress || null,
+      locationUrl: formLocationUrl || null,
+      isCompetitor: formIsCompetitor,
       lat: formPoint?.lat ?? null,
       lng: formPoint?.lng ?? null,
       isMaterialSupplier: formIsMaterial,
@@ -332,6 +368,9 @@ export default function SuppliersPage() {
                   <span key={t} className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">{traderTypeLabels[t] || t}</span>
                 ))}
               </div>
+              {s.isCompetitor && (
+                <span className="mt-2 inline-block rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">⚠️ منافس</span>
+              )}
               {s.lat && s.lng && (
                 <button
                   onClick={(e) => { e.stopPropagation(); setMapSupplier(s) }}
@@ -421,13 +460,52 @@ export default function SuppliersPage() {
                   placeholder="مثال: كربلاء - شارع الجمهورية - قرب ..."
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500" />
               </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">منافس؟</label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => setFormIsCompetitor(true)}
+                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${formIsCompetitor ? 'bg-red-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                    نعم، منافس
+                  </button>
+                  <button type="button" onClick={() => setFormIsCompetitor(false)}
+                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${!formIsCompetitor ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                    لا
+                  </button>
+                </div>
+              </div>
             </div>
 
-            {/* نفس أسلوب إدارة الحجوزات: عنوان كلامي + خريطة نحدد عليها النقطة */}
+            {/* الموقع: إما رابط وإما تحديد على الخريطة — مو الاثنين سوه. */}
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">تحديد الموقع على الخريطة</label>
-              <LocationPicker value={formPoint} onChange={setFormPoint} />
+              <label className="mb-1 block text-sm font-medium text-slate-600">رابط الموقع (بديل عن الخريطة)</label>
+              <input
+                value={formLocationUrl}
+                onChange={(e) => {
+                  const url = e.target.value
+                  setFormLocationUrl(url)
+                  if (!url.trim()) { setUrlError(''); setFormPoint(null); return }
+                  const coords = parseCoordsFromUrl(url)
+                  if (coords) { setFormPoint(coords); setUrlError('') }
+                  else { setFormPoint(null); setUrlError('ما كدرنا نطلع الإحداثيات من هذا الرابط — الصق رابط فيه موقع، أو حدد على الخريطة.') }
+                }}
+                placeholder="الصق رابط الموقع من خرائط جوجل..."
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
+                dir="ltr"
+              />
+              {urlError && <p className="mt-1 text-xs font-bold text-red-600">{urlError}</p>}
+              {formLocationUrl.trim() && formPoint && (
+                <p className="mt-1 text-xs font-bold text-emerald-700">
+                  ✓ انحددت النقطة تلقائياً من الرابط ({formPoint.lat.toFixed(5)}, {formPoint.lng.toFixed(5)})
+                </p>
+              )}
             </div>
+
+            {!formLocationUrl.trim() && (
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">أو حدد الموقع على الخريطة</label>
+                <LocationPicker value={formPoint} onChange={setFormPoint} />
+              </div>
+            )}
 
             <div>
               <label className="mb-2 block text-sm font-medium text-slate-600">التخصصات</label>
@@ -506,6 +584,10 @@ export default function SuppliersPage() {
           <div className="mt-4 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
             <p><span className="text-slate-400">المالك: </span>{detailSupplier.ownerName}</p>
             <p><span className="text-slate-400">الهاتف: </span><a href={`tel:${detailSupplier.phone}`} className="text-brand-600 hover:underline">{detailSupplier.phone}</a></p>
+            <p><span className="text-slate-400">منافس: </span>{detailSupplier.isCompetitor ? <span className="font-bold text-red-600">نعم</span> : 'لا'}</p>
+            {detailSupplier.locationUrl && (
+              <p className="sm:col-span-2"><span className="text-slate-400">رابط الموقع: </span><a href={detailSupplier.locationUrl} target="_blank" rel="noreferrer" className="text-brand-500 hover:underline" dir="ltr">{detailSupplier.locationUrl}</a></p>
+            )}
             {detailSupplier.address && (
               <p className="sm:col-span-2"><span className="text-slate-400">العنوان: </span>{detailSupplier.address}</p>
             )}

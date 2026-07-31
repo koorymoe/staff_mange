@@ -53,6 +53,9 @@ export default function LocationPicker({ value, onChange }: Props) {
   const [searching, setSearching] = useState(false)
   const [searchError, setSearchError] = useState('')
   const [myLocation, setMyLocation] = useState<[number, number] | null>(null)
+  // ملء الشاشة: الخريطة تتوسع بنفس الصفحة (overlay) — ما تحوّل المستخدم
+  // لنافذة/رابط ثاني، والخروج بزر أو بمفتاح Esc.
+  const [fullscreen, setFullscreen] = useState(false)
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -185,8 +188,22 @@ export default function LocationPicker({ value, onChange }: Props) {
     )
   }
 
+  useEffect(() => {
+    if (!fullscreen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullscreen])
+
+  // لازم Leaflet يعيد حساب أبعاده بعد ما يتغير حجم الحاوية، وإلا تطلع الخريطة
+  // مقصوصة أو رمادية.
+  useEffect(() => {
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 150)
+    return () => clearTimeout(t)
+  }, [fullscreen])
+
   return (
-    <div className="space-y-3">
+    <div className={fullscreen ? 'fixed inset-0 z-[2000] flex flex-col gap-3 bg-white p-4' : 'space-y-3'}>
       <div className="flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <input
@@ -230,7 +247,17 @@ export default function LocationPicker({ value, onChange }: Props) {
 
       {searchError && <p className="text-xs text-red-600">{searchError}</p>}
 
-      <div ref={containerRef} className="h-72 w-full overflow-hidden rounded-xl border border-slate-200" />
+      <div className={`relative w-full overflow-hidden rounded-xl border border-slate-200 ${fullscreen ? 'flex-1' : 'h-72'}`}>
+        <div ref={containerRef} className="h-full w-full" />
+        <button
+          type="button"
+          onClick={() => setFullscreen((f) => !f)}
+          title={fullscreen ? 'خروج من ملء الشاشة (Esc)' : 'ملء الشاشة'}
+          className="absolute left-3 top-3 z-[1000] rounded-lg bg-white/95 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-md hover:bg-white"
+        >
+          {fullscreen ? '✕ خروج من ملء الشاشة' : '⛶ ملء الشاشة'}
+        </button>
+      </div>
 
       <p className="text-xs text-slate-500">
         اضغط على الخريطة لتحديد الموقع، أو دور بالاسم واختر من النتائج. بعد التحديد تكدر تسحب العلامة الحمراء لتثبيت الموقع بدقة أكثر.

@@ -23,8 +23,10 @@ type Supplier struct {
 	OwnerName          string         `db:"ownerName" json:"ownerName"`
 	Phone              string         `db:"phone" json:"phone"`
 	Address            *string        `db:"address" json:"address"`
+	LocationUrl        *string        `db:"locationUrl" json:"locationUrl"`
 	Lat                *float64       `db:"lat" json:"lat"`
 	Lng                *float64       `db:"lng" json:"lng"`
+	IsCompetitor       bool           `db:"isCompetitor" json:"isCompetitor"`
 	IsMaterialSupplier bool           `db:"isMaterialSupplier" json:"isMaterialSupplier"`
 	IsContractor       bool           `db:"isContractor" json:"isContractor"`
 	TraderTypes        pq.StringArray `db:"traderTypes" json:"traderTypes"`
@@ -52,8 +54,10 @@ type UpsertSupplierRequest struct {
 	OwnerName          string   `json:"ownerName"`
 	Phone              string   `json:"phone"`
 	Address            *string  `json:"address"`
+	LocationUrl        *string  `json:"locationUrl"`
 	Lat                *float64 `json:"lat"`
 	Lng                *float64 `json:"lng"`
+	IsCompetitor       bool     `json:"isCompetitor"`
 	IsMaterialSupplier bool     `json:"isMaterialSupplier"`
 	IsContractor       bool     `json:"isContractor"`
 	TraderTypes        []string `json:"traderTypes"`

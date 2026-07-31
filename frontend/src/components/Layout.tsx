@@ -122,7 +122,7 @@ const navItems: NavItem[] = [
         roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'],
         children: [
           { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
-          { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROCUREMENT_ADMIN'] },
+          { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
         ],
       },
       {
@@ -236,7 +236,7 @@ const navItems: NavItem[] = [
     to: '/unit-procurement', label: 'وحدة المشتريات والمخازن', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3z"/></svg>,
     children: [
       { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
-      { to: '/suppliers', label: 'الموردون', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROCUREMENT_ADMIN'] },
+      { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
     ],
   },
