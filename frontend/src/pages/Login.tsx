@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
 
@@ -18,6 +18,12 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  // سبب انتهاء الجلسة يوصل من api.handleSessionExpired عبر sessionStorage —
+  // بدل alert الي كان يوقف الصفحة وينتظر ضغطة (وينفتح عدة مرات بنفس الوقت).
+  // قراءة صافية بلا حذف: StrictMode ينفّذ مُهيّئ useState مرتين، فلو حذفنا
+  // هنا راح تطلع القراءة الثانية فاضية وتضيع الرسالة. الحذف بـuseEffect.
+  const [sessionNote] = useState(() => sessionStorage.getItem('sessionEndedReason'))
+  useEffect(() => { sessionStorage.removeItem('sessionEndedReason') }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,6 +107,11 @@ export default function Login() {
           </div>
         </div>
 
+        {sessionNote && !error && (
+          <div className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-bold text-amber-800">
+            {sessionNote}
+          </div>
+        )}
         {error && (
           <p className="mt-4 w-full rounded-xl bg-red-500/15 p-3 text-center text-sm text-red-100 ring-1 ring-red-400/30">
             {error}

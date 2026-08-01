@@ -415,6 +415,43 @@ function currentToken(): string | null {
   return localStorage.getItem('authToken')
 }
 
+// أي صفحة تطلق عدة طلبات بنفس الوقت. لما تنتهي الجلسة كانت كلها ترجع 401
+// وكل وحدة تفتح alert وتعمل reload — فتتراكم رسائل فوق بعض والمستخدم يحس
+// النظام "معلّق". هذا القفل يخلي أول 401 بس هو الي يتصرّف، والباقي ينهمل.
+let sessionExpiredHandled = false
+
+export function handleSessionExpired(reason?: string) {
+  if (sessionExpiredHandled) return
+  // ما اكو توكن أصلاً؟ يعني إحنا بشاشة الدخول وطلب خلفي انطلق ورجع 401.
+  // لو حدّثنا الصفحة هنا ندخل بحلقة لا تنتهي: تحديث ← طلب ← 401 ← تحديث،
+  // وهذا الي كان يخلي النظام يبين "معلّق" وما ينفع معه تحديث.
+  if (!currentToken()) return
+  sessionExpiredHandled = true
+  localStorage.removeItem('authToken')
+  localStorage.removeItem('currentEmployee')
+  // نمرر السبب لشاشة الدخول بدل alert الي يوقف الصفحة وينتظر ضغطة
+  sessionStorage.setItem('sessionEndedReason', reason || 'انتهت صلاحية الجلسة، الرجاء تسجيل الدخول مجدداً')
+  window.location.reload()
+}
+
+// tokenExpiresAt يقرأ وقت انتهاء التوكن من داخله (حقل exp) بدون ما نسأل
+// السيرفر — يخلينا نعرف إن الجلسة منتهية قبل ما نطلق أي طلب فاشل أصلاً.
+export function tokenExpiresAt(): number | null {
+  const t = currentToken()
+  if (!t) return null
+  try {
+    const payload = JSON.parse(atob(t.split('.')[1]))
+    return typeof payload.exp === 'number' ? payload.exp * 1000 : null
+  } catch {
+    return null
+  }
+}
+
+export function isTokenExpired(): boolean {
+  const exp = tokenExpiresAt()
+  return exp !== null && Date.now() >= exp
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = currentToken()
   const res = await fetch(`${API_URL}${path}`, {
@@ -426,13 +463,8 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   })
   if (res.status === 401) {
     const body = await res.json().catch(() => ({}))
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('currentEmployee')
     if (!path.startsWith('/auth/login')) {
-      // نوريه سبب رجوعه لتسجيل الدخول قبل ما نحدّث الصفحة — بدون هذا كانت
-      // الشاشة تطلع بيضاء فجأة بدون أي تفسير (يحس المستخدم إنه "خطأ بالنظام").
-      alert(body.error || 'انتهت صلاحية الجلسة، الرجاء تسجيل الدخول مجدداً')
-      window.location.reload()
+      handleSessionExpired(body.error)
     }
     throw new Error(body.error || 'يجب تسجيل الدخول')
   }

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAutoRefresh } from '../useAutoRefresh'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
@@ -325,6 +326,9 @@ export default function Layout() {
   // navigation, not data fetching; safe to keep as a synchronous effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  // تحديث تلقائي كل نص ساعة + معالجة رجوع الموظف للتبويب بعد غياب طويل
+  useAutoRefresh(!!employee)
 
   const toggleSidebar = () => {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) setMobileOpen((o) => !o)
