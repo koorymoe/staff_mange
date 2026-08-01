@@ -239,6 +239,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireCoordinator := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "coordinator")
 	requireCrewManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "crew_management")
 	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
+	// تدقيق أمني: مسارات إدارية كانت مفتوحة لأي موظف مسجّل دخول (requireAuth
+	// فقط) — أي فني يقدر يثبّت حجز أو يعدّل زبون أو يضيف أدوات. صارت مربوطة
+	// بصلاحياتها الطبيعية، مع إبقاء المسارات الذاتية (حضور/إشعارات) مفتوحة.
+	requireCustomerMgmt := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "manage_customers", "sales_booking", "coordinator")
+	requireBookingCoord := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "coordinator", "crew_management")
+	requireKpiMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
+	// تعديل تفاصيل الحجز تستخدمه صفحات ثانية غير التنسيق (قائمة الحجوزات
+	// لتخصيص مركبة، وخريطة المهام) — فنوسّعها لصلاحياتهن حتى ما ننكسر شغل شغّال.
+	requireBookingEdit := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		"coordinator", "crew_management", "view_bookings", "mission_tracking", "sales_booking")
 	// إدارة المخزون (عدة الموظفين الشخصية/أدوات المركبات/العدة القياسية) — مسموحة
 	// لأدوار HR/ADMIN كالمعتاد، أو لأي موظف عنده صلاحية "inventory" المخصصة
 	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
@@ -335,18 +345,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth))
 	mux.Handle("GET /api/customers/gps", middleware.Chain(http.HandlerFunc(customerHandler.ListGps), requireAuth))
 	mux.Handle("GET /api/customers/lookup", middleware.Chain(http.HandlerFunc(customerHandler.Lookup), requireAuth))
-	mux.Handle("POST /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.FindOrCreate), requireAuth))
-	mux.Handle("PUT /api/customers/{id}", middleware.Chain(http.HandlerFunc(customerHandler.Update), requireAuth))
+	mux.Handle("POST /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.FindOrCreate), requireAuth, requireCustomerMgmt))
+	mux.Handle("PUT /api/customers/{id}", middleware.Chain(http.HandlerFunc(customerHandler.Update), requireAuth, requireCustomerMgmt))
 
 	// الحجوزات — دورة حياة الحجز الكاملة، كل خطوة تتطلب تسجيل دخول فقط (الصلاحية الدقيقة تُفرض بالواجهة حالياً)
 	mux.Handle("GET /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.List), requireAuth))
 	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/confirm", middleware.Chain(http.HandlerFunc(bookingHandler.Confirm), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/details", middleware.Chain(http.HandlerFunc(bookingHandler.UpdateDetails), requireAuth))
+	mux.Handle("PUT /api/bookings/{id}/confirm", middleware.Chain(http.HandlerFunc(bookingHandler.Confirm), requireAuth, requireBookingCoord))
+	mux.Handle("PUT /api/bookings/{id}/details", middleware.Chain(http.HandlerFunc(bookingHandler.UpdateDetails), requireAuth, requireBookingEdit))
 	mux.Handle("PUT /api/bookings/{id}/schedule", middleware.Chain(http.HandlerFunc(bookingHandler.Schedule), requireAuth))
 	mux.Handle("GET /api/bookings/{id}/schedule-log", middleware.Chain(http.HandlerFunc(bookingHandler.ScheduleLog), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth))
+	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
+	mux.Handle("PUT /api/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth))
@@ -394,7 +404,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/inventory/checks/{id}/resolve", middleware.Chain(http.HandlerFunc(inventoryHandler.ResolveInventoryCheck), requireAuth, requireHR))
 
 	mux.Handle("GET /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.ListVehicleTools), requireAuth))
-	mux.Handle("POST /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateVehicleTool), requireAuth))
+	mux.Handle("POST /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateVehicleTool), requireAuth, requireHROrInventory))
 	// تعديل/حذف أداة مركبة موجودة يقتصر على إدارة الكوادر (نفس صلاحية أدوات
 	// الأدوات الشخصية requireHR) — الإنشاء يبقى مفتوح لأي موظف (نفس السلوك القديم).
 	mux.Handle("PUT /api/inventory/vehicle/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateVehicleTool), requireAuth, requireHROrInventory))
@@ -403,7 +413,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/inventory/booking-tool-checks", middleware.Chain(http.HandlerFunc(inventoryHandler.ListAllBookingToolChecks), requireAuth))
 
 	mux.Handle("GET /api/inventory/ondemand", middleware.Chain(http.HandlerFunc(inventoryHandler.ListOnDemandTools), requireAuth))
-	mux.Handle("POST /api/inventory/ondemand", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateOnDemandTool), requireAuth))
+	mux.Handle("POST /api/inventory/ondemand", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateOnDemandTool), requireAuth, requireProcurementAdmin))
 	// تعديل أداة "حسب الحاجة" يقتصر على الأدمن أو إداري الكميات (نفس canManageOnDemand
 	// بالواجهة: isAdmin || PROCUREMENT_ADMIN) — يطابق requireProcurementAdmin الموجود.
 	mux.Handle("PUT /api/inventory/ondemand/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateOnDemandTool), requireAuth, requireProcurementAdmin))
@@ -589,7 +599,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/location-pings/path", middleware.Chain(http.HandlerFunc(locationPingHandler.Path), requireAuth, requireFieldMonitor))
 
 	// تقييم الأداء (منفصل عن KPI مال الغرامات) — الليدر يقيّم فنييه، الإداري يقيّم الليدرات
-	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth))
+	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth, requireKpiMgmt))
 	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth))
 	mux.Handle("GET /api/performance-reviews/ratable", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Ratable), requireAuth))
 	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))

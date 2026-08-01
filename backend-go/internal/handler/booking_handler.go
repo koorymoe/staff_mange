@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -153,7 +154,12 @@ func (h *BookingHandler) ReturnToCrew(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Note *string `json:"note"`
 	}
-	_ = DecodeJSON(r, &req) // الملاحظة اختيارية
+	_ = DecodeJSON(r, &req)
+	// السبب إجباري: إداري الكوادر لازم يعرف ليش رجع له الحجز
+	if req.Note == nil || strings.TrimSpace(*req.Note) == "" {
+		WriteError(w, http.StatusBadRequest, "لازم تكتب سبب إرجاع الحجز لكادر الشد")
+		return
+	}
 	booking, err := h.service.ReturnToCrew(r.PathValue("id"), req.Note)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر إرجاع الحجز لكادر الشد")

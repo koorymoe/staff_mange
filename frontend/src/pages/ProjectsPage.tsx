@@ -274,11 +274,17 @@ export default function ProjectsPage() {
 
   // إرجاع الحجز لكادر الشد لما يتبين إنه مو مال مشروع
   const returnBookingToCrew = async (b: TransferredBooking) => {
+    // السبب إجباري — إداري الكوادر لازم يعرف ليش رجع له الحجز حتى يتصرف،
+    // وإلا يرجع له بلا معلومة ويضيع.
+    if (!returnNote.trim()) {
+      alert('لازم تكتب سبب الإرجاع — إداري الكوادر يحتاجه حتى يعرف شنو يسوي بالحجز')
+      return
+    }
     setReturning(true)
     try {
       await request(`/bookings/${b.id}/return-to-crew`, {
         method: 'PUT',
-        body: JSON.stringify({ note: returnNote.trim() || undefined }),
+        body: JSON.stringify({ note: returnNote.trim() }),
       })
       // نشيله من القائمة فوراً بدل ما ننتظر إعادة تحميل كاملة
       setTransferred((prev) => prev.filter((x) => x.id !== b.id))
@@ -491,15 +497,16 @@ export default function ProjectsPage() {
 
             <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
               <p className="text-sm font-bold text-amber-800">مو مال مشروع؟ رجّعه لكادر الشد</p>
+              <p className="mt-0.5 text-xs text-amber-700">سبب الإرجاع إجباري — يوصل لإداري الكوادر</p>
               <input
                 value={returnNote}
                 onChange={(e) => setReturnNote(e.target.value)}
-                placeholder="سبب الإرجاع (اختياري) — يوصل لإداري الكوادر"
+                placeholder="ليش رجعته؟ مثال: شغلة شد عادية مو مشروع"
                 className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500"
               />
               <button
                 onClick={() => returnBookingToCrew(detailBooking)}
-                disabled={returning}
+                disabled={returning || !returnNote.trim()}
                 className="mt-2 w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50"
               >
                 {returning ? 'جاري الإرجاع...' : '↩️ إعادة الترحيل لكادر الشد'}
