@@ -83,15 +83,19 @@ func TestProgrammingMinimumApplies(t *testing.T) {
 	}
 }
 
-// الحدود الدنيا ما تنزل أبداً لما يزيد العدد (غلاف غير متناقص).
-func TestInstallMinimumIsMonotonic(t *testing.T) {
-	prev := 0.0
-	for c := 1; c <= 60; c++ {
-		got := installMinimumTotal(c)
-		if got < prev {
-			t.Fatalf("عدد %d نزّل الحد الأدنى: %v بعد %v", c, got, prev)
+// الحد الأدنى محسوب حرفياً مثل الاكسل: العدد × سعر الشريحة. نثبّت القيم
+// عند حدود الشرائح تحديداً — ومنها النزول المقصود عند 17 (تسعيرة جملة).
+func TestInstallMinimumMatchesExcel(t *testing.T) {
+	cases := map[int]float64{
+		1: 14000, 4: 56000, // 1-4 × 14000
+		5: 62500, 8: 100000, // 5-8 × 12500
+		9: 103500, 16: 184000, // 9-16 × 11500
+		17: 170000, 40: 400000, // 17+ × 10000 (ينزل عند 17 — نفس الاكسل)
+	}
+	for count, want := range cases {
+		if got := installMinimumTotal(count); got != want {
+			t.Fatalf("عدد %d: الاكسل يعطي %v والنظام أعطى %v", count, want, got)
 		}
-		prev = got
 	}
 }
 
@@ -166,5 +170,73 @@ func TestCameraCostMorePriceForMoreCable(t *testing.T) {
 			t.Fatalf("%v متر نزّل السعر: %v بعد %v", m, res.CamerasTotal, prev)
 		}
 		prev = res.CamerasTotal
+	}
+}
+
+// ── فحص مطابقة كاملة مع الاكسل ──
+// سيناريو محسوب باليد خطوة بخطوة من صيغ الشيت، حتى نتأكد إن النظام يعطي
+// نفس الرقم بالضبط مو تقريباً.
+//
+// الكتالوج: تركيب=10000، مضاعف التسليك=1، برمجة=2500
+// جدول العدد الكلي للأجهزة عند 6 = 11200 (K)
+// جدول طول الكيبل عند 10 متر = 800/متر (L)
+//
+// السطر الأول: 4 أجهزة، ارتفاع تركيب 6م (F=1.3)، بدون تسليك
+//
+//	G = 10000 × 4 × 1.3 = 52,000
+//
+// السطر الثاني: 2 جهاز، مع تسليك، طول 10م، ارتفاع تسليك 5م (O=2)
+//
+//	G = 0 (تصفّر لأنه اكو تسليك)
+//	K = 11200 × 1 = 11,200
+//	M = 2 × 1 × (800 × 10) = 16,000
+//	P = MAX(16000, 11200) = 16,000
+//
+// G58 = 52,000 + 16,000 = 68,000
+// E58 = 4 + 2 = 6 جهاز  ->  الشريحة 5-8: 6 × 12500 = 75,000
+// G59 = MAX(68,000، 75,000) = 75,000   (ينطبق الحد الأدنى)
+// البرمجة: خدمة وحدة بـ2500 -> R59 = MAX(2500، 13500) = 13,500
+// المجموع = 88,500  ->  CEILING لأقرب 1000 = 89,000
+func TestExcelParityFullScenario(t *testing.T) {
+	items := []model.ExecutionCostItem{
+		{SystemName: "س", ItemName: "جهاز", Count: 4, HeightMeters: 6,
+			ProgrammingItem: "برمجة"},
+		{SystemName: "س", ItemName: "جهاز", Count: 2, HeightMeters: 4,
+			WiringItemName: "كيبل", CableLengthMeters: 10, WiringHeightMeters: 5},
+	}
+	total, lines, mins, err := CalculateExecutionCostDetailed(items, condCatalog(), 6)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if lines[0].InstallTotal != 52000 {
+		t.Fatalf("تركيب السطر الأول: الاكسل 52000، النظام %v", lines[0].InstallTotal)
+	}
+	if lines[1].InstallTotal != 0 {
+		t.Fatalf("تركيب السطر الثاني لازم يتصفّر، النظام %v", lines[1].InstallTotal)
+	}
+	if lines[1].WiringByDeviceCount != 11200 {
+		t.Fatalf("K: الاكسل 11200، النظام %v", lines[1].WiringByDeviceCount)
+	}
+	if lines[1].WiringByCableLength != 16000 {
+		t.Fatalf("M: الاكسل 16000، النظام %v", lines[1].WiringByCableLength)
+	}
+	if lines[1].WiringTotal != 16000 {
+		t.Fatalf("P: الاكسل 16000، النظام %v", lines[1].WiringTotal)
+	}
+	m := mins[0]
+	if m.InstallWiringCalculated != 68000 {
+		t.Fatalf("G58: الاكسل 68000، النظام %v", m.InstallWiringCalculated)
+	}
+	if m.DeviceCount != 6 || m.InstallMinimumTotal != 75000 {
+		t.Fatalf("E58/الحد الأدنى: الاكسل 6 و75000، النظام %d و%v", m.DeviceCount, m.InstallMinimumTotal)
+	}
+	if m.InstallApplied != 75000 {
+		t.Fatalf("G59: الاكسل 75000، النظام %v", m.InstallApplied)
+	}
+	if m.ProgrammingApplied != 13500 {
+		t.Fatalf("R59: الاكسل 13500، النظام %v", m.ProgrammingApplied)
+	}
+	if total != 89000 {
+		t.Fatalf("المجموع النهائي: الاكسل 89000، النظام %d", total)
 	}
 }

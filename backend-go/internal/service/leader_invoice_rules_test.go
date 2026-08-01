@@ -23,11 +23,14 @@ func calc(count, height, meters int) int64 {
 	return v
 }
 
+// كل ما زاد العدد زاد السعر — باستثناء وحيد مقصود: عند العدد 17 تبدي
+// تسعيرة الجملة بالاكسل (10000 للجهاز بدل 11500)، فالحد الأدنى ينزل هناك.
+// نلتزم بالاكسل حرفياً حتى يطلع نفس الرقم، فنتجاوز هذي النقطة بالفحص.
 func TestCountIncreasesPrice(t *testing.T) {
 	prev := int64(0)
 	for c := 1; c <= 30; c++ {
 		got := calc(c, 4, 10)
-		if got < prev {
+		if got < prev && c != 17 {
 			t.Fatalf("العدد %d نزّل السعر: %d بعد %d", c, got, prev)
 		}
 		if c <= 5 || c%10 == 0 {
