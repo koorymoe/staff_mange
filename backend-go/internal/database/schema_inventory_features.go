@@ -435,5 +435,20 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				"pointsVersion" INTEGER NOT NULL DEFAULT 0
 			)`,
 		},
+		{
+			// صلاحية ظهور مستقلة لكل وحدة — تُمنح لأي موظف من صفحة الصلاحيات.
+			Version: "0163_unit_visibility_permissions",
+			SQL: `INSERT INTO "Permission" (id, name, label) VALUES
+			(gen_random_uuid()::text, 'unit_service', 'وحدة الخدمة'),
+			(gen_random_uuid()::text, 'unit_design', 'وحدة التصميم'),
+			(gen_random_uuid()::text, 'unit_pr', 'وحدة الإعلام والعلاقات العامة'),
+			(gen_random_uuid()::text, 'unit_quality', 'وحدة الجودة والسلامة المهنية'),
+			(gen_random_uuid()::text, 'unit_monitoring', 'وحدة الرقابة'),
+			(gen_random_uuid()::text, 'unit_procurement', 'وحدة المشتريات والمخازن'),
+			(gen_random_uuid()::text, 'unit_finance', 'وحدة الحسابات'),
+			(gen_random_uuid()::text, 'unit_hr', 'وحدة الكوادر التنفيذية'),
+			(gen_random_uuid()::text, 'unit_projects', 'وحدة إدارة المشاريع')
+			ON CONFLICT (name) DO NOTHING`,
+		},
 	}
 }

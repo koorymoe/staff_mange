@@ -20,6 +20,9 @@ interface NavItem {
   anyPermission?: string[]
   leaderOnly?: boolean
   gpsSkillOnly?: boolean
+  // صلاحية ظهور الوحدة كاملة: منحها للموظف يفتحله الوحدة وكل صفحاتها،
+  // بغض النظر عن صلاحياته التفصيلية — هذا معنى "أنطيه الصلاحية ويشوف".
+  unitPermission?: string
   children?: NavItem[]
   divider?: boolean
 }
@@ -177,6 +180,7 @@ const navItems: NavItem[] = [
   {
     // وحدة الخدمة: استقبال وتنسيق طلبات الزبائن وتنفيذها
     to: '/unit-service', label: 'وحدة الخدمة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+    unitPermission: 'unit_service',
     children: [
       { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
       { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
@@ -195,6 +199,7 @@ const navItems: NavItem[] = [
     // يملك هذي الصلاحية تحديداً، بغض النظر عن أي صلاحيات ثانية عنده (كان
     // content_technician لحاله كافي يفتحها بالغلط لأي حد يملكها من مكان ثاني).
     to: '/unit-technicians', label: 'وحدة التقنيين', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
+    unitPermission: 'unit_technicians',
     permission: 'unit_technicians',
     children: [
       { to: '/exhibitions', label: 'إدارة المعارض', icon: <></>, permission: 'unit_technicians' },
@@ -208,6 +213,7 @@ const navItems: NavItem[] = [
   // وحدة) — تطلعان لمدير النظام بس، وتفتحان صفحة "قريباً" بدل ما تختفيان بالكامل.
   {
     to: '/unit-design-group', label: 'وحدة التصميم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a4.5 4.5 0 0 0 0 9 4.5 4.5 0 0 1 0 9"/></svg>, roles: ['ADMIN'],
+    unitPermission: 'unit_design',
     children: [
       { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'] },
       { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'] },
@@ -217,6 +223,7 @@ const navItems: NavItem[] = [
     // وحدة الإعلام والعلاقات العامة: علاقات الشركة مع زبائنها — الشخصيات
     // المهمة (VIP) الي يأشّرها الموظفون، وسياسة الخصوصية المعلنة.
     to: '/unit-pr', label: 'وحدة الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>,
+    unitPermission: 'unit_pr',
     children: [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, roles: ['ADMIN'] },
       { to: '/privacy-policy', label: '🔒 سياسة الخصوصية', icon: <></> },
@@ -225,6 +232,7 @@ const navItems: NavItem[] = [
 
   {
     to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,
+    unitPermission: 'unit_quality',
     children: [
       { to: '/quality', label: 'الجودة', icon: <></>, permission: 'quality_control' },
       { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
@@ -234,6 +242,7 @@ const navItems: NavItem[] = [
   {
     // وحدة الرقابة: كل أدوات المراقبة والتدقيق العام بمكان واحد
     to: '/unit-monitoring', label: 'وحدة الرقابة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+    unitPermission: 'unit_monitoring',
     children: [
       { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
@@ -242,14 +251,18 @@ const navItems: NavItem[] = [
   },
   {
     to: '/unit-procurement', label: 'وحدة المشتريات والمخازن', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3z"/></svg>,
+    unitPermission: 'unit_procurement',
     children: [
       { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
       { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
+      // إدارة المركبات تظهر هنا كمان (مو بس بمجموعتها) — المخازن مسؤولة عنها
+      { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
     ],
   },
   {
     to: '/unit-finance', label: 'وحدة الحسابات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    unitPermission: 'unit_finance',
     children: [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
@@ -258,6 +271,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/unit-hr', label: 'وحدة الكوادر التنفيذية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>,
+    unitPermission: 'unit_hr',
     children: [
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
       { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
@@ -267,6 +281,7 @@ const navItems: NavItem[] = [
   },
   {
     to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
+    unitPermission: 'unit_projects',
     children: [
       { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'] },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
@@ -460,22 +475,29 @@ export default function Layout() {
   const role = employee?.role
   const hasMonitor = role === 'MONITOR' || employeePermissions.includes('monitoring')
   const hasAudit = employeePermissions.includes('auditing')
-  const isVisible = (item: NavItem): boolean => {
+  // unitGranted: صحيح لما يكون الموظف عنده صلاحية الوحدة الي هذا العنصر
+  // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
+  const isVisible = (item: NavItem, unitGranted = false): boolean => {
     if (item.divider) return true
-    if (item.roles && role && !item.roles.includes(role)) {
-      if (!((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
+    const granted =
+      unitGranted ||
+      (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))
+    if (!granted) {
+      if (item.roles && role && !item.roles.includes(role)) {
+        if (!((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
+      }
+      if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
+      if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => employeePermissions.includes(p))) return false
+      if (item.leaderOnly && !employee?.isLeader && role !== 'ADMIN') return false
+      if (item.gpsSkillOnly && role !== 'ADMIN' && !hasGpsSkill(employee, gpsServiceId)) return false
     }
-    if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
-    if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => employeePermissions.includes(p))) return false
-    if (item.leaderOnly && !employee?.isLeader && role !== 'ADMIN') return false
-    if (item.gpsSkillOnly && role !== 'ADMIN' && !hasGpsSkill(employee, gpsServiceId)) return false
-    if (item.children) return item.children.some(isVisible)
+    if (item.children) return item.children.some((c) => isVisible(c, granted))
     return true
   }
 
   // نشيل أي فاصل ("── الوحدات ──") ما يتبعه ولا عنصر ظاهر — مثلاً فني عادي
   // ما عنده صلاحية توصله لأي وحدة، فيصير الفاصل معلّق بدون شي تحته.
-  const visibleItems = navItems.filter(isVisible).filter((item, idx, arr) => {
+  const visibleItems = navItems.filter((it) => isVisible(it)).filter((item, idx, arr) => {
     if (!item.divider) return true
     const next = arr[idx + 1]
     return !!next && !next.divider
@@ -485,8 +507,13 @@ export default function Layout() {
 
   const gradientClass = roleColors[employee.role] || 'from-blue-500 to-indigo-600'
 
-  const renderNavItem = (item: NavItem, depth: number = 0): React.ReactNode => {
-    if (!isVisible(item)) return null
+  // unitGranted ينتقل للأولاد: لما الموظف عنده صلاحية الوحدة، كل صفحاتها
+  // تنعرض له بدون فحص صلاحياتها التفصيلية.
+  const renderNavItem = (item: NavItem, depth: number = 0, unitGranted = false): React.ReactNode => {
+    if (!isVisible(item, unitGranted)) return null
+    const granted =
+      unitGranted ||
+      (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))
 
     if (item.divider) {
       return (
@@ -499,7 +526,7 @@ export default function Layout() {
     }
 
     if (item.children) {
-      const kids = item.children.filter(isVisible)
+      const kids = item.children.filter((c) => isVisible(c, granted))
       if (!kids.length) return null
       const open = expandedGroups[item.label]
       const active = hasActiveChild(item, location.pathname)
@@ -526,7 +553,7 @@ export default function Layout() {
             </button>
             {open && !collapsed && (
               <div className="mt-1 mr-4 flex flex-col gap-0.5 border-r-2 border-white/[0.08] pr-2 animate-in">
-                {kids.map(child => renderNavItem(child, 1))}
+                {kids.map(child => renderNavItem(child, 1, granted))}
               </div>
             )}
           </div>
@@ -550,7 +577,7 @@ export default function Layout() {
           </button>
           {open && (
             <div className="mr-4 flex flex-col gap-0.5 border-r border-white/[0.06] pr-2">
-              {kids.map(child => renderNavItem(child, 2))}
+              {kids.map(child => renderNavItem(child, 2, granted))}
             </div>
           )}
         </div>

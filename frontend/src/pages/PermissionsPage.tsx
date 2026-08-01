@@ -139,8 +139,12 @@ export default function PermissionsPage() {
       // الصفحات الداخلية، حتى منح موظف صلاحية داخلية وحدة ما يفتحله وحدات
       // ثانية بالغلط. حالياً وحدة التقنيين هيه الوحدة الوحيدة المفعّلة بهذا
       // النمط — بقية الوحدات القديمة تعتمد صلاحياتها الحالية لحد ما تنراجع.
-      title: 'الوحدات (ظهور الوحدة كاملة بالقائمة)',
-      perms: ['unit_technicians'],
+      // منح صلاحية وحدة يفتح الوحدة كاملة بكل صفحاتها للموظف
+      title: 'الوحدات (منح الوحدة كاملة للموظف)',
+      perms: [
+        'unit_service', 'unit_technicians', 'unit_design', 'unit_pr', 'unit_quality',
+        'unit_monitoring', 'unit_procurement', 'unit_finance', 'unit_hr', 'unit_projects',
+      ],
     },
     {
       title: 'سياسة الخصوصية',

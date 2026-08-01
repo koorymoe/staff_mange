@@ -63,6 +63,18 @@ var DefaultPermissions = []Permission{
 	// ما تُمنح لأي دور افتراضياً — المدير حصراً يشوفها إلا إذا مُنحت يدوياً.
 	{Name: "privacy_policy_manage", Label: "إضافة وتعديل سياسات الخصوصية"},
 	{Name: "unit_technicians", Label: "وحدة التقنيين (ظهور الوحدة كاملة بالقائمة)"},
+	// صلاحية ظهور لكل وحدة إدارية بالقائمة الجانبية. منح صلاحية الوحدة يخلي
+	// الموظف يشوفها ويشوف بياناتها، وتبقى صلاحيات الصفحات الداخلية شغالة فوقها
+	// (يعني الوحدة تنفتح، وشنو يشوف جواها ينحدد بصلاحياته التفصيلية).
+	{Name: "unit_service", Label: "وحدة الخدمة"},
+	{Name: "unit_design", Label: "وحدة التصميم"},
+	{Name: "unit_pr", Label: "وحدة الإعلام والعلاقات العامة"},
+	{Name: "unit_quality", Label: "وحدة الجودة والسلامة المهنية"},
+	{Name: "unit_monitoring", Label: "وحدة الرقابة"},
+	{Name: "unit_procurement", Label: "وحدة المشتريات والمخازن"},
+	{Name: "unit_finance", Label: "وحدة الحسابات"},
+	{Name: "unit_hr", Label: "وحدة الكوادر التنفيذية"},
+	{Name: "unit_projects", Label: "وحدة إدارة المشاريع"},
 }
 
 // RoleDefaultPermissions هي الصلاحيات الافتراضية لكل دور وظيفي
