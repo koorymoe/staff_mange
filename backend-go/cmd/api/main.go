@@ -505,7 +505,29 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.Create), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"PROJECT_MANAGER"}, "project_management", "project_create_only")))
-	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, requireProjectManager))
+	// المشاريع المُسلَّمة للموظف الحالي — ما تحتاج صلاحية إدارة مشاريع عامة،
+	// التسليم نفسه هو الصلاحية وعلى هالمشاريع بس.
+	mux.Handle("GET /api/projects/delegated-to-me", middleware.Chain(http.HandlerFunc(projectHandler.ListDelegatedToMe), requireAuth))
+	mux.Handle("GET /api/projects/{id}/delegation-log", middleware.Chain(http.HandlerFunc(projectHandler.DelegationLog), requireAuth, requireProjectManager))
+	// التسليم/السحب بيد مدير المشاريع بس — الموظف المُسلَّم إله ما يقدر يسلّمه لغيره
+	mux.Handle("PUT /api/projects/{id}/delegate", middleware.Chain(http.HandlerFunc(projectHandler.Delegate), requireAuth, requireProjectManager))
+
+	// التعديل: مدير المشاريع على أي مشروع، أو الموظف المُسلَّم إله على مشروعه هو
+	// فقط. أي موظف ثاني ينرفض حتى لو حاول يعدّل مشروع مو إله.
+	allowManagerOrDelegate := func(next http.Handler) http.Handler {
+		managerGuard := requireProjectManager(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			employeeID := middleware.EmployeeIDFromContext(r)
+			if employeeID != "" {
+				if ok, err := projectService.IsDelegatedTo(r.PathValue("id"), employeeID); err == nil && ok {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			managerGuard.ServeHTTP(w, r)
+		})
+	}
+	mux.Handle("PUT /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Update), requireAuth, allowManagerOrDelegate))
 	mux.Handle("DELETE /api/projects/{id}", middleware.Chain(http.HandlerFunc(projectHandler.Delete), requireAuth, requireProjectManager))
 	// حذف ملف العقد المرفوع — لمدير النظام حصراً
 	mux.Handle("DELETE /api/projects/{id}/contract", middleware.Chain(http.HandlerFunc(projectHandler.DeleteContract), requireAuth, requireAdmin))

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"staffmange-api/internal/middleware"
 
@@ -24,6 +25,45 @@ func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, result)
+}
+
+// GET /api/projects/delegated-to-me — مشاريع مُسلَّمة للموظف الحالي. ما تحتاج
+// صلاحية إدارة مشاريع: التسليم نفسه هو الصلاحية، وعلى هذي المشاريع بس.
+func (h *ProjectHandler) ListDelegatedToMe(w http.ResponseWriter, r *http.Request) {
+	result, err := h.service.ListDelegatedTo(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المشاريع المُسلَّمة لك")
+		return
+	}
+	WriteJSON(w, http.StatusOK, result)
+}
+
+// PUT /api/projects/{id}/delegate — تسليم المشروع لموظف أو سحبه منه.
+func (h *ProjectHandler) Delegate(w http.ResponseWriter, r *http.Request) {
+	var req model.DelegateProjectRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	by := middleware.EmployeeIDFromContext(r)
+	p, err := h.service.Delegate(r.PathValue("id"), req.EmployeeID, &by, req.Note)
+	if err != nil {
+		// ما نرجّع نص خطأ قاعدة البيانات للمستخدم (تسريب تفاصيل داخلية) — نسجّله بس
+		log.Printf("delegate project %s failed: %v", r.PathValue("id"), err)
+		WriteError(w, http.StatusBadRequest, "تعذر تسليم المشروع")
+		return
+	}
+	WriteJSON(w, http.StatusOK, p)
+}
+
+// GET /api/projects/{id}/delegation-log — سجل تسليم مشروع معيّن.
+func (h *ProjectHandler) DelegationLog(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.DelegationLog(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل التسليم")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
 }
 
 // GET /api/projects/{id} — المشروع كامل بما بيه ملفات العقد (تُطلب عند الحاجة فقط)

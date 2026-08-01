@@ -456,5 +456,28 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			Version: "0164_add_project_created_by",
 			SQL:     `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "createdByEmployeeId" TEXT`,
 		},
+		{
+			// تسليم المشروع لموظف: الموظف المُسلَّم إله يشوف المشروع كامل
+			// بكل مراحله ويتحكم بيه — كأنه عنده إدارة مشاريع بس على هذا
+			// المشروع لحاله، بدون ما ننطيه الصلاحية العامة.
+			Version: "0165_project_delegation",
+			SQL: `
+				ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "delegatedToEmployeeId" TEXT;
+				ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "delegatedByEmployeeId" TEXT;
+				ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "delegatedAt" TIMESTAMPTZ;
+				CREATE INDEX IF NOT EXISTS "Project_delegatedTo_idx" ON "Project" ("delegatedToEmployeeId");
+				CREATE TABLE IF NOT EXISTS "ProjectDelegationLog" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"projectId" TEXT NOT NULL REFERENCES "Project"(id) ON DELETE CASCADE,
+					"employeeId" TEXT NOT NULL,
+					"delegatedByEmployeeId" TEXT,
+					action TEXT NOT NULL DEFAULT 'ASSIGN',
+					note TEXT,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "ProjectDelegationLog_project_idx" ON "ProjectDelegationLog" ("projectId");
+				CREATE INDEX IF NOT EXISTS "ProjectDelegationLog_employee_idx" ON "ProjectDelegationLog" ("employeeId");
+			`,
+		},
 	}
 }

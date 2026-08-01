@@ -65,6 +65,39 @@ func (s *ProjectService) List() (*model.ProjectListResponse, error) {
 	}, nil
 }
 
+// ListDelegatedTo مشاريع مُسلَّمة لموظف معيّن — نفس شكل القائمة العامة (مع
+// إحصائياتها والمراحل) حتى الواجهة تعرضها بنفس طريقة إدارة المشاريع بالضبط.
+func (s *ProjectService) ListDelegatedTo(employeeID string) (*model.ProjectListResponse, error) {
+	projects, err := s.repo.ListDelegatedTo(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	return &model.ProjectListResponse{
+		Projects: projects,
+		Stats:    computeProjectStats(projects),
+		Stages:   projectStages,
+	}, nil
+}
+
+// Delegate يسلّم المشروع لموظف، أو يسحب التسليم لو employeeID فاضي.
+func (s *ProjectService) Delegate(projectID, employeeID string, byEmployeeID *string, note string) (*model.Project, error) {
+	var target *string
+	if employeeID != "" {
+		target = &employeeID
+	}
+	return s.repo.Delegate(projectID, target, byEmployeeID, note)
+}
+
+// IsDelegatedTo يفحص ملكية التسليم — يستعملها الراوت قبل ما يسمح بالتعديل.
+func (s *ProjectService) IsDelegatedTo(projectID, employeeID string) (bool, error) {
+	return s.repo.IsDelegatedTo(projectID, employeeID)
+}
+
+// DelegationLog سجل التسليم لمشروع معيّن أو للكل.
+func (s *ProjectService) DelegationLog(projectID string) ([]model.ProjectDelegationLogEntry, error) {
+	return s.repo.DelegationLog(projectID)
+}
+
 func (s *ProjectService) Create(req model.CreateProjectRequest, createdBy *string) (*model.Project, error) {
 	if req.Name == "" {
 		return nil, errors.New("اسم المؤسسة مطلوب")

@@ -44,16 +44,103 @@ func prefixed(cols, alias string) string {
 const projectListColumns = `id, code, name, rep, phone, location, "locationUrl", "mapLatitude", "mapLongitude",
 	"workType", "refPerson", stage, price, staff, time, task, priority, "deliveryDate", survey,
 	"bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "createdByEmployeeId", "createdAt", "updatedAt",
+	"delegatedToEmployeeId", "delegatedByEmployeeId", "delegatedAt",
 	("contractPdfBase64" IS NOT NULL) AS "hasContract",
 	("signedContractPdfBase64" IS NOT NULL) AS "hasSignedContract"`
 
+const projectListSelect = `SELECT ` + `%s` + `, e.name AS "createdByName", d.name AS "delegatedToName"
+	FROM "Project" p
+	LEFT JOIN "Employee" e ON e.id = p."createdByEmployeeId"
+	LEFT JOIN "Employee" d ON d.id = p."delegatedToEmployeeId"`
+
 func (r *ProjectRepository) List() ([]model.Project, error) {
 	projects := []model.Project{}
-	// نجيب اسم مضيف المشروع بـJOIN حتى يظهر ببطاقته بدون استعلام لكل صف
-	err := r.db.Select(&projects, `SELECT `+prefixed(projectListColumns, "p")+`, e.name AS "createdByName"
-		FROM "Project" p LEFT JOIN "Employee" e ON e.id = p."createdByEmployeeId"
-		ORDER BY p."createdAt" DESC`)
+	// نجيب اسم مضيف المشروع واسم الموظف المُسلَّم إله بـJOIN بدل استعلام لكل صف
+	err := r.db.Select(&projects, strings.Replace(projectListSelect, "%s", prefixed(projectListColumns, "p"), 1)+
+		` ORDER BY p."createdAt" DESC`)
 	return projects, err
+}
+
+// ListDelegatedTo يرجّع بس المشاريع المُسلَّمة لموظف معيّن — يستخدمها الموظف
+// الي ما عنده صلاحية إدارة المشاريع العامة، فيشوف مشاريعه هو بس.
+func (r *ProjectRepository) ListDelegatedTo(employeeID string) ([]model.Project, error) {
+	projects := []model.Project{}
+	err := r.db.Select(&projects, strings.Replace(projectListSelect, "%s", prefixed(projectListColumns, "p"), 1)+
+		` WHERE p."delegatedToEmployeeId" = $1 ORDER BY p."createdAt" DESC`, employeeID)
+	return projects, err
+}
+
+// IsDelegatedTo يفحص إذا المشروع مُسلَّم لهذا الموظف — أساس التحقق قبل أي
+// تعديل: الموظف يتحكم بمشروعه المُسلَّم بس، مو بكل المشاريع.
+func (r *ProjectRepository) IsDelegatedTo(projectID, employeeID string) (bool, error) {
+	var n int
+	err := r.db.Get(&n, `SELECT COUNT(*) FROM "Project" WHERE id = $1 AND "delegatedToEmployeeId" = $2`,
+		projectID, employeeID)
+	return n > 0, err
+}
+
+// Delegate يسلّم المشروع لموظف (أو يسحبه لو employeeID فاضي) ويسجّل الحركة.
+func (r *ProjectRepository) Delegate(projectID string, employeeID *string, byEmployeeID *string, note string) (*model.Project, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var p model.Project
+	if err := tx.Get(&p, `
+		UPDATE "Project" SET
+			-- التحويل الصريح لازم: بدونه Postgres ما يقدر يستنتج نوع $2 داخل CASE
+			"delegatedToEmployeeId" = $2::text,
+			"delegatedByEmployeeId" = CASE WHEN $2::text IS NULL THEN NULL ELSE $3::text END,
+			"delegatedAt"           = CASE WHEN $2::text IS NULL THEN NULL ELSE now() END,
+			"updatedAt" = now()
+		WHERE id = $1
+		RETURNING *,
+			("contractPdfBase64" IS NOT NULL) AS "hasContract",
+			("signedContractPdfBase64" IS NOT NULL) AS "hasSignedContract"
+	`, projectID, employeeID, byEmployeeID); err != nil {
+		return nil, err
+	}
+
+	action, logEmployee := "REVOKE", ""
+	if employeeID != nil && *employeeID != "" {
+		action = "ASSIGN"
+		logEmployee = *employeeID
+	} else {
+		// عند السحب نسجّل منو جان مستلمه قبل (لو معروف) حتى يبقى السجل مفيد
+		if p.DelegatedToEmployeeID != nil {
+			logEmployee = *p.DelegatedToEmployeeID
+		}
+	}
+	if logEmployee != "" {
+		if _, err := tx.Exec(`
+			INSERT INTO "ProjectDelegationLog" ("projectId", "employeeId", "delegatedByEmployeeId", action, note)
+			VALUES ($1, $2, $3, $4, NULLIF($5, ''))
+		`, projectID, logEmployee, byEmployeeID, action, note); err != nil {
+			return nil, err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+// DelegationLog سجل تسليم مشروع واحد (أو كل السجل لو projectID فاضي).
+func (r *ProjectRepository) DelegationLog(projectID string) ([]model.ProjectDelegationLogEntry, error) {
+	rows := []model.ProjectDelegationLogEntry{}
+	q := `SELECT l.*, e.name AS "employeeName", b.name AS "delegatedByName",
+			p.code AS "projectCode", p.name AS "projectName"
+		FROM "ProjectDelegationLog" l
+		LEFT JOIN "Employee" e ON e.id = l."employeeId"
+		LEFT JOIN "Employee" b ON b.id = l."delegatedByEmployeeId"
+		LEFT JOIN "Project"  p ON p.id = l."projectId"`
+	if projectID != "" {
+		return rows, r.db.Select(&rows, q+` WHERE l."projectId" = $1 ORDER BY l."createdAt" DESC`, projectID)
+	}
+	return rows, r.db.Select(&rows, q+` ORDER BY l."createdAt" DESC`)
 }
 
 // GetByID يرجّع المشروع كامل بما بيه ملفات العقد — يُستخدم لما تنفتح نافذة العقد.

@@ -134,7 +134,6 @@ const navItems: NavItem[] = [
         to: '/mgmt-vehicles', label: 'إدارة المركبات', icon: <></>,
         children: [
           { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
-          { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
         ],
       },
     ],
@@ -177,6 +176,10 @@ const navItems: NavItem[] = [
   // منفصلة هنا حتى ما تتكرر بالقائمة.
   // ملاحظة: وحدات "الإعلام والعلاقات العامة" و"التصميم" و"التقنيات (IT)" ما
   // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
+  // مشاريعي المُسلَّمة: أي موظف ينسلّم إله مشروع يشوفه هنا بكل مراحله — بدون
+  // ما ننطيه صلاحية إدارة المشاريع العامة. الصفحة تطلع فاضية لو ماكو شي.
+  { to: '/my-projects', label: 'مشاريعي المُسلَّمة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg> },
+
   { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true },
 
   {
@@ -228,7 +231,6 @@ const navItems: NavItem[] = [
     unitPermission: 'unit_pr',
     children: [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, roles: ['ADMIN'] },
-      { to: '/privacy-policy', label: '🔒 سياسة الخصوصية', icon: <></> },
     ],
   },
 
@@ -249,6 +251,9 @@ const navItems: NavItem[] = [
       { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
       { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+      // إدارة سياسة الخصوصية (إضافة/تعديل النقاط) — صلاحية مستقلة تماماً عن
+      // قراءتها. القراءة متاحة لكل موظف من الرابط فوق "تسجيل الخروج".
+      { to: '/privacy-policy', label: '🔒 إدارة سياسة الخصوصية', icon: <></>, permission: 'privacy_policy_manage' },
     ],
   },
   {
@@ -260,6 +265,8 @@ const navItems: NavItem[] = [
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
       // إدارة المركبات تظهر هنا كمان (مو بس بمجموعتها) — المخازن مسؤولة عنها
       { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
+      // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
+      { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
     ],
   },
   {
@@ -856,6 +863,22 @@ export default function Layout() {
               </NavLink>
             )}
           </nav>
+
+          {/* سياسة الخصوصية — قراءة متاحة لكل موظف بدون أي صلاحية، ثابتة فوق
+              زر تسجيل الخروج. إضافة/تعديل النقاط شي ثاني تماماً: صلاحية
+              "privacy_policy_manage" وتظهر داخل وحدة الرقابة. */}
+          <div className="mx-3 mt-1">
+            <NavLink
+              to="/privacy-policy"
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              {collapsed ? '🔒' : '🔒 سياسة الخصوصية'}
+            </NavLink>
+          </div>
 
           {/* Logout */}
           <div className="mx-3 mb-3 mt-1">

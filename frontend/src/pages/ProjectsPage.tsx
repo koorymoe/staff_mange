@@ -54,6 +54,10 @@ interface Project {
   responsibleEmployeeId: string | null
   surveyorEmployeeId: string | null
   createdAt: string
+  // تسليم المشروع لموظف — يشتغل عليه كأنه عنده إدارة مشاريع، بس على هذا المشروع
+  delegatedToEmployeeId: string | null
+  delegatedToName: string | null
+  delegatedAt: string | null
 }
 
 // حجز محول من إدارة الكوادر (الحجوزات الكبيرة تعتبر مشاريع)
@@ -223,10 +227,15 @@ function parseRejection(task: string | null): { reason: string; notes: string; c
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-export default function ProjectsPage() {
+// mode='delegated' يعرض بس المشاريع المُسلَّمة للموظف الحالي — نفس الواجهة
+// والمراحل والتقارير بالضبط، بس على مشاريعه هو. هذا معنى "كأنه عنده صلاحية
+// إدارة مشاريع بس على هذا المشروع".
+export default function ProjectsPage({ mode = 'all' }: { mode?: 'all' | 'delegated' } = {}) {
   const { employee, permissions } = useSession()
   const role = employee?.role
-  const canManage = role === 'ADMIN' || role === 'PROJECT_MANAGER' || permissions.includes('project_management')
+  const delegatedMode = mode === 'delegated'
+  const canManage = delegatedMode
+    || role === 'ADMIN' || role === 'PROJECT_MANAGER' || permissions.includes('project_management')
   // صلاحية "إضافة مشروع فقط": يشوف واجهة إضافة نظيفة بس — بدون إحصائيات ولا
   // قائمة مشاريع ولا تقارير ولا استمارة كشف ولا ترحيل مراحل.
   const addOnly = !canManage && permissions.includes('project_create_only')
@@ -249,6 +258,8 @@ export default function ProjectsPage() {
   const [transferred, setTransferred] = useState<TransferredBooking[]>([])
   // تفاصيل الحجز المحوّل — منها يقرر يستلمه كمشروع أو يرجعه لكادر الشد
   const [detailBooking, setDetailBooking] = useState<TransferredBooking | null>(null)
+  // المشروع الي راح ينسلّم لموظف
+  const [delegateTarget, setDelegateTarget] = useState<Project | null>(null)
   const [returnNote, setReturnNote] = useState('')
   const [returning, setReturning] = useState(false)
 
@@ -257,10 +268,13 @@ export default function ProjectsPage() {
       // الطلبين بالتوازي بدل واحد يستنى الثاني — كانوا متسلسلين وهذا يضاعف
       // زمن فتح الصفحة بلا داعي.
       const [data, bookings] = await Promise.all([
-        request<{ projects: Project[]; stats: Stats }>('/projects'),
+        request<{ projects: Project[]; stats: Stats }>(
+          delegatedMode ? '/projects/delegated-to-me' : '/projects'),
         // الحجوزات الفعّالة بس — الأرشيف الكامل كان يوصل مئات الكيلوبايتات
         // ويكبر مع الوقت، مع إننا نحتاج بس المحوّلة الي لسه ما انستلمت.
-        request<TransferredBooking[]>('/bookings?status=PENDING,CONFIRMED'),
+        delegatedMode
+          ? Promise.resolve([] as TransferredBooking[])
+          : request<TransferredBooking[]>('/bookings?status=PENDING,CONFIRMED'),
       ])
       setProjects(data.projects)
       setStats(data.stats)
@@ -372,7 +386,9 @@ export default function ProjectsPage() {
     <div className="space-y-5">
       {/* Header + view tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold text-[var(--color-brand-900)]">📋 إدارة وأرشفة المشاريع</h1>
+        <h1 className="text-2xl font-bold text-[var(--color-brand-900)]">
+          {delegatedMode ? '📤 مشاريعي المُسلَّمة' : '📋 إدارة وأرشفة المشاريع'}
+        </h1>
         <div className="flex gap-2">
           <button onClick={() => setView('main')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${view === 'main' ? 'bg-[var(--color-brand-500)] text-white' : 'bg-white text-gray-600 border'}`}>
@@ -434,12 +450,13 @@ export default function ProjectsPage() {
           search={search} setSearch={setSearch}
           filterWorkType={filterWorkType} setFilterWorkType={setFilterWorkType}
           filterStage={filterStage} setFilterStage={setFilterStage}
-          onAdd={() => setShowAdd(true)}
+          onAdd={delegatedMode ? undefined : () => setShowAdd(true)}
           onEdit={(p) => setEditProject(p)}
           onMove={(project, nextStage) => setMoveTarget({ project, nextStage })}
           onReport={(type, project) => setReport({ type, project })}
           onDelete={del}
           onRefresh={load}
+          onDelegate={delegatedMode ? undefined : (p) => setDelegateTarget(p)}
         />
       ) : (
         <RejectionView projects={projects} />
@@ -456,6 +473,13 @@ export default function ProjectsPage() {
         />
       )}
       {report && <ReportModal type={report.type} project={report.project} onClose={() => setReport(null)} />}
+      {delegateTarget && (
+        <DelegateModal
+          project={delegateTarget}
+          onClose={() => setDelegateTarget(null)}
+          onSaved={() => { setDelegateTarget(null); load() }}
+        />
+      )}
 
       {/* تفاصيل الحجز المحوّل — يقررمنها: يستلمه كمشروع أو يرجعه لكادر الشد */}
       {detailBooking && (
@@ -546,12 +570,13 @@ function MainView(props: {
   search: string; setSearch: (v: string) => void
   filterWorkType: string; setFilterWorkType: (v: string) => void
   filterStage: string; setFilterStage: (v: string) => void
-  onAdd: () => void
+  onAdd?: () => void
   onEdit: (p: Project) => void
   onMove: (p: Project, nextStage: string) => void
   onReport: (type: 'survey' | 'visit', p: Project) => void
   onDelete: (id: string) => void
   onRefresh: () => void
+  onDelegate?: (p: Project) => void
 }) {
   const { projects, totalCount, stats, canManage } = props
   const maxStat = Math.max(1, ...STAGE_CARDS.map(c => stats[c.key as keyof Stats]))
@@ -621,7 +646,7 @@ function MainView(props: {
         </div>
       </div>
 
-      {canManage && (
+      {canManage && props.onAdd && (
         <button onClick={props.onAdd}
           className="w-full py-3 rounded-xl bg-[var(--color-brand-500)] text-white font-bold shadow hover:brightness-110 transition">
           + إضافة مشروع جديد
@@ -633,20 +658,22 @@ function MainView(props: {
         {projects.length === 0 && <p className="text-center text-gray-400 py-12 text-lg">لا توجد مشاريع</p>}
         {projects.map(p => (
           <ProjectCard key={p.id} p={p} canManage={canManage}
-            onEdit={props.onEdit} onMove={props.onMove} onReport={props.onReport} onDelete={props.onDelete} onRefresh={props.onRefresh} />
+            onEdit={props.onEdit} onMove={props.onMove} onReport={props.onReport} onDelete={props.onDelete}
+            onRefresh={props.onRefresh} onDelegate={props.onDelegate} />
         ))}
       </div>
     </>
   )
 }
 
-function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefresh }: {
+function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefresh, onDelegate }: {
   p: Project; canManage: boolean
   onEdit: (p: Project) => void
   onMove: (p: Project, nextStage: string) => void
   onReport: (type: 'survey' | 'visit', p: Project) => void
   onDelete: (id: string) => void
   onRefresh: () => void
+  onDelegate?: (p: Project) => void
 }) {
   const navigate = useNavigate()
   const isRejected = p.stage.includes('مرفوض')
@@ -696,6 +723,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         <Info icon="📍" value={p.location} />
         {/* مكان المرحلة القديم: منو رحّل الحجز أو أضاف المشروع */}
         <Info icon="🧑‍💼" value={p.createdByName ? `أضافه: ${p.createdByName}` : 'أضافه: غير محدد'} />
+        {p.delegatedToName && <Info icon="📤" value={`مُسلَّم إلى: ${p.delegatedToName}`} />}
       </div>
 
       <div className="mt-4 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
@@ -705,6 +733,12 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
               className="text-sm px-3 py-1.5 rounded-lg border border-blue-300 text-blue-600 hover:bg-blue-50">تعديل ✏️</button>
             <button onClick={() => onDelete(p.id)}
               className="text-sm px-3 py-1.5 rounded-lg border border-red-300 text-red-600 hover:bg-red-50">حذف</button>
+            {onDelegate && (
+              <button onClick={() => onDelegate(p)}
+                className="text-sm px-3 py-1.5 rounded-lg border border-violet-300 text-violet-700 hover:bg-violet-50">
+                {p.delegatedToEmployeeId ? '👤 تغيير المستلم' : '📤 تسليم المشروع'}
+              </button>
+            )}
           </div>
         )}
         <div className="flex gap-2 flex-wrap">
@@ -1384,5 +1418,113 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       <span className="text-xs text-gray-500 font-medium">{label}</span>
       <div className="mt-1">{children}</div>
     </label>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// تسليم المشروع لموظف
+// ---------------------------------------------------------------------------
+// المدير ما يريد يشتغل على المشروع بنفسه؟ يسلّمه لموظف. القائمة مرتبة من
+// المهندسين وصولاً للفنيين. الموظف المُسلَّم إله يشوف المشروع كامل بكل مراحله
+// من صفحة "مشاريعي المُسلَّمة" ويتحكم بيه — بس بهذا المشروع، مو بكل المشاريع.
+function DelegateModal({ project, onClose, onSaved }: {
+  project: Project
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const candidates = useProjectCandidates()
+  const [employeeId, setEmployeeId] = useState(project.delegatedToEmployeeId || '')
+  const [note, setNote] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = async (targetId: string) => {
+    setSaving(true)
+    setError(null)
+    try {
+      await request(`/projects/${project.id}/delegate`, {
+        method: 'PUT',
+        body: JSON.stringify({ employeeId: targetId, note: note.trim() }),
+      })
+      onSaved()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'تعذر تسليم المشروع')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // المرشحون مرتبين أصلاً: مهندسين ← تقنيين ← ليدريه ← فنيين ← إداريين
+  const groups: { label: string; items: ProjectCandidate[] }[] = []
+  for (const c of candidates) {
+    const last = groups[groups.length - 1]
+    if (last && last.label === c.groupLabel) last.items.push(c)
+    else groups.push({ label: c.groupLabel, items: [c] })
+  }
+
+  return (
+    <Modal title={`تسليم المشروع: ${project.name}`} onClose={onClose}>
+      <div className="space-y-4">
+        {project.delegatedToName && (
+          <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-800">
+            المشروع مُسلَّم حالياً إلى <b>{project.delegatedToName}</b>
+            {project.delegatedAt && ` منذ ${new Date(project.delegatedAt).toLocaleDateString('ar-IQ')}`}
+          </p>
+        )}
+
+        <Field label="الموظف المُستلِم (من المهندسين حتى الفنيين)">
+          <select
+            value={employeeId}
+            onChange={(e) => setEmployeeId(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">-- اختر موظف --</option>
+            {groups.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.items.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="ملاحظة للمُستلِم (اختياري)">
+          <textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            rows={3}
+            placeholder="شنو المطلوب منه بهذا المشروع؟"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+        </Field>
+
+        <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700">
+          الموظف المُستلِم راح يشوف هذا المشروع بكل مراحله وتقاريره من صفحة
+          «مشاريعي المُسلَّمة»، ويقدر يحرّكه بين المراحل ويعدّله — بس هذا المشروع لحاله.
+        </p>
+
+        {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
+
+        <div className="flex gap-2">
+          <button
+            onClick={() => save(employeeId)}
+            disabled={saving || !employeeId}
+            className="flex-1 rounded-lg bg-violet-600 px-4 py-2 font-medium text-white disabled:opacity-50"
+          >
+            {saving ? 'جاري الحفظ...' : 'تسليم المشروع'}
+          </button>
+          {project.delegatedToEmployeeId && (
+            <button
+              onClick={() => save('')}
+              disabled={saving}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 disabled:opacity-50"
+            >
+              سحب التسليم
+            </button>
+          )}
+        </div>
+      </div>
+    </Modal>
   )
 }

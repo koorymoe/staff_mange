@@ -128,6 +128,8 @@ function App() {
           <Route path="leader-invoices" element={<LeaderInvoicesListPage />} />
           <Route path="leader-invoices/new" element={<LeaderInvoiceNew />} />
           <Route path="camera-cost" element={<CameraCostPage />} />
+          {/* المشاريع المُسلَّمة للموظف — نفس واجهة إدارة المشاريع بس على مشاريعه */}
+          <Route path="my-projects" element={<ProjectsPage mode="delegated" />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="work-reports" element={<WorkReportPage />} />
