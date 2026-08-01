@@ -824,7 +824,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// افتراضياً تلقائياً لكل ليدر (isLeader، شوف grantLeaderBasketToLeaders)، لكن
 	// الأدمن يقدر كمان يمنحها لموظف MONITOR من صفحة الصلاحيات بدون ما يصير ليدر
 	// فعلياً (requireLeaderOrPermission يسمح بالاثنين).
-	requireLeaderBasket := middleware.RequireLeaderOrPermission(permissionRepo, employeeRepo, notificationRepo, "leader_basket")
+	// فواتير الليدر: يشوفها الليدر نفسه، وصاحب صلاحية سلة الليدر، *والمحاسب* —
+	// لأنه الفاتورة لازم ترحّل له بتفاصيلها حتى يدققها ويعتمدها.
+	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, "leader_basket", "finance")
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
 	mux.Handle("GET /api/materials", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListMaterials), requireAuth))
 	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth, requireLeaderBasket))

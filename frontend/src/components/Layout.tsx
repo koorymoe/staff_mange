@@ -119,6 +119,8 @@ const navItems: NavItem[] = [
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
         children: [
           { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
+          // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, anyPermission: ['finance', 'leader_basket'] },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
           { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN'], permission: 'expenses' },
         ],
@@ -275,6 +277,7 @@ const navItems: NavItem[] = [
     unitPermission: 'unit_finance',
     children: [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, anyPermission: ['finance', 'leader_basket'] },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
       { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN'], permission: 'expenses' },
     ],

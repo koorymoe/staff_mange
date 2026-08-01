@@ -8,6 +8,7 @@ import {
   type LeaderInvoice,
   type SystemPriceCatalog,
   type Booking,
+  type DirectedProject,
 } from '../api'
 
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
@@ -31,6 +32,9 @@ export default function LeaderInvoiceNew() {
   const [selectedBookingId, setSelectedBookingId] = useState(params.get('bookingId') || '')
   const bookingId = selectedBookingId || undefined
   const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
+  // المشاريع الموجّهة لهذا الموظف — هذي هي المصدر الأساسي للفاتورة: الليدر
+  // يسوي فاتورة للشغل الموجّه له، مو من قائمة عامة بكل الحجوزات.
+  const [myProjects, setMyProjects] = useState<DirectedProject[]>([])
   // وضع "حساب كلفة" السريع: بدون ربط بحجز ولا زبون ولا حفظ — بس رقم تقريبي
   // للليدر لما زبون يستفسر، بنفس محرك الحساب بالضبط.
   const estimateOnly = params.get('mode') === 'estimate'
@@ -58,6 +62,9 @@ export default function LeaderInvoiceNew() {
     api.getBookings({ status: 'COMPLETED' })
       .then(setCompletedBookings)
       .catch(() => setCompletedBookings([]))
+    api.getProjectsDirectedToMe()
+      .then((r) => setMyProjects(r.projects))
+      .catch(() => setMyProjects([]))
   }, [estimateOnly])
 
   const allSystemNames = useMemo(
@@ -313,7 +320,7 @@ export default function LeaderInvoiceNew() {
       {!estimateOnly && (
         <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50/50 p-4">
           <label className="mb-1 block text-sm font-bold text-brand-800">
-            اربط الفاتورة بحجز مكتمل (اختياري)
+            اختر الشغل الي راح تسويله فاتورة
           </label>
           <select
             value={selectedBookingId}
@@ -325,22 +332,42 @@ export default function LeaderInvoiceNew() {
                 setCustomerName(b.customer?.name || '')
                 setCustomerPhone(b.customer?.phone || '')
                 setCustomerAddress(b.customer?.location || '')
+                return
+              }
+              const pr = myProjects.find((x) => x.bookingId === id || `project:${x.id}` === id)
+              if (pr) {
+                setCustomerName(pr.name || '')
+                setCustomerPhone(pr.phone || '')
+                setCustomerAddress(pr.location || '')
               }
             }}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
           >
-            <option value="">— بدون ربط بحجز (فاتورة مستقلة) —</option>
-            {completedBookings.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.code ? `${b.code} — ` : ''}{b.customer?.name || 'بدون اسم'}
-                {b.scheduledAt ? ` (${new Date(b.scheduledAt).toLocaleDateString('ar-IQ')})` : ''}
-              </option>
-            ))}
+            <option value="">— بدون ربط (فاتورة مستقلة) —</option>
+            {myProjects.length > 0 && (
+              <optgroup label="📤 المشاريع الموجّهة لي">
+                {myProjects.map((p) => (
+                  <option key={p.id} value={p.bookingId || `project:${p.id}`}>
+                    {p.code} — {p.name}{p.stage ? ` (${p.stage})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {completedBookings.length > 0 && (
+              <optgroup label="حجوزات مكتملة">
+                {completedBookings.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.code ? `${b.code} — ` : ''}{b.customer?.name || 'بدون اسم'}
+                    {b.scheduledAt ? ` (${new Date(b.scheduledAt).toLocaleDateString('ar-IQ')})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            )}
           </select>
           <p className="mt-1 text-xs text-slate-500">
-            {completedBookings.length > 0
-              ? `${completedBookings.length} حجز مكتمل — لما تختار حجز تنملي معلومات الزبون تلقائياً.`
-              : 'ما اكو حجوزات مكتملة حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
+            {myProjects.length > 0
+              ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
+              : 'ما اكو مشروع موجّه لك حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
           </p>
         </div>
       )}

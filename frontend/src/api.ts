@@ -743,6 +743,18 @@ export interface EstimateExecutionCostResponse {
 }
 
 // ── استمارة حساب تكلفة كاميرات المراقبة (شيت مستقل بمعادلة مختلفة) ──
+// مشروع موجّه للموظف — يستخدمه الليدر لاختيار الشغل الي راح يسويله فاتورة
+export interface DirectedProject {
+  id: string
+  code: string
+  name: string
+  stage: string
+  phone: string | null
+  location: string | null
+  bookingId: string | null
+  delegatedToName: string | null
+}
+
 export interface CameraCostRow {
   normalCableMeters: number
   vipCableMeters: number
@@ -1961,6 +1973,9 @@ export const api = {
     request<EstimateExecutionCostResponse>('/leader-invoices/estimate', { method: 'POST', body: JSON.stringify({ items }) }),
   approveLeaderInvoice: (id: string) =>
     request<LeaderInvoice>(`/leader-invoices/${id}/approve`, { method: 'PUT' }),
+  // المشاريع الموجّهة للموظف الحالي — الليدر يسوي فاتورة للشغل الموجّه له
+  getProjectsDirectedToMe: () =>
+    request<{ projects: DirectedProject[] }>('/projects/delegated-to-me'),
   calculateCameraCost: (data: CameraCostRequest) =>
     request<CameraCostResponse>('/leader-invoices/camera-cost', { method: 'POST', body: JSON.stringify(data) }),
   getCameraCostOptions: () =>
