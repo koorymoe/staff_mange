@@ -450,5 +450,11 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			(gen_random_uuid()::text, 'unit_projects', 'وحدة إدارة المشاريع')
 			ON CONFLICT (name) DO NOTHING`,
 		},
+		{
+			// منو أضاف المشروع (أو رحّل الحجز لإدارة المشاريع) — يظهر ببطاقة
+			// المشروع مكان المرحلة، والمرحلة انتقلت لأعلى البطاقة.
+			Version: "0164_add_project_created_by",
+			SQL:     `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "createdByEmployeeId" TEXT`,
+		},
 	}
 }

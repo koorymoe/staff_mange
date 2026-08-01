@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"strings"
 
 	"staffmange-api/internal/model"
 )
@@ -20,15 +21,38 @@ func NewProjectRepository(db *sqlx.DB) *ProjectRepository {
 // تكون ميغابايتات لكل مشروع، وجلبها بالقائمة كان يخلي الصفحة بطيئة جداً. بدالها
 // نرجّع علمين بس (هل اكو عقد / هل اكو عقد موقّع)، والملف نفسه ينجلب لما
 // المستخدم يفتح نافذة العقد (GET /api/projects/{id}).
-const projectListColumns = `id, code, name, rep, phone, location, "mapLatitude", "mapLongitude",
+// prefixed يضيف بادئة الجدول لكل عمود بالقائمة — لازمة لما نعمل JOIN، وإلا
+// يطلع خطأ "column reference is ambiguous" أو ما ينلكه العمود أصلاً.
+func prefixed(cols, alias string) string {
+	parts := strings.Split(cols, ",")
+	out := make([]string, 0, len(parts))
+	for _, c := range parts {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		// التعابير المحسوبة (فيها أقواس) تنترك مثل ما هي
+		if strings.ContainsAny(c, "()") {
+			out = append(out, c)
+			continue
+		}
+		out = append(out, alias+"."+c)
+	}
+	return strings.Join(out, ", ")
+}
+
+const projectListColumns = `id, code, name, rep, phone, location, "locationUrl", "mapLatitude", "mapLongitude",
 	"workType", "refPerson", stage, price, staff, time, task, priority, "deliveryDate", survey,
-	"bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "createdAt", "updatedAt",
+	"bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "createdByEmployeeId", "createdAt", "updatedAt",
 	("contractPdfBase64" IS NOT NULL) AS "hasContract",
 	("signedContractPdfBase64" IS NOT NULL) AS "hasSignedContract"`
 
 func (r *ProjectRepository) List() ([]model.Project, error) {
 	projects := []model.Project{}
-	err := r.db.Select(&projects, `SELECT `+projectListColumns+` FROM "Project" ORDER BY "createdAt" DESC`)
+	// نجيب اسم مضيف المشروع بـJOIN حتى يظهر ببطاقته بدون استعلام لكل صف
+	err := r.db.Select(&projects, `SELECT `+prefixed(projectListColumns, "p")+`, e.name AS "createdByName"
+		FROM "Project" p LEFT JOIN "Employee" e ON e.id = p."createdByEmployeeId"
+		ORDER BY p."createdAt" DESC`)
 	return projects, err
 }
 
@@ -51,13 +75,13 @@ func (r *ProjectRepository) CountAll() (int, error) {
 	return count, err
 }
 
-func (r *ProjectRepository) Create(code, name string, rep, phone, location *string, mapLatitude, mapLongitude *float64, workType, refPerson *string, priority string, deliveryDate, bookingID, responsibleEmployeeID, surveyorEmployeeID *string) (*model.Project, error) {
+func (r *ProjectRepository) Create(code, name string, rep, phone, location *string, mapLatitude, mapLongitude *float64, workType, refPerson *string, priority string, deliveryDate, bookingID, responsibleEmployeeID, surveyorEmployeeID, locationUrl, createdByEmployeeID *string) (*model.Project, error) {
 	var p model.Project
 	err := r.db.Get(&p, `
-		INSERT INTO "Project" (id, code, name, rep, phone, location, "mapLatitude", "mapLongitude", "workType", "refPerson", priority, "deliveryDate", stage, "bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "updatedAt")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now())
+		INSERT INTO "Project" (id, code, name, rep, phone, location, "locationUrl", "mapLatitude", "mapLongitude", "workType", "refPerson", priority, "deliveryDate", stage, "bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "createdByEmployeeId", "updatedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $16, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $17, now())
 		RETURNING *
-	`, code, name, rep, phone, location, mapLatitude, mapLongitude, workType, refPerson, priority, deliveryDate, firstStage, bookingID, responsibleEmployeeID, surveyorEmployeeID)
+	`, code, name, rep, phone, location, mapLatitude, mapLongitude, workType, refPerson, priority, deliveryDate, firstStage, bookingID, responsibleEmployeeID, surveyorEmployeeID, locationUrl, createdByEmployeeID)
 	if err != nil {
 		return nil, err
 	}
@@ -72,6 +96,7 @@ func (r *ProjectRepository) Update(id string, req model.UpdateProjectRequest) (*
 			rep = COALESCE($3, rep),
 			phone = COALESCE($4, phone),
 			location = COALESCE($5, location),
+			"locationUrl" = COALESCE($24, "locationUrl"),
 			"mapLatitude" = COALESCE($6, "mapLatitude"),
 			"mapLongitude" = COALESCE($7, "mapLongitude"),
 			"workType" = COALESCE($8, "workType"),
@@ -94,7 +119,7 @@ func (r *ProjectRepository) Update(id string, req model.UpdateProjectRequest) (*
 	`, id, req.Name, req.Rep, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.WorkType, req.RefPerson, req.Stage,
 		req.Price, req.Staff, req.Time, req.Task, req.Priority, req.DeliveryDate, req.Survey,
 		req.ContractPdfBase64, req.SignedContractPdfBase64, req.ResponsibleEmployeeID, req.SurveyorEmployeeID,
-		req.ClearContract, req.ClearSignedContract)
+		req.ClearContract, req.ClearSignedContract, req.LocationUrl)
 	if err != nil {
 		return nil, err
 	}

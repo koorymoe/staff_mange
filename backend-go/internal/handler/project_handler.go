@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"staffmange-api/internal/middleware"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
@@ -42,7 +43,12 @@ func (h *ProjectHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	project, err := h.service.Create(req)
+	// نسجّل منو أضاف المشروع (أو رحّل الحجز) حتى يظهر ببطاقته
+	var createdBy *string
+	if id := middleware.EmployeeIDFromContext(r); id != "" {
+		createdBy = &id
+	}
+	project, err := h.service.Create(req, createdBy)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

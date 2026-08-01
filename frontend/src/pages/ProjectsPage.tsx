@@ -33,6 +33,7 @@ interface Project {
   phone: string | null
   location: string | null
   locationUrl: string | null
+  createdByName: string | null
   mapLatitude: number | null
   mapLongitude: number | null
   workType: string | null
@@ -673,6 +674,14 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         📅 انتهاء تقريبي: {p.deliveryDate || '---'}
       </div>
 
+      {/* المرحلة بأعلى وسط البطاقة — أهم معلومة، تنقرا بلمحة بدون تدوير */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2">
+        <span className="inline-block rounded-b-xl px-4 py-1 text-xs font-extrabold text-white shadow-sm"
+          style={{ background: borderColor }}>
+          {p.stage}
+        </span>
+      </div>
+
       <h3 className="font-bold text-lg mt-4 flex items-center gap-2" style={{ color: borderColor }}>
         {p.name}
         {p.priority === 'عاجل جداً' && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">عاجل 🔥</span>}
@@ -685,7 +694,8 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         <Info icon="🤝" value={p.refPerson || 'لا يوجد'} />
         <Info icon="🛠️" value={p.workType} />
         <Info icon="📍" value={p.location} />
-        <Info icon="📊" value={p.stage} />
+        {/* مكان المرحلة القديم: منو رحّل الحجز أو أضاف المشروع */}
+        <Info icon="🧑‍💼" value={p.createdByName ? `أضافه: ${p.createdByName}` : 'أضافه: غير محدد'} />
       </div>
 
       <div className="mt-4 pt-3 border-t flex flex-wrap items-center justify-between gap-2">

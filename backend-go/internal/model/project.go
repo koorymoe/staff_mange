@@ -47,13 +47,18 @@ func (r *RawJSON) UnmarshalJSON(data []byte) error {
 }
 
 type Project struct {
-	ID           string   `db:"id" json:"id"`
-	Code         string   `db:"code" json:"code"`
-	Name         string   `db:"name" json:"name"`
-	Rep          *string  `db:"rep" json:"rep"`
-	Phone        *string  `db:"phone" json:"phone"`
-	Location     *string  `db:"location" json:"location"`
+	ID       string  `db:"id" json:"id"`
+	Code     string  `db:"code" json:"code"`
+	Name     string  `db:"name" json:"name"`
+	Rep      *string `db:"rep" json:"rep"`
+	Phone    *string `db:"phone" json:"phone"`
+	Location *string `db:"location" json:"location"`
+	// رابط الموقع (بديل عن التحديد على الخريطة) — نفس آلية الموردين
+	LocationUrl  *string  `db:"locationUrl" json:"locationUrl"`
 	MapLatitude  *float64 `db:"mapLatitude" json:"mapLatitude"`
+	// منو أضاف المشروع / رحّل الحجز لإدارة المشاريع
+	CreatedByEmployeeID *string `db:"createdByEmployeeId" json:"createdByEmployeeId"`
+	CreatedByName       *string `db:"createdByName" json:"createdByName"`
 	MapLongitude *float64 `db:"mapLongitude" json:"mapLongitude"`
 	WorkType     *string  `db:"workType" json:"workType"`
 	RefPerson    *string  `db:"refPerson" json:"refPerson"`
@@ -100,6 +105,7 @@ type CreateProjectRequest struct {
 	Rep                   *string  `json:"rep"`
 	Phone                 *string  `json:"phone"`
 	Location              *string  `json:"location"`
+	LocationUrl           *string  `json:"locationUrl"`
 	MapLatitude           *float64 `json:"mapLatitude"`
 	MapLongitude          *float64 `json:"mapLongitude"`
 	WorkType              *string  `json:"workType"`
@@ -116,6 +122,7 @@ type UpdateProjectRequest struct {
 	Rep                     *string  `json:"rep"`
 	Phone                   *string  `json:"phone"`
 	Location                *string  `json:"location"`
+	LocationUrl             *string  `json:"locationUrl"`
 	MapLatitude             *float64 `json:"mapLatitude"`
 	MapLongitude            *float64 `json:"mapLongitude"`
 	WorkType                *string  `json:"workType"`

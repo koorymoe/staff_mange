@@ -63,7 +63,7 @@ func (s *ProjectService) List() (*model.ProjectListResponse, error) {
 	}, nil
 }
 
-func (s *ProjectService) Create(req model.CreateProjectRequest) (*model.Project, error) {
+func (s *ProjectService) Create(req model.CreateProjectRequest, createdBy *string) (*model.Project, error) {
 	if req.Name == "" {
 		return nil, errors.New("اسم المؤسسة مطلوب")
 	}
@@ -77,7 +77,7 @@ func (s *ProjectService) Create(req model.CreateProjectRequest) (*model.Project,
 		priority = *req.Priority
 	}
 	return s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.WorkType, req.RefPerson, priority, req.DeliveryDate, req.BookingID,
-		emptyToNil(req.ResponsibleEmployeeID), emptyToNil(req.SurveyorEmployeeID))
+		emptyToNil(req.ResponsibleEmployeeID), emptyToNil(req.SurveyorEmployeeID), req.LocationUrl, createdBy)
 }
 
 // emptyToNil يحوّل "" لـnil حتى لا نحاول نخزن سترنغ فاضي بعمود مفتاح أجنبي

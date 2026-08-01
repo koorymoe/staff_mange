@@ -35,6 +35,8 @@ export default function QuotationNew() {
   // من وين اجه المستخدم — لو اجه من إدارة المشاريع نطلعله زر "تم" يرجعه
   // مباشرة لهناك بدل ما يدور بالقائمة الجانبية.
   const returnTo = searchParams.get('returnTo')
+  // HTML المعاينة (نسخة الطباعة) — لما تنملي تنعرض بنافذة داخل النظام
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [products, setProducts] = useState<Product[]>([])
   const [customerName, setCustomerName] = useState(searchParams.get('customerName') || '')
   const [customerPhone, setCustomerPhone] = useState(searchParams.get('customerPhone') || '')
@@ -214,10 +216,12 @@ export default function QuotationNew() {
     }
   }
 
-  const handlePrint = (withImages = true) => {
+  // buildPrintHtml يبني نفس النسخة الي تنطبع بالضبط — نستعملها للطباعة
+  // وللمعاينة سوه، حتى المعاينة تكون طبق الأصل للمطبوع مو شي ثاني.
+  const buildPrintHtml = (withImages = true): string | null => {
     if (!customerName.trim()) {
       showStatus('الرجاء إدخال اسم الزبون قبل الطباعة', 'err')
-      return
+      return null
     }
     const validItems = items.filter((it) => it.productName.trim())
     const qdate = today
@@ -426,11 +430,24 @@ ${pageShell(`
 
 </body></html>`
 
+    return printHtml
+  }
+
+  const handlePrint = (withImages = true) => {
+    const html = buildPrintHtml(withImages)
+    if (!html) return
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
-    printWindow.document.write(printHtml)
+    printWindow.document.write(html)
     printWindow.document.close()
     setTimeout(() => printWindow.print(), 500)
+  }
+
+  // المعاينة: نعرض النسخة المطبوعة داخل النظام (مثل ملف PDF) — للاطلاع فقط،
+  // ومنها يقرر يعدّل أو يسوي عرض جديد أو يرجع لإدارة المشاريع.
+  const openPreview = () => {
+    const html = buildPrintHtml(true)
+    if (html) setPreviewHtml(html)
   }
 
   const filteredProducts = products.filter(p =>
@@ -697,11 +714,11 @@ ${pageShell(`
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
         }}>💾 {isEdit ? 'حفظ التعديلات' : 'حفظ العرض'}</button>
         {returnTo && (
-          <button onClick={() => navigate(returnTo)} style={{
+          <button onClick={openPreview} style={{
             background: 'linear-gradient(135deg, #2e7d32, #43a047)', color: 'white', border: 'none',
             padding: '14px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', fontFamily: 'inherit',
             flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-          }}>✓ تم — رجوع لإدارة المشاريع</button>
+          }}>✓ تم — معاينة العرض</button>
         )}
         {isEdit && (
           <button onClick={() => navigate('/quotations')} style={{
@@ -822,6 +839,47 @@ ${pageShell(`
         </div>
       )}
       </>
+      )}
+
+      {/* معاينة العرض — نفس النسخة الي تنطبع بالضبط، للاطلاع فقط (مثل PDF).
+          التعديل ما يصير من هنا: يغلق المعاينة ويرجع للنموذج. */}
+      {previewHtml && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 3000, background: 'rgba(0,0,0,0.6)',
+          display: 'flex', flexDirection: 'column', padding: '16px', gap: '12px',
+        }}>
+          <div style={{
+            display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center',
+            background: 'white', padding: '12px', borderRadius: '12px',
+          }}>
+            <span style={{ fontWeight: 800, color: '#0f2040', alignSelf: 'center', marginLeft: 'auto' }}>
+              👁️ معاينة العرض (نسخة الطباعة)
+            </span>
+            <button onClick={() => setPreviewHtml(null)} style={{
+              background: '#1565c0', color: 'white', border: 'none', padding: '10px 18px',
+              borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
+            }}>✏️ تعديل هذا العرض</button>
+            <button onClick={() => { setPreviewHtml(null); navigate('/quotations/new' + (returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : '')); window.location.reload() }} style={{
+              background: '#00838f', color: 'white', border: 'none', padding: '10px 18px',
+              borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
+            }}>➕ عرض سعر جديد</button>
+            <button onClick={() => handlePrint(true)} style={{
+              background: '#e65100', color: 'white', border: 'none', padding: '10px 18px',
+              borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
+            }}>🖨️ طباعة</button>
+            {returnTo && (
+              <button onClick={() => navigate(returnTo)} style={{
+                background: '#2e7d32', color: 'white', border: 'none', padding: '10px 18px',
+                borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
+              }}>✓ رجوع لإدارة المشاريع</button>
+            )}
+          </div>
+          <iframe
+            title="معاينة عرض السعر"
+            srcDoc={previewHtml}
+            style={{ flex: 1, width: '100%', border: 'none', borderRadius: '12px', background: 'white' }}
+          />
+        </div>
       )}
     </div>
   )
