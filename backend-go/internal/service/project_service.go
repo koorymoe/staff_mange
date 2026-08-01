@@ -79,6 +79,61 @@ func (s *ProjectService) ListDelegatedTo(employeeID string) (*model.ProjectListR
 	}, nil
 }
 
+// Statistics إحصائيات المشاريع الكاملة: نظرة عامة + سطر لكل مشروع بقيمته +
+// سطر لكل موظف يبيّن دوره الفعلي (أضاف / طلع كشف / كان مسؤول / استلم مشروع).
+func (s *ProjectService) Statistics() (*model.ProjectStatisticsResponse, error) {
+	projects, err := s.repo.ProjectValueRows()
+	if err != nil {
+		return nil, err
+	}
+	employees, err := s.repo.ProjectEmployeeStats()
+	if err != nil {
+		return nil, err
+	}
+
+	ov := model.ProjectStatisticsOverview{TotalProjects: len(projects)}
+	for _, p := range projects {
+		val := 0.0
+		if p.PriceValue != nil {
+			val = *p.PriceValue
+			ov.TotalValue += val
+			ov.PricedProjects++
+		}
+		if p.DelegatedToName != nil {
+			ov.DelegatedCount++
+		}
+		if p.HasSurvey {
+			ov.SurveysFilled++
+		}
+		switch {
+		case strings.Contains(p.Stage, "مكتمل"):
+			ov.CompletedCount++
+			ov.CompletedValue += val
+		case strings.Contains(p.Stage, "مرفوض"):
+			ov.RejectedCount++
+		default:
+			ov.ActiveCount++
+			ov.InProgressValue += val
+		}
+	}
+	if ov.PricedProjects > 0 {
+		ov.AverageValue = ov.TotalValue / float64(ov.PricedProjects)
+	}
+	// نعيد استخدام نفس دالة توزيع المراحل المستخدمة بصفحة المشاريع حتى
+	// الرقمين ما يختلفون بين الصفحتين
+	stageSource := make([]model.Project, 0, len(projects))
+	for _, p := range projects {
+		stageSource = append(stageSource, model.Project{Stage: p.Stage})
+	}
+	ov.StageBreakdown = computeProjectStats(stageSource)
+
+	return &model.ProjectStatisticsResponse{
+		Overview:  ov,
+		Projects:  projects,
+		Employees: employees,
+	}, nil
+}
+
 // Delegate يسلّم المشروع لموظف، أو يسحب التسليم لو employeeID فاضي.
 func (s *ProjectService) Delegate(projectID, employeeID string, byEmployeeID *string, note string) (*model.Project, error) {
 	var target *string

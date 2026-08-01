@@ -108,7 +108,8 @@ const navItems: NavItem[] = [
         children: [
           { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'] },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
-          { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
+          { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
+      { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, permission: 'project_management' },
           { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
           { to: '/products', label: 'المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
@@ -294,6 +295,7 @@ const navItems: NavItem[] = [
     children: [
       { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'] },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
+      { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
       { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
       { to: '/products', label: 'المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },

@@ -56,6 +56,17 @@ func (h *ProjectHandler) Delegate(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, p)
 }
 
+// GET /api/projects/statistics — إحصائيات المشاريع والموظفين داخلها.
+func (h *ProjectHandler) Statistics(w http.ResponseWriter, r *http.Request) {
+	res, err := h.service.Statistics()
+	if err != nil {
+		log.Printf("project statistics failed: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب إحصائيات المشاريع")
+		return
+	}
+	WriteJSON(w, http.StatusOK, res)
+}
+
 // GET /api/projects/{id}/delegation-log — سجل تسليم مشروع معيّن.
 func (h *ProjectHandler) DelegationLog(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.service.DelegationLog(r.PathValue("id"))
