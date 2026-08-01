@@ -188,6 +188,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	attendanceIconRequestHandler := handler.NewAttendanceIconRequestHandler(attendanceIconRequestService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
 	supplierHandler := handler.NewSupplierHandler(supplierService)
+	privacyPolicyHandler := handler.NewPrivacyPolicyHandler(repository.NewPrivacyPolicyRepository(db))
 	mapLinkHandler := handler.NewMapLinkHandler()
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	productHandler := handler.NewProductHandler(productService)
@@ -609,6 +610,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// حل روابط الخرائط (خصوصاً المختصرة مثل maps.app.goo.gl الي ما تحتوي
 	// إحداثيات) — لازم يمر بالسيرفر لأن المتصفح ما يقدر يتبع التحويل بسبب CORS.
 	mux.Handle("GET /api/geo/resolve-map-link", middleware.Chain(http.HandlerFunc(mapLinkHandler.Resolve), requireAuth))
+
+	// سياسة الخصوصية — القراءة والموافقة لأي موظف، والإدارة بصلاحية مستقلة
+	requirePrivacyMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "privacy_policy_manage")
+	mux.Handle("GET /api/privacy-policy", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.List), requireAuth))
+	mux.Handle("GET /api/privacy-policy/status", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Status), requireAuth))
+	mux.Handle("POST /api/privacy-policy/accept", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Accept), requireAuth))
+	mux.Handle("POST /api/privacy-policy", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Create), requireAuth, requirePrivacyMgmt))
+	mux.Handle("PUT /api/privacy-policy/{id}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Update), requireAuth, requirePrivacyMgmt))
+	mux.Handle("DELETE /api/privacy-policy/{id}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Delete), requireAuth, requirePrivacyMgmt))
 
 	mux.Handle("GET /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.List), requireAuth))
 	mux.Handle("POST /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.Create), requireAuth, requireSuppliersMgmt))

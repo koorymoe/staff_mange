@@ -142,6 +142,10 @@ export default function PermissionsPage() {
       title: 'الوحدات (ظهور الوحدة كاملة بالقائمة)',
       perms: ['unit_technicians'],
     },
+    {
+      title: 'سياسة الخصوصية',
+      perms: ['privacy_policy_manage'],
+    },
   ]
 
   return (

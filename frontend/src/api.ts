@@ -285,6 +285,10 @@ export interface Booking {
   arrivedAt: string | null
   startedAt: string | null
   confirmationContactedAt: string | null
+  // وقت تحويل الحجز لتنسيق الحجوزات (التثبيت)
+  confirmedAt: string | null
+  // الموقع: عنوان كلامي + نقطة على الخريطة + رابط (الرابط يغني عن التحديد)
+  locationUrl: string | null
   confirmationContactedBy: { id: string; name: string } | null
   systemType: string | null
   systemCount: number | null
@@ -1306,6 +1310,24 @@ export interface ToolRequestItem {
   returnedAt: string | null
 }
 
+export interface PrivacyPolicyPoint {
+  id: string
+  content: string
+  order: number
+  isActive: boolean
+  createdByEmployeeId: string | null
+  // اسم الي أضاف النقطة — يرجع للمالك ومدير النظام فقط
+  createdByName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface PrivacyPolicyStatus {
+  needsAcceptance: boolean
+  points: PrivacyPolicyPoint[]
+  acceptedAt: string | null
+}
+
 export type PersonalToolStatus = 'AVAILABLE' | 'LOST' | 'DAMAGED' | 'REPAIRING' | 'RETIRED' | 'CHECKED_OUT'
 
 // نفس النصوص الموجودة بالباك إند (model/inventory.go)
@@ -2111,6 +2133,18 @@ export const api = {
   createPersonalTool: (data: { employeeId: string; name: string; barcode: string }) =>
     request<PersonalTool>('/inventory/personal', { method: 'POST', body: JSON.stringify(data) }),
   // سجل حركة الأدوات: toolId لأداة وحدة، employeeId لكل عدة موظف، بلا شي = الكل
+  // سياسة الخصوصية
+  getPrivacyPolicy: (all?: boolean) =>
+    request<PrivacyPolicyPoint[]>(`/privacy-policy${all ? '?all=true' : ''}`),
+  getPrivacyPolicyStatus: () => request<PrivacyPolicyStatus>('/privacy-policy/status'),
+  acceptPrivacyPolicy: () =>
+    request<{ accepted: boolean }>('/privacy-policy/accept', { method: 'POST' }),
+  createPrivacyPolicyPoint: (content: string, order?: number) =>
+    request<PrivacyPolicyPoint>('/privacy-policy', { method: 'POST', body: JSON.stringify({ content, order }) }),
+  updatePrivacyPolicyPoint: (id: string, data: { content?: string; order?: number; isActive?: boolean }) =>
+    request<PrivacyPolicyPoint>(`/privacy-policy/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deletePrivacyPolicyPoint: (id: string) =>
+    request<void>(`/privacy-policy/${id}`, { method: 'DELETE' }),
   getToolEvents: (params?: { toolId?: string; employeeId?: string }) => {
     const qs = new URLSearchParams()
     if (params?.toolId) qs.set('toolId', params.toolId)

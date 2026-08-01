@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
-import LocationPicker from '../components/LocationPicker'
+import LocationFields from '../components/LocationFields'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -32,6 +32,7 @@ interface Project {
   rep: string | null
   phone: string | null
   location: string | null
+  locationUrl: string | null
   mapLatitude: number | null
   mapLongitude: number | null
   workType: string | null
@@ -868,6 +869,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
   const workTypes = useProjectWorkTypes()
   const [form, setForm] = useState({ name: '', rep: '', phone: '', location: '', workType: 'طاقة شمسية', refPerson: '', priority: 'عادي', deliveryDate: '' })
   const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(null)
+  const [locationUrl, setLocationUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -877,7 +879,7 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
     try {
       await request('/projects', {
         method: 'POST',
-        body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng }),
+        body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng, locationUrl: locationUrl || undefined }),
       })
       onSaved()
     } catch (e) { alert((e as Error).message); setSaving(false) }
@@ -889,10 +891,18 @@ function AddModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => vo
         <Field label="المؤسسة *"><input className="inp" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
         <Field label="الممثل"><input className="inp" value={form.rep} onChange={e => set('rep', e.target.value)} /></Field>
         <Field label="الهاتف"><input className="inp" value={form.phone} onChange={e => set('phone', e.target.value)} /></Field>
-        <Field label="عنوان الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
         <div className="sm:col-span-2">
-          <label className="text-xs font-bold text-gray-600">تحديد الموقع على الخريطة</label>
-          <LocationPicker value={mapPoint} onChange={setMapPoint} />
+          {/* نفس آلية الموردين: عنوان + رابط + خريطة، والرابط يغني عن الخريطة */}
+          <LocationFields
+            addressLabel="عنوان الموقع"
+            address={form.location}
+            onAddressChange={(v) => set('location', v)}
+            point={mapPoint}
+            onPointChange={setMapPoint}
+            locationUrl={locationUrl}
+            onLocationUrlChange={setLocationUrl}
+            resolveUrl={(u) => request<{ lat: number; lng: number }>(`/geo/resolve-map-link?url=${encodeURIComponent(u)}`)}
+          />
         </div>
         <Field label="نوع العمل">
           <select className="inp" value={form.workType} onChange={e => set('workType', e.target.value)}>
@@ -929,6 +939,7 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
   const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(
     project.mapLatitude != null && project.mapLongitude != null ? { lat: project.mapLatitude, lng: project.mapLongitude } : null,
   )
+  const [locationUrl, setLocationUrl] = useState(project.locationUrl || '')
   const [saving, setSaving] = useState(false)
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
@@ -938,7 +949,7 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
     try {
       await request(`/projects/${project.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng }),
+        body: JSON.stringify({ ...form, mapLatitude: mapPoint?.lat, mapLongitude: mapPoint?.lng, locationUrl: locationUrl || null }),
       })
       onSaved()
     } catch (e) { alert((e as Error).message); setSaving(false) }
@@ -950,10 +961,18 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
         <Field label="المؤسسة *"><input className="inp" value={form.name} onChange={e => set('name', e.target.value)} /></Field>
         <Field label="الممثل"><input className="inp" value={form.rep} onChange={e => set('rep', e.target.value)} /></Field>
         <Field label="الهاتف"><input className="inp" value={form.phone} onChange={e => set('phone', e.target.value)} /></Field>
-        <Field label="عنوان الموقع"><input className="inp" value={form.location} onChange={e => set('location', e.target.value)} /></Field>
         <div className="sm:col-span-2">
-          <label className="text-xs font-bold text-gray-600">تحديد الموقع على الخريطة</label>
-          <LocationPicker value={mapPoint} onChange={setMapPoint} />
+          {/* نفس آلية الموردين: عنوان + رابط + خريطة، والرابط يغني عن الخريطة */}
+          <LocationFields
+            addressLabel="عنوان الموقع"
+            address={form.location}
+            onAddressChange={(v) => set('location', v)}
+            point={mapPoint}
+            onPointChange={setMapPoint}
+            locationUrl={locationUrl}
+            onLocationUrlChange={setLocationUrl}
+            resolveUrl={(u) => request<{ lat: number; lng: number }>(`/geo/resolve-map-link?url=${encodeURIComponent(u)}`)}
+          />
         </div>
         <Field label="نوع العمل">
           <select className="inp" value={form.workType} onChange={e => set('workType', e.target.value)}>

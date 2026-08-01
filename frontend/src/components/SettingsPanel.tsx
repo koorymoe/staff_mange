@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../api'
 import { useSession } from '../session'
 
@@ -6,6 +7,7 @@ const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '�
 
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { employee } = useSession()
+  const navigate = useNavigate()
   const [tab, setTab] = useState<'password' | 'volume' | 'icon' | 'approvals'>('password')
 
   // تغيير كلمة المرور
@@ -177,6 +179,17 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
               ))}
             </div>
           )}
+
+          {/* سياسة الخصوصية — الموظف يرجع يقراها بأي وقت من هنا */}
+          <div className="mt-4 border-t border-slate-100 pt-4">
+            <button
+              onClick={() => { onClose(); navigate('/privacy-policy') }}
+              className="flex w-full items-center justify-between rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              <span>🔒 سياسة الخصوصية</span>
+              <span className="text-slate-400">←</span>
+            </button>
+          </div>
         </div>
       </div>
     </>

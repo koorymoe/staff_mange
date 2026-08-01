@@ -29,6 +29,7 @@ export default function Coordinator() {
   // الحجز الي قيد التثبيت حالياً — الأزرار كانت بلا أي إشارة انتظار، فالمستخدم
   // يحس النظام بطيء أو معلّق ويضغط عدة مرات.
   const [confirmingId, setConfirmingId] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
   const [supervisors, setSupervisors] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -268,8 +269,15 @@ export default function Coordinator() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
-  const pendingBookings = bookings.filter((b) => b.status === 'PENDING')
-  const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED')
+  // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
+  const matchesSearch = (b: Booking) => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return [b.code, b.customer?.code, b.customer?.phone, b.customer?.name]
+      .some((v) => (v || '').toString().toLowerCase().includes(q))
+  }
+  const pendingBookings = bookings.filter((b) => b.status === 'PENDING' && matchesSearch(b))
+  const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' && matchesSearch(b))
   const upcomingAppointments = bookings
     .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING') && new Date(b.scheduledAt) > new Date())
     .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
@@ -316,6 +324,21 @@ export default function Coordinator() {
             </div>
           )}
 
+          {/* بحث بكود الحجز أو كود الزبون أو رقمه أو اسمه */}
+          <div className="mt-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="🔍 بحث بكود الحجز، كود الزبون، رقم الهاتف، أو اسم الزبون..."
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+            />
+            {search.trim() && (
+              <p className="mt-2 text-xs text-slate-500">
+                النتائج: {pendingBookings.length} بانتظار التثبيت · {confirmedBookings.length} مثبّت
+              </p>
+            )}
+          </div>
+
           {/* بانتظار التثبيت */}
           <h3 className="mt-6 mb-3 text-lg font-bold text-brand-800">
             بانتظار التثبيت ({pendingBookings.length})
@@ -333,6 +356,12 @@ export default function Coordinator() {
                     </span>
                     <span className="mr-3 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
                       بانتظار التثبيت
+                    </span>
+                    {/* شوكت وصل هذا الحجز للتنسيق */}
+                    <span className="mr-2 text-xs text-slate-400">
+                      وصل للتنسيق: {new Date(booking.confirmedAt || booking.createdAt).toLocaleString('ar-IQ', {
+                        year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
+                      })}
                     </span>
                     {booking.priority === 'URGENT' && (
                       <span className="mr-2 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">

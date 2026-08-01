@@ -307,6 +307,8 @@ func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, 
 			"confirmedByEmployeeId" = COALESCE($3, "confirmedByEmployeeId"),
 			"adminNotes" = COALESCE($4, "adminNotes"),
 			"transferToProjects" = $5,
+			-- وقت التحويل لتنسيق الحجوزات — أول مرة بس، ما ينداس بإعادة التثبيت
+			"confirmedAt" = COALESCE("confirmedAt", now()),
 			"quotedPrice" = COALESCE($6, "quotedPrice"),
 			address = COALESCE($7, address),
 			"scheduledAt" = COALESCE($8::timestamp, "scheduledAt")

@@ -390,5 +390,50 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			ALTER TYPE "ToolStatus" ADD VALUE IF NOT EXISTS 'REPAIRING';
 			ALTER TYPE "ToolStatus" ADD VALUE IF NOT EXISTS 'RETIRED'`,
 		},
+		{
+			// وقت تحويل الحجز لتنسيق الحجوزات (التثبيت) — كان ما ينحفظ إطلاقاً،
+			// فما نقدر نجاوب "شوكت انحول هذا الحجز للتنسيق".
+			Version: "0160_add_booking_confirmed_at",
+			SQL: `ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "confirmedAt" TIMESTAMP;
+			CREATE INDEX IF NOT EXISTS "Booking_confirmedAt_idx" ON "Booking"("confirmedAt" DESC)`,
+		},
+		{
+			// الموقع بنفس آلية الموردين: عنوان كلامي + نقطة على الخريطة + رابط.
+			// الرابط يغني عن التحديد اليدوي (السيرفر يفكّه لإحداثيات).
+			Version: "0161_add_location_url_project_booking",
+			SQL: `ALTER TABLE "Project" ADD COLUMN IF NOT EXISTS "locationUrl" TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "locationUrl" TEXT;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "mapLatitude" DOUBLE PRECISION;
+			ALTER TABLE "Booking" ADD COLUMN IF NOT EXISTS "mapLongitude" DOUBLE PRECISION;
+			-- ملاحظة: العمودين فوق موجودين أصلاً بأغلب النسخ، IF NOT EXISTS يخليها آمنة`,
+		},
+		{
+			// سياسة الخصوصية: نقاط يضيفها صاحب الصلاحية، وكل موظف يوافق عليها
+			// أول دخول. نحتفظ بمنو أضاف كل نقطة (يشوفه المالك ومدير النظام).
+			Version: "0162_create_privacy_policy",
+			SQL: `INSERT INTO "Permission" (id, name, label)
+			VALUES (gen_random_uuid()::text, 'privacy_policy_manage', 'إضافة وتعديل سياسات الخصوصية')
+			ON CONFLICT (name) DO NOTHING;
+
+			CREATE TABLE IF NOT EXISTS "PrivacyPolicyPoint" (
+				id TEXT PRIMARY KEY,
+				content TEXT NOT NULL,
+				"order" INTEGER NOT NULL DEFAULT 0,
+				"isActive" BOOLEAN NOT NULL DEFAULT true,
+				"createdByEmployeeId" TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now(),
+				"updatedAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "PrivacyPolicyPoint_order_idx" ON "PrivacyPolicyPoint"("order", "createdAt");
+
+			-- موافقة الموظف: نخزن عدد النقاط وقت الموافقة حتى إذا انضافت نقاط
+			-- جديدة بعدين تنطلب موافقة جديدة تلقائياً.
+			CREATE TABLE IF NOT EXISTS "PrivacyPolicyAcceptance" (
+				id TEXT PRIMARY KEY,
+				"employeeId" TEXT NOT NULL UNIQUE,
+				"acceptedAt" TIMESTAMP NOT NULL DEFAULT now(),
+				"pointsVersion" INTEGER NOT NULL DEFAULT 0
+			)`,
+		},
 	}
 }

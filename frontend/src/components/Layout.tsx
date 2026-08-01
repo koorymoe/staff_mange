@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
+import PrivacyPolicyGate from './PrivacyPolicyGate'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
@@ -78,7 +79,6 @@ const navItems: NavItem[] = [
         children: [
           { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
           { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
-          { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, roles: ['ADMIN'] },
           { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
           { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
           { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_services' },
@@ -213,7 +213,15 @@ const navItems: NavItem[] = [
       { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'] },
     ],
   },
-  { to: '/unit-pr', label: 'وحدة الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>, roles: ['ADMIN'] },
+  {
+    // وحدة الإعلام والعلاقات العامة: علاقات الشركة مع زبائنها — الشخصيات
+    // المهمة (VIP) الي يأشّرها الموظفون، وسياسة الخصوصية المعلنة.
+    to: '/unit-pr', label: 'وحدة الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>,
+    children: [
+      { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, roles: ['ADMIN'] },
+      { to: '/privacy-policy', label: '🔒 سياسة الخصوصية', icon: <></> },
+    ],
+  },
 
   {
     to: '/unit-quality', label: 'وحدة الجودة والسلامة المهنية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/></svg>,
@@ -612,6 +620,8 @@ export default function Layout() {
 
   return (
     <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
+      {/* سياسة الخصوصية: تنعرض أول دخول ولما تنضاف نقاط جديدة */}
+      <PrivacyPolicyGate />
       <div dir="ltr" className="app-shell flex bg-[#f0f4f9]">
 
         {/* ===== Main Area ===== */}
