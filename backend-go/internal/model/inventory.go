@@ -60,8 +60,73 @@ type CreatePersonalToolRequest struct {
 }
 
 type UpdatePersonalToolRequest struct {
+	Name       *string `json:"name"`
+	Barcode    *string `json:"barcode"`
 	Status     *string `json:"status"`
 	CheckedOut *bool   `json:"checkedOut"`
+	Note       *string `json:"note"`
+}
+
+// حالات الأداة الشخصية — "مفقودة" و"تالفة" هي الي تهم بسجل الحركة، لأن السؤال
+// الأساسي هو "متى انفقدت هذي الأداة ومنو سجّلها".
+const (
+	PersonalToolStatusAvailable = "AVAILABLE"
+	PersonalToolStatusLost      = "LOST"
+	PersonalToolStatusDamaged   = "DAMAGED"
+	PersonalToolStatusRepairing = "REPAIRING"
+	PersonalToolStatusRetired   = "RETIRED"
+	// موجودة أصلاً بالـenum من قبل — نبقيها حتى بيانات قديمة تنعرض صح
+	PersonalToolStatusCheckedOut = "CHECKED_OUT"
+)
+
+var PersonalToolStatusLabels = map[string]string{
+	PersonalToolStatusAvailable:  "موجودة",
+	PersonalToolStatusLost:       "مفقودة",
+	PersonalToolStatusDamaged:    "تالفة",
+	PersonalToolStatusRepairing:  "بالتصليح",
+	PersonalToolStatusRetired:    "خارج الخدمة",
+	PersonalToolStatusCheckedOut: "مصروفة",
+}
+
+// أنواع أحداث سجل حركة الأداة
+const (
+	ToolEventCreated       = "CREATED"        // انضافت لعدة الموظف
+	ToolEventStatusChanged = "STATUS_CHANGED" // تغيّرت حالتها (هنا يبين وقت الفقدان)
+	ToolEventRenamed       = "RENAMED"        // انتعدّل اسمها أو باركودها
+	ToolEventCheckedOut    = "CHECKED_OUT"    // انصرفت للموظف
+	ToolEventReturned      = "RETURNED"       // انرجعت
+	ToolEventDeleted       = "DELETED"        // انحذفت من العدة
+)
+
+var ToolEventLabels = map[string]string{
+	ToolEventCreated:       "انضافت للعدة",
+	ToolEventStatusChanged: "تغيّرت الحالة",
+	ToolEventRenamed:       "انتعدّلت البيانات",
+	ToolEventCheckedOut:    "انصرفت",
+	ToolEventReturned:      "انرجعت",
+	ToolEventDeleted:       "انحذفت من العدة",
+}
+
+// PersonalToolEvent سجل حركة الأداة الشخصية — كل تغيير ينكتب هنا حتى نقدر
+// نجاوب "متى انفقدت هذي الأداة، ومنو سجّل الفقدان". السجل يبقى حتى بعد حذف
+// الأداة (ما اكو قيد مفتاح خارجي)، لأن قيمته بالضبط إنه يوثّق الي راح.
+type PersonalToolEvent struct {
+	ID         string    `db:"id" json:"id"`
+	ToolID     string    `db:"toolId" json:"toolId"`
+	ToolName   string    `db:"toolName" json:"toolName"`
+	EmployeeID string    `db:"employeeId" json:"employeeId"`
+	EventType  string    `db:"eventType" json:"eventType"`
+	FromStatus *string   `db:"fromStatus" json:"fromStatus"`
+	ToStatus   *string   `db:"toStatus" json:"toStatus"`
+	Note       *string   `db:"note" json:"note"`
+	ActorID    *string   `db:"actorId" json:"actorId"`
+	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
+
+	ActorName      *string `db:"actorName" json:"actorName"`
+	EmployeeName   *string `db:"employeeName" json:"employeeName"`
+	EventLabel     string  `db:"-" json:"eventLabel"`
+	FromStatusText string  `db:"-" json:"fromStatusText"`
+	ToStatusText   string  `db:"-" json:"toStatusText"`
 }
 
 type VehicleTool struct {

@@ -1251,6 +1251,45 @@ export interface ToolRequestItem {
   returnedAt: string | null
 }
 
+export type PersonalToolStatus = 'AVAILABLE' | 'LOST' | 'DAMAGED' | 'REPAIRING' | 'RETIRED' | 'CHECKED_OUT'
+
+// نفس النصوص الموجودة بالباك إند (model/inventory.go)
+export const personalToolStatusLabels: Record<PersonalToolStatus, string> = {
+  AVAILABLE: 'موجودة',
+  LOST: 'مفقودة',
+  DAMAGED: 'تالفة',
+  REPAIRING: 'بالتصليح',
+  RETIRED: 'خارج الخدمة',
+  CHECKED_OUT: 'مصروفة',
+}
+
+export const personalToolStatusColors: Record<PersonalToolStatus, string> = {
+  AVAILABLE: 'bg-emerald-50 text-emerald-700',
+  LOST: 'bg-red-100 text-red-700',
+  DAMAGED: 'bg-amber-100 text-amber-700',
+  REPAIRING: 'bg-blue-50 text-blue-700',
+  RETIRED: 'bg-slate-100 text-slate-500',
+  CHECKED_OUT: 'bg-indigo-50 text-indigo-700',
+}
+
+export interface PersonalToolEvent {
+  id: string
+  toolId: string
+  toolName: string
+  employeeId: string
+  employeeName: string | null
+  eventType: 'CREATED' | 'STATUS_CHANGED' | 'RENAMED' | 'CHECKED_OUT' | 'RETURNED' | 'DELETED'
+  eventLabel: string
+  fromStatus: string | null
+  toStatus: string | null
+  fromStatusText: string
+  toStatusText: string
+  note: string | null
+  actorId: string | null
+  actorName: string | null
+  createdAt: string
+}
+
 export type ToolRequestReason =
   | 'DAMAGED' | 'LOST' | 'WORN' | 'STOLEN' | 'NEVER_HAD' | 'EXTRA' | 'OTHER'
 
@@ -2016,7 +2055,15 @@ export const api = {
     request<PersonalTool[]>(`/inventory/personal${employeeId ? `?employeeId=${employeeId}` : ''}`),
   createPersonalTool: (data: { employeeId: string; name: string; barcode: string }) =>
     request<PersonalTool>('/inventory/personal', { method: 'POST', body: JSON.stringify(data) }),
-  updatePersonalTool: (id: string, data: Partial<PersonalTool>) =>
+  // سجل حركة الأدوات: toolId لأداة وحدة، employeeId لكل عدة موظف، بلا شي = الكل
+  getToolEvents: (params?: { toolId?: string; employeeId?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.toolId) qs.set('toolId', params.toolId)
+    if (params?.employeeId) qs.set('employeeId', params.employeeId)
+    const s = qs.toString()
+    return request<PersonalToolEvent[]>(`/inventory/tool-events${s ? `?${s}` : ''}`)
+  },
+  updatePersonalTool: (id: string, data: { name?: string; barcode?: string; status?: PersonalToolStatus; checkedOut?: boolean; note?: string }) =>
     request<PersonalTool>(`/inventory/personal/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePersonalTool: (id: string) => request<void>(`/inventory/personal/${id}`, { method: 'DELETE' }),
   getVehicleTools: (vehicleId?: string) =>

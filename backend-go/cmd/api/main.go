@@ -373,6 +373,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalTool), requireAuth, requireHROrInventory))
 	mux.Handle("PUT /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdatePersonalTool), requireAuth, requireHROrInventory))
 	mux.Handle("DELETE /api/inventory/personal/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalTool), requireAuth, requireHROrInventory))
+	// سجل حركة الأدوات — يبيّن متى انفقدت كل أداة ومنو سجّل الفقدان
+	mux.Handle("GET /api/inventory/tool-events", middleware.Chain(http.HandlerFunc(inventoryHandler.ToolEvents), requireAuth))
 
 	// العدة القياسية (PersonalToolTemplateItem) — القراءة مفتوحة لأي موظف، الإضافة/الحذف
 	// لمن عنده صلاحية "inventory" أو HR/ADMIN (نفس requireHROrInventory).

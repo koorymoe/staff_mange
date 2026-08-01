@@ -359,5 +359,36 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			CREATE INDEX IF NOT EXISTS "VehicleLog_filledBy_performedAt_idx"
 				ON "VehicleLog"("filledByEmployeeId", "performedAt")`,
 		},
+		{
+			// سجل حركة الأداة الشخصية — يجاوب "متى انفقدت الأداة ومنو سجّلها".
+			// بدون مفتاح خارجي على toolId عن قصد: السجل لازم يبقى حتى بعد حذف
+			// الأداة، لأن توثيق الي راح هو بالضبط قيمته.
+			Version: "0158_create_personal_tool_event",
+			SQL: `CREATE TABLE IF NOT EXISTS "PersonalToolEvent" (
+				id TEXT PRIMARY KEY,
+				"toolId" TEXT NOT NULL,
+				"toolName" TEXT NOT NULL,
+				"employeeId" TEXT NOT NULL,
+				"eventType" TEXT NOT NULL,
+				"fromStatus" TEXT,
+				"toStatus" TEXT,
+				note TEXT,
+				"actorId" TEXT,
+				"createdAt" TIMESTAMP NOT NULL DEFAULT now()
+			);
+			CREATE INDEX IF NOT EXISTS "PersonalToolEvent_toolId_idx" ON "PersonalToolEvent"("toolId", "createdAt" DESC);
+			CREATE INDEX IF NOT EXISTS "PersonalToolEvent_employeeId_idx" ON "PersonalToolEvent"("employeeId", "createdAt" DESC);
+			CREATE INDEX IF NOT EXISTS "PersonalToolEvent_type_idx" ON "PersonalToolEvent"("eventType", "createdAt" DESC)`,
+		},
+		{
+			// حالة الأداة enum بقيم AVAILABLE/CHECKED_OUT/DAMAGED فقط — نحتاج
+			// LOST خصوصاً (السؤال الأساسي "متى انفقدت") و REPAIRING و RETIRED.
+			// ADD VALUE ما ينفع داخل معاملة بنسخ قديمة، فنعملها وحدة وحدة
+			// بـIF NOT EXISTS الي يخليها آمنة للإعادة.
+			Version: "0159_extend_tool_status_enum",
+			SQL: `ALTER TYPE "ToolStatus" ADD VALUE IF NOT EXISTS 'LOST';
+			ALTER TYPE "ToolStatus" ADD VALUE IF NOT EXISTS 'REPAIRING';
+			ALTER TYPE "ToolStatus" ADD VALUE IF NOT EXISTS 'RETIRED'`,
+		},
 	}
 }

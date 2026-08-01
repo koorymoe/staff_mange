@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck, type Vehicle } from '../api'
+import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
 import { useSession, roleLabels } from '../session'
 
 type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests' | 'template' | 'reports'
@@ -56,6 +56,17 @@ export default function InventoryPage() {
   const canDeleteRequests = isAdmin
   // الموظف المفتوحة عدته بتبويب "أدوات خاصة" (null = عرض كل الموظفين)
   const [selectedKitEmployeeId, setSelectedKitEmployeeId] = useState<string | null>(null)
+  // تعديل أداة شخصية
+  const [toolEdit, setToolEdit] = useState<PersonalTool | null>(null)
+  const [toolEditName, setToolEditName] = useState('')
+  const [toolEditBarcode, setToolEditBarcode] = useState('')
+  const [toolEditStatus, setToolEditStatus] = useState<PersonalToolStatus>('AVAILABLE')
+  const [toolEditNote, setToolEditNote] = useState('')
+  const [toolSaving, setToolSaving] = useState(false)
+  // سجل حركة أداة
+  const [historyTool, setHistoryTool] = useState<PersonalTool | null>(null)
+  const [toolEvents, setToolEvents] = useState<PersonalToolEvent[]>([])
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [resolvingId, setResolvingId] = useState<string | null>(null)
   const handleResolveCheck = async (id: string) => {
     setResolvingId(id)
@@ -145,6 +156,56 @@ export default function InventoryPage() {
       // الي عنده نقص أول القائمة — هذا الي يحتاج انتباه الإداري
       .sort((a, b) => b.missing.length - a.missing.length || a.employee.name.localeCompare(b.employee.name, 'ar'))
   }, [employees, personalTools, templateNames])
+
+  const openToolEdit = (t: PersonalTool) => {
+    setToolEdit(t)
+    setToolEditName(t.name)
+    setToolEditBarcode(t.barcode || '')
+    setToolEditStatus((t.status as PersonalToolStatus) || 'AVAILABLE')
+    setToolEditNote('')
+  }
+
+  const saveToolEdit = async () => {
+    if (!toolEdit) return
+    setToolSaving(true)
+    try {
+      await api.updatePersonalTool(toolEdit.id, {
+        name: toolEditName.trim(),
+        barcode: toolEditBarcode.trim() || undefined,
+        status: toolEditStatus,
+        note: toolEditNote.trim() || undefined,
+      })
+      setToolEdit(null)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر حفظ التعديل')
+    } finally {
+      setToolSaving(false)
+    }
+  }
+
+  const handleDeleteTool = async (t: PersonalTool) => {
+    if (!confirm(`حذف «${t.name}» من عدة هذا الموظف؟ (تبقى بسجل الحركة)`)) return
+    try {
+      await api.deletePersonalTool(t.id)
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر الحذف')
+    }
+  }
+
+  const openToolHistory = async (t: PersonalTool) => {
+    setHistoryTool(t)
+    setToolEvents([])
+    setHistoryLoading(true)
+    try {
+      setToolEvents(await api.getToolEvents({ toolId: t.id }))
+    } catch {
+      setToolEvents([])
+    } finally {
+      setHistoryLoading(false)
+    }
+  }
 
   const vehicleToolStats = useMemo(() => ({
     kinds: vehicleTools.length,
@@ -546,6 +607,7 @@ export default function InventoryPage() {
                             <th className="px-4 py-3 text-sm font-semibold">النوع</th>
                             <th className="px-4 py-3 text-sm font-semibold">الباركود</th>
                             <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
+                            {canManageInventory && <th className="px-4 py-3 text-sm font-semibold">إجراءات</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -561,12 +623,25 @@ export default function InventoryPage() {
                               </td>
                               <td className="px-4 py-3 font-mono text-sm text-slate-500">{t.barcode}</td>
                               <td className="px-4 py-3">
-                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">{t.status}</span>
+                                <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                  personalToolStatusColors[t.status as PersonalToolStatus] || 'bg-slate-100 text-slate-600'
+                                }`}>
+                                  {personalToolStatusLabels[t.status as PersonalToolStatus] || t.status}
+                                </span>
                               </td>
+                              {canManageInventory && (
+                                <td className="px-4 py-3">
+                                  <div className="flex flex-wrap gap-1">
+                                    <button onClick={() => openToolEdit(t)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100">✎ تعديل</button>
+                                    <button onClick={() => openToolHistory(t)} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200">🕘 السجل</button>
+                                    <button onClick={() => handleDeleteTool(t)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100">🗑</button>
+                                  </div>
+                                </td>
+                              )}
                             </tr>
                           ))}
                           {k.tools.length === 0 && (
-                            <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400">ما عنده أي أداة مسجلة</td></tr>
+                            <tr><td colSpan={canManageInventory ? 5 : 4} className="px-4 py-6 text-center text-slate-400">ما عنده أي أداة مسجلة</td></tr>
                           )}
                         </tbody>
                       </table>
@@ -1006,6 +1081,84 @@ export default function InventoryPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {toolEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-900">تعديل أداة</h3>
+            <p className="mt-1 text-sm text-slate-400">{toolEdit.employee?.name || ''}</p>
+
+            <label className="mt-5 block text-sm font-semibold text-slate-700">اسم الأداة</label>
+            <input value={toolEditName} onChange={(e) => setToolEditName(e.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500" />
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">الباركود</label>
+            <input value={toolEditBarcode} onChange={(e) => setToolEditBarcode(e.target.value)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 font-mono outline-none focus:border-brand-500" />
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">الحالة</label>
+            <select value={toolEditStatus} onChange={(e) => setToolEditStatus(e.target.value as PersonalToolStatus)} className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500">
+              {(Object.keys(personalToolStatusLabels) as PersonalToolStatus[]).map((k) => (
+                <option key={k} value={k}>{personalToolStatusLabels[k]}</option>
+              ))}
+            </select>
+
+            <label className="mt-4 block text-sm font-semibold text-slate-700">
+              ملاحظة <span className="font-normal text-slate-400">(تنحفظ بسجل الحركة — مفيدة لتوثيق سبب الفقدان)</span>
+            </label>
+            <input value={toolEditNote} onChange={(e) => setToolEditNote(e.target.value)} placeholder="مثال: ضاعت بموقع الحسينية يوم الخميس" className="mt-1.5 w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500" />
+
+            <div className="mt-5 flex gap-3">
+              <button onClick={saveToolEdit} disabled={toolSaving} className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-2.5 font-bold text-white disabled:opacity-50">
+                {toolSaving ? 'جاري الحفظ...' : 'حفظ التعديل'}
+              </button>
+              <button onClick={() => setToolEdit(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {historyTool && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+          <div className="max-h-[85vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-900">سجل حركة: {historyTool.name}</h3>
+            <p className="mt-1 text-sm text-slate-400">{historyTool.employee?.name || ''}</p>
+
+            {historyLoading ? (
+              <p className="mt-6 text-slate-400">جاري التحميل...</p>
+            ) : toolEvents.length === 0 ? (
+              <p className="mt-6 rounded-xl bg-slate-50 p-4 text-center text-slate-400">ما اكو حركات مسجلة لهذي الأداة</p>
+            ) : (
+              <div className="mt-5 space-y-3">
+                {toolEvents.map((ev) => {
+                  const lost = ev.toStatus === 'LOST'
+                  return (
+                    <div key={ev.id} className={`rounded-xl border p-4 ${lost ? 'border-red-200 bg-red-50' : 'border-slate-100 bg-slate-50/60'}`}>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className={`font-bold ${lost ? 'text-red-700' : 'text-brand-800'}`}>
+                          {lost ? '⚠️ انفقدت' : ev.eventLabel}
+                        </span>
+                        <span className="text-xs text-slate-500">
+                          {new Date(ev.createdAt).toLocaleString('ar-IQ')}
+                        </span>
+                      </div>
+                      {ev.eventType === 'STATUS_CHANGED' && (
+                        <div className="mt-1 text-sm text-slate-600">
+                          {ev.fromStatusText} ← <span className="font-bold">{ev.toStatusText}</span>
+                        </div>
+                      )}
+                      {ev.note && <div className="mt-1 text-sm text-slate-600">{ev.note}</div>}
+                      <div className="mt-1 text-xs text-slate-400">
+                        سجّلها: {ev.actorName || 'غير محدد'}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            <button onClick={() => setHistoryTool(null)} className="mt-6 w-full rounded-xl border border-slate-300 py-2.5 font-medium text-slate-600 hover:bg-slate-50">إغلاق</button>
+          </div>
         </div>
       )}
 

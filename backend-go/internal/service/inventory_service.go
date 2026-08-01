@@ -40,19 +40,35 @@ func (s *InventoryService) ListPersonalTools(employeeID string) ([]model.Persona
 	return s.repo.ListPersonalTools(employeeID)
 }
 
-func (s *InventoryService) CreatePersonalTool(req model.CreatePersonalToolRequest) (*model.PersonalTool, error) {
+func (s *InventoryService) CreatePersonalTool(req model.CreatePersonalToolRequest, actorID *string) (*model.PersonalTool, error) {
 	if req.EmployeeID == "" || req.Name == "" || req.Barcode == "" {
 		return nil, errors.New("employeeId, name and barcode are required")
 	}
-	return s.repo.CreatePersonalTool(req.EmployeeID, req.Name, req.Barcode)
+	return s.repo.CreatePersonalTool(req.EmployeeID, req.Name, req.Barcode, actorID)
 }
 
-func (s *InventoryService) UpdatePersonalTool(id string, req model.UpdatePersonalToolRequest) (*model.PersonalTool, error) {
-	return s.repo.UpdatePersonalTool(id, req.Status, req.CheckedOut)
+func (s *InventoryService) UpdatePersonalTool(id string, req model.UpdatePersonalToolRequest, actorID *string) (*model.PersonalTool, error) {
+	if req.Name != nil {
+		trimmed := strings.TrimSpace(*req.Name)
+		if trimmed == "" {
+			return nil, errors.New("اسم الأداة ما يصير فاضي")
+		}
+		req.Name = &trimmed
+	}
+	if req.Status != nil {
+		if _, ok := model.PersonalToolStatusLabels[*req.Status]; !ok {
+			return nil, errors.New("حالة الأداة غير صحيحة")
+		}
+	}
+	return s.repo.UpdatePersonalTool(id, req, actorID)
 }
 
-func (s *InventoryService) DeletePersonalTool(id string) error {
-	return s.repo.DeletePersonalTool(id)
+func (s *InventoryService) DeletePersonalTool(id string, actorID *string) error {
+	return s.repo.DeletePersonalTool(id, actorID)
+}
+
+func (s *InventoryService) ListToolEvents(toolID, employeeID string) ([]model.PersonalToolEvent, error) {
+	return s.repo.ListToolEvents(toolID, employeeID)
 }
 
 func (s *InventoryService) ListVehicleTools(vehicleID string) ([]model.VehicleTool, error) {

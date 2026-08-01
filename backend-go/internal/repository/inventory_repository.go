@@ -95,7 +95,24 @@ func (r *InventoryRepository) ListPersonalTools(employeeID string) ([]model.Pers
 	return tools, nil
 }
 
-func (r *InventoryRepository) CreatePersonalTool(employeeID, name, barcode string) (*model.PersonalTool, error) {
+func (r *InventoryRepository) GetPersonalTool(id string) (*model.PersonalTool, error) {
+	var t model.PersonalTool
+	if err := r.db.Get(&t, `SELECT * FROM "PersonalTool" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	return &t, nil
+}
+
+// logToolEvent يكتب حدث بسجل حركة الأداة. فشل الكتابة ما يفشّل العملية
+// الأساسية — السجل توثيق مساعد، مو شرط لنجاح التعديل.
+func (r *InventoryRepository) logToolEvent(t *model.PersonalTool, eventType string, from, to, note, actorID *string) {
+	_, _ = r.db.Exec(`
+		INSERT INTO "PersonalToolEvent" (id, "toolId", "toolName", "employeeId", "eventType", "fromStatus", "toStatus", note, "actorId")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8)
+	`, t.ID, t.Name, t.EmployeeID, eventType, from, to, note, actorID)
+}
+
+func (r *InventoryRepository) CreatePersonalTool(employeeID, name, barcode string, actorID *string) (*model.PersonalTool, error) {
 	var t model.PersonalTool
 	err := r.db.Get(&t, `
 		INSERT INTO "PersonalTool" (id, "employeeId", name, barcode)
@@ -105,27 +122,90 @@ func (r *InventoryRepository) CreatePersonalTool(employeeID, name, barcode strin
 	if err != nil {
 		return nil, err
 	}
+	r.logToolEvent(&t, model.ToolEventCreated, nil, &t.Status, nil, actorID)
 	return &t, nil
 }
 
-func (r *InventoryRepository) UpdatePersonalTool(id string, status *string, checkedOut *bool) (*model.PersonalTool, error) {
-	var t model.PersonalTool
-	err := r.db.Get(&t, `
-		UPDATE "PersonalTool" SET
-			status = COALESCE($2, status),
-			"checkedOut" = COALESCE($3, "checkedOut")
-		WHERE id = $1
-		RETURNING *
-	`, id, status, checkedOut)
+func (r *InventoryRepository) UpdatePersonalTool(id string, req model.UpdatePersonalToolRequest, actorID *string) (*model.PersonalTool, error) {
+	before, err := r.GetPersonalTool(id)
 	if err != nil {
 		return nil, err
+	}
+	var t model.PersonalTool
+	err = r.db.Get(&t, `
+		UPDATE "PersonalTool" SET
+			name = COALESCE($2, name),
+			barcode = COALESCE($3, barcode),
+			status = COALESCE($4, status),
+			"checkedOut" = COALESCE($5, "checkedOut")
+		WHERE id = $1
+		RETURNING *
+	`, id, req.Name, req.Barcode, req.Status, req.CheckedOut)
+	if err != nil {
+		return nil, err
+	}
+
+	// حدث لكل تغيير فعلي — تغيير الحالة هو الي يوثّق وقت الفقدان
+	if before.Status != t.Status {
+		r.logToolEvent(&t, model.ToolEventStatusChanged, &before.Status, &t.Status, req.Note, actorID)
+	}
+	if before.Name != t.Name || before.Barcode != t.Barcode {
+		r.logToolEvent(&t, model.ToolEventRenamed, &before.Name, &t.Name, req.Note, actorID)
+	}
+	if before.CheckedOut != t.CheckedOut {
+		ev := model.ToolEventReturned
+		if t.CheckedOut {
+			ev = model.ToolEventCheckedOut
+		}
+		r.logToolEvent(&t, ev, nil, nil, req.Note, actorID)
 	}
 	return &t, nil
 }
 
-func (r *InventoryRepository) DeletePersonalTool(id string) error {
+func (r *InventoryRepository) DeletePersonalTool(id string, actorID *string) error {
+	// نسجّل الحذف قبل ما ننفذه — بعده ما نعرف اسم الأداة ولا صاحبها
+	if t, err := r.GetPersonalTool(id); err == nil {
+		r.logToolEvent(t, model.ToolEventDeleted, &t.Status, nil, nil, actorID)
+	}
 	_, err := r.db.Exec(`DELETE FROM "PersonalTool" WHERE id = $1`, id)
 	return err
+}
+
+const toolEventSelect = `SELECT ev.*, a.name AS "actorName", e.name AS "employeeName"
+	FROM "PersonalToolEvent" ev
+	LEFT JOIN "Employee" a ON a.id = ev."actorId"
+	LEFT JOIN "Employee" e ON e.id = ev."employeeId"`
+
+func (r *InventoryRepository) decorateEvents(events []model.PersonalToolEvent) []model.PersonalToolEvent {
+	for i := range events {
+		events[i].EventLabel = model.ToolEventLabels[events[i].EventType]
+		if events[i].FromStatus != nil {
+			events[i].FromStatusText = model.PersonalToolStatusLabels[*events[i].FromStatus]
+		}
+		if events[i].ToStatus != nil {
+			events[i].ToStatusText = model.PersonalToolStatusLabels[*events[i].ToStatus]
+		}
+	}
+	return events
+}
+
+// ListToolEvents سجل حركة: لأداة وحدة (toolID)، أو لكل أدوات موظف
+// (employeeID)، أو الأحداث كلها لما الاثنين فاضيين.
+func (r *InventoryRepository) ListToolEvents(toolID, employeeID string) ([]model.PersonalToolEvent, error) {
+	events := []model.PersonalToolEvent{}
+	var err error
+	switch {
+	case toolID != "":
+		err = r.db.Select(&events, toolEventSelect+` WHERE ev."toolId" = $1 ORDER BY ev."createdAt" DESC`, toolID)
+	case employeeID != "":
+		err = r.db.Select(&events, toolEventSelect+` WHERE ev."employeeId" = $1 ORDER BY ev."createdAt" DESC LIMIT 200`, employeeID)
+	default:
+		err = r.db.Select(&events, toolEventSelect+` ORDER BY ev."createdAt" DESC LIMIT 200`)
+	}
+	if err != nil {
+		return nil, err
+	}
+	return r.decorateEvents(events), nil
 }
 
 // ── Booking Tool Check (لقطة الأدوات الناقصة عند استلام حجز) ────────────────

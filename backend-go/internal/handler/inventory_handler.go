@@ -67,7 +67,7 @@ func (h *InventoryHandler) CreatePersonalTool(w http.ResponseWriter, r *http.Req
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	tool, err := h.service.CreatePersonalTool(req)
+	tool, err := h.service.CreatePersonalTool(req, actorID(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -81,7 +81,7 @@ func (h *InventoryHandler) UpdatePersonalTool(w http.ResponseWriter, r *http.Req
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	tool, err := h.service.UpdatePersonalTool(r.PathValue("id"), req)
+	tool, err := h.service.UpdatePersonalTool(r.PathValue("id"), req, actorID(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -90,11 +90,30 @@ func (h *InventoryHandler) UpdatePersonalTool(w http.ResponseWriter, r *http.Req
 }
 
 func (h *InventoryHandler) DeletePersonalTool(w http.ResponseWriter, r *http.Request) {
-	if err := h.service.DeletePersonalTool(r.PathValue("id")); err != nil {
+	if err := h.service.DeletePersonalTool(r.PathValue("id"), actorID(r)); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
+}
+
+// actorID منو سوّى الحركة — يُسجّل بسجل حركة الأداة. فاضي = مجهول.
+func actorID(r *http.Request) *string {
+	if id := middleware.EmployeeIDFromContext(r); id != "" {
+		return &id
+	}
+	return nil
+}
+
+// ToolEvents سجل حركة الأدوات: لأداة وحدة (?toolId=) أو لموظف (?employeeId=)
+// أو الكل. هنا يبين متى انفقدت كل أداة ومنو سجّل الفقدان.
+func (h *InventoryHandler) ToolEvents(w http.ResponseWriter, r *http.Request) {
+	events, err := h.service.ListToolEvents(r.URL.Query().Get("toolId"), r.URL.Query().Get("employeeId"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل حركة الأدوات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, events)
 }
 
 // ── Vehicle Tools ───────────────────────────────────────────────────────────
