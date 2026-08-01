@@ -8,6 +8,7 @@ export default function Finance() {
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [filter, setFilter] = useState<'all' | 'pending' | 'verified'>('all')
+  const [search, setSearch] = useState('')
 
   const load = () => {
     Promise.all([
@@ -36,7 +37,15 @@ export default function Finance() {
   const toggle = (id: string) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
 
+  // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
+  const matchesSearch = (b: Booking) => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return [b.code, b.customer?.code, b.customer?.phone, b.customer?.name]
+      .some((v) => (v || '').toString().toLowerCase().includes(q))
+  }
   const filtered = bookings.filter((b) => {
+    if (!matchesSearch(b)) return false
     if (filter === 'pending') return !b.amountVerified
     if (filter === 'verified') return b.amountVerified
     return true
@@ -97,6 +106,18 @@ export default function Finance() {
         </button>
       </div>
 
+      <div className="mt-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 بحث بكود الحجز، كود الزبون، رقم الهاتف، أو اسم الزبون..."
+          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+        />
+        {search.trim() && (
+          <p className="mt-2 text-xs text-slate-500">النتائج: {filtered.length} حجز</p>
+        )}
+      </div>
+
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && (
         <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
@@ -144,6 +165,15 @@ export default function Finance() {
                       {b.service.name}
                     </span>
                   )}
+                  {/* التاريخ وموعد الانتهاء ظاهرين بالسطر — الباقي داخل التفاصيل */}
+                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    📅 الحجز: {b.scheduledAt ? new Date(b.scheduledAt).toLocaleDateString('ar-IQ') : new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                  </span>
+                  <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                    b.completedAt ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    🏁 الانتهاء: {b.completedAt ? new Date(b.completedAt).toLocaleDateString('ar-IQ') : 'لم ينتهِ بعد'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span
@@ -178,6 +208,14 @@ export default function Finance() {
                   <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                     <InfoRow label="رقم الزبون" value={b.customer ? `CUST-${String(b.customer.customerCode).padStart(5, '0')}` : 'زبون غير معروف'} />
                     <InfoRow label="هاتف الزبون" value={b.customer?.phone || '-'} />
+                    <InfoRow
+                      label="تاريخ الحجز"
+                      value={new Date(b.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    />
+                    <InfoRow
+                      label="موعد التنفيذ"
+                      value={b.scheduledAt ? new Date(b.scheduledAt).toLocaleString('ar-IQ') : 'غير محدد'}
+                    />
                     <InfoRow
                       label="تاريخ الإنجاز"
                       value={

@@ -77,8 +77,10 @@ const navItems: NavItem[] = [
       // الموظفين، حصراً لمدير النظام.
       { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'] },
       {
+        // بدون قيد أدوار على المجموعة الوسيطة — ظهورها يتقرر من أبنائها فقط.
+        // قيد الأدوار هنا كان يخفي "إدارة العمل" كاملة عن أي دور مو بالقائمة
+        // (مثل إداري الكميات) حتى لو منحناه صلاحيات حجز/تنسيق/عملاء صراحةً.
         to: '/mgmt-work', label: 'إدارة العمل', icon: <></>,
-        roles: ['ADMIN', 'HR_COORDINATOR', 'SALES', 'MONITOR', 'FINANCE'],
         children: [
           { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
           { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
@@ -114,7 +116,6 @@ const navItems: NavItem[] = [
       },
       {
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
-        roles: ['ADMIN', 'FINANCE', 'MONITOR'],
         children: [
           { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
@@ -123,7 +124,6 @@ const navItems: NavItem[] = [
       },
       {
         to: '/mgmt-procurement', label: 'إدارة المشتريات', icon: <></>,
-        roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'],
         children: [
           { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
           { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
@@ -479,15 +479,34 @@ export default function Layout() {
   // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
   const isVisible = (item: NavItem, unitGranted = false): boolean => {
     if (item.divider) return true
+    // الوحدات: بوابة صارمة. الوحدة ما تطلع أبداً إلا لمن عنده صلاحية الوحدة
+    // نفسها (أو مدير النظام). قبل، الوحدة جانت تطلع لمجرد إنه ابن واحد جوّاها
+    // مسموح بصلاحية عامة — فصار الموظف يشوف وحدات مو إلها علاقة بشغله ويتكرر
+    // نفس المحتوى مرتين (مرة بـ"الإدارة" ومرة بالوحدة).
+    // القاعدة المطلوبة: "الإدارة" = كل شي الموظف عنده صلاحيته مهما كانت وحدته،
+    // و"الوحدات" = بس الوحدة الي انمنحت له صراحةً.
+    if (item.unitPermission && role !== 'ADMIN' && !employeePermissions.includes(item.unitPermission)) {
+      return false
+    }
     const granted =
       unitGranted ||
       (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))
     if (!granted) {
-      if (item.roles && role && !item.roles.includes(role)) {
-        if (!((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
+      // الصلاحية الممنوحة فعلياً تكفي بحالها. قبل، العنصر كان يشترط الدور
+      // *و* الصلاحية سوه — فلو منحت إداري الكميات صلاحية "عرض الحجوزات"
+      // تضل مخفية عنه لأن دوره مو بقائمة الأدوار المسموحة. هذا خالف معنى
+      // منح الصلاحية أصلاً، وكان يخلي صلاحيات كثيرة "ما تنطبق".
+      const hasOwnPermission =
+        (!!item.permission && employeePermissions.includes(item.permission)) ||
+        (!!item.anyPermission && item.anyPermission.some((p) => employeePermissions.includes(p)))
+
+      if (!hasOwnPermission) {
+        if (item.roles && role && !item.roles.includes(role)) {
+          if (!((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
+        }
+        if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
+        if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => employeePermissions.includes(p))) return false
       }
-      if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
-      if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => employeePermissions.includes(p))) return false
       if (item.leaderOnly && !employee?.isLeader && role !== 'ADMIN') return false
       if (item.gpsSkillOnly && role !== 'ADMIN' && !hasGpsSkill(employee, gpsServiceId)) return false
     }
