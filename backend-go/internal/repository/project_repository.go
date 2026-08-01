@@ -232,3 +232,11 @@ func (r *ProjectRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "Project" WHERE id = $1`, id)
 	return err
 }
+
+// HasAnyDelegation يفحص إذا الموظف موجّه له أي مشروع — نستخدمه حتى نسمح له
+// يسوي عرض سعر لمشروعه، بدون ما ننطيه صلاحية عروض الأسعار العامة.
+func (r *ProjectRepository) HasAnyDelegation(employeeID string) (bool, error) {
+	var n int
+	err := r.db.Get(&n, `SELECT COUNT(*) FROM "Project" WHERE "delegatedToEmployeeId" = $1`, employeeID)
+	return n > 0, err
+}

@@ -43,12 +43,23 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		priority = *req.Priority
 	}
 
+	// الخدمات: نقبل قائمة (خدمات متعددة بنفس الحجز) وننزل على الخدمة المفردة
+	// لو ما انرسلت قائمة — حتى أي شاشة قديمة تضل تشتغل بدون تعديل.
+	serviceIDs := req.ServiceIDs
+	if len(serviceIDs) == 0 && req.ServiceID != nil && *req.ServiceID != "" {
+		serviceIDs = []string{*req.ServiceID}
+	}
+	primaryService := req.ServiceID
+	if len(serviceIDs) > 0 {
+		primaryService = &serviceIDs[0]
+	}
+
 	b := &model.Booking{
 		ID:                 uuid.NewString(),
 		Code:               fmt.Sprintf("B%d", seq),
 		SequenceNumber:     &seq,
 		CustomerID:         req.CustomerID,
-		ServiceID:          req.ServiceID,
+		ServiceID:          primaryService,
 		Notes:              req.Notes,
 		VehicleType:        req.VehicleType,
 		Priority:           priority,
@@ -56,10 +67,17 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		Address:            req.Address,
 		MapLatitude:        req.MapLatitude,
 		MapLongitude:       req.MapLongitude,
+		LocationUrl:        req.LocationUrl,
 	}
 
 	if err := s.repo.Create(b); err != nil {
 		return nil, err
+	}
+
+	if len(serviceIDs) > 0 {
+		if err := s.repo.SetServices(b.ID, serviceIDs); err != nil {
+			return nil, err
+		}
 	}
 
 	if req.Address != nil || req.MapLatitude != nil || req.MapLongitude != nil {
@@ -68,7 +86,10 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 
 	// نوسم الزبون تلقائياً بالخدمة الي طلبها (جي بي اس، كاميرات...) حتى يظهر
 	// بقائمة "زبائن هذي الخدمة" لاحقاً، بدون أي كود منفصل — نفس كود الزبون الموحّد.
-	_ = s.customers.EnsureServiceTag(req.CustomerID, req.ServiceID)
+	// نوسم الزبون بكل خدمة طلبها بهذا الحجز، مو بالخدمة الرئيسية بس
+	for i := range serviceIDs {
+		_ = s.customers.EnsureServiceTag(req.CustomerID, &serviceIDs[i])
+	}
 
 	return s.repo.FindByID(b.ID)
 }
@@ -100,6 +121,12 @@ func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*m
 func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetailsRequest, editorID string) (*model.Booking, error) {
 	if req.QuotedPrice != nil && *req.QuotedPrice < 0 {
 		return nil, errors.New("المبلغ المقدّر ما يصير يكون بالسالب")
+	}
+	// تعديل قائمة الخدمات (لو انرسلت) — الزبون ممكن يزيد منظومة أو يشيل وحدة
+	if req.ServiceIDs != nil {
+		if err := s.repo.SetServices(id, req.ServiceIDs); err != nil {
+			return nil, err
+		}
 	}
 	if err := s.repo.UpdateDetails(id, req); err != nil {
 		return nil, err

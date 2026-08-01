@@ -64,8 +64,11 @@ type Booking struct {
 	LastEditedAt              *time.Time     `db:"lastEditedAt" json:"lastEditedAt"`
 	LastEditedBy              *EmployeeBrief `db:"-" json:"lastEditedBy"`
 
-	Customer            *Customer           `db:"-" json:"customer"`
+	Customer *Customer `db:"-" json:"customer"`
+	// Service الخدمة الرئيسية (توافق مع الشاشات القديمة)، و Services كل
+	// الخدمات المطلوبة بنفس الحجز — الزبون ممكن يطلب أكثر من منظومة سوة.
 	Service             *Service            `db:"-" json:"service"`
+	Services            []Service           `db:"-" json:"services"`
 	TransferEmployee    *Employee           `db:"-" json:"transferEmployee"`
 	ProjectSupervisor   *Employee           `db:"-" json:"projectSupervisor"`
 	ConfirmedByEmployee *Employee           `db:"-" json:"confirmedByEmployee"`
@@ -108,8 +111,11 @@ type ScheduleChangeLog struct {
 }
 
 type CreateBookingRequest struct {
-	CustomerID         string   `json:"customerId"`
-	ServiceID          *string  `json:"serviceId"`
+	CustomerID string  `json:"customerId"`
+	ServiceID  *string `json:"serviceId"`
+	// ServiceIDs كل الخدمات المطلوبة بنفس الحجز (الأولى تنعتبر الرئيسية).
+	// لو انرسلت فاضية ننزل على serviceId المفرد حتى ما ننكسر مع أي شاشة قديمة.
+	ServiceIDs         []string `json:"serviceIds"`
 	Notes              *string  `json:"notes"`
 	VehicleType        *string  `json:"vehicleType"`
 	Priority           *string  `json:"priority"`
@@ -117,6 +123,8 @@ type CreateBookingRequest struct {
 	Address            *string  `json:"address"`
 	MapLatitude        *float64 `json:"mapLatitude"`
 	MapLongitude       *float64 `json:"mapLongitude"`
+	// رابط الموقع (كوكل ماب) — بديل عن التأشير على الخريطة، نفس فكرة الموردين
+	LocationUrl *string `json:"locationUrl"`
 }
 
 type ConfirmBookingRequest struct {
@@ -157,6 +165,10 @@ type UpdateBookingDetailsRequest struct {
 	MapLatitude          *float64 `json:"mapLatitude"`
 	MapLongitude         *float64 `json:"mapLongitude"`
 	ExpenseResponsibleID *string  `json:"expenseResponsibleId"`
+	// رابط الموقع (بديل عن التحديد على الخريطة) — نفس فكرة الموردين
+	LocationUrl *string `json:"locationUrl"`
+	// قائمة الخدمات المطلوبة بالحجز (لو انرسلت، تستبدل القائمة الحالية)
+	ServiceIDs []string `json:"serviceIds"`
 }
 
 type CompleteBookingRequest struct {

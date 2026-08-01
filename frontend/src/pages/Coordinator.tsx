@@ -3,6 +3,12 @@ import { api, type Booking, type Employee, type CartItem, type Product, type Job
 import { useSession } from '../session'
 import LocationPicker from '../components/LocationPicker'
 
+// أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
+function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
+  if (b.services && b.services.length > 0) return b.services.map((s) => s.name).join(' + ')
+  return b.service?.name || 'بدون خدمة محددة'
+}
+
 // Convert an ISO date string to the local "YYYY-MM-DDTHH:mm" format expected by datetime-local inputs
 const toLocalInput = (iso: string) => {
   const d = new Date(iso)
@@ -308,7 +314,7 @@ export default function Coordinator() {
                   <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
                     <span className="font-mono font-semibold text-brand-600">{b.code}</span>
                     <span className="text-slate-600">{b.customer?.name || 'زبون غير معروف'}</span>
-                    <span className="text-slate-600">{b.service?.name || 'بدون خدمة محددة'}</span>
+                    <span className="text-slate-600">{serviceNames(b)}</span>
                     <span className="font-bold text-brand-800">
                       {new Date(b.scheduledAt!).toLocaleString('ar-IQ', {
                         weekday: 'long',
@@ -370,7 +376,7 @@ export default function Coordinator() {
                     )}
                   </div>
                   <div className="text-sm text-slate-500">
-                    {booking.service?.name || 'بدون خدمة محددة'}
+                    {serviceNames(booking)}
                   </div>
                 </div>
 
@@ -541,7 +547,7 @@ export default function Coordinator() {
                     )}
                   </div>
                   <div className="text-sm text-slate-500">
-                    {booking.service?.name || 'بدون خدمة محددة'}
+                    {serviceNames(booking)}
                   </div>
                 </div>
 

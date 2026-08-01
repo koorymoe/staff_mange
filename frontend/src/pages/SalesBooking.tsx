@@ -46,7 +46,11 @@ export default function SalesBooking() {
   const [familyName, setFamilyName] = useState('')
   const name = [firstName, fatherName, grandfatherName, familyName].map((p) => p.trim()).filter(Boolean).join(' ')
   const [phone, setPhone] = useState('')
-  const [serviceId, setServiceId] = useState('')
+  // خدمات متعددة: الزبون ممكن يطلب أكثر من منظومة بنفس الحجز
+  // (مثلاً منظومة صوت + كاميرات). أول خدمة تنعتبر الرئيسية.
+  const [serviceIds, setServiceIds] = useState<string[]>([])
+  // رابط الموقع (كوكل ماب) — بديل عن التحديد على الخريطة، نفس فكرة الموردين
+  const [locationUrl, setLocationUrl] = useState('')
   const [notes, setNotes] = useState('')
   const [addressDesc, setAddressDesc] = useState('')
   const [mapPoint, setMapPoint] = useState<{ lat: number; lng: number } | null>(null)
@@ -208,7 +212,9 @@ export default function SalesBooking() {
       const customer = await api.createCustomer({ name, phone })
       const booking = await api.createBooking({
         customerId: customer.id,
-        serviceId: serviceId || undefined,
+        serviceId: serviceIds[0] || undefined,
+        serviceIds: serviceIds.length ? serviceIds : undefined,
+        locationUrl: locationUrl.trim() || undefined,
         transferEmployeeId: employee?.id,
         notes: buildNotesString() || undefined,
         address: addressDesc.trim(),
@@ -221,7 +227,8 @@ export default function SalesBooking() {
       setGrandfatherName('')
       setFamilyName('')
       setPhone('')
-      setServiceId('')
+      setServiceIds([])
+      setLocationUrl('')
       setNotes('')
       setAddressDesc('')
       setMapPoint(null)
@@ -404,24 +411,61 @@ export default function SalesBooking() {
               <label className="mb-1 block text-sm font-medium text-slate-600">تحديد الموقع على الخريطة</label>
               <LocationPicker value={mapPoint} onChange={setMapPoint} />
             </div>
+            {/* رابط الموقع — بديل عن التحديد على الخريطة، نفس فكرة الموردين */}
+            <div className="mt-4">
+              <label className="mb-1 block text-sm font-medium text-slate-600">
+                أو رابط الموقع (من كوكل ماب)
+              </label>
+              <input
+                value={locationUrl}
+                onChange={(e) => setLocationUrl(e.target.value)}
+                placeholder="https://maps.app.goo.gl/..."
+                dir="ltr"
+                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none transition-colors focus:border-brand-500"
+              />
+              <p className="mt-1 text-[11px] text-slate-400">
+                إذا حطيت رابط ما تحتاج تأشّر على الخريطة.
+              </p>
+            </div>
           </div>
         </div>
 
         {/* Step 4: Service */}
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <SectionHeader num={4} title="الخدمة المطلوبة" />
-          <select
-            value={serviceId}
-            onChange={(e) => setServiceId(e.target.value)}
-            className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
-          >
-            <option value="">-- بدون خدمة محددة --</option>
-            {services.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.name}
-              </option>
-            ))}
-          </select>
+          <SectionHeader num={4} title="الخدمات المطلوبة" />
+          <p className="mb-3 text-xs text-slate-400">
+            تكدر تختار أكثر من خدمة لنفس الزبون (مثلاً منظومة صوت + كاميرات).
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {services.map((s) => {
+              const checked = serviceIds.includes(s.id)
+              return (
+                <label
+                  key={s.id}
+                  className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors ${
+                    checked ? 'border-brand-500 bg-brand-50 font-medium text-brand-800' : 'border-slate-200 text-slate-600'
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      setServiceIds((prev) =>
+                        prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id],
+                      )
+                    }
+                  />
+                  {s.name}
+                </label>
+              )
+            })}
+          </div>
+          {serviceIds.length > 1 && (
+            <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
+              انختارت {serviceIds.length} خدمات — الخدمة الأولى «
+              {services.find((x) => x.id === serviceIds[0])?.name}» تنعتبر الرئيسية.
+            </p>
+          )}
         </div>
 
         {/* Step 5: Urgency / Maintenance Type */}

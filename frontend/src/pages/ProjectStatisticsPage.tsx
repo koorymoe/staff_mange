@@ -99,7 +99,7 @@ export default function ProjectStatisticsPage() {
         <Card label="القيمة الإجمالية" value={`${money(ov.totalValue)} د.ع`} tone="green"
           hint={`${ov.pricedProjects} مشروع مُسعَّر من ${ov.totalProjects}`} />
         <Card label="معدّل قيمة المشروع" value={`${money(ov.averageValue)} د.ع`} tone="amber" />
-        <Card label="مشاريع مُسلَّمة لموظفين" value={ov.delegatedCount.toLocaleString()} tone="violet" />
+        <Card label="مشاريع موجّهة لموظفين" value={ov.delegatedCount.toLocaleString()} tone="violet" />
         <Card label="قيد التنفيذ" value={ov.activeCount.toLocaleString()} tone="blue"
           hint={`بقيمة ${money(ov.inProgressValue)} د.ع`} />
         <Card label="مكتملة" value={ov.completedCount.toLocaleString()} tone="green"
@@ -159,7 +159,7 @@ export default function ProjectStatisticsPage() {
                   <th className="p-2">القيمة المالية</th>
                   <th className="p-2">المسؤول</th>
                   <th className="p-2">منفّذ الكشف</th>
-                  <th className="p-2">مُسلَّم إلى</th>
+                  <th className="p-2">موجّه إلى</th>
                   <th className="p-2">أضافه</th>
                 </tr>
               </thead>
@@ -202,7 +202,7 @@ export default function ProjectStatisticsPage() {
             {([
               ['responsibleCount', 'مشاريع مسؤول عنها'],
               ['surveyAssignedCount', 'كشوفات'],
-              ['delegationsReceived', 'مشاريع استلمها'],
+              ['delegationsReceived', 'مشاريع وُجّهت له'],
               ['addedCount', 'مشاريع أضافها'],
               ['responsibleValue', 'القيمة المالية'],
             ] as [keyof EmployeeRow, string][]).map(([k, label]) => (
@@ -222,8 +222,8 @@ export default function ProjectStatisticsPage() {
                   <th className="p-2">كشوفات مملوءة</th>
                   <th className="p-2">مسؤول عن</th>
                   <th className="p-2">منها مكتملة</th>
-                  <th className="p-2">استلم مشروع</th>
-                  <th className="p-2">مُسلَّم إله حالياً</th>
+                  <th className="p-2">وُجّه له مشروع</th>
+                  <th className="p-2">موجّه له حالياً</th>
                   <th className="p-2">قيمة مشاريعه</th>
                 </tr>
               </thead>

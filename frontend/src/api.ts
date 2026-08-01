@@ -296,6 +296,8 @@ export interface Booking {
   bookingType: string
   customer: Customer | null
   service: Service | null
+  // كل الخدمات المطلوبة بنفس الحجز (الزبون ممكن يطلب أكثر من منظومة)
+  services?: Service[]
   transferEmployee: Employee | null
   projectSupervisor: Employee | null
   expenseResponsible: Employee | null
@@ -1783,6 +1785,9 @@ export const api = {
   createBooking: (data: {
     customerId: string
     serviceId?: string
+    // خدمات متعددة بنفس الحجز — الأولى تنعتبر الرئيسية
+    serviceIds?: string[]
+    locationUrl?: string
     notes?: string
     vehicleType?: string
     priority?: 'NORMAL' | 'URGENT'

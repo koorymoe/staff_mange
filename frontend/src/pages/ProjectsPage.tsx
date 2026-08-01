@@ -54,7 +54,7 @@ interface Project {
   responsibleEmployeeId: string | null
   surveyorEmployeeId: string | null
   createdAt: string
-  // تسليم المشروع لموظف — يشتغل عليه كأنه عنده إدارة مشاريع، بس على هذا المشروع
+  // توجيه المشروع لموظف — يشتغل عليه كأنه عنده إدارة مشاريع، بس على هذا المشروع
   delegatedToEmployeeId: string | null
   delegatedToName: string | null
   delegatedAt: string | null
@@ -227,7 +227,7 @@ function parseRejection(task: string | null): { reason: string; notes: string; c
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
-// mode='delegated' يعرض بس المشاريع المُسلَّمة للموظف الحالي — نفس الواجهة
+// mode='delegated' يعرض بس المشاريع الموجّهة للموظف الحالي — نفس الواجهة
 // والمراحل والتقارير بالضبط، بس على مشاريعه هو. هذا معنى "كأنه عنده صلاحية
 // إدارة مشاريع بس على هذا المشروع".
 export default function ProjectsPage({ mode = 'all' }: { mode?: 'all' | 'delegated' } = {}) {
@@ -387,7 +387,7 @@ export default function ProjectsPage({ mode = 'all' }: { mode?: 'all' | 'delegat
       {/* Header + view tabs */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-[var(--color-brand-900)]">
-          {delegatedMode ? '📤 مشاريعي المُسلَّمة' : '📋 إدارة وأرشفة المشاريع'}
+          {delegatedMode ? '📤 المشاريع الموجّهة لي' : '📋 إدارة وأرشفة المشاريع'}
         </h1>
         <div className="flex gap-2">
           <button onClick={() => setView('main')}
@@ -723,7 +723,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         <Info icon="📍" value={p.location} />
         {/* مكان المرحلة القديم: منو رحّل الحجز أو أضاف المشروع */}
         <Info icon="🧑‍💼" value={p.createdByName ? `أضافه: ${p.createdByName}` : 'أضافه: غير محدد'} />
-        {p.delegatedToName && <Info icon="📤" value={`مُسلَّم إلى: ${p.delegatedToName}`} />}
+        {p.delegatedToName && <Info icon="📤" value={`موجّه إلى: ${p.delegatedToName}`} />}
       </div>
 
       <div className="mt-4 pt-3 border-t flex flex-wrap items-center justify-between gap-2">
@@ -736,7 +736,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
             {onDelegate && (
               <button onClick={() => onDelegate(p)}
                 className="text-sm px-3 py-1.5 rounded-lg border border-violet-300 text-violet-700 hover:bg-violet-50">
-                {p.delegatedToEmployeeId ? '👤 تغيير المستلم' : '📤 تسليم المشروع'}
+                {p.delegatedToEmployeeId ? '👤 تغيير الموظف الموجّه له' : '📤 توجيه لموظف'}
               </button>
             )}
           </div>
@@ -1422,11 +1422,11 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 // ---------------------------------------------------------------------------
-// تسليم المشروع لموظف
+// توجيه المشروع لموظف
 // ---------------------------------------------------------------------------
 // المدير ما يريد يشتغل على المشروع بنفسه؟ يسلّمه لموظف. القائمة مرتبة من
-// المهندسين وصولاً للفنيين. الموظف المُسلَّم إله يشوف المشروع كامل بكل مراحله
-// من صفحة "مشاريعي المُسلَّمة" ويتحكم بيه — بس بهذا المشروع، مو بكل المشاريع.
+// المهندسين وصولاً للفنيين. الموظف الموجّه له يشوف المشروع كامل بكل مراحله
+// من صفحة "المشاريع الموجّهة لي" ويتحكم بيه — بس بهذا المشروع، مو بكل المشاريع.
 function DelegateModal({ project, onClose, onSaved }: {
   project: Project
   onClose: () => void
@@ -1448,7 +1448,7 @@ function DelegateModal({ project, onClose, onSaved }: {
       })
       onSaved()
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'تعذر تسليم المشروع')
+      setError(e instanceof Error ? e.message : 'تعذر توجيه المشروع')
     } finally {
       setSaving(false)
     }
@@ -1463,16 +1463,16 @@ function DelegateModal({ project, onClose, onSaved }: {
   }
 
   return (
-    <Modal title={`تسليم المشروع: ${project.name}`} onClose={onClose}>
+    <Modal title={`توجيه لموظف: ${project.name}`} onClose={onClose}>
       <div className="space-y-4">
         {project.delegatedToName && (
           <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-800">
-            المشروع مُسلَّم حالياً إلى <b>{project.delegatedToName}</b>
+            المشروع موجّه حالياً إلى <b>{project.delegatedToName}</b>
             {project.delegatedAt && ` منذ ${new Date(project.delegatedAt).toLocaleDateString('ar-IQ')}`}
           </p>
         )}
 
-        <Field label="الموظف المُستلِم (من المهندسين حتى الفنيين)">
+        <Field label="الموظف الموجّه له (من المهندسين حتى الفنيين)">
           <select
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value)}
@@ -1489,7 +1489,7 @@ function DelegateModal({ project, onClose, onSaved }: {
           </select>
         </Field>
 
-        <Field label="ملاحظة للمُستلِم (اختياري)">
+        <Field label="ملاحظة للموظف (اختياري)">
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -1500,8 +1500,9 @@ function DelegateModal({ project, onClose, onSaved }: {
         </Field>
 
         <p className="rounded-lg bg-amber-50 p-3 text-xs text-amber-700">
-          الموظف المُستلِم راح يشوف هذا المشروع بكل مراحله وتقاريره من صفحة
-          «مشاريعي المُسلَّمة»، ويقدر يحرّكه بين المراحل ويعدّله — بس هذا المشروع لحاله.
+          الموظف الموجّه له راح يشوف هذا المشروع بكل مراحله وتقاريره من صفحة
+          «المشاريع الموجّهة لي»، ويقدر يتابعه ويحرّكه بين المراحل ويسوي عرض سعر —
+          بس على هذا المشروع لحاله.
         </p>
 
         {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</p>}
@@ -1512,7 +1513,7 @@ function DelegateModal({ project, onClose, onSaved }: {
             disabled={saving || !employeeId}
             className="flex-1 rounded-lg bg-violet-600 px-4 py-2 font-medium text-white disabled:opacity-50"
           >
-            {saving ? 'جاري الحفظ...' : 'تسليم المشروع'}
+            {saving ? 'جاري الحفظ...' : 'توجيه لموظف'}
           </button>
           {project.delegatedToEmployeeId && (
             <button
@@ -1520,7 +1521,7 @@ function DelegateModal({ project, onClose, onSaved }: {
               disabled={saving}
               className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-600 disabled:opacity-50"
             >
-              سحب التسليم
+              إلغاء التوجيه
             </button>
           )}
         </div>

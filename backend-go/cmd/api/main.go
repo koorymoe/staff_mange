@@ -664,8 +664,22 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// عروض الأسعار (quotations)
 	mux.Handle("GET /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.List), requireAuth))
 	mux.Handle("GET /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Get), requireAuth))
-	mux.Handle("POST /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth, requireQuotationAccess))
-	mux.Handle("PUT /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth, requireQuotationAccess))
+	// الموظف الموجّه له مشروع لازم يقدر يسوي عرض سعر لمشروعه — التوجيه نفسه
+	// هو الصلاحية. غيره يضل محتاج صلاحية عروض الأسعار.
+	allowQuotationOrDelegate := func(next http.Handler) http.Handler {
+		guard := requireQuotationAccess(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if id := middleware.EmployeeIDFromContext(r); id != "" {
+				if ok, err := projectService.HasAnyDelegation(id); err == nil && ok {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			guard.ServeHTTP(w, r)
+		})
+	}
+	mux.Handle("POST /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth, allowQuotationOrDelegate))
+	mux.Handle("PUT /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("DELETE /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth, requireAdmin))
 
 	// المنتجات (products) — التعديل/الحذف محصوران بصلاحية content_technician، والإنشاء

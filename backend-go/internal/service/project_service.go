@@ -143,7 +143,12 @@ func (s *ProjectService) Delegate(projectID, employeeID string, byEmployeeID *st
 	return s.repo.Delegate(projectID, target, byEmployeeID, note)
 }
 
-// IsDelegatedTo يفحص ملكية التسليم — يستعملها الراوت قبل ما يسمح بالتعديل.
+// HasAnyDelegation صحيح لو الموظف موجّه له أي مشروع.
+func (s *ProjectService) HasAnyDelegation(employeeID string) (bool, error) {
+	return s.repo.HasAnyDelegation(employeeID)
+}
+
+// IsDelegatedTo يفحص ملكية التوجيه — يستعملها الراوت قبل ما يسمح بالتعديل.
 func (s *ProjectService) IsDelegatedTo(projectID, employeeID string) (bool, error) {
 	return s.repo.IsDelegatedTo(projectID, employeeID)
 }

@@ -3,6 +3,12 @@ import { api, type Booking, type Employee, type Vehicle } from '../api'
 import { useSession } from '../session'
 import MapViewer from '../components/MapViewer'
 
+// أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
+function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
+  if (b.services && b.services.length > 0) return b.services.map((s) => s.name).join(' + ')
+  return b.service?.name || 'بدون خدمة محددة'
+}
+
 const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
   { key: 'TECH_1', label: 'الفني الأول' },
   { key: 'TECH_2', label: 'الفني الثاني' },
@@ -306,7 +312,7 @@ export default function BookingsList() {
                     </td>
                     <td className="px-4 py-3">{b.customer?.name || 'زبون غير معروف'}</td>
                     <td className="px-4 py-3 font-mono text-sm text-slate-500">{b.customer?.code || '-'}</td>
-                    <td className="px-4 py-3 text-slate-600">{b.service?.name || '-'}</td>
+                    <td className="px-4 py-3 text-slate-600">{serviceNames(b)}</td>
                     <td className="px-4 py-3 text-slate-600">{b.transferEmployee?.name || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">

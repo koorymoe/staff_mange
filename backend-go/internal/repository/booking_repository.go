@@ -167,6 +167,27 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		}
 	}
 
+	// كل الخدمات المرتبطة بكل حجز (خدمات متعددة بالحجز الواحد) — استعلام
+	// واحد لكل الحجوزات بدل استعلام لكل حجز.
+	extraServicesByBooking := map[string][]model.Service{}
+	if len(bookingIDs) > 0 {
+		type bsRow struct {
+			BookingID     string `db:"bookingId"`
+			model.Service `db:",inline"`
+		}
+		rows := []bsRow{}
+		if err := r.db.Select(&rows, `
+			SELECT bs."bookingId", s.*
+			FROM "BookingService" bs
+			JOIN "Service" s ON s.id = bs."serviceId"
+			WHERE bs."bookingId" = ANY($1)
+			ORDER BY bs."createdAt"`, pq.Array(bookingIDs)); err == nil {
+			for _, row := range rows {
+				extraServicesByBooking[row.BookingID] = append(extraServicesByBooking[row.BookingID], row.Service)
+			}
+		}
+	}
+
 	assignmentsByBooking := map[string][]model.BookingAssignment{}
 	if len(bookingIDs) > 0 {
 		rows := []model.BookingAssignment{}
@@ -241,6 +262,22 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 				b.Service = &ss
 			}
 		}
+		// قائمة الخدمات: لو ما اكو صفوف بالجدول الجديد (حجز قديم) ننزل على
+		// الخدمة المفردة حتى الواجهة تلاقي دائماً قائمة مو فاضية
+		if list := extraServicesByBooking[b.ID]; len(list) > 0 {
+			// الخدمة الرئيسية دائماً أول القائمة حتى العرض يكون ثابت ومفهوم
+			if b.ServiceID != nil {
+				for i, sv := range list {
+					if sv.ID == *b.ServiceID && i != 0 {
+						list[0], list[i] = list[i], list[0]
+						break
+					}
+				}
+			}
+			b.Services = list
+		} else if b.Service != nil {
+			b.Services = []model.Service{*b.Service}
+		}
 		b.TransferEmployee = getEmp(b.TransferEmployeeID)
 		b.ProjectSupervisor = getEmp(b.ProjectSupervisorID)
 		b.ConfirmedByEmployee = getEmp(b.ConfirmedByEmployeeID)
@@ -293,10 +330,54 @@ func (r *BookingRepository) NextSequenceNumber() (int, error) {
 
 func (r *BookingRepository) Create(b *model.Booking) error {
 	_, err := r.db.NamedExec(`
-		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId", address, "mapLatitude", "mapLongitude", "updatedAt")
-		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId, :address, :mapLatitude, :mapLongitude, now())
+		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId", address, "mapLatitude", "mapLongitude", "locationUrl", "updatedAt")
+		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId, :address, :mapLatitude, :mapLongitude, :locationUrl, now())
 	`, b)
 	return err
+}
+
+// SetServices يحدّث قائمة خدمات الحجز (يستبدلها بالكامل). أول خدمة بالقائمة
+// تصير الخدمة الرئيسية بعمود serviceId حتى الشاشات القديمة تضل تشتغل.
+func (r *BookingRepository) SetServices(bookingID string, serviceIDs []string) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.Exec(`DELETE FROM "BookingService" WHERE "bookingId" = $1`, bookingID); err != nil {
+		return err
+	}
+	seen := map[string]bool{}
+	var primary *string
+	for _, sid := range serviceIDs {
+		if sid == "" || seen[sid] {
+			continue
+		}
+		seen[sid] = true
+		if primary == nil {
+			v := sid
+			primary = &v
+		}
+		if _, err := tx.Exec(`
+			INSERT INTO "BookingService" ("bookingId", "serviceId") VALUES ($1, $2)
+			ON CONFLICT DO NOTHING`, bookingID, sid); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.Exec(`UPDATE "Booking" SET "serviceId" = $2, "updatedAt" = now() WHERE id = $1`,
+		bookingID, primary); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// ServiceIDsFor يرجّع معرّفات خدمات الحجز بالترتيب.
+func (r *BookingRepository) ServiceIDsFor(bookingID string) ([]string, error) {
+	ids := []string{}
+	err := r.db.Select(&ids, `
+		SELECT "serviceId" FROM "BookingService" WHERE "bookingId" = $1 ORDER BY "createdAt"`, bookingID)
+	return ids, err
 }
 
 func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, scheduledAt *string) error {
@@ -338,9 +419,10 @@ func (r *BookingRepository) UpdateDetails(id string, req model.UpdateBookingDeta
 			"mapLocation" = COALESCE($5, "mapLocation"),
 			"mapLatitude" = COALESCE($6, "mapLatitude"),
 			"mapLongitude" = COALESCE($7, "mapLongitude"),
-			"expenseResponsibleId" = COALESCE($8, "expenseResponsibleId")
+			"expenseResponsibleId" = COALESCE($8, "expenseResponsibleId"),
+			"locationUrl" = COALESCE($9, "locationUrl")
 		WHERE id = $1
-	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID)
+	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID, req.LocationUrl)
 	return err
 }
 

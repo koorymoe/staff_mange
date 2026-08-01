@@ -479,5 +479,27 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				CREATE INDEX IF NOT EXISTS "ProjectDelegationLog_employee_idx" ON "ProjectDelegationLog" ("employeeId");
 			`,
 		},
+		{
+			// خدمات متعددة للحجز الواحد: الزبون ممكن يطلب منظومة صوت وكاميرات
+			// بنفس الوقت. عمود serviceId القديم يبقى للخدمة الرئيسية (توافق مع
+			// كل الشاشات والتقارير الحالية)، وهذا الجدول يضيف البقية.
+			Version: "0166_booking_multiple_services",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "BookingService" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+					"serviceId" TEXT NOT NULL REFERENCES "Service"(id) ON DELETE CASCADE,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+					UNIQUE ("bookingId", "serviceId")
+				);
+				CREATE INDEX IF NOT EXISTS "BookingService_booking_idx" ON "BookingService" ("bookingId");
+				-- نملي الجدول من الخدمة المفردة الموجودة حالياً حتى الحجوزات
+				-- القديمة تطلع بنفس الشكل الجديد بدون فرق
+				INSERT INTO "BookingService" ("bookingId", "serviceId")
+				SELECT id, "serviceId" FROM "Booking"
+				WHERE "serviceId" IS NOT NULL
+				ON CONFLICT DO NOTHING;
+			`,
+		},
 	}
 }
