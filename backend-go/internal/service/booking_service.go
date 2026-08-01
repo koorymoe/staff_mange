@@ -280,6 +280,32 @@ func (s *BookingService) ListToolChecks(bookingID string) ([]model.BookingToolCh
 // MarkConfirmationContacted تسجّل لحظة "تم" ضغطها الإداري بعد ما تواصل فعلاً مع
 // الزبون قبل تثبيت الحجز — خطوة سابقة ومنفصلة عن Confirm نفسها، حتى يقدر المراقب
 // (صلاحية crew_management) يدقق هل صار التواصل قبل التثبيت الفعلي أو لا.
+// ReturnToCrew يرجّع حجز محوّل لإدارة المشاريع رجعة لكادر الشد، وينبّه
+// إداري الكوادر إنه رجع له حتى ما يضيع بلا متابعة.
+func (s *BookingService) ReturnToCrew(id string, note *string) (*model.Booking, error) {
+	if err := s.repo.ReturnToCrew(id, note); err != nil {
+		return nil, err
+	}
+	booking, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if booking != nil && s.notifications != nil {
+		customerName := ""
+		if booking.Customer != nil {
+			customerName = booking.Customer.Name
+		}
+		reason := ""
+		if note != nil && *note != "" {
+			reason = " — السبب: " + *note
+		}
+		_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_returned_to_crew",
+			fmt.Sprintf("↩️ الحجز (%s) للزبون %s رجع من إدارة المشاريع لكادر الشد%s",
+				booking.Code, customerName, reason))
+	}
+	return booking, nil
+}
+
 func (s *BookingService) MarkConfirmationContacted(id, employeeID string) (*model.Booking, error) {
 	if err := s.repo.MarkConfirmationContacted(id, employeeID); err != nil {
 		return nil, err

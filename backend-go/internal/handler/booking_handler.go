@@ -148,6 +148,20 @@ func (h *BookingHandler) Start(w http.ResponseWriter, r *http.Request) {
 // PUT /api/bookings/{id}/confirmation-contacted
 // يسجّل "تم" الإداري بعد تواصله فعلياً مع الزبون — خطوة سابقة ومنفصلة عن التثبيت
 // (Confirm) نفسه، يستخدمها المراقب (صلاحية crew_management) للتدقيق قبل التثبيت.
+// ReturnToCrew يرجّع حجز محوّل لإدارة المشاريع رجعة لكادر الشد.
+func (h *BookingHandler) ReturnToCrew(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Note *string `json:"note"`
+	}
+	_ = DecodeJSON(r, &req) // الملاحظة اختيارية
+	booking, err := h.service.ReturnToCrew(r.PathValue("id"), req.Note)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر إرجاع الحجز لكادر الشد")
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
 func (h *BookingHandler) MarkConfirmationContacted(w http.ResponseWriter, r *http.Request) {
 	booking, err := h.service.MarkConfirmationContacted(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {

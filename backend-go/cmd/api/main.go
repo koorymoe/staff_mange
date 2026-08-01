@@ -254,6 +254,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireStaffManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "staff_management")
 	requireMonitor := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "MONITOR")
 	requireProjectManager := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROJECT_MANAGER")
+	// إدارة المشاريع: بالدور أو بصلاحية project_management الممنوحة يدوياً
+	requireProjectMgmt := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "PROJECT_MANAGER"}, "project_management")
 	requireFieldMonitor := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
 	requireGpsAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "GPS_ADMIN")
 	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "content_technician")
@@ -351,6 +353,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// "تم" الإداري بعد تواصله فعلياً مع الزبون — خطوة سابقة ومنفصلة عن التثبيت
 	// نفسه (نفس صلاحية تنسيق الحجوزات coordinator المستخدمة أصلاً بـCoordinator.tsx).
+	// إرجاع حجز محوّل لإدارة المشاريع رجعة لكادر الشد — لمدير المشاريع لما
+	// يفتح التفاصيل ويلكاه مو مال مشروع.
+	mux.Handle("PUT /api/bookings/{id}/return-to-crew", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnToCrew), requireAuth, requireProjectMgmt))
 	mux.Handle("PUT /api/bookings/{id}/confirmation-contacted", middleware.Chain(http.HandlerFunc(bookingHandler.MarkConfirmationContacted), requireAuth, requireCoordinator))
 	// تدقيق المراقب على الحجوزات الموجّهة قبل التثبيت (crew_management، صلاحية جديدة
 	// يقدر الأدمن يمنحها لأي موظف مراقب من صفحة الصلاحيات).

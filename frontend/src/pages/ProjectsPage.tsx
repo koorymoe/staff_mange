@@ -58,13 +58,18 @@ interface Project {
 interface TransferredBooking {
   id: string
   code: string
-  customer: { name: string; phone: string }
+  customer: { name: string; phone: string; location?: string | null; code?: string }
   service: { name: string } | null
   address: string | null
   quotedPrice: number | null
   transferToProjects: boolean
   status: string
   createdAt: string
+  scheduledAt?: string | null
+  notes?: string | null
+  adminNotes?: string | null
+  confirmedByName?: string | null
+  supervisor?: { name: string } | null
 }
 
 interface Stats {
@@ -240,6 +245,10 @@ export default function ProjectsPage() {
   const [moveTarget, setMoveTarget] = useState<{ project: Project; nextStage: string } | null>(null)
   const [report, setReport] = useState<{ type: 'survey' | 'visit'; project: Project } | null>(null)
   const [transferred, setTransferred] = useState<TransferredBooking[]>([])
+  // تفاصيل الحجز المحوّل — منها يقرر يستلمه كمشروع أو يرجعه لكادر الشد
+  const [detailBooking, setDetailBooking] = useState<TransferredBooking | null>(null)
+  const [returnNote, setReturnNote] = useState('')
+  const [returning, setReturning] = useState(false)
 
   const load = async () => {
     try {
@@ -247,7 +256,9 @@ export default function ProjectsPage() {
       // زمن فتح الصفحة بلا داعي.
       const [data, bookings] = await Promise.all([
         request<{ projects: Project[]; stats: Stats }>('/projects'),
-        request<TransferredBooking[]>('/bookings'),
+        // الحجوزات الفعّالة بس — الأرشيف الكامل كان يوصل مئات الكيلوبايتات
+        // ويكبر مع الوقت، مع إننا نحتاج بس المحوّلة الي لسه ما انستلمت.
+        request<TransferredBooking[]>('/bookings?status=PENDING,CONFIRMED'),
       ])
       setProjects(data.projects)
       setStats(data.stats)
@@ -258,6 +269,25 @@ export default function ProjectsPage() {
       ))
     } catch { /* ignore */ }
     setLoading(false)
+  }
+
+  // إرجاع الحجز لكادر الشد لما يتبين إنه مو مال مشروع
+  const returnBookingToCrew = async (b: TransferredBooking) => {
+    setReturning(true)
+    try {
+      await request(`/bookings/${b.id}/return-to-crew`, {
+        method: 'PUT',
+        body: JSON.stringify({ note: returnNote.trim() || undefined }),
+      })
+      // نشيله من القائمة فوراً بدل ما ننتظر إعادة تحميل كاملة
+      setTransferred((prev) => prev.filter((x) => x.id !== b.id))
+      setDetailBooking(null)
+      setReturnNote('')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')
+    } finally {
+      setReturning(false)
+    }
   }
 
   const receiveBooking = async (b: TransferredBooking) => {
@@ -367,10 +397,16 @@ export default function ProjectsPage() {
                     {b.quotedPrice ? ` · 💰 ${b.quotedPrice.toLocaleString('ar-IQ')} د.ع` : ''}
                   </p>
                 </div>
-                <button onClick={() => receiveBooking(b)}
-                  className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-700">
-                  استلام كمشروع ←
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => setDetailBooking(b)}
+                    className="rounded-lg border border-violet-300 bg-white px-4 py-2 text-sm font-bold text-violet-700 hover:bg-violet-50">
+                    📋 التفاصيل
+                  </button>
+                  <button onClick={() => receiveBooking(b)}
+                    className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-700">
+                    استلام كمشروع ←
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -412,6 +448,80 @@ export default function ProjectsPage() {
         />
       )}
       {report && <ReportModal type={report.type} project={report.project} onClose={() => setReport(null)} />}
+
+      {/* تفاصيل الحجز المحوّل — يقررمنها: يستلمه كمشروع أو يرجعه لكادر الشد */}
+      {detailBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+          <div className="max-h-[88vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-violet-900">تفاصيل الحجز</h3>
+            <p className="mt-1 text-sm text-slate-400">{detailBooking.code}</p>
+
+            <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
+              {[
+                ['الزبون', detailBooking.customer.name],
+                ['الهاتف', detailBooking.customer.phone],
+                ['كود الزبون', detailBooking.customer.code],
+                ['الخدمة', detailBooking.service?.name],
+                ['العنوان', detailBooking.address || detailBooking.customer.location],
+                ['المبلغ المقدّر', detailBooking.quotedPrice ? `${detailBooking.quotedPrice.toLocaleString('ar-IQ')} د.ع` : null],
+                ['موعد التنفيذ', detailBooking.scheduledAt ? new Date(detailBooking.scheduledAt).toLocaleString('ar-IQ') : null],
+                ['ثبّته', detailBooking.confirmedByName],
+                ['المشرف', detailBooking.supervisor?.name],
+                ['تاريخ الحجز', new Date(detailBooking.createdAt).toLocaleDateString('ar-IQ')],
+              ].filter(([, v]) => v).map(([k, v]) => (
+                <div key={k as string} className="flex justify-between gap-4">
+                  <span className="text-slate-400">{k}</span>
+                  <span className="text-left font-medium text-slate-800">{v}</span>
+                </div>
+              ))}
+              {detailBooking.notes && (
+                <div className="border-t border-slate-200 pt-2">
+                  <div className="text-slate-400">ملاحظات الحجز</div>
+                  <div className="mt-0.5 text-slate-700">{detailBooking.notes}</div>
+                </div>
+              )}
+              {detailBooking.adminNotes && (
+                <div className="border-t border-slate-200 pt-2">
+                  <div className="text-slate-400">ملاحظات الإداري</div>
+                  <div className="mt-0.5 text-slate-700">{detailBooking.adminNotes}</div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-bold text-amber-800">مو مال مشروع؟ رجّعه لكادر الشد</p>
+              <input
+                value={returnNote}
+                onChange={(e) => setReturnNote(e.target.value)}
+                placeholder="سبب الإرجاع (اختياري) — يوصل لإداري الكوادر"
+                className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500"
+              />
+              <button
+                onClick={() => returnBookingToCrew(detailBooking)}
+                disabled={returning}
+                className="mt-2 w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50"
+              >
+                {returning ? 'جاري الإرجاع...' : '↩️ إعادة الترحيل لكادر الشد'}
+              </button>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                onClick={() => { const b = detailBooking; setDetailBooking(null); receiveBooking(b) }}
+                className="flex-1 rounded-xl bg-violet-600 py-2.5 font-bold text-white hover:bg-violet-700"
+              >
+                استلام كمشروع ←
+              </button>
+              <button
+                onClick={() => { setDetailBooking(null); setReturnNote('') }}
+                className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50"
+              >
+                إغلاق
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -598,6 +708,9 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
                   ...(p.phone ? { customerPhone: p.phone } : {}),
                   ...(p.location ? { customerAddress: p.location } : {}),
                   projectName: `${p.code} — ${p.workType || 'مشروع'}`,
+                  // حتى يطلع زر "تم" بعرض السعر ويرجعه لإدارة المشاريع
+                  // بدل ما يضل يتنقل بالماوس بين الصفحات
+                  returnTo: '/projects',
                 })
                 navigate(`/quotations/new?${q.toString()}`)
               }}

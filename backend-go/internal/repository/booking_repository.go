@@ -692,3 +692,19 @@ func (r *BookingRepository) EmployeeHasSkillForService(employeeID, serviceID str
 	`, employeeID, serviceID)
 	return count > 0, err
 }
+
+// ReturnToCrew يرجّع حجز محوّل لإدارة المشاريع رجعة لكادر الشد — يستخدمه
+// مدير المشاريع لما يفتح تفاصيل الحجز ويلكاه مو مال مشروع أصلاً. الحجز يبقى
+// مثبّتاً (CONFIRMED)، بس ينشال من قائمة "بانتظار الاستلام كمشروع".
+func (r *BookingRepository) ReturnToCrew(id string, note *string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking" SET
+			"transferToProjects" = false,
+			"adminNotes" = CASE
+				WHEN $2::text IS NULL OR $2::text = '' THEN "adminNotes"
+				ELSE COALESCE("adminNotes" || E'\n', '') || 'أُعيد لكادر الشد: ' || $2::text
+			END
+		WHERE id = $1 AND "transferToProjects" = true
+	`, id, note)
+	return err
+}

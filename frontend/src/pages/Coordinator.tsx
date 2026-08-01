@@ -26,6 +26,9 @@ export default function Coordinator() {
   const { employee: currentUser } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
+  // الحجز الي قيد التثبيت حالياً — الأزرار كانت بلا أي إشارة انتظار، فالمستخدم
+  // يحس النظام بطيء أو معلّق ويضغط عدة مرات.
+  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [supervisors, setSupervisors] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -169,6 +172,9 @@ export default function Coordinator() {
   }
 
   const handleConfirm = async (booking: Booking, transferToProjects: boolean) => {
+    if (confirmingId) return // منع الضغط المتكرر
+    setConfirmingId(booking.id)
+    try {
     const priceValue = priceDrafts[booking.id]
     const addressValue = addressDrafts[booking.id]
     const scheduleValue = scheduleDrafts[booking.id]
@@ -182,6 +188,12 @@ export default function Coordinator() {
     })
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     if (!transferToProjects && updated.service) loadMatches([updated], updated.service.id)
+    } catch (e) {
+      // بدون هذا كان الفشل يمر بصمت والمستخدم يضل ينتظر بلا أي إشارة
+      alert(e instanceof Error ? e.message : 'تعذر تثبيت الحجز')
+    } finally {
+      setConfirmingId(null)
+    }
   }
 
   // "تم" — الإداري يضغطها بعد ما يتواصل فعلياً مع الزبون ويقفل الاتفاق، قبل
@@ -450,15 +462,17 @@ export default function Coordinator() {
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => handleConfirm(booking, false)}
-                    className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
+                    disabled={confirmingId !== null}
+                    className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg disabled:opacity-50"
                   >
-                    تثبيت وترحيل لكادر الشد
+                    {confirmingId === booking.id ? 'جاري الترحيل...' : 'تثبيت وترحيل لكادر الشد'}
                   </button>
                   <button
                     onClick={() => handleConfirm(booking, true)}
-                    className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-50"
+                    disabled={confirmingId !== null}
+                    className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-50 disabled:opacity-50"
                   >
-                    تثبيت وتحويل لإدارة المشاريع
+                    {confirmingId === booking.id ? 'جاري التحويل...' : 'تثبيت وتحويل لإدارة المشاريع'}
                   </button>
                 </div>
               </div>

@@ -32,6 +32,9 @@ export default function QuotationNew() {
   // تعبئة مسبقة لما يجي من صفحة إدارة المشاريع (زر "اعمل عرض سعر") — يوفّر
   // على المستخدم إعادة كتابة بيانات الزبون والمشروع.
   const [searchParams] = useSearchParams()
+  // من وين اجه المستخدم — لو اجه من إدارة المشاريع نطلعله زر "تم" يرجعه
+  // مباشرة لهناك بدل ما يدور بالقائمة الجانبية.
+  const returnTo = searchParams.get('returnTo')
   const [products, setProducts] = useState<Product[]>([])
   const [customerName, setCustomerName] = useState(searchParams.get('customerName') || '')
   const [customerPhone, setCustomerPhone] = useState(searchParams.get('customerPhone') || '')
@@ -693,6 +696,13 @@ ${pageShell(`
           fontWeight: 700, fontSize: '14px', fontFamily: 'inherit', flex: 1, opacity: submitting ? 0.6 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
         }}>💾 {isEdit ? 'حفظ التعديلات' : 'حفظ العرض'}</button>
+        {returnTo && (
+          <button onClick={() => navigate(returnTo)} style={{
+            background: 'linear-gradient(135deg, #2e7d32, #43a047)', color: 'white', border: 'none',
+            padding: '14px 24px', borderRadius: '10px', cursor: 'pointer', fontWeight: 700, fontSize: '14px', fontFamily: 'inherit',
+            flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
+          }}>✓ تم — رجوع لإدارة المشاريع</button>
+        )}
         {isEdit && (
           <button onClick={() => navigate('/quotations')} style={{
             background: '#607d8b', color: 'white', border: 'none',
