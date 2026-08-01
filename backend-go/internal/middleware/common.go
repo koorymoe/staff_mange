@@ -65,3 +65,26 @@ func Chain(h http.Handler, mws ...func(http.Handler) http.Handler) http.Handler 
 	}
 	return h
 }
+
+// SecurityHeaders يضيف ترويسات الحماية القياسية لكل رد:
+//   - X-Content-Type-Options: يمنع المتصفح من "تخمين" نوع المحتوى (هجوم
+//     MIME sniffing يخلي ملف مرفوع ينفّذ كأنه HTML/JS).
+//   - X-Frame-Options: يمنع وضع النظام داخل iframe بموقع خبيث (Clickjacking).
+//   - Referrer-Policy: ما يسرّب مسارات النظام الداخلية للمواقع الخارجية.
+//   - Strict-Transport-Security: يجبر المتصفح يستخدم HTTPS دائماً.
+//   - Permissions-Policy: يقفل صلاحيات المتصفح الي ما نحتاجها.
+func SecurityHeaders(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		h := w.Header()
+		h.Set("X-Content-Type-Options", "nosniff")
+		h.Set("X-Frame-Options", "DENY")
+		h.Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		h.Set("Permissions-Policy", "camera=(), microphone=(), payment=(), usb=()")
+		h.Set("Cross-Origin-Opener-Policy", "same-origin")
+		// HSTS ينضاف بس لما الطلب فعلاً على HTTPS (وراء nginx)
+		if r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https" {
+			h.Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
+}

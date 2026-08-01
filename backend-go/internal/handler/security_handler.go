@@ -15,11 +15,12 @@ import (
 type SecurityHandler struct {
 	db         *sqlx.DB
 	loginAudit *repository.LoginAuditRepository
+	lockout    *repository.SecurityLockoutRepository
 	startedAt  time.Time
 }
 
-func NewSecurityHandler(db *sqlx.DB, loginAudit *repository.LoginAuditRepository, startedAt time.Time) *SecurityHandler {
-	return &SecurityHandler{db: db, loginAudit: loginAudit, startedAt: startedAt}
+func NewSecurityHandler(db *sqlx.DB, loginAudit *repository.LoginAuditRepository, lockout *repository.SecurityLockoutRepository, startedAt time.Time) *SecurityHandler {
+	return &SecurityHandler{db: db, loginAudit: loginAudit, lockout: lockout, startedAt: startedAt}
 }
 
 type SecurityDashboardResponse struct {
@@ -38,6 +39,26 @@ type SecurityDashboardResponse struct {
 	DBConnectionsInUse   int     `json:"dbConnectionsInUse"`
 	OnlineEmployees      int     `json:"onlineEmployees"`
 	RecentLogins         any     `json:"recentLogins"`
+	// الحسابات المحظورة تلقائياً + آخر الأحداث الأمنية
+	LockedEmployees any `json:"lockedEmployees"`
+	SecurityEvents  any `json:"securityEvents"`
+}
+
+// POST /api/security/unlock/{id} — فك حظر حساب. للمالك حصراً.
+func (h *SecurityHandler) Unlock(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		WriteError(w, http.StatusBadRequest, "معرّف الموظف مطلوب")
+		return
+	}
+	if err := h.lockout.Unlock(id); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر فك الحظر")
+		return
+	}
+	by := middleware.EmployeeIDFromContext(r)
+	_ = h.lockout.LogEvent(&id, "", "ACCOUNT_UNLOCKED", "فكّ المالك الحظر (بواسطة "+by+")",
+		clientIP(r), r.UserAgent())
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // GET /api/security/dashboard — حصري لمدير النظام/المالك: مؤشرات صحة السيرفر
@@ -67,6 +88,15 @@ func (h *SecurityHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	dbStats := h.db.Stats()
 	diskTotal, diskUsed, diskFree := diskUsage()
 
+	locked, err := h.lockout.LockedEmployees()
+	if err != nil {
+		locked = nil
+	}
+	events, err := h.lockout.RecentEvents(200)
+	if err != nil {
+		events = nil
+	}
+
 	WriteJSON(w, http.StatusOK, SecurityDashboardResponse{
 		ServerUptimeSeconds:  int64(time.Since(h.startedAt).Seconds()),
 		GoroutineCount:       runtime.NumGoroutine(),
@@ -82,6 +112,8 @@ func (h *SecurityHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		DBConnectionsOpen:    dbStats.OpenConnections,
 		DBConnectionsInUse:   dbStats.InUse,
 		OnlineEmployees:      onlineCount,
+		LockedEmployees:      locked,
+		SecurityEvents:       events,
 		RecentLogins:         recent,
 	})
 }

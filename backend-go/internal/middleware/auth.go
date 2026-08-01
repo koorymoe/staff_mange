@@ -72,14 +72,38 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 // إيقاف تلقائي للحساب (شوف تعليق RecordAuthzViolation). إذا العدّاد وصل
 // عتبة التنبيه (وكل مضاعف لها بعدين)، نبعث تنبيه للإدارة (ADMIN) حتى تراجع
 // الموظف يدوياً وتقرر هي — قرار بشري، مو إيقاف آلي أعمى.
+// lockoutRepo يُحقن مرة وحدة عند الإقلاع — الميدل وير ما ياخذه بكل نداء حتى
+// ما نغيّر توقيع كل الدوال الموجودة.
+var lockoutRepo *repository.SecurityLockoutRepository
+
+// SetLockoutRepository يربط مستودع الحظر بالميدل وير (يُنادى من main).
+func SetLockoutRepository(r *repository.SecurityLockoutRepository) { lockoutRepo = r }
+
 func recordViolationAndBlock(w http.ResponseWriter, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, employeeID string) {
 	if employeeID != "" && employees != nil {
 		if violations, err := employees.RecordAuthzViolation(employeeID); err == nil {
-			if violations > 0 && violations%authzViolationNotifyThreshold == 0 && notifications != nil {
-				name, nameErr := employees.NameByID(employeeID)
-				if nameErr != nil || name == "" {
-					name = employeeID
+			name, nameErr := employees.NameByID(employeeID)
+			if nameErr != nil || name == "" {
+				name = employeeID
+			}
+			// أي محاولة وصول لعملية مو مخوّل لها = حظر فوري للحساب. المالك
+			// ومدير النظام مستثنون (Lock نفسها تستثنيهم) حتى ما ننقفل بره
+			// النظام. الحساب ما ينفتح إلا بيد المالك.
+			if lockoutRepo != nil {
+				locked, _ := lockoutRepo.Lock(employeeID, repository.LockReasonAuthzAbuse,
+					"حاول يوصل لعملية مو مخوّل لها")
+				_ = lockoutRepo.LogEvent(&employeeID, name, "AUTHZ_VIOLATION",
+					fmt.Sprintf("محاولة وصول غير مخوّلة رقم %d", violations), "", "")
+				if locked {
+					_ = lockoutRepo.LogEvent(&employeeID, name, "ACCOUNT_LOCKED",
+						"انحظر تلقائياً بعد محاولة وصول غير مخوّلة", "", "")
+					if notifications != nil {
+						_ = notifications.CreateForRole("ADMIN", "authz_violation",
+							fmt.Sprintf("🔒 انحظر حساب %s تلقائياً — حاول يوصل لعملية مو مخوّل لها", name))
+					}
 				}
+			}
+			if violations > 0 && violations%authzViolationNotifyThreshold == 0 && notifications != nil {
 				_ = notifications.CreateForRole("ADMIN", "authz_violation",
 					fmt.Sprintf("⚠️ الموظف %s حاول %d مرة يوصل لعملية مو مخوّل لها — راجع صلاحياته/دوره", name, violations))
 			}

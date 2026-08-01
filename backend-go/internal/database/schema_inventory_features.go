@@ -501,5 +501,29 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				ON CONFLICT DO NOTHING;
 			`,
 		},
+		{
+			// الحظر التلقائي: الحساب ينحظر تلقائياً عند تكرار كلمة سر غلط أو
+			// محاولة الوصول لعملية مو مخوّل لها، ويضل محظور لحد ما المالك
+			// يفعّله. نخزن السبب والوقت حتى تطلع بلوحة المراقبة.
+			Version: "0167_auto_lockout",
+			SQL: `
+				ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "failedLoginStreak" INTEGER NOT NULL DEFAULT 0;
+				ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "lockedAt" TIMESTAMPTZ;
+				ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "lockedReason" TEXT;
+				ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "lockedDetail" TEXT;
+				CREATE TABLE IF NOT EXISTS "SecurityEvent" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"employeeId" TEXT,
+					"employeeName" TEXT,
+					kind TEXT NOT NULL,
+					detail TEXT,
+					ip TEXT,
+					"userAgent" TEXT,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "SecurityEvent_createdAt_idx" ON "SecurityEvent" ("createdAt" DESC);
+				CREATE INDEX IF NOT EXISTS "SecurityEvent_employee_idx" ON "SecurityEvent" ("employeeId");
+			`,
+		},
 	}
 }

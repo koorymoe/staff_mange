@@ -116,7 +116,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	jobDurationSampleRepo := repository.NewJobDurationSampleRepository(db)
 
 	// Services
-	authService := service.NewAuthService(employeeRepo, loginAuditRepo, cfg.JWTSecret)
+	lockoutRepo := repository.NewSecurityLockoutRepository(db)
+	middleware.SetLockoutRepository(lockoutRepo)
+	authService := service.NewAuthService(employeeRepo, loginAuditRepo, lockoutRepo, cfg.JWTSecret)
 	employeeService := service.NewEmployeeService(employeeRepo)
 	employeeService.SetInventoryRepository(inventoryRepo)
 	permissionService := service.NewPermissionService(permissionRepo, employeeRepo)
@@ -161,12 +163,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
-	permissionHandler := handler.NewPermissionHandler(permissionService)
+	permissionHandler := handler.NewPermissionHandler(permissionService, lockoutRepo)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
 	bookingHandler := handler.NewBookingHandler(bookingService)
 	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService)
-	securityHandler := handler.NewSecurityHandler(db, loginAuditRepo, startedAt)
+	securityHandler := handler.NewSecurityHandler(db, loginAuditRepo, lockoutRepo, startedAt)
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
@@ -180,7 +182,30 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	complaintHandler := handler.NewComplaintHandler(complaintService)
 	trainingHandler := handler.NewTrainingHandler(trainingService)
 	missionHandler := handler.NewMissionHandler(missionService)
-	projectHandler := handler.NewProjectHandler(projectService)
+	// منو يشوف كل المشاريع: مدير النظام/المالك/مدير المشاريع، أو صاحب صلاحية
+	// إدارة المشاريع (أو إضافة مشروع فقط). غيرهم يشوف بس المشاريع الموجّهة له.
+	canSeeAllProjects := func(r *http.Request) bool {
+		role, _ := r.Context().Value(middleware.ContextRole).(string)
+		if role == "ADMIN" || role == "OWNER" || role == "PROJECT_MANAGER" || role == "MONITOR" {
+			return true
+		}
+		id := middleware.EmployeeIDFromContext(r)
+		if id == "" {
+			return false
+		}
+		perms, err := permissionRepo.ListForEmployee(id)
+		if err != nil {
+			return false
+		}
+		for _, p := range perms {
+			switch p.Name {
+			case "project_management", "project_create_only", "monitoring", "auditing":
+				return true
+			}
+		}
+		return false
+	}
+	projectHandler := handler.NewProjectHandler(projectService, canSeeAllProjects)
 	projectWorkTypeHandler := handler.NewProjectWorkTypeHandler(projectWorkTypeService)
 	vipCustomerHandler := handler.NewVipCustomerHandler(vipCustomerRepo)
 	checklistHandler := handler.NewChecklistHandler(checklistService)
@@ -317,6 +342,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
 	mux.Handle("GET /api/security/dashboard", middleware.Chain(http.HandlerFunc(securityHandler.Dashboard), requireAuth, requireOwner))
+	mux.Handle("POST /api/security/unlock/{id}", middleware.Chain(http.HandlerFunc(securityHandler.Unlock), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/free-memory", middleware.Chain(http.HandlerFunc(securityHandler.FreeMemory), requireAuth, requireOwner))
 	mux.Handle("GET /api/employees/match", middleware.Chain(http.HandlerFunc(employeeHandler.Match), requireAuth))
 	mux.Handle("GET /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Get), requireAuth))
@@ -855,5 +881,5 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// مسجّل دخول (يحتاجها المنسق قبل تثبيت موعد/فريق).
 	mux.Handle("GET /api/job-duration-estimate", middleware.Chain(http.HandlerFunc(jobDurationHandler.Estimate), requireAuth))
 
-	return middleware.Chain(mux, middleware.Recovery, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
+	return middleware.Chain(mux, middleware.Recovery, middleware.SecurityHeaders, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
 }

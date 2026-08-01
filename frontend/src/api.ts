@@ -1746,7 +1746,33 @@ export const api = {
         createdAt: string
         employee: { id: string; name: string } | null
       }[]
+      // الحسابات المحظورة تلقائياً — المالك وحده يفك حظرها
+      lockedEmployees: {
+        id: string
+        name: string
+        username: string | null
+        role: string
+        lockedAt: string | null
+        lockedReason: string | null
+        lockedDetail: string | null
+        failedLoginStreak: number
+        authzViolations: number
+      }[] | null
+      // سجل الأحداث الأمنية (محاولات دخول فاشلة، وصول غير مخوّل، حظر، فك حظر،
+      // تغيير صلاحيات)
+      securityEvents: {
+        id: string
+        employeeId: string | null
+        employeeName: string | null
+        kind: string
+        detail: string | null
+        ip: string | null
+        userAgent: string | null
+        createdAt: string
+      }[] | null
     }>('/security/dashboard'),
+  unlockEmployee: (id: string) =>
+    request<{ ok: boolean }>(`/security/unlock/${id}`, { method: 'POST' }),
   freeServerMemory: () => request<{ memoryUsedMB: number }>('/security/free-memory', { method: 'POST' }),
 
   askAssistant: (message: string) =>

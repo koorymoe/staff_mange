@@ -11,14 +11,31 @@ import (
 
 type ProjectHandler struct {
 	service *service.ProjectService
+	// canSeeAll يقرر هل هذا المستخدم يشوف كل المشاريع لو لا — يُحقن من main
+	// حتى الهاندلر ما يحتاج يعرف تفاصيل مستودع الصلاحيات.
+	canSeeAll func(r *http.Request) bool
 }
 
-func NewProjectHandler(s *service.ProjectService) *ProjectHandler {
-	return &ProjectHandler{service: s}
+func NewProjectHandler(s *service.ProjectService, canSeeAll func(r *http.Request) bool) *ProjectHandler {
+	return &ProjectHandler{service: s, canSeeAll: canSeeAll}
 }
 
 // GET /api/v1/projects
+//
+// أمان: هذا الراوت مفتوح لأي موظف مسجّل دخول لأنه شاشات كثيرة تحتاج أسماء
+// المشاريع. بس ما يصير أي موظف يشوف *كل* المشاريع — الي ما عنده صلاحية
+// إدارة المشاريع يشوف بس المشاريع الموجّهة له. قبل هذا الإصلاح كان أي فني
+// يقدر يفتح /api/projects ويشوف كل مشاريع الشركة.
 func (h *ProjectHandler) List(w http.ResponseWriter, r *http.Request) {
+	if h.canSeeAll != nil && !h.canSeeAll(r) {
+		result, err := h.service.ListDelegatedTo(middleware.EmployeeIDFromContext(r))
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر جلب المشاريع")
+			return
+		}
+		WriteJSON(w, http.StatusOK, result)
+		return
+	}
 	result, err := h.service.List()
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب المشاريع")
@@ -79,7 +96,16 @@ func (h *ProjectHandler) DelegationLog(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/projects/{id} — المشروع كامل بما بيه ملفات العقد (تُطلب عند الحاجة فقط)
 func (h *ProjectHandler) Get(w http.ResponseWriter, r *http.Request) {
-	project, err := h.service.Get(r.PathValue("id"))
+	id := r.PathValue("id")
+	// نفس قاعدة القائمة: بدون صلاحية إدارة المشاريع، ما يفتح إلا مشروعه الموجّه
+	if h.canSeeAll != nil && !h.canSeeAll(r) {
+		ok, err := h.service.IsDelegatedTo(id, middleware.EmployeeIDFromContext(r))
+		if err != nil || !ok {
+			WriteError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذا المشروع")
+			return
+		}
+	}
+	project, err := h.service.Get(id)
 	if err != nil {
 		WriteError(w, http.StatusNotFound, "المشروع غير موجود")
 		return

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -17,12 +18,16 @@ var ErrAccountSuspended = errors.New("تم إيقاف هذا الحساب — ر
 type AuthService struct {
 	employees  *repository.EmployeeRepository
 	loginAudit *repository.LoginAuditRepository
+	lockout    *repository.SecurityLockoutRepository
 	jwtSecret  []byte
 }
 
-func NewAuthService(employees *repository.EmployeeRepository, loginAudit *repository.LoginAuditRepository, jwtSecret string) *AuthService {
-	return &AuthService{employees: employees, loginAudit: loginAudit, jwtSecret: []byte(jwtSecret)}
+func NewAuthService(employees *repository.EmployeeRepository, loginAudit *repository.LoginAuditRepository, lockout *repository.SecurityLockoutRepository, jwtSecret string) *AuthService {
+	return &AuthService{employees: employees, loginAudit: loginAudit, lockout: lockout, jwtSecret: []byte(jwtSecret)}
 }
+
+// ErrAccountLocked الحساب انحظر تلقائياً — ما ينفتح إلا بيد المالك.
+var ErrAccountLocked = errors.New("تم حظر هذا الحساب لأسباب أمنية — راجع مالك النظام لإعادة تفعيله")
 
 type Claims struct {
 	EmployeeID string `json:"employeeId"`
@@ -37,14 +42,39 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Em
 		return nil, "", ErrInvalidCredentials
 	}
 
+	// الحساب المحظور تلقائياً ما يدخل حتى لو كلمة السر صحيحة
+	if employee.LockedAt != nil {
+		_ = s.loginAudit.Record(username, &employee.ID, false, ip, userAgent)
+		if s.lockout != nil {
+			_ = s.lockout.LogEvent(&employee.ID, employee.Name, "LOGIN_WHILE_LOCKED",
+				"محاولة دخول لحساب محظور", ip, userAgent)
+		}
+		return nil, "", ErrAccountLocked
+	}
+
 	if err := bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(password)); err != nil {
 		_ = s.loginAudit.Record(username, &employee.ID, false, ip, userAgent)
+		if s.lockout != nil {
+			streak, locked, _ := s.lockout.RegisterFailedLogin(employee.ID)
+			detail := fmt.Sprintf("كلمة مرور خاطئة (المحاولة %d من %d)", streak, repository.FailedLoginThreshold)
+			_ = s.lockout.LogEvent(&employee.ID, employee.Name, "LOGIN_FAILED", detail, ip, userAgent)
+			if locked {
+				_ = s.lockout.LogEvent(&employee.ID, employee.Name, "ACCOUNT_LOCKED",
+					fmt.Sprintf("انحظر تلقائياً بعد %d محاولات كلمة مرور خاطئة", streak), ip, userAgent)
+				return nil, "", ErrAccountLocked
+			}
+		}
 		return nil, "", ErrInvalidCredentials
 	}
 
 	if employee.Status != "ACTIVE" {
 		_ = s.loginAudit.Record(username, &employee.ID, false, ip, userAgent)
 		return nil, "", ErrAccountSuspended
+	}
+
+	// دخول ناجح -> نصفّر عدّاد المحاولات الفاشلة
+	if s.lockout != nil {
+		_ = s.lockout.ResetFailedLogins(employee.ID)
 	}
 
 	token, err := s.GenerateToken(employee)
@@ -95,9 +125,11 @@ func (s *AuthService) GenerateToken(employee *model.Employee) (string, error) {
 
 func (s *AuthService) ParseToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
+	// نثبّت الخوارزمية صراحةً (HS256) — بدونها نظرياً ينفتح باب هجمات
+	// الخلط بين خوارزميات التوقيع (alg confusion)
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(t *jwt.Token) (interface{}, error) {
 		return s.jwtSecret, nil
-	})
+	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil || !token.Valid {
 		return nil, errors.New("رمز الدخول غير صالح")
 	}

@@ -17,34 +17,40 @@ const (
 )
 
 type Employee struct {
-	ID                   string    `db:"id" json:"id"`
-	Name                 string    `db:"name" json:"name"`
-	Certificate          *string   `db:"certificate" json:"certificate"`
-	Position             *string   `db:"position" json:"position"`
-	Phone                *string   `db:"phone" json:"phone"`
-	Status               string    `db:"status" json:"status"`
-	AuthzViolations      int       `db:"authzViolations" json:"-"`
-	Role                 string    `db:"role" json:"role"`
-	OnDuty               bool      `db:"onDuty" json:"onDuty"`
-	Username             *string   `db:"username" json:"username"`
-	Password             *string   `db:"password" json:"-"`
-	HasDrivingLicense    bool      `db:"hasDrivingLicense" json:"hasDrivingLicense"`
-	HasSafetyCertificate bool      `db:"hasSafetyCertificate" json:"hasSafetyCertificate"`
-	Salary               *float64  `db:"salary" json:"salary"`
-	Shift                *string   `db:"shift" json:"shift"`
-	ShiftStart           *string   `db:"shiftStart" json:"shiftStart"`
-	ShiftEnd             *string   `db:"shiftEnd" json:"shiftEnd"`
-	MonthlyLeaves        int       `db:"monthlyLeaves" json:"monthlyLeaves"`
-	JobTitle             *string   `db:"jobTitle" json:"jobTitle"`
-	LeaderSkillLevel     int       `db:"leaderSkillLevel" json:"leaderSkillLevel"`
-	IsLeader             bool      `db:"isLeader" json:"isLeader"`
-	IsTrainee            bool      `db:"isTrainee" json:"isTrainee"`
+	ID              string  `db:"id" json:"id"`
+	Name            string  `db:"name" json:"name"`
+	Certificate     *string `db:"certificate" json:"certificate"`
+	Position        *string `db:"position" json:"position"`
+	Phone           *string `db:"phone" json:"phone"`
+	Status          string  `db:"status" json:"status"`
+	AuthzViolations int     `db:"authzViolations" json:"-"`
+	// الحظر التلقائي — لازم تكون موجودة بالموديل وإلا sqlx يفشل بـSELECT *
+	// ("missing destination name") ويطلع الخطأ كأنه كلمة مرور غلط.
+	FailedLoginStreak    int        `db:"failedLoginStreak" json:"-"`
+	LockedAt             *time.Time `db:"lockedAt" json:"lockedAt"`
+	LockedReason         *string    `db:"lockedReason" json:"lockedReason"`
+	LockedDetail         *string    `db:"lockedDetail" json:"lockedDetail"`
+	Role                 string     `db:"role" json:"role"`
+	OnDuty               bool       `db:"onDuty" json:"onDuty"`
+	Username             *string    `db:"username" json:"username"`
+	Password             *string    `db:"password" json:"-"`
+	HasDrivingLicense    bool       `db:"hasDrivingLicense" json:"hasDrivingLicense"`
+	HasSafetyCertificate bool       `db:"hasSafetyCertificate" json:"hasSafetyCertificate"`
+	Salary               *float64   `db:"salary" json:"salary"`
+	Shift                *string    `db:"shift" json:"shift"`
+	ShiftStart           *string    `db:"shiftStart" json:"shiftStart"`
+	ShiftEnd             *string    `db:"shiftEnd" json:"shiftEnd"`
+	MonthlyLeaves        int        `db:"monthlyLeaves" json:"monthlyLeaves"`
+	JobTitle             *string    `db:"jobTitle" json:"jobTitle"`
+	LeaderSkillLevel     int        `db:"leaderSkillLevel" json:"leaderSkillLevel"`
+	IsLeader             bool       `db:"isLeader" json:"isLeader"`
+	IsTrainee            bool       `db:"isTrainee" json:"isTrainee"`
 	// Division تفصل موظفي الشعبة الهندسية (ENGINEERING، الافتراضي) عن موظفي
 	// شعبة الديكور (DECOR) — تحدد أي كتالوج مهارات ينطبق عليهم، انظر
 	// model.DivisionEngineering / model.DivisionDecor.
-	Division             string    `db:"division" json:"division"`
-	AttendanceIcon       *string   `db:"attendanceIcon" json:"attendanceIcon"`
-	CreatedAt            time.Time `db:"createdAt" json:"createdAt"`
+	Division       string    `db:"division" json:"division"`
+	AttendanceIcon *string   `db:"attendanceIcon" json:"attendanceIcon"`
+	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
 
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
 	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
@@ -83,7 +89,7 @@ type CreateEmployeeRequest struct {
 	Role        *string  `json:"role"`
 	// Division: "ENGINEERING" (افتراضي) أو "DECOR" — أول سؤال يظهر بفورم إضافة
 	// موظف جديد بالواجهة، قبل ما تظهر بقية الحقول.
-	Division    *string  `json:"division"`
+	Division *string `json:"division"`
 }
 
 type UpdateEmployeeRequest struct {
@@ -119,4 +125,31 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Employee
 	Token string `json:"token"`
+}
+
+// LockedEmployee حساب محظور تلقائياً — يظهر بلوحة المراقبة مال المالك مع
+// سبب الحظر، والمالك وحده يقدر يفكّه.
+type LockedEmployee struct {
+	ID                string     `db:"id" json:"id"`
+	Name              string     `db:"name" json:"name"`
+	Username          *string    `db:"username" json:"username"`
+	Role              string     `db:"role" json:"role"`
+	LockedAt          *time.Time `db:"lockedAt" json:"lockedAt"`
+	LockedReason      *string    `db:"lockedReason" json:"lockedReason"`
+	LockedDetail      *string    `db:"lockedDetail" json:"lockedDetail"`
+	FailedLoginStreak int        `db:"failedLoginStreak" json:"failedLoginStreak"`
+	AuthzViolations   int        `db:"authzViolations" json:"authzViolations"`
+}
+
+// SecurityEvent حدث أمني مسجّل (محاولة دخول فاشلة، محاولة وصول غير مخوّلة،
+// حظر، فك حظر، منح صلاحيات...).
+type SecurityEvent struct {
+	ID           string    `db:"id" json:"id"`
+	EmployeeID   *string   `db:"employeeId" json:"employeeId"`
+	EmployeeName *string   `db:"employeeName" json:"employeeName"`
+	Kind         string    `db:"kind" json:"kind"`
+	Detail       *string   `db:"detail" json:"detail"`
+	IP           *string   `db:"ip" json:"ip"`
+	UserAgent    *string   `db:"userAgent" json:"userAgent"`
+	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
 }

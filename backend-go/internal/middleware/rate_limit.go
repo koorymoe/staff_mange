@@ -11,24 +11,43 @@ import (
 // clientIPForRateLimit يحدد عنوان IP الحقيقي للطلب (يفضّل X-Forwarded-For
 // اللي يضيفه nginx، مطابق لنفس منطق clientIP بحزمة handler، بس منسوخ هنا
 // تفادياً لحلقة استيراد بين middleware و handler).
+// ثغرة كانت هنا: الكود جان ياخذ X-Forwarded-For مباشرةً وهي ترويسة يكتبها
+// العميل بنفسه. يعني مهاجم يبعث بكل محاولة X-Forwarded-For بقيمة عشوائية
+// فيصير كل طلب "IP جديد" ويتجاوز حد المحاولات بالكامل — تخمين كلمات سر بلا
+// سقف. الحل: ما نثق بالترويسة إلا إذا الطلب جاي من بروكسي معروف (nginx على
+// نفس الجهاز)، وغيرها نعتمد عنوان الاتصال الحقيقي.
 func clientIPForRateLimit(r *http.Request) string {
-	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
-		parts := strings.Split(fwd, ",")
-		return strings.TrimSpace(parts[0])
-	}
-	if real := r.Header.Get("X-Real-IP"); real != "" {
-		return real
-	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil {
-		return host
+	if err != nil {
+		host = r.RemoteAddr
 	}
-	return r.RemoteAddr
+	if isTrustedProxy(host) {
+		if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+			parts := strings.Split(fwd, ",")
+			return strings.TrimSpace(parts[0])
+		}
+		if real := r.Header.Get("X-Real-IP"); real != "" {
+			return strings.TrimSpace(real)
+		}
+	}
+	return host
+}
+
+// isTrustedProxy: البروكسي عدنا (nginx) يشتغل على نفس الجهاز، فنثق بالمحلي بس.
+func isTrustedProxy(host string) bool {
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	return ip.IsLoopback()
 }
 
 // RateLimit يمنع أكثر من maxAttempts طلب من نفس عنوان IP خلال المدة window —
 // حماية أساسية ضد محاولات تخمين كلمة السر المتكررة (Brute Force)، سواءً من
 // مهاجم حقيقي أو حتى اختبار داخلي سريع كان سبب حظر IP السيرفر من Hetzner سابقاً.
+// maxTrackedClients أقصى عدد عناوين نتابعها قبل ما ننظّف القديم منها.
+const maxTrackedClients = 10000
+
 func RateLimit(maxAttempts int, window time.Duration) func(http.Handler) http.Handler {
 	var mu sync.Mutex
 	attempts := make(map[string][]time.Time)
@@ -52,6 +71,16 @@ func RateLimit(maxAttempts int, window time.Duration) func(http.Handler) http.Ha
 				return
 			}
 			attempts[ip] = append(recent, now)
+
+			// تنظيف دوري: بدونه الخريطة تكبر بلا حدود مع كل IP جديد وتصير
+			// باب لاستنزاف الذاكرة (DoS). ننظّف كل ما تتجاوز حداً معقولاً.
+			if len(attempts) > maxTrackedClients {
+				for k, v := range attempts {
+					if len(v) == 0 || v[len(v)-1].Before(cutoff) {
+						delete(attempts, k)
+					}
+				}
+			}
 			mu.Unlock()
 
 			next.ServeHTTP(w, r)

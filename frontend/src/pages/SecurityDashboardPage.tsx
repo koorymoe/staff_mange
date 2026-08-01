@@ -5,6 +5,16 @@ import { useSession } from '../session'
 type DashboardData = Awaited<ReturnType<typeof api.getSecurityDashboard>>
 type LoginRow = DashboardData['recentLogins'][number]
 
+// أسماء الأحداث الأمنية بالعربي
+const EVENT_LABELS: Record<string, string> = {
+  LOGIN_FAILED: '❌ كلمة مرور خاطئة',
+  LOGIN_WHILE_LOCKED: '🔒 دخول لحساب محظور',
+  ACCOUNT_LOCKED: '🚫 حظر تلقائي',
+  ACCOUNT_UNLOCKED: '✅ فك حظر',
+  AUTHZ_VIOLATION: '⚠️ وصول غير مخوّل',
+  PERMISSIONS_CHANGED: '🔑 تغيير صلاحيات',
+}
+
 function formatUptime(seconds: number): string {
   const h = Math.floor(seconds / 3600)
   const m = Math.floor((seconds % 3600) / 60)
@@ -175,6 +185,88 @@ export default function SecurityDashboardPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* الحسابات المحظورة تلقائياً — المالك وحده يفك الحظر */}
+          <div className="mt-4 overflow-hidden rounded-xl border border-red-500/30 bg-black/40">
+            <h3 className="border-b border-red-500/20 px-4 py-3 text-xs text-red-300/80">
+              🔒 حسابات محظورة تلقائياً ({data.lockedEmployees?.length || 0}) — ما تنفتح إلا بيدك
+            </h3>
+            {(data.lockedEmployees?.length || 0) === 0 ? (
+              <p className="px-4 py-6 text-center text-xs text-emerald-200/40">ماكو حساب محظور حالياً</p>
+            ) : (
+              <div className="divide-y divide-red-500/10">
+                {data.lockedEmployees!.map((e) => (
+                  <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div className="text-xs text-emerald-100">
+                      <span className="font-bold text-red-300">{e.name}</span>
+                      <span className="text-emerald-200/40"> ({e.username || '—'} · {e.role})</span>
+                      <div className="mt-0.5 text-emerald-200/60">
+                        {e.lockedReason === 'FAILED_LOGINS'
+                          ? `❌ ${e.failedLoginStreak} محاولات كلمة مرور خاطئة`
+                          : e.lockedReason === 'AUTHZ_ABUSE'
+                            ? `🚫 ${e.lockedDetail || 'حاول يوصل لعملية مو مخوّل لها'}`
+                            : e.lockedDetail || e.lockedReason}
+                        {e.lockedAt && (
+                          <span className="text-emerald-200/30"> · {new Date(e.lockedAt).toLocaleString('ar-IQ')}</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`فك الحظر عن ${e.name}؟`)) return
+                        try {
+                          await api.unlockEmployee(e.id)
+                          setData(await api.getSecurityDashboard())
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'تعذر فك الحظر')
+                        }
+                      }}
+                      className="rounded-lg border border-emerald-500/40 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/10"
+                    >
+                      ✅ إعادة التفعيل
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* سجل الأحداث الأمنية */}
+          <div className="mt-4 overflow-hidden rounded-xl border border-amber-500/20 bg-black/40">
+            <h3 className="border-b border-amber-500/20 px-4 py-3 text-xs text-amber-200/70">
+              ⚠️ SECURITY EVENTS — محاولات الدخول الفاشلة، الوصول غير المخوّل، الحظر، وتغيير الصلاحيات
+            </h3>
+            <div className="max-h-[420px] overflow-y-auto">
+              {(data.securityEvents?.length || 0) === 0 ? (
+                <p className="px-4 py-6 text-center text-xs text-emerald-200/40">ماكو أحداث مسجّلة</p>
+              ) : (
+                <table className="min-w-full divide-y divide-amber-500/10 text-right text-xs text-emerald-100">
+                  <thead className="sticky top-0 bg-black">
+                    <tr className="text-emerald-200/50">
+                      <th className="px-4 py-2 font-normal">الحدث</th>
+                      <th className="px-4 py-2 font-normal">الموظف</th>
+                      <th className="px-4 py-2 font-normal">التفاصيل</th>
+                      <th className="px-4 py-2 font-normal">IP</th>
+                      <th className="px-4 py-2 font-normal">الوقت</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-amber-500/10">
+                    {data.securityEvents!.map((ev) => (
+                      <tr key={ev.id}>
+                        <td className="px-4 py-2 whitespace-nowrap">{EVENT_LABELS[ev.kind] || ev.kind}</td>
+                        <td className="px-4 py-2">{ev.employeeName || ev.employeeId || '—'}</td>
+                        <td className="px-4 py-2 text-emerald-200/60">{ev.detail || '—'}</td>
+                        <td className="px-4 py-2 text-emerald-200/40" dir="ltr">{ev.ip || '—'}</td>
+                        <td className="px-4 py-2 text-emerald-200/40 whitespace-nowrap">
+                          {new Date(ev.createdAt).toLocaleString('ar-IQ')}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
 
           {/* سجل الدخول */}

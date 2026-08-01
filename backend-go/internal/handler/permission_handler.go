@@ -1,19 +1,23 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
 type PermissionHandler struct {
+	lockout *repository.SecurityLockoutRepository
 	service *service.PermissionService
 }
 
-func NewPermissionHandler(s *service.PermissionService) *PermissionHandler {
-	return &PermissionHandler{service: s}
+func NewPermissionHandler(s *service.PermissionService, lockout *repository.SecurityLockoutRepository) *PermissionHandler {
+	return &PermissionHandler{service: s, lockout: lockout}
 }
 
 // GET /api/v1/permissions
@@ -70,6 +74,18 @@ func (h *PermissionHandler) SetForEmployee(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر تحديث صلاحيات الموظف")
 		return
+	}
+	// منح/سحب الصلاحيات حدث حسّاس — لازم يبقى مؤرشف ويطلع بلوحة المالك:
+	// منو غيّر صلاحيات منو، ومتى، ومن أي جهاز.
+	if h.lockout != nil {
+		names := make([]string, 0, len(perms))
+		for _, p := range perms {
+			names = append(names, p.Name)
+		}
+		by := middleware.EmployeeIDFromContext(r)
+		_ = h.lockout.LogEvent(&employeeID, "", "PERMISSIONS_CHANGED",
+			fmt.Sprintf("غيّرها الموظف %s — الصلاحيات الحالية: %s", by, strings.Join(names, ", ")),
+			clientIP(r), r.UserAgent())
 	}
 	WriteJSON(w, http.StatusOK, perms)
 }
