@@ -7,6 +7,7 @@ import {
   type ExecutionCostItem,
   type LeaderInvoice,
   type SystemPriceCatalog,
+  type Booking,
 } from '../api'
 
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
@@ -25,7 +26,11 @@ interface DraftMaterial extends CreateMaterialLineRequest {
 export default function LeaderInvoiceNew() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
-  const bookingId = params.get('bookingId') || undefined
+  // الحجز ممكن ييجي من الرابط (لما ينضغط من شاشة الحجز) أو ينختار من قائمة
+  // الحجوزات المكتملة تحت — الليدر ما يحتاج يعرف رابط ولا معرّف.
+  const [selectedBookingId, setSelectedBookingId] = useState(params.get('bookingId') || '')
+  const bookingId = selectedBookingId || undefined
+  const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
   // وضع "حساب كلفة" السريع: بدون ربط بحجز ولا زبون ولا حفظ — بس رقم تقريبي
   // للليدر لما زبون يستفسر، بنفس محرك الحساب بالضبط.
   const estimateOnly = params.get('mode') === 'estimate'
@@ -46,6 +51,14 @@ export default function LeaderInvoiceNew() {
   useEffect(() => {
     api.getSystemPriceCatalog().then(setCatalog)
   }, [])
+
+  // الحجوزات المكتملة الي يقدر الليدر يسويلها فاتورة — ما تنجلب بوضع الاستفسار
+  useEffect(() => {
+    if (estimateOnly) return
+    api.getBookings({ status: 'COMPLETED' })
+      .then(setCompletedBookings)
+      .catch(() => setCompletedBookings([]))
+  }, [estimateOnly])
 
   const allSystemNames = useMemo(
     () => Array.from(new Set(catalog.map((c) => c.systemName))).sort(),
@@ -146,7 +159,7 @@ export default function LeaderInvoiceNew() {
 
   if (estimateResult) {
     return (
-      <div className="mx-auto max-w-lg">
+      <div className="mx-auto max-w-3xl">
         <h2 className="text-2xl font-bold text-brand-900">الكلفة التقريبية</h2>
         <div className="mt-4 rounded-xl border border-white bg-white p-6 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <p className="text-sm text-slate-400">تكلفة التنفيذ التقريبية</p>
@@ -154,6 +167,50 @@ export default function LeaderInvoiceNew() {
           <p className="mt-2 text-xs text-slate-400">إجمالي عدد الأجهزة: {estimateResult.totalDeviceCount}</p>
           <p className="mt-3 text-xs text-amber-600">هذا رقم تقريبي بس للاستفسار — ما ينحفظ ولا يرتبط بأي حجز.</p>
         </div>
+
+        {/* تفصيل الحساب — الليدر يشوف كل رقم من وين طلع بدل ما يثق برقم أعمى */}
+        {estimateResult.breakdown?.length > 0 && (
+          <div className="mt-4 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <h3 className="mb-3 font-bold text-brand-800">شلون انحسب الرقم؟</h3>
+            <div className="space-y-3">
+              {estimateResult.breakdown.map((b, i) => (
+                <div key={i} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4 text-sm">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-bold text-brand-900">{b.itemName}</span>
+                    <span className="font-bold text-brand-700">{b.lineTotal.toLocaleString()} د.ع</span>
+                  </div>
+                  <div className="mt-2 space-y-1 text-xs text-slate-600">
+                    <div>
+                      <span className="text-slate-400">التركيب: </span>
+                      {b.unitInstallPrice.toLocaleString()} × {b.count} قطعة
+                      {b.heightMultiplier !== 1 && <> × {b.heightMultiplier} (ارتفاع {b.heightMeters}م)</>}
+                      {' = '}<span className="font-bold">{b.installTotal.toLocaleString()}</span>
+                    </div>
+                    {b.wiringTotal > 0 && (
+                      <div>
+                        <span className="text-slate-400">التسليك ({b.wiringItemName}): </span>
+                        نأخذ الأكبر — حسب العدد الكلي {b.wiringByDeviceCount.toLocaleString()} / حسب الطول {b.wiringByCableLength.toLocaleString()}
+                        {b.cableLengthMeters > 0 && <> ({b.wiringPricePerMeter.toLocaleString()}/م × {b.cableLengthMeters}م × {b.wiringMultiplier})</>}
+                        {' → '}<span className="font-bold">{b.wiringTotal.toLocaleString()}</span>
+                        <span className="text-slate-400"> (حسب {b.wiringBasis})</span>
+                      </div>
+                    )}
+                    {b.programmingTotal > 0 && (
+                      <div>
+                        <span className="text-slate-400">البرمجة ({b.programmingItem}): </span>
+                        <span className="font-bold">{b.programmingTotal.toLocaleString()}</span>
+                        <span className="text-slate-400"> — سعر ثابت ما يتضاعف بالعدد</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="mt-3 text-xs text-slate-400">
+              المجموع النهائي يتقرّب لأعلى لأقرب ١٠٠٠ دينار.
+            </p>
+          </div>
+        )}
         <button
           onClick={() => { setEstimateResult(null) }}
           className="mt-4 w-full rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200"
@@ -209,8 +266,45 @@ export default function LeaderInvoiceNew() {
           : 'تحل محل شيت "تكاليف المشروع" — اختر المنظومات، بنود التنفيذ، والمواد، والحساب النهائي يتم بالسيرفر.'}
       </p>
 
+      {/* اختيار الحجز المكتمل — الليدر يلكه أسماء حجوزاته المكتملة ويسويلها
+          فاتورة، ومعلومات الزبون تنملي تلقائياً منه. */}
       {!estimateOnly && (
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50/50 p-4">
+          <label className="mb-1 block text-sm font-bold text-brand-800">
+            اربط الفاتورة بحجز مكتمل (اختياري)
+          </label>
+          <select
+            value={selectedBookingId}
+            onChange={(e) => {
+              const id = e.target.value
+              setSelectedBookingId(id)
+              const b = completedBookings.find((x) => x.id === id)
+              if (b) {
+                setCustomerName(b.customer?.name || '')
+                setCustomerPhone(b.customer?.phone || '')
+                setCustomerAddress(b.customer?.location || '')
+              }
+            }}
+            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+          >
+            <option value="">— بدون ربط بحجز (فاتورة مستقلة) —</option>
+            {completedBookings.map((b) => (
+              <option key={b.id} value={b.id}>
+                {b.code ? `${b.code} — ` : ''}{b.customer?.name || 'بدون اسم'}
+                {b.scheduledAt ? ` (${new Date(b.scheduledAt).toLocaleDateString('ar-IQ')})` : ''}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-slate-500">
+            {completedBookings.length > 0
+              ? `${completedBookings.length} حجز مكتمل — لما تختار حجز تنملي معلومات الزبون تلقائياً.`
+              : 'ما اكو حجوزات مكتملة حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
+          </p>
+        </div>
+      )}
+
+      {!estimateOnly && (
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <input
             placeholder="اسم الزبون"
             value={customerName}
@@ -264,10 +358,12 @@ export default function LeaderInvoiceNew() {
             .filter((it) => it.systemName === systemName)
             .map((it) => (
               <div key={it.key} className="mt-3 grid grid-cols-1 gap-2 border-t border-slate-100 pt-3 sm:grid-cols-6">
+                <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-bold text-slate-500">عنصر التركيب — شنو الشغلة الي راح تنعمل</label>
                 <select
                   value={it.itemName}
                   onChange={(e) => updateItem(it.key, { itemName: e.target.value })}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm sm:col-span-2"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
                 >
                   <option value="">اختر عنصر التركيب</option>
                   {installItemsFor(systemName).map((c) => (
@@ -276,26 +372,41 @@ export default function LeaderInvoiceNew() {
                     </option>
                   ))}
                 </select>
+                </div>
+
+                <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-500">العدد — كل قطعة تزيد السعر</label>
                 <input
                   type="number"
                   min={0}
                   placeholder="العدد"
                   value={it.count}
                   onChange={(e) => updateItem(it.key, { count: Number(e.target.value) })}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
                 />
+                </div>
+
+                <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-500">الارتفاع (م) — فوق ٤م يزيد السعر</label>
                 <input
                   type="number"
                   min={0}
                   placeholder="الارتفاع (م)"
                   value={it.heightMeters}
                   onChange={(e) => updateItem(it.key, { heightMeters: Number(e.target.value) })}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
                 />
+                <p className="mt-0.5 text-[10px] text-slate-400">
+                  ≤٤م بدون زيادة · ٥م ×١.١٥ · ٦م ×١.٣ · ٧م ×١.٥ · ٨م ×١.٧ · فوق ٨م ×٢
+                </p>
+                </div>
+
+                <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-500">نوع التسليك — نوع الكيبل المستخدم</label>
                 <select
                   value={it.wiringItemName || ''}
                   onChange={(e) => updateItem(it.key, { wiringItemName: e.target.value })}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
                 >
                   <option value="">بدون تسليك</option>
                   {wiringItemsFor(systemName).map((c) => (
@@ -304,18 +415,29 @@ export default function LeaderInvoiceNew() {
                     </option>
                   ))}
                 </select>
+                </div>
+
+                <div>
+                <label className="mb-1 block text-[11px] font-bold text-slate-500">طول الكيبل (م) — كل متر يزيد السعر</label>
                 <input
                   type="number"
                   min={0}
                   placeholder="طول الكيبل (م)"
                   value={it.cableLengthMeters}
                   onChange={(e) => updateItem(it.key, { cableLengthMeters: Number(e.target.value) })}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
                 />
+                <p className="mt-0.5 text-[10px] text-slate-400">
+                  ١-٤م: ١٠٠٠/م · ٥-١٠م: ٨٠٠/م · ١١-٢٩م: ينزل لـ٦٩٠/م · ≥٣٠م: ٧١٠/م
+                </p>
+                </div>
+
+                <div className="sm:col-span-2">
+                <label className="mb-1 block text-[11px] font-bold text-slate-500">البرمجة — خدمة إضافية بسعر ثابت</label>
                 <select
                   value={it.programmingItem || ''}
                   onChange={(e) => updateItem(it.key, { programmingItem: e.target.value })}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-sm sm:col-span-2"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
                 >
                   <option value="">بدون برمجة</option>
                   {programmingItemsFor(systemName).map((c) => (
@@ -324,12 +446,16 @@ export default function LeaderInvoiceNew() {
                     </option>
                   ))}
                 </select>
+                </div>
+
+                <div className="flex items-end">
                 <button
                   onClick={() => removeItem(it.key)}
-                  className="rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
+                  className="w-full rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
                 >
                   حذف البند
                 </button>
+                </div>
               </div>
             ))}
         </div>

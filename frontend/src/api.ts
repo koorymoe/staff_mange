@@ -654,9 +654,32 @@ export interface ProjectWorkType {
   createdAt: string
 }
 
+// تفصيل حساب بند واحد — يُعرض للّيدر حتى يشوف من وين طلع كل رقم
+export interface ExecutionCostBreakdownLine {
+  systemName: string
+  itemName: string
+  count: number
+  unitInstallPrice: number
+  heightMeters: number
+  heightMultiplier: number
+  installTotal: number
+  wiringItemName: string
+  wiringMultiplier: number
+  cableLengthMeters: number
+  wiringPricePerMeter: number
+  wiringByDeviceCount: number
+  wiringByCableLength: number
+  wiringBasis: string
+  wiringTotal: number
+  programmingItem: string
+  programmingTotal: number
+  lineTotal: number
+}
+
 export interface EstimateExecutionCostResponse {
   executionCost: number
   totalDeviceCount: number
+  breakdown: ExecutionCostBreakdownLine[]
 }
 
 export interface CreateMaterialLineRequest {

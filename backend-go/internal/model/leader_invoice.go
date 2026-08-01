@@ -97,10 +97,38 @@ type EstimateExecutionCostRequest struct {
 	Items []ExecutionCostItem `json:"items"`
 }
 
+// ExecutionCostBreakdownLine تفصيل حساب بند واحد — يُعرض بالواجهة حتى الليدر
+// يشوف من وين طلع كل رقم بدل ما يثق برقم أعمى.
+type ExecutionCostBreakdownLine struct {
+	SystemName string `json:"systemName"`
+	ItemName   string `json:"itemName"`
+	Count      int    `json:"count"`
+
+	UnitInstallPrice float64 `json:"unitInstallPrice"`
+	HeightMeters     int     `json:"heightMeters"`
+	HeightMultiplier float64 `json:"heightMultiplier"`
+	InstallTotal     float64 `json:"installTotal"`
+
+	WiringItemName      string  `json:"wiringItemName"`
+	WiringMultiplier    float64 `json:"wiringMultiplier"`
+	CableLengthMeters   int     `json:"cableLengthMeters"`
+	WiringPricePerMeter float64 `json:"wiringPricePerMeter"`
+	WiringByDeviceCount float64 `json:"wiringByDeviceCount"`
+	WiringByCableLength float64 `json:"wiringByCableLength"`
+	WiringBasis         string  `json:"wiringBasis"`
+	WiringTotal         float64 `json:"wiringTotal"`
+
+	ProgrammingItem  string  `json:"programmingItem"`
+	ProgrammingTotal float64 `json:"programmingTotal"`
+
+	LineTotal float64 `json:"lineTotal"`
+}
+
 // EstimateExecutionCostResponse نتيجة الحساب السريع فقط، بدون أي حفظ بقاعدة البيانات.
 type EstimateExecutionCostResponse struct {
-	ExecutionCost    int64 `json:"executionCost"`
-	TotalDeviceCount int   `json:"totalDeviceCount"`
+	ExecutionCost    int64                        `json:"executionCost"`
+	TotalDeviceCount int                          `json:"totalDeviceCount"`
+	Breakdown        []ExecutionCostBreakdownLine `json:"breakdown"`
 }
 
 // CreateMaterialLineRequest بند مادة واحد ضمن طلب إنشاء الفاتورة — إما materialCode

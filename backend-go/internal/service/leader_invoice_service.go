@@ -126,42 +126,83 @@ func programmingPriceFor(catalog []model.SystemPriceCatalog, systemName, program
 // totalDeviceCount هو العدد الكلي لأجهزة المشروع (وليس عدد بند واحد) — يُستخدم
 // كمفتاح موحّد لجدول التسليك حسب العدد الكلي، بنفس ما يفعله الشيت.
 func CalculateExecutionCost(items []model.ExecutionCostItem, catalog []model.SystemPriceCatalog, totalDeviceCount int) (int64, error) {
+	total, _, err := CalculateExecutionCostDetailed(items, catalog, totalDeviceCount)
+	return total, err
+}
+
+// CalculateExecutionCostDetailed نفس الحساب بس يرجّع تفصيل كل بند — الواجهة
+// تعرضه للّيدر حتى يشوف من وين طلع كل رقم بدل ما يثق برقم أعمى.
+func CalculateExecutionCostDetailed(items []model.ExecutionCostItem, catalog []model.SystemPriceCatalog, totalDeviceCount int) (int64, []model.ExecutionCostBreakdownLine, error) {
 	if len(items) == 0 {
-		return 0, fmt.Errorf("لا يمكن حساب تكلفة تنفيذ بدون بنود")
+		return 0, nil, fmt.Errorf("لا يمكن حساب تكلفة تنفيذ بدون بنود")
 	}
 
 	var sum float64
+	lines := make([]model.ExecutionCostBreakdownLine, 0, len(items))
 	deviceCountPrice := deviceCountWiringPrice(totalDeviceCount)
 
 	for _, item := range items {
 		if item.Count <= 0 {
-			continue // IF(count>0,1,0) — البند غير المُختار لا يُحتسب إطلاقاً
+			continue // بند بعدد صفر ما ينحسب إطلاقاً
 		}
+		count := float64(item.Count)
 
+		// ── التركيب: السعر × العدد × مضاعف الارتفاع ──
+		// العدد يضرب فعلياً (كل جهاز إضافي يزيد الكلفة)، والارتفاع يضرب فوقه.
 		basePrice := installPriceFor(catalog, item.SystemName, item.ItemName)
 		heightWeight := heightWeightMultiplier(item.HeightMeters)
-		installationTotal := basePrice * heightWeight
+		installationTotal := basePrice * count * heightWeight
 		sum += installationTotal
 
+		line := model.ExecutionCostBreakdownLine{
+			SystemName:       item.SystemName,
+			ItemName:         item.ItemName,
+			Count:            item.Count,
+			UnitInstallPrice: basePrice,
+			HeightMeters:     item.HeightMeters,
+			HeightMultiplier: heightWeight,
+			InstallTotal:     installationTotal,
+		}
+
+		// ── التسليك: الأكبر بين طريقتين، والاثنتين مضروبتين بمعامل نوع الكيبل ──
+		// (أ) حسب العدد الكلي لأجهزة المشروع  (ب) حسب طول الكيبل × سعر المتر
 		if item.WiringItemName != "" {
 			mult := wiringMultiplierFor(catalog, item.SystemName, item.WiringItemName)
-			deviceBased := deviceCountPrice*mult - installationTotal
-			if deviceBased < 0 {
-				deviceBased = 0
-			}
-			lengthBased := cableLengthWiringPricePerMeter(item.CableLengthMeters) * float64(item.CableLengthMeters)
+			deviceBased := deviceCountPrice * mult
+			pricePerMeter := cableLengthWiringPricePerMeter(item.CableLengthMeters)
+			lengthBased := pricePerMeter * float64(item.CableLengthMeters) * mult
 			wiringCost := math.Max(deviceBased, lengthBased)
 			sum += wiringCost
+
+			line.WiringItemName = item.WiringItemName
+			line.WiringMultiplier = mult
+			line.CableLengthMeters = item.CableLengthMeters
+			line.WiringPricePerMeter = pricePerMeter
+			line.WiringByDeviceCount = deviceBased
+			line.WiringByCableLength = lengthBased
+			line.WiringTotal = wiringCost
+			if lengthBased >= deviceBased {
+				line.WiringBasis = "طول الكيبل"
+			} else {
+				line.WiringBasis = "العدد الكلي للأجهزة"
+			}
 		}
 
+		// ── البرمجة: سعر خدمة ثابت لكل بند، ما يتضاعف بالعدد ──
 		if item.ProgrammingItem != "" {
-			sum += programmingPriceFor(catalog, item.SystemName, item.ProgrammingItem)
+			p := programmingPriceFor(catalog, item.SystemName, item.ProgrammingItem)
+			sum += p
+			line.ProgrammingItem = item.ProgrammingItem
+			line.ProgrammingTotal = p
 		}
+
+		line.LineTotal = line.InstallTotal + line.WiringTotal + line.ProgrammingTotal
+		lines = append(lines, line)
 	}
 
-	// CEILING(sum, 1000) — تقريب لأعلى لأقرب 1000
+	// CEILING(sum, 1000) — تقريب لأعلى لأقرب 1000، مثل الشيت
 	rounded := math.Ceil(sum/1000) * 1000
-	return int64(rounded), nil
+	return int64(rounded), lines, nil
 }
 
 // GenerateAccountingCode يبني كوداً محاسبياً فريداً وقابل للتتبع (إعادة تصدير

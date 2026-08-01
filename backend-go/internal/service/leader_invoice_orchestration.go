@@ -282,11 +282,15 @@ func (s *LeaderInvoiceService) Estimate(items []model.ExecutionCostItem) (*model
 	for _, item := range items {
 		totalDeviceCount += item.Count
 	}
-	executionCost, err := CalculateExecutionCost(items, catalog, totalDeviceCount)
+	executionCost, breakdown, err := CalculateExecutionCostDetailed(items, catalog, totalDeviceCount)
 	if err != nil {
 		return nil, err
 	}
-	return &model.EstimateExecutionCostResponse{ExecutionCost: executionCost, TotalDeviceCount: totalDeviceCount}, nil
+	return &model.EstimateExecutionCostResponse{
+		ExecutionCost:    executionCost,
+		TotalDeviceCount: totalDeviceCount,
+		Breakdown:        breakdown,
+	}, nil
 }
 
 // Approve يعتمد فاتورة ليدر — محصور بمدير/محاسب (requireFinance بالراوت)، الليدر
