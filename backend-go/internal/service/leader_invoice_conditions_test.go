@@ -174,29 +174,29 @@ func TestCameraCostMorePriceForMoreCable(t *testing.T) {
 }
 
 // ── فحص مطابقة كاملة مع الاكسل ──
-// سيناريو محسوب باليد خطوة بخطوة من صيغ الشيت، حتى نتأكد إن النظام يعطي
-// نفس الرقم بالضبط مو تقريباً.
+// سيناريو محسوب باليد خطوة بخطوة من صيغ الشيت الأصلية (بما بيها صيغتَي
+// المصفوفة K و L الي انكشفن متأخر)، حتى نتأكد إن النظام يعطي نفس الرقم.
 //
-// الكتالوج: تركيب=10000، مضاعف التسليك=1، برمجة=2500
-// جدول العدد الكلي للأجهزة عند 6 = 11200 (K)
-// جدول طول الكيبل عند 10 متر = 800/متر (L)
+// الكتالوج: تركيب=10000، مضاعف نوع التسليك N=1، برمجة=2500
 //
-// السطر الأول: 4 أجهزة، ارتفاع تركيب 6م (F=1.3)، بدون تسليك
+// سطر أ: 4 أجهزة، ارتفاع تركيب 6م (F=1.3)، بدون تسليك
 //
-//	G = 10000 × 4 × 1.3 = 52,000
+//	G = 10000 × 1.3 × 4 = 52,000
 //
-// السطر الثاني: 2 جهاز، مع تسليك، طول 10م، ارتفاع تسليك 5م (O=2)
+// سطر ب: 2 جهاز، تسليك، طول 10م، ارتفاع تسليك 5م (O=2)
 //
-//	G = 0 (تصفّر لأنه اكو تسليك)
-//	K = 11200 × 1 = 11,200
-//	M = 2 × 1 × (800 × 10) = 16,000
-//	P = MAX(16000, 11200) = 16,000
+//	G = 0                                   (يتصفّر لأنه اكو تسليك)
+//	E58 = 4 + 2 = 6  ->  جدول العدد الكلي عند 6 = 11,200
+//	K = 11,200 × E   (بدون مضاعف النوع)     -> للوحدة 11,200
+//	L = 800 × 10 = 8,000                    (سعر المتر × الأمتار)
+//	M = O × N × L = 2 × 1 × 8,000 = 16,000  -> للوحدة 16,000
+//	P = MAX(16,000, 11,200) = 16,000  × 2 جهاز = 32,000
 //
-// G58 = 52,000 + 16,000 = 68,000
-// E58 = 4 + 2 = 6 جهاز  ->  الشريحة 5-8: 6 × 12500 = 75,000
-// G59 = MAX(68,000، 75,000) = 75,000   (ينطبق الحد الأدنى)
-// البرمجة: خدمة وحدة بـ2500 -> R59 = MAX(2500، 13500) = 13,500
-// المجموع = 88,500  ->  CEILING لأقرب 1000 = 89,000
+// G58 = 52,000 + 32,000 = 84,000
+// الحد الأدنى: 6 أجهزة -> شريحة 5-8 -> 6 × 12,500 = 75,000
+// G59 = MAX(84,000، 75,000) = 84,000      (ما ينطبق الحد الأدنى)
+// R59 = MAX(2,500، 13,500) = 13,500
+// المجموع = 97,500  ->  CEILING لأقرب 1000 = 98,000
 func TestExcelParityFullScenario(t *testing.T) {
 	items := []model.ExecutionCostItem{
 		{SystemName: "س", ItemName: "جهاز", Count: 4, HeightMeters: 6,
@@ -208,35 +208,49 @@ func TestExcelParityFullScenario(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if lines[0].InstallTotal != 52000 {
-		t.Fatalf("تركيب السطر الأول: الاكسل 52000، النظام %v", lines[0].InstallTotal)
+	check := func(label string, want, got float64) {
+		t.Helper()
+		if want != got {
+			t.Fatalf("%s: الاكسل %v، النظام %v", label, want, got)
+		}
 	}
-	if lines[1].InstallTotal != 0 {
-		t.Fatalf("تركيب السطر الثاني لازم يتصفّر، النظام %v", lines[1].InstallTotal)
-	}
-	if lines[1].WiringByDeviceCount != 11200 {
-		t.Fatalf("K: الاكسل 11200، النظام %v", lines[1].WiringByDeviceCount)
-	}
-	if lines[1].WiringByCableLength != 16000 {
-		t.Fatalf("M: الاكسل 16000، النظام %v", lines[1].WiringByCableLength)
-	}
-	if lines[1].WiringTotal != 16000 {
-		t.Fatalf("P: الاكسل 16000، النظام %v", lines[1].WiringTotal)
-	}
+	check("G سطر أ", 52000, lines[0].InstallTotal)
+	check("G سطر ب (لازم يتصفّر)", 0, lines[1].InstallTotal)
+	check("K", 22400, lines[1].WiringByDeviceCount)
+	check("M", 32000, lines[1].WiringByCableLength)
+	check("P", 32000, lines[1].WiringTotal)
+
 	m := mins[0]
-	if m.InstallWiringCalculated != 68000 {
-		t.Fatalf("G58: الاكسل 68000، النظام %v", m.InstallWiringCalculated)
+	check("G58", 84000, m.InstallWiringCalculated)
+	if m.DeviceCount != 6 {
+		t.Fatalf("E58: الاكسل 6، النظام %d", m.DeviceCount)
 	}
-	if m.DeviceCount != 6 || m.InstallMinimumTotal != 75000 {
-		t.Fatalf("E58/الحد الأدنى: الاكسل 6 و75000، النظام %d و%v", m.DeviceCount, m.InstallMinimumTotal)
+	check("الحد الأدنى للتركيب", 75000, m.InstallMinimumTotal)
+	check("G59", 84000, m.InstallApplied)
+	check("R59", 13500, m.ProgrammingApplied)
+	if total != 98000 {
+		t.Fatalf("المجموع النهائي: الاكسل 98000، النظام %d", total)
 	}
-	if m.InstallApplied != 75000 {
-		t.Fatalf("G59: الاكسل 75000، النظام %v", m.InstallApplied)
+}
+
+// K ما ينضرب بمضاعف نوع التسليك — المضاعف يدخل بطرف الطول (M) بس.
+// هذا كان غلط بالنظام: كنا نضرب K بالمضاعف فيطلع رقم أعلى من الاكسل.
+func TestDeviceBasedWiringIgnoresMultiplier(t *testing.T) {
+	cat := []model.SystemPriceCatalog{
+		{SystemName: "س", ItemName: "جهاز", Category: "install", Value: 10000},
+		{SystemName: "س", ItemName: "كيبل غالي", Category: "wiring", Value: 3.0},
 	}
-	if m.ProgrammingApplied != 13500 {
-		t.Fatalf("R59: الاكسل 13500، النظام %v", m.ProgrammingApplied)
+	items := []model.ExecutionCostItem{{
+		SystemName: "س", ItemName: "جهاز", Count: 1, HeightMeters: 4,
+		WiringItemName: "كيبل غالي", CableLengthMeters: 1,
+	}}
+	_, lines, _, _ := CalculateExecutionCostDetailed(items, cat, 6)
+	// جدول العدد الكلي عند 6 = 11,200 — بدون أي ضرب بـ3
+	if lines[0].WiringByDeviceCount != 11200 {
+		t.Fatalf("K: الاكسل 11200 (بلا مضاعف)، النظام %v", lines[0].WiringByDeviceCount)
 	}
-	if total != 89000 {
-		t.Fatalf("المجموع النهائي: الاكسل 89000، النظام %d", total)
+	// أما الطول: 1000 × 1 متر × مضاعف 3 × وزن ارتفاع 1 = 3,000
+	if lines[0].WiringByCableLength != 3000 {
+		t.Fatalf("M: المتوقع 3000، النظام %v", lines[0].WiringByCableLength)
 	}
 }

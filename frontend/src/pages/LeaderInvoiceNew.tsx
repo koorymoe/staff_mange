@@ -193,10 +193,13 @@ export default function LeaderInvoiceNew() {
                     {b.wiringTotal > 0 && (
                       <div>
                         <span className="text-slate-400">التسليك ({b.wiringItemName}): </span>
-                        نأخذ الأكبر — حسب العدد الكلي {b.wiringByDeviceCount.toLocaleString()} / حسب الطول {b.wiringByCableLength.toLocaleString()}
+                        نأخذ الأكبر لكل جهاز ثم × العدد ({b.count}) — حسب العدد الكلي{' '}
+                        {b.wiringByDeviceCount.toLocaleString()} (بدون مضاعف نوع الكيبل) / حسب الطول{' '}
+                        {b.wiringByCableLength.toLocaleString()}
                         {b.cableLengthMeters > 0 && (
                           <> ({b.wiringPricePerMeter.toLocaleString()}/م × {b.cableLengthMeters}م × {b.wiringMultiplier}
-                          {b.wiringHeightWeight > 1 && <> × {b.wiringHeightWeight} (ارتفاع {b.wiringHeightMeters}م)</>})</>
+                          {b.wiringHeightWeight > 1 && <> × {b.wiringHeightWeight} (ارتفاع {b.wiringHeightMeters}م)</>}
+                          {' '}× {b.count})</>
                         )}
                         {' → '}<span className="font-bold">{b.wiringTotal.toLocaleString()}</span>
                         <span className="text-slate-400"> (حسب {b.wiringBasis})</span>

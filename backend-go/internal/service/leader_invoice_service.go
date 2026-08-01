@@ -264,16 +264,26 @@ func CalculateExecutionCostDetailed(items []model.ExecutionCostItem, catalog []m
 		// (أ) حسب العدد الكلي لأجهزة المشروع  (ب) حسب طول الكيبل × سعر المتر
 		if item.WiringItemName != "" {
 			mult := wiringMultiplierFor(catalog, item.SystemName, item.WiringItemName)
-			// K بالشيت: "السعر + سعر التنصيب" — حسب جدول العدد الكلي للأجهزة
-			deviceBased := deviceCountPrice * mult
-			// M بالشيت: صافي سعر التسليك = وزن الارتفاع × وزن المادة × السعر حسب الطول.
+			// K بالشيت (صيغة مصفوفة):
+			//   K = IF(H="", 0, VLOOKUP($E$58, جدول العدد الكلي) × E) − G
+			// نقطتان مهمتان انكشفن من الصيغة الأصلية:
+			//  1) K ما ينضرب بمضاعف نوع التسليك (N) إطلاقاً — المضاعف يدخل
+			//     بالطرف الثاني بس (M = O×N×L).
+			//  2) K ينضرب بـE (عدد الأجهزة بالسطر) — وبنظامنا العدد N يكافئ
+			//     N أسطر بالشيت، فنحسب لكل وحدة ثم نضرب بالعدد.
+			//  (طرح G ما يأثر: G يتصفّر أصلاً لما يكون بالسطر تسليك)
+			perUnitDeviceBased := deviceCountPrice
+			// M بالشيت: صافي سعر التسليك = وزن الارتفاع × وزن المادة × L،
+			// و L نفسها = سعر المتر × عدد الأمتار (الضرب داخل صيغة L).
 			// وزن ارتفاع التسليك ثنائي (×2 من 5 متر فما فوق) مو الجدول المتدرج
-			// مال التركيب — هذا شرط كان ناقص وكان يطلّع أسعار غلط بالحالتين.
+			// مال التركيب.
 			whw := wiringHeightWeight(item.WiringHeightMeters)
 			pricePerMeter := cableLengthWiringPricePerMeter(item.CableLengthMeters)
-			lengthBased := pricePerMeter * float64(item.CableLengthMeters) * mult * whw
-			// P بالشيت: المبلغ المعتمد = MAX(M, K)
-			wiringCost := math.Max(deviceBased, lengthBased)
+			perUnitLengthBased := pricePerMeter * float64(item.CableLengthMeters) * mult * whw
+			// P بالشيت: المبلغ المعتمد = MAX(M, K) — لكل سطر، وبعدين × العدد
+			deviceBased := perUnitDeviceBased * count
+			lengthBased := perUnitLengthBased * count
+			wiringCost := math.Max(perUnitDeviceBased, perUnitLengthBased) * count
 			a.installAndWiring += wiringCost
 
 			line.WiringItemName = item.WiringItemName
