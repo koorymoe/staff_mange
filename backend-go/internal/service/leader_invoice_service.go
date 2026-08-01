@@ -27,6 +27,74 @@ func heightWeightMultiplier(heightMeters int) float64 {
 	}
 }
 
+// wiringHeightWeight وزن ارتفاع *التسليك* — قاعدة مختلفة تماماً عن التركيب.
+// بالشيت: O = IF(الارتفاع >= 5, 2, 1) — يعني ثنائية مو متدرجة: أقل من 5 متر
+// بدون زيادة، ومن 5 متر فما فوق ضعف السعر مباشرة.
+func wiringHeightWeight(heightMeters int) float64 {
+	if heightMeters >= 5 {
+		return 2
+	}
+	return 1
+}
+
+// installMinimumPerDevice الحد الأدنى لأجور التركيب لكل جهاز حسب عدد الأجهزة
+// بالمنظومة — من G59 بالشيت: كل ما زاد عدد الأجهزة قلّ الحد الأدنى للجهاز
+// الواحد (تسعيرة جملة)، والمجموع النهائي = MAX(المحسوب، العدد × الحد الأدنى).
+func installMinimumPerDevice(deviceCount int) float64 {
+	switch {
+	case deviceCount <= 0:
+		return 0
+	case deviceCount <= 4:
+		return 14000
+	case deviceCount <= 8:
+		return 12500
+	case deviceCount <= 16:
+		return 11500
+	default: // >= 17
+		return 10000
+	}
+}
+
+// installMinimumTotal الحد الأدنى الإجمالي لأجور التركيب لعدد أجهزة معيّن.
+//
+// انتباه: تسعيرة الجملة بالشيت تنزل بحدود الشرائح، فحرفياً 17 جهاز × 10000 =
+// 170,000 أقل من 16 جهاز × 11500 = 184,000 — يعني إضافة جهاز تنزّل الحد الأدنى.
+// هذا يخالف قاعدة "كل ما زاد العدد زاد السعر" الي اتفقنا عليها، فنأخذ أعلى حد
+// أدنى ممكن عند أي عدد أقل أو يساوي (غلاف غير متناقص). الشيت يوصل نفس النتيجة
+// بالحالات الواقعية لأن MAX مع المجموع المحسوب يغطي الفرق، وهذا يضمنها دائماً.
+func installMinimumTotal(deviceCount int) float64 {
+	if deviceCount <= 0 {
+		return 0
+	}
+	best := 0.0
+	for _, cap := range []int{4, 8, 16, deviceCount} {
+		if cap > deviceCount {
+			cap = deviceCount
+		}
+		if v := installMinimumPerDevice(cap) * float64(cap); v > best {
+			best = v
+		}
+	}
+	return best
+}
+
+// programmingMinimumTotal الحد الأدنى الإجمالي لأجور البرمجة حسب عدد خدمات
+// البرمجة بالمنظومة — من R59 بالشيت (مبلغ مقطوع مو ضرب بالعدد).
+func programmingMinimumTotal(programmingCount int) float64 {
+	switch programmingCount {
+	case 0:
+		return 0
+	case 1:
+		return 13500
+	case 2:
+		return 24500
+	case 3:
+		return 32500
+	default: // >= 4
+		return 35000
+	}
+}
+
 // deviceCountWiringTable جدول التسليك حسب "العدد الكلي لأجهزة المشروع" (0 إلى 80) —
 // منسوخ حرفياً من شيت "تكاليف المشروع" (نفس القيم بالضبط).
 var deviceCountWiringTable = map[int]float64{
@@ -126,33 +194,63 @@ func programmingPriceFor(catalog []model.SystemPriceCatalog, systemName, program
 // totalDeviceCount هو العدد الكلي لأجهزة المشروع (وليس عدد بند واحد) — يُستخدم
 // كمفتاح موحّد لجدول التسليك حسب العدد الكلي، بنفس ما يفعله الشيت.
 func CalculateExecutionCost(items []model.ExecutionCostItem, catalog []model.SystemPriceCatalog, totalDeviceCount int) (int64, error) {
-	total, _, err := CalculateExecutionCostDetailed(items, catalog, totalDeviceCount)
+	total, _, _, err := CalculateExecutionCostDetailed(items, catalog, totalDeviceCount)
 	return total, err
 }
 
 // CalculateExecutionCostDetailed نفس الحساب بس يرجّع تفصيل كل بند — الواجهة
 // تعرضه للّيدر حتى يشوف من وين طلع كل رقم بدل ما يثق برقم أعمى.
-func CalculateExecutionCostDetailed(items []model.ExecutionCostItem, catalog []model.SystemPriceCatalog, totalDeviceCount int) (int64, []model.ExecutionCostBreakdownLine, error) {
+func CalculateExecutionCostDetailed(items []model.ExecutionCostItem, catalog []model.SystemPriceCatalog, totalDeviceCount int) (int64, []model.ExecutionCostBreakdownLine, []model.ExecutionCostSystemMinimum, error) {
 	if len(items) == 0 {
-		return 0, nil, fmt.Errorf("لا يمكن حساب تكلفة تنفيذ بدون بنود")
+		return 0, nil, nil, fmt.Errorf("لا يمكن حساب تكلفة تنفيذ بدون بنود")
 	}
 
-	var sum float64
 	lines := make([]model.ExecutionCostBreakdownLine, 0, len(items))
 	deviceCountPrice := deviceCountWiringPrice(totalDeviceCount)
+
+	// الحدود الدنيا بالشيت تُطبَّق *لكل منظومة على حدة* (كل منظومة إلها بلوك
+	// مستقل بالشيت مع صف G59/R59 خاص بيها) — فنجمّع الحسابات حسب المنظومة.
+	type systemAgg struct {
+		installAndWiring float64 // G58 = مجموع التركيب + مجموع التسليك المعتمد
+		deviceCount      int     // E58 = عدد الأجهزة الي إلها سعر تركيب
+		programming      float64 // R58 = مجموع البرمجة
+		programmingCount int     // S58 = عدد خدمات البرمجة
+	}
+	aggs := map[string]*systemAgg{}
+	order := []string{}
+	agg := func(name string) *systemAgg {
+		if a, ok := aggs[name]; ok {
+			return a
+		}
+		a := &systemAgg{}
+		aggs[name] = a
+		order = append(order, name)
+		return a
+	}
 
 	for _, item := range items {
 		if item.Count <= 0 {
 			continue // بند بعدد صفر ما ينحسب إطلاقاً
 		}
 		count := float64(item.Count)
+		a := agg(item.SystemName)
 
 		// ── التركيب: السعر × العدد × مضاعف الارتفاع ──
 		// العدد يضرب فعلياً (كل جهاز إضافي يزيد الكلفة)، والارتفاع يضرب فوقه.
 		basePrice := installPriceFor(catalog, item.SystemName, item.ItemName)
 		heightWeight := heightWeightMultiplier(item.HeightMeters)
 		installationTotal := basePrice * count * heightWeight
-		sum += installationTotal
+		// شرط الشيت: G = IF(نوع التسليك = فاضي, السعر×الوزن×العدد, 0).
+		// يعني لو السطر بي نوع تسليك، أجور التركيب *ما تنحسب أبداً* لأنها
+		// أصلاً داخلة ضمن "المبلغ المعتمد" للتسليك (K = السعر + سعر التنصيب).
+		// بدون هذا الشرط كنا نجمع الاثنين فيطلع السعر أعلى من الاكسل.
+		if item.WiringItemName != "" {
+			installationTotal = 0
+		}
+		if basePrice > 0 {
+			a.deviceCount += item.Count
+		}
+		a.installAndWiring += installationTotal
 
 		line := model.ExecutionCostBreakdownLine{
 			SystemName:       item.SystemName,
@@ -168,14 +266,22 @@ func CalculateExecutionCostDetailed(items []model.ExecutionCostItem, catalog []m
 		// (أ) حسب العدد الكلي لأجهزة المشروع  (ب) حسب طول الكيبل × سعر المتر
 		if item.WiringItemName != "" {
 			mult := wiringMultiplierFor(catalog, item.SystemName, item.WiringItemName)
+			// K بالشيت: "السعر + سعر التنصيب" — حسب جدول العدد الكلي للأجهزة
 			deviceBased := deviceCountPrice * mult
+			// M بالشيت: صافي سعر التسليك = وزن الارتفاع × وزن المادة × السعر حسب الطول.
+			// وزن ارتفاع التسليك ثنائي (×2 من 5 متر فما فوق) مو الجدول المتدرج
+			// مال التركيب — هذا شرط كان ناقص وكان يطلّع أسعار غلط بالحالتين.
+			whw := wiringHeightWeight(item.WiringHeightMeters)
 			pricePerMeter := cableLengthWiringPricePerMeter(item.CableLengthMeters)
-			lengthBased := pricePerMeter * float64(item.CableLengthMeters) * mult
+			lengthBased := pricePerMeter * float64(item.CableLengthMeters) * mult * whw
+			// P بالشيت: المبلغ المعتمد = MAX(M, K)
 			wiringCost := math.Max(deviceBased, lengthBased)
-			sum += wiringCost
+			a.installAndWiring += wiringCost
 
 			line.WiringItemName = item.WiringItemName
 			line.WiringMultiplier = mult
+			line.WiringHeightMeters = item.WiringHeightMeters
+			line.WiringHeightWeight = whw
 			line.CableLengthMeters = item.CableLengthMeters
 			line.WiringPricePerMeter = pricePerMeter
 			line.WiringByDeviceCount = deviceBased
@@ -191,7 +297,10 @@ func CalculateExecutionCostDetailed(items []model.ExecutionCostItem, catalog []m
 		// ── البرمجة: سعر خدمة ثابت لكل بند، ما يتضاعف بالعدد ──
 		if item.ProgrammingItem != "" {
 			p := programmingPriceFor(catalog, item.SystemName, item.ProgrammingItem)
-			sum += p
+			a.programming += p
+			if p > 0 {
+				a.programmingCount++
+			}
 			line.ProgrammingItem = item.ProgrammingItem
 			line.ProgrammingTotal = p
 		}
@@ -200,9 +309,39 @@ func CalculateExecutionCostDetailed(items []model.ExecutionCostItem, catalog []m
 		lines = append(lines, line)
 	}
 
+	// ── الحدود الدنيا لكل منظومة (صفوف G59 و R59 بالشيت) ──
+	// المشروع الصغير ما ينزل تحت حد معين مهما طلع الحساب التفصيلي واطي.
+	var sum float64
+	mins := make([]model.ExecutionCostSystemMinimum, 0, len(order))
+	for _, name := range order {
+		a := aggs[name]
+		perDevice := installMinimumPerDevice(a.deviceCount)
+		installFloor := installMinimumTotal(a.deviceCount)
+		installGroup := math.Max(a.installAndWiring, installFloor)
+
+		progFloor := programmingMinimumTotal(a.programmingCount)
+		progGroup := math.Max(a.programming, progFloor)
+
+		sum += installGroup + progGroup
+		mins = append(mins, model.ExecutionCostSystemMinimum{
+			SystemName:              name,
+			DeviceCount:             a.deviceCount,
+			InstallWiringCalculated: a.installAndWiring,
+			InstallMinimumPerDevice: perDevice,
+			InstallMinimumTotal:     installFloor,
+			InstallApplied:          installGroup,
+			InstallFloorUsed:        installFloor > a.installAndWiring,
+			ProgrammingCount:        a.programmingCount,
+			ProgrammingCalculated:   a.programming,
+			ProgrammingMinimum:      progFloor,
+			ProgrammingApplied:      progGroup,
+			ProgrammingFloorUsed:    progFloor > a.programming,
+		})
+	}
+
 	// CEILING(sum, 1000) — تقريب لأعلى لأقرب 1000، مثل الشيت
 	rounded := math.Ceil(sum/1000) * 1000
-	return int64(rounded), lines, nil
+	return int64(rounded), lines, mins, nil
 }
 
 // GenerateAccountingCode يبني كوداً محاسبياً فريداً وقابل للتتبع (إعادة تصدير

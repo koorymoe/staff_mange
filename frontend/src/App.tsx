@@ -35,6 +35,7 @@ const PermissionsPage = lazy(() => import('./pages/PermissionsPage'))
 const QuotationsPage = lazy(() => import('./pages/QuotationsPage'))
 const QuotationNew = lazy(() => import('./pages/QuotationNew'))
 const LeaderInvoiceNew = lazy(() => import('./pages/LeaderInvoiceNew'))
+const CameraCostPage = lazy(() => import('./pages/CameraCostPage'))
 const LeaderInvoicesListPage = lazy(() => import('./pages/LeaderInvoicesListPage'))
 const ProductsPage = lazy(() => import('./pages/ProductsPage'))
 const GpsDashboard = lazy(() => import('./pages/gps/GpsDashboard'))
@@ -126,6 +127,7 @@ function App() {
           <Route path="quotations/:id/edit" element={<QuotationNew />} />
           <Route path="leader-invoices" element={<LeaderInvoicesListPage />} />
           <Route path="leader-invoices/new" element={<LeaderInvoiceNew />} />
+          <Route path="camera-cost" element={<CameraCostPage />} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="work-reports" element={<WorkReportPage />} />

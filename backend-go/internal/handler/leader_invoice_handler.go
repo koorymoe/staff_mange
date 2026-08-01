@@ -77,6 +77,32 @@ func (h *LeaderInvoiceHandler) Estimate(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, res)
 }
 
+// POST /api/leader-invoices/camera-cost — استمارة "حساب تكلفة التنفيذ" الخاصة
+// بمنظومة كاميرات المراقبة (شيت مستقل بمعادلة مختلفة عن تكاليف المشروع).
+func (h *LeaderInvoiceHandler) CameraCost(w http.ResponseWriter, r *http.Request) {
+	var req model.CameraCostRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	res, err := service.CalculateCameraCost(req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, res)
+}
+
+// GET /api/leader-invoices/camera-cost/options — قوائم نوع المكان ونوع المنظومة
+// وأسعار الأعمال الإضافية، حتى الواجهة ما تكتب القيم بنفسها وتختلف عن المحرك.
+func (h *LeaderInvoiceHandler) CameraCostOptions(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"placeTypes":  service.CameraPlaceTypes,
+		"systemTypes": service.CameraSystemTypes,
+		"note":        service.CameraCostNote,
+	})
+}
+
 // PUT /api/leader-invoices/{id}/approve — محصور بـrequireFinance بالراوت.
 func (h *LeaderInvoiceHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	approverID := middleware.EmployeeIDFromContext(r)

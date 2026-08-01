@@ -632,6 +632,9 @@ export interface ExecutionCostItem {
   count: number
   heightMeters: number
   wiringItemName?: string
+  // ارتفاع التسليك — قاعدته ثنائية بالاكسل (٥م فما فوق = ضعف السعر)، غير
+  // متدرجة مثل ارتفاع التركيب
+  wiringHeightMeters?: number
   cableLengthMeters?: number
   programmingItem?: string
 }
@@ -701,6 +704,8 @@ export interface ExecutionCostBreakdownLine {
   installTotal: number
   wiringItemName: string
   wiringMultiplier: number
+  wiringHeightMeters: number
+  wiringHeightWeight: number
   cableLengthMeters: number
   wiringPricePerMeter: number
   wiringByDeviceCount: number
@@ -712,10 +717,75 @@ export interface ExecutionCostBreakdownLine {
   lineTotal: number
 }
 
+// تفصيل تطبيق الحدود الدنيا لكل منظومة (صفَّي G59 و R59 بالاكسل)
+export interface ExecutionCostSystemMinimum {
+  systemName: string
+  deviceCount: number
+  installWiringCalculated: number
+  installMinimumPerDevice: number
+  installMinimumTotal: number
+  installApplied: number
+  installFloorUsed: boolean
+  programmingCount: number
+  programmingCalculated: number
+  programmingMinimum: number
+  programmingApplied: number
+  programmingFloorUsed: boolean
+}
+
 export interface EstimateExecutionCostResponse {
   executionCost: number
   totalDeviceCount: number
   breakdown: ExecutionCostBreakdownLine[]
+  systemMinimums: ExecutionCostSystemMinimum[]
+}
+
+// ── استمارة حساب تكلفة كاميرات المراقبة (شيت مستقل بمعادلة مختلفة) ──
+export interface CameraCostRow {
+  normalCableMeters: number
+  vipCableMeters: number
+  heightAbove3m: boolean
+}
+
+export interface CameraCostExtras {
+  screenLarge43Count: number
+  screenSmall43Count: number
+  rackCount: number
+  boardCount: number
+  vipInternetMeters: number
+  normalInternetMeters: number
+  programmingAmount: number
+  otherAmount: number
+}
+
+export interface CameraCostRequest {
+  placeType: string
+  systemType: string
+  rows: CameraCostRow[]
+  extras: CameraCostExtras
+  discount: number
+}
+
+export interface CameraCostRowResult {
+  index: number
+  basePrice: number
+  placeMultiplier: number
+  afterPlace: number
+  systemMultiplier: number
+  afterSystem: number
+  heightMultiplier: number
+  total: number
+  countsAsCamera: boolean
+}
+
+export interface CameraCostResponse {
+  rows: CameraCostRowResult[]
+  cameraCount: number
+  camerasTotal: number
+  extrasTotal: number
+  discount: number
+  finalAmount: number
+  note: string
 }
 
 export interface CreateMaterialLineRequest {
@@ -1886,6 +1956,10 @@ export const api = {
     request<EstimateExecutionCostResponse>('/leader-invoices/estimate', { method: 'POST', body: JSON.stringify({ items }) }),
   approveLeaderInvoice: (id: string) =>
     request<LeaderInvoice>(`/leader-invoices/${id}/approve`, { method: 'PUT' }),
+  calculateCameraCost: (data: CameraCostRequest) =>
+    request<CameraCostResponse>('/leader-invoices/camera-cost', { method: 'POST', body: JSON.stringify(data) }),
+  getCameraCostOptions: () =>
+    request<{ placeTypes: string[]; systemTypes: string[]; note: string }>('/leader-invoices/camera-cost/options'),
 
   // إعدادات وحدة إدارة المشاريع — أنواع الأعمال قابلة للإضافة/الحذف
   // الشخصيات المهمة (VIP)

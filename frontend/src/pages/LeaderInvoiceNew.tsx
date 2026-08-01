@@ -93,6 +93,7 @@ export default function LeaderInvoiceNew() {
         count: 1,
         heightMeters: 4,
         wiringItemName: '',
+        wiringHeightMeters: 0,
         cableLengthMeters: 0,
         programmingItem: '',
       },
@@ -185,12 +186,18 @@ export default function LeaderInvoiceNew() {
                       {b.unitInstallPrice.toLocaleString()} × {b.count} قطعة
                       {b.heightMultiplier !== 1 && <> × {b.heightMultiplier} (ارتفاع {b.heightMeters}م)</>}
                       {' = '}<span className="font-bold">{b.installTotal.toLocaleString()}</span>
+                      {b.wiringItemName && (
+                        <span className="text-amber-600"> — تصفّرت لأنه البند بي تسليك (شرط الاكسل)</span>
+                      )}
                     </div>
                     {b.wiringTotal > 0 && (
                       <div>
                         <span className="text-slate-400">التسليك ({b.wiringItemName}): </span>
                         نأخذ الأكبر — حسب العدد الكلي {b.wiringByDeviceCount.toLocaleString()} / حسب الطول {b.wiringByCableLength.toLocaleString()}
-                        {b.cableLengthMeters > 0 && <> ({b.wiringPricePerMeter.toLocaleString()}/م × {b.cableLengthMeters}م × {b.wiringMultiplier})</>}
+                        {b.cableLengthMeters > 0 && (
+                          <> ({b.wiringPricePerMeter.toLocaleString()}/م × {b.cableLengthMeters}م × {b.wiringMultiplier}
+                          {b.wiringHeightWeight > 1 && <> × {b.wiringHeightWeight} (ارتفاع {b.wiringHeightMeters}م)</>})</>
+                        )}
                         {' → '}<span className="font-bold">{b.wiringTotal.toLocaleString()}</span>
                         <span className="text-slate-400"> (حسب {b.wiringBasis})</span>
                       </div>
@@ -206,6 +213,38 @@ export default function LeaderInvoiceNew() {
                 </div>
               ))}
             </div>
+            {/* الحدود الدنيا — الشيت يطبّقها لكل منظومة على حدة قبل الجمع */}
+            {estimateResult.systemMinimums?.length > 0 && (
+              <div className="mt-4 rounded-xl border border-brand-100 bg-brand-50/50 p-4">
+                <h4 className="mb-2 text-sm font-bold text-brand-800">الحدود الدنيا (لكل منظومة)</h4>
+                <div className="space-y-2 text-xs">
+                  {estimateResult.systemMinimums.map((m) => (
+                    <div key={m.systemName} className="rounded-lg bg-white p-3">
+                      <div className="font-bold text-brand-900">{m.systemName}</div>
+                      <div className="mt-1 text-slate-600">
+                        التركيب والتسليك: محسوب {m.installWiringCalculated.toLocaleString()} · الحد الأدنى{' '}
+                        {m.deviceCount} جهاز × {m.installMinimumPerDevice.toLocaleString()} ={' '}
+                        {m.installMinimumTotal.toLocaleString()} →{' '}
+                        <span className="font-bold">{m.installApplied.toLocaleString()}</span>
+                        {m.installFloorUsed && <span className="text-amber-600"> (انطبق الحد الأدنى)</span>}
+                      </div>
+                      {(m.programmingCount > 0 || m.programmingCalculated > 0) && (
+                        <div className="mt-1 text-slate-600">
+                          البرمجة: محسوب {m.programmingCalculated.toLocaleString()} · الحد الأدنى لـ
+                          {m.programmingCount} خدمة = {m.programmingMinimum.toLocaleString()} →{' '}
+                          <span className="font-bold">{m.programmingApplied.toLocaleString()}</span>
+                          {m.programmingFloorUsed && <span className="text-amber-600"> (انطبق الحد الأدنى)</span>}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  الحد الأدنى للتركيب: ١-٤ أجهزة ١٤٠٠٠/جهاز · ٥-٨ ١٢٥٠٠ · ٩-١٦ ١١٥٠٠ · ١٧ فأكثر ١٠٠٠٠.
+                  الحد الأدنى للبرمجة: خدمة ١٣٥٠٠ · خدمتين ٢٤٥٠٠ · ٣ خدمات ٣٢٥٠٠ · ٤ فأكثر ٣٥٠٠٠.
+                </p>
+              </div>
+            )}
             <p className="mt-3 text-xs text-slate-400">
               المجموع النهائي يتقرّب لأعلى لأقرب ١٠٠٠ دينار.
             </p>
@@ -416,6 +455,30 @@ export default function LeaderInvoiceNew() {
                   ))}
                 </select>
                 </div>
+
+                {it.wiringItemName && (
+                  <div>
+                  <label className="mb-1 block text-[11px] font-bold text-slate-500">ارتفاع التسليك (م) — قاعدة غير ارتفاع التركيب</label>
+                  <input
+                    type="number"
+                    min={0}
+                    placeholder="ارتفاع التسليك (م)"
+                    value={it.wiringHeightMeters ?? 0}
+                    onChange={(e) => updateItem(it.key, { wiringHeightMeters: Number(e.target.value) })}
+                    className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                  />
+                  <p className="mt-0.5 text-[10px] text-amber-600">
+                    أقل من ٥م بدون زيادة · ٥م فما فوق ×٢ مباشرة (مو متدرج مثل التركيب)
+                  </p>
+                  </div>
+                )}
+
+                {it.wiringItemName && (
+                  <div className="sm:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+                    ⚠️ لأنك اخترت نوع تسليك لهذا البند، أجور التركيب <b>ما تنحسب</b> — تنعتمد قيمة التسليك بس
+                    (المبلغ المعتمد = الأكبر بين التسليك حسب العدد الكلي والتسليك حسب الطول). هذا شرط الاكسل.
+                  </div>
+                )}
 
                 <div>
                 <label className="mb-1 block text-[11px] font-bold text-slate-500">طول الكيبل (م) — كل متر يزيد السعر</label>

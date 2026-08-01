@@ -282,7 +282,7 @@ func (s *LeaderInvoiceService) Estimate(items []model.ExecutionCostItem) (*model
 	for _, item := range items {
 		totalDeviceCount += item.Count
 	}
-	executionCost, breakdown, err := CalculateExecutionCostDetailed(items, catalog, totalDeviceCount)
+	executionCost, breakdown, minimums, err := CalculateExecutionCostDetailed(items, catalog, totalDeviceCount)
 	if err != nil {
 		return nil, err
 	}
@@ -290,6 +290,7 @@ func (s *LeaderInvoiceService) Estimate(items []model.ExecutionCostItem) (*model
 		ExecutionCost:    executionCost,
 		TotalDeviceCount: totalDeviceCount,
 		Breakdown:        breakdown,
+		SystemMinimums:   minimums,
 	}, nil
 }
 

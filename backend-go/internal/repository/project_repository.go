@@ -69,6 +69,21 @@ func (r *ProjectRepository) GetByID(id string) (*model.Project, error) {
 	return &p, nil
 }
 
+// NextCodeNumber يرجّع أكبر رقم مستخدم بأكواد المشاريع (PRJ-0007 -> 7).
+// نعتمد على أكبر رقم موجود مو على عدد الصفوف: لو انحذف مشروع، العدد ينقص بينما
+// الكود القديم يبقى مستخدَم — وهذا الي كان يسبب خطأ
+// duplicate key value violates unique constraint "Project_code_key".
+func (r *ProjectRepository) NextCodeNumber() (int, error) {
+	var maxNum int
+	err := r.db.Get(&maxNum, `
+		SELECT COALESCE(MAX(NULLIF(regexp_replace(code, '\D', '', 'g'), '')::int), 0)
+		FROM "Project"`)
+	if err != nil {
+		return 0, err
+	}
+	return maxNum + 1, nil
+}
+
 func (r *ProjectRepository) CountAll() (int, error) {
 	var count int
 	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Project"`)

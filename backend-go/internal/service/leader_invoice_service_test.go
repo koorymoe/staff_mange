@@ -77,15 +77,17 @@ func TestCalculateExecutionCost_WiringUsesMaxOfTwoTables(t *testing.T) {
 			CableLengthMeters: 40,                        // >=30 -> 710/meter => 28400
 		},
 	}
-	// totalDeviceCount = 1 -> device table price = 10200, * mult(1) - installTotal(20000) = negative -> clamp 0
-	// length-based: 710 * 40 = 28400
-	// total = installTotal(20000) + max(0, 28400) = 48400 -> ceil to 1000 = 49000
+	// شرط الشيت: السطر بي تسليك -> أجور التركيب تتصفّر (G = 0).
+	// K (حسب العدد الكلي): 10200 × 1 = 10200
+	// M (حسب الطول): 710 × 40 × 1 × وزن ارتفاع التسليك(0 متر -> 1) = 28400
+	// P = MAX = 28400. الحد الأدنى للتركيب: 1 جهاز × 14000 = 14000 < 28400
+	// المجموع = 28400 -> ceil 1000 = 29000
 	got, err := CalculateExecutionCost(items, testCatalog(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got != 49000 {
-		t.Fatalf("expected 49000, got %d", got)
+	if got != 29000 {
+		t.Fatalf("expected 29000, got %d", got)
 	}
 }
 
@@ -100,13 +102,15 @@ func TestCalculateExecutionCost_ProgrammingAdded(t *testing.T) {
 			ProgrammingItem: "برمجة المنظومة مع ربطها بالتطبيق اضافة هاتف",
 		},
 	}
-	// 20000 + 2500 = 22500 -> ceil 1000 = 23000
+	// تركيب: 20000 (بلا تسليك فما يتصفّر)، والحد الأدنى 1×14000 أقل منه فما ينطبق.
+	// برمجة: 2500 محسوبة، بس الحد الأدنى لخدمة برمجة وحدة = 13500 -> ينطبق.
+	// المجموع = 20000 + 13500 = 33500 -> ceil 1000 = 34000
 	got, err := CalculateExecutionCost(items, testCatalog(), 1)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got != 23000 {
-		t.Fatalf("expected 23000, got %d", got)
+	if got != 34000 {
+		t.Fatalf("expected 34000, got %d", got)
 	}
 }
 

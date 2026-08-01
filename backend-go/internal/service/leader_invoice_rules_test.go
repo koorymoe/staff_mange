@@ -19,7 +19,7 @@ func calc(count, height, meters int) int64 {
 		SystemName: "س", ItemName: "كاميرا", Count: count, HeightMeters: height,
 		WiringItemName: "كيبل", CableLengthMeters: meters,
 	}}
-	v, _, _ := CalculateExecutionCostDetailed(items, cat(), count)
+	v, _, _, _ := CalculateExecutionCostDetailed(items, cat(), count)
 	return v
 }
 

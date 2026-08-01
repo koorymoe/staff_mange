@@ -153,6 +153,8 @@ const navItems: NavItem[] = [
       { to: '/work-reports', label: 'تقارير العمل', icon: <></>, roles: ['TECHNICIAN'] },
       { to: '/leader-invoices', label: 'فواتير الليدر', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
       { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
+      // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
+      { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
     ],
   },
   {

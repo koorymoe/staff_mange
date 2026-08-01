@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/lib/pq"
+
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 )
@@ -67,17 +69,44 @@ func (s *ProjectService) Create(req model.CreateProjectRequest, createdBy *strin
 	if req.Name == "" {
 		return nil, errors.New("اسم المؤسسة مطلوب")
 	}
-	count, err := s.repo.CountAll()
-	if err != nil {
-		return nil, err
-	}
-	code := fmt.Sprintf("PRJ-%04d", count+1)
 	priority := "عادي"
 	if req.Priority != nil {
 		priority = *req.Priority
 	}
-	return s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.WorkType, req.RefPerson, priority, req.DeliveryDate, req.BookingID,
-		emptyToNil(req.ResponsibleEmployeeID), emptyToNil(req.SurveyorEmployeeID), req.LocationUrl, createdBy)
+
+	// الكود يُبنى من أكبر رقم موجود مو من عدد الصفوف، ومع ذلك يبقى احتمال تضارب
+	// لو موظفين ضافوا مشروع بنفس اللحظة — فنعيد المحاولة عدة مرات على خطأ
+	// التكرار (23505) بدل ما نطلّع الخطأ بوجه المستخدم.
+	next, err := s.repo.NextCodeNumber()
+	if err != nil {
+		return nil, err
+	}
+	var lastErr error
+	for attempt := 0; attempt < 10; attempt++ {
+		code := fmt.Sprintf("PRJ-%04d", next+attempt)
+		p, err := s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.WorkType, req.RefPerson, priority, req.DeliveryDate, req.BookingID,
+			emptyToNil(req.ResponsibleEmployeeID), emptyToNil(req.SurveyorEmployeeID), req.LocationUrl, createdBy)
+		if err == nil {
+			return p, nil
+		}
+		lastErr = err
+		if !isDuplicateKeyErr(err) {
+			return nil, err
+		}
+	}
+	return nil, lastErr
+}
+
+// isDuplicateKeyErr يميّز خطأ تكرار المفتاح الفريد بـPostgres (SQLSTATE 23505).
+func isDuplicateKeyErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	var pqErr *pq.Error
+	if errors.As(err, &pqErr) {
+		return pqErr.Code == "23505"
+	}
+	return strings.Contains(err.Error(), "23505")
 }
 
 // emptyToNil يحوّل "" لـnil حتى لا نحاول نخزن سترنغ فاضي بعمود مفتاح أجنبي

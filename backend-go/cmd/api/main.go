@@ -795,6 +795,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeader))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireLeader))
+	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireLeader))
+	mux.Handle("GET /api/leader-invoices/camera-cost/options", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCostOptions), requireAuth, requireLeader))
 	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه
 	mux.Handle("PUT /api/leader-invoices/{id}/approve", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Approve), requireAuth, requireFinance))
 
