@@ -831,6 +831,22 @@ export interface VehicleLog {
   notes: string | null
   createdAt: string
   recordedBy: { id: string; name: string } | null
+  // تفاصيل تعبئة الوقود
+  liters: number | null
+  filledByEmployeeId: string | null
+  filledByName: string | null
+  receiptNumber: string | null
+  stationName: string | null
+  // القائمة ترجع العلم فقط — الصورة تنجلب بـgetVehicleLogReceiptPhoto عند الطلب
+  hasReceiptPhoto: boolean
+}
+
+export interface EmployeeFuelStat {
+  employeeId: string
+  employeeName: string
+  fillCount: number
+  totalLiters: number
+  totalCost: number
 }
 
 export interface VehicleIncidentAttachment {
@@ -1818,8 +1834,21 @@ export const api = {
   createVehicle: (data: { name: string; plateNumber: string; color?: string; type?: string }) =>
     request<Vehicle>('/vehicles', { method: 'POST', body: JSON.stringify(data) }),
   getVehicleLogs: (vehicleId: string) => request<VehicleLog[]>(`/vehicles/${vehicleId}/logs`),
-  createVehicleLog: (vehicleId: string, data: { type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'; performedAt?: string; nextDueAt?: string; nextDueOdometer?: number; odometer?: number; cost?: number; notes?: string }) =>
+  createVehicleLog: (vehicleId: string, data: { type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'; performedAt?: string; nextDueAt?: string; nextDueOdometer?: number; odometer?: number; cost?: number; notes?: string; liters?: number; filledByEmployeeId?: string; receiptNumber?: string; stationName?: string; receiptPhotoBase64?: string }) =>
     request<VehicleLog & { fuelAnomaly?: FuelAnomalyResult }>(`/vehicles/${vehicleId}/logs`, { method: 'POST', body: JSON.stringify(data) }),
+  updateVehicleLog: (vehicleId: string, logId: string, data: { performedAt?: string; odometer?: number; cost?: number; notes?: string; nextDueAt?: string; nextDueOdometer?: number; liters?: number; filledByEmployeeId?: string; receiptNumber?: string; stationName?: string; receiptPhotoBase64?: string; clearReceiptPhoto?: boolean }) =>
+    request<VehicleLog>(`/vehicles/${vehicleId}/logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteVehicleLog: (vehicleId: string, logId: string) =>
+    request<void>(`/vehicles/${vehicleId}/logs/${logId}`, { method: 'DELETE' }),
+  getVehicleLogReceiptPhoto: (vehicleId: string, logId: string) =>
+    request<{ receiptPhotoBase64: string | null }>(`/vehicles/${vehicleId}/logs/${logId}/receipt-photo`),
+  getEmployeeFuelStats: (params?: { vehicleId?: string; month?: string }) => {
+    const qs = new URLSearchParams()
+    if (params?.vehicleId) qs.set('vehicleId', params.vehicleId)
+    if (params?.month) qs.set('month', params.month)
+    const s = qs.toString()
+    return request<EmployeeFuelStat[]>(`/vehicles/fuel-stats/by-employee${s ? `?${s}` : ''}`)
+  },
   getVehicleExpenseSummary: (vehicleId: string, params?: { month?: string; year?: string }) => {
     const qs = params?.year ? `?year=${params.year}` : params?.month ? `?month=${params.month}` : ''
     return request<VehicleExpenseSummary>(`/vehicles/${vehicleId}/expense-summary${qs}`)

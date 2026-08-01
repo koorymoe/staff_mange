@@ -144,6 +144,18 @@ type VehicleLog struct {
 	RecordedByID    *string        `db:"recordedById" json:"-"`
 	CreatedAt       time.Time      `db:"createdAt" json:"createdAt"`
 	RecordedBy      *EmployeeBrief `db:"-" json:"recordedBy"`
+
+	// حقول خاصة بتعبئة الوقود
+	Liters             *float64 `db:"liters" json:"liters"`
+	FilledByEmployeeID *string  `db:"filledByEmployeeId" json:"filledByEmployeeId"`
+	ReceiptNumber      *string  `db:"receiptNumber" json:"receiptNumber"`
+	StationName        *string  `db:"stationName" json:"stationName"`
+	// اسم الي عبّأ، جاي بـJOIN حتى الجدول يعرضه بدون استعلام لكل صف
+	FilledByName *string `db:"filledByName" json:"filledByName"`
+	// صورة الوصل تنحفظ base64 وهيه ثقيلة — القوائم ترجع العلم فقط،
+	// والصورة نفسها تنجلب بطلب مستقل لما المستخدم يضغط عليها.
+	HasReceiptPhoto    bool    `db:"hasReceiptPhoto" json:"hasReceiptPhoto"`
+	ReceiptPhotoBase64 *string `db:"-" json:"receiptPhotoBase64,omitempty"`
 }
 
 // VehicleLogCreateResult نتيجة إنشاء سجل سيارة، مع نتيجة فحص شذوذ الوقود إن كان النوع FUEL.
@@ -160,6 +172,39 @@ type CreateVehicleLogRequest struct {
 	Odometer        *int     `json:"odometer"`
 	Cost            *float64 `json:"cost"`
 	Notes           *string  `json:"notes"`
+
+	Liters             *float64 `json:"liters"`
+	FilledByEmployeeID *string  `json:"filledByEmployeeId"`
+	ReceiptNumber      *string  `json:"receiptNumber"`
+	StationName        *string  `json:"stationName"`
+	ReceiptPhotoBase64 *string  `json:"receiptPhotoBase64"`
+}
+
+// UpdateVehicleLogRequest تعديل سجل موجود — كل الحقول اختيارية، الي ينرسل
+// فقط ينتحدث. ClearReceiptPhoto لازم علم مستقل لأن COALESCE ما يقدر يفرّغ عمود.
+type UpdateVehicleLogRequest struct {
+	PerformedAt        *string  `json:"performedAt"`
+	Odometer           *int     `json:"odometer"`
+	Cost               *float64 `json:"cost"`
+	Notes              *string  `json:"notes"`
+	NextDueAt          *string  `json:"nextDueAt"`
+	NextDueOdometer    *int     `json:"nextDueOdometer"`
+	Liters             *float64 `json:"liters"`
+	FilledByEmployeeID *string  `json:"filledByEmployeeId"`
+	ReceiptNumber      *string  `json:"receiptNumber"`
+	StationName        *string  `json:"stationName"`
+	ReceiptPhotoBase64 *string  `json:"receiptPhotoBase64"`
+	ClearReceiptPhoto  bool     `json:"clearReceiptPhoto"`
+}
+
+// EmployeeFuelStat عدد مرات التعبئة وإجمالي اللترات والكلفة لكل موظف بفترة —
+// يجاوب سؤال "منو عبّأ وكم مرة" بالإحصائية الشهرية.
+type EmployeeFuelStat struct {
+	EmployeeID   string  `db:"employeeId" json:"employeeId"`
+	EmployeeName string  `db:"employeeName" json:"employeeName"`
+	FillCount    int     `db:"fillCount" json:"fillCount"`
+	TotalLiters  float64 `db:"totalLiters" json:"totalLiters"`
+	TotalCost    float64 `db:"totalCost" json:"totalCost"`
 }
 
 // VehicleIncident يغطي الأعطال والأضرار (صدمات) والحوادث الموثّقة بالكامل مع تحديد
@@ -263,23 +308,23 @@ type VehicleAlert struct {
 // VehicleExpenseSummary تجميع كل مصاريف سيارة (وقود/صيانة/قطع/حوادث/تنظيف) خلال
 // فترة (شهر أو سنة)، مع متوسط التكلفة لكل كم إن أمكن حساب المسافة المقطوعة بالفترة.
 type VehicleExpenseSummary struct {
-	VehicleID       string  `json:"vehicleId"`
-	Period          string  `json:"period"` // مثلاً "2026-07" أو "2026"
-	FuelCost        float64 `json:"fuelCost"`
-	MaintenanceCost float64 `json:"maintenanceCost"`
-	PartsCost       float64 `json:"partsCost"`
-	IncidentCost    float64 `json:"incidentCost"`
-	CleaningCost    float64 `json:"cleaningCost"`
-	TotalCost       float64 `json:"totalCost"`
-	DistanceKm      *int    `json:"distanceKm"`
+	VehicleID       string   `json:"vehicleId"`
+	Period          string   `json:"period"` // مثلاً "2026-07" أو "2026"
+	FuelCost        float64  `json:"fuelCost"`
+	MaintenanceCost float64  `json:"maintenanceCost"`
+	PartsCost       float64  `json:"partsCost"`
+	IncidentCost    float64  `json:"incidentCost"`
+	CleaningCost    float64  `json:"cleaningCost"`
+	TotalCost       float64  `json:"totalCost"`
+	DistanceKm      *int     `json:"distanceKm"`
 	AvgCostPerKm    *float64 `json:"avgCostPerKm"`
 }
 
 // FuelAnomalyResult نتيجة فحص شذوذ تكلفة تعبئة وقود جديدة مقارنة بمتوسط السيارة.
 type FuelAnomalyResult struct {
-	IsAnomaly      bool    `json:"isAnomaly"`
-	AverageCost    float64 `json:"averageCost"`
-	NewCost        float64 `json:"newCost"`
+	IsAnomaly       bool    `json:"isAnomaly"`
+	AverageCost     float64 `json:"averageCost"`
+	NewCost         float64 `json:"newCost"`
 	PercentAboveAvg float64 `json:"percentAboveAvg"`
 }
 
@@ -488,11 +533,11 @@ type FleetDashboardSummary struct {
 	Period string `json:"period"` // الشهر الحالي بصيغة YYYY-MM
 
 	TotalVehicles       int `json:"totalVehicles"`
-	ActiveVehiclesCount int `json:"activeVehiclesCount"`       // عاملة (isActive وبدون عطل مفتوح)
-	InMaintenanceCount  int `json:"inMaintenanceCount"`        // بها عطل مفتوح (FAULT)
-	OnMissionCount      int `json:"onMissionCount"`            // بمهمة قيد التنفيذ حالياً
-	NeedsServiceCount   int `json:"needsServiceCount"`         // تنبيه صيانة/قطعة مستحقة
-	ExpiringDocsCount   int `json:"expiringDocsCount"`         // وثيقة قريبة/منتهية الصلاحية
+	ActiveVehiclesCount int `json:"activeVehiclesCount"` // عاملة (isActive وبدون عطل مفتوح)
+	InMaintenanceCount  int `json:"inMaintenanceCount"`  // بها عطل مفتوح (FAULT)
+	OnMissionCount      int `json:"onMissionCount"`      // بمهمة قيد التنفيذ حالياً
+	NeedsServiceCount   int `json:"needsServiceCount"`   // تنبيه صيانة/قطعة مستحقة
+	ExpiringDocsCount   int `json:"expiringDocsCount"`   // وثيقة قريبة/منتهية الصلاحية
 
 	Alerts []VehicleAlert `json:"alerts"`
 

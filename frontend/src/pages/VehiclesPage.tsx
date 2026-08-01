@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary } from '../api'
+import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat } from '../api'
 import { useSession } from '../session'
 
 function fileToBase64(file: File): Promise<string> {
@@ -112,6 +112,20 @@ export default function VehiclesPage() {
   const [logNextDue, setLogNextDue] = useState('')
   const [logNextDueOdometer, setLogNextDueOdometer] = useState('')
   const [logNotes, setLogNotes] = useState('')
+  // تفاصيل تعبئة الوقود
+  const [logLiters, setLogLiters] = useState('')
+  const [logFilledBy, setLogFilledBy] = useState('')
+  const [logReceiptNo, setLogReceiptNo] = useState('')
+  const [logStation, setLogStation] = useState('')
+  const [logReceiptPhoto, setLogReceiptPhoto] = useState('')
+  // تعديل سجل موجود
+  const [editLog, setEditLog] = useState<VehicleLog | null>(null)
+  const [editForm, setEditForm] = useState({ odometer: '', cost: '', liters: '', filledBy: '', receiptNo: '', station: '', notes: '' })
+  const [savingLog, setSavingLog] = useState(false)
+  // صورة الوصل المعروضة بنافذة (تنجلب عند الطلب فقط)
+  const [receiptPhotoView, setReceiptPhotoView] = useState<string | null>(null)
+  // إحصائية "منو عبّأ وكم مرة" بالشهر
+  const [fuelStats, setFuelStats] = useState<EmployeeFuelStat[]>([])
 
   // incident form
   const [incType, setIncType] = useState<'FAULT' | 'DAMAGE' | 'ACCIDENT'>('FAULT')
@@ -183,6 +197,7 @@ export default function VehiclesPage() {
   useEffect(() => {
     if (!selectedId) return
     api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+    api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
   }, [selectedId, expenseMonth])
 
   const selectedVehicle = vehicles.find((v) => v.id === selectedId) || null
@@ -262,9 +277,16 @@ export default function VehiclesPage() {
       type: tab === 'logs' ? 'FUEL' : logType,
       odometer: logOdometer ? Number(logOdometer) : undefined,
       cost: logCost ? Number(logCost) : undefined,
-      nextDueAt: logNextDue || undefined,
-      nextDueOdometer: logNextDueOdometer ? Number(logNextDueOdometer) : undefined,
+      // موعد الصيانة القادمة خاص بتبويب الدهن فقط
+      nextDueAt: tab === 'oil' ? (logNextDue || undefined) : undefined,
+      nextDueOdometer: tab === 'oil' && logNextDueOdometer ? Number(logNextDueOdometer) : undefined,
       notes: logNotes || undefined,
+      // تفاصيل الوقود
+      liters: tab === 'logs' && logLiters ? Number(logLiters) : undefined,
+      filledByEmployeeId: tab === 'logs' ? (logFilledBy || undefined) : undefined,
+      receiptNumber: tab === 'logs' ? (logReceiptNo.trim() || undefined) : undefined,
+      stationName: tab === 'logs' ? (logStation.trim() || undefined) : undefined,
+      receiptPhotoBase64: tab === 'logs' ? (logReceiptPhoto || undefined) : undefined,
     })
     if (result.fuelAnomaly?.isAnomaly) {
       setFuelAnomalyWarning(
@@ -272,9 +294,71 @@ export default function VehiclesPage() {
       )
     }
     setLogOdometer(''); setLogCost(''); setLogNextDue(''); setLogNextDueOdometer(''); setLogNotes('')
+    setLogLiters(''); setLogFilledBy(''); setLogReceiptNo(''); setLogStation(''); setLogReceiptPhoto('')
     api.getVehicleLogs(selectedId).then(setLogs)
     api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+    api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
     loadAlerts()
+  }
+
+  const openEditLog = (l: VehicleLog) => {
+    setEditLog(l)
+    setEditForm({
+      odometer: l.odometer != null ? String(l.odometer) : '',
+      cost: l.cost != null ? String(l.cost) : '',
+      liters: l.liters != null ? String(l.liters) : '',
+      filledBy: l.filledByEmployeeId || '',
+      receiptNo: l.receiptNumber || '',
+      station: l.stationName || '',
+      notes: l.notes || '',
+    })
+  }
+
+  const saveEditLog = async () => {
+    if (!editLog || !selectedId) return
+    setSavingLog(true)
+    try {
+      await api.updateVehicleLog(selectedId, editLog.id, {
+        odometer: editForm.odometer ? Number(editForm.odometer) : undefined,
+        cost: editForm.cost ? Number(editForm.cost) : undefined,
+        liters: editForm.liters ? Number(editForm.liters) : undefined,
+        filledByEmployeeId: editForm.filledBy || undefined,
+        receiptNumber: editForm.receiptNo.trim() || undefined,
+        stationName: editForm.station.trim() || undefined,
+        notes: editForm.notes.trim() || undefined,
+      })
+      setEditLog(null)
+      api.getVehicleLogs(selectedId).then(setLogs)
+      api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+      api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر حفظ التعديل')
+    } finally {
+      setSavingLog(false)
+    }
+  }
+
+  const handleDeleteLog = async (id: string) => {
+    if (!selectedId || !confirm('حذف هذا السجل نهائياً؟')) return
+    try {
+      await api.deleteVehicleLog(selectedId, id)
+      api.getVehicleLogs(selectedId).then(setLogs)
+      api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+      api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر الحذف')
+    }
+  }
+
+  const viewReceiptPhoto = async (l: VehicleLog) => {
+    if (!selectedId) return
+    try {
+      const res = await api.getVehicleLogReceiptPhoto(selectedId, l.id)
+      if (res.receiptPhotoBase64) setReceiptPhotoView(res.receiptPhotoBase64)
+      else alert('ما اكو صورة وصل لهذا السجل')
+    } catch {
+      alert('تعذر جلب صورة الوصل')
+    }
   }
 
   const handleAddIncident = async (e: React.FormEvent) => {
@@ -568,14 +652,55 @@ export default function VehiclesPage() {
                     )}
                     <input type="number" placeholder="عداد المسافة" value={logOdometer} onChange={(e) => setLogOdometer(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
                     <input type="number" placeholder="التكلفة" value={logCost} onChange={(e) => setLogCost(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2" />
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500">تاريخ الصيانة القادمة (اختياري)</label>
-                      <input type="date" value={logNextDue} onChange={(e) => setLogNextDue(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-xs text-slate-500">العداد القادم للصيانة (اختياري)</label>
-                      <input type="number" placeholder="العداد القادم للصيانة" value={logNextDueOdometer} onChange={(e) => setLogNextDueOdometer(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
-                    </div>
+
+                    {/* موعد الصيانة القادمة مالو محل بتعبئة الوقود — يبقى
+                        بتبويب الدهن حيث الصيانة الفعلية. */}
+                    {tab === 'oil' ? (
+                      <>
+                        <div>
+                          <label className="mb-1 block text-xs text-slate-500">تاريخ الصيانة القادمة (اختياري)</label>
+                          <input type="date" value={logNextDue} onChange={(e) => setLogNextDue(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-slate-500">العداد القادم للصيانة (اختياري)</label>
+                          <input type="number" placeholder="العداد القادم للصيانة" value={logNextDueOdometer} onChange={(e) => setLogNextDueOdometer(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <label className="mb-1 block text-xs text-slate-500">عدد اللترات</label>
+                          <input type="number" step="0.01" min="0" placeholder="مثال: 45.5" value={logLiters} onChange={(e) => setLogLiters(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-slate-500">منو عبّأ؟</label>
+                          <select value={logFilledBy} onChange={(e) => setLogFilledBy(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                            <option value="">-- اختر الموظف --</option>
+                            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-slate-500">رقم الوصل</label>
+                          <input placeholder="رقم الوصل" value={logReceiptNo} onChange={(e) => setLogReceiptNo(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs text-slate-500">اسم المحطة</label>
+                          <input placeholder="اسم المحطة" value={logStation} onChange={(e) => setLogStation(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                        </div>
+                        <div className="sm:col-span-3">
+                          <label className="mb-1 block text-xs text-slate-500">صورة الوصل (اختياري)</label>
+                          <input
+                            type="file" accept="image/*"
+                            onChange={async (e) => {
+                              const f = e.target.files?.[0]
+                              setLogReceiptPhoto(f ? await fileToBase64(f) : '')
+                            }}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                          />
+                          {logReceiptPhoto && <p className="mt-1 text-xs font-bold text-emerald-700">✓ انرفعت صورة الوصل</p>}
+                        </div>
+                      </>
+                    )}
                     <input placeholder="ملاحظات" value={logNotes} onChange={(e) => setLogNotes(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-2 sm:col-span-2" />
                     <button type="submit" className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">تسجيل</button>
                     {fuelAnomalyWarning && (
@@ -605,6 +730,30 @@ export default function VehiclesPage() {
                     )}
                   </div>
 
+                  {/* منو عبّأ وكم مرة بهذا الشهر — الشهر نفسه مال ملخص المصاريف */}
+                  {tab === 'logs' && (
+                    <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                      <h4 className="mb-3 font-bold text-slate-700">تعبئة الوقود حسب الموظف ({expenseMonth})</h4>
+                      {fuelStats.length === 0 ? (
+                        <p className="text-sm text-slate-400">ما اكو تعبئة مسجلة بهذا الشهر</p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                          {fuelStats.map((s) => (
+                            <div key={s.employeeId} className="rounded-xl border border-slate-100 bg-slate-50/60 p-4">
+                              <div className="font-bold text-brand-900">{s.employeeName}</div>
+                              <div className="mt-1 text-sm text-slate-600">
+                                عبّأ <span className="font-bold text-brand-700">{s.fillCount}</span> مرة
+                              </div>
+                              <div className="mt-0.5 text-xs text-slate-400">
+                                {s.totalLiters.toLocaleString()} لتر · {s.totalCost.toLocaleString()} د.ع
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                     <table className="w-full text-right text-sm">
                       <thead className="bg-slate-50 text-slate-600">
@@ -613,8 +762,19 @@ export default function VehiclesPage() {
                           <th className="px-4 py-2">التاريخ</th>
                           <th className="px-4 py-2">العداد</th>
                           <th className="px-4 py-2">التكلفة</th>
-                          <th className="px-4 py-2">الموعد القادم</th>
-                          <th className="px-4 py-2">العداد القادم</th>
+                          {tab === 'logs' ? (
+                            <>
+                              <th className="px-4 py-2">اللترات</th>
+                              <th className="px-4 py-2">منو عبّأ</th>
+                              <th className="px-4 py-2">الوصل / المحطة</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="px-4 py-2">الموعد القادم</th>
+                              <th className="px-4 py-2">العداد القادم</th>
+                            </>
+                          )}
+                          <th className="px-4 py-2">إجراءات</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -624,11 +784,38 @@ export default function VehiclesPage() {
                             <td className="px-4 py-2 text-slate-500">{new Date(l.performedAt).toLocaleDateString('ar-IQ')}</td>
                             <td className="px-4 py-2 text-slate-500">{l.odometer ?? '-'}</td>
                             <td className="px-4 py-2 text-slate-500">{l.cost ?? '-'}</td>
-                            <td className="px-4 py-2 text-slate-500">{l.nextDueAt ? new Date(l.nextDueAt).toLocaleDateString('ar-IQ') : '-'}</td>
-                            <td className="px-4 py-2 text-slate-500">{l.nextDueOdometer ?? '-'}</td>
+                            {tab === 'logs' ? (
+                              <>
+                                <td className="px-4 py-2 font-bold text-brand-700">{l.liters ?? '-'}</td>
+                                <td className="px-4 py-2 text-slate-600">{l.filledByName || '-'}</td>
+                                <td className="px-4 py-2 text-slate-500">
+                                  {l.receiptNumber && <div>وصل: {l.receiptNumber}</div>}
+                                  {l.stationName && <div className="text-xs text-slate-400">{l.stationName}</div>}
+                                  {l.hasReceiptPhoto && (
+                                    <button onClick={() => viewReceiptPhoto(l)} className="mt-0.5 text-xs font-bold text-brand-600 hover:underline">
+                                      📷 شوف صورة الوصل
+                                    </button>
+                                  )}
+                                  {!l.receiptNumber && !l.stationName && !l.hasReceiptPhoto && '-'}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="px-4 py-2 text-slate-500">{l.nextDueAt ? new Date(l.nextDueAt).toLocaleDateString('ar-IQ') : '-'}</td>
+                                <td className="px-4 py-2 text-slate-500">{l.nextDueOdometer ?? '-'}</td>
+                              </>
+                            )}
+                            <td className="px-4 py-2">
+                              <div className="flex gap-1">
+                                <button onClick={() => openEditLog(l)} className="rounded-lg bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100">✎ تعديل</button>
+                                {isAdmin && (
+                                  <button onClick={() => handleDeleteLog(l.id)} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100">🗑</button>
+                                )}
+                              </div>
+                            </td>
                           </tr>
                         ))}
-                        {visibleLogs.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">لا توجد سجلات</td></tr>}
+                        {visibleLogs.length === 0 && <tr><td colSpan={tab === 'logs' ? 8 : 7} className="p-4 text-center text-slate-400">لا توجد سجلات</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -884,6 +1071,69 @@ export default function VehiclesPage() {
           )}
         </div>
       </div>
+
+      {editLog && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-brand-900">تعديل سجل — {LOG_TYPE_LABELS[editLog.type]}</h3>
+            <p className="mt-1 text-sm text-slate-400">{new Date(editLog.performedAt).toLocaleDateString('ar-IQ')}</p>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">عداد المسافة</label>
+                <input type="number" value={editForm.odometer} onChange={(e) => setEditForm({ ...editForm, odometer: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-slate-500">التكلفة</label>
+                <input type="number" value={editForm.cost} onChange={(e) => setEditForm({ ...editForm, cost: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              </div>
+              {editLog.type === 'FUEL' && (
+                <>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500">عدد اللترات</label>
+                    <input type="number" step="0.01" value={editForm.liters} onChange={(e) => setEditForm({ ...editForm, liters: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500">منو عبّأ</label>
+                    <select value={editForm.filledBy} onChange={(e) => setEditForm({ ...editForm, filledBy: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2">
+                      <option value="">-- اختر الموظف --</option>
+                      {employees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500">رقم الوصل</label>
+                    <input value={editForm.receiptNo} onChange={(e) => setEditForm({ ...editForm, receiptNo: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-slate-500">اسم المحطة</label>
+                    <input value={editForm.station} onChange={(e) => setEditForm({ ...editForm, station: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+                  </div>
+                </>
+              )}
+              <div className="col-span-2">
+                <label className="mb-1 block text-xs text-slate-500">ملاحظات</label>
+                <input value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} className="w-full rounded-lg border border-slate-300 px-3 py-2" />
+              </div>
+            </div>
+
+            <div className="mt-5 flex gap-3">
+              <button onClick={saveEditLog} disabled={savingLog} className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-2.5 font-bold text-white disabled:opacity-50">
+                {savingLog ? 'جاري الحفظ...' : 'حفظ التعديل'}
+              </button>
+              <button onClick={() => setEditLog(null)} className="rounded-xl border border-slate-300 px-6 py-2.5 font-medium text-slate-600 hover:bg-slate-50">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {receiptPhotoView && (
+        <div onClick={() => setReceiptPhotoView(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="max-h-full max-w-3xl overflow-auto rounded-2xl bg-white p-3">
+            <img src={receiptPhotoView} alt="صورة الوصل" className="max-w-full rounded-lg" />
+            <button onClick={() => setReceiptPhotoView(null)} className="mt-3 w-full rounded-xl border border-slate-300 py-2 font-medium text-slate-600">إغلاق</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

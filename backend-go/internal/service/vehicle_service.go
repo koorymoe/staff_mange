@@ -111,6 +111,23 @@ const FuelAnomalyThresholdPercent = 40.0
 
 // CheckFuelAnomaly يقارن تكلفة تعبئة وقود جديدة بمتوسط آخر 5 تعبئات للسيارة نفسها؛
 // يعتبرها شذوذاً لو تجاوزت المتوسط بأكثر من FuelAnomalyThresholdPercent%.
+func (s *VehicleService) UpdateLog(id string, req model.UpdateVehicleLogRequest) (*model.VehicleLog, error) {
+	if req.Liters != nil && *req.Liters < 0 {
+		return nil, errors.New("عدد اللترات ما يصير سالب")
+	}
+	return s.repo.UpdateLog(id, req)
+}
+
+func (s *VehicleService) DeleteLog(id string) error { return s.repo.DeleteLog(id) }
+
+func (s *VehicleService) GetLogReceiptPhoto(id string) (*string, error) {
+	return s.repo.GetLogReceiptPhoto(id)
+}
+
+func (s *VehicleService) EmployeeFuelStats(vehicleID, month string) ([]model.EmployeeFuelStat, error) {
+	return s.repo.EmployeeFuelStats(vehicleID, month)
+}
+
 func (s *VehicleService) CheckFuelAnomaly(vehicleID string, newCost float64) (*model.FuelAnomalyResult, error) {
 	costs, err := s.repo.LastFuelLogCosts(vehicleID, 5)
 	if err != nil {

@@ -346,5 +346,18 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			ALTER TABLE "VehicleTool" ALTER COLUMN barcode DROP NOT NULL;
 			ALTER TABLE "VehicleTool" DROP CONSTRAINT IF EXISTS "VehicleTool_barcode_key"`,
 		},
+		{
+			// تفاصيل تعبئة الوقود: اللترات، منو عبّأ، رقم الوصل، المحطة، وصورة
+			// الوصل. الفهرس على (filledByEmployeeId, performedAt) يخدم إحصائية
+			// "كم مرة عبّأ كل موظف بالشهر".
+			Version: "0157_vehicle_log_fuel_details",
+			SQL: `ALTER TABLE "VehicleLog" ADD COLUMN IF NOT EXISTS liters DOUBLE PRECISION;
+			ALTER TABLE "VehicleLog" ADD COLUMN IF NOT EXISTS "filledByEmployeeId" TEXT;
+			ALTER TABLE "VehicleLog" ADD COLUMN IF NOT EXISTS "receiptNumber" TEXT;
+			ALTER TABLE "VehicleLog" ADD COLUMN IF NOT EXISTS "stationName" TEXT;
+			ALTER TABLE "VehicleLog" ADD COLUMN IF NOT EXISTS "receiptPhotoBase64" TEXT;
+			CREATE INDEX IF NOT EXISTS "VehicleLog_filledBy_performedAt_idx"
+				ON "VehicleLog"("filledByEmployeeId", "performedAt")`,
+		},
 	}
 }

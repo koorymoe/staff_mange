@@ -146,6 +146,47 @@ func (h *VehicleHandler) CreateLog(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, log)
 }
 
+func (h *VehicleHandler) UpdateLog(w http.ResponseWriter, r *http.Request) {
+	var req model.UpdateVehicleLogRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	log, err := h.service.UpdateLog(r.PathValue("logId"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, log)
+}
+
+func (h *VehicleHandler) DeleteLog(w http.ResponseWriter, r *http.Request) {
+	if err := h.service.DeleteLog(r.PathValue("logId")); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حذف السجل")
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// LogReceiptPhoto يرجع صورة الوصل لوحدها — منفصلة عن القائمة حتى ما تثقّلها.
+func (h *VehicleHandler) LogReceiptPhoto(w http.ResponseWriter, r *http.Request) {
+	photo, err := h.service.GetLogReceiptPhoto(r.PathValue("logId"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "السجل غير موجود")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]*string{"receiptPhotoBase64": photo})
+}
+
+func (h *VehicleHandler) EmployeeFuelStats(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.service.EmployeeFuelStats(r.URL.Query().Get("vehicleId"), r.URL.Query().Get("month"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب إحصائية التعبئة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, stats)
+}
+
 func (h *VehicleHandler) ListIncidents(w http.ResponseWriter, r *http.Request) {
 	incidents, err := h.service.ListIncidents(r.PathValue("id"))
 	if err != nil {

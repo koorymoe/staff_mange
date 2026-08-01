@@ -132,9 +132,18 @@ func (r *VehicleRepository) DeletePhoto(vehicleID, photoID string) error {
 
 // ── VehicleLog (fuel / cleaning / oil change) ──
 
+// vehicleLogSelect يستثني صورة الوصل (base64 ثقيلة) ويرجع علم وجودها فقط،
+// مع اسم الي عبّأ بـJOIN. الصورة نفسها تنجلب بـGetLogReceiptPhoto عند الطلب.
+const vehicleLogSelect = `SELECT l.id, l."vehicleId", l.type, l."performedAt", l."nextDueAt",
+	l."nextDueOdometer", l.odometer, l.cost, l.notes, l."recordedById", l."createdAt",
+	l.liters, l."filledByEmployeeId", l."receiptNumber", l."stationName",
+	e.name AS "filledByName",
+	(l."receiptPhotoBase64" IS NOT NULL) AS "hasReceiptPhoto"
+	FROM "VehicleLog" l LEFT JOIN "Employee" e ON e.id = l."filledByEmployeeId"`
+
 func (r *VehicleRepository) ListLogs(vehicleID string) ([]model.VehicleLog, error) {
 	logs := []model.VehicleLog{}
-	if err := r.db.Select(&logs, `SELECT * FROM "VehicleLog" WHERE "vehicleId" = $1 ORDER BY "performedAt" DESC`, vehicleID); err != nil {
+	if err := r.db.Select(&logs, vehicleLogSelect+` WHERE l."vehicleId" = $1 ORDER BY l."performedAt" DESC`, vehicleID); err != nil {
 		return nil, err
 	}
 	for i := range logs {
@@ -143,18 +152,91 @@ func (r *VehicleRepository) ListLogs(vehicleID string) ([]model.VehicleLog, erro
 	return logs, nil
 }
 
-func (r *VehicleRepository) CreateLog(vehicleID string, req model.CreateVehicleLogRequest, recordedByID string) (*model.VehicleLog, error) {
+func (r *VehicleRepository) getLog(id string) (*model.VehicleLog, error) {
 	var l model.VehicleLog
-	err := r.db.Get(&l, `
-		INSERT INTO "VehicleLog" (id, "vehicleId", type, "performedAt", "nextDueAt", "nextDueOdometer", odometer, cost, notes, "recordedById")
-		VALUES (gen_random_uuid()::text, $1, $2, COALESCE($3::timestamp, now()), $4::timestamp, $5, $6, $7, $8, $9)
-		RETURNING *
-	`, vehicleID, req.Type, req.PerformedAt, req.NextDueAt, req.NextDueOdometer, req.Odometer, req.Cost, req.Notes, recordedByID)
-	if err != nil {
+	if err := r.db.Get(&l, vehicleLogSelect+` WHERE l.id = $1`, id); err != nil {
 		return nil, err
 	}
 	l.RecordedBy = r.loadEmployeeBrief(l.RecordedByID)
 	return &l, nil
+}
+
+// GetLogReceiptPhoto يجيب صورة الوصل لوحدها — منفصلة عن القوائم حتى ما نبلع
+// ميغابايتات base64 بكل جلب لسجلات السيارة.
+func (r *VehicleRepository) GetLogReceiptPhoto(id string) (*string, error) {
+	var photo *string
+	err := r.db.Get(&photo, `SELECT "receiptPhotoBase64" FROM "VehicleLog" WHERE id = $1`, id)
+	return photo, err
+}
+
+func (r *VehicleRepository) CreateLog(vehicleID string, req model.CreateVehicleLogRequest, recordedByID string) (*model.VehicleLog, error) {
+	var id string
+	err := r.db.Get(&id, `
+		INSERT INTO "VehicleLog" (id, "vehicleId", type, "performedAt", "nextDueAt", "nextDueOdometer",
+			odometer, cost, notes, "recordedById", liters, "filledByEmployeeId", "receiptNumber",
+			"stationName", "receiptPhotoBase64")
+		VALUES (gen_random_uuid()::text, $1, $2, COALESCE($3::timestamp, now()), $4::timestamp, $5, $6, $7, $8, $9,
+			$10, $11, $12, $13, $14)
+		RETURNING id
+	`, vehicleID, req.Type, req.PerformedAt, req.NextDueAt, req.NextDueOdometer, req.Odometer, req.Cost,
+		req.Notes, recordedByID, req.Liters, req.FilledByEmployeeID, req.ReceiptNumber, req.StationName,
+		req.ReceiptPhotoBase64)
+	if err != nil {
+		return nil, err
+	}
+	return r.getLog(id)
+}
+
+func (r *VehicleRepository) UpdateLog(id string, req model.UpdateVehicleLogRequest) (*model.VehicleLog, error) {
+	_, err := r.db.Exec(`
+		UPDATE "VehicleLog" SET
+			"performedAt" = COALESCE($2::timestamp, "performedAt"),
+			odometer = COALESCE($3, odometer),
+			cost = COALESCE($4, cost),
+			notes = COALESCE($5, notes),
+			"nextDueAt" = COALESCE($6::timestamp, "nextDueAt"),
+			"nextDueOdometer" = COALESCE($7, "nextDueOdometer"),
+			liters = COALESCE($8, liters),
+			"filledByEmployeeId" = COALESCE($9, "filledByEmployeeId"),
+			"receiptNumber" = COALESCE($10, "receiptNumber"),
+			"stationName" = COALESCE($11, "stationName"),
+			-- COALESCE ما يقدر يفرّغ عمود، فالحذف يحتاج علم صريح
+			"receiptPhotoBase64" = CASE WHEN $13 THEN NULL ELSE COALESCE($12, "receiptPhotoBase64") END
+		WHERE id = $1
+	`, id, req.PerformedAt, req.Odometer, req.Cost, req.Notes, req.NextDueAt, req.NextDueOdometer,
+		req.Liters, req.FilledByEmployeeID, req.ReceiptNumber, req.StationName,
+		req.ReceiptPhotoBase64, req.ClearReceiptPhoto)
+	if err != nil {
+		return nil, err
+	}
+	return r.getLog(id)
+}
+
+func (r *VehicleRepository) DeleteLog(id string) error {
+	_, err := r.db.Exec(`DELETE FROM "VehicleLog" WHERE id = $1`, id)
+	return err
+}
+
+// EmployeeFuelStats كم مرة عبّأ كل موظف بشهر معيّن، مع لتراته وكلفته.
+// vehicleID فاضي = كل السيارات.
+func (r *VehicleRepository) EmployeeFuelStats(vehicleID, month string) ([]model.EmployeeFuelStat, error) {
+	stats := []model.EmployeeFuelStat{}
+	err := r.db.Select(&stats, `
+		SELECT l."filledByEmployeeId" AS "employeeId",
+			COALESCE(e.name, 'غير محدد') AS "employeeName",
+			COUNT(*) AS "fillCount",
+			COALESCE(SUM(l.liters), 0) AS "totalLiters",
+			COALESCE(SUM(l.cost), 0) AS "totalCost"
+		FROM "VehicleLog" l
+		LEFT JOIN "Employee" e ON e.id = l."filledByEmployeeId"
+		WHERE l.type = 'FUEL'
+			AND l."filledByEmployeeId" IS NOT NULL
+			AND ($1 = '' OR l."vehicleId" = $1)
+			AND ($2 = '' OR to_char(l."performedAt", 'YYYY-MM') = $2)
+		GROUP BY l."filledByEmployeeId", e.name
+		ORDER BY "fillCount" DESC
+	`, vehicleID, month)
+	return stats, err
 }
 
 // ── VehicleIncident (fault / damage) ──

@@ -668,6 +668,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/vehicles", middleware.Chain(http.HandlerFunc(vehicleHandler.Create), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/{id}/logs", middleware.Chain(http.HandlerFunc(vehicleHandler.ListLogs), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/{id}/logs", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateLog), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/vehicles/{id}/logs/{logId}", middleware.Chain(http.HandlerFunc(vehicleHandler.UpdateLog), requireAuth, requireVehicleMgmt))
+	mux.Handle("DELETE /api/vehicles/{id}/logs/{logId}", middleware.Chain(http.HandlerFunc(vehicleHandler.DeleteLog), requireAuth, requireVehicleMgmt))
+	// صورة الوصل بمسار مستقل — القوائم ترجع علم وجودها فقط حتى ما تنبلع
+	// ميغابايتات base64 بكل جلب لسجلات السيارة.
+	mux.Handle("GET /api/vehicles/{id}/logs/{logId}/receipt-photo", middleware.Chain(http.HandlerFunc(vehicleHandler.LogReceiptPhoto), requireAuth, requireVehicleMgmt))
+	// كم مرة عبّأ كل موظف بالشهر
+	mux.Handle("GET /api/vehicles/fuel-stats/by-employee", middleware.Chain(http.HandlerFunc(vehicleHandler.EmployeeFuelStats), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/{id}/incidents", middleware.Chain(http.HandlerFunc(vehicleHandler.ListIncidents), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/{id}/incidents", middleware.Chain(http.HandlerFunc(vehicleHandler.CreateIncident), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicle-incidents/{id}", middleware.Chain(http.HandlerFunc(vehicleHandler.UpdateIncident), requireAuth, requireVehicleMgmt))
