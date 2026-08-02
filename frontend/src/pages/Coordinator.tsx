@@ -168,9 +168,13 @@ export default function Coordinator() {
 
   useEffect(load, [])
   useEffect(() => {
-    api.getSupervisors().then(setSupervisors)
-    api.getProducts().then(setProducts)
-    api.getVehicles().then(setVehicles)
+    // بيانات مساعدة (مشرفين/منتجات/مركبات): منسّق الحجوزات ممكن ما عنده
+    // صلاحية المركبات أو المنتجات — وقتها نخلي القائمة فارغة بدل ما ينكسر
+    // كل الصفحة. بدون هذا الـcatch كان الرفض يطلع Unhandled rejection
+    // ويطفّي الصفحة كلها، ويُحسب محاولة وصول غير مخوّلة على الموظف.
+    api.getSupervisors().then(setSupervisors).catch(() => setSupervisors([]))
+    api.getProducts().then(setProducts).catch(() => setProducts([]))
+    api.getVehicles().then(setVehicles).catch(() => setVehicles([]))
   }, [])
 
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {

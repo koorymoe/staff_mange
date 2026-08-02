@@ -220,7 +220,10 @@ export default function Dashboard() {
       gradient: 'from-blue-500 via-blue-600 to-blue-700',
       iconPath: 'M12 4v16m8-8H4',
       path: '/sales',
-      visible: ['ADMIN', 'SALES', 'HR_COORDINATOR'].includes(employee.role),
+      // نفس بوابة القائمة الجانبية: بالدور أو بصلاحية ممنوحة يدوياً. قبلها
+      // كانت الكروت بالدور بس، فموظف عنده صلاحية الحجز يشوف الرابط بالقائمة
+      // ولوحته فارغة.
+      visible: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'QUALITY_ENGINEER'].includes(employee.role) || permissions.includes('sales_booking'),
     },
     {
       title: 'حجز شكوى',
@@ -228,7 +231,7 @@ export default function Dashboard() {
       gradient: 'from-red-500 via-red-600 to-rose-700',
       iconPath: 'M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
       path: '/complaints',
-      visible: employee.role === 'SALES',
+      visible: employee.role === 'SALES' || permissions.includes('complaints'),
     },
     {
       title: 'طلب GPS جديد',
@@ -236,7 +239,7 @@ export default function Dashboard() {
       gradient: 'from-indigo-500 via-indigo-600 to-blue-700',
       iconPath: 'M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z',
       path: '/gps/purchase',
-      visible: employee.role === 'SALES',
+      visible: employee.role === 'SALES' || permissions.includes('gps_system'),
     },
     {
       title: 'تسجيل مشكلة جودة',
@@ -244,7 +247,7 @@ export default function Dashboard() {
       gradient: 'from-purple-500 via-purple-600 to-fuchsia-700',
       iconPath: 'M12 15a3 3 0 100-6 3 3 0 000 6z M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9',
       path: '/quality',
-      visible: employee.role === 'QUALITY_ENGINEER',
+      visible: employee.role === 'QUALITY_ENGINEER' || permissions.includes('quality_control'),
     },
     {
       title: 'طلبات GPS المعلقة',
@@ -268,7 +271,7 @@ export default function Dashboard() {
       gradient: 'from-violet-500 via-violet-600 to-violet-700',
       iconPath: 'M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z',
       path: '/customers',
-      visible: ['ADMIN', 'HR_COORDINATOR'].includes(employee.role),
+      visible: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'].includes(employee.role) || permissions.includes('manage_customers'),
     },
     {
       title: 'تتبع المهام',

@@ -85,7 +85,9 @@ export default function BookingsList() {
   useEffect(() => {
     if (isAdmin) {
       api.getEmployees().then((all) => setTechnicians(all.filter((e) => e.role === 'TECHNICIAN')))
-      api.getVehicles().then(setVehicles)
+      // المركبات بيانات مساعدة هنا — مو كل من يشوف الحجوزات عنده صلاحية
+      // المركبات، فالرفض ما يجوز يكسر الصفحة (شوف Coordinator.tsx)
+      api.getVehicles().then(setVehicles).catch(() => setVehicles([]))
     }
   }, [isAdmin])
 

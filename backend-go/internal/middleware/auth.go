@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+	"sync"
+	"time"
 
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
@@ -75,10 +77,6 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 	}
 }
 
-// recordViolationAndBlock تسجل محاولة وصول مرفوضة وترد "ممنوع" — بدون أي
-// إيقاف تلقائي للحساب (شوف تعليق RecordAuthzViolation). إذا العدّاد وصل
-// عتبة التنبيه (وكل مضاعف لها بعدين)، نبعث تنبيه للإدارة (ADMIN) حتى تراجع
-// الموظف يدوياً وتقرر هي — قرار بشري، مو إيقاف آلي أعمى.
 // lockoutRepo يُحقن مرة وحدة عند الإقلاع — الميدل وير ما ياخذه بكل نداء حتى
 // ما نغيّر توقيع كل الدوال الموجودة.
 var lockoutRepo *repository.SecurityLockoutRepository
@@ -86,27 +84,95 @@ var lockoutRepo *repository.SecurityLockoutRepository
 // SetLockoutRepository يربط مستودع الحظر بالميدل وير (يُنادى من main).
 func SetLockoutRepository(r *repository.SecurityLockoutRepository) { lockoutRepo = r }
 
-func recordViolationAndBlock(w http.ResponseWriter, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, employeeID string) {
+// عتبة الحظر التلقائي على محاولات الوصول غير المخوّلة.
+//
+// ليش عتبة مو حظر من أول محاولة؟ الحظر الفوري كان يوكع بيه الموظف العادي:
+// القائمة الجانبية تعرض رابط، الصفحة تنادي خادم ما يخصه، يجي ٤٠٣ واحد،
+// وينحظر الحساب حظر دائم ما ينفك إلا بيد المالك. المهاجم الحقيقي يجرّب
+// عشرات المسارات، فالعتبة تمسكه، والموظف الي دس دوسة غلط ما تأذيه.
+const (
+	authzLockThreshold = 5
+	authzLockWindow    = 10 * time.Minute
+)
+
+// authzViolationLog يخزّن أوقات المحاولات المرفوضة الأخيرة لكل موظف حتى
+// نحسب "٥ محاولات خلال ١٠ دقائق" بدل العدّاد التراكمي مدى الحياة.
+var authzViolationLog = struct {
+	sync.Mutex
+	hits map[string][]time.Time
+}{hits: make(map[string][]time.Time)}
+
+// registerAuthzViolation يسجّل محاولة جديدة ويرجّع عددها داخل النافذة.
+func registerAuthzViolation(employeeID string, now time.Time) int {
+	authzViolationLog.Lock()
+	defer authzViolationLog.Unlock()
+
+	cutoff := now.Add(-authzLockWindow)
+	kept := authzViolationLog.hits[employeeID][:0]
+	for _, t := range authzViolationLog.hits[employeeID] {
+		if t.After(cutoff) {
+			kept = append(kept, t)
+		}
+	}
+	kept = append(kept, now)
+	authzViolationLog.hits[employeeID] = kept
+
+	// تنظيف دوري: نشيل الموظفين الي ما عدهم محاولات فعّالة حتى الخريطة ما
+	// تكبر بلا حدود على سيرفر شغّال أشهر.
+	if len(authzViolationLog.hits) > 1000 {
+		for id, times := range authzViolationLog.hits {
+			if len(times) == 0 || !times[len(times)-1].After(cutoff) {
+				delete(authzViolationLog.hits, id)
+			}
+		}
+	}
+	return len(kept)
+}
+
+// clearAuthzViolations يصفّي سجل الموظف (يُستعمل بالاختبارات وبعد فك الحظر).
+func clearAuthzViolations(employeeID string) {
+	authzViolationLog.Lock()
+	defer authzViolationLog.Unlock()
+	delete(authzViolationLog.hits, employeeID)
+}
+
+// recordViolationAndBlock تسجل محاولة وصول مرفوضة وترد "ممنوع".
+//
+// الحظر التلقائي ما ينحرك إلا بشرطين مع بعض:
+//  1. الطلب مو مجرد قراءة (GET/HEAD/OPTIONS) — فتح صفحة غلط مو اعتداء.
+//  2. الموظف تجاوز authzLockThreshold محاولة خلال authzLockWindow.
+//
+// وبكل الحالات ننبّه الإدارة حتى القرار البشري يضل موجود.
+func recordViolationAndBlock(w http.ResponseWriter, r *http.Request, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, employeeID string) {
 	if employeeID != "" && employees != nil {
 		if violations, err := employees.RecordAuthzViolation(employeeID); err == nil {
 			name, nameErr := employees.NameByID(employeeID)
 			if nameErr != nil || name == "" {
 				name = employeeID
 			}
-			// أي محاولة وصول لعملية مو مخوّل لها = حظر فوري للحساب. المالك
-			// ومدير النظام مستثنون (Lock نفسها تستثنيهم) حتى ما ننقفل بره
-			// النظام. الحساب ما ينفتح إلا بيد المالك.
+			readOnly := r != nil && (r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions)
+			// القراءات ما تُحسب بالنافذة أصلاً — لا تحظر ولا تقرّب الموظف من
+			// الحظر. لو حسبناها، موظف جمّع ٤٠٣ من روابط قائمة مكسورة ينحظر
+			// بأول عملية كتابة عادية.
+			recent := 0
+			if !readOnly {
+				recent = registerAuthzViolation(employeeID, time.Now())
+			}
+
 			if lockoutRepo != nil {
-				locked, _ := lockoutRepo.Lock(employeeID, repository.LockReasonAuthzAbuse,
-					"حاول يوصل لعملية مو مخوّل لها")
 				_ = lockoutRepo.LogEvent(&employeeID, name, "AUTHZ_VIOLATION",
-					fmt.Sprintf("محاولة وصول غير مخوّلة رقم %d", violations), "", "")
-				if locked {
-					_ = lockoutRepo.LogEvent(&employeeID, name, "ACCOUNT_LOCKED",
-						"انحظر تلقائياً بعد محاولة وصول غير مخوّلة", "", "")
-					if notifications != nil {
-						_ = notifications.CreateForRole("ADMIN", "authz_violation",
-							fmt.Sprintf("🔒 انحظر حساب %s تلقائياً — حاول يوصل لعملية مو مخوّل لها", name))
+					fmt.Sprintf("محاولة وصول غير مخوّلة رقم %d (%d كتابة خلال %s)", violations, recent, authzLockWindow), "", "")
+
+				if recent >= authzLockThreshold {
+					locked, _ := lockoutRepo.Lock(employeeID, repository.LockReasonAuthzAbuse,
+						fmt.Sprintf("حاول %d مرات يوصل لعمليات مو مخوّل لها خلال %s", recent, authzLockWindow))
+					if locked {
+						_ = lockoutRepo.LogEvent(&employeeID, name, "ACCOUNT_LOCKED",
+							"انحظر تلقائياً بعد تكرار محاولات وصول غير مخوّلة", "", "")
+						if notifications != nil {
+							_ = notifications.CreateForRole("ADMIN", "authz_violation",
+								fmt.Sprintf("🔒 انحظر حساب %s تلقائياً — كرّر محاولات وصول غير مخوّلة", name))
+						}
 					}
 				}
 			}
@@ -132,7 +198,7 @@ func RequireRole(employees *repository.EmployeeRepository, notifications *reposi
 			role, _ := r.Context().Value(ContextRole).(string)
 			// OWNER يتخطى أي قيد أدوار — حساب المالك الأساسي، أقوى من أي دور ثاني بما فيه ADMIN
 			if role != "OWNER" && !allowed[role] {
-				recordViolationAndBlock(w, employees, notifications, EmployeeIDFromContext(r))
+				recordViolationAndBlock(w, r, employees, notifications, EmployeeIDFromContext(r))
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -154,7 +220,7 @@ func RequirePermission(permissions *repository.PermissionRepository, employees *
 			employeeID, _ := r.Context().Value(ContextEmployeeID).(string)
 			perms, err := permissions.ListForEmployee(employeeID)
 			if err != nil {
-				recordViolationAndBlock(w, employees, notifications, employeeID)
+				recordViolationAndBlock(w, r, employees, notifications, employeeID)
 				return
 			}
 			for _, p := range perms {
@@ -163,7 +229,7 @@ func RequirePermission(permissions *repository.PermissionRepository, employees *
 					return
 				}
 			}
-			recordViolationAndBlock(w, employees, notifications, employeeID)
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
 		})
 	}
 }
@@ -186,7 +252,7 @@ func RequireAnyPermission(permissions *repository.PermissionRepository, employee
 			employeeID, _ := r.Context().Value(ContextEmployeeID).(string)
 			perms, err := permissions.ListForEmployee(employeeID)
 			if err != nil {
-				recordViolationAndBlock(w, employees, notifications, employeeID)
+				recordViolationAndBlock(w, r, employees, notifications, employeeID)
 				return
 			}
 			for _, p := range perms {
@@ -195,7 +261,7 @@ func RequireAnyPermission(permissions *repository.PermissionRepository, employee
 					return
 				}
 			}
-			recordViolationAndBlock(w, employees, notifications, employeeID)
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
 		})
 	}
 }
@@ -215,7 +281,7 @@ func RequireLeader(employees *repository.EmployeeRepository, notifications *repo
 			employeeID := EmployeeIDFromContext(r)
 			isLeader, err := employees.IsLeaderFreshByID(employeeID)
 			if err != nil || !isLeader {
-				recordViolationAndBlock(w, employees, notifications, employeeID)
+				recordViolationAndBlock(w, r, employees, notifications, employeeID)
 				return
 			}
 			next.ServeHTTP(w, r)
@@ -254,7 +320,7 @@ func RequireRoleOrPermission(permissions *repository.PermissionRepository, emplo
 					}
 				}
 			}
-			recordViolationAndBlock(w, employees, notifications, employeeID)
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
 		})
 	}
 }
@@ -288,7 +354,7 @@ func RequireRoleOrAnyPermission(permissions *repository.PermissionRepository, em
 					}
 				}
 			}
-			recordViolationAndBlock(w, employees, notifications, employeeID)
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
 		})
 	}
 }
@@ -314,7 +380,7 @@ func RequireLeaderOrPermission(permissions *repository.PermissionRepository, emp
 					}
 				}
 			}
-			recordViolationAndBlock(w, employees, notifications, employeeID)
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
 		})
 	}
 }
@@ -346,7 +412,7 @@ func RequireLeaderOrAnyPermission(permissions *repository.PermissionRepository, 
 					}
 				}
 			}
-			recordViolationAndBlock(w, employees, notifications, employeeID)
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
 		})
 	}
 }
