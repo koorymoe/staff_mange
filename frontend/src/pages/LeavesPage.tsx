@@ -5,8 +5,8 @@ import { api, type LeaveRequest, type LeaveStatus } from '../api'
  * الإجازات.
  *
  * تبويبان: «طلباتي» لأي موظف، و«الموافقات» للي عنده صلاحية البت.
- * التوجيه يتحدد من كادر الموظف نفسه — الفني والليدر يروح طلبهم لمسؤول
- * الكوادر الفنية، والمسائي لمسؤول الكوادر المسائية، والإداري للمالك.
+ * التوجيه يتحدد من شفت الموظف نفسه — طلبات الصباحي تروح لإداري الشفت
+ * الصباحي، والمسائي لإداري المسائي. مدير النظام والمالك يوافقون على الكل.
  */
 
 const STATUS_STYLE: Record<LeaveStatus, string> = {
@@ -49,9 +49,9 @@ export default function LeavesPage() {
   }
   useEffect(load, [])
 
-  // أقرب تاريخ مسموح: باچر — الإجازة تُطلب قبل يوم على الأقل.
+  // أقرب تاريخ مسموح: بعد يومين — نفس القيد الي يفرضه السيرفر.
   // يُحسب مرة وحدة عند أول رندر (مو بكل رندر) حتى ما يتغير تحت إيد المستخدم.
-  const [minDate] = useState(() => iso(new Date(Date.now() + 24 * 60 * 60 * 1000)))
+  const [minDate] = useState(() => iso(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000)))
 
   const submit = async () => {
     if (!start) { alert('اختر تاريخ الإجازة'); return }
@@ -148,7 +148,7 @@ export default function LeavesPage() {
       <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
         <h1 className="text-2xl font-bold text-white">🏖️ الإجازات</h1>
         <p className="mt-1 text-sm text-blue-200">
-          طلب الإجازة يُقدَّم قبل يوم على الأقل، ويروح للمخوّل حسب نوع كادرك — ويوصلك إشعار بالقرار.
+          طلب الإجازة يُقدَّم قبل يومين على الأقل، ويروح لإداري شفتك — ويوصلك إشعار بالقرار.
         </p>
       </div>
 
@@ -183,7 +183,7 @@ export default function LeavesPage() {
           <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>طلب إجازة</h3>
             <p className="mt-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
-              الإجازة تُطلب قبل يوم على الأقل من تاريخها.
+              الإجازة تُطلب قبل يومين على الأقل من تاريخها.
             </p>
 
             <label className="mt-4 mb-1 block text-sm font-medium text-slate-600">من تاريخ *</label>

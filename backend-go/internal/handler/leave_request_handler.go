@@ -20,14 +20,16 @@ func NewLeaveRequestHandler(r *repository.LeaveRequestRepository, p *repository.
 	return &LeaveRequestHandler{repo: r, permissions: p, notify: n}
 }
 
-// routesFor المسارات الي يقدر هذا الشخص يبت بطلباتها.
+// routesFor الشفتات الي يقدر هذا الشخص يبت بطلباتها.
 //
-// المالك ومدير النظام يغطون الكل. غيرهم حسب صلاحياتهم — فلو انتقلت
-// مسؤولية الكوادر المسائية من شخص لشخص، تنتقل بالصلاحية مو بتعديل الكود.
+// المالك ومدير النظام يغطون كل الشفتات وكل الموظفين. غيرهم حسب
+// صلاحياتهم — إداري الكوادر ياخذ صلاحية شفته هو بس، فما يقدر ينطي
+// إجازة لموظف بشفت ثاني. ولو انتقلت المسؤولية من شخص لشخص تنتقل
+// بالصلاحية مو بتعديل الكود.
 func (h *LeaveRequestHandler) routesFor(r *http.Request) []string {
 	role := middleware.RoleFromContext(r)
 	if role == "OWNER" || role == "ADMIN" {
-		return []string{model.LeaveRouteField, model.LeaveRouteEvening, model.LeaveRouteAdmin}
+		return model.AllLeaveRoutes()
 	}
 	empID := middleware.EmployeeIDFromContext(r)
 	routes := []string{}
@@ -62,11 +64,12 @@ func (h *LeaveRequestHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "تاريخ النهاية قبل البداية")
 		return
 	}
-	// الإجازة تُطلب قبل يوم على الأقل — ما ينفع يطلب إجازة اليوم ويختفي
-	today := time.Now().Truncate(24 * time.Hour)
+	// الإجازة تُطلب قبل يومين على الأقل — حتى يلحكون يرتبون الشفت
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	minStart := today.AddDate(0, 0, model.LeaveMinNoticeDays)
 	if start.Before(minStart) {
-		WriteError(w, http.StatusBadRequest, "لازم تقدّم طلب الإجازة قبل يوم على الأقل من تاريخها")
+		WriteError(w, http.StatusBadRequest, "لازم تقدّم طلب الإجازة قبل يومين على الأقل من تاريخها")
 		return
 	}
 

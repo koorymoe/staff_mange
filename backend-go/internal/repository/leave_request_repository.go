@@ -41,15 +41,11 @@ func decorateLeaves(rows []model.LeaveRequest) []model.LeaveRequest {
 // Create يقدّم طلب إجازة. المسار يتحدد من بيانات الموظف بقاعدة البيانات،
 // مو من الي يرسله العميل — حتى ما يوجّه طلبه لأسهل واحد يوافق.
 func (r *LeaveRequestRepository) Create(employeeID string, start, end time.Time, reason *string) (*model.LeaveRequest, error) {
-	var emp struct {
-		Role     string  `db:"role"`
-		Shift    *string `db:"shift"`
-		IsLeader bool    `db:"isLeader"`
-	}
-	if err := r.db.Get(&emp, `SELECT role::text, shift::text, "isLeader" FROM "Employee" WHERE id = $1`, employeeID); err != nil {
+	var shift *string
+	if err := r.db.Get(&shift, `SELECT shift::text FROM "Employee" WHERE id = $1`, employeeID); err != nil {
 		return nil, fmt.Errorf("تعذر قراءة بيانات الموظف")
 	}
-	route := model.LeaveRouteFor(emp.Role, emp.Shift, emp.IsLeader)
+	route := model.LeaveRouteFor(shift)
 
 	var id string
 	if err := r.db.Get(&id, `

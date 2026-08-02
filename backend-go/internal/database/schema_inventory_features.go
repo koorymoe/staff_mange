@@ -707,6 +707,9 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			// طلبات الإجازة: الموظف يقدّم من النظام، والموافقة تروح للشخص
 			// المخوّل حسب نوع الكادر.
 			//
+			// ⚠️ هذي الهجرة تاريخية — التوجيه حسب نوع الكادر انلغى بـ
+			// 0175 وصار حسب الشفت. لا تعدّلها، اقرأ 0175 للوضع الحالي.
+			//
 			// التوجيه بالصلاحيات مو بأسماء الأشخاص — عبد الله وتقي اليوم،
 			// وغيرهم بكرة. الصلاحية تنتقل، الاسم لا.
 			//   leave_approve_field    → الكوادر الفنية والليدرية
@@ -739,6 +742,39 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					(gen_random_uuid()::text, 'leave_approve_admin',   'الموافقة على إجازات الكوادر الإدارية'),
 					(gen_random_uuid()::text, 'vip_manual_add',        'إضافة شخصية مهمة يدوياً')
 				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
+		{
+			// الموافقة على الإجازات صارت حسب *الشفت* مو حسب نوع الكادر:
+			// إداري الكوادر يوافق على الشفت الي يداوم بيه هو — أي موظف
+			// بهذا الشفت مهما كان دوره. فبدل مسارات FIELD/EVENING/ADMIN
+			// صار عدنا MORNING/EVENING.
+			Version: "0175_leave_routes_by_shift",
+			SQL: `
+				-- الصلاحية القديمة "الكوادر الفنية والليدرية" تصير "الشفت الصباحي"،
+				-- حتى الي عنده الصلاحية يبقى عنده مسؤولية مكافئة بدل ما تنسحب منه.
+				UPDATE "Permission"
+				SET name = 'leave_approve_morning', label = 'الموافقة على إجازات الشفت الصباحي'
+				WHERE name = 'leave_approve_field';
+
+				UPDATE "Permission"
+				SET label = 'الموافقة على إجازات الشفت المسائي'
+				WHERE name = 'leave_approve_evening';
+
+				-- مسار الإداريين انلغى: المالك ومدير النظام يغطون الكل أصلاً
+				DELETE FROM "EmployeePermission" WHERE "permissionId" IN
+					(SELECT id FROM "Permission" WHERE name = 'leave_approve_admin');
+				DELETE FROM "Permission" WHERE name = 'leave_approve_admin';
+
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'leave_approve_morning', 'الموافقة على إجازات الشفت الصباحي')
+				ON CONFLICT (name) DO NOTHING;
+
+				-- الطلبات القديمة تنعاد لمسارها الصحيح من شفت صاحبها نفسه
+				UPDATE "LeaveRequest" l
+				SET route = CASE WHEN e.shift::text = 'EVENING' THEN 'EVENING' ELSE 'MORNING' END
+				FROM "Employee" e
+				WHERE e.id = l."employeeId" AND l.route NOT IN ('MORNING','EVENING');
 			`,
 		},
 	}

@@ -247,7 +247,8 @@ export interface StockIntake {
 
 
 /** طلب إجازة — الموافقة تروح للمخوّل حسب نوع كادر الموظف */
-export type LeaveRoute = 'FIELD' | 'EVENING' | 'ADMIN'
+// مسار الموافقة = شفت الموظف. إداري الكوادر يوافق على شفته هو بس.
+export type LeaveRoute = 'MORNING' | 'EVENING'
 export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
 export interface LeaveRequest {

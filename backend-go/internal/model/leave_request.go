@@ -5,25 +5,31 @@ import "time"
 // طلب الإجازة: الموظف يقدّم من النظام، والموافقة تروح للشخص المخوّل حسب
 // نوع كادره — مو لأي مدير.
 
-// مسارات الموافقة. المسار يتحدد من الموظف الطالب نفسه، مو من اختياره —
-// حتى ما يقدر يوجّه طلبه لأسهل واحد يوافق.
+// مسارات الموافقة = الشفتات. المسار يتحدد من شفت الموظف الطالب، مو من
+// اختياره — حتى ما يقدر يوجّه طلبه لأسهل واحد يوافق.
+//
+// إداري الكوادر يوافق على *الشفت الي يداوم بيه هو* — أي موظف بهذا الشفت
+// مهما كان دوره (فني، مصمم، إداري). يعني إداري الصباحي ما يقدر ينطي
+// إجازة لموظف مسائي، والعكس. مدير النظام والمالك يوافقون على الكل.
 const (
-	LeaveRouteField   = "FIELD"   // الكوادر الفنية والليدرية
-	LeaveRouteEvening = "EVENING" // الكوادر المسائية
-	LeaveRouteAdmin   = "ADMIN"   // الكوادر الإدارية
+	LeaveRouteMorning = "MORNING"
+	LeaveRouteEvening = "EVENING"
 )
 
 var LeaveRouteLabels = map[string]string{
-	LeaveRouteField:   "الكوادر الفنية والليدرية",
-	LeaveRouteEvening: "الكوادر المسائية",
-	LeaveRouteAdmin:   "الكوادر الإدارية",
+	LeaveRouteMorning: "الشفت الصباحي",
+	LeaveRouteEvening: "الشفت المسائي",
 }
 
-// الصلاحية المطلوبة لكل مسار. المالك يوافق على الكل بلا صلاحية.
+// الصلاحية المطلوبة لكل شفت. المالك ومدير النظام يوافقون على الكل بلا صلاحية.
 var LeaveRoutePermission = map[string]string{
-	LeaveRouteField:   "leave_approve_field",
+	LeaveRouteMorning: "leave_approve_morning",
 	LeaveRouteEvening: "leave_approve_evening",
-	LeaveRouteAdmin:   "leave_approve_admin",
+}
+
+// AllLeaveRoutes كل الشفتات — للمالك ومدير النظام.
+func AllLeaveRoutes() []string {
+	return []string{LeaveRouteMorning, LeaveRouteEvening}
 }
 
 const (
@@ -42,9 +48,9 @@ var LeaveStatusLabels = map[string]string{
 
 // LeaveMinNoticeDays أقل مهلة بين تقديم الطلب وأول يوم إجازة.
 //
-// الاتفاق: الإجازة تُطلب قبل يوم أو يومين — يعني ما ينفع الموظف يطلب
-// إجازة اليوم نفسه ويختفي.
-const LeaveMinNoticeDays = 1
+// الاتفاق: الإجازة تُطلب قبل يومين على الأقل — حتى يلحكون يرتبون الشفت
+// قبل ما يغيب الموظف.
+const LeaveMinNoticeDays = 2
 
 type LeaveRequest struct {
 	ID           string     `db:"id" json:"id"`
@@ -81,16 +87,13 @@ type DecideLeaveRequest struct {
 	Note    *string `json:"note"`
 }
 
-// LeaveRouteFor يحدد مسار الموافقة من بيانات الموظف نفسه.
+// LeaveRouteFor يحدد مسار الموافقة من شفت الموظف — الدور ما دخل بيه.
 //
-// الترتيب مقصود: المسائي أولاً (لأن مسؤول الكوادر المسائية يغطي دوامه
-// كله بغض النظر عن نوع الشغل)، بعده الفني/الليدر، وأي واحد غيرهم إداري.
-func LeaveRouteFor(role string, shift *string, isLeader bool) string {
-	if shift != nil && *shift == "EVENING" {
+// الشفت الفاضي يُحسب صباحي، لأن هذا هو الافتراضي بعمود shift
+// بقاعدة البيانات (DEFAULT 'MORNING').
+func LeaveRouteFor(shift *string) string {
+	if shift != nil && *shift == LeaveRouteEvening {
 		return LeaveRouteEvening
 	}
-	if role == "TECHNICIAN" || isLeader {
-		return LeaveRouteField
-	}
-	return LeaveRouteAdmin
+	return LeaveRouteMorning
 }
