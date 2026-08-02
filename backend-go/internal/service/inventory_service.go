@@ -149,7 +149,7 @@ func (s *InventoryService) CreateToolRequest(req model.CreateToolRequestRequest)
 	if req.Reason == model.ToolRequestReasonOther && desc == nil {
 		return nil, errors.New("لازم تكتب شرح للسبب لما تختار «سبب آخر»")
 	}
-	return s.repo.CreateToolRequest(req.EmployeeID, req.ToolID, req.Reason, desc)
+	return s.repo.CreateToolRequest(req.EmployeeID, req.ToolID, req.Reason, req.RequestKind, desc)
 }
 
 func (s *InventoryService) DeleteToolRequest(id string) error {
@@ -253,4 +253,17 @@ func (s *InventoryService) CreateVehicleToolCheck(vehicleID, missionID, employee
 		missing = &joined
 	}
 	return s.repo.CreateVehicleToolCheck(vehicleID, missionID, employeeID, missing)
+}
+
+// ── إضافة الكميات للمخزون ────────────────────────────────────────────────────
+
+func (s *InventoryService) AddStock(req model.CreateStockIntakeRequest, byID *string) (*model.StockIntake, error) {
+	if req.ToolID == "" {
+		return nil, errors.New("لازم تحدد الأداة")
+	}
+	return s.repo.AddStock(req, byID)
+}
+
+func (s *InventoryService) ListStockIntakes(toolID string) ([]model.StockIntake, error) {
+	return s.repo.ListStockIntakes(toolID)
 }

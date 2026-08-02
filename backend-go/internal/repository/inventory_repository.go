@@ -396,6 +396,9 @@ func (r *InventoryRepository) hydrateRequest(req *model.ToolRequest) {
 	if req.Reason != nil {
 		req.ReasonLabel = model.ToolRequestReasonLabels[*req.Reason]
 	}
+	if req.RequestKind != nil {
+		req.KindLabel = model.ToolRequestKindLabels[*req.RequestKind]
+	}
 }
 
 func (r *InventoryRepository) ListToolRequests(employeeID string) ([]model.ToolRequest, error) {
@@ -415,13 +418,18 @@ func (r *InventoryRepository) ListToolRequests(employeeID string) ([]model.ToolR
 	return requests, nil
 }
 
-func (r *InventoryRepository) CreateToolRequest(employeeID, toolID, reason string, description *string) (*model.ToolRequest, error) {
+func (r *InventoryRepository) CreateToolRequest(employeeID, toolID, reason string, kind *string, description *string) (*model.ToolRequest, error) {
+	// لو الواجهة ما بعثت تصنيف، نستنتجه من السبب — حتى ما يضل طلب بلا سلة
+	k := model.KindForReason(reason)
+	if kind != nil && *kind != "" {
+		k = *kind
+	}
 	var req model.ToolRequest
 	err := r.db.Get(&req, `
-		INSERT INTO "ToolRequest" (id, "employeeId", "toolId", reason, description)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+		INSERT INTO "ToolRequest" (id, "employeeId", "toolId", reason, "requestKind", description)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5)
 		RETURNING *
-	`, employeeID, toolID, reason, description)
+	`, employeeID, toolID, reason, k, description)
 	if err != nil {
 		return nil, err
 	}
@@ -651,4 +659,64 @@ func (r *InventoryRepository) ReturnToolRequest(id string) (*model.ToolRequest, 
 	}
 	r.hydrateRequest(&req)
 	return &req, nil
+}
+
+// ── إضافة الكميات للمخزون ────────────────────────────────────────────────────
+
+// AddStock يزيد كمية أداة "حسب الحاجة" ويسجّل الإضافة بأثر كامل.
+//
+// نزيد المجموع والمتوفر سوا — الكمية الجديدة داخلة للمخزن، مو مصروفة.
+func (r *InventoryRepository) AddStock(req model.CreateStockIntakeRequest, byID *string) (*model.StockIntake, error) {
+	if req.Quantity <= 0 {
+		return nil, fmt.Errorf("الكمية لازم تكون أكبر من صفر")
+	}
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		UPDATE "OnDemandTool"
+		SET "totalQuantity" = "totalQuantity" + $2,
+			"availableQuantity" = "availableQuantity" + $2
+		WHERE id = $1`, req.ToolID, req.Quantity); err != nil {
+		return nil, err
+	}
+
+	var in model.StockIntake
+	if err := tx.Get(&in, `
+		INSERT INTO "StockIntake" (id, "toolId", quantity, "unitPrice", supplier, notes, "createdById")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, NULLIF($4,''), NULLIF($5,''), $6)
+		RETURNING *`, req.ToolID, req.Quantity, req.UnitPrice,
+		strDeref(req.Supplier), strDeref(req.Notes), byID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &in, nil
+}
+
+// ListStockIntakes سجل إضافات الكميات — منو أضاف وشكد ومتى.
+func (r *InventoryRepository) ListStockIntakes(toolID string) ([]model.StockIntake, error) {
+	rows := []model.StockIntake{}
+	q := `SELECT s.*, t.name AS "toolName", e.name AS "createdName"
+		FROM "StockIntake" s
+		JOIN "OnDemandTool" t ON t.id = s."toolId"
+		LEFT JOIN "Employee" e ON e.id = s."createdById"`
+	var err error
+	if toolID != "" {
+		err = r.db.Select(&rows, q+` WHERE s."toolId" = $1 ORDER BY s."createdAt" DESC`, toolID)
+	} else {
+		err = r.db.Select(&rows, q+` ORDER BY s."createdAt" DESC LIMIT 300`)
+	}
+	return rows, err
+}
+
+func strDeref(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
 }

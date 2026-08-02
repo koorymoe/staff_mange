@@ -203,6 +203,48 @@ export interface EmployeeFundBalance {
   pendingSettlements: number
 }
 
+
+/** تفاصيل المشروع والمبالغ بمتابعة الجودة — الفارق محسوب بالسيرفر */
+export interface QualityFollowUpFinancials {
+  bookingCode: string
+  serviceName?: string | null
+  location?: string | null
+  workDetails?: string | null
+  projectCode?: string | null
+  projectName?: string | null
+  projectStage?: string | null
+  quotedPrice?: number | null
+  projectPrice?: number | null
+  advancePaid?: number | null
+  amountCollected?: number | null
+  agreedTotal: number
+  receivedTotal: number
+  difference: number
+}
+
+/** حساب تكاليف الشد — تفصيلي لكل الكوادر */
+export interface GpsInstallCostRow { month: string; employeeName: string; installs: number; total: number }
+export interface GpsInstallCostSummary {
+  rows: GpsInstallCostRow[]
+  byEmployee: { employeeName: string; total: number }[]
+  grandTotal: number
+  totalInstalls: number
+  monthCount: number
+}
+
+/** سجل إضافة كمية للمخزون */
+export interface StockIntake {
+  id: string
+  toolId: string
+  toolName: string
+  quantity: number
+  unitPrice?: number | null
+  supplier?: string | null
+  notes?: string | null
+  createdName?: string | null
+  createdAt: string
+}
+
 export interface GpsSimCard {
   id: string
   simNumber: string
@@ -501,6 +543,8 @@ export interface QualityFollowUp {
   booking: Booking
   customer: Customer
   contactedByEmployee: { id: string; name: string } | null
+  // تفاصيل المشروع والمبالغ — مهندس الجودة يحتاجها وهو يتصل بالزبون
+  financials?: QualityFollowUpFinancials | null
 }
 
 function currentToken(): string | null {
@@ -1299,7 +1343,7 @@ export interface WorkReport {
   notes: string | null
   createdAt: string
   employee: { id: string; name: string } | null
-  booking: { id: string; code: string; customerName: string } | null
+  booking: { id: string; code: string; customerName: string; customerPhone?: string | null } | null
 }
 
 export interface TechnicianKpi {
@@ -1471,6 +1515,8 @@ export interface ToolRequestItem {
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'RETURNED'
   reason: ToolRequestReason | null
   reasonLabel: string
+  requestKind?: string | null
+  kindLabel?: string
   description: string | null
   purchasePrice: number | null
   procurementRequestId: string | null
@@ -2002,6 +2048,11 @@ export const api = {
   updateGpsDevice: (id: string, data: Partial<GpsDeviceRequest>) =>
     request<GpsDeviceRequest>(`/gps/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   // ── الدوار ──
+  getGpsInstallCosts: () => request<GpsInstallCostSummary>('/finance/gps-install-costs'),
+  addStockIntake: (data: { toolId: string; quantity: number; unitPrice?: number | null; supplier?: string | null; notes?: string | null }) =>
+    request<StockIntake>('/inventory/stock-intake', { method: 'POST', body: JSON.stringify(data) }),
+  getStockIntakes: (toolId?: string) =>
+    request<StockIntake[]>(`/inventory/stock-intake${toolId ? '?toolId=' + toolId : ''}`),
   getFunds: () => request<RevolvingFund[]>('/funds'),
   updateFund: (id: string, data: { name?: string; balance?: number; isActive?: boolean }) =>
     request<RevolvingFund>(`/funds/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

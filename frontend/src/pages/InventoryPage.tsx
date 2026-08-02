@@ -123,6 +123,11 @@ export default function InventoryPage() {
   // موظف مستحق، والخاصة تنطلب اسم الموظف وتنضاف له هو بس.
   const [addToolKind, setAddToolKind] = useState<'standard' | 'private'>('standard')
   const [addToolEmployeeId, setAddToolEmployeeId] = useState('')
+  // إضافة كميات للمخزون — إداري الكميات يزيد على الكمية الموجودة بأثر مسجّل
+  const [stockTarget, setStockTarget] = useState<OnDemandTool | null>(null)
+  const [stockQty, setStockQty] = useState('')
+  const [stockPrice, setStockPrice] = useState('')
+  const [stockSupplier, setStockSupplier] = useState('')
 
   // تقارير النواقص
   const [bookingToolChecks, setBookingToolChecks] = useState<BookingToolCheck[]>([])
@@ -347,6 +352,18 @@ export default function InventoryPage() {
     } catch (err) {
       alert(err instanceof Error ? err.message : 'حدث خطأ')
     }
+  }
+
+  const handleAddStock = async () => {
+    if (!stockTarget || !Number(stockQty)) { alert('اكتب الكمية'); return }
+    try {
+      await api.addStockIntake({
+        toolId: stockTarget.id, quantity: Number(stockQty),
+        unitPrice: Number(stockPrice) || null, supplier: stockSupplier || null,
+      })
+      setStockTarget(null); setStockQty(''); setStockPrice(''); setStockSupplier('')
+      load()
+    } catch (e) { alert(e instanceof Error ? e.message : 'حدث خطأ') }
   }
 
   const handleAddOnDemandTool = async (e: React.FormEvent) => {
@@ -856,6 +873,15 @@ export default function InventoryPage() {
                               >
                                 تعديل
                               </button>
+                              {/* إضافة كمية — عملية لها أثر مسجّل (منو أضاف وشكد ومتى)
+                                  بدل ما نعدّل الرقم يدوياً بلا سجل */}
+                              <button
+                                type="button"
+                                onClick={() => { setStockTarget(t); setStockQty(''); setStockPrice(''); setStockSupplier('') }}
+                                className="mr-2 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                              >
+                                ➕ إضافة كمية
+                              </button>
                             </td>
                           )}
                         </tr>
@@ -895,7 +921,18 @@ export default function InventoryPage() {
                         <td className="px-4 py-3 max-w-xs">
                           {r.reasonLabel ? (
                             <>
-                              <div className="font-medium text-brand-800">{r.reasonLabel}</div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="font-medium text-brand-800">{r.reasonLabel}</div>
+                                {/* السلة: تخصصية / بدل مفقود / بدل تالف */}
+                                {r.kindLabel && (
+                                  <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
+                                    r.requestKind === 'REPLACE_LOST' ? 'bg-red-100 text-red-800'
+                                    : r.requestKind === 'REPLACE_DAMAGED' ? 'bg-amber-100 text-amber-800'
+                                    : 'bg-sky-100 text-sky-800'}`}>
+                                    {r.kindLabel}
+                                  </span>
+                                )}
+                              </div>
                               {r.description && <div className="mt-0.5 text-xs text-slate-500">{r.description}</div>}
                             </>
                           ) : (
@@ -1350,6 +1387,30 @@ export default function InventoryPage() {
           </div>
         )
       })()}
+      {stockTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setStockTarget(null)}>
+          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>إضافة كمية</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              {stockTarget.name} — الكمية الحالية: <span className="font-bold">{stockTarget.availableQuantity}</span> من {stockTarget.totalQuantity}
+            </p>
+            <label className="mt-4 mb-1 block text-sm font-medium text-slate-600">الكمية المضافة *</label>
+            <input type="number" value={stockQty} onChange={(e) => setStockQty(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
+            <label className="mt-3 mb-1 block text-sm font-medium text-slate-600">سعر القطعة</label>
+            <input type="number" value={stockPrice} onChange={(e) => setStockPrice(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
+            <label className="mt-3 mb-1 block text-sm font-medium text-slate-600">المورد</label>
+            <input value={stockSupplier} onChange={(e) => setStockSupplier(e.target.value)}
+              className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
+            <div className="mt-4 flex gap-3">
+              <button onClick={handleAddStock} className="flex-1 rounded-lg px-4 py-3 font-medium text-white" style={{ backgroundColor: '#1a3a5c' }}>إضافة</button>
+              <button onClick={() => setStockTarget(null)} className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

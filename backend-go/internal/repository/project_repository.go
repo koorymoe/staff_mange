@@ -240,3 +240,11 @@ func (r *ProjectRepository) HasAnyDelegation(employeeID string) (bool, error) {
 	err := r.db.Get(&n, `SELECT COUNT(*) FROM "Project" WHERE "delegatedToEmployeeId" = $1`, employeeID)
 	return n > 0, err
 }
+
+// CustomerIDForBooking يرجّع معرّف زبون الحجز — نستعمله لما نرحّل صاحب
+// المشروع للشخصيات المهمة والمشروع جاي من حجز.
+func (r *ProjectRepository) CustomerIDForBooking(bookingID string) (string, error) {
+	var id string
+	err := r.db.Get(&id, `SELECT "customerId" FROM "Booking" WHERE id = $1`, bookingID)
+	return id, err
+}

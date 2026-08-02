@@ -211,12 +211,62 @@ func IsValidToolRequestReason(reason string) bool {
 	return ok
 }
 
+// تصنيف طلب الأداة — إداري الكميات يشوف الطلبات بثلاث سلال منفصلة.
+const (
+	ToolRequestKindSpecialized    = "SPECIALIZED"     // أداة تخصصية من أدوات حسب الحاجة
+	ToolRequestKindReplaceLost    = "REPLACE_LOST"    // بدل مفقود
+	ToolRequestKindReplaceDamaged = "REPLACE_DAMAGED" // بدل تالف
+)
+
+var ToolRequestKindLabels = map[string]string{
+	ToolRequestKindSpecialized:    "أداة تخصصية",
+	ToolRequestKindReplaceLost:    "بدل مفقود",
+	ToolRequestKindReplaceDamaged: "بدل تالف",
+}
+
+// KindForReason يستنتج التصنيف من سبب الطلب — حتى لو الواجهة ما بعثت تصنيف.
+func KindForReason(reason string) string {
+	switch reason {
+	case ToolRequestReasonLost, ToolRequestReasonStolen:
+		return ToolRequestKindReplaceLost
+	case ToolRequestReasonDamaged, ToolRequestReasonWorn:
+		return ToolRequestKindReplaceDamaged
+	default:
+		return ToolRequestKindSpecialized
+	}
+}
+
+// StockIntake إضافة كمية للمخزون — من يجي الفني يطلب أداة، الإداري ينطيه
+// من النظام والكمية تنقص. لازم يكون اكو طريقة يزيد بيها الكمية بأثر واضح.
+type StockIntake struct {
+	ID          string    `db:"id" json:"id"`
+	ToolID      string    `db:"toolId" json:"toolId"`
+	Quantity    int       `db:"quantity" json:"quantity"`
+	UnitPrice   *float64  `db:"unitPrice" json:"unitPrice"`
+	Supplier    *string   `db:"supplier" json:"supplier"`
+	Notes       *string   `db:"notes" json:"notes"`
+	CreatedByID *string   `db:"createdById" json:"createdById"`
+	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
+
+	ToolName    string  `db:"toolName" json:"toolName"`
+	CreatedName *string `db:"createdName" json:"createdName"`
+}
+
+type CreateStockIntakeRequest struct {
+	ToolID    string   `json:"toolId"`
+	Quantity  int      `json:"quantity"`
+	UnitPrice *float64 `json:"unitPrice"`
+	Supplier  *string  `json:"supplier"`
+	Notes     *string  `json:"notes"`
+}
+
 type ToolRequest struct {
 	ID           string     `db:"id" json:"id"`
 	EmployeeID   string     `db:"employeeId" json:"employeeId"`
 	ToolID       string     `db:"toolId" json:"toolId"`
 	Status       string     `db:"status" json:"status"`
 	Reason       *string    `db:"reason" json:"reason"`
+	RequestKind  *string    `db:"requestKind" json:"requestKind"`
 	Description  *string    `db:"description" json:"description"`
 	ApprovedByID *string    `db:"approvedById" json:"approvedById"`
 	RequestedAt  time.Time  `db:"requestedAt" json:"requestedAt"`
@@ -234,12 +284,14 @@ type ToolRequest struct {
 	// ReasonLabel نص السبب بالعربي، محسوب بالسيرفر حتى الواجهة ما تعيد
 	// تعريف نفس الخريطة وتنحرف عنها.
 	ReasonLabel string `db:"-" json:"reasonLabel"`
+	KindLabel   string `db:"-" json:"kindLabel"`
 }
 
 type CreateToolRequestRequest struct {
 	EmployeeID  string  `json:"employeeId"`
 	ToolID      string  `json:"toolId"`
 	Reason      string  `json:"reason"`
+	RequestKind *string `json:"requestKind"`
 	Description *string `json:"description"`
 }
 

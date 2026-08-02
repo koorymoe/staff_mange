@@ -141,6 +141,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	trainingService := service.NewTrainingService(trainingRepo)
 	missionService := service.NewMissionService(missionRepo)
 	projectService := service.NewProjectService(projectRepo)
+	// أي مشروع ينضاف يرحّل صاحبه للشخصيات المهمة تلقائياً
+	projectService.SetVipRepositories(vipCustomerRepo, customerRepo)
 	projectWorkTypeService := service.NewProjectWorkTypeService(projectWorkTypeRepo)
 	checklistService := service.NewChecklistService(checklistRepo)
 	techShowcaseService := service.NewTechShowcaseService(techShowcaseRepo)
@@ -174,6 +176,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	revolvingFundHandler := handler.NewRevolvingFundHandler(revolvingFundRepo)
+	gpsInstallCostHandler := handler.NewGpsInstallCostHandler(repository.NewGpsInstallCostRepository(db))
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService, permissionRepo)
 	kpiHandler := handler.NewKpiHandler(kpiService)
 	notificationHandler := handler.NewNotificationHandler(notificationService)
@@ -495,6 +498,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بالواجهة: isAdmin || PROCUREMENT_ADMIN) — يطابق requireProcurementAdmin الموجود.
 	mux.Handle("PUT /api/inventory/ondemand/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.UpdateOnDemandTool), requireAuth, requireProcurementAdmin))
 
+	// إضافة الكميات للمخزون — إداري الكميات حصراً
+	mux.Handle("POST /api/inventory/stock-intake", middleware.Chain(http.HandlerFunc(inventoryHandler.AddStock), requireAuth, requireProcurementAdmin))
+	mux.Handle("GET /api/inventory/stock-intake", middleware.Chain(http.HandlerFunc(inventoryHandler.ListStockIntakes), requireAuth, requireProcurementAdmin))
+
 	mux.Handle("GET /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.ListToolRequests), requireAuth))
 	// طلب أداة "حسب الحاجة" مقصور على الليدر فقط (isLeader فريش من قاعدة البيانات) —
 	// الموظف العادي يبقى يشوف حالة طلباته (GET) بس ما يقدر ينشئ طلب جديد.
@@ -786,6 +793,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── الدوار ────────────────────────────────────────────────────────────────
 	// الإدارة والصرف والتدقيق: صلاحية "الدوار" (المحاسب). أما رصيد الموظف
 	// نفسه ورفع تسويته فمفتوحين لأي موظف مسجّل دخول — كل واحد يشوف حركاته هو بس.
+	// حساب تكاليف الشد — تفصيلي لكل الكوادر، ضمن خانة الحسابات
+	mux.Handle("GET /api/finance/gps-install-costs", middleware.Chain(http.HandlerFunc(gpsInstallCostHandler.Summary), requireAuth, requireFinance))
+
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFund))
 	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFund))

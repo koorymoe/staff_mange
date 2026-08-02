@@ -649,5 +649,59 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				ON CONFLICT (name) DO NOTHING;
 			`,
 		},
+		{
+			// الشخصيات المهمة: منصب الزبون + الترحيل التلقائي من المشاريع.
+			//
+			// الناس الي يطلبون مشاريع دائماً ناس مهمين، فأي مشروع ينضاف
+			// يرحّل صاحبه تلقائياً للشخصيات المهمة بدل ما ننتظر أحد يعلّمه يدوياً.
+			Version: "0172_vip_position_and_project",
+			SQL: `
+				ALTER TABLE "VipCustomer" ADD COLUMN IF NOT EXISTS "customerPosition" TEXT;
+				ALTER TABLE "VipCustomer" ADD COLUMN IF NOT EXISTS "projectId" TEXT;
+				ALTER TABLE "VipCustomer" ADD COLUMN IF NOT EXISTS "source" TEXT NOT NULL DEFAULT 'MANUAL';
+
+				-- منصب الزبون يُخزن بسجل الزبون نفسه حتى يبقى حتى لو انشال من
+				-- قائمة الشخصيات المهمة ورجع انضاف
+				ALTER TABLE "Customer" ADD COLUMN IF NOT EXISTS "position" TEXT;
+			`,
+		},
+		{
+			// إضافة الكميات للمخزون + تصنيف طلبات الأدوات لثلاث سلال.
+			//
+			// الكمية كانت تتعدّل يدوي بخانة صغيرة بالجدول وما اكو سجل منو
+			// غيّرها ولا ليش — صار اكو عملية "إضافة كمية" لها أثر.
+			//
+			// وطلب الأداة صار يتصنّف: تخصصية (من أدوات حسب الحاجة)، أو بدل
+			// مفقود، أو بدل تالف — حتى إداري الكميات يشوفهن بسلال منفصلة.
+			Version: "0173_stock_intake_and_request_kind",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "StockIntake" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"toolId" TEXT NOT NULL REFERENCES "OnDemandTool"(id) ON DELETE CASCADE,
+					quantity INT NOT NULL,
+					"unitPrice" NUMERIC(14,2),
+					supplier TEXT,
+					notes TEXT,
+					"createdById" TEXT,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "StockIntake_tool_idx"
+					ON "StockIntake" ("toolId", "createdAt" DESC);
+
+				-- تصنيف الطلب: SPECIALIZED | REPLACE_LOST | REPLACE_DAMAGED
+				ALTER TABLE "ToolRequest" ADD COLUMN IF NOT EXISTS "requestKind" TEXT;
+
+				-- نملأ التصنيف للطلبات القديمة من سبب الطلب المسجّل أصلاً
+				UPDATE "ToolRequest" SET "requestKind" =
+					CASE reason
+						WHEN 'LOST'   THEN 'REPLACE_LOST'
+						WHEN 'STOLEN' THEN 'REPLACE_LOST'
+						WHEN 'DAMAGED' THEN 'REPLACE_DAMAGED'
+						WHEN 'WORN'    THEN 'REPLACE_DAMAGED'
+						ELSE 'SPECIALIZED'
+					END
+				WHERE "requestKind" IS NULL;
+			`,
+		},
 	}
 }

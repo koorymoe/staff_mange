@@ -15,6 +15,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -179,6 +180,10 @@ func importCustomers(db *sqlx.DB, rows []customerRow, simIDs map[string]string, 
 		notes := []string{}
 		if c.InstallerName != nil {
 			notes = append(notes, "منفّذ الشد: "+*c.InstallerName)
+		}
+		// التكلفة تنخزن بصيغة ثابتة حتى حساب تكاليف الشد يقدر يستخرجها
+		if c.InstallCost != nil && *c.InstallCost > 0 {
+			notes = append(notes, fmt.Sprintf("تكلفة الشد: %.0f", *c.InstallCost))
 		}
 		if c.VehicleType != nil {
 			notes = append(notes, "نوع المركبة: "+*c.VehicleType)

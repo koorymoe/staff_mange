@@ -29,6 +29,50 @@ func (r *QualityFollowUpRepository) hydrate(q *model.QualityFollowUp) {
 			q.ContactedByEmployee = &brief
 		}
 	}
+	q.Financials = r.loadFinancials(q.BookingID)
+}
+
+// loadFinancials يجمع تفاصيل الحجز ومشروعه المرتبط وأمواله باستعلام واحد.
+//
+// الفارق يُحسب هنا بالسيرفر (مو بالواجهة) حتى يبقى تعريف واحد للفارق بكل
+// الشاشات — الفارق = المتفق عليه ناقص (العربون + المستلم).
+func (r *QualityFollowUpRepository) loadFinancials(bookingID string) *model.QualityFollowUpFinancials {
+	var f model.QualityFollowUpFinancials
+	err := r.db.Get(&f, `
+		SELECT
+			b.code                       AS "bookingCode",
+			s.name                       AS "serviceName",
+			b.address                    AS "location",
+			b.notes                      AS "workDetails",
+			p.id                         AS "projectId",
+			p.code                       AS "projectCode",
+			p.name                       AS "projectName",
+			p.stage                      AS "projectStage",
+			b."quotedPrice"              AS "quotedPrice",
+			p.price                      AS "projectPrice",
+			b."advancePaid"              AS "advancePaid",
+			b."amountCollected"          AS "amountCollected"
+		FROM "Booking" b
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		LEFT JOIN "Project" p ON p."bookingId" = b.id
+		WHERE b.id = $1`, bookingID)
+	if err != nil {
+		return nil
+	}
+	// السعر المعتمد: سعر المشروع إذا الحجز انرحّل لمشروع، وإلا السعر المتفق بالحجز
+	if f.ProjectPrice != nil && *f.ProjectPrice > 0 {
+		f.AgreedTotal = *f.ProjectPrice
+	} else if f.QuotedPrice != nil {
+		f.AgreedTotal = *f.QuotedPrice
+	}
+	if f.AdvancePaid != nil {
+		f.ReceivedTotal += *f.AdvancePaid
+	}
+	if f.AmountCollected != nil {
+		f.ReceivedTotal += *f.AmountCollected
+	}
+	f.Difference = f.AgreedTotal - f.ReceivedTotal
+	return &f
 }
 
 // CreateForBooking تنشئ سطر متابعة جودة تلقائياً لحجز اكتمل (idempotent — ما تكرر لو

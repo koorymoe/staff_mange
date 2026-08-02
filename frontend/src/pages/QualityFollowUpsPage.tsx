@@ -100,6 +100,47 @@ export default function QualityFollowUpsPage() {
                 </span>
               </div>
 
+              {/* تفاصيل المشروع والمبالغ — حتى يعرف شنو انتفق عليه وشكد انستلم
+                  فعلاً، ويقدر يكتب تفاصيل الفارق وهو يتصل بالزبون */}
+              {item.financials && (
+                <div className="mt-3 rounded-xl bg-slate-50 p-4">
+                  <p className="mb-2 text-xs font-bold text-slate-500">تفاصيل المشروع والمبالغ</p>
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2">
+                    {item.financials.projectCode && (
+                      <p className="text-slate-600">المشروع: <span className="font-medium text-slate-800">{item.financials.projectCode} — {item.financials.projectName}</span>
+                        {item.financials.projectStage && <span className="mr-1 text-xs text-slate-400">({item.financials.projectStage})</span>}</p>
+                    )}
+                    {item.financials.location && <p className="text-slate-600">الموقع: <span className="font-medium text-slate-800">{item.financials.location}</span></p>}
+                    {item.financials.workDetails && <p className="text-slate-600 sm:col-span-2">تفاصيل العمل: <span className="font-medium text-slate-800">{item.financials.workDetails}</span></p>}
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-xs text-slate-500">المتفق عليه</p>
+                      <p className="font-bold text-slate-800">{item.financials.agreedTotal.toLocaleString('en-US')}</p>
+                    </div>
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-xs text-slate-500">العربون</p>
+                      <p className="font-bold text-slate-800">{(item.financials.advancePaid || 0).toLocaleString('en-US')}</p>
+                    </div>
+                    <div className="rounded-lg bg-white p-3">
+                      <p className="text-xs text-slate-500">المستلم</p>
+                      <p className="font-bold text-slate-800">{(item.financials.amountCollected || 0).toLocaleString('en-US')}</p>
+                    </div>
+                    <div className={`rounded-lg p-3 ${item.financials.difference > 0 ? 'bg-amber-100' : item.financials.difference < 0 ? 'bg-red-100' : 'bg-emerald-100'}`}>
+                      <p className="text-xs text-slate-600">الفارق</p>
+                      <p className={`font-bold ${item.financials.difference > 0 ? 'text-amber-900' : item.financials.difference < 0 ? 'text-red-900' : 'text-emerald-900'}`}>
+                        {item.financials.difference.toLocaleString('en-US')}
+                      </p>
+                      <p className="text-[10px] text-slate-500">
+                        {item.financials.difference > 0 ? 'باقي بذمة الزبون' : item.financials.difference < 0 ? 'انستلم أكثر من المتفق' : 'مسدّد بالكامل'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className="hidden">
+              </div>
+
               {item.status === 'PENDING' && (
                 <div className="mt-4 space-y-3">
                   <textarea

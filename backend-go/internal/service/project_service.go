@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/lib/pq"
@@ -23,10 +24,50 @@ var projectStages = []string{
 
 type ProjectService struct {
 	repo *repository.ProjectRepository
+	// vipRepo يُحقن من main — أي مشروع ينضاف يرحّل صاحبه للشخصيات المهمة
+	vipRepo      *repository.VipCustomerRepository
+	customerRepo *repository.CustomerRepository
 }
 
 func NewProjectService(repo *repository.ProjectRepository) *ProjectService {
 	return &ProjectService{repo: repo}
+}
+
+// SetVipRepositories يربط ترحيل الشخصيات المهمة (يُنادى من main).
+func (s *ProjectService) SetVipRepositories(vip *repository.VipCustomerRepository, customers *repository.CustomerRepository) {
+	s.vipRepo = vip
+	s.customerRepo = customers
+}
+
+// markProjectOwnerAsVip يرحّل صاحب المشروع للشخصيات المهمة.
+//
+// الناس الي يطلبون مشاريع دائماً ناس مهمين — فما ننتظر أحد يعلّمهم يدوياً.
+// نلاقي الزبون من الحجز المرتبط، وإذا ماكو حجز نلاقيه (أو ننشئه) بالهاتف.
+// فشل الترحيل ما يفشّل إنشاء المشروع — المشروع أهم.
+func (s *ProjectService) markProjectOwnerAsVip(p *model.Project, createdBy *string) {
+	if s.vipRepo == nil || s.customerRepo == nil || createdBy == nil || *createdBy == "" {
+		return
+	}
+	customerID := ""
+	if p.BookingID != nil && *p.BookingID != "" {
+		if id, err := s.repo.CustomerIDForBooking(*p.BookingID); err == nil {
+			customerID = id
+		}
+	}
+	if customerID == "" && p.Phone != nil && *p.Phone != "" {
+		if c, err := s.customerRepo.FindOrCreateByPhone(*p.Phone, p.Name); err == nil && c != nil {
+			customerID = c.ID
+		} else if err != nil {
+			log.Printf("ترحيل VIP للمشروع %s: تعذر إيجاد/إنشاء الزبون: %v", p.Code, err)
+		}
+	}
+	if customerID == "" {
+		return
+	}
+	// المنصب: الشخص المرجعي بالمشروع هو أقرب شي عندنا لمنصب الزبون
+	if err := s.vipRepo.MarkFromProject(p.ID, customerID, p.Name, p.RefPerson, *createdBy); err != nil {
+		log.Printf("ترحيل VIP للمشروع %s: %v", p.Code, err)
+	}
 }
 
 func computeProjectStats(projects []model.Project) model.ProjectStats {
@@ -180,6 +221,7 @@ func (s *ProjectService) Create(req model.CreateProjectRequest, createdBy *strin
 		p, err := s.repo.Create(code, req.Name, req.Rep, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.WorkType, req.RefPerson, priority, req.DeliveryDate, req.BookingID,
 			emptyToNil(req.ResponsibleEmployeeID), emptyToNil(req.SurveyorEmployeeID), req.LocationUrl, createdBy)
 		if err == nil {
+			s.markProjectOwnerAsVip(p, createdBy)
 			return p, nil
 		}
 		lastErr = err

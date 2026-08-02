@@ -153,3 +153,23 @@ func (h *RevolvingFundHandler) ReviewSettlement(w http.ResponseWriter, r *http.R
 	}
 	WriteJSON(w, http.StatusOK, t)
 }
+
+// GpsInstallCostHandler حساب تكاليف الشد — ضمن خانة الحسابات.
+type GpsInstallCostHandler struct {
+	repo *repository.GpsInstallCostRepository
+}
+
+func NewGpsInstallCostHandler(r *repository.GpsInstallCostRepository) *GpsInstallCostHandler {
+	return &GpsInstallCostHandler{repo: r}
+}
+
+// GET /api/finance/gps-install-costs
+func (h *GpsInstallCostHandler) Summary(w http.ResponseWriter, r *http.Request) {
+	s, err := h.repo.Summary()
+	if err != nil {
+		log.Printf("gps install costs: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر حساب تكاليف الشد")
+		return
+	}
+	WriteJSON(w, http.StatusOK, s)
+}

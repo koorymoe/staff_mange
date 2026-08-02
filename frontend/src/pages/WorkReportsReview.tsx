@@ -44,6 +44,13 @@ export default function WorkReportsReview() {
               <div>
                 <span className="font-mono font-bold text-brand-700">{r.booking?.code}</span>
                 <span className="mr-2 text-sm text-slate-500">{r.booking?.customerName}</span>
+                {/* رقم هاتف الزبون — حتى مهندس الجودة يتصل مباشرة من التقرير */}
+                {r.booking?.customerPhone && (
+                  <a href={`tel:${r.booking.customerPhone}`} dir="ltr"
+                    className="mr-2 inline-block rounded-lg bg-emerald-50 px-2.5 py-1 text-sm font-medium text-emerald-700 hover:bg-emerald-100">
+                    📞 {r.booking.customerPhone}
+                  </a>
+                )}
               </div>
               <span className={`rounded-full px-2 py-1 text-xs font-bold ${r.workStatus === 'COMPLETED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                 {r.workStatus === 'COMPLETED' ? 'تم الإنجاز' : 'توقف العمل'}

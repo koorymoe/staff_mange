@@ -166,3 +166,27 @@ func (r *CustomerRepository) ListGpsCustomers() ([]model.CustomerGpsResponse, er
 	}
 	return out, nil
 }
+
+// FindOrCreateByPhone يلاقي الزبون برقم هاتفه أو ينشئه إذا مو موجود.
+// نستعمله لما ينضاف مشروع بدون حجز مرتبط — لازم يكون اكو سجل زبون حتى
+// نقدر نرحّله للشخصيات المهمة.
+func (r *CustomerRepository) FindOrCreateByPhone(phone, name string) (*model.Customer, error) {
+	var c model.Customer
+	if err := r.db.Get(&c, `SELECT * FROM "Customer" WHERE phone = $1 LIMIT 1`, phone); err == nil {
+		return &c, nil
+	}
+	if name == "" {
+		name = phone
+	}
+	// customerCode عمود رقمي — ناخذ أكبر رقم موجود ونزيد واحد
+	err := r.db.Get(&c, `
+		INSERT INTO "Customer" (id, "customerCode", name, phone)
+		VALUES (gen_random_uuid()::text,
+			COALESCE((SELECT MAX("customerCode") FROM "Customer"), 0) + 1,
+			$1, $2)
+		RETURNING *`, name, phone)
+	if err != nil {
+		return nil, err
+	}
+	return &c, nil
+}

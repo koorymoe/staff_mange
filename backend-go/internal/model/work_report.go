@@ -16,14 +16,17 @@ type WorkReport struct {
 	Notes         *string   `db:"notes" json:"notes"`
 	CreatedAt     time.Time `db:"createdAt" json:"createdAt"`
 
-	Employee *EmployeeBrief      `db:"-" json:"employee"`
+	Employee *EmployeeBrief          `db:"-" json:"employee"`
 	Booking  *WorkReportBookingBrief `db:"-" json:"booking"`
 }
 
 type WorkReportBookingBrief struct {
-	ID           string `db:"id" json:"id"`
-	Code         string `db:"code" json:"code"`
-	CustomerName string `db:"customerName" json:"customerName"`
+	ID   string `db:"id" json:"id"`
+	Code string `db:"code" json:"code"`
+	// اسم الزبون ورقم هاتفه — الهاتف لازم بالتقرير حتى مهندس الجودة يقدر
+	// يتصل بالزبون مباشرة من التقرير بدون ما يدور عليه بشاشة ثانية.
+	CustomerName  string  `db:"customerName" json:"customerName"`
+	CustomerPhone *string `db:"customerPhone" json:"customerPhone"`
 }
 
 type CreateWorkReportRequest struct {

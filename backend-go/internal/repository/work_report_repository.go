@@ -21,7 +21,7 @@ func (r *WorkReportRepository) hydrate(wr *model.WorkReport) {
 	}
 	var booking model.WorkReportBookingBrief
 	err := r.db.Get(&booking, `
-		SELECT b.id, b.code, c.name AS "customerName"
+		SELECT b.id, b.code, c.name AS "customerName", c.phone AS "customerPhone"
 		FROM "Booking" b JOIN "Customer" c ON c.id = b."customerId"
 		WHERE b.id = $1
 	`, wr.BookingID)

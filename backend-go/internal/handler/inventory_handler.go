@@ -319,3 +319,34 @@ func (h *InventoryHandler) ListVehicleToolChecks(w http.ResponseWriter, r *http.
 	}
 	WriteJSON(w, http.StatusOK, checks)
 }
+
+// ── إضافة الكميات للمخزون ────────────────────────────────────────────────────
+
+// POST /api/inventory/stock-intake — إداري الكميات يضيف كمية لأداة
+func (h *InventoryHandler) AddStock(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateStockIntakeRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	var by *string
+	if id := middleware.EmployeeIDFromContext(r); id != "" {
+		by = &id
+	}
+	in, err := h.service.AddStock(req, by)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, in)
+}
+
+// GET /api/inventory/stock-intake?toolId= — سجل إضافات الكميات
+func (h *InventoryHandler) ListStockIntakes(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ListStockIntakes(r.URL.Query().Get("toolId"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل الإضافات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

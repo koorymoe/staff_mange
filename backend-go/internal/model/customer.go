@@ -6,11 +6,15 @@ import (
 )
 
 type Customer struct {
-	ID           string    `db:"id" json:"id"`
-	CustomerCode int       `db:"customerCode" json:"customerCode"`
-	Name         string    `db:"name" json:"name"`
-	Phone        string    `db:"phone" json:"phone"`
-	Location     *string   `db:"location" json:"location"`
+	ID           string  `db:"id" json:"id"`
+	CustomerCode int     `db:"customerCode" json:"customerCode"`
+	Name         string  `db:"name" json:"name"`
+	Phone        string  `db:"phone" json:"phone"`
+	Location     *string `db:"location" json:"location"`
+	// منصب الزبون — يظهر بالشخصيات المهمة. لازم يكون موجود هنا وإلا
+	// SELECT * ينكسر بـ"missing destination name position" (نفس الفخ الي
+	// وكعنا بيه مرتين قبل: عمود بقاعدة البيانات بلا حقل بالستركت).
+	Position     *string   `db:"position" json:"position"`
 	MapLatitude  *float64  `db:"mapLatitude" json:"mapLatitude"`
 	MapLongitude *float64  `db:"mapLongitude" json:"mapLongitude"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
