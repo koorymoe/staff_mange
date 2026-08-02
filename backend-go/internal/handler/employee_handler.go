@@ -15,22 +15,11 @@ import (
 // موظف مسجل دخول يحتاج يشوفها لبقية الكادر.
 func canSeeSalaries(role string) bool {
 	switch role {
-	case "ADMIN", "HR_COORDINATOR", "MONITOR", "FINANCE":
+	// OWNER كان ناقص هنا — المالك ما كان يشوف رواتب كادره إطلاقاً
+	case "OWNER", "ADMIN", "HR_COORDINATOR", "MONITOR", "FINANCE":
 		return true
 	default:
 		return false
-	}
-}
-
-// redactSalaries يشيل الراتب من أي موظف غير الشخص نفسه إذا الطالب ما عنده صلاحية يشوف الرواتب
-func redactSalaries(employees []model.Employee, role, selfID string) {
-	if canSeeSalaries(role) {
-		return
-	}
-	for i := range employees {
-		if employees[i].ID != selfID {
-			employees[i].Salary = nil
-		}
 	}
 }
 
@@ -49,8 +38,9 @@ func (h *EmployeeHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة الموظفين")
 		return
 	}
-	redactSalaries(employees, middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r))
-	WriteJSON(w, http.StatusOK, employees)
+	// نبني نسخة مقيّدة حسب دور الطالب — الحقول الي ما تخصه تنشال من الـJSON
+	// بالكامل، مو تنرجع null (شوف employee_view.go)
+	WriteJSON(w, http.StatusOK, ViewEmployees(employees, middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r)))
 }
 
 // GET /api/v1/employees/archived — الأدمن/المالك فقط، يشوفون الموظفين المؤرشفين والمحذوفين
@@ -75,10 +65,7 @@ func (h *EmployeeHandler) Get(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب بيانات الموظف")
 		return
 	}
-	if !canSeeSalaries(middleware.RoleFromContext(r)) && employee.ID != middleware.EmployeeIDFromContext(r) {
-		employee.Salary = nil
-	}
-	WriteJSON(w, http.StatusOK, employee)
+	WriteJSON(w, http.StatusOK, ViewEmployee(employee, middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r)))
 }
 
 // POST /api/v1/employees

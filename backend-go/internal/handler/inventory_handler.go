@@ -204,8 +204,19 @@ func (h *InventoryHandler) UpdateOnDemandTool(w http.ResponseWriter, r *http.Req
 
 // ── Tool Requests ───────────────────────────────────────────────────────────
 
+// GET /api/inventory/requests
+//
+// الموظف العادي يشوف طلباته هو بس. كانت ترجع طلبات كل الكادر لأي موظف
+// مسجّل دخول — يعني الفني يشوف منو طلب شنو وليش من F12.
 func (h *InventoryHandler) ListToolRequests(w http.ResponseWriter, r *http.Request) {
-	requests, err := h.service.ListToolRequests(r.URL.Query().Get("employeeId"))
+	scope := r.URL.Query().Get("employeeId")
+	switch middleware.RoleFromContext(r) {
+	case "OWNER", "ADMIN", "PROCUREMENT_ADMIN", "HR_COORDINATOR":
+		// هذول شغلهم يشوفون الطلبات كلها ويوافقون عليها
+	default:
+		scope = middleware.EmployeeIDFromContext(r)
+	}
+	requests, err := h.service.ListToolRequests(scope)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب طلبات الأدوات")
 		return

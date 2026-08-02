@@ -2053,6 +2053,9 @@ export const api = {
     request<StockIntake>('/inventory/stock-intake', { method: 'POST', body: JSON.stringify(data) }),
   getStockIntakes: (toolId?: string) =>
     request<StockIntake[]>(`/inventory/stock-intake${toolId ? '?toolId=' + toolId : ''}`),
+  /** أرقام اللوحة الرئيسية — بدون سحب أرشيف الشركة كامل للمتصفح */
+  getDashboardSummary: () => request<{ employeeCount: number; customerCount: number; bookingCount: number; gpsDeviceCount: number }>('/dashboard/summary'),
+
   getFunds: () => request<RevolvingFund[]>('/funds'),
   updateFund: (id: string, data: { name?: string; balance?: number; isActive?: boolean }) =>
     request<RevolvingFund>(`/funds/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

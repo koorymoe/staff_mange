@@ -105,20 +105,24 @@ export default function Dashboard() {
     // مدير المشاريع مدير مو فني — ما ينستلم مهام مثل الفنيين
     const isTech = employee.role === 'TECHNICIAN' || employee.isLeader
     const needsFinance = employee.role === 'FINANCE' || permissions.includes('monitoring')
+    // الأرقام تجي من مسار ملخّص واحد (بضع عشرات البايتات) بدل ما ننزّل
+    // كل الموظفين وكل العملاء على جهاز المستخدم عشان نعدّهم. الحجوزات
+    // تُطلب بس للي يحتاج قائمتها فعلاً (فني عنده مهام، أو مالية).
+    const needsBookingList = isTech || needsFinance
     Promise.all([
       api.getGpsStats().catch(() => null),
-      api.getBookings().catch(() => [] as Booking[]),
-      api.getEmployees().then((e) => e.length).catch(() => 0),
-      api.getCustomers().then((c) => c.length).catch(() => 0),
-      isTech ? api.getBookings().catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
+      needsBookingList ? api.getBookings().catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
+      api.getDashboardSummary().catch(() => null),
       needsFinance ? api.getBookings({ status: 'COMPLETED' }).catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
       needsFinance ? api.getExpenses().catch(() => [] as Expense[]) : Promise.resolve([] as Expense[]),
-    ]).then(([gps, bk, emp, cust, allBookings, cb, exp]) => {
+    ]).then(([gps, bk, summary, cb, exp]) => {
+      const allBookings = bk
       setGpsStats(gps as GpsStats | null)
       setBookings(bk as Booking[])
-      setBookingCount((bk as Booking[]).length)
-      setEmployeeCount(emp)
-      setCustomerCount(cust)
+      const sum = summary as { employeeCount: number; customerCount: number; bookingCount: number } | null
+      setBookingCount(sum?.bookingCount ?? (bk as Booking[]).length)
+      setEmployeeCount(sum?.employeeCount ?? 0)
+      setCustomerCount(sum?.customerCount ?? 0)
       setCompletedBookings(cb as Booking[])
       setExpenses(exp as Expense[])
       const taskList = (allBookings as Booking[]).filter(b =>

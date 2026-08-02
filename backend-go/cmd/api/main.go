@@ -176,6 +176,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	revolvingFundHandler := handler.NewRevolvingFundHandler(revolvingFundRepo)
+	dashboardHandler := handler.NewDashboardHandler(db)
 	gpsInstallCostHandler := handler.NewGpsInstallCostHandler(repository.NewGpsInstallCostRepository(db))
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService, permissionRepo)
 	kpiHandler := handler.NewKpiHandler(kpiService)
@@ -331,6 +332,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// متابعة تجديد اشتراكات الجي بي اس تخص الاثنين: مهندس الجودة يتصل
 	// بالزبائن، ومسؤول الجي بي اس يشوف منو خلصت مهلته وشريحته تحتاج حرق.
 	requireGpsOrQuality := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "gps_system", "quality_control")
+	// قوائم زبائن الجي بي اس فيها أسماء وأرقام ٤٩٣ زبون — كانت مفتوحة لأي
+	// موظف مسجّل دخول، يعني الفني يقدر يسحبها كلها من F12 وهو ما إله علاقة
+	// بالجي بي اس أصلاً. صارت محصورة بالي شغلهم فعلاً بالجي بي اس.
+	requireGpsData := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER", "SALES"}, "gps_system")
 
 	mux := http.NewServeMux()
 
@@ -361,7 +367,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/employees/{id}/skills", middleware.Chain(http.HandlerFunc(employeeHandler.SetSkills), requireAuth, requireStaffManagement))
 
 	// الصلاحيات — العرض متاح لأي مسجل دخول، التعديل والتطبيق التلقائي محصور بمدير النظام فقط
-	mux.Handle("GET /api/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth))
+	// قائمة كل صلاحيات النظام = خارطة للمهاجم يعرف بيها شنو موجود وشنو
+	// يستهدف. الموظف ما يحتاجها — صلاحياته هو تجي بـ/permissions/employee/{id}
+	mux.Handle("GET /api/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth, requireAdmin))
 	mux.Handle("GET /api/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
 	// قائمة الموظفين الي يوصلون لصلاحية معيّنة — لتعبئة القوائم المنسدلة
 	// (مثلاً: مين المسؤول عن المشروع، ومين يسوي الكشف)
@@ -786,7 +794,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// POST هنا مفتوحة لأي مسجل دخول (requireAuth بس) — هذا التسجيل الأساسي مو عملية
 	// إدارية، وموظف المبيعات (GpsPurchase.tsx) لازم يقدر يسجل بيانات الزبون وهو
 	// يرسل طلب شراء جهاز GPS جديد، قبل حتى ما يوصل الطلب لإداري GPS للموافقة.
-	mux.Handle("GET /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.ListCustomers), requireAuth))
+	mux.Handle("GET /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.ListCustomers), requireAuth, requireGpsData))
 	mux.Handle("POST /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.CreateCustomer), requireAuth, requireGpsSystem))
 	mux.Handle("PUT /api/gps/customers/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateCustomer), requireAuth, requireGpsSystem))
 
@@ -795,6 +803,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نفسه ورفع تسويته فمفتوحين لأي موظف مسجّل دخول — كل واحد يشوف حركاته هو بس.
 	// حساب تكاليف الشد — تفصيلي لكل الكوادر، ضمن خانة الحسابات
 	mux.Handle("GET /api/finance/gps-install-costs", middleware.Chain(http.HandlerFunc(gpsInstallCostHandler.Summary), requireAuth, requireFinance))
+
+	// أرقام اللوحة الرئيسية بدون سحب أرشيف الشركة كامل
+	mux.Handle("GET /api/dashboard/summary", middleware.Chain(http.HandlerFunc(dashboardHandler.Summary), requireAuth))
 
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFund))
@@ -808,7 +819,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/funds/my-transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyTxns), requireAuth))
 	mux.Handle("POST /api/funds/settlements", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlement), requireAuth))
 
-	mux.Handle("GET /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth))
+	mux.Handle("GET /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth, requireGpsData))
 	mux.Handle("POST /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.CreateSim), requireAuth, requireGpsSystem))
 	mux.Handle("PUT /api/gps/sims/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateSim), requireAuth, requireGpsSystem))
 
@@ -828,7 +839,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بالمخطط نفسه (schema_base.go) — هذا "طلب" بانتظار مراجعة إداري GPS، مو جهاز
 	// مفعّل فعلياً، فتقييد الإنشاء بصلاحية gps_system كان يمنع بالضبط سيناريو تقديم
 	// الطلب من موظف مبيعات ما عنده هذي الصلاحية. الموافقة (PUT) تبقى محمية.
-	mux.Handle("GET /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.ListDevices), requireAuth))
+	mux.Handle("GET /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.ListDevices), requireAuth, requireGpsData))
 	mux.Handle("POST /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.CreateDevice), requireAuth, requireGpsSystem))
 	mux.Handle("PUT /api/gps/devices/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateDevice), requireAuth, requireGpsSystem))
 
