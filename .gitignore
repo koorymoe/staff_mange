@@ -6,3 +6,8 @@ backups/
 tutorials.zip
 real-recordings.zip
 comprehensive-recordings.zip
+
+# تقارير التدقيق الأمني — ما تنرفع للريبو (الريبو عام، والتقرير يعطي
+# المهاجم خريطة بالمسارات الي لسه تحتاج حماية)
+docs/تدقيق-الأمان.md
+docs/security-audit*.md

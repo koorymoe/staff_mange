@@ -815,3 +815,23 @@ func (r *BookingRepository) IsAssignedTo(bookingID, employeeID string) (bool, er
 		)`, bookingID, employeeID)
 	return n > 0, err
 }
+
+// IsCartItemOfAssignedBooking يفحص إذا عنصر السلة يتبع حجز الموظف طرف بيه —
+// بدونه أي موظف يعدّل أو يحذف عناصر سلة أي حجز بمجرد معرفة رقم العنصر.
+func (r *BookingRepository) IsCartItemOfAssignedBooking(cartItemID, employeeID string) (bool, error) {
+	var n int
+	err := r.db.Get(&n, `
+		SELECT COUNT(*) FROM "CartItem" ci
+		JOIN "Booking" b ON b.id = ci."bookingId"
+		WHERE ci.id = $1 AND (
+			b."expenseResponsibleId" = $2
+			OR b."projectSupervisorId" = $2
+			OR b."transferEmployeeId" = $2
+			OR b."inspectionSupervisorId" = $2
+			OR EXISTS (
+				SELECT 1 FROM "BookingAssignment" ba
+				WHERE ba."bookingId" = b.id AND ba."employeeId" = $2
+			)
+		)`, cartItemID, employeeID)
+	return n > 0, err
+}

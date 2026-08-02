@@ -419,10 +419,36 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/bookings/{id}/tool-checks", middleware.Chain(http.HandlerFunc(bookingHandler.ToolChecks), requireAuth, requireCoordinator))
 
 	// سلة الحجز
-	mux.Handle("GET /api/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.ListForBooking), requireAuth))
-	mux.Handle("POST /api/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.Create), requireAuth))
-	mux.Handle("PUT /api/cart/{id}", middleware.Chain(http.HandlerFunc(cartHandler.Update), requireAuth))
-	mux.Handle("DELETE /api/cart/{id}", middleware.Chain(http.HandlerFunc(cartHandler.Delete), requireAuth))
+	// سلة الحجز: نفس قاعدة مسار عمل الحجز — الموظف طرف بالحجز أو منسّق.
+	// {bookingId} نستخدم حارس الحجز نفسه، و{id} (عنصر سلة) نتحقق من حجزه.
+	requireCartBookingParty := func(next http.Handler) http.Handler {
+		coordGuard := requireBookingCoord(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if eid := middleware.EmployeeIDFromContext(r); eid != "" {
+				if ok, err := bookingService.IsAssignedTo(r.PathValue("bookingId"), eid); err == nil && ok {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			coordGuard.ServeHTTP(w, r)
+		})
+	}
+	requireCartItemParty := func(next http.Handler) http.Handler {
+		coordGuard := requireBookingCoord(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if eid := middleware.EmployeeIDFromContext(r); eid != "" {
+				if ok, err := bookingService.IsCartItemOfAssignedBooking(r.PathValue("id"), eid); err == nil && ok {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			coordGuard.ServeHTTP(w, r)
+		})
+	}
+	mux.Handle("GET /api/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.ListForBooking), requireAuth, requireCartBookingParty))
+	mux.Handle("POST /api/cart/booking/{bookingId}", middleware.Chain(http.HandlerFunc(cartHandler.Create), requireAuth, requireCartBookingParty))
+	mux.Handle("PUT /api/cart/{id}", middleware.Chain(http.HandlerFunc(cartHandler.Update), requireAuth, requireCartItemParty))
+	mux.Handle("DELETE /api/cart/{id}", middleware.Chain(http.HandlerFunc(cartHandler.Delete), requireAuth, requireCartItemParty))
 
 	// المصاريف — أي موظف يقدر يرسل مصروف، الموافقة/الرفض للمحاسب ومدير النظام فقط
 	mux.Handle("GET /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.List), requireAuth))
@@ -640,8 +666,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/design-form/questions/reorder", middleware.Chain(http.HandlerFunc(designFormHandler.Reorder), requireAuth, requireAdmin))
 
 	// رابط عام للزبون (بدون تسجيل دخول) — يشوف الاستمارة ويرسل جوابه فقط
-	mux.Handle("GET /api/public/design-forms/{token}", http.HandlerFunc(designFormHandler.PublicGet))
-	mux.Handle("POST /api/public/design-forms/{token}/submit", http.HandlerFunc(designFormHandler.PublicSubmit))
+	// النماذج العامة: بلا تسجيل دخول، فلازم حد صارم — بدونه أي واحد عنده
+	// الرابط يقدر يغرق قاعدة البيانات بآلاف التقديمات الضخمة.
+	publicFormReadLimit := middleware.RateLimit(30, time.Minute)
+	publicFormSubmitLimit := middleware.RateLimit(5, time.Minute)
+	mux.Handle("GET /api/public/design-forms/{token}", publicFormReadLimit(http.HandlerFunc(designFormHandler.PublicGet)))
+	mux.Handle("POST /api/public/design-forms/{token}/submit", publicFormSubmitLimit(http.HandlerFunc(designFormHandler.PublicSubmit)))
 
 	// طلبات تغيير أيقونة الحضور — أي موظف يطلب، ومدير النظام بس يوافق/يرفض
 	mux.Handle("POST /api/attendance-icon-requests", middleware.Chain(http.HandlerFunc(attendanceIconRequestHandler.Create), requireAuth))

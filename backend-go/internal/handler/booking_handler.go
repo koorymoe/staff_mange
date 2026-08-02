@@ -86,13 +86,15 @@ func (h *BookingHandler) ScheduleLog(w http.ResponseWriter, r *http.Request) {
 func (h *BookingHandler) Schedule(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ScheduledAt string `json:"scheduledAt"`
-		ChangedByID string `json:"changedById"`
+		// ChangedByID ما ننقراه من الطلب — كان يخلي أي واحد ينسب تغيير
+		// الموعد لموظف ثاني بسجل التعديلات (تزوير هوية). نعتمد التوكن.
+		ChangedByID string `json:"-"`
 	}
 	if err := DecodeJSON(r, &body); err != nil || body.ScheduledAt == "" {
 		WriteError(w, http.StatusBadRequest, "scheduledAt is required")
 		return
 	}
-	booking, err := h.service.SetSchedule(r.PathValue("id"), body.ChangedByID, body.ScheduledAt)
+	booking, err := h.service.SetSchedule(r.PathValue("id"), middleware.EmployeeIDFromContext(r), body.ScheduledAt)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

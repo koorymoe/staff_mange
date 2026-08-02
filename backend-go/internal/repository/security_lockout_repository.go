@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -25,8 +27,17 @@ const (
 	LockReasonManual       = "MANUAL"
 )
 
-// FailedLoginThreshold عدد محاولات كلمة السر الغلط المتتالية قبل الحظر.
+// FailedLoginThreshold عدد محاولات كلمة السر الغلط المتتالية قبل التعطيل.
 const FailedLoginThreshold = 3
+
+// FailedLoginCooldown مدة التعطيل المؤقت بعد تجاوز الحد.
+//
+// ليش مؤقت مو دائم؟ الحظر الدائم عند كلمة سر غلط يعطي المهاجم سلاح: يجرّب
+// أسماء المستخدمين ويقفل حسابات الموظفين واحد واحد *بدون ما يعرف ولا كلمة
+// سر*. التعطيل المؤقت يوقف التخمين (اللي هدفه أصلاً محاولات كثيرة بسرعة)
+// بدون ما يخلي المهاجم يشلّ الشركة. الحظر *الدائم* يبقى بس لمحاولة الوصول
+// غير المخوّلة — وهذي تحتاج حساب مسجّل دخول أصلاً، فما تنستغل من بره.
+const FailedLoginCooldown = 15 * time.Minute
 
 // LogEvent يسجّل حدث أمني (يظهر بلوحة المراقبة مال المالك).
 func (r *SecurityLockoutRepository) LogEvent(employeeID *string, employeeName, kind, detail, ip, userAgent string) error {
@@ -49,9 +60,26 @@ func (r *SecurityLockoutRepository) RegisterFailedLogin(employeeID string) (stre
 	if streak < FailedLoginThreshold {
 		return streak, false, nil
 	}
-	ok, err := r.Lock(employeeID, LockReasonFailedLogins,
-		"تجاوز الحد المسموح لمحاولات كلمة المرور الخاطئة")
-	return streak, ok, err
+	// تعطيل مؤقت: نسجّل لحظة التعطيل بس ما نغيّر حالة الحساب — ينفك لحاله
+	// بعد انتهاء المدة، ويظهر للمالك بلوحة المراقبة طول ما هو فعّال.
+	_, err = r.db.Exec(`
+		UPDATE "Employee"
+		SET "lockedAt" = now(), "lockedReason" = $2,
+			"lockedDetail" = 'تعطيل مؤقت — ينتهي تلقائياً بعد 15 دقيقة'
+		WHERE id = $1 AND role NOT IN ('OWNER', 'ADMIN')`,
+		employeeID, LockReasonFailedLogins)
+	if err != nil {
+		return streak, false, err
+	}
+	return streak, true, nil
+}
+
+// IsTemporarilyLocked هل التعطيل المؤقت لسه فعّال (ما انتهت مدته).
+func IsTemporarilyLocked(lockedAt *time.Time, reason *string) bool {
+	if lockedAt == nil || reason == nil || *reason != LockReasonFailedLogins {
+		return false
+	}
+	return time.Since(*lockedAt) < FailedLoginCooldown
 }
 
 // ResetFailedLogins يصفّر العدّاد بعد دخول ناجح.
@@ -70,7 +98,9 @@ func (r *SecurityLockoutRepository) Lock(employeeID, reason, detail string) (boo
 	err := r.db.Get(&affected, `
 		WITH upd AS (
 			UPDATE "Employee"
-			SET status = 'SUSPENDED', "lockedAt" = now(), "lockedReason" = $2, "lockedDetail" = $3
+			SET status = 'SUSPENDED', "lockedAt" = now(), "lockedReason" = $2, "lockedDetail" = $3,
+				-- الحظر يبطل جلساته الحالية فوراً، مو بس يمنع دخول جديد
+				"sessionsInvalidatedAt" = now()
 			WHERE id = $1 AND role NOT IN ('OWNER', 'ADMIN') AND "lockedAt" IS NULL
 			RETURNING 1
 		)
@@ -85,6 +115,21 @@ func (r *SecurityLockoutRepository) Unlock(employeeID string) error {
 		SET status = 'ACTIVE', "lockedAt" = NULL, "lockedReason" = NULL, "lockedDetail" = NULL,
 			"failedLoginStreak" = 0, "authzViolations" = 0
 		WHERE id = $1`, employeeID)
+	return err
+}
+
+// ClearTemporaryLock يشيل التعطيل المؤقت بعد انتهاء مدته.
+func (r *SecurityLockoutRepository) ClearTemporaryLock(employeeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Employee"
+		SET "lockedAt" = NULL, "lockedReason" = NULL, "lockedDetail" = NULL, "failedLoginStreak" = 0
+		WHERE id = $1 AND "lockedReason" = $2`, employeeID, LockReasonFailedLogins)
+	return err
+}
+
+// InvalidateSessions يبطل كل التوكنات الصادرة قبل هالحظة لهذا الموظف.
+func (r *SecurityLockoutRepository) InvalidateSessions(employeeID string) error {
+	_, err := r.db.Exec(`UPDATE "Employee" SET "sessionsInvalidatedAt" = now() WHERE id = $1`, employeeID)
 	return err
 }
 

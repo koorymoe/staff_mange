@@ -1,6 +1,9 @@
 package handler
 
 import (
+	"context"
+	"errors"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -19,13 +22,71 @@ type MapLinkHandler struct {
 	client *http.Client
 }
 
+// allowedMapHosts نطاقات الخرائط المسموح بفتحها من السيرفر.
+//
+// ثغرة كانت هنا (SSRF): الهاندلر جان يفتح *أي* رابط http/https يرسله الموظف
+// ويتبع التحويلات — يعني يقدر يخلي السيرفر يطلب خدمات داخلية ما إله وصول
+// إلها (قاعدة البيانات، واجهات إدارة، بيانات وصفية للسحابة على
+// 169.254.169.254...). الحل طبقتين: قائمة نطاقات مسموحة + منع أي عنوان
+// داخلي/خاص حتى لو النطاق مسموح وحوّل لعنوان داخلي (DNS rebinding).
+var allowedMapHosts = map[string]bool{
+	"maps.app.goo.gl": true, "goo.gl": true, "maps.google.com": true,
+	"www.google.com": true, "google.com": true, "maps.googleapis.com": true,
+	"openstreetmap.org": true, "www.openstreetmap.org": true, "osm.org": true,
+	"maps.apple.com": true, "waze.com": true, "www.waze.com": true, "ul.waze.com": true,
+}
+
+func isAllowedMapHost(host string) bool {
+	h := strings.ToLower(host)
+	if i := strings.IndexByte(h, ':'); i >= 0 {
+		h = h[:i]
+	}
+	return allowedMapHosts[h]
+}
+
+// isBlockedIP يمنع كل ما هو داخلي: loopback، شبكات خاصة، link-local (ومنها
+// عنوان بيانات السحابة 169.254.169.254)، multicast، وغير المحدد.
+func isBlockedIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() || ip.IsInterfaceLocalMulticast() ||
+		ip.IsMulticast() || ip.IsUnspecified()
+}
+
+// safeDialContext يفحص العنوان الفعلي بعد ترجمة الـDNS وقبل فتح الاتصال —
+// هذا يقفل حتى نطاقاً مسموحاً "يترجم" لعنوان داخلي.
+func safeDialContext(ctx context.Context, network, addr string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return nil, err
+	}
+	ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return nil, err
+	}
+	for _, a := range ips {
+		if isBlockedIP(a.IP) {
+			return nil, errors.New("العنوان غير مسموح")
+		}
+	}
+	d := &net.Dialer{Timeout: 5 * time.Second}
+	return d.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+}
+
 func NewMapLinkHandler() *MapLinkHandler {
 	return &MapLinkHandler{
 		client: &http.Client{
-			Timeout: 10 * time.Second,
-			// نوقف عند 10 تحويلات حتى ما ندور بحلقة مفرغة لو الرابط خربان.
+			Timeout:   10 * time.Second,
+			Transport: &http.Transport{DialContext: safeDialContext},
+			// نوقف عند 5 تحويلات، ونفحص كل تحويل: لازم يبقى ضمن النطاقات
+			// المسموحة (التحويل هو الطريق الكلاسيكي لتجاوز قائمة النطاقات).
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
-				if len(via) >= 10 {
+				if len(via) >= 5 {
+					return http.ErrUseLastResponse
+				}
+				if !isAllowedMapHost(req.URL.Host) {
 					return http.ErrUseLastResponse
 				}
 				return nil
@@ -71,8 +132,12 @@ func (h *MapLinkHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	parsed, err := url.Parse(raw)
-	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
-		WriteError(w, http.StatusBadRequest, "الرابط غير صحيح")
+	if err != nil || parsed.Scheme != "https" || parsed.Host == "" {
+		WriteError(w, http.StatusBadRequest, "الرابط غير صحيح — لازم يكون رابط https")
+		return
+	}
+	if !isAllowedMapHost(parsed.Host) {
+		WriteError(w, http.StatusBadRequest, "هذا الرابط مو من مواقع الخرائط المعروفة — الصق رابط من كوكل ماب")
 		return
 	}
 

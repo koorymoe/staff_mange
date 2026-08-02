@@ -525,5 +525,14 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				CREATE INDEX IF NOT EXISTS "SecurityEvent_employee_idx" ON "SecurityEvent" ("employeeId");
 			`,
 		},
+		{
+			// إبطال الجلسات: نخزن لحظة "آخر إبطال" لكل موظف. أي توكن صدر قبلها
+			// يصير غير صالح فوراً — بدونها كان التوكن المسروق يضل شغّال 12
+			// ساعة حتى لو الموظف غيّر كلمة سره أو المالك حظره.
+			Version: "0168_session_invalidation",
+			SQL: `
+				ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "sessionsInvalidatedAt" TIMESTAMPTZ;
+			`,
+		},
 	}
 }

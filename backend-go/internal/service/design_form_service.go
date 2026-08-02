@@ -80,6 +80,13 @@ func (s *DesignFormService) Reorder(questionIDs []string) error {
 
 // Submit يستقبل جواب زبون عبر الرابط العام — يتأكد الاستمارة موجودة وكل سؤال
 // مطلوب (required) عنده جواب قبل الحفظ.
+// حدود التقديم العام — تمنع إغراق قاعدة البيانات من نموذج مفتوح للكل.
+const (
+	maxAnswerCount  = 200
+	maxAnswerLen    = 5000
+	maxAnswersBytes = 256 * 1024
+)
+
 func (s *DesignFormService) Submit(token string, req model.SubmitDesignFormRequest) (*model.DesignFormSubmission, error) {
 	form, err := s.repo.GetFormByToken(token)
 	if err != nil {
@@ -91,6 +98,20 @@ func (s *DesignFormService) Submit(token string, req model.SubmitDesignFormReque
 	}
 	if req.Answers == nil {
 		req.Answers = map[string]any{}
+	}
+	// حد منطقي على حجم التقديم — الاستمارة عامة (بلا تسجيل دخول)، فبدون هذا
+	// الحد يقدر أي واحد عنده الرابط يخزن حمولات ضخمة ويكبّر قاعدة البيانات
+	// والنسخ الاحتياطية بلا سقف.
+	if len(req.Answers) > maxAnswerCount {
+		return nil, fmt.Errorf("عدد الإجابات أكبر من المسموح")
+	}
+	if encoded, err := json.Marshal(req.Answers); err == nil && len(encoded) > maxAnswersBytes {
+		return nil, fmt.Errorf("حجم الإجابات أكبر من المسموح")
+	}
+	for k, v := range req.Answers {
+		if sv, ok := v.(string); ok && len(sv) > maxAnswerLen {
+			req.Answers[k] = sv[:maxAnswerLen]
+		}
 	}
 	for _, q := range questions {
 		if !q.Required {

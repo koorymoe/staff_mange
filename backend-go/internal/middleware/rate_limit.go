@@ -33,13 +33,20 @@ func clientIPForRateLimit(r *http.Request) string {
 	return host
 }
 
-// isTrustedProxy: البروكسي عدنا (nginx) يشتغل على نفس الجهاز، فنثق بالمحلي بس.
+// isTrustedProxy: منو نثق بترويسة X-Forwarded-For الجاية منه.
+//
+// انتباه مهم: النظام يشتغل بـDocker — السلسلة Caddy -> nginx -> الباك اند،
+// والباك اند يشوف عنوان حاوية nginx (شبكة خاصة 172.x) *مو* loopback. لو
+// حصرناها بـloopback بس، تنرفض الترويسة دائماً ويصير كل المستخدمين محسوبين
+// بعنوان واحد — يعني 8 محاولات فاشلة من أي شخص تقفل الدخول على الشركة كلها
+// (حرمان خدمة كامل). فنثق بالعناوين الخاصة/المحلية (شبكة Docker الداخلية)،
+// وهي أصلاً مو قابلة للوصول من الإنترنت مباشرةً.
 func isTrustedProxy(host string) bool {
 	ip := net.ParseIP(host)
 	if ip == nil {
 		return false
 	}
-	return ip.IsLoopback()
+	return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
 }
 
 // RateLimit يمنع أكثر من maxAttempts طلب من نفس عنوان IP خلال المدة window —

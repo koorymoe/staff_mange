@@ -61,6 +61,13 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 				return
 			}
 
+			// إبطال الجلسات: أي توكن صدر قبل آخر إبطال (تغيير كلمة سر، حظر،
+			// إنهاء جلسات) يُرفض فوراً — بدونه التوكن المسروق يضل شغّال 12 ساعة.
+			if !auth.SessionValid(claims.EmployeeID, claims.IssuedAt) {
+				writeError(w, http.StatusUnauthorized, "انتهت صلاحية الجلسة — سجّل دخول مجدداً")
+				return
+			}
+
 			ctx := context.WithValue(r.Context(), ContextEmployeeID, claims.EmployeeID)
 			ctx = context.WithValue(ctx, ContextRole, role)
 			next.ServeHTTP(w, r.WithContext(ctx))

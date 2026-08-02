@@ -135,6 +135,11 @@ func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetails
 	return s.repo.FindByID(id)
 }
 
+// IsCartItemOfAssignedBooking هل عنصر السلة يتبع حجز الموظف طرف بيه.
+func (s *BookingService) IsCartItemOfAssignedBooking(cartItemID, employeeID string) (bool, error) {
+	return s.repo.IsCartItemOfAssignedBooking(cartItemID, employeeID)
+}
+
 // IsAssignedTo هل الموظف طرف بهذا الحجز (مكلّف/مشرف/مسؤول مصاريف/رحّله).
 func (s *BookingService) IsAssignedTo(bookingID, employeeID string) (bool, error) {
 	return s.repo.IsAssignedTo(bookingID, employeeID)
