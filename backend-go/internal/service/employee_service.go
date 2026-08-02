@@ -202,6 +202,14 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 	if err := s.repo.Update(employee); err != nil {
 		return nil, err
 	}
+	// تغيير الدور أو صفة الليدر يغيّر الاستحقاق للعدة القياسية: فني ينتقل
+	// للمبيعات لازم تنشال عدته، وموظف يصير ليدر لازم ياخذها. فشل المزامنة
+	// ما يبطّل تعديل الموظف — نسجّله بس.
+	if s.inventoryRepo != nil && (req.Role != nil || req.IsLeader != nil) {
+		if err := s.inventoryRepo.SyncPersonalToolKitForEmployee(id); err != nil {
+			log.Printf("تحذير: تعذرت مزامنة العدة القياسية للموظف %s: %v", id, err)
+		}
+	}
 	return s.repo.FindByID(id)
 }
 

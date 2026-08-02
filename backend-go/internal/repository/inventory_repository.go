@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
@@ -112,11 +114,17 @@ func (r *InventoryRepository) logToolEvent(t *model.PersonalTool, eventType stri
 	`, t.ID, t.Name, t.EmployeeID, eventType, from, to, note, actorID)
 }
 
+// CreatePersonalTool ينشئ أداة خاصة لموظف محدد.
+//
+// الباركود ما عاد يُطلب من المستخدم (شيلناه من الفورم) — يبقى عمود NOT NULL
+// بقاعدة البيانات، فنولّده هنا لما يجي فاضي. التتبع الفريد صار بمعرّف
+// الأداة نفسه، مو بالباركود.
 func (r *InventoryRepository) CreatePersonalTool(employeeID, name, barcode string, actorID *string) (*model.PersonalTool, error) {
 	var t model.PersonalTool
 	err := r.db.Get(&t, `
 		INSERT INTO "PersonalTool" (id, "employeeId", name, barcode)
-		VALUES (gen_random_uuid()::text, $1, $2, $3)
+		VALUES (gen_random_uuid()::text, $1, $2,
+			COALESCE(NULLIF($3, ''), 'TOOL-' || substr(gen_random_uuid()::text, 1, 12)))
 		RETURNING *
 	`, employeeID, name, barcode)
 	if err != nil {
@@ -469,6 +477,16 @@ func (r *InventoryRepository) RejectToolRequest(id string) (*model.ToolRequest, 
 
 // ── Personal Tool Template (العدة القياسية) ─────────────────────────────────
 
+// toolKitEligibleSQL شرط "منو يستحق عدة قياسية".
+//
+// العدة تخص الي يشتغل بيدينه بالميدان: الفني والليدر. موظف المبيعات
+// والمصمم ومهندس الجودة وإداري الكوادر والمدقق ومدير النظام وإدارة
+// المشاريع — ما عندهم عدة أصلاً وما يتحاسبون عليها.
+//
+// قبل هذا الشرط، أي أداة تنضاف للعدة القياسية كانت تروح لـ"كل" موظف بلا
+// استثناء، فطلع موظف مبيعات معلّق برقبته ٣٩ أداة وإداري كوادر ٤١.
+const toolKitEligibleSQL = `(e.role = 'TECHNICIAN' OR e."isLeader" = true)`
+
 func (r *InventoryRepository) ListPersonalToolTemplateItems() ([]model.PersonalToolTemplateItem, error) {
 	items := []model.PersonalToolTemplateItem{}
 	err := r.db.Select(&items, `SELECT * FROM "PersonalToolTemplateItem" ORDER BY "createdAt" ASC`)
@@ -485,6 +503,18 @@ func (r *InventoryRepository) CreatePersonalToolTemplateItem(name string) (*mode
 	}
 	defer tx.Rollback()
 
+	// اسم مكرر يعني نسخة ثانية من نفس الأداة تنضاف لكل موظف — لاحظناها
+	// بالاختبار: إضافة "مفك" مرتين خلّت كل فني عنده مفكين.
+	var exists bool
+	if err := tx.Get(&exists, `
+		SELECT EXISTS(SELECT 1 FROM "PersonalToolTemplateItem" WHERE lower(btrim(name)) = lower(btrim($1)))
+	`, name); err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, fmt.Errorf("الأداة %q موجودة أصلاً بالعدة القياسية", name)
+	}
+
 	var item model.PersonalToolTemplateItem
 	if err := tx.Get(&item, `
 		INSERT INTO "PersonalToolTemplateItem" (id, name)
@@ -498,6 +528,7 @@ func (r *InventoryRepository) CreatePersonalToolTemplateItem(name string) (*mode
 		INSERT INTO "PersonalTool" (id, "employeeId", name, barcode)
 		SELECT gen_random_uuid()::text, e.id, $1, 'TPL-' || substr(gen_random_uuid()::text, 1, 12)
 		FROM "Employee" e
+		WHERE `+toolKitEligibleSQL+`
 	`, name); err != nil {
 		return nil, err
 	}
@@ -516,13 +547,65 @@ func (r *InventoryRepository) DeletePersonalToolTemplateItem(id string) error {
 // ApplyPersonalToolTemplateToEmployee يضيف PersonalTool لكل عنصر بالعدة القياسية
 // لموظف واحد — يُستدعى فور إنشاء موظف جديد (employee_service.go) حتى ياخذ
 // القائمة كاملة تلقائياً بدون أي خطوة يدوية من الإداري.
+//
+// ما ينطبق إلا على المستحقين (شوف toolKitEligibleSQL) — موظف مبيعات أو
+// مصمم جديد ما ينضاف له ولا أداة.
 func (r *InventoryRepository) ApplyPersonalToolTemplateToEmployee(employeeID string) error {
+	_, err := r.db.Exec(`
+		INSERT INTO "PersonalTool" (id, "employeeId", name, barcode)
+		SELECT gen_random_uuid()::text, e.id, t.name, 'TPL-' || substr(gen_random_uuid()::text, 1, 12)
+		FROM "PersonalToolTemplateItem" t
+		CROSS JOIN "Employee" e
+		WHERE e.id = $1 AND `+toolKitEligibleSQL+`
+	`, employeeID)
+	return err
+}
+
+// SyncPersonalToolKitForEmployee يضبط عدة موظف بعد ما يتغيّر دوره أو صفة
+// الليدر: إذا صار مستحق ياخذ العدة القياسية الناقصة، وإذا ما عاد مستحق
+// تنشال عدته. بدونها، فني يتحوّل لمبيعات يضل معلّق برقبته ٤٠ أداة.
+func (r *InventoryRepository) SyncPersonalToolKitForEmployee(employeeID string) error {
+	var eligible bool
+	if err := r.db.Get(&eligible, `SELECT `+toolKitEligibleSQL+` FROM "Employee" e WHERE e.id = $1`, employeeID); err != nil {
+		return err
+	}
+	if !eligible {
+		return r.RemovePersonalToolKit(employeeID)
+	}
+	// المستحق ياخذ الناقص بس — ما نكرّر أداة موجودة عنده أصلاً
 	_, err := r.db.Exec(`
 		INSERT INTO "PersonalTool" (id, "employeeId", name, barcode)
 		SELECT gen_random_uuid()::text, $1, t.name, 'TPL-' || substr(gen_random_uuid()::text, 1, 12)
 		FROM "PersonalToolTemplateItem" t
+		WHERE NOT EXISTS (
+			SELECT 1 FROM "PersonalTool" p WHERE p."employeeId" = $1 AND p.name = t.name
+		)
 	`, employeeID)
 	return err
+}
+
+// RemovePersonalToolKit يشيل عدة موظف ما عاد مستحق. نسجّل حدث حذف لكل أداة
+// قبل ما نشيلها — سجل الحركة (PersonalToolEvent) ما عنده مفتاح خارجي وموجود
+// أصلاً حتى يوثّق الي راح، فيبقى أثر يقدر المالك يراجعه.
+func (r *InventoryRepository) RemovePersonalToolKit(employeeID string) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	if _, err := tx.Exec(`
+		INSERT INTO "PersonalToolEvent" (id, "toolId", "toolName", "employeeId", "eventType", note)
+		SELECT gen_random_uuid()::text, p.id, p.name, p."employeeId", $2,
+			'انشالت لأن دور الموظف ما يستحق عدة قياسية'
+		FROM "PersonalTool" p WHERE p."employeeId" = $1
+	`, employeeID, model.ToolEventDeleted); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`DELETE FROM "PersonalTool" WHERE "employeeId" = $1`, employeeID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // ── Vehicle Tool Check (لقطة أدوات المركبة الناقصة عند بدء مهمة من ليدر) ────

@@ -534,5 +534,28 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				ALTER TABLE "Employee" ADD COLUMN IF NOT EXISTS "sessionsInvalidatedAt" TIMESTAMPTZ;
 			`,
 		},
+		{
+			// العدة القياسية كانت تنطبق على "كل" موظف بلا استثناء، فطلع موظف
+			// مبيعات معلّق برقبته ٣٩ أداة وإداري كوادر ٤١ ومدقق ٤١ — وهذول
+			// أصلاً ما عندهم عدة وما يتحاسبون عليها.
+			//
+			// هنا ننظّف الموجود: نشيل عدة كل موظف مو مستحق (مو فني ولا ليدر).
+			// نسجّل حدث حذف لكل أداة قبل ما نشيلها، لأن PersonalToolEvent مصمّم
+			// أصلاً يبقى بعد حذف الأداة حتى يوثّق الي راح — فيضل أثر للمراجعة.
+			Version: "0169_tool_kit_role_scope",
+			SQL: `
+				INSERT INTO "PersonalToolEvent" (id, "toolId", "toolName", "employeeId", "eventType", note)
+				SELECT gen_random_uuid()::text, p.id, p.name, p."employeeId", 'DELETED',
+					'انشالت بترحيل 0169: دور الموظف ما يستحق عدة قياسية'
+				FROM "PersonalTool" p
+				JOIN "Employee" e ON e.id = p."employeeId"
+				WHERE NOT (e.role = 'TECHNICIAN' OR e."isLeader" = true);
+
+				DELETE FROM "PersonalTool" p
+				USING "Employee" e
+				WHERE e.id = p."employeeId"
+				  AND NOT (e.role = 'TECHNICIAN' OR e."isLeader" = true);
+			`,
+		},
 	}
 }

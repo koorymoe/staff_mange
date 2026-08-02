@@ -41,9 +41,11 @@ func (s *InventoryService) ListPersonalTools(employeeID string) ([]model.Persona
 }
 
 func (s *InventoryService) CreatePersonalTool(req model.CreatePersonalToolRequest, actorID *string) (*model.PersonalTool, error) {
-	if req.EmployeeID == "" || req.Name == "" || req.Barcode == "" {
-		return nil, errors.New("employeeId, name and barcode are required")
+	// الباركود ما عاد مطلوب — انشال من الفورم ويتولّد بالمستودع لما يجي فاضي
+	if req.EmployeeID == "" || strings.TrimSpace(req.Name) == "" {
+		return nil, errors.New("لازم تختار الموظف وتكتب اسم الأداة")
 	}
+	req.Name = strings.TrimSpace(req.Name)
 	return s.repo.CreatePersonalTool(req.EmployeeID, req.Name, req.Barcode, actorID)
 }
 

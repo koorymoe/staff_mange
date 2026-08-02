@@ -90,7 +90,6 @@ export default function InventoryPage() {
   const [showPersonalForm, setShowPersonalForm] = useState(false)
   const [ptEmployeeId, setPtEmployeeId] = useState('')
   const [ptName, setPtName] = useState('')
-  const [ptBarcode, setPtBarcode] = useState('')
 
   // Vehicle tools
   const [vehicleTools, setVehicleTools] = useState<VehicleTool[]>([])
@@ -120,6 +119,10 @@ export default function InventoryPage() {
   const [templateItems, setTemplateItems] = useState<PersonalToolTemplateItem[]>([])
   const [templateName, setTemplateName] = useState('')
   const [templateSubmitting, setTemplateSubmitting] = useState(false)
+  // زر "إضافة أداة" الموحّد: يسأل أول شي قياسية لو خاصة. القياسية تروح لكل
+  // موظف مستحق، والخاصة تنطلب اسم الموظف وتنضاف له هو بس.
+  const [addToolKind, setAddToolKind] = useState<'standard' | 'private'>('standard')
+  const [addToolEmployeeId, setAddToolEmployeeId] = useState('')
 
   // تقارير النواقص
   const [bookingToolChecks, setBookingToolChecks] = useState<BookingToolCheck[]>([])
@@ -249,12 +252,26 @@ export default function InventoryPage() {
 
   const handleAddTemplateItem = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (addToolKind === 'private' && !addToolEmployeeId) {
+      alert('اختر الموظف الي عنده هاي الأداة الخاصة')
+      return
+    }
     setTemplateSubmitting(true)
     try {
-      const item = await api.createPersonalToolTemplateItem(templateName)
-      setTemplateItems((prev) => [...prev, item])
+      if (addToolKind === 'standard') {
+        // قياسية: تنضاف لكل موظف مستحق (فني/ليدر) تلقائياً بالخلفية
+        const item = await api.createPersonalToolTemplateItem(templateName)
+        setTemplateItems((prev) => [...prev, item])
+      } else {
+        // خاصة: تنضاف للموظف المختار هو بس، وما تدخل بالعدة القياسية
+        await api.createPersonalTool({ employeeId: addToolEmployeeId, name: templateName, barcode: '' })
+        load()
+      }
       setTemplateName('')
-    } catch { /* ignore */ }
+      setAddToolEmployeeId('')
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'حدث خطأ')
+    }
     finally { setTemplateSubmitting(false) }
   }
 
@@ -269,8 +286,8 @@ export default function InventoryPage() {
     e.preventDefault()
     setSubmitting(true)
     try {
-      await api.createPersonalTool({ employeeId: ptEmployeeId, name: ptName, barcode: ptBarcode })
-      setPtEmployeeId(''); setPtName(''); setPtBarcode('')
+      await api.createPersonalTool({ employeeId: ptEmployeeId, name: ptName, barcode: '' })
+      setPtEmployeeId(''); setPtName('')
       setShowPersonalForm(false)
       load()
     } catch (err) {
@@ -496,7 +513,8 @@ export default function InventoryPage() {
               </div>
               {showPersonalForm && (
                 <form onSubmit={handleAddPersonalTool} className="mb-6 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                  {/* الباركود انشال — ما نحتاجه بإضافة الأداة، ويتولّد بالخلفية */}
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-600">الموظف</label>
                       <select required value={ptEmployeeId} onChange={(e) => setPtEmployeeId(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500">
@@ -507,10 +525,6 @@ export default function InventoryPage() {
                     <div>
                       <label className="mb-1 block text-sm font-medium text-slate-600">اسم الأداة</label>
                       <input required value={ptName} onChange={(e) => setPtName(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">الباركود</label>
-                      <input required value={ptBarcode} onChange={(e) => setPtBarcode(e.target.value)} className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
                     </div>
                   </div>
                   <div className="mt-4">
@@ -964,21 +978,68 @@ export default function InventoryPage() {
           {activeTab === 'template' && (
             <div>
               {canManageInventory && (
-                <form onSubmit={handleAddTemplateItem} className="mb-6 flex gap-3 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                  <input
-                    required
-                    value={templateName}
-                    onChange={(e) => setTemplateName(e.target.value)}
-                    placeholder="اسم الأداة القياسية"
-                    className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
-                  />
-                  <button type="submit" disabled={templateSubmitting} className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3 font-medium text-white shadow-md shadow-brand-900/20 disabled:opacity-50">
-                    {templateSubmitting ? 'جاري الإضافة...' : 'إضافة للعدة القياسية'}
+                <form onSubmit={handleAddTemplateItem} className="mb-6 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                  <p className="mb-3 text-sm font-semibold text-slate-700">إضافة أداة</p>
+                  {/* السؤال الأول: قياسية لو خاصة */}
+                  <div className="mb-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      onClick={() => { setAddToolKind('standard'); setAddToolEmployeeId('') }}
+                      className={`rounded-lg border px-5 py-3 text-sm font-medium transition-colors ${
+                        addToolKind === 'standard'
+                          ? 'border-brand-500 bg-brand-50 text-brand-800'
+                          : 'border-gray-300 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      أداة قياسية
+                      <span className="mt-0.5 block text-xs font-normal opacity-70">تنضاف لعدة كل موظف مستحق</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddToolKind('private')}
+                      className={`rounded-lg border px-5 py-3 text-sm font-medium transition-colors ${
+                        addToolKind === 'private'
+                          ? 'border-brand-500 bg-brand-50 text-brand-800'
+                          : 'border-gray-300 text-slate-600 hover:bg-slate-50'
+                      }`}
+                    >
+                      أداة خاصة
+                      <span className="mt-0.5 block text-xs font-normal opacity-70">لموظف واحد تختاره</span>
+                    </button>
+                  </div>
+                  <div className={`grid grid-cols-1 gap-4 ${addToolKind === 'private' ? 'sm:grid-cols-2' : ''}`}>
+                    <div>
+                      <label className="mb-1 block text-sm font-medium text-slate-600">اسم الأداة</label>
+                      <input
+                        required
+                        value={templateName}
+                        onChange={(e) => setTemplateName(e.target.value)}
+                        placeholder={addToolKind === 'standard' ? 'اسم الأداة القياسية' : 'اسم الأداة الخاصة'}
+                        className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
+                      />
+                    </div>
+                    {addToolKind === 'private' && (
+                      <div>
+                        <label className="mb-1 block text-sm font-medium text-slate-600">الموظف الي عنده هاي الأداة</label>
+                        <select
+                          required
+                          value={addToolEmployeeId}
+                          onChange={(e) => setAddToolEmployeeId(e.target.value)}
+                          className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500"
+                        >
+                          <option value="">اختر الموظف</option>
+                          {employees.map((emp) => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                  <button type="submit" disabled={templateSubmitting} className="mt-4 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-3 font-medium text-white shadow-md shadow-brand-900/20 disabled:opacity-50">
+                    {templateSubmitting ? 'جاري الإضافة...' : 'إضافة'}
                   </button>
                 </form>
               )}
               <p className="mb-4 text-sm text-slate-500">
-                أي أداة تُضاف هنا تنضاف فوراً لعدة كل الموظفين الحاليين، وأي موظف جديد ياخذ العدة القياسية كاملة تلقائياً وقت إنشاء حسابه.
+                العدة القياسية تخص <span className="font-semibold text-slate-700">الفنيين والليدرات</span> بس — أي أداة قياسية تُضاف هنا تنضاف فوراً لعدتهم، وأي فني أو ليدر جديد ياخذ العدة كاملة تلقائياً وقت إنشاء حسابه. المبيعات والتصميم وإدارة المشاريع وبقية الإداريين ما عندهم عدة وما يتحاسبون عليها.
               </p>
               <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 <div className="overflow-x-auto">
