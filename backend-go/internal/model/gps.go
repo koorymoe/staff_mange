@@ -137,7 +137,7 @@ var FollowUpStageLabels = map[string]string{
 	FollowUpStageCallDue:  "مستحق الاتصال",
 	FollowUpStageWaiting:  "بانتظار المهلة الثانية",
 	FollowUpStageBurnDue:  "الشريحة تحتاج حرق",
-	FollowUpStageResolved: "تم الحسم",
+	FollowUpStageResolved: "تم الحسم / منتهي",
 }
 
 type UpsertSimCardRequest struct {

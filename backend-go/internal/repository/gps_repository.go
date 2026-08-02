@@ -655,8 +655,14 @@ func decorateFollowUpRow(row *model.GpsSubscriptionFollowUpRow) {
 	resolved := row.LastOutcome != nil &&
 		(*row.LastOutcome == model.FollowUpOutcomeWillRenew || *row.LastOutcome == model.FollowUpOutcomeWillMove)
 	refused := row.LastOutcome != nil && *row.LastOutcome == model.FollowUpOutcomeRefused
+	// الشريحة انحرقت خلاص = الملف مسكّر. بدون هالشرط، الزبائن القدام الي
+	// انحرقت شرائحهم من زمان يضلون يطلعون بقائمة "مستحق الاتصال" ويغرقون
+	// مهندس الجودة بمئات الأسماء الميتة.
+	alreadyBurned := row.SimStatus != nil && *row.SimStatus == model.SimStatusBurned
 
 	switch {
+	case alreadyBurned:
+		row.Stage = model.FollowUpStageResolved
 	case resolved:
 		row.Stage = model.FollowUpStageResolved
 	case row.DaysSinceExpiry >= model.GpsFollowUpBurnAfter && refused:
