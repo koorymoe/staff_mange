@@ -152,6 +152,16 @@ export default function QuotationsPage() {
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                         <button
+                          onClick={() => navigate(`/quotations/${q.id}/edit?preview=1`)}
+                          style={{
+                            background: '#ede7f6', color: '#4527a0', border: 'none',
+                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: 'bold',
+                          }}
+                        >
+                          👁️ معاينة
+                        </button>
+                        <button
                           onClick={() => navigate(`/quotations/${q.id}/edit`)}
                           style={{
                             background: '#e3f2fd', color: '#1565c0', border: 'none',

@@ -37,6 +37,8 @@ export default function QuotationNew() {
   const returnTo = searchParams.get('returnTo')
   // HTML المعاينة (نسخة الطباعة) — لما تنملي تنعرض بنافذة داخل النظام
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  // نطلب المعاينة بعد ما تنحمّل البيانات — البناء يحتاج الحقول تكون جاهزة
+  const [wantsPreview, setWantsPreview] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
   const [customerName, setCustomerName] = useState(searchParams.get('customerName') || '')
   const [customerPhone, setCustomerPhone] = useState(searchParams.get('customerPhone') || '')
@@ -93,8 +95,14 @@ export default function QuotationNew() {
         })) : [emptyItem()])
       })
       .catch((err) => showStatus('تعذر تحميل عرض السعر: ' + (err instanceof Error ? err.message : ''), 'err'))
-      .finally(() => setLoadingQuotation(false))
-  }, [id])
+      .finally(() => {
+        setLoadingQuotation(false)
+        // ?preview=1 يجي من زر "معاينة" بقائمة عروض الأسعار: نفتح نسخة
+        // الطباعة مباشرةً بدل شاشة التعديل، ومن داخلها يقدر يعدّل أو
+        // يسوي عرض جديد.
+        if (searchParams.get('preview') === '1') setWantsPreview(true)
+      })
+  }, [id, searchParams])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -445,6 +453,19 @@ ${pageShell(`
 
   // المعاينة: نعرض النسخة المطبوعة داخل النظام (مثل ملف PDF) — للاطلاع فقط،
   // ومنها يقرر يعدّل أو يسوي عرض جديد أو يرجع لإدارة المشاريع.
+  // لما ننطلب المعاينة تلقائياً (?preview=1) نستنى تنتهي التعبئة ثم نبنيها
+  useEffect(() => {
+    if (!wantsPreview || loadingQuotation) return
+    // نأجّلها لمهمة صغيرة حتى ما نغيّر الحالة داخل جسم الـeffect مباشرةً
+    queueMicrotask(() => {
+      const html = buildPrintHtml(true)
+      if (html) setPreviewHtml(html)
+      setWantsPreview(false)
+    })
+    // buildPrintHtml تقرأ الحالة الحالية فقط، ما نحتاج نراقبها كلها
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsPreview, loadingQuotation])
+
   const openPreview = () => {
     const html = buildPrintHtml(true)
     if (html) setPreviewHtml(html)
