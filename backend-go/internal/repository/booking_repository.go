@@ -792,3 +792,26 @@ func (r *BookingRepository) ReturnToCrew(id string, note *string) error {
 	`, id, note)
 	return err
 }
+
+// IsAssignedTo يفحص إذا الموظف مكلّف فعلاً بهذا الحجز — أساس التحقق قبل أي
+// إجراء على مسار العمل (وصلت/بدأت/أنهيت). بدونه أي موظف مسجّل دخول يقدر
+// "ينهي" حجز موظف ثاني أو يغيّر موعده (ثغرة IDOR).
+//
+// نعتبره مكلّفاً كذلك لو هو مسؤول المصاريف أو مشرف المشروع أو الي رحّل الحجز
+// — هذول أطراف شرعية بنفس الحجز.
+func (r *BookingRepository) IsAssignedTo(bookingID, employeeID string) (bool, error) {
+	var n int
+	err := r.db.Get(&n, `
+		SELECT COUNT(*) FROM "Booking" b
+		WHERE b.id = $1 AND (
+			b."expenseResponsibleId" = $2
+			OR b."projectSupervisorId" = $2
+			OR b."transferEmployeeId" = $2
+			OR b."inspectionSupervisorId" = $2
+			OR EXISTS (
+				SELECT 1 FROM "BookingAssignment" ba
+				WHERE ba."bookingId" = b.id AND ba."employeeId" = $2
+			)
+		)`, bookingID, employeeID)
+	return n > 0, err
+}

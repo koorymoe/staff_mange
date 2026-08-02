@@ -379,14 +379,33 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/confirm", middleware.Chain(http.HandlerFunc(bookingHandler.Confirm), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/details", middleware.Chain(http.HandlerFunc(bookingHandler.UpdateDetails), requireAuth, requireBookingEdit))
-	mux.Handle("PUT /api/bookings/{id}/schedule", middleware.Chain(http.HandlerFunc(bookingHandler.Schedule), requireAuth))
+	// حارس ملكية الحجز: أي إجراء على مسار عمل الحجز (موعد/بدء/وصول/تجهيز
+	// مواد/إنهاء) ينسمح بس لـ:
+	//   - الموظف المكلّف بالحجز فعلاً (أو مشرفه/مسؤول مصاريفه/الي رحّله)
+	//   - أو صاحب صلاحية تنسيق/إدارة الكوادر (يتصرف بكل الحجوزات بحكم دوره)
+	// قبل هذا الحارس، أي موظف مسجّل دخول كان يقدر ينهي حجز موظف ثاني أو
+	// يغيّر موعده (ثغرة IDOR).
+	requireBookingParty := func(next http.Handler) http.Handler {
+		coordGuard := requireBookingCoord(next)
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if id := middleware.EmployeeIDFromContext(r); id != "" {
+				if ok, err := bookingService.IsAssignedTo(r.PathValue("id"), id); err == nil && ok {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+			coordGuard.ServeHTTP(w, r)
+		})
+	}
+
+	mux.Handle("PUT /api/bookings/{id}/schedule", middleware.Chain(http.HandlerFunc(bookingHandler.Schedule), requireAuth, requireBookingParty))
 	mux.Handle("GET /api/bookings/{id}/schedule-log", middleware.Chain(http.HandlerFunc(bookingHandler.ScheduleLog), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth, requireBookingCoord))
-	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth))
-	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth))
+	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth, requireBookingParty))
+	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth, requireBookingParty))
+	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth, requireBookingParty))
+	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// "تم" الإداري بعد تواصله فعلياً مع الزبون — خطوة سابقة ومنفصلة عن التثبيت
 	// نفسه (نفس صلاحية تنسيق الحجوزات coordinator المستخدمة أصلاً بـCoordinator.tsx).

@@ -135,6 +135,11 @@ func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetails
 	return s.repo.FindByID(id)
 }
 
+// IsAssignedTo هل الموظف طرف بهذا الحجز (مكلّف/مشرف/مسؤول مصاريف/رحّله).
+func (s *BookingService) IsAssignedTo(bookingID, employeeID string) (bool, error) {
+	return s.repo.IsAssignedTo(bookingID, employeeID)
+}
+
 func (s *BookingService) ScheduleLog(id string) ([]model.ScheduleChangeLog, error) {
 	return s.repo.ScheduleLog(id)
 }
