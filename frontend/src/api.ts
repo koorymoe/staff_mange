@@ -158,6 +158,51 @@ export interface GpsStats {
   inUseSims?: number
 }
 
+
+/** الدوار: مبلغ دوّار للعمل يصرفه المحاسب ويرجع لما يتسوّى */
+export interface RevolvingFund {
+  id: string
+  name: string
+  balance: number
+  isActive: boolean
+  outstandingTotal: number
+}
+
+export type FundTxnKind = 'DISBURSE' | 'SETTLEMENT' | 'TOPUP'
+export type FundTxnStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+
+export interface RevolvingFundTxn {
+  id: string
+  fundId: string
+  fundName: string
+  employeeId?: string | null
+  employeeName?: string | null
+  kind: FundTxnKind
+  kindLabel: string
+  amount: number
+  spentAmount: number
+  returnedAmount: number
+  bookingId?: string | null
+  receiptImage?: string | null
+  notes?: string | null
+  status: FundTxnStatus
+  statusLabel: string
+  reviewedByName?: string | null
+  reviewedAt?: string | null
+  reviewNote?: string | null
+  createdAt: string
+}
+
+export interface EmployeeFundBalance {
+  employeeId: string
+  employeeName: string
+  jobTitle?: string | null
+  totalTaken: number
+  totalSettled: number
+  outstanding: number
+  pendingSettlements: number
+}
+
 export interface GpsSimCard {
   id: string
   simNumber: string
@@ -1956,6 +2001,31 @@ export const api = {
     request<GpsDeviceRequest>('/gps/devices', { method: 'POST', body: JSON.stringify(data) }),
   updateGpsDevice: (id: string, data: Partial<GpsDeviceRequest>) =>
     request<GpsDeviceRequest>(`/gps/devices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  // ── الدوار ──
+  getFunds: () => request<RevolvingFund[]>('/funds'),
+  updateFund: (id: string, data: { name?: string; balance?: number; isActive?: boolean }) =>
+    request<RevolvingFund>(`/funds/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  topupFund: (id: string, amount: number, notes?: string) =>
+    request<{ ok: boolean }>(`/funds/${id}/topup`, { method: 'POST', body: JSON.stringify({ amount, notes: notes || null }) }),
+  disburseFund: (data: { fundId: string; employeeId: string; amount: number; bookingId?: string | null; notes?: string | null }) =>
+    request<RevolvingFundTxn>('/funds/disburse', { method: 'POST', body: JSON.stringify(data) }),
+  getFundBalances: () => request<EmployeeFundBalance[]>('/funds/balances'),
+  getFundTransactions: (params?: { employeeId?: string; status?: string }) => {
+    const q = new URLSearchParams()
+    if (params?.employeeId) q.set('employeeId', params.employeeId)
+    if (params?.status) q.set('status', params.status)
+    const qs = q.toString()
+    return request<RevolvingFundTxn[]>(`/funds/transactions${qs ? '?' + qs : ''}`)
+  },
+  reviewFundSettlement: (id: string, approve: boolean, reviewNote?: string) =>
+    request<RevolvingFundTxn>(`/funds/settlements/${id}/review`, {
+      method: 'PUT', body: JSON.stringify({ approve, reviewNote: reviewNote || null }),
+    }),
+  getMyFundBalance: () => request<EmployeeFundBalance>('/funds/my-balance'),
+  getMyFundTransactions: () => request<RevolvingFundTxn[]>('/funds/my-transactions'),
+  submitFundSettlement: (data: { fundId: string; spentAmount: number; returnedAmount: number; receiptImage?: string | null; bookingId?: string | null; notes?: string | null }) =>
+    request<RevolvingFundTxn>('/funds/settlements', { method: 'POST', body: JSON.stringify(data) }),
+
   getSimCards: () => request<GpsSimCard[]>('/gps/sims'),
   createSimCard: (data: Partial<GpsSimCard>) =>
     request<GpsSimCard>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),

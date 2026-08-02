@@ -75,6 +75,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	cartRepo := repository.NewCartRepository(db)
 	expenseRepo := repository.NewExpenseRepository(db)
 	inventoryRepo := repository.NewInventoryRepository(db)
+	revolvingFundRepo := repository.NewRevolvingFundRepository(db)
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	kpiRepo := repository.NewKpiRepository(db)
 	kpiCriterionRepo := repository.NewKpiCriterionRepository(db)
@@ -172,6 +173,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
+	revolvingFundHandler := handler.NewRevolvingFundHandler(revolvingFundRepo)
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService, permissionRepo)
 	kpiHandler := handler.NewKpiHandler(kpiService)
 	notificationHandler := handler.NewNotificationHandler(notificationService)
@@ -321,6 +323,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إنشاء/تعديل بيانات نظام GPS (عملاء/شرائح/أجهزة/تجديد/صيانة) يقتصر على من
 	// يملك صلاحية "gps_system" فعلياً (نفس الصلاحية الي تفتح كل صفحات نظام GPS
 	// بالواجهة) — مو أي موظف مسجل دخول.
+	requireFund := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "revolving_fund")
 	requireGpsSystem := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "gps_system")
 	// متابعة تجديد اشتراكات الجي بي اس تخص الاثنين: مهندس الجودة يتصل
 	// بالزبائن، ومسؤول الجي بي اس يشوف منو خلصت مهلته وشريحته تحتاج حرق.
@@ -779,6 +782,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.ListCustomers), requireAuth))
 	mux.Handle("POST /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.CreateCustomer), requireAuth, requireGpsSystem))
 	mux.Handle("PUT /api/gps/customers/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateCustomer), requireAuth, requireGpsSystem))
+
+	// ── الدوار ────────────────────────────────────────────────────────────────
+	// الإدارة والصرف والتدقيق: صلاحية "الدوار" (المحاسب). أما رصيد الموظف
+	// نفسه ورفع تسويته فمفتوحين لأي موظف مسجّل دخول — كل واحد يشوف حركاته هو بس.
+	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
+	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFund))
+	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFund))
+	mux.Handle("POST /api/funds/disburse", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Disburse), requireAuth, requireFund))
+	mux.Handle("GET /api/funds/balances", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Balances), requireAuth, requireFund))
+	mux.Handle("GET /api/funds/transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Txns), requireAuth, requireFund))
+	mux.Handle("PUT /api/funds/settlements/{id}/review", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ReviewSettlement), requireAuth, requireFund))
+
+	mux.Handle("GET /api/funds/my-balance", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyBalance), requireAuth))
+	mux.Handle("GET /api/funds/my-transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyTxns), requireAuth))
+	mux.Handle("POST /api/funds/settlements", middleware.Chain(http.HandlerFunc(revolvingFundHandler.SubmitSettlement), requireAuth))
 
 	mux.Handle("GET /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth))
 	mux.Handle("POST /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.CreateSim), requireAuth, requireGpsSystem))

@@ -592,5 +592,62 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					ON "GpsRenewalFollowUp" ("deviceRequestId", "calledAt" DESC);
 			`,
 		},
+		{
+			// الدوار: مبلغ دوّار للعمل يصرفه المحاسب للموظفين.
+			//
+			// الدورة: المحاسب يسلّم الموظف مبلغ → ينزل من رصيد الدوار ويطلع
+			// دَين برقبة الموظف → الموظف يشتري ويرفع صورة الوصل ويرجّع الباقي
+			// → المحاسب يدقّق ويوافق → وقتها بس رصيد الموظف يتصفّر ويرجع
+			// المبلغ المرتجع للدوار.
+			//
+			// ليش ما نصفّر إلا بموافقة المحاسب؟ لأن التصفير بدون تدقيق يعني
+			// أي موظف يقدر يعلن إنه صرف الفلوس ويطلع نظيف بدون ما أحد يشوف
+			// الوصل. الموافقة هي كل قيمة النظام هنا.
+			Version: "0171_revolving_fund",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "RevolvingFund" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					name TEXT NOT NULL UNIQUE,
+					balance NUMERIC(14,2) NOT NULL DEFAULT 0,
+					"isActive" BOOLEAN NOT NULL DEFAULT true,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+					"updatedAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+
+				INSERT INTO "RevolvingFund" (id, name) VALUES
+					(gen_random_uuid()::text, 'دوار الطاقة الشمسية'),
+					(gen_random_uuid()::text, 'دوار الشعبة الهندسية')
+				ON CONFLICT (name) DO NOTHING;
+
+				-- حركة الدوار: صرف للموظف، أو تسوية يرفعها الموظف، أو
+				-- تغذية للدوار نفسه من المحاسب.
+				CREATE TABLE IF NOT EXISTS "RevolvingFundTxn" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"fundId" TEXT NOT NULL REFERENCES "RevolvingFund"(id),
+					"employeeId" TEXT,
+					kind TEXT NOT NULL,              -- DISBURSE | SETTLEMENT | TOPUP
+					amount NUMERIC(14,2) NOT NULL DEFAULT 0,        -- المبلغ المسلَّم (بالصرف)
+					"spentAmount" NUMERIC(14,2) NOT NULL DEFAULT 0, -- المصروف بالتسوية
+					"returnedAmount" NUMERIC(14,2) NOT NULL DEFAULT 0, -- المرتجع بالتسوية
+					"bookingId" TEXT,
+					"receiptImage" TEXT,             -- صورة الوصل (base64)
+					notes TEXT,
+					status TEXT NOT NULL DEFAULT 'APPROVED', -- التسوية تبدي PENDING
+					"createdById" TEXT,
+					"reviewedById" TEXT,
+					"reviewedAt" TIMESTAMPTZ,
+					"reviewNote" TEXT,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "RevolvingFundTxn_employee_idx"
+					ON "RevolvingFundTxn" ("employeeId", "createdAt" DESC);
+				CREATE INDEX IF NOT EXISTS "RevolvingFundTxn_status_idx"
+					ON "RevolvingFundTxn" (status, "createdAt" DESC);
+
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'revolving_fund', 'الدوار (صرف وتدقيق المبالغ الدوّارة)')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
 	}
 }

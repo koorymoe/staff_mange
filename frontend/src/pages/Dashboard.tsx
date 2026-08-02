@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
 import type { Booking, Expense, AttendanceRecord, StaffRequest } from '../api'
 import { useSession, hasGpsSkill } from '../session'
@@ -329,6 +330,9 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* رصيد الدوار — يظهر بس للموظف الي أخذ منه */}
+      <MyFundBalance />
 
       {/* ═══ KPI Cards - ADMIN ═══ */}
       {isAdmin && (
