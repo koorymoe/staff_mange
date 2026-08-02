@@ -245,6 +245,32 @@ export interface StockIntake {
   createdAt: string
 }
 
+
+/** طلب إجازة — الموافقة تروح للمخوّل حسب نوع كادر الموظف */
+export type LeaveRoute = 'FIELD' | 'EVENING' | 'ADMIN'
+export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+
+export interface LeaveRequest {
+  id: string
+  employeeId: string
+  employeeName: string
+  employeeRole: string
+  employeeShift?: string | null
+  jobTitle?: string | null
+  startDate: string
+  endDate: string
+  days: number
+  reason?: string | null
+  route: LeaveRoute
+  routeLabel: string
+  status: LeaveStatus
+  statusLabel: string
+  decidedByName?: string | null
+  decidedAt?: string | null
+  decisionNote?: string | null
+  createdAt: string
+}
+
 export interface GpsSimCard {
   id: string
   simNumber: string
@@ -2055,6 +2081,16 @@ export const api = {
     request<StockIntake[]>(`/inventory/stock-intake${toolId ? '?toolId=' + toolId : ''}`),
   /** أرقام اللوحة الرئيسية — بدون سحب أرشيف الشركة كامل للمتصفح */
   getDashboardSummary: () => request<{ employeeCount: number; customerCount: number; bookingCount: number; gpsDeviceCount: number }>('/dashboard/summary'),
+
+  // ── الإجازات ──
+  createLeave: (data: { startDate: string; endDate?: string; reason?: string | null }) =>
+    request<LeaveRequest>('/leaves', { method: 'POST', body: JSON.stringify(data) }),
+  getMyLeaves: () => request<LeaveRequest[]>('/leaves/mine'),
+  cancelLeave: (id: string) => request<{ ok: boolean }>(`/leaves/${id}`, { method: 'DELETE' }),
+  getLeaveInbox: (status?: string) => request<LeaveRequest[]>(`/leaves/inbox${status ? '?status=' + status : ''}`),
+  getLeavePendingCount: () => request<{ count: number; canApprove: boolean }>('/leaves/pending-count'),
+  decideLeave: (id: string, approve: boolean, note?: string) =>
+    request<LeaveRequest>(`/leaves/${id}/decide`, { method: 'PUT', body: JSON.stringify({ approve, note: note || null }) }),
 
   getFunds: () => request<RevolvingFund[]>('/funds'),
   updateFund: (id: string, data: { name?: string; balance?: number; isActive?: boolean }) =>

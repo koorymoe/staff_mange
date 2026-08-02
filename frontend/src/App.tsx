@@ -57,6 +57,7 @@ const GpsRenewalsReview = lazy(() => import('./pages/gps/GpsRenewalsReview'))
 const GpsMaintenanceRequestPage = lazy(() => import('./pages/gps/GpsMaintenanceRequestPage'))
 const GpsMaintenanceReview = lazy(() => import('./pages/gps/GpsMaintenanceReview'))
 const AttendancePage = lazy(() => import('./pages/AttendancePage'))
+const LeavesPage = lazy(() => import('./pages/LeavesPage'))
 
 const WorkReportPage = lazy(() => import('./pages/WorkReportPage'))
 const SuppliersPage = lazy(() => import('./pages/SuppliersPage'))
@@ -171,6 +172,7 @@ function App() {
           <Route path="gps/sims" element={<GpsSims />} />
           <Route path="gps/follow-up" element={<GpsFollowUp />} />
           <Route path="revolving-fund" element={<RevolvingFundPage />} />
+          <Route path="leaves" element={<LeavesPage />} />
           <Route path="gps-install-costs" element={<GpsInstallCostsPage />} />
           <Route path="gps/renewals" element={<GpsRenewals />} />
           <Route path="gps/maintenance" element={<GpsMaintenance />} />

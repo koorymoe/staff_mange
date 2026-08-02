@@ -177,6 +177,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	revolvingFundHandler := handler.NewRevolvingFundHandler(revolvingFundRepo)
 	dashboardHandler := handler.NewDashboardHandler(db)
+	leaveHandler := handler.NewLeaveRequestHandler(repository.NewLeaveRequestRepository(db), permissionRepo, notificationRepo)
 	gpsInstallCostHandler := handler.NewGpsInstallCostHandler(repository.NewGpsInstallCostRepository(db))
 	attendanceHandler := handler.NewAttendanceHandler(attendanceService, permissionRepo)
 	kpiHandler := handler.NewKpiHandler(kpiService)
@@ -335,6 +336,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// قوائم زبائن الجي بي اس فيها أسماء وأرقام ٤٩٣ زبون — كانت مفتوحة لأي
 	// موظف مسجّل دخول، يعني الفني يقدر يسحبها كلها من F12 وهو ما إله علاقة
 	// بالجي بي اس أصلاً. صارت محصورة بالي شغلهم فعلاً بالجي بي اس.
+	requireVipManualAdd := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER"}, "vip_manual_add")
 	requireGpsData := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
 		[]string{"ADMIN", "OWNER", "SALES"}, "gps_system")
 
@@ -639,7 +642,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (رقم الزبون وشنو طلب ومنو علّمه) تُعرض لمدير النظام حصراً.
 	mux.Handle("GET /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.List), requireAuth, requireAdmin))
 	mux.Handle("GET /api/vip-customers/ids", middleware.Chain(http.HandlerFunc(vipCustomerHandler.ListIDs), requireAuth))
-	mux.Handle("POST /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Mark), requireAuth, requireCustomerMgmt))
+	// الإضافة اليدوية للشخصية المهمة: الإداري ومدير النظام حصراً — مو أي
+	// موظف عنده صلاحية العملاء. (الترحيل التلقائي من المشاريع يمر بالخدمة
+	// مو بهذا المسار، فما يتأثر.)
+	mux.Handle("POST /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Mark), requireAuth, requireVipManualAdd))
 	mux.Handle("DELETE /api/vip-customers/{customerId}", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Unmark), requireAuth, requireAdmin))
 	mux.Handle("POST /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Create), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/project-work-types/{id}", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Delete), requireAuth, requireProjectManager))
@@ -803,6 +809,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نفسه ورفع تسويته فمفتوحين لأي موظف مسجّل دخول — كل واحد يشوف حركاته هو بس.
 	// حساب تكاليف الشد — تفصيلي لكل الكوادر، ضمن خانة الحسابات
 	mux.Handle("GET /api/finance/gps-install-costs", middleware.Chain(http.HandlerFunc(gpsInstallCostHandler.Summary), requireAuth, requireFinance))
+
+	// ── الإجازات ──────────────────────────────────────────────────────────────
+	// أي موظف يقدّم ويشوف طلباته. البت بالطلبات محصور بالمخوّل حسب مسار
+	// الكادر (يُتحقق داخل الهاندلر لأنه يعتمد على مسار الطلب نفسه).
+	mux.Handle("POST /api/leaves", middleware.Chain(http.HandlerFunc(leaveHandler.Create), requireAuth))
+	mux.Handle("GET /api/leaves/mine", middleware.Chain(http.HandlerFunc(leaveHandler.Mine), requireAuth))
+	mux.Handle("DELETE /api/leaves/{id}", middleware.Chain(http.HandlerFunc(leaveHandler.Cancel), requireAuth))
+	mux.Handle("GET /api/leaves/inbox", middleware.Chain(http.HandlerFunc(leaveHandler.Inbox), requireAuth))
+	mux.Handle("GET /api/leaves/pending-count", middleware.Chain(http.HandlerFunc(leaveHandler.PendingCount), requireAuth))
+	mux.Handle("PUT /api/leaves/{id}/decide", middleware.Chain(http.HandlerFunc(leaveHandler.Decide), requireAuth))
 
 	// أرقام اللوحة الرئيسية بدون سحب أرشيف الشركة كامل
 	mux.Handle("GET /api/dashboard/summary", middleware.Chain(http.HandlerFunc(dashboardHandler.Summary), requireAuth))

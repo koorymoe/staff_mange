@@ -703,5 +703,43 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				WHERE "requestKind" IS NULL;
 			`,
 		},
+		{
+			// طلبات الإجازة: الموظف يقدّم من النظام، والموافقة تروح للشخص
+			// المخوّل حسب نوع الكادر.
+			//
+			// التوجيه بالصلاحيات مو بأسماء الأشخاص — عبد الله وتقي اليوم،
+			// وغيرهم بكرة. الصلاحية تنتقل، الاسم لا.
+			//   leave_approve_field    → الكوادر الفنية والليدرية
+			//   leave_approve_evening  → الكوادر المسائية
+			//   leave_approve_admin    → الكوادر الإدارية
+			// والمالك يوافق على أي طلب مهما كان مساره.
+			Version: "0174_leave_requests",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "LeaveRequest" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+					"startDate" DATE NOT NULL,
+					"endDate" DATE NOT NULL,
+					reason TEXT,
+					route TEXT NOT NULL,             -- FIELD | EVENING | ADMIN
+					status TEXT NOT NULL DEFAULT 'PENDING',
+					"decidedById" TEXT REFERENCES "Employee"(id),
+					"decidedAt" TIMESTAMPTZ,
+					"decisionNote" TEXT,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "LeaveRequest_employee_idx"
+					ON "LeaveRequest" ("employeeId", "createdAt" DESC);
+				CREATE INDEX IF NOT EXISTS "LeaveRequest_pending_idx"
+					ON "LeaveRequest" (status, route, "startDate");
+
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'leave_approve_field',   'الموافقة على إجازات الكوادر الفنية والليدرية'),
+					(gen_random_uuid()::text, 'leave_approve_evening', 'الموافقة على إجازات الكوادر المسائية'),
+					(gen_random_uuid()::text, 'leave_approve_admin',   'الموافقة على إجازات الكوادر الإدارية'),
+					(gen_random_uuid()::text, 'vip_manual_add',        'إضافة شخصية مهمة يدوياً')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
 	}
 }

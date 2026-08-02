@@ -61,3 +61,19 @@ func (r *NotificationRepository) MarkAllRead(employeeID string) error {
 	_, err := r.db.Exec(`UPDATE "Notification" SET read = true WHERE "employeeId" = $1 AND read = false`, employeeID)
 	return err
 }
+
+// CreateForPermission ينبّه كل من عنده صلاحية معيّنة.
+//
+// نستعمله بطلبات الإجازة: التنبيه يروح للمخوّل بهذا المسار بالذات، فلو
+// انتقلت المسؤولية من شخص لشخص تنتقل معها التنبيهات — بدون تعديل كود.
+func (r *NotificationRepository) CreateForPermission(permissionName, notifType, message string) error {
+	_, err := r.db.Exec(`
+		INSERT INTO "Notification" (id, "employeeId", type, message)
+		SELECT gen_random_uuid()::text, e.id, $2, $3
+		FROM "Employee" e
+		JOIN "EmployeePermission" ep ON ep."employeeId" = e.id
+		JOIN "Permission" p ON p.id = ep."permissionId"
+		WHERE p.name = $1 AND e.status = 'ACTIVE'
+	`, permissionName, notifType, message)
+	return err
+}
