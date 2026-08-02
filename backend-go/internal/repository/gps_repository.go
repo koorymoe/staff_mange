@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"fmt"
+
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
@@ -192,10 +194,88 @@ func (r *GpsRepository) UpdateCustomer(id string, req model.UpsertGpsCustomerReq
 
 // ── SIM Cards ────────────────────────────────────────────────────────────────
 
+const simSelect = `SELECT s.*, c."fullName" AS "customerName"
+	FROM "SimCard" s LEFT JOIN "GpsCustomer" c ON c.id = s."customerId"`
+
+func (r *GpsRepository) decorateSims(sims []model.SimCard) []model.SimCard {
+	for i := range sims {
+		sims[i].StatusLabel = model.SimStatusLabels[sims[i].Status]
+	}
+	return sims
+}
+
 func (r *GpsRepository) ListSims() ([]model.SimCard, error) {
 	sims := []model.SimCard{}
-	err := r.db.Select(&sims, `SELECT * FROM "SimCard" ORDER BY "createdAt" DESC`)
-	return sims, err
+	err := r.db.Select(&sims, simSelect+` ORDER BY s."createdAt" DESC`)
+	return r.decorateSims(sims), err
+}
+
+// ListAvailableSims الشرائح الي تنفع تنربط بزبون جديد — المتوفرة بس.
+// الشريحة المربوطة ما تظهر هنا لحد ما تنحرّر من جديد.
+func (r *GpsRepository) ListAvailableSims() ([]model.SimCard, error) {
+	sims := []model.SimCard{}
+	err := r.db.Select(&sims, simSelect+` WHERE s.status = 'AVAILABLE' ORDER BY s."simNumber"`)
+	return r.decorateSims(sims), err
+}
+
+// AssignSimToCustomer يربط شريحة متوفرة بزبون ويخرجها من المتوفر.
+// الشرط `status = 'AVAILABLE'` بالتحديث نفسه يمنع سباق يربط نفس الشريحة
+// لزبونين بنفس اللحظة — لو انربطت قبلنا، التحديث ما يمس ولا صف.
+func (r *GpsRepository) AssignSimToCustomer(simID, customerID string) (*model.SimCard, error) {
+	var s model.SimCard
+	err := r.db.Get(&s, `
+		UPDATE "SimCard"
+		SET status = 'IN_USE', "customerId" = $2, "assignedAt" = now(), "releasedAt" = NULL
+		WHERE id = $1 AND status = 'AVAILABLE'
+		RETURNING *
+	`, simID, customerID)
+	if err != nil {
+		return nil, fmt.Errorf("الشريحة مو متوفرة — يمكن انربطت بزبون ثاني")
+	}
+	s.StatusLabel = model.SimStatusLabels[s.Status]
+	return &s, nil
+}
+
+// ReleaseSim تحرير الشريحة: تفك ارتباطها بالزبون وترجعها للمتوفر حتى
+// تنربط بزبون جديد. تشتغل من أي حالة (مربوطة/تحتاج حرق/محروقة).
+func (r *GpsRepository) ReleaseSim(simID string) (*model.SimCard, error) {
+	var s model.SimCard
+	err := r.db.Get(&s, `
+		UPDATE "SimCard"
+		SET status = 'AVAILABLE', "customerId" = NULL, "releasedAt" = now(), "assignedAt" = NULL
+		WHERE id = $1
+		RETURNING *
+	`, simID)
+	if err != nil {
+		return nil, err
+	}
+	s.StatusLabel = model.SimStatusLabels[s.Status]
+	return &s, nil
+}
+
+// MarkSimBurned يأشر إن الشريحة انحرقت فعلاً. تبقى مربوطة بالزبون حتى
+// يجي مسؤول الجي بي اس ويحرّرها — التحرير قرار منفصل عن الحرق.
+func (r *GpsRepository) MarkSimBurned(simID string) (*model.SimCard, error) {
+	var s model.SimCard
+	err := r.db.Get(&s, `
+		UPDATE "SimCard" SET status = 'BURNED', "burnedAt" = now()
+		WHERE id = $1 RETURNING *
+	`, simID)
+	if err != nil {
+		return nil, err
+	}
+	s.StatusLabel = model.SimStatusLabels[s.Status]
+	return &s, nil
+}
+
+// MarkSimNeedsBurn يحط الشريحة بقائمة "تحتاج حرق" حتى تطلع لمسؤول
+// الجي بي اس. ما نلمس شريحة انحرقت أصلاً.
+func (r *GpsRepository) MarkSimNeedsBurn(simID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "SimCard" SET status = 'NEEDS_BURN'
+		WHERE id = $1 AND status = 'IN_USE'
+	`, simID)
+	return err
 }
 
 func (r *GpsRepository) CreateSim(req model.UpsertSimCardRequest) (*model.SimCard, error) {
@@ -212,6 +292,7 @@ func (r *GpsRepository) CreateSim(req model.UpsertSimCardRequest) (*model.SimCar
 	if err != nil {
 		return nil, err
 	}
+	s.StatusLabel = model.SimStatusLabels[s.Status]
 	return &s, nil
 }
 
@@ -231,6 +312,7 @@ func (r *GpsRepository) UpdateSim(id string, req model.UpsertSimCardRequest) (*m
 	if err != nil {
 		return nil, err
 	}
+	s.StatusLabel = model.SimStatusLabels[s.Status]
 	return &s, nil
 }
 
@@ -511,4 +593,137 @@ func (r *GpsRepository) Stats() (*model.GpsStats, error) {
 		AvailableSims:   availableSims,
 		InUseSims:       totalSims - availableSims,
 	}, nil
+}
+
+// ── متابعة تجديد الاشتراكات المنتهية ─────────────────────────────────────────
+
+// ListSubscriptionFollowUps كل اشتراك منتهي مع عدد الأيام من انتهائه وآخر
+// اتصال صار عليه. هذي القائمة هي أساس شغل مهندس الجودة ومسؤول الجي بي اس:
+// منو لازم ننتصل بيه، ومنو خلصت مهلته وشريحته تحتاج حرق.
+//
+// نحسب daysSinceExpiry بالسيرفر (مو بالواجهة) حتى ما يختلف الرقم بين
+// شاشة وشاشة حسب توقيت جهاز المستخدم.
+func (r *GpsRepository) ListSubscriptionFollowUps() ([]model.GpsSubscriptionFollowUpRow, error) {
+	rows := []model.GpsSubscriptionFollowUpRow{}
+	err := r.db.Select(&rows, `
+		SELECT
+			d.id                                   AS "deviceRequestId",
+			d."customerId"                         AS "customerId",
+			COALESCE(c."fullName", '')             AS "customerName",
+			COALESCE(c.phone, '')                  AS "customerPhone",
+			d."subscriptionEnd"                    AS "subscriptionEnd",
+			(CURRENT_DATE - d."subscriptionEnd"::date) AS "daysSinceExpiry",
+			d."simCardId"                          AS "simCardId",
+			s."simNumber"                          AS "simNumber",
+			s.status::text                         AS "simStatus",
+			d."gpsNumber"                          AS "gpsNumber",
+			f.outcome                              AS "lastOutcome",
+			f."calledAt"                           AS "lastCalledAt"
+		FROM "GpsDeviceRequest" d
+		LEFT JOIN "GpsCustomer" c ON c.id = d."customerId"
+		LEFT JOIN "SimCard" s     ON s.id = d."simCardId"
+		LEFT JOIN LATERAL (
+			SELECT outcome, "calledAt" FROM "GpsRenewalFollowUp"
+			WHERE "deviceRequestId" = d.id ORDER BY "calledAt" DESC LIMIT 1
+		) f ON true
+		WHERE d."subscriptionEnd" IS NOT NULL
+		  AND d."subscriptionEnd"::date <= CURRENT_DATE
+		ORDER BY d."subscriptionEnd" ASC
+	`)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		decorateFollowUpRow(&rows[i])
+	}
+	return rows, nil
+}
+
+// decorateFollowUpRow يحدد مرحلة كل اشتراك حسب عدد الأيام وآخر نتيجة اتصال.
+//
+// القاعدة الي اتفقنا عليها:
+//   - أقل من ٤٠ يوم           → فترة سماح، ما نتصل بعد
+//   - ٤٠ فما فوق وما اتصلنا   → مستحق الاتصال (شغل مهندس الجودة)
+//   - اتصلنا والزبون رفض      → ننتظر مهلة ٤٠ يوم ثانية
+//   - ٨٠ فما فوق والزبون رفض  → الشريحة تحتاج حرق (شغل مسؤول الجي بي اس)
+//   - راح يجدد أو يحرّك        → انحسم، يطلع من قائمة الشغل
+func decorateFollowUpRow(row *model.GpsSubscriptionFollowUpRow) {
+	if row.LastOutcome != nil {
+		row.LastOutcomeLabel = model.FollowUpOutcomeLabels[*row.LastOutcome]
+	}
+
+	resolved := row.LastOutcome != nil &&
+		(*row.LastOutcome == model.FollowUpOutcomeWillRenew || *row.LastOutcome == model.FollowUpOutcomeWillMove)
+	refused := row.LastOutcome != nil && *row.LastOutcome == model.FollowUpOutcomeRefused
+
+	switch {
+	case resolved:
+		row.Stage = model.FollowUpStageResolved
+	case row.DaysSinceExpiry >= model.GpsFollowUpBurnAfter && refused:
+		row.Stage = model.FollowUpStageBurnDue
+	case refused:
+		row.Stage = model.FollowUpStageWaiting
+		row.DaysUntilNextStep = model.GpsFollowUpBurnAfter - row.DaysSinceExpiry
+	case row.DaysSinceExpiry >= model.GpsFollowUpCallAfter:
+		row.Stage = model.FollowUpStageCallDue
+	default:
+		row.Stage = model.FollowUpStageGrace
+		row.DaysUntilNextStep = model.GpsFollowUpCallAfter - row.DaysSinceExpiry
+	}
+	row.StageLabel = model.FollowUpStageLabels[row.Stage]
+}
+
+// CreateFollowUp يسجّل نتيجة اتصال مهندس الجودة بالزبون.
+func (r *GpsRepository) CreateFollowUp(deviceRequestID string, calledByID *string, req model.CreateFollowUpRequest) (*model.GpsRenewalFollowUp, error) {
+	var f model.GpsRenewalFollowUp
+	err := r.db.Get(&f, `
+		INSERT INTO "GpsRenewalFollowUp" (id, "deviceRequestId", "customerId", "calledById", outcome, notes, "daysSinceExpiry")
+		SELECT gen_random_uuid()::text, d.id, d."customerId", $2, $3, $4,
+			(CURRENT_DATE - d."subscriptionEnd"::date)
+		FROM "GpsDeviceRequest" d WHERE d.id = $1
+		RETURNING *
+	`, deviceRequestID, calledByID, req.Outcome, req.Notes)
+	if err != nil {
+		return nil, err
+	}
+	f.OutcomeLabel = model.FollowUpOutcomeLabels[f.Outcome]
+	return &f, nil
+}
+
+// ListFollowUps سجل الاتصالات على جهاز معيّن.
+func (r *GpsRepository) ListFollowUps(deviceRequestID string) ([]model.GpsRenewalFollowUp, error) {
+	rows := []model.GpsRenewalFollowUp{}
+	err := r.db.Select(&rows, `
+		SELECT f.*, e.name AS "calledByName"
+		FROM "GpsRenewalFollowUp" f
+		LEFT JOIN "Employee" e ON e.id = f."calledById"
+		WHERE f."deviceRequestId" = $1 ORDER BY f."calledAt" DESC
+	`, deviceRequestID)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		rows[i].OutcomeLabel = model.FollowUpOutcomeLabels[rows[i].Outcome]
+	}
+	return rows, nil
+}
+
+// SyncSimsNeedingBurn يأشر شرائح كل الاشتراكات الي وصلت مرحلة الحرق.
+// ينداري كل ما تُطلب قائمة المتابعة — بدل مهمة مجدولة منفصلة.
+func (r *GpsRepository) SyncSimsNeedingBurn() error {
+	_, err := r.db.Exec(`
+		UPDATE "SimCard" SET status = 'NEEDS_BURN'
+		WHERE status = 'IN_USE' AND id IN (
+			SELECT d."simCardId" FROM "GpsDeviceRequest" d
+			JOIN LATERAL (
+				SELECT outcome FROM "GpsRenewalFollowUp"
+				WHERE "deviceRequestId" = d.id ORDER BY "calledAt" DESC LIMIT 1
+			) f ON true
+			WHERE d."simCardId" IS NOT NULL
+			  AND d."subscriptionEnd" IS NOT NULL
+			  AND (CURRENT_DATE - d."subscriptionEnd"::date) >= $1
+			  AND f.outcome = $2
+		)
+	`, model.GpsFollowUpBurnAfter, model.FollowUpOutcomeRefused)
+	return err
 }

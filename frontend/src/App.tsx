@@ -43,6 +43,7 @@ const GpsDashboard = lazy(() => import('./pages/gps/GpsDashboard'))
 const GpsCustomers = lazy(() => import('./pages/gps/GpsCustomers'))
 const GpsDevices = lazy(() => import('./pages/gps/GpsDevices'))
 const GpsSims = lazy(() => import('./pages/gps/GpsSims'))
+const GpsFollowUp = lazy(() => import('./pages/gps/GpsFollowUp'))
 const GpsRenewals = lazy(() => import('./pages/gps/GpsRenewals'))
 const GpsMaintenance = lazy(() => import('./pages/gps/GpsMaintenance'))
 const GpsEmployee = lazy(() => import('./pages/gps/GpsEmployee'))
@@ -166,6 +167,7 @@ function App() {
           <Route path="gps/customers" element={<GpsCustomers />} />
           <Route path="gps/devices" element={<GpsDevices />} />
           <Route path="gps/sims" element={<GpsSims />} />
+          <Route path="gps/follow-up" element={<GpsFollowUp />} />
           <Route path="gps/renewals" element={<GpsRenewals />} />
           <Route path="gps/maintenance" element={<GpsMaintenance />} />
           <Route path="gps/employee" element={<GpsEmployee />} />

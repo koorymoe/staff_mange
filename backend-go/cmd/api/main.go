@@ -322,6 +322,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// يملك صلاحية "gps_system" فعلياً (نفس الصلاحية الي تفتح كل صفحات نظام GPS
 	// بالواجهة) — مو أي موظف مسجل دخول.
 	requireGpsSystem := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "gps_system")
+	// متابعة تجديد اشتراكات الجي بي اس تخص الاثنين: مهندس الجودة يتصل
+	// بالزبائن، ومسؤول الجي بي اس يشوف منو خلصت مهلته وشريحته تحتاج حرق.
+	requireGpsOrQuality := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "gps_system", "quality_control")
 
 	mux := http.NewServeMux()
 
@@ -780,6 +783,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth))
 	mux.Handle("POST /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.CreateSim), requireAuth, requireGpsSystem))
 	mux.Handle("PUT /api/gps/sims/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateSim), requireAuth, requireGpsSystem))
+
+	// دورة حياة الشريحة: الربط والتحرير والحرق كلها شغل مسؤول الجي بي اس.
+	mux.Handle("GET /api/gps/sims/available", middleware.Chain(http.HandlerFunc(gpsHandler.ListAvailableSims), requireAuth, requireGpsSystem))
+	mux.Handle("POST /api/gps/sims/{id}/assign", middleware.Chain(http.HandlerFunc(gpsHandler.AssignSim), requireAuth, requireGpsSystem))
+	mux.Handle("POST /api/gps/sims/{id}/release", middleware.Chain(http.HandlerFunc(gpsHandler.ReleaseSim), requireAuth, requireGpsSystem))
+	mux.Handle("POST /api/gps/sims/{id}/burn", middleware.Chain(http.HandlerFunc(gpsHandler.BurnSim), requireAuth, requireGpsSystem))
+
+	// متابعة التجديد: القائمة يشوفها الاثنين (مهندس الجودة يتصل، ومسؤول
+	// الجي بي اس يشوف منو يحتاج حرق)، وتسجيل نتيجة الاتصال لمهندس الجودة.
+	mux.Handle("GET /api/gps/subscriptions/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.SubscriptionFollowUps), requireAuth, requireGpsOrQuality))
+	mux.Handle("GET /api/gps/devices/{id}/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.ListFollowUps), requireAuth, requireGpsOrQuality))
+	mux.Handle("POST /api/gps/devices/{id}/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.CreateFollowUp), requireAuth, requireGpsOrQuality))
 
 	// نفس الشي هنا: صف GpsDeviceRequest الجديد يبدأ status='PENDING' افتراضياً
 	// بالمخطط نفسه (schema_base.go) — هذا "طلب" بانتظار مراجعة إداري GPS، مو جهاز

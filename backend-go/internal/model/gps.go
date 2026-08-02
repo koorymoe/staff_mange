@@ -30,15 +30,114 @@ type UpsertGpsCustomerRequest struct {
 	ResidenceCardBackURL  *string `json:"residenceCardBackUrl"`
 }
 
+// حالات الشريحة — دورة حياة كاملة من المتوفر للحرق وبالعكس (التحرير).
+const (
+	SimStatusAvailable = "AVAILABLE"  // متوفرة، تنفع تنربط بزبون جديد
+	SimStatusInUse     = "IN_USE"     // مربوطة بزبون — ما تظهر بالمتوفر
+	SimStatusNeedsBurn = "NEEDS_BURN" // الزبون رفض التجديد وخلصت المهلة
+	SimStatusBurned    = "BURNED"     // انحرقت فعلاً
+)
+
+var SimStatusLabels = map[string]string{
+	SimStatusAvailable: "متوفرة",
+	SimStatusInUse:     "مربوطة بزبون",
+	SimStatusNeedsBurn: "تحتاج حرق",
+	SimStatusBurned:    "محروقة",
+}
+
 type SimCard struct {
-	ID         string    `db:"id" json:"id"`
-	SimNumber  string    `db:"simNumber" json:"simNumber"`
-	ICCID      *string   `db:"iccid" json:"iccid"`
-	Operator   string    `db:"operator" json:"operator"`
-	Status     string    `db:"status" json:"status"`
-	CustomerID *string   `db:"customerId" json:"customerId"`
-	Notes      *string   `db:"notes" json:"notes"`
-	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
+	ID         string     `db:"id" json:"id"`
+	SimNumber  string     `db:"simNumber" json:"simNumber"`
+	ICCID      *string    `db:"iccid" json:"iccid"`
+	Operator   string     `db:"operator" json:"operator"`
+	Status     string     `db:"status" json:"status"`
+	CustomerID *string    `db:"customerId" json:"customerId"`
+	Notes      *string    `db:"notes" json:"notes"`
+	AssignedAt *time.Time `db:"assignedAt" json:"assignedAt"`
+	ReleasedAt *time.Time `db:"releasedAt" json:"releasedAt"`
+	BurnedAt   *time.Time `db:"burnedAt" json:"burnedAt"`
+	CreatedAt  time.Time  `db:"createdAt" json:"createdAt"`
+
+	StatusLabel  string  `db:"-" json:"statusLabel"`
+	CustomerName *string `db:"customerName" json:"customerName"`
+}
+
+// نتائج اتصال مهندس الجودة بالزبون بعد انتهاء الاشتراك.
+const (
+	FollowUpOutcomeWillRenew = "WILL_RENEW" // راح يجدد
+	FollowUpOutcomeWillMove  = "WILL_MOVE"  // راح يحرّك
+	FollowUpOutcomeRefused   = "REFUSED"    // ما يريد — تبدي مهلة الـ٤٠ الثانية
+	FollowUpOutcomeNoAnswer  = "NO_ANSWER"  // ما رد
+)
+
+var FollowUpOutcomeLabels = map[string]string{
+	FollowUpOutcomeWillRenew: "راح يجدد",
+	FollowUpOutcomeWillMove:  "راح يحرّك",
+	FollowUpOutcomeRefused:   "ما يريد يجدد",
+	FollowUpOutcomeNoAnswer:  "ما رد على الاتصال",
+}
+
+// GpsRenewalFollowUp سجل اتصال مهندس الجودة بزبون انتهى اشتراكه.
+type GpsRenewalFollowUp struct {
+	ID              string    `db:"id" json:"id"`
+	DeviceRequestID string    `db:"deviceRequestId" json:"deviceRequestId"`
+	CustomerID      *string   `db:"customerId" json:"customerId"`
+	CalledByID      *string   `db:"calledById" json:"calledById"`
+	Outcome         string    `db:"outcome" json:"outcome"`
+	Notes           *string   `db:"notes" json:"notes"`
+	DaysSinceExpiry *int      `db:"daysSinceExpiry" json:"daysSinceExpiry"`
+	CalledAt        time.Time `db:"calledAt" json:"calledAt"`
+
+	OutcomeLabel string  `db:"-" json:"outcomeLabel"`
+	CalledByName *string `db:"calledByName" json:"calledByName"`
+}
+
+type CreateFollowUpRequest struct {
+	Outcome string  `json:"outcome"`
+	Notes   *string `json:"notes"`
+}
+
+// GpsSubscriptionFollowUpRow صف بقائمة متابعة الاشتراكات المنتهية — يجمع
+// الزبون والجهاز والشريحة وآخر اتصال، مع عدد الأيام من انتهاء الاشتراك.
+type GpsSubscriptionFollowUpRow struct {
+	DeviceRequestID string     `db:"deviceRequestId" json:"deviceRequestId"`
+	CustomerID      string     `db:"customerId" json:"customerId"`
+	CustomerName    string     `db:"customerName" json:"customerName"`
+	CustomerPhone   string     `db:"customerPhone" json:"customerPhone"`
+	SubscriptionEnd *time.Time `db:"subscriptionEnd" json:"subscriptionEnd"`
+	DaysSinceExpiry int        `db:"daysSinceExpiry" json:"daysSinceExpiry"`
+	SimCardID       *string    `db:"simCardId" json:"simCardId"`
+	SimNumber       *string    `db:"simNumber" json:"simNumber"`
+	SimStatus       *string    `db:"simStatus" json:"simStatus"`
+	GpsNumber       *string    `db:"gpsNumber" json:"gpsNumber"`
+	LastOutcome     *string    `db:"lastOutcome" json:"lastOutcome"`
+	LastCalledAt    *time.Time `db:"lastCalledAt" json:"lastCalledAt"`
+
+	// Stage: أي مرحلة من دورة المتابعة — تنحسب بالسيرفر حتى الواجهة ما
+	// تعيد تعريف الأرقام وتنحرف عنها.
+	Stage             string `db:"-" json:"stage"`
+	StageLabel        string `db:"-" json:"stageLabel"`
+	LastOutcomeLabel  string `db:"-" json:"lastOutcomeLabel"`
+	DaysUntilNextStep int    `db:"-" json:"daysUntilNextStep"`
+}
+
+// مراحل دورة متابعة الاشتراك المنتهي
+const (
+	FollowUpStageGrace    = "GRACE"    // لسه ما وصل ٤٠ يوم
+	FollowUpStageCallDue  = "CALL_DUE" // وصل ٤٠ يوم — مهندس الجودة لازم يتصل
+	FollowUpStageWaiting  = "WAITING"  // اتصلنا والزبون رفض — بمهلة الـ٤٠ الثانية
+	FollowUpStageBurnDue  = "BURN_DUE" // خلصت الـ٨٠ يوم — الشريحة تحتاج حرق
+	FollowUpStageResolved = "RESOLVED" // راح يجدد أو يحرّك
+	GpsFollowUpCallAfter  = 40         // يوم من انتهاء الاشتراك
+	GpsFollowUpBurnAfter  = 80         // يوم من انتهاء الاشتراك
+)
+
+var FollowUpStageLabels = map[string]string{
+	FollowUpStageGrace:    "بفترة السماح",
+	FollowUpStageCallDue:  "مستحق الاتصال",
+	FollowUpStageWaiting:  "بانتظار المهلة الثانية",
+	FollowUpStageBurnDue:  "الشريحة تحتاج حرق",
+	FollowUpStageResolved: "تم الحسم",
 }
 
 type UpsertSimCardRequest struct {

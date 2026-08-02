@@ -165,9 +165,50 @@ export interface GpsSimCard {
   operator: string
   // Some legacy records use 'AVAILABLE'/'IN_USE' instead of 'ACTIVE'/'INACTIVE'.
   status: string
+  statusLabel?: string
   customerId?: string | null
+  customerName?: string | null
   customer?: GpsCustomer | null
+  assignedAt?: string | null
+  releasedAt?: string | null
+  burnedAt?: string | null
   createdAt?: string
+}
+
+/** نتيجة اتصال مهندس الجودة بزبون انتهى اشتراكه */
+export type GpsFollowUpOutcome = 'WILL_RENEW' | 'WILL_MOVE' | 'REFUSED' | 'NO_ANSWER'
+
+/** مرحلة الاشتراك المنتهي بدورة المتابعة — تجي محسوبة من السيرفر */
+export type GpsFollowUpStage = 'GRACE' | 'CALL_DUE' | 'WAITING' | 'BURN_DUE' | 'RESOLVED'
+
+export interface GpsSubscriptionFollowUp {
+  deviceRequestId: string
+  customerId: string
+  customerName: string
+  customerPhone: string
+  subscriptionEnd: string | null
+  daysSinceExpiry: number
+  simCardId?: string | null
+  simNumber?: string | null
+  simStatus?: string | null
+  gpsNumber?: string | null
+  lastOutcome?: GpsFollowUpOutcome | null
+  lastOutcomeLabel?: string
+  lastCalledAt?: string | null
+  stage: GpsFollowUpStage
+  stageLabel: string
+  daysUntilNextStep: number
+}
+
+export interface GpsRenewalFollowUp {
+  id: string
+  deviceRequestId: string
+  outcome: GpsFollowUpOutcome
+  outcomeLabel: string
+  notes?: string | null
+  daysSinceExpiry?: number | null
+  calledByName?: string | null
+  calledAt: string
 }
 
 export interface GpsDeviceRequest {
@@ -1920,6 +1961,23 @@ export const api = {
     request<GpsSimCard>('/gps/sims', { method: 'POST', body: JSON.stringify(data) }),
   updateSimCard: (id: string, data: Partial<GpsSimCard>) =>
     request<GpsSimCard>(`/gps/sims/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
+  // ── دورة حياة الشريحة ومتابعة التجديد ──
+  getAvailableSimCards: () => request<GpsSimCard[]>('/gps/sims/available'),
+  assignSimCard: (id: string, customerId: string) =>
+    request<GpsSimCard>(`/gps/sims/${id}/assign`, { method: 'POST', body: JSON.stringify({ customerId }) }),
+  releaseSimCard: (id: string) =>
+    request<GpsSimCard>(`/gps/sims/${id}/release`, { method: 'POST' }),
+  burnSimCard: (id: string) =>
+    request<GpsSimCard>(`/gps/sims/${id}/burn`, { method: 'POST' }),
+  getSubscriptionFollowUps: () =>
+    request<GpsSubscriptionFollowUp[]>('/gps/subscriptions/follow-up'),
+  getDeviceFollowUps: (deviceId: string) =>
+    request<GpsRenewalFollowUp[]>(`/gps/devices/${deviceId}/follow-up`),
+  createDeviceFollowUp: (deviceId: string, outcome: GpsFollowUpOutcome, notes?: string) =>
+    request<GpsRenewalFollowUp>(`/gps/devices/${deviceId}/follow-up`, {
+      method: 'POST', body: JSON.stringify({ outcome, notes: notes || null }),
+    }),
   getGpsRenewals: () => request<GpsRenewalRequest[]>('/gps/renewals'),
   createGpsRenewal: (data: { customerId: string; deviceRequestId: string; employeeId: string; subscriptionType: string }) =>
     request<GpsRenewalRequest>('/gps/renewals', { method: 'POST', body: JSON.stringify(data) }),

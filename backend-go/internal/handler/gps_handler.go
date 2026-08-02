@@ -3,6 +3,8 @@ package handler
 import (
 	"net/http"
 
+	"staffmange-api/internal/middleware"
+
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
@@ -244,4 +246,92 @@ func (h *GpsHandler) Stats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, stats)
+}
+
+// ── دورة حياة الشريحة ومتابعة التجديد ────────────────────────────────────────
+
+// GET /api/gps/sims/available — الشرائح المتوفرة للربط بزبون جديد
+func (h *GpsHandler) ListAvailableSims(w http.ResponseWriter, r *http.Request) {
+	sims, err := h.service.ListAvailableSims()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الشرائح المتوفرة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, sims)
+}
+
+// POST /api/gps/sims/{id}/assign — ربط شريحة متوفرة بزبون
+func (h *GpsHandler) AssignSim(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CustomerID string `json:"customerId"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	sim, err := h.service.AssignSim(r.PathValue("id"), req.CustomerID)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, sim)
+}
+
+// POST /api/gps/sims/{id}/release — تحرير الشريحة وإرجاعها للمتوفر
+func (h *GpsHandler) ReleaseSim(w http.ResponseWriter, r *http.Request) {
+	sim, err := h.service.ReleaseSim(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر تحرير الشريحة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, sim)
+}
+
+// POST /api/gps/sims/{id}/burn — تأشير إن الشريحة انحرقت
+func (h *GpsHandler) BurnSim(w http.ResponseWriter, r *http.Request) {
+	sim, err := h.service.BurnSim(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر تأشير حرق الشريحة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, sim)
+}
+
+// GET /api/gps/subscriptions/follow-up — قائمة متابعة الاشتراكات المنتهية
+func (h *GpsHandler) SubscriptionFollowUps(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.SubscriptionFollowUps()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة المتابعة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/gps/devices/{id}/follow-up — مهندس الجودة يسجّل نتيجة الاتصال
+func (h *GpsHandler) CreateFollowUp(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateFollowUpRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	var by *string
+	if id := middleware.EmployeeIDFromContext(r); id != "" {
+		by = &id
+	}
+	f, err := h.service.CreateFollowUp(r.PathValue("id"), by, req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, f)
+}
+
+// GET /api/gps/devices/{id}/follow-up — سجل الاتصالات على جهاز
+func (h *GpsHandler) ListFollowUps(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ListFollowUps(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل الاتصالات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
 }

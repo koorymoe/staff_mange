@@ -1,6 +1,8 @@
 package service
 
 import (
+	"errors"
+
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 )
@@ -87,4 +89,46 @@ func (s *GpsService) UpsertSetting(req model.UpsertGpsSubscriptionPriceRequest) 
 
 func (s *GpsService) Stats() (*model.GpsStats, error) {
 	return s.repo.Stats()
+}
+
+// ── دورة حياة الشريحة ومتابعة التجديد ────────────────────────────────────────
+
+func (s *GpsService) ListAvailableSims() ([]model.SimCard, error) {
+	return s.repo.ListAvailableSims()
+}
+
+func (s *GpsService) AssignSim(simID, customerID string) (*model.SimCard, error) {
+	if simID == "" || customerID == "" {
+		return nil, errors.New("لازم تحدد الشريحة والزبون")
+	}
+	return s.repo.AssignSimToCustomer(simID, customerID)
+}
+
+func (s *GpsService) ReleaseSim(simID string) (*model.SimCard, error) {
+	return s.repo.ReleaseSim(simID)
+}
+
+func (s *GpsService) BurnSim(simID string) (*model.SimCard, error) {
+	return s.repo.MarkSimBurned(simID)
+}
+
+// SubscriptionFollowUps قائمة متابعة الاشتراكات المنتهية. نزامن حالة
+// "تحتاج حرق" قبل ما نرجّع القائمة حتى مسؤول الجي بي اس يشوف الوضع الصح
+// بدون مهمة مجدولة منفصلة.
+func (s *GpsService) SubscriptionFollowUps() ([]model.GpsSubscriptionFollowUpRow, error) {
+	if err := s.repo.SyncSimsNeedingBurn(); err != nil {
+		return nil, err
+	}
+	return s.repo.ListSubscriptionFollowUps()
+}
+
+func (s *GpsService) CreateFollowUp(deviceRequestID string, calledByID *string, req model.CreateFollowUpRequest) (*model.GpsRenewalFollowUp, error) {
+	if _, ok := model.FollowUpOutcomeLabels[req.Outcome]; !ok {
+		return nil, errors.New("نتيجة الاتصال غير صحيحة")
+	}
+	return s.repo.CreateFollowUp(deviceRequestID, calledByID, req)
+}
+
+func (s *GpsService) ListFollowUps(deviceRequestID string) ([]model.GpsRenewalFollowUp, error) {
+	return s.repo.ListFollowUps(deviceRequestID)
 }

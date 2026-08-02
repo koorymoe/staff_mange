@@ -557,5 +557,40 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				  AND NOT (e.role = 'TECHNICIAN' OR e."isLeader" = true);
 			`,
 		},
+		{
+			// دورة حياة شريحة الجي بي اس + متابعة التجديد.
+			//
+			// الشريحة كان عندها حالتين بس (متوفرة/مستخدمة) وما اكو طريقة
+			// نعرف بيها شريحة تحتاج حرق ولا نحرّرها ترجع للمتوفر. أضفنا:
+			//   NEEDS_BURN — الزبون رفض التجديد وخلصت مهلة الـ٨٠ يوم
+			//   BURNED     — انحرقت فعلاً
+			// والتحرير يرجّعها AVAILABLE ويفك ارتباطها بالزبون.
+			//
+			// وجدول متابعة الاتصالات: مهندس الجودة يتصل بالزبون بعد ٤٠ يوم
+			// من انتهاء الاشتراك ويسجّل النتيجة، والنتيجة هي الي تقرر شنو
+			// يصير بالشريحة بعدين.
+			Version: "0170_gps_sim_lifecycle",
+			SQL: `
+				ALTER TYPE "SimStatus" ADD VALUE IF NOT EXISTS 'NEEDS_BURN';
+				ALTER TYPE "SimStatus" ADD VALUE IF NOT EXISTS 'BURNED';
+
+				ALTER TABLE "SimCard" ADD COLUMN IF NOT EXISTS "assignedAt" TIMESTAMPTZ;
+				ALTER TABLE "SimCard" ADD COLUMN IF NOT EXISTS "releasedAt" TIMESTAMPTZ;
+				ALTER TABLE "SimCard" ADD COLUMN IF NOT EXISTS "burnedAt" TIMESTAMPTZ;
+
+				CREATE TABLE IF NOT EXISTS "GpsRenewalFollowUp" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"deviceRequestId" TEXT NOT NULL,
+					"customerId" TEXT,
+					"calledById" TEXT,
+					outcome TEXT NOT NULL,
+					notes TEXT,
+					"daysSinceExpiry" INT,
+					"calledAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "GpsRenewalFollowUp_device_idx"
+					ON "GpsRenewalFollowUp" ("deviceRequestId", "calledAt" DESC);
+			`,
+		},
 	}
 }
