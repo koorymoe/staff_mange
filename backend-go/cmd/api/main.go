@@ -517,7 +517,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/missions/reports/performance", middleware.Chain(http.HandlerFunc(missionHandler.PerformanceReport), requireAuth))
 	mux.Handle("GET /api/missions/my/{employeeId}", middleware.Chain(http.HandlerFunc(missionHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth))
-	mux.Handle("POST /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth))
+	mux.Handle("POST /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/missions/{id}/stage", middleware.Chain(http.HandlerFunc(missionHandler.UpdateStage), requireAuth))
 
 	// إدارة المشاريع (projects)
@@ -570,7 +570,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (رقم الزبون وشنو طلب ومنو علّمه) تُعرض لمدير النظام حصراً.
 	mux.Handle("GET /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.List), requireAuth, requireAdmin))
 	mux.Handle("GET /api/vip-customers/ids", middleware.Chain(http.HandlerFunc(vipCustomerHandler.ListIDs), requireAuth))
-	mux.Handle("POST /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Mark), requireAuth))
+	mux.Handle("POST /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Mark), requireAuth, requireCustomerMgmt))
 	mux.Handle("DELETE /api/vip-customers/{customerId}", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Unmark), requireAuth, requireAdmin))
 	mux.Handle("POST /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Create), requireAuth, requireProjectManager))
 	mux.Handle("DELETE /api/project-work-types/{id}", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Delete), requireAuth, requireProjectManager))
@@ -578,8 +578,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الكشوفات: فورمات فارغة يطبعها المهندس، يمليها بالموقع، وبعدين يرفع صور
 	// الفورمة المالية — أي موظف مسجل دخول يقدر ينشئ/يرفع (مو حصراً مدير مشاريع).
 	mux.Handle("GET /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.List), requireAuth))
-	mux.Handle("POST /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.Create), requireAuth))
-	mux.Handle("PUT /api/checklists/{id}/photos", middleware.Chain(http.HandlerFunc(checklistHandler.AddPhotos), requireAuth))
+	mux.Handle("POST /api/checklists", middleware.Chain(http.HandlerFunc(checklistHandler.Create), requireAuth, requireProjectMgmt))
+	mux.Handle("PUT /api/checklists/{id}/photos", middleware.Chain(http.HandlerFunc(checklistHandler.AddPhotos), requireAuth, requireProjectMgmt))
 
 	// معرض أعمال التقنيين — أي موظف مسجل دخول يتصفحه (إلهام)، بس صاحب صلاحية
 	// "التقني" (content_technician) بس يقدر يضيف عمل/يرفع وسائط.
@@ -606,7 +606,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.List), requireAuth, requireUnitTechnicians))
 	mux.Handle("POST /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Create), requireAuth, requireUnitTechnicians))
 	mux.Handle("PUT /api/service-studies/{id}/assign", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Assign), requireAuth, requireAdmin))
-	mux.Handle("POST /api/service-studies/{id}/reports", middleware.Chain(http.HandlerFunc(serviceStudyHandler.AddReport), requireAuth))
+	mux.Handle("POST /api/service-studies/{id}/reports", middleware.Chain(http.HandlerFunc(serviceStudyHandler.AddReport), requireAuth, requireTechUnitOrProcurement))
 	mux.Handle("PUT /api/service-studies/{id}/archive", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Archive), requireAuth, requireAdmin))
 
 	// وحدة التصميم — عدة استمارات مستقلة، كل وحدة بأسئلتها وبرابطها العام الخاص
@@ -685,7 +685,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الحذف داخل نفس صلاحية إدارة الموردين — منو يقدر يضيف ويعدل يقدر يحذف،
 	// حتى ما يضطر يرجع للأدمن على كل مورد غلط.
 	mux.Handle("DELETE /api/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Delete), requireAuth, requireSuppliersMgmt))
-	mux.Handle("POST /api/suppliers/{id}/rate", middleware.Chain(http.HandlerFunc(supplierHandler.Rate), requireAuth))
+	mux.Handle("POST /api/suppliers/{id}/rate", middleware.Chain(http.HandlerFunc(supplierHandler.Rate), requireAuth, requireSuppliersMgmt))
 
 	// عروض الأسعار (quotations)
 	mux.Handle("GET /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.List), requireAuth))
@@ -722,7 +722,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إدارية، وموظف المبيعات (GpsPurchase.tsx) لازم يقدر يسجل بيانات الزبون وهو
 	// يرسل طلب شراء جهاز GPS جديد، قبل حتى ما يوصل الطلب لإداري GPS للموافقة.
 	mux.Handle("GET /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.ListCustomers), requireAuth))
-	mux.Handle("POST /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.CreateCustomer), requireAuth))
+	mux.Handle("POST /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.CreateCustomer), requireAuth, requireGpsSystem))
 	mux.Handle("PUT /api/gps/customers/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateCustomer), requireAuth, requireGpsSystem))
 
 	mux.Handle("GET /api/gps/sims", middleware.Chain(http.HandlerFunc(gpsHandler.ListSims), requireAuth))
@@ -734,7 +734,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// مفعّل فعلياً، فتقييد الإنشاء بصلاحية gps_system كان يمنع بالضبط سيناريو تقديم
 	// الطلب من موظف مبيعات ما عنده هذي الصلاحية. الموافقة (PUT) تبقى محمية.
 	mux.Handle("GET /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.ListDevices), requireAuth))
-	mux.Handle("POST /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.CreateDevice), requireAuth))
+	mux.Handle("POST /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.CreateDevice), requireAuth, requireGpsSystem))
 	mux.Handle("PUT /api/gps/devices/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateDevice), requireAuth, requireGpsSystem))
 
 	mux.Handle("GET /api/gps/renewals", middleware.Chain(http.HandlerFunc(gpsHandler.ListRenewals), requireAuth))
@@ -787,8 +787,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/vehicles/{id}/photos/{photoId}", middleware.Chain(http.HandlerFunc(vehicleHandler.DeletePhoto), requireAuth, requireVehicleMgmt))
 
 	// نظام المهمة: كل خروج سيارة يصير سجل مهمة متابَع (سبب، وجهة، عداد، ركاب)
-	mux.Handle("POST /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Start), requireAuth))
-	mux.Handle("PUT /api/vehicle-missions/{id}/end", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.End), requireAuth))
+	mux.Handle("POST /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Start), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/vehicle-missions/{id}/end", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.End), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicle-missions", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.List), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicle-missions/{id}", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.Get), requireAuth))
 	mux.Handle("POST /api/vehicle-missions/{id}/rating", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.CreateRating), requireAuth, requireVehicleMgmt))
@@ -798,9 +798,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees/{id}/driver-rating-summary", middleware.Chain(http.HandlerFunc(vehicleMissionHandler.DriverRatingSummary), requireAuth))
 
 	// نظام حجز المركبات (مسبق) — منفصل عن بدء المهمة الفعلي أعلاه.
-	mux.Handle("POST /api/vehicle-bookings", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Create), requireAuth))
+	mux.Handle("POST /api/vehicle-bookings", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Create), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicle-bookings/{id}/decide", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Decide), requireAuth, requireVehicleMgmt))
-	mux.Handle("PUT /api/vehicle-bookings/{id}/cancel", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Cancel), requireAuth))
+	mux.Handle("PUT /api/vehicle-bookings/{id}/cancel", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.Cancel), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicle-bookings", middleware.Chain(http.HandlerFunc(vehicleBookingHandler.List), requireAuth))
 	// ملخصات التذكير — للمراقب بس (نظرة شاملة على كل السيارات والفنيين)
 	// ملاحظة: هذولا فقط لوحة المراقبة (MonitorDashboard) تستدعيهم — عمداً مقيدين
