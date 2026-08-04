@@ -111,6 +111,38 @@ export default function DailyAuditPage() {
               hint="من فواتير الليدرز وتقديرات الإداري" color="#c8a45a" />
           </div>
 
+          {/* عدّاد التقدم: المبلغ يزيد من الصفر لحد الإجمالي المتوقع
+              كل ما المحاسب يدقق حجز — حتى يعرف وين واصل بدون ما يحسب */}
+          {rep.expectedTotal > 0 && (
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+                <span className="text-sm font-bold text-slate-700">تقدّم التدقيق اليوم</span>
+                <span className="text-sm text-slate-500">
+                  <b style={{ color: '#15803d' }}>{money(rep.verifiedTotal)}</b>
+                  {' '}من أصل{' '}
+                  <b style={{ color: '#c8a45a' }}>{money(rep.expectedTotal)}</b>
+                </span>
+              </div>
+              <div className="h-5 overflow-hidden rounded-full bg-slate-100">
+                <div
+                  className="h-full rounded-full transition-all duration-500"
+                  style={{
+                    width: `${Math.min(100, Math.round((rep.verifiedTotal / rep.expectedTotal) * 100))}%`,
+                    background: 'linear-gradient(90deg, #15803d, #22c55e)',
+                  }}
+                />
+              </div>
+              <div className="mt-2 flex flex-wrap justify-between gap-2 text-xs text-slate-500">
+                <span>
+                  {Math.min(100, Math.round((rep.verifiedTotal / rep.expectedTotal) * 100))}% مدقق
+                </span>
+                <span>
+                  باقي: <b className="text-amber-700">{money(Math.max(0, rep.expectedTotal - rep.verifiedTotal))}</b>
+                </span>
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 text-sm">
             <span className="rounded-full bg-emerald-100 px-3 py-1 font-bold text-emerald-800">
               مكتملة: {rep.completedCount}
