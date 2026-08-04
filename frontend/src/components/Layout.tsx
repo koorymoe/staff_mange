@@ -251,6 +251,8 @@ const navItems: NavItem[] = [
     unitPermission: 'unit_pr',
     children: [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
+      // طلبات حذف الحجوزات — المراقب ومدير النظام يبتون بيها
+      { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], },
     ],
   },
 

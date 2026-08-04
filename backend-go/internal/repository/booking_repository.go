@@ -571,6 +571,39 @@ func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPref
 	return count, err
 }
 
+// CountInHouseForEmployeeMonth الأعمال الي خلصها الموظف *داخل الشركة*
+// خلال الشهر، وأسماء أنواعها (الخدمات) — عمودين بالإحصائية الشهرية.
+func (r *BookingRepository) CountInHouseForEmployeeMonth(employeeID, monthPrefix string) (int, []string, error) {
+	var rows []struct {
+		Service *string `db:"service"`
+		N       int     `db:"n"`
+	}
+	err := r.db.Select(&rows, `
+		SELECT s.name AS service, COUNT(DISTINCT b.id) AS n
+		FROM "Booking" b
+		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		WHERE ba."employeeId" = $1
+		  AND b.status = 'COMPLETED'
+		  AND b."workLocation" = 'IN_HOUSE'
+		  AND to_char(b."completedAt", 'YYYY-MM') = $2
+		GROUP BY s.name
+		ORDER BY n DESC
+	`, employeeID, monthPrefix)
+	if err != nil {
+		return 0, nil, err
+	}
+	total := 0
+	types := []string{}
+	for _, row := range rows {
+		total += row.N
+		if row.Service != nil && *row.Service != "" {
+			types = append(types, *row.Service)
+		}
+	}
+	return total, types, nil
+}
+
 // CountAssignedForEmployeeMonth يرجّع عدد كل الحجوزات المسندة لموظف معيّن خلال
 // شهر معيّن، بكل الحالات (مثبت/ملغى/منجز...) — يُحسب حسب تاريخ الإنجاز أو
 // الإلغاء الفعلي لو موجود، وإلا تاريخ الإسناد (createdAt) — مو الموعد

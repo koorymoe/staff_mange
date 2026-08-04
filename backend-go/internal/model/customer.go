@@ -17,6 +17,9 @@ type Customer struct {
 	Position     *string   `db:"position" json:"position"`
 	MapLatitude  *float64  `db:"mapLatitude" json:"mapLatitude"`
 	MapLongitude *float64  `db:"mapLongitude" json:"mapLongitude"`
+	// رابط كوكل ماب — ينحفظ على الزبون نفسه مو على الحجز بس، حتى
+	// الحجز الجاي يلكاه جاهز. (عمود بقاعدة البيانات → لازم حقل هنا)
+	LocationURL *string `db:"locationUrl" json:"locationUrl"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
 }
 
@@ -47,9 +50,16 @@ type CreateCustomerRequest struct {
 	MapLongitude *float64 `json:"mapLongitude"`
 }
 
+// UpdateCustomerRequest تصحيح بيانات الزبون. كل الحقول اختيارية عدا
+// الاسم والهاتف — الفاضي منها يعني «ما تغيّر» مو «فضّيه».
 type UpdateCustomerRequest struct {
-	Name  string `json:"name"`
-	Phone string `json:"phone"`
+	Name         string   `json:"name"`
+	Phone        string   `json:"phone"`
+	Location     *string  `json:"location"`
+	MapLatitude  *float64 `json:"mapLatitude"`
+	MapLongitude *float64 `json:"mapLongitude"`
+	LocationURL  *string  `json:"locationUrl"`
+	Position     *string  `json:"position"`
 }
 
 // CustomerGpsInfo معلومات إضافية خاصة بزبائن الجي بي اس فقط (مستوردة من نظام التتبع القديم)

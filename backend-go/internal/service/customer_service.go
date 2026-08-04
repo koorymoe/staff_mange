@@ -43,7 +43,7 @@ func (s *CustomerService) Update(id string, req model.UpdateCustomerRequest) (*m
 	if req.Name == "" || req.Phone == "" {
 		return nil, errors.New("الاسم ورقم الهاتف مطلوبان")
 	}
-	c, err := s.repo.Update(id, req.Name, req.Phone)
+	c, err := s.repo.Update(id, req)
 	if err != nil {
 		return nil, err
 	}

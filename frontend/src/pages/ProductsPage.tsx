@@ -21,6 +21,9 @@ export default function ProductsPage() {
   const [defaultPrice, setDefaultPrice] = useState(0)
   const [wholesalePrice, setWholesalePrice] = useState(0)
   const [imageBase64, setImageBase64] = useState('')
+  const [specs, setSpecs] = useState('')
+  const [source, setSource] = useState('')
+  const [modelName, setModelName] = useState('')
   const [availability, setAvailability] = useState<ProductAvailability>('IN_STOCK')
   const [serviceId, setServiceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -74,12 +77,16 @@ export default function ProductsPage() {
         imageBase64: imageBase64 || undefined,
         availability,
         serviceId: serviceId || undefined,
+        specs: specs.trim() || undefined,
+        source: source.trim() || undefined,
+        modelName: modelName.trim() || undefined,
       })
       setName('')
       setUnit('قطعة')
       setDefaultPrice(0)
       setWholesalePrice(0)
       setImageBase64('')
+      setSpecs(''); setSource(''); setModelName('')
       setAvailability('IN_STOCK')
       setServiceId('')
       if (fileRef.current) fileRef.current.value = ''
@@ -180,6 +187,18 @@ export default function ProductsPage() {
               onFocus={(e) => { e.target.style.borderColor = PRIMARY }}
               onBlur={(e) => { e.target.style.borderColor = '#ddd' }}
             />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>المواصفات</label>
+            <input value={specs} onChange={(e) => setSpecs(e.target.value)} style={inputStyle} placeholder="مثال: 4MP · ليلي ملون" />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>المصدر</label>
+            <input value={source} onChange={(e) => setSource(e.target.value)} style={inputStyle} placeholder="المجهز أو بلد المنشأ" />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>الموديل</label>
+            <input value={modelName} onChange={(e) => setModelName(e.target.value)} style={inputStyle} placeholder="رقم/اسم الموديل" />
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>التوفر *</label>
@@ -285,6 +304,9 @@ export default function ProductsPage() {
               <div style={{ padding: '12px 16px' }}>
                 <h4 style={{ margin: '0 0 6px 0', color: PRIMARY, fontSize: '15px' }}>{product.name}</h4>
                 <p style={{ margin: '0 0 4px 0', fontSize: '13px', color: '#666' }}>الوحدة: {product.unit || 'قطعة'}</p>
+                {product.modelName && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: '#777' }}>الموديل: {product.modelName}</p>}
+                {product.specs && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: '#777' }}>المواصفات: {product.specs}</p>}
+                {product.source && <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#777' }}>المصدر: {product.source}</p>}
                 <p style={{
                   margin: '0 0 4px 0', fontSize: '16px', fontWeight: 'bold',
                   color: GOLD,

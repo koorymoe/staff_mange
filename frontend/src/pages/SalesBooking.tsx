@@ -46,6 +46,10 @@ export default function SalesBooking() {
   const [familyName, setFamilyName] = useState('')
   const name = [firstName, fatherName, grandfatherName, familyName].map((p) => p.trim()).filter(Boolean).join(' ')
   const [phone, setPhone] = useState('')
+  // تصحيح بيانات زبون قديم: أسماء النظام القديم غريبة أو ناقصة، فالموظف
+  // لازم يقدر يصلّحها من نفس شاشة الحجز — وتنحفظ على سجل الزبون مو
+  // على الحجز بس، وإلا الحجز الجديد يطلع بالاسم القديم الغلط.
+  const [fixCustomer, setFixCustomer] = useState(false)
   // خدمات متعددة: الزبون ممكن يطلب أكثر من منظومة بنفس الحجز
   // (مثلاً منظومة صوت + كاميرات). أول خدمة تنعتبر الرئيسية.
   const [serviceIds, setServiceIds] = useState<string[]>([])
@@ -210,6 +214,20 @@ export default function SalesBooking() {
     setSubmitting(true)
     try {
       const customer = await api.createCustomer({ name, phone })
+      // الزبون القديم: createCustomer يرجّعه بالاسم القديم ويتجاهل الي
+      // كتبناه. فلو الموظف اختار يصحّح، نحدّث سجله فعلياً — الاسم
+      // والعنوان والموقع ورابط الخريطة — حتى الحجز والي بعده يطلعون
+      // بالاسم الصحيح.
+      if (fixCustomer && existingCustomer) {
+        await api.updateCustomer(customer.id, {
+          name,
+          phone,
+          location: addressDesc.trim() || null,
+          mapLatitude: mapPoint.lat,
+          mapLongitude: mapPoint.lng,
+          locationUrl: locationUrl.trim() || null,
+        })
+      }
       const booking = await api.createBooking({
         customerId: customer.id,
         serviceId: serviceIds[0] || undefined,
@@ -233,6 +251,7 @@ export default function SalesBooking() {
       setAddressDesc('')
       setMapPoint(null)
       setUsedSavedLocation(false)
+      setFixCustomer(false)
       setBookingType(null)
       setUrgency(null)
       setSpecificDate('')
@@ -367,6 +386,23 @@ export default function SalesBooking() {
                   <span className="text-xs text-brand-700">
                     {existingCustomer.name} (كود: {existingCustomer.code})
                   </span>
+                  {!fixCustomer ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const [f, fa, gf, fam] = splitFullName(existingCustomer.name)
+                        setFirstName(f); setFatherName(fa); setGrandfatherName(gf); setFamilyName(fam)
+                        setFixCustomer(true)
+                      }}
+                      className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100"
+                    >
+                      ✏️ صحّح بياناته
+                    </button>
+                  ) : (
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
+                      راح تنحفظ البيانات الجديدة على سجل الزبون
+                    </span>
+                  )}
                 </div>
               )}
               {!phoneError && !existingCustomer && /^\d{11}$/.test(phone.trim()) && (

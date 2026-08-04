@@ -93,13 +93,22 @@ func (r *CustomerRepository) UpdateLocation(id string, location *string, lat, ln
 	return err
 }
 
-// Update يعدّل اسم ورقم هاتف الزبون — لتصحيح السجلات الخاطئة (اسم مو رباعي، رقم غلط...)
-func (r *CustomerRepository) Update(id, name, phone string) (*model.Customer, error) {
+// Update يعدّل بيانات الزبون — لتصحيح السجلات الخاطئة (اسم مو رباعي،
+// رقم غلط، عنوان قديم). الحقول الاختيارية الفاضية تبقي القديم.
+func (r *CustomerRepository) Update(id string, req model.UpdateCustomerRequest) (*model.Customer, error) {
 	var c model.Customer
 	err := r.db.Get(&c, `
-		UPDATE "Customer" SET name = $2, phone = $3 WHERE id = $1
+		UPDATE "Customer" SET
+			name = $2,
+			phone = $3,
+			location = COALESCE($4, location),
+			"mapLatitude" = COALESCE($5, "mapLatitude"),
+			"mapLongitude" = COALESCE($6, "mapLongitude"),
+			"locationUrl" = COALESCE($7, "locationUrl"),
+			position = COALESCE($8, position)
+		WHERE id = $1
 		RETURNING *
-	`, id, name, phone)
+	`, id, req.Name, req.Phone, req.Location, req.MapLatitude, req.MapLongitude, req.LocationURL, req.Position)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}

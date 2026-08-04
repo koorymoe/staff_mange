@@ -106,6 +106,15 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 			stats.ServicesKnownCount = count
 		}
 
+		// القائمة تنرسل دائماً — فاضية لو ماكو، حتى الواجهة ما تنكسر
+		stats.InHouseWorkTypes = []string{}
+		if count, types, err := s.bookings.CountInHouseForEmployeeMonth(e.ID, month); err == nil {
+			stats.InHouseWorksCount = count
+			if len(types) > 0 {
+				stats.InHouseWorkTypes = types
+			}
+		}
+
 		result = append(result, stats)
 	}
 

@@ -427,6 +427,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth, requireBookingParty))
+
+	// حذف الحجوزات التجريبية والملغاة: الإداري يطلب، والمراقب أو مدير
+	// النظام يبت. الحذف الفوري ما ينفع لأنه ما يترد.
+	bookingDeleteRepo := repository.NewBookingDeleteRequestRepository(db)
+	bookingDeleteHandler := handler.NewBookingDeleteRequestHandler(bookingDeleteRepo, notificationRepo)
+	requireDeleteRequest := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR"}, "booking_delete_request")
+	requireDeleteApprove := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "MONITOR"}, "booking_delete_approve")
+	mux.Handle("POST /api/bookings/{id}/delete-request", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Create), requireAuth, requireDeleteRequest))
+	mux.Handle("GET /api/booking-delete-requests", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.List), requireAuth, requireDeleteApprove))
+	mux.Handle("PUT /api/booking-delete-requests/{id}/decide", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Decide), requireAuth, requireDeleteApprove))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// "تم" الإداري بعد تواصله فعلياً مع الزبون — خطوة سابقة ومنفصلة عن التثبيت
 	// نفسه (نفس صلاحية تنسيق الحجوزات coordinator المستخدمة أصلاً بـCoordinator.tsx).

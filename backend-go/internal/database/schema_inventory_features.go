@@ -808,5 +808,53 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					ON "Booking" ("workLocation", "completedAt");
 			`,
 		},
+		{
+			// رابط موقع الزبون ينحفظ عليه هو، مو على الحجز بس — حتى
+			// الحجز الجاي يلكاه جاهز بدل ما نسأل الزبون كل مرة.
+			Version: "0178_customer_location_url",
+			SQL: `
+				ALTER TABLE "Customer"
+					ADD COLUMN IF NOT EXISTS "locationUrl" TEXT;
+			`,
+		},
+		{
+			// حقول المنتج الي ينسألهن الموظف وقت الإضافة: المواصفات
+			// والمصدر والموديل.
+			Version: "0180_product_specs_source_model",
+			SQL: `
+				ALTER TABLE "Product"
+					ADD COLUMN IF NOT EXISTS specs TEXT,
+					ADD COLUMN IF NOT EXISTS source TEXT,
+					ADD COLUMN IF NOT EXISTS "modelName" TEXT;
+			`,
+		},
+		{
+			// طلب حذف حجز: الإداري يطلب، والمراقب أو مدير النظام يبت.
+			// ما نحذف الحجز فوراً لأن الحذف ما يترد — والحجوزات
+			// التجريبية والملغاة تنشال بموافقة مو بمزاج.
+			Version: "0179_booking_delete_requests",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "BookingDeleteRequest" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+					"requestedById" TEXT NOT NULL REFERENCES "Employee"(id),
+					reason TEXT NOT NULL,
+					status TEXT NOT NULL DEFAULT 'PENDING',
+					"decidedById" TEXT REFERENCES "Employee"(id),
+					"decidedAt" TIMESTAMPTZ,
+					"decisionNote" TEXT,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+
+				-- طلب معلّق واحد بس لكل حجز، حتى ما تتكدس طلبات مكررة
+				CREATE UNIQUE INDEX IF NOT EXISTS "BookingDeleteRequest_one_pending"
+					ON "BookingDeleteRequest" ("bookingId") WHERE status = 'PENDING';
+
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'booking_delete_request', 'طلب حذف حجز'),
+					(gen_random_uuid()::text, 'booking_delete_approve', 'الموافقة على حذف الحجوزات')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
 	}
 }

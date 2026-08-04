@@ -557,6 +557,8 @@ export interface Customer {
   mapLongitude: number | null
   services: string[]
   previousBookingsCount?: number
+  locationUrl?: string | null
+  position?: string | null
 }
 
 export interface GpsCustomerListItem extends Customer {
@@ -687,6 +689,9 @@ export interface Product {
   /** تصنيف الموظف — هو المعتمد */
   serviceId: string | null
   serviceName: string | null
+  specs: string | null
+  source: string | null
+  modelName: string | null
   /** اقتراح النظام من اسم المنتج — يظهر للموظف حتى يوافق أو يغيّر */
   suggestedServiceId?: string | null
   suggestedServiceName?: string | null
@@ -701,6 +706,9 @@ export interface ProductInput {
   imageBase64?: string
   availability?: ProductAvailability
   serviceId?: string | null
+  specs?: string | null
+  source?: string | null
+  modelName?: string | null
 }
 
 // EmployeeMonthlyStats صف واحد بصفحة إحصائيات الموظفين الشهرية (OWNER/ADMIN فقط)
@@ -725,6 +733,8 @@ export interface EmployeeMonthlyStats {
   maintenanceBookingsCount: number
   freeMaintenanceCount: number
   servicesKnownCount: number
+  inHouseWorksCount: number
+  inHouseWorkTypes: string[]
 }
 
 export interface MonthlyPointsBucket {
@@ -864,6 +874,21 @@ export interface LeaderInvoice {
   systems: string[]
   items: ExecutionCostItem[]
   materials: LeaderInvoiceMaterialItem[]
+}
+
+export interface BookingDeleteRequest {
+  id: string
+  bookingId: string
+  reason: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  statusLabel: string
+  decisionNote: string | null
+  createdAt: string
+  bookingCode: string
+  customerName: string
+  bookingStatus: string
+  requestedByName: string
+  decidedByName: string | null
 }
 
 export interface VipCustomer {
@@ -1908,7 +1933,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  updateCustomer: (id: string, data: { name: string; phone: string }) =>
+  updateCustomer: (id: string, data: { name: string; phone: string; location?: string | null; mapLatitude?: number | null; mapLongitude?: number | null; locationUrl?: string | null; position?: string | null }) =>
     request<Customer>(`/customers/${id}`, {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -2268,6 +2293,14 @@ export const api = {
   getVipCustomers: () => request<VipCustomer[]>('/vip-customers'),
   getVipCustomerIds: () => request<string[]>('/vip-customers/ids'),
   // phone بديل عن customerId بالإضافة اليدوية — السيرفر يطلع الزبون من رقمه
+  // طلب حذف حجز: الإداري يطلب، والمراقب/المدير يبت
+  requestBookingDelete: (bookingId: string, reason: string) =>
+    request<BookingDeleteRequest>(`/bookings/${bookingId}/delete-request`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  getBookingDeleteRequests: (status?: string) =>
+    request<BookingDeleteRequest[]>(`/booking-delete-requests${status ? `?status=${status}` : ''}`),
+  decideBookingDelete: (id: string, approve: boolean, note?: string) =>
+    request<BookingDeleteRequest>(`/booking-delete-requests/${id}/decide`, { method: 'PUT', body: JSON.stringify({ approve, note: note || null }) }),
+
   markVipCustomer: (data: { customerId?: string; phone?: string; bookingId?: string; requestSummary?: string; customerPosition?: string; note?: string }) =>
     request<VipCustomer>('/vip-customers', { method: 'POST', body: JSON.stringify(data) }),
   unmarkVipCustomer: (customerId: string) => request<void>(`/vip-customers/${customerId}`, { method: 'DELETE' }),

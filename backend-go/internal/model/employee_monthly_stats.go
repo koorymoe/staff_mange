@@ -56,6 +56,11 @@ type EmployeeMonthlyStats struct {
 	// تُحسب فقط بالإحصائية الشهرية (بدل تكرار نقاط الكي بي اي الموجودة أصلاً
 	// بصفحة التقديرات). صفر دايماً بالإحصائية الأسبوعية (غير محسوبة عمداً).
 	ServicesKnownCount int `json:"servicesKnownCount"`
+
+	// أعمال داخل الشركة خلال الشهر، وأنواعها (أسماء الخدمات) — الشغل
+	// الي انخلص بالورشة بدل ما يطلع للزبون.
+	InHouseWorksCount int      `json:"inHouseWorksCount"`
+	InHouseWorkTypes  []string `json:"inHouseWorkTypes"`
 }
 
 // MonthlyPointsBucket نقطة واحدة بمنحنى نقاط الكي بي اي الشهري لموظف معيّن.

@@ -33,6 +33,9 @@ type Product struct {
 	// ⚠️ أي عمود تضيفه لجدول Product لازم يكون إله حقل هنا، لأن الاستعلام
 	// يستخدم SELECT * — وبدونه sqlx يطيح بـ missing destination name.
 	Availability string  `db:"availability" json:"availability"`
+	Specs        *string `db:"specs" json:"specs"`  // المواصفات
+	Source       *string `db:"source" json:"source"` // المصدر (المجهز/بلد المنشأ)
+	ModelName    *string `db:"modelName" json:"modelName"` // الموديل
 	ServiceID    *string `db:"serviceId" json:"serviceId"` // تصنيف الموظف — هو المعتمد
 
 	ServiceName       *string `db:"serviceName" json:"serviceName"`
@@ -53,6 +56,9 @@ type CreateProductRequest struct {
 	ImageBase64    *string  `json:"imageBase64"`
 	Availability   *string  `json:"availability"`
 	ServiceID      *string  `json:"serviceId"`
+	Specs          *string  `json:"specs"`
+	Source         *string  `json:"source"`
+	ModelName      *string  `json:"modelName"`
 }
 
 type UpdateProductRequest struct {
@@ -63,6 +69,9 @@ type UpdateProductRequest struct {
 	ImageBase64    *string  `json:"imageBase64"`
 	Availability   *string  `json:"availability"`
 	ServiceID      *string  `json:"serviceId"`
+	Specs          *string  `json:"specs"`
+	Source         *string  `json:"source"`
+	ModelName      *string  `json:"modelName"`
 	// ClearService يخلي الموظف يشيل التصنيف كلياً — بدونها ما نميّز بين
 	// «ما غيّر التصنيف» و«يريد يفضّيه».
 	ClearService bool `json:"clearService"`

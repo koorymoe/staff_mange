@@ -91,10 +91,12 @@ func (r *ProductRepository) Create(req model.CreateProductRequest) (*model.Produ
 	}
 	var id string
 	err := r.db.Get(&id, `
-		INSERT INTO "Product" (id, name, unit, "defaultPrice", "wholesalePrice", "imageBase64", availability, "serviceId")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''))
+		INSERT INTO "Product" (id, name, unit, "defaultPrice", "wholesalePrice", "imageBase64",
+			availability, "serviceId", specs, source, "modelName")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''), $8, $9, $10)
 		RETURNING id
-	`, req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64, availability, derefStr(req.ServiceID))
+	`, req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64, availability,
+		derefStr(req.ServiceID), req.Specs, req.Source, req.ModelName)
 	if err != nil {
 		return nil, err
 	}
@@ -115,10 +117,13 @@ func (r *ProductRepository) Update(id string, req model.UpdateProductRequest) (*
 			"wholesalePrice" = COALESCE($5, "wholesalePrice"),
 			"imageBase64" = COALESCE($6, "imageBase64"),
 			availability = COALESCE($7, availability),
-			"serviceId" = CASE WHEN $8 THEN NULL ELSE COALESCE(NULLIF($9,''), "serviceId") END
+			"serviceId" = CASE WHEN $8 THEN NULL ELSE COALESCE(NULLIF($9,''), "serviceId") END,
+			specs = COALESCE($10, specs),
+			source = COALESCE($11, source),
+			"modelName" = COALESCE($12, "modelName")
 		WHERE id = $1
 	`, id, req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64,
-		availability, req.ClearService, derefStr(req.ServiceID))
+		availability, req.ClearService, derefStr(req.ServiceID), req.Specs, req.Source, req.ModelName)
 	if err != nil {
 		return nil, err
 	}

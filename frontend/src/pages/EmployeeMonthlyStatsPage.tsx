@@ -115,6 +115,8 @@ export default function EmployeeMonthlyStatsPage() {
                 <th style={thStyle}>كل الحجوزات المسندة</th>
                 <th style={thStyle}>حجوزات الصيانة</th>
                 <th style={thStyle}>صيانات مجانية</th>
+                <th style={thStyle}>أعمال داخل الشركة</th>
+                <th style={thStyle}>نوعهن</th>
                 <th style={thStyle}>قيمة نقاط الكي بي اي</th>
                 <th style={thStyle}>إجمالي العمولة (حجم المبيعات)</th>
                 <th style={thStyle}>منحنى الأداء</th>
@@ -136,6 +138,10 @@ export default function EmployeeMonthlyStatsPage() {
                   <td style={tdStyle}>{r.totalBookingsCount}</td>
                   <td style={tdStyle}>{r.maintenanceBookingsCount}</td>
                   <td style={tdStyle}>{r.freeMaintenanceCount}</td>
+                  <td style={tdStyle}>{r.inHouseWorksCount ?? 0}</td>
+                  <td style={{ ...tdStyle, maxWidth: '220px' }}>
+                    {r.inHouseWorkTypes?.length ? r.inHouseWorkTypes.join('، ') : '—'}
+                  </td>
                   <td style={tdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: GOLD }}>{fmt(r.totalCommission)} د.ع</td>
                   <td style={tdStyle}>

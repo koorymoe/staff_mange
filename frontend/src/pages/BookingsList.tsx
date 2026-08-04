@@ -72,6 +72,21 @@ export default function BookingsList() {
   const dateInputRef = useRef<HTMLInputElement>(null)
   const monthInputRef = useRef<HTMLInputElement>(null)
   const isAdmin = employee?.role === 'ADMIN'
+  // طلب حذف حجز: الإداري والمراقب ومدير النظام، أو أي واحد ينمنح الصلاحية
+  const canRequestDelete = isAdmin || employee?.role === 'OWNER' ||
+    employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
+    permissions.includes('booking_delete_request')
+
+  const requestDelete = async (bookingId: string, code: string) => {
+    const reason = prompt(`سبب طلب حذف الحجز ${code}؟ (تجريبي، ملغى، مكرر...)`)
+    if (!reason || !reason.trim()) return
+    try {
+      await api.requestBookingDelete(bookingId, reason.trim())
+      alert('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر رفع الطلب')
+    }
+  }
   const [technicians, setTechnicians] = useState<Employee[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [mapBooking, setMapBooking] = useState<Booking | null>(null)
@@ -354,6 +369,14 @@ export default function BookingsList() {
                                 }`}
                               >
                                 {vipIds.includes(b.customer.id) ? '⭐ شخصية مهمة' : '☆ تعليم كشخصية مهمة'}
+                              </button>
+                            )}
+                            {canRequestDelete && (
+                              <button
+                                onClick={() => requestDelete(b.id, b.code)}
+                                className="mt-1 mr-2 rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
+                              >
+                                🗑️ اطلب حذف الحجز
                               </button>
                             )}
                           </div>
