@@ -47,7 +47,33 @@ func (s *GpsService) CreateDevice(req model.UpsertGpsDeviceRequest) (*model.GpsD
 	return s.repo.CreateDevice(req)
 }
 
+// UpdateDevice تحديث طلب الجهاز — ولو إداري الجي بي اس اختار شريحة
+// وقت ترحيل الزبون من المبيعات، نربطها بالزبون بنفس العملية.
+//
+// الربط يصير أول شي وبشرط status='AVAILABLE' داخل التحديث نفسه، حتى
+// لو إداريين اثنين اختاروا نفس الشريحة بنفس اللحظة واحد بس يفوز
+// والثاني ياخذ خطأ واضح بدل ما تنربط الشريحة لزبونين.
 func (s *GpsService) UpdateDevice(id string, req model.UpsertGpsDeviceRequest) (*model.GpsDeviceRequest, error) {
+	if req.SimCardID != nil && *req.SimCardID != "" {
+		current, err := s.repo.FindDevice(id)
+		if err != nil {
+			return nil, err
+		}
+		// ما نعيد الربط إذا نفس الشريحة مربوطة أصلاً بهذا الطلب
+		alreadyLinked := current.SimCardID != nil && *current.SimCardID == *req.SimCardID
+		if !alreadyLinked {
+			customerID := current.CustomerID
+			if req.CustomerID != nil && *req.CustomerID != "" {
+				customerID = *req.CustomerID
+			}
+			if customerID == "" {
+				return nil, errors.New("ما نعرف الزبون حتى نربطله الشريحة")
+			}
+			if _, err := s.repo.AssignSimToCustomer(*req.SimCardID, customerID); err != nil {
+				return nil, errors.New("الشريحة مو متوفرة — يمكن انربطت لزبون ثاني قبل شوي، اختر وحدة غيرها")
+			}
+		}
+	}
 	return s.repo.UpdateDevice(id, req)
 }
 

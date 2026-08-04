@@ -148,6 +148,16 @@ func (r *GpsRepository) loadDeviceRequestBare(id string) *model.GpsDeviceRequest
 	return &d
 }
 
+// FindDevice طلب جهاز واحد بدون تهيئة العلاقات — نحتاجه قبل التحديث
+// حتى نعرف زبونه وشريحته الحالية.
+func (r *GpsRepository) FindDevice(id string) (*model.GpsDeviceRequest, error) {
+	d := r.loadDeviceRequestBare(id)
+	if d == nil {
+		return nil, fmt.Errorf("طلب الجهاز غير موجود")
+	}
+	return d, nil
+}
+
 // ── GPS Customers ────────────────────────────────────────────────────────────
 
 func (r *GpsRepository) ListCustomers() ([]model.GpsCustomer, error) {
@@ -613,6 +623,7 @@ func (r *GpsRepository) ListSubscriptionFollowUps() ([]model.GpsSubscriptionFoll
 			COALESCE(c.phone, '')                  AS "customerPhone",
 			d."subscriptionEnd"                    AS "subscriptionEnd",
 			(CURRENT_DATE - d."subscriptionEnd"::date) AS "daysSinceExpiry",
+			(CURRENT_DATE - f."calledAt"::date)    AS "daysSinceLastCall",
 			d."simCardId"                          AS "simCardId",
 			s."simNumber"                          AS "simNumber",
 			s.status::text                         AS "simStatus",
@@ -644,9 +655,26 @@ func (r *GpsRepository) ListSubscriptionFollowUps() ([]model.GpsSubscriptionFoll
 // القاعدة الي اتفقنا عليها:
 //   - أقل من ٤٠ يوم           → فترة سماح، ما نتصل بعد
 //   - ٤٠ فما فوق وما اتصلنا   → مستحق الاتصال (شغل مهندس الجودة)
-//   - اتصلنا والزبون رفض      → ننتظر مهلة ٤٠ يوم ثانية
-//   - ٨٠ فما فوق والزبون رفض  → الشريحة تحتاج حرق (شغل مسؤول الجي بي اس)
+//   - اتصلنا والزبون رفض      → ننتظر مهلة ٤٠ يوم ثانية *من يوم الاتصال*
+//   - خلصت المهلة الثانية      → الشريحة تحتاج حرق (شغل مسؤول الجي بي اس)
 //   - راح يجدد أو يحرّك        → انحسم، يطلع من قائمة الشغل
+//
+// المهلة الثانية تنحسب من يوم مكالمة الرفض مو من يوم انتهاء الاشتراك.
+// لو حسبناها من الانتهاء، الزبون الي انتصلنا بيه بيوم ٧٠ ياخذ ١٠ أيام
+// بس بدل ٤٠ — وهذا مو الي اتفقنا عليه.
+// daysSinceRefusal الأيام من مكالمة الرفض. لو ما عدنا تاريخ مكالمة
+// (بيانات مستوردة مثلاً) نرجع للحساب القديم من تاريخ الانتهاء.
+func daysSinceRefusal(row *model.GpsSubscriptionFollowUpRow) int {
+	if row.DaysSinceLastCall != nil {
+		return *row.DaysSinceLastCall
+	}
+	return row.DaysSinceExpiry - model.GpsFollowUpCallAfter
+}
+
+func refusalGraceOver(row *model.GpsSubscriptionFollowUpRow) bool {
+	return daysSinceRefusal(row) >= model.GpsFollowUpCallAfter
+}
+
 func decorateFollowUpRow(row *model.GpsSubscriptionFollowUpRow) {
 	if row.LastOutcome != nil {
 		row.LastOutcomeLabel = model.FollowUpOutcomeLabels[*row.LastOutcome]
@@ -665,11 +693,11 @@ func decorateFollowUpRow(row *model.GpsSubscriptionFollowUpRow) {
 		row.Stage = model.FollowUpStageResolved
 	case resolved:
 		row.Stage = model.FollowUpStageResolved
-	case row.DaysSinceExpiry >= model.GpsFollowUpBurnAfter && refused:
+	case refused && refusalGraceOver(row):
 		row.Stage = model.FollowUpStageBurnDue
 	case refused:
 		row.Stage = model.FollowUpStageWaiting
-		row.DaysUntilNextStep = model.GpsFollowUpBurnAfter - row.DaysSinceExpiry
+		row.DaysUntilNextStep = model.GpsFollowUpCallAfter - daysSinceRefusal(row)
 	case row.DaysSinceExpiry >= model.GpsFollowUpCallAfter:
 		row.Stage = model.FollowUpStageCallDue
 	default:
@@ -722,14 +750,17 @@ func (r *GpsRepository) SyncSimsNeedingBurn() error {
 		WHERE status = 'IN_USE' AND id IN (
 			SELECT d."simCardId" FROM "GpsDeviceRequest" d
 			JOIN LATERAL (
-				SELECT outcome FROM "GpsRenewalFollowUp"
+				SELECT outcome, "calledAt" FROM "GpsRenewalFollowUp"
 				WHERE "deviceRequestId" = d.id ORDER BY "calledAt" DESC LIMIT 1
 			) f ON true
 			WHERE d."simCardId" IS NOT NULL
 			  AND d."subscriptionEnd" IS NOT NULL
-			  AND (CURRENT_DATE - d."subscriptionEnd"::date) >= $1
 			  AND f.outcome = $2
+			  -- نفس قاعدة decorateFollowUpRow بالضبط: ٤٠ يوم من مكالمة
+			  -- الرفض. لو اختلفت القاعدتين، الشاشة تكول «ينتظر» والشريحة
+			  -- تنتأشر للحرق (أو العكس) — وهذا أسوأ من الغلط نفسه.
+			  AND (CURRENT_DATE - f."calledAt"::date) >= $1
 		)
-	`, model.GpsFollowUpBurnAfter, model.FollowUpOutcomeRefused)
+	`, model.GpsFollowUpCallAfter, model.FollowUpOutcomeRefused)
 	return err
 }

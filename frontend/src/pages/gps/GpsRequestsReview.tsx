@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Employee, type GpsDeviceRequest } from '../../api'
+import { api, type Employee, type GpsDeviceRequest, type GpsSimCard } from '../../api'
 import { useSession, hasGpsSkill } from '../../session'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
@@ -16,6 +16,8 @@ export default function GpsRequestsReview() {
   const [scheduledAt, setScheduledAt] = useState('')
   const [assignedTechnicianId, setAssignedTechnicianId] = useState('')
   const [credentialsMessage, setCredentialsMessage] = useState('')
+  const [availableSims, setAvailableSims] = useState<GpsSimCard[]>([])
+  const [simCardId, setSimCardId] = useState('')
   const [saving, setSaving] = useState(false)
 
   const load = () => {
@@ -28,6 +30,8 @@ export default function GpsRequestsReview() {
       api.getEmployees().then(all => setGpsTechnicians(
         all.filter(e => e.role === 'TECHNICIAN' && hasGpsSkill(e, gpsServiceId))
       )),
+      // الشرائح المتوفرة بس — المربوطة بزبون ما تظهر لحد ما تنتحرر
+      api.getAvailableSimCards().then(setAvailableSims).catch(() => setAvailableSims([])),
     ]).finally(() => setLoading(false))
   }
   useEffect(load, [gpsServiceId])
@@ -35,11 +39,16 @@ export default function GpsRequestsReview() {
   const openReview = (req: GpsDeviceRequest) => {
     setSelected(req); setActivationDate(''); setChecks({ checked: false, activated: false, delivered: false })
     setScheduledAt(''); setAssignedTechnicianId(''); setCredentialsMessage('')
+    setSimCardId(req.simCardId || '')
   }
+
+  // الزبون الي اشترى جهاز + شريحة لازم ينختارله شريحة من المتوفرات
+  const needsSim = !!selected && selected.purchaseType === 'DEVICE_SIM' && !selected.simCardId
 
   // زر التفعيل ما يشتغل الا بعد ما الإداري يحدد تاريخ التفعيل ويكتب بيانات الدخول
   // (يوزر + باسورد) الي يحتاجها الزبون — بالإضافة للشروط الأصلية حسب نوع الشراء.
   const canActivate = !!selected && !!activationDate && credentialsMessage.trim().length > 0 &&
+    (!needsSim || !!simCardId) &&
     (selected.purchaseType !== 'DEVICE_ONLY' || (checks.checked && checks.activated && checks.delivered))
 
   const activate = async () => {
@@ -49,6 +58,7 @@ export default function GpsRequestsReview() {
     }
     if (!activationDate) { alert('يرجى إدخال تاريخ التفعيل أولاً'); return }
     if (!credentialsMessage.trim()) { alert('يرجى كتابة اليوزر والباسورد الخاص بالزبون أولاً'); return }
+    if (needsSim && !simCardId) { alert('اختر شريحة من الشرائح المتوفرة أولاً'); return }
 
     setSaving(true)
     try {
@@ -64,6 +74,9 @@ export default function GpsRequestsReview() {
         scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
         assignedTechnicianId: assignedTechnicianId || undefined,
         credentialsMessage: credentialsMessage.trim(),
+        // السيرفر يربط الشريحة بالزبون بنفس العملية، وبشرط إنها لسه
+        // متوفرة — فلو إداري ثاني سبقنا إلها نطلع خطأ واضح
+        simCardId: simCardId || undefined,
       })
       setSelected(null)
       load()
@@ -172,6 +185,38 @@ export default function GpsRequestsReview() {
                       {label}
                     </label>
                   ))}
+                </div>
+              )}
+
+              {/* اختيار الشريحة وقت ترحيل الزبون من المبيعات — من
+                  المتوفرات بس، والمربوطة ما تظهر لحد ما تنتحرر */}
+              {selected.purchaseType === 'DEVICE_SIM' && (
+                <div className="rounded-xl bg-cyan-50 p-4">
+                  <label className="mb-2 block text-sm font-bold text-cyan-800">
+                    📶 شريحة الزبون {needsSim && '*'}
+                  </label>
+                  {selected.simCardId ? (
+                    <p className="text-sm text-slate-700">
+                      مربوطة أصلاً: <span className="font-bold">{selected.simCard?.simNumber || selected.simCardId}</span>
+                    </p>
+                  ) : (
+                    <>
+                      <select value={simCardId} onChange={e => setSimCardId(e.target.value)}
+                        className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm">
+                        <option value="">— اختر شريحة متوفرة —</option>
+                        {availableSims.map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.simNumber}{s.operator ? ` — ${s.operator}` : ''}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-2 text-xs text-slate-500">
+                        {availableSims.length > 0
+                          ? `متوفر ${availableSims.length} شريحة`
+                          : '⚠️ ماكو شرائح متوفرة — حرّر شريحة من شاشة الشرائح أو أضف وحدة جديدة'}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
 

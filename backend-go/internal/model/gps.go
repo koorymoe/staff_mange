@@ -112,6 +112,9 @@ type GpsSubscriptionFollowUpRow struct {
 	GpsNumber       *string    `db:"gpsNumber" json:"gpsNumber"`
 	LastOutcome     *string    `db:"lastOutcome" json:"lastOutcome"`
 	LastCalledAt    *time.Time `db:"lastCalledAt" json:"lastCalledAt"`
+	// أيام من آخر مكالمة — أساس مهلة الـ٤٠ يوم الثانية بعد الرفض.
+	// فاضي إذا ما صارت ولا مكالمة.
+	DaysSinceLastCall *int `db:"daysSinceLastCall" json:"daysSinceLastCall"`
 
 	// Stage: أي مرحلة من دورة المتابعة — تنحسب بالسيرفر حتى الواجهة ما
 	// تعيد تعريف الأرقام وتنحرف عنها.
@@ -126,10 +129,12 @@ const (
 	FollowUpStageGrace    = "GRACE"    // لسه ما وصل ٤٠ يوم
 	FollowUpStageCallDue  = "CALL_DUE" // وصل ٤٠ يوم — مهندس الجودة لازم يتصل
 	FollowUpStageWaiting  = "WAITING"  // اتصلنا والزبون رفض — بمهلة الـ٤٠ الثانية
-	FollowUpStageBurnDue  = "BURN_DUE" // خلصت الـ٨٠ يوم — الشريحة تحتاج حرق
+	FollowUpStageBurnDue  = "BURN_DUE" // خلصت المهلة الثانية — الشريحة تحتاج حرق
 	FollowUpStageResolved = "RESOLVED" // راح يجدد أو يحرّك
-	GpsFollowUpCallAfter  = 40         // يوم من انتهاء الاشتراك
-	GpsFollowUpBurnAfter  = 80         // يوم من انتهاء الاشتراك
+
+	// نفس الـ٤٠ يوم تُستخدم مرتين: الأولى من انتهاء الاشتراك لحد
+	// الاتصال، والثانية من مكالمة الرفض لحد الحرق.
+	GpsFollowUpCallAfter = 40
 )
 
 var FollowUpStageLabels = map[string]string{
@@ -160,8 +165,10 @@ type GpsDeviceRequest struct {
 	SubscriptionEnd      *time.Time `db:"subscriptionEnd" json:"subscriptionEnd"`
 	SubscriptionStatus   string     `db:"subscriptionStatus" json:"subscriptionStatus"`
 	Status               string     `db:"status" json:"status"`
-	SimCardID            *string    `db:"simCardId" json:"-"`
-	Notes                *string    `db:"notes" json:"notes"`
+	// كان json:"-" — فالواجهة ما كانت تعرف إذا الطلب مربوط بشريحة أصلاً،
+	// وشاشة الترحيل تطلب اختيار شريحة حتى للطلبات المربوطة من قبل.
+	SimCardID            *string `db:"simCardId" json:"simCardId"`
+	Notes                *string `db:"notes" json:"notes"`
 	IsChecked            bool       `db:"isChecked" json:"isChecked"`
 	IsActivated          bool       `db:"isActivated" json:"isActivated"`
 	IsDelivered          bool       `db:"isDelivered" json:"isDelivered"`

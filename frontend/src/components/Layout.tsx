@@ -111,6 +111,9 @@ const navItems: NavItem[] = [
           { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, permission: 'gps_system' },
           // متابعة التجديد تخص مسؤول الجي بي اس ومهندس الجودة سوا
           { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, anyPermission: ['gps_system', 'quality_control'] },
+          // شاشة الشرائح كانت موجودة بالمسارات بس بلا رابط بالقائمة —
+          // يعني تحرير الشريحة وحرقها ما كان يوصلهن أحد إلا بكتابة الرابط
+          { to: '/gps/sims', label: '📶 شرائح GPS', icon: <></>, permission: 'gps_system' },
           { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, permission: 'gps_system' },
           { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, permission: 'gps_system' },
           { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'] },

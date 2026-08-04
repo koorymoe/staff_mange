@@ -339,6 +339,7 @@ export interface GpsDeviceRequest {
   subscriptionStatus: string
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'DELIVERED'
   simCardId: string | null
+  simCard?: GpsSimCard | null
   notes: string | null
   isChecked: boolean
   isActivated: boolean
