@@ -43,7 +43,9 @@ func (r *GpsInstallCostRepository) Summary() (*model.GpsInstallCostSummary, erro
 		return nil, err
 	}
 
-	sum := &model.GpsInstallCostSummary{Rows: rows}
+	// القوائم تنرسل فاضية مو null — الواجهة تمر عليها دائماً، والـnull
+	// يطيّح الصفحة كلها (نفس فخ skills الي وكعنا بيه بصفحة الموظفين).
+	sum := &model.GpsInstallCostSummary{Rows: rows, ByEmployee: []model.GpsInstallCostByEmployee{}}
 	months := map[string]bool{}
 	people := map[string]float64{}
 	for _, row := range rows {

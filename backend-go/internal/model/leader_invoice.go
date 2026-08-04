@@ -75,6 +75,16 @@ type LeaderInvoice struct {
 	ApprovedByEmployeeID *string    `db:"approvedByEmployeeId" json:"approvedByEmployeeId"`
 	ApprovedAt           *time.Time `db:"approvedAt" json:"approvedAt"`
 
+	// تفاصيل يحتاجها المحاسب: منو الليدر الي رفعها، ومنو اعتمدها،
+	// وأي حجز تخص. تنعبّى بالتهيئة مو من الجدول.
+	EmployeeName   string  `db:"-" json:"employeeName"`
+	EmployeeRole   string  `db:"-" json:"employeeRole"`
+	EmployeePhone  *string `db:"-" json:"employeePhone"`
+	ApprovedByName *string `db:"-" json:"approvedByName"`
+	BookingCode    *string `db:"-" json:"bookingCode"`
+	// ملخص الحجز المرتبط — العنوان والخدمة والمبالغ والكادر المنفّذ
+	Booking *Booking `db:"-" json:"booking"`
+
 	Systems   []string                    `db:"-" json:"systems"`
 	Items     []ExecutionCostItem         `db:"-" json:"items"`
 	Materials []LeaderInvoiceMaterialItem `db:"-" json:"materials"`

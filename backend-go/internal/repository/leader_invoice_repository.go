@@ -185,6 +185,55 @@ func (r *LeaderInvoiceRepository) hydrate(inv *model.LeaderInvoice) error {
 		return err
 	}
 	inv.Materials = materials
+
+	// التفاصيل الي يحتاجها المحاسب: منو رفعها ومنو اعتمدها وأي حجز
+	// تخص. بدونها الجدول يعرض «—» بمكان الزبون والليدر.
+	var emp struct {
+		Name  string  `db:"name"`
+		Role  string  `db:"role"`
+		Phone *string `db:"phone"`
+	}
+	if err := r.db.Get(&emp, `SELECT name, role::text, phone FROM "Employee" WHERE id = $1`, inv.EmployeeID); err == nil {
+		inv.EmployeeName = emp.Name
+		inv.EmployeeRole = emp.Role
+		inv.EmployeePhone = emp.Phone
+	}
+	if inv.ApprovedByEmployeeID != nil {
+		var name string
+		if err := r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, *inv.ApprovedByEmployeeID); err == nil {
+			inv.ApprovedByName = &name
+		}
+	}
+	if inv.BookingID != nil {
+		var b model.Booking
+		if err := r.db.Get(&b, `SELECT * FROM "Booking" WHERE id = $1`, *inv.BookingID); err == nil {
+			code := b.Code
+			inv.BookingCode = &code
+			// نعبّي الزبون والخدمة والكادر حتى المحاسب يشوف كل شي بمكان واحد
+			var c model.Customer
+			if err := r.db.Get(&c, `SELECT * FROM "Customer" WHERE id = $1`, b.CustomerID); err == nil {
+				b.Customer = &c
+			}
+			if b.ServiceID != nil {
+				var sv model.Service
+				if err := r.db.Get(&sv, `SELECT * FROM "Service" WHERE id = $1`, *b.ServiceID); err == nil {
+					b.Service = &sv
+				}
+			}
+			assignments := []model.BookingAssignment{}
+			if err := r.db.Select(&assignments, `
+				SELECT a.* FROM "BookingAssignment" a WHERE a."bookingId" = $1`, b.ID); err == nil {
+				for i := range assignments {
+					var e model.Employee
+					if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE id = $1`, assignments[i].EmployeeID); err == nil {
+						assignments[i].Employee = e
+					}
+				}
+				b.Assignments = assignments
+			}
+			inv.Booking = &b
+		}
+	}
 	return nil
 }
 

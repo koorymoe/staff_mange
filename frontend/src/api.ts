@@ -856,6 +856,12 @@ export interface LeaderInvoiceMaterialItem {
 }
 
 export interface LeaderInvoice {
+  employeeName?: string
+  employeeRole?: string
+  employeePhone?: string | null
+  approvedByName?: string | null
+  bookingCode?: string | null
+  booking?: Booking | null
   id: string
   bookingId: string | null
   employeeId: string
@@ -890,6 +896,36 @@ export interface BookingDeleteRequest {
   bookingStatus: string
   requestedByName: string
   decidedByName: string | null
+}
+
+/** التدقيق اليومي: حجوزات يوم واحد بمجاميعه الأربعة */
+export interface DailyAuditRow {
+  id: string
+  code: string
+  status: string
+  customerName: string
+  customerPhone: string
+  serviceName: string
+  amountVerified: boolean
+  collected: number
+  quotedPrice: number
+  invoiceTotal: number | null
+  invoiceCode: string | null
+  expectedAmount: number
+  openIssues: number
+}
+
+export interface DailyAuditReport {
+  date: string
+  rows: DailyAuditRow[]
+  completedCount: number
+  pendingCount: number
+  issuesCount: number
+  collectedTotal: number
+  notVerifiedTotal: number
+  verifiedTotal: number
+  allAmountsTotal: number
+  expectedTotal: number
 }
 
 /** بلاغ خطأ سجّله المحاسب أثناء التدقيق */
@@ -1974,6 +2010,9 @@ export const api = {
     request<Complaint>(`/complaints/${id}/contact`, { method: 'PUT', body: JSON.stringify({ contacted }) }),
   setComplaintNotes: (id: string, notes: string) =>
     request<Complaint>(`/complaints/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
+  getDailyAudit: (date?: string) =>
+    request<DailyAuditReport>(`/finance/daily-audit${date ? `?date=${date}` : ''}`),
+
   // التدقيق: قرار المحاسب — مطابق أو بلاغ خطأ ينوجّه للمعني
   auditBooking: (id: string, data: { action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR'; amountCollected?: number; advancePaid?: number; note?: string }) =>
     request<Booking | AuditIssue>(`/bookings/${id}/audit`, { method: 'PUT', body: JSON.stringify(data) }),

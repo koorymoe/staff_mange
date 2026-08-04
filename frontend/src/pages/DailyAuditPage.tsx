@@ -1,0 +1,197 @@
+import { useEffect, useState } from 'react'
+import { api, type DailyAuditReport, type DailyAuditRow } from '../api'
+
+/**
+ * التدقيق اليومي.
+ *
+ * الفرق عن «تدقيق الحسابات» العام: هذا يمشي بيوم واحد. المحاسب يحدد
+ * تاريخ، يشوف كل حجوزات ذاك اليوم — المكتملة وغير المكتملة، المدققة
+ * والمحوّلة للرقابة — ويعرف من الصبح شكد المفروض يجمع.
+ *
+ * التدقيق نفسه (المبلغ وخيارات الخطأ) يصير من نفس الشاشة بالضبط.
+ */
+
+const money = (n: number) => n.toLocaleString('en-IQ') + ' د.ع'
+
+function todayStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  COMPLETED: 'مكتمل',
+  PENDING: 'معلّق',
+  CONFIRMED: 'مثبّت',
+  IN_PROGRESS: 'قيد التنفيذ',
+  CANCELLED: 'ملغى',
+}
+
+function Tile({ label, value, hint, color }: { label: string; value: string; hint?: string; color: string }) {
+  return (
+    <div className="rounded-2xl bg-white p-5 shadow-sm">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-1 text-2xl font-bold" style={{ color }}>{value}</p>
+      {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
+    </div>
+  )
+}
+
+export default function DailyAuditPage() {
+  const [date, setDate] = useState(todayStr())
+  const [rep, setRep] = useState<DailyAuditReport | null>(null)
+  const [amounts, setAmounts] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState<string | null>(null)
+
+  const load = (d: string) => {
+    api.getDailyAudit(d).then(setRep).catch(() => setRep(null))
+  }
+  useEffect(() => { load(date) }, [date])
+
+  const audit = async (row: DailyAuditRow, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR') => {
+    const typed = amounts[row.id]
+    // بلا مبلغ مكتوب: ننزل على المعتمد (فاتورة الليدر أو تقدير الإداري)
+    const amount = typed !== undefined && typed !== ''
+      ? Number(typed)
+      : (row.collected > 0 ? undefined : row.expectedAmount || undefined)
+
+    let note: string | undefined
+    if (action !== 'VERIFY') {
+      const answer = prompt(action === 'MISMATCH'
+        ? 'شنو الفرق بالضبط؟ (يروح للرقابة والجودة)'
+        : 'شنو الغلط بالسعر؟ (يروح للرقابة والإداري)')
+      if (answer === null) return
+      note = answer.trim() || undefined
+    }
+    setBusy(row.id)
+    try {
+      await api.auditBooking(row.id, { action, amountCollected: amount, note })
+      setAmounts((prev) => ({ ...prev, [row.id]: '' }))
+      load(date)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر التدقيق')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  return (
+    <div dir="rtl" className="space-y-6">
+      <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+        <h1 className="text-2xl font-bold text-white">📅 التدقيق اليومي</h1>
+        <p className="mt-1 text-sm text-blue-200">
+          حدّد التاريخ وشوف كل حجوزات ذاك اليوم — شنو انجمع، شنو باقي، وشكد المفروض يجي اليوم.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 shadow-sm">
+        <label className="text-sm text-slate-600">التاريخ</label>
+        <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
+          className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+        {date !== todayStr() && (
+          <button onClick={() => setDate(todayStr())}
+            className="rounded-lg border border-brand-500 px-4 py-2 text-sm font-bold text-brand-700 hover:bg-brand-50">
+            اليوم
+          </button>
+        )}
+      </div>
+
+      {!rep && <p className="py-10 text-center text-slate-400">جاري التحميل...</p>}
+
+      {rep && (
+        <>
+          {/* المجاميع الأربعة */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Tile label="١) المبالغ المستلمة" value={money(rep.collectedTotal)}
+              hint={`من ${rep.completedCount} حجز مكتمل`} color="#15803d" />
+            <Tile label="٢) ما تم تدقيقه" value={money(rep.notVerifiedTotal)}
+              hint="لسه بانتظار قرارك" color="#b45309" />
+            <Tile label="٣) كل المبالغ (مدقق + غير مدقق)" value={money(rep.allAmountsTotal)}
+              hint={`المدقق منها: ${money(rep.verifiedTotal)}`} color="#1a3a5c" />
+            <Tile label="٤) الإجمالي المتوقع لليوم" value={money(rep.expectedTotal)}
+              hint="من فواتير الليدرز وتقديرات الإداري" color="#c8a45a" />
+          </div>
+
+          <div className="flex flex-wrap gap-3 text-sm">
+            <span className="rounded-full bg-emerald-100 px-3 py-1 font-bold text-emerald-800">
+              مكتملة: {rep.completedCount}
+            </span>
+            <span className="rounded-full bg-slate-200 px-3 py-1 font-bold text-slate-700">
+              غير مكتملة: {rep.pendingCount}
+            </span>
+            {rep.issuesCount > 0 && (
+              <span className="rounded-full bg-red-100 px-3 py-1 font-bold text-red-700">
+                محوّلة للرقابة: {rep.issuesCount}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {rep.rows.map((row) => (
+              <div key={row.id} className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold text-slate-800">
+                      {row.code}
+                      <span className="mr-2 text-sm font-normal text-slate-500">{row.customerName || 'زبون غير معروف'}</span>
+                    </p>
+                    <p className="mt-1 text-xs text-slate-400" dir="ltr">{row.customerPhone}</p>
+                    <p className="mt-1 text-sm text-slate-600">
+                      {row.serviceName} · <span className="text-slate-400">{STATUS_LABEL[row.status] || row.status}</span>
+                    </p>
+                    <p className="mt-2 text-sm text-slate-600">
+                      المستلم: <b>{money(row.collected)}</b>
+                      {row.invoiceTotal != null
+                        ? <> · فاتورة الليدر: <b>{money(row.invoiceTotal)}</b> <span className="text-xs text-slate-400">({row.invoiceCode})</span></>
+                        : <> · <span className="text-amber-700">ماكو فاتورة ليدر — المعتمد تقدير الإداري: <b>{money(row.quotedPrice)}</b></span></>}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    {row.amountVerified
+                      ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">✔ مدقق</span>
+                      : <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">بانتظار التدقيق</span>}
+                    {row.openIssues > 0 && (
+                      <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                        محوّل للرقابة
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {!row.amountVerified && row.status === 'COMPLETED' && (
+                  <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                    <input
+                      type="number" min="0" inputMode="numeric"
+                      value={amounts[row.id] ?? ''}
+                      onChange={(e) => setAmounts((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                      placeholder={`المبلغ حسب الفاتورة${row.expectedAmount ? ` (المعتمد: ${row.expectedAmount})` : ''}`}
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                    />
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <button disabled={busy === row.id} onClick={() => audit(row, 'VERIFY')}
+                        className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                        ✔ مطابق
+                      </button>
+                      <button disabled={busy === row.id} onClick={() => audit(row, 'MISMATCH')}
+                        className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                        ⚠️ غير مطابق
+                      </button>
+                      <button disabled={busy === row.id} onClick={() => audit(row, 'PRICE_ERROR')}
+                        className="rounded-lg bg-red-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
+                        ✕ خطأ بالسعر
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+            {rep.rows.length === 0 && (
+              <p className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm">
+                ماكو حجوزات بهذا التاريخ
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}

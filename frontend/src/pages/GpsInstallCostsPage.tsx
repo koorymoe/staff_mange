@@ -25,11 +25,37 @@ export default function GpsInstallCostsPage() {
   if (error) return <div dir="rtl" className="rounded-xl bg-red-50 p-6 text-center text-red-700">{error}</div>
   if (!data) return null
 
-  // نجمّع الصفوف بجدول: صف لكل شهر، عمود لكل موظف — نفس شكل الإكسل القديم
-  const months = [...new Set(data.rows.map((r) => r.month))]
-  const people = data.byEmployee.map((e) => e.employeeName)
+  // نجمّع الصفوف بجدول: صف لكل شهر، عمود لكل موظف — نفس شكل الإكسل القديم.
+  // القوائم ممكن ترجع فاضية أو null، فنحصّن قبل ما نمر عليها.
+  const rows = data.rows ?? []
+  const byEmployee = data.byEmployee ?? []
+  const months = [...new Set(rows.map((r) => r.month))]
+  const people = byEmployee.map((e) => e.employeeName)
   const cell = (month: string, name: string) =>
-    data.rows.find((r) => r.month === month && r.employeeName === name)
+    rows.find((r) => r.month === month && r.employeeName === name)
+
+  // ماكو بيانات شد بعد — نوضح السبب بدل شاشة فاضية أو كراش
+  if (rows.length === 0) {
+    return (
+      <div dir="rtl" className="space-y-6">
+        <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+          <h1 className="text-2xl font-bold text-white">🔧 حساب تكاليف الشد</h1>
+          <p className="mt-1 text-sm text-blue-200">تكاليف شد أجهزة الجي بي اس — تفصيلي لكل الكوادر</p>
+        </div>
+        <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
+          <p className="text-lg font-bold text-slate-700">ماكو بيانات شد بعد</p>
+          <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-500">
+            هذي الشاشة تحسب تكاليف <b>شد أجهزة الجي بي اس</b> من سجلات الشد نفسها (منفّذ الشد
+            وتكلفته). تبقى فاضية لحد ما تنستورد بيانات الجي بي اس القديمة أو تنسجّل عمليات شد
+            جديدة بالنظام.
+            <br /><br />
+            هي <b>غير</b> «حساب تكلفة التنصيب للتنفيذ» — ذيچ حاسبة تحسبلك كلفة تنفيذ شغلة قبل
+            ما تسويها، وهذي تقرير يجمعلك شكد كلّفتنا عمليات الشد الي خلصت فعلاً.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div dir="rtl" className="space-y-6">
