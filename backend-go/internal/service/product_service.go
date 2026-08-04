@@ -29,7 +29,10 @@ func (s *ProductService) Create(req model.CreateProductRequest) (*model.Product,
 	if req.WholesalePrice != nil && *req.WholesalePrice < 0 {
 		return nil, errors.New("سعر الجملة ما يصير يكون بالسالب")
 	}
-	return s.repo.Create(req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64)
+	if req.Availability != nil && !model.ValidProductAvailability(*req.Availability) {
+		return nil, errors.New("حالة التوفر غير معروفة")
+	}
+	return s.repo.Create(req)
 }
 
 func (s *ProductService) Update(id string, req model.UpdateProductRequest) (*model.Product, error) {
@@ -39,7 +42,10 @@ func (s *ProductService) Update(id string, req model.UpdateProductRequest) (*mod
 	if req.WholesalePrice != nil && *req.WholesalePrice < 0 {
 		return nil, errors.New("سعر الجملة ما يصير يكون بالسالب")
 	}
-	return s.repo.Update(id, req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64)
+	if req.Availability != nil && !model.ValidProductAvailability(*req.Availability) {
+		return nil, errors.New("حالة التوفر غير معروفة")
+	}
+	return s.repo.Update(id, req)
 }
 
 func (s *ProductService) Delete(id string) error {

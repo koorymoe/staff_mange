@@ -489,6 +489,17 @@ export interface JobDurationEstimate {
   minSamples: number
 }
 
+/** إحصائية الأعمال المنجزة داخل الشركة خلال شهر */
+export interface InternalWorksReport {
+  month: string
+  inHouseCount: number
+  onSiteCount: number
+  inHouseAmount: number
+  services: { name: string; count: number; amount: number }[]
+  crew: { employeeName: string; count: number }[]
+  works: { code: string; completedAt: string | null; serviceName: string; amount: number }[]
+}
+
 export interface Stats {
   totals: {
     totalCustomers: number
@@ -660,6 +671,9 @@ async function downloadFile(path: string, filename: string): Promise<void> {
   window.URL.revokeObjectURL(url)
 }
 
+// توفر المنتج: بمخزن الشركة، أو ينطلب من المجهز وقت الحاجة
+export type ProductAvailability = 'IN_STOCK' | 'ON_DEMAND'
+
 export interface Product {
   id: string
   name: string
@@ -667,6 +681,25 @@ export interface Product {
   defaultPrice: number | null
   wholesalePrice?: number | null
   imageBase64?: string
+  availability: ProductAvailability
+  availabilityLabel: string
+  /** تصنيف الموظف — هو المعتمد */
+  serviceId: string | null
+  serviceName: string | null
+  /** اقتراح النظام من اسم المنتج — يظهر للموظف حتى يوافق أو يغيّر */
+  suggestedServiceId?: string | null
+  suggestedServiceName?: string | null
+}
+
+/** الحقول الي ينرسلها المستخدم — بدون المحسوبة بالسيرفر */
+export interface ProductInput {
+  name: string
+  unit?: string | null
+  defaultPrice?: number | null
+  wholesalePrice?: number | null
+  imageBase64?: string
+  availability?: ProductAvailability
+  serviceId?: string | null
 }
 
 // EmployeeMonthlyStats صف واحد بصفحة إحصائيات الموظفين الشهرية (OWNER/ADMIN فقط)
@@ -2166,9 +2199,10 @@ export const api = {
 
   // Products
   getProducts: () => request<Product[]>('/products'),
-  createProduct: (data: Omit<Product, 'id'> & { imageBase64?: string }) =>
+  // الحقول المحسوبة (العناوين واقتراح النظام) ما تنرسل — السيرفر يحسبها
+  createProduct: (data: ProductInput) =>
     request<Product>('/products', { method: 'POST', body: JSON.stringify(data) }),
-  updateProduct: (id: string, data: Partial<Omit<Product, 'id'>> & { imageBase64?: string }) =>
+  updateProduct: (id: string, data: Partial<ProductInput> & { clearService?: boolean }) =>
     request<Product>(`/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteProduct: (id: string) =>
     request<void>(`/products/${id}`, { method: 'DELETE' }),
@@ -2596,6 +2630,8 @@ export const api = {
   exportEmployeeMonthlyStats: (month: string) =>
     downloadFile(`/employee-stats/monthly/export?month=${encodeURIComponent(month)}`, `employee-stats-${month}.xlsx`),
   getDailyStats: (date?: string) => request<DailyStats>(`/stats-management/daily${date ? `?date=${encodeURIComponent(date)}` : ''}`),
+  getInternalWorks: (month?: string) =>
+    request<InternalWorksReport>(`/stats-management/internal-works${month ? `?month=${encodeURIComponent(month)}` : ''}`),
   getWeeklyStats: (from: string, to: string) =>
     request<WeeklyStats>(`/stats-management/weekly?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   getProjectStageStats: () => request<ProjectStageStats[]>('/stats-management/projects'),

@@ -497,9 +497,10 @@ func (r *BookingRepository) Complete(id string, req model.CompleteBookingRequest
 			"completedAt" = now(),
 			"completionNotes" = COALESCE($2, "completionNotes"),
 			"amountCollected" = COALESCE($3, "amountCollected"),
-			"advancePaid" = COALESCE($4, "advancePaid")
+			"advancePaid" = COALESCE($4, "advancePaid"),
+			"workLocation" = COALESCE(NULLIF($5,''), "workLocation")
 		WHERE id = $1
-	`, id, req.CompletionNotes, req.AmountCollected, req.AdvancePaid)
+	`, id, req.CompletionNotes, req.AmountCollected, req.AdvancePaid, workLocationOrEmpty(req.WorkLocation))
 	return err
 }
 

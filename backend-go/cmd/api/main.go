@@ -229,7 +229,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
 	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo)
 	employeeStatsHandler := handler.NewEmployeeStatsHandler(employeeMonthlyStatsService)
-	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo, leaderInvoiceRepo, attendanceRepo, employeeMonthlyStatsService)
+	internalWorksRepo := repository.NewInternalWorksRepository(db)
+	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo, leaderInvoiceRepo, attendanceRepo, employeeMonthlyStatsService, internalWorksRepo)
 	statsManagementHandler := handler.NewStatsManagementHandler(statsManagementService)
 	exhibitionRepo := repository.NewExhibitionRepository(db)
 	exhibitionService := service.NewExhibitionService(exhibitionRepo, assistantService)
@@ -286,6 +287,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
 	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
+	// حساب تكلفة التنصيب للتنفيذ: متاح لكل الكوادر عدا الفني العادي
+	requireNotPlainTech := middleware.RequireNotPlainTechnician(employeeRepo, notificationRepo)
 	// موافقة/رفض طلبات الأدوات: كانت دور صارم بدون منفذ صلاحية، فإداري الكميات
 	// — وهو صاحب الشغلة أصلاً — ما كان يقدر يوافق أبداً مهما انمنحت له
 	// صلاحيات. صارت صلاحية مستقلة تُمنح لأي موظف، مع إبقاء الأدوار القديمة.
@@ -981,7 +984,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth, requireLeaderBasket))
 	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeader))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
-	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireLeader))
+	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireNotPlainTech))
 	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireLeader))
 	mux.Handle("GET /api/leader-invoices/camera-cost/options", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCostOptions), requireAuth, requireLeader))
 	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه
@@ -998,6 +1001,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/stats-management/daily", middleware.Chain(http.HandlerFunc(statsManagementHandler.Daily), requireAuth, requireAdmin))
 	mux.Handle("GET /api/stats-management/weekly", middleware.Chain(http.HandlerFunc(statsManagementHandler.Weekly), requireAuth, requireAdmin))
 	mux.Handle("GET /api/stats-management/projects", middleware.Chain(http.HandlerFunc(statsManagementHandler.ProjectStages), requireAuth, requireAdmin))
+	mux.Handle("GET /api/stats-management/internal-works", middleware.Chain(http.HandlerFunc(statsManagementHandler.InternalWorks), requireAuth, requireAdmin))
 
 	// تقدير مدة العمل المتعلَّم (learned baseline) — قراءة فقط، متاح لأي مستخدم
 	// مسجّل دخول (يحتاجها المنسق قبل تثبيت موعد/فريق).

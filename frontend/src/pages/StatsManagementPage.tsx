@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type DailyStats, type WeeklyStats, type ProjectStageStats } from '../api'
+import { api, type DailyStats, type WeeklyStats, type ProjectStageStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
 
 const PRIMARY = '#1a237e'
@@ -244,13 +244,138 @@ function ProjectsTab() {
   )
 }
 
+function monthStr() {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+}
+
+/**
+ * أكثر خدمة طلبها الزبائن — انتقلت لهنا من صفحة إحصائيات الموظفين،
+ * لأن مكانها الصحيح إدارة الإحصائيات.
+ */
+function ServicesTab() {
+  const [stats, setStats] = useState<Stats | null>(null)
+  useEffect(() => { api.getStats().then(setStats).catch(() => setStats(null)) }, [])
+
+  if (!stats) return <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>
+  const rows = stats.serviceBreakdown
+  const max = rows[0]?.count || 1
+
+  return (
+    <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '20px' }}>
+      <h3 style={{ color: PRIMARY, margin: '0 0 4px 0' }}>أكثر خدمة طلبها الزبائن</h3>
+      <p style={{ color: '#888', fontSize: '13px', margin: '0 0 16px 0' }}>مرتّبة من الأكثر طلباً — كل الخدمات بدون سقف</p>
+      {rows.map((s, i) => (
+        <div key={s.serviceId || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+          <span style={{ fontSize: '13px', width: '140px', color: '#444' }}>{s.name}</span>
+          <div style={{ flex: 1, height: '22px', background: '#f1f1f1', borderRadius: '11px', overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${(s.count / max) * 100}%`, background: PRIMARY, borderRadius: '11px' }} />
+          </div>
+          <span style={{ fontSize: '13px', fontWeight: 'bold', width: '40px', color: PRIMARY }}>{s.count}</span>
+        </div>
+      ))}
+      {rows.length === 0 && <p style={{ color: '#999', fontSize: '13px' }}>ماكو بيانات حجوزات بعد</p>}
+    </div>
+  )
+}
+
+/** الأعمال المنجزة داخل الشركة خلال شهر — شنو انخلص جوه ومنو اشتغل */
+function InternalWorksTab() {
+  const [month, setMonth] = useState(monthStr())
+  const [rep, setRep] = useState<InternalWorksReport | null>(null)
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRep(null)
+    api.getInternalWorks(month).then(setRep).catch(() => setRep(null))
+  }, [month])
+
+  const total = rep ? rep.inHouseCount + rep.onSiteCount : 0
+  const share = rep && total > 0 ? Math.round((rep.inHouseCount / total) * 100) : 0
+
+  return (
+    <div>
+      <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <label style={{ fontSize: '13px', color: '#666' }}>الشهر</label>
+        <input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)}
+          style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+      </div>
+
+      {!rep && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+
+      {rep && (
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+            <StatCard label="أعمال انخلصت داخل الشركة" value={rep.inHouseCount} />
+            <StatCard label="أعمال طلعت للزبون" value={rep.onSiteCount} />
+            <StatCard label="نسبة الشغل الداخلي" value={`${share}%`} />
+            <StatCard label="مبالغ الشغل الداخلي" value={`${fmt(rep.inHouseAmount)} د.ع`} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '16px' }}>
+              <h4 style={{ color: PRIMARY, margin: '0 0 12px 0', fontSize: '15px' }}>شنو انشتغل جوه</h4>
+              {rep.services.map((s) => (
+                <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f2f2f2', fontSize: '13px' }}>
+                  <span>{s.name}</span>
+                  <span style={{ fontWeight: 'bold', color: PRIMARY }}>{s.count} · {fmt(s.amount)} د.ع</span>
+                </div>
+              ))}
+              {rep.services.length === 0 && <p style={{ color: '#999', fontSize: '13px' }}>ماكو شغل داخلي بهذا الشهر</p>}
+            </div>
+
+            <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '16px' }}>
+              <h4 style={{ color: PRIMARY, margin: '0 0 12px 0', fontSize: '15px' }}>منو اشتغل جوه</h4>
+              {rep.crew.map((c) => (
+                <div key={c.employeeName} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f2f2f2', fontSize: '13px' }}>
+                  <span>{c.employeeName}</span>
+                  <span style={{ fontWeight: 'bold', color: GOLD }}>{c.count} عمل</span>
+                </div>
+              ))}
+              {rep.crew.length === 0 && <p style={{ color: '#999', fontSize: '13px' }}>ماكو كادر مسجّل</p>}
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr>
+                  {['الكود', 'الخدمة', 'تاريخ الإنجاز', 'المبلغ'].map((h) => (
+                    <th key={h} style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rep.works.map((w) => (
+                  <tr key={w.code} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>{w.code}</td>
+                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>{w.serviceName}</td>
+                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>
+                      {w.completedAt ? new Date(w.completedAt).toLocaleDateString('ar-IQ') : '—'}
+                    </td>
+                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>{fmt(w.amount)} د.ع</td>
+                  </tr>
+                ))}
+                {rep.works.length === 0 && (
+                  <tr><td colSpan={4} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>ماكو أعمال داخلية بهذا الشهر</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
 export default function StatsManagementPage() {
-  const [tab, setTab] = useState<'daily' | 'weekly' | 'monthly' | 'projects'>('daily')
+  const [tab, setTab] = useState<'daily' | 'weekly' | 'monthly' | 'internal' | 'services' | 'projects'>('daily')
 
   const tabs: { key: typeof tab; label: string }[] = [
     { key: 'daily', label: 'يومية' },
     { key: 'weekly', label: 'أسبوعية' },
     { key: 'monthly', label: 'شهرية' },
+    { key: 'internal', label: 'داخل الشركة' },
+    { key: 'services', label: 'أكثر خدمة مطلوبة' },
     { key: 'projects', label: 'المشاريع' },
   ]
 
@@ -261,7 +386,7 @@ export default function StatsManagementPage() {
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '20px',
       }}>
         <h1 style={{ margin: 0, fontSize: '24px' }}>إدارة الإحصائيات</h1>
-        <span style={{ color: GOLD, fontSize: '14px' }}>يومية، أسبوعية، شهرية، ومشاريع — حصراً لمدير النظام</span>
+        <span style={{ color: GOLD, fontSize: '14px' }}>يومية، أسبوعية، شهرية، شغل داخل الشركة، أكثر خدمة مطلوبة، ومشاريع — حصراً لمدير النظام</span>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
@@ -285,6 +410,8 @@ export default function StatsManagementPage() {
       {tab === 'daily' && <DailyTab />}
       {tab === 'weekly' && <WeeklyTab />}
       {tab === 'monthly' && <EmployeeMonthlyStatsPage />}
+      {tab === 'internal' && <InternalWorksTab />}
+      {tab === 'services' && <ServicesTab />}
       {tab === 'projects' && <ProjectsTab />}
     </div>
   )

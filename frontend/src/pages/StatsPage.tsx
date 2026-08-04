@@ -91,27 +91,8 @@ export default function StatsPage() {
 
       {tab === 'overview' && (
         <div className="space-y-6">
-          {/* الخدمات الأكثر طلباً — أول شي يبين، وتشمل كل خدمة عندنا بدون سقف عدد */}
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <h2 className="text-lg font-semibold mb-4">الخدمات الأكثر طلباً</h2>
-            <div className="space-y-2">
-              {stats.serviceBreakdown.map((s, i) => {
-                const max = stats.serviceBreakdown[0]?.count || 1
-                return (
-                  <div key={s.serviceId || i} className="flex items-center gap-3">
-                    <span className="text-sm w-32 truncate text-gray-700">{s.name}</span>
-                    <div className="flex-1 h-6 bg-gray-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-[var(--color-brand-500)] rounded-full transition-all" style={{ width: `${(s.count / max) * 100}%` }} />
-                    </div>
-                    <span className="text-sm font-medium w-10 text-left">{s.count}</span>
-                  </div>
-                )
-              })}
-              {stats.serviceBreakdown.length === 0 && (
-                <p className="text-sm text-gray-400">لا توجد بيانات حجوزات بعد</p>
-              )}
-            </div>
-          </div>
+          {/* «أكثر خدمة طلبها الزبائن» انتقلت لإدارة الإحصائيات (تبويب
+              «أكثر خدمة مطلوبة») — هاي الصفحة للموظفين، مو للخدمات. */}
 
           {/* Employee counts */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

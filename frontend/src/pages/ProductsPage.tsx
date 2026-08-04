@@ -1,13 +1,19 @@
 import { useEffect, useState, useRef } from 'react'
-import { api, type Product } from '../api'
+import { api, type Product, type ProductAvailability, type Service } from '../api'
 
 const PRIMARY = '#1a237e'
 const GOLD = '#c8a45a'
 
 const fmt = (n: number) => n.toLocaleString('en-IQ')
 
+const AVAILABILITY: { value: ProductAvailability; label: string; hint: string }[] = [
+  { value: 'IN_STOCK', label: 'متوفر داخل الشركة', hint: 'موجود بالمخزن' },
+  { value: 'ON_DEMAND', label: 'يطلب عند الحاجة', hint: 'ينطلب من المجهز' },
+]
+
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([])
+  const [services, setServices] = useState<Service[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
@@ -15,7 +21,10 @@ export default function ProductsPage() {
   const [defaultPrice, setDefaultPrice] = useState(0)
   const [wholesalePrice, setWholesalePrice] = useState(0)
   const [imageBase64, setImageBase64] = useState('')
+  const [availability, setAvailability] = useState<ProductAvailability>('IN_STOCK')
+  const [serviceId, setServiceId] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [busyId, setBusyId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const load = () => {
@@ -25,7 +34,24 @@ export default function ProductsPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
+  useEffect(() => {
+    load()
+    api.getServices().then(setServices).catch(() => setServices([]))
+  }, [])
+
+  // تعديل مباشر من بطاقة المنتج — التوفر والتصنيف يتغيّرون كثير،
+  // فما نخلي المستخدم يفتح شاشة ثانية لكل تعديل.
+  const patch = async (id: string, data: Parameters<typeof api.updateProduct>[1]) => {
+    setBusyId(id)
+    try {
+      const updated = await api.updateProduct(id, data)
+      setProducts((prev) => prev.map((p) => (p.id === id ? updated : p)))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر التعديل')
+    } finally {
+      setBusyId(null)
+    }
+  }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -46,12 +72,16 @@ export default function ProductsPage() {
         defaultPrice,
         wholesalePrice: wholesalePrice || undefined,
         imageBase64: imageBase64 || undefined,
+        availability,
+        serviceId: serviceId || undefined,
       })
       setName('')
       setUnit('قطعة')
       setDefaultPrice(0)
       setWholesalePrice(0)
       setImageBase64('')
+      setAvailability('IN_STOCK')
+      setServiceId('')
       if (fileRef.current) fileRef.current.value = ''
       load()
     } catch (err) {
@@ -152,6 +182,27 @@ export default function ProductsPage() {
             />
           </div>
           <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>التوفر *</label>
+            <select
+              value={availability}
+              onChange={(e) => setAvailability(e.target.value as ProductAvailability)}
+              style={inputStyle}
+            >
+              {AVAILABILITY.map((a) => (
+                <option key={a.value} value={a.value}>{a.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>الخدمة</label>
+            <select value={serviceId} onChange={(e) => setServiceId(e.target.value)} style={inputStyle}>
+              <option value="">— يقترحها النظام —</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
             <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>صورة المنتج</label>
             <input
               ref={fileRef}
@@ -245,6 +296,57 @@ export default function ProductsPage() {
                     سعر الجملة: {fmt(product.wholesalePrice)} د.ع
                   </p>
                 )}
+
+                {/* التوفر — زر واحد يقلب بين الحالتين */}
+                <button
+                  disabled={busyId === product.id}
+                  onClick={() => patch(product.id, {
+                    availability: product.availability === 'IN_STOCK' ? 'ON_DEMAND' : 'IN_STOCK',
+                  })}
+                  title="اضغط لتبديل حالة التوفر"
+                  style={{
+                    width: '100%', marginBottom: '8px', padding: '7px', borderRadius: '6px',
+                    border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: 'bold',
+                    background: product.availability === 'IN_STOCK' ? '#dcfce7' : '#fef3c7',
+                    color: product.availability === 'IN_STOCK' ? '#15803d' : '#a16207',
+                    opacity: busyId === product.id ? 0.5 : 1,
+                  }}
+                >
+                  {product.availability === 'IN_STOCK' ? '✔ متوفر داخل الشركة' : '🛒 يطلب عند الحاجة'}
+                </button>
+
+                {/* التصنيف: الموظف يختار، والنظام يقترح */}
+                <select
+                  disabled={busyId === product.id}
+                  value={product.serviceId ?? ''}
+                  onChange={(e) => patch(product.id,
+                    e.target.value ? { serviceId: e.target.value } : { clearService: true })}
+                  style={{
+                    width: '100%', marginBottom: '6px', padding: '7px', borderRadius: '6px',
+                    border: '1px solid #ddd', fontSize: '12px', background: 'white',
+                  }}
+                >
+                  <option value="">بلا تصنيف</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+
+                {/* الاقتراح يظهر بس إذا الموظف ما صنّف بعد، أو صنّف بخلافه */}
+                {product.suggestedServiceId && product.suggestedServiceId !== product.serviceId && (
+                  <button
+                    disabled={busyId === product.id}
+                    onClick={() => patch(product.id, { serviceId: product.suggestedServiceId })}
+                    style={{
+                      width: '100%', marginBottom: '10px', padding: '6px', borderRadius: '6px',
+                      border: '1px dashed #93c5fd', background: '#eff6ff', color: '#1d4ed8',
+                      cursor: 'pointer', fontSize: '11px',
+                    }}
+                  >
+                    🤖 النظام يقترح: {product.suggestedServiceName} — اعتمدها
+                  </button>
+                )}
+
                 <button
                   onClick={() => handleDelete(product.id)}
                   style={{

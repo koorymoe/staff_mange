@@ -46,6 +46,9 @@ type Booking struct {
 	SystemType              *string    `db:"systemType" json:"systemType"`
 	ProjectSpeed            *string    `db:"projectSpeed" json:"projectSpeed"`
 	WorkType                *string    `db:"workType" json:"workType"`
+	// WorkLocation وين انشتغل الشغل: عند الزبون لو داخل الشركة (بالورشة).
+	// ⚠️ عمود بجدول Booking — لازم يضل إله حقل هنا لأن الاستعلام SELECT *.
+	WorkLocation string `db:"workLocation" json:"workLocation"`
 	AddressDescription      *string    `db:"addressDescription" json:"addressDescription"`
 	CreatedAt               time.Time  `db:"createdAt" json:"createdAt"`
 	UpdatedAt               time.Time  `db:"updatedAt" json:"updatedAt"`
@@ -175,4 +178,23 @@ type CompleteBookingRequest struct {
 	CompletionNotes *string  `json:"completionNotes"`
 	AmountCollected *float64 `json:"amountCollected"`
 	AdvancePaid     *float64 `json:"advancePaid"`
+	// WorkLocation وين انجز الشغل — ينسأل وقت الإنجاز لأن هذا الوقت
+	// الوحيد الي نعرف بيه الجواب أكيد.
+	WorkLocation *string `json:"workLocation"`
+}
+
+// وين انشتغل الشغل — أساس إحصائية «الأعمال داخل الشركة».
+const (
+	WorkOnSite  = "ON_SITE"  // عند الزبون
+	WorkInHouse = "IN_HOUSE" // داخل الشركة (بالورشة)
+)
+
+var WorkLocationLabels = map[string]string{
+	WorkOnSite:  "عند الزبون",
+	WorkInHouse: "داخل الشركة",
+}
+
+func ValidWorkLocation(v string) bool {
+	_, ok := WorkLocationLabels[v]
+	return ok
 }

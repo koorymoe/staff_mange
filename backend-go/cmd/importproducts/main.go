@@ -13,6 +13,7 @@ import (
 
 	"staffmange-api/internal/config"
 	"staffmange-api/internal/database"
+	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 )
 
@@ -63,7 +64,14 @@ func main() {
 			skipped++
 			continue
 		}
-		if _, err := repo.Create(row.Name, row.Unit, row.DefaultPrice, nil, row.ImageBase64); err != nil {
+		// التوفر والتصنيف يتركون افتراضي — المستورد ما يعرفهم،
+		// والموظف يحددهم من إدارة المنتجات.
+		if _, err := repo.Create(model.CreateProductRequest{
+			Name:         row.Name,
+			Unit:         row.Unit,
+			DefaultPrice: row.DefaultPrice,
+			ImageBase64:  row.ImageBase64,
+		}); err != nil {
 			log.Printf("فشل استيراد %q: %v", row.Name, err)
 			failed++
 			continue

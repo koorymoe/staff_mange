@@ -34,6 +34,16 @@ func (h *StatsManagementHandler) Weekly(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, stats)
 }
 
+// GET /api/stats-management/internal-works?month=2026-08
+func (h *StatsManagementHandler) InternalWorks(w http.ResponseWriter, r *http.Request) {
+	stats, err := h.service.InternalWorks(r.URL.Query().Get("month"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب إحصائية الأعمال داخل الشركة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, stats)
+}
+
 // GET /api/stats-management/projects
 func (h *StatsManagementHandler) ProjectStages(w http.ResponseWriter, r *http.Request) {
 	stats, err := h.service.ProjectStages()

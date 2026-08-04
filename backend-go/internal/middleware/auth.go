@@ -289,6 +289,30 @@ func RequireLeader(employees *repository.EmployeeRepository, notifications *repo
 	}
 }
 
+// RequireNotPlainTechnician يسمح لكل الكوادر عدا الفني العادي.
+//
+// حساب تكلفة التنصيب للتنفيذ صار فقرة رئيسية بكل الحسابات — إداري،
+// ليدر، إدارة — عدا الفني. فالقيد بالعكس: بدل ما نعدد الأدوار المسموحة
+// وننسى واحد كل ما ينضاف دور جديد، نمنع دور واحد بس.
+func RequireNotPlainTechnician(employees *repository.EmployeeRepository, notifications *repository.NotificationRepository) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role != "TECHNICIAN" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			// الفني الليدر يبقى مسموح — القيد على الفني العادي بس
+			employeeID := EmployeeIDFromContext(r)
+			if isLeader, err := employees.IsLeaderFreshByID(employeeID); err == nil && isLeader {
+				next.ServeHTTP(w, r)
+				return
+			}
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
+		})
+	}
+}
+
 // RequireLeaderOrPermission يسمح بالوصول لليدر (isLeader فريش من قاعدة البيانات،
 // نفس RequireLeader) أو لأي موظف عنده صلاحية مخصصة معينة (نفس RequirePermission)
 // أو ADMIN/OWNER. تُستخدم لسلة الليدر (leader_basket): افتراضياً حصراً لليدر،

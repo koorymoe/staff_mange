@@ -777,5 +777,36 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				WHERE e.id = l."employeeId" AND l.route NOT IN ('MORNING','EVENING');
 			`,
 		},
+		{
+			// إدارة المنتجات: هل المنتج متوفر داخل الشركة لو ينطلب عند
+			// الحاجة، ولأي خدمة ينتمي.
+			//
+			// serviceId تصنيف *الموظف* وهو المعتمد. اقتراح النظام يُحسب
+			// وقت القراءة من اسم المنتج مقابل الخدمات ومهاراتها، فما
+			// ينخزن — حتى ما يبقى محفوظ غلط لو انضافت خدمة جديدة.
+			Version: "0176_product_availability_and_service",
+			SQL: `
+				ALTER TABLE "Product"
+					ADD COLUMN IF NOT EXISTS availability TEXT NOT NULL DEFAULT 'IN_STOCK',
+					ADD COLUMN IF NOT EXISTS "serviceId" TEXT REFERENCES "Service"(id) ON DELETE SET NULL;
+
+				CREATE INDEX IF NOT EXISTS "Product_service_idx" ON "Product" ("serviceId");
+			`,
+		},
+		{
+			// وين انشتغل الشغل — أساس إحصائية «الأعمال داخل الشركة».
+			//
+			// الافتراضي ON_SITE لأن أغلب الشغل يطلع للزبون، والحجوزات
+			// القديمة ما عدنا منها معلومة أكيدة فما ننسبها للداخل غلط.
+			// الحقل ينسأل وقت إنجاز الحجز.
+			Version: "0177_booking_work_location",
+			SQL: `
+				ALTER TABLE "Booking"
+					ADD COLUMN IF NOT EXISTS "workLocation" TEXT NOT NULL DEFAULT 'ON_SITE';
+
+				CREATE INDEX IF NOT EXISTS "Booking_work_location_idx"
+					ON "Booking" ("workLocation", "completedAt");
+			`,
+		},
 	}
 }

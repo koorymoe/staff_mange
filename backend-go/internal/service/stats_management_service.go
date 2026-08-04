@@ -17,6 +17,7 @@ type StatsManagementService struct {
 	leaderInvoices  *repository.LeaderInvoiceRepository
 	attendance      *repository.AttendanceRepository
 	employeeMonthly *EmployeeMonthlyStatsService
+	internalWorks   *repository.InternalWorksRepository
 }
 
 func NewStatsManagementService(
@@ -27,11 +28,22 @@ func NewStatsManagementService(
 	leaderInvoices *repository.LeaderInvoiceRepository,
 	attendance *repository.AttendanceRepository,
 	employeeMonthly *EmployeeMonthlyStatsService,
+	internalWorks *repository.InternalWorksRepository,
 ) *StatsManagementService {
 	return &StatsManagementService{
 		employees: employees, bookings: bookings, commissions: commissions, projects: projects,
 		leaderInvoices: leaderInvoices, attendance: attendance, employeeMonthly: employeeMonthly,
+		internalWorks: internalWorks,
 	}
+}
+
+// InternalWorks الأعمال المنجزة داخل الشركة بشهر معيّن (YYYY-MM) —
+// الشهر الحالي افتراضياً.
+func (s *StatsManagementService) InternalWorks(month string) (*model.InternalWorksReport, error) {
+	if month == "" {
+		month = time.Now().Format("2006-01")
+	}
+	return s.internalWorks.Monthly(month)
 }
 
 // Daily يبني إحصائية يوم معيّن (date بصيغة "YYYY-MM-DD") — اليوم افتراضياً لو
