@@ -29,7 +29,10 @@ type VipCustomer struct {
 }
 
 type MarkVipCustomerRequest struct {
-	CustomerID       string  `json:"customerId"`
+	CustomerID string `json:"customerId"`
+	// Phone بديل عن CustomerID بالإضافة اليدوية: الإداري يدز الرقم بس
+	// والسيرفر يطلع الزبون منه.
+	Phone            string  `json:"phone"`
 	BookingID        *string `json:"bookingId"`
 	ProjectID        *string `json:"projectId"`
 	RequestSummary   *string `json:"requestSummary"`

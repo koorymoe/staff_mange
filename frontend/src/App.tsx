@@ -142,7 +142,8 @@ function App() {
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="stats" element={<StatsPage />} />
           <Route path="projects" element={<ProjectsPage />} />
-          <Route path="vip-customers" element={<RequireAdmin><VipCustomersPage /></RequireAdmin>} />
+          {/* الشخصيات المهمة: مدير النظام، أو أي إداري ينمنح صلاحية الإضافة اليدوية */}
+          <Route path="vip-customers" element={<RequirePermission permission="vip_manual_add"><VipCustomersPage /></RequirePermission>} />
           {/* سياسة الخصوصية مفتوحة لكل موظف — يقراها من الإعدادات */}
           <Route path="privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="project-work-types" element={<ProjectWorkTypesSettingsPage />} />

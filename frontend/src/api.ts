@@ -871,6 +871,8 @@ export interface VipCustomer {
   customerId: string
   bookingId: string | null
   requestSummary: string | null
+  customerPosition: string | null
+  sourceLabel?: string
   note: string | null
   markedByEmployeeId: string
   createdAt: string
@@ -2265,7 +2267,8 @@ export const api = {
   // الشخصيات المهمة (VIP)
   getVipCustomers: () => request<VipCustomer[]>('/vip-customers'),
   getVipCustomerIds: () => request<string[]>('/vip-customers/ids'),
-  markVipCustomer: (data: { customerId: string; bookingId?: string; requestSummary?: string; note?: string }) =>
+  // phone بديل عن customerId بالإضافة اليدوية — السيرفر يطلع الزبون من رقمه
+  markVipCustomer: (data: { customerId?: string; phone?: string; bookingId?: string; requestSummary?: string; customerPosition?: string; note?: string }) =>
     request<VipCustomer>('/vip-customers', { method: 'POST', body: JSON.stringify(data) }),
   unmarkVipCustomer: (customerId: string) => request<void>(`/vip-customers/${customerId}`, { method: 'DELETE' }),
 

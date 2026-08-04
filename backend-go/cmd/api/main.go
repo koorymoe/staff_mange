@@ -214,7 +214,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	}
 	projectHandler := handler.NewProjectHandler(projectService, canSeeAllProjects)
 	projectWorkTypeHandler := handler.NewProjectWorkTypeHandler(projectWorkTypeService)
-	vipCustomerHandler := handler.NewVipCustomerHandler(vipCustomerRepo)
+	vipCustomerHandler := handler.NewVipCustomerHandler(vipCustomerRepo, customerService)
 	checklistHandler := handler.NewChecklistHandler(checklistService)
 	techShowcaseHandler := handler.NewTechShowcaseHandler(techShowcaseService)
 	attendanceIconRequestHandler := handler.NewAttendanceIconRequestHandler(attendanceIconRequestService)
@@ -287,8 +287,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
 	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
-	// حساب تكلفة التنصيب للتنفيذ: متاح لكل الكوادر عدا الفني العادي
-	requireNotPlainTech := middleware.RequireNotPlainTechnician(employeeRepo, notificationRepo)
 	// موافقة/رفض طلبات الأدوات: كانت دور صارم بدون منفذ صلاحية، فإداري الكميات
 	// — وهو صاحب الشغلة أصلاً — ما كان يقدر يوافق أبداً مهما انمنحت له
 	// صلاحيات. صارت صلاحية مستقلة تُمنح لأي موظف، مع إبقاء الأدوار القديمة.
@@ -984,7 +982,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth, requireLeaderBasket))
 	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeader))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
-	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireNotPlainTech))
+	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
+	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد
+	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth))
 	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireLeader))
 	mux.Handle("GET /api/leader-invoices/camera-cost/options", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCostOptions), requireAuth, requireLeader))
 	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه

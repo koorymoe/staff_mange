@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type VipCustomer } from '../api'
+import { api, type VipCustomer, type Customer } from '../api'
 
 // قائمة الشخصيات المهمة — لمدير النظام حصراً (الراوت بالسيرفر محمي بـrequireAdmin).
 // تعرض تفاصيل الزبون ورقمه وشنو طلب من عدنا ومنو الموظف الي علّمه.
@@ -8,6 +8,49 @@ export default function VipCustomersPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+
+  // الإضافة اليدوية: الإداري يدز الرقم، والنظام يطلعله الزبون بمعلوماته
+  const [phone, setPhone] = useState('')
+  const [found, setFound] = useState<Customer | null>(null)
+  const [notFound, setNotFound] = useState(false)
+  const [position, setPosition] = useState('')
+  const [summary, setSummary] = useState('')
+  const [note, setNote] = useState('')
+  const [adding, setAdding] = useState(false)
+
+  // نبحث تلقائياً أول ما يكتمل الرقم — بلا زر بحث
+  useEffect(() => {
+    const p = phone.trim()
+    if (p.length < 10) {
+      // تفضية النتيجة السابقة خارج جسم الـeffect المتزامن
+      queueMicrotask(() => { setFound(null); setNotFound(false) })
+      return
+    }
+    let active = true
+    api.lookupCustomer(p)
+      .then((c) => { if (active) { setFound(c); setNotFound(!c) } })
+      .catch(() => { if (active) { setFound(null); setNotFound(true) } })
+    return () => { active = false }
+  }, [phone])
+
+  const addManual = async () => {
+    if (!found) return
+    setAdding(true)
+    try {
+      await api.markVipCustomer({
+        phone: phone.trim(),
+        customerPosition: position.trim() || undefined,
+        requestSummary: summary.trim() || undefined,
+        note: note.trim() || undefined,
+      })
+      setPhone(''); setFound(null); setPosition(''); setSummary(''); setNote('')
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذرت الإضافة')
+    } finally {
+      setAdding(false)
+    }
+  }
 
   const load = () => {
     api.getVipCustomers()
@@ -35,6 +78,54 @@ export default function VipCustomersPage() {
         الزبائن الي علّمهم الموظفون كشخصيات مهمة — مع تفاصيل الزبون وشنو طلب من عدنا ومنو الموظف الي علّمه.
       </p>
 
+      {/* إضافة يدوية — للإداري ومدير النظام (السيرفر يفرض القيد كمان) */}
+      <div className="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-5">
+        <h3 className="font-bold text-amber-900">➕ إضافة شخصية مهمة يدوياً</h3>
+        <p className="mt-1 text-xs text-amber-700">
+          اكتب رقم الزبون بس — النظام يطلعلك اسمه ومعلوماته كاملة.
+        </p>
+
+        <input
+          value={phone} onChange={(e) => setPhone(e.target.value)} dir="ltr" inputMode="numeric"
+          placeholder="07XXXXXXXXX"
+          className="mt-3 w-full max-w-xs rounded-lg border border-amber-300 bg-white px-4 py-2.5 text-right outline-none focus:border-amber-500"
+        />
+
+        {notFound && phone.trim().length >= 10 && (
+          <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
+            ماكو زبون بهذا الرقم — تأكد من الرقم أو سجّله كزبون أول.
+          </p>
+        )}
+
+        {found && (
+          <div className="mt-3 rounded-xl bg-white p-4 shadow-sm">
+            <p className="font-bold text-slate-800">{found.name}</p>
+            <p className="mt-1 text-sm text-slate-600">📞 {found.phone} · كود: {found.code}</p>
+            {found.location && <p className="mt-1 text-sm text-slate-600">📍 {found.location}</p>}
+            <p className="mt-1 text-xs text-slate-400">
+              حجوزاته السابقة: {found.previousBookingsCount ?? 0}
+              {found.services?.length ? ` · خدماته: ${found.services.join('، ')}` : ''}
+            </p>
+
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <input value={position} onChange={(e) => setPosition(e.target.value)}
+                placeholder="منصب الزبون (مثال: مدير شركة)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+              <input value={summary} onChange={(e) => setSummary(e.target.value)}
+                placeholder="شنو طلب من عدنا (مثال: شد كاميرات)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+            </div>
+            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة (اختياري)"
+              className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+
+            <button onClick={addManual} disabled={adding}
+              className="mt-3 rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50">
+              {adding ? 'جاري الإضافة...' : '⭐ علّمه شخصية مهمة'}
+            </button>
+          </div>
+        )}
+      </div>
+
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && <p className="mt-4 rounded-lg bg-red-50 p-4 text-red-600">{error}</p>}
 
@@ -45,6 +136,7 @@ export default function VipCustomersPage() {
               <tr className="border-b border-slate-100 text-right text-slate-400">
                 <th className="px-4 py-3">الزبون</th>
                 <th className="px-4 py-3">رقم الهاتف</th>
+                <th className="px-4 py-3">المنصب</th>
                 <th className="px-4 py-3">شنو طلب</th>
                 <th className="px-4 py-3">رمز الحجز</th>
                 <th className="px-4 py-3">علّمه</th>
@@ -57,6 +149,7 @@ export default function VipCustomersPage() {
                 <tr key={v.id} className="border-b border-slate-50 last:border-0">
                   <td className="px-4 py-3 font-bold text-brand-900">⭐ {v.customerName}</td>
                   <td className="px-4 py-3 font-bold text-brand-700" dir="ltr">{v.customerPhone}</td>
+                  <td className="px-4 py-3">{v.customerPosition || '—'}</td>
                   <td className="px-4 py-3">{v.requestSummary || '—'}</td>
                   <td className="px-4 py-3 font-mono text-slate-500">{v.bookingCode || '—'}</td>
                   <td className="px-4 py-3">{v.markedByName}</td>
@@ -74,7 +167,7 @@ export default function VipCustomersPage() {
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
                     ما اكو زبائن معلّمين كشخصيات مهمة بعد.
                   </td>
                 </tr>

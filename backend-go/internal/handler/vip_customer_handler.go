@@ -9,14 +9,16 @@ import (
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/service"
 )
 
 type VipCustomerHandler struct {
-	repo *repository.VipCustomerRepository
+	repo      *repository.VipCustomerRepository
+	customers *service.CustomerService
 }
 
-func NewVipCustomerHandler(repo *repository.VipCustomerRepository) *VipCustomerHandler {
-	return &VipCustomerHandler{repo: repo}
+func NewVipCustomerHandler(repo *repository.VipCustomerRepository, customers *service.CustomerService) *VipCustomerHandler {
+	return &VipCustomerHandler{repo: repo, customers: customers}
 }
 
 // GET /api/vip-customers — التفاصيل الكاملة، لمدير النظام فقط (محمي بالراوت).
@@ -46,6 +48,17 @@ func (h *VipCustomerHandler) Mark(w http.ResponseWriter, r *http.Request) {
 	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
 		return
+	}
+	// الإضافة اليدوية: الإداري يدز الرقم بس، والنظام يطلع الزبون بمعلوماته.
+	// نحل الرقم للزبون هنا بالسيرفر مو بالواجهة، حتى ما ينضاف زبون وهمي
+	// بإرسال customerId مصنوع من العميل.
+	if strings.TrimSpace(req.CustomerID) == "" && strings.TrimSpace(req.Phone) != "" {
+		c, err := h.customers.Lookup(strings.TrimSpace(req.Phone))
+		if err != nil || c == nil {
+			WriteError(w, http.StatusNotFound, "ماكو زبون بهذا الرقم — تأكد من الرقم أو سجّله كزبون أول")
+			return
+		}
+		req.CustomerID = c.ID
 	}
 	if strings.TrimSpace(req.CustomerID) == "" {
 		WriteError(w, http.StatusBadRequest, "الزبون مطلوب")
