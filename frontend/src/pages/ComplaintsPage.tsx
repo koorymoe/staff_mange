@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { api, complaintTypeLabels, type Complaint, type ComplaintCustomerStat, type ComplaintType, type Customer, type Employee } from '../api'
 import { useSession } from '../session'
 
@@ -33,6 +33,7 @@ export default function ComplaintsPage() {
   const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [stats, setStats] = useState<ComplaintCustomerStat[]>([])
+  const [contactBusy, setContactBusy] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -64,11 +65,14 @@ export default function ComplaintsPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(load, [])
-  // تقرير عدد شكاوى كل زبون — منفصل تماماً عن إحصائيات الحجوزات
-  useEffect(() => {
+  // تقرير عدد شكاوى كل زبون — منفصل تماماً عن إحصائيات الحجوزات.
+  // ينعاد تحميله بعد تأشير الاتصال حتى عمود «الحالة» يتحدث فوراً.
+  const loadStats = useCallback(() => {
     if (canTrack) api.getComplaintStats().then(setStats).catch(() => {})
   }, [canTrack])
+
+  useEffect(load, [])
+  useEffect(loadStats, [loadStats])
   // الأدوار الي بس تسجل شكوى (بدون متابعة) تشوف الفورم مباشرة بدون زر تبديل
   useEffect(() => {
     // Auto-opening the complaint form for roles without a tracking view is a
@@ -139,6 +143,30 @@ export default function ComplaintsPage() {
       alert(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // تأشير الاتصال بالزبون — النظام يخزن منو اتصل ومتى، ويطلع كدام الشكوى
+  const toggleContacted = async (c: Complaint) => {
+    setContactBusy(c.id)
+    try {
+      const updated = await api.setComplaintContacted(c.id, !c.contactedAt)
+      setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
+      loadStats()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تحديث حالة الاتصال')
+    } finally {
+      setContactBusy(null)
+    }
+  }
+
+  const saveNotes = async (c: Complaint, value: string) => {
+    if ((c.notes || '') === value.trim()) return
+    try {
+      const updated = await api.setComplaintNotes(c.id, value.trim())
+      setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر حفظ الملاحظات')
     }
   }
 
@@ -332,7 +360,7 @@ export default function ComplaintsPage() {
                   <th className="px-4 py-2 font-semibold text-slate-600">الزبون</th>
                   <th className="px-4 py-2 font-semibold text-slate-600">الهاتف</th>
                   <th className="px-4 py-2 font-semibold text-slate-600">عدد الشكاوى</th>
-                  <th className="px-4 py-2 font-semibold text-slate-600">مفتوحة حالياً</th>
+                  <th className="px-4 py-2 font-semibold text-slate-600">الحالة</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -341,7 +369,18 @@ export default function ComplaintsPage() {
                     <td className="px-4 py-2 font-medium">{s.customerName}</td>
                     <td className="px-4 py-2 text-slate-500">{s.customerPhone}</td>
                     <td className="px-4 py-2 font-bold text-brand-700">{s.complaintCount}</td>
-                    <td className="px-4 py-2">{s.openCount > 0 ? `${s.openCount} ⚠️` : '-'}</td>
+                    {/* الحالة = هل انتصلنا بيه، مو «مفتوحة حالياً» */}
+                    <td className="px-4 py-2">
+                      {s.notContactedCount > 0 ? (
+                        <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                          ✕ لم يتم الاتصال{s.notContactedCount > 1 ? ` (${s.notContactedCount})` : ''}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                          ✔ تم الاتصال
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -399,6 +438,8 @@ export default function ComplaintsPage() {
                   <th className="px-4 py-3 text-sm font-semibold">الزبون</th>
                   <th className="px-4 py-3 text-sm font-semibold">الوصف</th>
                   <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
+                  <th className="px-4 py-3 text-sm font-semibold">الاتصال بالزبون</th>
+                  <th className="px-4 py-3 text-sm font-semibold">ملاحظات الزبون</th>
                   <th className="px-4 py-3 text-sm font-semibold">المسؤول</th>
                   <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
                   <th className="px-4 py-3 text-sm font-semibold">الحل</th>
@@ -423,6 +464,34 @@ export default function ComplaintsPage() {
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[c.status]}`}>
                         {statusLabels[c.status]}
                       </span>
+                    </td>
+                    {/* سويچ الاتصال — أخضر «تم» وأحمر «لم يتم»، ويخزن منو اتصل */}
+                    <td className="px-4 py-3">
+                      <button
+                        type="button"
+                        disabled={contactBusy === c.id}
+                        onClick={() => toggleContacted(c)}
+                        className={`rounded-full px-3 py-1 text-xs font-bold transition-colors disabled:opacity-50 ${
+                          c.contactedAt
+                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                            : 'bg-red-100 text-red-700 hover:bg-red-200'
+                        }`}
+                      >
+                        {c.contactedAt ? '✔ تم الاتصال' : '✕ لم يتم الاتصال'}
+                      </button>
+                      {c.contactedAt && (
+                        <div className="mt-1 text-[11px] text-slate-400">
+                          {c.contactedByName || '—'} · {new Date(c.contactedAt).toLocaleDateString('ar-IQ')}
+                        </div>
+                      )}
+                    </td>
+                    <td className="max-w-[200px] px-4 py-3">
+                      <input
+                        defaultValue={c.notes || ''}
+                        onBlur={(e) => saveNotes(c, e.target.value)}
+                        placeholder="ملاحظات الزبون..."
+                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs outline-none focus:border-brand-500"
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <select

@@ -24,6 +24,13 @@ type Complaint struct {
 	CreatedByEmployeeID  string     `db:"createdByEmployeeId" json:"-"`
 	AssignedToEmployeeID *string    `db:"assignedToEmployeeId" json:"-"`
 	Resolution           *string    `db:"resolution" json:"resolution"`
+	// حالة الاتصال بالزبون: منو اتصل ومتى، وملاحظات الزبون.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	ContactedAt   *time.Time `db:"contactedAt" json:"contactedAt"`
+	ContactedByID *string    `db:"contactedById" json:"contactedById"`
+	Notes         *string    `db:"notes" json:"notes"`
+	// اسم الي اتصل — يُملأ بالتهيئة حتى تظهر معلوماته كدام الشكوى
+	ContactedByName *string `db:"-" json:"contactedByName"`
 	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
 	ResolvedAt           *time.Time `db:"resolvedAt" json:"resolvedAt"`
 
@@ -59,5 +66,6 @@ type ComplaintCustomerStat struct {
 	CustomerName   string `db:"customerName" json:"customerName"`
 	CustomerPhone  string `db:"customerPhone" json:"customerPhone"`
 	ComplaintCount int    `db:"complaintCount" json:"complaintCount"`
+	NotContactedCount int `db:"notContactedCount" json:"notContactedCount"`
 	OpenCount      int    `db:"openCount" json:"openCount"`
 }

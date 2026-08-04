@@ -573,6 +573,7 @@ export interface ComplaintCustomerStat {
   customerPhone: string
   complaintCount: number
   openCount: number
+  notContactedCount: number
 }
 
 export interface QualityFollowUp {
@@ -897,6 +898,7 @@ export interface VipCustomer {
   bookingId: string | null
   requestSummary: string | null
   customerPosition: string | null
+  boughtFromUs?: boolean
   sourceLabel?: string
   note: string | null
   markedByEmployeeId: string
@@ -1711,6 +1713,10 @@ export interface Complaint {
   assignedToEmployee: { id: string; name: string } | null
   relatedEmployee: { id: string; name: string } | null
   resolution: string | null
+  /** حالة الاتصال بالزبون — منو اتصل ومتى */
+  contactedAt: string | null
+  contactedByName: string | null
+  notes: string | null
   createdAt: string
   resolvedAt: string | null
 }
@@ -1939,6 +1945,10 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
+  setComplaintContacted: (id: string, contacted: boolean) =>
+    request<Complaint>(`/complaints/${id}/contact`, { method: 'PUT', body: JSON.stringify({ contacted }) }),
+  setComplaintNotes: (id: string, notes: string) =>
+    request<Complaint>(`/complaints/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
   getComplaintStats: () => request<ComplaintCustomerStat[]>('/complaints/stats'),
 
   getSecurityDashboard: () =>
@@ -2301,7 +2311,7 @@ export const api = {
   decideBookingDelete: (id: string, approve: boolean, note?: string) =>
     request<BookingDeleteRequest>(`/booking-delete-requests/${id}/decide`, { method: 'PUT', body: JSON.stringify({ approve, note: note || null }) }),
 
-  markVipCustomer: (data: { customerId?: string; phone?: string; bookingId?: string; requestSummary?: string; customerPosition?: string; note?: string }) =>
+  markVipCustomer: (data: { customerId?: string; phone?: string; name?: string; location?: string | null; locationUrl?: string | null; boughtFromUs?: boolean; bookingId?: string; requestSummary?: string; customerPosition?: string; note?: string }) =>
     request<VipCustomer>('/vip-customers', { method: 'POST', body: JSON.stringify(data) }),
   unmarkVipCustomer: (customerId: string) => request<void>(`/vip-customers/${customerId}`, { method: 'DELETE' }),
 

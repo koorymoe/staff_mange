@@ -40,6 +40,16 @@ func (s *ComplaintService) Update(id string, req model.UpdateComplaintRequest) (
 	return s.repo.Update(id, req.Status, req.AssignedToEmployeeID, req.Resolution)
 }
 
+// SetContacted تأشير الاتصال بالزبون — منو اتصل ومتى ينتخزنون.
+func (s *ComplaintService) SetContacted(id string, contacted bool, byID string) (*model.Complaint, error) {
+	return s.repo.SetContacted(id, contacted, byID)
+}
+
+// SetNotes ملاحظات الزبون على الشكوى.
+func (s *ComplaintService) SetNotes(id, notes string) (*model.Complaint, error) {
+	return s.repo.SetNotes(id, notes)
+}
+
 func (s *ComplaintService) Resolve(id string, req model.ResolveComplaintRequest) (*model.Complaint, error) {
 	return s.repo.Resolve(id, req.Resolution)
 }

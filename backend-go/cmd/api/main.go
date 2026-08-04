@@ -577,6 +577,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// أدوار المتابعة بالواجهة: مهندس الجودة/المراقب/الأدمن) — لا أي موظف مسجل دخول
 	// (مثلاً موظف مبيعات عنده صلاحية "complaints" بس لتسجيل شكوى جديدة فقط).
 	mux.Handle("PUT /api/complaints/{id}", middleware.Chain(http.HandlerFunc(complaintHandler.Update), requireAuth, requireQuality))
+	// تأشير الاتصال والملاحظات: أي موظف يقدر — المهم النظام يخزن منو
+	// اتصل. حصرها بالجودة يخلي الشكوى تضل بلا متابعة لو المهندس مشغول.
+	mux.Handle("PUT /api/complaints/{id}/contact", middleware.Chain(http.HandlerFunc(complaintHandler.SetContacted), requireAuth))
+	mux.Handle("PUT /api/complaints/{id}/notes", middleware.Chain(http.HandlerFunc(complaintHandler.SetNotes), requireAuth))
 	mux.Handle("PUT /api/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth, requireQuality))
 	mux.Handle("GET /api/complaints/stats", middleware.Chain(http.HandlerFunc(complaintHandler.Stats), requireAuth))
 	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth, requireQuality))

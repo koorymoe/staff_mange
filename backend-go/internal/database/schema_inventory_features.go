@@ -829,6 +829,29 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			`,
 		},
 		{
+			// الشكاوى: هل انتصلنا بالزبون ومنو اتصل ومتى، وملاحظاته.
+			//
+			// «مفتوحة حالياً» ما تكفي — الحالة الي تهم مهندس الجودة هي
+			// «تم الاتصال أو لا»، ومنو الي اتصل حتى يترجعله المالك، وشنو
+			// ملاحظات الزبون حتى نستفاد منها.
+			Version: "0181_complaint_contact",
+			SQL: `
+				ALTER TABLE "Complaint"
+					ADD COLUMN IF NOT EXISTS "contactedAt" TIMESTAMPTZ,
+					ADD COLUMN IF NOT EXISTS "contactedById" TEXT REFERENCES "Employee"(id),
+					ADD COLUMN IF NOT EXISTS notes TEXT;
+			`,
+		},
+		{
+			// الشخصية المهمة اليدوية: هل هذا الشخص مشترى من عدنا أصلاً؟
+			// ممكن نتعرف على شخصية مهمة بلا ما تكون زبون.
+			Version: "0182_vip_bought_from_us",
+			SQL: `
+				ALTER TABLE "VipCustomer"
+					ADD COLUMN IF NOT EXISTS "boughtFromUs" BOOLEAN NOT NULL DEFAULT true;
+			`,
+		},
+		{
 			// طلب حذف حجز: الإداري يطلب، والمراقب أو مدير النظام يبت.
 			// ما نحذف الحجز فوراً لأن الحذف ما يترد — والحجوزات
 			// التجريبية والملغاة تنشال بموافقة مو بمزاج.

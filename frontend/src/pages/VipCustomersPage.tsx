@@ -17,6 +17,11 @@ export default function VipCustomersPage() {
   const [summary, setSummary] = useState('')
   const [note, setNote] = useState('')
   const [adding, setAdding] = useState(false)
+  // الشخصية المهمة مو لازم تكون زبون عدنا — نتعرف عليها بأي مكان
+  const [newName, setNewName] = useState('')
+  const [newLocation, setNewLocation] = useState('')
+  const [newLocationUrl, setNewLocationUrl] = useState('')
+  const [boughtFromUs, setBoughtFromUs] = useState(true)
 
   // نبحث تلقائياً أول ما يكتمل الرقم — بلا زر بحث
   useEffect(() => {
@@ -34,16 +39,22 @@ export default function VipCustomersPage() {
   }, [phone])
 
   const addManual = async () => {
-    if (!found) return
+    // موجود بالنظام → نعلّمه. مو موجود → لازم اسم حتى ننشئ سجله.
+    if (!found && !newName.trim()) { alert('اكتب اسم الشخصية أول'); return }
     setAdding(true)
     try {
       await api.markVipCustomer({
         phone: phone.trim(),
+        name: found ? undefined : newName.trim(),
+        location: found ? undefined : (newLocation.trim() || undefined),
+        locationUrl: found ? undefined : (newLocationUrl.trim() || undefined),
+        boughtFromUs,
         customerPosition: position.trim() || undefined,
         requestSummary: summary.trim() || undefined,
         note: note.trim() || undefined,
       })
       setPhone(''); setFound(null); setPosition(''); setSummary(''); setNote('')
+      setNewName(''); setNewLocation(''); setNewLocationUrl(''); setBoughtFromUs(true)
       load()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذرت الإضافة')
@@ -92,9 +103,41 @@ export default function VipCustomersPage() {
         />
 
         {notFound && phone.trim().length >= 10 && (
-          <p className="mt-3 rounded-lg bg-red-50 p-3 text-sm text-red-700">
-            ماكو زبون بهذا الرقم — تأكد من الرقم أو سجّله كزبون أول.
-          </p>
+          <div className="mt-3 rounded-xl bg-white p-4 shadow-sm">
+            <p className="mb-3 rounded-lg bg-blue-50 p-3 text-sm text-blue-800">
+              ما مشترى من عدنا — اكتب معلوماته كاملة وراح ينحفظ بالنظام.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input value={newName} onChange={(e) => setNewName(e.target.value)}
+                placeholder="الاسم الكامل *"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+              <input value={position} onChange={(e) => setPosition(e.target.value)}
+                placeholder="المنصب (مثال: مدير شركة)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+              <input value={newLocation} onChange={(e) => setNewLocation(e.target.value)}
+                placeholder="العنوان"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+              <input value={newLocationUrl} onChange={(e) => setNewLocationUrl(e.target.value)} dir="ltr"
+                placeholder="رابط الموقع (كوكل ماب)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+              <input value={summary} onChange={(e) => setSummary(e.target.value)}
+                placeholder="شنو يخصه / وين تعرفنا عليه"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+              <input value={note} onChange={(e) => setNote(e.target.value)}
+                placeholder="ملاحظة (اختياري)"
+                className="rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+            </div>
+
+            <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={boughtFromUs} onChange={(e) => setBoughtFromUs(e.target.checked)} />
+              مشترى من عدنا
+            </label>
+
+            <button onClick={addManual} disabled={adding || !newName.trim()}
+              className="mt-3 rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50">
+              {adding ? 'جاري الإضافة...' : '⭐ أضفه شخصية مهمة'}
+            </button>
+          </div>
         )}
 
         {found && (
@@ -117,6 +160,10 @@ export default function VipCustomersPage() {
             </div>
             <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة (اختياري)"
               className="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500" />
+            <label className="mt-3 flex items-center gap-2 text-sm text-slate-700">
+              <input type="checkbox" checked={boughtFromUs} onChange={(e) => setBoughtFromUs(e.target.checked)} />
+              مشترى من عدنا
+            </label>
 
             <button onClick={addManual} disabled={adding}
               className="mt-3 rounded-lg bg-amber-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-amber-700 disabled:opacity-50">
@@ -137,6 +184,7 @@ export default function VipCustomersPage() {
                 <th className="px-4 py-3">الزبون</th>
                 <th className="px-4 py-3">رقم الهاتف</th>
                 <th className="px-4 py-3">المنصب</th>
+                <th className="px-4 py-3">مشترى من عدنا</th>
                 <th className="px-4 py-3">شنو طلب</th>
                 <th className="px-4 py-3">رمز الحجز</th>
                 <th className="px-4 py-3">علّمه</th>
@@ -150,6 +198,11 @@ export default function VipCustomersPage() {
                   <td className="px-4 py-3 font-bold text-brand-900">⭐ {v.customerName}</td>
                   <td className="px-4 py-3 font-bold text-brand-700" dir="ltr">{v.customerPhone}</td>
                   <td className="px-4 py-3">{v.customerPosition || '—'}</td>
+                  <td className="px-4 py-3">
+                    {v.boughtFromUs === false
+                      ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600">لا</span>
+                      : <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-700">إي</span>}
+                  </td>
                   <td className="px-4 py-3">{v.requestSummary || '—'}</td>
                   <td className="px-4 py-3 font-mono text-slate-500">{v.bookingCode || '—'}</td>
                   <td className="px-4 py-3">{v.markedByName}</td>
@@ -167,7 +220,7 @@ export default function VipCustomersPage() {
               ))}
               {items.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-6 text-center text-slate-400">
+                  <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                     ما اكو زبائن معلّمين كشخصيات مهمة بعد.
                   </td>
                 </tr>

@@ -40,6 +40,48 @@ func (r *ComplaintRepository) hydrate(c *model.Complaint) {
 	if c.RelatedEmployeeID != nil {
 		c.RelatedEmployee = r.loadEmployeeBrief(*c.RelatedEmployeeID)
 	}
+	// منو اتصل بالزبون — لازم يبين كدام الشكوى مثل ما انطلب
+	if c.ContactedByID != nil {
+		if e := r.loadEmployeeBrief(*c.ContactedByID); e != nil {
+			name := e.Name
+			c.ContactedByName = &name
+		}
+	}
+}
+
+// SetContacted يأشر إن أحد اتصل بالزبون (أو يشيل التأشير)، ويخزن منو
+// اتصل ومتى. أي موظف يقدر — المهم نعرف منو.
+func (r *ComplaintRepository) SetContacted(id string, contacted bool, byID string) (*model.Complaint, error) {
+	var q string
+	var args []any
+	if contacted {
+		q = `UPDATE "Complaint" SET "contactedAt" = now(), "contactedById" = $2 WHERE id = $1`
+		args = []any{id, byID}
+	} else {
+		q = `UPDATE "Complaint" SET "contactedAt" = NULL, "contactedById" = NULL WHERE id = $1`
+		args = []any{id}
+	}
+	if _, err := r.db.Exec(q, args...); err != nil {
+		return nil, err
+	}
+	return r.Find(id)
+}
+
+// SetNotes ملاحظات الزبون — نستفاد منها بالتحسين.
+func (r *ComplaintRepository) SetNotes(id, notes string) (*model.Complaint, error) {
+	if _, err := r.db.Exec(`UPDATE "Complaint" SET notes = NULLIF($2,'') WHERE id = $1`, id, notes); err != nil {
+		return nil, err
+	}
+	return r.Find(id)
+}
+
+func (r *ComplaintRepository) Find(id string) (*model.Complaint, error) {
+	var c model.Complaint
+	if err := r.db.Get(&c, `SELECT * FROM "Complaint" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	r.hydrate(&c)
+	return &c, nil
 }
 
 func (r *ComplaintRepository) List() ([]model.Complaint, error) {
@@ -94,7 +136,8 @@ func (r *ComplaintRepository) StatsByCustomer() ([]model.ComplaintCustomerStat, 
 			cu.name AS "customerName",
 			cu.phone AS "customerPhone",
 			COUNT(c.id) AS "complaintCount",
-			COUNT(*) FILTER (WHERE c.status IN ('NEW', 'IN_PROGRESS')) AS "openCount"
+			COUNT(*) FILTER (WHERE c.status IN ('NEW', 'IN_PROGRESS')) AS "openCount",
+		       COUNT(*) FILTER (WHERE c."contactedAt" IS NULL) AS "notContactedCount"
 		FROM "Complaint" c
 		JOIN "Customer" cu ON cu.id = c."customerId"
 		GROUP BY cu.id, cu.name, cu.phone

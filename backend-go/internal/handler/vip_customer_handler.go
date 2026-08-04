@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -53,12 +54,34 @@ func (h *VipCustomerHandler) Mark(w http.ResponseWriter, r *http.Request) {
 	// نحل الرقم للزبون هنا بالسيرفر مو بالواجهة، حتى ما ينضاف زبون وهمي
 	// بإرسال customerId مصنوع من العميل.
 	if strings.TrimSpace(req.CustomerID) == "" && strings.TrimSpace(req.Phone) != "" {
-		c, err := h.customers.Lookup(strings.TrimSpace(req.Phone))
-		if err != nil || c == nil {
-			WriteError(w, http.StatusNotFound, "ماكو زبون بهذا الرقم — تأكد من الرقم أو سجّله كزبون أول")
+		phone := strings.TrimSpace(req.Phone)
+		c, err := h.customers.Lookup(phone)
+		if err == nil && c != nil {
+			req.CustomerID = c.ID
+		} else if strings.TrimSpace(req.Name) != "" {
+			// شخصية مهمة مو زبون عدنا: ننشئ سجل جديد بمعلوماته حتى
+			// تنحفظ وترجع تنلكه بالرقم بأي وقت.
+			created, cerr := h.customers.FindOrCreate(model.CreateCustomerRequest{
+				Name:         strings.TrimSpace(req.Name),
+				Phone:        phone,
+				Location:     req.Location,
+				MapLatitude:  req.MapLatitude,
+				MapLongitude: req.MapLongitude,
+			})
+			if cerr != nil || created == nil {
+				WriteError(w, http.StatusBadRequest, "تعذر حفظ معلومات الشخصية")
+				return
+			}
+			req.CustomerID = created.ID
+			if req.LocationURL != nil && *req.LocationURL != "" {
+				_, _ = h.customers.Update(created.ID, model.UpdateCustomerRequest{
+					Name: created.Name, Phone: created.Phone, LocationURL: req.LocationURL,
+				})
+			}
+		} else {
+			WriteError(w, http.StatusNotFound, "ماكو زبون بهذا الرقم — اكتب اسمه حتى نضيفه كشخصية مهمة جديدة")
 			return
 		}
-		req.CustomerID = c.ID
 	}
 	if strings.TrimSpace(req.CustomerID) == "" {
 		WriteError(w, http.StatusBadRequest, "الزبون مطلوب")
@@ -66,6 +89,7 @@ func (h *VipCustomerHandler) Mark(w http.ResponseWriter, r *http.Request) {
 	}
 	saved, err := h.repo.Mark(uuid.NewString(), req, middleware.EmployeeIDFromContext(r))
 	if err != nil {
+		log.Printf("mark vip: %v", err)
 		WriteError(w, http.StatusBadRequest, "تعذر تعليم الزبون كشخصية مهمة")
 		return
 	}

@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/service"
 )
 
@@ -66,6 +67,40 @@ func (h *ComplaintHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /api/v1/complaints/{id}/resolve
+// PUT /api/complaints/{id}/contact — أي موظف يأشر إنه اتصل بالزبون
+func (h *ComplaintHandler) SetContacted(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Contacted bool `json:"contacted"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	out, err := h.service.SetContacted(r.PathValue("id"), req.Contacted, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر تحديث حالة الاتصال")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// PUT /api/complaints/{id}/notes — ملاحظات الزبون
+func (h *ComplaintHandler) SetNotes(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Notes string `json:"notes"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	out, err := h.service.SetNotes(r.PathValue("id"), req.Notes)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر حفظ الملاحظات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 func (h *ComplaintHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 	var req model.ResolveComplaintRequest
 	if err := DecodeJSON(r, &req); err != nil {

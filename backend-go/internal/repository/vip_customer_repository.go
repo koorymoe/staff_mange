@@ -68,18 +68,19 @@ func (r *VipCustomerRepository) markWithSource(id string, req model.MarkVipCusto
 	var saved model.VipCustomer
 	if err := r.db.Get(&saved, `
 		INSERT INTO "VipCustomer" (id, "customerId", "bookingId", "projectId", "requestSummary",
-			"customerPosition", note, "markedByEmployeeId", source)
-		VALUES (COALESCE(NULLIF($1,''), gen_random_uuid()::text), $2, $3, $4, $5, $6, $7, $8, $9)
+			"customerPosition", note, "markedByEmployeeId", source, "boughtFromUs")
+		VALUES (COALESCE(NULLIF($1,''), gen_random_uuid()::text), $2, $3, $4, $5, $6, $7, $8, $9, COALESCE($10, true))
 		ON CONFLICT ("customerId") DO UPDATE SET
 			"bookingId" = COALESCE(EXCLUDED."bookingId", "VipCustomer"."bookingId"),
 			"projectId" = COALESCE(EXCLUDED."projectId", "VipCustomer"."projectId"),
 			"requestSummary" = COALESCE(EXCLUDED."requestSummary", "VipCustomer"."requestSummary"),
 			"customerPosition" = COALESCE(EXCLUDED."customerPosition", "VipCustomer"."customerPosition"),
 			note = COALESCE(EXCLUDED.note, "VipCustomer".note),
-			"markedByEmployeeId" = EXCLUDED."markedByEmployeeId"
+			"markedByEmployeeId" = EXCLUDED."markedByEmployeeId",
+			"boughtFromUs" = EXCLUDED."boughtFromUs"
 		RETURNING *
 	`, id, req.CustomerID, req.BookingID, req.ProjectID, req.RequestSummary,
-		req.CustomerPosition, req.Note, markedBy, source); err != nil {
+		req.CustomerPosition, req.Note, markedBy, source, req.BoughtFromUs); err != nil {
 		return nil, err
 	}
 	var full model.VipCustomer
