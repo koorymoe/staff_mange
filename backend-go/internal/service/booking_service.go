@@ -70,6 +70,21 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		LocationUrl:        req.LocationUrl,
 	}
 
+	// حجز داخل الشركة: نثبت workLocation من هنا حتى إحصائية «الأعمال
+	// داخل الشركة» تلقفه بلا ما ننتظر أحد يأشرها وقت الإنجاز.
+	b.BookingType = "REGULAR"
+	b.WorkLocation = model.WorkOnSite
+	if req.BookingType != nil && *req.BookingType != "" {
+		b.BookingType = *req.BookingType
+	}
+	if b.BookingType == "INTERNAL" {
+		b.WorkLocation = model.WorkInHouse
+		b.InternalEmployeeName = req.InternalEmployeeName
+		b.InternalEmployeePhone = req.InternalEmployeePhone
+		b.InternalDepartment = req.InternalDepartment
+		b.InternalApproved = req.InternalApproved
+	}
+
 	if err := s.repo.Create(b); err != nil {
 		return nil, err
 	}

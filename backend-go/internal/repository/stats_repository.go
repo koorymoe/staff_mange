@@ -201,16 +201,38 @@ func (r *StatsRepository) TechnicianStats() ([]model.TechnicianStat, error) {
 
 func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, error) {
 	type row struct {
-		ServiceID *string `db:"serviceId"`
-		Name      *string `db:"name"`
-		Count     int     `db:"count"`
+		ServiceID *string    `db:"serviceId"`
+		Name      *string    `db:"name"`
+		Count     int        `db:"count"`
+		FirstAt   *time.Time `db:"firstAt"`
+		LastAt    *time.Time `db:"lastAt"`
+		Revenue   float64    `db:"revenue"`
+		Cost      float64    `db:"cost"`
 	}
 	var rows []row
+	// المبالغ والكلفة تنحسب بحجز واحد لكل صف قبل التجميع — لو ضمّينا
+	// CartItem مباشرة، حجز بثلاث مواد يضاعف مبلغه ثلاث مرات.
 	err := r.db.Select(&rows, `
-		SELECT b."serviceId", s.name, COUNT(*) as count
-		FROM "Booking" b
-		LEFT JOIN "Service" s ON s.id = b."serviceId"
-		GROUP BY b."serviceId", s.name
+		WITH per_booking AS (
+			SELECT b.id, b."serviceId", b."createdAt",
+			       COALESCE(b."amountCollected", 0) + COALESCE(b."advancePaid", 0) AS collected,
+			       COALESCE((
+			           SELECT SUM(ci.quantity * COALESCE(p."wholesalePrice", 0))
+			           FROM "CartItem" ci
+			           LEFT JOIN "Product" p ON p.name = ci."productName"
+			           WHERE ci."bookingId" = b.id
+			       ), 0) AS cost
+			FROM "Booking" b
+		)
+		SELECT pb."serviceId", s.name,
+		       COUNT(*) AS count,
+		       MIN(pb."createdAt") AS "firstAt",
+		       MAX(pb."createdAt") AS "lastAt",
+		       COALESCE(SUM(pb.collected), 0) AS revenue,
+		       COALESCE(SUM(pb.cost), 0) AS cost
+		FROM per_booking pb
+		LEFT JOIN "Service" s ON s.id = pb."serviceId"
+		GROUP BY pb."serviceId", s.name
 	`)
 	if err != nil {
 		return nil, err
@@ -221,7 +243,11 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 		if rw.Name != nil {
 			name = *rw.Name
 		}
-		entries = append(entries, model.ServiceBreakdownEntry{ServiceID: rw.ServiceID, Name: name, Count: rw.Count})
+		entries = append(entries, model.ServiceBreakdownEntry{
+			ServiceID: rw.ServiceID, Name: name, Count: rw.Count,
+			FirstAt: rw.FirstAt, LastAt: rw.LastAt,
+			Revenue: rw.Revenue, Profit: rw.Revenue - rw.Cost,
+		})
 	}
 	return entries, nil
 }

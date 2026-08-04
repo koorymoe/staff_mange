@@ -40,10 +40,20 @@ type TechnicianStat struct {
 	RevenueHandled float64 `json:"revenueHandled"`
 }
 
+// ServiceBreakdownEntry خدمة بعدد طلباتها، ومن شوكت بدت، وشكد
+// دخّلت مبالغ وأرباح.
+//
+// الربح = المستلم ناقص كلفة المواد (سعر الجملة). المواد الي ماكو
+// إلها سعر جملة بالكتالوج تُحسب بكلفة صفر — يعني الربح المعروض هو
+// *الحد الأعلى*، مو رقم مؤكد. أفضل من إخفاء الرقم كلياً.
 type ServiceBreakdownEntry struct {
-	ServiceID *string `json:"serviceId"`
-	Name      string  `json:"name"`
-	Count     int     `json:"count"`
+	ServiceID *string    `json:"serviceId"`
+	Name      string     `json:"name"`
+	Count     int        `json:"count"`
+	FirstAt   *time.Time `json:"firstAt"`
+	LastAt    *time.Time `json:"lastAt"`
+	Revenue   float64    `json:"revenue"`
+	Profit    float64    `json:"profit"`
 }
 
 type RoleCount struct {

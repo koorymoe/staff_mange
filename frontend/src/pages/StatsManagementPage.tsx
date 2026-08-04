@@ -264,16 +264,29 @@ function ServicesTab() {
   return (
     <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '20px' }}>
       <h3 style={{ color: PRIMARY, margin: '0 0 4px 0' }}>أكثر خدمة طلبها الزبائن</h3>
-      <p style={{ color: '#888', fontSize: '13px', margin: '0 0 16px 0' }}>مرتّبة من الأكثر طلباً — كل الخدمات بدون سقف</p>
+      <p style={{ color: '#888', fontSize: '13px', margin: '0 0 16px 0' }}>
+        مرتّبة من الأكثر طلباً — من شوكت بدت كل خدمة، وشكد دخّلت مبالغ وأرباح
+      </p>
       {rows.map((s, i) => (
-        <div key={s.serviceId || i} style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <span style={{ fontSize: '13px', width: '140px', color: '#444' }}>{s.name}</span>
-          <div style={{ flex: 1, height: '22px', background: '#f1f1f1', borderRadius: '11px', overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${(s.count / max) * 100}%`, background: PRIMARY, borderRadius: '11px' }} />
+        <div key={s.serviceId || i} style={{ marginBottom: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '13px', width: '140px', color: '#444' }}>{s.name}</span>
+            <div style={{ flex: 1, height: '22px', background: '#f1f1f1', borderRadius: '11px', overflow: 'hidden' }}>
+              <div style={{ height: '100%', width: `${(s.count / max) * 100}%`, background: PRIMARY, borderRadius: '11px' }} />
+            </div>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', width: '40px', color: PRIMARY }}>{s.count}</span>
           </div>
-          <span style={{ fontSize: '13px', fontWeight: 'bold', width: '40px', color: PRIMARY }}>{s.count}</span>
+          <div style={{ marginRight: '152px', marginTop: '3px', fontSize: '11px', color: '#888', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+            <span>📅 من {s.firstAt ? new Date(s.firstAt).toLocaleDateString('ar-IQ') : '—'} إلى {s.lastAt ? new Date(s.lastAt).toLocaleDateString('ar-IQ') : '—'}</span>
+            <span>💰 دخل: <b style={{ color: PRIMARY }}>{fmt(s.revenue)} د.ع</b></span>
+            <span>📈 ربح: <b style={{ color: GOLD }}>{fmt(s.profit)} د.ع</b></span>
+          </div>
         </div>
       ))}
+      <p style={{ marginTop: '12px', fontSize: '11px', color: '#aaa' }}>
+        الربح = المستلم ناقص كلفة المواد بسعر الجملة. المواد الي ماكو إلها سعر جملة بالكتالوج
+        تُحسب بكلفة صفر، يعني الربح المعروض هو الحد الأعلى.
+      </p>
       {rows.length === 0 && <p style={{ color: '#999', fontSize: '13px' }}>ماكو بيانات حجوزات بعد</p>}
     </div>
   )

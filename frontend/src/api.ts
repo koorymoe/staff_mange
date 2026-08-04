@@ -523,7 +523,7 @@ export interface Stats {
     completed: number
     revenueHandled: number
   }[]
-  serviceBreakdown: { serviceId: string | null; name: string; count: number }[]
+  serviceBreakdown: { serviceId: string | null; name: string; count: number; firstAt: string | null; lastAt: string | null; revenue: number; profit: number }[]
   roleCounts: { role: EmployeeRole; count: number }[]
   recentBookings: {
     id: string
@@ -890,6 +890,31 @@ export interface BookingDeleteRequest {
   bookingStatus: string
   requestedByName: string
   decidedByName: string | null
+}
+
+/** بلاغ خطأ سجّله المحاسب أثناء التدقيق */
+export interface AuditIssue {
+  id: string
+  bookingId: string
+  kind: 'MISMATCH' | 'PRICE_ERROR'
+  kindLabel: string
+  routedTo: string
+  note: string | null
+  expectedAmount: number | null
+  actualAmount: number | null
+  status: 'OPEN' | 'RESOLVED'
+  createdAt: string
+  bookingCode: string
+  customerName: string
+  raisedByName: string
+}
+
+export interface Announcement {
+  id: string
+  body: string
+  active: boolean
+  createdAt: string
+  createdByName: string
 }
 
 export interface VipCustomer {
@@ -1949,6 +1974,24 @@ export const api = {
     request<Complaint>(`/complaints/${id}/contact`, { method: 'PUT', body: JSON.stringify({ contacted }) }),
   setComplaintNotes: (id: string, notes: string) =>
     request<Complaint>(`/complaints/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
+  // التدقيق: قرار المحاسب — مطابق أو بلاغ خطأ ينوجّه للمعني
+  auditBooking: (id: string, data: { action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR'; amountCollected?: number; advancePaid?: number; note?: string }) =>
+    request<Booking | AuditIssue>(`/bookings/${id}/audit`, { method: 'PUT', body: JSON.stringify(data) }),
+  getAuditIssues: (status?: string) =>
+    request<AuditIssue[]>(`/audit-issues${status ? `?status=${status}` : ''}`),
+  resolveAuditIssue: (id: string) =>
+    request<{ ok: boolean }>(`/audit-issues/${id}/resolve`, { method: 'PUT' }),
+
+  // شريط الإعلانات
+  getAnnouncements: (all?: boolean) =>
+    request<Announcement[]>(`/announcements${all ? '?all=1' : ''}`),
+  createAnnouncement: (body: string) =>
+    request<Announcement>('/announcements', { method: 'POST', body: JSON.stringify({ body }) }),
+  setAnnouncementActive: (id: string, active: boolean) =>
+    request<{ ok: boolean }>(`/announcements/${id}/active`, { method: 'PUT', body: JSON.stringify({ active }) }),
+  deleteAnnouncement: (id: string) =>
+    request<void>(`/announcements/${id}`, { method: 'DELETE' }),
+
   getComplaintStats: () => request<ComplaintCustomerStat[]>('/complaints/stats'),
 
   getSecurityDashboard: () =>
@@ -2050,6 +2093,7 @@ export const api = {
     const qs = query.toString()
     return request<Booking[]>(`/bookings${qs ? `?${qs}` : ''}`)
   },
+  // bookingType: 'INTERNAL' يخلي الحجز شغل داخل الشركة (للإداري فما فوق)
   createBooking: (data: {
     customerId: string
     serviceId?: string
@@ -2063,6 +2107,11 @@ export const api = {
     address?: string
     mapLatitude?: number
     mapLongitude?: number
+    bookingType?: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL'
+    internalEmployeeName?: string
+    internalEmployeePhone?: string
+    internalDepartment?: string
+    internalApproved?: boolean
   }) => request<Booking>('/bookings', { method: 'POST', body: JSON.stringify(data) }),
   confirmBooking: (
     id: string,

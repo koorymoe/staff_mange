@@ -852,6 +852,64 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			`,
 		},
 		{
+			// حجز داخل الشركة: شغل لموظف من موظفينا بالورشة، مو لزبون.
+			// نوع ثالث بشاشة الحجز، يسجله الإداري فما فوق حصراً،
+			// وإحصائياته تروح لـ«الأعمال داخل الشركة».
+			Version: "0184_internal_booking",
+			SQL: `
+				ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'INTERNAL';
+
+				ALTER TABLE "Booking"
+					ADD COLUMN IF NOT EXISTS "internalEmployeeName" TEXT,
+					ADD COLUMN IF NOT EXISTS "internalEmployeePhone" TEXT,
+					ADD COLUMN IF NOT EXISTS "internalDepartment" TEXT,
+					ADD COLUMN IF NOT EXISTS "internalApproved" BOOLEAN;
+
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'booking_internal', 'تسجيل حجز داخل الشركة')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
+		{
+			// شريط الإعلانات: المالك أو مدير النظام ينزّل خبر، وكل
+			// الموظفين يشوفونه. الموظف يقدر يخفيه، بس يرجع يظهرله بعد
+			// تسجيل خروج ودخول — فالإخفاء ينخزن بالجلسة مو بقاعدة
+			// البيانات (sessionStorage بالواجهة).
+			Version: "0185_announcements",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "Announcement" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					body TEXT NOT NULL,
+					active BOOLEAN NOT NULL DEFAULT true,
+					"createdById" TEXT NOT NULL REFERENCES "Employee"(id),
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "Announcement_active_idx"
+					ON "Announcement" (active, "createdAt" DESC);
+			`,
+		},
+		{
+			// بلاغات أخطاء التدقيق: المحاسب يشوف المبلغ مو مطابق
+			// لفاتورته، فيأشّر النوع والنظام يوجّهه للمعني.
+			Version: "0183_booking_audit_issue",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "BookingAuditIssue" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"bookingId" TEXT NOT NULL REFERENCES "Booking"(id) ON DELETE CASCADE,
+					kind TEXT NOT NULL,
+					note TEXT,
+					"expectedAmount" DOUBLE PRECISION,
+					"actualAmount" DOUBLE PRECISION,
+					"raisedById" TEXT NOT NULL REFERENCES "Employee"(id),
+					status TEXT NOT NULL DEFAULT 'OPEN',
+					"resolvedAt" TIMESTAMPTZ,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "BookingAuditIssue_open_idx"
+					ON "BookingAuditIssue" (status, kind, "createdAt" DESC);
+			`,
+		},
+		{
 			// طلب حذف حجز: الإداري يطلب، والمراقب أو مدير النظام يبت.
 			// ما نحذف الحجز فوراً لأن الحذف ما يترد — والحجوزات
 			// التجريبية والملغاة تنشال بموافقة مو بمزاج.

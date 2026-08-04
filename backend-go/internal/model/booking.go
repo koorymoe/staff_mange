@@ -49,6 +49,12 @@ type Booking struct {
 	// WorkLocation وين انشتغل الشغل: عند الزبون لو داخل الشركة (بالورشة).
 	// ⚠️ عمود بجدول Booking — لازم يضل إله حقل هنا لأن الاستعلام SELECT *.
 	WorkLocation string `db:"workLocation" json:"workLocation"`
+	// حجز داخل الشركة: الشغل لموظف من موظفينا مو لزبون خارجي.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	InternalEmployeeName  *string `db:"internalEmployeeName" json:"internalEmployeeName"`
+	InternalEmployeePhone *string `db:"internalEmployeePhone" json:"internalEmployeePhone"`
+	InternalDepartment    *string `db:"internalDepartment" json:"internalDepartment"`
+	InternalApproved      *bool   `db:"internalApproved" json:"internalApproved"`
 	AddressDescription      *string    `db:"addressDescription" json:"addressDescription"`
 	CreatedAt               time.Time  `db:"createdAt" json:"createdAt"`
 	UpdatedAt               time.Time  `db:"updatedAt" json:"updatedAt"`
@@ -128,6 +134,14 @@ type CreateBookingRequest struct {
 	MapLongitude       *float64 `json:"mapLongitude"`
 	// رابط الموقع (كوكل ماب) — بديل عن التأشير على الخريطة، نفس فكرة الموردين
 	LocationUrl *string `json:"locationUrl"`
+
+	// حجز داخل الشركة: نوع الحجز INTERNAL مع معلومات الموظف الطالب.
+	// الخدمات والموقع يبقون مثل أي حجز.
+	BookingType           *string `json:"bookingType"`
+	InternalEmployeeName  *string `json:"internalEmployeeName"`
+	InternalEmployeePhone *string `json:"internalEmployeePhone"`
+	InternalDepartment    *string `json:"internalDepartment"`
+	InternalApproved      *bool   `json:"internalApproved"`
 }
 
 type ConfirmBookingRequest struct {

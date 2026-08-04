@@ -9,6 +9,7 @@ import TrainingPage from '../pages/TrainingPage'
 import AssistantWidget from './AssistantWidget'
 import ManagerAssistantChat from './ManagerAssistantChat'
 import SettingsPanel from './SettingsPanel'
+import AnnouncementTicker from './AnnouncementTicker'
 
 interface NavItem {
   to: string
@@ -134,6 +135,7 @@ const navItems: NavItem[] = [
           { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></> },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
@@ -253,6 +255,8 @@ const navItems: NavItem[] = [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
       // طلبات حذف الحجوزات — المراقب ومدير النظام يبتون بيها
       { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], },
+      // لوحة الإعلانات — المالك ومدير النظام بس
+      { to: '/announcements', label: '📢 لوحة الإعلانات', icon: <></>, roles: ['ADMIN'] },
     ],
   },
 
@@ -297,6 +301,7 @@ const navItems: NavItem[] = [
     children: [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></> },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
@@ -793,6 +798,9 @@ export default function Layout() {
               </div>
             </div>
           </header>
+
+          {/* شريط الإعلانات — يشوفه كل موظف تحت الهيدر مباشرة */}
+          <AnnouncementTicker />
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">

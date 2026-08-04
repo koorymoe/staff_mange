@@ -93,6 +93,8 @@ const WorkReportsReview = lazy(() => import('./pages/WorkReportsReview'))
 const EmployeeMonthlyStatsPage = lazy(() => import('./pages/EmployeeMonthlyStatsPage'))
 const StatsManagementPage = lazy(() => import('./pages/StatsManagementPage'))
 const BookingDeleteRequestsPage = lazy(() => import('./pages/BookingDeleteRequestsPage'))
+const AuditIssuesPage = lazy(() => import('./pages/AuditIssuesPage'))
+const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
 
 function RouteLoading() {
   return (
@@ -176,6 +178,8 @@ function App() {
           <Route path="revolving-fund" element={<RevolvingFundPage />} />
           <Route path="leaves" element={<LeavesPage />} />
           <Route path="booking-delete-requests" element={<BookingDeleteRequestsPage />} />
+          <Route path="audit-issues" element={<AuditIssuesPage />} />
+          <Route path="announcements" element={<RequireAdmin><AnnouncementsPage /></RequireAdmin>} />
           <Route path="gps-install-costs" element={<GpsInstallCostsPage />} />
           <Route path="gps/renewals" element={<GpsRenewals />} />
           <Route path="gps/maintenance" element={<GpsMaintenance />} />

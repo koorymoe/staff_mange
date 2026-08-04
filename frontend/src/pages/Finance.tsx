@@ -25,12 +25,50 @@ export default function Finance() {
 
   useEffect(load, [])
 
-  const handleVerify = async (booking: Booking) => {
+  // مبلغ الفاتورة الي يكتبه المحاسب لكل حجز — لازم للحجوزات القديمة
+  // المستوردة بقيم صفر: يفتح فاتورة النظام القديم ويكتب سعرها هنا.
+  const [invoiceAmounts, setInvoiceAmounts] = useState<Record<string, string>>({})
+  const [auditBusy, setAuditBusy] = useState<string | null>(null)
+
+  const amountFor = (b: Booking) => {
+    const typed = invoiceAmounts[b.id]
+    if (typed !== undefined && typed !== '') return Number(typed)
+    return b.amountCollected ?? 0
+  }
+
+  const doAudit = async (b: Booking, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR') => {
+    const typed = invoiceAmounts[b.id]
+    const amount = typed !== undefined && typed !== '' ? Number(typed) : undefined
+
+    if (action === 'VERIFY' && amountFor(b) <= 0) {
+      alert('اكتب المبلغ من الفاتورة أول — ما ينفع تدقق حجز بلا مبلغ')
+      return
+    }
+    let note: string | undefined
+    if (action !== 'VERIFY') {
+      const answer = prompt(action === 'MISMATCH'
+        ? 'شنو الفرق بالضبط؟ (يروح للرقابة والجودة)'
+        : 'شنو الغلط بالسعر؟ (يروح للرقابة والإداري)')
+      if (answer === null) return
+      note = answer.trim() || undefined
+    }
+
+    setAuditBusy(b.id)
     try {
-      const updated = await api.verifyAmount(booking.id)
-      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+      const res = await api.auditBooking(b.id, { action, amountCollected: amount, note })
+      if (action === 'VERIFY') {
+        setBookings((prev) => prev.map((x) => (x.id === b.id ? (res as Booking) : x)))
+      } else {
+        alert('انسجّل البلاغ وانوجّه للمعني — الحجز يبقى غير مدقق لحد ما ينحسم')
+        if (amount !== undefined) {
+          setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, amountCollected: amount } : x)))
+        }
+      }
+      setInvoiceAmounts((prev) => ({ ...prev, [b.id]: '' }))
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'تعذر تدقيق الحجز')
+      alert(err instanceof Error ? err.message : 'تعذر تنفيذ التدقيق')
+    } finally {
+      setAuditBusy(null)
     }
   }
 
@@ -409,14 +447,52 @@ export default function Finance() {
                     </div>
                   </div>
 
-                  {/* Verify button */}
+                  {/* التدقيق: مبلغ الفاتورة إجباري، أو بلاغ خطأ ينوجّه للمعني */}
                   {!b.amountVerified && (
-                    <button
-                      onClick={() => handleVerify(b)}
-                      className="mt-4 w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
-                    >
-                      تأكيد التدقيق
-                    </button>
+                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                      <label className="mb-1 block text-xs font-bold text-slate-600">
+                        المبلغ حسب الفاتورة *
+                      </label>
+                      <input
+                        type="number" min="0" inputMode="numeric"
+                        value={invoiceAmounts[b.id] ?? ''}
+                        onChange={(e) => setInvoiceAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                        placeholder={b.amountCollected ? String(b.amountCollected) : 'اكتب المبلغ من الفاتورة'}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                      />
+                      {(b.amountCollected ?? 0) === 0 && (
+                        <p className="mt-1 text-xs text-amber-700">
+                          ⚠️ هذا الحجز بلا مبلغ (مستورد من النظام القديم) — افتح فاتورته واكتب سعرها.
+                        </p>
+                      )}
+
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                        <button
+                          disabled={auditBusy === b.id}
+                          onClick={() => doAudit(b, 'VERIFY')}
+                          className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+                        >
+                          ✔ مطابق — أكّد التدقيق
+                        </button>
+                        <button
+                          disabled={auditBusy === b.id}
+                          onClick={() => doAudit(b, 'MISMATCH')}
+                          className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                        >
+                          ⚠️ غير مطابق
+                        </button>
+                        <button
+                          disabled={auditBusy === b.id}
+                          onClick={() => doAudit(b, 'PRICE_ERROR')}
+                          className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          ✕ خطأ بالسعر
+                        </button>
+                      </div>
+                      <p className="mt-2 text-[11px] text-slate-400">
+                        «غير مطابق» يروح للرقابة والجودة · «خطأ بالسعر» يروح للرقابة والإداري
+                      </p>
+                    </div>
                   )}
                 </div>
               )}

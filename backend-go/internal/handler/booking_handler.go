@@ -6,15 +6,17 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
 type BookingHandler struct {
-	service *service.BookingService
+	service     *service.BookingService
+	permissions *repository.PermissionRepository
 }
 
-func NewBookingHandler(s *service.BookingService) *BookingHandler {
-	return &BookingHandler{service: s}
+func NewBookingHandler(s *service.BookingService, p *repository.PermissionRepository) *BookingHandler {
+	return &BookingHandler{service: s, permissions: p}
 }
 
 // GET /api/v1/bookings?status=&customerId=
@@ -33,6 +35,21 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
+	}
+	// حجز داخل الشركة للإداري فما فوق حصراً — موظف المبيعات ما يقدر
+	// يسجّل شغل داخلي، لأنه شغل شركة مو بيع لزبون.
+	if req.BookingType != nil && *req.BookingType == "INTERNAL" {
+		role := middleware.RoleFromContext(r)
+		allowed := role == "ADMIN" || role == "OWNER" || role == "HR_COORDINATOR" || role == "MONITOR"
+		if !allowed && h.permissions != nil {
+			if ok, err := h.permissions.HasPermission(middleware.EmployeeIDFromContext(r), "booking_internal"); err == nil && ok {
+				allowed = true
+			}
+		}
+		if !allowed {
+			WriteError(w, http.StatusForbidden, "حجز داخل الشركة يسجّله الإداري فما فوق")
+			return
+		}
 	}
 	booking, err := h.service.Create(req)
 	if err != nil {

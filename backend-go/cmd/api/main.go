@@ -169,7 +169,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	permissionHandler := handler.NewPermissionHandler(permissionService, lockoutRepo)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
-	bookingHandler := handler.NewBookingHandler(bookingService)
+	bookingHandler := handler.NewBookingHandler(bookingService, permissionRepo)
 	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService)
 	securityHandler := handler.NewSecurityHandler(db, loginAuditRepo, lockoutRepo, startedAt)
 	cartHandler := handler.NewCartHandler(cartService)
@@ -437,6 +437,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/bookings/{id}/delete-request", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Create), requireAuth, requireDeleteRequest))
 	mux.Handle("GET /api/booking-delete-requests", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.List), requireAuth, requireDeleteApprove))
 	mux.Handle("PUT /api/booking-delete-requests/{id}/decide", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Decide), requireAuth, requireDeleteApprove))
+	// التدقيق: المحاسب ما يقدر يمرر حجز بلا مبلغ — إما يكتب المبلغ من
+	// الفاتورة، أو يأشر خطأ والنظام يوجّهه للمعني (غير مطابق → رقابة
+	// وجودة، خطأ سعر → رقابة وإداري).
+	bookingAuditRepo := repository.NewBookingAuditRepository(db)
+	bookingAuditHandler := handler.NewBookingAuditHandler(bookingAuditRepo, bookingRepo, notificationRepo)
+	mux.Handle("PUT /api/bookings/{id}/audit", middleware.Chain(http.HandlerFunc(bookingAuditHandler.Audit), requireAuth, requireVerifyBooking))
+	// شريط الإعلانات: يقراه كل موظف، وينزّله المالك ومدير النظام بس
+	announcementRepo := repository.NewAnnouncementRepository(db)
+	announcementHandler := handler.NewAnnouncementHandler(announcementRepo)
+	mux.Handle("GET /api/announcements", middleware.Chain(http.HandlerFunc(announcementHandler.List), requireAuth))
+	mux.Handle("POST /api/announcements", middleware.Chain(http.HandlerFunc(announcementHandler.Create), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/announcements/{id}/active", middleware.Chain(http.HandlerFunc(announcementHandler.SetActive), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/announcements/{id}", middleware.Chain(http.HandlerFunc(announcementHandler.Delete), requireAuth, requireAdmin))
+	mux.Handle("GET /api/audit-issues", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ListIssues), requireAuth))
+	mux.Handle("PUT /api/audit-issues/{id}/resolve", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ResolveIssue), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// "تم" الإداري بعد تواصله فعلياً مع الزبون — خطوة سابقة ومنفصلة عن التثبيت
 	// نفسه (نفس صلاحية تنسيق الحجوزات coordinator المستخدمة أصلاً بـCoordinator.tsx).

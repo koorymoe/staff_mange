@@ -5,7 +5,7 @@ import { useSession } from '../session'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import LocationPicker from '../components/LocationPicker'
 
-type BookingType = 'REGULAR' | 'MAINTENANCE'
+type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
 type MaintenanceType = 'EXECUTION_ERROR' | 'DEVICE_ISSUE' | 'UPKEEP'
 
@@ -36,7 +36,11 @@ function SectionHeader({ num, title }: { num: number; title: string }) {
 }
 
 export default function SalesBooking() {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
+  // حجز داخل الشركة للإداري فما فوق — نفس قيد السيرفر بالضبط
+  const canInternal = employee?.role === 'ADMIN' || employee?.role === 'OWNER' ||
+    employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
+    permissions.includes('booking_internal')
   const [services, setServices] = useState<Service[]>([])
 
   const [bookingType, setBookingType] = useState<BookingType | null>(null)
@@ -50,6 +54,12 @@ export default function SalesBooking() {
   // لازم يقدر يصلّحها من نفس شاشة الحجز — وتنحفظ على سجل الزبون مو
   // على الحجز بس، وإلا الحجز الجديد يطلع بالاسم القديم الغلط.
   const [fixCustomer, setFixCustomer] = useState(false)
+  // حجز داخل الشركة: الشغل لموظف من موظفينا، فنسأل عن معلوماته
+  // وموافقة مسؤوله بدل معلومات الزبون الخارجي.
+  const [intName, setIntName] = useState('')
+  const [intPhone, setIntPhone] = useState('')
+  const [intDept, setIntDept] = useState('')
+  const [intApproved, setIntApproved] = useState(false)
   // خدمات متعددة: الزبون ممكن يطلب أكثر من منظومة بنفس الحجز
   // (مثلاً منظومة صوت + كاميرات). أول خدمة تنعتبر الرئيسية.
   const [serviceIds, setServiceIds] = useState<string[]>([])
@@ -135,7 +145,8 @@ export default function SalesBooking() {
 
   const buildNotesString = () => {
     const parts: string[] = []
-    const typeLabel = bookingType === 'REGULAR' ? 'حجز عادي' : 'حجز صيانة'
+    const typeLabel = bookingType === 'REGULAR' ? 'حجز عادي'
+      : bookingType === 'INTERNAL' ? 'حجز داخل الشركة' : 'حجز صيانة'
     parts.push(`[نوع: ${typeLabel}]`)
 
     if (bookingType === 'REGULAR' && urgency) {
@@ -206,6 +217,10 @@ export default function SalesBooking() {
       setMessage('يرجى تحديد التاريخ')
       return
     }
+    if (bookingType === 'INTERNAL' && (!intName.trim() || !intPhone.trim() || !intDept.trim())) {
+      setMessage('اكتب اسم الموظف الثلاثي ورقمه وقسمه')
+      return
+    }
     if (bookingType === 'MAINTENANCE' && !maintenanceType) {
       setMessage('يرجى اختيار نوع الصيانة')
       return
@@ -238,6 +253,11 @@ export default function SalesBooking() {
         address: addressDesc.trim(),
         mapLatitude: mapPoint.lat,
         mapLongitude: mapPoint.lng,
+        bookingType: bookingType ?? undefined,
+        internalEmployeeName: bookingType === 'INTERNAL' ? intName.trim() : undefined,
+        internalEmployeePhone: bookingType === 'INTERNAL' ? intPhone.trim() : undefined,
+        internalDepartment: bookingType === 'INTERNAL' ? intDept.trim() : undefined,
+        internalApproved: bookingType === 'INTERNAL' ? intApproved : undefined,
       })
       setSuccess({ customerCode: customer.code, bookingCode: booking.code })
       setFirstName('')
@@ -252,6 +272,7 @@ export default function SalesBooking() {
       setMapPoint(null)
       setUsedSavedLocation(false)
       setFixCustomer(false)
+      setIntName(''); setIntPhone(''); setIntDept(''); setIntApproved(false)
       setBookingType(null)
       setUrgency(null)
       setSpecificDate('')
@@ -308,6 +329,21 @@ export default function SalesBooking() {
               <span className="text-lg font-bold text-slate-800">حجز صيانة</span>
               <span className="text-xs text-slate-500">صيانة أو إصلاح جهاز مركب</span>
             </button>
+            {canInternal && (
+              <button
+                type="button"
+                onClick={() => { setBookingType('INTERNAL'); setUrgency(null); setSpecificDate(''); setMaintenanceType(null) }}
+                className={`flex flex-col items-center gap-3 rounded-2xl border-2 p-6 transition-all ${
+                  bookingType === 'INTERNAL'
+                    ? 'border-emerald-500 bg-emerald-50 shadow-md'
+                    : 'border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/50'
+                }`}
+              >
+                <span className="text-4xl">🏢</span>
+                <span className="text-lg font-bold text-slate-800">حجز داخل الشركة</span>
+                <span className="text-xs text-slate-500">شغل لموظف من موظفينا — إحصائياته تروح للشغل الداخلي</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -413,6 +449,38 @@ export default function SalesBooking() {
             </div>
           </div>
         </div>
+
+        {/* حجز داخل الشركة: معلومات الموظف الطالب وموافقة مسؤوله */}
+        {bookingType === 'INTERNAL' && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <h3 className="mb-4 text-lg font-bold text-emerald-900">🏢 معلومات الموظف الطالب</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">اسم الموظف الثلاثي *</label>
+                <input value={intName} onChange={(e) => setIntName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">رقم هاتفه *</label>
+                <input value={intPhone} onChange={(e) => setIntPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                  dir="ltr" inputMode="numeric"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">القسم *</label>
+                <input value={intDept} onChange={(e) => setIntDept(e.target.value)}
+                  placeholder="مثال: وحدة التقنيين"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+              </div>
+              <div className="flex items-end">
+                <label className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm">
+                  <input type="checkbox" checked={intApproved} onChange={(e) => setIntApproved(e.target.checked)} />
+                  تم الحصول على موافقة مسؤوله
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Step 3: Address */}
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
