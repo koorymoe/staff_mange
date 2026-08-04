@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -69,6 +70,12 @@ func parseDate(s *string) *time.Time {
 		return nil
 	}
 	return &t
+}
+
+// normalizeName يوحّد المسافات بالاسم — يشيل الزوائد بالطرفين ويحوّل
+// أي تتابع مسافات لمسافة وحدة. بدونها نفس الشخص ينضاف مرتين.
+func normalizeName(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }
 
 func main() {
@@ -146,14 +153,25 @@ func importCustomers(db *sqlx.DB, rows []customerRow, simIDs map[string]string, 
 			phone = *c.Phone
 		}
 
-		// نطابق بالاسم+الهاتف حتى إعادة التشغيل ما تكرّر الزبون
+		// نطابق بالاسم+الهاتف حتى إعادة التشغيل ما تكرّر الزبون.
+		//
+		// المطابقة تصير بعد تنظيف المسافات: بالإكسل أكو أسماء نفسها
+		// بالضبط بس بمسافة زايدة بالنص («شهاب احمد  خضير رمضان»)،
+		// وبالمطابقة الحرفية تنضاف كزبون ثاني. regexp_replace يوحّد
+		// المسافات بالطرفين قبل المقارنة.
+		name := normalizeName(c.FullName)
+		phone = strings.TrimSpace(phone)
+
 		var custID string
-		err := db.Get(&custID, `SELECT id FROM "GpsCustomer" WHERE "fullName" = $1 AND COALESCE(phone,'') = $2`, c.FullName, phone)
+		err := db.Get(&custID, `
+			SELECT id FROM "GpsCustomer"
+			WHERE regexp_replace(btrim("fullName"), '\s+', ' ', 'g') = $1
+			  AND COALESCE(btrim(phone),'') = $2`, name, phone)
 		if err != nil {
 			if err := db.Get(&custID, `
 				INSERT INTO "GpsCustomer" (id, "fullName", phone)
-				VALUES (gen_random_uuid()::text, $1, $2) RETURNING id`, c.FullName, phone); err != nil {
-				log.Printf("تحذير: تعذرت إضافة الزبون %s: %v", c.FullName, err)
+				VALUES (gen_random_uuid()::text, $1, $2) RETURNING id`, name, phone); err != nil {
+				log.Printf("تحذير: تعذرت إضافة الزبون %s: %v", name, err)
 				continue
 			}
 			added++
