@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee } from '../api'
+import { useSession } from '../session'
 
 /**
  * الدوار — شاشة المحاسب.
@@ -14,6 +15,12 @@ const money = (n: number) => n.toLocaleString('en-US') + ' د.ع'
 type Tab = 'funds' | 'balances' | 'review' | 'log'
 
 export default function RevolvingFundPage() {
+  // قيمة مبالغ الدوار نفسها مو شغل يومي: تعديل الرصيد والتغذية لمدير
+  // النظام والمالك، أو لمن ينطونه صلاحية revolving_fund_amount صراحةً.
+  // الباقي (الصرف والتدقيق) يبقى بصلاحية revolving_fund مثل ما هو.
+  const { permissions, employee } = useSession()
+  const canEditAmount = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || permissions.includes('revolving_fund_amount')
+
   const [tab, setTab] = useState<Tab>('funds')
   const [funds, setFunds] = useState<RevolvingFund[]>([])
   const [balances, setBalances] = useState<EmployeeFundBalance[]>([])
@@ -138,12 +145,14 @@ export default function RevolvingFundPage() {
                   <p className="mt-1 text-sm text-slate-500">الرصيد الحالي: <span className="font-bold text-slate-800">{money(f.balance)}</span></p>
                   <p className="text-sm text-slate-500">بيد الموظفين وما انتسوّى: <span className="font-bold text-amber-700">{money(f.outstandingTotal)}</span></p>
                 </div>
-                <div className="flex gap-2">
-                  <button onClick={() => { setTopupFor(f); setTopupAmount('') }}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">تغذية</button>
-                  <button onClick={() => { setEditFor(f); setEditBalance(String(f.balance)) }}
-                    className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">تعديل المبلغ</button>
-                </div>
+                {canEditAmount && (
+                  <div className="flex gap-2">
+                    <button onClick={() => { setTopupFor(f); setTopupAmount('') }}
+                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">تغذية</button>
+                    <button onClick={() => { setEditFor(f); setEditBalance(String(f.balance)) }}
+                      className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">تعديل المبلغ</button>
+                  </div>
+                )}
               </div>
             </div>
           ))}

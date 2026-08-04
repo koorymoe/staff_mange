@@ -693,9 +693,11 @@ export interface Product {
   specs: string | null
   source: string | null
   modelName: string | null
-  /** اقتراح النظام من اسم المنتج — يظهر للموظف حتى يوافق أو يغيّر */
-  suggestedServiceId?: string | null
-  suggestedServiceName?: string | null
+  /** الخدمة كما كتبها التقني بنفسه — مو اقتراح نظام */
+  serviceText: string | null
+  createdById: string | null
+  /** اسم التقني الي ضاف المنتج */
+  createdByName: string | null
 }
 
 /** الحقول الي ينرسلها المستخدم — بدون المحسوبة بالسيرفر */
@@ -710,6 +712,7 @@ export interface ProductInput {
   specs?: string | null
   source?: string | null
   modelName?: string | null
+  serviceText?: string | null
 }
 
 // EmployeeMonthlyStats صف واحد بصفحة إحصائيات الموظفين الشهرية (OWNER/ADMIN فقط)
@@ -1872,6 +1875,48 @@ export interface ProductRequest {
   resolvedAt: string | null
 }
 
+/** منو يعوّض الدوار عن المنتج المشترى */
+export type PayerKind = 'COMPANY' | 'CUSTOMER'
+
+/** تجهيز طلب منتج من الدوار — أبو الحسابات يشتري، والمبلغ يبقى ناقص
+ *  من الدوار لحد ما المحاسب يرجّعه. */
+export interface ProductProcurement {
+  id: string
+  requestId: string
+  fundId: string
+  supplierId: string
+  productName: string
+  spentAmount: number
+  reason: string
+  receiptImage: string | null
+  payerKind: PayerKind
+  customerNote: string | null
+  bookingId: string | null
+  status: 'PENDING' | 'SETTLED'
+  purchasedById: string
+  settledById: string | null
+  settledAt: string | null
+  settleNote: string | null
+  createdAt: string
+  fundName: string
+  supplierName: string
+  purchasedByName: string
+  settledByName: string | null
+  statusLabel: string
+  payerLabel: string
+}
+
+export interface FulfillProductInput {
+  fundId: string
+  supplierId: string
+  spentAmount: number
+  reason: string
+  receiptImage: string
+  payerKind: PayerKind
+  customerNote?: string
+  bookingId?: string
+}
+
 export interface ServiceStudyReport {
   id: string
   serviceStudyId: string
@@ -1925,6 +1970,17 @@ export const api = {
     request<ProductRequest>('/product-requests', { method: 'POST', body: JSON.stringify(data) }),
   approveProductRequest: (id: string) => request<ProductRequest>(`/product-requests/${id}/approve`, { method: 'PUT' }),
   rejectProductRequest: (id: string) => request<ProductRequest>(`/product-requests/${id}/reject`, { method: 'PUT' }),
+
+  // الموردين المضافين مسبقاً — لاختيار المورد وقت تجهيز الطلب
+  getSupplierOptions: () => request<{ id: string; companyName: string; ownerName: string }[]>('/suppliers'),
+
+  // تجهيز طلب المنتج من الدوار — أبو الحسابات (نفسه أبو الكميات)
+  getProductProcurements: (status?: string) =>
+    request<ProductProcurement[]>(`/product-procurements${status ? `?status=${status}` : ''}`),
+  fulfillProductRequest: (id: string, data: FulfillProductInput) =>
+    request<ProductProcurement>(`/product-requests/${id}/fulfill`, { method: 'POST', body: JSON.stringify(data) }),
+  settleProductProcurement: (id: string, note?: string) =>
+    request<ProductProcurement>(`/product-procurements/${id}/settle`, { method: 'PUT', body: JSON.stringify({ note }) }),
 
   // وحدة التقنيين — إدارة الخدمات
   getServiceStudies: () => request<ServiceStudy[]>('/service-studies'),
@@ -2325,6 +2381,8 @@ export const api = {
 
   // Products
   getProducts: () => request<Product[]>('/products'),
+  // المضاف من شاشة «إضافة منتج» بس — بدون كتالوج عروض الأسعار القديم
+  getAddedProducts: () => request<Product[]>('/products?added=1'),
   // الحقول المحسوبة (العناوين واقتراح النظام) ما تنرسل — السيرفر يحسبها
   createProduct: (data: ProductInput) =>
     request<Product>('/products', { method: 'POST', body: JSON.stringify(data) }),

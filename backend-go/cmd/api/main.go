@@ -238,6 +238,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	productRequestRepo := repository.NewProductRequestRepository(db)
 	productRequestService := service.NewProductRequestService(productRequestRepo, productRepo)
 	productRequestHandler := handler.NewProductRequestHandler(productRequestService)
+	productProcurementService := service.NewProductProcurementService(repository.NewProductProcurementRepository(db), productRequestService)
+	productProcurementHandler := handler.NewProductProcurementHandler(productProcurementService)
 	serviceStudyRepo := repository.NewServiceStudyRepository(db)
 	serviceStudyService := service.NewServiceStudyService(serviceStudyRepo)
 	serviceStudyHandler := handler.NewServiceStudyHandler(serviceStudyService)
@@ -330,6 +332,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// يملك صلاحية "gps_system" فعلياً (نفس الصلاحية الي تفتح كل صفحات نظام GPS
 	// بالواجهة) — مو أي موظف مسجل دخول.
 	requireFund := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "revolving_fund")
+	// قيمة مبالغ الدوار نفسها (تعديل الرصيد والتغذية) — مدير النظام والمالك
+	// فقط، أو أي موظف ينطونه صلاحية revolving_fund_amount صراحةً.
+	requireFundAmount := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "revolving_fund_amount")
 	requireGpsSystem := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "gps_system")
 	// متابعة تجديد اشتراكات الجي بي اس تخص الاثنين: مهندس الجودة يتصل
 	// بالزبائن، ومسؤول الجي بي اس يشوف منو خلصت مهلته وشريحته تحتاج حرق.
@@ -710,6 +715,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/product-requests/{id}/approve", middleware.Chain(http.HandlerFunc(productRequestHandler.Approve), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/product-requests/{id}/reject", middleware.Chain(http.HandlerFunc(productRequestHandler.Reject), requireAuth, requireAdmin))
 
+	// تجهيز طلب المنتج من الدوار — أبو الحسابات (نفسه أبو الكميات)
+	mux.Handle("GET /api/product-procurements", middleware.Chain(http.HandlerFunc(productProcurementHandler.List), requireAuth, requireFund))
+	mux.Handle("POST /api/product-requests/{id}/fulfill", middleware.Chain(http.HandlerFunc(productProcurementHandler.Fulfill), requireAuth, requireFund))
+	mux.Handle("PUT /api/product-procurements/{id}/settle", middleware.Chain(http.HandlerFunc(productProcurementHandler.Settle), requireAuth, requireFund))
+
 	// وحدة التقنيين — إدارة الخدمات
 	mux.Handle("GET /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.List), requireAuth, requireUnitTechnicians))
 	mux.Handle("POST /api/service-studies", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Create), requireAuth, requireUnitTechnicians))
@@ -857,8 +867,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/dashboard/summary", middleware.Chain(http.HandlerFunc(dashboardHandler.Summary), requireAuth))
 
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
-	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFund))
-	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFund))
+	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))
+	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFundAmount))
 	mux.Handle("POST /api/funds/disburse", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Disburse), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/balances", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Balances), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Txns), requireAuth, requireFund))

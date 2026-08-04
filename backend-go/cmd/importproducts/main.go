@@ -71,7 +71,7 @@ func main() {
 			Unit:         row.Unit,
 			DefaultPrice: row.DefaultPrice,
 			ImageBase64:  row.ImageBase64,
-		}); err != nil {
+		}, ""); err != nil { // مستورد — بلا موظف مضيف
 			log.Printf("فشل استيراد %q: %v", row.Name, err)
 			failed++
 			continue

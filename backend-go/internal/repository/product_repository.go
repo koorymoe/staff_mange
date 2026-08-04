@@ -16,62 +16,36 @@ func NewProductRepository(db *sqlx.DB) *ProductRepository {
 
 // p.* يجيب كل أعمدة المنتج، ونضم اسم الخدمة حتى الواجهة ما تحتاج
 // استعلام ثاني لكل صف.
-const productSelect = `SELECT p.*, s.name AS "serviceName"
+const productSelect = `SELECT p.*, s.name AS "serviceName", e.name AS "createdByName"
 	FROM "Product" p
-	LEFT JOIN "Service" s ON s.id = p."serviceId"`
+	LEFT JOIN "Service" s ON s.id = p."serviceId"
+	LEFT JOIN "Employee" e ON e.id = p."createdById"`
 
-// serviceHints خدمات الشركة مع مهاراتها — أساس اقتراح النظام للتصنيف.
-func (r *ProductRepository) serviceHints() []model.ServiceHint {
-	var rows []struct {
-		ID    string  `db:"id"`
-		Name  string  `db:"name"`
-		Skill *string `db:"skill"`
-	}
-	if err := r.db.Select(&rows, `
-		SELECT s.id, s.name, k.name AS skill
-		FROM "Service" s
-		LEFT JOIN "Skill" k ON k."serviceId" = s.id
-	`); err != nil {
-		return nil // الاقتراح كماليات — فشله ما يوقف عرض المنتجات
-	}
-	byID := map[string]*model.ServiceHint{}
-	order := []string{}
-	for _, row := range rows {
-		h, ok := byID[row.ID]
-		if !ok {
-			h = &model.ServiceHint{ID: row.ID, Name: row.Name, Terms: []string{row.Name}}
-			byID[row.ID] = h
-			order = append(order, row.ID)
-		}
-		if row.Skill != nil && *row.Skill != "" {
-			h.Terms = append(h.Terms, *row.Skill)
-		}
-	}
-	out := make([]model.ServiceHint, 0, len(order))
-	for _, id := range order {
-		out = append(out, *byID[id])
-	}
-	return out
-}
-
-// decorate يعبّي الحقول المحسوبة: عنوان التوفر، واقتراح النظام للتصنيف.
+// decorate يعبّي عنوان «الحاجة» المقروء.
 //
-// الاقتراح يُحسب بالسيرفر مو بالواجهة، حتى ما يختلف من شاشة لشاشة.
+// اقتراح النظام للخدمة انشال: التقني هو الي يكتب الخدمة بنفسه، لأنه
+// يعرف شغله أحسن من أي مطابقة أسماء.
 func (r *ProductRepository) decorate(products []model.Product) []model.Product {
-	hints := r.serviceHints()
 	for i := range products {
 		products[i].AvailabilityLabel = model.ProductAvailabilityLabels[products[i].Availability]
-		if id, name, ok := model.SuggestServiceFor(products[i].Name, hints); ok {
-			products[i].SuggestedServiceID = &id
-			products[i].SuggestedServiceName = &name
-		}
 	}
 	return products
 }
 
+// List كل المنتجات — يستخدمها عرض السعر، لأنه لازم يشوف الكتالوج كامل.
 func (r *ProductRepository) List() ([]model.Product, error) {
 	products := []model.Product{}
 	err := r.db.Select(&products, productSelect+` ORDER BY p.name ASC`)
+	return r.decorate(products), err
+}
+
+// ListAdded المنتجات المضافة من شاشة «إضافة منتج» بس.
+//
+// شاشة التقنيين ما تعرض كتالوج عروض الأسعار القديم — هذاك مئات
+// المنتجات وما تخص شغلهم. المضاف من عدهم إله createdById.
+func (r *ProductRepository) ListAdded() ([]model.Product, error) {
+	products := []model.Product{}
+	err := r.db.Select(&products, productSelect+` WHERE p."createdById" IS NOT NULL ORDER BY p."createdAt" DESC`)
 	return r.decorate(products), err
 }
 
@@ -84,7 +58,7 @@ func (r *ProductRepository) Get(id string) (*model.Product, error) {
 	return &out[0], nil
 }
 
-func (r *ProductRepository) Create(req model.CreateProductRequest) (*model.Product, error) {
+func (r *ProductRepository) Create(req model.CreateProductRequest, createdByID string) (*model.Product, error) {
 	availability := model.ProductInStock
 	if req.Availability != nil && model.ValidProductAvailability(*req.Availability) {
 		availability = *req.Availability
@@ -92,11 +66,11 @@ func (r *ProductRepository) Create(req model.CreateProductRequest) (*model.Produ
 	var id string
 	err := r.db.Get(&id, `
 		INSERT INTO "Product" (id, name, unit, "defaultPrice", "wholesalePrice", "imageBase64",
-			availability, "serviceId", specs, source, "modelName")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''), $8, $9, $10)
+			availability, "serviceId", specs, source, "modelName", "serviceText", "createdById")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''), $8, $9, $10, $11, NULLIF($12,''))
 		RETURNING id
 	`, req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64, availability,
-		derefStr(req.ServiceID), req.Specs, req.Source, req.ModelName)
+		derefStr(req.ServiceID), req.Specs, req.Source, req.ModelName, req.ServiceText, createdByID)
 	if err != nil {
 		return nil, err
 	}
@@ -120,10 +94,11 @@ func (r *ProductRepository) Update(id string, req model.UpdateProductRequest) (*
 			"serviceId" = CASE WHEN $8 THEN NULL ELSE COALESCE(NULLIF($9,''), "serviceId") END,
 			specs = COALESCE($10, specs),
 			source = COALESCE($11, source),
-			"modelName" = COALESCE($12, "modelName")
+			"modelName" = COALESCE($12, "modelName"),
+			"serviceText" = COALESCE($13, "serviceText")
 		WHERE id = $1
 	`, id, req.Name, req.Unit, req.DefaultPrice, req.WholesalePrice, req.ImageBase64,
-		availability, req.ClearService, derefStr(req.ServiceID), req.Specs, req.Source, req.ModelName)
+		availability, req.ClearService, derefStr(req.ServiceID), req.Specs, req.Source, req.ModelName, req.ServiceText)
 	if err != nil {
 		return nil, err
 	}

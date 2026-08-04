@@ -1,19 +1,20 @@
 package model
 
-import (
-	"strings"
-	"time"
-)
+import "time"
 
-// توفر المنتج: موجود بمخزن الشركة، أو ينطلب من المجهز وقت الحاجة.
+// حاجة المنتج: هل نحتاج نوفّره أو لا.
+//
+// القيم بقت مثل ما هي (IN_STOCK/ON_DEMAND) حتى ما تنكسر البيانات
+// الموجودة، بس معناها صار «الحاجة» مو «التوفر»:
+//   ON_DEMAND = يحتاج نوفّره   |   IN_STOCK = ما يحتاج
 const (
-	ProductInStock  = "IN_STOCK"  // متوفر داخل الشركة
-	ProductOnDemand = "ON_DEMAND" // يطلب عند الحاجة
+	ProductInStock  = "IN_STOCK"  // ما يحتاج توفير
+	ProductOnDemand = "ON_DEMAND" // يحتاج توفير
 )
 
 var ProductAvailabilityLabels = map[string]string{
-	ProductInStock:  "متوفر داخل الشركة",
-	ProductOnDemand: "يطلب عند الحاجة",
+	ProductInStock:  "ما يحتاج توفير",
+	ProductOnDemand: "يحتاج توفير",
 }
 
 func ValidProductAvailability(v string) bool {
@@ -36,16 +37,14 @@ type Product struct {
 	Specs        *string `db:"specs" json:"specs"`  // المواصفات
 	Source       *string `db:"source" json:"source"` // المصدر (المجهز/بلد المنشأ)
 	ModelName    *string `db:"modelName" json:"modelName"` // الموديل
-	ServiceID    *string `db:"serviceId" json:"serviceId"` // تصنيف الموظف — هو المعتمد
+	ServiceID    *string `db:"serviceId" json:"serviceId"`     // تصنيف الموظف — هو المعتمد
+	ServiceText  *string `db:"serviceText" json:"serviceText"` // الخدمة كما كتبها التقني
+	CreatedByID  *string `db:"createdById" json:"createdById"`
 
 	ServiceName       *string `db:"serviceName" json:"serviceName"`
+	CreatedByName     *string `db:"createdByName" json:"createdByName"`
 	AvailabilityLabel string  `db:"-" json:"availabilityLabel"`
 
-	// اقتراح النظام: يُحسب من اسم المنتج مقابل أسماء الخدمات ومهاراتها.
-	// يبقى اقتراح بس — المعتمد تصنيف الموظف، والاقتراح يظهر إله حتى
-	// يوافق عليه أو يختار غيره.
-	SuggestedServiceID   *string `db:"-" json:"suggestedServiceId"`
-	SuggestedServiceName *string `db:"-" json:"suggestedServiceName"`
 }
 
 type CreateProductRequest struct {
@@ -59,6 +58,7 @@ type CreateProductRequest struct {
 	Specs          *string  `json:"specs"`
 	Source         *string  `json:"source"`
 	ModelName      *string  `json:"modelName"`
+	ServiceText    *string  `json:"serviceText"`
 }
 
 type UpdateProductRequest struct {
@@ -72,90 +72,8 @@ type UpdateProductRequest struct {
 	Specs          *string  `json:"specs"`
 	Source         *string  `json:"source"`
 	ModelName      *string  `json:"modelName"`
+	ServiceText    *string  `json:"serviceText"`
 	// ClearService يخلي الموظف يشيل التصنيف كلياً — بدونها ما نميّز بين
 	// «ما غيّر التصنيف» و«يريد يفضّيه».
 	ClearService bool `json:"clearService"`
-}
-
-// ServiceHint خدمة بأسماء مهاراتها — مدخل مطابقة اقتراح النظام.
-type ServiceHint struct {
-	ID    string
-	Name  string
-	Terms []string // اسم الخدمة + أسماء مهاراتها
-}
-
-// SuggestServiceFor يخمّن خدمة المنتج من اسمه.
-//
-// المطابقة بالكلمات مو بالحرف: نقسم اسم المنتج والمصطلح لكلمات، وكل
-// كلمة مشتركة تحسب نقطة. المصطلح الي ينطابق كامل ياخذ ترجيح إضافي،
-// لأن «كاميرا حرارية» أدل من «كاميرا» لحالها.
-//
-// النتيجة اقتراح بس — الموظف هو الي يعتمد أو يغيّر.
-func SuggestServiceFor(productName string, hints []ServiceHint) (id, name string, ok bool) {
-	words := arabicWords(productName)
-	if len(words) == 0 {
-		return "", "", false
-	}
-	bestScore := 0
-	var best *ServiceHint
-	for i := range hints {
-		score := 0
-		for _, term := range hints[i].Terms {
-			tw := arabicWords(term)
-			if len(tw) == 0 {
-				continue
-			}
-			hit := 0
-			for _, w := range tw {
-				if matchesAny(w, words) {
-					hit++
-				}
-			}
-			if hit == len(tw) {
-				hit += len(tw) // المصطلح انطابق كامل
-			}
-			if hit > score {
-				score = hit
-			}
-		}
-		if score > bestScore {
-			bestScore = score
-			best = &hints[i]
-		}
-	}
-	if best == nil {
-		return "", "", false
-	}
-	return best.ID, best.Name, true
-}
-
-func matchesAny(w string, words []string) bool {
-	for _, pw := range words {
-		if w == pw {
-			return true
-		}
-		// الاحتواء للكلمات الطويلة بس، حتى ما تنطابق كلمات قصيرة بالغلط
-		if len([]rune(w)) >= 4 && strings.Contains(pw, w) {
-			return true
-		}
-		if len([]rune(pw)) >= 4 && strings.Contains(w, pw) {
-			return true
-		}
-	}
-	return false
-}
-
-// arabicWords يقسم النص لكلمات، يشيل «ال» الملتصقة حتى «الحرارة» تطابق
-// «حرارة»، ويهمل الكلمات القصيرة (حروف الجر وأدوات الربط).
-func arabicWords(s string) []string {
-	out := []string{}
-	for _, f := range strings.FieldsFunc(s, func(r rune) bool {
-		return r == ' ' || r == '\t' || r == '\n' || r == '-' || r == '/' || r == '،' || r == ','
-	}) {
-		f = strings.TrimPrefix(f, "ال")
-		if len([]rune(f)) >= 3 {
-			out = append(out, f)
-		}
-	}
-	return out
 }

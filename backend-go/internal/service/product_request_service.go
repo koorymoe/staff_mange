@@ -53,7 +53,7 @@ func (s *ProductRequestService) Approve(id, resolvedByID string) (*model.Product
 			Specs:        item.Specs,
 			Source:       item.Source,
 			ModelName:    item.Model,
-		}); perr != nil {
+		}, resolvedByID); perr != nil {
 			// الاقتراح انوافق عليه فعلاً؛ فشل الإنشاء ما يلغي الموافقة،
 			// بس لازم المستخدم يدري حتى يضيفه يدوي.
 			return item, fmt.Errorf("انوافق على الطلب بس تعذر إنشاء المنتج بالكتالوج — أضفه يدوي من «إضافة منتج»")

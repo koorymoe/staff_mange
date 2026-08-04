@@ -818,6 +818,17 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			`,
 		},
 		{
+			// منو أضاف المنتج — يظهر ببطاقته، ويميّز المنتجات المضافة
+			// من شاشة «إضافة منتج» عن كتالوج عروض الأسعار القديم.
+			Version: "0186_product_created_by",
+			SQL: `
+				ALTER TABLE "Product"
+					ADD COLUMN IF NOT EXISTS "createdById" TEXT REFERENCES "Employee"(id),
+					ADD COLUMN IF NOT EXISTS "serviceText" TEXT;
+				CREATE INDEX IF NOT EXISTS "Product_created_by_idx" ON "Product" ("createdById");
+			`,
+		},
+		{
 			// حقول المنتج الي ينسألهن الموظف وقت الإضافة: المواصفات
 			// والمصدر والموديل.
 			Version: "0180_product_specs_source_model",
@@ -935,6 +946,59 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					(gen_random_uuid()::text, 'booking_delete_request', 'طلب حذف حجز'),
 					(gen_random_uuid()::text, 'booking_delete_approve', 'الموافقة على حذف الحجوزات')
 				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
+		{
+			// قيمة مبالغ الدوار (تعديل الرصيد والتغذية) تنفصل عن شغل الدوار
+			// اليومي: صلاحية revolving_fund تخلي المحاسب يصرف ويدقّق، بس
+			// ما تخليه يغيّر رأس المال نفسه. تغيير الرصيد لمدير النظام
+			// والمالك، أو لمن ينطونه هاي الصلاحية صراحةً.
+			Version: "0187_fund_amount_permission",
+			SQL: `
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'revolving_fund_amount', 'تعديل قيمة مبالغ الدوار')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
+		{
+			// تجهيز طلب المنتج من الدوار:
+			//
+			// التقني يطلب منتج → أبو الحسابات (نفسه أبو الكميات) يشوف
+			// الطلب، يحدد المورد من الموردين المضافين مسبقاً، يأخذ جزء من
+			// الدوار ويشتري، ويسجّل: المبلغ المصروف، السبب، صورة الوصل،
+			// والمورد.
+			//
+			// وأهم نقطة: لازم يحدد المنتج للشركة لو للزبون — لأن هذا الي
+			// يقرر منو يعوّض الدوار. والطلب يبقى معلّق (PENDING) لحد ما
+			// المحاسب يرجّع المبلغ للدوار فعلاً، وبس هناك يصير SETTLED.
+			Version: "0188_product_procurement",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "ProductProcurement" (
+					id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+					"requestId" TEXT NOT NULL REFERENCES "ProductRequest"(id) ON DELETE CASCADE,
+					"fundId" TEXT NOT NULL REFERENCES "RevolvingFund"(id),
+					"supplierId" TEXT NOT NULL REFERENCES "Supplier"(id),
+					"productName" TEXT NOT NULL,
+					"spentAmount" NUMERIC(14,2) NOT NULL,
+					reason TEXT NOT NULL,
+					"receiptImage" TEXT,
+					-- منو يعوّض الدوار: COMPANY = الشركة | CUSTOMER = الزبون
+					"payerKind" TEXT NOT NULL,
+					"customerNote" TEXT,
+					"bookingId" TEXT REFERENCES "Booking"(id),
+					-- PENDING = المبلغ لسّه برقبة الدوار | SETTLED = انرجع
+					status TEXT NOT NULL DEFAULT 'PENDING',
+					"purchasedById" TEXT NOT NULL REFERENCES "Employee"(id),
+					"settledById" TEXT REFERENCES "Employee"(id),
+					"settledAt" TIMESTAMPTZ,
+					"settleNote" TEXT,
+					"createdAt" TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE INDEX IF NOT EXISTS "ProductProcurement_status_idx"
+					ON "ProductProcurement" (status, "createdAt" DESC);
+				-- تجهيز واحد بس لكل طلب — ما نصرف من الدوار مرتين لنفس الطلب
+				CREATE UNIQUE INDEX IF NOT EXISTS "ProductProcurement_one_per_request"
+					ON "ProductProcurement" ("requestId");
 			`,
 		},
 	}

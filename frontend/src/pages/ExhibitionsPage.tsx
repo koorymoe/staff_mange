@@ -129,8 +129,15 @@ export default function ExhibitionsPage() {
             <form onSubmit={handleCreate} className="mt-3 grid grid-cols-1 gap-3 rounded-xl border border-white bg-white p-5 shadow-sm sm:grid-cols-2">
               <input required value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="عنوان المعرض" className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
               <input required value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="مكان المعرض" className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
-              <input required type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
-              <input required type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+              {/* التاريخين بدون تسمية ما ينعرف أيهم البداية وأيهم النهاية */}
+              <label className="flex flex-col gap-1 text-sm text-slate-600">
+                تاريخ بداية المعرض
+                <input required type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+              </label>
+              <label className="flex flex-col gap-1 text-sm text-slate-600">
+                تاريخ نهاية المعرض
+                <input required type="date" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500" />
+              </label>
               <input value={form.companies} onChange={(e) => setForm({ ...form, companies: e.target.value })} placeholder="الشركات الموجودة بالمعرض (مفصولة بفاصلة)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 sm:col-span-2" />
               <input value={form.productsToShow} onChange={(e) => setForm({ ...form, productsToShow: e.target.value })} placeholder="المنتجات المراد عرضها (مفصولة بفاصلة)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 sm:col-span-2" />
               <button type="submit" disabled={saving} className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50 sm:col-span-2">

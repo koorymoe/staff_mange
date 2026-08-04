@@ -19,7 +19,12 @@ func (s *ProductService) List() ([]model.Product, error) {
 	return s.repo.List()
 }
 
-func (s *ProductService) Create(req model.CreateProductRequest) (*model.Product, error) {
+// ListAdded المضافة من شاشة «إضافة منتج» بس — شاشة التقنيين.
+func (s *ProductService) ListAdded() ([]model.Product, error) {
+	return s.repo.ListAdded()
+}
+
+func (s *ProductService) Create(req model.CreateProductRequest, createdByID string) (*model.Product, error) {
 	if req.Name == "" {
 		return nil, errors.New("name is required")
 	}
@@ -32,7 +37,7 @@ func (s *ProductService) Create(req model.CreateProductRequest) (*model.Product,
 	if req.Availability != nil && !model.ValidProductAvailability(*req.Availability) {
 		return nil, errors.New("حالة التوفر غير معروفة")
 	}
-	return s.repo.Create(req)
+	return s.repo.Create(req, createdByID)
 }
 
 func (s *ProductService) Update(id string, req model.UpdateProductRequest) (*model.Product, error) {
