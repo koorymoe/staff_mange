@@ -42,6 +42,13 @@ func (h *ProductRequestHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *ProductRequestHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	item, err := h.service.Approve(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {
+		// لو الموافقة نجحت وفشل إنشاء المنتج بس، نرجّع نص الخطأ الحقيقي
+		// حتى المستخدم يعرف إنه لازم يضيفه يدوي — مو «تعذر الموافقة»
+		// وهو موافق عليه فعلاً.
+		if item != nil {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		WriteError(w, http.StatusBadRequest, "تعذر الموافقة")
 		return
 	}

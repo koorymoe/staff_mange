@@ -231,7 +231,11 @@ const navItems: NavItem[] = [
     permission: 'unit_technicians',
     children: [
       { to: '/exhibitions', label: 'إدارة المعارض', icon: <></>, permission: 'unit_technicians' },
-      { to: '/product-requests', label: 'إدارة المنتجات', icon: <></>, permission: 'unit_technicians' },
+      // شغلتان مختلفتان: «إضافة منتج» تضيفه لكتالوج النظام مباشرة
+      // بكل مزاياه (التوفر، الخدمة، المواصفات، المصدر، الموديل)،
+      // و«طلبات المنتجات» اقتراح ينتظر موافقة المدير.
+      { to: '/products', label: '➕ إضافة منتج', icon: <></>, permission: 'unit_technicians' },
+      { to: '/product-requests', label: 'طلبات المنتجات', icon: <></>, permission: 'unit_technicians' },
       { to: '/service-studies', label: 'إدارة الخدمات', icon: <></>, permission: 'unit_technicians' },
       { to: '/training-management', label: 'مفردات التدريب', icon: <></>, permission: 'content_technician' },
       { to: '/tech-showcase', label: 'معرض الأعمال', icon: <></>, permission: 'content_technician' },

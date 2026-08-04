@@ -236,7 +236,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	exhibitionService := service.NewExhibitionService(exhibitionRepo, assistantService)
 	exhibitionHandler := handler.NewExhibitionHandler(exhibitionService)
 	productRequestRepo := repository.NewProductRequestRepository(db)
-	productRequestService := service.NewProductRequestService(productRequestRepo)
+	productRequestService := service.NewProductRequestService(productRequestRepo, productRepo)
 	productRequestHandler := handler.NewProductRequestHandler(productRequestService)
 	serviceStudyRepo := repository.NewServiceStudyRepository(db)
 	serviceStudyService := service.NewServiceStudyService(serviceStudyRepo)
