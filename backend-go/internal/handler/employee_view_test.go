@@ -101,3 +101,20 @@ func TestHRSeesOperationalNotFinancial(t *testing.T) {
 		t.Errorf("منسّق الكوادر شاف بيانات الحظر الإدارية: %s", out)
 	}
 }
+
+// TestSkillsAlwaysArray الموظف الي ماعنده ولا مهارة لازم يرجع skills: []
+// مو بدون الحقل أصلاً.
+//
+// هذا مو تجميل: حذف الحقل خلّى صفحة الموظفين تنادي .filter على undefined
+// وتطيح كلها بوجه المالك. تقليل البيانات يخص القيم الحساسة، مو شكل
+// القوائم الي الواجهة تمر عليها دائماً.
+func TestSkillsAlwaysArray(t *testing.T) {
+	e := sampleEmployee()
+	e.Skills = nil
+	for _, role := range []string{"TECHNICIAN", "HR_COORDINATOR", "ADMIN", "OWNER"} {
+		out := marshalView(t, ViewEmployee(e, role, "x"))
+		if !strings.Contains(out, `"skills":[]`) {
+			t.Errorf("الدور %s ما استلم skills كمصفوفة فاضية: %s", role, out)
+		}
+	}
+}

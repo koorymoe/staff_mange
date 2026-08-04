@@ -34,7 +34,14 @@ func basePublicFields(e *model.Employee) employeeView {
 	putIfSet(v, "jobTitle", e.JobTitle)
 	putIfSet(v, "position", e.Position)
 	putIfSet(v, "attendanceIcon", e.AttendanceIcon)
-	if len(e.Skills) > 0 {
+	// ⚠️ القوائم تنرسل دائماً — فاضية لو ماكو، مو محذوفة.
+	//
+	// تقليل البيانات معناه ما ننشر قيم حساسة، مو إننا نخفي شكل الحقل.
+	// حذف skills لموظف بلا مهارات خلّى الواجهة تنادي .filter على
+	// undefined وصفحة الموظفين كلها تطيح. المصفوفة الفاضية ما تكشف شي.
+	if e.Skills == nil {
+		v["skills"] = []model.EmployeeSkillDetail{}
+	} else {
 		v["skills"] = e.Skills
 	}
 	return v
