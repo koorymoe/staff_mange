@@ -15,9 +15,19 @@ export default function AnnouncementTicker() {
   const [items, setItems] = useState<Announcement[]>([])
   const [hidden, setHidden] = useState(() => sessionStorage.getItem(DISMISS_KEY) === '1')
 
+  // نعيد الجلب كل دقيقة: بدونها الإعلان الجديد ما يوصل إلا للي يفتح
+  // النظام بعده — والموظفين الي شغّالين أصلاً يضلون ما يشوفونه.
   useEffect(() => {
     if (hidden) return
-    api.getAnnouncements().then(setItems).catch(() => setItems([]))
+    let alive = true
+    const fetch = () => {
+      api.getAnnouncements()
+        .then((rows) => { if (alive) setItems(rows) })
+        .catch(() => { if (alive) setItems([]) })
+    }
+    fetch()
+    const timer = setInterval(fetch, 60_000)
+    return () => { alive = false; clearInterval(timer) }
   }, [hidden])
 
   if (hidden || items.length === 0) return null

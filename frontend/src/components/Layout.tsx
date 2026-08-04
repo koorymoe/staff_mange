@@ -256,8 +256,6 @@ const navItems: NavItem[] = [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
       // طلبات حذف الحجوزات — المراقب ومدير النظام يبتون بيها
       { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], },
-      // لوحة الإعلانات — المالك ومدير النظام بس
-      { to: '/announcements', label: '📢 لوحة الإعلانات', icon: <></>, roles: ['ADMIN'] },
     ],
   },
 
@@ -918,6 +916,23 @@ export default function Layout() {
               {collapsed ? '🔒' : '🔒 سياسة الخصوصية'}
             </NavLink>
           </div>
+
+          {/* لوحة الإعلانات — ثابتة بالأسفل تحت سياسة الخصوصية، مو داخل
+              أي وحدة، لأنها تخص المالك ومدير النظام وحدهم. */}
+          {(role === 'ADMIN' || role === 'OWNER') && (
+            <div className="mx-3 mt-1">
+              <NavLink
+                to="/announcements"
+                className={({ isActive }) =>
+                  `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                {collapsed ? '📢' : '📢 لوحة الإعلانات'}
+              </NavLink>
+            </div>
+          )}
 
           {/* Logout */}
           <div className="mx-3 mb-3 mt-1">
