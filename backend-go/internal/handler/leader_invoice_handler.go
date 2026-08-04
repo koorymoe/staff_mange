@@ -74,6 +74,13 @@ func (h *LeaderInvoiceHandler) Estimate(w http.ResponseWriter, r *http.Request) 
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// تفصيل الحساب (المعادلات والحدود الدنيا) أسعار داخلية — للمالك ومدير
+	// النظام فقط. الليدر ياخذ المبلغ وبس. نشيلها من الرد نفسه مو من الشاشة
+	// بس، وإلا تبقى موجودة بالـJSON لأي أحد يفتح أدوات المطوّر.
+	if role := middleware.RoleFromContext(r); role != "ADMIN" && role != "OWNER" {
+		res.Breakdown = nil
+		res.SystemMinimums = nil
+	}
 	WriteJSON(w, http.StatusOK, res)
 }
 

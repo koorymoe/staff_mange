@@ -25,6 +25,34 @@ const trackingRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN']
 // الزبون — دوره رقابي بس، مو التواصل المباشر.
 const fullDetailRoles = ['QUALITY_ENGINEER', 'ADMIN']
 
+// سويچ الاتصال — أخضر يمين «تم» وأحمر يسار «لم يتم». مشترك بين شاشة
+// المراقب وشاشة مهندس الجودة حتى الاثنين يشوفون نفس الشي بالضبط.
+function ContactSwitch({ complaint, busy, onToggle }: {
+  complaint: Complaint
+  busy: boolean
+  onToggle: () => void
+}) {
+  const on = !!complaint.contactedAt
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={onToggle}
+      title={on ? 'تم الاتصال — اضغط للتراجع' : 'لم يتم الاتصال — اضغط للتأشير'}
+      className={`flex items-center gap-2 rounded-full px-1 py-1 transition-colors disabled:opacity-50 ${
+        on ? 'bg-emerald-100' : 'bg-red-100'
+      }`}
+    >
+      <span className={`h-5 w-9 rounded-full p-0.5 transition-colors ${on ? 'bg-emerald-500' : 'bg-red-400'}`}>
+        <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${on ? 'translate-x-0' : 'translate-x-4'}`} />
+      </span>
+      <span className={`pl-2 text-xs font-bold ${on ? 'text-emerald-700' : 'text-red-700'}`}>
+        {on ? 'تم الاتصال' : 'لم يتم الاتصال'}
+      </span>
+    </button>
+  )
+}
+
 export default function ComplaintsPage() {
   const { employee: currentUser } = useSession()
   const canTrack = !!currentUser && trackingRoles.includes(currentUser.role)
@@ -389,13 +417,18 @@ export default function ComplaintsPage() {
         </div>
       )}
 
+      {/* المراقب: يشوف الشكاوى ويتحكم بسويچ الاتصال وبالملاحظات — بدون
+          تفاصيل الزبون، لأن دوره رقابي مو تواصل مباشر. */}
       {canTrack && !loading && !error && !canSeeFullDetail && (
         <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 text-right">
               <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                 <tr>
-                  <th className="px-4 py-3 text-sm font-semibold">تنبيه</th>
+                  <th className="px-4 py-3 text-sm font-semibold">الشكوى</th>
+                  <th className="px-4 py-3 text-sm font-semibold">الاتصال بالزبون</th>
+                  <th className="px-4 py-3 text-sm font-semibold">منو اتصل</th>
+                  <th className="px-4 py-3 text-sm font-semibold">ملاحظات الزبون</th>
                   <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
                   <th className="px-4 py-3 text-sm font-semibold">التاريخ</th>
                 </tr>
@@ -403,8 +436,27 @@ export default function ComplaintsPage() {
               <tbody className="divide-y divide-slate-100">
                 {complaints.map((c) => (
                   <tr key={c.id} className="transition-colors hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-amber-700">
-                      ⚠️ شكوى تحتاج متابعة من مهندس الجودة
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-brand-800">{complaintTypeLabels[c.type] || c.type}</span>
+                      {!c.contactedAt && (
+                        <div className="text-xs text-amber-700">⚠️ تحتاج متابعة</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <ContactSwitch complaint={c} busy={contactBusy === c.id} onToggle={() => toggleContacted(c)} />
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {c.contactedAt
+                        ? <>{c.contactedByName || '—'}<div className="text-[11px] text-slate-400">{new Date(c.contactedAt).toLocaleDateString('ar-IQ')}</div></>
+                        : '—'}
+                    </td>
+                    <td className="max-w-[220px] px-4 py-3">
+                      <input
+                        defaultValue={c.notes || ''}
+                        onBlur={(e) => saveNotes(c, e.target.value)}
+                        placeholder="ملاحظات الزبون..."
+                        className="w-full rounded-lg border border-slate-200 px-2 py-1 text-xs outline-none focus:border-brand-500"
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[c.status]}`}>
@@ -418,7 +470,7 @@ export default function ComplaintsPage() {
                 ))}
                 {complaints.length === 0 && (
                   <tr>
-                    <td colSpan={3} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
                       لا توجد شكاوى بعد
                     </td>
                   </tr>
@@ -467,21 +519,11 @@ export default function ComplaintsPage() {
                     </td>
                     {/* سويچ الاتصال — أخضر «تم» وأحمر «لم يتم»، ويخزن منو اتصل */}
                     <td className="px-4 py-3">
-                      <button
-                        type="button"
-                        disabled={contactBusy === c.id}
-                        onClick={() => toggleContacted(c)}
-                        className={`rounded-full px-3 py-1 text-xs font-bold transition-colors disabled:opacity-50 ${
-                          c.contactedAt
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                            : 'bg-red-100 text-red-700 hover:bg-red-200'
-                        }`}
-                      >
-                        {c.contactedAt ? '✔ تم الاتصال' : '✕ لم يتم الاتصال'}
-                      </button>
+                      <ContactSwitch complaint={c} busy={contactBusy === c.id} onToggle={() => toggleContacted(c)} />
                       {c.contactedAt && (
-                        <div className="mt-1 text-[11px] text-slate-400">
-                          {c.contactedByName || '—'} · {new Date(c.contactedAt).toLocaleDateString('ar-IQ')}
+                        <div className="mt-1 text-[11px] text-slate-500">
+                          اتصل: <b className="text-slate-600">{c.contactedByName || '—'}</b>
+                          {' · '}{new Date(c.contactedAt).toLocaleDateString('ar-IQ')}
                         </div>
                       )}
                     </td>
@@ -541,7 +583,7 @@ export default function ComplaintsPage() {
                 ))}
                 {complaints.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                       لا توجد شكاوى بعد
                     </td>
                   </tr>

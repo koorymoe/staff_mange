@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type Exhibition, type Employee } from '../api'
+import { api, type Exhibition, type Employee, type EmployeeRole } from '../api'
 import { useSession } from '../session'
 
 function fileToBase64(file: File): Promise<string> {
@@ -15,6 +15,27 @@ function splitList(v: string) {
   return v.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
+// ترتيب القائمة المنسدلة: التقنيين والمهندسين أول، بعدين المصممين،
+// وبعدهم الباقي — لأن هذول هم المرشّحين الطبيعيين للمعارض.
+const NOMINEE_GROUPS: { label: string; roles: EmployeeRole[] }[] = [
+  { label: 'التقنيين والمهندسين', roles: ['TECHNICIAN', 'ENGINEER', 'QUALITY_ENGINEER'] },
+  { label: 'المصممين', roles: ['DESIGNER'] },
+]
+
+function groupNominees(employees: Employee[]) {
+  const active = employees.filter((e) => e.status === 'ACTIVE')
+  const used = new Set<string>()
+  const groups = NOMINEE_GROUPS.map((g) => {
+    const members = active
+      .filter((e) => g.roles.includes(e.role))
+      .sort((a, b) => a.name.localeCompare(b.name, 'ar'))
+    members.forEach((m) => used.add(m.id))
+    return { label: g.label, members }
+  })
+  const rest = active.filter((e) => !used.has(e.id)).sort((a, b) => a.name.localeCompare(b.name, 'ar'))
+  return [...groups, { label: 'باقي الموظفين', members: rest }].filter((g) => g.members.length > 0)
+}
+
 export default function ExhibitionsPage() {
   const { permissions, employee } = useSession()
   const canAdd = employee?.role === 'ADMIN' || permissions.includes('unit_technicians')
@@ -28,6 +49,8 @@ export default function ExhibitionsPage() {
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [findingsDraft, setFindingsDraft] = useState<Record<string, string>>({})
+  const [nominateFor, setNominateFor] = useState<string | null>(null)
+  const [nominatePicked, setNominatePicked] = useState<string[]>([])
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const load = () => {
@@ -56,15 +79,19 @@ export default function ExhibitionsPage() {
     }
   }
 
-  const handleNominate = async (id: string, current: string[]) => {
-    const options = employees.map((e) => `${e.name} :: ${e.id}`).join('\n')
-    const picked = prompt(`اكتب أسماء الموظفين المرشّحين مفصولين بفاصلة (اختر من):\n${options}`, current.join(', '))
-    if (picked === null) return
-    const names = splitList(picked)
-    const ids = employees.filter((e) => names.includes(e.name)).map((e) => e.id)
-    setBusyId(id)
+  // الترشيح صار قائمة منسدلة مجمّعة بدل ما يكتب الأسماء بيده — الكتابة
+  // كانت تخلي أي حرف زايد يضيّع الموظف من الترشيح.
+  const openNominate = (ex: Exhibition) => {
+    setNominateFor(ex.id)
+    setNominatePicked(ex.nominatedEmployees.map((e) => e.id))
+  }
+
+  const saveNominate = async () => {
+    if (!nominateFor) return
+    setBusyId(nominateFor)
     try {
-      await api.nominateExhibition(id, ids)
+      await api.nominateExhibition(nominateFor, nominatePicked)
+      setNominateFor(null)
       load()
     } finally {
       setBusyId(null)
@@ -173,7 +200,7 @@ export default function ExhibitionsPage() {
               <b className="text-slate-600">الترشيح:</b>
               <span className="text-slate-500">{ex.nominatedEmployees.length > 0 ? ex.nominatedEmployees.map((e) => e.name).join('، ') : 'لا يوجد بعد'}</span>
               {isAdmin && (
-                <button onClick={() => handleNominate(ex.id, ex.nominatedEmployees.map((e) => e.name))} disabled={busyId === ex.id} className="rounded bg-brand-50 px-2 py-0.5 font-bold text-brand-700 hover:bg-brand-100">
+                <button onClick={() => openNominate(ex)} disabled={busyId === ex.id} className="rounded bg-brand-50 px-2 py-0.5 font-bold text-brand-700 hover:bg-brand-100">
                   تعديل
                 </button>
               )}
@@ -225,6 +252,47 @@ export default function ExhibitionsPage() {
           </div>
         ))}
       </div>
+
+      {/* قائمة ترشيح الموظفين — مجمّعة بالترتيب: تقنيين ومهندسين، مصممين، الباقي */}
+      {nominateFor && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4">
+          <div className="mt-10 w-full max-w-lg rounded-xl bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between">
+              <h3 className="text-lg font-bold text-brand-900">ترشيح موظفين للمعرض</h3>
+              <button onClick={() => setNominateFor(null)} className="text-2xl leading-none text-slate-400">×</button>
+            </div>
+            <p className="mt-1 text-sm text-slate-500">اختر من القائمة — تكدر تختار أكثر من واحد.</p>
+
+            <div className="mt-3 max-h-80 overflow-y-auto rounded-lg border border-slate-200">
+              {groupNominees(employees).map((g) => (
+                <div key={g.label}>
+                  <div className="sticky top-0 bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600">{g.label}</div>
+                  {g.members.map((m) => (
+                    <label key={m.id} className="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-slate-50">
+                      <input
+                        type="checkbox"
+                        checked={nominatePicked.includes(m.id)}
+                        onChange={(e) => setNominatePicked((prev) =>
+                          e.target.checked ? [...prev, m.id] : prev.filter((id) => id !== m.id))}
+                      />
+                      <span className="font-medium text-slate-700">{m.name}</span>
+                      {m.jobTitle && <span className="text-xs text-slate-400">{m.jobTitle}</span>}
+                    </label>
+                  ))}
+                </div>
+              ))}
+              {employees.length === 0 && <p className="p-4 text-center text-sm text-slate-400">ماكو موظفين</p>}
+            </div>
+
+            <div className="mt-4 flex gap-2">
+              <button onClick={saveNominate} disabled={busyId === nominateFor} className="flex-1 rounded-lg bg-brand-500 px-4 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
+                {busyId === nominateFor ? 'جاري الحفظ...' : `حفظ الترشيح (${nominatePicked.length})`}
+              </button>
+              <button onClick={() => setNominateFor(null)} className="rounded-lg border border-slate-300 px-4 py-2 text-sm">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

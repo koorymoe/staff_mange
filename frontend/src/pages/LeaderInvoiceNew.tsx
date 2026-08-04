@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useSession } from '../session'
 import {
   api,
   type CreateMaterialLineRequest,
@@ -25,6 +26,12 @@ interface DraftMaterial extends CreateMaterialLineRequest {
 }
 
 export default function LeaderInvoiceNew() {
+  // تفصيل الحساب (المعادلات والحدود الدنيا) للمالك ومدير النظام فقط —
+  // الليدر يشوف المبلغ وبس. هذي أسعار داخلية ما تنعرض لكل من يحسب كلفة.
+  // (المالك ينطبّع دوره لـADMIN بالجلسة، فالشرط يغطي الاثنين.)
+  const { employee } = useSession()
+  const canSeeBreakdown = employee?.role === 'ADMIN'
+
   const [params] = useSearchParams()
   const navigate = useNavigate()
   // الحجز ممكن ييجي من الرابط (لما ينضغط من شاشة الحجز) أو ينختار من قائمة
@@ -176,8 +183,8 @@ export default function LeaderInvoiceNew() {
           <p className="mt-3 text-xs text-amber-600">هذا رقم تقريبي بس للاستفسار — ما ينحفظ ولا يرتبط بأي حجز.</p>
         </div>
 
-        {/* تفصيل الحساب — الليدر يشوف كل رقم من وين طلع بدل ما يثق برقم أعمى */}
-        {estimateResult.breakdown?.length > 0 && (
+        {/* تفصيل الحساب — للمالك ومدير النظام فقط */}
+        {canSeeBreakdown && estimateResult.breakdown?.length > 0 && (
           <div className="mt-4 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <h3 className="mb-3 font-bold text-brand-800">شلون انحسب الرقم؟</h3>
             <div className="space-y-3">
