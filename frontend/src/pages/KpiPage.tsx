@@ -255,7 +255,9 @@ function AdministrativeTab() {
     Promise.all([api.getKpiEvaluations(), api.getEmployees(), api.getKpiCriteria()])
       .then(([evals, emps, crit]) => {
         setEvaluations(evals)
-        setEmployees(emps.filter((e) => e.role !== 'TECHNICIAN' && e.role !== 'ADMIN'))
+        // ⚠️ كانت تشيل الفنيين ومدير النظام من القائمة. الكي بي اي مو
+        // خاص بالإداريين — المدير يخصم من أي موظف بالشركة، والفني منهم.
+        setEmployees(emps)
         setCriteria(crit)
       })
       .catch((e) => setError(e.message))
@@ -266,6 +268,39 @@ function AdministrativeTab() {
 
   // التقييمات الملغاة (المسترجعة) ما تدخل بحساب النقاط المتبقية ولا الخصم المالي
   const weeklyEvals = evaluations.filter((ev) => isThisWeek(ev.createdAt) && !ev.cancelled)
+
+  // الشهر الحالي — نفس منطق الأسبوع بس بنطاق أوسع
+  const isThisMonth = (iso: string) => {
+    const d = new Date(iso)
+    const now = new Date()
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+  }
+  const monthlyEvals = evaluations.filter((ev) => isThisMonth(ev.createdAt) && !ev.cancelled)
+
+  const monthlyByEmployee = monthlyEvals.reduce<
+    Record<string, { name: string; totalPoints: number; totalIQD: number; count: number }>
+  >((acc, ev) => {
+    if (!acc[ev.employeeId]) {
+      acc[ev.employeeId] = { name: ev.employee.name, totalPoints: 0, totalIQD: 0, count: 0 }
+    }
+    acc[ev.employeeId].totalPoints += ev.points
+    acc[ev.employeeId].totalIQD += ev.deductionAmount
+    acc[ev.employeeId].count += 1
+    return acc
+  }, {})
+
+  // أكثر سبب تكرر بالشهر — يخلي المدير يشوف المشكلة المتكررة مو الحالات
+  const monthlyTopReasons = Object.entries(
+    monthlyEvals.reduce<Record<string, number>>((acc, ev) => {
+      // السبب ينكتب «المعيار: تفاصيل» — نأخذ المعيار بس للتجميع
+      const key = (ev.reason || 'بدون سبب').split(':')[0].trim()
+      acc[key] = (acc[key] ?? 0) + 1
+      return acc
+    }, {}),
+  ).sort((a, b) => b[1] - a[1]).slice(0, 5)
+
+  const monthTotalPoints = monthlyEvals.reduce((n, ev) => n + ev.points, 0)
+  const monthTotalIQD = monthlyEvals.reduce((n, ev) => n + ev.deductionAmount, 0)
 
   const weeklyByEmployee = weeklyEvals.reduce<
     Record<string, { name: string; totalPoints: number; totalIQD: number; deductions: KpiEvaluation[] }>
@@ -673,6 +708,88 @@ function AdministrativeTab() {
                 </tbody>
               </table>
             </div>
+          </div>
+
+          {/* ملخص الشهر — جنب ملخص الأسبوع. الأسبوعي يبيّن الحالة
+              الحالية (شكد باقي لكل موظف)، والشهري يبيّن الاتجاه: منو
+              أكثر واحد انخصم، وشنو السبب المتكرر. */}
+          <div className="mt-6 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <div className="flex flex-wrap items-center justify-between gap-3 p-5">
+              <h3 className="text-lg font-bold text-brand-800">ملخص الشهر</h3>
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                  مخالفات: {monthlyEvals.length}
+                </span>
+                <span className="rounded-full bg-red-100 px-3 py-1 text-red-700">
+                  نقاط مخصومة: {-monthTotalPoints}
+                </span>
+                <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">
+                  إجمالي الخصم: {monthTotalIQD.toLocaleString()} د.ع
+                </span>
+                <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
+                  موظفين بلا مخالفة: {employees.filter((e) => e.status === 'ACTIVE' && !monthlyByEmployee[e.id]).length}
+                </span>
+              </div>
+            </div>
+
+            {monthlyEvals.length === 0 ? (
+              <p className="px-5 pb-6 text-sm text-slate-400">ماكو ولا مخالفة هذا الشهر — كلهم نظاف 👌</p>
+            ) : (
+              <div className="grid grid-cols-1 gap-0 lg:grid-cols-3">
+                {/* الموظفين حسب الخصم */}
+                <div className="overflow-x-auto lg:col-span-2">
+                  <table className="min-w-full divide-y divide-gray-200 text-right">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-4 py-2 text-sm font-semibold text-slate-600">الموظف</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-slate-600">عدد المخالفات</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-slate-600">النقاط</th>
+                        <th className="px-4 py-2 text-sm font-semibold text-slate-600">الخصم (د.ع)</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {Object.entries(monthlyByEmployee)
+                        .sort((a, b) => a[1].totalPoints - b[1].totalPoints)
+                        .map(([id, m]) => (
+                          <tr key={id} className="hover:bg-slate-50">
+                            <td className="px-4 py-2 font-medium">{m.name}</td>
+                            <td className="px-4 py-2 text-slate-600">{m.count}</td>
+                            <td className="px-4 py-2">
+                              <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-bold text-red-700">
+                                {m.totalPoints}
+                              </span>
+                            </td>
+                            <td className="px-4 py-2 font-bold text-red-600">
+                              {m.totalIQD > 0 ? m.totalIQD.toLocaleString() : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* الأسباب المتكررة — هاي الي تقول للمدير وين المشكلة */}
+                <div className="border-t border-slate-100 p-5 lg:border-r lg:border-t-0">
+                  <h4 className="mb-3 text-sm font-bold text-slate-700">أكثر الأسباب تكراراً</h4>
+                  <div className="space-y-2">
+                    {monthlyTopReasons.map(([reason, n]) => (
+                      <div key={reason}>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-slate-600">{reason}</span>
+                          <span className="font-bold text-slate-500">{n}</span>
+                        </div>
+                        <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                          <div
+                            className="h-full rounded-full bg-brand-500"
+                            style={{ width: `${(n / monthlyTopReasons[0][1]) * 100}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Full history */}
