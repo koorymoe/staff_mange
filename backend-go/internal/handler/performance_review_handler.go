@@ -42,6 +42,9 @@ func (h *PerformanceReviewHandler) Ratable(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *PerformanceReviewHandler) ListForEmployee(w http.ResponseWriter, r *http.Request) {
+	if !requireSelfOrSupervisor(w, r, r.PathValue("employeeId")) {
+		return
+	}
 	reviews, err := h.service.ListForEmployee(r.PathValue("employeeId"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب التقييمات")

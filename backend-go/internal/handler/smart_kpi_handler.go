@@ -16,6 +16,9 @@ func NewSmartKpiHandler(s *service.SmartKpiService) *SmartKpiHandler {
 
 // GET /api/v1/smart-kpi/technician/{employeeId}?month=YYYY-MM
 func (h *SmartKpiHandler) Technician(w http.ResponseWriter, r *http.Request) {
+	if !requireSelfOrSupervisor(w, r, r.PathValue("employeeId")) {
+		return
+	}
 	result, err := h.service.CalculateTechnicianKpi(r.PathValue("employeeId"), r.URL.Query().Get("month"))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

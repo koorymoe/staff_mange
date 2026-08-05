@@ -107,6 +107,26 @@ func (h *BookingAuditHandler) ListIssues(w http.ResponseWriter, r *http.Request)
 
 // PUT /api/audit-issues/{id}/resolve
 func (h *BookingAuditHandler) ResolveIssue(w http.ResponseWriter, r *http.Request) {
+	// البلاغ ينغلق من الجهة الي انوجّهله بس. بدون هالفحص أي موظف مسجّل
+	// دخول يقدر يغلق البلاغ — يعني نفس الي سبّب خطأ السعر يغلق البلاغ
+	// المرفوع ضده، وكل فايدة التوجيه تروح.
+	kind, err := h.repo.KindOf(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "البلاغ غير موجود")
+		return
+	}
+	role := middleware.RoleFromContext(r)
+	allowed := role == "ADMIN" || role == "OWNER"
+	for _, rt := range model.AuditRoutedRoles(kind) {
+		if rt == role {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		WriteError(w, http.StatusForbidden, "هذا البلاغ ما ينغلق إلا من "+model.AuditRoutedLabel(kind))
+		return
+	}
 	if err := h.repo.Resolve(r.PathValue("id")); err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر إغلاق البلاغ")
 		return

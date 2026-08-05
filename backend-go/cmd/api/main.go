@@ -558,7 +558,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth, requireLeader))
 	mux.Handle("PUT /api/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth, requireInventoryApprove))
 	mux.Handle("PUT /api/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth, requireInventoryApprove))
-	mux.Handle("PUT /api/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth))
+	// إرجاع الأداة يشيل مسؤوليتها عن الموظف — نفس مستوى الموافقة، لأن
+	// إذا أي موظف يقدر يأشر «رجعتها» تروح كل محاسبة العدة المفقودة.
+	mux.Handle("PUT /api/inventory/requests/{id}/return", middleware.Chain(http.HandlerFunc(inventoryHandler.ReturnToolRequest), requireAuth, requireInventoryApprove))
 	// حذف طلب أداة يمحي أثر الطلب نهائياً — محصور بمدير النظام والمالك فقط،
 	// مو بكل من يقدر يوافق أو يرفض.
 	mux.Handle("DELETE /api/inventory/requests/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteToolRequest), requireAuth, requireAdmin))
@@ -630,7 +632,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/missions/my/{employeeId}", middleware.Chain(http.HandlerFunc(missionHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/missions/{id}", middleware.Chain(http.HandlerFunc(missionHandler.Get), requireAuth))
 	mux.Handle("POST /api/missions", middleware.Chain(http.HandlerFunc(missionHandler.Create), requireAuth, requireBookingCoord))
-	mux.Handle("PUT /api/missions/{id}/stage", middleware.Chain(http.HandlerFunc(missionHandler.UpdateStage), requireAuth))
+	// تقدّم مراحل المهمة: إدارة المشاريع أو المراقب — مو أي موظف يحرّك
+	// مهمة غيره.
+	mux.Handle("PUT /api/missions/{id}/stage", middleware.Chain(http.HandlerFunc(missionHandler.UpdateStage), requireAuth, requireFieldMonitor))
 
 	// إدارة المشاريع (projects)
 	mux.Handle("GET /api/projects", middleware.Chain(http.HandlerFunc(projectHandler.List), requireAuth))

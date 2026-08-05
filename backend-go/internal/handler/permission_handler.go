@@ -33,6 +33,11 @@ func (h *PermissionHandler) ListAll(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/permissions/employee/{id}
 func (h *PermissionHandler) ListForEmployee(w http.ResponseWriter, r *http.Request) {
 	employeeID := extractID(r.URL.Path, "/api/permissions/employee/")
+	// صلاحيات الموظف تكشف خارطة الوصول للنظام — منو يقدر يوصل لوين.
+	// الموظف يشوف مالته، والمشرف بس يشوف مال غيره.
+	if !requireSelfOrSupervisor(w, r, employeeID) {
+		return
+	}
 	perms, err := h.service.ListForEmployee(employeeID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب صلاحيات الموظف")

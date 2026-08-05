@@ -68,6 +68,9 @@ func (h *MissionHandler) UpdateStage(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/missions/my/{employeeId}
 func (h *MissionHandler) ListForEmployee(w http.ResponseWriter, r *http.Request) {
+	if !requireSelfOrSupervisor(w, r, r.PathValue("employeeId")) {
+		return
+	}
 	missions, err := h.service.ListForEmployee(r.PathValue("employeeId"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب المهام")

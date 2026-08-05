@@ -28,6 +28,9 @@ func (h *KpiHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/kpi/employee/{employeeId}
 func (h *KpiHandler) ListForEmployee(w http.ResponseWriter, r *http.Request) {
+	if !requireSelfOrSupervisor(w, r, r.PathValue("employeeId")) {
+		return
+	}
 	evals, err := h.service.ListForEmployee(r.PathValue("employeeId"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب التقييمات")

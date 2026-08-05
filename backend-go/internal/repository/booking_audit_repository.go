@@ -106,6 +106,13 @@ func (r *BookingAuditRepository) Resolve(id string) error {
 	return err
 }
 
+// KindOf نوع البلاغ — نحتاجه حتى نتأكد إن الي يغلقه من الجهة المعنية.
+func (r *BookingAuditRepository) KindOf(id string) (string, error) {
+	var kind string
+	err := r.db.Get(&kind, `SELECT kind FROM "BookingAuditIssue" WHERE id = $1`, id)
+	return kind, err
+}
+
 // PendingZeroAmount الحجوزات المنجزة الي مبلغها صفر أو فاضي — هذي
 // الي المحاسب لازم يمشي عليها بفواتير النظام القديم.
 func (r *BookingAuditRepository) PendingZeroAmount() (int, error) {

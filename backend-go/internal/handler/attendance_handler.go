@@ -125,6 +125,12 @@ func (h *AttendanceHandler) TodaySummary(w http.ResponseWriter, r *http.Request)
 
 // GET /api/attendance/employee/{id}?month=YYYY-MM
 func (h *AttendanceHandler) MonthlyReport(w http.ResponseWriter, r *http.Request) {
+	// نفس فحص التصدير بالضبط — كان مطبّق على التصدير وناسي التقرير نفسه،
+	// يعني أي موظف يبدّل الرقم بالرابط ويقرأ دوام أي زميل.
+	if !h.canViewEmployee(r, r.PathValue("id")) {
+		WriteError(w, http.StatusForbidden, "لا تملك صلاحية الوصول لهذا السجل")
+		return
+	}
 	report, err := h.service.MonthlyReport(r.PathValue("id"), r.URL.Query().Get("month"))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
