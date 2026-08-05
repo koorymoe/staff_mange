@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord, StaffRequest } from '../api'
+import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest } from '../api'
 import { useSession, hasGpsSkill } from '../session'
 import MapViewer from '../components/MapViewer'
 
@@ -94,6 +94,10 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(formatTime())
   const [projectStats, setProjectStats] = useState<Record<string, number> | null>(null)
   const [pendingStaffReqs, setPendingStaffReqs] = useState<StaffRequest[]>([])
+  // طلبات الإجازة الي تنتظر قرار هذا المدير — بضمنها الي انطاها موافقة
+  // أولية. تظهر بالشاشة الرئيسية حتى ما تنتسى: الموافقة الأولية بلا
+  // قرار نهائي معناها موظف ناطر بلا جواب.
+  const [openLeaves, setOpenLeaves] = useState<LeaveRequest[]>([])
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(formatTime()), 60000)
@@ -138,6 +142,12 @@ export default function Dashboard() {
         .then(reqs => setPendingStaffReqs(reqs.filter(r => r.status === 'PENDING' || r.status === 'APPROVED')))
         .catch(() => setPendingStaffReqs([]))
     }
+
+    // طلبات الإجازة الي تنتظر قراره — الراوت نفسه يرجع فاضي لغير
+    // المخوّلين، فما نحتاج نفحص الدور هنا.
+    api.getLeaveInbox('OPEN')
+      .then((rows) => setOpenLeaves(rows ?? []))
+      .catch(() => setOpenLeaves([]))
 
     // إحصائيات المشاريع للوحة مدير المشاريع (أو الأدمن)
     if (employee.role === 'PROJECT_MANAGER' || employee.role === 'ADMIN' || permissions.includes('project_management')) {
@@ -413,6 +423,55 @@ export default function Dashboard() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ طلبات إجازة مفتوحة — بضمنها الي انطاها موافقة أولية، حتى ما تنتسى ═══ */}
+      {openLeaves.length > 0 && (
+        <div className="rounded-2xl border-2 border-sky-200 bg-gradient-to-l from-sky-50 to-cyan-50 p-5 shadow-lg shadow-sky-100/50">
+          <div className="mb-3 flex items-center justify-between">
+            <button onClick={() => navigate('/leaves')} className="rounded-lg bg-sky-600 px-4 py-1.5 text-xs font-bold text-white transition hover:bg-sky-700">
+              عرض الإجازات ←
+            </button>
+            <div className="flex items-center gap-3">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-sky-400 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-sky-500" />
+              </span>
+              <h3 className="text-base font-extrabold text-sky-800">
+                طلبات إجازة تنتظر قرارك
+                <span className="mr-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-sky-600 text-sm font-black text-white">{openLeaves.length}</span>
+              </h3>
+            </div>
+          </div>
+          <div className="space-y-2">
+            {openLeaves.slice(0, 4).map(l => (
+              <div
+                key={l.id}
+                onClick={() => navigate('/leaves')}
+                className={`flex cursor-pointer items-center justify-between rounded-xl px-4 py-3 transition hover:shadow-md ${
+                  l.status === 'PRELIMINARY' ? 'bg-amber-50 ring-1 ring-amber-300 hover:bg-amber-100' : 'bg-white/80 hover:bg-white'
+                }`}
+              >
+                <span className="shrink-0 text-[11px] font-bold">
+                  {l.status === 'PRELIMINARY' ? (
+                    <span className="rounded-full bg-amber-500 px-2 py-0.5 text-white">موافقة أولية — ناقصها تأكيد</span>
+                  ) : (
+                    <span className="rounded-full bg-slate-200 px-2 py-0.5 text-slate-700">جديد</span>
+                  )}
+                </span>
+                <div className="text-right text-sm">
+                  <span className="font-bold text-sky-700">{l.employeeName}</span>
+                  <span className="mr-2 text-slate-600">
+                    {l.days} يوم · {new Date(l.startDate).toLocaleDateString('ar-IQ')} → {new Date(l.endDate).toLocaleDateString('ar-IQ')}
+                  </span>
+                </div>
+              </div>
+            ))}
+            {openLeaves.length > 4 && (
+              <div className="pt-1 text-center text-xs font-semibold text-sky-700">و{openLeaves.length - 4} طلب غيرها…</div>
+            )}
           </div>
         </div>
       )}
