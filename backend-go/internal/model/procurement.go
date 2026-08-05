@@ -44,7 +44,10 @@ type EmployeeIDNameBrief struct {
 
 // ProcurementBookingBrief يماثل include: { booking: { include: { customer: { select ... } } } } بالباك إند القديم
 type ProcurementBookingBrief struct {
-	ID       string         `db:"id" json:"id"`
+	ID string `db:"id" json:"id"`
+	// كود الحجز — إداري الكميات يحتاجه حتى يعرف أي حجز يخص الطلب.
+	// كانت الواجهة تعرضه وهو مو موجود بالرد أصلاً، فيطلع «undefined».
+	Code     string         `db:"code" json:"code"`
 	Customer *CustomerBrief `db:"-" json:"customer"`
 }
 

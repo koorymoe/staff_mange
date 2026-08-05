@@ -38,11 +38,16 @@ func (r *ProcurementRepository) loadEmployeeIDName(id string) *model.EmployeeIDN
 
 func (r *ProcurementRepository) loadBookingBrief(id string) *model.ProcurementBookingBrief {
 	var b model.ProcurementBookingBrief
-	var customerID string
-	if err := r.db.Get(&customerID, `SELECT "customerId" FROM "Booking" WHERE id = $1`, id); err != nil {
+	var row struct {
+		CustomerID string `db:"customerId"`
+		Code       string `db:"code"`
+	}
+	if err := r.db.Get(&row, `SELECT "customerId", code FROM "Booking" WHERE id = $1`, id); err != nil {
 		return nil
 	}
+	customerID := row.CustomerID
 	b.ID = id
+	b.Code = row.Code
 	var customer model.CustomerBrief
 	if err := r.db.Get(&customer, `SELECT id, name, phone FROM "Customer" WHERE id = $1`, customerID); err == nil {
 		b.Customer = &customer
