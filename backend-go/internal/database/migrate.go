@@ -92,6 +92,17 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := grantRolePermission(db, "PROCUREMENT_ADMIN", "inventory", "جرد الأدوات"); err != nil {
 		return err
 	}
+	// الفني هو الي يكتشف المادة الناقصة وهو بموقع الشغل — فزر «اطلب مادة
+	// ناقصة» بشاشة مهامه لازم يشتغل من غير ما أحد ينطيه صلاحية يدوياً.
+	// قبل هيچي الزر كان يوصله لشاشة يرفضها السيرفر: «لا تملك صلاحية
+	// تقديم هذا النوع من الطلبات». تنبقى صلاحية عادية تنسحب لأي موظف
+	// بالإرادة، بس الافتراضي إنها موجودة.
+	if err := grantRolePermission(db, "TECHNICIAN", "procurement", "المشتريات"); err != nil {
+		return err
+	}
+	if err := grantRolePermission(db, "TECHNICIAN", "procurement_customer", "طلب منتج للزبون"); err != nil {
+		return err
+	}
 	if err := seedOwnerAccount(db, ownerUsername, ownerPassword); err != nil {
 		return err
 	}

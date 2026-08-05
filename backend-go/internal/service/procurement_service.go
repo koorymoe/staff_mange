@@ -62,6 +62,10 @@ func (s *ProcurementService) Create(employeeID, role string, req model.CreatePro
 		}
 	}
 
+	// صاحب الطلب ينتحدد من الجلسة مو من جسم الطلب. قبل هيچي كان
+	// requestedById ينجي من العميل — يعني أي موظف يقدر يرفع طلب
+	// باسم زميله، والحساب يروح على غيره.
+	req.RequestedByID = employeeID
 	return s.repo.Create(req)
 }
 

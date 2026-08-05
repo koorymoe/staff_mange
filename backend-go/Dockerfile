@@ -18,6 +18,10 @@ RUN apk add --no-cache ca-certificates tzdata
 RUN adduser -D -u 1000 appuser
 WORKDIR /app
 COPY --from=build /server /app/server
+# مجلد الملفات المرفوعة: ينمسك من فوليوم دائم بالـcompose، بس ننشئه
+# هنا بملكية appuser حتى يكدر يكتب بيه — بدونه الحاوية كانت تموت عند
+# الإقلاع لأن /app ملك root والمستخدم مو root.
+RUN mkdir -p /app/uploads && chown appuser:appuser /app/uploads
 USER appuser
 EXPOSE 4000
 ENTRYPOINT ["/app/server"]

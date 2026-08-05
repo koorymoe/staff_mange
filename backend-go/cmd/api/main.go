@@ -1097,7 +1097,12 @@ func buildFileStore(cfg *config.Config) storage.Store {
 	}
 	s, err := storage.NewLocalStore(cfg.UploadsDir)
 	if err != nil {
-		log.Fatalf("تعذر تهيئة مجلد التخزين المحلي: %v", err)
+		// ⚠️ ما نطيح السيرفر. فشل تهيئة مجلد الملفات كان log.Fatalf —
+		// يعني حاوية بمجلد عمل مو قابل للكتابة توقّف النظام كله وهو
+		// شغّال تمام. الرفع والعرض بس ينعطلون، والباقي يكمل.
+		log.Printf("[storage] ⚠️ تعذر تهيئة مجلد التخزين %q: %v — الرفع والعرض معطّلين، وباقي النظام شغّال",
+			cfg.UploadsDir, err)
+		return storage.NewUnavailableStore(err.Error())
 	}
 	return s
 }

@@ -32,6 +32,9 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
       TUTORIALS_DIR: /app/tutorials
+      # مجلد رفع الملفات — لازم يكون فوليوم دائم، مو داخل الصورة، وإلا
+      # كل الصور والوصولات تروح مع أول إعادة نشر.
+      UPLOADS_DIR: /app/uploads
       # بيانات دخول حساب المالك — تنقرأ من .env بالسيرفر فقط، أبداً من الكود.
       OWNER_USERNAME: ${OWNER_USERNAME:-}
       OWNER_PASSWORD: ${OWNER_PASSWORD:-}
@@ -40,6 +43,8 @@ services:
       # حتى يشرح للموظفين شلون يستخدمون النظام — bind-mount بدل نسخها بالصورة حتى
       # نقدر نحدّث محتوى الأدلة بدون إعادة بناء صورة الباك اند.
       - ./tutorials:/app/tutorials:ro
+      # الملفات المرفوعة (صور المنتجات، الوصولات، وثائق السيارات)
+      - uploads_data:/app/uploads
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
       interval: 5s
@@ -79,5 +84,6 @@ services:
 
 volumes:
   db_data:
+  uploads_data:
   caddy_data:
   caddy_config:
