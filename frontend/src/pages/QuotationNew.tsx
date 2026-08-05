@@ -68,7 +68,7 @@ export default function QuotationNew() {
   }
 
   useEffect(() => {
-    api.getProducts().then(setProducts).catch(() => {})
+    api.getProducts().then((rows) => setProducts(rows ?? [])).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -511,7 +511,7 @@ ${pageShell(`
       setPmName(''); setPmUnit('قطعة'); setPmPrice(0); setPmImage('')
       setPmStatus('✓ تم الحفظ بنجاح')
       const prods = await api.getProducts()
-      setProducts(prods)
+      setProducts(prods ?? [])
     } catch {
       setPmStatus('✕ فشل الحفظ')
     }
