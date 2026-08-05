@@ -232,6 +232,43 @@ export default function SecurityDashboardPage() {
             )}
           </div>
 
+          {/* حسابات المالك/مدير النظام تحت التخمين — مو محظورة عمداً، حتى
+              ما يقدر مهاجم يقفل عليك نظامك بمحاولات غلط. بس لازم تشوفها. */}
+          {(data.employeesUnderAttack?.length || 0) > 0 && (
+            <div className="mt-4 overflow-hidden rounded-xl border border-amber-500/40 bg-black/40">
+              <h3 className="border-b border-amber-500/20 px-4 py-3 text-xs text-amber-300/90">
+                ⚠️ حسابات إدارية تحت محاولات تخمين ({data.employeesUnderAttack!.length}) — ما تنحظر تلقائياً حتى ما ينقفل عليك النظام
+              </h3>
+              <div className="divide-y divide-amber-500/10">
+                {data.employeesUnderAttack!.map((e) => (
+                  <div key={e.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                    <div className="text-xs text-emerald-100">
+                      <span className="font-bold text-amber-300">{e.name}</span>
+                      <span className="text-emerald-200/40"> ({e.username || '—'} · {e.role})</span>
+                      <div className="mt-0.5 text-emerald-200/60">
+                        ❌ {e.failedLoginStreak} محاولة كلمة مرور خاطئة — الحساب شغّال، بس راجع سجل الأحداث تحت وشوف الـIP
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        if (!confirm(`تصفير عدّاد المحاولات لـ${e.name}؟`)) return
+                        try {
+                          await api.resetLoginAttempts(e.id)
+                          setData(await api.getSecurityDashboard())
+                        } catch (err) {
+                          alert(err instanceof Error ? err.message : 'تعذر تصفير العدّاد')
+                        }
+                      }}
+                      className="rounded-lg border border-amber-500/40 px-3 py-1.5 text-xs font-medium text-amber-300 hover:bg-amber-500/10"
+                    >
+                      🔄 تصفير العدّاد
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* سجل الأحداث الأمنية */}
           <div className="mt-4 overflow-hidden rounded-xl border border-amber-500/20 bg-black/40">
             <h3 className="border-b border-amber-500/20 px-4 py-3 text-xs text-amber-200/70">

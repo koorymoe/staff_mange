@@ -2126,6 +2126,16 @@ export const api = {
         failedLoginStreak: number
         authzViolations: number
       }[] | null
+      // حسابات المالك/مدير النظام الي تتعرض لتخمين — مستثناة من الحظر
+      // التلقائي فما تظهر بقائمة المحظورين، بس لازم المالك يشوفها
+      employeesUnderAttack: {
+        id: string
+        name: string
+        username: string | null
+        role: string
+        failedLoginStreak: number
+        authzViolations: number
+      }[] | null
       // سجل الأحداث الأمنية (محاولات دخول فاشلة، وصول غير مخوّل، حظر، فك حظر،
       // تغيير صلاحيات)
       securityEvents: {
@@ -2141,6 +2151,8 @@ export const api = {
     }>('/security/dashboard'),
   unlockEmployee: (id: string) =>
     request<{ ok: boolean }>(`/security/unlock/${id}`, { method: 'POST' }),
+  resetLoginAttempts: (id: string) =>
+    request<{ ok: boolean }>(`/security/reset-attempts/${id}`, { method: 'POST' }),
   freeServerMemory: () => request<{ memoryUsedMB: number }>('/security/free-memory', { method: 'POST' }),
 
   askAssistant: (message: string) =>

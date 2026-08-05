@@ -41,7 +41,10 @@ type SecurityDashboardResponse struct {
 	RecentLogins         any     `json:"recentLogins"`
 	// الحسابات المحظورة تلقائياً + آخر الأحداث الأمنية
 	LockedEmployees any `json:"lockedEmployees"`
-	SecurityEvents  any `json:"securityEvents"`
+	// حسابات المالك/مدير النظام الي تتعرض لتخمين — ما تنحظر تلقائياً
+	// فما تظهر بالقائمة الي فوك، بس لازم المالك يشوفها
+	EmployeesUnderAttack any `json:"employeesUnderAttack"`
+	SecurityEvents       any `json:"securityEvents"`
 }
 
 // POST /api/security/unlock/{id} — فك حظر حساب. للمالك حصراً.
@@ -57,6 +60,25 @@ func (h *SecurityHandler) Unlock(w http.ResponseWriter, r *http.Request) {
 	}
 	by := middleware.EmployeeIDFromContext(r)
 	_ = h.lockout.LogEvent(&id, "", "ACCOUNT_UNLOCKED", "فكّ المالك الحظر (بواسطة "+by+")",
+		clientIP(r), r.UserAgent())
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// POST /api/security/reset-attempts/{id} — يصفّر عدّاد المحاولات الخاطئة.
+// للحسابات المستثناة من الحظر (المالك/مدير النظام) حتى المالك يشيل
+// التنبيه بعد ما يتأكد إنه ماكو هجوم. للمالك حصراً.
+func (h *SecurityHandler) ResetAttempts(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		WriteError(w, http.StatusBadRequest, "معرّف الموظف مطلوب")
+		return
+	}
+	if err := h.lockout.ResetFailedLogins(id); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر تصفير العدّاد")
+		return
+	}
+	by := middleware.EmployeeIDFromContext(r)
+	_ = h.lockout.LogEvent(&id, "", "ATTEMPTS_RESET", "صفّر المالك عدّاد المحاولات (بواسطة "+by+")",
 		clientIP(r), r.UserAgent())
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
@@ -92,6 +114,10 @@ func (h *SecurityHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		locked = nil
 	}
+	underAttack, err := h.lockout.EmployeesUnderAttack()
+	if err != nil {
+		underAttack = nil
+	}
 	events, err := h.lockout.RecentEvents(200)
 	if err != nil {
 		events = nil
@@ -113,6 +139,7 @@ func (h *SecurityHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		DBConnectionsInUse:   dbStats.InUse,
 		OnlineEmployees:      onlineCount,
 		LockedEmployees:      locked,
+		EmployeesUnderAttack: underAttack,
 		SecurityEvents:       events,
 		RecentLogins:         recent,
 	})

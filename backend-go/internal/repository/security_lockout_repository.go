@@ -62,16 +62,41 @@ func (r *SecurityLockoutRepository) RegisterFailedLogin(employeeID string) (stre
 	}
 	// تعطيل مؤقت: نسجّل لحظة التعطيل بس ما نغيّر حالة الحساب — ينفك لحاله
 	// بعد انتهاء المدة، ويظهر للمالك بلوحة المراقبة طول ما هو فعّال.
-	_, err = r.db.Exec(`
-		UPDATE "Employee"
-		SET "lockedAt" = now(), "lockedReason" = $2,
-			"lockedDetail" = 'تعطيل مؤقت — ينتهي تلقائياً بعد 15 دقيقة'
-		WHERE id = $1 AND role NOT IN ('OWNER', 'ADMIN')`,
-		employeeID, LockReasonFailedLogins)
+	//
+	// ⚠️ المالك ومدير النظام مستثنين — فالتحديث ممكن ما يمس ولا صف. لازم
+	// نرجّع locked حسب الي انتحدث فعلاً، مو حسب العدّاد: قبل هيچي كنا
+	// نرجّع true دائماً، فالحساب المستثنى ياخذ رسالة «معطّل» وهو مو معطّل
+	// ولا يظهر بقائمة المحظورين ولا عنده زر فك حظر.
+	var affected int
+	err = r.db.Get(&affected, `
+		WITH upd AS (
+			UPDATE "Employee"
+			SET "lockedAt" = now(), "lockedReason" = $2,
+				"lockedDetail" = 'تعطيل مؤقت — ينتهي تلقائياً بعد 15 دقيقة'
+			WHERE id = $1 AND role NOT IN ('OWNER', 'ADMIN')
+			RETURNING 1
+		)
+		SELECT COUNT(*) FROM upd`, employeeID, LockReasonFailedLogins)
 	if err != nil {
 		return streak, false, err
 	}
-	return streak, true, nil
+	return streak, affected > 0, nil
+}
+
+// UnderAttack الحسابات الي تتعرض لمحاولات تخمين وما تنحظر تلقائياً
+// (المالك ومدير النظام). ما تظهر بقائمة المحظورين لأنها مو محظورة —
+// بس المالك لازم يشوفها، لأن هذي بالضبط الحسابات الي تستاهل الهجوم.
+func (r *SecurityLockoutRepository) EmployeesUnderAttack() ([]model.LockedEmployee, error) {
+	rows := []model.LockedEmployee{}
+	err := r.db.Select(&rows, `
+		SELECT id, name, username, role, "lockedAt", "lockedReason", "lockedDetail",
+			"failedLoginStreak", "authzViolations"
+		FROM "Employee"
+		WHERE "lockedAt" IS NULL
+		  AND "failedLoginStreak" >= $1
+		  AND role IN ('OWNER', 'ADMIN')
+		ORDER BY "failedLoginStreak" DESC`, FailedLoginThreshold)
+	return rows, err
 }
 
 // IsTemporarilyLocked هل التعطيل المؤقت لسه فعّال (ما انتهت مدته).

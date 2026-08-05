@@ -90,6 +90,14 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Em
 					fmt.Sprintf("تعطيل مؤقت (15 دقيقة) بعد %d محاولات كلمة مرور خاطئة", streak), ip, userAgent)
 				return nil, "", ErrAccountTemporarilyLocked
 			}
+			// حساب مستثنى من الحظر (مالك أو مدير نظام) وتجاوز الحد: ما
+			// نكذب عليه برسالة «معطّل» — هو مو معطّل فعلاً — بس نرفع
+			// حدث مميز حتى المالك يشوف إنه اكو أحد يخمّن على أهم حساب.
+			if streak >= repository.FailedLoginThreshold {
+				_ = s.lockout.LogEvent(&employee.ID, employee.Name, "PRIVILEGED_LOGIN_ATTACK",
+					fmt.Sprintf("%d محاولة خاطئة على حساب %s — الحساب ما ينحظر تلقائياً", streak, employee.Role),
+					ip, userAgent)
+			}
 		}
 		return nil, "", ErrInvalidCredentials
 	}

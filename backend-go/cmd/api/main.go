@@ -367,6 +367,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
 	mux.Handle("GET /api/security/dashboard", middleware.Chain(http.HandlerFunc(securityHandler.Dashboard), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/unlock/{id}", middleware.Chain(http.HandlerFunc(securityHandler.Unlock), requireAuth, requireOwner))
+	mux.Handle("POST /api/security/reset-attempts/{id}", middleware.Chain(http.HandlerFunc(securityHandler.ResetAttempts), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/free-memory", middleware.Chain(http.HandlerFunc(securityHandler.FreeMemory), requireAuth, requireOwner))
 	mux.Handle("GET /api/employees/match", middleware.Chain(http.HandlerFunc(employeeHandler.Match), requireAuth))
 	mux.Handle("GET /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Get), requireAuth))
