@@ -240,6 +240,8 @@ function AdministrativeTab() {
   const [deductCriteria, setDeductCriteria] = useState<string | null>(null)
   const [deductPoints, setDeductPoints] = useState(1)
   const [deductNotes, setDeductNotes] = useState('')
+  // نشر المخالفة بلوحة الإعلانات — اختياري، ولمدة 3 أيام بس
+  const [announceDeduction, setAnnounceDeduction] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [newCriterionLabel, setNewCriterionLabel] = useState('')
 
@@ -301,10 +303,12 @@ function AdministrativeTab() {
         evaluatorId: currentUser.id,
         points: deductPoints,
         reason,
+        announce: announceDeduction,
       })
       setDeductCriteria(null)
       setDeductPoints(1)
       setDeductNotes('')
+      setAnnounceDeduction(false)
       load()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'حدث خطأ')
@@ -555,6 +559,22 @@ function AdministrativeTab() {
                         />
                       </div>
                     </div>
+                    {/* نشر المخالفة بالشريط — قرار المدير، ولثلاثة أيام
+                        بعدها تنطفي لحالها */}
+                    <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={announceDeduction}
+                        onChange={(e) => setAnnounceDeduction(e.target.checked)}
+                        className="mt-0.5"
+                      />
+                      <span className="text-sm text-amber-900">
+                        <span className="font-bold">📢 انشرها بلوحة الإعلانات</span>
+                        <span className="block text-xs text-amber-700">
+                          تطلع بالشريط المتحرك لكل الموظفين لمدة ٣ أيام، وبعدها تنطفي لحالها.
+                        </span>
+                      </span>
+                    </label>
                     <button
                       onClick={handleDeduct}
                       disabled={submitting}

@@ -50,7 +50,7 @@ func (h *AnnouncementHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "اكتب نص الإعلان")
 		return
 	}
-	out, err := h.repo.Create(body, middleware.EmployeeIDFromContext(r))
+	out, err := h.repo.Create(body, middleware.EmployeeIDFromContext(r), req.ExpiresInDays)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر نشر الإعلان")
 		return

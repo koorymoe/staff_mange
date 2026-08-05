@@ -118,6 +118,50 @@ func (h *LeaveRequestHandler) Inbox(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /api/leaves/{id}/decide — موافقة أو رفض
+// PUT /api/leaves/{id}/preliminary — موافقة أولية + ملاحظة.
+//
+// الموظف ياخذ إشعار إنها أولية ومو نهائية، والطلب يبقى بصندوق المدير
+// لحد ما يبت بيه — ما ينشال، وإلا ينتسى والموظف ينظلم.
+func (h *LeaveRequestHandler) Preliminary(w http.ResponseWriter, r *http.Request) {
+	var req model.PreliminaryLeaveRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	id := r.PathValue("id")
+	route, err := h.repo.RouteOf(id)
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "الطلب غير موجود")
+		return
+	}
+	allowed := false
+	for _, rt := range h.routesFor(r) {
+		if rt == route {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		WriteError(w, http.StatusForbidden, "ما عندك صلاحية البت بطلبات "+model.LeaveRouteLabels[route])
+		return
+	}
+
+	leave, err := h.repo.Preliminary(id, req.Note, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if h.notify != nil {
+		msg := "🔎 اجت موافقة أولية على طلب إجازتك بتاريخ " + leave.StartDate.Format("2006-01-02") +
+			" — لسّه بحالة المراجعة، القرار النهائي راح يوصلك"
+		if leave.PreliminaryNote != nil && *leave.PreliminaryNote != "" {
+			msg += " — ملاحظة: " + *leave.PreliminaryNote
+		}
+		_ = h.notify.Create(leave.EmployeeID, "leave_preliminary", msg)
+	}
+	WriteJSON(w, http.StatusOK, leave)
+}
+
 func (h *LeaveRequestHandler) Decide(w http.ResponseWriter, r *http.Request) {
 	var req model.DecideLeaveRequest
 	if err := DecodeJSON(r, &req); err != nil {

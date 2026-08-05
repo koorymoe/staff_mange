@@ -36,6 +36,9 @@ type CreateKpiEvaluationRequest struct {
 	EvaluatorID string `json:"evaluatorId"`
 	Points      *int   `json:"points"`
 	Reason      string `json:"reason"`
+	// Announce ينشر المخالفة بلوحة الإعلانات لمدة 3 أيام. يشتغل مع
+	// المخالفات بس (نقاط بالسالب) — المدير يختاره وقت التسجيل.
+	Announce bool `json:"announce"`
 }
 
 type KpiLeaderboardEntry struct {

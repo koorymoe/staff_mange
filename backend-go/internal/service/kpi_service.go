@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log"
 	"strconv"
 	"time"
 
@@ -9,14 +10,21 @@ import (
 	"staffmange-api/internal/repository"
 )
 
+// announcementPublisher الجزء الي نحتاجه من مستودع الإعلانات — واجهة
+// صغيرة بدل ما نربط الخدمة بالمستودع كامل.
+type announcementPublisher interface {
+	Create(body, byID string, expiresInDays int) (*model.Announcement, error)
+}
+
 type KpiService struct {
 	repo          *repository.KpiRepository
 	employees     *repository.EmployeeRepository
 	notifications *repository.NotificationRepository
+	announcements announcementPublisher
 }
 
-func NewKpiService(repo *repository.KpiRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository) *KpiService {
-	return &KpiService{repo: repo, employees: employees, notifications: notifications}
+func NewKpiService(repo *repository.KpiRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, announcements announcementPublisher) *KpiService {
+	return &KpiService{repo: repo, employees: employees, notifications: notifications, announcements: announcements}
 }
 
 func (s *KpiService) List() ([]model.KpiEvaluation, error) {
@@ -54,13 +62,22 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 	}
 	if *req.Points < 0 {
 		_ = s.employees.SetTrainee(req.EmployeeID, true)
+		reason := req.Reason
+		if reason == "" {
+			reason = "بدون سبب مذكور"
+		}
 		if s.notifications != nil {
-			reason := req.Reason
-			if reason == "" {
-				reason = "بدون سبب مذكور"
-			}
 			_ = s.notifications.Create(req.EmployeeID, "kpi_deduction",
 				"⚠️ تم خصم "+strconv.Itoa(-*req.Points)+" نقطة من رصيدك (السبب: "+reason+")")
+		}
+		// نشر المخالفة بلوحة الإعلانات — بطلب المدير وقت التسجيل، ولمدة
+		// ثلاثة أيام بس. فشل النشر ما يلغي التقييم، التقييم انسجل أصلاً.
+		if req.Announce && s.announcements != nil && empErr == nil && employee != nil {
+			body := "⚠️ مخالفة: " + employee.Name + " — خصم " +
+				strconv.Itoa(-*req.Points) + " نقطة (" + reason + ")"
+			if _, err := s.announcements.Create(body, req.EvaluatorID, model.AnnouncementPenaltyDays); err != nil {
+				log.Printf("نشر مخالفة %s بلوحة الإعلانات: %v", req.EmployeeID, err)
+			}
 		}
 	}
 

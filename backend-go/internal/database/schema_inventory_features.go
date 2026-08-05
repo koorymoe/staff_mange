@@ -949,6 +949,32 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			`,
 		},
 		{
+			// انتهاء صلاحية الإعلان: إعلانات المخالفات تنشر لثلاثة أيام
+			// وبعدها تختفي لحالها. بدونها الشريط يمتلئ بمخالفات قديمة
+			// ولا أحد يتذكر يوقفها وحدة وحدة.
+			//
+			// NULL = بلا انتهاء (الإعلان العادي يبقى لحد ما توقفه بيدك).
+			Version: "0191_announcement_expiry",
+			SQL: `
+				ALTER TABLE "Announcement"
+					ADD COLUMN IF NOT EXISTS "expiresAt" TIMESTAMPTZ;
+				CREATE INDEX IF NOT EXISTS "Announcement_expiry_idx"
+					ON "Announcement" (active, "expiresAt");
+			`,
+		},
+		{
+			// الموافقة الأولية على الإجازة: مرحلة وسط بين الطلب والقرار
+			// النهائي. المدير يطمّن الموظف إن طلبه ماشي بدون ما يلزم
+			// نفسه، والطلب يبقى بصندوقه لحد ما يبت بيه نهائياً.
+			Version: "0190_leave_preliminary_approval",
+			SQL: `
+				ALTER TABLE "LeaveRequest"
+					ADD COLUMN IF NOT EXISTS "preliminaryById" TEXT REFERENCES "Employee"(id),
+					ADD COLUMN IF NOT EXISTS "preliminaryAt" TIMESTAMPTZ,
+					ADD COLUMN IF NOT EXISTS "preliminaryNote" TEXT;
+			`,
+		},
+		{
 			// حساب كلفة التنفيذ صار صلاحية بدل ما يكون مفتوح لكل موظف.
 			//
 			// كان بند بالقائمة الرئيسية بلا أي قيد — يعني المصمم والمبيعات

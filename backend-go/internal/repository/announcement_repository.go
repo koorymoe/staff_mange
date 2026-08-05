@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"time"
 
 	"staffmange-api/internal/model"
 )
@@ -20,7 +21,10 @@ const announcementSelect = `SELECT a.*, e.name AS "createdByName"
 // ListActive الإعلانات الشغالة — هذي الي تمر بالشريط.
 func (r *AnnouncementRepository) ListActive() ([]model.Announcement, error) {
 	rows := []model.Announcement{}
-	err := r.db.Select(&rows, announcementSelect+` WHERE a.active ORDER BY a."createdAt" DESC LIMIT 20`)
+	// المنتهي ما يظهر حتى لو لسّه active — ينطفي لحاله بلا تدخل
+	err := r.db.Select(&rows, announcementSelect+`
+		WHERE a.active AND (a."expiresAt" IS NULL OR a."expiresAt" > now())
+		ORDER BY a."createdAt" DESC LIMIT 20`)
 	return rows, err
 }
 
@@ -31,11 +35,16 @@ func (r *AnnouncementRepository) ListAll() ([]model.Announcement, error) {
 	return rows, err
 }
 
-func (r *AnnouncementRepository) Create(body, byID string) (*model.Announcement, error) {
+// Create ينشئ إعلان. expiresInDays صفر = بلا انتهاء.
+func (r *AnnouncementRepository) Create(body, byID string, expiresInDays int) (*model.Announcement, error) {
+	var expires any
+	if expiresInDays > 0 {
+		expires = time.Now().AddDate(0, 0, expiresInDays)
+	}
 	var id string
 	if err := r.db.Get(&id, `
-		INSERT INTO "Announcement" (id, body, "createdById")
-		VALUES (gen_random_uuid()::text, $1, $2) RETURNING id`, body, byID); err != nil {
+		INSERT INTO "Announcement" (id, body, "createdById", "expiresAt")
+		VALUES (gen_random_uuid()::text, $1, $2, $3) RETURNING id`, body, byID, expires); err != nil {
 		return nil, err
 	}
 	var a model.Announcement

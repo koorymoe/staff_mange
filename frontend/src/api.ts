@@ -249,7 +249,7 @@ export interface StockIntake {
 /** طلب إجازة — الموافقة تروح للمخوّل حسب نوع كادر الموظف */
 // مسار الموافقة = شفت الموظف. إداري الكوادر يوافق على شفته هو بس.
 export type LeaveRoute = 'MORNING' | 'EVENING'
-export type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+export type LeaveStatus = 'PENDING' | 'PRELIMINARY' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
 export interface LeaveRequest {
   id: string
@@ -269,6 +269,10 @@ export interface LeaveRequest {
   decidedByName?: string | null
   decidedAt?: string | null
   decisionNote?: string | null
+  // الموافقة الأولية — مرحلة وسط، الطلب يبقى مفتوح عند المدير بعدها
+  preliminaryByName?: string | null
+  preliminaryAt?: string | null
+  preliminaryNote?: string | null
   createdAt: string
 }
 
@@ -2356,6 +2360,8 @@ export const api = {
   cancelLeave: (id: string) => request<{ ok: boolean }>(`/leaves/${id}`, { method: 'DELETE' }),
   getLeaveInbox: (status?: string) => request<LeaveRequest[]>(`/leaves/inbox${status ? '?status=' + status : ''}`),
   getLeavePendingCount: () => request<{ count: number; canApprove: boolean }>('/leaves/pending-count'),
+  preliminaryLeave: (id: string, note?: string) =>
+    request<LeaveRequest>(`/leaves/${id}/preliminary`, { method: 'PUT', body: JSON.stringify({ note }) }),
   decideLeave: (id: string, approve: boolean, note?: string) =>
     request<LeaveRequest>(`/leaves/${id}/decide`, { method: 'PUT', body: JSON.stringify({ approve, note: note || null }) }),
 
@@ -2568,7 +2574,7 @@ export const api = {
   // KPI
   getKpiEvaluations: () => request<KpiEvaluation[]>('/kpi'),
   getEmployeeKpi: (employeeId: string) => request<KpiEvaluation[]>(`/kpi/employee/${employeeId}`),
-  createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string }) =>
+  createKpiEvaluation: (data: { employeeId: string; evaluatorId: string; points: number; reason: string; announce?: boolean }) =>
     request<KpiEvaluation>('/kpi', { method: 'POST', body: JSON.stringify(data) }),
   deleteKpiEvaluation: (id: string) => request<void>(`/kpi/${id}`, { method: 'DELETE' }),
   cancelKpiEvaluation: (id: string) => request<KpiEvaluation>(`/kpi/${id}/cancel`, { method: 'PUT' }),

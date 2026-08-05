@@ -20,10 +20,12 @@ func NewLeaveRequestRepository(db *sqlx.DB) *LeaveRequestRepository {
 }
 
 const leaveSelect = `SELECT l.*, e.name AS "employeeName", e.role::text AS "employeeRole",
-		e.shift::text AS "employeeShift", e."jobTitle", d.name AS "decidedByName"
+		e.shift::text AS "employeeShift", e."jobTitle", d.name AS "decidedByName",
+		pb.name AS "preliminaryByName"
 	FROM "LeaveRequest" l
 	JOIN "Employee" e ON e.id = l."employeeId"
-	LEFT JOIN "Employee" d ON d.id = l."decidedById"`
+	LEFT JOIN "Employee" d ON d.id = l."decidedById"
+	LEFT JOIN "Employee" pb ON pb.id = l."preliminaryById"`
 
 func decorateLeaves(rows []model.LeaveRequest) []model.LeaveRequest {
 	for i := range rows {
@@ -86,12 +88,19 @@ func (r *LeaveRequestRepository) ListForApprover(routes []string, status string)
 	// بصندوق الموافقات ضجيج بس.
 	q := leaveSelect + ` WHERE l.route = ANY($1) AND l.status <> 'CANCELLED'`
 	args := []any{pq.Array(routes)}
-	if status != "" {
+	// status=OPEN اختصار للي لسّه يحتاج قرار (جديد + موافقة أولية)
+	if status == "OPEN" {
+		args = append(args, pq.Array(model.LeaveOpenStatuses()))
+		q += fmt.Sprintf(` AND l.status = ANY($%d)`, len(args))
+	} else if status != "" {
 		args = append(args, status)
 		q += fmt.Sprintf(` AND l.status = $%d`, len(args))
 	}
 	// المعلّق أولاً وبالأقرب تاريخاً — هذا الي يحتاج قرار اليوم
-	q += ` ORDER BY (l.status = 'PENDING') DESC, l."startDate" ASC, l."createdAt" DESC LIMIT 500`
+	// المفتوح أولاً (جديد أو موافقة أولية) وبالأقرب تاريخاً — هذا الي
+	// يحتاج قرار اليوم. الموافقة الأولية تبقى فوق حتى ما تنتسى.
+	q += ` ORDER BY (l.status IN ('PENDING','PRELIMINARY')) DESC,
+		(l.status = 'PRELIMINARY') DESC, l."startDate" ASC, l."createdAt" DESC LIMIT 500`
 	err := r.db.Select(&rows, q, args...)
 	return decorateLeaves(rows), err
 }
@@ -100,6 +109,8 @@ func (r *LeaveRequestRepository) ListForApprover(routes []string, status string)
 //
 // شرط status='PENDING' داخل التحديث يمنع البت بنفس الطلب مرتين، ولا
 // يخلي طلب ملغى يترجع للحياة.
+// Decide القرار النهائي. ينقبل من PENDING أو من PRELIMINARY — يعني
+// المدير يكدر يبت مباشرة، أو ينطي موافقة أولية أول وبعدين يأكد.
 func (r *LeaveRequestRepository) Decide(id string, approve bool, note *string, byID string) (*model.LeaveRequest, error) {
 	status := model.LeaveStatusRejected
 	if approve {
@@ -109,9 +120,26 @@ func (r *LeaveRequestRepository) Decide(id string, approve bool, note *string, b
 	if err := r.db.Get(&updated, `
 		UPDATE "LeaveRequest"
 		SET status = $2, "decidedById" = $3, "decidedAt" = now(), "decisionNote" = NULLIF($4,'')
-		WHERE id = $1 AND status = 'PENDING'
+		WHERE id = $1 AND status IN ('PENDING', 'PRELIMINARY')
 		RETURNING id`, id, status, byID, derefStr(note)); err != nil {
 		return nil, fmt.Errorf("الطلب مو موجود أو انبتّ بيه من قبل")
+	}
+	return r.Get(updated)
+}
+
+// Preliminary موافقة أولية — مو قرار نهائي.
+//
+// الطلب يبقى مفتوح بصندوق المدير بعدها (LeaveOpenStatuses تشمل
+// PRELIMINARY)، لأنه لو انشال المدير ينساه والموظف ينظلم.
+func (r *LeaveRequestRepository) Preliminary(id string, note *string, byID string) (*model.LeaveRequest, error) {
+	var updated string
+	if err := r.db.Get(&updated, `
+		UPDATE "LeaveRequest"
+		SET status = 'PRELIMINARY', "preliminaryById" = $2, "preliminaryAt" = now(),
+			"preliminaryNote" = NULLIF($3,'')
+		WHERE id = $1 AND status = 'PENDING'
+		RETURNING id`, id, byID, derefStr(note)); err != nil {
+		return nil, fmt.Errorf("الطلب مو بانتظار الموافقة — يمكن انبتّ بيه من قبل")
 	}
 	return r.Get(updated)
 }
@@ -142,7 +170,11 @@ func (r *LeaveRequestRepository) PendingCountFor(routes []string) (int, error) {
 		return 0, nil
 	}
 	var n int
-	err := r.db.Get(&n, `SELECT COUNT(*) FROM "LeaveRequest" WHERE status = 'PENDING' AND route = ANY($1)`, pq.Array(routes))
+	// الموافقة الأولية لسّه تحتاج قرار — تنعد بالشارة مثل الجديدة
+	err := r.db.Get(&n, `
+		SELECT COUNT(*) FROM "LeaveRequest"
+		WHERE status = ANY($2) AND route = ANY($1)`,
+		pq.Array(routes), pq.Array(model.LeaveOpenStatuses()))
 	return n, err
 }
 

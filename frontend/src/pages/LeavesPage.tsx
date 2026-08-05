@@ -11,6 +11,7 @@ import { api, type LeaveRequest, type LeaveStatus } from '../api'
 
 const STATUS_STYLE: Record<LeaveStatus, string> = {
   PENDING: 'bg-amber-100 text-amber-800',
+  PRELIMINARY: 'bg-sky-100 text-sky-800',
   APPROVED: 'bg-emerald-100 text-emerald-800',
   REJECTED: 'bg-red-100 text-red-800',
   CANCELLED: 'bg-slate-200 text-slate-600',
@@ -66,8 +67,23 @@ export default function LeavesPage() {
     } finally { setBusy(false) }
   }
 
+  // الموافقة الأولية: الملاحظة اختيارية، والطلب يبقى بالصندوق بعدها
+  const preliminary = async (l: LeaveRequest) => {
+    if (noteFor !== l.id) { setNoteFor(l.id); setNote(''); return }
+    setBusy(true)
+    try {
+      await api.preliminaryLeave(l.id, note || undefined)
+      setNoteFor(null); setNote('')
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر إعطاء الموافقة الأولية')
+    } finally { setBusy(false) }
+  }
+
   const decide = async (l: LeaveRequest, approve: boolean) => {
-    if (!approve && noteFor !== l.id) { setNoteFor(l.id); setNote(''); return }
+    // خانة الملاحظة تنفتح بالموافقة والرفض — المدير يكتب ملاحظته
+    // بالحالتين، مو بالرفض بس.
+    if (noteFor !== l.id) { setNoteFor(l.id); setNote(''); return }
     setBusy(true)
     try {
       await api.decideLeave(l.id, approve, note || undefined)
@@ -101,9 +117,15 @@ export default function LeavesPage() {
           </p>
           {l.reason && <p className="mt-1 text-sm text-slate-600">📝 {l.reason}</p>}
           <p className="mt-1 text-xs text-slate-400">{l.routeLabel}</p>
+          {l.preliminaryByName && (
+            <p className="mt-1 text-xs text-sky-700">
+              🔎 موافقة أولية: {l.preliminaryByName}
+              {l.preliminaryNote && ` — ${l.preliminaryNote}`}
+            </p>
+          )}
           {l.decidedByName && (
             <p className="mt-1 text-xs text-slate-500">
-              البت: {l.decidedByName}
+              البت النهائي: {l.decidedByName}
               {l.decisionNote && ` — ${l.decisionNote}`}
             </p>
           )}
@@ -111,21 +133,39 @@ export default function LeavesPage() {
         <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLE[l.status]}`}>{l.statusLabel}</span>
       </div>
 
-      {forApprover && l.status === 'PENDING' && (
+      {forApprover && (l.status === 'PENDING' || l.status === 'PRELIMINARY') && (
         <div className="mt-3">
+          {l.status === 'PRELIMINARY' && (
+            <p className="mb-2 rounded-lg bg-sky-50 px-3 py-2 text-xs font-medium text-sky-800">
+              ⏳ هذا الطلب انطته موافقة أولية — لسّه ناطر قرارك النهائي، وراح
+              يضل ظاهر هنا لحد ما تبت بيه.
+            </p>
+          )}
           {noteFor === l.id && (
             <input
-              value={note} onChange={(e) => setNote(e.target.value)} placeholder="سبب الرفض (اختياري)"
+              value={note} onChange={(e) => setNote(e.target.value)} placeholder="ملاحظة (اختيارية) — تروح للموظف مع القرار"
               className="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-right text-sm outline-none focus:border-brand-500"
             />
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            {l.status === 'PENDING' && (
+              <button disabled={busy} onClick={() => preliminary(l)}
+                className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white hover:bg-sky-700 disabled:opacity-50">
+                {noteFor === l.id ? 'تأكيد الموافقة الأولية' : '🔎 موافقة أولية'}
+              </button>
+            )}
             <button disabled={busy} onClick={() => decide(l, true)}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">✔ موافقة</button>
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+              {noteFor === l.id ? 'تأكيد الموافقة النهائية' : '✔ موافقة نهائية'}
+            </button>
             <button disabled={busy} onClick={() => decide(l, false)}
               className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">
               {noteFor === l.id ? 'تأكيد الرفض' : '✕ رفض'}
             </button>
+            {noteFor === l.id && (
+              <button disabled={busy} onClick={() => { setNoteFor(null); setNote('') }}
+                className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-600">إلغاء</button>
+            )}
           </div>
         </div>
       )}
@@ -140,7 +180,9 @@ export default function LeavesPage() {
 
   if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل...</div>
 
-  const pending = inbox.filter((l) => l.status === 'PENDING')
+  // المفتوح = جديد + موافقة أولية. الموافقة الأولية تبقى بالعد حتى
+  // ما ينتسى الطلب بنص الطريق.
+  const pending = inbox.filter((l) => l.status === 'PENDING' || l.status === 'PRELIMINARY')
   const list = tab === 'mine' ? mine : inbox
 
   return (

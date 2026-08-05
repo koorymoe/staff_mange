@@ -32,18 +32,37 @@ func AllLeaveRoutes() []string {
 	return []string{LeaveRouteMorning, LeaveRouteEvening}
 }
 
+// مراحل الطلب. الموافقة على مرحلتين:
+//
+//	PENDING → PRELIMINARY (موافقة أولية، مو نهائية) → APPROVED
+//
+// ليش مرحلتين؟ لأن المدير أحياناً يريد يطمّن الموظف إن طلبه ماشي،
+// بس القرار النهائي ينتظر ترتيب الشفت. الموافقة الأولية تعطي الموظف
+// خبر بدون ما تلزم الإدارة.
+//
+// ⚠️ الطلب بحالة PRELIMINARY يبقى بصندوق المدير — ما ينشال. لأنه لو
+// انشال، المدير ينساه والموظف ينظلم: انطوه موافقة أولية وما وصلت
+// لقرار نهائي أبداً.
 const (
-	LeaveStatusPending   = "PENDING"
-	LeaveStatusApproved  = "APPROVED"
-	LeaveStatusRejected  = "REJECTED"
-	LeaveStatusCancelled = "CANCELLED" // الموظف سحب طلبه قبل البت بيه
+	LeaveStatusPending     = "PENDING"
+	LeaveStatusPreliminary = "PRELIMINARY" // موافقة أولية — لسّه بحالة المراجعة
+	LeaveStatusApproved    = "APPROVED"
+	LeaveStatusRejected    = "REJECTED"
+	LeaveStatusCancelled   = "CANCELLED" // الموظف سحب طلبه قبل البت بيه
 )
 
 var LeaveStatusLabels = map[string]string{
-	LeaveStatusPending:   "بانتظار الموافقة",
-	LeaveStatusApproved:  "مقبولة",
-	LeaveStatusRejected:  "مرفوضة",
-	LeaveStatusCancelled: "ملغاة",
+	LeaveStatusPending:     "بانتظار الموافقة",
+	LeaveStatusPreliminary: "موافقة أولية — بحالة المراجعة",
+	LeaveStatusApproved:    "مقبولة",
+	LeaveStatusRejected:    "مرفوضة",
+	LeaveStatusCancelled:   "ملغاة",
+}
+
+// LeaveOpenStatuses الحالات الي لسّه تحتاج قرار من المدير — تظهر
+// بصندوقه وتنعد بالشارة.
+func LeaveOpenStatuses() []string {
+	return []string{LeaveStatusPending, LeaveStatusPreliminary}
 }
 
 // LeaveMinNoticeDays أقل مهلة بين تقديم الطلب وأول يوم إجازة.
@@ -65,11 +84,18 @@ type LeaveRequest struct {
 	DecisionNote *string    `db:"decisionNote" json:"decisionNote"`
 	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
 
-	EmployeeName  string  `db:"employeeName" json:"employeeName"`
-	EmployeeRole  string  `db:"employeeRole" json:"employeeRole"`
-	EmployeeShift *string `db:"employeeShift" json:"employeeShift"`
-	JobTitle      *string `db:"jobTitle" json:"jobTitle"`
-	DecidedByName *string `db:"decidedByName" json:"decidedByName"`
+	// الموافقة الأولية تنحفظ منفصلة عن النهائية — حتى يبقى أثر
+	// المرحلتين وملاحظة كل وحدة، بدل ما الثانية تمسح الأولى.
+	PreliminaryByID *string    `db:"preliminaryById" json:"preliminaryById"`
+	PreliminaryAt   *time.Time `db:"preliminaryAt" json:"preliminaryAt"`
+	PreliminaryNote *string    `db:"preliminaryNote" json:"preliminaryNote"`
+
+	EmployeeName      string  `db:"employeeName" json:"employeeName"`
+	EmployeeRole      string  `db:"employeeRole" json:"employeeRole"`
+	EmployeeShift     *string `db:"employeeShift" json:"employeeShift"`
+	JobTitle          *string `db:"jobTitle" json:"jobTitle"`
+	DecidedByName     *string `db:"decidedByName" json:"decidedByName"`
+	PreliminaryByName *string `db:"preliminaryByName" json:"preliminaryByName"`
 
 	RouteLabel  string `db:"-" json:"routeLabel"`
 	StatusLabel string `db:"-" json:"statusLabel"`
@@ -85,6 +111,11 @@ type CreateLeaveRequest struct {
 type DecideLeaveRequest struct {
 	Approve bool    `json:"approve"`
 	Note    *string `json:"note"`
+}
+
+// PreliminaryLeaveRequest موافقة أولية + ملاحظة المدير.
+type PreliminaryLeaveRequest struct {
+	Note *string `json:"note"`
 }
 
 // LeaveRouteFor يحدد مسار الموافقة من شفت الموظف — الدور ما دخل بيه.

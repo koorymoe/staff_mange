@@ -79,6 +79,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	revolvingFundRepo := repository.NewRevolvingFundRepository(db)
 	attendanceRepo := repository.NewAttendanceRepository(db)
 	kpiRepo := repository.NewKpiRepository(db)
+	announcementRepo := repository.NewAnnouncementRepository(db)
 	kpiCriterionRepo := repository.NewKpiCriterionRepository(db)
 	smartKpiRepo := repository.NewSmartKpiRepository(db)
 	complaintRepo := repository.NewComplaintRepository(db)
@@ -135,7 +136,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	inventoryService.SetProcurementRepository(procurementRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	notificationService := service.NewNotificationService(notificationRepo)
-	kpiService := service.NewKpiService(kpiRepo, employeeRepo, notificationRepo)
+	kpiService := service.NewKpiService(kpiRepo, employeeRepo, notificationRepo, announcementRepo)
 	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
@@ -474,7 +475,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/finance/daily-audit", middleware.Chain(http.HandlerFunc(dailyAuditHandler.Day), requireAuth, requireVerifyBooking))
 	mux.Handle("PUT /api/bookings/{id}/audit", middleware.Chain(http.HandlerFunc(bookingAuditHandler.Audit), requireAuth, requireVerifyBooking))
 	// شريط الإعلانات: يقراه كل موظف، وينزّله المالك ومدير النظام بس
-	announcementRepo := repository.NewAnnouncementRepository(db)
 	announcementHandler := handler.NewAnnouncementHandler(announcementRepo)
 	mux.Handle("GET /api/announcements", middleware.Chain(http.HandlerFunc(announcementHandler.List), requireAuth))
 	mux.Handle("POST /api/announcements", middleware.Chain(http.HandlerFunc(announcementHandler.Create), requireAuth, requireAdmin))
@@ -887,6 +887,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/leaves/{id}", middleware.Chain(http.HandlerFunc(leaveHandler.Cancel), requireAuth))
 	mux.Handle("GET /api/leaves/inbox", middleware.Chain(http.HandlerFunc(leaveHandler.Inbox), requireAuth))
 	mux.Handle("GET /api/leaves/pending-count", middleware.Chain(http.HandlerFunc(leaveHandler.PendingCount), requireAuth))
+	mux.Handle("PUT /api/leaves/{id}/preliminary", middleware.Chain(http.HandlerFunc(leaveHandler.Preliminary), requireAuth))
 	mux.Handle("PUT /api/leaves/{id}/decide", middleware.Chain(http.HandlerFunc(leaveHandler.Decide), requireAuth))
 
 	// أرقام اللوحة الرئيسية بدون سحب أرشيف الشركة كامل
