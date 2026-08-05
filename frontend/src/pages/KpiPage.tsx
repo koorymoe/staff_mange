@@ -7,7 +7,10 @@ import { useSession } from '../session'
 const POINTS_PER_WEEK = 8
 const IQD_PER_POINT = 10_000
 
-const EVALUATOR_ROLES = ['MONITOR', 'HR_COORDINATOR']
+// منو يقدر يخصم نقاط. الكي بي اي مو خاص بالإداريين — المدير والمالك
+// يخصمون من أي موظف بالشركة: فني، مصمم، مبيعات، محاسب... الكل.
+// كانوا ناقصين من القائمة فما كان يطلعلهم فورم الخصم أصلاً.
+const EVALUATOR_ROLES = ['ADMIN', 'OWNER', 'MONITOR', 'HR_COORDINATOR']
 
 function getWeekStart(date: Date): Date {
   const d = new Date(date)
@@ -245,7 +248,7 @@ function AdministrativeTab() {
   const [submitting, setSubmitting] = useState(false)
   const [newCriterionLabel, setNewCriterionLabel] = useState('')
 
-  const isEvaluator = currentUser && (EVALUATOR_ROLES.includes(currentUser.role) || permissions.includes('auditing'))
+  const isEvaluator = currentUser && (EVALUATOR_ROLES.includes(currentUser.role) || permissions.includes('auditing') || permissions.includes('kpi_management'))
   const canManageCriteria = currentUser?.role === 'ADMIN' || permissions.includes('kpi_criteria_management')
 
   const load = () => {
@@ -456,7 +459,10 @@ function AdministrativeTab() {
       {isEvaluator && (
         <>
           <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <h3 className="mb-4 text-lg font-bold text-brand-800">خصم نقاط موظف</h3>
+            <h3 className="text-lg font-bold text-brand-800">خصم نقاط موظف</h3>
+            <p className="mb-4 mt-1 text-sm text-slate-500">
+              يشمل كل موظفي الشركة — فنيين، مصممين، مبيعات، محاسبة، إداريين.
+            </p>
             <div className="mb-4">
               <label className="mb-1 block text-sm font-medium text-slate-600">اختر الموظف</label>
               <select

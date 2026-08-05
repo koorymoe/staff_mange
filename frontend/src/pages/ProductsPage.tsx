@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { api, type Product, type ProductAvailability, fileUrl } from '../api'
+import { api, type Product, type ProductAvailability, type Service, fileUrl } from '../api'
 
 const PRIMARY = '#1a237e'
 const GOLD = '#c8a45a'
@@ -26,6 +26,9 @@ export default function ProductsPage() {
   const [modelName, setModelName] = useState('')
   const [availability, setAvailability] = useState<ProductAvailability>('ON_DEMAND')
   const [serviceText, setServiceText] = useState('')
+  // خدماتنا تنعرض بقائمة منسدلة، والتقني يكدر يكتب وحدة مو موجودة —
+  // datalist تعطي الاثنين بحقل واحد: يختار من القائمة أو يكتب براحته.
+  const [services, setServices] = useState<Service[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -39,7 +42,10 @@ export default function ProductsPage() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { load() }, [])
+  useEffect(() => {
+    load()
+    api.getServices().then((rows) => setServices(rows ?? [])).catch(() => setServices([]))
+  }, [])
 
   const patch = async (id: string, data: Parameters<typeof api.updateProduct>[1]) => {
     setBusyId(id)
@@ -164,7 +170,16 @@ export default function ProductsPage() {
           {/* الخدمة يكتبها التقني بنفسه — ماكو قائمة وماكو اقتراح نظام */}
           <div>
             <label style={labelStyle}>الخدمة</label>
-            <input value={serviceText} onChange={(e) => setServiceText(e.target.value)} style={inputStyle} placeholder="اكتب الخدمة الي يخصها المنتج" />
+            <input
+              value={serviceText}
+              onChange={(e) => setServiceText(e.target.value)}
+              style={inputStyle}
+              list="product-services"
+              placeholder="اختر من خدماتنا أو اكتب وحدة جديدة"
+            />
+            <datalist id="product-services">
+              {services.map((sv) => <option key={sv.id} value={sv.name} />)}
+            </datalist>
           </div>
           <div>
             <label style={labelStyle}>الحاجة *</label>
