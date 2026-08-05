@@ -7,26 +7,40 @@ import "time"
 const (
 	RequestTypePersonalSupply  = "PERSONAL_SUPPLY"  // طلب احتياجات شخصية للموظف نفسه
 	RequestTypeCustomerProduct = "CUSTOMER_PRODUCT" // طلب منتج للزبون (الفلو الأصلي، مربوط بحجز)
+	// طلب مادة يدوي: الإداري أو الليدر يكتب المادة بالتفصيل — موديل،
+	// نوعية، عدد، سعر تقريبي — بدون ما يكون مربوط بحجز ولا بكتالوك.
+	RequestTypeManualSupply = "MANUAL_SUPPLY"
 )
 
+var RequestTypeLabels = map[string]string{
+	RequestTypePersonalSupply:  "احتياجات شخصية",
+	RequestTypeCustomerProduct: "منتج للزبون",
+	RequestTypeManualSupply:    "طلب مادة يدوي",
+}
+
 type ProcurementRequest struct {
-	ID               string     `db:"id" json:"id"`
-	Code             string     `db:"code" json:"code"`
-	RequestedByID    string     `db:"requestedById" json:"-"`
-	BookingID        *string    `db:"bookingId" json:"-"`
-	RequestType      string     `db:"requestType" json:"requestType"`
-	Notes            *string    `db:"notes" json:"notes"`
-	Status           string     `db:"status" json:"status"`
-	FulfilledByID    *string    `db:"fulfilledById" json:"-"`
-	TotalCost        *float64   `db:"totalCost" json:"totalCost"`
-	FulfillmentNotes *string    `db:"fulfillmentNotes" json:"fulfillmentNotes"`
-	CreatedAt        time.Time  `db:"createdAt" json:"createdAt"`
-	FulfilledAt      *time.Time `db:"fulfilledAt" json:"fulfilledAt"`
+	ID               string   `db:"id" json:"id"`
+	Code             string   `db:"code" json:"code"`
+	RequestedByID    string   `db:"requestedById" json:"-"`
+	BookingID        *string  `db:"bookingId" json:"-"`
+	RequestType      string   `db:"requestType" json:"requestType"`
+	Notes            *string  `db:"notes" json:"notes"`
+	Status           string   `db:"status" json:"status"`
+	FulfilledByID    *string  `db:"fulfilledById" json:"-"`
+	TotalCost        *float64 `db:"totalCost" json:"totalCost"`
+	FulfillmentNotes *string  `db:"fulfillmentNotes" json:"fulfillmentNotes"`
+	// المورد الي انجابت منه المادة — يتحدد وقت التجهيز، إلزامي حتى
+	// نعرف من وين انجابت ونكدر نحاسب على السعر.
+	SupplierID  *string    `db:"supplierId" json:"supplierId"`
+	CreatedAt   time.Time  `db:"createdAt" json:"createdAt"`
+	FulfilledAt *time.Time `db:"fulfilledAt" json:"fulfilledAt"`
 
 	Items       []ProcurementItem          `db:"-" json:"items"`
 	RequestedBy *ProcurementRequesterBrief `db:"-" json:"requestedBy"`
 	FulfilledBy *EmployeeIDNameBrief       `db:"-" json:"fulfilledBy"`
 	Booking     *ProcurementBookingBrief   `db:"-" json:"booking"`
+	Supplier    *EmployeeIDNameBrief       `db:"-" json:"supplier"`
+	TypeLabel   string                     `db:"-" json:"typeLabel"`
 }
 
 // ProcurementRequesterBrief يماثل { select: { id: true, name: true, role: true } } بالباك إند القديم
@@ -65,6 +79,10 @@ type ProcurementItem struct {
 	UnitPrice   *float64 `db:"unitPrice" json:"unitPrice"`
 	TotalPrice  *float64 `db:"totalPrice" json:"totalPrice"`
 	Fulfilled   bool     `db:"fulfilled" json:"fulfilled"`
+	// تفاصيل الطلب اليدوي — الموديل والنوعية وملاحظات المادة
+	Model     *string `db:"model" json:"model"`
+	Spec      *string `db:"spec" json:"spec"`
+	ItemNotes *string `db:"itemNotes" json:"itemNotes"`
 }
 
 type CreateProcurementItemRequest struct {
@@ -72,6 +90,9 @@ type CreateProcurementItemRequest struct {
 	Quantity    int      `json:"quantity"`
 	UnitPrice   *float64 `json:"unitPrice"`
 	TotalPrice  *float64 `json:"totalPrice"`
+	Model       *string  `json:"model"`
+	Spec        *string  `json:"spec"`
+	ItemNotes   *string  `json:"itemNotes"`
 }
 
 type CreateProcurementRequestRequest struct {
@@ -95,6 +116,7 @@ type FulfillProcurementItemRequest struct {
 
 type FulfillProcurementRequestRequest struct {
 	FulfilledByID    string                          `json:"fulfilledById"`
+	SupplierID       *string                         `json:"supplierId"`
 	TotalCost        *float64                        `json:"totalCost"`
 	FulfillmentNotes *string                         `json:"fulfillmentNotes"`
 	Items            []FulfillProcurementItemRequest `json:"items"`

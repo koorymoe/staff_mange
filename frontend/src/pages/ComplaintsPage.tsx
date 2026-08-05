@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { api, complaintTypeLabels, type Complaint, type ComplaintCustomerStat, type ComplaintType, type Customer, type Employee } from '../api'
 import { useSession } from '../session'
 
@@ -19,49 +19,63 @@ const statusColors: Record<Complaint['status'], string> = {
 // أبو الجودة والمراقب المدقق (والأدمن) يشوفون متابعة/إدارة الشكاوى بس —
 // باقي الأدوار الي عندها صلاحية الشكاوى (مثلاً المبيعات) تشوف تسجيل شكوى
 // جديدة بس، بدون واجهة المتابعة والإدارة.
-const trackingRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN']
+const trackingRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN', 'OWNER']
+// الاتصال بالزبون مو حكر على مهندس الجودة: أي موظف ينطيه المدير صلاحية
+// complaint_contact يكدر يتصل ويأشر النتيجة، واسمه ينحفظ كدام الشكوى.
+const contactRoles = ['QUALITY_ENGINEER', 'MONITOR', 'ADMIN', 'OWNER']
 // مهندس الجودة (والأدمن) يشوف تفاصيل الزبون كاملة ويتواصل معه مباشرة.
 // المراقب المدقق يشوف بس "إنذار" إنه اكو شكوى تحتاج متابعة، بدون تفاصيل
 // الزبون — دوره رقابي بس، مو التواصل المباشر.
 const fullDetailRoles = ['QUALITY_ENGINEER', 'ADMIN']
 
-// سويچ الاتصال — أخضر يمين «تم» وأحمر يسار «لم يتم». مشترك بين شاشة
-// المراقب وشاشة مهندس الجودة حتى الاثنين يشوفون نفس الشي بالضبط.
-function ContactSwitch({ complaint, busy, onToggle }: {
+// حالة الاتصال — قائمة منسدلة بخيارين صريحين بدل السويچ: الموظف يختار
+// شنو سوّى، ما يخمّن شنو معنى اليمين واليسار. أخضر «تم» وأحمر «لم يتم».
+//
+// `canEdit` false يعني الموظف يشوف الحالة بس ما يغيّرها — الاتصال
+// بالزبون صلاحية مستقلة (complaint_contact) ينطيها المدير لمن يريد.
+function ContactSelect({ complaint, busy, canEdit, onChange }: {
   complaint: Complaint
   busy: boolean
-  onToggle: () => void
+  canEdit: boolean
+  onChange: (contacted: boolean) => void
 }) {
   const on = !!complaint.contactedAt
+  const tone = on
+    ? 'border-emerald-300 bg-emerald-50 text-emerald-700'
+    : 'border-red-300 bg-red-50 text-red-700'
+  if (!canEdit) {
+    return (
+      <span className={`inline-block rounded-full border px-3 py-1 text-xs font-bold ${tone}`}>
+        {on ? '✔ تم الاتصال' : '✕ لم يتم الاتصال'}
+      </span>
+    )
+  }
   return (
-    <button
-      type="button"
+    <select
+      value={on ? 'YES' : 'NO'}
       disabled={busy}
-      onClick={onToggle}
-      title={on ? 'تم الاتصال — اضغط للتراجع' : 'لم يتم الاتصال — اضغط للتأشير'}
-      className={`flex items-center gap-2 rounded-full px-1 py-1 transition-colors disabled:opacity-50 ${
-        on ? 'bg-emerald-100' : 'bg-red-100'
-      }`}
+      onChange={(e) => onChange(e.target.value === 'YES')}
+      className={`rounded-lg border px-2 py-1.5 text-xs font-bold outline-none disabled:opacity-50 ${tone}`}
     >
-      <span className={`h-5 w-9 rounded-full p-0.5 transition-colors ${on ? 'bg-emerald-500' : 'bg-red-400'}`}>
-        <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${on ? 'translate-x-0' : 'translate-x-4'}`} />
-      </span>
-      <span className={`pl-2 text-xs font-bold ${on ? 'text-emerald-700' : 'text-red-700'}`}>
-        {on ? 'تم الاتصال' : 'لم يتم الاتصال'}
-      </span>
-    </button>
+      <option value="NO">✕ لم يتم الاتصال</option>
+      <option value="YES">✔ تم الاتصال</option>
+    </select>
   )
 }
 
 export default function ComplaintsPage() {
-  const { employee: currentUser } = useSession()
-  const canTrack = !!currentUser && trackingRoles.includes(currentUser.role)
+  const { employee: currentUser, permissions } = useSession()
+  const canContact = !!currentUser
+    && (contactRoles.includes(currentUser.role) || permissions.includes('complaint_contact'))
+  const canTrack = (!!currentUser && trackingRoles.includes(currentUser.role)) || canContact
   const canSeeFullDetail = !!currentUser && fullDetailRoles.includes(currentUser.role)
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [stats, setStats] = useState<ComplaintCustomerStat[]>([])
   const [contactBusy, setContactBusy] = useState<string | null>(null)
+  // الزبون المفتوح بتقرير الشكاوى — نعرض شكاواه وحدة وحدة تحته
+  const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showForm, setShowForm] = useState(false)
@@ -175,10 +189,10 @@ export default function ComplaintsPage() {
   }
 
   // تأشير الاتصال بالزبون — النظام يخزن منو اتصل ومتى، ويطلع كدام الشكوى
-  const toggleContacted = async (c: Complaint) => {
+  const setContacted = async (c: Complaint, contacted: boolean) => {
     setContactBusy(c.id)
     try {
-      const updated = await api.setComplaintContacted(c.id, !c.contactedAt)
+      const updated = await api.setComplaintContacted(c.id, contacted)
       setComplaints((prev) => prev.map((x) => (x.id === c.id ? updated : x)))
       loadStats()
     } catch (e) {
@@ -392,25 +406,69 @@ export default function ComplaintsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {stats.map((s) => (
-                  <tr key={s.customerId}>
-                    <td className="px-4 py-2 font-medium">{s.customerName}</td>
-                    <td className="px-4 py-2 text-slate-500">{s.customerPhone}</td>
-                    <td className="px-4 py-2 font-bold text-brand-700">{s.complaintCount}</td>
-                    {/* الحالة = هل انتصلنا بيه، مو «مفتوحة حالياً» */}
-                    <td className="px-4 py-2">
-                      {s.notContactedCount > 0 ? (
-                        <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
-                          ✕ لم يتم الاتصال{s.notContactedCount > 1 ? ` (${s.notContactedCount})` : ''}
-                        </span>
-                      ) : (
-                        <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
-                          ✔ تم الاتصال
-                        </span>
+                {stats.map((s) => {
+                  const rows = complaints.filter((c) => c.customer?.id === s.customerId)
+                  const open = expandedCustomer === s.customerId
+                  return (
+                    <Fragment key={s.customerId}>
+                      <tr
+                        className="cursor-pointer transition-colors hover:bg-slate-50"
+                        onClick={() => setExpandedCustomer(open ? null : s.customerId)}
+                      >
+                        <td className="px-4 py-2 font-medium">
+                          <span className="ml-1 text-slate-400">{open ? '▾' : '◂'}</span>
+                          {s.customerName}
+                        </td>
+                        <td className="px-4 py-2 text-slate-500">{s.customerPhone}</td>
+                        <td className="px-4 py-2 font-bold text-brand-700">{s.complaintCount}</td>
+                        {/* الحالة = هل انتصلنا بيه، مو «مفتوحة حالياً» */}
+                        <td className="px-4 py-2">
+                          {s.notContactedCount > 0 ? (
+                            <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                              ✕ لم يتم الاتصال{s.notContactedCount > 1 ? ` (${s.notContactedCount})` : ''}
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
+                              ✔ تم الاتصال
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                      {/* شكاوى هذا الزبون وحدة وحدة: كل شكوى إلها قائمة
+                          منسدلة مستقلة واسم الموظف الي اتصل وحلّها. */}
+                      {open && (
+                        <tr className="bg-slate-50">
+                          <td colSpan={4} className="px-4 py-3">
+                            {rows.length === 0 && <p className="text-xs text-slate-400">ماكو تفاصيل متاحة إلك.</p>}
+                            <div className="space-y-2">
+                              {rows.map((c) => (
+                                <div key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-white px-3 py-2 shadow-sm">
+                                  <div className="text-xs text-slate-500">
+                                    {c.contactedAt ? (
+                                      <>اتصل: <b className="text-slate-700">{c.contactedByName || '—'}</b>
+                                        {' · '}{new Date(c.contactedAt).toLocaleDateString('ar-IQ')}</>
+                                    ) : 'ما اتصل بيه أحد بعد'}
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <ContactSelect
+                                      complaint={c}
+                                      busy={contactBusy === c.id}
+                                      canEdit={canContact}
+                                      onChange={(v) => setContacted(c, v)}
+                                    />
+                                    <span className="text-sm font-medium text-brand-800">
+                                      {complaintTypeLabels[c.type] || c.type}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </td>
+                        </tr>
                       )}
-                    </td>
-                  </tr>
-                ))}
+                    </Fragment>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -443,7 +501,7 @@ export default function ComplaintsPage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <ContactSwitch complaint={c} busy={contactBusy === c.id} onToggle={() => toggleContacted(c)} />
+                      <ContactSelect complaint={c} busy={contactBusy === c.id} canEdit={canContact} onChange={(v) => setContacted(c, v)} />
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
                       {c.contactedAt
@@ -519,7 +577,7 @@ export default function ComplaintsPage() {
                     </td>
                     {/* سويچ الاتصال — أخضر «تم» وأحمر «لم يتم»، ويخزن منو اتصل */}
                     <td className="px-4 py-3">
-                      <ContactSwitch complaint={c} busy={contactBusy === c.id} onToggle={() => toggleContacted(c)} />
+                      <ContactSelect complaint={c} busy={contactBusy === c.id} canEdit={canContact} onChange={(v) => setContacted(c, v)} />
                       {c.contactedAt && (
                         <div className="mt-1 text-[11px] text-slate-500">
                           اتصل: <b className="text-slate-600">{c.contactedByName || '—'}</b>

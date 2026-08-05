@@ -60,7 +60,16 @@ func (r *ProcurementRepository) hydrate(req *model.ProcurementRequest, withFulfi
 	if err := r.db.Select(&items, `SELECT * FROM "ProcurementItem" WHERE "requestId" = $1`, req.ID); err == nil {
 		req.Items = items
 	}
+	req.TypeLabel = model.RequestTypeLabels[req.RequestType]
 	req.RequestedBy = r.loadRequesterBrief(req.RequestedByID)
+	if req.SupplierID != nil {
+		var sup model.EmployeeIDNameBrief
+		// جدول الموردين اسم عموده "companyName" مو name — بدون الاسم
+		// المستعار يرجع المورد فاضي بالواجهة.
+		if err := r.db.Get(&sup, `SELECT id, "companyName" AS name FROM "Supplier" WHERE id = $1`, *req.SupplierID); err == nil {
+			req.Supplier = &sup
+		}
+	}
 	if withFulfilledBy && req.FulfilledByID != nil {
 		req.FulfilledBy = r.loadEmployeeIDName(*req.FulfilledByID)
 	}
@@ -125,9 +134,10 @@ func (r *ProcurementRepository) Create(req model.CreateProcurementRequestRequest
 
 	for _, item := range req.Items {
 		if _, err := tx.Exec(`
-			INSERT INTO "ProcurementItem" (id, "requestId", "productName", quantity, "unitPrice", "totalPrice")
-			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5)
-		`, request.ID, item.ProductName, item.Quantity, item.UnitPrice, item.TotalPrice); err != nil {
+			INSERT INTO "ProcurementItem" (id, "requestId", "productName", quantity, "unitPrice", "totalPrice", model, spec, "itemNotes")
+			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), NULLIF($8,''))
+		`, request.ID, item.ProductName, item.Quantity, item.UnitPrice, item.TotalPrice,
+			deref(item.Model), deref(item.Spec), deref(item.ItemNotes)); err != nil {
 			return nil, err
 		}
 	}
@@ -150,6 +160,7 @@ func (r *ProcurementRepository) UpdateStatus(id, status string) (*model.Procurem
 	return &request, nil
 }
 
+// UpdateItem سعر البند وحالته وقت التجهيز.
 func (r *ProcurementRepository) UpdateItem(id string, unitPrice, totalPrice *float64, fulfilled bool) error {
 	_, err := r.db.Exec(`
 		UPDATE "ProcurementItem" SET
@@ -180,10 +191,11 @@ func (r *ProcurementRepository) Fulfill(id string, req model.FulfillProcurementR
 			"fulfilledById" = $2,
 			"totalCost" = $3,
 			"fulfillmentNotes" = $4,
-			"fulfilledAt" = $5
+			"fulfilledAt" = $5,
+			"supplierId" = COALESCE($6, "supplierId")
 		WHERE id = $1
 		RETURNING *
-	`, id, req.FulfilledByID, req.TotalCost, req.FulfillmentNotes, now)
+	`, id, req.FulfilledByID, req.TotalCost, req.FulfillmentNotes, now, req.SupplierID)
 	if err != nil {
 		return nil, err
 	}

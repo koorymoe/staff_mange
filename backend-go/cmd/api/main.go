@@ -345,6 +345,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// قيمة مبالغ الدوار نفسها (تعديل الرصيد والتغذية) — مدير النظام والمالك
 	// فقط، أو أي موظف ينطونه صلاحية revolving_fund_amount صراحةً.
 	requireFundAmount := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "revolving_fund_amount")
+	// التخريج يرجّع فلوس للدوار — صلاحية مستقلة عن شغل الدوار اليومي.
+	requireDischarge := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "FINANCE"}, "fund_discharge")
+	// الاتصال بالزبون مو حكر على مهندس الجودة — أي موظف ينطيه المدير
+	// صلاحية complaint_contact يكدر يتصل ويأشر النتيجة باسمه.
+	requireComplaintContact := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "QUALITY_ENGINEER", "MONITOR"}, "complaint_contact")
 	requireGpsSystem := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "gps_system")
 	// متابعة تجديد اشتراكات الجي بي اس تخص الاثنين: مهندس الجودة يتصل
 	// بالزبائن، ومسؤول الجي بي اس يشوف منو خلصت مهلته وشريحته تحتاج حرق.
@@ -626,8 +631,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/complaints/{id}", middleware.Chain(http.HandlerFunc(complaintHandler.Update), requireAuth, requireQuality))
 	// تأشير الاتصال والملاحظات: أي موظف يقدر — المهم النظام يخزن منو
 	// اتصل. حصرها بالجودة يخلي الشكوى تضل بلا متابعة لو المهندس مشغول.
-	mux.Handle("PUT /api/complaints/{id}/contact", middleware.Chain(http.HandlerFunc(complaintHandler.SetContacted), requireAuth))
-	mux.Handle("PUT /api/complaints/{id}/notes", middleware.Chain(http.HandlerFunc(complaintHandler.SetNotes), requireAuth))
+	mux.Handle("PUT /api/complaints/{id}/contact", middleware.Chain(http.HandlerFunc(complaintHandler.SetContacted), requireAuth, requireComplaintContact))
+	mux.Handle("PUT /api/complaints/{id}/notes", middleware.Chain(http.HandlerFunc(complaintHandler.SetNotes), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth, requireQuality))
 	mux.Handle("GET /api/complaints/stats", middleware.Chain(http.HandlerFunc(complaintHandler.Stats), requireAuth))
 	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth, requireQuality))
@@ -900,6 +905,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/funds/balances", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Balances), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Txns), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/settlements/{id}/review", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ReviewSettlement), requireAuth, requireFund))
+	mux.Handle("PUT /api/funds/settlements/{id}/discharge", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Discharge), requireAuth, requireDischarge))
+	mux.Handle("GET /api/funds/discharge-accounts", middleware.Chain(http.HandlerFunc(revolvingFundHandler.DischargeAccounts), requireAuth, requireFund))
 
 	mux.Handle("GET /api/funds/my-balance", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyBalance), requireAuth))
 	mux.Handle("GET /api/funds/my-transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.MyTxns), requireAuth))

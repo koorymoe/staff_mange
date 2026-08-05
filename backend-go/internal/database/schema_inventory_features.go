@@ -1053,5 +1053,65 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					ON "ProductProcurement" ("requestId");
 			`,
 		},
+		{
+			// التخريج: الحلقة الناقصة بدورة الدوار.
+			//
+			// الموظف ياخذ مبلغ (DISBURSE = ناقص من الدوار)، يشتري، ويرجّع
+			// الزايد بالتسوية (SETTLEMENT). موافقة المحاسب ترجّع المرتجع
+			// بس — أما المبلغ الي انصرف فعلاً يبقى ناقص من الدوار.
+			//
+			// يرجع متى؟ لمن المحاسب يخرّج المادة على النظام المحاسبي
+			// ويحدد على أي حساب انخرجت. هناك بس ينضاف المبلغ المصروف
+			// للدوار. يعني الدوار «ينتظر» المحاسب — والمبلغ الي ينتظره
+			// هو المصروف، مو كل السلفة، لأن المرتجع رجع من قبل.
+			Version: "0192_fund_discharge",
+			SQL: `
+				ALTER TABLE "RevolvingFundTxn"
+					ADD COLUMN IF NOT EXISTS "dischargedAt" TIMESTAMPTZ,
+					ADD COLUMN IF NOT EXISTS "dischargedById" TEXT REFERENCES "Employee"(id),
+					ADD COLUMN IF NOT EXISTS "dischargeAccount" TEXT,
+					ADD COLUMN IF NOT EXISTS "dischargeNote" TEXT;
+				-- الطلب الي انصرف عليه المبلغ — حتى يبين اسم الموظف الطالب
+				-- بشاشة التغذية بدل ما المحاسب يدوّر عليه بيده.
+				ALTER TABLE "RevolvingFundTxn"
+					ADD COLUMN IF NOT EXISTS "requestId" TEXT;
+				CREATE INDEX IF NOT EXISTS "RevolvingFundTxn_discharge_idx"
+					ON "RevolvingFundTxn" (kind, status, "dischargedAt");
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'fund_discharge', 'تخريج المواد وتعويض الدوار')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
+		{
+			// الطلب اليدوي: الإداري أو الليدر يكتب المادة بالتفصيل —
+			// الموديل والنوعية والعدد والسعر التقريبي — بدل ما يكون
+			// الطلب مربوط بحجز أو بكتالوك.
+			//
+			// وعند التجهيز لازم يتحدد المورد: بدونه ما نعرف من وين
+			// انجابت المادة ولا نكدر نحاسب على السعر.
+			Version: "0193_manual_procurement_detail",
+			SQL: `
+				ALTER TABLE "ProcurementItem"
+					ADD COLUMN IF NOT EXISTS "model" TEXT,
+					ADD COLUMN IF NOT EXISTS "spec" TEXT,
+					ADD COLUMN IF NOT EXISTS "itemNotes" TEXT;
+				ALTER TABLE "ProcurementRequest"
+					ADD COLUMN IF NOT EXISTS "supplierId" TEXT REFERENCES "Supplier"(id);
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'procurement_manual', 'طلب مادة يدوي (إداري/ليدر)')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
+		{
+			// الاتصال بالزبون مو حكر على مهندس الجودة — أي موظف ينطيه
+			// المدير هاي الصلاحية يكدر يتصل ويأشر النتيجة، واسمه ينحفظ
+			// كدام الشكوى حتى يبين منو حل المشكلة.
+			Version: "0194_complaint_contact_permission",
+			SQL: `
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'complaint_contact', 'الاتصال بالزبون ومتابعة الشكوى')
+				ON CONFLICT (name) DO NOTHING;
+			`,
+		},
 	}
 }

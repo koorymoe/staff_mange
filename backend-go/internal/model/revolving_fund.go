@@ -18,6 +18,9 @@ type RevolvingFund struct {
 
 	// OutstandingTotal مجموع الي بيد الموظفين من هذا الدوار وما انتسوّى بعد
 	OutstandingTotal float64 `db:"-" json:"outstandingTotal"`
+	// AwaitingDischargeTotal المبلغ الي الدوار ناطره من المحاسب: مصروف
+	// مدقّق وما انخرّج بعد. هذا الي ينقص من رأس مال الدوار فعلياً.
+	AwaitingDischargeTotal float64 `db:"-" json:"awaitingDischargeTotal"`
 }
 
 // أنواع حركة الدوار
@@ -25,12 +28,14 @@ const (
 	FundTxnDisburse   = "DISBURSE"   // المحاسب يسلّم موظف
 	FundTxnSettlement = "SETTLEMENT" // الموظف يسوّي (صرف + مرتجع + وصل)
 	FundTxnTopup      = "TOPUP"      // تغذية الدوار نفسه
+	FundTxnDischarge  = "DISCHARGE"  // تخريج المادة → تعويض المبلغ المصروف
 )
 
 var FundTxnKindLabels = map[string]string{
 	FundTxnDisburse:   "تسليم للموظف",
 	FundTxnSettlement: "تسوية من الموظف",
 	FundTxnTopup:      "تغذية الدوار",
+	FundTxnDischarge:  "تخريج مادة — تعويض الدوار",
 }
 
 // حالات التسوية
@@ -64,11 +69,29 @@ type RevolvingFundTxn struct {
 	ReviewNote     *string    `db:"reviewNote" json:"reviewNote"`
 	CreatedAt      time.Time  `db:"createdAt" json:"createdAt"`
 
+	// التخريج — الخطوة الي ترجّع المبلغ المصروف للدوار.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا وإلا ينكسر SELECT *.
+	RequestID        *string    `db:"requestId" json:"requestId"`
+	DischargedAt     *time.Time `db:"dischargedAt" json:"dischargedAt"`
+	DischargedByID   *string    `db:"dischargedById" json:"dischargedById"`
+	DischargeAccount *string    `db:"dischargeAccount" json:"dischargeAccount"`
+	DischargeNote    *string    `db:"dischargeNote" json:"dischargeNote"`
+
 	FundName     string  `db:"fundName" json:"fundName"`
 	EmployeeName *string `db:"employeeName" json:"employeeName"`
 	ReviewedBy   *string `db:"reviewedByName" json:"reviewedByName"`
+	DischargedBy *string `db:"dischargedByName" json:"dischargedByName"`
 	KindLabel    string  `db:"-" json:"kindLabel"`
 	StatusLabel  string  `db:"-" json:"statusLabel"`
+	// AwaitingDischarge = تسوية مقبولة، بيها مبلغ مصروف، وما انخرجت بعد.
+	// يعني الدوار ناطر هذا المبلغ من المحاسب.
+	AwaitingDischarge bool `db:"-" json:"awaitingDischarge"`
+}
+
+// DischargeRequest المحاسب يأشر إن المادة انخرجت وعلى أي حساب انحسبت.
+type DischargeRequest struct {
+	Account string  `json:"account"`
+	Note    *string `json:"note"`
 }
 
 // EmployeeFundBalance رصيد موظف واحد: شكد بيده وما انتسوّى.
@@ -95,7 +118,10 @@ type DisburseRequest struct {
 	EmployeeID string  `json:"employeeId"`
 	Amount     float64 `json:"amount"`
 	BookingID  *string `json:"bookingId"`
-	Notes      *string `json:"notes"`
+	// RequestID طلب المشتريات الي انصرف عليه — اختياري، بس لمن ينوجد
+	// يبين اسم الموظف الطالب والمادة كدام المحاسب.
+	RequestID *string `json:"requestId"`
+	Notes     *string `json:"notes"`
 }
 
 type SettlementRequest struct {

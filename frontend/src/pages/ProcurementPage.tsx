@@ -1,6 +1,6 @@
-import { useState, useEffect, useContext } from 'react'
+import { Fragment, useState, useEffect, useContext } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { api, type ProcurementRequest, type ProcurementStats, type Booking } from '../api'
+import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRequestType, type ProcurementStats, type Booking } from '../api'
 import { SessionContext } from '../session'
 
 const statusLabels: Record<string, string> = {
@@ -26,6 +26,8 @@ export default function ProcurementPage() {
   // الأدمن/المالك يقدر ينشئ الاثنين دائماً.
   const canCreatePersonal = isAdminLike || permissions.includes('procurement_personal')
   const canCreateCustomer = isAdminLike || permissions.includes('procurement_customer')
+  // الطلب اليدوي: الإداري أو الليدر يكتب المادة بالتفصيل بدون حجز ولا كتالوك
+  const canCreateManual = isAdminLike || permissions.includes('procurement_manual')
   const [searchParams] = useSearchParams()
 
   const [requests, setRequests] = useState<ProcurementRequest[]>([])
@@ -33,14 +35,17 @@ export default function ProcurementPage() {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [activeTab, setActiveTab] = useState<'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'>('CUSTOMER_PRODUCT')
+  const [activeTab, setActiveTab] = useState<ProcurementRequestType>('CUSTOMER_PRODUCT')
+  const [suppliers, setSuppliers] = useState<{ id: string; companyName: string; ownerName: string }[]>([])
 
   // Form state
   const [showForm, setShowForm] = useState(false)
-  const [formRequestType, setFormRequestType] = useState<'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'>('CUSTOMER_PRODUCT')
+  const [formRequestType, setFormRequestType] = useState<ProcurementRequestType>('CUSTOMER_PRODUCT')
   const [formBookingId, setFormBookingId] = useState('')
   const [formNotes, setFormNotes] = useState('')
-  const [formItems, setFormItems] = useState([{ productName: '', quantity: 1 }])
+  type FormItem = { productName: string; quantity: number; model: string; spec: string; unitPrice: string; itemNotes: string }
+  const emptyItem = (): FormItem => ({ productName: '', quantity: 1, model: '', spec: '', unitPrice: '', itemNotes: '' })
+  const [formItems, setFormItems] = useState<FormItem[]>([emptyItem()])
   const [submitting, setSubmitting] = useState(false)
 
   // Expanded rows
@@ -50,19 +55,23 @@ export default function ProcurementPage() {
   const [fulfillModal, setFulfillModal] = useState<ProcurementRequest | null>(null)
   const [fulfillCost, setFulfillCost] = useState('')
   const [fulfillNotes, setFulfillNotes] = useState('')
+  const [fulfillSupplierId, setFulfillSupplierId] = useState('')
   const [fulfillItems, setFulfillItems] = useState<{ id: string; productName: string; quantity: number; unitPrice: string; totalPrice: string; fulfilled: boolean }[]>([])
   const [fulfilling, setFulfilling] = useState(false)
 
   const loadData = async () => {
     try {
-      const [reqs, st, bks] = await Promise.all([
+      const [reqs, st, bks, sups] = await Promise.all([
         api.getProcurementRequests(),
         api.getProcurementStats(),
         api.getBookings(),
+        // الموردين المضافين مسبقاً — أبو الكميات لازم يحدد منهم
+        api.getSupplierOptions().catch(() => []),
       ])
       setRequests(reqs)
       setStats(st)
       setBookings(bks)
+      setSuppliers(sups ?? [])
     } catch (e) {
       setError(e instanceof Error ? e.message : 'حدث خطأ في تحميل البيانات')
     } finally {
@@ -97,10 +106,19 @@ export default function ProcurementPage() {
     if (!showForm) return
     // Auto-selecting the request type when the employee only has one permission is a
     // derived-state sync from props, not a fetch.
+    const allowed: ProcurementRequestType[] = []
+    if (canCreatePersonal) allowed.push('PERSONAL_SUPPLY')
+    if (canCreateCustomer) allowed.push('CUSTOMER_PRODUCT')
+    if (canCreateManual) allowed.push('MANUAL_SUPPLY')
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (canCreatePersonal && !canCreateCustomer) setFormRequestType('PERSONAL_SUPPLY')
-    else if (canCreateCustomer && !canCreatePersonal) setFormRequestType('CUSTOMER_PRODUCT')
-  }, [showForm, canCreatePersonal, canCreateCustomer])
+    if (allowed.length === 1) setFormRequestType(allowed[0])
+  }, [showForm, canCreatePersonal, canCreateCustomer, canCreateManual])
+
+  // أنواع الطلبات المسموحة لهذا الموظف — تحدد الراديو وتبويب الجدول
+  const allowedTypes: ProcurementRequestType[] = []
+  if (canCreatePersonal) allowedTypes.push('PERSONAL_SUPPLY')
+  if (canCreateCustomer) allowedTypes.push('CUSTOMER_PRODUCT')
+  if (canCreateManual) allowedTypes.push('MANUAL_SUPPLY')
 
   const handleSubmit = async () => {
     if (formItems.some(i => !i.productName.trim() || i.quantity < 1)) {
@@ -116,11 +134,19 @@ export default function ProcurementPage() {
         bookingId: formRequestType === 'CUSTOMER_PRODUCT' ? (formBookingId || undefined) : undefined,
         requestType: formRequestType,
         notes: formNotes || undefined,
-        items: formItems.map(i => ({ productName: i.productName.trim(), quantity: i.quantity })),
+        items: formItems.map(i => ({
+          productName: i.productName.trim(),
+          quantity: i.quantity,
+          // السعر التقريبي الي يكتبه الطالب — أبو الكميات يصحّحه وقت الشراء
+          unitPrice: i.unitPrice ? parseFloat(i.unitPrice) : null,
+          model: i.model.trim() || null,
+          spec: i.spec.trim() || null,
+          itemNotes: i.itemNotes.trim() || null,
+        })),
       })
       setFormBookingId('')
       setFormNotes('')
-      setFormItems([{ productName: '', quantity: 1 }])
+      setFormItems([emptyItem()])
       setShowForm(false)
       await loadData()
     } catch (e) {
@@ -143,6 +169,7 @@ export default function ProcurementPage() {
     setFulfillModal(req)
     setFulfillCost(req.totalCost?.toString() || '')
     setFulfillNotes(req.fulfillmentNotes || '')
+    setFulfillSupplierId(req.supplierId || '')
     setFulfillItems(req.items.map(i => ({
       id: i.id,
       productName: i.productName,
@@ -155,11 +182,18 @@ export default function ProcurementPage() {
 
   const handleFulfill = async () => {
     if (!fulfillModal || !employee) return
+    // بدون مورد ما نعرف من وين انجابت المادة — الباك إند يرفض أصلاً،
+    // بس نوقفها هنا حتى ما يضيع شغل المستخدم بطلب فاشل.
+    if (!fulfillSupplierId) {
+      setError('لازم تحدد المورد الي انجابت منه المادة')
+      return
+    }
     setFulfilling(true)
     setError('')
     try {
       await api.fulfillProcurementRequest(fulfillModal.id, {
         fulfilledById: employee.id,
+        supplierId: fulfillSupplierId,
         totalCost: fulfillCost ? parseFloat(fulfillCost) : undefined,
         fulfillmentNotes: fulfillNotes || undefined,
         items: fulfillItems.map(i => ({
@@ -234,32 +268,25 @@ export default function ProcurementPage() {
         </button>
         {showForm && (
           <div className="p-4 pt-0 space-y-4 border-t">
-            {canCreatePersonal && canCreateCustomer && (
+            {allowedTypes.length > 1 && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">نوع الطلب</label>
-                <div className="flex gap-4">
-                  <label className="flex items-center gap-1.5 text-sm">
-                    <input
-                      type="radio"
-                      name="requestType"
-                      checked={formRequestType === 'PERSONAL_SUPPLY'}
-                      onChange={() => setFormRequestType('PERSONAL_SUPPLY')}
-                    />
-                    طلب لنفسي
-                  </label>
-                  <label className="flex items-center gap-1.5 text-sm">
-                    <input
-                      type="radio"
-                      name="requestType"
-                      checked={formRequestType === 'CUSTOMER_PRODUCT'}
-                      onChange={() => setFormRequestType('CUSTOMER_PRODUCT')}
-                    />
-                    طلب للزبون
-                  </label>
+                <div className="flex flex-wrap gap-4">
+                  {allowedTypes.map(t => (
+                    <label key={t} className="flex items-center gap-1.5 text-sm">
+                      <input
+                        type="radio"
+                        name="requestType"
+                        checked={formRequestType === t}
+                        onChange={() => setFormRequestType(t)}
+                      />
+                      {procurementTypeLabels[t]}
+                    </label>
+                  ))}
                 </div>
               </div>
             )}
-            {!canCreatePersonal && !canCreateCustomer && (
+            {allowedTypes.length === 0 && (
               <p className="text-sm text-red-600">لا تملك صلاحية تقديم أي نوع من طلبات المشتريات.</p>
             )}
 
@@ -284,42 +311,77 @@ export default function ProcurementPage() {
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">المواد المطلوبة</label>
               <div className="space-y-2">
-                {formItems.map((item, idx) => (
-                  <div key={idx} className="flex gap-2 items-center">
-                    <input
-                      type="text"
-                      placeholder="اسم المادة"
-                      value={item.productName}
-                      onChange={e => {
-                        const next = [...formItems]
-                        next[idx] = { ...next[idx], productName: e.target.value }
-                        setFormItems(next)
-                      }}
-                      className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
-                    />
-                    <input
-                      type="number"
-                      min={1}
-                      placeholder="الكمية"
-                      value={item.quantity}
-                      onChange={e => {
-                        const next = [...formItems]
-                        next[idx] = { ...next[idx], quantity: parseInt(e.target.value) || 1 }
-                        setFormItems(next)
-                      }}
-                      className="w-24 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
-                    />
-                    {formItems.length > 1 && (
-                      <button
-                        onClick={() => setFormItems(formItems.filter((_, i) => i !== idx))}
-                        className="text-red-500 hover:text-red-700 text-xl leading-none"
-                      >×</button>
-                    )}
-                  </div>
-                ))}
+                {formItems.map((item, idx) => {
+                  const patch = (p: Partial<FormItem>) => {
+                    const next = [...formItems]
+                    next[idx] = { ...next[idx], ...p }
+                    setFormItems(next)
+                  }
+                  return (
+                    <div key={idx} className="rounded-lg border border-slate-200 p-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="اسم المادة"
+                          value={item.productName}
+                          onChange={e => patch({ productName: e.target.value })}
+                          className="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+                        />
+                        <input
+                          type="number"
+                          min={1}
+                          placeholder="الكمية"
+                          value={item.quantity}
+                          onChange={e => patch({ quantity: parseInt(e.target.value) || 1 })}
+                          className="w-24 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+                        />
+                        {formItems.length > 1 && (
+                          <button
+                            onClick={() => setFormItems(formItems.filter((_, i) => i !== idx))}
+                            className="text-red-500 hover:text-red-700 text-xl leading-none"
+                          >×</button>
+                        )}
+                      </div>
+                      {/* تفاصيل الطلب اليدوي — الطالب يحدد بالضبط شنو يريد */}
+                      {formRequestType === 'MANUAL_SUPPLY' && (
+                        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                          <input
+                            type="text"
+                            placeholder="الموديل"
+                            value={item.model}
+                            onChange={e => patch({ model: e.target.value })}
+                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+                          />
+                          <input
+                            type="text"
+                            placeholder="النوعية / المواصفات"
+                            value={item.spec}
+                            onChange={e => patch({ spec: e.target.value })}
+                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+                          />
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="السعر التقريبي للوحدة"
+                            value={item.unitPrice}
+                            onChange={e => patch({ unitPrice: e.target.value })}
+                            className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+                          />
+                          <input
+                            type="text"
+                            placeholder="ملاحظات المادة (ترتيب، لون، بديل مقبول...)"
+                            value={item.itemNotes}
+                            onChange={e => patch({ itemNotes: e.target.value })}
+                            className="sm:col-span-3 border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
               <button
-                onClick={() => setFormItems([...formItems, { productName: '', quantity: 1 }])}
+                onClick={() => setFormItems([...formItems, emptyItem()])}
                 className="mt-2 text-sm text-[#2c5aad] hover:underline"
               >+ إضافة مادة</button>
             </div>
@@ -336,7 +398,7 @@ export default function ProcurementPage() {
 
             <button
               onClick={handleSubmit}
-              disabled={submitting || (!canCreatePersonal && !canCreateCustomer)}
+              disabled={submitting || allowedTypes.length === 0}
               className="bg-[#2c5aad] text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-[#1a3a6e] disabled:opacity-50 transition"
             >
               {submitting ? 'جاري الإرسال...' : 'إرسال الطلب'}
@@ -358,6 +420,12 @@ export default function ProcurementPage() {
           className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${activeTab === 'PERSONAL_SUPPLY' ? 'border-[#2c5aad] text-[#2c5aad]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
           طلبات احتياجات شخصية
+        </button>
+        <button
+          onClick={() => setActiveTab('MANUAL_SUPPLY')}
+          className={`px-4 py-2 text-sm font-semibold border-b-2 transition ${activeTab === 'MANUAL_SUPPLY' ? 'border-[#2c5aad] text-[#2c5aad]' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          طلبات مواد يدوية
         </button>
       </div>
 
@@ -381,8 +449,8 @@ export default function ProcurementPage() {
                 <tr><td colSpan={activeTab === 'CUSTOMER_PRODUCT' ? 7 : 6} className="text-center py-8 text-slate-400">لا توجد طلبات</td></tr>
               )}
               {requests.filter(r => r.requestType === activeTab).map(req => (
-                <>
-                  <tr key={req.id} className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => toggleRow(req.id)}>
+                <Fragment key={req.id}>
+                  <tr className="border-b border-slate-100 hover:bg-slate-50 cursor-pointer" onClick={() => toggleRow(req.id)}>
                     <td className="px-4 py-3 font-mono text-xs">{req.code}</td>
                     <td className="px-4 py-3">{req.requestedBy.name}</td>
                     {activeTab === 'CUSTOMER_PRODUCT' && (
@@ -421,14 +489,18 @@ export default function ProcurementPage() {
                           {req.items.map(item => (
                             <div key={item.id} className="flex gap-4 text-xs text-slate-700">
                               <span className="font-medium">{item.productName}</span>
+                              {item.model && <span>الموديل: {item.model}</span>}
+                              {item.spec && <span>النوعية: {item.spec}</span>}
                               <span>الكمية: {item.quantity}</span>
                               {item.unitPrice != null && <span>سعر الوحدة: {fmt(item.unitPrice)}</span>}
                               {item.totalPrice != null && <span>الإجمالي: {fmt(item.totalPrice)}</span>}
                               <span className={item.fulfilled ? 'text-emerald-600' : 'text-amber-600'}>
                                 {item.fulfilled ? 'تم التوفير' : 'لم يوفر'}
                               </span>
+                              {item.itemNotes && <span className="text-slate-500">({item.itemNotes})</span>}
                             </div>
                           ))}
+                          {req.supplier && <p className="text-xs text-slate-500 mt-2">المورد: <b>{req.supplier.name}</b></p>}
                           {req.notes && <p className="text-xs text-slate-500 mt-2">ملاحظات: {req.notes}</p>}
                           {req.fulfilledBy && <p className="text-xs text-slate-500">وفّره: {req.fulfilledBy.name}</p>}
                           {req.fulfillmentNotes && <p className="text-xs text-slate-500">ملاحظات التوفير: {req.fulfillmentNotes}</p>}
@@ -436,7 +508,7 @@ export default function ProcurementPage() {
                       </td>
                     </tr>
                   )}
-                </>
+                </Fragment>
               ))}
             </tbody>
           </table>
@@ -503,6 +575,25 @@ export default function ProcurementPage() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                المورد <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={fulfillSupplierId}
+                onChange={e => setFulfillSupplierId(e.target.value)}
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5aad]"
+              >
+                <option value="">اختر المورد الي انجابت منه المادة</option>
+                {suppliers.map(sp => (
+                  <option key={sp.id} value={sp.id}>{sp.companyName}{sp.ownerName ? ` — ${sp.ownerName}` : ''}</option>
+                ))}
+              </select>
+              {suppliers.length === 0 && (
+                <p className="mt-1 text-xs text-amber-600">ما اكو موردين مضافين — ضيفهم من شاشة الموردين أول.</p>
+              )}
             </div>
 
             <div>

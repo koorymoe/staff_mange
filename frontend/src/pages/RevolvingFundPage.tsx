@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee, fileUrl } from '../api'
+import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee, type ProcurementRequest, fileUrl } from '../api'
 import { useSession } from '../session'
 
 /**
@@ -12,7 +12,7 @@ import { useSession } from '../session'
 
 const money = (n: number) => n.toLocaleString('en-US') + ' د.ع'
 
-type Tab = 'funds' | 'balances' | 'review' | 'log'
+type Tab = 'funds' | 'balances' | 'review' | 'discharge' | 'log'
 
 export default function RevolvingFundPage() {
   // قيمة مبالغ الدوار نفسها مو شغل يومي: تعديل الرصيد والتغذية لمدير
@@ -20,6 +20,9 @@ export default function RevolvingFundPage() {
   // الباقي (الصرف والتدقيق) يبقى بصلاحية revolving_fund مثل ما هو.
   const { permissions, employee } = useSession()
   const canEditAmount = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || permissions.includes('revolving_fund_amount')
+  // التخريج يرجّع فلوس للدوار — صلاحية مستقلة عن التدقيق اليومي
+  const canDischarge = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+    || employee?.role === 'FINANCE' || permissions.includes('fund_discharge')
 
   const [tab, setTab] = useState<Tab>('funds')
   const [funds, setFunds] = useState<RevolvingFund[]>([])
@@ -40,6 +43,12 @@ export default function RevolvingFundPage() {
   const [dEmployee, setDEmployee] = useState('')
   const [dAmount, setDAmount] = useState('')
   const [dNotes, setDNotes] = useState('')
+  const [dRequestId, setDRequestId] = useState('')
+  const [openRequests, setOpenRequests] = useState<ProcurementRequest[]>([])
+  const [accounts, setAccounts] = useState<string[]>([])
+  const [dischargeFor, setDischargeFor] = useState<RevolvingFundTxn | null>(null)
+  const [dischargeAccount, setDischargeAccount] = useState('')
+  const [dischargeNote, setDischargeNote] = useState('')
   const [viewReceipt, setViewReceipt] = useState<RevolvingFundTxn | null>(null)
   const [reviewNote, setReviewNote] = useState('')
   const [busy, setBusy] = useState(false)
@@ -51,8 +60,14 @@ export default function RevolvingFundPage() {
       api.getFundTransactions({ status: 'PENDING' }),
       api.getFundTransactions(),
       api.getEmployees().catch(() => [] as Employee[]),
+      api.getProcurementRequests().catch(() => [] as ProcurementRequest[]),
+      api.getDischargeAccounts().catch(() => [] as string[]),
     ])
-      .then(([f, b, p, l, e]) => { setFunds(f); setBalances(b); setPending(p); setLog(l); setEmployees(e) })
+      .then(([f, b, p, l, e, reqs, accs]) => {
+        setFunds(f); setBalances(b); setPending(p); setLog(l); setEmployees(e)
+        setOpenRequests((reqs ?? []).filter((r) => r.status === 'PENDING' || r.status === 'IN_PROGRESS'))
+        setAccounts(accs ?? [])
+      })
       .catch((e) => setError(e instanceof Error ? e.message : 'تعذر تحميل بيانات الدوار'))
       .finally(() => setLoading(false))
   }
@@ -76,8 +91,11 @@ export default function RevolvingFundPage() {
     if (!dFund || !dEmployee || !Number(dAmount)) { alert('اختر الدوار والموظف واكتب المبلغ'); return }
     setBusy(true)
     try {
-      await api.disburseFund({ fundId: dFund, employeeId: dEmployee, amount: Number(dAmount), notes: dNotes || null })
-      setDisburseOpen(false); setDAmount(''); setDNotes(''); setDEmployee('')
+      await api.disburseFund({
+        fundId: dFund, employeeId: dEmployee, amount: Number(dAmount),
+        requestId: dRequestId || null, notes: dNotes || null,
+      })
+      setDisburseOpen(false); setDAmount(''); setDNotes(''); setDEmployee(''); setDRequestId('')
       load()
     } catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
@@ -89,10 +107,22 @@ export default function RevolvingFundPage() {
     catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
   }
 
+  const doDischarge = async () => {
+    if (!dischargeFor || !dischargeAccount.trim()) { alert('حدد على أي حساب انخرجت المادة'); return }
+    setBusy(true)
+    try {
+      await api.dischargeSettlement(dischargeFor.id, { account: dischargeAccount.trim(), note: dischargeNote || null })
+      setDischargeFor(null); setDischargeAccount(''); setDischargeNote(''); load()
+    } catch (e) { alert(e instanceof Error ? e.message : 'خطأ') } finally { setBusy(false) }
+  }
+
   if (loading) return <div dir="rtl" className="p-8 text-center text-slate-500">جاري التحميل...</div>
   if (error) return <div dir="rtl" className="rounded-xl bg-red-50 p-6 text-center text-red-700">{error}</div>
 
   const totalOutstanding = balances.reduce((s, b) => s + b.outstanding, 0)
+  // التسويات المدققة الي بيها مصروف وما انخرجت — الدوار ناطر فلوسها
+  const awaitingDischarge = log.filter((t) => t.awaitingDischarge)
+  const totalAwaiting = funds.reduce((s, f) => s + (f.awaitingDischargeTotal || 0), 0)
 
   return (
     <div dir="rtl" className="space-y-6">
@@ -109,6 +139,9 @@ export default function RevolvingFundPage() {
             <p className="text-sm font-medium text-slate-500">{f.name}</p>
             <p className="mt-1 text-2xl font-bold" style={{ color: '#1a3a5c' }}>{money(f.balance)}</p>
             <p className="mt-1 text-xs text-amber-700">بيد الموظفين: {money(f.outstandingTotal)}</p>
+            {f.awaitingDischargeTotal > 0 && (
+              <p className="mt-0.5 text-xs text-violet-700">ناطر التخريج: {money(f.awaitingDischargeTotal)}</p>
+            )}
           </div>
         ))}
         <div className="rounded-2xl border-2 border-amber-300 bg-amber-50 p-5">
@@ -119,10 +152,16 @@ export default function RevolvingFundPage() {
           <p className="text-sm font-medium text-red-800">تسويات تنتظر تدقيقك</p>
           <p className="mt-1 text-2xl font-bold text-red-900">{pending.length}</p>
         </div>
+        {/* الي الدوار ناطره منك: مصروف مدقّق وما انخرّج بعد */}
+        <div className="rounded-2xl border-2 border-violet-300 bg-violet-50 p-5">
+          <p className="text-sm font-medium text-violet-800">الدوار ناطر تخريجك</p>
+          <p className="mt-1 text-2xl font-bold text-violet-900">{money(totalAwaiting)}</p>
+          <p className="mt-0.5 text-xs text-violet-700">{awaitingDischarge.length} مادة ما انخرجت</p>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {([['funds', 'الدوارات'], ['balances', 'أرصدة الموظفين'], ['review', `التدقيق (${pending.length})`], ['log', 'سجل الحركات']] as [Tab, string][]).map(([k, label]) => (
+        {([['funds', 'الدوارات'], ['balances', 'أرصدة الموظفين'], ['review', `التدقيق (${pending.length})`], ['discharge', `التخريج (${awaitingDischarge.length})`], ['log', 'سجل الحركات']] as [Tab, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setTab(k)}
             className={`rounded-xl px-5 py-2.5 text-sm font-bold transition-colors ${tab === k ? 'text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
             style={tab === k ? { backgroundColor: '#1a3a5c' } : undefined}>
@@ -144,6 +183,7 @@ export default function RevolvingFundPage() {
                   <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>{f.name}</h3>
                   <p className="mt-1 text-sm text-slate-500">الرصيد الحالي: <span className="font-bold text-slate-800">{money(f.balance)}</span></p>
                   <p className="text-sm text-slate-500">بيد الموظفين وما انتسوّى: <span className="font-bold text-amber-700">{money(f.outstandingTotal)}</span></p>
+                  <p className="text-sm text-slate-500">ناطر تخريج المحاسب: <span className="font-bold text-violet-700">{money(f.awaitingDischargeTotal || 0)}</span></p>
                 </div>
                 {canEditAmount && (
                   <div className="flex gap-2">
@@ -224,6 +264,100 @@ export default function RevolvingFundPage() {
         </div>
       )}
 
+      {/* ═══ التخريج: الخطوة الي ترجّع المبلغ المصروف للدوار ═══
+          الموظف رجّع الزايد بالتسوية، والمبلغ الي انصرف فعلاً يبقى ناقص
+          من الدوار لحد ما المحاسب يخرّج المادة ويحدد على أي حساب. */}
+      {tab === 'discharge' && (
+        <div className="space-y-3">
+          <div className="rounded-2xl bg-white p-4 text-sm text-slate-600 shadow-sm">
+            هاي المبالغ انصرفت فعلاً وانوافق عليها — الدوار ناقصها لحد ما
+            تخرّج المادة على النظام المحاسبي وتحدد على أي حساب انحسبت.
+            بضغطة «تم التخريج» يرجع <b>المبلغ المصروف</b> للدوار (المرتجع
+            رجع من قبل بالتدقيق).
+          </div>
+          {awaitingDischarge.map((t) => (
+            <div key={t.id} className="rounded-2xl border-2 border-violet-300 bg-violet-50 p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="font-bold text-violet-900">{t.employeeName}</p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    الدوار ناطر <span className="font-bold text-violet-800">{money(t.spentAmount)}</span>
+                    {t.returnedAmount > 0 && (
+                      <span className="text-slate-500"> · رجّع {money(t.returnedAmount)} بالتدقيق</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500">{t.fundName} · {new Date(t.createdAt).toLocaleDateString('ar-IQ')}</p>
+                  {t.notes && <p className="mt-1 text-sm text-slate-700">📝 {t.notes}</p>}
+                </div>
+                <div className="flex gap-2">
+                  {t.receiptImage && (
+                    <button onClick={() => { setViewReceipt(t); setReviewNote('') }}
+                      className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50">
+                      🧾 شوف الوصل
+                    </button>
+                  )}
+                  {canDischarge ? (
+                    <button disabled={busy}
+                      onClick={() => { setDischargeFor(t); setDischargeAccount(''); setDischargeNote('') }}
+                      className="rounded-lg bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50">
+                      📤 تم التخريج
+                    </button>
+                  ) : (
+                    <span className="self-center text-xs text-slate-400">التخريج بيد المحاسب</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+          {awaitingDischarge.length === 0 && (
+            <p className="rounded-2xl bg-white p-8 text-center text-slate-400 shadow-sm">
+              ماكو مادة ناطرة التخريج — الدوار مكتمل ✔
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* نافذة التخريج: الحساب يتكتب أو ينتخب من الحسابات المستخدمة سابقاً */}
+      {dischargeFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
+          <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>تخريج مادة — {dischargeFor.employeeName}</h3>
+            <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
+              راح يرجع للدوار <b>{money(dischargeFor.spentAmount)}</b>
+            </p>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">على أي حساب انخرجت؟</label>
+              <input
+                list="discharge-accounts"
+                value={dischargeAccount}
+                onChange={(e) => setDischargeAccount(e.target.value)}
+                placeholder="اكتب الحساب أو اختاره من القائمة"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+              />
+              <datalist id="discharge-accounts">
+                {accounts.map((a) => <option key={a} value={a} />)}
+              </datalist>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm font-medium text-slate-700">ملاحظة (اختياري)</label>
+              <input
+                value={dischargeNote}
+                onChange={(e) => setDischargeNote(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-violet-500"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setDischargeFor(null)}
+                className="rounded-lg px-4 py-2 text-sm text-slate-600 hover:bg-slate-100">إلغاء</button>
+              <button disabled={busy} onClick={doDischarge}
+                className="rounded-lg bg-violet-600 px-6 py-2 text-sm font-bold text-white hover:bg-violet-700 disabled:opacity-50">
+                {busy ? 'جاري...' : 'تأكيد التخريج'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {tab === 'log' && (
         <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
           <div className="overflow-x-auto">
@@ -289,6 +423,28 @@ export default function RevolvingFundPage() {
           <select value={dFund} onChange={(e) => setDFund(e.target.value)}
             className="mb-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500">
             {funds.map((f) => <option key={f.id} value={f.id}>{f.name} — رصيد {money(f.balance)}</option>)}
+          </select>
+          {/* التغذية على طلب مادة: اختيار الطلب يعبّي اسم الموظف الطالب
+              والمبلغ التقريبي تلقائياً — بدل ما يدوّر المحاسب بيده. */}
+          <label className="mb-1 block text-sm font-medium text-slate-600">على أي طلب؟ (اختياري)</label>
+          <select value={dRequestId}
+            onChange={(e) => {
+              const id = e.target.value
+              setDRequestId(id)
+              const req = openRequests.find((r) => r.id === id)
+              if (req) {
+                setDEmployee(req.requestedBy.id)
+                const est = req.items.reduce((sum, i) => sum + (i.unitPrice || 0) * i.quantity, 0)
+                if (est > 0 && !dAmount) setDAmount(String(est))
+              }
+            }}
+            className="mb-3 w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500">
+            <option value="">بدون طلب — تسليم مباشر</option>
+            {openRequests.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.code} · {r.requestedBy.name} · {r.items.map((i) => i.productName).join('، ').slice(0, 40)}
+              </option>
+            ))}
           </select>
           <label className="mb-1 block text-sm font-medium text-slate-600">الموظف</label>
           <select value={dEmployee} onChange={(e) => setDEmployee(e.target.value)}

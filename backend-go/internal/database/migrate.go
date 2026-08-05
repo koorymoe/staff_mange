@@ -103,6 +103,35 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := grantRolePermission(db, "TECHNICIAN", "procurement_customer", "طلب منتج للزبون"); err != nil {
 		return err
 	}
+	// الطلب اليدوي: الإداري والمحاسب والليدر يكدرون يطلبون مادة بالتفصيل.
+	// (الليدرات ينمنحون بالاستعلام الي بعده لأن الليدر صفة مو دور.)
+	for _, role := range []string{"ADMIN", "OWNER", "FINANCE", "HR_COORDINATOR", "PROJECT_MANAGER"} {
+		if err := grantRolePermission(db, role, "procurement_manual", "طلب مادة يدوي (إداري/ليدر)"); err != nil {
+			return err
+		}
+	}
+	if _, err := db.Exec(`
+		INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
+		SELECT gen_random_uuid()::text, e.id, p.id
+		FROM "Employee" e CROSS JOIN "Permission" p
+		WHERE p.name = 'procurement_manual' AND e."isLeader" = true
+		  AND NOT EXISTS (
+			SELECT 1 FROM "EmployeePermission" ep
+			WHERE ep."employeeId" = e.id AND ep."permissionId" = p.id
+		  )`); err != nil {
+		return err
+	}
+	// التخريج وتعويض الدوار — للمحاسب.
+	if err := grantRolePermission(db, "FINANCE", "fund_discharge", "تخريج المواد وتعويض الدوار"); err != nil {
+		return err
+	}
+	// الاتصال بالزبون على الشكوى — مهندس الجودة والمراقب افتراضياً،
+	// والمدير يكدر ينطيها لأي موظف ثاني من شاشة الصلاحيات.
+	for _, role := range []string{"QUALITY_ENGINEER", "MONITOR"} {
+		if err := grantRolePermission(db, role, "complaint_contact", "الاتصال بالزبون ومتابعة الشكوى"); err != nil {
+			return err
+		}
+	}
 	if err := seedOwnerAccount(db, ownerUsername, ownerPassword); err != nil {
 		return err
 	}

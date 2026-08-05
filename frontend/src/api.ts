@@ -166,9 +166,11 @@ export interface RevolvingFund {
   balance: number
   isActive: boolean
   outstandingTotal: number
+  /** المبلغ الي الدوار ناطره من المحاسب: مصروف مدقّق وما انخرّج بعد */
+  awaitingDischargeTotal: number
 }
 
-export type FundTxnKind = 'DISBURSE' | 'SETTLEMENT' | 'TOPUP'
+export type FundTxnKind = 'DISBURSE' | 'SETTLEMENT' | 'TOPUP' | 'DISCHARGE'
 export type FundTxnStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
 
 export interface RevolvingFundTxn {
@@ -191,6 +193,14 @@ export interface RevolvingFundTxn {
   reviewedAt?: string | null
   reviewNote?: string | null
   createdAt: string
+  /** التخريج — الخطوة الي ترجّع المبلغ المصروف للدوار */
+  requestId?: string | null
+  dischargedAt?: string | null
+  dischargedByName?: string | null
+  dischargeAccount?: string | null
+  dischargeNote?: string | null
+  /** تسوية مدققة، بيها مصروف، وما انخرجت بعد → الدوار ناطرها */
+  awaitingDischarge: boolean
 }
 
 export interface EmployeeFundBalance {
@@ -1820,6 +1830,14 @@ export interface Complaint {
   resolvedAt: string | null
 }
 
+export type ProcurementRequestType = 'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT' | 'MANUAL_SUPPLY'
+
+export const procurementTypeLabels: Record<ProcurementRequestType, string> = {
+  PERSONAL_SUPPLY: 'احتياجات شخصية',
+  CUSTOMER_PRODUCT: 'منتج للزبون',
+  MANUAL_SUPPLY: 'طلب مادة يدوي',
+}
+
 export interface ProcurementItem {
   id: string
   requestId: string
@@ -1828,6 +1846,10 @@ export interface ProcurementItem {
   unitPrice: number | null
   totalPrice: number | null
   fulfilled: boolean
+  /** تفاصيل الطلب اليدوي */
+  model?: string | null
+  spec?: string | null
+  itemNotes?: string | null
 }
 
 export interface ProcurementRequest {
@@ -1835,9 +1857,12 @@ export interface ProcurementRequest {
   code: string
   requestedBy: { id: string; name: string; role: string }
   requestedById: string
-  booking: (Booking & { customer: Customer }) | null
+  booking: { id: string; code: string; customer: { id: string; name: string; phone: string } | null } | null
   bookingId: string | null
-  requestType: 'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'
+  requestType: ProcurementRequestType
+  typeLabel: string
+  supplierId: string | null
+  supplier: { id: string; name: string } | null
   notes: string | null
   status: 'PENDING' | 'IN_PROGRESS' | 'FULFILLED' | 'REJECTED'
   fulfilledBy: { id: string; name: string } | null
@@ -2370,7 +2395,7 @@ export const api = {
     request<RevolvingFund>(`/funds/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   topupFund: (id: string, amount: number, notes?: string) =>
     request<{ ok: boolean }>(`/funds/${id}/topup`, { method: 'POST', body: JSON.stringify({ amount, notes: notes || null }) }),
-  disburseFund: (data: { fundId: string; employeeId: string; amount: number; bookingId?: string | null; notes?: string | null }) =>
+  disburseFund: (data: { fundId: string; employeeId: string; amount: number; bookingId?: string | null; requestId?: string | null; notes?: string | null }) =>
     request<RevolvingFundTxn>('/funds/disburse', { method: 'POST', body: JSON.stringify(data) }),
   getFundBalances: () => request<EmployeeFundBalance[]>('/funds/balances'),
   getFundTransactions: (params?: { employeeId?: string; status?: string }) => {
@@ -2386,6 +2411,15 @@ export const api = {
     }),
   getMyFundBalance: () => request<EmployeeFundBalance>('/funds/my-balance'),
   getMyFundTransactions: () => request<RevolvingFundTxn[]>('/funds/my-transactions'),
+
+  /** المحاسب يأشر «تم التخريج» ويحدد الحساب — هنا يرجع المصروف للدوار */
+  dischargeSettlement: (id: string, data: { account: string; note?: string | null }) =>
+    request<RevolvingFundTxn>(`/funds/settlements/${id}/discharge`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+
+  getDischargeAccounts: () => request<string[]>('/funds/discharge-accounts'),
   submitFundSettlement: (data: { fundId: string; spentAmount: number; returnedAmount: number; receiptImage?: string | null; bookingId?: string | null; notes?: string | null }) =>
     request<RevolvingFundTxn>('/funds/settlements', { method: 'POST', body: JSON.stringify(data) }),
 
@@ -2863,11 +2897,11 @@ export const api = {
   // Procurement
   getProcurementRequests: () => request<ProcurementRequest[]>('/procurement'),
   getProcurementStats: () => request<ProcurementStats>('/procurement/stats'),
-  createProcurementRequest: (data: { requestedById: string; bookingId?: string; requestType: 'PERSONAL_SUPPLY' | 'CUSTOMER_PRODUCT'; notes?: string; items: { productName: string; quantity: number }[] }) =>
+  createProcurementRequest: (data: { requestedById: string; bookingId?: string; requestType: ProcurementRequestType; notes?: string; items: { productName: string; quantity: number; unitPrice?: number | null; model?: string | null; spec?: string | null; itemNotes?: string | null }[] }) =>
     request<ProcurementRequest>('/procurement', { method: 'POST', body: JSON.stringify(data) }),
   updateProcurementStatus: (id: string, status: string) =>
     request<ProcurementRequest>(`/procurement/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
-  fulfillProcurementRequest: (id: string, data: { fulfilledById: string; totalCost?: number; fulfillmentNotes?: string; items?: { id: string; unitPrice?: number; totalPrice?: number; fulfilled?: boolean }[] }) =>
+  fulfillProcurementRequest: (id: string, data: { fulfilledById: string; supplierId: string; totalCost?: number; fulfillmentNotes?: string; items?: { id: string; unitPrice?: number; totalPrice?: number; fulfilled?: boolean }[] }) =>
     request<ProcurementRequest>(`/procurement/${id}/fulfill`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — ليدر فقط

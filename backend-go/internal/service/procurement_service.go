@@ -36,6 +36,8 @@ func permissionForRequestType(requestType string) (string, error) {
 		return "procurement_personal", nil
 	case model.RequestTypeCustomerProduct:
 		return "procurement_customer", nil
+	case model.RequestTypeManualSupply:
+		return "procurement_manual", nil
 	default:
 		return "", errors.New("نوع الطلب غير معروف")
 	}
@@ -73,6 +75,11 @@ func (s *ProcurementService) UpdateStatus(id string, req model.UpdateProcurement
 	return s.repo.UpdateStatus(id, req.Status)
 }
 
+// Fulfill أبو الكميات يجهّز الطلب. المورد إلزامي: بدونه ما نعرف من وين
+// انجابت المادة، والسعر يبقى بلا سند نحاسب عليه.
 func (s *ProcurementService) Fulfill(id string, req model.FulfillProcurementRequestRequest) (*model.ProcurementRequest, error) {
+	if req.SupplierID == nil || *req.SupplierID == "" {
+		return nil, errors.New("لازم تحدد المورد الي انجابت منه المادة")
+	}
 	return s.repo.Fulfill(id, req)
 }

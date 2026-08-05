@@ -154,6 +154,32 @@ func (h *RevolvingFundHandler) ReviewSettlement(w http.ResponseWriter, r *http.R
 	WriteJSON(w, http.StatusOK, t)
 }
 
+// PUT /api/funds/settlements/{id}/discharge — المحاسب يأشر «تم التخريج»
+// ويحدد على أي حساب انخرجت المادة. هنا بس يرجع المبلغ المصروف للدوار.
+func (h *RevolvingFundHandler) Discharge(w http.ResponseWriter, r *http.Request) {
+	var req model.DischargeRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	t, err := h.repo.Discharge(r.PathValue("id"), req.Account, req.Note, actor(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, t)
+}
+
+// GET /api/funds/discharge-accounts — الحسابات المستخدمة سابقاً (قائمة منسدلة)
+func (h *RevolvingFundHandler) DischargeAccounts(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.DischargeAccounts()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحسابات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 // GpsInstallCostHandler حساب تكاليف الشد — ضمن خانة الحسابات.
 type GpsInstallCostHandler struct {
 	repo *repository.GpsInstallCostRepository

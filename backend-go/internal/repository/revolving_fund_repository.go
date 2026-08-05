@@ -35,6 +35,11 @@ func (r *RevolvingFundRepository) ListFunds() ([]model.RevolvingFund, error) {
 			), 0)
 			FROM "RevolvingFundTxn" d
 			WHERE d."fundId" = $1 AND d.kind = 'DISBURSE'`, funds[i].ID)
+		// الي الدوار ناطره من المحاسب: مصروف مدقّق وما انخرّج بعد
+		_ = r.db.Get(&funds[i].AwaitingDischargeTotal, `
+			SELECT COALESCE(SUM("spentAmount"), 0) FROM "RevolvingFundTxn"
+			WHERE "fundId" = $1 AND kind = 'SETTLEMENT' AND status = 'APPROVED'
+			  AND "spentAmount" > 0 AND "dischargedAt" IS NULL`, funds[i].ID)
 	}
 	return funds, nil
 }
@@ -54,16 +59,21 @@ func (r *RevolvingFundRepository) UpdateFund(id string, req model.UpsertFundRequ
 	return &f, nil
 }
 
-const fundTxnSelect = `SELECT t.*, f.name AS "fundName", e.name AS "employeeName", rv.name AS "reviewedByName"
+const fundTxnSelect = `SELECT t.*, f.name AS "fundName", e.name AS "employeeName",
+		rv.name AS "reviewedByName", dc.name AS "dischargedByName"
 	FROM "RevolvingFundTxn" t
 	JOIN "RevolvingFund" f ON f.id = t."fundId"
 	LEFT JOIN "Employee" e ON e.id = t."employeeId"
-	LEFT JOIN "Employee" rv ON rv.id = t."reviewedById"`
+	LEFT JOIN "Employee" rv ON rv.id = t."reviewedById"
+	LEFT JOIN "Employee" dc ON dc.id = t."dischargedById"`
 
 func decorateTxns(rows []model.RevolvingFundTxn) []model.RevolvingFundTxn {
 	for i := range rows {
 		rows[i].KindLabel = model.FundTxnKindLabels[rows[i].Kind]
 		rows[i].StatusLabel = model.FundTxnStatusLabels[rows[i].Status]
+		rows[i].AwaitingDischarge = rows[i].Kind == model.FundTxnSettlement &&
+			rows[i].Status == model.FundTxnApproved &&
+			rows[i].SpentAmount > 0 && rows[i].DischargedAt == nil
 	}
 	return rows
 }
@@ -93,9 +103,9 @@ func (r *RevolvingFundRepository) Disburse(req model.DisburseRequest, byID *stri
 	var t model.RevolvingFundTxn
 	if err := tx.Get(&t, `
 		INSERT INTO "RevolvingFundTxn"
-			(id, "fundId", "employeeId", kind, amount, "bookingId", notes, status, "createdById")
-		VALUES (gen_random_uuid()::text, $1, $2, 'DISBURSE', $3, $4, NULLIF($5,''), 'APPROVED', $6)
-		RETURNING *`, req.FundID, req.EmployeeID, req.Amount, req.BookingID, deref(req.Notes), byID); err != nil {
+			(id, "fundId", "employeeId", kind, amount, "bookingId", "requestId", notes, status, "createdById")
+		VALUES (gen_random_uuid()::text, $1, $2, 'DISBURSE', $3, $4, $5, NULLIF($6,''), 'APPROVED', $7)
+		RETURNING *`, req.FundID, req.EmployeeID, req.Amount, req.BookingID, req.RequestID, deref(req.Notes), byID); err != nil {
 		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
@@ -203,6 +213,68 @@ func (r *RevolvingFundRepository) ReviewSettlement(id string, req model.ReviewSe
 	t.KindLabel = model.FundTxnKindLabels[t.Kind]
 	t.StatusLabel = model.FundTxnStatusLabels[t.Status]
 	return &t, nil
+}
+
+// Discharge المحاسب يأشر إن المادة انخرجت على النظام المحاسبي ويحدد على
+// أي حساب انحسبت — وهنا بس يرجع المبلغ المصروف للدوار.
+//
+// المبلغ الي يرجع هو "spentAmount" وحده، مو كل السلفة: المرتجع رجع من
+// قبل وقت الموافقة على التسوية. يعني موظف أخذ 50 وصرف 20 ورجّع 30 —
+// رجعت الـ30 بالتدقيق، والـ20 ترجع هنا. وموظف أخذ 100 وصرفهن كلهن —
+// ما يرجع ولا دينار قبل التخريج، وبالتخريج ترجع الـ100 كاملة.
+//
+// شرط "dischargedAt" IS NULL بالتحديث نفسه يمنع تخريج نفس التسوية
+// مرتين — وإلا انضاف المبلغ للدوار مرتين من ضغطتين متزامنتين.
+func (r *RevolvingFundRepository) Discharge(id, account string, note *string, byID *string) (*model.RevolvingFundTxn, error) {
+	if account == "" {
+		return nil, fmt.Errorf("لازم تحدد على أي حساب انخرجت المادة")
+	}
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var t model.RevolvingFundTxn
+	if err := tx.Get(&t, `
+		UPDATE "RevolvingFundTxn"
+		SET "dischargedAt" = now(), "dischargedById" = $2,
+			"dischargeAccount" = $3, "dischargeNote" = NULLIF($4,'')
+		WHERE id = $1 AND kind = 'SETTLEMENT' AND status = 'APPROVED'
+		  AND "spentAmount" > 0 AND "dischargedAt" IS NULL
+		RETURNING *`, id, byID, account, deref(note)); err != nil {
+		return nil, fmt.Errorf("التسوية مو جاهزة للتخريج — لازم تكون مدققة، بيها مبلغ مصروف، وما انخرجت من قبل")
+	}
+
+	if _, err := tx.Exec(`UPDATE "RevolvingFund" SET balance = balance + $2, "updatedAt" = now() WHERE id = $1`,
+		t.FundID, t.SpentAmount); err != nil {
+		return nil, err
+	}
+	// حركة مستقلة حتى يبين بالكشف من وين رجع المبلغ وعلى أي حساب
+	if _, err := tx.Exec(`
+		INSERT INTO "RevolvingFundTxn"
+			(id, "fundId", "employeeId", kind, amount, "dischargeAccount", notes, status, "createdById", "dischargedById", "dischargedAt")
+		VALUES (gen_random_uuid()::text, $1, $2, 'DISCHARGE', $3, $4, NULLIF($5,''), 'APPROVED', $6, $6, now())`,
+		t.FundID, t.EmployeeID, t.SpentAmount, account, deref(note), byID); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	t.KindLabel = model.FundTxnKindLabels[t.Kind]
+	t.StatusLabel = model.FundTxnStatusLabels[t.Status]
+	return &t, nil
+}
+
+// DischargeAccounts الحسابات الي انستخدمت من قبل — تنعرض كقائمة منسدلة
+// بجنب خانة الكتابة الحرة، حتى ما يكتب المحاسب نفس الحساب بصيغتين.
+func (r *RevolvingFundRepository) DischargeAccounts() ([]string, error) {
+	rows := []string{}
+	err := r.db.Select(&rows, `
+		SELECT DISTINCT "dischargeAccount" FROM "RevolvingFundTxn"
+		WHERE "dischargeAccount" IS NOT NULL AND "dischargeAccount" <> ''
+		ORDER BY 1`)
+	return rows, err
 }
 
 // EmployeeOutstanding شكد بيد هذا الموظف وما انتسوّى.
