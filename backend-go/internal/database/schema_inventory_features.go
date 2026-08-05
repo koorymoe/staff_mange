@@ -949,6 +949,32 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 			`,
 		},
 		{
+			// حساب كلفة التنفيذ صار صلاحية بدل ما يكون مفتوح لكل موظف.
+			//
+			// كان بند بالقائمة الرئيسية بلا أي قيد — يعني المصمم والمبيعات
+			// وأي أحد يشوف محرك التسعير. صار صلاحية تنعطى وتنسحب بالإرادة.
+			//
+			// ننطيها بالبداية للي يستخدمها فعلاً اليوم (مدير النظام والمالك
+			// والمحاسب والليدرات) حتى ما ينقطع شغل أحد فجأة، والباقي ينسحب.
+			Version: "0189_execution_cost_permission",
+			SQL: `
+				INSERT INTO "Permission" (id, name, label) VALUES
+					(gen_random_uuid()::text, 'execution_cost', 'حساب كلفة التنفيذ')
+				ON CONFLICT (name) DO NOTHING;
+
+				INSERT INTO "EmployeePermission" (id, "employeeId", "permissionId")
+				SELECT gen_random_uuid()::text, e.id, p.id
+				FROM "Employee" e
+				CROSS JOIN "Permission" p
+				WHERE p.name = 'execution_cost'
+				  AND (e.role IN ('ADMIN', 'OWNER', 'FINANCE') OR e."isLeader" = true)
+				  AND NOT EXISTS (
+					SELECT 1 FROM "EmployeePermission" ep
+					WHERE ep."employeeId" = e.id AND ep."permissionId" = p.id
+				  );
+			`,
+		},
+		{
 			// قيمة مبالغ الدوار (تعديل الرصيد والتغذية) تنفصل عن شغل الدوار
 			// اليومي: صلاحية revolving_fund تخلي المحاسب يصرف ويدقّق، بس
 			// ما تخليه يغيّر رأس المال نفسه. تغيير الرصيد لمدير النظام

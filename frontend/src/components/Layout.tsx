@@ -36,10 +36,11 @@ const I = ({ d }: { d: string }) => (
 const navItems: NavItem[] = [
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
   { to: '/attendance', label: 'الحضور', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
-  // حساب تكلفة التنصيب للتنفيذ — فقرة رئيسية تحت الرئيسية مباشرة،
-  // بكل الحسابات وكل الأدوار بلا استثناء (وموجودة كمان ضمن وحدة الحسابات).
+  // حساب تكلفة التنصيب للتنفيذ — بصلاحية execution_cost، مو مفتوح
+  // للكل. كان بلا أي قيد فالمصمم والمبيعات يشوفون محرك التسعير.
   {
     to: '/leader-invoices/new?mode=estimate', label: 'حساب تكلفة التنصيب للتنفيذ',
+    permission: 'execution_cost',
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h3M13 10h3M8 14h3M13 14h3M8 18h8"/></svg>,
   },
   // الإجازات: مع نظام الحضور — أي موظف يقدّم طلبه من هنا، والمخوّل يشوف صندوق الموافقات
@@ -139,9 +140,11 @@ const navItems: NavItem[] = [
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
-      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></> },
+      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></>, permission: 'execution_cost' },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, anyPermission: ['finance', 'leader_basket'] },
+          // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
+          // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'] },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
           { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN'], permission: 'expenses' },
         ],
@@ -174,8 +177,8 @@ const navItems: NavItem[] = [
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN'] },
       { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
       { to: '/work-reports', label: 'تقارير العمل', icon: <></>, roles: ['TECHNICIAN'] },
-      { to: '/leader-invoices', label: 'فواتير الليدر', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
-      { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
+      { to: '/leader-invoices', label: 'فواتيري', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
+      { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true, permission: 'execution_cost' },
       // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
       { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
     ],
@@ -308,9 +311,11 @@ const navItems: NavItem[] = [
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
-      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></> },
+      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></>, permission: 'execution_cost' },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, anyPermission: ['finance', 'leader_basket'] },
+          // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
+          // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'] },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
       { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN'], permission: 'expenses' },
     ],

@@ -27,7 +27,13 @@ func NewLeaderInvoiceHandler(
 
 // GET /api/leader-invoices?employeeId=
 func (h *LeaderInvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
+	// الليدر يشوف فواتيره هو بس. قبل هيچي كان employeeId ينجي من
+	// الرابط — يعني أي ليدر يشيله ويشوف فواتير كل الليدرات، أو
+	// يحطّ رقم زميله ويشوف مالته.
 	employeeID := r.URL.Query().Get("employeeId")
+	if !canReviewInvoices(r) {
+		employeeID = middleware.EmployeeIDFromContext(r)
+	}
 	invoices, err := h.service.List(employeeID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب فواتير الليدر")
@@ -43,7 +49,23 @@ func (h *LeaderInvoiceHandler) Get(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
+	// نفس القاعدة: الليدر ما يفتح فاتورة غيره حتى لو عنده رقمها
+	if !canReviewInvoices(r) && inv.EmployeeID != middleware.EmployeeIDFromContext(r) {
+		WriteError(w, http.StatusForbidden, "هذي مو فاتورتك")
+		return
+	}
 	WriteJSON(w, http.StatusOK, inv)
+}
+
+// canReviewInvoices منو يشوف فواتير كل الليدرات: المحاسب والمراقب
+// ومدير النظام والمالك. الليدر نفسه يشوف مالته بس، وباقي الموظفين
+// (مصمم، مبيعات...) ما إلهم شغل بهذي الشاشة أصلاً.
+func canReviewInvoices(r *http.Request) bool {
+	switch middleware.RoleFromContext(r) {
+	case "ADMIN", "OWNER", "FINANCE", "MONITOR":
+		return true
+	}
+	return false
 }
 
 // POST /api/leader-invoices
