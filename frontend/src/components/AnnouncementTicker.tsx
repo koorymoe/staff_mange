@@ -4,36 +4,46 @@ import { api, type Announcement } from '../api'
 /**
  * شريط الإعلانات المتحرك.
  *
- * يظهر لكل موظف أول ما يفتح النظام، ويعيد نفسه باستمرار. الموظف
- * يقدر يخفيه — بس الإخفاء ينخزن بـsessionStorage مو localStorage،
- * يعني يرجع يظهرله بعد تسجيل خروج ودخول، مثل ما انطلب بالضبط.
+ * يظهر لكل موظف طول ما اكو إعلان فعّال، وما يتوقف أبداً إلا لما
+ * المدير يوقفه من «لوحة الإعلانات».
+ *
+ * ⚠️ ماكو زر إخفاء للموظف — وهذا مقصود. قبل كان اكو زر ✕ يخزّن
+ * الإخفاء بـsessionStorage، وsessionStorage ما ينمسح بتحديث الصفحة
+ * (ينمسح بس لما ينسد التبويب). يعني الموظف يضغط ✕ مرة وحدة، وبعدها
+ * يحدّث الصفحة ألف مرة وما يطلعله ولا إعلان — وهو يحسب النظام خربان.
+ * والمطلوب أصلاً إن الإعلان ما يوقف إلا بيد المدير.
  */
 
-const DISMISS_KEY = 'announcements-dismissed'
+// مفتاح الإخفاء القديم — ننظّفه حتى الي ضغط ✕ سابقاً ترجعله الإعلانات
+const LEGACY_DISMISS_KEY = 'announcements-dismissed'
 
 export default function AnnouncementTicker() {
   const [items, setItems] = useState<Announcement[]>([])
-  const [hidden, setHidden] = useState(() => sessionStorage.getItem(DISMISS_KEY) === '1')
 
   // نعيد الجلب كل دقيقة: بدونها الإعلان الجديد ما يوصل إلا للي يفتح
   // النظام بعده — والموظفين الي شغّالين أصلاً يضلون ما يشوفونه.
   useEffect(() => {
-    if (hidden) return
+    sessionStorage.removeItem(LEGACY_DISMISS_KEY)
     let alive = true
     const fetch = () => {
       api.getAnnouncements()
-        .then((rows) => { if (alive) setItems(rows) })
+        .then((rows) => { if (alive) setItems(rows ?? []) })
         .catch(() => { if (alive) setItems([]) })
     }
     fetch()
     const timer = setInterval(fetch, 60_000)
     return () => { alive = false; clearInterval(timer) }
-  }, [hidden])
+  }, [])
 
-  if (hidden || items.length === 0) return null
+  if (items.length === 0) return null
 
-  // نكرر النص مرتين حتى الحركة تبقى متصلة بلا فراغ بالنص
+  // كل إعلان بند مستقل مفصول بنجمة — تكدر تضيف أكثر من موضوع
+  // وكلهم يمرّون بالشريط واحد ورا الثاني.
   const line = items.map((a) => a.body).join('   ★   ')
+
+  // المدة تتناسب مع الطول: النص الطويل ما يمر بنفس سرعة القصير
+  // وإلا ما ينقرأ.
+  const durationSec = Math.max(20, Math.round(line.length / 4))
 
   return (
     <div
@@ -42,29 +52,28 @@ export default function AnnouncementTicker() {
       style={{ background: 'linear-gradient(90deg, #1a3a5c, #2c5aad)' }}
     >
       <span className="shrink-0 rounded-full bg-amber-400 px-3 py-0.5 text-xs font-bold text-amber-950">
-        📢 إعلان
+        📢 إعلان{items.length > 1 ? ` (${items.length})` : ''}
       </span>
 
       <div className="relative flex-1 overflow-hidden">
-        <div className="ticker-track whitespace-nowrap text-sm font-medium text-white">
+        {/* نسختين من النص حتى الدوران يبقى متصل بلا فراغ بالنص */}
+        <div
+          className="ticker-track whitespace-nowrap text-sm font-medium text-white"
+          style={{ animationDuration: `${durationSec}s` }}
+        >
           <span className="px-8">{line}</span>
           <span className="px-8">{line}</span>
         </div>
       </div>
 
-      <button
-        onClick={() => { sessionStorage.setItem(DISMISS_KEY, '1'); setHidden(true) }}
-        title="يخفيه لحد ما تسجل خروج وترجع تدخل"
-        className="shrink-0 rounded-lg px-2 py-0.5 text-xs text-blue-200 hover:bg-white/10 hover:text-white"
-      >
-        ✕
-      </button>
-
       <style>{`
         .ticker-track {
           display: inline-flex;
-          animation: amani-ticker 30s linear infinite;
+          animation-name: amani-ticker;
+          animation-timing-function: linear;
+          animation-iteration-count: infinite;
         }
+        /* يوقف بمرور الماوس — حتى يكدر يقرا إعلان طويل */
         .ticker-track:hover { animation-play-state: paused; }
         @keyframes amani-ticker {
           from { transform: translateX(-50%); }

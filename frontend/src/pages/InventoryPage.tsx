@@ -170,6 +170,11 @@ export default function InventoryPage() {
   )
 
   // لكل موظف: عدته، شنو ناقص من القياسية، وشنو زايد عليها.
+  //
+  // ⚠️ الي عنده عدة هم الي يشتغلون بيدينهم بالميدان: الفني والليدر.
+  // نفس شرط السيرفر (toolKitEligibleSQL) بالضبط. بدونه الشاشة تعرض
+  // «ناقص 37» للمحاسب وموظف المبيعات وإداري الكوادر — ناس ما عندهم
+  // عدة أصلاً ولا يتحاسبون عليها، فالتقرير كله يصير ضوضاء.
   const kitSummaries = useMemo(() => {
     const byEmployee = new Map<string, PersonalTool[]>()
     for (const t of personalTools) {
@@ -178,6 +183,7 @@ export default function InventoryPage() {
       else byEmployee.set(t.employeeId, [t])
     }
     return employees
+      .filter((emp) => emp.role === 'TECHNICIAN' || emp.isLeader)
       .map((emp) => {
         const tools = byEmployee.get(emp.id) || []
         const owned = new Set(tools.map((t) => t.name.trim()))
