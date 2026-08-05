@@ -453,20 +453,58 @@ func (r *InventoryRepository) GetToolRequest(id string) (*model.ToolRequest, err
 
 // ApproveToolRequest يوافق على الطلب، ولو الأداة انشترت (مو متوفرة بالمخزن)
 // يخزن سعرها ومعرّف طلب المشتريات المتولّد حتى تنربط السلسلة كاملة.
-func (r *InventoryRepository) ApproveToolRequest(id, approvedByID string, purchasePrice *float64, procurementRequestID *string) (*model.ToolRequest, error) {
+// ApproveToolRequest يوافق على الطلب *وينقّص الكمية من مخزن إداري الكميات*.
+//
+// deductStock=true لما الأداة موجودة بالمخزن فعلاً (يعني انعطت من
+// الرف). لما تكون مو موجودة وينشترى إلها، ماكو شي ينتنقص.
+//
+// قبل هيچي الموافقة كانت تقلب الحالة بس والكمية ما تتحرك أبداً — يعني
+// إداري الكميات يشوف رقم ما يمثّل شي، وينطي أدوات وهو يحسب إنها لسّه
+// عنده. الخصم داخل نفس المعاملة، وشرط availableQuantity > 0 داخل
+// التحديث نفسه حتى ما ينخصم رقمين بنفس اللحظة ويطلع بالسالب.
+func (r *InventoryRepository) ApproveToolRequest(id, approvedByID string, purchasePrice *float64, procurementRequestID *string, deductStock bool) (*model.ToolRequest, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
 	var req model.ToolRequest
-	err := r.db.Get(&req, `
+	if err := tx.Get(&req, `
 		UPDATE "ToolRequest" SET status = 'APPROVED', "approvedById" = $2, "approvedAt" = now(),
 			"purchasePrice" = COALESCE($3, "purchasePrice"),
 			"procurementRequestId" = COALESCE($4, "procurementRequestId")
-		WHERE id = $1
+		WHERE id = $1 AND status = 'PENDING'
 		RETURNING *
-	`, id, approvedByID, purchasePrice, procurementRequestID)
-	if err != nil {
+	`, id, approvedByID, purchasePrice, procurementRequestID); err != nil {
+		return nil, fmt.Errorf("الطلب مو معلّق — يمكن انبتّ بيه من قبل")
+	}
+
+	if deductStock {
+		var left int
+		if err := tx.Get(&left, `
+			UPDATE "OnDemandTool"
+			SET "availableQuantity" = "availableQuantity" - 1
+			WHERE id = $1 AND "availableQuantity" > 0
+			RETURNING "availableQuantity"`, req.ToolID); err != nil {
+			return nil, fmt.Errorf("الأداة خلصت من المخزن — حدّث الكمية أو اشترِ وحدة")
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	r.hydrateRequest(&req)
 	return &req, nil
+}
+
+// ReturnToolStock يرجّع وحدة للمخزن لما الأداة تنرجع.
+func (r *InventoryRepository) ReturnToolStock(toolID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "OnDemandTool"
+		SET "availableQuantity" = LEAST("availableQuantity" + 1, "totalQuantity")
+		WHERE id = $1`, toolID)
+	return err
 }
 
 func (r *InventoryRepository) RejectToolRequest(id string) (*model.ToolRequest, error) {

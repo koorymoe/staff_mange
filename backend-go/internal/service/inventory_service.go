@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"log"
 	"strings"
 
 	"staffmange-api/internal/model"
@@ -176,7 +177,8 @@ func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRe
 		return nil, errors.New("الأداة غير موجودة")
 	}
 	if tool.AvailableQuantity > 0 {
-		return s.repo.ApproveToolRequest(id, req.ApprovedByID, nil, nil)
+		// انعطت من الرف — ننقّصها من مخزن إداري الكميات
+		return s.repo.ApproveToolRequest(id, req.ApprovedByID, nil, nil, true)
 	}
 
 	if req.PurchasePrice == nil || *req.PurchasePrice <= 0 {
@@ -208,15 +210,25 @@ func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRe
 	if err != nil {
 		return nil, errors.New("تعذر إنشاء طلب المشتريات للمحاسب")
 	}
-	return s.repo.ApproveToolRequest(id, req.ApprovedByID, &price, &pr.ID)
+	// انشترت خصيصاً — ما كانت بالمخزن أصلاً فماكو شي ينتنقص
+	return s.repo.ApproveToolRequest(id, req.ApprovedByID, &price, &pr.ID, false)
 }
 
 func (s *InventoryService) RejectToolRequest(id string) (*model.ToolRequest, error) {
 	return s.repo.RejectToolRequest(id)
 }
 
+// ReturnToolRequest الأداة رجعت لإداري الكميات — ترجع للمخزن بعد.
 func (s *InventoryService) ReturnToolRequest(id string) (*model.ToolRequest, error) {
-	return s.repo.ReturnToolRequest(id)
+	out, err := s.repo.ReturnToolRequest(id)
+	if err != nil {
+		return nil, err
+	}
+	// الإرجاع صار فعلاً؛ فشل تحديث الرقم ما يلغيه — بس ينسجل
+	if err := s.repo.ReturnToolStock(out.ToolID); err != nil {
+		log.Printf("إرجاع أداة %s: تعذر تحديث كمية المخزن: %v", out.ToolID, err)
+	}
+	return out, nil
 }
 
 // ── Personal Tool Template (العدة القياسية) ─────────────────────────────────

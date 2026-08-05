@@ -581,7 +581,7 @@ export default function InventoryPage() {
                         </div>
                         <div className="mt-3 text-sm text-slate-600">
                           عدته: <span className="font-bold text-brand-700">{k.tools.length}</span> أداة
-                          {k.extra.length > 0 && <span className="text-slate-400"> · زايدة {k.extra.length}</span>}
+                          {k.extra.length > 0 && <span className="text-slate-400"> · خاصة {k.extra.length}</span>}
                         </div>
                         {k.missing.length > 0 && (
                           <div className="mt-2 text-xs text-red-600">
@@ -616,13 +616,70 @@ export default function InventoryPage() {
                     </div>
 
                     {k.missing.length > 0 ? (
-                      <div className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4">
-                        <div className="font-bold text-red-700">⚠️ ناقص {k.missing.length} أداة من العدة القياسية</div>
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {k.missing.map((m) => (
-                            <span key={m} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-red-700">{m}</span>
-                          ))}
+                      <div className="mb-5 overflow-hidden rounded-xl border border-red-200 bg-white">
+                        {/* تقرير النواقص: مو كومة أسماء حمر — أرقام محسوبة
+                            وجدول يقول لإداري الكميات شنو يكدر ينطي الحين
+                            وشنو لازم يشتريه. */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-red-100 bg-red-50 px-4 py-3">
+                          <div className="font-bold text-red-700">⚠️ تقرير نواقص العدة القياسية</div>
+                          <div className="flex flex-wrap gap-2 text-xs font-bold">
+                            <span className="rounded-full bg-white px-3 py-1 text-slate-600">
+                              العدة القياسية: {templateNames.size}
+                            </span>
+                            <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-700">
+                              موجود عنده: {templateNames.size - k.missing.length}
+                            </span>
+                            <span className="rounded-full bg-red-100 px-3 py-1 text-red-700">
+                              ناقص: {k.missing.length}
+                            </span>
+                            <span className="rounded-full bg-brand-50 px-3 py-1 text-brand-700">
+                              الاكتمال: {Math.round(((templateNames.size - k.missing.length) / Math.max(1, templateNames.size)) * 100)}%
+                            </span>
+                          </div>
                         </div>
+
+                        {/* شريط اكتمال — يبيّن الحالة بنظرة وحدة */}
+                        <div className="h-2 w-full bg-slate-100">
+                          <div
+                            className="h-2 bg-emerald-500 transition-all"
+                            style={{ width: `${Math.round(((templateNames.size - k.missing.length) / Math.max(1, templateNames.size)) * 100)}%` }}
+                          />
+                        </div>
+
+                        <table className="min-w-full divide-y divide-slate-100 text-right text-sm">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="px-4 py-2 font-semibold text-slate-600">الأداة الناقصة</th>
+                              <th className="px-4 py-2 font-semibold text-slate-600">متوفرة بمخزن الكميات؟</th>
+                              <th className="px-4 py-2 font-semibold text-slate-600">الإجراء</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {k.missing.map((m) => {
+                              const inStock = onDemandTools.find((t) => t.name.trim() === m)
+                              const qty = inStock?.availableQuantity ?? 0
+                              return (
+                                <tr key={m}>
+                                  <td className="px-4 py-2 font-medium text-slate-700">{m}</td>
+                                  <td className="px-4 py-2">
+                                    {qty > 0 ? (
+                                      <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                                        ✔ موجودة — {qty} بالمخزن
+                                      </span>
+                                    ) : (
+                                      <span className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700">
+                                        ✘ خالصة من المخزن
+                                      </span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-2 text-xs text-slate-500">
+                                    {qty > 0 ? 'ينطيها إداري الكميات من الرف' : 'لازم تنشترى'}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
                       </div>
                     ) : (
                       <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">
@@ -649,7 +706,7 @@ export default function InventoryPage() {
                                 {templateNames.has(t.name.trim()) ? (
                                   <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">قياسية</span>
                                 ) : (
-                                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">زايدة</span>
+                                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">أداة خاصة</span>
                                 )}
                               </td>
                               <td className="px-4 py-3 font-mono text-sm text-slate-500">{t.barcode}</td>
