@@ -1937,8 +1937,16 @@ export interface ServiceStudy {
 
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
-  changePassword: (currentPassword: string, newPassword: string) =>
-    request<void>('/auth/change-password', { method: 'PUT', body: JSON.stringify({ currentPassword, newPassword }) }),
+  // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
+  // السيرفر يرجّع توكن جديد ولازم نخزنه فوراً، وإلا كل طلب بعدها يطلع
+  // 401 والمستخدم يشوف الشاشة واقفة كأن التغيير ما خلص.
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const res = await request<{ token: string }>('/auth/change-password', {
+      method: 'PUT',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    if (res?.token) localStorage.setItem('authToken', res.token)
+  },
   createAttendanceIconRequest: (requestedIcon: string) =>
     request<AttendanceIconRequest>('/attendance-icon-requests', { method: 'POST', body: JSON.stringify({ requestedIcon }) }),
   getPendingAttendanceIconRequests: () => request<AttendanceIconRequest[]>('/attendance-icon-requests'),

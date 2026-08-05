@@ -77,9 +77,11 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	employeeID := middleware.EmployeeIDFromContext(r)
-	if err := h.auth.ChangePassword(employeeID, req.CurrentPassword, req.NewPassword); err != nil {
+	token, err := h.auth.ChangePassword(employeeID, req.CurrentPassword, req.NewPassword)
+	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	w.WriteHeader(http.StatusNoContent)
+	// الواجهة لازم تخزن التوكن الجديد — القديم انبطل بنفس اللحظة
+	WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 }

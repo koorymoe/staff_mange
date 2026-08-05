@@ -8,7 +8,7 @@ const ICON_CHOICES = ['😀', '😎', '🦁', '🐺', '🦅', '🐉', '⚡', '�
 export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   const { employee } = useSession()
   const navigate = useNavigate()
-  const [tab, setTab] = useState<'password' | 'volume' | 'icon' | 'approvals'>('password')
+  const [tab, setTab] = useState<'password' | 'volume' | 'icon' | 'approvals'>('volume')
 
   // تغيير كلمة المرور
   const [currentPassword, setCurrentPassword] = useState('')
@@ -79,7 +79,9 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
   }
 
   const tabs: { key: typeof tab; label: string }[] = [
-    { key: 'password', label: 'كلمة المرور' },
+    // تغيير كلمة المرور لمدير النظام والمالك بس — كلمات سر الموظفين
+    // تنتحدد من «إدارة الموظفين»، حتى تبقى معروفة عند الإدارة.
+    ...(isAdmin ? [{ key: 'password' as const, label: 'كلمة المرور' }] : []),
     { key: 'volume', label: 'الصوت' },
     { key: 'icon', label: 'رمز الحضور' },
     ...(isAdmin ? [{ key: 'approvals' as const, label: `طلبات الرمز${pendingRequests.length ? ` (${pendingRequests.length})` : ''}` }] : []),
@@ -106,7 +108,7 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="max-h-96 overflow-y-auto p-4">
-          {tab === 'password' && (
+          {tab === 'password' && isAdmin && (
             <form onSubmit={handleChangePassword} className="flex flex-col gap-3">
               <input
                 type="password" required placeholder="كلمة المرور الحالية"
@@ -114,10 +116,11 @@ export default function SettingsPanel({ onClose }: { onClose: () => void }) {
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
               />
               <input
-                type="password" required placeholder="كلمة المرور الجديدة" minLength={6}
+                type="password" required placeholder="كلمة المرور الجديدة" minLength={4}
                 value={newPassword} onChange={(e) => setNewPassword(e.target.value)}
                 className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
               />
+              <p className="text-xs text-slate-400">٤ محارف على الأقل — أرقام أو حروف، براحتك.</p>
               {pwMsg && <p className={`text-xs ${pwMsg.ok ? 'text-emerald-600' : 'text-red-600'}`}>{pwMsg.text}</p>}
               <button type="submit" disabled={pwSaving} className="rounded-lg bg-brand-500 py-2 text-sm font-bold text-white hover:bg-brand-600 disabled:opacity-50">
                 {pwSaving ? 'جاري الحفظ...' : 'تغيير كلمة المرور'}

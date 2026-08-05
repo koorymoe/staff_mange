@@ -3,7 +3,6 @@ package service
 import (
 	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -123,30 +122,36 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Em
 
 // ChangePassword يغيّر كلمة مرور موظف بنفسه — يتحقق من كلمة المرور الحالية
 // قبل ما يخليه يحدد وحدة جديدة.
-func (s *AuthService) ChangePassword(employeeID, currentPassword, newPassword string) error {
+//
+// يرجّع توكن جديد: إبطال الجلسات يقتل توكن الموظف الحالي هو بعد، فبدون
+// توكن بديل يبقى بالشاشة وكل طلب بعدها يطلع 401 — يعني «التغيير يضل
+// معلّق» بنظر المستخدم. الجديد يخلي جهازه شغّال، وباقي الأجهزة تنطرد
+// وهذا كل المطلوب أمنياً.
+func (s *AuthService) ChangePassword(employeeID, currentPassword, newPassword string) (string, error) {
 	if err := ValidatePasswordStrength(newPassword); err != nil {
-		return err
+		return "", err
 	}
 	employee, err := s.employees.FindByID(employeeID)
 	if err != nil || employee == nil || employee.Password == nil {
-		return errors.New("تعذر التحقق من الموظف")
+		return "", errors.New("تعذر التحقق من الموظف")
 	}
 	if bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(currentPassword)) != nil {
-		return errors.New("كلمة المرور الحالية غير صحيحة")
+		return "", errors.New("كلمة المرور الحالية غير صحيحة")
 	}
 	hashed, err := HashPassword(newPassword)
 	if err != nil {
-		return err
+		return "", err
 	}
 	if err := s.employees.SetPassword(employeeID, hashed); err != nil {
-		return err
+		return "", err
 	}
 	// تغيير كلمة السر يبطل كل الجلسات القديمة فوراً — بدونها التوكن
 	// المسروق يضل شغّال لين ينتهي (12 ساعة) حتى بعد ما الموظف غيّر سره.
 	if s.lockout != nil {
 		_ = s.lockout.InvalidateSessions(employeeID)
 	}
-	return nil
+	// التوكن الجديد ينصدر بعد الإبطال حتى يعدّي فحص SessionValid
+	return s.GenerateToken(employee)
 }
 
 func (s *AuthService) Me(employeeID string) (*model.Employee, error) {
@@ -195,32 +200,19 @@ func (s *AuthService) ParseToken(tokenString string) (*Claims, error) {
 	return claims, nil
 }
 
-// ValidatePasswordStrength الحد الأدنى لقوة كلمة المرور.
+// PasswordMinLength الحد الأدنى لطول كلمة المرور.
+const PasswordMinLength = 4
+
+// ValidatePasswordStrength الحد الأدنى لكلمة المرور: 4 محارف وبس.
 //
-// 6 أحرف بلا أي شرط جان ضعيف جداً: "123456" مقبولة، وتنكسر بثوانٍ لو تسرّبت
-// قاعدة البيانات. نطلب 10 أحرف على الأقل مع خليط حروف وأرقام، ونرفض
-// الكلمات الشائعة جداً.
+// كانت تطلب 10 محارف + خليط حروف وأرقام + ترفض كلمات شائعة. عملياً
+// هذا خلّى الموظفين ما يقدرون يغيّرون سرهم أصلاً — والنتيجة إن الكل
+// يبقى على كلمة السر الافتراضية، وهذا أسوأ من كلمة سر قصيرة. الحماية
+// الحقيقية جاية من تعطيل الدخول بعد 3 محاولات خاطئة ومن تحديد معدّل
+// الطلبات، مو من شروط كتابة تعجّز المستخدم.
 func ValidatePasswordStrength(pw string) error {
-	if len([]rune(pw)) < 10 {
-		return errors.New("كلمة المرور لازم تكون 10 محارف على الأقل")
-	}
-	var hasLetter, hasDigit bool
-	for _, c := range pw {
-		switch {
-		case c >= '0' && c <= '9':
-			hasDigit = true
-		case (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c > 127:
-			hasLetter = true
-		}
-	}
-	if !hasLetter || !hasDigit {
-		return errors.New("كلمة المرور لازم تحتوي حروف وأرقام سوة")
-	}
-	lower := strings.ToLower(pw)
-	for _, bad := range []string{"password", "123456789", "qwerty", "111111", "iraq", "admin"} {
-		if strings.Contains(lower, bad) {
-			return errors.New("كلمة المرور سهلة التخمين — اختر وحدة أقوى")
-		}
+	if len([]rune(pw)) < PasswordMinLength {
+		return fmt.Errorf("كلمة المرور لازم تكون %d محارف على الأقل", PasswordMinLength)
 	}
 	return nil
 }

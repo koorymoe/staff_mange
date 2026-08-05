@@ -359,7 +359,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireLoginRateLimit := middleware.RateLimit(8, time.Minute)
 	mux.Handle("POST /api/auth/login", requireLoginRateLimit(http.HandlerFunc(authHandler.Login)))
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
-	mux.Handle("PUT /api/auth/change-password", middleware.Chain(http.HandlerFunc(authHandler.ChangePassword), requireAuth))
+	// تغيير كلمة المرور لمدير النظام والمالك بس. الموظف ما يغيّر سره
+	// بنفسه — كلمات السر تنتحدد من «إدارة الموظفين» عند الأدمن، حتى
+	// تبقى معروفة عند الإدارة وما يقفل موظف حسابه على نفسه.
+	mux.Handle("PUT /api/auth/change-password", middleware.Chain(http.HandlerFunc(authHandler.ChangePassword), requireAuth,
+		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER")))
 
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
 	mux.Handle("GET /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
