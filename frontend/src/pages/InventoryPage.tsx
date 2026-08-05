@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { Fragment, useEffect, useState, useMemo } from 'react'
 import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
 import { useSession, roleLabels } from '../session'
 
@@ -32,6 +32,31 @@ const requestStatusColors: Record<ToolRequest['status'], string> = {
   APPROVED: 'bg-green-100 text-green-800',
   REJECTED: 'bg-red-100 text-red-800',
   RETURNED: 'bg-gray-100 text-gray-800',
+}
+
+// groupTools يجمع أدوات الموظف بالاسم: صف واحد لكل أداة مكتوب جنبه
+// العدد، بدل صف مستقل لكل نسخة. الباركود يبقى ظاهر بالتفاصيل لأنه
+// يميّز النسخة الواحدة وما ينفع يتجمّع.
+function groupTools(tools: PersonalTool[]) {
+  const byName = new Map<string, PersonalTool[]>()
+  for (const t of tools) {
+    const key = t.name.trim()
+    const list = byName.get(key)
+    if (list) list.push(t)
+    else byName.set(key, [t])
+  }
+  return [...byName.entries()]
+    .map(([name, units]) => {
+      const counts = new Map<string, number>()
+      for (const u of units) counts.set(u.status, (counts.get(u.status) ?? 0) + 1)
+      return {
+        name,
+        units,
+        // الأكثر عدداً أول — الحالة الغالبة تبيّن بالنظرة الأولى
+        statuses: [...counts.entries()].sort((a, b) => b[1] - a[1]),
+      }
+    })
+    .sort((a, b) => a.name.localeCompare(b.name, 'ar'))
 }
 
 export default function InventoryPage() {
@@ -77,6 +102,8 @@ export default function InventoryPage() {
     finally { setResolvingId(null) }
   }
   const [activeTab, setActiveTab] = useState<TabKey>('todaychecks')
+  // أي أداة مفتوحة تفاصيلها — المفتاح "رقم الموظف:اسم الأداة"
+  const [expandedTool, setExpandedTool] = useState<string | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -692,44 +719,80 @@ export default function InventoryPage() {
                         <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
                           <tr>
                             <th className="px-4 py-3 text-sm font-semibold">اسم الأداة</th>
+                            <th className="px-4 py-3 text-sm font-semibold">العدد</th>
                             <th className="px-4 py-3 text-sm font-semibold">النوع</th>
-                            <th className="px-4 py-3 text-sm font-semibold">الباركود</th>
                             <th className="px-4 py-3 text-sm font-semibold">الحالة</th>
-                            {canManageInventory && <th className="px-4 py-3 text-sm font-semibold">إجراءات</th>}
+                            <th className="px-4 py-3 text-sm font-semibold"></th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {k.tools.map((t) => (
-                            <tr key={t.id} className="hover:bg-slate-50">
-                              <td className="px-4 py-3 font-medium">{t.name}</td>
-                              <td className="px-4 py-3">
-                                {templateNames.has(t.name.trim()) ? (
-                                  <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">قياسية</span>
-                                ) : (
-                                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">أداة خاصة</span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3 font-mono text-sm text-slate-500">{t.barcode}</td>
-                              <td className="px-4 py-3">
-                                <span className={`rounded-full px-3 py-1 text-xs font-bold ${
-                                  personalToolStatusColors[t.status as PersonalToolStatus] || 'bg-slate-100 text-slate-600'
-                                }`}>
-                                  {personalToolStatusLabels[t.status as PersonalToolStatus] || t.status}
-                                </span>
-                              </td>
-                              {canManageInventory && (
-                                <td className="px-4 py-3">
-                                  <div className="flex flex-wrap gap-1">
-                                    <button onClick={() => openToolEdit(t)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100">✎ تعديل</button>
-                                    <button onClick={() => openToolHistory(t)} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200">🕘 السجل</button>
-                                    <button onClick={() => handleDeleteTool(t)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100">🗑</button>
-                                  </div>
-                                </td>
-                              )}
-                            </tr>
-                          ))}
+                          {groupTools(k.tools).map((g) => {
+                            const open = expandedTool === `${k.employee.id}:${g.name}`
+                            return (
+                              <Fragment key={g.name}>
+                                <tr
+                                  className="cursor-pointer hover:bg-slate-50"
+                                  onClick={() => setExpandedTool(open ? null : `${k.employee.id}:${g.name}`)}
+                                >
+                                  <td className="px-4 py-3 font-medium">{g.name}</td>
+                                  <td className="px-4 py-3">
+                                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                      g.units.length > 1 ? 'bg-brand-100 text-brand-800' : 'bg-slate-100 text-slate-600'
+                                    }`}>
+                                      × {g.units.length}
+                                    </span>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {templateNames.has(g.name) ? (
+                                      <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">قياسية</span>
+                                    ) : (
+                                      <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">أداة خاصة</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {/* حالة موحّدة لو كل النسخ نفس الحالة، وإلا تفصيل مختصر */}
+                                    <div className="flex flex-wrap gap-1">
+                                      {g.statuses.map(([st, n]) => (
+                                        <span key={st} className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                          personalToolStatusColors[st as PersonalToolStatus] || 'bg-slate-100 text-slate-600'
+                                        }`}>
+                                          {personalToolStatusLabels[st as PersonalToolStatus] || st}
+                                          {g.statuses.length > 1 && ` (${n})`}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </td>
+                                  <td className="px-4 py-3 text-xs text-slate-400">{open ? '▲ إخفاء' : '▼ تفاصيل'}</td>
+                                </tr>
+                                {/* التفاصيل: كل نسخة بباركودها — الباركود يميّز
+                                    النسخة الواحدة، فما ينفع يتجمّع بالصف */}
+                                {open && g.units.map((t) => (
+                                  <tr key={t.id} className="bg-slate-50/60 text-sm">
+                                    <td className="px-8 py-2 text-slate-400">↳</td>
+                                    <td className="px-4 py-2 font-mono text-xs text-slate-500" colSpan={2}>{t.barcode}</td>
+                                    <td className="px-4 py-2">
+                                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${
+                                        personalToolStatusColors[t.status as PersonalToolStatus] || 'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {personalToolStatusLabels[t.status as PersonalToolStatus] || t.status}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      {canManageInventory && (
+                                        <div className="flex flex-wrap gap-1">
+                                          <button onClick={() => openToolEdit(t)} className="rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100">✎ تعديل</button>
+                                          <button onClick={() => openToolHistory(t)} className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200">🕘 السجل</button>
+                                          <button onClick={() => handleDeleteTool(t)} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-bold text-red-600 hover:bg-red-100">🗑</button>
+                                        </div>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </Fragment>
+                            )
+                          })}
                           {k.tools.length === 0 && (
-                            <tr><td colSpan={canManageInventory ? 5 : 4} className="px-4 py-6 text-center text-slate-400">ما عنده أي أداة مسجلة</td></tr>
+                            <tr><td colSpan={5} className="px-4 py-6 text-center text-slate-400">ما عنده أي أداة مسجلة</td></tr>
                           )}
                         </tbody>
                       </table>
