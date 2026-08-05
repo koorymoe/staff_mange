@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type TechShowcaseItem } from '../api'
+import { api, type TechShowcaseItem, fileUrl } from '../api'
 import { useSession } from '../session'
 
 function fileToBase64(file: File): Promise<string> {
@@ -97,7 +97,7 @@ export default function TechShowcasePage() {
             {it.mediaUrls.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {it.mediaUrls.map((url, i) => (
-                  <img key={i} src={url} className="h-20 w-20 rounded-lg border object-cover" />
+                  <img key={i} src={fileUrl(url)} className="h-20 w-20 rounded-lg border object-cover" />
                 ))}
               </div>
             )}

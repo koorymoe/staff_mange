@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type Exhibition, type Employee, type EmployeeRole } from '../api'
+import { api, type Exhibition, type Employee, type EmployeeRole, fileUrl } from '../api'
 import { useSession } from '../session'
 
 function fileToBase64(file: File): Promise<string> {
@@ -209,7 +209,7 @@ export default function ExhibitionsPage() {
             {ex.businessCardPhotos.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-2">
                 {ex.businessCardPhotos.map((url, i) => (
-                  <img key={i} src={url} className="h-16 w-16 rounded-lg border object-cover" />
+                  <img key={i} src={fileUrl(url)} className="h-16 w-16 rounded-lg border object-cover" />
                 ))}
               </div>
             )}

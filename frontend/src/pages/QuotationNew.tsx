@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type Product } from '../api'
+import { api, type Product, fileUrl } from '../api'
 import { useSession } from '../session'
 import { _IMG_VSTRIP, _IMG_FBANNER } from '../printImages'
 
@@ -662,7 +662,7 @@ ${pageShell(`
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                             >
                               {p.imageBase64 ? (
-                                <img src={p.imageBase64} style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid #e0e0e0', background: '#fafafa' }} />
+                                <img src={fileUrl(p.imageBase64)} style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid #e0e0e0', background: '#fafafa' }} />
                               ) : (
                                 <div style={{ width: 40, height: 40, background: '#f0f2f8', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📦</div>
                               )}
@@ -856,7 +856,7 @@ ${pageShell(`
                     {products.map((p) => (
                       <div key={p.id} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden', textAlign: 'center' }}>
                         {p.imageBase64 ? (
-                          <img src={p.imageBase64} style={{ width: '100%', height: 90, objectFit: 'contain', background: '#fafafa' }} />
+                          <img src={fileUrl(p.imageBase64)} style={{ width: '100%', height: 90, objectFit: 'contain', background: '#fafafa' }} />
                         ) : (
                           <div style={{ width: '100%', height: '90px', background: 'linear-gradient(135deg, #e8eaf6, #f5f7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>📦</div>
                         )}

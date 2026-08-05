@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type ProjectChecklist } from '../api'
+import { api, type ProjectChecklist, fileUrl } from '../api'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -143,7 +143,7 @@ export default function ChecklistsPage() {
             {c.photoUrls.length > 0 && (
               <div className="mt-3 flex flex-wrap gap-2">
                 {c.photoUrls.map((url, i) => (
-                  <img key={i} src={url} className="h-24 w-24 rounded-lg border object-cover" />
+                  <img key={i} src={fileUrl(url)} className="h-24 w-24 rounded-lg border object-cover" />
                 ))}
               </div>
             )}

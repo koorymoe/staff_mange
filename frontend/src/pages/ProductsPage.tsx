@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { api, type Product, type ProductAvailability } from '../api'
+import { api, type Product, type ProductAvailability, fileUrl } from '../api'
 
 const PRIMARY = '#1a237e'
 const GOLD = '#c8a45a'
@@ -53,12 +53,22 @@ export default function ProductsPage() {
     }
   }
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // الصورة تنرفع للتخزين وننحفظ رابطها بس — بدل ما نحشر base64
+  // بقاعدة البيانات ونثقّل كل استعلام يجيب المنتج.
+  const [uploading, setUploading] = useState(false)
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setImageBase64(reader.result as string)
-    reader.readAsDataURL(file)
+    setUploading(true)
+    try {
+      const res = await api.uploadFile(file, 'products')
+      setImageBase64(res.url)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر رفع الصورة')
+      if (fileRef.current) fileRef.current.value = ''
+    } finally {
+      setUploading(false)
+    }
   }
 
   const handleAdd = async (e: React.FormEvent) => {
@@ -167,6 +177,7 @@ export default function ProductsPage() {
           <div>
             <label style={labelStyle}>صورة المنتج</label>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageChange} style={{ ...inputStyle, padding: '7px 12px' }} />
+            {uploading && <span style={{ fontSize: '12px', color: '#666' }}>جاري رفع الصورة...</span>}
           </div>
         </div>
 
@@ -184,13 +195,13 @@ export default function ProductsPage() {
 
         {imageBase64 && (
           <div style={{ marginTop: '12px' }}>
-            <img src={imageBase64} alt="معاينة" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: `2px solid ${GOLD}` }} />
+            <img src={fileUrl(imageBase64)} alt="معاينة" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '8px', border: `2px solid ${GOLD}` }} />
           </div>
         )}
 
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || uploading}
           style={{
             marginTop: '16px', width: '100%', background: PRIMARY, color: 'white', border: 'none',
             padding: '12px', borderRadius: '8px', cursor: submitting ? 'not-allowed' : 'pointer',
@@ -221,7 +232,7 @@ export default function ProductsPage() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
               }}>
                 {product.imageBase64 ? (
-                  <img src={product.imageBase64} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={fileUrl(product.imageBase64)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <span style={{ color: GOLD, fontSize: '40px' }}>&#128230;</span>
                 )}

@@ -8,14 +8,16 @@ import (
 
 // Config يحمل كل إعدادات التطبيق المقروءة من متغيرات البيئة (ENV)
 type Config struct {
-	Port           string
-	DatabaseURL    string
-	JWTSecret      string
-	CORSOrigins    []string
-	R2Bucket       string
-	R2AccessKey    string
-	R2SecretKey    string
-	R2Endpoint     string
+	Port        string
+	DatabaseURL string
+	JWTSecret   string
+	CORSOrigins []string
+	R2Bucket    string
+	R2AccessKey string
+	R2SecretKey string
+	R2Endpoint  string
+	// UploadsDir مجلد التخزين المحلي — يُستخدم لما إعدادات R2 ناقصة.
+	UploadsDir     string
 	GeminiAPIKey   string
 	GeminiDailyCap int
 	TutorialsDir   string
@@ -37,6 +39,7 @@ func Load() *Config {
 		R2AccessKey:    getEnv("R2_ACCESS_KEY", ""),
 		R2SecretKey:    getEnv("R2_SECRET_KEY", ""),
 		R2Endpoint:     getEnv("R2_ENDPOINT", ""),
+		UploadsDir:     getEnv("UPLOADS_DIR", "data/uploads"),
 		GeminiAPIKey:   getEnv("GEMINI_API_KEY", ""),
 		GeminiDailyCap: getEnvInt("GEMINI_DAILY_CAP", 300),
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي

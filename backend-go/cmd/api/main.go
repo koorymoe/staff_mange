@@ -14,6 +14,7 @@ import (
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
+	"staffmange-api/internal/storage"
 )
 
 func main() {
@@ -172,6 +173,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	bookingHandler := handler.NewBookingHandler(bookingService, permissionRepo)
 	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService)
 	securityHandler := handler.NewSecurityHandler(db, loginAuditRepo, lockoutRepo, startedAt)
+
+	// تخزين الملفات: R2 إذا انضبطت إعداداته، وإلا القرص المحلي. الاثنين
+	// نفس الواجهة فباقي النظام ما يعرف أيهم شغّال.
+	fileStore := buildFileStore(cfg)
+	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
+	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret))
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
@@ -358,6 +365,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// كإجراء حماية تلقائي ضدهم لما شافوا محاولات دخول متكررة سريعة.
 	requireLoginRateLimit := middleware.RateLimit(8, time.Minute)
 	mux.Handle("POST /api/auth/login", requireLoginRateLimit(http.HandlerFunc(authHandler.Login)))
+	// رفع الملفات يحتاج تسجيل دخول. العرض بعد — الملفات تحمل صور وصولات
+	// ووثائق زبائن، وما تنعرض لأي أحد يخمّن الرابط.
+	mux.Handle("POST /api/files", middleware.Chain(http.HandlerFunc(fileHandler.Upload), requireAuth))
+	mux.Handle("GET /api/files/token", middleware.Chain(http.HandlerFunc(fileHandler.Token), requireAuth))
+	// العرض ما يمر بـrequireAuth لأن <img> ما يرسل ترويسة Authorization —
+	// التحقق يصير بالوسم الموقّع بالمعالج نفسه.
+	mux.Handle("GET /api/files/", http.HandlerFunc(fileHandler.Serve))
+
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
 	// تغيير كلمة المرور لمدير النظام والمالك بس. الموظف ما يغيّر سره
 	// بنفسه — كلمات السر تنتحدد من «إدارة الموظفين» عند الأدمن، حتى
@@ -1059,4 +1074,28 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/job-duration-estimate", middleware.Chain(http.HandlerFunc(jobDurationHandler.Estimate), requireAuth))
 
 	return middleware.Chain(mux, middleware.Recovery, middleware.SecurityHeaders, middleware.Logging, middleware.Metrics, middleware.CORS(cfg.CORSOrigins), middleware.BodyLimit(middleware.MaxBodyBytes))
+}
+
+// buildFileStore يختار باكند التخزين. R2 لو إعداداته كاملة وينجح
+// إنشاؤه، وإلا القرص المحلي — النظام ما يوقف لأن التخزين البعيد
+// مو مضبوط.
+func buildFileStore(cfg *config.Config) storage.Store {
+	r2cfg := storage.R2Config{
+		Bucket:    cfg.R2Bucket,
+		AccessKey: cfg.R2AccessKey,
+		SecretKey: cfg.R2SecretKey,
+		Endpoint:  cfg.R2Endpoint,
+	}
+	if r2cfg.Configured() {
+		if s, err := storage.NewR2Store(r2cfg); err == nil {
+			return s
+		} else {
+			log.Printf("[storage] تعذر تهيئة R2 (%v) — نرجع للقرص المحلي", err)
+		}
+	}
+	s, err := storage.NewLocalStore(cfg.UploadsDir)
+	if err != nil {
+		log.Fatalf("تعذر تهيئة مجلد التخزين المحلي: %v", err)
+	}
+	return s
 }

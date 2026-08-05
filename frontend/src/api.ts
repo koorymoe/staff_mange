@@ -630,6 +630,37 @@ export function isTokenExpired(): boolean {
   return exp !== null && Date.now() >= exp
 }
 
+// وسم الملفات: ينجاب مرة وحدة ويتجدد قبل ما ينتهي. وسم <img> ما يرسل
+// ترويسة Authorization، فالرابط لازم يحمل الوسم بنفسه.
+let fileToken = ''
+let fileTokenAt = 0
+export async function ensureFileToken(): Promise<string> {
+  // نجدده كل 10 دقائق — صلاحيته 15، فما نوصل لحافة الانتهاء
+  if (fileToken && Date.now() - fileTokenAt < 10 * 60 * 1000) return fileToken
+  try {
+    const res = await request<{ token: string }>('/files/token')
+    fileToken = res.token
+    fileTokenAt = Date.now()
+  } catch {
+    // فشل جلب الوسم ما يكسر الشاشة — الصور القديمة (data:) تضل تشتغل
+  }
+  return fileToken
+}
+
+/** fileUrl يحوّل القيمة المخزّنة لرابط يعرضه المتصفح.
+ *
+ *  يتعامل مع الثلاثة: data: URL قديمة، مسار /api/files/ جديد، ورابط
+ *  خارجي كامل. الشاشات تنادي هذي بدل ما تحط القيمة مباشرة بـsrc. */
+export function fileUrl(value?: string | null): string {
+  if (!value) return ''
+  if (value.startsWith('data:') || value.startsWith('http')) return value
+  if (value.startsWith('/api/files/')) {
+    const base = API_URL.replace(/\/api$/, '')
+    return `${base}${value}${fileToken ? `?ft=${encodeURIComponent(fileToken)}` : ''}`
+  }
+  return value
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = currentToken()
   const res = await fetch(`${API_URL}${path}`, {
@@ -2401,6 +2432,24 @@ export const api = {
 
   // Products
   getProducts: () => request<Product[]>('/products'),
+  // ── الملفات المخزّنة برّا قاعدة البيانات ──
+  //
+  // الصور القديمة لسّه data: URLs والجديدة صارت /api/files/... —
+  // fileUrl() يتعامل مع الاثنين، فما نحتاج نعدّل كل شاشة.
+  getFileToken: () => request<{ token: string }>('/files/token'),
+  uploadFile: async (file: File, folder?: string) => {
+    const form = new FormData()
+    form.append('file', file)
+    const token = currentToken()
+    // ماكو Content-Type: المتصفح لازم يحطه بنفسه مع حدود multipart
+    const res = await fetch(
+      `${API_URL}/files${folder ? `?folder=${encodeURIComponent(folder)}` : ''}`,
+      { method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form },
+    )
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الملف')
+    return res.json() as Promise<{ key: string; url: string; size: number; type: string }>
+  },
+
   // المضاف من شاشة «إضافة منتج» بس — بدون كتالوج عروض الأسعار القديم
   getAddedProducts: () => request<Product[]>('/products?added=1'),
   // الحقول المحسوبة (العناوين واقتراح النظام) ما تنرسل — السيرفر يحسبها

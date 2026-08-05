@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee } from '../api'
+import { api, type RevolvingFund, type RevolvingFundTxn, type EmployeeFundBalance, type Employee, fileUrl } from '../api'
 import { useSession } from '../session'
 
 /**
@@ -314,7 +314,7 @@ export default function RevolvingFundPage() {
             {' · '}المرتجع: <span className="font-bold">{money(viewReceipt.returnedAmount)}</span>
           </p>
           {viewReceipt.receiptImage && (
-            <img src={viewReceipt.receiptImage} alt="صورة الوصل"
+            <img src={fileUrl(viewReceipt.receiptImage)} alt="صورة الوصل"
               className="mb-3 max-h-[50vh] w-full rounded-lg border border-slate-200 object-contain" />
           )}
           <textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} rows={2}

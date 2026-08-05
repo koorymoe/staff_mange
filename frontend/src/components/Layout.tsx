@@ -4,6 +4,7 @@ import PrivacyPolicyGate from './PrivacyPolicyGate'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
+import { ensureFileToken } from '../api'
 import Login from '../pages/Login'
 import TrainingPage from '../pages/TrainingPage'
 import AssistantWidget from './AssistantWidget'
@@ -395,6 +396,16 @@ export default function Layout() {
   // navigation, not data fetching; safe to keep as a synchronous effect.
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  // وسم عرض الملفات: ينجاب مرة عند الدخول ويتجدد كل 10 دقائق. بدونه
+  // الصور المخزّنة برّا القاعدة ترجع 401 لأن <img> ما يرسل ترويسة
+  // Authorization.
+  useEffect(() => {
+    if (!employee) return
+    void ensureFileToken()
+    const timer = setInterval(() => { void ensureFileToken() }, 10 * 60 * 1000)
+    return () => clearInterval(timer)
+  }, [employee])
 
   // تحديث تلقائي كل نص ساعة + معالجة رجوع الموظف للتبويب بعد غياب طويل
   useAutoRefresh(!!employee)

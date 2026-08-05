@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type ProductRequest, type ProductProcurement, type PayerKind, type RevolvingFund } from '../api'
+import { api, fileUrl, type ProductRequest, type ProductProcurement, type PayerKind, type RevolvingFund } from '../api'
 import { useSession } from '../session'
 
 const money = (n: number) => n.toLocaleString('en-IQ')
@@ -86,12 +86,17 @@ export default function ProductRequestsPage() {
     setFf({ ...emptyFulfill, fundId: funds[0]?.id ?? '' })
   }
 
-  const readReceipt = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // الوصل يروح للتخزين ونحفظ رابطه — صور الوصولات كانت أثقل شي
+  // بقاعدة البيانات لأنها تنرفع بكل عملية صرف.
+  const readReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => setFf((v) => ({ ...v, receiptImage: reader.result as string }))
-    reader.readAsDataURL(file)
+    try {
+      const res = await api.uploadFile(file, 'receipts')
+      setFf((v) => ({ ...v, receiptImage: res.url }))
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر رفع صورة الوصل')
+    }
   }
 
   const submitFulfill = async (e: React.FormEvent) => {
@@ -289,7 +294,7 @@ export default function ProductRequestsPage() {
             </div>
 
             {ff.receiptImage && (
-              <img src={ff.receiptImage} alt="الوصل" className="mt-3 h-24 w-24 rounded-lg border border-slate-200 object-cover" />
+              <img src={fileUrl(ff.receiptImage)} alt="الوصل" className="mt-3 h-24 w-24 rounded-lg border border-slate-200 object-cover" />
             )}
 
             <div className="mt-5 flex gap-2">
@@ -341,7 +346,7 @@ export default function ProductRequestsPage() {
                     </td>
                     <td className="p-2">
                       {p.receiptImage
-                        ? <a href={p.receiptImage} target="_blank" rel="noreferrer" className="text-brand-600 underline">عرض</a>
+                        ? <a href={fileUrl(p.receiptImage)} target="_blank" rel="noreferrer" className="text-brand-600 underline">عرض</a>
                         : '—'}
                     </td>
                     <td className="p-2 text-slate-400">{p.purchasedByName}</td>
