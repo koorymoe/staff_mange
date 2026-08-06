@@ -121,6 +121,19 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 		  )`); err != nil {
 		return err
 	}
+	// دور «تقني» = مسؤول وحدة التقنيين. الوحدة تنفتح له بالدور نفسه بدل
+	// ما المدير يمنحه الصلاحية بالإيد كل مرة يضيف تقني جديد.
+	//
+	// وحدة التقنيين بيها: إدارة المعارض، إضافة المنتجات، طلبات المنتجات،
+	// دراسات الخدمات، مفردات التدريب، ومعرض الأعمال.
+	for _, perm := range []struct{ name, label string }{
+		{"unit_technicians", "وحدة التقنيين (ظهور الوحدة كاملة بالقائمة)"},
+		{"content_technician", "صلاحية التقني (إدارة المحتوى التدريبي والخدمات والمواد)"},
+	} {
+		if err := grantRolePermission(db, "TECHNICAL", perm.name, perm.label); err != nil {
+			return err
+		}
+	}
 	// التخريج وتعويض الدوار — للمحاسب.
 	if err := grantRolePermission(db, "FINANCE", "fund_discharge", "تخريج المواد وتعويض الدوار"); err != nil {
 		return err

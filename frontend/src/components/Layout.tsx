@@ -96,9 +96,6 @@ const navItems: NavItem[] = [
           // خمس مستويات للوصول لشاشة وحدة. المجموعة انشالت والشاشتين
           // صعدن هنا مباشرة.
           { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
-          // صلاحية التقني (محتوى) معزولة عن باقي الصلاحيات — تطلع لأي موظف عنده
-          // هذي الصلاحية المخصصة بغض النظر عن دوره، بدل ما تكون بس تحت ADMIN.
-          { to: '/training-management', label: 'صلاحية التقني (محتوى)', icon: <></>, permission: 'content_technician' },
           { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
           // تقييم الأداء (منفصل عن الكي بي اي) — تيم ليدرات الفرق
           { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'] },
