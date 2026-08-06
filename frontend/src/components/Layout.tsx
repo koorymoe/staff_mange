@@ -92,25 +92,20 @@ const navItems: NavItem[] = [
         to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
         children: [
           { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
-          {
-            to: '/mgmt-permissions', label: 'إدارة الصلاحيات', icon: <></>,
-            children: [
-              { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
-              // صلاحية التقني (محتوى) معزولة عن باقي الصلاحيات — تطلع لأي موظف عنده
-              // هذي الصلاحية المخصصة بغض النظر عن دوره، بدل ما تكون بس تحت ADMIN.
-              { to: '/training-management', label: 'صلاحية التقني (محتوى)', icon: <></>, permission: 'content_technician' },
-            ],
-          },
-          { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'] },
+          // الصلاحيات جانت مدفونة جوّا مجموعة «إدارة الصلاحيات» — يعني
+          // خمس مستويات للوصول لشاشة وحدة. المجموعة انشالت والشاشتين
+          // صعدن هنا مباشرة.
+          { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
+          // صلاحية التقني (محتوى) معزولة عن باقي الصلاحيات — تطلع لأي موظف عنده
+          // هذي الصلاحية المخصصة بغض النظر عن دوره، بدل ما تكون بس تحت ADMIN.
+          { to: '/training-management', label: 'صلاحية التقني (محتوى)', icon: <></>, permission: 'content_technician' },
           { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
-          { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
-          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
-          { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
-          { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control' },
+          // تقييم الأداء (منفصل عن الكي بي اي) — تيم ليدرات الفرق
+          { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'] },
           // طلبات الكادر الواردة من إدارة المشاريع — إداري الكوادر يلبيها
-          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'] },
-          // تقييم الأداء (منفصل عن KPI) — إداري الكوادر يقيّم تيم ليدرات الفرق
-          { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'] },
+          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'] },
+          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
+          { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'] },
         ],
       },
       // إدارة الإحصائيات — عنصر مستقل مباشر تحت "الإدارة"، مو داخل إدارة
@@ -128,6 +123,10 @@ const navItems: NavItem[] = [
           { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
           { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_services' },
           { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
+          // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
+          // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
+          { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+          { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control' },
           // شاشة البت بطلبات حذف الحجوزات. كانت مدفونة جوّا وحدة العلاقات
           // العامة، ووحدة كاملة تنحجب عن أي واحد ما عنده صلاحية الوحدة —
           // فالمالك كان يوصله إشعار الطلب وما يلكه مكان يوافق بيه. محلها
@@ -180,21 +179,24 @@ const navItems: NavItem[] = [
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
           { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'] },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
-          { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN'], permission: 'expenses' },
         ],
       },
       {
-        to: '/mgmt-procurement', label: 'إدارة المشتريات', icon: <></>,
+        to: '/mgmt-procurement', label: 'المشتريات والمخازن', icon: <></>,
         children: [
           { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
+          // جرد الأدوات جان تحت «إدارة الموظفين» — وهو مخزن مو ملف موظف
+          { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
           { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
         ],
       },
       {
         // إدارة المركبات ما تظل معزولة بره قائمة الإدارة — صارت مجموعة فرعية هنا
-        to: '/mgmt-vehicles', label: 'إدارة المركبات', icon: <></>,
+        to: '/mgmt-vehicles', label: 'المركبات والأسطول', icon: <></>,
         children: [
           { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
+          // لوحة الأسطول جانت تحت «وحدة المشتريات والمخازن» — ما إلها علاقة
+          { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
         ],
       },
     ],
@@ -274,7 +276,7 @@ const navItems: NavItem[] = [
       // و«طلبات المنتجات» اقتراح ينتظر موافقة المدير.
       { to: '/products', label: '➕ إضافة منتج', icon: <></>, permission: 'unit_technicians' },
       { to: '/product-requests', label: 'طلبات المنتجات', icon: <></>, permission: 'unit_technicians' },
-      { to: '/service-studies', label: 'إدارة الخدمات', icon: <></>, permission: 'unit_technicians' },
+      { to: '/service-studies', label: 'دراسات الخدمات', icon: <></>, permission: 'unit_technicians' },
       { to: '/training-management', label: 'مفردات التدريب', icon: <></>, permission: 'content_technician' },
       { to: '/tech-showcase', label: 'معرض الأعمال', icon: <></>, permission: 'content_technician' },
     ],
@@ -331,7 +333,6 @@ const navItems: NavItem[] = [
       // إدارة المركبات تظهر هنا كمان (مو بس بمجموعتها) — المخازن مسؤولة عنها
       { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
       // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
-      { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
     ],
   },
   {
@@ -349,7 +350,6 @@ const navItems: NavItem[] = [
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
           { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'] },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
-      { to: '/my-expenses', label: 'المصاريف', icon: <></>, roles: ['ADMIN'], permission: 'expenses' },
     ],
   },
   {
