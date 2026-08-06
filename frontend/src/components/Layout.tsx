@@ -697,7 +697,11 @@ export default function Layout() {
   //   ٢. المجموعة الي ما بقى بيها إلا ولد واحد تنفك، والولد يطلع بمحلها.
   type PrunedItem = Omit<NavItem, 'children'> & { granted: boolean; children?: PrunedItem[] }
 
-  const prune = (items: NavItem[], unitGranted: boolean, seen: Set<string>, depth = 0): PrunedItem[] => {
+  // insideUnit: هل احنا جوّا وحدة إدارية؟ الوحدات مستثناة من قاعدة
+  // «الشاشة تظهر بأول محل بس» — لأن محتواها كله موجود أصلاً تحت
+  // «الإدارة»، فالقاعدة جانت تفرّغ الوحدات وتشيلها كاملة عن مدير
+  // النظام. الوحدة باب مستقل يلمّ شغل قسم معيّن، مو تكرار.
+  const prune = (items: NavItem[], unitGranted: boolean, seen: Set<string>, depth = 0, insideUnit = false): PrunedItem[] => {
     const out: PrunedItem[] = []
     for (const item of items) {
       if (!isVisible(item, unitGranted)) continue
@@ -708,7 +712,7 @@ export default function Layout() {
       if (item.divider) { out.push({ ...item, children: undefined, granted }); continue }
 
       if (item.children) {
-        const kids = prune(item.children, granted, seen, depth + 1)
+        const kids = prune(item.children, granted, seen, depth + 1, insideUnit || !!item.unitPermission)
         if (!kids.length) continue
         // مجموعة بولد واحد = تفرع بلا فايدة: نطلّع الولد محلها.
         // بس مو بالمستوى الأول — هناك الولد يطلع يتيم بلا عنوان يدل
@@ -732,8 +736,10 @@ export default function Layout() {
       // ‎/leader-invoices/new?mode=estimate‎ حساب استفساري ما ينحفظ، و
       // ‎/leader-invoices/new‎ فاتورة مربوطة بحجز.
       const key = item.to || ''
-      if (key && seen.has(key)) continue
-      if (key) seen.add(key)
+      if (!insideUnit) {
+        if (key && seen.has(key)) continue
+        if (key) seen.add(key)
+      }
       out.push({ ...item, children: undefined, granted })
     }
     // فاصل ما يتبعه ولا عنصر (مثلاً "── الوحدات ──" وكل الوحدات انشالت
