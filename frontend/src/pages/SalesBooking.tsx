@@ -189,15 +189,19 @@ export default function SalesBooking() {
       return
     }
 
-    const nameValidationError = validateCustomerName(name)
-    if (nameValidationError) {
-      setMessage(nameValidationError)
-      return
-    }
-    const phoneValidationError = validateCustomerPhone(phone)
-    if (phoneValidationError) {
-      setMessage(phoneValidationError)
-      return
+    // الحجز الداخلي ما بيه زبون — بياناته اسم الموظف وقسمه، وينفحصن
+    // تحت. فحص الاسم الرباعي هنا جان يوقف الحجز الداخلي بلا سبب.
+    if (bookingType !== 'INTERNAL') {
+      const nameValidationError = validateCustomerName(name)
+      if (nameValidationError) {
+        setMessage(nameValidationError)
+        return
+      }
+      const phoneValidationError = validateCustomerPhone(phone)
+      if (phoneValidationError) {
+        setMessage(phoneValidationError)
+        return
+      }
     }
 
     if (!addressDesc.trim()) {
@@ -217,9 +221,19 @@ export default function SalesBooking() {
       setMessage('يرجى تحديد التاريخ')
       return
     }
-    if (bookingType === 'INTERNAL' && (!intName.trim() || !intPhone.trim() || !intDept.trim())) {
-      setMessage('اكتب اسم الموظف الثلاثي ورقمه وقسمه')
-      return
+    if (bookingType === 'INTERNAL') {
+      if (!intName.trim() || !intDept.trim()) {
+        setMessage('اكتب اسم الموظف الثلاثي والقسم الي يشتغل بيه')
+        return
+      }
+      if (intName.trim().split(/\s+/).length < 3) {
+        setMessage('اسم الموظف لازم يكون ثلاثي (٣ أسماء على الأقل)')
+        return
+      }
+      if (!/^\d{11}$/.test(intPhone.trim())) {
+        setMessage('رقم هاتف الموظف لازم يكون ١١ رقم')
+        return
+      }
     }
     if (bookingType === 'MAINTENANCE' && !maintenanceType) {
       setMessage('يرجى اختيار نوع الصيانة')
@@ -228,7 +242,14 @@ export default function SalesBooking() {
 
     setSubmitting(true)
     try {
-      const customer = await api.createCustomer({ name, phone })
+      // الحجز الداخلي ما بيه زبون، بس السجل لازمه جهة يتعلّق بيها
+      // (وإلا ما ينفتح حجز أصلاً) — فنستعملها بيانات الموظف الطالب
+      // نفسه: اسمه الثلاثي ورقمه. رقمه هو المفتاح، فلو حجز مرة ثانية
+      // ينربط بنفس السجل ويطلع تاريخه كله سوه.
+      const customer =
+        bookingType === 'INTERNAL'
+          ? await api.createCustomer({ name: intName.trim(), phone: intPhone.trim() })
+          : await api.createCustomer({ name, phone })
       // الزبون القديم: createCustomer يرجّعه بالاسم القديم ويتجاهل الي
       // كتبناه. فلو الموظف اختار يصحّح، نحدّث سجله فعلياً — الاسم
       // والعنوان والموقع ورابط الخريطة — حتى الحجز والي بعده يطلعون
@@ -347,7 +368,10 @@ export default function SalesBooking() {
           </div>
         </div>
 
-        {/* Step 2: Customer Info */}
+        {/* Step 2: Customer Info — حجز داخل الشركة ماكو بيه زبون أصلاً،
+            الشغل لموظف من موظفينا، فتنشال الخانة كاملة ويحل محلها
+            كارت «معلومات الموظف الطالب» تحت. */}
+        {bookingType !== 'INTERNAL' && (
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <SectionHeader num={2} title="معلومات الزبون" />
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -449,30 +473,37 @@ export default function SalesBooking() {
             </div>
           </div>
         </div>
+        )}
 
-        {/* حجز داخل الشركة: معلومات الموظف الطالب وموافقة مسؤوله */}
+        {/* حجز داخل الشركة: هذي هي «معلومات الزبون» مالته — الشغل لموظف
+            من موظفينا، فنسأل عن اسمه الثلاثي بخانة وحدة وقسمه، مو عن
+            اسم زبون رباعي. */}
         {bookingType === 'INTERNAL' && (
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <h3 className="mb-4 text-lg font-bold text-emerald-900">🏢 معلومات الموظف الطالب</h3>
+            <SectionHeader num={2} title="🏢 معلومات الموظف الطالب" />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div>
+              <div className="sm:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-600">اسم الموظف الثلاثي *</label>
                 <input value={intName} onChange={(e) => setIntName(e.target.value)}
+                  placeholder="مثال: أحمد علي حسين"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-600">القسم الي يشتغل بيه *</label>
+                <input value={intDept} onChange={(e) => setIntDept(e.target.value)}
+                  placeholder="مثال: وحدة التقنيين"
                   className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-600">رقم هاتفه *</label>
                 <input value={intPhone} onChange={(e) => setIntPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                  dir="ltr" inputMode="numeric"
+                  dir="ltr" inputMode="numeric" placeholder="07XXXXXXXXX"
                   className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+                <p className="mt-1 text-[11px] text-slate-400">
+                  رقم اتصال واحد لازم — الفني يحتاجه يوصله يوم الشغل.
+                </p>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">القسم *</label>
-                <input value={intDept} onChange={(e) => setIntDept(e.target.value)}
-                  placeholder="مثال: وحدة التقنيين"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
-              </div>
-              <div className="flex items-end">
+              <div className="sm:col-span-2">
                 <label className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm">
                   <input type="checkbox" checked={intApproved} onChange={(e) => setIntApproved(e.target.checked)} />
                   تم الحصول على موافقة مسؤوله
