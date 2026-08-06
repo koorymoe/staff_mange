@@ -102,7 +102,7 @@ const navItems: NavItem[] = [
             ],
           },
           { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'] },
-          { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
+          { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
           { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
           { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
           { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
@@ -357,7 +357,7 @@ const navItems: NavItem[] = [
     unitPermission: 'unit_hr',
     children: [
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
-      { to: '/kpi', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
+      { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'] },
       { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'] },
     ],
@@ -631,13 +631,57 @@ export default function Layout() {
     return true
   }
 
-  // نشيل أي فاصل ("── الوحدات ──") ما يتبعه ولا عنصر ظاهر — مثلاً فني عادي
-  // ما عنده صلاحية توصله لأي وحدة، فيصير الفاصل معلّق بدون شي تحته.
-  const visibleItems = navItems.filter((it) => isVisible(it)).filter((item, idx, arr) => {
-    if (!item.divider) return true
-    const next = arr[idx + 1]
-    return !!next && !next.divider
-  })
+  // ═══ تنظيف الشجرة قبل العرض ═══
+  //
+  // القائمة كانت تتبنى مثل ما هي مكتوبة بالكود، فطلعت:
+  //  • ٣٣ شاشة مكررة — نفس الصفحة تحت «الإدارة» ومرة ثانية تحت «الوحدات»
+  //    (تدقيق الحسابات، الدوار، المشاريع، الحجوزات... كلها مرتين)
+  //  • مجموعات بولد واحد: «إدارة المركبات ← إدارة المركبات»
+  //  • تفرعات لخمس مستويات للوصول لشاشة وحدة
+  //
+  // بدل ما نحذف بالإيد عنصر عنصر (ويرجع الخلل أول ما ينضاف عنصر جديد)،
+  // ننضّف بقاعدتين عامتين تشتغلن لحالهن على أي عنصر ينضاف بالمستقبل:
+  //   ١. الشاشة تظهر بأول محل توصلها بيه بس — التكرار بعدها ينشال.
+  //   ٢. المجموعة الي ما بقى بيها إلا ولد واحد تنفك، والولد يطلع بمحلها.
+  type PrunedItem = Omit<NavItem, 'children'> & { granted: boolean; children?: PrunedItem[] }
+
+  const prune = (items: NavItem[], unitGranted: boolean, seen: Set<string>, depth = 0): PrunedItem[] => {
+    const out: PrunedItem[] = []
+    for (const item of items) {
+      if (!isVisible(item, unitGranted)) continue
+      const granted =
+        unitGranted ||
+        (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))
+
+      if (item.divider) { out.push({ ...item, children: undefined, granted }); continue }
+
+      if (item.children) {
+        const kids = prune(item.children, granted, seen, depth + 1)
+        if (!kids.length) continue
+        // مجموعة بولد واحد = تفرع بلا فايدة: نطلّع الولد محلها.
+        // بس مو بالمستوى الأول — هناك الولد يطلع يتيم بلا عنوان يدل
+        // على وين هو (مثلاً «تقييم الأداء» طايح جنب «سياسة الخصوصية»).
+        if (depth > 0 && kids.length === 1 && !kids[0].divider) { out.push(kids[0]); continue }
+        out.push({ ...item, granted, children: kids })
+        continue
+      }
+
+      // نفس الشاشة ما تتكرر — أول محل يوصلها هو محلها
+      const key = (item.to || '').split('?')[0]
+      if (key && seen.has(key)) continue
+      if (key) seen.add(key)
+      out.push({ ...item, children: undefined, granted })
+    }
+    // فاصل ما يتبعه ولا عنصر (مثلاً "── الوحدات ──" وكل الوحدات انشالت
+    // لأن محتواها ظاهر فوق) ما إله معنى
+    return out.filter((it, idx, arr) => {
+      if (!it.divider) return true
+      const next = arr[idx + 1]
+      return !!next && !next.divider
+    })
+  }
+
+  const visibleItems = prune(navItems, false, new Set<string>())
 
   const toggle = (label: string) => setExpandedGroups((p) => ({ ...p, [label]: !p[label] }))
 
@@ -645,11 +689,8 @@ export default function Layout() {
 
   // unitGranted ينتقل للأولاد: لما الموظف عنده صلاحية الوحدة، كل صفحاتها
   // تنعرض له بدون فحص صلاحياتها التفصيلية.
-  const renderNavItem = (item: NavItem, depth: number = 0, unitGranted = false): React.ReactNode => {
-    if (!isVisible(item, unitGranted)) return null
-    const granted =
-      unitGranted ||
-      (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))
+  // العنصر وصلنا منضّف من prune — ما نفلتر ولا نحسب صلاحيات هنا من جديد.
+  const renderNavItem = (item: PrunedItem, depth: number = 0): React.ReactNode => {
 
     if (item.divider) {
       return (
@@ -662,8 +703,7 @@ export default function Layout() {
     }
 
     if (item.children) {
-      const kids = item.children.filter((c) => isVisible(c, granted))
-      if (!kids.length) return null
+      const kids = item.children
       const open = expandedGroups[item.label]
       const active = hasActiveChild(item, location.pathname)
 
@@ -689,7 +729,7 @@ export default function Layout() {
             </button>
             {open && !collapsed && (
               <div className="mt-1 mr-4 flex flex-col gap-0.5 border-r-2 border-white/[0.08] pr-2 animate-in">
-                {kids.map(child => renderNavItem(child, 1, granted))}
+                {kids.map(child => renderNavItem(child, 1))}
               </div>
             )}
           </div>
@@ -713,7 +753,7 @@ export default function Layout() {
           </button>
           {open && (
             <div className="mr-4 flex flex-col gap-0.5 border-r border-white/[0.06] pr-2">
-              {kids.map(child => renderNavItem(child, 2, granted))}
+              {kids.map(child => renderNavItem(child, 2))}
             </div>
           )}
         </div>
