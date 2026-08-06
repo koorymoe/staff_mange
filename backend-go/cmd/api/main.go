@@ -114,6 +114,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	locationPingRepo := repository.NewLocationPingRepository(db)
 	performanceReviewRepo := repository.NewPerformanceReviewRepository(db)
 	notificationRepo := repository.NewNotificationRepository(db)
+
+	// ═══ نظام الغرامات التلقائي ═══
+	// النظام يغرّم لحاله ويعلن، والنقاط ترجع بالشغل النظيف مو بالطلب.
+	disciplineRepo := repository.NewDisciplineRepository(db)
 	deviceMaintenanceRepo := repository.NewDeviceMaintenanceRepository(db)
 	teamInventoryCheckRepo := repository.NewTeamInventoryCheckRepository(db)
 	jobDurationSampleRepo := repository.NewJobDurationSampleRepository(db)
@@ -128,6 +132,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	serviceCatalogService := service.NewServiceCatalogService(serviceRepo)
 	customerService := service.NewCustomerService(customerRepo)
 	bookingService := service.NewBookingService(bookingRepo, employeeRepo, customerRepo, qualityFollowUpRepo, notificationRepo, inventoryRepo)
+
+	disciplineService := service.NewDisciplineService(disciplineRepo, announcementRepo, notificationRepo, employeeRepo)
+	// نربط فحص عدالة التوزيع بخدمة الحجوزات بعد بناء الاثنين (تفادي
+	// اعتماد دائري بينهن)
+	bookingService.SetDisciplineChecker(disciplineService)
+	disciplineService.StartBackgroundSweeps()
 	qualityFollowUpService := service.NewQualityFollowUpService(qualityFollowUpRepo)
 	cartService := service.NewCartService(cartRepo)
 	expenseService := service.NewExpenseService(expenseRepo)
@@ -393,6 +403,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// موظفين — القراءة تحتاج تسجيل دخول فقط، الإنشاء/التعديل الحساس محمي بدور ADMIN
 	mux.Handle("GET /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
 	mux.Handle("GET /api/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
+	disciplineHandler := handler.NewDisciplineHandler(disciplineService)
+	// نقاط الانضباط: كل موظف يشوف الأرصدة (الشفافية جزء من العقوبة)،
+	// وتشغيل الفحص يدوياً للمدير حصراً.
+	mux.Handle("GET /api/discipline", middleware.Chain(http.HandlerFunc(disciplineHandler.List), requireAuth))
+	mux.Handle("GET /api/discipline/events", middleware.Chain(http.HandlerFunc(disciplineHandler.Events), requireAuth))
+	mux.Handle("POST /api/discipline/run", middleware.Chain(http.HandlerFunc(disciplineHandler.Run), requireAuth, requireAdmin))
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
 	mux.Handle("GET /api/security/dashboard", middleware.Chain(http.HandlerFunc(securityHandler.Dashboard), requireAuth, requireOwner))
 	mux.Handle("POST /api/security/unlock/{id}", middleware.Chain(http.HandlerFunc(securityHandler.Unlock), requireAuth, requireOwner))

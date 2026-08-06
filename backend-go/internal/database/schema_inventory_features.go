@@ -1140,5 +1140,46 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					ADD COLUMN IF NOT EXISTS "workStoppedById" TEXT;
 			`,
 		},
+		{
+			// ═══ نظام نقاط الانضباط والغرامات ═══
+			// كل موظف عنده ١٠٠ نقطة. النقطة الوحدة بعشر آلاف دينار.
+			// النظام هو الي يغرّم تلقائياً — مو المدير — حتى ما تصير
+			// محاباة ولا نسيان. والنقاط ترجع بالشغل النظيف مو بالطلب.
+			//
+			// مهم: هاي نقاط منفصلة تماماً عن الكي بي اي. الكي بي اي تقييم
+			// أداء، وهاي انضباط إداري — ما تنخلط وياها.
+			Version: "0197_discipline_points",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "DisciplinePoints" (
+					"employeeId"      TEXT PRIMARY KEY REFERENCES "Employee"(id) ON DELETE CASCADE,
+					points            INT NOT NULL DEFAULT 100,
+					"lastRestoredAt"  TIMESTAMPTZ,
+					"updatedAt"       TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+
+				CREATE TABLE IF NOT EXISTS "DisciplineEvent" (
+					id           TEXT PRIMARY KEY,
+					"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+					"bookingId"  TEXT,
+					kind         TEXT NOT NULL,
+					delta        INT  NOT NULL,
+					reason       TEXT NOT NULL,
+					"createdAt"  TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+
+				-- ما ننطي نفس الغرامة مرتين لنفس الحجز ونفس السبب
+				CREATE UNIQUE INDEX IF NOT EXISTS "discipline_event_unique_penalty"
+					ON "DisciplineEvent" ("employeeId", "bookingId", kind)
+					WHERE "bookingId" IS NOT NULL;
+
+				CREATE INDEX IF NOT EXISTS "discipline_event_employee_idx"
+					ON "DisciplineEvent" ("employeeId", "createdAt" DESC);
+
+				-- منو الإداري الي كلّف هذا الكادر — بدونها ما نعرف منو
+				-- نغرّم لمن يتأخر الورق
+				ALTER TABLE "BookingAssignment"
+					ADD COLUMN IF NOT EXISTS "assignedById" TEXT;
+			`,
+		},
 	}
 }

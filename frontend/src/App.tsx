@@ -26,6 +26,7 @@ const MyExpenses = lazy(() => import('./pages/MyExpenses'))
 const Finance = lazy(() => import('./pages/Finance'))
 const ExpensesReview = lazy(() => import('./pages/ExpensesReview'))
 const KpiPage = lazy(() => import('./pages/KpiPage'))
+const DisciplinePage = lazy(() => import('./pages/DisciplinePage'))
 const ComplaintsPage = lazy(() => import('./pages/ComplaintsPage'))
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const MyInventory = lazy(() => import('./pages/MyInventory'))
@@ -126,6 +127,7 @@ function App() {
           <Route path="my-expenses" element={<MyExpenses />} />
           <Route path="finance" element={<Finance />} />
           <Route path="expenses" element={<ExpensesReview />} />
+          <Route path="discipline" element={<DisciplinePage />} />
           <Route path="kpi" element={<KpiPage />} />
           <Route path="complaints" element={<ComplaintsPage />} />
           {/* متابعة جرد كل الفنيين = شاشة إشراف. الفني يسوّي جرده من

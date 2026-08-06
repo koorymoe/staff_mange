@@ -642,13 +642,51 @@ func (r *BookingRepository) CreateScheduleLog(bookingID, changedByID string, old
 	return err
 }
 
-func (r *BookingRepository) UpsertAssignment(bookingID, employeeID, role string) error {
+// UpsertAssignment يعيّن كادر على حجز، ويسجّل منو الإداري الي كلّفه —
+// بدون هذا التسجيل ما نعرف منو نحاسب لو تأخر ورق الحجز.
+func (r *BookingRepository) UpsertAssignment(bookingID, employeeID, role, assignedByID string) error {
+	var by any
+	if assignedByID != "" {
+		by = assignedByID
+	}
 	_, err := r.db.Exec(`
-		INSERT INTO "BookingAssignment" (id, "bookingId", "employeeId", role)
-		VALUES (gen_random_uuid()::text, $1, $2, $3)
-		ON CONFLICT ("bookingId", role) DO UPDATE SET "employeeId" = EXCLUDED."employeeId"
-	`, bookingID, employeeID, role)
+		INSERT INTO "BookingAssignment" (id, "bookingId", "employeeId", role, "assignedById")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+		ON CONFLICT ("bookingId", role) DO UPDATE
+			SET "employeeId" = EXCLUDED."employeeId",
+			    "assignedById" = COALESCE(EXCLUDED."assignedById", "BookingAssignment"."assignedById")
+	`, bookingID, employeeID, role, by)
 	return err
+}
+
+// ActiveCountByLeader يرجّع لكل تيم ليدر عدد حجوزاته الشغّالة (مو منجزة
+// ولا ملغاة) — يستخدمها فحص عدالة التوزيع.
+func (r *BookingRepository) ActiveCountByLeader() (counts map[string]int, names map[string]string, err error) {
+	rows := []struct {
+		ID    string `db:"id"`
+		Name  string `db:"name"`
+		Count int    `db:"cnt"`
+	}{}
+	err = r.db.Select(&rows, `
+		SELECT e.id, e.name, COUNT(b.id) FILTER (
+			WHERE b.status NOT IN ('COMPLETED', 'CANCELLED')
+		) AS cnt
+		FROM "Employee" e
+		LEFT JOIN "BookingAssignment" ba ON ba."employeeId" = e.id
+		LEFT JOIN "Booking" b ON b.id = ba."bookingId"
+		WHERE e."isLeader" = true AND e.status = 'ACTIVE'
+		GROUP BY e.id, e.name
+	`)
+	if err != nil {
+		return nil, nil, err
+	}
+	counts = map[string]int{}
+	names = map[string]string{}
+	for _, r0 := range rows {
+		counts[r0.ID] = r0.Count
+		names[r0.ID] = r0.Name
+	}
+	return counts, names, nil
 }
 
 func (r *BookingRepository) ListAssignments(bookingID string) ([]model.BookingAssignment, error) {

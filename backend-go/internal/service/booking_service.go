@@ -19,6 +19,20 @@ type BookingService struct {
 	qualityFollowUps *repository.QualityFollowUpRepository
 	notifications    *repository.NotificationRepository
 	inventory        *repository.InventoryRepository
+	// discipline: فحص عدالة التوزيع وقت التعيين. اختياري — لو ما انربط
+	// النظام يشتغل عادي بلا غرامات.
+	discipline AssignmentBalanceChecker
+}
+
+// AssignmentBalanceChecker يفصل خدمة الحجوزات عن خدمة الانضباط حتى ما
+// يصير اعتماد دائري بين الاثنين.
+type AssignmentBalanceChecker interface {
+	CheckAssignmentBalance(adminID, assignedLeaderID, bookingID, bookingCode string, activeByLeader map[string]int, leaderNames map[string]string)
+}
+
+// SetDisciplineChecker يربط فحص عدالة التوزيع بعد بناء الخدمتين.
+func (s *BookingService) SetDisciplineChecker(c AssignmentBalanceChecker) {
+	s.discipline = c
 }
 
 func NewBookingService(repo *repository.BookingRepository, employees *repository.EmployeeRepository, customers *repository.CustomerRepository, qualityFollowUps *repository.QualityFollowUpRepository, notifications *repository.NotificationRepository, inventory *repository.InventoryRepository) *BookingService {
@@ -241,8 +255,21 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest, edito
 		return nil, errors.New("هذا الموظف غير متاح حالياً (خارج الدوام)")
 	}
 
-	if err := s.repo.UpsertAssignment(id, req.EmployeeID, req.Role); err != nil {
+	if err := s.repo.UpsertAssignment(id, req.EmployeeID, req.Role, editorID); err != nil {
 		return nil, err
+	}
+
+	// عدالة التوزيع: لو الإداري كلّف ليدر عنده شغل وبنفس الوقت أكو ليدر
+	// فاضي تماماً، النظام يغرّمه نقطة. الفحص يصير بعد التعيين مباشرة —
+	// وقتها بس نعرف منو انكلّف فعلاً.
+	if s.discipline != nil && employee.IsLeader {
+		if counts, names, err := s.repo.ActiveCountByLeader(); err == nil {
+			// نشيل هذا الحجز من العدّ حتى ما نحسبه على المكلَّف تواً
+			if counts[req.EmployeeID] > 0 {
+				counts[req.EmployeeID]--
+			}
+			s.discipline.CheckAssignmentBalance(editorID, req.EmployeeID, id, booking.Code, counts, names)
+		}
 	}
 
 	if req.AssignedVehicle != nil {

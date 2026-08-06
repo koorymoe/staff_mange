@@ -2019,6 +2019,26 @@ export interface ServiceStudy {
   createdAt: string
 }
 
+// ═══ نقاط الانضباط ═══
+export interface DisciplinePoints {
+  employeeId: string
+  employeeName: string
+  points: number
+  deductedDinar: number
+  lastRestoredAt: string | null
+  updatedAt: string
+}
+export interface DisciplineEvent {
+  id: string
+  employeeId: string
+  employeeName: string
+  bookingId: string | null
+  kind: 'LATE_PAPERWORK' | 'UNBALANCED_ASSIGNMENT' | 'RESTORE'
+  delta: number
+  reason: string
+  createdAt: string
+}
+
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
@@ -2100,6 +2120,10 @@ export const api = {
     request<Booking>(`/bookings/${id}/stop-work`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   resumeBookingWork: (id: string) =>
     request<Booking>(`/bookings/${id}/resume-work`, { method: 'PUT' }),
+  getDisciplinePoints: () => request<DisciplinePoints[]>('/discipline'),
+  getDisciplineEvents: (employeeId?: string) =>
+    request<DisciplineEvent[]>(`/discipline/events${employeeId ? '?employeeId=' + employeeId : ''}`),
+  runDisciplineSweep: () => request<DisciplinePoints[]>('/discipline/run', { method: 'POST' }),
   createService: (data: { name: string; category?: string; division?: 'ENGINEERING' | 'DECOR' | '' }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
   createSkill: (serviceId: string, name: string) =>
