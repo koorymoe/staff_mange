@@ -509,6 +509,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/audit-issues", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ListIssues), requireAuth))
 	mux.Handle("PUT /api/audit-issues/{id}/resolve", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ResolveIssue), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
+	// إرجاع الحجز للتدقيق: التدقيق جان قرار نهائي ما إله رجعة. مدير
+	// النظام حصراً يكدر يفتحه من جديد حتى ينصلّح أي غلط بالمبلغ.
+	mux.Handle("PUT /api/bookings/{id}/unverify", middleware.Chain(http.HandlerFunc(bookingHandler.Unverify), requireAuth, requireAdmin))
 	// "تم" الإداري بعد تواصله فعلياً مع الزبون — خطوة سابقة ومنفصلة عن التثبيت
 	// نفسه (نفس صلاحية تنسيق الحجوزات coordinator المستخدمة أصلاً بـCoordinator.tsx).
 	// إرجاع حجز محوّل لإدارة المشاريع رجعة لكادر الشد — لمدير المشاريع لما

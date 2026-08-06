@@ -620,6 +620,15 @@ func (r *BookingRepository) Verify(id string) error {
 	return err
 }
 
+// Unverify يرجّع الحجز لحالة «بانتظار التدقيق» بعد ما انتأشر مدقّق.
+// التدقيق جان قرار نهائي ما إله رجعة: أي غلط بالمبلغ أو بالمستلم
+// يبقى محبوس بالسجل، والمدقق ما يكدر يرجع يصحّحه. مدير النظام لازم
+// يكدر يفتحه من جديد.
+func (r *BookingRepository) Unverify(id string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "amountVerified" = false, "updatedAt" = now() WHERE id = $1`, id)
+	return err
+}
+
 func (r *BookingRepository) SetSchedule(id, scheduledAt string) error {
 	// النهاية تنحسب تلقائياً ساعة بعد البداية — ما ننطي الإداري خانة
 	// ثانية يعبّيها، المدى ثابت والقاعدة وحدة بكل النظام.

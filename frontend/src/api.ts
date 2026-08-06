@@ -2394,6 +2394,9 @@ export const api = {
     request<Booking>(`/bookings/${id}/materials-ready`, { method: 'PUT', body: JSON.stringify({}) }),
   verifyAmount: (id: string) =>
     request<Booking>(`/bookings/${id}/verify`, { method: 'PUT', body: JSON.stringify({}) }),
+  // إرجاع الحجز للتدقيق بعد ما انتأشر مدقّق — مدير النظام حصراً
+  unverifyBooking: (id: string) =>
+    request<Booking>(`/bookings/${id}/unverify`, { method: 'PUT' }),
   markConfirmationContacted: (id: string) =>
     request<Booking>(`/bookings/${id}/confirmation-contacted`, { method: 'PUT', body: JSON.stringify({}) }),
   getPendingAudit: () => request<Booking[]>('/bookings/pending-audit'),

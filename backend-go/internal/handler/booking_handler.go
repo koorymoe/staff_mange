@@ -225,6 +225,16 @@ func (h *BookingHandler) MarkArrived(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, booking)
 }
 
+// PUT /api/bookings/{id}/unverify — يرجّع الحجز للتدقيق (مدير النظام)
+func (h *BookingHandler) Unverify(w http.ResponseWriter, r *http.Request) {
+	booking, err := h.service.Unverify(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
 // PUT /api/bookings/{id}/stop-work
 func (h *BookingHandler) StopWork(w http.ResponseWriter, r *http.Request) {
 	var req model.StopWorkRequest

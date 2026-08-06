@@ -488,3 +488,11 @@ func (s *BookingService) Verify(id string) (*model.Booking, error) {
 	}
 	return s.repo.FindByID(id)
 }
+
+// Unverify يفتح الحجز للتدقيق من جديد — لمدير النظام حصراً.
+func (s *BookingService) Unverify(id string) (*model.Booking, error) {
+	if err := s.repo.Unverify(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}

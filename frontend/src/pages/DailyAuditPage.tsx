@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type DailyAuditReport, type DailyAuditRow } from '../api'
+import { useSession } from '../session'
 
 /**
  * التدقيق اليومي.
@@ -41,11 +42,32 @@ export default function DailyAuditPage() {
   const [rep, setRep] = useState<DailyAuditReport | null>(null)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
+  // إرجاع الحجز للتدقيق: صلاحية مدير النظام حصراً (المالك يتطبّع لمدير
+  // بالجلسة، فتشمله تلقائياً).
+  const { employee } = useSession()
+  const isAdmin = employee?.role === 'ADMIN'
 
   const load = (d: string) => {
     api.getDailyAudit(d).then(setRep).catch(() => setRep(null))
   }
   useEffect(() => { load(date) }, [date])
+
+  // ═══ إرجاع الحجز للتدقيق ═══
+  // التدقيق جان قرار نهائي ما إله رجعة: أول ما ينضغط «مطابق» تختفي
+  // خانة التدقيق كاملة، فأي غلط بالمبلغ يبقى محبوس بالسجل وما ينصلّح.
+  // مدير النظام حصراً يكدر يفتحه من جديد ويرجع يدققه.
+  const unverify = async (row: DailyAuditRow) => {
+    if (!window.confirm(`ترجّع الحجز ${row.code} للتدقيق من جديد؟`)) return
+    setBusy(row.id)
+    try {
+      await api.unverifyBooking(row.id)
+      load(date)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر إرجاع الحجز للتدقيق')
+    } finally {
+      setBusy(null)
+    }
+  }
 
   const audit = async (row: DailyAuditRow, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR') => {
     const typed = amounts[row.id]
@@ -181,6 +203,16 @@ export default function DailyAuditPage() {
                     {row.amountVerified
                       ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">✔ مدقق</span>
                       : <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">بانتظار التدقيق</span>}
+                    {row.amountVerified && isAdmin && (
+                      <button
+                        type="button"
+                        disabled={busy === row.id}
+                        onClick={() => unverify(row)}
+                        className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                      >
+                        ↩ إرجاع للتدقيق
+                      </button>
+                    )}
                     {row.openIssues > 0 && (
                       <span className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
                         محوّل للرقابة
