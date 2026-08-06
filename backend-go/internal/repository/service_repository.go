@@ -33,8 +33,8 @@ func (r *ServiceRepository) List() ([]model.Service, error) {
 
 func (r *ServiceRepository) Create(s *model.Service) error {
 	_, err := r.db.NamedExec(`
-		INSERT INTO "Service" (id, name, category)
-		VALUES (:id, :name, :category)
+		INSERT INTO "Service" (id, name, category, division)
+		VALUES (:id, :name, :category, :division)
 	`, s)
 	return err
 }

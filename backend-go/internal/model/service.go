@@ -24,6 +24,11 @@ type Service struct {
 type CreateServiceRequest struct {
 	Name     string  `json:"name"`
 	Category *string `json:"category"`
+	// Division: شعبة الخدمة — "ENGINEERING" (الشد/الهندسية) أو "DECOR".
+	// هي الي تقرر مهارات الخدمة تطلع لمنو: موظف الديكور ما يشوف مهارات
+	// خدمة هندسية أبداً، والعكس. لو ما انبعثت، تنحسب هندسية (سلوك
+	// النظام قبل ما ينضاف السؤال).
+	Division *string `json:"division"`
 }
 
 type CreateSkillRequest struct {

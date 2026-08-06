@@ -27,7 +27,17 @@ func (s *ServiceCatalogService) Create(req model.CreateServiceRequest) (*model.S
 		return nil, errors.New("اسم الخدمة مطلوب")
 	}
 
-	svc := &model.Service{ID: uuid.NewString(), Name: req.Name, Category: req.Category}
+	// الشعبة مو تفصيل شكلي: هي الي تحدد مهارات هذي الخدمة تنعرض لأي كادر.
+	// نتحقق منها هنا حتى ما تنحفظ قيمة غلط تخلي الخدمة ما تطلع لولا شعبة.
+	division := model.DivisionEngineering
+	if req.Division != nil && *req.Division != "" {
+		if *req.Division != model.DivisionEngineering && *req.Division != model.DivisionDecor {
+			return nil, errors.New("شعبة الخدمة لازم تكون هندسية أو ديكور")
+		}
+		division = *req.Division
+	}
+
+	svc := &model.Service{ID: uuid.NewString(), Name: req.Name, Category: req.Category, Division: division}
 	if err := s.repo.Create(svc); err != nil {
 		return nil, err
 	}

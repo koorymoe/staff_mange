@@ -9,6 +9,10 @@ export default function Services() {
   const [error, setError] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [category, setCategory] = useState('')
+  // الشعبة: أول سؤال لازم ينجاوب قبل إضافة الخدمة. هي الي تقرر مهارات
+  // هذي الخدمة تطلع لأي كادر — كادر الشد (هندسية) أو كادر الديكور —
+  // ولا واحد منهم يشوف مهارات الشعبة الثانية.
+  const [division, setDivision] = useState<'ENGINEERING' | 'DECOR' | ''>('')
   const [submitting, setSubmitting] = useState(false)
   const [skillDraft, setSkillDraft] = useState<Record<string, string>>({})
   const [skillSubmitting, setSkillSubmitting] = useState<string | null>(null)
@@ -55,11 +59,16 @@ export default function Services() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!division) {
+      alert('اختار شعبة الخدمة أول: هندسية (شد) أو ديكور')
+      return
+    }
     setSubmitting(true)
     try {
-      await api.createService({ name, category: category || undefined })
+      await api.createService({ name, category: category || undefined, division })
       setName('')
       setCategory('')
+      setDivision('')
       load()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'حدث خطأ')
@@ -78,6 +87,31 @@ export default function Services() {
         onSubmit={handleAdd}
         className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3"
       >
+        <div className="sm:col-span-3">
+          <label className="mb-2 block text-sm font-medium text-slate-600">
+            الخدمة لأي شعبة؟ <span className="text-red-500">*</span>
+          </label>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {([
+              { v: 'ENGINEERING' as const, t: '🔧 الشعبة الهندسية (الشد)', d: 'كاميرات، شبكات، GPS، أقفال... — مهاراتها تطلع لكادر الشد بس' },
+              { v: 'DECOR' as const, t: '🎨 شعبة الديكور', d: 'حدادة، نجارة، صباغة، سيراميك... — مهاراتها تطلع لكادر الديكور بس' },
+            ]).map((o) => (
+              <button
+                key={o.v}
+                type="button"
+                onClick={() => setDivision(o.v)}
+                className={`rounded-xl border-2 p-3 text-right transition-all ${
+                  division === o.v
+                    ? 'border-brand-500 bg-brand-50 shadow-sm'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <span className="block text-sm font-bold text-slate-800">{o.t}</span>
+                <span className="mt-0.5 block text-[11px] leading-relaxed text-slate-500">{o.d}</span>
+              </button>
+            ))}
+          </div>
+        </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-600">اسم الخدمة</label>
           <input
@@ -127,6 +161,17 @@ export default function Services() {
                   {service.category && (
                     <span className="mr-2 text-sm text-slate-400">({service.category})</span>
                   )}
+                  {/* الشعبة تبيّن بالبطاقة — حتى تعرف بنظرة مهارات هذي
+                      الخدمة تطلع لأي كادر، بدل ما تفتح ملف موظف وتشوف. */}
+                  <span
+                    className={`mr-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                      service.division === 'DECOR'
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-sky-50 text-sky-700'
+                    }`}
+                  >
+                    {service.division === 'DECOR' ? '🎨 ديكور' : '🔧 هندسية'}
+                  </span>
                 </div>
                 {employee?.role === 'ADMIN' && (
                   <button

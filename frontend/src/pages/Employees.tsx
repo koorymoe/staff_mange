@@ -208,7 +208,13 @@ export default function Employees() {
   const toggleSkill = async (employee: Employee, skillId: string) => {
     const current = new Map(employee.skills.map((s) => [s.skillId, s.canPerform]))
     current.set(skillId, !current.get(skillId))
-    const skills = services.flatMap((svc) => svc.skills.map((sk) => ({ skillId: sk.id, canPerform: current.get(sk.id) ?? false })))
+    // بس مهارات شعبة الموظف. قبل، الحفظ جان يمر على كل الخدمات — يعني
+    // موظف ديكور تنكتب له صفوف لمهارات هندسية (بـfalse)، والعكس. الشاشة
+    // ما تعرضهن فما ينلاحظ، بس السجل يمتلئ بمهارات مو من شعبته ولو
+    // انفتحت من أي مكان ثاني تطلع غلط.
+    const skills = services
+      .filter((svc) => svc.division === employee.division)
+      .flatMap((svc) => svc.skills.map((sk) => ({ skillId: sk.id, canPerform: current.get(sk.id) ?? false })))
     const updated = await api.updateEmployeeSkills(employee.id, skills)
     setEmployees((prev) => prev.map((emp) => (emp.id === employee.id ? updated : emp)))
   }

@@ -2080,7 +2080,7 @@ export const api = {
   addChecklistPhotos: (id: string, photoUrls: string[]) =>
     request<ProjectChecklist>(`/checklists/${id}/photos`, { method: 'PUT', body: JSON.stringify({ photoUrls }) }),
   getServices: () => request<Service[]>('/services'),
-  createService: (data: { name: string; category?: string }) =>
+  createService: (data: { name: string; category?: string; division?: 'ENGINEERING' | 'DECOR' | '' }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
   createSkill: (serviceId: string, name: string) =>
     request<Skill>(`/services/${serviceId}/skills`, { method: 'POST', body: JSON.stringify({ name }) }),
