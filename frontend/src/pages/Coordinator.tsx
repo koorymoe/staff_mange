@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption } from '../api'
 import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
+import CompletionBadge from '../components/CompletionBadge'
+import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -283,6 +285,49 @@ export default function Coordinator() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
+  // ═══ متابعة الإنجاز وحمل الليدرات ═══
+  // الإداري ما جان يشوف منو خلّص شغله كامل ومنو أنجز وترك الورق وراه،
+  // ولا جان يشوف كل ليدر شكد عنده حجوزات قبل ما يكلّفه — فيكلّف واحد
+  // مزحوم وواحد ثاني فاضي.
+  const [stateFilter, setStateFilter] = useState<string>('ALL')
+  const [leaderFilter, setLeaderFilter] = useState<string>('ALL')
+
+  // حمل كل ليدر: الحجوزات الي لسه شغالة عليه (مو منجزة ولا ملغاة)
+  const leaderLoad = (() => {
+    const map = new Map<string, { name: string; active: Booking[]; done: Booking[] }>()
+    for (const b of bookings) {
+      for (const a of b.assignments || []) {
+        // الليدر بالحجز = الموظف المعيّن الي مؤشّر «تيم ليدر» بملفه
+        // (الأدوار TECH_1/2/3 هي لبقية الكادر، مو للليدر).
+        if (!a.employee?.isLeader) continue
+        const id = a.employee?.id
+        if (!id) continue
+        if (!map.has(id)) map.set(id, { name: a.employee.name, active: [], done: [] })
+        const entry = map.get(id)!
+        if (b.status === 'COMPLETED' || b.status === 'CANCELLED') entry.done.push(b)
+        else entry.active.push(b)
+      }
+    }
+    return [...map.entries()]
+      .map(([id, v]) => ({ id, ...v }))
+      .sort((x, y) => x.active.length - y.active.length) // الأخف حمل أول — حتى يكلّفه
+  })()
+
+  // الحجوزات الي انتهت (منجزة أو متوقفة) — هاي الي إلها حالة اكتمال
+  const finishedBookings = bookings
+    .filter((b) => b.status === 'COMPLETED' || b.status === 'CANCELLED')
+    .filter((b) => matchesSearch(b))
+    .filter((b) => stateFilter === 'ALL' || b.completionState === stateFilter)
+    .filter((b) =>
+      leaderFilter === 'ALL' ||
+      (b.assignments || []).some((a) => a.employee?.isLeader && a.employee?.id === leaderFilter),
+    )
+
+  const stateCounts = COMPLETION_ORDER.reduce<Record<string, number>>((acc, st) => {
+    acc[st] = bookings.filter((b) => b.completionState === st).length
+    return acc
+  }, {})
+
   // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
   const matchesSearch = (b: Booking) => {
     const q = search.trim().toLowerCase()
@@ -337,6 +382,92 @@ export default function Coordinator() {
               </div>
             </div>
           )}
+
+          {/* ═══ حمل الليدرات: منو فاضي ومنو مزحوم ═══
+              الإداري ما يكلّف بالحدس — يشوف كل ليدر شكد عنده حجوزات
+              شغالة وأي حجوزات، والقائمة مرتبة من الأخف حملاً. */}
+          <div className="mt-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <h3 className="mb-3 text-sm font-bold text-[#0f2040]">👷 حمل الليدرات — منو تكدر تكلّفه</h3>
+            {leaderLoad.length === 0 && <p className="text-xs text-slate-400">ماكو ليدرات مكلّفين بحجوزات حالياً.</p>}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {leaderLoad.map((l) => (
+                <button
+                  key={l.id}
+                  type="button"
+                  onClick={() => setLeaderFilter(leaderFilter === l.id ? 'ALL' : l.id)}
+                  className={`rounded-xl border p-3 text-right transition-all ${
+                    leaderFilter === l.id ? 'border-brand-500 bg-brand-50' : 'border-slate-200 bg-white hover:border-slate-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-bold text-slate-800">{l.name}</span>
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                        l.active.length === 0
+                          ? 'bg-emerald-50 text-emerald-700'
+                          : l.active.length <= 2
+                            ? 'bg-sky-50 text-sky-700'
+                            : 'bg-red-50 text-red-700'
+                      }`}
+                    >
+                      {l.active.length === 0 ? 'فاضي' : `${l.active.length} حجز شغّال`}
+                    </span>
+                  </div>
+                  {l.active.length > 0 && (
+                    <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                      {l.active.map((b) => b.code).join('، ')}
+                    </p>
+                  )}
+                  <p className="mt-0.5 text-[10px] text-slate-400">أنجز {l.done.length} حجز</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ═══ متابعة الإنجاز ═══ */}
+          <div className="mt-4 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <h3 className="mb-3 text-sm font-bold text-[#0f2040]">📋 متابعة الإنجاز — منو خلّص ورقه ومنو لا</h3>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setStateFilter('ALL')}
+                className={`rounded-full border px-3 py-1 text-[11px] font-bold ${
+                  stateFilter === 'ALL' ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-slate-200 text-slate-500'
+                }`}
+              >
+                الكل
+              </button>
+              {COMPLETION_ORDER.map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStateFilter(stateFilter === st ? 'ALL' : st)}
+                  className={`rounded-full border px-3 py-1 text-[11px] font-bold ${
+                    stateFilter === st ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-slate-200 text-slate-500'
+                  }`}
+                >
+                  {completionLabel(st)} ({stateCounts[st] ?? 0})
+                </button>
+              ))}
+            </div>
+            {(stateFilter !== 'ALL' || leaderFilter !== 'ALL') && (
+              <div className="mt-3 space-y-1.5">
+                {finishedBookings.length === 0 && (
+                  <p className="text-xs text-slate-400">ماكو حجوزات بهذي الحالة.</p>
+                )}
+                {finishedBookings.map((b) => (
+                  <div key={b.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
+                    <span className="font-mono text-xs font-bold text-brand-700">{b.code}</span>
+                    <span className="text-xs text-slate-600">{b.customer?.name || '—'}</span>
+                    <span className="text-[11px] text-slate-400">
+                      {(b.assignments || []).find((a) => a.employee?.isLeader)?.employee?.name || 'بلا ليدر'}
+                    </span>
+                    <span className="mr-auto"><CompletionBadge booking={b} /></span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* بحث بكود الحجز أو كود الزبون أو رقمه أو اسمه */}
           <div className="mt-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

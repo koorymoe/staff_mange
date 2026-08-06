@@ -3,49 +3,49 @@ package model
 import "time"
 
 type Booking struct {
-	ID                      string     `db:"id" json:"id"`
-	Code                    string     `db:"code" json:"code"`
-	SequenceNumber          *int       `db:"sequenceNumber" json:"sequenceNumber"`
-	ScheduledAt             *time.Time `db:"scheduledAt" json:"scheduledAt"`
-	PendingScheduledAt      *time.Time `db:"pendingScheduledAt" json:"pendingScheduledAt"`
-	CustomerID              string     `db:"customerId" json:"-"`
-	ServiceID               *string    `db:"serviceId" json:"-"`
-	TransferEmployeeID      *string    `db:"transferEmployeeId" json:"-"`
-	ProjectSupervisorID     *string    `db:"projectSupervisorId" json:"-"`
-	ExpenseResponsibleID    *string    `db:"expenseResponsibleId" json:"expenseResponsibleId"`
-	ConfirmedByEmployeeID   *string    `db:"confirmedByEmployeeId" json:"-"`
-	Notes                   *string    `db:"notes" json:"notes"`
-	VehicleType             *string    `db:"vehicleType" json:"vehicleType"`
-	Priority                string     `db:"priority" json:"priority"`
-	Status                  string     `db:"status" json:"status"`
-	TransferToProjects      bool       `db:"transferToProjects" json:"transferToProjects"`
-	ConfirmedByName         *string    `db:"confirmedByName" json:"confirmedByName"`
-	AdminNotes              *string    `db:"adminNotes" json:"adminNotes"`
-	AssignedVehicle         *string    `db:"assignedVehicle" json:"assignedVehicle"`
-	QuotedPrice             *float64   `db:"quotedPrice" json:"quotedPrice"`
-	Address                 *string    `db:"address" json:"address"`
-	MapLocation             *string    `db:"mapLocation" json:"mapLocation"`
-	MapLatitude             *float64   `db:"mapLatitude" json:"mapLatitude"`
-	MapLongitude            *float64   `db:"mapLongitude" json:"mapLongitude"`
-	CompletedAt             *time.Time `db:"completedAt" json:"completedAt"`
-	CompletionNotes         *string    `db:"completionNotes" json:"completionNotes"`
-	AmountCollected         *float64   `db:"amountCollected" json:"amountCollected"`
-	AdvancePaid             *float64   `db:"advancePaid" json:"advancePaid"`
-	AmountVerified          bool       `db:"amountVerified" json:"amountVerified"`
-	EquipmentStatus         string     `db:"equipmentStatus" json:"equipmentStatus"`
-	Shift                   *string    `db:"shift" json:"shift"`
-	DeviceCount             *int       `db:"deviceCount" json:"deviceCount"`
-	InspectionSupervisorID  *string    `db:"inspectionSupervisorId" json:"inspectionSupervisorId"`
-	ProjectCar              *string    `db:"projectCar" json:"projectCar"`
-	CrewNotes               *string    `db:"crewNotes" json:"crewNotes"`
-	BookingType             string     `db:"bookingType" json:"bookingType"`
-	Urgency                 *string    `db:"urgency" json:"urgency"`
-	MaintenanceType         *string    `db:"maintenanceType" json:"maintenanceType"`
-	RemembersExecutionCrew  bool       `db:"remembersExecutionCrew" json:"remembersExecutionCrew"`
-	SystemCount             *int       `db:"systemCount" json:"systemCount"`
-	SystemType              *string    `db:"systemType" json:"systemType"`
-	ProjectSpeed            *string    `db:"projectSpeed" json:"projectSpeed"`
-	WorkType                *string    `db:"workType" json:"workType"`
+	ID                     string     `db:"id" json:"id"`
+	Code                   string     `db:"code" json:"code"`
+	SequenceNumber         *int       `db:"sequenceNumber" json:"sequenceNumber"`
+	ScheduledAt            *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	PendingScheduledAt     *time.Time `db:"pendingScheduledAt" json:"pendingScheduledAt"`
+	CustomerID             string     `db:"customerId" json:"-"`
+	ServiceID              *string    `db:"serviceId" json:"-"`
+	TransferEmployeeID     *string    `db:"transferEmployeeId" json:"-"`
+	ProjectSupervisorID    *string    `db:"projectSupervisorId" json:"-"`
+	ExpenseResponsibleID   *string    `db:"expenseResponsibleId" json:"expenseResponsibleId"`
+	ConfirmedByEmployeeID  *string    `db:"confirmedByEmployeeId" json:"-"`
+	Notes                  *string    `db:"notes" json:"notes"`
+	VehicleType            *string    `db:"vehicleType" json:"vehicleType"`
+	Priority               string     `db:"priority" json:"priority"`
+	Status                 string     `db:"status" json:"status"`
+	TransferToProjects     bool       `db:"transferToProjects" json:"transferToProjects"`
+	ConfirmedByName        *string    `db:"confirmedByName" json:"confirmedByName"`
+	AdminNotes             *string    `db:"adminNotes" json:"adminNotes"`
+	AssignedVehicle        *string    `db:"assignedVehicle" json:"assignedVehicle"`
+	QuotedPrice            *float64   `db:"quotedPrice" json:"quotedPrice"`
+	Address                *string    `db:"address" json:"address"`
+	MapLocation            *string    `db:"mapLocation" json:"mapLocation"`
+	MapLatitude            *float64   `db:"mapLatitude" json:"mapLatitude"`
+	MapLongitude           *float64   `db:"mapLongitude" json:"mapLongitude"`
+	CompletedAt            *time.Time `db:"completedAt" json:"completedAt"`
+	CompletionNotes        *string    `db:"completionNotes" json:"completionNotes"`
+	AmountCollected        *float64   `db:"amountCollected" json:"amountCollected"`
+	AdvancePaid            *float64   `db:"advancePaid" json:"advancePaid"`
+	AmountVerified         bool       `db:"amountVerified" json:"amountVerified"`
+	EquipmentStatus        string     `db:"equipmentStatus" json:"equipmentStatus"`
+	Shift                  *string    `db:"shift" json:"shift"`
+	DeviceCount            *int       `db:"deviceCount" json:"deviceCount"`
+	InspectionSupervisorID *string    `db:"inspectionSupervisorId" json:"inspectionSupervisorId"`
+	ProjectCar             *string    `db:"projectCar" json:"projectCar"`
+	CrewNotes              *string    `db:"crewNotes" json:"crewNotes"`
+	BookingType            string     `db:"bookingType" json:"bookingType"`
+	Urgency                *string    `db:"urgency" json:"urgency"`
+	MaintenanceType        *string    `db:"maintenanceType" json:"maintenanceType"`
+	RemembersExecutionCrew bool       `db:"remembersExecutionCrew" json:"remembersExecutionCrew"`
+	SystemCount            *int       `db:"systemCount" json:"systemCount"`
+	SystemType             *string    `db:"systemType" json:"systemType"`
+	ProjectSpeed           *string    `db:"projectSpeed" json:"projectSpeed"`
+	WorkType               *string    `db:"workType" json:"workType"`
 	// WorkLocation وين انشتغل الشغل: عند الزبون لو داخل الشركة (بالورشة).
 	// ⚠️ عمود بجدول Booking — لازم يضل إله حقل هنا لأن الاستعلام SELECT *.
 	WorkLocation string `db:"workLocation" json:"workLocation"`
@@ -55,6 +55,21 @@ type Booking struct {
 	InternalEmployeePhone *string `db:"internalEmployeePhone" json:"internalEmployeePhone"`
 	InternalDepartment    *string `db:"internalDepartment" json:"internalDepartment"`
 	InternalApproved      *bool   `db:"internalApproved" json:"internalApproved"`
+	// ═══ اكتمال الحجز بعد الإنجاز ═══
+	// الإنجاز لحاله ما يكفي: الليدر لازم يسوي فاتورة التكاليف المربوطة
+	// بالحجز، وتقرير العمل. هذولا محسوبات وقت الجلب (مو أعمدة بالجدول)
+	// من وجود LeaderInvoice و WorkReport مربوطات بهذا الحجز.
+	HasInvoice bool `db:"-" json:"hasInvoice"`
+	HasReport  bool `db:"-" json:"hasReport"`
+	// CompletionState الحالة الي تنعرض بتنسيق الحجوزات:
+	//   ASSIGNED         مكلّف (منترحّل لليدر، لسه ما انتهى)
+	//   STOPPED          توقف العمل
+	//   DONE_NO_BOTH     تم الإنجاز بدون فاتورة وتقرير
+	//   DONE_NO_INVOICE  تم الإنجاز بدون فاتورة
+	//   DONE_NO_REPORT   تم الإنجاز بدون تقرير
+	//   DONE_FULL        تم الإنجاز بشكل كامل
+	CompletionState string `db:"-" json:"completionState"`
+
 	AddressDescription      *string    `db:"addressDescription" json:"addressDescription"`
 	CreatedAt               time.Time  `db:"createdAt" json:"createdAt"`
 	UpdatedAt               time.Time  `db:"updatedAt" json:"updatedAt"`

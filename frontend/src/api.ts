@@ -444,9 +444,22 @@ export interface BookingAssignment {
   employee: Employee
 }
 
+// حالة اكتمال الحجز بعد الإنجاز — تنحسب بالسيرفر من وجود فاتورة
+// التكاليف المربوطة بالحجز وتقرير العمل.
+export type CompletionState =
+  | 'ASSIGNED'         // مكلّف — منترحّل لليدر ولسه ما انتهى
+  | 'STOPPED'          // توقف العمل
+  | 'DONE_NO_BOTH'     // تم الإنجاز بدون فاتورة وتقرير
+  | 'DONE_NO_INVOICE'  // تم الإنجاز بدون فاتورة
+  | 'DONE_NO_REPORT'   // تم الإنجاز بدون تقرير
+  | 'DONE_FULL'        // تم الإنجاز بشكل كامل
+
 export interface Booking {
   id: string
   code: string
+  hasInvoice: boolean
+  hasReport: boolean
+  completionState: CompletionState
   sequenceNumber: number | null
   scheduledAt: string | null
   scheduleLogs: { id: string; changedById: string; changedBy: { id: string; name: string; role: string }; oldTime: string | null; newTime: string; createdAt: string }[]

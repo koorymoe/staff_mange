@@ -143,6 +143,28 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 // صار عدد الحجوزات بالآلاف بعد استيراد البيانات القديمة، صفحة الحجوزات صارت تسوي
 // عشرات الآلاف من الاستعلامات المتسلسلة وتعلق. الحل: نجمع كل الـ IDs المطلوبة أول
 // وبعدين نجيبهم بدفعة وحدة لكل نوع (WHERE id = ANY(...))، ونوزعهم بالذاكرة.
+// completionState يترجم حالة الحجز + وجود الفاتورة والتقرير لحالة وحدة
+// تنعرض بتنسيق الحجوزات. الإداري لازم يشوف بنظرة منو خلّص شغله كامل
+// ومنو أنجز وترك الورق وراه.
+func completionState(b *model.Booking) string {
+	if b.Status != "COMPLETED" {
+		if b.Status == "CANCELLED" {
+			return "STOPPED"
+		}
+		return "ASSIGNED"
+	}
+	switch {
+	case b.HasInvoice && b.HasReport:
+		return "DONE_FULL"
+	case !b.HasInvoice && !b.HasReport:
+		return "DONE_NO_BOTH"
+	case !b.HasInvoice:
+		return "DONE_NO_INVOICE"
+	default:
+		return "DONE_NO_REPORT"
+	}
+}
+
 func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 	if len(bookings) == 0 {
 		return nil
@@ -209,6 +231,31 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 			ORDER BY bs."createdAt"`, pq.Array(bookingIDs)); err == nil {
 			for _, row := range rows {
 				extraServicesByBooking[row.BookingID] = append(extraServicesByBooking[row.BookingID], row.Service)
+			}
+		}
+	}
+
+	// ═══ اكتمال الحجز: فاتورة وتقرير ═══
+	// الإنجاز ما يكتمل إلا بفاتورة التكاليف المربوطة بالحجز + تقرير العمل.
+	// نجيبهن باستعلامين لكل الحجوزات سوه (مو استعلام لكل حجز) حتى نضل
+	// بنفس عدد الاستعلامات الثابت.
+	withInvoice := map[string]bool{}
+	withReport := map[string]bool{}
+	if len(bookingIDs) > 0 {
+		ids := []string{}
+		if err := r.db.Select(&ids, `
+			SELECT DISTINCT "bookingId" FROM "LeaderInvoice"
+			WHERE "bookingId" = ANY($1)`, pq.Array(bookingIDs)); err == nil {
+			for _, id := range ids {
+				withInvoice[id] = true
+			}
+		}
+		ids = []string{}
+		if err := r.db.Select(&ids, `
+			SELECT DISTINCT "bookingId" FROM "WorkReport"
+			WHERE "bookingId" = ANY($1)`, pq.Array(bookingIDs)); err == nil {
+			for _, id := range ids {
+				withReport[id] = true
 			}
 		}
 	}
@@ -303,6 +350,10 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		} else if b.Service != nil {
 			b.Services = []model.Service{*b.Service}
 		}
+		b.HasInvoice = withInvoice[b.ID]
+		b.HasReport = withReport[b.ID]
+		b.CompletionState = completionState(b)
+
 		b.TransferEmployee = getEmp(b.TransferEmployeeID)
 		b.ProjectSupervisor = getEmp(b.ProjectSupervisorID)
 		b.ConfirmedByEmployee = getEmp(b.ConfirmedByEmployeeID)
