@@ -2,7 +2,8 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type Product, fileUrl } from '../api'
 import { useSession } from '../session'
-import { _IMG_VSTRIP, _IMG_FBANNER } from '../printImages'
+import vstripUrl from '../assets/print/quotation-vstrip.png'
+import bannerUrl from '../assets/print/quotation-banner.png'
 
 interface ItemRow {
   productName: string
@@ -461,6 +462,12 @@ ${pageShell(`
     return printHtml
   }
 
+  // صور الطباعة صارت ملفات حقيقية مو نص مضمّن بالكود. نافذة الطباعة
+  // تنفتح فاضية (about:blank)، والمسار النسبي ما ينحل جواها — فنخليه
+  // مطلق بأصل الموقع حتى الصورة توصلها.
+  const _IMG_VSTRIP = new URL(vstripUrl, window.location.origin).href
+  const _IMG_FBANNER = new URL(bannerUrl, window.location.origin).href
+
   const handlePrint = (withImages = true) => {
     const html = buildPrintHtml(withImages)
     if (!html) return
@@ -468,7 +475,23 @@ ${pageShell(`
     if (!printWindow) return
     printWindow.document.write(html)
     printWindow.document.close()
-    setTimeout(() => printWindow.print(), 500)
+    // الصور صارت تنجلب من السيرفر بدل ما تكون مضمّنة بالنص، فننتظرها
+    // تخلص قبل الطباعة — وإلا الطباعة تطلع بلا بانر لو انفتحت قبلها.
+    // (المهلة الثابتة القديمة جانت تكفي لأن الصور جانت جاهزة بالنص.)
+    const images = Array.from(printWindow.document.images)
+    const ready = images.map((img) =>
+      img.complete
+        ? Promise.resolve()
+        : new Promise<void>((resolve) => {
+            img.onload = () => resolve()
+            img.onerror = () => resolve() // صورة ما وصلت ما توقف الطباعة
+          }),
+    )
+    // مهلة قصوى ٥ ثواني حتى ما تنحبس الطباعة لو صورة علقت
+    void Promise.race([
+      Promise.all(ready),
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ]).then(() => setTimeout(() => printWindow.print(), 150))
   }
 
   // المعاينة: نعرض النسخة المطبوعة داخل النظام (مثل ملف PDF) — للاطلاع فقط،
