@@ -62,6 +62,7 @@ type ProjectCandidate struct {
 	Name       string `db:"name" json:"name"`
 	Role       string `db:"role" json:"role"`
 	IsLeader   bool   `db:"isLeader" json:"isLeader"`
+	IsTrainee  bool   `db:"isTrainee" json:"isTrainee"`
 	HasEngSkl  bool   `db:"hasEngSkill" json:"-"`
 	IsTechPerm bool   `db:"isTechPerm" json:"-"`
 	Group      string `db:"-" json:"group"`

@@ -102,9 +102,26 @@ interface ProjectCandidate {
   name: string
   role: string
   isLeader: boolean
+  isTrainee: boolean
   group: string
   groupLabel: string
   isEngineer: boolean
+}
+
+// اسم المرشح بالقائمة يبيّن دوره وحالته — المدير لازم يتأكد إنه اختار
+// الشخص الصح، وإذا الموظف لسه متدرب لازم يعرف قبل ما يوجّهه مشروع.
+const ROLE_AR: Record<string, string> = {
+  ADMIN: 'مدير النظام', OWNER: 'المالك', TECHNICIAN: 'فني', TECHNICAL: 'تقني',
+  ENGINEER: 'مهندس', QUALITY_ENGINEER: 'مهندس جودة', SALES: 'مبيعات',
+  HR_COORDINATOR: 'كوادر', FINANCE: 'حسابات', MONITOR: 'رقابة',
+  PROCUREMENT_ADMIN: 'مخازن', GPS_ADMIN: 'مسؤول GPS', DESIGNER: 'مصمم',
+  PROJECT_MANAGER: 'مدير مشاريع',
+}
+function candidateLabel(c: ProjectCandidate): string {
+  const bits = [ROLE_AR[c.role] || c.role]
+  if (c.isLeader) bits.push('تيم ليدر')
+  if (c.isTrainee) bits.push('⚠ متدرب')
+  return `${c.name} — ${bits.join('، ')}`
 }
 
 // مرشحو المشروع — "المسؤول عن المشروع" حصراً المهندسون (اللي عندهم مهارات
@@ -130,7 +147,7 @@ function EmployeeOptions({ candidates }: { candidates: ProjectCandidate[] }) {
     <>
       {groups.map(g => (
         <optgroup key={g.label} label={g.label}>
-          {g.items.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {g.items.map(c => <option key={c.id} value={c.id}>{candidateLabel(c)}</option>)}
         </optgroup>
       ))}
     </>
@@ -1497,7 +1514,7 @@ function DelegateModal({ project, onClose, onSaved }: {
             {groups.map((g) => (
               <optgroup key={g.label} label={g.label}>
                 {g.items.map((c) => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
+                  <option key={c.id} value={c.id}>{candidateLabel(c)}</option>
                 ))}
               </optgroup>
             ))}

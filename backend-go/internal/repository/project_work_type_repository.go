@@ -41,7 +41,7 @@ func (r *ProjectWorkTypeRepository) Delete(id string) error {
 func (r *ProjectWorkTypeRepository) ListProjectCandidates(engineeringSkills []string) ([]model.ProjectCandidate, error) {
 	candidates := []model.ProjectCandidate{}
 	err := r.db.Select(&candidates, `
-		SELECT e.id, e.name, e.role, e."isLeader",
+		SELECT e.id, e.name, e.role, e."isLeader", e."isTrainee",
 			EXISTS (
 				SELECT 1 FROM "EmployeeSkill" es
 				JOIN "Skill" s ON s.id = es."skillId"
@@ -53,7 +53,10 @@ func (r *ProjectWorkTypeRepository) ListProjectCandidates(engineeringSkills []st
 				WHERE ep."employeeId" = e.id AND p.name = 'content_technician'
 			) AS "isTechPerm"
 		FROM "Employee" e
-		WHERE e.status = 'ACTIVE' AND e."isTrainee" = false
+		-- المتدرب ما ينشال من القائمة: قبل جان ينختفي بالسكوت، فالمدير
+		-- ينطي موظف جديد دور تقني وبعدين ما يلكاه بقائمة التوجيه ولا
+		-- يعرف ليش. هسه يطلع مؤشّر «متدرب» والمدير هو الي يقرر.
+		WHERE e.status = 'ACTIVE'
 		ORDER BY e.name
 	`, pq.Array(engineeringSkills))
 	if err != nil {

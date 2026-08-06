@@ -3,6 +3,7 @@ import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { useSession } from '../session'
 import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
+import CompletionBadge from '../components/CompletionBadge'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -36,22 +37,6 @@ function formatDateArabic(dateStr: string) {
 // للعثور عليه بدل ما يضيع من كل الفلاتر.
 function relevantDate(b: Booking): string {
   return b.scheduledAt || b.createdAt
-}
-
-const statusLabels: Record<string, string> = {
-  PENDING: 'بانتظار التثبيت',
-  CONFIRMED: 'مثبت',
-  IN_PROGRESS: 'جاري التنفيذ',
-  COMPLETED: 'منجز',
-  CANCELLED: 'ملغى',
-}
-
-const statusColors: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  CONFIRMED: 'bg-blue-100 text-blue-700',
-  IN_PROGRESS: 'bg-orange-100 text-orange-700',
-  COMPLETED: 'bg-emerald-100 text-emerald-700',
-  CANCELLED: 'bg-red-100 text-red-700',
 }
 
 const techRoleLabels: Record<string, string> = {
@@ -339,9 +324,10 @@ export default function BookingsList() {
                         : <span className="text-amber-600">لم يُنسَّق بعد ({new Date(b.createdAt).toLocaleDateString('ar-IQ')})</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <span className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[b.status]}`}>
-                        {statusLabels[b.status] || b.status}
-                      </span>
+                      {/* الحالة التفصيلية بدل «مثبت/منجز» الخام: تبيّن هل
+                          انكلّف كادر عليه، وهل خلّص فاتورته وتقريره. نفس
+                          اللغة الي بتنسيق الحجوزات بالضبط. */}
+                      <CompletionBadge booking={b} />
                     </td>
                     <td className="px-4 py-3">
                       <button
