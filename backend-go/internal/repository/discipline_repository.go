@@ -170,6 +170,9 @@ func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, 
 		WHERE b.status = 'COMPLETED'
 		  AND b."completedAt" IS NOT NULL
 		  AND b."completedAt" < now() - ($1::text || ' hours')::interval
+		  -- الغرامات تبدي من تاريخ تشغيل النظام: ما نحاسب أحد على شغل
+		  -- قديم ما جان النظام يطالبه بيه أصلاً
+		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
 		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
@@ -212,4 +215,12 @@ func (r *DisciplineRepository) SystemAuthorID() (string, error) {
 		LIMIT 1
 	`)
 	return id, err
+}
+
+// StartsAt يرجّع لحظة تشغيل نظام الغرامات — كل شي انتهى قبلها ما
+// ينحاسب عليه.
+func (r *DisciplineRepository) StartsAt() (string, error) {
+	var t string
+	err := r.db.Get(&t, `SELECT "startsAt"::text FROM "DisciplineConfig" WHERE id = 1`)
+	return t, err
 }

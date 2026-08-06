@@ -1181,5 +1181,46 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					ADD COLUMN IF NOT EXISTS "assignedById" TEXT;
 			`,
 		},
+		{
+			// ═══ الغرامات تبدي من تاريخ النشر ═══
+			// بدون هذا، أول ما يشتغل النظام يمر على **كل** حجز منجز قديم
+			// ماكو عليه فاتورة أو تقرير ويغرّم عليه — فينغرم الإداريون
+			// دفعة وحدة على شغل عمره أشهر ما جان النظام يطالبهم بيه أصلاً.
+			// هذا ظلم وما إله معنى.
+			//
+			// نثبّت لحظة تشغيل النظام بصف واحد، والفحص ما يشوف إلا
+			// الحجوزات الي انتهت بعدها. الصف ينكتب مرة وحدة بس
+			// (ON CONFLICT DO NOTHING) فأي نشر بعدين ما يزحزح التاريخ.
+			Version: "0198_discipline_start_date",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "DisciplineConfig" (
+					id         INT PRIMARY KEY DEFAULT 1,
+					"startsAt" TIMESTAMPTZ NOT NULL DEFAULT now(),
+					CONSTRAINT "discipline_config_single_row" CHECK (id = 1)
+				);
+				INSERT INTO "DisciplineConfig" (id, "startsAt")
+				VALUES (1, now())
+				ON CONFLICT (id) DO NOTHING;
+			`,
+		},
+		{
+			// ═══ موعد الحجز صار مدى: من ... إلى ═══
+			// الإداري يتصل بالزبون ويحدد له وقت، والوقت الواحد ما يصير
+			// وعد يلتزم بيه: الطريق والشغل الي قبله ما ينحسبون بالدقيقة.
+			// فالمتفق عليه مدى ساعة — «نجيك بين ٧ و٨» — وهذا الي ينحكى
+			// للزبون فعلاً، ولازم النظام يعرضه نفس الشي.
+			//
+			// العمود الجديد ينحسب تلقائياً ساعة بعد البداية، والحجوزات
+			// القديمة ننزلها بنفس القاعدة حتى ما تطلع بلا نهاية.
+			Version: "0199_booking_schedule_window",
+			SQL: `
+				ALTER TABLE "Booking"
+					ADD COLUMN IF NOT EXISTS "scheduledEndAt" TIMESTAMPTZ;
+
+				UPDATE "Booking"
+				SET "scheduledEndAt" = "scheduledAt" + interval '1 hour'
+				WHERE "scheduledAt" IS NOT NULL AND "scheduledEndAt" IS NULL;
+			`,
+		},
 	}
 }

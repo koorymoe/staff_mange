@@ -465,6 +465,9 @@ export interface Booking {
   completionState: CompletionState
   sequenceNumber: number | null
   scheduledAt: string | null
+  // نهاية المدى المتفق عليه مع الزبون (ساعة بعد البداية) — الموعد
+  // ينحكى للزبون «من ... إلى ...» مو وقت واحد.
+  scheduledEndAt: string | null
   scheduleLogs: { id: string; changedById: string; changedBy: { id: string; name: string; role: string }; oldTime: string | null; newTime: string; createdAt: string }[]
   materialsReadyAt: string | null
   materialsReadyBy: { id: string; name: string } | null

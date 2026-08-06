@@ -481,7 +481,8 @@ func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, 
 			"confirmedAt" = COALESCE("confirmedAt", now()),
 			"quotedPrice" = COALESCE($6, "quotedPrice"),
 			address = COALESCE($7, address),
-			"scheduledAt" = COALESCE($8::timestamp, "scheduledAt")
+			"scheduledAt" = COALESCE($8::timestamp, "scheduledAt"),
+			"scheduledEndAt" = COALESCE($8::timestamp + interval '1 hour', "scheduledEndAt")
 		WHERE id = $1
 	`, id, req.ConfirmedByName, req.ConfirmedByEmployeeID, req.AdminNotes, req.TransferToProjects, req.QuotedPrice, req.Address, scheduledAt)
 	return err
@@ -620,7 +621,13 @@ func (r *BookingRepository) Verify(id string) error {
 }
 
 func (r *BookingRepository) SetSchedule(id, scheduledAt string) error {
-	_, err := r.db.Exec(`UPDATE "Booking" SET "scheduledAt" = $2::timestamp WHERE id = $1`, id, scheduledAt)
+	// النهاية تنحسب تلقائياً ساعة بعد البداية — ما ننطي الإداري خانة
+	// ثانية يعبّيها، المدى ثابت والقاعدة وحدة بكل النظام.
+	_, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "scheduledAt" = $2::timestamp,
+		    "scheduledEndAt" = $2::timestamp + interval '1 hour'
+		WHERE id = $1`, id, scheduledAt)
 	return err
 }
 

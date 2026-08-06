@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { useSession } from '../session'
 import { MapViewer } from '../components/MapLazy'
+import { formatScheduleWindow } from '../utils/schedule'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -334,7 +335,7 @@ export default function BookingsList() {
                     <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">
                       {b.scheduledAt
-                        ? new Date(b.scheduledAt).toLocaleString('ar-IQ', { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })
+                        ? formatScheduleWindow(b.scheduledAt, b.scheduledEndAt)
                         : <span className="text-amber-600">لم يُنسَّق بعد ({new Date(b.createdAt).toLocaleDateString('ar-IQ')})</span>}
                     </td>
                     <td className="px-4 py-3">
@@ -489,7 +490,7 @@ export default function BookingsList() {
                           <div>
                             <p className="text-slate-400">الموعد المحدد للزبون</p>
                             <p className="mt-1 text-slate-700">
-                              {b.scheduledAt ? new Date(b.scheduledAt).toLocaleString('ar-IQ') : 'غير محدد'}
+                              {b.scheduledAt ? formatScheduleWindow(b.scheduledAt, b.scheduledEndAt) : 'غير محدد'}
                             </p>
                           </div>
                           <div>

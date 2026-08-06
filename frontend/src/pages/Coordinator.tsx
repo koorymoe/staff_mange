@@ -3,6 +3,7 @@ import { api, type Booking, type Employee, type CartItem, type Product, type Job
 import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
+import { formatScheduleWindow } from '../utils/schedule'
 import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
@@ -369,13 +370,7 @@ export default function Coordinator() {
                     <span className="text-slate-600">{b.customer?.name || 'زبون غير معروف'}</span>
                     <span className="text-slate-600">{serviceNames(b)}</span>
                     <span className="font-bold text-brand-800">
-                      {new Date(b.scheduledAt!).toLocaleString('ar-IQ', {
-                        weekday: 'long',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        day: 'numeric',
-                        month: 'numeric',
-                      })}
+                      {formatScheduleWindow(b.scheduledAt, b.scheduledEndAt)}
                     </span>
                   </div>
                 ))}

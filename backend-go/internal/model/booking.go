@@ -3,10 +3,16 @@ package model
 import "time"
 
 type Booking struct {
-	ID                     string     `db:"id" json:"id"`
-	Code                   string     `db:"code" json:"code"`
-	SequenceNumber         *int       `db:"sequenceNumber" json:"sequenceNumber"`
-	ScheduledAt            *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	ID             string     `db:"id" json:"id"`
+	Code           string     `db:"code" json:"code"`
+	SequenceNumber *int       `db:"sequenceNumber" json:"sequenceNumber"`
+	ScheduledAt    *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	// ScheduledEndAt نهاية المدى المتفق عليه مع الزبون. الوقت الواحد ما
+	// يصير وعد يلتزم بيه (الطريق والشغل الي قبله ما ينحسبون بالدقيقة)،
+	// فالمتفق عليه مدى ساعة: «نجيك بين ٧ و٨». ينحسب تلقائياً ساعة بعد
+	// البداية بكل مكان ينتحدد بيه الموعد.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
+	ScheduledEndAt         *time.Time `db:"scheduledEndAt" json:"scheduledEndAt"`
 	PendingScheduledAt     *time.Time `db:"pendingScheduledAt" json:"pendingScheduledAt"`
 	CustomerID             string     `db:"customerId" json:"-"`
 	ServiceID              *string    `db:"serviceId" json:"-"`
