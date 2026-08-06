@@ -2,8 +2,10 @@ package repository
 
 import (
 	"sort"
+	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -24,12 +26,8 @@ func (r *EmployeeRepository) List() ([]model.Employee, error) {
 	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status NOT IN ('ARCHIVED', 'DELETED', 'SUSPENDED') AND role != 'OWNER' ORDER BY name ASC`); err != nil {
 		return nil, err
 	}
-	for i := range employees {
-		skills, err := r.SkillsForEmployee(employees[i].ID)
-		if err != nil {
-			return nil, err
-		}
-		employees[i].Skills = skills
+	if err := r.attachSkills(employees); err != nil {
+		return nil, err
 	}
 	return employees, nil
 }
@@ -41,12 +39,8 @@ func (r *EmployeeRepository) ListArchived() ([]model.Employee, error) {
 	if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE status IN ('ARCHIVED', 'DELETED', 'SUSPENDED') ORDER BY name ASC`); err != nil {
 		return nil, err
 	}
-	for i := range employees {
-		skills, err := r.SkillsForEmployee(employees[i].ID)
-		if err != nil {
-			return nil, err
-		}
-		employees[i].Skills = skills
+	if err := r.attachSkills(employees); err != nil {
+		return nil, err
 	}
 	return employees, nil
 }
@@ -229,14 +223,12 @@ func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee
 	`, serviceID); err != nil {
 		return nil, err
 	}
+	if err := r.attachSkills(employees); err != nil {
+		return nil, err
+	}
 	for i := range employees {
-		skills, err := r.SkillsForEmployee(employees[i].ID)
-		if err != nil {
-			return nil, err
-		}
-		employees[i].Skills = skills
 		hasSkill := false
-		for _, s := range skills {
+		for _, s := range employees[i].Skills {
 			if s.CanPerform && s.Skill != nil && s.Skill.ServiceID == serviceID {
 				hasSkill = true
 				break
@@ -250,6 +242,64 @@ func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee
 			(employees[b].HasRequiredSkill == nil || !*employees[b].HasRequiredSkill)
 	})
 	return employees, nil
+}
+
+// attachSkills يعبّي مهارات كل الموظفين سوه باستعلامين، مهما جان عددهم.
+//
+// SkillsForEmployee تسوي استعلام للمهارات + استعلام لكل مهارة حتى تجيب
+// تفاصيلها. نداؤها بحلقة على الموظفين معناها استعلام لكل موظف على الأقل،
+// وقائمة الموظفين تنطلب بشاشات كثيرة (التنسيق، التعيين، الإحصاءات) —
+// فالتأخير ينضرب بعدد الشاشات.
+func (r *EmployeeRepository) attachSkills(employees []model.Employee) error {
+	if len(employees) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(employees))
+	for i := range employees {
+		employees[i].Skills = []model.EmployeeSkillDetail{}
+		ids = append(ids, employees[i].ID)
+	}
+
+	// المهارة وتفاصيلها بضربة وحدة (JOIN) بدل استعلام لكل مهارة
+	type row struct {
+		model.EmployeeSkillDetail `db:",inline"`
+		SkillID2                  *string    `db:"s_id"`
+		SkillName                 *string    `db:"s_name"`
+		SkillServiceID            *string    `db:"s_serviceId"`
+		SkillCreatedAt            *time.Time `db:"s_createdAt"`
+	}
+	rows := []row{}
+	if err := r.db.Select(&rows, `
+		SELECT es.*, s.id AS "s_id", s.name AS "s_name", s."serviceId" AS "s_serviceId", s."createdAt" AS "s_createdAt"
+		FROM "EmployeeSkill" es
+		LEFT JOIN "Skill" s ON s.id = es."skillId"
+		WHERE es."employeeId" = ANY($1)`, pq.Array(ids)); err != nil {
+		return err
+	}
+
+	byEmployee := map[string][]model.EmployeeSkillDetail{}
+	for _, rw := range rows {
+		d := rw.EmployeeSkillDetail
+		if rw.SkillID2 != nil {
+			d.Skill = &model.Skill{ID: *rw.SkillID2}
+			if rw.SkillName != nil {
+				d.Skill.Name = *rw.SkillName
+			}
+			if rw.SkillServiceID != nil {
+				d.Skill.ServiceID = *rw.SkillServiceID
+			}
+			if rw.SkillCreatedAt != nil {
+				d.Skill.CreatedAt = *rw.SkillCreatedAt
+			}
+		}
+		byEmployee[d.EmployeeID] = append(byEmployee[d.EmployeeID], d)
+	}
+	for i := range employees {
+		if list := byEmployee[employees[i].ID]; list != nil {
+			employees[i].Skills = list
+		}
+	}
+	return nil
 }
 
 // SkillsForEmployee يجلب كل مهارات موظف مع تفاصيل المهارة والخدمة المرتبطة بيها

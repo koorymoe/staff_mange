@@ -44,6 +44,66 @@ func (r *MissionRepository) hydrate(m *model.Mission, withBooking, withEvents bo
 	return nil
 }
 
+// attachBookingsAndEvents يعبّي حجوزات المهام وأحداثها بعدد استعلامات ثابت.
+//
+// hydrate جانت تنادي FindByID لكل مهمة — وكل نداء يسوي حزمة استعلامات
+// كاملة للحجز (زبون، خدمات، كادر، سجل الجدولة). يعني قائمة ٢٠٠ مهمة =
+// مئات الرحلات لقاعدة البيانات. هنا نجيب كل الحجوزات بضربة وحدة.
+//
+// latestEventOnly: شاشة المتابعة تحتاج آخر حدث بس، وشاشة التفاصيل تحتاج
+// كل الأحداث — نفس السلوك السابق بالضبط، بس بلا حلقة استعلامات.
+func (r *MissionRepository) attachBookingsAndEvents(missions []model.Mission, withEvents, latestEventOnly bool) error {
+	if len(missions) == 0 {
+		return nil
+	}
+	bookingIDs := make([]string, 0, len(missions))
+	missionIDs := make([]string, 0, len(missions))
+	for i := range missions {
+		bookingIDs = append(bookingIDs, missions[i].BookingID)
+		missionIDs = append(missionIDs, missions[i].ID)
+	}
+
+	bookings, err := r.bookingRepo.FindByIDs(bookingIDs)
+	if err != nil {
+		return err
+	}
+	for i := range missions {
+		if b := bookings[missions[i].BookingID]; b != nil {
+			missions[i].Booking = b
+		}
+	}
+
+	if !withEvents {
+		return nil
+	}
+	// مهمة بلا أحداث لازم ترجع قائمة فاضية مو null — هيك جانت ترجع قبل،
+	// والواجهة تعتمد عليها.
+	for i := range missions {
+		missions[i].Events = []model.MissionEvent{}
+	}
+	events := []model.MissionEvent{}
+	query := `SELECT * FROM "MissionEvent" WHERE "missionId" = ANY($1) ORDER BY "missionId", "createdAt" ASC`
+	if latestEventOnly {
+		// DISTINCT ON يطلّع آخر حدث لكل مهمة بضربة وحدة — نفس ما تسويه
+		// ORDER BY "createdAt" DESC LIMIT 1 لكل مهمة على حدة.
+		query = `SELECT DISTINCT ON ("missionId") * FROM "MissionEvent"
+			WHERE "missionId" = ANY($1) ORDER BY "missionId", "createdAt" DESC`
+	}
+	if err := r.db.Select(&events, query, pq.Array(missionIDs)); err != nil {
+		return err
+	}
+	byMission := map[string][]model.MissionEvent{}
+	for _, e := range events {
+		byMission[e.MissionID] = append(byMission[e.MissionID], e)
+	}
+	for i := range missions {
+		if list := byMission[missions[i].ID]; list != nil {
+			missions[i].Events = list
+		}
+	}
+	return nil
+}
+
 func (r *MissionRepository) attachLeaderAndMembers(missions []model.Mission) {
 	empIDs := map[string]bool{}
 	for _, m := range missions {
@@ -95,10 +155,8 @@ func (r *MissionRepository) List(stage, leaderID, employeeID string) ([]model.Mi
 	if err := r.db.Select(&missions, query, args...); err != nil {
 		return nil, err
 	}
-	for i := range missions {
-		if err := r.hydrate(&missions[i], true, true); err != nil {
-			return nil, err
-		}
+	if err := r.attachBookingsAndEvents(missions, true, false); err != nil {
+		return nil, err
 	}
 	r.attachLeaderAndMembers(missions)
 	return missions, nil
@@ -183,10 +241,8 @@ func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission,
 	if err != nil {
 		return nil, err
 	}
-	for i := range missions {
-		if err := r.hydrate(&missions[i], true, true); err != nil {
-			return nil, err
-		}
+	if err := r.attachBookingsAndEvents(missions, true, false); err != nil {
+		return nil, err
 	}
 	return missions, nil
 }
@@ -199,14 +255,8 @@ func (r *MissionRepository) ListActive() ([]model.Mission, error) {
 	if err != nil {
 		return nil, err
 	}
-	for i := range missions {
-		if err := r.hydrate(&missions[i], true, false); err != nil {
-			return nil, err
-		}
-		events := []model.MissionEvent{}
-		if err := r.db.Select(&events, `SELECT * FROM "MissionEvent" WHERE "missionId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, missions[i].ID); err == nil {
-			missions[i].Events = events
-		}
+	if err := r.attachBookingsAndEvents(missions, true, true); err != nil {
+		return nil, err
 	}
 	r.attachLeaderAndMembers(missions)
 	return missions, nil

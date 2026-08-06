@@ -108,6 +108,31 @@ func (r *BookingRepository) FindByID(id string) (*model.Booking, error) {
 	return &b, nil
 }
 
+// FindByIDs يجلب مجموعة حجوزات بعلاقاتها كاملة بعدد استعلامات ثابت.
+// يفيد المناداة الي تحتاج حجوزات كثيرة سوه (مثل قائمة المهام) بدل
+// FindByID بحلقة — كل نداء منها يسوي حزمة استعلامات لحاله.
+func (r *BookingRepository) FindByIDs(ids []string) (map[string]*model.Booking, error) {
+	out := map[string]*model.Booking{}
+	if len(ids) == 0 {
+		return out, nil
+	}
+	rows := []model.Booking{}
+	if err := r.db.Select(&rows, `SELECT * FROM "Booking" WHERE id = ANY($1)`, pq.Array(ids)); err != nil {
+		return nil, err
+	}
+	ptrs := make([]*model.Booking, 0, len(rows))
+	for i := range rows {
+		ptrs = append(ptrs, &rows[i])
+	}
+	if err := r.hydrateAll(ptrs); err != nil {
+		return nil, err
+	}
+	for _, b := range ptrs {
+		out[b.ID] = b
+	}
+	return out, nil
+}
+
 // hydrate يجلب علاقات حجز واحد — يلف hydrateAll تفادياً لتكرار المنطق.
 func (r *BookingRepository) hydrate(b *model.Booking) error {
 	return r.hydrateAll([]*model.Booking{b})

@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 
+	"github.com/lib/pq"
+
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -265,10 +267,171 @@ func (r *LeaderInvoiceRepository) List(employeeID string) ([]model.LeaderInvoice
 	if err != nil {
 		return nil, err
 	}
-	for i := range invoices {
-		if err := r.hydrate(&invoices[i]); err != nil {
-			return nil, err
-		}
+	if err := r.hydrateAll(invoices); err != nil {
+		return nil, err
 	}
 	return invoices, nil
+}
+
+// hydrateAll يعبّي كل الفواتير سوه بعدد ثابت من الاستعلامات، بدل ما ينادي
+// hydrate لكل فاتورة على حدة.
+//
+// hydrate الواحدة تسوي ٨ استعلامات (مواد، ليدر، معتمد، حجز، زبون، خدمة،
+// تعيينات، وموظف لكل تعيين). فمعناها القائمة جانت تسوي ٨×عدد الفواتير:
+// ٥٠٠ فاتورة = ٤٠٠٠ رحلة لقاعدة البيانات بفتحة وحدة للصفحة. وكل ما
+// ينضاف شهر شغل تصير الصفحة أبطأ لين توقف تحمّل.
+//
+// هنا نجمع المفاتيح كلها أول، وننزّل كل جدول بطلب واحد (WHERE id = ANY)،
+// وندمج بالذاكرة. النتيجة نفسها بالضبط — بس بعدد استعلامات ثابت مهما
+// كبرت القائمة.
+func (r *LeaderInvoiceRepository) hydrateAll(invoices []model.LeaderInvoice) error {
+	if len(invoices) == 0 {
+		return nil
+	}
+
+	invoiceIDs := make([]string, 0, len(invoices))
+	employeeIDs := map[string]bool{}
+	bookingIDs := []string{}
+	for i := range invoices {
+		inv := &invoices[i]
+		if inv.SystemsJSON != "" {
+			_ = json.Unmarshal([]byte(inv.SystemsJSON), &inv.Systems)
+		}
+		if inv.ItemsJSON != "" {
+			_ = json.Unmarshal([]byte(inv.ItemsJSON), &inv.Items)
+		}
+		inv.Materials = []model.LeaderInvoiceMaterialItem{}
+		invoiceIDs = append(invoiceIDs, inv.ID)
+		employeeIDs[inv.EmployeeID] = true
+		if inv.ApprovedByEmployeeID != nil {
+			employeeIDs[*inv.ApprovedByEmployeeID] = true
+		}
+		if inv.BookingID != nil {
+			bookingIDs = append(bookingIDs, *inv.BookingID)
+		}
+	}
+
+	// ① المواد — كلها بطلب واحد ثم نوزّعها على فواتيرها
+	materials := []model.LeaderInvoiceMaterialItem{}
+	if err := r.db.Select(&materials, `
+		SELECT * FROM "LeaderInvoiceMaterialItem"
+		WHERE "leaderInvoiceId" = ANY($1) ORDER BY "createdAt"`, pq.Array(invoiceIDs)); err != nil {
+		return err
+	}
+	byInvoice := map[string][]model.LeaderInvoiceMaterialItem{}
+	for _, m := range materials {
+		byInvoice[m.LeaderInvoiceID] = append(byInvoice[m.LeaderInvoiceID], m)
+	}
+
+	// ② الحجوزات وما يتعلق بيها (زبون، خدمة، كادر منفّذ)
+	bookings := map[string]*model.Booking{}
+	assignmentsByBooking := map[string][]model.BookingAssignment{}
+	if len(bookingIDs) > 0 {
+		rows := []model.Booking{}
+		if err := r.db.Select(&rows, `SELECT * FROM "Booking" WHERE id = ANY($1)`, pq.Array(bookingIDs)); err != nil {
+			return err
+		}
+		customerIDs := []string{}
+		serviceIDs := []string{}
+		foundIDs := make([]string, 0, len(rows))
+		for i := range rows {
+			b := &rows[i]
+			bookings[b.ID] = b
+			foundIDs = append(foundIDs, b.ID)
+			customerIDs = append(customerIDs, b.CustomerID)
+			if b.ServiceID != nil {
+				serviceIDs = append(serviceIDs, *b.ServiceID)
+			}
+		}
+
+		customers := []model.Customer{}
+		if err := r.db.Select(&customers, `SELECT * FROM "Customer" WHERE id = ANY($1)`, pq.Array(customerIDs)); err != nil {
+			return err
+		}
+		customerByID := map[string]*model.Customer{}
+		for i := range customers {
+			customerByID[customers[i].ID] = &customers[i]
+		}
+
+		serviceByID := map[string]*model.Service{}
+		if len(serviceIDs) > 0 {
+			services := []model.Service{}
+			if err := r.db.Select(&services, `SELECT * FROM "Service" WHERE id = ANY($1)`, pq.Array(serviceIDs)); err != nil {
+				return err
+			}
+			for i := range services {
+				serviceByID[services[i].ID] = &services[i]
+			}
+		}
+
+		assignments := []model.BookingAssignment{}
+		if err := r.db.Select(&assignments, `
+			SELECT * FROM "BookingAssignment" WHERE "bookingId" = ANY($1)`, pq.Array(foundIDs)); err != nil {
+			return err
+		}
+		for _, a := range assignments {
+			employeeIDs[a.EmployeeID] = true
+			assignmentsByBooking[a.BookingID] = append(assignmentsByBooking[a.BookingID], a)
+		}
+
+		for id, b := range bookings {
+			b.Customer = customerByID[b.CustomerID]
+			if b.ServiceID != nil {
+				b.Service = serviceByID[*b.ServiceID]
+			}
+			b.Assignments = assignmentsByBooking[id]
+		}
+	}
+
+	// ③ الموظفون — الليدرات والمعتمدون والكادر المنفّذ، كلهم بطلب واحد
+	ids := make([]string, 0, len(employeeIDs))
+	for id := range employeeIDs {
+		ids = append(ids, id)
+	}
+	employees := []model.Employee{}
+	if len(ids) > 0 {
+		if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE id = ANY($1)`, pq.Array(ids)); err != nil {
+			return err
+		}
+	}
+	employeeByID := map[string]*model.Employee{}
+	for i := range employees {
+		employeeByID[employees[i].ID] = &employees[i]
+	}
+
+	// الكادر المنفّذ ينلزق بتعييناته بعد ما صار عدنا كل الموظفين
+	for _, list := range assignmentsByBooking {
+		for i := range list {
+			if e := employeeByID[list[i].EmployeeID]; e != nil {
+				list[i].Employee = *e
+			}
+		}
+	}
+
+	// ④ الدمج النهائي
+	for i := range invoices {
+		inv := &invoices[i]
+		if m := byInvoice[inv.ID]; m != nil {
+			inv.Materials = m
+		}
+		if e := employeeByID[inv.EmployeeID]; e != nil {
+			inv.EmployeeName = e.Name
+			inv.EmployeeRole = e.Role
+			inv.EmployeePhone = e.Phone
+		}
+		if inv.ApprovedByEmployeeID != nil {
+			if e := employeeByID[*inv.ApprovedByEmployeeID]; e != nil {
+				name := e.Name
+				inv.ApprovedByName = &name
+			}
+		}
+		if inv.BookingID != nil {
+			if b := bookings[*inv.BookingID]; b != nil {
+				code := b.Code
+				inv.BookingCode = &code
+				inv.Booking = b
+			}
+		}
+	}
+	return nil
 }
