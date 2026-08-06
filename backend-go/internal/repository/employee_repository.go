@@ -218,7 +218,7 @@ func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee
 		SELECT e.* FROM "Employee" e
 		WHERE e.status = 'ACTIVE'
 		  AND (
-		    e.role IN ('TECHNICIAN', 'ENGINEER')
+		    e.role IN ('TECHNICIAN', 'TECHNICAL', 'ENGINEER')
 		    OR EXISTS (
 		      SELECT 1 FROM "EmployeeSkill" es
 		      JOIN "Skill" sk ON sk.id = es."skillId"

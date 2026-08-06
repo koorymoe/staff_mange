@@ -15,6 +15,7 @@ const roleLabels: Record<EmployeeRole, string> = {
   PROCUREMENT_ADMIN: 'إداري الكميات',
   DESIGNER: 'مصمم',
   SERVICE_MANAGER: 'مسؤول خدمة',
+  TECHNICAL: 'تقني',
   OWNER: 'مالك النظام',
 }
 

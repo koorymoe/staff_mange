@@ -531,7 +531,8 @@ func (r *InventoryRepository) RejectToolRequest(id string) (*model.ToolRequest, 
 //
 // قبل هذا الشرط، أي أداة تنضاف للعدة القياسية كانت تروح لـ"كل" موظف بلا
 // استثناء، فطلع موظف مبيعات معلّق برقبته ٣٩ أداة وإداري كوادر ٤١.
-const toolKitEligibleSQL = `(e.role = 'TECHNICIAN' OR e."isLeader" = true)`
+// التقني يشتغل بالميدان مثل الفني — فتنطبق عليه العدة القياسية بعد
+const toolKitEligibleSQL = `(e.role IN ('TECHNICIAN', 'TECHNICAL') OR e."isLeader" = true)`
 
 func (r *InventoryRepository) ListPersonalToolTemplateItems() ([]model.PersonalToolTemplateItem, error) {
 	items := []model.PersonalToolTemplateItem{}

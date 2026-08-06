@@ -77,7 +77,7 @@ const navItems: NavItem[] = [
   // تصنيفي: صفحة شخصية عامة لكل الأدوار — لازم تبقى بمستوى مستقل بره "الإدارة"،
   // لأنه الفني/الليدر ما عندهم وصول لأي شي ثاني بالإدارة، فتضل قائمة فاضية
   // بالنسبة الهم لو حطيناها جوه.
-  { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN'] },
+  { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
 
   // ── الإدارة ──
   {
@@ -210,9 +210,9 @@ const navItems: NavItem[] = [
     // مجموعة "العمل" للفني/الليدر — مهامه اليومية ومصاريفه وتقاريره وفواتيره
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
-      { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN'] },
-      { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'PROJECT_MANAGER'] },
-      { to: '/work-reports', label: 'تقارير العمل', icon: <></>, roles: ['TECHNICIAN'] },
+      { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+      { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL', 'PROJECT_MANAGER'] },
+      { to: '/work-reports', label: 'تقارير العمل', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
       { to: '/leader-invoices', label: 'فواتيري', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
       { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true, permission: 'execution_cost' },
       // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
@@ -223,14 +223,14 @@ const navItems: NavItem[] = [
     // مجموعة "الجرد" — جرد الأدوات الشخصية وجرد الفريق (تيم ليدر بس يشوف الثانية)
     to: '/tech-inventory-group', label: 'الجرد', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
     children: [
-      { to: '/my-inventory', label: 'جرد أدواتي', icon: <></>, roles: ['TECHNICIAN'] },
-      { to: '/team-inventory', label: 'جرد الفريق', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
+      { to: '/my-inventory', label: 'جرد أدواتي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+      { to: '/team-inventory', label: 'جرد الفريق', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
     ],
   },
   // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
   { to: '/performance-review', label: 'تقييم فريقي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
   // صيانة الأجهزة العامة: حصراً للتيم ليدر (شيت "صيانة الاجهزة")
-  { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
+  { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
   { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
 
   // ═══ فاصل: تحته "الوحدات" — كل وحدة إدارية تجمع محتوياتها تحت باب واحد.
@@ -420,6 +420,9 @@ export default function Layout() {
   const [employee, setEmployeeState] = useState<Employee | null>(loadStoredEmployee)
   const [employeePermissions, setEmployeePermissions] = useState<string[]>([])
   const [gpsServiceId, setGpsServiceId] = useState<string | null>(null)
+  // هل عند الموظف المتدرب مواد فعلاً؟ null = لسّه ما فحصنا.
+  // بدونها ينحبس بشاشة تدريب فارغة ما بيها شي يدرسه.
+  const [traineeHasMaterials, setTraineeHasMaterials] = useState<boolean | null>(null)
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({})
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -443,6 +446,20 @@ export default function Layout() {
     void ensureFileToken()
     const timer = setInterval(() => { void ensureFileToken() }, 10 * 60 * 1000)
     return () => clearInterval(timer)
+  }, [employee])
+
+  // نفحص إذا اكو مواد تدريبية منشورة لهذا المتدرب. ما اكو مواد = ما
+  // اكو تدريب، فيدخل النظام عادي بدل ما ينحبس بشاشة فارغة.
+  useEffect(() => {
+    // Resetting the flag when the trainee state changes is derived-state sync, not a fetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!employee?.isTrainee) { setTraineeHasMaterials(null); return }
+    let alive = true
+    api.getMyTraining(employee.id)
+      .then((res) => { if (alive) setTraineeHasMaterials((res?.materials?.length ?? 0) > 0) })
+      // فشل الطلب ما يصير يحبس الموظف — نخليه يدخل عادي
+      .catch(() => { if (alive) setTraineeHasMaterials(false) })
+    return () => { alive = false }
   }, [employee])
 
   // تحديث تلقائي كل نص ساعة + معالجة رجوع الموظف للتبويب بعد غياب طويل
@@ -554,8 +571,16 @@ export default function Layout() {
     )
   }
 
-  // موظف قيد التدريب: يشوف صفحة التدريب فقط، بدون أي وصول لباقي النظام
-  if (employee.isTrainee) {
+  // موظف قيد التدريب: يشوف صفحة التدريب فقط، بدون أي وصول لباقي النظام.
+  //
+  // بس بشرط: لازم يكون المدير ناشر مواد تدريبية فعلاً. قبل، مجرد ما
+  // ينتأشر الموظف «متدرب» ينحبس بشاشة مكتوب بيها «لا توجد مواد تدريبية
+  // لهذه الخدمة بعد» — ما يشوف مهامه ولا يسجّل دوام ولا يسوي ولا شي،
+  // وما عنده حتى شنو يدرس. حبس بلا فايدة.
+  //
+  // هسه: ما اكو مواد = ما اكو تدريب، والموظف يدخل النظام عادي. الحبس
+  // يشتغل بس لمن المدير يحدد المواد — وهو صاحب القرار.
+  if (employee.isTrainee && traineeHasMaterials === true) {
     return (
       <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
         <div dir="rtl" className="min-h-screen bg-[#f0f4f9]">
@@ -577,8 +602,10 @@ export default function Layout() {
   const role = employee?.role
   const hasMonitor = role === 'MONITOR' || employeePermissions.includes('monitoring')
   const hasAudit = employeePermissions.includes('auditing')
-  // الفني العادي (مو ليدر) — قائمته مقفلة على شغله
-  const isPlainTechnician = role === 'TECHNICIAN' && !employee?.isLeader
+  // الفني والتقني العادي (مو ليدر) — قائمتهم مقفلة على شغلهم.
+  // التقني نفس الفني بالميدان، بس يتولى أكثر من خدمة — فما إله شغل
+  // بالشاشات الإدارية مثل ما ما إله شغل الفني.
+  const isPlainTechnician = (role === 'TECHNICIAN' || role === 'TECHNICAL') && !employee?.isLeader
   // unitGranted: صحيح لما يكون الموظف عنده صلاحية الوحدة الي هذا العنصر
   // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
   const isVisible = (item: NavItem, unitGranted = false): boolean => {

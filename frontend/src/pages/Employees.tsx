@@ -28,6 +28,8 @@ const roleLabels: Record<string, string> = {
   PROCUREMENT_ADMIN: 'إداري الكميات',
   DESIGNER: 'مصمم',
   SERVICE_MANAGER: 'مسؤول خدمة',
+  // التقني يتولى أكثر من خدمة — منفصل عن «فني» الي يشتغل بخدمة وحدة
+  TECHNICAL: 'تقني',
 }
 
 const roleColors: Record<string, { bg: string; text: string; dot: string }> = {

@@ -87,6 +87,7 @@ export type EmployeeRole =
   | 'SALES'
   | 'HR_COORDINATOR'
   | 'TECHNICIAN'
+  | 'TECHNICAL'
   | 'PROJECT_MANAGER'
   | 'MONITOR'
   | 'FINANCE'
