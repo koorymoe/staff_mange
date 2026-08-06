@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
 import PrivacyPolicyGate from './PrivacyPolicyGate'
-import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
 import { ensureFileToken } from '../api'
@@ -10,6 +10,22 @@ import TrainingPage from '../pages/TrainingPage'
 import AssistantWidget from './AssistantWidget'
 import ManagerAssistantChat from './ManagerAssistantChat'
 import SettingsPanel from './SettingsPanel'
+
+// وجهة كل نوع إشعار: ضغطة على الإشعار توديك للشاشة الي تخصه بدل ما
+// تدوّر عليها. نوع مو موجود بالخريطة = الإشعار يتأشر مقروء وبس.
+const notifTargets: Record<string, string> = {
+  leave_request: '/leaves',
+  leave_preliminary: '/leaves',
+  leave_decision: '/leaves',
+  booking_delete_request: '/booking-delete-requests',
+  booking_confirmed: '/bookings',
+  booking_returned_to_crew: '/bookings',
+  audit_issue: '/audit-issues',
+  kpi_deduction: '/kpi',
+  kpi_leaderboard: '/kpi',
+  authz_violation: '/owner-security',
+  job_duration_overrun: '/missions',
+}
 import AnnouncementTicker from './AnnouncementTicker'
 
 interface NavItem {
@@ -32,6 +48,19 @@ interface NavItem {
 const I = ({ d }: { d: string }) => (
   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d={d} /></svg>
 )
+
+// ═══ قائمة الفني العادي ═══
+// الفني ما يشوف إلا شغله: الرئيسية، الحضور، الإجازات، تصنيفي، جرد
+// أدواته، ومهامه. كل شي غير هذا يختفي عنه — حتى لو انفتح بصلاحية
+// جماعية أو انضاف عنصر جديد للقائمة بعدين.
+const TECHNICIAN_NAV = [
+  '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-inventory', '/privacy-policy',
+]
+
+// صلاحيات تنمنح للفني تلقائياً عند الإقلاع (حتى يشتغل زر «اطلب مادة»
+// من شاشة مهامي). هاي ما تفتحله عناصر بالقائمة — بس الصلاحية الي
+// ينطيها المدير بيده هي الي تفتح شي زيادة، مثل حساب تكلفة التنصيب.
+const TECHNICIAN_AUTO_PERMISSIONS = ['procurement', 'procurement_customer', 'procurement_personal']
 
 const navItems: NavItem[] = [
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
@@ -99,6 +128,11 @@ const navItems: NavItem[] = [
           { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
           { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_services' },
           { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
+          // شاشة البت بطلبات حذف الحجوزات. كانت مدفونة جوّا وحدة العلاقات
+          // العامة، ووحدة كاملة تنحجب عن أي واحد ما عنده صلاحية الوحدة —
+          // فالمالك كان يوصله إشعار الطلب وما يلكه مكان يوافق بيه. محلها
+          // المنطقي هنا: هي قرار على حجز.
+          { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR'], permission: 'booking_delete_approve' },
         ],
       },
       {
@@ -262,8 +296,6 @@ const navItems: NavItem[] = [
     unitPermission: 'unit_pr',
     children: [
       { to: '/vip-customers', label: '⭐ الشخصيات المهمة', icon: <></>, permission: 'vip_manual_add' },
-      // طلبات حذف الحجوزات — المراقب ومدير النظام يبتون بيها
-      { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], },
     ],
   },
 
@@ -396,6 +428,7 @@ export default function Layout() {
   const [notifOpen, setNotifOpen] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const location = useLocation()
+  const navigate = useNavigate()
 
   // Closing the mobile nav on route change is a one-line UI reset tied to router
   // navigation, not data fetching; safe to keep as a synchronous effect.
@@ -465,6 +498,13 @@ export default function Layout() {
         setNotifications((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))
         setUnreadCount((c) => Math.max(0, c - 1))
       } catch { /* ignore */ }
+    }
+    // الإشعار بلا وجهة يخلي الموظف يدوّر بيده على الشاشة الي تخص الخبر —
+    // وأحياناً ما يلكها أصلاً. كل نوع يوديه لمحله مباشرة.
+    const target = notifTargets[n.type]
+    if (target) {
+      setNotifOpen(false)
+      navigate(target)
     }
   }
 
@@ -537,6 +577,8 @@ export default function Layout() {
   const role = employee?.role
   const hasMonitor = role === 'MONITOR' || employeePermissions.includes('monitoring')
   const hasAudit = employeePermissions.includes('auditing')
+  // الفني العادي (مو ليدر) — قائمته مقفلة على شغله
+  const isPlainTechnician = role === 'TECHNICIAN' && !employee?.isLeader
   // unitGranted: صحيح لما يكون الموظف عنده صلاحية الوحدة الي هذا العنصر
   // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
   const isVisible = (item: NavItem, unitGranted = false): boolean => {
@@ -549,6 +591,18 @@ export default function Layout() {
     // و"الوحدات" = بس الوحدة الي انمنحت له صراحةً.
     if (item.unitPermission && role !== 'ADMIN' && !employeePermissions.includes(item.unitPermission)) {
       return false
+    }
+    // الفني العادي: قائمة مقفلة على شغله. العنصر الي إله رابط (مو
+    // مجموعة) لازم يكون بالقائمة المسموحة، أو ينفتح بصلاحية منحها
+    // المدير بيده — مو بصلاحية جات تلقائياً مع الدور.
+    if (isPlainTechnician && !item.children && !item.divider) {
+      const path = (item.to || '').split('?')[0]
+      if (!TECHNICIAN_NAV.includes(path)) {
+        const unlockers = [item.permission, ...(item.anyPermission || [])].filter(
+          (perm): perm is string => !!perm && !TECHNICIAN_AUTO_PERMISSIONS.includes(perm),
+        )
+        if (!unlockers.some((perm) => employeePermissions.includes(perm))) return false
+      }
     }
     const granted =
       unitGranted ||
@@ -798,7 +852,13 @@ export default function Layout() {
                             className={`block w-full border-b border-slate-50 px-4 py-3 text-right text-sm transition-colors hover:bg-slate-50 ${n.read ? 'text-slate-500' : 'bg-brand-50/50 font-medium text-slate-800'}`}
                           >
                             <p>{n.message}</p>
-                            <p className="mt-1 text-[11px] text-slate-400">{new Date(n.createdAt).toLocaleString('ar-IQ')}</p>
+                            <div className="mt-1 flex items-center justify-between">
+                              <span className="text-[11px] text-slate-400">{new Date(n.createdAt).toLocaleString('ar-IQ')}</span>
+                              {/* سهم يبيّن إن الإشعار ينفتح على شاشة */}
+                              {notifTargets[n.type] && (
+                                <span className="text-[11px] font-bold text-brand-600">افتحها ←</span>
+                              )}
+                            </div>
                           </button>
                         ))}
                       </div>

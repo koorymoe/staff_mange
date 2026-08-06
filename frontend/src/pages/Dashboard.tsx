@@ -1065,8 +1065,13 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ═══ GPS Panel — GPS_ADMIN أو فني عنده مهارة GPS (بدون باقي لوحات الأدمن اللي ما تخصهم) ═══ */}
-      {!isAdmin && (employee.role === 'GPS_ADMIN' || (employee.role === 'TECHNICIAN' && hasGpsSkill(employee, gpsServiceId))) && (
+      {/* ═══ GPS Panel ═══
+          مسؤول الجي بي اس يشوفها دائماً. أما الفني فلازم يجتمع عنده
+          شرطين: مهارة الجي بي اس *و* صلاحية gps_system الي ينطيها
+          المدير بيده. قبل، مجرد تأشير المهارة كان يفتح اللوحة —
+          فالفني العادي يلكه لوحة جي بي اس بلوحته وهي ما تخصه. */}
+      {!isAdmin && (employee.role === 'GPS_ADMIN'
+        || (employee.role === 'TECHNICIAN' && hasGpsSkill(employee, gpsServiceId) && permissions.includes('gps_system'))) && (
         <div className="grid grid-cols-1 gap-4">
           <SystemPanel title="نظام GPS" color="#f59e0b" dotColor="bg-amber-400" actionLabel="عرض الكل" onAction={() => navigate('/gps')}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
