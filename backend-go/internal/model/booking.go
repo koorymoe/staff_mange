@@ -116,7 +116,12 @@ type BookingAssignment struct {
 	EmployeeID string    `db:"employeeId" json:"-"`
 	Role       string    `db:"role" json:"role"`
 	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
-	Employee   Employee  `db:"-" json:"employee"`
+	// AssignedByID منو الإداري الي كلّف هذا الكادر — أساس المحاسبة لو
+	// تأخر ورق الحجز.
+	// ⚠️ عمود بالجدول → لازم حقل هنا، لأن الجلب يستعمل SELECT * وأي
+	// عمود بلا حقل يفشل الاستعلام كله بالسكوت وترجع التعيينات فاضية.
+	AssignedByID *string  `db:"assignedById" json:"-"`
+	Employee     Employee `db:"-" json:"employee"`
 }
 
 type CartItem struct {

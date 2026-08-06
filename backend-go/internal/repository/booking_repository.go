@@ -146,13 +146,20 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 // completionState يترجم حالة الحجز + وجود الفاتورة والتقرير لحالة وحدة
 // تنعرض بتنسيق الحجوزات. الإداري لازم يشوف بنظرة منو خلّص شغله كامل
 // ومنو أنجز وترك الورق وراه.
-func completionState(b *model.Booking) string {
+func completionState(b *model.Booking, hasCrew bool) string {
 	if b.Status != "COMPLETED" {
 		// توقف العمل بيد الليدر، أو الحجز انلغى — الاثنين «متوقف»
 		if b.Status == "CANCELLED" || b.WorkStoppedAt != nil {
 			return "STOPPED"
 		}
-		return "ASSIGNED"
+		// «مثبت» و«في حالة التكليف» حالتين مختلفات: المثبت انتأكد
+		// بس ماكو أحد منكلّف بيه بعد — ولسه ينتظر الإداري. والمكلّف
+		// انترحّل لليدر وصار عليه مسؤول. الفرق مهم للإداري: المثبت
+		// شغل باقي عليه، والمكلّف شغل ماشي.
+		if hasCrew {
+			return "ASSIGNED"
+		}
+		return "CONFIRMED_ONLY"
 	}
 	switch {
 	case b.HasInvoice && b.HasReport:
@@ -353,7 +360,6 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		}
 		b.HasInvoice = withInvoice[b.ID]
 		b.HasReport = withReport[b.ID]
-		b.CompletionState = completionState(b)
 
 		b.TransferEmployee = getEmp(b.TransferEmployeeID)
 		b.ProjectSupervisor = getEmp(b.ProjectSupervisorID)
@@ -369,6 +375,10 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 				assignments[j].Employee = *e
 			}
 		}
+		// الحالة تنحسب بعد التعيينات — لأن الفرق بين «مثبت» و«في حالة
+		// التكليف» هو بالضبط: اكو كادر منكلّف على الحجز لو لا.
+		b.CompletionState = completionState(b, len(assignments) > 0)
+
 		if assignments == nil {
 			assignments = []model.BookingAssignment{}
 		}
