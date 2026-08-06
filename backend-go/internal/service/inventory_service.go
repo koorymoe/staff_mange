@@ -33,6 +33,10 @@ func (s *InventoryService) TodaysInventoryChecks() ([]model.InventoryCheck, erro
 	return s.repo.TodaysInventoryChecks()
 }
 
+func (s *InventoryService) LastInventoryCheck(employeeID string) (*model.InventoryCheck, error) {
+	return s.repo.LastInventoryCheck(employeeID)
+}
+
 func (s *InventoryService) ResolveInventoryCheck(id string, resolvedByID string) (*model.InventoryCheck, error) {
 	return s.repo.ResolveInventoryCheck(id, resolvedByID)
 }

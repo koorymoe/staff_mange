@@ -57,11 +57,6 @@ const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-inventory', '/privacy-policy',
 ]
 
-// صلاحيات تنمنح للفني تلقائياً عند الإقلاع (حتى يشتغل زر «اطلب مادة»
-// من شاشة مهامي). هاي ما تفتحله عناصر بالقائمة — بس الصلاحية الي
-// ينطيها المدير بيده هي الي تفتح شي زيادة، مثل حساب تكلفة التنصيب.
-const TECHNICIAN_AUTO_PERMISSIONS = ['procurement', 'procurement_customer', 'procurement_personal']
-
 const navItems: NavItem[] = [
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
   { to: '/attendance', label: 'الحضور', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
@@ -619,14 +614,9 @@ export default function Layout() {
     // الفني العادي: قائمة مقفلة على شغله. العنصر الي إله رابط (مو
     // مجموعة) لازم يكون بالقائمة المسموحة، أو ينفتح بصلاحية منحها
     // المدير بيده — مو بصلاحية جات تلقائياً مع الدور.
-    if (isPlainTechnician && !item.children && !item.divider) {
+    if (isPlainTechnician && !item.children && !item.divider && !unitGranted) {
       const path = (item.to || '').split('?')[0]
-      if (!TECHNICIAN_NAV.includes(path)) {
-        const unlockers = [item.permission, ...(item.anyPermission || [])].filter(
-          (perm): perm is string => !!perm && !TECHNICIAN_AUTO_PERMISSIONS.includes(perm),
-        )
-        if (!unlockers.some((perm) => employeePermissions.includes(perm))) return false
-      }
+      if (!TECHNICIAN_NAV.includes(path)) return false
     }
     const granted =
       unitGranted ||
@@ -685,7 +675,10 @@ export default function Layout() {
         // مجموعة بولد واحد = تفرع بلا فايدة: نطلّع الولد محلها.
         // بس مو بالمستوى الأول — هناك الولد يطلع يتيم بلا عنوان يدل
         // على وين هو (مثلاً «تقييم الأداء» طايح جنب «سياسة الخصوصية»).
-        if (depth > 0 && kids.length === 1 && !kids[0].divider) { out.push(kids[0]); continue }
+        // قائمة الفني قصيرة أصلاً، فالمجموعة الي ما بيها إلا ولد واحد
+        // تصير ضغطة زايدة بلا فايدة: «العمل ← مهامي» و«الجرد ← جرد
+        // أدواتي». تنفك حتى بالمستوى الأول وتطلع الشاشة مباشرة.
+        if ((depth > 0 || isPlainTechnician) && kids.length === 1 && !kids[0].divider) { out.push(kids[0]); continue }
         out.push({ ...item, granted, children: kids })
         continue
       }

@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest } from '../api'
+import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck } from '../api'
 import { useSession, hasGpsSkill } from '../session'
 import MapViewer from '../components/MapViewer'
 
@@ -84,6 +84,35 @@ export default function Dashboard() {
   const [customerCount, setCustomerCount] = useState(0)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [myTasks, setMyTasks] = useState<Booking[]>([])
+  const [lastCheck, setLastCheck] = useState<InventoryCheck | null>(null)
+  // الفني/التقني بالميدان (مو ليدر) — واجهته الرئيسية شغله هو بس
+  const fieldOnly = !!employee
+    && (employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL')
+    && !employee.isLeader
+
+  // ── متى يصير الجرد مستحق؟ ──
+  // قاعدتان مثل ما الشغل ماشي بالواقع:
+  //  ١. جرد أسبوعي — مرّت ٧ أيام أو أكثر على آخر جرد (أو ما جرد أبداً).
+  //  ٢. قبل كل حجز — عنده مهمة مو مكتملة وما جرد اليوم، لأن العدة تنتفحص
+  //     قبل ما يطلع للموقع مو بعد ما يوصل ويكتشف إنه ناقصه شي.
+  // «الآن» تنقرأ مرة وحدة عند فتح الصفحة — قراءة الوقت أثناء الرسم
+  // تخلي النتيجة تفرق بين رسمة وأخرى.
+  const [openedAt] = useState(() => Date.now())
+  const lastCheckAt = lastCheck ? new Date(lastCheck.checkedAt) : null
+  const daysSinceCheck = lastCheckAt
+    ? Math.floor((openedAt - lastCheckAt.getTime()) / 86400000)
+    : null
+  const checkedToday = !!lastCheckAt && lastCheckAt.toDateString() === new Date(openedAt).toDateString()
+  const dueWeekly = daysSinceCheck === null || daysSinceCheck >= 7
+  const dueBeforeTask = myTasks.length > 0 && !checkedToday
+  const inventoryDue = fieldOnly && (dueWeekly || dueBeforeTask)
+  const inventoryHint = daysSinceCheck === null
+    ? 'ما سويت جرد بعد — راجع عدتك وأشّر الموجود'
+    : dueBeforeTask && !dueWeekly
+      ? `عندك ${myTasks.length} مهمة — جرد عدتك قبل ما تطلع`
+      : dueWeekly
+        ? (daysSinceCheck === 0 ? 'حان وقت الجرد' : `آخر جرد قبل ${daysSinceCheck} يوم`)
+        : 'جردت اليوم ✓ — تكدر تراجع عدتك'
   const [mapTask, setMapTask] = useState<Booking | null>(null)
   const [taskAmounts, setTaskAmounts] = useState<Record<string, string>>({})
   const [taskAdvances, setTaskAdvances] = useState<Record<string, string>>({})
@@ -107,16 +136,23 @@ export default function Dashboard() {
   useEffect(() => {
     if (!employee) return
     // مدير المشاريع مدير مو فني — ما ينستلم مهام مثل الفنيين
-    const isTech = employee.role === 'TECHNICIAN' || employee.isLeader
+    const isTech = employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL' || employee.isLeader
     const needsFinance = employee.role === 'FINANCE' || permissions.includes('monitoring')
+    // الفني/التقني بالميدان (مو ليدر): صفحته الرئيسية = مهامه هو، مو أكثر.
+    // كان ينزّل كل حجوزات الشركة ويفلترها بالمتصفح حتى يلكه مهامه — يعني
+    // كل ما تكبر الشركة تصير صفحته أبطأ، وهو أصلاً ما إله علاقة بالباقي.
+    // هسه الفلترة بقاعدة البيانات، وشلنا عنه طلبين ما يشوف نتيجتهم:
+    // إحصاءات GPS وملخّص الأرقام (موظفين/زبائن) — مالتهم للإداريين.
     // الأرقام تجي من مسار ملخّص واحد (بضع عشرات البايتات) بدل ما ننزّل
     // كل الموظفين وكل العملاء على جهاز المستخدم عشان نعدّهم. الحجوزات
     // تُطلب بس للي يحتاج قائمتها فعلاً (فني عنده مهام، أو مالية).
     const needsBookingList = isTech || needsFinance
     Promise.all([
-      api.getGpsStats().catch(() => null),
-      needsBookingList ? api.getBookings().catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
-      api.getDashboardSummary().catch(() => null),
+      fieldOnly ? Promise.resolve(null) : api.getGpsStats().catch(() => null),
+      needsBookingList
+        ? api.getBookings(fieldOnly ? { assignedTo: 'me' } : undefined).catch(() => [] as Booking[])
+        : Promise.resolve([] as Booking[]),
+      fieldOnly ? Promise.resolve(null) : api.getDashboardSummary().catch(() => null),
       needsFinance ? api.getBookings({ status: 'COMPLETED' }).catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
       needsFinance ? api.getExpenses().catch(() => [] as Expense[]) : Promise.resolve([] as Expense[]),
     ]).then(([gps, bk, summary, cb, exp]) => {
@@ -135,6 +171,9 @@ export default function Dashboard() {
       )
       setMyTasks(taskList)
     }).finally(() => setLoading(false))
+
+    // آخر جرد للفني — حتى نعرف هل حان وقت جرده الأسبوعي
+    if (fieldOnly) api.getMyLastInventoryCheck().then(setLastCheck).catch(() => setLastCheck(null))
 
     // طلبات الكادر المعلقة — تنبيه لإداري الكوادر والأدمن
     if (employee.role === 'ADMIN' || employee.role === 'HR_COORDINATOR') {
@@ -910,8 +949,46 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* ═══ شريط الفني: جرد أدواته + طلب إجازة ═══
+          الفني ما إله شاشات إدارية يتنقل بيها، فالشغلتين الي يحتاجهن
+          فعلاً — جرده وطلب إجازته — تطلعن له بالرئيسية مباشرة بدل ما
+          يدور عليهن بالقائمة. */}
+      {fieldOnly && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            onClick={() => navigate('/my-inventory')}
+            className={`flex items-center justify-between gap-3 rounded-2xl p-4 text-right shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition hover:shadow-md ${
+              inventoryDue ? 'bg-amber-50 ring-1 ring-amber-300' : 'bg-white'
+            }`}
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={inventoryDue ? '#d97706' : '#64748b'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+            </svg>
+            <div className="flex-1">
+              <p className={`text-sm font-extrabold ${inventoryDue ? 'text-amber-900' : 'text-brand-900'}`}>
+                {inventoryDue ? 'حان وقت جرد أدواتك' : 'جرد أدواتي'}
+              </p>
+              <p className={`text-xs ${inventoryDue ? 'text-amber-700' : 'text-slate-400'}`}>{inventoryHint}</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => navigate('/leaves')}
+            className="flex items-center justify-between gap-3 rounded-2xl bg-white p-4 text-right shadow-[0_1px_3px_rgba(0,0,0,0.04)] transition hover:shadow-md"
+          >
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /><path d="m9 16 2 2 4-4" />
+            </svg>
+            <div className="flex-1">
+              <p className="text-sm font-extrabold text-brand-900">تقديم طلب إجازة</p>
+              <p className="text-xs text-slate-400">محتاج إجازة؟ قدّم طلبك من هنا</p>
+            </div>
+          </button>
+        </div>
+      )}
+
       {/* ═══ My Tasks Panel (Technician/Leader) ═══ */}
-      {(employee.role === 'TECHNICIAN' || employee.isLeader) && (
+      {(employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL' || employee.isLeader) && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <button onClick={() => navigate('/my-tasks')} className="text-xs font-medium text-brand-500 hover:underline">عرض الكل ←</button>

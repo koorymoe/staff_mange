@@ -62,6 +62,10 @@ export default function MyInventory() {
         api.getToolRequests(employee.id),
       ])
       setPersonalTools(pt)
+      // كل الأدوات تبدي مؤشّرة ✓، والفني يشيل الصح عن الناقص بس.
+      // بالعادة عدته كاملة، فالمنطقي يأشّر الاستثناء مو يعيد تأشير كل
+      // أداة عنده كل مرة يجرد — هذا الي يخلي الجرد الأسبوعي ثقيل عليه.
+      setCheckMap(Object.fromEntries(pt.map((t) => [t.id, true])))
       setVehicleTools(vt)
       setOnDemandTools(od)
       setMyRequests(tr)

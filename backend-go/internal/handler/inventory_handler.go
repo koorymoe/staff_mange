@@ -41,6 +41,18 @@ func (h *InventoryHandler) TodaysInventoryChecks(w http.ResponseWriter, r *http.
 	WriteJSON(w, http.StatusOK, checks)
 }
 
+// GET /api/inventory/checks/mine — آخر جرد للفني نفسه (بلا أي بيانات
+// عن بقية الفنيين). الفني يسوّي جرده ويشوف حالته هو؛ متابعة جرد
+// الآخرين شغل الليدر والمراقب.
+func (h *InventoryHandler) MyLastInventoryCheck(w http.ResponseWriter, r *http.Request) {
+	check, err := h.service.LastInventoryCheck(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب آخر جرد")
+		return
+	}
+	WriteJSON(w, http.StatusOK, check)
+}
+
 func (h *InventoryHandler) ResolveInventoryCheck(w http.ResponseWriter, r *http.Request) {
 	check, err := h.service.ResolveInventoryCheck(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
 	if err != nil {

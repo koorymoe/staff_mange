@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"fmt"
 
 	"github.com/jmoiron/sqlx"
@@ -38,6 +39,25 @@ func (r *InventoryRepository) CreateInventoryCheck(employeeID string, req model.
 		return nil, err
 	}
 	c.Employee = r.loadEmployeeBrief(c.EmployeeID)
+	return &c, nil
+}
+
+// LastInventoryCheck يرجّع آخر جرد سوّاه الموظف نفسه (أو nil لو ما جرد
+// أبداً) — تنستعمل حتى نعرف هل حان وقت جرده الأسبوعي. الفني يشوف
+// جرده هو بس، مو جرد بقية الفنيين.
+func (r *InventoryRepository) LastInventoryCheck(employeeID string) (*model.InventoryCheck, error) {
+	var c model.InventoryCheck
+	err := r.db.Get(&c, `
+		SELECT * FROM "InventoryCheck"
+		WHERE "employeeId" = $1
+		ORDER BY "checkedAt" DESC
+		LIMIT 1`, employeeID)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
 	return &c, nil
 }
 

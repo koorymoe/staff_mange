@@ -19,8 +19,26 @@ func NewBookingHandler(s *service.BookingService, p *repository.PermissionReposi
 	return &BookingHandler{service: s, permissions: p}
 }
 
-// GET /api/v1/bookings?status=&customerId=
+// GET /api/v1/bookings?status=&customerId=&assignedTo=me
+//
+// الفني يريد مهامه هو — كانت الواجهة تنزّل كل حجوزات الشركة (بكل
+// تعييناتها وزبائنها وخدماتها) وتفلترها بالمتصفح حتى تلكه سبع مهام.
+// يعني ميغابايتات تمشي بالشبكة كل ما يفتح الصفحة، والتأخير يكبر كل ما
+// تتراكم الحجوزات. هسه الفلترة بقاعدة البيانات: JOIN على التعيين
+// ويرجع حجوزاته هو بس.
+//
+// وهو قيد أمان بعد: الفني ما عاد يوصل لبيانات زبائن الشركة كلها من
+// مسار عام، حتى لو الواجهة طلبتها.
 func (h *BookingHandler) List(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("assignedTo") == "me" {
+		bookings, err := h.service.ListAssignedTo(middleware.EmployeeIDFromContext(r))
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر جلب مهامك")
+			return
+		}
+		WriteJSON(w, http.StatusOK, bookings)
+		return
+	}
 	bookings, err := h.service.List(r.URL.Query().Get("status"), r.URL.Query().Get("customerId"), r.URL.Query().Get("date"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")

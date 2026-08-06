@@ -128,7 +128,10 @@ function App() {
           <Route path="expenses" element={<ExpensesReview />} />
           <Route path="kpi" element={<KpiPage />} />
           <Route path="complaints" element={<ComplaintsPage />} />
-          <Route path="inventory" element={<InventoryPage />} />
+          {/* متابعة جرد كل الفنيين = شاشة إشراف. الفني يسوّي جرده من
+              my-inventory؛ هاي تحتاج صلاحية «جرد الأدوات» حتى لو كتب
+              رابطها بيده — نفس القيد المطبّق بالسيرفر. */}
+          <Route path="inventory" element={<RequirePermission permission="inventory"><InventoryPage /></RequirePermission>} />
           <Route path="my-inventory" element={<MyInventory />} />
           <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />
           <Route path="quotations" element={<QuotationsPage />} />

@@ -2276,8 +2276,11 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  getBookings: (params?: { status?: Booking['status'] | Booking['status'][]; customerId?: string; date?: string }) => {
+  // assignedTo: 'me' يرجّع مهام الموظف الحالي بس — الفلترة بقاعدة
+  // البيانات بدل ما ننزّل كل حجوزات الشركة ونفلترها بالمتصفح.
+  getBookings: (params?: { status?: Booking['status'] | Booking['status'][]; customerId?: string; date?: string; assignedTo?: 'me' }) => {
     const query = new URLSearchParams()
+    if (params?.assignedTo) query.set('assignedTo', params.assignedTo)
     if (params?.status) query.set('status', Array.isArray(params.status) ? params.status.join(',') : params.status)
     if (params?.customerId) query.set('customerId', params.customerId)
     if (params?.date) query.set('date', params.date)
@@ -2825,6 +2828,8 @@ export const api = {
   createInventoryCheck: (data: { complete: boolean; missingItems?: string }) =>
     request<InventoryCheck>('/inventory/checks', { method: 'POST', body: JSON.stringify(data) }),
   getTodaysInventoryChecks: () => request<InventoryCheck[]>('/inventory/checks/today'),
+  // آخر جرد للفني نفسه — يرجّع null لو ما جرد أبداً
+  getMyLastInventoryCheck: () => request<InventoryCheck | null>('/inventory/checks/mine'),
   resolveInventoryCheck: (id: string) => request<InventoryCheck>(`/inventory/checks/${id}/resolve`, { method: 'POST' }),
   getPersonalTools: (employeeId?: string) =>
     request<PersonalTool[]>(`/inventory/personal${employeeId ? `?employeeId=${employeeId}` : ''}`),
