@@ -4,7 +4,7 @@ import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
 import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck } from '../api'
 import { useSession, hasGpsSkill } from '../session'
-import MapViewer from '../components/MapViewer'
+import { MapViewer } from '../components/MapLazy'
 
 /* ───── Attendance helpers ───── */
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption } from '../api'
 import { useSession } from '../session'
-import LocationPicker from '../components/LocationPicker'
+import { LocationPicker } from '../components/MapLazy'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {

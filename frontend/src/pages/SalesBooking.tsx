@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api, type Customer, type Service } from '../api'
 import { useSession } from '../session'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
-import LocationPicker from '../components/LocationPicker'
+import { LocationPicker } from '../components/MapLazy'
 
 type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'

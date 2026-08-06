@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSession } from '../session'
-import LocationPicker from '../components/LocationPicker'
-import MapViewer from '../components/MapViewer'
+import { LocationPicker } from '../components/MapLazy'
+import { MapViewer } from '../components/MapLazy'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 

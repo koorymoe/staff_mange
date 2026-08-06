@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { useSession } from '../session'
-import MapViewer from '../components/MapViewer'
+import { MapViewer } from '../components/MapLazy'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {

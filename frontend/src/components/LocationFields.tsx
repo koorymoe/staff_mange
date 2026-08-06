@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import LocationPicker from './LocationPicker'
+import { LocationPicker } from './MapLazy'
 import { parseCoordsFromUrl } from '../lib/mapUrl'
 
 interface Props {
