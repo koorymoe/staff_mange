@@ -3,6 +3,7 @@ import { api, type Booking, type Employee, type CartItem, type Product, type Job
 import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
+import BookingEditPanel from '../components/BookingEditPanel'
 import { formatScheduleWindow } from '../utils/schedule'
 import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
 
@@ -699,6 +700,14 @@ export default function Coordinator() {
                     {booking.customer?.location || '-'}
                   </div>
                 </div>
+
+                {/* تعديل الخدمة والسعر والموعد سوه — الخدمة ما جان بيها
+                    تعديل أصلاً، فالزبون يغيّر طلبه والإداري ما يكدر
+                    يعكسه بالحجز. */}
+                <BookingEditPanel
+                  booking={booking}
+                  onSaved={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
+                />
 
                 <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
                   <div>

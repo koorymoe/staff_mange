@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
+import BookingEditPanel from '../components/BookingEditPanel'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -371,6 +372,18 @@ export default function BookingsList() {
                             <p className="text-slate-400">رقم هاتف الزبون</p>
                             <p className="mt-1 font-bold text-brand-700" dir="ltr">{b.customer?.phone || '-'}</p>
                           </div>
+                          {/* تعديل الحجز نفسه: الخدمة والسعر والموعد.
+                              قبل، التعديل الوحيد هنا جان تغيير الكادر —
+                              وأي تغيير بطلب الزبون يحتاج إلغاء الحجز
+                              وإعادة إنشائه. */}
+                          {isAdmin && (
+                            <div className="sm:col-span-2">
+                              <BookingEditPanel
+                                booking={b}
+                                onSaved={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
+                              />
+                            </div>
+                          )}
                           <div>
                             <div className="flex items-center justify-between">
                               <p className="text-slate-400">الكادر الذي تم تكليفه</p>
