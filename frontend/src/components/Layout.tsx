@@ -41,6 +41,10 @@ interface NavItem {
   // صلاحية ظهور الوحدة كاملة: منحها للموظف يفتحله الوحدة وكل صفحاتها،
   // بغض النظر عن صلاحياته التفصيلية — هذا معنى "أنطيه الصلاحية ويشوف".
   unitPermission?: string
+  // شغل الميدان مو إدارة: العنصر ينحجب عن الفني والتيم ليدر مهما جانت
+  // صلاحياتهم. الليدر عنده صلاحيات إدارية (مشاريع، طلبات مواد) بس محلها
+  // مجموعة «العمل» مالته — مو باب «الإدارة».
+  hideFromFieldStaff?: boolean
   children?: NavItem[]
   divider?: boolean
 }
@@ -65,6 +69,9 @@ const navItems: NavItem[] = [
   {
     to: '/leader-invoices/new?mode=estimate', label: 'حساب تكلفة التنصيب للتنفيذ',
     permission: 'execution_cost',
+    // للميدان نفس الشاشة موجودة داخل «العمل» باسمها المفهوم عندهم
+    // («حساب كلفة (استفسار زبون)») — ما تتكرر فوق بعنوان ثاني.
+    hideFromFieldStaff: true,
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h3M13 10h3M8 14h3M13 14h3M8 18h8"/></svg>,
   },
   // الإجازات: مع نظام الحضور — أي موظف يقدّم طلبه من هنا، والمخوّل يشوف صندوق الموافقات
@@ -72,12 +79,25 @@ const navItems: NavItem[] = [
   // تصنيفي: صفحة شخصية عامة لكل الأدوار — لازم تبقى بمستوى مستقل بره "الإدارة"،
   // لأنه الفني/الليدر ما عندهم وصول لأي شي ثاني بالإدارة، فتضل قائمة فاضية
   // بالنسبة الهم لو حطيناها جوه.
-  { to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
+  // مجموعة «تصنيفي»: تصنيف الموظف نفسه، وتحته تقييم فريقه إذا كان ليدر.
+  // لمن ما يكون بيها إلا «تصنيفي» تنفك المجموعة وتطلع الشاشة مباشرة —
+  // فباقي الأدوار ما ينتغيّر عندهم شي.
+  {
+    to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+    children: [
+      { to: '/my-ranking', label: 'تصنيفي', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
+      // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
+      { to: '/performance-review', label: 'تقييم فريقي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+    ],
+  },
 
   // ── الإدارة ──
   {
     // مجموعة الإدارة بدون قيد أدوار — ظهورها يعتمد على أبنائها (كل ابن مقيّد بدوره/صلاحيته)،
     // حتى أي موظف ينمنح صلاحية إدارية (مثل إدارة المشاريع) توصله من دون تغيير دوره.
+    // ما تطلع لكادر الميدان أبداً — الفني ما إله شغل بيها، والتيم ليدر
+    // شغله الإداري (المشاريع، طلبات المواد) محله مجموعة «العمل» مالته.
+    hideFromFieldStaff: true,
     to: '/admin-group', label: 'الإدارة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
     children: [
       {
@@ -203,26 +223,41 @@ const navItems: NavItem[] = [
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+      { to: '/work-reports', label: 'التقارير', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+      { to: '/leader-invoices', label: 'فواتيري', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
       { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL', 'PROJECT_MANAGER'] },
-      { to: '/work-reports', label: 'تقارير العمل', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      { to: '/leader-invoices', label: 'فواتيري', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
-      { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true, permission: 'execution_cost' },
+      // حسبتان مختلفتان بنفس المحرك:
+      //  • «استفسار زبون» = رقم بس، ما ينحفظ ولا ينربط بحجز — للزبون
+      //    الي يسأل عن السعر قبل ما يحجز.
+      //  • «حساب كلفة زبون (حجز)» = نفس الحساب بس مربوط بالحجز الي
+      //    راح يطلع له الليدر، ويترحّل فاتورة للمحاسب.
+      { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, permission: 'execution_cost' },
+      { to: '/leader-invoices/new', label: 'حساب كلفة زبون (حجز)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
       // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
-      { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN'], leaderOnly: true },
+      { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      // صيانة الأجهزة العامة: حصراً للتيم ليدر (شيت "صيانة الاجهزة")
+      { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      // طلبات المواد — شغل ميدان مو إدارة، فمحلها هنا مو باب «الإدارة»
+      { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], permission: 'procurement' },
+      {
+        // "الجرد" — جرد الأدوات الشخصية وجرد الفريق (تيم ليدر بس يشوف الثانية).
+        // الفني العادي ما بيها إلا وحدة فتنفك وتطلع «جرد أدواتي» مباشرة.
+        to: '/tech-inventory-group', label: 'الجرد', icon: <></>,
+        children: [
+          { to: '/my-inventory', label: 'جرد أدواتي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+          { to: '/team-inventory', label: 'جرد الفريق', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+        ],
+      },
+      {
+        // "المشاريع" للميدان: يفتح مشروع جديد، أو يتابع الي انوجّه له
+        to: '/tech-projects-group', label: 'المشاريع', icon: <></>,
+        children: [
+          { to: '/projects', label: 'إضافة مشروع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], anyPermission: ['project_management', 'project_create_only'] },
+          { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+        ],
+      },
     ],
   },
-  {
-    // مجموعة "الجرد" — جرد الأدوات الشخصية وجرد الفريق (تيم ليدر بس يشوف الثانية)
-    to: '/tech-inventory-group', label: 'الجرد', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>,
-    children: [
-      { to: '/my-inventory', label: 'جرد أدواتي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      { to: '/team-inventory', label: 'جرد الفريق', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
-    ],
-  },
-  // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
-  { to: '/performance-review', label: 'تقييم فريقي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>, roles: ['TECHNICIAN'], leaderOnly: true },
-  // صيانة الأجهزة العامة: حصراً للتيم ليدر (شيت "صيانة الاجهزة")
-  { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3h-8a2 2 0 0 0-2 2v2h12V5a2 2 0 0 0-2-2z"/></svg>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
   { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
 
   // ═══ فاصل: تحته "الوحدات" — كل وحدة إدارية تجمع محتوياتها تحت باب واحد.
@@ -602,6 +637,9 @@ export default function Layout() {
   // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
   const isVisible = (item: NavItem, unitGranted = false): boolean => {
     if (item.divider) return true
+    // كادر الميدان (فني أو ليدر): باب «الإدارة» ما يطلع لهم أبداً. شغل
+    // الليدر الإداري موجود بمجموعة «العمل» مالته.
+    if (item.hideFromFieldStaff && (role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
     // الوحدات: بوابة صارمة. الوحدة ما تطلع أبداً إلا لمن عنده صلاحية الوحدة
     // نفسها (أو مدير النظام). قبل، الوحدة جانت تطلع لمجرد إنه ابن واحد جوّاها
     // مسموح بصلاحية عامة — فصار الموظف يشوف وحدات مو إلها علاقة بشغله ويتكرر
@@ -675,16 +713,25 @@ export default function Layout() {
         // مجموعة بولد واحد = تفرع بلا فايدة: نطلّع الولد محلها.
         // بس مو بالمستوى الأول — هناك الولد يطلع يتيم بلا عنوان يدل
         // على وين هو (مثلاً «تقييم الأداء» طايح جنب «سياسة الخصوصية»).
-        // قائمة الفني قصيرة أصلاً، فالمجموعة الي ما بيها إلا ولد واحد
-        // تصير ضغطة زايدة بلا فايدة: «العمل ← مهامي» و«الجرد ← جرد
-        // أدواتي». تنفك حتى بالمستوى الأول وتطلع الشاشة مباشرة.
-        if ((depth > 0 || isPlainTechnician) && kids.length === 1 && !kids[0].divider) { out.push(kids[0]); continue }
+        // قائمة الفني العادي مسطّحة بالكامل: مجموعات المستوى الأول تنفك
+        // وأولادها يطلعون مباشرة. عنده ست شاشات بس، فأي تفرع فوقهن
+        // ضغطة زايدة بلا فايدة.
+        if (isPlainTechnician && depth === 0) { out.push(...kids); continue }
+        if (depth > 0 && kids.length === 1 && !kids[0].divider) { out.push(kids[0]); continue }
+        // بالمستوى الأول ما ننفك عموماً (الولد يطلع يتيم بلا عنوان يدل
+        // على وين هو). الاستثناء: المجموعة الي ما بقى بيها إلا نفس شاشة
+        // عنوانها — مثل «تصنيفي ← تصنيفي» لمن الموظف مو ليدر. هذي
+        // تفرع على نفسها، تنفك.
+        if (depth === 0 && kids.length === 1 && kids[0].to === item.to) { out.push(kids[0]); continue }
         out.push({ ...item, granted, children: kids })
         continue
       }
 
-      // نفس الشاشة ما تتكرر — أول محل يوصلها هو محلها
-      const key = (item.to || '').split('?')[0]
+      // نفس الشاشة ما تتكرر — أول محل يوصلها هو محلها.
+      // المفتاح يشمل الـ query لأن نفس الصفحة تشتغل شغلتين مختلفتين حسبه:
+      // ‎/leader-invoices/new?mode=estimate‎ حساب استفساري ما ينحفظ، و
+      // ‎/leader-invoices/new‎ فاتورة مربوطة بحجز.
+      const key = item.to || ''
       if (key && seen.has(key)) continue
       if (key) seen.add(key)
       out.push({ ...item, children: undefined, granted })

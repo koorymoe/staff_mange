@@ -182,9 +182,12 @@ export default function Dashboard() {
         .catch(() => setPendingStaffReqs([]))
     }
 
-    // طلبات الإجازة الي تنتظر قراره — الراوت نفسه يرجع فاضي لغير
-    // المخوّلين، فما نحتاج نفحص الدور هنا.
-    api.getLeaveInbox('OPEN')
+    // طلبات الإجازة الي تنتظر قراره. صندوق الموافقات مو مفتوح للكل —
+    // الراوت يرد 403 على غير المخوّل، فكل موظف عادي (وأغلب الموظفين
+    // كذلك) جان يطلع بكونسوله خطأ ٤٠٣ مع كل فتحة للرئيسية بلا فايدة.
+    // نسأل أول بمسار العدّ الرخيص: مخوّل؟ وقتها بس ننزّل الصندوق.
+    api.getLeavePendingCount()
+      .then(({ canApprove }) => (canApprove ? api.getLeaveInbox('OPEN') : []))
       .then((rows) => setOpenLeaves(rows ?? []))
       .catch(() => setOpenLeaves([]))
 
