@@ -55,6 +55,13 @@ type Booking struct {
 	InternalEmployeePhone *string `db:"internalEmployeePhone" json:"internalEmployeePhone"`
 	InternalDepartment    *string `db:"internalDepartment" json:"internalDepartment"`
 	InternalApproved      *bool   `db:"internalApproved" json:"internalApproved"`
+	// توقف العمل: الليدر بدأ وما كدر يكمّل. الحجز يضل شغّال ويكدر
+	// يكمّله بعدين، بس يبين «متوقف» بتنسيق الحجوزات مع سببه.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	WorkStoppedAt   *time.Time `db:"workStoppedAt" json:"workStoppedAt"`
+	WorkStopReason  *string    `db:"workStopReason" json:"workStopReason"`
+	WorkStoppedByID *string    `db:"workStoppedById" json:"workStoppedById"`
+
 	// ═══ اكتمال الحجز بعد الإنجاز ═══
 	// الإنجاز لحاله ما يكفي: الليدر لازم يسوي فاتورة التكاليف المربوطة
 	// بالحجز، وتقرير العمل. هذولا محسوبات وقت الجلب (مو أعمدة بالجدول)
@@ -226,4 +233,10 @@ var WorkLocationLabels = map[string]string{
 func ValidWorkLocation(v string) bool {
 	_, ok := WorkLocationLabels[v]
 	return ok
+}
+
+// StopWorkRequest سبب توقف العمل — إجباري، لأن «توقف» بلا سبب ما تنفع
+// لا للمتابعة ولا للتقرير.
+type StopWorkRequest struct {
+	Reason string `json:"reason"`
 }

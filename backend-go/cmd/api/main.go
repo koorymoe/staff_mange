@@ -461,6 +461,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/materials-ready", middleware.Chain(http.HandlerFunc(bookingHandler.SetMaterialsReady), requireAuth, requireBookingParty))
+	// توقف العمل ورجوعه — بيد طرف الحجز نفسه (الليدر/الكادر المكلّف)
+	mux.Handle("PUT /api/bookings/{id}/stop-work", middleware.Chain(http.HandlerFunc(bookingHandler.StopWork), requireAuth, requireBookingParty))
+	mux.Handle("PUT /api/bookings/{id}/resume-work", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeWork), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth, requireBookingParty))
 
 	// حذف الحجوزات التجريبية والملغاة: الإداري يطلب، والمراقب أو مدير

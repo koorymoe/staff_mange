@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -217,6 +218,31 @@ func (h *BookingHandler) MarkConfirmationContacted(w http.ResponseWriter, r *htt
 // PUT /api/bookings/{id}/arrived
 func (h *BookingHandler) MarkArrived(w http.ResponseWriter, r *http.Request) {
 	booking, err := h.service.MarkArrived(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
+// PUT /api/bookings/{id}/stop-work
+func (h *BookingHandler) StopWork(w http.ResponseWriter, r *http.Request) {
+	var req model.StopWorkRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	booking, err := h.service.StopWork(r.PathValue("id"), req.Reason, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
+// PUT /api/bookings/{id}/resume-work
+func (h *BookingHandler) ResumeWork(w http.ResponseWriter, r *http.Request) {
+	booking, err := h.service.ResumeWork(r.PathValue("id"))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

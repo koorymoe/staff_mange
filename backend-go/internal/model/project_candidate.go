@@ -10,6 +10,15 @@ const (
 	CandidateGroupTechs     = "TECHS"
 	CandidateGroupAdmins    = "ADMINS"
 	CandidateGroupDesigners = "DESIGNERS"
+	// خانة «الإداريون» جانت تكوّم كل واحد مو فني ولا مهندس: مبيعات
+	// وحسابات وكوادر ومخازن ومسؤولي خدمات ورقابة وإدارة — اثنعش موظف
+	// بخانة وحدة، فالمدير ما يلكه منو يريد. صارت خانات مفهومة.
+	CandidateGroupServices = "SERVICES"
+	CandidateGroupSales    = "SALES"
+	CandidateGroupFinance  = "FINANCE"
+	CandidateGroupHR       = "HR"
+	CandidateGroupStore    = "STORE"
+	CandidateGroupMonitor  = "MONITOR"
 )
 
 // ProjectCandidateGroupOrder ترتيب ظهور المجموعات بالقائمة المنسدلة.
@@ -18,8 +27,14 @@ var ProjectCandidateGroupOrder = []string{
 	CandidateGroupTechnical,
 	CandidateGroupLeaders,
 	CandidateGroupTechs,
-	CandidateGroupAdmins,
 	CandidateGroupDesigners,
+	CandidateGroupServices,
+	CandidateGroupSales,
+	CandidateGroupStore,
+	CandidateGroupFinance,
+	CandidateGroupHR,
+	CandidateGroupMonitor,
+	CandidateGroupAdmins,
 }
 
 // ProjectCandidateGroupLabels التسميات العربية الي تظهر كعناوين مجموعات.
@@ -30,6 +45,12 @@ var ProjectCandidateGroupLabels = map[string]string{
 	CandidateGroupTechs:     "الفنيون",
 	CandidateGroupAdmins:    "الإداريون",
 	CandidateGroupDesigners: "المصممون",
+	CandidateGroupServices:  "مسؤولو الخدمات",
+	CandidateGroupSales:     "المبيعات",
+	CandidateGroupFinance:   "الحسابات",
+	CandidateGroupHR:        "الكوادر",
+	CandidateGroupStore:     "المشتريات والمخازن",
+	CandidateGroupMonitor:   "الرقابة",
 }
 
 // ProjectCandidate موظف مرشح لمشروع، مع مجموعته وهل هو مهندس.
@@ -56,12 +77,29 @@ func ClassifyProjectCandidate(c *ProjectCandidate) {
 		c.Group = CandidateGroupEngineers
 	case c.IsTechPerm:
 		c.Group = CandidateGroupTechnical
-	case c.Role == "TECHNICIAN" && c.IsLeader:
+	// الليدر أول — تيم ليدر يبقى بخانة «الليدرية» سواء دوره فني أو تقني
+	case (c.Role == "TECHNICIAN" || c.Role == "TECHNICAL") && c.IsLeader:
 		c.Group = CandidateGroupLeaders
+	// TECHNICAL دور ميداني مثل الفني بس يتولى أكثر من خدمة — محله
+	// «التقنيون»، مو مكوّم مع الإداريين مثل ما جان.
+	case c.Role == "TECHNICAL":
+		c.Group = CandidateGroupTechnical
 	case c.Role == "TECHNICIAN":
 		c.Group = CandidateGroupTechs
 	case c.Role == "DESIGNER":
 		c.Group = CandidateGroupDesigners
+	case c.Role == "GPS_ADMIN" || c.Role == "SERVICE_MANAGER":
+		c.Group = CandidateGroupServices
+	case c.Role == "SALES":
+		c.Group = CandidateGroupSales
+	case c.Role == "FINANCE":
+		c.Group = CandidateGroupFinance
+	case c.Role == "HR_COORDINATOR":
+		c.Group = CandidateGroupHR
+	case c.Role == "PROCUREMENT_ADMIN":
+		c.Group = CandidateGroupStore
+	case c.Role == "MONITOR" || c.Role == "QUALITY_ENGINEER":
+		c.Group = CandidateGroupMonitor
 	default:
 		c.Group = CandidateGroupAdmins
 	}

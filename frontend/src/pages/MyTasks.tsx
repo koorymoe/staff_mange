@@ -160,6 +160,16 @@ export default function MyTasks() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
+  // ═══ بعد الإنجاز: الورق ما ينتسى ═══
+  // الإنجاز لحاله ما يكفي — باقي فاتورة التكاليف المربوطة بالحجز وتقرير
+  // العمل. قبل، الحجز جان يختفي من الشاشة أول ما يضغط «تم الإنجاز»
+  // فينسى الورق ويطلع الحجز «منجز» وهو ناقص. هسه تطلع له مطالبة بيها
+  // الاثنين — بس مو إجبارية: يكدر يأجلها بـ«بعدين» ويرجع لها.
+  const [paperwork, setPaperwork] = useState<{ booking: Booking; stopped: boolean } | null>(null)
+  const [stopFor, setStopFor] = useState<Booking | null>(null)
+  const [stopReason, setStopReason] = useState('')
+  const [stopping, setStopping] = useState(false)
+
   const handleComplete = async (booking: Booking) => {
     const amountCollected = amounts[booking.id] ? Number(amounts[booking.id]) : undefined
     const advancePaid = advances[booking.id] ? Number(advances[booking.id]) : undefined
@@ -169,6 +179,24 @@ export default function MyTasks() {
       advancePaid,
     })
     setBookings((prev) => prev.filter((b) => b.id !== booking.id))
+    setPaperwork({ booking, stopped: false })
+  }
+
+  // توقف العمل: السبب إجباري، وبعده ينطلب تقرير — والتقرير يتأجل إذا حب.
+  const handleStopWork = async () => {
+    if (!stopFor || !stopReason.trim()) return
+    setStopping(true)
+    try {
+      const updated = await api.stopBookingWork(stopFor.id, stopReason.trim())
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+      setPaperwork({ booking: updated, stopped: true })
+      setStopFor(null)
+      setStopReason('')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تسجيل توقف العمل')
+    } finally {
+      setStopping(false)
+    }
   }
 
   return (
@@ -318,6 +346,30 @@ export default function MyTasks() {
                             تم الإنجاز
                           </button>
                         </div>
+                        {b.workStoppedAt ? (
+                          <div className="mt-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs">
+                            <span className="font-bold text-slate-700">⏸ العمل متوقف</span>
+                            <span className="text-slate-500"> — {b.workStopReason}</span>
+                            <button
+                              onClick={async () => {
+                                const u = await api.resumeBookingWork(b.id)
+                                setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))
+                              }}
+                              className="mr-2 rounded px-2 py-0.5 font-bold text-brand-700 underline"
+                            >
+                              رجعت أكمّل
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setStopFor(b); setStopReason('') }}
+                            className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-600 transition-all hover:bg-slate-50"
+                          >
+                            ⏸ توقف العمل
+                          </button>
+                        )}
+                        <div className="hidden">
+                        </div>
                         {employee?.isLeader && (
                           <button
                             onClick={() => navigate(`/leader-invoices/new?bookingId=${b.id}`)}
@@ -415,6 +467,82 @@ export default function MyTasks() {
                 {submittingAccept ? 'جارٍ التأكيد...' : 'تم'}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ سبب توقف العمل — إجباري ═══ */}
+      {stopFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-[#0f2040]">⏸ توقف العمل — حجز {stopFor.code}</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              اكتب سبب التوقف. بدونه ما ينفع لا للمتابعة ولا للتقرير.
+            </p>
+            <textarea
+              value={stopReason}
+              onChange={(e) => setStopReason(e.target.value)}
+              rows={3}
+              placeholder="مثال: الزبون مو موجود بالموقع / المواد ناقصة / عطل بالكهرباء"
+              className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={handleStopWork}
+                disabled={!stopReason.trim() || stopping}
+                className="flex-1 rounded-xl bg-gradient-to-l from-slate-600 to-slate-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {stopping ? 'جارٍ التسجيل...' : 'سجّل توقف العمل'}
+              </button>
+              <button
+                onClick={() => setStopFor(null)}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600"
+              >
+                رجوع
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ بعد الإنجاز أو التوقف: الورق الباقي ═══
+          مو إجباري — يكدر يأجله بـ«بعدين». بس ما يختفي بالسكوت مثل قبل. */}
+      {paperwork && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-[#0f2040]">
+              {paperwork.stopped ? '⏸ العمل توقف' : '✅ تم الإنجاز'} — حجز {paperwork.booking.code}
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              {paperwork.stopped
+                ? 'باقي عليك تقرير يوضّح شنو صار ووين وقف الشغل.'
+                : 'باقي عليك ورقتين حتى يطلع الحجز «منجز بشكل كامل»:'}
+            </p>
+            <div className="mt-4 space-y-2">
+              {!paperwork.stopped && (
+                <button
+                  onClick={() => navigate(`/leader-invoices/new?bookingId=${paperwork.booking.id}`)}
+                  className="w-full rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 text-sm font-bold text-white"
+                >
+                  🧾 سوّي فاتورة التكاليف الآن
+                </button>
+              )}
+              <button
+                onClick={() => navigate(`/work-reports?bookingId=${paperwork.booking.id}`)}
+                className="w-full rounded-xl border-2 border-brand-300 bg-brand-50 px-4 py-3 text-sm font-bold text-brand-700"
+              >
+                📝 سوّي تقرير العمل الآن
+              </button>
+              <button
+                onClick={() => setPaperwork(null)}
+                className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500"
+              >
+                بعدين
+              </button>
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-amber-700">
+              ⚠ الحجز راح يبقى مؤشّر «منجز بدون فاتورة/تقرير» بتنسيق الحجوزات لين تخلّصهن.
+            </p>
           </div>
         </div>
       )}

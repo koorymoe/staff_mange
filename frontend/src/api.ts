@@ -457,6 +457,8 @@ export type CompletionState =
 export interface Booking {
   id: string
   code: string
+  workStoppedAt: string | null
+  workStopReason: string | null
   hasInvoice: boolean
   hasReport: boolean
   completionState: CompletionState
@@ -2093,6 +2095,11 @@ export const api = {
   addChecklistPhotos: (id: string, photoUrls: string[]) =>
     request<ProjectChecklist>(`/checklists/${id}/photos`, { method: 'PUT', body: JSON.stringify({ photoUrls }) }),
   getServices: () => request<Service[]>('/services'),
+  // توقف العمل: الليدر بدأ وما كدر يكمّل. السبب إجباري.
+  stopBookingWork: (id: string, reason: string) =>
+    request<Booking>(`/bookings/${id}/stop-work`, { method: 'PUT', body: JSON.stringify({ reason }) }),
+  resumeBookingWork: (id: string) =>
+    request<Booking>(`/bookings/${id}/resume-work`, { method: 'PUT' }),
   createService: (data: { name: string; category?: string; division?: 'ENGINEERING' | 'DECOR' | '' }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
   createSkill: (serviceId: string, name: string) =>

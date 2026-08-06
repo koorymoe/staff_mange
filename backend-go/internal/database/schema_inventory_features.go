@@ -1126,5 +1126,19 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				ON CONFLICT (name) DO NOTHING;
 			`,
 		},
+		{
+			// توقف العمل: الليدر يوصل ويبدي، وأحياناً ما يكدر يكمّل (الزبون
+			// مو موجود، المواد ناقصة، عطل...). قبل ما جان إله محل بالنظام —
+			// يا ينجز يا يترك الحجز معلّق بلا سبب مكتوب. هسه عمودان: وقت
+			// التوقف وسببه. ما ضفنا حالة جديدة لـstatus عمداً — الحجز يضل
+			// شغّال ويكدر يكمّله بعدين، بس يبين «متوقف» بتنسيق الحجوزات.
+			Version: "0196_booking_work_stop",
+			SQL: `
+				ALTER TABLE "Booking"
+					ADD COLUMN IF NOT EXISTS "workStoppedAt" TIMESTAMPTZ,
+					ADD COLUMN IF NOT EXISTS "workStopReason" TEXT,
+					ADD COLUMN IF NOT EXISTS "workStoppedById" TEXT;
+			`,
+		},
 	}
 }

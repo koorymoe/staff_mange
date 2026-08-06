@@ -394,6 +394,26 @@ func (s *BookingService) MarkArrived(id string) (*model.Booking, error) {
 	return s.repo.FindByID(id)
 }
 
+// StopWork يوقف العمل بسبب مكتوب. السبب إجباري — «توقف» بلا سبب ما
+// تنفع لا للمتابعة ولا للتقرير.
+func (s *BookingService) StopWork(id, reason, employeeID string) (*model.Booking, error) {
+	if strings.TrimSpace(reason) == "" {
+		return nil, errors.New("سبب توقف العمل مطلوب")
+	}
+	if err := s.repo.StopWork(id, strings.TrimSpace(reason), employeeID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// ResumeWork يرجّع الحجز شغّال بعد ما ينحل سبب التوقف.
+func (s *BookingService) ResumeWork(id string) (*model.Booking, error) {
+	if err := s.repo.ResumeWork(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
 // SetMaterialsReady يسمح فقط لتيم ليدر مسند لهذا الحجز (أو أدمن/مراقب) بتأكيد تجهيز
 // المواد — لحظة الضغط تصير بداية عدّاد استجابة الفنيين.
 func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Booking, error) {

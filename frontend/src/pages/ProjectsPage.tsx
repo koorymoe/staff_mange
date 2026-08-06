@@ -1434,6 +1434,9 @@ function DelegateModal({ project, onClose, onSaved }: {
 }) {
   const candidates = useProjectCandidates()
   const [employeeId, setEmployeeId] = useState(project.delegatedToEmployeeId || '')
+  // بحث بالاسم — القائمة فيها كل موظفي الشركة موزّعين على خانات، فبدل
+  // ما يدوّر المدير بالقائمة كلها يكتب اسمه ويلكاه.
+  const [q, setQ] = useState('')
   const [note, setNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -1454,9 +1457,12 @@ function DelegateModal({ project, onClose, onSaved }: {
     }
   }
 
-  // المرشحون مرتبين أصلاً: مهندسين ← تقنيين ← ليدريه ← فنيين ← إداريين
+  // المرشحون مرتبين أصلاً بالخانات من السيرفر
+  const shown = q.trim()
+    ? candidates.filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()))
+    : candidates
   const groups: { label: string; items: ProjectCandidate[] }[] = []
-  for (const c of candidates) {
+  for (const c of shown) {
     const last = groups[groups.length - 1]
     if (last && last.label === c.groupLabel) last.items.push(c)
     else groups.push({ label: c.groupLabel, items: [c] })
@@ -1472,7 +1478,16 @@ function DelegateModal({ project, onClose, onSaved }: {
           </p>
         )}
 
-        <Field label="الموظف الموجّه له (من المهندسين حتى الفنيين)">
+        <Field label="الموظف الموجّه له (كل كوادر الشركة)">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="🔍 اكتب اسم الموظف للبحث..."
+            className="mb-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+          />
+          {q.trim() && shown.length === 0 && (
+            <p className="mb-2 text-xs text-red-500">ماكو موظف بهذا الاسم.</p>
+          )}
           <select
             value={employeeId}
             onChange={(e) => setEmployeeId(e.target.value)}

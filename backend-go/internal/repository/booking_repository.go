@@ -148,7 +148,8 @@ func (r *BookingRepository) hydrate(b *model.Booking) error {
 // ومنو أنجز وترك الورق وراه.
 func completionState(b *model.Booking) string {
 	if b.Status != "COMPLETED" {
-		if b.Status == "CANCELLED" {
+		// توقف العمل بيد الليدر، أو الحجز انلغى — الاثنين «متوقف»
+		if b.Status == "CANCELLED" || b.WorkStoppedAt != nil {
 			return "STOPPED"
 		}
 		return "ASSIGNED"
@@ -555,6 +556,27 @@ func (r *BookingRepository) StartWithResponseTime(id string) error {
 func (r *BookingRepository) MarkArrived(id string) error {
 	_, err := r.db.Exec(`
 		UPDATE "Booking" SET "arrivedAt" = COALESCE("arrivedAt", now()) WHERE id = $1
+	`, id)
+	return err
+}
+
+// StopWork يسجّل توقف العمل بسببه ومنو أوقفه. الحجز ما ينلغى — يضل
+// شغّال ويكدر الليدر يكمّله بعدين، بس يبين «متوقف» للإداري.
+func (r *BookingRepository) StopWork(id, reason, byEmployeeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "workStoppedAt" = now(), "workStopReason" = $2, "workStoppedById" = $3, "updatedAt" = now()
+		WHERE id = $1
+	`, id, reason, byEmployeeID)
+	return err
+}
+
+// ResumeWork يشيل علامة التوقف لمن يرجع الليدر يكمّل الشغل.
+func (r *BookingRepository) ResumeWork(id string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "workStoppedAt" = NULL, "workStopReason" = NULL, "workStoppedById" = NULL, "updatedAt" = now()
+		WHERE id = $1
 	`, id)
 	return err
 }
