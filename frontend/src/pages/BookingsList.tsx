@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
-import { api, type Booking, type Employee, type Vehicle } from '../api'
+import { api, type Booking, type Employee, type VehicleOption } from '../api'
 import { useSession } from '../session'
 import MapViewer from '../components/MapViewer'
 
@@ -88,7 +88,7 @@ export default function BookingsList() {
     }
   }
   const [technicians, setTechnicians] = useState<Employee[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([])
   const [mapBooking, setMapBooking] = useState<Booking | null>(null)
   // الشخصيات المهمة: أي موظف يقدر يعلّم زبون بضغطة زر. نجيب المعرّفات بس
   // (بدون تفاصيل) حتى نعرف أي زر يكون مضغوط.
@@ -102,7 +102,7 @@ export default function BookingsList() {
       api.getEmployees().then((all) => setTechnicians(all.filter((e) => e.role === 'TECHNICIAN')))
       // المركبات بيانات مساعدة هنا — مو كل من يشوف الحجوزات عنده صلاحية
       // المركبات، فالرفض ما يجوز يكسر الصفحة (شوف Coordinator.tsx)
-      api.getVehicles().then(setVehicles).catch(() => setVehicles([]))
+      api.getVehicleOptions().then(setVehicles).catch(() => setVehicles([]))
     }
   }, [isAdmin])
 

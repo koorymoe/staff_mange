@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type Vehicle } from '../api'
+import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption } from '../api'
 import { useSession } from '../session'
 import LocationPicker from '../components/LocationPicker'
 
@@ -50,7 +50,7 @@ export default function Coordinator() {
   const [cartOpen, setCartOpen] = useState<Record<string, boolean>>({})
   const [cartForm, setCartForm] = useState<Record<string, { productName: string; quantity: string; unitPrice: string; notes: string }>>({})
   const [products, setProducts] = useState<Product[]>([])
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [vehicles, setVehicles] = useState<VehicleOption[]>([])
   const [scheduleMode, setScheduleMode] = useState<Record<string, 'slots' | 'manual'>>({})
   const [editingLocationId, setEditingLocationId] = useState<string | null>(null)
 
@@ -152,12 +152,16 @@ export default function Coordinator() {
       .getBookings({ status: ['PENDING', 'CONFIRMED'] })
       .then((data) => {
         setBookings(data)
-        const candidates = data.filter((b) => b.status === 'CONFIRMED' && !b.transferToProjects && b.service)
+        const candidates = data.filter((b) => b.status === 'CONFIRMED' && !b.transferToProjects)
         // نجمّع الحجوزات حسب نفس الخدمة ونطلب موظفي المطابقة مرة وحدة لكل خدمة بدل
         // طلب منفصل لكل حجز (كان يسوي طلب HTTP مستقل لكل حجز بيها نفس الخدمة).
+        // الحجز بلا خدمة محددة (مثلاً حجز صيانة) جان ينشال من هنا،
+        // فما يوصله طلب مطابقة، فما تنعرض خانات الفنيين أصلاً وما
+        // يكدر المنسّق يكلّف أحد. هسه يدخل بمفتاح فاضي ويجيب كل
+        // الكوادر بلا فحص مهارة خدمة معيّنة.
         const byService = new Map<string, Booking[]>()
         for (const b of candidates) {
-          const sid = b.service!.id
+          const sid = b.service?.id || ''
           byService.set(sid, [...(byService.get(sid) || []), b])
         }
         byService.forEach((bs, sid) => loadMatches(bs, sid))
@@ -174,7 +178,7 @@ export default function Coordinator() {
     // ويطفّي الصفحة كلها، ويُحسب محاولة وصول غير مخوّلة على الموظف.
     api.getSupervisors().then(setSupervisors).catch(() => setSupervisors([]))
     api.getProducts().then(setProducts).catch(() => setProducts([]))
-    api.getVehicles().then(setVehicles).catch(() => setVehicles([]))
+    api.getVehicleOptions().then(setVehicles).catch(() => setVehicles([]))
   }, [])
 
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
@@ -745,11 +749,14 @@ export default function Coordinator() {
                       </div>
                     )}
 
-                    {matches[booking.id] && (
+                    {/* الخانات تنعرض دائماً — قبل، لو ما وصلت قائمة
+                        المطابقة (حجز بلا خدمة أو طلب فشل) تختفي خانات
+                        الفنيين كلها وما يكدر يكلّف أحد. */}
+                    {(
                       <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
                         {techRoles.map((tr) => {
                           const assigned = booking.assignments.find((a) => a.role === tr.key)
-                          const candidates = matches[booking.id]
+                          const candidates = matches[booking.id] || []
                           return (
                             <div key={tr.key}>
                               <label className="mb-1 block text-sm font-medium text-slate-600">
@@ -763,7 +770,7 @@ export default function Coordinator() {
                                 <option value="">-- اختر فني --</option>
                                 {candidates.length === 0 && (
                                   <option value="" disabled>
-                                    لا يوجد موظف متاح
+                                    {matches[booking.id] ? 'ماكو كادر متاح' : 'جاري تحميل الكوادر...'}
                                   </option>
                                 )}
                                 {candidates.map((c) => (

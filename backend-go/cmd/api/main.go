@@ -227,6 +227,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	techShowcaseHandler := handler.NewTechShowcaseHandler(techShowcaseService)
 	attendanceIconRequestHandler := handler.NewAttendanceIconRequestHandler(attendanceIconRequestService)
 	procurementHandler := handler.NewProcurementHandler(procurementService)
+	geoHandler := handler.NewGeoHandler()
 	supplierHandler := handler.NewSupplierHandler(supplierService)
 	privacyPolicyHandler := handler.NewPrivacyPolicyHandler(repository.NewPrivacyPolicyRepository(db))
 	mapLinkHandler := handler.NewMapLinkHandler()
@@ -832,6 +833,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/privacy-policy/{id}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Update), requireAuth, requirePrivacyMgmt))
 	mux.Handle("DELETE /api/privacy-policy/{id}", middleware.Chain(http.HandlerFunc(privacyPolicyHandler.Delete), requireAuth, requirePrivacyMgmt))
 
+	// بحث المناطق يمر من سيرفرنا — خدمة الخرائط تحجب المتصفحات
+	mux.Handle("GET /api/geo/search", middleware.Chain(http.HandlerFunc(geoHandler.Search), requireAuth))
+
 	mux.Handle("GET /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.List), requireAuth))
 	mux.Handle("POST /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.Create), requireAuth, requireSuppliersMgmt))
 	mux.Handle("PUT /api/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Update), requireAuth, requireSuppliersMgmt))
@@ -953,6 +957,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/stats", middleware.Chain(http.HandlerFunc(statsHandler.Overview), requireAuth))
 
 	// إدارة المركبات — وقود/تنظيف/تبديل زيت، أعطال وأضرار، حالة شهرية
+	// قائمة مبسطة لاختيار سيارة لحجز — بلا صلاحية إدارة الأسطول
+	mux.Handle("GET /api/vehicles/options", middleware.Chain(http.HandlerFunc(vehicleHandler.Options), requireAuth))
 	mux.Handle("GET /api/vehicles", middleware.Chain(http.HandlerFunc(vehicleHandler.List), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles", middleware.Chain(http.HandlerFunc(vehicleHandler.Create), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/{id}/logs", middleware.Chain(http.HandlerFunc(vehicleHandler.ListLogs), requireAuth, requireVehicleMgmt))

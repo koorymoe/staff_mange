@@ -62,7 +62,10 @@ export default function AttendancePage() {
   const [error, setError] = useState('')
   const [viewedEmployeeId, setViewedEmployeeId] = useState<string>('')
 
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  // تصدير جدول الدوام مو لكل موظف — للمراقب ومدير النظام والمالك بس،
+  // أو لمن ينطيه المدير صلاحية المراقبة صراحةً.
+  const canExport = isAdmin
 
   const loadOpenSession = useCallback(() => {
     if (!employee) return
@@ -220,7 +223,7 @@ export default function AttendancePage() {
       )}
 
       {/* Monthly attendance record */}
-      <MonthlyView month={month} setMonth={setMonth} report={report} employeeId={targetEmployeeId} />
+      <MonthlyView month={month} setMonth={setMonth} report={report} employeeId={targetEmployeeId} canExport={canExport} />
 
       {/* Admin table */}
       {isAdmin && <AdminTable records={todaySummary} />}
@@ -230,7 +233,8 @@ export default function AttendancePage() {
 
 /* ───── Monthly attendance table ───── */
 
-function MonthlyView({ month, setMonth, report, employeeId }: {
+function MonthlyView({ month, setMonth, report, employeeId, canExport }: {
+  canExport: boolean
   month: string
   setMonth: (m: string) => void
   report: MonthlyAttendanceReport | null
@@ -269,15 +273,17 @@ function MonthlyView({ month, setMonth, report, employeeId }: {
         </button>
       </div>
 
-      <div className="flex items-center justify-between border-b border-gray-100 px-8 py-3">
-        <button
-          onClick={handleExport}
-          disabled={exporting || !report || report.days.length === 0}
-          className="rounded-lg bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-40"
-        >
-          {exporting ? 'جارٍ التصدير...' : 'تصدير Excel'}
-        </button>
-      </div>
+      {canExport && (
+        <div className="flex items-center justify-between border-b border-gray-100 px-8 py-3">
+          <button
+            onClick={handleExport}
+            disabled={exporting || !report || report.days.length === 0}
+            className="rounded-lg bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-40"
+          >
+            {exporting ? 'جارٍ التصدير...' : 'تصدير Excel'}
+          </button>
+        </div>
+      )}
 
       {/* Summary */}
       {report && (

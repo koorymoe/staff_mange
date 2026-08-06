@@ -1183,6 +1183,14 @@ export interface Permission {
   label: string
 }
 
+/** سيارة بالقائمة المنسدلة — الاسم والرقم واللون بس */
+export interface VehicleOption {
+  id: string
+  name: string
+  plateNumber: string
+  color: string | null
+}
+
 export interface Vehicle {
   id: string
   name: string
@@ -2040,6 +2048,13 @@ export const api = {
   rejectProductRequest: (id: string) => request<ProductRequest>(`/product-requests/${id}/reject`, { method: 'PUT' }),
 
   // الموردين المضافين مسبقاً — لاختيار المورد وقت تجهيز الطلب
+  /** بحث المناطق — يمر من سيرفرنا لأن خدمة الخرائط تحجب المتصفحات */
+  searchPlaces: (q: string, limit = 5, proximity?: { viewbox: string; bounded: string }) => {
+    const params = new URLSearchParams({ q, limit: String(limit) })
+    if (proximity) { params.set('viewbox', proximity.viewbox); params.set('bounded', proximity.bounded) }
+    return request<{ lat: string; lon: string; display_name: string }[]>(`/geo/search?${params}`)
+  },
+
   getSupplierOptions: () => request<{ id: string; companyName: string; ownerName: string }[]>('/suppliers'),
 
   // تجهيز طلب المنتج من الدوار — أبو الحسابات (نفسه أبو الكميات)
@@ -2622,6 +2637,13 @@ export const api = {
 
   // Vehicles
   getVehicles: () => request<Vehicle[]>('/vehicles'),
+
+  /**
+   * قائمة مبسطة لاختيار سيارة لحجز — بلا صلاحية إدارة الأسطول.
+   * /vehicles محمية بصلاحية vehicle_management وما عدها موظف التنسيق،
+   * فالقائمة المنسدلة جانت تطلع فاضية وما يكدر يحدد سيارة.
+   */
+  getVehicleOptions: () => request<VehicleOption[]>('/vehicles/options'),
   createVehicle: (data: { name: string; plateNumber: string; color?: string; type?: string }) =>
     request<Vehicle>('/vehicles', { method: 'POST', body: JSON.stringify(data) }),
   getVehicleLogs: (vehicleId: string) => request<VehicleLog[]>(`/vehicles/${vehicleId}/logs`),

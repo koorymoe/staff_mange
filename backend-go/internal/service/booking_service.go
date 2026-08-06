@@ -9,6 +9,7 @@ import (
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/timeutil"
 )
 
 type BookingService struct {
@@ -113,6 +114,11 @@ func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*m
 	if req.QuotedPrice != nil && *req.QuotedPrice < 0 {
 		return nil, errors.New("المبلغ المقدّر ما يصير يكون بالسالب")
 	}
+	// نفس قصة التوقيت: الموعد المكتوب بالإيد بغداد → عالمي قبل التخزين
+	if req.ScheduledAt != nil {
+		normalized := timeutil.NormalizeCompanyLocal(*req.ScheduledAt)
+		req.ScheduledAt = &normalized
+	}
 	if err := s.repo.Confirm(id, req, req.ScheduledAt); err != nil {
 		return nil, err
 	}
@@ -165,6 +171,10 @@ func (s *BookingService) ScheduleLog(id string) ([]model.ScheduleChangeLog, erro
 }
 
 func (s *BookingService) SetSchedule(id, changedByID, scheduledAt string) (*model.Booking, error) {
+	// الموظف يكتب الوقت بتوقيت بغداد، والنظام يخزن بالتوقيت العالمي.
+	// بدونها الموعد يتقدم ثلاث ساعات كل ما ينحفظ.
+	scheduledAt = timeutil.NormalizeCompanyLocal(scheduledAt)
+
 	existing, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err

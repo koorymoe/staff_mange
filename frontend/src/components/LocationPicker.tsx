@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { api } from '../api'
 
 const KARBALA: [number, number] = [32.6160, 44.0249]
 
@@ -133,18 +134,14 @@ export default function LocationPicker({ value, onChange }: Props) {
     try {
       // البحث الفوري (أثناء الكتابة): محصور بمنطقة الموظف حتى تطلع نتائج قريبة أول شي.
       // البحث الشامل (زر "بحث"): بدون حصر، يدور بكل العراق.
-      const proximityParams = silent ? `&viewbox=${nearbyViewbox()}&bounded=1` : ''
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&countrycodes=iq${proximityParams}&q=${encodeURIComponent(q.trim())}`
-      )
-      if (!res.ok) throw new Error('تعذر البحث')
-      let data: SearchResult[] = await res.json()
+      // البحث يمر من سيرفرنا مو من المتصفح مباشرة — خدمة الخرائط تحجب
+      // الطلبات الي ما تعرّف بنفسها، وكل موظفينا يطلعون بنفس عنوان
+      // الإنترنت فينحجبون سوه ويطلع «تعذر البحث».
+      const proximity = silent ? { viewbox: nearbyViewbox(), bounded: '1' } : undefined
+      let data: SearchResult[] = await api.searchPlaces(q.trim(), limit, proximity)
       // إذا ما لكينا نتائج قريبة، نوسع البحث لكل العراق بدل ما نرجع فاضي
       if (silent && data.length === 0) {
-        const fallback = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&limit=${limit}&countrycodes=iq&q=${encodeURIComponent(q.trim())}`
-        )
-        if (fallback.ok) data = await fallback.json()
+        data = await api.searchPlaces(q.trim(), limit)
       }
       setResults(data)
       if (!silent && data.length === 0) setSearchError('لم يتم العثور على نتائج')

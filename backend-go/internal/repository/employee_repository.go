@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"sort"
+
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -196,14 +198,35 @@ func (r *EmployeeRepository) Supervisors() ([]model.Employee, error) {
 	return employees, err
 }
 
-// MatchForService يرجّع الفنيين النشطين والمتاحين حالياً مع علامة إذا يمتلكون مهارة الخدمة المطلوبة
+// MatchForService يرجّع الكوادر الي ينفع تنكلّف بخدمة معيّنة، مع علامة
+// إذا يمتلكون مهارتها.
+//
+// جان بيها قيدين خربوا التنسيق:
+//
+//	١. `"onDuty" = true` — يعني الموظف ما يظهر إلا إذا مسجّل حضور بهاي
+//	   اللحظة. والمنسّق يوزّع حجوزات باچر وبعده، فيفتح الحجز ويلكه
+//	   «لا يوجد موظف متاح» لمجرد إن الفني ما سجّل دوام هسه.
+//
+//	٢. `role = 'TECHNICIAN'` — يشيل المهندسين وأي كادر ثاني يمتلك مهارة
+//	   الخدمة فعلاً. والمهارة هي المقياس الصح مو المسمّى الوظيفي.
+//
+// هسه: الفنيين والمهندسين، وأي موظف عنده مهارة هاي الخدمة مهما جان
+// دوره. والي عنده المهارة يطلع أول، وبعده الباقي.
 func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee, error) {
 	employees := []model.Employee{}
 	if err := r.db.Select(&employees, `
-		SELECT * FROM "Employee"
-		WHERE status = 'ACTIVE' AND "onDuty" = true AND role = 'TECHNICIAN'
-		ORDER BY name ASC
-	`); err != nil {
+		SELECT e.* FROM "Employee" e
+		WHERE e.status = 'ACTIVE'
+		  AND (
+		    e.role IN ('TECHNICIAN', 'ENGINEER')
+		    OR EXISTS (
+		      SELECT 1 FROM "EmployeeSkill" es
+		      JOIN "Skill" sk ON sk.id = es."skillId"
+		      WHERE es."employeeId" = e.id AND es."canPerform" = true AND sk."serviceId" = $1
+		    )
+		  )
+		ORDER BY e.name ASC
+	`, serviceID); err != nil {
 		return nil, err
 	}
 	for i := range employees {
@@ -221,6 +244,11 @@ func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee
 		}
 		employees[i].HasRequiredSkill = &hasSkill
 	}
+	// الي عنده المهارة أول — المنسّق يشوف المناسب كدامه بدل ما يدوّر
+	sort.SliceStable(employees, func(a, b int) bool {
+		return employees[a].HasRequiredSkill != nil && *employees[a].HasRequiredSkill &&
+			(employees[b].HasRequiredSkill == nil || !*employees[b].HasRequiredSkill)
+	})
 	return employees, nil
 }
 

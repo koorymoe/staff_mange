@@ -217,10 +217,10 @@ func (s *EmployeeService) Supervisors() ([]model.Employee, error) {
 	return s.repo.Supervisors()
 }
 
+// Match كوادر ينفع تنكلّف بخدمة. serviceID فاضي مسموح: الحجز الي ما
+// إله خدمة محددة (مثلاً حجز صيانة) لازم يطلعله كادر بعد — قبل، كان
+// يرجع خطأ فتختفي خانات الفنيين كلها من الحجز.
 func (s *EmployeeService) Match(serviceID string) ([]model.Employee, error) {
-	if serviceID == "" {
-		return nil, errors.New("serviceId is required")
-	}
 	return s.repo.MatchForService(serviceID)
 }
 

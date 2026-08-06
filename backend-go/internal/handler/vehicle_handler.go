@@ -25,6 +25,36 @@ func (h *VehicleHandler) List(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, vehicles)
 }
 
+// Options قائمة مختصرة للاختيار وقت تخصيص سيارة لحجز.
+//
+// شاشة تنسيق الحجوزات جانت تنادي /api/vehicles وهي محمية بصلاحية إدارة
+// المركبات — وما عدها ولا موظف تنسيق. فالنتيجة: القائمة المنسدلة تطلع
+// فاضية وما يكدرون يحددون سيارة أبداً.
+//
+// اختيار السيارة مو إدارة أسطول: نرجّع الاسم والرقم واللون بس، بلا
+// وثائق ولا صيانة ولا مصاريف — فما نكشف شي بمجرد التخصيص.
+func (h *VehicleHandler) Options(w http.ResponseWriter, r *http.Request) {
+	vehicles, err := h.service.List()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة المركبات")
+		return
+	}
+	type option struct {
+		ID          string `json:"id"`
+		Name        string `json:"name"`
+		PlateNumber string `json:"plateNumber"`
+		Color       *string `json:"color"`
+	}
+	out := []option{}
+	for _, v := range vehicles {
+		if !v.IsActive {
+			continue
+		}
+		out = append(out, option{ID: v.ID, Name: v.Name, PlateNumber: v.PlateNumber, Color: v.Color})
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 func (h *VehicleHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateVehicleRequest
 	if err := DecodeJSON(r, &req); err != nil {
