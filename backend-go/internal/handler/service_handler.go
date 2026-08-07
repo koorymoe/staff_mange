@@ -65,3 +65,13 @@ func (h *ServiceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// GET /api/skills — كل المهارات بقائمة مسطّحة (لبرامج التدريب)
+func (h *ServiceHandler) ListSkills(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.AllSkills()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المهارات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

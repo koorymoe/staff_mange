@@ -64,8 +64,11 @@ type Employee struct {
 	ExperienceYears *float64   `db:"experienceYears" json:"experienceYears"`
 	LastReview      *string    `db:"lastReview" json:"lastReview"`
 	CareerStatus    string     `db:"careerStatus" json:"careerStatus"`
-	NextRole        *string    `db:"nextRole" json:"nextRole"`
-	TrainingNeeds   *string    `db:"trainingNeeds" json:"trainingNeeds"`
+	// JobLevel المستوى الوظيفي ١-١٠ — غير leaderSkillLevel (درجة مهارة
+	// الليدر). افتراضيته ٥ حتى ما ينوسم موظف بتقييم ما انعطى له.
+	JobLevel      int     `db:"jobLevel" json:"jobLevel"`
+	NextRole      *string `db:"nextRole" json:"nextRole"`
+	TrainingNeeds *string `db:"trainingNeeds" json:"trainingNeeds"`
 
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
 	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
@@ -127,6 +130,42 @@ type UpdateEmployeeRequest struct {
 	ShiftEnd             *string  `json:"shiftEnd"`
 	MonthlyLeaves        *int     `json:"monthlyLeaves"`
 	JobTitle             *string  `json:"jobTitle"`
+
+	// ملف الموارد البشرية — منقول من نظام الطاقة الشمسية
+	Department      *string  `json:"department"`
+	HireDate        *string  `json:"hireDate"`
+	ExperienceYears *float64 `json:"experienceYears"`
+	LastReview      *string  `json:"lastReview"`
+	CareerStatus    *string  `json:"careerStatus"`
+	JobLevel        *int     `json:"jobLevel"`
+	NextRole        *string  `json:"nextRole"`
+	TrainingNeeds   *string  `json:"trainingNeeds"`
+}
+
+// ═══ أهلية الترقية ═══
+//
+// نفس قواعد النظام القديم، بس محسوبة بالسيرفر مو بالمتصفح — القاعدة
+// وحدة للكل ولا تنغيّر لو أحد فتح أدوات المطوّر.
+//
+//	خبرة ≥٣ سنوات و مستوى ≥٧ و تقييم ممتاز/جيد جداً  →  يحتاج ترقية
+//	تقييم «يحتاج تحسين» أو مستوى <٤                    →  يحتاج تدريب
+//	غيرها                                              →  مستقر
+const (
+	CareerStable     = "مستقر"
+	CareerNeedsPromo = "يحتاج ترقية"
+	CareerNeedsTrain = "يحتاج تدريب"
+	CareerWatched    = "تحت المراقبة"
+)
+
+// EvaluateCareerStatus يحسب الحالة الوظيفية من الخبرة والمستوى والتقييم.
+func EvaluateCareerStatus(experienceYears float64, level int, lastReview string) string {
+	if experienceYears >= 3 && level >= 7 && (lastReview == "ممتاز" || lastReview == "جيد جداً") {
+		return CareerNeedsPromo
+	}
+	if lastReview == "يحتاج تحسين" || level < 4 {
+		return CareerNeedsTrain
+	}
+	return CareerStable
 }
 
 type LoginRequest struct {

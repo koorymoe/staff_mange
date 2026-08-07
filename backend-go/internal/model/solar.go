@@ -208,3 +208,62 @@ type SolarStats struct {
 	TotalInstall       float64 `db:"totalInstall" json:"totalInstall"`
 	TotalProgram       float64 `db:"totalProgram" json:"totalProgram"`
 }
+
+// ═══ برامج التدريب ═══
+// منقولة من نظام الطاقة الشمسية، بس على موظفينا ومهاراتنا الموجودة.
+
+type TrainingProgram struct {
+	ID               string     `db:"id" json:"id"`
+	Name             string     `db:"name" json:"name"`
+	Level            string     `db:"level" json:"level"`
+	DurationDays     int        `db:"durationDays" json:"durationDays"`
+	StartDate        *time.Time `db:"startDate" json:"startDate"`
+	EndDate          *time.Time `db:"endDate" json:"endDate"`
+	TargetDepartment *string    `db:"targetDepartment" json:"targetDepartment"`
+	InstructorID     *string    `db:"instructorId" json:"instructorId"`
+	Objectives       *string    `db:"objectives" json:"objectives"`
+	Content          *string    `db:"content" json:"content"`
+	PassRate         int        `db:"passRate" json:"passRate"`
+	Cost             float64    `db:"cost" json:"cost"`
+	Status           string     `db:"status" json:"status"`
+	Progress         int        `db:"progress" json:"progress"`
+	CreatedByID      *string    `db:"createdById" json:"-"`
+	CreatedAt        time.Time  `db:"createdAt" json:"createdAt"`
+	UpdatedAt        time.Time  `db:"updatedAt" json:"updatedAt"`
+
+	// محسوبة وقت الجلب
+	InstructorName *string               `db:"-" json:"instructorName"`
+	Participants   []TrainingParticipant `db:"-" json:"participants"`
+	Skills         []TrainingSkill       `db:"-" json:"skills"`
+}
+
+type TrainingParticipant struct {
+	EmployeeID string  `json:"employeeId"`
+	Name       string  `json:"name"`
+	Department *string `json:"department"`
+	JobTitle   *string `json:"jobTitle"`
+	Passed     *bool   `json:"passed"`
+}
+
+type TrainingSkill struct {
+	SkillID  string `json:"skillId"`
+	Name     string `json:"name"`
+	Category string `json:"category"`
+}
+
+type SaveTrainingProgramRequest struct {
+	Name             string   `json:"name"`
+	Level            string   `json:"level"`
+	DurationDays     int      `json:"durationDays"`
+	StartDate        string   `json:"startDate"`
+	TargetDepartment string   `json:"targetDepartment"`
+	InstructorID     string   `json:"instructorId"`
+	Objectives       string   `json:"objectives"`
+	Content          string   `json:"content"`
+	PassRate         int      `json:"passRate"`
+	Cost             float64  `json:"cost"`
+	Status           string   `json:"status"`
+	Progress         int      `json:"progress"`
+	ParticipantIDs   []string `json:"participantIds"`
+	SkillIDs         []string `json:"skillIds"`
+}

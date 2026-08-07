@@ -272,3 +272,26 @@ func solarVersionedMigrations() []Migration {
 		},
 	}
 }
+
+// employeeJobLevelMigration المستوى الوظيفي (١-١٠) من نظام الطاقة
+// الشمسية.
+//
+// أول ما ربطته بـ"leaderSkillLevel" الموجود — وهذا غلط: ذاك درجة
+// مهارة الليدر، وافتراضيته صفر لكل الموظفين. يعني قاعدة «مستوى <٤
+// ← يحتاج تدريب» جانت تأشّر **كل موظف بالشركة** إنه يحتاج تدريب
+// عاجل، وهذا إنذار كاذب بحجم الشركة كلها.
+//
+// المستوى الوظيفي شي ثاني: تقييم إداري من ١ لـ ١٠. عمود مستقل،
+// وافتراضيته ٥ (وسط) حتى الموظفين الحاليين ما ينوسمون بشي ما
+// انقيّموا بيه أصلاً.
+func employeeJobLevelMigration() []Migration {
+	return []Migration{
+		{
+			Version: "0214_employee_job_level",
+			SQL: `
+				ALTER TABLE "Employee"
+					ADD COLUMN IF NOT EXISTS "jobLevel" INTEGER NOT NULL DEFAULT 5;
+			`,
+		},
+	}
+}

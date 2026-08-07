@@ -182,6 +182,9 @@ func versionedMigrations() []Migration {
 	// 0210 وما بعدها: دورة حياة الحجز — الحذف صار أرشفة (كان يمحي الحجز
 	// وتاريخه للأبد)، وحالة «في الانتظار» للزبون الي ما يرد، وتوثيق التأجيل.
 	result = append(result, bookingLifecycleVersionedMigrations()...)
+	// 0214: المستوى الوظيفي (١-١٠) عمود مستقل — ربطه بـleaderSkillLevel كان
+	// يأشّر كل الشركة «يحتاج تدريب» لأن ذاك افتراضيته صفر.
+	result = append(result, employeeJobLevelMigration()...)
 	return result
 }
 

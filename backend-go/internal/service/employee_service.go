@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -186,6 +187,49 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 	}
 	if req.JobTitle != nil {
 		employee.JobTitle = req.JobTitle
+	}
+
+	// ═══ ملف الموارد البشرية ═══
+	if req.Department != nil {
+		employee.Department = req.Department
+	}
+	if req.HireDate != nil {
+		if t, err := time.Parse("2006-01-02", *req.HireDate); err == nil {
+			employee.HireDate = &t
+		} else if *req.HireDate == "" {
+			employee.HireDate = nil
+		}
+	}
+	if req.ExperienceYears != nil {
+		employee.ExperienceYears = req.ExperienceYears
+	}
+	if req.LastReview != nil {
+		employee.LastReview = req.LastReview
+	}
+	if req.JobLevel != nil && *req.JobLevel >= 1 && *req.JobLevel <= 10 {
+		employee.JobLevel = *req.JobLevel
+	}
+	if req.NextRole != nil {
+		employee.NextRole = req.NextRole
+	}
+	if req.TrainingNeeds != nil {
+		employee.TrainingNeeds = req.TrainingNeeds
+	}
+	// الحالة الوظيفية تنحسب بالسيرفر من الخبرة والمستوى والتقييم — قاعدة
+	// وحدة للكل. الإداري يقدر يفرض «تحت المراقبة» يدوياً، وهاي الوحيدة
+	// الي ما تنحسب لأنها قرار مو نتيجة.
+	if req.CareerStatus != nil && *req.CareerStatus == model.CareerWatched {
+		employee.CareerStatus = model.CareerWatched
+	} else {
+		exp := 0.0
+		if employee.ExperienceYears != nil {
+			exp = *employee.ExperienceYears
+		}
+		review := ""
+		if employee.LastReview != nil {
+			review = *employee.LastReview
+		}
+		employee.CareerStatus = model.EvaluateCareerStatus(exp, employee.JobLevel, review)
 	}
 
 	if req.Password != nil && *req.Password != "" {

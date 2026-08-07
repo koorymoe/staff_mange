@@ -175,7 +175,16 @@ func (r *EmployeeRepository) Update(e *model.Employee) error {
 			"shiftEnd" = :shiftEnd,
 			"monthlyLeaves" = :monthlyLeaves,
 			"jobTitle" = :jobTitle,
-			"authzViolations" = :authzViolations
+			"authzViolations" = :authzViolations,
+			-- ملف الموارد البشرية المنقول من نظام الطاقة الشمسية
+			department = :department,
+			"hireDate" = :hireDate,
+			"experienceYears" = :experienceYears,
+			"lastReview" = :lastReview,
+			"careerStatus" = :careerStatus,
+			"jobLevel" = :jobLevel,
+			"nextRole" = :nextRole,
+			"trainingNeeds" = :trainingNeeds
 		WHERE id = :id
 	`, e)
 	return err

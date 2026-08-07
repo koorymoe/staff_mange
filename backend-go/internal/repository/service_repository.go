@@ -54,3 +54,28 @@ func (r *ServiceRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "Service" WHERE id = $1`, id)
 	return err
 }
+
+// AllSkills يرجّع كل المهارات بتصنيفها واسم خدمتها.
+//
+// ماكو مسار يجيب المهارات لحالها بالنظام — تنجاب دائماً مدفونة جوّا
+// الخدمات. برامج التدريب تحتاجها قائمة مسطّحة عشان تختار «شنو راح
+// يتعلّم المتدرّب».
+func (r *ServiceRepository) AllSkills() ([]SkillWithService, error) {
+	rows := []SkillWithService{}
+	err := r.db.Select(&rows, `
+		SELECT s.id, s.name, s.category, s.description,
+		       s."serviceId", srv.name AS "serviceName"
+		FROM "Skill" s
+		LEFT JOIN "Service" srv ON srv.id = s."serviceId"
+		ORDER BY s.category, srv.name NULLS LAST, s.name`)
+	return rows, err
+}
+
+type SkillWithService struct {
+	ID          string  `db:"id" json:"id"`
+	Name        string  `db:"name" json:"name"`
+	Category    string  `db:"category" json:"category"`
+	Description *string `db:"description" json:"description"`
+	ServiceID   *string `db:"serviceId" json:"serviceId"`
+	ServiceName *string `db:"serviceName" json:"serviceName"`
+}

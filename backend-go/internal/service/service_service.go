@@ -63,3 +63,8 @@ func (s *ServiceCatalogService) Delete(id string) error {
 	}
 	return err
 }
+
+// AllSkills كل المهارات بقائمة مسطّحة — تحتاجها برامج التدريب.
+func (s *ServiceCatalogService) AllSkills() ([]repository.SkillWithService, error) {
+	return s.repo.AllSkills()
+}

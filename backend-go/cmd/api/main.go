@@ -97,6 +97,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
 	solarRepo := repository.NewSolarRepository(db)
+	trainingProgramRepo := repository.NewTrainingProgramRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	systemPriceCatalogRepo := repository.NewSystemPriceCatalogRepository(db)
 	materialRepo := repository.NewMaterialRepository(db)
@@ -244,6 +245,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mapLinkHandler := handler.NewMapLinkHandler()
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	solarHandler := handler.NewSolarHandler(solarRepo)
+	trainingProgramHandler := handler.NewTrainingProgramHandler(trainingProgramRepo)
 	productHandler := handler.NewProductHandler(productService)
 	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
 	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
@@ -437,6 +439,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// الخدمات والمهارات — القراءة لأي مسجل دخول، الإضافة لمدير النظام فقط
 	mux.Handle("GET /api/services", middleware.Chain(http.HandlerFunc(serviceHandler.List), requireAuth))
+	// المهارات بقائمة مسطّحة — لاختيار مهارات البرنامج التدريبي
+	mux.Handle("GET /api/skills", middleware.Chain(http.HandlerFunc(serviceHandler.ListSkills), requireAuth))
 	mux.Handle("POST /api/services", middleware.Chain(http.HandlerFunc(serviceHandler.Create), requireAuth, requireContentTech))
 	mux.Handle("POST /api/services/{id}/skills", middleware.Chain(http.HandlerFunc(serviceHandler.CreateSkill), requireAuth, requireContentTech))
 	mux.Handle("DELETE /api/services/{id}", middleware.Chain(http.HandlerFunc(serviceHandler.Delete), requireAuth, requireAdmin))
@@ -960,6 +964,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ومواصفاتها وهو شغال. التعديل والتجهيز بصلاحية "solar_system".
 	requireSolar := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
 		[]string{"ADMIN", "OWNER"}, "solar_system")
+
+	// ═══ برامج التدريب ═══
+	// القراءة لأي موظف (يشوف تدريباته)، والإدارة لإداري الكوادر والتقني.
+	requireTraining := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER", "HR_COORDINATOR"}, "staff_management", "content_technician")
+	mux.Handle("GET /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.List), requireAuth))
+	mux.Handle("POST /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Create), requireAuth, requireTraining))
+	mux.Handle("PUT /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Update), requireAuth, requireTraining))
+	mux.Handle("PUT /api/training-programs/{id}/complete", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Complete), requireAuth, requireTraining))
+	mux.Handle("DELETE /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Delete), requireAuth, requireTraining))
 
 	mux.Handle("GET /api/solar/stats", middleware.Chain(http.HandlerFunc(solarHandler.Stats), requireAuth))
 	mux.Handle("GET /api/solar/low-stock", middleware.Chain(http.HandlerFunc(solarHandler.LowStock), requireAuth))
