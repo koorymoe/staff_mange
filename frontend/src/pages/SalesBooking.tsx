@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { api, type Customer, type Service } from '../api'
+import { api, type Customer, type Service, type SolarSystem } from '../api'
 import { useSession } from '../session'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { LocationPicker } from '../components/MapLazy'
 
-type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL'
+type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
 type MaintenanceType = 'EXECUTION_ERROR' | 'DEVICE_ISSUE' | 'UPKEEP'
 
@@ -44,6 +44,12 @@ export default function SalesBooking() {
   const [services, setServices] = useState<Service[]>([])
 
   const [bookingType, setBookingType] = useState<BookingType | null>(null)
+  // ═══ حجز طاقة شمسية ═══
+  // المنظومة اختيارية: الزبون أحياناً يريد منظومة ولسه ما قرر أي وحدة،
+  // فالمبيعات يسجّل الحجز والمنسّق يحدد المنظومة بعد المعاينة.
+  const [solarSystems, setSolarSystems] = useState<SolarSystem[]>([])
+  const [solarSystemId, setSolarSystemId] = useState('')
+  const [solarMonthlyKwh, setSolarMonthlyKwh] = useState('')
   const [firstName, setFirstName] = useState('')
   const [fatherName, setFatherName] = useState('')
   const [grandfatherName, setGrandfatherName] = useState('')
@@ -143,9 +149,17 @@ export default function SalesBooking() {
     setPhone(digitsOnly)
   }
 
+  // نجيب الكتالوك بس لمن ينختار النوع — ما نحمّله لكل موظف مبيعات
+  // يفتح الصفحة وهو أصلاً راح يسوي حجز عادي.
+  useEffect(() => {
+    if (bookingType !== 'SOLAR' || solarSystems.length > 0) return
+    api.getSolarSystems().then(setSolarSystems).catch(() => {})
+  }, [bookingType, solarSystems.length])
+
   const buildNotesString = () => {
     const parts: string[] = []
     const typeLabel = bookingType === 'REGULAR' ? 'حجز عادي'
+    : bookingType === 'SOLAR' ? 'حجز طاقة شمسية'
       : bookingType === 'INTERNAL' ? 'حجز داخل الشركة' : 'حجز صيانة'
     parts.push(`[نوع: ${typeLabel}]`)
 
@@ -156,6 +170,12 @@ export default function SalesBooking() {
         SPECIFIC_DATE: `تاريخ محدد: ${specificDate}`,
       }
       parts.push(`[الأولوية: ${urgencyLabels[urgency]}]`)
+    }
+
+    if (bookingType === 'SOLAR') {
+      const sys = solarSystems.find((x) => x.id === solarSystemId)
+      if (sys) parts.push(`[المنظومة: ${sys.brand} ${sys.capacity} — ${sys.model}]`)
+      if (solarMonthlyKwh) parts.push(`[استهلاك الزبون الشهري: ${solarMonthlyKwh} كيلو واط/ساعة]`)
     }
 
     if (bookingType === 'MAINTENANCE' && maintenanceType) {
@@ -275,6 +295,9 @@ export default function SalesBooking() {
         mapLatitude: mapPoint.lat,
         mapLongitude: mapPoint.lng,
         bookingType: bookingType ?? undefined,
+        // المنظومة والاستهلاك — السعر المقدّر ينحسب بالسيرفر من الكتالوك
+        solarSystemId: bookingType === 'SOLAR' && solarSystemId ? solarSystemId : undefined,
+        solarMonthlyKwh: bookingType === 'SOLAR' && solarMonthlyKwh ? Number(solarMonthlyKwh) : undefined,
         internalEmployeeName: bookingType === 'INTERNAL' ? intName.trim() : undefined,
         internalEmployeePhone: bookingType === 'INTERNAL' ? intPhone.trim() : undefined,
         internalDepartment: bookingType === 'INTERNAL' ? intDept.trim() : undefined,
@@ -349,6 +372,19 @@ export default function SalesBooking() {
               <span className="text-4xl">🔧</span>
               <span className="text-lg font-bold text-slate-800">حجز صيانة</span>
               <span className="text-xs text-slate-500">صيانة أو إصلاح جهاز مركب</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setBookingType('SOLAR'); setMaintenanceType(null); setRemembersCrew(false) }}
+              className={`flex flex-col items-center gap-3 rounded-2xl border-2 p-6 transition-all ${
+                bookingType === 'SOLAR'
+                  ? 'border-amber-500 bg-amber-50 shadow-md'
+                  : 'border-slate-200 bg-white hover:border-amber-300 hover:bg-amber-50/50'
+              }`}
+            >
+              <span className="text-4xl">☀️</span>
+              <span className="text-lg font-bold text-slate-800">حجز طاقة شمسية</span>
+              <span className="text-xs text-slate-500">زبون يريد منظومة — السعر يجي من الكتالوك تلقائياً</span>
             </button>
             {canInternal && (
               <button
@@ -603,6 +639,76 @@ export default function SalesBooking() {
           )}
         </div>
 
+        {/* حجز طاقة شمسية: المنظومة المتفق عليها واستهلاك الزبون */}
+        {bookingType === 'SOLAR' && (
+          <div className="rounded-2xl border-2 border-amber-200 bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+            <SectionHeader num={5} title="☀️ تفاصيل المنظومة الشمسية" />
+
+            <div className="mb-4 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+              السعر المقدّر ينحسب تلقائياً من مكوّنات المنظومة بأسعار المخزن —
+              ما تحتاج تكتبه، ويوصل للمنسّق جاهز.
+            </div>
+
+            <label className="mb-1 block text-sm font-medium text-slate-600">
+              المنظومة المتفق عليها (اختيارية — تكدر تتركها ويحددها المنسّق بعد المعاينة)
+            </label>
+            <select
+              value={solarSystemId}
+              onChange={(e) => setSolarSystemId(e.target.value)}
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-amber-500"
+            >
+              <option value="">— لسه ما تحددت —</option>
+              {solarSystems.map((sys) => (
+                <option key={sys.id} value={sys.id}>
+                  {sys.brand} · {sys.capacity} · {sys.model} — {Math.round(sys.price.total).toLocaleString('en-US')} د.ع
+                </option>
+              ))}
+            </select>
+
+            {(() => {
+              const sys = solarSystems.find((x) => x.id === solarSystemId)
+              if (!sys) return null
+              return (
+                <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3 text-xs">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    <Info label="الألواح" value={sys.panel ? `${sys.panelQty} × ${sys.panel.name}` : '—'} />
+                    <Info label="الإنفيرتر" value={sys.inverter ? `${sys.inverterQty} × ${sys.inverter.name}` : '—'} />
+                    <Info label="البطاريات" value={sys.battery ? `${sys.batteryQty} × ${sys.battery.name}` : '—'} />
+                    <Info label="السعر التقديري" value={`${Math.round(sys.price.total).toLocaleString('en-US')} د.ع`} />
+                  </div>
+                  {sys.shortages.length > 0 && (
+                    <div className="mt-2 rounded-lg bg-red-100 p-2 font-bold text-red-700">
+                      ⚠️ انتبه: مكوّنات هذي المنظومة ما متوفرة كاملة بالمخزن حالياً —
+                      لا توعد الزبون بموعد قريب قبل ما تتأكد من الإداري.
+                    </div>
+                  )}
+                </div>
+              )
+            })()}
+
+            <label className="mb-1 mt-4 block text-sm font-medium text-slate-600">
+              استهلاك الزبون الشهري (كيلو واط/ساعة) — اختياري
+            </label>
+            <input
+              type="number"
+              min={0}
+              value={solarMonthlyKwh}
+              onChange={(e) => setSolarMonthlyKwh(e.target.value)}
+              placeholder="مثال: 500 — يساعد الإداري يتأكد إن السعة مناسبة"
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none focus:border-amber-500"
+            />
+            {Number(solarMonthlyKwh) > 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                بهذا الاستهلاك، السعة المناسبة تقريباً{' '}
+                <b className="text-amber-700">
+                  {Math.ceil(Number(solarMonthlyKwh) / 30 / 4.5)} كيلو واط
+                </b>{' '}
+                (محسوبة على ٤٫٥ ساعة شمس فعّالة باليوم)
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Step 5: Urgency / Maintenance Type */}
         {bookingType === 'REGULAR' && (
           <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -775,6 +881,15 @@ export default function SalesBooking() {
           )}
         </div>
       </form>
+    </div>
+  )
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="font-bold text-slate-800">{value}</div>
     </div>
   )
 }

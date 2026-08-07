@@ -2675,7 +2675,11 @@ export const api = {
     address?: string
     mapLatitude?: number
     mapLongitude?: number
-    bookingType?: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL'
+    bookingType?: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'
+    // حجز طاقة شمسية: المنظومة من الكتالوك (اختيارية) واستهلاك الزبون
+    // الشهري. السعر المقدّر ينحسب بالسيرفر من مكوّنات المنظومة.
+    solarSystemId?: string
+    solarMonthlyKwh?: number
     internalEmployeeName?: string
     internalEmployeePhone?: string
     internalDepartment?: string

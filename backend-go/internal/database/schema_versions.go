@@ -185,6 +185,9 @@ func versionedMigrations() []Migration {
 	// 0214: المستوى الوظيفي (١-١٠) عمود مستقل — ربطه بـleaderSkillLevel كان
 	// يأشّر كل الشركة «يحتاج تدريب» لأن ذاك افتراضيته صفر.
 	result = append(result, employeeJobLevelMigration()...)
+	// 0215 وما بعدها: نوع حجز «طاقة شمسية» لموظف المبيعات، مربوط بكتالوك
+	// المنظومات حتى يوصل للمنسّق ومعاه سعر المنظومة ومكوّناتها.
+	result = append(result, solarBookingMigration()...)
 	return result
 }
 

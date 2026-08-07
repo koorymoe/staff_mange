@@ -295,3 +295,39 @@ func employeeJobLevelMigration() []Migration {
 		},
 	}
 }
+
+// solarBookingMigration نوع حجز «طاقة شمسية».
+//
+// موظف المبيعات يستلم زبون يريد منظومة شمسية — وهذا شغل مختلف عن
+// التركيب العادي والصيانة: إله كتالوك منظومات وسعر يطلع من المخزن،
+// ولازم ينفرز بالإحصاءات لحاله حتى نعرف شكد بعنا منظومات.
+//
+// والأهم: الحجز ينربط بمنظومة من الكتالوك، فيوصل للمنسّق ومعاه سعرها
+// ومكوّناتها — بدل ما يتصل بالمبيعات يسأل «شنو المنظومة الي اتفقتوا
+// عليها؟».
+func solarBookingMigration() []Migration {
+	return []Migration{
+		{
+			Version: "0215_booking_type_solar",
+			SQL:     `ALTER TYPE "BookingType" ADD VALUE IF NOT EXISTS 'SOLAR'`,
+		},
+		{
+			// المنظومة المطلوبة — اختيارية: الزبون أحياناً يريد منظومة
+			// ولسه ما قرر أي وحدة، فالمبيعات يسجّل الحجز والمنسّق يحدد
+			// المنظومة بعد المعاينة.
+			//
+			// ON DELETE SET NULL مو RESTRICT: محو منظومة من الكتالوك ما
+			// يصير يقفل حجز قديم انسجّل عليها.
+			Version: "0216_booking_solar_system",
+			SQL: `
+				ALTER TABLE "Booking"
+					ADD COLUMN IF NOT EXISTS "solarSystemId" TEXT
+						REFERENCES "SolarSystem"(id) ON DELETE SET NULL,
+					ADD COLUMN IF NOT EXISTS "solarMonthlyKwh" DOUBLE PRECISION;
+
+				CREATE INDEX IF NOT EXISTS "Booking_solarSystem_idx"
+					ON "Booking" ("solarSystemId") WHERE "solarSystemId" IS NOT NULL;
+			`,
+		},
+	}
+}

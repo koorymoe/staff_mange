@@ -61,6 +61,11 @@ type Booking struct {
 	InternalEmployeePhone *string `db:"internalEmployeePhone" json:"internalEmployeePhone"`
 	InternalDepartment    *string `db:"internalDepartment" json:"internalDepartment"`
 	InternalApproved      *bool   `db:"internalApproved" json:"internalApproved"`
+	// حجز طاقة شمسية: المنظومة الي اتفق عليها المبيعات مع الزبون (اختيارية —
+	// ممكن تتحدد بعد المعاينة)، واستهلاك الزبون الشهري لحساب السعة المناسبة.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	SolarSystemID   *string  `db:"solarSystemId" json:"solarSystemId"`
+	SolarMonthlyKwh *float64 `db:"solarMonthlyKwh" json:"solarMonthlyKwh"`
 	// توقف العمل: الليدر بدأ وما كدر يكمّل. الحجز يضل شغّال ويكدر
 	// يكمّله بعدين، بس يبين «متوقف» بتنسيق الحجوزات مع سببه.
 	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
@@ -202,11 +207,13 @@ type CreateBookingRequest struct {
 
 	// حجز داخل الشركة: نوع الحجز INTERNAL مع معلومات الموظف الطالب.
 	// الخدمات والموقع يبقون مثل أي حجز.
-	BookingType           *string `json:"bookingType"`
-	InternalEmployeeName  *string `json:"internalEmployeeName"`
-	InternalEmployeePhone *string `json:"internalEmployeePhone"`
-	InternalDepartment    *string `json:"internalDepartment"`
-	InternalApproved      *bool   `json:"internalApproved"`
+	BookingType           *string  `json:"bookingType"`
+	SolarSystemID         *string  `json:"solarSystemId"`
+	SolarMonthlyKwh       *float64 `json:"solarMonthlyKwh"`
+	InternalEmployeeName  *string  `json:"internalEmployeeName"`
+	InternalEmployeePhone *string  `json:"internalEmployeePhone"`
+	InternalDepartment    *string  `json:"internalDepartment"`
+	InternalApproved      *bool    `json:"internalApproved"`
 }
 
 type ConfirmBookingRequest struct {

@@ -642,3 +642,13 @@ func (r *SolarRepository) LowStock() ([]model.SolarComponent, error) {
 		ORDER BY quantity, name`)
 	return rows, err
 }
+
+// SystemTotalPrice يرجّع سعر المنظومة الكلي بأسعار المخزن الحالية.
+// يستعملها حجز الطاقة الشمسية حتى السعر المقدّر يجي محسوب مو مكتوب.
+func (r *SolarRepository) SystemTotalPrice(systemID string) (float64, error) {
+	sys, err := r.FindSystem(systemID)
+	if err != nil {
+		return 0, err
+	}
+	return sys.Price.Total, nil
+}

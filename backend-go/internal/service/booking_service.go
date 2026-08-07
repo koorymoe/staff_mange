@@ -22,6 +22,8 @@ type BookingService struct {
 	// discipline: فحص عدالة التوزيع وقت التعيين. اختياري — لو ما انربط
 	// النظام يشتغل عادي بلا غرامات.
 	discipline AssignmentBalanceChecker
+	// solar: سعر المنظومة لحجز الطاقة الشمسية. اختياري.
+	solar SolarPricer
 }
 
 // AssignmentBalanceChecker يفصل خدمة الحجوزات عن خدمة الانضباط حتى ما
@@ -29,6 +31,15 @@ type BookingService struct {
 type AssignmentBalanceChecker interface {
 	CheckAssignmentBalance(adminID, assignedLeaderID, bookingID, bookingCode string, activeByLeader map[string]int, leaderNames map[string]string)
 }
+
+// SolarPricer يعطي سعر المنظومة بدون ما تعتمد خدمة الحجوزات على
+// مستودع الطاقة الشمسية كاملاً.
+type SolarPricer interface {
+	SystemTotalPrice(systemID string) (float64, error)
+}
+
+// SetSolarPricer يربط تسعير المنظومات.
+func (s *BookingService) SetSolarPricer(p SolarPricer) { s.solar = p }
 
 // SetDisciplineChecker يربط فحص عدالة التوزيع بعد بناء الخدمتين.
 func (s *BookingService) SetDisciplineChecker(c AssignmentBalanceChecker) {
@@ -102,6 +113,20 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 	if req.BookingType != nil && *req.BookingType != "" {
 		b.BookingType = *req.BookingType
 	}
+	// ═══ حجز طاقة شمسية ═══
+	// المنظومة تجي من الكتالوك، فالسعر المقدّر ما ينكتب بالإيد — ينحسب
+	// من مكوّناتها بأسعار المخزن اليوم. المبيعات ما يعرف أسعار المكوّنات
+	// أصلاً، ولو خلّيناه يقدّر بالإيد يطلع رقم ما إله علاقة بالكلفة.
+	if b.BookingType == "SOLAR" {
+		b.SolarSystemID = req.SolarSystemID
+		b.SolarMonthlyKwh = req.SolarMonthlyKwh
+		if req.SolarSystemID != nil && *req.SolarSystemID != "" && s.solar != nil {
+			if price, err := s.solar.SystemTotalPrice(*req.SolarSystemID); err == nil && price > 0 {
+				b.QuotedPrice = &price
+			}
+		}
+	}
+
 	if b.BookingType == "INTERNAL" {
 		b.WorkLocation = model.WorkInHouse
 		b.InternalEmployeeName = req.InternalEmployeeName
