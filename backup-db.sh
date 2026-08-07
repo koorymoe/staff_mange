@@ -33,6 +33,7 @@ CADDY_CONTAINER="${CADDY_CONTAINER:-staff_mange-caddy-1}"
 
 mkdir -p "$BACKUP_DIR"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+START_EPOCH=$(date +%s)
 WORK="$BACKUP_DIR/.work_$TIMESTAMP"
 mkdir -p "$WORK"
 trap 'rm -rf "$WORK"' EXIT
@@ -40,19 +41,68 @@ trap 'rm -rf "$WORK"' EXIT
 WARNINGS=()
 warn() { echo "  ⚠️ $*"; WARNINGS+=("$*"); }
 
+# ── قاعدة صارمة: كل شي يخص النسخ الاحتياطية للمالك وحده ──
+# الإشعار يروح لدور OWNER بس، مو لـADMIN. المالك سلّم إدارة النظام
+# وبقت مراقبة النسخ إله هو بس — فلو دزّينا الإشعار لـADMIN همّه كشفنا
+# وجود النسخ وحالتها لشخص مو مفروض يشوفها.
+psql_q() { docker exec "$DB_CONTAINER" psql -U staffmange -d staffmange -q -c "$1" >/dev/null 2>&1 || true; }
+
+# sql_escape يحمي من الفواصل المفردة بنص الخطأ (اسم ملف أو رسالة فيها ')
+# — بدونها أي ' تكسر جملة الـINSERT وتضيع التسجيلة بالسكوت.
+sql_escape() { printf '%s' "$1" | sed "s/'/''/g"; }
+
 # notify_owner يخلي فشل النسخة يوصل للمالك **داخل النظام نفسه**.
 # بدونها، لو وقفت النسخ ما يعرف أحد إلا يوم الكارثة — وهذا بالضبط
 # الي يخلي الناس تكتشف إن ماكو باكاب بأسوأ لحظة ممكنة.
 notify_owner() {
-  docker exec "$DB_CONTAINER" psql -U staffmange -d staffmange -q -c "
+  psql_q "
     INSERT INTO \"Notification\" (id, \"employeeId\", type, message)
-    SELECT gen_random_uuid()::text, id, 'backup_failed', '$1'
-    FROM \"Employee\" WHERE role IN ('OWNER','ADMIN') AND status = 'ACTIVE'
-  " >/dev/null 2>&1 || true
+    SELECT gen_random_uuid()::text, id, 'backup_failed', '$(sql_escape "$1")'
+    FROM \"Employee\" WHERE role = 'OWNER' AND status = 'ACTIVE'
+  "
+}
+
+# ── تسجيل نتيجة كل تشغيل بجدول BackupRun ──
+# ليش؟ حاوية الباك إند ما تشوف مجلد backups/ على السيرفر. بدون هذا
+# الصف ما اكو طريقة النظام يعرض للمالك حالة النسخ إلا بفتح SSH كل يوم.
+# الجدول يقراه مسار /api/owner/backups المحمي بـRequireOwner.
+STATUS_OK=false
+STATUS_FILE=""
+STATUS_SIZE=0
+STATUS_TABLES=0
+STATUS_ENCRYPTED=false
+STATUS_OFFSITE=false
+STATUS_TARGETS=""
+STATUS_UPLOADS=false
+STATUS_ENV=false
+STATUS_KEPT=0
+STATUS_ERROR=""
+
+record_run() {
+  local warns=""
+  if [ ${#WARNINGS[@]} -gt 0 ]; then
+    warns=$(printf '%s؛ ' "${WARNINGS[@]}")
+  fi
+  psql_q "
+    INSERT INTO \"BackupRun\" (
+      id, \"startedAt\", \"finishedAt\", ok, \"fileName\", \"sizeBytes\",
+      \"tableCount\", encrypted, offsite, \"offsiteTarget\", \"hasUploads\",
+      \"hasEnv\", warnings, error, \"keptCount\"
+    ) VALUES (
+      gen_random_uuid()::text, NOW() - make_interval(secs => $(( $(date +%s) - START_EPOCH ))), NOW(),
+      $STATUS_OK, NULLIF('$(sql_escape "$STATUS_FILE")',''), $STATUS_SIZE,
+      $STATUS_TABLES, $STATUS_ENCRYPTED, $STATUS_OFFSITE,
+      NULLIF('$(sql_escape "$STATUS_TARGETS")',''), $STATUS_UPLOADS,
+      $STATUS_ENV, NULLIF('$(sql_escape "$warns")',''),
+      NULLIF('$(sql_escape "$STATUS_ERROR")',''), $STATUS_KEPT
+    )
+  "
 }
 
 fail() {
   echo "❌ $*" >&2
+  STATUS_ERROR="$*"
+  record_run
   notify_owner "🔴 فشلت النسخة الاحتياطية اليوم: $* — راجع السيرفر فوراً"
   exit 1
 }
@@ -74,6 +124,7 @@ tail -5 "$WORK/database.sql" | grep -q "PostgreSQL database dump complete" \
 TABLES=$(grep -c "^CREATE TABLE" "$WORK/database.sql" || true)
 [ "$TABLES" -ge 20 ] || fail "عدد الجداول $TABLES — قليل جداً، في خطأ"
 echo "  ✓ $TABLES جدول ($(du -h "$WORK/database.sql" | cut -f1))"
+STATUS_TABLES=$TABLES
 
 # ── ٢) الملفات المرفوعة ──
 echo "→ الملفات المرفوعة..."
@@ -82,6 +133,7 @@ if docker ps --format '{{.Names}}' | grep -qx "$BACKEND_CONTAINER"; then
     > "$WORK/uploads.tar" 2>/dev/null
   if [ -s "$WORK/uploads.tar" ]; then
     echo "  ✓ $(du -h "$WORK/uploads.tar" | cut -f1)"
+    STATUS_UPLOADS=true
   else
     rm -f "$WORK/uploads.tar"
     echo "  — فاضي (طبيعي إذا التخزين على R2)"
@@ -93,7 +145,7 @@ fi
 # ── ٣) الأسرار ── ٤) إعدادات النشر ── ٥) الأدلة ──
 echo "→ الإعدادات والأسرار..."
 if [ -f "$SCRIPT_DIR/.env" ]; then
-  cp "$SCRIPT_DIR/.env" "$WORK/env.txt"; echo "  ✓ .env"
+  cp "$SCRIPT_DIR/.env" "$WORK/env.txt"; echo "  ✓ .env"; STATUS_ENV=true
 else
   warn "ماكو .env — بدونه ما تكدر تشغّل النظام من النسخة!"
 fi
@@ -148,6 +200,7 @@ if [ -n "${BACKUP_PASSPHRASE:-}" ] && command -v gpg >/dev/null 2>&1; then
   if gpg --batch --yes --symmetric --cipher-algo AES256 \
        --passphrase "$BACKUP_PASSPHRASE" -o "$ARCHIVE.gpg" "$ARCHIVE" 2>/dev/null; then
     rm -f "$ARCHIVE"; FINAL="$ARCHIVE.gpg"
+    STATUS_ENCRYPTED=true
     echo "  ✓ مشفّرة"
   else
     warn "فشل التشفير — النسخة غير مشفّرة"
@@ -155,6 +208,9 @@ if [ -n "${BACKUP_PASSPHRASE:-}" ] && command -v gpg >/dev/null 2>&1; then
 fi
 
 echo "✅ النسخة جاهزة: $(basename "$FINAL") ($(du -h "$FINAL" | cut -f1))"
+STATUS_OK=true
+STATUS_FILE="$(basename "$FINAL")"
+STATUS_SIZE=$(stat -c %s "$FINAL" 2>/dev/null || echo 0)
 
 # ═══ النسخة خارج السيرفر ═══
 # نسخة على نفس السيرفر ما تحميك من ضياع السيرفر. ندعم ثلاث وجهات،
@@ -168,7 +224,7 @@ if [ -n "${R2_BUCKET:-}" ] && [ -n "${R2_ACCESS_KEY:-}" ]; then
     if AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY" AWS_SECRET_ACCESS_KEY="$R2_SECRET_KEY" \
        aws s3 cp "$FINAL" "s3://$R2_BUCKET/backups/$(basename "$FINAL")" \
        --endpoint-url "$R2_ENDPOINT" >/dev/null 2>&1; then
-      echo "  ✓ انرفعت لـR2"; OFFSITE_OK=1
+      echo "  ✓ انرفعت لـR2"; OFFSITE_OK=1; STATUS_OFFSITE=true; STATUS_TARGETS="${STATUS_TARGETS}R2 "
     else
       warn "فشل الرفع لـR2"
     fi
@@ -181,7 +237,7 @@ fi
 if [ -n "${BACKUP_SSH_TARGET:-}" ]; then
   echo "→ النسخ لسيرفر ثاني..."
   if scp -o StrictHostKeyChecking=accept-new -q "$FINAL" "$BACKUP_SSH_TARGET" 2>/dev/null; then
-    echo "  ✓ انرفعت لـ$BACKUP_SSH_TARGET"; OFFSITE_OK=1
+    echo "  ✓ انرفعت لـ$BACKUP_SSH_TARGET"; OFFSITE_OK=1; STATUS_OFFSITE=true; STATUS_TARGETS="${STATUS_TARGETS}$BACKUP_SSH_TARGET "
   else
     warn "فشل النسخ لـ$BACKUP_SSH_TARGET"
   fi
@@ -190,7 +246,7 @@ fi
 # وجهة ٣: قرص/مسار ثاني على نفس الجهاز — أضعف حماية بس أحسن من ولا شي
 if [ -n "${BACKUP_SECOND_DIR:-}" ] && [ -d "${BACKUP_SECOND_DIR}" ]; then
   cp "$FINAL" "$BACKUP_SECOND_DIR/" 2>/dev/null \
-    && { echo "  ✓ انسخت لـ$BACKUP_SECOND_DIR"; OFFSITE_OK=1; } \
+    && { echo "  ✓ انسخت لـ$BACKUP_SECOND_DIR"; OFFSITE_OK=1; STATUS_OFFSITE=true; STATUS_TARGETS="${STATUS_TARGETS}$BACKUP_SECOND_DIR "; } \
     || warn "فشل النسخ لـ$BACKUP_SECOND_DIR"
 fi
 
@@ -203,6 +259,7 @@ fi
 find "$BACKUP_DIR" -name "staffmange_*.tar.gz*" -mtime +"$KEEP_DAYS" -delete 2>/dev/null
 find "$BACKUP_DIR" -name "staffmange_*.sql.gz" -mtime +"$KEEP_DAYS" -delete 2>/dev/null
 COUNT=$(find "$BACKUP_DIR" -name "staffmange_*.tar.gz*" | wc -l)
+STATUS_KEPT=$COUNT
 
 echo "📦 النسخ المحفوظة: $COUNT (نحتفظ بـ$KEEP_DAYS يوم)"
 if [ ${#WARNINGS[@]} -gt 0 ]; then
@@ -210,3 +267,6 @@ if [ ${#WARNINGS[@]} -gt 0 ]; then
   echo "⚠️ تحذيرات (${#WARNINGS[@]}):"
   printf '   • %s\n' "${WARNINGS[@]}"
 fi
+
+# ── تسجيل النتيجة بالنظام (يقراها المالك وحده) ──
+record_run

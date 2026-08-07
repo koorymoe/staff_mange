@@ -2636,6 +2636,12 @@ export const api = {
   markSolarContacted: (id: string, notes?: string) =>
     request<SolarInstallation>(`/solar/installations/${id}/contacted`, { method: 'PUT', body: JSON.stringify({ notes: notes ?? '' }) }),
 
+  // ── النسخ الاحتياطية: للمالك وحده ──
+  // المسار محمي بـRequireOwner ويرجّع 404 لأي حساب ثاني (حتى ADMIN) —
+  // مقصود، حتى ما ينكشف وجود الميزة أصلاً.
+  getOwnerBackups: (limit?: number) =>
+    request<BackupOverview>(`/owner/backups${limit ? `?limit=${limit}` : ''}`),
+
   getArchivedBookings: (limit?: number) =>
     request<Booking[]>(`/bookings/archived${limit ? `?limit=${limit}` : ''}`),
   archiveBooking: (id: string, reason: string) =>
@@ -3389,4 +3395,42 @@ export const api = {
   getPublicDesignForm: (token: string) => request<{ name: string; questions: DesignFormQuestion[] }>(`/public/design-forms/${token}`),
   submitPublicDesignForm: (token: string, answers: Record<string, unknown>) =>
     request<DesignFormSubmission>(`/public/design-forms/${token}/submit`, { method: 'POST', body: JSON.stringify({ answers }) }),
+}
+
+export interface BackupRun {
+  id: string
+  startedAt: string
+  finishedAt: string | null
+  ok: boolean
+  fileName: string | null
+  sizeBytes: number
+  tableCount: number
+  encrypted: boolean
+  offsite: boolean
+  offsiteTarget: string | null
+  hasUploads: boolean
+  hasEnv: boolean
+  warnings: string | null
+  error: string | null
+  keptCount: number
+}
+
+export interface BackupHealth {
+  last: BackupRun | null
+  lastSuccess: BackupRun | null
+  hoursSinceSuccess: number | null
+  consecutiveFails: number
+  success7d: number
+  failed7d: number
+  offsiteOK: boolean
+  encrypted: boolean
+  status: 'OK' | 'WARN' | 'CRITICAL' | 'UNKNOWN'
+  message: string
+  recommendations: string[]
+  totalRunsRecorded: number
+}
+
+export interface BackupOverview {
+  health: BackupHealth
+  runs: BackupRun[]
 }

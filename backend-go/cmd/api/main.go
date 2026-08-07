@@ -97,6 +97,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
 	solarRepo := repository.NewSolarRepository(db)
+	backupRunRepo := repository.NewBackupRunRepository(db)
 	trainingProgramRepo := repository.NewTrainingProgramRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	systemPriceCatalogRepo := repository.NewSystemPriceCatalogRepository(db)
@@ -245,6 +246,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mapLinkHandler := handler.NewMapLinkHandler()
 	quotationHandler := handler.NewQuotationHandler(quotationService)
 	solarHandler := handler.NewSolarHandler(solarRepo)
+	backupHandler := handler.NewBackupHandler(backupRunRepo)
 	// سعر المنظومة لحجز الطاقة الشمسية — ينحسب من الكتالوك مو ينكتب بالإيد
 	bookingService.SetSolarPricer(solarRepo)
 	trainingProgramHandler := handler.NewTrainingProgramHandler(trainingProgramRepo)
@@ -995,6 +997,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/solar/systems/{id}/process", middleware.Chain(http.HandlerFunc(solarHandler.ProcessSystem), requireAuth, requireSolar))
 	mux.Handle("GET /api/solar/installations", middleware.Chain(http.HandlerFunc(solarHandler.ListInstallations), requireAuth))
 	mux.Handle("PUT /api/solar/installations/{id}/contacted", middleware.Chain(http.HandlerFunc(solarHandler.MarkContacted), requireAuth, requireSolar))
+
+	// ── مراقبة النسخ الاحتياطية — للمالك وحده ──
+	// requireOwner يرجّع 404 مو 403: أي حساب ثاني (حتى ADMIN) ما يعرف
+	// إن هذا المسار موجود أصلاً. لا تضيف هنا أي middleware ثاني.
+	mux.Handle("GET /api/owner/backups", middleware.Chain(http.HandlerFunc(backupHandler.Overview), requireAuth, middleware.RequireOwner()))
 
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))

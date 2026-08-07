@@ -289,6 +289,31 @@ func RequireLeader(employees *repository.EmployeeRepository, notifications *repo
 	}
 }
 
+// RequireOwner يقصر المسار على حساب المالك وحده — ولا حتى ADMIN.
+//
+// ثلاث فروقات مقصودة عن RequireRole("OWNER"):
+//
+//  1. يرجّع 404 مو 403. الـ403 يعترف إن المسار موجود ويكشف وجود الميزة
+//     لأي واحد يجرّب. الـ404 ما يفرّق عن أي رابط مو موجود أصلاً.
+//  2. ما ينبّه الإدارة ولا يسجّل مخالفة. تنبيه «فلان حاول يوصل لعملية
+//     مو مخوّل لها» يوصل لـADMIN — يعني نفس الشي الي نخبّيه ينكشف
+//     بالإشعار.
+//  3. ما يقرّب أحد من الحظر التلقائي.
+//
+// تُستخدم لمراقبة النسخ الاحتياطية: المالك سلّم إدارة النظام لكن
+// الإشراف على النسخ يبقى عنده هو بس.
+func RequireOwner() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if role, _ := r.Context().Value(ContextRole).(string); role != "OWNER" {
+				writeError(w, http.StatusNotFound, "المسار غير موجود")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // RequireLeaderOrPermission يسمح بالوصول لليدر (isLeader فريش من قاعدة البيانات،
 // نفس RequireLeader) أو لأي موظف عنده صلاحية مخصصة معينة (نفس RequirePermission)
 // أو ADMIN/OWNER. تُستخدم لسلة الليدر (leader_basket): افتراضياً حصراً لليدر،

@@ -85,6 +85,7 @@ echo
 echo "لفحص الحالة بأي وقت:  ./backup-status.sh"
 echo "للاسترجاع:            ./restore-backup.sh"
 echo "وقت الكارثة:          اقرا EMERGENCY.md"
+echo "ومن داخل النظام بحساب المالك: 🔐 النسخ الاحتياطية (ما يشوفها أي حساب ثاني)"
 echo
 if [ -z "${BACKUP_PASSPHRASE:-}" ]; then
   echo "🔐 نصيحة أمنية: النسخة فيها كلمات سر وبيانات زبائن."

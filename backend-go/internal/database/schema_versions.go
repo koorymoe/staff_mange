@@ -188,6 +188,9 @@ func versionedMigrations() []Migration {
 	// 0215 وما بعدها: نوع حجز «طاقة شمسية» لموظف المبيعات، مربوط بكتالوك
 	// المنظومات حتى يوصل للمنسّق ومعاه سعر المنظومة ومكوّناتها.
 	result = append(result, solarBookingMigration()...)
+	// 0217: سجل النسخ الاحتياطية — يقرأه المالك وحده. سكربت النسخ يكتب
+	// بيه نتيجة كل تشغيل لأن حاوية الباك إند ما تشوف مجلد backups/.
+	result = append(result, backupRunMigration()...)
 	return result
 }
 
