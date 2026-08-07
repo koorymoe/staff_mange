@@ -26,7 +26,10 @@ export default function MyExpenses() {
   const load = () => {
     if (!employee) return
     api.getExpenses(employee.id).then(setExpenses)
-    api.getBookings().then(bookings => {
+    // حجوزاته الشغالة بس. جان يسحب كل أرشيف الشركة (بكل زبائنه
+    // وتعييناته) ويفلتره بالمتصفح حتى يلكه حجوزاته — يعني كل ما كبر
+    // الأرشيف صارت صفحة مصاريفه أبطأ، وهو أصلاً ما إله علاقة بالباقي.
+    api.getBookings({ assignedTo: 'me' }).then(bookings => {
       const active = bookings.filter(b =>
         (b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS') &&
         b.assignments.some(a => a.employee.id === employee.id)

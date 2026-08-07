@@ -13,7 +13,7 @@ function getCurrentMonth(): string {
 }
 
 // صفحة إحصائيات الموظفين الشهرية — تجمع نقاط الكي بي اي (نفس الآلية الموجودة
-// أصلاً)، سرعة العمل (TODO: تُملأ بعد اكتمال ميزة تقدير مدة تنفيذ العمل)،
+// أصلاً)، سرعة العمل (نسبة زمن الموظف للمتوسط العام بنفس المنظومة)،
 // نظافة السيارة (من تقييم السائقين بعد المهمة الموجود أصلاً)، الشكاوى، عدد
 // المبيعات، الحجوزات المكتملة، ومجموع العمولة الشهرية — OWNER/ADMIN فقط،
 // مقيّدة بـRequireAdmin بنفس نمط بقية الصفحات الحساسة (permissions،
@@ -107,7 +107,7 @@ export default function EmployeeMonthlyStatsPage() {
                 <th style={thStyle}>الموظف</th>
                 <th style={thStyle}>الدور</th>
                 <th style={thStyle}>عدد الخدمات التي يعرفها</th>
-                <th style={thStyle}>سرعة العمل</th>
+                <th style={thStyle} title="نسبة زمن الموظف للمتوسط العام بنفس المنظومة ونوع الشغل — فوق ١ أسرع، تحت ١ أبطأ">سرعة العمل</th>
                 <th style={thStyle}>نظافة السيارة</th>
                 <th style={thStyle}>الشكاوى</th>
                 <th style={thStyle}>عدد المبيعات</th>
@@ -128,7 +128,18 @@ export default function EmployeeMonthlyStatsPage() {
                   <td style={tdStyle}>{r.employeeName}</td>
                   <td style={tdStyle}>{r.role}</td>
                   <td style={tdStyle}>{r.servicesKnownCount}</td>
-                  <td style={tdStyle}>{r.workSpeedScore != null ? r.workSpeedScore.toFixed(2) : '—'}</td>
+                  {/* فوق ١ أسرع من المتوسط، تحت ١ أبطأ. نعرض عدد العيّنات
+                      لأن رقم مبني على عيّنتين مو نفس رقم مبني على عشرين. */}
+                  <td style={tdStyle}>
+                    {r.workSpeedScore != null ? (
+                      <span style={{ fontWeight: 700, color: r.workSpeedScore >= 1 ? '#059669' : '#dc2626' }}>
+                        {r.workSpeedScore >= 1 ? '⬆︎' : '⬇︎'} {r.workSpeedScore.toFixed(2)}
+                        <span style={{ color: '#94a3b8', fontWeight: 400 }}> ({r.workSpeedSamples})</span>
+                      </span>
+                    ) : (
+                      <span title="ماكو عيّنات كافية لهذا الشهر">—</span>
+                    )}
+                  </td>
                   <td style={tdStyle}>
                     {r.vehicleCleanlinessScore != null ? `${r.vehicleCleanlinessScore.toFixed(2)} (${r.vehicleRatingsCount})` : '—'}
                   </td>

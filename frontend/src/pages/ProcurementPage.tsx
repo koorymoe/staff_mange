@@ -64,7 +64,9 @@ export default function ProcurementPage() {
       const [reqs, st, bks, sups] = await Promise.all([
         api.getProcurementRequests(),
         api.getProcurementStats(),
-        api.getBookings(),
+        // القائمة المنسدلة تربط الطلب بحجز شغّال — ماكو معنى نعرض
+        // حجوزات منجزة وملغاة من سنين، ولا نسحب الأرشيف كله عشانها.
+        api.getBookings({ status: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] }),
         // الموردين المضافين مسبقاً — أبو الكميات لازم يحدد منهم
         api.getSupplierOptions().catch(() => []),
       ])

@@ -825,7 +825,10 @@ export interface EmployeeMonthlyStats {
   to?: string
   kpiPoints: number
   kpiPointsValue: number
-  workSpeedScore: number | null // TODO: يُملأ بعد اكتمال ميزة تقدير مدة تنفيذ العمل
+  // نسبة زمن الموظف للمتوسط العام بنفس المنظومة ونوع الشغل:
+  // فوق ١ أسرع، تحت ١ أبطأ. null يعني ماكو عيّنات كافية.
+  workSpeedScore: number | null
+  workSpeedSamples: number
   vehicleCleanlinessScore: number | null
   vehicleRatingsCount: number
   complaintsCount: number

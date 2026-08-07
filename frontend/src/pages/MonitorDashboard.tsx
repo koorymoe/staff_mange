@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { api, type Booking, type Employee, type Stats, type VehicleScoreSummary, type TechnicianWashSummary } from '../api'
+import { api, type Booking, type Employee, type Stats, type VehicleScoreSummary, type TechnicianWashSummary, type FinanceSummary } from '../api'
 import { useSession } from '../session'
 import { useNavigate } from 'react-router-dom'
 
@@ -11,6 +11,7 @@ export default function MonitorDashboard() {
   const [tab, setTab] = useState<Tab>('overview')
   const [stats, setStats] = useState<Stats | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [finance, setFinance] = useState<FinanceSummary | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [vehicleScores, setVehicleScores] = useState<VehicleScoreSummary[]>([])
@@ -22,13 +23,24 @@ export default function MonitorDashboard() {
     const since = monthAgo.toISOString().slice(0, 10)
     Promise.all([
       api.getStats().catch(() => null),
-      api.getBookings().catch(() => []),
+      // الشغل الحيّ كامل + آخر ٢٠٠ منجز للعرض. جان يسحب أرشيف الشركة
+      // كله (بكل زبائنه وتعييناته وسلة مواده) وهو أصلاً يقص القوائم
+      // على ٢٠ و٣٠ صف بالعرض — يعني ميغابايتات تمشي بالشبكة عشان
+      // خمسين صف، والثقل يكبر كل ما تراكمت الحجوزات.
+      Promise.all([
+        api.getBookings({ status: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] }).catch(() => [] as Booking[]),
+        api.getBookings({ status: 'COMPLETED', limit: 200 }).catch(() => [] as Booking[]),
+      ]).then(([active, done]) => [...active, ...done]).catch(() => []),
       api.getEmployees().catch(() => []),
       api.getVehicleScoreSummaries(since).catch(() => []),
       api.getTechnicianWashSummaries(since).catch(() => []),
-    ]).then(([s, b, e, vs, tw]) => {
+      // العدّادات (بانتظار التدقيق، المنجز اليوم) محسوبة بالسيرفر على
+      // الأرشيف الكامل — القائمة مقصوصة بس الرقم دقيق ١٠٠٪.
+      api.getFinanceSummary().catch(() => null),
+    ]).then(([s, b, e, vs, tw, fin]) => {
       setStats(s as Stats | null)
       setBookings(b as Booking[])
+      setFinance(fin as FinanceSummary | null)
       setEmployees(e as Employee[])
       setVehicleScores(vs as VehicleScoreSummary[])
       setTechWashSummaries(tw as TechnicianWashSummary[])
@@ -45,6 +57,8 @@ export default function MonitorDashboard() {
   const completedBookings = bookings.filter(b => b.status === 'COMPLETED')
   const pendingBookings = bookings.filter(b => b.status === 'PENDING')
   const unverifiedBookings = completedBookings.filter(b => !b.amountVerified)
+  // الرقم من السيرفر (كل الأرشيف)، والقائمة تحت مقصوصة للعرض بس
+  const unverifiedCount = finance?.unverifiedCount ?? unverifiedBookings.length
   const onDutyEmployees = employees.filter(e => e.onDuty && e.status === 'ACTIVE')
   const techs = employees.filter(e => e.role === 'TECHNICIAN' || e.role === 'PROJECT_MANAGER')
   const coordinators = employees.filter(e => e.role === 'HR_COORDINATOR')
@@ -53,7 +67,7 @@ export default function MonitorDashboard() {
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'overview', label: 'نظرة عامة' },
     { key: 'crews', label: 'الكوادر الميدانية', count: activeBookings.length },
-    { key: 'audit', label: 'التدقيق', count: unverifiedBookings.length },
+    { key: 'audit', label: 'التدقيق', count: unverifiedCount },
     { key: 'finance', label: 'المالية' },
     { key: 'vehicles', label: 'تقييم السيارات والفنيين' },
   ]

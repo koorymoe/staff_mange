@@ -76,7 +76,20 @@ export default function MapPage() {
   const routeLayerRef = useRef<L.Polyline | null>(null)
 
   useEffect(() => {
-    api.getBookings().then(b => {
+    // نجيب الي يطلبه الفلتر بس. جان يسحب أرشيف الشركة كله بكل فتحة
+    // للخريطة — والفلتر الافتراضي «النشطة» أصلاً، يعني ٩٥٪ من الي
+    // انسحب ما ينعرض.
+    //
+    // لاحظ: ما نقدر نقصّه على النشطة ونخلص، لأن بالفلتر خيارات «الكل»
+    // و«مكتملة» — ولو جبنا النشطة بس جان المستخدم يختار «مكتملة»
+    // ويشوف خريطة فارغة ويظن ماكو حجوزات منجزة.
+    const wanted: Parameters<typeof api.getBookings>[0] =
+      statusFilter === 'active'
+        ? { status: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] }
+        : statusFilter === 'all'
+          ? { limit: 500 }
+          : { status: statusFilter as Booking['status'], limit: 500 }
+    api.getBookings(wanted).then(b => {
       // الفني يشوف بس الحجوزات المسندة له تحديداً من قبل الإداري/المنسق — مو كل حجوزات الشركة
       const visible = employee?.role === 'TECHNICIAN'
         ? b.filter((booking) => booking.assignments?.some((a) => a.employee.id === employee.id))
@@ -85,7 +98,7 @@ export default function MapPage() {
       setLoading(false)
     }).catch(() => setLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [employee?.id])
+  }, [employee?.id, statusFilter])
 
   useEffect(() => {
     if (!mapContainerRef.current || mapRef.current) return

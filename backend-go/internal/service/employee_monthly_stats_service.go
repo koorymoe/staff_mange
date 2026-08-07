@@ -21,6 +21,7 @@ type EmployeeMonthlyStatsService struct {
 	bookings             *repository.BookingRepository
 	vehicleMissionRating *repository.VehicleMissionRatingRepository
 	commissions          *repository.EmployeeCommissionRepository
+	durations            *repository.JobDurationSampleRepository
 }
 
 func NewEmployeeMonthlyStatsService(
@@ -31,6 +32,7 @@ func NewEmployeeMonthlyStatsService(
 	bookings *repository.BookingRepository,
 	vehicleMissionRating *repository.VehicleMissionRatingRepository,
 	commissions *repository.EmployeeCommissionRepository,
+	durations *repository.JobDurationSampleRepository,
 ) *EmployeeMonthlyStatsService {
 	return &EmployeeMonthlyStatsService{
 		employees:            employees,
@@ -40,6 +42,7 @@ func NewEmployeeMonthlyStatsService(
 		bookings:             bookings,
 		vehicleMissionRating: vehicleMissionRating,
 		commissions:          commissions,
+		durations:            durations,
 	}
 }
 
@@ -61,9 +64,23 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 			EmployeeName: e.Name,
 			Role:         e.Role,
 			Month:        month,
-			// WorkSpeedScore يبقى nil عمداً — TODO يُملأ بعد اكتمال ميزة تقدير
-			// مدة تنفيذ العمل (job-duration-estimation)، مبنية بفريق موازٍ.
-			WorkSpeedScore: nil,
+		}
+
+		// ═══ سرعة العمل ═══
+		// جانت تطلع «—» دائماً لأن الرقم ما جان ينحسب أبداً — عمود ميّت
+		// بالصفحة من يوم ما انبنت. والبيانات موجودة أصلاً: كل إنجاز شغل
+		// يسجّل عيّنة زمنية بـ"JobDurationSample".
+		//
+		// الرقم نسبة: المتوسط العام ÷ زمن هذا الموظف بنفس المنظومة ونفس
+		// نوع الشغل. فوق ١ أسرع من المتوسط، تحت ١ أبطأ.
+		//
+		// يضل nil لو ماكو عيّنات كافية — «ما نعرف» أصدق من رقم مبني على
+		// عيّنة وحدة، والمدير راح يبني عليه قرار بحق موظف.
+		if s.durations != nil {
+			if ratio, samples, derr := s.durations.EmployeeSpeedRatio(e.ID, month); derr == nil && samples > 0 {
+				stats.WorkSpeedScore = ratio
+				stats.WorkSpeedSamples = samples
+			}
 		}
 
 		if points, kerr := s.kpi.SumPointsForEmployeeMonth(e.ID, month); kerr == nil {

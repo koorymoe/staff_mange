@@ -22,7 +22,12 @@ type EmployeeMonthlyStats struct {
 	// WorkSpeedScore: TODO — يُملأ فعلياً بعد اكتمال ميزة تقدير مدة تنفيذ العمل
 	// (job-duration-estimation) التي يبنيها فريق موازي بنفس الجلسة. حالياً
 	// دايماً nil عمداً (placeholder صريح، مو رقم مختلق).
+	// WorkSpeedScore نسبة سرعة الموظف للمتوسط العام: فوق ١ أسرع، تحت ١
+	// أبطأ. nil يعني ماكو عيّنات كافية — «ما نعرف» مو صفر.
 	WorkSpeedScore *float64 `json:"workSpeedScore"`
+	// WorkSpeedSamples شكد عيّنة انبنى عليها الرقم — رقم مبني على عيّنتين
+	// مو نفس رقم مبني على عشرين، والمدير لازم يشوف الفرق قبل ما يقرر.
+	WorkSpeedSamples int `json:"workSpeedSamples"`
 
 	// VehicleCleanlinessScore: متوسط بند "cleanliness" من "تقييم السائقين بعد
 	// المهمة" (VehicleMissionRating) خلال الشهر — nil لو ما عنده أي مهام مقيَّمة
