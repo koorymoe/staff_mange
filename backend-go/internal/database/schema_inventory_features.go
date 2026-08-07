@@ -1260,5 +1260,36 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					ADD COLUMN IF NOT EXISTS "adjustedAt" TIMESTAMPTZ;
 			`,
 		},
+		{
+			// ═══ الفهارس الي كانت ناقصة — سبب بطء النظام ═══
+			// BookingAssignment جان بيه فهرس على "employeeId" بس. بس
+			// أغلب الشغل يمشي بالاتجاه الثاني: نجيب الحجوزات أول، وبعدين
+			// نجيب كوادرها بـ `"bookingId" = ANY($1)`. بلا فهرس، كل
+			// استعلام يقرا الجدول كله — وكل ما زادت الحجوزات صار أبطأ.
+			// نفس القصة بشاشة الليدر (LEFT JOIN على bookingId) وبعدّ
+			// أحمال الليدرات وبكنس الغرامات.
+			//
+			// وBooking نفسه ما جان مفهرس على الليدر ولا على وقت
+			// الإنجاز، مع إن هذولا مفتاح شاشة «شغلي» وكنسة الغرامات.
+			Version: "0202_hot_path_indexes",
+			SQL: `
+				CREATE INDEX IF NOT EXISTS "BookingAssignment_bookingId_idx"
+					ON "BookingAssignment" ("bookingId");
+
+				CREATE INDEX IF NOT EXISTS "Booking_projectSupervisorId_idx"
+					ON "Booking" ("projectSupervisorId") WHERE "projectSupervisorId" IS NOT NULL;
+				CREATE INDEX IF NOT EXISTS "Booking_expenseResponsibleId_idx"
+					ON "Booking" ("expenseResponsibleId") WHERE "expenseResponsibleId" IS NOT NULL;
+				CREATE INDEX IF NOT EXISTS "Booking_completedAt_idx"
+					ON "Booking" ("completedAt" DESC) WHERE "completedAt" IS NOT NULL;
+				CREATE INDEX IF NOT EXISTS "Booking_scheduledAt_idx"
+					ON "Booking" ("scheduledAt") WHERE "scheduledAt" IS NOT NULL;
+
+				CREATE INDEX IF NOT EXISTS "ScheduleChangeLog_bookingId_idx"
+					ON "ScheduleChangeLog" ("bookingId");
+				CREATE INDEX IF NOT EXISTS "LocationPing_bookingId_idx"
+					ON "LocationPing" ("bookingId") WHERE "bookingId" IS NOT NULL;
+			`,
+		},
 	}
 }

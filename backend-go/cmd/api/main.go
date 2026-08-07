@@ -929,6 +929,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// أرقام اللوحة الرئيسية بدون سحب أرشيف الشركة كامل
 	mux.Handle("GET /api/dashboard/summary", middleware.Chain(http.HandlerFunc(dashboardHandler.Summary), requireAuth))
 
+	// مجاميع المحاسب والمراقب — تنحسب بقاعدة البيانات بدل تنزيل الأرشيف
+	// اثنين يشوفون هذي الأرقام: المحاسب بدوره، والمراقب بصلاحيته. لازم
+	// الاثنين سوه — حارس بالدور بس يرفض المراقب، وحارس بالصلاحية بس
+	// يرفض المحاسب الجديد الي ما انمنحت له صلاحية صريحة بعد. وأي رفض
+	// هنا مو مجرد ٤٠٣: النظام يعدّه محاولة تلاعب ويقفل الحساب بعد ٣ مرات،
+	// والصفحة تعاود الطلب لحالها — يعني القفل يجي بثواني.
+	mux.Handle("GET /api/dashboard/finance-summary", middleware.Chain(
+		http.HandlerFunc(dashboardHandler.FinanceSummary),
+		requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "monitoring"),
+	))
+
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))
 	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFundAmount))

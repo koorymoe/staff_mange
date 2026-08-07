@@ -2049,6 +2049,24 @@ export interface DisciplineEvent {
   createdAt: string
 }
 
+/** مجاميع لوحة المحاسب والمراقب — كلها محسوبة على الأرشيف الكامل بالسيرفر */
+export interface FinanceSummary {
+  completedCount: number
+  unverifiedCount: number
+  verifiedCount: number
+  todayCompleted: number
+  pendingCount: number
+  confirmedCount: number
+  inProgressCount: number
+  activeCrewCount: number
+  totalCollected: number
+  totalQuoted: number
+  totalCartValue: number
+  pendingExpenses: number
+  approvedExpenses: number
+  totalExpenseValue: number
+}
+
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
@@ -2332,12 +2350,13 @@ export const api = {
 
   // assignedTo: 'me' يرجّع مهام الموظف الحالي بس — الفلترة بقاعدة
   // البيانات بدل ما ننزّل كل حجوزات الشركة ونفلترها بالمتصفح.
-  getBookings: (params?: { status?: Booking['status'] | Booking['status'][]; customerId?: string; date?: string; assignedTo?: 'me' }) => {
+  getBookings: (params?: { status?: Booking['status'] | Booking['status'][]; customerId?: string; date?: string; assignedTo?: 'me'; limit?: number }) => {
     const query = new URLSearchParams()
     if (params?.assignedTo) query.set('assignedTo', params.assignedTo)
     if (params?.status) query.set('status', Array.isArray(params.status) ? params.status.join(',') : params.status)
     if (params?.customerId) query.set('customerId', params.customerId)
     if (params?.date) query.set('date', params.date)
+    if (params?.limit) query.set('limit', String(params.limit))
     const qs = query.toString()
     return request<Booking[]>(`/bookings${qs ? `?${qs}` : ''}`)
   },
@@ -2453,6 +2472,8 @@ export const api = {
     request<StockIntake[]>(`/inventory/stock-intake${toolId ? '?toolId=' + toolId : ''}`),
   /** أرقام اللوحة الرئيسية — بدون سحب أرشيف الشركة كامل للمتصفح */
   getDashboardSummary: () => request<{ employeeCount: number; customerCount: number; bookingCount: number; gpsDeviceCount: number }>('/dashboard/summary'),
+  /** مجاميع المحاسب والمراقب — تنحسب بقاعدة البيانات بدل تنزيل كل الأرشيف المنجز */
+  getFinanceSummary: () => request<FinanceSummary>('/dashboard/finance-summary'),
 
   // ── الإجازات ──
   createLeave: (data: { startDate: string; endDate?: string; reason?: string | null }) =>

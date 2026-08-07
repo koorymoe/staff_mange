@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck } from '../api'
+import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary } from '../api'
 import { useSession, hasGpsSkill } from '../session'
 import { MapViewer } from '../components/MapLazy'
 
@@ -119,6 +119,7 @@ export default function Dashboard() {
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({})
   const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  const [finance, setFinance] = useState<FinanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
   const [projectStats, setProjectStats] = useState<Record<string, number> | null>(null)
@@ -150,12 +151,26 @@ export default function Dashboard() {
     Promise.all([
       fieldOnly ? Promise.resolve(null) : api.getGpsStats().catch(() => null),
       needsBookingList
-        ? api.getBookings(fieldOnly ? { assignedTo: 'me' } : undefined).catch(() => [] as Booking[])
+        ? api
+            .getBookings(
+              fieldOnly
+                ? { assignedTo: 'me' }
+                // المراقب والمحاسب يعرضون الشغل الحيّ بس — كل الفلاتر
+                // بلوحاتهم على هذي الحالات الثلاث. الباقي (منجز/ملغى)
+                // جان ينزل بلا فايدة ويثقل الصفحة كل ما كبر الأرشيف.
+                : { status: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
+            )
+            .catch(() => [] as Booking[])
         : Promise.resolve([] as Booking[]),
       fieldOnly ? Promise.resolve(null) : api.getDashboardSummary().catch(() => null),
-      needsFinance ? api.getBookings({ status: 'COMPLETED' }).catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
+      // الأرقام (المجاميع والعدادات) تجي محسوبة من السيرفر على الأرشيف
+      // الكامل، والقائمة تجي مقصوصة لأنها للعرض بس — «آخر المنجز» و«منجز
+      // اليوم». يعني الأرقام دقيقة ١٠٠٪ بدون ما ننزّل أرشيف الشركة.
+      needsFinance ? api.getBookings({ status: 'COMPLETED', limit: 200 }).catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
       needsFinance ? api.getExpenses().catch(() => [] as Expense[]) : Promise.resolve([] as Expense[]),
-    ]).then(([gps, bk, summary, cb, exp]) => {
+      needsFinance ? api.getFinanceSummary().catch(() => null) : Promise.resolve(null),
+    ]).then(([gps, bk, summary, cb, exp, fin]) => {
+      setFinance(fin as FinanceSummary | null)
       const allBookings = bk
       setGpsStats(gps as GpsStats | null)
       setBookings(bk as Booking[])
@@ -599,16 +614,20 @@ export default function Dashboard() {
 
       {/* ═══ Monitor Overview Panel ═══ */}
       {permissions.includes('monitoring') && !isAdmin && (() => {
-        const pending = bookings.filter(b => b.status === 'PENDING')
-        const confirmed = bookings.filter(b => b.status === 'CONFIRMED')
+        // الأرقام من ملخّص السيرفر (محسوبة على الأرشيف الكامل)، والقوائم
+        // من الشغل الحيّ ومن آخر ٢٠٠ منجز — للعرض بس.
         const inProgress = bookings.filter(b => b.status === 'IN_PROGRESS')
         const completed = completedBookings
-        const unverified = completed.filter(b => !b.amountVerified)
-        const verified = completed.filter(b => b.amountVerified)
         const todayCompleted = completed.filter(b => b.completedAt && new Date(b.completedAt).toDateString() === new Date().toDateString())
-        const activeTechs = new Set(inProgress.flatMap(b => b.assignments.map(a => a.employee.id)))
-        const totalCollected = completed.reduce((s, b) => s + (b.amountCollected || 0) + (b.advancePaid || 0), 0)
-        const pendingExpenses = expenses.filter(e => e.status === 'PENDING')
+        const nPending = finance?.pendingCount ?? bookings.filter(b => b.status === 'PENDING').length
+        const nConfirmed = finance?.confirmedCount ?? bookings.filter(b => b.status === 'CONFIRMED').length
+        const nInProgress = finance?.inProgressCount ?? inProgress.length
+        const nUnverified = finance?.unverifiedCount ?? 0
+        const nVerified = finance?.verifiedCount ?? 0
+        const nTodayCompleted = finance?.todayCompleted ?? todayCompleted.length
+        const nActiveTechs = finance?.activeCrewCount ?? new Set(inProgress.flatMap(b => b.assignments.map(a => a.employee.id))).size
+        const totalCollected = finance?.totalCollected ?? 0
+        const nPendingExpenses = finance?.pendingExpenses ?? expenses.filter(e => e.status === 'PENDING').length
 
         return (
           <div className="space-y-4">
@@ -623,19 +642,19 @@ export default function Dashboard() {
             {/* Stats grid */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-b from-violet-50 to-white p-4 text-center">
-                <p className="text-3xl font-black text-violet-600">{inProgress.length}</p>
+                <p className="text-3xl font-black text-violet-600">{nInProgress}</p>
                 <p className="mt-1 text-xs font-medium text-violet-500">مهام قيد التنفيذ</p>
               </div>
               <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-b from-blue-50 to-white p-4 text-center">
-                <p className="text-3xl font-black text-blue-600">{activeTechs.size}</p>
+                <p className="text-3xl font-black text-blue-600">{nActiveTechs}</p>
                 <p className="mt-1 text-xs font-medium text-blue-500">فنيين في الميدان</p>
               </div>
               <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white p-4 text-center">
-                <p className="text-3xl font-black text-amber-600">{unverified.length}</p>
+                <p className="text-3xl font-black text-amber-600">{nUnverified}</p>
                 <p className="mt-1 text-xs font-medium text-amber-500">بانتظار تدقيق مالي</p>
               </div>
               <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-4 text-center">
-                <p className="text-3xl font-black text-emerald-600">{todayCompleted.length}</p>
+                <p className="text-3xl font-black text-emerald-600">{nTodayCompleted}</p>
                 <p className="mt-1 text-xs font-medium text-emerald-500">أنجزت اليوم</p>
               </div>
             </div>
@@ -643,15 +662,15 @@ export default function Dashboard() {
             {/* Secondary stats */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <div className="rounded-xl bg-white p-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-brand-700">{pending.length}</p>
+                <p className="text-xl font-bold text-brand-700">{nPending}</p>
                 <p className="text-[10px] text-slate-400">بانتظار التثبيت</p>
               </div>
               <div className="rounded-xl bg-white p-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-brand-700">{confirmed.length}</p>
+                <p className="text-xl font-bold text-brand-700">{nConfirmed}</p>
                 <p className="text-[10px] text-slate-400">مثبتة (بحاجة تنسيق)</p>
               </div>
               <div className="rounded-xl bg-white p-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-emerald-600">{verified.length}</p>
+                <p className="text-xl font-bold text-emerald-600">{nVerified}</p>
                 <p className="text-[10px] text-slate-400">تم تدقيقها</p>
               </div>
               <div className="rounded-xl bg-white p-3 text-center shadow-sm">
@@ -717,13 +736,13 @@ export default function Dashboard() {
 
             {/* Alerts row */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              {unverified.length > 0 && (
+              {nUnverified > 0 && (
                 <button onClick={() => navigate('/finance')} className="rounded-2xl border-2 border-amber-300 bg-gradient-to-l from-amber-50 to-orange-50 p-4 text-right transition hover:shadow-lg">
                   <div className="flex items-center justify-between">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                     <div className="flex items-center gap-3">
                       <div>
-                        <span className="text-sm font-extrabold text-amber-800">{unverified.length} حجز بحاجة تدقيق</span>
+                        <span className="text-sm font-extrabold text-amber-800">{nUnverified} حجز بحاجة تدقيق</span>
                         <p className="text-xs text-amber-600 mt-0.5">مبالغ لم يتم التحقق منها</p>
                       </div>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-200">
@@ -733,13 +752,13 @@ export default function Dashboard() {
                   </div>
                 </button>
               )}
-              {pendingExpenses.length > 0 && (
+              {nPendingExpenses > 0 && (
                 <button onClick={() => navigate('/expenses')} className="rounded-2xl border-2 border-red-200 bg-gradient-to-l from-red-50 to-rose-50 p-4 text-right transition hover:shadow-lg">
                   <div className="flex items-center justify-between">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                     <div className="flex items-center gap-3">
                       <div>
-                        <span className="text-sm font-extrabold text-red-800">{pendingExpenses.length} مصروف بانتظار الموافقة</span>
+                        <span className="text-sm font-extrabold text-red-800">{nPendingExpenses} مصروف بانتظار الموافقة</span>
                         <p className="text-xs text-red-600 mt-0.5">طلبات استرجاع من الفنيين</p>
                       </div>
                       <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-200">
@@ -756,15 +775,17 @@ export default function Dashboard() {
 
       {/* ═══ Accountant Dashboard Panel ═══ */}
       {employee.role === 'FINANCE' && (() => {
+        // المجاميع تجي من السيرفر محسوبة على كل الأرشيف المنجز — دقيقة
+        // بالكامل. القائمة المعروضة تحت (آخر ٨) تكفيها آخر دفعة نزلت.
         const completed = completedBookings
-        const unverified = completed.filter(b => !b.amountVerified)
-        const verified = completed.filter(b => b.amountVerified)
-        const totalCollected = completed.reduce((s, b) => s + (b.amountCollected || 0) + (b.advancePaid || 0), 0)
-        const totalQuoted = completed.reduce((s, b) => s + (b.quotedPrice || 0), 0)
-        const totalCartValue = completed.reduce((s, b) => s + (b.cartItems ?? []).reduce((cs, c) => cs + c.totalPrice, 0), 0)
-        const pendingExpenses = expenses.filter(e => e.status === 'PENDING')
-        const approvedExpenses = expenses.filter(e => e.status === 'APPROVED')
-        const totalExpenses = approvedExpenses.reduce((s, e) => s + e.amount, 0)
+        const nUnverified = finance?.unverifiedCount ?? 0
+        const nVerified = finance?.verifiedCount ?? 0
+        const nCompleted = finance?.completedCount ?? completed.length
+        const totalCollected = finance?.totalCollected ?? 0
+        const totalQuoted = finance?.totalQuoted ?? 0
+        const totalCartValue = finance?.totalCartValue ?? 0
+        const nPendingExpenses = finance?.pendingExpenses ?? expenses.filter(e => e.status === 'PENDING').length
+        const totalExpenses = finance?.totalExpenseValue ?? 0
         const recentCompleted = [...completed].sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime()).slice(0, 8)
 
         return (
@@ -797,27 +818,27 @@ export default function Dashboard() {
             {/* Audit status */}
             <div className="grid grid-cols-3 gap-3">
               <button onClick={() => navigate('/finance')} className="rounded-xl bg-white p-3 text-center shadow-sm transition hover:shadow-md">
-                <p className="text-xl font-bold text-brand-700">{completed.length}</p>
+                <p className="text-xl font-bold text-brand-700">{nCompleted}</p>
                 <p className="text-[10px] text-slate-400">إجمالي المنجزة</p>
               </button>
               <button onClick={() => navigate('/finance')} className="rounded-xl bg-amber-50 p-3 text-center shadow-sm transition hover:shadow-md">
-                <p className="text-xl font-bold text-amber-600">{unverified.length}</p>
+                <p className="text-xl font-bold text-amber-600">{nUnverified}</p>
                 <p className="text-[10px] text-amber-500">بانتظار التدقيق</p>
               </button>
               <button onClick={() => navigate('/finance')} className="rounded-xl bg-emerald-50 p-3 text-center shadow-sm transition hover:shadow-md">
-                <p className="text-xl font-bold text-emerald-600">{verified.length}</p>
+                <p className="text-xl font-bold text-emerald-600">{nVerified}</p>
                 <p className="text-[10px] text-emerald-500">تم التدقيق</p>
               </button>
             </div>
 
             {/* Pending expenses alert */}
-            {pendingExpenses.length > 0 && (
+            {nPendingExpenses > 0 && (
               <button onClick={() => navigate('/expenses')} className="w-full rounded-2xl border-2 border-red-200 bg-gradient-to-l from-red-50 to-rose-50 p-4 text-right transition hover:shadow-lg">
                 <div className="flex items-center justify-between">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round"><path d="M19 12H5M12 19l-7-7 7-7" /></svg>
                   <div className="flex items-center gap-3">
                     <div>
-                      <span className="text-sm font-extrabold text-red-800">{pendingExpenses.length} طلب استرجاع بانتظار الموافقة</span>
+                      <span className="text-sm font-extrabold text-red-800">{nPendingExpenses} طلب استرجاع بانتظار الموافقة</span>
                       <p className="text-xs text-red-600 mt-0.5">مصاريف من الفنيين تحتاج مراجعة</p>
                     </div>
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-200">

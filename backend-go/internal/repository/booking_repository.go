@@ -20,7 +20,7 @@ func NewBookingRepository(db *sqlx.DB) *BookingRepository {
 	return &BookingRepository{db: db}
 }
 
-func (r *BookingRepository) List(status, customerID, date string) ([]model.Booking, error) {
+func (r *BookingRepository) List(status, customerID, date string, limit int) ([]model.Booking, error) {
 	query := `SELECT * FROM "Booking" WHERE 1=1`
 	args := []any{}
 	if date != "" {
@@ -51,6 +51,13 @@ func (r *BookingRepository) List(status, customerID, date string) ([]model.Booki
 		query += fmt.Sprintf(` AND "customerId" = $%d`, len(args))
 	}
 	query += ` ORDER BY "createdAt" DESC`
+	// سقف اختياري: الشاشات الي تعرض «آخر كذا حجز» ما تحتاج الأرشيف كله،
+	// وبدونه كل فتحة صفحة تسحب كل حجز انسجّل من يوم ما اشتغل النظام.
+	// صفر = بلا سقف (السلوك القديم لأي نداء ما يمرّر حد).
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(` LIMIT $%d`, len(args))
+	}
 
 	bookings := []model.Booking{}
 	if err := r.db.Select(&bookings, query, args...); err != nil {

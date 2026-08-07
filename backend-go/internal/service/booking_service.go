@@ -39,8 +39,8 @@ func NewBookingService(repo *repository.BookingRepository, employees *repository
 	return &BookingService{repo: repo, employees: employees, customers: customers, qualityFollowUps: qualityFollowUps, notifications: notifications, inventory: inventory}
 }
 
-func (s *BookingService) List(status, customerID, date string) ([]model.Booking, error) {
-	return s.repo.List(status, customerID, date)
+func (s *BookingService) List(status, customerID, date string, limit int) ([]model.Booking, error) {
+	return s.repo.List(status, customerID, date, limit)
 }
 
 // ListAssignedTo يرجّع حجوزات الموظف المعيّن عليها فقط. حد أعلى ٢٠٠

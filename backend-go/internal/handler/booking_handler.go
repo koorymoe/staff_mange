@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"staffmange-api/internal/middleware"
@@ -40,7 +41,15 @@ func (h *BookingHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, http.StatusOK, bookings)
 		return
 	}
-	bookings, err := h.service.List(r.URL.Query().Get("status"), r.URL.Query().Get("customerId"), r.URL.Query().Get("date"))
+	// limit اختياري: الشاشة الي تعرض «آخر كذا حجز» تطلب عددها بس، بدل ما
+	// يمشي أرشيف الشركة كله بالشبكة كل مرة تنفتح.
+	limit := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	bookings, err := h.service.List(r.URL.Query().Get("status"), r.URL.Query().Get("customerId"), r.URL.Query().Get("date"), limit)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
 		return
@@ -291,7 +300,7 @@ func (h *BookingHandler) Complete(w http.ResponseWriter, r *http.Request) {
 // الإداري ضغط "تم" (تواصل مع الزبون) قبل التثبيت الفعلي أو لا، عبر حقل
 // confirmationContactedAt).
 func (h *BookingHandler) PendingAudit(w http.ResponseWriter, r *http.Request) {
-	bookings, err := h.service.List("PENDING", "", "")
+	bookings, err := h.service.List("PENDING", "", "", 0)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
 		return
