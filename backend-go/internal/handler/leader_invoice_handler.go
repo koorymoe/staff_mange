@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"staffmange-api/internal/middleware"
@@ -135,7 +136,10 @@ func (h *LeaderInvoiceHandler) CameraCostOptions(w http.ResponseWriter, r *http.
 // PUT /api/leader-invoices/{id}/approve — محصور بـrequireFinance بالراوت.
 func (h *LeaderInvoiceHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	approverID := middleware.EmployeeIDFromContext(r)
-	inv, err := h.service.Approve(r.PathValue("id"), approverID)
+	var req model.ApproveLeaderInvoiceRequest
+	// الجسم اختياري بالشكل بس الرقم إجباري بالمنطق — الخدمة ترفض الفاضي
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	inv, err := h.service.Approve(r.PathValue("id"), approverID, req.ExternalInvoiceNumber)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -163,4 +167,19 @@ func (h *LeaderInvoiceHandler) ListMaterials(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// GET /api/leader-invoices/by-number?number= — يلكه الفاتورة برقم
+// المحاسب الخارجي. هذا سبب أرشفة الرقم أصلاً.
+func (h *LeaderInvoiceHandler) FindByExternalNumber(w http.ResponseWriter, r *http.Request) {
+	inv, err := h.service.FindByExternalNumber(r.URL.Query().Get("number"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if inv == nil {
+		WriteError(w, http.StatusNotFound, "ماكو فاتورة بهذا الرقم")
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
 }

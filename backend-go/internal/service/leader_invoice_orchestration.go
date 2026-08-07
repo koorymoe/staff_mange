@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -296,8 +297,40 @@ func (s *LeaderInvoiceService) Estimate(items []model.ExecutionCostItem) (*model
 
 // Approve يعتمد فاتورة ليدر — محصور بمدير/محاسب (requireFinance بالراوت)، الليدر
 // نفسه ما يقدر يعتمد فاتورته حتى لو كملها، لازم طرف ثاني يراجعها.
-func (s *LeaderInvoiceService) Approve(id, approverEmployeeID string) (*model.LeaderInvoice, error) {
-	inv, err := s.invoices.Approve(id, approverEmployeeID)
+func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber string) (*model.LeaderInvoice, error) {
+	// رقم الفاتورة المحاسبية إجباري: المحاسب يصدّر فواتيره بنظام ثاني،
+	// وبدون الرقم ينقطع الخيط بين النظامين وما يبقى شي يربط فاتورتنا
+	// المعتمدة بفاتورته الصادرة.
+	externalNumber = strings.TrimSpace(externalNumber)
+	if externalNumber == "" {
+		return nil, fmt.Errorf("رقم الفاتورة المحاسبية مطلوب قبل الاعتماد")
+	}
+	inv, err := s.invoices.Approve(id, approverEmployeeID, externalNumber)
+	if err != nil {
+		// الرقم فريد — لو انستعمل بفاتورة ثانية نوضّح السبب بدل رسالة
+		// قاعدة بيانات ما يفهمها أحد
+		if strings.Contains(err.Error(), "leader_invoice_external_number_unique") {
+			return nil, fmt.Errorf("رقم الفاتورة %s مستعمل بفاتورة ثانية — تأكد من الرقم", externalNumber)
+		}
+		return nil, err
+	}
+	if inv == nil {
+		return nil, fmt.Errorf("الفاتورة غير موجودة أو معتمدة أصلاً")
+	}
+	return inv, nil
+}
+
+// FindByExternalNumber يدوّر فاتورة برقم المحاسب.
+func (s *LeaderInvoiceService) FindByExternalNumber(number string) (*model.LeaderInvoice, error) {
+	number = strings.TrimSpace(number)
+	if number == "" {
+		return nil, fmt.Errorf("اكتب رقم الفاتورة")
+	}
+	return s.invoices.FindByExternalNumber(number)
+}
+
+func (s *LeaderInvoiceService) approveOld(id, approverEmployeeID string) (*model.LeaderInvoice, error) {
+	inv, err := s.invoices.Approve(id, approverEmployeeID, "")
 	if err != nil {
 		return nil, err
 	}

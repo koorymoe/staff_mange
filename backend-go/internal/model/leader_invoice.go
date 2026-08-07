@@ -74,6 +74,11 @@ type LeaderInvoice struct {
 	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
 	ApprovedByEmployeeID *string    `db:"approvedByEmployeeId" json:"approvedByEmployeeId"`
 	ApprovedAt           *time.Time `db:"approvedAt" json:"approvedAt"`
+	// رقم الفاتورة المحاسبية الصادرة من نظام المحاسب الخارجي، وتاريخ
+	// ربطه. إجباري وقت الاعتماد — بدونه ما ينربط الخيط بين النظامين.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	ExternalInvoiceNumber *string    `db:"externalInvoiceNumber" json:"externalInvoiceNumber"`
+	ExternalInvoiceAt     *time.Time `db:"externalInvoiceAt" json:"externalInvoiceAt"`
 
 	// تفاصيل يحتاجها المحاسب: منو الليدر الي رفعها، ومنو اعتمدها،
 	// وأي حجز تخص. تنعبّى بالتهيئة مو من الجدول.
@@ -239,4 +244,10 @@ func GenerateAccountingCode(invoiceID string, createdAt time.Time) string {
 		suffix = suffix[len(suffix)-6:]
 	}
 	return fmt.Sprintf("LDR-%s-%s", createdAt.Format("20060102"), suffix)
+}
+
+// ApproveLeaderInvoiceRequest اعتماد فاتورة الليدر — رقم الفاتورة
+// المحاسبية إجباري.
+type ApproveLeaderInvoiceRequest struct {
+	ExternalInvoiceNumber string `json:"externalInvoiceNumber"`
 }

@@ -156,13 +156,18 @@ func (r *LeaderInvoiceRepository) SumNetTotalForDate(date string) (float64, erro
 
 // Approve يعتمد فاتورة SUBMITTED فقط (لا يسمح باعتماد فاتورة معتمدة أصلاً
 // مرة ثانية) — يرجّع nil لو الفاتورة غير موجودة أو معتمدة أصلاً.
-func (r *LeaderInvoiceRepository) Approve(id, approverEmployeeID string) (*model.LeaderInvoice, error) {
+func (r *LeaderInvoiceRepository) Approve(id, approverEmployeeID, externalNumber string) (*model.LeaderInvoice, error) {
 	var inv model.LeaderInvoice
 	err := r.db.Get(&inv, `
-		UPDATE "LeaderInvoice" SET status = 'APPROVED', "approvedByEmployeeId" = $2, "approvedAt" = CURRENT_TIMESTAMP
+		UPDATE "LeaderInvoice"
+		SET status = 'APPROVED',
+		    "approvedByEmployeeId" = $2,
+		    "approvedAt" = CURRENT_TIMESTAMP,
+		    "externalInvoiceNumber" = $3,
+		    "externalInvoiceAt" = CURRENT_TIMESTAMP
 		WHERE id = $1 AND status != 'APPROVED'
 		RETURNING *
-	`, id, approverEmployeeID)
+	`, id, approverEmployeeID, externalNumber)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -434,4 +439,25 @@ func (r *LeaderInvoiceRepository) hydrateAll(invoices []model.LeaderInvoice) err
 		}
 	}
 	return nil
+}
+
+// FindByExternalNumber يدوّر فاتورة برقم المحاسب الخارجي — هذا سبب
+// أرشفة الرقم أصلاً: يلكاها بيه لمن يحتاجها.
+func (r *LeaderInvoiceRepository) FindByExternalNumber(number string) (*model.LeaderInvoice, error) {
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `
+		SELECT * FROM "LeaderInvoice"
+		WHERE lower(btrim("externalInvoiceNumber")) = lower(btrim($1))
+		LIMIT 1
+	`, number)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
 }

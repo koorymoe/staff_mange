@@ -1222,5 +1222,29 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 				WHERE "scheduledAt" IS NOT NULL AND "scheduledEndAt" IS NULL;
 			`,
 		},
+		{
+			// ═══ رقم الفاتورة المحاسبية الخارجية ═══
+			// المحاسب يصدّر الفواتير بنظام ثاني برّا نظامنا. لمن يدقق
+			// فاتورة الليدر ويعتمدها، لازم يربطها برقم فاتورته الخارجية —
+			// وإلا ينقطع الخيط: عدنا فاتورة معتمدة وعنده فاتورة صادرة،
+			// وماكو شي يربطهن، فأي مراجعة أو تدقيق لاحق يصير يدوي.
+			//
+			// الرقم فريد: رقم الفاتورة المحاسبية ما ينعاد مرتين، وهذا
+			// أصلاً سبب أرشفته.
+			Version: "0200_leader_invoice_external_number",
+			SQL: `
+				ALTER TABLE "LeaderInvoice"
+					ADD COLUMN IF NOT EXISTS "externalInvoiceNumber" TEXT,
+					ADD COLUMN IF NOT EXISTS "externalInvoiceAt" TIMESTAMPTZ;
+
+				CREATE UNIQUE INDEX IF NOT EXISTS "leader_invoice_external_number_unique"
+					ON "LeaderInvoice" (lower(btrim("externalInvoiceNumber")))
+					WHERE "externalInvoiceNumber" IS NOT NULL AND btrim("externalInvoiceNumber") <> '';
+
+				-- البحث بالرقم لازم يكون سريع — هو المفتاح الي يدوّر بيه
+				CREATE INDEX IF NOT EXISTS "leader_invoice_external_number_idx"
+					ON "LeaderInvoice" ("externalInvoiceNumber");
+			`,
+		},
 	}
 }

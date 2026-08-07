@@ -11,18 +11,31 @@ export default function LeaderInvoicesListPage() {
   const [invoices, setInvoices] = useState<LeaderInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
+  // ═══ رقم الفاتورة المحاسبية ═══
+  // المحاسب يصدّر فواتيره بنظام ثاني برّا نظامنا. بدون ربط الرقم وقت
+  // الاعتماد ينقطع الخيط: عدنا فاتورة معتمدة وعنده فاتورة صادرة وماكو
+  // شي يربطهن — فأي مراجعة لاحقة تصير يدوية. الرقم إجباري، ومؤرشف
+  // حتى يلكاها بيه لمن يحتاجها.
+  const [approveFor, setApproveFor] = useState<LeaderInvoice | null>(null)
+  const [invoiceNo, setInvoiceNo] = useState('')
+  const [approveErr, setApproveErr] = useState<string | null>(null)
+  const [search, setSearch] = useState('')
   const [details, setDetails] = useState<LeaderInvoice | null>(null)
 
   const load = () => { api.getLeaderInvoices().then(setInvoices).finally(() => setLoading(false)) }
   useEffect(load, [])
 
-  const handleApprove = async (id: string) => {
-    setBusyId(id)
+  const handleApprove = async () => {
+    if (!approveFor || !invoiceNo.trim()) return
+    setBusyId(approveFor.id)
+    setApproveErr(null)
     try {
-      await api.approveLeaderInvoice(id)
+      await api.approveLeaderInvoice(approveFor.id, invoiceNo.trim())
+      setApproveFor(null)
+      setInvoiceNo('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر اعتماد الفاتورة')
+      setApproveErr(e instanceof Error ? e.message : 'تعذر اعتماد الفاتورة')
     } finally {
       setBusyId(null)
     }
@@ -33,6 +46,14 @@ export default function LeaderInvoicesListPage() {
       <h2 className="text-2xl font-bold text-brand-900">فواتير الليدر</h2>
       <p className="mt-1 text-slate-500">كل فواتير التنفيذ التي أنشأها الليدرز عبر النظام.</p>
 
+      {/* البحث برقم فاتورة المحاسب — هذا سبب أرشفة الرقم: يلكاها بيه */}
+      <input
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        placeholder="🔍 بحث برقم الفاتورة المحاسبية، كود المحاسبة، الزبون، أو الليدر..."
+        className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
+      />
+
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
 
       {!loading && (
@@ -41,6 +62,7 @@ export default function LeaderInvoicesListPage() {
             <thead>
               <tr className="border-b border-slate-100 text-right text-slate-400">
                 <th className="px-4 py-3">كود المحاسبة</th>
+                <th className="px-4 py-3">رقم الفاتورة المحاسبية</th>
                 <th className="px-4 py-3">الليدر</th>
                 <th className="px-4 py-3">الزبون</th>
                 <th className="px-4 py-3">المنظومات</th>
@@ -53,9 +75,21 @@ export default function LeaderInvoicesListPage() {
               </tr>
             </thead>
             <tbody>
-              {invoices.map((inv) => (
+              {invoices
+                .filter((inv) => {
+                  const q = search.trim().toLowerCase()
+                  if (!q) return true
+                  return [inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName]
+                    .some((v) => (v || '').toString().toLowerCase().includes(q))
+                })
+                .map((inv) => (
                 <tr key={inv.id} className="border-b border-slate-50 last:border-0">
                   <td className="px-4 py-3 font-mono text-brand-700">{inv.accountingCode}</td>
+                  <td className="px-4 py-3">
+                    {inv.externalInvoiceNumber
+                      ? <span className="rounded-lg bg-emerald-50 px-2 py-1 font-mono text-xs font-bold text-emerald-800">{inv.externalInvoiceNumber}</span>
+                      : <span className="text-xs text-slate-400">—</span>}
+                  </td>
                   <td className="px-4 py-3">
                     <span className="font-bold text-slate-700">{inv.employeeName || '—'}</span>
                     {inv.bookingCode && <div className="text-xs text-slate-400">حجز {inv.bookingCode}</div>}
@@ -85,7 +119,7 @@ export default function LeaderInvoicesListPage() {
                       </button>
                       {canApprove && inv.status !== 'APPROVED' && (
                         <button
-                          onClick={() => handleApprove(inv.id)}
+                          onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
                           disabled={busyId === inv.id}
                           className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700 disabled:opacity-50"
                         >
@@ -109,6 +143,54 @@ export default function LeaderInvoicesListPage() {
       )}
 
       {/* تفاصيل الفاتورة — كل الي يحتاجه المحاسب بمكان واحد */}
+      {/* ═══ الاعتماد يمر برقم الفاتورة المحاسبية ═══ */}
+      {approveFor && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-[#0f2040]">اعتماد الفاتورة</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              كود المحاسبة: <span className="font-mono font-bold text-brand-700">{approveFor.accountingCode}</span>
+              {' · '}المجموع: <b>{approveFor.netTotal.toLocaleString()} د.ع</b>
+            </p>
+
+            <label className="mt-4 block text-sm font-medium text-slate-600">
+              رقم الفاتورة المحاسبية <span className="text-red-500">*</span>
+            </label>
+            <input
+              value={invoiceNo}
+              onChange={(e) => setInvoiceNo(e.target.value)}
+              autoFocus
+              placeholder="الرقم الصادر من نظام المحاسبة"
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500"
+            />
+            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-500">
+              الرقم ينحفظ ويتأرشف مع الفاتورة، وتكدر تدوّر بيه بعدين من خانة البحث فوق.
+              وما ينعاد على فاتورة ثانية.
+            </p>
+
+            {approveErr && (
+              <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{approveErr}</p>
+            )}
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={handleApprove}
+                disabled={!invoiceNo.trim() || busyId === approveFor.id}
+                className="flex-1 rounded-xl bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {busyId === approveFor.id ? 'جاري الاعتماد...' : '✔ اعتماد الفاتورة'}
+              </button>
+              <button
+                onClick={() => setApproveFor(null)}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600"
+              >
+                رجوع
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {details && (
         <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={() => setDetails(null)}>
           <div dir="rtl" className="my-8 w-full max-w-3xl rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -129,6 +211,11 @@ export default function LeaderInvoicesListPage() {
                 <p>التاريخ: {new Date(details.createdAt).toLocaleString('ar-IQ')}</p>
                 <p>الحالة: {details.status === 'APPROVED' ? '✔ معتمدة' : 'بانتظار الاعتماد'}</p>
                 {details.approvedByName && <p>اعتمدها: <b>{details.approvedByName}</b></p>}
+                {details.externalInvoiceNumber && (
+                  <p className="col-span-2">
+                    رقم الفاتورة المحاسبية: <b className="font-mono text-emerald-700">{details.externalInvoiceNumber}</b>
+                  </p>
+                )}
               </div>
             </section>
 

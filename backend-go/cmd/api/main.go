@@ -1097,6 +1097,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireExecutionCost))
 	mux.Handle("GET /api/leader-invoices/camera-cost/options", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCostOptions), requireAuth, requireExecutionCost))
 	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه
+	// البحث بالفاتورة المحاسبية — لازم يجي قبل مسار {id} حتى ما ينحسب
+	// "by-number" معرّف فاتورة
+	mux.Handle("GET /api/leader-invoices/by-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FindByExternalNumber), requireAuth, requireLeaderBasket))
 	mux.Handle("PUT /api/leader-invoices/{id}/approve", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Approve), requireAuth, requireFinance))
 
 	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER

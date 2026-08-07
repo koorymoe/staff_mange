@@ -924,6 +924,10 @@ export interface LeaderInvoiceMaterialItem {
 }
 
 export interface LeaderInvoice {
+  // رقم الفاتورة المحاسبية الصادرة من نظام المحاسب الخارجي — إجباري
+  // وقت الاعتماد، ومؤرشف حتى يلكاها بيه لمن يحتاجها.
+  externalInvoiceNumber: string | null
+  externalInvoiceAt: string | null
   employeeName?: string
   employeeRole?: string
   employeePhone?: string | null
@@ -2613,8 +2617,14 @@ export const api = {
     request<LeaderInvoice>('/leader-invoices', { method: 'POST', body: JSON.stringify(data) }),
   estimateLeaderInvoiceCost: (items: ExecutionCostItem[]) =>
     request<EstimateExecutionCostResponse>('/leader-invoices/estimate', { method: 'POST', body: JSON.stringify({ items }) }),
-  approveLeaderInvoice: (id: string) =>
-    request<LeaderInvoice>(`/leader-invoices/${id}/approve`, { method: 'PUT' }),
+  approveLeaderInvoice: (id: string, externalInvoiceNumber: string) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/approve`, {
+      method: 'PUT',
+      body: JSON.stringify({ externalInvoiceNumber }),
+    }),
+  // البحث برقم فاتورة المحاسب — سبب أرشفة الرقم أصلاً
+  findInvoiceByNumber: (number: string) =>
+    request<LeaderInvoice>(`/leader-invoices/by-number?number=${encodeURIComponent(number)}`),
   // المشاريع الموجّهة للموظف الحالي — الليدر يسوي فاتورة للشغل الموجّه له
   getProjectsDirectedToMe: () =>
     request<{ projects: DirectedProject[] }>('/projects/delegated-to-me'),
