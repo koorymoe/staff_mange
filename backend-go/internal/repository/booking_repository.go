@@ -65,11 +65,18 @@ func (r *BookingRepository) List(status, customerID, date string) ([]model.Booki
 // ListForAssignedEmployee يرجّع الحجوزات اللي الموظف معيّن عليها بـ BookingAssignment
 // (مثلاً موظف مبيعات أو فني مرتبط بيها) — يستخدمها المساعد الذكي لعرض "حجوزاتي".
 func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int) ([]model.Booking, error) {
+	// ⚠️ التيم ليدر ما ينحفظ بجدول التعيينات — ينحفظ بعمود
+	// projectSupervisorId على الحجز نفسه. فالاستعلام الي يشوف
+	// التعيينات بس جان ما يرجّع للليدر حجوزاته أبداً: يكلّفه الإداري
+	// وهو ما يشوف ولا حجز بشاشة «مهامي»، والفنيين يشوفونه.
+	// الليدر فني قبل كل شي — لازم يشوف الحجز الي رايح له.
 	bookings := []model.Booking{}
 	err := r.db.Select(&bookings, `
-		SELECT b.* FROM "Booking" b
-		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		SELECT DISTINCT b.* FROM "Booking" b
+		LEFT JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1
+		   OR b."projectSupervisorId" = $1
+		   OR b."expenseResponsibleId" = $1
 		ORDER BY b."createdAt" DESC
 		LIMIT $2
 	`, employeeID, limit)
@@ -377,7 +384,11 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		}
 		// الحالة تنحسب بعد التعيينات — لأن الفرق بين «مثبت» و«في حالة
 		// التكليف» هو بالضبط: اكو كادر منكلّف على الحجز لو لا.
-		b.CompletionState = completionState(b, len(assignments) > 0)
+		// «مكلّف» يعني اكو أحد مسؤول عن الحجز — كادر معيّن أو تيم ليدر.
+		// الليدر ينحفظ بعمود مستقل مو بجدول التعيينات، فلو ما حسبناه
+		// يطلع الحجز «مثبت بلا كادر» وهو مكلّف فعلاً.
+		hasCrew := len(assignments) > 0 || (b.ProjectSupervisorID != nil && *b.ProjectSupervisorID != "")
+		b.CompletionState = completionState(b, hasCrew)
 
 		if assignments == nil {
 			assignments = []model.BookingAssignment{}
@@ -698,8 +709,11 @@ func (r *BookingRepository) ActiveCountByLeader() (counts map[string]int, names 
 			WHERE b.status NOT IN ('COMPLETED', 'CANCELLED')
 		) AS cnt
 		FROM "Employee" e
-		LEFT JOIN "BookingAssignment" ba ON ba."employeeId" = e.id
-		LEFT JOIN "Booking" b ON b.id = ba."bookingId"
+		LEFT JOIN "Booking" b ON (
+			b."projectSupervisorId" = e.id
+			OR EXISTS (SELECT 1 FROM "BookingAssignment" ba
+			           WHERE ba."bookingId" = b.id AND ba."employeeId" = e.id)
+		)
 		WHERE e."isLeader" = true AND e.status = 'ACTIVE'
 		GROUP BY e.id, e.name
 	`)

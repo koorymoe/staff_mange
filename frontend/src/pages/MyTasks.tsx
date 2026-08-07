@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { formatScheduleWindow } from '../utils/schedule'
+import CompletionBadge from '../components/CompletionBadge'
 import { api, type Booking, type PersonalTool } from '../api'
 import { useSession } from '../session'
 
@@ -88,16 +89,44 @@ export default function MyTasks() {
   }, [])
 
   const load = () => {
-    Promise.all([api.getBookings({ status: 'CONFIRMED' }), api.getBookings({ status: 'IN_PROGRESS' })])
-      .then(([confirmed, inProgress]) => setBookings([...confirmed, ...inProgress]))
+    // المنجزة تنجلب بعد — الموظف لازم يضل يشوف شغله الي خلّصه
+    // بتفاصيله، مو يختفي عنه أول ما يضغط «تم».
+    Promise.all([
+      api.getBookings({ status: 'CONFIRMED' }),
+      api.getBookings({ status: 'IN_PROGRESS' }),
+      api.getBookings({ status: 'COMPLETED' }),
+    ])
+      .then(([confirmed, inProgress, completed]) => setBookings([...confirmed, ...inProgress, ...completed]))
       .finally(() => setLoading(false))
   }
 
   useEffect(load, [])
 
-  const myTasks = bookings.filter((b) =>
-    b.assignments.some((a) => a.employee.id === employee?.id),
-  )
+  // الحجز يخصني إذا انكلّفت بيه ككادر، **أو** إذا أني التيم ليدر
+  // مالته. الليدر ينحفظ بعمود مستقل مو بجدول التعيينات — بدون هذا
+  // الشرط الليدر ما يشوف ولا حجز بشاشته وهو المسؤول عنه.
+  // ═══ منو يسوق مسار الحجز؟ ═══
+  // الليدر. هو الي يجهّز المواد، ويأشّر الانطلاق، ويبدي العمل،
+  // وينهيه. الفني ما يحتاج يضغط ولا وحدة منهن — أول ما يضغط الليدر
+  // «انطلقنا» يصير الفريق كله منطلق تلقائياً، لأن الحدث على الحجز
+  // مو على كل موظف لحاله.
+  //
+  // شغل الفني الوحيد: يجرد أدواته وأدوات السيارة وينطي «تم».
+  const amLeaderOf = (b: Booking) => {
+    if (!employee) return false
+    if (b.projectSupervisor?.id) return b.projectSupervisor.id === employee.id
+    // حجز ما انتحدد له تيم ليدر: أي ليدر مكلّف بيه يسوق المسار
+    return !!employee.isLeader && b.assignments.some((a) => a.employee.id === employee.id)
+  }
+
+  const isMine = (b: Booking) =>
+    b.assignments.some((a) => a.employee.id === employee?.id) ||
+    b.projectSupervisor?.id === employee?.id
+  const myTasks = bookings.filter((b) => isMine(b) && b.status !== 'COMPLETED')
+  // شغلي الي خلّصته — يضل ظاهر بتفاصيله وبحالة ورقه
+  const myDone = bookings
+    .filter((b) => isMine(b) && b.status === 'COMPLETED')
+    .sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime())
 
   const handleArrive = async (booking: Booking) => {
     const updated = await api.markArrived(booking.id)
@@ -112,31 +141,28 @@ export default function MyTasks() {
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
-  const handleStart = async (booking: Booking) => {
-    if (!employee) {
-      await doStart(booking.id)
-      return
-    }
+  // جرد الفني: يفتح نفس مودال الأدوات بس ما يبدي العمل — البدء بيد
+  // الليدر. toolsOnly تفرّق بين الحالتين.
+  const [toolsOnly, setToolsOnly] = useState(false)
+  const openToolsCheck = async (booking: Booking, onlyTools: boolean) => {
+    setToolsOnly(onlyTools)
+    if (!employee) { if (!onlyTools) await doStart(booking.id); return }
     setToolsModalBooking(booking)
     setToolsLoading(true)
     try {
       const tools = await api.getPersonalTools(employee.id)
       if (tools.length === 0) {
-        // لا توجد أدوات مسجلة لهذا الموظف — نتخطى المودال بالكامل ونكمل الاستلام
-        // عادي، بدل ما نعلقه بشاشة فاضية بلا فايدة.
         setToolsModalBooking(null)
-        await doStart(booking.id)
+        if (!onlyTools) await doStart(booking.id)
         return
       }
       setPersonalTools(tools)
-      // كل الأدوات مؤشرة (موجودة) افتراضياً — الموظف يشيل التأشير فقط عن الناقص.
       const allChecked: Record<string, boolean> = {}
       tools.forEach((t) => { allChecked[t.id] = true })
       setCheckedTools(allChecked)
     } catch {
-      // تعذر جلب الأدوات — لا نمنع الاستلام، نكمل عادي بدون شيك.
       setToolsModalBooking(null)
-      await doStart(booking.id)
+      if (!onlyTools) await doStart(booking.id)
     } finally {
       setToolsLoading(false)
     }
@@ -147,7 +173,16 @@ export default function MyTasks() {
     setSubmittingAccept(true)
     try {
       const missingToolIds = personalTools.filter((t) => !checkedTools[t.id]).map((t) => t.id)
-      await doStart(toolsModalBooking.id, missingToolIds)
+      if (toolsOnly) {
+        // جرد بس — ما نبدي العمل. البدء بيد الليدر.
+        const missingNames = personalTools.filter((t) => !checkedTools[t.id]).map((t) => t.name)
+        await api.createInventoryCheck({
+          complete: missingNames.length === 0,
+          missingItems: missingNames.length ? missingNames.join('، ') : undefined,
+        })
+      } else {
+        await doStart(toolsModalBooking.id, missingToolIds)
+      }
       setToolsModalBooking(null)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر تأكيد الاستلام')
@@ -277,6 +312,8 @@ export default function MyTasks() {
                     )}
 
                     {b.status === 'CONFIRMED' ? (
+                      amLeaderOf(b) ? (
+                      /* ═══ الليدر يسوق المسار ═══ */
                       <div className="mt-3 space-y-2">
                         {b.materialsReadyAt ? (
                           <div className="rounded-lg border-2 border-red-300 bg-red-50 px-4 py-3 text-center">
@@ -285,33 +322,54 @@ export default function MyTasks() {
                               جهّزها {b.materialsReadyBy?.name || 'تيم ليدر الفريق'} من {elapsedSince(b.materialsReadyAt)}
                             </p>
                           </div>
-                        ) : employee?.isLeader ? (
+                        ) : (
                           <button
                             onClick={() => handleMaterialsReady(b)}
                             className="w-full rounded-lg bg-gradient-to-l from-purple-500 to-purple-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                           >
                             📦 تم تجهيز المواد — أبلغ الفريق
                           </button>
-                        ) : null}
+                        )}
                         {b.arrivedAt ? (
                           <div className="rounded-lg bg-sky-50 px-3 py-2 text-xs font-bold text-sky-700">
-                            📍 وصلت للزبون من {elapsedSince(b.arrivedAt)}
+                            📍 وصلنا للزبون من {elapsedSince(b.arrivedAt)}
                           </div>
                         ) : (
                           <button
                             onClick={() => handleArrive(b)}
                             className="w-full rounded-lg bg-gradient-to-l from-sky-500 to-sky-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                           >
-                            📍 وصلت للزبون
+                            📍 انطلقنا / وصلنا للزبون — عن الفريق كله
                           </button>
                         )}
                         <button
-                          onClick={() => handleStart(b)}
+                          onClick={() => openToolsCheck(b, false)}
                           className="w-full rounded-lg bg-gradient-to-l from-amber-500 to-amber-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
                         >
-                          ✅ تم الاستلام — بدأت بالعمل
+                          ✅ بدأنا بالعمل — عن الفريق كله
                         </button>
                       </div>
+                      ) : (
+                      /* ═══ الفني: يتابع بس، وشغله جرد أدواته ═══ */
+                      <div className="mt-3 space-y-2">
+                        <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                          {b.arrivedAt
+                            ? `📍 الفريق وصل للزبون من ${elapsedSince(b.arrivedAt)}`
+                            : b.materialsReadyAt
+                              ? `📦 المواد جاهزة من ${elapsedSince(b.materialsReadyAt)} — انتظر إشارة الليدر`
+                              : '⏳ بانتظار الليدر يجهّز المواد'}
+                          <span className="mt-1 block text-[11px] text-slate-400">
+                            الانطلاق وبدء العمل بيد الليدر — ما تحتاج تضغط شي.
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => openToolsCheck(b, true)}
+                          className="w-full rounded-lg bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                        >
+                          🧰 جردت أدواتي وأدوات السيارة — تم
+                        </button>
+                      </div>
+                      )
                     ) : (
                       <div className="mt-3">
                         <div className="mb-2 rounded-lg bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
@@ -542,6 +600,54 @@ export default function MyTasks() {
             <p className="mt-3 text-[11px] leading-relaxed text-amber-700">
               ⚠ الحجز راح يبقى مؤشّر «منجز بدون فاتورة/تقرير» بتنسيق الحجوزات لين تخلّصهن.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ شغلي الي خلّصته ═══
+          قبل، الحجز يختفي من الشاشة أول ما ينضغط «تم الإنجاز» — فالموظف
+          ما عاد يشوف شغله ولا تفاصيله ولا يعرف باقي عليه ورق لو لا. */}
+      {myDone.length > 0 && (
+        <div className="mt-8">
+          <h3 className="mb-3 font-bold text-brand-800">✅ شغلي المنجز ({myDone.length})</h3>
+          <div className="flex flex-col gap-2">
+            {myDone.map((b) => (
+              <div key={b.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-sm font-semibold text-brand-600">{b.code}</span>
+                  <span className="text-sm font-bold text-slate-700">{b.customer?.name || '—'}</span>
+                  <span className="text-xs text-slate-400">{(b.services?.length ? b.services.map((s) => s.name).join(" + ") : b.service?.name) || "—"}</span>
+                  <span className="mr-auto"><CompletionBadge booking={b} /></span>
+                </div>
+                <div className="mt-2 grid grid-cols-1 gap-1 text-xs text-slate-500 sm:grid-cols-2">
+                  <p>🏁 انتهى: {b.completedAt ? new Date(b.completedAt).toLocaleString('ar-IQ') : '—'}</p>
+                  <p>💰 المستلم: {(b.amountCollected ?? 0).toLocaleString()} د.ع</p>
+                  {b.address && <p className="sm:col-span-2">📍 {b.address}</p>}
+                  {b.completionNotes && <p className="sm:col-span-2">📝 {b.completionNotes}</p>}
+                </div>
+                {/* الورق الباقي — يضل قدامه لين يخلّصه */}
+                {(!b.hasInvoice || !b.hasReport) && amLeaderOf(b) && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {!b.hasInvoice && (
+                      <button
+                        onClick={() => navigate(`/leader-invoices/new?bookingId=${b.id}`)}
+                        className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700"
+                      >
+                        🧾 باقي عليك الفاتورة
+                      </button>
+                    )}
+                    {!b.hasReport && (
+                      <button
+                        onClick={() => navigate(`/work-reports?bookingId=${b.id}`)}
+                        className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700"
+                      >
+                        📝 باقي عليك التقرير
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       )}
