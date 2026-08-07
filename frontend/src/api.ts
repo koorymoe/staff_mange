@@ -2088,6 +2088,146 @@ export interface FinanceSummary {
   totalExpenseValue: number
 }
 
+
+// ═══════════ نظام الطاقة الشمسية ═══════════
+// منقول من نظام Solar Expert الي جان على Google Sheets، ومبني من جديد
+// بالـGo داخل نظامنا.
+
+export type SolarCategory = 'PANEL' | 'INVERTER' | 'BATTERY' | 'BOARD' | 'IRON'
+
+export const SOLAR_CATEGORY_LABELS: Record<SolarCategory, string> = {
+  PANEL: 'لوح شمسي',
+  INVERTER: 'إنفيرتر',
+  BATTERY: 'بطارية',
+  BOARD: 'بورد حماية',
+  IRON: 'حديد وحدادة',
+}
+
+/** مواصفات كل تصنيف — نفس حقول النظام القديم بس بمفاتيح واضحة بدل specA..specK */
+export const SOLAR_SPEC_FIELDS: Record<SolarCategory, string[]> = {
+  PANEL: ['القدرة (W)', 'النوع (Mono/Poly)', 'Vmp (V)', 'Imp (A)', 'Voc (V)', 'Isc (A)', 'الكفاءة %', 'الضمان (سنوات)', 'الأبعاد (mm)', 'الوزن (kg)', 'ضمان الأداء (سنوات)'],
+  INVERTER: ['القدرة (KW)', 'النوع (On/Off/Hybrid)', 'جهد البطارية (V)', 'أقصى شحن (A)', 'عدد MPPT', 'نطاق PV (V)', 'الكفاءة %', 'الضمان (سنوات)', 'جهد الخرج (VAC)', 'درجة الحماية (IP)', 'الاتصال (WiFi/RS485)'],
+  BATTERY: ['السعة (Ah)', 'النوع (LiFePO4/Lead)', 'الجهد (V)', 'أقصى شحن (A)', 'عدد الدورات', 'DOD %', 'الكفاءة %', 'الضمان (سنوات)', 'الأبعاد (mm)', 'الوزن (kg)', 'أقصى تفريغ (A)'],
+  BOARD: ['الأمبير (A)', 'النوع (AC/DC Combo)', 'عدد الفيوزات', 'نوع القاطع (MCB/SPD)', 'الضمان (سنوات)', 'الأبعاد (mm)', 'درجة الحماية (IP)'],
+  IRON: ['نوع الحديد', 'المقاس', 'السماكة (mm)', 'الطول القياسي (متر)', 'الوزن (kg/متر)', 'درجة الجودة', 'نوع الطلاء', 'الاستخدام المقترح'],
+}
+
+export const SOLAR_BRANDS = ['Deye', 'Felicity', 'Growatt', 'Must', 'SRNE', 'منظومات اخرى']
+
+export const SOLAR_WIRING_TYPES = ['DC 4mm²', 'DC 6mm²', 'DC 10mm²', 'AC 2.5mm²', 'AC 4mm²', 'AC 6mm²', 'كابل اتصال']
+
+export const SOLAR_IRON_TYPES = ['زاوية حديد 4x4', 'زاوية حديد 5x5', 'قضبان تسليح 12mm', 'قضبان تسليح 16mm', 'حديد مسطح 5cm', 'حديد مسطح 10cm', 'صاج مجلفن 2mm', 'صاج مجلفن 3mm', 'مسامير وبراغي وصواميل', 'دهانات حماية ضد الصدأ']
+
+export const SOLAR_IRON_UNITS = ['متر', 'قطعة', 'كغ', 'مجموعة']
+
+export interface SolarComponent {
+  id: string
+  name: string
+  category: SolarCategory
+  quantity: number
+  price: number
+  minStock: number
+  specs: Record<string, string>
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SolarWiringLine { type: string; length: number; price: number }
+export interface SolarIronLine { type: string; qty: number; unit: string; price: number }
+
+/** المكوّن الي ما يكفي بالمخزن — missing يعني مو موجود أصلاً، وهذا أخطر */
+export interface SolarShortage {
+  componentId: string
+  name: string
+  required: number
+  available: number
+  missing: boolean
+}
+
+export interface SolarPrice {
+  panels: number; inverters: number; batteries: number; board: number
+  wiring: number; iron: number; install: number; program: number; warranty: number
+  components: number; total: number
+}
+
+export interface SolarSystem {
+  id: string
+  brand: string
+  model: string
+  capacity: string
+  panelId: string | null;    panelQty: number
+  inverterId: string | null; inverterQty: number
+  batteryId: string | null;  batteryQty: number
+  boardId: string | null
+  wiringDetails: SolarWiringLine[] | null
+  wiringTotalCost: number
+  ironDetails: SolarIronLine[] | null
+  ironTotalCost: number
+  installPrice: number
+  programPrice: number
+  warrantyPrice: number
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  panel: SolarComponent | null
+  inverter: SolarComponent | null
+  battery: SolarComponent | null
+  board: SolarComponent | null
+  /** ينحسب من أسعار المخزن الحالية — الكتالوك يعكس سعر اليوم مو سعر يوم كتابته */
+  price: SolarPrice
+  shortages: SolarShortage[]
+}
+
+export interface SolarInstallation {
+  id: string
+  systemId: string
+  customerId: string
+  installDate: string
+  followUpAt: string
+  contactedAt: string | null
+  contactNotes: string | null
+  status: 'PENDING' | 'CONTACTED'
+  totalPrice: number
+  priceBreakdown: SolarPrice | null
+  notes: string | null
+  createdAt: string
+  customer: { id: string; name: string; phone: string | null; location: string | null } | null
+  system: SolarSystem | null
+  contactedByName: string | null
+  dueForFollowUp: boolean
+  daysOverdue: number
+}
+
+export interface SolarStats {
+  systemCount: number
+  componentCount: number
+  inventoryValue: number
+  lowStockCount: number
+  outOfStockCount: number
+  processedCount: number
+  customerCount: number
+  dueFollowUpCount: number
+  contactedCount: number
+  installedThisMonth: number
+  totalWiring: number
+  totalIron: number
+  totalInstall: number
+  totalProgram: number
+}
+
+export interface SaveSolarSystemInput {
+  brand: string; model: string; capacity: string
+  panelId?: string | null; panelQty: number
+  inverterId?: string | null; inverterQty: number
+  batteryId?: string | null; batteryQty: number
+  boardId?: string | null
+  wiringDetails: SolarWiringLine[]
+  ironDetails: SolarIronLine[]
+  installPrice: number; programPrice: number; warrantyPrice: number
+  notes?: string | null
+}
+
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
@@ -2374,6 +2514,38 @@ export const api = {
   // ═══ أرشيف الحجوزات ═══
   // «الحذف» ما يمحي: الحجز يختفي من الحجوزات ومن تنسيق الحجوزات ويجي
   // هنا بسبب حذفه ومنو حذفه — حتى نكدر نجاوب «شكد حجز انلغى وليش؟».
+  // ═══ الطاقة الشمسية ═══
+  getSolarStats: () => request<SolarStats>('/solar/stats'),
+  getSolarLowStock: () => request<SolarComponent[]>('/solar/low-stock'),
+
+  getSolarComponents: (category?: SolarCategory) =>
+    request<SolarComponent[]>(`/solar/components${category ? `?category=${category}` : ''}`),
+  createSolarComponent: (data: Omit<SolarComponent, 'id' | 'createdAt' | 'updatedAt'>) =>
+    request<SolarComponent>('/solar/components', { method: 'POST', body: JSON.stringify(data) }),
+  updateSolarComponent: (id: string, data: Omit<SolarComponent, 'id' | 'createdAt' | 'updatedAt'>) =>
+    request<SolarComponent>(`/solar/components/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSolarComponent: (id: string) =>
+    request<{ ok: boolean }>(`/solar/components/${id}`, { method: 'DELETE' }),
+
+  getSolarSystems: (brand?: string) =>
+    request<SolarSystem[]>(`/solar/systems${brand ? `?brand=${encodeURIComponent(brand)}` : ''}`),
+  getSolarSystem: (id: string) => request<SolarSystem>(`/solar/systems/${id}`),
+  createSolarSystem: (data: SaveSolarSystemInput) =>
+    request<SolarSystem>('/solar/systems', { method: 'POST', body: JSON.stringify(data) }),
+  updateSolarSystem: (id: string, data: SaveSolarSystemInput) =>
+    request<SolarSystem>(`/solar/systems/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteSolarSystem: (id: string) =>
+    request<{ ok: boolean }>(`/solar/systems/${id}`, { method: 'DELETE' }),
+
+  /** تجهيز منظومة لزبون — يخصم مكوّناتها من المخزن. يرمي خطأ لو المخزن ما يكفي. */
+  processSolarSystem: (id: string, data: { customerId?: string; customerName: string; customerPhone: string; customerAddress: string; installDate: string; notes?: string }) =>
+    request<SolarInstallation>(`/solar/systems/${id}/process`, { method: 'POST', body: JSON.stringify(data) }),
+
+  getSolarInstallations: (status?: 'PENDING' | 'CONTACTED') =>
+    request<SolarInstallation[]>(`/solar/installations${status ? `?status=${status}` : ''}`),
+  markSolarContacted: (id: string, notes?: string) =>
+    request<SolarInstallation>(`/solar/installations/${id}/contacted`, { method: 'PUT', body: JSON.stringify({ notes: notes ?? '' }) }),
+
   getArchivedBookings: (limit?: number) =>
     request<Booking[]>(`/bookings/archived${limit ? `?limit=${limit}` : ''}`),
   archiveBooking: (id: string, reason: string) =>
