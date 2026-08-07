@@ -125,6 +125,19 @@ export interface Employee {
   jobTitle: string | null
   division: Division
   attendanceIcon?: string | null
+
+  // ═══ ملف الموارد البشرية ═══
+  // careerStatus تنحسب بالسيرفر من الخبرة والمستوى والتقييم — قاعدة
+  // وحدة للكل، ما تنغيّر لو أحد فتح أدوات المطوّر.
+  department: string | null
+  hireDate: string | null
+  experienceYears: number | null
+  lastReview: string | null
+  careerStatus: string
+  jobLevel: number
+  nextRole: string | null
+  trainingNeeds: string | null
+
   skills: EmployeeSkill[]
   hasRequiredSkill?: boolean
 }
@@ -2228,6 +2241,66 @@ export interface SaveSolarSystemInput {
   notes?: string | null
 }
 
+
+// ═══ برامج التدريب ═══
+export interface SkillWithService {
+  id: string
+  name: string
+  category: string
+  description: string | null
+  serviceId: string | null
+  serviceName: string | null
+}
+
+export interface TrainingParticipant {
+  employeeId: string
+  name: string
+  department: string | null
+  jobTitle: string | null
+  passed: boolean | null
+}
+
+export interface TrainingProgram {
+  id: string
+  name: string
+  level: 'مبتدئ' | 'متوسط' | 'متقدم'
+  durationDays: number
+  startDate: string | null
+  endDate: string | null
+  targetDepartment: string | null
+  instructorId: string | null
+  instructorName: string | null
+  objectives: string | null
+  content: string | null
+  passRate: number
+  cost: number
+  status: 'قيد التخطيط' | 'جاري التنفيذ' | 'مكتمل'
+  progress: number
+  createdAt: string
+  participants: TrainingParticipant[]
+  skills: { skillId: string; name: string; category: string }[]
+}
+
+export interface SaveTrainingProgramInput {
+  name: string
+  level: string
+  durationDays: number
+  startDate: string
+  targetDepartment: string
+  instructorId: string
+  objectives: string
+  content: string
+  passRate: number
+  cost: number
+  status: string
+  progress: number
+  participantIds: string[]
+  skillIds: string[]
+}
+
+export const DEPARTMENTS = ['الفنية', 'المبيعات', 'الصيانة', 'الإدارة', 'المستودع']
+export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحتاج تحسين']
+
 export const api = {
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
@@ -2514,6 +2587,20 @@ export const api = {
   // ═══ أرشيف الحجوزات ═══
   // «الحذف» ما يمحي: الحجز يختفي من الحجوزات ومن تنسيق الحجوزات ويجي
   // هنا بسبب حذفه ومنو حذفه — حتى نكدر نجاوب «شكد حجز انلغى وليش؟».
+  // ═══ برامج التدريب ═══
+  getSkills: () => request<SkillWithService[]>('/skills'),
+  getTrainingPrograms: (status?: string) =>
+    request<TrainingProgram[]>(`/training-programs${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  createTrainingProgram: (data: SaveTrainingProgramInput) =>
+    request<TrainingProgram>('/training-programs', { method: 'POST', body: JSON.stringify(data) }),
+  updateTrainingProgram: (id: string, data: SaveTrainingProgramInput) =>
+    request<TrainingProgram>(`/training-programs/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  /** الإكمال يمنح مهارات البرنامج لكل المشاركين فعلاً */
+  completeTrainingProgram: (id: string) =>
+    request<TrainingProgram>(`/training-programs/${id}/complete`, { method: 'PUT' }),
+  deleteTrainingProgram: (id: string) =>
+    request<{ ok: boolean }>(`/training-programs/${id}`, { method: 'DELETE' }),
+
   // ═══ الطاقة الشمسية ═══
   getSolarStats: () => request<SolarStats>('/solar/stats'),
   getSolarLowStock: () => request<SolarComponent[]>('/solar/low-stock'),
@@ -2659,6 +2746,8 @@ export const api = {
         Employee,
         'role' | 'onDuty' | 'status' | 'name' | 'position' | 'phone' | 'certificate' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
         | 'isLeader' | 'salary' | 'shift' | 'shiftStart' | 'shiftEnd' | 'monthlyLeaves' | 'jobTitle'
+        // ملف الموارد البشرية — careerStatus ما تنرسل: تنحسب بالسيرفر
+        | 'department' | 'hireDate' | 'experienceYears' | 'lastReview' | 'jobLevel' | 'nextRole' | 'trainingNeeds'
       >
     > & {
       username?: string

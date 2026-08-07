@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type Stats } from '../api'
+import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import { useSession } from '../session'
 import AddEmployeeWizard from '../components/AddEmployeeWizard'
 import { openManagerChat } from '../components/openManagerChat'
@@ -564,6 +565,16 @@ export default function Employees() {
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* ملف الموارد البشرية — القسم والخبرة والتقييم، والحالة
+                      الوظيفية تنحسب بالسيرفر مو تنكتب بالإيد */}
+                  {(isAdmin || userPermissions.includes('edit_employee_profile')) && selectedEmployee && (
+                    <EmployeeHRPanel
+                      employee={selectedEmployee}
+                      // selectedEmployee مشتق من القائمة، فتحديثها يحدّثه معاها
+                      onUpdated={(u) => setEmployees((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
+                    />
                   )}
 
                   {!(isAdmin || userPermissions.includes('edit_employee_profile')) && (
