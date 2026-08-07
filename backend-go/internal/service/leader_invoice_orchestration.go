@@ -320,6 +320,45 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	return inv, nil
 }
 
+// SetExternalNumber يربط رقم فاتورة محاسبية بفاتورة معتمدة أصلاً —
+// للفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً.
+func (s *LeaderInvoiceService) SetExternalNumber(id, number string) (*model.LeaderInvoice, error) {
+	number = strings.TrimSpace(number)
+	if number == "" {
+		return nil, fmt.Errorf("اكتب رقم الفاتورة المحاسبية")
+	}
+	inv, err := s.invoices.SetExternalNumber(id, number)
+	if err != nil {
+		if strings.Contains(err.Error(), "leader_invoice_external_number_unique") {
+			return nil, fmt.Errorf("رقم الفاتورة %s مستعمل بفاتورة ثانية — تأكد من الرقم", number)
+		}
+		return nil, err
+	}
+	if inv == nil {
+		return nil, fmt.Errorf("الفاتورة غير موجودة")
+	}
+	return inv, nil
+}
+
+// AdjustAmounts يعدّل مبالغ الفاتورة — للمحاسب. السبب إجباري: التعديل
+// على مبلغ ما يصير يمر بلا تفسير مكتوب.
+func (s *LeaderInvoiceService) AdjustAmounts(id string, req model.AdjustLeaderInvoiceRequest) (*model.LeaderInvoice, error) {
+	if strings.TrimSpace(req.Reason) == "" {
+		return nil, fmt.Errorf("سبب التعديل مطلوب")
+	}
+	if req.ExecutionCost < 0 || req.MaterialsTotal < 0 || req.DiscountValue < 0 {
+		return nil, fmt.Errorf("المبالغ ما تصير بالسالب")
+	}
+	inv, err := s.invoices.AdjustAmounts(id, req.ExecutionCost, req.MaterialsTotal, req.DiscountValue, strings.TrimSpace(req.Reason))
+	if err != nil {
+		return nil, err
+	}
+	if inv == nil {
+		return nil, fmt.Errorf("الفاتورة غير موجودة")
+	}
+	return inv, nil
+}
+
 // FindByExternalNumber يدوّر فاتورة برقم المحاسب.
 func (s *LeaderInvoiceService) FindByExternalNumber(number string) (*model.LeaderInvoice, error) {
 	number = strings.TrimSpace(number)

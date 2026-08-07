@@ -461,3 +461,53 @@ func (r *LeaderInvoiceRepository) FindByExternalNumber(number string) (*model.Le
 	}
 	return &inv, nil
 }
+
+// SetExternalNumber يربط رقم الفاتورة المحاسبية بفاتورة معتمدة أصلاً —
+// للفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً.
+func (r *LeaderInvoiceRepository) SetExternalNumber(id, number string) (*model.LeaderInvoice, error) {
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `
+		UPDATE "LeaderInvoice"
+		SET "externalInvoiceNumber" = $2, "externalInvoiceAt" = CURRENT_TIMESTAMP
+		WHERE id = $1
+		RETURNING *
+	`, id, number)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+// AdjustAmounts يعدّل مبالغ الفاتورة — للمحاسب حصراً.
+// تقدير الإداري يطلع غلط أحياناً والفاتورة الي بيد الليدر هي الصح،
+// فالمحاسب لازم يكدر يطابق. نخزن سبب التعديل حتى يبقى أثر.
+func (r *LeaderInvoiceRepository) AdjustAmounts(id string, executionCost, materialsTotal, discountValue float64, reason string) (*model.LeaderInvoice, error) {
+	net := executionCost + materialsTotal - discountValue
+	if net < 0 {
+		net = 0
+	}
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `
+		UPDATE "LeaderInvoice"
+		SET "executionCost" = $2, "materialsTotal" = $3, "discountValue" = $4, "netTotal" = $5,
+		    "adjustedReason" = $6, "adjustedAt" = CURRENT_TIMESTAMP
+		WHERE id = $1
+		RETURNING *
+	`, id, executionCost, materialsTotal, discountValue, net, reason)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}

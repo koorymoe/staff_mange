@@ -1246,5 +1246,19 @@ func inventoryFeaturesVersionedMigrations() []Migration {
 					ON "LeaderInvoice" ("externalInvoiceNumber");
 			`,
 		},
+		{
+			// ═══ المحاسب يعدّل مبالغ فاتورة الليدر ═══
+			// تقدير الإداري يطلع غلط أحياناً، والفاتورة الي بيد الليدر هي
+			// الصح. بدون تعديل، المبلغ الواصل ما يتطابق ويّا الفاتورة
+			// ويبقى فرق معلّق بالحسابات بلا حل.
+			// نخزن السبب ووقت التعديل حتى يبقى أثر — التعديل على مبلغ
+			// ما يصير يمر بلا تفسير.
+			Version: "0201_leader_invoice_adjust",
+			SQL: `
+				ALTER TABLE "LeaderInvoice"
+					ADD COLUMN IF NOT EXISTS "adjustedReason" TEXT,
+					ADD COLUMN IF NOT EXISTS "adjustedAt" TIMESTAMPTZ;
+			`,
+		},
 	}
 }

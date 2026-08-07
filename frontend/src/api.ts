@@ -928,6 +928,8 @@ export interface LeaderInvoice {
   // وقت الاعتماد، ومؤرشف حتى يلكاها بيه لمن يحتاجها.
   externalInvoiceNumber: string | null
   externalInvoiceAt: string | null
+  adjustedReason: string | null
+  adjustedAt: string | null
   employeeName?: string
   employeeRole?: string
   employeePhone?: string | null
@@ -2622,6 +2624,14 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ externalInvoiceNumber }),
     }),
+  // ربط رقم فاتورة محاسبية بفاتورة معتمدة أصلاً (الفواتير القديمة)
+  setInvoiceExternalNumber: (id: string, externalInvoiceNumber: string) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/external-number`, {
+      method: 'PUT', body: JSON.stringify({ externalInvoiceNumber }),
+    }),
+  // تعديل المحاسب على مبالغ الفاتورة — السبب إجباري
+  adjustLeaderInvoice: (id: string, data: { executionCost: number; materialsTotal: number; discountValue: number; reason: string }) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/adjust`, { method: 'PUT', body: JSON.stringify(data) }),
   // البحث برقم فاتورة المحاسب — سبب أرشفة الرقم أصلاً
   findInvoiceByNumber: (number: string) =>
     request<LeaderInvoice>(`/leader-invoices/by-number?number=${encodeURIComponent(number)}`),

@@ -20,6 +20,79 @@ export default function LeaderInvoicesListPage() {
   const [invoiceNo, setInvoiceNo] = useState('')
   const [approveErr, setApproveErr] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  // ═══ ترتيب شاشة المحاسب ═══
+  // الشاشة جانت جدول واحد طويل فيه كل شي مخلوط: المعتمد وغير المعتمد،
+  // والمربوط برقم وغير المربوط. المحاسب يدوّر بعينه. هسه تبويبات
+  // تحصر شغله بالي محتاجه، وبطاقات فوق تكله بالأرقام وين الشغل.
+  const [tab, setTab] = useState<'PENDING' | 'NO_NUMBER' | 'APPROVED' | 'ALL'>('PENDING')
+  // ربط رقم لفاتورة معتمدة قبل ما يصير الرقم إجبارياً
+  const [linkFor, setLinkFor] = useState<LeaderInvoice | null>(null)
+  const [linkNo, setLinkNo] = useState('')
+  const [linkErr, setLinkErr] = useState<string | null>(null)
+  // تعديل المحاسب على المبالغ
+  const [adjustFor, setAdjustFor] = useState<LeaderInvoice | null>(null)
+  const [adj, setAdj] = useState({ executionCost: '', materialsTotal: '', discountValue: '', reason: '' })
+  const [adjErr, setAdjErr] = useState<string | null>(null)
+
+  const linkNumber = async () => {
+    if (!linkFor || !linkNo.trim()) return
+    setBusyId(linkFor.id); setLinkErr(null)
+    try {
+      await api.setInvoiceExternalNumber(linkFor.id, linkNo.trim())
+      setLinkFor(null); setLinkNo(''); load()
+    } catch (e) {
+      setLinkErr(e instanceof Error ? e.message : 'تعذر ربط الرقم')
+    } finally { setBusyId(null) }
+  }
+
+  const openAdjust = (inv: LeaderInvoice) => {
+    setAdjustFor(inv)
+    setAdjErr(null)
+    setAdj({
+      executionCost: String(inv.executionCost),
+      materialsTotal: String(inv.materialsTotal),
+      discountValue: String(inv.discountValue),
+      reason: '',
+    })
+  }
+  const adjNet = Math.max(0, (Number(adj.executionCost) || 0) + (Number(adj.materialsTotal) || 0) - (Number(adj.discountValue) || 0))
+  const saveAdjust = async () => {
+    if (!adjustFor || !adj.reason.trim()) return
+    setBusyId(adjustFor.id); setAdjErr(null)
+    try {
+      await api.adjustLeaderInvoice(adjustFor.id, {
+        executionCost: Number(adj.executionCost) || 0,
+        materialsTotal: Number(adj.materialsTotal) || 0,
+        discountValue: Number(adj.discountValue) || 0,
+        reason: adj.reason.trim(),
+      })
+      setAdjustFor(null); load()
+    } catch (e) {
+      setAdjErr(e instanceof Error ? e.message : 'تعذر حفظ التعديل')
+    } finally { setBusyId(null) }
+  }
+
+  // الفلترة: تبويب + بحث
+  const matchesSearch = (inv: LeaderInvoice) => {
+    const q = search.trim().toLowerCase()
+    if (!q) return true
+    return [inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName]
+      .some((v) => (v || '').toString().toLowerCase().includes(q))
+  }
+  const inTab = (inv: LeaderInvoice) => {
+    if (tab === 'ALL') return true
+    if (tab === 'PENDING') return inv.status !== 'APPROVED'
+    if (tab === 'APPROVED') return inv.status === 'APPROVED'
+    return inv.status === 'APPROVED' && !inv.externalInvoiceNumber
+  }
+  const shown = invoices.filter((i) => inTab(i) && matchesSearch(i))
+  const counts = {
+    PENDING: invoices.filter((i) => i.status !== 'APPROVED').length,
+    NO_NUMBER: invoices.filter((i) => i.status === 'APPROVED' && !i.externalInvoiceNumber).length,
+    APPROVED: invoices.filter((i) => i.status === 'APPROVED').length,
+    ALL: invoices.length,
+  }
+  const sumShown = shown.reduce((t, i) => t + i.netTotal, 0)
   const [details, setDetails] = useState<LeaderInvoice | null>(null)
 
   const load = () => { api.getLeaderInvoices().then(setInvoices).finally(() => setLoading(false)) }
@@ -45,6 +118,38 @@ export default function LeaderInvoicesListPage() {
     <div>
       <h2 className="text-2xl font-bold text-brand-900">فواتير الليدر</h2>
       <p className="mt-1 text-slate-500">كل فواتير التنفيذ التي أنشأها الليدرز عبر النظام.</p>
+
+      {/* التبويبات: كل تبويب شغلة وحدة يشتغلها المحاسب */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        {([
+          { k: 'PENDING' as const, t: '⏳ بانتظار الاعتماد', c: counts.PENDING },
+          { k: 'NO_NUMBER' as const, t: '🔗 معتمدة بلا رقم فاتورة', c: counts.NO_NUMBER },
+          { k: 'APPROVED' as const, t: '✔ معتمدة', c: counts.APPROVED },
+          { k: 'ALL' as const, t: 'الكل', c: counts.ALL },
+        ]).map((o) => (
+          <button
+            key={o.k}
+            onClick={() => setTab(o.k)}
+            className={`rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
+              tab === o.k
+                ? 'border-brand-500 bg-brand-50 text-brand-800'
+                : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+            }`}
+          >
+            {o.t} <span className="text-xs">({o.c})</span>
+          </button>
+        ))}
+      </div>
+
+      <div className="mt-3 rounded-xl border border-white bg-white px-4 py-3 text-sm shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+        المعروض: <b className="text-brand-800">{shown.length}</b> فاتورة ·
+        مجموعها: <b className="text-brand-800">{sumShown.toLocaleString()} د.ع</b>
+        {counts.NO_NUMBER > 0 && tab !== 'NO_NUMBER' && (
+          <span className="mr-3 text-amber-700">
+            ⚠ أكو {counts.NO_NUMBER} فاتورة معتمدة بلا رقم فاتورة محاسبية
+          </span>
+        )}
+      </div>
 
       {/* البحث برقم فاتورة المحاسب — هذا سبب أرشفة الرقم: يلكاها بيه */}
       <input
@@ -75,14 +180,7 @@ export default function LeaderInvoicesListPage() {
               </tr>
             </thead>
             <tbody>
-              {invoices
-                .filter((inv) => {
-                  const q = search.trim().toLowerCase()
-                  if (!q) return true
-                  return [inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName]
-                    .some((v) => (v || '').toString().toLowerCase().includes(q))
-                })
-                .map((inv) => (
+              {shown.map((inv) => (
                 <tr key={inv.id} className="border-b border-slate-50 last:border-0">
                   <td className="px-4 py-3 font-mono text-brand-700">{inv.accountingCode}</td>
                   <td className="px-4 py-3">
@@ -126,6 +224,27 @@ export default function LeaderInvoicesListPage() {
                           {busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
                         </button>
                       )}
+                      {/* الفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً —
+                          المحاسب يربطها بأرقامها بأثر رجعي */}
+                      {canApprove && inv.status === 'APPROVED' && !inv.externalInvoiceNumber && (
+                        <button
+                          onClick={() => { setLinkFor(inv); setLinkNo(''); setLinkErr(null) }}
+                          disabled={busyId === inv.id}
+                          className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-600 disabled:opacity-50"
+                        >
+                          🔗 اربط رقم فاتورة
+                        </button>
+                      )}
+                      {/* تقدير الإداري يطلع غلط أحياناً والفاتورة هي الصح */}
+                      {canApprove && (
+                        <button
+                          onClick={() => openAdjust(inv)}
+                          disabled={busyId === inv.id}
+                          className="rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-50 disabled:opacity-50"
+                        >
+                          ✏️ تعديل المبالغ
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -143,6 +262,114 @@ export default function LeaderInvoicesListPage() {
       )}
 
       {/* تفاصيل الفاتورة — كل الي يحتاجه المحاسب بمكان واحد */}
+      {/* ═══ ربط رقم فاتورة بفاتورة معتمدة أصلاً ═══ */}
+      {linkFor && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-[#0f2040]">🔗 ربط رقم الفاتورة المحاسبية</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              هاي فاتورة انعتمدت قبل ما يصير الرقم إجبارياً — اربطها برقمها حتى يكتمل الأرشيف.
+              <br />كود المحاسبة: <span className="font-mono font-bold text-brand-700">{linkFor.accountingCode}</span>
+              {' · '}المجموع: <b>{linkFor.netTotal.toLocaleString()} د.ع</b>
+            </p>
+            <input
+              value={linkNo}
+              onChange={(e) => setLinkNo(e.target.value)}
+              autoFocus
+              placeholder="رقم الفاتورة الصادر من نظام المحاسبة"
+              className="mt-3 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500"
+            />
+            {linkErr && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{linkErr}</p>}
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={linkNumber}
+                disabled={!linkNo.trim() || busyId === linkFor.id}
+                className="flex-1 rounded-xl bg-gradient-to-l from-amber-500 to-amber-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {busyId === linkFor.id ? 'جاري الربط...' : 'اربط الرقم'}
+              </button>
+              <button onClick={() => setLinkFor(null)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">
+                رجوع
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ تعديل المحاسب على المبالغ ═══ */}
+      {adjustFor && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto bg-black/40 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-[#0f2040]">✏️ تعديل مبالغ الفاتورة</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              كود المحاسبة: <span className="font-mono font-bold text-brand-700">{adjustFor.accountingCode}</span>
+              {adjustFor.booking && (
+                <> · المستلم بالحجز: <b>{(adjustFor.booking.amountCollected ?? 0).toLocaleString()} د.ع</b></>
+              )}
+            </p>
+
+            <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              {([
+                { k: 'executionCost' as const, l: 'تكاليف التنفيذ' },
+                { k: 'materialsTotal' as const, l: 'مجموع المواد' },
+                { k: 'discountValue' as const, l: 'الخصم' },
+              ]).map((f) => (
+                <div key={f.k}>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">{f.l}</label>
+                  <input
+                    type="number"
+                    value={adj[f.k]}
+                    onChange={(e) => setAdj((p) => ({ ...p, [f.k]: e.target.value }))}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                  />
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm">
+              المجموع الصافي الجديد: <b className="text-brand-800">{adjNet.toLocaleString()} د.ع</b>
+              <span className="text-xs text-slate-400"> (كان {adjustFor.netTotal.toLocaleString()})</span>
+              {adjustFor.booking && (
+                <div className={`mt-1 text-xs font-bold ${
+                  adjNet === (adjustFor.booking.amountCollected ?? 0) ? 'text-emerald-600' : 'text-amber-700'
+                }`}>
+                  {adjNet === (adjustFor.booking.amountCollected ?? 0)
+                    ? '✔ مطابق للمبلغ الواصل'
+                    : `الفرق عن المبلغ الواصل: ${Math.abs(adjNet - (adjustFor.booking.amountCollected ?? 0)).toLocaleString()} د.ع`}
+                </div>
+              )}
+            </div>
+
+            <label className="mt-3 block text-sm font-medium text-slate-600">
+              سبب التعديل <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={adj.reason}
+              onChange={(e) => setAdj((p) => ({ ...p, reason: e.target.value }))}
+              rows={2}
+              placeholder="مثال: تقدير الإداري جان غلط، والمعتمد فاتورة الليدر"
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+            <p className="mt-1 text-[11px] text-slate-500">السبب ينحفظ مع الفاتورة — التعديل على مبلغ ما يمر بلا تفسير.</p>
+
+            {adjErr && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{adjErr}</p>}
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={saveAdjust}
+                disabled={!adj.reason.trim() || busyId === adjustFor.id}
+                className="flex-1 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {busyId === adjustFor.id ? 'جاري الحفظ...' : 'حفظ التعديل'}
+              </button>
+              <button onClick={() => setAdjustFor(null)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">
+                رجوع
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ الاعتماد يمر برقم الفاتورة المحاسبية ═══ */}
       {approveFor && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
@@ -211,6 +438,11 @@ export default function LeaderInvoicesListPage() {
                 <p>التاريخ: {new Date(details.createdAt).toLocaleString('ar-IQ')}</p>
                 <p>الحالة: {details.status === 'APPROVED' ? '✔ معتمدة' : 'بانتظار الاعتماد'}</p>
                 {details.approvedByName && <p>اعتمدها: <b>{details.approvedByName}</b></p>}
+                {details.adjustedReason && (
+                  <p className="col-span-2 rounded-lg bg-amber-50 px-2 py-1 text-amber-800">
+                    ✏️ عدّل المحاسب المبالغ: {details.adjustedReason}
+                  </p>
+                )}
                 {details.externalInvoiceNumber && (
                   <p className="col-span-2">
                     رقم الفاتورة المحاسبية: <b className="font-mono text-emerald-700">{details.externalInvoiceNumber}</b>

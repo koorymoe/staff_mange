@@ -183,3 +183,31 @@ func (h *LeaderInvoiceHandler) FindByExternalNumber(w http.ResponseWriter, r *ht
 	}
 	WriteJSON(w, http.StatusOK, inv)
 }
+
+// PUT /api/leader-invoices/{id}/external-number — ربط رقم فاتورة
+// محاسبية بفاتورة معتمدة أصلاً (الفواتير القديمة).
+func (h *LeaderInvoiceHandler) SetExternalNumber(w http.ResponseWriter, r *http.Request) {
+	var req model.SetExternalNumberRequest
+	_ = json.NewDecoder(r.Body).Decode(&req)
+	inv, err := h.service.SetExternalNumber(r.PathValue("id"), req.ExternalInvoiceNumber)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}
+
+// PUT /api/leader-invoices/{id}/adjust — تعديل المحاسب على المبالغ.
+func (h *LeaderInvoiceHandler) Adjust(w http.ResponseWriter, r *http.Request) {
+	var req model.AdjustLeaderInvoiceRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
+		return
+	}
+	inv, err := h.service.AdjustAmounts(r.PathValue("id"), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}

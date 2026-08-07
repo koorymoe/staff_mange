@@ -79,6 +79,9 @@ type LeaderInvoice struct {
 	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
 	ExternalInvoiceNumber *string    `db:"externalInvoiceNumber" json:"externalInvoiceNumber"`
 	ExternalInvoiceAt     *time.Time `db:"externalInvoiceAt" json:"externalInvoiceAt"`
+	// تعديل المحاسب على المبالغ: سببه ووقته. ⚠️ أعمدة بالجدول.
+	AdjustedReason *string    `db:"adjustedReason" json:"adjustedReason"`
+	AdjustedAt     *time.Time `db:"adjustedAt" json:"adjustedAt"`
 
 	// تفاصيل يحتاجها المحاسب: منو الليدر الي رفعها، ومنو اعتمدها،
 	// وأي حجز تخص. تنعبّى بالتهيئة مو من الجدول.
@@ -250,4 +253,17 @@ func GenerateAccountingCode(invoiceID string, createdAt time.Time) string {
 // المحاسبية إجباري.
 type ApproveLeaderInvoiceRequest struct {
 	ExternalInvoiceNumber string `json:"externalInvoiceNumber"`
+}
+
+// SetExternalNumberRequest ربط رقم فاتورة محاسبية بفاتورة معتمدة أصلاً.
+type SetExternalNumberRequest struct {
+	ExternalInvoiceNumber string `json:"externalInvoiceNumber"`
+}
+
+// AdjustLeaderInvoiceRequest تعديل المحاسب على مبالغ الفاتورة.
+type AdjustLeaderInvoiceRequest struct {
+	ExecutionCost  float64 `json:"executionCost"`
+	MaterialsTotal float64 `json:"materialsTotal"`
+	DiscountValue  float64 `json:"discountValue"`
+	Reason         string  `json:"reason"`
 }

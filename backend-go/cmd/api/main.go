@@ -1101,6 +1101,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// "by-number" معرّف فاتورة
 	mux.Handle("GET /api/leader-invoices/by-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FindByExternalNumber), requireAuth, requireLeaderBasket))
 	mux.Handle("PUT /api/leader-invoices/{id}/approve", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Approve), requireAuth, requireFinance))
+	// ربط رقم فاتورة محاسبية بفاتورة معتمدة أصلاً، وتعديل المبالغ —
+	// الاثنين للمحاسب/المدير حصراً
+	mux.Handle("PUT /api/leader-invoices/{id}/external-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetExternalNumber), requireAuth, requireFinance))
+	mux.Handle("PUT /api/leader-invoices/{id}/adjust", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjust), requireAuth, requireFinance))
 
 	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER
 	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).
