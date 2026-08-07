@@ -458,6 +458,25 @@ export type CompletionState =
 export interface Booking {
   id: string
   code: string
+
+  // ═══ الأرشفة ═══ الحجز «المحذوف» ما يروح: يختفي من الشاشات ويضل
+  // بالأرشيف بسبب حذفه ومنو حذفه.
+  archivedAt: string | null
+  archivedById: string | null
+  archiveReason: string | null
+
+  // ═══ في الانتظار ═══ عدد المحاولات يفرّق بين زبون ما رد مرة وزبون
+  // ما رد خمس مرات — الثاني قرار مو انتظار.
+  waitingSince: string | null
+  waitingNote: string | null
+  contactAttempts: number
+  lastContactAttemptAt: string | null
+
+  // ═══ التأجيل ═══ حجز تأجل أربع مرات علامة على شي غلط ولازم ينشاف.
+  postponeCount: number
+  lastPostponedAt: string | null
+  postponeReason: string | null
+
   workStoppedAt: string | null
   workStopReason: string | null
   hasInvoice: boolean
@@ -468,7 +487,7 @@ export interface Booking {
   // نهاية المدى المتفق عليه مع الزبون (ساعة بعد البداية) — الموعد
   // ينحكى للزبون «من ... إلى ...» مو وقت واحد.
   scheduledEndAt: string | null
-  scheduleLogs: { id: string; changedById: string; changedBy: { id: string; name: string; role: string }; oldTime: string | null; newTime: string; createdAt: string }[]
+  scheduleLogs: { id: string; changedById: string; changedBy: { id: string; name: string; role: string }; oldTime: string | null; newTime: string; kind: string; reason: string | null; createdAt: string }[]
   materialsReadyAt: string | null
   materialsReadyBy: { id: string; name: string } | null
   responseMinutes: number | null
@@ -498,7 +517,9 @@ export interface Booking {
   notes: string | null
   vehicleType: string | null
   priority: 'NORMAL' | 'URGENT'
-  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED'
+  // WAITING: اتصلنا بالزبون بعد التثبيت وما رد — الحجز ينزاح من طابور
+  // الشغل ويضل محفوظ لحد ما يرد.
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'WAITING'
   transferToProjects: boolean
   confirmedByName: string | null
   adminNotes: string | null
@@ -2350,6 +2371,27 @@ export const api = {
 
   // assignedTo: 'me' يرجّع مهام الموظف الحالي بس — الفلترة بقاعدة
   // البيانات بدل ما ننزّل كل حجوزات الشركة ونفلترها بالمتصفح.
+  // ═══ أرشيف الحجوزات ═══
+  // «الحذف» ما يمحي: الحجز يختفي من الحجوزات ومن تنسيق الحجوزات ويجي
+  // هنا بسبب حذفه ومنو حذفه — حتى نكدر نجاوب «شكد حجز انلغى وليش؟».
+  getArchivedBookings: (limit?: number) =>
+    request<Booking[]>(`/bookings/archived${limit ? `?limit=${limit}` : ''}`),
+  archiveBooking: (id: string, reason: string) =>
+    request<Booking>(`/bookings/${id}`, { method: 'DELETE', body: JSON.stringify({ reason }) }),
+  restoreBooking: (id: string) =>
+    request<Booking>(`/bookings/${id}/restore`, { method: 'PUT' }),
+
+  /** تأجيل الموعد بطلب الزبون — السبب إجباري وينعد بعدد التأجيلات */
+  postponeBooking: (id: string, scheduledAt: string, reason: string) =>
+    request<Booking>(`/bookings/${id}/postpone`, { method: 'PUT', body: JSON.stringify({ scheduledAt, reason }) }),
+
+  /** اتصلنا بالزبون وما رد — الحجز ينزاح من طابور الشغل ويضل محفوظ */
+  markBookingWaiting: (id: string, note?: string) =>
+    request<Booking>(`/bookings/${id}/waiting`, { method: 'PUT', body: JSON.stringify({ note: note ?? '' }) }),
+  /** الزبون رد — يرجع للطابور، وعدد المحاولات يبقى مسجّل */
+  resumeBooking: (id: string) =>
+    request<Booking>(`/bookings/${id}/resume`, { method: 'PUT' }),
+
   getBookings: (params?: { status?: Booking['status'] | Booking['status'][]; customerId?: string; date?: string; assignedTo?: 'me'; limit?: number }) => {
     const query = new URLSearchParams()
     if (params?.assignedTo) query.set('assignedTo', params.assignedTo)

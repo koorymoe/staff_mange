@@ -19,6 +19,7 @@ const QualityFollowUpsPage = lazy(() => import('./pages/QualityFollowUpsPage'))
 const SecurityDashboardPage = lazy(() => import('./pages/SecurityDashboardPage'))
 const AssistantConversationsPage = lazy(() => import('./pages/AssistantConversationsPage'))
 const Coordinator = lazy(() => import('./pages/Coordinator'))
+const BookingsArchive = lazy(() => import('./pages/BookingsArchive'))
 const BookingsList = lazy(() => import('./pages/BookingsList'))
 const MyTasks = lazy(() => import('./pages/MyTasks'))
 const MyRanking = lazy(() => import('./pages/MyRanking'))
@@ -121,6 +122,7 @@ function App() {
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
+          <Route path="bookings-archive" element={<BookingsArchive />} />
           <Route path="bookings" element={<BookingsList />} />
           <Route path="my-tasks" element={<MyTasks />} />
           <Route path="my-ranking" element={<MyRanking />} />

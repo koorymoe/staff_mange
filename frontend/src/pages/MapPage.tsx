@@ -7,12 +7,14 @@ import 'leaflet/dist/leaflet.css'
 
 const KARBALA: [number, number] = [32.6160, 44.0249]
 
-const MARKER_COLORS = {
+const MARKER_COLORS: Record<string, string> = {
   PENDING: '#f59e0b',
   CONFIRMED: '#3b82f6',
   IN_PROGRESS: '#8b5cf6',
   COMPLETED: '#10b981',
   CANCELLED: '#ef4444',
+  // اتصلنا بالزبون وما رد — الحجز محفوظ بس مو بطابور الشغل
+  WAITING: '#64748b',
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -21,6 +23,7 @@ const STATUS_LABELS: Record<string, string> = {
   IN_PROGRESS: 'جاري التنفيذ',
   COMPLETED: 'مكتمل',
   CANCELLED: 'ملغي',
+  WAITING: 'في الانتظار',
 }
 
 function createMarkerIcon(color: string, isSelected = false) {

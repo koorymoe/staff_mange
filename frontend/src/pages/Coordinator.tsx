@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
+import BookingLifecycleActions from '../components/BookingLifecycleActions'
 import { formatScheduleWindow } from '../utils/schedule'
 import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
 
@@ -34,6 +35,8 @@ const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
 
 export default function Coordinator() {
   const { employee: currentUser } = useSession()
+  // الحذف (الأرشفة) قرار إداري — المنسّق يأجّل ويحط بالانتظار، بس ما يحذف
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER'
   const [bookings, setBookings] = useState<Booking[]>([])
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
   // الحجز الي قيد التثبيت حالياً — الأزرار كانت بلا أي إشارة انتظار، فالمستخدم
@@ -153,7 +156,9 @@ export default function Coordinator() {
       // نجيب الحجوزات الفعّالة بس (قيد التنسيق) لا كل الأرشيف التاريخي — هذي الصفحة
       // ما تستخدم إطلاقاً حجوزات IN_PROGRESS/COMPLETED/CANCELLED، وجلبها كلها كان يبطّئ
       // الصفحة كثير مع تراكم آلاف الحجوزات القديمة.
-      .getBookings({ status: ['PENDING', 'CONFIRMED'] })
+      // WAITING بعد: الزبون ما رد، والحجز لازم يضل مرئي للمنسّق حتى
+      // يعاود الاتصال — لو ما جبناه صار يختفي بلا ما ينحل.
+      .getBookings({ status: ['PENDING', 'CONFIRMED', 'WAITING'] })
       .then((data) => {
         setBookings(data)
         const candidates = data.filter((b) => b.status === 'CONFIRMED' && !b.transferToProjects)
@@ -707,6 +712,13 @@ export default function Coordinator() {
                 <BookingEditPanel
                   booking={booking}
                   onSaved={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
+                />
+
+                {/* قرارات الزبون: أجّل، ما رد، ألغى */}
+                <BookingLifecycleActions
+                  booking={booking}
+                  canArchive={isAdmin}
+                  onChanged={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
                 />
 
                 <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
