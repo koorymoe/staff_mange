@@ -474,6 +474,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	mux.Handle("PUT /api/bookings/{id}/schedule", middleware.Chain(http.HandlerFunc(bookingHandler.Schedule), requireAuth, requireBookingParty))
 	mux.Handle("GET /api/bookings/{id}/schedule-log", middleware.Chain(http.HandlerFunc(bookingHandler.ScheduleLog), requireAuth))
+
+	// ═══ أرشيف الحجوزات وتأجيلها وانتظار رد الزبون ═══
+	// الأرشيف للي عنده صلاحية تنسيق أو إدارة — هو سجل قرارات الإلغاء.
+	mux.Handle("GET /api/bookings/archived", middleware.Chain(http.HandlerFunc(bookingHandler.ListArchived), requireAuth, requireCoordinator))
+	// الحذف صار أرشفة: الحجز يختفي من الشاشات ويضل بالأرشيف بسببه
+	mux.Handle("DELETE /api/bookings/{id}", middleware.Chain(http.HandlerFunc(bookingHandler.ArchiveBooking), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/bookings/{id}/restore", middleware.Chain(http.HandlerFunc(bookingHandler.RestoreBooking), requireAuth, requireAdmin))
+	// التأجيل والانتظار شغل المنسّق — هو الي يتصل بالزبون
+	mux.Handle("PUT /api/bookings/{id}/postpone", middleware.Chain(http.HandlerFunc(bookingHandler.Postpone), requireAuth, requireCoordinator))
+	mux.Handle("PUT /api/bookings/{id}/waiting", middleware.Chain(http.HandlerFunc(bookingHandler.MarkWaiting), requireAuth, requireCoordinator))
+	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth, requireBookingParty))

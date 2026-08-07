@@ -94,20 +94,25 @@ func (r *BookingDeleteRequestRepository) Decide(id string, approve bool, note *s
 	}
 
 	if approve {
-		if _, err := tx.Exec(`DELETE FROM "Booking" WHERE id = $1`, bookingID); err != nil {
-			return nil, fmt.Errorf("تعذر حذف الحجز — يمكن مرتبط بسجلات ثانية")
+		// أرشفة مو محو. المحو كان يشيل الحجز وكل تاريخه للأبد — وحتى
+		// طلب الحذف نفسه (منو طلبه وليش ومنو وافق) ينمحي معاه
+		// بالـCASCADE، فما يبقى ولا دليل على القرار.
+		//
+		// هسه الحجز يختفي من الحجوزات ومن تنسيق الحجوزات، ويضل بالأرشيف
+		// بسبب حذفه ومنو حذفه — نقدر نجاوب «شكد حجز انلغى الشهر هذا
+		// وليش» بدل ما نخمّن.
+		if _, err := tx.Exec(`
+			UPDATE "Booking"
+			SET "archivedAt" = now(), "archivedById" = $2,
+			    "archiveReason" = COALESCE(
+			        (SELECT reason FROM "BookingDeleteRequest" WHERE id = $3), 'حذف بموافقة الإدارة')
+			WHERE id = $1 AND "archivedAt" IS NULL`, bookingID, byID, id); err != nil {
+			return nil, fmt.Errorf("تعذر أرشفة الحجز")
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
 		return nil, err
-	}
-	// بعد الحذف الصف ينشال بالـCASCADE، فما نكدر نقرأ الطلب من جديد
-	if approve {
-		return &model.BookingDeleteRequest{
-			ID: id, BookingID: bookingID, Status: status,
-			StatusLabel: model.BookingDeleteStatusLabels[status],
-		}, nil
 	}
 	return r.Get(id)
 }

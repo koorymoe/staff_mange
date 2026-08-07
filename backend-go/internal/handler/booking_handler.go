@@ -329,3 +329,87 @@ func (h *BookingHandler) Verify(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, booking)
 }
+
+// ═══ الأرشيف والتأجيل والانتظار ═══
+
+// GET /api/bookings/archived
+func (h *BookingHandler) ListArchived(w http.ResponseWriter, r *http.Request) {
+	limit := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 {
+			limit = n
+		}
+	}
+	rows, err := h.service.ListArchived(limit)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب أرشيف الحجوزات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// DELETE /api/bookings/{id} — حذف من الشاشات، حفظ بالأرشيف
+func (h *BookingHandler) ArchiveBooking(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Reason string `json:"reason"`
+	}
+	_ = DecodeJSON(r, &body)
+	b, err := h.service.Archive(r.PathValue("id"), middleware.EmployeeIDFromContext(r), body.Reason)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
+// PUT /api/bookings/{id}/restore
+func (h *BookingHandler) RestoreBooking(w http.ResponseWriter, r *http.Request) {
+	b, err := h.service.Restore(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
+// PUT /api/bookings/{id}/postpone
+func (h *BookingHandler) Postpone(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		ScheduledAt string `json:"scheduledAt"`
+		Reason      string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات التأجيل غير صحيحة")
+		return
+	}
+	b, err := h.service.Postpone(r.PathValue("id"), body.ScheduledAt, body.Reason, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
+// PUT /api/bookings/{id}/waiting — الزبون ما رد
+func (h *BookingHandler) MarkWaiting(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Note string `json:"note"`
+	}
+	_ = DecodeJSON(r, &body)
+	b, err := h.service.MarkWaiting(r.PathValue("id"), body.Note, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
+// PUT /api/bookings/{id}/resume — الزبون رد، يرجع للطابور
+func (h *BookingHandler) ResumeFromWaiting(w http.ResponseWriter, r *http.Request) {
+	b, err := h.service.ResumeFromWaiting(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}

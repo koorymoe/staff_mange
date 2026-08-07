@@ -68,6 +68,33 @@ type Booking struct {
 	WorkStopReason  *string    `db:"workStopReason" json:"workStopReason"`
 	WorkStoppedByID *string    `db:"workStoppedById" json:"workStoppedById"`
 
+	// ═══ الأرشفة ═══
+	// الحجز المحذوف ما يروح: يختفي من الحجوزات ومن تنسيق الحجوزات ويضل
+	// بالأرشيف بسبب حذفه ومنو حذفه. قبل كان DELETE حقيقي — الحجز وسببه
+	// ومنو وافق على حذفه كلهم ينمحون سوه ولا يبقى أثر.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	ArchivedAt    *time.Time `db:"archivedAt" json:"archivedAt"`
+	ArchivedByID  *string    `db:"archivedById" json:"archivedById"`
+	ArchiveReason *string    `db:"archiveReason" json:"archiveReason"`
+
+	// ═══ في الانتظار ═══
+	// اتصلنا بالزبون بعد التثبيت حتى نطلعله وما رد. الحجز ينزاح من طابور
+	// الشغل ويضل محفوظ لحد ما يرد. عدد المحاولات يفرّق بين زبون ما رد
+	// مرة وزبون ما رد خمس مرات — الثاني قرار مو انتظار.
+	WaitingSince         *time.Time `db:"waitingSince" json:"waitingSince"`
+	WaitingNote          *string    `db:"waitingNote" json:"waitingNote"`
+	WaitingByID          *string    `db:"waitingById" json:"waitingById"`
+	ContactAttempts      int        `db:"contactAttempts" json:"contactAttempts"`
+	LastContactAttemptAt *time.Time `db:"lastContactAttemptAt" json:"lastContactAttemptAt"`
+
+	// ═══ التأجيل ═══
+	// الزبون يأجّل الموعد. الموعد إله سجل تغييرات أصلاً، بس ماكو فرق بين
+	// «الإداري رتّب الجدول» و«الزبون أجّل» — وحجز تأجل أربع مرات علامة
+	// على شي غلط لازم ينشاف.
+	PostponeCount   int        `db:"postponeCount" json:"postponeCount"`
+	LastPostponedAt *time.Time `db:"lastPostponedAt" json:"lastPostponedAt"`
+	PostponeReason  *string    `db:"postponeReason" json:"postponeReason"`
+
 	// ═══ اكتمال الحجز بعد الإنجاز ═══
 	// الإنجاز لحاله ما يكفي: الليدر لازم يسوي فاتورة التكاليف المربوطة
 	// بالحجز، وتقرير العمل. هذولا محسوبات وقت الجلب (مو أعمدة بالجدول)
@@ -148,8 +175,13 @@ type ScheduleChangeLog struct {
 	ChangedByID string     `db:"changedById" json:"changedById"`
 	OldTime     *time.Time `db:"oldTime" json:"oldTime"`
 	NewTime     time.Time  `db:"newTime" json:"newTime"`
-	CreatedAt   time.Time  `db:"createdAt" json:"createdAt"`
-	ChangedBy   *Employee  `db:"-" json:"changedBy"`
+	// Kind يفرّق بين تغيير جدولة عادي (SCHEDULE) وتأجيل من الزبون
+	// (POSTPONE)، وReason سبب التأجيل.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	Kind      string    `db:"kind" json:"kind"`
+	Reason    *string   `db:"reason" json:"reason"`
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+	ChangedBy *Employee `db:"-" json:"changedBy"`
 }
 
 type CreateBookingRequest struct {

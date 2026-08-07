@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -20,8 +21,10 @@ func NewBookingRepository(db *sqlx.DB) *BookingRepository {
 	return &BookingRepository{db: db}
 }
 
+// List يرجّع الحجوزات العاملة. المؤرشفة (المحذوفة) مستثناة دائماً —
+// تنجاب بـ ListArchived لوحدها.
 func (r *BookingRepository) List(status, customerID, date string, limit int) ([]model.Booking, error) {
-	query := `SELECT * FROM "Booking" WHERE 1=1`
+	query := `SELECT * FROM "Booking" WHERE "archivedAt" IS NULL`
 	args := []any{}
 	if date != "" {
 		// نفس منطق "موعد الحجز الفعلي" بالواجهة: scheduledAt لو موجود، وإلا createdAt —
@@ -81,9 +84,10 @@ func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int
 	err := r.db.Select(&bookings, `
 		SELECT DISTINCT b.* FROM "Booking" b
 		LEFT JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		WHERE ba."employeeId" = $1
+		WHERE b."archivedAt" IS NULL
+		  AND (ba."employeeId" = $1
 		   OR b."projectSupervisorId" = $1
-		   OR b."expenseResponsibleId" = $1
+		   OR b."expenseResponsibleId" = $1)
 		ORDER BY b."createdAt" DESC
 		LIMIT $2
 	`, employeeID, limit)
@@ -1053,4 +1057,153 @@ func (r *BookingRepository) IsCartItemOfAssignedBooking(cartItemID, employeeID s
 			)
 		)`, cartItemID, employeeID)
 	return n > 0, err
+}
+
+// ═══════════ الأرشيف ═══════════
+
+// ListArchived يرجّع الحجوزات المؤرشفة (المحذوفة) بتفاصيلها الكاملة.
+//
+// «الحذف» بهذا النظام ما يمحي: الحجز يختفي من الحجوزات ومن تنسيق
+// الحجوزات ويجي هنا — بسبب حذفه ومنو حذفه ومتى. هذا الي يخلينا نجاوب
+// «شكد حجز انلغى الشهر هذا وليش؟».
+func (r *BookingRepository) ListArchived(limit int) ([]model.Booking, error) {
+	if limit <= 0 {
+		limit = 300
+	}
+	bookings := []model.Booking{}
+	if err := r.db.Select(&bookings, `
+		SELECT * FROM "Booking"
+		WHERE "archivedAt" IS NOT NULL
+		ORDER BY "archivedAt" DESC
+		LIMIT $1`, limit); err != nil {
+		return nil, err
+	}
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
+		return nil, err
+	}
+	return bookings, nil
+}
+
+// Archive ينقل الحجز للأرشيف بسبب مكتوب.
+func (r *BookingRepository) Archive(id, byEmployeeID, reason string) error {
+	res, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "archivedAt" = now(), "archivedById" = $2, "archiveReason" = $3
+		WHERE id = $1 AND "archivedAt" IS NULL`, id, nullIfEmpty(byEmployeeID), reason)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز مو موجود أو مؤرشف من قبل")
+	}
+	return nil
+}
+
+// Restore يرجّع حجز من الأرشيف للعمل — الزبون رجع وقرر يكمّل.
+func (r *BookingRepository) Restore(id string) error {
+	res, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "archivedAt" = NULL, "archivedById" = NULL, "archiveReason" = NULL
+		WHERE id = $1 AND "archivedAt" IS NOT NULL`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز مو بالأرشيف")
+	}
+	return nil
+}
+
+// ═══════════ التأجيل ═══════════
+
+// Postpone يأجّل موعد الحجز بسبب من الزبون.
+//
+// مو نفس تغيير الجدولة العادي: التأجيل ينعد ويتوثّق سببه، لأن حجز
+// تأجل أربع مرات علامة على شي غلط ولازم يطلع للإداري.
+//
+// السطر ينكتب بسجل المواعيد بنوع POSTPONE حتى يبقى التاريخ كامل: منو
+// أجّل ومن أي وقت لأي وقت وليش.
+func (r *BookingRepository) Postpone(id, newTime, reason, byEmployeeID string) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var old *time.Time
+	if err := tx.Get(&old, `SELECT "scheduledAt" FROM "Booking" WHERE id = $1`, id); err != nil {
+		return errors.New("الحجز مو موجود")
+	}
+
+	// النهاية تنحسب ساعة بعد البداية — نفس قاعدة المدى بكل مكان
+	if _, err := tx.Exec(`
+		UPDATE "Booking"
+		SET "scheduledAt" = $2::timestamp,
+		    "scheduledEndAt" = $2::timestamp + interval '1 hour',
+		    "postponeCount" = "postponeCount" + 1,
+		    "lastPostponedAt" = now(),
+		    "postponeReason" = NULLIF($3, ''),
+		    "updatedAt" = now()
+		WHERE id = $1`, id, newTime, reason); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO "ScheduleChangeLog" (id, "bookingId", "changedById", "oldTime", "newTime", kind, reason)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4::timestamp, 'POSTPONE', NULLIF($5, ''))`,
+		id, byEmployeeID, old, newTime, reason); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// ═══════════ في الانتظار ═══════════
+
+// MarkWaiting يحط الحجز بحالة «في الانتظار»: اتصلنا بالزبون وما رد.
+//
+// ليش حالة قائمة بذاتها؟ لأن الحجز لا ينلغى (الزبون ممكن يرد بكرة) ولا
+// يضل مثبّت (يطلع بقائمة الجاهز للتوجيه ويربك التنسيق). فينزاح من
+// طابور الشغل ويضل محفوظ.
+//
+// عدد المحاولات يزيد كل مرة — زبون ما رد مرة غير زبون ما رد خمس مرات.
+func (r *BookingRepository) MarkWaiting(id, note, byEmployeeID string) error {
+	res, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET status = 'WAITING',
+		    "waitingSince" = COALESCE("waitingSince", now()),
+		    "waitingNote" = NULLIF($2, ''),
+		    "waitingById" = $3,
+		    "contactAttempts" = "contactAttempts" + 1,
+		    "lastContactAttemptAt" = now(),
+		    "updatedAt" = now()
+		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED') AND "archivedAt" IS NULL`,
+		id, note, nullIfEmpty(byEmployeeID))
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("ما نكدر نحط هذا الحجز بالانتظار بحالته الحالية")
+	}
+	return nil
+}
+
+// ResumeFromWaiting يرجّع الحجز من الانتظار — الزبون رد.
+//
+// يرجع لـCONFIRMED إذا جان مثبّت قبل (إله وقت تثبيت)، وإلا لـPENDING.
+// عدد المحاولات يبقى مسجّل: التاريخ ما ينمسح لأن الزبون رد أخيراً.
+func (r *BookingRepository) ResumeFromWaiting(id string) error {
+	res, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET status = CASE WHEN "confirmedAt" IS NOT NULL THEN 'CONFIRMED'::"BookingStatus"
+		                  ELSE 'PENDING'::"BookingStatus" END,
+		    "waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
+		    "updatedAt" = now()
+		WHERE id = $1 AND status = 'WAITING'`, id)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز مو بحالة الانتظار")
+	}
+	return nil
 }

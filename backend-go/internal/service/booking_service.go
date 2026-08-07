@@ -496,3 +496,62 @@ func (s *BookingService) Unverify(id string) (*model.Booking, error) {
 	}
 	return s.repo.FindByID(id)
 }
+
+// ═══ الأرشيف والتأجيل والانتظار ═══
+
+// ListArchived الحجوزات المحذوفة — موجودة بالأرشيف مو ممحية.
+func (s *BookingService) ListArchived(limit int) ([]model.Booking, error) {
+	return s.repo.ListArchived(limit)
+}
+
+// Archive يحذف الحجز من الشاشات العاملة ويحفظه بالأرشيف.
+func (s *BookingService) Archive(id, byEmployeeID, reason string) (*model.Booking, error) {
+	reason = strings.TrimSpace(reason)
+	if reason == "" {
+		return nil, errors.New("سبب الحذف مطلوب")
+	}
+	if err := s.repo.Archive(id, byEmployeeID, reason); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// Restore يرجّع حجز من الأرشيف للعمل.
+func (s *BookingService) Restore(id string) (*model.Booking, error) {
+	if err := s.repo.Restore(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// Postpone يأجّل موعد الحجز. الموعد يجي بتوقيت بغداد وينخزن عالمي —
+// بدون التحويل الموعد يتقدم ثلاث ساعات كل ما ينحفظ.
+func (s *BookingService) Postpone(id, newTime, reason, byEmployeeID string) (*model.Booking, error) {
+	newTime = strings.TrimSpace(newTime)
+	if newTime == "" {
+		return nil, errors.New("الموعد الجديد مطلوب")
+	}
+	if strings.TrimSpace(reason) == "" {
+		return nil, errors.New("سبب التأجيل مطلوب")
+	}
+	if err := s.repo.Postpone(id, timeutil.NormalizeCompanyLocal(newTime), reason, byEmployeeID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// MarkWaiting يحط الحجز بحالة «في الانتظار» — اتصلنا بالزبون وما رد.
+func (s *BookingService) MarkWaiting(id, note, byEmployeeID string) (*model.Booking, error) {
+	if err := s.repo.MarkWaiting(id, note, byEmployeeID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// ResumeFromWaiting يرجّع الحجز من الانتظار — الزبون رد.
+func (s *BookingService) ResumeFromWaiting(id string) (*model.Booking, error) {
+	if err := s.repo.ResumeFromWaiting(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}

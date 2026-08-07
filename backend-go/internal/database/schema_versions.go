@@ -179,6 +179,9 @@ func versionedMigrations() []Migration {
 	// جوّا النظام — كتالوك المنظومات ومكوّناتها وتجهيزها للزبون، وحقول الموارد
 	// البشرية وبرامج التدريب، مربوطة بموظفينا ومهاراتنا وزبائننا الموجودين.
 	result = append(result, solarVersionedMigrations()...)
+	// 0210 وما بعدها: دورة حياة الحجز — الحذف صار أرشفة (كان يمحي الحجز
+	// وتاريخه للأبد)، وحالة «في الانتظار» للزبون الي ما يرد، وتوثيق التأجيل.
+	result = append(result, bookingLifecycleVersionedMigrations()...)
 	return result
 }
 
