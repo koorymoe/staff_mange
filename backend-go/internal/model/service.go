@@ -3,10 +3,16 @@ package model
 import "time"
 
 type Skill struct {
-	ID        string    `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	ServiceID string    `db:"serviceId" json:"serviceId"`
-	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+	ID        string `db:"id" json:"id"`
+	Name      string `db:"name" json:"name"`
+	ServiceID string `db:"serviceId" json:"serviceId"`
+	// Category محور ثاني غير الخدمة: فنية / سلامة / إدارية. جاي من نظام
+	// الطاقة الشمسية — «السلامة المهنية» و«خدمة العملاء» مهارات ما تخص
+	// خدمة وحدة، تخص كل الخدمات.
+	// ⚠️ عمود بالجدول → لازم حقل هنا، وإلا SELECT * يفشل بالسكوت.
+	Category    string    `db:"category" json:"category"`
+	Description *string   `db:"description" json:"description"`
+	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
 }
 
 type Service struct {

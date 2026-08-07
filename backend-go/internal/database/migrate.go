@@ -80,6 +80,10 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := seedDecorSkills(db); err != nil {
 		return err
 	}
+	// مهارات نظام الطاقة الشمسية المنقول — الجديدة بس، والموجودة تضل مثل ما هي
+	if err := seedSolarSkills(db); err != nil {
+		return err
+	}
 	if err := grantGpsSystemToMonitors(db); err != nil {
 		return err
 	}

@@ -96,6 +96,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	procurementRepo := repository.NewProcurementRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
+	solarRepo := repository.NewSolarRepository(db)
 	productRepo := repository.NewProductRepository(db)
 	systemPriceCatalogRepo := repository.NewSystemPriceCatalogRepository(db)
 	materialRepo := repository.NewMaterialRepository(db)
@@ -242,6 +243,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	privacyPolicyHandler := handler.NewPrivacyPolicyHandler(repository.NewPrivacyPolicyRepository(db))
 	mapLinkHandler := handler.NewMapLinkHandler()
 	quotationHandler := handler.NewQuotationHandler(quotationService)
+	solarHandler := handler.NewSolarHandler(solarRepo)
 	productHandler := handler.NewProductHandler(productService)
 	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
 	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
@@ -941,6 +943,31 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "monitoring"),
 	))
+
+	// ═══ نظام الطاقة الشمسية (منقول من Google Sheets) ═══
+	// القراءة لأي موظف مسجّل: الفني بالموقع يحتاج يشوف مكوّنات المنظومة
+	// ومواصفاتها وهو شغال. التعديل والتجهيز بصلاحية "solar_system".
+	requireSolar := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER"}, "solar_system")
+
+	mux.Handle("GET /api/solar/stats", middleware.Chain(http.HandlerFunc(solarHandler.Stats), requireAuth))
+	mux.Handle("GET /api/solar/low-stock", middleware.Chain(http.HandlerFunc(solarHandler.LowStock), requireAuth))
+
+	mux.Handle("GET /api/solar/components", middleware.Chain(http.HandlerFunc(solarHandler.ListComponents), requireAuth))
+	mux.Handle("POST /api/solar/components", middleware.Chain(http.HandlerFunc(solarHandler.CreateComponent), requireAuth, requireSolar))
+	mux.Handle("PUT /api/solar/components/{id}", middleware.Chain(http.HandlerFunc(solarHandler.UpdateComponent), requireAuth, requireSolar))
+	mux.Handle("DELETE /api/solar/components/{id}", middleware.Chain(http.HandlerFunc(solarHandler.DeleteComponent), requireAuth, requireSolar))
+
+	mux.Handle("GET /api/solar/systems", middleware.Chain(http.HandlerFunc(solarHandler.ListSystems), requireAuth))
+	mux.Handle("GET /api/solar/systems/{id}", middleware.Chain(http.HandlerFunc(solarHandler.GetSystem), requireAuth))
+	mux.Handle("POST /api/solar/systems", middleware.Chain(http.HandlerFunc(solarHandler.CreateSystem), requireAuth, requireSolar))
+	mux.Handle("PUT /api/solar/systems/{id}", middleware.Chain(http.HandlerFunc(solarHandler.UpdateSystem), requireAuth, requireSolar))
+	mux.Handle("DELETE /api/solar/systems/{id}", middleware.Chain(http.HandlerFunc(solarHandler.DeleteSystem), requireAuth, requireSolar))
+
+	// التجهيز يخصم من المخزن فعلياً — صلاحية إجبارية
+	mux.Handle("POST /api/solar/systems/{id}/process", middleware.Chain(http.HandlerFunc(solarHandler.ProcessSystem), requireAuth, requireSolar))
+	mux.Handle("GET /api/solar/installations", middleware.Chain(http.HandlerFunc(solarHandler.ListInstallations), requireAuth))
+	mux.Handle("PUT /api/solar/installations/{id}/contacted", middleware.Chain(http.HandlerFunc(solarHandler.MarkContacted), requireAuth, requireSolar))
 
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))

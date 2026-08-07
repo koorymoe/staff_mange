@@ -175,6 +175,10 @@ func versionedMigrations() []Migration {
 	// 0133 وما بعدها: العدة القياسية للأدوات الشخصية (PersonalToolTemplateItem) +
 	// لقطة أدوات المركبة العامة الناقصة عند بدء مهمة من قبل ليدر (VehicleToolCheck).
 	result = append(result, inventoryFeaturesVersionedMigrations()...)
+	// 0203 وما بعدها: نقل نظام الطاقة الشمسية (Solar Expert) من Google Sheets
+	// جوّا النظام — كتالوك المنظومات ومكوّناتها وتجهيزها للزبون، وحقول الموارد
+	// البشرية وبرامج التدريب، مربوطة بموظفينا ومهاراتنا وزبائننا الموجودين.
+	result = append(result, solarVersionedMigrations()...)
 	return result
 }
 

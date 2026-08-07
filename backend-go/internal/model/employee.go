@@ -54,6 +54,19 @@ type Employee struct {
 	AttendanceIcon *string   `db:"attendanceIcon" json:"attendanceIcon"`
 	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
 
+	// ═══ ملف الموارد البشرية (منقول من نظام الطاقة الشمسية) ═══
+	// ⚠️ هذولا أعمدة بالجدول → لازم حقول هنا. الجلب يستعمل SELECT * وأي
+	// عمود بلا حقل يفشّل الاستعلام كله بالسكوت — حتى تسجيل الدخول يوكف
+	// وما يطلع ولا خطأ بالكونسول، بس «اسم المستخدم أو كلمة المرور غير
+	// صحيحة». صارت مرتين، فلا تضيف عمود على "Employee" بدون حقل هنا.
+	Department      *string    `db:"department" json:"department"`
+	HireDate        *time.Time `db:"hireDate" json:"hireDate"`
+	ExperienceYears *float64   `db:"experienceYears" json:"experienceYears"`
+	LastReview      *string    `db:"lastReview" json:"lastReview"`
+	CareerStatus    string     `db:"careerStatus" json:"careerStatus"`
+	NextRole        *string    `db:"nextRole" json:"nextRole"`
+	TrainingNeeds   *string    `db:"trainingNeeds" json:"trainingNeeds"`
+
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
 	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
 }
