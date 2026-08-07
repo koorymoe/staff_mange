@@ -6,6 +6,7 @@ import {
   type SolarIronLine, type SolarStats, type SolarSystem, type SolarWiringLine,
 } from '../api'
 import { useSession } from '../session'
+import { useNavigate } from 'react-router-dom'
 
 // ═══ نظام الطاقة الشمسية ═══
 //
@@ -244,6 +245,7 @@ function Systems({
   canEdit: boolean
   onChanged: () => Promise<unknown>
 }) {
+  const navigate = useNavigate()
   const [brand, setBrand] = useState('الكل')
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState<SolarSystem | 'new' | null>(null)
@@ -359,6 +361,15 @@ function Systems({
                   <div className="text-[10px] font-bold text-amber-700">الإجمالي (بأسعار المخزن اليوم)</div>
                   <div className="text-xl font-black text-orange-700">{iqd(s.price.total)}</div>
                 </div>
+
+                <button
+                  onClick={() =>
+                    navigate(`/quotations/new?solarSystemId=${s.id}&projectName=${encodeURIComponent(`منظومة طاقة شمسية ${s.capacity} — ${s.brand} ${s.model}`)}`)
+                  }
+                  className="mt-3 w-full rounded-lg border-2 border-[#1a237e] bg-white px-3 py-2 text-xs font-bold text-[#1a237e]"
+                >
+                  📄 اطلع عرض سعر رسمي للزبون
+                </button>
 
                 {canEdit && (
                   <div className="mt-3 flex flex-wrap gap-2">

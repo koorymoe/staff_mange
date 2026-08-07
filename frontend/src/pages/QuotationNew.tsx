@@ -36,6 +36,11 @@ export default function QuotationNew() {
   // من وين اجه المستخدم — لو اجه من إدارة المشاريع نطلعله زر "تم" يرجعه
   // مباشرة لهناك بدل ما يدور بالقائمة الجانبية.
   const returnTo = searchParams.get('returnTo')
+  // ═══ عرض سعر من منظومة شمسية ═══
+  // المنظومة عدها كل الأرقام (مكوّناتها بكميّاتها وأسعارها، والتسليك
+  // والحدادة والتنصيب والبرمجة) — فبدل ما الإداري يعيد كتابتهن بالإيد
+  // ويغلط برقم، نجيبهن من الكتالوك ونعبّي سطور العرض.
+  const solarSystemId = searchParams.get('solarSystemId')
   // HTML المعاينة (نسخة الطباعة) — لما تنملي تنعرض بنافذة داخل النظام
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   // نطلب المعاينة بعد ما تنحمّل البيانات — البناء يحتاج الحقول تكون جاهزة
@@ -46,6 +51,31 @@ export default function QuotationNew() {
   const [customerAddress, setCustomerAddress] = useState(searchParams.get('customerAddress') || '')
   const [projectName, setProjectName] = useState(searchParams.get('projectName') || '')
   const [items, setItems] = useState<ItemRow[]>([emptyItem()])
+
+  // نجلب المنظومة ونحوّلها سطور عرض سعر. الأسعار تجي من الباك إند
+  // محسوبة بأسعار المخزن اليوم — نفس الرقم الي يشوفه الإداري بالكتالوك.
+  useEffect(() => {
+    if (!solarSystemId) return
+    api.getSolarSystem(solarSystemId).then((sys) => {
+      const rows: ItemRow[] = []
+      const push = (name: string, qty: number, unitPrice: number, unit = 'قطعة') => {
+        if (qty <= 0 || unitPrice <= 0) return
+        rows.push({ productName: name, unit, quantity: qty, unitPrice, totalPrice: qty * unitPrice })
+      }
+      if (sys.panel) push(sys.panel.name, sys.panelQty, sys.panel.price, 'لوح')
+      if (sys.inverter) push(sys.inverter.name, sys.inverterQty, sys.inverter.price, 'جهاز')
+      if (sys.battery) push(sys.battery.name, sys.batteryQty, sys.battery.price, 'بطارية')
+      if (sys.board) push(sys.board.name, 1, sys.board.price, 'قطعة')
+      push('التسليكات والكابلات', 1, sys.price.wiring, 'مجموعة')
+      push('أعمال الحدادة والتشكيل', 1, sys.price.iron, 'مجموعة')
+      push('التنصيب والتثبيت', 1, sys.price.install, 'خدمة')
+      push('البرمجة والضبط', 1, sys.price.program, 'خدمة')
+      push('الضمان الممتد', 1, sys.price.warranty, 'خدمة')
+      if (rows.length > 0) setItems(rows)
+      setProjectName((prev) => prev || `منظومة طاقة شمسية ${sys.capacity} — ${sys.brand} ${sys.model}`)
+    }).catch(() => {})
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [solarSystemId])
   const [discountPercent, setDiscountPercent] = useState(0)
   const [duration, setDuration] = useState('')
   const [notes, setNotes] = useState('')
