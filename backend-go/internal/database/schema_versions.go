@@ -200,6 +200,9 @@ func versionedMigrations() []Migration {
 	// 0221 وما بعدها: الإنجاز الجزئي — الحجز الي ياخذ أكثر من يوم يرجع
 	// للإداري بتقرير «وين وصلوا» بدل ما ينحسب مكتمل أو متوقف.
 	result = append(result, partialCompletionMigration()...)
+	// 0224 وما بعدها: تطبيع البحث العربي بالسيرفر (نفس الي بالواجهة) +
+	// فهارس trigram حتى البحث الجزئي ما يمسح الجدول كله.
+	result = append(result, arabicSearchMigration()...)
 	return result
 }
 

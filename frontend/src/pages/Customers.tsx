@@ -56,8 +56,16 @@ export default function Customers() {
   const [editMessage, setEditMessage] = useState<string | null>(null)
   const editName = [editFirstName, editFatherName, editGrandfatherName, editFamilyName].map((p) => p.trim()).filter(Boolean).join(' ')
 
+  // ═══ البحث صار بالسيرفر ═══
+  //
+  // كانت الصفحة تنزّل **كل** الزبائن بكل فتحة وتفلترهم بالمتصفح — بـ٥٠٠٠
+  // زبون هذا ١٫٤ ميغا كل مرة، وعلى 4G ثواني ينتظرها الموظف بلا فايدة.
+  //
+  // هسه: نجيب أول ٥٠٠ للتصفح، وأول ما يكتب حرفين نسأل السيرفر. السيرفر
+  // يطبّع النص بنفس طريقة الواجهة بالضبط (ar_norm) فالنتيجة وحدة.
+  const INITIAL_LIMIT = 500
   const load = () => {
-    Promise.all([api.getCustomers(), api.getCustomersByGpsService()])
+    Promise.all([api.getCustomers({ limit: INITIAL_LIMIT }), api.getCustomersByGpsService()])
       .then(([all, gps]) => {
         setCustomers(all)
         setGpsCustomers(gps)
@@ -65,6 +73,20 @@ export default function Customers() {
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
+
+  // بحث السيرفر — بتأخير ٣٠٠ملي حتى ما نرسل طلب بكل ضغطة زر، ومع إلغاء
+  // الطلب القديم حتى نتيجة متأخرة ما تدوس على نتيجة أحدث.
+  useEffect(() => {
+    const q = search.trim()
+    if (q.length < 2) return
+    let alive = true
+    const t = setTimeout(() => {
+      api.getCustomers({ search: q, limit: 200 })
+        .then((rows) => { if (alive) setCustomers(rows) })
+        .catch(() => {})
+    }, 300)
+    return () => { alive = false; clearTimeout(t) }
+  }, [search])
 
   useEffect(load, [])
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Expense } from '../api'
+import { matches } from '../utils/search'
 
 export default function Finance() {
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -77,10 +78,7 @@ export default function Finance() {
 
   // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
   const matchesSearch = (b: Booking) => {
-    const q = search.trim().toLowerCase()
-    if (!q) return true
-    return [b.code, b.customer?.code, b.customer?.phone, b.customer?.name]
-      .some((v) => (v || '').toString().toLowerCase().includes(q))
+    return matches([b.code, b.customer?.code, b.customer?.phone, b.customer?.name], search)
   }
   const filtered = bookings.filter((b) => {
     if (!matchesSearch(b)) return false

@@ -2450,7 +2450,15 @@ export const api = {
     request<Employee[]>(`/employees/match?serviceId=${serviceId}`),
   getSupervisors: () => request<Employee[]>('/employees/supervisors'),
 
-  getCustomers: () => request<Customer[]>('/customers'),
+  /** بلا وسائط يجيب الكل (متل ما كان). مع بحث/حد يفلتر بالسيرفر — بـ٥٠٠٠ زبون
+   *  كان الجلب الكامل ١٫٤ ميغا بكل فتحة صفحة. */
+  getCustomers: (opts?: { search?: string; limit?: number }) => {
+    const p = new URLSearchParams()
+    if (opts?.search) p.set('search', opts.search)
+    if (opts?.limit) p.set('limit', String(opts.limit))
+    const qs = p.toString()
+    return request<Customer[]>(`/customers${qs ? '?' + qs : ''}`)
+  },
   getCustomersByGpsService: () => request<GpsCustomerListItem[]>('/customers/gps'),
   lookupCustomer: (phone: string) =>
     request<Customer | null>(`/customers/lookup?phone=${phone}`).catch(() => null),

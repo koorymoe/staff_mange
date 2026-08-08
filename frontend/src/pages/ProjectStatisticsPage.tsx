@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { matches } from '../utils/search'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -67,11 +68,9 @@ export default function ProjectStatisticsPage() {
 
   const projects = useMemo(() => {
     if (!data) return []
-    const q = search.trim().toLowerCase()
-    if (!q) return data.projects
+    if (!search.trim()) return data.projects
     return data.projects.filter((p) =>
-      [p.code, p.name, p.stage, p.workType, p.responsibleName, p.surveyorName, p.delegatedToName, p.createdByName]
-        .some((v) => (v || '').toString().toLowerCase().includes(q)))
+      matches([p.code, p.name, p.stage, p.workType, p.responsibleName, p.surveyorName, p.delegatedToName, p.createdByName], search))
   }, [data, search])
 
   const employees = useMemo(() => {

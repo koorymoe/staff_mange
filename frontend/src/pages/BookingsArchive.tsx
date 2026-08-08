@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { api, type Booking } from '../api'
 import { useSession } from '../session'
 import BookingLifecycleActions from '../components/BookingLifecycleActions'
+import { matches } from '../utils/search'
 
 // ═══ أرشيف الحجوزات ═══
 //
@@ -28,12 +29,9 @@ export default function BookingsArchive() {
   }, [])
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    if (!q) return rows
+    if (!search.trim()) return rows
     return rows.filter((b) =>
-      [b.code, b.customer?.name, b.customer?.phone, b.archiveReason, b.address]
-        .filter(Boolean)
-        .some((v) => String(v).toLowerCase().includes(q)),
+      matches([b.code, b.customer?.name, b.customer?.phone, b.archiveReason, b.address], search),
     )
   }, [rows, search])
 

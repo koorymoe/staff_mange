@@ -57,12 +57,74 @@ func (r *QuotationRepository) List(search string) ([]model.Quotation, error) {
 	if err != nil {
 		return nil, err
 	}
+	return quotations, r.hydrateAll(quotations)
+}
+
+// hydrateAll يعبّي البنود وأسماء المنشئين لكل العروض بـ**استعلامين**
+// بدل استعلامين لكل عرض.
+//
+// قبل: ٨٠٠ عرض = ١٦٠١ استعلام و٠٫٨٥ ثانية بالسيرفر لوحده، والرقم يكبر
+// خطياً مع كل عرض جديد — يعني الصفحة تبطّئ لحالها كل شهر بلا ما يتغير
+// أي شي بالكود. هذا نمط N+1 الكلاسيكي.
+func (r *QuotationRepository) hydrateAll(quotations []model.Quotation) error {
+	if len(quotations) == 0 {
+		return nil
+	}
+
+	ids := make([]string, 0, len(quotations))
+	empIDs := map[string]bool{}
 	for i := range quotations {
-		if err := r.hydrate(&quotations[i]); err != nil {
-			return nil, err
+		ids = append(ids, quotations[i].ID)
+		if quotations[i].CreatedByEmployeeID != "" {
+			empIDs[quotations[i].CreatedByEmployeeID] = true
+		}
+		quotations[i].Items = []model.QuotationItem{}
+	}
+
+	// ── البنود بدفعة وحدة ──
+	items := []model.QuotationItem{}
+	q, args, err := sqlx.In(`SELECT * FROM "QuotationItem" WHERE "quotationId" IN (?)`, ids)
+	if err != nil {
+		return err
+	}
+	if err := r.db.Select(&items, r.db.Rebind(q), args...); err != nil {
+		return err
+	}
+	byQuotation := map[string][]model.QuotationItem{}
+	for _, it := range items {
+		byQuotation[it.QuotationID] = append(byQuotation[it.QuotationID], it)
+	}
+
+	// ── أسماء المنشئين بدفعة وحدة ──
+	byEmployee := map[string]model.EmployeeBrief{}
+	if len(empIDs) > 0 {
+		list := make([]string, 0, len(empIDs))
+		for id := range empIDs {
+			list = append(list, id)
+		}
+		briefs := []model.EmployeeBrief{}
+		q, args, err := sqlx.In(`SELECT id, name FROM "Employee" WHERE id IN (?)`, list)
+		if err != nil {
+			return err
+		}
+		if err := r.db.Select(&briefs, r.db.Rebind(q), args...); err != nil {
+			return err
+		}
+		for _, b := range briefs {
+			byEmployee[b.ID] = b
 		}
 	}
-	return quotations, nil
+
+	for i := range quotations {
+		if rows, ok := byQuotation[quotations[i].ID]; ok {
+			quotations[i].Items = rows
+		}
+		if b, ok := byEmployee[quotations[i].CreatedByEmployeeID]; ok {
+			c := b
+			quotations[i].CreatedByEmployee = &c
+		}
+	}
+	return nil
 }
 
 func (r *QuotationRepository) FindByID(id string) (*model.Quotation, error) {

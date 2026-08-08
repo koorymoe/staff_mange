@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type LeaderInvoice } from '../api'
 import { useSession } from '../session'
+import { matches } from '../utils/search'
 
 // قائمة بسيطة لعرض فواتير الليدر السابقة (كل الفواتير أو حسب الموظف).
 // الفاتورة تضل SUBMITTED (ظاهرة عند الليدر) لين مدير/محاسب يعتمدها لـAPPROVED —
@@ -74,10 +75,7 @@ export default function LeaderInvoicesListPage() {
 
   // الفلترة: تبويب + بحث
   const matchesSearch = (inv: LeaderInvoice) => {
-    const q = search.trim().toLowerCase()
-    if (!q) return true
-    return [inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName]
-      .some((v) => (v || '').toString().toLowerCase().includes(q))
+    return matches([inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName], search)
   }
   const inTab = (inv: LeaderInvoice) => {
     if (tab === 'ALL') return true

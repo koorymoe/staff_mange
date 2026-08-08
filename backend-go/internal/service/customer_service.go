@@ -16,7 +16,16 @@ func NewCustomerService(repo *repository.CustomerRepository) *CustomerService {
 }
 
 func (s *CustomerService) List() ([]model.CustomerResponse, error) {
-	customers, err := s.repo.List()
+	return s.Search("", 0)
+}
+
+// Search بحث الزبائن بالسيرفر مع حد أقصى.
+//
+// ⚠️ لازم يمر بنفس تحويل List بالضبط (ToResponse + خدمات الزبون):
+// الواجهة تعتمد على c.code وc.services، ولو رجّعنا الصف الخام تنكسر
+// الشاشة. (صارت فعلاً وانلكت بفحص المتصفح.)
+func (s *CustomerService) Search(search string, limit int) ([]model.CustomerResponse, error) {
+	customers, err := s.repo.Search(search, limit)
 	if err != nil {
 		return nil, err
 	}

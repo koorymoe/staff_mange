@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import { MapViewer } from '../components/MapLazy'
+import { matches } from '../utils/search'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -187,8 +188,7 @@ export default function SuppliersPage() {
 
   const filtered = suppliers.filter((s) => {
     if (search) {
-      const q = search.toLowerCase()
-      if (!s.companyName.toLowerCase().includes(q) && !s.ownerName.toLowerCase().includes(q) && !s.phone.includes(q)) return false
+      if (!matches([s.companyName, s.ownerName, s.phone], search)) return false
     }
     if (filterSpecialty && !s.specialties.some((sp) => sp.id === filterSpecialty)) return false
     if (filterType === 'material' && !s.isMaterialSupplier) return false

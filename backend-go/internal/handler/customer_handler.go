@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
@@ -48,7 +49,13 @@ func NewCustomerHandler(s *service.CustomerService) *CustomerHandler {
 
 // GET /api/v1/customers
 func (h *CustomerHandler) List(w http.ResponseWriter, r *http.Request) {
-	customers, err := h.service.List()
+	// بلا وسائط يرجّع كل الزبائن متل ما كان — أي مستدعي قديم ما ينكسر.
+	search := r.URL.Query().Get("search")
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit > 2000 {
+		limit = 2000
+	}
+	customers, err := h.service.Search(search, limit)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب قائمة العملاء")
 		return

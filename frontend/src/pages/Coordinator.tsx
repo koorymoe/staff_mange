@@ -7,6 +7,7 @@ import BookingEditPanel from '../components/BookingEditPanel'
 import BookingLifecycleActions from '../components/BookingLifecycleActions'
 import { formatScheduleWindow } from '../utils/schedule'
 import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
+import { matches as searchMatches } from '../utils/search'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -337,10 +338,7 @@ export default function Coordinator() {
 
   // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
   const matchesSearch = (b: Booking) => {
-    const q = search.trim().toLowerCase()
-    if (!q) return true
-    return [b.code, b.customer?.code, b.customer?.phone, b.customer?.name]
-      .some((v) => (v || '').toString().toLowerCase().includes(q))
+    return searchMatches([b.code, b.customer?.code, b.customer?.phone, b.customer?.name], search)
   }
   const pendingBookings = bookings.filter((b) => b.status === 'PENDING' && matchesSearch(b))
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' && matchesSearch(b))

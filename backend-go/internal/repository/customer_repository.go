@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -18,9 +20,56 @@ func NewCustomerRepository(db *sqlx.DB) *CustomerRepository {
 	return &CustomerRepository{db: db}
 }
 
+// List الزبائن — مع بحث وحد أقصى اختياريين.
+//
+// بلا وسائط يشتغل مثل ما كان بالضبط (كل الزبائن) حتى ما ينكسر أي
+// مستدعي قديم. بس شاشة الزبائن صارت تمرر بحث وحد: بـ٥٠٠٠ زبون كانت
+// الصفحة تنزّل ١٫٤ ميغا بكل فتحة، وهذا على 4G ثواني تنعاد كل مرة.
+//
+// البحث يستعمل ar_norm — نفس تطبيع الواجهة بالضبط، حتى ما يصير عدنا
+// بحثين بسلوكين مختلفين.
 func (r *CustomerRepository) List() ([]model.Customer, error) {
+	return r.Search("", 0)
+}
+
+func (r *CustomerRepository) Search(search string, limit int) ([]model.Customer, error) {
 	customers := []model.Customer{}
-	err := r.db.Select(&customers, `SELECT * FROM "Customer" ORDER BY "customerCode" ASC`)
+	query := `SELECT * FROM "Customer"`
+	args := []any{}
+	if s := strings.TrimSpace(search); s != "" {
+		args = append(args, s)
+		// ⚠️ شرط الأرقام لازم ينحمي بـ<> '': لو بحث بحروف بس، تطبيع
+		// الأرقام يطلع نص فاضي، و LIKE '%%' يطابق **كل** الصفوف — يعني
+		// بحث «فاطمة» يرجّع كل الزبائن. لكيناها بفحص عيّنة النتائج.
+		query += `
+			WHERE ar_norm(name) LIKE '%' || ar_norm($1) || '%'
+			   OR (regexp_replace(ar_norm($1), '\D', '', 'g') <> ''
+			       AND (phone LIKE '%' || regexp_replace(ar_norm($1), '\D', '', 'g') || '%'
+			         OR "customerCode"::text LIKE '%' || regexp_replace(ar_norm($1), '\D', '', 'g') || '%'))`
+	}
+	if strings.TrimSpace(search) != "" {
+		// ترتيب حسب قوة المطابقة، مو حسب الكود.
+		//
+		// ليش؟ مع الحد الأقصى، الترتيب بالكود يقص النتائج قبل ما توصل
+		// للمطابقة الأدق: زبون اسمه «أحمد علي» كوده عالي ينطرد برّا
+		// الحد بينما «أحمد تجريبي ٣» يبقى — والموظف يشوف «ماكو نتائج»
+		// وهي موجودة. (انلكت بفحص المتصفح.)
+		//
+		// ١) تطابق كامل  ٢) يبدي بالكلمة  ٣) الأقرب للبداية
+		query += `
+			ORDER BY
+				(ar_norm(name) = ar_norm($1)) DESC,
+				(ar_norm(name) LIKE ar_norm($1) || '%') DESC,
+				position(ar_norm($1) in ar_norm(name)),
+				"customerCode" ASC`
+	} else {
+		query += ` ORDER BY "customerCode" ASC`
+	}
+	if limit > 0 {
+		args = append(args, limit)
+		query += fmt.Sprintf(` LIMIT $%d`, len(args))
+	}
+	err := r.db.Select(&customers, query, args...)
 	return customers, err
 }
 
