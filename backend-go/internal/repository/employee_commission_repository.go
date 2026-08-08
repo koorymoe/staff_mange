@@ -55,7 +55,7 @@ func (r *EmployeeCommissionRepository) SumForEmployeeRange(employeeID, from, to 
 	var total sql64
 	err := r.db.Get(&total, `
 		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission"
-		WHERE "employeeId" = $1 AND "createdAt"::date BETWEEN $2::date AND $3::date
+		WHERE "employeeId" = $1 AND baghdad_date("createdAt") BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return float64(total), err
 }
@@ -96,7 +96,7 @@ func (r *EmployeeCommissionRepository) SumForEmployeeLast7Days(employeeID string
 func (r *EmployeeCommissionRepository) SumForDate(date string) (float64, error) {
 	var total sql64
 	err := r.db.Get(&total, `
-		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission" WHERE "createdAt"::date = $1::date
+		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission" WHERE baghdad_date("createdAt") = $1::date
 	`, date)
 	return float64(total), err
 }

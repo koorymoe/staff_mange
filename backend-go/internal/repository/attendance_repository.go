@@ -34,7 +34,7 @@ func (r *AttendanceRepository) FindToday(employeeID string) (*model.Attendance, 
 	var a model.Attendance
 	err := r.db.Get(&a, `
 		SELECT * FROM "Attendance"
-		WHERE "employeeId" = $1 AND date = CURRENT_DATE
+		WHERE "employeeId" = $1 AND date = baghdad_today()
 	`, employeeID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
@@ -68,7 +68,7 @@ func (r *AttendanceRepository) TodaySessions(employeeID string) ([]model.Attenda
 	records := []model.Attendance{}
 	if err := r.db.Select(&records, `
 		SELECT * FROM "Attendance"
-		WHERE "employeeId" = $1 AND date = CURRENT_DATE
+		WHERE "employeeId" = $1 AND date = baghdad_today()
 		ORDER BY "checkIn" ASC
 	`, employeeID); err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ func (r *AttendanceRepository) CheckIn(employeeID string) (*model.Attendance, er
 	var a model.Attendance
 	err = r.db.Get(&a, `
 		INSERT INTO "Attendance" (id, "employeeId", "checkIn", date)
-		VALUES (gen_random_uuid()::text, $1, now(), CURRENT_DATE)
+		VALUES (gen_random_uuid()::text, $1, now(), baghdad_today())
 		RETURNING *
 	`, employeeID)
 	if err != nil {
@@ -125,7 +125,7 @@ func (r *AttendanceRepository) CheckOut(employeeID string) (*model.Attendance, e
 func (r *AttendanceRepository) Today() ([]model.Attendance, error) {
 	records := []model.Attendance{}
 	if err := r.db.Select(&records, `
-		SELECT * FROM "Attendance" WHERE date = CURRENT_DATE ORDER BY "checkIn" ASC
+		SELECT * FROM "Attendance" WHERE date = baghdad_today() ORDER BY "checkIn" ASC
 	`); err != nil {
 		return nil, err
 	}
@@ -138,7 +138,7 @@ func (r *AttendanceRepository) Today() ([]model.Attendance, error) {
 // TodaySummary ترجع ملخص حضور كل موظف عنده جلسة (أو أكثر) باليوم الحالي —
 // مجمّعة بـ GROUP BY لتفادي N+1، وتستخدم بجدول المراقب.
 func (r *AttendanceRepository) TodaySummary() ([]model.EmployeeDailyAttendanceSummary, error) {
-	return r.daySummary("CURRENT_DATE")
+	return r.daySummary("baghdad_today()")
 }
 
 // DaySummary نفس TodaySummary لكن بتاريخ محدد (لدعم ?date= بتصدير الإكسل).

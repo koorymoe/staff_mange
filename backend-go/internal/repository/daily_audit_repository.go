@@ -49,7 +49,7 @@ func (r *DailyAuditRepository) Day(date string) (*model.DailyAuditReport, error)
 			SELECT "netTotal", "accountingCode" FROM "LeaderInvoice"
 			WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1
 		) li ON true
-		WHERE COALESCE(b."completedAt", b."scheduledAt", b."createdAt")::date = $1::date
+		WHERE baghdad_date(COALESCE(b."completedAt", b."scheduledAt", b."createdAt")) = $1::date
 		ORDER BY b."createdAt" DESC`, date)
 	if err != nil {
 		return nil, err

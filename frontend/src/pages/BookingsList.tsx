@@ -5,6 +5,7 @@ import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
+import { matches } from '../utils/search'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -169,10 +170,7 @@ export default function BookingsList() {
     .filter((b) => {
       const q = search.trim().toLowerCase()
       if (q && !(
-        b.code.toLowerCase().includes(q) ||
-        (b.customer?.name || '').toLowerCase().includes(q) ||
-        (b.customer?.code || '').toLowerCase().includes(q) ||
-        (b.customer?.phone || '').includes(search.trim())
+        matches([b.code, b.customer?.name, b.customer?.code, b.customer?.phone], search)
       )) return false
       if (selectedMonth && !relevantDate(b).startsWith(selectedMonth)) return false
       return true

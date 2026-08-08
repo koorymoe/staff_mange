@@ -32,8 +32,8 @@ func (r *BookingRepository) List(status, customerID, date string, limit int) ([]
 		// الحجوزات التاريخي ونفلتره بالواجهة، وهذا كان يبطّئ الصفحة مع تراكم البيانات.
 		args = append(args, date)
 		query += fmt.Sprintf(` AND (
-			(("scheduledAt" IS NOT NULL) AND "scheduledAt"::date = $%d::date)
-			OR (("scheduledAt" IS NULL) AND "createdAt"::date = $%d::date)
+			(("scheduledAt" IS NOT NULL) AND baghdad_date("scheduledAt") = $%d::date)
+			OR (("scheduledAt" IS NULL) AND baghdad_date("createdAt") = $%d::date)
 		)`, len(args), len(args))
 	}
 	if status != "" {
@@ -843,7 +843,7 @@ func (r *BookingRepository) CountCompletedForEmployeeRange(employeeID, from, to 
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL
-			AND b."completedAt"::date BETWEEN $2::date AND $3::date
+			AND baghdad_date(b."completedAt") BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return count, err
 }
@@ -856,7 +856,7 @@ func (r *BookingRepository) CountAssignedForEmployeeRange(employeeID, from, to s
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1
-			AND COALESCE(b."completedAt", b."createdAt")::date BETWEEN $2::date AND $3::date
+			AND baghdad_date(COALESCE(b."completedAt", b."createdAt")) BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return count, err
 }
@@ -869,7 +869,7 @@ func (r *BookingRepository) CountMaintenanceForEmployeeRange(employeeID, from, t
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
-			AND COALESCE(b."completedAt", b."createdAt")::date BETWEEN $2::date AND $3::date
+			AND baghdad_date(COALESCE(b."completedAt", b."createdAt")) BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return count, err
 }
@@ -883,7 +883,7 @@ func (r *BookingRepository) CountFreeMaintenanceForEmployeeRange(employeeID, fro
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
 			AND (b."quotedPrice" IS NULL OR b."quotedPrice" = 0)
-			AND COALESCE(b."completedAt", b."createdAt")::date BETWEEN $2::date AND $3::date
+			AND baghdad_date(COALESCE(b."completedAt", b."createdAt")) BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return count, err
 }

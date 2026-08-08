@@ -621,10 +621,10 @@ func (r *SolarRepository) Stats() (*model.SolarStats, error) {
 			(SELECT COUNT(*) FROM "SolarInstallation")                               AS "processedCount",
 			(SELECT COUNT(DISTINCT "customerId") FROM "SolarInstallation")           AS "customerCount",
 			(SELECT COUNT(*) FROM "SolarInstallation"
-			  WHERE status = 'PENDING' AND "followUpAt" <= CURRENT_DATE)             AS "dueFollowUpCount",
+			  WHERE status = 'PENDING' AND "followUpAt" <= baghdad_today())             AS "dueFollowUpCount",
 			(SELECT COUNT(*) FROM "SolarInstallation" WHERE status = 'CONTACTED')    AS "contactedCount",
 			(SELECT COUNT(*) FROM "SolarInstallation"
-			  WHERE date_trunc('month', "installDate") = date_trunc('month', CURRENT_DATE))
+			  WHERE date_trunc('month', "installDate") = date_trunc('month', baghdad_today()))
 			                                                                         AS "installedThisMonth",
 			(SELECT COALESCE(SUM("wiringTotalCost"), 0) FROM "SolarSystem")          AS "totalWiring",
 			(SELECT COALESCE(SUM("ironTotalCost"), 0)   FROM "SolarSystem")          AS "totalIron",

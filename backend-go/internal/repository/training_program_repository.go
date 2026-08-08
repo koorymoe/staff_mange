@@ -29,7 +29,7 @@ func (r *TrainingProgramRepository) List(status string) ([]model.TrainingProgram
 	if err := r.db.Select(&rows, `
 		SELECT * FROM "TrainingProgram"
 		WHERE ($1 = '' OR status = $1)
-		ORDER BY COALESCE("startDate", "createdAt"::date) DESC`, status); err != nil {
+		ORDER BY COALESCE("startDate", baghdad_date("createdAt")) DESC`, status); err != nil {
 		return nil, err
 	}
 	return rows, r.hydrate(rows)

@@ -191,6 +191,9 @@ func versionedMigrations() []Migration {
 	// 0217: سجل النسخ الاحتياطية — يقرأه المالك وحده. سكربت النسخ يكتب
 	// بيه نتيجة كل تشغيل لأن حاوية الباك إند ما تشوف مجلد backups/.
 	result = append(result, backupRunMigration()...)
+	// 0218 وما بعدها: «أي يوم؟» ينحسب بتوقيت بغداد مو غرينتش — كان الحجز
+	// الي بعد منتصف الليل يطلع باليوم الي قبله بجدول التنسيق وبالإحصاءات.
+	result = append(result, baghdadDateMigration()...)
 	return result
 }
 

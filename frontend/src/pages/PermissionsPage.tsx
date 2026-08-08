@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Permission } from '../api'
 import { roleLabels } from '../session'
+import { matches } from '../utils/search'
 
 export default function PermissionsPage() {
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -91,7 +92,7 @@ export default function PermissionsPage() {
   }
 
   const filteredEmployees = employees.filter((emp) =>
-    emp.name.toLowerCase().includes(search.toLowerCase()),
+    matches([emp.name, emp.jobTitle, emp.position], search),
   )
 
   const permissionGroups = [

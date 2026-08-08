@@ -163,7 +163,7 @@ func (r *ComplaintRepository) CountForEmployeeRange(employeeID, from, to string)
 	var count int
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "Complaint"
-		WHERE "relatedEmployeeId" = $1 AND "createdAt"::date BETWEEN $2::date AND $3::date
+		WHERE "relatedEmployeeId" = $1 AND baghdad_date("createdAt") BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return count, err
 }

@@ -67,7 +67,7 @@ func (r *InventoryRepository) TodaysInventoryChecks() ([]model.InventoryCheck, e
 	if err := r.db.Select(&checks, `
 		SELECT DISTINCT ON ("employeeId") *
 		FROM "InventoryCheck"
-		WHERE "checkedAt" >= CURRENT_DATE
+		WHERE "checkedAt" >= baghdad_today()
 		ORDER BY "employeeId", "checkedAt" DESC
 	`); err != nil {
 		return nil, err

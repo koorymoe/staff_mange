@@ -76,7 +76,7 @@ func (r *VehicleMissionRatingRepository) GetCleanlinessAvgForDriverRange(employe
 		SELECT COUNT(mr.id) AS count, AVG(mr.cleanliness) AS avg
 		FROM "VehicleMission" m
 		JOIN "VehicleMissionRating" mr ON mr."missionId" = m.id
-		WHERE m."driverId" = $1 AND m."startedAt"::date BETWEEN $2::date AND $3::date
+		WHERE m."driverId" = $1 AND baghdad_date(m."startedAt") BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	if err != nil {
 		return nil, 0, err

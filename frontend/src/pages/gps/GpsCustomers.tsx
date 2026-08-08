@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { api, type GpsCustomer } from '../../api'
+import { matches } from '../../utils/search'
 
 export default function GpsCustomers() {
   const [customers, setCustomers] = useState<GpsCustomer[]>([])
@@ -41,7 +42,7 @@ export default function GpsCustomers() {
   }
 
   const filtered = customers.filter((c) =>
-    (c.fullName || '').includes(search) || (c.phone || '').includes(search)
+    matches([c.fullName, c.phone], search)
   )
 
   return (

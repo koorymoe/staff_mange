@@ -107,7 +107,7 @@ func (r *LeaderInvoiceRepository) CountForEmployeeRange(employeeID, from, to str
 	var count int
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "LeaderInvoice"
-		WHERE "employeeId" = $1 AND "createdAt"::date BETWEEN $2::date AND $3::date
+		WHERE "employeeId" = $1 AND baghdad_date("createdAt") BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return count, err
 }
@@ -117,7 +117,7 @@ func (r *LeaderInvoiceRepository) CountForEmployeeRange(employeeID, from, to str
 func (r *LeaderInvoiceRepository) SumNetTotalForRange(from, to string) (float64, error) {
 	var total sql.NullFloat64
 	err := r.db.Get(&total, `
-		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE "createdAt"::date BETWEEN $1::date AND $2::date
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date
 	`, from, to)
 	if err != nil {
 		return 0, err
@@ -131,13 +131,13 @@ func (r *LeaderInvoiceRepository) SumNetTotalMorningEveningForRange(from, to str
 	var m, e sql.NullFloat64
 	if err = r.db.Get(&m, `
 		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
-		WHERE "createdAt"::date BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") < 12
+		WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") < 12
 	`, from, to); err != nil {
 		return 0, 0, err
 	}
 	if err = r.db.Get(&e, `
 		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
-		WHERE "createdAt"::date BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") >= 12
+		WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") >= 12
 	`, from, to); err != nil {
 		return 0, 0, err
 	}
@@ -149,7 +149,7 @@ func (r *LeaderInvoiceRepository) SumNetTotalMorningEveningForRange(from, to str
 func (r *LeaderInvoiceRepository) SumNetTotalForDate(date string) (float64, error) {
 	var total sql.NullFloat64
 	err := r.db.Get(&total, `
-		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE "createdAt"::date = $1::date
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE baghdad_date("createdAt") = $1::date
 	`, date)
 	return total.Float64, err
 }

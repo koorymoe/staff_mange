@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Customer, type GpsCustomerListItem, type Booking } from '../api'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
+import { matches } from '../utils/search'
 
 function splitFullName(fullName: string): [string, string, string, string] {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -123,13 +124,9 @@ export default function Customers() {
   const selectedCustomer = customers.find((c) => c.id === selectedId) || null
 
   const activeList: Customer[] = tab === 'gps' ? gpsCustomers : customers
-  const normalizedSearch = search.trim().toLowerCase()
-  const filteredCustomers = normalizedSearch
-    ? activeList.filter((c) =>
-        c.code.toLowerCase().includes(normalizedSearch) ||
-        c.name.toLowerCase().includes(normalizedSearch) ||
-        c.phone.includes(normalizedSearch)
-      )
+  // البحث يمر بالتطبيع العربي: «احمد» تلكه «أحمد»، و«٠٧٧٠» تلكه «0770»
+  const filteredCustomers = search.trim()
+    ? activeList.filter((c) => matches([c.code, c.name, c.phone], search))
     : activeList
 
   const handleSubmit = async (e: React.FormEvent) => {

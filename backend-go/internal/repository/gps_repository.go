@@ -622,8 +622,8 @@ func (r *GpsRepository) ListSubscriptionFollowUps() ([]model.GpsSubscriptionFoll
 			COALESCE(c."fullName", '')             AS "customerName",
 			COALESCE(c.phone, '')                  AS "customerPhone",
 			d."subscriptionEnd"                    AS "subscriptionEnd",
-			(CURRENT_DATE - d."subscriptionEnd"::date) AS "daysSinceExpiry",
-			(CURRENT_DATE - f."calledAt"::date)    AS "daysSinceLastCall",
+			(baghdad_today() - d."subscriptionEnd"::date) AS "daysSinceExpiry",
+			(baghdad_today() - baghdad_date(f."calledAt"))    AS "daysSinceLastCall",
 			d."simCardId"                          AS "simCardId",
 			s."simNumber"                          AS "simNumber",
 			s.status::text                         AS "simStatus",
@@ -638,7 +638,7 @@ func (r *GpsRepository) ListSubscriptionFollowUps() ([]model.GpsSubscriptionFoll
 			WHERE "deviceRequestId" = d.id ORDER BY "calledAt" DESC LIMIT 1
 		) f ON true
 		WHERE d."subscriptionEnd" IS NOT NULL
-		  AND d."subscriptionEnd"::date <= CURRENT_DATE
+		  AND d."subscriptionEnd"::date <= baghdad_today()
 		ORDER BY d."subscriptionEnd" ASC
 	`)
 	if err != nil {
@@ -713,7 +713,7 @@ func (r *GpsRepository) CreateFollowUp(deviceRequestID string, calledByID *strin
 	err := r.db.Get(&f, `
 		INSERT INTO "GpsRenewalFollowUp" (id, "deviceRequestId", "customerId", "calledById", outcome, notes, "daysSinceExpiry")
 		SELECT gen_random_uuid()::text, d.id, d."customerId", $2, $3, $4,
-			(CURRENT_DATE - d."subscriptionEnd"::date)
+			(baghdad_today() - d."subscriptionEnd"::date)
 		FROM "GpsDeviceRequest" d WHERE d.id = $1
 		RETURNING *
 	`, deviceRequestID, calledByID, req.Outcome, req.Notes)
@@ -759,7 +759,7 @@ func (r *GpsRepository) SyncSimsNeedingBurn() error {
 			  -- نفس قاعدة decorateFollowUpRow بالضبط: ٤٠ يوم من مكالمة
 			  -- الرفض. لو اختلفت القاعدتين، الشاشة تكول «ينتظر» والشريحة
 			  -- تنتأشر للحرق (أو العكس) — وهذا أسوأ من الغلط نفسه.
-			  AND (CURRENT_DATE - f."calledAt"::date) >= $1
+			  AND (baghdad_today() - baghdad_date(f."calledAt")) >= $1
 		)
 	`, model.GpsFollowUpCallAfter, model.FollowUpOutcomeRefused)
 	return err

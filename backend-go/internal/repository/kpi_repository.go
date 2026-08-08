@@ -110,7 +110,7 @@ func (r *KpiRepository) SumPointsForEmployeeRange(employeeID, from, to string) (
 	var total int
 	err := r.db.Get(&total, `
 		SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation"
-		WHERE "employeeId" = $1 AND cancelled = false AND "createdAt"::date BETWEEN $2::date AND $3::date
+		WHERE "employeeId" = $1 AND cancelled = false AND baghdad_date("createdAt") BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return total, err
 }

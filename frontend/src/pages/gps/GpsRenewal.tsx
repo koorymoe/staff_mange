@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type GpsDeviceRequest } from '../../api'
 import { useSession } from '../../session'
+import { matches as searchMatches } from '../../utils/search'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const remainingDays = (end: string | null) => end ? Math.ceil((new Date(end).getTime() - Date.now()) / 86400000) : null
@@ -25,7 +26,7 @@ export default function GpsRenewal() {
     const all = await api.getGpsDevices()
     const matches = all.filter(r =>
       (r.status === 'APPROVED' || r.status === 'DELIVERED') &&
-      (r.customer.fullName.includes(search) || r.customer.phone.includes(search))
+      searchMatches([r.customer.fullName, r.customer.phone], search)
     )
     if (matches.length > 0) {
       setResults(matches)

@@ -4,6 +4,7 @@ import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import { useSession } from '../session'
 import AddEmployeeWizard from '../components/AddEmployeeWizard'
 import { openManagerChat } from '../components/openManagerChat'
+import { matches } from '../utils/search'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -115,7 +116,7 @@ export default function Employees() {
 
   const baseEmployees = showArchived ? archivedEmployees : (isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees)
   const visibleEmployees = baseEmployees.filter(emp => {
-    if (searchQuery && !emp.name.includes(searchQuery) && !(emp.position || '').includes(searchQuery)) return false
+    if (searchQuery && !matches([emp.name, emp.position, emp.phone, emp.jobTitle], searchQuery)) return false
     if (filterRole && emp.role !== filterRole) return false
     return true
   })

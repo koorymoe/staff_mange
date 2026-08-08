@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type GpsDeviceRequest } from '../../api'
+import { matches } from '../../utils/search'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 
@@ -114,9 +115,7 @@ export default function GpsDelivery() {
 
   const filtered = pending.filter(r =>
     !search ||
-    r.customer.fullName.includes(search) ||
-    r.customer.phone.includes(search) ||
-    (r.gpsNumber || '').includes(search)
+    matches([r.customer.fullName, r.customer.phone, r.gpsNumber], search)
   )
 
   const customerFullName = (req: GpsDeviceRequest) => `${req.customer.fullName} ${req.customer.fatherName || ''} ${req.customer.grandfatherName || ''}`.trim()

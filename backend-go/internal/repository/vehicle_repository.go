@@ -362,7 +362,7 @@ func computeWeightedScore(r *model.VehicleDailyRating) *float64 {
 }
 
 func (r *VehicleRepository) CreateDailyRating(req model.CreateVehicleDailyRatingRequest, recordedByID string) (*model.VehicleDailyRating, error) {
-	ratedDate := "CURRENT_DATE"
+	ratedDate := "baghdad_today()"
 	var args []any
 	args = append(args, req.VehicleID, req.Wash, req.ExteriorClean, req.ExteriorCondition, req.TireCondition,
 		req.GlassClean, req.LightsCondition, req.TechnicalFaults, req.FaultDescription, req.InteriorClean,
