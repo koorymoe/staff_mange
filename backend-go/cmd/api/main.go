@@ -121,6 +121,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ نظام الغرامات التلقائي ═══
 	// النظام يغرّم لحاله ويعلن، والنقاط ترجع بالشغل النظيف مو بالطلب.
 	disciplineRepo := repository.NewDisciplineRepository(db)
+	bookingProgressRepo := repository.NewBookingProgressRepository(db)
 	deviceMaintenanceRepo := repository.NewDeviceMaintenanceRepository(db)
 	teamInventoryCheckRepo := repository.NewTeamInventoryCheckRepository(db)
 	jobDurationSampleRepo := repository.NewJobDurationSampleRepository(db)
@@ -412,6 +413,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
 	mux.Handle("GET /api/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
 	disciplineHandler := handler.NewDisciplineHandler(disciplineService)
+	bookingProgressHandler := handler.NewBookingProgressHandler(bookingProgressRepo, bookingRepo, notificationRepo)
 	// نقاط الانضباط: كل موظف يشوف الأرصدة (الشفافية جزء من العقوبة)،
 	// وتشغيل الفحص يدوياً للمدير حصراً.
 	mux.Handle("GET /api/discipline", middleware.Chain(http.HandlerFunc(disciplineHandler.List), requireAuth))
@@ -503,6 +505,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// توقف العمل ورجوعه — بيد طرف الحجز نفسه (الليدر/الكادر المكلّف)
 	mux.Handle("PUT /api/bookings/{id}/stop-work", middleware.Chain(http.HandlerFunc(bookingHandler.StopWork), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/resume-work", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeWork), requireAuth, requireBookingParty))
+	// ── الإنجاز الجزئي ──
+	// نفس صلاحية «تم الإنجاز» بالضبط: الي يقدر يقفل الحجز يقدر يأشّره
+	// جزئي. لو ضيّقناها أكثر، الليدر يوكف بلا خيار آخر اليوم ويأشّر
+	// «تم الإنجاز» على شغل ناقص — وهاي المشكلة الي نحلها أصلاً.
+	mux.Handle("POST /api/bookings/{id}/partial-complete", middleware.Chain(http.HandlerFunc(bookingProgressHandler.PartialComplete), requireAuth, requireBookingParty))
+	mux.Handle("POST /api/bookings/{id}/schedule-continuation", middleware.Chain(http.HandlerFunc(bookingProgressHandler.ScheduleContinuation), requireAuth, requireCoordinator))
+	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
+	mux.Handle("GET /api/bookings/{id}/suggested-crew", middleware.Chain(http.HandlerFunc(bookingProgressHandler.SuggestedCrew), requireAuth))
+
 	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth, requireBookingParty))
 
 	// حذف الحجوزات التجريبية والملغاة: الإداري يطلب، والمراقب أو مدير

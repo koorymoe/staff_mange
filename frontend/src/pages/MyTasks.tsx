@@ -5,6 +5,8 @@ import 'leaflet/dist/leaflet.css'
 import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import { api, type Booking, type PersonalTool } from '../api'
+import PartialCompleteDialog from '../components/PartialCompleteDialog'
+import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import { useSession } from '../session'
 
 function elapsedSince(iso: string): string {
@@ -203,6 +205,7 @@ export default function MyTasks() {
   // الاثنين — بس مو إجبارية: يكدر يأجلها بـ«بعدين» ويرجع لها.
   const [paperwork, setPaperwork] = useState<{ booking: Booking; stopped: boolean } | null>(null)
   const [stopFor, setStopFor] = useState<Booking | null>(null)
+  const [partialFor, setPartialFor] = useState<Booking | null>(null)
   const [stopReason, setStopReason] = useState('')
   const [stopping, setStopping] = useState(false)
 
@@ -402,7 +405,18 @@ export default function MyTasks() {
                           >
                             تم الإنجاز
                           </button>
+                          {/* الشغل الي ياخذ أكثر من يوم: بدل ما يأشّر
+                              «تم الإنجاز» على شغل ناقص أو «توقف العمل»
+                              وكأن الشغل فشل. */}
+                          <button
+                            onClick={() => setPartialFor(b)}
+                            className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-800 transition-all hover:bg-amber-100"
+                          >
+                            🔄 إنجاز جزئي (نكمل باچر)
+                          </button>
                         </div>
+                        {/* تقارير الأيام الفائتة — الكادر يقراها قبل ما يبدي */}
+                        <BookingProgressTimeline bookingId={b.id} />
                         {b.workStoppedAt ? (
                           <div className="mt-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs">
                             <span className="font-bold text-slate-700">⏸ العمل متوقف</span>
@@ -526,6 +540,18 @@ export default function MyTasks() {
             </div>
           </div>
         </div>
+      )}
+
+      {partialFor && (
+        <PartialCompleteDialog
+          booking={partialFor}
+          onClose={() => setPartialFor(null)}
+          onDone={() => {
+            // الحجز رجع للإداري — ما عاد بمهام هذا الموظف
+            setBookings((prev) => prev.filter((x) => x.id !== partialFor.id))
+            setPartialFor(null)
+          }}
+        />
       )}
 
       {/* ═══ سبب توقف العمل — إجباري ═══ */}

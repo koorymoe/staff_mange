@@ -79,6 +79,10 @@ type Booking struct {
 	// ومنو وافق على حذفه كلهم ينمحون سوه ولا يبقى أثر.
 	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
 	ArchivedAt    *time.Time `db:"archivedAt" json:"archivedAt"`
+	// الإنجاز الجزئي: كم مرة انأجّل الحجز لليوم الجاي وآخر مرة متى.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	PartialCount  int        `db:"partialCount" json:"partialCount"`
+	LastPartialAt *time.Time `db:"lastPartialAt" json:"lastPartialAt"`
 	ArchivedByID  *string    `db:"archivedById" json:"archivedById"`
 	ArchiveReason *string    `db:"archiveReason" json:"archiveReason"`
 

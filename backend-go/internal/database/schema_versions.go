@@ -197,6 +197,9 @@ func versionedMigrations() []Migration {
 	// 0220: تعديل يدوي على نقاط الانضباط للمالك/مدير النظام — مع تسجيل
 	// منو عدّل، حتى يبقى تصحيحاً مسؤولاً مو باباً خلفياً.
 	result = append(result, disciplineManualMigration()...)
+	// 0221 وما بعدها: الإنجاز الجزئي — الحجز الي ياخذ أكثر من يوم يرجع
+	// للإداري بتقرير «وين وصلوا» بدل ما ينحسب مكتمل أو متوقف.
+	result = append(result, partialCompletionMigration()...)
 	return result
 }
 

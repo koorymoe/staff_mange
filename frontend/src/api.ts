@@ -469,6 +469,9 @@ export type CompletionState =
   | 'DONE_FULL'        // تم الإنجاز بشكل كامل
 
 export interface Booking {
+  /** كم مرة انأجّل الحجز لليوم الجاي بسبب إنجاز جزئي */
+  partialCount: number
+  lastPartialAt: string | null
   id: string
   code: string
 
@@ -532,7 +535,7 @@ export interface Booking {
   priority: 'NORMAL' | 'URGENT'
   // WAITING: اتصلنا بالزبون بعد التثبيت وما رد — الحجز ينزاح من طابور
   // الشغل ويضل محفوظ لحد ما يرد.
-  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'WAITING'
+  status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'WAITING' | 'PARTIAL'
   transferToProjects: boolean
   confirmedByName: string | null
   adminNotes: string | null
@@ -2728,6 +2731,21 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ employeeId }),
     }),
+  // ── الإنجاز الجزئي: الحجز الي ياخذ أكثر من يوم ──
+  partialCompleteBooking: (id: string, body: PartialCompleteBody) =>
+    request<BookingProgressReport>(`/bookings/${id}/partial-complete`, {
+      method: 'POST', body: JSON.stringify(body),
+    }),
+  getBookingProgress: (id: string) =>
+    request<BookingProgressReport[]>(`/bookings/${id}/progress`),
+  getSuggestedCrew: (id: string) =>
+    request<SuggestedCrewMember[]>(`/bookings/${id}/suggested-crew`),
+  /** الإداري يحدد موعد إكمال حجز منجز جزئياً — مو «تأجيل»، فما ينعد بعداد التأجيلات */
+  scheduleContinuation: (id: string, scheduledAt: string) =>
+    request<Booking>(`/bookings/${id}/schedule-continuation`, {
+      method: 'POST', body: JSON.stringify({ scheduledAt }),
+    }),
+
   completeBooking: (
     id: string,
     data: { completionNotes?: string; amountCollected?: number; advancePaid?: number },
@@ -3440,4 +3458,37 @@ export interface BackupHealth {
 export interface BackupOverview {
   health: BackupHealth
   runs: BackupRun[]
+}
+
+export interface PartialCompleteBody {
+  workDone: string
+  remainingWork: string
+  percentDone: number
+  blockers?: string
+  materialsUsed?: string
+  amountCollected?: number
+}
+
+export interface BookingProgressReport {
+  id: string
+  bookingId: string
+  dayNumber: number
+  reportedById: string | null
+  reportedBy: { id: string; name: string } | null
+  workDone: string
+  remainingWork: string
+  percentDone: number
+  blockers: string | null
+  materialsUsed: string | null
+  crewSnapshot: string | null
+  createdAt: string
+}
+
+export interface SuggestedCrewMember {
+  employeeId: string
+  name: string
+  role: string
+  daysWorked: number
+  available: boolean
+  note: string
 }
