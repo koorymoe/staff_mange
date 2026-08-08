@@ -145,19 +145,23 @@ func (r *QualityFollowUpRepository) Update(id, status string, contactedByEmploye
 // ما نخصم أكثر — الشكوى الوحدة ما تلغي تقييم الموظف كله.
 const qualityKpiPoints = 1
 
-// LeaderOf يرجّع الليدر المسؤول عن حجز.
+// LeaderOf يرجّع **الليدر** المسؤول عن حجز — ولا أحد غيره.
 //
-// الترتيب مقصود: المكلّف الي isLeader أولاً، وإذا ماكو ليدر بالكادر
-// ناخذ TECH_1 (الأول بالترتيب) — لأن حد ما لازم يكون مسؤول قدام
-// الزبون، وتركها بلا مسؤول يعني الشكوى تروح بالهوا.
+// ⚠️ ماكو بديل: إذا الكادر ما بيه ليدر، نرجّع فاضي وما ينغرم أحد.
+// كان عندنا بديل ياخذ TECH_1، وهذا غلط — الفني ما يتحمّل مسؤولية
+// شغل الفريق قدام الزبون، وهاي مسؤولية الليدر حصراً بقرار صاحب
+// العمل. الأفضل ما ينغرم أحد على إن ينغرم واحد مو مسؤول.
+//
+// والحجز الي بلا ليدر ما تروح شكواه بالهوا: الإدارة تنبّه بإشعار
+// حتى تعرف إن أكو شكوى بلا مسؤول وتحدد المسؤول بنفسها.
 func (r *QualityFollowUpRepository) LeaderOf(bookingID string) (string, error) {
 	var id string
 	err := r.db.Get(&id, `
 		SELECT a."employeeId"
 		FROM "BookingAssignment" a
 		JOIN "Employee" e ON e.id = a."employeeId"
-		WHERE a."bookingId" = $1
-		ORDER BY e."isLeader" DESC, a.role ASC
+		WHERE a."bookingId" = $1 AND e."isLeader" = true
+		ORDER BY a.role ASC
 		LIMIT 1`, bookingID)
 	return id, err
 }
@@ -358,14 +362,15 @@ func (r *QualityFollowUpRepository) Inspect(id, byEmployeeID string, req model.Q
 	return "", nil
 }
 
+// leaderOfTx نفس LeaderOf بس داخل المعاملة — الليدر حصراً، بلا بديل.
 func (r *QualityFollowUpRepository) leaderOfTx(tx *sqlx.Tx, bookingID string) (string, error) {
 	var id string
 	err := tx.Get(&id, `
 		SELECT a."employeeId"
 		FROM "BookingAssignment" a
 		JOIN "Employee" e ON e.id = a."employeeId"
-		WHERE a."bookingId" = $1
-		ORDER BY e."isLeader" DESC, a.role ASC
+		WHERE a."bookingId" = $1 AND e."isLeader" = true
+		ORDER BY a.role ASC
 		LIMIT 1`, bookingID)
 	return id, err
 }
