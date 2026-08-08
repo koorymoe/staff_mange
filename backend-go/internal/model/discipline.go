@@ -34,6 +34,15 @@ const (
 	DisciplineUnbalancedAssign = "UNBALANCED_ASSIGNMENT"
 	// DisciplineRestore رجوع نقطة بعد شغل نظيف.
 	DisciplineRestore = "RESTORE"
+	// DisciplineManual تعديل يدوي من المالك أو مدير النظام.
+	//
+	// النظام يغرّم تلقائياً حتى ما تصير محاباة — بس الآلة ما تعرف كل شي:
+	// الموظف ممكن يتأخر لأن الزبون ما كان بالبيت، أو ينغرم على شي مو
+	// ذنبه. فلازم يكون بيد المالك مفتاح يصحّح.
+	//
+	// وحتى ما يصير هذا المفتاح باب خلفي: كل تعديل يدوي ينسجّل بنفس
+	// السجل مع اسم الي عدّل والسبب — يعني ينشاف متل أي حركة ثانية.
+	DisciplineManual = "MANUAL"
 )
 
 // DisciplinePoints رصيد نقاط موظف.
@@ -57,6 +66,9 @@ type DisciplineEvent struct {
 	Delta      int       `db:"delta" json:"delta"`
 	Reason     string    `db:"reason" json:"reason"`
 	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
+	// منو سوّى التعديل — يمتلي بالتعديل اليدوي بس، والتلقائي يبقى فاضي.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
+	ByEmployeeID *string `db:"byEmployeeId" json:"byEmployeeId"`
 
 	EmployeeName string `db:"-" json:"employeeName"`
 }

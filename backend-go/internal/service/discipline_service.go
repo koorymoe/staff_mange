@@ -1,8 +1,11 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -47,6 +50,49 @@ func (s *DisciplineService) Events(employeeID string, limit int) ([]model.Discip
 
 // announce ينشر الغرامة بلوحة الإعلانات لكل الموظفين. الإعلان جزء من
 // العقوبة — الشفافية هي الي تخلي الناس تنتبه.
+// Adjust تعديل يدوي على رصيد موظف من المالك أو مدير النظام.
+//
+// نشترط سبب مكتوب: تعديل بلا سبب ما ينفهم بعد شهر، لا من المالك ولا
+// من الموظف الي انطلب منه توضيح. والموظف ينوصله إشعار بالتعديل
+// وسببه — التعديل بالخفية يكسر ثقة الموظف بالنظام كله.
+func (s *DisciplineService) Adjust(employeeID string, delta int, reason, byEmployeeID string) (*model.DisciplinePoints, error) {
+	if employeeID == "" {
+		return nil, errors.New("لازم تحدد الموظف")
+	}
+	if delta == 0 {
+		return nil, errors.New("لازم تحدد كم نقطة تريد تزيد أو تنقص")
+	}
+	if len(strings.TrimSpace(reason)) < 3 {
+		return nil, errors.New("لازم تكتب سبب التعديل")
+	}
+
+	remaining, applied, err := s.repo.Adjust(employeeID, delta, strings.TrimSpace(reason), byEmployeeID)
+	if err != nil {
+		return nil, err
+	}
+	if applied == 0 {
+		return nil, errors.New("الرصيد وصل الحد — ما تغيّر شي (الرصيد بين ٠ و١٠٠)")
+	}
+
+	if s.notifications != nil {
+		verb := "انزادت"
+		amount := applied
+		if applied < 0 {
+			verb = "انخصمت"
+			amount = -applied
+		}
+		_ = s.notifications.Create(employeeID, "discipline_manual",
+			"📝 "+verb+" "+strconv.Itoa(amount)+" نقطة من رصيد الانضباط مالتك بتعديل إداري (السبب: "+
+				strings.TrimSpace(reason)+"). رصيدك الحالي "+strconv.Itoa(remaining)+" من ١٠٠")
+	}
+
+	return &model.DisciplinePoints{
+		EmployeeID:    employeeID,
+		Points:        remaining,
+		DeductedDinar: (model.DisciplineStartingPoints - remaining) * model.DisciplineDinarPerPoint,
+	}, nil
+}
+
 func (s *DisciplineService) announce(body string) {
 	if s.announcements == nil {
 		return

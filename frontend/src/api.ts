@@ -2076,11 +2076,12 @@ export interface DisciplinePoints {
   updatedAt: string
 }
 export interface DisciplineEvent {
+  byEmployeeId?: string | null
   id: string
   employeeId: string
   employeeName: string
   bookingId: string | null
-  kind: 'LATE_PAPERWORK' | 'UNBALANCED_ASSIGNMENT' | 'RESTORE'
+  kind: 'LATE_PAPERWORK' | 'UNBALANCED_ASSIGNMENT' | 'RESTORE' | 'MANUAL'
   delta: number
   reason: string
   createdAt: string
@@ -2389,6 +2390,12 @@ export const api = {
   getDisciplineEvents: (employeeId?: string) =>
     request<DisciplineEvent[]>(`/discipline/events${employeeId ? '?employeeId=' + employeeId : ''}`),
   runDisciplineSweep: () => request<DisciplinePoints[]>('/discipline/run', { method: 'POST' }),
+  // تعديل يدوي على رصيد موظف — للمالك ومدير النظام. delta موجب يزيد وسالب ينقص.
+  adjustDisciplinePoints: (employeeId: string, delta: number, reason: string) =>
+    request<DisciplinePoints>('/discipline/adjust', {
+      method: 'POST',
+      body: JSON.stringify({ employeeId, delta, reason }),
+    }),
   createService: (data: { name: string; category?: string; division?: 'ENGINEERING' | 'DECOR' | '' }) =>
     request<Service>('/services', { method: 'POST', body: JSON.stringify(data) }),
   createSkill: (serviceId: string, name: string) =>

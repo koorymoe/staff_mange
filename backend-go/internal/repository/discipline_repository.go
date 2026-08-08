@@ -61,6 +61,62 @@ func (r *DisciplineRepository) Penalize(employeeID, kind, reason string, booking
 	return true, left, nil
 }
 
+// Adjust تعديل يدوي على رصيد موظف — زيادة أو نقصان — من المالك أو مدير
+// النظام. الحركة والرصيد ينتحدثون بمعاملة وحدة، ونسجّل منو عدّل.
+//
+// نفس حدود التلقائي بالضبط: ما ينزل تحت الصفر ولا يفوت ١٠٠. التعديل
+// اليدوي ما يعطي صلاحيات أوسع من النظام، يعطي بس القدرة على التصحيح.
+//
+// يرجّع الرصيد بعد التعديل والفرق الي انطبّق فعلاً (ممكن يقل عن
+// المطلوب إذا الرصيد وصل الحد).
+func (r *DisciplineRepository) Adjust(employeeID string, delta int, reason, byEmployeeID string) (remaining int, applied int, err error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return 0, 0, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// نقفل الصف ونقرا الرصيد الحالي — بدون القفل، تعديلين بنفس اللحظة
+	// يقرون نفس الرصيد وواحد منهم يضيع.
+	var before int
+	if err = tx.Get(&before, `
+		INSERT INTO "DisciplinePoints" ("employeeId", points, "updatedAt")
+		VALUES ($1, $2, now())
+		ON CONFLICT ("employeeId") DO UPDATE SET "updatedAt" = "DisciplinePoints"."updatedAt"
+		RETURNING points
+	`, employeeID, model.DisciplineStartingPoints); err != nil {
+		return 0, 0, err
+	}
+
+	after := before + delta
+	if after < 0 {
+		after = 0
+	}
+	if after > model.DisciplineStartingPoints {
+		after = model.DisciplineStartingPoints
+	}
+	applied = after - before
+	if applied == 0 {
+		return before, 0, nil // الرصيد أصلاً على الحد — ما نسجّل حركة فاضية
+	}
+
+	if _, err = tx.Exec(`
+		INSERT INTO "DisciplineEvent" (id, "employeeId", "bookingId", kind, delta, reason, "byEmployeeId")
+		VALUES ($1, $2, NULL, $3, $4, $5, $6)
+	`, uuid.NewString(), employeeID, model.DisciplineManual, applied, reason, byEmployeeID); err != nil {
+		return 0, 0, err
+	}
+	if _, err = tx.Exec(`
+		UPDATE "DisciplinePoints" SET points = $2, "updatedAt" = now() WHERE "employeeId" = $1
+	`, employeeID, after); err != nil {
+		return 0, 0, err
+	}
+	if err = tx.Commit(); err != nil {
+		return 0, 0, err
+	}
+	return after, applied, nil
+}
+
 // RestoreOne يرجّع نقطة وحدة لموظف اشتغل نظيف. ما يتجاوز الرصيد الأصلي.
 func (r *DisciplineRepository) RestoreOne(employeeID, reason string) error {
 	tx, err := r.db.Beginx()

@@ -416,6 +416,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// وتشغيل الفحص يدوياً للمدير حصراً.
 	mux.Handle("GET /api/discipline", middleware.Chain(http.HandlerFunc(disciplineHandler.List), requireAuth))
 	mux.Handle("GET /api/discipline/events", middleware.Chain(http.HandlerFunc(disciplineHandler.Events), requireAuth))
+	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.
+	mux.Handle("POST /api/discipline/adjust", middleware.Chain(http.HandlerFunc(disciplineHandler.Adjust), requireAuth, requireAdmin))
 	mux.Handle("POST /api/discipline/run", middleware.Chain(http.HandlerFunc(disciplineHandler.Run), requireAuth, requireAdmin))
 	mux.Handle("GET /api/employees/archived", middleware.Chain(http.HandlerFunc(employeeHandler.ListArchived), requireAuth, requireAdmin))
 	mux.Handle("GET /api/security/dashboard", middleware.Chain(http.HandlerFunc(securityHandler.Dashboard), requireAuth, requireOwner))

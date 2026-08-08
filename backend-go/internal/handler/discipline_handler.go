@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/service"
 )
 
@@ -34,6 +35,27 @@ func (h *DisciplineHandler) Events(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, items)
+}
+
+// POST /api/discipline/adjust — تعديل يدوي على رصيد موظف.
+// للمالك ومدير النظام حصراً (مربوط بالراوتر). كل تعديل ينسجّل بالسجل
+// باسم الي عدّله وسببه.
+func (h *DisciplineHandler) Adjust(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		EmployeeID string `json:"employeeId"`
+		Delta      int    `json:"delta"`
+		Reason     string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	result, err := h.service.Adjust(req.EmployeeID, req.Delta, req.Reason, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, result)
 }
 
 // POST /api/discipline/run — تشغيل الفحص فوراً بدل انتظار الدورة.

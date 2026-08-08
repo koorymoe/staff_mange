@@ -194,6 +194,9 @@ func versionedMigrations() []Migration {
 	// 0218 وما بعدها: «أي يوم؟» ينحسب بتوقيت بغداد مو غرينتش — كان الحجز
 	// الي بعد منتصف الليل يطلع باليوم الي قبله بجدول التنسيق وبالإحصاءات.
 	result = append(result, baghdadDateMigration()...)
+	// 0220: تعديل يدوي على نقاط الانضباط للمالك/مدير النظام — مع تسجيل
+	// منو عدّل، حتى يبقى تصحيحاً مسؤولاً مو باباً خلفياً.
+	result = append(result, disciplineManualMigration()...)
 	return result
 }
 
