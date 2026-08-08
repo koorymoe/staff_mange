@@ -119,6 +119,7 @@ export default function QuotationNew() {
         setDuration(q.duration || '')
         setNotes(q.notes || '')
         setItems(q.items.length > 0 ? q.items.map((it) => ({
+          imageBase64: it.imageBase64 || '',
           productName: it.productName,
           unit: it.unit,
           quantity: it.quantity,
@@ -214,6 +215,8 @@ export default function QuotationNew() {
     showStatus('جاري الحفظ...', 'ok')
     try {
       const itemsPayload = validItems.map(it => ({
+        // الصورة تنحفظ وية البند، وإلا المعاينة بعد الحفظ تطلع فارغة
+        imageBase64: it.imageBase64 || undefined,
         productName: it.productName,
         unit: it.unit,
         quantity: it.quantity,
@@ -270,10 +273,19 @@ export default function QuotationNew() {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;')
 
-  // escAttr للروابط داخل src: نسمح بس بصور base64 (data:image/...) — أي شي
-  // ثاني (javascript: مثلاً) ينرفض.
-  const safeImg = (v: string | undefined): string =>
-    v && /^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(v) ? v : ''
+  // الصور داخل src: نسمح بشكلين بس — data:image قديمة، ومسار /api/files/
+  // الجديد (الصور انترحّلت للتخزين ومعادت base64). أي شي ثاني
+  // (javascript: مثلاً) ينرفض.
+  //
+  // ⚠️ مسار الملف لازم يمرّ بـfileUrl() حتى ينضاف توكن ?ft= — بدونه
+  // نافذة الطباعة تطلب الصورة بلا هيدر Authorization فترجع 401
+  // وتنعرض فارغة.
+  const safeImg = (v: string | undefined | null): string => {
+    if (!v) return ''
+    if (/^data:image\/(png|jpe?g|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(v)) return v
+    if (/^\/api\/files\/[A-Za-z0-9._/-]+$/.test(v)) return fileUrl(v)
+    return ''
+  }
 
   // buildPrintHtml يبني نفس النسخة الي تنطبع بالضبط — نستعملها للطباعة
   // وللمعاينة سوه، حتى المعاينة تكون طبق الأصل للمطبوع مو شي ثاني.

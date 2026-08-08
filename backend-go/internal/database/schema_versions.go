@@ -211,6 +211,9 @@ func versionedMigrations() []Migration {
 	result = append(result, freeWorkMigration()...)
 	// 0231: الطلبات — كتاب رسمي من الموظف للإدارة، بجواب مكتوب وسجل.
 	result = append(result, employeeLetterMigration()...)
+	// 0232: صورة المنتج تنحفظ مع بند عرض السعر — كانت تختفي بعد الحفظ
+	// فالعرض المطبوع يطلع بمربعات فاضية.
+	result = append(result, quotationImageMigration()...)
 	return result
 }
 

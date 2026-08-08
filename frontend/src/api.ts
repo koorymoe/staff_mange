@@ -1262,6 +1262,8 @@ export interface CreateLeaderInvoiceRequest {
 
 export interface QuotationItem {
   id?: string
+  /** مرجع صورة المنتج وقت إصدار العرض — مرّرها عبر fileUrl() قبل الـsrc */
+  imageBase64?: string | null
   productName: string
   unit: string
   quantity: number

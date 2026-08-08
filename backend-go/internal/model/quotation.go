@@ -26,6 +26,9 @@ type Quotation struct {
 type QuotationItem struct {
 	ID          string  `db:"id" json:"id"`
 	QuotationID string  `db:"quotationId" json:"quotationId"`
+	// مرجع صورة المنتج وقت إصدار العرض (مسار ملف أو data: قديمة).
+	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
+	ImageBase64 *string `db:"imageBase64" json:"imageBase64"`
 	ProductName string  `db:"productName" json:"productName"`
 	Unit        *string `db:"unit" json:"unit"`
 	Quantity    int     `db:"quantity" json:"quantity"`
@@ -34,6 +37,9 @@ type QuotationItem struct {
 }
 
 type QuotationItemInput struct {
+	// صورة المنتج تنتنسخ بالعرض وقت الحفظ: العرض وثيقة انرسلت للزبون
+	// بتاريخ معيّن، فلو تغيّرت صورة المنتج بعدين ما تتغيّر الوثيقة.
+	ImageBase64 *string `json:"imageBase64"`
 	ProductName string  `json:"productName"`
 	Unit        *string `json:"unit"`
 	Quantity    int     `json:"quantity"`

@@ -173,9 +173,10 @@ func (r *QuotationRepository) insertItems(tx *sqlx.Tx, quotationID string, items
 	for _, item := range items {
 		totalPrice := float64(item.Quantity) * item.UnitPrice
 		if _, err := tx.Exec(`
-			INSERT INTO "QuotationItem" (id, "quotationId", "productName", unit, quantity, "unitPrice", "totalPrice")
-			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6)
-		`, quotationID, item.ProductName, item.Unit, item.Quantity, item.UnitPrice, totalPrice); err != nil {
+			INSERT INTO "QuotationItem" (id, "quotationId", "productName", unit, quantity, "unitPrice", "totalPrice", "imageBase64")
+			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''))
+		`, quotationID, item.ProductName, item.Unit, item.Quantity, item.UnitPrice, totalPrice,
+			derefStr(item.ImageBase64)); err != nil {
 			return err
 		}
 	}
