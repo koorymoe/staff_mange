@@ -56,19 +56,26 @@ type LeaderInvoiceMaterialItem struct {
 // LeaderInvoice فاتورة الليدر الكاملة — منظومات مختارة (حتى 3)، بنود تنفيذ،
 // مواد، خصم، والمجموع الصافي. مبنية لتحل محل شيت جوجل بنفس منطق الحساب تماماً.
 type LeaderInvoice struct {
-	ID                   string     `db:"id" json:"id"`
-	BookingID            *string    `db:"bookingId" json:"bookingId"`
-	EmployeeID           string     `db:"employeeId" json:"employeeId"`
-	CustomerName         *string    `db:"customerName" json:"customerName"`
-	CustomerPhone        *string    `db:"customerPhone" json:"customerPhone"`
-	CustomerAddress      *string    `db:"customerAddress" json:"customerAddress"`
-	SystemsJSON          string     `db:"systems" json:"-"`
-	ItemsJSON            string     `db:"items" json:"-"`
-	TotalDeviceCount     int        `db:"totalDeviceCount" json:"totalDeviceCount"`
-	ExecutionCost        float64    `db:"executionCost" json:"executionCost"`
-	MaterialsTotal       float64    `db:"materialsTotal" json:"materialsTotal"`
-	DiscountValue        float64    `db:"discountValue" json:"discountValue"`
-	NetTotal             float64    `db:"netTotal" json:"netTotal"`
+	ID               string  `db:"id" json:"id"`
+	BookingID        *string `db:"bookingId" json:"bookingId"`
+	EmployeeID       string  `db:"employeeId" json:"employeeId"`
+	CustomerName     *string `db:"customerName" json:"customerName"`
+	CustomerPhone    *string `db:"customerPhone" json:"customerPhone"`
+	CustomerAddress  *string `db:"customerAddress" json:"customerAddress"`
+	SystemsJSON      string  `db:"systems" json:"-"`
+	ItemsJSON        string  `db:"items" json:"-"`
+	TotalDeviceCount int     `db:"totalDeviceCount" json:"totalDeviceCount"`
+	ExecutionCost    float64 `db:"executionCost" json:"executionCost"`
+	MaterialsTotal   float64 `db:"materialsTotal" json:"materialsTotal"`
+	DiscountValue    float64 `db:"discountValue" json:"discountValue"`
+	NetTotal         float64 `db:"netTotal" json:"netTotal"`
+	// ── الشغل المجاني ──
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (الجلب SELECT *).
+	IsFree         bool    `db:"isFree" json:"isFree"`
+	FreeReasonID   *string `db:"freeReasonId" json:"freeReasonId"`
+	FreeReasonNote *string `db:"freeReasonNote" json:"freeReasonNote"`
+	// اسم السبب للعرض — ينجلب بالربط مو من الجدول
+	FreeReasonLabel      *string    `db:"-" json:"freeReasonLabel"`
 	AccountingCode       string     `db:"accountingCode" json:"accountingCode"`
 	Status               string     `db:"status" json:"status"` // SUBMITTED | APPROVED
 	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
@@ -100,7 +107,11 @@ type LeaderInvoice struct {
 
 // CreateLeaderInvoiceRequest جسم طلب إنشاء فاتورة ليدر جديدة.
 type CreateLeaderInvoiceRequest struct {
-	BookingID       *string                     `json:"bookingId"`
+	BookingID *string `json:"bookingId"`
+	// الشغل المجاني: الفاتورة تنسوّى بصفر بسبب من القائمة
+	IsFree          bool                        `json:"isFree"`
+	FreeReasonID    *string                     `json:"freeReasonId"`
+	FreeReasonNote  *string                     `json:"freeReasonNote"`
 	CustomerName    *string                     `json:"customerName"`
 	CustomerPhone   *string                     `json:"customerPhone"`
 	CustomerAddress *string                     `json:"customerAddress"`
@@ -266,4 +277,16 @@ type AdjustLeaderInvoiceRequest struct {
 	MaterialsTotal float64 `json:"materialsTotal"`
 	DiscountValue  float64 `json:"discountValue"`
 	Reason         string  `json:"reason"`
+}
+
+// FreeWorkReason سبب من قائمة الشغل المجاني.
+//
+// قائمة مو نص حر: النص الحر ما ينجمّع ولا ينحسب. لما يكون من قائمة
+// نقدر نجاوب «شكد كلّفنا الضمان هالسنة؟» بسؤال واحد.
+type FreeWorkReason struct {
+	ID        string `db:"id" json:"id"`
+	Label     string `db:"label" json:"label"`
+	SortOrder int    `db:"sortOrder" json:"sortOrder"`
+	Active    bool   `db:"active" json:"active"`
+	NeedsNote bool   `db:"needsNote" json:"needsNote"`
 }

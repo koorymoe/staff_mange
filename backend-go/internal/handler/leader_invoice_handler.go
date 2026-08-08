@@ -211,3 +211,13 @@ func (h *LeaderInvoiceHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, inv)
 }
+
+// GET /api/free-work-reasons — قائمة أسباب الشغل المجاني.
+func (h *LeaderInvoiceHandler) FreeReasons(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.FreeReasons()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب أسباب المجانية")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

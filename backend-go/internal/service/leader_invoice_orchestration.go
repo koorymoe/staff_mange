@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -125,6 +126,29 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 		netTotal = 0
 	}
 
+	// ── الشغل المجاني ──
+	//
+	// ⚠️ ما نصفّر الكلفة والمواد — نصفّر **الصافي** بس، بخصم يساوي
+	// المبلغ كله. ليش؟ لأن الشغل المجاني كلّفنا فعلاً: وقت كادر ومواد
+	// من المخزن. لو صفّرنا كل شي، الضمان يبين مجاني على الشركة وهو مو
+	// مجاني — وما نقدر نجاوب «شكد كلّفنا الضمان هالسنة؟».
+	//
+	// فالفاتورة تبقى تحمل الكلفة الحقيقية، والزبون يدفع صفر.
+	if req.IsFree {
+		if req.FreeReasonID == nil || *req.FreeReasonID == "" {
+			return nil, fmt.Errorf("لازم تحدد سبب المجانية")
+		}
+		reason, rerr := s.invoices.FreeReason(*req.FreeReasonID)
+		if rerr != nil || reason == nil {
+			return nil, fmt.Errorf("سبب المجانية مو معروف")
+		}
+		if reason.NeedsNote && utf8.RuneCountInString(strings.TrimSpace(derefString(req.FreeReasonNote))) < 5 {
+			return nil, fmt.Errorf("سبب «%s» يحتاج توضيح مكتوب", reason.Label)
+		}
+		discount = float64(executionCost) + materialsTotal
+		netTotal = 0
+	}
+
 	inv := &model.LeaderInvoice{
 		BookingID:        req.BookingID,
 		EmployeeID:       employeeID,
@@ -139,6 +163,9 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 		DiscountValue:    discount,
 		NetTotal:         netTotal,
 		Status:           "SUBMITTED",
+		IsFree:           req.IsFree,
+		FreeReasonID:     req.FreeReasonID,
+		FreeReasonNote:   req.FreeReasonNote,
 	}
 
 	saved, err := s.invoices.Create(inv, materialLines)
@@ -392,4 +419,16 @@ func (s *LeaderInvoiceService) Get(id string) (*model.LeaderInvoice, error) {
 
 func (s *LeaderInvoiceService) List(employeeID string) ([]model.LeaderInvoice, error) {
 	return s.invoices.List(employeeID)
+}
+
+func derefString(p *string) string {
+	if p == nil {
+		return ""
+	}
+	return *p
+}
+
+// FreeReasons أسباب الشغل المجاني الفعّالة.
+func (s *LeaderInvoiceService) FreeReasons() ([]model.FreeWorkReason, error) {
+	return s.invoices.FreeReasons()
 }

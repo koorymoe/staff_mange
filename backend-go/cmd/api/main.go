@@ -1176,6 +1176,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فواتير الليدر: يشوفها الليدر نفسه، وصاحب صلاحية سلة الليدر، *والمحاسب* —
 	// لأنه الفاتورة لازم ترحّل له بتفاصيلها حتى يدققها ويعتمدها.
 	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, "leader_basket", "finance")
+	// أسباب الشغل المجاني — يقراها أي موظف يسوي فاتورة
+	mux.Handle("GET /api/free-work-reasons", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FreeReasons), requireAuth))
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
 	mux.Handle("GET /api/materials", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListMaterials), requireAuth))
 	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth, requireLeaderBasket))

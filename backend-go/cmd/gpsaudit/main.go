@@ -115,9 +115,9 @@ func main() {
 	fmt.Printf("  حالتها تغيّرت بعد الاستيراد: %d  (طبيعي — الربط بزبون يقلبها IN_USE)\n", diff)
 
 	// ── الزبائن ──
-	people := map[string]bool{}      // اسم+هاتف
-	triples := map[string]bool{}     // اسم+هاتف+رقم GPS
-	dupGps := map[string][]string{}  // رقم GPS → أسماء
+	people := map[string]bool{}     // اسم+هاتف
+	triples := map[string]bool{}    // اسم+هاتف+رقم GPS
+	dupGps := map[string][]string{} // رقم GPS → أسماء
 	for _, c := range f.Customers {
 		nm, ph, gp := norm(c.FullName), norm(c.Phone), norm(c.GpsNumber)
 		people[nm+"|"+ph] = true

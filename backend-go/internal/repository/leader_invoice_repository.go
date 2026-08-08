@@ -46,14 +46,17 @@ func (r *LeaderInvoiceRepository) Create(inv *model.LeaderInvoice, materials []m
 		INSERT INTO "LeaderInvoice" (
 			id, "bookingId", "employeeId", "customerName", "customerPhone", "customerAddress",
 			systems, items, "totalDeviceCount", "executionCost", "materialsTotal",
-			"discountValue", "netTotal", "accountingCode", status
+			"discountValue", "netTotal", "accountingCode", status,
+			"isFree", "freeReasonId", "freeReasonNote"
 		) VALUES (
-			gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, gen_random_uuid()::text, $13
+			gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, gen_random_uuid()::text, $13,
+			$14, $15, NULLIF($16,'')
 		) RETURNING *
 	`,
 		inv.BookingID, inv.EmployeeID, inv.CustomerName, inv.CustomerPhone, inv.CustomerAddress,
 		string(systemsJSON), string(itemsJSON), inv.TotalDeviceCount, inv.ExecutionCost, inv.MaterialsTotal,
 		inv.DiscountValue, inv.NetTotal, inv.Status,
+		inv.IsFree, inv.FreeReasonID, derefStr(inv.FreeReasonNote),
 	)
 	if err != nil {
 		return nil, err
@@ -272,6 +275,9 @@ func (r *LeaderInvoiceRepository) List(employeeID string) ([]model.LeaderInvoice
 	if err != nil {
 		return nil, err
 	}
+	// أسماء أسباب المجانية بدفعة وحدة — القائمة صغيرة وثابتة، فنجيبها
+	// كلها مرة وحدة بدل استعلام لكل فاتورة.
+	r.attachFreeReasonLabels(invoices)
 	if err := r.hydrateAll(invoices); err != nil {
 		return nil, err
 	}
@@ -510,4 +516,52 @@ func (r *LeaderInvoiceRepository) AdjustAmounts(id string, executionCost, materi
 		return nil, err
 	}
 	return &inv, nil
+}
+
+// FreeReason سبب مجانية واحد بالمعرّف.
+func (r *LeaderInvoiceRepository) FreeReason(id string) (*model.FreeWorkReason, error) {
+	var fr model.FreeWorkReason
+	if err := r.db.Get(&fr, `SELECT id, label, "sortOrder", active, "needsNote" FROM "FreeWorkReason" WHERE id = $1 AND active`, id); err != nil {
+		return nil, err
+	}
+	return &fr, nil
+}
+
+// FreeReasons قائمة أسباب المجانية الفعّالة — تعبّي القائمة بالواجهة.
+func (r *LeaderInvoiceRepository) FreeReasons() ([]model.FreeWorkReason, error) {
+	rows := []model.FreeWorkReason{}
+	err := r.db.Select(&rows, `
+		SELECT id, label, "sortOrder", active, "needsNote"
+		FROM "FreeWorkReason" WHERE active ORDER BY "sortOrder" ASC, label ASC`)
+	return rows, err
+}
+
+// attachFreeReasonLabels يعبّي اسم سبب المجانية للعرض.
+func (r *LeaderInvoiceRepository) attachFreeReasonLabels(invoices []model.LeaderInvoice) {
+	need := false
+	for i := range invoices {
+		if invoices[i].FreeReasonID != nil {
+			need = true
+			break
+		}
+	}
+	if !need {
+		return
+	}
+	reasons, err := r.FreeReasons()
+	if err != nil {
+		return
+	}
+	byID := map[string]string{}
+	for _, x := range reasons {
+		byID[x.ID] = x.Label
+	}
+	for i := range invoices {
+		if invoices[i].FreeReasonID != nil {
+			if label, ok := byID[*invoices[i].FreeReasonID]; ok {
+				l := label
+				invoices[i].FreeReasonLabel = &l
+			}
+		}
+	}
 }

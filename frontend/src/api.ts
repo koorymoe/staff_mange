@@ -997,6 +997,10 @@ export interface LeaderInvoiceMaterialItem {
 }
 
 export interface LeaderInvoice {
+  isFree?: boolean
+  freeReasonId?: string | null
+  freeReasonNote?: string | null
+  freeReasonLabel?: string | null
   // رقم الفاتورة المحاسبية الصادرة من نظام المحاسب الخارجي — إجباري
   // وقت الاعتماد، ومؤرشف حتى يلكاها بيه لمن يحتاجها.
   externalInvoiceNumber: string | null
@@ -1247,6 +1251,10 @@ export interface CreateLeaderInvoiceRequest {
   items: ExecutionCostItem[]
   materials: CreateMaterialLineRequest[]
   discountValue: number
+  /** الشغل المجاني: الصافي صفر بسبب من القائمة، والكلفة الحقيقية تبقى مسجّلة */
+  isFree?: boolean
+  freeReasonId?: string
+  freeReasonNote?: string
 }
 
 export interface QuotationItem {
@@ -3019,6 +3027,9 @@ export const api = {
     request<void>(`/quotations/${id}`, { method: 'DELETE' }),
 
   // Leader invoices (تحل محل شيت جوجل الليدر)
+  /** أسباب الشغل المجاني — فاتورة بصفر لازم تنربط بسبب من القائمة */
+  getFreeWorkReasons: () => request<FreeWorkReason[]>('/free-work-reasons'),
+
   getSystemPriceCatalog: (systemName?: string) =>
     request<SystemPriceCatalog[]>(`/system-price-catalog${systemName ? `?systemName=${encodeURIComponent(systemName)}` : ''}`),
   getMaterials: (code?: string) =>
@@ -3540,4 +3551,13 @@ export interface SuggestedCrewMember {
   daysWorked: number
   available: boolean
   note: string
+}
+
+export interface FreeWorkReason {
+  id: string
+  label: string
+  sortOrder: number
+  active: boolean
+  /** يطلب توضيح مكتوب إضافي (مثل «سبب آخر») */
+  needsNote: boolean
 }

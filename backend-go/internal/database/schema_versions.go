@@ -206,6 +206,9 @@ func versionedMigrations() []Migration {
 	// 0227 وما بعدها: حكم الجودة — تقرير إيجابي/سلبي بأثر حقيقي على
 	// نقاط الليدر، ومسار كشف يوقف الغرامة لما الزبون يكون كاذب.
 	result = append(result, qualityVerdictMigration()...)
+	// 0229 وما بعدها: الشغل المجاني — فاتورة بصفر بسبب من قائمة، بدل
+	// «فاتورة صفر بلا سبب» أو «ما نسوي فاتورة أصلاً».
+	result = append(result, freeWorkMigration()...)
 	return result
 }
 

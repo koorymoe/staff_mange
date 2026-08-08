@@ -8,6 +8,7 @@ import {
   type ExecutionCostItem,
   type LeaderInvoice,
   type SystemPriceCatalog,
+  type FreeWorkReason,
   type Booking,
   type DirectedProject,
 } from '../api'
@@ -54,6 +55,17 @@ export default function LeaderInvoiceNew() {
   const [customerPhone, setCustomerPhone] = useState('')
   const [customerAddress, setCustomerAddress] = useState('')
   const [discountValue, setDiscountValue] = useState(0)
+
+  // ── الشغل المجاني ──
+  // أكو حجوزات تنشتغل مجاناً (ضمان، إعادة عمل، تعويض شكوى). قبل هذا
+  // الليدر إما يسوي فاتورة بصفر بلا سبب — فمحد يعرف ليش بعد شهر —
+  // أو ما يسوي فاتورة أصلاً، فالشغل ينضاع من السجل كله.
+  const [isFree, setIsFree] = useState(false)
+  const [freeReasonId, setFreeReasonId] = useState('')
+  const [freeReasonNote, setFreeReasonNote] = useState('')
+  const [freeReasons, setFreeReasons] = useState<FreeWorkReason[]>([])
+  useEffect(() => { api.getFreeWorkReasons().then(setFreeReasons).catch(() => {}) }, [])
+  const selectedReason = freeReasons.find((r) => r.id === freeReasonId)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [result, setResult] = useState<LeaderInvoice | null>(null)
@@ -143,6 +155,10 @@ export default function LeaderInvoiceNew() {
       setError('أضف بند تنفيذ واحد على الأقل')
       return
     }
+    if (isFree && !freeReasonId) {
+      setError('اختار سبب المجانية')
+      return
+    }
     setSaving(true)
     try {
       const cleanItems = items.map(({ key, ...rest }) => { void key; return rest })
@@ -162,6 +178,9 @@ export default function LeaderInvoiceNew() {
           .filter((m) => m.quantity > 0 && (m.materialCode || m.name))
           .map(({ key, ...rest }) => { void key; return rest }),
         discountValue,
+        isFree,
+        freeReasonId: isFree ? freeReasonId : undefined,
+        freeReasonNote: isFree ? freeReasonNote.trim() : undefined,
       }
       const invoice = await api.createLeaderInvoice(payload)
       setResult(invoice)
@@ -615,16 +634,68 @@ export default function LeaderInvoiceNew() {
       )}
 
       {!estimateOnly && (
-        <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <input
-            type="number"
-            min={0}
-            placeholder="قيمة الخصم"
-            value={discountValue}
-            onChange={(e) => setDiscountValue(Number(e.target.value))}
-            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-          />
-        </div>
+        <>
+          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <input
+              type="number"
+              min={0}
+              placeholder="قيمة الخصم"
+              value={discountValue}
+              onChange={(e) => setDiscountValue(Number(e.target.value))}
+              disabled={isFree}
+              className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500 disabled:bg-slate-100"
+            />
+          </div>
+
+          {/* ── الشغل المجاني ── */}
+          <div className={`mt-4 rounded-xl border-2 p-4 ${isFree ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={isFree}
+                onChange={(e) => { setIsFree(e.target.checked); if (!e.target.checked) { setFreeReasonId(''); setFreeReasonNote('') } }}
+                className="h-4 w-4"
+              />
+              <span className="text-sm font-bold text-[#0f2040]">🎁 هذا الشغل مجاني — الزبون ما يدفع شي</span>
+            </label>
+
+            {isFree && (
+              <div className="mt-3 space-y-2">
+                <div>
+                  <label className="block text-xs font-bold text-slate-600">سبب المجانية <span className="text-red-500">*</span></label>
+                  <select
+                    value={freeReasonId}
+                    onChange={(e) => setFreeReasonId(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">— اختار السبب —</option>
+                    {freeReasons.map((r) => (
+                      <option key={r.id} value={r.id}>{r.label}</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedReason?.needsNote && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600">
+                      وضّح أكثر <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      value={freeReasonNote}
+                      onChange={(e) => setFreeReasonNote(e.target.value)}
+                      placeholder="مثال: رجعنا لأن الكاميرا الثالثة ما اشتغلت بالتركيب الأول"
+                      className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                    />
+                  </div>
+                )}
+                {/* الفرق المهم: الكلفة تبقى مسجّلة، الزبون بس ما يدفع */}
+                <p className="rounded-lg bg-white/70 px-3 py-2 text-[11px] text-emerald-900">
+                  💡 الفاتورة تنحفظ بكلفتها الحقيقية (شغل الكادر والمواد) والصافي على الزبون صفر —
+                  حتى نعرف بعدين شكد كلّفنا الشغل المجاني فعلاً، بدل ما يبين مجاني على الشركة بعد.
+                </p>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {error && <p className="mt-3 text-sm font-bold text-red-600">{error}</p>}
