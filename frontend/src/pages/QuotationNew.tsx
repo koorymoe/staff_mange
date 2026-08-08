@@ -285,6 +285,18 @@ export default function QuotationNew() {
     const validItems = items.filter((it) => it.productName.trim())
     const qdate = today
 
+    // ── حارس المجموع الصفري ──
+    // عرض سعر مجموعه صفر ما يصير يوصل الزبون. أكو بنود مجانية أحياناً،
+    // بس **العرض كله** بصفر يعني نسينا نحط الأسعار أو العدد — وهذا
+    // انصار فعلاً: عرض بـ١١ بند وكل الأعمدة صفر انطبع وانرسل.
+    if (validItems.length > 0 && grandTotal === 0) {
+      const proceed = window.confirm(
+        'المجموع الكلي صفر — يعني كل البنود بلا سعر أو بلا عدد.\n\n' +
+        'متأكد تريد تطبع العرض هيچي؟ (إضغط إلغاء حتى تراجع الأسعار والأعداد)',
+      )
+      if (!proceed) return null
+    }
+
     // ═══ كم بند يدخل بالصفحة؟ نقيس، ما نخمّن ═══
     //
     // كان مكتوب بالكود «٦ بنود بالصفحة الأولى، ١٠ بالباقيات» — أرقام
@@ -299,7 +311,7 @@ export default function QuotationNew() {
     // fitRows تبني الصفحة فعلياً بإطار مخفي وتشوف أي صف يطلع برّا
     // حدود المساحة. ما ننتظر تحميل الصور: عرض وارتفاع الصورة مثبتين
     // بالـCSS فالتخطيط محسوم من غير ما توصل الصورة.
-    const fitRows = (buildPage: (rowsHtml: string) => string, rowsHtml: string[], reservePx: number): number => {
+    const fitRows = (buildPage: (rowsHtml: string) => string, rowsHtml: string[], trailingHtml = ''): number => {
       if (rowsHtml.length === 0) return 0
       const frame = document.createElement('iframe')
       // برّا الشاشة مو display:none — المخفي ما ينحسبله تخطيط أصلاً
@@ -309,21 +321,36 @@ export default function QuotationNew() {
         const doc = frame.contentDocument
         if (!doc) return rowsHtml.length
         doc.open()
-        doc.write(`${docHead}${buildPage(rowsHtml.join(''))}</body></html>`)
+        // نبني الصفحة ومعاها الصف الملحق (المجموع) لو موجود، حتى
+        // نقيس ارتفاعه الحقيقي بدل ما نخمّنه برقم.
+        doc.write(`${docHead}${buildPage(rowsHtml.join('') + trailingHtml)}</body></html>`)
         doc.close()
 
         const content = doc.querySelector('.content') as HTMLElement | null
-        const trs = doc.querySelectorAll('.data-table tbody tr')
-        if (!content || trs.length === 0) return rowsHtml.length
+        const allTrs = Array.from(doc.querySelectorAll('.data-table tbody tr')) as HTMLElement[]
+        if (!content || allTrs.length === 0) return rowsHtml.length
+
+        // ارتفاع الصف الملحق ينقاس من الصفحة نفسها. ⚠️ لا تحطه رقماً
+        // ثابتاً: هذا بالضبط الي خلّى صف المجموع ينقص من تحت ويلزك
+        // بالبانر — حجزنا ٤٤ بكسل وهو أطول من هيچي.
+        let reserve = 0
+        const itemTrs = allTrs
+        if (trailingHtml) {
+          const last = allTrs[allTrs.length - 1]
+          const r = last.getBoundingClientRect()
+          // + هامش الجدول السفلي حتى ما يلزك بحافة المساحة
+          reserve = r.height + 8
+          itemTrs.pop()
+        }
 
         // آخر نقطة مسموحة: أسفل المحتوى ناقص الحشوة السفلى (محجوزة
-        // للبانر) وناقص أي شي لازم يبقى بنفس الصفحة (صف المجموع).
+        // للبانر) وناقص مساحة الصف الملحق.
         const padBottom = parseFloat(frame.contentWindow?.getComputedStyle(content).paddingBottom || '0')
-        const limit = content.getBoundingClientRect().bottom - padBottom - reservePx
+        const limit = content.getBoundingClientRect().bottom - padBottom - reserve
 
         let fit = 0
-        for (const tr of Array.from(trs)) {
-          if ((tr as HTMLElement).getBoundingClientRect().bottom > limit) break
+        for (const tr of itemTrs) {
+          if (tr.getBoundingClientRect().bottom > limit) break
           fit++
         }
         // صف واحد على الأقل، وإلا ندخل بحلقة لا تنتهي
@@ -481,22 +508,29 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
 
     // صف المجموع الكلي لازم يبقى بنفس صفحة آخر بند — لو انزاح لصفحة
     // لحاله يطلع رقم يتيم بلا جدول. فنحجزله مساحة عند القياس.
-    const GRAND_ROW_PX = 44
-
     const pages: string[][] = []
     let rest = allRows
     let isFirst = true
     while (rest.length > 0) {
-      // نحجز مساحة المجموع بس إذا يمكن هاي آخر صفحة
       const build = isFirst
         ? (rows: string) => pageShell(page1Inner(rows, false))
         : (rows: string) => pageShell(contInner(rows, pages.length + 1, false))
-      let n = fitRows(build, rest, 0)
+
+      // شكد بند يدخل بلا صف المجموع
+      let n = fitRows(build, rest)
+
       if (n >= rest.length) {
-        // كلهن يدخلن — نتأكد إن المجموع بعد يدخل وياهن
-        n = fitRows(build, rest, GRAND_ROW_PX)
-        if (n < rest.length) n = rest.length // ما يدخل المجموع، ينزل للصفحة الجاية
+        // كل الباقي يدخل — يعني هاي آخر صفحة، فلازم صف المجموع يلگه
+        // محل وياهم.
+        const withGrand = fitRows(build, rest, grandRowHtml)
+        if (withGrand < rest.length) {
+          // ما يلگه. ⚠️ الغلط الي كان هنا: نخلي كل البنود بهاي الصفحة
+          // ونطبع المجموع وياهم — فينقص من تحت ويلزك بالبانر. الصح:
+          // ننزّل آخر بند للصفحة الجاية حتى المجموع يلگه محل هناك.
+          n = Math.max(1, rest.length - 1)
+        }
       }
+
       pages.push(rest.slice(0, n))
       rest = rest.slice(n)
       isFirst = false
@@ -810,7 +844,16 @@ ${pageShell(`
                     <input value={item.unit} onChange={(e) => updateItem(index, { unit: e.target.value })} style={{ ...tableInputStyle, width: '80px' }} />
                   </td>
                   <td style={{ padding: '10px 6px' }}>
-                    <input type="number" min={1} value={item.quantity} onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })} style={{ ...tableInputStyle, width: '80px' }} />
+                    {/* ⚠️ Number('') = صفر. الموظف يمسح الخانة حتى يكتب
+                        رقم جديد، فتنصفّر، وسعر البند يصير صفر — والمجموع
+                        الكلي يطلع صفر بعرض كامل يوصل الزبون. صار أقل شي
+                        واحد، لأن بند بلا عدد ما إله معنى أصلاً. */}
+                    <input type="number" min={1} value={item.quantity}
+                      onChange={(e) => {
+                        const n = Number(e.target.value)
+                        updateItem(index, { quantity: Number.isFinite(n) && n >= 1 ? n : 1 })
+                      }}
+                      style={{ ...tableInputStyle, width: '80px' }} />
                   </td>
                   <td style={{ padding: '10px 6px' }}>
                     <input type="number" min={0} value={item.unitPrice} onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) })} style={{ ...tableInputStyle, width: '110px' }} />
