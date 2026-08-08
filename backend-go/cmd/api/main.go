@@ -142,7 +142,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// اعتماد دائري بينهن)
 	bookingService.SetDisciplineChecker(disciplineService)
 	disciplineService.StartBackgroundSweeps()
-	qualityFollowUpService := service.NewQualityFollowUpService(qualityFollowUpRepo)
+	qualityFollowUpService := service.NewQualityFollowUpService(qualityFollowUpRepo, notificationRepo)
 	cartService := service.NewCartService(cartRepo)
 	expenseService := service.NewExpenseService(expenseRepo)
 	inventoryService := service.NewInventoryService(inventoryRepo)
@@ -699,6 +699,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/complaints/stats", middleware.Chain(http.HandlerFunc(complaintHandler.Stats), requireAuth))
 	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth, requireQuality))
 	mux.Handle("PUT /api/quality-follow-ups/{id}", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Update), requireAuth, requireQuality))
+	// حكم الجودة: تقرير إيجابي/سلبي، والكشف الميداني. نفس صلاحية الشاشة
+	// نفسها — الي يشوف المتابعة هو الي يحكم بيها.
+	mux.Handle("POST /api/quality-follow-ups/{id}/verdict", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Verdict), requireAuth, requireQuality))
+	mux.Handle("POST /api/quality-follow-ups/{id}/inspect", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Inspect), requireAuth, requireQuality))
 
 	// التدريب — عرض متاح لأي مسجل دخول، التعيين وإدارة المواد لمدير النظام فقط
 	mux.Handle("GET /api/training/materials/mine", middleware.Chain(http.HandlerFunc(trainingHandler.MaterialsMine), requireAuth))

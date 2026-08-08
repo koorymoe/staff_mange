@@ -155,20 +155,20 @@ type UpsertSimCardRequest struct {
 }
 
 type GpsDeviceRequest struct {
-	ID                   string     `db:"id" json:"id"`
-	CustomerID           string     `db:"customerId" json:"-"`
-	EmployeeID           string     `db:"employeeId" json:"-"`
-	AdminID              *string    `db:"adminId" json:"adminId"`
-	PurchaseType         string     `db:"purchaseType" json:"purchaseType"`
-	SubscriptionType     string     `db:"subscriptionType" json:"subscriptionType"`
-	SubscriptionStart    *time.Time `db:"subscriptionStart" json:"subscriptionStart"`
-	SubscriptionEnd      *time.Time `db:"subscriptionEnd" json:"subscriptionEnd"`
-	SubscriptionStatus   string     `db:"subscriptionStatus" json:"subscriptionStatus"`
-	Status               string     `db:"status" json:"status"`
+	ID                 string     `db:"id" json:"id"`
+	CustomerID         string     `db:"customerId" json:"-"`
+	EmployeeID         string     `db:"employeeId" json:"-"`
+	AdminID            *string    `db:"adminId" json:"adminId"`
+	PurchaseType       string     `db:"purchaseType" json:"purchaseType"`
+	SubscriptionType   string     `db:"subscriptionType" json:"subscriptionType"`
+	SubscriptionStart  *time.Time `db:"subscriptionStart" json:"subscriptionStart"`
+	SubscriptionEnd    *time.Time `db:"subscriptionEnd" json:"subscriptionEnd"`
+	SubscriptionStatus string     `db:"subscriptionStatus" json:"subscriptionStatus"`
+	Status             string     `db:"status" json:"status"`
 	// كان json:"-" — فالواجهة ما كانت تعرف إذا الطلب مربوط بشريحة أصلاً،
 	// وشاشة الترحيل تطلب اختيار شريحة حتى للطلبات المربوطة من قبل.
-	SimCardID            *string `db:"simCardId" json:"simCardId"`
-	Notes                *string `db:"notes" json:"notes"`
+	SimCardID            *string    `db:"simCardId" json:"simCardId"`
+	Notes                *string    `db:"notes" json:"notes"`
 	IsChecked            bool       `db:"isChecked" json:"isChecked"`
 	IsActivated          bool       `db:"isActivated" json:"isActivated"`
 	IsDelivered          bool       `db:"isDelivered" json:"isDelivered"`

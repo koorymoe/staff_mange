@@ -12,9 +12,25 @@ type QualityFollowUp struct {
 	ContactedAt           *time.Time `db:"contactedAt" json:"contactedAt"`
 	CreatedAt             time.Time  `db:"createdAt" json:"createdAt"`
 
+	// ── حكم الجودة ──
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (الجلب SELECT *).
+	ReportType          *string    `db:"reportType" json:"reportType"`             // POSITIVE | NEGATIVE
+	InspectionStatus    string     `db:"inspectionStatus" json:"inspectionStatus"` // NONE | PENDING | DONE
+	InspectionResult    *string    `db:"inspectionResult" json:"inspectionResult"` // CUSTOMER_RIGHT | CUSTOMER_WRONG
+	InspectionNotes     *string    `db:"inspectionNotes" json:"inspectionNotes"`
+	InspectedByID       *string    `db:"inspectedById" json:"-"`
+	InspectedAt         *time.Time `db:"inspectedAt" json:"inspectedAt"`
+	PenalizedEmployeeID *string    `db:"penalizedEmployeeId" json:"-"`
+	KpiEvaluationID     *string    `db:"kpiEvaluationId" json:"-"`
+
 	Booking             *Booking       `db:"-" json:"booking"`
 	Customer            *Customer      `db:"-" json:"customer"`
 	ContactedByEmployee *EmployeeBrief `db:"-" json:"contactedByEmployee"`
+	InspectedBy         *EmployeeBrief `db:"-" json:"inspectedBy"`
+	// منو انغرم (أو منو راح ينغرم) — الليدر المسؤول عن الحجز
+	PenalizedEmployee *EmployeeBrief `db:"-" json:"penalizedEmployee"`
+	// تفاصيل التنفيذ: منو طلع، ومتى بدا وخلّص، وشكد استغرق
+	Execution *BookingExecutionDetail `db:"-" json:"execution"`
 
 	// تفاصيل المشروع والمبالغ — مهندس الجودة يحتاجها وهو يتصل بالزبون حتى
 	// يعرف شنو انتفق عليه وشكد انستلم فعلاً، ويقدر يكتب تفاصيل الفارق.
@@ -48,3 +64,50 @@ type UpdateQualityFollowUpRequest struct {
 	Status       string  `json:"status"`
 	ContactNotes *string `json:"contactNotes"`
 }
+
+// BookingExecutionDetail «شنو صار بهذا الحجز فعلاً» — يقراها مهندس
+// الجودة قبل ما يتصل بالزبون.
+//
+// بدونها هو يتصل وهو ما يعرف منو طلع ولا شكد استغرقوا، فيسأل الزبون
+// أسئلة عامة ويكتب ملاحظة عامة. ومع التفاصيل يقدر يسأل سؤال محدد:
+// «الفريق وصلكم الساعة ٩ وخلّص ١١، هل هذا صحيح؟».
+type BookingExecutionDetail struct {
+	StartedAt   *time.Time `json:"startedAt"`
+	CompletedAt *time.Time `json:"completedAt"`
+	// المدة بالدقائق — نحسبها بالسيرفر حتى تكون وحدة بكل مكان
+	DurationMinutes *int                `json:"durationMinutes"`
+	CompletionNotes *string             `json:"completionNotes"`
+	WorkStoppedAt   *time.Time          `json:"workStoppedAt"`
+	WorkStopReason  *string             `json:"workStopReason"`
+	Crew            []BookingCrewMember `json:"crew"`
+	// تقارير الإنجاز الجزئي إذا الحجز أخذ أكثر من يوم
+	ProgressReports []BookingProgressReport `json:"progressReports"`
+}
+
+// BookingCrewMember عضو من الكادر الي طلع للحجز.
+type BookingCrewMember struct {
+	EmployeeID string `db:"employeeId" json:"employeeId"`
+	Name       string `db:"name" json:"name"`
+	Role       string `db:"role" json:"role"`
+	IsLeader   bool   `db:"isLeader" json:"isLeader"`
+}
+
+// QualityVerdictRequest حكم مهندس الجودة بعد ما يتصل بالزبون.
+type QualityVerdictRequest struct {
+	// POSITIVE | NEGATIVE
+	ReportType string `json:"reportType"`
+	Notes      string `json:"notes"`
+	// بالتقرير السلبي: هل يوقف الغرامة لحد الكشف؟
+	NeedsInspection bool `json:"needsInspection"`
+}
+
+// QualityInspectionRequest نتيجة الكشف الميداني.
+type QualityInspectionRequest struct {
+	// CUSTOMER_RIGHT | CUSTOMER_WRONG
+	Result string `json:"result"`
+	Notes  string `json:"notes"`
+}
+
+// QualityKpiCriterion اسم معيار الكي بي اي الي تنخصم منه شكوى الزبون.
+// موجود بجدول KpiCriterion ضمن المعايير الثمانية.
+const QualityKpiCriterion = "شكوى الزبائن"

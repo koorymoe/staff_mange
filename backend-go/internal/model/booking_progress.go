@@ -27,11 +27,11 @@ type BookingProgressReport struct {
 // workDone وremainingWork إلزاميين: تقرير جزئي بلا «وين وصلنا» ما ينفع
 // الكادر الجاي بشي، وهو كل سبب وجود الميزة.
 type PartialCompleteRequest struct {
-	WorkDone      string  `json:"workDone"`
-	RemainingWork string  `json:"remainingWork"`
-	PercentDone   int     `json:"percentDone"`
-	Blockers      *string `json:"blockers"`
-	MaterialsUsed *string `json:"materialsUsed"`
+	WorkDone        string   `json:"workDone"`
+	RemainingWork   string   `json:"remainingWork"`
+	PercentDone     int      `json:"percentDone"`
+	Blockers        *string  `json:"blockers"`
+	MaterialsUsed   *string  `json:"materialsUsed"`
 	AmountCollected *float64 `json:"amountCollected"`
 }
 
@@ -44,6 +44,6 @@ type SuggestedCrewMember struct {
 	// كم يوم اشتغل على هذا الحجز — الي اشتغل أكثر يعرف أكثر
 	DaysWorked int `db:"daysWorked" json:"daysWorked"`
 	// متوفر اليوم المقترح لو لا — الإداري لازم يعرف قبل ما يختار
-	Available bool `db:"-" json:"available"`
+	Available bool   `db:"-" json:"available"`
 	Note      string `db:"-" json:"note"`
 }

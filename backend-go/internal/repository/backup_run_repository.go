@@ -27,18 +27,18 @@ func NewBackupRunRepository(db *sqlx.DB) *BackupRunRepository {
 // BackupHealth خلاصة جاهزة للعرض — الحكم ينحسب هنا بالسيرفر مو
 // بالواجهة، حتى يبقى نفس الحكم لو انقرا من أي مكان.
 type BackupHealth struct {
-	Last               *model.BackupRun `json:"last"`
-	LastSuccess        *model.BackupRun `json:"lastSuccess"`
-	HoursSinceSuccess  *float64         `json:"hoursSinceSuccess"`
-	ConsecutiveFails   int              `json:"consecutiveFails"`
-	Success7d          int              `json:"success7d"`
-	Failed7d           int              `json:"failed7d"`
-	OffsiteOK          bool             `json:"offsiteOK"`
-	Encrypted          bool             `json:"encrypted"`
-	Status             string           `json:"status"` // OK | WARN | CRITICAL | UNKNOWN
-	Message            string           `json:"message"`
-	Recommendations    []string         `json:"recommendations"`
-	TotalRunsRecorded  int              `json:"totalRunsRecorded"`
+	Last              *model.BackupRun `json:"last"`
+	LastSuccess       *model.BackupRun `json:"lastSuccess"`
+	HoursSinceSuccess *float64         `json:"hoursSinceSuccess"`
+	ConsecutiveFails  int              `json:"consecutiveFails"`
+	Success7d         int              `json:"success7d"`
+	Failed7d          int              `json:"failed7d"`
+	OffsiteOK         bool             `json:"offsiteOK"`
+	Encrypted         bool             `json:"encrypted"`
+	Status            string           `json:"status"` // OK | WARN | CRITICAL | UNKNOWN
+	Message           string           `json:"message"`
+	Recommendations   []string         `json:"recommendations"`
+	TotalRunsRecorded int              `json:"totalRunsRecorded"`
 }
 
 func (r *BackupRunRepository) List(limit int) ([]model.BackupRun, error) {

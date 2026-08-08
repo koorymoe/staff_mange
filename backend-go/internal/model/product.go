@@ -6,7 +6,8 @@ import "time"
 //
 // القيم بقت مثل ما هي (IN_STOCK/ON_DEMAND) حتى ما تنكسر البيانات
 // الموجودة، بس معناها صار «الحاجة» مو «التوفر»:
-//   ON_DEMAND = يحتاج نوفّره   |   IN_STOCK = ما يحتاج
+//
+//	ON_DEMAND = يحتاج نوفّره   |   IN_STOCK = ما يحتاج
 const (
 	ProductInStock  = "IN_STOCK"  // ما يحتاج توفير
 	ProductOnDemand = "ON_DEMAND" // يحتاج توفير
@@ -34,9 +35,9 @@ type Product struct {
 	// ⚠️ أي عمود تضيفه لجدول Product لازم يكون إله حقل هنا، لأن الاستعلام
 	// يستخدم SELECT * — وبدونه sqlx يطيح بـ missing destination name.
 	Availability string  `db:"availability" json:"availability"`
-	Specs        *string `db:"specs" json:"specs"`  // المواصفات
-	Source       *string `db:"source" json:"source"` // المصدر (المجهز/بلد المنشأ)
-	ModelName    *string `db:"modelName" json:"modelName"` // الموديل
+	Specs        *string `db:"specs" json:"specs"`             // المواصفات
+	Source       *string `db:"source" json:"source"`           // المصدر (المجهز/بلد المنشأ)
+	ModelName    *string `db:"modelName" json:"modelName"`     // الموديل
 	ServiceID    *string `db:"serviceId" json:"serviceId"`     // تصنيف الموظف — هو المعتمد
 	ServiceText  *string `db:"serviceText" json:"serviceText"` // الخدمة كما كتبها التقني
 	CreatedByID  *string `db:"createdById" json:"createdById"`
@@ -44,7 +45,6 @@ type Product struct {
 	ServiceName       *string `db:"serviceName" json:"serviceName"`
 	CreatedByName     *string `db:"createdByName" json:"createdByName"`
 	AvailabilityLabel string  `db:"-" json:"availabilityLabel"`
-
 }
 
 type CreateProductRequest struct {

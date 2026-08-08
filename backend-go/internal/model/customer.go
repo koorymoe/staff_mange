@@ -14,13 +14,21 @@ type Customer struct {
 	// منصب الزبون — يظهر بالشخصيات المهمة. لازم يكون موجود هنا وإلا
 	// SELECT * ينكسر بـ"missing destination name position" (نفس الفخ الي
 	// وكعنا بيه مرتين قبل: عمود بقاعدة البيانات بلا حقل بالستركت).
-	Position     *string   `db:"position" json:"position"`
-	MapLatitude  *float64  `db:"mapLatitude" json:"mapLatitude"`
-	MapLongitude *float64  `db:"mapLongitude" json:"mapLongitude"`
+	Position     *string  `db:"position" json:"position"`
+	MapLatitude  *float64 `db:"mapLatitude" json:"mapLatitude"`
+	MapLongitude *float64 `db:"mapLongitude" json:"mapLongitude"`
 	// رابط كوكل ماب — ينحفظ على الزبون نفسه مو على الحجز بس، حتى
 	// الحجز الجاي يلكاه جاهز. (عمود بقاعدة البيانات → لازم حقل هنا)
 	LocationURL *string `db:"locationUrl" json:"locationUrl"`
-	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+	// ── الشكاوى الكاذبة ──
+	// كم مرة انكشف بالكشف الميداني إن شكوى الزبون ما كانت صحيحة.
+	// المبيعات والإداري يشوفونها قبل ما يوعدوه بشي.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	FalseClaimCount  int        `db:"falseClaimCount" json:"falseClaimCount"`
+	LastFalseClaimAt *time.Time `db:"lastFalseClaimAt" json:"lastFalseClaimAt"`
+	FalseClaimNote   *string    `db:"falseClaimNote" json:"falseClaimNote"`
+
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
 }
 
 // CustomerResponse يضيف حقل "code" المنسّق (CUST-00001) مثل الباك إند القديم بالضبط،

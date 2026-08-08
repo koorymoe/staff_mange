@@ -136,4 +136,3 @@ func (r *AssistantConversationRepository) ListEmployeesWithConversations() ([]mo
 	`)
 	return rows, err
 }
-

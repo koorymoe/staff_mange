@@ -7,14 +7,14 @@ package database
 // شيتات. أربعة منهن (موظفين، مهارات، تدريب، زبائن) عدنا مثلهن بالنظام
 // أصلاً — فما ننقلهن، ننقل الي ما موجود ونربطه بالموجود:
 //
-//   Solar_Data      → "SolarSystem"      (جديد)
-//   Inventory       → "SolarComponent"   (جديد — مكوّنات بمواصفات تخصصية)
-//   Customers       → "SolarInstallation" + "Customer" الموجود
-//   Employees       → أعمدة إضافية على "Employee" الموجود
-//   Skills_Catalog  → "Skill" الموجود + عمود تصنيف
-//   Training        → "TrainingProgram" (جديد، على موظفينا ومهاراتنا)
-//   System_Logs     → "SolarLog"
-//   Processed_Count → ما يحتاج جدول: عدّة صفوف "SolarInstallation"
+//	Solar_Data      → "SolarSystem"      (جديد)
+//	Inventory       → "SolarComponent"   (جديد — مكوّنات بمواصفات تخصصية)
+//	Customers       → "SolarInstallation" + "Customer" الموجود
+//	Employees       → أعمدة إضافية على "Employee" الموجود
+//	Skills_Catalog  → "Skill" الموجود + عمود تصنيف
+//	Training        → "TrainingProgram" (جديد، على موظفينا ومهاراتنا)
+//	System_Logs     → "SolarLog"
+//	Processed_Count → ما يحتاج جدول: عدّة صفوف "SolarInstallation"
 //
 // ليش المكوّنات جدول لحاله ومو بالمخزن الموجود؟ لأن مخزننا نوعين: عدة
 // الفنيين ("OnDemandTool") ومواد التنفيذ ("Material"). لوح شمسي بمواصفات

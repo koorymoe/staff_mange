@@ -16,7 +16,7 @@ type VipCustomer struct {
 	Source string `db:"source" json:"source"`
 	// هل هذا الشخص مشترى من عدنا؟ ممكن نتعرف على شخصية مهمة بلا ما
 	// تكون زبون. ⚠️ عمود بالجدول → لازم حقل هنا (RETURNING */SELECT *).
-	BoughtFromUs bool `db:"boughtFromUs" json:"boughtFromUs"`
+	BoughtFromUs       bool      `db:"boughtFromUs" json:"boughtFromUs"`
 	Note               *string   `db:"note" json:"note"`
 	MarkedByEmployeeID string    `db:"markedByEmployeeId" json:"markedByEmployeeId"`
 	CreatedAt          time.Time `db:"createdAt" json:"createdAt"`
@@ -38,17 +38,17 @@ type MarkVipCustomerRequest struct {
 	Phone string `json:"phone"`
 	// الشخصية المهمة مو لازم تكون زبون عدنا. لو ما لكينا الرقم
 	// وانكتب اسم، ننشئ سجل جديد بهالمعلومات ونعلّمه.
-	Name         string   `json:"name"`
-	Location     *string  `json:"location"`
-	MapLatitude  *float64 `json:"mapLatitude"`
-	MapLongitude *float64 `json:"mapLongitude"`
-	LocationURL  *string  `json:"locationUrl"`
-	BoughtFromUs *bool    `json:"boughtFromUs"`
-	BookingID        *string `json:"bookingId"`
-	ProjectID        *string `json:"projectId"`
-	RequestSummary   *string `json:"requestSummary"`
-	CustomerPosition *string `json:"customerPosition"`
-	Note             *string `json:"note"`
+	Name             string   `json:"name"`
+	Location         *string  `json:"location"`
+	MapLatitude      *float64 `json:"mapLatitude"`
+	MapLongitude     *float64 `json:"mapLongitude"`
+	LocationURL      *string  `json:"locationUrl"`
+	BoughtFromUs     *bool    `json:"boughtFromUs"`
+	BookingID        *string  `json:"bookingId"`
+	ProjectID        *string  `json:"projectId"`
+	RequestSummary   *string  `json:"requestSummary"`
+	CustomerPosition *string  `json:"customerPosition"`
+	Note             *string  `json:"note"`
 }
 
 // مصادر ترحيل الشخصية المهمة

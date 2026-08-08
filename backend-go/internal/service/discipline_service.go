@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -62,7 +63,7 @@ func (s *DisciplineService) Adjust(employeeID string, delta int, reason, byEmplo
 	if delta == 0 {
 		return nil, errors.New("لازم تحدد كم نقطة تريد تزيد أو تنقص")
 	}
-	if len(strings.TrimSpace(reason)) < 3 {
+	if utf8.RuneCountInString(strings.TrimSpace(reason)) < 3 {
 		return nil, errors.New("لازم تكتب سبب التعديل")
 	}
 

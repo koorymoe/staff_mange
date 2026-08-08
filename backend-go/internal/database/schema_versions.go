@@ -203,6 +203,9 @@ func versionedMigrations() []Migration {
 	// 0224 وما بعدها: تطبيع البحث العربي بالسيرفر (نفس الي بالواجهة) +
 	// فهارس trigram حتى البحث الجزئي ما يمسح الجدول كله.
 	result = append(result, arabicSearchMigration()...)
+	// 0227 وما بعدها: حكم الجودة — تقرير إيجابي/سلبي بأثر حقيقي على
+	// نقاط الليدر، ومسار كشف يوقف الغرامة لما الزبون يكون كاذب.
+	result = append(result, qualityVerdictMigration()...)
 	return result
 }
 

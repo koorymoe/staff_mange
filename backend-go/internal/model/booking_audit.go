@@ -47,11 +47,11 @@ type BookingAuditIssue struct {
 	ResolvedAt *time.Time `db:"resolvedAt" json:"resolvedAt"`
 	CreatedAt  time.Time  `db:"createdAt" json:"createdAt"`
 
-	BookingCode  string  `db:"bookingCode" json:"bookingCode"`
-	CustomerName string  `db:"customerName" json:"customerName"`
-	RaisedByName string  `db:"raisedByName" json:"raisedByName"`
-	KindLabel    string  `db:"-" json:"kindLabel"`
-	RoutedTo     string  `db:"-" json:"routedTo"`
+	BookingCode  string `db:"bookingCode" json:"bookingCode"`
+	CustomerName string `db:"customerName" json:"customerName"`
+	RaisedByName string `db:"raisedByName" json:"raisedByName"`
+	KindLabel    string `db:"-" json:"kindLabel"`
+	RoutedTo     string `db:"-" json:"routedTo"`
 }
 
 // AuditBookingRequest قرار المحاسب على حجز واحد.

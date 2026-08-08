@@ -40,9 +40,9 @@ func (h *VehicleHandler) Options(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type option struct {
-		ID          string `json:"id"`
-		Name        string `json:"name"`
-		PlateNumber string `json:"plateNumber"`
+		ID          string  `json:"id"`
+		Name        string  `json:"name"`
+		PlateNumber string  `json:"plateNumber"`
 		Color       *string `json:"color"`
 	}
 	out := []option{}

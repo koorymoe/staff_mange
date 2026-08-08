@@ -20,10 +20,10 @@ type TeamInventoryCheck struct {
 	Employee2ID *string   `db:"employee2Id" json:"employee2Id"`
 	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
 
-	Leader    *EmployeeBrief              `db:"-" json:"leader"`
-	Employee1 *EmployeeBrief              `db:"-" json:"employee1"`
-	Employee2 *EmployeeBrief              `db:"-" json:"employee2"`
-	Items     []TeamInventoryCheckItem    `db:"-" json:"items"`
+	Leader    *EmployeeBrief           `db:"-" json:"leader"`
+	Employee1 *EmployeeBrief           `db:"-" json:"employee1"`
+	Employee2 *EmployeeBrief           `db:"-" json:"employee2"`
+	Items     []TeamInventoryCheckItem `db:"-" json:"items"`
 }
 
 // PersonRole يميز صاحب الحالة (present/reason) لكل أداة داخل جلسة الجرد — الليدر
@@ -36,9 +36,9 @@ const (
 
 // ShortageReason القيم الثابتة لسبب النقص — مطابقة حرفياً لقائمة الشيت المنسدلة.
 const (
-	ShortageReasonForgotten = "FORGOTTEN"    // نسيان في مكان معين
-	ShortageReasonDamaged   = "DAMAGED"      // يجب جلب القطعة المتلوفة "تلف"
-	ShortageReasonUnknown   = "UNKNOWN"      // لا اعرف
+	ShortageReasonForgotten = "FORGOTTEN" // نسيان في مكان معين
+	ShortageReasonDamaged   = "DAMAGED"   // يجب جلب القطعة المتلوفة "تلف"
+	ShortageReasonUnknown   = "UNKNOWN"   // لا اعرف
 )
 
 var ValidShortageReasons = map[string]bool{

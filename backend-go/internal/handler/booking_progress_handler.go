@@ -35,11 +35,11 @@ func (h *BookingProgressHandler) PartialComplete(w http.ResponseWriter, r *http.
 	}
 	// الشرط الوحيد المتشدد بهاي الميزة، وهو سبب وجودها كله: بلا «شنو
 	// انخلص» و«شنو باقي» التقرير ما ينفع الكادر الجاي بشي.
-	if len(strings.TrimSpace(req.WorkDone)) < 3 {
+	if TextLen(req.WorkDone) < 3 {
 		WriteError(w, http.StatusBadRequest, "لازم تكتب شنو انخلص اليوم")
 		return
 	}
-	if len(strings.TrimSpace(req.RemainingWork)) < 3 {
+	if TextLen(req.RemainingWork) < 3 {
 		WriteError(w, http.StatusBadRequest, "لازم تكتب شنو باقي — هذا الي يعتمد عليه الكادر الجاي")
 		return
 	}

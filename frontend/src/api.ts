@@ -630,6 +630,11 @@ export interface Customer {
   previousBookingsCount?: number
   locationUrl?: string | null
   position?: string | null
+  /** كم مرة انكشف إن شكواه ما كانت صحيحة — المبيعات والإداري يشوفونها
+   *  قبل ما يوعدون الزبون بشي */
+  falseClaimCount?: number
+  lastFalseClaimAt?: string | null
+  falseClaimNote?: string | null
 }
 
 export interface GpsCustomerListItem extends Customer {
@@ -647,6 +652,25 @@ export interface ComplaintCustomerStat {
   notContactedCount: number
 }
 
+export interface BookingCrewMember {
+  employeeId: string
+  name: string
+  role: string
+  isLeader: boolean
+}
+
+/** «شنو صار بهذا الحجز فعلاً» — يقراها مهندس الجودة قبل ما يتصل */
+export interface BookingExecutionDetail {
+  startedAt: string | null
+  completedAt: string | null
+  durationMinutes: number | null
+  completionNotes: string | null
+  workStoppedAt: string | null
+  workStopReason: string | null
+  crew: BookingCrewMember[]
+  progressReports: BookingProgressReport[]
+}
+
 export interface QualityFollowUp {
   id: string
   status: 'PENDING' | 'CONTACTED_OK' | 'CONTACTED_ISSUE' | 'CONVERTED' | 'CLOSED'
@@ -656,6 +680,15 @@ export interface QualityFollowUp {
   booking: Booking
   customer: Customer
   contactedByEmployee: { id: string; name: string } | null
+  /** حكم الجودة */
+  reportType: 'POSITIVE' | 'NEGATIVE' | null
+  inspectionStatus: 'NONE' | 'PENDING' | 'DONE'
+  inspectionResult: 'CUSTOMER_RIGHT' | 'CUSTOMER_WRONG' | null
+  inspectionNotes: string | null
+  inspectedAt: string | null
+  inspectedBy: { id: string; name: string } | null
+  penalizedEmployee: { id: string; name: string } | null
+  execution: BookingExecutionDetail | null
   // تفاصيل المشروع والمبالغ — مهندس الجودة يحتاجها وهو يتصل بالزبون
   financials?: QualityFollowUpFinancials | null
 }
@@ -2594,6 +2627,14 @@ export const api = {
     request<{ employees: { id: string; name: string; position: string | null }[] }>('/assistant/conversations/employees'),
 
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
+  /** حكم الجودة: إيجابي (ما يترتب عليه شي) أو سلبي (يخصم نقطة من الليدر،
+   *  إلا إذا طلبنا كشف — وقتها الخصم ينتظر النتيجة) */
+  qualityVerdict: (id: string, body: { reportType: 'POSITIVE' | 'NEGATIVE'; notes: string; needsInspection: boolean }) =>
+    request<QualityFollowUp[]>(`/quality-follow-ups/${id}/verdict`, { method: 'POST', body: JSON.stringify(body) }),
+  /** نتيجة الكشف الميداني: كلام الزبون صح (يتغرّم الليدر) أو كذب (علامة على الزبون) */
+  qualityInspect: (id: string, body: { result: 'CUSTOMER_RIGHT' | 'CUSTOMER_WRONG'; notes: string }) =>
+    request<QualityFollowUp[]>(`/quality-follow-ups/${id}/inspect`, { method: 'POST', body: JSON.stringify(body) }),
+
   updateQualityFollowUp: (
     id: string,
     data: { status: QualityFollowUp['status']; contactNotes?: string },

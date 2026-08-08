@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type QualityFollowUp } from '../api'
+import BookingExecutionSummary from '../components/BookingExecutionSummary'
 import { useSession } from '../session'
 
 const statusLabels: Record<QualityFollowUp['status'], string> = {
@@ -38,6 +39,39 @@ export default function QualityFollowUpsPage() {
   }
 
   useEffect(load, [])
+
+  const [busy, setBusy] = useState<string | null>(null)
+
+  // ── حكم الجودة ──
+  // التقرير الإيجابي ما يترتب عليه شي. السلبي يخصم نقطة «شكوى الزبائن»
+  // من الليدر — إلا إذا المهندس شك بالزبون وطلب كشف، وقتها الغرامة
+  // تنتظر لحد ما يطلع أحد يشوف بعينه.
+  const verdict = async (id: string, reportType: 'POSITIVE' | 'NEGATIVE', needsInspection = false) => {
+    const notes = (notesDraft[id] || '').trim()
+    if (reportType === 'NEGATIVE' && notes.length < 5) {
+      alert('اكتب شنو كالك الزبون — التقرير السلبي يخصم نقطة من الليدر')
+      return
+    }
+    setBusy(id)
+    try {
+      setItems(await api.qualityVerdict(id, { reportType, notes, needsInspection }))
+      setNotesDraft({ ...notesDraft, [id]: '' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تسجيل التقرير')
+    } finally { setBusy(null) }
+  }
+
+  const inspect = async (id: string, result: 'CUSTOMER_RIGHT' | 'CUSTOMER_WRONG') => {
+    const notes = (notesDraft[id] || '').trim()
+    if (notes.length < 5) { alert('اكتب شنو شفت بالكشف — هذا الي يعتمد عليه القرار'); return }
+    setBusy(id)
+    try {
+      setItems(await api.qualityInspect(id, { result, notes }))
+      setNotesDraft({ ...notesDraft, [id]: '' })
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تسجيل نتيجة الكشف')
+    } finally { setBusy(null) }
+  }
 
   const handleUpdate = async (id: string, status: QualityFollowUp['status']) => {
     try {
@@ -138,8 +172,16 @@ export default function QualityFollowUpsPage() {
                   </div>
                 </div>
               )}
-              <div className="hidden">
-              </div>
+              {/* منو طلع، ومتى بدا وخلّص — قبل ما يتصل بالزبون */}
+              <BookingExecutionSummary exec={item.execution} />
+
+              {/* الزبون الي سبق واشتكى كذباً — تحذير قبل ما يبني عليه حكم */}
+              {(item.customer.falseClaimCount || 0) > 0 && (
+                <p className="mt-3 rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-xs font-bold text-orange-900">
+                  ⚠️ هذا الزبون انكشف {item.customer.falseClaimCount} مرة إن شكواه ما كانت صحيحة —
+                  خذ حذرك وفكّر بالكشف قبل ما تخصم من الكادر.
+                </p>
+              )}
 
               {item.status === 'PENDING' && (
                 <div className="mt-4 space-y-3">
@@ -152,18 +194,83 @@ export default function QualityFollowUpsPage() {
                   />
                   <div className="flex flex-wrap gap-2">
                     <button
-                      onClick={() => handleUpdate(item.id, 'CONTACTED_OK')}
-                      className="rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-200"
+                      onClick={() => verdict(item.id, 'POSITIVE')}
+                      disabled={busy === item.id}
+                      className="rounded-lg bg-green-100 px-4 py-2 text-sm font-bold text-green-800 hover:bg-green-200 disabled:opacity-50"
                     >
-                      تواصلت - كله تمام
+                      ✅ تقرير إيجابي
                     </button>
                     <button
-                      onClick={() => handleUpdate(item.id, 'CONTACTED_ISSUE')}
-                      className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-200"
+                      onClick={() => verdict(item.id, 'NEGATIVE')}
+                      disabled={busy === item.id}
+                      className="rounded-lg bg-red-100 px-4 py-2 text-sm font-bold text-red-800 hover:bg-red-200 disabled:opacity-50"
                     >
-                      تواصلت - اكو مشكلة
+                      ⛔ تقرير سلبي — خصم نقطة من الليدر
+                    </button>
+                    {/* الزبون أحياناً يجذب. هذا الزر يوقف الغرامة لحد ما
+                        يطلع أحد يشوف بعينه — بدل ما نظلم الليدر أو ننطي
+                        الزبون سلاح يستعمله كل مرة. */}
+                    <button
+                      onClick={() => verdict(item.id, 'NEGATIVE', true)}
+                      disabled={busy === item.id}
+                      className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                    >
+                      🔍 سلبي — بس يحتاج كشف (بلا خصم الحين)
                     </button>
                   </div>
+                  <p className="text-[11px] text-slate-400">
+                    التقرير السلبي يخصم نقطة «شكوى الزبائن» من الليدر فوراً. لو تشك بالزبون، اختار «يحتاج كشف».
+                  </p>
+                </div>
+              )}
+
+              {item.inspectionStatus === 'PENDING' && (
+                <div className="mt-4 rounded-xl border-2 border-amber-400 bg-amber-50 p-3">
+                  <p className="text-sm font-bold text-amber-900">🔍 بانتظار الكشف الميداني</p>
+                  <p className="mt-1 text-xs text-amber-800">
+                    الغرامة موقوفة لحد ما يطلع أحد يشوف. بعد الكشف اكتب شنو شفت واختار النتيجة:
+                  </p>
+                  <textarea
+                    placeholder="شنو شفت بالكشف؟ (إلزامي)"
+                    value={notesDraft[item.id] || ''}
+                    onChange={(e) => setNotesDraft({ ...notesDraft, [item.id]: e.target.value })}
+                    rows={2}
+                    className="mt-2 w-full rounded-lg border border-amber-300 px-3 py-2 text-right text-sm outline-none focus:border-amber-500"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <button
+                      onClick={() => inspect(item.id, 'CUSTOMER_RIGHT')}
+                      disabled={busy === item.id}
+                      className="rounded-lg bg-red-100 px-4 py-2 text-sm font-bold text-red-800 hover:bg-red-200 disabled:opacity-50"
+                    >
+                      كلام الزبون صح — يتغرّم الليدر
+                    </button>
+                    <button
+                      onClick={() => inspect(item.id, 'CUSTOMER_WRONG')}
+                      disabled={busy === item.id}
+                      className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-200 disabled:opacity-50"
+                    >
+                      كلام الزبون كذب — علامة على الزبون
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* نتيجة الحكم بعد ما ينبتّ بيه */}
+              {item.reportType && item.inspectionStatus !== 'PENDING' && (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
+                  <span className={`font-bold ${item.reportType === 'POSITIVE' ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {item.reportType === 'POSITIVE' ? '✅ تقرير إيجابي' : '⛔ تقرير سلبي'}
+                  </span>
+                  {item.penalizedEmployee && (
+                    <span className="text-slate-600"> — انخصمت نقطة من {item.penalizedEmployee.name}</span>
+                  )}
+                  {item.inspectionResult === 'CUSTOMER_WRONG' && (
+                    <span className="text-orange-700"> — الكشف بيّن إن الزبون ما كان صادق، ومحد انغرم</span>
+                  )}
+                  {item.inspectedBy && (
+                    <span className="text-slate-400"> · كشف: {item.inspectedBy.name}</span>
+                  )}
                 </div>
               )}
 
