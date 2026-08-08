@@ -42,6 +42,27 @@ func (h *LeaveRequestHandler) routesFor(r *http.Request) []string {
 }
 
 // POST /api/leaves — الموظف يقدّم طلب إجازة
+
+// blockSelfDecision يمنع الشخص يبت بطلب إجازته هو.
+//
+// المسار ينتحدد من **شفت مقدّم الطلب**، ومسؤول الشفت الصباحي نفسه
+// صباحي — يعني طلب إجازته يوصل لصندوقه هو، ويوافق عليه بضغطة زر بلا
+// ما يشوفه أحد. هاي مو ثغرة تقنية، هاي ثغرة رقابية: أي واحد عنده
+// صلاحية الموافقة يكدر ياخذ إجازات بلا حسيب.
+//
+// المالك مستثنى — هو أعلى سلطة وماكو فوقه أحد يوافقه، ولو منعناه
+// يبقى طلبه معلق للأبد.
+func (h *LeaveRequestHandler) blockSelfDecision(w http.ResponseWriter, r *http.Request, leaveOwnerID string) bool {
+	if middleware.RoleFromContext(r) == "OWNER" {
+		return false
+	}
+	if leaveOwnerID != "" && leaveOwnerID == middleware.EmployeeIDFromContext(r) {
+		WriteError(w, http.StatusForbidden, "ما تكدر تبت بطلب إجازتك إنت — لازم يوافق عليه المالك أو مخوّل ثاني")
+		return true
+	}
+	return false
+}
+
 func (h *LeaveRequestHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateLeaveRequest
 	if err := DecodeJSON(r, &req); err != nil {
@@ -146,6 +167,10 @@ func (h *LeaveRequestHandler) Preliminary(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if owner, err := h.repo.OwnerOf(id); err == nil && h.blockSelfDecision(w, r, owner) {
+		return
+	}
+
 	leave, err := h.repo.Preliminary(id, req.Note, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
@@ -185,6 +210,10 @@ func (h *LeaveRequestHandler) Decide(w http.ResponseWriter, r *http.Request) {
 	}
 	if !allowed {
 		WriteError(w, http.StatusForbidden, "ما عندك صلاحية البت بطلبات "+model.LeaveRouteLabels[route])
+		return
+	}
+
+	if owner, err := h.repo.OwnerOf(id); err == nil && h.blockSelfDecision(w, r, owner) {
 		return
 	}
 

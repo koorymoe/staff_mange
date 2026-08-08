@@ -157,6 +157,13 @@ func (r *LeaveRequestRepository) Cancel(id, employeeID string) error {
 	return nil
 }
 
+// OwnerOf منو مقدّم الطلب — نحتاجها حتى نمنعه يبت بطلبه هو.
+func (r *LeaveRequestRepository) OwnerOf(id string) (string, error) {
+	var employeeID string
+	err := r.db.Get(&employeeID, `SELECT "employeeId" FROM "LeaveRequest" WHERE id = $1`, id)
+	return employeeID, err
+}
+
 // RouteOf مسار طلب معيّن — نحتاجه حتى نتأكد إن الي يبت بيه مخوّل لهذا المسار.
 func (r *LeaveRequestRepository) RouteOf(id string) (string, error) {
 	var route string

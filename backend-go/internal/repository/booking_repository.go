@@ -893,21 +893,30 @@ func (r *BookingRepository) CountFreeMaintenanceForEmployeeRange(employeeID, fro
 // تلتقط الحجز باليوم الصحيح حتى لو تأجّل موعده لاحقاً.
 const dailyDateExpr = `COALESCE(b."scheduledAt", b."createdAt")`
 
+// dailyDayExpr «أي يوم؟» بتوقيت بغداد. ⚠️ لا تستعمل dailyDateExpr::date
+// مباشرة: هذاك يعطي يوم غرينتش، فالحجز الي بعد منتصف الليل ينحسب على
+// اليوم الي فات. (شوف schema_baghdad_date.go)
+const dailyDayExpr = `baghdad_date(` + dailyDateExpr + `)`
+
+// dailyHourExpr ساعة بغداد — تُستعمل بفرز صباحي/مسائي. بدونها «الصباح»
+// يصير من ٣ الفجر لحد ٣ العصر بتوقيت بغداد.
+const dailyHourExpr = `EXTRACT(HOUR FROM ` + dailyDateExpr + ` + interval '3 hours')`
+
 // CountForDate يرجّع عدد كل الحجوزات (بكل الحالات) بتاريخ معيّن.
 func (r *BookingRepository) CountForDate(date string) (int, error) {
 	var count int
-	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDateExpr+`::date = $1::date`, date)
+	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date`, date)
 	return count, err
 }
 
 // CountMorningEveningForDate يرجّع عدد الحجوزات الصباحية (قبل الساعة 12
 // ظهراً) والمسائية بتاريخ معيّن.
 func (r *BookingRepository) CountMorningEveningForDate(date string) (morning int, evening int, err error) {
-	err = r.db.Get(&morning, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDateExpr+`::date = $1::date AND EXTRACT(HOUR FROM `+dailyDateExpr+`) < 12`, date)
+	err = r.db.Get(&morning, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date AND `+dailyHourExpr+` < 12`, date)
 	if err != nil {
 		return 0, 0, err
 	}
-	err = r.db.Get(&evening, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDateExpr+`::date = $1::date AND EXTRACT(HOUR FROM `+dailyDateExpr+`) >= 12`, date)
+	err = r.db.Get(&evening, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date AND `+dailyHourExpr+` >= 12`, date)
 	return morning, evening, err
 }
 
@@ -918,7 +927,7 @@ func (r *BookingRepository) CountDistinctCrewForDate(date string) (int, error) {
 	err := r.db.Get(&count, `
 		SELECT COUNT(DISTINCT ba."employeeId") FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		WHERE `+dailyDateExpr+`::date = $1::date
+		WHERE `+dailyDayExpr+` = $1::date
 	`, date)
 	return count, err
 }
@@ -929,7 +938,7 @@ func (r *BookingRepository) CountDistinctVehiclesForDate(date string) (int, erro
 	var count int
 	err := r.db.Get(&count, `
 		SELECT COUNT(DISTINCT b."assignedVehicle") FROM "Booking" b
-		WHERE `+dailyDateExpr+`::date = $1::date AND b."assignedVehicle" IS NOT NULL AND b."assignedVehicle" != ''
+		WHERE `+dailyDayExpr+` = $1::date AND b."assignedVehicle" IS NOT NULL AND b."assignedVehicle" != ''
 	`, date)
 	return count, err
 }
@@ -940,7 +949,7 @@ func (r *BookingRepository) AssignedAndCompletedForEmployeeOnDate(employeeID, da
 	err = r.db.Get(&assigned, `
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		WHERE ba."employeeId" = $1 AND `+dailyDateExpr+`::date = $2::date
+		WHERE ba."employeeId" = $1 AND `+dailyDayExpr+` = $2::date
 	`, employeeID, date)
 	if err != nil {
 		return 0, 0, err
@@ -948,7 +957,7 @@ func (r *BookingRepository) AssignedAndCompletedForEmployeeOnDate(employeeID, da
 	err = r.db.Get(&completed, `
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		WHERE ba."employeeId" = $1 AND `+dailyDateExpr+`::date = $2::date AND b.status = 'COMPLETED'
+		WHERE ba."employeeId" = $1 AND `+dailyDayExpr+` = $2::date AND b.status = 'COMPLETED'
 	`, employeeID, date)
 	return assigned, completed, err
 }
