@@ -22,6 +22,15 @@ type EmployeeMonthlyStatsService struct {
 	vehicleMissionRating *repository.VehicleMissionRatingRepository
 	commissions          *repository.EmployeeCommissionRepository
 	durations            *repository.JobDurationSampleRepository
+	// smartKpi يحسب النقاط الكاملة (الستة عناصر) — نفس المصدر الي
+	// يقراه المخطط، حتى الرقم بالجدول والرقم بالمخطط يكونون واحد.
+	smartKpi *SmartKpiService
+}
+
+// SetSmartKpi يربط حاسبة النقاط الكاملة. منفصلة عن الباني حتى ما
+// نكسر أي مستدعي موجود.
+func (s *EmployeeMonthlyStatsService) SetSmartKpi(k *SmartKpiService) {
+	s.smartKpi = k
 }
 
 func NewEmployeeMonthlyStatsService(
@@ -86,6 +95,11 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 		if points, kerr := s.kpi.SumPointsForEmployeeMonth(e.ID, month); kerr == nil {
 			stats.KpiPoints = points
 			stats.KpiPointsValue = float64(points) * 10000
+		}
+		if s.smartKpi != nil {
+			if res, serr := s.smartKpi.CalculateTechnicianKpi(e.ID, month); serr == nil && res != nil {
+				stats.SmartKpiPoints = res.TotalPoints
+			}
 		}
 
 		if avg, count, verr := s.vehicleMissionRating.GetCleanlinessAvgForDriverMonth(e.ID, month); verr == nil {

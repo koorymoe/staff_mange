@@ -147,7 +147,9 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 		return nil, err
 	}
 
-	totalPoints := completedBookingsPoints + speedPoints + workReportPoints + attendancePoints + complaintsPoints - manualDeductionPoints
+	// ⚠️ نجمع مو نطرح: التقييم اليدوي مخزون بإشارته (الخصم سالب).
+	// الطرح كان يقلب المعنى — الخصم يزيد النقاط والمكافأة تنقصها.
+	totalPoints := completedBookingsPoints + speedPoints + workReportPoints + attendancePoints + complaintsPoints + manualDeductionPoints
 
 	return &model.SmartKpiResult{
 		EmployeeID:   employee.ID,

@@ -116,10 +116,19 @@ func (r *SmartKpiRepository) ComplaintsCount(employeeID string, start, end time.
 	return count, err
 }
 
+// ManualDeductionPoints مجموع التقييمات اليدوية **بإشارتها**: الخصم
+// سالب والمكافأة موجبة. الي يستدعيها يجمعها للمجموع مو يطرحها.
+//
+// ⚠️ كانت تنطرح بالخدمة (total - sum)، والخصم مخزون سالب — فالنتيجة
+// إن **الخصم يزيد نقاط الموظف** والمكافأة تنقصها. بالضبط بالمقلوب.
+// انكشفت بفحص حي: خصم ٢ نقطة رفع المجموع من ٨٠ لـ٨٢.
+//
+// ونستثني الملغاة: التقييم الي انسحب ما يصير يبقى محسوب.
 func (r *SmartKpiRepository) ManualDeductionPoints(employeeID string, start, end time.Time) (int, int, error) {
 	var points []int
 	err := r.db.Select(&points, `
-		SELECT points FROM "KpiEvaluation" WHERE "employeeId" = $1 AND "createdAt" >= $2 AND "createdAt" < $3
+		SELECT points FROM "KpiEvaluation"
+		WHERE "employeeId" = $1 AND "createdAt" >= $2 AND "createdAt" < $3 AND NOT cancelled
 	`, employeeID, start, end)
 	if err != nil {
 		return 0, 0, err

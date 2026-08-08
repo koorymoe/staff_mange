@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type KpiCriterion, type KpiEvaluation, type Employee, type TechnicianKpi } from '../api'
 import { useSession } from '../session'
+import KpiBreakdownChart from '../components/KpiBreakdownChart'
 
 // نقاط الكي بي اي صارت تتحمّل من الباك إند (قابلة للإضافة والحذف من الواجهة
 // بدل ما تكون مثبتة هنا بالكود) — راجع KpiCriterion بـ api.ts.
@@ -44,6 +45,7 @@ const BREAKDOWN_LABELS: Record<string, string> = {
 
 function TechnicianTab() {
   const [leaderboard, setLeaderboard] = useState<TechnicianKpi[]>([])
+  const [chartFor, setChartFor] = useState<{ id: string; name: string } | null>(null)
   const [month, setMonth] = useState(getCurrentMonth)
   const [loading, setLoading] = useState(true)
   const [selectedTech, setSelectedTech] = useState<TechnicianKpi | null>(null)
@@ -220,8 +222,24 @@ function TechnicianTab() {
                 <p className="text-3xl font-extrabold text-white">
                   {selectedTech.totalPoints}
                 </p>
+                {/* المخطط يبيّن العمود الواطي بنظرة وحدة — الرقم لوحده
+                    ما يكول للموظف شنو يسوي حتى يحسّنه. */}
+                <button
+                  onClick={() => setChartFor({ id: selectedTech.employeeId, name: selectedTech.employeeName })}
+                  className="mt-3 rounded-lg bg-white/20 px-4 py-1.5 text-sm font-bold text-white hover:bg-white/30"
+                >
+                  📊 شوف المخطط مفصّل
+                </button>
               </div>
             </div>
+          )}
+
+          {chartFor && (
+            <KpiBreakdownChart
+              employeeId={chartFor.id}
+              employeeName={chartFor.name}
+              onClose={() => setChartFor(null)}
+            />
           )}
         </>
       )}

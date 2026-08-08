@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { api, type EmployeeMonthlyStats } from '../api'
+import KpiBreakdownChart from '../components/KpiBreakdownChart'
 import PerformanceCurveModal from '../components/PerformanceCurveModal'
 
 const PRIMARY = '#1a237e'
@@ -24,6 +25,7 @@ export default function EmployeeMonthlyStatsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [exporting, setExporting] = useState(false)
+  const [kpiFor, setKpiFor] = useState<{ id: string; name: string } | null>(null)
   const [curveFor, setCurveFor] = useState<{ id: string; name: string } | null>(null)
 
   const load = useCallback(() => {
@@ -117,7 +119,9 @@ export default function EmployeeMonthlyStatsPage() {
                 <th style={thStyle}>صيانات مجانية</th>
                 <th style={thStyle}>أعمال داخل الشركة</th>
                 <th style={thStyle}>نوعهن</th>
-                <th style={thStyle}>قيمة نقاط الكي بي اي</th>
+                <th style={thStyle} title="النقاط الكاملة: الحجوزات + السرعة + التقارير + الحضور + الشكاوى + التقييم اليدوي">نقاط الكي بي اي</th>
+                <th style={thStyle} title="التقييمات اليدوية بس (خصومات/مكافآت المدير)">تقييم يدوي</th>
+                <th style={thStyle}>قيمة النقاط اليدوية</th>
                 <th style={thStyle}>إجمالي العمولة (حجم المبيعات)</th>
                 <th style={thStyle}>منحنى الأداء</th>
               </tr>
@@ -153,6 +157,26 @@ export default function EmployeeMonthlyStatsPage() {
                   <td style={{ ...tdStyle, maxWidth: '220px' }}>
                     {r.inHouseWorkTypes?.length ? r.inHouseWorkTypes.join('، ') : '—'}
                   </td>
+                  {/* العدد قبل القيمة: الصفحة كانت تعرض الدينار بس،
+                      فالمالك يشوف «٠ د.ع» ويظن ماكو نقاط — والحقيقة إن
+                      العدد موجود ومحسوب، بس ما كان ينعرض. */}
+                  <td style={tdStyle}>
+                    <button
+                      onClick={() => setKpiFor({ id: r.employeeId, name: r.employeeName })}
+                      style={{
+                        border: 'none', cursor: 'pointer', borderRadius: '999px', padding: '4px 12px',
+                        fontWeight: 800, fontSize: '13px',
+                        background: r.smartKpiPoints >= 100 ? '#dcfce7' : r.smartKpiPoints >= 50 ? '#fef3c7' : '#fee2e2',
+                        color: r.smartKpiPoints >= 100 ? '#15803d' : r.smartKpiPoints >= 50 ? '#b45309' : '#b91c1c',
+                      }}
+                      title="اضغط لتشوف مخطط النقاط مفصّلة"
+                    >
+                      {r.smartKpiPoints} 📊
+                    </button>
+                  </td>
+                  <td style={{ ...tdStyle, color: r.kpiPoints < 0 ? '#b91c1c' : r.kpiPoints > 0 ? '#15803d' : '#64748b' }}>
+                    {r.kpiPoints > 0 ? `+${r.kpiPoints}` : r.kpiPoints}
+                  </td>
                   <td style={tdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: GOLD }}>{fmt(r.totalCommission)} د.ع</td>
                   <td style={tdStyle}>
@@ -184,6 +208,15 @@ export default function EmployeeMonthlyStatsPage() {
             )}
           </table>
         </div>
+      )}
+
+      {kpiFor && (
+        <KpiBreakdownChart
+          employeeId={kpiFor.id}
+          employeeName={kpiFor.name}
+          month={month}
+          onClose={() => setKpiFor(null)}
+        />
       )}
 
       {curveFor && (

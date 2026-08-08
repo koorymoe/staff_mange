@@ -256,6 +256,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
 	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo, jobDurationSampleRepo)
+	// النقاط الكاملة بجدول الإحصاءات تجي من نفس حاسبة المخطط، حتى
+	// الرقم بالجدول والرقم بالمخطط ما يختلفون.
+	employeeMonthlyStatsService.SetSmartKpi(smartKpiService)
 	employeeStatsHandler := handler.NewEmployeeStatsHandler(employeeMonthlyStatsService)
 	internalWorksRepo := repository.NewInternalWorksRepository(db)
 	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo, leaderInvoiceRepo, attendanceRepo, employeeMonthlyStatsService, internalWorksRepo)

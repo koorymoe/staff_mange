@@ -859,8 +859,11 @@ export interface EmployeeMonthlyStats {
   month: string
   from?: string
   to?: string
+  /** مجموع التقييمات اليدوية بس (خصومات/مكافآت المدير) */
   kpiPoints: number
   kpiPointsValue: number
+  /** النقاط الكاملة المحسوبة من الستة عناصر — هذا الرقم الي يفصّله المخطط */
+  smartKpiPoints: number
   // نسبة زمن الموظف للمتوسط العام بنفس المنظومة ونوع الشغل:
   // فوق ١ أسرع، تحت ١ أبطأ. null يعني ماكو عيّنات كافية.
   workSpeedScore: number | null
