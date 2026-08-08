@@ -156,6 +156,29 @@ func (s *DisciplineService) RunPaperworkSweep() {
 	}
 }
 
+// RunAuditSweep يمر على الحجوزات المنجزة الي مبلغها ما انتدقّق بعد
+// ٣٦ ساعة ويغرّم المحاسب. نفس آلية غرامة الورق بالضبط، بس المهلة
+// أطول لأن التدقيق يحتاج الفاتورة تكون جاهزة أصلاً.
+//
+// ليش نغرّم على التدقيق؟ لأن المبلغ الي ما ينتدقّق يبقى معلّق
+// بالذمة، وكل ما يتأخر يصعب تتبّع الفلوس لوين راحت — والزبون ممكن
+// يكون دفع من زمان ومحد يدري.
+func (s *DisciplineService) RunAuditSweep() {
+	rows, err := s.repo.OverdueAudit(model.DisciplineAuditHours)
+	if err != nil {
+		log.Printf("[discipline] تعذر فحص الحجوزات غير المدققة: %v", err)
+		return
+	}
+	for i := range rows {
+		r := rows[i]
+		bid := r.BookingID
+		s.penalize(r.AdminID, r.AdminName, model.DisciplineLateAudit,
+			fmt.Sprintf("مرّت %d ساعة على إنجاز الحجز %s وفاتورته جاهزة، والمبلغ لسه ما انتدقّق",
+				model.DisciplineAuditHours, r.BookingCode),
+			&bid)
+	}
+}
+
 // RunRestoreSweep يرجّع نقطة وحدة لكل موظف اشتغل المدة المطلوبة بلا أي
 // غرامة. هذا هو الجواب الوحيد على «أريد تخفيض بالنقاط»: ما اكو واسطة —
 // اشتغل نظيف والنقطة ترجع لحالها.
@@ -222,6 +245,7 @@ func (s *DisciplineService) StartBackgroundSweeps() {
 		time.Sleep(2 * time.Minute)
 		for {
 			s.RunPaperworkSweep()
+			s.RunAuditSweep()
 			s.RunRestoreSweep()
 			time.Sleep(time.Hour)
 		}

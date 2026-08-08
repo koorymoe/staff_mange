@@ -209,6 +209,8 @@ func versionedMigrations() []Migration {
 	// 0229 وما بعدها: الشغل المجاني — فاتورة بصفر بسبب من قائمة، بدل
 	// «فاتورة صفر بلا سبب» أو «ما نسوي فاتورة أصلاً».
 	result = append(result, freeWorkMigration()...)
+	// 0231: الطلبات — كتاب رسمي من الموظف للإدارة، بجواب مكتوب وسجل.
+	result = append(result, employeeLetterMigration()...)
 	return result
 }
 

@@ -1086,6 +1086,18 @@ export default function Layout() {
             )}
             {/* النسخ الاحتياطية: للمالك وحده — actualRole مو role، لأن
                 role يتطبّع لـ'ADMIN' فوق وهذا يكشفها لكل مدير */}
+            {/* الطلبات: متاحة لكل موظف بلا صلاحية — أي واحد إله حق
+                يوصّل طلبه للإدارة. */}
+            <NavLink
+              to="/letters"
+              className={({ isActive }) =>
+                `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                  isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              📄 الطلبات
+            </NavLink>
             {employee.actualRole === 'OWNER' && (
               <NavLink
                 to="/owner-backups"

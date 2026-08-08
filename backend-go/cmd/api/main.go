@@ -121,6 +121,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ نظام الغرامات التلقائي ═══
 	// النظام يغرّم لحاله ويعلن، والنقاط ترجع بالشغل النظيف مو بالطلب.
 	disciplineRepo := repository.NewDisciplineRepository(db)
+	employeeLetterRepo := repository.NewEmployeeLetterRepository(db)
 	bookingProgressRepo := repository.NewBookingProgressRepository(db)
 	deviceMaintenanceRepo := repository.NewDeviceMaintenanceRepository(db)
 	teamInventoryCheckRepo := repository.NewTeamInventoryCheckRepository(db)
@@ -416,9 +417,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.List), requireAuth))
 	mux.Handle("GET /api/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
 	disciplineHandler := handler.NewDisciplineHandler(disciplineService)
+	employeeLetterHandler := handler.NewEmployeeLetterHandler(employeeLetterRepo, notificationRepo)
 	bookingProgressHandler := handler.NewBookingProgressHandler(bookingProgressRepo, bookingRepo, notificationRepo)
 	// نقاط الانضباط: كل موظف يشوف الأرصدة (الشفافية جزء من العقوبة)،
 	// وتشغيل الفحص يدوياً للمدير حصراً.
+	// ── الطلبات: كتاب رسمي من الموظف للإدارة ──
+	// التقديم وقراءة طلباتك: لكل موظف. البت: للمالك ومدير النظام.
+	mux.Handle("GET /api/letters/addressees", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Addressees), requireAuth))
+	mux.Handle("POST /api/letters", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Create), requireAuth))
+	mux.Handle("GET /api/letters/mine", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Mine), requireAuth))
+	mux.Handle("GET /api/letters", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Inbox), requireAuth, requireAdmin))
+	mux.Handle("GET /api/letters/pending-count", middleware.Chain(http.HandlerFunc(employeeLetterHandler.PendingCount), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/letters/{id}/decide", middleware.Chain(http.HandlerFunc(employeeLetterHandler.Decide), requireAuth, requireAdmin))
+
 	mux.Handle("GET /api/discipline", middleware.Chain(http.HandlerFunc(disciplineHandler.List), requireAuth))
 	mux.Handle("GET /api/discipline/events", middleware.Chain(http.HandlerFunc(disciplineHandler.Events), requireAuth))
 	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.

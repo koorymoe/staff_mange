@@ -21,6 +21,10 @@ const (
 	// DisciplineCleanDaysToRestore كم يوم نظيف (بلا أي غرامة) لازم
 	// يشتغلها الموظف حتى ترجع له نقطة وحدة.
 	DisciplineCleanDaysToRestore = 3
+	// DisciplineAuditHours كم ساعة ننطي المحاسب يدقّق مبلغ حجز منجز
+	// قبل ما ينغرم. أطول من مهلة الورق (١٦ ساعة) لأن التدقيق يحتاج
+	// الفاتورة تكون جاهزة أصلاً.
+	DisciplineAuditHours = 36
 )
 
 // أنواع الأحداث
@@ -32,6 +36,10 @@ const (
 	// DisciplineUnbalancedAssign الإداري كلّف ليدر عنده حجوزات وبنفس
 	// الوقت أكو ليدر فاضي — توزيع غلط يتحاسب عليه.
 	DisciplineUnbalancedAssign = "UNBALANCED_ASSIGNMENT"
+	// DisciplineLateAudit الحجز انجز وعدّت ٣٦ ساعة بلا تدقيق المبلغ.
+	// الغرامة على المحاسب — المبلغ الي ما ينتدقّق يبقى معلّق بالذمة،
+	// وكل ما يتأخر التدقيق يصعب تتبّع الفلوس لوين راحت.
+	DisciplineLateAudit = "LATE_AUDIT"
 	// DisciplineRestore رجوع نقطة بعد شغل نظيف.
 	DisciplineRestore = "RESTORE"
 	// DisciplineManual تعديل يدوي من المالك أو مدير النظام.

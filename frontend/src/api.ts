@@ -2433,6 +2433,18 @@ export const api = {
     request<Booking>(`/bookings/${id}/stop-work`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   resumeBookingWork: (id: string) =>
     request<Booking>(`/bookings/${id}/resume-work`, { method: 'PUT' }),
+  // ── الطلبات: كتاب رسمي من الموظف للإدارة ──
+  getLetterAddressees: () => request<string[]>('/letters/addressees'),
+  createLetter: (body: { addressedTo: string; subject: string; body: string }) =>
+    request<EmployeeLetter>('/letters', { method: 'POST', body: JSON.stringify(body) }),
+  getMyLetters: () => request<EmployeeLetter[]>('/letters/mine'),
+  /** صندوق الإدارة — للمالك ومدير النظام */
+  getLetters: (status?: string) =>
+    request<EmployeeLetter[]>(`/letters${status ? '?status=' + status : ''}`),
+  decideLetter: (id: string, body: { approve: boolean; note: string }) =>
+    request<EmployeeLetter>(`/letters/${id}/decide`, { method: 'PUT', body: JSON.stringify(body) }),
+  getPendingLettersCount: () => request<{ count: number }>('/letters/pending-count'),
+
   getDisciplinePoints: () => request<DisciplinePoints[]>('/discipline'),
   getDisciplineEvents: (employeeId?: string) =>
     request<DisciplineEvent[]>(`/discipline/events${employeeId ? '?employeeId=' + employeeId : ''}`),
@@ -3567,4 +3579,19 @@ export interface FreeWorkReason {
   active: boolean
   /** يطلب توضيح مكتوب إضافي (مثل «سبب آخر») */
   needsNote: boolean
+}
+
+export interface EmployeeLetter {
+  id: string
+  employeeId: string
+  addressedTo: string
+  subject: string
+  body: string
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  decisionNote: string | null
+  decidedAt: string | null
+  createdAt: string
+  employee: { id: string; name: string } | null
+  decidedBy: { id: string; name: string } | null
+  employeeJobTitle: string | null
 }

@@ -10,6 +10,7 @@ import { useSession } from '../session'
 const KIND_LABELS: Record<string, { text: string; cls: string }> = {
   LATE_PAPERWORK:        { text: 'تأخر فاتورة/تقرير', cls: 'bg-red-50 text-red-700' },
   UNBALANCED_ASSIGNMENT: { text: 'توزيع غير عادل',    cls: 'bg-amber-50 text-amber-800' },
+  LATE_AUDIT:            { text: 'تأخر تدقيق مبلغ',   cls: 'bg-orange-50 text-orange-800' },
   RESTORE:               { text: 'رجوع نقطة',          cls: 'bg-emerald-50 text-emerald-700' },
   MANUAL:                { text: '✋ تعديل يدوي',        cls: 'bg-blue-50 text-blue-700' },
 }

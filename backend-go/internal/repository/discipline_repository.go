@@ -280,3 +280,43 @@ func (r *DisciplineRepository) StartsAt() (string, error) {
 	err := r.db.Get(&t, `SELECT "startsAt"::text FROM "DisciplineConfig" WHERE id = 1`)
 	return t, err
 }
+
+// OverdueAudit الحجوزات المنجزة الي مبلغها ما انتدقّق بعد المهلة.
+//
+// الغرامة تروح للمحاسب — أي موظف دوره FINANCE أو عنده صلاحية
+// «finance». مو لواحد محدد لأن المحاسبة ممكن تكون أكثر من شخص، وكل
+// واحد منهم مسؤول عن الطابور نفسه.
+//
+// ⚠️ ما نغرّم إلا إذا **الفاتورة موجودة**: التدقيق يحتاج فاتورة، ولو
+// غرّمناه على حجز بلا فاتورة نغرّمه على تقصير غيره (الإداري ينغرم
+// عليها أصلاً بغرامة الورق).
+func (r *DisciplineRepository) OverdueAudit(hours int) ([]OverduePaperwork, error) {
+	rows := []OverduePaperwork{}
+	err := r.db.Select(&rows, `
+		SELECT b.id AS "bookingId", b.code,
+		       acc.id AS "adminId", acc.name AS "adminName",
+		       true AS "hasInvoice", true AS "hasReport"
+		FROM "Booking" b
+		CROSS JOIN LATERAL (
+			SELECT e.id, e.name
+			FROM "Employee" e
+			WHERE e.status = 'ACTIVE'
+			  AND (
+			    e.role = 'FINANCE'
+			    OR EXISTS (
+			      SELECT 1 FROM "EmployeePermission" ep
+			      JOIN "Permission" p ON p.id = ep."permissionId"
+			      WHERE ep."employeeId" = e.id AND p.name = 'finance'
+			    )
+			  )
+		) acc
+		WHERE b.status = 'COMPLETED'
+		  AND b."completedAt" IS NOT NULL
+		  AND b."amountVerified" = false
+		  AND b."completedAt" < now() - ($1::text || ' hours')::interval
+		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  -- التدقيق يحتاج فاتورة. بلا فاتورة، التقصير مو تقصير المحاسب.
+		  AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+	`, hours)
+	return rows, err
+}

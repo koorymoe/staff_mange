@@ -62,6 +62,7 @@ func (h *DisciplineHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 // للمالك/المدير حصراً — يفيد بعد ما يعدّل شي ويريد يشوف الأثر حالاً.
 func (h *DisciplineHandler) Run(w http.ResponseWriter, r *http.Request) {
 	h.service.RunPaperworkSweep()
+	h.service.RunAuditSweep()
 	h.service.RunRestoreSweep()
 	items, err := h.service.List()
 	if err != nil {
