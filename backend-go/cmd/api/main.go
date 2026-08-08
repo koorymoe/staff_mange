@@ -256,6 +256,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
 	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
 	networkPriceRepo := repository.NewNetworkPriceRepository(db)
+	// ── صندوق المراقب ──
+	// الربط بـSetMonitorFeed بعد البناء (مو بالمنشئ) حتى ما يصير اعتماد
+	// دائري بين خدمة الحجوزات وخدمة المراقبة.
+	monitorReviewRepo := repository.NewMonitorReviewRepository(db)
+	monitorReviewService := service.NewMonitorReviewService(monitorReviewRepo, employeeRepo, notificationRepo)
+	monitorReviewHandler := handler.NewMonitorReviewHandler(monitorReviewService)
+	bookingService.SetMonitorFeed(monitorReviewService)
+	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	networkCostHandler := handler.NewNetworkCostHandler(networkPriceRepo)
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
 	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo, jobDurationSampleRepo)
@@ -1207,6 +1215,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد
 	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireExecutionCost))
 	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireExecutionCost))
+	// ── صندوق المراقب ──
+	// شغل المراقب: يشوف ويأشّر. requireMonitor = ADMIN أو MONITOR،
+	// والمالك داخل بالأدمن.
+	mux.Handle("GET /api/monitor-reviews", middleware.Chain(http.HandlerFunc(monitorReviewHandler.List), requireAuth, requireMonitor))
+	mux.Handle("GET /api/monitor-reviews/counts", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Counts), requireAuth, requireMonitor))
+	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMonitor))
+
 	// ── تكلفة الشبكات ──
 	// الاستمارة والحساب: نفس قيد حاسبة الكاميرات (صلاحية حساب التنفيذ).
 	// أما تعديل الأسعار فمحصور بالمالك ومدير النظام — سعر يتغيّر يعني

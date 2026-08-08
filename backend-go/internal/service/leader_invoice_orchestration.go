@@ -21,6 +21,26 @@ type LeaderInvoiceService struct {
 	bookings    *repository.BookingRepository
 	employees   *repository.EmployeeRepository
 	durations   *JobDurationEstimatorService
+	// monitor: صندوق المراقب. اختياري.
+	monitor MonitorFeed
+}
+
+// SetMonitorFeed يربط صندوق المراقب بعد بناء الخدمات.
+func (s *LeaderInvoiceService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
+
+// monitorInvoiceSummary سطر واحد يوضّح المبالغ بلا ما يفتح الفاتورة.
+func monitorInvoiceSummary(inv *model.LeaderInvoice) (string, string) {
+	name := ""
+	if inv.CustomerName != nil {
+		name = *inv.CustomerName
+	}
+	title := fmt.Sprintf("فاتورة %s — %s", inv.AccountingCode, name)
+	summary := fmt.Sprintf("التنفيذ: %.0f • المواد: %.0f • الخصم: %.0f • الصافي: %.0f",
+		inv.ExecutionCost, inv.MaterialsTotal, inv.DiscountValue, inv.NetTotal)
+	if inv.IsFree {
+		summary += " • شغل مجاني"
+	}
+	return title, summary
 }
 
 func NewLeaderInvoiceService(
@@ -175,6 +195,13 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 
 	s.computeAndSaveCommissions(saved)
 	s.recordDurationSample(saved)
+
+	// الفاتورة توصل المراقب **قبل** ما يدققها المحاسب — يعني يشوف
+	// الأرقام الأصلية قبل أي تعديل، وهذا كل الفايدة.
+	if s.monitor != nil {
+		title, summary := monitorInvoiceSummary(saved)
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title, summary, "TECHNICIAN", &saved.EmployeeID)
+	}
 
 	return saved, nil
 }
@@ -343,6 +370,13 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	}
 	if inv == nil {
 		return nil, fmt.Errorf("الفاتورة غير موجودة أو معتمدة أصلاً")
+	}
+	// وبعد التدقيق كمان: المراقب يقارن الأرقام قبل وبعد، فأي تعديل
+	// من المحاسب ينبيّن.
+	if s.monitor != nil {
+		title, summary := monitorInvoiceSummary(inv)
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceAfterAudit, inv.ID, title,
+			summary+" • رقم الفاتورة المحاسبية: "+externalNumber, "FINANCE", &approverEmployeeID)
 	}
 	return inv, nil
 }

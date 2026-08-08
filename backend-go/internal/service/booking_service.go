@@ -24,7 +24,13 @@ type BookingService struct {
 	discipline AssignmentBalanceChecker
 	// solar: سعر المنظومة لحجز الطاقة الشمسية. اختياري.
 	solar SolarPricer
+	// monitor: صندوق المراقب. اختياري — بدونه النظام يشتغل عادي بس
+	// المراقب ما يوصله شي.
+	monitor MonitorFeed
 }
+
+// SetMonitorFeed يربط صندوق المراقب بعد بناء الخدمتين.
+func (s *BookingService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
 
 // AssignmentBalanceChecker يفصل خدمة الحجوزات عن خدمة الانضباط حتى ما
 // يصير اعتماد دائري بين الاثنين.
@@ -185,6 +191,9 @@ func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*m
 		_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_confirmed",
 			fmt.Sprintf("📌 حجز جديد مثبّت (%s) للزبون %s — يحتاج تحديد الكادر المناسب له", booking.Code, customerName))
 	}
+	if s.monitor != nil {
+		s.monitor.BookingStage(model.MonitorStageBookingAfterConfirm, booking, "HR_COORDINATOR", nil)
+	}
 	return booking, nil
 }
 
@@ -246,7 +255,24 @@ func (s *BookingService) SetSchedule(id, changedByID, scheduledAt string) (*mode
 			return nil, err
 		}
 	}
-	return s.repo.FindByID(id)
+	updated, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+	// المراقب يشوف الحجز وموعده **قبل** التثبيت — هذا الوقت الي ينفع
+	// بيه الاعتراض، بعد التثبيت يصير تصليح مو منع.
+	if s.monitor != nil {
+		s.monitor.BookingStage(model.MonitorStageBookingBeforeConfirm, updated, "HR_COORDINATOR", ptrOrNil(changedByID))
+	}
+	return updated, nil
+}
+
+// ptrOrNil يحوّل النص الفارغ لـnil حتى ما ننحفظ معرّف موظف فاضي.
+func ptrOrNil(s string) *string {
+	if s == "" {
+		return nil
+	}
+	return &s
 }
 
 // Assign يعيّن فني لمهمة الحجز، يتحقق من المهارة والدوام، ويحدد المسؤول عن المصاريف تلقائياً
@@ -503,6 +529,10 @@ func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (
 	// فشل هذا الترحيل ما يوقف إكمال الحجز نفسه (ثانوي).
 	if booking != nil {
 		_ = s.qualityFollowUps.CreateForBooking(booking.ID, booking.CustomerID)
+	}
+	// بعد الإنجاز: المراقب يشوف شنو انعمل فعلاً قبل ما تصير فاتورة.
+	if s.monitor != nil {
+		s.monitor.BookingStage(model.MonitorStageBookingAfterComplete, booking, "TECHNICIAN", booking.ProjectSupervisorID)
 	}
 	return booking, nil
 }

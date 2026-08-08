@@ -220,6 +220,9 @@ const navItems: NavItem[] = [
     ],
   },
 
+  // صندوق المراقب أول شي بباب المراقبة: هو الي «يوصله» شغل، وبقية
+  // الشاشات تفرّج بس.
+  { to: '/monitor-inbox', label: '👁️ صندوق المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   { to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
@@ -353,6 +356,7 @@ const navItems: NavItem[] = [
     to: '/unit-monitoring', label: 'وحدة الرقابة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
     unitPermission: 'unit_monitoring',
     children: [
+      { to: '/monitor-inbox', label: '👁️ صندوق المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
       { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },

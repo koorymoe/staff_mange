@@ -1190,6 +1190,29 @@ export interface DirectedProject {
   delegatedToName: string | null
 }
 
+/** ═══ صندوق المراقب ═══
+ *  كل حدث لازم عين المراقب عليه ينوصل هنا كصف بانتظار قرار. */
+export type MonitorStage =
+  | 'INVOICE_BEFORE_AUDIT' | 'INVOICE_AFTER_AUDIT'
+  | 'BOOKING_BEFORE_CONFIRM' | 'BOOKING_AFTER_CONFIRM' | 'BOOKING_AFTER_COMPLETE'
+
+export interface MonitorReview {
+  id: string
+  stage: MonitorStage
+  entityType: 'BOOKING' | 'LEADER_INVOICE'
+  entityId: string
+  title: string
+  summary: string | null
+  ownerRole: string | null
+  ownerEmployeeId: string | null
+  status: 'PENDING' | 'OK' | 'FLAGGED'
+  note: string | null
+  reviewedAt: string | null
+  createdAt: string
+  ownerEmployee?: { id: string; name: string }
+  reviewedBy?: { id: string; name: string }
+}
+
 /** ═══ تسعيرة الشبكات ═══
  *  الأسعار بقاعدة البيانات مو بالكود — المالك يعدّلها من الشاشة. */
 export interface NetworkBracket {
@@ -3121,6 +3144,19 @@ export const api = {
   // المشاريع الموجّهة للموظف الحالي — الليدر يسوي فاتورة للشغل الموجّه له
   getProjectsDirectedToMe: () =>
     request<{ projects: DirectedProject[] }>('/projects/delegated-to-me'),
+  // ── صندوق المراقب ──
+  getMonitorReviews: (params: { stage?: string; status?: string; ownerRole?: string } = {}) => {
+    const q = new URLSearchParams()
+    if (params.stage) q.set('stage', params.stage)
+    if (params.status) q.set('status', params.status)
+    if (params.ownerRole) q.set('ownerRole', params.ownerRole)
+    const qs = q.toString()
+    return request<MonitorReview[]>(`/monitor-reviews${qs ? `?${qs}` : ''}`)
+  },
+  getMonitorReviewCounts: () => request<{ stage: MonitorStage; count: number }[]>('/monitor-reviews/counts'),
+  decideMonitorReview: (id: string, data: { flag: boolean; note: string }) =>
+    request<MonitorReview>(`/monitor-reviews/${id}/decide`, { method: 'POST', body: JSON.stringify(data) }),
+
   // ── تكلفة الشبكات ──
   getNetworkCostItems: () => request<NetworkPriceItem[]>('/network-cost/items'),
   calculateNetworkCost: (data: { lines: { itemId: string; quantity: number }[]; discount: number }) =>

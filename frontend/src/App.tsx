@@ -48,6 +48,7 @@ const QuotationNew = lazy(() => import('./pages/QuotationNew'))
 const LeaderInvoiceNew = lazy(() => import('./pages/LeaderInvoiceNew'))
 const CameraCostPage = lazy(() => import('./pages/CameraCostPage'))
 const NetworkCostPage = lazy(() => import('./pages/NetworkCostPage'))
+const MonitorInboxPage = lazy(() => import('./pages/MonitorInboxPage'))
 const NetworkPricesPage = lazy(() => import('./pages/NetworkPricesPage'))
 const ProjectStatisticsPage = lazy(() => import('./pages/ProjectStatisticsPage'))
 const LeaderInvoicesListPage = lazy(() => import('./pages/LeaderInvoicesListPage'))
@@ -161,6 +162,7 @@ function App() {
           <Route path="leader-invoices/new" element={<LeaderInvoiceNew />} />
           <Route path="camera-cost" element={<CameraCostPage />} />
           <Route path="network-cost" element={<NetworkCostPage />} />
+          <Route path="monitor-inbox" element={<MonitorInboxPage />} />
           <Route path="network-prices" element={<NetworkPricesPage />} />
           {/* المشاريع الموجّهة للموظف — نفس واجهة إدارة المشاريع بس على مشاريعه */}
           <Route path="my-projects" element={<ProjectsPage mode="delegated" />} />

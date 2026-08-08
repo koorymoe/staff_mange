@@ -216,6 +216,8 @@ func versionedMigrations() []Migration {
 	result = append(result, quotationImageMigration()...)
 	// 0233: تسعيرة الشبكات — أسعار بجدول يعدّلها المالك، مو بالكود.
 	result = append(result, networkPricingMigration()...)
+	// 0234: صندوق المراقب — الشغل يوصله بمحطاته بدل ما يدور عليه.
+	result = append(result, monitorReviewMigration()...)
 	return result
 }
 
