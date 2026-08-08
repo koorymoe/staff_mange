@@ -74,7 +74,7 @@ export default function QuotationNew() {
       if (rows.length > 0) setItems(rows)
       setProjectName((prev) => prev || `منظومة طاقة شمسية ${sys.capacity} — ${sys.brand} ${sys.model}`)
     }).catch(() => {})
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [solarSystemId])
   const [discountPercent, setDiscountPercent] = useState(0)
   const [duration, setDuration] = useState('')
@@ -284,8 +284,53 @@ export default function QuotationNew() {
     const validItems = items.filter((it) => it.productName.trim())
     const qdate = today
 
-    const MAX_ITEMS_PAGE1 = 6
-    const MAX_ITEMS_CONT = 10
+    // ═══ كم بند يدخل بالصفحة؟ نقيس، ما نخمّن ═══
+    //
+    // كان مكتوب بالكود «٦ بنود بالصفحة الأولى، ١٠ بالباقيات» — أرقام
+    // ثابتة ما لها علاقة بالمساحة الحقيقية. النتيجة إن عرض بـ١٠ بنود
+    // يطلع: ٦ بنود، بعدها **نص صفحة فاضية**، وبعدين الباقي بصفحة
+    // ثانية. والزبون يستلم عرض يبين ناقص.
+    //
+    // وأي رقم ثابت ثاني راح ينكسر بنفس الطريقة: اسم منتج طويل ينلف
+    // بسطرين فيصير الصف أطول، وبند بلا صورة أقصر بكثير. فما اكو رقم
+    // صحيح — اكو **قياس**.
+    //
+    // fitRows تبني الصفحة فعلياً بإطار مخفي وتشوف أي صف يطلع برّا
+    // حدود المساحة. ما ننتظر تحميل الصور: عرض وارتفاع الصورة مثبتين
+    // بالـCSS فالتخطيط محسوم من غير ما توصل الصورة.
+    const fitRows = (buildPage: (rowsHtml: string) => string, rowsHtml: string[], reservePx: number): number => {
+      if (rowsHtml.length === 0) return 0
+      const frame = document.createElement('iframe')
+      // برّا الشاشة مو display:none — المخفي ما ينحسبله تخطيط أصلاً
+      frame.style.cssText = 'position:fixed;left:-9999px;top:0;width:210mm;height:297mm;border:0;visibility:hidden'
+      document.body.appendChild(frame)
+      try {
+        const doc = frame.contentDocument
+        if (!doc) return rowsHtml.length
+        doc.open()
+        doc.write(`${docHead}${buildPage(rowsHtml.join(''))}</body></html>`)
+        doc.close()
+
+        const content = doc.querySelector('.content') as HTMLElement | null
+        const trs = doc.querySelectorAll('.data-table tbody tr')
+        if (!content || trs.length === 0) return rowsHtml.length
+
+        // آخر نقطة مسموحة: أسفل المحتوى ناقص الحشوة السفلى (محجوزة
+        // للبانر) وناقص أي شي لازم يبقى بنفس الصفحة (صف المجموع).
+        const padBottom = parseFloat(frame.contentWindow?.getComputedStyle(content).paddingBottom || '0')
+        const limit = content.getBoundingClientRect().bottom - padBottom - reservePx
+
+        let fit = 0
+        for (const tr of Array.from(trs)) {
+          if ((tr as HTMLElement).getBoundingClientRect().bottom > limit) break
+          fit++
+        }
+        // صف واحد على الأقل، وإلا ندخل بحلقة لا تنتهي
+        return Math.max(1, fit)
+      } finally {
+        frame.remove()
+      }
+    }
 
     const makeItemRow = (item: typeof validItems[number], idx: number) => {
       const safeSrc = safeImg(item.imageBase64)
@@ -321,16 +366,6 @@ export default function QuotationNew() {
       <td class="col-total">${fmt(grandTotal)}</td>
     </tr>`
 
-    const page1Items = validItems.slice(0, MAX_ITEMS_PAGE1)
-    const remainingItems = validItems.slice(MAX_ITEMS_PAGE1)
-    const contPages: (typeof validItems)[] = []
-    for (let i = 0; i < remainingItems.length; i += MAX_ITEMS_CONT) {
-      contPages.push(remainingItems.slice(i, i + MAX_ITEMS_CONT))
-    }
-
-    const isLastProductPage = contPages.length === 0
-    const page1RowsHtml = page1Items.map((item, i) => makeItemRow(item, i)).join('')
-
     const headerHtml = `<div class="header">
       <div class="header-right">
         <div class="header-company-ar">شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية</div>
@@ -347,32 +382,7 @@ export default function QuotationNew() {
   <div class="content">${inner}</div>
 </div>`
 
-    const contPagesHtml = contPages.map((chunk, ci) => {
-      const startIdx = MAX_ITEMS_PAGE1 + ci * MAX_ITEMS_CONT
-      const isLast = ci === contPages.length - 1
-      const rows = chunk.map((item, i) => makeItemRow(item, startIdx + i)).join('')
-      return pageShell(`
-    ${headerHtml}
-    <div class="info-row-p2">
-      <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${esc(customerName)}</div></div>
-      <div class="info-item"><div class="label">التاريخ:</div><div class="value">${qdate}</div></div>
-      <div class="info-item"><div class="label">تكملة المنتجات</div><div class="value">صفحة ${ci + 2}</div></div>
-    </div>
-    <hr class="hr">
-    <table class="data-table">${tableHead}<tbody>${rows}${isLast ? grandRowHtml : ''}</tbody></table>`)
-    }).join('\n')
-
-    const termsHtml = [
-      'الأسعار المذكورة أعلاه لا تشمل أجور النقل والتركيب ما لم يُذكر خلاف ذلك.',
-      'عرض السعر ساري المفعول لمدة 15 يوم من تاريخه.',
-      'الدفع: 50% مقدم والباقي عند التسليم.',
-      'مدة التنفيذ تبدأ من تاريخ استلام الدفعة الأولى.',
-      'الأسعار قابلة للتغيير حسب تقلبات السوق.',
-    ].map((t, i) => `<li><span class="num">${i + 1}.</span>${t}</li>`).join('')
-
-    const notesText = notes.trim() || 'لا توجد ملاحظات'
-
-    const printHtml = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+    const docHead = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=Tajawal:wght@400;500;700&family=Amiri:wght@400;700&display=swap" rel="stylesheet">
 <style>
 @page { size: A4; margin: 0; }
@@ -437,10 +447,12 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
   .page:last-child { page-break-after: auto; }
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 }
-</style></head><body>
+</style></head><body>`
 
-<!-- PAGE 1: Products -->
-${pageShell(`
+    // ── قوالب محتوى الصفحات ──
+    // نعرّفها مرة وحدة ونستعملها للقياس وللمخرج النهائي سوه — لو
+    // اختلفوا، القياس يصير على صفحة مو الي تنطبع.
+    const page1Inner = (rowsHtml: string, withGrand: boolean) => `
     ${headerHtml}
     <div class="info-row-p1">
       <div class="info-item"><div class="label">اسم المشروع والموقع:</div><div class="value">${esc(projectName || '---')}</div></div>
@@ -451,11 +463,70 @@ ${pageShell(`
     <div class="title-right">عرض السعر الاولي</div>
     <hr class="hr">
     <div class="title-right">تفاصيل المنتجات والخدمات</div>
-    <table class="data-table">${tableHead}<tbody>${page1RowsHtml}${isLastProductPage ? grandRowHtml : ''}</tbody></table>
-`)}
+    <table class="data-table">${tableHead}<tbody>${rowsHtml}${withGrand ? grandRowHtml : ''}</tbody></table>`
 
-<!-- CONTINUATION PAGES -->
-${contPagesHtml}
+    const contInner = (rowsHtml: string, pageNo: number, withGrand: boolean) => `
+    ${headerHtml}
+    <div class="info-row-p2">
+      <div class="info-item"><div class="label">اسم الزبون</div><div class="value">${esc(customerName)}</div></div>
+      <div class="info-item"><div class="label">التاريخ:</div><div class="value">${qdate}</div></div>
+      <div class="info-item"><div class="label">تكملة المنتجات</div><div class="value">صفحة ${pageNo}</div></div>
+    </div>
+    <hr class="hr">
+    <table class="data-table">${tableHead}<tbody>${rowsHtml}${withGrand ? grandRowHtml : ''}</tbody></table>`
+
+    // ── التقسيم بالقياس ──
+    const allRows = validItems.map((item, i) => makeItemRow(item, i))
+
+    // صف المجموع الكلي لازم يبقى بنفس صفحة آخر بند — لو انزاح لصفحة
+    // لحاله يطلع رقم يتيم بلا جدول. فنحجزله مساحة عند القياس.
+    const GRAND_ROW_PX = 44
+
+    const pages: string[][] = []
+    let rest = allRows
+    let isFirst = true
+    while (rest.length > 0) {
+      // نحجز مساحة المجموع بس إذا يمكن هاي آخر صفحة
+      const build = isFirst
+        ? (rows: string) => pageShell(page1Inner(rows, false))
+        : (rows: string) => pageShell(contInner(rows, pages.length + 1, false))
+      let n = fitRows(build, rest, 0)
+      if (n >= rest.length) {
+        // كلهن يدخلن — نتأكد إن المجموع بعد يدخل وياهن
+        n = fitRows(build, rest, GRAND_ROW_PX)
+        if (n < rest.length) n = rest.length // ما يدخل المجموع، ينزل للصفحة الجاية
+      }
+      pages.push(rest.slice(0, n))
+      rest = rest.slice(n)
+      isFirst = false
+    }
+    if (pages.length === 0) pages.push([])
+
+    const lastPageIdx = pages.length - 1
+    const productPagesHtml = pages.map((rows, pi) => {
+      const withGrand = pi === lastPageIdx
+      const inner = pi === 0
+        ? page1Inner(rows.join(''), withGrand)
+        : contInner(rows.join(''), pi + 1, withGrand)
+      return pageShell(inner)
+    }).join('\n')
+
+    const termsHtml = [
+      'الأسعار المذكورة أعلاه لا تشمل أجور النقل والتركيب ما لم يُذكر خلاف ذلك.',
+      'عرض السعر ساري المفعول لمدة 15 يوم من تاريخه.',
+      'الدفع: 50% مقدم والباقي عند التسليم.',
+      'مدة التنفيذ تبدأ من تاريخ استلام الدفعة الأولى.',
+      'الأسعار قابلة للتغيير حسب تقلبات السوق.',
+    ].map((t, i) => `<li><span class="num">${i + 1}.</span>${t}</li>`).join('')
+
+    const notesText = notes.trim() || 'لا توجد ملاحظات'
+
+
+    const printHtml = `${docHead}
+
+
+<!-- صفحات المنتجات: عددها ومحتواها ينتحددون بالقياس، مو برقم ثابت -->
+${productPagesHtml}
 
 <!-- SUMMARY PAGE -->
 ${pageShell(`
