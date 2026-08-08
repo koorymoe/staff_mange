@@ -168,10 +168,7 @@ export default function BookingsList() {
 
   const filtered = bookings
     .filter((b) => {
-      const q = search.trim().toLowerCase()
-      if (q && !(
-        matches([b.code, b.customer?.name, b.customer?.code, b.customer?.phone], search)
-      )) return false
+      if (search.trim() && !matches([b.code, b.customer?.name, b.customer?.code, b.customer?.phone], search)) return false
       if (selectedMonth && !relevantDate(b).startsWith(selectedMonth)) return false
       return true
     })

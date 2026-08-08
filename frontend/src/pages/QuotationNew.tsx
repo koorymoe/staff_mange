@@ -4,6 +4,7 @@ import { api, type Product, fileUrl } from '../api'
 import { useSession } from '../session'
 import vstripUrl from '../assets/print/quotation-vstrip.png'
 import bannerUrl from '../assets/print/quotation-banner.png'
+import { matches } from '../utils/search'
 
 interface ItemRow {
   productName: string
@@ -615,8 +616,13 @@ ${pageShell(`
     if (html) setPreviewHtml(html)
   }
 
+  // البحث عن المنتج وانت تكتب العرض — لازم يمر بالتطبيع العربي مثل
+  // باقي النظام: بدونه «كامره» ما تلكه «كاميرة» والموظف يظن المنتج
+  // مو بالكتالوك فيكتبه يدوي — فينخلق منتج مكرر بسعر مختلف.
   const filteredProducts = products.filter(p =>
-    activeAutocomplete !== null ? p.name.includes(items[activeAutocomplete]?.productName || '') : false
+    activeAutocomplete !== null
+      ? matches([p.name], items[activeAutocomplete]?.productName || '')
+      : false,
   )
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

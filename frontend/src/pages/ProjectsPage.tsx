@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
+import { matches } from '../utils/search'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -354,15 +355,8 @@ export default function ProjectsPage({ mode = 'all' }: { mode?: 'all' | 'delegat
   useEffect(() => { load() }, [])
 
   const filtered = useMemo(() => {
-    const s = search.toLowerCase().trim()
     return projects.filter(p => {
-      const matchSearch = !s ||
-        (p.name?.toLowerCase().includes(s)) ||
-        (p.code?.toLowerCase().includes(s)) ||
-        (p.phone?.toLowerCase().includes(s)) ||
-        (p.location?.toLowerCase().includes(s)) ||
-        (p.rep?.toLowerCase().includes(s)) ||
-        (p.stage?.toLowerCase().includes(s))
+      const matchSearch = matches([p.name, p.code, p.phone, p.location, p.rep, p.stage], search)
       const matchWork = !filterWorkType || p.workType === filterWorkType
       const matchStage = !filterStage || p.stage.includes(filterStage)
       return matchSearch && matchWork && matchStage
@@ -1293,9 +1287,8 @@ function RejectionView({ projects }: { projects: Project[] }) {
       if (d && (!map[reason].lastDate || d > map[reason].lastDate!)) map[reason].lastDate = d
     }
     let list = Object.values(map)
-    const s = search.toLowerCase()
-    if (s) list = list.filter(r => r.reason.toLowerCase().includes(s) ||
-      r.projects.some(p => p.name?.toLowerCase().includes(s) || p.location?.toLowerCase().includes(s)))
+    if (search.trim()) list = list.filter(r => matches([r.reason], search) ||
+      r.projects.some(p => matches([p.name, p.location], search)))
     if (sort === 'count') list.sort((a, b) => b.projects.length - a.projects.length)
     else if (sort === 'date') list.sort((a, b) => new Date(b.lastDate || 0).getTime() - new Date(a.lastDate || 0).getTime())
     else list.sort((a, b) => a.reason.localeCompare(b.reason, 'ar'))
@@ -1476,7 +1469,7 @@ function DelegateModal({ project, onClose, onSaved }: {
 
   // المرشحون مرتبين أصلاً بالخانات من السيرفر
   const shown = q.trim()
-    ? candidates.filter((c) => c.name.toLowerCase().includes(q.trim().toLowerCase()))
+    ? candidates.filter((c) => matches([c.name], q))
     : candidates
   const groups: { label: string; items: ProjectCandidate[] }[] = []
   for (const c of shown) {

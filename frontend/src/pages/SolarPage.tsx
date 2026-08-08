@@ -7,6 +7,7 @@ import {
 } from '../api'
 import { useSession } from '../session'
 import { useNavigate } from 'react-router-dom'
+import { matches } from '../utils/search'
 
 // ═══ نظام الطاقة الشمسية ═══
 //
@@ -254,10 +255,7 @@ function Systems({
   const shown = systems
     .filter((s) => brand === 'الكل' || s.brand === brand)
     .filter((s) => {
-      const q = search.trim().toLowerCase()
-      if (!q) return true
-      return [s.brand, s.model, s.capacity, s.panel?.name, s.inverter?.name, s.battery?.name]
-        .filter(Boolean).some((v) => String(v).toLowerCase().includes(q))
+      return matches([s.brand, s.model, s.capacity, s.panel?.name, s.inverter?.name, s.battery?.name], search)
     })
 
   return (
@@ -949,10 +947,7 @@ function Customers({ rows, canEdit, onChanged }: { rows: SolarInstallation[]; ca
   const shown = rows
     .filter((r) => filter === 'all' || (filter === 'due' ? r.dueForFollowUp : r.status === 'CONTACTED'))
     .filter((r) => {
-      const q = search.trim().toLowerCase()
-      if (!q) return true
-      return [r.customer?.name, r.customer?.phone, r.system?.brand, r.system?.capacity]
-        .filter(Boolean).some((v) => String(v).toLowerCase().includes(q))
+      return matches([r.customer?.name, r.customer?.phone, r.system?.brand, r.system?.capacity], search)
     })
 
   const fmtDate = (s: string) => new Date(s).toLocaleDateString('ar-IQ', { dateStyle: 'medium' })
