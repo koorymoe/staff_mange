@@ -413,3 +413,28 @@ func (h *BookingHandler) ResumeFromWaiting(w http.ResponseWriter, r *http.Reques
 	}
 	WriteJSON(w, http.StatusOK, b)
 }
+
+// PUT /api/bookings/{id}/type — تغيير نوع الحجز.
+//
+// للمالك ومدير النظام حصراً (مقيّد بالراوتر): نوع الحجز يأثر على
+// الإحصاءات والعمولات وحساب الصيانة، فمو قرار إداري يومي.
+func (h *BookingHandler) ChangeType(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		BookingType string `json:"bookingType"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	allowed := map[string]bool{"REGULAR": true, "MAINTENANCE": true, "INTERNAL": true, "SOLAR": true}
+	if !allowed[req.BookingType] {
+		WriteError(w, http.StatusBadRequest, "نوع حجز غير معروف")
+		return
+	}
+	booking, err := h.service.ChangeType(r.PathValue("id"), req.BookingType, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}

@@ -580,3 +580,12 @@ func (s *BookingService) ResumeFromWaiting(id string) (*model.Booking, error) {
 	}
 	return s.repo.FindByID(id)
 }
+
+// ChangeType تغيير نوع الحجز — للمالك ومدير النظام (مقيّد بالراوتر).
+// يرجّع الحجز بعد التغيير حتى الواجهة تحدّث الصف بلا إعادة تحميل.
+func (s *BookingService) ChangeType(id, newType, byEmployeeID string) (*model.Booking, error) {
+	if err := s.repo.ChangeType(id, newType, byEmployeeID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}

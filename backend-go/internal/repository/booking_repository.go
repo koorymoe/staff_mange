@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 
@@ -1215,4 +1216,68 @@ func (r *BookingRepository) ResumeFromWaiting(id string) error {
 		return errors.New("الحجز مو بحالة الانتظار")
 	}
 	return nil
+}
+
+// ChangeType يغيّر نوع الحجز (عادي / صيانة / داخل الشركة / طاقة شمسية).
+//
+// النوع ينتحدد وقت الإنشاء ويبقى ثابت — بس بالواقع ينغلط: الإداري
+// يسجّل شغل داخلي كحجز عادي، أو حجز صيانة ينسجّل عادي فما ينحسب
+// بإحصاءات الصيانة. وبدون تغيير، الحل الوحيد يلغي الحجز ويسوي غيره —
+// فيضيع تاريخه وتكليفاته وتقاريره.
+//
+// ⚠️ التغيير يتسجّل بسجل تغييرات الموعد (kind = 'TYPE_CHANGE'): نوع
+// الحجز يأثر على الإحصاءات والعمولات، فمو صح ينتغيّر بلا أثر.
+func (r *BookingRepository) ChangeType(id, newType, byEmployeeID string) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var old struct {
+		Type        string     `db:"bookingType"`
+		ScheduledAt *time.Time `db:"scheduledAt"`
+	}
+	if err := tx.Get(&old, `SELECT "bookingType", "scheduledAt" FROM "Booking" WHERE id = $1`, id); err != nil {
+		return errors.New("الحجز مو موجود")
+	}
+	if old.Type == newType {
+		return errors.New("الحجز أصلاً بهذا النوع")
+	}
+
+	if _, err := tx.Exec(`
+		UPDATE "Booking" SET "bookingType" = $2::"BookingType", "updatedAt" = now() WHERE id = $1
+	`, id, newType); err != nil {
+		return err
+	}
+
+	// السجل يحتاج newTime وهو NOT NULL — نحط موعد الحجز نفسه (ما
+	// تغيّر)، لأن المقصود توثيق **منو غيّر النوع ومتى** مو الموعد.
+	when := time.Now()
+	if old.ScheduledAt != nil {
+		when = *old.ScheduledAt
+	}
+	if _, err := tx.Exec(`
+		INSERT INTO "ScheduleChangeLog" (id, "bookingId", "changedById", "newTime", reason, kind)
+		VALUES ($1, $2, $3, $4, $5, 'TYPE_CHANGE')
+	`, uuid.NewString(), id, byEmployeeID, when,
+		"تغيير نوع الحجز من "+bookingTypeLabel(old.Type)+" إلى "+bookingTypeLabel(newType)); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// bookingTypeLabel الاسم العربي لنوع الحجز — للسجل والإشعارات.
+func bookingTypeLabel(t string) string {
+	switch t {
+	case "REGULAR":
+		return "حجز عادي"
+	case "MAINTENANCE":
+		return "حجز صيانة"
+	case "INTERNAL":
+		return "شغل داخل الشركة"
+	case "SOLAR":
+		return "حجز طاقة شمسية"
+	}
+	return t
 }

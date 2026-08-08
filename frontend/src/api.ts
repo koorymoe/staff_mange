@@ -2806,6 +2806,10 @@ export const api = {
       method: 'POST', body: JSON.stringify({ scheduledAt }),
     }),
 
+  /** تغيير نوع الحجز — للمالك ومدير النظام بس (السيرفر يرفض غيرهم) */
+  changeBookingType: (id: string, bookingType: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR') =>
+    request<Booking>(`/bookings/${id}/type`, { method: 'PUT', body: JSON.stringify({ bookingType }) }),
+
   completeBooking: (
     id: string,
     data: { completionNotes?: string; amountCollected?: number; advancePaid?: number },

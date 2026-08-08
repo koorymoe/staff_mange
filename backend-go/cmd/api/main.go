@@ -517,6 +517,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
 	mux.Handle("GET /api/bookings/{id}/suggested-crew", middleware.Chain(http.HandlerFunc(bookingProgressHandler.SuggestedCrew), requireAuth))
 
+	// تغيير نوع الحجز: المالك ومدير النظام بس. النوع يأثر على الإحصاءات
+	// والعمولات وحساب الصيانة — فمو قرار إداري يومي.
+	mux.Handle("PUT /api/bookings/{id}/type", middleware.Chain(http.HandlerFunc(bookingHandler.ChangeType), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/complete", middleware.Chain(http.HandlerFunc(bookingHandler.Complete), requireAuth, requireBookingParty))
 
 	// حذف الحجوزات التجريبية والملغاة: الإداري يطلب، والمراقب أو مدير
