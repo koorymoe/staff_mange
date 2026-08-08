@@ -255,6 +255,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	productHandler := handler.NewProductHandler(productService)
 	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
 	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
+	networkPriceRepo := repository.NewNetworkPriceRepository(db)
+	networkCostHandler := handler.NewNetworkCostHandler(networkPriceRepo)
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
 	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo, jobDurationSampleRepo)
 	// النقاط الكاملة بجدول الإحصاءات تجي من نفس حاسبة المخطط، حتى
@@ -1205,6 +1207,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد
 	mux.Handle("POST /api/leader-invoices/estimate", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Estimate), requireAuth, requireExecutionCost))
 	mux.Handle("POST /api/leader-invoices/camera-cost", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCost), requireAuth, requireExecutionCost))
+	// ── تكلفة الشبكات ──
+	// الاستمارة والحساب: نفس قيد حاسبة الكاميرات (صلاحية حساب التنفيذ).
+	// أما تعديل الأسعار فمحصور بالمالك ومدير النظام — سعر يتغيّر يعني
+	// كل فاتورة جاية تتغير معاه.
+	mux.Handle("GET /api/network-cost/items", middleware.Chain(http.HandlerFunc(networkCostHandler.ListActive), requireAuth, requireExecutionCost))
+	mux.Handle("POST /api/network-cost/calculate", middleware.Chain(http.HandlerFunc(networkCostHandler.Calculate), requireAuth, requireExecutionCost))
+	mux.Handle("GET /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.ListAll), requireAuth, requireAdmin))
+	mux.Handle("POST /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.CreatePrice), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.UpdatePrice), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.DeactivatePrice), requireAuth, requireAdmin))
 	mux.Handle("GET /api/leader-invoices/camera-cost/options", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCostOptions), requireAuth, requireExecutionCost))
 	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه
 	// البحث بالفاتورة المحاسبية — لازم يجي قبل مسار {id} حتى ما ينحسب

@@ -214,6 +214,8 @@ func versionedMigrations() []Migration {
 	// 0232: صورة المنتج تنحفظ مع بند عرض السعر — كانت تختفي بعد الحفظ
 	// فالعرض المطبوع يطلع بمربعات فاضية.
 	result = append(result, quotationImageMigration()...)
+	// 0233: تسعيرة الشبكات — أسعار بجدول يعدّلها المالك، مو بالكود.
+	result = append(result, networkPricingMigration()...)
 	return result
 }
 

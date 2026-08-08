@@ -165,6 +165,8 @@ const navItems: NavItem[] = [
           { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, permission: 'gps_system' },
           { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, permission: 'gps_system' },
           { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'] },
+          // أسعار الشبكات — تنعدّل من الشاشة لأنها لسه تتبني وتتغيّر
+          { to: '/network-prices', label: 'أسعار الشبكات', icon: <></>, roles: ['ADMIN'] },
         ],
       },
       {
@@ -239,6 +241,8 @@ const navItems: NavItem[] = [
       { to: '/leader-invoices/new', label: 'حساب كلفة زبون (حجز)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
       // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
       { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      // استمارة الشبكات — أسعارها بقاعدة البيانات مو بالكود، فتنعدّل بلا نشر
+      { to: '/network-cost', label: 'حساب كلفة الشبكات', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
       // صيانة الأجهزة العامة: حصراً للتيم ليدر (شيت "صيانة الاجهزة")
       { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
       // طلبات المواد — شغل ميدان مو إدارة، فمحلها هنا مو باب «الإدارة»

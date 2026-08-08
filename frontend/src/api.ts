@@ -1190,6 +1190,46 @@ export interface DirectedProject {
   delegatedToName: string | null
 }
 
+/** ═══ تسعيرة الشبكات ═══
+ *  الأسعار بقاعدة البيانات مو بالكود — المالك يعدّلها من الشاشة. */
+export interface NetworkBracket {
+  upTo: number      // 0 = «وأكثر»
+  unitPrice: number
+}
+
+export interface NetworkPriceItem {
+  id: string
+  label: string
+  unit: string
+  pricingMode: 'FLAT' | 'TIERED' | 'BRACKET'
+  basePrice: number
+  includedQty: number
+  extraPerUnit: number
+  brackets: NetworkBracket[]
+  note: string | null
+  sortOrder: number
+  active: boolean
+}
+
+export interface NetworkCostLineResult {
+  itemId: string
+  label: string
+  unit: string
+  quantity: number
+  basePart: number
+  extraQty: number
+  extraPart: number
+  unitPrice: number
+  total: number
+}
+
+export interface NetworkCostResponse {
+  lines: NetworkCostLineResult[]
+  subtotal: number
+  discount: number
+  finalAmount: number
+}
+
 export interface CameraCostRow {
   normalCableMeters: number
   vipCableMeters: number
@@ -3081,6 +3121,17 @@ export const api = {
   // المشاريع الموجّهة للموظف الحالي — الليدر يسوي فاتورة للشغل الموجّه له
   getProjectsDirectedToMe: () =>
     request<{ projects: DirectedProject[] }>('/projects/delegated-to-me'),
+  // ── تكلفة الشبكات ──
+  getNetworkCostItems: () => request<NetworkPriceItem[]>('/network-cost/items'),
+  calculateNetworkCost: (data: { lines: { itemId: string; quantity: number }[]; discount: number }) =>
+    request<NetworkCostResponse>('/network-cost/calculate', { method: 'POST', body: JSON.stringify(data) }),
+  getNetworkPrices: () => request<NetworkPriceItem[]>('/network-cost/prices'),
+  createNetworkPrice: (data: Partial<NetworkPriceItem>) =>
+    request<NetworkPriceItem>('/network-cost/prices', { method: 'POST', body: JSON.stringify(data) }),
+  updateNetworkPrice: (id: string, data: Partial<NetworkPriceItem>) =>
+    request<NetworkPriceItem>(`/network-cost/prices/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deactivateNetworkPrice: (id: string) =>
+    request<{ ok: boolean }>(`/network-cost/prices/${id}`, { method: 'DELETE' }),
   calculateCameraCost: (data: CameraCostRequest) =>
     request<CameraCostResponse>('/leader-invoices/camera-cost', { method: 'POST', body: JSON.stringify(data) }),
   getCameraCostOptions: () =>
