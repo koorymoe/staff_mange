@@ -387,3 +387,135 @@
 @media (prefers-reduced-motion: reduce) {
   .curtain { transition: none !important; }
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   الشعاع المنزلق — من صورة «Modern Navbar»
+   ══════════════════════════════════════════════════════════════════
+   خيط ضوّي قرمزي تحت العنصر الفعّال، ينزلق للعنصر الجديد بدل ما
+   يختفي ويظهر. طبقتين: خيط حاد بالنص، وهالة واسعة تحته.
+
+   ⚠️ ينزلق بالـtransform والعرض مقاس من الزر نفسه — مو عرض ثابت.
+   العناوين العربية أطوالها تختلف («الأوامر» مقابل «المعلومات»)،
+   وأي رقم ثابت يخلي الشعاع أقصر أو أطول من الكلمة. */
+
+.cmd-tabs {
+  position: relative;
+  display: flex;
+  gap: 30px;
+  padding: 2px 4px 16px;
+  border-bottom: 1px solid var(--cmd-border);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cmd-tabs::-webkit-scrollbar { display: none; }
+
+.cmd-tab {
+  position: relative;
+  border: 0;
+  background: transparent;
+  color: var(--cmd-muted);
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+  padding: 4px 2px;
+  cursor: pointer;
+  transition: color 0.3s var(--cmd-ease);
+}
+.cmd-tab:hover { color: var(--cmd-text); }
+.cmd-tab.active { color: #fff; }
+
+.cmd-beam {
+  position: absolute;
+  bottom: 0;
+  right: 0;              /* RTL: الانزلاق يبدي من اليمين */
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--cmd-crimson) 22%, #fff 50%, var(--cmd-crimson) 78%, transparent);
+  box-shadow: 0 0 12px 1px rgba(224, 36, 94, 0.85), 0 0 34px 6px rgba(224, 36, 94, 0.42);
+  transition: transform 0.5s var(--cmd-ease), width 0.5s var(--cmd-ease), opacity 0.3s;
+  pointer-events: none;
+  will-change: transform, width;
+}
+/* الهالة الواسعة تحت الخيط — هي الي تنطي إحساس «الضوء» بالصورة */
+.cmd-beam::after {
+  content: '';
+  position: absolute;
+  left: -18%;
+  right: -18%;
+  top: -7px;
+  height: 17px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(224, 36, 94, 0.42), transparent 72%);
+  filter: blur(3px);
+}
+
+/* ═══ تفاصيل الهيكل — بطاقات ومؤشرات وجداول فارغة ═══
+   فارغة بالبيانات، بس مبنية بالكامل: لما تجي البيانات تنحط بمحلها
+   بلا ما ينتغيّر التخطيط. */
+
+.cmd-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 13px;
+  margin-top: 20px;
+}
+.cmd-tile {
+  border: 1px solid var(--cmd-border);
+  background: var(--cmd-surface);
+  border-radius: 15px;
+  padding: 15px 16px;
+}
+.cmd-tile .k { font-size: 11.5px; color: var(--cmd-muted); font-weight: 700; }
+.cmd-tile .v {
+  margin-top: 7px;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: rgba(255, 255, 255, 0.22);   /* باهت: الرقم مو موجود، مو صفر */
+}
+.cmd-tile .h { margin-top: 3px; font-size: 10.5px; color: rgba(255,255,255,0.3); }
+
+.cmd-grid2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.cmd-panel {
+  border: 1px solid var(--cmd-border);
+  background: var(--cmd-surface);
+  border-radius: 17px;
+  padding: 17px 18px;
+  min-height: 152px;
+  display: flex;
+  flex-direction: column;
+}
+.cmd-panel h3 {
+  margin: 0 0 3px;
+  font-size: 13.5px;
+  font-weight: 800;
+}
+.cmd-panel .sub { margin: 0 0 12px; font-size: 11.5px; color: var(--cmd-muted); }
+
+/* صفوف شبح — تبيّن شكل الجدول بلا ما تكذب ببيانات وهمية */
+.cmd-ghost {
+  height: 11px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.09), rgba(255,255,255,0.035));
+  margin-bottom: 9px;
+}
+.cmd-ghost:nth-child(2) { width: 82%; }
+.cmd-ghost:nth-child(3) { width: 64%; }
+.cmd-ghost:nth-child(4) { width: 73%; }
+
+.cmd-pending {
+  margin-top: auto;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.34);
+  border-top: 1px dashed var(--cmd-border);
+  padding-top: 9px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cmd-beam { transition: none; }
+}
