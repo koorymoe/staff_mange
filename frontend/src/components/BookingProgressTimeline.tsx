@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { api, type BookingProgressReport } from '../api'
+import { api, type Booking, type BookingProgressReport } from '../api'
+import EntityIdentity from './EntityIdentity'
 
 // ═══ «وين وصل الي قبلنا؟» ═══
 //
@@ -8,7 +9,7 @@ import { api, type BookingProgressReport } from '../api'
 // يعرف، وأحياناً يجاوب غلط فينعاد شغل منجز أو ينتنسى شغل ناقص.
 //
 // نعرض كل يوم بترتيبه: منو اشتغل، شنو خلّص، شنو باقي، وشنو عرقلهم.
-export default function BookingProgressTimeline({ bookingId }: { bookingId: string }) {
+export default function BookingProgressTimeline({ bookingId, booking }: { bookingId: string; booking?: Partial<Booking> | null }) {
   const [rows, setRows] = useState<BookingProgressReport[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -25,6 +26,9 @@ export default function BookingProgressTimeline({ bookingId }: { bookingId: stri
   const last = rows[rows.length - 1]
 
   return (
+    <>
+      {/* الخط الزمني كان يعرض أحداث بلا ما يقول لأي حجز ولا لمنو */}
+      <EntityIdentity booking={booking} variant="full" className="mb-3" />
     <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h4 className="text-sm font-bold text-amber-900">
@@ -75,5 +79,6 @@ export default function BookingProgressTimeline({ bookingId }: { bookingId: stri
         ))}
       </div>
     </div>
+    </>
   )
 }

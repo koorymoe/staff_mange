@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type VehicleOption } from '../api'
+import { formatCustomerCode } from '../utils/identity'
 import { useSession } from '../session'
 import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
@@ -310,7 +311,7 @@ export default function BookingsList() {
                       {b.code}
                     </td>
                     <td className="px-4 py-3">{b.customer?.name || 'زبون غير معروف'}</td>
-                    <td className="px-4 py-3 font-mono text-sm text-slate-500">{b.customer?.code || '-'}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-slate-500">{formatCustomerCode(b.customer) || '-'}</td>
                     <td className="px-4 py-3 text-slate-600">{serviceNames(b)}</td>
                     <td className="px-4 py-3 text-slate-600">{b.transferEmployee?.name || '-'}</td>
                     <td className="px-4 py-3 text-slate-500">{b.assignedVehicle || '-'}</td>

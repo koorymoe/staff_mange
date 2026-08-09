@@ -7,6 +7,7 @@ import CompletionBadge from '../components/CompletionBadge'
 import { api, type Booking, type PersonalTool } from '../api'
 import PartialCompleteDialog from '../components/PartialCompleteDialog'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
+import EntityIdentity from '../components/EntityIdentity'
 import { useSession } from '../session'
 
 function elapsedSince(iso: string): string {
@@ -259,6 +260,8 @@ export default function MyTasks() {
                     key={b.id}
                     className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
                   >
+                    {/* هوية كاملة: الفني كان يشوف كود الحجز بس */}
+                    <EntityIdentity booking={b} variant="full" className="mb-2" />
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-sm font-semibold text-brand-600">
                         {b.code}
@@ -416,7 +419,7 @@ export default function MyTasks() {
                           </button>
                         </div>
                         {/* تقارير الأيام الفائتة — الكادر يقراها قبل ما يبدي */}
-                        <BookingProgressTimeline bookingId={b.id} />
+                        <BookingProgressTimeline bookingId={b.id} booking={b} />
                         {b.workStoppedAt ? (
                           <div className="mt-2 rounded-lg border border-slate-300 bg-slate-50 px-3 py-2 text-xs">
                             <span className="font-bold text-slate-700">⏸ العمل متوقف</span>

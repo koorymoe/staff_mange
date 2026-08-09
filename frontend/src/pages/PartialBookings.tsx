@@ -88,7 +88,7 @@ export default function PartialBookings() {
             </div>
             {b.address && <p className="mt-1 text-xs text-slate-500">📍 {b.address}</p>}
 
-            <BookingProgressTimeline bookingId={b.id} />
+            <BookingProgressTimeline bookingId={b.id} booking={b} />
 
             {/* الكادر المقترح */}
             <div className="mt-3 rounded-xl border border-slate-200 p-3">

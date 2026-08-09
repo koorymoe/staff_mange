@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption } from '../api'
+import { formatCustomerCode } from '../utils/identity'
 import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
@@ -341,7 +342,9 @@ export default function Coordinator() {
 
   // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
   const matchesSearch = (b: Booking) => {
-    return searchMatches([b.code, b.customer?.code, b.customer?.phone, b.customer?.name], search)
+    // ⚠️ كان يبحث بـcustomer.code وهو ما ينرسل مع الحجز — يعني البحث
+    // بكود الزبون جان ما يطابق ولا حجز أبداً، بصمت.
+    return searchMatches([b.code, formatCustomerCode(b.customer), b.customer?.phone, b.customer?.name], search)
   }
   const pendingBookings = bookings.filter((b) => b.status === 'PENDING' && matchesSearch(b))
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' && matchesSearch(b))
