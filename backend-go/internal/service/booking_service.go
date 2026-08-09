@@ -582,17 +582,28 @@ func (s *BookingService) Restore(id string) (*model.Booking, error) {
 // Postpone يأجّل موعد الحجز. الموعد يجي بتوقيت بغداد وينخزن عالمي —
 // بدون التحويل الموعد يتقدم ثلاث ساعات كل ما ينحفظ.
 func (s *BookingService) Postpone(id, newTime, reason, byEmployeeID string) (*model.Booking, error) {
+	// الموعد اختياري: أكثر التأجيلات تصير والزبون ما محدّد متى يناسبه،
+	// والإداري كان يضطر يحط تاريخ من راسه حتى يمرّر الشاشة — فيطلع
+	// موعد كذب بالجدول والكادر يتحضّر لحجز ماكو.
+	//
+	// ⚠️ السبب يضل إجباري: «تأجل» بلا سبب ما تنفع لا للإحصاء ولا
+	// للكادر الي راح يسأل ليش.
 	newTime = strings.TrimSpace(newTime)
-	if newTime == "" {
-		return nil, errors.New("الموعد الجديد مطلوب")
-	}
 	if strings.TrimSpace(reason) == "" {
 		return nil, errors.New("سبب التأجيل مطلوب")
 	}
-	if err := s.repo.Postpone(id, timeutil.NormalizeCompanyLocal(newTime), reason, byEmployeeID); err != nil {
+	if newTime != "" {
+		newTime = timeutil.NormalizeCompanyLocal(newTime)
+	}
+	if err := s.repo.Postpone(id, newTime, reason, byEmployeeID); err != nil {
 		return nil, err
 	}
 	return s.repo.FindByID(id)
+}
+
+// ListPostponed الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري.
+func (s *BookingService) ListPostponed() ([]model.Booking, error) {
+	return s.repo.ListPostponed()
 }
 
 // MarkWaiting يحط الحجز بحالة «في الانتظار» — اتصلنا بالزبون وما رد.

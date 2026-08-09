@@ -20,6 +20,7 @@ const SecurityDashboardPage = lazy(() => import('./pages/SecurityDashboardPage')
 const AssistantConversationsPage = lazy(() => import('./pages/AssistantConversationsPage'))
 const Coordinator = lazy(() => import('./pages/Coordinator'))
 const BookingsArchive = lazy(() => import('./pages/BookingsArchive'))
+const PostponedBookings = lazy(() => import('./pages/PostponedBookings'))
 const SolarPage = lazy(() => import('./pages/SolarPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
@@ -136,6 +137,7 @@ function App() {
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           <Route path="bookings-archive" element={<BookingsArchive />} />
+          <Route path="postponed-bookings" element={<PostponedBookings />} />
           <Route path="partial-bookings" element={<PartialBookings />} />
           <Route path="letters" element={<LettersPage />} />
           <Route path="solar" element={<SolarPage />} />

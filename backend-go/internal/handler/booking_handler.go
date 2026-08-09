@@ -390,6 +390,16 @@ func (h *BookingHandler) Postpone(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, b)
 }
 
+// GET /api/bookings/postponed — المؤجلة بلا موعد، طابور قرارات الإداري
+func (h *BookingHandler) ListPostponed(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ListPostponed()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات المؤجلة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 // PUT /api/bookings/{id}/waiting — الزبون ما رد
 func (h *BookingHandler) MarkWaiting(w http.ResponseWriter, r *http.Request) {
 	var body struct {

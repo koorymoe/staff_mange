@@ -212,6 +212,7 @@ func (r *BookingProgressRepository) ScheduleContinuation(bookingID, scheduledAt,
 			status = 'CONFIRMED',
 			"scheduledAt" = $2::timestamp,
 			"scheduledEndAt" = $2::timestamp + interval '1 hour',
+			"awaitingReschedule" = false,
 			"updatedAt" = now()
 		WHERE id = $1
 	`, bookingID, scheduledAt); err != nil {

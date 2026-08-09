@@ -32,7 +32,10 @@ func (r *BookingRepository) List(status, customerID, date string, limit int) ([]
 		// حتى فلترة التاريخ تصير بالسيرفر (نجيب يوم وحد فقط) بدل ما نجيب كل أرشيف
 		// الحجوزات التاريخي ونفلتره بالواجهة، وهذا كان يبطّئ الصفحة مع تراكم البيانات.
 		args = append(args, date)
-		query += fmt.Sprintf(` AND (
+		// ⚠️ الحجز المؤجل بلا موعد ينستثنى صراحةً: بدون هذا الشرط
+		// يرجع للسطر الثاني (createdAt) ويطلع بجدول **يوم إنشائه**،
+		// يعني نفس المشكلة الي أجّلناه حتى نتجنبها.
+		query += fmt.Sprintf(` AND NOT "awaitingReschedule" AND (
 			(("scheduledAt" IS NOT NULL) AND baghdad_date("scheduledAt") = $%d::date)
 			OR (("scheduledAt" IS NULL) AND baghdad_date("createdAt") = $%d::date)
 		)`, len(args), len(args))
@@ -505,7 +508,10 @@ func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, 
 			"quotedPrice" = COALESCE($6, "quotedPrice"),
 			address = COALESCE($7, address),
 			"scheduledAt" = COALESCE($8::timestamp, "scheduledAt"),
-			"scheduledEndAt" = COALESCE($8::timestamp + interval '1 hour', "scheduledEndAt")
+			"scheduledEndAt" = COALESCE($8::timestamp + interval '1 hour', "scheduledEndAt"),
+			-- نفس القاعدة: أي مكان يحط موعد يلغي علم الانتظار
+			"awaitingReschedule" = CASE WHEN $8::timestamp IS NULL
+			                            THEN "awaitingReschedule" ELSE false END
 		WHERE id = $1
 	`, id, req.ConfirmedByName, req.ConfirmedByEmployeeID, req.AdminNotes, req.TransferToProjects, req.QuotedPrice, req.Address, scheduledAt)
 	return err
@@ -658,7 +664,10 @@ func (r *BookingRepository) SetSchedule(id, scheduledAt string) error {
 	_, err := r.db.Exec(`
 		UPDATE "Booking"
 		SET "scheduledAt" = $2::timestamp,
-		    "scheduledEndAt" = $2::timestamp + interval '1 hour'
+		    "scheduledEndAt" = $2::timestamp + interval '1 hour',
+		    -- تحديد موعد يلغي «مؤجل بلا موعد» — وإلا الحجز ياخذ موعد
+		    -- ويضل مخفي من جدول اليوم وعالق بقائمة المؤجلة.
+		    "awaitingReschedule" = false
 		WHERE id = $1`, id, scheduledAt)
 	return err
 }
@@ -1145,26 +1154,59 @@ func (r *BookingRepository) Postpone(id, newTime, reason, byEmployeeID string) e
 		return errors.New("الحجز مو موجود")
 	}
 
-	// النهاية تنحسب ساعة بعد البداية — نفس قاعدة المدى بكل مكان
+	// ⚠️ newTime فارغ = تأجيل بلا موعد. نمرّره *string مو نص فارغ:
+	// ''::timestamp يطلّع خطأ بـPostgres، ما ينحوّل NULL بالسكوت.
+	var newTimePtr *string
+	if newTime != "" {
+		newTimePtr = &newTime
+	}
+
+	// بموعد: النهاية ساعة بعد البداية (نفس قاعدة المدى بكل مكان).
+	// بلا موعد: نفرّغ الموعد ونرفع علم «ينتظر جدولة» حتى ينزاح من
+	// جدول اليوم ويطلع بقائمة المؤجلة.
 	if _, err := tx.Exec(`
 		UPDATE "Booking"
 		SET "scheduledAt" = $2::timestamp,
-		    "scheduledEndAt" = $2::timestamp + interval '1 hour',
+		    "scheduledEndAt" = CASE WHEN $2::timestamp IS NULL
+		                            THEN NULL
+		                            ELSE $2::timestamp + interval '1 hour' END,
+		    "awaitingReschedule" = ($2::timestamp IS NULL),
 		    "postponeCount" = "postponeCount" + 1,
 		    "lastPostponedAt" = now(),
 		    "postponeReason" = NULLIF($3, ''),
 		    "updatedAt" = now()
-		WHERE id = $1`, id, newTime, reason); err != nil {
+		WHERE id = $1`, id, newTimePtr, reason); err != nil {
 		return err
 	}
 
 	if _, err := tx.Exec(`
 		INSERT INTO "ScheduleChangeLog" (id, "bookingId", "changedById", "oldTime", "newTime", kind, reason)
 		VALUES (gen_random_uuid()::text, $1, $2, $3, $4::timestamp, 'POSTPONE', NULLIF($5, ''))`,
-		id, byEmployeeID, old, newTime, reason); err != nil {
+		id, byEmployeeID, old, newTimePtr, reason); err != nil {
 		return err
 	}
 	return tx.Commit()
+}
+
+// ListPostponed الحجوزات المؤجلة بلا موعد — الي تنتظر قرار من الإداري.
+//
+// بدون هاي القائمة الحجز المؤجل بلا موعد يضيع: مو بجدول اليوم (وهذا
+// مقصود) ومو بأي مكان ثاني. الأقدم تأجيلاً أول، لأنه الي منتظر أكثر.
+func (r *BookingRepository) ListPostponed() ([]model.Booking, error) {
+	bookings := []model.Booking{}
+	err := r.db.Select(&bookings, `
+		SELECT * FROM "Booking"
+		WHERE "archivedAt" IS NULL
+		  AND "awaitingReschedule"
+		  AND status NOT IN ('COMPLETED', 'CANCELLED')
+		ORDER BY "lastPostponedAt" ASC`)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
+		return nil, err
+	}
+	return bookings, nil
 }
 
 // ═══════════ في الانتظار ═══════════

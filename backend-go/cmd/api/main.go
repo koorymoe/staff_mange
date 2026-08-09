@@ -517,6 +517,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الحذف صار أرشفة: الحجز يختفي من الشاشات ويضل بالأرشيف بسببه
 	mux.Handle("DELETE /api/bookings/{id}", middleware.Chain(http.HandlerFunc(bookingHandler.ArchiveBooking), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/restore", middleware.Chain(http.HandlerFunc(bookingHandler.RestoreBooking), requireAuth, requireAdmin))
+	// المؤجلة بلا موعد: قائمة مستقلة لأنها منزاحة عن جدول اليوم قصداً
+	mux.Handle("GET /api/bookings/postponed", middleware.Chain(http.HandlerFunc(bookingHandler.ListPostponed), requireAuth, requireCoordinator))
 	// التأجيل والانتظار شغل المنسّق — هو الي يتصل بالزبون
 	mux.Handle("PUT /api/bookings/{id}/postpone", middleware.Chain(http.HandlerFunc(bookingHandler.Postpone), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/waiting", middleware.Chain(http.HandlerFunc(bookingHandler.MarkWaiting), requireAuth, requireCoordinator))

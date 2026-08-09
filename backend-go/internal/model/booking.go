@@ -103,6 +103,10 @@ type Booking struct {
 	PostponeCount   int        `db:"postponeCount" json:"postponeCount"`
 	LastPostponedAt *time.Time `db:"lastPostponedAt" json:"lastPostponedAt,omitempty"`
 	PostponeReason  *string    `db:"postponeReason" json:"postponeReason,omitempty"`
+	// انأجّل بلا موعد: الزبون ما محدّد متى يناسبه. الحجز ينزاح من جدول
+	// اليوم ويروح لقائمة «الحجوزات المؤجلة» لحد ما ينحدد له موعد.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
+	AwaitingReschedule bool `db:"awaitingReschedule" json:"awaitingReschedule"`
 
 	// ═══ اكتمال الحجز بعد الإنجاز ═══
 	// الإنجاز لحاله ما يكفي: الليدر لازم يسوي فاتورة التكاليف المربوطة
@@ -183,7 +187,9 @@ type ScheduleChangeLog struct {
 	BookingID   string     `db:"bookingId" json:"-"`
 	ChangedByID string     `db:"changedById" json:"changedById"`
 	OldTime     *time.Time `db:"oldTime" json:"oldTime,omitempty"`
-	NewTime     time.Time  `db:"newTime" json:"newTime"`
+	// NewTime فارغ يعني «انأجّل بلا موعد» — ما ينشال الحقل من السجل،
+	// التأجيل بلا موعد حدث لازم ينتسجّل مثل غيره.
+	NewTime *time.Time `db:"newTime" json:"newTime,omitempty"`
 	// Kind يفرّق بين تغيير جدولة عادي (SCHEDULE) وتأجيل من الزبون
 	// (POSTPONE)، وReason سبب التأجيل.
 	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).

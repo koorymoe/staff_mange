@@ -33,6 +33,8 @@ export default function BookingLifecycleActions({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
   const [when, setWhen] = useState(toLocalInput(booking.scheduledAt))
+  // تأجيل بلا موعد — الزبون ما محدّد متى يناسبه
+  const [noDate, setNoDate] = useState(false)
   const [reason, setReason] = useState('')
 
   const run = async (fn: () => Promise<Booking>) => {
@@ -129,15 +131,36 @@ export default function BookingLifecycleActions({
       {open === 'postpone' && (
         <div className="mt-2 rounded-xl border border-blue-200 bg-blue-50/50 p-3">
           <h4 className="mb-2 text-sm font-bold text-blue-900">📅 تأجيل الموعد</h4>
-          <label className="mb-1 block text-xs font-medium text-slate-600">
-            الموعد الجديد (النهاية تنحسب ساعة بعده تلقائياً)
+
+          {/* ⚠️ أكثر التأجيلات تصير والزبون ما محدّد متى يناسبه. قبل،
+              الإداري يضطر يحط تاريخ من راسه حتى يمرّر الشاشة — فيطلع
+              موعد كذب بالجدول والكادر يتحضّر لحجز ماكو. */}
+          <label className="mb-2 flex items-center gap-2 text-xs font-bold text-blue-900">
+            <input
+              type="checkbox"
+              checked={noDate}
+              onChange={(e) => { setNoDate(e.target.checked); if (e.target.checked) setWhen('') }}
+            />
+            تأجيل بدون تحديد موعد (الزبون ما محدّد)
           </label>
-          <input
-            type="datetime-local"
-            value={when}
-            onChange={(e) => setWhen(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
-          />
+
+          {noDate ? (
+            <p className="rounded-lg bg-white px-3 py-2 text-xs text-slate-600">
+              الحجز راح ينزاح من جدول اليوم ويروح لقائمة «الحجوزات المؤجلة» حتى تحدد له موعد بعدين.
+            </p>
+          ) : (
+            <>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                الموعد الجديد (النهاية تنحسب ساعة بعده تلقائياً)
+              </label>
+              <input
+                type="datetime-local"
+                value={when}
+                onChange={(e) => setWhen(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-blue-500"
+              />
+            </>
+          )}
           <label className="mb-1 mt-2 block text-xs font-medium text-slate-600">سبب التأجيل *</label>
           <input
             value={reason}
@@ -149,9 +172,9 @@ export default function BookingLifecycleActions({
             busy={busy}
             err={err}
             onCancel={() => setOpen(null)}
-            onSave={() => run(() => api.postponeBooking(booking.id, when, reason))}
-            disabled={!when || !reason.trim()}
-            label="أجّل الموعد"
+            onSave={() => run(() => api.postponeBooking(booking.id, noDate ? '' : when, reason))}
+            disabled={(!noDate && !when) || !reason.trim()}
+            label={noDate ? 'أجّل بدون موعد' : 'أجّل الموعد'}
           />
         </div>
       )}

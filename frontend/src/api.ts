@@ -490,6 +490,8 @@ export interface Booking {
 
   // ═══ التأجيل ═══ حجز تأجل أربع مرات علامة على شي غلط ولازم ينشاف.
   postponeCount: number
+  /** انأجّل بلا موعد — منزاح من جدول اليوم لحد ما ينحدد له موعد */
+  awaitingReschedule: boolean
   lastPostponedAt: string | null
   postponeReason: string | null
 
@@ -2797,6 +2799,9 @@ export const api = {
     request<Booking>(`/bookings/${id}/restore`, { method: 'PUT' }),
 
   /** تأجيل الموعد بطلب الزبون — السبب إجباري وينعد بعدد التأجيلات */
+  /** الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري */
+  getPostponedBookings: () => request<Booking[]>('/bookings/postponed'),
+  /** scheduledAt فارغ = تأجيل بلا موعد */
   postponeBooking: (id: string, scheduledAt: string, reason: string) =>
     request<Booking>(`/bookings/${id}/postpone`, { method: 'PUT', body: JSON.stringify({ scheduledAt, reason }) }),
 
