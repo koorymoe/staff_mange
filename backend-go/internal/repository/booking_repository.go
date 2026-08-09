@@ -1252,6 +1252,10 @@ func (r *BookingRepository) MarkWaiting(id, note, byEmployeeID string) error {
 		    "waitingById" = $3,
 		    "contactAttempts" = "contactAttempts" + 1,
 		    "lastContactAttemptAt" = now(),
+		    -- محاولة اتصال جديدة تبدي سلّم التذكير من الأول: الإداري
+		    -- توّه اتصل، ما ينفع نذكّره بعد ساعة.
+		    "lastWaitingReminderAt" = NULL,
+		    "waitingReminderCount" = 0,
 		    "updatedAt" = now()
 		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED') AND "archivedAt" IS NULL`,
 		id, note, nullIfEmpty(byEmployeeID))
@@ -1274,6 +1278,7 @@ func (r *BookingRepository) ResumeFromWaiting(id string) error {
 		SET status = CASE WHEN "confirmedAt" IS NOT NULL THEN 'CONFIRMED'::"BookingStatus"
 		                  ELSE 'PENDING'::"BookingStatus" END,
 		    "waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
+		    "lastWaitingReminderAt" = NULL, "waitingReminderCount" = 0,
 		    "updatedAt" = now()
 		WHERE id = $1 AND status = 'WAITING'`, id)
 	if err != nil {
@@ -1283,6 +1288,53 @@ func (r *BookingRepository) ResumeFromWaiting(id string) error {
 		return errors.New("الحجز مو بحالة الانتظار")
 	}
 	return nil
+}
+
+// WaitingReminderRow صف بتذكير المعاودة — الي يحتاجه الإشعار بس،
+// مو الحجز كامل.
+type WaitingReminderRow struct {
+	ID              string  `db:"id"`
+	Code            string  `db:"code"`
+	ContactAttempts int     `db:"contactAttempts"`
+	CustomerName    string  `db:"customerName"`
+	CustomerPhone   *string `db:"customerPhone"`
+}
+
+// ListWaitingDueForReminder الحجوزات المستحقة تذكير معاودة اتصال.
+//
+// ثلاث شروط سوه تمنع الإزعاج:
+//   minAge       ما نذكّر بنفس الشفت الي أشّر بيه الإداري
+//   minGap       تذكير واحد بالكثير لكل حجز باليوم
+//   maxReminders بعد عدد معيّن نوقف — هذا قرار مو انتظار
+func (r *BookingRepository) ListWaitingDueForReminder(minAgeHours, minGapHours, maxReminders int) ([]WaitingReminderRow, error) {
+	rows := []WaitingReminderRow{}
+	err := r.db.Select(&rows, `
+		SELECT b.id, b.code, b."contactAttempts",
+		       c.name AS "customerName", c.phone AS "customerPhone"
+		FROM "Booking" b
+		JOIN "Customer" c ON c.id = b."customerId"
+		WHERE b.status = 'WAITING'
+		  AND b."archivedAt" IS NULL
+		  AND b."waitingSince" < now() - ($1 || ' hours')::interval
+		  AND (b."lastWaitingReminderAt" IS NULL
+		       OR b."lastWaitingReminderAt" < now() - ($2 || ' hours')::interval)
+		  AND b."waitingReminderCount" < $3
+		ORDER BY b."waitingSince" ASC`, minAgeHours, minGapHours, maxReminders)
+	return rows, err
+}
+
+// MarkWaitingReminded يسجّل إنه انذكّر — بدونها الكنسة الجاية تعيد
+// نفس التذكير بعد ساعة.
+func (r *BookingRepository) MarkWaitingReminded(ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	_, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "lastWaitingReminderAt" = now(),
+		    "waitingReminderCount" = "waitingReminderCount" + 1
+		WHERE id = ANY($1)`, pq.Array(ids))
+	return err
 }
 
 // ChangeType يغيّر نوع الحجز (عادي / صيانة / داخل الشركة / طاقة شمسية).

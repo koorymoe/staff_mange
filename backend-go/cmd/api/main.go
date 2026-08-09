@@ -163,6 +163,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// وصول المشروع لمرحلة «٥. البدء بالتنفيذ» يفتح حجزه عند إداري
 	// الحجوزات — الربط بعد البناء حتى ما يصير اعتماد دائري.
 	projectService.SetBookingUnlocker(bookingService)
+
+	// تذكير معاودة الاتصال بالزبون الي ما رد — بدونه الحجز يقعد
+	// بالطابور بلا حركة، لا ملغي ولا شغّال.
+	bookingReminderService := service.NewBookingReminderService(bookingRepo, notificationRepo)
+	bookingReminderService.StartBackgroundSweeps()
 	projectWorkTypeService := service.NewProjectWorkTypeService(projectWorkTypeRepo)
 	checklistService := service.NewChecklistService(checklistRepo)
 	techShowcaseService := service.NewTechShowcaseService(techShowcaseRepo)
@@ -190,6 +195,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
 	bookingHandler := handler.NewBookingHandler(bookingService, permissionRepo)
+	bookingHandler.SetReminderService(bookingReminderService)
 	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService)
 	securityHandler := handler.NewSecurityHandler(db, loginAuditRepo, lockoutRepo, startedAt)
 
@@ -520,6 +526,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الحذف صار أرشفة: الحجز يختفي من الشاشات ويضل بالأرشيف بسببه
 	mux.Handle("DELETE /api/bookings/{id}", middleware.Chain(http.HandlerFunc(bookingHandler.ArchiveBooking), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/restore", middleware.Chain(http.HandlerFunc(bookingHandler.RestoreBooking), requireAuth, requireAdmin))
+	// الكنسة اليدوية للإدارة والفحص — التلقائية تشتغل بالخلفية
+	mux.Handle("POST /api/bookings/waiting-reminder-sweep", middleware.Chain(http.HandlerFunc(bookingHandler.RunWaitingReminderSweep), requireAuth, requireAdmin))
 	// المؤجلة بلا موعد: قائمة مستقلة لأنها منزاحة عن جدول اليوم قصداً
 	mux.Handle("GET /api/bookings/postponed", middleware.Chain(http.HandlerFunc(bookingHandler.ListPostponed), requireAuth, requireCoordinator))
 	// التأجيل والانتظار شغل المنسّق — هو الي يتصل بالزبون

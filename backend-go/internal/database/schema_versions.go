@@ -223,6 +223,8 @@ func versionedMigrations() []Migration {
 	result = append(result, postponeNoDateMigration()...)
 	// 0237: حجز المشاريع يضل مرئي للمنسّق مقفول لحد ما يوصل التنفيذ.
 	result = append(result, projectBookingUnlockMigration()...)
+	// 0238: تذكير معاودة الاتصال بالزبون الي ما رد — بحدود ضد الإزعاج.
+	result = append(result, waitingReminderMigration()...)
 	return result
 }
 

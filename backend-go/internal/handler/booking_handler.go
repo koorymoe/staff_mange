@@ -15,11 +15,16 @@ import (
 type BookingHandler struct {
 	service     *service.BookingService
 	permissions *repository.PermissionRepository
+	// reminders اختياري — يُربط من main للتشغيل اليدوي للكنسة
+	reminders *service.BookingReminderService
 }
 
 func NewBookingHandler(s *service.BookingService, p *repository.PermissionRepository) *BookingHandler {
 	return &BookingHandler{service: s, permissions: p}
 }
+
+// SetReminderService يربط خدمة التذكير بعد البناء.
+func (h *BookingHandler) SetReminderService(r *service.BookingReminderService) { h.reminders = r }
 
 // GET /api/v1/bookings?status=&customerId=&assignedTo=me
 //
@@ -388,6 +393,21 @@ func (h *BookingHandler) Postpone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, b)
+}
+
+// POST /api/bookings/waiting-reminder-sweep — تشغيل يدوي للكنسة
+// (للفحص وللإدارة)، نفس أسلوب كنسة الانضباط.
+func (h *BookingHandler) RunWaitingReminderSweep(w http.ResponseWriter, r *http.Request) {
+	if h.reminders == nil {
+		WriteError(w, http.StatusServiceUnavailable, "خدمة التذكير مو مربوطة")
+		return
+	}
+	n, err := h.reminders.RunWaitingReminderSweep()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{"reminded": n})
 }
 
 // GET /api/bookings/postponed — المؤجلة بلا موعد، طابور قرارات الإداري

@@ -102,6 +102,11 @@ type Booking struct {
 	WaitingByID          *string    `db:"waitingById" json:"waitingById,omitempty"`
 	ContactAttempts      int        `db:"contactAttempts" json:"contactAttempts"`
 	LastContactAttemptAt *time.Time `db:"lastContactAttemptAt" json:"lastContactAttemptAt,omitempty"`
+	// تذكير المعاودة: آخر مرة ذكّرنا الإداري وكم مرة. للحد من الإزعاج
+	// مو للتذكير نفسه — تذكير ينتجاهل أسوأ من ماكو تذكير.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	LastWaitingReminderAt *time.Time `db:"lastWaitingReminderAt" json:"lastWaitingReminderAt,omitempty"`
+	WaitingReminderCount  int        `db:"waitingReminderCount" json:"waitingReminderCount"`
 
 	// ═══ التأجيل ═══
 	// الزبون يأجّل الموعد. الموعد إله سجل تغييرات أصلاً، بس ماكو فرق بين
