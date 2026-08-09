@@ -204,7 +204,7 @@ func (h *LeaderInvoiceHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "طلب غير صالح")
 		return
 	}
-	inv, err := h.service.AdjustAmounts(r.PathValue("id"), req)
+	inv, err := h.service.AdjustAmounts(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -217,6 +217,20 @@ func (h *LeaderInvoiceHandler) FreeReasons(w http.ResponseWriter, r *http.Reques
 	rows, err := h.service.FreeReasons()
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب أسباب المجانية")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+
+// GET /api/leader-invoices/{id}/adjustments — سجل تعديلات المحاسب.
+//
+// «شنو كان المبلغ وشنو صار ومنو غيّره وليش». قبل، هاي المعلومة ما
+// كانت موجودة أصلاً — التعديل يمحي الأصل.
+func (h *LeaderInvoiceHandler) Adjustments(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.Adjustments(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)

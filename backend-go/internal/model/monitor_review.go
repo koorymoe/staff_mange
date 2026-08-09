@@ -28,6 +28,7 @@ type MonitorReview struct {
 const (
 	MonitorStageInvoiceBeforeAudit  = "INVOICE_BEFORE_AUDIT"
 	MonitorStageInvoiceAfterAudit   = "INVOICE_AFTER_AUDIT"
+	MonitorStageInvoiceAdjusted     = "INVOICE_ADJUSTED"
 	MonitorStageBookingBeforeConfirm = "BOOKING_BEFORE_CONFIRM"
 	MonitorStageBookingAfterConfirm  = "BOOKING_AFTER_CONFIRM"
 	MonitorStageBookingAfterComplete = "BOOKING_AFTER_COMPLETE"
@@ -52,6 +53,8 @@ func MonitorStageLabel(stage string) string {
 		return "فاتورة قبل التدقيق"
 	case MonitorStageInvoiceAfterAudit:
 		return "فاتورة بعد التدقيق"
+	case MonitorStageInvoiceAdjusted:
+		return "مبالغ فاتورة انتعدّلت"
 	case MonitorStageBookingBeforeConfirm:
 		return "حجز قبل التثبيت"
 	case MonitorStageBookingAfterConfirm:

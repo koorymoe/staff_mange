@@ -290,3 +290,29 @@ type FreeWorkReason struct {
 	Active    bool   `db:"active" json:"active"`
 	NeedsNote bool   `db:"needsNote" json:"needsNote"`
 }
+
+
+// LeaderInvoiceAdjustment سطر واحد بسجل تعديلات المحاسب على الفاتورة.
+//
+// نحفظ المبالغ الأربعة **قبل وبعد** حتى لو ما انتغيّر إلا واحد —
+// المقارنة لازم تكون كاملة، والعرض هو الي يخفي الي ما انتغيّر.
+type LeaderInvoiceAdjustment struct {
+	ID        string `db:"id" json:"id"`
+	InvoiceID string `db:"invoiceId" json:"invoiceId"`
+
+	OldExecutionCost  float64 `db:"oldExecutionCost" json:"oldExecutionCost"`
+	NewExecutionCost  float64 `db:"newExecutionCost" json:"newExecutionCost"`
+	OldMaterialsTotal float64 `db:"oldMaterialsTotal" json:"oldMaterialsTotal"`
+	NewMaterialsTotal float64 `db:"newMaterialsTotal" json:"newMaterialsTotal"`
+	OldDiscountValue  float64 `db:"oldDiscountValue" json:"oldDiscountValue"`
+	NewDiscountValue  float64 `db:"newDiscountValue" json:"newDiscountValue"`
+	OldNetTotal       float64 `db:"oldNetTotal" json:"oldNetTotal"`
+	NewNetTotal       float64 `db:"newNetTotal" json:"newNetTotal"`
+
+	Reason       string    `db:"reason" json:"reason"`
+	AdjustedByID *string   `db:"adjustedById" json:"adjustedById"`
+	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+
+	// اسم المحاسب — ينجي بالربط مو من الجدول
+	AdjustedByName *string `db:"adjustedByName" json:"adjustedByName"`
+}

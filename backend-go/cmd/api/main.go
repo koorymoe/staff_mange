@@ -1263,6 +1263,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الاثنين للمحاسب/المدير حصراً
 	mux.Handle("PUT /api/leader-invoices/{id}/external-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetExternalNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/adjust", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjust), requireAuth, requireFinance))
+	mux.Handle("GET /api/leader-invoices/{id}/adjustments", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjustments), requireAuth))
 
 	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER
 	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).

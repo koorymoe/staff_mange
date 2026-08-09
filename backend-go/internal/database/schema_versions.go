@@ -230,6 +230,9 @@ func versionedMigrations() []Migration {
 	result = append(result, unlockPermissionsMigration()...)
 	// 0240: مركز القيادة — باسورد ثاني لنفس اليوزر يفتح الطبقة العليا.
 	result = append(result, commandRealmMigration()...)
+	// 0241: سجل تعديلات الفاتورة — التعديل كان يمحي الأرقام الأصلية
+	// وما يسجّل منو عدّل.
+	result = append(result, invoiceAdjustmentMigration()...)
 	return result
 }
 

@@ -403,19 +403,36 @@ func (s *LeaderInvoiceService) SetExternalNumber(id, number string) (*model.Lead
 
 // AdjustAmounts يعدّل مبالغ الفاتورة — للمحاسب. السبب إجباري: التعديل
 // على مبلغ ما يصير يمر بلا تفسير مكتوب.
-func (s *LeaderInvoiceService) AdjustAmounts(id string, req model.AdjustLeaderInvoiceRequest) (*model.LeaderInvoice, error) {
+func (s *LeaderInvoiceService) AdjustAmounts(id string, req model.AdjustLeaderInvoiceRequest, byEmployeeID string) (*model.LeaderInvoice, error) {
 	if strings.TrimSpace(req.Reason) == "" {
 		return nil, fmt.Errorf("سبب التعديل مطلوب")
 	}
 	if req.ExecutionCost < 0 || req.MaterialsTotal < 0 || req.DiscountValue < 0 {
 		return nil, fmt.Errorf("المبالغ ما تصير بالسالب")
 	}
-	inv, err := s.invoices.AdjustAmounts(id, req.ExecutionCost, req.MaterialsTotal, req.DiscountValue, strings.TrimSpace(req.Reason))
+	inv, err := s.invoices.AdjustAmounts(id, req.ExecutionCost, req.MaterialsTotal, req.DiscountValue,
+		strings.TrimSpace(req.Reason), byEmployeeID)
 	if err != nil {
 		return nil, err
 	}
 	if inv == nil {
 		return nil, fmt.Errorf("الفاتورة غير موجودة")
+	}
+	// تعديل مبلغ فاتورة هو اللحظة الي تحتاج عين ثانية — وقبل، ما كانت
+	// تدزّ ولا شي للمراقب (بعكس الإصدار والاعتماد).
+	if s.monitor != nil {
+		title, summary := monitorInvoiceSummary(inv)
+		// ⚠️ مفتاح الصف = معرّف **التعديل** مو الفاتورة.
+		// صندوق المراقب عنده فهرس فريد (نوع+معرّف+محطة) يمنع التكرار،
+		// فلو استعملنا معرّف الفاتورة چان التعديل الثاني والثالث
+		// انبلعوا بصمت — والمراقب يشوف الأول بس. وكل تعديل على مبلغ
+		// يستاهل عين لحاله.
+		entityID := inv.ID
+		if rows, err := s.invoices.Adjustments(inv.ID); err == nil && len(rows) > 0 {
+			entityID = rows[0].ID
+		}
+		s.monitor.Stage(model.MonitorStageInvoiceAdjusted, "INVOICE_ADJUSTMENT", entityID, title,
+			summary+" • سبب التعديل: "+strings.TrimSpace(req.Reason), "FINANCE", &byEmployeeID)
 	}
 	return inv, nil
 }
@@ -465,4 +482,10 @@ func derefString(p *string) string {
 // FreeReasons أسباب الشغل المجاني الفعّالة.
 func (s *LeaderInvoiceService) FreeReasons() ([]model.FreeWorkReason, error) {
 	return s.invoices.FreeReasons()
+}
+
+
+// Adjustments سجل تعديلات فاتورة — «شنو كان وشنو صار ومنو غيّره».
+func (s *LeaderInvoiceService) Adjustments(invoiceID string) ([]model.LeaderInvoiceAdjustment, error) {
+	return s.invoices.Adjustments(invoiceID)
 }

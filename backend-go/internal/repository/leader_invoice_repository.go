@@ -493,13 +493,50 @@ func (r *LeaderInvoiceRepository) SetExternalNumber(id, number string) (*model.L
 // AdjustAmounts يعدّل مبالغ الفاتورة — للمحاسب حصراً.
 // تقدير الإداري يطلع غلط أحياناً والفاتورة الي بيد الليدر هي الصح،
 // فالمحاسب لازم يكدر يطابق. نخزن سبب التعديل حتى يبقى أثر.
-func (r *LeaderInvoiceRepository) AdjustAmounts(id string, executionCost, materialsTotal, discountValue float64, reason string) (*model.LeaderInvoice, error) {
+func (r *LeaderInvoiceRepository) AdjustAmounts(id string, executionCost, materialsTotal, discountValue float64, reason, byEmployeeID string) (*model.LeaderInvoice, error) {
 	net := executionCost + materialsTotal - discountValue
 	if net < 0 {
 		net = 0
 	}
+
+	// ⚠️ معاملة وحدة: السجل والتعديل سوة أو ولا واحد.
+	// لو انحفظ التعديل وفشل السجل، ضاعت الأرقام الأصلية للأبد وما
+	// نعرف حتى إنها ضاعت — وهذا بالضبط الخلل الي نصلّحه.
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// نقفل الصف ونقرا القيم **قبل** التعديل
+	var before model.LeaderInvoice
+	if err := tx.Get(&before, `SELECT * FROM "LeaderInvoice" WHERE id = $1 FOR UPDATE`, id); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO "LeaderInvoiceAdjustment"
+			(id, "invoiceId",
+			 "oldExecutionCost", "newExecutionCost",
+			 "oldMaterialsTotal", "newMaterialsTotal",
+			 "oldDiscountValue", "newDiscountValue",
+			 "oldNetTotal", "newNetTotal",
+			 reason, "adjustedById")
+		VALUES (gen_random_uuid()::text, $1, $2,$3, $4,$5, $6,$7, $8,$9, $10, NULLIF($11,''))`,
+		id,
+		before.ExecutionCost, executionCost,
+		before.MaterialsTotal, materialsTotal,
+		before.DiscountValue, discountValue,
+		before.NetTotal, net,
+		reason, byEmployeeID); err != nil {
+		return nil, err
+	}
+
 	var inv model.LeaderInvoice
-	err := r.db.Get(&inv, `
+	err = tx.Get(&inv, `
 		UPDATE "LeaderInvoice"
 		SET "executionCost" = $2, "materialsTotal" = $3, "discountValue" = $4, "netTotal" = $5,
 		    "adjustedReason" = $6, "adjustedAt" = CURRENT_TIMESTAMP
@@ -510,6 +547,9 @@ func (r *LeaderInvoiceRepository) AdjustAmounts(id string, executionCost, materi
 		return nil, nil
 	}
 	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
 		return nil, err
 	}
 	if err := r.hydrate(&inv); err != nil {
@@ -564,4 +604,17 @@ func (r *LeaderInvoiceRepository) attachFreeReasonLabels(invoices []model.Leader
 			}
 		}
 	}
+}
+
+
+// Adjustments سجل تعديلات فاتورة — الأحدث أول.
+func (r *LeaderInvoiceRepository) Adjustments(invoiceID string) ([]model.LeaderInvoiceAdjustment, error) {
+	rows := []model.LeaderInvoiceAdjustment{}
+	err := r.db.Select(&rows, `
+		SELECT a.*, e.name AS "adjustedByName"
+		FROM "LeaderInvoiceAdjustment" a
+		LEFT JOIN "Employee" e ON e.id = a."adjustedById"
+		WHERE a."invoiceId" = $1
+		ORDER BY a."createdAt" DESC`, invoiceID)
+	return rows, err
 }
