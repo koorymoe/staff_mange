@@ -138,6 +138,15 @@ func (r *EmployeeRepository) SetPassword(id, hashedPassword string) error {
 	return err
 }
 
+// SetCommandPassword باسورد مركز القيادة — منفصل عن العادي.
+func (r *EmployeeRepository) SetCommandPassword(id, hashedPassword string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Employee"
+		SET "commandPassword" = $2, "commandPasswordSetAt" = now()
+		WHERE id = $1`, id, hashedPassword)
+	return err
+}
+
 // SetAttendanceIcon يحدّث الأيقونة الشخصية لموظف معيّن — بعد موافقة الإداري
 // على طلب تغيير الرمز.
 func (r *EmployeeRepository) SetAttendanceIcon(id, icon string) error {

@@ -34,9 +34,21 @@ var ErrAccountLocked = errors.New("تم حظر هذا الحساب لأسباب 
 // بدون ما يعرف كلمات سرهم.
 var ErrAccountTemporarilyLocked = errors.New("تم تعطيل الدخول مؤقتاً بسبب محاولات خاطئة متكررة — جرّب بعد 15 دقيقة")
 
+// RealmStaff نظام إدارة الشركة (الي موجود)، RealmCommand مركز القيادة.
+//
+// ⚠️ الطبقة تنكتب بالتوكن نفسه مو بالواجهة: بدونها أي واحد يبدّل
+// المسار بالمتصفح ويدخل الطبقة الثانية بتوكن الطبقة الأولى — يعني
+// الفصل يصير بالاسم بس.
+const (
+	RealmStaff   = "staff"
+	RealmCommand = "command"
+)
+
 type Claims struct {
 	EmployeeID string `json:"employeeId"`
 	Role       string `json:"role"`
+	// Realm فارغ = staff (التوكنات القديمة الي صدرت قبل هاي الميزة).
+	Realm string `json:"realm,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -76,6 +88,21 @@ func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Em
 			}
 			return nil, "", ErrAccountLocked
 		}
+	}
+
+	// ═══ باسورد مركز القيادة ═══
+	// نفس اليوزر وباسورد ثاني يفتح الطبقة العليا (فكرة PPSK). ينتفحص
+	// **قبل** العادي لأنه لو طابق ما نريد نعدّ محاولة فاشلة على العادي.
+	if employee.CommandPassword != nil && *employee.CommandPassword != "" &&
+		bcrypt.CompareHashAndPassword([]byte(*employee.CommandPassword), []byte(password)) == nil {
+		_ = s.loginAudit.Record(username+" [مركز القيادة]", &employee.ID, true, ip, userAgent)
+		if s.lockout != nil {
+			_ = s.lockout.LogEvent(&employee.ID, employee.Name, "COMMAND_LOGIN",
+				"دخول مركز القيادة", ip, userAgent)
+			_ = s.lockout.ResetFailedLogins(employee.ID)
+		}
+		token, err := s.generateTokenForRealm(employee, RealmCommand)
+		return employee, token, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(password)); err != nil {
@@ -159,9 +186,14 @@ func (s *AuthService) Me(employeeID string) (*model.Employee, error) {
 }
 
 func (s *AuthService) GenerateToken(employee *model.Employee) (string, error) {
+	return s.generateTokenForRealm(employee, RealmStaff)
+}
+
+func (s *AuthService) generateTokenForRealm(employee *model.Employee, realm string) (string, error) {
 	claims := Claims{
 		EmployeeID: employee.ID,
 		Role:       employee.Role,
+		Realm:      realm,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -220,4 +252,28 @@ func ValidatePasswordStrength(pw string) error {
 func HashPassword(password string) (string, error) {
 	hashed, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	return string(hashed), err
+}
+
+
+// SetCommandPassword يحط أو يغيّر باسورد مركز القيادة.
+//
+// ⚠️ لازم يختلف عن الباسورد العادي — لو تطابقن انلغى الفصل كله:
+// الي يعرف باسورد الموظف يفتح الطبقة العليا.
+func (s *AuthService) SetCommandPassword(employeeID, newPassword string) error {
+	if err := ValidatePasswordStrength(newPassword); err != nil {
+		return err
+	}
+	employee, err := s.employees.FindByID(employeeID)
+	if err != nil || employee == nil {
+		return errors.New("تعذر التحقق من الموظف")
+	}
+	if employee.Password != nil &&
+		bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(newPassword)) == nil {
+		return errors.New("باسورد مركز القيادة لازم يكون مختلف عن باسوردك العادي")
+	}
+	hashed, err := HashPassword(newPassword)
+	if err != nil {
+		return err
+	}
+	return s.employees.SetCommandPassword(employeeID, hashed)
 }

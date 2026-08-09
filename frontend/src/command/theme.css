@@ -1,0 +1,207 @@
+/* ═══ مركز القيادة — ثيم مستقل تماماً ═══
+ *
+ * الألوان مأخوذة من الفيديوين الي دزّهن صاحب العمل:
+ *   فيديو ١: أسود عميق + حرير قرمزي (#e0245e → #8b0f3a)، لوحات
+ *            زجاجية طايرة بحواف بيضاء رفيعة، ونقاط ماك بالرأس.
+ *   فيديو ٢: كحلي/أسود + سماوي كهربائي (#22d3ee)، ومؤشر ينزلق
+ *            بنعومة بين العناصر.
+ *
+ * القرمزي للأسطح والهوية، والسماوي للمؤشر والتفاعل — لونين بوظيفتين
+ * مختلفتين، مو خلط عشوائي.
+ *
+ * ⚠️ كل شي هنا محصور بـ.cmd-root حتى ما يتسرّب ولا قاعدة على نظام
+ * الشركة. الطبقتين لازم يبقن منفصلات بصرياً — الخلط بينهن يخلي
+ * المستخدم ما يعرف وين هو، وهذا خطير بطبقة تنطي أوامر.
+ */
+
+.cmd-root {
+  --cmd-bg: #06060a;
+  --cmd-surface: rgba(255, 255, 255, 0.045);
+  --cmd-surface-strong: rgba(255, 255, 255, 0.08);
+  --cmd-border: rgba(255, 255, 255, 0.11);
+  --cmd-text: #f4f4f6;
+  --cmd-muted: rgba(255, 255, 255, 0.52);
+
+  --cmd-crimson: #e0245e;
+  --cmd-crimson-deep: #8b0f3a;
+  --cmd-cyan: #22d3ee;
+  --cmd-cyan-deep: #0e7490;
+
+  --cmd-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--cmd-bg);
+  color: var(--cmd-text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+/* الحرير القرمزي بالخلفية — طبقتين تدرّج شعاعي تتحركن ببطء شديد.
+   بطيئة قصداً: الخلفية تعطي عمق، وما لازم تسحب الانتباه من المحتوى. */
+.cmd-root::before,
+.cmd-root::after {
+  content: '';
+  position: absolute;
+  inset: -30%;
+  pointer-events: none;
+  z-index: 0;
+}
+.cmd-root::before {
+  background:
+    radial-gradient(60% 45% at 22% 18%, rgba(224, 36, 94, 0.5), transparent 62%),
+    radial-gradient(55% 40% at 78% 72%, rgba(139, 15, 58, 0.42), transparent 66%);
+  filter: blur(30px);
+  animation: cmd-drift 26s var(--cmd-ease) infinite alternate;
+}
+.cmd-root::after {
+  background: radial-gradient(45% 35% at 82% 12%, rgba(34, 211, 238, 0.2), transparent 68%);
+  filter: blur(46px);
+  animation: cmd-drift 34s var(--cmd-ease) infinite alternate-reverse;
+}
+@keyframes cmd-drift {
+  from { transform: translate3d(-3%, -2%, 0) scale(1); }
+  to   { transform: translate3d(4%, 3%, 0) scale(1.1); }
+}
+
+/* السطح الزجاجي — هذا الي يعطي إحساس «شاشة ماك لمّاعة»:
+   شفافية + ضباب خلفي + حافة عليا فاتحة تحاكي انعكاس الضوء. */
+.cmd-glass {
+  position: relative;
+  background: var(--cmd-surface);
+  border: 1px solid var(--cmd-border);
+  border-radius: 22px;
+  backdrop-filter: blur(26px) saturate(150%);
+  -webkit-backdrop-filter: blur(26px) saturate(150%);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+.cmd-glass::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 45%;
+  border-radius: 22px 22px 0 0;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent);
+  pointer-events: none;
+}
+
+/* نقاط ماك بالرأس — من الفيديو الأول */
+.cmd-dots { display: flex; gap: 8px; }
+.cmd-dot { width: 12px; height: 12px; border-radius: 999px; }
+.cmd-dot.r { background: #ff5f57; }
+.cmd-dot.y { background: #febc2e; }
+.cmd-dot.g { background: #28c840; }
+
+/* عناصر القائمة + المؤشر المنزلق (فيديو ٢).
+   المؤشر عنصر **واحد** يتحرك بالـtransform، مو حد سفلي على كل عنصر —
+   وهذا الي يخلي الانتقال ينزلق فعلاً بدل ما يقفز. */
+.cmd-nav { position: relative; }
+.cmd-indicator {
+  position: absolute;
+  inset-inline-start: 8px;
+  width: calc(100% - 16px);
+  border-radius: 14px;
+  background: linear-gradient(90deg, rgba(224, 36, 94, 0.34), rgba(34, 211, 238, 0.18));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 0 22px rgba(224, 36, 94, 0.3);
+  transition: transform 0.42s var(--cmd-ease), height 0.42s var(--cmd-ease), opacity 0.25s;
+  pointer-events: none;
+  z-index: 0;
+}
+.cmd-navitem {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: 14px;
+  color: var(--cmd-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  text-align: start;
+  transition: color 0.25s var(--cmd-ease);
+}
+.cmd-navitem:hover { color: var(--cmd-text); }
+.cmd-navitem.active { color: #fff; }
+
+/* دخول الشاشة: انزلاق خفيف مع ظهور — نفس إحساس الانتقال بالفيديو */
+.cmd-page { animation: cmd-in 0.45s var(--cmd-ease) both; }
+@keyframes cmd-in {
+  from { opacity: 0; transform: translateY(14px) scale(0.99); }
+  to   { opacity: 1; transform: none; }
+}
+
+.cmd-card { padding: 20px; }
+.cmd-title {
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  background: linear-gradient(92deg, #fff 10%, var(--cmd-crimson) 55%, var(--cmd-cyan) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.cmd-label {
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--cmd-muted);
+  text-transform: uppercase;
+}
+.cmd-divider { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 14px 0; }
+
+.cmd-input {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--cmd-border);
+  color: var(--cmd-text);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+.cmd-input:focus {
+  border-color: rgba(34, 211, 238, 0.55);
+  box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.12);
+}
+.cmd-btn {
+  width: 100%;
+  padding: 13px 16px;
+  border-radius: 14px;
+  border: 0;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(92deg, var(--cmd-crimson-deep), var(--cmd-crimson) 55%, var(--cmd-cyan));
+  box-shadow: 0 10px 30px rgba(224, 36, 94, 0.32);
+  transition: transform 0.2s var(--cmd-ease), box-shadow 0.2s;
+}
+.cmd-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 38px rgba(224, 36, 94, 0.42); }
+.cmd-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* الجهاز الي ما يحب الحركة يحترم اختياره — مو تفصيل تجميلي:
+   الحركة الزايدة تسبب دوخة لناس فعلاً. */
+@media (prefers-reduced-motion: reduce) {
+  .cmd-root::before, .cmd-root::after { animation: none; }
+  .cmd-page { animation: none; }
+  .cmd-indicator { transition: none; }
+}
+
+/* شريط الأيقونات الضيّق — الترتيب من الصورة الثانية */
+.cmd-rail {
+  width: 76px;
+  padding: 16px 10px;
+  display: flex;
+  flex-direction: column;
+}
+.cmd-railitem {
+  justify-content: center;
+  padding: 14px 0;
+  font-size: 19px;
+}

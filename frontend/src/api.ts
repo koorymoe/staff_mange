@@ -2561,14 +2561,23 @@ export const api = {
     },
   ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
   login: async (username: string, password: string) => {
-    const result = await request<Employee & { token: string }>('/auth/login', {
+    const result = await request<Employee & { token: string; realm?: string }>('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ username, password }),
     })
-    const { token, ...employee } = result
+    const { token, realm, ...employee } = result
     localStorage.setItem('authToken', token)
+    // الطبقة تنخزن حتى إعادة فتح الصفحة ترجّعك لنفس النظام.
+    // نفس اليوزر وباسورد ثاني = نظام ثاني (فكرة PPSK).
+    localStorage.setItem('authRealm', realm || 'staff')
     return employee
   },
+  /** الطبقة الحالية — staff = نظام الشركة، command = مركز القيادة */
+  currentRealm: () => localStorage.getItem('authRealm') || 'staff',
+  setCommandPassword: (newPassword: string) =>
+    request<{ ok: boolean }>('/auth/command-password', {
+      method: 'PUT', body: JSON.stringify({ newPassword }),
+    }),
   updateEmployeeSkills: (id: string, skills: { skillId: string; canPerform: boolean }[]) =>
     request<Employee>(`/employees/${id}/skills`, {
       method: 'PUT',

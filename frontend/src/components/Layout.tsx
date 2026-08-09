@@ -6,6 +6,7 @@ import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
 import { ensureFileToken } from '../api'
 import Login from '../pages/Login'
+import CommandApp from '../command/CommandApp'
 import TrainingPage from '../pages/TrainingPage'
 import AssistantWidget from './AssistantWidget'
 import ManagerAssistantChat from './ManagerAssistantChat'
@@ -714,6 +715,22 @@ export default function Layout() {
       <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
         <Login />
       </SessionContext.Provider>
+    )
+  }
+
+  // ═══ مركز القيادة ═══
+  // نفس اليوزر دخل بباسورد ثاني → نظام ثاني بالكامل (فكرة PPSK).
+  // ⚠️ الفصل الحقيقي بالسيرفر (توكن القيادة ينرفض على مسارات
+  // الموظفين) — هذا الشرط للعرض بس، مو حماية.
+  if (api.currentRealm() === 'command') {
+    return (
+      <CommandApp
+        onExit={() => {
+          localStorage.removeItem('authToken')
+          localStorage.removeItem('authRealm')
+          window.location.reload()
+        }}
+      />
     )
   }
 

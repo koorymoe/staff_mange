@@ -48,7 +48,12 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, model.LoginResponse{Employee: *employee, Token: token})
+	// نستخرج الطبقة من التوكن نفسه مو من متغيّر جانبي — مصدر واحد.
+	realm := service.RealmStaff
+	if claims, err := h.auth.ParseToken(token); err == nil && claims.Realm != "" {
+		realm = claims.Realm
+	}
+	WriteJSON(w, http.StatusOK, model.LoginResponse{Employee: *employee, Token: token, Realm: realm})
 }
 
 // GET /api/v1/auth/me
@@ -84,4 +89,25 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 	}
 	// الواجهة لازم تخزن التوكن الجديد — القديم انبطل بنفس اللحظة
 	WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+}
+
+
+// PUT /api/auth/command-password — يحط أو يغيّر باسورد مركز القيادة.
+//
+// كل واحد يحطه لنفسه بس (المعرّف من التوكن مو من الجسم) — حتى ما
+// يقدر أحد يحط باسورد قيادة لحساب غيره ويفتح الطبقة العليا باسمه.
+func (h *AuthHandler) SetCommandPassword(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		NewPassword string `json:"newPassword"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	employeeID, _ := r.Context().Value(middleware.ContextEmployeeID).(string)
+	if err := h.auth.SetCommandPassword(employeeID, req.NewPassword); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

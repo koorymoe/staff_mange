@@ -23,6 +23,7 @@ type contextKey string
 const (
 	ContextEmployeeID contextKey = "employeeId"
 	ContextRole       contextKey = "role"
+	ContextRealm      contextKey = "realm"
 )
 
 // writeError يكتب استجابة خطأ بنفس شكل handler.WriteError دون استيراد حزمة
@@ -70,8 +71,23 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 				return
 			}
 
+			// الطبقة: التوكنات القديمة بلا realm تنعتبر staff.
+			realm := claims.Realm
+			if realm == "" {
+				realm = service.RealmStaff
+			}
+			// ⚠️ توكن مركز القيادة **ما يشتغل** على مسارات الموظفين.
+			// بدون هذا الحاجز، الفصل بين الطبقتين يصير بالاسم بس: يكفي
+			// تبدّل المسار بالمتصفح وتشتغل بكل النظام بتوكن القيادة.
+			// مسارات القيادة تسمح لنفسها بحارس مستقل (RequireCommandRealm).
+			if realm != service.RealmStaff && !strings.HasPrefix(r.URL.Path, "/api/command/") {
+				writeError(w, http.StatusForbidden, "توكن مركز القيادة ما يشتغل على هذا المسار")
+				return
+			}
+
 			ctx := context.WithValue(r.Context(), ContextEmployeeID, claims.EmployeeID)
 			ctx = context.WithValue(ctx, ContextRole, role)
+			ctx = context.WithValue(ctx, ContextRealm, realm)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -450,4 +466,21 @@ func EmployeeIDFromContext(r *http.Request) string {
 func RoleFromContext(r *http.Request) string {
 	role, _ := r.Context().Value(ContextRole).(string)
 	return role
+}
+
+
+// RequireCommandRealm يقبل توكنات مركز القيادة بس.
+//
+// العكس مقصود: توكن الموظف العادي ما يفتح مركز القيادة حتى لو صاحبه
+// مالك — الطبقة العليا تتطلب الباسورد الثاني، وهذا كل معناها.
+func RequireCommandRealm() func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if realm, _ := r.Context().Value(ContextRealm).(string); realm != service.RealmCommand {
+				writeError(w, http.StatusNotFound, "المسار غير موجود")
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
 }

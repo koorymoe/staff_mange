@@ -228,6 +228,8 @@ func versionedMigrations() []Migration {
 	// 0239: المفاتيح الناقصة — ٣١ شاشة كانت مشروطة بالدور بس وماكو إلها
 	// صلاحية، فمنح الصلاحية ما كان ينفتح بيها شي.
 	result = append(result, unlockPermissionsMigration()...)
+	// 0240: مركز القيادة — باسورد ثاني لنفس اليوزر يفتح الطبقة العليا.
+	result = append(result, commandRealmMigration()...)
 	return result
 }
 

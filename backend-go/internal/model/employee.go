@@ -36,17 +36,23 @@ type Employee struct {
 	OnDuty                bool       `db:"onDuty" json:"onDuty"`
 	Username              *string    `db:"username" json:"username"`
 	Password              *string    `db:"password" json:"-"`
-	HasDrivingLicense     bool       `db:"hasDrivingLicense" json:"hasDrivingLicense"`
-	HasSafetyCertificate  bool       `db:"hasSafetyCertificate" json:"hasSafetyCertificate"`
-	Salary                *float64   `db:"salary" json:"salary"`
-	Shift                 *string    `db:"shift" json:"shift"`
-	ShiftStart            *string    `db:"shiftStart" json:"shiftStart"`
-	ShiftEnd              *string    `db:"shiftEnd" json:"shiftEnd"`
-	MonthlyLeaves         int        `db:"monthlyLeaves" json:"monthlyLeaves"`
-	JobTitle              *string    `db:"jobTitle" json:"jobTitle"`
-	LeaderSkillLevel      int        `db:"leaderSkillLevel" json:"leaderSkillLevel"`
-	IsLeader              bool       `db:"isLeader" json:"isLeader"`
-	IsTrainee             bool       `db:"isTrainee" json:"isTrainee"`
+	// باسورد مركز القيادة — منفصل تماماً عن العادي حتى تنعزل الطبقتين:
+	// لو انسرق العادي، مركز القيادة يضل مقفول.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (الجلب SELECT *). وjson:"-"
+	// إجباري — ما يطلع بأي رد أبداً.
+	CommandPassword      *string    `db:"commandPassword" json:"-"`
+	CommandPasswordSetAt *time.Time `db:"commandPasswordSetAt" json:"-"`
+	HasDrivingLicense    bool       `db:"hasDrivingLicense" json:"hasDrivingLicense"`
+	HasSafetyCertificate bool       `db:"hasSafetyCertificate" json:"hasSafetyCertificate"`
+	Salary               *float64   `db:"salary" json:"salary"`
+	Shift                *string    `db:"shift" json:"shift"`
+	ShiftStart           *string    `db:"shiftStart" json:"shiftStart"`
+	ShiftEnd             *string    `db:"shiftEnd" json:"shiftEnd"`
+	MonthlyLeaves        int        `db:"monthlyLeaves" json:"monthlyLeaves"`
+	JobTitle             *string    `db:"jobTitle" json:"jobTitle"`
+	LeaderSkillLevel     int        `db:"leaderSkillLevel" json:"leaderSkillLevel"`
+	IsLeader             bool       `db:"isLeader" json:"isLeader"`
+	IsTrainee            bool       `db:"isTrainee" json:"isTrainee"`
 	// Division تفصل موظفي الشعبة الهندسية (ENGINEERING، الافتراضي) عن موظفي
 	// شعبة الديكور (DECOR) — تحدد أي كتالوج مهارات ينطبق عليهم، انظر
 	// model.DivisionEngineering / model.DivisionDecor.
@@ -179,6 +185,8 @@ type LoginRequest struct {
 type LoginResponse struct {
 	Employee
 	Token string `json:"token"`
+	// Realm: staff = نظام الشركة، command = مركز القيادة.
+	Realm string `json:"realm,omitempty"`
 }
 
 // LockedEmployee حساب محظور تلقائياً — يظهر بلوحة المراقبة مال المالك مع
