@@ -64,6 +64,12 @@ const avatarGradients: string[] = [
 export default function Employees() {
   const { employee: currentUser, permissions: userPermissions } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
+  // فتح حساب جديد = المالك وحده. `role` ينزّل OWNER لـADMIN حتى تشتغل
+  // بقية الشاشات، فالدور الحقيقي بـ`actualRole`.
+  //
+  // ⚠️ هذا إخفاء للزر بس — المنع الحقيقي بالسيرفر (RequireOwnerOnly على
+  // POST /api/employees). إخفاء الزر لحاله ما يمنع أحد يدزّ الطلب بيده.
+  const canCreateAccounts = currentUser?.actualRole === 'OWNER'
   const isHR = currentUser?.role === 'HR_COORDINATOR'
   const [employees, setEmployees] = useState<Employee[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -268,7 +274,7 @@ export default function Employees() {
               {showArchived ? '↩ رجوع للنشطين' : '🗄️ المؤرشفون/المحذوفون/الموقوفين'}
             </button>
           )}
-          {isAdmin && !showArchived && (
+          {canCreateAccounts && !showArchived && (
             <button
               onClick={() => setShowAddForm(!showAddForm)}
               className="flex items-center gap-2 rounded-xl bg-gradient-to-l from-[#2c5aad] to-[#1e3f7a] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-900/20 transition-all hover:shadow-xl hover:shadow-blue-900/30"
@@ -281,7 +287,7 @@ export default function Employees() {
       </div>
 
       {/* Add Employee Wizard */}
-      {isAdmin && showAddForm && (
+      {canCreateAccounts && showAddForm && (
         <AddEmployeeWizard onClose={() => setShowAddForm(false)} onCreated={load} />
       )}
 
@@ -666,8 +672,11 @@ export default function Employees() {
                     )}
                   </div>
 
-                  {/* Login Credentials — Admin only */}
-                  {isAdmin && (
+                  {/* بيانات الدخول — المالك وحده.
+                      حط اسم مستخدم وباسورد على حساب موجود = استيلاء
+                      عليه. لهذا نفس قيد فتح الحسابات ينطبق هنا،
+                      والسيرفر يرفضها هم مو الواجهة بس. */}
+                  {canCreateAccounts && (
                     <div className="mt-5">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="h-1.5 w-1.5 rounded-full bg-[#2c5aad]"/>

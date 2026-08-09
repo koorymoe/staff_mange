@@ -94,6 +94,22 @@ func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// بيانات الدخول = فتح حساب بشكل ثاني.
+	//
+	// المالك طلب إن فتح الحسابات إله وحده، ومنع POST /api/employees
+	// لحاله ما يسدّ الباب: مدير النظام يكدر يحط اسم مستخدم وباسورد على
+	// **أي** حساب موجود ويدخل بيه — يعني يستولي على حساب المالك نفسه.
+	// لهذا نفس القيد على تغيير اسم المستخدم أو الباسورد من هذا المسار.
+	//
+	// بقية الحقول (الراتب، الدور، المهارات...) تبقى لمدير النظام مثل
+	// ما كانت — القيد على بيانات الدخول بس.
+	if req.Username != nil || req.Password != nil {
+		if role, _ := r.Context().Value(middleware.ContextRole).(string); role != "OWNER" {
+			WriteError(w, http.StatusForbidden, "تغيير بيانات الدخول للمالك وحده")
+			return
+		}
+	}
+
 	employee, err := h.service.Update(id, req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

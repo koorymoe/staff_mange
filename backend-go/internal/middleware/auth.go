@@ -330,6 +330,34 @@ func RequireOwner() func(http.Handler) http.Handler {
 	}
 }
 
+// RequireOwnerOnly يقصر المسار على المالك — ولا حتى ADMIN — بس **بلا
+// عقوبة**: يرجّع 403 برسالة واضحة، ما يسجّل مخالفة ولا يقرّب أحد من
+// الحظر التلقائي.
+//
+// ⚠️ ليش مو RequireRole("OWNER")؟
+// لأنها تنادي recordViolationAndBlock، ويعني مدير النظام الي يضغط زر
+// باقي بواجهة قديمة بالكاش **ينحظر حسابه بعد ٣ ضغطات**. الميزة هنا
+// محصورة مو مخفية، والمنع المشروع مو محاولة اختراق.
+//
+// ⚠️ وليش مو RequireOwner (الـ404)؟
+// الـ404 للأشياء الي وجودها نفسه سر (النسخ الاحتياطية). فتح الحسابات
+// مو سر — مدير النظام يعرف إن الحسابات موجودة، بس ما إله يفتحها.
+// رسالة واضحة أحسن من إخفاء يخلّيه يظن النظام مكسور.
+//
+// تُستخدم لفتح الحسابات: المالك سلّم إدارة النظام، بس **منو يدخل
+// النظام** يبقى قراره هو.
+func RequireOwnerOnly(message string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if role, _ := r.Context().Value(ContextRole).(string); role != "OWNER" {
+				writeError(w, http.StatusForbidden, message)
+				return
+			}
+			next.ServeHTTP(w, r)
+		})
+	}
+}
+
 // RequireLeaderOrPermission يسمح بالوصول لليدر (isLeader فريش من قاعدة البيانات،
 // نفس RequireLeader) أو لأي موظف عنده صلاحية مخصصة معينة (نفس RequirePermission)
 // أو ADMIN/OWNER. تُستخدم لسلة الليدر (leader_basket): افتراضياً حصراً لليدر،

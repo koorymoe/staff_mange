@@ -1178,6 +1178,18 @@ export default function Layout() {
             </NavLink>
             {employee.actualRole === 'OWNER' && (
               <NavLink
+                to="/command-code"
+                className={({ isActive }) =>
+                  `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                  }`
+                }
+              >
+                🔐 رمز مركز القيادة
+              </NavLink>
+            )}
+            {employee.actualRole === 'OWNER' && (
+              <NavLink
                 to="/owner-backups"
                 className={({ isActive }) =>
                   `mt-1 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${

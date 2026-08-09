@@ -25,6 +25,7 @@ const SolarPage = lazy(() => import('./pages/SolarPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazy(() => import('./pages/OwnerBackups'))
+const CommandCodePage = lazy(() => import('./pages/CommandCodePage'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
 const PartialBookings = lazy(() => import('./pages/PartialBookings'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
@@ -135,6 +136,7 @@ function App() {
           <Route path="quality-follow-ups" element={<QualityFollowUpsPage />} />
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
+          <Route path="command-code" element={<CommandCodePage />} />
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           <Route path="bookings-archive" element={<BookingsArchive />} />
