@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -9,7 +10,12 @@ import (
 
 type GpsService struct {
 	repo *repository.GpsRepository
+	// monitor: صندوق المراقب. اختياري.
+	monitor MonitorFeed
 }
+
+// SetMonitorFeed يربط صندوق المراقب بعد البناء.
+func (s *GpsService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
 
 func NewGpsService(repo *repository.GpsRepository) *GpsService {
 	return &GpsService{repo: repo}
@@ -74,7 +80,37 @@ func (s *GpsService) UpdateDevice(id string, req model.UpsertGpsDeviceRequest) (
 			}
 		}
 	}
-	return s.repo.UpdateDevice(id, req)
+	// نلتقط الحالة قبل التعديل حتى نعرف **الانتقال** مو الحالة:
+	// بدونه كل تعديل على جهاز مسلّم يعيد إضافته لصندوق المراقب.
+	before, _ := s.repo.FindDevice(id)
+	saved, err := s.repo.UpdateDevice(id, req)
+	if err != nil {
+		return nil, err
+	}
+	// التسليم هو نهاية شغل إداري الجي بي اس: الجهاز راح للزبون
+	// والاشتراك بدأ. هاي اللحظة الي تنشاف.
+	if s.monitor != nil && saved != nil && saved.IsDelivered && (before == nil || !before.IsDelivered) {
+		gps := "بلا رقم"
+		if saved.GpsNumber != nil {
+			gps = *saved.GpsNumber
+		}
+		sub := "بلا تاريخ"
+		if saved.SubscriptionEnd != nil {
+			sub = saved.SubscriptionEnd.Format("2006-01-02")
+		}
+		// الاشتراك بالعربي — المراقب ما يقرا YEARLY
+		subType := map[string]string{
+			"THREE_MONTHS": "ثلاثة أشهر", "SIX_MONTHS": "ستة أشهر", "YEARLY": "سنوي",
+		}[saved.SubscriptionType]
+		if subType == "" {
+			subType = saved.SubscriptionType
+		}
+		s.monitor.Stage(model.MonitorStageGpsDeviceDone, "GPS_DEVICE", saved.ID,
+			"جهاز جي بي اس انسلّم — "+gps,
+			fmt.Sprintf("نوع الاشتراك: %s • ينتهي: %s", subType, sub),
+			"GPS_ADMIN", saved.AdminID)
+	}
+	return saved, nil
 }
 
 func (s *GpsService) ListRenewals() ([]model.GpsRenewalRequest, error) {

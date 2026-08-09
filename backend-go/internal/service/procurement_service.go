@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	"strings"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -10,7 +12,12 @@ import (
 type ProcurementService struct {
 	repo        *repository.ProcurementRepository
 	permissions *repository.PermissionRepository
+	// monitor: صندوق المراقب. اختياري.
+	monitor MonitorFeed
 }
+
+// SetMonitorFeed يربط صندوق المراقب بعد البناء.
+func (s *ProcurementService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
 
 func NewProcurementService(repo *repository.ProcurementRepository, permissions *repository.PermissionRepository) *ProcurementService {
 	return &ProcurementService{repo: repo, permissions: permissions}
@@ -81,5 +88,31 @@ func (s *ProcurementService) Fulfill(id string, req model.FulfillProcurementRequ
 	if req.SupplierID == nil || *req.SupplierID == "" {
 		return nil, errors.New("لازم تحدد المورد الي انجابت منه المادة")
 	}
-	return s.repo.Fulfill(id, req)
+	saved, err := s.repo.Fulfill(id, req)
+	if err != nil {
+		return nil, err
+	}
+	// ⚠️ لحظة التجهيز هي لحظة **صرف الفلوس** — بعدها المادة انشترت
+	// وما ينفع تراجع. هاي الي يحتاج المراقب يشوفها من إداري الكميات،
+	// مو الطلب لما ينفتح.
+	if s.monitor != nil && saved != nil {
+		cost := "بلا مبلغ"
+		if saved.TotalCost != nil {
+			cost = fmt.Sprintf("%.0f د.ع", *saved.TotalCost)
+		}
+		// الاسم ممكن ما ينجلب مع الحفظ — ما نطبع «المورد: » فاضية
+		supplier := ""
+		if saved.Supplier != nil && saved.Supplier.Name != "" {
+			supplier = " • المورد: " + saved.Supplier.Name
+		}
+		names := make([]string, 0, len(saved.Items))
+		for _, it := range saved.Items {
+			names = append(names, fmt.Sprintf("%s ×%d", it.ProductName, it.Quantity))
+		}
+		s.monitor.Stage(model.MonitorStageProcurementFulfilled, "PROCUREMENT", saved.ID,
+			"طلب مواد "+saved.Code,
+			fmt.Sprintf("الكلفة: %s%s • %s", cost, supplier, strings.Join(names, "، ")),
+			"PROCUREMENT_ADMIN", saved.FulfilledByID)
+	}
+	return saved, nil
 }

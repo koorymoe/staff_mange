@@ -17,6 +17,9 @@ import (
 type MonitorFeed interface {
 	BookingStage(stage string, b *model.Booking, ownerRole string, ownerEmployeeID *string)
 	InvoiceStage(stage, invoiceID, title, summary, ownerRole string, ownerEmployeeID *string)
+	// Stage عام لبقية الأقسام (مشتريات، جودة، جي بي اس، طاقة شمسية) —
+	// كلها نفس الشكل: عنوان وملخص ومنو صاحب الشغل.
+	Stage(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string)
 }
 
 // MonitorReviewService صندوق المراقب — إضافة وقرار.
@@ -68,6 +71,23 @@ func (s *MonitorReviewService) BookingStage(stage string, b *model.Booking, owne
 	})
 	if err != nil {
 		log.Printf("[monitor] تعذر إضافة صف مراقبة للحجز %s: %v", b.ID, err)
+	}
+}
+
+// Stage يدزّ أي شي ثاني لمحطة مراقبة — نفس منطق الحجز والفاتورة
+// بالضبط، بس بلا معرفة بنوع الكيان.
+func (s *MonitorReviewService) Stage(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string) {
+	err := s.repo.Enqueue(model.EnqueueMonitorReview{
+		Stage:           stage,
+		EntityType:      entityType,
+		EntityID:        entityID,
+		Title:           title,
+		Summary:         summary,
+		OwnerRole:       ownerRole,
+		OwnerEmployeeID: ownerEmployeeID,
+	})
+	if err != nil {
+		log.Printf("[monitor] تعذر إضافة صف مراقبة (%s %s): %v", entityType, entityID, err)
 	}
 }
 

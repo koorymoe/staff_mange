@@ -11,7 +11,12 @@ import (
 type QualityFollowUpService struct {
 	repo          *repository.QualityFollowUpRepository
 	notifications *repository.NotificationRepository
+	// monitor: صندوق المراقب. اختياري.
+	monitor MonitorFeed
 }
+
+// SetMonitorFeed يربط صندوق المراقب بعد البناء.
+func (s *QualityFollowUpService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
 
 func NewQualityFollowUpService(repo *repository.QualityFollowUpRepository, notifications *repository.NotificationRepository) *QualityFollowUpService {
 	return &QualityFollowUpService{repo: repo, notifications: notifications}
@@ -30,6 +35,20 @@ func (s *QualityFollowUpService) Verdict(id, byEmployeeID string, req model.Qual
 	// تعرف حتى تحدد المسؤول بنفسها.
 	if req.ReportType == "NEGATIVE" && !req.NeedsInspection && penalized == "" {
 		s.notifyUnattributed(req.Notes)
+	}
+	// ⚠️ الحكم السلبي بس — الإيجابي ماكو عليه شي يتدقق.
+	// هنا نقطة انخصمت بيها نقطة من موظف بناءً على كلام زبون، وهاي
+	// بالضبط الي لازم عين ثانية عليها.
+	if s.monitor != nil && req.ReportType == "NEGATIVE" {
+		state := "انخصمت نقطة من الليدر"
+		if req.NeedsInspection {
+			state = "موقوف — يحتاج كشف ميداني"
+		} else if penalized == "" {
+			state = "ماكو ليدر مكلّف — بلا خصم"
+		}
+		s.monitor.Stage(model.MonitorStageQualityVerdict, "QUALITY_FOLLOW_UP", id,
+			"حكم جودة على شكوى زبون",
+			state+" • "+req.Notes, "QUALITY_ENGINEER", &byEmployeeID)
 	}
 	return s.repo.List()
 }

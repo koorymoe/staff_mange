@@ -1201,11 +1201,12 @@ export interface DirectedProject {
 export type MonitorStage =
   | 'INVOICE_BEFORE_AUDIT' | 'INVOICE_AFTER_AUDIT'
   | 'BOOKING_BEFORE_CONFIRM' | 'BOOKING_AFTER_CONFIRM' | 'BOOKING_AFTER_COMPLETE'
+  | 'PROCUREMENT_FULFILLED' | 'QUALITY_VERDICT' | 'GPS_DEVICE_DONE'
 
 export interface MonitorReview {
   id: string
   stage: MonitorStage
-  entityType: 'BOOKING' | 'LEADER_INVOICE'
+  entityType: 'BOOKING' | 'LEADER_INVOICE' | 'PROCUREMENT' | 'QUALITY_FOLLOW_UP' | 'GPS_DEVICE'
   entityId: string
   title: string
   summary: string | null

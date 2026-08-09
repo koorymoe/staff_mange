@@ -273,6 +273,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	monitorReviewHandler := handler.NewMonitorReviewHandler(monitorReviewService)
 	bookingService.SetMonitorFeed(monitorReviewService)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
+	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
+	// المشتريات وقت صرف الفلوس، الجودة وقت الحكم السلبي،
+	// الجي بي اس وقت تسليم الجهاز.
+	procurementService.SetMonitorFeed(monitorReviewService)
+	qualityFollowUpService.SetMonitorFeed(monitorReviewService)
+	gpsService.SetMonitorFeed(monitorReviewService)
 	networkCostHandler := handler.NewNetworkCostHandler(networkPriceRepo)
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
 	employeeMonthlyStatsService := service.NewEmployeeMonthlyStatsService(employeeRepo, kpiRepo, complaintRepo, leaderInvoiceRepo, bookingRepo, vehicleMissionRatingRepo, employeeCommissionRepo, jobDurationSampleRepo)

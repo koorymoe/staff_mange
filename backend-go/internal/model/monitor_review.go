@@ -31,6 +31,11 @@ const (
 	MonitorStageBookingBeforeConfirm = "BOOKING_BEFORE_CONFIRM"
 	MonitorStageBookingAfterConfirm  = "BOOKING_AFTER_CONFIRM"
 	MonitorStageBookingAfterComplete = "BOOKING_AFTER_COMPLETE"
+	// شغل بقية الأقسام — نفس الفكرة: اللحظة الي بيها القرار ينفّذ
+	// ويصير صعب التراجع عنه.
+	MonitorStageProcurementFulfilled = "PROCUREMENT_FULFILLED"
+	MonitorStageQualityVerdict       = "QUALITY_VERDICT"
+	MonitorStageGpsDeviceDone        = "GPS_DEVICE_DONE"
 )
 
 const (
@@ -53,6 +58,12 @@ func MonitorStageLabel(stage string) string {
 		return "حجز بعد التثبيت"
 	case MonitorStageBookingAfterComplete:
 		return "حجز بعد الإنجاز"
+	case MonitorStageProcurementFulfilled:
+		return "مادة انشترت"
+	case MonitorStageQualityVerdict:
+		return "حكم الجودة"
+	case MonitorStageGpsDeviceDone:
+		return "جهاز جي بي اس انخلص"
 	}
 	return stage
 }

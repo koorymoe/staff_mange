@@ -17,6 +17,9 @@ const STAGES: { key: MonitorStage; label: string; hint: string }[] = [
   { key: 'BOOKING_BEFORE_CONFIRM', label: '📅 حجز قبل التثبيت', hint: 'هذا وقت الاعتراض، بعدها تصليح مو منع' },
   { key: 'BOOKING_AFTER_CONFIRM', label: '📌 حجز بعد التثبيت', hint: 'الكادر والموعد النهائي' },
   { key: 'BOOKING_AFTER_COMPLETE', label: '🏁 حجز بعد الإنجاز', hint: 'شنو انعمل فعلاً قبل ما تصير فاتورة' },
+  { key: 'PROCUREMENT_FULFILLED', label: '📦 مادة انشترت', hint: 'لحظة صرف الفلوس — الكلفة والمورد' },
+  { key: 'QUALITY_VERDICT', label: '⚠️ حكم الجودة', hint: 'انخصمت نقطة من موظف بناءً على كلام زبون' },
+  { key: 'GPS_DEVICE_DONE', label: '📡 جهاز جي بي اس انسلّم', hint: 'الجهاز راح للزبون والاشتراك بدأ' },
 ]
 
 const ROLE_LABELS: Record<string, string> = {
@@ -76,8 +79,16 @@ export default function MonitorInboxPage() {
   }
 
   // رابط الكيان: الحجز نفتحه بشاشة الحجوزات، والفاتورة بشاشة الفواتير
-  const linkOf = (row: MonitorReview) =>
-    row.entityType === 'BOOKING' ? `/bookings?focus=${row.entityId}` : `/leader-invoices?focus=${row.entityId}`
+  const linkOf = (row: MonitorReview) => {
+    switch (row.entityType) {
+      case 'BOOKING': return `/bookings?focus=${row.entityId}`
+      case 'LEADER_INVOICE': return `/leader-invoices?focus=${row.entityId}`
+      case 'PROCUREMENT': return '/procurement'
+      case 'QUALITY_FOLLOW_UP': return '/quality-follow-ups'
+      case 'GPS_DEVICE': return '/gps'
+      default: return '#'
+    }
+  }
 
   return (
     <div dir="rtl" className="space-y-5">
