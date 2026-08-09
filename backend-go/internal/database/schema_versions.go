@@ -225,6 +225,9 @@ func versionedMigrations() []Migration {
 	result = append(result, projectBookingUnlockMigration()...)
 	// 0238: تذكير معاودة الاتصال بالزبون الي ما رد — بحدود ضد الإزعاج.
 	result = append(result, waitingReminderMigration()...)
+	// 0239: المفاتيح الناقصة — ٣١ شاشة كانت مشروطة بالدور بس وماكو إلها
+	// صلاحية، فمنح الصلاحية ما كان ينفتح بيها شي.
+	result = append(result, unlockPermissionsMigration()...)
 	return result
 }
 

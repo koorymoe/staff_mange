@@ -28,7 +28,7 @@ const notifTargets: Record<string, string> = {
 }
 import AnnouncementTicker from './AnnouncementTicker'
 
-interface NavItem {
+export interface NavItem {
   to: string
   label: string
   icon: React.ReactNode
@@ -45,6 +45,15 @@ interface NavItem {
   // صلاحياتهم. الليدر عنده صلاحيات إدارية (مشاريع، طلبات مواد) بس محلها
   // مجموعة «العمل» مالته — مو باب «الإدارة».
   hideFromFieldStaff?: boolean
+  // unlockPermission: صلاحية **تفتح** العنصر وما تقيّده أبداً.
+  //
+  // الفرق عن permission: هذيچ شرط (ما عندك الصلاحية = ما تشوف)، وهاي
+  // مفتاح (عندك الصلاحية = تشوف، مهما كان دورك). كل عنصر جان إله roles
+  // بس ما جان ينفتح بأي منح — وهاي المشكلة الي شكه منها صاحب العمل:
+  // «صلاحية من أنطيها لأحد يلا تظهر إله».
+  unlockPermission?: string
+  // ownerOnly: الاستثناء الوحيد الي المنح ما يكسره — شاشات المالك.
+  ownerOnly?: boolean
   children?: NavItem[]
   divider?: boolean
 }
@@ -61,7 +70,7 @@ const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-inventory', '/privacy-policy',
 ]
 
-const navItems: NavItem[] = [
+export const navItems: NavItem[] = [
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
   { to: '/attendance', label: 'الحضور', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // حساب تكلفة التنصيب للتنفيذ — بصلاحية execution_cost، مو مفتوح
@@ -87,7 +96,7 @@ const navItems: NavItem[] = [
     children: [
       { to: '/my-ranking', label: 'تصنيفي', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
       // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
-      { to: '/performance-review', label: 'تقييم فريقي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      { to: '/performance-review', label: 'تقييم فريقي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'performance_review' },
     ],
   },
 
@@ -111,18 +120,19 @@ const navItems: NavItem[] = [
           // خمس مستويات للوصول لشاشة وحدة. المجموعة انشالت والشاشتين
           // صعدن هنا مباشرة.
           { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
+          { to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
           { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
           // تقييم الأداء (منفصل عن الكي بي اي) — تيم ليدرات الفرق
-          { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'] },
+          { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
           // طلبات الكادر الواردة من إدارة المشاريع — إداري الكوادر يلبيها
-          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'] },
+          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
           { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
-          { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'] },
+          { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
         ],
       },
       // إدارة الإحصائيات — عنصر مستقل مباشر تحت "الإدارة"، مو داخل إدارة
       // الموظفين، حصراً لمدير النظام.
-      { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'] },
+      { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
       {
         // بدون قيد أدوار على المجموعة الوسيطة — ظهورها يتقرر من أبنائها فقط.
         // قيد الأدوار هنا كان يخفي "إدارة العمل" كاملة عن أي دور مو بالقائمة
@@ -165,16 +175,16 @@ const navItems: NavItem[] = [
           { to: '/gps/sims', label: '📶 شرائح GPS', icon: <></>, permission: 'gps_system' },
           { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, permission: 'gps_system' },
           { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, permission: 'gps_system' },
-          { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'] },
+          { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'service_managers' },
           // أسعار الشبكات — تنعدّل من الشاشة لأنها لسه تتبني وتتغيّر
-          { to: '/network-prices', label: 'أسعار الشبكات', icon: <></>, roles: ['ADMIN'] },
+          { to: '/network-prices', label: 'أسعار الشبكات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'network_prices' },
         ],
       },
       {
         // إدارة المشاريع صارت صلاحية: أي موظف عنده project_management يشوفها بغض النظر عن دوره
         to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
         children: [
-          { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'] },
+          { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
           { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
@@ -190,14 +200,14 @@ const navItems: NavItem[] = [
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
-      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'] },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></>, permission: 'execution_cost' },
-          { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
+          { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'] },
-          { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view' },
+          { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
         ],
       },
       {
@@ -233,8 +243,8 @@ const navItems: NavItem[] = [
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      { to: '/work-reports', label: 'التقارير', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      { to: '/leader-invoices', label: 'فواتيري', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      { to: '/work-reports', label: 'التقارير', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'work_reports' },
+      { to: '/leader-invoices', label: 'فواتيري', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'leader_invoices_view' },
       { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL', 'PROJECT_MANAGER'] },
       // حسبتان مختلفتان بنفس المحرك:
       //  • «استفسار زبون» = رقم بس، ما ينحفظ ولا ينربط بحجز — للزبون
@@ -244,11 +254,11 @@ const navItems: NavItem[] = [
       { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, permission: 'execution_cost' },
       { to: '/leader-invoices/new', label: 'حساب كلفة زبون (حجز)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
       // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
-      { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'execution_cost' },
       // استمارة الشبكات — أسعارها بقاعدة البيانات مو بالكود، فتنعدّل بلا نشر
-      { to: '/network-cost', label: 'حساب كلفة الشبكات', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      { to: '/network-cost', label: 'حساب كلفة الشبكات', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'execution_cost' },
       // صيانة الأجهزة العامة: حصراً للتيم ليدر (شيت "صيانة الاجهزة")
-      { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'device_maintenance' },
       // طلبات المواد — شغل ميدان مو إدارة، فمحلها هنا مو باب «الإدارة»
       { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], permission: 'procurement' },
       {
@@ -264,8 +274,8 @@ const navItems: NavItem[] = [
         // "المشاريع" للميدان: يفتح مشروع جديد، أو يتابع الي انوجّه له
         to: '/tech-projects-group', label: 'المشاريع', icon: <></>,
         children: [
-          { to: '/projects', label: 'إضافة مشروع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], anyPermission: ['project_management', 'project_create_only'] },
-          { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+          { to: '/projects', label: 'إضافة مشروع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
+          { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'my_projects' },
         ],
       },
     ],
@@ -280,7 +290,7 @@ const navItems: NavItem[] = [
   // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
   // المشاريع الموجّهة لي: أي موظف ينوجّهله مشروع يشوفه هنا بكل مراحله — بدون
   // ما ننطيه صلاحية إدارة المشاريع العامة. الصفحة تطلع فاضية لو ماكو شي.
-  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg> },
+  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, unlockPermission: 'my_projects' },
 
   { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true },
 
@@ -329,8 +339,8 @@ const navItems: NavItem[] = [
     to: '/unit-design-group', label: 'وحدة التصميم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a4.5 4.5 0 0 0 0 9 4.5 4.5 0 0 1 0 9"/></svg>, roles: ['ADMIN'],
     unitPermission: 'unit_design',
     children: [
-      { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'] },
-      { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'] },
+      { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
+      { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
     ],
   },
   {
@@ -385,14 +395,14 @@ const navItems: NavItem[] = [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
-      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'] },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></>, permission: 'execution_cost' },
-          { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
+          { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'] },
-      { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'] },
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view' },
+      { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
     ],
   },
   {
@@ -401,15 +411,15 @@ const navItems: NavItem[] = [
     children: [
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
       { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
-      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'] },
-      { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'] },
+      { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'staff_requests' },
+      { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'performance_review' },
     ],
   },
   {
     to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
     unitPermission: 'unit_projects',
     children: [
-      { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'] },
+      { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
       { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
@@ -419,7 +429,7 @@ const navItems: NavItem[] = [
   },
 
   // ── اختصارات سريعة (أهم إجراءات المبيعات) ──
-  { to: '/sales', label: 'حجز جديد', icon: <I d="M12 5v14M5 12h14" />, roles: ['SALES'] },
+  { to: '/sales', label: 'حجز جديد', icon: <I d="M12 5v14M5 12h14" />, roles: ['SALES'], unlockPermission: 'create_booking' },
   { to: '/complaints', label: 'حجز شكوى', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, roles: ['SALES'] },
 
   // ── مجموعة GPS (تلم كل طلبات الـ GPS الخاصة بالمبيعات تحت باب وحد) ──
@@ -427,10 +437,10 @@ const navItems: NavItem[] = [
     to: '/gps-group', label: 'GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
     roles: ['SALES'],
     children: [
-      { to: '/gps/purchase', label: 'طلب GPS جديد', icon: <></>, roles: ['SALES'] },
-      { to: '/gps/delivery', label: 'تسليم أجهزة GPS', icon: <></>, roles: ['SALES'] },
-      { to: '/gps/renewal', label: 'طلب تجديد GPS', icon: <></>, roles: ['SALES'] },
-      { to: '/gps/maintenance-request', label: 'طلب صيانة GPS', icon: <></>, roles: ['SALES'] },
+      { to: '/gps/purchase', label: 'طلب GPS جديد', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
+      { to: '/gps/delivery', label: 'تسليم أجهزة GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
+      { to: '/gps/renewal', label: 'طلب تجديد GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
+      { to: '/gps/maintenance-request', label: 'طلب صيانة GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
     ],
   },
 ]
@@ -457,6 +467,99 @@ const roleColors: Record<string, string> = {
   GPS_ADMIN: 'from-indigo-500 to-blue-600',
   QUALITY_ENGINEER: 'from-fuchsia-500 to-purple-600',
   ENGINEER: 'from-teal-500 to-cyan-700',
+}
+
+// ═══ منو يشوف شنو — مصدر وحيد ═══
+//
+// نقية بلا حالة، حتى نقدر نسألها «شنو راح يشوفه فلان؟» بدون ما نسجّل
+// دخوله. شاشة «شوف بعين الموظف» تناديها بنفسها، فما تنحرف عن الواقع
+// أبداً — نفس الدالة الي ترسم القائمة الحقيقية.
+export type NavContext = {
+  employee: Employee | null | undefined
+  permissions: string[]
+  gpsServiceId: string | null
+}
+
+export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
+  const role = ctx.employee?.role
+  const hasMonitor = role === 'MONITOR' || ctx.permissions.includes('monitoring')
+  const hasAudit = ctx.permissions.includes('auditing')
+  // الفني والتقني العادي (مو ليدر) — قائمتهم مقفلة على شغلهم.
+  // التقني نفس الفني بالميدان، بس يتولى أكثر من خدمة — فما إله شغل
+  // بالشاشات الإدارية مثل ما ما إله شغل الفني.
+  const isPlainTechnician = (role === 'TECHNICIAN' || role === 'TECHNICAL') && !ctx.employee?.isLeader
+  // unitGranted: صحيح لما يكون الموظف عنده صلاحية الوحدة الي هذا العنصر
+  // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
+  
+    if (item.divider) return true
+
+    // ═══ قاعدة تعلو على كل شي: الصلاحية الممنوحة صراحةً تفتح العنصر ═══
+    //
+    // قبل، منح الصلاحية ما جان ينفع لأن أربع بوابات تشتغل **قبله**:
+    // قائمة الفني البيضاء، وحجب كادر الميدان، وشرط الدور، وبوابة الوحدة.
+    // فالمدير ينطي الصلاحية والموظف يضل ما يشوف الشاشة — وهاي بالضبط
+    // شكوى صاحب العمل «صلاحية من أنطيها لأحد يلا تظهر إله».
+    //
+    // ⚠️ الاستثناء الوحيد ownerOnly: شاشات المالك ما تنفتح بالمنح أبداً.
+    if (!item.ownerOnly) {
+      const grantedExplicitly =
+        (!!item.unlockPermission && ctx.permissions.includes(item.unlockPermission)) ||
+        (!!item.permission && ctx.permissions.includes(item.permission)) ||
+        (!!item.anyPermission && item.anyPermission.some((p) => ctx.permissions.includes(p))) ||
+        (!!item.unitPermission && ctx.permissions.includes(item.unitPermission))
+      if (grantedExplicitly) return true
+    }
+    if (item.ownerOnly && ctx.employee?.actualRole !== 'OWNER') return false
+    // كادر الميدان (فني أو ليدر): باب «الإدارة» ما يطلع لهم أبداً. شغل
+    // الليدر الإداري موجود بمجموعة «العمل» مالته.
+    if (item.hideFromFieldStaff && (role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
+    // الوحدات: بوابة صارمة. الوحدة ما تطلع أبداً إلا لمن عنده صلاحية الوحدة
+    // نفسها (أو مدير النظام). قبل، الوحدة جانت تطلع لمجرد إنه ابن واحد جوّاها
+    // مسموح بصلاحية عامة — فصار الموظف يشوف وحدات مو إلها علاقة بشغله ويتكرر
+    // نفس المحتوى مرتين (مرة بـ"الإدارة" ومرة بالوحدة).
+    // القاعدة المطلوبة: "الإدارة" = كل شي الموظف عنده صلاحيته مهما كانت وحدته،
+    // و"الوحدات" = بس الوحدة الي انمنحت له صراحةً.
+    if (item.unitPermission && role !== 'ADMIN' && !ctx.permissions.includes(item.unitPermission)) {
+      return false
+    }
+    // الفني العادي: قائمة مقفلة على شغله. العنصر الي إله رابط (مو
+    // مجموعة) لازم يكون بالقائمة المسموحة، أو ينفتح بصلاحية منحها
+    // المدير بيده — مو بصلاحية جات تلقائياً مع الدور.
+    if (isPlainTechnician && !item.children && !item.divider && !unitGranted) {
+      const path = (item.to || '').split('?')[0]
+      if (!TECHNICIAN_NAV.includes(path)) return false
+    }
+    const granted =
+      unitGranted ||
+      (!!item.unitPermission && (role === 'ADMIN' || ctx.permissions.includes(item.unitPermission)))
+    if (!granted) {
+      // الصلاحية الممنوحة فعلياً تكفي بحالها. قبل، العنصر كان يشترط الدور
+      // *و* الصلاحية سوه — فلو منحت إداري الكميات صلاحية "عرض الحجوزات"
+      // تضل مخفية عنه لأن دوره مو بقائمة الأدوار المسموحة. هذا خالف معنى
+      // منح الصلاحية أصلاً، وكان يخلي صلاحيات كثيرة "ما تنطبق".
+      const hasOwnPermission =
+        (!!item.permission && ctx.permissions.includes(item.permission)) ||
+        (!!item.anyPermission && item.anyPermission.some((p) => ctx.permissions.includes(p)))
+
+      if (!hasOwnPermission) {
+        if (item.roles && role && !item.roles.includes(role as EmployeeRole)) {
+          // ⚠️ التيم ليدر فني قبل كل شي — لازم يشوف شاشات الميدان
+          // (مهامي، جردي، حساب الكلفة) حتى لو دوره مو TECHNICIAN.
+          // بدون هذا كان لازم نخليه «ليدر **وفني**» بنفس الوقت حتى
+          // يطلعله الحجز، وهذا مو معقول: الفاتورة يمّه والشغل يمّه.
+          const leaderFieldItem = !!ctx.employee?.isLeader && item.roles.includes('TECHNICIAN')
+          if (!leaderFieldItem && !((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
+        }
+        if (item.permission && role !== 'ADMIN' && !ctx.permissions.includes(item.permission)) return false
+        if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => ctx.permissions.includes(p))) return false
+      }
+      if (item.leaderOnly && !ctx.employee?.isLeader && role !== 'ADMIN') return false
+      if (item.gpsSkillOnly && role !== 'ADMIN' && !hasGpsSkill(ctx.employee ?? null, ctx.gpsServiceId)) return false
+      // الفني العادي بس ينمنع — الليدر يشوفه (نفس قيد السيرفر بالضبط)
+    }
+    if (item.children) return item.children.some((c) => isNavVisible(c, ctx, granted))
+    return true
+  return true
 }
 
 export default function Layout() {
@@ -643,66 +746,10 @@ export default function Layout() {
   }
 
   const role = employee?.role
-  const hasMonitor = role === 'MONITOR' || employeePermissions.includes('monitoring')
-  const hasAudit = employeePermissions.includes('auditing')
-  // الفني والتقني العادي (مو ليدر) — قائمتهم مقفلة على شغلهم.
-  // التقني نفس الفني بالميدان، بس يتولى أكثر من خدمة — فما إله شغل
-  // بالشاشات الإدارية مثل ما ما إله شغل الفني.
+  const isVisible = (item: NavItem, unitGranted = false): boolean =>
+    isNavVisible(item, { employee, permissions: employeePermissions, gpsServiceId }, unitGranted)
+  // الفني العادي (مو ليدر): قائمته مسطّحة — تنستعمل بترتيب العرض تحت
   const isPlainTechnician = (role === 'TECHNICIAN' || role === 'TECHNICAL') && !employee?.isLeader
-  // unitGranted: صحيح لما يكون الموظف عنده صلاحية الوحدة الي هذا العنصر
-  // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
-  const isVisible = (item: NavItem, unitGranted = false): boolean => {
-    if (item.divider) return true
-    // كادر الميدان (فني أو ليدر): باب «الإدارة» ما يطلع لهم أبداً. شغل
-    // الليدر الإداري موجود بمجموعة «العمل» مالته.
-    if (item.hideFromFieldStaff && (role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
-    // الوحدات: بوابة صارمة. الوحدة ما تطلع أبداً إلا لمن عنده صلاحية الوحدة
-    // نفسها (أو مدير النظام). قبل، الوحدة جانت تطلع لمجرد إنه ابن واحد جوّاها
-    // مسموح بصلاحية عامة — فصار الموظف يشوف وحدات مو إلها علاقة بشغله ويتكرر
-    // نفس المحتوى مرتين (مرة بـ"الإدارة" ومرة بالوحدة).
-    // القاعدة المطلوبة: "الإدارة" = كل شي الموظف عنده صلاحيته مهما كانت وحدته،
-    // و"الوحدات" = بس الوحدة الي انمنحت له صراحةً.
-    if (item.unitPermission && role !== 'ADMIN' && !employeePermissions.includes(item.unitPermission)) {
-      return false
-    }
-    // الفني العادي: قائمة مقفلة على شغله. العنصر الي إله رابط (مو
-    // مجموعة) لازم يكون بالقائمة المسموحة، أو ينفتح بصلاحية منحها
-    // المدير بيده — مو بصلاحية جات تلقائياً مع الدور.
-    if (isPlainTechnician && !item.children && !item.divider && !unitGranted) {
-      const path = (item.to || '').split('?')[0]
-      if (!TECHNICIAN_NAV.includes(path)) return false
-    }
-    const granted =
-      unitGranted ||
-      (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))
-    if (!granted) {
-      // الصلاحية الممنوحة فعلياً تكفي بحالها. قبل، العنصر كان يشترط الدور
-      // *و* الصلاحية سوه — فلو منحت إداري الكميات صلاحية "عرض الحجوزات"
-      // تضل مخفية عنه لأن دوره مو بقائمة الأدوار المسموحة. هذا خالف معنى
-      // منح الصلاحية أصلاً، وكان يخلي صلاحيات كثيرة "ما تنطبق".
-      const hasOwnPermission =
-        (!!item.permission && employeePermissions.includes(item.permission)) ||
-        (!!item.anyPermission && item.anyPermission.some((p) => employeePermissions.includes(p)))
-
-      if (!hasOwnPermission) {
-        if (item.roles && role && !item.roles.includes(role)) {
-          // ⚠️ التيم ليدر فني قبل كل شي — لازم يشوف شاشات الميدان
-          // (مهامي، جردي، حساب الكلفة) حتى لو دوره مو TECHNICIAN.
-          // بدون هذا كان لازم نخليه «ليدر **وفني**» بنفس الوقت حتى
-          // يطلعله الحجز، وهذا مو معقول: الفاتورة يمّه والشغل يمّه.
-          const leaderFieldItem = !!employee?.isLeader && item.roles.includes('TECHNICIAN')
-          if (!leaderFieldItem && !((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
-        }
-        if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
-        if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => employeePermissions.includes(p))) return false
-      }
-      if (item.leaderOnly && !employee?.isLeader && role !== 'ADMIN') return false
-      if (item.gpsSkillOnly && role !== 'ADMIN' && !hasGpsSkill(employee, gpsServiceId)) return false
-      // الفني العادي بس ينمنع — الليدر يشوفه (نفس قيد السيرفر بالضبط)
-    }
-    if (item.children) return item.children.some((c) => isVisible(c, granted))
-    return true
-  }
 
   // ═══ تنظيف الشجرة قبل العرض ═══
   //
