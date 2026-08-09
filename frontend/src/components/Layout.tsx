@@ -685,7 +685,12 @@ export default function Layout() {
 
       if (!hasOwnPermission) {
         if (item.roles && role && !item.roles.includes(role)) {
-          if (!((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
+          // ⚠️ التيم ليدر فني قبل كل شي — لازم يشوف شاشات الميدان
+          // (مهامي، جردي، حساب الكلفة) حتى لو دوره مو TECHNICIAN.
+          // بدون هذا كان لازم نخليه «ليدر **وفني**» بنفس الوقت حتى
+          // يطلعله الحجز، وهذا مو معقول: الفاتورة يمّه والشغل يمّه.
+          const leaderFieldItem = !!employee?.isLeader && item.roles.includes('TECHNICIAN')
+          if (!leaderFieldItem && !((hasMonitor || hasAudit) && item.roles.includes('MONITOR'))) return false
         }
         if (item.permission && role !== 'ADMIN' && !employeePermissions.includes(item.permission)) return false
         if (item.anyPermission && role !== 'ADMIN' && !item.anyPermission.some((p) => employeePermissions.includes(p))) return false
