@@ -160,6 +160,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	projectService := service.NewProjectService(projectRepo)
 	// أي مشروع ينضاف يرحّل صاحبه للشخصيات المهمة تلقائياً
 	projectService.SetVipRepositories(vipCustomerRepo, customerRepo)
+	// وصول المشروع لمرحلة «٥. البدء بالتنفيذ» يفتح حجزه عند إداري
+	// الحجوزات — الربط بعد البناء حتى ما يصير اعتماد دائري.
+	projectService.SetBookingUnlocker(bookingService)
 	projectWorkTypeService := service.NewProjectWorkTypeService(projectWorkTypeRepo)
 	checklistService := service.NewChecklistService(checklistRepo)
 	techShowcaseService := service.NewTechShowcaseService(techShowcaseRepo)

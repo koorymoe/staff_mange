@@ -539,6 +539,10 @@ export interface Booking {
   // الشغل ويضل محفوظ لحد ما يرد.
   status: 'PENDING' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'WAITING' | 'PARTIAL'
   transferToProjects: boolean
+  /** وصل مرحلة «البدء بالتنفيذ» — الي يفتح الحجز للتنسيق */
+  projectExecutionAt?: string | null
+  /** عند إدارة المشاريع وما وصل التنفيذ: يشوفه المنسّق بس ما يلمسه */
+  projectLocked: boolean
   confirmedByName: string | null
   adminNotes: string | null
   assignedVehicle: string | null

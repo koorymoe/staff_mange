@@ -404,6 +404,9 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		// يطلع الحجز «مثبت بلا كادر» وهو مكلّف فعلاً.
 		hasCrew := len(assignments) > 0 || (b.ProjectSupervisorID != nil && *b.ProjectSupervisorID != "")
 		b.CompletionState = completionState(b, hasCrew)
+		// حجز عند إدارة المشاريع وما وصل التنفيذ = مقفول: المنسّق يشوفه
+		// ويعرف وين وصل، بس ما يكدر يلمسه.
+		b.ProjectLocked = b.TransferToProjects && b.ProjectExecutionAt == nil
 
 		if assignments == nil {
 			assignments = []model.BookingAssignment{}
@@ -669,6 +672,28 @@ func (r *BookingRepository) SetSchedule(id, scheduledAt string) error {
 		    -- ويضل مخفي من جدول اليوم وعالق بقائمة المؤجلة.
 		    "awaitingReschedule" = false
 		WHERE id = $1`, id, scheduledAt)
+	return err
+}
+
+// MarkProjectExecution يفتح حجز المشاريع للمنسّق — ينتنادى لما المشروع
+// يوصل مرحلة «٥. البدء بالتنفيذ».
+//
+// COALESCE مقصود: إعادة الدخول لنفس المرحلة ما تصفّر وقت الفتح الأول،
+// وإلا «كم قعد المشروع بالإجراءات» يصير رقم كذب.
+func (r *BookingRepository) MarkProjectExecution(bookingID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "projectExecutionAt" = COALESCE("projectExecutionAt", now()),
+		    "updatedAt" = now()
+		WHERE id = $1`, bookingID)
+	return err
+}
+
+// ClearProjectExecution يرجّع الحجز لحالته قبل المشاريع — ينتنادى وية
+// إرجاعه لكادر الشد، حتى ما يبقى عليه أثر مشروع انلغى.
+func (r *BookingRepository) ClearProjectExecution(bookingID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking" SET "projectExecutionAt" = NULL, "updatedAt" = now() WHERE id = $1`, bookingID)
 	return err
 }
 

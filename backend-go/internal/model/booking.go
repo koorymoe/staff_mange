@@ -12,19 +12,26 @@ type Booking struct {
 	// فالمتفق عليه مدى ساعة: «نجيك بين ٧ و٨». ينحسب تلقائياً ساعة بعد
 	// البداية بكل مكان ينتحدد بيه الموعد.
 	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
-	ScheduledEndAt         *time.Time `db:"scheduledEndAt" json:"scheduledEndAt,omitempty"`
-	PendingScheduledAt     *time.Time `db:"pendingScheduledAt" json:"pendingScheduledAt,omitempty"`
-	CustomerID             string     `db:"customerId" json:"-"`
-	ServiceID              *string    `db:"serviceId" json:"-"`
-	TransferEmployeeID     *string    `db:"transferEmployeeId" json:"-"`
-	ProjectSupervisorID    *string    `db:"projectSupervisorId" json:"-"`
-	ExpenseResponsibleID   *string    `db:"expenseResponsibleId" json:"expenseResponsibleId,omitempty"`
-	ConfirmedByEmployeeID  *string    `db:"confirmedByEmployeeId" json:"-"`
-	Notes                  *string    `db:"notes" json:"notes,omitempty"`
-	VehicleType            *string    `db:"vehicleType" json:"vehicleType,omitempty"`
-	Priority               string     `db:"priority" json:"priority"`
-	Status                 string     `db:"status" json:"status"`
-	TransferToProjects     bool       `db:"transferToProjects" json:"transferToProjects"`
+	ScheduledEndAt        *time.Time `db:"scheduledEndAt" json:"scheduledEndAt,omitempty"`
+	PendingScheduledAt    *time.Time `db:"pendingScheduledAt" json:"pendingScheduledAt,omitempty"`
+	CustomerID            string     `db:"customerId" json:"-"`
+	ServiceID             *string    `db:"serviceId" json:"-"`
+	TransferEmployeeID    *string    `db:"transferEmployeeId" json:"-"`
+	ProjectSupervisorID   *string    `db:"projectSupervisorId" json:"-"`
+	ExpenseResponsibleID  *string    `db:"expenseResponsibleId" json:"expenseResponsibleId,omitempty"`
+	ConfirmedByEmployeeID *string    `db:"confirmedByEmployeeId" json:"-"`
+	Notes                 *string    `db:"notes" json:"notes,omitempty"`
+	VehicleType           *string    `db:"vehicleType" json:"vehicleType,omitempty"`
+	Priority              string     `db:"priority" json:"priority"`
+	Status                string     `db:"status" json:"status"`
+	TransferToProjects    bool       `db:"transferToProjects" json:"transferToProjects"`
+	// وقت وصول المشروع لمرحلة «٥. البدء بالتنفيذ» — هو الي يفتح الحجز
+	// عند إداري الحجوزات حتى ينسّقه بكادر الشد. فارغ = لسه بالإجراءات.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
+	ProjectExecutionAt *time.Time `db:"projectExecutionAt" json:"projectExecutionAt,omitempty"`
+	// ProjectLocked محسوب مو عمود: عند المشاريع وما وصل التنفيذ.
+	// المنسّق يشوفه بس ما يكدر يلمسه.
+	ProjectLocked          bool       `db:"-" json:"projectLocked"`
 	ConfirmedByName        *string    `db:"confirmedByName" json:"confirmedByName,omitempty"`
 	AdminNotes             *string    `db:"adminNotes" json:"adminNotes,omitempty"`
 	AssignedVehicle        *string    `db:"assignedVehicle" json:"assignedVehicle,omitempty"`

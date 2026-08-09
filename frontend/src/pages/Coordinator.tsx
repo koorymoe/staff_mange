@@ -162,7 +162,10 @@ export default function Coordinator() {
       .getBookings({ status: ['PENDING', 'CONFIRMED', 'WAITING'] })
       .then((data) => {
         setBookings(data)
-        const candidates = data.filter((b) => b.status === 'CONFIRMED' && !b.transferToProjects)
+        // حجز المشاريع **المفتوح** (وصل التنفيذ) ياخذ مرشحين مثل أي
+        // حجز عادي — نفس كادر الشد هو الي راح ينفّذ. المقفول بس
+        // ينستثنى لأنه لسه بإجراءات إدارة المشاريع.
+        const candidates = data.filter((b) => b.status === 'CONFIRMED' && !b.projectLocked)
         // نجمّع الحجوزات حسب نفس الخدمة ونطلب موظفي المطابقة مرة وحدة لكل خدمة بدل
         // طلب منفصل لكل حجز (كان يسوي طلب HTTP مستقل لكل حجز بيها نفس الخدمة).
         // الحجز بلا خدمة محددة (مثلاً حجز صيانة) جان ينشال من هنا،
@@ -712,12 +715,16 @@ export default function Coordinator() {
                   onSaved={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
                 />
 
-                {/* قرارات الزبون: أجّل، ما رد، ألغى */}
-                <BookingLifecycleActions
-                  booking={booking}
-                  canArchive={isAdmin}
-                  onChanged={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
-                />
+                {/* قرارات الزبون: أجّل، ما رد، ألغى.
+                    مخفية للمقفول — السيرفر يرفضها أصلاً، فعرض أزرار
+                    تطلّع خطأ بس يضيّع وقت المنسّق. */}
+                {!booking.projectLocked && (
+                  <BookingLifecycleActions
+                    booking={booking}
+                    canArchive={isAdmin}
+                    onChanged={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
+                  />
+                )}
 
                 <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">
                   <div>
@@ -841,12 +848,27 @@ export default function Coordinator() {
                   </div>
                 </div>
 
-                {booking.transferToProjects ? (
-                  <p className="mt-4 rounded-lg bg-brand-50 px-4 py-2 text-sm text-brand-700">
-                    تم تحويل هذا الطلب إلى إدارة المشاريع.
-                  </p>
+                {/* ═══ حجز عند إدارة المشاريع ═══
+                    قبل، الحجز يختفي من دنيا المنسّق ويطلع سطر ميّت «تم
+                    التحويل» وبس — ما يعرف وين وصل ولا متى يرجع له، مع
+                    إن **نفس كادر الشد** هو الي راح ينفّذ.
+                    هسه يضل ظاهر: مقفول لحد ما المشروع يوصل «٥. البدء
+                    بالتنفيذ»، وبعدها ينفتح بنفس كتلة التوجيه العادية. */}
+                {booking.projectLocked ? (
+                  <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3">
+                    <p className="text-sm font-bold text-amber-900">🔒 حجز مشاريع — بانتظار إكمال الإجراءات</p>
+                    <p className="mt-1 text-xs text-amber-800">
+                      عند إدارة المشاريع (اتصال، كشف، عرض سعر، عقد). أول ما يوصل مرحلة «البدء بالتنفيذ»
+                      راح ينفتح هنا وتنسّقه بكادر الشد مثل أي حجز، وراح يوصلك إشعار.
+                    </p>
+                  </div>
                 ) : (
                   <div className="mt-4">
+                    {booking.transferToProjects && (
+                      <div className="mb-3 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2">
+                        <p className="text-sm font-bold text-emerald-900">🏗️ حجز مشاريع وصل مرحلة التنفيذ — جاهز للتنسيق</p>
+                      </div>
+                    )}
                     <h4 className="text-sm font-bold text-brand-800">توجيه كادر الشد</h4>
                     <p className="mt-1 text-xs text-slate-400">
                       تحديد الكادر والسيارة اختياري - يمكن تثبيت الحجز وتحديدهم لاحقاً.

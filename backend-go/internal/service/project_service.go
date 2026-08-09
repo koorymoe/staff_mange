@@ -22,8 +22,26 @@ var projectStages = []string{
 	"❌ مرفوض",
 }
 
+// ProjectExecutionStage المرحلة الي تفتح الحجز عند إداري الحجوزات:
+// خلصت إجراءات المشروع (اتصال، كشف، عرض سعر، عقد) وصار جاهز للتنفيذ،
+// و**نفس كادر الشد** هو الي راح ينفّذ — فيرجع للتنسيق العادي.
+const ProjectExecutionStage = "5. البدء بالتنفيذ"
+
+// stageUnlocksBooking المكتمل يفتح بعد، لو المشروع قفز المرحلة.
+func stageUnlocksBooking(stage string) bool {
+	return stage == ProjectExecutionStage || stage == "✅ مكتمل"
+}
+
+// BookingUnlocker يخلي خدمة المشاريع تفتح الحجز بدون ما تعتمد على
+// خدمة الحجوزات كاملة — نفس أسلوب بقية الحقن بالمشروع.
+type BookingUnlocker interface {
+	MarkProjectExecution(bookingID string) error
+}
+
 type ProjectService struct {
 	repo *repository.ProjectRepository
+	// bookings يُحقن من main — يفتح الحجز لما المشروع يوصل التنفيذ
+	bookings BookingUnlocker
 	// vipRepo يُحقن من main — أي مشروع ينضاف يرحّل صاحبه للشخصيات المهمة
 	vipRepo      *repository.VipCustomerRepository
 	customerRepo *repository.CustomerRepository
@@ -260,8 +278,24 @@ func (s *ProjectService) Get(id string) (*model.Project, error) {
 func (s *ProjectService) Update(id string, req model.UpdateProjectRequest) (*model.Project, error) {
 	req.ResponsibleEmployeeID = emptyToNil(req.ResponsibleEmployeeID)
 	req.SurveyorEmployeeID = emptyToNil(req.SurveyorEmployeeID)
-	return s.repo.Update(id, req)
+	p, err := s.repo.Update(id, req)
+	if err != nil {
+		return nil, err
+	}
+	// وصول المشروع للتنفيذ يفتح حجزه عند إداري الحجوزات. الفشل هنا ما
+	// يرجّع خطأ — تحديث المشروع نجح فعلاً، وما يصير نرجّع فشل ونخلي
+	// مدير المشاريع يعيد المحاولة ويغيّر المرحلة مرتين.
+	if s.bookings != nil && p != nil && p.BookingID != nil && req.Stage != nil && stageUnlocksBooking(*req.Stage) {
+		if err := s.bookings.MarkProjectExecution(*p.BookingID); err != nil {
+			log.Printf("[project] تعذر فتح حجز المشروع %s: %v", id, err)
+		}
+	}
+	return p, nil
 }
+
+// SetBookingUnlocker يربط فتح الحجز (يُنادى من main) — بعد البناء حتى
+// ما يصير اعتماد دائري بين خدمة المشاريع وخدمة الحجوزات.
+func (s *ProjectService) SetBookingUnlocker(b BookingUnlocker) { s.bookings = b }
 
 func (s *ProjectService) Delete(id string) error {
 	return s.repo.Delete(id)

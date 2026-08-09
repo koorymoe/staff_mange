@@ -276,7 +276,29 @@ func ptrOrNil(s string) *string {
 }
 
 // Assign يعيّن فني لمهمة الحجز، يتحقق من المهارة والدوام، ويحدد المسؤول عن المصاريف تلقائياً
+// ensureNotProjectLocked يمنع تنسيق حجز لسه عند إدارة المشاريع.
+//
+// ⚠️ الإقفال لازم يكون هنا مو بالواجهة بس: زر مخفي ينلتف عليه بنداء
+// API مباشر، والحجز يتنسّق وكادر الشد يتكلّف قبل ما المشروع يخلّص
+// إجراءاته أصلاً.
+func (s *BookingService) ensureNotProjectLocked(id string) error {
+	b, err := s.repo.FindByID(id)
+	if err != nil {
+		return err
+	}
+	if b == nil {
+		return errors.New("Booking not found")
+	}
+	if b.TransferToProjects && b.ProjectExecutionAt == nil {
+		return errors.New("هذا الحجز عند إدارة المشاريع — ما تكدر تنسّقه لحد ما يوصل مرحلة التنفيذ")
+	}
+	return nil
+}
+
 func (s *BookingService) Assign(id string, req model.AssignBookingRequest, editorID string) (*model.Booking, error) {
+	if err := s.ensureNotProjectLocked(id); err != nil {
+		return nil, err
+	}
 	if req.EmployeeID == "" || req.Role == "" {
 		return nil, errors.New("employeeId and role are required")
 	}
@@ -377,6 +399,9 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest, edito
 }
 
 func (s *BookingService) SetSupervisor(id string, employeeID *string) (*model.Booking, error) {
+	if err := s.ensureNotProjectLocked(id); err != nil {
+		return nil, err
+	}
 	if employeeID != nil {
 		employee, err := s.employees.FindByID(*employeeID)
 		if err != nil || employee == nil || (employee.Role != "PROJECT_MANAGER" && !employee.IsLeader) {
@@ -419,6 +444,27 @@ func (s *BookingService) StartWithToolsCheck(id, employeeID string, missingToolI
 	return s.Start(id)
 }
 
+// MarkProjectExecution يفتح حجز المشاريع للتنسيق — تناديها خدمة
+// المشاريع لما المشروع يوصل مرحلة التنفيذ.
+func (s *BookingService) MarkProjectExecution(bookingID string) error {
+	if err := s.repo.MarkProjectExecution(bookingID); err != nil {
+		return err
+	}
+	b, err := s.repo.FindByID(bookingID)
+	if err != nil || b == nil || s.notifications == nil {
+		return nil
+	}
+	customerName := ""
+	if b.Customer != nil {
+		customerName = b.Customer.Name
+	}
+	// بدون الإشعار الحجز ينفتح بالسكوت والمنسّق ما يدري — يعني نفس
+	// المشكلة القديمة بس بشكل ثاني.
+	_ = s.notifications.CreateForRole("HR_COORDINATOR", "project_booking_ready",
+		fmt.Sprintf("🏗️ حجز المشاريع %s (%s) وصل مرحلة التنفيذ — جاهز للتنسيق بكادر الشد", b.Code, customerName))
+	return nil
+}
+
 // ListToolChecks ترجّع لقطات الأدوات الناقصة المسجّلة عند استلام حجز معيّن.
 func (s *BookingService) ListToolChecks(bookingID string) ([]model.BookingToolCheck, error) {
 	if s.inventory == nil {
@@ -436,6 +482,8 @@ func (s *BookingService) ReturnToCrew(id string, note *string) (*model.Booking, 
 	if err := s.repo.ReturnToCrew(id, note); err != nil {
 		return nil, err
 	}
+	// الحجز رجع لكادر الشد — ما يبقى عليه أثر مشروع انلغى
+	_ = s.repo.ClearProjectExecution(id)
 	booking, err := s.repo.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -582,6 +630,9 @@ func (s *BookingService) Restore(id string) (*model.Booking, error) {
 // Postpone يأجّل موعد الحجز. الموعد يجي بتوقيت بغداد وينخزن عالمي —
 // بدون التحويل الموعد يتقدم ثلاث ساعات كل ما ينحفظ.
 func (s *BookingService) Postpone(id, newTime, reason, byEmployeeID string) (*model.Booking, error) {
+	if err := s.ensureNotProjectLocked(id); err != nil {
+		return nil, err
+	}
 	// الموعد اختياري: أكثر التأجيلات تصير والزبون ما محدّد متى يناسبه،
 	// والإداري كان يضطر يحط تاريخ من راسه حتى يمرّر الشاشة — فيطلع
 	// موعد كذب بالجدول والكادر يتحضّر لحجز ماكو.
@@ -608,6 +659,9 @@ func (s *BookingService) ListPostponed() ([]model.Booking, error) {
 
 // MarkWaiting يحط الحجز بحالة «في الانتظار» — اتصلنا بالزبون وما رد.
 func (s *BookingService) MarkWaiting(id, note, byEmployeeID string) (*model.Booking, error) {
+	if err := s.ensureNotProjectLocked(id); err != nil {
+		return nil, err
+	}
 	if err := s.repo.MarkWaiting(id, note, byEmployeeID); err != nil {
 		return nil, err
 	}

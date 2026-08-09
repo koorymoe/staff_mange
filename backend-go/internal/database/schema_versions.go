@@ -221,6 +221,8 @@ func versionedMigrations() []Migration {
 	// 0235-0236: التأجيل بلا موعد — الحجز ينزاح من الجدول ويروح لقائمة
 	// المؤجلة بدل موعد كذب يتحضّر له الكادر.
 	result = append(result, postponeNoDateMigration()...)
+	// 0237: حجز المشاريع يضل مرئي للمنسّق مقفول لحد ما يوصل التنفيذ.
+	result = append(result, projectBookingUnlockMigration()...)
 	return result
 }
 
