@@ -1,6 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
+import CommandLogin from '../command/CommandLogin'
+import '../command/theme.css'
 
 const orbs = [
   { size: 220, top: '6%', left: '8%', delay: '0s' },
@@ -24,6 +26,38 @@ export default function Login() {
   // هنا راح تطلع القراءة الثانية فاضية وتضيع الرسالة. الحذف بـuseEffect.
   const [sessionNote] = useState(() => sessionStorage.getItem('sessionEndedReason'))
   useEffect(() => { sessionStorage.removeItem('sessionEndedReason') }, [])
+
+  // ═══ الستارة ═══
+  //
+  // من ركن أسفل الشاشة تنسحب ستارة وتكشف دخول مركز القيادة.
+  //
+  // ⚠️ الشاشتين تنادن **نفس** `api.login`. الي يقرر لأي نظام تدخل هو
+  // الرمز مو الشاشة: يوزرك + رمزك العادي من الشاشة الحمراء يدخّلك
+  // نظام الشركة، ويوزرك + رمز القيادة من الشاشة الزرقاء يدخّلك مركز
+  // القيادة. ماكو طريق دخول ثاني ينضاف — بس منظر ثاني لنفس الطريق.
+  //
+  // 0 = مسدولة، 1 = مرفوعة كلها. الكسر بينهن للسحب بالإصبع.
+  const [curtain, setCurtain] = useState(0)
+  const dragRef = useRef<{ startY: number; from: number } | null>(null)
+
+  const onHandleDown = (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId)
+    dragRef.current = { startY: e.clientY, from: curtain }
+  }
+  const onHandleMove = (e: React.PointerEvent<HTMLButtonElement>) => {
+    const d = dragRef.current
+    if (!d) return
+    // السحب لفوق = قيمة أكبر. نقسم على ارتفاع الشاشة حتى السحب يمشي
+    // وية الإصبع بنفس المسافة مهما كان حجم الجهاز.
+    const next = d.from + (d.startY - e.clientY) / window.innerHeight
+    setCurtain(Math.min(1, Math.max(0, next)))
+  }
+  const onHandleUp = () => {
+    if (!dragRef.current) return
+    dragRef.current = null
+    // تلتصق بالطرفين: نص ستارة مرفوعة ما إلها معنى
+    setCurtain((c) => (c > 0.3 ? 1 : 0))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,6 +160,38 @@ export default function Login() {
           {submitting ? 'جاري الدخول...' : 'تسجيل الدخول'}
         </button>
       </form>
+
+      {/* مقبض الستارة — ركن أسفل الشاشة */}
+      <button
+        type="button"
+        aria-label="ارفع الستارة"
+        className="curtain-handle"
+        onPointerDown={onHandleDown}
+        onPointerMove={onHandleMove}
+        onPointerUp={onHandleUp}
+        onPointerCancel={onHandleUp}
+        onClick={() => setCurtain((c) => (c === 0 ? 1 : 0))}
+      />
+
+      {/* الستارة نفسها.
+          محلها الطبيعي برّا الشاشة من تحت، فما تغطي شي وهي مسدولة.
+          ⚠️ inert لما تكون مسدولة: بدونه حقول الدخول الحمراء تبقى
+          موجودة بالصفحة، والـTab ينط عليها وقارئ الشاشة يقراها —
+          يعني نموذج دخول مخفي بالعين بس شغّال فعلياً. */}
+      <div
+        className="curtain"
+        inert={curtain === 0 ? true : undefined}
+        style={{
+          transform: `translateY(${(1 - curtain) * 100}%)`,
+          // بلا انتقال أثناء السحب — وإلا الستارة تتأخر ورا الإصبع
+          transition: dragRef.current ? 'none' : 'transform 0.62s cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
+        <CommandLogin />
+        <button type="button" className="curtain-close" onClick={() => setCurtain(0)}>
+          ▼ إنزال الستارة
+        </button>
+      </div>
     </div>
   )
 }
