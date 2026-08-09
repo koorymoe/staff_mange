@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type WorkReport } from '../api'
+import { formatCustomerCode } from '../utils/identity'
+import EntityIdentity from '../components/EntityIdentity'
 
 export default function WorkReportsReview() {
   const [reports, setReports] = useState<WorkReport[]>([])
@@ -56,6 +58,19 @@ export default function WorkReportsReview() {
                 {r.workStatus === 'COMPLETED' ? 'تم الإنجاز' : 'توقف العمل'}
               </span>
             </div>
+            {/* هوية كاملة: التقرير كان يقول كود الحجز والزبون بس */}
+            <EntityIdentity
+              fields={{
+                bookingCode: r.booking?.code,
+                customerCode: formatCustomerCode(r.booking),
+                customerName: r.booking?.customerName,
+                customerPhone: r.booking?.customerPhone || undefined,
+                address: r.booking?.address || undefined,
+                leaderName: r.booking?.leaderName || undefined,
+              }}
+              variant="full"
+              className="mt-2"
+            />
             <p className="mt-1 text-xs text-slate-400">
               الفني: {r.employee?.name || '-'} · {new Date(r.createdAt).toLocaleString('ar-IQ')}
             </p>

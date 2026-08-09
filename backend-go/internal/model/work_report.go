@@ -27,6 +27,11 @@ type WorkReportBookingBrief struct {
 	// يتصل بالزبون مباشرة من التقرير بدون ما يدور عليه بشاشة ثانية.
 	CustomerName  string  `db:"customerName" json:"customerName"`
 	CustomerPhone *string `db:"customerPhone" json:"customerPhone"`
+	// كود الزبون والليدر المسؤول — التقرير لازم يعرّف نفسه بالكامل،
+	// مو يخلي الي يقراه يدور بأي حجز وبأي زبون.
+	CustomerCode int     `db:"customerCode" json:"customerCode"`
+	Address      *string `db:"address" json:"address"`
+	LeaderName   *string `db:"leaderName" json:"leaderName"`
 }
 
 type CreateWorkReportRequest struct {

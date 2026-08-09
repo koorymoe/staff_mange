@@ -9,6 +9,7 @@ import BookingLifecycleActions from '../components/BookingLifecycleActions'
 import { formatScheduleWindow } from '../utils/schedule'
 import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
 import { matches as searchMatches } from '../utils/search'
+import EntityIdentity from '../components/EntityIdentity'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -462,11 +463,9 @@ export default function Coordinator() {
                 )}
                 {finishedBookings.map((b) => (
                   <div key={b.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
-                    <span className="font-mono text-xs font-bold text-brand-700">{b.code}</span>
-                    <span className="text-xs text-slate-600">{b.customer?.name || '—'}</span>
-                    <span className="text-[11px] text-slate-400">
-                      {(b.assignments || []).find((a) => a.employee?.isLeader)?.employee?.name || 'بلا ليدر'}
-                    </span>
+                    {/* الهوية الكاملة بدل الكود+الاسم: المنسّق يتصل
+                        بالزبون من هنا مباشرة بلا ما يفتح الحجز. */}
+                    <EntityIdentity booking={b} className="flex-1 border-0 bg-transparent px-0 py-0" />
                     <span className="mr-auto"><CompletionBadge booking={b} /></span>
                   </div>
                 ))}

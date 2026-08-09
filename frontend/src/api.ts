@@ -1206,7 +1206,7 @@ export type MonitorStage =
 export interface MonitorReview {
   id: string
   stage: MonitorStage
-  entityType: 'BOOKING' | 'LEADER_INVOICE' | 'PROCUREMENT' | 'QUALITY_FOLLOW_UP' | 'GPS_DEVICE'
+  entityType: 'BOOKING' | 'LEADER_INVOICE' | 'INVOICE_ADJUSTMENT' | 'PROCUREMENT' | 'QUALITY_FOLLOW_UP' | 'GPS_DEVICE'
   entityId: string
   title: string
   summary: string | null
@@ -1218,6 +1218,16 @@ export interface MonitorReview {
   createdAt: string
   ownerEmployee?: { id: string; name: string }
   reviewedBy?: { id: string; name: string }
+  /** هوية الحجز وراء الصف — تنبني بالسيرفر. غايبة لو الصف ما إله حجز. */
+  identity?: {
+    bookingId: string
+    bookingCode: string
+    customerCode: number
+    customerName: string
+    customerPhone: string | null
+    address: string | null
+    leaderName: string | null
+  }
 }
 
 /** ═══ تسعيرة الشبكات ═══
@@ -1356,6 +1366,19 @@ export interface Quotation {
   duration: string | null
   notes: string | null
   status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
+  createdAt: string
+}
+
+/** سطر بسجل تعديلات المحاسب على فاتورة — قبل وبعد */
+export interface LeaderInvoiceAdjustment {
+  id: string
+  invoiceId: string
+  oldExecutionCost: number; newExecutionCost: number
+  oldMaterialsTotal: number; newMaterialsTotal: number
+  oldDiscountValue: number; newDiscountValue: number
+  oldNetTotal: number; newNetTotal: number
+  reason: string
+  adjustedByName: string | null
   createdAt: string
 }
 
@@ -1732,7 +1755,7 @@ export interface WorkReport {
   notes: string | null
   createdAt: string
   employee: { id: string; name: string } | null
-  booking: { id: string; code: string; customerName: string; customerPhone?: string | null } | null
+  booking: { id: string; code: string; customerName: string; customerPhone?: string | null; customerCode?: number; address?: string | null; leaderName?: string | null } | null
 }
 
 export interface TechnicianKpi {
@@ -3137,6 +3160,8 @@ export const api = {
     request<SystemPriceCatalog[]>(`/system-price-catalog${systemName ? `?systemName=${encodeURIComponent(systemName)}` : ''}`),
   getMaterials: (code?: string) =>
     request<Material[]>(`/materials${code ? `?code=${encodeURIComponent(code)}` : ''}`),
+  getInvoiceAdjustments: (id: string) =>
+    request<LeaderInvoiceAdjustment[]>(`/leader-invoices/${id}/adjustments`),
   getLeaderInvoices: (employeeId?: string) =>
     request<LeaderInvoice[]>(`/leader-invoices${employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : ''}`),
   getLeaderInvoice: (id: string) => request<LeaderInvoice>(`/leader-invoices/${id}`),

@@ -22,6 +22,29 @@ type MonitorReview struct {
 
 	OwnerEmployee *EmployeeBrief `db:"-" json:"ownerEmployee,omitempty"`
 	ReviewedBy    *EmployeeBrief `db:"-" json:"reviewedBy,omitempty"`
+
+	// هوية الشي الي ينتراجع. صندوق المراقب كان يعرض عنوان نصّي بس —
+	// «فاتورة الليدر» بلا كود حجز ولا زبون — فالمراقب لازم يفتح كل صف
+	// حتى يعرف عن منو يحچي. طلب صاحب العمل: «مامربوط شي بشي لازم ينربط».
+	Identity *MonitorIdentity `db:"-" json:"identity,omitempty"`
+}
+
+// MonitorIdentity هوية الحجز وراء صف الصندوق — نفس حقول رأس الهوية
+// بالواجهة حتى ما تختلف التسمية بين المكانين.
+//
+// ⚠️ الحقل الفارغ يبقى فارغ ولا ينتخمّن: صف بلا حجز (جهاز جي بي اس
+// مثلاً) يرجّع بلا هوية، ما نلزق بيه أول حجز نلگاه.
+type MonitorIdentity struct {
+	BookingID     string  `db:"bookingId" json:"bookingId"`
+	BookingCode   string  `db:"bookingCode" json:"bookingCode"`
+	CustomerCode  int     `db:"customerCode" json:"customerCode"`
+	CustomerName  string  `db:"customerName" json:"customerName"`
+	CustomerPhone *string `db:"customerPhone" json:"customerPhone"`
+	Address       *string `db:"address" json:"address"`
+	LeaderName    *string `db:"leaderName" json:"leaderName"`
+
+	// مفتاح الربط الداخلي — entityType|entityId
+	Key string `db:"key" json:"-"`
 }
 
 // محطات المراقبة — بالضبط الي طلبها صاحب العمل.

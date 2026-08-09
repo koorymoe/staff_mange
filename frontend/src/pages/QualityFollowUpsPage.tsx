@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type QualityFollowUp } from '../api'
+import EntityIdentity from '../components/EntityIdentity'
+import { formatCustomerCode } from '../utils/identity'
 import BookingExecutionSummary from '../components/BookingExecutionSummary'
 import { useSession } from '../session'
 
@@ -128,6 +130,18 @@ export default function QualityFollowUpsPage() {
                   <p className="text-sm text-slate-500">
                     الحجز: {item.booking.code} — {item.booking.service?.name || 'بدون خدمة محددة'}
                   </p>
+                  {/* هوية كاملة: مهندس الجودة كان يشوف كود الحجز والخدمة بس */}
+                  <EntityIdentity
+                    fields={{
+                      bookingCode: item.booking.code,
+                      customerCode: formatCustomerCode(item.customer),
+                      customerName: item.customer?.name,
+                      customerPhone: item.customer?.phone,
+                      serviceName: item.booking.service?.name,
+                    }}
+                    variant="full"
+                    className="mt-2"
+                  />
                 </div>
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusColors[item.status]}`}>
                   {statusLabels[item.status]}

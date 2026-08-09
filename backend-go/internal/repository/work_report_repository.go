@@ -21,8 +21,19 @@ func (r *WorkReportRepository) hydrate(wr *model.WorkReport) {
 	}
 	var booking model.WorkReportBookingBrief
 	err := r.db.Get(&booking, `
-		SELECT b.id, b.code, c.name AS "customerName", c.phone AS "customerPhone"
-		FROM "Booking" b JOIN "Customer" c ON c.id = b."customerId"
+		SELECT b.id, b.code, c.name AS "customerName", c.phone AS "customerPhone",
+		       c."customerCode", b.address,
+		       -- الليدر: المشرف المعيّن، وإلا أول مكلّف مؤشّر «تيم ليدر».
+		       -- COALESCE ما تنفع هنا لأن الثاني يحتاج استعلام فرعي.
+		       COALESCE(sup.name, (
+		         SELECT e2.name FROM "BookingAssignment" ba
+		         JOIN "Employee" e2 ON e2.id = ba."employeeId"
+		         WHERE ba."bookingId" = b.id AND e2."isLeader" = true
+		         ORDER BY ba."createdAt" LIMIT 1
+		       )) AS "leaderName"
+		FROM "Booking" b
+		JOIN "Customer" c ON c.id = b."customerId"
+		LEFT JOIN "Employee" sup ON sup.id = b."projectSupervisorId"
 		WHERE b.id = $1
 	`, wr.BookingID)
 	if err == nil {

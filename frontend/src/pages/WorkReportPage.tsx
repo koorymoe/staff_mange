@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking } from '../api'
 import { useSession } from '../session'
+import EntityIdentity from '../components/EntityIdentity'
 
 type WorkStatus = 'COMPLETED' | 'STOPPED' | null
 
@@ -137,6 +138,11 @@ export default function WorkReportPage() {
                     <p className="font-bold text-brand-900">{booking.code}</p>
                     <p className="text-sm text-slate-500">{booking.customer?.name}</p>
                   </div>
+                </div>
+                <div className="hidden md:block">
+                  {/* الفني يكتب تقرير عن حجز — لازم يشوف لمنو ومنو الليدر
+                      المسؤول قبل ما يوقّع على «تم الإنجاز». */}
+                  <EntityIdentity booking={booking} />
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-left">

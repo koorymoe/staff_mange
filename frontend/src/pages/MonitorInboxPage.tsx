@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MonitorReview, type MonitorStage } from '../api'
+import EntityIdentity from '../components/EntityIdentity'
+import { formatCustomerCode } from '../utils/identity'
 
 // ═══ صندوق المراقب ═══
 //
@@ -83,6 +85,10 @@ export default function MonitorInboxPage() {
     switch (row.entityType) {
       case 'BOOKING': return `/bookings?focus=${row.entityId}`
       case 'LEADER_INVOICE': return `/leader-invoices?focus=${row.entityId}`
+      // صف التعديل مفتاحه معرّف **التعديل** مو الفاتورة (وإلا الفهرس
+      // الفريد يبلع التعديل الثاني)، فالرابط يروح للحجز لو موجود.
+      case 'INVOICE_ADJUSTMENT':
+        return row.identity ? `/bookings?focus=${row.identity.bookingId}` : '/leader-invoices'
       case 'PROCUREMENT': return '/procurement'
       case 'QUALITY_FOLLOW_UP': return '/quality-follow-ups'
       case 'GPS_DEVICE': return '/gps'
@@ -157,6 +163,22 @@ export default function MonitorInboxPage() {
                   {row.ownerEmployee && <>({row.ownerEmployee.name}) </>}
                   • {new Date(row.createdAt).toLocaleString('en-GB')}
                 </p>
+                {/* المراقب كان يقرا «فاتورة الليدر» وبس، ولازم يفتح كل صف
+                    حتى يعرف عن منو يحچي. الهوية تجي جاهزة من السيرفر. */}
+                {row.identity && (
+                  <EntityIdentity
+                    variant="full"
+                    className="mt-2"
+                    fields={{
+                      bookingCode: row.identity.bookingCode,
+                      customerCode: formatCustomerCode({ customerCode: row.identity.customerCode }),
+                      customerName: row.identity.customerName,
+                      customerPhone: row.identity.customerPhone || undefined,
+                      address: row.identity.address || undefined,
+                      leaderName: row.identity.leaderName || undefined,
+                    }}
+                  />
+                )}
               </div>
               {row.status !== 'PENDING' && (
                 <span className={`rounded-full px-3 py-1 text-xs font-bold ${row.status === 'FLAGGED' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>

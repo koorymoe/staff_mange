@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type SuggestedCrewMember } from '../api'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
+import EntityIdentity from '../components/EntityIdentity'
 
 // ═══ حجوزات تحتاج إكمال ═══
 //
@@ -86,7 +87,7 @@ export default function PartialBookings() {
                 </span>
               )}
             </div>
-            {b.address && <p className="mt-1 text-xs text-slate-500">📍 {b.address}</p>}
+            <EntityIdentity booking={b} variant="full" className="mt-2" />
 
             <BookingProgressTimeline bookingId={b.id} booking={b} />
 

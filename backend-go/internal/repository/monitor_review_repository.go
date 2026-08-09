@@ -72,6 +72,7 @@ func (r *MonitorReviewRepository) List(stage, status, ownerRole string, limit in
 		return nil, err
 	}
 	r.hydrate(rows)
+	r.hydrateIdentity(rows)
 	return rows, nil
 }
 
@@ -107,6 +108,7 @@ func (r *MonitorReviewRepository) Decide(id, monitorID string, req model.DecideM
 	}
 	rows := []model.MonitorReview{row}
 	r.hydrate(rows)
+	r.hydrateIdentity(rows)
 	return &rows[0], nil
 }
 
@@ -155,6 +157,108 @@ func (r *MonitorReviewRepository) hydrate(rows []model.MonitorReview) {
 				c := b
 				rows[i].ReviewedBy = &c
 			}
+		}
+	}
+}
+
+// hydrateIdentity يجيب هوية الحجز وراء كل صف — بدفعة وحدة.
+//
+// كل نوع كيان يوصل للحجز بطريقه: الحجز نفسه مباشرة، والفاتورة
+// وتعديلها والمشتريات عبر "bookingId"، ومتابعة الجودة عبر قيدها
+// الفريد. الأنواع الي ما إلها حجز (جهاز جي بي اس) ما تطلع بالنتيجة
+// وتبقى بلا هوية — وهذا الصحيح.
+//
+// ⚠️ الفشل ما يوقف العرض: الهوية زينة مو شرط. لو الاستعلام طاح
+// يرجع الصندوق بلا هوية بدل ما يطيح كله.
+func (r *MonitorReviewRepository) hydrateIdentity(rows []model.MonitorReview) {
+	if len(rows) == 0 {
+		return
+	}
+	// نجمع المعرّفات حسب النوع حتى ما ندير استعلام لكل صف
+	byType := map[string][]string{}
+	for i := range rows {
+		byType[rows[i].EntityType] = append(byType[rows[i].EntityType], rows[i].EntityID)
+	}
+
+	// كل نوع → استعلام يرجّع (key, bookingId)
+	sources := map[string]string{
+		"BOOKING":            `SELECT 'BOOKING|' || id AS key, id AS "bookingId" FROM "Booking" WHERE id IN (?)`,
+		"LEADER_INVOICE":     `SELECT 'LEADER_INVOICE|' || id AS key, "bookingId" FROM "LeaderInvoice" WHERE id IN (?) AND "bookingId" IS NOT NULL`,
+		"INVOICE_ADJUSTMENT": `SELECT 'INVOICE_ADJUSTMENT|' || a.id AS key, i."bookingId" FROM "LeaderInvoiceAdjustment" a JOIN "LeaderInvoice" i ON i.id = a."invoiceId" WHERE a.id IN (?) AND i."bookingId" IS NOT NULL`,
+		"PROCUREMENT":        `SELECT 'PROCUREMENT|' || id AS key, "bookingId" FROM "ProcurementRequest" WHERE id IN (?) AND "bookingId" IS NOT NULL`,
+		"QUALITY_FOLLOW_UP":  `SELECT 'QUALITY_FOLLOW_UP|' || id AS key, "bookingId" FROM "QualityFollowUp" WHERE id IN (?)`,
+	}
+
+	type link struct {
+		Key       string `db:"key"`
+		BookingID string `db:"bookingId"`
+	}
+	links := []link{}
+	for typ, ids := range byType {
+		tmpl, ok := sources[typ]
+		if !ok {
+			continue
+		}
+		q, args, err := sqlx.In(tmpl, ids)
+		if err != nil {
+			continue
+		}
+		part := []link{}
+		if err := r.db.Select(&part, r.db.Rebind(q), args...); err != nil {
+			continue
+		}
+		links = append(links, part...)
+	}
+	if len(links) == 0 {
+		return
+	}
+
+	bookingIDs := map[string]bool{}
+	for _, l := range links {
+		bookingIDs[l.BookingID] = true
+	}
+	list := make([]string, 0, len(bookingIDs))
+	for id := range bookingIDs {
+		list = append(list, id)
+	}
+
+	// الليدر: المشرف المعيّن، وإلا أول مكلّف مؤشّر «تيم ليدر».
+	// ⚠️ ما نرجّع أول فني لما ماكو ليدر — تنسب مسؤولية لواحد ما تحمّلها.
+	q, args, err := sqlx.In(`
+		SELECT b.id AS "bookingId", b.code AS "bookingCode",
+		       c."customerCode", c.name AS "customerName", c.phone AS "customerPhone",
+		       b.address,
+		       COALESCE(sup.name, (
+		         SELECT e2.name FROM "BookingAssignment" ba
+		         JOIN "Employee" e2 ON e2.id = ba."employeeId"
+		         WHERE ba."bookingId" = b.id AND e2."isLeader" = true
+		         ORDER BY ba."createdAt" LIMIT 1
+		       )) AS "leaderName"
+		FROM "Booking" b
+		JOIN "Customer" c ON c.id = b."customerId"
+		LEFT JOIN "Employee" sup ON sup.id = b."projectSupervisorId"
+		WHERE b.id IN (?)`, list)
+	if err != nil {
+		return
+	}
+	idents := []model.MonitorIdentity{}
+	if err := r.db.Select(&idents, r.db.Rebind(q), args...); err != nil {
+		return
+	}
+	byBooking := map[string]model.MonitorIdentity{}
+	for _, it := range idents {
+		byBooking[it.BookingID] = it
+	}
+	byKey := map[string]model.MonitorIdentity{}
+	for _, l := range links {
+		if it, ok := byBooking[l.BookingID]; ok {
+			byKey[l.Key] = it
+		}
+	}
+	for i := range rows {
+		if it, ok := byKey[rows[i].EntityType+"|"+rows[i].EntityID]; ok {
+			c := it
+			rows[i].Identity = &c
 		}
 	}
 }

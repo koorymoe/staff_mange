@@ -12,6 +12,7 @@ import {
   type Booking,
   type DirectedProject,
 } from '../api'
+import EntityIdentity from '../components/EntityIdentity'
 
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
 // اختيار حتى 3 منظومات، بنود تنفيذ لكل منظومة (عدد/ارتفاع/تسليك/طول كيبل/برمجة)،
@@ -390,6 +391,12 @@ export default function LeaderInvoiceNew() {
               </optgroup>
             )}
           </select>
+          {/* بعد الاختيار: الهوية الكاملة للحجز المربوط. الفاتورة الغلط
+              تنكتب لما الليدر يختار حجز ويطلع الزبون واحد ثاني. */}
+          {(() => {
+            const linked = completedBookings.find((x) => x.id === selectedBookingId)
+            return linked ? <EntityIdentity booking={linked} variant="full" className="mt-2" /> : null
+          })()}
           <p className="mt-1 text-xs text-slate-500">
             {myProjects.length > 0
               ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`

@@ -1,7 +1,117 @@
 import { useEffect, useState } from 'react'
-import { api, type LeaderInvoice } from '../api'
+import { api, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
+import EntityIdentity from '../components/EntityIdentity'
+import { formatCustomerCode } from '../utils/identity'
 import { useSession } from '../session'
 import { matches } from '../utils/search'
+import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
+
+// ═══ طباعة فاتورة الليدر ═══
+//
+// هاي أكثر ورقة تطلع للزبون، وكانت **ماكو بيها طباعة أصلاً** — المحاسب
+// يصوّر الشاشة أو ينسخ الأرقام بالإيد.
+//
+// الرأس نفسه رأس بقية المطبوعات (`printIdentityHtml`) حتى الورقة تعرّف
+// نفسها: كود الحجز وكود الزبون واسم الليدر المسؤول.
+//
+// ⚠️ كل نص زبون أو مادة يمرّ بـ`esc()`. اسم بيه `<` يكسر الصفحة، واسم
+// بيه وسم فيه onerror ينفّذ بجلسة الي يفتح المعاينة.
+//
+// ⚠️ سجل التعديلات ينطبع هو هم: الورقة الي تعرض الرقم الجديد بلا ما
+// تگول إنه انتعدّل تخلي القارئ يظن إنه الأصلي.
+function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]) {
+  const money = (n: number) => `${Number(n || 0).toLocaleString('en-US')} د.ع`
+  const identity = printIdentityHtml({
+    bookingCode: inv.bookingCode || undefined,
+    customerCode: formatCustomerCode(inv.booking?.customer) || undefined,
+    customerName: inv.customerName || inv.booking?.customer?.name || undefined,
+    customerPhone: inv.customerPhone || inv.booking?.customer?.phone || undefined,
+    address: inv.customerAddress || inv.booking?.address || undefined,
+    serviceName: inv.booking?.service?.name || undefined,
+    leaderName: inv.employeeName || undefined,
+  })
+
+  const itemRows = inv.items
+    .map(
+      (it) => `<tr><td>${esc(it.itemName)} <small>${esc(it.systemName)}</small></td>
+        <td>${esc(it.count)}</td>
+        <td><small>${esc(
+          [it.heightMeters ? `ارتفاع ${it.heightMeters}م` : '', it.cableLengthMeters ? `كيبل ${it.cableLengthMeters}م` : '']
+            .filter(Boolean)
+            .join(' · '),
+        )}</small></td></tr>`,
+    )
+    .join('')
+
+  const materialRows = inv.materials
+    .map(
+      (m) => `<tr><td>${esc(m.name)}</td><td>${esc(m.quantity)}</td><td>${esc(money(m.lineTotal))}</td></tr>`,
+    )
+    .join('')
+
+  const adjRows = adjustments
+    .map((a) => {
+      const changed = (
+        [
+          ['تكاليف التنفيذ', a.oldExecutionCost, a.newExecutionCost],
+          ['مجموع المواد', a.oldMaterialsTotal, a.newMaterialsTotal],
+          ['الخصم', a.oldDiscountValue, a.newDiscountValue],
+          ['المجموع الصافي', a.oldNetTotal, a.newNetTotal],
+        ] as [string, number, number][]
+      ).filter(([, o, n]) => o !== n)
+      if (changed.length === 0) return ''
+      const lines = changed
+        .map(([label, o, n]) => `${esc(label)}: <s>${esc(money(o))}</s> ← <b>${esc(money(n))}</b>`)
+        .join('<br>')
+      return `<div class="adj">${lines}<br>السبب: ${esc(a.reason)}
+        — ${esc(a.adjustedByName || 'غير معروف')}، ${esc(new Date(a.createdAt).toLocaleString('ar-IQ'))}</div>`
+    })
+    .join('')
+
+  const html = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
+<title>فاتورة ${esc(inv.accountingCode)}</title><style>
+  body{font-family:'Segoe UI',Tahoma,sans-serif;padding:22px;color:#0f2040}
+  h1{font-size:19px;margin:0} .code{font-family:monospace;color:#1d4ed8;font-size:13px}
+  table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
+  th,td{border-bottom:1px solid #e2e8f0;padding:5px;text-align:right}
+  th{color:#64748b;font-weight:600} small{color:#94a3b8}
+  h2{font-size:13px;margin:16px 0 2px;color:#334155}
+  .tot{margin-top:14px;border-top:2px solid #0f2040;padding-top:8px;font-size:13.5px}
+  .tot div{display:flex;justify-content:space-between;padding:2px 0}
+  .tot .net{font-size:16px;font-weight:800;border-top:1px solid #cbd5e1;margin-top:5px;padding-top:5px}
+  .adj{border:1px solid #fcd34d;background:#fffbeb;border-radius:7px;padding:7px 10px;
+       font-size:11.5px;margin-top:5px}
+  ${printIdentityCss}
+  @media print{body{padding:0}}
+</style></head><body>
+  <h1>فاتورة ليدر</h1>
+  <p class="code">${esc(inv.accountingCode)}${inv.externalInvoiceNumber ? ` · محاسبياً: ${esc(inv.externalInvoiceNumber)}` : ''}
+    · ${esc(new Date(inv.createdAt).toLocaleString('ar-IQ'))}</p>
+  ${identity}
+  <h2>بنود التنفيذ — ${esc(inv.systems.join('، ') || '—')} · ${esc(inv.totalDeviceCount)} جهاز</h2>
+  <table><thead><tr><th>البند</th><th>العدد</th><th>تفاصيل</th></tr></thead>
+    <tbody>${itemRows || '<tr><td colspan="3"><small>ماكو بنود</small></td></tr>'}</tbody></table>
+  ${materialRows ? `<h2>المواد</h2><table><thead><tr><th>المادة</th><th>الكمية</th><th>المجموع</th></tr></thead><tbody>${materialRows}</tbody></table>` : ''}
+  <div class="tot">
+    <div><span>تكاليف التنفيذ</span><b>${esc(money(inv.executionCost))}</b></div>
+    <div><span>مجموع المواد</span><b>${esc(money(inv.materialsTotal))}</b></div>
+    <div><span>الخصم</span><b>${esc(money(inv.discountValue))}</b></div>
+    <div class="net"><span>المجموع الصافي</span><span>${esc(money(inv.netTotal))}</span></div>
+  </div>
+  ${adjRows ? `<h2>تعديلات المحاسب</h2>${adjRows}` : ''}
+</body></html>`
+
+  const w = window.open('', '_blank')
+  // مانع النوافذ ممكن يرجّع null — بلا هذا الفحص الطباعة تطيح بصمت
+  if (!w) {
+    alert('المتصفح منع فتح نافذة الطباعة — سمح النوافذ المنبثقة لهذا الموقع')
+    return
+  }
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  w.print()
+}
 
 // قائمة بسيطة لعرض فواتير الليدر السابقة (كل الفواتير أو حسب الموظف).
 // الفاتورة تضل SUBMITTED (ظاهرة عند الليدر) لين مدير/محاسب يعتمدها لـAPPROVED —
@@ -92,6 +202,8 @@ export default function LeaderInvoicesListPage() {
   }
   const sumShown = shown.reduce((t, i) => t + i.netTotal, 0)
   const [details, setDetails] = useState<LeaderInvoice | null>(null)
+  // سجل تعديلات المحاسب — «شنو كان وشنو صار ومنو غيّره»
+  const [adjustments, setAdjustments] = useState<LeaderInvoiceAdjustment[]>([])
 
   const load = () => { api.getLeaderInvoices().then(setInvoices).finally(() => setLoading(false)) }
   useEffect(load, [])
@@ -190,7 +302,12 @@ export default function LeaderInvoicesListPage() {
                     <span className="font-bold text-slate-700">{inv.employeeName || '—'}</span>
                     {inv.bookingCode && <div className="text-xs text-slate-400">حجز {inv.bookingCode}</div>}
                   </td>
-                  <td className="px-4 py-3">{inv.customerName || inv.booking?.customer?.name || '—'}</td>
+                  <td className="px-4 py-3">
+                    {inv.customerName || inv.booking?.customer?.name || '—'}
+                    {formatCustomerCode(inv.booking?.customer) && (
+                      <div className="font-mono text-xs text-slate-400">{formatCustomerCode(inv.booking?.customer)}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{inv.systems.join('، ')}</td>
                   <td className="px-4 py-3">{inv.executionCost.toLocaleString()}</td>
                   <td className="px-4 py-3">{inv.materialsTotal.toLocaleString()}</td>
@@ -208,7 +325,12 @@ export default function LeaderInvoicesListPage() {
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
-                        onClick={() => setDetails(inv)}
+                        onClick={() => {
+                          setDetails(inv)
+                          // نجيب السجل عند الفتح بس — ما نثقّل القائمة
+                          setAdjustments([])
+                          api.getInvoiceAdjustments(inv.id).then(setAdjustments).catch(() => setAdjustments([]))
+                        }}
                         className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200"
                       >
                         📋 التفاصيل
@@ -424,7 +546,15 @@ export default function LeaderInvoicesListPage() {
                 <h3 className="text-lg font-bold text-brand-900">تفاصيل الفاتورة</h3>
                 <p className="font-mono text-sm text-brand-700">{details.accountingCode}</p>
               </div>
-              <button onClick={() => setDetails(null)} className="rounded-lg px-3 py-1 text-slate-400 hover:bg-slate-100">✕</button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => printInvoice(details, adjustments)}
+                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700"
+                >
+                  🖨️ طباعة
+                </button>
+                <button onClick={() => setDetails(null)} className="rounded-lg px-3 py-1 text-slate-400 hover:bg-slate-100">✕</button>
+              </div>
             </div>
 
             <section className="mt-4 rounded-xl bg-slate-50 p-4">
@@ -448,6 +578,55 @@ export default function LeaderInvoicesListPage() {
                 )}
               </div>
             </section>
+
+            {/* رأس الهوية الموحّد — نفس الي بكل الشاشات */}
+            <EntityIdentity
+              booking={details.booking}
+              fields={{
+                customerName: details.customerName || undefined,
+                customerPhone: details.customerPhone || undefined,
+                address: details.customerAddress || undefined,
+                bookingCode: details.bookingCode || undefined,
+                leaderName: details.employeeName || undefined,
+              }}
+              variant="full"
+              className="mt-3"
+            />
+
+            {/* ═══ شنو غيّر المحاسب ═══
+                قبل، الفاتورة تعرض «عدّل المحاسب المبالغ» وسببه بس —
+                بلا ما تقول شنو كان الرقم. وهسه صار محفوظ. */}
+            {adjustments.length > 0 && (
+              <section className="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4">
+                <h4 className="mb-2 text-sm font-bold text-amber-900">✏️ تعديلات المحاسب على المبالغ</h4>
+                <div className="space-y-2">
+                  {adjustments.map((a) => {
+                    const rows: [string, number, number][] = [
+                      ['التنفيذ', a.oldExecutionCost, a.newExecutionCost],
+                      ['المواد', a.oldMaterialsTotal, a.newMaterialsTotal],
+                      ['الخصم', a.oldDiscountValue, a.newDiscountValue],
+                      ['الصافي', a.oldNetTotal, a.newNetTotal],
+                    ]
+                    return (
+                      <div key={a.id} className="rounded-lg bg-white px-3 py-2 text-xs">
+                        <p className="font-bold text-slate-700">
+                          {a.adjustedByName || 'محاسب'} • {new Date(a.createdAt).toLocaleString('en-GB')}
+                        </p>
+                        {/* المبلغ الي ما انتغيّر ما ينعرض — ضجيج */}
+                        {rows.filter(([, o, n]) => o !== n).map(([label, o, n]) => (
+                          <p key={label} className="mt-0.5">
+                            {label}: <span className="text-slate-500 line-through">{o.toLocaleString()}</span>
+                            {' → '}
+                            <b className="text-amber-900">{n.toLocaleString()}</b>
+                          </p>
+                        ))}
+                        <p className="mt-1 text-slate-600">السبب: {a.reason}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
 
             <section className="mt-3 rounded-xl bg-blue-50 p-4">
               <h4 className="mb-2 text-sm font-bold text-blue-900">الزبون والحجز</h4>
