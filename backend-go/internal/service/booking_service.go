@@ -123,6 +123,7 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		MapLatitude:        req.MapLatitude,
 		MapLongitude:       req.MapLongitude,
 		LocationUrl:        req.LocationUrl,
+		DeviceCount:        req.DeviceCount,
 	}
 
 	// حجز داخل الشركة: نثبت workLocation من هنا حتى إحصائية «الأعمال
@@ -152,6 +153,27 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		b.InternalEmployeePhone = req.InternalEmployeePhone
 		b.InternalDepartment = req.InternalDepartment
 		b.InternalApproved = req.InternalApproved
+	}
+
+	// ═══ الحقول الإجبارية حسب الخدمة ═══
+	//
+	// «موظف المبيعات من يسوي حجز جي بي اس يطلعله ريكوست فيلد».
+	//
+	// ⚠️ الفحص بالسيرفر مو بالواجهة بس: الواجهة تنخدع (طلب مباشر،
+	// نسخة قديمة بالكاش)، والحجز الناقص ينحفظ وما ينكشف إلا بعد أيام
+	// لما الفني يوصل ويلگى ماكو عدد أجهزة ولا نوع مركبة.
+	//
+	// ⚠️ شرط تعبئة بس — ماكو ولا رقم ولا حساب ينتغيّر.
+	if len(serviceIDs) > 0 {
+		needs, err := s.repo.AnyServiceRequiresDeviceInfo(serviceIDs)
+		if err == nil && needs {
+			if b.DeviceCount == nil || *b.DeviceCount <= 0 {
+				return nil, errors.New("عدد الأجهزة مطلوب لهذي الخدمة")
+			}
+			if b.VehicleType == nil || strings.TrimSpace(*b.VehicleType) == "" {
+				return nil, errors.New("نوع المركبة مطلوب لهذي الخدمة")
+			}
+		}
 	}
 
 	if err := s.repo.Create(b); err != nil {

@@ -255,6 +255,9 @@ type CreateBookingRequest struct {
 	MapLongitude       *float64 `json:"mapLongitude,omitempty"`
 	// رابط الموقع (كوكل ماب) — بديل عن التأشير على الخريطة، نفس فكرة الموردين
 	LocationUrl *string `json:"locationUrl,omitempty"`
+	// تفاصيل الأجهزة — إجبارية للخدمات المؤشّرة requiresDeviceInfo
+	// (جي بي اس). عمودين موجودين أصلاً بجدول الحجز.
+	DeviceCount *int `json:"deviceCount,omitempty"`
 
 	// حجز داخل الشركة: نوع الحجز INTERNAL مع معلومات الموظف الطالب.
 	// الخدمات والموقع يبقون مثل أي حجز.

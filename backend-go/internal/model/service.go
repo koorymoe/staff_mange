@@ -23,6 +23,11 @@ type Service struct {
 	// السبعة الجديدة: حدادة/نجارة/صباغة/سيراميك/لبخ/تأسيس ماء ومجاري/جبس بورد) —
 	// نفس تقسيم model.Employee.Division، يحدد أي كتالوج مهارات يظهر لأي شعبة.
 	Division  string    `db:"division" json:"division"`
+	// RequiresDeviceInfo الخدمة تطلب تفاصيل الأجهزة وقت الحجز (عدد
+	// الأجهزة ونوع المركبة) — جي بي اس أول حالة. صاحب العمل يأشّر
+	// غيرها بلا تعديل كود.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
+	RequiresDeviceInfo bool `db:"requiresDeviceInfo" json:"requiresDeviceInfo"`
 	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
 	Skills    []Skill   `db:"-" json:"skills"`
 }

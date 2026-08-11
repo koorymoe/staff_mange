@@ -2,6 +2,8 @@ package repository
 
 import (
 	"fmt"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/jmoiron/sqlx"
 
@@ -156,6 +158,28 @@ func (r *RevolvingFundRepository) SubmitSettlement(employeeID string, req model.
 	}
 	if req.SpentAmount > 0 && (req.ReceiptImage == nil || *req.ReceiptImage == "") {
 		return nil, fmt.Errorf("لازم ترفع صورة الوصل للمبلغ المصروف")
+	}
+	// ═══ بيان الصرف إجباري ═══
+	//
+	// «الموظف الي أحوّله فلوس من الدوار، لما يسوي حسابه يطلعله
+	// ريكوست فيلد».
+	//
+	// الوصل يثبت إن الفلوس انصرفت، بس **ما يگول على شنو**. بدون بيان
+	// المحاسب يشوف «صرف ٢٠٠ ألف» ولازم يتصل يسأل، وبعد أسبوع الموظف
+	// ما يتذكر. والحجز المربوط يجاوب لحاله، فأي واحد منهم يكفي.
+	//
+	// ⚠️ شرط تعبئة بس — ماكو مبلغ ولا رصيد ينتغيّر.
+	if req.SpentAmount > 0 {
+		hasBooking := req.BookingID != nil && strings.TrimSpace(*req.BookingID) != ""
+		note := ""
+		if req.Notes != nil {
+			note = strings.TrimSpace(*req.Notes)
+		}
+		// ⚠️ العدّ بالحروف مو بالبايتات: «شريت» عربية ٥ حروف بس ١٠
+		// بايتات، وlen() چان يقبل كلمة وحدة كأنها بيان كامل.
+		if !hasBooking && utf8.RuneCountInString(note) < 5 {
+			return nil, fmt.Errorf("اكتب على شنو انصرفت الفلوس، أو اربطها بحجز")
+		}
 	}
 
 	var t model.RevolvingFundTxn

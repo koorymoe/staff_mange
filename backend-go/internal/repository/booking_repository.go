@@ -1555,3 +1555,18 @@ func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
 		model.StageBucketPostponedAfter:  row.PostAfter,
 	}, nil
 }
+
+// AnyServiceRequiresDeviceInfo هل وحدة من هذي الخدمات تطلب تفاصيل أجهزة؟
+//
+// استعلام واحد لكل الخدمات مو واحد لكل خدمة — الحجز ممكن إله عدة
+// خدمات، ولفّة عليهن تعني عدة رحلات لقاعدة البيانات بكل إنشاء حجز.
+func (r *BookingRepository) AnyServiceRequiresDeviceInfo(serviceIDs []string) (bool, error) {
+	if len(serviceIDs) == 0 {
+		return false, nil
+	}
+	var n int
+	err := r.db.Get(&n, `
+		SELECT COUNT(*) FROM "Service"
+		WHERE id = ANY($1) AND "requiresDeviceInfo"`, pq.Array(serviceIDs))
+	return n > 0, err
+}

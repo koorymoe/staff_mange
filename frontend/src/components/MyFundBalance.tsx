@@ -39,6 +39,14 @@ export default function MyFundBalance() {
     const r = Number(returned) || 0
     if (s + r <= 0) { alert('اكتب المبلغ المصروف أو المرتجع'); return }
     if (s > 0 && !receipt) { alert('لازم ترفع صورة الوصل للمبلغ المصروف'); return }
+    // ═══ بيان الصرف إجباري ═══
+    // الوصل يثبت إن الفلوس انصرفت بس ما يگول **على شنو**. بدونه
+    // المحاسب لازم يتصل يسأل، وبعد أسبوع الموظف ما يتذكر.
+    // ⚠️ الطول بالحروف مو بالبايتات — العربي حرفه بايتين وأكثر.
+    if (s > 0 && [...notes.trim()].length < 5) {
+      alert('اكتب على شنو انصرفت الفلوس — بيان مختصر يكفي')
+      return
+    }
     // الدوار الي أخذ منه — ناخذه من آخر عملية تسليم
     const lastDisburse = txns.find((t) => t.kind === 'DISBURSE')
     if (!lastDisburse) { alert('ماكو عملية تسليم مسجّلة'); return }
@@ -112,8 +120,11 @@ export default function MyFundBalance() {
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right" />
             {receipt && <img src={receipt} alt="الوصل" className="mt-2 max-h-48 w-full rounded-lg border border-slate-200 object-contain" />}
 
-            <label className="mt-3 mb-1 block text-sm font-medium text-slate-600">ملاحظات</label>
+            <label className="mt-3 mb-1 block text-sm font-medium text-slate-600">
+              على شنو انصرفت الفلوس؟ <span className="text-red-600">*</span>
+            </label>
             <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
+              placeholder="مثال: شريت كيبل ٥٠ متر وموصلات لحجز B120"
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
 
             <div className="mt-4 flex gap-3">

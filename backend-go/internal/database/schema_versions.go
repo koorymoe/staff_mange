@@ -239,6 +239,9 @@ func versionedMigrations() []Migration {
 	// 0243: نواة الذكاء الاصطناعي — إشارات وأدلة وأحكام ومؤشرات.
 	// ⚠️ الأدلة تنجمع بالكود بلا اشتراك؛ الحكم بس ينتظر المنصّة.
 	result = append(result, aiCoreMigration()...)
+	// 0244: الحقول الإجبارية — الخدمة تقدر تطلب تفاصيل أجهزة وقت الحجز.
+	// ⚠️ شروط تعبئة بس، ماكو ولا رقم ينتغيّر.
+	result = append(result, requiredFieldsMigration()...)
 	return result
 }
 

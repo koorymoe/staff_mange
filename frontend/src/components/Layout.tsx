@@ -77,7 +77,7 @@ export const navItems: NavItem[] = [
   // حساب تكلفة التنصيب للتنفيذ — بصلاحية execution_cost، مو مفتوح
   // للكل. كان بلا أي قيد فالمصمم والمبيعات يشوفون محرك التسعير.
   {
-    to: '/leader-invoices/new?mode=estimate', label: 'حساب تكلفة التنصيب للتنفيذ',
+    to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب',
     permission: 'execution_cost',
     // للميدان نفس الشاشة موجودة داخل «العمل» باسمها المفهوم عندهم
     // («حساب كلفة (استفسار زبون)») — ما تتكرر فوق بعنوان ثاني.
@@ -97,7 +97,7 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/my-ranking', label: 'تصنيفي', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
       // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
-      { to: '/performance-review', label: 'تقييم فريقي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'performance_review' },
+      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'performance_review' },
     ],
   },
 
@@ -124,7 +124,7 @@ export const navItems: NavItem[] = [
           { to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
           { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
           // تقييم الأداء (منفصل عن الكي بي اي) — تيم ليدرات الفرق
-          { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
+          { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
           // طلبات الكادر الواردة من إدارة المشاريع — إداري الكوادر يلبيها
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
           { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
@@ -156,7 +156,7 @@ export const navItems: NavItem[] = [
           { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
-          { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+          { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
           { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control' },
           // شاشة البت بطلبات حذف الحجوزات. كانت مدفونة جوّا وحدة العلاقات
           // العامة، ووحدة كاملة تنحجب عن أي واحد ما عنده صلاحية الوحدة —
@@ -188,13 +188,13 @@ export const navItems: NavItem[] = [
         // إدارة المشاريع صارت صلاحية: أي موظف عنده project_management يشوفها بغض النظر عن دوره
         to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
         children: [
-          { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
+          { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
           { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, permission: 'project_management' },
           { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
-          { to: '/products', label: 'المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
+          { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
         ],
       },
       {
@@ -206,7 +206,7 @@ export const navItems: NavItem[] = [
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
-      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></>, permission: 'execution_cost' },
+      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, permission: 'execution_cost' },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
@@ -248,14 +248,14 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
       { to: '/work-reports', label: 'التقارير', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'work_reports' },
-      { to: '/leader-invoices', label: 'فواتيري', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'leader_invoices_view' },
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'leader_invoices_view' },
       { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL', 'PROJECT_MANAGER'] },
       // حسبتان مختلفتان بنفس المحرك:
       //  • «استفسار زبون» = رقم بس، ما ينحفظ ولا ينربط بحجز — للزبون
       //    الي يسأل عن السعر قبل ما يحجز.
       //  • «حساب كلفة زبون (حجز)» = نفس الحساب بس مربوط بالحجز الي
       //    راح يطلع له الليدر، ويترحّل فاتورة للمحاسب.
-      { to: '/leader-invoices/new?mode=estimate', label: 'حساب كلفة (استفسار زبون)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, permission: 'execution_cost' },
+      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, permission: 'execution_cost' },
       { to: '/leader-invoices/new', label: 'حساب كلفة زبون (حجز)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
       // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
       { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'execution_cost' },
@@ -276,9 +276,9 @@ export const navItems: NavItem[] = [
       },
       {
         // "المشاريع" للميدان: يفتح مشروع جديد، أو يتابع الي انوجّه له
-        to: '/tech-projects-group', label: 'المشاريع', icon: <></>,
+        to: '/tech-projects-group', label: '🏗️ المشاريع', icon: <></>,
         children: [
-          { to: '/projects', label: 'إضافة مشروع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
+          { to: '/projects', label: '🏗️ المشاريع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
           { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'my_projects' },
         ],
       },
@@ -330,7 +330,7 @@ export const navItems: NavItem[] = [
       // شغلتان مختلفتان: «إضافة منتج» تضيفه لكتالوج النظام مباشرة
       // بكل مزاياه (التوفر، الخدمة، المواصفات، المصدر، الموديل)،
       // و«طلبات المنتجات» اقتراح ينتظر موافقة المدير.
-      { to: '/products', label: '➕ إضافة منتج', icon: <></>, permission: 'unit_technicians' },
+      { to: '/products', label: '📦 المنتجات', icon: <></>, permission: 'unit_technicians' },
       { to: '/product-requests', label: 'طلبات المنتجات', icon: <></>, permission: 'unit_technicians' },
       { to: '/service-studies', label: 'دراسات الخدمات', icon: <></>, permission: 'unit_technicians' },
       { to: '/training-management', label: 'مفردات التدريب', icon: <></>, permission: 'content_technician' },
@@ -374,7 +374,7 @@ export const navItems: NavItem[] = [
       { to: '/monitor-inbox', label: '👁️ صندوق المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
-      { to: '/complaints', label: 'الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+      { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
       // إدارة سياسة الخصوصية (إضافة/تعديل النقاط) — صلاحية مستقلة تماماً عن
       // قراءتها. القراءة متاحة لكل موظف من الرابط فوق "تسجيل الخروج".
       { to: '/privacy-policy', label: '🔒 إدارة سياسة الخصوصية', icon: <></>, permission: 'privacy_policy_manage' },
@@ -401,7 +401,7 @@ export const navItems: NavItem[] = [
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
-      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب للتنفيذ', icon: <></>, permission: 'execution_cost' },
+      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, permission: 'execution_cost' },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
@@ -416,25 +416,25 @@ export const navItems: NavItem[] = [
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
       { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'staff_requests' },
-      { to: '/performance-review', label: 'تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'performance_review' },
+      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'performance_review' },
     ],
   },
   {
     to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
     unitPermission: 'unit_projects',
     children: [
-      { to: '/projects', label: 'المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
+      { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
       { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
       { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
-      { to: '/products', label: 'المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
+      { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
     ],
   },
 
   // ── اختصارات سريعة (أهم إجراءات المبيعات) ──
   { to: '/sales', label: 'حجز جديد', icon: <I d="M12 5v14M5 12h14" />, roles: ['SALES'], unlockPermission: 'create_booking' },
-  { to: '/complaints', label: 'حجز شكوى', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, roles: ['SALES'] },
+  { to: '/complaints', label: '⚠️ الشكاوى', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, roles: ['SALES'] },
 
   // ── مجموعة GPS (تلم كل طلبات الـ GPS الخاصة بالمبيعات تحت باب وحد) ──
   {

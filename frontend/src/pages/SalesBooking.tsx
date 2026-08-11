@@ -69,6 +69,12 @@ export default function SalesBooking() {
   // خدمات متعددة: الزبون ممكن يطلب أكثر من منظومة بنفس الحجز
   // (مثلاً منظومة صوت + كاميرات). أول خدمة تنعتبر الرئيسية.
   const [serviceIds, setServiceIds] = useState<string[]>([])
+  // تفاصيل الأجهزة — تنطلب بس للخدمات المؤشّرة، والسيرفر يفرضها هم
+  const [deviceCount, setDeviceCount] = useState('')
+  const [gpsVehicleType, setGpsVehicleType] = useState('')
+  // الخدمة المختارة تطلب تفاصيل أجهزة؟ العلم يجي من السيرفر مو مكتوب
+  // بالكود — صاحب العمل يأشّر أي خدمة ثانية بلا نشر نسخة جديدة.
+  const needsDeviceInfo = services.some((s) => serviceIds.includes(s.id) && s.requiresDeviceInfo)
   // رابط الموقع (كوكل ماب) — بديل عن التحديد على الخريطة، نفس فكرة الموردين
   const [locationUrl, setLocationUrl] = useState('')
   const [notes, setNotes] = useState('')
@@ -288,6 +294,10 @@ export default function SalesBooking() {
         customerId: customer.id,
         serviceId: serviceIds[0] || undefined,
         serviceIds: serviceIds.length ? serviceIds : undefined,
+        // ⚠️ Number('') = صفر مو فاضي — بلا الفحص يمشي صفر للسيرفر
+        // وينرفض برسالة «عدد الأجهزة مطلوب» والموظف كاتبه فعلاً.
+        deviceCount: needsDeviceInfo && deviceCount ? Number(deviceCount) : undefined,
+        vehicleType: needsDeviceInfo && gpsVehicleType.trim() ? gpsVehicleType.trim() : undefined,
         locationUrl: locationUrl.trim() || undefined,
         transferEmployeeId: employee?.id,
         notes: buildNotesString() || undefined,
@@ -631,6 +641,43 @@ export default function SalesBooking() {
               )
             })}
           </div>
+          {/* ═══ حقول إجبارية حسب الخدمة ═══
+              الخدمة المؤشّرة requiresDeviceInfo (جي بي اس) تطلب عدد
+              الأجهزة ونوع المركبة. قبل، حجز الجي بي اس ينوصل للفني
+              بلا ولا معلومة عن الأجهزة، ويكتشفها بموقع الزبون.
+              ⚠️ السيرفر يرفضها هم — الواجهة تنخدع. */}
+          {needsDeviceInfo && (
+            <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50/70 p-4">
+              <p className="mb-3 text-sm font-bold text-amber-900">
+                📡 هذي الخدمة تطلب تفاصيل الأجهزة — إجبارية
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">عدد الأجهزة *</label>
+                  <input
+                    required
+                    type="number"
+                    min={1}
+                    value={deviceCount}
+                    onChange={(e) => setDeviceCount(e.target.value)}
+                    placeholder="مثال: 3"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">نوع المركبة *</label>
+                  <input
+                    required
+                    value={gpsVehicleType}
+                    onChange={(e) => setGpsVehicleType(e.target.value)}
+                    placeholder="مثال: شاحنة / صالون / بيك أب"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {serviceIds.length > 1 && (
             <p className="mt-3 rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-700">
               انختارت {serviceIds.length} خدمات — الخدمة الأولى «

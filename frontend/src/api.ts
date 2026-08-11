@@ -57,6 +57,8 @@ export interface Service {
   category: string | null
   division: Division
   skills: Skill[]
+  /** الخدمة تطلب عدد أجهزة ونوع مركبة وقت الحجز (جي بي اس) */
+  requiresDeviceInfo?: boolean
 }
 
 export interface ServiceManager {
@@ -2989,6 +2991,8 @@ export const api = {
     locationUrl?: string
     notes?: string
     vehicleType?: string
+    /** عدد الأجهزة — إجباري للخدمات المؤشّرة requiresDeviceInfo */
+    deviceCount?: number
     priority?: 'NORMAL' | 'URGENT'
     transferEmployeeId?: string
     address?: string
