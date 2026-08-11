@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type MonitorReview, type MonitorStage } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
+import BookingTimelineView from '../components/BookingTimeline'
 
 // ═══ صندوق المراقب ═══
 //
@@ -194,6 +195,18 @@ export default function MonitorInboxPage() {
                 </span>
               )}
             </div>
+
+            {/* قصة الحجز والأوقات — «المراقب يحتاج يشوف كلشي… الإداري
+                شكد تأخر يلا ثبّت الحجز والفني شكد تأخر يله طلع
+                للزبون». تنفتح بالطلب حتى ما نجيب خط زمني لكل صف. */}
+            {row.identity && (
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs font-bold text-brand-700">
+                  🕒 شوف قصة الحجز والأوقات
+                </summary>
+                <BookingTimelineView bookingId={row.identity.bookingId} />
+              </details>
+            )}
 
             {row.status === 'PENDING' ? (
               <div className="mt-3 flex flex-wrap items-center gap-2">

@@ -618,3 +618,14 @@ func (r *LeaderInvoiceRepository) Adjustments(invoiceID string) ([]model.LeaderI
 		ORDER BY a."createdAt" DESC`, invoiceID)
 	return rows, err
 }
+
+// ListByBooking فواتير حجز — للخط الزمني ولصفوف المراقب.
+//
+// ⚠️ "bookingId" ما كان ينستعمل بأي WHERE قبل هذا، مع إنه عمود
+// مفهرس — يعني الربط كان موجود بالبيانات وما ينستغل.
+func (r *LeaderInvoiceRepository) ListByBooking(bookingID string) ([]model.LeaderInvoice, error) {
+	rows := []model.LeaderInvoice{}
+	err := r.db.Select(&rows, `
+		SELECT * FROM "LeaderInvoice" WHERE "bookingId" = $1 ORDER BY "createdAt" ASC`, bookingID)
+	return rows, err
+}

@@ -394,3 +394,14 @@ func (r *QualityFollowUpRepository) deductQualityPointTx(tx *sqlx.Tx, employeeID
 		float64(qualityKpiPoints)*10000)
 	return id, err
 }
+
+// ByBooking متابعة الجودة لحجز — للخط الزمني.
+// bookingId عليه قيد فريد، فأقصى شي صف واحد.
+func (r *QualityFollowUpRepository) ByBooking(bookingID string) (*model.QualityFollowUp, error) {
+	var row model.QualityFollowUp
+	err := r.db.Get(&row, `SELECT * FROM "QualityFollowUp" WHERE "bookingId" = $1`, bookingID)
+	if err != nil {
+		return nil, nil // ماكو متابعة — مو خطأ
+	}
+	return &row, nil
+}

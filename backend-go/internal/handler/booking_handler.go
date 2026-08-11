@@ -17,7 +17,12 @@ type BookingHandler struct {
 	permissions *repository.PermissionRepository
 	// reminders اختياري — يُربط من main للتشغيل اليدوي للكنسة
 	reminders *service.BookingReminderService
+	// timeline اختياري — بدونه المسار يرجّع 503 بدل ما يطيح
+	timeline *service.BookingTimelineService
 }
+
+// SetTimelineService يربط خدمة الخط الزمني بعد البناء.
+func (h *BookingHandler) SetTimelineService(t *service.BookingTimelineService) { h.timeline = t }
 
 func NewBookingHandler(s *service.BookingService, p *repository.PermissionRepository) *BookingHandler {
 	return &BookingHandler{service: s, permissions: p}
@@ -545,4 +550,18 @@ func (h *BookingHandler) StageBucketCounts(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	WriteJSON(w, http.StatusOK, counts)
+}
+
+// GET /api/bookings/{id}/timeline — قصة الحجز كاملة + التأخيرات.
+func (h *BookingHandler) Timeline(w http.ResponseWriter, r *http.Request) {
+	if h.timeline == nil {
+		WriteError(w, http.StatusServiceUnavailable, "الخط الزمني مو مربوط")
+		return
+	}
+	tl, err := h.timeline.Build(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, tl)
 }

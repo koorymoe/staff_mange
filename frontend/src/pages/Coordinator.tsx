@@ -11,6 +11,7 @@ import { COMPLETION_ORDER, completionLabel } from '../components/completionState
 import { matches as searchMatches } from '../utils/search'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingRoutingNotes from '../components/BookingRoutingNotes'
+import BookingTimelineView from '../components/BookingTimeline'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -468,6 +469,12 @@ export default function Coordinator() {
                         بالزبون من هنا مباشرة بلا ما يفتح الحجز. */}
                     <EntityIdentity booking={b} className="flex-1 border-0 bg-transparent px-0 py-0" />
                     <span className="mr-auto"><CompletionBadge booking={b} /></span>
+                    {/* قصة الحجز والأوقات — تنفتح بالطلب حتى ما نجيب
+                        خط زمني لكل حجز بالقائمة. */}
+                    <details className="w-full">
+                      <summary className="cursor-pointer text-xs font-bold text-brand-700">🕒 شوف قصة الحجز والأوقات</summary>
+                      <BookingTimelineView bookingId={b.id} />
+                    </details>
                   </div>
                 ))}
               </div>

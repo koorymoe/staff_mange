@@ -275,6 +275,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ نواة الذكاء الاصطناعي ═══
 	// نفس أسلوب صندوق المراقب: الربط بعد البناء حتى ما يصير اعتماد
 	// متبادل بين خدمة الحجوزات ونواة التحليل.
+	// الخط الزمني للحجز — يجمع قصته من سبعة جداول ويحسب التأخيرات
+	bookingTimelineService := service.NewBookingTimelineService(
+		bookingRepo, bookingProgressRepo, leaderInvoiceRepo, qualityFollowUpRepo, monitorReviewRepo)
+	bookingHandler.SetTimelineService(bookingTimelineService)
+
 	// المهام الإضافية — المدير يوجّه شغل لموظف، مو مربوط بحجز
 	extraTaskRepo := repository.NewExtraTaskRepository(db)
 	extraTaskHandler := handler.NewExtraTaskHandler(extraTaskRepo, notificationRepo)
@@ -585,6 +590,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.GetWorkWindow), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.SetWorkWindow), requireAuth, requireAdmin))
+	mux.Handle("GET /api/bookings/{id}/timeline", middleware.Chain(http.HandlerFunc(bookingHandler.Timeline), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/crew-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetCrewNotes), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/project-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetProjectNotes), requireAuth, requireBookingCoord))
 	// إلغاء بسبب مكتوب — بوقته ومنو ألغى، حتى نفرّق قبل التثبيت وبعده.

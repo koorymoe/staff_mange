@@ -269,3 +269,27 @@ func (r *MonitorReviewRepository) hydrateIdentity(rows []model.MonitorReview) {
 		}
 	}
 }
+
+// ByEntity صفوف المراقب لكيان معيّن — للخط الزمني.
+//
+// ⚠️ صفوف الفواتير مفتاحها **معرّف الفاتورة** مو الحجز، وصفوف
+// التعديلات مفتاحها معرّف التعديل. فالمنادي لازم يجيب فواتير الحجز
+// أول ويسأل عنها بأنواعها — ما يكفي يسأل عن الحجز.
+func (r *MonitorReviewRepository) ByEntity(entityType string, entityIDs []string) ([]model.MonitorReview, error) {
+	if len(entityIDs) == 0 {
+		return []model.MonitorReview{}, nil
+	}
+	q, args, err := sqlx.In(`
+		SELECT * FROM "MonitorReview"
+		WHERE "entityType" = ? AND "entityId" IN (?)
+		ORDER BY "createdAt" ASC`, entityType, entityIDs)
+	if err != nil {
+		return nil, err
+	}
+	rows := []model.MonitorReview{}
+	if err := r.db.Select(&rows, r.db.Rebind(q), args...); err != nil {
+		return nil, err
+	}
+	r.hydrate(rows)
+	return rows, nil
+}

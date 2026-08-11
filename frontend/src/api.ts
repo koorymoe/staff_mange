@@ -1330,6 +1330,34 @@ export const EXTRA_TASK_STATUS: Record<ExtraTask['status'], string> = {
   CANCELLED: 'ملغاة',
 }
 
+/** ═══ الخط الزمني للحجز ═══
+ *  قصة الحجز من سبعة جداول + التأخيرات الستة. ماكو بيانات جديدة —
+ *  كلها موجودة بس متفرقة. */
+export interface TimelineEvent {
+  at: string
+  kind: string
+  title: string
+  detail?: string
+  actor?: string
+}
+
+export interface DelayMetric {
+  key: string
+  label: string
+  /** null = ما ينطبق (مو صفر) — الواجهة تخفيه كلياً */
+  minutes: number | null
+  owner: string
+  thresholdMinutes: number
+  breached: boolean
+}
+
+export interface BookingTimeline {
+  bookingId: string
+  code: string
+  events: TimelineEvent[]
+  delays: DelayMetric[]
+}
+
 export interface MonitorReview {
   id: string
   stage: MonitorStage
@@ -2998,6 +3026,9 @@ export const api = {
   getAiWorkWindow: () => request<AiWorkWindow>('/ai/work-window'),
   setAiWorkWindow: (startHour: number, endHour: number) =>
     request<{ ok: boolean }>('/ai/work-window', { method: 'PUT', body: JSON.stringify({ startHour, endHour }) }),
+
+  /** قصة الحجز كاملة + التأخيرات */
+  getBookingTimeline: (id: string) => request<BookingTimeline>(`/bookings/${id}/timeline`),
 
   // ═══ المهام الإضافية ═══
   /** المدير يوجّه مهمة لموظف */
