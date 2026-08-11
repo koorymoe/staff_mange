@@ -1236,6 +1236,66 @@ export const STAGE_BUCKETS: { key: StageBucket; label: string; icon: string }[] 
   { key: 'CANCELLED_AFTER_CONFIRM', label: 'ملغى بعد التثبيت', icon: '✖️' },
 ]
 
+/** ═══ نواة الذكاء الاصطناعي ═══
+ *  الأدلة حقائق نحسبها من الجداول، والحكم تفسير. الفصل مقصود:
+ *  حكم بلا أدلة = تخمين، والتخمين هنا يتحول لظلم موظف. */
+export interface AiVerdict {
+  id: string
+  signalId: string
+  source: 'RULES' | 'MODEL'
+  modelName?: string
+  headline: string
+  reasoning?: string
+  confidence: number
+  severity: 'INFO' | 'WATCH' | 'WARN' | 'CRITICAL'
+  blameEmployeeId?: string
+  blameEmployeeName?: string
+  suggestion?: string
+  createdAt: string
+}
+
+export interface AiEvidence {
+  id: string
+  signalId: string
+  facts: Record<string, unknown>
+  /** الي ما قدرنا نجمعه — ينعرض مو ينخبّى */
+  gaps: string[]
+  collectedAt: string
+}
+
+export interface AiSignal {
+  id: string
+  kind: string
+  entityType: string
+  entityId: string
+  employeeId?: string
+  employeeName?: string
+  status: 'PENDING' | 'COLLECTED' | 'ANALYZED' | 'SKIPPED'
+  occurredAt: string
+  createdAt: string
+  evidence?: AiEvidence
+  verdict?: AiVerdict
+}
+
+export interface AiCatalogItem {
+  key: string
+  label: string
+  ready: boolean
+  detail: string
+}
+
+export interface AiCatalog {
+  signals: AiCatalogItem[]
+  metrics: AiCatalogItem[]
+  judge: string
+  platformLinked: boolean
+}
+
+export interface AiWorkWindow {
+  startHour: number
+  endHour: number
+}
+
 export interface MonitorReview {
   id: string
   stage: MonitorStage
@@ -1260,6 +1320,8 @@ export interface MonitorReview {
     customerPhone: string | null
     address: string | null
     leaderName: string | null
+    /** رقم الفاتورة المحاسبية — لصفوف الفواتير وتعديلاتها بس */
+    externalInvoiceNumber?: string
   }
 }
 
@@ -2893,6 +2955,16 @@ export const api = {
     return request<Booking[]>(`/bookings${qs ? `?${qs}` : ''}`)
   },
   // ═══ تتبّع المراحل ═══
+  // ═══ الذكاء الاصطناعي ═══
+  // ⚠️ كلها للمالك ومدير النظام حصراً — السيرفر يفرضها، مو الواجهة.
+  getAiSignals: (kind?: string) =>
+    request<AiSignal[]>(`/ai/signals${kind ? `?kind=${encodeURIComponent(kind)}` : ''}`),
+  runAiProcess: () => request<{ analyzed: number }>('/ai/process', { method: 'POST' }),
+  getAiCatalog: () => request<AiCatalog>('/ai/catalog'),
+  getAiWorkWindow: () => request<AiWorkWindow>('/ai/work-window'),
+  setAiWorkWindow: (startHour: number, endHour: number) =>
+    request<{ ok: boolean }>('/ai/work-window', { method: 'PUT', body: JSON.stringify({ startHour, endHour }) }),
+
   /** ملاحظة الإداري للكادر المنفّذ — يقراها الفريق بشاشة «مهامي». */
   setBookingCrewNotes: (id: string, note: string) =>
     request<Booking>(`/bookings/${id}/crew-notes`, { method: 'PUT', body: JSON.stringify({ note }) }),

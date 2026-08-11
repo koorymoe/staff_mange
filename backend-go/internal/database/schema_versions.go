@@ -236,6 +236,9 @@ func versionedMigrations() []Migration {
 	// 0242: تتبّع مراحل الحجز — منو رحّله، ملاحظات موجّهة للكادر
 	// ولمدير المشاريع، ووقت الإلغاء (حتى نفرّق قبل التثبيت وبعده).
 	result = append(result, bookingStageTrackingMigration()...)
+	// 0243: نواة الذكاء الاصطناعي — إشارات وأدلة وأحكام ومؤشرات.
+	// ⚠️ الأدلة تنجمع بالكود بلا اشتراك؛ الحكم بس ينتظر المنصّة.
+	result = append(result, aiCoreMigration()...)
 	return result
 }
 

@@ -167,7 +167,25 @@ export default function BookingsList() {
       .finally(() => setLoading(false))
   }, [selectedDate, selectedMonth])
 
+  // ═══ شنو يطلع بهاي الشاشة ═══
+  //
+  // «الحجز الجديد بعدني ما مثبته ولا مكلف كادر ولا منسق ولا متواصل وية
+  // الزبون — ما أريده يطلع هنا إلا بحال تم التواصل وتحديد الكادر
+  // والتاريخ».
+  //
+  // الحجز الي لسه ما انسّق مو «حجز اليوم» — هو **طلب** واصل للتنسيق.
+  // عرضه هنا يخلط الشغل المؤكد بالشغل الي لسه ما انولد، ويخلي عدّ
+  // «شكد عدنا اليوم» كذب.
+  //
+  // ⚠️ ما ينختفي بصمت: العدد ينعرض فوق مع رابط لشاشة التنسيق. إخفاء
+  // بلا إشارة يخلي الإداري يظن الحجز ضاع ويعيد تسجيله.
+  const isCoordinated = (b: (typeof bookings)[number]) =>
+    !!b.confirmedAt && !!b.scheduledAt && (b.assignments?.length ?? 0) > 0
+
+  const notCoordinated = bookings.filter((b) => !isCoordinated(b))
+
   const filtered = bookings
+    .filter(isCoordinated)
     .filter((b) => {
       if (search.trim() && !matches([b.code, b.customer?.name, b.customer?.code, b.customer?.phone], search)) return false
       if (selectedMonth && !relevantDate(b).startsWith(selectedMonth)) return false
@@ -185,6 +203,18 @@ export default function BookingsList() {
           <> إحصائية "أكثر الخدمات طلباً" لكل الخدمات صارت بصفحة <a href="/stats" className="text-brand-600 hover:underline">إحصائيات الموظفين</a>.</>
         )}
       </p>
+
+      {notCoordinated.length > 0 && (
+        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+          <span className="font-bold text-amber-900">
+            ⏳ {notCoordinated.length} حجز لسه ما انسّق (بلا تثبيت أو موعد أو كادر)
+          </span>
+          <span className="text-amber-800">— ما يطلع بالقائمة لحد ما ينسّق.</span>
+          <a href="/coordinator" className="mr-auto rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white">
+            روح لتنسيق الحجوزات ←
+          </a>
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input

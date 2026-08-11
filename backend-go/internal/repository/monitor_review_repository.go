@@ -182,16 +182,20 @@ func (r *MonitorReviewRepository) hydrateIdentity(rows []model.MonitorReview) {
 
 	// كل نوع → استعلام يرجّع (key, bookingId)
 	sources := map[string]string{
-		"BOOKING":            `SELECT 'BOOKING|' || id AS key, id AS "bookingId" FROM "Booking" WHERE id IN (?)`,
-		"LEADER_INVOICE":     `SELECT 'LEADER_INVOICE|' || id AS key, "bookingId" FROM "LeaderInvoice" WHERE id IN (?) AND "bookingId" IS NOT NULL`,
-		"INVOICE_ADJUSTMENT": `SELECT 'INVOICE_ADJUSTMENT|' || a.id AS key, i."bookingId" FROM "LeaderInvoiceAdjustment" a JOIN "LeaderInvoice" i ON i.id = a."invoiceId" WHERE a.id IN (?) AND i."bookingId" IS NOT NULL`,
-		"PROCUREMENT":        `SELECT 'PROCUREMENT|' || id AS key, "bookingId" FROM "ProcurementRequest" WHERE id IN (?) AND "bookingId" IS NOT NULL`,
-		"QUALITY_FOLLOW_UP":  `SELECT 'QUALITY_FOLLOW_UP|' || id AS key, "bookingId" FROM "QualityFollowUp" WHERE id IN (?)`,
+		"BOOKING":            `SELECT 'BOOKING|' || id AS key, id AS "bookingId", NULL::text AS "externalNo" FROM "Booking" WHERE id IN (?)`,
+		"LEADER_INVOICE":     `SELECT 'LEADER_INVOICE|' || id AS key, "bookingId", "externalInvoiceNumber" AS "externalNo" FROM "LeaderInvoice" WHERE id IN (?) AND "bookingId" IS NOT NULL`,
+		"INVOICE_ADJUSTMENT": `SELECT 'INVOICE_ADJUSTMENT|' || a.id AS key, i."bookingId", i."externalInvoiceNumber" AS "externalNo" FROM "LeaderInvoiceAdjustment" a JOIN "LeaderInvoice" i ON i.id = a."invoiceId" WHERE a.id IN (?) AND i."bookingId" IS NOT NULL`,
+		"PROCUREMENT":        `SELECT 'PROCUREMENT|' || id AS key, "bookingId", NULL::text AS "externalNo" FROM "ProcurementRequest" WHERE id IN (?) AND "bookingId" IS NOT NULL`,
+		"QUALITY_FOLLOW_UP":  `SELECT 'QUALITY_FOLLOW_UP|' || id AS key, "bookingId", NULL::text AS "externalNo" FROM "QualityFollowUp" WHERE id IN (?)`,
 	}
 
 	type link struct {
 		Key       string `db:"key"`
 		BookingID string `db:"bookingId"`
+		// رقم الفاتورة المحاسبية — ينجي وية الرابط لأنه على الفاتورة
+		// مو على الحجز. الحجز الواحد ممكن إله أكثر من فاتورة، فربطه
+		// بالحجز چان يخلط أرقام فواتير مختلفة بنفس الصف.
+		ExternalNo *string `db:"externalNo"`
 	}
 	links := []link{}
 	for typ, ids := range byType {
@@ -252,7 +256,10 @@ func (r *MonitorReviewRepository) hydrateIdentity(rows []model.MonitorReview) {
 	byKey := map[string]model.MonitorIdentity{}
 	for _, l := range links {
 		if it, ok := byBooking[l.BookingID]; ok {
-			byKey[l.Key] = it
+			// نسخة لكل مفتاح: رقم الفاتورة يخص الصف مو الحجز
+			row := it
+			row.ExternalInvoiceNumber = l.ExternalNo
+			byKey[l.Key] = row
 		}
 	}
 	for i := range rows {

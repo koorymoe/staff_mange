@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -27,7 +28,19 @@ type BookingService struct {
 	// monitor: صندوق المراقب. اختياري — بدونه النظام يشتغل عادي بس
 	// المراقب ما يوصله شي.
 	monitor MonitorFeed
+	// ai: مسجّل إشارات التحليل. اختياري — بدونه النظام يشتغل عادي
+	// بس ماكو تحليل يتراكم.
+	ai AiSignalRecorder
 }
+
+// AiSignalRecorder يفصل خدمة الحجوزات عن نواة الذكاء الاصطناعي حتى
+// ما يصير اعتماد متبادل بين الاثنين.
+type AiSignalRecorder interface {
+	RecordSignal(model.AiSignal) (*model.AiSignal, error)
+}
+
+// SetAiRecorder يربط مسجّل الإشارات بعد البناء.
+func (s *BookingService) SetAiRecorder(a AiSignalRecorder) { s.ai = a }
 
 // SetMonitorFeed يربط صندوق المراقب بعد بناء الخدمتين.
 func (s *BookingService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
@@ -528,6 +541,22 @@ func (s *BookingService) StopWork(id, reason, employeeID string) (*model.Booking
 	}
 	if err := s.repo.StopWork(id, strings.TrimSpace(reason), employeeID); err != nil {
 		return nil, err
+	}
+	// إشارة للتحليل: «ليش وقّف الشغل؟».
+	//
+	// ⚠️ تنسجّل وبس — التحليل يصير بالخلفية. ربط التحليل بهاي اللحظة
+	// چان يخلي بطؤه (أو فشله) يعطّل موظف واقف بموقع الزبون.
+	// ⚠️ وفشلها ما يرجّع خطأ: توقف العمل انحفظ فعلاً، وإفشال الطلب
+	// بسبب إشارة تحليل يخلي الموظف يعيد المحاولة بلا فايدة.
+	if s.ai != nil {
+		if _, err := s.ai.RecordSignal(model.AiSignal{
+			Kind:       model.AiSignalWorkStopped,
+			EntityType: "BOOKING",
+			EntityID:   id,
+			EmployeeID: &employeeID,
+		}); err != nil {
+			log.Printf("[ai] تعذر تسجيل إشارة توقف العمل للحجز %s: %v", id, err)
+		}
 	}
 	return s.repo.FindByID(id)
 }

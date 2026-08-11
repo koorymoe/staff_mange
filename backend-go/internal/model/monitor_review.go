@@ -43,6 +43,12 @@ type MonitorIdentity struct {
 	Address       *string `db:"address" json:"address"`
 	LeaderName    *string `db:"leaderName" json:"leaderName"`
 
+	// رقم الفاتورة المحاسبية الي كتبه المحاسب من النظام الخارجي.
+	// المراقب يدقّق **ورا** المحاسب، فلازم يشوف الرقم الي ثبّته —
+	// بدونه ما يكدر يطابق فاتورتنا بفاتورة النظام الخارجي.
+	// ⚠️ ينتعبى لصفوف الفواتير وتعديلاتها بس، ويبقى فاضي لغيرها.
+	ExternalInvoiceNumber *string `db:"-" json:"externalInvoiceNumber,omitempty"`
+
 	// مفتاح الربط الداخلي — entityType|entityId
 	Key string `db:"key" json:"-"`
 }

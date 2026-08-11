@@ -29,6 +29,7 @@ const CommandCodePage = lazy(() => import('./pages/CommandCodePage'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
 const PartialBookings = lazy(() => import('./pages/PartialBookings'))
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
+const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
 const LettersPage = lazy(() => import('./pages/LettersPage'))
 const TrainingPrograms = lazy(() => import('./pages/TrainingPrograms'))
@@ -144,6 +145,7 @@ function App() {
           <Route path="postponed-bookings" element={<PostponedBookings />} />
           <Route path="partial-bookings" element={<PartialBookings />} />
           <Route path="stage-buckets" element={<StageBucketsPage />} />
+          <Route path="ai-insights" element={<AiInsightsPage />} />
           <Route path="letters" element={<LettersPage />} />
           <Route path="solar" element={<SolarPage />} />
           <Route path="training-programs" element={<TrainingPrograms />} />

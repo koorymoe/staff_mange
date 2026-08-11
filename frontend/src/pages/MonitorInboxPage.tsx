@@ -165,6 +165,14 @@ export default function MonitorInboxPage() {
                 </p>
                 {/* المراقب كان يقرا «فاتورة الليدر» وبس، ولازم يفتح كل صف
                     حتى يعرف عن منو يحچي. الهوية تجي جاهزة من السيرفر. */}
+                {/* رقم الفاتورة المحاسبية الي ثبّته المحاسب — المراقب
+                    يدقّق وراه، وبدون الرقم ما يكدر يطابق فاتورتنا
+                    بفاتورة النظام الخارجي. */}
+                {row.identity?.externalInvoiceNumber && (
+                  <p className="mt-1.5 inline-block rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                    🧾 رقم الفاتورة المحاسبية: <span className="font-mono">{row.identity.externalInvoiceNumber}</span>
+                  </p>
+                )}
                 {row.identity && (
                   <EntityIdentity
                     variant="full"

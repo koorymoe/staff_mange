@@ -272,6 +272,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	monitorReviewService := service.NewMonitorReviewService(monitorReviewRepo, employeeRepo, notificationRepo)
 	monitorReviewHandler := handler.NewMonitorReviewHandler(monitorReviewService)
 	bookingService.SetMonitorFeed(monitorReviewService)
+	// ═══ نواة الذكاء الاصطناعي ═══
+	// نفس أسلوب صندوق المراقب: الربط بعد البناء حتى ما يصير اعتماد
+	// متبادل بين خدمة الحجوزات ونواة التحليل.
+	aiRepo := repository.NewAiRepository(db)
+	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo)
+	aiBrainService := service.NewAiBrainService(aiRepo, aiEvidenceService)
+	aiHandler := handler.NewAiHandler(aiRepo, aiBrainService)
+	bookingService.SetAiRecorder(aiRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
 	// المشتريات وقت صرف الفلوس، الجودة وقت الحكم السلبي،
@@ -549,6 +557,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
 	// ملاحظات موجّهة: وحدة للكادر ووحدة لمدير المشاريع.
+	// ═══ الذكاء الاصطناعي ═══
+	// ⚠️ كلها requireAdmin (يشمل المالك): «التقرير يطلع فقط لمدير
+	// النظام والمالك» — طلب صريح. تحليل سلوك موظف بيد زميله يتحول
+	// لسلاح داخلي.
+	mux.Handle("GET /api/ai/signals", middleware.Chain(http.HandlerFunc(aiHandler.ListSignals), requireAuth, requireAdmin))
+	mux.Handle("POST /api/ai/process", middleware.Chain(http.HandlerFunc(aiHandler.Process), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/metrics", middleware.Chain(http.HandlerFunc(aiHandler.Metrics), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.GetWorkWindow), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.SetWorkWindow), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/crew-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetCrewNotes), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/project-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetProjectNotes), requireAuth, requireBookingCoord))
 	// إلغاء بسبب مكتوب — بوقته ومنو ألغى، حتى نفرّق قبل التثبيت وبعده.
