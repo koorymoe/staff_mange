@@ -1293,6 +1293,28 @@ export interface AiCatalog {
   platformLinked: boolean
 }
 
+export interface AiMetric {
+  id: string
+  metricKey: string
+  scope: string
+  scopeId?: string
+  periodStart: string
+  periodEnd: string
+  value: number
+  /** عدد العيّنات — «٥٠٪» من عيّنتين مو مثل «٥٠٪» من مئتين */
+  sampleCount: number
+  computedAt: string
+}
+
+export const AI_METRIC_LABELS: Record<string, string> = {
+  STOP_RATE: 'نسبة توقف العمل',
+  STOP_MINUTES_AVG: 'متوسط الوقت الضايع بالتوقف',
+  MATERIAL_MISS_RATE: 'توقف بسبب مادة ما انطلبت',
+  SCOPE_CREEP_RATE: 'زيادة طلبات الزبون بالموقع',
+  PROCUREMENT_DELAY: 'تأخر توفير المواد',
+  LATE_START_RATE: 'نسبة التأخر بالخروج للزبون',
+}
+
 export interface AiWorkWindow {
   startHour: number
   endHour: number
@@ -3023,6 +3045,8 @@ export const api = {
     request<AiSignal[]>(`/ai/signals${kind ? `?kind=${encodeURIComponent(kind)}` : ''}`),
   runAiProcess: () => request<{ analyzed: number }>('/ai/process', { method: 'POST' }),
   getAiCatalog: () => request<AiCatalog>('/ai/catalog'),
+  getAiMetrics: () => request<AiMetric[]>('/ai/metrics'),
+  recomputeAiMetrics: () => request<{ metrics: number }>('/ai/metrics/recompute', { method: 'POST' }),
   getAiWorkWindow: () => request<AiWorkWindow>('/ai/work-window'),
   setAiWorkWindow: (startHour: number, endHour: number) =>
     request<{ ok: boolean }>('/ai/work-window', { method: 'PUT', body: JSON.stringify({ startHour, endHour }) }),

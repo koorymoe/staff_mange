@@ -152,6 +152,8 @@ export const navItems: NavItem[] = [
       { to: '/extra-tasks', label: '📋 المهام الإضافية', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'staff_management' },
       // ⚠️ المالك ومدير النظام بس — تحليل سلوك موظف بيد زميله يتحول لسلاح.
       { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
+      // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
+      { to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
           { to: '/services', label: 'الخدمات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_services' },

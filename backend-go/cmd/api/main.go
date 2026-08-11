@@ -287,7 +287,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	aiRepo := repository.NewAiRepository(db)
 	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo)
 	aiBrainService := service.NewAiBrainService(aiRepo, aiEvidenceService)
-	aiHandler := handler.NewAiHandler(aiRepo, aiBrainService)
+	aiMetricsService := service.NewAiMetricsService(aiRepo)
+	aiHandler := handler.NewAiHandler(aiRepo, aiBrainService, aiMetricsService)
 	bookingService.SetAiRecorder(aiRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -586,6 +587,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// لسلاح داخلي.
 	mux.Handle("GET /api/ai/signals", middleware.Chain(http.HandlerFunc(aiHandler.ListSignals), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/process", middleware.Chain(http.HandlerFunc(aiHandler.Process), requireAuth, requireAdmin))
+	mux.Handle("POST /api/ai/metrics/recompute", middleware.Chain(http.HandlerFunc(aiHandler.RecomputeMetrics), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/metrics", middleware.Chain(http.HandlerFunc(aiHandler.Metrics), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.GetWorkWindow), requireAuth, requireAdmin))

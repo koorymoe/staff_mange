@@ -31,6 +31,7 @@ const PartialBookings = lazy(() => import('./pages/PartialBookings'))
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
 const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
 const ExtraTasksPage = lazy(() => import('./pages/ExtraTasksPage'))
+const RolesGuidePage = lazy(() => import('./pages/RolesGuidePage'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
 const LettersPage = lazy(() => import('./pages/LettersPage'))
 const TrainingPrograms = lazy(() => import('./pages/TrainingPrograms'))
@@ -148,6 +149,7 @@ function App() {
           <Route path="stage-buckets" element={<StageBucketsPage />} />
           <Route path="ai-insights" element={<AiInsightsPage />} />
           <Route path="extra-tasks" element={<ExtraTasksPage />} />
+          <Route path="roles-guide" element={<RolesGuidePage />} />
           <Route path="letters" element={<LettersPage />} />
           <Route path="solar" element={<SolarPage />} />
           <Route path="training-programs" element={<TrainingPrograms />} />

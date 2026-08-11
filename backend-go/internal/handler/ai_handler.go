@@ -19,12 +19,13 @@ import (
 // وهذا مو تفصيل إداري — تحليل «ليش هذا الموظف وقّف الشغل» بيد زميله
 // يتحول لسلاح داخلي، ويخلي الموظفين يخافون يكتبون السبب الحقيقي.
 type AiHandler struct {
-	repo  *repository.AiRepository
-	brain *service.AiBrainService
+	repo    *repository.AiRepository
+	brain   *service.AiBrainService
+	metrics *service.AiMetricsService
 }
 
-func NewAiHandler(repo *repository.AiRepository, brain *service.AiBrainService) *AiHandler {
-	return &AiHandler{repo: repo, brain: brain}
+func NewAiHandler(repo *repository.AiRepository, brain *service.AiBrainService, metrics *service.AiMetricsService) *AiHandler {
+	return &AiHandler{repo: repo, brain: brain, metrics: metrics}
 }
 
 // GET /api/ai/signals?kind=&limit=
@@ -50,6 +51,21 @@ func (h *AiHandler) Process(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]int{"analyzed": n})
+}
+
+// POST /api/ai/metrics/recompute — يعيد حساب مؤشرات آخر ٣٠ يوم.
+//
+// ⚠️ يدوي بهاي المرحلة، نفس منطق /process: المالك يشوف النتيجة وقت
+// ما يريد بدل ما يشتغل بالخلفية ويستهلك بلا ما أحد ينتبه.
+func (h *AiHandler) RecomputeMetrics(w http.ResponseWriter, r *http.Request) {
+	to := time.Now()
+	from := to.AddDate(0, 0, -30)
+	n, err := h.metrics.Recompute(from, to)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]int{"metrics": n})
 }
 
 // GET /api/ai/metrics?from=&to=
@@ -134,10 +150,10 @@ func (h *AiHandler) Catalog(w http.ResponseWriter, r *http.Request) {
 	}
 	metrics := []item{
 		{model.AiMetricStopRate, model.AiMetricLabel(model.AiMetricStopRate), false, "ينتظر: حاسبة المؤشرات"},
-		{model.AiMetricStopMinutesAvg, model.AiMetricLabel(model.AiMetricStopMinutesAvg), false, "ينتظر: حاسبة المؤشرات"},
-		{model.AiMetricMaterialMissRate, model.AiMetricLabel(model.AiMetricMaterialMissRate), false, "ينتظر: حاسبة المؤشرات"},
-		{model.AiMetricScopeCreepRate, model.AiMetricLabel(model.AiMetricScopeCreepRate), false, "ينتظر: حاسبة المؤشرات"},
-		{model.AiMetricProcurementDelay, model.AiMetricLabel(model.AiMetricProcurementDelay), false, "ينتظر: حاسبة المؤشرات"},
+		{model.AiMetricStopMinutesAvg, model.AiMetricLabel(model.AiMetricStopMinutesAvg), true, "ينحسب من أدلة التوقفات المتراكمة"},
+		{model.AiMetricMaterialMissRate, model.AiMetricLabel(model.AiMetricMaterialMissRate), true, "ينحسب من أدلة التوقفات المتراكمة"},
+		{model.AiMetricScopeCreepRate, model.AiMetricLabel(model.AiMetricScopeCreepRate), true, "ينحسب من أدلة التوقفات المتراكمة"},
+		{model.AiMetricProcurementDelay, model.AiMetricLabel(model.AiMetricProcurementDelay), true, "ينحسب من أدلة التوقفات المتراكمة"},
 		{model.AiMetricLateStartRate, model.AiMetricLabel(model.AiMetricLateStartRate), false, "ينتظر: حاسبة المؤشرات"},
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{

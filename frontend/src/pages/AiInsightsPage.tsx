@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { api, type AiCatalog, type AiSignal } from '../api'
+import { api, AI_METRIC_LABELS, type AiCatalog, type AiMetric, type AiSignal } from '../api'
 
 // ═══ إحصائيات ومؤشرات الذكاء الاصطناعي ═══
 //
@@ -37,14 +37,15 @@ const fmtFact = (v: unknown) => (v === true ? 'إي' : v === false ? 'لا' : v 
 export default function AiInsightsPage() {
   const [signals, setSignals] = useState<AiSignal[]>([])
   const [catalog, setCatalog] = useState<AiCatalog | null>(null)
+  const [metrics, setMetrics] = useState<AiMetric[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
   const load = useCallback(() => {
     setLoading(true)
-    Promise.all([api.getAiSignals(), api.getAiCatalog()])
-      .then(([s, c]) => { setSignals(s); setCatalog(c) })
+    Promise.all([api.getAiSignals(), api.getAiCatalog(), api.getAiMetrics()])
+      .then(([s, c, m]) => { setSignals(s); setCatalog(c); setMetrics(m) })
       .catch((e) => setErr(e instanceof Error ? e.message : 'تعذر الجلب'))
       .finally(() => setLoading(false))
   }, [])
@@ -56,6 +57,9 @@ export default function AiInsightsPage() {
     setErr(null)
     try {
       await api.runAiProcess()
+      // المؤشرات تنحسب من الأدلة، فلازم تنعاد بعد التحليل مباشرة —
+      // وإلا تبقى تعرض أرقام ما تشمل الي انحلل هسه.
+      await api.recomputeAiMetrics()
       load()
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر التحليل')
@@ -123,6 +127,30 @@ export default function AiInsightsPage() {
                 </p>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ المؤشرات ═══ */}
+      {metrics.length > 0 && (
+        <div className="rounded-2xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <h3 className="mb-3 font-bold text-[#0f2040]">📊 المؤشرات — آخر ٣٠ يوم</h3>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {metrics.map((m) => (
+              <div key={m.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                <p className="text-[11px] font-bold text-slate-500">
+                  {AI_METRIC_LABELS[m.metricKey] || m.metricKey}
+                </p>
+                <p className="mt-1 text-2xl font-extrabold text-[#0f2040]">
+                  {m.metricKey === 'STOP_MINUTES_AVG'
+                    ? `${Math.round(m.value)} دقيقة`
+                    : `${m.value.toFixed(0)}%`}
+                </p>
+                {/* ⚠️ عدد العيّنات ينعرض دائماً: «٥٠٪» من عيّنتين مو
+                    مثل «٥٠٪» من مئتين، والقرار يختلف. */}
+                <p className="mt-0.5 text-[10.5px] text-slate-400">من {m.sampleCount} حالة</p>
+              </div>
+            ))}
           </div>
         </div>
       )}
