@@ -1318,6 +1318,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/leader-invoices/{id}/approve", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Approve), requireAuth, requireFinance))
 	// ربط رقم فاتورة محاسبية بفاتورة معتمدة أصلاً، وتعديل المبالغ —
 	// الاثنين للمحاسب/المدير حصراً
+	// ═══ تدقيق الفاتورة ═══
+	// الحكم قبل الاعتماد، وسحب الاعتماد لما ينصار بالغلط.
+	mux.Handle("PUT /api/leader-invoices/{id}/audit", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetAuditVerdict), requireAuth, requireFinance))
+	mux.Handle("PUT /api/leader-invoices/{id}/revoke", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.RevokeApproval), requireAuth, requireFinance))
+	mux.Handle("GET /api/leader-invoices/approved-without-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ApprovedWithoutNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/external-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetExternalNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/adjust", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjust), requireAuth, requireFinance))
 	mux.Handle("GET /api/leader-invoices/{id}/adjustments", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjustments), requireAuth))

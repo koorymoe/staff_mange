@@ -489,3 +489,61 @@ func (s *LeaderInvoiceService) FreeReasons() ([]model.FreeWorkReason, error) {
 func (s *LeaderInvoiceService) Adjustments(invoiceID string) ([]model.LeaderInvoiceAdjustment, error) {
 	return s.invoices.Adjustments(invoiceID)
 }
+
+// ═══ التدقيق ═══
+
+// SetAuditVerdict حكم المحاسب: مطابق / غير مطابق / خطأ بالسعر.
+//
+// «من ينطي هنا شي يكتب ملاحظة، والمدقق يكدر يقرأه والمدير يكدر
+// يقرأه» — فالحكم يدزّ صف لصندوق المراقب.
+func (s *LeaderInvoiceService) SetAuditVerdict(id string, req model.AuditVerdictRequest, byEmployeeID string) (*model.LeaderInvoice, error) {
+	if !model.ValidAuditVerdict(req.Verdict) {
+		return nil, fmt.Errorf("الحكم لازم يكون: مطابق أو غير مطابق أو خطأ بالسعر")
+	}
+	note := strings.TrimSpace(req.Note)
+	// ⚠️ «غير مطابق» أو «خطأ بالسعر» بلا شرح ما تفيد أحد: المراقب
+	// والمدير الاثنين يقرونها، ولازم يعرفون **شنو** الاختلاف.
+	if req.Verdict != model.AuditVerdictMatched && utf8.RuneCountInString(note) < 5 {
+		return nil, fmt.Errorf("اكتب ملاحظة توضّح الاختلاف — المراقب والمدير راح يقرونها")
+	}
+	inv, err := s.invoices.SetAuditVerdict(id, req.Verdict, note, byEmployeeID, req.Amount)
+	if err != nil {
+		return nil, err
+	}
+	if s.monitor != nil && inv != nil {
+		title, summary := monitorInvoiceSummary(inv)
+		detail := " • حكم التدقيق: " + model.AuditVerdictLabel(req.Verdict)
+		if note != "" {
+			detail += " — " + note
+		}
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, inv.ID, title,
+			summary+detail, "FINANCE", &byEmployeeID)
+	}
+	return inv, nil
+}
+
+// RevokeApproval يسحب اعتماد فاتورة انعتمدت بالغلط.
+func (s *LeaderInvoiceService) RevokeApproval(id, reason, byEmployeeID string) (*model.LeaderInvoice, error) {
+	reason = strings.TrimSpace(reason)
+	// ⚠️ السبب إجباري: سحب اعتماد بلا سبب يخلي السجل يقول «انسحب» وبس،
+	// والمراقب ما يعرف إذا كان غلط بالرقم لو بالمبلغ لو تلاعب.
+	if utf8.RuneCountInString(reason) < 5 {
+		return nil, fmt.Errorf("اكتب سبب سحب الاعتماد")
+	}
+	inv, err := s.invoices.RevokeApproval(id, reason, byEmployeeID)
+	if err != nil {
+		return nil, err
+	}
+	// السحب لحظة تستاهل عين المراقب — نفس وزن الاعتماد.
+	if s.monitor != nil && inv != nil {
+		title, summary := monitorInvoiceSummary(inv)
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceAfterAudit, inv.ID, title,
+			summary+" • ⚠️ انسحب الاعتماد — السبب: "+reason, "FINANCE", &byEmployeeID)
+	}
+	return inv, nil
+}
+
+// ListApprovedWithoutNumber الفواتير المعتمدة بلا رقم — الفجوة الي كلّفت.
+func (s *LeaderInvoiceService) ListApprovedWithoutNumber() ([]model.LeaderInvoice, error) {
+	return s.invoices.ListApprovedWithoutNumber()
+}

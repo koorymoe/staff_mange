@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { api, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
+import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
 import { useSession } from '../session'
@@ -128,6 +128,12 @@ export default function LeaderInvoicesListPage() {
   // شي يربطهن — فأي مراجعة لاحقة تصير يدوية. الرقم إجباري، ومؤرشف
   // حتى يلكاها بيه لمن يحتاجها.
   const [approveFor, setApproveFor] = useState<LeaderInvoice | null>(null)
+  // ═══ التدقيق ═══ الحكم يتحط **قبل** الاعتماد، والسحب لما ينصار بالغلط
+  const [auditFor, setAuditFor] = useState<LeaderInvoice | null>(null)
+  const [auditVerdict, setAuditVerdict] = useState<'MATCHED' | 'MISMATCH' | 'PRICE_ERROR'>('MATCHED')
+  const [auditNote, setAuditNote] = useState('')
+  const [auditAmount, setAuditAmount] = useState('')
+  const [auditErr, setAuditErr] = useState<string | null>(null)
   const [invoiceNo, setInvoiceNo] = useState('')
   const [approveErr, setApproveErr] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -201,6 +207,37 @@ export default function LeaderInvoicesListPage() {
     ALL: invoices.length,
   }
   const sumShown = shown.reduce((t, i) => t + i.netTotal, 0)
+  const saveAudit = async () => {
+    if (!auditFor) return
+    setAuditErr(null)
+    setBusyId(auditFor.id)
+    try {
+      await api.setInvoiceAuditVerdict(auditFor.id, {
+        verdict: auditVerdict,
+        note: auditNote.trim(),
+        // ⚠️ Number('') = صفر مو فاضي — بلا الفحص نرسل صفراً كأنه
+        // «ما دخل ولا دينار» وهي معلومة غلط تماماً.
+        auditedAmount: auditAmount.trim() ? Number(auditAmount) : null,
+      })
+      setAuditFor(null); setAuditNote(''); setAuditAmount('')
+      load()
+    } catch (e) {
+      setAuditErr(e instanceof Error ? e.message : 'تعذر حفظ الحكم')
+    } finally { setBusyId(null) }
+  }
+
+  const revoke = async (inv: LeaderInvoice) => {
+    const reason = prompt(`ليش تسحب اعتماد الفاتورة ${inv.accountingCode}؟\n(السبب إجباري — المراقب والمدير راح يقرونه)`)
+    if (!reason) return
+    setBusyId(inv.id)
+    try {
+      await api.revokeInvoiceApproval(inv.id, reason)
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر سحب الاعتماد')
+    } finally { setBusyId(null) }
+  }
+
   const [details, setDetails] = useState<LeaderInvoice | null>(null)
   // سجل تعديلات المحاسب — «شنو كان وشنو صار ومنو غيّره»
   const [adjustments, setAdjustments] = useState<LeaderInvoiceAdjustment[]>([])
@@ -318,6 +355,25 @@ export default function LeaderInvoicesListPage() {
                     }`}>
                       {inv.status === 'APPROVED' ? '✔ معتمدة' : 'بانتظار الاعتماد'}
                     </span>
+                    {/* حكم التدقيق — «يطلعن وينن بفواتير الليدر» */}
+                    {inv.auditVerdict && (
+                      <span className={`mt-1 block rounded-full px-2 py-0.5 text-center text-[10.5px] font-bold ${
+                        AUDIT_VERDICTS.find((v) => v.key === inv.auditVerdict)?.cls || ''
+                      }`}>
+                        {AUDIT_VERDICTS.find((v) => v.key === inv.auditVerdict)?.label}
+                      </span>
+                    )}
+                    {inv.externalInvoiceNumber && (
+                      <span className="mt-1 block text-center font-mono text-[10.5px] text-slate-500">
+                        {inv.externalInvoiceNumber}
+                      </span>
+                    )}
+                    {/* انسحب اعتمادها قبل — إشارة تحتاج انتباه */}
+                    {(inv.revokedCount ?? 0) > 0 && (
+                      <span className="mt-1 block text-center text-[10.5px] font-bold text-red-600">
+                        ↩ انسحب اعتمادها {inv.revokedCount} مرة
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-slate-400">
                     {new Date(inv.createdAt).toLocaleDateString('ar-IQ')}
@@ -335,6 +391,32 @@ export default function LeaderInvoicesListPage() {
                       >
                         📋 التفاصيل
                       </button>
+                      {/* الحكم قبل الاعتماد — «أول شي بالتدقيق» */}
+                      {canApprove && inv.status !== 'APPROVED' && (
+                        <button
+                          onClick={() => {
+                            setAuditFor(inv)
+                            setAuditVerdict(inv.auditVerdict || 'MATCHED')
+                            setAuditNote(inv.auditNote || '')
+                            setAuditAmount(inv.auditedAmount != null ? String(inv.auditedAmount) : '')
+                            setAuditErr(null)
+                          }}
+                          className="rounded-lg border border-brand-300 px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-50"
+                        >
+                          🔍 تدقيق
+                        </button>
+                      )}
+                      {/* ↩ سحب الاعتماد — «لازم تخليلي خيار أكدر أرجعله
+                          الفواتير الما معتمدة» */}
+                      {canApprove && inv.status === 'APPROVED' && (
+                        <button
+                          onClick={() => revoke(inv)}
+                          disabled={busyId === inv.id}
+                          className="rounded-lg border border-red-300 px-3 py-1.5 text-xs font-bold text-red-700 hover:bg-red-50 disabled:opacity-50"
+                        >
+                          ↩ اسحب الاعتماد
+                        </button>
+                      )}
                       {canApprove && inv.status !== 'APPROVED' && (
                         <button
                           onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
@@ -491,6 +573,72 @@ export default function LeaderInvoicesListPage() {
       )}
 
       {/* ═══ الاعتماد يمر برقم الفاتورة المحاسبية ═══ */}
+      {/* ═══ نافذة التدقيق ═══
+          «أول شي بالتدقيق: مطابق / غير مطابق / خطأ بالسعر».
+          مطابق = سعر الفاتورة نفسه المبلغ الداخل.
+          غير مطابق = يختلف.
+          خطأ بالسعر = الموظف جاب أعلى أو أوطى من الفاتورة. */}
+      {auditFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAuditFor(null)}>
+          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-bold text-[#0f2040]">🔍 تدقيق الفاتورة {auditFor.accountingCode}</h3>
+            <p className="mt-1 text-xs text-slate-500">
+              مبلغ الفاتورة: <b>{auditFor.netTotal.toLocaleString()} د.ع</b>
+            </p>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              {AUDIT_VERDICTS.map((v) => (
+                <button
+                  key={v.key}
+                  onClick={() => setAuditVerdict(v.key)}
+                  className={`rounded-xl px-3 py-2 text-sm font-bold ${
+                    auditVerdict === v.key ? v.cls + ' ring-2 ring-offset-1 ring-slate-400' : 'bg-slate-100 text-slate-600'
+                  }`}
+                >
+                  {v.label}
+                </button>
+              ))}
+            </div>
+
+            <label className="mb-1 mt-3 block text-xs font-bold text-slate-500">المبلغ الي دخل فعلاً (اختياري)</label>
+            <input
+              type="number"
+              value={auditAmount}
+              onChange={(e) => setAuditAmount(e.target.value)}
+              placeholder="اتركه فاضي إذا نفس مبلغ الفاتورة"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+
+            <label className="mb-1 mt-3 block text-xs font-bold text-slate-500">
+              الملاحظة {auditVerdict !== 'MATCHED' && <span className="text-red-600">* إجبارية</span>}
+            </label>
+            <textarea
+              value={auditNote}
+              onChange={(e) => setAuditNote(e.target.value)}
+              rows={3}
+              placeholder="مثال: الموظف أخذ ١٢٠ ألف والفاتورة ١٠٠ ألف"
+              className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+            />
+            <p className="mt-1 text-[11px] text-slate-400">👁️ المراقب والمدير راح يقرون هذي الملاحظة.</p>
+
+            {auditErr && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{auditErr}</p>}
+
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={saveAudit}
+                disabled={busyId !== null}
+                className="flex-1 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                احفظ الحكم
+              </button>
+              <button onClick={() => setAuditFor(null)} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">
+                رجوع
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {approveFor && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">

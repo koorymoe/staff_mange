@@ -88,6 +88,26 @@ type LeaderInvoice struct {
 	ExternalInvoiceAt     *time.Time `db:"externalInvoiceAt" json:"externalInvoiceAt"`
 	// تعديل المحاسب على المبالغ: سببه ووقته. ⚠️ أعمدة بالجدول.
 	AdjustedReason *string    `db:"adjustedReason" json:"adjustedReason"`
+
+	// ═══ التدقيق ═══
+	// حكم المحاسب قبل الاعتماد: مطابق / غير مطابق / خطأ بالسعر.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	AuditVerdict  *string    `db:"auditVerdict" json:"auditVerdict,omitempty"`
+	AuditNote     *string    `db:"auditNote" json:"auditNote,omitempty"`
+	AuditedByID   *string    `db:"auditedById" json:"auditedById,omitempty"`
+	AuditedAt     *time.Time `db:"auditedAt" json:"auditedAt,omitempty"`
+	AuditedAmount *float64   `db:"auditedAmount" json:"auditedAmount,omitempty"`
+
+	// ═══ سحب الاعتماد ═══
+	// «لازم تخليلي خيار أكدر أرجعله الفواتير الما معتمدة».
+	// ⚠️ ما ينمحي شي: الرقم القديم وسبب السحب يبقون بالسجل.
+	RevokedAt    *time.Time `db:"revokedAt" json:"revokedAt,omitempty"`
+	RevokedByID  *string    `db:"revokedById" json:"revokedById,omitempty"`
+	RevokeReason *string    `db:"revokeReason" json:"revokeReason,omitempty"`
+	RevokedCount int        `db:"revokedCount" json:"revokedCount"`
+
+	AuditedByName *string `db:"-" json:"auditedByName,omitempty"`
+	RevokedByName *string `db:"-" json:"revokedByName,omitempty"`
 	AdjustedAt     *time.Time `db:"adjustedAt" json:"adjustedAt"`
 
 	// تفاصيل يحتاجها المحاسب: منو الليدر الي رفعها، ومنو اعتمدها،
@@ -315,4 +335,47 @@ type LeaderInvoiceAdjustment struct {
 
 	// اسم المحاسب — ينجي بالربط مو من الجدول
 	AdjustedByName *string `db:"adjustedByName" json:"adjustedByName"`
+}
+
+// ═══ أحكام التدقيق ═══
+//
+// «بالتدقيق: مطابق / غير مطابق / خطأ بالسعر».
+//   مطابق      = سعر الفاتورة نفسه المبلغ الي داخل
+//   غير مطابق  = الفاتورة سعرها يختلف عن المبلغ الداخل
+//   خطأ بالسعر = الموظف غلط، جاب أعلى من الفاتورة أو أوطى
+const (
+	AuditVerdictMatched    = "MATCHED"
+	AuditVerdictMismatch   = "MISMATCH"
+	AuditVerdictPriceError = "PRICE_ERROR"
+)
+
+func AuditVerdictLabel(v string) string {
+	switch v {
+	case AuditVerdictMatched:
+		return "مطابق"
+	case AuditVerdictMismatch:
+		return "غير مطابق"
+	case AuditVerdictPriceError:
+		return "خطأ بالسعر"
+	}
+	return v
+}
+
+func ValidAuditVerdict(v string) bool {
+	return v == AuditVerdictMatched || v == AuditVerdictMismatch || v == AuditVerdictPriceError
+}
+
+// AuditVerdictRequest حكم المحاسب على الفاتورة.
+//
+// ⚠️ الملاحظة إجبارية بغير المطابق وبخطأ السعر: «غير مطابق» بلا شرح
+// ما تفيد لا المراقب ولا المدير — والاثنين يقرونها.
+type AuditVerdictRequest struct {
+	Verdict string   `json:"verdict"`
+	Note    string   `json:"note"`
+	Amount  *float64 `json:"auditedAmount"`
+}
+
+// RevokeApprovalRequest سحب اعتماد فاتورة انعتمدت بالغلط.
+type RevokeApprovalRequest struct {
+	Reason string `json:"reason"`
 }

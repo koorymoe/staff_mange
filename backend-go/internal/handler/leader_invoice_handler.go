@@ -235,3 +235,45 @@ func (h *LeaderInvoiceHandler) Adjustments(w http.ResponseWriter, r *http.Reques
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
+
+// ═══ التدقيق ═══
+
+// PUT /api/leader-invoices/{id}/audit — حكم المحاسب قبل الاعتماد.
+func (h *LeaderInvoiceHandler) SetAuditVerdict(w http.ResponseWriter, r *http.Request) {
+	var req model.AuditVerdictRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	inv, err := h.service.SetAuditVerdict(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}
+
+// PUT /api/leader-invoices/{id}/revoke — سحب اعتماد انصار بالغلط.
+func (h *LeaderInvoiceHandler) RevokeApproval(w http.ResponseWriter, r *http.Request) {
+	var req model.RevokeApprovalRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	inv, err := h.service.RevokeApproval(r.PathValue("id"), req.Reason, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}
+
+// GET /api/leader-invoices/approved-without-number — الفجوة الي كلّفت.
+func (h *LeaderInvoiceHandler) ApprovedWithoutNumber(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ListApprovedWithoutNumber()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الجلب")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

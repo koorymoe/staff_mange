@@ -1056,7 +1056,26 @@ export interface LeaderInvoice {
   systems: string[]
   items: ExecutionCostItem[]
   materials: LeaderInvoiceMaterialItem[]
+  // ═══ التدقيق ═══
+  /** MATCHED مطابق · MISMATCH غير مطابق · PRICE_ERROR خطأ بالسعر */
+  auditVerdict?: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR'
+  auditNote?: string
+  auditedByName?: string
+  auditedAt?: string
+  /** المبلغ الي دخل فعلاً — أساس المطابقة */
+  auditedAmount?: number
+  // ═══ سحب الاعتماد ═══
+  revokedAt?: string
+  revokedByName?: string
+  revokeReason?: string
+  revokedCount?: number
 }
+
+export const AUDIT_VERDICTS: { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR'; label: string; cls: string }[] = [
+  { key: 'MATCHED', label: '✅ مطابق', cls: 'bg-emerald-100 text-emerald-800' },
+  { key: 'MISMATCH', label: '⚠️ غير مطابق', cls: 'bg-amber-100 text-amber-800' },
+  { key: 'PRICE_ERROR', label: '❌ خطأ بالسعر', cls: 'bg-red-100 text-red-800' },
+]
 
 export interface BookingDeleteRequest {
   id: string
@@ -3050,6 +3069,15 @@ export const api = {
   getAiWorkWindow: () => request<AiWorkWindow>('/ai/work-window'),
   setAiWorkWindow: (startHour: number, endHour: number) =>
     request<{ ok: boolean }>('/ai/work-window', { method: 'PUT', body: JSON.stringify({ startHour, endHour }) }),
+
+  /** حكم التدقيق قبل الاعتماد: مطابق / غير مطابق / خطأ بالسعر */
+  setInvoiceAuditVerdict: (id: string, data: { verdict: string; note: string; auditedAmount?: number | null }) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/audit`, { method: 'PUT', body: JSON.stringify(data) }),
+  /** سحب اعتماد فاتورة انعتمدت بالغلط — السبب إجباري */
+  revokeInvoiceApproval: (id: string, reason: string) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/revoke`, { method: 'PUT', body: JSON.stringify({ reason }) }),
+  /** الفواتير المعتمدة بلا رقم فاتورة محاسبية — الفجوة الي كلّفت */
+  getApprovedWithoutNumber: () => request<LeaderInvoice[]>('/leader-invoices/approved-without-number'),
 
   /** قصة الحجز كاملة + التأخيرات */
   getBookingTimeline: (id: string) => request<BookingTimeline>(`/bookings/${id}/timeline`),

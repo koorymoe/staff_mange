@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 
 	"github.com/lib/pq"
 
@@ -628,4 +629,78 @@ func (r *LeaderInvoiceRepository) ListByBooking(bookingID string) ([]model.Leade
 	err := r.db.Select(&rows, `
 		SELECT * FROM "LeaderInvoice" WHERE "bookingId" = $1 ORDER BY "createdAt" ASC`, bookingID)
 	return rows, err
+}
+
+// ═══ التدقيق ═══
+
+// SetAuditVerdict يحفظ حكم المحاسب — قبل الاعتماد.
+//
+// ⚠️ ما ينحفظ على فاتورة معتمدة: الحكم خطوة **قبل** الاعتماد، وتغييره
+// بعده يخلي الاعتماد مبنياً على حكم انتبدّل ورا ظهره.
+func (r *LeaderInvoiceRepository) SetAuditVerdict(id, verdict, note, byEmployeeID string, amount *float64) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "auditVerdict" = $2, "auditNote" = NULLIF($3,''), "auditedById" = $4,
+		    "auditedAt" = now(), "auditedAmount" = $5
+		WHERE id = $1 AND status <> 'APPROVED'`,
+		id, verdict, note, byEmployeeID, amount)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة معتمدة أصلاً — اسحب الاعتماد قبل ما تغيّر الحكم")
+	}
+	return r.GetByID(id)
+}
+
+// RevokeApproval يسحب اعتماد فاتورة انعتمدت بالغلط.
+//
+// «سوّه اعتماد لفاتورة وبالغلط راحت… لازم تخليلي خيار أكدر أرجعله
+// الفواتير الما معتمدة».
+//
+// ⚠️ ما نمحي رقم الفاتورة المحاسبية: الرقم انصدر بالنظام الثاني فعلاً،
+// ومحوه هنا يخلي التطابق بين النظامين مستحيل بعدين. يبقى بالسجل مع
+// سبب السحب ومنو سحب.
+//
+// ⚠️ وما نصفّر الحكم: المحاسب يشوف على شنو انبنى الاعتماد الملغي.
+//
+// ⚠️ revokedCount يتزايد: فاتورة انسحب اعتمادها ثلاث مرات علامة على
+// خلل — إما بالتدقيق أو بالفاتورة نفسها.
+func (r *LeaderInvoiceRepository) RevokeApproval(id, reason, byEmployeeID string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET status = 'SUBMITTED',
+		    "revokedAt" = now(), "revokedById" = $2, "revokeReason" = $3,
+		    "revokedCount" = "revokedCount" + 1,
+		    "approvedByEmployeeId" = NULL, "approvedAt" = NULL
+		WHERE id = $1 AND status = 'APPROVED'`,
+		id, byEmployeeID, reason)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة مو معتمدة أصلاً")
+	}
+	return r.GetByID(id)
+}
+
+// ListApprovedWithoutNumber الفواتير المعتمدة بلا رقم فاتورة محاسبية.
+//
+// هذي **الفجوة الي كلّفت**: انعتمدت قبل ما يصير الرقم إجبارياً، أو
+// بمسار ما فحص. المحاسب لازم يشوفها ويعالجها — إما يحط الرقم أو
+// يسحب الاعتماد.
+func (r *LeaderInvoiceRepository) ListApprovedWithoutNumber() ([]model.LeaderInvoice, error) {
+	rows := []model.LeaderInvoice{}
+	err := r.db.Select(&rows, `
+		SELECT * FROM "LeaderInvoice"
+		WHERE status = 'APPROVED'
+		  AND ("externalInvoiceNumber" IS NULL OR btrim("externalInvoiceNumber") = '')
+		ORDER BY "approvedAt" DESC NULLS LAST`)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		_ = r.hydrate(&rows[i])
+	}
+	return rows, nil
 }

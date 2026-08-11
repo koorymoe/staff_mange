@@ -244,6 +244,9 @@ func versionedMigrations() []Migration {
 	result = append(result, requiredFieldsMigration()...)
 	// 0245: المهام الإضافية — المدير يوجّه شغل لموظف، مو مربوط بحجز.
 	result = append(result, extraTaskMigration()...)
+	// 0246: تدقيق الفاتورة — الحكم (مطابق/غير مطابق/خطأ بالسعر)، وقيد
+	// قاعدة بيانات يمنع اعتماد فاتورة بلا رقم، وسحب الاعتماد.
+	result = append(result, invoiceAuditMigration()...)
 	return result
 }
 
