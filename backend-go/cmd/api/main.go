@@ -275,6 +275,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ نواة الذكاء الاصطناعي ═══
 	// نفس أسلوب صندوق المراقب: الربط بعد البناء حتى ما يصير اعتماد
 	// متبادل بين خدمة الحجوزات ونواة التحليل.
+	// المهام الإضافية — المدير يوجّه شغل لموظف، مو مربوط بحجز
+	extraTaskRepo := repository.NewExtraTaskRepository(db)
+	extraTaskHandler := handler.NewExtraTaskHandler(extraTaskRepo, notificationRepo)
+
 	aiRepo := repository.NewAiRepository(db)
 	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo)
 	aiBrainService := service.NewAiBrainService(aiRepo, aiEvidenceService)
@@ -557,6 +561,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
 	// ملاحظات موجّهة: وحدة للكادر ووحدة لمدير المشاريع.
+	// ═══ المهام الإضافية ═══
+	// التوجيه والمتابعة للمدير؛ التنفيذ للموظف نفسه.
+	// ⚠️ مسارات التنفيذ requireAuth بس — الحارس ما يعرف صاحب المهمة،
+	// فالمستودع يفحص "assignedToId" بكل عملية. بدونه أي موظف ينهي
+	// مهمة موظف ثاني بمعرّفها.
+	mux.Handle("POST /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.Create), requireAuth, requireStaffManagement))
+	mux.Handle("GET /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.List), requireAuth, requireStaffManagement))
+	mux.Handle("PUT /api/extra-tasks/{id}/cancel", middleware.Chain(http.HandlerFunc(extraTaskHandler.Cancel), requireAuth, requireStaffManagement))
+	mux.Handle("GET /api/extra-tasks/mine", middleware.Chain(http.HandlerFunc(extraTaskHandler.Mine), requireAuth))
+	mux.Handle("GET /api/extra-tasks/mine/count", middleware.Chain(http.HandlerFunc(extraTaskHandler.MyOpenCount), requireAuth))
+	mux.Handle("PUT /api/extra-tasks/{id}/seen", middleware.Chain(http.HandlerFunc(extraTaskHandler.MarkSeen), requireAuth))
+	mux.Handle("PUT /api/extra-tasks/{id}/start", middleware.Chain(http.HandlerFunc(extraTaskHandler.Start), requireAuth))
+	mux.Handle("PUT /api/extra-tasks/{id}/complete", middleware.Chain(http.HandlerFunc(extraTaskHandler.Complete), requireAuth))
+
 	// ═══ الذكاء الاصطناعي ═══
 	// ⚠️ كلها requireAdmin (يشمل المالك): «التقرير يطلع فقط لمدير
 	// النظام والمالك» — طلب صريح. تحليل سلوك موظف بيد زميله يتحول

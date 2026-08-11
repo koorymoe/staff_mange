@@ -8,6 +8,7 @@ import { api, type Booking, type PersonalTool } from '../api'
 import PartialCompleteDialog from '../components/PartialCompleteDialog'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
+import MyExtraTasks from '../components/MyExtraTasks'
 import { useSession } from '../session'
 
 function elapsedSince(iso: string): string {
@@ -260,6 +261,10 @@ export default function MyTasks() {
       {!loading && (
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2">
+            {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
+                لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
+            <MyExtraTasks />
+
             <h3 className="mb-3 font-bold text-brand-800">المهام الحالية</h3>
             <div className="flex flex-col gap-3">
               {myTasks.map((b) => {

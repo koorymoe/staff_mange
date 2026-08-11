@@ -148,6 +148,8 @@ export const navItems: NavItem[] = [
       { to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
       { to: '/partial-bookings', label: '🔄 حجوزات تحتاج إكمال', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
       { to: '/stage-buckets', label: '🗂️ ما وصلت للتنفيذ', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
+      // توجيه شغل لموظف — نفس صلاحية إدارة الكوادر
+      { to: '/extra-tasks', label: '📋 المهام الإضافية', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR'], permission: 'staff_management' },
       // ⚠️ المالك ومدير النظام بس — تحليل سلوك موظف بيد زميله يتحول لسلاح.
       { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },

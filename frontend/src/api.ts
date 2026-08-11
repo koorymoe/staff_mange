@@ -1298,6 +1298,38 @@ export interface AiWorkWindow {
   endHour: number
 }
 
+/** ═══ المهام الإضافية ═══
+ *  شغل موجّه من المدير لموظف، مو مربوط بحجز: «خرّج فواتير الشهر»،
+ *  «رتّب المخزن». تطلع عند الموظف الي انتوجّهت له. */
+export interface ExtraTask {
+  id: string
+  title: string
+  description?: string
+  assignedToId: string
+  assignedToName?: string
+  assignedById?: string
+  assignedByName?: string
+  priority: 'NORMAL' | 'URGENT'
+  dueAt?: string
+  status: 'NEW' | 'IN_PROGRESS' | 'DONE' | 'CANCELLED'
+  seenAt?: string
+  startedAt?: string
+  doneAt?: string
+  doneNote?: string
+  cancelledAt?: string
+  cancelReason?: string
+  createdAt: string
+  /** محسوبة بالسيرفر: فات موعدها وما انخلصت */
+  overdue: boolean
+}
+
+export const EXTRA_TASK_STATUS: Record<ExtraTask['status'], string> = {
+  NEW: 'جديدة',
+  IN_PROGRESS: 'قيد التنفيذ',
+  DONE: 'منجزة',
+  CANCELLED: 'ملغاة',
+}
+
 export interface MonitorReview {
   id: string
   stage: MonitorStage
@@ -2966,6 +2998,33 @@ export const api = {
   getAiWorkWindow: () => request<AiWorkWindow>('/ai/work-window'),
   setAiWorkWindow: (startHour: number, endHour: number) =>
     request<{ ok: boolean }>('/ai/work-window', { method: 'PUT', body: JSON.stringify({ startHour, endHour }) }),
+
+  // ═══ المهام الإضافية ═══
+  /** المدير يوجّه مهمة لموظف */
+  createExtraTask: (data: {
+    title: string; description?: string; assignedToId: string
+    priority: 'NORMAL' | 'URGENT'; dueAt?: string | null
+  }) => request<ExtraTask>('/extra-tasks', { method: 'POST', body: JSON.stringify(data) }),
+  /** كل المهام — للمدير */
+  getExtraTasks: (params: { status?: string; assigneeId?: string } = {}) => {
+    const q = new URLSearchParams()
+    if (params.status) q.set('status', params.status)
+    if (params.assigneeId) q.set('assigneeId', params.assigneeId)
+    const qs = q.toString()
+    return request<ExtraTask[]>(`/extra-tasks${qs ? `?${qs}` : ''}`)
+  },
+  /** مهامي أنا — المعرّف من التوكن، ما ينرسل بالطلب */
+  getMyExtraTasks: (includeDone = false) =>
+    request<ExtraTask[]>(`/extra-tasks/mine${includeDone ? '?includeDone=1' : ''}`),
+  getMyExtraTaskCount: () => request<{ count: number }>('/extra-tasks/mine/count'),
+  markExtraTaskSeen: (id: string) =>
+    request<{ ok: boolean }>(`/extra-tasks/${id}/seen`, { method: 'PUT' }),
+  startExtraTask: (id: string) =>
+    request<ExtraTask>(`/extra-tasks/${id}/start`, { method: 'PUT' }),
+  completeExtraTask: (id: string, doneNote: string) =>
+    request<ExtraTask>(`/extra-tasks/${id}/complete`, { method: 'PUT', body: JSON.stringify({ doneNote }) }),
+  cancelExtraTask: (id: string, reason: string) =>
+    request<ExtraTask>(`/extra-tasks/${id}/cancel`, { method: 'PUT', body: JSON.stringify({ reason }) }),
 
   /** ملاحظة الإداري للكادر المنفّذ — يقراها الفريق بشاشة «مهامي». */
   setBookingCrewNotes: (id: string, note: string) =>

@@ -242,6 +242,8 @@ func versionedMigrations() []Migration {
 	// 0244: الحقول الإجبارية — الخدمة تقدر تطلب تفاصيل أجهزة وقت الحجز.
 	// ⚠️ شروط تعبئة بس، ماكو ولا رقم ينتغيّر.
 	result = append(result, requiredFieldsMigration()...)
+	// 0245: المهام الإضافية — المدير يوجّه شغل لموظف، مو مربوط بحجز.
+	result = append(result, extraTaskMigration()...)
 	return result
 }
 
