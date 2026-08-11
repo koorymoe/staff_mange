@@ -35,9 +35,19 @@ func (r *BookingRepository) List(status, customerID, date string, limit int) ([]
 		// ⚠️ الحجز المؤجل بلا موعد ينستثنى صراحةً: بدون هذا الشرط
 		// يرجع للسطر الثاني (createdAt) ويطلع بجدول **يوم إنشائه**،
 		// يعني نفس المشكلة الي أجّلناه حتى نتجنبها.
+		// ⚠️ الحجز الي **ما انثبت** ما يطلع بجدول أي يوم.
+		//
+		// كان السطر الثاني ينزل على createdAt لما ماكو موعد — فالحجز
+		// الي انسجّل اليوم ولسه ما انسّق يطلع بجدول اليوم كأنه شغل
+		// مجدول، ويطلع بجدول «كذا تاريخ» بعدين. وهذا غلط: الحجز
+		// بلا موعد مو شغل اليوم، هو **بانتظار التثبيت** ولازم يضل
+		// بقائمة الانتظار لحد ما ينسّق وينثبت.
+		//
+		// خلّينا احتياط createdAt للحجز **المثبّت** الي ما إله موعد
+		// (حالة نادرة بس موجودة) — أما غير المثبّت فما يطلع أبداً.
 		query += fmt.Sprintf(` AND NOT "awaitingReschedule" AND (
 			(("scheduledAt" IS NOT NULL) AND baghdad_date("scheduledAt") = $%d::date)
-			OR (("scheduledAt" IS NULL) AND baghdad_date("createdAt") = $%d::date)
+			OR (("scheduledAt" IS NULL) AND "confirmedAt" IS NOT NULL AND baghdad_date("createdAt") = $%d::date)
 		)`, len(args), len(args))
 	}
 	if status != "" {
@@ -222,6 +232,10 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		addEmp(b.MaterialsReadyByID)
 		addEmp(b.ConfirmationContactedByID)
 		addEmp(b.LastEditedByID)
+		addEmp(b.CreatedByID)
+		addEmp(b.CrewNotesByID)
+		addEmp(b.ProjectNotesByID)
+		addEmp(b.CancelledByID)
 	}
 
 	customers := map[string]model.Customer{}
@@ -390,6 +404,20 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		b.MaterialsReadyBy = getEmpBrief(b.MaterialsReadyByID)
 		b.ConfirmationContactedBy = getEmpBrief(b.ConfirmationContactedByID)
 		b.LastEditedBy = getEmpBrief(b.LastEditedByID)
+
+		// أسماء المراحل — الاسم لحاله يكفي بالعرض، ما نرجّع الموظف كله
+		name := func(id *string) *string {
+			if e := getEmp(id); e != nil {
+				n := e.Name
+				return &n
+			}
+			return nil
+		}
+		b.CreatedByName = name(b.CreatedByID)
+		b.CrewNotesByName = name(b.CrewNotesByID)
+		b.ProjectNotesByName = name(b.ProjectNotesByID)
+		b.CancelledByName = name(b.CancelledByID)
+		b.StageBucket = b.ComputeStageBucket()
 
 		assignments := assignmentsByBooking[b.ID]
 		for j := range assignments {
@@ -1399,4 +1427,131 @@ func bookingTypeLabel(t string) string {
 		return "حجز طاقة شمسية"
 	}
 	return t
+}
+
+// ═══ تتبّع المراحل ═══
+
+// SetCreatedBy يسجّل منو أدخل الحجز.
+//
+// COALESCE مقصود: منو أدخله ما يتغيّر أبداً. لو انتحدّث مرة ثانية
+// (تعديل، استرجاع من الأرشيف) يبقى الأول — هو الي أدخله فعلاً.
+func (r *BookingRepository) SetCreatedBy(id, employeeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking" SET "createdById" = COALESCE("createdById", $2) WHERE id = $1`,
+		id, employeeID)
+	return err
+}
+
+// SetCrewNotes ملاحظة الإداري للكادر المنفّذ.
+func (r *BookingRepository) SetCrewNotes(id, note, byEmployeeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "crewNotes" = NULLIF($2,''), "crewNotesById" = $3, "crewNotesAt" = now()
+		WHERE id = $1`, id, note, byEmployeeID)
+	return err
+}
+
+// SetProjectNotes ملاحظة الإداري لمدير المشاريع.
+func (r *BookingRepository) SetProjectNotes(id, note, byEmployeeID string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET "projectNotes" = NULLIF($2,''), "projectNotesById" = $3, "projectNotesAt" = now()
+		WHERE id = $1`, id, note, byEmployeeID)
+	return err
+}
+
+// Cancel إلغاء الحجز بسبب مكتوب.
+//
+// ⚠️ الشرط على الحالة يمنع إلغاء حجز منجز: الشغل انعمل والفاتورة
+// ممكن تكون انصدرت، وإلغاؤه بعدها يكسر الحسابات. ويمنع الإلغاء
+// المكرر — الي يدوس على وقت الإلغاء الأول ومنو ألغى.
+//
+// ⚠️ ما نمسح waitingSince ولا awaitingReschedule: الحجز الي كان
+// منتظر رد وانلغى، معلومة «كان منتظر» جزء من قصته. سلّة المرحلة
+// تحسب الإلغاء أولاً فما تتلخبط.
+func (r *BookingRepository) Cancel(id, reason, byEmployeeID string) error {
+	res, err := r.db.Exec(`
+		UPDATE "Booking"
+		SET status = 'CANCELLED', "cancelledAt" = now(),
+		    "cancelledById" = $2, "cancelReason" = $3
+		WHERE id = $1 AND status NOT IN ('COMPLETED','CANCELLED') AND "archivedAt" IS NULL`,
+		id, byEmployeeID, reason)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز منجز أو ملغى من قبل — ما ينلغى")
+	}
+	return nil
+}
+
+// ListByStageBucket الحجوزات الي بسلّة مرحلة معيّنة.
+//
+// الفرز «قبل/بعد التثبيت» يصير بالسيرفر مو بالواجهة: الواجهة چان
+// لازم تجيب كل الحجوزات وتفرزهن بالمتصفح، وهذا يثقل مع التراكم.
+func (r *BookingRepository) ListByStageBucket(bucket string, limit int) ([]model.Booking, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	var cond string
+	switch bucket {
+	case model.StageBucketCancelledBefore:
+		cond = `status = 'CANCELLED' AND "confirmedAt" IS NULL`
+	case model.StageBucketCancelledAfter:
+		cond = `status = 'CANCELLED' AND "confirmedAt" IS NOT NULL`
+	case model.StageBucketNoAnswerBefore:
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL`
+	case model.StageBucketNoAnswerAfter:
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL`
+	case model.StageBucketPostponedBefore:
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NULL`
+	case model.StageBucketPostponedAfter:
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NOT NULL`
+	default:
+		return nil, errors.New("سلّة مو معروفة")
+	}
+	bookings := []model.Booking{}
+	err := r.db.Select(&bookings, `
+		SELECT * FROM "Booking"
+		WHERE "archivedAt" IS NULL AND `+cond+`
+		ORDER BY "createdAt" DESC LIMIT $1`, limit)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
+		return nil, err
+	}
+	return bookings, nil
+}
+
+// StageBucketCounts عدّاد كل سلّة — للأرقام فوق التبويبات.
+func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
+	row := struct {
+		CancelBefore int `db:"cancelBefore"`
+		CancelAfter  int `db:"cancelAfter"`
+		NoAnsBefore  int `db:"noAnsBefore"`
+		NoAnsAfter   int `db:"noAnsAfter"`
+		PostBefore   int `db:"postBefore"`
+		PostAfter    int `db:"postAfter"`
+	}{}
+	err := r.db.Get(&row, `
+		SELECT
+		  COUNT(*) FILTER (WHERE status = 'CANCELLED' AND "confirmedAt" IS NULL) AS "cancelBefore",
+		  COUNT(*) FILTER (WHERE status = 'CANCELLED' AND "confirmedAt" IS NOT NULL) AS "cancelAfter",
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL) AS "noAnsBefore",
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL) AS "noAnsAfter",
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NULL) AS "postBefore",
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NOT NULL) AS "postAfter"
+		FROM "Booking" WHERE "archivedAt" IS NULL`)
+	if err != nil {
+		return nil, err
+	}
+	return map[string]int{
+		model.StageBucketCancelledBefore: row.CancelBefore,
+		model.StageBucketCancelledAfter:  row.CancelAfter,
+		model.StageBucketNoAnswerBefore:  row.NoAnsBefore,
+		model.StageBucketNoAnswerAfter:   row.NoAnsAfter,
+		model.StageBucketPostponedBefore: row.PostBefore,
+		model.StageBucketPostponedAfter:  row.PostAfter,
+	}, nil
 }

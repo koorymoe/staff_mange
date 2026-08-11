@@ -684,3 +684,68 @@ func (s *BookingService) ChangeType(id, newType, byEmployeeID string) (*model.Bo
 	}
 	return s.repo.FindByID(id)
 }
+
+// ═══ تتبّع المراحل ═══
+
+// RecordCreator يسجّل منو أدخل الحجز — ينندى بعد الإنشاء مباشرة.
+//
+// ⚠️ منفصل عن Create مو معاه: Create عنده منادين آخرين (استيراد،
+// مهام مجدولة) ما إلهم موظف، وتغيير توقيعه چان يفرض عليهم يمرّرون
+// معرّفاً وهمياً — يعني ننسب الحجز لواحد ما أدخله.
+//
+// ⚠️ الفشل ما يوقف إنشاء الحجز: «منو أدخله» معلومة زينة، بس ضياعها
+// ما يسوّي حجز الزبون ينرفض.
+func (s *BookingService) RecordCreator(bookingID, employeeID string) {
+	if bookingID == "" || employeeID == "" {
+		return
+	}
+	_ = s.repo.SetCreatedBy(bookingID, employeeID)
+}
+
+// SetCrewNotes ملاحظة الإداري للكادر المنفّذ — يقراها الفريق بشاشته.
+func (s *BookingService) SetCrewNotes(id, note, byEmployeeID string) (*model.Booking, error) {
+	if err := s.repo.SetCrewNotes(id, note, byEmployeeID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// SetProjectNotes ملاحظة الإداري لمدير المشاريع.
+func (s *BookingService) SetProjectNotes(id, note, byEmployeeID string) (*model.Booking, error) {
+	if err := s.repo.SetProjectNotes(id, note, byEmployeeID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// Cancel إلغاء الحجز — السبب إجباري.
+//
+// ⚠️ «ملغى» بلا سبب ما تفيد أحد: المراقب ما يعرف ليش، والإحصائية ما
+// تفرّق بين زبون بدّل رأيه وبين غلط منّا خسّرنا شغلاً.
+func (s *BookingService) Cancel(id, reason, byEmployeeID string) (*model.Booking, error) {
+	if strings.TrimSpace(reason) == "" {
+		return nil, errors.New("سبب الإلغاء إجباري")
+	}
+	if err := s.ensureNotProjectLocked(id); err != nil {
+		return nil, err
+	}
+	if err := s.repo.Cancel(id, strings.TrimSpace(reason), byEmployeeID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
+// ListByStageBucket و StageBucketCounts — تمرير مباشر للمستودع.
+func (s *BookingService) ListByStageBucket(bucket string, limit int) ([]model.Booking, error) {
+	return s.repo.ListByStageBucket(bucket, limit)
+}
+
+func (s *BookingService) StageBucketCounts() (map[string]int, error) {
+	return s.repo.StageBucketCounts()
+}
+
+// Get حجز واحد بمعرّفه — للمنادين الي يحتاجون النسخة المهدرجة
+// (بالأسماء وسلّة المرحلة) بعد عملية كتابة.
+func (s *BookingService) Get(id string) (*model.Booking, error) {
+	return s.repo.FindByID(id)
+}

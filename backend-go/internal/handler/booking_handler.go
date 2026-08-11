@@ -89,6 +89,12 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// منو أدخل الحجز — «بانتظار التثبيت» كانت تعرضه بلا ما تگول
+	// لمنو ترجع لو المعلومة ناقصة.
+	h.service.RecordCreator(booking.ID, middleware.EmployeeIDFromContext(r))
+	if fresh, err := h.service.Get(booking.ID); err == nil && fresh != nil {
+		booking = fresh
+	}
 	WriteJSON(w, http.StatusCreated, booking)
 }
 
@@ -467,4 +473,76 @@ func (h *BookingHandler) ChangeType(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, booking)
+}
+
+// ═══ تتبّع المراحل ═══
+
+// PUT /api/bookings/{id}/crew-notes — ملاحظة الإداري للكادر المنفّذ.
+func (h *BookingHandler) SetCrewNotes(w http.ResponseWriter, r *http.Request) {
+	h.setNote(w, r, "/crew-notes", h.service.SetCrewNotes)
+}
+
+// PUT /api/bookings/{id}/project-notes — ملاحظة الإداري لمدير المشاريع.
+func (h *BookingHandler) SetProjectNotes(w http.ResponseWriter, r *http.Request) {
+	h.setNote(w, r, "/project-notes", h.service.SetProjectNotes)
+}
+
+// setNote الجسم المشترك للملاحظتين — نفس الشكل بالضبط، والفرق بالدالة
+// الي تنحفظ بيها. تكرار الجسم مرتين يعني إصلاح أي عيب لازم ينعمل مرتين.
+func (h *BookingHandler) setNote(
+	w http.ResponseWriter, r *http.Request, suffix string,
+	save func(id, note, byEmployeeID string) (*model.Booking, error),
+) {
+	id := strings.TrimSuffix(extractID(r.URL.Path, "/api/bookings/"), suffix)
+	var req struct {
+		Note string `json:"note"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	booking, err := save(id, req.Note, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
+// PUT /api/bookings/{id}/cancel — إلغاء بسبب مكتوب.
+func (h *BookingHandler) Cancel(w http.ResponseWriter, r *http.Request) {
+	id := strings.TrimSuffix(extractID(r.URL.Path, "/api/bookings/"), "/cancel")
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	booking, err := h.service.Cancel(id, req.Reason, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
+// GET /api/bookings/stage-bucket?bucket=...  — حجوزات سلّة وحدة.
+func (h *BookingHandler) ListByStageBucket(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ListByStageBucket(r.URL.Query().Get("bucket"), 0)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// GET /api/bookings/stage-bucket-counts — أرقام فوق التبويبات.
+func (h *BookingHandler) StageBucketCounts(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.service.StageBucketCounts()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حساب الأعداد")
+		return
+	}
+	WriteJSON(w, http.StatusOK, counts)
 }

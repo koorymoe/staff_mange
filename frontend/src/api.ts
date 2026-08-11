@@ -492,6 +492,19 @@ export interface Booking {
   postponeCount: number
   /** انأجّل بلا موعد — منزاح من جدول اليوم لحد ما ينحدد له موعد */
   awaitingReschedule: boolean
+  // ═══ تتبّع المراحل ═══
+  createdByName?: string
+  crewNotes?: string
+  crewNotesByName?: string
+  crewNotesAt?: string
+  projectNotes?: string
+  projectNotesByName?: string
+  projectNotesAt?: string
+  cancelledAt?: string
+  cancelledByName?: string
+  cancelReason?: string
+  /** محسوبة بالسيرفر — أي سلّة ينتمي لها الحجز (فاضية = ولا وحدة) */
+  stageBucket?: StageBucket | ''
   lastPostponedAt: string | null
   postponeReason: string | null
 
@@ -1202,6 +1215,26 @@ export type MonitorStage =
   | 'INVOICE_BEFORE_AUDIT' | 'INVOICE_AFTER_AUDIT'
   | 'BOOKING_BEFORE_CONFIRM' | 'BOOKING_AFTER_CONFIRM' | 'BOOKING_AFTER_COMPLETE'
   | 'PROCUREMENT_FULFILLED' | 'QUALITY_VERDICT' | 'GPS_DEVICE_DONE'
+
+/** ═══ سلال مراحل الحجز ═══
+ *  «هاي تصير بيها حالتين — قبل التثبيت وبعد التثبيت»: زبون ألغى قبل ما
+ *  نثبتله موعد شي، وزبون ألغى بعد ما وعدناه وحضّرنا كادر شي ثاني. */
+export type StageBucket =
+  | 'POSTPONED_BEFORE_CONFIRM'
+  | 'POSTPONED_AFTER_CONFIRM'
+  | 'NO_ANSWER_BEFORE_CONFIRM'
+  | 'NO_ANSWER_AFTER_CONFIRM'
+  | 'CANCELLED_BEFORE_CONFIRM'
+  | 'CANCELLED_AFTER_CONFIRM'
+
+export const STAGE_BUCKETS: { key: StageBucket; label: string; icon: string }[] = [
+  { key: 'POSTPONED_BEFORE_CONFIRM', label: 'مؤجّل قبل التثبيت', icon: '⏳' },
+  { key: 'POSTPONED_AFTER_CONFIRM', label: 'مؤجّل بعد التثبيت', icon: '⏳' },
+  { key: 'NO_ANSWER_BEFORE_CONFIRM', label: 'ما رد — قبل التثبيت', icon: '📵' },
+  { key: 'NO_ANSWER_AFTER_CONFIRM', label: 'ما رد — بعد التثبيت', icon: '📵' },
+  { key: 'CANCELLED_BEFORE_CONFIRM', label: 'ملغى قبل التثبيت', icon: '✖️' },
+  { key: 'CANCELLED_AFTER_CONFIRM', label: 'ملغى بعد التثبيت', icon: '✖️' },
+]
 
 export interface MonitorReview {
   id: string
@@ -2859,6 +2892,22 @@ export const api = {
     const qs = query.toString()
     return request<Booking[]>(`/bookings${qs ? `?${qs}` : ''}`)
   },
+  // ═══ تتبّع المراحل ═══
+  /** ملاحظة الإداري للكادر المنفّذ — يقراها الفريق بشاشة «مهامي». */
+  setBookingCrewNotes: (id: string, note: string) =>
+    request<Booking>(`/bookings/${id}/crew-notes`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  /** ملاحظة الإداري لمدير المشاريع. */
+  setBookingProjectNotes: (id: string, note: string) =>
+    request<Booking>(`/bookings/${id}/project-notes`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  /** إلغاء الحجز — السبب إجباري. */
+  cancelBooking: (id: string, reason: string) =>
+    request<Booking>(`/bookings/${id}/cancel`, { method: 'PUT', body: JSON.stringify({ reason }) }),
+  /** حجوزات سلّة مرحلة وحدة (مؤجّل/ما رد/ملغى × قبل وبعد التثبيت). */
+  getBookingsByStageBucket: (bucket: StageBucket) =>
+    request<Booking[]>(`/bookings/stage-bucket?bucket=${encodeURIComponent(bucket)}`),
+  /** أعداد السلال الست — للأرقام فوق التبويبات. */
+  getStageBucketCounts: () => request<Record<StageBucket, number>>('/bookings/stage-bucket-counts'),
+
   // bookingType: 'INTERNAL' يخلي الحجز شغل داخل الشركة (للإداري فما فوق)
   createBooking: (data: {
     customerId: string

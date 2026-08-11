@@ -548,6 +548,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/waiting", middleware.Chain(http.HandlerFunc(bookingHandler.MarkWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
+	// ملاحظات موجّهة: وحدة للكادر ووحدة لمدير المشاريع.
+	mux.Handle("PUT /api/bookings/{id}/crew-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetCrewNotes), requireAuth, requireBookingCoord))
+	mux.Handle("PUT /api/bookings/{id}/project-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetProjectNotes), requireAuth, requireBookingCoord))
+	// إلغاء بسبب مكتوب — بوقته ومنو ألغى، حتى نفرّق قبل التثبيت وبعده.
+	mux.Handle("PUT /api/bookings/{id}/cancel", middleware.Chain(http.HandlerFunc(bookingHandler.Cancel), requireAuth, requireBookingCoord))
+	// سلال المراحل الست
+	mux.Handle("GET /api/bookings/stage-bucket", middleware.Chain(http.HandlerFunc(bookingHandler.ListByStageBucket), requireAuth, requireCoordinator))
+	mux.Handle("GET /api/bookings/stage-bucket-counts", middleware.Chain(http.HandlerFunc(bookingHandler.StageBucketCounts), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/supervisor", middleware.Chain(http.HandlerFunc(bookingHandler.Supervisor), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/start", middleware.Chain(http.HandlerFunc(bookingHandler.Start), requireAuth, requireBookingParty))
 	mux.Handle("PUT /api/bookings/{id}/arrived", middleware.Chain(http.HandlerFunc(bookingHandler.MarkArrived), requireAuth, requireBookingParty))

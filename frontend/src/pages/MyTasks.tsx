@@ -94,12 +94,21 @@ export default function MyTasks() {
   const load = () => {
     // المنجزة تنجلب بعد — الموظف لازم يضل يشوف شغله الي خلّصه
     // بتفاصيله، مو يختفي عنه أول ما يضغط «تم».
-    Promise.all([
-      api.getBookings({ status: 'CONFIRMED' }),
-      api.getBookings({ status: 'IN_PROGRESS' }),
-      api.getBookings({ status: 'COMPLETED' }),
-    ])
-      .then(([confirmed, inProgress, completed]) => setBookings([...confirmed, ...inProgress, ...completed]))
+    // ⚠️ نطلب «مهامي» من السيرفر مو نجيب حجوزات الشركة ونفلترها هنا.
+    //
+    // الفلترة بالحالة كانت **تخبّي الحجز عن الليدر**: الإداري يحط
+    // الليدر بخانة الليدر قبل ما يثبّت الحجز، فالحجز يضل PENDING —
+    // وهذي الشاشة كانت تطلب CONFIRMED وIN_PROGRESS وCOMPLETED بس.
+    // النتيجة: الليدر ما يشوف ولا شي، والحل الي كانوا يسوونه إنهم
+    // يحطونه بخانة الفني هم حتى يطلعله.
+    //
+    // ومسار السيرفر يغطي الاثنين: المكلّف بجدول التعيينات **والليدر**
+    // بعمود المشرف — وهو الي كان ناقص.
+    //
+    // وفايدة ثانية: الفني ما عاد ينزّل حجوزات الشركة كلها بزبائنها
+    // على تلفونه حتى يشوف مهامه هو.
+    api.getBookings({ assignedTo: 'me' })
+      .then(setBookings)
       .finally(() => setLoading(false))
   }
 
@@ -262,6 +271,25 @@ export default function MyTasks() {
                   >
                     {/* هوية كاملة: الفني كان يشوف كود الحجز بس */}
                     <EntityIdentity booking={b} variant="full" className="mb-2" />
+
+                    {/* ملاحظة الإداري للكادر — هاي كانت تنقال بالتلفون
+                        وتضيع. الي ما كان بالمكالمة ما يعرفها. */}
+                    {b.crewNotes && (
+                      <div className="mb-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm">
+                        <span className="font-bold text-sky-900">📋 ملاحظة الإداري:</span>{' '}
+                        <span className="text-sky-900">{b.crewNotes}</span>
+                        {b.crewNotesByName && (
+                          <span className="mr-1 text-[11px] text-sky-700">— {b.crewNotesByName}</span>
+                        )}
+                      </div>
+                    )}
+                    {/* الحجز المعيّن لليدر قبل التثبيت: يشوفه بس يعرف
+                        إنه لسه ما انثبت، فما يروح للزبون بلا موعد. */}
+                    {b.status === 'PENDING' && (
+                      <div className="mb-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                        ⏳ لسه ما انثبت — انتظر التثبيت والموعد قبل ما تتحرك
+                      </div>
+                    )}
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-sm font-semibold text-brand-600">
                         {b.code}

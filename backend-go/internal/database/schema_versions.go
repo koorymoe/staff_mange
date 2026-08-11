@@ -233,6 +233,9 @@ func versionedMigrations() []Migration {
 	// 0241: سجل تعديلات الفاتورة — التعديل كان يمحي الأرقام الأصلية
 	// وما يسجّل منو عدّل.
 	result = append(result, invoiceAdjustmentMigration()...)
+	// 0242: تتبّع مراحل الحجز — منو رحّله، ملاحظات موجّهة للكادر
+	// ولمدير المشاريع، ووقت الإلغاء (حتى نفرّق قبل التثبيت وبعده).
+	result = append(result, bookingStageTrackingMigration()...)
 	return result
 }
 

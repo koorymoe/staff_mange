@@ -10,6 +10,7 @@ import { formatScheduleWindow } from '../utils/schedule'
 import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
 import { matches as searchMatches } from '../utils/search'
 import EntityIdentity from '../components/EntityIdentity'
+import BookingRoutingNotes from '../components/BookingRoutingNotes'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -506,6 +507,13 @@ export default function Coordinator() {
                     <span className="mr-3 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
                       بانتظار التثبيت
                     </span>
+                    {/* منو رحّل الحجز — أول سؤال ينسأل لما المعلومة
+                        ناقصة، وكان ينسأل بالتلفون لأنه مو مكتوب. */}
+                    {booking.createdByName && (
+                      <span className="mr-2 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
+                        📝 رحّله: {booking.createdByName}
+                      </span>
+                    )}
                     {/* شوكت وصل هذا الحجز للتنسيق */}
                     <span className="mr-2 text-xs text-slate-400">
                       وصل للتنسيق: {new Date(booking.confirmedAt || booking.createdAt).toLocaleString('ar-IQ', {
@@ -636,6 +644,13 @@ export default function Coordinator() {
                     </button>
                   )}
                 </div>
+
+                {/* الملاحظة تنكتب **قبل** الترحيل: بعده الإداري ينتقل
+                    للحجز الجاي وما يرجعله. */}
+                <BookingRoutingNotes
+                  booking={booking}
+                  onSaved={(u) => setBookings((prev) => prev.map((b) => (b.id === u.id ? u : b)))}
+                />
 
                 <div className="mt-4 flex flex-wrap gap-2">
                   <button

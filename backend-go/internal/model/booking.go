@@ -120,6 +120,35 @@ type Booking struct {
 	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
 	AwaitingReschedule bool `db:"awaitingReschedule" json:"awaitingReschedule"`
 
+	// ═══ تتبّع المراحل ═══
+	// منو أدخل/رحّل الحجز — «بانتظار التثبيت» كانت تعرض حجوزات بلا
+	// ما تقول لمنو ترجع لو المعلومة ناقصة.
+	// ملاحظات موجّهة: وحدة للكادر المنفّذ ووحدة لمدير المشاريع —
+	// منفصلات لأن الاثنين يقرون أشياء مختلفة.
+	// والإلغاء بوقته حتى نفرّق «انلغى قبل التثبيت» عن «بعده».
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
+	CreatedByID      *string    `db:"createdById" json:"createdById,omitempty"`
+	CrewNotesByID    *string    `db:"crewNotesById" json:"crewNotesById,omitempty"`
+	CrewNotesAt      *time.Time `db:"crewNotesAt" json:"crewNotesAt,omitempty"`
+	ProjectNotes     *string    `db:"projectNotes" json:"projectNotes,omitempty"`
+	ProjectNotesByID *string    `db:"projectNotesById" json:"projectNotesById,omitempty"`
+	ProjectNotesAt   *time.Time `db:"projectNotesAt" json:"projectNotesAt,omitempty"`
+	CancelledAt      *time.Time `db:"cancelledAt" json:"cancelledAt,omitempty"`
+	CancelledByID    *string    `db:"cancelledById" json:"cancelledById,omitempty"`
+	CancelReason     *string    `db:"cancelReason" json:"cancelReason,omitempty"`
+
+	// أسماء محسوبة وقت الجلب — مو أعمدة.
+	CreatedByName      *string `db:"-" json:"createdByName,omitempty"`
+	CrewNotesByName    *string `db:"-" json:"crewNotesByName,omitempty"`
+	ProjectNotesByName *string `db:"-" json:"projectNotesByName,omitempty"`
+	CancelledByName    *string `db:"-" json:"cancelledByName,omitempty"`
+
+	// ═══ سلّة المرحلة ═══
+	// «مؤجّل قبل التثبيت» غير «مؤجّل بعده»، ونفس الشي للملغى وللزبون
+	// الي ما رد. محسوبة وقت الجلب من confirmedAt — مو عمود، حتى ما
+	// يصير مصدرين للحقيقة ينفرزون عن بعض.
+	StageBucket string `db:"-" json:"stageBucket,omitempty"`
+
 	// ═══ اكتمال الحجز بعد الإنجاز ═══
 	// الإنجاز لحاله ما يكفي: الليدر لازم يسوي فاتورة التكاليف المربوطة
 	// بالحجز، وتقرير العمل. هذولا محسوبات وقت الجلب (مو أعمدة بالجدول)
@@ -311,4 +340,70 @@ func ValidWorkLocation(v string) bool {
 // لا للمتابعة ولا للتقرير.
 type StopWorkRequest struct {
 	Reason string `json:"reason"`
+}
+
+// ═══ سلال المراحل ═══
+//
+// صاحب العمل: «هاي تصير بيها حالتين — قبل التثبيت وبعد التثبيت».
+// وهو محق: زبون ألغى **قبل** ما نثبتله موعد شي، وزبون ألغى **بعد**
+// ما وعدناه وحضّرنا كادر شي ثاني تماماً. نفس الفرق بالتأجيل وبعدم
+// الرد. دمجهن بسلّة وحدة يخبّي فرقاً بالمسؤولية وبالخسارة.
+const (
+	StageBucketPostponedBefore = "POSTPONED_BEFORE_CONFIRM"
+	StageBucketPostponedAfter  = "POSTPONED_AFTER_CONFIRM"
+	StageBucketNoAnswerBefore  = "NO_ANSWER_BEFORE_CONFIRM"
+	StageBucketNoAnswerAfter   = "NO_ANSWER_AFTER_CONFIRM"
+	StageBucketCancelledBefore = "CANCELLED_BEFORE_CONFIRM"
+	StageBucketCancelledAfter  = "CANCELLED_AFTER_CONFIRM"
+)
+
+// StageBucketLabel التسمية العربية — مصدر واحد للسيرفر والواجهة.
+func StageBucketLabel(bucket string) string {
+	switch bucket {
+	case StageBucketPostponedBefore:
+		return "مؤجّل قبل التثبيت"
+	case StageBucketPostponedAfter:
+		return "مؤجّل بعد التثبيت"
+	case StageBucketNoAnswerBefore:
+		return "الزبون ما رد — قبل التثبيت"
+	case StageBucketNoAnswerAfter:
+		return "الزبون ما رد — بعد التثبيت"
+	case StageBucketCancelledBefore:
+		return "ملغى قبل التثبيت"
+	case StageBucketCancelledAfter:
+		return "ملغى بعد التثبيت"
+	}
+	return ""
+}
+
+// ComputeStageBucket يحدد سلّة الحجز — أو نص فاضي لو ما ينتمي لولا وحدة.
+//
+// ⚠️ الترتيب مقصود: الإلغاء يغلب التأجيل وعدم الرد. حجز الزبون ما رد
+// بيه وبعدين ألغاه **ملغى** — الانتظار انتهى وصار قرار. لو عكسنا
+// الترتيب چان الحجز الملغى ظل يطلع بقائمة «ما رد» وننتظر رداً من واحد
+// خلاص انسحب.
+//
+// ⚠️ الفرز «قبل/بعد» يعتمد على confirmedAt مو على الحالة الحالية:
+// الحالة تتغيّر (الملغى صار CANCELLED)، بس confirmedAt يبقى شاهد إنه
+// كان مثبتاً يوم انلغى.
+func (b *Booking) ComputeStageBucket() string {
+	after := b.ConfirmedAt != nil
+	switch {
+	case b.Status == "CANCELLED":
+		if after {
+			return StageBucketCancelledAfter
+		}
+		return StageBucketCancelledBefore
+	case b.WaitingSince != nil:
+		if after {
+			return StageBucketNoAnswerAfter
+		}
+		return StageBucketNoAnswerBefore
+	case b.AwaitingReschedule:
+		if after {
+			return StageBucketPostponedAfter
+		}
+		return StageBucketPostponedBefore
+	}
+	return ""
 }
