@@ -214,6 +214,12 @@ export const navItems: NavItem[] = [
       },
       {
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
+        // ⚠️ محجوبة عن المحاسب: محتواها **نفسه** محتوى «العمل» مالته
+        // كلمة بكلمة، فكان يشوف نفس التسع شاشات مرتين — مرة بالإدارة
+        // ومرة بالعمل. «ماريد الأوامر تتكرر… أحتاج واحد مو ثنينهن».
+        // للمدير والمراقب تبقى مثل ما هي: هذول ما عندهم «العمل» مال
+        // المحاسب أصلاً، فما يتكرر عندهم شي.
+        hideForRoles: ['FINANCE'],
         children: [
           { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
@@ -312,7 +318,9 @@ export const navItems: NavItem[] = [
   // ما ننطيه صلاحية إدارة المشاريع العامة. الصفحة تطلع فاضية لو ماكو شي.
   { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, unlockPermission: 'my_projects', hideForRoles: ['FINANCE'] },
 
-  { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true },
+  // للمحاسب ما بقى فوگ الفاصل ولا شي (الإدارة انحجبت عنه لأنها مكرّرة)،
+  // فالفاصل يصير خط يفصل الفراغ عن «العمل» — ضجيج بلا معنى.
+  { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true, hideForRoles: ['FINANCE'] },
 
   {
     // وحدة الخدمة: استقبال وتنسيق طلبات الزبائن وتنفيذها
@@ -524,11 +532,12 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   // unitGranted: صحيح لما يكون الموظف عنده صلاحية الوحدة الي هذا العنصر
   // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
   
-    if (item.divider) return true
-
-    // منع صريح لدور — قبل قاعدة «المنح يفتح»، وإلا الصلاحية نفسها
-    // ترجّع العنصر وتخلي الشاشة تتكرر بمحلين بقائمة نفس الموظف.
+    // منع صريح لدور — **قبل كل شي**، حتى قبل الفواصل وقاعدة «المنح
+    // يفتح»: الفاصل يرجّع true بلا فحص، والصلاحية ترجّع العنصر وتخلي
+    // الشاشة تتكرر بمحلين بقائمة نفس الموظف.
     if (item.hideForRoles && role && item.hideForRoles.includes(role as EmployeeRole)) return false
+
+    if (item.divider) return true
     if (item.fieldStaffOnly && role !== 'ADMIN' && !(role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
 
     // ═══ قاعدة تعلو على كل شي: الصلاحية الممنوحة صراحةً تفتح العنصر ═══

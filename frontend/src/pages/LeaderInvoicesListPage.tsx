@@ -263,8 +263,36 @@ export default function LeaderInvoicesListPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">فواتير الليدر</h2>
-      <p className="mt-1 text-slate-500">كل فواتير التنفيذ التي أنشأها الليدرز عبر النظام.</p>
+      {/* الرأس بنفس عائلة شاشات المحاسب (التدقيق اليومي/البلاغات)، ويگول
+          صراحةً إنه هذا **طابور الاعتماد** — سؤال صاحب العمل «وين ألگه
+          الفواتير الي بانتظار الاعتماد؟» جوابه هاي الشاشة، بس الاسم
+          «فواتير الليدر» ما جان يدل عليها. */}
+      <div
+        className="relative overflow-hidden rounded-2xl p-6 shadow-md"
+        style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #24507e 55%, #2f6ba8 100%)' }}
+      >
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #c8a45a 0%, transparent 70%)' }}
+        />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-white">🧾 فواتير الليدر</h2>
+            <p className="mt-1 max-w-xl text-sm text-blue-100">
+              الفاتورة الي تأشّرت <b className="text-white">مطابق</b> بالتدقيق اليومي توصل هنا
+              بتبويب «بانتظار الاعتماد». الاعتماد يطلب <b className="text-white">رقم الفاتورة</b> من
+              نظامك الثاني.
+            </p>
+          </div>
+          {counts.PENDING > 0 && (
+            <div className="rounded-xl bg-amber-400/20 px-4 py-2 text-center ring-1 ring-amber-200/40 backdrop-blur">
+              <p className="text-2xl font-black leading-none text-amber-100">{counts.PENDING}</p>
+              <p className="mt-1 text-[11px] text-amber-50">بانتظار اعتمادك</p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* التبويبات: كل تبويب شغلة وحدة يشتغلها المحاسب */}
       <div className="mt-4 flex flex-wrap gap-2">
