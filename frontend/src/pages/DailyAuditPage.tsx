@@ -200,9 +200,21 @@ export default function DailyAuditPage() {
                     </p>
                   </div>
                   <div className="flex flex-col items-end gap-1">
-                    {row.amountVerified
-                      ? <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">✔ مدقق</span>
-                      : <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">بانتظار التدقيق</span>}
+                    {/* ⚠️ الشارة كانت **تكذب**: تكتب «بانتظار التدقيق» على
+                        حجز لسه ما انجز — يعني ماكو فلوس انستلمت وماكو شي
+                        ينتدقق أصلاً. المحاسب يشوف طابور شغل ما يكدر
+                        يسويه، ويحس إنه متأخر بشي مو بيده.
+                        وهاي بالضبط الي شكّه صاحب العمل: «ليش وحدة بيها
+                        خيارات المطابقة والبقية ما بيهن؟» */}
+                    {row.amountVerified ? (
+                      <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">✔ مدقق</span>
+                    ) : row.status === 'COMPLETED' ? (
+                      <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">بانتظار التدقيق</span>
+                    ) : (
+                      <span className="rounded-full bg-slate-200 px-3 py-1 text-xs font-bold text-slate-600">
+                        لسه ما انجز — ما ينتدقق
+                      </span>
+                    )}
                     {row.amountVerified && isAdmin && (
                       <button
                         type="button"
@@ -220,6 +232,15 @@ export default function DailyAuditPage() {
                     )}
                   </div>
                 </div>
+
+                {/* الحجز الي ما انجز: نگول ليش ماكو أزرار بدل ما نتركه
+                    فاضي والمستخدم يظن النظام مكسور. */}
+                {!row.amountVerified && row.status !== 'COMPLETED' && (
+                  <p className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                    ⏳ التدقيق يصير بعد إنجاز الحجز — الحالة هسه: <b>{STATUS_LABEL[row.status] || row.status}</b>.
+                    ماكو مبلغ مستلم حتى ينتدقق.
+                  </p>
+                )}
 
                 {!row.amountVerified && row.status === 'COMPLETED' && (
                   <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
