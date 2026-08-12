@@ -55,6 +55,15 @@ export interface NavItem {
   unlockPermission?: string
   // ownerOnly: الاستثناء الوحيد الي المنح ما يكسره — شاشات المالك.
   ownerOnly?: boolean
+  // hideForRoles: منع صريح لدور معيّن — يشتغل **قبل** كل شي، حتى قبل
+  // «الصلاحية الممنوحة تفتح العنصر». استعماله الوحيد: نفس الشاشة
+  // موجودة بمحل أنسب لهذا الدور، فما نريدها تتكرر بالقائمة مرتين.
+  hideForRoles?: EmployeeRole[]
+  // fieldStaffOnly: عكس hideFromFieldStaff — صندوق شغل الميدان. ما يطلع
+  // لأي دور مكتبي مهما انمنحت له صلاحيات، لأن الصلاحية الوحدة (مثل
+  // execution_cost) جانت تفتح أبناءه فيطلع للمحاسب «العمل» **مرتين**:
+  // واحدة مالته وواحدة مال الفني. مدير النظام ما ينتأثر.
+  fieldStaffOnly?: boolean
   children?: NavItem[]
   divider?: boolean
 }
@@ -79,6 +88,8 @@ export const navItems: NavItem[] = [
   {
     to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب',
     permission: 'execution_cost',
+    // المحاسب نفس الشاشة عنده داخل «العمل» — ما تتكرر فوگ عنده.
+    hideForRoles: ['FINANCE'],
     // للميدان نفس الشاشة موجودة داخل «العمل» باسمها المفهوم عندهم
     // («حساب كلفة (استفسار زبون)») — ما تتكرر فوق بعنوان ثاني.
     hideFromFieldStaff: true,
@@ -248,6 +259,7 @@ export const navItems: NavItem[] = [
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
   {
     // مجموعة "العمل" للفني/الليدر — مهامه اليومية ومصاريفه وتقاريره وفواتيره
+    fieldStaffOnly: true,
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
@@ -298,7 +310,7 @@ export const navItems: NavItem[] = [
   // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
   // المشاريع الموجّهة لي: أي موظف ينوجّهله مشروع يشوفه هنا بكل مراحله — بدون
   // ما ننطيه صلاحية إدارة المشاريع العامة. الصفحة تطلع فاضية لو ماكو شي.
-  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, unlockPermission: 'my_projects' },
+  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, unlockPermission: 'my_projects', hideForRoles: ['FINANCE'] },
 
   { to: '/units-divider', label: '── الوحدات ──', icon: <></>, divider: true },
 
@@ -397,7 +409,13 @@ export const navItems: NavItem[] = [
     ],
   },
   {
-    to: '/unit-finance', label: 'وحدة الحسابات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+    // ⚠️ الاسم «العمل» مو «وحدة الحسابات» — بطلب صاحب العمل: المحاسب
+    // ما يريد باب اسمه وحدة ويگعد يدور جوّاه؛ يريد شغله كله تحت «العمل».
+    // صلاحية الوحدة نفسها (unit_finance) ما انتغيّرت، فالمنوحين ما
+    // ينتأثرون — الي انتغيّر العنوان ومحتوياته بس.
+    // ما تتصادم وية «العمل» مال الفني (فوگ): كل أبناء ذيچ مقيّدين
+    // بـTECHNICIAN/TECHNICAL، فما تطلع للمحاسب أبداً.
+    to: '/unit-finance', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
     unitPermission: 'unit_finance',
     children: [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
@@ -406,11 +424,14 @@ export const navItems: NavItem[] = [
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'HR_COORDINATOR', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, permission: 'execution_cost' },
-          { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
-          // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
-          // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view' },
+      { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
+      // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
+      // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view' },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
+      // المشاريع الموجّهة لي: محلها هنا للمحاسب — والنسخة العامة فوگ
+      // منحجوبة عنه بـhideForRoles حتى ما تتكرر.
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, unlockPermission: 'my_projects' },
     ],
   },
   {
@@ -500,6 +521,11 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   // داخلها — وقتها كل شي جوّا الوحدة يظهر له بدون فحص صلاحيات تفصيلية.
   
     if (item.divider) return true
+
+    // منع صريح لدور — قبل قاعدة «المنح يفتح»، وإلا الصلاحية نفسها
+    // ترجّع العنصر وتخلي الشاشة تتكرر بمحلين بقائمة نفس الموظف.
+    if (item.hideForRoles && role && item.hideForRoles.includes(role as EmployeeRole)) return false
+    if (item.fieldStaffOnly && role !== 'ADMIN' && !(role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
 
     // ═══ قاعدة تعلو على كل شي: الصلاحية الممنوحة صراحةً تفتح العنصر ═══
     //

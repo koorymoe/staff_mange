@@ -21,6 +21,9 @@ func NewDailyAuditRepository(db *sqlx.DB) *DailyAuditRepository {
 
 // Day يبني تقرير يوم واحد (date بصيغة YYYY-MM-DD).
 //
+// ⚠️ الحجوزات المنجزة **بس**. الحجز الي ما انجز ماكو منه مبلغ مستلم حتى
+// ينتدقق، وظهوره بالقائمة كان يخلي المحاسب يشوف طابور شغل ما يكدر يشتغله.
+//
 // المبلغ المعتمد لكل حجز: فاتورة الليدر إذا رفعها، وإلا الكلفة
 // التقديرية الي حطها الإداري — هذا الي انطلب بالضبط، لأن بلا فاتورة
 // ولا تقدير الحجز يطلع صفر ويخرب المجموع.
@@ -49,7 +52,8 @@ func (r *DailyAuditRepository) Day(date string) (*model.DailyAuditReport, error)
 			SELECT "netTotal", "accountingCode" FROM "LeaderInvoice"
 			WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1
 		) li ON true
-		WHERE baghdad_date(COALESCE(b."completedAt", b."scheduledAt", b."createdAt")) = $1::date
+		WHERE b.status = 'COMPLETED'
+		  AND baghdad_date(COALESCE(b."completedAt", b."scheduledAt", b."createdAt")) = $1::date
 		ORDER BY b."createdAt" DESC`, date)
 	if err != nil {
 		return nil, err

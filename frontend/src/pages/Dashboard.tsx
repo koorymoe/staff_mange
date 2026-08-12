@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary } from '../api'
+import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport } from '../api'
 import { useSession, hasGpsSkill } from '../session'
 import { MapViewer } from '../components/MapLazy'
 
@@ -128,6 +128,14 @@ export default function Dashboard() {
   // أولية. تظهر بالشاشة الرئيسية حتى ما تنتسى: الموافقة الأولية بلا
   // قرار نهائي معناها موظف ناطر بلا جواب.
   const [openLeaves, setOpenLeaves] = useState<LeaveRequest[]>([])
+  // التدقيق اليومي على الشاشة الرئيسية — طلب صاحب العمل: المحاسب يفتح
+  // النظام ويشوف شغل اليوم كَبل ما يدور عليه بالقائمة.
+  const [dailyAudit, setDailyAudit] = useState<DailyAuditReport | null>(null)
+
+  useEffect(() => {
+    if (employee?.role !== 'FINANCE' && !permissions.includes('finance')) return
+    api.getDailyAudit().then(setDailyAudit).catch(() => setDailyAudit(null))
+  }, [employee?.role, permissions])
 
   useEffect(() => {
     const t = setInterval(() => setCurrentTime(formatTime()), 60000)
@@ -794,6 +802,41 @@ export default function Dashboard() {
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>
               لوحة المحاسب
             </h3>
+
+            {/* ═══ التدقيق اليومي — أول شي يشوفه المحاسب ═══
+                الأرقام كلها من حجوزات **منجزة** بس (السيرفر يفلترها)،
+                فالي يظهر هنا شغل يكدر يشتغله فعلاً مو طابور وهمي. */}
+            {dailyAudit && (
+              <button
+                type="button"
+                onClick={() => navigate('/daily-audit')}
+                className="w-full rounded-2xl border-2 border-brand-200 bg-gradient-to-l from-brand-50 to-white p-4 text-right transition hover:shadow-md"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <p className="font-extrabold text-brand-900">📅 التدقيق اليومي — {dailyAudit.date}</p>
+                  <span className="text-xs font-bold text-brand-600">افتح ←</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-full bg-amber-100 px-3 py-1 font-bold text-amber-800">
+                    بانتظار التدقيق: {Math.max(0, dailyAudit.completedCount - dailyAudit.rows.filter((r) => r.amountVerified).length)}
+                  </span>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 font-bold text-emerald-800">
+                    مدقق: {dailyAudit.rows.filter((r) => r.amountVerified).length}
+                  </span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 font-bold text-slate-600">
+                    المحصّل: {dailyAudit.collectedTotal.toLocaleString()}
+                  </span>
+                  {dailyAudit.issuesCount > 0 && (
+                    <span className="rounded-full bg-red-100 px-3 py-1 font-bold text-red-700">
+                      محوّلة للرقابة: {dailyAudit.issuesCount}
+                    </span>
+                  )}
+                </div>
+                {dailyAudit.rows.length === 0 && (
+                  <p className="mt-3 text-xs text-slate-500">ماكو حجز منجز اليوم — ماكو شي ينتدقق.</p>
+                )}
+              </button>
+            )}
 
             {/* Financial KPIs */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
