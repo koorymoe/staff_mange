@@ -197,7 +197,27 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		_ = s.customers.EnsureServiceTag(req.CustomerID, &serviceIDs[i])
 	}
 
-	return s.repo.FindByID(b.ID)
+	created, err := s.repo.FindByID(b.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	// ═══ الطاقة الشمسية → صندوق المراقب ═══
+	//
+	// السعر هنا انحسب **تلقائياً** من مكوّنات المنظومة، وموظف المبيعات
+	// ما شافه ولا يقدر يعدّله. يعني ماكو ولا عين بشرية شافت الرقم قبل
+	// ما يروح للزبون.
+	//
+	// لو مكوّن انتغيّر سعره بالمخزن، أو انختارت منظومة مو الي اتفقوا
+	// عليها، الرقم يمشي غلط لآخر السلسلة. المراقب يشوفه بلحظة التسعير
+	// — قبل ما ينبني عليه عرض سعر واتفاق مع الزبون.
+	//
+	// ⚠️ بس إذا فعلاً انتسعّر: منظومة بلا سعر ما بيها شي ينتراقب.
+	if b.BookingType == "SOLAR" && b.QuotedPrice != nil && *b.QuotedPrice > 0 && s.monitor != nil {
+		s.monitor.BookingStage(model.MonitorStageSolarQuoted, created, "MONITOR", nil)
+	}
+
+	return created, nil
 }
 
 func (s *BookingService) Confirm(id string, req model.ConfirmBookingRequest) (*model.Booking, error) {

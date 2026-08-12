@@ -66,6 +66,12 @@ const (
 	MonitorStageProcurementFulfilled = "PROCUREMENT_FULFILLED"
 	MonitorStageQualityVerdict       = "QUALITY_VERDICT"
 	MonitorStageGpsDeviceDone        = "GPS_DEVICE_DONE"
+	// حجز طاقة شمسية انتسعّر: السعر ينحسب تلقائياً من مكوّنات المنظومة
+	// بأسعار المخزن، وموظف المبيعات ما يشوف الأرقام ولا يقدر يعدّلها.
+	// فلو تغيّر سعر مكوّن بالمخزن أو انختارت منظومة غلط، الرقم يوصل
+	// الزبون بعرض سعر وما ينكشف الخطأ إلا بعد ما يوافق. المراقب يشوفه
+	// بلحظة التسعير — قبل ما ينبني عليه اتفاق.
+	MonitorStageSolarQuoted = "SOLAR_QUOTED"
 )
 
 const (
@@ -96,6 +102,8 @@ func MonitorStageLabel(stage string) string {
 		return "حكم الجودة"
 	case MonitorStageGpsDeviceDone:
 		return "جهاز جي بي اس انخلص"
+	case MonitorStageSolarQuoted:
+		return "منظومة شمسية انتسعّرت"
 	}
 	return stage
 }

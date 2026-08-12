@@ -23,6 +23,7 @@ const STAGES: { key: MonitorStage; label: string; hint: string }[] = [
   { key: 'PROCUREMENT_FULFILLED', label: '📦 مادة انشترت', hint: 'لحظة صرف الفلوس — الكلفة والمورد' },
   { key: 'QUALITY_VERDICT', label: '⚠️ حكم الجودة', hint: 'انخصمت نقطة من موظف بناءً على كلام زبون' },
   { key: 'GPS_DEVICE_DONE', label: '📡 جهاز جي بي اس انسلّم', hint: 'الجهاز راح للزبون والاشتراك بدأ' },
+  { key: 'SOLAR_QUOTED', label: '☀️ منظومة شمسية انتسعّرت', hint: 'السعر انحسب تلقائياً من المخزن — محد شافه قبل الزبون' },
 ]
 
 const ROLE_LABELS: Record<string, string> = {
