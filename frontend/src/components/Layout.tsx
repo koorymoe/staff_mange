@@ -425,6 +425,10 @@ export const navItems: NavItem[] = [
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, permission: 'execution_cost' },
       { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
+      // الشبكات والكاميرات: حاسبات مستقلة بمعادلات خاصة. جانن بمجموعة
+      // الميدان بس، فالمحاسب ما يوصلهن — وهو الي يطلع فاتورة الشبكات.
+      { to: '/network-cost', label: '🌐 حساب كلفة الشبكات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'execution_cost' },
+      { to: '/camera-cost', label: '📷 حساب كلفة الكاميرات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'execution_cost' },
       // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
       // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view' },

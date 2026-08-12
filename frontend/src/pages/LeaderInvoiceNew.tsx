@@ -443,7 +443,24 @@ export default function LeaderInvoiceNew() {
             {name}
           </button>
         ))}
+        {/* ═══ شبكات ═══
+            «بجانب منظومة الصوت أكو خيار اسمه شبكات».
+            ⚠️ ما انضافت كمنظومة عادية عن قصد: تسعير الشبكات **شرائح**
+            (تسليك: ١٢٬٠٠٠ لحد ٢٠ متر وبعدها ١٬٤٠٠ للمتر؛ تنظيم الراك:
+            سعر البورت يتغيّر بحجم السويتج). جدول المنظومات هنا يعرف سعر
+            واحد ثابت للوحدة بس — يعني لو حطيناها هنا راح تطلع أرقام
+            **غلط**. فالخيار يوديك للحاسبة الي تعرف الشرائح، ومنها تطلع
+            الفاتورة بنفس الطريقة. */}
+        <button
+          onClick={() => navigate('/network-cost')}
+          className="rounded-full border-2 border-dashed border-brand-400 bg-white px-3 py-1 text-xs font-bold text-brand-700 hover:bg-brand-50"
+        >
+          🌐 شبكات ↗
+        </button>
       </div>
+      <p className="mt-1 text-[11px] text-slate-400">
+        الشبكات سعرها بالشرائح — تنحسب بحاسبتها الخاصة وتطلع منها الفاتورة أو استفسار الزبون.
+      </p>
 
       {systems.map((systemName) => (
         <div key={systemName} className="mt-4 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
