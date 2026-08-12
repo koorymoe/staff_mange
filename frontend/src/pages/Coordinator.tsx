@@ -351,6 +351,32 @@ export default function Coordinator() {
   }
   const pendingBookings = bookings.filter((b) => b.status === 'PENDING' && matchesSearch(b))
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' && matchesSearch(b))
+
+  // ═══ التثبيت شي والتنسيق شي ثاني ═══
+  //
+  // «لازم تنعزل الحجوزات المثبتة الي بيها كادر عن المثبتة بدون تنسيق —
+  // هذا يرجع للحجوزات الي تحتاج تنسيق ينسقهن».
+  //
+  // قبل، الحل كان إجبار الإداري يحدد كادر وموعد وقت التثبيت. وهذا غلط
+  // بالواقع: «الحجز بعد أسبوع — اني شمدريني بعد أسبوع منو موجود؟».
+  // فيضطر يحط كادر عشوائي حتى تمر الشاشة، فيطلع تكليف كذب بالجدول،
+  // والكادر الي انكتب اسمه ما يدري بيه أصلاً.
+  //
+  // فالتثبيت يضل حر: تواصلت مع الزبون واتفقتوا → ثبّت. أما الكادر
+  // والموعد فينحطّون لمن يجي وقتهم، والحجز يضل بطابور التنسيق لحد
+  // ذاك الوقت.
+  //
+  // ⚠️ الحجز المثبّت بلا كادر **ما يصير يطلع بجدول اليوم** — شاشة
+  // الحجوزات تشيله (isCoordinated هناك) لأنه شغل ما انولد بعد.
+  // عرضه ويّا شغل اليوم يخلي عدّ «شكد عدنا اليوم» كذب، والكادر
+  // يتحضّر لحجز محد كلّفه بيه.
+  const isFullyCoordinated = (b: Booking) =>
+    !!b.scheduledAt && (b.assignments?.length ?? 0) > 0
+
+  // المحتاجة تنسيق فوگ: هاي الي عليها شغل. المنسّقة تحت — خلصت.
+  const confirmedNeedingCoordination = confirmedBookings.filter((b) => !isFullyCoordinated(b))
+  const confirmedDone = confirmedBookings.filter(isFullyCoordinated)
+  const orderedConfirmed = [...confirmedNeedingCoordination, ...confirmedDone]
   const upcomingAppointments = bookings
     .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING') && new Date(b.scheduledAt) > new Date())
     .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
@@ -682,16 +708,56 @@ export default function Coordinator() {
             )}
           </div>
 
-          {/* تم تثبيتها */}
-          <h3 className="mt-8 mb-3 text-lg font-bold text-brand-800">
+          {/* تم تثبيتها — مقسومة: المحتاجة تنسيق فوگ، المنسّقة تحت */}
+          <h3 className="mt-8 mb-1 text-lg font-bold text-brand-800">
             تم تثبيتها ({confirmedBookings.length})
           </h3>
+          <p className="mb-3 text-xs text-slate-500">
+            {confirmedNeedingCoordination.length > 0 ? (
+              <>
+                <span className="font-bold text-amber-700">
+                  ⏳ {confirmedNeedingCoordination.length} تحتاج تنسيق
+                </span>
+                {' '}(بلا كادر أو بلا موعد — ما تطلع بجدول اليوم لحد ما تنسّقها)
+                {confirmedDone.length > 0 && <> · <span className="font-bold text-emerald-700">✅ {confirmedDone.length} منسّقة</span></>}
+              </>
+            ) : (
+              <span className="font-bold text-emerald-700">✅ كلها منسّقة — كادر وموعد محددين</span>
+            )}
+          </p>
           <div className="flex flex-col gap-4">
-            {confirmedBookings.map((booking) => (
+            {orderedConfirmed.map((booking, idx) => (
+              <div key={booking.id}>
+              {/* فاصل بصري بين الي محتاجة شغل والي خلصت */}
+              {idx === confirmedNeedingCoordination.length && confirmedNeedingCoordination.length > 0 && (
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="h-px flex-1 bg-emerald-200" />
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                    ✅ منسّقة بالكامل ({confirmedDone.length})
+                  </span>
+                  <div className="h-px flex-1 bg-emerald-200" />
+                </div>
+              )}
               <div
-                key={booking.id}
-                className="rounded-xl border border-emerald-200 bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
+                className={`rounded-xl border bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] ${
+                  isFullyCoordinated(booking) ? 'border-emerald-200' : 'border-amber-300 bg-amber-50/30'
+                }`}
               >
+                {/* شريط يگول بالضبط شنو ناقص — بدونه الإداري ما يعرف
+                    ليش هذا الحجز مو بجدول اليوم */}
+                {!isFullyCoordinated(booking) && (
+                  <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-800">
+                    ⏳ مثبّت بس يحتاج تنسيق — ناقص{' '}
+                    {!booking.scheduledAt && (booking.assignments?.length ?? 0) === 0
+                      ? 'الموعد والكادر'
+                      : !booking.scheduledAt
+                        ? 'الموعد'
+                        : 'الكادر'}
+                    <span className="mr-1 font-normal text-amber-700">
+                      · ما راح يطلع بجدول اليوم ولا يوصل الكادر لحد ما تكمّله
+                    </span>
+                  </div>
+                )}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="font-mono text-sm font-semibold text-brand-600">
@@ -1122,6 +1188,7 @@ export default function Coordinator() {
                     </div>
                   )}
                 </div>
+              </div>
               </div>
             ))}
             {confirmedBookings.length === 0 && (

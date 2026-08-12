@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/safeguard"
 )
 
 // ═══ تذكير معاودة الاتصال بالزبون الي ما رد ═══
@@ -89,16 +90,14 @@ func (s *BookingReminderService) RunWaitingReminderSweep() (int, error) {
 //
 // الفاصل ساعة والحدود فوق هي الي تحدد الإزعاج فعلاً — الكنسة تلگه
 // المستحق بس.
+// ⚠️ لازم تمر بـsafeguard.Loop مو goroutine عارية: panic هنا كان يقتل
+// السيرفر كله ويخلي كل الشاشات تطلع «Failed to fetch».
 func (s *BookingReminderService) StartBackgroundSweeps() {
-	go func() {
-		time.Sleep(3 * time.Minute)
-		for {
-			if n, err := s.RunWaitingReminderSweep(); err != nil {
-				log.Printf("[reminder] كنسة تذكير المعاودة فشلت: %v", err)
-			} else if n > 0 {
-				log.Printf("[reminder] انذكّر الإداري بـ%d حجز بالانتظار", n)
-			}
-			time.Sleep(time.Hour)
+	safeguard.Loop("كنسة تذكير الحجوزات", 3*time.Minute, time.Hour, func() {
+		if n, err := s.RunWaitingReminderSweep(); err != nil {
+			log.Printf("[reminder] كنسة تذكير المعاودة فشلت: %v", err)
+		} else if n > 0 {
+			log.Printf("[reminder] انذكّر الإداري بـ%d حجز بالانتظار", n)
 		}
-	}()
+	})
 }

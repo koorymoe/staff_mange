@@ -21,6 +21,12 @@ type Props = {
   className?: string
 }
 
+// برّا المكوّن: التعريف جوّا يخلق نوع مكوّن جديد كل رندر، فReact يفكّ
+// ويركّب كل الشرائح من جديد بلا داعي.
+const Chip = ({ children, strong = false }: { children: React.ReactNode; strong?: boolean }) => (
+  <span className={strong ? 'font-extrabold text-[#0f2040]' : 'text-slate-600'}>{children}</span>
+)
+
 export default function EntityIdentity({ booking, fields, variant = 'compact', className = '' }: Props) {
   const id: IdentityFields = { ...identityOf(booking), ...(fields || {}) }
   const when = formatWhen(id.scheduledAt)
@@ -28,10 +34,6 @@ export default function EntityIdentity({ booking, fields, variant = 'compact', c
   // كود الحجز وكود الزبون هما المفتاحين — بدونهم الرأس ما يعرّف شي
   const hasAny = id.bookingCode || id.customerCode || id.customerName
   if (!hasAny) return null
-
-  const Chip = ({ children, strong = false }: { children: React.ReactNode; strong?: boolean }) => (
-    <span className={strong ? 'font-extrabold text-[#0f2040]' : 'text-slate-600'}>{children}</span>
-  )
 
   return (
     <div

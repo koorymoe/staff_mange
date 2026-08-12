@@ -423,6 +423,20 @@ function PriceRow({ label, value }: { label: string; value: number }) {
 
 /* ═══════════════ نموذج المنظومة ═══════════════ */
 
+// برّا SystemForm: التعريف جوّاه كان يعيد تركيب القائمة كل رندر، فتنقفل
+// وأنت تختار منها.
+const Select = ({ value, onChange, list, label }: { value: string; onChange: (v: string) => void; list: SolarComponent[]; label: string }) => (
+  <div>
+    <label className="mb-1 block text-xs font-medium text-slate-600">{label}</label>
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+      <option value="">— اختر —</option>
+      {list.map((c) => (
+        <option key={c.id} value={c.id}>{c.name} ({iqd(c.price)} · متوفر {c.quantity})</option>
+      ))}
+    </select>
+  </div>
+)
+
 function SystemForm({
   system, components, onClose, onSaved,
 }: {
@@ -498,18 +512,6 @@ function SystemForm({
       setErr(e instanceof Error ? e.message : 'تعذر الحفظ')
     } finally { setBusy(false) }
   }
-
-  const Select = ({ value, onChange, list, label }: { value: string; onChange: (v: string) => void; list: SolarComponent[]; label: string }) => (
-    <div>
-      <label className="mb-1 block text-xs font-medium text-slate-600">{label}</label>
-      <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
-        <option value="">— اختر —</option>
-        {list.map((c) => (
-          <option key={c.id} value={c.id}>{c.name} ({iqd(c.price)} · متوفر {c.quantity})</option>
-        ))}
-      </select>
-    </div>
-  )
 
   return (
     <div className="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-lg">

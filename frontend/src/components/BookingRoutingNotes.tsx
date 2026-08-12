@@ -24,6 +24,59 @@ type Props = {
   onSaved: (updated: Booking) => void
 }
 
+// ⚠️ Box لازم يضل **برّا** BookingRoutingNotes.
+//
+// كان معرّف جوّا جسم المكوّن، ومعناها كل رندر يخلق نوع مكوّن جديد
+// بنظر React. React يقارن الأنواع بالمرجع، فيشوف نوع مختلف كل مرة،
+// فيفكّ الـtextarea القديمة ويركّب وحدة جديدة مكانها.
+//
+// النتيجة الي شافها الإداري: يكتب حرف → onChange يغيّر الحالة →
+// رندر → textarea جديدة بلا تركيز → المؤشر يطير ويوقف الكتابة.
+// حرف واحد بس كل ضغطة.
+//
+// نقله برّا يخلي النوع ثابت، فتضل نفس الـtextarea ويضل التركيز.
+type BoxProps = {
+  which: 'crew' | 'project'
+  label: string
+  hint: string
+  value: string
+  setValue: (v: string) => void
+  savedBy?: string
+  savedAt?: string
+  accent: string
+  busy: 'crew' | 'project' | null
+  onSave: (which: 'crew' | 'project') => void
+}
+
+function Box({
+  which, label, hint, value, setValue, savedBy, savedAt, accent, busy, onSave,
+}: BoxProps) {
+  return (
+    <div className={`rounded-xl border p-3 ${accent}`}>
+      <label className="mb-1 block text-xs font-bold text-slate-700">{label}</label>
+      <textarea
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        rows={2}
+        placeholder={hint}
+        className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+      />
+      <div className="mt-1.5 flex items-center justify-between gap-2">
+        <span className="text-[11px] text-slate-500">
+          {savedBy ? <>كتبها {savedBy}{savedAt && <> · {new Date(savedAt).toLocaleString('en-GB')}</>}</> : 'ما انكتبت بعد'}
+        </span>
+        <button
+          onClick={() => onSave(which)}
+          disabled={busy !== null}
+          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+        >
+          {busy === which ? 'جاري الحفظ...' : 'احفظ'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function BookingRoutingNotes({ booking, show = 'both', onSaved }: Props) {
   const [crew, setCrew] = useState(booking.crewNotes || '')
   const [project, setProject] = useState(booking.projectNotes || '')
@@ -46,42 +99,6 @@ export default function BookingRoutingNotes({ booking, show = 'both', onSaved }:
     }
   }
 
-  const Box = ({
-    which, label, hint, value, setValue, savedBy, savedAt, accent,
-  }: {
-    which: 'crew' | 'project'
-    label: string
-    hint: string
-    value: string
-    setValue: (v: string) => void
-    savedBy?: string
-    savedAt?: string
-    accent: string
-  }) => (
-    <div className={`rounded-xl border p-3 ${accent}`}>
-      <label className="mb-1 block text-xs font-bold text-slate-700">{label}</label>
-      <textarea
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        rows={2}
-        placeholder={hint}
-        className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-      />
-      <div className="mt-1.5 flex items-center justify-between gap-2">
-        <span className="text-[11px] text-slate-500">
-          {savedBy ? <>كتبها {savedBy}{savedAt && <> · {new Date(savedAt).toLocaleString('en-GB')}</>}</> : 'ما انكتبت بعد'}
-        </span>
-        <button
-          onClick={() => save(which)}
-          disabled={busy !== null}
-          className="rounded-lg bg-[#0f2040] px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
-        >
-          {busy === which ? 'جاري الحفظ...' : 'احفظ'}
-        </button>
-      </div>
-    </div>
-  )
-
   return (
     <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2" dir="rtl">
       {(show === 'crew' || show === 'both') && (
@@ -94,6 +111,8 @@ export default function BookingRoutingNotes({ booking, show = 'both', onSaved }:
           savedBy={booking.crewNotesByName}
           savedAt={booking.crewNotesAt}
           accent="border-sky-200 bg-sky-50/60"
+          busy={busy}
+          onSave={save}
         />
       )}
       {(show === 'project' || show === 'both') && (
@@ -106,6 +125,8 @@ export default function BookingRoutingNotes({ booking, show = 'both', onSaved }:
           savedBy={booking.projectNotesByName}
           savedAt={booking.projectNotesAt}
           accent="border-violet-200 bg-violet-50/60"
+          busy={busy}
+          onSave={save}
         />
       )}
       {err && <p className="col-span-full rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{err}</p>}

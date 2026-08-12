@@ -454,7 +454,10 @@ export default function Dashboard() {
         >
           <div>
             <h3 className="text-base font-extrabold">📊 إدارة الإحصائيات</h3>
-            <p className="mt-1 text-sm text-blue-100">حجوزات اليوم: {bookingCount} — إحصائيات يومية وأسبوعية وشهرية لكل موظف، وإحصائية المشاريع</p>
+            {/* ⚠️ bookingCount هو COUNT(*) على كل جدول الحجوزات — مجموع
+                تاريخي مو رقم اليوم. اللافتة كانت تسميه «حجوزات اليوم»
+                فتنطي رقم أكبر بمرات من الحقيقة. */}
+            <p className="mt-1 text-sm text-blue-100">مجموع الحجوزات: {bookingCount} — إحصائيات يومية وأسبوعية وشهرية لكل موظف، وإحصائية المشاريع</p>
           </div>
           <span className="text-lg">←</span>
         </button>

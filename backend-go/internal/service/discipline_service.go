@@ -11,6 +11,7 @@ import (
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/safeguard"
 )
 
 // ═══ نظام الغرامات التلقائي ═══
@@ -239,17 +240,14 @@ func (s *DisciplineService) CheckAssignmentBalance(adminID, assignedLeaderID, bo
 
 // StartBackgroundSweeps يشغّل الفحص الدوري. كل ساعة يكفي: المهلة ١٦
 // ساعة، فما اكو داعي نفحص كل دقيقة ونحمّل قاعدة البيانات بلا فايدة.
+// ⚠️ كل كنسة بحمايتها المنفصلة: انهيار كنسة الأوراق ما يصير يمنع كنسة
+// التدقيق من الشغل بنفس الدورة — وقبل، أي وحدة منهن تسقّط السيرفر كله.
 func (s *DisciplineService) StartBackgroundSweeps() {
-	go func() {
-		// تأخير أولي حتى ما نزاحم إقلاع السيرفر
-		time.Sleep(2 * time.Minute)
-		for {
-			s.RunPaperworkSweep()
-			s.RunAuditSweep()
-			s.RunRestoreSweep()
-			time.Sleep(time.Hour)
-		}
-	}()
+	safeguard.Loop("كنسات الانضباط", 2*time.Minute, time.Hour, func() {
+		safeguard.Run("كنسة الأوراق", s.RunPaperworkSweep)
+		safeguard.Run("كنسة التدقيق", s.RunAuditSweep)
+		safeguard.Run("كنسة الاسترجاع", s.RunRestoreSweep)
+	})
 }
 
 // formatDinar يكتب المبلغ بفواصل الآلاف — ١٠٠٠٠ → 10,000

@@ -5,6 +5,11 @@ import './fonts.css'
 import './index.css'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary.tsx'
+import { installNetworkErrorTrap } from './netErrors.ts'
+
+// قبل الرندر: أي طلب يفشل بلا معالجة بالشاشة يوصل الموظف برسالة
+// مفهومة بدل ما ينبلع بصمت.
+installNetworkErrorTrap()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
