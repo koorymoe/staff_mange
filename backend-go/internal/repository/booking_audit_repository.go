@@ -17,11 +17,17 @@ func NewBookingAuditRepository(db *sqlx.DB) *BookingAuditRepository {
 }
 
 const auditIssueSelect = `SELECT i.*, b.code AS "bookingCode",
-		COALESCE(c.name, '') AS "customerName", e.name AS "raisedByName"
+		COALESCE(c.name, '') AS "customerName", e.name AS "raisedByName",
+		ld.name AS "leaderName"
 	FROM "BookingAuditIssue" i
 	JOIN "Booking" b ON b.id = i."bookingId"
 	LEFT JOIN "Customer" c ON c.id = b."customerId"
-	JOIN "Employee" e ON e.id = i."raisedById"`
+	JOIN "Employee" e ON e.id = i."raisedById"
+	LEFT JOIN LATERAL (
+		SELECT le.name FROM "LeaderInvoice" li
+		JOIN "Employee" le ON le.id = li."employeeId"
+		WHERE li."bookingId" = b.id ORDER BY li."createdAt" DESC LIMIT 1
+	) ld ON true`
 
 func decorateAuditIssues(rows []model.BookingAuditIssue) []model.BookingAuditIssue {
 	for i := range rows {
@@ -82,7 +88,11 @@ func (r *BookingAuditRepository) RaiseIssue(bookingID, kind string, note *string
 }
 
 // List بلاغات الأخطاء. kinds فاضية = الكل.
-func (r *BookingAuditRepository) List(status string, kinds []string) ([]model.BookingAuditIssue, error) {
+//
+// raisedByID مو فاضي = بلاغات هذا الموظف بس. استعماله الوحيد المحاسب:
+// شغله يختلف عن شغل المراقب — البلاغات عنده **صادر** سجّله هو، وعند
+// المراقب **وارد** يدقق بيه على الليدر.
+func (r *BookingAuditRepository) List(status string, kinds []string, raisedByID string) ([]model.BookingAuditIssue, error) {
 	rows := []model.BookingAuditIssue{}
 	q := auditIssueSelect + ` WHERE 1=1`
 	args := []any{}
@@ -93,6 +103,10 @@ func (r *BookingAuditRepository) List(status string, kinds []string) ([]model.Bo
 	if len(kinds) > 0 {
 		args = append(args, kinds)
 		q += fmt.Sprintf(` AND i.kind = ANY($%d)`, len(args))
+	}
+	if raisedByID != "" {
+		args = append(args, raisedByID)
+		q += fmt.Sprintf(` AND i."raisedById" = $%d`, len(args))
 	}
 	q += ` ORDER BY (i.status = 'OPEN') DESC, i."createdAt" DESC LIMIT 500`
 	err := r.db.Select(&rows, q, args...)

@@ -50,6 +50,9 @@ type BookingAuditIssue struct {
 	BookingCode  string `db:"bookingCode" json:"bookingCode"`
 	CustomerName string `db:"customerName" json:"customerName"`
 	RaisedByName string `db:"raisedByName" json:"raisedByName"`
+	// الليدر صاحب فاتورة الحجز — المراقب يتابع البلاغ **عليه** مو على
+	// المحاسب الي سجّله: «حتى يتأكد من الليدر ليش عنده أخطاء».
+	LeaderName *string `db:"leaderName" json:"leaderName,omitempty"`
 	KindLabel    string `db:"-" json:"kindLabel"`
 	RoutedTo     string `db:"-" json:"routedTo"`
 }

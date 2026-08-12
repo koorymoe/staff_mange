@@ -14,10 +14,38 @@ type BookingAuditHandler struct {
 	repo     *repository.BookingAuditRepository
 	bookings *repository.BookingRepository
 	notify   *repository.NotificationRepository
+	invoices *repository.LeaderInvoiceRepository
 }
 
-func NewBookingAuditHandler(r *repository.BookingAuditRepository, b *repository.BookingRepository, n *repository.NotificationRepository) *BookingAuditHandler {
-	return &BookingAuditHandler{repo: r, bookings: b, notify: n}
+func NewBookingAuditHandler(r *repository.BookingAuditRepository, b *repository.BookingRepository, n *repository.NotificationRepository, inv *repository.LeaderInvoiceRepository) *BookingAuditHandler {
+	return &BookingAuditHandler{repo: r, bookings: b, notify: n, invoices: inv}
+}
+
+// stampInvoiceVerdict ينزّل حكم التدقيق اليومي على فاتورة الحجز.
+//
+// طلب صاحب العمل: «الفواتير أطابقهن، من أطابقهن يروحون وين؟ فواتير
+// بحاجة لاعتماد». قبل هذا، التدقيق اليومي جان يشتغل على الحجز بس
+// والفاتورة تضل بلا حكم — فالمحاسب يدقق ٢٠ حجز وقائمة الفواتير ما
+// تتحرك ولا خطوة، ويرجع يحكم عليهن وحدة وحدة من جديد.
+//
+// ⚠️ ما يعدّل فاتورة معتمدة (SetAuditVerdict ترفض) ولا يفشّل التدقيق
+// إذا ماكو فاتورة أصلاً — أكو حجوزات تنتدقق بتقدير الإداري بلا فاتورة.
+func (h *BookingAuditHandler) stampInvoiceVerdict(bookingID, verdict string, note *string, empID string, amount *float64) {
+	if h.invoices == nil {
+		return
+	}
+	rows, err := h.invoices.ListByBooking(bookingID)
+	if err != nil || len(rows) == 0 {
+		return
+	}
+	latest := rows[len(rows)-1] // ListByBooking مرتبة تصاعدياً بالإنشاء
+	noteStr := ""
+	if note != nil {
+		noteStr = *note
+	}
+	if _, err := h.invoices.SetAuditVerdict(latest.ID, verdict, noteStr, empID, amount); err != nil {
+		log.Printf("stamp invoice verdict (booking %s): %v", bookingID, err)
+	}
 }
 
 // PUT /api/bookings/{id}/audit — قرار المحاسب.
@@ -38,6 +66,8 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		// «مطابق» يرحّل الفاتورة لطابور الاعتماد بحكمها مثبّت.
+		h.stampInvoiceVerdict(bookingID, model.AuditVerdictMatched, req.Note, empID, req.AmountCollected)
 
 	case model.AuditMismatch, model.AuditPriceError:
 		// المبلغ الي كتبه المحاسب ينحفظ حتى لو أشّر خطأ — هو الرقم
@@ -55,6 +85,15 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 			log.Printf("raise audit issue: %v", err)
 			WriteError(w, http.StatusBadRequest, "تعذر تسجيل البلاغ")
 			return
+		}
+		// نفس الشي للأحكام السلبية: الفاتورة تحمل سبب رفضها، فالمراقب
+		// يفتحها ويلگه ليش انتأشرت بلا ما يدور بالبلاغات.
+		{
+			v := model.AuditVerdictMismatch
+			if req.Action == model.AuditPriceError {
+				v = model.AuditVerdictPriceError
+			}
+			h.stampInvoiceVerdict(bookingID, v, req.Note, empID, req.AmountCollected)
 		}
 		if h.notify != nil {
 			msg := "💸 " + issue.KindLabel + " بالحجز " + issue.BookingCode +
@@ -96,7 +135,17 @@ func (h *BookingAuditHandler) ListIssues(w http.ResponseWriter, r *http.Request)
 	case "HR_COORDINATOR":
 		kinds = []string{model.AuditPriceError}
 	}
-	rows, err := h.repo.List(strings.TrimSpace(r.URL.Query().Get("status")), kinds)
+	// ═══ المحاسب مو مراقب ═══
+	// «أخطاء الفواتير تظهر إله كمحاسب — هو أرسلهن. بس تظهر للمراقب
+	// كتدقيق حتى يتأكد من الليدر ليش عنده أخطاء.»
+	// المحاسب يشوف **صادره** هو بس؛ المراقب والمدير يشوفون الكل مع
+	// اسم الليدر. بدون هذا الاثنين جانوا يشوفون نفس القائمة بالضبط،
+	// فالمحاسب يحسبها شغل عليه وهو أصلاً الي سجّلها.
+	raisedBy := ""
+	if role == "FINANCE" {
+		raisedBy = middleware.EmployeeIDFromContext(r)
+	}
+	rows, err := h.repo.List(strings.TrimSpace(r.URL.Query().Get("status")), kinds, raisedBy)
 	if err != nil {
 		log.Printf("list audit issues: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب البلاغات")

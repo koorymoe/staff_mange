@@ -1137,6 +1137,8 @@ export interface AuditIssue {
   bookingCode: string
   customerName: string
   raisedByName: string
+  // الليدر صاحب فاتورة الحجز — للمراقب حتى يتأكد منه ليش عنده أخطاء
+  leaderName?: string | null
 }
 
 export interface Announcement {
