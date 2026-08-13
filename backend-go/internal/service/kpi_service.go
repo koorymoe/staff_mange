@@ -50,7 +50,7 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 	var oldTopID string
 	if empErr == nil && employee != nil {
 		monthAgo = time.Now().AddDate(0, -1, 0).Format("2006-01-02")
-		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo); err == nil && len(board) > 0 {
+		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo, ""); err == nil && len(board) > 0 {
 			oldTopID = board[0].EmployeeID
 		}
 	}
@@ -82,7 +82,7 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 	}
 
 	if empErr == nil && employee != nil && s.notifications != nil {
-		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo); err == nil && len(board) > 0 {
+		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo, ""); err == nil && len(board) > 0 {
 			newTop := board[0]
 			if newTop.EmployeeID != oldTopID {
 				_ = s.notifications.CreateForRole(employee.Role, "kpi_leaderboard",
@@ -117,17 +117,59 @@ func (s *KpiService) Cancel(id, cancelledByEmployeeID string) (*model.KpiEvaluat
 
 // RoleLeaderboard يرجع ترتيب موظفي دور معيّن أسبوعياً وشهرياً معاً
 func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, error) {
+	const day = "2006-01-02"
 	now := time.Now()
-	weekAgo := now.AddDate(0, 0, -7).Format("2006-01-02")
-	monthAgo := now.AddDate(0, -1, 0).Format("2006-01-02")
+	weekAgo := now.AddDate(0, 0, -7).Format(day)
+	monthAgo := now.AddDate(0, -1, 0).Format(day)
+	// الفترة السابقة: الأسبوع/الشهر الي قبل الحالي بالضبط — للمقارنة
+	twoWeeksAgo := now.AddDate(0, 0, -14).Format(day)
+	twoMonthsAgo := now.AddDate(0, -2, 0).Format(day)
 
-	weekly, err := s.repo.RoleLeaderboard(role, weekAgo)
+	weekly, err := s.repo.RoleLeaderboard(role, weekAgo, "")
 	if err != nil {
 		return nil, err
 	}
-	monthly, err := s.repo.RoleLeaderboard(role, monthAgo)
+	monthly, err := s.repo.RoleLeaderboard(role, monthAgo, "")
 	if err != nil {
 		return nil, err
 	}
+	prevWeekly, err := s.repo.RoleLeaderboard(role, twoWeeksAgo, weekAgo)
+	if err != nil {
+		return nil, err
+	}
+	prevMonthly, err := s.repo.RoleLeaderboard(role, twoMonthsAgo, monthAgo)
+	if err != nil {
+		return nil, err
+	}
+
+	applyDeltas(weekly, prevWeekly)
+	applyDeltas(monthly, prevMonthly)
+
 	return &model.RoleKpiLeaderboard{Role: role, Weekly: weekly, Monthly: monthly}, nil
+}
+
+// applyDeltas يحسب فرق النقاط وفرق الترتيب عن الفترة السابقة.
+//
+// ⚠️ فرق الترتيب معكوس بقصد: المركز ٣ → ١ معناه **تقدّم**، رغم إن
+// الرقم نزل. لو رجّعناه كما هو (-2) الواجهة تعرض سهم نازل أحمر على
+// موظف تحسّن — وهذا يظلمه ويخليه يفقد الثقة بالشاشة كلها.
+//
+// ⚠️ الي ما كان موجود بالفترة السابقة (موظف جديد) ياخذ delta = 0 مو
+// رقم ضخم: موظف داوم أسبوع واحد ما ينعرض إنه «قفز ٩ مراكز».
+func applyDeltas(current, previous []model.KpiLeaderboardEntry) {
+	prevPoints := make(map[string]int, len(previous))
+	prevRank := make(map[string]int, len(previous))
+	for i, p := range previous {
+		prevPoints[p.EmployeeID] = p.Points
+		prevRank[p.EmployeeID] = i + 1
+	}
+	for i := range current {
+		id := current[i].EmployeeID
+		if old, ok := prevPoints[id]; ok {
+			current[i].PointsDelta = current[i].Points - old
+		}
+		if oldRank, ok := prevRank[id]; ok {
+			current[i].RankDelta = oldRank - (i + 1) // موجب = تقدّم
+		}
+	}
 }

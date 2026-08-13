@@ -47,6 +47,17 @@ type KpiLeaderboardEntry struct {
 	Points            int    `db:"points" json:"points"`
 	EvaluationCount   int    `db:"evaluationCount" json:"evaluationCount"`
 	CompletedBookings int    `db:"completedBookings" json:"completedBookings"`
+	// كل الي انكلّف بيه (مو الملغى) — أساس معدل الإنجاز. الي خلّص ٨ من
+	// ٨ مو مثل الي خلّص ٨ من ٢٠.
+	AssignedBookings int `db:"assignedBookings" json:"assignedBookings"`
+	// أيام حضوره بالفترة — أساس «الالتزام بالدوام»
+	AttendedDays int `db:"attendedDays" json:"attendedDays"`
+
+	// فروقات عن الفترة السابقة — تنحسب بالخدمة مو بقاعدة البيانات.
+	// ⚠️ RankDelta موجب = تقدّم (٣ → ١ يرجّع +2)، لأن نزول رقم المركز
+	// معناه تحسّن، وعرضه بسهم أحمر يظلم الموظف.
+	PointsDelta int `db:"-" json:"pointsDelta"`
+	RankDelta   int `db:"-" json:"rankDelta"`
 }
 
 type RoleKpiLeaderboard struct {

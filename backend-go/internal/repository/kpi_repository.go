@@ -136,7 +136,13 @@ func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, months
 	return buckets, err
 }
 
-func (r *KpiRepository) RoleLeaderboard(role string, since string) ([]model.KpiLeaderboardEntry, error) {
+// RoleLeaderboard ترتيب أصحاب دور واحد بفترة محددة.
+//
+// ⚠️ until مطلوب مو بس since: بدونه ما نكدر نجيب **الفترة السابقة**
+// (الأسبوع الي قبله) للمقارنة. والرقم بلا مقارنة ما يگول شي — «٨٦
+// نقطة» زين لو خبل؟ السهم الي يگول «+٧ عن الأسبوع الماضي» هو الي
+// يخلي الموظف يعرف هل هو يتحسّن لو ينزل.
+func (r *KpiRepository) RoleLeaderboard(role string, since, until string) ([]model.KpiLeaderboardEntry, error) {
 	entries := []model.KpiLeaderboardEntry{}
 	err := r.db.Select(&entries, `
 		SELECT
@@ -147,13 +153,37 @@ func (r *KpiRepository) RoleLeaderboard(role string, since string) ([]model.KpiL
 			COALESCE((
 				SELECT COUNT(*) FROM "BookingAssignment" ba
 				JOIN "Booking" b ON b.id = ba."bookingId"
-				WHERE ba."employeeId" = e.id AND b.status = 'COMPLETED' AND b."completedAt" >= $2::timestamp
-			), 0) AS "completedBookings"
+				WHERE ba."employeeId" = e.id AND b.status = 'COMPLETED'
+				  AND b."completedAt" >= $2::timestamp
+				  AND ($3 = '' OR b."completedAt" < $3::timestamp)
+			), 0) AS "completedBookings",
+			-- كل الحجوزات الي انكلّف بيها بالفترة (مو المنجزة بس) —
+			-- بدونها ما نكدر نحسب معدل الإنجاز، والمعدل هو الي يميّز
+			-- الي خلّص ٨ من ٨ عن الي خلّص ٨ من ٢٠.
+			COALESCE((
+				SELECT COUNT(*) FROM "BookingAssignment" ba
+				JOIN "Booking" b ON b.id = ba."bookingId"
+				WHERE ba."employeeId" = e.id
+				  AND b."createdAt" >= $2::timestamp
+				  AND ($3 = '' OR b."createdAt" < $3::timestamp)
+				  AND b.status <> 'CANCELLED'
+			), 0) AS "assignedBookings",
+			-- أيام حضور بالفترة: أساس «الالتزام بالدوام»
+			COALESCE((
+				SELECT COUNT(DISTINCT a.date) FROM "Attendance" a
+				WHERE a."employeeId" = e.id
+				  AND a.date >= $2::date
+				  AND ($3 = '' OR a.date < $3::date)
+			), 0) AS "attendedDays"
 		FROM "Employee" e
-		LEFT JOIN "KpiEvaluation" k ON k."employeeId" = e.id AND k."createdAt" >= $2::timestamp AND k.cancelled = false
+		LEFT JOIN "KpiEvaluation" k
+		       ON k."employeeId" = e.id
+		      AND k."createdAt" >= $2::timestamp
+		      AND ($3 = '' OR k."createdAt" < $3::timestamp)
+		      AND k.cancelled = false
 		WHERE e.role = $1 AND e.status = 'ACTIVE'
 		GROUP BY e.id, e.name
 		ORDER BY points DESC, "completedBookings" DESC
-	`, role, since)
+	`, role, since, until)
 	return entries, err
 }

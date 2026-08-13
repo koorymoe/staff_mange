@@ -1927,6 +1927,14 @@ export interface KpiLeaderboardEntry {
   points: number
   evaluationCount: number
   completedBookings: number
+  /** كل الي انكلّف بيه (مو الملغى) — أساس معدل الإنجاز. */
+  assignedBookings: number
+  /** أيام حضوره بالفترة — أساس الالتزام بالدوام. */
+  attendedDays: number
+  /** فرق النقاط عن الفترة السابقة. */
+  pointsDelta: number
+  /** فرق الترتيب — موجب = تقدّم (٣ → ١ يرجّع +2). */
+  rankDelta: number
 }
 
 export interface RoleKpiLeaderboard {
