@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
-import { api, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse } from '../api'
+import { api, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse, type DailyAttendance } from '../api'
+import { countAbsentDays, countLateDays, isLateDay, movementsOf, type Movement } from '../attendanceStats'
 
 /* ───── helpers ───── */
 
@@ -61,6 +62,8 @@ export default function AttendancePage() {
   const [todaySummary, setTodaySummary] = useState<EmployeeDailyAttendanceSummary[]>([])
   const [error, setError] = useState('')
   const [viewedEmployeeId, setViewedEmployeeId] = useState<string>('')
+  // «عرض السجل» و«عرض التفاصيل» يفتحون نفس اللوحة — الحركات الكاملة
+  const [showAllMovements, setShowAllMovements] = useState(false)
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
   // تصدير جدول الدوام مو لكل موظف — للمراقب ومدير النظام والمالك بس،
@@ -142,67 +145,162 @@ export default function AttendancePage() {
     )
   }
 
+  // ── أرقام الشهر ──
+  const shiftStart = employee.shiftStart ?? null
+  const lateDays = countLateDays(report, shiftStart)
+  const absentDays = countAbsentDays(report, month)
+  const todayMinutes = openSession?.totalMinutes ?? 0
+
+  // حركات اليوم: من جلسات اليوم نفسه بالتقرير الشهري
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const todayRecord: DailyAttendance | null =
+    report?.days.find((d) => d.date.slice(0, 10) === todayKey) ?? null
+  const movements = movementsOf(todayRecord)
+
   return (
-    <div dir="rtl" className="mx-auto max-w-4xl space-y-8 p-4">
-      {/* Status card */}
-      <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-        <div className="bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-8 py-6 text-white">
-          <h1 className="text-2xl font-bold">حالة الحضور</h1>
-          <p className="mt-1 text-sm text-blue-200">{employee.name}</p>
+    <div dir="rtl" className="mx-auto max-w-6xl space-y-5 p-4">
+      {/* ═══ العنوان ═══ */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-xl">🕐</span>
+          <div>
+            <h1 className="text-2xl font-black text-[#0f2040]">الحضور</h1>
+            <p className="text-xs text-slate-500">متابعة حضورك وانصرافك اليومي</p>
+          </div>
         </div>
+        <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
+          📅 {new Date().toLocaleDateString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+        </span>
+      </div>
 
-        <div className="p-8 text-center">
-          {error && (
-            <div className="mb-4 rounded-lg bg-red-50 px-4 py-2 text-sm font-semibold text-red-600">{error}</div>
-          )}
+      {error && (
+        <div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>
+      )}
 
-          {!today ? (
-            <div className="flex flex-col items-center gap-6">
+      {/* ═══ البطاقات الأربع ═══ */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard
+          icon="🛡️" label="حالة اليوم"
+          value={today ? 'متواجد' : 'غير مسجّل'}
+          tone={today ? 'emerald' : 'slate'}
+        />
+        <StatCard icon="🕐" label="وقت الحضور" value={fmtTime(todayRecord?.firstCheckIn ?? today?.checkIn ?? null)} tone="sky" />
+        <StatCard icon="⏱️" label="إجمالي الساعات هذا الشهر" value={report ? fmtHours(report.totalMinutes) : '—'} tone="violet" />
+        <StatCard icon="📅" label="أيام الحضور هذا الشهر" value={report ? `${report.daysPresent} أيام` : '—'} tone="amber" />
+      </div>
+
+      {/* ═══ حالة الحضور + ملخص اليوم ═══ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* اللوحة الكبيرة */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
+          <h2 className="mb-5 flex items-center gap-2 text-base font-extrabold text-[#0f2040]">
+            🕐 حالة الحضور
+          </h2>
+
+          <div className="flex flex-col items-center gap-5 sm:flex-row-reverse sm:items-center sm:justify-between">
+            {/* الدائرة */}
+            <div className="relative flex h-40 w-40 shrink-0 items-center justify-center">
+              <span className={`absolute inset-0 rounded-full ${today ? 'bg-emerald-100' : 'bg-slate-100'}`} />
+              <span className={`absolute inset-4 rounded-full ${today ? 'bg-emerald-200/70' : 'bg-slate-200/70'}`} />
+              {today && <span className="absolute inset-0 animate-ping rounded-full bg-emerald-300 opacity-30" />}
               <button
-                onClick={handleCheckIn}
-                className="group relative flex h-40 w-40 items-center justify-center rounded-full bg-gradient-to-br from-green-500 to-emerald-600 shadow-xl transition hover:scale-105 hover:shadow-2xl"
+                onClick={today ? undefined : handleCheckIn}
+                disabled={!!today}
+                className={`relative z-10 flex h-24 w-24 items-center justify-center rounded-full shadow-lg transition ${
+                  today
+                    ? 'bg-gradient-to-br from-emerald-500 to-emerald-600 cursor-default'
+                    : 'bg-gradient-to-br from-sky-500 to-sky-600 hover:scale-105'
+                }`}
+                aria-label={today ? 'متواجد' : 'سجّل حضورك'}
               >
-                <span className="absolute inset-0 animate-ping rounded-full bg-green-400 opacity-20" />
-                <span className="absolute inset-0 animate-pulse rounded-full bg-green-400 opacity-10" />
-                <svg className="relative z-10 h-16 w-16 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <svg className="h-11 w-11 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                 </svg>
               </button>
-              <span className="text-2xl font-bold text-gray-800">متواجد بالشركة</span>
-              <p className="text-gray-500">اضغط لتسجيل حضورك</p>
-              {openSession && openSession.totalMinutes > 0 && (
-                <p className="text-sm font-semibold text-[#2c5aad]">دوامك اليوم لحد الحين: {fmtHours(openSession.totalMinutes)}</p>
-              )}
             </div>
-          ) : (
-            <>
-              <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-green-100">
-                <svg className="h-10 w-10 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <p className="mb-1 text-xl font-bold text-gray-800">
-                أنت متواجد منذ الساعة {fmtTime(today.checkIn)}
+
+            {/* النص والأزرار */}
+            <div className="flex-1 text-center sm:text-right">
+              <h3 className="text-2xl font-black text-[#0f2040]">
+                {today ? 'متواجد بالشركة' : 'ما سجّلت حضورك بعد'}
+              </h3>
+              <p className={`mt-1 text-sm font-bold ${today ? 'text-emerald-600' : 'text-slate-500'}`}>
+                {today ? '✅ تم تسجيل الحضور بنجاح' : 'اضغط الزر حتى تسجّل حضورك'}
               </p>
-              <p className="mb-2 text-lg text-gray-500">مدة هذي الجلسة: {elapsed}</p>
-              {openSession && (
-                <p className="mb-8 text-sm font-semibold text-[#2c5aad]">مجموع دوامك اليوم: {fmtHours(openSession.totalMinutes)}</p>
+
+              {today && (
+                <div className="mt-4 inline-block rounded-xl border border-slate-200 bg-slate-50 px-5 py-3">
+                  <p className="text-[11px] text-slate-500">وقت الحضور</p>
+                  <p className="text-lg font-black text-emerald-700">{fmtTime(today.checkIn)}</p>
+                  <p className="mt-0.5 text-[11px] text-slate-500">هاي الجلسة: {elapsed}</p>
+                </div>
               )}
+
               {justCheckedOut && (
-                <p className="mb-4 text-lg font-semibold text-green-600">شكراً لك، أحسنت العمل اليوم!</p>
+                <p className="mt-3 text-sm font-bold text-emerald-600">شكراً لك، أحسنت العمل اليوم!</p>
               )}
-              <button
-                onClick={handleCheckOut}
-                className="inline-flex items-center gap-3 rounded-full bg-gradient-to-l from-red-600 to-amber-500 px-10 py-4 text-lg font-bold text-white shadow-lg transition hover:scale-105 hover:shadow-xl"
-              >
-                <svg className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h6a2 2 0 012 2v1" />
-                </svg>
-                انصراف
-              </button>
-            </>
-          )}
+
+              <div className="mt-5 flex flex-wrap justify-center gap-2 sm:justify-start">
+                {today ? (
+                  <button
+                    onClick={handleCheckOut}
+                    className="rounded-xl bg-[#2c5aad] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-[#24488c]"
+                  >
+                    ⬅️ تسجيل الانصراف
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCheckIn}
+                    className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700"
+                  >
+                    ✅ تسجيل الحضور
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAllMovements((v) => !v)}
+                  className="rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-sm font-bold text-slate-600 transition hover:bg-slate-50"
+                >
+                  ☰ عرض السجل
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
+
+        {/* ملخص اليوم */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-[#0f2040]">📋 ملخص اليوم</h2>
+          <div className="space-y-2.5">
+            <SummaryRow icon="🕐" label="إجمالي ساعات اليوم" value={fmtHours(todayMinutes)} />
+            <SummaryRow
+              icon="⏱️" label="الجلسة الحالية"
+              value={today ? `${fmtTime(today.checkIn)} — الآن` : 'ماكو جلسة مفتوحة'}
+            />
+            <SummaryRow
+              icon="🔁" label="عدد جلسات اليوم"
+              value={todayRecord ? `${todayRecord.sessions.length}` : '0'}
+            />
+          </div>
+          <button
+            onClick={() => setShowAllMovements((v) => !v)}
+            className="mt-4 flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+          >
+            <span>{showAllMovements ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</span>
+            <span>{showAllMovements ? '⌄' : '‹'}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ═══ سجل الدوام الشهري + آخر الحركات ═══ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <MonthlyView
+            month={month} setMonth={setMonth} report={report}
+            employeeId={targetEmployeeId} canExport={canExport}
+            shiftStart={shiftStart} lateDays={lateDays} absentDays={absentDays}
+          />
+        </div>
+        <MovementsPanel movements={movements} expanded={showAllMovements} onToggle={() => setShowAllMovements((v) => !v)} />
       </div>
 
       {/* Employee picker for admins */}
@@ -222,23 +320,116 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* Monthly attendance record */}
-      <MonthlyView month={month} setMonth={setMonth} report={report} employeeId={targetEmployeeId} canExport={canExport} />
-
       {/* Admin table */}
       {isAdmin && <AdminTable records={todaySummary} />}
     </div>
   )
 }
 
+/* ───── بطاقة رقم علوية ───── */
+
+function StatCard({ icon, label, value, tone }: {
+  icon: string; label: string; value: string
+  tone: 'emerald' | 'sky' | 'violet' | 'amber' | 'slate'
+}) {
+  const tones: Record<string, string> = {
+    emerald: 'text-emerald-600 bg-emerald-50',
+    sky: 'text-sky-600 bg-sky-50',
+    violet: 'text-violet-600 bg-violet-50',
+    amber: 'text-amber-600 bg-amber-50',
+    slate: 'text-slate-500 bg-slate-100',
+  }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-medium text-slate-500">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm ${tones[tone]}`}>{icon}</span>
+      </div>
+      <p className={`mt-1.5 text-lg font-black ${tones[tone].split(' ')[0]}`}>{value}</p>
+    </div>
+  )
+}
+
+/* ───── سطر بملخص اليوم ───── */
+
+function SummaryRow({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2.5">
+      <div className="min-w-0">
+        <p className="text-[11px] text-slate-500">{label}</p>
+        <p className="truncate text-xs font-bold text-slate-800">{value}</p>
+      </div>
+      <span className="shrink-0 text-base">{icon}</span>
+    </div>
+  )
+}
+
+/* ───── آخر الحركات ─────
+ *
+ * الخروج بنص اليوم والرجوع بعده = استراحة، مو انصراف. التمييز
+ * يخلي الموظف يشوف يومه مثل ما صار فعلاً، بدل «تسجيل انصراف» أربع
+ * مرات بيوم واحد. */
+
+function MovementsPanel({ movements, expanded, onToggle }: {
+  movements: Movement[]; expanded: boolean; onToggle: () => void
+}) {
+  const shown = expanded ? movements : movements.slice(0, 4)
+  const style: Record<Movement['kind'], { color: string; icon: string }> = {
+    in:    { color: 'text-emerald-600 bg-emerald-50', icon: '→' },
+    break: { color: 'text-amber-600 bg-amber-50',     icon: '⏸' },
+    back:  { color: 'text-sky-600 bg-sky-50',         icon: '↩' },
+    out:   { color: 'text-slate-600 bg-slate-100',    icon: '←' },
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-[#0f2040]">🕓 آخر الحركات</h2>
+
+      {shown.length === 0 ? (
+        <p className="py-6 text-center text-xs text-slate-400">ماكو حركات اليوم</p>
+      ) : (
+        <div className="space-y-2.5">
+          {shown.map((m, i) => (
+            <div key={`${m.at}-${i}`} className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${style[m.kind].color}`}>
+                  {style[m.kind].icon}
+                </span>
+                <span className="text-xs font-bold text-slate-700">{m.label}</span>
+              </div>
+              <div className="text-left">
+                <p className="text-[11px] font-bold text-slate-600">{fmtTime(m.at)}</p>
+                <p className="text-[10px] text-slate-400">اليوم</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {movements.length > 4 && (
+        <button
+          onClick={onToggle}
+          className="mt-4 flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+        >
+          <span>{expanded ? 'عرض أقل' : `عرض جميع الحركات (${movements.length})`}</span>
+          <span>{expanded ? '⌄' : '‹'}</span>
+        </button>
+      )}
+    </div>
+  )
+}
+
 /* ───── Monthly attendance table ───── */
 
-function MonthlyView({ month, setMonth, report, employeeId, canExport }: {
+function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStart, lateDays, absentDays }: {
   canExport: boolean
   month: string
   setMonth: (m: string) => void
   report: MonthlyAttendanceReport | null
   employeeId: string
+  shiftStart: string | null
+  lateDays: number
+  absentDays: number
 }) {
   const canGoForward = month < currentMonthKey()
   const [exporting, setExporting] = useState(false)
@@ -285,17 +476,23 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport }: {
         </div>
       )}
 
-      {/* Summary */}
+      {/* الأرقام الأربعة */}
       {report && (
-        <div className="grid grid-cols-2 divide-x divide-x-reverse divide-gray-100 border-b border-gray-100 sm:grid-cols-2">
-          <div className="p-5 text-center">
-            <p className="text-2xl font-bold text-[#2c5aad]">{report.daysPresent}</p>
-            <p className="text-sm text-gray-500">يوم حضور</p>
-          </div>
-          <div className="p-5 text-center">
-            <p className="text-2xl font-bold text-[#2c5aad]">{fmtHours(report.totalMinutes)}</p>
-            <p className="text-sm text-gray-500">إجمالي ساعات الدوام</p>
-          </div>
+        <div className="grid grid-cols-2 gap-px border-b border-slate-100 bg-slate-100 sm:grid-cols-4">
+          <MiniStat icon="🕐" label="إجمالي الساعات" value={fmtHours(report.totalMinutes)} tone="text-sky-700" />
+          <MiniStat icon="📅" label="أيام الحضور" value={`${report.daysPresent} أيام`} tone="text-emerald-700" />
+          <MiniStat
+            icon="⏰" label="أيام التأخير"
+            value={shiftStart ? `${lateDays} يوم` : 'ماكو دوام محدد'}
+            tone={lateDays > 0 ? 'text-amber-700' : 'text-slate-600'}
+            hint={shiftStart ? `الدوام ${shiftStart}` : 'حدد وقت الدوام بملف الموظف'}
+          />
+          <MiniStat
+            icon="🚫" label="أيام بلا بصمة"
+            value={`${absentDays} يوم`}
+            tone={absentDays > 0 ? 'text-red-700' : 'text-slate-600'}
+            hint="عدا الجمعة — وممكن تكون إجازة مصدّقة"
+          />
         </div>
       )}
 
@@ -309,22 +506,41 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport }: {
                 <th className="px-6 py-3 font-semibold">اليوم</th>
                 <th className="px-6 py-3 font-semibold">وقت الحضور</th>
                 <th className="px-6 py-3 font-semibold">وقت الانصراف</th>
-                <th className="px-6 py-3 font-semibold">عدد الجلسات</th>
                 <th className="px-6 py-3 font-semibold">عدد الساعات</th>
+                <th className="px-6 py-3 font-semibold">الحالة</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {report.days.map((d) => (
+              {report.days.map((d) => {
+                // الحالة: لسه شغّال / تأخر / مكتمل. التأخير يطلع بعموده
+                // حتى يعرف الموظف أي يوم بالضبط انحسب عليه.
+                const late = isLateDay(d, shiftStart)
+                const badge = d.stillOpen
+                  ? { text: 'مفتوح', cls: 'bg-sky-50 text-sky-700' }
+                  : late
+                    ? { text: 'متأخر', cls: 'bg-amber-50 text-amber-700' }
+                    : { text: 'مكتمل', cls: 'bg-emerald-50 text-emerald-700' }
+                return (
                 <tr key={d.date} className="hover:bg-gray-50">
                   <td className="px-6 py-4 font-medium text-gray-800">{dayLabel(d.firstCheckIn)}</td>
                   <td className="px-6 py-4 text-gray-600">{fmtTime(d.firstCheckIn)}</td>
                   <td className="px-6 py-4 text-gray-600">
                     {d.stillOpen ? <span className="text-amber-600 font-semibold">لم يسجل انصراف بعد</span> : fmtTime(d.lastCheckOut)}
                   </td>
-                  <td className="px-6 py-4 text-gray-600">{d.sessions.length > 1 ? d.sessions.length : '—'}</td>
-                  <td className="px-6 py-4 text-gray-600">{fmtHours(d.totalMinutes)}</td>
+                  <td className="px-6 py-4 text-gray-600">
+                    {fmtHours(d.totalMinutes)}
+                    {d.sessions.length > 1 && (
+                      <span className="mr-1 text-[11px] text-slate-400">({d.sessions.length} جلسات)</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${badge.cls}`}>
+                      ● {badge.text}
+                    </span>
+                  </td>
                 </tr>
-              ))}
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -399,6 +615,22 @@ function AdminTable({ records }: { records: EmployeeDailyAttendanceSummary[] }) 
           </table>
         </div>
       )}
+    </div>
+  )
+}
+
+/* ───── رقم صغير بترويسة الجدول الشهري ───── */
+
+function MiniStat({ icon, label, value, tone, hint }: {
+  icon: string; label: string; value: string; tone: string; hint?: string
+}) {
+  return (
+    <div className="bg-white p-4 text-center" title={hint}>
+      <div className="mb-1 flex items-center justify-center gap-1.5">
+        <span className="text-sm">{icon}</span>
+        <p className="text-[11px] text-slate-500">{label}</p>
+      </div>
+      <p className={`text-base font-black ${tone}`}>{value}</p>
     </div>
   )
 }
