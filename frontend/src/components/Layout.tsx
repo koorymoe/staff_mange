@@ -82,7 +82,7 @@ const TECHNICIAN_NAV = [
 
 export const navItems: NavItem[] = [
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
-  { to: '/attendance', label: 'الحضور', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
+  { to: '/attendance', label: 'جدول دوامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // حساب تكلفة التنصيب للتنفيذ — بصلاحية execution_cost، مو مفتوح
   // للكل. كان بلا أي قيد فالمصمم والمبيعات يشوفون محرك التسعير.
   {

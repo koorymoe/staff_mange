@@ -277,6 +277,18 @@ export interface StockIntake {
 export type LeaveRoute = 'MORNING' | 'EVENING'
 export type LeaveStatus = 'PENDING' | 'PRELIMINARY' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
+/** نوع الإجازة — يغيّر كيف تنحاسب، مو مجرد تسمية. */
+export type LeaveKind = 'REGULAR' | 'SICK' | 'URGENT' | 'UNPAID'
+
+/** الطارئة والمرضية مستثنيات من مهلة اليومين — الموت والحادث
+ *  والمرض ما ينتظرون. */
+export const LEAVE_KINDS: { value: LeaveKind; label: string; note?: string }[] = [
+  { value: 'REGULAR', label: 'إجازة اعتيادية', note: 'تنخصم من رصيدك الشهري · تحتاج طلب قبل يومين' },
+  { value: 'SICK',    label: 'إجازة مرضية',   note: 'ما تنخصم من الرصيد · بلا مهلة' },
+  { value: 'URGENT',  label: 'إجازة طارئة',   note: 'موت أو حادث أو ولادة · بلا مهلة' },
+  { value: 'UNPAID',  label: 'إجازة بلا راتب', note: 'لمن يخلص رصيدك · تحتاج طلب قبل يومين' },
+]
+
 export interface LeaveRequest {
   id: string
   employeeId: string
@@ -290,6 +302,8 @@ export interface LeaveRequest {
   reason?: string | null
   route: LeaveRoute
   routeLabel: string
+  kind: LeaveKind
+  kindLabel: string
   status: LeaveStatus
   statusLabel: string
   decidedByName?: string | null
@@ -3289,7 +3303,7 @@ export const api = {
   getFinanceSummary: () => request<FinanceSummary>('/dashboard/finance-summary'),
 
   // ── الإجازات ──
-  createLeave: (data: { startDate: string; endDate?: string; reason?: string | null }) =>
+  createLeave: (data: { startDate: string; endDate?: string; reason?: string | null; kind?: LeaveKind }) =>
     request<LeaveRequest>('/leaves', { method: 'POST', body: JSON.stringify(data) }),
   getMyLeaves: () => request<LeaveRequest[]>('/leaves/mine'),
   cancelLeave: (id: string) => request<{ ok: boolean }>(`/leaves/${id}`, { method: 'DELETE' }),

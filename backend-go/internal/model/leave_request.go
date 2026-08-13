@@ -77,6 +77,7 @@ type LeaveRequest struct {
 	StartDate    time.Time  `db:"startDate" json:"startDate"`
 	EndDate      time.Time  `db:"endDate" json:"endDate"`
 	Reason       *string    `db:"reason" json:"reason"`
+	Kind         string     `db:"kind" json:"kind"`
 	Route        string     `db:"route" json:"route"`
 	Status       string     `db:"status" json:"status"`
 	DecidedByID  *string    `db:"decidedById" json:"decidedById"`
@@ -99,6 +100,7 @@ type LeaveRequest struct {
 
 	RouteLabel  string `db:"-" json:"routeLabel"`
 	StatusLabel string `db:"-" json:"statusLabel"`
+	KindLabel   string `db:"-" json:"kindLabel"`
 	Days        int    `db:"-" json:"days"`
 }
 
@@ -106,6 +108,43 @@ type CreateLeaveRequest struct {
 	StartDate string  `json:"startDate"` // YYYY-MM-DD
 	EndDate   string  `json:"endDate"`   // اختياري — لو فاضي يصير نفس البداية
 	Reason    *string `json:"reason"`
+	Kind      string  `json:"kind"` // اختياري — لو فاضي يصير REGULAR
+}
+
+// ═══ أنواع الإجازة ═══
+//
+// النوع يغيّر **كيف تنحاسب** الإجازة، مو مجرد تسمية:
+//   - الاعتيادية تنخصم من الرصيد الشهري
+//   - المرضية ما تنخصم (الموظف المريض ما ينحاسب على رصيده)
+//   - الطارئة إلها أولوية بالموافقة (موت، حادث، ولادة)
+//   - بلا راتب للي خلص رصيده ويحتاج يوم
+//
+// قبل، كلهن جانن نفس الشي، والمدير يقرا السبب المكتوب ويخمّن — وأكو
+// موظفين ما يكتبون سبب أصلاً.
+const (
+	LeaveKindRegular = "REGULAR"
+	LeaveKindSick    = "SICK"
+	LeaveKindUrgent  = "URGENT"
+	LeaveKindUnpaid  = "UNPAID"
+)
+
+var LeaveKindLabels = map[string]string{
+	LeaveKindRegular: "إجازة اعتيادية",
+	LeaveKindSick:    "إجازة مرضية",
+	LeaveKindUrgent:  "إجازة طارئة",
+	LeaveKindUnpaid:  "إجازة بلا راتب",
+}
+
+// NormalizeLeaveKind يرجّع نوع صالح دايماً.
+//
+// ⚠️ الفاضي والمجهول الاثنين يصيرون «اعتيادية»: قيمة غريبة تجي من
+// نسخة واجهة قديمة ما تصير ترفض الطلب كله — الموظف ما يفهم ليش
+// إجازته انرفضت، والقيد بقاعدة البيانات يرفضها أصلاً لو مرّت.
+func NormalizeLeaveKind(k string) string {
+	if _, ok := LeaveKindLabels[k]; ok {
+		return k
+	}
+	return LeaveKindRegular
 }
 
 type DecideLeaveRequest struct {

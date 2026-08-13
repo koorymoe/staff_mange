@@ -85,16 +85,32 @@ func (h *LeaveRequestHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "تاريخ النهاية قبل البداية")
 		return
 	}
-	// الإجازة تُطلب قبل يومين على الأقل — حتى يلحكون يرتبون الشفت
-	now := time.Now()
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
-	minStart := today.AddDate(0, 0, model.LeaveMinNoticeDays)
-	if start.Before(minStart) {
-		WriteError(w, http.StatusBadRequest, "لازم تقدّم طلب الإجازة قبل يومين على الأقل من تاريخها")
-		return
+	kind := model.NormalizeLeaveKind(req.Kind)
+
+	// ═══ مهلة اليومين ═══
+	//
+	// الإجازة تُطلب قبل يومين على الأقل حتى يلحكون يرتبون الشفت.
+	//
+	// ⚠️ بس الطارئة والمرضية مستثنيات — وهذا مو تساهل:
+	// الموت والحادث والولادة ما ينتظرون يومين، والمرض ما ينحدد
+	// بموعد. لو فرضنا المهلة عليهن، الموظف الي أبوه بالمستشفى
+	// ما يقدر يقدّم طلب أصلاً، فيغيب بلا ورق — ويطلع «بلا بصمة»
+	// بسجله وينحاسب على شي مو ذنبه.
+	//
+	// والقرار يبقى للمدير: النظام يسمح بالتقديم، مو يوافق تلقائياً.
+	needsNotice := kind != model.LeaveKindUrgent && kind != model.LeaveKindSick
+	if needsNotice {
+		now := time.Now()
+		today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+		minStart := today.AddDate(0, 0, model.LeaveMinNoticeDays)
+		if start.Before(minStart) {
+			WriteError(w, http.StatusBadRequest,
+				"لازم تقدّم طلب الإجازة قبل يومين على الأقل من تاريخها (عدا الطارئة والمرضية)")
+			return
+		}
 	}
 
-	leave, err := h.repo.Create(middleware.EmployeeIDFromContext(r), start, end, req.Reason)
+	leave, err := h.repo.Create(middleware.EmployeeIDFromContext(r), start, end, req.Reason, kind)
 	if err != nil {
 		log.Printf("create leave: %v", err)
 		WriteError(w, http.StatusBadRequest, "تعذر تقديم طلب الإجازة")

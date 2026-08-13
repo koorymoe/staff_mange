@@ -247,6 +247,9 @@ func versionedMigrations() []Migration {
 	// 0246: تدقيق الفاتورة — الحكم (مطابق/غير مطابق/خطأ بالسعر)، وقيد
 	// قاعدة بيانات يمنع اعتماد فاتورة بلا رقم، وسحب الاعتماد.
 	result = append(result, invoiceAuditMigration()...)
+	// 0240: نوع الإجازة (اعتيادية/مرضية/طارئة/بلا راتب) — الرصيد الشهري
+	// ما ينطبق على المرضية، والطارئة إلها أولوية مختلفة بالموافقة.
+	result = append(result, leaveKindMigrations()...)
 	return result
 }
 

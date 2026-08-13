@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
-import { api, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse, type DailyAttendance } from '../api'
+import { api, LEAVE_KINDS, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse, type DailyAttendance, type LeaveRequest, type LeaveKind } from '../api'
 import { countAbsentDays, countLateDays, isLateDay, movementsOf, type Movement } from '../attendanceStats'
 
 /* ───── helpers ───── */
@@ -64,6 +64,12 @@ export default function AttendancePage() {
   const [viewedEmployeeId, setViewedEmployeeId] = useState<string>('')
   // «عرض السجل» و«عرض التفاصيل» يفتحون نفس اللوحة — الحركات الكاملة
   const [showAllMovements, setShowAllMovements] = useState(false)
+  const [myLeaves, setMyLeaves] = useState<LeaveRequest[]>([])
+
+  const loadMyLeaves = useCallback(() => {
+    api.getMyLeaves().then(setMyLeaves).catch(() => setMyLeaves([]))
+  }, [])
+  useEffect(() => { loadMyLeaves() }, [loadMyLeaves])
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
   // تصدير جدول الدوام مو لكل موظف — للمراقب ومدير النظام والمالك بس،
@@ -164,8 +170,8 @@ export default function AttendancePage() {
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-xl">🕐</span>
           <div>
-            <h1 className="text-2xl font-black text-[#0f2040]">الحضور</h1>
-            <p className="text-xs text-slate-500">متابعة حضورك وانصرافك اليومي</p>
+            <h1 className="text-2xl font-black text-[#0f2040]">جدول دوامي</h1>
+            <p className="text-xs text-slate-500">متابعة حضورك وانصرافك وطلبات الإجازة من مكان واحد</p>
           </div>
         </div>
         <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
@@ -189,8 +195,8 @@ export default function AttendancePage() {
         <StatCard icon="📅" label="أيام الحضور هذا الشهر" value={report ? `${report.daysPresent} أيام` : '—'} tone="amber" />
       </div>
 
-      {/* ═══ حالة الحضور + ملخص اليوم ═══ */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      {/* ═══ حالة الحضور + ملخص اليوم + طلب إجازة ═══ */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
         {/* اللوحة الكبيرة */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
           <h2 className="mb-5 flex items-center gap-2 text-base font-extrabold text-[#0f2040]">
@@ -289,6 +295,12 @@ export default function AttendancePage() {
             <span>{showAllMovements ? '⌄' : '‹'}</span>
           </button>
         </div>
+
+        {/* ═══ طلب الإجازة — من جوّا الصفحة ═══
+            «طلب الإجازة يكون من داخل، ماريده يكون بالخارج».
+            الإجازة جزء من جدول دوامك — تطلبها وأنت تشوف رصيدك
+            وحضورك قدامك، مو تروح لشاشة ثانية وترجع. */}
+        <LeavePanel onSubmitted={loadMyLeaves} leaves={myLeaves} />
       </div>
 
       {/* ═══ سجل الدوام الشهري + آخر الحركات ═══ */}
@@ -631,6 +643,153 @@ function MiniStat({ icon, label, value, tone, hint }: {
         <p className="text-[11px] text-slate-500">{label}</p>
       </div>
       <p className={`text-base font-black ${tone}`}>{value}</p>
+    </div>
+  )
+}
+
+/* ───── طلب الإجازة من داخل جدول الدوام ─────
+ *
+ * الموظف كان لازم يترك شاشة دوامه ويروح لصفحة الإجازات المنفصلة.
+ * وهاي نقلة غلط: الإجازة **جزء من جدول دوامك** — تطلبها وأنت تشوف
+ * رصيد حضورك وأيامك قدامك، مو بشاشة معزولة ما تعرض إلا الطلبات. */
+
+function LeavePanel({ onSubmitted, leaves }: {
+  onSubmitted: () => void
+  leaves: LeaveRequest[]
+}) {
+  const todayKey = new Date().toISOString().slice(0, 10)
+  const [kind, setKind] = useState<LeaveKind>('REGULAR')
+  const [from, setFrom] = useState(todayKey)
+  const [to, setTo] = useState(todayKey)
+  const [reason, setReason] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+  const [done, setDone] = useState(false)
+
+  const meta = LEAVE_KINDS.find((k) => k.value === kind)
+
+  const submit = async () => {
+    if (!from) { setErr('حدد تاريخ البداية'); return }
+    if (to && to < from) { setErr('تاريخ النهاية قبل البداية'); return }
+    setBusy(true); setErr(null)
+    try {
+      await api.createLeave({ startDate: from, endDate: to || from, reason: reason.trim() || null, kind })
+      // ⚠️ ما نفضّي التواريخ إلا بعد النجاح: تفضيتها عند الفشل تخلي
+      // الموظف يعيد تعبئة كلشي بلا ما يعرف ليش راح.
+      setReason(''); setDone(true)
+      setTimeout(() => setDone(false), 4000)
+      onSubmitted()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'تعذر إرسال الطلب')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const statusTone: Record<string, string> = {
+    PENDING:     'bg-amber-50 text-amber-700',
+    PRELIMINARY: 'bg-sky-50 text-sky-700',
+    APPROVED:    'bg-emerald-50 text-emerald-700',
+    REJECTED:    'bg-red-50 text-red-700',
+    CANCELLED:   'bg-slate-100 text-slate-500',
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* النموذج */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-extrabold text-[#0f2040]">📅 طلب إجازة</h2>
+        <p className="mt-0.5 text-[11px] text-slate-500">من داخل جدول دوامك مباشرة</p>
+
+        <div className="mt-4 space-y-2.5">
+          <div>
+            <label className="mb-1 block text-[11px] font-medium text-slate-600">نوع الإجازة</label>
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as LeaveKind)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-sky-500"
+            >
+              {LEAVE_KINDS.map((k) => (
+                <option key={k.value} value={k.value}>{k.label}</option>
+              ))}
+            </select>
+            {meta?.note && <p className="mt-1 text-[10px] text-slate-500">{meta.note}</p>}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">من تاريخ</label>
+              <input
+                type="date" value={from}
+                onChange={(e) => { setFrom(e.target.value); if (to < e.target.value) setTo(e.target.value) }}
+                className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none focus:border-sky-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-[11px] font-medium text-slate-600">إلى تاريخ</label>
+              <input
+                type="date" value={to} min={from}
+                onChange={(e) => setTo(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-2 py-2 text-xs outline-none focus:border-sky-500"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-medium text-slate-600">السبب</label>
+            <textarea
+              value={reason} onChange={(e) => setReason(e.target.value)}
+              rows={2} placeholder="اكتب سبب الإجازة"
+              className="w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-sky-500"
+            />
+          </div>
+
+          {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-[11px] font-bold text-red-700">{err}</p>}
+          {done && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-[11px] font-bold text-emerald-700">✅ انرسل الطلب — تتابع حالته تحت</p>}
+
+          <button
+            onClick={submit} disabled={busy}
+            className="w-full rounded-xl bg-[#2c5aad] py-2.5 text-xs font-bold text-white shadow-md transition hover:bg-[#24488c] disabled:opacity-50"
+          >
+            {busy ? 'جارٍ الإرسال...' : 'إرسال الطلب'}
+          </button>
+        </div>
+      </div>
+
+      {/* آخر الطلبات */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <h2 className="mb-3 text-sm font-extrabold text-[#0f2040]">📋 طلبات الإجازة الأخيرة</h2>
+        {leaves.length === 0 ? (
+          <p className="py-4 text-center text-[11px] text-slate-400">ماكو طلبات بعد</p>
+        ) : (
+          <div className="space-y-2">
+            {leaves.slice(0, 4).map((l) => (
+              <div key={l.id} className="rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold text-slate-700">{l.kindLabel || 'إجازة'}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${statusTone[l.status] || 'bg-slate-100 text-slate-600'}`}>
+                    ● {l.statusLabel}
+                  </span>
+                </div>
+                <p className="mt-1 text-[10px] text-slate-500">
+                  {new Date(l.startDate).toLocaleDateString('ar-IQ', { day: 'numeric', month: 'short' })}
+                  {' ← '}
+                  {new Date(l.endDate).toLocaleDateString('ar-IQ', { day: 'numeric', month: 'short' })}
+                  {' · '}{l.days} {l.days === 1 ? 'يوم' : 'أيام'}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* لافتة توضيحية */}
+      <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
+        <p className="text-[11px] font-extrabold text-sky-900">ℹ️ الإجازات الآن من داخل جدول دوامي</p>
+        <p className="mt-1 text-[10px] leading-relaxed text-sky-800">
+          تگدر تطلب الإجازة وتتابع حالتها من هنا — بلا ما تروح لشاشة الإجازات المنفصلة.
+        </p>
+      </div>
     </div>
   )
 }

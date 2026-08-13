@@ -31,6 +31,7 @@ func decorateLeaves(rows []model.LeaveRequest) []model.LeaveRequest {
 	for i := range rows {
 		rows[i].RouteLabel = model.LeaveRouteLabels[rows[i].Route]
 		rows[i].StatusLabel = model.LeaveStatusLabels[rows[i].Status]
+		rows[i].KindLabel = model.LeaveKindLabels[rows[i].Kind]
 		days := int(rows[i].EndDate.Sub(rows[i].StartDate).Hours()/24) + 1
 		if days < 1 {
 			days = 1
@@ -42,7 +43,7 @@ func decorateLeaves(rows []model.LeaveRequest) []model.LeaveRequest {
 
 // Create يقدّم طلب إجازة. المسار يتحدد من بيانات الموظف بقاعدة البيانات،
 // مو من الي يرسله العميل — حتى ما يوجّه طلبه لأسهل واحد يوافق.
-func (r *LeaveRequestRepository) Create(employeeID string, start, end time.Time, reason *string) (*model.LeaveRequest, error) {
+func (r *LeaveRequestRepository) Create(employeeID string, start, end time.Time, reason *string, kind string) (*model.LeaveRequest, error) {
 	var shift *string
 	if err := r.db.Get(&shift, `SELECT shift::text FROM "Employee" WHERE id = $1`, employeeID); err != nil {
 		return nil, fmt.Errorf("تعذر قراءة بيانات الموظف")
@@ -51,9 +52,9 @@ func (r *LeaveRequestRepository) Create(employeeID string, start, end time.Time,
 
 	var id string
 	if err := r.db.Get(&id, `
-		INSERT INTO "LeaveRequest" (id, "employeeId", "startDate", "endDate", reason, route)
-		VALUES (gen_random_uuid()::text, $1, $2, $3, NULLIF($4,''), $5)
-		RETURNING id`, employeeID, start, end, derefStr(reason), route); err != nil {
+		INSERT INTO "LeaveRequest" (id, "employeeId", "startDate", "endDate", reason, route, kind)
+		VALUES (gen_random_uuid()::text, $1, $2, $3, NULLIF($4,''), $5, $6)
+		RETURNING id`, employeeID, start, end, derefStr(reason), route, kind); err != nil {
 		return nil, err
 	}
 	return r.Get(id)
