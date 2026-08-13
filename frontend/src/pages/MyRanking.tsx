@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession } from '../session'
 import { roleLabels } from '../session'
+import { tracksFor } from '../rankingTracks'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -14,7 +15,7 @@ const levels = [
 const BOOKINGS_PER_RANK = 10
 
 export default function MyRanking() {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly')
@@ -25,10 +26,24 @@ export default function MyRanking() {
     if (isTechnician) api.getStats().then(setStats).catch(() => setStats(null))
   }, [isTechnician])
 
+  // ═══ التصنيف حسب الشغل مو حسب الدور ═══
+  //
+  // مسارات الموظف = صلاحياته الفعلية. الي عنده «تنسيق الحجوزات»
+  // ينقارن بمنسّقي الحجوزات مهما كان اسم دوره — والي يشتغل شغلتين
+  // يظهر بتصنيفين.
+  const myTracks = tracksFor(permissions)
+  const [trackIdx, setTrackIdx] = useState(0)
+  const activeTrack = myTracks[trackIdx] ?? null
+
   useEffect(() => {
     if (!employee) return
-    api.getRoleKpiLeaderboard(employee.role).then(setBoard).catch(() => setBoard(null))
-  }, [employee])
+    // بلا صلاحية تصنيف، نرجع للدور — حتى ما يشوف الموظف شاشة فاضية
+    // بينما هو فعلاً عنده زملاء بنفس الدور.
+    const p = activeTrack
+      ? api.getPermissionKpiLeaderboard(activeTrack.permission)
+      : api.getRoleKpiLeaderboard(employee.role)
+    p.then(setBoard).catch(() => setBoard(null))
+  }, [employee, activeTrack])
 
   const skillCount = employee?.skills.filter((s) => s.canPerform).length || 0
   const currentLevel = [...levels].reverse().find((l) => skillCount >= l.min) || levels[0]
@@ -51,7 +66,8 @@ export default function MyRanking() {
 
   // ── أرقام الموظف بالفترة المختارة ──
   const myRank = myIndex >= 0 ? myIndex + 1 : null
-  const roleLabel = employee ? roleLabels[employee.role] : ''
+  // اسم المجموعة = المسار (الشغل)، وإذا ماكو مسار نرجع لاسم الدور
+  const roleLabel = activeTrack ? activeTrack.label : (employee ? roleLabels[employee.role] : '')
   // معدل الإنجاز: المنجز من الي انكلّف بيه. الي خلّص ٨ من ٨ مو مثل
   // الي خلّص ٨ من ٢٠ — والرقم المطلق لحاله يخفي هذا الفرق.
   const completionRate = myEntry && myEntry.assignedBookings > 0
@@ -70,7 +86,7 @@ export default function MyRanking() {
           <div>
             <h2 className="text-2xl font-black text-[#0f2040]">تصنيفي</h2>
             <p className="text-xs text-slate-500">
-              مقارنة بين {roleLabel} فقط
+              مقارنة بين الي يشتغلون {roleLabel}
             </p>
           </div>
         </div>
@@ -89,8 +105,31 @@ export default function MyRanking() {
         </div>
       </div>
 
+      {/* ═══ مسارات التصنيف ═══
+          الموظف الي يشتغل أكثر من شغلة يظهر بأكثر من تصنيف — وهذا
+          واقعه، مو خلل. التصنيف الواحد حسب الدور كان يخفيه. */}
+      {myTracks.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          {myTracks.map((t, i) => (
+            <button
+              key={t.permission}
+              onClick={() => setTrackIdx(i)}
+              className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                i === trackIdx
+                  ? 'bg-[#0f2040] text-white shadow-md'
+                  : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-        ⓘ الترتيب بين أصحاب نفس الدور — آخر {periodDays} يوم، والمقارنة مع {periodLabel}
+        ⓘ الترتيب بين الي يشتغلون <b>نفس الشغل</b> ({roleLabel}) — مو حسب مسمّى الدور.
+        {' '}آخر {periodDays} يوم، والمقارنة مع {periodLabel}.
+        {myTracks.length > 1 && ` وإنت تشتغل ${myTracks.length} شغلات، فعندك ${myTracks.length} تصنيفات.`}
       </p>
 
       {/* ═══ البطاقات الأربع ═══ */}

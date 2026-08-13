@@ -136,6 +136,75 @@ func (r *KpiRepository) MonthlyPointsSeriesForEmployee(employeeID string, months
 	return buckets, err
 }
 
+// ═══ الترتيب حسب الشغل مو حسب المسمّى ═══
+//
+// المشكلة الي كانت: الترتيب ينبني على e.role. يعني الموظف الي دوره
+// «محاسب» بس ينطوه صلاحيات إدارة الكوادر وتنسيق الحجوزات — يشتغل
+// شغل المنسّقين كل يوم — **ما يظهر بتصنيفهم أبداً**. ينقارن بمحاسبين
+// ما يشتغلون شغله.
+//
+// النظام يحكم بالاسم المكتوب بملفه، مو بالشغل الي يسويه فعلاً. وهاي
+// تخلي التصنيف كله يكذب: منسّق شاطر ما يطلع بالقائمة، ومحاسب ما
+// يمسّ التنسيق يتصدّرها.
+//
+// الحل: نجمّع بالصلاحية. منو عنده صلاحية «تنسيق الحجوزات» ينقارن
+// بمنسّقي الحجوزات — مهما كان اسم دوره.
+//
+// ⚠️ والموظف يظهر بأكثر من تصنيف إذا يشتغل أكثر من شغلة. هذا مو خلل
+// — هذا بالضبط واقعه، والتصنيف الواحد كان يخفيه.
+func (r *KpiRepository) PermissionLeaderboard(permission string, since, until string) ([]model.KpiLeaderboardEntry, error) {
+	entries := []model.KpiLeaderboardEntry{}
+	err := r.db.Select(&entries, `
+		WITH holders AS (
+			-- ⚠️ OWNER و ADMIN مستثنون: عندهم كل الصلاحيات بحكم
+			-- موقعهم، فيطلعون بكل تصنيف ويزاحمون الي يشتغل الشغل
+			-- فعلاً. التصنيف للي ينفّذ، مو للي يملك الوصول.
+			SELECT DISTINCT e.id, e.name
+			FROM "Employee" e
+			JOIN "EmployeePermission" ep ON ep."employeeId" = e.id
+			JOIN "Permission" p          ON p.id = ep."permissionId"
+			WHERE e.status = 'ACTIVE'
+			  AND p.name = $1
+			  AND e.role NOT IN ('OWNER', 'ADMIN')
+		)
+		SELECT
+			h.id AS "employeeId",
+			h.name AS "employeeName",
+			COALESCE(SUM(k.points), 0) AS points,
+			COUNT(k.id) AS "evaluationCount",
+			COALESCE((
+				SELECT COUNT(*) FROM "BookingAssignment" ba
+				JOIN "Booking" b ON b.id = ba."bookingId"
+				WHERE ba."employeeId" = h.id AND b.status = 'COMPLETED'
+				  AND b."completedAt" >= $2::timestamp
+				  AND ($3 = '' OR b."completedAt" < $3::timestamp)
+			), 0) AS "completedBookings",
+			COALESCE((
+				SELECT COUNT(*) FROM "BookingAssignment" ba
+				JOIN "Booking" b ON b.id = ba."bookingId"
+				WHERE ba."employeeId" = h.id
+				  AND b."createdAt" >= $2::timestamp
+				  AND ($3 = '' OR b."createdAt" < $3::timestamp)
+				  AND b.status <> 'CANCELLED'
+			), 0) AS "assignedBookings",
+			COALESCE((
+				SELECT COUNT(DISTINCT a.date) FROM "Attendance" a
+				WHERE a."employeeId" = h.id
+				  AND a.date >= $2::date
+				  AND ($3 = '' OR a.date < $3::date)
+			), 0) AS "attendedDays"
+		FROM holders h
+		LEFT JOIN "KpiEvaluation" k
+		       ON k."employeeId" = h.id
+		      AND k."createdAt" >= $2::timestamp
+		      AND ($3 = '' OR k."createdAt" < $3::timestamp)
+		      AND k.cancelled = false
+		GROUP BY h.id, h.name
+		ORDER BY points DESC, "completedBookings" DESC
+	`, permission, since, until)
+	return entries, err
+}
+
 // RoleLeaderboard ترتيب أصحاب دور واحد بفترة محددة.
 //
 // ⚠️ until مطلوب مو بس since: بدونه ما نكدر نجيب **الفترة السابقة**

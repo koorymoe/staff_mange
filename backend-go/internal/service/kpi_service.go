@@ -148,6 +148,39 @@ func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, er
 	return &model.RoleKpiLeaderboard{Role: role, Weekly: weekly, Monthly: monthly}, nil
 }
 
+// PermissionLeaderboard ترتيب حسب الشغل — كل صاحب صلاحية معيّنة
+// ينقارن بأصحابها، مهما كان اسم دوره.
+func (s *KpiService) PermissionLeaderboard(permission string) (*model.RoleKpiLeaderboard, error) {
+	const day = "2006-01-02"
+	now := time.Now()
+	weekAgo := now.AddDate(0, 0, -7).Format(day)
+	monthAgo := now.AddDate(0, -1, 0).Format(day)
+	twoWeeksAgo := now.AddDate(0, 0, -14).Format(day)
+	twoMonthsAgo := now.AddDate(0, -2, 0).Format(day)
+
+	weekly, err := s.repo.PermissionLeaderboard(permission, weekAgo, "")
+	if err != nil {
+		return nil, err
+	}
+	monthly, err := s.repo.PermissionLeaderboard(permission, monthAgo, "")
+	if err != nil {
+		return nil, err
+	}
+	prevWeekly, err := s.repo.PermissionLeaderboard(permission, twoWeeksAgo, weekAgo)
+	if err != nil {
+		return nil, err
+	}
+	prevMonthly, err := s.repo.PermissionLeaderboard(permission, twoMonthsAgo, monthAgo)
+	if err != nil {
+		return nil, err
+	}
+
+	applyDeltas(weekly, prevWeekly)
+	applyDeltas(monthly, prevMonthly)
+
+	return &model.RoleKpiLeaderboard{Role: permission, Weekly: weekly, Monthly: monthly}, nil
+}
+
 // applyDeltas يحسب فرق النقاط وفرق الترتيب عن الفترة السابقة.
 //
 // ⚠️ فرق الترتيب معكوس بقصد: المركز ٣ → ١ معناه **تقدّم**، رغم إن

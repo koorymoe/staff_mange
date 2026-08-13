@@ -74,6 +74,19 @@ func (h *KpiHandler) RoleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, board)
 }
 
+// GET /api/kpi/leaderboard-by-permission/{permission}
+//
+// الترتيب حسب الشغل: أصحاب نفس الصلاحية ينقارنون ببعض مهما اختلفت
+// مسمّيات أدوارهم.
+func (h *KpiHandler) PermissionLeaderboard(w http.ResponseWriter, r *http.Request) {
+	board, err := h.service.PermissionLeaderboard(r.PathValue("permission"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب لوحة الترتيب")
+		return
+	}
+	WriteJSON(w, http.StatusOK, board)
+}
+
 // DELETE /api/v1/kpi/{id}
 func (h *KpiHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Delete(r.PathValue("id")); err != nil {

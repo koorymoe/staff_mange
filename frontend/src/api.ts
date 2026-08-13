@@ -3762,6 +3762,9 @@ export const api = {
   getKpiLeaderboard: (month?: string) =>
     request<TechnicianKpi[]>(`/smart-kpi/leaderboard${month ? `?month=${month}` : ''}`),
   getRoleKpiLeaderboard: (role: string) => request<RoleKpiLeaderboard>(`/kpi/leaderboard/${role}`),
+  /** الترتيب حسب الشغل — أصحاب نفس الصلاحية ينقارنون ببعض. */
+  getPermissionKpiLeaderboard: (permission: string) =>
+    request<RoleKpiLeaderboard>(`/kpi/leaderboard-by-permission/${permission}`),
 
   // Cart
   getCartItems: (bookingId: string) => request<CartItem[]>(`/cart/booking/${bookingId}`),

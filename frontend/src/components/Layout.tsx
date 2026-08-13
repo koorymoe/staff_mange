@@ -126,7 +126,18 @@ export const navItems: NavItem[] = [
         // مذكور بهذي القائمة (مثال حقيقي: PROCUREMENT_ADMIN مع صلاحية "جرد الأدوات").
         to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
         children: [
-          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
+          // ═══ الوصول بالصلاحية مو بالدور ═══
+          //
+          // «إداري الكوادر» كان ياخذ هاي الشاشات لمجرد إن دوره اسمه
+          // هيچ — بلا ما ينطيه أحد صلاحية. وهاي هي المشكلة نفسها الي
+          // تظهر بالتصنيف: النظام يحكم بالمسمّى مو بالشغل.
+          //
+          // شلناه من قوائم الأدوار. صاحب الصلاحية يشوفها، والي ما عنده
+          // ما يشوفها — مهما كان اسم دوره.
+          //
+          // ⚠️ ADMIN و MONITOR بقوا: هذني إدارة النظام نفسه، وشيلهم
+          // يقفل الباب على الي ينطي الصلاحيات أصلاً.
+          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
           // الصلاحيات جانت مدفونة جوّا مجموعة «إدارة الصلاحيات» — يعني
           // خمس مستويات للوصول لشاشة وحدة. المجموعة انشالت والشاشتين
           // صعدن هنا مباشرة.
@@ -134,13 +145,13 @@ export const navItems: NavItem[] = [
           { to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
           { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
           // تقييم الأداء (منفصل عن الكي بي اي) — تيم ليدرات الفرق
-          { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
-          // طلبات الكادر الواردة من إدارة المشاريع — إداري الكوادر يلبيها
-          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
+          { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], unlockPermission: 'performance_review' },
+          // طلبات الكادر الواردة من إدارة المشاريع
+          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR'], unlockPermission: 'staff_requests' },
           // ⚠️ الإجازات انشالت من القائمة العلوية: الموظف يطلبها من
           // «جدول دوامي» مباشرة. بس المدير لازم يضل يوصل صندوق الطلبات
           // حتى يوافق — بلا هذا المدخل الطلبات تنتراكم وماكو منو يشوفها.
-          { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
+          { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
           { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
           { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
         ],
