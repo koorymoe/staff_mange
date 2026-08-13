@@ -118,6 +118,48 @@ export default function Coordinator() {
     return slots
   }
 
+  // ═══ ليش كل حفظ لازم يمر من هنا ═══
+  //
+  // كانت إحدى عشر عملية بهاي الشاشة تنادي السيرفر بـawait عارية بلا
+  // try: تعيين مشرف، تحديد موعد، تعديل سعر وعنوان وموقع، تكليف فني،
+  // إضافة وحذف من السلة.
+  //
+  // لمن يفشل أي واحد منهن — انقطاع، صلاحية ناقصة، سيرفر يعيد التشغيل —
+  // الوعد يترفض بلا ما يمسكه أحد: ما تطلع رسالة، والخانة تبقى تعرض
+  // القيمة الجديدة الي كتبها الموظف (لأن الحالة المحلية ما انرجعت).
+  //
+  // فالإداري يشوف السعر الجديد قدامه ويكمّل شغله وهو مطمّن — والسعر
+  // ما وصل قاعدة البيانات إطلاقاً. وينكشف بعد أيام لمن يفتح الحجز
+  // ويلگى الرقم القديم، وما يعرف منو غيّره ولا متى.
+  //
+  // الحفظ الي يفشل بصمت أخطر من الي يفشل بصوت.
+  const [saveError, setSaveError] = useState<string | null>(null)
+
+  /** يحدّث حجز بالقائمة، ويعرض سبب الفشل بدل ما يبلعه. */
+  const applyUpdate = async (what: string, fn: () => Promise<Booking>) => {
+    try {
+      const updated = await fn()
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+      setSaveError(null)
+      return updated
+    } catch (e) {
+      setSaveError(`تعذر ${what}: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+      return null
+    }
+  }
+
+  /** نفس الفكرة للعمليات الي ما ترجّع حجز (السلة). */
+  const runAction = async (what: string, fn: () => Promise<unknown>) => {
+    try {
+      await fn()
+      setSaveError(null)
+      return true
+    } catch (e) {
+      setSaveError(`تعذر ${what}: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+      return false
+    }
+  }
+
   const loadCart = async (bookingId: string) => {
     const items = await api.getCartItems(bookingId)
     setCartItems(prev => ({ ...prev, [bookingId]: items }))
@@ -126,18 +168,21 @@ export default function Coordinator() {
   const addCartItem = async (bookingId: string) => {
     const form = cartForm[bookingId]
     if (!form?.productName || !form?.quantity || !form?.unitPrice) return
-    await api.addCartItem(bookingId, {
+    const ok = await runAction('إضافة المادة للسلة', () => api.addCartItem(bookingId, {
       productName: form.productName,
       quantity: Number(form.quantity),
       unitPrice: Number(form.unitPrice),
       notes: form.notes || undefined,
-    })
+    }))
+    // ⚠️ ما نفضّي الخانات إلا بعد نجاح الحفظ: تفضيتها عند الفشل تخلي
+    // الإداري يعيد كتابة المادة كلها من الصفر بلا ما يعرف ليش راحت.
+    if (!ok) return
     setCartForm(prev => ({ ...prev, [bookingId]: { productName: '', quantity: '', unitPrice: '', notes: '' } }))
     loadCart(bookingId)
   }
 
   const removeCartItem = async (bookingId: string, itemId: string) => {
-    await api.deleteCartItem(itemId)
+    if (!(await runAction('حذف المادة من السلة', () => api.deleteCartItem(itemId)))) return
     loadCart(bookingId)
   }
 
@@ -199,8 +244,7 @@ export default function Coordinator() {
   }, [])
 
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
-    const updated = await api.assignSupervisor(booking.id, employeeId || null)
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    await applyUpdate('تعيين المشرف', () => api.assignSupervisor(booking.id, employeeId || null))
   }
 
   const handleConfirm = async (booking: Booking, transferToProjects: boolean) => {
@@ -232,14 +276,12 @@ export default function Coordinator() {
   // الضغط على التثبيت النهائي (تثبيت وترحيل/تحويل). هذا يسجل توقيت منفصل يقدر
   // يشوفه لاحقاً موظف مراقب بصلاحية crew_management للتدقيق.
   const handleMarkContacted = async (booking: Booking) => {
-    const updated = await api.markConfirmationContacted(booking.id)
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    await applyUpdate('تسجيل التواصل مع الزبون', () => api.markConfirmationContacted(booking.id))
   }
 
   const handleScheduleChange = async (booking: Booking, value: string) => {
     if (!value) return
-    const updated = await api.scheduleBooking(booking.id, value, currentUser?.id)
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    await applyUpdate('تحديد الموعد', () => api.scheduleBooking(booking.id, value, currentUser?.id))
   }
 
   const handleDetailsBlur = async (
@@ -250,8 +292,7 @@ export default function Coordinator() {
     if (field === 'quotedPrice') {
       const num = value === '' ? null : Number(value)
       if (num === booking.quotedPrice) return
-      const updated = await api.updateBookingDetails(booking.id, { quotedPrice: num })
-      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+      await applyUpdate('حفظ المبلغ المقدّر', () => api.updateBookingDetails(booking.id, { quotedPrice: num }))
     } else if (field === 'mapLocation') {
       if (value === (booking.mapLocation || '')) return
       let lat: number | null = null, lng: number | null = null
@@ -260,16 +301,14 @@ export default function Coordinator() {
       if (!m) m = value.match(/place\/(-?\d+\.?\d*),(-?\d+\.?\d*)/)
       if (!m) m = value.match(/^(-?\d+\.?\d*)\s*,\s*(-?\d+\.?\d*)$/)
       if (m) { lat = parseFloat(m[1]); lng = parseFloat(m[2]) }
-      const updated = await api.updateBookingDetails(booking.id, {
+      await applyUpdate('حفظ الموقع', () => api.updateBookingDetails(booking.id, {
         mapLocation: value,
         mapLatitude: lat,
         mapLongitude: lng,
-      })
-      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+      }))
     } else {
       if (value === (booking.address || '')) return
-      const updated = await api.updateBookingDetails(booking.id, { address: value })
-      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+      await applyUpdate('حفظ العنوان', () => api.updateBookingDetails(booking.id, { address: value }))
     }
   }
 
@@ -277,11 +316,10 @@ export default function Coordinator() {
   // خرائط كوكل المختصرة لأنها ما تحمل الإحداثيات أصلاً بالرابط نفسه)
   const handleMapPointChange = async (booking: Booking, point: { lat: number; lng: number } | null) => {
     if (!point) return
-    const updated = await api.updateBookingDetails(booking.id, {
+    await applyUpdate('حفظ نقطة الخريطة', () => api.updateBookingDetails(booking.id, {
       mapLatitude: point.lat,
       mapLongitude: point.lng,
-    })
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    }))
   }
 
   const handleAssign = async (
@@ -290,14 +328,14 @@ export default function Coordinator() {
     employeeId: string,
   ) => {
     if (!employeeId) return
-    const updated = await api.assignTechnician(booking.id, { employeeId, role })
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    // ⚠️ أخطر وحدة بالقائمة: فشلها الصامت يخلي الإداري يظن الفني
+    // مكلّف، والفني ما يوصله شي — فالحجز يوصل يومه وماكو أحد رايح له.
+    await applyUpdate('تكليف الفني', () => api.assignTechnician(booking.id, { employeeId, role }))
   }
 
   const handleVehicleChange = async (booking: Booking, assignedVehicle: string) => {
     if (assignedVehicle === (booking.assignedVehicle || '')) return
-    const updated = await api.updateBookingDetails(booking.id, { assignedVehicle })
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    await applyUpdate('تحديد المركبة', () => api.updateBookingDetails(booking.id, { assignedVehicle }))
   }
 
   // ═══ متابعة الإنجاز وحمل الليدرات ═══
@@ -384,6 +422,26 @@ export default function Coordinator() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-brand-900">تنسيق الحجوزات (الإداري)</h2>
+
+      {/* ⚠️ الشريط لاصق بأعلى الشاشة (sticky): الفشل يصير غالباً وأنت
+          بنص القائمة عند حجز بعيد عن الرأس، ورسالة تطلع فوگ برّا مجال
+          النظر ما تنقرا — يعني نرجع لنفس الفشل الصامت. */}
+      {saveError && (
+        <div className="sticky top-2 z-20 mt-3 flex items-start justify-between gap-3 rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 shadow-lg">
+          <div>
+            <p className="text-sm font-extrabold text-red-800">⚠️ {saveError}</p>
+            <p className="mt-0.5 text-xs text-red-700">
+              التغيير <b>ما انحفظ</b> — جرّب مرة ثانية. إذا تكرر، دز صورة الرسالة للدعم.
+            </p>
+          </div>
+          <button
+            onClick={() => setSaveError(null)}
+            className="shrink-0 rounded-lg border border-red-300 bg-white px-2.5 py-1 text-xs font-bold text-red-700"
+          >
+            إخفاء
+          </button>
+        </div>
+      )}
       <p className="mt-1 text-slate-500">
         ثبّت الحجز مع الزبون مع تحديد التكلفة والعنوان، ثم وجّهه لكادر الشد أو لإدارة المشاريع وحدد
         الفنيين المتاحين (اختياري الآن، يمكن تحديدهم لاحقاً).
