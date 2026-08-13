@@ -127,3 +127,25 @@ body {
     linear-gradient(160deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(255, 255, 255, 0) 58%),
     radial-gradient(140% 100% at 20% 0%, rgba(255, 255, 255, 0.25), transparent 55%);
 }
+
+/* ═══ حركة تبديل التحية بالرئيسية ═══
+   التحية الزمنية تطلع أول، وبعد ثواني تستقر على «مرحباً».
+   الحركة ناعمة ومرة وحدة — التبديل الي ينط يلفت النظر بالطريقة الغلط.
+
+   ⚠️ prefers-reduced-motion محترم: أكو ناس الحركة تدوّخهم فعلاً،
+   وهاي شاشة يفتحونها كل يوم. */
+@keyframes greet-swap-in {
+  from { opacity: 0; transform: translateY(-0.4rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes greet-icon-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(12deg); }
+  75%      { transform: rotate(-8deg); }
+}
+.greet-swap { animation: greet-swap-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.greet-icon { animation: greet-icon-wave 1.6s ease-in-out 2; transform-origin: 70% 70%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .greet-swap, .greet-icon { animation: none; }
+}

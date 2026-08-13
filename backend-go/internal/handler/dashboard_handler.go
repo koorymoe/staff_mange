@@ -106,3 +106,62 @@ func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request
 	}
 	WriteJSON(w, http.StatusOK, s)
 }
+
+// ═══ نبض اليوم — الواجهة الرئيسية للإداري ═══
+//
+// الشاشة الرئيسية جانت أربع أزرار وبس. الإداري يفتح النظام الصبح وما
+// يشوف ولا رقم: كم حجز عدنا اليوم؟ منو بالميدان هسه؟ أكو شكوى جديدة؟
+// فيضطر يفتح أربع شاشات واحدة واحدة حتى يعرف وضع يومه.
+//
+// ⚠️ كلها مجاميع بقاعدة البيانات — مو تنزيل الحجوزات للمتصفح وجمعها
+// هناك. نفس درس ملخّص المحاسب: الجمع بالمتصفح يثقل كل يوم مع تراكم
+// الأرشيف، وما يوكف لأن الأرشيف ما ينقص.
+//
+// ⚠️ «حجوزات اليوم» = المجدولة اليوم فعلاً (scheduledAt)، مو COUNT(*)
+// على كل الجدول. اللافتة القديمة جانت تعرض المجموع التاريخي وتسميه
+// «حجوزات اليوم» — رقم أكبر بمرات من الحقيقة.
+type todayPulse struct {
+	TodayBookings     int `db:"todayBookings"  json:"todayBookings"`
+	YesterdayBookings int `db:"yesterdayBookings" json:"yesterdayBookings"`
+	OpenMissions      int `db:"openMissions"   json:"openMissions"`
+	NewComplaints     int `db:"newComplaints"  json:"newComplaints"`
+	NeedsCoordination int `db:"needsCoordination" json:"needsCoordination"`
+	CrewInField       int `db:"crewInField"    json:"crewInField"`
+	OverdueMissions   int `db:"overdueMissions" json:"overdueMissions"`
+}
+
+// GET /api/dashboard/today-pulse
+func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
+	var s todayPulse
+	err := h.db.Get(&s, `
+		SELECT
+			(SELECT COUNT(*) FROM "Booking"
+			  WHERE "archivedAt" IS NULL AND "scheduledAt"::date = CURRENT_DATE)     AS "todayBookings",
+			-- أمس للمقارنة: رقم بلا مرجع ما يگول شي. ١٢ حجز زين لو خبل؟
+			(SELECT COUNT(*) FROM "Booking"
+			  WHERE "archivedAt" IS NULL
+			    AND "scheduledAt"::date = CURRENT_DATE - 1)                          AS "yesterdayBookings",
+			-- المهام المفتوحة: الي لسه بالميدان، مو المنجزة ولا المتوقفة
+			(SELECT COUNT(*) FROM "Mission"
+			  WHERE stage NOT IN ('COMPLETED','STOPPED'))                            AS "openMissions",
+			(SELECT COUNT(*) FROM "Complaint" WHERE status = 'NEW')                  AS "newComplaints",
+			-- مثبّت بس بلا موعد أو بلا كادر — هذا الي يحتاج شغل الإداري
+			(SELECT COUNT(*) FROM "Booking" b
+			  WHERE b."archivedAt" IS NULL AND b.status = 'CONFIRMED'
+			    AND (b."scheduledAt" IS NULL
+			         OR NOT EXISTS (SELECT 1 FROM "BookingAssignment" ba
+			                         WHERE ba."bookingId" = b.id)))                  AS "needsCoordination",
+			-- كوادر بالميدان هسه: طلعوا وما وصلوا/خلصوا
+			(SELECT COUNT(DISTINCT m."leaderId") FROM "Mission" m
+			  WHERE m.stage IN ('EN_ROUTE','ARRIVED','WORK_STARTED'))                AS "crewInField",
+			-- تأخر ميداني: مهمة مفتوحة من أكثر من يوم بلا إنجاز
+			(SELECT COUNT(*) FROM "Mission"
+			  WHERE stage NOT IN ('COMPLETED','STOPPED')
+			    AND "assignedAt" < now() - interval '24 hours')                      AS "overdueMissions"`)
+	if err != nil {
+		log.Printf("today pulse: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب نبض اليوم")
+		return
+	}
+	WriteJSON(w, http.StatusOK, s)
+}

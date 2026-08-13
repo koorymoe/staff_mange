@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -69,6 +70,52 @@ func (s *MissionService) Create(req model.CreateMissionRequest) (*model.Mission,
 		memberIDs = []string{}
 	}
 	return s.repo.Create(code, req.BookingID, req.LeaderID, memberIDs, parseFloatPtr(req.CustomerLat), parseFloatPtr(req.CustomerLng), req.CustomerAddress)
+}
+
+// EnsureForBooking ينفّذ BookingService.MissionStarter.
+//
+// idempotent بالكامل: تنستدعى بكل تكليف — والتكليف ينعاد كثير
+// (تبديل فني، إضافة ثاني للكادر، إعادة تكليف بالغلط). أول مرة تخلق
+// المهمة، وبعدها تحدّث الكادر بس.
+//
+// ⚠️ ما تلمس المرحلة: مهمة وصلت «بالطريق» وانضاف إلها فني ما ترجع
+// «تم الإسناد» — الشغل ماشي، بس الكادر توسّع. إرجاعها للبداية يمحي
+// توقيتات حقيقية انتسجّلت بالميدان.
+func (s *MissionService) EnsureForBooking(
+	bookingID, leaderID string, memberIDs []string, address *string, lat, lng *float64,
+) error {
+	if bookingID == "" || leaderID == "" {
+		return errors.New("bookingId و leaderId مطلوبين")
+	}
+	exists, err := s.repo.ExistsForBooking(bookingID)
+	if err != nil {
+		return err
+	}
+	if memberIDs == nil {
+		memberIDs = []string{}
+	}
+	if exists {
+		return s.repo.SyncCrew(bookingID, leaderID, memberIDs)
+	}
+	count, err := s.repo.CountAll()
+	if err != nil {
+		return err
+	}
+	_, err = s.repo.Create(fmt.Sprintf("MSN-%04d", count+1), bookingID, leaderID, memberIDs, lat, lng, address)
+	return err
+}
+
+// BackfillOnce يعوّض الحجوزات الشغّالة الي انكلّفت قبل ما ينربط
+// التوليد التلقائي. آمنة بالتكرار — تتخطى الي عندها مهمة أصلاً.
+func (s *MissionService) BackfillOnce() {
+	n, err := s.repo.BackfillFromAssignments()
+	if err != nil {
+		log.Printf("[mission] تعذر تعويض المهام الناقصة: %v", err)
+		return
+	}
+	if n > 0 {
+		log.Printf("[mission] انخلقت %d مهمة للحجوزات الشغّالة الي جانت بلا مهمة", n)
+	}
 }
 
 func (s *MissionService) UpdateStage(id string, req model.UpdateMissionStageRequest) (*model.Mission, error) {

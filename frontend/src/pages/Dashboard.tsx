@@ -2,8 +2,9 @@ import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport } from '../api'
+import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse } from '../api'
 import { useSession, hasGpsSkill } from '../session'
+import { timeGreeting, GREETING_HOLD_MS } from '../greeting'
 import { MapViewer } from '../components/MapLazy'
 
 /* ───── Attendance helpers ───── */
@@ -122,6 +123,26 @@ export default function Dashboard() {
   const [finance, setFinance] = useState<FinanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
+
+  // ═══ التحية ═══
+  // تطلع زمنية («صباح الخير») وبعد ثواني تستقر على «مرحباً».
+  //
+  // ⚠️ التحية تنحسب مرة وحدة عند فتح الشاشة وتنثبت: لو حسبناها بكل
+  // رندر، الموظف الي فاتح النظام الساعة ١١:٥٩ ظهراً يشوف التحية
+  // تنقلب قدامه من «صباح الخير» لـ«نهارك سعيد» بلا سبب واضح.
+  // نبض اليوم — أرقام الإداري. تفشل بهدوء: الشاشة الرئيسية ما تصير
+  // تنكسر لأن ويدجت وحدة ما وصلها رد.
+  const [pulse, setPulse] = useState<TodayPulse | null>(null)
+  useEffect(() => {
+    api.getTodayPulse().then(setPulse).catch(() => setPulse(null))
+  }, [])
+
+  const [greet] = useState(() => timeGreeting())
+  const [greetingPhase, setGreetingPhase] = useState<'time' | 'rest'>('time')
+  useEffect(() => {
+    const t = setTimeout(() => setGreetingPhase('rest'), GREETING_HOLD_MS)
+    return () => clearTimeout(t)
+  }, [])
   const [projectStats, setProjectStats] = useState<Record<string, number> | null>(null)
   const [pendingStaffReqs, setPendingStaffReqs] = useState<StaffRequest[]>([])
   // طلبات الإجازة الي تنتظر قرار هذا المدير — بضمنها الي انطاها موافقة
@@ -397,7 +418,18 @@ export default function Dashboard() {
                 متصل
               </span>
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">مرحباً، {employee.name}</h1>
+            {/* التحية الزمنية أول، وبعدها تستقر على «مرحباً».
+                key يخلي React يعيد تشغيل الحركة عند التبديل. */}
+            <h1 key={greetingPhase} className="greet-swap text-3xl font-bold tracking-tight">
+              {greetingPhase === 'time' ? (
+                <>
+                  <span className="greet-icon ml-1 inline-block">{greet.icon}</span>
+                  {greet.text}، {employee.name}
+                </>
+              ) : (
+                <>مرحباً، {employee.name}</>
+              )}
+            </h1>
             <p className="mt-2 text-sm text-blue-200/80">{formatDate()}</p>
             <p className="mt-1 text-xs text-blue-300/60">نظام إدارة شامل — شركة الأماني</p>
           </div>
@@ -1174,6 +1206,38 @@ export default function Dashboard() {
         </div>
       )}
 
+      {/* ═══ نبض اليوم ═══
+          الإداري يفتح النظام الصبح ولازم يعرف وضع يومه بنظرة وحدة:
+          كم حجز اليوم، منو بالميدان، شنو ينتظر شغله، وشنو متأخر.
+          قبل، كل رقم منهن يحتاج يفتح شاشة منفصلة يدور بيها.
+
+          كل بطاقة تودّي لشاشتها بضغطة — الرقم بلا طريق يوصلك له
+          يخلّي الإداري يشوف المشكلة وما يقدر يتصرّف. */}
+      {pulse && (isAdmin || employee.role === 'HR_COORDINATOR' || permissions.includes('coordinator')) && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <PulseCard
+            label="حجوزات اليوم" value={pulse.todayBookings} icon="📅" tone="blue"
+            compare={pulse.yesterdayBookings} compareLabel="أمس"
+            onClick={() => navigate('/bookings')}
+          />
+          <PulseCard
+            label="تحتاج تنسيق" value={pulse.needsCoordination} icon="⏳" tone="amber"
+            hint="مثبّتة بلا موعد أو كادر"
+            onClick={() => navigate('/coordinator')}
+          />
+          <PulseCard
+            label="بالميدان الآن" value={pulse.crewInField} icon="🚗" tone="emerald"
+            hint={`${pulse.openMissions} مهمة مفتوحة`}
+            onClick={() => navigate('/missions')}
+          />
+          <PulseCard
+            label="شكاوى جديدة" value={pulse.newComplaints} icon="⚠️" tone="red"
+            hint={pulse.overdueMissions > 0 ? `+${pulse.overdueMissions} مهمة متأخرة` : undefined}
+            onClick={() => navigate('/complaints')}
+          />
+        </div>
+      )}
+
       {/* ═══ Quick Access ═══ */}
       {quickCards.length > 0 && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -1314,6 +1378,60 @@ function SystemPanel({ title, dotColor, actionLabel, onAction, children }: {
       </div>
       {children}
     </div>
+  )
+}
+
+// ═══ بطاقة نبض ═══
+//
+// الرقم كبير ويُقرا من بعيد، واللون يگول الحالة بلا ما تقرا.
+//
+// ⚠️ الصفر ما ينعرض بلون تحذير: «٠ شكاوى» خبر زين، وتلوينه أحمر
+// يخلي الإداري يتوتر على شي مو موجود. اللون ينشتغل بس لو الرقم > 0.
+function PulseCard({
+  label, value, icon, tone, hint, compare, compareLabel, onClick,
+}: {
+  label: string
+  value: number
+  icon: string
+  tone: 'blue' | 'amber' | 'emerald' | 'red'
+  hint?: string
+  compare?: number
+  compareLabel?: string
+  onClick: () => void
+}) {
+  const active = value > 0
+  const tones: Record<string, { ring: string; text: string; bg: string }> = {
+    blue:    { ring: 'border-sky-200',     text: 'text-sky-700',     bg: 'bg-sky-50' },
+    amber:   { ring: 'border-amber-300',   text: 'text-amber-700',   bg: 'bg-amber-50' },
+    emerald: { ring: 'border-emerald-200', text: 'text-emerald-700', bg: 'bg-emerald-50' },
+    red:     { ring: 'border-red-300',     text: 'text-red-700',     bg: 'bg-red-50' },
+  }
+  const t = active ? tones[tone] : { ring: 'border-slate-200', text: 'text-slate-500', bg: 'bg-white' }
+
+  // فرق اليوم عن أمس — الاتجاه يفيد أكثر من الرقم لحاله
+  let delta: { text: string; up: boolean } | null = null
+  if (compare !== undefined && compare > 0) {
+    const diff = Math.round(((value - compare) / compare) * 100)
+    if (diff !== 0) delta = { text: `${Math.abs(diff)}٪ عن ${compareLabel}`, up: diff > 0 }
+  }
+
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-2xl border-2 ${t.ring} ${t.bg} p-4 text-right transition-all hover:-translate-y-0.5 hover:shadow-md`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-xl">{icon}</span>
+        <span className={`text-3xl font-black tabular-nums ${t.text}`}>{value}</span>
+      </div>
+      <p className="mt-1.5 text-xs font-bold text-slate-700">{label}</p>
+      {hint && <p className="mt-0.5 text-[11px] text-slate-500">{hint}</p>}
+      {delta && (
+        <p className={`mt-0.5 text-[11px] font-bold ${delta.up ? 'text-emerald-600' : 'text-slate-500'}`}>
+          {delta.up ? '▲' : '▼'} {delta.text}
+        </p>
+      )}
+    </button>
   )
 }
 

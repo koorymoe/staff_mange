@@ -183,6 +183,82 @@ func (r *MissionRepository) CountAll() (int, error) {
 	return count, err
 }
 
+// ExistsForBooking هل الحجز عنده مهمة أصلاً.
+//
+// ضروري لأن التكليف ينعاد: الإداري يبدّل فني، أو يضيف ثاني للكادر،
+// أو يعيد تكليف نفس الواحد بالغلط. بلا هذا الفحص كل ضغطة تخلق مهمة
+// جديدة لنفس الحجز، وشاشة التتبع تمتلئ نسخ مكررة ما إلها معنى.
+func (r *MissionRepository) ExistsForBooking(bookingID string) (bool, error) {
+	var n int
+	err := r.db.Get(&n, `SELECT COUNT(*) FROM "Mission" WHERE "bookingId" = $1`, bookingID)
+	return n > 0, err
+}
+
+// SyncCrew يحدّث ليدر المهمة وأعضاءها لمن يتغيّر الكادر بعد الإنشاء.
+//
+// ⚠️ ما نلمس المرحلة (stage): مهمة وصلت «بالطريق» وانضاف إلها فني
+// ما ترجع «تم الإسناد» — الشغل ماشي، بس الكادر توسّع.
+func (r *MissionRepository) SyncCrew(bookingID, leaderID string, memberIDs []string) error {
+	_, err := r.db.Exec(`
+		UPDATE "Mission"
+		SET "leaderId" = $2, "memberIds" = $3, "updatedAt" = now()
+		WHERE "bookingId" = $1
+	`, bookingID, leaderID, pq.Array(memberIDs))
+	return err
+}
+
+// BackfillFromAssignments يخلق مهام للحجوزات الشغّالة الي عندها كادر
+// مكلّف وما إلها مهمة.
+//
+// ⚠️ ليش نحتاجها: التوليد التلقائي ينشبك بلحظة **التكليف**. يعني كل
+// الحجوزات الي انكلّفت قبل هذا التصليح تضل بلا مهمة للأبد، وشاشة
+// التتبع تبقى فاضية لحد ما ينكلّف حجز جديد. الشركة شغّالة من زمان،
+// فالشاشة راح تظل تكذب على المراقب.
+//
+// نقتصر على الشغّالة (مو منجزة ولا ملغاة ولا مؤرشفة): المنجزة خلصت
+// وماكو شي يتتبّع بيها، وإنشاء مهام إلها يملأ الشاشة بتاريخ ميت.
+//
+// الليدر: المؤشّر «تيم ليدر» بالكادر، وإلا أول مكلّف.
+// يرجّع عدد الي انخلق.
+func (r *MissionRepository) BackfillFromAssignments() (int, error) {
+	res, err := r.db.Exec(`
+		WITH candidates AS (
+			SELECT b.id  AS booking_id,
+			       b.address,
+			       b."mapLatitude"  AS lat,
+			       b."mapLongitude" AS lng,
+			       ARRAY_AGG(ba."employeeId" ORDER BY e."isLeader" DESC, ba."createdAt") AS member_ids
+			FROM "Booking" b
+			JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+			JOIN "Employee" e           ON e.id = ba."employeeId"
+			LEFT JOIN "Mission" m       ON m."bookingId" = b.id
+			WHERE m.id IS NULL
+			  AND b."archivedAt" IS NULL
+			  AND b.status NOT IN ('COMPLETED', 'CANCELLED')
+			GROUP BY b.id, b.address, b."mapLatitude", b."mapLongitude"
+		), numbered AS (
+			SELECT c.*,
+			       (SELECT COUNT(*) FROM "Mission") + ROW_NUMBER() OVER (ORDER BY c.booking_id) AS seq
+			FROM candidates c
+		)
+		INSERT INTO "Mission" (id, code, "bookingId", "leaderId", "memberIds",
+		                       "customerLat", "customerLng", "customerAddress", stage, "updatedAt")
+		SELECT gen_random_uuid()::text,
+		       'MSN-' || LPAD(seq::text, 4, '0'),
+		       booking_id,
+		       member_ids[1],
+		       member_ids,
+		       lat, lng, address,
+		       'ASSIGNED', now()
+		FROM numbered
+	`)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
+}
+
 func (r *MissionRepository) Create(code, bookingID, leaderID string, memberIDs []string, customerLat, customerLng *float64, customerAddress *string) (*model.Mission, error) {
 	var m model.Mission
 	err := r.db.Get(&m, `

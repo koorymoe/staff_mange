@@ -13,6 +13,7 @@ import (
 	"staffmange-api/internal/handler"
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/safeguard"
 	"staffmange-api/internal/service"
 	"staffmange-api/internal/storage"
 )
@@ -260,6 +261,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	backupHandler := handler.NewBackupHandler(backupRunRepo)
 	// سعر المنظومة لحجز الطاقة الشمسية — ينحسب من الكتالوك مو ينكتب بالإيد
 	bookingService.SetSolarPricer(solarRepo)
+	// تكليف الكادر يولّد مهمة ميدانية. بلا هذا السطر شاشة «تتبع المهام»
+	// تضل فارغة للأبد مهما اشتغلت الشركة — وهذا الي كان صاير.
+	bookingService.SetMissionStarter(missionService)
+	// تعويض الحجوزات الشغّالة الي انكلّفت قبل هذا الربط — وإلا الشاشة
+	// تضل فاضية لحد ما ينكلّف حجز جديد. بحماية: فشلها ما يمنع الإقلاع.
+	safeguard.Go("تعويض مهام الحجوزات القديمة", missionService.BackfillOnce)
 	trainingProgramHandler := handler.NewTrainingProgramHandler(trainingProgramRepo)
 	productHandler := handler.NewProductHandler(productService)
 	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
@@ -1071,6 +1078,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// أرقام اللوحة الرئيسية بدون سحب أرشيف الشركة كامل
 	mux.Handle("GET /api/dashboard/summary", middleware.Chain(http.HandlerFunc(dashboardHandler.Summary), requireAuth))
+	// نبض اليوم: أرقام الشاشة الرئيسية للإداري. مجاميع بس — ماكو بيانات
+	// زبون ولا مبالغ، فما يحتاج صلاحية أضيق من تسجيل الدخول.
+	mux.Handle("GET /api/dashboard/today-pulse", middleware.Chain(http.HandlerFunc(dashboardHandler.TodayPulse), requireAuth))
 
 	// مجاميع المحاسب والمراقب — تنحسب بقاعدة البيانات بدل تنزيل الأرشيف
 	// اثنين يشوفون هذي الأرقام: المحاسب بدوره، والمراقب بصلاحيته. لازم

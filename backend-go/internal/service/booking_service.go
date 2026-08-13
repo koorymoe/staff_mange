@@ -31,6 +31,9 @@ type BookingService struct {
 	// ai: مسجّل إشارات التحليل. اختياري — بدونه النظام يشتغل عادي
 	// بس ماكو تحليل يتراكم.
 	ai AiSignalRecorder
+	// missions: توليد مهمة الميدان عند تكليف الكادر. اختياري —
+	// بدونه شاشة تتبع المهام تضل فارغة (وهذا الي كان صاير).
+	missions MissionStarter
 }
 
 // AiSignalRecorder يفصل خدمة الحجوزات عن نواة الذكاء الاصطناعي حتى
@@ -59,6 +62,31 @@ type SolarPricer interface {
 
 // SetSolarPricer يربط تسعير المنظومات.
 func (s *BookingService) SetSolarPricer(p SolarPricer) { s.solar = p }
+
+// ═══ ليش شاشة «تتبع المهام» كانت فارغة للأبد ═══
+//
+// المهمة (Mission) هي الي تتبّع الكادر بالميدان: تم الإسناد → تجهيز
+// المواد → بالطريق → وصل → جاري العمل → مكتمل. الشاشة مبنية كاملة،
+// والـAPI شغّال، والمراحل معرّفة.
+//
+// بس **ماكو ولا سطر يخلق مهمة**. `POST /api/missions` موجود ومحد
+// يناديه — لا الواجهة ولا السيرفر. يعني الجدول يضل فاضي مهما اشتغلت
+// الشركة، والشاشة تعرض «ماكو مهام» للأبد، وكل إحصائيات الميدان صفر.
+//
+// اللحظة الطبيعية لولادة المهمة هي **تكليف الكادر**: هناك انولد شغل
+// ميداني له ليدر ومكان وزبون. فنربطها بالتكليف.
+//
+// ⚠️ واجهة مستقلة مو استدعاء مباشر لخدمة المهام: خدمة الحجوزات ما
+// تصير تعرف تفاصيل المهام، وخدمة المهام تحتاج الحجوزات — الربط
+// المباشر بينهن يسوي دورة استيراد ما تنبني أصلاً.
+type MissionStarter interface {
+	// EnsureForBooking يخلق مهمة للحجز إذا ما إله وحدة، أو يحدّث
+	// كادرها إذا موجودة. لازم تكون idempotent — تنستدعى بكل تكليف.
+	EnsureForBooking(bookingID, leaderID string, memberIDs []string, address *string, lat, lng *float64) error
+}
+
+// SetMissionStarter يربط توليد المهام التلقائي.
+func (s *BookingService) SetMissionStarter(m MissionStarter) { s.missions = m }
 
 // SetDisciplineChecker يربط فحص عدالة التوزيع بعد بناء الخدمتين.
 func (s *BookingService) SetDisciplineChecker(c AssignmentBalanceChecker) {
@@ -403,6 +431,41 @@ func (s *BookingService) Assign(id string, req model.AssignBookingRequest, edito
 	if req.AssignedVehicle != nil {
 		if err := s.repo.SetAssignedVehicle(id, *req.AssignedVehicle); err != nil {
 			return nil, err
+		}
+	}
+
+	// ═══ ولادة مهمة الميدان ═══
+	//
+	// هنا انولد شغل ميداني حقيقي: أكو كادر مكلّف وزبون ومكان. فتنخلق
+	// المهمة الي يتتبعها المراقب بشاشة «تتبع المهام».
+	//
+	// الليدر يجي من الكادر المكلّف: الي مؤشّر «تيم ليدر» بملفه. إذا
+	// ماكو ليدر بعد (الإداري كلّف فني أول)، ناخذ أول مكلّف مؤقتاً —
+	// وينتصحّح لحاله لمن ينضاف الليدر، لأن الدالة تحدّث الكادر مو
+	// تخلق مهمة ثانية.
+	//
+	// ⚠️ الخطأ ينتسجّل وما ينرجّع: فشل إنشاء المهمة ما يصير يمنع
+	// تكليف الكادر. التكليف هو الأصل، والمهمة تتبّع إله.
+	if s.missions != nil {
+		if assignments, err := s.repo.ListAssignments(id); err == nil && len(assignments) > 0 {
+			leaderID := ""
+			memberIDs := make([]string, 0, len(assignments))
+			for _, a := range assignments {
+				memberIDs = append(memberIDs, a.EmployeeID)
+				if leaderID == "" {
+					if emp, _ := s.employees.FindByID(a.EmployeeID); emp != nil && emp.IsLeader {
+						leaderID = a.EmployeeID
+					}
+				}
+			}
+			if leaderID == "" {
+				leaderID = assignments[0].EmployeeID
+			}
+			if err := s.missions.EnsureForBooking(
+				id, leaderID, memberIDs, booking.Address, booking.MapLatitude, booking.MapLongitude,
+			); err != nil {
+				log.Printf("[mission] تعذر توليد مهمة للحجز %s: %v", booking.Code, err)
+			}
 		}
 	}
 

@@ -2431,6 +2431,23 @@ export interface DisciplineEvent {
 }
 
 /** مجاميع لوحة المحاسب والمراقب — كلها محسوبة على الأرشيف الكامل بالسيرفر */
+/** نبض يوم الإداري — الأرقام الي تطلع بالشاشة الرئيسية. */
+export interface TodayPulse {
+  /** المجدولة اليوم فعلاً — مو مجموع الجدول كله. */
+  todayBookings: number
+  /** أمس للمقارنة: رقم بلا مرجع ما يگول شي. */
+  yesterdayBookings: number
+  /** مهام ميدانية لسه شغّالة (مو منجزة ولا متوقفة). */
+  openMissions: number
+  newComplaints: number
+  /** مثبّتة بس بلا موعد أو بلا كادر — شغل ينتظر الإداري. */
+  needsCoordination: number
+  /** ليدرات بالميدان هسه (طلعوا وما خلصوا). */
+  crewInField: number
+  /** مهام مفتوحة من أكثر من ٢٤ ساعة. */
+  overdueMissions: number
+}
+
 export interface FinanceSummary {
   completedCount: number
   unverifiedCount: number
@@ -3266,6 +3283,8 @@ export const api = {
     request<StockIntake[]>(`/inventory/stock-intake${toolId ? '?toolId=' + toolId : ''}`),
   /** أرقام اللوحة الرئيسية — بدون سحب أرشيف الشركة كامل للمتصفح */
   getDashboardSummary: () => request<{ employeeCount: number; customerCount: number; bookingCount: number; gpsDeviceCount: number }>('/dashboard/summary'),
+  /** أرقام يوم الإداري — كلها محسوبة بقاعدة البيانات. */
+  getTodayPulse: () => request<TodayPulse>('/dashboard/today-pulse'),
   /** مجاميع المحاسب والمراقب — تنحسب بقاعدة البيانات بدل تنزيل كل الأرشيف المنجز */
   getFinanceSummary: () => request<FinanceSummary>('/dashboard/finance-summary'),
 
