@@ -34,5 +34,36 @@ func leaveKindMigrations() []Migration {
 				END $$;
 			`,
 		},
+		{
+			// ═══ رجوع لحالتين بس ═══
+			//
+			// أربع أنواع كانت أكثر من اللازم: كل نوع إضافي يخلي الموظف
+			// يوقف يفكّر «أي وحدة أختار؟»، ويخلي المدير يقرا تصنيف بدل
+			// ما يقرا السبب المكتوب.
+			//
+			// بقت حالتان، والفرق بينهن **مهلة التقديم** مو تصنيف إداري:
+			//   REGULAR → قبل يومين (حتى يرتبون الشفت)
+			//   URGENT  → بلا مهلة
+			//
+			// ⚠️ الترتيب مهم: نحوّل الصفوف القديمة **قبل** ما نضيّق
+			// القيد. بالعكس، القيد يفشل على أول صف SICK موجود ويوقف
+			// الترحيل كله ويمنع السيرفر من الإقلاع.
+			//
+			// ⚠️ SICK يصير REGULAR مو URGENT: المرضية كانت مستثناة من
+			// المهلة، بس تحويلها لـURGENT يخلي طلبات قديمة تنقرا «طارئة»
+			// وهي ما كانت. الطلبات القديمة انبتّ بيها أصلاً، فالتسمية
+			// الدقيقة أهم من المهلة الي ما عاد إلها معنى.
+			Version: "0241_leave_kind_two_states",
+			SQL: `
+				UPDATE "LeaveRequest" SET kind = 'REGULAR' WHERE kind <> 'URGENT';
+
+				ALTER TABLE "LeaveRequest"
+					DROP CONSTRAINT IF EXISTS leave_request_kind_valid;
+
+				ALTER TABLE "LeaveRequest"
+					ADD CONSTRAINT leave_request_kind_valid
+					CHECK (kind IN ('REGULAR','URGENT'));
+			`,
+		},
 	}
 }

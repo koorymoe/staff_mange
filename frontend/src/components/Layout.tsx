@@ -96,7 +96,6 @@ export const navItems: NavItem[] = [
     icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h3M13 10h3M8 14h3M13 14h3M8 18h8"/></svg>,
   },
   // الإجازات: مع نظام الحضور — أي موظف يقدّم طلبه من هنا، والمخوّل يشوف صندوق الموافقات
-  { to: '/leaves', label: 'الإجازات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg> },
   // تصنيفي: صفحة شخصية عامة لكل الأدوار — لازم تبقى بمستوى مستقل بره "الإدارة"،
   // لأنه الفني/الليدر ما عندهم وصول لأي شي ثاني بالإدارة، فتضل قائمة فاضية
   // بالنسبة الهم لو حطيناها جوه.
@@ -138,6 +137,10 @@ export const navItems: NavItem[] = [
           { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'performance_review' },
           // طلبات الكادر الواردة من إدارة المشاريع — إداري الكوادر يلبيها
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR', 'HR_COORDINATOR'], unlockPermission: 'staff_requests' },
+          // ⚠️ الإجازات انشالت من القائمة العلوية: الموظف يطلبها من
+          // «جدول دوامي» مباشرة. بس المدير لازم يضل يوصل صندوق الطلبات
+          // حتى يوافق — بلا هذا المدخل الطلبات تنتراكم وماكو منو يشوفها.
+          { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'HR_COORDINATOR'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
           { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
           { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
         ],

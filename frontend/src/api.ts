@@ -277,16 +277,12 @@ export interface StockIntake {
 export type LeaveRoute = 'MORNING' | 'EVENING'
 export type LeaveStatus = 'PENDING' | 'PRELIMINARY' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
 
-/** نوع الإجازة — يغيّر كيف تنحاسب، مو مجرد تسمية. */
-export type LeaveKind = 'REGULAR' | 'SICK' | 'URGENT' | 'UNPAID'
+/** حالتا الإجازة — الفرق بينهن مهلة التقديم مو تصنيف إداري. */
+export type LeaveKind = 'REGULAR' | 'URGENT'
 
-/** الطارئة والمرضية مستثنيات من مهلة اليومين — الموت والحادث
- *  والمرض ما ينتظرون. */
 export const LEAVE_KINDS: { value: LeaveKind; label: string; note?: string }[] = [
-  { value: 'REGULAR', label: 'إجازة اعتيادية', note: 'تنخصم من رصيدك الشهري · تحتاج طلب قبل يومين' },
-  { value: 'SICK',    label: 'إجازة مرضية',   note: 'ما تنخصم من الرصيد · بلا مهلة' },
-  { value: 'URGENT',  label: 'إجازة طارئة',   note: 'موت أو حادث أو ولادة · بلا مهلة' },
-  { value: 'UNPAID',  label: 'إجازة بلا راتب', note: 'لمن يخلص رصيدك · تحتاج طلب قبل يومين' },
+  { value: 'REGULAR', label: 'إجازة قبل يومين', note: 'تنطلب قبل يومين على الأقل — حتى يرتبون الشفت' },
+  { value: 'URGENT',  label: 'إجازة طارئة',    note: 'بلا مهلة — الطارئ ما ينتظر' },
 ]
 
 export interface LeaveRequest {

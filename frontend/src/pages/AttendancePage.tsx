@@ -783,13 +783,6 @@ function LeavePanel({ onSubmitted, leaves }: {
         )}
       </div>
 
-      {/* لافتة توضيحية */}
-      <div className="rounded-2xl border border-sky-200 bg-sky-50/70 p-4">
-        <p className="text-[11px] font-extrabold text-sky-900">ℹ️ الإجازات الآن من داخل جدول دوامي</p>
-        <p className="mt-1 text-[10px] leading-relaxed text-sky-800">
-          تگدر تطلب الإجازة وتتابع حالتها من هنا — بلا ما تروح لشاشة الإجازات المنفصلة.
-        </p>
-      </div>
     </div>
   )
 }
