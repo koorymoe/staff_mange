@@ -98,11 +98,14 @@ export default function PermissionsPage() {
   const permissionGroups = [
     {
       title: 'إدارة الموظفين',
-      perms: ['staff_management', 'edit_employee_profile', 'kpi_management', 'kpi_criteria_management', 'inventory', 'tool_requests_approve'],
+      // ⚠️ صلاحيات مستقلة لكل شغلة: staff_management كانت تفتح معاها
+      // الإحصائيات وبرامج التدريب وتوجيه المهام — كلهن على مفتاح واحد.
+      // انفصلن حتى تنطي الشغلة الي تقصدها بس.
+      perms: ['staff_management', 'staff_stats', 'extra_tasks_assign', 'training_manage', 'edit_employee_profile', 'kpi_management', 'kpi_criteria_management', 'inventory', 'tool_requests_approve'],
     },
     {
       title: 'إدارة العمل',
-      perms: ['sales_booking', 'manage_customers', 'view_bookings', 'coordinator', 'manage_services', 'mission_tracking'],
+      perms: ['sales_booking', 'manage_customers', 'view_bookings', 'coordinator', 'bookings_archive', 'manage_services', 'mission_tracking'],
     },
     {
       title: 'إدارة المشاريع والخدمات',

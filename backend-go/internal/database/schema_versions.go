@@ -250,6 +250,9 @@ func versionedMigrations() []Migration {
 	// 0240: نوع الإجازة (اعتيادية/مرضية/طارئة/بلا راتب) — الرصيد الشهري
 	// ما ينطبق على المرضية، والطارئة إلها أولوية مختلفة بالموافقة.
 	result = append(result, leaveKindMigrations()...)
+	// 0242: صلاحيات مستقلة لكل شغلة بدل الركوب على صلاحية عامة —
+	// «الموظف ما يكدر يسوي شي إلا إذا انطيته الصلاحية مال هذا الشي».
+	result = append(result, scopedPermissionMigrations()...)
 	return result
 }
 

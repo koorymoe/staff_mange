@@ -385,6 +385,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// وظيفي صارم، وإلا نفس بگ "تدقيق الحسابات" يتكرر: زر يطلع بالواجهة، السيرفر
 	// يرفضه، وبعد 3 محاولات ينوقف حساب الموظف تلقائياً.
 	requireStaffManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "staff_management")
+	// ═══ حرّاس الصلاحيات المستقلة ═══
+	//
+	// ⚠️ الإخفاء بالقائمة الجانبية **مو حماية**: الموظف يكتب المسار
+	// بالمتصفح أو يدز طلب مباشر ويوصل. لازم السيرفر يرفض بعد، وإلا
+	// المنع تجميلي بس.
+	requireBookingsArchive := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "bookings_archive")
+	requireExtraTaskAssign := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "extra_tasks_assign")
+	requireTrainingManage := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "training_manage")
 	requireMonitor := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "MONITOR")
 	requireProjectManager := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROJECT_MANAGER")
 	// إدارة المشاريع: بالدور أو بصلاحية project_management الممنوحة يدوياً
@@ -558,7 +566,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// ═══ أرشيف الحجوزات وتأجيلها وانتظار رد الزبون ═══
 	// الأرشيف للي عنده صلاحية تنسيق أو إدارة — هو سجل قرارات الإلغاء.
-	mux.Handle("GET /api/bookings/archived", middleware.Chain(http.HandlerFunc(bookingHandler.ListArchived), requireAuth, requireCoordinator))
+	mux.Handle("GET /api/bookings/archived", middleware.Chain(http.HandlerFunc(bookingHandler.ListArchived), requireAuth, requireBookingsArchive))
 	// الحذف صار أرشفة: الحجز يختفي من الشاشات ويضل بالأرشيف بسببه
 	mux.Handle("DELETE /api/bookings/{id}", middleware.Chain(http.HandlerFunc(bookingHandler.ArchiveBooking), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/restore", middleware.Chain(http.HandlerFunc(bookingHandler.RestoreBooking), requireAuth, requireAdmin))
@@ -579,9 +587,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ مسارات التنفيذ requireAuth بس — الحارس ما يعرف صاحب المهمة،
 	// فالمستودع يفحص "assignedToId" بكل عملية. بدونه أي موظف ينهي
 	// مهمة موظف ثاني بمعرّفها.
-	mux.Handle("POST /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.Create), requireAuth, requireStaffManagement))
-	mux.Handle("GET /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.List), requireAuth, requireStaffManagement))
-	mux.Handle("PUT /api/extra-tasks/{id}/cancel", middleware.Chain(http.HandlerFunc(extraTaskHandler.Cancel), requireAuth, requireStaffManagement))
+	mux.Handle("POST /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.Create), requireAuth, requireExtraTaskAssign))
+	mux.Handle("GET /api/extra-tasks", middleware.Chain(http.HandlerFunc(extraTaskHandler.List), requireAuth, requireExtraTaskAssign))
+	mux.Handle("PUT /api/extra-tasks/{id}/cancel", middleware.Chain(http.HandlerFunc(extraTaskHandler.Cancel), requireAuth, requireExtraTaskAssign))
 	mux.Handle("GET /api/extra-tasks/mine", middleware.Chain(http.HandlerFunc(extraTaskHandler.Mine), requireAuth))
 	mux.Handle("GET /api/extra-tasks/mine/count", middleware.Chain(http.HandlerFunc(extraTaskHandler.MyOpenCount), requireAuth))
 	mux.Handle("PUT /api/extra-tasks/{id}/seen", middleware.Chain(http.HandlerFunc(extraTaskHandler.MarkSeen), requireAuth))
@@ -1103,14 +1111,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		[]string{"ADMIN", "OWNER"}, "solar_system")
 
 	// ═══ برامج التدريب ═══
-	// القراءة لأي موظف (يشوف تدريباته)، والإدارة لإداري الكوادر والتقني.
-	requireTraining := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
-		[]string{"ADMIN", "OWNER", "HR_COORDINATOR"}, "staff_management", "content_technician")
+	//
+	// القراءة لأي موظف (يشوف تدريباته)، والإدارة بصلاحية
+	// training_manage المستقلة.
+	//
+	// ⚠️ قبل، الإدارة جانت تنفتح بـstaff_management أو بمجرد إن دوره
+	// HR_COORDINATOR. يعني تنطي موظف صلاحية إدارة الكوادر فينفتحله
+	// معاها تعديل برامج التدريب بلا ما تقصد.
 	mux.Handle("GET /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.List), requireAuth))
-	mux.Handle("POST /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Create), requireAuth, requireTraining))
-	mux.Handle("PUT /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Update), requireAuth, requireTraining))
-	mux.Handle("PUT /api/training-programs/{id}/complete", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Complete), requireAuth, requireTraining))
-	mux.Handle("DELETE /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Delete), requireAuth, requireTraining))
+	mux.Handle("POST /api/training-programs", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Create), requireAuth, requireTrainingManage))
+	mux.Handle("PUT /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Update), requireAuth, requireTrainingManage))
+	mux.Handle("PUT /api/training-programs/{id}/complete", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Complete), requireAuth, requireTrainingManage))
+	mux.Handle("DELETE /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Delete), requireAuth, requireTrainingManage))
 
 	mux.Handle("GET /api/solar/stats", middleware.Chain(http.HandlerFunc(solarHandler.Stats), requireAuth))
 	mux.Handle("GET /api/solar/low-stock", middleware.Chain(http.HandlerFunc(solarHandler.LowStock), requireAuth))
