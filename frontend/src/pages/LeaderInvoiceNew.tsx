@@ -211,14 +211,25 @@ export default function LeaderInvoiceNew() {
     0,
   )
 
-  // تجميع الملخّص بنفس ترتيب التصميم
+  // ═══ تجميع الملخّص ═══
+  //
+  // 🔴 `?? []` مو زيادة احتياط — هاي **كانت تكسر الشاشة**:
+  // Go يحوّل الـslice الفارغة لـ`null` مو `[]` بالـJSON. فأول ما
+  // تضيف بند وما تختار عنصر تركيب بعد، السيرفر يرجّع
+  // `breakdown: null`، و`null.reduce(...)` يرمي خطأ **بالرندر** —
+  // يعني ما تطلع رسالة خطأ صغيرة، تطلع «صار خطأ غير متوقع» وتضيع
+  // الشاشة كلها والبنود الي عبّاها الليدر.
+  //
+  // (نفس السبب موجود بالكود القديم بـ`systemMinimums?.length` — نفس
+  // الفخ انلدغ بيه مرة قبل.)
+  const breakdown = livePreview?.breakdown ?? []
   const summary = livePreview && {
     devicesTotal: materialsTotal,
-    install: livePreview.breakdown.reduce((n, b) => n + b.installTotal, 0),
-    wiring: livePreview.breakdown.reduce((n, b) => n + b.wiringTotal, 0),
-    programming: livePreview.breakdown.reduce((n, b) => n + b.programmingTotal, 0),
-    total: livePreview.executionCost + materialsTotal,
-    devices: livePreview.totalDeviceCount,
+    install: breakdown.reduce((n, b) => n + b.installTotal, 0),
+    wiring: breakdown.reduce((n, b) => n + b.wiringTotal, 0),
+    programming: breakdown.reduce((n, b) => n + b.programmingTotal, 0),
+    total: (livePreview.executionCost || 0) + materialsTotal,
+    devices: livePreview.totalDeviceCount || 0,
   }
 
   // ═══ حفظ كمسودة ═══

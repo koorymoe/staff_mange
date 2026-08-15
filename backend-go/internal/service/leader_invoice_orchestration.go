@@ -341,6 +341,16 @@ func (s *LeaderInvoiceService) Estimate(items []model.ExecutionCostItem) (*model
 	if err != nil {
 		return nil, err
 	}
+	// ⚠️ الـslice الفارغة بـGo تنكتب `null` بالـJSON مو `[]`، والواجهة
+	// تسوي عليها `.reduce(...)` فتنكسر الشاشة كلها بـ«صار خطأ غير
+	// متوقع». وهاي تصير بحالة عادية جداً: الليدر يضيف بند وما يختار
+	// عنصر التركيب بعد. نضمن قائمة فارغة حقيقية بدل null.
+	if breakdown == nil {
+		breakdown = []model.ExecutionCostBreakdownLine{}
+	}
+	if minimums == nil {
+		minimums = []model.ExecutionCostSystemMinimum{}
+	}
 	return &model.EstimateExecutionCostResponse{
 		ExecutionCost:    executionCost,
 		TotalDeviceCount: totalDeviceCount,
