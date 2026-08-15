@@ -114,8 +114,18 @@ export default function MyFundBalance() {
               </p>
             )}
 
-            <label className="mt-3 mb-1 block text-sm font-medium text-slate-600">صورة الوصل</label>
-            <input type="file" accept="image/*" capture="environment"
+            {/* ═══ صورة الوصل: كامرة **أو** من الاستوديو ═══
+                ⚠️ كان `capture="environment"` — وهاي تجبر المتصفح يفتح
+                الكامرة **مباشرة** وما تنطي خيار الاستوديو إطلاقاً.
+                يعني الموظف الي صوّر الوصل قبل ساعة، أو استلم صورته
+                بالواتساب، ما يكدر يرفعها — لازم يمسك الورقة ويصوّرها
+                من جديد. وإذا الورقة ضاعت، ما يكدر يسوّي حسابه أصلاً.
+
+                بلا capture، المتصفح يعرض الخيارين (كامرة/استوديو). */}
+            <label className="mt-3 mb-1 block text-sm font-medium text-slate-600">
+              صورة الوصل <span className="text-xs font-normal text-slate-400">— صوّرها هسه أو اختارها من الاستوديو</span>
+            </label>
+            <input type="file" accept="image/*"
               onChange={(e) => { const f = e.target.files?.[0]; if (f) pickReceipt(f) }}
               className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right" />
             {receipt && <img src={receipt} alt="الوصل" className="mt-2 max-h-48 w-full rounded-lg border border-slate-200 object-contain" />}

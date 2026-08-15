@@ -208,15 +208,55 @@ export default function LeaderInvoiceNew() {
     }
   }
 
+  // ⚠️ النتيجة كانت **تستبدل الشاشة كلها**: الليدر يضغط «احسب»
+  // فيختفي كلشي عبّاه ويطلع رقم لحاله. وإذا أراد يعدّل بند واحد لازم
+  // يرجع ويشوف شنو كان مكتوب — أو يعيد الإدخال من الصفر.
+  //
+  // هسه النتيجة تطلع **فوگ الصفحة** والبيانات تبقى تحتها، فيگدر
+  // يعدّل ويعيد الحساب بلا ما يضيع شي.
   if (estimateResult) {
     return (
       <div className="mx-auto max-w-3xl">
-        <h2 className="text-2xl font-bold text-brand-900">الكلفة التقريبية</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-2xl font-bold text-brand-900">الكلفة التقريبية</h2>
+          <button
+            onClick={() => setEstimateResult(null)}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
+          >
+            ← رجوع وتعديل البنود
+          </button>
+        </div>
         <div className="mt-4 rounded-xl border border-white bg-white p-6 text-center shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <p className="text-sm text-slate-400">تكلفة التنفيذ التقريبية</p>
           <p className="mt-1 text-3xl font-bold text-brand-800">{estimateResult.executionCost.toLocaleString()} د.ع</p>
           <p className="mt-2 text-xs text-slate-400">إجمالي عدد الأجهزة: {estimateResult.totalDeviceCount}</p>
           <p className="mt-3 text-xs text-amber-600">هذا رقم تقريبي بس للاستفسار — ما ينحفظ ولا يرتبط بأي حجز.</p>
+
+          {/* ═══ مشاركة مع الزبون ═══
+              الليدر يطلعله الرقم وهو واقف عند الزبون، والزبون يريد
+              يشوفه أو ياخذه وياه. قبل، لازم يصوّر الشاشة بتلفونه
+              ويدزها — أو يقرا الرقم بصوته والزبون يكتبه ويغلط.
+
+              ⚠️ نستخدم مشاركة النظام إذا متوفرة (تلفون)، وإلا ننسخ
+              للحافظة (كمبيوتر) — بدل ما نعتمد على وحدة وتفشل بالثانية. */}
+          <button
+            onClick={async () => {
+              const txt = [
+                'الكلفة التقريبية — شركة الأماني',
+                `المبلغ: ${estimateResult.executionCost.toLocaleString()} د.ع`,
+                `عدد الأجهزة: ${estimateResult.totalDeviceCount}`,
+                '',
+                'ⓘ هذا تقدير تقريبي وليس فاتورة نهائية.',
+              ].join('\n')
+              try {
+                if (navigator.share) await navigator.share({ text: txt })
+                else { await navigator.clipboard.writeText(txt); alert('انتنسخ النص — تكدر تلصقه بالواتساب') }
+              } catch { /* الموظف ألغى المشاركة — مو خطأ */ }
+            }}
+            className="mt-4 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700"
+          >
+            📤 مشاركة النتيجة مع الزبون
+          </button>
         </div>
 
         {/* تفصيل الحساب — للمالك ومدير النظام فقط */}
@@ -395,9 +435,43 @@ export default function LeaderInvoiceNew() {
 
       <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-500">
         {estimateOnly
-          ? 'ⓘ استفسار: اختر المنظومات وبنود التنفيذ وتطلعلك الكلفة — نفس محرك الفاتورة بالضبط، بس بلا حفظ ولا ربط.'
+          ? 'ⓘ استفسار: اختر نوع العمل وأضف العناصر وتطلعلك الكلفة — نفس محرك الفاتورة بالضبط، بس بلا حفظ ولا ربط.'
           : 'ⓘ مربوط بحجز: اختر الحجز أول، وبيانات الزبون تنملي لحالها، والفاتورة تترحّل للمحاسب.'}
       </p>
+
+      {/* ═══ خطوات الحساب ═══
+          الشاشة طويلة وبيها خانات كثيرة. بلا شريط خطوات، الليدر ما
+          يعرف وين واصل ولا شكد باقي عليه — فيوقف بالنص أو ينسى بند.
+          الشريط يگله بالضبط بأي مرحلة هو، وتتقدّم لحالها من الحالة. */}
+      <ol className="mt-4 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3 sm:gap-2">
+        {[
+          { n: 1, label: 'اختيار نوع العمل', done: systems.length > 0 },
+          { n: 2, label: 'إضافة العناصر', done: items.length > 0 },
+          { n: 3, label: 'مراجعة الكلفة', done: !!estimateResult },
+          { n: 4, label: estimateOnly ? 'مشاركة النتيجة' : 'حفظ الفاتورة', done: false },
+        ].map((st, i, arr) => {
+          // الخطوة الحالية = أول وحدة ما خلصت
+          const currentIdx = arr.findIndex((x) => !x.done)
+          const isCurrent = i === (currentIdx === -1 ? arr.length - 1 : currentIdx)
+          return (
+            <li key={st.n} className="flex min-w-0 flex-1 items-center gap-1.5 sm:gap-2">
+              <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black sm:h-7 sm:w-7 sm:text-xs ${
+                st.done ? 'bg-emerald-500 text-white'
+                : isCurrent ? 'bg-[#2c5aad] text-white'
+                : 'bg-slate-100 text-slate-400'
+              }`}>
+                {st.done ? '✓' : st.n}
+              </span>
+              <span className={`truncate text-[10px] font-bold sm:text-[11px] ${
+                isCurrent ? 'text-[#0f2040]' : st.done ? 'text-emerald-700' : 'text-slate-400'
+              }`}>
+                {st.label}
+              </span>
+              {i < arr.length - 1 && <span className="hidden h-px flex-1 bg-slate-200 sm:block" />}
+            </li>
+          )
+        })}
+      </ol>
 
       {/* اختيار الحجز المكتمل — الليدر يلكه أسماء حجوزاته المكتملة ويسويلها
           فاتورة، ومعلومات الزبون تنملي تلقائياً منه. */}
@@ -485,7 +559,10 @@ export default function LeaderInvoiceNew() {
         </div>
       )}
 
-      <h3 className="mt-6 mb-2 font-bold text-brand-800">المنظومات (حتى 3)</h3>
+      <h3 className="mt-6 mb-2 flex items-center gap-2 font-bold text-brand-800">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2c5aad] text-[11px] font-black text-white">1</span>
+        اختيار نوع العمل <span className="text-xs font-normal text-slate-400">(حتى ٣)</span>
+      </h3>
       <div className="flex flex-wrap gap-2">
         {allSystemNames.map((name) => (
           <button
