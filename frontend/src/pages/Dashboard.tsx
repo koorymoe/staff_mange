@@ -4,6 +4,8 @@ import MyFundBalance from '../components/MyFundBalance'
 import { api } from '../api'
 import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse } from '../api'
 import { useSession, hasGpsSkill } from '../session'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 import { timeGreeting, GREETING_HOLD_MS } from '../greeting'
 import { MapViewer } from '../components/MapLazy'
 
@@ -77,6 +79,8 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
 }
 
 export default function Dashboard() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const { employee, permissions, gpsServiceId } = useSession()
   const navigate = useNavigate()
   const [gpsStats, setGpsStats] = useState<GpsStats | null>(null)
@@ -308,16 +312,17 @@ export default function Dashboard() {
 
 
   const handleTaskStart = async (b: Booking) => {
-    const updated = await api.startBooking(b.id)
+    const updated = await guard.run('بدء المهمة', () => api.startBooking(b.id))
+    if (!updated) return
     setMyTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
   }
 
   const handleTaskComplete = async (b: Booking) => {
-    await api.completeBooking(b.id, {
+    if (!(await guard.run('إنهاء المهمة', () => api.completeBooking(b.id, {
       completionNotes: taskNotes[b.id] || undefined,
       amountCollected: taskAmounts[b.id] ? Number(taskAmounts[b.id]) : undefined,
       advancePaid: taskAdvances[b.id] ? Number(taskAdvances[b.id]) : undefined,
-    })
+    })))) return
     setMyTasks(prev => prev.filter(t => t.id !== b.id))
   }
 
@@ -439,6 +444,8 @@ export default function Dashboard() {
   ]
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl" className="space-y-6">
       {/* ═══ Hero Section ═══ */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-[#0a1628] via-[#1a3a6e] to-[#2c5aad] p-8 text-white">
@@ -1450,6 +1457,7 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+    </>
   )
 }
 

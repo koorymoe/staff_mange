@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { api, type ProjectWorkType } from '../api'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 
 // إعدادات وحدة إدارة المشاريع — أنواع الأعمال ("نوع العمل") صارت قابلة
 // للإضافة والحذف براحة المدير، بدل قائمة ثابتة بالكود. أي نوع تضيفه هنا
 // يظهر فوراً بقائمة "نوع العمل" عند إنشاء/تعديل/فلترة المشاريع.
 export default function ProjectWorkTypesSettingsPage() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const [types, setTypes] = useState<ProjectWorkType[]>([])
   const [loading, setLoading] = useState(true)
   const [name, setName] = useState('')
@@ -32,11 +36,13 @@ export default function ProjectWorkTypesSettingsPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('حذف نوع العمل هذا؟ المشاريع الي مستخدمينه بيهه ما تتأثر، بس النوع ما يضل يظهر بالقائمة عند إنشاء مشروع جديد.')) return
-    await api.deleteProjectWorkType(id)
+    if (!(await guard.run('حذف نوع العمل', () => api.deleteProjectWorkType(id)))) return
     load()
   }
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl">
       <h2 className="text-2xl font-bold text-brand-900">إعدادات إدارة المشاريع — أنواع الأعمال</h2>
       <p className="mt-1 text-slate-500">
@@ -78,5 +84,6 @@ export default function ProjectWorkTypesSettingsPage() {
         </div>
       )}
     </div>
+    </>
   )
 }

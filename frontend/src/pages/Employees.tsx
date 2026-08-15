@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type Stats } from '../api'
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import { useSession } from '../session'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 import AddEmployeeWizard from '../components/AddEmployeeWizard'
 import { openManagerChat } from '../components/openManagerChat'
 import { matches } from '../utils/search'
@@ -62,6 +64,8 @@ const avatarGradients: string[] = [
 ]
 
 export default function Employees() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const { employee: currentUser, permissions: userPermissions } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
   // فتح حساب جديد = المالك وحده. `role` ينزّل OWNER لـADMIN حتى تشتغل
@@ -223,7 +227,8 @@ export default function Employees() {
     const skills = services
       .filter((svc) => svc.division === employee.division)
       .flatMap((svc) => svc.skills.map((sk) => ({ skillId: sk.id, canPerform: current.get(sk.id) ?? false })))
-    const updated = await api.updateEmployeeSkills(employee.id, skills)
+    const updated = await guard.run('حفظ المهارات', () => api.updateEmployeeSkills(employee.id, skills))
+    if (!updated) return
     setEmployees((prev) => prev.map((emp) => (emp.id === employee.id ? updated : emp)))
   }
 
@@ -237,6 +242,8 @@ export default function Employees() {
   const uniqueRoles = [...new Set(baseEmployees.map(e => e.role))]
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div className="max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
@@ -635,7 +642,8 @@ export default function Employees() {
                       <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50 transition-colors">
                         <input type="checkbox" checked={selectedEmployee.onDuty}
                           onChange={async (e) => {
-                            const updated = await api.updateEmployee(selectedEmployee.id, { onDuty: e.target.checked })
+                            const updated = await guard.run('تغيير حالة الدوام', () => api.updateEmployee(selectedEmployee.id, { onDuty: e.target.checked }))
+                            if (!updated) return
                             setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
                           }}
                           className="h-4 w-4 accent-[#2c5aad] rounded" />
@@ -649,7 +657,8 @@ export default function Employees() {
                           <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50 transition-colors">
                             <input type="checkbox" checked={selectedEmployee.hasDrivingLicense}
                               onChange={async (e) => {
-                                const updated = await api.updateEmployee(selectedEmployee.id, { hasDrivingLicense: e.target.checked })
+                                const updated = await guard.run('تحديث رخصة السوق', () => api.updateEmployee(selectedEmployee.id, { hasDrivingLicense: e.target.checked }))
+                                if (!updated) return
                                 setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
                               }}
                               className="h-4 w-4 accent-[#2c5aad] rounded" />
@@ -661,7 +670,8 @@ export default function Employees() {
                           <label className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm cursor-pointer hover:bg-slate-50 transition-colors">
                             <input type="checkbox" checked={selectedEmployee.hasSafetyCertificate}
                               onChange={async (e) => {
-                                const updated = await api.updateEmployee(selectedEmployee.id, { hasSafetyCertificate: e.target.checked })
+                                const updated = await guard.run('تحديث شهادة السلامة', () => api.updateEmployee(selectedEmployee.id, { hasSafetyCertificate: e.target.checked }))
+                                if (!updated) return
                                 setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
                               }}
                               className="h-4 w-4 accent-[#2c5aad] rounded" />
@@ -869,5 +879,6 @@ export default function Employees() {
         </div>
       )}
     </div>
+    </>
   )
 }

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type DesignForm } from '../api'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 
 const PRIMARY = '#47528f'
 const GOLD = '#c97a3a'
@@ -39,6 +41,8 @@ function FormBrandPreview({ name }: { name: string }) {
 }
 
 export default function DesignFormsListPage() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const navigate = useNavigate()
   const [forms, setForms] = useState<DesignForm[]>([])
   const [loading, setLoading] = useState(true)
@@ -67,7 +71,7 @@ export default function DesignFormsListPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('حذف هذه الفورمة نهائياً؟ راح تنحذف كل أسئلتها وأجوبتها معها.')) return
-    await api.deleteDesignForm(id)
+    if (!(await guard.run('حذف النموذج', () => api.deleteDesignForm(id)))) return
     load()
   }
 
@@ -78,6 +82,8 @@ export default function DesignFormsListPage() {
   }
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl">
       <h2 className="text-2xl font-bold" style={{ color: PRIMARY }}>وحدة التصميم — فورمة التصميم</h2>
       <p className="mt-1 text-slate-500">
@@ -133,5 +139,6 @@ export default function DesignFormsListPage() {
         ))}
       </div>
     </div>
+    </>
   )
 }

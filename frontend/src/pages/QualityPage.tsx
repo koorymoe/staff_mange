@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type QualityIssue, type Employee } from '../api'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: 'مفتوحة',
@@ -13,6 +15,8 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function QualityPage() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const [issues, setIssues] = useState<QualityIssue[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [filter, setFilter] = useState<'ALL' | 'EXECUTION' | 'OVERSIGHT'>('ALL')
@@ -33,17 +37,19 @@ export default function QualityPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
-    await api.createQualityIssue({ category, title, description: description || undefined, responsibleEmployeeId: responsible || undefined })
+    if (!(await guard.run('تسجيل البلاغ', () => api.createQualityIssue({ category, title, description: description || undefined, responsibleEmployeeId: responsible || undefined })))) return
     setTitle(''); setDescription(''); setResponsible('')
     load()
   }
 
   const handleStatus = async (id: string, status: 'IN_PROGRESS' | 'RESOLVED') => {
-    await api.updateQualityIssue(id, { status })
+    if (!(await guard.run('تحديث حالة البلاغ', () => api.updateQualityIssue(id, { status })))) return
     load()
   }
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl" className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-brand-900">الجودة</h2>
@@ -119,5 +125,6 @@ export default function QualityPage() {
         )}
       </div>
     </div>
+    </>
   )
 }

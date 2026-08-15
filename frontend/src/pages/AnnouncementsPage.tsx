@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Announcement } from '../api'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 
 /**
  * إدارة الإعلانات — المالك ومدير النظام حصراً.
@@ -7,6 +9,8 @@ import { api, type Announcement } from '../api'
  * كل إعلان شغّال يمر بالشريط المتحرك كدام كل الموظفين.
  */
 export default function AnnouncementsPage() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const [items, setItems] = useState<Announcement[]>([])
   const [body, setBody] = useState('')
   const [busy, setBusy] = useState(false)
@@ -35,17 +39,19 @@ export default function AnnouncementsPage() {
   }
 
   const toggle = async (a: Announcement) => {
-    await api.setAnnouncementActive(a.id, !a.active)
+    if (!(await guard.run('تغيير حالة الإعلان', () => api.setAnnouncementActive(a.id, !a.active)))) return
     load()
   }
 
   const remove = async (a: Announcement) => {
     if (!confirm('حذف الإعلان نهائياً؟')) return
-    await api.deleteAnnouncement(a.id)
+    if (!(await guard.run('حذف الإعلان', () => api.deleteAnnouncement(a.id)))) return
     load()
   }
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl" className="space-y-6">
       <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
         <h1 className="text-2xl font-bold text-white">📢 لوحة الإعلانات</h1>
@@ -101,5 +107,6 @@ export default function AnnouncementsPage() {
         )}
       </div>
     </div>
+    </>
   )
 }

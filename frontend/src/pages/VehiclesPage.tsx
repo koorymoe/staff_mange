@@ -1,6 +1,8 @@
 import { useEffect, useState, useMemo } from 'react'
 import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat } from '../api'
 import { useSession } from '../session'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -67,6 +69,8 @@ const currentMonth = () => {
 }
 
 export default function VehiclesPage() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const { employee } = useSession()
   const isAdmin = employee?.role === 'ADMIN'
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
@@ -204,7 +208,8 @@ export default function VehiclesPage() {
 
   const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault()
-    const created = await api.createVehicle({ name: vName, plateNumber: vPlate, color: vColor || undefined, type: vType || undefined })
+    const created = await guard.run('إضافة المركبة', () => api.createVehicle({ name: vName, plateNumber: vPlate, color: vColor || undefined, type: vType || undefined }))
+    if (!created) return
     const extra: Record<string, string | number> = {}
     if (vModel) extra.model = vModel
     if (vYear) extra.year = Number(vYear)
@@ -214,7 +219,7 @@ export default function VehiclesPage() {
     if (vOdometer) extra.currentOdometer = Number(vOdometer)
     if (vCondition) extra.condition = vCondition
     if (Object.keys(extra).length > 0) {
-      await api.updateVehicle(created.id, extra)
+      await guard.run('حفظ تفاصيل المركبة', () => api.updateVehicle(created.id, extra))
     }
     setVName(''); setVPlate(''); setVColor(''); setVType('')
     setVModel(''); setVYear(''); setVChassis(''); setVEngine(''); setVFuel(''); setVOdometer(''); setVCondition('')
@@ -235,7 +240,7 @@ export default function VehiclesPage() {
   const handleUpdateVehicle = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedId) return
-    await api.updateVehicle(selectedId, {
+    if (!(await guard.run('حفظ تعديل المركبة', () => api.updateVehicle(selectedId, {
       name: editDraft.name,
       plateNumber: editDraft.plateNumber,
       color: editDraft.color || undefined,
@@ -247,7 +252,7 @@ export default function VehiclesPage() {
       fuelType: editDraft.fuelType || undefined,
       currentOdometer: editDraft.currentOdometer,
       condition: editDraft.condition || undefined,
-    })
+    })))) return
     setShowEditVehicle(false)
     loadVehicles()
   }
@@ -271,7 +276,7 @@ export default function VehiclesPage() {
     e.preventDefault()
     if (!selectedId) return
     setFuelAnomalyWarning(null)
-    const result = await api.createVehicleLog(selectedId, {
+    const result = await guard.run('تسجيل العملية', () => api.createVehicleLog(selectedId, {
       // تبويب الوقود ما بيه اختيار نوع — النوع ثابت FUEL، وتبويب الدهن
       // يستخدم النوع المختار (زيت أو صيانة عامة).
       type: tab === 'logs' ? 'FUEL' : logType,
@@ -287,7 +292,8 @@ export default function VehiclesPage() {
       receiptNumber: tab === 'logs' ? (logReceiptNo.trim() || undefined) : undefined,
       stationName: tab === 'logs' ? (logStation.trim() || undefined) : undefined,
       receiptPhotoBase64: tab === 'logs' ? (logReceiptPhoto || undefined) : undefined,
-    })
+    }))
+    if (!result) return
     if (result.fuelAnomaly?.isAnomaly) {
       setFuelAnomalyWarning(
         `⚠️ هذا المبلغ أعلى من المعدل المعتاد لهذي السيارة بـ ${Math.round(result.fuelAnomaly.percentAboveAvg)}%`
@@ -364,7 +370,7 @@ export default function VehiclesPage() {
   const handleAddIncident = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedId || !incDesc.trim()) return
-    await api.createVehicleIncident(selectedId, {
+    if (!(await guard.run('تسجيل العطل', () => api.createVehicleIncident(selectedId, {
       type: incType,
       description: incDesc,
       responsibleEmployeeId: incResponsible || undefined,
@@ -374,7 +380,7 @@ export default function VehiclesPage() {
       peoplePresent: incType === 'ACCIDENT' ? (incPeoplePresent || undefined) : undefined,
       policeReportNumber: incType === 'ACCIDENT' ? (incPoliceReport || undefined) : undefined,
       repairCost: incType === 'ACCIDENT' && incRepairCost ? Number(incRepairCost) : undefined,
-    })
+    })))) return
     setIncDesc(''); setIncResponsible(''); setIncCost('')
     setIncLocation(''); setIncDriver(''); setIncPeoplePresent(''); setIncPoliceReport(''); setIncRepairCost('')
     loadIncidentsWithAttachments(selectedId)
@@ -383,7 +389,7 @@ export default function VehiclesPage() {
 
   const handleResolveIncident = async (id: string) => {
     if (!selectedId) return
-    await api.updateVehicleIncident(id, { status: 'RESOLVED' })
+    if (!(await guard.run('إغلاق العطل', () => api.updateVehicleIncident(id, { status: 'RESOLVED' })))) return
     loadIncidentsWithAttachments(selectedId)
   }
 
@@ -402,7 +408,7 @@ export default function VehiclesPage() {
   }
 
   const handleDeleteIncidentAttachment = async (incidentId: string, attachmentId: string) => {
-    await api.deleteVehicleIncidentAttachment(incidentId, attachmentId)
+    if (!(await guard.run('حذف المرفق', () => api.deleteVehicleIncidentAttachment(incidentId, attachmentId)))) return
     const atts = await api.getVehicleIncidentAttachments(incidentId)
     setIncidentAttachments((prev) => ({ ...prev, [incidentId]: atts }))
   }
@@ -410,9 +416,9 @@ export default function VehiclesPage() {
   const handleSetMonthly = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedId) return
-    await api.setVehicleMonthlyStatus(selectedId, {
+    if (!(await guard.run('حفظ الحالة الشهرية', () => api.setVehicleMonthlyStatus(selectedId, {
       month: monMonth, hasIssue: monHasIssue, issueDescription: monDesc || undefined, resolved: monResolved, notes: monNotes || undefined,
-    })
+    })))) return
     setMonDesc(''); setMonNotes('')
     api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
   }
@@ -464,6 +470,8 @@ export default function VehiclesPage() {
   }
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl" className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
@@ -1135,5 +1143,6 @@ export default function VehiclesPage() {
         </div>
       )}
     </div>
+    </>
   )
 }

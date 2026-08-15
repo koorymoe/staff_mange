@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useSession } from '../session'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 import { api } from '../api'
 import type { Booking } from '../api'
 import L from 'leaflet'
@@ -57,6 +59,8 @@ function createMyLocationIcon() {
 }
 
 export default function MapPage() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const { employee } = useSession()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null)
@@ -275,11 +279,12 @@ export default function MapPage() {
     const coords = parseLocationLink(linkValue.trim())
     if (!coords) return
 
-    const updated = await api.updateBookingDetails(bookingId, {
+    const updated = await guard.run('حفظ موقع الحجز', () => api.updateBookingDetails(bookingId, {
       mapLatitude: coords[0],
       mapLongitude: coords[1],
       mapLocation: linkValue.trim(),
-    })
+    }))
+    if (!updated) return
     setBookings(prev => prev.map(b => b.id === updated.id ? updated : b))
     setShowLinkInput(null)
     setLinkValue('')
@@ -296,6 +301,8 @@ export default function MapPage() {
   )
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div className="-m-3 flex h-[calc(100%+1.5rem)] flex-col sm:-m-5 sm:h-[calc(100%+2.5rem)] lg:-m-8 lg:h-[calc(100%+4rem)]">
       {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3">
@@ -529,5 +536,6 @@ export default function MapPage() {
         </div>
       </div>
     </div>
+    </>
   )
 }

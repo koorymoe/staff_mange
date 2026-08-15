@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type TrainingMaterial } from '../api'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 
 export default function TrainingManagement() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const [employees, setEmployees] = useState<Employee[]>([])
   const [services, setServices] = useState<Service[]>([])
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>('')
@@ -53,28 +57,31 @@ export default function TrainingManagement() {
   const toggleTraineeMode = async (isTrainee: boolean) => {
     if (!selectedEmployeeId) return
     if (isTrainee) {
-      await api.updateEmployee(selectedEmployeeId, { isTrainee: true })
+      if (!(await guard.run('تحويل الموظف لمتدرب', () => api.updateEmployee(selectedEmployeeId, { isTrainee: true })))) return
     } else {
       // إنهاء التدريب يسجل تلقائياً تقييم إيجابي يعكس اجتيازه، بدل تعطيل الوضع بس
-      await api.completeTraining(selectedEmployeeId)
+      if (!(await guard.run('إنهاء التدريب', () => api.completeTraining(selectedEmployeeId)))) return
     }
     setEmployees(prev => prev.map(e => e.id === selectedEmployeeId ? { ...e, isTrainee } : e))
   }
 
   const addMaterial = async () => {
     if (!selectedServiceId || !newTitle || !newUrl) return
-    const material = await api.createTrainingMaterial({ serviceId: selectedServiceId, title: newTitle, url: newUrl, type: newType })
+    const material = await guard.run('إضافة المادة التدريبية', () => api.createTrainingMaterial({ serviceId: selectedServiceId, title: newTitle, url: newUrl, type: newType }))
+    if (!material) return
     setMaterials(prev => [...prev, material])
     setNewTitle('')
     setNewUrl('')
   }
 
   const removeMaterial = async (id: string) => {
-    await api.deleteTrainingMaterial(id)
+    if (!(await guard.run('حذف المادة التدريبية', () => api.deleteTrainingMaterial(id)))) return
     setMaterials(prev => prev.filter(m => m.id !== id))
   }
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div>
       <h2 className="text-2xl font-bold text-brand-900">إدارة التدريب</h2>
       <p className="mt-1 text-slate-500">حدد صلاحية التدريب للموظفين الجدد والمواد التي يشاهدونها حسب تخصصهم.</p>
@@ -156,5 +163,6 @@ export default function TrainingManagement() {
         </div>
       </div>
     </div>
+    </>
   )
 }

@@ -10,6 +10,8 @@ import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
 import { useSession } from '../session'
+import { useSaveGuard } from '../useSaveGuard'
+import SaveError from '../components/SaveError'
 
 function elapsedSince(iso: string): string {
   const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
@@ -68,6 +70,8 @@ function DirectionsModal({ booking, onClose }: { booking: Booking; onClose: () =
 }
 
 export default function MyTasks() {
+  // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
+  const guard = useSaveGuard()
   const { employee } = useSession()
   const navigate = useNavigate()
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -142,7 +146,8 @@ export default function MyTasks() {
     .sort((a, b) => new Date(b.completedAt || 0).getTime() - new Date(a.completedAt || 0).getTime())
 
   const handleArrive = async (booking: Booking) => {
-    const updated = await api.markArrived(booking.id)
+    const updated = await guard.run('تسجيل الوصول', () => api.markArrived(booking.id))
+    if (!updated) return
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
@@ -150,7 +155,8 @@ export default function MyTasks() {
   // ما عنده أدوات شخصية مسجلة أصلاً (نتخطى المودال حتى لا يعلق بواجهة فاضية)،
   // أو بعد ما يضغط "تم" بمودال شيك الأدوات.
   const doStart = async (bookingId: string, missingToolIds?: string[]) => {
-    const updated = await api.startBooking(bookingId, missingToolIds)
+    const updated = await guard.run('بدء العمل', () => api.startBooking(bookingId, missingToolIds))
+    if (!updated) return
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
@@ -205,7 +211,8 @@ export default function MyTasks() {
   }
 
   const handleMaterialsReady = async (booking: Booking) => {
-    const updated = await api.setMaterialsReady(booking.id)
+    const updated = await guard.run('تأشير جاهزية المواد', () => api.setMaterialsReady(booking.id))
+    if (!updated) return
     setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
   }
 
@@ -223,11 +230,14 @@ export default function MyTasks() {
   const handleComplete = async (booking: Booking) => {
     const amountCollected = amounts[booking.id] ? Number(amounts[booking.id]) : undefined
     const advancePaid = advances[booking.id] ? Number(advances[booking.id]) : undefined
-    await api.completeBooking(booking.id, {
+    // ⚠️ ما نشيل المهمة من القائمة إلا بعد نجاح الحفظ: شيلها عند
+    // الفشل يخلي الفني يظن إنه سلّم الشغل والمبلغ، والحجز يبقى مفتوح
+    // بالنظام وماكو منو يدري.
+    if (!(await guard.run('إنهاء الحجز', () => api.completeBooking(booking.id, {
       completionNotes: notes[booking.id] || undefined,
       amountCollected,
       advancePaid,
-    })
+    })))) return
     setBookings((prev) => prev.filter((b) => b.id !== booking.id))
     setPaperwork({ booking, stopped: false })
   }
@@ -250,6 +260,8 @@ export default function MyTasks() {
   }
 
   return (
+    <>
+      <SaveError message={guard.error} onClose={guard.clear} />
     <div>
       <h2 className="text-2xl font-bold text-brand-900">مهامي</h2>
       <p className="mt-1 text-slate-500">
@@ -716,5 +728,6 @@ export default function MyTasks() {
 
       {directionsFor && <DirectionsModal booking={directionsFor} onClose={() => setDirectionsFor(null)} />}
     </div>
+    </>
   )
 }
