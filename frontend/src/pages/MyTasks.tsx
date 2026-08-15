@@ -226,6 +226,12 @@ export default function MyTasks() {
   const [partialFor, setPartialFor] = useState<Booking | null>(null)
   const [stopReason, setStopReason] = useState('')
   const [stopping, setStopping] = useState(false)
+  // ⚠️ الوقت ينثبت بفتح الشاشة مو بكل رندر — وفوق هنا لأن الخطّافات
+  // لازم تنستدعى قبل أي return مبكر.
+  const [{ todayKey, monthAgo }] = useState(() => ({
+    todayKey: new Date().toDateString(),
+    monthAgo: Date.now() - 30 * 24 * 60 * 60 * 1000,
+  }))
 
   const handleComplete = async (booking: Booking) => {
     const amountCollected = amounts[booking.id] ? Number(amounts[booking.id]) : undefined
@@ -262,16 +268,47 @@ export default function MyTasks() {
   return (
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">مهامي</h2>
-      <p className="mt-1 text-slate-500">
-        المهام المكلف بها حالياً، ومهاراتك المعتمدة بالنظام.
-      </p>
+    <div dir="rtl">
+      {/* ═══ العنوان ═══ */}
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg sm:h-11 sm:w-11 sm:text-xl">☑️</span>
+        <div className="min-w-0">
+          <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">مهامي</h2>
+          <p className="text-[11px] text-slate-500 sm:text-xs">
+            المهام المكلّف بيها حالياً وإجراءات التنفيذ المعتمدة
+          </p>
+        </div>
+      </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
 
+      {/* ═══ الأرقام — ٢×٢ بالموبايل ═══
+          ⚠️ هاي شاشة **الميدان**: الفني يفتحها من تلفونه وهو بالسيارة
+          أو عند الزبون. أربع بطاقات بصف واحد تنضغط وتصير أرقام ما
+          تنقرا على شاشة ٦ إنچ. */}
       {!loading && (
-        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4 sm:gap-3">
+          <TaskStat
+            icon="📅" label="مهام اليوم" tone="sky" unit="مهام"
+            value={myTasks.filter((b) => b.scheduledAt && new Date(b.scheduledAt).toDateString() === todayKey).length}
+          />
+          <TaskStat
+            icon="⚙️" label="قيد التنفيذ" tone="violet" unit="مهمة"
+            value={myTasks.filter((b) => b.status === 'IN_PROGRESS').length}
+          />
+          <TaskStat
+            icon="⏳" label="بانتظار البدء" tone="amber" unit="مهام"
+            value={myTasks.filter((b) => b.status !== 'IN_PROGRESS').length}
+          />
+          <TaskStat
+            icon="✅" label="مكتملة هذا الشهر" tone="emerald" unit="مهمة"
+            value={myDone.filter((b) => b.completedAt && new Date(b.completedAt).getTime() >= monthAgo).length}
+          />
+        </div>
+      )}
+
+      {!loading && (
+        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3 sm:mt-6 sm:gap-6">
           <div className="lg:col-span-2">
             {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
                 لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
@@ -432,33 +469,33 @@ export default function MyTasks() {
                             placeholder="المبلغ المستلم"
                             value={amounts[b.id] || ''}
                             onChange={(e) => setAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                            className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 sm:py-2"
                           />
                           <input
                             type="number"
                             placeholder="دفعة مقدمة (إن وجدت)"
                             value={advances[b.id] || ''}
                             onChange={(e) => setAdvances((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                            className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 sm:py-2"
                           />
                           <input
                             placeholder="ملاحظات الإنجاز"
                             value={notes[b.id] || ''}
                             onChange={(e) => setNotes((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                            className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                            className="rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500 sm:py-2"
                           />
                           <button
                             onClick={() => handleComplete(b)}
-                            className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg"
+                            className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 text-sm font-bold text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg sm:py-2"
                           >
-                            تم الإنجاز
+                            ✅ تم الإنجاز
                           </button>
                           {/* الشغل الي ياخذ أكثر من يوم: بدل ما يأشّر
                               «تم الإنجاز» على شغل ناقص أو «توقف العمل»
                               وكأن الشغل فشل. */}
                           <button
                             onClick={() => setPartialFor(b)}
-                            className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-800 transition-all hover:bg-amber-100"
+                            className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-800 transition-all hover:bg-amber-100 sm:py-2"
                           >
                             🔄 إنجاز جزئي (نكمل باچر)
                           </button>
@@ -729,5 +766,32 @@ export default function MyTasks() {
       {directionsFor && <DirectionsModal booking={directionsFor} onClose={() => setDirectionsFor(null)} />}
     </div>
     </>
+  )
+}
+
+/* ───── بطاقة رقم ميدانية ───── */
+
+function TaskStat({ icon, label, value, tone, unit }: {
+  icon: string; label: string; value: number; unit: string
+  tone: 'sky' | 'violet' | 'amber' | 'emerald'
+}) {
+  const tones: Record<string, { t: string; b: string }> = {
+    sky:     { t: 'text-sky-700',     b: 'bg-sky-50' },
+    violet:  { t: 'text-violet-700',  b: 'bg-violet-50' },
+    amber:   { t: 'text-amber-700',   b: 'bg-amber-50' },
+    emerald: { t: 'text-emerald-700', b: 'bg-emerald-50' },
+  }
+  // الصفر ما ينلوّن: «٠ قيد التنفيذ» مو مشكلة — تلوينه يخلي الفني
+  // يحس إن أكو شي ناقص عليه وهو أنجز كلشي.
+  const c = value > 0 ? tones[tone] : { t: 'text-slate-500', b: 'bg-slate-100' }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm sm:p-4">
+      <div className="flex items-start justify-between gap-1.5">
+        <p className="text-[10px] font-medium leading-tight text-slate-500 sm:text-[11px]">{label}</p>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs sm:h-8 sm:w-8 sm:text-sm ${c.b}`}>{icon}</span>
+      </div>
+      <p className={`mt-1 text-xl font-black sm:text-2xl ${c.t}`}>{value}</p>
+      <p className="text-[9px] text-slate-400 sm:text-[10px]">{unit}</p>
+    </div>
   )
 }
