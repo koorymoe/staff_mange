@@ -66,6 +66,8 @@ export interface NavItem {
   fieldStaffOnly?: boolean
   children?: NavItem[]
   divider?: boolean
+  /** عنوان قسم بلا خطوط جانبية — «التنقل الرئيسي» بأعلى القائمة */
+  plain?: boolean
 }
 
 const I = ({ d }: { d: string }) => (
@@ -81,6 +83,9 @@ const TECHNICIAN_NAV = [
 ]
 
 export const navItems: NavItem[] = [
+  // عنوان القسم — يفصل التنقل عن رأس القائمة (الشعار وبطاقة الموظف)،
+  // فالعين تعرف وين تبدي بدل ما تلگه كتلة أزرار ملزوقة بالبطاقة.
+  { to: '/nav-main-label', label: 'التنقل الرئيسي', icon: <></>, divider: true, plain: true },
   { to: '/', label: 'الرئيسية', end: true, icon: <I d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10" /> },
   { to: '/attendance', label: 'جدول دوامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // ⚠️ مهامي الإضافية بلا قيد دور ولا صلاحية — هاي **مهام الموظف
@@ -923,6 +928,15 @@ export default function Layout() {
   const renderNavItem = (item: PrunedItem, depth: number = 0): React.ReactNode => {
 
     if (item.divider) {
+      // عنوان قسم بسيط (بلا خطوط) مقابل الفاصل الي يفصل مجموعتين
+      if (item.plain) {
+        if (collapsed) return <div key={item.label} className="my-2 h-px bg-white/10" />
+        return (
+          <p key={item.label} className="mb-1.5 mt-3 px-3 text-[10px] font-bold tracking-wide text-white/35">
+            {item.label}
+          </p>
+        )
+      }
       return (
         <div key={item.label} className="my-2 flex items-center gap-2 px-1">
           <span className="h-px flex-1 bg-white/20" />
@@ -942,23 +956,28 @@ export default function Layout() {
           <div key={item.label}>
             <button
               onClick={() => toggle(item.label)}
-              className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
+              className={`group relative flex w-full items-center gap-2 rounded-xl px-2.5 py-2.5 text-sm font-bold transition-all duration-200 ${
                 active
-                  ? 'bg-white/[0.12] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]'
-                  : 'text-blue-200/70 hover:bg-white/[0.06] hover:text-white'
+                  ? 'bg-white/[0.10] text-white'
+                  : 'text-blue-100/70 hover:bg-white/[0.06] hover:text-white'
               }`}
             >
+              {active && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
               {!collapsed && (
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                  className={`transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ flexShrink: 0 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  className={`ml-0.5 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ flexShrink: 0 }}>
                   <polyline points="6 9 12 15 18 9"/>
                 </svg>
               )}
               {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
-              <span style={{ flexShrink: 0 }} className="opacity-80 group-hover:opacity-100 transition-opacity">{item.icon}</span>
+              {/* الأيقونة بمربّع — نفس التصميم: صندوق صغير بحافة دائرية
+                  يميّز العنصر النشط ويخلي الأيقونات على خط واحد. */}
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                active ? 'bg-white/15 text-white' : 'bg-white/[0.05] text-blue-100/70 group-hover:bg-white/10'
+              }`}>{item.icon}</span>
             </button>
             {open && !collapsed && (
-              <div className="mt-1 mr-4 flex flex-col gap-0.5 border-r-2 border-white/[0.08] pr-2 animate-in">
+              <div className="mt-1 flex flex-col gap-0.5 rounded-xl bg-black/20 p-1.5 animate-in">
                 {kids.map(child => renderNavItem(child, 1))}
               </div>
             )}
@@ -995,17 +1014,20 @@ export default function Layout() {
       return (
         <NavLink key={item.to} to={item.to} end={item.end}
           className={({ isActive }) =>
-            `group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${
+            `group relative flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-sm font-bold transition-all duration-200 ${
               isActive
-                ? 'glossy-btn bg-gradient-to-l from-[#2c5aad]/90 to-[#1e3f7a] text-white shadow-lg shadow-blue-900/30'
-                : 'text-blue-200/70 hover:bg-white/[0.06] hover:text-white'
+                ? 'bg-white/[0.10] text-white'
+                : 'text-blue-100/70 hover:bg-white/[0.06] hover:text-white'
             }`
           }>
           {({ isActive }) => (
             <>
-              {isActive && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-6 w-1 rounded-l-full bg-white/80" />}
+              {/* شريط أزرق على الحافة اليسرى للعنصر النشط */}
+              {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
               {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
-              <span style={{ flexShrink: 0 }} className="opacity-80 group-hover:opacity-100 transition-opacity">{item.icon}</span>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                isActive ? 'bg-white/15 text-white' : 'bg-white/[0.05] text-blue-100/70 group-hover:bg-white/10'
+              }`}>{item.icon}</span>
             </>
           )}
         </NavLink>
@@ -1032,19 +1054,25 @@ export default function Layout() {
       )
     }
 
+    // ── بند داخل مجموعة ──
+    // نقطة زرقاء صغيرة بدل الخط الجانبي: تربط البند بمجموعته بلمحة
+    // وتخلي العنصر النشط يبيّن بلا ما ياخذ لون كامل يزاحم عنوان
+    // المجموعة فوقه.
     return (
       <NavLink key={item.to} to={item.to} end={item.end}
         className={({ isActive }) =>
-          `group relative rounded-lg px-4 py-1.5 text-right text-[12.5px] font-medium transition-all duration-200 ${
+          `group flex items-center gap-2 rounded-lg px-3 py-2 text-right text-[12.5px] transition-all duration-200 ${
             isActive
-              ? 'bg-white/[0.1] text-white font-semibold'
-              : 'text-gray-500 hover:bg-white/[0.04] hover:text-gray-300'
+              ? 'bg-white/[0.10] font-bold text-white'
+              : 'font-medium text-blue-100/50 hover:bg-white/[0.05] hover:text-blue-100/80'
           }`
         }>
         {({ isActive }) => (
           <>
-            {isActive && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-0.5 rounded-l-full bg-[#2c5aad]" />}
-            {item.label}
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${
+              isActive ? 'bg-[#4d8dff]' : 'bg-white/20 group-hover:bg-white/40'
+            }`} />
+            <span className="flex-1 text-right">{item.label}</span>
           </>
         )}
       </NavLink>
