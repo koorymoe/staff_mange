@@ -85,6 +85,9 @@ export default function Dashboard() {
   const [customerCount, setCustomerCount] = useState(0)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [myTasks, setMyTasks] = useState<Booking[]>([])
+  const [myDoneThisWeek, setMyDoneThisWeek] = useState(0)
+  // تبويبات مهامي — الليدر يفلتر شغله بدل ما يدور بالقائمة كلها
+  const [taskTab, setTaskTab] = useState<'all' | 'waiting' | 'running'>('all')
   const [lastCheck, setLastCheck] = useState<InventoryCheck | null>(null)
   // الفني/التقني بالميدان (مو ليدر) — واجهته الرئيسية شغله هو بس
   const fieldOnly = !!employee
@@ -214,6 +217,15 @@ export default function Dashboard() {
         b.assignments.some(a => a.employee.id === employee.id)
       )
       setMyTasks(taskList)
+      // ═══ منجزاتي هذا الأسبوع ═══
+      // الرقم الي يخلي الليدر يشوف حصيلة شغله، مو بس الي باقي عليه.
+      // شاشة تعرض المتبقّي بس تحس مثل قائمة ديون ما تخلص.
+      const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+      setMyDoneThisWeek((allBookings as Booking[]).filter(b =>
+        b.status === 'COMPLETED' &&
+        b.completedAt && new Date(b.completedAt).getTime() >= weekAgo &&
+        b.assignments.some(a => a.employee.id === employee.id)
+      ).length)
     }).finally(() => setLoading(false))
 
     // آخر جرد للفني — حتى نعرف هل حان وقت جرده الأسبوعي
@@ -315,6 +327,35 @@ export default function Dashboard() {
   const pendingMaintenance = gpsStats?.devicesByStatus?.find((d) => d.status === 'MAINTENANCE')?.count || 0
 
   const quickCards = [
+    // ═══ إجراءات الميدان ═══
+    // الليدر يحتاج هذني كل يوم، وكانت مدفونة بالقائمة الجانبية —
+    // ثلاث ضغطات لكل وحدة وهو بالسيارة بيده تلفون.
+    {
+      title: 'حساب تكلفة التنصيب',
+      desc: 'احسب كلفة شغلة قبل ما تبدأ',
+      gradient: 'from-sky-500 via-sky-600 to-sky-700',
+      iconPath: 'M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z',
+      path: '/leader-invoices/new?mode=estimate',
+      visible: (employee.isLeader || employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL')
+        && permissions.includes('execution_cost'),
+    },
+    {
+      title: 'طلب معدات',
+      desc: 'اطلب أداة أو مادة ناقصة',
+      gradient: 'from-amber-500 via-amber-600 to-amber-700',
+      iconPath: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+      path: '/procurement',
+      visible: (employee.isLeader || employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL')
+        && permissions.includes('procurement'),
+    },
+    {
+      title: 'جردي',
+      desc: 'راجع عدتك وسجّل الناقص',
+      gradient: 'from-violet-500 via-violet-600 to-violet-700',
+      iconPath: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4',
+      path: '/my-inventory',
+      visible: employee.isLeader || employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL',
+    },
     {
       title: 'حجز جديد',
       desc: 'إنشاء حجز خدمة جديد للعميل',
@@ -1090,9 +1131,38 @@ export default function Dashboard() {
       )}
 
       {/* ═══ My Tasks Panel (Technician/Leader) ═══ */}
+      {/* ═══ لوحة الميدان: أرقام يومي + إجراءات سريعة ═══
+          الفني والليدر كانوا يشوفون قائمة مهام وبس — بلا أي رقم يلخّص
+          يومهم. «شكد عندي؟ شكد باقي؟ شكد خلّصت؟» أسئلة تحتاج عدّ يدوي
+          بالقائمة كل صباح. */}
+      {(employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL' || employee.isLeader) && (
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <FieldStat
+            icon="📋" label="مهام اليوم" tone="sky"
+            value={myTasks.filter(b => b.scheduledAt && new Date(b.scheduledAt).toDateString() === new Date().toDateString()).length}
+            hint={`${myTasks.length} إجمالي المهام`}
+          />
+          <FieldStat
+            icon="🕐" label="بانتظار الاستلام" tone="amber"
+            value={myTasks.filter(b => b.status !== 'IN_PROGRESS').length}
+            hint="حجز بانتظار العميل"
+          />
+          <FieldStat
+            icon="⚙️" label="قيد التنفيذ" tone="violet"
+            value={myTasks.filter(b => b.status === 'IN_PROGRESS').length}
+            hint="شغل جاري"
+          />
+          <FieldStat
+            icon="✅" label="المكتملة هذا الأسبوع" tone="emerald"
+            value={myDoneThisWeek}
+            hint="مهمة مكتملة"
+          />
+        </div>
+      )}
+
       {(employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL' || employee.isLeader) && (
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <button onClick={() => navigate('/my-tasks')} className="text-xs font-medium text-brand-500 hover:underline">عرض الكل ←</button>
             <h3 className="flex items-center gap-2 text-base font-extrabold text-brand-900">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" /></svg>
@@ -1100,6 +1170,27 @@ export default function Dashboard() {
               {myTasks.length > 0 && <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-xs font-black text-white">{myTasks.length}</span>}
             </h3>
           </div>
+
+          {/* تبويبات: الليدر عنده مهام كثيرة، والفلترة أسرع من التدوير */}
+          {myTasks.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {([
+                { k: 'all', label: `الكل (${myTasks.length})` },
+                { k: 'waiting', label: `بانتظار الاستلام (${myTasks.filter(b => b.status !== 'IN_PROGRESS').length})` },
+                { k: 'running', label: `قيد التنفيذ (${myTasks.filter(b => b.status === 'IN_PROGRESS').length})` },
+              ] as const).map(t => (
+                <button
+                  key={t.k}
+                  onClick={() => setTaskTab(t.k)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                    taskTab === t.k ? 'bg-[#2c5aad] text-white shadow-md' : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          )}
 
           {myTasks.length === 0 ? (
             <div className="rounded-2xl bg-white p-8 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -1110,7 +1201,10 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-3">
-              {myTasks.map(b => {
+              {myTasks
+                .filter(b => taskTab === 'all'
+                  || (taskTab === 'running' ? b.status === 'IN_PROGRESS' : b.status !== 'IN_PROGRESS'))
+                .map(b => {
                 const myRole = b.assignments.find(a => a.employee.id === employee?.id)?.role
                 return (
                   <div key={b.id} className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(0,0,0,0.06)]">
@@ -1432,6 +1526,33 @@ function PulseCard({
         </p>
       )}
     </button>
+  )
+}
+
+// ═══ بطاقة رقم ميدانية ═══
+//
+// ⚠️ الصفر ما ينلوّن: «٠ قيد التنفيذ» مو مشكلة، وتلوينه يخلي الفني
+// يحس إن أكو شي ناقص عليه وهو أنجز كلشي.
+function FieldStat({ icon, label, value, tone, hint }: {
+  icon: string; label: string; value: number
+  tone: 'sky' | 'amber' | 'violet' | 'emerald'; hint?: string
+}) {
+  const tones: Record<string, { t: string; b: string }> = {
+    sky:     { t: 'text-sky-700',     b: 'bg-sky-50' },
+    amber:   { t: 'text-amber-700',   b: 'bg-amber-50' },
+    violet:  { t: 'text-violet-700',  b: 'bg-violet-50' },
+    emerald: { t: 'text-emerald-700', b: 'bg-emerald-50' },
+  }
+  const c = value > 0 ? tones[tone] : { t: 'text-slate-500', b: 'bg-slate-100' }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-medium text-slate-500">{label}</p>
+        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm ${c.b}`}>{icon}</span>
+      </div>
+      <p className={`mt-1 text-2xl font-black ${c.t}`}>{value}</p>
+      {hint && <p className="mt-0.5 text-[10px] text-slate-400">{hint}</p>}
+    </div>
   )
 }
 
