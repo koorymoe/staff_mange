@@ -725,9 +725,18 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         >
           🌐 شبكات ↗
         </button>
+        {/* ═══ كاميرات المراقبة ═══
+            نفس سبب الشبكات: شيت مستقل بمعادلة غير معادلة تكاليف
+            المشروع. لو انحطت كمنظومة عادية هنا راح تطلع أرقام غلط. */}
+        <button
+          onClick={() => navigate('/camera-cost')}
+          className="rounded-xl border-2 border-dashed border-brand-400 bg-white px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-50"
+        >
+          📷 كاميرات المراقبة ↗
+        </button>
       </div>
       <p className="mt-2 text-[11px] text-slate-400">
-        الشبكات سعرها بالشرائح — تنحسب بحاسبتها الخاصة وتطلع منها الفاتورة أو استفسار الزبون.
+        الشبكات وكاميرات المراقبة سعرهن بالشرائح — تنحسب كل وحدة بحاسبتها الخاصة وتطلع منها الفاتورة أو استفسار الزبون.
       </p>
       </div>
 
