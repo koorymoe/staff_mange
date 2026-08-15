@@ -90,18 +90,12 @@ export const navItems: NavItem[] = [
   //
   // أما **توجيه** المهام لغيره فيحتاج صلاحية extra_tasks_assign.
   { to: '/my-extra-tasks', label: 'مهامي الإضافية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
-  // حساب تكلفة التنصيب للتنفيذ — بصلاحية execution_cost، مو مفتوح
-  // للكل. كان بلا أي قيد فالمصمم والمبيعات يشوفون محرك التسعير.
-  {
-    to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب',
-    permission: 'execution_cost',
-    // المحاسب نفس الشاشة عنده داخل «العمل» — ما تتكرر فوگ عنده.
-    hideForRoles: ['FINANCE'],
-    // للميدان نفس الشاشة موجودة داخل «العمل» باسمها المفهوم عندهم
-    // («حساب كلفة (استفسار زبون)») — ما تتكرر فوق بعنوان ثاني.
-    hideFromFieldStaff: true,
-    icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M8 6h8M8 10h3M13 10h3M8 14h3M13 14h3M8 18h8"/></svg>,
-  },
+  // ⚠️ «حساب الكلفة» انشال من القائمة العلوية: كان يطلع مرتين —
+  // مرة فوگ ومرة داخل «العمل» بعنوانين مختلفين لنفس الشاشة، فالليدر
+  // يحتار أي وحدة يفتح.
+  //
+  // صار مدخل واحد داخل «العمل»، والشاشة نفسها تسأل: استفسار لو
+  // مربوط بحجز. الفرق قرار **جوّا الشاشة** مو رابطين بالقائمة.
   // الإجازات: مع نظام الحضور — أي موظف يقدّم طلبه من هنا، والمخوّل يشوف صندوق الموافقات
   // تصنيفي: صفحة شخصية عامة لكل الأدوار — لازم تبقى بمستوى مستقل بره "الإدارة"،
   // لأنه الفني/الليدر ما عندهم وصول لأي شي ثاني بالإدارة، فتضل قائمة فاضية
@@ -247,7 +241,7 @@ export const navItems: NavItem[] = [
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
-      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, permission: 'execution_cost' },
+      { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
@@ -297,8 +291,8 @@ export const navItems: NavItem[] = [
       //    الي يسأل عن السعر قبل ما يحجز.
       //  • «حساب كلفة زبون (حجز)» = نفس الحساب بس مربوط بالحجز الي
       //    راح يطلع له الليدر، ويترحّل فاتورة للمحاسب.
-      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, permission: 'execution_cost' },
-      { to: '/leader-invoices/new', label: 'حساب كلفة زبون (حجز)', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+      // مدخل واحد للاثنين — الشاشة نفسها تسأل: استفسار لو مربوط بحجز
+      { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, permission: 'execution_cost' },
       // استمارة الكاميرات — شيت مستقل بالاكسل بمعادلة مختلفة عن تكاليف المشروع
       { to: '/camera-cost', label: 'حساب كلفة كاميرات المراقبة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'execution_cost' },
       // استمارة الشبكات — أسعارها بقاعدة البيانات مو بالكود، فتنعدّل بلا نشر
@@ -450,7 +444,7 @@ export const navItems: NavItem[] = [
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
-      { to: '/leader-invoices/new?mode=estimate', label: '🧮 حساب تكلفة التنصيب', icon: <></>, permission: 'execution_cost' },
+      { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
       { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
       // الشبكات والكاميرات: حاسبات مستقلة بمعادلات خاصة. جانن بمجموعة
       // الميدان بس، فالمحاسب ما يوصلهن — وهو الي يطلع فاتورة الشبكات.

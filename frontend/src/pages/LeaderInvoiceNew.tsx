@@ -44,9 +44,25 @@ export default function LeaderInvoiceNew() {
   // المشاريع الموجّهة لهذا الموظف — هذي هي المصدر الأساسي للفاتورة: الليدر
   // يسوي فاتورة للشغل الموجّه له، مو من قائمة عامة بكل الحجوزات.
   const [myProjects, setMyProjects] = useState<DirectedProject[]>([])
-  // وضع "حساب كلفة" السريع: بدون ربط بحجز ولا زبون ولا حفظ — بس رقم تقريبي
-  // للليدر لما زبون يستفسر، بنفس محرك الحساب بالضبط.
-  const estimateOnly = params.get('mode') === 'estimate'
+  // ═══ استفسار ولا مربوط بحجز؟ ═══
+  //
+  // نفس محرك الحساب بالضبط، بس فرقين:
+  //   استفسار  → رقم تقريبي بس، ما ينحفظ ولا ينربط بشي. للزبون الي
+  //              يسأل عن السعر قبل ما يحجز.
+  //   بحجز     → نفس الحساب مربوط بحجز، وينترحّل فاتورة للمحاسب.
+  //
+  // ⚠️ كان الفرق **رابطين مختلفين بالقائمة** بعنوانين مختلفين لنفس
+  // الشاشة — فالليدر يحتار أي وحدة يفتح، وأحياناً يفتح الغلط ويكتشف
+  // بعد ما يعبّي كلشي.
+  //
+  // صار قرار جوّا الشاشة: يفتح مدخل واحد ويختار من فوگ.
+  //
+  // الافتراضي «استفسار» لأنه الأكثر استعمالاً وما يحفظ شي — والخيار
+  // الي ما يحفظ أسلم كافتراضي من الي يحفظ.
+  const [mode, setMode] = useState<'estimate' | 'booking'>(
+    params.get('mode') === 'booking' ? 'booking' : 'estimate',
+  )
+  const estimateOnly = mode === 'estimate'
 
   const [catalog, setCatalog] = useState<SystemPriceCatalog[]>([])
   const [systems, setSystems] = useState<string[]>([])
@@ -334,12 +350,53 @@ export default function LeaderInvoiceNew() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl">
-      <h2 className="text-2xl font-bold text-brand-900">{estimateOnly ? 'حساب كلفة (استفسار زبون)' : 'فاتورة ليدر جديدة'}</h2>
-      <p className="mt-1 text-slate-500">
+    <div className="mx-auto max-w-4xl" dir="rtl">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-lg sm:h-11 sm:w-11 sm:text-xl">🧮</span>
+        <div className="min-w-0">
+          <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">حساب الكلفة</h2>
+          <p className="text-[11px] text-slate-500 sm:text-xs">نفس محرك الحساب — تختار إذا استفسار لو مربوط بحجز</p>
+        </div>
+      </div>
+
+      {/* ═══ استفسار ولا حجز؟ ═══
+          الاختيار من فوگ قبل أي شي، لأنه يغيّر شنو ينحفظ. لو انحط
+          بالآخر، الليدر يعبّي كلشي وبعدين يكتشف إنه بالوضع الغلط. */}
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+        {([
+          { k: 'estimate', icon: '💬', title: 'استفسار زبون', desc: 'رقم تقريبي بس — ما ينحفظ ولا ينربط بحجز' },
+          { k: 'booking',  icon: '🔖', title: 'مربوط بحجز',   desc: 'نفس الحساب، وينترحّل فاتورة للمحاسب' },
+        ] as const).map((o) => (
+          <button
+            key={o.k}
+            onClick={() => setMode(o.k)}
+            className={`rounded-2xl border-2 p-3.5 text-right transition ${
+              mode === o.k
+                ? 'border-[#2c5aad] bg-sky-50 shadow-md'
+                : 'border-slate-200 bg-white hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className={`text-sm font-extrabold ${mode === o.k ? 'text-[#0f2040]' : 'text-slate-700'}`}>
+                  {o.icon} {o.title}
+                </p>
+                <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">{o.desc}</p>
+              </div>
+              <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
+                mode === o.k ? 'border-[#2c5aad] bg-[#2c5aad]' : 'border-slate-300'
+              }`}>
+                {mode === o.k && <span className="text-[10px] font-black text-white">✓</span>}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-500">
         {estimateOnly
-          ? 'لما زبون يستفسر عن سعر تقريبي — اختر المنظومات وبنود التنفيذ، والحساب نفس محرك الفاتورة بالضبط، بس بدون حفظ ولا ربط بحجز.'
-          : 'تحل محل شيت "تكاليف المشروع" — اختر المنظومات، بنود التنفيذ، والمواد، والحساب النهائي يتم بالسيرفر.'}
+          ? 'ⓘ استفسار: اختر المنظومات وبنود التنفيذ وتطلعلك الكلفة — نفس محرك الفاتورة بالضبط، بس بلا حفظ ولا ربط.'
+          : 'ⓘ مربوط بحجز: اختر الحجز أول، وبيانات الزبون تنملي لحالها، والفاتورة تترحّل للمحاسب.'}
       </p>
 
       {/* اختيار الحجز المكتمل — الليدر يلكه أسماء حجوزاته المكتملة ويسويلها

@@ -340,7 +340,7 @@ export default function Dashboard() {
       desc: 'احسب كلفة شغلة قبل ما تبدأ',
       gradient: 'from-sky-500 via-sky-600 to-sky-700',
       iconPath: 'M9 7h6m-6 4h6m-6 4h4M5 3h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2z',
-      path: '/leader-invoices/new?mode=estimate',
+      path: '/leader-invoices/new',
       visible: (employee.isLeader || employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL')
         && permissions.includes('execution_cost'),
     },
@@ -1138,6 +1138,27 @@ export default function Dashboard() {
       )}
 
       {/* ═══ My Tasks Panel (Technician/Leader) ═══ */}
+      {/* ═══ Quick Access ═══ */}
+      {quickCards.length > 0 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {quickCards.map((card) => (
+            <button key={card.path} onClick={() => navigate(card.path)}
+              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-bl ${card.gradient} p-5 text-right text-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
+              <div className="absolute inset-0 bg-gradient-to-l from-white/0 via-white/10 to-white/0 translate-x-full transition-transform duration-700 group-hover:-translate-x-full" />
+              <div className="relative flex items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={card.iconPath} /></svg>
+                </div>
+                <div className="flex-1">
+                  <p className="text-base font-bold">{card.title}</p>
+                  <p className="mt-0.5 text-xs text-white/70">{card.desc}</p>
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ═══ لوحة الميدان: أرقام يومي + إجراءات سريعة ═══
           الفني والليدر كانوا يشوفون قائمة مهام وبس — بلا أي رقم يلخّص
           يومهم. «شكد عندي؟ شكد باقي؟ شكد خلّصت؟» أسئلة تحتاج عدّ يدوي
@@ -1336,27 +1357,6 @@ export default function Dashboard() {
             hint={pulse.overdueMissions > 0 ? `+${pulse.overdueMissions} مهمة متأخرة` : undefined}
             onClick={() => navigate('/complaints')}
           />
-        </div>
-      )}
-
-      {/* ═══ Quick Access ═══ */}
-      {quickCards.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {quickCards.map((card) => (
-            <button key={card.path} onClick={() => navigate(card.path)}
-              className={`group relative overflow-hidden rounded-2xl bg-gradient-to-bl ${card.gradient} p-5 text-right text-white shadow-lg transition-all duration-300 hover:shadow-2xl hover:-translate-y-1`}>
-              <div className="absolute inset-0 bg-gradient-to-l from-white/0 via-white/10 to-white/0 translate-x-full transition-transform duration-700 group-hover:-translate-x-full" />
-              <div className="relative flex items-center gap-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={card.iconPath} /></svg>
-                </div>
-                <div className="flex-1">
-                  <p className="text-base font-bold">{card.title}</p>
-                  <p className="mt-0.5 text-xs text-white/70">{card.desc}</p>
-                </div>
-              </div>
-            </button>
-          ))}
         </div>
       )}
 
