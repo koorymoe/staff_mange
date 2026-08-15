@@ -422,12 +422,29 @@ export interface BookingAwaitingReview {
   crew: CrewReviewState[]
 }
 
+/** ═══ أنواع التقييم ═══
+ *
+ * «يحتاج تدريب» غير «مخالفة سلوك»: الأول نقص مهارة علاجه دورة،
+ * والثاني إجراء إداري. خلطهن يظلم الاثنين.
+ *
+ * ⚠️ الليدر **يبلّغ** بالمخالفة ما يغرّم — الغرامة قرار الإدارة. */
+export type ReviewRating = 'POSITIVE' | 'NEEDS_TRAINING' | 'MISCONDUCT' | 'COMMITMENT'
+
+export const REVIEW_RATINGS: {
+  value: ReviewRating; label: string; icon: string; tone: 'emerald' | 'amber' | 'red' | 'orange'; hint: string
+}[] = [
+  { value: 'POSITIVE',       label: 'إيجابي',       icon: '👍', tone: 'emerald', hint: 'شغل زين — ينتسجّل بسجله' },
+  { value: 'NEEDS_TRAINING', label: 'يحتاج تدريب',  icon: '🎓', tone: 'amber',   hint: 'نقص مهارة — يتحوّل متدرب تلقائياً' },
+  { value: 'MISCONDUCT',     label: 'مخالفة سلوك',  icon: '⚠️', tone: 'red',     hint: 'أسلوب أو تصرّف — بلاغ للإدارة، وهي تقرر' },
+  { value: 'COMMITMENT',     label: 'خلل بالالتزام', icon: '⏰', tone: 'orange',  hint: 'تأخر أو غياب عن الشغلة — بلاغ للإدارة' },
+]
+
 export interface CrewReviewState {
   employeeId: string
   name: string
   position: string | null
   /** فاضي إذا لسه ما انقيّم بهذا الحجز. */
-  rating: 'POSITIVE' | 'NEGATIVE' | null
+  rating: ReviewRating | null
   reason: string | null
 }
 
@@ -435,7 +452,7 @@ export interface PerformanceReview {
   id: string
   employeeId: string
   evaluatorId: string
-  rating: 'POSITIVE' | 'NEGATIVE'
+  rating: ReviewRating
   reason: string
   createdAt: string
   employee: { id: string; name: string; position: string | null } | null
@@ -3445,7 +3462,7 @@ export const api = {
     request<StaffRequest>(`/staff-requests/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 
   // تقييم الأداء (منفصل عن KPI مال الغرامات) — يحدد استحقاق التدريب فقط
-  createPerformanceReview: (data: { employeeId: string; rating: 'POSITIVE' | 'NEGATIVE'; reason: string; bookingId?: string | null }) =>
+  createPerformanceReview: (data: { employeeId: string; rating: ReviewRating; reason: string; bookingId?: string | null }) =>
     request<PerformanceReview>('/performance-reviews', { method: 'POST', body: JSON.stringify(data) }),
   getPerformanceReviews: () => request<PerformanceReview[]>('/performance-reviews'),
   getRatableEmployees: () => request<{ id: string; name: string }[]>('/performance-reviews/ratable'),

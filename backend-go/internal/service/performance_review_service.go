@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"fmt"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -11,10 +12,18 @@ type PerformanceReviewService struct {
 	repo      *repository.PerformanceReviewRepository
 	employees *repository.EmployeeRepository
 	bookings  *repository.BookingRepository
+	// إشعار الإدارة ببلاغات المخالفة والالتزام. اختياري — بدونه
+	// التقييم ينسجّل عادي بس ماكو منو ينتبه للبلاغ.
+	notifications *repository.NotificationRepository
 }
 
-func NewPerformanceReviewService(repo *repository.PerformanceReviewRepository, employees *repository.EmployeeRepository, bookings *repository.BookingRepository) *PerformanceReviewService {
-	return &PerformanceReviewService{repo: repo, employees: employees, bookings: bookings}
+func NewPerformanceReviewService(
+	repo *repository.PerformanceReviewRepository,
+	employees *repository.EmployeeRepository,
+	bookings *repository.BookingRepository,
+	notifications *repository.NotificationRepository,
+) *PerformanceReviewService {
+	return &PerformanceReviewService{repo: repo, employees: employees, bookings: bookings, notifications: notifications}
 }
 
 // RatableEmployees يرجّع الموظفين الي المستخدم الحالي يقدر يقيّمهم حسب السلسلة
@@ -71,7 +80,12 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 	if req.EmployeeID == "" || req.Reason == "" {
 		return nil, errors.New("الموظف وسبب التقييم مطلوبين")
 	}
-	if req.Rating != "POSITIVE" && req.Rating != "NEGATIVE" {
+	// NEGATIVE القديمة تنقبل وتنتحوّل — نسخة واجهة قديمة ما تصير
+	// تفشل تقييم كتبه الليدر فعلاً.
+	if req.Rating == "NEGATIVE" {
+		req.Rating = model.ReviewNeedsTraining
+	}
+	if !model.ValidReviewRating(req.Rating) {
 		return nil, errors.New("نوع التقييم غير معروف")
 	}
 
@@ -92,8 +106,34 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 	if err != nil {
 		return nil, err
 	}
-	if req.Rating == "NEGATIVE" {
+	// ═══ كل نوع وأثره ═══
+	//
+	// ⚠️ التدريب بس هو الي ينفّذ تلقائياً. المخالفة وخلل الالتزام
+	// **يبلّغون الإدارة** ولا يغرّمون — الليدر يبلّغ والإدارة تقرر.
+	// إعطاء الليدر سلطة غرامة مباشرة على زملائه يخلي أي خلاف شخصي
+	// يتحوّل خصم من راتب، والنظام يصير سلاح مو أداة.
+	switch req.Rating {
+	case model.ReviewNeedsTraining:
 		_ = s.employees.SetTrainee(req.EmployeeID, true)
+
+	case model.ReviewMisconduct, model.ReviewCommitment:
+		if s.notifications != nil {
+			target, _ := s.employees.FindByID(req.EmployeeID)
+			by, _ := s.employees.FindByID(evaluatorID)
+			name, byName := req.EmployeeID, evaluatorID
+			if target != nil {
+				name = target.Name
+			}
+			if by != nil {
+				byName = by.Name
+			}
+			msg := fmt.Sprintf("⚠️ بلاغ %s: %s — بلّغ عنه %s (السبب: %s). القرار إلك.",
+				model.ReviewRatingLabels[req.Rating], name, byName, req.Reason)
+			// يروح لإداري الكوادر وللمراقب: الاثنين مخوّلين بالإجراء،
+			// وواحد بس يخلي البلاغ ينتظر لو كان بإجازة.
+			_ = s.notifications.CreateForRole("HR_COORDINATOR", "review_flag", msg)
+			_ = s.notifications.CreateForRole("MONITOR", "review_flag", msg)
+		}
 	}
 	return review, nil
 }
@@ -136,7 +176,6 @@ func (s *PerformanceReviewService) ListForEmployee(employeeID string) ([]model.P
 func (s *PerformanceReviewService) List() ([]model.PerformanceReview, error) {
 	return s.repo.List()
 }
-
 
 // BookingsAwaitingReview حجوزات الليدر المنجزة وكادر كل وحدة.
 func (s *PerformanceReviewService) BookingsAwaitingReview(leaderID string) ([]model.BookingAwaitingReview, error) {

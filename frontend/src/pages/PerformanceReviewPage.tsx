@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { api, type BookingAwaitingReview, type CrewReviewState } from '../api'
+import { api, REVIEW_RATINGS, type BookingAwaitingReview, type CrewReviewState, type ReviewRating } from '../api'
 
 // ═══ تقييم الأداء — لكل حجز ═══
 //
@@ -158,13 +158,23 @@ function CrewRow({ bookingId, member, onSaved }: {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  const save = async (rating: 'POSITIVE' | 'NEGATIVE') => {
+  const save = async (rating: ReviewRating) => {
     setBusy(true); setErr(null)
     try {
-      // ⚠️ السبب إجباري بالسيرفر. الملاحظة اختيارية على الليدر، فنعبّي
-      // نص افتراضي واضح بدل ما نوقفه بخانة إجبارية بعد شغل ميداني —
-      // الحجز نفسه هو السياق، والملاحظة تفصيل زايد.
-      const reason = note.trim() || (rating === 'POSITIVE' ? 'أداء جيد بهذا الحجز' : 'يحتاج تدريب — بهذا الحجز')
+      // الإيجابي والتدريب: الملاحظة اختيارية — الحجز نفسه هو السياق،
+      // وإجبار الليدر على كتابة نص بعد شغل ميداني يخليه ما يقيّم.
+      //
+      // ⚠️ أما المخالفة وخلل الالتزام **يشترطون سبب مكتوب**: هذني
+      // بلاغات تروح للإدارة وممكن تنبني عليها غرامة. بلاغ بلا سبب
+      // ما يقدر أحد يتصرّف بيه، ويظلم الموظف الي انبلّغ عنه.
+      const needsReason = rating === 'MISCONDUCT' || rating === 'COMMITMENT'
+      if (needsReason && [...note.trim()].length < 5) {
+        setErr('اكتب شنو صار بالضبط — البلاغ يروح للإدارة ولازم يفهمونه')
+        setBusy(false)
+        return
+      }
+      const label = REVIEW_RATINGS.find((r) => r.value === rating)?.label ?? ''
+      const reason = note.trim() || `${label} — بهذا الحجز`
       await api.createPerformanceReview({ employeeId: member.employeeId, rating, reason, bookingId })
       onSaved()
     } catch (e) {
@@ -185,29 +195,37 @@ function CrewRow({ bookingId, member, onSaved }: {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => save('POSITIVE')}
-            disabled={busy}
-            className={`rounded-lg px-4 py-2 text-xs font-bold transition disabled:opacity-50 ${
-              member.rating === 'POSITIVE'
-                ? 'bg-emerald-600 text-white shadow-md'
-                : 'border border-emerald-300 bg-white text-emerald-700 hover:bg-emerald-50'
-            }`}
-          >
-            👍 إيجابي
-          </button>
-          <button
-            onClick={() => save('NEGATIVE')}
-            disabled={busy}
-            className={`rounded-lg px-4 py-2 text-xs font-bold transition disabled:opacity-50 ${
-              member.rating === 'NEGATIVE'
-                ? 'bg-red-600 text-white shadow-md'
-                : 'border border-red-300 bg-white text-red-700 hover:bg-red-50'
-            }`}
-          >
-            🎓 يحتاج تدريب
-          </button>
+        {/* ═══ أربعة أنواع مو اثنين ═══
+            «يحتاج تدريب» غير «مخالفة سلوك»: الأول نقص مهارة علاجه
+            دورة، والثاني إجراء إداري. خلطهن يخلي صاحب الأسلوب السيّئ
+            ينزل بدورة فنية ما تعالج شي، وناقص المهارة ينحسب مخالف.
+
+            ⚠️ متجاوب: أربع أزرار بصف واحد على شاشة موبايل تصير
+            مضغوطة ما تنضغط — فتنكسر ٢×٢. */}
+        <div className="grid w-full grid-cols-2 gap-1.5 sm:flex sm:w-auto sm:flex-wrap">
+          {REVIEW_RATINGS.map((r) => {
+            const active = member.rating === r.value
+            const tones: Record<string, { on: string; off: string }> = {
+              emerald: { on: 'bg-emerald-600 text-white shadow-md', off: 'border-emerald-300 text-emerald-700 hover:bg-emerald-50' },
+              amber:   { on: 'bg-amber-600 text-white shadow-md',   off: 'border-amber-300 text-amber-700 hover:bg-amber-50' },
+              red:     { on: 'bg-red-600 text-white shadow-md',     off: 'border-red-300 text-red-700 hover:bg-red-50' },
+              orange:  { on: 'bg-orange-600 text-white shadow-md',  off: 'border-orange-300 text-orange-700 hover:bg-orange-50' },
+            }
+            const t = tones[r.tone]
+            return (
+              <button
+                key={r.value}
+                onClick={() => save(r.value)}
+                disabled={busy}
+                title={r.hint}
+                className={`rounded-lg px-3 py-2.5 text-[11px] font-bold transition disabled:opacity-50 sm:px-4 sm:py-2 sm:text-xs ${
+                  active ? t.on : `border bg-white ${t.off}`
+                }`}
+              >
+                {r.icon} {r.label}
+              </button>
+            )
+          })}
         </div>
       </div>
 

@@ -338,7 +338,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
 	serviceManagerHandler := handler.NewServiceManagerHandler(serviceManagerRepo)
 	locationPingHandler := handler.NewLocationPingHandler(locationPingRepo)
-	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo, bookingRepo)
+	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo, bookingRepo, notificationRepo)
 	performanceReviewHandler := handler.NewPerformanceReviewHandler(performanceReviewService)
 	deviceMaintenanceHandler := handler.NewDeviceMaintenanceHandler(deviceMaintenanceService)
 	teamInventoryCheckHandler := handler.NewTeamInventoryCheckHandler(teamInventoryCheckService)

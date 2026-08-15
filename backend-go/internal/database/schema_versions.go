@@ -256,6 +256,9 @@ func versionedMigrations() []Migration {
 	// 0243: التقييم يصير لكل حجز — الليدر يقيّم كل واحد طلع وياه
 	// بكل شغلة، بدل تقييم حر بلا سياق.
 	result = append(result, reviewPerBookingMigrations()...)
+	// 0244: أنواع التقييم — «يحتاج تدريب» غير «مخالفة سلوك». الأول
+	// نقص مهارة علاجه تدريب، والثاني إجراء إداري. خلطهن يظلم الاثنين.
+	result = append(result, reviewKindMigrations()...)
 	return result
 }
 
