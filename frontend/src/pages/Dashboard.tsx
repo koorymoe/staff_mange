@@ -362,6 +362,19 @@ export default function Dashboard() {
       visible: employee.isLeader || employee.role === 'TECHNICIAN' || employee.role === 'TECHNICAL',
     },
     {
+      // ═══ الطلبات ═══
+      // «تكون بالواجهة الرئيسية فقط وليس بالقائمة الجانبية، جنب جردي».
+      // ⚠️ بلا شرط ظهور: أي موظف إله حق يوصّل طلبه للإدارة (إجازة،
+      // سلفة، شكوى إدارية) — وشرط الصلاحية هنا يقفل باب رسمي بوجه
+      // موظف ما عنده طريق ثاني يوصل بيه.
+      title: 'الطلبات',
+      desc: 'قدّم طلبك للإدارة وتابع حالته',
+      gradient: 'from-slate-500 via-slate-600 to-slate-700',
+      iconPath: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+      path: '/letters',
+      visible: true,
+    },
+    {
       title: 'حجز جديد',
       desc: 'إنشاء حجز خدمة جديد للعميل',
       gradient: 'from-blue-500 via-blue-600 to-blue-700',
