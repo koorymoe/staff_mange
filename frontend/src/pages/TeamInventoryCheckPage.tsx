@@ -18,7 +18,7 @@ import { api, type Booking, type BookingCrewInventoryState } from '../api'
 // ما يجرد عن أحد — يشوف ويتابع، وأدواته هو يجردها بـ«جرد أدواتي»
 // مثل أي أحد.
 
-export default function TeamInventoryCheckPage() {
+export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolean } = {}) {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [selected, setSelected] = useState('')
   const [crew, setCrew] = useState<BookingCrewInventoryState[]>([])
@@ -59,15 +59,19 @@ export default function TeamInventoryCheckPage() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-3xl space-y-4">
-      <div className="flex items-center gap-3">
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg sm:h-11 sm:w-11 sm:text-xl">👥</span>
-        <div className="min-w-0">
-          <h1 className="text-xl font-black text-[#0f2040] sm:text-2xl">جرد أدوات فريقي</h1>
-          <p className="text-[11px] text-slate-500 sm:text-xs">
-            منو من فريقك جرد عدته قبل ما تطلعون — وشنو الناقص عنده
-          </p>
+      {/* مدمجة جوّا «الجرد»؟ ما نعيد الرأس — الشاشة أصلاً بيها رأس
+          وعنوان التبويب، وتكراره يدفع المحتوى للأسفل بلا فايدة. */}
+      {!embedded && (
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg sm:h-11 sm:w-11 sm:text-xl">👥</span>
+          <div className="min-w-0">
+            <h1 className="text-xl font-black text-[#0f2040] sm:text-2xl">جرد أدوات فريقي</h1>
+            <p className="text-[11px] text-slate-500 sm:text-xs">
+              منو من فريقك جرد عدته قبل ما تطلعون — وشنو الناقص عنده
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{err}</p>}
 

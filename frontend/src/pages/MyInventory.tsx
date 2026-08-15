@@ -5,11 +5,20 @@ import {
   type Booking, type BookingCrewInventoryState,
 } from '../api'
 import { useSession } from '../session'
+import TeamInventoryCheckPage from './TeamInventoryCheckPage'
 
-type TabKey = 'checklist' | 'vehicle' | 'request' | 'my-requests'
+type TabKey = 'checklist' | 'team' | 'vehicle' | 'request' | 'my-requests'
 
+// ═══ «الجرد» مدخل واحد ═══
+//
+// «يصير عدنا بس كلمة جرد — من ندخل عليها نحدد بالواجهة من فوگ إذا
+// جرد عدتي أو جرد فريقي».
+//
+// كانت مجموعة بالقائمة تنفتح على بندين: ضغطتين حتى توصل لشغلة وحدة،
+// والاثنين نفس الموضوع أصلاً — عدة نفس الحجز.
 const tabs: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'checklist', label: 'جرد أدواتي', icon: '📋' },
+  { key: 'checklist', label: 'جرد عدتي', icon: '📋' },
+  { key: 'team', label: 'جرد أدوات فريقي', icon: '👥' },
   { key: 'vehicle', label: 'أدوات السيارة', icon: '🚗' },
   { key: 'request', label: 'طلب أداة', icon: '📦' },
   { key: 'my-requests', label: 'طلباتي', icon: '📝' },
@@ -280,48 +289,25 @@ export default function MyInventory() {
                 </p>
               )}
 
-              {/* ═══ جرد أدوات فريقي ═══
-                  «الليدر يجرد أدواته ويشوف منو من الموظفين الي راح
-                  يطلعون وياه **بهذا الحجز** جرد».
-                  ⚠️ تنعرض للفني بعد — الفني يشوف إن رفيقه ما جرد
-                  فيذكّره قبل ما يطلعون، وهذا أسرع من ما ينتظر الليدر
-                  يلاحظ. وما تنعرض إلا لكادر نفس الحجز (السيرفر يفرضها). */}
-              {forBooking && crew.length > 0 && (
-                <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_2px_10px_rgba(15,32,64,0.05)]">
-                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-sm font-bold text-[#0f2040]">👥 جرد أدوات فريقي بهذا الحجز</p>
-                    <span className="text-[11px] text-slate-500">
-                      {crew.filter((c) => c.checkedAt).length} من {crew.length} جردوا
+              {/* ملخّص سطر واحد بس — التفصيل بتبويب «جرد أدوات فريقي».
+                  عرض القائمة كاملة بالمكانين يعني نفس المعلومة مرتين
+                  بنفس الشاشة، والشاشة تطول بلا فايدة. */}
+              {forBooking && crew.length > 1 && (
+                <button
+                  onClick={() => setActiveTab('team')}
+                  className="mb-4 flex w-full flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-right text-[11px] hover:bg-slate-50"
+                >
+                  <span className="font-bold text-[#0f2040]">👥 فريقك بهذا الحجز</span>
+                  <span className="text-slate-600">
+                    {crew.filter((c) => c.checkedAt).length} من {crew.length} جردوا
+                  </span>
+                  {crew.some((c) => c.checkedAt && !c.complete) && (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 font-bold text-red-700">
+                      اكو نقص عند {crew.filter((c) => c.checkedAt && !c.complete).length}
                     </span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {crew.map((c) => (
-                      <div
-                        key={c.employeeId}
-                        className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
-                          !c.checkedAt ? 'border-amber-200 bg-amber-50'
-                            : c.complete ? 'border-emerald-200 bg-emerald-50'
-                            : 'border-red-200 bg-red-50'
-                        }`}
-                      >
-                        <span className="font-bold text-slate-800">{c.name}</span>
-                        {c.isLeader && <span className="rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">ليدر</span>}
-                        {c.employeeId === employee?.id && <span className="text-[10px] text-slate-400">(أنت)</span>}
-                        <span className="mr-auto font-bold">
-                          {!c.checkedAt ? '⏳ ما جرد بعد'
-                            : c.complete ? '✅ عدته كاملة'
-                            : '⚠️ عنده نقص'}
-                        </span>
-                        {/* النقص ينعرض بالاسم: «عنده نقص» بلا تفصيل
-                            تخلي الليدر يتصل يسأل — ونفس المكالمة الي
-                            بنينا الشاشة حتى نلغيها. */}
-                        {c.missingItems && (
-                          <span className="w-full text-[11px] text-red-700">الناقص: {c.missingItems}</span>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                  )}
+                  <span className="mr-auto font-bold text-brand-700">التفاصيل ←</span>
+                </button>
               )}
 
               {/* Progress bar */}
@@ -406,6 +392,9 @@ export default function MyInventory() {
           )}
 
           {/* ===== أدوات السيارة ===== */}
+          {/* «جرد أدوات فريقي» — نفس الشاشة المستقلة بلا نسخ منطقها */}
+          {activeTab === 'team' && <TeamInventoryCheckPage embedded />}
+
           {activeTab === 'vehicle' && (
             <div>
               {vehicleTools.length === 0 ? (

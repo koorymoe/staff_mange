@@ -316,19 +316,11 @@ export const navItems: NavItem[] = [
       { to: '/device-maintenance', label: 'صيانة الأجهزة', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'device_maintenance' },
       // طلبات المواد — شغل ميدان مو إدارة، فمحلها هنا مو باب «الإدارة»
       { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], permission: 'procurement' },
-      {
-        // "الجرد" — جرد الأدوات الشخصية وجرد الفريق (تيم ليدر بس يشوف الثانية).
-        // الفني العادي ما بيها إلا وحدة فتنفك وتطلع «جرد أدواتي» مباشرة.
-        to: '/tech-inventory-group', label: 'الجرد', icon: <></>,
-        children: [
-          { to: '/my-inventory', label: 'جرد أدواتي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-          // «جرد أدوات فريقي» — الاسم يوضّح إنه جرد **أدوات** الفريق.
-          // (وحالة جرد كادر كل حجز تطلع بشاشة «جرد أدواتي» نفسها أول
-          // ما تختار الحجز — الليدر ما يحتاج يفتح شاشة ثانية حتى يشوف
-          // منو جرد قبل ما يطلعون.)
-          { to: '/team-inventory', label: 'جرد أدوات فريقي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
-        ],
-      },
+      // ═══ «الجرد» بند واحد ═══
+      // كان مجموعة تنفتح على بندين («جرد أدواتي» و«جرد أدوات فريقي»)،
+      // يعني ضغطتين حتى توصل لشغلة وحدة. صار بند واحد يفتح الشاشة،
+      // والاختيار بين «جرد عدتي» و«جرد أدوات فريقي» من فوگ بالواجهة.
+      { to: '/my-inventory', label: 'الجرد', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
       {
         // "المشاريع" للميدان: يفتح مشروع جديد، أو يتابع الي انوجّه له
         to: '/tech-projects-group', label: '🏗️ المشاريع', icon: <></>,
