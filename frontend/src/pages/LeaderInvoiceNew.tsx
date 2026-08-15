@@ -27,7 +27,7 @@ interface DraftMaterial extends CreateMaterialLineRequest {
   key: string
 }
 
-export default function LeaderInvoiceNew() {
+export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estimate' | 'booking' } = {}) {
   // تفصيل الحساب (المعادلات والحدود الدنيا) للمالك ومدير النظام فقط —
   // الليدر يشوف المبلغ وبس. هذي أسعار داخلية ما تنعرض لكل من يحسب كلفة.
   // (المالك ينطبّع دوره لـADMIN بالجلسة، فالشرط يغطي الاثنين.)
@@ -59,8 +59,10 @@ export default function LeaderInvoiceNew() {
   //
   // الافتراضي «استفسار» لأنه الأكثر استعمالاً وما يحفظ شي — والخيار
   // الي ما يحفظ أسلم كافتراضي من الي يحفظ.
+  // الوضع يجي إما من مكان النداء (لما تنفتح جوّا «فواتيري» تبدي
+  // مربوطة بحجز مباشرة) أو من الرابط.
   const [mode, setMode] = useState<'estimate' | 'booking'>(
-    params.get('mode') === 'booking' ? 'booking' : 'estimate',
+    initialMode ?? (params.get('mode') === 'booking' ? 'booking' : 'estimate'),
   )
   const estimateOnly = mode === 'estimate'
 

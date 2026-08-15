@@ -10,6 +10,7 @@ import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
+import LeaderInvoiceNew from './LeaderInvoiceNew'
 import WorkReportPage from './WorkReportPage'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
@@ -109,9 +110,18 @@ export default function MyTasks() {
   // الصلاحية هي الي تقرر منو يشوف شنو، مو الدور: محاسب انطيته صلاحية
   // فواتير يشوف تبويب فواتيره، وفني بلا الصلاحية ما يشوفه.
   const [tab, setTab] = useState<TabKey>('bookings')
+  // «فاتورة جديدة» جوّا تبويب فواتيري — نفس شاشة حساب الكلفة بس
+  // تبدي **مربوطة بحجز** مباشرة، لأن الفاتورة الي تنطلع من هنا
+  // دائماً لشغل صار، مو استفسار زبون.
+  const [newInvoice, setNewInvoice] = useState(false)
   const perms = permissions ?? []
   const canSeeInvoices = employee?.role === 'ADMIN' || perms.includes('leader_invoices_view') || perms.includes('execution_cost')
-  const canSeeReports = employee?.role === 'ADMIN' || perms.includes('work_reports')
+  // ⚠️ «تقاريري» بلا شرط صلاحية: هذي **تقارير الموظف نفسه** عن شغله
+  // هو، ومسار السيرفر ما يطلب ولا صلاحية عليها (requireAuth بس).
+  // شرط `work_reports` كان يخبّي على الفني تقاريره هو — يعني يخلّص
+  // شغل وما يكدر يكتب عنه تقرير. الصلاحية مكانها **مراجعة تقارير
+  // غيره**، وهاي بشاشة منفصلة أصلاً.
+  const canSeeReports = true
 
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 30000)
@@ -336,7 +346,32 @@ export default function MyTasks() {
       {/* التبويبان الثانيان يعيدان استعمال نفس الشاشتين الموجودتين —
           ما ننسخ منطق الفواتير ولا التقارير بمكان ثاني، وإلا صارت
           نسختين تفترقن أول تعديل. */}
-      {tab === 'invoices' && <div className="mt-4"><LeaderInvoicesListPage /></div>}
+      {tab === 'invoices' && (
+        <div className="mt-4">
+          {newInvoice ? (
+            <>
+              <button
+                onClick={() => setNewInvoice(false)}
+                className="mb-3 rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
+              >
+                → رجوع لفواتيري
+              </button>
+              {/* نفس شاشة حساب الكلفة بلا نسخ — بس تفتح على «مربوط بحجز» */}
+              <LeaderInvoiceNew initialMode="booking" />
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setNewInvoice(true)}
+                className="mb-3 w-full rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-bold text-white shadow-md sm:w-auto"
+              >
+                ＋ فاتورة جديدة
+              </button>
+              <LeaderInvoicesListPage />
+            </>
+          )}
+        </div>
+      )}
       {tab === 'reports' && <div className="mt-4"><WorkReportPage /></div>}
 
       {loading && tab === 'bookings' && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
