@@ -61,3 +61,17 @@ func (h *PerformanceReviewHandler) List(w http.ResponseWriter, r *http.Request) 
 	}
 	WriteJSON(w, http.StatusOK, reviews)
 }
+
+// GET /api/performance-reviews/my-bookings
+//
+// حجوزات الليدر المنجزة وكادر كل وحدة وحالة تقييمهم — الليدر ما
+// يحتاج يدور على موظفيه بقائمة، النظام يگله «هذني شغلاتك ومنو طلع
+// وياك بكل وحدة».
+func (h *PerformanceReviewHandler) MyBookings(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.BookingsAwaitingReview(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

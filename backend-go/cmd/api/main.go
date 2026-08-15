@@ -363,7 +363,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بصلاحياتها الطبيعية، مع إبقاء المسارات الذاتية (حضور/إشعارات) مفتوحة.
 	requireCustomerMgmt := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "manage_customers", "sales_booking", "coordinator")
 	requireBookingCoord := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "coordinator", "crew_management")
-	requireKpiMgmt := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management")
 	// تعديل تفاصيل الحجز تستخدمه صفحات ثانية غير التنسيق (قائمة الحجوزات
 	// لتخصيص مركبة، وخريطة المهام) — فنوسّعها لصلاحياتهن حتى ما ننكسر شغل شغّال.
 	requireBookingEdit := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo,
@@ -988,10 +987,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/location-pings/path", middleware.Chain(http.HandlerFunc(locationPingHandler.Path), requireAuth, requireFieldMonitor))
 
 	// تقييم الأداء (منفصل عن KPI مال الغرامات) — الليدر يقيّم فنييه، الإداري يقيّم الليدرات
-	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth, requireKpiMgmt))
+	// ⚠️ الحارس يقبل kpi_management **أو** performance_review: الليدر
+	// لازم يقيّم كادره، وأكثر الليدرات ما عندهم kpi_management (هاي
+	// للغرامات المالية، شي ثاني تماماً). ربطهن بحارس واحد كان يمنع
+	// الليدر من تقييم فريقه أصلاً.
+	//
+	// ومنو يقيّم منو محسوم بالخدمة (authorizeReview): الليدر فنيي
+	// فريقه بس، وإداري الكوادر الليدرات بس. فتوسيع الحارس ما يفتح
+	// باب — يخلي الي عنده الحق يوصله.
+	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth,
+		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management", "performance_review")))
 	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth))
 	mux.Handle("GET /api/performance-reviews/ratable", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Ratable), requireAuth))
 	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))
+	mux.Handle("GET /api/performance-reviews/my-bookings", middleware.Chain(http.HandlerFunc(performanceReviewHandler.MyBookings), requireAuth))
 
 	// المشتريات (procurement)
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth, requireProcurement))

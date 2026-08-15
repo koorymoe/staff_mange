@@ -253,6 +253,9 @@ func versionedMigrations() []Migration {
 	// 0242: صلاحيات مستقلة لكل شغلة بدل الركوب على صلاحية عامة —
 	// «الموظف ما يكدر يسوي شي إلا إذا انطيته الصلاحية مال هذا الشي».
 	result = append(result, scopedPermissionMigrations()...)
+	// 0243: التقييم يصير لكل حجز — الليدر يقيّم كل واحد طلع وياه
+	// بكل شغلة، بدل تقييم حر بلا سياق.
+	result = append(result, reviewPerBookingMigrations()...)
 	return result
 }
 

@@ -88,7 +88,7 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 		return nil, err
 	}
 
-	review, err := s.repo.Create(req.EmployeeID, evaluatorID, req.Rating, req.Reason)
+	review, err := s.repo.Create(req.EmployeeID, evaluatorID, req.Rating, req.Reason, req.BookingID)
 	if err != nil {
 		return nil, err
 	}
@@ -135,4 +135,10 @@ func (s *PerformanceReviewService) ListForEmployee(employeeID string) ([]model.P
 
 func (s *PerformanceReviewService) List() ([]model.PerformanceReview, error) {
 	return s.repo.List()
+}
+
+
+// BookingsAwaitingReview حجوزات الليدر المنجزة وكادر كل وحدة.
+func (s *PerformanceReviewService) BookingsAwaitingReview(leaderID string) ([]model.BookingAwaitingReview, error) {
+	return s.repo.BookingsAwaitingReview(leaderID)
 }

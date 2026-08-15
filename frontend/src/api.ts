@@ -412,6 +412,25 @@ export interface StaffRequest {
   employees: { id: string; name: string; position: string | null }[]
 }
 
+/** حجز منجز ينتظر تقييم كادره. */
+export interface BookingAwaitingReview {
+  bookingId: string
+  code: string
+  customerName: string
+  serviceName: string | null
+  completedAt: string | null
+  crew: CrewReviewState[]
+}
+
+export interface CrewReviewState {
+  employeeId: string
+  name: string
+  position: string | null
+  /** فاضي إذا لسه ما انقيّم بهذا الحجز. */
+  rating: 'POSITIVE' | 'NEGATIVE' | null
+  reason: string | null
+}
+
 export interface PerformanceReview {
   id: string
   employeeId: string
@@ -3426,10 +3445,12 @@ export const api = {
     request<StaffRequest>(`/staff-requests/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 
   // تقييم الأداء (منفصل عن KPI مال الغرامات) — يحدد استحقاق التدريب فقط
-  createPerformanceReview: (data: { employeeId: string; rating: 'POSITIVE' | 'NEGATIVE'; reason: string }) =>
+  createPerformanceReview: (data: { employeeId: string; rating: 'POSITIVE' | 'NEGATIVE'; reason: string; bookingId?: string | null }) =>
     request<PerformanceReview>('/performance-reviews', { method: 'POST', body: JSON.stringify(data) }),
   getPerformanceReviews: () => request<PerformanceReview[]>('/performance-reviews'),
   getRatableEmployees: () => request<{ id: string; name: string }[]>('/performance-reviews/ratable'),
+  /** حجوزات الليدر المنجزة وكادر كل وحدة وحالة تقييمهم. */
+  getMyBookingsForReview: () => request<BookingAwaitingReview[]>('/performance-reviews/my-bookings'),
   getPerformanceReviewsForEmployee: (employeeId: string) => request<PerformanceReview[]>(`/performance-reviews/employee/${employeeId}`),
 
   // Products
