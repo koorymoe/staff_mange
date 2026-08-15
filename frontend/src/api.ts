@@ -814,9 +814,43 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
   if (!res.ok) {
     const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || `Request failed: ${res.status}`)
+    throw new Error(body.error || describeHttpStatus(res.status))
   }
   return res.json()
+}
+
+// ═══ ليش نترجم رقم الحالة ═══
+//
+// «Request failed: 413» ما يگول للموظف ولا شي. هو يعرف إنه ضغط زر
+// وما اشتغل — بس ما يعرف **ليش** ولا شنو يسوي.
+//
+// وأخطر شي: الأرقام الي تجي من nginx أو من الوسيط — هذني ما يوصلهن
+// نظامنا أصلاً، فما بيهن رسالة عربية. الموظف يشوف رقم ويتصل بالدعم،
+// والدعم يدور ساعة على شي حله سطر واحد.
+//
+// ⚠️ 413 بالذات: صار فعلاً بالإنتاج. الموظف يرفع صورة وصل الدوار،
+// وnginx يرفضها قبل ما توصل السيرفر، والموظف يشوف رقم غامض ويعيد
+// المحاولة عشر مرات بلا فايدة.
+function describeHttpStatus(status: number): string {
+  switch (status) {
+    case 413:
+      return 'الملف كبير جداً — جرّب صورة أصغر أو صوّرها بجودة أقل.'
+    case 403:
+      return 'ما عندك صلاحية لهاي العملية — راجع المدير.'
+    case 404:
+      return 'الشي الي تدور عليه مو موجود — يمكن انحذف.'
+    case 408:
+    case 504:
+      return 'الطلب طوّل أكثر من اللازم — جرّب مرة ثانية.'
+    case 429:
+      return 'محاولات كثيرة بوقت قصير — استنى شوي وجرّب.'
+    case 500:
+    case 502:
+    case 503:
+      return 'عطل بالسيرفر — جرّب بعد دقيقة، وإذا تكرر خبّر الدعم.'
+    default:
+      return `تعذر تنفيذ الطلب (رمز ${status}).`
+  }
 }
 
 // downloadFile يجيب ملف (إكسل مثلاً) من الـ API ويحفزّ تنزيله بالمتصفح عبر
