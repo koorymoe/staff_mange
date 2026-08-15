@@ -38,6 +38,11 @@ type ExecutionCostItem struct {
 	WiringHeightMeters int    `json:"wiringHeightMeters"` // ارتفاع التسليك — قاعدته ثنائية (>=5 متر = ضعف)
 	CableLengthMeters  int    `json:"cableLengthMeters"`  // طول الكيبل بالمتر (اختياري)
 	ProgrammingItem    string `json:"programmingItem"`    // اسم خدمة البرمجة المختارة (اختياري)
+	// ملاحظة قصيرة للبند («على باب المكتب الداخلي»). ما تدخل بالحساب أبداً —
+	// بس الفني يحتاجها لما يوصل الموقع، والمحاسب يحتاجها لما يدقّق سطر
+	// ما يفهم ليش سعره هيج. تنحفظ بنفس عمود JSON مثل بقية الحقول، فما
+	// تحتاج هجرة ولا تكسر الفواتير القديمة (تنقرأ فارغة).
+	Notes string `json:"notes"`
 }
 
 // LeaderInvoiceMaterialItem بند مادة واحد بفاتورة الليدر (من الأرشيف بالكود أو يدوي).

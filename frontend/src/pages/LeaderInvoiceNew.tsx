@@ -139,6 +139,7 @@ export default function LeaderInvoiceNew() {
         wiringHeightMeters: 0,
         cableLengthMeters: 0,
         programmingItem: '',
+        notes: '',
       },
     ])
   }
@@ -161,6 +162,111 @@ export default function LeaderInvoiceNew() {
   }
 
   const removeMaterial = (key: string) => setMaterials((prev) => prev.filter((m) => m.key !== key))
+
+  // ═══ الملخّص المباشر ═══
+  //
+  // «ملخص الكلفة التقريبية» بالتصميم — يتحدّث وأنت تعبّي.
+  //
+  // 🔴 القرار المهم: نجيبه **من السيرفر** مو نحسبه بالمتصفح.
+  //
+  // الحساب بالمتصفح أسرع، بس يخلق **رقمين مختلفين بنفس الشاشة**:
+  // واحد بالملخّص وواحد بالنتيجة النهائية. والليدر ينطي الزبون
+  // الرقم الي شافه أول — وإذا فرق، الشركة تخسر أو الزبون ينزعج.
+  // المعادلة بالسيرفر بيها حدود دنيا لكل منظومة وأوزان ارتفاع
+  // ومضاعفات تسليك، ونسخها بالواجهة يعني نسختين تفترقن أول تعديل.
+  //
+  // ⚠️ وننادي بعد **٦٠٠ مللي من آخر تعديل** مو بكل ضغطة زر: بلا
+  // هالتأخير، كتابة «١٥» بخانة الطول تدز نداءين، والليدر الي يعبّي
+  // عشر خانات يدز عشرين نداء على انترنت موبايل.
+  const [livePreview, setLivePreview] = useState<EstimateExecutionCostResponse | null>(null)
+  const [previewing, setPreviewing] = useState(false)
+  useEffect(() => {
+    // ⚠️ كلشي جوّا المؤقّت — حتى التصفير. تعديل الحالة **مباشرة** بجسم
+    // الـeffect يولّد رندر متسلسل (وهذا الي يمنعه react-hooks).
+    const t = setTimeout(() => {
+      if (items.length === 0) { setLivePreview(null); setPreviewing(false); return }
+      setPreviewing(true)
+      const clean = items.map(({ key, ...rest }) => { void key; return rest })
+      api.estimateLeaderInvoiceCost(clean)
+        .then(setLivePreview)
+        // الفشل ما ينعرض: هذا ملخّص مساعد، والرقم الرسمي يجي بالضغط
+        // على «احسب». رسالة خطأ على كل تعديل ناقص تزعج بلا فايدة.
+        .catch(() => setLivePreview(null))
+        .finally(() => setPreviewing(false))
+    }, 600)
+    return () => clearTimeout(t)
+  }, [items])
+
+  // ═══ خانة «الأجهزة» بالملخّص ═══
+  //
+  // بالتصميم أربع خانات، وأول وحدة «الأجهزة». وهاي **مو** من محرك
+  // التنفيذ — محرك التنفيذ يحسب الشغل (تركيب/تسليك/برمجة) مو ثمن
+  // الجهاز نفسه. ثمن الأجهزة يجي من بنود المواد.
+  //
+  // ولأنه وضع الاستفسار ما بيه مواد أصلاً، الخانة تظل تحچي الصدق:
+  // تنعرض «غير مشمولة» بدل رقم مخترع. رقم مخترع هنا يعني الليدر
+  // ينطي الزبون سعر يشمل أجهزة ما انحسبت.
+  const materialsTotal = materials.reduce(
+    (n, m) => n + (Number(m.unitPrice) || 0) * (Number(m.quantity) || 0),
+    0,
+  )
+
+  // تجميع الملخّص بنفس ترتيب التصميم
+  const summary = livePreview && {
+    devicesTotal: materialsTotal,
+    install: livePreview.breakdown.reduce((n, b) => n + b.installTotal, 0),
+    wiring: livePreview.breakdown.reduce((n, b) => n + b.wiringTotal, 0),
+    programming: livePreview.breakdown.reduce((n, b) => n + b.programmingTotal, 0),
+    total: livePreview.executionCost + materialsTotal,
+    devices: livePreview.totalDeviceCount,
+  }
+
+  // ═══ حفظ كمسودة ═══
+  //
+  // بالتصميم زر «حفظ كمسودة». وما ينحفظ بالسيرفر عن قصد: الاستفسار
+  // أصلاً ما ينحفظ (هذا تعريفه)، والفاتورة الناقصة إذا انحفظت
+  // بالسيرفر تطلع بقوائم المحاسب كفاتورة حقيقية ناقصة.
+  //
+  // فالمسودة تظل بجهاز الليدر: يعبّي نص الحساب، يطلع لحجز، ويرجع
+  // يكمّل بلا ما يعيد كلشي من الصفر.
+  const DRAFT_KEY = 'leaderInvoiceDraft'
+  const [draftSaved, setDraftSaved] = useState(false)
+  const saveDraft = () => {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ mode, systems, items, materials }))
+      setDraftSaved(true)
+      setTimeout(() => setDraftSaved(false), 2500)
+    } catch { /* مساحة التخزين ممتلئة — المسودة ميزة مساعدة، ما توقف الشغل */ }
+  }
+  const [hasDraft, setHasDraft] = useState(() => !!localStorage.getItem(DRAFT_KEY))
+  const restoreDraft = () => {
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY)
+      if (!raw) return
+      const d = JSON.parse(raw)
+      if (d.mode) setMode(d.mode)
+      if (Array.isArray(d.systems)) setSystems(d.systems)
+      if (Array.isArray(d.items)) setItems(d.items)
+      if (Array.isArray(d.materials)) setMaterials(d.materials)
+      setHasDraft(false)
+    } catch { setHasDraft(false) }
+  }
+
+  // نص المشاركة — نفس النص بالنتيجة، حتى الزبون يوصله رقم واحد
+  const shareText = (total: number, deviceCount: number) => [
+    'الكلفة التقريبية — شركة الأماني',
+    `المبلغ: ${total.toLocaleString()} د.ع`,
+    `عدد الأجهزة: ${deviceCount}`,
+    '',
+    'ⓘ هذا تقدير تقريبي وليس فاتورة نهائية.',
+  ].join('\n')
+
+  const shareResult = async (txt: string) => {
+    try {
+      if (navigator.share) await navigator.share({ text: txt })
+      else { await navigator.clipboard.writeText(txt); alert('انتنسخ النص — تكدر تلصقه بالواتساب') }
+    } catch { /* الموظف ألغى المشاركة — مو خطأ */ }
+  }
 
   const handleSave = async () => {
     setError(null)
@@ -240,19 +346,7 @@ export default function LeaderInvoiceNew() {
               ⚠️ نستخدم مشاركة النظام إذا متوفرة (تلفون)، وإلا ننسخ
               للحافظة (كمبيوتر) — بدل ما نعتمد على وحدة وتفشل بالثانية. */}
           <button
-            onClick={async () => {
-              const txt = [
-                'الكلفة التقريبية — شركة الأماني',
-                `المبلغ: ${estimateResult.executionCost.toLocaleString()} د.ع`,
-                `عدد الأجهزة: ${estimateResult.totalDeviceCount}`,
-                '',
-                'ⓘ هذا تقدير تقريبي وليس فاتورة نهائية.',
-              ].join('\n')
-              try {
-                if (navigator.share) await navigator.share({ text: txt })
-                else { await navigator.clipboard.writeText(txt); alert('انتنسخ النص — تكدر تلصقه بالواتساب') }
-              } catch { /* الموظف ألغى المشاركة — مو خطأ */ }
-            }}
+            onClick={() => shareResult(shareText(estimateResult.executionCost, estimateResult.totalDeviceCount))}
             className="mt-4 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700"
           >
             📤 مشاركة النتيجة مع الزبون
@@ -439,6 +533,23 @@ export default function LeaderInvoiceNew() {
           : 'ⓘ مربوط بحجز: اختر الحجز أول، وبيانات الزبون تنملي لحالها، والفاتورة تترحّل للمحاسب.'}
       </p>
 
+      {hasDraft && items.length === 0 && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+          <p className="text-[11px] font-bold text-amber-900">📝 عندك مسودة محفوظة من آخر مرة</p>
+          <div className="flex gap-2">
+            <button onClick={restoreDraft} className="rounded-lg bg-amber-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-amber-700">
+              كمّلها
+            </button>
+            <button
+              onClick={() => { localStorage.removeItem(DRAFT_KEY); setHasDraft(false) }}
+              className="rounded-lg border border-amber-300 px-3 py-1 text-[11px] font-bold text-amber-800 hover:bg-amber-100"
+            >
+              احذفها
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ═══ خطوات الحساب ═══
           الشاشة طويلة وبيها خانات كثيرة. بلا شريط خطوات، الليدر ما
           يعرف وين واصل ولا شكد باقي عليه — فيوقف بالنص أو ينسى بند.
@@ -473,10 +584,17 @@ export default function LeaderInvoiceNew() {
         })}
       </ol>
 
+      {/* ═══ عمودين: الشغل يمين والملخّص يسار ═══
+          بالتصميم الملخّص جنب الحقول مو تحتهن — لأن الليدر يحتاج يشوف
+          الرقم وهو يعبّي. وبالموبايل ينقلب عمود واحد والملخّص فوگ
+          (order-first) حتى يبقى بأول الشاشة بلا ما ينزّل ويطلع. */}
+      <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_300px] lg:items-start">
+        <div className="min-w-0 space-y-4">
+
       {/* اختيار الحجز المكتمل — الليدر يلكه أسماء حجوزاته المكتملة ويسويلها
           فاتورة، ومعلومات الزبون تنملي تلقائياً منه. */}
       {!estimateOnly && (
-        <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50/50 p-4">
+        <div className="rounded-xl border border-brand-100 bg-brand-50/50 p-4">
           <label className="mb-1 block text-sm font-bold text-brand-800">
             اختر الشغل الي راح تسويله فاتورة
           </label>
@@ -537,7 +655,7 @@ export default function LeaderInvoiceNew() {
       )}
 
       {!estimateOnly && (
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <input
             placeholder="اسم الزبون"
             value={customerName}
@@ -559,22 +677,25 @@ export default function LeaderInvoiceNew() {
         </div>
       )}
 
-      <h3 className="mt-6 mb-2 flex items-center gap-2 font-bold text-brand-800">
-        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#2c5aad] text-[11px] font-black text-white">1</span>
+      {/* ═══ (١) اختيار نوع العمل ═══ */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
+      <h3 className="mb-1 flex flex-wrap items-center gap-2 font-bold text-brand-800">
+        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2c5aad] text-[11px] font-black text-white">1</span>
         اختيار نوع العمل <span className="text-xs font-normal text-slate-400">(حتى ٣)</span>
       </h3>
+      <p className="mb-3 text-[11px] text-slate-400">اختر فئة أو أكثر لإضافة العناصر المتعلقة بها.</p>
       <div className="flex flex-wrap gap-2">
         {allSystemNames.map((name) => (
           <button
             key={name}
             onClick={() => toggleSystem(name)}
-            className={`rounded-full px-3 py-1 text-xs font-bold ${
+            className={`rounded-xl border-2 px-3 py-1.5 text-xs font-bold transition ${
               systems.includes(name)
-                ? 'bg-brand-700 text-white'
-                : 'bg-brand-50 text-brand-700 hover:bg-brand-100'
+                ? 'border-[#2c5aad] bg-sky-50 text-[#0f2040]'
+                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
             }`}
           >
-            {name}
+            {systemIcon(name)} {name}
           </button>
         ))}
         {/* ═══ شبكات ═══
@@ -587,31 +708,69 @@ export default function LeaderInvoiceNew() {
             الفاتورة بنفس الطريقة. */}
         <button
           onClick={() => navigate('/network-cost')}
-          className="rounded-full border-2 border-dashed border-brand-400 bg-white px-3 py-1 text-xs font-bold text-brand-700 hover:bg-brand-50"
+          className="rounded-xl border-2 border-dashed border-brand-400 bg-white px-3 py-1.5 text-xs font-bold text-brand-700 hover:bg-brand-50"
         >
           🌐 شبكات ↗
         </button>
       </div>
-      <p className="mt-1 text-[11px] text-slate-400">
+      <p className="mt-2 text-[11px] text-slate-400">
         الشبكات سعرها بالشرائح — تنحسب بحاسبتها الخاصة وتطلع منها الفاتورة أو استفسار الزبون.
       </p>
+      </div>
 
-      {systems.map((systemName) => (
-        <div key={systemName} className="mt-4 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <div className="flex items-center justify-between">
-            <h4 className="font-bold text-brand-800">{systemName}</h4>
-            <button
-              onClick={() => addItem(systemName)}
-              className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100"
-            >
-              + إضافة بند
-            </button>
+      {/* ═══ (٢) العناصر المختارة ═══
+          بالتصميم البنود **بطاقات** جنب بعض مو صفوف طويلة — وهذا مو
+          شكل بس: الصف الطويل بالموبايل يصير عمود من ٨ خانات بلا عنوان
+          يجمعهن، فالليدر يضيع أي خانة تخص أي بند. البطاقة بيها راس
+          باسم البند، فتضل مفهومة حتى بشاشة ٥ إنچ. */}
+      {systems.length > 0 && (
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 font-bold text-brand-800">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2c5aad] text-[11px] font-black text-white">2</span>
+            العناصر المختارة
+            {items.length > 0 && <span className="text-xs font-normal text-slate-400">({items.length})</span>}
+          </h3>
+          {/* منظومة وحدة؟ زر واحد. أكثر؟ زر لكل منظومة — حتى الليدر
+              ما يضيف بند وبعدين يكتشف إنه راح للمنظومة الغلط. */}
+          <div className="flex flex-wrap gap-1.5">
+            {systems.map((s) => (
+              <button
+                key={s}
+                onClick={() => addItem(s)}
+                className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-bold text-brand-700 hover:bg-slate-100"
+              >
+                + إضافة بند{systems.length > 1 ? ` — ${s}` : ''}
+              </button>
+            ))}
           </div>
-          {items
-            .filter((it) => it.systemName === systemName)
-            .map((it) => (
-              <div key={it.key} className="mt-3 grid grid-cols-1 gap-2 border-t border-slate-100 pt-3 sm:grid-cols-6">
-                <div className="sm:col-span-2">
+        </div>
+
+        {items.length === 0 && (
+          <p className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-3 py-6 text-center text-xs text-slate-400">
+            ما أضفت ولا بند بعد — اضغط «إضافة بند» وابدأ.
+          </p>
+        )}
+
+        <div className="grid grid-cols-1 gap-3 xl:grid-cols-2">
+          {items.map((it) => {
+            const systemName = it.systemName
+            return (
+              <div key={it.key} className="rounded-2xl border border-slate-200 bg-slate-50/40 p-3">
+                <div className="mb-2.5 flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                  <p className="min-w-0 truncate text-xs font-extrabold text-[#0f2040]">
+                    {systemIcon(systemName)} {it.itemName || `بند جديد — ${systemName}`}
+                  </p>
+                  <button
+                    onClick={() => removeItem(it.key)}
+                    aria-label="حذف البند"
+                    className="shrink-0 rounded-lg px-1.5 py-0.5 text-sm text-red-500 hover:bg-red-50"
+                  >
+                    🗑
+                  </button>
+                </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <div className="sm:col-span-1">
                 <label className="mb-1 block text-[11px] font-bold text-slate-500">عنصر التركيب — شنو الشغلة الي راح تنعمل</label>
                 <select
                   value={it.itemName}
@@ -688,7 +847,7 @@ export default function LeaderInvoiceNew() {
                 )}
 
                 {it.wiringItemName && (
-                  <div className="sm:col-span-2 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
+                  <div className="sm:col-span-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-700">
                     ⚠️ لأنك اخترت نوع تسليك لهذا البند، أجور التركيب <b>ما تنحسب</b> — تنعتمد قيمة التسليك بس
                     (المبلغ المعتمد = الأكبر بين التسليك حسب العدد الكلي والتسليك حسب الطول). هذا شرط الاكسل.
                   </div>
@@ -709,7 +868,7 @@ export default function LeaderInvoiceNew() {
                 </p>
                 </div>
 
-                <div className="sm:col-span-2">
+                <div>
                 <label className="mb-1 block text-[11px] font-bold text-slate-500">البرمجة — خدمة إضافية بسعر ثابت</label>
                 <select
                   value={it.programmingItem || ''}
@@ -725,21 +884,27 @@ export default function LeaderInvoiceNew() {
                 </select>
                 </div>
 
-                <div className="flex items-end">
-                <button
-                  onClick={() => removeItem(it.key)}
-                  className="w-full rounded-lg border border-red-200 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50"
-                >
-                  حذف البند
-                </button>
+                {/* ملاحظة البند — ما تدخل بالحساب أبداً. الفني يوصل الموقع
+                    ويعرف وين بالضبط، والمحاسب يعرف ليش السطر سعره هيج. */}
+                <div className="sm:col-span-3">
+                <label className="mb-1 block text-[11px] font-bold text-slate-500">ملاحظات قصيرة (اختيارية)</label>
+                <input
+                  value={it.notes || ''}
+                  onChange={(e) => updateItem(it.key, { notes: e.target.value })}
+                  placeholder="مثال: تركيب على الجدار قرب المدخل الرئيسي"
+                  className="w-full rounded-lg border border-slate-300 px-2 py-1 text-sm"
+                />
                 </div>
               </div>
-            ))}
+            </div>
+            )
+          })}
         </div>
-      ))}
+      </div>
+      )}
 
       {!estimateOnly && (
-      <div className="mt-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
         <div className="flex items-center justify-between">
           <h4 className="font-bold text-brand-800">المواد</h4>
           <button
@@ -793,7 +958,7 @@ export default function LeaderInvoiceNew() {
 
       {!estimateOnly && (
         <>
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <input
               type="number"
               min={0}
@@ -806,7 +971,7 @@ export default function LeaderInvoiceNew() {
           </div>
 
           {/* ── الشغل المجاني ── */}
-          <div className={`mt-4 rounded-xl border-2 p-4 ${isFree ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
+          <div className={`rounded-xl border-2 p-4 ${isFree ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white'}`}>
             <label className="flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
@@ -856,19 +1021,119 @@ export default function LeaderInvoiceNew() {
         </>
       )}
 
+        </div>
+
+        {/* ═══ ملخّص الكلفة التقريبية ═══
+            لاصق بالكمبيوتر (يضل ظاهر وأنت تنزل بالبنود)، وفوگ بالموبايل. */}
+        <aside className="order-first lg:sticky lg:top-4 lg:order-last">
+          <div className="rounded-2xl border-2 border-sky-200 bg-white p-4 shadow-lg">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-extrabold text-[#0f2040]">📋 ملخص الكلفة التقريبية</p>
+              {previewing && <span className="text-[10px] text-slate-400">يحسب...</span>}
+            </div>
+
+            {summary ? (
+              <>
+                <div className="mt-3 space-y-1.5">
+                  {/* الأجهزة أول سطر مثل التصميم — وبالاستفسار تحچي الصدق:
+                      ماكو بنود مواد، فماكو ثمن أجهزة ينحسب. */}
+                  <SumRow
+                    label="الأجهزة"
+                    value={summary.devicesTotal}
+                    hint={summary.devicesTotal === 0 ? 'غير مشمولة' : undefined}
+                  />
+                  <SumRow label="مواد التسليك" value={summary.wiring} />
+                  <SumRow label="البرمجة" value={summary.programming} />
+                  <SumRow label="أجور التركيب" value={summary.install} />
+                </div>
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <p className="text-[10px] text-slate-500">الإجمالي التقريبي</p>
+                  <p className="text-2xl font-black text-[#2c5aad]">
+                    {summary.total.toLocaleString()} <span className="text-sm">د.ع</span>
+                  </p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">عدد الأجهزة: {summary.devices}</p>
+                </div>
+                <p className="mt-2.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[10px] leading-relaxed text-amber-800">
+                  ⓘ هذه الكلفة تقديرية وليست فاتورة نهائية.
+                </p>
+              </>
+            ) : (
+              <p className="mt-2 text-[11px] text-slate-400">
+                {previewing ? 'يحسب الكلفة...' : 'كمّل بنود التنفيذ ويطلعلك الملخّص'}
+              </p>
+            )}
+          </div>
+        </aside>
+      </div>
+
       {error && <p className="mt-3 text-sm font-bold text-red-600">{error}</p>}
 
-      <button
-        onClick={handleSave}
-        disabled={saving}
-        className="mt-6 w-full rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 text-sm font-bold text-white shadow-md disabled:opacity-50"
-      >
-        {saving
-          ? 'جاري الحساب...'
-          : estimateOnly
-            ? 'احسب الكلفة التقريبية'
-            : 'حفظ الفاتورة (يحسب السيرفر التكاليف والمجموع النهائي)'}
-      </button>
+      {/* ═══ شريط الأزرار ═══
+          بالتصميم ثلاثة أزرار بالأسفل. «مشاركة» و«مسودة» ينطفون لما
+          ماكو شي ينشارك — زر يضغطه الليدر وما يصير شي أسوأ من زر مقفل. */}
+      <div className="sticky bottom-0 z-20 mt-5 flex flex-col-reverse gap-2 border-t border-slate-200 bg-white/95 py-3 backdrop-blur sm:flex-row sm:items-center sm:justify-center">
+        <button
+          onClick={() => summary && shareResult(shareText(summary.total, summary.devices))}
+          disabled={!summary}
+          className="rounded-xl border border-emerald-300 px-4 py-2.5 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:opacity-40"
+        >
+          📤 مشاركة مع الزبون
+        </button>
+        <button
+          onClick={saveDraft}
+          disabled={items.length === 0}
+          className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
+        >
+          {draftSaved ? '✅ انحفظت المسودة' : '💾 حفظ كمسودة'}
+        </button>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-6 py-2.5 text-sm font-bold text-white shadow-md disabled:opacity-50"
+        >
+          {saving
+            ? 'جاري الحساب...'
+            : estimateOnly
+              ? '🧮 احسب الكلفة التقريبية'
+              : '🧾 حفظ الفاتورة'}
+        </button>
+      </div>
+      {!estimateOnly && (
+        <p className="mt-1 text-center text-[10px] text-slate-400">
+          المجموع النهائي وكود المحاسبة يحسبهن السيرفر عند الحفظ.
+        </p>
+      )}
+    </div>
+  )
+}
+
+/* ───── أيقونة المنظومة ─────
+   شكل بس — بس يفرّق: الليدر يلمح الأيقونة أسرع ما يقرا الاسم، خصوصاً
+   لما تكون عشر بطاقات بالشاشة. أي منظومة جديدة تطلع بأيقونة عامة
+   بدل ما تنكسر. */
+function systemIcon(name: string): string {
+  const n = name.toLowerCase()
+  if (name.includes('بصمة') || n.includes('finger')) return '🔒'
+  if (name.includes('قفل') || name.includes('أقفال') || n.includes('lock')) return '🔓'
+  if (name.includes('كامير') || n.includes('cam') || n.includes('ip')) return '📹'
+  if (name.includes('حريق') || n.includes('fire') || name.includes('إنذار')) return '🔥'
+  if (name.includes('صوت') || n.includes('audio') || n.includes('sound')) return '🎙'
+  if (name.includes('شبك') || n.includes('network')) return '🌐'
+  if (name.includes('شمس') || n.includes('solar')) return '☀️'
+  return '🔧'
+}
+
+/* ───── خانة بملخّص الكلفة ───── */
+
+function SumRow({ label, value, hint }: { label: string; value: number; hint?: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-slate-50/70 px-2.5 py-1.5">
+      <span className="text-[11px] text-slate-600">{label}</span>
+      {hint ? (
+        <span className="text-[10px] text-slate-400">{hint}</span>
+      ) : (
+        <span className="text-xs font-black text-slate-800">{value.toLocaleString()} <span className="text-[9px] font-normal text-slate-400">د.ع</span></span>
+      )}
     </div>
   )
 }

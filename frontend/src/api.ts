@@ -1086,6 +1086,8 @@ export interface ExecutionCostItem {
   wiringHeightMeters?: number
   cableLengthMeters?: number
   programmingItem?: string
+  /** ملاحظة قصيرة للبند — ما تدخل بالحساب، بس تفرق بالتنفيذ والتدقيق */
+  notes?: string
 }
 
 export interface LeaderInvoiceMaterialItem {
