@@ -373,6 +373,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
 	requireInventoryView := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "inventory")
+	requireToolRequest := middleware.RequireLeaderOrPermission(permissionRepo, employeeRepo, notificationRepo, "tool_requests")
 	// حساب كلفة التنفيذ: صلاحية تنعطى وتنسحب، مو دور ثابت
 	requireExecutionCost := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "execution_cost")
 	// موافقة/رفض طلبات الأدوات: كانت دور صارم بدون منفذ صلاحية، فإداري الكميات
@@ -734,6 +735,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الأدوات» — الفني يسوّي جرده هو ويشوف حالته من المسار الي بعده.
 	mux.Handle("GET /api/inventory/checks/today", middleware.Chain(http.HandlerFunc(inventoryHandler.TodaysInventoryChecks), requireAuth, requireInventoryView))
 	mux.Handle("GET /api/inventory/checks/mine", middleware.Chain(http.HandlerFunc(inventoryHandler.MyLastInventoryCheck), requireAuth))
+	// جرد كادر حجز معيّن — الخدمة تتأكد إن الطالب من نفس الحجز، فما
+	// يحتاج حارس دور: الليدر يشوف فريقه، والفني يشوف رفاقه بنفس الشغلة.
+	mux.Handle("GET /api/inventory/checks/booking/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.BookingCrewInventory), requireAuth))
 	mux.Handle("POST /api/inventory/checks/{id}/resolve", middleware.Chain(http.HandlerFunc(inventoryHandler.ResolveInventoryCheck), requireAuth, requireHR))
 
 	mux.Handle("GET /api/inventory/vehicle", middleware.Chain(http.HandlerFunc(inventoryHandler.ListVehicleTools), requireAuth))
@@ -756,9 +760,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/inventory/stock-intake", middleware.Chain(http.HandlerFunc(inventoryHandler.ListStockIntakes), requireAuth, requireProcurementAdmin))
 
 	mux.Handle("GET /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.ListToolRequests), requireAuth))
-	// طلب أداة "حسب الحاجة" مقصور على الليدر فقط (isLeader فريش من قاعدة البيانات) —
-	// الموظف العادي يبقى يشوف حالة طلباته (GET) بس ما يقدر ينشئ طلب جديد.
-	mux.Handle("POST /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth, requireLeader))
+	// طلب أداة: الليدر بحكم دوره، **أو** أي موظف تنمنح له صلاحية
+	// «طلب أداة من المخزن». قبل كان الليدر بس — فالفني الي تنكسر
+	// عدته بالموقع لازم يدور على ليدره حتى يطلبله، والشغل يوقف.
+	mux.Handle("POST /api/inventory/requests", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolRequest), requireAuth, requireToolRequest))
 	mux.Handle("PUT /api/inventory/requests/{id}/approve", middleware.Chain(http.HandlerFunc(inventoryHandler.ApproveToolRequest), requireAuth, requireInventoryApprove))
 	mux.Handle("PUT /api/inventory/requests/{id}/reject", middleware.Chain(http.HandlerFunc(inventoryHandler.RejectToolRequest), requireAuth, requireInventoryApprove))
 	// إرجاع الأداة يشيل مسؤوليتها عن الموظف — نفس مستوى الموافقة، لأن

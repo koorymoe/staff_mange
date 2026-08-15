@@ -322,7 +322,11 @@ export const navItems: NavItem[] = [
         to: '/tech-inventory-group', label: 'الجرد', icon: <></>,
         children: [
           { to: '/my-inventory', label: 'جرد أدواتي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-          { to: '/team-inventory', label: 'جرد الفريق', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
+          // «جرد أدوات فريقي» — الاسم يوضّح إنه جرد **أدوات** الفريق.
+          // (وحالة جرد كادر كل حجز تطلع بشاشة «جرد أدواتي» نفسها أول
+          // ما تختار الحجز — الليدر ما يحتاج يفتح شاشة ثانية حتى يشوف
+          // منو جرد قبل ما يطلعون.)
+          { to: '/team-inventory', label: 'جرد أدوات فريقي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true },
         ],
       },
       {

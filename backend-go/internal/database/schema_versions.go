@@ -260,6 +260,7 @@ func versionedMigrations() []Migration {
 	// نقص مهارة علاجه تدريب، والثاني إجراء إداري. خلطهن يظلم الاثنين.
 	result = append(result, reviewKindMigrations()...)
 	result = append(result, reviewScoreMigrations()...)
+	result = append(result, inventoryPerBookingMigrations()...)
 	return result
 }
 

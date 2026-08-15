@@ -32,6 +32,16 @@ func (h *InventoryHandler) CreateInventoryCheck(w http.ResponseWriter, r *http.R
 	WriteJSON(w, http.StatusCreated, check)
 }
 
+// BookingCrewInventory حالة جرد كادر حجز واحد — شاشة «جرد أدوات فريقي».
+func (h *InventoryHandler) BookingCrewInventory(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.BookingCrewInventory(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusForbidden, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
 func (h *InventoryHandler) TodaysInventoryChecks(w http.ResponseWriter, r *http.Request) {
 	checks, err := h.service.TodaysInventoryChecks()
 	if err != nil {

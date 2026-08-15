@@ -8,6 +8,9 @@ type InventoryCheck struct {
 	Complete     bool       `db:"complete" json:"complete"`
 	MissingItems *string    `db:"missingItems" json:"missingItems"`
 	CheckedAt    time.Time  `db:"checkedAt" json:"checkedAt"`
+	// الحجز الي انجرد قبله. فاضي بالجرود القديمة وبالجرد العام
+	// الي ما ينربط بشغل معيّن.
+	BookingID *string `db:"bookingId" json:"bookingId"`
 	Resolved     bool       `db:"resolved" json:"resolved"`
 	ResolvedByID *string    `db:"resolvedById" json:"resolvedById"`
 	ResolvedAt   *time.Time `db:"resolvedAt" json:"resolvedAt"`
@@ -19,6 +22,22 @@ type InventoryCheck struct {
 type CreateInventoryCheckRequest struct {
 	Complete     bool    `json:"complete"`
 	MissingItems *string `json:"missingItems"`
+	// اختياري: الجرد الي يصير قبل حجز معيّن ينربط بيه.
+	BookingID *string `json:"bookingId"`
+}
+
+// ═══ حالة جرد كادر حجز واحد ═══
+//
+// الليدر ما يحتاج يسأل واحد واحد «جردت لو لا؟» — الشاشة تگله.
+type BookingCrewInventoryState struct {
+	EmployeeID string  `db:"employeeId" json:"employeeId"`
+	Name       string  `db:"name" json:"name"`
+	Position   *string `db:"position" json:"position"`
+	IsLeader   bool    `db:"isLeader" json:"isLeader"`
+	// فاضية = ما جرد لهذا الحجز بعد
+	Checked      *time.Time `db:"checkedAt" json:"checkedAt"`
+	Complete     *bool      `db:"complete" json:"complete"`
+	MissingItems *string    `db:"missingItems" json:"missingItems"`
 }
 
 // BookingToolCheck لقطة (snapshot) للأدوات الشخصية الي كانت ناقصة عند الموظف

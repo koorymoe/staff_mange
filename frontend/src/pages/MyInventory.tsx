@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import {
   api, toolRequestReasonLabels,
   type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestReason,
+  type Booking, type BookingCrewInventoryState,
 } from '../api'
 import { useSession } from '../session'
 
@@ -52,6 +53,21 @@ export default function MyInventory() {
   const [description, setDescription] = useState('')
   const [reasonError, setReasonError] = useState('')
 
+  // ═══ الجرد صار قبل كل حجز ═══
+  //
+  // «الموظف يحتاج يجرد أدواته **قبل كل حجز**».
+  //
+  // الجرد اليومي ما يجاوب السؤال المهم: الفني جرد الصبح وطلع بثلاث
+  // حجوزات، ونسى الميتر بالحجز الثاني — الجرد يگول «كامل» وهو مو
+  // كامل وقت الحجز الثالث. والأهم: لما تنقص أداة عند الزبون، ماكو
+  // شي يربط النقص بالحجز الي صار بيه.
+  //
+  // فالفني يختار الحجز الي طالع له، ويجرد إله.
+  const [myBookings, setMyBookings] = useState<Booking[]>([])
+  const [forBooking, setForBooking] = useState('')
+  // حالة جرد كادر الحجز المختار — «جرد أدوات فريقي»
+  const [crew, setCrew] = useState<BookingCrewInventoryState[]>([])
+
   const load = async () => {
     if (!employee) return
     try {
@@ -69,6 +85,9 @@ export default function MyInventory() {
       setVehicleTools(vt)
       setOnDemandTools(od)
       setMyRequests(tr)
+      // حجوزاتي الي ما خلصت — هذني الي ينجرد إلهن
+      const bs = await api.getBookings({ assignedTo: 'me' }).catch(() => [])
+      setMyBookings(bs.filter((b) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED'))
     } catch (e) {
       setError(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
@@ -85,6 +104,20 @@ export default function MyInventory() {
 
   const [submittingCheck, setSubmittingCheck] = useState(false)
 
+  const loadCrew = (bookingId: string) => {
+    if (!bookingId) { setCrew([]); return }
+    api.getBookingCrewInventory(bookingId).then(setCrew).catch(() => setCrew([]))
+  }
+
+  // تبديل الحجز يرجّع الشاشة لحالة «ما جردت» — وإلا الفني يجرد لحجز
+  // ويبدّل لحجز ثاني ويلگاه مأشّر «انحفظ»، فيطلع بلا جرد.
+  const pickBooking = (bookingId: string) => {
+    setForBooking(bookingId)
+    setCheckDone(false)
+    setCheckMap(Object.fromEntries(personalTools.map((t) => [t.id, true])))
+    loadCrew(bookingId)
+  }
+
   const toggleCheck = (id: string) => {
     setCheckMap((prev) => ({ ...prev, [id]: !prev[id] }))
   }
@@ -100,8 +133,10 @@ export default function MyInventory() {
       await api.createInventoryCheck({
         complete: missing.length === 0,
         missingItems: missing.length > 0 ? missing.join('، ') : undefined,
+        bookingId: forBooking || undefined,
       })
       setCheckDone(true)
+      if (forBooking) loadCrew(forBooking)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر تسجيل الجرد')
     } finally {
@@ -171,6 +206,77 @@ export default function MyInventory() {
           {/* ===== جرد أدواتي ===== */}
           {activeTab === 'checklist' && (
             <div>
+              {/* ═══ لأي حجز تجرد؟ ═══ */}
+              <div className="mb-4 rounded-xl border-2 border-brand-200 bg-brand-50/50 p-4">
+                <label className="mb-1 block text-xs font-bold text-brand-800">
+                  لأي حجز تجرد عدتك؟
+                </label>
+                <select
+                  value={forBooking}
+                  onChange={(e) => pickBooking(e.target.value)}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                >
+                  <option value="">— جرد عام (مو مربوط بحجز) —</option>
+                  {myBookings.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.code ? `${b.code} — ` : ''}{b.customer?.name || 'بدون اسم'}
+                      {b.scheduledAt ? ` (${new Date(b.scheduledAt).toLocaleDateString('ar-IQ')})` : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
+                  {forBooking
+                    ? 'ⓘ الجرد ينحفظ على هذا الحجز — إذا نقصت أداة عند الزبون نعرف بأي شغلة صار النقص.'
+                    : myBookings.length > 0
+                      ? 'ⓘ اختار الحجز الي طالع له — الجرد المربوط بحجز يوصل ليدر الحجز ويشوف منو جرد.'
+                      : 'ⓘ ماكو عندك حجوزات مفتوحة حالياً — تكدر تسوي جرد عام لعدتك.'}
+                </p>
+              </div>
+
+              {/* ═══ جرد أدوات فريقي ═══
+                  «الليدر يجرد أدواته ويشوف منو من الموظفين الي راح
+                  يطلعون وياه **بهذا الحجز** جرد».
+                  ⚠️ تنعرض للفني بعد — الفني يشوف إن رفيقه ما جرد
+                  فيذكّره قبل ما يطلعون، وهذا أسرع من ما ينتظر الليدر
+                  يلاحظ. وما تنعرض إلا لكادر نفس الحجز (السيرفر يفرضها). */}
+              {forBooking && crew.length > 0 && (
+                <div className="mb-4 rounded-xl border border-slate-200 bg-white p-4 shadow-[0_2px_10px_rgba(15,32,64,0.05)]">
+                  <div className="mb-2.5 flex flex-wrap items-center justify-between gap-2">
+                    <p className="text-sm font-bold text-[#0f2040]">👥 جرد أدوات فريقي بهذا الحجز</p>
+                    <span className="text-[11px] text-slate-500">
+                      {crew.filter((c) => c.checkedAt).length} من {crew.length} جردوا
+                    </span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {crew.map((c) => (
+                      <div
+                        key={c.employeeId}
+                        className={`flex flex-wrap items-center gap-2 rounded-lg border px-3 py-2 text-xs ${
+                          !c.checkedAt ? 'border-amber-200 bg-amber-50'
+                            : c.complete ? 'border-emerald-200 bg-emerald-50'
+                            : 'border-red-200 bg-red-50'
+                        }`}
+                      >
+                        <span className="font-bold text-slate-800">{c.name}</span>
+                        {c.isLeader && <span className="rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">ليدر</span>}
+                        {c.employeeId === employee?.id && <span className="text-[10px] text-slate-400">(أنت)</span>}
+                        <span className="mr-auto font-bold">
+                          {!c.checkedAt ? '⏳ ما جرد بعد'
+                            : c.complete ? '✅ عدته كاملة'
+                            : '⚠️ عنده نقص'}
+                        </span>
+                        {/* النقص ينعرض بالاسم: «عنده نقص» بلا تفصيل
+                            تخلي الليدر يتصل يسأل — ونفس المكالمة الي
+                            بنينا الشاشة حتى نلغيها. */}
+                        {c.missingItems && (
+                          <span className="w-full text-[11px] text-red-700">الناقص: {c.missingItems}</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Progress bar */}
               <div className="mb-4 rounded-xl bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 <div className="mb-2 flex items-center justify-between text-sm">

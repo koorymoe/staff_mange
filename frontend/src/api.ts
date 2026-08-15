@@ -2081,12 +2081,26 @@ export interface CartItem {
   createdAt: string
 }
 
+/** ═══ حالة جرد موظف واحد بحجز معيّن ═══
+ *  فاضي `checkedAt` = ما جرد لهذا الحجز بعد. */
+export interface BookingCrewInventoryState {
+  employeeId: string
+  name: string
+  position: string | null
+  isLeader: boolean
+  checkedAt: string | null
+  complete: boolean | null
+  missingItems: string | null
+}
+
 export interface InventoryCheck {
   id: string
   employeeId: string
   complete: boolean
   missingItems: string | null
   checkedAt: string
+  /** الحجز الي انجرد قبله — فاضي بالجرود العامة والقديمة */
+  bookingId: string | null
   resolved: boolean
   resolvedById: string | null
   resolvedAt: string | null
@@ -3863,8 +3877,11 @@ export const api = {
   markAllNotificationsRead: () => request<{ success: boolean }>('/notifications/read-all', { method: 'POST' }),
 
   // Inventory
-  createInventoryCheck: (data: { complete: boolean; missingItems?: string }) =>
+  createInventoryCheck: (data: { complete: boolean; missingItems?: string; bookingId?: string }) =>
     request<InventoryCheck>('/inventory/checks', { method: 'POST', body: JSON.stringify(data) }),
+  /** حالة جرد كل واحد بكادر حجز معيّن — «جرد أدوات فريقي». */
+  getBookingCrewInventory: (bookingId: string) =>
+    request<BookingCrewInventoryState[]>(`/inventory/checks/booking/${bookingId}`),
   getTodaysInventoryChecks: () => request<InventoryCheck[]>('/inventory/checks/today'),
   // آخر جرد للفني نفسه — يرجّع null لو ما جرد أبداً
   getMyLastInventoryCheck: () => request<InventoryCheck | null>('/inventory/checks/mine'),

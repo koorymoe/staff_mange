@@ -33,6 +33,24 @@ func (s *InventoryService) TodaysInventoryChecks() ([]model.InventoryCheck, erro
 	return s.repo.TodaysInventoryChecks()
 }
 
+// BookingCrewInventory حالة جرد كل واحد بكادر حجز معيّن.
+//
+// ⚠️ محصورة بمن هو **بنفس الحجز**: بدون هالشرط أي موظف يقرا نواقص
+// عدة أي زميل بتبديل رقم بالرابط. والليدر يشوف فريقه هو، مو كل
+// الشركة.
+func (s *InventoryService) BookingCrewInventory(bookingID, viewerID string) ([]model.BookingCrewInventoryState, error) {
+	rows, err := s.repo.BookingCrewInventory(bookingID)
+	if err != nil {
+		return nil, err
+	}
+	for _, c := range rows {
+		if c.EmployeeID == viewerID {
+			return rows, nil
+		}
+	}
+	return nil, errors.New("هذا الحجز مو من حجوزاتك")
+}
+
 func (s *InventoryService) LastInventoryCheck(employeeID string) (*model.InventoryCheck, error) {
 	return s.repo.LastInventoryCheck(employeeID)
 }

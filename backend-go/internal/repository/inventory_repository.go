@@ -30,11 +30,21 @@ func (r *InventoryRepository) loadEmployeeBrief(id string) *model.EmployeeBrief 
 
 func (r *InventoryRepository) CreateInventoryCheck(employeeID string, req model.CreateInventoryCheckRequest) (*model.InventoryCheck, error) {
 	var c model.InventoryCheck
+	// ⚠️ ON CONFLICT يحدّث بدل ما يفشل: الفني يجرد، ويلگه أداة ناقصة
+	// بعدين، ويعيد الجرد. رفضه برسالة «جردت قبل» يخلي السجل يكذب.
+	// (الفهرس جزئي، فالجرد العام بلا حجز ما يمرّ من هنا ويظل يتراكم
+	// بصفوف مستقلة مثل ما كان.)
 	err := r.db.Get(&c, `
-		INSERT INTO "InventoryCheck" (id, "employeeId", complete, "missingItems")
-		VALUES (gen_random_uuid()::text, $1, $2, $3)
+		INSERT INTO "InventoryCheck" (id, "employeeId", complete, "missingItems", "bookingId")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, NULLIF($4,''))
+		ON CONFLICT ("bookingId", "employeeId") WHERE "bookingId" IS NOT NULL
+		DO UPDATE SET complete = EXCLUDED.complete,
+		              "missingItems" = EXCLUDED."missingItems",
+		              "checkedAt" = CURRENT_TIMESTAMP,
+		              -- الجرد الجديد يلغي «انحلّت»: نقص جديد يحتاج حل جديد
+		              resolved = false, "resolvedById" = NULL, "resolvedAt" = NULL
 		RETURNING *
-	`, employeeID, req.Complete, req.MissingItems)
+	`, employeeID, req.Complete, req.MissingItems, derefStr(req.BookingID))
 	if err != nil {
 		return nil, err
 	}
@@ -79,6 +89,42 @@ func (r *InventoryRepository) TodaysInventoryChecks() ([]model.InventoryCheck, e
 		}
 	}
 	return checks, nil
+}
+
+// ═══ جرد كادر حجز واحد ═══
+//
+// «الليدر يجرد أدواته ويشوف منو من الموظفين الي راح يطلعون وياه
+// **بهذا الحجز** جرد».
+//
+// ⚠️ الكادر يجي من مصدرين لازم يتوحّدون: جدول التعيينات (الفنيين)
+// **وعمود المشرف بالحجز** (الليدر). الليدر ما ينحفظ بجدول التعيينات
+// — فلو أخذنا التعيينات بس، الليدر ما يطلع بقائمة فريقه أبداً وما
+// يشوف جرده هو.
+func (r *InventoryRepository) BookingCrewInventory(bookingID string) ([]model.BookingCrewInventoryState, error) {
+	rows := []model.BookingCrewInventoryState{}
+	err := r.db.Select(&rows, `
+		WITH crew AS (
+			SELECT ba."employeeId" AS id, false AS "isLeader"
+			FROM "BookingAssignment" ba WHERE ba."bookingId" = $1
+			UNION
+			SELECT b."projectSupervisorId", true
+			FROM "Booking" b
+			WHERE b.id = $1 AND b."projectSupervisorId" IS NOT NULL
+		)
+		SELECT e.id AS "employeeId", e.name, e.position,
+		       bool_or(crew."isLeader") AS "isLeader",
+		       ic."checkedAt", ic.complete, ic."missingItems"
+		FROM crew
+		JOIN "Employee" e ON e.id = crew.id
+		LEFT JOIN "InventoryCheck" ic
+		       ON ic."bookingId" = $1 AND ic."employeeId" = e.id
+		GROUP BY e.id, e.name, e.position, ic."checkedAt", ic.complete, ic."missingItems"
+		ORDER BY bool_or(crew."isLeader") DESC, e.name
+	`, bookingID)
+	if err != nil {
+		return nil, err
+	}
+	return rows, nil
 }
 
 // ResolveInventoryCheck يؤشر إنو الإداري/الأدمن وفّر النقص المسجّل بهذا الجرد.
