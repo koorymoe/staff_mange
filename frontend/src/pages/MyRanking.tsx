@@ -3,6 +3,7 @@ import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession } from '../session'
 import { roleLabels } from '../session'
 import { tracksFor } from '../rankingTracks'
+import PerformanceReviewPage from './PerformanceReviewPage'
 
 const levels = [
   { level: 1, label: 'متدرب', min: 0 },
@@ -14,8 +15,21 @@ const levels = [
 
 const BOOKINGS_PER_RANK = 10
 
+// ═══ «التقييم» ═══
+//
+// «بدل كلمة تصنيفي نخلي كلمة التقييم — من ندخل عليها تفتح واجهة بيها
+// تقييمي وتصنيفي، وبيها خيار تقييم فريقي. نفس الآلية الي اشتغلنا بيها
+// بأغلب الواجهات».
+//
+// نفس نمط «مهامي» و«الجرد»: بند واحد بالقائمة، والخيارات من فوگ.
 export default function MyRanking() {
   const { employee, permissions } = useSession()
+  // «تقييم فريقي» ما يطلع إلا لمن يقيّم فعلاً — الليدر أو من عنده
+  // الصلاحية. تبويب يفتح شاشة تگله «ممنوع» أسوأ من تبويب ما موجود.
+  const canReviewTeam = employee?.role === 'ADMIN'
+    || !!employee?.isLeader
+    || (permissions ?? []).includes('performance_review')
+  const [view, setView] = useState<'mine' | 'team'>('mine')
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly')
@@ -84,12 +98,13 @@ export default function MyRanking() {
         <div className="flex items-center gap-3">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-50 text-xl">🏆</span>
           <div>
-            <h2 className="text-2xl font-black text-[#0f2040]">تصنيفي</h2>
+            <h2 className="text-2xl font-black text-[#0f2040]">التقييم</h2>
             <p className="text-xs text-slate-500">
-              مقارنة بين الي يشتغلون {roleLabel}
+              {view === 'mine' ? `تقييمي وتصنيفي — مقارنة بين الي يشتغلون ${roleLabel}` : 'قيّم فريقك عن كل حجز'}
             </p>
           </div>
         </div>
+        {view === 'mine' && (
         <div className="flex gap-2">
           {(['monthly', 'weekly'] as const).map((p) => (
             <button
@@ -103,8 +118,36 @@ export default function MyRanking() {
             </button>
           ))}
         </div>
+        )}
       </div>
 
+      {/* ═══ خياران من فوگ ═══
+          نفس نمط «مهامي» و«الجرد»: بند واحد بالقائمة والاختيار هنا. */}
+      {canReviewTeam && (
+        <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-flex sm:gap-2">
+          {([
+            { k: 'mine' as const, label: '🏆 تقييمي وتصنيفي' },
+            { k: 'team' as const, label: '⭐ تقييم فريقي' },
+          ]).map((o) => (
+            <button
+              key={o.k}
+              onClick={() => setView(o.k)}
+              className={`rounded-xl px-3 py-2 text-[11px] font-extrabold transition sm:px-5 sm:text-xs ${
+                view === o.k
+                  ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow-md'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* تقييم الفريق يعيد استعمال نفس الشاشة بلا نسخ منطقها */}
+      {view === 'team' && <PerformanceReviewPage />}
+
+      {view === 'mine' && (<>
       {/* ═══ مسارات التصنيف ═══
           الموظف الي يشتغل أكثر من شغلة يظهر بأكثر من تصنيف — وهذا
           واقعه، مو خلل. التصنيف الواحد حسب الدور كان يخفيه. */}
@@ -372,6 +415,7 @@ export default function MyRanking() {
           )}
         </div>
       </div>
+      </>)}
     </div>
   )
 }

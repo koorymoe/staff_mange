@@ -103,14 +103,12 @@ export const navItems: NavItem[] = [
   // مجموعة «تصنيفي»: تصنيف الموظف نفسه، وتحته تقييم فريقه إذا كان ليدر.
   // لمن ما يكون بيها إلا «تصنيفي» تنفك المجموعة وتطلع الشاشة مباشرة —
   // فباقي الأدوار ما ينتغيّر عندهم شي.
-  {
-    to: '/my-ranking', label: 'تصنيفي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-    children: [
-      { to: '/my-ranking', label: 'تصنيفي', icon: <></>, roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
-      // تيم ليدر بس يقيّم فنيي فريقه (منفصل عن KPI)
-      { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'performance_review' },
-    ],
-  },
+  // ═══ «التقييم» بند واحد ═══
+  // كانت مجموعة تنفتح على «تصنيفي» و«تقييم الأداء». صارت بند واحد
+  // يفتح الشاشة، والاختيار بين «تقييمي وتصنيفي» و«تقييم فريقي» من
+  // فوگ بالواجهة — نفس نمط «مهامي» و«الجرد».
+  { to: '/my-ranking', label: 'التقييم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+    roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
 
   // ── الإدارة ──
   {
@@ -292,7 +290,13 @@ export const navItems: NavItem[] = [
       // (المحاسب والمراقب والمدير إلهم بندهم الخاص بمجموعة الحسابات
       // — ذاك يشوف فواتير **الكل**، وهذا يشوف فواتيره هو.)
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL', 'PROJECT_MANAGER'] },
+      // ⚠️ «مصاريفي» انشالت من هنا — صارت خيار جوّا «مهامي» ويّا
+      // الحجوزات والفواتير والتقارير. الأربعة يخصّون نفس الشغل:
+      // حجزك، وفاتورة حجزك، وتقرير حجزك، ومصاريف حجزك.
+      //
+      // (مدير المشاريع ما عنده «مهامي»، فيبقى بنده هنا — بدونه
+      // يفقد الوصول لمصاريفه نهائياً.)
+      { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['PROJECT_MANAGER'] },
       // حسبتان مختلفتان بنفس المحرك:
       //  • «استفسار زبون» = رقم بس، ما ينحفظ ولا ينربط بحجز — للزبون
       //    الي يسأل عن السعر قبل ما يحجز.

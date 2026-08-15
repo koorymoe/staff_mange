@@ -12,18 +12,21 @@ import MyExtraTasks from '../components/MyExtraTasks'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
 import LeaderInvoiceNew from './LeaderInvoiceNew'
 import WorkReportPage from './WorkReportPage'
+import MyExpenses from './MyExpenses'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 
-// ═══ الخيارات الثلاثة ═══
-// الحجوزات = شغلك اليوم · فواتيري = فواتير شغلك · تقاريري = تقارير شغلك.
+// ═══ خيارات «مهامي» ═══
+// الحجوزات = شغلك · فواتيري = فواتير شغلك · تقاريري = تقارير شغلك ·
+// مصاريفي = مصاريف شغلك. الأربعة يخصّون نفس الشي، فمكانهن واحد.
 // ⚠️ برّا المكوّن: مصفوفة تنبني بكل رندر تخلي React يعيد بناء الأزرار
 // بلا داعي.
 const TABS = [
   { key: 'bookings' as const, label: 'الحجوزات', icon: '📋' },
   { key: 'invoices' as const, label: 'فواتيري', icon: '🧾' },
   { key: 'reports' as const, label: 'تقاريري', icon: '📝' },
+  { key: 'expenses' as const, label: 'مصاريفي', icon: '💰' },
 ]
 
 type TabKey = (typeof TABS)[number]['key']
@@ -106,7 +109,7 @@ export default function MyTasks() {
   const [toolsLoading, setToolsLoading] = useState(false)
   const [submittingAccept, setSubmittingAccept] = useState(false)
 
-  // ── الخيارات الثلاثة ──
+  // ── خيارات الشاشة ──
   // الصلاحية هي الي تقرر منو يشوف شنو، مو الدور: محاسب انطيته صلاحية
   // فواتير يشوف تبويب فواتيره، وفني بلا الصلاحية ما يشوفه.
   const [tab, setTab] = useState<TabKey>('bookings')
@@ -324,10 +327,11 @@ export default function MyTasks() {
           صلاحية فواتير ما يشوف تبويب فواتير — تبويب يفتح شاشة تگله
           «ممنوع» أسوأ من تبويب ما موجود. */}
       {!loading && (
-        <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-grid sm:gap-2">
+        <div className="mt-4 grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-flex sm:gap-2">
           {TABS.filter((t) => t.key === 'bookings'
             || (t.key === 'invoices' && canSeeInvoices)
-            || (t.key === 'reports' && canSeeReports)).map((t) => (
+            || (t.key === 'reports' && canSeeReports)
+            || t.key === 'expenses').map((t) => (
             <button
               key={t.key}
               onClick={() => setTab(t.key)}
@@ -373,6 +377,7 @@ export default function MyTasks() {
         </div>
       )}
       {tab === 'reports' && <div className="mt-4"><WorkReportPage /></div>}
+      {tab === 'expenses' && <div className="mt-4"><MyExpenses /></div>}
 
       {loading && tab === 'bookings' && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
 
