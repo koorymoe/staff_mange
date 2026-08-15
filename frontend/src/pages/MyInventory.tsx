@@ -62,11 +62,22 @@ export default function MyInventory() {
   // كامل وقت الحجز الثالث. والأهم: لما تنقص أداة عند الزبون، ماكو
   // شي يربط النقص بالحجز الي صار بيه.
   //
-  // فالفني يختار الحجز الي طالع له، ويجرد إله.
+  // ⚠️ والحجز **ما ينختار بالإيد**: يطلع لحاله.
+  //
+  // «ماكدر اختار الحجز الي اجردله — يطلعلي مباشرة الحجز الي أني
+  // متوجّه له». وهذا صح: الفني طالع لشغل معروف، وقائمة منسدلة
+  // تسأله وين رايح تضيّع وقته وتفتح باب يجرد للحجز الغلط.
+  //
+  // الترتيب: الشغل الي بديت بيه أولاً، وبعده الأقرب بالموعد.
   const [myBookings, setMyBookings] = useState<Booking[]>([])
   const [forBooking, setForBooking] = useState('')
   // حالة جرد كادر الحجز المختار — «جرد أدوات فريقي»
   const [crew, setCrew] = useState<BookingCrewInventoryState[]>([])
+
+  const loadCrew = (bookingId: string) => {
+    if (!bookingId) { setCrew([]); return }
+    api.getBookingCrewInventory(bookingId).then(setCrew).catch(() => setCrew([]))
+  }
 
   const load = async () => {
     if (!employee) return
@@ -87,7 +98,22 @@ export default function MyInventory() {
       setMyRequests(tr)
       // حجوزاتي الي ما خلصت — هذني الي ينجرد إلهن
       const bs = await api.getBookings({ assignedTo: 'me' }).catch(() => [])
-      setMyBookings(bs.filter((b) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED'))
+      const open = bs
+        .filter((b) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED')
+        .sort((x, y) => {
+          // الشغل الشغّال أول — هو الي الفني واقف بيه هسه
+          if ((x.status === 'IN_PROGRESS') !== (y.status === 'IN_PROGRESS')) {
+            return x.status === 'IN_PROGRESS' ? -1 : 1
+          }
+          // ⚠️ الحجز بلا موعد ينزل للآخر مو يتصدّر: بلا هذا، حجز
+          // قديم ما انجدول يسبق شغل اليوم ويصير الافتراضي الغلط.
+          return (x.scheduledAt || '9999').localeCompare(y.scheduledAt || '9999')
+        })
+      setMyBookings(open)
+      if (open.length > 0) {
+        setForBooking(open[0].id)
+        loadCrew(open[0].id)
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'حدث خطأ')
     } finally {
@@ -104,11 +130,6 @@ export default function MyInventory() {
 
   const [submittingCheck, setSubmittingCheck] = useState(false)
 
-  const loadCrew = (bookingId: string) => {
-    if (!bookingId) { setCrew([]); return }
-    api.getBookingCrewInventory(bookingId).then(setCrew).catch(() => setCrew([]))
-  }
-
   // تبديل الحجز يرجّع الشاشة لحالة «ما جردت» — وإلا الفني يجرد لحجز
   // ويبدّل لحجز ثاني ويلگاه مأشّر «انحفظ»، فيطلع بلا جرد.
   const pickBooking = (bookingId: string) => {
@@ -117,6 +138,8 @@ export default function MyInventory() {
     setCheckMap(Object.fromEntries(personalTools.map((t) => [t.id, true])))
     loadCrew(bookingId)
   }
+
+  const activeBooking = myBookings.find((b) => b.id === forBooking) || null
 
   const toggleCheck = (id: string) => {
     setCheckMap((prev) => ({ ...prev, [id]: !prev[id] }))
@@ -206,32 +229,56 @@ export default function MyInventory() {
           {/* ===== جرد أدواتي ===== */}
           {activeTab === 'checklist' && (
             <div>
-              {/* ═══ لأي حجز تجرد؟ ═══ */}
-              <div className="mb-4 rounded-xl border-2 border-brand-200 bg-brand-50/50 p-4">
-                <label className="mb-1 block text-xs font-bold text-brand-800">
-                  لأي حجز تجرد عدتك؟
-                </label>
-                <select
-                  value={forBooking}
-                  onChange={(e) => pickBooking(e.target.value)}
-                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                >
-                  <option value="">— جرد عام (مو مربوط بحجز) —</option>
-                  {myBookings.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.code ? `${b.code} — ` : ''}{b.customer?.name || 'بدون اسم'}
-                      {b.scheduledAt ? ` (${new Date(b.scheduledAt).toLocaleDateString('ar-IQ')})` : ''}
-                    </option>
-                  ))}
-                </select>
-                <p className="mt-1 text-[11px] leading-relaxed text-slate-500">
-                  {forBooking
-                    ? 'ⓘ الجرد ينحفظ على هذا الحجز — إذا نقصت أداة عند الزبون نعرف بأي شغلة صار النقص.'
-                    : myBookings.length > 0
-                      ? 'ⓘ اختار الحجز الي طالع له — الجرد المربوط بحجز يوصل ليدر الحجز ويشوف منو جرد.'
-                      : 'ⓘ ماكو عندك حجوزات مفتوحة حالياً — تكدر تسوي جرد عام لعدتك.'}
+              {/* ═══ الحجز الي تجرد له — يطلع لحاله ═══ */}
+              {activeBooking ? (
+                <div className="mb-4 rounded-xl border-2 border-brand-200 bg-brand-50/50 p-4">
+                  <p className="text-[11px] font-bold text-brand-700">
+                    {activeBooking.status === 'IN_PROGRESS' ? '🔧 شغلك الحالي' : '📍 حجزك القادم'}
+                    {' — تجرد عدتك إله'}
+                  </p>
+                  <p className="mt-1 font-black text-[#0f2040]">
+                    {activeBooking.code && <span className="font-mono">{activeBooking.code} · </span>}
+                    {activeBooking.customer?.name || 'بدون اسم'}
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-600">
+                    {activeBooking.scheduledAt && (
+                      <span>🕐 {new Date(activeBooking.scheduledAt).toLocaleString('ar-IQ', {
+                        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+                      })}</span>
+                    )}
+                    {(activeBooking.address || activeBooking.customer?.location) && (
+                      <span>📍 {activeBooking.address || activeBooking.customer?.location}</span>
+                    )}
+                  </div>
+
+                  {/* ⚠️ عنده أكثر من حجز مفتوح؟ نعرضهن **أزرار** مو
+                      قائمة منسدلة: الأزرار تخليه يشوف الي عنده بلمحة
+                      ويبدّل بضغطة، والمنسدلة تخبّي الخيارات وتطلب
+                      ضغطتين. وواحد بس؟ ما نعرض شي أصلاً. */}
+                  {myBookings.length > 1 && (
+                    <div className="mt-2.5 flex flex-wrap gap-1.5 border-t border-brand-200/60 pt-2.5">
+                      <span className="text-[10px] text-slate-500">عندك {myBookings.length} حجوزات:</span>
+                      {myBookings.map((b) => (
+                        <button
+                          key={b.id}
+                          onClick={() => pickBooking(b.id)}
+                          className={`rounded-lg px-2 py-1 text-[10px] font-bold transition ${
+                            b.id === forBooking
+                              ? 'bg-brand-700 text-white'
+                              : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {b.code || b.customer?.name || 'حجز'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-500">
+                  ⓘ ماكو عندك حجز مفتوح حالياً — الجرد الي تسويه هسه ينحفظ كجرد عام لعدتك.
                 </p>
-              </div>
+              )}
 
               {/* ═══ جرد أدوات فريقي ═══
                   «الليدر يجرد أدواته ويشوف منو من الموظفين الي راح

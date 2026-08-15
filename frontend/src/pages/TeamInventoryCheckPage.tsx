@@ -1,220 +1,204 @@
 import { useEffect, useState } from 'react'
-import { api, type TeamInventoryToolCatalogItem, type TeamInventoryCheck, type TeamInventoryShortageReason, type Employee } from '../api'
-import { useSession } from '../session'
+import { api, type Booking, type BookingCrewInventoryState } from '../api'
 
-const reasonLabels: Record<TeamInventoryShortageReason, string> = {
-  FORGOTTEN: 'نسيان في مكان معين',
-  DAMAGED: 'يجب جلب القطعة المتلوفة "تلف"',
-  UNKNOWN: 'لا اعرف',
-}
-
-type PersonKey = 'LEADER' | 'EMPLOYEE1' | 'EMPLOYEE2'
-
-interface ToolState {
-  present: boolean
-  reason: TeamInventoryShortageReason | ''
-}
+// ═══ جرد أدوات فريقي ═══
+//
+// «ما أختار فريقي — يطلعلي فريقي الي وياي بهذا الحجز، وجاردين عددهم
+// لو لا. هم من ينطون «تم» على أدواتهم تطلع عندي، ويطلع عندي إذا
+// عدهم نقص».
+//
+// ⚠️ الشاشة القديمة كانت **الليدر يجرد عن فريقه**: يختار موظفين من
+// قائمة، ويأشّر بنفسه شنو موجود عند كل واحد. وهاي غلط بثلاث نواحي:
+//
+//   • الليدر ما يعرف شنو بحقيبة الفني — يخمّن، والتخمين ينكتب حقيقة.
+//   • المسؤولية تنقلب: الفني ينقصه أداة والسجل يگول الليدر أشّرها.
+//   • واختيار الموظفين بالإيد يعني ممكن يختار واحد مو بالحجز أصلاً.
+//
+// هسه كل واحد يجرد **عدته هو**، والليدر يشوف النتيجة جاهزة. الليدر
+// ما يجرد عن أحد — يشوف ويتابع، وأدواته هو يجردها بـ«جرد أدواتي»
+// مثل أي أحد.
 
 export default function TeamInventoryCheckPage() {
-  const { employee } = useSession()
-  const [tools, setTools] = useState<TeamInventoryToolCatalogItem[]>([])
-  const [employees, setEmployees] = useState<Employee[]>([])
-  const [checks, setChecks] = useState<TeamInventoryCheck[]>([])
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [selected, setSelected] = useState('')
+  const [crew, setCrew] = useState<BookingCrewInventoryState[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
 
-  const [employee1Id, setEmployee1Id] = useState('')
-  const [employee2Id, setEmployee2Id] = useState('')
-  // state[toolName][personKey] = { present, reason }
-  const [state, setState] = useState<Record<string, Record<PersonKey, ToolState>>>({})
-
-  const load = async () => {
-    try {
-      const [toolList, empList, checkList] = await Promise.all([
-        api.getTeamInventoryTools(),
-        api.getEmployees(),
-        api.getTeamInventoryChecks(),
-      ])
-      setTools(toolList)
-      setEmployees(empList)
-      setChecks(checkList)
-      setState((prev) => {
-        const next: Record<string, Record<PersonKey, ToolState>> = { ...prev }
-        for (const tool of toolList) {
-          if (!next[tool.name]) {
-            next[tool.name] = {
-              LEADER: { present: true, reason: '' },
-              EMPLOYEE1: { present: true, reason: '' },
-              EMPLOYEE2: { present: true, reason: '' },
+  useEffect(() => {
+    api.getBookings({ assignedTo: 'me' })
+      .then((bs) => {
+        const open = bs
+          .filter((b) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED')
+          .sort((x, y) => {
+            if ((x.status === 'IN_PROGRESS') !== (y.status === 'IN_PROGRESS')) {
+              return x.status === 'IN_PROGRESS' ? -1 : 1
             }
-          }
-        }
-        return next
+            // الحجز بلا موعد للآخر — وإلا حجز قديم ما انجدول يتصدّر
+            return (x.scheduledAt || '9999').localeCompare(y.scheduledAt || '9999')
+          })
+        setBookings(open)
+        if (open.length > 0) setSelected(open[0].id)
       })
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'حدث خطأ')
-    } finally {
-      setLoading(false)
-    }
-  }
+      .catch((e) => setErr(e instanceof Error ? e.message : 'تعذر جلب حجوزاتك'))
+      .finally(() => setLoading(false))
+  }, [])
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load() }, [])
+  // ⚠️ التصفير جوّا الـpromise مو بجسم الـeffect: تعديل الحالة
+  // مباشرة بالجسم يولّد رندر متسلسل.
+  useEffect(() => {
+    if (!selected) return
+    api.getBookingCrewInventory(selected).then(setCrew).catch(() => setCrew([]))
+  }, [selected])
 
-  const setToolState = (toolName: string, person: PersonKey, patch: Partial<ToolState>) => {
-    setState((prev) => ({
-      ...prev,
-      [toolName]: {
-        ...prev[toolName],
-        [person]: { ...prev[toolName]?.[person], ...patch },
-      },
-    }))
-  }
+  const booking = bookings.find((b) => b.id === selected) || null
+  const doneCount = crew.filter((c) => c.checkedAt).length
+  const shortCount = crew.filter((c) => c.checkedAt && !c.complete).length
 
-  const otherEmployees = employees.filter((e) => e.id !== employee?.id)
-
-  const handleSubmit = async () => {
-    const items: { toolName: string; personRole: PersonKey; present: boolean; reason?: TeamInventoryShortageReason | null }[] = []
-    for (const tool of tools) {
-      const roles: PersonKey[] = ['LEADER']
-      if (employee1Id) roles.push('EMPLOYEE1')
-      if (employee2Id) roles.push('EMPLOYEE2')
-      for (const role of roles) {
-        const s = state[tool.name]?.[role]
-        if (!s) continue
-        if (!s.present && !s.reason) {
-          alert(`اختر سبب النقص لأداة "${tool.name}"`)
-          return
-        }
-        items.push({ toolName: tool.name, personRole: role, present: s.present, reason: s.present ? null : (s.reason || null) })
-      }
-    }
-    if (items.length === 0) {
-      alert('لا توجد أدوات لتسجيل الجرد')
-      return
-    }
-    setSubmitting(true)
-    try {
-      await api.createTeamInventoryCheck({
-        employee1Id: employee1Id || null,
-        employee2Id: employee2Id || null,
-        items,
-      })
-      await load()
-      alert('تم حفظ جرد الفريق بنجاح')
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر حفظ الجرد')
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
-  const columns: { key: PersonKey; label: string }[] = [
-    { key: 'LEADER', label: 'الليدر' },
-    ...(employee1Id ? [{ key: 'EMPLOYEE1' as PersonKey, label: 'الموظف الأول' }] : []),
-    ...(employee2Id ? [{ key: 'EMPLOYEE2' as PersonKey, label: 'الموظف الثاني' }] : []),
-  ]
+  if (loading) return <p className="p-6 text-center text-slate-400">جارٍ التحميل...</p>
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">جرد العدد (جرد الفريق)</h2>
-      <p className="mt-1 text-slate-500">اختر أفراد الفريق ثم حدد حالة كل أداة لكل شخص</p>
+    <div dir="rtl" className="mx-auto max-w-3xl space-y-4">
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg sm:h-11 sm:w-11 sm:text-xl">👥</span>
+        <div className="min-w-0">
+          <h1 className="text-xl font-black text-[#0f2040] sm:text-2xl">جرد أدوات فريقي</h1>
+          <p className="text-[11px] text-slate-500 sm:text-xs">
+            منو من فريقك جرد عدته قبل ما تطلعون — وشنو الناقص عنده
+          </p>
+        </div>
+      </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
-      {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}
+      {err && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{err}</p>}
 
-      {!loading && !error && (
+      {!booking ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
+          <p className="text-3xl">🗓️</p>
+          <p className="mt-2 text-sm font-bold text-slate-600">ماكو عندك حجز مفتوح حالياً</p>
+          <p className="mt-1 text-xs text-slate-400">لما ينكلّف إلك حجز، يطلع هنا فريقك وحالة جردهم تلقائياً.</p>
+        </div>
+      ) : (
         <>
-          <div className="mt-6 grid grid-cols-1 gap-4 rounded-xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">الموظف الأول</label>
-              <select value={employee1Id} onChange={(e) => setEmployee1Id(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2">
-                <option value="">-- اختر --</option>
-                {otherEmployees.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
+          {/* ── الحجز — يطلع لحاله ── */}
+          <div className="rounded-2xl border-2 border-brand-200 bg-brand-50/50 p-4">
+            <p className="text-[11px] font-bold text-brand-700">
+              {booking.status === 'IN_PROGRESS' ? '🔧 شغلك الحالي' : '📍 حجزك القادم'}
+            </p>
+            <p className="mt-1 font-black text-[#0f2040]">
+              {booking.code && <span className="font-mono">{booking.code} · </span>}
+              {booking.customer?.name || 'بدون اسم'}
+            </p>
+            <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-600">
+              {booking.scheduledAt && (
+                <span>🕐 {new Date(booking.scheduledAt).toLocaleString('ar-IQ', {
+                  day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit',
+                })}</span>
+              )}
+              {(booking.address || booking.customer?.location) && (
+                <span>📍 {booking.address || booking.customer?.location}</span>
+              )}
             </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-600">الموظف الثاني</label>
-              <select value={employee2Id} onChange={(e) => setEmployee2Id(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2">
-                <option value="">-- اختر --</option>
-                {otherEmployees.filter((e) => e.id !== employee1Id).map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-              </select>
-            </div>
-          </div>
 
-          <div className="mt-6 overflow-hidden rounded-xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 text-right">
-                <thead className="bg-gradient-to-l from-brand-500 to-brand-800 text-white">
-                  <tr>
-                    <th className="px-4 py-3 text-sm font-semibold">الأداة</th>
-                    {columns.map((c) => (
-                      <th key={c.key} className="px-4 py-3 text-sm font-semibold">{c.label}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {tools.map((tool) => (
-                    <tr key={tool.id}>
-                      <td className="px-4 py-3 font-medium">{tool.name}</td>
-                      {columns.map((c) => {
-                        const s = state[tool.name]?.[c.key] || { present: true, reason: '' }
-                        return (
-                          <td key={c.key} className="px-4 py-3">
-                            <div className="flex flex-col gap-1">
-                              <label className="flex items-center gap-2 text-sm">
-                                <input type="checkbox" checked={s.present}
-                                  onChange={(e) => setToolState(tool.name, c.key, { present: e.target.checked, reason: e.target.checked ? '' : s.reason })} />
-                                متوفرة
-                              </label>
-                              {!s.present && (
-                                <select value={s.reason} onChange={(e) => setToolState(tool.name, c.key, { reason: e.target.value as TeamInventoryShortageReason })}
-                                  className="rounded border border-slate-200 px-2 py-1 text-xs">
-                                  <option value="">-- سبب النقص --</option>
-                                  {Object.entries(reasonLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                                </select>
-                              )}
-                            </div>
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <button onClick={handleSubmit} disabled={submitting}
-            className="mt-6 w-full rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 py-3 font-bold text-white shadow-md disabled:opacity-50">
-            {submitting ? 'جارٍ الحفظ...' : 'حفظ جرد الفريق'}
-          </button>
-
-          <h3 className="mt-10 text-lg font-bold text-brand-900">جلسات الجرد السابقة</h3>
-          <div className="mt-3 space-y-3">
-            {checks.length === 0 ? (
-              <p className="text-slate-400">لا توجد جلسات سابقة</p>
-            ) : (
-              checks.map((c) => (
-                <div key={c.id} className="rounded-xl bg-white p-4 shadow-[0_2px_10px_rgba(15,32,64,0.05)]">
-                  <div className="text-sm text-slate-500">
-                    الليدر: {c.leader?.name || '—'} · الموظف الأول: {c.employee1?.name || '—'} · الموظف الثاني: {c.employee2?.name || '—'}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-400">{new Date(c.createdAt).toLocaleString('ar-IQ')}</div>
-                  <div className="mt-2 text-sm">
-                    {c.items.filter((i) => !i.present).length === 0
-                      ? <span className="text-green-600 font-bold">جميع الأدوات متوفرة</span>
-                      : <span className="text-amber-700 font-bold">{c.items.filter((i) => !i.present).length} أداة ناقصة</span>}
-                  </div>
-                </div>
-              ))
+            {/* أكثر من حجز؟ أزرار — تشوفهن بلمحة وتبدّل بضغطة */}
+            {bookings.length > 1 && (
+              <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-brand-200/60 pt-2.5">
+                <span className="text-[10px] text-slate-500">عندك {bookings.length} حجوزات:</span>
+                {bookings.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => setSelected(b.id)}
+                    className={`rounded-lg px-2 py-1 text-[10px] font-bold transition ${
+                      b.id === selected ? 'bg-brand-700 text-white' : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                    }`}
+                  >
+                    {b.code || b.customer?.name || 'حجز'}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
+
+          {/* ── الأرقام ── */}
+          <div className="grid grid-cols-3 gap-2.5">
+            <Stat label="الفريق" value={crew.length} tone="slate" />
+            <Stat label="جردوا" value={doneCount} tone="emerald" />
+            <Stat label="عدهم نقص" value={shortCount} tone="red" />
+          </div>
+
+          {/* ── الفريق ── */}
+          <div className="space-y-2">
+            {crew.length === 0 && (
+              <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400">
+                ما انكلّف كادر لهذا الحجز بعد.
+              </p>
+            )}
+            {crew.map((c) => (
+              <div
+                key={c.employeeId}
+                className={`rounded-2xl border-2 bg-white p-4 ${
+                  !c.checkedAt ? 'border-amber-300'
+                    : c.complete ? 'border-emerald-300'
+                    : 'border-red-300'
+                }`}
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-slate-100 text-sm font-black text-slate-500">
+                    {c.name.charAt(0)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-slate-800">{c.name}</p>
+                    <p className="text-[10px] text-slate-500">
+                      {c.isLeader ? 'ليدر' : c.position || 'فني'}
+                    </p>
+                  </div>
+                  <span className={`mr-auto rounded-full px-3 py-1 text-[11px] font-bold ${
+                    !c.checkedAt ? 'bg-amber-100 text-amber-800'
+                      : c.complete ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {!c.checkedAt ? '⏳ ما جرد بعد' : c.complete ? '✅ عدته كاملة' : '⚠️ عنده نقص'}
+                  </span>
+                </div>
+
+                {/* الناقص بالاسم مو «عنده نقص» بس: بلا التفصيل يضطر
+                    الليدر يتصل يسأل — ونفس المكالمة الي بنينا الشاشة
+                    حتى نلغيها. */}
+                {c.missingItems && (
+                  <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-[11px] text-red-800">
+                    الناقص: {c.missingItems}
+                  </p>
+                )}
+                {c.checkedAt && (
+                  <p className="mt-1 text-[10px] text-slate-400">
+                    جرد {new Date(c.checkedAt).toLocaleString('ar-IQ', {
+                      day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+                    })}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <p className="rounded-xl bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-500">
+            ⓘ كل واحد يجرد عدته هو من شاشة «جرد أدواتي» — وأنت تشوف النتيجة هنا.
+            أدواتك انت جردها من نفس الشاشة مثل الباقين.
+          </p>
         </>
       )}
+    </div>
+  )
+}
+
+function Stat({ label, value, tone }: { label: string; value: number; tone: 'slate' | 'emerald' | 'red' }) {
+  const tones: Record<string, string> = {
+    slate: 'text-slate-700',
+    emerald: 'text-emerald-700',
+    red: 'text-red-700',
+  }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+      <p className={`text-2xl font-black ${tones[tone]}`}>{value}</p>
+      <p className="text-[10px] text-slate-500">{label}</p>
     </div>
   )
 }
