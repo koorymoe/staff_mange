@@ -418,6 +418,8 @@ export interface BookingAwaitingReview {
   code: string
   customerName: string
   serviceName: string | null
+  customerPhone: string | null
+  customerAddress: string | null
   completedAt: string | null
   crew: CrewReviewState[]
 }
@@ -446,6 +448,10 @@ export interface CrewReviewState {
   /** فاضي إذا لسه ما انقيّم بهذا الحجز. */
   rating: ReviewRating | null
   reason: string | null
+  /** درجات ١-٥ اختيارية — فاضية يعني ما انطّى نجوم، مو صفر. */
+  commitmentScore: number | null
+  speedScore: number | null
+  qualityScore: number | null
 }
 
 export interface PerformanceReview {
@@ -3464,7 +3470,10 @@ export const api = {
     request<StaffRequest>(`/staff-requests/${id}/status`, { method: 'PUT', body: JSON.stringify({ status }) }),
 
   // تقييم الأداء (منفصل عن KPI مال الغرامات) — يحدد استحقاق التدريب فقط
-  createPerformanceReview: (data: { employeeId: string; rating: ReviewRating; reason: string; bookingId?: string | null }) =>
+  createPerformanceReview: (data: {
+    employeeId: string; rating: ReviewRating; reason: string; bookingId?: string | null
+    commitmentScore?: number | null; speedScore?: number | null; qualityScore?: number | null
+  }) =>
     request<PerformanceReview>('/performance-reviews', { method: 'POST', body: JSON.stringify(data) }),
   getPerformanceReviews: () => request<PerformanceReview[]>('/performance-reviews'),
   getRatableEmployees: () => request<{ id: string; name: string }[]>('/performance-reviews/ratable'),

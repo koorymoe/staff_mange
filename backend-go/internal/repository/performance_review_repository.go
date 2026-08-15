@@ -15,19 +15,26 @@ func NewPerformanceReviewRepository(db *sqlx.DB) *PerformanceReviewRepository {
 	return &PerformanceReviewRepository{db: db}
 }
 
-func (r *PerformanceReviewRepository) Create(employeeID, evaluatorID, rating, reason string, bookingID *string) (*model.PerformanceReview, error) {
+func (r *PerformanceReviewRepository) Create(employeeID, evaluatorID, rating, reason string, bookingID *string, commitment, speed, quality *int) (*model.PerformanceReview, error) {
 	var pr model.PerformanceReview
 	// ⚠️ ON CONFLICT يحدّث بدل ما يفشل: الليدر يغيّر رأيه ويعيد التقييم
 	// لنفس الحجز — ما يصير نرفضه برسالة «انقيّم قبل» ويضطر يتصل بالدعم.
 	// الفهرس الفريد يحمي من تقييمين، وهاي تخلي التعديل طبيعي.
 	err := r.db.Get(&pr, `
-		INSERT INTO "PerformanceReview" (id, "employeeId", "evaluatorId", rating, reason, "bookingId")
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO "PerformanceReview" (id, "employeeId", "evaluatorId", rating, reason, "bookingId",
+		                                 "commitmentScore", "speedScore", "qualityScore")
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		ON CONFLICT ("bookingId", "employeeId") WHERE "bookingId" IS NOT NULL
 		DO UPDATE SET rating = EXCLUDED.rating, reason = EXCLUDED.reason,
-		              "evaluatorId" = EXCLUDED."evaluatorId"
+		              "evaluatorId" = EXCLUDED."evaluatorId",
+		              -- ⚠️ COALESCE: إعادة التقييم بلا نجوم ما تمحي النجوم
+		              -- الي انطاها قبل. الليدر يعدّل الحكم بضغطة وحدة،
+		              -- وما يتوقع إن تفاصيل نطّاها أمس تنمسح بصمت.
+		              "commitmentScore" = COALESCE(EXCLUDED."commitmentScore", "PerformanceReview"."commitmentScore"),
+		              "speedScore"      = COALESCE(EXCLUDED."speedScore",      "PerformanceReview"."speedScore"),
+		              "qualityScore"    = COALESCE(EXCLUDED."qualityScore",    "PerformanceReview"."qualityScore")
 		RETURNING *
-	`, uuid.NewString(), employeeID, evaluatorID, rating, reason, bookingID)
+	`, uuid.NewString(), employeeID, evaluatorID, rating, reason, bookingID, commitment, speed, quality)
 	if err != nil {
 		return nil, err
 	}
@@ -89,6 +96,8 @@ func (r *PerformanceReviewRepository) BookingsAwaitingReview(leaderID string) ([
 			b.code          AS code,
 			COALESCE(c.name, '—') AS "customerName",
 			s.name          AS "serviceName",
+			c.phone         AS "customerPhone",
+			c.location      AS "customerAddress",
 			b."completedAt" AS "completedAt"
 		FROM "Booking" b
 		JOIN "BookingAssignment" mine ON mine."bookingId" = b.id AND mine."employeeId" = $1
@@ -113,7 +122,8 @@ func (r *PerformanceReviewRepository) BookingsAwaitingReview(leaderID string) ([
 		crew := []model.CrewReviewState{}
 		if err := r.db.Select(&crew, `
 			SELECT e.id AS "employeeId", e.name, e.position,
-			       pr.rating, pr.reason
+			       pr.rating, pr.reason,
+			       pr."commitmentScore", pr."speedScore", pr."qualityScore"
 			FROM "BookingAssignment" ba
 			JOIN "Employee" e ON e.id = ba."employeeId"
 			LEFT JOIN "PerformanceReview" pr

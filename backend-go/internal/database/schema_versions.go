@@ -259,6 +259,7 @@ func versionedMigrations() []Migration {
 	// 0244: أنواع التقييم — «يحتاج تدريب» غير «مخالفة سلوك». الأول
 	// نقص مهارة علاجه تدريب، والثاني إجراء إداري. خلطهن يظلم الاثنين.
 	result = append(result, reviewKindMigrations()...)
+	result = append(result, reviewScoreMigrations()...)
 	return result
 }
 

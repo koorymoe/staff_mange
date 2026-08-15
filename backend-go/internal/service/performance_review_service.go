@@ -102,7 +102,14 @@ func (s *PerformanceReviewService) Create(evaluatorID string, req model.CreatePe
 		return nil, err
 	}
 
-	review, err := s.repo.Create(req.EmployeeID, evaluatorID, req.Rating, req.Reason, req.BookingID)
+	// الدرجات اختيارية، بس إذا انطاها لازم تكون ١-٥. رقم برّا المدى
+	// يخرب كل متوسط ينحسب منه بعدين.
+	if !model.ValidReviewScore(req.CommitmentScore) || !model.ValidReviewScore(req.SpeedScore) || !model.ValidReviewScore(req.QualityScore) {
+		return nil, errors.New("درجة التقييم لازم تكون من ١ إلى ٥")
+	}
+
+	review, err := s.repo.Create(req.EmployeeID, evaluatorID, req.Rating, req.Reason, req.BookingID,
+		req.CommitmentScore, req.SpeedScore, req.QualityScore)
 	if err != nil {
 		return nil, err
 	}

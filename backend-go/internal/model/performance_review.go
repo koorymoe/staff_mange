@@ -14,7 +14,12 @@ type PerformanceReview struct {
 	// الحجز الي انقيّم عليه. فاضي بالتقييمات القديمة الي انسجّلت قبل
 	// ما يصير التقييم مربوط بشغل.
 	BookingID *string   `db:"bookingId" json:"bookingId"`
-	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
+	// درجات ١-٥ اختيارية — تفصّل «وين» بالضبط بدل حكم واحد عام.
+	// NULL يعني الليدر ما نطّى نجوم، مو إنه نطّى صفر.
+	CommitmentScore *int      `db:"commitmentScore" json:"commitmentScore"`
+	SpeedScore      *int      `db:"speedScore" json:"speedScore"`
+	QualityScore    *int      `db:"qualityScore" json:"qualityScore"`
+	CreatedAt       time.Time `db:"createdAt" json:"createdAt"`
 
 	Employee  *EmployeeBrief `db:"-" json:"employee"`
 	Evaluator *EmployeeBrief `db:"-" json:"evaluator"`
@@ -59,6 +64,17 @@ type CreatePerformanceReviewRequest struct {
 	Rating     string  `json:"rating"`
 	Reason     string  `json:"reason"`
 	BookingID  *string `json:"bookingId"`
+
+	CommitmentScore *int `json:"commitmentScore"`
+	SpeedScore      *int `json:"speedScore"`
+	QualityScore    *int `json:"qualityScore"`
+}
+
+// ValidReviewScore الدرجة إما فاضية (ما انطّى نجوم) أو ١-٥.
+// ⚠️ الفحص هنا **زيادة** على قيد قاعدة البيانات مو بديل عنه: القيد
+// يحمي من أي مسار ثاني، وهذا ينطي رسالة عربية مفهومة بدل خطأ SQL.
+func ValidReviewScore(v *int) bool {
+	return v == nil || (*v >= 1 && *v <= 5)
 }
 
 // ═══ حجز ينتظر تقييم كادره ═══
@@ -70,6 +86,10 @@ type BookingAwaitingReview struct {
 	Code         string     `db:"code" json:"code"`
 	CustomerName string     `db:"customerName" json:"customerName"`
 	ServiceName  *string    `db:"serviceName" json:"serviceName"`
+	// هوية الزبون بنفس البطاقة — الليدر يتذكّر الشغلة من العنوان
+	// والرقم أسرع ما يتذكرها من كود الحجز.
+	CustomerPhone   *string `db:"customerPhone" json:"customerPhone"`
+	CustomerAddress *string `db:"customerAddress" json:"customerAddress"`
 	CompletedAt  *time.Time `db:"completedAt" json:"completedAt"`
 
 	// الكادر الي طلع بهذا الحجز، وحالة تقييم كل واحد
@@ -83,4 +103,8 @@ type CrewReviewState struct {
 	// التقييم الي انسجّل إذا انقيّم — فاضي إذا لسه
 	Rating *string `db:"rating" json:"rating"`
 	Reason *string `db:"reason" json:"reason"`
+
+	CommitmentScore *int `db:"commitmentScore" json:"commitmentScore"`
+	SpeedScore      *int `db:"speedScore" json:"speedScore"`
+	QualityScore    *int `db:"qualityScore" json:"qualityScore"`
 }
