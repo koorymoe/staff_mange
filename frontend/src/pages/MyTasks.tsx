@@ -9,9 +9,23 @@ import PartialCompleteDialog from '../components/PartialCompleteDialog'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
+import LeaderInvoicesListPage from './LeaderInvoicesListPage'
+import WorkReportPage from './WorkReportPage'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+
+// ═══ الخيارات الثلاثة ═══
+// الحجوزات = شغلك اليوم · فواتيري = فواتير شغلك · تقاريري = تقارير شغلك.
+// ⚠️ برّا المكوّن: مصفوفة تنبني بكل رندر تخلي React يعيد بناء الأزرار
+// بلا داعي.
+const TABS = [
+  { key: 'bookings' as const, label: 'الحجوزات', icon: '📋' },
+  { key: 'invoices' as const, label: 'فواتيري', icon: '🧾' },
+  { key: 'reports' as const, label: 'تقاريري', icon: '📝' },
+]
+
+type TabKey = (typeof TABS)[number]['key']
 
 function elapsedSince(iso: string): string {
   const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
@@ -72,7 +86,7 @@ function DirectionsModal({ booking, onClose }: { booking: Booking; onClose: () =
 export default function MyTasks() {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const navigate = useNavigate()
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,6 +104,14 @@ export default function MyTasks() {
   const [checkedTools, setCheckedTools] = useState<Record<string, boolean>>({})
   const [toolsLoading, setToolsLoading] = useState(false)
   const [submittingAccept, setSubmittingAccept] = useState(false)
+
+  // ── الخيارات الثلاثة ──
+  // الصلاحية هي الي تقرر منو يشوف شنو، مو الدور: محاسب انطيته صلاحية
+  // فواتير يشوف تبويب فواتيره، وفني بلا الصلاحية ما يشوفه.
+  const [tab, setTab] = useState<TabKey>('bookings')
+  const perms = permissions ?? []
+  const canSeeInvoices = employee?.role === 'ADMIN' || perms.includes('leader_invoices_view') || perms.includes('execution_cost')
+  const canSeeReports = employee?.role === 'ADMIN' || perms.includes('work_reports')
 
   useEffect(() => {
     const t = setInterval(() => setTick((v) => v + 1), 30000)
@@ -280,13 +302,50 @@ export default function MyTasks() {
         </div>
       </div>
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {/* ═══ ثلاثة خيارات جوّا الشاشة مو ثلاث بنود بالقائمة ═══
+          «مهامي» و«فواتير الليدر» و«التقارير» كانوا ثلاث بنود منفصلة
+          بالقائمة الجانبية — والثلاثة نفس الشغل: حجزك، فاتورة حجزك،
+          وتقرير حجزك. الموظف يخلص شغلة ولازم يطلع للقائمة ويدور على
+          البند الثاني حتى يكمّلها.
+
+          هسه القائمة بيها «مهامي» وحدها، والثلاثة خيارات جوّاها.
+
+          ⚠️ الخيار ما يطلع إلا للي عنده صلاحيته: فاتح «مهامي» بلا
+          صلاحية فواتير ما يشوف تبويب فواتير — تبويب يفتح شاشة تگله
+          «ممنوع» أسوأ من تبويب ما موجود. */}
+      {!loading && (
+        <div className="mt-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-grid sm:gap-2">
+          {TABS.filter((t) => t.key === 'bookings'
+            || (t.key === 'invoices' && canSeeInvoices)
+            || (t.key === 'reports' && canSeeReports)).map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setTab(t.key)}
+              className={`rounded-xl px-3 py-2 text-[11px] font-extrabold transition sm:px-5 sm:text-xs ${
+                tab === t.key
+                  ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow-md'
+                  : 'text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {t.icon} {t.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* التبويبان الثانيان يعيدان استعمال نفس الشاشتين الموجودتين —
+          ما ننسخ منطق الفواتير ولا التقارير بمكان ثاني، وإلا صارت
+          نسختين تفترقن أول تعديل. */}
+      {tab === 'invoices' && <div className="mt-4"><LeaderInvoicesListPage /></div>}
+      {tab === 'reports' && <div className="mt-4"><WorkReportPage /></div>}
+
+      {loading && tab === 'bookings' && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
 
       {/* ═══ الأرقام — ٢×٢ بالموبايل ═══
           ⚠️ هاي شاشة **الميدان**: الفني يفتحها من تلفونه وهو بالسيارة
           أو عند الزبون. أربع بطاقات بصف واحد تنضغط وتصير أرقام ما
           تنقرا على شاشة ٦ إنچ. */}
-      {!loading && (
+      {!loading && tab === 'bookings' && (
         <div className="mt-4 grid grid-cols-2 gap-2.5 lg:grid-cols-4 sm:gap-3">
           <TaskStat
             icon="📅" label="مهام اليوم" tone="sky" unit="مهام"
@@ -307,9 +366,9 @@ export default function MyTasks() {
         </div>
       )}
 
-      {!loading && (
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-3 sm:mt-6 sm:gap-6">
-          <div className="lg:col-span-2">
+      {!loading && tab === 'bookings' && (
+        <div className="mt-4 sm:mt-6">
+          <div>
             {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
                 لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
             <MyExtraTasks />
@@ -554,26 +613,6 @@ export default function MyTasks() {
             </div>
           </div>
 
-          <div>
-            <h3 className="mb-3 font-bold text-brand-800">مهاراتي المعتمدة</h3>
-            <div className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-              <div className="flex flex-wrap gap-2">
-                {employee?.skills
-                  .filter((s) => s.canPerform)
-                  .map((s) => (
-                    <span
-                      key={s.id}
-                      className="rounded-full bg-brand-50 px-3 py-1 text-xs font-medium text-brand-700"
-                    >
-                      {s.skill.name}
-                    </span>
-                  ))}
-                {(!employee || employee.skills.filter((s) => s.canPerform).length === 0) && (
-                  <p className="text-sm text-slate-400">لم يتم تحديد مهارات بعد.</p>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

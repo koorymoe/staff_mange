@@ -282,9 +282,16 @@ export const navItems: NavItem[] = [
     fieldStaffOnly: true,
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
+      // ⚠️ «التقارير» و«فواتير الليدر» انشالن من هنا عن قصد — صاروا
+      // خيارين جوّا شاشة «مهامي» نفسها.
+      //
+      // الثلاثة نفس الشغل: حجزك، وفاتورة حجزك، وتقرير حجزك. لما كانوا
+      // ثلاث بنود بالقائمة، الفني يخلص الحجز ويطلع للقائمة ويدور على
+      // البند الثاني حتى يكمّل نفس الشغلة — وأغلبهم ما كانوا يدورون.
+      //
+      // (المحاسب والمراقب والمدير إلهم بندهم الخاص بمجموعة الحسابات
+      // — ذاك يشوف فواتير **الكل**، وهذا يشوف فواتيره هو.)
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      { to: '/work-reports', label: 'التقارير', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'work_reports' },
-      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], leaderOnly: true, unlockPermission: 'leader_invoices_view' },
       { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL', 'PROJECT_MANAGER'] },
       // حسبتان مختلفتان بنفس المحرك:
       //  • «استفسار زبون» = رقم بس، ما ينحفظ ولا ينربط بحجز — للزبون
