@@ -248,9 +248,18 @@ function parseRejection(task: string | null): { reason: string; notes: string; c
 // mode='delegated' يعرض بس المشاريع الموجّهة للموظف الحالي — نفس الواجهة
 // والمراحل والتقارير بالضبط، بس على مشاريعه هو. هذا معنى "كأنه عنده صلاحية
 // إدارة مشاريع بس على هذا المشروع".
-export default function ProjectsPage({ mode = 'all' }: { mode?: 'all' | 'delegated' } = {}) {
+// ═══ خياران من فوگ بدل بندين بالقائمة ═══
+//
+// «المشاريع نفس الطريقة — من أضغط عليها تفتح واجهة أختار إضافة
+// مشروع لو المشاريع الموجّهة لي».
+//
+// نفس نمط «مهامي» و«الجرد» و«التقييم»: بند واحد بالقائمة، والاختيار
+// جوّا الشاشة. الوضع يجي من الرابط أول مرة (‎/my-projects‎ يفتح على
+// الموجّهة لي) ويتبدّل بضغطة بلا ما تطلع للقائمة.
+export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'all' | 'delegated' } = {}) {
   const { employee, permissions } = useSession()
   const role = employee?.role
+  const [mode, setMode] = useState<'all' | 'delegated'>(initialMode)
   const delegatedMode = mode === 'delegated'
   const canManage = delegatedMode
     || role === 'ADMIN' || role === 'PROJECT_MANAGER' || permissions.includes('project_management')
@@ -412,6 +421,39 @@ export default function ProjectsPage({ mode = 'all' }: { mode?: 'all' | 'delegat
           </button>
         </div>
       </div>
+
+      {/* ═══ الخياران ═══
+          ⚠️ «كل المشاريع» ما يطلع إلا لمن يديرها فعلاً — الفني الي
+          عنده مشاريع موجّهة له بس ما يشوف مشاريع الشركة كلها. */}
+      {canManage && !addOnly && (
+        <div className="inline-flex flex-wrap gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-sm">
+          {([
+            { k: 'all' as const, label: '🏗️ كل المشاريع' },
+            { k: 'delegated' as const, label: '📤 المشاريع الموجّهة لي' },
+          ]).map((o) => (
+            <button
+              key={o.k}
+              onClick={() => setMode(o.k)}
+              className={`rounded-xl px-4 py-2 text-xs font-extrabold transition ${
+                mode === o.k
+                  ? 'bg-gradient-to-l from-[var(--color-brand-500)] to-[var(--color-brand-800)] text-white shadow-md'
+                  : 'text-gray-600 hover:bg-slate-50'
+              }`}
+            >
+              {o.label}
+            </button>
+          ))}
+          {/* «إضافة مشروع» زر مباشر جنب الخيارين — كان مدفون تحت
+              الإحصائيات والرسم البياني، والي جاي يضيف مشروع يريده
+              بأول الشاشة. */}
+          <button
+            onClick={() => setShowAdd(true)}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white shadow-md hover:bg-emerald-700"
+          >
+            ＋ إضافة مشروع
+          </button>
+        </div>
+      )}
 
       {/* حجوزات محولة من إدارة الكوادر — بانتظار الاستلام كمشاريع */}
       {transferred.length > 0 && (

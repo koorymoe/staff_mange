@@ -325,14 +325,15 @@ export const navItems: NavItem[] = [
       // يعني ضغطتين حتى توصل لشغلة وحدة. صار بند واحد يفتح الشاشة،
       // والاختيار بين «جرد عدتي» و«جرد أدوات فريقي» من فوگ بالواجهة.
       { to: '/my-inventory', label: 'الجرد', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
-      {
-        // "المشاريع" للميدان: يفتح مشروع جديد، أو يتابع الي انوجّه له
-        to: '/tech-projects-group', label: '🏗️ المشاريع', icon: <></>,
-        children: [
-          { to: '/projects', label: '🏗️ المشاريع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
-          { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'my_projects' },
-        ],
-      },
+      // ═══ «المشاريع» بند واحد ═══
+      // كانت مجموعة تنفتح على بندين. صارت بند واحد يفتح الشاشة،
+      // والاختيار بين «كل المشاريع» و«الموجّهة لي» وزر «إضافة مشروع»
+      // من فوگ بالواجهة — نفس نمط «مهامي» و«الجرد» و«التقييم».
+      //
+      // ⚠️ المدخل ‎/my-projects‎ لأن الفني الي ما عنده إدارة مشاريع
+      // ما يشوف إلا الموجّهة له، والشاشة تفتح عليها مباشرة. ومن عنده
+      // الإدارة يلگه الخيارين من فوگ.
+      { to: '/my-projects', label: '🏗️ المشاريع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'my_projects' },
     ],
   },
   { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
