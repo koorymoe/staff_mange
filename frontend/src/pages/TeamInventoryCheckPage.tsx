@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type BookingCrewInventoryState } from '../api'
+import { acceptedBookings } from '../utils/acceptedBookings'
 
 // ═══ جرد أدوات فريقي ═══
 //
@@ -28,15 +29,7 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
   useEffect(() => {
     api.getBookings({ assignedTo: 'me' })
       .then((bs) => {
-        const open = bs
-          .filter((b) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED')
-          .sort((x, y) => {
-            if ((x.status === 'IN_PROGRESS') !== (y.status === 'IN_PROGRESS')) {
-              return x.status === 'IN_PROGRESS' ? -1 : 1
-            }
-            // الحجز بلا موعد للآخر — وإلا حجز قديم ما انجدول يتصدّر
-            return (x.scheduledAt || '9999').localeCompare(y.scheduledAt || '9999')
-          })
+        const open = acceptedBookings(bs)
         setBookings(open)
         if (open.length > 0) setSelected(open[0].id)
       })
@@ -78,16 +71,16 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
       {!booking ? (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
           <p className="text-3xl">🗓️</p>
-          <p className="mt-2 text-sm font-bold text-slate-600">ماكو عندك حجز مفتوح حالياً</p>
-          <p className="mt-1 text-xs text-slate-400">لما ينكلّف إلك حجز، يطلع هنا فريقك وحالة جردهم تلقائياً.</p>
+          <p className="mt-2 text-sm font-bold text-slate-600">ما استلمت أي حجز بعد</p>
+          <p className="mt-1 text-xs text-slate-400">
+            روح لـ«مهامي» واضغط «استلام» على الحجز الي طالع له — ويطلع هنا فريقك وحالة جردهم تلقائياً.
+          </p>
         </div>
       ) : (
         <>
           {/* ── الحجز — يطلع لحاله ── */}
           <div className="rounded-2xl border-2 border-brand-200 bg-brand-50/50 p-4">
-            <p className="text-[11px] font-bold text-brand-700">
-              {booking.status === 'IN_PROGRESS' ? '🔧 شغلك الحالي' : '📍 حجزك القادم'}
-            </p>
+            <p className="text-[11px] font-bold text-brand-700">🔧 الحجز الي استلمته</p>
             <p className="mt-1 font-black text-[#0f2040]">
               {booking.code && <span className="font-mono">{booking.code} · </span>}
               {booking.customer?.name || 'بدون اسم'}

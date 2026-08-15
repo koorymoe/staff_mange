@@ -6,6 +6,7 @@ import {
 } from '../api'
 import { useSession } from '../session'
 import TeamInventoryCheckPage from './TeamInventoryCheckPage'
+import { acceptedBookings } from '../utils/acceptedBookings'
 
 type TabKey = 'checklist' | 'team' | 'vehicle' | 'request' | 'my-requests'
 
@@ -77,7 +78,9 @@ export default function MyInventory() {
   // متوجّه له». وهذا صح: الفني طالع لشغل معروف، وقائمة منسدلة
   // تسأله وين رايح تضيّع وقته وتفتح باب يجرد للحجز الغلط.
   //
-  // الترتيب: الشغل الي بديت بيه أولاً، وبعده الأقرب بالموعد.
+  // ⚠️ وما نعرض إلا الحجز الي **استلمه** — مو كل حجوزاته. الفني
+  // ممكن يكون مكلّف بعشر حجوزات موزّعة على الأسبوع، وعرضهن كلهن
+  // يخلي الجرد يخص شغل بعد أربع أيام، ويفتح باب يجرد للحجز الغلط.
   const [myBookings, setMyBookings] = useState<Booking[]>([])
   const [forBooking, setForBooking] = useState('')
   // حالة جرد كادر الحجز المختار — «جرد أدوات فريقي»
@@ -107,17 +110,7 @@ export default function MyInventory() {
       setMyRequests(tr)
       // حجوزاتي الي ما خلصت — هذني الي ينجرد إلهن
       const bs = await api.getBookings({ assignedTo: 'me' }).catch(() => [])
-      const open = bs
-        .filter((b) => b.status !== 'COMPLETED' && b.status !== 'CANCELLED')
-        .sort((x, y) => {
-          // الشغل الشغّال أول — هو الي الفني واقف بيه هسه
-          if ((x.status === 'IN_PROGRESS') !== (y.status === 'IN_PROGRESS')) {
-            return x.status === 'IN_PROGRESS' ? -1 : 1
-          }
-          // ⚠️ الحجز بلا موعد ينزل للآخر مو يتصدّر: بلا هذا، حجز
-          // قديم ما انجدول يسبق شغل اليوم ويصير الافتراضي الغلط.
-          return (x.scheduledAt || '9999').localeCompare(y.scheduledAt || '9999')
-        })
+      const open = acceptedBookings(bs)
       setMyBookings(open)
       if (open.length > 0) {
         setForBooking(open[0].id)
@@ -241,10 +234,7 @@ export default function MyInventory() {
               {/* ═══ الحجز الي تجرد له — يطلع لحاله ═══ */}
               {activeBooking ? (
                 <div className="mb-4 rounded-xl border-2 border-brand-200 bg-brand-50/50 p-4">
-                  <p className="text-[11px] font-bold text-brand-700">
-                    {activeBooking.status === 'IN_PROGRESS' ? '🔧 شغلك الحالي' : '📍 حجزك القادم'}
-                    {' — تجرد عدتك إله'}
-                  </p>
+                  <p className="text-[11px] font-bold text-brand-700">🔧 الحجز الي استلمته — تجرد عدتك إله</p>
                   <p className="mt-1 font-black text-[#0f2040]">
                     {activeBooking.code && <span className="font-mono">{activeBooking.code} · </span>}
                     {activeBooking.customer?.name || 'بدون اسم'}
@@ -284,8 +274,9 @@ export default function MyInventory() {
                   )}
                 </div>
               ) : (
-                <p className="mb-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-[11px] text-slate-500">
-                  ⓘ ماكو عندك حجز مفتوح حالياً — الجرد الي تسويه هسه ينحفظ كجرد عام لعدتك.
+                <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-[11px] leading-relaxed text-amber-900">
+                  ⓘ ما استلمت أي حجز بعد — روح لـ«مهامي» واضغط «استلام» على الحجز الي طالع له، ويطلع هنا لحاله.
+                  الجرد الي تسويه هسه ينحفظ كجرد عام لعدتك مو مربوط بحجز.
                 </p>
               )}
 
