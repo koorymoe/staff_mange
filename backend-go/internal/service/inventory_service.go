@@ -11,6 +11,15 @@ import (
 
 type InventoryService struct {
 	repo *repository.InventoryRepository
+	// ═══ إشعار القرار ═══
+	// «إداري الكوادر يحتاج الإشعارات الي توصل إله حتى يشوف طلباته
+	// مرفوضة لو مقبولة».
+	//
+	// ⚠️ الطلب كان **يروح بلا رجعة**: الموظف يطلب أداة، وإداري
+	// الكميات يوافق أو يرفض، وما يوصل الطالب ولا خبر. يضل يفتح
+	// «طلباتي» كل يوم يشوف تغيّرت لو لا — أو يتصل يسأل.
+	// (الإجازات والطلبات الإدارية كانت الوحيدة الي تشعر بالقرار.)
+	notifications *repository.NotificationRepository
 	// طلب أداة مو متوفرة بالمخزن يتحول لطلب مشتريات يوصل للمحاسب — نحتاج
 	// مستودع المشتريات حتى ننشئه. اختياري (SetProcurementRepository) حتى ما
 	// ينكسر أي كود ينشئ الخدمة بدونه.
@@ -23,6 +32,22 @@ func NewInventoryService(repo *repository.InventoryRepository) *InventoryService
 
 func (s *InventoryService) SetProcurementRepository(p *repository.ProcurementRepository) {
 	s.procurement = p
+}
+
+func (s *InventoryService) SetNotificationRepository(n *repository.NotificationRepository) {
+	s.notifications = n
+}
+
+// notifyRequester يوصل قرار الطلب لصاحبه.
+// ⚠️ فشل الإشعار ما يلغي القرار — القرار صار فعلاً، وإرجاعه لأن
+// الإشعار فشل أسوأ من إشعار ضايع.
+func (s *InventoryService) notifyRequester(employeeID, notifType, message string) {
+	if s.notifications == nil || employeeID == "" {
+		return
+	}
+	if err := s.notifications.Create(employeeID, notifType, message); err != nil {
+		log.Printf("[inventory] تعذر إرسال إشعار القرار للموظف %s: %v", employeeID, err)
+	}
 }
 
 func (s *InventoryService) CreateInventoryCheck(employeeID string, req model.CreateInventoryCheckRequest) (*model.InventoryCheck, error) {
@@ -200,7 +225,13 @@ func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRe
 	}
 	if tool.AvailableQuantity > 0 {
 		// انعطت من الرف — ننقّصها من مخزن إداري الكميات
-		return s.repo.ApproveToolRequest(id, req.ApprovedByID, nil, nil, true)
+		out, err := s.repo.ApproveToolRequest(id, req.ApprovedByID, nil, nil, true)
+		if err != nil {
+			return nil, err
+		}
+		s.notifyRequester(out.EmployeeID, "tool_request_decision",
+			"✅ انوافق على طلبك للأداة «"+tool.Name+"» — متوفرة بالمخزن، راجع إداري الكميات تستلمها")
+		return out, nil
 	}
 
 	if req.PurchasePrice == nil || *req.PurchasePrice <= 0 {
@@ -233,11 +264,22 @@ func (s *InventoryService) ApproveToolRequest(id string, req model.ApproveToolRe
 		return nil, errors.New("تعذر إنشاء طلب المشتريات للمحاسب")
 	}
 	// انشترت خصيصاً — ما كانت بالمخزن أصلاً فماكو شي ينتنقص
-	return s.repo.ApproveToolRequest(id, req.ApprovedByID, &price, &pr.ID, false)
+	out, err := s.repo.ApproveToolRequest(id, req.ApprovedByID, &price, &pr.ID, false)
+	if err != nil {
+		return nil, err
+	}
+	s.notifyRequester(out.EmployeeID, "tool_request_decision",
+		"✅ انوافق على طلبك للأداة «"+tool.Name+"» — مو متوفرة بالمخزن، فانفتح طلب شراء إلها ("+pr.Code+")")
+	return out, nil
 }
 
 func (s *InventoryService) RejectToolRequest(id string) (*model.ToolRequest, error) {
-	return s.repo.RejectToolRequest(id)
+	out, err := s.repo.RejectToolRequest(id)
+	if err != nil {
+		return nil, err
+	}
+	s.notifyRequester(out.EmployeeID, "tool_request_decision", "❌ انرفض طلب الأداة مالتك — راجع إداري الكميات لو تحتاج توضيح")
+	return out, nil
 }
 
 // ReturnToolRequest الأداة رجعت لإداري الكميات — ترجع للمخزن بعد.

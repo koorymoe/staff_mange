@@ -26,6 +26,17 @@ const notifTargets: Record<string, string> = {
   kpi_leaderboard: '/kpi',
   authz_violation: '/owner-security',
   job_duration_overrun: '/missions',
+  // ═══ قرارات الطلبات ═══
+  // الإشعار بلا وجهة يخلي الموظف يقرا «انوافق على طلبك» ويضغط عليه
+  // وما يصير شي — فيضطر يدوّر على الشاشة بنفسه.
+  tool_request_decision: '/my-inventory',
+  procurement_decision: '/procurement',
+  staff_request_decision: '/staff-requests',
+  booking_delete_decision: '/bookings',
+  employee_letter_decision: '/letters',
+  extra_task: '/my-extra-tasks',
+  extra_task_done: '/extra-tasks',
+  extra_task_cancelled: '/my-extra-tasks',
 }
 import AnnouncementTicker from './AnnouncementTicker'
 

@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"staffmange-api/internal/model"
@@ -14,10 +15,26 @@ type ProcurementService struct {
 	permissions *repository.PermissionRepository
 	// monitor: صندوق المراقب. اختياري.
 	monitor MonitorFeed
+	// إشعار الطالب بقرار طلبه. اختياري.
+	notifications *repository.NotificationRepository
 }
 
 // SetMonitorFeed يربط صندوق المراقب بعد البناء.
 func (s *ProcurementService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
+
+// ⚠️ نفس فجوة طلبات الأدوات: الطالب ما يعرف شنو صار بطلبه.
+func (s *ProcurementService) SetNotificationRepository(n *repository.NotificationRepository) {
+	s.notifications = n
+}
+
+func (s *ProcurementService) notifyRequester(employeeID, notifType, message string) {
+	if s.notifications == nil || employeeID == "" {
+		return
+	}
+	if err := s.notifications.Create(employeeID, notifType, message); err != nil {
+		log.Printf("[procurement] تعذر إرسال إشعار القرار للموظف %s: %v", employeeID, err)
+	}
+}
 
 func NewProcurementService(repo *repository.ProcurementRepository, permissions *repository.PermissionRepository) *ProcurementService {
 	return &ProcurementService{repo: repo, permissions: permissions}
@@ -79,7 +96,19 @@ func (s *ProcurementService) Create(employeeID, role string, req model.CreatePro
 }
 
 func (s *ProcurementService) UpdateStatus(id string, req model.UpdateProcurementStatusRequest) (*model.ProcurementRequest, error) {
-	return s.repo.UpdateStatus(id, req.Status)
+	saved, err := s.repo.UpdateStatus(id, req.Status)
+	if err != nil {
+		return nil, err
+	}
+	if saved != nil {
+		switch req.Status {
+		case "REJECTED":
+			s.notifyRequester(saved.RequestedByID, "procurement_decision", "❌ انرفض طلب المواد مالتك ("+saved.Code+")")
+		case "APPROVED":
+			s.notifyRequester(saved.RequestedByID, "procurement_decision", "✅ انوافق على طلب المواد مالتك ("+saved.Code+")")
+		}
+	}
+	return saved, nil
 }
 
 // Fulfill أبو الكميات يجهّز الطلب. المورد إلزامي: بدونه ما نعرف من وين

@@ -68,5 +68,17 @@ func (h *BookingDeleteRequestHandler) Decide(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	// ⚠️ الإنشاء كان يشعر المراقب والمدير، والقرار ما يشعر **الطالب**
+	// — فالإداري يطلب حذف حجز وما يعرف أبداً شنو صار بطلبه.
+	if h.notify != nil && out != nil && out.RequestedByID != "" {
+		msg := "❌ انرفض طلب حذف الحجز"
+		if req.Approve {
+			msg = "✅ انوافق على طلب حذف الحجز"
+		}
+		if req.Note != nil && *req.Note != "" {
+			msg += " — " + *req.Note
+		}
+		_ = h.notify.Create(out.RequestedByID, "booking_delete_decision", msg)
+	}
 	WriteJSON(w, http.StatusOK, out)
 }

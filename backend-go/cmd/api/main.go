@@ -150,6 +150,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	inventoryService := service.NewInventoryService(inventoryRepo)
 	// موافقة على طلب أداة غير متوفرة تولّد طلب مشتريات يوصل للمحاسب.
 	inventoryService.SetProcurementRepository(procurementRepo)
+	// قرار طلب الأداة يوصل صاحبه — بلا هذا الطلب يروح بلا رجعة
+	inventoryService.SetNotificationRepository(notificationRepo)
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	notificationService := service.NewNotificationService(notificationRepo)
 	kpiService := service.NewKpiService(kpiRepo, employeeRepo, notificationRepo, announcementRepo)
@@ -302,6 +304,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// المشتريات وقت صرف الفلوس، الجودة وقت الحكم السلبي،
 	// الجي بي اس وقت تسليم الجهاز.
 	procurementService.SetMonitorFeed(monitorReviewService)
+	procurementService.SetNotificationRepository(notificationRepo)
 	qualityFollowUpService.SetMonitorFeed(monitorReviewService)
 	gpsService.SetMonitorFeed(monitorReviewService)
 	networkCostHandler := handler.NewNetworkCostHandler(networkPriceRepo)
@@ -336,6 +339,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	vehicleBookingHandler := handler.NewVehicleBookingHandler(vehicleBookingService)
 	qualityHandler := handler.NewQualityHandler(qualityService)
 	staffRequestHandler := handler.NewStaffRequestHandler(staffRequestRepo)
+	// قرار طلب الكادر يوصل مدير المشاريع الي طلبه
+	staffRequestHandler.SetNotificationRepository(notificationRepo)
 	serviceManagerHandler := handler.NewServiceManagerHandler(serviceManagerRepo)
 	locationPingHandler := handler.NewLocationPingHandler(locationPingRepo)
 	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo, bookingRepo, notificationRepo)

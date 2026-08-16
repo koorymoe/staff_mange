@@ -9,11 +9,18 @@ import (
 )
 
 type StaffRequestHandler struct {
-	repo *repository.StaffRequestRepository
+	repo   *repository.StaffRequestRepository
+	notify *repository.NotificationRepository
 }
 
+// ⚠️ الإشعار اختياري بالبناء (يتحط بعدين) حتى ما ينكسر أي كود ينشئ
+// المعالج بلا مستودع إشعارات.
 func NewStaffRequestHandler(repo *repository.StaffRequestRepository) *StaffRequestHandler {
 	return &StaffRequestHandler{repo: repo}
+}
+
+func (h *StaffRequestHandler) SetNotificationRepository(n *repository.NotificationRepository) {
+	h.notify = n
 }
 
 // Create مدير المشاريع (أو من عنده صلاحية إدارة المشاريع) يقدم طلب كادر
@@ -95,6 +102,20 @@ func (h *StaffRequestHandler) UpdateStatus(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر تحديث حالة الطلب")
 		return
+	}
+	// ═══ إشعار صاحب الطلب ═══
+	// كان الطلب يروح بلا رجعة: مدير المشاريع يطلب كادر، والقرار
+	// يصير، وهو يضل يفتح الشاشة يشوف تغيّرت لو لا.
+	if h.notify != nil && current.RequesterID != "" {
+		msg := map[string]string{
+			"APPROVED":  "✅ انوافق على طلب الكادر مالتك",
+			"REJECTED":  "❌ انرفض طلب الكادر مالتك",
+			"FULFILLED": "🎉 انجهّز طلب الكادر مالتك — الكادر صار جاهز",
+		}[req.Status]
+		if msg != "" {
+			// فشل الإشعار ما يلغي القرار — القرار صار فعلاً
+			_ = h.notify.Create(current.RequesterID, "staff_request_decision", msg)
+		}
 	}
 	WriteJSON(w, http.StatusOK, sr)
 }
