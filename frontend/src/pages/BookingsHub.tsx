@@ -3,6 +3,7 @@ import { useSession } from '../session'
 import BookingsList from './BookingsList'
 import Coordinator from './Coordinator'
 import SalesBooking from './SalesBooking'
+import PartialBookings from './PartialBookings'
 import StageBucketsPage from './StageBucketsPage'
 
 // ═══ «الحجوزات» — ثلاث شاشات بمدخل واحد ═══
@@ -44,12 +45,18 @@ const TABS = [
   { key: 'coord' as const, label: 'تنسيق الحجوزات', icon: '🧩', step: '٣' },
   // ٤ — انكلّف عليه كادر، وينتظر يوم التنفيذ
   { key: 'assigned' as const, label: 'مكلّف — بانتظار التنفيذ', icon: '👥', step: '٤' },
-  // ٥ — الاتجاه الأول بعد التكليف
+  // ٥ — طلع الكادر وما خلّص: يحتاج موعد إكمال
+  // ⚠️ محلها **قبل** «تم الإنجاز» مو بعده: الإكمال الجزئي محطة
+  // بالطريق للإنجاز، مو نتيجة نهائية. وكانت بند مستقل بالقائمة
+  // الجانبية — «ما أريدها بالقائمة الجانبية، أريدها تطلع بجانب
+  // الحجوزات وحجوزات بانتظار التثبيت».
+  { key: 'partial' as const, label: 'تحتاج إكمال', icon: '🔄', step: '٥' },
+  // ٦ — الاتجاه الأول بعد التكليف
   // «بعد ما يوصل الحجز مرحلة التكليف راح ياخذ اتجاهين: الاتجاه الأول
   // الي هو تم الإنجاز… وراها بنود نتفرّع».
   // التفرّعات (كامل · بلا فاتورة · بلا تقرير · بلا الاثنين · جزئي)
   // تنفتح جوّا الشاشة مو كخيارات بالصف الأعلى.
-  { key: 'done' as const, label: 'تم الإنجاز', icon: '🏁', step: '٥' },
+  { key: 'done' as const, label: 'تم الإنجاز', icon: '🏁', step: '٦' },
   // ═══ والاتجاه الثاني: الي ما وصل ═══
   // «اكو حجوزات ما توصل — الزبون يلغي أو ما يرد، لازم تترتب».
   // ⚠️ هذي مو محطة بالطريق، هي **مخرج منه**: الحجز الي يوصلها خرج
@@ -78,7 +85,9 @@ export default function BookingsHub() {
     || (t.key === 'coord' && canCoord)
     // «ما وصلت للتنفيذ» شغل تنسيق: منو يتابع الزبون الي ما رد
     || (t.key === 'stuck' && canCoord)
-    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck'),
+    // «تحتاج إكمال» شغل تنسيق: منو يحدد موعد الإكمال
+    || (t.key === 'partial' && canCoord)
+    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial'),
   )
 
   return (
@@ -121,6 +130,7 @@ export default function BookingsHub() {
       {tab === 'pending' && <BookingsList key="pending" bucket="pending" />}
       {tab === 'confirmed' && <BookingsList key="confirmed" bucket="confirmed" />}
       {tab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
+      {tab === 'partial' && <PartialBookings />}
       {tab === 'done' && <BookingsList key="done" bucket="done" />}
       {tab === 'stuck' && <StageBucketsPage />}
     </div>

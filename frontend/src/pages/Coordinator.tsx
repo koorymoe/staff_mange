@@ -335,7 +335,11 @@ export default function Coordinator() {
   //
   // ⚠️ وما تنسجّل طلعة: ما نعرف منو طلع، وتسجيل الكادر الحالي يعني
   // إنتاجية مبنية على تخمين.
-  const isOwner = currentUser?.role === 'OWNER'
+  // ⚠️ `role` مطبّع: جلسة الواجهة تحوّل دور المالك لـ'ADMIN' حتى
+  // يشتغل كل شي مبني على `role === 'ADMIN'` تلقائياً، والدور الحقيقي
+  // ينحفظ بـ`actualRole`. فحص `role === 'OWNER'` ما ينجح **أبداً** —
+  // وهذا الي خلّى الزر ما يطلع للمالك نفسه.
+  const isOwner = currentUser?.actualRole === 'OWNER' || currentUser?.role === 'OWNER'
 
   const settleLegacy = async (booking: Booking) => {
     if (!confirm(

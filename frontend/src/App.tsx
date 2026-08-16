@@ -26,7 +26,6 @@ const SolarPage = lazy(() => import('./pages/SolarPage'))
 const OwnerBackups = lazy(() => import('./pages/OwnerBackups'))
 const CommandCodePage = lazy(() => import('./pages/CommandCodePage'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
-const PartialBookings = lazy(() => import('./pages/PartialBookings'))
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
 const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
 const ExtraTasksPage = lazy(() => import('./pages/ExtraTasksPage'))
@@ -152,7 +151,9 @@ function App() {
               ⚠️ المسار يبقى موجود ويحوّل: أكو روابط محفوظة بمتصفحات
               الموظفين، وحذفه يعني صفحة بيضاء بلا تفسير. */}
           <Route path="postponed-bookings" element={<Navigate to="/bookings" replace />} />
-          <Route path="partial-bookings" element={<PartialBookings />} />
+          {/* انمرجت بشاشة الحجوزات — المسار يحوّل حتى الروابط
+              المحفوظة ما تطلع صفحة بيضاء. */}
+          <Route path="partial-bookings" element={<Navigate to="/bookings" replace />} />
           <Route path="stage-buckets" element={<StageBucketsPage />} />
           <Route path="ai-insights" element={<AiInsightsPage />} />
           <Route path="extra-tasks" element={<ExtraTasksPage />} />
