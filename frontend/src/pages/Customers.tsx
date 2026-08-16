@@ -39,6 +39,13 @@ export default function Customers() {
   const [history, setHistory] = useState<Booking[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [search, setSearch] = useState('')
+  // ── ترتيب الشاشة الجديد ──
+  const [showAdd, setShowAdd] = useState(false)
+  const [locationFilter, setLocationFilter] = useState('')
+  const [claimFilter, setClaimFilter] = useState('')
+  const [kindFilter, setKindFilter] = useState('')
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
 
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
@@ -143,13 +150,29 @@ export default function Customers() {
       .finally(() => setHistoryLoading(false))
   }, [selectedId])
 
-  const selectedCustomer = customers.find((c) => c.id === selectedId) || null
-
   const activeList: Customer[] = tab === 'gps' ? gpsCustomers : customers
+
+  // قائمة المواقع تنبني من الزبائن نفسهم — ماكو جدول مواقع بالنظام،
+  // وكتابتها بالإيد تعني فلتر يفوت مواقع جديدة.
+  const locationOptions = Array.from(
+    new Set(activeList.map((c) => (c.location || '').trim()).filter(Boolean)),
+  ).sort().slice(0, 60)
+
   // البحث يمر بالتطبيع العربي: «احمد» تلكه «أحمد»، و«٠٧٧٠» تلكه «0770»
-  const filteredCustomers = search.trim()
-    ? activeList.filter((c) => matches([c.code, c.name, c.phone], search))
-    : activeList
+  const filteredCustomers = activeList
+    .filter((c) => (search.trim() ? matches([c.code, c.name, c.phone], search) : true))
+    .filter((c) => (locationFilter ? (c.location || '').trim() === locationFilter : true))
+    .filter((c) => (kindFilter === 'vip' ? !!c.position : kindFilter === 'normal' ? !c.position : true))
+    .filter((c) => (claimFilter === 'false' ? (c.falseClaimCount ?? 0) > 0
+      : claimFilter === 'clean' ? (c.falseClaimCount ?? 0) === 0 : true))
+
+  const filtersOn = !!(search.trim() || locationFilter || kindFilter || claimFilter)
+
+  // ⚠️ الصفحة تنحصر بالعدد الموجود: بعد التصفية ممكن تكون واقف بصفحة
+  // ٥ وماكو إلا صفحتين، فتشوف جدول فاضي وتظن ماكو زبائن.
+  const pageCount = Math.max(1, Math.ceil(filteredCustomers.length / perPage))
+  const safePage = Math.min(page, pageCount)
+  const pageRows = filteredCustomers.slice((safePage - 1) * perPage, safePage * perPage)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -185,16 +208,49 @@ export default function Customers() {
     }
   }
 
+  // ── أرقام الرأس ──
+  // ⚠️ «جدد هذا الشهر» ينحسب من `createdAt` الحقيقي مو من ترتيب
+  // القائمة: الترتيب يتغيّر بالبحث، والرقم ينطلع كذب.
+  const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
+  const newThisMonth = customers.filter((c) => c.createdAt && new Date(c.createdAt) >= monthStart).length
+  const vipCount = customers.filter((c) => !!c.position).length
+  const pct = (n: number) => (customers.length ? Math.round((n / customers.length) * 1000) / 10 : 0)
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">الزبائن</h2>
-      <p className="mt-1 text-slate-500">
-        كل زبون يحصل على كود ثابت يبقى مرتبطاً به في كل تعاملاته مع الشركة.
-      </p>
+    <div dir="rtl">
+      {/* ═══ الرأس ═══ */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-lg sm:h-12 sm:w-12 sm:text-2xl">👥</span>
+          <div className="min-w-0">
+            <h2 className="text-xl font-black text-[#0f2040] sm:text-2xl">الزبائن</h2>
+            <p className="text-[11px] text-slate-500 sm:text-xs">إدارة بيانات الزبائن ومتابعة حجوزاتهم وخدماتهم</p>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ الأرقام ═══ */}
+      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
+        <StatCard icon="👥" tone="sky" label="كل الزبائن" value={customers.length} hint="100% من إجمالي الزبائن" />
+        <StatCard icon="🧑‍💼" tone="emerald" label="جدد هذا الشهر" value={newThisMonth} hint={`${pct(newThisMonth)}% من إجمالي الزبائن`} />
+        <StatCard icon="👑" tone="amber" label="شخصيات مهمة / VIP" value={vipCount} hint={`${pct(vipCount)}% من إجمالي الزبائن`} />
+      </div>
+
+      {/* ═══ إضافة زبون ═══
+          ⚠️ النموذج مطوي: كان يفتح أول الصفحة دائماً ويدفع الجدول
+          تحته، والإداري بأغلب دخوله جاي **يدوّر** على زبون مو يضيف. */}
+      <div className="mt-4 flex justify-end">
+        <button
+          onClick={() => setShowAdd((v) => !v)}
+          className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2.5 text-sm font-bold text-white shadow-md"
+        >
+          {showAdd ? '✕ إغلاق' : '＋ إضافة زبون'}
+        </button>
+      </div>
 
       <form
         onSubmit={handleSubmit}
-        className="mt-6 grid grid-cols-1 gap-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3"
+        className={`mt-3 grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)] sm:grid-cols-3 ${showAdd ? 'grid' : 'hidden'}`}
       >
         <div>
           <label className="mb-1 block text-sm font-medium text-slate-600">
@@ -267,13 +323,67 @@ export default function Customers() {
             </button>
           </div>
 
-          <div className="relative">
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="دور بكود الزبون (CUST-00001)، الاسم، أو رقم الهاتف..."
-              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 outline-none transition-colors focus:border-brand-500 focus:ring-1 focus:ring-brand-500/20"
-            />
+          {/* ═══ الفلاتر ═══ */}
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_2px_12px_rgba(15,32,64,0.05)]">
+            <div className="grid grid-cols-1 gap-2.5 lg:grid-cols-4">
+              <div className="lg:col-span-2">
+                <label className="mb-1 block text-[10px] font-bold text-slate-500">بحث</label>
+                <input
+                  value={search}
+                  onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                  placeholder="🔍 ابحث بالاسم أو الكود أو الهاتف..."
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-[10px] font-bold text-slate-500">الموقع</label>
+                <select
+                  value={locationFilter}
+                  onChange={(e) => { setLocationFilter(e.target.value); setPage(1) }}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                >
+                  <option value="">الكل</option>
+                  {locationOptions.map((l) => <option key={l} value={l}>{l}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold text-slate-500">التصنيف</label>
+                  <select
+                    value={kindFilter}
+                    onChange={(e) => { setKindFilter(e.target.value); setPage(1) }}
+                    className="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-brand-500"
+                  >
+                    <option value="">الكل</option>
+                    <option value="vip">شخصية مهمة</option>
+                    <option value="normal">عادي</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-[10px] font-bold text-slate-500">البلاغات</label>
+                  <select
+                    value={claimFilter}
+                    onChange={(e) => { setClaimFilter(e.target.value); setPage(1) }}
+                    className="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm outline-none focus:border-brand-500"
+                  >
+                    <option value="">الكل</option>
+                    <option value="clean">بلا بلاغات</option>
+                    <option value="false">عنده بلاغ كاذب</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            {filtersOn && (
+              <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] text-slate-500">النتائج: {filteredCustomers.length} من {activeList.length}</p>
+                <button
+                  onClick={() => { setSearch(''); setLocationFilter(''); setClaimFilter(''); setKindFilter(''); setPage(1) }}
+                  className="rounded-lg border border-slate-300 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
+                >
+                  ✖ مسح الفلاتر
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -288,14 +398,16 @@ export default function Customers() {
                   {tab === 'all' && <th className="px-4 py-3 text-sm font-semibold">الموقع</th>}
                   {tab === 'gps' && <th className="px-4 py-3 text-sm font-semibold">رقم الجهاز</th>}
                   {tab === 'gps' && <th className="px-4 py-3 text-sm font-semibold">انتهاء الاشتراك</th>}
-                  <th className="px-4 py-3 text-sm font-semibold">تعديل</th>
+                  {tab === 'all' && <th className="px-4 py-3 text-sm font-semibold">التصنيف</th>}
+                  <th className="px-4 py-3 text-sm font-semibold">الإجراءات</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {filteredCustomers.map((c) => (
+                {pageRows.map((c) => (
+                  <>
                   <tr
                     key={c.id}
-                    onClick={() => setSelectedId(c.id)}
+                    onClick={() => setSelectedId(selectedId === c.id ? null : c.id)}
                     className={`cursor-pointer transition-colors ${
                       selectedId === c.id ? 'bg-brand-50' : 'hover:bg-slate-50'
                     }`}
@@ -328,22 +440,61 @@ export default function Customers() {
                           : '-'}
                       </td>
                     )}
+                    {tab === 'all' && (
+                      <td className="px-4 py-3">
+                        {c.position ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">👑 {c.position}</span>
+                        ) : (c.falseClaimCount ?? 0) > 0 ? (
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-bold text-red-700">
+                            ⚠️ بلاغ كاذب ×{c.falseClaimCount}
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-700">عادي</span>
+                        )}
+                      </td>
+                    )}
                     <td className="px-4 py-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          openEdit(c)
-                        }}
-                        className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-200"
-                      >
-                        تعديل
-                      </button>
+                      {/* 👁 يفتح التفاصيل جوّا الصف — مثل التصميم:
+                          الإداري يشوف تفاصيل الزبون بلا ما يفقد مكانه
+                          بالجدول ولا ينزّل لآخر الصفحة. */}
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSelectedId(selectedId === c.id ? null : c.id) }}
+                          title="عرض التفاصيل"
+                          className={`rounded-lg px-2.5 py-1.5 text-xs font-bold transition ${
+                            selectedId === c.id ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          👁 تفاصيل
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); openEdit(c) }}
+                          title="تعديل"
+                          className="rounded-lg bg-slate-100 px-2 py-1.5 text-xs text-slate-600 hover:bg-slate-200"
+                        >
+                          ✏️
+                        </button>
+                      </div>
                     </td>
                   </tr>
+
+                  {/* ── صف التفاصيل ── */}
+                  {selectedId === c.id && (
+                    <tr key={`${c.id}-details`} className="bg-slate-50/70">
+                      <td colSpan={9} className="px-4 py-4">
+                        <CustomerDetails
+                          customer={c}
+                          history={history}
+                          loading={historyLoading}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 ))}
                 {filteredCustomers.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-4 py-6 text-center text-slate-400">
+                    <td colSpan={9} className="px-4 py-6 text-center text-slate-400">
                       {activeList.length === 0 ? 'لا يوجد زبائن بعد' : 'لا توجد نتائج مطابقة للبحث'}
                     </td>
                   </tr>
@@ -353,123 +504,46 @@ export default function Customers() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            {!selectedCustomer && (
-              <p className="text-slate-400">اختر زبوناً من القائمة لعرض بياناته وسجل طلباته.</p>
-            )}
-            {selectedCustomer && (
-              <div>
-                <h3 className="text-lg font-bold text-brand-800">{selectedCustomer.name}</h3>
-                <div className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-                  <p>
-                    <span className="text-slate-500">الكود: </span>
-                    <span className="font-mono font-semibold text-brand-600">
-                      {selectedCustomer.code}
-                    </span>
-                  </p>
-                  <p>
-                    <span className="text-slate-500">الهاتف: </span>
-                    {selectedCustomer.phone}
-                  </p>
-                  <p>
-                    <span className="text-slate-500">آخر موقع محفوظ: </span>
-                    {selectedCustomer.location || '-'}
-                    {selectedCustomer.mapLatitude != null && selectedCustomer.mapLongitude != null && (
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${selectedCustomer.mapLatitude}&mlon=${selectedCustomer.mapLongitude}#map=17/${selectedCustomer.mapLatitude}/${selectedCustomer.mapLongitude}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="mr-2 font-semibold text-brand-600 underline"
-                      >
-                        عرض على الخريطة
-                      </a>
-                    )}
-                  </p>
+          {/* ═══ الترقيم ═══ */}
+          {filteredCustomers.length > 0 && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                عرض
+                <select
+                  value={perPage}
+                  onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
+                  className="rounded-lg border border-slate-300 px-2 py-1 text-[11px]"
+                >
+                  {[10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+                من {filteredCustomers.length} زبون
+              </label>
+              {pageCount > 1 && (
+                <div className="flex flex-wrap items-center gap-1">
+                  <PageBtn onClick={() => setPage(1)} disabled={safePage === 1}>«</PageBtn>
+                  <PageBtn onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>‹</PageBtn>
+                  {/* نافذة صفحات حول الحالية — ٦٥ زر صفحة ما ينقرا */}
+                  {pageWindow(safePage, pageCount).map((n, i) =>
+                    n === 0
+                      ? <span key={`gap${i}`} className="px-1 text-slate-400">…</span>
+                      : (
+                        <button
+                          key={n}
+                          onClick={() => setPage(n)}
+                          className={`h-7 min-w-7 rounded-lg px-2 text-[11px] font-bold ${
+                            n === safePage ? 'bg-[#2c5aad] text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {n}
+                        </button>
+                      ),
+                  )}
+                  <PageBtn onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={safePage === pageCount}>›</PageBtn>
+                  <PageBtn onClick={() => setPage(pageCount)} disabled={safePage === pageCount}>»</PageBtn>
                 </div>
-
-                {!historyLoading && (
-                  <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="rounded-xl bg-slate-50 p-3 text-center">
-                      <p className="text-xl font-bold text-brand-700">{history.length}</p>
-                      <p className="text-xs text-slate-500">إجمالي الحجوزات</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 p-3 text-center">
-                      <p className="text-xl font-bold text-emerald-600">
-                        {history.filter((b) => b.status === 'COMPLETED').length}
-                      </p>
-                      <p className="text-xs text-slate-500">زيارات مكتملة</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 p-3 text-center">
-                      <p className="text-xl font-bold text-blue-600">
-                        {history.filter((b) => b.status === 'IN_PROGRESS').length}
-                      </p>
-                      <p className="text-xs text-slate-500">قيد التنفيذ</p>
-                    </div>
-                    <div className="rounded-xl bg-slate-50 p-3 text-center">
-                      <p className="text-xl font-bold text-amber-600">
-                        {history.filter((b) => b.status === 'PENDING').length}
-                      </p>
-                      <p className="text-xs text-slate-500">بانتظار التثبيت</p>
-                    </div>
-                  </div>
-                )}
-
-                <h4 className="mt-5 font-bold text-brand-800">أرشيف طلبات وعناوين الزبون</h4>
-                {historyLoading && <p className="mt-2 text-slate-400">جاري التحميل...</p>}
-                {!historyLoading && (
-                  <div className="mt-3 divide-y divide-slate-100">
-                    {history.map((b) => (
-                      <div key={b.id} className="py-3 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono font-semibold text-brand-600">{b.code}</span>
-                          <span
-                            className={`rounded-full px-2 py-1 text-xs font-bold ${statusColors[b.status]}`}
-                          >
-                            {statusLabels[b.status] || b.status}
-                          </span>
-                        </div>
-                        <div className="mt-1 grid grid-cols-1 gap-1 text-slate-600 sm:grid-cols-2">
-                          <p>
-                            <span className="text-slate-400">الخدمة المطلوبة: </span>
-                            {b.service?.name || '-'}
-                          </p>
-                          <p>
-                            <span className="text-slate-400">الموظف الذي سجل الطلب: </span>
-                            {b.transferEmployee?.name || '-'}
-                          </p>
-                          <p>
-                            <span className="text-slate-400">السيارة المخصصة: </span>
-                            {b.assignedVehicle || '-'}
-                          </p>
-                          <p>
-                            <span className="text-slate-400">التاريخ: </span>
-                            {new Date(b.createdAt).toLocaleDateString('ar-IQ')}
-                          </p>
-                          <p className="sm:col-span-2">
-                            <span className="text-slate-400">العنوان: </span>
-                            {b.address || '-'}
-                            {b.mapLatitude != null && b.mapLongitude != null && (
-                              <a
-                                href={`https://www.openstreetmap.org/?mlat=${b.mapLatitude}&mlon=${b.mapLongitude}#map=17/${b.mapLatitude}/${b.mapLongitude}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mr-2 font-semibold text-brand-600 underline"
-                              >
-                                عرض على الخريطة
-                              </a>
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
-                    {history.length === 0 && (
-                      <p className="py-4 text-center text-slate-400">لا توجد طلبات لهذا الزبون</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -542,6 +616,159 @@ export default function Customers() {
           </form>
         </div>
       )}
+    </div>
+  )
+}
+
+/* ───── قطع الشاشة ───── */
+
+// بطاقة رقم بالرأس
+function StatCard({ icon, tone, label, value, hint }: {
+  icon: string; tone: 'sky' | 'emerald' | 'amber'; label: string; value: number; hint: string
+}) {
+  const tones: Record<string, string> = {
+    sky: 'bg-sky-50 text-sky-600',
+    emerald: 'bg-emerald-50 text-emerald-600',
+    amber: 'bg-amber-50 text-amber-600',
+  }
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_12px_rgba(15,32,64,0.05)]">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate text-[11px] font-bold text-slate-500">{label}</p>
+          <p className="mt-1 text-3xl font-black text-[#0f2040]">{value}</p>
+          <p className="text-[10px] text-slate-400">{hint}</p>
+        </div>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-lg ${tones[tone]}`}>{icon}</span>
+      </div>
+    </div>
+  )
+}
+
+function PageBtn({ children, onClick, disabled }: {
+  children: React.ReactNode; onClick: () => void; disabled: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="h-7 min-w-7 rounded-lg border border-slate-300 px-2 text-[11px] font-bold text-slate-600 disabled:opacity-40"
+    >
+      {children}
+    </button>
+  )
+}
+
+// نافذة أرقام الصفحات — الصفر يعني «…»
+// ⚠️ ٦٥ زر صفحة ما ينقرا ولا ينضغط بالموبايل، فنعرض جيران الحالية بس.
+function pageWindow(current: number, total: number): number[] {
+  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
+  const out: number[] = [1]
+  const from = Math.max(2, current - 1)
+  const to = Math.min(total - 1, current + 1)
+  if (from > 2) out.push(0)
+  for (let i = from; i <= to; i++) out.push(i)
+  if (to < total - 1) out.push(0)
+  out.push(total)
+  return out
+}
+
+/* ───── تفاصيل الزبون — تنفتح جوّا الصف ───── */
+
+function CustomerDetails({ customer, history, loading }: {
+  customer: Customer; history: Booking[]; loading: boolean
+}) {
+  const last = history[0]
+  const services = Array.from(new Set(history.map((b) => b.service?.name).filter(Boolean) as string[]))
+  const crew = last ? last.assignments.map((a) => a.employee.name) : []
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <DetailBox icon="⚠️" title="حالة البلاغات">
+        {(customer.falseClaimCount ?? 0) > 0 ? (
+          <>
+            <p className="font-bold text-red-700">انكشف {customer.falseClaimCount} بلاغ غير صحيح</p>
+            {customer.falseClaimNote && <p className="mt-1 text-slate-600">{customer.falseClaimNote}</p>}
+            {customer.lastFalseClaimAt && (
+              <p className="mt-1 text-[10px] text-slate-400">
+                آخر مرة: {new Date(customer.lastFalseClaimAt).toLocaleDateString('ar-IQ')}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="text-emerald-700">ماكو بلاغات غير صحيحة على هذا الزبون.</p>
+        )}
+      </DetailBox>
+
+      <DetailBox icon="🕐" title="آخر حجز">
+        {loading ? <p className="text-slate-400">جاري التحميل...</p> : last ? (
+          <>
+            <p><span className="text-slate-400">الكود: </span><span className="font-mono font-bold">{last.code}</span></p>
+            <p><span className="text-slate-400">التاريخ: </span>{new Date(last.createdAt).toLocaleDateString('ar-IQ')}</p>
+            {last.scheduledAt && (
+              <p><span className="text-slate-400">الموعد: </span>
+                {new Date(last.scheduledAt).toLocaleString('ar-IQ', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
+          </>
+        ) : <p className="text-slate-400">ماكو حجوزات بعد.</p>}
+      </DetailBox>
+
+      <DetailBox icon="👥" title="الكادر المكلّف">
+        {loading ? <p className="text-slate-400">جاري التحميل...</p> : crew.length > 0 ? (
+          <ul className="space-y-0.5">
+            {crew.map((n, i) => <li key={i}>• {n}</li>)}
+          </ul>
+        ) : <p className="text-slate-400">ما انكلّف كادر بآخر حجز.</p>}
+      </DetailBox>
+
+      <DetailBox icon="🔧" title="الخدمات المطلوبة">
+        {loading ? <p className="text-slate-400">جاري التحميل...</p> : services.length > 0 ? (
+          <ul className="space-y-0.5">
+            {services.map((n) => <li key={n}>• {n}</li>)}
+          </ul>
+        ) : <p className="text-slate-400">ماكو خدمات مسجّلة.</p>}
+      </DetailBox>
+
+      {/* ── سجل الحجوزات ── */}
+      <div className="sm:col-span-2 xl:col-span-4">
+        <p className="mb-2 text-xs font-bold text-[#0f2040]">
+          📋 سجل الحجوزات {history.length > 0 && <span className="text-slate-400">({history.length})</span>}
+        </p>
+        {loading && <p className="text-xs text-slate-400">جاري التحميل...</p>}
+        {!loading && history.length === 0 && (
+          <p className="rounded-xl border border-dashed border-slate-200 bg-white px-3 py-4 text-center text-xs text-slate-400">
+            ماكو حجوزات لهذا الزبون.
+          </p>
+        )}
+        {/* ⚠️ تمرير أفقي جوّا الصندوق: بلا سقف، الحجوزات الكثيرة
+            تمدّ الصف وتكسر الجدول كله على الموبايل. */}
+        <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white">
+          {history.map((b) => (
+            <div key={b.id} className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-2 text-[11px] last:border-0">
+              <span className="font-mono font-bold text-brand-600">{b.code}</span>
+              <span className="text-slate-600">{b.service?.name || '—'}</span>
+              <span className="text-slate-400">{new Date(b.createdAt).toLocaleDateString('ar-IQ')}</span>
+              <span className={`mr-auto rounded-full px-2 py-0.5 font-bold ${statusColors[b.status]}`}>
+                {statusLabels[b.status] || b.status}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DetailBox({ icon, title, children }: {
+  icon: string; title: string; children: React.ReactNode
+}) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <p className="mb-1.5 border-b border-slate-100 pb-1.5 text-[11px] font-extrabold text-[#0f2040]">
+        {icon} {title}
+      </p>
+      <div className="space-y-0.5 text-[11px] text-slate-700">{children}</div>
     </div>
   )
 }

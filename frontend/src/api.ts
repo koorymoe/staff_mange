@@ -692,6 +692,7 @@ export interface Expense {
 
 export interface Customer {
   id: string
+  createdAt: string
   customerCode: number
   code: string
   name: string
