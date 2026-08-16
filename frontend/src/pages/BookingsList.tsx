@@ -7,7 +7,7 @@ import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
 import { matches } from '../utils/search'
-import { BOOKING_STAGES, currentStage } from '../bookingStage'
+import { BOOKING_STAGES, currentStage, executionStarted } from '../bookingStage'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -193,14 +193,34 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   // ويعيد تسجيله.
   //
   // هسه السلّة هي الي تقرر شنو يطلع، والإداري يعرف بأي سلّة هو.
+  //
+  // ═══ والسلال ما تتداخل ═══
+  //
+  // «أريد الحجوزات الي ما مثبتة أصلاً، الي هنّ الحجوزات المرحّلة
+  // حديثاً حتى نتواصل وية الزبون — هذا الي بانتظار التثبيت».
+  //
+  // فالحجز يمشي بسلّة وحدة بكل لحظة: بانتظار التثبيت ← مثبّتة ←
+  // مكلّفة. لو طلع بسلّتين، الإداري يعالجه مرتين أو ينساه لأنه
+  // «شافه بالسلّة الثانية».
   const inBucket = (b: (typeof bookings)[number]) => {
+    const crewed = (b.assignments?.length ?? 0) > 0
+    const started = executionStarted(b)
     switch (bucket) {
-      // بانتظار التثبيت: ما انثبّت بعد
-      case 'pending': return !b.confirmedAt && b.status !== 'CANCELLED' && b.status !== 'COMPLETED'
-      // مثبّتة: انثبّت — بغض النظر عن الكادر والموعد
-      case 'confirmed': return !!b.confirmedAt && b.status !== 'COMPLETED' && b.status !== 'CANCELLED'
-      // مكلّفة: مثبّت وعنده كادر فعلاً
-      case 'assigned': return !!b.confirmedAt && (b.assignments?.length ?? 0) > 0
+      // بانتظار التثبيت: المرحّل حديثاً الي ننتظر نتواصل وية زبونه.
+      // ⚠️ الملغى والمنجز ما يبقون هنا — هذي سلّة شغل، مو أرشيف.
+      case 'pending':
+        return !b.confirmedAt && !crewed && !started
+          && b.status !== 'CANCELLED' && b.status !== 'COMPLETED'
+      // مثبّتة: انثبّت وبعده ما انكلّف عليه كادر ولا بدا التنفيذ.
+      // الموعد مو شرط — يجوز يتثبّت اليوم وينحدد موعده بعد أيام.
+      case 'confirmed':
+        return !!b.confirmedAt && !crewed && !started
+          && b.status !== 'COMPLETED' && b.status !== 'CANCELLED'
+      // مكلّفة: انكلّف عليه كادر **أو** بدا التنفيذ فعلاً.
+      // «أو» مو «و»: حجز باشر بيه الليدر بلا ما ينسجّل تكليف رسمي
+      // لازم يبقى مرئي بمكان ما — وهذا مكانه.
+      case 'assigned':
+        return (crewed || started) && b.status !== 'CANCELLED'
       default: return true
     }
   }

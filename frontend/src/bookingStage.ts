@@ -32,6 +32,19 @@ export const BOOKING_STAGES: Stage[] = [
   { key: 'done', label: 'انجز', icon: '🏁', done: (b) => b.status === 'COMPLETED', at: (b) => b.completedAt },
 ]
 
+// ═══ الحجز الي بدا التنفيذ ═══
+//
+// «من يتنسق ويستلمهن الليدر ويبدا التنفيذ بيهن المفروض يختفن من هاي
+// الواجهة — وين يرحن؟ يرحن لحجوزات مكلفة».
+//
+// ⚠️ هذي الدالة هي **المصدر الوحيد** لهذا السؤال: شاشة التنسيق تخفي
+// بيها، وسلّة «مكلّفة» تعرض بيها. لو كل شاشة حكمت لحالها، تجي لحظة
+// يختفي بيها الحجز من التنسيق وما يطلع بالمكلّفة — وهاي هي «الهوسة»
+// الي ما نريدها: حجز موجود بقاعدة البيانات وما يشوفه أحد.
+export function executionStarted(b: Booking): boolean {
+  return !!b.startedAt || !!b.arrivedAt || b.status === 'IN_PROGRESS' || b.status === 'COMPLETED'
+}
+
 /** أول مرحلة ما خلصت — «وين واقف الحجز هسه». */
 export function currentStage(b: Booking): Stage {
   return BOOKING_STAGES.find((s) => !s.done(b)) ?? BOOKING_STAGES[BOOKING_STAGES.length - 1]

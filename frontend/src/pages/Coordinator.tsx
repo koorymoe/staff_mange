@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption } from '../api'
 import { formatCustomerCode } from '../utils/identity'
+import { executionStarted } from '../bookingStage'
 import { useSession } from '../session'
 import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
@@ -69,22 +70,47 @@ export default function Coordinator() {
   // تقدير مدة العمل المتعلَّم تلقائياً من بيانات فعلية سابقة (بدون رقم مفروض
   // يدوياً) — يُعرض بجانب اختيار الفنيين حتى المنسق يشوف تقدير واقعي قبل التثبيت.
   const [durationEstimates, setDurationEstimates] = useState<Record<string, JobDurationEstimate>>({})
+  const estimateAsked = useRef<Set<string>>(new Set())
+
+  // ═══ ليش تقدير المدة صار بمفتاح مو بحجز ═══
+  //
+  // «هاي الصفحة ثكيلة بالتحميل، هاي مشكلة، لازم أسرع شوي».
+  //
+  // كان هذا الأثر يدزّ **طلب مستقل لكل حجز مثبّت**: عشرين حجز = عشرين
+  // نداء. والأسوأ إنه معلّق على `bookings` كلها — وكل حفظ بالشاشة
+  // (سعر، موعد، مشرف، فني) يبدّل مصفوفة الحجوزات، فينعاد الأثر
+  // ويعيد **نفس** العشرين نداء من الصفر. فالصفحة تثقل بكل ضغطة.
+  //
+  // والتقدير أصلاً ما يعتمد على الحجز، يعتمد على أربعة أرقام
+  // (منظومة، نوع شغل، عدد، حجم كادر) — وأغلب الحجوزات تشترك بنفس
+  // الأربعة. فصار المفتاح هو الأربعة: نطلب مرة وحدة لكل تركيبة
+  // مختلفة، وما نعيد طلب تركيبة وصلتنا.
+  const estimateKeyOf = (b: Booking) => {
+    const crewSize = 1 + b.assignments.filter((a) => a.role === 'TECH_1' || a.role === 'TECH_2' || a.role === 'TECH_3').length
+    const itemCount = b.deviceCount || b.systemCount || 1
+    const jobType: 'MAINTENANCE' | 'INSTALL' = b.bookingType === 'MAINTENANCE' ? 'MAINTENANCE' : 'INSTALL'
+    return { key: `${b.systemType}|${jobType}|${itemCount}|${crewSize}`, systemName: b.systemType!, jobType, itemCount, crewSize }
+  }
 
   useEffect(() => {
-    const confirmed = bookings.filter((b) => b.status === 'CONFIRMED' && b.systemType)
-    confirmed.forEach((booking) => {
-      const crewSize = 1 + booking.assignments.filter((a) => a.role === 'TECH_1' || a.role === 'TECH_2' || a.role === 'TECH_3').length
-      const itemCount = booking.deviceCount || booking.systemCount || 1
+    const wanted = new Map<string, ReturnType<typeof estimateKeyOf>>()
+    for (const b of bookings) {
+      if (b.status !== 'CONFIRMED' || !b.systemType) continue
+      const k = estimateKeyOf(b)
+      if (!wanted.has(k.key)) wanted.set(k.key, k)
+    }
+    for (const k of wanted.values()) {
+      // ⚠️ سجل الطلبات بـ`ref` مو بالحالة: الحالة ما تنكتب إلا بعد
+      // ما يرجع الجواب، فطلبين لنفس التركيبة بنفس اللحظة يمرّون
+      // الاثنين. الـ`ref` ينكتب فوراً فيمنع الثاني.
+      if (estimateAsked.current.has(k.key)) continue
+      estimateAsked.current.add(k.key)
       api
-        .getJobDurationEstimate({
-          systemName: booking.systemType!,
-          jobType: booking.bookingType === 'MAINTENANCE' ? 'MAINTENANCE' : 'INSTALL',
-          itemCount,
-          crewSize,
-        })
-        .then((estimate) => setDurationEstimates((prev) => ({ ...prev, [booking.id]: estimate })))
-        .catch(() => undefined)
-    })
+        .getJobDurationEstimate({ systemName: k.systemName, jobType: k.jobType, itemCount: k.itemCount, crewSize: k.crewSize })
+        .then((estimate) => setDurationEstimates((p) => ({ ...p, [k.key]: estimate })))
+        // لو فشل، نشيله من السجل حتى يعاود بالتحميل الجاي
+        .catch(() => { estimateAsked.current.delete(k.key) })
+    }
   }, [bookings])
 
   const getAvailableSlots = (excludeId?: string) => {
@@ -209,7 +235,18 @@ export default function Coordinator() {
       // WAITING بعد: الزبون ما رد، والحجز لازم يضل مرئي للمنسّق حتى
       // يعاود الاتصال — لو ما جبناه صار يختفي بلا ما ينحل.
       .getBookings({ status: ['PENDING', 'CONFIRMED', 'WAITING'] })
-      .then((data) => {
+      .then((all) => {
+        // ═══ الي بدا التنفيذ ما يبقى بشاشة التنسيق ═══
+        //
+        // «المفروض من يتنسق ويستلمهن الليدر ويبدا التنفيذ بيهن يختفن
+        // من هاي الواجهة — يرحن لحجوزات مكلفة».
+        //
+        // فلتر الحالة فوق يشيل IN_PROGRESS، بس الحجز يبقى CONFIRMED
+        // ولو الليدر وصل الموقع وباشر (`arrivedAt`/`startedAt`) —
+        // فيضل معروض هنا وكأنه ينتظر تنسيق، والمنسّق يروح يغيّر موعده
+        // أو كادره وهم شغالين بيه فعلاً. `executionStarted` تشيله،
+        // وسلّة «حجوزات مكلّفة» تستلمه بنفس الدالة.
+        const data = all.filter((b) => !executionStarted(b))
         setBookings(data)
         // حجز المشاريع **المفتوح** (وصل التنفيذ) ياخذ مرشحين مثل أي
         // حجز عادي — نفس كادر الشد هو الي راح ينفّذ. المقفول بس
@@ -1098,15 +1135,15 @@ export default function Coordinator() {
 
                     {booking.systemType && (
                       <div className="mt-2">
-                        {durationEstimates[booking.id]?.expectedMinutes != null ? (
+                        {durationEstimates[estimateKeyOf(booking).key]?.expectedMinutes != null ? (
                           <div className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-bold text-brand-700">
-                            ⏱️ الوقت المتوقع (متعلَّم من {durationEstimates[booking.id].sampleCount} عيّنة سابقة):{' '}
-                            {Math.round(durationEstimates[booking.id].expectedMinutes!)} دقيقة
+                            ⏱️ الوقت المتوقع (متعلَّم من {durationEstimates[estimateKeyOf(booking).key].sampleCount} عيّنة سابقة):{' '}
+                            {Math.round(durationEstimates[estimateKeyOf(booking).key].expectedMinutes!)} دقيقة
                           </div>
                         ) : (
                           <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500">
-                            ⏳ لا توجد بيانات كافية بعد ({durationEstimates[booking.id]?.sampleCount ?? 0}/
-                            {durationEstimates[booking.id]?.minSamples ?? 5} عينات)
+                            ⏳ لا توجد بيانات كافية بعد ({durationEstimates[estimateKeyOf(booking).key]?.sampleCount ?? 0}/
+                            {durationEstimates[estimateKeyOf(booking).key]?.minSamples ?? 5} عينات)
                           </div>
                         )}
                       </div>
