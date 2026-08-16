@@ -956,13 +956,13 @@ export default function Layout() {
           <div key={item.label}>
             <button
               onClick={() => toggle(item.label)}
-              className={`group relative flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-200 ${
+              className={`group relative flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-300 ${
                 active
-                  ? 'bg-white/[0.12] text-white'
-                  : 'bg-white/[0.04] text-blue-100/70 hover:bg-white/[0.08] hover:text-white'
+                  ? 'bg-gradient-to-l from-[#2563eb] to-[#1e40af] text-white shadow-[0_0_18px_rgba(59,130,246,0.45)] ring-1 ring-sky-400/40'
+                  : 'bg-white/[0.04] text-blue-100/70 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_0_12px_rgba(59,130,246,0.18)]'
               }`}
             >
-              {active && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
+              {active && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-sky-300 shadow-[0_0_10px_2px_rgba(125,211,252,0.9)]" />}
               {!collapsed && (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                   className={`ml-0.5 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ flexShrink: 0 }}>
@@ -972,8 +972,8 @@ export default function Layout() {
               {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
               {/* الأيقونة بمربّع — نفس التصميم: صندوق صغير بحافة دائرية
                   يميّز العنصر النشط ويخلي الأيقونات على خط واحد. */}
-              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
-                active ? 'bg-white/20 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/12'
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-all duration-300 ${
+                active ? 'bg-white/25 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/[0.12]'
               }`}>{item.icon}</span>
             </button>
             {open && !collapsed && (
@@ -1014,19 +1014,20 @@ export default function Layout() {
       return (
         <NavLink key={item.to} to={item.to} end={item.end}
           className={({ isActive }) =>
-            `group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-200 ${
+            `group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-300 ${
               isActive
-                ? 'bg-white/[0.12] text-white'
-                : 'bg-white/[0.04] text-blue-100/70 hover:bg-white/[0.08] hover:text-white'
+                ? 'bg-gradient-to-l from-[#2563eb] to-[#1e40af] text-white shadow-[0_0_18px_rgba(59,130,246,0.45)] ring-1 ring-sky-400/40'
+                : 'bg-white/[0.04] text-blue-100/70 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_0_12px_rgba(59,130,246,0.18)]'
             }`
           }>
           {({ isActive }) => (
             <>
               {/* شريط أزرق على الحافة اليسرى للعنصر النشط */}
-              {isActive && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
+              {/* شعاع الإنارة على الحافة: يمشي مع العنصر النشط */}
+              {isActive && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-sky-300 shadow-[0_0_10px_2px_rgba(125,211,252,0.9)]" />}
               {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
-              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
-                isActive ? 'bg-white/20 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/12'
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-all duration-300 ${
+                isActive ? 'bg-white/25 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/[0.12]'
               }`}>{item.icon}</span>
             </>
           )}
@@ -1061,16 +1062,16 @@ export default function Layout() {
     return (
       <NavLink key={item.to} to={item.to} end={item.end}
         className={({ isActive }) =>
-          `group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-right text-[12px] transition-all duration-200 ${
+          `group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-right text-[12px] transition-all duration-300 ${
             isActive
-              ? 'bg-white/[0.14] font-bold text-white'
+              ? 'bg-sky-500/25 font-bold text-white shadow-[0_0_12px_rgba(56,189,248,0.35)] ring-1 ring-sky-400/30'
               : 'bg-white/[0.03] font-medium text-blue-100/55 hover:bg-white/[0.08] hover:text-blue-100/85'
           }`
         }>
         {({ isActive }) => (
           <>
-            <span className={`h-1.5 w-1.5 shrink-0 rounded-full transition-colors ${
-              isActive ? 'bg-[#4d8dff]' : 'bg-white/20 group-hover:bg-white/40'
+            <span className={`h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-300 ${
+              isActive ? 'bg-sky-300 shadow-[0_0_8px_2px_rgba(125,211,252,0.8)]' : 'bg-white/20 group-hover:bg-white/40'
             }`} />
             <span className="flex-1 text-right">{item.label}</span>
           </>
@@ -1194,11 +1195,20 @@ export default function Layout() {
         {/* ===== Right Sidebar — Premium ===== */}
         <aside
           dir="rtl"
-          className={`app-sidebar glossy-dark fixed inset-y-0 right-0 z-50 flex flex-col bg-[#0f2040] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:h-auto lg:translate-x-0 ${
+          // ⚠️ isolate + overflow-hidden: هالة الضوء تحت مطلقة الموضع،
+          // وبدونهن تطلع برّا القائمة وتغطي محتوى الصفحة.
+          className={`app-sidebar glossy-dark isolate fixed inset-y-0 right-0 z-50 flex flex-col overflow-hidden bg-[#0f2040] transition-transform duration-300 ease-in-out lg:sticky lg:top-0 lg:z-auto lg:h-auto lg:translate-x-0 ${
             mobileOpen ? 'translate-x-0' : 'translate-x-full'
           }`}
           style={{ width: collapsed ? 72 : 270, minWidth: collapsed ? 72 : 270 }}
         >
+          {/* ═══ هالة الإنارة ═══
+              ضوء أزرق خفيف ينزل من أعلى القائمة، يعطيها العمق الي
+              بالتصميم بدل الكحلي المسطّح.
+              ⚠️ pointer-events-none: طبقة زينة، وبدونها تبلع ضغطات
+              أول بندين بالقائمة. */}
+          <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 bg-[radial-gradient(120%_70%_at_50%_0%,rgba(56,120,255,0.28),transparent_70%)]" />
+
           {/* Logo */}
           <div className={`flex items-center ${collapsed ? 'justify-center' : 'justify-center gap-3'} px-4 py-5`}>
             {/* شعار الشركة الحقيقي بدل المكعّب العام.
