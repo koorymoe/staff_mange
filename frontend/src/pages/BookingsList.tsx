@@ -9,7 +9,7 @@ import BookingEditPanel from '../components/BookingEditPanel'
 import BookingVisits from '../components/BookingVisits'
 import { matches } from '../utils/search'
 import { BOOKING_STAGES, currentStage, executionStarted } from '../bookingStage'
-import { DONE_FILTERS, type BookingBucket, type DoneFilter } from './bookingBuckets'
+import { BUCKET_HEADINGS, DONE_FILTERS, type BookingBucket, type DoneFilter } from './bookingBuckets'
 
 export type { BookingBucket } from './bookingBuckets'
 
@@ -337,10 +337,10 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">الحجوزات</h2>
+      <h2 className="text-2xl font-bold text-brand-900">{BUCKET_HEADINGS[bucket].title}</h2>
       <p className="mt-1 text-slate-500">
-        سجل كامل بجميع الحجوزات السابقة مع تفاصيلها.
-        {canSeeStats && (
+        {BUCKET_HEADINGS[bucket].next}
+        {bucket === 'all' && canSeeStats && (
           <> إحصائية "أكثر الخدمات طلباً" لكل الخدمات صارت بصفحة <a href="/stats" className="text-brand-600 hover:underline">إحصائيات الموظفين</a>.</>
         )}
       </p>
