@@ -7,6 +7,7 @@ import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
 import { matches } from '../utils/search'
+import { BOOKING_STAGES, currentStage } from '../bookingStage'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -48,7 +49,11 @@ const techRoleLabels: Record<string, string> = {
   TECH_3: 'الفني الثالث',
 }
 
-export default function BookingsList() {
+// ═══ سلال الحجوزات ═══
+// كل تبويب بشاشة «الحجوزات» يفتح نفس القائمة بسلّة مختلفة.
+export type BookingBucket = 'all' | 'pending' | 'confirmed' | 'assigned'
+
+export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucket } = {}) {
   const { employee, permissions } = useSession()
   const canSeeStats = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -179,13 +184,29 @@ export default function BookingsList() {
   //
   // ⚠️ ما ينختفي بصمت: العدد ينعرض فوق مع رابط لشاشة التنسيق. إخفاء
   // بلا إشارة يخلي الإداري يظن الحجز ضاع ويعيد تسجيله.
-  const isCoordinated = (b: (typeof bookings)[number]) =>
-    !!b.confirmedAt && !!b.scheduledAt && (b.assignments?.length ?? 0) > 0
-
-  const notCoordinated = bookings.filter((b) => !isCoordinated(b))
+  // ⚠️ الإخفاء الصامت انلغى.
+  //
+  // كانت الشاشة تعرض **بس** الحجز الي عنده تثبيت وموعد وكادر — أي
+  // حجز ناقصه وحدة منهن يختفي. يعني الإداري يثبّت حجز بلا كادر
+  // (وهذا مشروع تماماً: يجوز يثبّته اليوم ويكلّف الكادر بعد أربع
+  // أيام) فيروح يدوّر عليه بالقائمة وما يلگاه — فيظن إنه ضاع
+  // ويعيد تسجيله.
+  //
+  // هسه السلّة هي الي تقرر شنو يطلع، والإداري يعرف بأي سلّة هو.
+  const inBucket = (b: (typeof bookings)[number]) => {
+    switch (bucket) {
+      // بانتظار التثبيت: ما انثبّت بعد
+      case 'pending': return !b.confirmedAt && b.status !== 'CANCELLED' && b.status !== 'COMPLETED'
+      // مثبّتة: انثبّت — بغض النظر عن الكادر والموعد
+      case 'confirmed': return !!b.confirmedAt && b.status !== 'COMPLETED' && b.status !== 'CANCELLED'
+      // مكلّفة: مثبّت وعنده كادر فعلاً
+      case 'assigned': return !!b.confirmedAt && (b.assignments?.length ?? 0) > 0
+      default: return true
+    }
+  }
 
   const filtered = bookings
-    .filter(isCoordinated)
+    .filter(inBucket)
     .filter((b) => {
       if (search.trim() && !matches([b.code, b.customer?.name, b.customer?.code, b.customer?.phone], search)) return false
       if (selectedMonth && !relevantDate(b).startsWith(selectedMonth)) return false
@@ -204,17 +225,6 @@ export default function BookingsList() {
         )}
       </p>
 
-      {notCoordinated.length > 0 && (
-        <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
-          <span className="font-bold text-amber-900">
-            ⏳ {notCoordinated.length} حجز لسه ما انسّق (بلا تثبيت أو موعد أو كادر)
-          </span>
-          <span className="text-amber-800">— ما يطلع بالقائمة لحد ما ينسّق.</span>
-          <a href="/coordinator" className="mr-auto rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white">
-            روح لتنسيق الحجوزات ←
-          </a>
-        </div>
-      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input
@@ -277,28 +287,26 @@ export default function BookingsList() {
           📋 كل الحجوزات
         </button>
 
-        {/* فلتر بحث متقدم: اختيار شهر كامل بدل يوم وحد */}
-        <div className="relative">
-          <button
-            onClick={() => monthInputRef.current?.showPicker?.()}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium ${
-              selectedMonth
-                ? 'border-brand-500 bg-brand-500 text-white'
-                : 'border-slate-300 text-slate-600 hover:bg-slate-50'
-            }`}
-          >
-            🗓️ {selectedMonth
-              ? new Date(`${selectedMonth}-01T00:00:00`).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long' })
-              : 'فلتر متقدم: اختر شهر'}
-          </button>
+        {/* ═══ فلتر الشهر ═══
+            ⚠️ كان زر وفوقه خانة شهر **شفافة تغطيه بالكامل**: الضغطة
+            تروح للخانة المخفية مو للزر، و`showPicker()` ما تنستدعى
+            أبداً — فالفلتر ما يفتح ولا مرة. صارت خانة ظاهرة عادية،
+            تشتغل بكل متصفح بلا حيلة. */}
+        <label className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium ${
+          selectedMonth ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-slate-300 text-slate-600'
+        }`}>
+          <span className="whitespace-nowrap">🗓️ فلتر شهر</span>
           <input
             ref={monthInputRef}
             type="month"
             value={selectedMonth || ''}
-            onChange={(e) => { if (e.target.value) { setSelectedDate(null); setSelectedMonth(e.target.value) } }}
-            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            onChange={(e) => {
+              if (e.target.value) { setSelectedDate(null); setSelectedMonth(e.target.value) }
+              else { setSelectedMonth(null); setSelectedDate(todayStr()) }
+            }}
+            className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs outline-none focus:border-brand-500"
           />
-        </div>
+        </label>
         {selectedMonth && (
           <button
             onClick={() => { setSelectedMonth(null); setSelectedDate(todayStr()) }}
@@ -368,7 +376,14 @@ export default function BookingsList() {
                   {expandedId === b.id && (
                     <tr>
                       <td colSpan={9} className="bg-slate-50 px-4 py-4">
-                        <div className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                        {/* ═══ وين وصل الحجز ═══
+                            «أريد متابعة لحالة الحجز مرحلة بعد مرحلة».
+                            ⚠️ المراحل تگول «وين وصل» مو «شنو ناقص عليك»:
+                            كل مرحلة اختيارية لحالها، والحجز يتثبّت بلا
+                            كادر والكادر ينكلّف بعدها بأيام. */}
+                        <StageStrip booking={b} />
+
+                        <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                           <div>
                             <p className="text-slate-400">اسم الزبون</p>
                             <p className="mt-1 font-bold text-slate-700">{b.customer?.name || 'زبون غير معروف'}</p>
@@ -596,6 +611,55 @@ export default function BookingsList() {
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/* ───── شريط مراحل الحجز ───── */
+
+function StageStrip({ booking }: { booking: Booking }) {
+  const now = currentStage(booking)
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-3">
+      <p className="mb-2.5 text-[11px] font-extrabold text-[#0f2040]">
+        📍 وين وصل الحجز — <span className="text-brand-700">{now.done(booking) ? 'انجز' : now.label}</span>
+      </p>
+      {/* ⚠️ تمرير أفقي جوّا الشريط: سبع مراحل على شاشة موبايل تنضغط
+          لنقاط بلا أسماء، فتصير زينة ما تفيد. */}
+      <div className="flex gap-1 overflow-x-auto pb-1">
+        {BOOKING_STAGES.map((st, i) => {
+          const done = st.done(booking)
+          const isNow = st.key === now.key && !done
+          const at = st.at(booking)
+          return (
+            <div key={st.key} className="flex min-w-[92px] flex-1 flex-col items-center gap-1">
+              <div className="flex w-full items-center">
+                <span className={`h-1 flex-1 rounded-full ${i === 0 ? 'bg-transparent' : done ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+                <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] ${
+                  done ? 'bg-emerald-500 text-white'
+                    : isNow ? 'bg-amber-400 text-white ring-2 ring-amber-200'
+                    : 'bg-slate-200 text-slate-400'
+                }`}>
+                  {done ? '✓' : st.icon}
+                </span>
+                <span className={`h-1 flex-1 rounded-full ${i === BOOKING_STAGES.length - 1 ? 'bg-transparent' : done ? 'bg-emerald-400' : 'bg-slate-200'}`} />
+              </div>
+              <span className={`text-center text-[9.5px] leading-tight ${
+                done ? 'font-bold text-emerald-700' : isNow ? 'font-bold text-amber-700' : 'text-slate-400'
+              }`}>
+                {st.label}
+              </span>
+              {/* الوقت ينعرض للمرحلة الي خلصت بس — المرحلة الي ما
+                  صارت ما إلها وقت، وشرطة مكانها ضجيج. */}
+              {done && at && (
+                <span className="text-[9px] text-slate-400">
+                  {new Date(at).toLocaleDateString('ar-IQ', { day: 'numeric', month: 'short' })}
+                </span>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }
