@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, type Customer, type Service, type SolarSystem } from '../api'
 import { useSession } from '../session'
+import MultiSelect from '../components/MultiSelect'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { LocationPicker } from '../components/MapLazy'
 
@@ -617,30 +618,16 @@ export default function SalesBooking() {
           <p className="mb-3 text-xs text-slate-400">
             تكدر تختار أكثر من خدمة لنفس الزبون (مثلاً منظومة صوت + كاميرات).
           </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {services.map((s) => {
-              const checked = serviceIds.includes(s.id)
-              return (
-                <label
-                  key={s.id}
-                  className={`flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm transition-colors ${
-                    checked ? 'border-brand-500 bg-brand-50 font-medium text-brand-800' : 'border-slate-200 text-slate-600'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() =>
-                      setServiceIds((prev) =>
-                        prev.includes(s.id) ? prev.filter((x) => x !== s.id) : [...prev, s.id],
-                      )
-                    }
-                  />
-                  {s.name}
-                </label>
-              )
-            })}
-          </div>
+          {/* ⚠️ قائمة منسدلة بدل ٢٠+ مربّع مفتوح: القائمة المفتوحة كانت
+              تاخذ نص الصفحة وتدفن باقي خانات الحجز تحتها، والإداري
+              يضطر ينزّل ويطلع بين الخدمة والموعد. */}
+          <MultiSelect
+            options={services.map((s) => ({ id: s.id, name: s.name }))}
+            selected={serviceIds}
+            onChange={setServiceIds}
+            placeholder="اضغط لاختيار الخدمات..."
+            emptyText="ماكو خدمات مسجّلة بالنظام"
+          />
           {/* ═══ حقول إجبارية حسب الخدمة ═══
               الخدمة المؤشّرة requiresDeviceInfo (جي بي اس) تطلب عدد
               الأجهزة ونوع المركبة. قبل، حجز الجي بي اس ينوصل للفني
