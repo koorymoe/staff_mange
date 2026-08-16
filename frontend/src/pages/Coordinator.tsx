@@ -421,9 +421,26 @@ export default function Coordinator() {
   const confirmedNeedingCoordination = confirmedBookings.filter((b) => !isFullyCoordinated(b))
   const confirmedDone = confirmedBookings.filter(isFullyCoordinated)
   const orderedConfirmed = [...confirmedNeedingCoordination, ...confirmedDone]
-  const upcomingAppointments = bookings
-    .filter((b) => b.scheduledAt && (b.status === 'CONFIRMED' || b.status === 'PENDING') && new Date(b.scheduledAt) > new Date())
-    .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime())
+  // ═══ كشف تعارض الموعد ═══
+  //
+  // «من أخلي وقت للحجز ينطيني تنبيه إنه اكو حجز بهذا الوقت فقط حتى
+  // أعرف، أو يقترحلي أوقات متاحة».
+  //
+  // ⚠️ تنبيه مو منع: يجوز الإداري **يقصد** يحط حجزين بنفس الساعة
+  // (كادرين مختلفين، أو زبونين بنفس البناية). المنع يخليه يدور على
+  // حيلة يتجاوزها، والتنبيه يخليه يقرر وهو شايف.
+  const conflictsFor = (bookingId: string, value: string) => {
+    if (!value) return []
+    const t = new Date(value).getTime()
+    if (Number.isNaN(t)) return []
+    const HOUR = 60 * 60 * 1000
+    return bookings.filter((b) => {
+      if (b.id === bookingId || !b.scheduledAt) return false
+      if (b.status === 'CANCELLED' || b.status === 'COMPLETED') return false
+      // نفس الساعة تقريباً — فرق أقل من ساعة يعتبر تعارض
+      return Math.abs(new Date(b.scheduledAt).getTime() - t) < HOUR
+    })
+  }
 
   return (
     <div>
@@ -460,26 +477,12 @@ export default function Coordinator() {
 
       {!loading && !error && (
         <>
-          {/* المواعيد المحجوزة مسبقاً - حتى لا يتم تحديد موعد متعارض */}
-          {upcomingAppointments.length > 0 && (
-            <div className="mt-6 overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-              <h3 className="bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 font-bold text-white">
-                🗓️ المواعيد المحجوزة (تجنب تحديد نفس الوقت لزبون آخر)
-              </h3>
-              <div className="flex flex-col divide-y divide-slate-100">
-                {upcomingAppointments.map((b) => (
-                  <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-sm">
-                    <span className="font-mono font-semibold text-brand-600">{b.code}</span>
-                    <span className="text-slate-600">{b.customer?.name || 'زبون غير معروف'}</span>
-                    <span className="text-slate-600">{serviceNames(b)}</span>
-                    <span className="font-bold text-brand-800">
-                      {formatScheduleWindow(b.scheduledAt, b.scheduledEndAt)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* ⚠️ جدول «المواعيد المحجوزة» انشال من هنا.
+              كان يعرض كل المواعيد القادمة بأعلى الشاشة — عشرات الصفوف
+              يقراهن الإداري **بعينه** ويقارنهن بالوقت الي بذهنه، وبعدها
+              يمرّر نص شاشة حتى يوصل الحجز الي يشتغل عليه.
+              بدله: التحذير يجي **بلحظة اختيار الوقت** لهذا الحجز
+              بالذات، ويگول منو الزبون المتعارض ويقترح بديل. */}
 
           {/* ═══ حمل الليدرات: منو فاضي ومنو مزحوم ═══
               الإداري ما يكلّف بالحدس — يشوف كل ليدر شكد عنده حجوزات
@@ -722,6 +725,45 @@ export default function Coordinator() {
                       <p className="mt-1 text-xs text-slate-400">
                         اختر من المواعيد المتاحة أو اكتب يدوياً
                       </p>
+                      {/* ═══ تنبيه التعارض ═══ */}
+                      {(() => {
+                        const clash = conflictsFor(booking.id, scheduleDrafts[booking.id] || '')
+                        if (clash.length === 0) return null
+                        const free = getAvailableSlots(booking.id).slice(0, 3)
+                        return (
+                          <div className="mt-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-3 py-2">
+                            <p className="text-xs font-extrabold text-amber-900">
+                              ⚠️ اكو {clash.length === 1 ? 'حجز' : `${clash.length} حجوزات`} بنفس الوقت تقريباً
+                            </p>
+                            <ul className="mt-1 space-y-0.5 text-[11px] text-amber-900">
+                              {clash.map((c) => (
+                                <li key={c.id}>
+                                  • <span className="font-mono font-bold">{c.code}</span> — {c.customer?.name || 'زبون'}
+                                  {' · '}{formatScheduleWindow(c.scheduledAt, c.scheduledEndAt)}
+                                </li>
+                              ))}
+                            </ul>
+                            {free.length > 0 && (
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-amber-200 pt-2">
+                                <span className="text-[10px] font-bold text-amber-800">أوقات فاضية:</span>
+                                {free.map((f) => (
+                                  <button
+                                    key={f.value}
+                                    type="button"
+                                    onClick={() => setScheduleDrafts((prev) => ({ ...prev, [booking.id]: f.value }))}
+                                    className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-amber-800 ring-1 ring-amber-300 hover:bg-amber-100"
+                                  >
+                                    {f.label}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <p className="mt-1.5 text-[10px] text-amber-700">
+                              تنبيه بس — تكدر تكمّل إذا كنت تقصدها (كادرين مختلفين مثلاً).
+                            </p>
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
                 </div>
