@@ -3,6 +3,7 @@ import { useSession } from '../session'
 import BookingsList from './BookingsList'
 import Coordinator from './Coordinator'
 import SalesBooking from './SalesBooking'
+import StageBucketsPage from './StageBucketsPage'
 
 // ═══ «الحجوزات» — ثلاث شاشات بمدخل واحد ═══
 //
@@ -27,6 +28,11 @@ const TABS = [
   { key: 'pending' as const, label: 'بانتظار التثبيت', icon: '⏳' },
   { key: 'confirmed' as const, label: 'حجوزات مثبّتة', icon: '✅' },
   { key: 'assigned' as const, label: 'حجوزات مكلّفة', icon: '👥' },
+  // ═══ الي ما توصل للتنفيذ ═══
+  // «اكو حجوزات ما توصل — الزبون يلغي أو ما يرد، لازم تترتب».
+  // كانت شاشة مستقلة بالقائمة الجانبية وانشالت من هناك؛ محلها
+  // المنطقي هنا: هي حجوزات، وآخر محطة برحلتهن.
+  { key: 'stuck' as const, label: 'ما وصلت للتنفيذ', icon: '🚫' },
 ]
 
 type TabKey = (typeof TABS)[number]['key']
@@ -48,7 +54,9 @@ export default function BookingsHub() {
   const shown = TABS.filter((t) =>
     (t.key === 'new' && canCreate)
     || (t.key === 'coord' && canCoord)
-    || (t.key !== 'new' && t.key !== 'coord'),
+    // «ما وصلت للتنفيذ» شغل تنسيق: منو يتابع الزبون الي ما رد
+    || (t.key === 'stuck' && canCoord)
+    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck'),
   )
 
   return (
@@ -83,6 +91,7 @@ export default function BookingsHub() {
       {tab === 'pending' && <BookingsList key="pending" bucket="pending" />}
       {tab === 'confirmed' && <BookingsList key="confirmed" bucket="confirmed" />}
       {tab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
+      {tab === 'stuck' && <StageBucketsPage />}
     </div>
   )
 }

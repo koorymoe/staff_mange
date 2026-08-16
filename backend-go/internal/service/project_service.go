@@ -240,6 +240,10 @@ func (s *ProjectService) Create(req model.CreateProjectRequest, createdBy *strin
 			emptyToNil(req.ResponsibleEmployeeID), emptyToNil(req.SurveyorEmployeeID), req.LocationUrl, createdBy)
 		if err == nil {
 			s.markProjectOwnerAsVip(p, createdBy)
+			// مشروع ينفتح مباشرة بمرحلة التنفيذ (مثلاً شغل بديت
+			// بيه فعلاً وتنسجّل بعدين) لازم يفتح حجزه هو بعد —
+			// وإلا يبقى مقفل ومحد يلاحظ.
+			s.unlockBookingIfExecuting(p)
 			return p, nil
 		}
 		lastErr = err
@@ -285,12 +289,30 @@ func (s *ProjectService) Update(id string, req model.UpdateProjectRequest) (*mod
 	// وصول المشروع للتنفيذ يفتح حجزه عند إداري الحجوزات. الفشل هنا ما
 	// يرجّع خطأ — تحديث المشروع نجح فعلاً، وما يصير نرجّع فشل ونخلي
 	// مدير المشاريع يعيد المحاولة ويغيّر المرحلة مرتين.
-	if s.bookings != nil && p != nil && p.BookingID != nil && req.Stage != nil && stageUnlocksBooking(*req.Stage) {
-		if err := s.bookings.MarkProjectExecution(*p.BookingID); err != nil {
-			log.Printf("[project] تعذر فتح حجز المشروع %s: %v", id, err)
-		}
-	}
+	// ⚠️ نعتمد مرحلة المشروع **بعد** التحديث مو `req.Stage` بس.
+	//
+	// كان الشرط يطلب إن الطلب نفسه يحمل المرحلة — يعني مشروع واصل
+	// «٥. البدء بالتنفيذ» ينتحدث بأي شي ثاني (رقم هاتف، مسؤول) بلا
+	// ما يرسل `stage`، فالحجز **يبقى مقفل للأبد** وإداري الحجوزات
+	// ما يكدر ينسّقه أبداً وما يعرف ليش.
+	s.unlockBookingIfExecuting(p)
 	return p, nil
+}
+
+// unlockBookingIfExecuting يفتح حجز المشروع إذا وصل مرحلة التنفيذ.
+//
+// الفشل ما يرجّع خطأ — العملية الأصلية (إنشاء/تحديث المشروع) نجحت
+// فعلاً، وما يصير نرجّع فشل ونخلي مدير المشاريع يعيدها مرتين.
+func (s *ProjectService) unlockBookingIfExecuting(p *model.Project) {
+	if s.bookings == nil || p == nil || p.BookingID == nil || *p.BookingID == "" {
+		return
+	}
+	if !stageUnlocksBooking(p.Stage) {
+		return
+	}
+	if err := s.bookings.MarkProjectExecution(*p.BookingID); err != nil {
+		log.Printf("[project] تعذر فتح حجز المشروع %s: %v", p.ID, err)
+	}
 }
 
 // SetBookingUnlocker يربط فتح الحجز (يُنادى من main) — بعد البناء حتى
