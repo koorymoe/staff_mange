@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import RequireAdmin from './components/RequireAdmin'
 import RequirePermission from './components/RequirePermission'
@@ -20,7 +20,6 @@ const SecurityDashboardPage = lazy(() => import('./pages/SecurityDashboardPage')
 const AssistantConversationsPage = lazy(() => import('./pages/AssistantConversationsPage'))
 const Coordinator = lazy(() => import('./pages/Coordinator'))
 const BookingsArchive = lazy(() => import('./pages/BookingsArchive'))
-const PostponedBookings = lazy(() => import('./pages/PostponedBookings'))
 const SolarPage = lazy(() => import('./pages/SolarPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
@@ -145,7 +144,14 @@ function App() {
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           <Route path="bookings-archive" element={<BookingsArchive />} />
-          <Route path="postponed-bookings" element={<PostponedBookings />} />
+          {/* ═══ «الحجوزات المؤجلة» انمرجت ═══
+              كانت شاشة مستقلة تعرض **نفس** حجوزات سلّة «مؤجّلة» بشاشة
+              «ما وصلت للتنفيذ» — نفس الحجز بمكانين، والإداري يشتغل على
+              وحدة وينسى الثانية. صارت سلّة وحدة، وميزتها (تحديد موعد
+              جديد) انتقلت معها.
+              ⚠️ المسار يبقى موجود ويحوّل: أكو روابط محفوظة بمتصفحات
+              الموظفين، وحذفه يعني صفحة بيضاء بلا تفسير. */}
+          <Route path="postponed-bookings" element={<Navigate to="/bookings" replace />} />
           <Route path="partial-bookings" element={<PartialBookings />} />
           <Route path="stage-buckets" element={<StageBucketsPage />} />
           <Route path="ai-insights" element={<AiInsightsPage />} />

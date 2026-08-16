@@ -66,6 +66,23 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   const dateInputRef = useRef<HTMLInputElement>(null)
   const monthInputRef = useRef<HTMLInputElement>(null)
   const isAdmin = employee?.role === 'ADMIN'
+  // ═══ التعديل صار بالصلاحية مو بالدور ═══
+  //
+  // «هنا نحتاج زر تعديل لتفاصيل الحجز، مثلاً الوقت أو الكادر».
+  //
+  // الزر جان موجود — بس محجوب على `role === 'ADMIN'` وحده. فإداري
+  // الكوادر الي عنده صلاحية التنسيق يشوف الحجز ولا يكدر يلمسه، مع
+  // إن **السيرفر يسمحله** (`requireBookingEdit` و`requireBookingCoord`
+  // الاثنين يقبلون بالصلاحية مو بالدور).
+  //
+  // ⚠️ القوائم هنا تطابق حراس السيرفر بالضبط: زر يطلع وينرفض بـ٤٠٣
+  // أسوأ من زر ما يطلع.
+  const owner = employee?.role === 'OWNER'
+  const canEditDetails = isAdmin || owner
+    || ['coordinator', 'crew_management', 'view_bookings', 'mission_tracking', 'sales_booking']
+      .some((p) => permissions.includes(p))
+  const canEditCrew = isAdmin || owner
+    || ['coordinator', 'crew_management'].some((p) => permissions.includes(p))
   // طلب حذف حجز: الإداري والمراقب ومدير النظام، أو أي واحد ينمنح الصلاحية
   const canRequestDelete = isAdmin || employee?.role === 'OWNER' ||
     employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
@@ -92,13 +109,13 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   const [assigning, setAssigning] = useState(false)
 
   useEffect(() => {
-    if (isAdmin) {
+    if (canEditCrew) {
       api.getEmployees().then((all) => setTechnicians(all.filter((e) => e.role === 'TECHNICIAN')))
       // المركبات بيانات مساعدة هنا — مو كل من يشوف الحجوزات عنده صلاحية
       // المركبات، فالرفض ما يجوز يكسر الصفحة (شوف Coordinator.tsx)
       api.getVehicleOptions().then(setVehicles).catch(() => setVehicles([]))
     }
-  }, [isAdmin])
+  }, [canEditCrew])
 
   useEffect(() => { api.getVipCustomerIds().then(setVipIds).catch(() => {}) }, [])
 
@@ -437,7 +454,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                               قبل، التعديل الوحيد هنا جان تغيير الكادر —
                               وأي تغيير بطلب الزبون يحتاج إلغاء الحجز
                               وإعادة إنشائه. */}
-                          {isAdmin && (
+                          {canEditDetails && (
                             <div className="sm:col-span-2">
                               <BookingEditPanel
                                 booking={b}
@@ -448,7 +465,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                           <div>
                             <div className="flex items-center justify-between">
                               <p className="text-slate-400">الكادر الذي تم تكليفه</p>
-                              {isAdmin && (
+                              {canEditCrew && (
                                 <button
                                   type="button"
                                   onClick={() => setEditingId(editingId === b.id ? null : b.id)}
@@ -482,10 +499,23 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                               </div>
                             ) : b.assignments.length > 0 ? (
                               <ul className="mt-1 list-inside list-disc text-slate-700">
+                                {/* ═══ وين الليدر؟ ═══
+                                    «أني محدد ليدر، جاي يطلعلي فقط فني — وين
+                                    الليدر؟». الليدر مو دور تكليف منفصل: هو
+                                    موظف عليه علم `isLeader` وينكلّف كأي فني.
+                                    فكانت القائمة تگول «الفني الأول» بس،
+                                    والإداري يشوف حجزه بلا ليدر مع إنه حدده.
+                                    ⚠️ العلم يجي من السيرفر مع بيانات الموظف —
+                                    ما ننسخه ولا نستنتجه بالمتصفح. */}
                                 {b.assignments.map((a) => (
                                   <li key={a.id}>
                                     {a.employee.name}
                                     <span className="text-slate-400"> ({techRoleLabels[a.role] || a.role})</span>
+                                    {a.employee.isLeader && (
+                                      <span className="mr-1.5 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-800">
+                                        👑 ليدر
+                                      </span>
+                                    )}
                                   </li>
                                 ))}
                               </ul>

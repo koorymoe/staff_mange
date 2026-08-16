@@ -118,6 +118,23 @@ export default function StageBucketsPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(1)
+  // ═══ تحديد الموعد من نفس الصف ═══
+  // «الحجوزات المؤجلة» كانت شاشة مستقلة بالقائمة تعرض **نفس** هذي
+  // الحجوزات، وميزتها الوحيدة إنها تخلي الإداري يحدد موعداً جديداً.
+  // فبدل ما يبقى نفس الحجز بشاشتين (والإداري يشتغل على وحدة وينسى
+  // الثانية)، الميزة انتقلت هنا وانشالت الشاشة.
+  const [dateDrafts, setDateDrafts] = useState<Record<string, string>>({})
+  const [busyId, setBusyId] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+
+  const isPostponed = bucket === 'POSTPONED_AFTER_CONFIRM'
+  // ═══ ورجوع الزبون الي ما رد ═══
+  // «هذا هنا في حال الزبون بعدين رد، شلون نرجعه؟ لازم أكو خيار
+  // نرجعه حتى نرتبه».
+  // ⚠️ بدون هذا الزر الحجز يبقى بـ«ما رد» للأبد حتى لو الزبون رد
+  // بعد ساعة — والإداري يضطر يسجّل حجزاً جديداً بدله، فينفقد تاريخ
+  // المحاولات وينعد الزبون مرتين.
+  const isNoAnswer = bucket.startsWith('NO_ANSWER')
 
   const load = useCallback(() => {
     // ⚠️ التحميل بـtimeout مو بجسم الأثر: `setState` مباشرة جوّا الأثر
@@ -134,6 +151,39 @@ export default function StageBucketsPage() {
   }, [bucket])
 
   useEffect(load, [load])
+
+  /** يحدد موعداً جديداً للحجز المؤجل — وأول ما ينحدد يختفي من هنا
+   *  ويرجع لجدوله الطبيعي. */
+  const applyDate = async (id: string) => {
+    const when = dateDrafts[id]
+    if (!when) { setActionError('حدد الموعد أول'); return }
+    setBusyId(id)
+    setActionError(null)
+    try {
+      await api.scheduleBooking(id, when)
+      // ⚠️ نشيله محلياً بدل ما نعيد تحميل كل شي: الحجز خلص وطلع من
+      // السلّة، وإعادة النداء تومض الصفحة كلها بلا داعي.
+      setRows((prev) => prev.filter((b) => b.id !== id))
+      setCounts((c) => ({ ...c, [bucket]: Math.max(0, (c[bucket] || 1) - 1) }))
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'تعذر تحديد الموعد')
+    } finally { setBusyId(null) }
+  }
+
+  /** الزبون رد — الحجز يرجع لطابوره (مثبّت لو غير مثبّت حسب حالته
+   *  قبل الانتظار)، وعدد المحاولات يبقى مسجّل مو ينمسح. */
+  const resume = async (id: string, name: string) => {
+    if (!confirm(`الزبون «${name}» رد؟ الحجز راح يرجع لطابور الشغل.`)) return
+    setBusyId(id)
+    setActionError(null)
+    try {
+      await api.resumeBooking(id)
+      setRows((prev) => prev.filter((b) => b.id !== id))
+      setCounts((c) => ({ ...c, [bucket]: Math.max(0, (c[bucket] || 1) - 1) }))
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')
+    } finally { setBusyId(null) }
+  }
 
   const group = GROUPS.find((g) => g.buckets.some((b) => b.key === bucket)) ?? GROUPS[0]
   const subLabel = group.buckets.find((b) => b.key === bucket)?.label ?? ''
@@ -214,6 +264,10 @@ export default function StageBucketsPage() {
           )}
         </div>
 
+        {actionError && (
+          <p className="mx-5 mt-4 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{actionError}</p>
+        )}
+
         {loading && <p className="px-5 py-10 text-center text-slate-400">جاري التحميل...</p>}
 
         {!loading && rows.length === 0 && (
@@ -225,7 +279,7 @@ export default function StageBucketsPage() {
             {/* ⚠️ التمرير جوّا الجدول مو بالصفحة: سبع أعمدة على شاشة
                 موبايل تدفع الصفحة كلها للجنب وتخرّب القائمة الجانبية. */}
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[860px] text-right">
+              <table className={`w-full text-right ${isPostponed || isNoAnswer ? 'min-w-[1000px]' : 'min-w-[860px]'}`}>
                 <thead>
                   <tr className="text-[11px] font-bold text-slate-400">
                     <th className="px-4 py-3 font-bold">#</th>
@@ -235,6 +289,8 @@ export default function StageBucketsPage() {
                     <th className="px-4 py-3 font-bold">الوقت</th>
                     <th className="px-4 py-3 font-bold">{info.reasonHead}</th>
                     <th className="px-4 py-3 font-bold">{info.whenHead}</th>
+                    {isPostponed && <th className="px-4 py-3 font-bold">موعد جديد</th>}
+                    {isNoAnswer && <th className="px-4 py-3 font-bold">إجراء</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -312,6 +368,43 @@ export default function StageBucketsPage() {
                             </div>
                           ) : <span className="text-slate-300">—</span>}
                         </td>
+                        {isNoAnswer && (
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => resume(b.id, name)}
+                              disabled={busyId === b.id}
+                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              {busyId === b.id ? '...' : '📞 الزبون رد'}
+                            </button>
+                            {b.contactAttempts > 0 && (
+                              <p className="mt-1 text-[10px] text-slate-400">{b.contactAttempts} محاولة</p>
+                            )}
+                          </td>
+                        )}
+                        {isPostponed && (
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="datetime-local"
+                                value={dateDrafts[b.id] || ''}
+                                onChange={(e) => setDateDrafts((p) => ({ ...p, [b.id]: e.target.value }))}
+                                className="rounded-lg border border-slate-300 px-2 py-1.5 text-[11px] outline-none focus:border-brand-500"
+                              />
+                              <button
+                                onClick={() => applyDate(b.id)}
+                                disabled={busyId === b.id}
+                                className="shrink-0 rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-50"
+                              >
+                                {busyId === b.id ? '...' : 'ثبّت'}
+                              </button>
+                            </div>
+                            {b.postponeCount > 2 && (
+                              // انأجّل ثلاث مرات فأكثر — هذا مو تأجيل، هذي مشكلة
+                              <p className="mt-1 text-[10px] font-bold text-red-600">تأجّل {b.postponeCount} مرات</p>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     )
                   })}

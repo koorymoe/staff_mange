@@ -184,7 +184,9 @@ export const navItems: NavItem[] = [
       // تسجّله، تنسّقه، وتتابعه.
       { to: '/bookings', label: '📋 الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], anyPermission: ['view_bookings', 'coordinator', 'sales_booking'], unlockPermission: 'view_bookings' },
       { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
-      { to: '/postponed-bookings', label: '📅 الحجوزات المؤجلة', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
+      // ⚠️ «📅 الحجوزات المؤجلة» انشالت: نفس حجوزاتها تطلع بسلّة
+      // «حجوزات مؤجّلة» جوّا «ما وصلت للتنفيذ» بشاشة الحجوزات، مع
+      // نفس إمكانية تحديد موعد جديد.
       { to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
       { to: '/partial-bookings', label: '🔄 حجوزات تحتاج إكمال', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
       // ⚠️ «ما وصلت للتنفيذ» انشالت من القائمة: نفس الحجوزات تطلع
