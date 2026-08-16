@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api, type Customer, type GpsCustomerListItem, type Booking } from '../api'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { matches } from '../utils/search'
+// تسمية الحالة من مصدر واحد للنظام كله
+import { bookingStatusLabel, bookingStatusColor } from '../bookingStatus'
 
 function splitFullName(fullName: string): [string, string, string, string] {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -10,22 +12,6 @@ function splitFullName(fullName: string): [string, string, string, string] {
 
 const serviceLabels: Record<string, string> = {
   GPS: 'جي بي اس',
-}
-
-const statusLabels: Record<string, string> = {
-  PENDING: 'بانتظار التثبيت',
-  CONFIRMED: 'مثبت',
-  IN_PROGRESS: 'جاري التنفيذ',
-  COMPLETED: 'منجز',
-  CANCELLED: 'ملغى',
-}
-
-const statusColors: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  CONFIRMED: 'bg-blue-100 text-blue-700',
-  IN_PROGRESS: 'bg-orange-100 text-orange-700',
-  COMPLETED: 'bg-emerald-100 text-emerald-700',
-  CANCELLED: 'bg-red-100 text-red-700',
 }
 
 export default function Customers() {
@@ -749,8 +735,8 @@ function CustomerDetails({ customer, history, loading }: {
               <span className="font-mono font-bold text-brand-600">{b.code}</span>
               <span className="text-slate-600">{b.service?.name || '—'}</span>
               <span className="text-slate-400">{new Date(b.createdAt).toLocaleDateString('ar-IQ')}</span>
-              <span className={`mr-auto rounded-full px-2 py-0.5 font-bold ${statusColors[b.status]}`}>
-                {statusLabels[b.status] || b.status}
+              <span className={`mr-auto rounded-full px-2 py-0.5 font-bold ${bookingStatusColor(b.status)}`}>
+                {bookingStatusLabel(b.status)}
               </span>
             </div>
           ))}

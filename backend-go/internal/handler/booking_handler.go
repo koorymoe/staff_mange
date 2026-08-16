@@ -164,6 +164,16 @@ func (h *BookingHandler) Schedule(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /api/v1/bookings/{id}/assign
+// Unassign يشيل موظف من خانة كادر بالحجز.
+func (h *BookingHandler) Unassign(w http.ResponseWriter, r *http.Request) {
+	booking, err := h.service.Unassign(r.PathValue("id"), r.URL.Query().Get("role"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
 func (h *BookingHandler) Assign(w http.ResponseWriter, r *http.Request) {
 	var req model.AssignBookingRequest
 	if err := DecodeJSON(r, &req); err != nil {

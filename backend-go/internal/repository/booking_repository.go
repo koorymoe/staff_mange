@@ -770,6 +770,21 @@ func (r *BookingRepository) UpsertAssignment(bookingID, employeeID, role, assign
 	return err
 }
 
+// RemoveAssignment يشيل موظف من خانة كادر بحجز.
+//
+// «مرات من أخلي كادر للحجز أريد ألغي الكادر».
+//
+// ⚠️ ما كان موجود أبداً: `UpsertAssignment` تكدر **تبدّل** الموظف
+// بالخانة بس ما تكدر تفرّغها، و`Assign` ترفض المعرّف الفارغ قبل ما
+// توصلها. يعني الإداري الي يكلّف موظف بالغلط ما عنده أي طريق يشيله
+// — يبدّله بواحد ثاني وبس، والحجز يبقى بكادر ما يخصه.
+func (r *BookingRepository) RemoveAssignment(bookingID, role string) error {
+	_, err := r.db.Exec(`
+		DELETE FROM "BookingAssignment" WHERE "bookingId" = $1 AND role = $2
+	`, bookingID, role)
+	return err
+}
+
 // ActiveCountByLeader يرجّع لكل تيم ليدر عدد حجوزاته الشغّالة (مو منجزة
 // ولا ملغاة) — يستخدمها فحص عدالة التوزيع.
 func (r *BookingRepository) ActiveCountByLeader() (counts map[string]int, names map[string]string, err error) {

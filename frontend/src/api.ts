@@ -3299,6 +3299,9 @@ export const api = {
     id: string,
     data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; mapLatitude?: number | null; mapLongitude?: number | null; expenseResponsibleId?: string | null; serviceIds?: string[] },
   ) => request<Booking>(`/bookings/${id}/details`, { method: 'PUT', body: JSON.stringify(data) }),
+  /** إلغاء تكليف موظف من خانة كادر — الحجز يبقى مثبّت بلا كادر. */
+  unassignTechnician: (id: string, role: string) =>
+    request<Booking>(`/bookings/${id}/assign?role=${encodeURIComponent(role)}`, { method: 'DELETE' }),
   assignTechnician: (
     id: string,
     data: { employeeId: string; role: 'TECH_1' | 'TECH_2' | 'TECH_3'; assignedVehicle?: string },

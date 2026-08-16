@@ -581,6 +581,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/waiting", middleware.Chain(http.HandlerFunc(bookingHandler.MarkWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
+	// إلغاء تكليف موظف — نفس حارس التكليف: الي يكدر يكلّف يكدر يشيل.
+	// حارس أشد يعني الإداري يكلّف بالغلط وينتظر المدير حتى يصلّحها.
+	mux.Handle("DELETE /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Unassign), requireAuth, requireBookingCoord))
 	// ملاحظات موجّهة: وحدة للكادر ووحدة لمدير المشاريع.
 	// ═══ المهام الإضافية ═══
 	// التوجيه والمتابعة للمدير؛ التنفيذ للموظف نفسه.

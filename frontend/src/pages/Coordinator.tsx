@@ -322,6 +322,12 @@ export default function Coordinator() {
     }))
   }
 
+  // إلغاء تكليف موظف من خانة — الحجز يبقى مثبّت بلا كادر.
+  const handleUnassign = async (booking: Booking, role: string, name: string) => {
+    if (!confirm(`إلغاء تكليف «${name}» من هذا الحجز؟\nالحجز يبقى مثبّت، بس بلا كادر بهاي الخانة.`)) return
+    await applyUpdate('إلغاء التكليف', () => api.unassignTechnician(booking.id, role))
+  }
+
   const handleAssign = async (
     booking: Booking,
     role: 'TECH_1' | 'TECH_2' | 'TECH_3',
@@ -1074,9 +1080,24 @@ export default function Coordinator() {
                           const candidates = matches[booking.id] || []
                           return (
                             <div key={tr.key}>
-                              <label className="mb-1 block text-sm font-medium text-slate-600">
-                                {tr.label} (اختياري)
-                              </label>
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <label className="block text-sm font-medium text-slate-600">
+                                  {tr.label} (اختياري)
+                                </label>
+                                {/* ⚠️ زر الإلغاء ما كان موجود: القائمة
+                                    تبدّل الموظف بس، فالإداري الي يكلّف
+                                    بالغلط ما عنده أي طريق يشيله — يضطر
+                                    يحط واحد ثاني والحجز يبقى بكادر
+                                    ما يخصه. */}
+                                {assigned && (
+                                  <button
+                                    onClick={() => handleUnassign(booking, tr.key, assigned.employee.name)}
+                                    className="rounded-lg px-2 py-0.5 text-[11px] font-bold text-red-600 hover:bg-red-50"
+                                  >
+                                    ✖ إلغاء التكليف
+                                  </button>
+                                )}
+                              </div>
                               <select
                                 value={assigned?.employee.id || ''}
                                 onChange={(e) => handleAssign(booking, tr.key, e.target.value)}

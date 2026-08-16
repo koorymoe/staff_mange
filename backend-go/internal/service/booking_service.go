@@ -378,6 +378,25 @@ func (s *BookingService) ensureNotProjectLocked(id string) error {
 	return nil
 }
 
+// Unassign يشيل الكادر من خانة بحجز.
+//
+// ⚠️ الحجز يبقى **مثبّت** بعد الإلغاء — ما يرجع «بانتظار التثبيت».
+// التثبيت اتفاق مع الزبون صار فعلاً، وإرجاعه يعني نمحي حقيقة حصلت
+// ونربك الزبون بمكالمة تثبيت ثانية. يطلع بقائمة «مثبّت بلا تنسيق»
+// حتى ينكلّف كادر جديد.
+func (s *BookingService) Unassign(id, role string) (*model.Booking, error) {
+	if err := s.ensureNotProjectLocked(id); err != nil {
+		return nil, err
+	}
+	if role == "" {
+		return nil, errors.New("لازم تحدد خانة الكادر الي تريد تشيلها")
+	}
+	if err := s.repo.RemoveAssignment(id, role); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
 func (s *BookingService) Assign(id string, req model.AssignBookingRequest, editorID string) (*model.Booking, error) {
 	if err := s.ensureNotProjectLocked(id); err != nil {
 		return nil, err

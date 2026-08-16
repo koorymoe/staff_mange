@@ -35,7 +35,7 @@ const RolesGuidePage = lazy(() => import('./pages/RolesGuidePage'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
 const LettersPage = lazy(() => import('./pages/LettersPage'))
 const TrainingPrograms = lazy(() => import('./pages/TrainingPrograms'))
-const BookingsList = lazy(() => import('./pages/BookingsList'))
+const BookingsHub = lazy(() => import('./pages/BookingsHub'))
 const MyTasks = lazy(() => import('./pages/MyTasks'))
 const MyRanking = lazy(() => import('./pages/MyRanking'))
 const MyExtraTasksPage = lazy(() => import('./pages/MyExtraTasksPage'))
@@ -154,7 +154,10 @@ function App() {
           <Route path="letters" element={<LettersPage />} />
           <Route path="solar" element={<SolarPage />} />
           <Route path="training-programs" element={<TrainingPrograms />} />
-          <Route path="bookings" element={<BookingsList />} />
+          {/* «الحجوزات» صارت مدخل واحد بثلاثة خيارات: حجوزات اليوم ·
+              تنسيق الحجوزات · حجز جديد. والمسارات القديمة باقية شغّالة
+              لمن عنده رابط محفوظ أو إشعار قديم يوديه لها. */}
+          <Route path="bookings" element={<BookingsHub />} />
           <Route path="my-tasks" element={<MyTasks />} />
           <Route path="my-ranking" element={<MyRanking />} />
           {/* مهامي الإضافية — بلا حارس: هاي مهام الموظف نفسه */}

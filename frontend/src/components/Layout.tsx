@@ -122,7 +122,7 @@ export const navItems: NavItem[] = [
     // ما تطلع لكادر الميدان أبداً — الفني ما إله شغل بيها، والتيم ليدر
     // شغله الإداري (المشاريع، طلبات المواد) محله مجموعة «العمل» مالته.
     hideFromFieldStaff: true,
-    to: '/admin-group', label: 'الإدارة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
+    to: '/admin-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
     children: [
       {
         // بدون قيد أدوار هنا أيضاً — نفس مبدأ مجموعة "الإدارة" الأعلى: قيد على المجموعة
@@ -163,20 +163,22 @@ export const navItems: NavItem[] = [
       // إدارة الإحصائيات — عنصر مستقل مباشر تحت "الإدارة"، مو داخل إدارة
       // الموظفين، حصراً لمدير النظام.
       { to: '/stats-management', label: 'إدارة الإحصائيات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
-      {
-        // بدون قيد أدوار على المجموعة الوسيطة — ظهورها يتقرر من أبنائها فقط.
-        // قيد الأدوار هنا كان يخفي "إدارة العمل" كاملة عن أي دور مو بالقائمة
-        // (مثل إداري الكميات) حتى لو منحناه صلاحيات حجز/تنسيق/عملاء صراحةً.
-        to: '/mgmt-work', label: 'إدارة العمل', icon: <></>,
-        children: [
-          { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
-          { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
-          { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
-          { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
+      // ═══ «إدارة العمل» انفكّت ═══
+      // كانت مجموعة جوّا مجموعة: تضغط «الإدارة» فتنفتح «إدارة العمل»
+      // فتنفتح الشاشات — ثلاث ضغطات. هسه محتوياتها مباشرة تحت «العمل».
+      //
+      // ═══ ودمج الحجوزات ═══
+      // «الحجوزات» و«حجز جديد» و«تنسيق الحجوزات» صارن **بند واحد**،
+      // والثلاثة خيارات من فوگ بالشاشة. الثلاثة نفس الشغلة: حجز
+      // تسجّله، تنسّقه، وتتابعه.
+      { to: '/bookings', label: '📋 الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], anyPermission: ['view_bookings', 'coordinator', 'sales_booking'], unlockPermission: 'view_bookings' },
+      { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       { to: '/postponed-bookings', label: '📅 الحجوزات المؤجلة', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
       { to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
       { to: '/partial-bookings', label: '🔄 حجوزات تحتاج إكمال', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
-      { to: '/stage-buckets', label: '🗂️ ما وصلت للتنفيذ', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
+      // ⚠️ «ما وصلت للتنفيذ» انشالت من القائمة: نفس الحجوزات تطلع
+      // بشاشة «الحجوزات» بفلاترها، وبند ثاني إلها يعني نفس الحجز
+      // بمكانين والإداري يشتغل على وحدة وينسى الثانية.
       // توجيه شغل لموظف — نفس صلاحية إدارة الكوادر
       { to: '/extra-tasks', label: '📋 توجيه المهام الإضافية', icon: <></>, roles: ['ADMIN'], permission: 'extra_tasks_assign' },
       // ⚠️ المالك ومدير النظام بس — تحليل سلوك موظف بيد زميله يتحول لسلاح.
@@ -194,9 +196,7 @@ export const navItems: NavItem[] = [
           // العامة، ووحدة كاملة تنحجب عن أي واحد ما عنده صلاحية الوحدة —
           // فالمالك كان يوصله إشعار الطلب وما يلكه مكان يوافق بيه. محلها
           // المنطقي هنا: هي قرار على حجز.
-          { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR'], permission: 'booking_delete_approve' },
-        ],
-      },
+      { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR'], permission: 'booking_delete_approve' },
       {
         // الجي بي اس صارت خدمة بتحكم صلاحية "gps_system" — مو دور وظيفي منفصل،
         // فأي موظف عنده هذي الصلاحية (مسؤول خدمة الجي بي اس أو المراقب) يشوفها.
