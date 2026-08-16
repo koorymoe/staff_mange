@@ -134,22 +134,76 @@ func (r *MissionRepository) attachLeaderAndMembers(missions []model.Mission) {
 	}
 }
 
+// ═══ ليش المرحلة تنحسب من الحجز ═══
+//
+// «هاي ليش مو صحيحة؟ ما أعتقد مربوطة — لأن عندي مهام مكتملة وعندي
+// هواي أمور، ليش هيج كله صفرة؟».
+//
+// وهو محق: كل العدّادات صفر إلا «تم الإسناد». والسبب إن مرحلة المهمة
+// (`Mission.stage`) ما تتقدّم إلا لمن أحد يضغط أزرار **شاشة المهام**
+// نفسها (`PUT /missions/{id}/stage`). بس الكادر بالواقع يشتغل على
+// **الحجز**: يأشّر المواد جاهزة، ويوصل، ويبدي، ويخلّص — وكل هذي
+// تنكتب بجدول الحجوزات، وما تلمس المهمة أبداً.
+//
+// فالمهمة تقعد بـ«تم الإسناد» للأبد حتى لو حجزها منجز من أسبوع.
+// الشاشة ما كانت مكسورة — كانت تعرض بصدق حقلاً محد يحدّثه.
+//
+// الحل: المرحلة **تنحسب** من أوقات الحجز الحقيقية، وناخذ الأبعد بين
+// الاثنين (مرحلة المهمة المسجّلة، والمرحلة المستنتجة من الحجز).
+//
+// ⚠️ «الأبعد» مقصودة: أزرار شاشة المهام تبقى شغّالة (مرحلة «بالطريق»
+// مثلاً ماكو إلها مقابل بالحجز، فلازم تنحفظ من المهمة)، والحجز يدفع
+// المرحلة للأمام لمن يسبقها. وبأي حال ما ترجع المرحلة للورا.
+const missionStageExpr = `
+	CASE GREATEST(
+		CASE m.stage
+			WHEN 'ASSIGNED' THEN 0 WHEN 'MATERIALS_PREP' THEN 1 WHEN 'MATERIALS_READY' THEN 2
+			WHEN 'EN_ROUTE' THEN 3 WHEN 'ARRIVED' THEN 4 WHEN 'WORK_STARTED' THEN 5
+			WHEN 'COMPLETED' THEN 6 WHEN 'STOPPED' THEN 7 ELSE 0 END,
+		CASE
+			WHEN b.status = 'CANCELLED' THEN 7
+			WHEN b.status = 'COMPLETED' OR b."completedAt" IS NOT NULL THEN 6
+			WHEN b."startedAt" IS NOT NULL OR b.status = 'IN_PROGRESS' THEN 5
+			WHEN b."arrivedAt" IS NOT NULL THEN 4
+			WHEN b."materialsReadyAt" IS NOT NULL THEN 2
+			ELSE 0 END
+	)
+		WHEN 0 THEN 'ASSIGNED' WHEN 1 THEN 'MATERIALS_PREP' WHEN 2 THEN 'MATERIALS_READY'
+		WHEN 3 THEN 'EN_ROUTE' WHEN 4 THEN 'ARRIVED' WHEN 5 THEN 'WORK_STARTED'
+		WHEN 6 THEN 'COMPLETED' ELSE 'STOPPED' END`
+
+// missionSelect يجيب أعمدة المهمة مع المرحلة المحسوبة، والأوقات
+// المكمّلة من الحجز.
+//
+// ⚠️ الأوقات تنكمّل بـ`COALESCE` مو تنكتب فوگ: الوقت المسجّل بالمهمة
+// (لو أحد استعمل أزرارها) أدق لأنه ينسجّل بلحظته، ووقت الحجز يعبّي
+// الفراغ بس. بدون هذا الخط الزمني بالبطاقة يطلع فاضي مع إن الشغل صار.
+const missionSelect = `
+	SELECT m.*,
+	       ` + missionStageExpr + ` AS stage,
+	       COALESCE(m."materialsReadyAt", b."materialsReadyAt") AS "materialsReadyAt",
+	       COALESCE(m."arrivedAt", b."arrivedAt") AS "arrivedAt",
+	       COALESCE(m."workStartedAt", b."startedAt") AS "workStartedAt",
+	       COALESCE(m."completedAt", b."completedAt") AS "completedAt"
+	FROM "Mission" m
+	JOIN "Booking" b ON b.id = m."bookingId"`
+
 func (r *MissionRepository) List(stage, leaderID, employeeID string) ([]model.Mission, error) {
-	query := `SELECT * FROM "Mission" WHERE 1=1`
+	query := missionSelect + ` WHERE 1=1`
 	args := []any{}
 	if stage != "" {
 		args = append(args, stage)
-		query += fmt.Sprintf(` AND stage = $%d`, len(args))
+		query += fmt.Sprintf(` AND `+missionStageExpr+` = $%d`, len(args))
 	}
 	if leaderID != "" {
 		args = append(args, leaderID)
-		query += fmt.Sprintf(` AND "leaderId" = $%d`, len(args))
+		query += fmt.Sprintf(` AND m."leaderId" = $%d`, len(args))
 	}
 	if employeeID != "" {
 		args = append(args, employeeID, employeeID)
-		query += fmt.Sprintf(` AND ("leaderId" = $%d OR $%d = ANY("memberIds"))`, len(args)-1, len(args))
+		query += fmt.Sprintf(` AND (m."leaderId" = $%d OR $%d = ANY(m."memberIds"))`, len(args)-1, len(args))
 	}
-	query += ` ORDER BY "createdAt" DESC`
+	query += ` ORDER BY m."createdAt" DESC`
 
 	missions := []model.Mission{}
 	if err := r.db.Select(&missions, query, args...); err != nil {
@@ -164,7 +218,7 @@ func (r *MissionRepository) List(stage, leaderID, employeeID string) ([]model.Mi
 
 func (r *MissionRepository) FindByID(id string) (*model.Mission, error) {
 	var m model.Mission
-	err := r.db.Get(&m, `SELECT * FROM "Mission" WHERE id = $1`, id)
+	err := r.db.Get(&m, missionSelect+` WHERE m.id = $1`, id)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -311,7 +365,8 @@ func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission,
 	missions := []model.Mission{}
 	err := r.db.Select(&missions, `
 		SELECT * FROM "Mission"
-		WHERE ("leaderId" = $1 OR $1 = ANY("memberIds")) AND stage NOT IN ('COMPLETED', 'STOPPED')
+		WHERE (m."leaderId" = $1 OR $1 = ANY(m."memberIds"))
+		  AND `+missionStageExpr+` NOT IN ('COMPLETED', 'STOPPED')
 		ORDER BY "createdAt" DESC
 	`, employeeID)
 	if err != nil {
@@ -326,7 +381,7 @@ func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission,
 func (r *MissionRepository) ListActive() ([]model.Mission, error) {
 	missions := []model.Mission{}
 	err := r.db.Select(&missions, `
-		SELECT * FROM "Mission" WHERE stage NOT IN ('COMPLETED', 'STOPPED') ORDER BY "createdAt" DESC
+`+missionSelect+` WHERE `+missionStageExpr+` NOT IN ('COMPLETED', 'STOPPED') ORDER BY m."createdAt" DESC
 	`)
 	if err != nil {
 		return nil, err
@@ -339,15 +394,15 @@ func (r *MissionRepository) ListActive() ([]model.Mission, error) {
 }
 
 func (r *MissionRepository) ListForPerformanceReport(from, to *string) ([]model.Mission, error) {
-	query := `SELECT * FROM "Mission" WHERE stage IN ('COMPLETED', 'STOPPED')`
+	query := missionSelect + ` WHERE ` + missionStageExpr + ` IN ('COMPLETED', 'STOPPED')`
 	args := []any{}
 	if from != nil {
 		args = append(args, *from)
-		query += fmt.Sprintf(` AND "createdAt" >= $%d`, len(args))
+		query += fmt.Sprintf(` AND m."createdAt" >= $%d`, len(args))
 	}
 	if to != nil {
 		args = append(args, *to)
-		query += fmt.Sprintf(` AND "createdAt" <= $%d`, len(args))
+		query += fmt.Sprintf(` AND m."createdAt" <= $%d`, len(args))
 	}
 	missions := []model.Mission{}
 	err := r.db.Select(&missions, query, args...)
