@@ -352,8 +352,10 @@ type StopWorkRequest struct {
 // ما وعدناه وحضّرنا كادر شي ثاني تماماً. نفس الفرق بالتأجيل وبعدم
 // الرد. دمجهن بسلّة وحدة يخبّي فرقاً بالمسؤولية وبالخسارة.
 const (
-	StageBucketPostponedBefore = "POSTPONED_BEFORE_CONFIRM"
-	StageBucketPostponedAfter  = "POSTPONED_AFTER_CONFIRM"
+	// ⚠️ ماكو «مؤجّل قبل التثبيت»: صاحب العمل — «ما عدي هيج شي، يعني
+	// شلون أأجّل موعد وأني أصلاً ما محددله موعد؟». والتأجيل بالكود
+	// نفسه ينقل من موعد قديم لموعد جديد، فالحجز بلا موعد ما يوصله.
+	StageBucketPostponed       = "POSTPONED_AFTER_CONFIRM"
 	StageBucketNoAnswerBefore  = "NO_ANSWER_BEFORE_CONFIRM"
 	StageBucketNoAnswerAfter   = "NO_ANSWER_AFTER_CONFIRM"
 	StageBucketCancelledBefore = "CANCELLED_BEFORE_CONFIRM"
@@ -363,10 +365,8 @@ const (
 // StageBucketLabel التسمية العربية — مصدر واحد للسيرفر والواجهة.
 func StageBucketLabel(bucket string) string {
 	switch bucket {
-	case StageBucketPostponedBefore:
-		return "مؤجّل قبل التثبيت"
-	case StageBucketPostponedAfter:
-		return "مؤجّل بعد التثبيت"
+	case StageBucketPostponed:
+		return "مؤجّلة"
 	case StageBucketNoAnswerBefore:
 		return "الزبون ما رد — قبل التثبيت"
 	case StageBucketNoAnswerAfter:
@@ -403,10 +403,7 @@ func (b *Booking) ComputeStageBucket() string {
 		}
 		return StageBucketNoAnswerBefore
 	case b.AwaitingReschedule:
-		if after {
-			return StageBucketPostponedAfter
-		}
-		return StageBucketPostponedBefore
+		return StageBucketPostponed
 	}
 	return ""
 }

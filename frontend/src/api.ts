@@ -1333,7 +1333,6 @@ export type MonitorStage =
  *  «هاي تصير بيها حالتين — قبل التثبيت وبعد التثبيت»: زبون ألغى قبل ما
  *  نثبتله موعد شي، وزبون ألغى بعد ما وعدناه وحضّرنا كادر شي ثاني. */
 export type StageBucket =
-  | 'POSTPONED_BEFORE_CONFIRM'
   | 'POSTPONED_AFTER_CONFIRM'
   | 'NO_ANSWER_BEFORE_CONFIRM'
   | 'NO_ANSWER_AFTER_CONFIRM'
@@ -1341,8 +1340,9 @@ export type StageBucket =
   | 'CANCELLED_AFTER_CONFIRM'
 
 export const STAGE_BUCKETS: { key: StageBucket; label: string; icon: string }[] = [
-  { key: 'POSTPONED_BEFORE_CONFIRM', label: 'مؤجّل قبل التثبيت', icon: '⏳' },
-  { key: 'POSTPONED_AFTER_CONFIRM', label: 'مؤجّل بعد التثبيت', icon: '⏳' },
+  // ⚠️ ماكو «مؤجّل قبل التثبيت»: «ما عدي هيج شي، شلون أأجّل موعد
+  // وأني أصلاً ما محددله موعد؟» — والتأجيل بالكود ينقل من موعد لموعد.
+  { key: 'POSTPONED_AFTER_CONFIRM', label: 'مؤجّلة', icon: '⏳' },
   { key: 'NO_ANSWER_BEFORE_CONFIRM', label: 'ما رد — قبل التثبيت', icon: '📵' },
   { key: 'NO_ANSWER_AFTER_CONFIRM', label: 'ما رد — بعد التثبيت', icon: '📵' },
   { key: 'CANCELLED_BEFORE_CONFIRM', label: 'ملغى قبل التثبيت', icon: '✖️' },

@@ -1346,9 +1346,10 @@ type WaitingReminderRow struct {
 // ListWaitingDueForReminder الحجوزات المستحقة تذكير معاودة اتصال.
 //
 // ثلاث شروط سوه تمنع الإزعاج:
-//   minAge       ما نذكّر بنفس الشفت الي أشّر بيه الإداري
-//   minGap       تذكير واحد بالكثير لكل حجز باليوم
-//   maxReminders بعد عدد معيّن نوقف — هذا قرار مو انتظار
+//
+//	minAge       ما نذكّر بنفس الشفت الي أشّر بيه الإداري
+//	minGap       تذكير واحد بالكثير لكل حجز باليوم
+//	maxReminders بعد عدد معيّن نوقف — هذا قرار مو انتظار
 func (r *BookingRepository) ListWaitingDueForReminder(minAgeHours, minGapHours, maxReminders int) ([]WaitingReminderRow, error) {
 	rows := []WaitingReminderRow{}
 	err := r.db.Select(&rows, `
@@ -1518,10 +1519,10 @@ func (r *BookingRepository) ListByStageBucket(bucket string, limit int) ([]model
 		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL`
 	case model.StageBucketNoAnswerAfter:
 		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL`
-	case model.StageBucketPostponedBefore:
-		cond = `status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NULL`
-	case model.StageBucketPostponedAfter:
-		cond = `status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NOT NULL`
+	// ⚠️ بلا شرط `confirmedAt`: السلّة وحدة، والحجز المؤجل الي
+	// (بسبب بيانات قديمة) ما عليه تثبيت لازم يبقى مرئي مو ينضاع.
+	case model.StageBucketPostponed:
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule"`
 	default:
 		return nil, errors.New("سلّة مو معروفة")
 	}
@@ -1546,8 +1547,7 @@ func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
 		CancelAfter  int `db:"cancelAfter"`
 		NoAnsBefore  int `db:"noAnsBefore"`
 		NoAnsAfter   int `db:"noAnsAfter"`
-		PostBefore   int `db:"postBefore"`
-		PostAfter    int `db:"postAfter"`
+		Postponed    int `db:"postponed"`
 	}{}
 	err := r.db.Get(&row, `
 		SELECT
@@ -1555,8 +1555,7 @@ func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
 		  COUNT(*) FILTER (WHERE status = 'CANCELLED' AND "confirmedAt" IS NOT NULL) AS "cancelAfter",
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL) AS "noAnsBefore",
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL) AS "noAnsAfter",
-		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NULL) AS "postBefore",
-		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule" AND "confirmedAt" IS NOT NULL) AS "postAfter"
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule") AS "postponed"
 		FROM "Booking" WHERE "archivedAt" IS NULL`)
 	if err != nil {
 		return nil, err
@@ -1566,8 +1565,7 @@ func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
 		model.StageBucketCancelledAfter:  row.CancelAfter,
 		model.StageBucketNoAnswerBefore:  row.NoAnsBefore,
 		model.StageBucketNoAnswerAfter:   row.NoAnsAfter,
-		model.StageBucketPostponedBefore: row.PostBefore,
-		model.StageBucketPostponedAfter:  row.PostAfter,
+		model.StageBucketPostponed:       row.Postponed,
 	}, nil
 }
 
