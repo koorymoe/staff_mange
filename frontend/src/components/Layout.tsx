@@ -729,21 +729,6 @@ export default function Layout() {
     }
   }
 
-  // ═══ حفظ صورة الموظف ═══
-  //
-  // «أضيف صورة بدل الحرف، ومن أضغط عليها تنفتح».
-  //
-  // ⚠️ نحدّث الجلسة بالجواب الراجع من السيرفر مو بالقيمة الي دزّيناها:
-  // لو السيرفر عدّل شي (أو رفض) تبقى الواجهة تعرض الحقيقة مو أمنيتنا.
-  const savePhoto = async (url: string | null) => {
-    if (!employee) return
-    try {
-      const updated = await api.updateEmployee(employee.id, { photoUrl: url ?? '' })
-      setEmployee(updated)
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر حفظ الصورة')
-    }
-  }
 
   // نتحقق من هوية الموظف الحقيقية من السيرفر مرة وحدة عند فتح النظام —
   // هذا يصحح تلقائياً أي بيانات جلسة قديمة/معدَّلة (مثلاً بأدوات المطورين
@@ -1267,18 +1252,19 @@ export default function Layout() {
                   <p className="text-sm font-bold text-white">{employee.name}</p>
                   <p className="text-[11px] text-blue-300/60">{roleLabels[employee.actualRole || employee.role]}</p>
                 </div>
-                {/* ═══ صورة الموظف ═══
-                    «أضيف صورة بدل الحرف، ومن أضغط عليها تنفتح».
-                    ⚠️ كل واحد يبدّل **صورته هو** من هنا — مو صور
-                    غيره: هاي بطاقته الشخصية بالقائمة. */}
+                {/* ═══ صورة الموظف — عرض بس ═══
+                    «اقفلها بيد الإدارة بس».
+                    ⚠️ والسيرفر كان يفرضها من الأصل: تعديل بيانات
+                    الموظف (`PUT /employees/{id}`) محصور بمدير النظام،
+                    فزر الرفع هنا چان يفشل بـ٤٠٣ لأي موظف عادي —
+                    يعني زر يوعد بشي ما يكدر يسويه. الصورة تنضاف من
+                    شاشة الموظفين، وهنا تنشاف وتنفتح بس. */}
                 <div className="relative">
                   <EmployeeAvatar
                     name={employee.name}
                     photoUrl={employee.photoUrl}
                     size="md"
                     rounded="xl"
-                    canEdit
-                    onPhotoChange={savePhoto}
                   />
                   <span className="pointer-events-none absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
                 </div>

@@ -378,9 +378,11 @@ export default function Employees() {
                     <div className="absolute top-0 left-0 w-40 h-40 rounded-full bg-white/5 -translate-x-1/2 -translate-y-1/2"/>
                     <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full bg-white/5 translate-x-1/3 translate-y-1/3"/>
                     <div className="relative flex items-start gap-5">
-                      {/* ⚠️ الرفع هنا لمدير النظام بس — الموظف يبدّل
-                          صورته هو من بطاقته بالقائمة الجانبية، بس
-                          صور بقية الكادر قرار إداري. */}
+                      {/* ═══ المكان الوحيد الي تنضاف منه الصورة ═══
+                          «اقفلها بيد الإدارة بس» — والسيرفر يفرضها
+                          كمان: `PUT /employees/{id}` محصور بمدير
+                          النظام. فالشرط هنا يطابق حارس السيرفر، مو
+                          يعتمد عليه بس. */}
                       <EmployeeAvatar
                         name={selectedEmployee.name}
                         photoUrl={selectedEmployee.photoUrl}
