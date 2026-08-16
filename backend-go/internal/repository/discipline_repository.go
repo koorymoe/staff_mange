@@ -253,6 +253,10 @@ func (r *DisciplineRepository) OverdueLeaderPaperwork(hours int) ([]OverdueLeade
 		  -- الغرامات تبدي من تاريخ تشغيل النظام: ما نحاسب أحد على شغل
 		  -- قديم ما جان النظام يطالبه بيه أصلاً
 		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  -- ⚠️ الحجز المسوّى إدارياً ينستثنى: شغله صار قبل النظام
+		  -- وما إله فاتورة ولا تقرير أصلاً، وغرامة عليه تعاقب ناس
+		  -- ما إلهم ذنب على ورق محد طالبهم بيه.
+		  AND b."settledLegacyAt" IS NULL
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
 		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
@@ -286,6 +290,10 @@ func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, 
 		  -- الغرامات تبدي من تاريخ تشغيل النظام: ما نحاسب أحد على شغل
 		  -- قديم ما جان النظام يطالبه بيه أصلاً
 		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  -- ⚠️ الحجز المسوّى إدارياً ينستثنى: شغله صار قبل النظام
+		  -- وما إله فاتورة ولا تقرير أصلاً، وغرامة عليه تعاقب ناس
+		  -- ما إلهم ذنب على ورق محد طالبهم بيه.
+		  AND b."settledLegacyAt" IS NULL
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
 		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
@@ -372,6 +380,10 @@ func (r *DisciplineRepository) OverdueAudit(hours int) ([]OverduePaperwork, erro
 		  AND b."amountVerified" = false
 		  AND b."completedAt" < now() - ($1::text || ' hours')::interval
 		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  -- ⚠️ الحجز المسوّى إدارياً ينستثنى: شغله صار قبل النظام
+		  -- وما إله فاتورة ولا تقرير أصلاً، وغرامة عليه تعاقب ناس
+		  -- ما إلهم ذنب على ورق محد طالبهم بيه.
+		  AND b."settledLegacyAt" IS NULL
 		  -- التدقيق يحتاج فاتورة. بلا فاتورة، التقصير مو تقصير المحاسب.
 		  AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
 	`, hours)

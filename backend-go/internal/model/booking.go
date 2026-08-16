@@ -119,6 +119,13 @@ type Booking struct {
 	// اليوم ويروح لقائمة «الحجوزات المؤجلة» لحد ما ينحدد له موعد.
 	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
 	AwaitingReschedule bool `db:"awaitingReschedule" json:"awaitingReschedule"`
+	// ═══ تسوية إدارية لحجز قديم ═══
+	// «تم الإنجاز بدون تفاصيل» — شغل صار قبل النظام وما نعرف كادره
+	// ولا تكلفته. معلَّم حتى ينستثنى من الغرامات وما ينخلط بالمنجز
+	// الحقيقي.
+	SettledLegacyAt   *time.Time `db:"settledLegacyAt" json:"settledLegacyAt"`
+	SettledLegacyByID *string    `db:"settledLegacyById" json:"settledLegacyById"`
+	SettledLegacyNote *string    `db:"settledLegacyNote" json:"settledLegacyNote"`
 
 	// ═══ تتبّع المراحل ═══
 	// منو أدخل/رحّل الحجز — «بانتظار التثبيت» كانت تعرض حجوزات بلا

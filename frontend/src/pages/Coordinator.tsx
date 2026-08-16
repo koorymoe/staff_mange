@@ -322,6 +322,37 @@ export default function Coordinator() {
     }
   }
 
+  // ═══ «تم الإنجاز» بدون تفاصيل — للمالك وحده ═══
+  //
+  // «هذني حجوزات قديمة احنا مشتغّليهن وما نعرف الكادر الي طلع ولا
+  // التكلفة، فنريده ينكتب عليه تم الإنجاز بشكل كامل بدون تفاصيل،
+  // وبعدين نكمل المحتاجيهن».
+  //
+  // ⚠️ هذا **مو** تأشير إنجاز عادي: الحجز ينعلّم «تسوية إدارية» حتى
+  // ينستثنى من غرامات الفاتورة والتقرير. بدون العلامة، تنظيف
+  // الطابور يتحوّل بعد ٢٤ ساعة لغرامات على ليدرات وإداريين، على شغل
+  // صار قبل ما يوجد النظام ومحد يكدر يوثّقه.
+  //
+  // ⚠️ وما تنسجّل طلعة: ما نعرف منو طلع، وتسجيل الكادر الحالي يعني
+  // إنتاجية مبنية على تخمين.
+  const isOwner = currentUser?.role === 'OWNER'
+
+  const settleLegacy = async (booking: Booking) => {
+    if (!confirm(
+      `تأشير الحجز ${booking.code} «تم الإنجاز بدون تفاصيل»؟\n\n`
+      + 'راح ينقفل منجزاً بلا كادر ولا مبالغ، وينعلّم كتسوية إدارية '
+      + '(مستثنى من غرامات الفاتورة والتقرير).',
+    )) return
+    const note = prompt('ملاحظة (اختيارية) — مثلاً: حجز قديم قبل النظام') || ''
+    try {
+      const updated = await api.settleLegacyBooking(booking.id, note.trim())
+      setBookings((prev) => prev.filter((b) => b.id !== updated.id))
+      setSaveError(null)
+    } catch (e) {
+      setSaveError(`تعذر التأشير: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+    }
+  }
+
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
     await applyUpdate('تعيين المشرف', () => api.assignSupervisor(booking.id, employeeId || null))
   }
@@ -707,6 +738,15 @@ export default function Coordinator() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-slate-500">{serviceNames(booking)}</span>
+                    {isOwner && (
+                      <button
+                        onClick={() => settleLegacy(booking)}
+                        className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                        title="حجز قديم ما نعرف كادره ولا تكلفته — ينقفل منجزاً بلا تفاصيل، ومستثنى من الغرامات"
+                      >
+                        ✅ تم الإنجاز (بدون تفاصيل)
+                      </button>
+                    )}
                     {canRequestDelete && (
                       <button
                         onClick={() => requestDelete(booking)}
@@ -972,6 +1012,15 @@ export default function Coordinator() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-slate-500">{serviceNames(booking)}</span>
+                    {isOwner && (
+                      <button
+                        onClick={() => settleLegacy(booking)}
+                        className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                        title="حجز قديم ما نعرف كادره ولا تكلفته — ينقفل منجزاً بلا تفاصيل، ومستثنى من الغرامات"
+                      >
+                        ✅ تم الإنجاز (بدون تفاصيل)
+                      </button>
+                    )}
                     {canRequestDelete && (
                       <button
                         onClick={() => requestDelete(booking)}

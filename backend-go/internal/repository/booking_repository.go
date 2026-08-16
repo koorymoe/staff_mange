@@ -695,6 +695,40 @@ func (r *BookingRepository) Complete(id string, req model.CompleteBookingRequest
 	return tx.Commit()
 }
 
+// SettleLegacy يقفل حجز قديم «تم الإنجاز بدون تفاصيل».
+//
+// «هذني حجوزات قديمة احنا مشتغّليهن وما نعرف الكادر الي طلع ولا
+// التكلفة… نريده ينكتب عليه تم الإنجاز بشكل كامل بدون تفاصيل».
+//
+// ⚠️ **ما نسجّل طلعة** بعكس الإنجاز العادي: الطلعة تعني «هذول ناس
+// طلعوا بهذا اليوم»، وإحنا ما نعرف منو طلع. لو سجّلناها بالكادر
+// الحالي (أو بلا كادر) نكون كتبنا تاريخاً ما صار، وإنتاجية موظف
+// تنبني على تخمين — وهذا بالضبط عكس الي انبنت عشانه الطلعات.
+//
+// ⚠️ وما نلمس المبالغ: المبلغ المجهول يبقى فاضي مو صفر. الصفر رقم
+// يدخل بالحسابات ويكذب، والفراغ يگول «ما نعرف» بصراحة.
+func (r *BookingRepository) SettleLegacy(id, byEmployeeID, note string) error {
+	res, err := r.db.Exec(`
+		UPDATE "Booking" SET
+			status = 'COMPLETED',
+			"completedAt" = COALESCE("completedAt", now()),
+			"settledLegacyAt" = now(),
+			"settledLegacyById" = $2,
+			"settledLegacyNote" = NULLIF($3, ''),
+			"awaitingReschedule" = false,
+			"waitingSince" = NULL,
+			"updatedAt" = now()
+		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED') AND "archivedAt" IS NULL
+	`, id, byEmployeeID, note)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز منجز أو ملغى أو غير موجود")
+	}
+	return nil
+}
+
 func (r *BookingRepository) Verify(id string) error {
 	_, err := r.db.Exec(`UPDATE "Booking" SET "amountVerified" = true WHERE id = $1`, id)
 	return err

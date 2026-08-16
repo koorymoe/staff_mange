@@ -264,6 +264,9 @@ func versionedMigrations() []Migration {
 	// 0247: الطلعة وحدة القياس مو الحجز — «كل مرة طلعناله تنحسب حجز
 	// للموظف، وكل مرة ينكتب بيها تاريخ وكادر طلع».
 	result = append(result, bookingVisitMigrations()...)
+	// 0248: تسوية الحجوزات القديمة — «تم الإنجاز بدون تفاصيل»، مؤقت
+	// للمالك، ومستثنى من الغرامات لأن شغله صار قبل النظام.
+	result = append(result, legacySettleMigrations()...)
 	return result
 }
 

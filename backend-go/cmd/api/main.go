@@ -585,6 +585,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// التأجيل والانتظار شغل المنسّق — هو الي يتصل بالزبون
 	mux.Handle("PUT /api/bookings/{id}/postpone", middleware.Chain(http.HandlerFunc(bookingHandler.Postpone), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/waiting", middleware.Chain(http.HandlerFunc(bookingHandler.MarkWaiting), requireAuth, requireCoordinator))
+	// ⚠️ للمالك وحده: هذا قفل حجز بلا تفاصيل — يتفتح لغيره يصير باب
+	// خلفي يقفل بيه أي واحد شغله بضغطة بدل ما يوثّقه.
+	mux.Handle("POST /api/bookings/{id}/settle-legacy", middleware.Chain(http.HandlerFunc(bookingHandler.SettleLegacy), requireAuth, requireOwner))
 	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
 	// إلغاء تكليف موظف — نفس حارس التكليف: الي يكدر يكلّف يكدر يشيل.

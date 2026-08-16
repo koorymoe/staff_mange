@@ -821,6 +821,14 @@ func (s *BookingService) MarkWaiting(id, note, byEmployeeID string) (*model.Book
 	return s.repo.FindByID(id)
 }
 
+// SettleLegacy تسوية إدارية لحجز قديم — «تم الإنجاز بدون تفاصيل».
+func (s *BookingService) SettleLegacy(id, byEmployeeID, note string) (*model.Booking, error) {
+	if err := s.repo.SettleLegacy(id, byEmployeeID, note); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
 // ResumeFromWaiting يرجّع الحجز من الانتظار — الزبون رد.
 func (s *BookingService) ResumeFromWaiting(id string) (*model.Booking, error) {
 	if err := s.repo.ResumeFromWaiting(id); err != nil {

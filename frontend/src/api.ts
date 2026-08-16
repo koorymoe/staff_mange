@@ -546,6 +546,9 @@ export interface Booking {
   postponeCount: number
   /** انأجّل بلا موعد — منزاح من جدول اليوم لحد ما ينحدد له موعد */
   awaitingReschedule: boolean
+  /** تسوية إدارية: انقفل «منجز بدون تفاصيل» من المالك */
+  settledLegacyAt?: string | null
+  settledLegacyNote?: string | null
   // ═══ تتبّع المراحل ═══
   createdByName?: string
   crewNotes?: string
@@ -3203,6 +3206,11 @@ export const api = {
   /** اتصلنا بالزبون وما رد — الحجز ينزاح من طابور الشغل ويضل محفوظ */
   markBookingWaiting: (id: string, note?: string) =>
     request<Booking>(`/bookings/${id}/waiting`, { method: 'PUT', body: JSON.stringify({ note: note ?? '' }) }),
+  /** ═══ تسوية إدارية لحجز قديم — «تم الإنجاز بدون تفاصيل» ═══
+   *  للمالك وحده (السيرفر يفرضها). الحجز ينقفل منجزاً بلا كادر ولا
+   *  مبالغ، وينعلّم حتى ينستثنى من غرامات الفاتورة والتقرير. */
+  settleLegacyBooking: (id: string, note?: string) =>
+    request<Booking>(`/bookings/${id}/settle-legacy`, { method: 'POST', body: JSON.stringify({ note: note ?? '' }) }),
   /** الزبون رد — يرجع للطابور، وعدد المحاولات يبقى مسجّل */
   resumeBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/resume`, { method: 'PUT' }),

@@ -320,6 +320,28 @@ func (h *BookingHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, booking)
 }
 
+// POST /api/bookings/{id}/settle-legacy — «تم الإنجاز بدون تفاصيل»
+//
+// «هذا الخيار يكون مؤقت فقط للمالك، راح أدخل من حساب المالك أسوي —
+// لأن هذني حجوزات قديمة احنا مشتغّليهن وما نعرف الكادر الي طلع ولا
+// التكلفة».
+//
+// ⚠️ محصور بالمالك بحارس المسار، ومو بإخفاء الزر: الزر المخفي يبقى
+// مساره مفتوح لأي واحد يعرف عنوانه.
+func (h *BookingHandler) SettleLegacy(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Note string `json:"note"`
+	}
+	// الملاحظة اختيارية — نتجاهل خطأ التحليل لو الجسم فاضي
+	_ = DecodeJSON(r, &req)
+	booking, err := h.service.SettleLegacy(r.PathValue("id"), middleware.EmployeeIDFromContext(r), req.Note)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, booking)
+}
+
 // GET /api/bookings/pending-audit
 // نفس منطق List بحالة PENDING بالضبط، لكن بمسار مستقل يُحمى بصلاحية crew_management
 // (يستخدمه المراقب لتدقيق الحجوزات الموجّهة قبل ما يثبّتها الإداري — يشوف فيها هل
