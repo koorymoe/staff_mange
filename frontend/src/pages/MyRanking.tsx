@@ -208,37 +208,55 @@ export default function MyRanking() {
       </div>
 
       {/* ═══ أعلى ٣ ═══ */}
+      {top3.length === 0 && (
+        <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs text-slate-400">
+          ماكو تصنيف بهذي الفترة بعد — التصنيف يبني نفسه من الحجوزات المنجزة والتقييمات.
+        </p>
+      )}
       {top3.length > 0 && (
         <div className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5">
           <h3 className="mb-4 text-sm font-extrabold text-[#0f2040]">
             👑 أعلى ٣ {roleLabel} {period === 'weekly' ? 'هذا الأسبوع' : 'هذا الشهر'}
           </h3>
-          {/* الترتيب البصري: الثالث يمين، الأول وسط وأكبر، الثاني يسار */}
-          <div className="flex items-end justify-center gap-3">
+          {/* ═══ المنصّة ═══
+              ⚠️ بالموبايل تنقلب **صفوف** مو ثلاث بطاقات جنب بعض.
+              ثلاث بطاقات على شاشة ٣٦٠ بكسل تعني ١٠٠ بكسل للوحدة —
+              والاسم العربي ينقص لحرفين ونقاط، فالشاشة تصير بلا فايدة:
+              تشوف ترتيب بلا ما تعرف منو.
+              وترتيب العرض يختلف: بالموبايل ١ ثم ٢ ثم ٣ (من فوگ لتحت
+              مثل أي قائمة)، وبالكمبيوتر الأول بالوسط مثل المنصّة. */}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-center sm:gap-3">
             {[top3[2], top3[0], top3[1]].map((e, slot) => {
-              if (!e) return <div key={slot} className="flex-1" />
+              if (!e) return <div key={slot} className="hidden sm:block sm:flex-1" />
               const place = e === top3[0] ? 1 : e === top3[1] ? 2 : 3
               const medal = place === 1 ? '🥇' : place === 2 ? '🥈' : '🥉'
               const placeLabel = place === 1 ? 'الأول' : place === 2 ? 'الثاني' : 'الثالث'
               const isMe = e.employeeId === employee?.id
+              const orderCls = place === 1 ? 'order-1' : place === 2 ? 'order-2' : 'order-3'
               return (
                 <div
                   key={e.employeeId}
-                  className={`flex-1 rounded-2xl border-2 bg-white p-4 text-center ${
+                  className={`${orderCls} flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 sm:order-none sm:block sm:flex-1 sm:p-4 sm:text-center ${
                     place === 1 ? 'border-amber-300 shadow-lg' : 'border-slate-200'
                   } ${isMe ? 'ring-2 ring-sky-300' : ''}`}
                 >
-                  <div className="mb-1 text-2xl">{medal}</div>
-                  <p className="truncate text-xs font-bold text-slate-700">{e.employeeName}</p>
-                  <p className={`mt-1 text-2xl font-black ${place === 1 ? 'text-amber-600' : 'text-slate-600'}`}>
-                    {e.points}
+                  <div className="shrink-0 text-2xl sm:mb-1">{medal}</div>
+                  {/* الاسم بلا قصّ: يلتف بسطرين إذا احتاج */}
+                  <p className="min-w-0 flex-1 break-words text-right text-xs font-bold leading-tight text-slate-700 sm:text-center">
+                    {e.employeeName}
+                    {isMe && <span className="mr-1 text-[10px] text-sky-600">(أنت)</span>}
                   </p>
-                  {e.pointsDelta !== 0 && (
-                    <p className={`text-[10px] font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                      {e.pointsDelta > 0 ? '▲' : '▼'} {Math.abs(e.pointsDelta)}
+                  <div className="shrink-0 text-left sm:text-center">
+                    <p className={`text-2xl font-black leading-none ${place === 1 ? 'text-amber-600' : 'text-slate-600'} sm:mt-1`}>
+                      {e.points}
                     </p>
-                  )}
-                  <span className={`mt-2 inline-block rounded-md px-2 py-0.5 text-[10px] font-bold ${
+                    {e.pointsDelta !== 0 && (
+                      <p className={`text-[10px] font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {e.pointsDelta > 0 ? '▲' : '▼'} {Math.abs(e.pointsDelta)}
+                      </p>
+                    )}
+                  </div>
+                  <span className={`shrink-0 rounded-md px-2 py-0.5 text-[10px] font-bold sm:mt-2 sm:inline-block ${
                     place === 1 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'
                   }`}>
                     {placeLabel}

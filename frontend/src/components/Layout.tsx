@@ -932,7 +932,7 @@ export default function Layout() {
       if (item.plain) {
         if (collapsed) return <div key={item.label} className="my-2 h-px bg-white/10" />
         return (
-          <p key={item.label} className="mb-1.5 mt-3 px-3 text-[10px] font-bold tracking-wide text-white/35">
+          <p key={item.label} className="mb-1 mt-2.5 px-2 text-[9.5px] font-bold tracking-wide text-white/35">
             {item.label}
           </p>
         )
@@ -956,13 +956,13 @@ export default function Layout() {
           <div key={item.label}>
             <button
               onClick={() => toggle(item.label)}
-              className={`group relative flex w-full items-center gap-2 rounded-xl px-2.5 py-2.5 text-sm font-bold transition-all duration-200 ${
+              className={`group relative flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-200 ${
                 active
-                  ? 'bg-white/[0.10] text-white'
-                  : 'text-blue-100/70 hover:bg-white/[0.06] hover:text-white'
+                  ? 'bg-white/[0.12] text-white'
+                  : 'bg-white/[0.04] text-blue-100/70 hover:bg-white/[0.08] hover:text-white'
               }`}
             >
-              {active && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
+              {active && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
               {!collapsed && (
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
                   className={`ml-0.5 transition-transform duration-300 ${open ? 'rotate-180' : ''}`} style={{ flexShrink: 0 }}>
@@ -972,12 +972,12 @@ export default function Layout() {
               {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
               {/* الأيقونة بمربّع — نفس التصميم: صندوق صغير بحافة دائرية
                   يميّز العنصر النشط ويخلي الأيقونات على خط واحد. */}
-              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                active ? 'bg-white/15 text-white' : 'bg-white/[0.05] text-blue-100/70 group-hover:bg-white/10'
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+                active ? 'bg-white/20 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/12'
               }`}>{item.icon}</span>
             </button>
             {open && !collapsed && (
-              <div className="mt-1 flex flex-col gap-0.5 rounded-xl bg-black/20 p-1.5 animate-in">
+              <div className="mt-1 flex flex-col gap-1 rounded-lg bg-black/25 p-1 animate-in">
                 {kids.map(child => renderNavItem(child, 1))}
               </div>
             )}
@@ -1014,19 +1014,19 @@ export default function Layout() {
       return (
         <NavLink key={item.to} to={item.to} end={item.end}
           className={({ isActive }) =>
-            `group relative flex items-center gap-2 rounded-xl px-2.5 py-2.5 text-sm font-bold transition-all duration-200 ${
+            `group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-200 ${
               isActive
-                ? 'bg-white/[0.10] text-white'
-                : 'text-blue-100/70 hover:bg-white/[0.06] hover:text-white'
+                ? 'bg-white/[0.12] text-white'
+                : 'bg-white/[0.04] text-blue-100/70 hover:bg-white/[0.08] hover:text-white'
             }`
           }>
           {({ isActive }) => (
             <>
               {/* شريط أزرق على الحافة اليسرى للعنصر النشط */}
-              {isActive && <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
+              {isActive && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#4d8dff]" />}
               {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
-              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                isActive ? 'bg-white/15 text-white' : 'bg-white/[0.05] text-blue-100/70 group-hover:bg-white/10'
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-colors ${
+                isActive ? 'bg-white/20 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/12'
               }`}>{item.icon}</span>
             </>
           )}
@@ -1061,10 +1061,10 @@ export default function Layout() {
     return (
       <NavLink key={item.to} to={item.to} end={item.end}
         className={({ isActive }) =>
-          `group flex items-center gap-2 rounded-lg px-3 py-2 text-right text-[12.5px] transition-all duration-200 ${
+          `group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-right text-[12px] transition-all duration-200 ${
             isActive
-              ? 'bg-white/[0.10] font-bold text-white'
-              : 'font-medium text-blue-100/50 hover:bg-white/[0.05] hover:text-blue-100/80'
+              ? 'bg-white/[0.14] font-bold text-white'
+              : 'bg-white/[0.03] font-medium text-blue-100/55 hover:bg-white/[0.08] hover:text-blue-100/85'
           }`
         }>
         {({ isActive }) => (
@@ -1250,7 +1250,7 @@ export default function Layout() {
           <div className="mx-4 mb-2 h-px bg-gradient-to-l from-transparent via-white/10 to-transparent"/>
 
           {/* Nav */}
-          <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-3 pb-3 scrollbar-thin">
+          <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-2.5 pb-3 scrollbar-thin">
             {visibleItems.map(item => renderNavItem(item, 0))}
             {employee.actualRole === 'OWNER' && (
               <NavLink
