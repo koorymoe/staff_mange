@@ -63,7 +63,16 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
+  // ═══ «بانتظار التثبيت» بلا فلتر تاريخ ═══
+  //
+  // «الحجوزات الجديدة ما يحتاج بيها فلاتر — أي حجز جديد يجي هنا».
+  //
+  // ⚠️ وهذا ما كان ترتيب بس: الشاشة تبدي بفلتر **يوم اليوم**، فالحجز
+  // الي انسجّل أمس وما أحد حچى وية زبونه بعد **ما يطلع أصلاً** —
+  // الإداري يشوف «لا توجد حجوزات» ويظن ماكو شغل، والحجز يقعد بلا
+  // متابعة لحد ما ينسى. الطابور الي ينتظر تصرّف ما ينفلتر بالتاريخ:
+  // كله لازم ينشاف، أقدمه أول.
+  const [selectedDate, setSelectedDate] = useState<string | null>(bucket === 'pending' ? null : todayStr())
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [doneFilter, setDoneFilter] = useState<DoneFilter>('ALL')
   const dateInputRef = useRef<HTMLInputElement>(null)
@@ -333,7 +342,12 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
       return true
     })
     // الأحدث للأقدم دايماً — هذا الترتيب الافتراضي المطلوب.
-    .sort((a, b) => new Date(relevantDate(b)).getTime() - new Date(relevantDate(a)).getTime())
+    // ⚠️ إلا طابور الانتظار: هناك **الأقدم أول**، لأنه الي منتظر
+    // أكثر — الزبون الي مسجّل من ثلاث أيام وما أحد حچى وياه أولى
+    // من الي انسجّل قبل ساعة.
+    .sort((a, b) => bucket === 'pending'
+      ? new Date(relevantDate(a)).getTime() - new Date(relevantDate(b)).getTime()
+      : new Date(relevantDate(b)).getTime() - new Date(relevantDate(a)).getTime())
 
   return (
     <div>
@@ -373,6 +387,8 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
           className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500 sm:w-96"
         />
 
+        {/* أدوات التاريخ ما تطلع بطابور الانتظار — شوف التعليق فوق */}
+        {bucket !== 'pending' && (
         <div className="flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-1 py-1">
           <button
             onClick={() => { setSelectedMonth(null); setSelectedDate((d) => addDays(d || todayStr(), 1)) }}
@@ -404,8 +420,9 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
             ◀
           </button>
         </div>
+        )}
 
-        {selectedDate !== todayStr() && !selectedMonth && (
+        {bucket !== 'pending' && selectedDate !== todayStr() && !selectedMonth && (
           <button
             onClick={() => setSelectedDate(todayStr())}
             className="rounded-lg border border-brand-200 px-3 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
@@ -414,6 +431,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
           </button>
         )}
 
+        {bucket !== 'pending' && (
         <button
           onClick={() => { setSelectedMonth(null); setSelectedDate((d) => (d === null ? todayStr() : null)) }}
           className={`rounded-lg border px-3 py-2 text-sm font-medium ${
@@ -425,12 +443,14 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
         >
           📋 كل الحجوزات
         </button>
+        )}
 
         {/* ═══ فلتر الشهر ═══
             ⚠️ كان زر وفوقه خانة شهر **شفافة تغطيه بالكامل**: الضغطة
             تروح للخانة المخفية مو للزر، و`showPicker()` ما تنستدعى
             أبداً — فالفلتر ما يفتح ولا مرة. صارت خانة ظاهرة عادية،
             تشتغل بكل متصفح بلا حيلة. */}
+        {bucket !== 'pending' && (
         <label className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium ${
           selectedMonth ? 'border-brand-500 bg-brand-50 text-brand-800' : 'border-slate-300 text-slate-600'
         }`}>
@@ -446,7 +466,8 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
             className="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs outline-none focus:border-brand-500"
           />
         </label>
-        {selectedMonth && (
+        )}
+        {bucket !== 'pending' && selectedMonth && (
           <button
             onClick={() => { setSelectedMonth(null); setSelectedDate(todayStr()) }}
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
