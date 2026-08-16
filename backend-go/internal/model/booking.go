@@ -407,3 +407,30 @@ func (b *Booking) ComputeStageBucket() string {
 	}
 	return ""
 }
+
+// ═══ الطلعة ═══
+//
+// «كل مرة طلعناله تنحسب حجز للموظف، وكل مرة ينكتب بيها تاريخ وكادر
+// طلع». الحجز ممكن ياخذ أربع طلعات بأربع كوادر مختلفة — والإنتاجية
+// تنحسب من هذول مو من الحجز الواحد.
+type BookingVisit struct {
+	ID               string                   `db:"id" json:"id"`
+	BookingID        string                   `db:"bookingId" json:"bookingId"`
+	VisitNumber      int                      `db:"visitNumber" json:"visitNumber"`
+	Outcome          string                   `db:"outcome" json:"outcome"`
+	PercentDone      *int                     `db:"percentDone" json:"percentDone"`
+	ProgressReportID *string                  `db:"progressReportId" json:"progressReportId"`
+	ScheduledAt      *time.Time               `db:"scheduledAt" json:"scheduledAt"`
+	OccurredAt       time.Time                `db:"occurredAt" json:"occurredAt"`
+	CreatedAt        time.Time                `db:"createdAt" json:"createdAt"`
+	Crew             []BookingVisitCrewMember `db:"-" json:"crew"`
+}
+
+// BookingVisitCrewMember منو طلع بهاي الطلعة — بالمعرّف مو بالاسم،
+// حتى الإنتاجية تنعدّ بـJOIN مو بمطابقة نصوص تنكسر أول تشابه أسماء.
+type BookingVisitCrewMember struct {
+	EmployeeID string `db:"employeeId" json:"employeeId"`
+	Name       string `db:"name" json:"name"`
+	Role       string `db:"role" json:"role"`
+	IsLeader   bool   `db:"isLeader" json:"isLeader"`
+}

@@ -261,6 +261,9 @@ func versionedMigrations() []Migration {
 	result = append(result, reviewKindMigrations()...)
 	result = append(result, reviewScoreMigrations()...)
 	result = append(result, inventoryPerBookingMigrations()...)
+	// 0247: الطلعة وحدة القياس مو الحجز — «كل مرة طلعناله تنحسب حجز
+	// للموظف، وكل مرة ينكتب بيها تاريخ وكادر طلع».
+	result = append(result, bookingVisitMigrations()...)
 	return result
 }
 

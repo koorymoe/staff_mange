@@ -15,14 +15,29 @@ type BookingProgressHandler struct {
 	repo     *repository.BookingProgressRepository
 	bookings *repository.BookingRepository
 	notify   *repository.NotificationRepository
+	visits   *repository.BookingVisitRepository
 }
 
 func NewBookingProgressHandler(
 	repo *repository.BookingProgressRepository,
 	bookings *repository.BookingRepository,
 	notify *repository.NotificationRepository,
+	visits *repository.BookingVisitRepository,
 ) *BookingProgressHandler {
-	return &BookingProgressHandler{repo: repo, bookings: bookings, notify: notify}
+	return &BookingProgressHandler{repo: repo, bookings: bookings, notify: notify, visits: visits}
+}
+
+// GET /api/bookings/{id}/visits — كل طلعة صارت على هذا الحجز.
+//
+// «أريد حتى لو الحجز نفسه طلعناله أربع أيام، كل مرة طلعناله تنحسب
+// حجز للموظف، وكل مرة ينكتب بيها تاريخ وكادر طلع».
+func (h *BookingProgressHandler) Visits(w http.ResponseWriter, r *http.Request) {
+	visits, err := h.visits.ByBooking(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الطلعات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, visits)
 }
 
 // POST /api/bookings/{id}/partial-complete — «خلصنا جزء والباقي باچر»

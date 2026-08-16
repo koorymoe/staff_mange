@@ -204,6 +204,63 @@ type OverduePaperwork struct {
 	HasReport   bool   `db:"hasReport"`
 }
 
+// OverdueLeaderPaperwork نفس الفكرة بس **الليدر** هو المطلوب: الي طلع
+// وسوّى الشغل هو الي يوثّقه.
+//
+// «يتغرّم الليدر إذا ما سوّى تقرير وفاتورة للحجز خلال مدة أقصاها ٢٤
+// ساعة».
+type OverdueLeaderPaperwork struct {
+	BookingID   string `db:"bookingId"`
+	BookingCode string `db:"code"`
+	LeaderID    string `db:"leaderId"`
+	LeaderName  string `db:"leaderName"`
+	HasInvoice  bool   `db:"hasInvoice"`
+	HasReport   bool   `db:"hasReport"`
+}
+
+// OverdueLeaderPaperwork يلگه الليدر المسؤول عن كل حجز منجز تأخر ورقه.
+//
+// ⚠️ «الليدر» ينجاب من كادر **آخر طلعة** مو من التكليف الحالي: الحجز
+// الي ياخذ أربع أيام يجوز يتبدّل كادره، والي يوثّق هو الي خلّصه.
+// وإذا ما اكو طلعة مسجّلة (بيانات قديمة) ننزل على التكليف الحالي.
+func (r *DisciplineRepository) OverdueLeaderPaperwork(hours int) ([]OverdueLeaderPaperwork, error) {
+	rows := []OverdueLeaderPaperwork{}
+	err := r.db.Select(&rows, `
+		SELECT b.id AS "bookingId", b.code,
+		       ldr.id AS "leaderId", ldr.name AS "leaderName",
+		       EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id) AS "hasInvoice",
+		       EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id) AS "hasReport"
+		FROM "Booking" b
+		JOIN LATERAL (
+			SELECT e.id, e.name
+			FROM "Employee" e
+			WHERE e.id = COALESCE(
+				(SELECT vc."employeeId"
+				 FROM "BookingVisitCrew" vc
+				 JOIN "BookingVisit" v ON v.id = vc."visitId"
+				 WHERE v."bookingId" = b.id AND vc."isLeader"
+				 ORDER BY v."visitNumber" DESC LIMIT 1),
+				(SELECT ba."employeeId" FROM "BookingAssignment" ba
+				 JOIN "Employee" le ON le.id = ba."employeeId"
+				 WHERE ba."bookingId" = b.id AND le."isLeader"
+				 ORDER BY ba.role LIMIT 1)
+			)
+			AND e.status = 'ACTIVE'
+		) ldr ON true
+		WHERE b.status = 'COMPLETED'
+		  AND b."completedAt" IS NOT NULL
+		  AND b."completedAt" < now() - ($1::text || ' hours')::interval
+		  -- الغرامات تبدي من تاريخ تشغيل النظام: ما نحاسب أحد على شغل
+		  -- قديم ما جان النظام يطالبه بيه أصلاً
+		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  AND (
+		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		  )
+	`, hours)
+	return rows, err
+}
+
 func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, error) {
 	rows := []OverduePaperwork{}
 	err := r.db.Select(&rows, `

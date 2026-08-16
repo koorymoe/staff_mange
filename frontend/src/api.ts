@@ -628,6 +628,32 @@ export interface Booking {
   createdAt: string
 }
 
+// ═══ الطلعات ═══
+//
+// «كل مرة طلعناله تنحسب حجز للموظف، وكل مرة ينكتب بيها تاريخ وكادر
+// طلع — لأن يجوز الكادر يتغيّر». الحجز الي ياخذ أربع أيام أربع
+// طلعات، وكل طلعة إلها كادرها الي طلع بيها هي.
+export interface BookingVisitCrewMember {
+  employeeId: string
+  name: string
+  role: string
+  isLeader: boolean
+}
+
+export interface BookingVisit {
+  id: string
+  bookingId: string
+  visitNumber: number
+  /** PARTIAL = يوم شغل انقفل والحجز ما خلص · DONE = الطلعة الي خلّصته */
+  outcome: 'PARTIAL' | 'DONE'
+  percentDone: number | null
+  progressReportId: string | null
+  scheduledAt: string | null
+  occurredAt: string
+  createdAt: string
+  crew: BookingVisitCrewMember[]
+}
+
 export interface JobDurationEstimate {
   expectedMinutes: number | null
   sampleCount: number
@@ -3166,6 +3192,9 @@ export const api = {
 
   /** تأجيل الموعد بطلب الزبون — السبب إجباري وينعد بعدد التأجيلات */
   /** الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري */
+  /** كل طلعة صارت على الحجز — بتاريخها وكادرها */
+  getBookingVisits: (id: string) => request<BookingVisit[]>(`/bookings/${id}/visits`),
+
   getPostponedBookings: () => request<Booking[]>('/bookings/postponed'),
   /** scheduledAt فارغ = تأجيل بلا موعد */
   postponeBooking: (id: string, scheduledAt: string, reason: string) =>

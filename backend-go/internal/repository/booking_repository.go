@@ -661,8 +661,22 @@ func (r *BookingRepository) SetMaterialsReady(id, byEmployeeID string) error {
 	return err
 }
 
+// Complete يقفل الحجز — ويسجّل **طلعة الإنجاز**.
+//
+// ⚠️ الطلعة الأخيرة (الي خلّصت الشغل) ما إلها تقرير إنجاز جزئي، فلو
+// ما سجّلناها هنا تنفقد من الإنتاجية بالكامل: حجز خلص بطلعة وحدة
+// ينحسب صفر طلعات لكادره.
+//
+// وبمعاملة وحدة مع تحديث الحجز: حجز ينقفل بلا طلعة يعني شغل صار
+// وما ينحسب لأحد.
 func (r *BookingRepository) Complete(id string, req model.CompleteBookingRequest) error {
-	_, err := r.db.Exec(`
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err = tx.Exec(`
 		UPDATE "Booking" SET
 			status = 'COMPLETED',
 			"completedAt" = now(),
@@ -671,8 +685,14 @@ func (r *BookingRepository) Complete(id string, req model.CompleteBookingRequest
 			"advancePaid" = COALESCE($4, "advancePaid"),
 			"workLocation" = COALESCE(NULLIF($5,''), "workLocation")
 		WHERE id = $1
-	`, id, req.CompletionNotes, req.AmountCollected, req.AdvancePaid, workLocationOrEmpty(req.WorkLocation))
-	return err
+	`, id, req.CompletionNotes, req.AmountCollected, req.AdvancePaid, workLocationOrEmpty(req.WorkLocation)); err != nil {
+		return err
+	}
+
+	if _, err = recordVisitTx(tx, id, "DONE", nil, nil); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r *BookingRepository) Verify(id string) error {
@@ -824,16 +844,30 @@ func (r *BookingRepository) ListAssignments(bookingID string) ([]model.BookingAs
 	return assignments, err
 }
 
-// CountCompletedForEmployeeMonth يرجّع عدد الحجوزات المكتملة (COMPLETED) خلال
-// شهر معيّن (monthPrefix بصيغة "YYYY-MM") التي كان موظف معيّن مربوطاً بها عبر
-// "BookingAssignment" (أي دور: ليدر أو فني).
+// CountCompletedForEmployeeMonth إنتاجية موظف بشهر — **بالطلعات**.
+//
+// ═══ ليش انتغيّر العدّ ═══
+//
+// «شلون يطلع الموظف ليوم للحجز وينطي إنجاز جزئي؟ … أريد كل مرة
+// طلعناله تنحسب حجز للموظف. المشكلة الي تصير هسه إن الطلعة الأولى
+// تختفي ويُحسب بس الطلعة الثانية — إنتاجية الموظف بالضيم».
+//
+// العدّ القديم كان: احسب **الحجوزات** المنجزة المربوطة بالموظف عبر
+// `BookingAssignment`. وهذا يظلم مرتين:
+//
+//   ١) `BookingAssignment` جدول **الحالة الحالية** — صف واحد لكل دور.
+//      لمن الإداري يبدّل الكادر للطلعة الثانية، الكادر الأول ينمحي
+//      من الحجز وكأنه ما طلع أبداً.
+//   ٢) وحتى لو ما تبدّل: أربع طلعات على نفس الحجز = حجز واحد بالعدّ.
+//
+// هسه العدّ من `BookingVisit`: كل طلعة تنعدّ لكادرها الي طلع بيها،
+// بلا فرق إذا خلّصت الحجز أو قفلت يوم شغل.
 func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
 	var count int
 	err := r.db.Get(&count, `
-		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
-		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL
-			AND to_char(b."completedAt", 'YYYY-MM') = $2
+		SELECT COUNT(*) FROM "BookingVisitCrew" vc
+		JOIN "BookingVisit" v ON v.id = vc."visitId"
+		WHERE vc."employeeId" = $1 AND to_char(v."occurredAt", 'YYYY-MM') = $2
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -1032,10 +1066,12 @@ func (r *BookingRepository) AssignedAndCompletedForEmployeeOnDate(employeeID, da
 	if err != nil {
 		return 0, 0, err
 	}
+	// المنجز اليوم = طلعات اليوم، مو حجوزات اليوم: الفني الي طلع
+	// وقفل يوم شغل على حجز ما خلص، شغل يوم كامل.
 	err = r.db.Get(&completed, `
-		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
-		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		WHERE ba."employeeId" = $1 AND `+dailyDayExpr+` = $2::date AND b.status = 'COMPLETED'
+		SELECT COUNT(*) FROM "BookingVisitCrew" vc
+		JOIN "BookingVisit" v ON v.id = vc."visitId"
+		WHERE vc."employeeId" = $1 AND (v."occurredAt" AT TIME ZONE 'Asia/Baghdad')::date = $2::date
 	`, employeeID, date)
 	return assigned, completed, err
 }
@@ -1051,14 +1087,14 @@ func (r *BookingRepository) CountEnteredThisWeekForEmployee(transferEmployeeID s
 	return count, err
 }
 
-// CountCompletedForEmployeeLast7Days يرجّع عدد الحجوزات المكتملة لموظف معيّن
-// خلال آخر 7 أيام — يُستخدم لقياس إنتاجية الكوادر الأسبوعية.
+// CountCompletedForEmployeeLast7Days إنتاجية الأسبوع — بالطلعات كمان
+// (نفس سبب `CountCompletedForEmployeeMonth`).
 func (r *BookingRepository) CountCompletedForEmployeeLast7Days(employeeID string) (int, error) {
 	var count int
 	err := r.db.Get(&count, `
-		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
-		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
-		WHERE ba."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" >= now() - interval '7 days'
+		SELECT COUNT(*) FROM "BookingVisitCrew" vc
+		JOIN "BookingVisit" v ON v.id = vc."visitId"
+		WHERE vc."employeeId" = $1 AND v."occurredAt" >= now() - interval '7 days'
 	`, employeeID)
 	return count, err
 }

@@ -21,13 +21,23 @@ import StageBucketsPage from './StageBucketsPage'
 // تعديل.
 
 // الترتيب مقصود: من أول ما يوصل الحجز لآخر مرحلة يمر بيها الإداري.
-// تسجّل → تنسّق → تتابع الي ما انثبّت → المثبّت → المكلّف.
+// تسجّل → تتواصل وتثبّت وترحّل → تنسّق → المثبّت → المكلّف → المنجز.
 const TABS = [
   { key: 'new' as const, label: 'حجز جديد', icon: '＋' },
-  { key: 'coord' as const, label: 'تنسيق الحجوزات', icon: '🧩' },
+  // ⚠️ «بانتظار التثبيت» **قبل** التنسيق: هي أول محطة بعد التسجيل —
+  // «الحجوزات الجديدة الي ما متفقين وية الزبون تطلع بانتظار
+  // التثبيت، ومن نضغط تواصل وترحيل لكادر الشد يله يترحّل لتنسيق
+  // الحجوزات». الترتيب بالشاشة يمشي وية الشغل نفسه.
   { key: 'pending' as const, label: 'بانتظار التثبيت', icon: '⏳' },
+  { key: 'coord' as const, label: 'تنسيق الحجوزات', icon: '🧩' },
   { key: 'confirmed' as const, label: 'حجوزات مثبّتة', icon: '✅' },
   { key: 'assigned' as const, label: 'حجوزات مكلّفة', icon: '👥' },
+  // ═══ الاتجاه الأول بعد التكليف ═══
+  // «بعد ما يوصل الحجز مرحلة التكليف راح ياخذ اتجاهين: الاتجاه الأول
+  // الي هو تم الإنجاز… وراها بنود نتفرّع».
+  // التفرّعات (كامل · بلا فاتورة · بلا تقرير · بلا الاثنين · جزئي)
+  // تنفتح جوّا الشاشة مو كخيارات بالصف الأعلى.
+  { key: 'done' as const, label: 'تم الإنجاز', icon: '🏁' },
   // ═══ الي ما توصل للتنفيذ ═══
   // «اكو حجوزات ما توصل — الزبون يلغي أو ما يرد، لازم تترتب».
   // كانت شاشة مستقلة بالقائمة الجانبية وانشالت من هناك؛ محلها
@@ -91,6 +101,7 @@ export default function BookingsHub() {
       {tab === 'pending' && <BookingsList key="pending" bucket="pending" />}
       {tab === 'confirmed' && <BookingsList key="confirmed" bucket="confirmed" />}
       {tab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
+      {tab === 'done' && <BookingsList key="done" bucket="done" />}
       {tab === 'stuck' && <StageBucketsPage />}
     </div>
   )

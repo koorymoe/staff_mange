@@ -483,7 +483,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees/supervisors", middleware.Chain(http.HandlerFunc(employeeHandler.Supervisors), requireAuth))
 	disciplineHandler := handler.NewDisciplineHandler(disciplineService)
 	employeeLetterHandler := handler.NewEmployeeLetterHandler(employeeLetterRepo, notificationRepo)
-	bookingProgressHandler := handler.NewBookingProgressHandler(bookingProgressRepo, bookingRepo, notificationRepo)
+	bookingVisitRepo := repository.NewBookingVisitRepository(db)
+	bookingProgressHandler := handler.NewBookingProgressHandler(bookingProgressRepo, bookingRepo, notificationRepo, bookingVisitRepo)
 	// نقاط الانضباط: كل موظف يشوف الأرصدة (الشفافية جزء من العقوبة)،
 	// وتشغيل الفحص يدوياً للمدير حصراً.
 	// ── الطلبات: كتاب رسمي من الموظف للإدارة ──
@@ -637,6 +638,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/bookings/{id}/partial-complete", middleware.Chain(http.HandlerFunc(bookingProgressHandler.PartialComplete), requireAuth, requireBookingParty))
 	mux.Handle("POST /api/bookings/{id}/schedule-continuation", middleware.Chain(http.HandlerFunc(bookingProgressHandler.ScheduleContinuation), requireAuth, requireCoordinator))
 	mux.Handle("GET /api/bookings/{id}/progress", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Reports), requireAuth))
+	// ⚠️ الطلعات ما إلها حارس خاص: منو يشوف الحجز يشوف طلعاته. إخفاء
+	// «منو طلع ومتى» عن الي يشوف الحجز نفسه ما إله معنى.
+	mux.Handle("GET /api/bookings/{id}/visits", middleware.Chain(http.HandlerFunc(bookingProgressHandler.Visits), requireAuth))
 	mux.Handle("GET /api/bookings/{id}/suggested-crew", middleware.Chain(http.HandlerFunc(bookingProgressHandler.SuggestedCrew), requireAuth))
 
 	// تغيير نوع الحجز: المالك ومدير النظام بس. النوع يأثر على الإحصاءات

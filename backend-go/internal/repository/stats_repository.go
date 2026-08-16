@@ -171,10 +171,14 @@ func (r *StatsRepository) TechnicianStats() ([]model.TechnicianStat, error) {
 		if err != nil {
 			return nil, err
 		}
+		// ⚠️ «المنجز» هنا صار **عدد الطلعات** مو عدد الحجوزات: الحجز
+		// الي ياخذ أربع أيام أربع طلعات، وكل طلعة إلها كادرها الي
+		// طلع بيها. العدّ القديم من `BookingAssignment` كان يمحي
+		// الكادر الأول أول ما يتبدّل، ويعدّ الحجز الطويل مرة وحدة.
 		completed, err := r.count(`
-			SELECT COUNT(*) FROM "BookingAssignment" a
-			JOIN "Booking" b ON b.id = a."bookingId"
-			WHERE a."employeeId" = $1 AND b.status = 'COMPLETED'
+			SELECT COUNT(*) FROM "BookingVisitCrew" vc
+			JOIN "BookingVisit" v ON v.id = vc."visitId"
+			WHERE vc."employeeId" = $1
 		`, e.EmployeeID)
 		if err != nil {
 			return nil, err

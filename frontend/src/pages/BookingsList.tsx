@@ -6,8 +6,12 @@ import { MapViewer } from '../components/MapLazy'
 import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
+import BookingVisits from '../components/BookingVisits'
 import { matches } from '../utils/search'
 import { BOOKING_STAGES, currentStage, executionStarted } from '../bookingStage'
+import { DONE_FILTERS, type BookingBucket, type DoneFilter } from './bookingBuckets'
+
+export type { BookingBucket } from './bookingBuckets'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -51,8 +55,6 @@ const techRoleLabels: Record<string, string> = {
 
 // ═══ سلال الحجوزات ═══
 // كل تبويب بشاشة «الحجوزات» يفتح نفس القائمة بسلّة مختلفة.
-export type BookingBucket = 'all' | 'pending' | 'confirmed' | 'assigned'
-
 export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucket } = {}) {
   const { employee, permissions } = useSession()
   const canSeeStats = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
@@ -63,6 +65,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(todayStr())
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
+  const [doneFilter, setDoneFilter] = useState<DoneFilter>('ALL')
   const dateInputRef = useRef<HTMLInputElement>(null)
   const monthInputRef = useRef<HTMLInputElement>(null)
   const isAdmin = employee?.role === 'ADMIN'
@@ -99,6 +102,13 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     }
   }
   const [technicians, setTechnicians] = useState<Employee[]>([])
+  // ═══ وين الليدر؟ ═══
+  // «هنا بالتعديل مال الحجز، كون أكدر أخلي الليدر — وين الليدر؟».
+  // الليدر بالنظام حقل مستقل (`projectSupervisor` — «تيم ليدر») مو
+  // دور من أدوار الفنيين الثلاثة. شاشة التنسيق عندها هالخانة من
+  // زمان، وشاشة الحجوزات نسيتها — فالإداري الي يعدّل الكادر من هنا
+  // يلگه ثلاث خانات فنيين وماكو وين يحط الليدر.
+  const [supervisors, setSupervisors] = useState<Employee[]>([])
   const [vehicles, setVehicles] = useState<VehicleOption[]>([])
   const [mapBooking, setMapBooking] = useState<Booking | null>(null)
   // الشخصيات المهمة: أي موظف يقدر يعلّم زبون بضغطة زر. نجيب المعرّفات بس
@@ -114,6 +124,9 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
       // المركبات بيانات مساعدة هنا — مو كل من يشوف الحجوزات عنده صلاحية
       // المركبات، فالرفض ما يجوز يكسر الصفحة (شوف Coordinator.tsx)
       api.getVehicleOptions().then(setVehicles).catch(() => setVehicles([]))
+      // ⚠️ الرفض ما يكسر الشاشة: مو كل من يعدّل الكادر عنده صلاحية
+      // قائمة المشرفين — وقتها تبقى الخانة فاضية بدل ما تطفّي الصفحة.
+      api.getSupervisors().then(setSupervisors).catch(() => setSupervisors([]))
     }
   }, [canEditCrew])
 
@@ -149,6 +162,46 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     }
   }
 
+  // ═══ مسار التثبيت — من «بانتظار التثبيت» للتنسيق ═══
+  //
+  // «الحجوزات الجديدة الي ما متفقين وية الزبون المفروض تطلع
+  // بانتظار التثبيت. من نضغط (تواصل وية الزبون) و(ترحيل لكادر الشد)
+  // يله يترحّل لتنسيق الحجوزات. أني ما أريد الحجوزات مباشرة تطلع
+  // بتنسيق الحجوزات».
+  //
+  // ⚠️ قبل، الحجز الجديد كان يوصل شاشة التنسيق **بلحظة تسجيله**:
+  // المنسّق يشوف حجوزات ما أحد حچى وية زبونها بعد، ويبدي يدوّر
+  // مواعيد وكوادر لشغل يمكن ما يصير أصلاً.
+  const [flowBusy, setFlowBusy] = useState<string | null>(null)
+
+  const markContacted = async (booking: Booking) => {
+    setFlowBusy(booking.id)
+    try {
+      const updated = await api.markConfirmationContacted(booking.id)
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تسجيل التواصل')
+    } finally { setFlowBusy(null) }
+  }
+
+  /** يثبّت الحجز ويرحّله: لكادر الشد (يوصل التنسيق) أو لإدارة
+   *  المشاريع (يبقى مقفل عندهم لحد ما يوصل مرحلة التنفيذ). */
+  const confirmAndTransfer = async (booking: Booking, toProjects: boolean) => {
+    const where = toProjects ? 'إدارة المشاريع' : 'كادر الشد'
+    if (!confirm(`تثبيت الحجز ${booking.code} وترحيله لـ${where}؟`)) return
+    setFlowBusy(booking.id)
+    try {
+      const updated = await api.confirmBooking(booking.id, {
+        confirmedByName: employee?.name || '',
+        confirmedByEmployeeId: employee?.id,
+        transferToProjects: toProjects,
+      })
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر التثبيت')
+    } finally { setFlowBusy(null) }
+  }
+
   const handleVehicleChange = async (booking: Booking, assignedVehicle: string) => {
     setAssigning(true)
     try {
@@ -156,6 +209,20 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
       setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر تعديل السيارة')
+    } finally {
+      setAssigning(false)
+    }
+  }
+
+  /** تعيين/إزالة الليدر (تيم ليدر) — نفس مسار السيرفر الي تستعمله
+   *  شاشة التنسيق، حتى ما يصير مسارين للشغلة الوحدة. */
+  const handleSupervisor = async (booking: Booking, employeeId: string) => {
+    setAssigning(true)
+    try {
+      const updated = await api.assignSupervisor(booking.id, employeeId || null)
+      setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تعيين الليدر')
     } finally {
       setAssigning(false)
     }
@@ -237,7 +304,23 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
       // «أو» مو «و»: حجز باشر بيه الليدر بلا ما ينسجّل تكليف رسمي
       // لازم يبقى مرئي بمكان ما — وهذا مكانه.
       case 'assigned':
+        // ⚠️ المنجز طلع من «مكلّفة»: صارله سلّته الخاصة بتفرّعاتها،
+        // وبقاؤه بالاثنين يعني الإداري يشوفه بمكانين ويظن إنه لسه شغّال.
         return (crewed || started) && b.status !== 'CANCELLED'
+          && b.status !== 'COMPLETED' && b.status !== 'PARTIAL'
+      // ═══ تم الإنجاز ═══
+      // «الاتجاه الأول الي هو تم الإنجاز، وراها بنود نتفرّع».
+      // المنجز جزئياً يدخل هنا كمان: هو شغل صار فعلاً، وطلعته
+      // انحسبت لكادرها — بس الحجز ما خلص بعد.
+      case 'done': {
+        const isDone = b.status === 'COMPLETED' || b.status === 'PARTIAL'
+        if (!isDone) return false
+        switch (doneFilter) {
+          case 'PARTIAL': return b.status === 'PARTIAL'
+          case 'ALL': return true
+          default: return b.status === 'COMPLETED' && b.completionState === doneFilter
+        }
+      }
       default: return true
     }
   }
@@ -262,6 +345,25 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
         )}
       </p>
 
+
+      {/* ═══ تفرّعات «تم الإنجاز» ═══
+          خيار واحد بالأعلى («تم الإنجاز») والتفصيل جوّاه — نفس نمط
+          «زبون ما رد» و«حجوزات ملغية». */}
+      {bucket === 'done' && (
+        <div className="mt-4 inline-flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
+          {DONE_FILTERS.map((f) => (
+            <button
+              key={f.key}
+              onClick={() => setDoneFilter(f.key)}
+              className={`rounded-lg px-3 py-1.5 text-[11px] font-bold transition-colors ${
+                doneFilter === f.key ? 'bg-white text-[#0f2040] shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input
@@ -402,6 +504,41 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                       <CompletionBadge booking={b} />
                     </td>
                     <td className="px-4 py-3">
+                      {/* مسار التثبيت — يطلع بسلّة «بانتظار التثبيت» بس،
+                          لأنها الوحيدة الي هذي الخطوات تعني بيها شي. */}
+                      {bucket === 'pending' && canEditDetails && (
+                        <div className="mb-1.5 flex flex-wrap gap-1">
+                          {!b.confirmationContactedAt ? (
+                            <button
+                              onClick={() => markContacted(b)}
+                              disabled={flowBusy === b.id}
+                              className="rounded-lg bg-amber-500 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-amber-600 disabled:opacity-50"
+                            >
+                              📞 تواصلت وية الزبون
+                            </button>
+                          ) : (
+                            <>
+                              <span className="rounded-lg bg-emerald-50 px-2 py-1 text-[10px] font-bold text-emerald-700">
+                                ✓ تواصلنا
+                              </span>
+                              <button
+                                onClick={() => confirmAndTransfer(b, false)}
+                                disabled={flowBusy === b.id}
+                                className="rounded-lg bg-brand-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-brand-700 disabled:opacity-50"
+                              >
+                                ✅ ثبّت ورحّل لكادر الشد
+                              </button>
+                              <button
+                                onClick={() => confirmAndTransfer(b, true)}
+                                disabled={flowBusy === b.id}
+                                className="rounded-lg bg-violet-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-violet-700 disabled:opacity-50"
+                              >
+                                🏗 ثبّت ورحّل لإدارة المشاريع
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
                       <button
                         onClick={() => setExpandedId(expandedId === b.id ? null : b.id)}
                         className="rounded-lg border border-brand-200 px-3 py-1 text-xs font-medium text-brand-700 transition-colors hover:bg-brand-50"
@@ -419,6 +556,14 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                             كل مرحلة اختيارية لحالها، والحجز يتثبّت بلا
                             كادر والكادر ينكلّف بعدها بأيام. */}
                         <StageStrip booking={b} />
+
+                        {/* ═══ الطلعات ═══
+                            الحجز الي ياخذ أربع أيام أربع طلعات، وكل
+                            وحدة إلها كادرها وتاريخها — والطلعة الي
+                            راحت ما تنمحي لمن يتبدّل الكادر. */}
+                        <div className="mt-3">
+                          <BookingVisits bookingId={b.id} />
+                        </div>
 
                         <div className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
                           <div>
@@ -477,6 +622,22 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                             </div>
                             {editingId === b.id ? (
                               <div className="mt-2 flex flex-col gap-2">
+                                {/* ⚠️ الليدر أول الخانات: هو المسؤول عن
+                                    الحجز، والفنيين وراه. */}
+                                <div>
+                                  <label className="mb-0.5 block text-xs font-bold text-amber-700">👑 تيم ليدر</label>
+                                  <select
+                                    value={b.projectSupervisor?.id || ''}
+                                    disabled={assigning}
+                                    onChange={(e) => handleSupervisor(b, e.target.value)}
+                                    className="w-full rounded-lg border border-amber-300 px-2 py-1.5 text-sm outline-none focus:border-amber-500"
+                                  >
+                                    <option value="">-- بدون تيم ليدر --</option>
+                                    {supervisors.map((sv) => (
+                                      <option key={sv.id} value={sv.id}>{sv.name}</option>
+                                    ))}
+                                  </select>
+                                </div>
                                 {techRoles.map((tr) => {
                                   const current = b.assignments.find((a) => a.role === tr.key)
                                   return (
@@ -497,8 +658,17 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                                   )
                                 })}
                               </div>
-                            ) : b.assignments.length > 0 ? (
+                            ) : b.assignments.length > 0 || b.projectSupervisor ? (
                               <ul className="mt-1 list-inside list-disc text-slate-700">
+                                {/* الليدر ينعرض حتى لو ماكو ولا فني مكلّف:
+                                    هو المسؤول، وغيابه من العرض يخلّي
+                                    الحجز يبان بلا مسؤول وهو إله. */}
+                                {b.projectSupervisor && (
+                                  <li className="font-bold text-amber-800">
+                                    👑 {b.projectSupervisor.name}
+                                    <span className="font-normal text-slate-400"> (تيم ليدر)</span>
+                                  </li>
+                                )}
                                 {/* ═══ وين الليدر؟ ═══
                                     «أني محدد ليدر، جاي يطلعلي فقط فني — وين
                                     الليدر؟». الليدر مو دور تكليف منفصل: هو

@@ -93,6 +93,16 @@ func (r *BookingProgressRepository) PartialComplete(bookingID, reportedByID stri
 		return nil, err
 	}
 
+	// ═══ الطلعة تنسجّل هنا ═══
+	// «الطلعة الأولى تختفي ويُحسب بس الطلعة الثانية — إنتاجية الموظف
+	// بالضيم». التقرير الجزئي يحفظ الكادر **كنص أسماء**، والنص ما
+	// ينعدّ ولا ينربط بموظف. فالطلعة تنسجّل بمعرّفات الكادر، بنفس
+	// المعاملة: لو انقفل اليوم وما انسجّلت طلعته، الموظف يشتغل يوم
+	// كامل وما ينحسبله.
+	if _, err = recordVisitTx(tx, bookingID, "PARTIAL", &percent, &report.ID); err != nil {
+		return nil, err
+	}
+
 	if err = tx.Commit(); err != nil {
 		return nil, err
 	}

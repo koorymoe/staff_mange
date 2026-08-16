@@ -132,6 +132,40 @@ func (s *DisciplineService) penalize(employeeID, employeeName, kind, reason stri
 	log.Printf("[discipline] غرامة: %s — %s (بقي %d)", employeeName, reason, left)
 }
 
+// RunLeaderPaperworkSweep يغرّم **الليدر** الي مرّت ٢٤ ساعة على إنجاز
+// حجزه وما سوّى فاتورته وتقريره.
+//
+// «يتغرّم الليدر إذا ما سوّى تقرير وفاتورة للحجز خلال مدة أقصاها ٢٤
+// ساعة، ويتغرّم الإداري إذا مرّت يومين… هاي شغلة حتى ينجبرون
+// يكملون الحجز».
+//
+// ⚠️ هاي تشتغل **قبل** غرامة الإداري بالوقت (٢٤ مقابل ٤٨): الي سوّى
+// الشغل هو أول من يتحمّل توثيقه، والإداري ينغرم بعدين لأنه ما تابع.
+// والغرامتين نوعين منفصلين بالسجل، فالاثنين ممكن ينغرمون على نفس
+// الحجز إذا التأخير استمر — وهذا مقصود.
+func (s *DisciplineService) RunLeaderPaperworkSweep() {
+	rows, err := s.repo.OverdueLeaderPaperwork(model.DisciplineLeaderPaperworkHours)
+	if err != nil {
+		log.Printf("[discipline] تعذر فحص حجوزات الليدرات المتأخرة: %v", err)
+		return
+	}
+	for i := range rows {
+		r := rows[i]
+		missing := "الفاتورة والتقرير"
+		switch {
+		case r.HasInvoice && !r.HasReport:
+			missing = "التقرير"
+		case !r.HasInvoice && r.HasReport:
+			missing = "الفاتورة"
+		}
+		bid := r.BookingID
+		s.penalize(r.LeaderID, r.LeaderName, model.DisciplineLeaderLatePaperwork,
+			fmt.Sprintf("مرّت %d ساعة على إنجاز الحجز %s وما سوّيت %s",
+				model.DisciplineLeaderPaperworkHours, r.BookingCode, missing),
+			&bid)
+	}
+}
+
 // RunPaperworkSweep يمر على الحجوزات المنجزة الي تأخر ورقها ويغرّم
 // الإداري الي كلّف. يشتغل دورياً بالخلفية.
 func (s *DisciplineService) RunPaperworkSweep() {
@@ -238,12 +272,15 @@ func (s *DisciplineService) CheckAssignmentBalance(adminID, assignedLeaderID, bo
 		&bid)
 }
 
-// StartBackgroundSweeps يشغّل الفحص الدوري. كل ساعة يكفي: المهلة ١٦
-// ساعة، فما اكو داعي نفحص كل دقيقة ونحمّل قاعدة البيانات بلا فايدة.
+// StartBackgroundSweeps يشغّل الفحص الدوري. كل ساعة يكفي: أقصر مهلة
+// ٢٤ ساعة، فما اكو داعي نفحص كل دقيقة ونحمّل قاعدة البيانات بلا فايدة.
 // ⚠️ كل كنسة بحمايتها المنفصلة: انهيار كنسة الأوراق ما يصير يمنع كنسة
 // التدقيق من الشغل بنفس الدورة — وقبل، أي وحدة منهن تسقّط السيرفر كله.
 func (s *DisciplineService) StartBackgroundSweeps() {
 	safeguard.Loop("كنسات الانضباط", 2*time.Minute, time.Hour, func() {
+		// ⚠️ كنسة الليدر أول: هو أول من ينغرم بالوقت (٢٤ مقابل ٤٨)،
+		// والترتيب يخلّي إعلان الغرامتين يطلع بتسلسله المنطقي.
+		safeguard.Run("كنسة أوراق الليدر", s.RunLeaderPaperworkSweep)
 		safeguard.Run("كنسة الأوراق", s.RunPaperworkSweep)
 		safeguard.Run("كنسة التدقيق", s.RunAuditSweep)
 		safeguard.Run("كنسة الاسترجاع", s.RunRestoreSweep)

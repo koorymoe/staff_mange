@@ -61,6 +61,7 @@ func (h *DisciplineHandler) Adjust(w http.ResponseWriter, r *http.Request) {
 // POST /api/discipline/run — تشغيل الفحص فوراً بدل انتظار الدورة.
 // للمالك/المدير حصراً — يفيد بعد ما يعدّل شي ويريد يشوف الأثر حالاً.
 func (h *DisciplineHandler) Run(w http.ResponseWriter, r *http.Request) {
+	h.service.RunLeaderPaperworkSweep()
 	h.service.RunPaperworkSweep()
 	h.service.RunAuditSweep()
 	h.service.RunRestoreSweep()
