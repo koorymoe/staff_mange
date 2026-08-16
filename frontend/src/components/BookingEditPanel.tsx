@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import MultiSelect from './MultiSelect'
 import { api, type Booking, type Service } from '../api'
 import { useSession } from '../session'
 
@@ -72,8 +73,6 @@ export default function BookingEditPanel({
 
   useEffect(() => { api.getServices().then(setServices).catch(() => {}) }, [])
 
-  const toggleService = (id: string) =>
-    setServiceIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
 
   const save = async () => {
     if (serviceIds.length === 0) { setMsg('اختار خدمة وحدة على الأقل'); return }
@@ -126,21 +125,21 @@ export default function BookingEditPanel({
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="sm:col-span-2">
           <label className="mb-1 block text-xs font-medium text-slate-600">الخدمات المطلوبة</label>
-          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-3">
-            {services.map((s) => (
-              <label
-                key={s.id}
-                className={`flex cursor-pointer items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs ${
-                  serviceIds.includes(s.id)
-                    ? 'border-brand-500 bg-white font-bold text-brand-800'
-                    : 'border-slate-200 bg-white text-slate-600'
-                }`}
-              >
-                <input type="checkbox" checked={serviceIds.includes(s.id)} onChange={() => toggleService(s.id)} />
-                {s.name}
-              </label>
-            ))}
-          </div>
+          {/* ═══ قائمة منسدلة مو مربّعات مفتوحة ═══
+              «هاي مال الخدمات المطلوبة — كتلك أريدها قائمة منسدلة، ما
+              أريدها هيج تاخذ نص الشاشة».
+              الخدمات صارن ٣٠+، فالمربّعات المفتوحة تدفن باقي خانات
+              التعديل (السعر، الموعد، الملاحظات) تحتها — الإداري يفتح
+              «تعديل الحجز» عشان يغيّر الموعد فيلگه جدار خدمات.
+              ⚠️ نفس المكوّن الي بالحجز الجديد بالضبط — ما نسوي منتقي
+              ثاني يفترق عنه أول تعديل. */}
+          <MultiSelect
+            options={services.map((sv) => ({ id: sv.id, name: sv.name }))}
+            selected={serviceIds}
+            onChange={setServiceIds}
+            placeholder="اختر الخدمات المطلوبة"
+            emptyText="ماكو خدمات"
+          />
         </div>
 
         <div>

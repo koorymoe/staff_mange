@@ -40,7 +40,12 @@ const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
 ]
 
 export default function Coordinator() {
-  const { employee: currentUser } = useSession()
+  const { employee: currentUser, permissions } = useSession()
+  // منو يكدر يطلب حذف حجز — نفس قائمة شاشة الحجوزات بالضبط، حتى ما
+  // يصير الزر يطلع بشاشة ويختفي بالثانية لنفس الموظف.
+  const canRequestDelete = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER'
+    || currentUser?.role === 'HR_COORDINATOR' || currentUser?.role === 'MONITOR'
+    || (permissions ?? []).includes('booking_delete_request')
   // الحذف (الأرشفة) قرار إداري — المنسّق يأجّل ويحط بالانتظار، بس ما يحذف
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER'
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -292,6 +297,30 @@ export default function Coordinator() {
     api.getProducts().then(setProducts).catch(() => setProducts([]))
     api.getVehicleOptions().then(setVehicles).catch(() => setVehicles([]))
   }, [])
+
+  // ═══ طلب حذف الحجز من شاشة التنسيق ═══
+  //
+  // «ضيفلي هنانه خيار طلب حذف الحجز».
+  //
+  // الحجز التجريبي أو المكرر أو الي الزبون تراجع عنه يوصل هنا مثل
+  // أي حجز، والمنسّق يشوفه قدّامه — بس ما عنده وين يأشّر عليه. فيبقى
+  // بالطابور يزاحم الشغل الحقيقي، أو المنسّق يفتح شاشة الحجوزات
+  // يدوّره من جديد حتى يطلب حذفه.
+  //
+  // ⚠️ **طلب** حذف مو حذف: المراقب أو مدير النظام هو الي يبتّ. نفس
+  // المسار الي بشاشة الحجوزات بالضبط — ما نسوي مسار ثاني للشغلة
+  // الوحدة.
+  const requestDelete = async (booking: Booking) => {
+    const reason = prompt(`سبب طلب حذف الحجز ${booking.code}؟ (تجريبي، ملغى، مكرر...)`)
+    if (!reason || !reason.trim()) return
+    try {
+      await api.requestBookingDelete(booking.id, reason.trim())
+      setSaveError(null)
+      alert('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه')
+    } catch (e) {
+      setSaveError(`تعذر رفع طلب الحذف: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+    }
+  }
 
   const handleSupervisorChange = async (booking: Booking, employeeId: string) => {
     await applyUpdate('تعيين المشرف', () => api.assignSupervisor(booking.id, employeeId || null))
@@ -676,8 +705,16 @@ export default function Coordinator() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-slate-500">
-                    {serviceNames(booking)}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500">{serviceNames(booking)}</span>
+                    {canRequestDelete && (
+                      <button
+                        onClick={() => requestDelete(booking)}
+                        className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
+                      >
+                        🗑️ اطلب حذف الحجز
+                      </button>
+                    )}
                   </div>
                 </div>
 
@@ -933,8 +970,16 @@ export default function Coordinator() {
                       </span>
                     )}
                   </div>
-                  <div className="text-sm text-slate-500">
-                    {serviceNames(booking)}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-slate-500">{serviceNames(booking)}</span>
+                    {canRequestDelete && (
+                      <button
+                        onClick={() => requestDelete(booking)}
+                        className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
+                      >
+                        🗑️ اطلب حذف الحجز
+                      </button>
+                    )}
                   </div>
                 </div>
 
