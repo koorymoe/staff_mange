@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type Stats } from '../api'
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
+import EmployeeAvatar from '../components/EmployeeAvatar'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -52,22 +53,28 @@ const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
   SERVICE_MANAGER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
 }
 
-const avatarGradients: string[] = [
-  'from-blue-500 to-indigo-600',
-  'from-emerald-500 to-teal-600',
-  'from-violet-500 to-purple-600',
-  'from-rose-500 to-pink-600',
-  'from-amber-500 to-orange-600',
-  'from-cyan-500 to-sky-600',
-  'from-fuchsia-500 to-purple-600',
-  'from-lime-500 to-green-600',
-]
+// ⚠️ تدرّجات الأفاتار انشالت: الصورة صارت من `EmployeeAvatar`
+// (صورة الموظف، وإلا حرفه بلون ثابت من اسمه).
 
 export default function Employees() {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
   const { employee: currentUser, permissions: userPermissions } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
+
+  // ═══ حفظ صورة موظف ═══
+  // نحدّث القائمة والمختار بالجواب الراجع من السيرفر — مو بالقيمة الي
+  // دزّيناها، حتى لو رفض أو عدّل تبقى الشاشة تعرض الحقيقة.
+  const savePhoto = async (employeeId: string, url: string | null) => {
+    try {
+      const updated = await api.updateEmployee(employeeId, { photoUrl: url ?? '' })
+      // ⚠️ `selectedEmployee` مشتق من القائمة مو حالة مستقلة، فتحديث
+      // القائمة يكفي — ولو خزّناه بحالة ثانية نفتح باب اختلافهن.
+      setEmployees((prev) => prev.map((e) => (e.id === updated.id ? { ...e, photoUrl: updated.photoUrl } : e)))
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر حفظ الصورة')
+    }
+  }
   // فتح حساب جديد = المالك وحده. `role` ينزّل OWNER لـADMIN حتى تشتغل
   // بقية الشاشات، فالدور الحقيقي بـ`actualRole`.
   //
@@ -237,7 +244,6 @@ export default function Employees() {
     return { completed: techStat?.completed || 0, inProgress: techStat?.totalAssigned || 0, overtime: 0 }
   }
 
-  const getAvatarGradient = (idx: number) => avatarGradients[idx % avatarGradients.length]
 
   const uniqueRoles = [...new Set(baseEmployees.map(e => e.role))]
 
@@ -306,7 +312,7 @@ export default function Employees() {
           {/* Employee Cards Grid */}
           <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pl-2 scrollbar-thin">
             <p className="text-xs font-medium text-slate-400 mb-2">{visibleEmployees.length} موظف</p>
-            {visibleEmployees.map((emp, idx) => {
+            {visibleEmployees.map((emp) => {
               const rc = roleColors[emp.role] || { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-500' }
               const skillCount = emp.skills.filter(s => s.canPerform).length
               const isSelected = selectedId === emp.id
@@ -321,9 +327,10 @@ export default function Employees() {
                   }`}
                 >
                   {isSelected && <span className="absolute right-0 top-1/2 -translate-y-1/2 h-8 w-1 rounded-l-full bg-[#2c5aad]"/>}
-                  <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${getAvatarGradient(idx)} text-base font-bold text-white shadow-md`}>
-                    {emp.name.charAt(0)}
-                    <span className={`absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-white ${emp.onDuty ? 'bg-emerald-500' : 'bg-slate-300'}`}/>
+                  {/* صورة الموظف بالقائمة — الحرف بديل لمن ماكو صورة */}
+                  <div className="relative shrink-0">
+                    <EmployeeAvatar name={emp.name} photoUrl={emp.photoUrl} size="lg" rounded="xl" />
+                    <span className={`pointer-events-none absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-white ${emp.onDuty ? 'bg-emerald-500' : 'bg-slate-300'}`}/>
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-bold text-[#0f2040] truncate">{emp.name}</p>
@@ -363,7 +370,6 @@ export default function Employees() {
               const skillCount = selectedEmployee.skills.filter(s => s.canPerform).length
               const currentLevel = [...levels].reverse().find(l => skillCount >= l.min) || levels[0]
               const nextLevel = levels.find(l => l.min > skillCount)
-              const empIdx = employees.findIndex(e => e.id === selectedEmployee.id)
 
               return (
                 <div>
@@ -372,9 +378,18 @@ export default function Employees() {
                     <div className="absolute top-0 left-0 w-40 h-40 rounded-full bg-white/5 -translate-x-1/2 -translate-y-1/2"/>
                     <div className="absolute bottom-0 right-0 w-32 h-32 rounded-full bg-white/5 translate-x-1/3 translate-y-1/3"/>
                     <div className="relative flex items-start gap-5">
-                      <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br ${getAvatarGradient(empIdx)} text-2xl font-bold text-white shadow-xl ring-4 ring-white/20`}>
-                        {selectedEmployee.name.charAt(0)}
-                      </div>
+                      {/* ⚠️ الرفع هنا لمدير النظام بس — الموظف يبدّل
+                          صورته هو من بطاقته بالقائمة الجانبية، بس
+                          صور بقية الكادر قرار إداري. */}
+                      <EmployeeAvatar
+                        name={selectedEmployee.name}
+                        photoUrl={selectedEmployee.photoUrl}
+                        size="xl"
+                        rounded="xl"
+                        canEdit={isAdmin}
+                        onPhotoChange={(url) => savePhoto(selectedEmployee.id, url)}
+                        className="shrink-0 ring-4 ring-white/20 rounded-2xl"
+                      />
                       <div className="flex-1">
                         <h3 className="text-xl font-extrabold">{selectedEmployee.name}</h3>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2">

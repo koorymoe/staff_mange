@@ -267,6 +267,8 @@ func versionedMigrations() []Migration {
 	// 0248: تسوية الحجوزات القديمة — «تم الإنجاز بدون تفاصيل»، مؤقت
 	// للمالك، ومستثنى من الغرامات لأن شغله صار قبل النظام.
 	result = append(result, legacySettleMigrations()...)
+	// 0249: صورة الموظف — «أضيف صورة بدل الحرف، ومن أضغط عليها تنفتح».
+	result = append(result, employeePhotoMigrations()...)
 	return result
 }
 

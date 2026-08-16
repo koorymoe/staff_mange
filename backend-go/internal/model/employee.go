@@ -17,9 +17,11 @@ const (
 )
 
 type Employee struct {
-	ID              string  `db:"id" json:"id"`
-	Name            string  `db:"name" json:"name"`
-	Certificate     *string `db:"certificate" json:"certificate"`
+	ID          string  `db:"id" json:"id"`
+	Name        string  `db:"name" json:"name"`
+	Certificate *string `db:"certificate" json:"certificate"`
+	// مسار صورة الموظف (`/api/files/...`) — فاضي = نعرض أول حرف اسمه
+	PhotoURL        *string `db:"photoUrl" json:"photoUrl"`
 	Position        *string `db:"position" json:"position"`
 	Phone           *string `db:"phone" json:"phone"`
 	Status          string  `db:"status" json:"status"`
@@ -130,6 +132,7 @@ type UpdateEmployeeRequest struct {
 	HasSafetyCertificate *bool    `json:"hasSafetyCertificate"`
 	IsLeader             *bool    `json:"isLeader"`
 	IsTrainee            *bool    `json:"isTrainee"`
+	PhotoURL             *string  `json:"photoUrl"`
 	Salary               *float64 `json:"salary"`
 	Shift                *string  `json:"shift"`
 	ShiftStart           *string  `json:"shiftStart"`

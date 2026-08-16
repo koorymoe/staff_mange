@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
 import PrivacyPolicyGate from './PrivacyPolicyGate'
+import EmployeeAvatar from './EmployeeAvatar'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
@@ -728,6 +729,22 @@ export default function Layout() {
     }
   }
 
+  // ═══ حفظ صورة الموظف ═══
+  //
+  // «أضيف صورة بدل الحرف، ومن أضغط عليها تنفتح».
+  //
+  // ⚠️ نحدّث الجلسة بالجواب الراجع من السيرفر مو بالقيمة الي دزّيناها:
+  // لو السيرفر عدّل شي (أو رفض) تبقى الواجهة تعرض الحقيقة مو أمنيتنا.
+  const savePhoto = async (url: string | null) => {
+    if (!employee) return
+    try {
+      const updated = await api.updateEmployee(employee.id, { photoUrl: url ?? '' })
+      setEmployee(updated)
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر حفظ الصورة')
+    }
+  }
+
   // نتحقق من هوية الموظف الحقيقية من السيرفر مرة وحدة عند فتح النظام —
   // هذا يصحح تلقائياً أي بيانات جلسة قديمة/معدَّلة (مثلاً بأدوات المطورين
   // بالمتصفح) بقيت محفوظة بذاكرة المتصفح المحلية من قبل، ويسجل خروج
@@ -1250,9 +1267,20 @@ export default function Layout() {
                   <p className="text-sm font-bold text-white">{employee.name}</p>
                   <p className="text-[11px] text-blue-300/60">{roleLabels[employee.actualRole || employee.role]}</p>
                 </div>
-                <div className={`relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-lg`}>
-                  {employee.attendanceIcon || employee.name.charAt(0)}
-                  <span className="absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
+                {/* ═══ صورة الموظف ═══
+                    «أضيف صورة بدل الحرف، ومن أضغط عليها تنفتح».
+                    ⚠️ كل واحد يبدّل **صورته هو** من هنا — مو صور
+                    غيره: هاي بطاقته الشخصية بالقائمة. */}
+                <div className="relative">
+                  <EmployeeAvatar
+                    name={employee.name}
+                    photoUrl={employee.photoUrl}
+                    size="md"
+                    rounded="xl"
+                    canEdit
+                    onPhotoChange={savePhoto}
+                  />
+                  <span className="pointer-events-none absolute -bottom-0.5 -left-0.5 h-3 w-3 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
                 </div>
               </div>
               <div className="mt-3 flex items-center gap-2">
@@ -1265,9 +1293,9 @@ export default function Layout() {
             </div>
           ) : (
             <div className="mx-auto mb-3">
-              <div className={`relative flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-lg`}>
-                {employee.attendanceIcon || employee.name.charAt(0)}
-                <span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
+              <div className="relative">
+                <EmployeeAvatar name={employee.name} photoUrl={employee.photoUrl} size="md" rounded="xl" />
+                <span className="pointer-events-none absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
               </div>
             </div>
           )}

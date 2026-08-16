@@ -167,6 +167,7 @@ func (r *EmployeeRepository) Update(e *model.Employee) error {
 		UPDATE "Employee" SET
 			name = :name,
 			certificate = :certificate,
+			"photoUrl" = :photoUrl,
 			position = :position,
 			phone = :phone,
 			status = :status,

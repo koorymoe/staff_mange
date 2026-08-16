@@ -170,6 +170,15 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 	if req.IsTrainee != nil {
 		employee.IsTrainee = *req.IsTrainee
 	}
+	// ⚠️ نص فاضي = **شيل الصورة** (يرجع للحرف الأول)، وغياب الحقل
+	// كلياً = لا تلمسها. بلا هذا الفرق ما تكدر تشيل صورة انرفعت غلط.
+	if req.PhotoURL != nil {
+		if *req.PhotoURL == "" {
+			employee.PhotoURL = nil
+		} else {
+			employee.PhotoURL = req.PhotoURL
+		}
+	}
 	if req.Salary != nil {
 		employee.Salary = req.Salary
 	}

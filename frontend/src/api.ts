@@ -105,6 +105,8 @@ export interface Employee {
   id: string
   name: string
   certificate: string | null
+  /** مسار صورة الموظف — فاضي يعني نعرض أول حرف اسمه */
+  photoUrl?: string | null
   position: string | null
   phone: string | null
   status: 'ACTIVE' | 'INACTIVE' | 'ARCHIVED' | 'DELETED' | 'SUSPENDED'
@@ -3403,7 +3405,7 @@ export const api = {
     data: Partial<
       Pick<
         Employee,
-        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'phone' | 'certificate' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
+        'role' | 'onDuty' | 'status' | 'name' | 'position' | 'phone' | 'certificate' | 'photoUrl' | 'hasDrivingLicense' | 'hasSafetyCertificate' | 'isTrainee'
         | 'isLeader' | 'salary' | 'shift' | 'shiftStart' | 'shiftEnd' | 'monthlyLeaves' | 'jobTitle'
         // ملف الموارد البشرية — careerStatus ما تنرسل: تنحسب بالسيرفر
         | 'department' | 'hireDate' | 'experienceYears' | 'lastReview' | 'jobLevel' | 'nextRole' | 'trainingNeeds'
