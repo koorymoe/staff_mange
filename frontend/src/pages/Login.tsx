@@ -92,6 +92,8 @@ export default function Login() {
     <div className="login-stage relative flex min-h-screen items-center justify-center overflow-hidden p-4">
       {/* ═══ الخلفية ═══ شبكة وتوهّج، بلا أي صورة تنحمّل */}
       <div className="login-grid" aria-hidden />
+      <div className="login-skyline" aria-hidden />
+      <div className="login-center-aura" aria-hidden />
       {dots.map((o, i) => (
         <span
           key={i}
@@ -103,16 +105,19 @@ export default function Login() {
       {/* ═══ خدمات الشركة حول البطاقة ═══
           ⚠️ تنخفي تحت 1280px: هاي زينة تحيط ببطاقة الدخول، وبالموبايل
           تصير جدار نصوص يدفن الخانات الي جاي عشانها الموظف. */}
-      <div className="pointer-events-none absolute right-6 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-7 xl:flex 2xl:right-16">
+      <div className="login-service-column login-services-right" aria-hidden="true">
         {RIGHT_SERVICES.map((it) => <ServiceCard key={it.title} item={it} side="right" />)}
       </div>
-      <div className="pointer-events-none absolute left-6 top-1/2 z-10 hidden -translate-y-1/2 flex-col gap-7 xl:flex 2xl:left-16">
+      <div className="login-service-column login-services-left" aria-hidden="true">
         {LEFT_SERVICES.map((it) => <ServiceCard key={it.title} item={it} side="left" />)}
       </div>
 
+      <div className="login-platform" aria-hidden>
+        <span /><span /><span />
+      </div>
       <form
         onSubmit={handleSubmit}
-        className="login-card relative z-20 flex w-full max-w-[420px] flex-col items-center rounded-[2.2rem] px-7 py-10 sm:px-9"
+        className="login-card relative z-20 flex w-full max-w-[430px] flex-col items-center rounded-[2.2rem] px-7 py-8 sm:px-9"
       >
         <div className="login-logo flex h-20 w-20 items-center justify-center rounded-3xl">
           <img src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="شعار شركة الأماني" className="h-12 w-12 object-contain" />
