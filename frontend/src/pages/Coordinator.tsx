@@ -7,11 +7,9 @@ import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
 import BookingLifecycleActions from '../components/BookingLifecycleActions'
-import { formatScheduleWindow } from '../utils/schedule'
 import { COMPLETION_ORDER, completionLabel } from '../components/completionStates'
 import { matches as searchMatches } from '../utils/search'
 import EntityIdentity from '../components/EntityIdentity'
-import BookingRoutingNotes from '../components/BookingRoutingNotes'
 import BookingTimelineView from '../components/BookingTimeline'
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
@@ -52,16 +50,17 @@ export default function Coordinator() {
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
   // الحجز الي قيد التثبيت حالياً — الأزرار كانت بلا أي إشارة انتظار، فالمستخدم
   // يحس النظام بطيء أو معلّق ويضغط عدة مرات.
-  const [confirmingId, setConfirmingId] = useState<string | null>(null)
   const [search, setSearch] = useState('')
   const [supervisors, setSupervisors] = useState<Employee[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   // قيم التثبيت (التكلفة المقدرة + العنوان + الموعد) قبل الضغط على تثبيت
-  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({})
-  const [addressDrafts, setAddressDrafts] = useState<Record<string, string>>({})
-  const [scheduleDrafts, setScheduleDrafts] = useState<Record<string, string>>({})
+  // مسوّدات المواعيد الي لسه ما انحفظن — تنحجز بالمواعيد المتاحة حتى
+  // ما ينختار نفس الوقت لحجزين بنفس اللحظة.
+  // ⚠️ صارت للقراءة بس بعد ما انشال قسم «بانتظار التثبيت» (التثبيت
+  // صار بمحطته)، وخلّيناها لأن حجز المواعيد يعتمد عليها.
+  const [scheduleDrafts] = useState<Record<string, string>>({})
 
   // سلة المنتجات
   const [cartItems, setCartItems] = useState<Record<string, CartItem[]>>({})
@@ -361,38 +360,6 @@ export default function Coordinator() {
     await applyUpdate('تعيين المشرف', () => api.assignSupervisor(booking.id, employeeId || null))
   }
 
-  const handleConfirm = async (booking: Booking, transferToProjects: boolean) => {
-    if (confirmingId) return // منع الضغط المتكرر
-    setConfirmingId(booking.id)
-    try {
-    const priceValue = priceDrafts[booking.id]
-    const addressValue = addressDrafts[booking.id]
-    const scheduleValue = scheduleDrafts[booking.id]
-    const updated = await api.confirmBooking(booking.id, {
-      confirmedByName: currentUser?.name || 'الإداري',
-      confirmedByEmployeeId: currentUser?.id,
-      transferToProjects,
-      quotedPrice: priceValue ? Number(priceValue) : undefined,
-      address: addressValue || undefined,
-      scheduledAt: scheduleValue || undefined,
-    })
-    setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
-    if (!transferToProjects && updated.service) loadMatches([updated], updated.service.id)
-    } catch (e) {
-      // بدون هذا كان الفشل يمر بصمت والمستخدم يضل ينتظر بلا أي إشارة
-      alert(e instanceof Error ? e.message : 'تعذر تثبيت الحجز')
-    } finally {
-      setConfirmingId(null)
-    }
-  }
-
-  // "تم" — الإداري يضغطها بعد ما يتواصل فعلياً مع الزبون ويقفل الاتفاق، قبل
-  // الضغط على التثبيت النهائي (تثبيت وترحيل/تحويل). هذا يسجل توقيت منفصل يقدر
-  // يشوفه لاحقاً موظف مراقب بصلاحية crew_management للتدقيق.
-  const handleMarkContacted = async (booking: Booking) => {
-    await applyUpdate('تسجيل التواصل مع الزبون', () => api.markConfirmationContacted(booking.id))
-  }
-
   const handleScheduleChange = async (booking: Booking, value: string) => {
     if (!value) return
     await applyUpdate('تحديد الموعد', () => api.scheduleBooking(booking.id, value, currentUser?.id))
@@ -507,7 +474,6 @@ export default function Coordinator() {
     // بكود الزبون جان ما يطابق ولا حجز أبداً، بصمت.
     return searchMatches([b.code, formatCustomerCode(b.customer), b.customer?.phone, b.customer?.name], search)
   }
-  const pendingBookings = bookings.filter((b) => b.status === 'PENDING' && matchesSearch(b))
   const confirmedBookings = bookings.filter((b) => b.status === 'CONFIRMED' && matchesSearch(b))
 
   // ═══ التثبيت شي والتنسيق شي ثاني ═══
@@ -698,253 +664,23 @@ export default function Coordinator() {
             />
             {search.trim() && (
               <p className="mt-2 text-xs text-slate-500">
-                النتائج: {pendingBookings.length} بانتظار التثبيت · {confirmedBookings.length} مثبّت
+                النتائج: {confirmedBookings.length} حجز مثبّت
               </p>
             )}
           </div>
 
-          {/* بانتظار التثبيت */}
-          <h3 className="mt-6 mb-3 text-lg font-bold text-brand-800">
-            بانتظار التثبيت ({pendingBookings.length})
-          </h3>
-          <div className="flex flex-col gap-4">
-            {pendingBookings.map((booking) => (
-              <div
-                key={booking.id}
-                className="rounded-xl border border-amber-200 bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="font-mono text-sm font-semibold text-brand-600">
-                      {booking.code}
-                    </span>
-                    <span className="mr-3 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
-                      بانتظار التثبيت
-                    </span>
-                    {/* منو رحّل الحجز — أول سؤال ينسأل لما المعلومة
-                        ناقصة، وكان ينسأل بالتلفون لأنه مو مكتوب. */}
-                    {booking.createdByName && (
-                      <span className="mr-2 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-bold text-slate-700">
-                        📝 رحّله: {booking.createdByName}
-                      </span>
-                    )}
-                    {/* شوكت وصل هذا الحجز للتنسيق */}
-                    <span className="mr-2 text-xs text-slate-400">
-                      وصل للتنسيق: {new Date(booking.confirmedAt || booking.createdAt).toLocaleString('ar-IQ', {
-                        year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
-                      })}
-                    </span>
-                    {booking.priority === 'URGENT' && (
-                      <span className="mr-2 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
-                        عاجل
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-500">{serviceNames(booking)}</span>
-                    {isOwner && (
-                      <button
-                        onClick={() => settleLegacy(booking)}
-                        className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
-                        title="حجز قديم ما نعرف كادره ولا تكلفته — ينقفل منجزاً بلا تفاصيل، ومستثنى من الغرامات"
-                      >
-                        ✅ تم الإنجاز (بدون تفاصيل)
-                      </button>
-                    )}
-                    {canRequestDelete && (
-                      <button
-                        onClick={() => requestDelete(booking)}
-                        className="rounded-full bg-red-50 px-3 py-1 text-xs font-bold text-red-700 transition-colors hover:bg-red-100"
-                      >
-                        🗑️ اطلب حذف الحجز
-                      </button>
-                    )}
-                  </div>
-                </div>
+          {/* ═══ «بانتظار التثبيت» انشالت من هنا ═══
+              «الحجوزات جاي تعبر بالمراحل — عندي حجز لم ينسق بعد،
+              شعدنا يطلع بتم التثبيت؟ أريدك تلتزم بالآلية الصحيحة».
 
-                <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
-                  <div>
-                    <span className="text-slate-400">الزبون: </span>
-                    <span className="font-medium text-brand-800">{booking.customer?.name || 'زبون غير معروف'}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-400">الهاتف: </span>
-                    {booking.customer?.phone || '-'}
-                  </div>
-                  <div>
-                    <span className="text-slate-400">الموقع المسجل: </span>
-                    {booking.customer?.location || '-'}
-                  </div>
-                </div>
-                {booking.notes && (
-                  <p className="mt-2 text-sm text-slate-500">
-                    <span className="text-slate-400">ملاحظات الزبون: </span>
-                    {booking.notes}
-                  </p>
-                )}
+              هذا القسم كان **باب ثاني** يثبّت الحجز من شاشة التنسيق
+              مباشرة، فيتخطى البوابة الي اتفقنا عليها: تواصل وية
+              الزبون ← ثبّت ورحّل. يعني حجز يوصل «تم التثبيت» بلا ما
+              يمر بـ«بانتظار التثبيت» ولا أحد حچى وية زبونه.
 
-                <div className="mt-4 rounded-lg bg-slate-50 p-4">
-                  <h4 className="text-sm font-bold text-brand-800">
-                    بعد الاتفاق مع الزبون، حدد التفاصيل قبل التثبيت
-                  </h4>
-                  <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">
-                        التكلفة المقدرة (اختياري)
-                      </label>
-                      <input
-                        type="number"
-                        placeholder="مثال: 150000"
-                        value={priceDrafts[booking.id] || ''}
-                        onChange={(e) =>
-                          setPriceDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
-                        }
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">
-                        عنوان تنفيذ المهمة (اختياري)
-                      </label>
-                      <input
-                        placeholder="عنوان مفصل لموقع تنفيذ المهمة"
-                        value={addressDrafts[booking.id] || ''}
-                        onChange={(e) =>
-                          setAddressDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
-                        }
-                        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="mb-1 block text-sm font-medium text-slate-600">
-                        الموعد المحدد للزبون
-                      </label>
-                      <div className="flex gap-2">
-                        {scheduleMode[booking.id] === 'manual' ? (
-                          <input
-                            type="datetime-local"
-                            value={scheduleDrafts[booking.id] || ''}
-                            onChange={(e) =>
-                              setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
-                            }
-                            className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                          />
-                        ) : (
-                          <select
-                            value={scheduleDrafts[booking.id] || ''}
-                            onChange={(e) =>
-                              setScheduleDrafts((prev) => ({ ...prev, [booking.id]: e.target.value }))
-                            }
-                            className="flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
-                          >
-                            <option value="">-- اختر موعد --</option>
-                            {getAvailableSlots(booking.id).map(s => (
-                              <option key={s.value} value={s.value} disabled={s.label.includes('محجوز')}>
-                                {s.label}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setScheduleMode(prev => ({ ...prev, [booking.id]: prev[booking.id] === 'manual' ? 'slots' : 'manual' }))}
-                          className="rounded-lg border border-slate-300 px-3 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-50"
-                        >
-                          {scheduleMode[booking.id] === 'manual' ? 'المواعيد' : 'يدوي'}
-                        </button>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-400">
-                        اختر من المواعيد المتاحة أو اكتب يدوياً
-                      </p>
-                      {/* ═══ تنبيه التعارض ═══ */}
-                      {(() => {
-                        const clash = conflictsFor(booking.id, scheduleDrafts[booking.id] || '')
-                        if (clash.length === 0) return null
-                        const free = getAvailableSlots(booking.id).slice(0, 3)
-                        return (
-                          <div className="mt-2 rounded-xl border-2 border-amber-300 bg-amber-50 px-3 py-2">
-                            <p className="text-xs font-extrabold text-amber-900">
-                              ⚠️ اكو {clash.length === 1 ? 'حجز' : `${clash.length} حجوزات`} بنفس الوقت تقريباً
-                            </p>
-                            <ul className="mt-1 space-y-0.5 text-[11px] text-amber-900">
-                              {clash.map((c) => (
-                                <li key={c.id}>
-                                  • <span className="font-mono font-bold">{c.code}</span> — {c.customer?.name || 'زبون'}
-                                  {' · '}{formatScheduleWindow(c.scheduledAt, c.scheduledEndAt)}
-                                </li>
-                              ))}
-                            </ul>
-                            {free.length > 0 && (
-                              <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-amber-200 pt-2">
-                                <span className="text-[10px] font-bold text-amber-800">أوقات فاضية:</span>
-                                {free.map((f) => (
-                                  <button
-                                    key={f.value}
-                                    type="button"
-                                    onClick={() => setScheduleDrafts((prev) => ({ ...prev, [booking.id]: f.value }))}
-                                    className="rounded-lg bg-white px-2 py-1 text-[10px] font-bold text-amber-800 ring-1 ring-amber-300 hover:bg-amber-100"
-                                  >
-                                    {f.label}
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                            <p className="mt-1.5 text-[10px] text-amber-700">
-                              تنبيه بس — تكدر تكمّل إذا كنت تقصدها (كادرين مختلفين مثلاً).
-                            </p>
-                          </div>
-                        )
-                      })()}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-3">
-                  {booking.confirmationContactedAt ? (
-                    <div className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700">
-                      ✅ تم التواصل مع الزبون وإقفال الاتفاق ({booking.confirmationContactedBy?.name || 'الإداري'}) —{' '}
-                      {new Date(booking.confirmationContactedAt).toLocaleString('ar-IQ')}
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => handleMarkContacted(booking)}
-                      className="w-full rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700 transition-all hover:bg-emerald-100"
-                    >
-                      تم — تواصلت مع الزبون وأقفلت الاتفاق
-                    </button>
-                  )}
-                </div>
-
-                {/* الملاحظة تنكتب **قبل** الترحيل: بعده الإداري ينتقل
-                    للحجز الجاي وما يرجعله. */}
-                <BookingRoutingNotes
-                  booking={booking}
-                  onSaved={(u) => setBookings((prev) => prev.map((b) => (b.id === u.id ? u : b)))}
-                />
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handleConfirm(booking, false)}
-                    disabled={confirmingId !== null}
-                    className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg disabled:opacity-50"
-                  >
-                    {confirmingId === booking.id ? 'جاري الترحيل...' : 'تثبيت وترحيل لكادر الشد'}
-                  </button>
-                  <button
-                    onClick={() => handleConfirm(booking, true)}
-                    disabled={confirmingId !== null}
-                    className="rounded-lg border border-brand-300 px-4 py-2 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-50 disabled:opacity-50"
-                  >
-                    {confirmingId === booking.id ? 'جاري التحويل...' : 'تثبيت وتحويل لإدارة المشاريع'}
-                  </button>
-                </div>
-              </div>
-            ))}
-            {pendingBookings.length === 0 && (
-              <p className="text-slate-400">لا توجد حجوزات بانتظار التثبيت.</p>
-            )}
-          </div>
-
+              التثبيت صار بمكان واحد: محطة «بانتظار التثبيت». وشاشة
+              التنسيق تستلم **المثبّت** بس — وهذا الي يخلّي المراحل
+              تمشي وحدة بعد وحدة بدل ما تتقافز. */}
           {/* تم تثبيتها — مقسومة: المحتاجة تنسيق فوگ، المنسّقة تحت */}
           <h3 className="mt-8 mb-1 text-lg font-bold text-brand-800">
             تم تثبيتها ({confirmedBookings.length})
@@ -1171,6 +907,25 @@ export default function Coordinator() {
                         {scheduleMode[`c_${booking.id}`] === 'manual' ? 'المواعيد' : 'يدوي'}
                       </button>
                     </div>
+
+                    {/* ═══ تنبيه التعارض ═══
+                        «خلي من أخلي وقت للحجز ينطيني تنبيه إنو أكو حجز
+                        بهذا الوقت».
+                        ⚠️ كان معلّقاً بقسم «بانتظار التثبيت» الي
+                        انشال، فانفقد وياه. رجّعته لخانة الموعد
+                        الفعّالة — هاي المكان الي ينحدد بيه الموعد
+                        فعلاً هسه. */}
+                    {(() => {
+                      const clash = conflictsFor(booking.id, booking.scheduledAt || '')
+                      if (clash.length === 0) return null
+                      return (
+                        <p className="mt-1.5 rounded-lg bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-800">
+                          ⚠️ أكو {clash.length} حجز بنفس الوقت تقريباً:{' '}
+                          {clash.slice(0, 3).map((c) => c.code).join('، ')}
+                          {clash.length > 3 && ` +${clash.length - 3}`}
+                        </p>
+                      )
+                    })()}
                     {booking.scheduleLogs?.length > 0 && (
                       <details className="mt-1">
                         <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600">سجل التعديلات ({booking.scheduleLogs.length})</summary>

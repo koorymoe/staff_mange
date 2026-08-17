@@ -35,20 +35,27 @@ const startedSQL = `(b."startedAt" IS NOT NULL OR b."arrivedAt" IS NOT NULL
 
 // bucketCondition يرجّع شرط المحطة، أو نص فاضي للـ«الكل».
 func bucketCondition(bucket string) string {
+	// ⚠️ المطلوب حذفه ينستثنى من **كل** المحطات ويروح لمحطته: بقاؤه
+	// بالطابور يعني الإداري يشتغل على حجز يمكن ينحذف.
+	notDeleting := ` AND NOT ` + deletePendingSQL
+
 	switch bucket {
+	// محطة مستقلة: ينتظر قرار المراقب
+	case "delete_pending":
+		return deletePendingSQL
 	// ١ — انسجّل وما انثبّت بعد: ولا كادر ولا تنفيذ
 	case "pending":
 		return `b."confirmedAt" IS NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED')`
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting
 	// ٢ — انثبّت وينتظر موعداً وكادراً
 	case "confirmed":
 		return `b."confirmedAt" IS NOT NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED')`
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting
 	// ٤ — عليه كادر أو بدا التنفيذ، وما خلص
 	// ⚠️ «أو» مو «و»: حجز باشر بيه الليدر بلا تكليف رسمي لازم يبقى مرئي.
 	case "assigned":
 		return `(` + hasCrewSQL + ` OR ` + startedSQL + `)
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED', 'PARTIAL')`
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED', 'PARTIAL')` + notDeleting
 	// ٦ — خلص. المنجز جزئياً **مو** هنا: صارله محطته.
 	case "done":
 		return `b.status = 'COMPLETED'`
@@ -64,6 +71,16 @@ func bucketCondition(bucket string) string {
 	}
 	return ""
 }
+
+// ═══ حجز مطلوب حذفه ═══
+// «الحجوزات الي ينحذفن أريدهن يترحّلن بعد، ينتقلن مرحلة مرحلة، ما
+// أريد يضلن بمكان واحد».
+//
+// ⚠️ ينشال من محطته الطبيعية: الإداري ما يجوز يضيّع وقته يدوّر كادراً
+// لحجز يمكن ينحذف بعد ساعة. وإذا انرفض الطلب، يرجع لمحطته لحاله لأن
+// المحطة تنحسب من حالته مو من علامة ثابتة.
+const deletePendingSQL = `EXISTS (SELECT 1 FROM "BookingDeleteRequest" dr
+	WHERE dr."bookingId" = b.id AND dr.status = 'PENDING')`
 
 const hasInvoiceSQL = `EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`
 const hasReportSQL = `EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)`
@@ -132,12 +149,17 @@ func (r *BookingRepository) ListPaged(q BookingPageQuery) ([]model.Booking, int,
 		page = 1
 	}
 
-	// ⚠️ الترتيب هنا يطابق الواجهة: طابور الانتظار **الأقدم أول**
-	// (الي منتظر أكثر أولى)، وباقي المحطات الأحدث أول.
+	// ═══ الأحدث أول — بكل المحطات ═══
+	//
+	// «الحجوزات الي بانتظار التثبيت بيهن مشكلة: الحجز القديم يطلع أول
+	// واحد والجديد آخر واحد، لازم ينعكسن — احنا نمشي من الأحدث
+	// للأقدم».
+	//
+	// ⚠️ كنت خليت طابور الانتظار **الأقدم أول** باجتهاد مني (الي منتظر
+	// أكثر أولى)، وهذا خالف طريقة شغلهم: الحجز الي وصل توّه هو الي
+	// ينتظر تواصل، والقديم أغلبه انعالج. صار الترتيب واحداً بكل
+	// المحطات — الأحدث أول.
 	order := `ORDER BY COALESCE(b."scheduledAt", b."createdAt") DESC`
-	if q.Bucket == "pending" {
-		order = `ORDER BY COALESCE(b."scheduledAt", b."createdAt") ASC`
-	}
 
 	args = append(args, pageSize, (page-1)*pageSize)
 	query := fmt.Sprintf(`SELECT b.* FROM "Booking" b WHERE %s %s LIMIT $%d OFFSET $%d`,

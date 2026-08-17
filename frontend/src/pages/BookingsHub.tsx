@@ -37,26 +37,29 @@ import StageBucketsPage from './StageBucketsPage'
 // بالضبط وين تصير بالواقع.
 const TABS = [
   // ١ — الإدخال
-  { key: 'new' as const, label: 'حجز جديد', icon: '＋', step: '١' },
+  { key: 'new' as const, label: 'حجز جديد', icon: '＋' },
   // ٢ — شاشة الشغل: المنسّق يفتحها أول ما يدخل، فمحلها بالمقدمة
-  { key: 'coord' as const, label: 'تنسيق الحجوزات', icon: '🧩', step: '٢' },
+  { key: 'coord' as const, label: 'تنسيق الحجوزات', icon: '🧩' },
   // ٣ — انسجّل وما أحد حچى وية زبونه بعد
-  { key: 'pending' as const, label: 'بانتظار التثبيت — بحاجة لتنسيق', icon: '⏳', step: '٣' },
+  { key: 'pending' as const, label: 'بانتظار التثبيت — بحاجة لتنسيق', icon: '⏳' },
   // ٤ — انثبّت وانرحّل، وينتظر كادراً
-  { key: 'confirmed' as const, label: 'تم التثبيت — بحاجة لكادر', icon: '✅', step: '٤' },
+  { key: 'confirmed' as const, label: 'تم التثبيت — بحاجة لكادر', icon: '✅' },
   // ٥ — انكلّف عليه كادر، وينتظر يوم التنفيذ
-  { key: 'assigned' as const, label: 'مكلّف — بانتظار التنفيذ', icon: '👥', step: '٥' },
+  { key: 'assigned' as const, label: 'مكلّف — بانتظار التنفيذ', icon: '👥' },
   // ٦ — الاتجاه الأول بعد التكليف
   // «بعد ما يوصل الحجز مرحلة التكليف راح ياخذ اتجاهين: الاتجاه الأول
   // الي هو تم الإنجاز… وراها بنود نتفرّع».
   // التفرّعات (كامل · بلا فاتورة · بلا تقرير · بلا الاثنين) تنفتح
   // جوّا الشاشة مو كخيارات بالصف الأعلى.
-  { key: 'done' as const, label: 'تم الإنجاز', icon: '🏁', step: '٦' },
+  { key: 'done' as const, label: 'تم الإنجاز', icon: '🏁' },
   // ٧ — طلع الكادر وما خلّص: يحتاج موعد إكمال
-  { key: 'partial' as const, label: 'تحتاج إكمال', icon: '🔄', step: '٧' },
+  { key: 'partial' as const, label: 'تحتاج إكمال', icon: '🔄' },
   // ٨ — والاتجاه الثاني: الي ما وصل
   // «اكو حجوزات ما توصل — الزبون يلغي أو ما يرد، لازم تترتب».
-  { key: 'stuck' as const, label: 'ما وصلت للتنفيذ', icon: '🚫', step: '٨' },
+  { key: 'stuck' as const, label: 'ما وصلت للتنفيذ', icon: '🚫' },
+  // ٩ — مخرج ثاني: انطلب حذفه وينتظر قرار المراقب
+  // «الحجوزات الي ينحذفن أريدهن يترحّلن بعد، ما أريد يضلن بمكان واحد».
+  { key: 'deleting' as const, label: 'بانتظار قرار الحذف', icon: '🗑️' },
 ]
 
 
@@ -83,14 +86,22 @@ export default function BookingsHub() {
     || (t.key === 'stuck' && canCoord)
     // «تحتاج إكمال» شغل تنسيق: منو يحدد موعد الإكمال
     || (t.key === 'partial' && canCoord)
-    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial'),
+    // متابعة طلبات الحذف شغل تنسيق/إشراف
+    || (t.key === 'deleting' && canCoord)
+    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting'),
   )
 
   return (
     <div dir="rtl">
       {/* ═══ الخيارات ═══ */}
       {shown.length > 1 && (
-        <div className="mb-4 grid grid-cols-2 gap-1.5 sm:grid-cols-3 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-flex sm:gap-2">
+        // ═══ الشريط يبقى بمكانه ═══
+        // «من أنزل لجوّه أشوف الحجوزات البعيدة ما أريدهن يصعدن لفوگ،
+        // أريدهن يضلن ثابتات».
+        // ⚠️ `sticky` مو `fixed`: يبقى جوّا تدفّق الصفحة فما يغطي
+        // المحتوى ولا يحتاج حساب ارتفاع يدوي. وz-30 يخلّيه فوگ صفوف
+        // الجدول ولاصق تحت رأس الصفحة.
+        <div className="sticky top-0 z-30 mb-4 grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.08)] backdrop-blur sm:inline-flex sm:gap-2">
           {shown.map((t) => (
             <button
               key={t.key}
@@ -101,14 +112,6 @@ export default function BookingsHub() {
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
-              {/* رقم المحطة — يخلّي الطريق مقروء بنظرة */}
-              {t.step && (
-                <span className={`ml-1 rounded-md px-1.5 py-0.5 text-[9px] font-black ${
-                  tab === t.key ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'
-                }`}>
-                  {t.step}
-                </span>
-              )}
               {t.icon} {t.label}
             </button>
           ))}
@@ -128,6 +131,7 @@ export default function BookingsHub() {
       {tab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
       {tab === 'partial' && <PartialBookings />}
       {tab === 'done' && <BookingsList key="done" bucket="done" />}
+      {tab === 'deleting' && <BookingsList key="deleting" bucket="delete_pending" />}
       {tab === 'stuck' && <StageBucketsPage />}
     </div>
   )
