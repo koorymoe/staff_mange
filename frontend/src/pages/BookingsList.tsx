@@ -7,9 +7,9 @@ import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
 import BookingVisits from '../components/BookingVisits'
-import { matches } from '../utils/search'
-import { BOOKING_STAGES, currentStage, executionStarted } from '../bookingStage'
+import { BOOKING_STAGES, currentStage } from '../bookingStage'
 import { BUCKET_HEADINGS, DONE_FILTERS, type BookingBucket, type DoneFilter } from './bookingBuckets'
+import Pager from '../components/Pager'
 
 export type { BookingBucket } from './bookingBuckets'
 
@@ -40,12 +40,6 @@ function formatDateArabic(dateStr: string) {
   return new Date(`${dateStr}T00:00:00`).toLocaleDateString('ar-IQ', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
 }
 
-// موعد الحجز الفعلي (الموعد المحدد للزبون) هو المعيار الصح للفلترة بالتاريخ —
-// لو ما محدد موعد بعد (لسا ما تنسّق)، نرجع لتاريخ التسجيل حتى الحجز يبقى قابل
-// للعثور عليه بدل ما يضيع من كل الفلاتر.
-function relevantDate(b: Booking): string {
-  return b.scheduledAt || b.createdAt
-}
 
 const techRoleLabels: Record<string, string> = {
   TECH_1: 'الفني الأول',
@@ -75,6 +69,17 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   const [selectedDate, setSelectedDate] = useState<string | null>(bucket === 'pending' ? null : todayStr())
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [doneFilter, setDoneFilter] = useState<DoneFilter>('ALL')
+  // ═══ الترقيم بالسيرفر ═══
+  //
+  // «حتى لا يضل يحمّل السيرفر بتحميل كل الحجوزات — يحمّل جزء جزء».
+  //
+  // ⚠️ الشاشة كانت تسحب **كل** حجوزات الفلتر وتفرزهن بالمتصفح على
+  // المحطات. يعني حتى لو الإداري راح يشوف عشرة، السيرفر يجهّز الآلاف
+  // ويمرّرهن بالشبكة — ومع تراكم السنين تصير كل فتحة شاشة سحبة ثقيلة
+  // على القاعدة وعلى تلفون الموظف.
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+  const [total, setTotal] = useState(0)
   const dateInputRef = useRef<HTMLInputElement>(null)
   const monthInputRef = useRef<HTMLInputElement>(null)
   const isAdmin = employee?.role === 'ADMIN'
@@ -250,20 +255,51 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     }
   }
 
+  // ═══ البحث ينتظر ما تخلص كتابة ═══
+  // البحث صار بالسيرفر، فنداء بكل حرف يعني عشر نداءات باسم زبون
+  // واحد. نص ثانية سكوت تكفي.
+  const [searchQ, setSearchQ] = useState('')
   useEffect(() => {
-    // نطلب من السيرفر يوم واحد بس (لو محدد) بدل ما نجيب كل أرشيف الحجوزات التاريخي
-    // ونفلتره بالواجهة — نفس المشكلة اللي صلحناها بصفحة تنسيق الحجوزات، وهذي الصفحة
-    // كانت أسوأ لأنها ما تفلتر بالحالة إطلاقاً (كل الحجوزات من كل الأزمنة).
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLoading(true)
-    // فلتر الشهر يحتاج كل الحجوزات (نفلترها بالواجهة)، أما فلتر يوم واحد فنطلبه
-    // من السيرفر مباشرة (أخف على قاعدة البيانات) — الاثنين ما ينفعون بنفس الوقت.
-    api
-      .getBookings(selectedMonth ? undefined : selectedDate ? { date: selectedDate } : undefined)
-      .then(setBookings)
-      .catch((e) => setError(e.message))
-      .finally(() => setLoading(false))
-  }, [selectedDate, selectedMonth])
+    const t = setTimeout(() => { setSearchQ(search.trim()); setPage(1) }, 400)
+    return () => clearTimeout(t)
+  }, [search])
+
+  // ⚠️ أي تبديل بالفلاتر يرجّع للصفحة الأولى: البقاء بصفحة ٧ بعد فلتر
+  // جديد يعني شاشة فاضية والإداري يظن ماكو نتائج.
+  useEffect(() => {
+    const t = setTimeout(() => setPage(1), 0)
+    return () => clearTimeout(t)
+  }, [selectedDate, selectedMonth, doneFilter, bucket])
+
+  useEffect(() => {
+    let alive = true
+    const t = setTimeout(() => {
+      setLoading(true)
+      // تفرّعات «تم الإنجاز» تنفلتر بالسيرفر كمان — الفاتورة والتقرير
+      // ينتفحصون بالقاعدة مو بجلب الكل وفرزه بالمتصفح.
+      const serverBucket = bucket === 'done' && doneFilter !== 'ALL'
+        ? `done_${doneFilter.replace('DONE_', '').toLowerCase()}`
+        : bucket
+      api
+        .getBookingsPaged({
+          bucket: serverBucket,
+          search: searchQ || undefined,
+          date: selectedMonth ? undefined : selectedDate || undefined,
+          month: selectedMonth || undefined,
+          page,
+          pageSize: perPage,
+        })
+        .then((res) => {
+          if (!alive) return
+          setBookings(res.items ?? [])
+          setTotal(res.total ?? 0)
+          setError(null)
+        })
+        .catch((e) => { if (alive) setError(e.message) })
+        .finally(() => { if (alive) setLoading(false) })
+    }, 0)
+    return () => { alive = false; clearTimeout(t) }
+  }, [bucket, doneFilter, searchQ, selectedDate, selectedMonth, page, perPage])
 
   // ═══ شنو يطلع بهاي الشاشة ═══
   //
@@ -287,67 +323,19 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   //
   // هسه السلّة هي الي تقرر شنو يطلع، والإداري يعرف بأي سلّة هو.
   //
-  // ═══ والسلال ما تتداخل ═══
+  // ═══ الفرز صار بالسيرفر ═══
   //
-  // «أريد الحجوزات الي ما مثبتة أصلاً، الي هنّ الحجوزات المرحّلة
-  // حديثاً حتى نتواصل وية الزبون — هذا الي بانتظار التثبيت».
+  // شروط المحطات (بانتظار التثبيت · مثبّت · مكلّف · منجز) والبحث
+  // والتاريخ كلهن انتقلن لـ`/bookings/paged`، فالواجهة تعرض الي يوصلها
+  // بلا ما تعيد الفرز.
   //
-  // فالحجز يمشي بسلّة وحدة بكل لحظة: بانتظار التثبيت ← مثبّتة ←
-  // مكلّفة. لو طلع بسلّتين، الإداري يعالجه مرتين أو ينساه لأنه
-  // «شافه بالسلّة الثانية».
-  const inBucket = (b: (typeof bookings)[number]) => {
-    const crewed = (b.assignments?.length ?? 0) > 0
-    const started = executionStarted(b)
-    switch (bucket) {
-      // بانتظار التثبيت: المرحّل حديثاً الي ننتظر نتواصل وية زبونه.
-      // ⚠️ الملغى والمنجز ما يبقون هنا — هذي سلّة شغل، مو أرشيف.
-      case 'pending':
-        return !b.confirmedAt && !crewed && !started
-          && b.status !== 'CANCELLED' && b.status !== 'COMPLETED'
-      // مثبّتة: انثبّت وبعده ما انكلّف عليه كادر ولا بدا التنفيذ.
-      // الموعد مو شرط — يجوز يتثبّت اليوم وينحدد موعده بعد أيام.
-      case 'confirmed':
-        return !!b.confirmedAt && !crewed && !started
-          && b.status !== 'COMPLETED' && b.status !== 'CANCELLED'
-      // مكلّفة: انكلّف عليه كادر **أو** بدا التنفيذ فعلاً.
-      // «أو» مو «و»: حجز باشر بيه الليدر بلا ما ينسجّل تكليف رسمي
-      // لازم يبقى مرئي بمكان ما — وهذا مكانه.
-      case 'assigned':
-        // ⚠️ المنجز طلع من «مكلّفة»: صارله سلّته الخاصة بتفرّعاتها،
-        // وبقاؤه بالاثنين يعني الإداري يشوفه بمكانين ويظن إنه لسه شغّال.
-        return (crewed || started) && b.status !== 'CANCELLED'
-          && b.status !== 'COMPLETED' && b.status !== 'PARTIAL'
-      // ═══ تم الإنجاز ═══
-      // «الاتجاه الأول الي هو تم الإنجاز، وراها بنود نتفرّع».
-      // المنجز جزئياً يدخل هنا كمان: هو شغل صار فعلاً، وطلعته
-      // انحسبت لكادرها — بس الحجز ما خلص بعد.
-      case 'done': {
-        const isDone = b.status === 'COMPLETED' || b.status === 'PARTIAL'
-        if (!isDone) return false
-        switch (doneFilter) {
-          case 'PARTIAL': return b.status === 'PARTIAL'
-          case 'ALL': return true
-          default: return b.status === 'COMPLETED' && b.completionState === doneFilter
-        }
-      }
-      default: return true
-    }
-  }
-
+  // ⚠️ وهذا مو تحسين سرعة بس: الفرز بالمتصفح يشتغل على **الصفحة
+  // الحالية** — يعني بحث عن حجز بصفحة ٧ يطلّع «ماكو نتيجة» وهو
+  // موجود. الفرز لازم يكون وين البيانات كلها.
+  //
+  // ⚠️ شروط السلال بالسيرفر (`bucketCondition`) لازم تبقى مطابقة
+  // للي كانت هنا حرف بحرف — أي فرق يخلّي العدّاد يخالف القائمة.
   const filtered = bookings
-    .filter(inBucket)
-    .filter((b) => {
-      if (search.trim() && !matches([b.code, b.customer?.name, b.customer?.code, b.customer?.phone], search)) return false
-      if (selectedMonth && !relevantDate(b).startsWith(selectedMonth)) return false
-      return true
-    })
-    // الأحدث للأقدم دايماً — هذا الترتيب الافتراضي المطلوب.
-    // ⚠️ إلا طابور الانتظار: هناك **الأقدم أول**، لأنه الي منتظر
-    // أكثر — الزبون الي مسجّل من ثلاث أيام وما أحد حچى وياه أولى
-    // من الي انسجّل قبل ساعة.
-    .sort((a, b) => bucket === 'pending'
-      ? new Date(relevantDate(a)).getTime() - new Date(relevantDate(b)).getTime()
-      : new Date(relevantDate(b)).getTime() - new Date(relevantDate(a)).getTime())
 
   return (
     <div>
@@ -837,6 +825,18 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
               )}
             </tbody>
           </table>
+          </div>
+
+          {/* ═══ الترقيم ═══ نفس مكوّن شاشة الزبائن بالضبط */}
+          <div className="border-t border-slate-100 px-4 py-3">
+            <Pager
+              page={page}
+              perPage={perPage}
+              total={total}
+              unit="حجز"
+              onPage={setPage}
+              onPerPage={setPerPage}
+            />
           </div>
         </div>
       )}

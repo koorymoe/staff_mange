@@ -821,6 +821,11 @@ func (s *BookingService) MarkWaiting(id, note, byEmployeeID string) (*model.Book
 	return s.repo.FindByID(id)
 }
 
+// ListPaged صفحة وحدة من محطة — الفرز والعدّ بالسيرفر.
+func (s *BookingService) ListPaged(q repository.BookingPageQuery) ([]model.Booking, int, error) {
+	return s.repo.ListPaged(q)
+}
+
 // SettleLegacy تسوية إدارية لحجز قديم — «تم الإنجاز بدون تفاصيل».
 func (s *BookingService) SettleLegacy(id, byEmployeeID, note string) (*model.Booking, error) {
 	if err := s.repo.SettleLegacy(id, byEmployeeID, note); err != nil {

@@ -3217,6 +3217,21 @@ export const api = {
   resumeBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/resume`, { method: 'PUT' }),
 
+  // ═══ الحجوزات صفحة صفحة ═══
+  //
+  // «حتى لا يضل يحمّل السيرفر بتحميل كل الحجوزات — يحمّل جزء جزء».
+  //
+  // ⚠️ مسار مستقل عن `getBookings`: هذاك يرجّع مصفوفة وتناديه عشرات
+  // الشاشات، وتغيير شكل جوابه يكسرهن كلهن. وهنا الفرز والعدّ يصيرون
+  // بالسيرفر — الواجهة ما تشوف إلا صفحتها.
+  getBookingsPaged: (params: {
+    bucket?: string; search?: string; date?: string; month?: string; page?: number; pageSize?: number
+  }) => {
+    const q = new URLSearchParams()
+    Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') q.set(k, String(v)) })
+    return request<{ items: Booking[]; total: number; page: number }>(`/bookings/paged?${q.toString()}`)
+  },
+
   getBookings: (params?: { status?: Booking['status'] | Booking['status'][]; customerId?: string; date?: string; assignedTo?: 'me'; limit?: number }) => {
     const query = new URLSearchParams()
     if (params?.assignedTo) query.set('assignedTo', params.assignedTo)

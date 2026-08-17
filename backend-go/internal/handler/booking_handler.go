@@ -320,6 +320,39 @@ func (h *BookingHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, booking)
 }
 
+// GET /api/bookings/paged — صفحة وحدة من محطة معيّنة.
+//
+// «أريدك تسويلي مثلها للحجوزات، حتى لا يضل يحمّل السيرفر بتحميل كل
+// الحجوزات — يحمّل جزء جزء».
+//
+// ⚠️ مسار مستقل مو تعديل على `/bookings`: عشرات الشاشات تنادي الأصلي
+// وتتوقع مصفوفة. تغيير شكل جوابه يكسرهن كلهن بضربة وحدة.
+func (h *BookingHandler) Paged(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	page, _ := strconv.Atoi(q.Get("page"))
+	pageSize, _ := strconv.Atoi(q.Get("pageSize"))
+	items, total, err := h.service.ListPaged(repository.BookingPageQuery{
+		Bucket:   q.Get("bucket"),
+		Search:   q.Get("search"),
+		Date:     q.Get("date"),
+		Month:    q.Get("month"),
+		Page:     page,
+		PageSize: pageSize,
+	})
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
+		return
+	}
+	if items == nil {
+		items = []model.Booking{}
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"items": items,
+		"total": total,
+		"page":  page,
+	})
+}
+
 // POST /api/bookings/{id}/settle-legacy — «تم الإنجاز بدون تفاصيل»
 //
 // «هذا الخيار يكون مؤقت فقط للمالك، راح أدخل من حساب المالك أسوي —

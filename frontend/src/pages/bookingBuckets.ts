@@ -11,7 +11,9 @@
 // شغّال بالتطوير — نفس سبب `completionStates.ts`.
 export type BookingBucket = 'all' | 'pending' | 'confirmed' | 'assigned' | 'done'
 
-export type DoneFilter = 'ALL' | 'DONE_FULL' | 'DONE_NO_INVOICE' | 'DONE_NO_REPORT' | 'DONE_NO_BOTH' | 'PARTIAL'
+// ⚠️ «منجز جزئي» انشال من هنا: صارله محطة مستقلة («تحتاج إكمال»)،
+// وخيار بالاثنين يعني نفس الحجز بمكانين.
+export type DoneFilter = 'ALL' | 'DONE_FULL' | 'DONE_NO_INVOICE' | 'DONE_NO_REPORT' | 'DONE_NO_BOTH'
 
 export const DONE_FILTERS: { key: DoneFilter; label: string }[] = [
   { key: 'ALL', label: 'الكل' },
@@ -19,7 +21,6 @@ export const DONE_FILTERS: { key: DoneFilter; label: string }[] = [
   { key: 'DONE_NO_INVOICE', label: '⚠ بلا فاتورة' },
   { key: 'DONE_NO_REPORT', label: '⚠ بلا تقرير' },
   { key: 'DONE_NO_BOTH', label: '⚠ بلا فاتورة وتقرير' },
-  { key: 'PARTIAL', label: '⏳ منجز جزئي' },
 ]
 
 // ═══ كل محطة تعرّف نفسها ═══
@@ -32,12 +33,12 @@ export const DONE_FILTERS: { key: DoneFilter; label: string }[] = [
 // الجاية** — لأن هذا هو السؤال الي يفتح الشاشة عشانه.
 export const BUCKET_HEADINGS: Record<BookingBucket, { title: string; next: string }> = {
   pending: {
-    title: '⏳ بانتظار التثبيت',
+    title: '⏳ بانتظار التثبيت — بحاجة لتنسيق',
     next: 'حجوزات مرحّلة حديثاً وما أحد حچى وية زبونها بعد. الخطوة الجاية: تواصل وية الزبون، وبعدها ثبّت ورحّل لكادر الشد أو لإدارة المشاريع.',
   },
   confirmed: {
-    title: '✅ تم التثبيت — بحاجة لتنسيق',
-    next: 'انثبّت وانرحّل، وما عليه كادر بعد. الخطوة الجاية: من شاشة «تنسيق الحجوزات» حدد الموعد والكادر.',
+    title: '✅ تم التثبيت — بحاجة لكادر',
+    next: 'انثبّت وانرحّل، وما عليه كادر بعد. الخطوة الجاية: من «تنسيق الحجوزات» حدد الموعد والكادر.',
   },
   assigned: {
     title: '👥 مكلّف — بانتظار التنفيذ',

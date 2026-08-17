@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Pager from '../components/Pager'
 import { api, type Customer, type GpsCustomerListItem, type Booking } from '../api'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { matches } from '../utils/search'
@@ -491,44 +492,16 @@ export default function Customers() {
           </div>
 
           {/* ═══ الترقيم ═══ */}
+          {/* مكوّن مشترك وية شاشة الحجوزات، حتى ما يفترقن أول تعديل */}
           {filteredCustomers.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <label className="flex items-center gap-1.5 text-[11px] text-slate-500">
-                عرض
-                <select
-                  value={perPage}
-                  onChange={(e) => { setPerPage(Number(e.target.value)); setPage(1) }}
-                  className="rounded-lg border border-slate-300 px-2 py-1 text-[11px]"
-                >
-                  {[10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
-                </select>
-                من {filteredCustomers.length} زبون
-              </label>
-              {pageCount > 1 && (
-                <div className="flex flex-wrap items-center gap-1">
-                  <PageBtn onClick={() => setPage(1)} disabled={safePage === 1}>«</PageBtn>
-                  <PageBtn onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}>‹</PageBtn>
-                  {/* نافذة صفحات حول الحالية — ٦٥ زر صفحة ما ينقرا */}
-                  {pageWindow(safePage, pageCount).map((n, i) =>
-                    n === 0
-                      ? <span key={`gap${i}`} className="px-1 text-slate-400">…</span>
-                      : (
-                        <button
-                          key={n}
-                          onClick={() => setPage(n)}
-                          className={`h-7 min-w-7 rounded-lg px-2 text-[11px] font-bold ${
-                            n === safePage ? 'bg-[#2c5aad] text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'
-                          }`}
-                        >
-                          {n}
-                        </button>
-                      ),
-                  )}
-                  <PageBtn onClick={() => setPage((p) => Math.min(pageCount, p + 1))} disabled={safePage === pageCount}>›</PageBtn>
-                  <PageBtn onClick={() => setPage(pageCount)} disabled={safePage === pageCount}>»</PageBtn>
-                </div>
-              )}
-            </div>
+            <Pager
+              page={safePage}
+              perPage={perPage}
+              total={filteredCustomers.length}
+              unit="زبون"
+              onPage={setPage}
+              onPerPage={setPerPage}
+            />
           )}
         </div>
       )}
@@ -631,33 +604,8 @@ function StatCard({ icon, tone, label, value, hint }: {
   )
 }
 
-function PageBtn({ children, onClick, disabled }: {
-  children: React.ReactNode; onClick: () => void; disabled: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      className="h-7 min-w-7 rounded-lg border border-slate-300 px-2 text-[11px] font-bold text-slate-600 disabled:opacity-40"
-    >
-      {children}
-    </button>
-  )
-}
-
-// نافذة أرقام الصفحات — الصفر يعني «…»
-// ⚠️ ٦٥ زر صفحة ما ينقرا ولا ينضغط بالموبايل، فنعرض جيران الحالية بس.
-function pageWindow(current: number, total: number): number[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1)
-  const out: number[] = [1]
-  const from = Math.max(2, current - 1)
-  const to = Math.min(total - 1, current + 1)
-  if (from > 2) out.push(0)
-  for (let i = from; i <= to; i++) out.push(i)
-  if (to < total - 1) out.push(0)
-  out.push(total)
-  return out
-}
+// ⚠️ `PageBtn` و`pageWindow` انشالن من هنا: صارن جوّا `Pager`
+// المشترك، ونسخة ثانية منهن تعني ترقيمين يفترقن أول تعديل.
 
 /* ───── تفاصيل الزبون — تنفتح جوّا الصف ───── */
 
