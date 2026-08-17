@@ -271,3 +271,115 @@ html.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 /* ⚠️ الصور والشعارات ما تنلمس: قلب ألوانها يشوّه صورة الموظف
    وشعار الشركة. */
 html.dark img { opacity: 0.94; }
+
+/* ═══════════════════════════════════════════════════════════════
+   شاشة الدخول الجديدة
+   ═══════════════════════════════════════════════════════════════
+
+   خلفية تقنية غامقة، وبطاقة زجاجية بحافة متوهّجة، وخدمات الشركة
+   حوالَيها.
+
+   ⚠️ كل شي هنا **CSS خالص**: بلا صور خلفية ولا مكتبة حركة. شاشة
+   الدخول أول شي ينحمّل، والموظف يفتحها من تلفونه بشبكة ضعيفة —
+   صورة خلفية بحجم ميغا تعني إنه يقعد ينتظر قبل ما يكتب اسمه.
+
+   ⚠️ وما تتأثر بالوضع الليلي: هي غامقة أصلاً بالتصميم، والقلب
+   يخربطها. لهذا ألوانها مكتوبة صراحةً مو مأخوذة من اللوحة. */
+
+.login-stage {
+  background:
+    radial-gradient(1200px 600px at 50% 0%, #123a6b 0%, transparent 60%),
+    radial-gradient(900px 500px at 10% 100%, #0b2b52 0%, transparent 55%),
+    radial-gradient(900px 500px at 90% 100%, #131a4a 0%, transparent 55%),
+    linear-gradient(160deg, #050a18 0%, #071022 55%, #050a18 100%);
+}
+
+/* شبكة خفيفة تعطي إحساس «لوحة تحكم» بلا ما تشتّت النظر */
+.login-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(56, 189, 248, 0.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(56, 189, 248, 0.055) 1px, transparent 1px);
+  background-size: 46px 46px;
+  /* تخف بالأطراف حتى ما تصير إطاراً حاداً */
+  mask-image: radial-gradient(120% 90% at 50% 40%, #000 35%, transparent 78%);
+  pointer-events: none;
+}
+
+/* ═══ البطاقة ═══ زجاج غامق بحافة متوهّجة */
+.login-card {
+  background: linear-gradient(180deg, rgba(17, 30, 56, 0.92) 0%, rgba(10, 19, 38, 0.94) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  backdrop-filter: blur(14px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 40px rgba(37, 99, 235, 0.28),
+    0 0 90px rgba(56, 189, 248, 0.16),
+    0 30px 60px rgba(0, 0, 0, 0.55);
+}
+
+/* التوهّج تحت البطاقة — «المنصّة» بالتصميم */
+.login-card::after {
+  content: '';
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: -22px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(56, 189, 248, 0.45), transparent 75%);
+  filter: blur(10px);
+  pointer-events: none;
+}
+
+.login-logo {
+  background: linear-gradient(160deg, #ffffff 0%, #dbeafe 100%);
+  box-shadow: 0 0 30px rgba(56, 189, 248, 0.5), 0 10px 25px rgba(0, 0, 0, 0.45);
+}
+
+/* ⚠️ خانات الدخول غامقة صراحةً: القاعدة العامة بالوضع الليلي ما
+   تكفي هنا لأن الشاشة غامقة **بالوضعين**. */
+.login-field {
+  background: rgba(9, 17, 34, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  color: #e6f0ff;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.login-field::placeholder { color: rgba(148, 178, 214, 0.55); }
+.login-field:focus {
+  border-color: rgba(56, 189, 248, 0.85);
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+}
+
+.login-submit {
+  background: linear-gradient(180deg, #3b82f6 0%, #1d4ed8 100%);
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.45), 0 0 0 1px rgba(147, 197, 253, 0.35) inset;
+  transition: transform 0.15s, box-shadow 0.2s;
+}
+.login-submit:hover:not(:disabled) {
+  box-shadow: 0 14px 34px rgba(37, 99, 235, 0.6), 0 0 0 1px rgba(191, 219, 254, 0.5) inset;
+  transform: translateY(-1px);
+}
+.login-submit:active:not(:disabled) { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-submit { transition: none; }
+}
+
+/* نقاط الخلفية — تتنفّس ببطء، وتسكت لمن يطلب الجهاز تقليل الحركة */
+.login-dot {
+  position: absolute;
+  border-radius: 9999px;
+  background: rgba(125, 211, 252, 0.85);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.9);
+  animation: login-dot-pulse 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes login-dot-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 0.9;  transform: scale(1.35); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-dot { animation: none; opacity: 0.5; }
+}

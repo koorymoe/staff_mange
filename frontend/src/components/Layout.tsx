@@ -1241,7 +1241,7 @@ export default function Layout() {
                 ⚠️ على خلفية بيضا: الشعار أزرق غامق، وعلى خلفية القائمة
                 الكحلية ما يبيّن — نفس اللونين تقريباً. */}
             <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-white shadow-lg shadow-blue-900/40">
-              <img src="/favicon.png?v=3" alt="شعار شركة الأماني" className="h-8 w-8 object-contain" />
+              <img src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="شعار شركة الأماني" className="h-8 w-8 object-contain" />
               <span className="absolute -top-1 -left-1 h-3 w-3 rounded-full border-2 border-[#0f2040] bg-emerald-400"/>
             </div>
             {!collapsed && (
