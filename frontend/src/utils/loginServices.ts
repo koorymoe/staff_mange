@@ -1,31 +1,32 @@
-// ═══ خدمات الشركة حول بطاقة الدخول ═══
-//
-// شاشة الدخول أكثر شاشة تنشاف بالنظام — الموظف يفتحها كل يوم،
-// والزبون يشوفها لمن يجي المكتب. فبدل خلفية فاضية، تعرض شنو تشتغل
-// بيه الشركة.
-//
-// ⚠️ الأعمدة تنخفي بالموبايل: هاي زينة تحيط ببطاقة الدخول، وبشاشة
-// ٣٩٠px تصير جدار نصوص يدفن الخانات الي جاي عشانها الموظف.
+export type ServiceKind =
+  | 'audio'
+  | 'fire'
+  | 'gps'
+  | 'technical'
+  | 'camera'
+  | 'network'
+  | 'solar'
+  | 'home'
+  | 'lock'
 
 export interface ServiceItem {
   title: string
   desc: string
-  icon: string
-  /** لون التوهّج — كل خدمة إلها لونها بالتصميم */
+  kind: ServiceKind
   color: string
 }
 
 export const RIGHT_SERVICES: ServiceItem[] = [
-  { title: 'أنظمة الصوتيات', desc: 'صوت نقي وتجربة احترافية', icon: '🔊', color: '#a855f7' },
-  { title: 'أنظمة الحريق والسلامة', desc: 'سلامة موثوقة وحماية شاملة', icon: '🧯', color: '#ef4444' },
-  { title: 'أنظمة تتبع المركبات GPS', desc: 'تتبع لحظي وأمان كامل', icon: '🚗', color: '#22c55e' },
-  { title: 'الخدمات الفنية والحلول الذكية', desc: 'حلول مبتكرة لدعم أعمالك', icon: '🛠️', color: '#f59e0b' },
+  { title: 'أنظمة الصوتيات', desc: 'صوت نقي وتجربة احترافية', kind: 'audio', color: '#d946ef' },
+  { title: 'أنظمة الحريق والسلامة', desc: 'سلامة موثوقة وحماية شاملة', kind: 'fire', color: '#ff4438' },
+  { title: 'أنظمة تتبع المركبات GPS', desc: 'تتبع لحظي وأمان كامل', kind: 'gps', color: '#55e86a' },
+  { title: 'الخدمات الفنية والحلول الذكية', desc: 'حلول مبتكرة لدعم أعمالك', kind: 'technical', color: '#ff9f32' },
 ]
 
 export const LEFT_SERVICES: ServiceItem[] = [
-  { title: 'أنظمة المراقبة والكاميرات', desc: 'مراقبة ذكية على مدار الساعة', icon: '📹', color: '#38bdf8' },
-  { title: 'الشبكات والبنية التحتية', desc: 'اتصالات مستقرة وآمنة', icon: '📡', color: '#22d3ee' },
-  { title: 'الطاقة الشمسية', desc: 'طاقة نظيفة ومستدامة', icon: '☀️', color: '#facc15' },
-  { title: 'المنزل الذكي', desc: 'تحكم ذكي لحياة أكثر راحة', icon: '🏠', color: '#818cf8' },
-  { title: 'الأقفال الذكية', desc: 'أمان متطور وتحكم ذكي', icon: '🔐', color: '#c084fc' },
+  { title: 'أنظمة المراقبة والكاميرات', desc: 'مراقبة ذكية على مدار الساعة', kind: 'camera', color: '#36d9ff' },
+  { title: 'الشبكات والبنية التحتية', desc: 'اتصالات مستقرة وآمنة', kind: 'network', color: '#27d7ff' },
+  { title: 'الطاقة الشمسية', desc: 'طاقة نظيفة ومستدامة', kind: 'solar', color: '#ffd64b' },
+  { title: 'المنزل الذكي', desc: 'تحكم ذكي لحياة أكثر راحة', kind: 'home', color: '#9e6cff' },
+  { title: 'الأقفال الذكية', desc: 'أمان متطور وتحكم ذكي', kind: 'lock', color: '#c56cff' },
 ]
