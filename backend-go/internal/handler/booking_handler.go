@@ -353,6 +353,16 @@ func (h *BookingHandler) Paged(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /api/bookings/station-counts — كم حجز بكل محطة.
+func (h *BookingHandler) StationCounts(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.service.StationCounts()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حساب العدّادات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, counts)
+}
+
 // POST /api/bookings/{id}/settle-legacy — «تم الإنجاز بدون تفاصيل»
 //
 // «هذا الخيار يكون مؤقت فقط للمالك، راح أدخل من حساب المالك أسوي —

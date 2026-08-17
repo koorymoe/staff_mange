@@ -826,6 +826,11 @@ func (s *BookingService) ListPaged(q repository.BookingPageQuery) ([]model.Booki
 	return s.repo.ListPaged(q)
 }
 
+// StationCounts عدّاد كل محطة — استعلام واحد.
+func (s *BookingService) StationCounts() (map[string]int, error) {
+	return s.repo.StationCounts()
+}
+
 // SettleLegacy تسوية إدارية لحجز قديم — «تم الإنجاز بدون تفاصيل».
 func (s *BookingService) SettleLegacy(id, byEmployeeID, note string) (*model.Booking, error) {
 	if err := s.repo.SettleLegacy(id, byEmployeeID, note); err != nil {

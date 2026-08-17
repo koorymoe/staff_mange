@@ -3217,6 +3217,9 @@ export const api = {
   resumeBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/resume`, { method: 'PUT' }),
 
+  /** عدّاد كل محطة — استعلام واحد بالسيرفر */
+  getBookingStationCounts: () => request<Record<string, number>>('/bookings/station-counts'),
+
   // ═══ الحجوزات صفحة صفحة ═══
   //
   // «حتى لا يضل يحمّل السيرفر بتحميل كل الحجوزات — يحمّل جزء جزء».

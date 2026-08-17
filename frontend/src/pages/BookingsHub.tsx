@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { api } from '../api'
 import { useSession } from '../session'
 import BookingsList from './BookingsList'
 import Coordinator from './Coordinator'
@@ -81,6 +82,33 @@ export default function BookingsHub() {
   // شاشة إدخال، وفتحها افتراضياً يعني الإداري يفتح النظام ويلگه
   // نموذج فاضي بدل شغله الي ينتظره.
   const [tab, setTab] = useState<TabKey>('pending')
+
+  // ═══ عدّاد على كل محطة ═══
+  //
+  // الإداري چان لازم يضغط تسع محطات وحدة وحدة حتى يعرف من وين يبدي.
+  // الرقم على الخيار يجاوبه بنظرة: وين متكدّس الشغل.
+  //
+  // ⚠️ استعلام واحد بالسيرفر لكل العدّادات — تسع نداءات بكل فتحة
+  // شاشة تصير حملاً أثقل من الي شلناه بالترقيم.
+  const [counts, setCounts] = useState<Record<string, number>>({})
+  useEffect(() => {
+    let alive = true
+    const load = () => api.getBookingStationCounts()
+      .then((c) => { if (alive) setCounts(c) })
+      .catch(() => {})
+    const t = setTimeout(load, 0)
+    // ⚠️ تحديث كل دقيقة: الحجز الجديد يوصل والإداري ما يعيد تحميل
+    // الصفحة — فيقعد ساعة وهو يظن ماكو شغل جديد.
+    const iv = setInterval(load, 60_000)
+    return () => { alive = false; clearTimeout(t); clearInterval(iv) }
+  }, [tab])
+
+  // مفتاح العدّاد لكل محطة (الي ما إلها عدّاد ما تعرض رقم)
+  const countKey: Partial<Record<TabKey, string>> = {
+    pending: 'pending', confirmed: 'confirmed', assigned: 'assigned',
+    done: 'done', partial: 'partial', projects: 'at_projects',
+    deleting: 'delete_pending', stuck: 'stuck',
+  }
   const shown = TABS.filter((t) =>
     (t.key === 'new' && canCreate)
     || (t.key === 'coord' && canCoord)
@@ -117,6 +145,20 @@ export default function BookingsHub() {
               }`}
             >
               {t.icon} {t.label}
+              {/* العدّاد — ما يطلع إلا لمن يكون أكبر من صفر: «٠» جنب
+                  كل خيار ضجيج، والفراغ يگول «ماكو شي» بهدوء. */}
+              {(() => {
+                const k = countKey[t.key]
+                const n = k ? counts[k] : undefined
+                if (!n) return null
+                return (
+                  <span className={`mr-1 rounded-full px-1.5 py-0.5 text-[9px] font-black ${
+                    tab === t.key ? 'bg-white/25 text-white' : 'bg-brand-50 text-brand-700'
+                  }`}>
+                    {n}
+                  </span>
+                )
+              })()}
             </button>
           ))}
         </div>

@@ -198,3 +198,66 @@ func (r *BookingRepository) ListPaged(q BookingPageQuery) ([]model.Booking, int,
 	}
 	return bookings, total, nil
 }
+
+// ═══ عدّادات المحطات ═══
+//
+// «خل نضيف ملاعيب وترتيبات وزينة للنظام».
+//
+// الإداري يفتح الشاشة وما يعرف وين متكدّس الشغل إلا لمن يضغط كل
+// محطة وحدة وحدة — تسع ضغطات حتى يعرف من وين يبدي. والرقم على
+// الخيار يجاوبه بنظرة.
+//
+// ⚠️ استعلام **واحد** لكل العدّادات مو تسعة: تسع نداءات بكل فتحة
+// شاشة (ومع كل تحديث تلقائي) تصير حملاً أثقل من الي شلناه بالترقيم.
+// `COUNT(*) FILTER` يخلّي القاعدة تمرّ على الجدول مرة وحدة.
+func (r *BookingRepository) StationCounts() (map[string]int, error) {
+	buckets := []string{"pending", "confirmed", "assigned", "done", "at_projects", "delete_pending"}
+	sel := []string{}
+	for _, b := range buckets {
+		// نفس شروط المحطات بالضبط — من نفس المصدر، حتى ما يصير العدّاد
+		// يگول رقماً والقائمة تعرض غيره.
+		sel = append(sel, fmt.Sprintf(`COUNT(*) FILTER (WHERE %s) AS %q`, bucketCondition(b), b))
+	}
+	row := map[string]any{}
+	q := `SELECT ` + strings.Join(sel, ", ") + ` FROM "Booking" b WHERE b."archivedAt" IS NULL`
+	rows, err := r.db.Queryx(q)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	if rows.Next() {
+		if err := rows.MapScan(row); err != nil {
+			return nil, err
+		}
+	}
+	out := map[string]int{}
+	for k, v := range row {
+		switch n := v.(type) {
+		case int64:
+			out[k] = int(n)
+		case int:
+			out[k] = n
+		}
+	}
+
+	// «تحتاج إكمال» مصدرها الحالة مو شروط المحطات — والمنجدول منها
+	// ينعدّ بعد (شوف شاشة الإكمال).
+	var partial int
+	if err := r.db.Get(&partial, `
+		SELECT COUNT(*) FROM "Booking"
+		WHERE "archivedAt" IS NULL AND (status = 'PARTIAL' OR ("partialCount" > 0 AND status = 'CONFIRMED'))
+	`); err == nil {
+		out["partial"] = partial
+	}
+
+	// «ما وصلت للتنفيذ»: الملغى والمؤجل والي ما رد
+	var stuck int
+	if err := r.db.Get(&stuck, `
+		SELECT COUNT(*) FROM "Booking"
+		WHERE "archivedAt" IS NULL
+		  AND (status = 'CANCELLED' OR "waitingSince" IS NOT NULL OR "awaitingReschedule")
+	`); err == nil {
+		out["stuck"] = stuck
+	}
+	return out, nil
+}
