@@ -383,3 +383,370 @@ html.dark img { opacity: 0.94; }
 @media (prefers-reduced-motion: reduce) {
   .login-dot { animation: none; opacity: 0.5; }
 }
+
+/* ═══ شاشة الدخول السينمائية — توزيع مطابق للمرجع مع رسومات SVG خفيفة ═══ */
+.login-stage {
+  min-height: 100vh;
+  min-height: 100dvh;
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse 44% 72% at 50% 52%, rgba(13, 82, 196, 0.34), transparent 72%),
+    radial-gradient(ellipse 32% 48% at 5% 48%, rgba(0, 112, 255, 0.14), transparent 76%),
+    radial-gradient(ellipse 32% 48% at 95% 48%, rgba(114, 25, 226, 0.13), transparent 76%),
+    linear-gradient(180deg, #020617 0%, #03102d 48%, #020616 100%);
+}
+
+.login-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -2;
+  opacity: .68;
+  background-image:
+    radial-gradient(circle, rgba(91, 171, 255, .95) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(128, 95, 255, .68) 0 1px, transparent 1.5px);
+  background-position: 0 0, 23px 31px;
+  background-size: 67px 67px, 89px 89px;
+  mask-image: linear-gradient(to bottom, #000, transparent 82%);
+  animation: login-stars-drift 28s linear infinite;
+}
+
+.login-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0 15%, rgba(21, 108, 255, .11) 15.1% 15.2%, transparent 15.3% 84%, rgba(126, 51, 255, .08) 84.1% 84.2%, transparent 84.3%),
+    repeating-linear-gradient(90deg, transparent 0 119px, rgba(43, 128, 255, .035) 120px);
+}
+
+.login-grid {
+  opacity: .75;
+  background-size: 42px 42px;
+  transform: perspective(500px) rotateX(62deg) scale(1.55);
+  transform-origin: 50% 86%;
+  mask-image: linear-gradient(to bottom, transparent 5%, #000 60%, transparent 97%);
+}
+
+.login-skyline {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 0;
+  height: 43%;
+  opacity: .22;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 16px, rgba(16, 85, 177, .8) 17px 19px, transparent 20px 35px),
+    linear-gradient(180deg, transparent 0 36%, rgba(2, 22, 61, .94) 37%);
+  clip-path: polygon(0 100%,0 55%,3% 55%,3% 34%,6% 34%,6% 63%,9% 63%,9% 41%,12% 41%,12% 67%,16% 67%,16% 30%,20% 30%,20% 58%,23% 58%,23% 45%,27% 45%,27% 73%,31% 73%,31% 39%,35% 39%,35% 62%,39% 62%,39% 51%,43% 51%,43% 75%,47% 75%,47% 43%,51% 43%,51% 69%,55% 69%,55% 35%,59% 35%,59% 66%,63% 66%,63% 47%,67% 47%,67% 71%,71% 71%,71% 39%,75% 39%,75% 63%,79% 63%,79% 32%,83% 32%,83% 68%,87% 68%,87% 46%,91% 46%,91% 62%,95% 62%,95% 38%,100% 38%,100% 100%);
+}
+
+.login-center-aura {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(72vw, 960px);
+  height: min(94vh, 760px);
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  border-radius: 44%;
+  background: radial-gradient(ellipse, rgba(30, 117, 255, .16), transparent 68%);
+  filter: blur(8px);
+  pointer-events: none;
+}
+
+.login-card {
+  overflow: visible;
+  border-color: rgba(65, 157, 255, .72);
+  background:
+    linear-gradient(180deg, rgba(9, 32, 75, .94), rgba(3, 16, 45, .96)),
+    radial-gradient(circle at 50% 0, rgba(59, 137, 255, .25), transparent 48%);
+  box-shadow:
+    inset 0 0 0 1px rgba(157, 210, 255, .11),
+    inset 0 0 46px rgba(31, 105, 230, .11),
+    0 0 4px rgba(78, 174, 255, .92),
+    0 0 34px rgba(32, 105, 255, .4),
+    0 0 110px rgba(12, 73, 196, .2),
+    0 34px 80px rgba(0, 0, 0, .66);
+  animation: login-card-enter 780ms cubic-bezier(.2,.9,.2,1) both, login-card-glow 4.8s ease-in-out 1s infinite;
+}
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  z-index: -1;
+  border: 1px solid rgba(98, 176, 255, .13);
+  border-radius: 1.9rem;
+  pointer-events: none;
+}
+
+.login-card::after {
+  left: 3%;
+  right: 3%;
+  bottom: -38px;
+  height: 60px;
+  background: radial-gradient(closest-side, rgba(32, 132, 255, .72), rgba(32, 98, 255, .2) 50%, transparent 78%);
+}
+
+.login-logo {
+  border: 2px solid rgba(133, 184, 255, .86);
+  box-shadow: 0 0 0 5px rgba(38, 112, 255, .1), 0 0 34px rgba(67, 142, 255, .72), 0 12px 28px rgba(0, 0, 0, .55);
+  animation: login-logo-breathe 4s ease-in-out infinite;
+}
+
+.login-field {
+  min-height: 43px;
+  border-color: rgba(62, 139, 239, .66);
+  background: rgba(2, 12, 37, .82);
+  box-shadow: inset 0 0 18px rgba(11, 67, 151, .14);
+}
+
+.login-field:focus {
+  border-color: #48b8ff;
+  box-shadow: 0 0 0 3px rgba(45, 147, 255, .14), 0 0 22px rgba(31, 130, 255, .27);
+}
+
+.login-submit {
+  border: 1px solid rgba(119, 205, 255, .9);
+  background: linear-gradient(180deg, #0878ff, #064ad6);
+  box-shadow: inset 0 1px rgba(255,255,255,.34), 0 0 8px #148cff, 0 0 26px rgba(0, 111, 255, .82);
+}
+
+.login-platform {
+  position: absolute;
+  top: calc(50% + 292px);
+  left: 50%;
+  z-index: 5;
+  width: min(46vw, 570px);
+  height: 108px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(45, 139, 255, .72);
+  border-radius: 50%;
+  box-shadow: 0 0 10px #087dff, inset 0 0 28px rgba(10, 105, 255, .4), 0 0 55px rgba(0, 104, 255, .42);
+  pointer-events: none;
+  animation: login-platform-pulse 4s ease-in-out infinite;
+}
+
+.login-platform::before,
+.login-platform::after,
+.login-platform span {
+  content: '';
+  position: absolute;
+  inset: 12px 25px;
+  border: 1px solid rgba(66, 159, 255, .52);
+  border-radius: 50%;
+}
+.login-platform::after { inset: 28px 58px; }
+.login-platform span:nth-child(1) { inset: 42px 82px; border-style: dashed; animation: login-orbit-spin 10s linear infinite; }
+.login-platform span:nth-child(2) { inset: -13px 48px 78px; border-color: rgba(113, 186, 255, .36); }
+.login-platform span:nth-child(3) { inset: 75px 100px -22px; border-color: rgba(0, 104, 255, .2); }
+
+.login-service-column {
+  position: absolute;
+  top: 50%;
+  z-index: 8;
+  display: none;
+  width: clamp(300px, 25vw, 390px);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.login-services-right { right: clamp(14px, 2.6vw, 58px); }
+.login-services-left { left: clamp(14px, 2.6vw, 58px); }
+
+.login-service-card {
+  --service-color: #3ecbff;
+  position: relative;
+  display: flex;
+  min-height: 112px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--service-color);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--service-color) 28%, transparent));
+  animation: login-service-enter 760ms cubic-bezier(.2,.9,.2,1) both;
+}
+.login-service-card:nth-child(2) { animation-delay: 90ms; }
+.login-service-card:nth-child(3) { animation-delay: 180ms; }
+.login-service-card:nth-child(4) { animation-delay: 270ms; }
+.login-service-card:nth-child(5) { animation-delay: 360ms; }
+.login-service-left { flex-direction: row-reverse; }
+
+.login-service-copy {
+  position: relative;
+  z-index: 3;
+  width: 46%;
+  direction: rtl;
+  text-align: right;
+}
+.login-service-copy h2 {
+  margin: 0;
+  font-size: clamp(.8rem, 1vw, 1rem);
+  font-weight: 900;
+  line-height: 1.4;
+  color: var(--service-color);
+  text-shadow: 0 0 14px color-mix(in srgb, var(--service-color) 72%, transparent);
+}
+.login-service-copy p {
+  margin: 4px 0 0;
+  color: rgba(211, 228, 255, .72);
+  font-size: clamp(.57rem, .7vw, .68rem);
+  line-height: 1.4;
+}
+
+.login-service-visual {
+  position: relative;
+  display: grid;
+  width: 49%;
+  min-width: 142px;
+  height: 105px;
+  place-items: center;
+}
+.login-service-art {
+  position: relative;
+  z-index: 4;
+  width: 94%;
+  height: 94%;
+  overflow: visible;
+  filter: drop-shadow(0 0 5px var(--service-color)) drop-shadow(0 0 13px color-mix(in srgb, var(--service-color) 56%, transparent));
+  animation: login-art-float 4.6s ease-in-out infinite;
+}
+.login-service-card:nth-child(even) .login-service-art { animation-delay: -2.2s; }
+
+.login-service-halo {
+  position: absolute;
+  right: 2%;
+  bottom: 4px;
+  left: 2%;
+  height: 30px;
+  border: 2px solid color-mix(in srgb, var(--service-color) 70%, transparent);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--service-color) 24%, transparent), transparent 68%);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--service-color) 48%, transparent), inset 0 0 12px color-mix(in srgb, var(--service-color) 33%, transparent);
+}
+.login-service-orbit {
+  position: absolute;
+  right: 8%;
+  bottom: 12px;
+  left: 8%;
+  height: 20px;
+  border: 1px dashed color-mix(in srgb, var(--service-color) 70%, transparent);
+  border-radius: 50%;
+  animation: login-orbit-spin 7s linear infinite;
+}
+.login-service-orbit.orbit-two {
+  right: 20%;
+  bottom: 18px;
+  left: 20%;
+  height: 12px;
+  animation-direction: reverse;
+  animation-duration: 5s;
+}
+.login-service-scan {
+  position: absolute;
+  top: 16%;
+  bottom: 18%;
+  left: 49%;
+  width: 1px;
+  background: linear-gradient(transparent, var(--service-color), transparent);
+  box-shadow: 0 0 12px var(--service-color);
+  opacity: .58;
+  animation: login-scan 3.2s ease-in-out infinite;
+}
+
+.login-service-line {
+  position: absolute;
+  top: 58%;
+  width: clamp(42px, 5vw, 88px);
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--service-color));
+  opacity: .72;
+}
+.login-service-line i {
+  position: absolute;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--service-color);
+  box-shadow: 0 0 9px var(--service-color);
+  animation: login-node-travel 2.8s ease-in-out infinite;
+}
+.login-service-right .login-service-line { left: calc(clamp(42px, 5vw, 88px) * -1); transform: scaleX(-1); }
+.login-service-left .login-service-line { right: calc(clamp(42px, 5vw, 88px) * -1); }
+
+@media (min-width: 1280px) {
+  .login-service-column { display: flex; flex-direction: column; }
+  .login-services-right { gap: clamp(15px, 2.4vh, 25px); }
+  .login-services-left { gap: clamp(0px, .8vh, 8px); }
+}
+
+@media (min-width: 1280px) and (max-height: 760px) {
+  .login-service-column { transform: translateY(-50%) scale(.88); }
+  .login-platform { top: calc(50% + 275px); }
+  .login-card { transform: scale(.92); }
+}
+
+@media (max-width: 1279px) {
+  .login-platform { width: min(92vw, 520px); top: calc(50% + 292px); }
+}
+
+@media (max-width: 520px) {
+  .login-stage { align-items: flex-start; overflow-y: auto; padding-top: max(18px, env(safe-area-inset-top)); padding-bottom: 28px; }
+  .login-card { margin-block: auto; border-radius: 1.7rem; }
+  .login-card::before { border-radius: 1.45rem; }
+  .login-platform { position: fixed; top: auto; bottom: -20px; width: 115vw; }
+}
+
+@keyframes login-stars-drift {
+  to { background-position: 67px 67px, 112px 120px; }
+}
+@keyframes login-card-enter {
+  from { opacity: 0; transform: translateY(28px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes login-card-glow {
+  50% { border-color: rgba(105, 191, 255, .96); box-shadow: inset 0 0 0 1px rgba(157,210,255,.16), inset 0 0 52px rgba(31,105,230,.16), 0 0 7px rgba(78,174,255,1), 0 0 46px rgba(32,105,255,.52), 0 0 125px rgba(12,73,196,.26), 0 34px 80px rgba(0,0,0,.66); }
+}
+@keyframes login-logo-breathe {
+  50% { transform: translateY(-3px); box-shadow: 0 0 0 7px rgba(38,112,255,.08), 0 0 45px rgba(67,162,255,.86), 0 14px 30px rgba(0,0,0,.55); }
+}
+@keyframes login-platform-pulse {
+  50% { transform: translate(-50%, -50%) scale(1.035); opacity: .78; }
+}
+@keyframes login-service-enter {
+  from { opacity: 0; transform: translateY(16px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes login-art-float {
+  50% { transform: translateY(-7px); }
+}
+@keyframes login-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes login-scan {
+  0%,100% { transform: translateX(-38px); opacity: .12; }
+  50% { transform: translateX(38px); opacity: .7; }
+}
+@keyframes login-node-travel {
+  0%,100% { left: 0; opacity: .25; }
+  50% { left: calc(100% - 7px); opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-stage::before,
+  .login-card,
+  .login-logo,
+  .login-platform,
+  .login-platform span,
+  .login-service-card,
+  .login-service-art,
+  .login-service-orbit,
+  .login-service-scan,
+  .login-service-line i {
+    animation: none !important;
+  }
+}
