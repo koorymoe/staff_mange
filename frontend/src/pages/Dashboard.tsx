@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
+import TodayBoard from '../components/TodayBoard'
 import { api } from '../api'
 import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse } from '../api'
 import { useSession, hasGpsSkill } from '../session'
@@ -505,6 +506,15 @@ export default function Dashboard() {
 
       {/* رصيد الدوار — يظهر بس للموظف الي أخذ منه */}
       <MyFundBalance />
+
+      {/* ═══ لوحة اليوم ═══
+          «شنو صاير اليوم» و«شغلي اليوم» ولوحة الشرف ومخطط الحركة.
+          ⚠️ لمن عنده شغل بالحجوزات بس — الفني ما يهمه «شكد مثبّت
+          ينتظر كادر»، وعرضها له يحوّل الرئيسية لضجيج. */}
+      {(isAdmin || employee.role === 'OWNER' || employee.role === 'HR_COORDINATOR'
+        || employee.role === 'MONITOR' || ['coordinator', 'view_bookings', 'monitoring'].some((p) => permissions.includes(p))) && (
+        <TodayBoard />
+      )}
 
       {/* ═══ KPI Cards - ADMIN ═══ */}
       {isAdmin && (

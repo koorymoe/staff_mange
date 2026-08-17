@@ -659,6 +659,20 @@ export interface BookingVisit {
   crew: BookingVisitCrewMember[]
 }
 
+/** ═══ لوحة اليوم ═══ «شنو صاير اليوم» و«شغلي اليوم» ولوحة الشرف. */
+export interface TodayBoardData {
+  bookingsToday: number
+  inField: number
+  completedToday: number
+  newToday: number
+  needsContact: number
+  needsCrew: number
+  needsPaper: number
+  needsFinish: number
+  topCrew: { employeeId: string; name: string; photoUrl: string | null; visits: number; done: number }[]
+  last14: { day: string; count: number }[]
+}
+
 export interface JobDurationEstimate {
   expectedMinutes: number | null
   sampleCount: number
@@ -3216,6 +3230,9 @@ export const api = {
   /** الزبون رد — يرجع للطابور، وعدد المحاولات يبقى مسجّل */
   resumeBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/resume`, { method: 'PUT' }),
+
+  /** لوحة اليوم — كل أرقامها بنداء واحد */
+  getTodayBoard: () => request<TodayBoardData>('/dashboard/today'),
 
   /** «وين هذا الحجز؟» — يرجّع المحطة الي بيها الحجز فعلاً */
   locateBookings: (q: string) =>

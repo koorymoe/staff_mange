@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
 import PrivacyPolicyGate from './PrivacyPolicyGate'
 import EmployeeAvatar from './EmployeeAvatar'
+import LiveAlerts from './LiveAlerts'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api, type Employee, type EmployeeRole } from '../api'
 import { SessionContext, roleLabels, hasGpsSkill } from '../session'
@@ -1134,6 +1135,10 @@ export default function Layout() {
                 </button>
                 {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
               </div>
+              {/* ═══ التنبيهات الحيّة ═══
+                  «أريد توصل إشعارات لأجهزتهم وإشعارات للحاسبات».
+                  الزر يطلع لمن ما ينطلب الإذن بعد — وبعدها يختفي. */}
+              <LiveAlerts />
               <div className="relative">
                 <button
                   onClick={() => setNotifOpen((o) => !o)}
