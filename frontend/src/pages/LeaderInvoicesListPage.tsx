@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { onEnter } from '../utils/enterKey'
 import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
@@ -633,6 +634,7 @@ export default function LeaderInvoicesListPage() {
               type="number"
               value={auditAmount}
               onChange={(e) => setAuditAmount(e.target.value)}
+              {...onEnter(saveAudit, { disabled: busyId !== null })}
               placeholder="اتركه فاضي إذا نفس مبلغ الفاتورة"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
             />
@@ -679,9 +681,13 @@ export default function LeaderInvoicesListPage() {
             <label className="mt-4 block text-sm font-medium text-slate-600">
               رقم الفاتورة المحاسبية <span className="text-red-500">*</span>
             </label>
+            {/* ⚠️ Enter = «اعتماد»: المحاسب يدخل عشرات الأرقام باليوم،
+                وكل رقم يعني يرفع إيده عن الكيبورد ويمسك الماوس ويدوّر
+                الزر. الشرط نفس شرط تعطيل الزر — ما ينفّذ برقم فاضي. */}
             <input
               value={invoiceNo}
               onChange={(e) => setInvoiceNo(e.target.value)}
+              {...onEnter(handleApprove, { disabled: !invoiceNo.trim() || busyId === approveFor.id })}
               autoFocus
               placeholder="الرقم الصادر من نظام المحاسبة"
               className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-500"

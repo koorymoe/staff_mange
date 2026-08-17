@@ -353,6 +353,19 @@ func (h *BookingHandler) Paged(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// GET /api/bookings/locate?q=... — «وين هذا الحجز؟»
+func (h *BookingHandler) Locate(w http.ResponseWriter, r *http.Request) {
+	items, err := h.service.LocateBookings(r.URL.Query().Get("q"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر البحث")
+		return
+	}
+	if items == nil {
+		items = []repository.BookingLocation{}
+	}
+	WriteJSON(w, http.StatusOK, items)
+}
+
 // GET /api/bookings/station-counts — كم حجز بكل محطة.
 func (h *BookingHandler) StationCounts(w http.ResponseWriter, r *http.Request) {
 	counts, err := h.service.StationCounts()

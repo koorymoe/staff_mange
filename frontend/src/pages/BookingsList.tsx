@@ -10,6 +10,7 @@ import BookingVisits from '../components/BookingVisits'
 import { BOOKING_STAGES, currentStage } from '../bookingStage'
 import { BUCKET_HEADINGS, DONE_FILTERS, type BookingBucket, type DoneFilter } from './bookingBuckets'
 import Pager from '../components/Pager'
+import BookingLocator from '../components/BookingLocator'
 
 export type { BookingBucket } from './bookingBuckets'
 
@@ -826,6 +827,15 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
             </tbody>
           </table>
           </div>
+
+          {/* ═══ «وين هذا الحجز؟» ═══
+              ما يطلع إلا لمن يكون البحث ما لگه شي **بهاي المحطة** —
+              وقتها ندوّر عليه بباقي المحطات ونگول وين هو. */}
+          {filtered.length === 0 && searchQ.length >= 2 && (
+            <div className="px-4 pb-2">
+              <BookingLocator term={searchQ} currentStation={BUCKET_HEADINGS[bucket].title} />
+            </div>
+          )}
 
           {/* ═══ الترقيم ═══ نفس مكوّن شاشة الزبائن بالضبط */}
           <div className="border-t border-slate-100 px-4 py-3">

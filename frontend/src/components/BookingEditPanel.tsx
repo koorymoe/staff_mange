@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import MultiSelect from './MultiSelect'
+import { onEnter } from '../utils/enterKey'
 import { api, type Booking, type Service } from '../api'
 import { useSession } from '../session'
 
@@ -148,6 +149,7 @@ export default function BookingEditPanel({
             type="number"
             value={price}
             onChange={(e) => setPrice(e.target.value)}
+            {...onEnter(save, { disabled: saving })}
             placeholder="غير محددة"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
           />

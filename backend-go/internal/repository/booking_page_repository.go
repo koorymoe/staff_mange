@@ -261,3 +261,94 @@ func (r *BookingRepository) StationCounts() (map[string]int, error) {
 	}
 	return out, nil
 }
+
+// ═══ وين الحجز؟ ═══
+//
+// «يجي الموظف يبحث عن الحجز — وين يبحث؟ بالحجوزات المثبتة، والحجز
+// بعده ما متثبت. أريد النظام يساعد الموظف: من يبحث بكود حجز بمكان
+// غلط، يكله هذا الحجز بفلان مكان، ابحث عنه هناك».
+//
+// وهاي أذكى من زيادة سرعة البحث: المشكلة مو إن الموظف ما لگاه، هي
+// إنه ما يعرف **وين يدوّر**. عشر محطات، وهو يفتحهن وحدة وحدة —
+// وأغلب الوقت ينتهي يظن الحجز انحذف ويسجّله من جديد.
+//
+// ⚠️ نجاوب بالمحطة الي **الحجز بيها فعلاً** — نحسبها من نفس شروط
+// المحطات، مو من تخمين. ولو الحجز مو موجود إطلاقاً، نگول «مو
+// موجود» صراحة بدل ما نرجّع فراغ يفسّره الموظف كيف ما جان.
+type BookingLocation struct {
+	ID       string  `db:"id" json:"id"`
+	Code     string  `db:"code" json:"code"`
+	Customer *string `db:"customerName" json:"customerName"`
+	Station  string  `db:"-" json:"station"`
+}
+
+// Locate يلگه الحجز بالكود (أو جزء منه) ويگول بأي محطة هو.
+func (r *BookingRepository) Locate(term string) ([]BookingLocation, error) {
+	term = strings.TrimSpace(term)
+	if term == "" {
+		return nil, nil
+	}
+	// الترتيب مهم: أول محطة يطابقها الحجز هي جوابه، فنمشي بترتيب
+	// المسار حتى ما يطلع «منجز» لحجز مطلوب حذفه مثلاً.
+	stations := []struct{ key, label string }{
+		{"delete_pending", "بانتظار قرار الحذف"},
+		{"at_projects", "عند إدارة المشاريع"},
+		{"pending", "بانتظار التثبيت — بحاجة لتنسيق"},
+		{"confirmed", "تم التثبيت — بحاجة لكادر"},
+		{"assigned", "مكلّف — بانتظار التنفيذ"},
+		{"done", "تم الإنجاز"},
+	}
+	sel := []string{}
+	for _, st := range stations {
+		sel = append(sel, fmt.Sprintf(`(%s) AS %q`, bucketCondition(st.key), st.key))
+	}
+
+	rows, err := r.db.Queryx(`
+		SELECT b.id, b.code, c.name AS "customerName",
+		       b.status::text AS status,
+		       (b.status = 'PARTIAL' OR (b."partialCount" > 0 AND b.status = 'CONFIRMED')) AS partial,
+		       (b.status = 'CANCELLED' OR b."waitingSince" IS NOT NULL OR b."awaitingReschedule") AS stuck,
+		       `+strings.Join(sel, ", ")+`
+		FROM "Booking" b
+		LEFT JOIN "Customer" c ON c.id = b."customerId"
+		WHERE b."archivedAt" IS NULL AND (b.code ILIKE $1 OR c.phone ILIKE $1 OR c.name ILIKE $1)
+		ORDER BY b."createdAt" DESC LIMIT 5`, "%"+term+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := []BookingLocation{}
+	for rows.Next() {
+		m := map[string]any{}
+		if err := rows.MapScan(m); err != nil {
+			return nil, err
+		}
+		loc := BookingLocation{Station: "بالأرشيف أو خارج المحطات"}
+		if v, ok := m["id"].(string); ok {
+			loc.ID = v
+		}
+		if v, ok := m["code"].(string); ok {
+			loc.Code = v
+		}
+		if v, ok := m["customerName"].(string); ok {
+			loc.Customer = &v
+		}
+		// ⚠️ «تحتاج إكمال» و«ما وصلت» يسبقن الباقي بالفحص: حالتهن
+		// تغلب (حجز منجز جزئياً مو «مكلّف»، والملغى مو «منجز»).
+		if b, _ := m["partial"].(bool); b {
+			loc.Station = "تحتاج إكمال"
+		} else if b, _ := m["stuck"].(bool); b {
+			loc.Station = "ما وصلت للتنفيذ"
+		} else {
+			for _, st := range stations {
+				if v, _ := m[st.key].(bool); v {
+					loc.Station = st.label
+					break
+				}
+			}
+		}
+		out = append(out, loc)
+	}
+	return out, nil
+}

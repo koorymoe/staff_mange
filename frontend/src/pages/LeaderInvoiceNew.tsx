@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { onEnter } from '../utils/enterKey'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useSession } from '../session'
 import {
@@ -958,12 +959,16 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
               onChange={(e) => updateMaterial(m.key, { quantity: Number(e.target.value) })}
               className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
             />
+            {/* ⚠️ Enter بآخر خانة = صف مادة جديد: الليدر يدخل عشر
+                مواد، ولو لازم يمسك الماوس بين كل وحدة والثانية يصير
+                إدخال الفاتورة أطول من الشغل نفسه. */}
             <input
               type="number"
               min={0}
               placeholder="سعر الوحدة (لو مادة يدوية)"
               value={m.unitPrice ?? ''}
               onChange={(e) => updateMaterial(m.key, { unitPrice: Number(e.target.value) })}
+              {...onEnter(addMaterial)}
               className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
             />
             <button

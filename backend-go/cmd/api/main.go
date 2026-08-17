@@ -589,6 +589,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// خلفي يقفل بيه أي واحد شغله بضغطة بدل ما يوثّقه.
 	// نفس حارس `GET /api/bookings` — هاي نفس البيانات بصفحات، فما يجوز
 	// تكون أضيق ولا أوسع منه.
+	mux.Handle("GET /api/bookings/locate", middleware.Chain(http.HandlerFunc(bookingHandler.Locate), requireAuth))
 	mux.Handle("GET /api/bookings/station-counts", middleware.Chain(http.HandlerFunc(bookingHandler.StationCounts), requireAuth))
 	mux.Handle("GET /api/bookings/paged", middleware.Chain(http.HandlerFunc(bookingHandler.Paged), requireAuth))
 	mux.Handle("POST /api/bookings/{id}/settle-legacy", middleware.Chain(http.HandlerFunc(bookingHandler.SettleLegacy), requireAuth, requireOwner))

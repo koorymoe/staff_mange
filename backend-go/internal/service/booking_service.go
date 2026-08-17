@@ -826,6 +826,11 @@ func (s *BookingService) ListPaged(q repository.BookingPageQuery) ([]model.Booki
 	return s.repo.ListPaged(q)
 }
 
+// LocateBookings «وين هذا الحجز؟» — يجاوب بالمحطة الي هو بيها.
+func (s *BookingService) LocateBookings(term string) ([]repository.BookingLocation, error) {
+	return s.repo.Locate(term)
+}
+
 // StationCounts عدّاد كل محطة — استعلام واحد.
 func (s *BookingService) StationCounts() (map[string]int, error) {
 	return s.repo.StationCounts()

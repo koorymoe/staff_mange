@@ -3217,6 +3217,11 @@ export const api = {
   resumeBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/resume`, { method: 'PUT' }),
 
+  /** «وين هذا الحجز؟» — يرجّع المحطة الي بيها الحجز فعلاً */
+  locateBookings: (q: string) =>
+    request<{ id: string; code: string; customerName: string | null; station: string }[]>(
+      `/bookings/locate?q=${encodeURIComponent(q)}`),
+
   /** عدّاد كل محطة — استعلام واحد بالسيرفر */
   getBookingStationCounts: () => request<Record<string, number>>('/bookings/station-counts'),
 
