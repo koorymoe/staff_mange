@@ -56,6 +56,8 @@ const TABS = [
   { key: 'partial' as const, label: 'تحتاج إكمال', icon: '🔄' },
   // ٨ — والاتجاه الثاني: الي ما وصل
   // «اكو حجوزات ما توصل — الزبون يلغي أو ما يرد، لازم تترتب».
+  // محبوس عند إدارة المشاريع — يرجع لحاله أول ما يوصل التنفيذ
+  { key: 'projects' as const, label: 'عند إدارة المشاريع', icon: '🏗️' },
   { key: 'stuck' as const, label: 'ما وصلت للتنفيذ', icon: '🚫' },
   // ٩ — مخرج ثاني: انطلب حذفه وينتظر قرار المراقب
   // «الحجوزات الي ينحذفن أريدهن يترحّلن بعد، ما أريد يضلن بمكان واحد».
@@ -88,7 +90,9 @@ export default function BookingsHub() {
     || (t.key === 'partial' && canCoord)
     // متابعة طلبات الحذف شغل تنسيق/إشراف
     || (t.key === 'deleting' && canCoord)
-    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting'),
+    // متابعة المحبوس عند المشاريع شغل تنسيق
+    || (t.key === 'projects' && canCoord)
+    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting' && t.key !== 'projects'),
   )
 
   return (
@@ -131,6 +135,7 @@ export default function BookingsHub() {
       {tab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
       {tab === 'partial' && <PartialBookings />}
       {tab === 'done' && <BookingsList key="done" bucket="done" />}
+      {tab === 'projects' && <BookingsList key="projects" bucket="at_projects" />}
       {tab === 'deleting' && <BookingsList key="deleting" bucket="delete_pending" />}
       {tab === 'stuck' && <StageBucketsPage />}
     </div>

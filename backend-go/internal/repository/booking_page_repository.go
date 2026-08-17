@@ -38,11 +38,17 @@ func bucketCondition(bucket string) string {
 	// ⚠️ المطلوب حذفه ينستثنى من **كل** المحطات ويروح لمحطته: بقاؤه
 	// بالطابور يعني الإداري يشتغل على حجز يمكن ينحذف.
 	notDeleting := ` AND NOT ` + deletePendingSQL
+	// ⚠️ والمحبوس عند المشاريع ينستثنى بعد — نفس السبب: طابور الشغل
+	// ما يجوز يمتلئ بحجوزات الإداري ما يكدر يلمسها.
+	notDeleting += ` AND NOT ` + atProjectsSQL
 
 	switch bucket {
 	// محطة مستقلة: ينتظر قرار المراقب
 	case "delete_pending":
 		return deletePendingSQL
+	// محطة مستقلة: عند إدارة المشاريع لحد ما يوصل التنفيذ
+	case "at_projects":
+		return atProjectsSQL + ` AND NOT ` + deletePendingSQL
 	// ١ — انسجّل وما انثبّت بعد: ولا كادر ولا تنفيذ
 	case "pending":
 		return `b."confirmedAt" IS NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
@@ -81,6 +87,24 @@ func bucketCondition(bucket string) string {
 // المحطة تنحسب من حالته مو من علامة ثابتة.
 const deletePendingSQL = `EXISTS (SELECT 1 FROM "BookingDeleteRequest" dr
 	WHERE dr."bookingId" = b.id AND dr.status = 'PENDING')`
+
+// ═══ محبوس عند إدارة المشاريع ═══
+//
+// «الحجوزات الي يترحّلن للكادر… أريدهن يترحّلن بعد، ينتقلن مرحلة
+// مرحلة، ما أريد يضلن بمكان واحد» — واختار محطة مستقلة.
+//
+// الحجز الي انرحّل لإدارة المشاريع يبقى **مقفول** على الإداري لحد ما
+// المشرف يوصله مرحلة التنفيذ. فبقاؤه بطابور «تم التثبيت» يزاحم شغلاً
+// يكدر يلمسه بحجز ما يكدر يلمسه — والإداري يشوف رقماً بالعدّاد ما
+// يقدر يشتغل عليه.
+//
+// ⚠️ ومحطة مستقلة أفضل من إخفائه: الحجز المحبوس شهر عند المشاريع
+// لازم ينشاف وينعدّ، وإلا محد ينتبه إنه واقف.
+//
+// ⚠️ وما يحتاج علامة ترجعه: أول ما يوصل التنفيذ (`projectExecutionAt`)
+// الشرط يصير كذباً لحاله، فيرجع لمحطته الطبيعية تلقائياً.
+const atProjectsSQL = `(b."transferToProjects" AND b."projectExecutionAt" IS NULL
+	AND b.status NOT IN ('CANCELLED', 'COMPLETED'))`
 
 const hasInvoiceSQL = `EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`
 const hasReportSQL = `EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)`
