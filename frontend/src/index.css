@@ -149,3 +149,125 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .greet-swap, .greet-icon { animation: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   الوضع الليلي
+   ═══════════════════════════════════════════════════════════════
+
+   «سوي الوضع الليلي».
+
+   الموظف الي يشتغل بالليل من تلفونه، الشاشة البيضاء تعمي عينه —
+   خصوصاً الفني بالميدان والليدر الي يكتب تقريره آخر الليل.
+
+   ⚠️ ليش هنا بملف واحد مو `dark:` بكل شاشة؟ لأن النظام فيه أكثر من
+   ١٥٠ شاشة ومكوّن. إضافة `dark:` لكل صنف تعني آلاف التعديلات، وأي
+   شاشة تنبني بكرة وتنسى `dark:` تطلع بيضاء ناصعة بنص الوضع الليلي —
+   يعني وضع ليلي «أغلبه» شغّال، وهذا أسوأ من ما اكو.
+
+   وTailwind v4 يخلّي كل لون **متغيّر CSS** (`bg-white` تساوي
+   `var(--color-white)`)، فقلب اللوحة بمكان واحد يقلب النظام كله —
+   والشاشة الجديدة تجي مظلمة لحالها بلا ما أحد ينتبهلها.
+
+   ⚠️ والقلب مو عشوائي: نعكس **سلّم الرمادي** (slate) ونثبّت الأبيض
+   على رمادي غامق، فالنص الغامق يصير فاتح والخلفية الفاتحة تصير
+   غامقة — وتبقى الفروق بين الدرجات محفوظة مثل ما هي بالنهار.
+
+   ⚠️ وألوان المعاني (أحمر/أخضر/أصفر) تنخفّف بس ما تنقلب: الأحمر لازم
+   يبقى أحمر — تحذير ينقلب لأخضر بالليل يعني قرار غلط بالفلوس. */
+
+html.dark {
+  color-scheme: dark;
+
+  /* سلّم الرمادي منعكس */
+  --color-slate-50:  #161d2e;
+  --color-slate-100: #1c2437;
+  --color-slate-200: #26304a;
+  --color-slate-300: #38445f;
+  --color-slate-400: #7d8aa5;
+  --color-slate-500: #99a5bd;
+  --color-slate-600: #b6c0d4;
+  --color-slate-700: #ccd4e3;
+  --color-slate-800: #e2e8f2;
+  --color-slate-900: #f1f5fb;
+
+  /* لون العلامة يفتح شوية حتى يبان على الغامق */
+  --color-brand-50:  #16233d;
+  --color-brand-100: #1b2c4d;
+  --color-brand-800: #9db9e8;
+  --color-brand-900: #cfe0f8;
+
+  /* خلفيات المعاني تنغمق، ونصوصها تفتح — المعنى يبقى هو */
+  --color-red-50: #3a1a1f;   --color-red-100: #4d2027;
+  --color-emerald-50: #12332a; --color-emerald-100: #16412f;
+  --color-amber-50: #38290f;  --color-amber-100: #4a3512;
+  --color-sky-50: #12283d;    --color-sky-100: #16334d;
+  --color-violet-50: #241a3d; --color-violet-100: #2e2150;
+  --color-rose-50: #3a1826;
+  --color-teal-50: #103030;
+  --color-indigo-50: #1a1f3d;
+  --color-orange-50: #3a2312;
+
+  --color-red-700: #ff9d9d;    --color-red-800: #ffb4b4;
+  --color-emerald-700: #7fe0b4; --color-emerald-800: #9beac6;
+  --color-amber-700: #f5c877;   --color-amber-800: #f8d79a;
+  --color-amber-900: #fbe6bf;
+  --color-sky-800: #a5cff5;
+  --color-violet-800: #c3b0f5;
+}
+
+html.dark body {
+  background: linear-gradient(180deg, #0b1020 0%, #10182b 100%);
+}
+
+/* ⚠️ خلفية البطاقات تنقلب بالصنف مو بالمتغيّر: `--color-white` يخدم
+   **الاثنين** — خلفية البطاقة (`bg-white`) ونص الأزرار والقائمة
+   الجانبية (`text-white`). قلبه بالمتغيّر يخلّي نص القائمة الجانبية
+   غامقاً على خلفية غامقة — يعني قائمة ما تنقرا.
+   فنقلب خلفيات الأبيض بس، والنص الأبيض يبقى أبيض. */
+html.dark .bg-white { background-color: #131a2a; }
+html.dark .bg-white\/95 { background-color: rgba(19, 26, 42, 0.95); }
+html.dark .bg-white\/90 { background-color: rgba(19, 26, 42, 0.9); }
+html.dark .bg-white\/80 { background-color: rgba(19, 26, 42, 0.8); }
+html.dark .bg-white\/60 { background-color: rgba(19, 26, 42, 0.6); }
+/* ⚠️ الشفافيات الواطية (٥٪–٢٥٪) ما تنلمس: هي زينة **فوگ خلفيات
+   غامقة أصلاً** (القائمة الجانبية والرؤوس الملوّنة)، وقلبها يطفّي
+   التفاصيل الي تفصل عناصرها. */
+
+/* ⚠️ الألوان المكتوبة بالقيمة (`text-[#0f2040]`) ما تتبع المتغيّرات:
+   ١٢٧ عنوان بالنظام مكتوب بيها، وكلها تبقى كحلية غامقة على خلفية
+   غامقة — يعني عناوين ما تنقرا بنص الشاشات. نقلبها بالصنف نفسه بدل
+   ما ندور على ١٢٧ ملف ونبدّلهن (وننسى وحدة). */
+html.dark .text-\[\#0f2040\] { color: #dbe6f7; }
+html.dark .text-\[\#2c5aad\] { color: #9fc0ee; }
+html.dark .text-\[\#1a237e\] { color: #b9c6f2; }
+html.dark .bg-\[\#f0f4f9\] { background-color: #182034; }
+
+/* الظلال ما تبين على الغامق — نبدّلها بحدود خفيفة تفصل البطاقات */
+html.dark [class*="shadow-"] {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* ⚠️ خانات الإدخال: المتصفح يرسم خلفيتها بنفسه بالكثير من الحالات
+   (خصوصاً الملء التلقائي)، فنفرضها صراحةً — وإلا تطلع خانة بيضا
+   بنص شاشة غامقة. */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #1a2236;
+  color: #e2e8f2;
+  border-color: #38445f;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #7d8aa5; }
+
+/* التقويم والساعة بخانات التاريخ تطلع سودة على غامق — نقلبها */
+html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark input[type="time"]::-webkit-calendar-picker-indicator,
+html.dark input[type="month"]::-webkit-calendar-picker-indicator,
+html.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+/* ⚠️ الصور والشعارات ما تنلمس: قلب ألوانها يشوّه صورة الموظف
+   وشعار الشركة. */
+html.dark img { opacity: 0.94; }
