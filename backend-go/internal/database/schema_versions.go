@@ -269,6 +269,9 @@ func versionedMigrations() []Migration {
 	result = append(result, legacySettleMigrations()...)
 	// 0249: صورة الموظف — «أضيف صورة بدل الحرف، ومن أضغط عليها تنفتح».
 	result = append(result, employeePhotoMigrations()...)
+	// 0250: الحجوزات القديمة ترجع لـ«بانتظار التثبيت» حتى تعبر البوابة
+	// الجديدة — «رجّعهن كلهن». قابلة للتراجع بجدول النسخة.
+	result = append(result, legacyPendingResetMigrations()...)
 	return result
 }
 
