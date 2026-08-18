@@ -55,12 +55,32 @@ export default function Login() {
   return (
     <main className="login-live-stage" dir="rtl">
       <div className="login-live-scene" aria-hidden="true">
-        <img src={`${import.meta.env.BASE_URL}login-live-background.png`} alt="" />
+        {/* ⚠️ الخلفية تنحمّل بالـCSS مو بوسم <img>: تحت 1050px الأنماط
+            تخفّيها أصلاً (opacity .2 تحت طبقة شبه صمّاء)، فوسم <img>
+            كان ينزّلها بالموبايل حتى لو ما تنشاف — يعني الموظف بالميدان
+            يدفع من رصيده مقابل صورة ما يشوفها. بالـCSS المتصفح ما
+            يطلبها إلا لمن تنطبق الشاشة الكبيرة. */}
+        <span className="login-live-photo" />
         <span className="login-live-scan" />
         <span className="login-live-particle particle-one" />
         <span className="login-live-particle particle-two" />
         <span className="login-live-particle particle-three" />
       </div>
+
+        {/* أسماء الخدمات مرسومة **داخل** الصورة، والصورة ما تنحمّل
+          بالموبايل. هذا النص المخفي بالعين هو النسخة الوحيدة الي
+          يوصلها قارئ الشاشة ومحرك البحث. */}
+      <ul className="sr-only">
+        <li>أنظمة المراقبة والكاميرات</li>
+        <li>الشبكات والبنية التحتية</li>
+        <li>الطاقة الشمسية</li>
+        <li>المنزل الذكي</li>
+        <li>الأقفال الذكية</li>
+        <li>أنظمة الصوتيات</li>
+        <li>أنظمة الحريق والسلامة</li>
+        <li>أنظمة تتبع المركبات GPS</li>
+        <li>الخدمات الفنية والحلول الذكية</li>
+      </ul>
 
       <section className="login-live-card" aria-labelledby="login-title">
         <div className="login-live-logo"><img src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="شعار شركة الأماني" /></div>
