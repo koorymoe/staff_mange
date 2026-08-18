@@ -105,12 +105,12 @@ export default function GpsEmployee() {
     DELIVERED: 'تم التسليم', IN_PROGRESS: 'قيد المعالجة', COMPLETED: 'مكتمل',
   }
   const statusColor: Record<string, { color: string; bg: string }> = {
-    PENDING: { color: '#d97706', bg: '#fffbeb' },
-    APPROVED: { color: '#2563eb', bg: '#eff6ff' },
-    REJECTED: { color: '#dc2626', bg: '#fef2f2' },
-    DELIVERED: { color: '#16a34a', bg: '#f0fdf4' },
-    IN_PROGRESS: { color: '#7c3aed', bg: '#f5f3ff' },
-    COMPLETED: { color: '#16a34a', bg: '#f0fdf4' },
+    PENDING: { color: 'var(--t-warning)', bg: '#fffbeb' },
+    APPROVED: { color: 'var(--t-info)', bg: '#eff6ff' },
+    REJECTED: { color: 'var(--t-danger)', bg: '#fef2f2' },
+    DELIVERED: { color: 'var(--t-success)', bg: '#f0fdf4' },
+    IN_PROGRESS: { color: 'var(--t-violet)', bg: '#f5f3ff' },
+    COMPLETED: { color: 'var(--t-success)', bg: '#f0fdf4' },
   }
   const typeLabel: Record<string, string> = { device: 'شراء جهاز', renewal: 'تجديد', maintenance: 'صيانة' }
   const subLabel: Record<string, string> = { THREE_MONTHS: '3 أشهر', SIX_MONTHS: '6 أشهر', YEARLY: 'سنوي' }
@@ -128,7 +128,7 @@ export default function GpsEmployee() {
       {/* Assigned Installs */}
       {assignedInstalls.length > 0 && (
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>🛠️ تركيباتي المجدولة</h3>
+          <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>🛠️ تركيباتي المجدولة</h3>
           <div className="flex flex-col gap-3">
             {assignedInstalls.map(d => (
               <div key={d.id} className="flex items-center justify-between rounded-xl border border-slate-100 p-4">
@@ -153,9 +153,9 @@ export default function GpsEmployee() {
       {/* Service Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
-          { key: 'purchase' as const, icon: '📱', title: 'شراء جهاز', desc: 'طلب جهاز تتبع جديد للزبون', color: '#1a3a5c' },
-          { key: 'renewal' as const, icon: '🔄', title: 'تجديد اشتراك', desc: 'تجديد اشتراك زبون حالي', color: '#16a34a' },
-          { key: 'maintenance' as const, icon: '🔧', title: 'طلب صيانة', desc: 'إرسال طلب صيانة لجهاز', color: '#d97706' },
+          { key: 'purchase' as const, icon: '📱', title: 'شراء جهاز', desc: 'طلب جهاز تتبع جديد للزبون', color: 'var(--t-title)' },
+          { key: 'renewal' as const, icon: '🔄', title: 'تجديد اشتراك', desc: 'تجديد اشتراك زبون حالي', color: 'var(--t-success)' },
+          { key: 'maintenance' as const, icon: '🔧', title: 'طلب صيانة', desc: 'إرسال طلب صيانة لجهاز', color: 'var(--t-warning)' },
         ].map(card => (
           <button
             key={card.key}
@@ -173,7 +173,7 @@ export default function GpsEmployee() {
       {/* Purchase Form */}
       {activeForm === 'purchase' && (
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>📱 طلب شراء جهاز</h3>
+          <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>📱 طلب شراء جهاز</h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">الزبون *</label>
@@ -238,7 +238,7 @@ export default function GpsEmployee() {
               </select>
             </div>
           </div>
-          <button onClick={handleRenewal} disabled={submitting} className="mt-4 rounded-2xl bg-green-600 px-8 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50">
+          <button onClick={handleRenewal} disabled={submitting} className="mt-4 rounded-2xl bg-green-700 px-8 py-3 text-sm font-bold text-white shadow-sm disabled:opacity-50">
             {submitting ? 'جاري الإرسال...' : '📤 إرسال طلب التجديد'}
           </button>
         </div>
@@ -270,7 +270,7 @@ export default function GpsEmployee() {
       {/* Recent Requests Table */}
       <div className="rounded-2xl bg-white shadow-sm overflow-hidden">
         <div className="p-5 border-b border-slate-100">
-          <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>📋 آخر الطلبات</h3>
+          <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>📋 آخر الطلبات</h3>
         </div>
         <div className="overflow-x-auto">
         <table className="w-full text-right">
@@ -285,7 +285,7 @@ export default function GpsEmployee() {
           </thead>
           <tbody className="divide-y divide-slate-100">
             {recentRequests.map((r) => {
-              const sc = statusColor[r.status] || { color: '#64748b', bg: '#f8fafc' }
+              const sc = statusColor[r.status] || { color: 'var(--t-muted)', bg: '#f8fafc' }
               return (
                 <tr key={r.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm font-medium">{typeLabel[r.type]}</td>

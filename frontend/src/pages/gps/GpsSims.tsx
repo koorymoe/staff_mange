@@ -97,7 +97,7 @@ export default function GpsSims() {
           <div className="flex items-center gap-3">
             <span className="text-2xl">📊</span>
             <div>
-              <p className="text-2xl font-bold" style={{ color: '#1a3a5c' }}>{totalSims}</p>
+              <p className="text-2xl font-bold" style={{ color: 'var(--t-title)' }}>{totalSims}</p>
               <p className="text-sm text-slate-500">إجمالي الشرائح</p>
             </div>
           </div>
@@ -145,7 +145,7 @@ export default function GpsSims() {
       {/* Add Form */}
       {showForm && (
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>➕ شريحة جديدة</h3>
+          <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>➕ شريحة جديدة</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">رقم الشريحة *</label>
@@ -208,7 +208,7 @@ export default function GpsSims() {
                       {s.status === 'AVAILABLE' && (
                         <button
                           onClick={() => { setAssignTarget(s); setAssignCustomerId('') }}
-                          className="rounded-2xl bg-green-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-green-600"
+                          className="rounded-2xl bg-green-500 px-4 py-1.5 text-xs font-bold text-white hover:bg-green-700"
                         >
                           ربط بزبون
                         </button>
@@ -245,7 +245,7 @@ export default function GpsSims() {
       {assignTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setAssignTarget(null)}>
           <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>ربط الشريحة بزبون</h3>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>ربط الشريحة بزبون</h3>
             <p className="mt-1 text-sm text-slate-600">الشريحة: <span dir="ltr">{assignTarget.simNumber}</span></p>
             <label className="mt-4 mb-1 block text-sm font-medium text-slate-600">اختر الزبون</label>
             <select

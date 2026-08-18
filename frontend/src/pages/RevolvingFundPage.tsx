@@ -137,7 +137,7 @@ export default function RevolvingFundPage() {
         {funds.map((f) => (
           <div key={f.id} className="rounded-2xl bg-white p-5 shadow-sm">
             <p className="text-sm font-medium text-slate-500">{f.name}</p>
-            <p className="mt-1 text-2xl font-bold" style={{ color: '#1a3a5c' }}>{money(f.balance)}</p>
+            <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--t-title)' }}>{money(f.balance)}</p>
             <p className="mt-1 text-xs text-amber-700">بيد الموظفين: {money(f.outstandingTotal)}</p>
             {f.awaitingDischargeTotal > 0 && (
               <p className="mt-0.5 text-xs text-violet-700">ناطر التخريج: {money(f.awaitingDischargeTotal)}</p>
@@ -173,14 +173,14 @@ export default function RevolvingFundPage() {
       {tab === 'funds' && (
         <div className="space-y-4">
           <button onClick={() => { setDisburseOpen(true); setDFund(funds[0]?.id || '') }}
-            className="rounded-xl bg-emerald-600 px-6 py-3 font-bold text-white hover:bg-emerald-700">
+            className="rounded-xl bg-emerald-700 px-6 py-3 font-bold text-white hover:bg-emerald-800">
             ➕ تسليم مبلغ لموظف
           </button>
           {funds.map((f) => (
             <div key={f.id} className="rounded-2xl bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>{f.name}</h3>
+                  <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>{f.name}</h3>
                   <p className="mt-1 text-sm text-slate-500">الرصيد الحالي: <span className="font-bold text-slate-800">{money(f.balance)}</span></p>
                   <p className="text-sm text-slate-500">بيد الموظفين وما انتسوّى: <span className="font-bold text-amber-700">{money(f.outstandingTotal)}</span></p>
                   <p className="text-sm text-slate-500">ناطر تخريج المحاسب: <span className="font-bold text-violet-700">{money(f.awaitingDischargeTotal || 0)}</span></p>
@@ -188,7 +188,7 @@ export default function RevolvingFundPage() {
                 {canEditAmount && (
                   <div className="flex gap-2">
                     <button onClick={() => { setTopupFor(f); setTopupAmount('') }}
-                      className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700">تغذية</button>
+                      className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800">تغذية</button>
                     <button onClick={() => { setEditFor(f); setEditBalance(String(f.balance)) }}
                       className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">تعديل المبلغ</button>
                   </div>
@@ -253,7 +253,7 @@ export default function RevolvingFundPage() {
                     </button>
                   )}
                   <button disabled={busy} onClick={() => doReview(t, true)}
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">✔ وافق</button>
+                    className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">✔ وافق</button>
                   <button disabled={busy} onClick={() => doReview(t, false)}
                     className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50">✕ ارفض</button>
                 </div>
@@ -321,7 +321,7 @@ export default function RevolvingFundPage() {
       {dischargeFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
           <div className="w-full max-w-md space-y-4 rounded-2xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>تخريج مادة — {dischargeFor.employeeName}</h3>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>تخريج مادة — {dischargeFor.employeeName}</h3>
             <p className="rounded-lg bg-violet-50 p-3 text-sm text-violet-900">
               راح يرجع للدوار <b>{money(dischargeFor.spentAmount)}</b>
             </p>
@@ -478,7 +478,7 @@ export default function RevolvingFundPage() {
             className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
           <div className="mt-4 flex gap-3">
             <button disabled={busy} onClick={() => doReview(viewReceipt, true)}
-              className="flex-1 rounded-lg bg-emerald-600 px-4 py-3 font-medium text-white disabled:opacity-50">✔ وافق وصفّر رصيده</button>
+              className="flex-1 rounded-lg bg-emerald-700 px-4 py-3 font-medium text-white disabled:opacity-50">✔ وافق وصفّر رصيده</button>
             <button disabled={busy} onClick={() => doReview(viewReceipt, false)}
               className="rounded-lg bg-red-600 px-4 py-3 font-medium text-white disabled:opacity-50">✕ ارفض</button>
           </div>
@@ -492,7 +492,7 @@ function Modal({ title, children, onClose, wide }: { title: string; children: Re
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
       <div dir="rtl" className={`w-full ${wide ? 'max-w-2xl' : 'max-w-md'} rounded-2xl bg-white p-6 shadow-xl`} onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>{title}</h3>
+        <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>{title}</h3>
         {children}
       </div>
     </div>

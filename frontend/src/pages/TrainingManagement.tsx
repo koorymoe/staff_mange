@@ -144,7 +144,7 @@ export default function TrainingManagement() {
                   <option value="DOCUMENT">مستند</option>
                 </select>
                 <button onClick={addMaterial}
-                  className="rounded-lg bg-emerald-500 py-2 text-sm font-bold text-white hover:bg-emerald-600">
+                  className="rounded-lg bg-emerald-500 py-2 text-sm font-bold text-white hover:bg-emerald-700">
                   + إضافة مادة
                 </button>
               </div>

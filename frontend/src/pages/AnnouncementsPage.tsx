@@ -71,7 +71,9 @@ export default function AnnouncementsPage() {
         <button
           onClick={publish} disabled={busy || !body.trim()}
           className="mt-3 rounded-lg px-5 py-2.5 font-medium text-white disabled:opacity-50"
-          style={{ backgroundColor: '#1a3a5c' }}
+          /* ⚠️ أغمق من كحلي البطاقة: نص أبيض ١٦px على #1a3a5c تباينه
+             ٤.١٧ — تحت الحد. الزر بس ينغمق، والبطاقة تبقى بلونها. */
+          style={{ backgroundColor: '#152b45' }}
         >
           {busy ? 'جاري النشر...' : '📢 انشر الإعلان'}
         </button>

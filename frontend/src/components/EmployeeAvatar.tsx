@@ -126,7 +126,7 @@ export default function EmployeeAvatar({
                 {canEdit && (
                   <button
                     onClick={() => { void onPhotoChange?.(null); setOpen(false) }}
-                    className="rounded-lg bg-red-500/90 px-3 py-1 text-xs font-bold text-white hover:bg-red-600"
+                    className="rounded-lg bg-red-600/90 px-3 py-1 text-xs font-bold text-white hover:bg-red-700"
                   >
                     🗑️ شيل الصورة
                   </button>

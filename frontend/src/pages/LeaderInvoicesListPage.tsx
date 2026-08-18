@@ -74,7 +74,7 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
   body{font-family:'Segoe UI',Tahoma,sans-serif;padding:22px;color:#0f2040}
   h1{font-size:19px;margin:0} .code{font-family:monospace;color:#1d4ed8;font-size:13px}
   table{width:100%;border-collapse:collapse;margin-top:6px;font-size:12.5px}
-  th,td{border-bottom:1px solid #e2e8f0;padding:5px;text-align:right}
+  th,td{border-bottom:1px solid var(--bd-line);padding:5px;text-align:right}
   th{color:#64748b;font-weight:600} small{color:#94a3b8}
   h2{font-size:13px;margin:16px 0 2px;color:#334155}
   .tot{margin-top:14px;border-top:2px solid #0f2040;padding-top:8px;font-size:13.5px}

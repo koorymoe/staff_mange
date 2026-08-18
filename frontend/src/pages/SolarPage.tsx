@@ -75,7 +75,7 @@ export default function SolarPage() {
           >
             {t.label}
             {t.badge ? (
-              <span className="mr-2 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-black text-white">
+              <span className="mr-2 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-black text-white">
                 {t.badge}
               </span>
             ) : null}
@@ -375,7 +375,7 @@ function Systems({
                       onClick={() => setProcessing(s)}
                       disabled={short}
                       title={short ? 'المخزن ما يكفي' : ''}
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                      className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
                     >
                       ✅ جهّزها لزبون
                     </button>
@@ -739,7 +739,7 @@ function ProcessForm({ system, onClose, onDone }: { system: SolarSystem; onClose
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={submit} disabled={busy} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
+        <button onClick={submit} disabled={busy} className="rounded-lg bg-emerald-700 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
           {busy ? 'جاري التجهيز...' : 'أكّد واخصم من المخزن'}
         </button>
         <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-600">إلغاء</button>
@@ -770,7 +770,7 @@ function Inventory({ components, canEdit, onChanged }: { components: SolarCompon
         ))}
         <FilterBtn active={filter === 'low'} onClick={() => setFilter('low')} danger>⚠️ مخزون منخفض</FilterBtn>
         {canEdit && (
-          <button onClick={() => setEditing('new')} className="mr-auto rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white">
+          <button onClick={() => setEditing('new')} className="mr-auto rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white">
             + مادة جديدة
           </button>
         )}
@@ -854,7 +854,7 @@ function FilterBtn({ children, active, onClick, danger }: { children: React.Reac
       onClick={onClick}
       className={`rounded-full border-2 px-4 py-1.5 text-xs font-bold ${
         active
-          ? danger ? 'border-red-500 bg-red-500 text-white' : 'border-amber-500 bg-amber-500 text-white'
+          ? danger ? 'border-red-500 bg-red-600 text-white' : 'border-amber-500 bg-amber-500 text-white'
           : 'border-slate-200 bg-white text-slate-600'
       }`}
     >{children}</button>
@@ -930,7 +930,7 @@ function ComponentForm({ component, onClose, onSaved }: { component: SolarCompon
       </div>
 
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={save} disabled={busy} className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
+        <button onClick={save} disabled={busy} className="rounded-lg bg-emerald-700 px-5 py-2 text-sm font-bold text-white disabled:opacity-50">
           {busy ? 'جاري الحفظ...' : 'حفظ المادة'}
         </button>
         <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-bold text-slate-600">إلغاء</button>
@@ -1044,7 +1044,7 @@ function Customers({ rows, canEdit, onChanged }: { rows: SolarInstallation[]; ca
                     try { await api.markSolarContacted(r.id, notes); await onChanged() }
                     catch (e) { alert(e instanceof Error ? e.message : 'تعذر التسجيل') }
                   }}
-                  className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white"
+                  className="flex-1 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white"
                 >
                   ✅ سجّل إني اتصلت
                 </button>

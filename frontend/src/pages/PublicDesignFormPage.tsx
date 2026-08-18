@@ -3,7 +3,15 @@ import { useParams } from 'react-router-dom'
 import { api, type DesignFormQuestion } from '../api'
 
 const PRIMARY = '#47528f'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--design-ink)'
 const GOLD = '#c97a3a'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const GOLD_TEXT = 'var(--gold-warm-ink)'
 const PEACH = '#fbede2'
 
 export default function PublicDesignFormPage() {
@@ -51,21 +59,21 @@ export default function PublicDesignFormPage() {
     direction: 'rtl',
     fontFamily: "'Cairo', 'Tajawal', sans-serif",
     minHeight: '100vh',
-    background: '#f4f5fa',
+    background: 'var(--sf-sunken)',
     display: 'flex',
     justifyContent: 'center',
     padding: '32px 16px',
   }
 
   if (loading) {
-    return <div style={wrapStyle}><p style={{ color: PRIMARY, fontWeight: 700 }}>جاري التحميل...</p></div>
+    return <div style={wrapStyle}><p style={{ color: PRIMARY_TEXT, fontWeight: 700 }}>جاري التحميل...</p></div>
   }
 
   if (error && !done) {
     return (
       <div style={wrapStyle}>
-        <div style={{ background: '#fff', borderRadius: '16px', padding: '32px', maxWidth: '480px', textAlign: 'center', boxShadow: '0 4px 24px rgba(71,82,143,0.12)' }}>
-          <p style={{ color: '#c0392b', fontWeight: 700, fontSize: '16px' }}>{error}</p>
+        <div style={{ background: 'var(--sf-card)', borderRadius: '16px', padding: '32px', maxWidth: '480px', textAlign: 'center', boxShadow: '0 4px 24px rgba(71,82,143,0.12)' }}>
+          <p style={{ color: 'var(--t-danger)', fontWeight: 700, fontSize: '16px' }}>{error}</p>
         </div>
       </div>
     )
@@ -75,7 +83,7 @@ export default function PublicDesignFormPage() {
     <div style={wrapStyle}>
       <div style={{ width: '100%', maxWidth: '720px' }}>
         <div style={{
-          background: '#fff', borderRadius: '18px', overflow: 'hidden',
+          background: 'var(--sf-card)', borderRadius: '18px', overflow: 'hidden',
           boxShadow: '0 8px 32px rgba(71,82,143,0.15)', border: `1px solid ${PEACH}`,
         }}>
           <div style={{
@@ -86,7 +94,7 @@ export default function PublicDesignFormPage() {
             <div style={{ fontSize: '17px', fontWeight: 700, lineHeight: 1.5 }}>
               شركة الأماني للتجارة العامة والاستثمارات العقارية والوكالات التجارية محدودة المسؤولية
             </div>
-            <div style={{ fontSize: '12px', fontWeight: 600, color: GOLD, marginTop: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 600, color: GOLD_TEXT, marginTop: '4px' }}>
               Al-Amani for General Trading, Real Estate &amp; Commercial Agencies LLC
             </div>
             <div style={{ marginTop: '14px', fontSize: '20px', fontWeight: 700 }}>{name}</div>
@@ -96,7 +104,7 @@ export default function PublicDesignFormPage() {
           {done ? (
             <div style={{ padding: '48px 30px', textAlign: 'center' }}>
               <div style={{ fontSize: '40px' }}>✓</div>
-              <p style={{ color: PRIMARY, fontWeight: 700, fontSize: '18px', marginTop: '10px' }}>تم إرسال الفورمة بنجاح</p>
+              <p style={{ color: PRIMARY_TEXT, fontWeight: 700, fontSize: '18px', marginTop: '10px' }}>تم إرسال الفورمة بنجاح</p>
               <p style={{ color: '#7c85ad', fontSize: '14px', marginTop: '6px' }}>شكراً لك، فريق التصميم بشركة الأماني راح يتواصل معك قريباً.</p>
             </div>
           ) : (
@@ -106,8 +114,8 @@ export default function PublicDesignFormPage() {
               )}
               {questions.map((q) => (
                 <div key={q.id}>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: PRIMARY, marginBottom: '6px' }}>
-                    {q.label} {q.required && <span style={{ color: '#c0392b' }}>*</span>}
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 700, color: PRIMARY_TEXT, marginBottom: '6px' }}>
+                    {q.label} {q.required && <span style={{ color: 'var(--t-danger)' }}>*</span>}
                   </label>
                   {q.type === 'TEXTAREA' && (
                     <textarea
@@ -140,7 +148,7 @@ export default function PublicDesignFormPage() {
                   {q.type === 'CHECKBOX' && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                       {q.options.map((o) => (
-                        <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: PEACH, borderRadius: '8px', padding: '6px 10px', color: PRIMARY }}>
+                        <label key={o} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', background: PEACH, borderRadius: '8px', padding: '6px 10px', color: PRIMARY_TEXT }}>
                           <input
                             type="checkbox"
                             checked={((answers[q.id] as string[]) || []).includes(o)}
@@ -157,7 +165,7 @@ export default function PublicDesignFormPage() {
                 </div>
               ))}
 
-              {error && <p style={{ color: '#c0392b', fontSize: '13px' }}>{error}</p>}
+              {error && <p style={{ color: 'var(--t-danger)', fontSize: '13px' }}>{error}</p>}
 
               {questions.length > 0 && (
                 <button
@@ -186,6 +194,6 @@ const inputStyle: React.CSSProperties = {
   fontSize: '14px',
   outline: 'none',
   fontFamily: "'Cairo', 'Tajawal', sans-serif",
-  color: PRIMARY,
+  color: PRIMARY_TEXT,
   boxSizing: 'border-box',
 }

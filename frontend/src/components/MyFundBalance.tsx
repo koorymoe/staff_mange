@@ -92,7 +92,7 @@ export default function MyFundBalance() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
           <div dir="rtl" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>تسوية الدوار</h3>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>تسوية الدوار</h3>
             <p className="mt-1 text-sm text-slate-600">الي بيدك: <span className="font-bold">{money(bal.outstanding)}</span></p>
             <p className="mt-2 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
               اكتب شكد صرفت وشكد راجع رجّعته، وارفع صورة الوصل. رصيدك ما يتصفّر إلا بعد ما المحاسب يدقّق ويوافق.

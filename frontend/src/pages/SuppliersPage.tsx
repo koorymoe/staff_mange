@@ -489,7 +489,7 @@ export default function SuppliersPage() {
                     نعم، منافس
                   </button>
                   <button type="button" onClick={() => setFormIsCompetitor(false)}
-                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${!formIsCompetitor ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+                    className={`flex-1 rounded-lg px-4 py-2 text-sm font-bold transition-colors ${!formIsCompetitor ? 'bg-emerald-700 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
                     لا
                   </button>
                 </div>

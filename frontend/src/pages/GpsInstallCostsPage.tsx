@@ -67,7 +67,7 @@ export default function GpsInstallCostsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div className="rounded-2xl bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">إجمالي التكاليف</p>
-          <p className="mt-1 text-2xl font-bold" style={{ color: '#1a3a5c' }}>{money(data.grandTotal)}</p>
+          <p className="mt-1 text-2xl font-bold" style={{ color: 'var(--t-title)' }}>{money(data.grandTotal)}</p>
         </div>
         <div className="rounded-2xl bg-white p-5 shadow-sm">
           <p className="text-sm text-slate-500">عدد عمليات الشد</p>
@@ -80,12 +80,12 @@ export default function GpsInstallCostsPage() {
       </div>
 
       <section className="rounded-2xl bg-white p-6 shadow-sm">
-        <h2 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>الإجمالي لكل كادر</h2>
+        <h2 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>الإجمالي لكل كادر</h2>
         <div className="space-y-2">
           {data.byEmployee.slice().sort((a, b) => b.total - a.total).map((e) => (
             <div key={e.employeeName} className="flex items-center justify-between rounded-xl bg-slate-50 p-3">
               <span className="font-medium text-slate-800">{e.employeeName}</span>
-              <span className="font-bold" style={{ color: '#1a3a5c' }}>{money(e.total)}</span>
+              <span className="font-bold" style={{ color: 'var(--t-title)' }}>{money(e.total)}</span>
             </div>
           ))}
           {data.byEmployee.length === 0 && <p className="p-6 text-center text-slate-400">ماكو بيانات شد</p>}
@@ -93,7 +93,7 @@ export default function GpsInstallCostsPage() {
       </section>
 
       <section className="overflow-hidden rounded-2xl bg-white shadow-sm">
-        <h2 className="p-6 pb-3 text-lg font-bold" style={{ color: '#1a3a5c' }}>التفصيل الشهري</h2>
+        <h2 className="p-6 pb-3 text-lg font-bold" style={{ color: 'var(--t-title)' }}>التفصيل الشهري</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-right">
             <thead style={{ backgroundColor: '#1a3a5c' }} className="text-white">
@@ -117,7 +117,7 @@ export default function GpsInstallCostsPage() {
                         </td>
                       )
                     })}
-                    <td className="whitespace-nowrap px-4 py-3 font-bold" style={{ color: '#1a3a5c' }}>{money(monthTotal)}</td>
+                    <td className="whitespace-nowrap px-4 py-3 font-bold" style={{ color: 'var(--t-title)' }}>{money(monthTotal)}</td>
                   </tr>
                 )
               })}

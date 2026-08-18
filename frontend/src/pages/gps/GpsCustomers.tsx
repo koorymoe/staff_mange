@@ -75,7 +75,7 @@ export default function GpsCustomers() {
       {/* Add Form Modal */}
       {showForm && (
         <div className="mb-6 rounded-2xl bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>➕ زبون جديد</h3>
+          <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>➕ زبون جديد</h3>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-600">الاسم الكامل *</label>
@@ -120,7 +120,7 @@ export default function GpsCustomers() {
             <div key={c.id} className="rounded-2xl bg-white p-5 shadow-sm transition-all hover:shadow-md">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>{c.fullName}</h3>
+                  <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>{c.fullName}</h3>
                   {c.fatherName && <p className="text-sm text-slate-500">{c.fatherName} {c.grandfatherName || ''}</p>}
                 </div>
                 <span className="text-2xl">👤</span>

@@ -3,7 +3,14 @@ import { api, type DailyStats, type WeeklyStats, type ProjectStageStats, type St
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
 
 const PRIMARY = '#1a237e'
-const GOLD = '#c8a45a'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--brand-ink)'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const GOLD_TEXT = 'var(--gold-ink)'
 
 const fmt = (n: number) => n.toLocaleString('en-IQ')
 
@@ -19,9 +26,9 @@ function todayStr() {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '14px' }}>
-      <div style={{ fontSize: '12px', color: '#888' }}>{label}</div>
-      <div style={{ fontSize: '20px', fontWeight: 'bold', color: PRIMARY, marginTop: '4px' }}>{value}</div>
+    <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '14px' }}>
+      <div style={{ fontSize: '12px', color: 'var(--t-faint)' }}>{label}</div>
+      <div style={{ fontSize: '20px', fontWeight: 'bold', color: PRIMARY_TEXT, marginTop: '4px' }}>{value}</div>
     </div>
   )
 }
@@ -37,25 +44,25 @@ function DailyTab() {
 
   return (
     <div>
-      <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <label style={{ fontSize: '13px', color: '#666' }}>التاريخ</label>
+      <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>التاريخ</label>
         <input
           type="date"
           value={date}
           onChange={(e) => e.target.value && setDate(e.target.value)}
-          style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+          style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }}
         />
         {date !== todayStr() && (
           <button
             onClick={() => setDate(todayStr())}
-            style={{ padding: '8px 14px', border: `1px solid ${PRIMARY}`, background: 'white', color: PRIMARY, borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+            style={{ padding: '8px 14px', border: `1px solid ${PRIMARY}`, background: 'var(--sf-card)', color: PRIMARY_TEXT, borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
           >
             اليوم
           </button>
         )}
       </div>
 
-      {!stats && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {!stats && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
 
       {stats && (
         <>
@@ -70,7 +77,7 @@ function DailyTab() {
             <StatCard label="إجمالي الأرباح" value={`${fmt(stats.totalProfitAmount)} د.ع`} />
           </div>
 
-          <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+          <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -85,20 +92,20 @@ function DailyTab() {
               <tbody>
                 {stats.employees.map((e) => (
                   <tr key={e.employeeId}>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.employeeName}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.role}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{e.bookingsAssigned}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee', color: '#2e7d32', fontWeight: 'bold' }}>{e.bookingsCompleted}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee', color: '#c62828' }}>{e.bookingsAssigned - e.bookingsCompleted}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{e.employeeName}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{e.role}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{e.bookingsAssigned}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)', color: 'var(--t-success)', fontWeight: 'bold' }}>{e.bookingsCompleted}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)', color: 'var(--t-danger)' }}>{e.bookingsAssigned - e.bookingsCompleted}</td>
+                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>
                       {e.checkedIn
-                        ? <span style={{ color: '#2e7d32', fontWeight: 'bold' }}>✔ إي</span>
-                        : <span style={{ color: '#c62828', fontWeight: 'bold' }}>✘ لا</span>}
+                        ? <span style={{ color: 'var(--t-success)', fontWeight: 'bold' }}>✔ إي</span>
+                        : <span style={{ color: 'var(--t-danger)', fontWeight: 'bold' }}>✘ لا</span>}
                     </td>
                   </tr>
                 ))}
                 {stats.employees.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا يوجد نشاط بهذا اليوم</td></tr>
+                  <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>لا يوجد نشاط بهذا اليوم</td></tr>
                 )}
               </tbody>
             </table>
@@ -118,7 +125,7 @@ function defaultWeekRange() {
 }
 
 const weeklyThStyle: React.CSSProperties = { padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY, whiteSpace: 'nowrap' }
-const weeklyTdStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }
+const weeklyTdStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }
 
 function WeeklyTab() {
   const initial = defaultWeekRange()
@@ -135,20 +142,20 @@ function WeeklyTab() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-        <label style={{ fontSize: '13px', color: '#666' }}>من</label>
-        <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
-        <label style={{ fontSize: '13px', color: '#666' }}>إلى</label>
-        <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+      <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>من</label>
+        <input type="date" value={from} max={to} onChange={(e) => e.target.value && setFrom(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }} />
+        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>إلى</label>
+        <input type="date" value={to} min={from} onChange={(e) => e.target.value && setTo(e.target.value)} style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }} />
         <button
           onClick={() => { const r = defaultWeekRange(); setFrom(r.from); setTo(r.to) }}
-          style={{ padding: '8px 14px', border: `1px solid ${PRIMARY}`, background: 'white', color: PRIMARY, borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
+          style={{ padding: '8px 14px', border: `1px solid ${PRIMARY}`, background: 'var(--sf-card)', color: PRIMARY_TEXT, borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer' }}
         >
           آخر 7 أيام
         </button>
       </div>
 
-      {!stats && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {!stats && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
 
       {stats && (
         <>
@@ -159,8 +166,8 @@ function WeeklyTab() {
           </div>
 
           <div>
-            <h3 style={{ color: PRIMARY, marginBottom: '10px' }}>أداء كل موظف خلال المدى المحدد</h3>
-            <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+            <h3 style={{ color: PRIMARY_TEXT, marginBottom: '10px' }}>أداء كل موظف خلال المدى المحدد</h3>
+            <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr>
@@ -194,11 +201,11 @@ function WeeklyTab() {
                       <td style={weeklyTdStyle}>{r.maintenanceBookingsCount}</td>
                       <td style={weeklyTdStyle}>{r.freeMaintenanceCount}</td>
                       <td style={weeklyTdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
-                      <td style={{ ...weeklyTdStyle, fontWeight: 'bold', color: GOLD }}>{fmt(r.totalCommission)} د.ع</td>
+                      <td style={{ ...weeklyTdStyle, fontWeight: 'bold', color: GOLD_TEXT }}>{fmt(r.totalCommission)} د.ع</td>
                     </tr>
                   ))}
                   {stats.employees.length === 0 && (
-                    <tr><td colSpan={13} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا يوجد نشاط بهذا المدى</td></tr>
+                    <tr><td colSpan={13} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>لا يوجد نشاط بهذا المدى</td></tr>
                   )}
                 </tbody>
               </table>
@@ -215,7 +222,7 @@ function ProjectsTab() {
   useEffect(() => { api.getProjectStageStats().then(setStats) }, [])
   const total = stats.reduce((s, r) => s + r.count, 0)
   return (
-    <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+    <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
@@ -226,17 +233,17 @@ function ProjectsTab() {
         <tbody>
           {stats.map((r) => (
             <tr key={r.stage}>
-              <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{r.stage}</td>
-              <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid #eee' }}>{r.count}</td>
+              <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{r.stage}</td>
+              <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{r.count}</td>
             </tr>
           ))}
           {stats.length === 0 && (
-            <tr><td colSpan={2} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>لا توجد مشاريع بعد</td></tr>
+            <tr><td colSpan={2} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>لا توجد مشاريع بعد</td></tr>
           )}
         </tbody>
         {stats.length > 0 && (
           <tfoot>
-            <tr><td style={{ padding: '10px 12px', fontWeight: 'bold' }}>الإجمالي</td><td style={{ padding: '10px 12px', fontWeight: 'bold', color: PRIMARY }}>{total}</td></tr>
+            <tr><td style={{ padding: '10px 12px', fontWeight: 'bold' }}>الإجمالي</td><td style={{ padding: '10px 12px', fontWeight: 'bold', color: PRIMARY_TEXT }}>{total}</td></tr>
           </tfoot>
         )}
       </table>
@@ -257,37 +264,37 @@ function ServicesTab() {
   const [stats, setStats] = useState<Stats | null>(null)
   useEffect(() => { api.getStats().then(setStats).catch(() => setStats(null)) }, [])
 
-  if (!stats) return <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>
+  if (!stats) return <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>
   const rows = stats.serviceBreakdown
   const max = rows[0]?.count || 1
 
   return (
-    <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '20px' }}>
-      <h3 style={{ color: PRIMARY, margin: '0 0 4px 0' }}>أكثر خدمة طلبها الزبائن</h3>
-      <p style={{ color: '#888', fontSize: '13px', margin: '0 0 16px 0' }}>
+    <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '12px', padding: '20px' }}>
+      <h3 style={{ color: PRIMARY_TEXT, margin: '0 0 4px 0' }}>أكثر خدمة طلبها الزبائن</h3>
+      <p style={{ color: 'var(--t-faint)', fontSize: '13px', margin: '0 0 16px 0' }}>
         مرتّبة من الأكثر طلباً — من شوكت بدت كل خدمة، وشكد دخّلت مبالغ وأرباح
       </p>
       {rows.map((s, i) => (
         <div key={s.serviceId || i} style={{ marginBottom: '14px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <span style={{ fontSize: '13px', width: '140px', color: '#444' }}>{s.name}</span>
-            <div style={{ flex: 1, height: '22px', background: '#f1f1f1', borderRadius: '11px', overflow: 'hidden' }}>
+            <span style={{ fontSize: '13px', width: '140px', color: 'var(--t-body)' }}>{s.name}</span>
+            <div style={{ flex: 1, height: '22px', background: 'var(--sf-sunken)', borderRadius: '11px', overflow: 'hidden' }}>
               <div style={{ height: '100%', width: `${(s.count / max) * 100}%`, background: PRIMARY, borderRadius: '11px' }} />
             </div>
-            <span style={{ fontSize: '13px', fontWeight: 'bold', width: '40px', color: PRIMARY }}>{s.count}</span>
+            <span style={{ fontSize: '13px', fontWeight: 'bold', width: '40px', color: PRIMARY_TEXT }}>{s.count}</span>
           </div>
-          <div style={{ marginRight: '152px', marginTop: '3px', fontSize: '11px', color: '#888', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+          <div style={{ marginRight: '152px', marginTop: '3px', fontSize: '11px', color: 'var(--t-faint)', display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
             <span>📅 من {s.firstAt ? new Date(s.firstAt).toLocaleDateString('ar-IQ') : '—'} إلى {s.lastAt ? new Date(s.lastAt).toLocaleDateString('ar-IQ') : '—'}</span>
-            <span>💰 دخل: <b style={{ color: PRIMARY }}>{fmt(s.revenue)} د.ع</b></span>
-            <span>📈 ربح: <b style={{ color: GOLD }}>{fmt(s.profit)} د.ع</b></span>
+            <span>💰 دخل: <b style={{ color: PRIMARY_TEXT }}>{fmt(s.revenue)} د.ع</b></span>
+            <span>📈 ربح: <b style={{ color: GOLD_TEXT }}>{fmt(s.profit)} د.ع</b></span>
           </div>
         </div>
       ))}
-      <p style={{ marginTop: '12px', fontSize: '11px', color: '#aaa' }}>
+      <p style={{ marginTop: '12px', fontSize: '11px', color: 'var(--t-faint)' }}>
         الربح = المستلم ناقص كلفة المواد بسعر الجملة. المواد الي ماكو إلها سعر جملة بالكتالوج
         تُحسب بكلفة صفر، يعني الربح المعروض هو الحد الأعلى.
       </p>
-      {rows.length === 0 && <p style={{ color: '#999', fontSize: '13px' }}>ماكو بيانات حجوزات بعد</p>}
+      {rows.length === 0 && <p style={{ color: 'var(--t-faint)', fontSize: '13px' }}>ماكو بيانات حجوزات بعد</p>}
     </div>
   )
 }
@@ -307,13 +314,13 @@ function InternalWorksTab() {
 
   return (
     <div>
-      <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-        <label style={{ fontSize: '13px', color: '#666' }}>الشهر</label>
+      <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <label style={{ fontSize: '13px', color: 'var(--t-muted)' }}>الشهر</label>
         <input type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)}
-          style={{ padding: '8px 10px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+          style={{ padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }} />
       </div>
 
-      {!rep && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {!rep && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
 
       {rep && (
         <>
@@ -325,30 +332,30 @@ function InternalWorksTab() {
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-            <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '16px' }}>
-              <h4 style={{ color: PRIMARY, margin: '0 0 12px 0', fontSize: '15px' }}>شنو انشتغل جوه</h4>
+            <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '12px', padding: '16px' }}>
+              <h4 style={{ color: PRIMARY_TEXT, margin: '0 0 12px 0', fontSize: '15px' }}>شنو انشتغل جوه</h4>
               {rep.services.map((s) => (
                 <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f2f2f2', fontSize: '13px' }}>
                   <span>{s.name}</span>
-                  <span style={{ fontWeight: 'bold', color: PRIMARY }}>{s.count} · {fmt(s.amount)} د.ع</span>
+                  <span style={{ fontWeight: 'bold', color: PRIMARY_TEXT }}>{s.count} · {fmt(s.amount)} د.ع</span>
                 </div>
               ))}
-              {rep.services.length === 0 && <p style={{ color: '#999', fontSize: '13px' }}>ماكو شغل داخلي بهذا الشهر</p>}
+              {rep.services.length === 0 && <p style={{ color: 'var(--t-faint)', fontSize: '13px' }}>ماكو شغل داخلي بهذا الشهر</p>}
             </div>
 
-            <div style={{ background: 'white', border: '1px solid #e0e0e0', borderRadius: '12px', padding: '16px' }}>
-              <h4 style={{ color: PRIMARY, margin: '0 0 12px 0', fontSize: '15px' }}>منو اشتغل جوه</h4>
+            <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '12px', padding: '16px' }}>
+              <h4 style={{ color: PRIMARY_TEXT, margin: '0 0 12px 0', fontSize: '15px' }}>منو اشتغل جوه</h4>
               {rep.crew.map((c) => (
                 <div key={c.employeeName} style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f2f2f2', fontSize: '13px' }}>
                   <span>{c.employeeName}</span>
-                  <span style={{ fontWeight: 'bold', color: GOLD }}>{c.count} عمل</span>
+                  <span style={{ fontWeight: 'bold', color: GOLD_TEXT }}>{c.count} عمل</span>
                 </div>
               ))}
-              {rep.crew.length === 0 && <p style={{ color: '#999', fontSize: '13px' }}>ماكو كادر مسجّل</p>}
+              {rep.crew.length === 0 && <p style={{ color: 'var(--t-faint)', fontSize: '13px' }}>ماكو كادر مسجّل</p>}
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+          <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr>
@@ -359,7 +366,7 @@ function InternalWorksTab() {
               </thead>
               <tbody>
                 {rep.works.map((w) => (
-                  <tr key={w.code} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <tr key={w.code} style={{ borderBottom: '1px solid var(--bd-line)' }}>
                     <td style={{ padding: '9px 12px', fontSize: '13px' }}>{w.code}</td>
                     <td style={{ padding: '9px 12px', fontSize: '13px' }}>{w.serviceName}</td>
                     <td style={{ padding: '9px 12px', fontSize: '13px' }}>
@@ -369,7 +376,7 @@ function InternalWorksTab() {
                   </tr>
                 ))}
                 {rep.works.length === 0 && (
-                  <tr><td colSpan={4} style={{ padding: '30px', textAlign: 'center', color: '#999' }}>ماكو أعمال داخلية بهذا الشهر</td></tr>
+                  <tr><td colSpan={4} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>ماكو أعمال داخلية بهذا الشهر</td></tr>
                 )}
               </tbody>
             </table>
@@ -399,7 +406,7 @@ export default function StatsManagementPage() {
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '20px',
       }}>
         <h1 style={{ margin: 0, fontSize: '24px' }}>إدارة الإحصائيات</h1>
-        <span style={{ color: GOLD, fontSize: '14px' }}>يومية، أسبوعية، شهرية، شغل داخل الشركة، أكثر خدمة مطلوبة، ومشاريع — حصراً لمدير النظام</span>
+        <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>يومية، أسبوعية، شهرية، شغل داخل الشركة، أكثر خدمة مطلوبة، ومشاريع — حصراً لمدير النظام</span>
       </div>
 
       <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>

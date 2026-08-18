@@ -239,7 +239,7 @@ export default function MapPage() {
         const coords = route.geometry.coordinates.map((c: number[]) => [c[1], c[0]] as [number, number])
 
         routeLayerRef.current = L.polyline(coords, {
-          color: '#2c5aad',
+          color: 'var(--t-info)',
           weight: 5,
           opacity: 0.8,
         }).addTo(mapRef.current!)

@@ -215,7 +215,7 @@ body { background: #fff; font-family: 'Cairo', sans-serif; direction: rtl; -webk
             <button
               onClick={submit}
               disabled={busy}
-              className="rounded-lg bg-emerald-600 px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
+              className="rounded-lg bg-emerald-700 px-5 py-2 text-sm font-bold text-white disabled:opacity-50"
             >
               {busy ? 'جاري الإرسال...' : '📨 أرسل الطلب'}
             </button>

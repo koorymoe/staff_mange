@@ -420,7 +420,7 @@ function CrewCard({ member, draft, onChange }: {
         {REVIEW_RATINGS.map((r) => {
           const active = draft.rating === r.value
           const tones: Record<string, { on: string; off: string }> = {
-            emerald: { on: 'bg-emerald-600 text-white shadow-md', off: 'border-emerald-300 text-emerald-700 hover:bg-emerald-50' },
+            emerald: { on: 'bg-emerald-700 text-white shadow-md', off: 'border-emerald-300 text-emerald-700 hover:bg-emerald-50' },
             amber:   { on: 'bg-amber-600 text-white shadow-md',   off: 'border-amber-300 text-amber-700 hover:bg-amber-50' },
             red:     { on: 'bg-red-600 text-white shadow-md',     off: 'border-red-300 text-red-700 hover:bg-red-50' },
             orange:  { on: 'bg-orange-600 text-white shadow-md',  off: 'border-orange-300 text-orange-700 hover:bg-orange-50' },

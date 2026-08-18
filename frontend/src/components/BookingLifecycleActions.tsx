@@ -87,7 +87,7 @@ export default function BookingLifecycleActions({
           <button
             onClick={() => run(() => api.resumeBooking(booking.id))}
             disabled={busy}
-            className="mt-2 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
+            className="mt-2 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50"
           >
             ✅ الزبون رد — رجّعه للطابور
           </button>

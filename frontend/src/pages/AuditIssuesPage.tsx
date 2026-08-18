@@ -130,7 +130,7 @@ export default function AuditIssuesPage() {
 
             {i.status === 'OPEN' && (
               <button disabled={busy === i.id} onClick={() => resolve(i)}
-                className="mt-3 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+                className="mt-3 rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
                 {asAccountant ? '✔ انحلّت — أغلق البلاغ' : '✔ تأكدت من الليدر — أغلق البلاغ'}
               </button>
             )}

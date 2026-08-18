@@ -257,7 +257,7 @@ export default function AttendancePage() {
                 ) : (
                   <button
                     onClick={handleCheckIn}
-                    className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700"
+                    className="rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-emerald-800"
                   >
                     ✅ تسجيل الحضور
                   </button>
@@ -481,7 +481,7 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStar
           <button
             onClick={handleExport}
             disabled={exporting || !report || report.days.length === 0}
-            className="rounded-lg bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-700 hover:bg-emerald-100 disabled:opacity-40"
+            className="rounded-lg bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-40"
           >
             {exporting ? 'جارٍ التصدير...' : 'تصدير Excel'}
           </button>

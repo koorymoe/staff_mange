@@ -199,7 +199,7 @@ export default function StaffRequestsPage() {
                 )}
                 {req.status === 'APPROVED' && (
                   <button onClick={() => setStatus(req.id, 'FULFILLED')}
-                    className="rounded-lg bg-emerald-500 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-600">تم التلبية ✅</button>
+                    className="rounded-lg bg-emerald-500 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-700">تم التلبية ✅</button>
                 )}
               </div>
             )}

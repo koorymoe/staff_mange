@@ -314,7 +314,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
           )}
           {step === 7 && (
             <button onClick={handleFinish} disabled={submitting}
-              className="rounded-lg bg-emerald-500 px-6 py-2 text-sm font-bold text-white hover:bg-emerald-600 disabled:opacity-40">
+              className="rounded-lg bg-emerald-500 px-6 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-40">
               {submitting ? 'جاري الحفظ...' : 'حفظ الصلاحيات وإنهاء'}
             </button>
           )}

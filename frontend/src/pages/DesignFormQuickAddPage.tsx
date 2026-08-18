@@ -3,6 +3,10 @@ import { Navigate, Link } from 'react-router-dom'
 import { api, type DesignForm } from '../api'
 
 const PRIMARY = '#47528f'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--design-ink)'
 
 // اختصار "إضافة سؤال": يودّي مباشرة لأسئلة الفورمة الوحيدة الموجودة، أو يخلّي
 // المستخدم يختار من عدة فورمات إذا اكو أكثر من وحدة، أو يوجّهه ينشئ أول
@@ -31,10 +35,10 @@ export default function DesignFormQuickAddPage() {
 
   return (
     <div dir="rtl">
-      <h2 className="text-2xl font-bold" style={{ color: PRIMARY }}>لأي فورمة تريد تضيف السؤال؟</h2>
+      <h2 className="text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>لأي فورمة تريد تضيف السؤال؟</h2>
       <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         {forms.map((f) => (
-          <Link key={f.id} to={`/design-forms/${f.id}`} className="rounded-xl border border-white bg-white p-4 font-bold shadow-sm hover:shadow-md" style={{ color: PRIMARY }}>
+          <Link key={f.id} to={`/design-forms/${f.id}`} className="rounded-xl border border-white bg-white p-4 font-bold shadow-sm hover:shadow-md" style={{ color: PRIMARY_TEXT }}>
             {f.name}
           </Link>
         ))}

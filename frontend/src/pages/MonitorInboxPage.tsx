@@ -229,7 +229,7 @@ export default function MonitorInboxPage() {
                 <button
                   onClick={() => decide(row, false)}
                   disabled={busy === row.id}
-                  className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
+                  className="rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white disabled:opacity-50"
                 >
                   سليم ✓
                 </button>

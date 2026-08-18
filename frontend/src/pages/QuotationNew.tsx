@@ -376,7 +376,7 @@ export default function QuotationNew() {
       const safeSrc = safeImg(item.imageBase64)
       const imgCell = withImages
         ? (safeSrc
-          ? `<img src="${safeSrc}" style="width:55px;height:55px;object-fit:contain;border-radius:6px;border:1px solid #e0e0e0;background:#fafafa;display:block;margin:0 auto;">`
+          ? `<img src="${safeSrc}" style="width:55px;height:55px;object-fit:contain;border-radius:6px;border:1px solid var(--bd-line);background:#fafafa;display:block;margin:0 auto;">`
           : `<div style="width:55px;height:55px;background:#f0f2f8;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:26px;margin:0 auto;">📦</div>`)
         : ''
       return `<tr>
@@ -724,30 +724,30 @@ ${pageShell(`
       </div>
 
       {loadingQuotation && (
-        <div style={{ textAlign: 'center', color: '#999', padding: '30px' }}>جاري تحميل بيانات العرض...</div>
+        <div style={{ textAlign: 'center', color: 'var(--t-faint)', padding: '30px' }}>جاري تحميل بيانات العرض...</div>
       )}
 
       {!loadingQuotation && (
       <>
       {/* ===== Quote Info Section ===== */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-        <div style={{ fontSize: '15px', fontWeight: 700, color: '#1a237e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid #e8eaf6' }}>
+      <div style={{ background: 'var(--sf-card)', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--t-title-alt)', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid var(--bd-line)' }}>
           معلومات العرض الأساسية
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>
-              <span style={{ color: '#c62828' }}>*</span> رقم العرض
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>
+              <span style={{ color: 'var(--t-danger)' }}>*</span> رقم العرض
             </label>
-            <input readOnly value={quotationNumber} style={inputStyle({ bg: '#eceff1', fw: 700, color: '#1a237e' })} placeholder="تلقائي" />
+            <input readOnly value={quotationNumber} style={inputStyle({ bg: '#eceff1', fw: 700, color: 'var(--t-title-alt)' })} placeholder="تلقائي" />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>التاريخ</label>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>التاريخ</label>
             <input readOnly value={today} style={inputStyle({ bg: '#eceff1' })} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>
-              <span style={{ color: '#c62828' }}>*</span> مدة التنفيذ
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>
+              <span style={{ color: 'var(--t-danger)' }}>*</span> مدة التنفيذ
             </label>
             <input value={duration} onChange={(e) => setDuration(e.target.value)} placeholder="مثال: 10 أيام عمل" style={inputStyle({})} />
           </div>
@@ -756,7 +756,7 @@ ${pageShell(`
 
       {/* ===== Customer Card ===== */}
       <div style={{
-        background: 'white', borderRadius: '12px', marginBottom: '20px',
+        background: 'var(--sf-card)', borderRadius: '12px', marginBottom: '20px',
         border: '2px solid #1a237e', overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
       }}>
         <div style={{
@@ -768,7 +768,7 @@ ${pageShell(`
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0' }}>
           <div style={customerFieldStyle(true)}>
-            <label style={customerLabelStyle}><span style={{ color: '#c62828' }}>*</span> اسم الزبون</label>
+            <label style={customerLabelStyle}><span style={{ color: 'var(--t-danger)' }}>*</span> اسم الزبون</label>
             <input value={customerName} onChange={(e) => setCustomerName(e.target.value)} placeholder="الاسم الكامل..." style={customerInputStyle} />
           </div>
           <div style={customerFieldStyle(true)}>
@@ -779,7 +779,7 @@ ${pageShell(`
             <label style={customerLabelStyle}>العنوان / المحافظة</label>
             <input value={customerAddress} onChange={(e) => setCustomerAddress(e.target.value)} placeholder="مثال: كربلاء" style={customerInputStyle} />
           </div>
-          <div style={{ ...customerFieldStyle(false), gridColumn: '1 / -1', borderTop: '1px solid #e8eaf6' }}>
+          <div style={{ ...customerFieldStyle(false), gridColumn: '1 / -1', borderTop: '1px solid var(--bd-line)' }}>
             <label style={customerLabelStyle}>اسم المشروع والموقع</label>
             <input value={projectName} onChange={(e) => setProjectName(e.target.value)} placeholder="مثال: منظومة طاقة شمسية..." style={customerInputStyle} />
           </div>
@@ -787,9 +787,9 @@ ${pageShell(`
       </div>
 
       {/* ===== Products Table ===== */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid #e8eaf6' }}>
-          <span style={{ fontSize: '15px', fontWeight: 700, color: '#1a237e' }}>تفاصيل المنتجات والخدمات</span>
+      <div style={{ background: 'var(--sf-card)', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid var(--bd-line)' }}>
+          <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--t-title-alt)' }}>تفاصيل المنتجات والخدمات</span>
           <button onClick={addRow} style={{
             background: '#1a237e', color: 'white', border: 'none', padding: '9px 18px',
             borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '13px', fontFamily: 'inherit',
@@ -810,8 +810,8 @@ ${pageShell(`
             </thead>
             <tbody>
               {items.map((item, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                  <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: '#1a237e' }}>{index + 1}</td>
+                <tr key={index} style={{ borderBottom: '1px solid var(--bd-line)' }}>
+                  <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: 'var(--t-title-alt)' }}>{index + 1}</td>
                   <td style={{ padding: '10px 6px', position: 'relative' }}>
                     <div ref={(el) => { autocompleteRefs.current[index] = el }} style={{ position: 'relative' }}>
                       <input
@@ -828,8 +828,8 @@ ${pageShell(`
                       {activeAutocomplete === index && filteredProducts.length > 0 && dropdownRect && (
                         <div style={{
                           position: 'fixed', top: dropdownRect.top, left: dropdownRect.left, width: dropdownRect.width,
-                          background: 'white', borderRadius: '10px', maxHeight: '260px', overflowY: 'auto',
-                          zIndex: 1000, boxShadow: '0 8px 30px rgba(0,0,0,0.15)', border: '1px solid #e0e0e0',
+                          background: 'var(--sf-card)', borderRadius: '10px', maxHeight: '260px', overflowY: 'auto',
+                          zIndex: 1000, boxShadow: '0 8px 30px rgba(0,0,0,0.15)', border: '1px solid var(--bd-line)',
                         }}>
                           {filteredProducts.map((p) => (
                             <div key={p.id} onClick={() => handleProductSelect(index, p)}
@@ -838,13 +838,13 @@ ${pageShell(`
                               onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                             >
                               {p.imageBase64 ? (
-                                <img src={fileUrl(p.imageBase64)} style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid #e0e0e0', background: '#fafafa' }} />
+                                <img src={fileUrl(p.imageBase64)} style={{ width: 40, height: 40, objectFit: 'contain', borderRadius: 6, border: '1px solid var(--bd-line)', background: 'var(--sf-sunken)' }} />
                               ) : (
-                                <div style={{ width: 40, height: 40, background: '#f0f2f8', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📦</div>
+                                <div style={{ width: 40, height: 40, background: 'var(--sf-sunken)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📦</div>
                               )}
                               <div style={{ flex: 1 }}>
-                                <div style={{ fontWeight: 700, color: '#1a237e', fontSize: '13px' }}>{p.name}</div>
-                                <div style={{ fontSize: '11px', color: '#757575' }}>{fmt(p.defaultPrice ?? 0)} د.ع  {p.unit || 'قطعة'}</div>
+                                <div style={{ fontWeight: 700, color: 'var(--t-title-alt)', fontSize: '13px' }}>{p.name}</div>
+                                <div style={{ fontSize: '11px', color: 'var(--t-muted)' }}>{fmt(p.defaultPrice ?? 0)} د.ع  {p.unit || 'قطعة'}</div>
                               </div>
                             </div>
                           ))}
@@ -870,7 +870,7 @@ ${pageShell(`
                   <td style={{ padding: '10px 6px' }}>
                     <input type="number" min={0} value={item.unitPrice} onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) })} style={{ ...tableInputStyle, width: '110px' }} />
                   </td>
-                  <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: '#1a237e' }}>{fmt(item.totalPrice)}</td>
+                  <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: 'var(--t-title-alt)' }}>{fmt(item.totalPrice)}</td>
                   <td style={{ padding: '10px 6px', textAlign: 'center' }}>
                     <button type="button" onClick={() => removeRow(index)} style={{
                       background: '#c62828', color: 'white', border: 'none', padding: '6px 10px',
@@ -889,32 +889,32 @@ ${pageShell(`
         background: 'linear-gradient(135deg, #fff8e1, #ffecb3)',
         border: '2px solid #ffa000', borderRadius: '12px', padding: '24px', marginBottom: '20px',
       }}>
-        <div style={{ fontSize: '15px', fontWeight: 700, color: '#e65100', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid #ffe082' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--t-warning)', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid #ffe082' }}>
           الخصم والصافي
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', maxWidth: '650px', margin: '0 auto' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>نسبة الخصم (%)</label>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>نسبة الخصم (%)</label>
             <input type="number" min={0} max={100} value={discountPercent} onChange={(e) => setDiscountPercent(Number(e.target.value))} style={inputStyle({})} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>قيمة الخصم (د.ع)</label>
-            <input readOnly value={fmt(discountValue) + ' د.ع'} style={inputStyle({ bg: '#fff', fw: 700, color: '#c62828', ta: 'center' })} />
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>قيمة الخصم (د.ع)</label>
+            <input readOnly value={fmt(discountValue) + ' د.ع'} style={inputStyle({ bg: '#fff', fw: 700, color: 'var(--t-danger)', ta: 'center' })} />
           </div>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>الصافي بعد الخصم (د.ع)</label>
-            <input readOnly value={fmt(netTotal) + ' د.ع'} style={inputStyle({ bg: '#fff', fw: 700, color: '#2e7d32', ta: 'center' })} />
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>الصافي بعد الخصم (د.ع)</label>
+            <input readOnly value={fmt(netTotal) + ' د.ع'} style={inputStyle({ bg: '#fff', fw: 700, color: 'var(--t-success)', ta: 'center' })} />
           </div>
         </div>
       </div>
 
       {/* ===== Notes ===== */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-        <div style={{ fontSize: '15px', fontWeight: 700, color: '#1a237e', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid #e8eaf6' }}>
+      <div style={{ background: 'var(--sf-card)', borderRadius: '12px', padding: '24px', marginBottom: '20px', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+        <div style={{ fontSize: '15px', fontWeight: 700, color: 'var(--t-title-alt)', marginBottom: '16px', paddingBottom: '10px', borderBottom: '2px solid var(--bd-line)' }}>
           ملاحظات خاصة بالعرض
         </div>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="اكتب هنا أي ملاحظات إضافية..."
-          rows={4} style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #e0e0e0', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', boxSizing: 'border-box' as const, outline: 'none', resize: 'vertical' }} />
+          rows={4} style={{ width: '100%', padding: '12px 14px', border: '1.5px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px', fontFamily: 'inherit', boxSizing: 'border-box' as const, outline: 'none', resize: 'vertical' }} />
       </div>
 
       {/* ===== Grand Total Box ===== */}
@@ -922,7 +922,7 @@ ${pageShell(`
         background: 'linear-gradient(135deg, #1a237e, #283593)',
         borderRadius: '12px', padding: '24px', marginBottom: '20px', textAlign: 'center',
       }}>
-        <div style={{ color: '#b0bec5', fontSize: '14px', marginBottom: '8px' }}>الإجمالي الكلي للعرض</div>
+        <div style={{ color: 'var(--t-faint)', fontSize: '14px', marginBottom: '8px' }}>الإجمالي الكلي للعرض</div>
         <div style={{ color: '#ffd54f', fontSize: '40px', fontWeight: 800 }}>{fmt(grandTotal)} د.ع</div>
       </div>
 
@@ -980,7 +980,7 @@ ${pageShell(`
       {showProductModal && (
         <div onClick={(e) => { if (e.target === e.currentTarget) setShowProductModal(false) }}
           style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#fff', borderRadius: '14px', width: '100%', maxWidth: '740px', margin: 'auto', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ background: 'var(--sf-card)', borderRadius: '14px', width: '100%', maxWidth: '740px', margin: 'auto', overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{
               background: 'linear-gradient(135deg, #1a237e, #283593)', color: '#fff',
               padding: '20px 26px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -993,30 +993,30 @@ ${pageShell(`
             </div>
             <div style={{ padding: '24px' }}>
               {/* Add form */}
-              <div style={{ background: '#f5f7ff', border: '1px solid #e8eaf6', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1a237e', marginBottom: '14px', paddingBottom: '10px', borderBottom: '2px solid #e8eaf6' }}>
+              <div style={{ background: 'var(--sf-sunken)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '20px', marginBottom: '24px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t-title-alt)', marginBottom: '14px', paddingBottom: '10px', borderBottom: '2px solid var(--bd-line)' }}>
                   ➕ إضافة منتج جديد
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>
-                      <span style={{ color: '#c62828' }}>*</span> اسم المنتج
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>
+                      <span style={{ color: 'var(--t-danger)' }}>*</span> اسم المنتج
                     </label>
                     <input value={pmName} onChange={(e) => setPmName(e.target.value)} placeholder="مثال: لوح شمسي 400 واط" style={inputStyle({})} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>وحدة القياس</label>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>وحدة القياس</label>
                     <input value={pmUnit} onChange={(e) => setPmUnit(e.target.value)} style={inputStyle({})} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>السعر الافتراضي (د.ع)</label>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>السعر الافتراضي (د.ع)</label>
                     <input type="number" min={0} value={pmPrice} onChange={(e) => setPmPrice(Number(e.target.value))} style={inputStyle({})} />
                   </div>
                   <div style={{ gridColumn: '1 / -1' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#555', marginBottom: '6px' }}>صورة المنتج (اختياري)</label>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>صورة المنتج (اختياري)</label>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                       <input type="file" accept="image/*" onChange={handleImageUpload} style={{ fontSize: 13 }} />
-                      {pmImage && <img src={pmImage} style={{ width: 60, height: 60, objectFit: 'contain', borderRadius: 8, border: '1px solid #e0e0e0' }} />}
+                      {pmImage && <img src={pmImage} style={{ width: 60, height: 60, objectFit: 'contain', borderRadius: 8, border: '1px solid var(--bd-line)' }} />}
                     </div>
                   </div>
                 </div>
@@ -1029,26 +1029,26 @@ ${pageShell(`
               </div>
               {/* Products list */}
               <div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#1a237e', marginBottom: '14px', paddingBottom: '10px', borderBottom: '2px solid #e8eaf6', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--t-title-alt)', marginBottom: '14px', paddingBottom: '10px', borderBottom: '2px solid var(--bd-line)', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   المنتجات المخزونة <span style={{ background: '#1a237e', color: '#fff', padding: '2px 12px', borderRadius: '20px', fontSize: '12px' }}>{products.length}</span>
                 </div>
                 {products.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#9e9e9e', padding: '30px' }}>
+                  <div style={{ textAlign: 'center', color: 'var(--t-faint)', padding: '30px' }}>
                     <div style={{ fontSize: '36px', marginBottom: '8px' }}>📦</div>لا توجد منتجات بعد!
                   </div>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: '12px' }}>
                     {products.map((p) => (
-                      <div key={p.id} style={{ background: '#fff', border: '1px solid #e0e0e0', borderRadius: '10px', overflow: 'hidden', textAlign: 'center' }}>
+                      <div key={p.id} style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', overflow: 'hidden', textAlign: 'center' }}>
                         {p.imageBase64 ? (
-                          <img src={fileUrl(p.imageBase64)} style={{ width: '100%', height: 90, objectFit: 'contain', background: '#fafafa' }} />
+                          <img src={fileUrl(p.imageBase64)} style={{ width: '100%', height: 90, objectFit: 'contain', background: 'var(--sf-sunken)' }} />
                         ) : (
                           <div style={{ width: '100%', height: '90px', background: 'linear-gradient(135deg, #e8eaf6, #f5f7ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>📦</div>
                         )}
                         <div style={{ padding: '8px 6px' }}>
-                          <div style={{ fontWeight: 700, fontSize: '12px', color: '#1a237e' }}>{p.name}</div>
-                          <div style={{ fontSize: '10px', color: '#757575' }}>{p.unit || 'قطعة'}</div>
-                          <div style={{ fontSize: '11px', color: '#2e7d32', fontWeight: 700, marginTop: '2px' }}>{fmt(p.defaultPrice ?? 0)} د.ع</div>
+                          <div style={{ fontWeight: 700, fontSize: '12px', color: 'var(--t-title-alt)' }}>{p.name}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--t-muted)' }}>{p.unit || 'قطعة'}</div>
+                          <div style={{ fontSize: '11px', color: 'var(--t-success)', fontWeight: 700, marginTop: '2px' }}>{fmt(p.defaultPrice ?? 0)} د.ع</div>
                           <button onClick={() => handlePmDelete(p.id)} style={{
                             background: '#c62828', color: '#fff', border: 'none', padding: '5px 0',
                             borderRadius: '5px', cursor: 'pointer', fontSize: '11px', fontFamily: 'inherit',
@@ -1076,9 +1076,9 @@ ${pageShell(`
         }}>
           <div style={{
             display: 'flex', flexWrap: 'wrap', gap: '8px', justifyContent: 'center',
-            background: 'white', padding: '12px', borderRadius: '12px',
+            background: 'var(--sf-card)', padding: '12px', borderRadius: '12px',
           }}>
-            <span style={{ fontWeight: 800, color: '#0f2040', alignSelf: 'center', marginLeft: 'auto' }}>
+            <span style={{ fontWeight: 800, color: 'var(--t-title)', alignSelf: 'center', marginLeft: 'auto' }}>
               👁️ معاينة العرض (نسخة الطباعة)
             </span>
             <button onClick={() => setPreviewHtml(null)} style={{
@@ -1107,7 +1107,7 @@ ${pageShell(`
             // ولا لكوكيز الصفحة الأم (طبقة دفاع ثانية بعد التهريب).
             sandbox=""
             srcDoc={previewHtml}
-            style={{ flex: 1, width: '100%', border: 'none', borderRadius: '12px', background: 'white' }}
+            style={{ flex: 1, width: '100%', border: 'none', borderRadius: '12px', background: 'var(--sf-card)' }}
           />
         </div>
       )}
@@ -1117,7 +1117,7 @@ ${pageShell(`
 
 function inputStyle(opts: { bg?: string; fw?: number; color?: string; ta?: React.CSSProperties['textAlign'] }): React.CSSProperties {
   return {
-    width: '100%', padding: '11px 13px', border: '1.5px solid #e0e0e0', borderRadius: '8px',
+    width: '100%', padding: '11px 13px', border: '1.5px solid var(--bd-line)', borderRadius: '8px',
     fontSize: '14px', fontFamily: 'inherit', background: opts.bg || '#fff',
     boxSizing: 'border-box', outline: 'none',
     fontWeight: opts.fw, color: opts.color, textAlign: opts.ta,
@@ -1131,20 +1131,20 @@ const thStyle = (opts: { width: string }): React.CSSProperties => ({
 
 const customerFieldStyle = (hasBorderLeft: boolean): React.CSSProperties => ({
   padding: '14px 18px',
-  borderLeft: hasBorderLeft ? '1px solid #e8eaf6' : 'none',
+  borderLeft: hasBorderLeft ? '1px solid var(--bd-line)' : 'none',
 })
 
 const customerLabelStyle: React.CSSProperties = {
-  display: 'block', fontSize: '12px', fontWeight: 600, color: '#666', marginBottom: '6px',
+  display: 'block', fontSize: '12px', fontWeight: 600, color: 'var(--t-muted)', marginBottom: '6px',
 }
 
 const customerInputStyle: React.CSSProperties = {
-  width: '100%', padding: '10px 0', border: 'none', borderBottom: '1.5px solid #e0e0e0',
+  width: '100%', padding: '10px 0', border: 'none', borderBottom: '1.5px solid var(--bd-line)',
   fontSize: '14px', fontFamily: 'inherit', outline: 'none', background: 'transparent',
 }
 
 const tableInputStyle: React.CSSProperties = {
-  width: '100%', padding: '8px 10px', border: '1px solid #e8eaf6', borderRadius: '6px',
+  width: '100%', padding: '8px 10px', border: '1px solid var(--bd-line)', borderRadius: '6px',
   fontSize: '13px', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box',
   textAlign: 'center',
 }

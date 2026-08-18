@@ -198,7 +198,7 @@ export default function TrainingPrograms() {
                         try { await api.completeTrainingProgram(p.id); await load() }
                         catch (e) { alert(e instanceof Error ? e.message : 'تعذر الإكمال') }
                       }}
-                      className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white"
+                      className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white"
                     >
                       🎓 أكمله وامنح المهارات
                     </button>

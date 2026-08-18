@@ -155,7 +155,7 @@ export default function LeavesPage() {
               </button>
             )}
             <button disabled={busy} onClick={() => decide(l, true)}
-              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+              className="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-800 disabled:opacity-50">
               {noteFor === l.id ? 'تأكيد الموافقة النهائية' : '✔ موافقة نهائية'}
             </button>
             <button disabled={busy} onClick={() => decide(l, false)}
@@ -202,11 +202,11 @@ export default function LeavesPage() {
           <button onClick={() => setTab('inbox')}
             className={`rounded-xl px-5 py-2.5 text-sm font-bold ${tab === 'inbox' ? 'text-white' : 'bg-white text-slate-600'}`}
             style={tab === 'inbox' ? { backgroundColor: '#1a3a5c' } : undefined}>
-            الموافقات {pending.length > 0 && <span className="mr-1 rounded-full bg-red-500 px-2 py-0.5 text-xs text-white">{pending.length}</span>}
+            الموافقات {pending.length > 0 && <span className="mr-1 rounded-full bg-red-600 px-2 py-0.5 text-xs text-white">{pending.length}</span>}
           </button>
         )}
         <button onClick={() => { setOpen(true); setStart(minDate) }}
-          className="mr-auto rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">
+          className="mr-auto rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-800">
           ➕ طلب إجازة
         </button>
       </div>
@@ -223,7 +223,7 @@ export default function LeavesPage() {
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)}>
           <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>طلب إجازة</h3>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>طلب إجازة</h3>
             <p className="mt-1 rounded-lg bg-slate-50 p-3 text-xs text-slate-600">
               الإجازة تُطلب قبل يومين على الأقل من تاريخها.
             </p>

@@ -157,7 +157,7 @@ export default function DeviceMaintenancePage() {
                   )}
                   {t.receivedAt && !t.deliveredAt && (
                     <button onClick={() => markDelivered(t.id)}
-                      className="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white">تسليم الجهاز للزبون</button>
+                      className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white">تسليم الجهاز للزبون</button>
                   )}
                 </div>
               </div>

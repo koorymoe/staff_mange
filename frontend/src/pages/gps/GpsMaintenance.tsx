@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react'
 import { api, type GpsMaintenanceRequest } from '../../api'
 
 const statusConfig: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: 'معلق', color: '#d97706', bg: '#fffbeb' },
-  IN_PROGRESS: { label: 'قيد المعالجة', color: '#7c3aed', bg: '#f5f3ff' },
-  COMPLETED: { label: 'مكتمل', color: '#16a34a', bg: '#f0fdf4' },
+  PENDING: { label: 'معلق', color: 'var(--t-warning)', bg: '#fffbeb' },
+  IN_PROGRESS: { label: 'قيد المعالجة', color: 'var(--t-violet)', bg: '#f5f3ff' },
+  COMPLETED: { label: 'مكتمل', color: 'var(--t-success)', bg: '#f0fdf4' },
 }
 
 export default function GpsMaintenance() {
@@ -48,14 +48,14 @@ export default function GpsMaintenance() {
       {/* Request Cards */}
       <div className="space-y-4">
         {requests.map((r) => {
-          const sc = statusConfig[r.status] || { label: r.status, color: '#64748b', bg: '#f8fafc' }
+          const sc = statusConfig[r.status] || { label: r.status, color: 'var(--t-muted)', bg: '#f8fafc' }
           return (
             <div key={r.id} className="rounded-2xl bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">🔧</span>
                   <div>
-                    <h3 className="font-bold" style={{ color: '#1a3a5c' }}>{r.customer?.fullName || 'غير معروف'}</h3>
+                    <h3 className="font-bold" style={{ color: 'var(--t-title)' }}>{r.customer?.fullName || 'غير معروف'}</h3>
                     <p className="text-sm text-slate-500">📞 {r.customer?.phone || '-'}</p>
                   </div>
                 </div>
@@ -111,7 +111,7 @@ export default function GpsMaintenance() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-lg">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold" style={{ color: '#1a3a5c' }}>🔧 تفاصيل طلب الصيانة</h3>
+              <h3 className="text-xl font-bold" style={{ color: 'var(--t-title)' }}>🔧 تفاصيل طلب الصيانة</h3>
               <button onClick={() => setSelectedRequest(null)} className="text-2xl text-slate-400 hover:text-slate-600">&times;</button>
             </div>
 

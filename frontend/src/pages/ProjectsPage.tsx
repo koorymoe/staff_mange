@@ -220,13 +220,13 @@ const REJECTION_REASONS = [
 ]
 
 const CATEGORIES = [
-  { key: 'all', label: 'الكل', color: '#475569' },
-  { key: 'مالي', label: 'مالي', color: '#16a34a' },
-  { key: 'عميل', label: 'عميل', color: '#d97706' },
-  { key: 'تقني', label: 'تقني', color: '#dc2626' },
-  { key: 'إداري', label: 'إداري', color: '#0891b2' },
-  { key: 'ظروف', label: 'ظروف', color: '#6b7280' },
-  { key: 'أخرى', label: 'أخرى', color: '#1f2937' },
+  { key: 'all', label: 'الكل', color: 'var(--t-muted)' },
+  { key: 'مالي', label: 'مالي', color: 'var(--t-success)' },
+  { key: 'عميل', label: 'عميل', color: 'var(--t-warning)' },
+  { key: 'تقني', label: 'تقني', color: 'var(--t-danger)' },
+  { key: 'إداري', label: 'إداري', color: 'var(--t-cyan)' },
+  { key: 'ظروف', label: 'ظروف', color: 'var(--t-muted)' },
+  { key: 'أخرى', label: 'أخرى', color: 'var(--t-body)' },
 ]
 
 function categoryColor(cat: string): string {
@@ -429,7 +429,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
           <button onClick={() => setView('rejection')}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${view === 'rejection' ? 'bg-red-600 text-white' : 'bg-white text-gray-600 border'}`}>
             🚫 أسباب الرفض
-            {rejectedCount > 0 && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{rejectedCount}</span>}
+            {rejectedCount > 0 && <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full">{rejectedCount}</span>}
           </button>
         </div>
       </div>
@@ -460,7 +460,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
               بأول الشاشة. */}
           <button
             onClick={() => setShowAdd(true)}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-extrabold text-white shadow-md hover:bg-emerald-700"
+            className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-extrabold text-white shadow-md hover:bg-emerald-800"
           >
             ＋ إضافة مشروع
           </button>
@@ -776,7 +776,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
 
       <h3 className="font-bold text-lg mt-4 flex items-center gap-2" style={{ color: borderColor }}>
         {p.name}
-        {p.priority === 'عاجل جداً' && <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">عاجل 🔥</span>}
+        {p.priority === 'عاجل جداً' && <span className="bg-red-600 text-white text-xs px-2 py-0.5 rounded-full animate-pulse">عاجل 🔥</span>}
         <span className="text-xs text-gray-400 font-normal">{p.code}</span>
       </h3>
 
@@ -813,7 +813,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
           )}
           {stageIdx >= 2 && (
             <button onClick={() => onReport('survey', p)}
-              className="text-sm px-3 py-1.5 rounded-lg bg-green-600 text-white font-medium hover:brightness-110">استمارة الكشف</button>
+              className="text-sm px-3 py-1.5 rounded-lg bg-green-700 text-white font-medium hover:brightness-110">استمارة الكشف</button>
           )}
           {/* بين الكشف والسعر: يفتح نظام عرض السعر الموجود عدنا، مع تعبئة بيانات
               الزبون والمشروع تلقائياً — بلون مميّز عن باقي الأزرار. */}
@@ -850,7 +850,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
               className="text-sm px-3 py-1.5 rounded-lg bg-gray-500 text-white font-medium hover:brightness-110">رفض</button>
           )}
           {isCompleted && (
-            <span className="text-sm px-3 py-1.5 rounded-full bg-green-600 text-white font-bold flex items-center gap-1">✅ تم التسليم والانتهاء</span>
+            <span className="text-sm px-3 py-1.5 rounded-full bg-green-700 text-white font-bold flex items-center gap-1">✅ تم التسليم والانتهاء</span>
           )}
         </div>
       </div>
@@ -1263,7 +1263,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       )}
 
       <button onClick={save} disabled={saving}
-        className="w-full mt-3 py-2.5 rounded-lg bg-green-600 text-white font-bold disabled:opacity-50">
+        className="w-full mt-3 py-2.5 rounded-lg bg-green-700 text-white font-bold disabled:opacity-50">
         {saving ? 'جارٍ الحفظ...' : 'تأكيد ✅'}
       </button>
     </Modal>
@@ -1370,7 +1370,7 @@ function RejectionView({ projects }: { projects: Project[] }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl font-bold text-red-600">🚫 أسباب رفض المشاريع</h2>
-        <button onClick={exportCsv} className="px-4 py-2 rounded-full bg-green-600 text-white font-bold text-sm hover:brightness-110">📊 سحب التقرير (Excel)</button>
+        <button onClick={exportCsv} className="px-4 py-2 rounded-full bg-green-700 text-white font-bold text-sm hover:brightness-110">📊 سحب التقرير (Excel)</button>
       </div>
 
       {/* Stats */}
@@ -1389,7 +1389,7 @@ function RejectionView({ projects }: { projects: Project[] }) {
               className="px-4 py-1.5 rounded-full text-sm font-bold border-2 transition"
               style={category === c.key
                 ? { background: c.color, color: '#fff', borderColor: c.color }
-                : { borderColor: '#e5e7eb', color: '#475569' }}>
+                : { borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
               {c.label}
             </button>
           ))}

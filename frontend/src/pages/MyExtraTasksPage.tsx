@@ -405,7 +405,7 @@ export default function MyExtraTasksPage() {
               <button
                 onClick={complete}
                 disabled={busy !== null}
-                className="flex-1 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+                className="flex-1 rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
               >
                 {busy ? 'جاري الحفظ...' : 'خلّصتها'}
               </button>
@@ -508,7 +508,7 @@ function TaskRow({ task: t, now, busy, onStart, onComplete }: {
               )}
               <button
                 onClick={onComplete}
-                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white"
+                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white"
               >
                 ✓ خلّصتها
               </button>

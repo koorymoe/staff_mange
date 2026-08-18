@@ -2,7 +2,15 @@ import { useEffect, useState, useRef } from 'react'
 import { api, type Product, type ProductAvailability, type Service, fileUrl } from '../api'
 
 const PRIMARY = '#1a237e'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--brand-ink)'
 const GOLD = '#c8a45a'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const GOLD_TEXT = 'var(--gold-ink)'
 
 const fmt = (n: number) => n.toLocaleString('en-IQ')
 
@@ -116,11 +124,11 @@ export default function ProductsPage() {
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px',
+    width: '100%', padding: '10px 12px', border: '1px solid var(--bd-line)', borderRadius: '8px',
     fontSize: '14px', boxSizing: 'border-box', outline: 'none',
   }
   const labelStyle: React.CSSProperties = {
-    display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666',
+    display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--t-muted)',
   }
 
   return (
@@ -130,7 +138,7 @@ export default function ProductsPage() {
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '24px',
       }}>
         <h1 style={{ margin: 0, fontSize: '24px' }}>إضافة منتج</h1>
-        <span style={{ color: GOLD, fontSize: '14px' }}>
+        <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>
           المنتجات الي يضيفها التقنيين — وتظهر تلقائياً بعرض السعر
         </span>
       </div>
@@ -138,11 +146,11 @@ export default function ProductsPage() {
       <form
         onSubmit={handleAdd}
         style={{
-          background: 'white', border: `2px solid ${PRIMARY}`, borderRadius: '12px',
+          background: 'var(--sf-card)', border: `2px solid ${PRIMARY}`, borderRadius: '12px',
           padding: '20px', marginBottom: '24px',
         }}
       >
-        <h3 style={{ color: PRIMARY, margin: '0 0 16px 0', borderBottom: `2px solid ${GOLD}`, paddingBottom: '8px' }}>
+        <h3 style={{ color: PRIMARY_TEXT, margin: '0 0 16px 0', borderBottom: `2px solid ${GOLD}`, paddingBottom: '8px' }}>
           إضافة منتج جديد
         </h3>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', alignItems: 'end' }}>
@@ -192,7 +200,7 @@ export default function ProductsPage() {
           <div>
             <label style={labelStyle}>صورة المنتج</label>
             <input ref={fileRef} type="file" accept="image/*" onChange={handleImageChange} style={{ ...inputStyle, padding: '7px 12px' }} />
-            {uploading && <span style={{ fontSize: '12px', color: '#666' }}>جاري رفع الصورة...</span>}
+            {uploading && <span style={{ fontSize: '12px', color: 'var(--t-muted)' }}>جاري رفع الصورة...</span>}
           </div>
         </div>
 
@@ -227,9 +235,9 @@ export default function ProductsPage() {
         </button>
       </form>
 
-      {loading && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {loading && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
       {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: '#dc2626' }}>
+        <div style={{ background: 'var(--sf-danger)', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: 'var(--t-danger)' }}>
           تعذر الاتصال بالخادم: {error}
         </div>
       )}
@@ -239,7 +247,7 @@ export default function ProductsPage() {
           {products.map((product) => (
             <div
               key={product.id}
-              style={{ background: 'white', border: '2px solid #e0e0e0', borderRadius: '12px', overflow: 'hidden' }}
+              style={{ background: 'var(--sf-card)', border: '2px solid var(--bd-line)', borderRadius: '12px', overflow: 'hidden' }}
             >
               <div style={{
                 height: '140px',
@@ -249,27 +257,27 @@ export default function ProductsPage() {
                 {product.imageBase64 ? (
                   <img src={fileUrl(product.imageBase64)} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ color: GOLD, fontSize: '40px' }}>&#128230;</span>
+                  <span style={{ color: GOLD_TEXT, fontSize: '40px' }}>&#128230;</span>
                 )}
               </div>
               <div style={{ padding: '12px 16px' }}>
-                <h4 style={{ margin: '0 0 6px 0', color: PRIMARY, fontSize: '15px' }}>
+                <h4 style={{ margin: '0 0 6px 0', color: PRIMARY_TEXT, fontSize: '15px' }}>
                   {product.name}
-                  {product.modelName && <span style={{ color: '#777', fontWeight: 'normal' }}> — {product.modelName}</span>}
+                  {product.modelName && <span style={{ color: 'var(--t-muted)', fontWeight: 'normal' }}> — {product.modelName}</span>}
                 </h4>
-                {product.serviceText && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: '#777' }}>الخدمة: {product.serviceText}</p>}
-                {product.specs && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: '#777', whiteSpace: 'pre-wrap' }}>المواصفات: {product.specs}</p>}
-                {product.source && <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: '#777' }}>المصدر: {product.source}</p>}
-                <p style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 'bold', color: GOLD }}>
+                {product.serviceText && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: 'var(--t-muted)' }}>الخدمة: {product.serviceText}</p>}
+                {product.specs && <p style={{ margin: '0 0 2px 0', fontSize: '12px', color: 'var(--t-muted)', whiteSpace: 'pre-wrap' }}>المواصفات: {product.specs}</p>}
+                {product.source && <p style={{ margin: '0 0 4px 0', fontSize: '12px', color: 'var(--t-muted)' }}>المصدر: {product.source}</p>}
+                <p style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 'bold', color: GOLD_TEXT }}>
                   {fmt(product.defaultPrice ?? 0)} د.ع
                 </p>
                 {product.wholesalePrice != null && (
-                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: '#999' }}>
+                  <p style={{ margin: '0 0 10px 0', fontSize: '12px', color: 'var(--t-faint)' }}>
                     سعر الجملة: {fmt(product.wholesalePrice)} د.ع
                   </p>
                 )}
                 {product.createdByName && (
-                  <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: '#555' }}>
+                  <p style={{ margin: '0 0 8px 0', fontSize: '12px', color: 'var(--t-body)' }}>
                     👤 أضافه: {product.createdByName}
                   </p>
                 )}
@@ -295,7 +303,7 @@ export default function ProductsPage() {
                 <button
                   onClick={() => handleDelete(product.id)}
                   style={{
-                    width: '100%', background: '#fee2e2', color: '#dc2626', border: 'none',
+                    width: '100%', background: 'var(--sf-danger)', color: 'var(--t-danger)', border: 'none',
                     padding: '8px', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: 'bold',
                   }}
                 >
@@ -305,7 +313,7 @@ export default function ProductsPage() {
             </div>
           ))}
           {products.length === 0 && (
-            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: '#999' }}>
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '40px', color: 'var(--t-faint)' }}>
               ماكو منتجات مضافة بعد — أضف أول منتج من الفورم فوك
             </div>
           )}

@@ -497,6 +497,22 @@ html.dark img { opacity: 0.94; }
    وهذنه متروكات أصلاً بجدول فوگ.
    ⚠️ الاستثناء **بالمكان** مو بالصنف: أي شاشة جديدة تنبني جوّا
    القائمة تاخذ نفس المعاملة بلا ما أحد ينتبهلها. */
+/* ⚠️ الدرجات الغامقة (700/800/900) ما تنقلب: هاي أزرار وأسطح
+   **غامقة أصلاً** بالنهار وعليها نص أبيض — قلبها يخلّيها فاتحة
+   فيختفي نصّها. (زر «الكل» بشاشة المشاريع چان يختفي تماماً:
+   تباين ١.١٩.) ثالث مرة ينضرب نفس الفخّ — المتغيّر يخدم النص
+   والخلفية سوا. */
+html.dark .bg-slate-700, html.dark .bg-gray-700 { background-color: #334155; }
+html.dark .bg-slate-800, html.dark .bg-gray-800 { background-color: #1e293b; }
+html.dark .bg-slate-900, html.dark .bg-gray-900 { background-color: #0f172a; }
+/* ⚠️ ونصوصها الفاتحة (100/200) ترجع لأصلها: هي نص فاتح فوگ تلك
+   الأسطح الغامقة، وقلبها يخلّيها غامقة على غامق — كتلة الأوامر
+   بشاشة النسخ الاحتياطية چانت تباينها ١.١٥، يعني مخفية. */
+html.dark .text-slate-100, html.dark .text-gray-100 { color: #f1f5f9; }
+html.dark .text-slate-200, html.dark .text-gray-200 { color: #e2e8f0; }
+html.dark .border-slate-700, html.dark .border-gray-700 { border-color: #334155; }
+html.dark .border-slate-800, html.dark .border-gray-800 { border-color: #1e293b; }
+
 html.dark .app-sidebar .text-slate-300 { color: #cbd5e1; }
 html.dark .app-sidebar .text-slate-400 { color: #94a3b8; }
 html.dark .app-sidebar .text-slate-500 { color: #64748b; }
@@ -754,3 +770,85 @@ html.dark .bg-\[\#0f2040\] .text-slate-300 { color: #cbd5e1; }
    صامت مو سطح)، فالنص الغامق يبقى هو الصح. ننصّ عليها حتى قلب
    `--color-slate-900` ما يجرّ لون النص وياه. */
 html.dark .bg-slate-400.text-white { color: #0f172a; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ألوان مكتوبة داخل style — ٢٦ ملف
+   ═══════════════════════════════════════════════════════════════
+
+   ٢٦ ملف (صفحات GPS وعروض الأسعار وإدارة الإحصائيات وغيرهن) چانن
+   يكتبن ألوانهن سطرياً: `style={{ color: '#1a3a5c' }}`.
+
+   ⚠️ والتنسيق السطري **يغلب أي قاعدة CSS** — يعني قلب الوضع الليلي
+   ما يوصلهن مهما كتبنا. النتيجة چانت عناوين وأزرار كحلية غامقة على
+   خلفية غامقة: «⚡ إجراءات سريعة» تباينها ١.٤٩ — شبه مخفية.
+
+   ⚠️ الحل مو حذف السطري (٢٥٩ موضع) بل تحويله لمتغيّرات. والمتغيّر
+   السطري (`var(--t-title)`) يقرا قيمته من اللوحة، فينقلب وياها.
+
+   ⚠️ وقيم **النهار هي الأصلية بالضبط** — الي يشتغل بالنهار ما يشوف
+   ولا فرق. الي انجمعن سوا كانن درجات رمادي متطابقة تقريباً
+   (`#666` و`#4b5563` مثلاً)، وتوحيدهن يخلّي الشاشات متناسقة بدل
+   ما كل صفحة تختار رماديها.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --t-title:     #1a3a5c;
+  --t-title-alt: #1a237e;
+  --t-body:      #1f2937;
+  --t-muted:     #4b5563;
+  --t-faint:     #9ca3af;
+  --t-danger:    #dc2626;
+  --t-success:   #16a34a;
+  --t-warning:   #d97706;
+  --t-info:      #2563eb;
+  --t-violet:    #7c3aed;
+  --t-cyan:      #0891b2;
+
+  --sf-card:     #ffffff;
+  --sf-sunken:   #f8fafc;
+  --sf-danger:   #fef2f2;
+  --sf-success:  #f0fdf4;
+  --sf-info:     #eff6ff;
+  --sf-violet:   #f5f3ff;
+  --tint-warning: #fffbeb;
+  --bd-line:     #e5e7eb;
+
+  /* ثوابت ألوان معرّفة بأعلى الملفات (`const PRIMARY = '#1a237e'`).
+     ⚠️ نفس الثابت يخدم عنواناً غامقاً على أبيض **ورأس جدول كحلي**
+     عليه نص أبيض. فُصل لنسختين: هاي للنص وتنقلب، والأصل يبقى
+     للأسطح. نفس فخّ `--color-white`. */
+  --brand-ink:     #1a237e;
+  --design-ink:    #47528f;
+  --gold-ink:      #c8a45a;
+  --gold-warm-ink: #c97a3a;
+}
+
+html.dark {
+  /* نصوص: تنقلب لفاتح، والمعنى يبقى (الأحمر أحمر) */
+  --t-title:     #dbe6f7;
+  --t-title-alt: #c3ccf5;
+  --t-body:      #d5dce9;
+  --t-muted:     #b6c0d4;
+  --t-faint:     #8f9bb5;
+  --t-danger:    #eba8a8;
+  --t-success:   #9ce8ce;
+  --t-warning:   #e8d29c;
+  --t-info:      #9cb9e8;
+  --t-violet:    #b39ce8;
+  --t-cyan:      #9ce8e0;
+
+  /* أسطح: تنغمق بنفس درجات بطاقات النظام */
+  --sf-card:     #131a2a;
+  --sf-sunken:   #182034;
+  --sf-danger:   #271212;
+  --sf-success:  #122820;
+  --sf-info:     #121b28;
+  --sf-violet:   #191228;
+  --tint-warning: #272112;
+  --bd-line:     #26304a;
+
+  --brand-ink:     #c3ccf5;
+  --design-ink:    #b9c0e8;
+  --gold-ink:      #e2c98f;
+  --gold-warm-ink: #e6b183;
+}

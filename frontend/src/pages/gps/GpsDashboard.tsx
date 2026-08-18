@@ -116,11 +116,11 @@ export default function GpsDashboard() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {[
-              { label: 'إجمالي الزبائن', value: stats.totalCustomers ?? 0, icon: '👥', color: '#1a3a5c' },
-              { label: 'اشتراكات فعالة', value: activeCount, icon: '✅', color: '#16a34a' },
-              { label: 'تنتهي قريباً', value: expiringSoon.length, icon: '⚠️', color: '#d97706' },
-              { label: 'منتهي +40 يوم', value: expired40Count, icon: '🔴', color: '#dc2626' },
-              { label: 'منتهي +80 يوم', value: expired80Count, icon: '⛔', color: '#7c2d12' },
+              { label: 'إجمالي الزبائن', value: stats.totalCustomers ?? 0, icon: '👥', color: 'var(--t-title)' },
+              { label: 'اشتراكات فعالة', value: activeCount, icon: '✅', color: 'var(--t-success)' },
+              { label: 'تنتهي قريباً', value: expiringSoon.length, icon: '⚠️', color: 'var(--t-warning)' },
+              { label: 'منتهي +40 يوم', value: expired40Count, icon: '🔴', color: 'var(--t-danger)' },
+              { label: 'منتهي +80 يوم', value: expired80Count, icon: '⛔', color: 'var(--t-warning)' },
             ].map(card => (
               <div key={card.label} className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between">
@@ -134,7 +134,7 @@ export default function GpsDashboard() {
 
           {/* Quick Actions */}
           <div className="rounded-2xl bg-white p-6 shadow-sm">
-            <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>⚡ إجراءات سريعة</h3>
+            <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>⚡ إجراءات سريعة</h3>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { label: 'إضافة زبون', icon: '👤', href: '/gps/customers' },
@@ -149,7 +149,7 @@ export default function GpsDashboard() {
                   style={{ borderColor: '#1a3a5c' }}
                 >
                   <span className="text-2xl">{action.icon}</span>
-                  <p className="mt-2 text-sm font-bold" style={{ color: '#1a3a5c' }}>{action.label}</p>
+                  <p className="mt-2 text-sm font-bold" style={{ color: 'var(--t-title)' }}>{action.label}</p>
                 </button>
               ))}
             </div>
@@ -175,9 +175,9 @@ export default function GpsDashboard() {
           {/* SIM Quick Stats */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {[
-              { label: 'إجمالي الشرائح', value: stats.totalSims ?? sims.length, icon: '📱', color: '#1a3a5c' },
-              { label: 'شرائح متوفرة', value: stats.availableSims ?? sims.filter((s) => s.status === 'AVAILABLE').length, icon: '🟢', color: '#16a34a' },
-              { label: 'شرائح مستخدمة', value: stats.inUseSims ?? sims.filter((s) => s.status === 'IN_USE').length, icon: '🔵', color: '#2563eb' },
+              { label: 'إجمالي الشرائح', value: stats.totalSims ?? sims.length, icon: '📱', color: 'var(--t-title)' },
+              { label: 'شرائح متوفرة', value: stats.availableSims ?? sims.filter((s) => s.status === 'AVAILABLE').length, icon: '🟢', color: 'var(--t-success)' },
+              { label: 'شرائح مستخدمة', value: stats.inUseSims ?? sims.filter((s) => s.status === 'IN_USE').length, icon: '🔵', color: 'var(--t-info)' },
             ].map(card => (
               <div key={card.label} className="rounded-2xl bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -199,11 +199,11 @@ export default function GpsDashboard() {
           {/* Filter Buttons */}
           <div className="flex flex-wrap gap-2">
             {[
-              { key: 'all', label: 'الكل', color: '#1a3a5c' },
-              { key: 'active', label: 'فعال', color: '#16a34a' },
-              { key: 'expiring', label: 'ينتهي قريباً', color: '#d97706' },
-              { key: 'expired40', label: 'منتهي +40', color: '#dc2626' },
-              { key: 'expired80', label: 'منتهي +80', color: '#7c2d12' },
+              { key: 'all', label: 'الكل', color: 'var(--t-title)' },
+              { key: 'active', label: 'فعال', color: 'var(--t-success)' },
+              { key: 'expiring', label: 'ينتهي قريباً', color: 'var(--t-warning)' },
+              { key: 'expired40', label: 'منتهي +40', color: 'var(--t-danger)' },
+              { key: 'expired80', label: 'منتهي +80', color: 'var(--t-warning)' },
             ].map(f => (
               <button
                 key={f.key}
@@ -235,7 +235,7 @@ export default function GpsDashboard() {
                     style={selectedDevice?.id === d.id ? { '--tw-ring-color': '#1a3a5c' } as React.CSSProperties : {}}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold" style={{ color: '#1a3a5c' }}>{d.customer?.fullName || 'غير معروف'}</span>
+                      <span className="font-bold" style={{ color: 'var(--t-title)' }}>{d.customer?.fullName || 'غير معروف'}</span>
                       <span
                         className="rounded-full px-3 py-1 text-xs font-bold"
                         style={{ backgroundColor: progressColor + '20', color: progressColor }}
@@ -263,7 +263,7 @@ export default function GpsDashboard() {
             {/* Detail Panel */}
             {selectedDevice && (
               <div className="w-80 rounded-2xl bg-white p-6 shadow-sm">
-                <h3 className="mb-4 text-lg font-bold" style={{ color: '#1a3a5c' }}>تفاصيل الاشتراك</h3>
+                <h3 className="mb-4 text-lg font-bold" style={{ color: 'var(--t-title)' }}>تفاصيل الاشتراك</h3>
                 <div className="space-y-3">
                   <div>
                     <span className="text-xs text-slate-500">الزبون</span>
@@ -312,7 +312,7 @@ export default function GpsDashboard() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">📱 إجمالي الشرائح</p>
-              <p className="text-3xl font-bold" style={{ color: '#1a3a5c' }}>{sims.length}</p>
+              <p className="text-3xl font-bold" style={{ color: 'var(--t-title)' }}>{sims.length}</p>
             </div>
             <div className="rounded-2xl bg-white p-5 shadow-sm">
               <p className="text-sm text-slate-500">🟢 متوفرة</p>

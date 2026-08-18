@@ -36,13 +36,17 @@ const STATUS_LABEL: Record<string, string> = {
  * حتى المحاسب يميّز الأربعة بلمحة عين وهو يمرّ عليهن، بلا ما يقرا
  * العناوين وحدة وحدة.
  */
-function Tile({ label, value, hint, color, tint, icon }: {
-  label: string; value: string; hint?: string; color: string; tint: string; icon: string
+function Tile({ label, value, hint, color, ink, tint, icon }: {
+  label: string; value: string; hint?: string; color: string; ink: string; tint: string; icon: string
 }) {
   return (
     <div
-      className="group relative overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:shadow-md"
-      style={{ background: `linear-gradient(180deg, ${tint} 0%, #ffffff 62%)` }}
+      /* ⚠️ التدرّج والنص ياخذان لونهما من `tint`/`ink` الي ينمرّران
+         كمتغيّرات CSS مو كقيم ثابتة: التدرّج چان ينتهي بـ`#ffffff`
+         صريح، فالبطاقة تبقى بيضة بالوضع الليلي ورقمها الكحلي
+         ينختفي عليها (تباين ١.٣٩). */
+      className="group relative overflow-hidden rounded-2xl shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-0.5 hover:shadow-md"
+      style={{ background: `linear-gradient(180deg, ${tint} 0%, var(--sf-card) 62%)` }}
     >
       <span className="absolute inset-x-0 top-0 h-1" style={{ backgroundColor: color }} />
       <div className="p-5">
@@ -50,7 +54,7 @@ function Tile({ label, value, hint, color, tint, icon }: {
           <span aria-hidden>{icon}</span>
           {label}
         </p>
-        <p className="mt-1.5 text-2xl font-black tracking-tight" style={{ color }}>{value}</p>
+        <p className="mt-1.5 text-2xl font-black tracking-tight" style={{ color: ink }}>{value}</p>
         {hint && <p className="mt-1 text-xs text-slate-400">{hint}</p>}
       </div>
     </div>
@@ -178,13 +182,13 @@ export default function DailyAuditPage() {
           {/* المجاميع الأربعة */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Tile label="١) المبالغ المستلمة" value={money(rep.collectedTotal)}
-              hint={`من ${rep.completedCount} حجز مكتمل`} color="#15803d" tint="#ecfdf5" icon="💰" />
+              hint={`من ${rep.completedCount} حجز مكتمل`} color="#15803d" ink="var(--t-success)" tint="var(--sf-success)" icon="💰" />
             <Tile label="٢) ما تم تدقيقه" value={money(rep.notVerifiedTotal)}
-              hint="لسه بانتظار قرارك" color="#b45309" tint="#fffbeb" icon="⏳" />
+              hint="لسه بانتظار قرارك" color="#b45309" ink="var(--t-warning)" tint="var(--tint-warning)" icon="⏳" />
             <Tile label="٣) كل المبالغ (مدقق + غير مدقق)" value={money(rep.allAmountsTotal)}
-              hint={`المدقق منها: ${money(rep.verifiedTotal)}`} color="#1a3a5c" tint="#eff6ff" icon="🧮" />
+              hint={`المدقق منها: ${money(rep.verifiedTotal)}`} color="#1a3a5c" ink="var(--t-title)" tint="var(--sf-info)" icon="🧮" />
             <Tile label="٤) الإجمالي المتوقع لليوم" value={money(rep.expectedTotal)}
-              hint="من فواتير الليدرز وتقديرات الإداري" color="#a67c2e" tint="#fefce8" icon="🎯" />
+              hint="من فواتير الليدرز وتقديرات الإداري" color="#a67c2e" ink="var(--gold-ink)" tint="var(--tint-warning)" icon="🎯" />
           </div>
 
           {/* عدّاد التقدم: المبلغ يزيد من الصفر لحد الإجمالي المتوقع
@@ -194,7 +198,7 @@ export default function DailyAuditPage() {
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-sm font-bold text-slate-700">تقدّم التدقيق اليوم</span>
                 <span className="text-sm text-slate-500">
-                  <b style={{ color: '#15803d' }}>{money(rep.verifiedTotal)}</b>
+                  <b style={{ color: 'var(--t-success)' }}>{money(rep.verifiedTotal)}</b>
                   {' '}من أصل{' '}
                   <b style={{ color: '#c8a45a' }}>{money(rep.expectedTotal)}</b>
                 </span>

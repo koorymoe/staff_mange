@@ -755,7 +755,7 @@ export default function Coordinator() {
                     {isOwner && (
                       <button
                         onClick={() => settleLegacy(booking)}
-                        className="rounded-full bg-emerald-600 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-emerald-700"
+                        className="rounded-full bg-emerald-700 px-3 py-1 text-xs font-bold text-white transition-colors hover:bg-emerald-800"
                         title="حجز قديم ما نعرف كادره ولا تكلفته — ينقفل منجزاً بلا تفاصيل، ومستثنى من الغرامات"
                       >
                         ✅ تم الإنجاز (بدون تفاصيل)

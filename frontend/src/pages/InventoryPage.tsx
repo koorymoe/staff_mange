@@ -538,7 +538,7 @@ export default function InventoryPage() {
                         <button
                           onClick={() => handleResolveCheck(c.id)}
                           disabled={resolvingId === c.id}
-                          className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                          className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
                         >
                           {resolvingId === c.id ? 'جاري...' : 'تم توفير الاحتياج ✓'}
                         </button>
@@ -1004,7 +1004,7 @@ export default function InventoryPage() {
                               <button
                                 type="button"
                                 onClick={() => { setStockTarget(t); setStockQty(''); setStockPrice(''); setStockSupplier('') }}
-                                className="mr-2 rounded-lg bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                                className="mr-2 rounded-lg bg-emerald-700 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-800"
                               >
                                 ➕ إضافة كمية
                               </button>
@@ -1516,7 +1516,7 @@ export default function InventoryPage() {
       {stockTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setStockTarget(null)}>
           <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold" style={{ color: '#1a3a5c' }}>إضافة كمية</h3>
+            <h3 className="text-lg font-bold" style={{ color: 'var(--t-title)' }}>إضافة كمية</h3>
             <p className="mt-1 text-sm text-slate-600">
               {stockTarget.name} — الكمية الحالية: <span className="font-bold">{stockTarget.availableQuantity}</span> من {stockTarget.totalQuantity}
             </p>

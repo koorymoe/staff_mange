@@ -2,7 +2,10 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { api, type DesignForm, type DesignFormQuestion, type DesignFormSubmission } from '../api'
 
-const PRIMARY = '#47528f'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--design-ink)'
 
 export default function DesignFormSubmissionsPage() {
   const { formId } = useParams<{ formId: string }>()
@@ -23,8 +26,8 @@ export default function DesignFormSubmissionsPage() {
 
   return (
     <div dir="rtl">
-      <Link to="/design-forms" className="text-sm font-bold" style={{ color: PRIMARY }}>← رجوع لكل الفورمات</Link>
-      <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY }}>
+      <Link to="/design-forms" className="text-sm font-bold" style={{ color: PRIMARY_TEXT }}>← رجوع لكل الفورمات</Link>
+      <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>
         الأجوبة المستلمة{currentForm ? ` — ${currentForm.name}` : ''}
       </h2>
 
@@ -40,7 +43,7 @@ export default function DesignFormSubmissionsPage() {
           {submissions.map((sub, si) => (
             <div key={sub.id} className="rounded-xl border border-white bg-white p-5 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
-                <span className="font-bold" style={{ color: PRIMARY }}>جواب #{si + 1}</span>
+                <span className="font-bold" style={{ color: PRIMARY_TEXT }}>جواب #{si + 1}</span>
                 <span className="text-xs text-slate-400">{new Date(sub.submittedAt).toLocaleString('ar-IQ')}</span>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

@@ -3,6 +3,10 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { api, type DesignForm, type DesignFormQuestion, type DesignFormQuestionType } from '../api'
 
 const PRIMARY = '#47528f'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--design-ink)'
 
 const TYPE_LABELS: Record<DesignFormQuestionType, string> = {
   TEXT: 'نص قصير',
@@ -116,8 +120,8 @@ export default function DesignFormBuilderPage() {
 
   return (
     <div dir="rtl">
-      <Link to="/design-forms" className="text-sm font-bold" style={{ color: PRIMARY }}>← رجوع لكل الفورمات</Link>
-      <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY }}>
+      <Link to="/design-forms" className="text-sm font-bold" style={{ color: PRIMARY_TEXT }}>← رجوع لكل الفورمات</Link>
+      <h2 className="mt-2 text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>
         {currentForm ? `أسئلة فورمة: ${currentForm.name}` : 'جاري التحميل...'}
       </h2>
       <p className="mt-1 text-slate-500">
@@ -183,7 +187,7 @@ export default function DesignFormBuilderPage() {
             <div className="flex items-start gap-3">
               <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-bold text-brand-700">{i + 1}</span>
               <div>
-                <p className="font-bold" style={{ color: PRIMARY }}>
+                <p className="font-bold" style={{ color: PRIMARY_TEXT }}>
                   {q.label} {q.required && <span className="text-red-500">*</span>}
                 </p>
                 <p className="text-xs text-slate-500">{TYPE_LABELS[q.type]}{q.options.length > 0 && ` — ${q.options.join('، ')}`}</p>

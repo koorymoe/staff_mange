@@ -449,13 +449,13 @@ export default function Dashboard() {
 
 
   const kpiCards = [
-    { title: 'الموظفين', value: employeeCount, color: '#3b82f6', bg: 'from-blue-500/10 to-blue-500/5', ring: 75, path: '/employees',
+    { title: 'الموظفين', value: employeeCount, color: 'var(--t-info)', bg: 'from-blue-500/10 to-blue-500/5', ring: 75, path: '/employees',
       icon: <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" /> },
-    { title: 'العملاء', value: customerCount, color: '#10b981', bg: 'from-emerald-500/10 to-emerald-500/5', ring: 60, path: '/customers',
+    { title: 'العملاء', value: customerCount, color: 'var(--t-success)', bg: 'from-emerald-500/10 to-emerald-500/5', ring: 60, path: '/customers',
       icon: <><path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></> },
-    { title: 'الحجوزات', value: bookingCount, color: '#8b5cf6', bg: 'from-violet-500/10 to-violet-500/5', ring: 45, path: '/bookings',
+    { title: 'الحجوزات', value: bookingCount, color: 'var(--t-violet)', bg: 'from-violet-500/10 to-violet-500/5', ring: 45, path: '/bookings',
       icon: <><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></> },
-    { title: 'أجهزة GPS', value: gpsStats?.totalDevices || 0, color: '#f59e0b', bg: 'from-amber-500/10 to-amber-500/5', ring: 85, path: '/gps',
+    { title: 'أجهزة GPS', value: gpsStats?.totalDevices || 0, color: 'var(--t-warning)', bg: 'from-amber-500/10 to-amber-500/5', ring: 85, path: '/gps',
       icon: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></> },
   ]
 
@@ -495,7 +495,7 @@ export default function Dashboard() {
               )}
             </h1>
             <p className="mt-2 text-sm text-blue-200/80">{formatDate()}</p>
-            <p className="mt-1 text-xs text-blue-300/60">نظام إدارة شامل — شركة الأماني</p>
+            <p className="mt-1 text-xs text-blue-300/80">نظام إدارة شامل — شركة الأماني</p>
           </div>
 
           {/* Time display */}
@@ -1084,14 +1084,14 @@ export default function Dashboard() {
             <>
               <div className="relative">
                 <button onClick={() => setShowCheckoutConfirm(!showCheckoutConfirm)}
-                  className="rounded-lg bg-red-500 px-3 py-1 text-xs font-bold text-white hover:bg-red-600">
+                  className="rounded-lg bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700">
                   انصراف
                 </button>
                 {showCheckoutConfirm && (
                   <div className="absolute right-4 top-full z-[60] mt-2 w-44 rounded-xl border border-slate-100 bg-white p-3 shadow-2xl">
                     <p className="mb-2 text-xs font-semibold text-gray-800">تسجيل انصراف؟</p>
                     <div className="flex gap-2">
-                      <button onClick={handleAttCheckOut} className="flex-1 rounded-lg bg-red-500 px-2 py-1 text-xs font-bold text-white">نعم</button>
+                      <button onClick={handleAttCheckOut} className="flex-1 rounded-lg bg-red-600 px-2 py-1 text-xs font-bold text-white">نعم</button>
                       <button onClick={() => setShowCheckoutConfirm(false)} className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600">إلغاء</button>
                     </div>
                   </div>
@@ -1100,7 +1100,7 @@ export default function Dashboard() {
             </>
           ) : (
             <button onClick={handleAttCheckIn}
-              className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-600">
+              className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">
               تسجيل حضور
             </button>
           )}
@@ -1264,7 +1264,7 @@ export default function Dashboard() {
                     {/* Task header */}
                     <div className={`flex items-center justify-between px-5 py-3 ${b.status === 'IN_PROGRESS' ? 'bg-gradient-to-l from-violet-600 to-violet-700' : 'bg-gradient-to-l from-amber-500 to-amber-600'}`}>
                       <div className="flex items-center gap-2">
-                        {b.priority === 'URGENT' && <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">عاجل</span>}
+                        {b.priority === 'URGENT' && <span className="rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">عاجل</span>}
                         <span className="rounded-full bg-white/20 px-2 py-0.5 text-[11px] font-bold text-white">
                           {myRole === 'TECH_1' ? 'الفني الأول' : myRole === 'TECH_2' ? 'الفني الثاني' : 'الفني الثالث'}
                         </span>

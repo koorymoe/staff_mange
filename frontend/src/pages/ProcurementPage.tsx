@@ -624,7 +624,7 @@ export default function ProcurementPage() {
               <button
                 onClick={handleFulfill}
                 disabled={fulfilling}
-                className="px-6 py-2 text-sm bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 disabled:opacity-50 transition"
+                className="px-6 py-2 text-sm bg-emerald-700 text-white rounded-lg font-medium hover:bg-emerald-800 disabled:opacity-50 transition"
               >
                 {fulfilling ? 'جاري التنفيذ...' : 'تأكيد التوفير'}
               </button>

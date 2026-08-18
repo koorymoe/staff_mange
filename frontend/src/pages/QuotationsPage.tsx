@@ -4,13 +4,21 @@ import { api, type Quotation } from '../api'
 import { useSession } from '../session'
 
 const PRIMARY = '#1a237e'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--brand-ink)'
 const GOLD = '#c8a45a'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const GOLD_TEXT = 'var(--gold-ink)'
 
 const statusConfig: Record<Quotation['status'], { label: string; bg: string; color: string }> = {
-  NEW: { label: 'جديد', bg: '#fff3cd', color: '#856404' },
-  SENT: { label: 'مرسل', bg: '#cce5ff', color: '#004085' },
-  ACCEPTED: { label: 'مقبول', bg: '#d4edda', color: '#155724' },
-  REJECTED: { label: 'مرفوض', bg: '#f8d7da', color: '#721c24' },
+  NEW: { label: 'جديد', bg: '#fff3cd', color: 'var(--t-warning)' },
+  SENT: { label: 'مرسل', bg: '#cce5ff', color: 'var(--t-info)' },
+  ACCEPTED: { label: 'مقبول', bg: '#d4edda', color: 'var(--t-success)' },
+  REJECTED: { label: 'مرفوض', bg: '#f8d7da', color: 'var(--t-danger)' },
 }
 
 const fmt = (n: number) => n.toLocaleString('en-IQ')
@@ -63,13 +71,14 @@ export default function QuotationsPage() {
       }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '24px' }}>عروض الأسعار</h1>
-          <span style={{ color: GOLD, fontSize: '14px' }}>إدارة ومتابعة عروض الأسعار</span>
+          <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>إدارة ومتابعة عروض الأسعار</span>
         </div>
         <button
           onClick={() => navigate('/quotations/new')}
           style={{
             background: GOLD,
-            color: PRIMARY,
+            // ⚠️ نص غامق ثابت: الخلفية ذهبية بالوضعين، فالنص ما ينقلب.
+            color: '#1a237e',
             border: 'none',
             padding: '10px 24px',
             borderRadius: '8px',
@@ -95,16 +104,16 @@ export default function QuotationsPage() {
         />
       </div>
 
-      {loading && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {loading && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
       {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: '#dc2626' }}>
+        <div style={{ background: 'var(--sf-danger)', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: 'var(--t-danger)' }}>
           تعذر الاتصال بالخادم: {error}
         </div>
       )}
 
       {!loading && !error && (
         <div style={{
-          background: 'white',
+          background: 'var(--sf-card)',
           border: `2px solid ${PRIMARY}`,
           borderRadius: '12px',
           overflow: 'hidden',
@@ -127,16 +136,16 @@ export default function QuotationsPage() {
               {quotations.map((q) => {
                 const st = statusConfig[q.status]
                 return (
-                  <tr key={q.id} style={{ borderBottom: '1px solid #eee' }}
+                  <tr key={q.id} style={{ borderBottom: '1px solid var(--bd-line)' }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = '#f8f9ff')}
                     onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
                   >
-                    <td style={{ padding: '12px 16px', fontWeight: 'bold', color: PRIMARY }}>{q.quotationNumber}</td>
+                    <td style={{ padding: '12px 16px', fontWeight: 'bold', color: PRIMARY_TEXT }}>{q.quotationNumber}</td>
                     <td style={{ padding: '12px 16px' }}>{q.customerName}</td>
-                    <td style={{ padding: '12px 16px', color: '#666' }}>{q.projectName || '-'}</td>
+                    <td style={{ padding: '12px 16px', color: 'var(--t-muted)' }}>{q.projectName || '-'}</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>{fmt(q.grandTotal)} د.ع</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', color: '#dc2626' }}>{fmt(q.discountValue)} د.ع</td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 'bold', color: PRIMARY }}>{fmt(q.netTotal)} د.ع</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', color: 'var(--t-danger)' }}>{fmt(q.discountValue)} د.ع</td>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', fontWeight: 'bold', color: PRIMARY_TEXT }}>{fmt(q.netTotal)} د.ع</td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
                       <span style={{
                         background: st.bg, color: st.color,
@@ -146,7 +155,7 @@ export default function QuotationsPage() {
                         {st.label}
                       </span>
                     </td>
-                    <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', color: '#666' }}>
+                    <td style={{ padding: '12px 16px', textAlign: 'center', fontSize: '13px', color: 'var(--t-muted)' }}>
                       {new Date(q.createdAt).toLocaleDateString('ar-IQ')}
                     </td>
                     <td style={{ padding: '12px 16px', textAlign: 'center' }}>
@@ -154,7 +163,7 @@ export default function QuotationsPage() {
                         <button
                           onClick={() => navigate(`/quotations/${q.id}/edit?preview=1`)}
                           style={{
-                            background: '#ede7f6', color: '#4527a0', border: 'none',
+                            background: 'var(--sf-violet)', color: 'var(--t-violet)', border: 'none',
                             padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
                             fontSize: '12px', fontWeight: 'bold',
                           }}
@@ -164,7 +173,7 @@ export default function QuotationsPage() {
                         <button
                           onClick={() => navigate(`/quotations/${q.id}/edit`)}
                           style={{
-                            background: '#e3f2fd', color: '#1565c0', border: 'none',
+                            background: 'var(--sf-info)', color: 'var(--t-info)', border: 'none',
                             padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
                             fontSize: '12px', fontWeight: 'bold',
                           }}
@@ -175,7 +184,7 @@ export default function QuotationsPage() {
                           <button
                             onClick={() => handleDelete(q.id)}
                             style={{
-                              background: '#fee2e2', color: '#dc2626', border: 'none',
+                              background: 'var(--sf-danger)', color: 'var(--t-danger)', border: 'none',
                               padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
                               fontSize: '12px', fontWeight: 'bold',
                             }}
@@ -190,7 +199,7 @@ export default function QuotationsPage() {
               })}
               {quotations.length === 0 && (
                 <tr>
-                  <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#999' }}>
+                  <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--t-faint)' }}>
                     {search ? 'لا توجد نتائج مطابقة' : 'لا توجد عروض أسعار بعد'}
                   </td>
                 </tr>

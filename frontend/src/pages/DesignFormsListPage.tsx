@@ -5,7 +5,15 @@ import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 
 const PRIMARY = '#47528f'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--design-ink)'
 const GOLD = '#c97a3a'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const GOLD_TEXT = 'var(--gold-warm-ink)'
 
 function publicUrl(token: string) {
   const base = import.meta.env.BASE_URL.replace(/\/$/, '')
@@ -26,14 +34,14 @@ function FormBrandPreview({ name }: { name: string }) {
         <div style={{ fontSize: '11px', fontWeight: 700, lineHeight: 1.4 }}>
           شركة الأماني للتجارة العامة والاستثمارات العقارية
         </div>
-        <div style={{ fontSize: '8px', fontWeight: 600, color: GOLD, marginTop: '2px' }}>
+        <div style={{ fontSize: '8px', fontWeight: 600, color: GOLD_TEXT, marginTop: '2px' }}>
           Al-Amani for General Trading &amp; Real Estate
         </div>
         <div style={{ marginTop: '8px', fontSize: '14px', fontWeight: 700 }}>{name || 'اسم الفورمة'}</div>
       </div>
-      <div style={{ background: '#fff', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <div style={{ height: '8px', width: '60%', background: '#eef0f8', borderRadius: '4px' }} />
-        <div style={{ height: '18px', width: '100%', background: '#f7f8fc', border: '1px solid #eef0f8', borderRadius: '6px' }} />
+      <div style={{ background: 'var(--sf-card)', padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ height: '8px', width: '60%', background: 'var(--sf-sunken)', borderRadius: '4px' }} />
+        <div style={{ height: '18px', width: '100%', background: 'var(--sf-sunken)', border: '1px solid #eef0f8', borderRadius: '6px' }} />
         <div style={{ marginTop: '4px', height: '20px', width: '100%', background: GOLD, opacity: 0.85, borderRadius: '6px' }} />
       </div>
     </div>
@@ -85,7 +93,7 @@ export default function DesignFormsListPage() {
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
     <div dir="rtl">
-      <h2 className="text-2xl font-bold" style={{ color: PRIMARY }}>وحدة التصميم — فورمة التصميم</h2>
+      <h2 className="text-2xl font-bold" style={{ color: PRIMARY_TEXT }}>وحدة التصميم — فورمة التصميم</h2>
       <p className="mt-1 text-slate-500">
         كل فورمة مستقلة بأسئلتها الخاصة ورابطها العام — كلهن بنفس الهوية البصرية لشركة الأماني، وترسلها للزبون مباشرة بدون ما يشوف أي شي ثاني من النظام.
       </p>

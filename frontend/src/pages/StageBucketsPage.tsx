@@ -373,7 +373,7 @@ export default function StageBucketsPage() {
                             <button
                               onClick={() => resume(b.id, name)}
                               disabled={busyId === b.id}
-                              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
                             >
                               {busyId === b.id ? '...' : '📞 الزبون رد'}
                             </button>

@@ -4,7 +4,15 @@ import KpiBreakdownChart from '../components/KpiBreakdownChart'
 import PerformanceCurveModal from '../components/PerformanceCurveModal'
 
 const PRIMARY = '#1a237e'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const PRIMARY_TEXT = 'var(--brand-ink)'
 const GOLD = '#c8a45a'
+// ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
+// نفس اللون يخدم عنواناً غامقاً على أبيض، ورأس جدول كحلي عليه نص أبيض.
+// قلب الاثنين سوا يكسر واحداً منهما — نفس فخّ --color-white.
+const GOLD_TEXT = 'var(--gold-ink)'
 
 const fmt = (n: number) => n.toLocaleString('en-IQ')
 
@@ -55,7 +63,7 @@ export default function EmployeeMonthlyStatsPage() {
     background: PRIMARY, whiteSpace: 'nowrap',
   }
   const tdStyle: React.CSSProperties = {
-    padding: '10px 12px', textAlign: 'right', fontSize: '13px', borderBottom: '1px solid #eee',
+    padding: '10px 12px', textAlign: 'right', fontSize: '13px', borderBottom: '1px solid var(--bd-line)',
   }
 
   return (
@@ -65,27 +73,29 @@ export default function EmployeeMonthlyStatsPage() {
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '24px',
       }}>
         <h1 style={{ margin: 0, fontSize: '24px' }}>إحصائيات الموظفين الشهرية</h1>
-        <span style={{ color: GOLD, fontSize: '14px' }}>نقاط الكي بي اي، العمولات، المبيعات، الحجوزات، والشكاوى — لكل موظف كل شهر</span>
+        <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>نقاط الكي بي اي، العمولات، المبيعات، الحجوزات، والشكاوى — لكل موظف كل شهر</span>
       </div>
 
       <div style={{
         display: 'flex', gap: '12px', alignItems: 'end', marginBottom: '20px',
-        background: 'white', border: `2px solid ${PRIMARY}`, borderRadius: '12px', padding: '16px',
+        background: 'var(--sf-card)', border: `2px solid ${PRIMARY}`, borderRadius: '12px', padding: '16px',
       }}>
         <div>
-          <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: '#666' }}>الشهر</label>
+          <label style={{ display: 'block', marginBottom: '4px', fontSize: '13px', color: 'var(--t-muted)' }}>الشهر</label>
           <input
             type="month"
             value={month}
             onChange={(e) => setMonth(e.target.value)}
-            style={{ padding: '10px 12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }}
+            style={{ padding: '10px 12px', border: '1px solid var(--bd-line)', borderRadius: '8px', fontSize: '14px' }}
           />
         </div>
         <button
           onClick={handleExport}
           disabled={exporting || loading}
           style={{
-            background: GOLD, color: PRIMARY, border: 'none', padding: '10px 20px',
+            // ⚠️ نص غامق ثابت مو `PRIMARY_TEXT`: الخلفية ذهبية **بالوضعين**
+            // (زر صامت مو سطح)، فقلب النص لفاتح يخلّيه فاتحاً على ذهبي.
+            background: GOLD, color: '#1a237e', border: 'none', padding: '10px 20px',
             borderRadius: '8px', cursor: exporting ? 'not-allowed' : 'pointer', fontWeight: 'bold', fontSize: '14px',
             opacity: exporting ? 0.6 : 1,
           }}
@@ -94,15 +104,15 @@ export default function EmployeeMonthlyStatsPage() {
         </button>
       </div>
 
-      {loading && <p style={{ color: '#999', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {loading && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
       {error && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: '#dc2626' }}>
+        <div style={{ background: 'var(--sf-danger)', border: '1px solid #fecaca', borderRadius: '8px', padding: '16px', color: 'var(--t-danger)' }}>
           تعذر الاتصال بالخادم: {error}
         </div>
       )}
 
       {!loading && !error && (
-        <div style={{ overflowX: 'auto', background: 'white', borderRadius: '12px', border: '1px solid #e0e0e0' }}>
+        <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr>
@@ -138,7 +148,7 @@ export default function EmployeeMonthlyStatsPage() {
                     {r.workSpeedScore != null ? (
                       <span style={{ fontWeight: 700, color: r.workSpeedScore >= 1 ? '#059669' : '#dc2626' }}>
                         {r.workSpeedScore >= 1 ? '⬆︎' : '⬇︎'} {r.workSpeedScore.toFixed(2)}
-                        <span style={{ color: '#94a3b8', fontWeight: 400 }}> ({r.workSpeedSamples})</span>
+                        <span style={{ color: 'var(--t-faint)', fontWeight: 400 }}> ({r.workSpeedSamples})</span>
                       </span>
                     ) : (
                       <span title="ماكو عيّنات كافية لهذا الشهر">—</span>
@@ -178,7 +188,7 @@ export default function EmployeeMonthlyStatsPage() {
                     {r.kpiPoints > 0 ? `+${r.kpiPoints}` : r.kpiPoints}
                   </td>
                   <td style={tdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
-                  <td style={{ ...tdStyle, fontWeight: 'bold', color: GOLD }}>{fmt(r.totalCommission)} د.ع</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold', color: GOLD_TEXT }}>{fmt(r.totalCommission)} د.ع</td>
                   <td style={tdStyle}>
                     <button
                       onClick={() => setCurveFor({ id: r.employeeId, name: r.employeeName })}
@@ -191,7 +201,7 @@ export default function EmployeeMonthlyStatsPage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={14} style={{ ...tdStyle, textAlign: 'center', color: '#999', padding: '40px' }}>
+                  <td colSpan={14} style={{ ...tdStyle, textAlign: 'center', color: 'var(--t-faint)', padding: '40px' }}>
                     لا توجد بيانات لهذا الشهر
                   </td>
                 </tr>
@@ -201,7 +211,7 @@ export default function EmployeeMonthlyStatsPage() {
               <tfoot>
                 <tr>
                   <td style={{ ...tdStyle, fontWeight: 'bold' }} colSpan={12}>الإجمالي</td>
-                  <td style={{ ...tdStyle, fontWeight: 'bold', color: PRIMARY }}>{fmt(totalCommissionSum)} د.ع</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold', color: PRIMARY_TEXT }}>{fmt(totalCommissionSum)} د.ع</td>
                   <td style={tdStyle} />
                 </tr>
               </tfoot>

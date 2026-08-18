@@ -361,7 +361,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
               للحافظة (كمبيوتر) — بدل ما نعتمد على وحدة وتفشل بالثانية. */}
           <button
             onClick={() => shareResult(shareText(estimateResult.executionCost, estimateResult.totalDeviceCount))}
-            className="mt-4 w-full rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-emerald-700"
+            className="mt-4 w-full rounded-xl bg-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-emerald-800"
           >
             📤 مشاركة النتيجة مع الزبون
           </button>

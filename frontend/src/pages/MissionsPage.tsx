@@ -34,15 +34,20 @@ interface Mission {
   events: { id: string; action: string; employeeId: string; createdAt: string; note: string | null }[]
 }
 
-const STAGES: Record<string, { label: string; color: string; icon: string }> = {
-  ASSIGNED:        { label: 'تم الإسناد', color: '#6b7280', icon: '📋' },
-  MATERIALS_PREP:  { label: 'تجهيز المواد', color: '#d97706', icon: '📦' },
-  MATERIALS_READY: { label: 'المواد جاهزة', color: '#2563eb', icon: '✅' },
-  EN_ROUTE:        { label: 'بالطريق', color: '#7c3aed', icon: '🚗' },
-  ARRIVED:         { label: 'وصل الموقع', color: '#0891b2', icon: '📍' },
-  WORK_STARTED:    { label: 'جاري العمل', color: '#ea580c', icon: '⚡' },
-  COMPLETED:       { label: 'مكتمل', color: '#16a34a', icon: '🏆' },
-  STOPPED:         { label: 'متوقف', color: '#dc2626', icon: '⏸️' },
+// ═══ ألوان المراحل ═══
+// ⚠️ لونان لكل مرحلة مو واحد: `ink` للنص (ينقلب بالوضع الليلي حتى
+// ينقرا على البطاقة الغامقة)، و`fill` لخلفية الشارة الي عليها نص
+// أبيض (يبقى غامقاً بالوضعين — قلبه يخلّي أبيض على فاتح).
+// نفس فخّ `--color-white` الي انكوينا بيه مرتين قبل.
+const STAGES: Record<string, { label: string; ink: string; fill: string; icon: string }> = {
+  ASSIGNED:        { label: 'تم الإسناد',   ink: 'var(--t-muted)',   fill: '#475569', icon: '📋' },
+  MATERIALS_PREP:  { label: 'تجهيز المواد', ink: 'var(--t-warning)', fill: '#b45309', icon: '📦' },
+  MATERIALS_READY: { label: 'المواد جاهزة', ink: 'var(--t-info)',    fill: '#1d4ed8', icon: '✅' },
+  EN_ROUTE:        { label: 'بالطريق',      ink: 'var(--t-violet)',  fill: '#6d28d9', icon: '🚗' },
+  ARRIVED:         { label: 'وصل الموقع',   ink: 'var(--t-cyan)',    fill: '#0e7490', icon: '📍' },
+  WORK_STARTED:    { label: 'جاري العمل',   ink: 'var(--t-warning)', fill: '#b45309', icon: '⚡' },
+  COMPLETED:       { label: 'مكتمل',        ink: 'var(--t-success)', fill: '#15803d', icon: '🏆' },
+  STOPPED:         { label: 'متوقف',        ink: 'var(--t-danger)',  fill: '#b91c1c', icon: '⏸️' },
 }
 
 const stageOrder = ['ASSIGNED', 'MATERIALS_PREP', 'MATERIALS_READY', 'EN_ROUTE', 'ARRIVED', 'WORK_STARTED', 'COMPLETED']
@@ -180,7 +185,7 @@ export default function MissionsPage() {
             return (
               <div key={key} className="rounded-xl bg-white p-4 shadow-sm text-center">
                 <span className="text-2xl">{s.icon}</span>
-                <p className="mt-1 text-2xl font-bold" style={{ color: s.color }}>{count}</p>
+                <p className="mt-1 text-2xl font-bold" style={{ color: s.ink }}>{count}</p>
                 <p className="text-xs text-slate-500">{s.label}</p>
               </div>
             )
@@ -222,7 +227,7 @@ export default function MissionsPage() {
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{s.icon}</span>
-                    <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: s.color }}>{s.label}</span>
+                    <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: s.fill }}>{s.label}</span>
                     <span className="text-xs text-slate-400">{m.code}</span>
                   </div>
                   {delay === 'late' && <span className="text-xs font-bold text-red-500 animate-pulse">❗ متأخر</span>}
@@ -250,7 +255,7 @@ export default function MissionsPage() {
                     const stg = STAGES[st]
                     return (
                       <div key={st} className="flex items-center gap-1">
-                        <div className={`h-2.5 w-2.5 rounded-full ${done ? '' : 'bg-slate-200'}`} style={done ? { backgroundColor: stg.color } : {}} title={stg.label} />
+                        <div className={`h-2.5 w-2.5 rounded-full ${done ? '' : 'bg-slate-200'}`} style={done ? { backgroundColor: stg.fill } : {}} title={stg.label} />
                         {i < stageOrder.length - 1 && <div className={`h-0.5 w-4 ${done ? 'bg-slate-400' : 'bg-slate-200'}`} />}
                       </div>
                     )
@@ -330,11 +335,11 @@ export default function MissionsPage() {
                     )}
                     {m.stage === 'WORK_STARTED' && (
                       <>
-                        <button onClick={() => advanceStage(m, 'COMPLETED')} className="rounded-lg bg-green-600 px-4 py-2 text-sm font-bold text-white hover:bg-green-700">🏆 تم الإنجاز</button>
+                        <button onClick={() => advanceStage(m, 'COMPLETED')} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-bold text-white hover:bg-green-800">🏆 تم الإنجاز</button>
                         <button onClick={() => {
                           const reason = prompt('سبب التوقف؟')
                           if (reason) advanceStage(m, 'STOPPED', { stopReason: reason })
-                        }} className="rounded-lg bg-red-500 px-4 py-2 text-sm font-bold text-white hover:bg-red-600">⏸️ توقف</button>
+                        }} className="rounded-lg bg-red-600 px-4 py-2 text-sm font-bold text-white hover:bg-red-700">⏸️ توقف</button>
                       </>
                     )}
                     <button onClick={() => setSelectedMission(m)} className="rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-600 hover:bg-slate-200">📊 التفاصيل</button>
@@ -388,7 +393,7 @@ export default function MissionsPage() {
                 }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: s.color }}>{s.icon} {s.label}</span>
+                      <span className="rounded-full px-3 py-1 text-xs font-bold text-white" style={{ backgroundColor: s.fill }}>{s.icon} {s.label}</span>
                       <span className="text-xs text-slate-400">{m.code}</span>
                     </div>
                     <span className={`text-xs font-bold ${delay === 'late' ? 'text-red-500' : delay === 'warning' ? 'text-yellow-600' : 'text-green-500'}`}>
@@ -496,7 +501,7 @@ function LivePathModal({ mission, onClose }: { mission: Mission; onClose: () => 
       const latlngs = points.map(p => [p.latitude, p.longitude]) as [number, number][]
       if (ref.line) map.removeLayer(ref.line)
       if (ref.marker) map.removeLayer(ref.marker)
-      ref.line = L.polyline(latlngs, { color: '#7c3aed', weight: 4 }).addTo(map)
+      ref.line = L.polyline(latlngs, { color: 'var(--t-violet)', weight: 4 }).addTo(map)
       ref.marker = L.marker(latlngs[latlngs.length - 1]).addTo(map)
       map.fitBounds(ref.line.getBounds(), { padding: [30, 30] })
     })

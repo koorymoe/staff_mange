@@ -118,42 +118,42 @@ export default function GpsRenewals() {
 
   return (
     <div dir="rtl">
-      <h1 className="text-2xl font-bold mb-6" style={{ color: '#1a3a5c' }}>طلبات تجديد الاشتراك 🔄</h1>
+      <h1 className="text-2xl font-bold mb-6" style={{ color: 'var(--t-title)' }}>طلبات تجديد الاشتراك 🔄</h1>
       {loading ? (
-        <div className="text-center py-20" style={{ color: '#9ca3af' }}>جارٍ التحميل...</div>
+        <div className="text-center py-20" style={{ color: 'var(--t-faint)' }}>جارٍ التحميل...</div>
       ) : renewals.length === 0 ? (
-        <div className="text-center py-16 rounded-2xl" style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div className="text-center py-16 rounded-2xl" style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="text-5xl mb-4">✅</div>
-          <p className="text-lg" style={{ color: '#9ca3af' }}>لا توجد طلبات تجديد معلقة</p>
+          <p className="text-lg" style={{ color: 'var(--t-faint)' }}>لا توجد طلبات تجديد معلقة</p>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-hidden" style={{ background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--sf-card)', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr style={{ background: '#f8fafc' }}>
-                <th className="px-4 py-3 text-right font-semibold" style={{ color: '#4b5563' }}>اسم الزبون</th>
-                <th className="px-4 py-3 text-right font-semibold" style={{ color: '#4b5563' }}>الهاتف</th>
-                <th className="px-4 py-3 text-right font-semibold" style={{ color: '#4b5563' }}>تاريخ انتهاء الاشتراك</th>
-                <th className="px-4 py-3 text-right font-semibold" style={{ color: '#4b5563' }}>النوع المطلوب</th>
-                <th className="px-4 py-3 text-right font-semibold" style={{ color: '#4b5563' }}>تاريخ الطلب</th>
-                <th className="px-4 py-3 text-right font-semibold" style={{ color: '#4b5563' }}>إجراء</th>
+              <tr style={{ background: 'var(--sf-sunken)' }}>
+                <th className="px-4 py-3 text-right font-semibold" style={{ color: 'var(--t-muted)' }}>اسم الزبون</th>
+                <th className="px-4 py-3 text-right font-semibold" style={{ color: 'var(--t-muted)' }}>الهاتف</th>
+                <th className="px-4 py-3 text-right font-semibold" style={{ color: 'var(--t-muted)' }}>تاريخ انتهاء الاشتراك</th>
+                <th className="px-4 py-3 text-right font-semibold" style={{ color: 'var(--t-muted)' }}>النوع المطلوب</th>
+                <th className="px-4 py-3 text-right font-semibold" style={{ color: 'var(--t-muted)' }}>تاريخ الطلب</th>
+                <th className="px-4 py-3 text-right font-semibold" style={{ color: 'var(--t-muted)' }}>إجراء</th>
               </tr>
             </thead>
             <tbody>
               {renewals.map((r, i) => (
                 <tr key={r.id} style={{ background: i % 2 === 0 ? 'white' : '#fafafa' }}>
-                  <td className="px-4 py-3 font-medium" style={{ color: '#1f2937' }}>
+                  <td className="px-4 py-3 font-medium" style={{ color: 'var(--t-body)' }}>
                     {r.customer ? `${r.customer.fullName} ${r.customer.fatherName} ${r.customer.grandfatherName}` : '-'}
                   </td>
-                  <td className="px-4 py-3" style={{ color: '#4b5563' }}>{r.customer?.phone || '-'}</td>
-                  <td className="px-4 py-3" style={{ color: '#4b5563' }}>{r.currentEnd ? formatDate(r.currentEnd) : '-'}</td>
-                  <td className="px-4 py-3" style={{ color: '#4b5563' }}>{getSubscriptionLabel(r.subscriptionType)}</td>
-                  <td className="px-4 py-3" style={{ color: '#6b7280' }}>{r.createdAt ? formatDate(r.createdAt) : '-'}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--t-muted)' }}>{r.customer?.phone || '-'}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--t-muted)' }}>{r.currentEnd ? formatDate(r.currentEnd) : '-'}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--t-muted)' }}>{getSubscriptionLabel(r.subscriptionType)}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--t-muted)' }}>{r.createdAt ? formatDate(r.createdAt) : '-'}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => setSelected(r)}
                       className="text-sm px-4 py-1.5 rounded-lg font-medium"
-                      style={{ background: '#f8fafc', color: '#1a3a5c', border: '1px solid #e2e8f0', cursor: 'pointer' }}>
+                      style={{ background: 'var(--sf-sunken)', color: 'var(--t-title)', border: '1px solid var(--bd-line)', cursor: 'pointer' }}>
                       موافقة ومعالجة ←
                     </button>
                   </td>
@@ -167,24 +167,24 @@ export default function GpsRenewals() {
 
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div className="rounded-2xl w-full max-w-lg m-4" style={{ background: 'white', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid #e5e7eb' }}>
-              <h2 className="text-xl font-bold" style={{ color: '#1a3a5c' }}>تأكيد التجديد</h2>
-              <button onClick={() => setSelected(null)} style={{ color: '#9ca3af', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
+          <div className="rounded-2xl w-full max-w-lg m-4" style={{ background: 'var(--sf-card)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
+            <div className="p-5 flex items-center justify-between" style={{ borderBottom: '1px solid var(--bd-line)' }}>
+              <h2 className="text-xl font-bold" style={{ color: 'var(--t-title)' }}>تأكيد التجديد</h2>
+              <button onClick={() => setSelected(null)} style={{ color: 'var(--t-faint)', fontSize: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}>✕</button>
             </div>
             <div className="p-6 text-sm" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="grid grid-cols-2 gap-3 p-4 rounded-xl" style={{ background: '#f9fafb' }}>
-                <div><span style={{ color: '#6b7280' }}>الاسم: </span><span className="font-semibold">{selected.customer ? `${selected.customer.fullName} ${selected.customer.fatherName} ${selected.customer.grandfatherName}` : '-'}</span></div>
-                <div><span style={{ color: '#6b7280' }}>الهاتف: </span><span className="font-semibold">{selected.customer?.phone || '-'}</span></div>
-                <div><span style={{ color: '#6b7280' }}>العنوان: </span><span className="font-semibold">{selected.customer?.address || '-'}</span></div>
-                <div><span style={{ color: '#6b7280' }}>الاشتراك المطلوب: </span><span className="font-semibold">{getSubscriptionLabel(selected.subscriptionType)}</span></div>
-                <div><span style={{ color: '#6b7280' }}>تاريخ انتهاء الحالي: </span><span className="font-semibold" style={{ color: '#dc2626' }}>{selected.currentEnd ? formatDate(selected.currentEnd) : '-'}</span></div>
+              <div className="grid grid-cols-2 gap-3 p-4 rounded-xl" style={{ background: 'var(--sf-sunken)' }}>
+                <div><span style={{ color: 'var(--t-muted)' }}>الاسم: </span><span className="font-semibold">{selected.customer ? `${selected.customer.fullName} ${selected.customer.fatherName} ${selected.customer.grandfatherName}` : '-'}</span></div>
+                <div><span style={{ color: 'var(--t-muted)' }}>الهاتف: </span><span className="font-semibold">{selected.customer?.phone || '-'}</span></div>
+                <div><span style={{ color: 'var(--t-muted)' }}>العنوان: </span><span className="font-semibold">{selected.customer?.address || '-'}</span></div>
+                <div><span style={{ color: 'var(--t-muted)' }}>الاشتراك المطلوب: </span><span className="font-semibold">{getSubscriptionLabel(selected.subscriptionType)}</span></div>
+                <div><span style={{ color: 'var(--t-muted)' }}>تاريخ انتهاء الحالي: </span><span className="font-semibold" style={{ color: 'var(--t-danger)' }}>{selected.currentEnd ? formatDate(selected.currentEnd) : '-'}</span></div>
               </div>
-              <div className="text-sm rounded-xl p-4" style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534' }}>
+              <div className="text-sm rounded-xl p-4" style={{ background: 'var(--sf-success)', border: '1px solid #bbf7d0', color: 'var(--t-success)' }}>
                 سيتم تجديد الاشتراك تلقائياً وطباعة الفاتورة عند الموافقة
               </div>
             </div>
-            <div className="p-5 flex gap-3" style={{ borderTop: '1px solid #e5e7eb' }}>
+            <div className="p-5 flex gap-3" style={{ borderTop: '1px solid var(--bd-line)' }}>
               <button onClick={() => handleApprove(selected)} disabled={approving}
                 className="flex-1 py-3 rounded-lg font-semibold text-white"
                 style={{ background: '#1a3a5c', border: 'none', cursor: 'pointer' }}>
@@ -192,7 +192,7 @@ export default function GpsRenewals() {
               </button>
               <button onClick={() => setSelected(null)}
                 className="px-6 py-3 rounded-lg font-medium"
-                style={{ border: '1px solid #e5e7eb', color: '#4b5563', background: 'white', cursor: 'pointer' }}>
+                style={{ border: '1px solid var(--bd-line)', color: 'var(--t-muted)', background: 'var(--sf-card)', cursor: 'pointer' }}>
                 إغلاق
               </button>
             </div>
