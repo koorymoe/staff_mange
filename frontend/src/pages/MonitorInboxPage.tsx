@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MonitorReview, type MonitorStage } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
@@ -47,24 +47,33 @@ export default function MonitorInboxPage() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const [list, c] = await Promise.all([
-        api.getMonitorReviews({ stage, status: showDone ? '' : 'PENDING', ownerRole }),
-        api.getMonitorReviewCounts(),
-      ])
-      setRows(list)
-      setCounts(Object.fromEntries(c.map((x) => [x.stage, x.count])))
-      setError(null)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'تعذر جلب الصندوق')
-    } finally {
-      setLoading(false)
-    }
-  }, [stage, showDone, ownerRole])
+  // ⚠️ الجلب بمكان **واحد** داخل الـeffect، والقرار يطلب التحديث
+  // برفع العدّاد. و`alive` يمنع سباق الطلبات: المراقب يبدّل المحطات
+  // بسرعة، وجواب محطة قديمة يوصل متأخر ويطمس الجديد — يعني يشوف
+  // مراجعات محطة وهو واقف على محطة ثانية، ويتخذ قرار بالغلط.
+  const [reload, setReload] = useState(0)
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const [list, c] = await Promise.all([
+          api.getMonitorReviews({ stage, status: showDone ? '' : 'PENDING', ownerRole }),
+          api.getMonitorReviewCounts(),
+        ])
+        if (alive) {
+          setRows(list)
+          setCounts(Object.fromEntries(c.map((x) => [x.stage, x.count])))
+          setError(null)
+        }
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : 'تعذر جلب الصندوق')
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [stage, showDone, ownerRole, reload])
 
   const decide = async (row: MonitorReview, flag: boolean) => {
     const note = (notes[row.id] || '').trim()
@@ -76,7 +85,7 @@ export default function MonitorInboxPage() {
     setError(null)
     try {
       await api.decideMonitorReview(row.id, { flag, note })
-      await load()
+      setReload((n) => n + 1)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'تعذر حفظ القرار')
     } finally { setBusy(null) }

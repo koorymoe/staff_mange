@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useState, type ReactElement } from 'react'
+import { useEffect, useState, type ReactElement } from 'react'
 import { api, type Employee } from '../api'
-import { navItems, isNavVisible, type NavItem } from '../components/Layout'
+import { navItems, isNavVisible, type NavItem } from '../components/navTree'
 
 // ═══ شوف النظام بعين الموظف ═══
 //
@@ -14,9 +14,15 @@ import { navItems, isNavVisible, type NavItem } from '../components/Layout'
 export default function PermissionPreview() {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [selected, setSelected] = useState<string>('')
-  const [perms, setPerms] = useState<string[]>([])
+  // ⚠️ النتيجة تنحفظ **مع رقم الموظف الي جابها**، والصلاحيات
+  // و«جاري التحميل» تنشتقّان منها. هذا يمنع سباق الطلبات: لو المدير
+  // بدّل الموظف بسرعة، جواب الأول يوصل متأخر — وبالمقارنة ينرفض،
+  // فما يشوف صلاحيات موظف وهو يقرا اسم موظف ثاني. وهاي الشاشة
+  // كلها موجودة حتى يتأكد شنو يشوف كل موظف.
+  const [fetched, setFetched] = useState<{ id: string; names: string[] }>({ id: '', names: [] })
   const [gpsServiceId, setGpsServiceId] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
+  const perms = fetched.id === selected ? fetched.names : []
+  const loading = !!selected && fetched.id !== selected
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
@@ -27,19 +33,26 @@ export default function PermissionPreview() {
     }).catch(() => {})
   }, [])
 
-  const load = useCallback(async (id: string) => {
-    if (!id) { setPerms([]); return }
-    setLoading(true)
-    setError(null)
-    try {
-      const rows = await api.getEmployeePermissions(id)
-      setPerms(rows.map((p) => p.name))
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'تعذر جلب صلاحيات الموظف')
-    } finally { setLoading(false) }
-  }, [])
-
-  useEffect(() => { void load(selected) }, [selected, load])
+  // ⚠️ `alive` يحمي من سباق الطلبات: لو المدير بدّل الموظف بسرعة،
+  // جواب الموظف الأول يوصل متأخر ويطمس الثاني — يعني يشوف صلاحيات
+  // موظف وهو يقرا اسم موظف ثاني. وهاي الشاشة كلها موجودة حتى
+  // يتأكد شنو يشوف كل موظف.
+  useEffect(() => {
+    if (!selected) return
+    let alive = true
+    void (async () => {
+      try {
+        const rows = await api.getEmployeePermissions(selected)
+        if (alive) { setFetched({ id: selected, names: rows.map((p) => p.name) }); setError(null) }
+      } catch (e) {
+        if (alive) {
+          setFetched({ id: selected, names: [] })
+          setError(e instanceof Error ? e.message : 'تعذر جلب صلاحيات الموظف')
+        }
+      }
+    })()
+    return () => { alive = false }
+  }, [selected])
 
   const emp = employees.find((e) => e.id === selected)
   const ctx = { employee: emp, permissions: perms, gpsServiceId }

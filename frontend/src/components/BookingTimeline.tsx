@@ -33,15 +33,24 @@ function humanMinutes(m: number): string {
 }
 
 export default function BookingTimelineView({ bookingId }: { bookingId: string }) {
-  const [tl, setTl] = useState<Timeline | null>(null)
-  const [loading, setLoading] = useState(true)
+  // ⚠️ النتيجة تنحفظ **مع رقم الحجز الي جابها**، و«جاري التحميل»
+  // تنشتق منها بدل ما تكون حالة منفصلة. سببين:
+  //   • لو المستخدم بدّل الحجز قبل ما يرد الأول، جواب الحجز القديم
+  //     يوصل متأخر — وبالمقارنة `loaded.id !== bookingId` ينرفض،
+  //     فما يشوف خط زمني لحجز ثاني وهو ما يدري.
+  //   • ومؤشر التحميل يطلع فوراً عند التبديل بلا ما نلمس أي حالة
+  //     بجسم الـeffect (الي يسبّب دورة رسم زايدة بكل فتحة).
+  const [loaded, setLoaded] = useState<{ id: string; tl: Timeline | null } | null>(null)
+  const loading = loaded?.id !== bookingId
+  const tl = loading ? null : loaded.tl
 
   useEffect(() => {
-    setLoading(true)
-    api.getBookingTimeline(bookingId)
-      .then(setTl)
-      .catch(() => setTl(null))
-      .finally(() => setLoading(false))
+    let alive = true
+    void (async () => {
+      const data = await api.getBookingTimeline(bookingId).catch(() => null)
+      if (alive) setLoaded({ id: bookingId, tl: data })
+    })()
+    return () => { alive = false }
   }, [bookingId])
 
   if (loading) return <p className="text-xs text-slate-400">جاري تحميل الخط الزمني...</p>

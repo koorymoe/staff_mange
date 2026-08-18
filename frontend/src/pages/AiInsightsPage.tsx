@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, AI_METRIC_LABELS, type AiCatalog, type AiMetric, type AiSignal } from '../api'
 
 // ═══ إحصائيات ومؤشرات الذكاء الاصطناعي ═══
@@ -42,15 +42,25 @@ export default function AiInsightsPage() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  const load = useCallback(() => {
-    setLoading(true)
-    Promise.all([api.getAiSignals(), api.getAiCatalog(), api.getAiMetrics()])
-      .then(([s, c, m]) => { setSignals(s); setCatalog(c); setMetrics(m) })
-      .catch((e) => setErr(e instanceof Error ? e.message : 'تعذر الجلب'))
-      .finally(() => setLoading(false))
-  }, [])
+  // ⚠️ الجلب يصير بمكان **واحد** داخل الـeffect، وزر التحليل يطلبه
+  // برفع العدّاد بدل ما ينادي نسخة ثانية من نفس الكود. هذا يمنع
+  // سباق الطلبات (`alive`) ويخلّي مسار الجلب واحد ما ينحرف.
+  const [reload, setReload] = useState(0)
 
-  useEffect(load, [load])
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const [s, c, m] = await Promise.all([api.getAiSignals(), api.getAiCatalog(), api.getAiMetrics()])
+        if (alive) { setSignals(s); setCatalog(c); setMetrics(m) }
+      } catch (e) {
+        if (alive) setErr(e instanceof Error ? e.message : 'تعذر الجلب')
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [reload])
 
   const analyze = async () => {
     setBusy(true)
@@ -60,7 +70,7 @@ export default function AiInsightsPage() {
       // المؤشرات تنحسب من الأدلة، فلازم تنعاد بعد التحليل مباشرة —
       // وإلا تبقى تعرض أرقام ما تشمل الي انحلل هسه.
       await api.recomputeAiMetrics()
-      load()
+      setReload((n) => n + 1)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر التحليل')
     } finally {

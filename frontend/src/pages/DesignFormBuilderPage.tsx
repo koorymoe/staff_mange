@@ -32,17 +32,28 @@ export default function DesignFormBuilderPage() {
   const [saving, setSaving] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
 
-  const load = () => {
-    if (!formId) return
-    setLoading(true)
-    Promise.all([api.getDesignForms(), api.getDesignFormQuestions(formId)])
-      .then(([allForms, qs]) => { setForms(allForms); setQuestions(qs) })
-      .finally(() => setLoading(false))
-  }
+  // ⚠️ الجلب بمكان واحد داخل الـeffect، والحفظ والحذف يطلبونه برفع
+  // العدّاد. و`alive` يمنع سباق الطلبات: تبديل الاستمارة بسرعة چان
+  // يخلّي أسئلة استمارة قديمة تطلع تحت اسم استمارة ثانية.
+  const [reload, setReload] = useState(0)
+  const refresh = () => setReload((n) => n + 1)
+
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load()
-  }, [formId])
+    if (!formId) return
+    let alive = true
+    void (async () => {
+      try {
+        const [allForms, qs] = await Promise.all([
+          api.getDesignForms(),
+          api.getDesignFormQuestions(formId),
+        ])
+        if (alive) { setForms(allForms); setQuestions(qs) }
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [formId, reload])
 
   const currentForm = forms.find((f) => f.id === formId)
 
@@ -69,7 +80,7 @@ export default function DesignFormBuilderPage() {
       setShowForm(false)
       setForm(emptyForm())
       setEditingId(null)
-      load()
+      refresh()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'تعذر حفظ السؤال')
     } finally {
@@ -82,7 +93,7 @@ export default function DesignFormBuilderPage() {
     setBusyId(id)
     try {
       await api.deleteDesignFormQuestion(id)
-      load()
+      refresh()
     } finally {
       setBusyId(null)
     }
@@ -97,7 +108,7 @@ export default function DesignFormBuilderPage() {
     try {
       await api.reorderDesignFormQuestions(reordered.map((q) => q.id))
     } catch {
-      load()
+      refresh()
     }
   }
 

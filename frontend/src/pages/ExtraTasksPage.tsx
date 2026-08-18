@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { api, EXTRA_TASK_STATUS, type Employee, type ExtraTask } from '../api'
 
 // ═══ المهام الإضافية — شاشة المدير ═══
@@ -34,15 +34,26 @@ export default function ExtraTasksPage() {
   const [dueAt, setDueAt] = useState('')
   const [busy, setBusy] = useState(false)
 
-  const load = useCallback(() => {
-    setLoading(true)
-    api.getExtraTasks({ status: statusFilter })
-      .then(setTasks)
-      .catch((e) => setErr(e instanceof Error ? e.message : 'تعذر الجلب'))
-      .finally(() => setLoading(false))
-  }, [statusFilter])
+  // ⚠️ الجلب بمكان **واحد** داخل الـeffect، والتوجيه والإلغاء
+  // يطلبونه برفع العدّاد. و`alive` يمنع سباق الطلبات: تبديل الفلتر
+  // بسرعة چان يخلّي جواب الفلتر القديم يوصل متأخر ويطمس الجديد —
+  // يعني الموظف يشوف مهام ما تخصّ الفلتر المأشّر قدّامه.
+  const [reload, setReload] = useState(0)
 
-  useEffect(load, [load])
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const rows = await api.getExtraTasks({ status: statusFilter })
+        if (alive) setTasks(rows)
+      } catch (e) {
+        if (alive) setErr(e instanceof Error ? e.message : 'تعذر الجلب')
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
+  }, [statusFilter, reload])
   useEffect(() => { api.getEmployees().then(setEmployees).catch(() => setEmployees([])) }, [])
 
   const assign = async () => {
@@ -60,7 +71,7 @@ export default function ExtraTasksPage() {
         dueAt: dueAt ? new Date(dueAt).toISOString() : null,
       })
       setTitle(''); setDesc(''); setDueAt(''); setPriority('NORMAL')
-      load()
+      setReload((n) => n + 1)
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر التوجيه')
     } finally { setBusy(false) }
@@ -71,7 +82,7 @@ export default function ExtraTasksPage() {
     if (!reason) return
     try {
       await api.cancelExtraTask(t.id, reason)
-      load()
+      setReload((n) => n + 1)
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر الإلغاء')
     }

@@ -38,7 +38,10 @@ export default function ProductRequestsPage() {
       api.getProductProcurements().then((rows) => setProcurements(rows ?? [])).catch(() => setProcurements([]))
     }
   }
-  useEffect(load, [])
+  // ⚠️ `canFulfill` بالاعتماديات: هي تنحسب من صلاحيات الموظف الي
+  // توصل بعد الرندر الأول. بدونها الي عنده صلاحية التجهيز چان يشوف
+  // قائمة مشتريات فاضية لحد ما يعيد تحميل الصفحة.
+  useEffect(load, [canFulfill])
 
   // الدوارات والموردين ننزّلهم بس للي يجهّز — الباقي ما يحتاجهم
   useEffect(() => {

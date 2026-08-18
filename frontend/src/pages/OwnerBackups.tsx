@@ -20,13 +20,23 @@ export default function OwnerBackups() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // ⚠️ غير المالك ما ننادي له أصلاً — ومو محتاجين نطفّي مؤشر التحميل
+  // إله، لأن الرندر يرجّع «الصفحة غير موجودة» قبل ما يوصل لفحص
+  // التحميل. تصفير الحالة هنا چان يسبّب دورة رسم زايدة بلا فايدة.
   useEffect(() => {
-    if (!isOwner) { setLoading(false); return }
-    api
-      .getOwnerBackups(30)
-      .then(setData)
-      .catch((e) => setError(e instanceof Error ? e.message : 'تعذر جلب حالة النسخ'))
-      .finally(() => setLoading(false))
+    if (!isOwner) return
+    let alive = true
+    void (async () => {
+      try {
+        const overview = await api.getOwnerBackups(30)
+        if (alive) setData(overview)
+      } catch (e) {
+        if (alive) setError(e instanceof Error ? e.message : 'تعذر جلب حالة النسخ')
+      } finally {
+        if (alive) setLoading(false)
+      }
+    })()
+    return () => { alive = false }
   }, [isOwner])
 
   if (!isOwner) {

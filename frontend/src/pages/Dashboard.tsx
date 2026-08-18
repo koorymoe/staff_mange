@@ -262,7 +262,9 @@ export default function Dashboard() {
         .then(d => setProjectStats(d?.stats || null))
         .catch(() => setProjectStats(null))
     }
-  }, [employee, permissions])
+    // `fieldOnly` مشتقّة من `employee` الي فوگ بالقائمة — مذكورة
+    // صراحةً حتى القاعدة تتأكد ماكو قيمة تتغيّر بلا ما ينعاد الجلب.
+  }, [employee, permissions, fieldOnly])
 
   /* ── Attendance widget state ── */
   const [activeRecord, setActiveRecord] = useState<AttendanceRecord | null>(null)

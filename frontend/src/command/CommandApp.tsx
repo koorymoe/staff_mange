@@ -177,7 +177,11 @@ function PanelCard({ p }: { p: Panel }) {
 export default function CommandApp({ onExit }: { onExit: () => void }) {
   const [active, setActive] = useState(SECTIONS[0].key)
   const section = SECTIONS.find((s) => s.key === active) || SECTIONS[0]
-  const [tab, setTab] = useState(section.tabs[0].key)
+  // ⚠️ التبويب المختار **مشتقّ** مو محفوظ بحالة تنعدّل بـeffect:
+  // لمن يتبدّل القسم، المفتاح المحفوظ ما يطابق ولا تبويب بالقسم
+  // الجديد فينرجع لأول تبويب لحاله. تصفيره بـeffect چان يخلّي رسمة
+  // زايدة يظهر بيها القسم الجديد بتبويب القسم القديم للحظة.
+  const [pickedTab, setPickedTab] = useState<string | null>(null)
 
   const railRef = useRef<HTMLDivElement>(null)
   const navRef = useRef<HTMLDivElement>(null)
@@ -186,11 +190,8 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
   const [rail, setRail] = useState({ y: 0, h: 0, ready: false })
   const [beam, setBeam] = useState({ x: 0, w: 0, ready: false })
 
-  // تبديل القسم يرجّع التبويب لأوله — وإلا يبقى مفتاح تبويب من قسم
-  // ثاني ما يطابق ولا تبويب، فتطلع الشاشة فاضية بلا سبب واضح.
-  useEffect(() => { setTab(section.tabs[0].key) }, [section])
-
-  const current = section.tabs.find((t) => t.key === tab) || section.tabs[0]
+  const current = section.tabs.find((t) => t.key === pickedTab) || section.tabs[0]
+  const tab = current.key
 
   // المؤشرات كلها **تنقاس** من العناصر نفسها مو تنحسب بأرقام ثابتة:
   // الكلمات العربية أطوالها تختلف، وأي رقم ثابت يخلي الشعاع أقصر أو
@@ -295,7 +296,7 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
                 key={t.key}
                 data-tab={t.key}
                 className={`cmd-tab${tab === t.key ? ' active' : ''}`}
-                onClick={() => setTab(t.key)}
+                onClick={() => setPickedTab(t.key)}
               >
                 {t.label}
               </button>

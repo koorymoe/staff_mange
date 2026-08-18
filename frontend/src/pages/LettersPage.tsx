@@ -36,7 +36,10 @@ export default function LettersPage() {
   const load = () => {
     const jobs: Promise<unknown>[] = [
       api.getMyLetters().then(setMine),
-      api.getLetterAddressees().then((a) => { setAddressees(a); if (!addressedTo) setAddressedTo(a[0] || '') }),
+      // ⚠️ تحديث **دالي**: نقرا الاختيار الحالي من داخل React بدل ما
+      // نعتمد على نسخة قديمة منه. بدونه لو المستخدم اختار جهة قبل ما
+      // توصل القائمة، اختياره ينمسح.
+      api.getLetterAddressees().then((a) => { setAddressees(a); setAddressedTo((cur) => cur || a[0] || '') }),
     ]
     if (isAdmin) jobs.push(api.getLetters().then(setInbox))
     Promise.all(jobs).catch(() => {}).finally(() => setLoading(false))

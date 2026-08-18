@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type EmployeeRole, type Permission } from '../api'
-import { navItems, isNavVisible, type NavItem } from '../components/Layout'
+import { navItems, isNavVisible, type NavItem } from '../components/navTree'
 
 // ═══ دليل الأدوار والصلاحيات ═══
 //

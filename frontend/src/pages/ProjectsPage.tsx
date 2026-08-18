@@ -290,29 +290,13 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
   const [returnNote, setReturnNote] = useState('')
   const [returning, setReturning] = useState(false)
 
-  const load = async () => {
-    try {
-      // الطلبين بالتوازي بدل واحد يستنى الثاني — كانوا متسلسلين وهذا يضاعف
-      // زمن فتح الصفحة بلا داعي.
-      const [data, bookings] = await Promise.all([
-        request<{ projects: Project[]; stats: Stats }>(
-          delegatedMode ? '/projects/delegated-to-me' : '/projects'),
-        // الحجوزات الفعّالة بس — الأرشيف الكامل كان يوصل مئات الكيلوبايتات
-        // ويكبر مع الوقت، مع إننا نحتاج بس المحوّلة الي لسه ما انستلمت.
-        delegatedMode
-          ? Promise.resolve([] as TransferredBooking[])
-          : request<TransferredBooking[]>('/bookings?status=PENDING,CONFIRMED'),
-      ])
-      setProjects(data.projects)
-      setStats(data.stats)
-      // الحجوزات المحولة لإدارة المشاريع واللي لسه ما انعمل منها مشروع
-      const linked = new Set(data.projects.map(p => p.bookingId).filter(Boolean))
-      setTransferred(bookings.filter(b =>
-        b.transferToProjects && b.status !== 'COMPLETED' && b.status !== 'CANCELLED' && !linked.has(b.id)
-      ))
-    } catch { /* ignore */ }
-    setLoading(false)
-  }
+  // ⚠️ الجلب ينطلب برفع عدّاد بدل نداء مباشر: نداء دالة تحدّث الحالة
+  // من جسم الـeffect يسبّب دورة رسم زايدة، وبنفس الوقت يخلّي مسار
+  // الجلب موزّع على مكانين. هسه مكان واحد، وكل الي يريد تحديث
+  // ينادي `refresh()`.
+  const [reload, setReload] = useState(0)
+  const refresh = () => setReload((n) => n + 1)
+
 
   // إرجاع الحجز لكادر الشد لما يتبين إنه مو مال مشروع
   const returnBookingToCrew = async (b: TransferredBooking) => {
@@ -353,15 +337,43 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
           bookingId: b.id,
         }),
       })
-      load()
+      refresh()
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر استلام الحجز')
     }
   }
 
-  // `load` is async and only sets state after its awaits resolve; false positive.
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  useEffect(() => { load() }, [])
+  // ⚠️ `delegatedMode` بالاعتماديات: تبديل «المفوّضة لي» يبدّل المسار
+  // الي ينجلب منه، وبدونها چان يبقى يعرض بيانات الوضع السابق.
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        // الطلبين بالتوازي بدل واحد يستنى الثاني — كانوا متسلسلين وهذا
+        // يضاعف زمن فتح الصفحة بلا داعي.
+        const [data, bookings] = await Promise.all([
+          request<{ projects: Project[]; stats: Stats }>(
+            delegatedMode ? '/projects/delegated-to-me' : '/projects'),
+          // الحجوزات الفعّالة بس — الأرشيف الكامل كان يوصل مئات
+          // الكيلوبايتات ويكبر مع الوقت، مع إننا نحتاج بس المحوّلة الي
+          // لسه ما انستلمت.
+          delegatedMode
+            ? Promise.resolve([] as TransferredBooking[])
+            : request<TransferredBooking[]>('/bookings?status=PENDING,CONFIRMED'),
+        ])
+        if (!alive) return
+        setProjects(data.projects)
+        setStats(data.stats)
+        // الحجوزات المحوّلة لإدارة المشاريع والي لسه ما انعمل منها مشروع
+        const linked = new Set(data.projects.map((p) => p.bookingId).filter(Boolean))
+        setTransferred(bookings.filter((b) =>
+          b.transferToProjects && b.status !== 'COMPLETED' && b.status !== 'CANCELLED' && !linked.has(b.id)
+        ))
+      } catch { /* ignore */ }
+      if (alive) setLoading(false)
+    })()
+    return () => { alive = false }
+  }, [reload, delegatedMode])
 
   const filtered = useMemo(() => {
     return projects.filter(p => {
@@ -377,7 +389,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
   const del = async (id: string) => {
     if (!confirm('حذف المشروع؟')) return
     await request(`/projects/${id}`, { method: 'DELETE' })
-    load()
+    refresh()
   }
 
   // واجهة "إضافة مشروع فقط" — نظيفة ومبسّطة، بلا أي إحصائيات/قوائم/تقارير
@@ -508,21 +520,21 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
           onMove={(project, nextStage) => setMoveTarget({ project, nextStage })}
           onReport={(type, project) => setReport({ type, project })}
           onDelete={del}
-          onRefresh={load}
+          onRefresh={refresh}
           onDelegate={delegatedMode ? undefined : (p) => setDelegateTarget(p)}
         />
       ) : (
         <RejectionView projects={projects} />
       )}
 
-      {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); load() }} />}
-      {editProject && <EditModal project={editProject} onClose={() => setEditProject(null)} onSaved={() => { setEditProject(null); load() }} />}
+      {showAdd && <AddModal onClose={() => setShowAdd(false)} onSaved={() => { setShowAdd(false); refresh() }} />}
+      {editProject && <EditModal project={editProject} onClose={() => setEditProject(null)} onSaved={() => { setEditProject(null); refresh() }} />}
       {moveTarget && (
         <MoveModal
           project={moveTarget.project}
           nextStage={moveTarget.nextStage}
           onClose={() => setMoveTarget(null)}
-          onSaved={() => { setMoveTarget(null); load() }}
+          onSaved={() => { setMoveTarget(null); refresh() }}
         />
       )}
       {report && <ReportModal type={report.type} project={report.project} onClose={() => setReport(null)} />}
@@ -530,7 +542,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
         <DelegateModal
           project={delegateTarget}
           onClose={() => setDelegateTarget(null)}
-          onSaved={() => { setDelegateTarget(null); load() }}
+          onSaved={() => { setDelegateTarget(null); refresh() }}
         />
       )}
 
