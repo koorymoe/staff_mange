@@ -977,3 +977,159 @@ html.dark img { opacity: 0.94; }
     transition: none;
   }
 }
+
+/* Login V3: animated background layer + real responsive HTML form. */
+.login-live-stage {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  place-items: center;
+  background: #000617;
+  padding: 22px;
+}
+.login-live-stage::before {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  content: '';
+  background: radial-gradient(circle at 50% 42%, rgba(0,100,255,.2), transparent 35%), linear-gradient(180deg, transparent 55%, rgba(0,27,93,.38));
+  pointer-events: none;
+}
+.login-live-scene { position: absolute; z-index: -2; inset: 0; overflow: hidden; }
+.login-live-scene::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  background: radial-gradient(ellipse at center, transparent 28%, rgba(0,2,14,.12) 68%, rgba(0,2,14,.56));
+}
+.login-live-scene img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  animation: login-live-drift 16s ease-in-out infinite alternate;
+  filter: saturate(1.04) contrast(1.03);
+}
+.login-live-scan {
+  position: absolute;
+  z-index: 1;
+  top: -30%;
+  left: 50%;
+  width: 1px;
+  height: 160%;
+  opacity: .42;
+  background: linear-gradient(transparent, #26a8ff, transparent);
+  box-shadow: 0 0 24px 5px rgba(27,137,255,.3);
+  animation: login-live-scan 7s ease-in-out infinite;
+}
+.login-live-particle { position: absolute; z-index: 2; width: 5px; height: 5px; border-radius: 50%; background: #78d8ff; box-shadow: 0 0 10px 2px #168cff; animation: login-live-float 7s ease-in-out infinite; }
+.login-live-particle.particle-one { top: 17%; left: 43%; }
+.login-live-particle.particle-two { top: 67%; left: 58%; animation-delay: -2.5s; }
+.login-live-particle.particle-three { top: 43%; left: 68%; animation-delay: -4.5s; }
+
+.login-live-card {
+  position: relative;
+  z-index: 2;
+  width: min(92vw, 430px);
+  border: 1px solid rgba(91,176,255,.78);
+  border-radius: 34px;
+  background: linear-gradient(150deg, rgba(5,34,82,.95), rgba(1,16,52,.97) 60%, rgba(0,10,35,.98));
+  padding: 28px 38px 25px;
+  color: white;
+  box-shadow: inset 0 0 0 1px rgba(126,205,255,.11), inset 0 0 46px rgba(10,73,182,.16), 0 0 8px #248cff, 0 0 38px rgba(18,104,255,.68), 0 24px 70px rgba(0,0,0,.72);
+  backdrop-filter: blur(17px);
+  animation: login-live-card-in .72s cubic-bezier(.2,.9,.2,1) both, login-live-card-glow 4.6s ease-in-out 1s infinite;
+}
+.login-live-card::before {
+  position: absolute;
+  inset: 9px;
+  border: 1px solid rgba(72,143,234,.25);
+  border-radius: 27px;
+  content: '';
+  pointer-events: none;
+}
+.login-live-logo {
+  position: relative;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  margin: -2px auto 17px;
+  overflow: hidden;
+  border: 2px solid rgba(81,129,255,.82);
+  border-radius: 22px;
+  place-items: center;
+  background: #f4f7ff;
+  box-shadow: 0 0 0 6px rgba(35,101,255,.12), 0 0 28px rgba(58,147,255,.72);
+  animation: login-live-logo 4s ease-in-out infinite;
+}
+.login-live-logo img { width: 78%; height: 78%; object-fit: contain; }
+.login-live-header { text-align: center; }
+.login-live-header h1 { margin: 0; color: #fff; font-size: clamp(2rem, 4.6vh, 2.65rem); font-weight: 900; line-height: 1.15; text-shadow: 0 3px 14px rgba(0,0,0,.52); }
+.login-live-subtitle, .login-live-secure { display: flex; align-items: center; justify-content: center; gap: 13px; color: rgba(193,211,240,.72); font-size: .95rem; }
+.login-live-subtitle { margin: 7px 0 18px; }
+.login-live-subtitle span, .login-live-secure span { width: 48px; height: 1px; background: linear-gradient(90deg, transparent, #1c94ff); }
+.login-live-subtitle span:last-child, .login-live-secure span:last-child { transform: scaleX(-1); }
+.login-live-form { position: relative; z-index: 1; }
+.login-live-form > label { display: block; margin: 10px 4px 6px; color: rgba(235,243,255,.88); font-size: .82rem; font-weight: 650; }
+.login-live-control { position: relative; display: flex; height: 52px; align-items: center; border: 1px solid rgba(56,132,232,.72); border-radius: 11px; background: rgba(0,12,41,.86); box-shadow: inset 0 0 18px rgba(0,57,142,.12); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+.login-live-control:focus-within { border-color: #65c8ff; box-shadow: 0 0 0 3px rgba(46,156,255,.16), 0 0 18px rgba(20,116,255,.32); transform: translateY(-1px); }
+.login-live-control > svg { position: absolute; right: 14px; width: 20px; color: #5bb8f5; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.login-live-control input { width: 100%; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 46px; color: #f4f8ff; font: 600 .95rem/1 system-ui, sans-serif; text-align: right; }
+.login-live-control input::placeholder { color: rgba(164,190,226,.42); font-weight: 500; }
+.login-live-eye { position: absolute; left: 8px; display: grid; width: 38px; height: 38px; border: 0; border-radius: 9px; place-items: center; background: transparent; color: #54baff; cursor: pointer; }
+.login-live-eye:hover { background: rgba(48,147,255,.1); color: #91dcff; }
+.login-live-eye svg { width: 21px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
+.login-live-options { display: flex; align-items: center; justify-content: space-between; margin: 13px 2px 20px; }
+.login-live-remember { display: flex; align-items: center; gap: 7px; color: rgba(229,239,255,.82); font-size: .8rem; cursor: pointer; }
+.login-live-remember input { width: 16px; height: 16px; margin: 0; accent-color: #167dff; }
+.login-live-forgot { border: 0; background: transparent; color: #38b9ff; font: inherit; font-size: .76rem; cursor: pointer; }
+.login-live-forgot:hover { color: #9ae2ff; text-decoration: underline; }
+.login-live-submit { position: relative; display: flex; width: 100%; height: 54px; align-items: center; justify-content: center; border: 1px solid #51c7ff; border-radius: 11px; background: linear-gradient(180deg, #1089ff, #0757df); color: white; cursor: pointer; box-shadow: inset 0 0 18px rgba(135,222,255,.16), 0 0 9px #248eff, 0 0 25px rgba(0,111,255,.7); transition: transform .2s ease, filter .2s ease; }
+.login-live-submit span { font-size: 1.35rem; font-weight: 900; }
+.login-live-submit b { position: absolute; left: 20px; font-size: 1.7rem; font-weight: 400; }
+.login-live-submit:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.15); }
+.login-live-submit:disabled { cursor: wait; opacity: .74; }
+.login-live-message { margin: 12px 0 0; border: 1px solid rgba(255,199,70,.4); border-radius: 8px; background: rgba(45,32,4,.78); padding: 8px 10px; color: #ffe7a2; font-size: .75rem; text-align: center; }
+.login-live-message.is-error { border-color: rgba(255,82,102,.55); background: rgba(57,5,18,.82); color: #ffd2d8; }
+.login-live-secure { position: relative; z-index: 1; margin-top: 19px; font-size: .82rem; }
+.login-live-platform { position: absolute; z-index: 1; top: calc(50% + 291px); left: 50%; width: min(620px, 95vw); height: 104px; border: 2px solid rgba(36,151,255,.82); border-radius: 50%; background: radial-gradient(ellipse, rgba(0,99,255,.34), transparent 66%); box-shadow: 0 0 16px #168cff, inset 0 0 28px rgba(35,132,255,.58), 0 0 58px rgba(0,88,255,.44); transform: translate(-50%,-50%); animation: login-live-platform 4s ease-in-out infinite; }
+.login-live-platform span, .login-live-platform i { position: absolute; inset: 15px 5%; border: 1px solid rgba(82,180,255,.78); border-radius: 50%; }
+.login-live-platform i { inset: 29px 15%; border-style: dashed; animation: login-live-orbit 10s linear infinite; }
+
+@media (max-width: 1050px) {
+  .login-live-stage { overflow-y: auto; padding: max(18px, env(safe-area-inset-top)) 16px max(30px, env(safe-area-inset-bottom)); }
+  .login-live-scene img { opacity: .2; filter: blur(2px) saturate(.7); transform: scale(1.08); }
+  .login-live-scene::before { position: absolute; z-index: 2; inset: 0; content: ''; background: radial-gradient(circle at 50% 42%, rgba(8,55,135,.65), rgba(0,5,22,.94) 73%); }
+}
+@media (max-width: 560px) {
+  .login-live-stage { display: flex; min-height: 100dvh; align-items: center; justify-content: center; }
+  .login-live-card { width: 100%; max-width: 410px; border-radius: 25px; padding: 23px 20px 20px; }
+  .login-live-card::before { inset: 6px; border-radius: 20px; }
+  .login-live-logo { width: 76px; height: 76px; margin-bottom: 13px; border-radius: 18px; }
+  .login-live-header h1 { font-size: 2rem; }
+  .login-live-subtitle { margin-bottom: 13px; font-size: .82rem; }
+  .login-live-control { height: 49px; }
+  .login-live-options { margin-bottom: 17px; }
+  .login-live-submit { height: 52px; }
+  .login-live-secure { margin-top: 16px; }
+  .login-live-platform { position: fixed; top: auto; bottom: -48px; width: 120vw; opacity: .62; }
+}
+@media (max-height: 710px) and (min-width: 561px) {
+  .login-live-card { transform: scale(.88); }
+  .login-live-platform { top: calc(50% + 260px); transform: translate(-50%,-50%) scale(.88); }
+}
+@keyframes login-live-drift { from { transform: scale(1.01) translate3d(-.3%,0,0); } to { transform: scale(1.055) translate3d(.3%,-.7%,0); } }
+@keyframes login-live-scan { 0%,100% { transform: translateX(-270px) rotate(14deg); opacity: .08; } 50% { transform: translateX(270px) rotate(14deg); opacity: .48; } }
+@keyframes login-live-float { 0%,100% { transform: translateY(0) scale(.7); opacity: .2; } 50% { transform: translateY(-38px) scale(1.2); opacity: .9; } }
+@keyframes login-live-card-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes login-live-card-glow { 50% { box-shadow: inset 0 0 0 1px rgba(126,205,255,.17), inset 0 0 55px rgba(10,73,182,.22), 0 0 10px #4bb3ff, 0 0 54px rgba(18,104,255,.78), 0 28px 76px rgba(0,0,0,.74); } }
+@keyframes login-live-logo { 50% { transform: translateY(-3px); box-shadow: 0 0 0 7px rgba(35,101,255,.1), 0 0 38px rgba(58,147,255,.9); } }
+@keyframes login-live-platform { 50% { opacity: .74; transform: translate(-50%,-50%) scale(1.04); } }
+@keyframes login-live-orbit { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .login-live-scene img, .login-live-scan, .login-live-particle, .login-live-card, .login-live-logo, .login-live-platform, .login-live-platform i { animation: none !important; }
+}
