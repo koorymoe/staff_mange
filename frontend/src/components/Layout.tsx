@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAutoRefresh } from '../useAutoRefresh'
 import PrivacyPolicyGate from './PrivacyPolicyGate'
 import EmployeeAvatar from './EmployeeAvatar'
@@ -87,6 +87,8 @@ export default function Layout() {
   const [notifications, setNotifications] = useState<import('../api').Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [notifOpen, setNotifOpen] = useState(false)
+  const notifPanelRef = useRef<HTMLDivElement>(null)
+  const notifBtnRef = useRef<HTMLButtonElement>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
@@ -166,6 +168,38 @@ export default function Layout() {
     const interval = setInterval(load, 30000)
     return () => clearInterval(interval)
   }, [employee])
+
+  // ═══ إغلاق قائمة الإشعارات ═══
+  //
+  // ⚠️ بمستمع على المستند مو بحجاب شفاف فوگ الشاشة. الحجاب أسهل
+  // بالكتابة بس يبلع كل تفاعل: التمرير ينضرب بيه فالصفحة تتجمّد،
+  // وضغطة الجرس نفسه ما توصله.
+  //
+  // ⚠️ و`pointerdown` مو `click`: لو الموظف ضغط على زر ثاني بالصفحة،
+  // الإغلاق يصير قبل ما ينفّذ الزر — فما تنسد الطريق على ضغطة وحدة.
+  //
+  // ⚠️ والتمرير يغلقها بعد: القائمة معلّقة بمكان الجرس، فلو الصفحة
+  // تحركت وهي مفتوحة تبقى طايفة بالفراغ فوگ محتوى ما يخصّها.
+  useEffect(() => {
+    if (!notifOpen) return
+    const close = () => setNotifOpen(false)
+    const onDown = (e: PointerEvent) => {
+      const t = e.target as Node
+      if (notifPanelRef.current?.contains(t)) return
+      if (notifBtnRef.current?.contains(t)) return   // الجرس يبدّل بنفسه
+      close()
+    }
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
+    document.addEventListener('pointerdown', onDown)
+    window.addEventListener('keydown', onKey)
+    // `true` = مرحلة الالتقاط: التمرير داخل `main` ما يوصل `window` بالفقاعة
+    document.addEventListener('scroll', close, true)
+    return () => {
+      document.removeEventListener('pointerdown', onDown)
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('scroll', close, true)
+    }
+  }, [notifOpen])
 
   const handleNotifClick = async (n: import('../api').Notification) => {
     if (!n.read) {
@@ -556,7 +590,10 @@ export default function Layout() {
               <ThemeToggle />
               <div className="relative">
                 <button
+                  ref={notifBtnRef}
                   onClick={() => setNotifOpen((o) => !o)}
+                  aria-expanded={notifOpen}
+                  aria-label={`الإشعارات${unreadCount > 0 ? ` — ${unreadCount} غير مقروء` : ''}`}
                   className="relative flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 transition-all hover:bg-slate-100 hover:text-slate-600"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -570,8 +607,20 @@ export default function Layout() {
                 </button>
                 {notifOpen && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                    <div className="absolute left-0 top-12 z-50 w-80 max-w-[90vw] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+                    {/* ⚠️ ماكو حجاب شفاف يغطّي الشاشة — الإغلاق يصير
+                        بمستمع على المستند (تحت). الحجاب چان يبلع كل شي:
+                        عجلة الماوس تنضرب بيه فالصفحة تتجمّد ورا القائمة
+                        («تضل فوگ» والموظف يظن النظام علّق)، وحتى ضغطة
+                        الجرس نفسه ما توصله فما يكدر يغلقها من نفس الزر.
+                        ⚠️ ظل قوي وحلقة: بلاهن اللوحة بيضة على خلفية
+                        فاتحة بلا فصل، فتبين ملزوقة بالصفحة مو طايفة
+                        فوگها.
+                        ⚠️ وبالموبايل تنشدّ للحافتين: الجرس بحافة الشاشة،
+                        و`left-0` چانت تطلّعها برّا الحافة. */}
+                    <div
+                      ref={notifPanelRef}
+                      className="absolute top-12 z-50 w-80 overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-900/10 max-sm:fixed max-sm:inset-x-3 max-sm:w-auto sm:left-0"
+                    >
                       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                         <span className="text-sm font-bold text-slate-800">الإشعارات</span>
                         {unreadCount > 0 && (
