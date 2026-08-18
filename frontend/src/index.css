@@ -575,172 +575,7 @@ html.dark .bg-\[\#0f2040\] .text-slate-300 { color: #cbd5e1; }
 }
 
 /* Login V3: animated background layer + real responsive HTML form. */
-.login-live-stage {
-  position: relative;
-  isolation: isolate;
-  display: grid;
-  width: 100%;
-  min-height: 100vh;
-  min-height: 100dvh;
-  overflow: hidden;
-  place-items: center;
-  background: #000617;
-  padding: 22px;
-}
-.login-live-stage::before {
-  position: absolute;
-  z-index: -1;
-  inset: 0;
-  content: '';
-  background: radial-gradient(circle at 50% 42%, rgba(0,100,255,.2), transparent 35%), linear-gradient(180deg, transparent 55%, rgba(0,27,93,.38));
-  pointer-events: none;
-}
-.login-live-scene { position: absolute; z-index: -2; inset: 0; overflow: hidden; }
-.login-live-scene::after {
-  position: absolute;
-  inset: 0;
-  content: '';
-  background: radial-gradient(ellipse at center, transparent 28%, rgba(0,2,14,.12) 68%, rgba(0,2,14,.56));
-}
-/* المشهد المرسوم حول البطاقة — الخدمات ونصوصها مرسومة داخل الصورة.
-   ⚠️ لو تريد تضيف خدمة أو تغيّر اسم خدمة، ما تنكتب هنا بالكود —
-   لازم تنعاد الصورة نفسها. أسماء الخدمات مكتوبة نصاً بـLogin.tsx
-   (مخفية بالعين) حتى قارئ الشاشة والبحث يوصلهن.
-   ⚠️ WebP بدل PNG: نفس المنظر بـ170KB بدل 2 ميغا، وهاي أول صورة
-   تنحمّل بالنظام كله. */
-.login-live-photo {
-  position: absolute;
-  inset: 0;
-  display: none;
-  background-image: url('/staff_mange/login-live-background.webp');
-  background-position: center;
-  background-size: cover;
-  animation: login-live-drift 16s ease-in-out infinite alternate;
-  filter: saturate(1.04) contrast(1.03);
-}
-/* ما تنحمّل إلا بالشاشة الي فعلاً تعرضها */
-@media (min-width: 1051px) {
-  .login-live-photo { display: block; }
-}
-.login-live-scan {
-  position: absolute;
-  z-index: 1;
-  top: -30%;
-  left: 50%;
-  width: 1px;
-  height: 160%;
-  opacity: .42;
-  background: linear-gradient(transparent, #26a8ff, transparent);
-  box-shadow: 0 0 24px 5px rgba(27,137,255,.3);
-  animation: login-live-scan 7s ease-in-out infinite;
-}
-.login-live-particle { position: absolute; z-index: 2; width: 5px; height: 5px; border-radius: 50%; background: #78d8ff; box-shadow: 0 0 10px 2px #168cff; animation: login-live-float 7s ease-in-out infinite; }
-.login-live-particle.particle-one { top: 17%; left: 43%; }
-.login-live-particle.particle-two { top: 67%; left: 58%; animation-delay: -2.5s; }
-.login-live-particle.particle-three { top: 43%; left: 68%; animation-delay: -4.5s; }
 
-.login-live-card {
-  position: relative;
-  z-index: 2;
-  width: min(92vw, 430px);
-  border: 1px solid rgba(91,176,255,.78);
-  border-radius: 34px;
-  background: linear-gradient(150deg, rgba(5,34,82,.95), rgba(1,16,52,.97) 60%, rgba(0,10,35,.98));
-  padding: 28px 38px 25px;
-  color: white;
-  box-shadow: inset 0 0 0 1px rgba(126,205,255,.11), inset 0 0 46px rgba(10,73,182,.16), 0 0 8px #248cff, 0 0 38px rgba(18,104,255,.68), 0 24px 70px rgba(0,0,0,.72);
-  backdrop-filter: blur(17px);
-  animation: login-live-card-in .72s cubic-bezier(.2,.9,.2,1) both, login-live-card-glow 4.6s ease-in-out 1s infinite;
-}
-.login-live-card::before {
-  position: absolute;
-  inset: 9px;
-  border: 1px solid rgba(72,143,234,.25);
-  border-radius: 27px;
-  content: '';
-  pointer-events: none;
-}
-.login-live-logo {
-  position: relative;
-  display: grid;
-  width: 92px;
-  height: 92px;
-  margin: -2px auto 17px;
-  overflow: hidden;
-  border: 2px solid rgba(81,129,255,.82);
-  border-radius: 22px;
-  place-items: center;
-  background: #f4f7ff;
-  box-shadow: 0 0 0 6px rgba(35,101,255,.12), 0 0 28px rgba(58,147,255,.72);
-  animation: login-live-logo 4s ease-in-out infinite;
-}
-.login-live-logo img { width: 78%; height: 78%; object-fit: contain; }
-.login-live-header { text-align: center; }
-.login-live-header h1 { margin: 0; color: #fff; font-size: clamp(2rem, 4.6vh, 2.65rem); font-weight: 900; line-height: 1.15; text-shadow: 0 3px 14px rgba(0,0,0,.52); }
-.login-live-subtitle, .login-live-secure { display: flex; align-items: center; justify-content: center; gap: 13px; color: rgba(193,211,240,.72); font-size: .95rem; }
-.login-live-subtitle { margin: 7px 0 18px; }
-.login-live-subtitle span, .login-live-secure span { width: 48px; height: 1px; background: linear-gradient(90deg, transparent, #1c94ff); }
-.login-live-subtitle span:last-child, .login-live-secure span:last-child { transform: scaleX(-1); }
-.login-live-form { position: relative; z-index: 1; }
-.login-live-form > label { display: block; margin: 10px 4px 6px; color: rgba(235,243,255,.88); font-size: .82rem; font-weight: 650; }
-.login-live-control { position: relative; display: flex; height: 52px; align-items: center; border: 1px solid rgba(56,132,232,.72); border-radius: 11px; background: rgba(0,12,41,.86); box-shadow: inset 0 0 18px rgba(0,57,142,.12); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
-.login-live-control:focus-within { border-color: #65c8ff; box-shadow: 0 0 0 3px rgba(46,156,255,.16), 0 0 18px rgba(20,116,255,.32); transform: translateY(-1px); }
-.login-live-control > svg { position: absolute; right: 14px; width: 20px; color: #5bb8f5; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.login-live-control input { width: 100%; height: 100%; border: 0; outline: 0; background: transparent; padding: 0 46px; color: #f4f8ff; font: 600 .95rem/1 system-ui, sans-serif; text-align: right; }
-.login-live-control input::placeholder { color: rgba(164,190,226,.42); font-weight: 500; }
-.login-live-eye { position: absolute; left: 8px; display: grid; width: 38px; height: 38px; border: 0; border-radius: 9px; place-items: center; background: transparent; color: #54baff; cursor: pointer; }
-.login-live-eye:hover { background: rgba(48,147,255,.1); color: #91dcff; }
-.login-live-eye svg { width: 21px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.8; }
-.login-live-options { display: flex; align-items: center; justify-content: space-between; margin: 13px 2px 20px; }
-.login-live-remember { display: flex; align-items: center; gap: 7px; color: rgba(229,239,255,.82); font-size: .8rem; cursor: pointer; }
-.login-live-remember input { width: 16px; height: 16px; margin: 0; accent-color: #167dff; }
-.login-live-forgot { border: 0; background: transparent; color: #38b9ff; font: inherit; font-size: .76rem; cursor: pointer; }
-.login-live-forgot:hover { color: #9ae2ff; text-decoration: underline; }
-.login-live-submit { position: relative; display: flex; width: 100%; height: 54px; align-items: center; justify-content: center; border: 1px solid #51c7ff; border-radius: 11px; background: linear-gradient(180deg, #1089ff, #0757df); color: white; cursor: pointer; box-shadow: inset 0 0 18px rgba(135,222,255,.16), 0 0 9px #248eff, 0 0 25px rgba(0,111,255,.7); transition: transform .2s ease, filter .2s ease; }
-.login-live-submit span { font-size: 1.35rem; font-weight: 900; }
-.login-live-submit b { position: absolute; left: 20px; font-size: 1.7rem; font-weight: 400; }
-.login-live-submit:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.15); }
-.login-live-submit:disabled { cursor: wait; opacity: .74; }
-.login-live-message { margin: 12px 0 0; border: 1px solid rgba(255,199,70,.4); border-radius: 8px; background: rgba(45,32,4,.78); padding: 8px 10px; color: #ffe7a2; font-size: .75rem; text-align: center; }
-.login-live-message.is-error { border-color: rgba(255,82,102,.55); background: rgba(57,5,18,.82); color: #ffd2d8; }
-.login-live-secure { position: relative; z-index: 1; margin-top: 19px; font-size: .82rem; }
-.login-live-platform { position: absolute; z-index: 1; top: calc(50% + 291px); left: 50%; width: min(620px, 95vw); height: 104px; border: 2px solid rgba(36,151,255,.82); border-radius: 50%; background: radial-gradient(ellipse, rgba(0,99,255,.34), transparent 66%); box-shadow: 0 0 16px #168cff, inset 0 0 28px rgba(35,132,255,.58), 0 0 58px rgba(0,88,255,.44); transform: translate(-50%,-50%); animation: login-live-platform 4s ease-in-out infinite; }
-.login-live-platform span, .login-live-platform i { position: absolute; inset: 15px 5%; border: 1px solid rgba(82,180,255,.78); border-radius: 50%; }
-.login-live-platform i { inset: 29px 15%; border-style: dashed; animation: login-live-orbit 10s linear infinite; }
-
-@media (max-width: 1050px) {
-  .login-live-stage { overflow-y: auto; padding: max(18px, env(safe-area-inset-top)) 16px max(30px, env(safe-area-inset-bottom)); }
-  /* الصورة أصلاً ما تنحمّل هنا — التوهّج تحت يعوّض عنها */
-  .login-live-scene::before { position: absolute; z-index: 2; inset: 0; content: ''; background: radial-gradient(circle at 50% 42%, rgba(8,55,135,.65), rgba(0,5,22,.94) 73%); }
-}
-@media (max-width: 560px) {
-  .login-live-stage { display: flex; min-height: 100dvh; align-items: center; justify-content: center; }
-  .login-live-card { width: 100%; max-width: 410px; border-radius: 25px; padding: 23px 20px 20px; }
-  .login-live-card::before { inset: 6px; border-radius: 20px; }
-  .login-live-logo { width: 76px; height: 76px; margin-bottom: 13px; border-radius: 18px; }
-  .login-live-header h1 { font-size: 2rem; }
-  .login-live-subtitle { margin-bottom: 13px; font-size: .82rem; }
-  .login-live-control { height: 49px; }
-  .login-live-options { margin-bottom: 17px; }
-  .login-live-submit { height: 52px; }
-  .login-live-secure { margin-top: 16px; }
-  .login-live-platform { position: fixed; top: auto; bottom: -48px; width: 120vw; opacity: .62; }
-}
-@media (max-height: 710px) and (min-width: 561px) {
-  .login-live-card { transform: scale(.88); }
-  .login-live-platform { top: calc(50% + 260px); transform: translate(-50%,-50%) scale(.88); }
-}
-@keyframes login-live-drift { from { transform: scale(1.01) translate3d(-.3%,0,0); } to { transform: scale(1.055) translate3d(.3%,-.7%,0); } }
-@keyframes login-live-scan { 0%,100% { transform: translateX(-270px) rotate(14deg); opacity: .08; } 50% { transform: translateX(270px) rotate(14deg); opacity: .48; } }
-@keyframes login-live-float { 0%,100% { transform: translateY(0) scale(.7); opacity: .2; } 50% { transform: translateY(-38px) scale(1.2); opacity: .9; } }
-@keyframes login-live-card-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: translateY(0) scale(1); } }
-@keyframes login-live-card-glow { 50% { box-shadow: inset 0 0 0 1px rgba(126,205,255,.17), inset 0 0 55px rgba(10,73,182,.22), 0 0 10px #4bb3ff, 0 0 54px rgba(18,104,255,.78), 0 28px 76px rgba(0,0,0,.74); } }
-@keyframes login-live-logo { 50% { transform: translateY(-3px); box-shadow: 0 0 0 7px rgba(35,101,255,.1), 0 0 38px rgba(58,147,255,.9); } }
-@keyframes login-live-platform { 50% { opacity: .74; transform: translate(-50%,-50%) scale(1.04); } }
-@keyframes login-live-orbit { to { transform: rotate(360deg); } }
-@media (prefers-reduced-motion: reduce) {
-  .login-live-scene img, .login-live-scan, .login-live-particle, .login-live-card, .login-live-logo, .login-live-platform, .login-live-platform i { animation: none !important; }
-}
 
 /* ═══════════════════════════════════════════════════════════════
    نص الأزرار الفاتحة
@@ -857,4 +692,579 @@ html.dark {
   --design-ink:    #b9c0e8;
   --gold-ink:      #e2c98f;
   --gold-warm-ink: #e6b183;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   شاشة الدخول — مركز عمليات حيّ
+   ═══════════════════════════════════════════════════════════════
+
+   «نريد واجهة تسجيل دخول قوية وحلوة وبيها أشياء لايف».
+
+   ⚠️ كل الحركة `transform` و`opacity` **بس**. هذنه الوحيدتان الي
+   المتصفح يحرّكهن على كارت الشاشة بلا ما يعيد حساب تخطيط الصفحة.
+   أي حركة على `top`/`width`/`filter` تخلّي الشاشة تلعثم بالأجهزة
+   الواطية — والفني بالميدان تلفونه مو آخر موديل.
+
+   ⚠️ وماكو ولا صورة: النسخة القديمة چانت خلفية ٢ ميغا تنزّل بكل
+   فتحة، والفني يدفعها من رصيده. هاي وزنها صفر بايت.
+
+   ⚠️ وتخف بالموبايل وتسكت كلياً لمن الجهاز يطلب تقليل الحركة —
+   بآخر الملف.
+
+   ⚠️ وألوانها مكتوبة صراحةً مو من اللوحة: الشاشة غامقة **بالوضعين**
+   (ماكو نهار وليل بشاشة الدخول)، فقلب الوضع الليلي لازم ما يلمسها.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lg-stage {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px;
+  overflow: hidden;
+  place-items: center;
+  background:
+    radial-gradient(1100px 700px at 50% -10%, #10305e 0%, transparent 62%),
+    radial-gradient(900px 600px at 8% 108%, #0a2a52 0%, transparent 58%),
+    radial-gradient(900px 600px at 92% 105%, #171a4d 0%, transparent 58%),
+    linear-gradient(165deg, #040814 0%, #060e1f 52%, #04070f 100%);
+  color: #e7f0ff;
+}
+
+/* ═══ الخلفية الحيّة ═══ */
+.lg-sky { position: absolute; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; }
+
+/* شفق يتموّج — ثلاث كتل ضوء تدور ببطء وتتنفّس */
+.lg-aurora {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: .5;
+  will-change: transform;
+}
+.lg-aurora-1 {
+  top: -18%; right: -8%; width: 46vw; height: 46vw;
+  background: radial-gradient(circle, #1d6fe0 0%, transparent 68%);
+  animation: lg-drift-a 26s ease-in-out infinite alternate;
+}
+.lg-aurora-2 {
+  bottom: -22%; left: -10%; width: 52vw; height: 52vw;
+  background: radial-gradient(circle, #6b3ce0 0%, transparent 68%);
+  animation: lg-drift-b 32s ease-in-out infinite alternate;
+}
+.lg-aurora-3 {
+  top: 28%; left: 34%; width: 34vw; height: 34vw;
+  background: radial-gradient(circle, #14b8c4 0%, transparent 70%);
+  opacity: .3;
+  animation: lg-drift-c 38s ease-in-out infinite alternate;
+}
+@keyframes lg-drift-a { to { transform: translate3d(-6vw, 5vh, 0) scale(1.18); } }
+@keyframes lg-drift-b { to { transform: translate3d(7vw, -6vh, 0) scale(1.12); } }
+@keyframes lg-drift-c { to { transform: translate3d(-5vw, -4vh, 0) scale(.86); } }
+
+/* أرضية شبكية بمنظور — تمشي باتجاه الناظر فتعطي عمقاً */
+.lg-floor {
+  position: absolute;
+  right: -50%; bottom: -10%;
+  width: 200%; height: 62%;
+  background-image:
+    linear-gradient(rgba(86, 178, 255, .16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(86, 178, 255, .16) 1px, transparent 1px);
+  background-size: 62px 62px;
+  transform: perspective(340px) rotateX(62deg);
+  transform-origin: 50% 100%;
+  mask-image: linear-gradient(to top, #000 4%, transparent 76%);
+  animation: lg-floor-run 4.5s linear infinite;
+  will-change: background-position;
+}
+@keyframes lg-floor-run { to { background-position: 0 62px, 0 0; } }
+
+/* خط مسح ينزل ببطء — إحساس «الشاشة تشتغل» */
+.lg-scan {
+  position: absolute;
+  right: 0; left: 0; top: 0;
+  height: 32vh;
+  background: linear-gradient(to bottom, transparent, rgba(96, 190, 255, .07) 45%, transparent);
+  animation: lg-scan-run 9s linear infinite;
+  will-change: transform;
+}
+@keyframes lg-scan-run {
+  0%   { transform: translate3d(0, -35vh, 0); }
+  100% { transform: translate3d(0, 135vh, 0); }
+}
+
+/* غبار ضوئي — ١٨ نقطة، كل وحدة بمسار ومدة مختلفة (محسوبة من --n) */
+.lg-dust {
+  position: absolute;
+  top: calc(6% + (var(--n) * 5.1%));
+  right: calc(3% + (var(--n) * 5.4%));
+  width: 2px; height: 2px;
+  border-radius: 50%;
+  background: #9ad4ff;
+  box-shadow: 0 0 8px 2px rgba(120, 200, 255, .75);
+  opacity: 0;
+  animation: lg-dust-float calc(11s + (var(--n) * 0.7s)) ease-in-out infinite;
+  animation-delay: calc(var(--n) * -0.83s);
+  will-change: transform, opacity;
+}
+@keyframes lg-dust-float {
+  0%   { opacity: 0; transform: translate3d(0, 12px, 0) scale(.6); }
+  35%  { opacity: .85; }
+  70%  { opacity: .5; }
+  100% { opacity: 0; transform: translate3d(-14px, -46px, 0) scale(1.25); }
+}
+
+/* ═══ بطاقة الدخول ═══ */
+.lg-card {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  width: 100%;
+  max-width: 468px;
+  flex-direction: column;
+  align-items: center;
+  padding: 44px 40px 32px;
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(13, 22, 44, .82) 0%, rgba(7, 13, 28, .9) 100%);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    0 0 0 1px rgba(120, 180, 255, .1) inset,
+    0 34px 90px rgba(0, 0, 0, .68),
+    0 0 150px -30px rgba(56, 160, 255, .65);
+  animation: lg-card-in .8s cubic-bezier(.22,1,.36,1) both;
+}
+@keyframes lg-card-in {
+  from { opacity: 0; transform: translateY(22px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* إطار يدور حول البطاقة — قوس ضوء يلف بالحافة.
+   ⚠️ القناع ضروري: بدونه المخروط الملوّن ينطبع **جوّا** البطاقة
+   (خلفيتها شبه شفافة) ويطمس الخانات. `mask-composite: exclude`
+   يشيل الداخل ويخلّي شريط ١.٥px بالحافة بس. */
+.lg-card-ring {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  padding: 1.5px;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+}
+.lg-card-ring::before {
+  content: '';
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 190%; aspect-ratio: 1;
+  background: conic-gradient(from 0deg, transparent 0deg, #4aa8ff 34deg, #a97bff 62deg, transparent 96deg, transparent 360deg);
+  animation: lg-ring-spin 6.5s linear infinite;
+  will-change: transform;
+}
+@keyframes lg-ring-spin {
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to   { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+/* ═══ الشعار ═══ حلقتان تدوران عكس بعض ومسح رادار خلفه */
+.lg-logo {
+  position: relative;
+  display: grid;
+  width: 112px; height: 112px;
+  place-items: center;
+}
+.lg-logo img {
+  position: relative;
+  z-index: 2;
+  width: 76px; height: 76px;
+  padding: 11px;
+  border-radius: 26px;
+  background: linear-gradient(160deg, #fff 0%, #dbeafe 100%);
+  box-shadow: 0 0 26px rgba(90, 175, 255, .55), 0 10px 22px rgba(0, 0, 0, .45);
+  object-fit: contain;
+}
+.lg-orbit {
+  position: absolute;
+  border: 1px dashed rgba(120, 190, 255, .32);
+  border-radius: 50%;
+  will-change: transform;
+}
+.lg-orbit-1 { inset: 0;  animation: lg-spin 14s linear infinite; }
+.lg-orbit-2 { inset: 9px; border-style: solid; border-color: rgba(160, 130, 255, .22); animation: lg-spin 9s linear infinite reverse; }
+@keyframes lg-spin { to { transform: rotate(360deg); } }
+
+.lg-radar {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, rgba(74, 168, 255, .32) 0deg, transparent 52deg, transparent 360deg);
+  mask-image: radial-gradient(circle, #000 42%, transparent 72%);
+  animation: lg-spin 3.6s linear infinite;
+  will-change: transform;
+}
+
+/* ═══ العنوان ═══ لمعة تمر على الحروف */
+.lg-brand {
+  margin: 16px 0 0;
+  background: linear-gradient(100deg, #eaf3ff 0%, #eaf3ff 38%, #8fd0ff 50%, #eaf3ff 62%, #eaf3ff 100%);
+  background-size: 260% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: -.6px;
+  animation: lg-shine 6.5s ease-in-out infinite;
+}
+@keyframes lg-shine {
+  0%, 62% { background-position: 130% 0; }
+  100%    { background-position: -30% 0; }
+}
+
+.lg-sub {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 12px;
+  margin: 9px 0 0;
+  color: #a8c6ea;
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.lg-sub span { height: 1px; flex: 1; background: linear-gradient(90deg, transparent, rgba(120, 180, 255, .42)); }
+.lg-sub span:last-child { background: linear-gradient(90deg, rgba(120, 180, 255, .42), transparent); }
+
+/* ═══ النموذج ═══ */
+.lg-form { width: 100%; margin-top: 24px; }
+.lg-form label {
+  display: block;
+  margin-bottom: 7px;
+  color: #b7cfec;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.lg-form label + .lg-field { margin-bottom: 15px; }
+
+.lg-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 50px;
+  padding: 0 44px 0 12px;
+  border: 1px solid rgba(96, 150, 220, .26);
+  border-radius: 14px;
+  background: rgba(5, 11, 24, .72);
+  transition: border-color .2s, box-shadow .25s, background-color .2s;
+}
+.lg-field:focus-within {
+  border-color: rgba(90, 180, 255, .8);
+  background: rgba(7, 16, 34, .85);
+  box-shadow: 0 0 0 3px rgba(74, 168, 255, .16), 0 0 24px -6px rgba(74, 168, 255, .55);
+}
+.lg-field > svg {
+  position: absolute;
+  right: 14px;
+  width: 18px; height: 18px;
+  fill: none;
+  stroke: #6f96c4;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke .2s;
+}
+.lg-field:focus-within > svg { stroke: #7cc4ff; }
+.lg-field input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: #e9f2ff;
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+  text-align: right;
+}
+.lg-field input::placeholder { color: #6d87ab; }
+/* ⚠️ التعبئة التلقائية بكروم تفرض خلفية بيضة — نطفّيها بظل داخلي،
+   وإلا الخانة تطلع بيضة ناصعة بنص شاشة غامقة. */
+.lg-field input:-webkit-autofill,
+.lg-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #e9f2ff;
+  -webkit-box-shadow: 0 0 0 60px rgba(7, 16, 34, 1) inset;
+  box-shadow: 0 0 0 60px rgba(7, 16, 34, 1) inset;
+  transition: background-color 9999s;
+}
+
+.lg-eye {
+  position: absolute;
+  left: 8px;
+  display: grid;
+  width: 32px; height: 32px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: #6f96c4;
+  cursor: pointer;
+  place-items: center;
+  transition: color .2s, background-color .2s;
+}
+.lg-eye:hover { background: rgba(120, 180, 255, .1); color: #9ed0ff; }
+.lg-eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.lg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 4px 0 20px;
+  font-size: 12.5px;
+}
+.lg-remember { display: flex; align-items: center; gap: 8px; color: #b7cfec; cursor: pointer; }
+.lg-remember input { position: absolute; opacity: 0; pointer-events: none; }
+.lg-box {
+  display: grid;
+  width: 17px; height: 17px;
+  border: 1.5px solid rgba(120, 180, 255, .45);
+  border-radius: 5px;
+  place-items: center;
+  transition: background-color .2s, border-color .2s;
+}
+.lg-box::after {
+  content: '';
+  width: 9px; height: 5px;
+  border: 2px solid #04101f;
+  border-top: 0;
+  border-right: 0;
+  opacity: 0;
+  transform: rotate(-45deg) translate(1px, -1px) scale(.6);
+  transition: opacity .18s, transform .18s;
+}
+.lg-remember input:checked + .lg-box { border-color: #5bb4ff; background: #5bb4ff; }
+.lg-remember input:checked + .lg-box::after { opacity: 1; transform: rotate(-45deg) translate(1px, -1px) scale(1); }
+.lg-remember input:focus-visible + .lg-box { box-shadow: 0 0 0 3px rgba(74, 168, 255, .3); }
+
+.lg-forgot {
+  border: 0;
+  background: none;
+  color: #7fb4ec;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12.5px;
+  text-underline-offset: 4px;
+  transition: color .2s;
+}
+.lg-forgot:hover { color: #a9d3ff; text-decoration: underline; }
+
+/* ═══ زر الدخول ═══ لمعة تعبر عليه */
+.lg-submit {
+  position: relative;
+  display: flex;
+  width: 100%;
+  height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 14px;
+  background: linear-gradient(100deg, #2f7fe8 0%, #4aa8ff 50%, #6f5cf0 100%);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 15.5px;
+  font-weight: 800;
+  box-shadow: 0 12px 30px -10px rgba(74, 140, 255, .75), 0 0 0 1px rgba(160, 205, 255, .3) inset;
+  transition: transform .16s, box-shadow .22s, filter .2s;
+}
+.lg-submit:hover:not(:disabled) {
+  transform: translateY(-1.5px);
+  box-shadow: 0 18px 40px -10px rgba(74, 140, 255, .9), 0 0 0 1px rgba(200, 226, 255, .45) inset;
+}
+.lg-submit:active:not(:disabled) { transform: translateY(0); }
+.lg-submit:disabled { cursor: progress; filter: saturate(.8) brightness(.9); }
+.lg-submit-sweep {
+  position: absolute;
+  top: 0; bottom: 0;
+  width: 42%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, .35), transparent);
+  animation: lg-sweep 3.6s ease-in-out infinite;
+  will-change: transform;
+}
+@keyframes lg-sweep {
+  0%   { transform: translateX(230%); }
+  55%  { transform: translateX(-230%); }
+  100% { transform: translateX(-230%); }
+}
+.lg-arrow { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+.lg-submit:hover:not(:disabled) .lg-arrow { transform: translateX(-4px); }
+.lg-spin {
+  width: 17px; height: 17px;
+  border: 2px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: lg-spin 0.75s linear infinite;
+}
+
+.lg-msg {
+  margin: 14px 0 0;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: rgba(250, 204, 21, .12);
+  color: #fde9b0;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(250, 204, 21, .25) inset;
+  animation: lg-msg-in .32s cubic-bezier(.22,1,.36,1) both;
+}
+.lg-msg.is-error {
+  background: rgba(248, 113, 113, .14);
+  color: #ffc9c9;
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, .3) inset;
+}
+@keyframes lg-msg-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+.lg-secure {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin: 20px 0 0;
+  color: #8fabcd;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.lg-secure span { height: 1px; flex: 1; background: rgba(140, 180, 230, .16); }
+.lg-secure svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══ القاعدة الضوئية تحت البطاقة ═══ ثلاث حلقات تتنفّس */
+.lg-base {
+  position: absolute;
+  top: 50%; left: 50%;
+  z-index: 1;
+  width: min(760px, 94vw); height: 160px;
+  transform: translate(-50%, calc(-50% + 330px));
+  pointer-events: none;
+}
+.lg-base i {
+  position: absolute;
+  inset: 0;
+  border: 1px solid rgba(74, 168, 255, .3);
+  border-radius: 50%;
+  animation: lg-ripple 4.6s ease-out infinite;
+  will-change: transform, opacity;
+}
+.lg-base i:nth-child(2) { animation-delay: 1.5s; }
+.lg-base i:nth-child(3) { animation-delay: 3s; }
+@keyframes lg-ripple {
+  0%   { opacity: .55; transform: scale(.7); }
+  100% { opacity: 0;   transform: scale(1.25); }
+}
+
+/* ═══ الموبايل ═══
+   ⚠️ الحركة تخف بقوة: الأرضية الشبكية والمسح والقاعدة تنطفي،
+   والغبار ينقص للنص. هاي أثقل ثلاث حركات، والموبايل يدفعها بطارية
+   ومعالجاً — والمستخدم أصلاً ما يشوف الخدمات هناك. */
+@media (max-width: 900px) {
+  .lg-stage { padding: 18px 16px max(24px, env(safe-area-inset-bottom)); }
+  .lg-floor, .lg-scan, .lg-base { display: none; }
+  .lg-aurora-3 { display: none; }
+  .lg-dust:nth-child(n + 12) { display: none; }
+  .lg-card { padding: 28px 22px 22px; border-radius: 24px; }
+  .lg-brand { font-size: 26px; }
+  .lg-logo { width: 82px; height: 82px; }
+  .lg-logo img { width: 54px; height: 54px; }
+}
+@media (max-height: 700px) and (min-width: 901px) {
+  .lg-base { display: none; }
+}
+
+/* ═══ تقليل الحركة ═══
+   ⚠️ أكو ناس الحركة تدوّخهم فعلاً (دوار حركي)، وهاي شاشة يفتحونها
+   كل يوم. لمن الجهاز يطلب التقليل، كلشي يسكت — والشاشة تبقى حلوة
+   ساكنة مو مكسورة. */
+@media (prefers-reduced-motion: reduce) {
+  .lg-stage *, .lg-stage *::before, .lg-stage *::after {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+  .lg-brand { color: #eaf3ff; -webkit-text-fill-color: #eaf3ff; }
+  .lg-dust, .lg-scan { opacity: .4; }
+  .lg-card-ring { display: none; }
+}
+
+/* ═══ أشعة ضوء تنزل من فوق ═══
+   البطاقة صارت وحدها بالشاشة بعد ما شلنا الخدمات، فالفراغ حواليها
+   لازم يشتغل لصالحها مو ضدها. الأشعة تسحب العين للنص. */
+.lg-rays {
+  position: absolute;
+  top: -30%; left: 50%;
+  width: min(1100px, 130vw); height: 120%;
+  transform: translateX(-50%);
+  background:
+    conic-gradient(from 178deg at 50% 0%,
+      transparent 0deg,
+      rgba(90, 170, 255, .09) 4deg, transparent 8deg,
+      transparent 12deg,
+      rgba(150, 120, 255, .07) 16deg, transparent 21deg,
+      transparent 26deg,
+      rgba(90, 200, 255, .08) 30deg, transparent 35deg,
+      transparent 360deg);
+  mask-image: linear-gradient(to bottom, #000 0%, transparent 68%);
+  animation: lg-rays-sway 16s ease-in-out infinite alternate;
+  will-change: transform;
+}
+@keyframes lg-rays-sway {
+  from { transform: translateX(-50%) rotate(-2.5deg); }
+  to   { transform: translateX(-50%) rotate(2.5deg); }
+}
+
+/* ═══ حلقة واسعة تلف حول البطاقة ═══ إحساس «مدار» */
+.lg-halo {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 680px; height: 680px;
+  border: 1px solid rgba(96, 165, 250, .12);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+.lg-halo::before,
+.lg-halo::after {
+  content: '';
+  position: absolute;
+  border: 1px solid rgba(129, 140, 248, .1);
+  border-radius: 50%;
+}
+.lg-halo::before { inset: 62px; border-style: dashed; animation: lg-spin 46s linear infinite; }
+.lg-halo::after  { inset: -78px; border-color: rgba(56, 189, 248, .08); }
+
+/* نقطة تمشي على المدار — تفصيل صغير يخلّي الشاشة تحس حيّة */
+.lg-sat {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 680px; height: 680px;
+  transform: translate(-50%, -50%);
+  animation: lg-spin 22s linear infinite;
+  pointer-events: none;
+  will-change: transform;
+}
+.lg-sat::before {
+  content: '';
+  position: absolute;
+  top: -4px; left: 50%;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #7dd3fc;
+  box-shadow: 0 0 14px 4px rgba(125, 211, 252, .8);
+}
+
+@media (max-width: 900px) {
+  .lg-rays, .lg-halo, .lg-sat { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lg-sat { display: none; }
 }

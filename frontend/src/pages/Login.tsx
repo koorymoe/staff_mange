@@ -4,6 +4,21 @@ import CommandLogin from '../command/CommandLogin'
 import '../command/theme.css'
 import { useSession } from '../session'
 
+// ═══ شاشة الدخول ═══
+//
+// «نريد واجهة تسجيل دخول قوية وحلوة وبيها أشياء لايف».
+//
+// ⚠️ كل الحركة **بالكود مو بصورة**: الصورة ما تتحرك أصلاً، وفوق
+// هذا النسخة القديمة چانت خلفية ٢ ميغا تنزّل بكل فتحة — والفني
+// بالميدان يدفعها من رصيده. هاي الشاشة وزنها صفر بايت.
+//
+// ⚠️ والحركة كلها `transform` و`opacity` بس — هذنه الوحيدتان الي
+// المتصفح يحرّكهن على كارت الشاشة بلا ما يعيد حساب تخطيط الصفحة.
+// أي حركة على `top` أو `width` تخلّي الشاشة تلعثم بالأجهزة الواطية،
+// والموظف يفتح هالشاشة كل يوم.
+//
+// ⚠️ وتخف بالموبايل وتسكت لمن الجهاز يطلب تقليل الحركة — شوف CSS.
+
 const UserIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 const LockIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
 
@@ -53,74 +68,133 @@ export default function Login() {
   }
 
   return (
-    <main className="login-live-stage" dir="rtl">
-      <div className="login-live-scene" aria-hidden="true">
-        {/* ⚠️ الخلفية تنحمّل بالـCSS مو بوسم <img>: تحت 1050px الأنماط
-            تخفّيها أصلاً (opacity .2 تحت طبقة شبه صمّاء)، فوسم <img>
-            كان ينزّلها بالموبايل حتى لو ما تنشاف — يعني الموظف بالميدان
-            يدفع من رصيده مقابل صورة ما يشوفها. بالـCSS المتصفح ما
-            يطلبها إلا لمن تنطبق الشاشة الكبيرة. */}
-        <span className="login-live-photo" />
-        <span className="login-live-scan" />
-        <span className="login-live-particle particle-one" />
-        <span className="login-live-particle particle-two" />
-        <span className="login-live-particle particle-three" />
+    <main className="lg-stage" dir="rtl">
+      {/* ═══ الخلفية الحيّة ═══ كلها زينة، فمخفية عن قارئ الشاشة */}
+      <div className="lg-sky" aria-hidden>
+        <span className="lg-aurora lg-aurora-1" />
+        <span className="lg-aurora lg-aurora-2" />
+        <span className="lg-aurora lg-aurora-3" />
+        <span className="lg-floor" />
+        <span className="lg-scan" />
+        <span className="lg-rays" />
+        <span className="lg-halo" />
+        <span className="lg-sat" />
+        {/* نجوم/غبار ضوئي — مواقعها ثابتة حتى ما تختلف بين رسمة وأخرى */}
+        {[...Array(18)].map((_, i) => (
+          <span key={i} className="lg-dust" style={{ ['--n' as string]: i }} />
+        ))}
       </div>
 
-        {/* أسماء الخدمات مرسومة **داخل** الصورة، والصورة ما تنحمّل
-          بالموبايل. هذا النص المخفي بالعين هو النسخة الوحيدة الي
-          يوصلها قارئ الشاشة ومحرك البحث. */}
-      <ul className="sr-only">
-        <li>أنظمة المراقبة والكاميرات</li>
-        <li>الشبكات والبنية التحتية</li>
-        <li>الطاقة الشمسية</li>
-        <li>المنزل الذكي</li>
-        <li>الأقفال الذكية</li>
-        <li>أنظمة الصوتيات</li>
-        <li>أنظمة الحريق والسلامة</li>
-        <li>أنظمة تتبع المركبات GPS</li>
-        <li>الخدمات الفنية والحلول الذكية</li>
-      </ul>
+      <section className="lg-card" aria-labelledby="lg-title">
+        <span className="lg-card-ring" aria-hidden />
 
-      <section className="login-live-card" aria-labelledby="login-title">
-        <div className="login-live-logo"><img src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="شعار شركة الأماني" /></div>
-        <header className="login-live-header">
-          <h1 id="login-title">شركة الأماني</h1>
-          <div className="login-live-subtitle"><span />نظام الإدارة المتكامل<span /></div>
-        </header>
+        <div className="lg-logo">
+          <span className="lg-orbit lg-orbit-1" aria-hidden />
+          <span className="lg-orbit lg-orbit-2" aria-hidden />
+          <span className="lg-radar" aria-hidden />
+          <img src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="شعار شركة الأماني" />
+        </div>
 
-        <form className="login-live-form" onSubmit={handleSubmit}>
-          <label htmlFor="login-username">اسم المستخدم</label>
-          <div className="login-live-control">
+        <h1 id="lg-title" className="lg-brand">شركة الأماني</h1>
+        <p className="lg-sub"><span />نظام الإدارة المتكامل<span /></p>
+
+        <form className="lg-form" onSubmit={handleSubmit}>
+          <label htmlFor="lg-user">اسم المستخدم</label>
+          <div className="lg-field">
             <UserIcon />
-            <input id="login-username" required dir="ltr" autoCapitalize="off" autoCorrect="off" spellCheck={false} autoComplete="username" placeholder="أدخل اسم المستخدم" value={username} onChange={(event) => setUsername(event.target.value)} />
+            <input
+              id="lg-user" required dir="ltr" autoCapitalize="off" autoCorrect="off"
+              spellCheck={false} autoComplete="username" placeholder="أدخل اسم المستخدم"
+              value={username} onChange={(e) => setUsername(e.target.value)}
+            />
           </div>
 
-          <label htmlFor="login-password">كلمة المرور</label>
-          <div className="login-live-control">
+          <label htmlFor="lg-pass">كلمة المرور</label>
+          <div className="lg-field">
             <LockIcon />
-            <input id="login-password" required type={showPass ? 'text' : 'password'} dir="ltr" autoComplete="current-password" placeholder="أدخل كلمة المرور" value={password} onChange={(event) => setPassword(event.target.value)} />
-            <button type="button" className="login-live-eye" onClick={() => setShowPass((value) => !value)} aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}>
+            <input
+              id="lg-pass" required type={showPass ? 'text' : 'password'} dir="ltr"
+              autoComplete="current-password" placeholder="أدخل كلمة المرور"
+              value={password} onChange={(e) => setPassword(e.target.value)}
+            />
+            {/* ⚠️ إظهار كلمة المرور: الفني يكتبها بتلفونه بالميدان بإيد
+                وحدة، والغلط المتكرر يقفل الحساب. */}
+            <button
+              type="button" className="lg-eye"
+              onClick={() => setShowPass((v) => !v)}
+              aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
+            >
               <svg viewBox="0 0 24 24" aria-hidden="true">
-                {showPass ? <path d="M17.94 17.94A10.1 10.1 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/> : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}
+                {showPass
+                  ? <path d="M17.94 17.94A10.1 10.1 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9 9 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"/>
+                  : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}
               </svg>
             </button>
           </div>
 
-          <div className="login-live-options">
-            <label className="login-live-remember"><input type="checkbox" checked={remember} onChange={(event) => setRemember(event.target.checked)} /><span>تذكرني</span></label>
-            <button type="button" className="login-live-forgot" onClick={() => setError('تُسترجع كلمة المرور من مدير النظام — راجعه لإعادة ضبطها.')}>نسيت كلمة المرور؟</button>
+          <div className="lg-row">
+            {/* ⚠️ «تذكرني» تحفظ **الاسم بس** مو كلمة المرور: حفظ الكلمة
+                بالجهاز يعني أي واحد يفتح تلفون الموظف يدخل باسمه —
+                والنظام فيه فلوس وصلاحيات. */}
+            <label className="lg-remember">
+              <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+              <span className="lg-box" aria-hidden />
+              تذكرني
+            </label>
+            <button
+              type="button" className="lg-forgot"
+              onClick={() => setError('كلمة المرور تنرجع من مدير النظام — راجعه وهو يعيد ضبطها بحسابك.')}
+            >
+              نسيت كلمة المرور؟
+            </button>
           </div>
 
-          <button type="submit" disabled={submitting} className="login-live-submit"><span>{submitting ? 'جاري الدخول...' : 'تسجيل الدخول'}</span>{!submitting && <b aria-hidden="true">←</b>}</button>
-          {(sessionNote || error) && <p className={`login-live-message ${error ? 'is-error' : ''}`} role="alert">{error || sessionNote}</p>}
+          <button type="submit" disabled={submitting} className="lg-submit">
+            <span className="lg-submit-sweep" aria-hidden />
+            {submitting
+              ? <><span className="lg-spin" aria-hidden />جاري الدخول…</>
+              : <>تسجيل الدخول
+                  <svg viewBox="0 0 24 24" aria-hidden="true" className="lg-arrow">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                  </svg>
+                </>}
+          </button>
+
+          {(sessionNote || error) && (
+            <p className={`lg-msg ${error ? 'is-error' : ''}`} role="alert">{error || sessionNote}</p>
+          )}
         </form>
-        <footer className="login-live-secure"><span />♢ دخول آمن ومحمي<span /></footer>
+
+        <p className="lg-secure">
+          <span />
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          دخول آمن ومحمي
+          <span />
+        </p>
       </section>
 
-      <div className="login-live-platform" aria-hidden="true"><span /><i /></div>
-      <button type="button" aria-label="ارفع الستارة" className="curtain-handle" onPointerDown={onHandleDown} onPointerMove={onHandleMove} onPointerUp={onHandleUp} onPointerCancel={onHandleUp} onClick={() => setCurtain((value) => value === 0 ? 1 : 0)} />
-      <div className="curtain" inert={curtain === 0 ? true : undefined} style={{ transform: `translateY(${(1 - curtain) * 100}%)`, transition: dragging ? 'none' : 'transform 0.62s cubic-bezier(0.22, 1, 0.36, 1)' }}>
+      {/* قاعدة ضوئية تحت البطاقة */}
+      <div className="lg-base" aria-hidden><i /><i /><i /></div>
+
+      {/* ═══ الستارة ═══ من ركن أسفل الشاشة تنسحب وتكشف دخول مركز القيادة.
+          ⚠️ الشاشتان تنادان **نفس** api.login — الي يقرر لأي نظام تدخل
+          هو الرمز مو الشاشة. ماكو طريق دخول ثاني ينضاف. */}
+      <button
+        type="button" aria-label="ارفع الستارة" className="curtain-handle"
+        onPointerDown={onHandleDown} onPointerMove={onHandleMove}
+        onPointerUp={onHandleUp} onPointerCancel={onHandleUp}
+        onClick={() => setCurtain((v) => (v === 0 ? 1 : 0))}
+      />
+      {/* ⚠️ inert وهي مسدولة: بدونه حقول الدخول تبقى بالصفحة، والـTab
+          ينط عليها وقارئ الشاشة يقراها — نموذج دخول مخفي بالعين بس شغّال. */}
+      <div
+        className="curtain"
+        inert={curtain === 0 ? true : undefined}
+        style={{
+          transform: `translateY(${(1 - curtain) * 100}%)`,
+          transition: dragging ? 'none' : 'transform 0.62s cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
+      >
         <CommandLogin />
         <button type="button" className="curtain-close" onClick={() => setCurtain(0)}>▼ إنزال الستارة</button>
       </div>
