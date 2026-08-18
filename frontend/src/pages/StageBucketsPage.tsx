@@ -354,7 +354,7 @@ export default function StageBucketsPage() {
                           ) : (
                             // ⚠️ «بلا سبب» تنعرض صريحة مو شرطة: السبب الناقص
                             // معلومة بحد ذاتها — منو أجّل بلا ما يعلّل؟
-                            <span className="text-[11px] text-slate-300">ما انكتب سبب</span>
+                            <span className="text-[11px] text-slate-500">ما انكتب سبب</span>
                           )}
                         </td>
                         <td className="px-4 py-3">

@@ -1390,13 +1390,13 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-4">
           <SystemPanel title="المشاريع" color="#8b5cf6" dotColor="bg-violet-400" actionLabel="عرض الكل" onAction={() => navigate('/projects')}>
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-7">
-              <MiniKPI label="اتصال" value={projectStats['اتصال'] || 0} color="#3b82f6" />
-              <MiniKPI label="كشف" value={projectStats['كشف'] || 0} color="#10b981" />
-              <MiniKPI label="سعر" value={projectStats['سعر'] || 0} color="#f59e0b" />
-              <MiniKPI label="تنفيذ" value={projectStats['تنفيذ'] || 0} color="#ef4444" />
-              <MiniKPI label="مكتمل" value={projectStats['مكتمل'] || 0} color="#2563eb" />
-              <MiniKPI label="مرفوض" value={projectStats['مرفوض'] || 0} color="#6b7280" />
-              <MiniKPI label="حجوزات محولة" value={bookings.filter(b => b.transferToProjects && b.status !== 'COMPLETED' && b.status !== 'CANCELLED').length} color="#8b5cf6" />
+              <MiniKPI label="اتصال" value={projectStats['اتصال'] || 0} ink="var(--t-info)" tint="var(--sf-info)" />
+              <MiniKPI label="كشف" value={projectStats['كشف'] || 0} ink="var(--t-success)" tint="var(--sf-success)" />
+              <MiniKPI label="سعر" value={projectStats['سعر'] || 0} ink="var(--t-warning)" tint="var(--tint-warning)" />
+              <MiniKPI label="تنفيذ" value={projectStats['تنفيذ'] || 0} ink="var(--t-danger)" tint="var(--sf-danger)" />
+              <MiniKPI label="مكتمل" value={projectStats['مكتمل'] || 0} ink="var(--t-info)" tint="var(--sf-info)" />
+              <MiniKPI label="مرفوض" value={projectStats['مرفوض'] || 0} ink="var(--t-muted)" tint="var(--sf-sunken)" />
+              <MiniKPI label="حجوزات محولة" value={bookings.filter(b => b.transferToProjects && b.status !== 'COMPLETED' && b.status !== 'CANCELLED').length} ink="var(--t-violet)" tint="var(--sf-violet)" />
             </div>
           </SystemPanel>
         </div>
@@ -1412,10 +1412,10 @@ export default function Dashboard() {
         <div className="grid grid-cols-1 gap-4">
           <SystemPanel title="نظام GPS" color="#f59e0b" dotColor="bg-amber-400" actionLabel="عرض الكل" onAction={() => navigate('/gps')}>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <MiniKPI label="الأجهزة" value={gpsStats?.totalDevices || 0} color="#10b981" />
-              <MiniKPI label="المشتركين" value={gpsStats?.totalCustomers || 0} color="#3b82f6" />
-              <MiniKPI label="شرائح SIM" value={gpsStats?.totalSims || 0} color="#8b5cf6" />
-              <MiniKPI label="صيانة معلقة" value={pendingMaintenance} color={pendingMaintenance > 0 ? '#ef4444' : '#f59e0b'} />
+              <MiniKPI label="الأجهزة" value={gpsStats?.totalDevices || 0} ink="var(--t-success)" tint="var(--sf-success)" />
+              <MiniKPI label="المشتركين" value={gpsStats?.totalCustomers || 0} ink="var(--t-info)" tint="var(--sf-info)" />
+              <MiniKPI label="شرائح SIM" value={gpsStats?.totalSims || 0} ink="var(--t-violet)" tint="var(--sf-violet)" />
+              <MiniKPI label="صيانة معلقة" value={pendingMaintenance} ink={pendingMaintenance > 0 ? 'var(--t-danger)' : 'var(--t-warning)'} tint={pendingMaintenance > 0 ? 'var(--sf-danger)' : 'var(--tint-warning)'} />
             </div>
           </SystemPanel>
         </div>
@@ -1427,28 +1427,28 @@ export default function Dashboard() {
           {/* GPS Panel */}
           <SystemPanel title="نظام GPS" color="#f59e0b" dotColor="bg-amber-400" actionLabel="عرض الكل" onAction={() => navigate('/gps')}>
             <div className="grid grid-cols-2 gap-3">
-              <MiniKPI label="الأجهزة" value={gpsStats?.totalDevices || 0} color="#10b981" />
-              <MiniKPI label="المشتركين" value={gpsStats?.totalCustomers || 0} color="#3b82f6" />
-              <MiniKPI label="شرائح SIM" value={gpsStats?.totalSims || 0} color="#8b5cf6" />
-              <MiniKPI label="صيانة معلقة" value={pendingMaintenance} color={pendingMaintenance > 0 ? '#ef4444' : '#f59e0b'} />
+              <MiniKPI label="الأجهزة" value={gpsStats?.totalDevices || 0} ink="var(--t-success)" tint="var(--sf-success)" />
+              <MiniKPI label="المشتركين" value={gpsStats?.totalCustomers || 0} ink="var(--t-info)" tint="var(--sf-info)" />
+              <MiniKPI label="شرائح SIM" value={gpsStats?.totalSims || 0} ink="var(--t-violet)" tint="var(--sf-violet)" />
+              <MiniKPI label="صيانة معلقة" value={pendingMaintenance} ink={pendingMaintenance > 0 ? 'var(--t-danger)' : 'var(--t-warning)'} tint={pendingMaintenance > 0 ? 'var(--sf-danger)' : 'var(--tint-warning)'} />
             </div>
           </SystemPanel>
 
           {/* Sales Panel */}
           <SystemPanel title="المبيعات والمالية" color="#3b82f6" dotColor="bg-blue-400" actionLabel="عرض الكل" onAction={() => navigate('/finance')}>
             <div className="grid grid-cols-2 gap-3">
-              <MiniKPI label="الحجوزات" value={bookingCount} color="#3b82f6" />
-              <MiniKPI label="العملاء" value={customerCount} color="#10b981" />
-              <MiniKPI label="عروض الأسعار" value={0} color="#8b5cf6" />
-              <MiniKPI label="المعاملات" value={0} color="#f59e0b" />
+              <MiniKPI label="الحجوزات" value={bookingCount} ink="var(--t-info)" tint="var(--sf-info)" />
+              <MiniKPI label="العملاء" value={customerCount} ink="var(--t-success)" tint="var(--sf-success)" />
+              <MiniKPI label="عروض الأسعار" value={0} ink="var(--t-violet)" tint="var(--sf-violet)" />
+              <MiniKPI label="المعاملات" value={0} ink="var(--t-warning)" tint="var(--tint-warning)" />
             </div>
           </SystemPanel>
 
           {/* HR Panel */}
           <SystemPanel title="الموارد البشرية" color="#10b981" dotColor="bg-emerald-400" actionLabel="عرض الكل" onAction={() => navigate('/employees')}>
             <div className="grid grid-cols-2 gap-3">
-              <MiniKPI label="الموظفين" value={employeeCount} color="#3b82f6" />
-              <MiniKPI label="الشكاوى" value={0} color="#ef4444" />
+              <MiniKPI label="الموظفين" value={employeeCount} ink="var(--t-info)" tint="var(--sf-info)" />
+              <MiniKPI label="الشكاوى" value={0} ink="var(--t-danger)" tint="var(--sf-danger)" />
             </div>
           </SystemPanel>
 
@@ -1463,7 +1463,7 @@ export default function Dashboard() {
                 <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" className="mx-auto mb-2">
                   <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
                 </svg>
-                <p className="text-xs text-slate-300">لا توجد نشاطات حديثة</p>
+                <p className="text-xs text-slate-500">لا توجد نشاطات حديثة</p>
               </div>
             </div>
           </div>
@@ -1589,11 +1589,15 @@ function FieldStat({ icon, label, value, tone, hint }: {
   )
 }
 
-function MiniKPI({ label, value, color }: { label: string; value: number; color: string }) {
+// ⚠️ لونان مو واحد: `ink` للرقم و`tint` لخلفية المربّع. قبل، اللون
+// الواحد چان يخدم الاثنين — والنتيجة رقم باهت بالوضعين (#3b82f6
+// على أبيض = ٣.٦٨، وعلى البطاقة الغامقة = ٤.٣٦). والمتغيّرات
+// الدلالية غامقة بالنهار وفاتحة بالليل، فالرقم ينقرا بالحالتين.
+function MiniKPI({ label, value, ink, tint }: { label: string; value: number; ink: string; tint: string }) {
   return (
     <div className="group flex items-center justify-between rounded-xl border border-slate-100 p-3.5 transition-colors hover:border-slate-200 hover:bg-slate-50/50">
-      <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: color + '12' }}>
-        <span className="text-lg font-black" style={{ color }}>{value}</span>
+      <div className="flex h-10 w-10 items-center justify-center rounded-lg" style={{ backgroundColor: tint }}>
+        <span className="text-lg font-black" style={{ color: ink }}>{value}</span>
       </div>
       <p className="text-xs font-medium text-slate-500">{label}</p>
     </div>

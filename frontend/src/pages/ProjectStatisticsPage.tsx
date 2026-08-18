@@ -170,7 +170,7 @@ export default function ProjectStatisticsPage() {
                     <td className="p-2 text-xs">{p.stage}</td>
                     <td className="p-2 text-xs text-slate-500">{p.workType || '—'}</td>
                     <td className="p-2 font-bold text-emerald-700">
-                      {p.priceValue != null ? `${money(p.priceValue)} د.ع` : <span className="text-slate-300">غير مُسعَّر</span>}
+                      {p.priceValue != null ? `${money(p.priceValue)} د.ع` : <span className="text-slate-500">غير مُسعَّر</span>}
                     </td>
                     <td className="p-2 text-xs">{p.responsibleName || '—'}</td>
                     <td className="p-2 text-xs">

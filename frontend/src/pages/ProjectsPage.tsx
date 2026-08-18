@@ -167,7 +167,7 @@ function useProjectWorkTypes(): string[] {
 
 const STAGE_CARDS = [
   { key: 'اتصال', label: 'اتصال', icon: '📞', color: 'bg-[var(--color-brand-500)]' },
-  { key: 'كشف', label: 'كشف', icon: '🔍', color: 'bg-green-600' },
+  { key: 'كشف', label: 'كشف', icon: '🔍', color: 'bg-green-700' },
   { key: 'سعر', label: 'سعر', icon: '💰', color: 'bg-amber-500' },
   { key: 'عقد', label: 'عقد', icon: '📄', color: 'bg-purple-600' },
   { key: 'تنفيذ', label: 'تنفيذ', icon: '🛠️', color: 'bg-red-600' },
