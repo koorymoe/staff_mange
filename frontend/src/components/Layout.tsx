@@ -364,7 +364,7 @@ export default function Layout() {
       if (item.plain) {
         if (collapsed) return <div key={item.to || item.label} className="my-2 h-px bg-white/10" />
         return (
-          <p key={item.to || item.label} className="mb-1 mt-2.5 px-2 text-[9.5px] font-bold tracking-wide text-white/35">
+          <p key={item.to || item.label} className="mb-1 mt-2.5 px-2 text-[9.5px] font-bold tracking-wide text-white/55">
             {item.label}
           </p>
         )
@@ -659,7 +659,7 @@ export default function Layout() {
             {!collapsed && (
               <div>
                 <p className="text-sm font-extrabold text-white tracking-tight">الأماني</p>
-                <p className="text-[10px] text-blue-300/50 font-medium">Management System</p>
+                <p className="text-[10px] text-blue-300/75 font-medium">Management System</p>
               </div>
             )}
           </div>
@@ -670,7 +670,7 @@ export default function Layout() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 text-right">
                   <p className="text-sm font-bold text-white">{employee.name}</p>
-                  <p className="text-[11px] text-blue-300/60">{roleLabels[employee.actualRole || employee.role]}</p>
+                  <p className="text-[11px] text-blue-300/80">{roleLabels[employee.actualRole || employee.role]}</p>
                 </div>
                 {/* ═══ صورة الموظف — عرض بس ═══
                     «اقفلها بيد الإدارة بس».
@@ -805,7 +805,7 @@ export default function Layout() {
           <div className="mx-3 mb-3 mt-1">
             <div className="h-px bg-gradient-to-l from-transparent via-white/10 to-transparent mb-3"/>
             <button onClick={() => setEmployee(null)}
-              className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-300/50 transition-all duration-200 hover:bg-red-500/10 hover:text-red-300">
+              className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-red-300/80 transition-all duration-200 hover:bg-red-500/10 hover:text-red-300">
               {!collapsed && <span className="flex-1 text-right">تسجيل الخروج</span>}
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="opacity-60 group-hover:opacity-100 transition-opacity">
                 <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>
