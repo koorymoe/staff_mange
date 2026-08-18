@@ -107,6 +107,10 @@ export default function Login() {
         <span className="lx-blob lx-b2" />
         <span className="lx-blob lx-b3" />
         <span className="lx-grid" />
+        <span className="lx-floor" />
+        <div className="lx-rings"><i /><i /><i /><i /></div>
+        <span className="lx-beam" />
+        <span className="lx-beam lx-beam-2" />
         {[...Array(14)].map((_, i) => (
           <span key={i} className="lx-spark" style={{ ['--n' as string]: i }} />
         ))}

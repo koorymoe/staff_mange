@@ -721,7 +721,10 @@ html.dark {
   min-height: 100dvh;
   padding: 28px 20px;
   overflow: hidden;
-  background: linear-gradient(165deg, #eef4ff 0%, #e7edfd 45%, #f3ecfd 100%);
+  /* ⚠️ زركة صافية بلا بنفسجي: البنفسجي چان يسحبها للّيلكي.
+     التدرّج من فاتح جداً فوگ لأزرق أعمق تحت — يعطي عمقاً بلا ما
+     يطفّي الإضاءة. */
+  background: linear-gradient(168deg, #eaf3ff 0%, #d3e6ff 42%, #b3d4fb 78%, #9cc7f7 100%);
   place-items: center;
   perspective: 1400px;
 }
@@ -738,17 +741,17 @@ html.dark {
 }
 .lx-b1 {
   top: -16%; right: -6%; width: 44vw; height: 44vw;
-  background: radial-gradient(circle, rgba(56, 132, 255, .55) 0%, transparent 68%);
+  background: radial-gradient(circle, rgba(37, 99, 235, .62) 0%, transparent 68%);
   animation: lx-f1 24s ease-in-out infinite alternate;
 }
 .lx-b2 {
   bottom: -20%; left: -8%; width: 48vw; height: 48vw;
-  background: radial-gradient(circle, rgba(160, 90, 255, .42) 0%, transparent 68%);
+  background: radial-gradient(circle, rgba(14, 165, 233, .55) 0%, transparent 68%);
   animation: lx-f2 30s ease-in-out infinite alternate;
 }
 .lx-b3 {
   top: 24%; left: 30%; width: 34vw; height: 34vw;
-  background: radial-gradient(circle, rgba(0, 208, 220, .38) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(6, 182, 212, .48) 0%, transparent 70%);
   animation: lx-f3 36s ease-in-out infinite alternate;
 }
 @keyframes lx-f1 { to { transform: translate3d(-7vw, 6vh, 0) scale(1.2); } }
@@ -760,13 +763,76 @@ html.dark {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(40, 80, 160, .05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(40, 80, 160, .05) 1px, transparent 1px);
+    linear-gradient(rgba(28, 68, 150, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 68, 150, .08) 1px, transparent 1px);
   background-size: 54px 54px;
   mask-image: radial-gradient(130% 105% at 50% 45%, #000 30%, transparent 78%);
 }
 
 /* ومضات صغيرة تطلع وتنطفي */
+/* ═══ الترتيبات ═══
+   ⚠️ الخلفية بلا بنية تطلع «ضباب ملوّن». هاي العناصر تعطيها هيكلاً:
+   حلقات متراكزة ورا البطاقة، أرضية شبكية بمنظور، وشعاعان مائلان
+   يعبران. كلها هندسية ومنتظمة — القوة تجي من الترتيب مو من الزحمة. */
+
+/* حلقات متراكزة ورا البطاقة */
+.lx-rings {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 760px; height: 760px;
+  transform: translate(-50%, -50%);
+}
+.lx-rings i {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid rgba(37, 99, 235, .13);
+  border-radius: 50%;
+  animation: lx-ring-breathe 7s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.lx-rings i:nth-child(2) { inset: 13%; border-color: rgba(37, 99, 235, .1);  animation-delay: -1.4s; }
+.lx-rings i:nth-child(3) { inset: 26%; border-color: rgba(6, 182, 212, .12); animation-delay: -2.8s; border-style: dashed; }
+.lx-rings i:nth-child(4) { inset: 39%; border-color: rgba(37, 99, 235, .08); animation-delay: -4.2s; }
+@keyframes lx-ring-breathe {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.028); }
+}
+
+/* أرضية شبكية بمنظور — تمشي باتجاه الناظر */
+.lx-floor {
+  position: absolute;
+  right: -50%; bottom: -6%;
+  width: 200%; height: 50%;
+  background-image:
+    linear-gradient(rgba(29, 78, 216, .16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 78, 216, .16) 1px, transparent 1px);
+  background-size: 66px 66px;
+  transform: perspective(360px) rotateX(66deg);
+  transform-origin: 50% 100%;
+  mask-image: linear-gradient(to top, #000 2%, transparent 72%);
+  animation: lx-floor-run 5s linear infinite;
+  will-change: background-position;
+}
+@keyframes lx-floor-run { to { background-position: 0 66px, 0 0; } }
+
+/* شعاعان مائلان يعبران المشهد */
+.lx-beam {
+  position: absolute;
+  top: -50%;
+  width: 30%; height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .5), transparent);
+  transform: rotate(16deg);
+  animation: lx-beam-run 11s cubic-bezier(.45, 0, .55, 1) infinite;
+  will-change: transform, opacity;
+}
+.lx-beam-2 { animation-delay: -5.5s; opacity: .6; }
+@keyframes lx-beam-run {
+  0%       { transform: rotate(16deg) translateX(-120%); opacity: 0; }
+  15%      { opacity: 1; }
+  70%      { opacity: 1; }
+  85%, 100%{ transform: rotate(16deg) translateX(420%); opacity: 0; }
+}
+
 .lx-spark {
   position: absolute;
   top: calc(8% + (var(--n) * 6.3%));
@@ -774,7 +840,7 @@ html.dark {
   width: 5px; height: 5px;
   border-radius: 50%;
   background: #fff;
-  box-shadow: 0 0 12px 3px rgba(120, 170, 255, .85);
+  box-shadow: 0 0 12px 3px rgba(59, 130, 246, .9);
   opacity: 0;
   animation: lx-spark-go calc(7s + (var(--n) * .6s)) ease-in-out infinite;
   animation-delay: calc(var(--n) * -.7s);
@@ -838,7 +904,7 @@ html.dark {
   inset: 0;
   padding: 2.5px;
   border-radius: 50%;
-  background: conic-gradient(from 0deg, #3b82f6, #22d3ee, #a855f7, #3b82f6);
+  background: conic-gradient(from 0deg, #1d4ed8, #38bdf8, #06b6d4, #1d4ed8);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
@@ -973,7 +1039,7 @@ html.dark {
   right: 50%; bottom: -1.5px; left: 50%;
   height: 2.5px;
   border-radius: 2px;
-  background: linear-gradient(90deg, #22d3ee, #3b82f6, #a855f7);
+  background: linear-gradient(90deg, #06b6d4, #3b82f6, #1d4ed8);
   transition: right .3s cubic-bezier(.22, 1, .36, 1), left .3s cubic-bezier(.22, 1, .36, 1);
 }
 .lx-field:focus-within .lx-underline { right: 14px; left: 14px; }
@@ -1019,7 +1085,7 @@ html.dark {
 .lx-submit-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, #2f74e8, #22a7e8, #7b4ff0, #2f74e8);
+  background: linear-gradient(100deg, #1d4ed8, #2f74e8, #06b6d4, #1d4ed8);
   background-size: 300% 100%;
   animation: lx-shift 7s linear infinite;
   will-change: background-position;
@@ -1076,7 +1142,8 @@ html.dark {
 @media (max-width: 640px) {
   .lx { padding: 20px 16px max(24px, env(safe-area-inset-bottom)); }
   .lx-card { padding: 34px 22px 26px; border-radius: 26px; }
-  .lx-b3 { display: none; }
+  .lx-b3, .lx-floor, .lx-beam { display: none; }
+  .lx-rings { width: 520px; height: 520px; }
   .lx-spark:nth-child(n + 9) { display: none; }
   .lx-logo { width: 96px; height: 96px; }
   .lx-logo-disc { width: 78px; height: 78px; }
