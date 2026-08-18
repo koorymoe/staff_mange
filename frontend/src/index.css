@@ -695,370 +695,404 @@ html.dark {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   شاشة الدخول — شاشة مقسومة
+   شاشة الدخول — مضيئة، بالنص، وترد على المستخدم
    ═══════════════════════════════════════════════════════════════
 
-   «اريد شي قوي».
+   «واجهة مضيئة قويه… أشياء متحركة ورياكشن… بالنصف… والشعار
+   واضح وجميل».
 
-   النسخة السابقة چانت **زخرفة**: كرات ضوء بنفسجية طايفة — نفس
-   الشي بكل قالب مجاني، ولهذا حسّها ضعيفة. الي يخلّي الواجهة قوية
-   مو المؤثرات بل الترتيب: مساحات مضبوطة، تدرّج واضح بالأهمية،
-   خط قوي، وحركة **منظّمة** مو عشوائية.
+   ⚠️ «رياكشن» يعني الشاشة **ترد** مو بس تتحرك لحالها: البطاقة
+   تميل ورا الماوس، وضوء يتبع المؤشر عليها، والتسمية ترتفع لمن
+   تكتب، والزر ينضغط. الحركة الي ما ترد تصير خلفية متحركة —
+   والموظف يمل منها بأسبوع وهو يفتحها كل يوم.
 
-   ⚠️ القسمة مقصودة: جهة للهوية وجهة نظيفة للنموذج. هاي بنية الدخول
-   بالمنتجات المحترمة، لأنها تعطي الهوية حضوراً كامل بلا ما تزاحم
-   الخانات — والموظف يفتح هالشاشة ٥ مرات باليوم، فالخانات لازم
-   تبقى أول شي تشوفه عينه.
-
-   ⚠️ وألوانها مكتوبة صراحةً مو من اللوحة: الشاشة غامقة **بالوضعين**
+   ⚠️ وألوانها مكتوبة صراحةً مو من اللوحة: الشاشة مضيئة **بالوضعين**
    (ماكو نهار وليل بشاشة الدخول)، فقلب الوضع الليلي ما يلمسها.
 
-   ⚠️ وكل الحركة `transform`/`opacity` بس — الوحيدتان الي المتصفح
+   ⚠️ الحركة كلها `transform`/`opacity` — الوحيدتان الي المتصفح
    يحرّكهن على كارت الشاشة بلا إعادة حساب التخطيط.
    ═══════════════════════════════════════════════════════════════ */
 
-.lg {
+.lx {
+  position: relative;
+  z-index: 0;
   display: grid;
   min-height: 100vh;
   min-height: 100dvh;
-  grid-template-columns: 1.05fr .95fr;
-  background: #070c17;
-  color: #e8eefb;
-}
-
-/* ═══════════ جهة الهوية ═══════════ */
-.lg-brand {
-  position: relative;
-  z-index: 0;
-  display: flex;
+  padding: 28px 20px;
   overflow: hidden;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 46px 54px;
-  background:
-    radial-gradient(900px 520px at 78% 8%, rgba(44, 90, 173, .5) 0%, transparent 62%),
-    radial-gradient(700px 500px at 12% 96%, rgba(21, 44, 88, .75) 0%, transparent 60%),
-    linear-gradient(158deg, #0f2040 0%, #0b1830 55%, #081222 100%);
+  background: linear-gradient(165deg, #eef4ff 0%, #e7edfd 45%, #f3ecfd 100%);
+  place-items: center;
+  perspective: 1400px;
 }
 
-/* شبكة دقيقة — هيكل مو زخرفة */
-.lg-mesh {
+/* ═══ الخلفية المضيئة ═══ */
+.lx-sky { position: absolute; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; }
+
+/* كتل لون مشبعة تتموّج — «مضيئة» تجي من هنا */
+.lx-blob {
   position: absolute;
-  z-index: -1;
+  border-radius: 50%;
+  filter: blur(64px);
+  will-change: transform;
+}
+.lx-b1 {
+  top: -16%; right: -6%; width: 44vw; height: 44vw;
+  background: radial-gradient(circle, rgba(56, 132, 255, .55) 0%, transparent 68%);
+  animation: lx-f1 24s ease-in-out infinite alternate;
+}
+.lx-b2 {
+  bottom: -20%; left: -8%; width: 48vw; height: 48vw;
+  background: radial-gradient(circle, rgba(160, 90, 255, .42) 0%, transparent 68%);
+  animation: lx-f2 30s ease-in-out infinite alternate;
+}
+.lx-b3 {
+  top: 24%; left: 30%; width: 34vw; height: 34vw;
+  background: radial-gradient(circle, rgba(0, 208, 220, .38) 0%, transparent 70%);
+  animation: lx-f3 36s ease-in-out infinite alternate;
+}
+@keyframes lx-f1 { to { transform: translate3d(-7vw, 6vh, 0) scale(1.2); } }
+@keyframes lx-f2 { to { transform: translate3d(8vw, -5vh, 0) scale(1.14); } }
+@keyframes lx-f3 { to { transform: translate3d(-6vw, -5vh, 0) scale(.84); } }
+
+/* شبكة ناعمة تعطي بنية للضوء بدل ما يطلع ضبابياً */
+.lx-grid {
+  position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(120, 175, 255, .07) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(120, 175, 255, .07) 1px, transparent 1px);
-  background-size: 58px 58px;
-  mask-image: radial-gradient(120% 100% at 70% 20%, #000 25%, transparent 82%);
+    linear-gradient(rgba(40, 80, 160, .05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(40, 80, 160, .05) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(130% 105% at 50% 45%, #000 30%, transparent 78%);
 }
 
-/* شعاع مائل يعبر الشبكة كل فترة — الحركة «المنظّمة» */
-.lg-beam {
+/* ومضات صغيرة تطلع وتنطفي */
+.lx-spark {
   position: absolute;
-  z-index: -1;
-  top: -60%; left: -30%;
-  width: 42%; height: 220%;
-  background: linear-gradient(90deg, transparent, rgba(140, 200, 255, .1), transparent);
-  transform: rotate(18deg);
-  animation: lg-beam-run 9s cubic-bezier(.5, 0, .5, 1) infinite;
-  will-change: transform;
-}
-@keyframes lg-beam-run {
-  0%      { transform: rotate(18deg) translateX(-40%); opacity: 0; }
-  12%     { opacity: 1; }
-  60%     { opacity: 1; }
-  75%,100%{ transform: rotate(18deg) translateX(320%); opacity: 0; }
-}
-
-/* علامة الشركة كبيرة جداً وباهتة بالخلف — «ختم» يعطي ثقلاً */
-.lg-mark {
-  position: absolute;
-  z-index: -1;
-  right: -8%; bottom: -14%;
-  width: 56%; aspect-ratio: 1;
-  border: 1.5px solid rgba(130, 180, 255, .07);
+  top: calc(8% + (var(--n) * 6.3%));
+  right: calc(5% + (var(--n) * 6.6%));
+  width: 5px; height: 5px;
   border-radius: 50%;
-}
-.lg-mark::before,
-.lg-mark::after {
-  content: '';
-  position: absolute;
-  border: 1.5px solid rgba(130, 180, 255, .055);
-  border-radius: 50%;
-}
-.lg-mark::before { inset: 12%; }
-.lg-mark::after  { inset: 26%; border-style: dashed; animation: lg-slow-spin 70s linear infinite; }
-@keyframes lg-slow-spin { to { transform: rotate(360deg); } }
-
-.lg-brand-top { display: flex; align-items: center; gap: 12px; }
-.lg-brand-top img {
-  width: 42px; height: 42px;
-  padding: 7px;
-  border-radius: 13px;
   background: #fff;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, .35);
-  object-fit: contain;
+  box-shadow: 0 0 12px 3px rgba(120, 170, 255, .85);
+  opacity: 0;
+  animation: lx-spark-go calc(7s + (var(--n) * .6s)) ease-in-out infinite;
+  animation-delay: calc(var(--n) * -.7s);
+  will-change: transform, opacity;
 }
-.lg-brand-top span {
-  color: #9dc0f0;
-  font-size: 13px;
-  font-weight: 800;
-  letter-spacing: 3.5px;
-}
-
-.lg-brand-mid { max-width: 560px; }
-.lg-brand-mid h1 {
-  margin: 0;
-  color: #fff;
-  font-size: clamp(40px, 4.4vw, 68px);
-  font-weight: 900;
-  letter-spacing: -1.5px;
-  line-height: 1.06;
-  animation: lg-rise .75s cubic-bezier(.22,1,.36,1) both;
-}
-.lg-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 11px;
-  margin: 18px 0 0;
-  color: #8fc4ff;
-  font-size: clamp(15px, 1.35vw, 19px);
-  font-weight: 700;
-  animation: lg-rise .75s cubic-bezier(.22,1,.36,1) .08s both;
-}
-.lg-tag::before {
-  content: '';
-  width: 44px; height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, #4a9eff, transparent);
-}
-.lg-desc {
-  max-width: 44ch;
-  margin: 22px 0 0;
-  color: #93a9c9;
-  font-size: 15px;
-  line-height: 1.85;
-  animation: lg-rise .75s cubic-bezier(.22,1,.36,1) .16s both;
-}
-@keyframes lg-rise {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: none; }
+@keyframes lx-spark-go {
+  0%, 100% { opacity: 0; transform: scale(.4); }
+  45%      { opacity: .95; transform: scale(1); }
 }
 
-/* شريط أعمدة يتنفّس — «النظام شغّال» بلا ضجيج */
-.lg-bars {
-  display: flex;
-  height: 46px;
-  align-items: flex-end;
-  gap: 5px;
+/* ═══════════ البطاقة ═══════════ */
+.lx-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 452px;
+  padding: 46px 40px 34px;
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, .74);
+  backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow:
+    0 34px 70px -22px rgba(38, 68, 140, .32),
+    0 4px 18px -6px rgba(38, 68, 140, .16),
+    0 1px 0 rgba(255, 255, 255, .9) inset;
+  /* ⚠️ الميلان ياخذ قيمه من متغيّرات يكتبها JS مباشرة على العنصر —
+     بلا إعادة رسم React مع كل حركة ماوس. */
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+  animation: lx-card-in .8s cubic-bezier(.22, 1, .36, 1) both;
 }
-.lg-bars i {
-  width: 3px;
-  height: 100%;
-  border-radius: 2px;
-  background: linear-gradient(to top, rgba(74, 158, 255, .55), rgba(74, 158, 255, .12));
-  transform-origin: bottom;
-  animation: lg-bar-pulse 2.8s ease-in-out infinite;
-  animation-delay: calc(var(--n) * -.14s);
+@keyframes lx-card-in {
+  from { opacity: 0; transform: translateY(26px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ضوء يتبع المؤشر فوگ البطاقة */
+.lx-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 0%),
+              rgba(90, 150, 255, .18), transparent 62%);
+  opacity: 0;
+  transition: opacity .3s;
+  pointer-events: none;
+}
+.lx-card:hover .lx-glow { opacity: 1; }
+
+/* ═══ الشعار ═══ واضح وكبير، بحلقة متدرّجة تدور وهالة تنبض */
+.lx-logo {
+  position: relative;
+  display: grid;
+  width: 116px; height: 116px;
+  margin: 0 auto;
+  place-items: center;
+}
+.lx-logo-ring {
+  position: absolute;
+  inset: 0;
+  padding: 2.5px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #3b82f6, #22d3ee, #a855f7, #3b82f6);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: lx-spin 7s linear infinite;
   will-change: transform;
 }
-@keyframes lg-bar-pulse {
-  0%, 100% { transform: scaleY(.16); opacity: .5; }
-  50%      { transform: scaleY(1);   opacity: 1; }
+@keyframes lx-spin { to { transform: rotate(360deg); } }
+.lx-logo-pulse {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(59, 130, 246, .5);
+  border-radius: 50%;
+  animation: lx-pulse 2.8s ease-out infinite;
+  will-change: transform, opacity;
 }
-
-/* ═══════════ جهة النموذج ═══════════ */
-.lg-panel {
+@keyframes lx-pulse {
+  0%   { opacity: .7; transform: scale(1); }
+  100% { opacity: 0;  transform: scale(1.35); }
+}
+.lx-logo-disc {
   display: grid;
-  padding: 40px;
-  background: #0a1120;
+  width: 92px; height: 92px;
+  border-radius: 50%;
+  background: #fff;
   place-items: center;
+  box-shadow: 0 12px 30px -10px rgba(38, 68, 140, .45), 0 0 0 1px rgba(255, 255, 255, .9);
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1);
 }
-.lg-form {
-  width: 100%;
-  max-width: 396px;
-  animation: lg-rise .7s cubic-bezier(.22,1,.36,1) .1s both;
-}
-.lg-form-logo { display: none; }
+.lx-card:hover .lx-logo-disc { transform: scale(1.06); }
+.lx-logo-disc img { width: 62px; height: 62px; object-fit: contain; }
 
-.lg-form h2 {
-  margin: 0;
-  color: #fff;
-  font-size: 29px;
+.lx-title {
+  margin: 20px 0 0;
+  color: #10224a;
+  font-size: 33px;
   font-weight: 900;
-  letter-spacing: -.5px;
+  letter-spacing: -.7px;
+  text-align: center;
 }
-.lg-hi { margin: 9px 0 34px; color: #8ea6c6; font-size: 14px; }
-
-.lg-form label {
-  display: block;
-  margin-bottom: 8px;
-  color: #b9cde8;
-  font-size: 13px;
-  font-weight: 700;
-}
-.lg-form label + .lg-field { margin-bottom: 18px; }
-
-.lg-field {
-  position: relative;
+.lx-tag {
   display: flex;
-  align-items: center;
-  height: 52px;
-  padding: 0 46px 0 12px;
-  border: 1px solid #22314c;
-  border-radius: 12px;
-  background: #0d1526;
-  transition: border-color .18s, box-shadow .22s;
-}
-.lg-field:focus-within {
-  border-color: #4a9eff;
-  box-shadow: 0 0 0 3px rgba(74, 158, 255, .14);
-}
-.lg-field > svg {
-  position: absolute;
-  right: 15px;
-  width: 18px; height: 18px;
-  fill: none;
-  stroke: #607da3;
-  stroke-width: 2;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  transition: stroke .18s;
-}
-.lg-field:focus-within > svg { stroke: #7cbaff; }
-.lg-field input {
-  width: 100%;
-  border: 0;
-  background: transparent;
-  color: #eaf1fd;
-  font-family: inherit;
-  font-size: 14.5px;
-  outline: none;
-  text-align: right;
-}
-.lg-field input::placeholder { color: #5b7396; }
-/* ⚠️ التعبئة التلقائية بكروم تفرض خلفية بيضة — نطفّيها بظل داخلي،
-   وإلا الخانة تطلع بيضة ناصعة بنص شاشة غامقة. */
-.lg-field input:-webkit-autofill,
-.lg-field input:-webkit-autofill:focus {
-  -webkit-text-fill-color: #eaf1fd;
-  box-shadow: 0 0 0 60px #0d1526 inset;
-  transition: background-color 9999s;
-}
-
-.lg-eye {
-  position: absolute;
-  left: 9px;
-  display: grid;
-  width: 32px; height: 32px;
-  border: 0;
-  border-radius: 9px;
-  background: transparent;
-  color: #607da3;
-  cursor: pointer;
-  place-items: center;
-  transition: color .18s, background-color .18s;
-}
-.lg-eye:hover { background: rgba(74, 158, 255, .1); color: #9ecbff; }
-.lg-eye svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-
-.lg-submit {
-  display: flex;
-  width: 100%;
-  height: 54px;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  margin-top: 12px;
+  margin: 8px 0 0;
+  color: #5b7ba6;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.lx-tag::before, .lx-tag::after {
+  content: '';
+  width: 26px; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, .55));
+}
+.lx-tag::after { background: linear-gradient(90deg, rgba(59, 130, 246, .55), transparent); }
+
+/* ═══════════ الخانات ═══════════ */
+.lx-form { margin-top: 32px; }
+
+.lx-field {
+  position: relative;
+  display: flex;
+  height: 58px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 46px 0 12px;
+  border: 1.5px solid rgba(150, 175, 215, .5);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .78);
+  transition: border-color .2s, box-shadow .25s, background-color .2s;
+}
+.lx-field:focus-within {
+  border-color: #3b82f6;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, .13);
+}
+.lx-field > svg {
+  position: absolute;
+  right: 15px;
+  width: 19px; height: 19px;
+  fill: none;
+  stroke: #8aa2c4;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke .2s, transform .25s;
+}
+.lx-field:focus-within > svg { stroke: #2f74e8; transform: scale(1.08); }
+
+.lx-field input {
+  width: 100%;
+  padding-top: 12px;
   border: 0;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #2f7ce8 0%, #1f56c4 100%);
+  background: transparent;
+  color: #12244c;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  text-align: right;
+}
+/* ⚠️ التعبئة التلقائية بكروم تفرض خلفية زركة — نطفّيها بظل داخلي. */
+.lx-field input:-webkit-autofill,
+.lx-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #12244c;
+  box-shadow: 0 0 0 60px #fff inset;
+  transition: background-color 9999s;
+}
+
+/* التسمية ترتفع لمن تكتب أو تركّز — «رياكشن» */
+.lx-field label {
+  position: absolute;
+  right: 46px;
+  color: #7f97ba;
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  transform-origin: right center;
+  transition: transform .22s cubic-bezier(.22, 1, .36, 1), color .2s;
+}
+.lx-field:focus-within label,
+.lx-field.has-val label {
+  color: #2f74e8;
+  transform: translateY(-15px) scale(.78);
+}
+
+/* خط ينرسم تحت الخانة من النص للطرفين */
+.lx-underline {
+  position: absolute;
+  right: 50%; bottom: -1.5px; left: 50%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #22d3ee, #3b82f6, #a855f7);
+  transition: right .3s cubic-bezier(.22, 1, .36, 1), left .3s cubic-bezier(.22, 1, .36, 1);
+}
+.lx-field:focus-within .lx-underline { right: 14px; left: 14px; }
+
+.lx-eye {
+  position: absolute;
+  left: 10px;
+  display: grid;
+  width: 34px; height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #8aa2c4;
+  cursor: pointer;
+  place-items: center;
+  transition: color .18s, background-color .18s, transform .18s;
+}
+.lx-eye:hover { background: rgba(59, 130, 246, .1); color: #2f74e8; transform: scale(1.06); }
+.lx-eye svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══════════ الزر ═══════════ */
+.lx-submit {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 56px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 15px;
+  background: none;
   color: #fff;
   cursor: pointer;
   font-family: inherit;
-  font-size: 16px;
+  font-size: 16.5px;
   font-weight: 800;
-  box-shadow: 0 10px 26px -10px rgba(47, 124, 232, .85);
-  transition: transform .15s, box-shadow .2s, filter .18s;
+  box-shadow: 0 14px 30px -12px rgba(47, 116, 232, .95);
+  transition: transform .16s, box-shadow .22s;
 }
-.lg-submit:hover:not(:disabled) { filter: brightness(1.08); box-shadow: 0 16px 34px -12px rgba(47, 124, 232, 1); transform: translateY(-1px); }
-.lg-submit:active:not(:disabled) { transform: translateY(0); }
-.lg-submit:disabled { cursor: progress; filter: saturate(.75) brightness(.85); }
-.lg-arrow { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
-.lg-submit:hover:not(:disabled) .lg-arrow { transform: translateX(-4px); }
-.lg-spin {
-  width: 17px; height: 17px;
-  border: 2px solid rgba(255, 255, 255, .3);
+.lx-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 20px 40px -14px rgba(47, 116, 232, 1); }
+.lx-submit:active:not(:disabled) { transform: translateY(0) scale(.985); }
+.lx-submit:disabled { cursor: progress; filter: saturate(.7) brightness(.95); }
+/* التدرّج يتحرك جوّا الزر — يخلّيه حيّاً بلا وميض مزعج */
+.lx-submit-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, #2f74e8, #22a7e8, #7b4ff0, #2f74e8);
+  background-size: 300% 100%;
+  animation: lx-shift 7s linear infinite;
+  will-change: background-position;
+}
+@keyframes lx-shift { to { background-position: -300% 0; } }
+.lx-submit-txt {
+  position: relative;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.lx-arrow { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: transform .22s; }
+.lx-submit:hover:not(:disabled) .lx-arrow { transform: translateX(-5px); }
+.lx-spin {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255, 255, 255, .35);
   border-top-color: #fff;
   border-radius: 50%;
-  animation: lg-slow-spin .7s linear infinite;
+  animation: lx-spin .7s linear infinite;
 }
 
-.lg-msg {
-  margin: 16px 0 0;
+.lx-msg {
+  margin: 18px 0 0;
   padding: 12px 15px;
-  border-radius: 11px;
-  background: rgba(250, 204, 21, .1);
-  color: #fbe3a4;
+  border-radius: 12px;
+  background: #fff7e2;
+  color: #8a6100;
   font-size: 13px;
   font-weight: 700;
   text-align: center;
-  box-shadow: 0 0 0 1px rgba(250, 204, 21, .22) inset;
-  animation: lg-rise .3s cubic-bezier(.22,1,.36,1) both;
+  box-shadow: 0 0 0 1px rgba(217, 158, 0, .28) inset;
+  animation: lx-msg-in .3s cubic-bezier(.22, 1, .36, 1) both;
 }
-.lg-msg.is-error {
-  background: rgba(248, 113, 113, .12);
-  color: #ffc4c4;
-  box-shadow: 0 0 0 1px rgba(248, 113, 113, .28) inset;
-}
+.lx-msg.is-error { background: #ffeef0; color: #b3231f; box-shadow: 0 0 0 1px rgba(220, 38, 38, .25) inset; }
+@keyframes lx-msg-in { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
 
-.lg-secure {
+.lx-secure {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  margin: 30px 0 0;
-  color: #6e88ab;
+  margin: 26px 0 0;
+  color: #7c93b5;
   font-size: 12px;
+  font-weight: 600;
 }
-.lg-secure svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.lx-secure svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
-/* ═══════════ الشاشات الأصغر ═══════════
-   ⚠️ تحت 1024px القسمة تنهار لعمود واحد: جهة الهوية تصير شريطاً
-   قصيراً بالأعلى، والنموذج ياخذ الباقي. القسمة بشاشة ضيقة تخلّي
-   الخانات نص عرض التلفون — وهاي الشاشة يفتحها الفني من تلفونه. */
-@media (max-width: 1023px) {
-  .lg { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
-  .lg-brand { padding: 26px 24px 22px; gap: 18px; }
-  .lg-brand-top, .lg-bars, .lg-desc { display: none; }
-  .lg-brand-mid { display: flex; align-items: center; gap: 14px; }
-  .lg-brand-mid h1 { font-size: 26px; letter-spacing: -.6px; }
-  .lg-tag { margin: 0; font-size: 12.5px; }
-  .lg-tag::before { display: none; }
-  .lg-panel { padding: 30px 22px max(30px, env(safe-area-inset-bottom)); }
+/* ═══════════ الموبايل ═══════════
+   ⚠️ الميلان ينطفي (ماكو مؤشر باللمس)، والومضات تنقص، وكتلة لون
+   وحدة تنطفي — هاي أثقل الحركات والموبايل يدفعها بطارية. */
+@media (max-width: 640px) {
+  .lx { padding: 20px 16px max(24px, env(safe-area-inset-bottom)); }
+  .lx-card { padding: 34px 22px 26px; border-radius: 26px; }
+  .lx-b3 { display: none; }
+  .lx-spark:nth-child(n + 9) { display: none; }
+  .lx-logo { width: 96px; height: 96px; }
+  .lx-logo-disc { width: 78px; height: 78px; }
+  .lx-logo-disc img { width: 52px; height: 52px; }
+  .lx-title { font-size: 27px; }
+  .lx-form { margin-top: 26px; }
 }
-@media (max-width: 560px) {
-  .lg-brand { display: none; }
-  .lg-form-logo {
-    display: block;
-    width: 62px; height: 62px;
-    margin: 0 auto 20px;
-    padding: 9px;
-    border-radius: 20px;
-    background: #fff;
-    box-shadow: 0 10px 26px rgba(0, 0, 0, .45);
-    object-fit: contain;
-  }
-  .lg-form h2 { text-align: center; }
-  .lg-hi { margin-bottom: 28px; text-align: center; }
+@media (hover: none) {
+  .lx-card { transform: none !important; }
 }
 
 /* ⚠️ أكو ناس الحركة تدوّخهم فعلاً، وهاي شاشة تنفتح كل يوم. */
 @media (prefers-reduced-motion: reduce) {
-  .lg *, .lg *::before, .lg *::after {
+  .lx *, .lx *::before, .lx *::after {
     animation: none !important;
     transition-duration: .01ms !important;
   }
-  .lg-bars i { transform: scaleY(.5); }
+  .lx-card { transform: none !important; }
 }

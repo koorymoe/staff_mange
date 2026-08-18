@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import CommandLogin from '../command/CommandLogin'
 import '../command/theme.css'
@@ -6,24 +6,20 @@ import { useSession } from '../session'
 
 // ═══ شاشة الدخول ═══
 //
-// «اريد شي قوي… كون قوي».
+// «اريد واجهة مضيئة قويه… وأشياء متحركة ورياكشن… بالنصف… والشعار
+// واضح وجميل».
 //
-// ⚠️ النسخة السابقة چانت **زخرفة**: كرات ضوء بنفسجية طايفة — نفس
-// الشي الموجود بكل قالب مجاني بالإنترنت، ولهذا حسّها ضعيفة. الي
-// يخلّي الواجهة تحس قوية مو المؤثرات، بل الترتيب: مساحات مضبوطة،
-// تدرّج واضح بالأهمية، خط قوي، وحركة **منظّمة** مو عشوائية.
+// ⚠️ «رياكشن» يعني الشاشة **ترد** على المستخدم مو بس تتحرك لحالها:
+// البطاقة تميل ورا الماوس، وضوء يتبع المؤشر، والزر ينبض بالضغط،
+// والخانة ترتفع تسميتها لمن تكتب بيها. الحركة الي ما ترد تصير
+// خلفية متحركة — والمستخدم يمل منها بأسبوع.
 //
-// فالشاشة انقسمت: جهة للهوية (كحلي الشركة `#0f2040`) وجهة نظيفة
-// للنموذج. وهاي بنية الدخول بالمنتجات المحترمة (Supabase, Clay,
-// Wise) — لأنها تعطي الهوية حضوراً كامل بلا ما تزاحم الخانات.
+// ⚠️ وكل الحركة `transform`/`opacity` بس، والميلان ينحسب برسمة
+// وحدة (`requestAnimationFrame`) ويكتب **متغيّرات CSS** بدل ما
+// يعيد رسم React — تحريك الحالة مع كل حركة ماوس يخنق الصفحة.
 //
-// ⚠️ الحركة كلها `transform` و`opacity` بس — هذنه الوحيدتان الي
-// المتصفح يحرّكهن على كارت الشاشة بلا ما يعيد حساب تخطيط الصفحة.
-// أي حركة على `top`/`width` تخلّي الشاشة تلعثم بالأجهزة الواطية،
-// والفني بالميدان تلفونه مو آخر موديل.
-//
-// ⚠️ وماكو ولا صورة: النسخة الي قبلها چانت خلفية ٢ ميغا تنزّل بكل
-// فتحة، والفني يدفعها من رصيده. هاي وزنها صفر.
+// ⚠️ والميلان ينطفي باللمس: التلفون ماكو بيه مؤشر، وحساب الميلان
+// من اللمسة يخلّي البطاقة تنط تحت الإصبع.
 
 const UserIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
 const LockIcon = () => <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
@@ -40,6 +36,9 @@ export default function Login() {
   const dragRef = useRef<{ startY: number; from: number } | null>(null)
   const [dragging, setDragging] = useState(false)
 
+  const cardRef = useRef<HTMLDivElement>(null)
+  const frameRef = useRef(0)
+
   useEffect(() => {
     sessionStorage.removeItem('sessionEndedReason')
     // ⚠️ «تذكرني» انشالت بطلب صاحب النظام — ننضّف الاسم المحفوظ من
@@ -47,6 +46,31 @@ export default function Login() {
     // خانة تشيله.
     localStorage.removeItem('rememberedUser')
   }, [])
+
+  // ═══ الميلان وضوء المؤشر ═══
+  const onPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse') return
+    const card = cardRef.current
+    if (!card) return
+    const rect = card.getBoundingClientRect()
+    const x = (e.clientX - rect.left) / rect.width
+    const y = (e.clientY - rect.top) / rect.height
+    cancelAnimationFrame(frameRef.current)
+    frameRef.current = requestAnimationFrame(() => {
+      card.style.setProperty('--rx', `${(0.5 - y) * 7}deg`)
+      card.style.setProperty('--ry', `${(x - 0.5) * 9}deg`)
+      card.style.setProperty('--mx', `${x * 100}%`)
+      card.style.setProperty('--my', `${y * 100}%`)
+    })
+  }, [])
+  const onPointerLeave = useCallback(() => {
+    const card = cardRef.current
+    if (!card) return
+    cancelAnimationFrame(frameRef.current)
+    card.style.setProperty('--rx', '0deg')
+    card.style.setProperty('--ry', '0deg')
+  }, [])
+  useEffect(() => () => cancelAnimationFrame(frameRef.current), [])
 
   const onHandleDown = (event: React.PointerEvent<HTMLButtonElement>) => {
     event.currentTarget.setPointerCapture(event.pointerId)
@@ -76,64 +100,60 @@ export default function Login() {
   }
 
   return (
-    <main className="lg" dir="rtl">
-      {/* ═══════════ جهة الهوية ═══════════ */}
-      <aside className="lg-brand">
-        <div className="lg-mesh" aria-hidden />
-        <span className="lg-beam" aria-hidden />
-        <span className="lg-mark" aria-hidden />
+    <main className="lx" dir="rtl" onPointerMove={onPointerMove} onPointerLeave={onPointerLeave}>
+      {/* ═══ الخلفية المضيئة ═══ كتل لون تتموّج + شبكة ناعمة */}
+      <div className="lx-sky" aria-hidden>
+        <span className="lx-blob lx-b1" />
+        <span className="lx-blob lx-b2" />
+        <span className="lx-blob lx-b3" />
+        <span className="lx-grid" />
+        {[...Array(14)].map((_, i) => (
+          <span key={i} className="lx-spark" style={{ ['--n' as string]: i }} />
+        ))}
+      </div>
 
-        <header className="lg-brand-top">
-          <img src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="" aria-hidden />
-          <span>AL-AMANI</span>
-        </header>
+      <div className="lx-card" ref={cardRef}>
+        <span className="lx-glow" aria-hidden />
 
-        <div className="lg-brand-mid">
-          <h1>شركة الأماني</h1>
-          <p className="lg-tag">نظام الإدارة المتكامل</p>
-          <p className="lg-desc">
-            الحجوزات، الكوادر، الفواتير، والمخزون — بمكان واحد،
-            وكل خطوة مسجّلة باسم صاحبها.
-          </p>
+        {/* ═══ الشعار ═══ حلقة متدرّجة تدور حوله وهالة تنبض */}
+        <div className="lx-logo">
+          <span className="lx-logo-ring" aria-hidden />
+          <span className="lx-logo-pulse" aria-hidden />
+          <span className="lx-logo-disc">
+            <img src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="شعار شركة الأماني" />
+          </span>
         </div>
 
-        {/* شريط أعمدة يتنفّس — حركة منظّمة تحس «النظام شغّال» */}
-        <div className="lg-bars" aria-hidden>
-          {[...Array(28)].map((_, i) => <i key={i} style={{ ['--n' as string]: i }} />)}
-        </div>
-      </aside>
+        <h1 className="lx-title">شركة الأماني</h1>
+        <p className="lx-tag">نظام الإدارة المتكامل</p>
 
-      {/* ═══════════ جهة النموذج ═══════════ */}
-      <section className="lg-panel">
-        <form className="lg-form" onSubmit={handleSubmit}>
-          {/* الشعار يطلع بالموبايل بس — بالديسكتوب هو بجهة الهوية */}
-          <img className="lg-form-logo" src={`${import.meta.env.BASE_URL}favicon.png?v=3`} alt="شعار شركة الأماني" />
-
-          <h2>تسجيل الدخول</h2>
-          <p className="lg-hi">أهلاً بيك — دخّل بياناتك حتى تبدي شغلك.</p>
-
-          <label htmlFor="lg-user">اسم المستخدم</label>
-          <div className="lg-field">
+        <form className="lx-form" onSubmit={handleSubmit}>
+          {/* ⚠️ التسمية ترتفع فوگ الخانة لمن تكتب — «رياكشن» يخلّي
+              الموظف يعرف وين هو بلا ما يدوّر. */}
+          <div className={`lx-field ${username ? 'has-val' : ''}`}>
             <UserIcon />
             <input
-              id="lg-user" required dir="ltr" autoCapitalize="off" autoCorrect="off"
-              spellCheck={false} autoComplete="username" placeholder="أدخل اسم المستخدم"
+              id="lx-user" required dir="ltr" autoCapitalize="off" autoCorrect="off"
+              spellCheck={false} autoComplete="username" placeholder=" "
               value={username} onChange={(e) => setUsername(e.target.value)}
             />
+            <label htmlFor="lx-user">اسم المستخدم</label>
+            <span className="lx-underline" aria-hidden />
           </div>
 
-          <label htmlFor="lg-pass">كلمة المرور</label>
-          <div className="lg-field">
+          <div className={`lx-field ${password ? 'has-val' : ''}`}>
             <LockIcon />
             <input
-              id="lg-pass" required type={showPass ? 'text' : 'password'} dir="ltr"
-              autoComplete="current-password" placeholder="أدخل كلمة المرور"
+              id="lx-pass" required type={showPass ? 'text' : 'password'} dir="ltr"
+              autoComplete="current-password" placeholder=" "
               value={password} onChange={(e) => setPassword(e.target.value)}
             />
+            <label htmlFor="lx-pass">كلمة المرور</label>
+            <span className="lx-underline" aria-hidden />
             {/* ⚠️ إظهار كلمة المرور: الفني يكتبها بتلفونه بالميدان بإيد
                 وحدة، والغلط المتكرر يقفل الحساب. */}
             <button
-              type="button" className="lg-eye"
+              type="button" className="lx-eye"
               onClick={() => setShowPass((v) => !v)}
               aria-label={showPass ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور'}
             >
@@ -145,26 +165,29 @@ export default function Login() {
             </button>
           </div>
 
-          <button type="submit" disabled={submitting} className="lg-submit">
-            {submitting
-              ? <><span className="lg-spin" aria-hidden />جاري الدخول…</>
-              : <>تسجيل الدخول
-                  <svg viewBox="0 0 24 24" aria-hidden="true" className="lg-arrow">
-                    <path d="M19 12H5M12 19l-7-7 7-7"/>
-                  </svg>
-                </>}
+          <button type="submit" disabled={submitting} className="lx-submit">
+            <span className="lx-submit-bg" aria-hidden />
+            <span className="lx-submit-txt">
+              {submitting
+                ? <><span className="lx-spin" aria-hidden />جاري الدخول…</>
+                : <>تسجيل الدخول
+                    <svg viewBox="0 0 24 24" aria-hidden="true" className="lx-arrow">
+                      <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                  </>}
+            </span>
           </button>
 
           {(sessionNote || error) && (
-            <p className={`lg-msg ${error ? 'is-error' : ''}`} role="alert">{error || sessionNote}</p>
+            <p className={`lx-msg ${error ? 'is-error' : ''}`} role="alert">{error || sessionNote}</p>
           )}
-
-          <p className="lg-secure">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            دخول آمن ومحمي
-          </p>
         </form>
-      </section>
+
+        <p className="lx-secure">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          دخول آمن ومحمي
+        </p>
+      </div>
 
       {/* ═══ الستارة ═══ من ركن أسفل الشاشة تنسحب وتكشف دخول مركز القيادة.
           ⚠️ الشاشتان تنادان **نفس** api.login — الي يقرر لأي نظام تدخل
