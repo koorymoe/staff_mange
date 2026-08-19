@@ -107,7 +107,7 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 var allowedFolders = map[string]bool{
 	"products": true, "receipts": true, "vehicles": true, "projects": true,
 	"reports": true, "exhibitions": true, "gps": true, "incidents": true,
-	"misc": true,
+	"misc": true, "sim": true,
 }
 
 func safeFolder(f string) string {

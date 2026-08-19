@@ -84,6 +84,11 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := seedSolarSkills(db); err != nil {
 		return err
 	}
+	// مختبر المحاكاة — محتوى المرحلة الأولى.
+	// ⚠️ غير محقّق (verified=FALSE) فما يوصل متدرّباً — المالك وحده يشوفه.
+	if err := seedSimLock(db); err != nil {
+		return err
+	}
 	if err := grantGpsSystemToMonitors(db); err != nil {
 		return err
 	}

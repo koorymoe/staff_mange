@@ -293,6 +293,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	extraTaskRepo := repository.NewExtraTaskRepository(db)
 	extraTaskHandler := handler.NewExtraTaskHandler(extraTaskRepo, notificationRepo)
 
+	// مختبر المحاكاة — للمالك وحده بهالمرحلة (شوف مسارات /api/sim تحت).
+	simRepo := repository.NewSimRepository(db)
+	simHandler := handler.NewSimHandler(simRepo)
+
 	aiRepo := repository.NewAiRepository(db)
 	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo)
 	aiBrainService := service.NewAiBrainService(aiRepo, aiEvidenceService)
@@ -1184,6 +1188,28 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// requireOwner يرجّع 404 مو 403: أي حساب ثاني (حتى ADMIN) ما يعرف
 	// إن هذا المسار موجود أصلاً. لا تضيف هنا أي middleware ثاني.
 	mux.Handle("GET /api/owner/backups", middleware.Chain(http.HandlerFunc(backupHandler.Overview), requireAuth, middleware.RequireOwner()))
+
+	// ═══ مختبر المحاكاة — للمالك وحده ═══
+	//
+	// «أريد محاكيات… بس هذا أريده يظهر فقط عند المالك حتى مدير النظام
+	// ما أريده يظهر عنده إلى أن يكتمل بصورة كاملة».
+	//
+	// ⚠️ `RequireOwner()` ترجّع **404** مو 403: أي حساب ثاني — حتى ADMIN —
+	// ما يعرف إن هذي المسارات موجودة أصلاً. وما تسجّل مخالفة، فمدير يضغط
+	// زراً قديماً ما ينحظر حسابه.
+	//
+	// ⚠️ لا تستبدلها بصلاحية: كل وسائط الصلاحيات بالنظام
+	// (RequirePermission/RequireAnyPermission/RequireRole) تمرّر ADMIN بلا
+	// شرط، يعني الصلاحية ما تگدر تخفي شي عن مدير النظام أبداً.
+	simOwner := middleware.RequireOwner()
+	mux.Handle("GET /api/sim/categories", middleware.Chain(http.HandlerFunc(simHandler.ListCategories), requireAuth, simOwner))
+	mux.Handle("GET /api/sim/categories/{id}/exercises", middleware.Chain(http.HandlerFunc(simHandler.ListExercises), requireAuth, simOwner))
+	mux.Handle("GET /api/sim/categories/{id}/lessons", middleware.Chain(http.HandlerFunc(simHandler.ListLessons), requireAuth, simOwner))
+	mux.Handle("GET /api/sim/exercises/{id}", middleware.Chain(http.HandlerFunc(simHandler.GetExercise), requireAuth, simOwner))
+	mux.Handle("POST /api/sim/exercises/{id}/attempts", middleware.Chain(http.HandlerFunc(simHandler.StartAttempt), requireAuth, simOwner))
+	mux.Handle("PUT /api/sim/attempts/{id}/progress", middleware.Chain(http.HandlerFunc(simHandler.SaveProgress), requireAuth, simOwner))
+	mux.Handle("PUT /api/sim/attempts/{id}/finish", middleware.Chain(http.HandlerFunc(simHandler.FinishAttempt), requireAuth, simOwner))
+	mux.Handle("GET /api/sim/attempts/mine", middleware.Chain(http.HandlerFunc(simHandler.MyAttempts), requireAuth, simOwner))
 
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))
