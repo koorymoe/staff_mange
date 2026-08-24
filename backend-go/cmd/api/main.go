@@ -384,7 +384,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireInventoryView := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "inventory")
 	requireToolRequest := middleware.RequireLeaderOrPermission(permissionRepo, employeeRepo, notificationRepo, "tool_requests")
 	// حساب كلفة التنفيذ: صلاحية تنعطى وتنسحب، مو دور ثابت
-	requireExecutionCost := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "execution_cost")
+	// ⚠️ **واعية للّيدر** مو صلاحية صرفة — وهذا إصلاح خلل حظر حسابات:
+	//
+	// الليدر الي يسوي فاتورة **لازم** يحسب كلفتها؛ الحساب جزء من الفاتورة
+	// مو ميزة منفصلة. وصفحة الفاتورة تدزّ طلب الحساب **تلقائياً** وهو يكتب،
+	// فالليدر الي ما عنده صلاحية `execution_cost` چان يجمّع مخالفات وصول
+	// بلا ما يدري — وبخمس مخالفات بعشر دقائق **ينحظر حسابه تلقائياً**
+	// وينرمي لشاشة الدخول، وفكّ الحظر للمالك وحده.
+	//
+	// السبب إن ترحيل 0189 منح `execution_cost` **مرة وحدة** للّيدرية
+	// الموجودين وقتها، وأي واحد ينترقّى ليدراً بعدها ما ياخذها.
+	//
+	// وباقي مسارات فواتير الليدر أصلاً واعية للّيدر (requireLeaderBasket)،
+	// فهذا الحارس چان **متناقض** وياهن.
+	requireExecutionCost := middleware.RequireLeaderOrPermission(permissionRepo, employeeRepo, notificationRepo, "execution_cost")
 	// موافقة/رفض طلبات الأدوات: كانت دور صارم بدون منفذ صلاحية، فإداري الكميات
 	// — وهو صاحب الشغلة أصلاً — ما كان يقدر يوافق أبداً مهما انمنحت له
 	// صلاحيات. صارت صلاحية مستقلة تُمنح لأي موظف، مع إبقاء الأدوار القديمة.

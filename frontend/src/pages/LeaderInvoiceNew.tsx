@@ -183,7 +183,27 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // عشر خانات يدز عشرين نداء على انترنت موبايل.
   const [livePreview, setLivePreview] = useState<EstimateExecutionCostResponse | null>(null)
   const [previewing, setPreviewing] = useState(false)
+  // ⚠️ لمن السيرفر يرفض الحساب (٤٠٣)، **نوقف الطلب التلقائي نهائياً**
+  // ونعرض السبب. اقرا التعليق تحت — هذا إصلاح خلل حظر حسابات.
+  const [previewDenied, setPreviewDenied] = useState(false)
+
   useEffect(() => {
+    // ═══ ⚠️ إصلاح: الطلب التلقائي چان يحظر حساب الليدر ═══
+    //
+    // «عندي موظف اني مسوي ليدر، من يريد يسوي فاتورة ينحضر».
+    //
+    // السلسلة الي چانت تصير:
+    //   ١. الليدر بلا صلاحية `execution_cost` يفتح الصفحة (الزر بشاشة
+    //      «مهامي» مشروط بـisLeader بس).
+    //   ٢. هذا المؤقّت يدزّ **POST** كل ٦٠٠ms سكون وهو يكتب.
+    //   ٣. السيرفر يرد ٤٠٣، والفشل **ينبلع بصمت** فهو ما يشوف شي.
+    //   ٤. كل ٤٠٣ على طلب كاتب ينعدّ **مخالفة وصول**.
+    //   ٥. خمس مخالفات بعشر دقائق ← **حسابه ينحظر** وجلساته تنقتل.
+    //
+    // انصلح الجذر بالسيرفر (الحارس صار واعياً للّيدر)، بس نحطّ حاجزاً
+    // ثانياً هنا: أول رفض يوقف التكرار. طلب واحد فاشل ما يضرّ؛ الي
+    // يحظر هو **التكرار**.
+    if (previewDenied) return
     // ⚠️ كلشي جوّا المؤقّت — حتى التصفير. تعديل الحالة **مباشرة** بجسم
     // الـeffect يولّد رندر متسلسل (وهذا الي يمنعه react-hooks).
     const t = setTimeout(() => {
@@ -191,14 +211,19 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       setPreviewing(true)
       const clean = items.map(({ key, ...rest }) => { void key; return rest })
       api.estimateLeaderInvoiceCost(clean)
-        .then(setLivePreview)
-        // الفشل ما ينعرض: هذا ملخّص مساعد، والرقم الرسمي يجي بالضغط
-        // على «احسب». رسالة خطأ على كل تعديل ناقص تزعج بلا فايدة.
-        .catch(() => setLivePreview(null))
-        .finally(() => setPreviewing(false))
+        .then((r) => { setLivePreview(r); setPreviewing(false) })
+        .catch((e: unknown) => {
+          setLivePreview(null)
+          setPreviewing(false)
+          // ⚠️ الرفض بسبب الصلاحية **ينعرض ويوقف التكرار**. باقي
+          // الأخطاء (تعديل ناقص، انقطاع لحظي) تبقى صامتة مثل ما چانت:
+          // هذا ملخّص مساعد، ورسالة على كل تعديل ناقص تزعج بلا فايدة.
+          const msg = e instanceof Error ? e.message : ''
+          if (/صلاحي|permission|forbidden|مخوّل|مخول/i.test(msg)) setPreviewDenied(true)
+        })
     }, 600)
     return () => clearTimeout(t)
-  }, [items])
+  }, [items, previewDenied])
 
   // ═══ خانة «الأجهزة» بالملخّص ═══
   //
@@ -1085,9 +1110,19 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
                 </p>
               </>
             ) : (
-              <p className="mt-2 text-[11px] text-slate-400">
-                {previewing ? 'يحسب الكلفة...' : 'كمّل بنود التنفيذ ويطلعلك الملخّص'}
-              </p>
+              /* ⚠️ الرفض بالصلاحية **ينعرض** — قبل چان ينبلع بصمت،
+                 فالليدر يضل يكتب والنظام يجمّع عليه مخالفات لحد ما
+                 ينحظر حسابه بلا ما يعرف ليش. */
+              previewDenied ? (
+                <p className="mt-2 rounded-lg bg-amber-50 px-2.5 py-2 text-[11px] leading-relaxed text-amber-800">
+                  ⚠️ حسابك ما عنده صلاحية حساب الكلفة التلقائي — راجع الإدارة.
+                  <br />تگدر تكمّل الفاتورة عادي، بس بلا ملخّص كلفة.
+                </p>
+              ) : (
+                <p className="mt-2 text-[11px] text-slate-400">
+                  {previewing ? 'يحسب الكلفة...' : 'كمّل بنود التنفيذ ويطلعلك الملخّص'}
+                </p>
+              )
             )}
           </div>
         </aside>

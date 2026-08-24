@@ -627,7 +627,7 @@ export default function MyTasks() {
                         </div>
                         {employee?.isLeader && (
                           <button
-                            onClick={() => navigate(`/leader-invoices/new?bookingId=${b.id}`)}
+                            onClick={() => navigate(`/leader-invoices/new?mode=booking&bookingId=${b.id}`)}
                             className="mt-2 w-full rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100"
                           >
                             🧾 إنشاء فاتورة ليدر لهذا الحجز
@@ -768,7 +768,7 @@ export default function MyTasks() {
             <div className="mt-4 space-y-2">
               {!paperwork.stopped && (
                 <button
-                  onClick={() => navigate(`/leader-invoices/new?bookingId=${paperwork.booking.id}`)}
+                  onClick={() => navigate(`/leader-invoices/new?mode=booking&bookingId=${paperwork.booking.id}`)}
                   className="w-full rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3 text-sm font-bold text-white"
                 >
                   🧾 سوّي فاتورة التكاليف الآن
@@ -820,7 +820,7 @@ export default function MyTasks() {
                   <div className="mt-2 flex flex-wrap gap-2">
                     {!b.hasInvoice && (
                       <button
-                        onClick={() => navigate(`/leader-invoices/new?bookingId=${b.id}`)}
+                        onClick={() => navigate(`/leader-invoices/new?mode=booking&bookingId=${b.id}`)}
                         className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-xs font-bold text-brand-700"
                       >
                         🧾 باقي عليك الفاتورة

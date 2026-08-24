@@ -135,7 +135,14 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
 
   useEffect(() => {
     if (canEditCrew) {
-      api.getEmployees().then((all) => setTechnicians(all.filter((e) => e.role === 'TECHNICIAN')))
+      // ⚠️ **مو `role === 'TECHNICIAN'` وحده** — «اكو موظفين مسويهم
+      // ليدرية بس ميطلعون لإداري الكوادر». الفلتر القديم چان يشيل كل
+      // ليدر دوره `TECHNICAL` أو `ENGINEER` أو مدير مشاريع، ويشيل
+      // التقنيين أصلاً. الكادر الميداني مو دوراً واحداً، والليدر يتكلّف
+      // بحكم كونه ليدراً مو بحكم مسمّاه.
+      api.getEmployees().then((all) => setTechnicians(all.filter(
+        (e) => e.isLeader || e.role === 'TECHNICIAN' || e.role === 'TECHNICAL' || e.role === 'ENGINEER',
+      )))
       // المركبات بيانات مساعدة هنا — مو كل من يشوف الحجوزات عنده صلاحية
       // المركبات، فالرفض ما يجوز يكسر الصفحة (شوف Coordinator.tsx)
       api.getVehicleOptions().then(setVehicles).catch(() => setVehicles([]))

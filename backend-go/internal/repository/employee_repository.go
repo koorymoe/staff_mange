@@ -223,8 +223,17 @@ func (r *EmployeeRepository) Supervisors() ([]model.Employee, error) {
 //	٢. `role = 'TECHNICIAN'` — يشيل المهندسين وأي كادر ثاني يمتلك مهارة
 //	   الخدمة فعلاً. والمهارة هي المقياس الصح مو المسمّى الوظيفي.
 //
-// هسه: الفنيين والمهندسين، وأي موظف عنده مهارة هاي الخدمة مهما جان
-// دوره. والي عنده المهارة يطلع أول، وبعده الباقي.
+//	٣. **والليدر ما جان معرّفاً أصلاً** — «اكو موظفين مسويهم ليدرية بس
+//	   ميطلعون لإداري الكوادر من يريد يحددهم لحجز معين». الليدر الي دوره
+//	   مو من الثلاثة (مدير مشاريع، مبيعات، مدير خدمة…) وما عنده مهارة
+//	   مسجّلة لنفس الخدمة **ما جان يطلع أبداً** — ولهذا بعضهم يطلع
+//	   وبعضهم لا، حسب دوره ومهاراته.
+//
+//	   والليدر يتكلّف بحكم كونه ليدراً، مو بحكم مهارة بخدمة بعينها —
+//	   شغله يقود الكادر مو ينفّذ بإيده بالضرورة.
+//
+// هسه: الفنيين والمهندسين، **والليدرية**، وأي موظف عنده مهارة هاي
+// الخدمة مهما جان دوره. والي عنده المهارة يطلع أول، وبعده الباقي.
 func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee, error) {
 	employees := []model.Employee{}
 	if err := r.db.Select(&employees, `
@@ -232,6 +241,7 @@ func (r *EmployeeRepository) MatchForService(serviceID string) ([]model.Employee
 		WHERE e.status = 'ACTIVE'
 		  AND (
 		    e.role IN ('TECHNICIAN', 'TECHNICAL', 'ENGINEER')
+		    OR e."isLeader" = true
 		    OR EXISTS (
 		      SELECT 1 FROM "EmployeeSkill" es
 		      JOIN "Skill" sk ON sk.id = es."skillId"
