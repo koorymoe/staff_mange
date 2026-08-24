@@ -1028,7 +1028,16 @@ html.dark {
   transition: transform .22s cubic-bezier(.22, 1, .36, 1), color .2s;
 }
 .lx-field:focus-within label,
-.lx-field.has-val label {
+.lx-field.has-val label,
+/* ⚠️ `:not(:placeholder-shown)` هي الي تضمن الصح فعلاً:
+   الخانة عندها `placeholder=" "` (فراغ)، فهاي القاعدة تنطبق لحظة ما
+   يصير بالخانة **أي نص** — سواء كتبه المستخدم، أو عبّاه المتصفح
+   تلقائياً، أو حطّه مدير كلمات السر.
+   الصنف `has-val` يعتمد على حالة React، وReact **ما يعرف** بالتعبئة
+   التلقائية (ما تشغّل حدث تغيير) — فالتسمية چانت تبقى مكانها **فوگ
+   النص المعبّى** والاثنان يتداخلان. وأي موظف بياناته محفوظة بالمتصفح
+   يشوف هالتداخل كل مرة يفتح النظام. */
+.lx-field input:not(:placeholder-shown) + label {
   color: #2f74e8;
   transform: translateY(-15px) scale(.78);
 }
