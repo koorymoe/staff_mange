@@ -429,7 +429,79 @@ const AUDIO: PartDef[] = [
   },
 ]
 
-export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE, ...AUDIO]
+// ═══ الألياف الضوئية GPON ═══
+//
+// ⚠️ منافذ الليف نوعها `fiber`: اللوح يعطي وصلاتها **طولاً بالكيلومتر
+// وعدد لحامات** بدل «نوع كيبل Cat6»، ويمنع ربط ليف بمنفذ نحاس.
+const GPON: PartDef[] = [
+  {
+    id: 'olt', domain: 'gpon', name: 'OLT — طرفية الخط الضوئي', model: 'GPON Class B+ · ٨ منافذ PON',
+    symbol: 'olt', w: 145, h: 62,
+    geo3d: { sizeM: { w: 0.44, h: 0.088, d: 0.30 }, bodyColorHex: '#243244', faceColorHex: '#141b26',
+      features: [{ kind: 'portRow', count: 8, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
+    about: 'الجهاز الي بالمقسّم — يغذّي مئات المشتركين بليف واحد لكل منفذ PON.',
+    ports: [
+      { id: 'pon1', label: 'PON 1', kind: 'fiber', x: 0.2, y: 1 },
+      { id: 'pon2', label: 'PON 2', kind: 'fiber', x: 0.5, y: 1 },
+      { id: 'uplink', label: 'صاعد', kind: 'sfp', x: 0.85, y: 1 },
+    ],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'OLT-1' },
+      { id: 'txDbm', label: 'قدرة الإرسال', unit: 'dBm', kind: 'number', default: 3, min: -5, max: 10,
+        help: 'فئة B+ ترسل بين +١٫٥ و+٥ ديسيبل·ملّي واط.' },
+      { id: 'ponCapacity', label: 'سعة منفذ PON', kind: 'number', default: 64, min: 8, max: 128 },
+      { id: 'serviceVlan', label: 'VLAN الخدمة', kind: 'number', default: 35, min: 1, max: 4094,
+        help: 'لازم يطابق الي بالONT — وإلا يسجّل بلا إنترنت.' },
+    ],
+  },
+  {
+    id: 'splitter', domain: 'gpon', name: 'سبليتر ضوئي', model: 'مقسّم بصري · نسبة قابلة للاختيار',
+    symbol: 'splitter', w: 95, h: 70,
+    geo3d: { sizeM: { w: 0.14, h: 0.035, d: 0.10 }, bodyColorHex: '#475569', faceColorHex: '#334155' },
+    about: 'يقسّم الليف الواحد على عدة مشتركين — وكل تقسيم ياكل من الميزانية الضوئية.',
+    ports: [
+      { id: 'in', label: 'داخل', kind: 'fiber', x: 0, y: 0.5 },
+      { id: 'o1', label: 'خرج ١', kind: 'fiber', x: 1, y: 0.2 },
+      { id: 'o2', label: 'خرج ٢', kind: 'fiber', x: 1, y: 0.4 },
+      { id: 'o3', label: 'خرج ٣', kind: 'fiber', x: 1, y: 0.6 },
+      { id: 'o4', label: 'خرج ٤', kind: 'fiber', x: 1, y: 0.8 },
+    ],
+    params: [
+      { id: 'ratio', label: 'نسبة التقسيم', kind: 'select', default: '8',
+        options: [
+          { value: '2', label: '1:2 · فقد ٣٫٦ dB' }, { value: '4', label: '1:4 · فقد ٧٫٣ dB' },
+          { value: '8', label: '1:8 · فقد ١٠٫٥ dB' }, { value: '16', label: '1:16 · فقد ١٣٫٧ dB' },
+          { value: '32', label: '1:32 · فقد ١٧٫٠ dB' }, { value: '64', label: '1:64 · فقد ٢٠٫٥ dB' },
+        ] },
+    ],
+    danger: 'كل زيادة بنسبة التقسيم تاكل من الميزانية — 1:64 ياكل ٢٠ ديسيبل، وهذا نص الميزانية تقريباً.',
+  },
+  {
+    id: 'ont', domain: 'gpon', name: 'ONT — وحدة المشترك', model: 'راوتر ضوئي · WiFi + LAN',
+    symbol: 'ont', w: 100, h: 66,
+    geo3d: { sizeM: { w: 0.19, h: 0.035, d: 0.13 }, bodyColorHex: '#e2e8f0', faceColorHex: '#cbd5e1',
+      features: [{ kind: 'statusLed', x: 0.2, y: 0.5 }, { kind: 'statusLed', x: 0.35, y: 0.5 }, { kind: 'statusLed', x: 0.5, y: 0.5 }] },
+    about: 'الجهاز الي ببيت الزبون — يستقبل الضوء ويطلّع إنترنت وWiFi.',
+    ports: [
+      { id: 'pon', label: 'PON', kind: 'fiber', x: 0, y: 0.5 },
+      { id: 'lan1', label: 'LAN 1', kind: 'eth', x: 1, y: 0.35 },
+      { id: 'lan2', label: 'LAN 2', kind: 'eth', x: 1, y: 0.65 },
+    ],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'ONT-1' },
+      { id: 'rxMin', label: 'أدنى حساسية', unit: 'dBm', kind: 'number', default: -27, min: -40, max: -10 },
+      { id: 'rxMax', label: 'حد الإشباع', unit: 'dBm', kind: 'number', default: -8, min: -20, max: 0,
+        help: 'قدرة **أعلى** من هذا تعمي المستقبل — الONT ما يشتغل.' },
+      { id: 'wanMode', label: 'وضع WAN', kind: 'select', default: 'pppoe',
+        options: [{ value: 'pppoe', label: 'PPPoE' }, { value: 'dhcp', label: 'DHCP' }, { value: 'static', label: 'ثابت' }] },
+      { id: 'pppoeUser', label: 'اسم مستخدم PPPoE', kind: 'text', default: '' },
+      { id: 'wanVlan', label: 'معرّف VLAN', kind: 'number', default: 35, min: 1, max: 4094 },
+      { id: 'ssid', label: 'اسم الشبكة اللاسلكية', kind: 'text', default: 'Home-WiFi' },
+    ],
+  },
+]
+
+export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE, ...AUDIO, ...GPON]
 
 export const PART_BY_ID: Record<string, PartDef> = Object.fromEntries(PARTS.map((p) => [p.id, p]))
 
@@ -439,6 +511,7 @@ export const DOMAINS: { id: DomainId; name: string; icon: string; about: string 
   { id: 'electrical', name: 'الدوائر الكهربائية', icon: '⚡', about: 'مصادر ومقاومات ولمبات ومفاتيح — الدائرة تنحل فعلاً بقوانين كيرشوف.' },
   { id: 'fire', name: 'إنذار الحريق', icon: '🔥', about: 'زونات ومقاومة نهاية وصفّارات وبطارية — اللوحة تقرا عطلاً لو الخط غلط.' },
   { id: 'audio', name: 'الصوت والإذاعة', icon: '🔊', about: 'مكبّرات وسماعات وخط ١٠٠ فولت — التحميل الزائد يحرق المكبّر.' },
+  { id: 'gpon', name: 'الألياف الضوئية', icon: '🔬', about: 'OLT وسبليترات وONT — الميزانية الضوئية تقرّر منو يسجّل ومنو لا.' },
 ]
 
 /** القيم الابتدائية لقطعة — تنسخ من الكتالوگ لمن تنحط باللوح. */

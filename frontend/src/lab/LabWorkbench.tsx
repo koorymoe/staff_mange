@@ -22,6 +22,7 @@ import { DOMAINS, PARTS, PART_BY_ID } from './catalog'
 import { electricalEngine } from './engines/electrical'
 import { audioEngine } from './engines/audio'
 import { fireEngine } from './engines/fire'
+import { gponEngine } from './engines/gpon'
 import { networkEngine } from './engines/network'
 import { portVoltages, solarEngine } from './engines/solar'
 import { computeStages, quickTest } from './stages'
@@ -44,6 +45,7 @@ const ENGINES: Record<DomainId, DomainEngine> = {
   network: networkEngine,
   fire: fireEngine,
   audio: audioEngine,
+  gpon: gponEngine,
 }
 
 export default function LabWorkbench() {
@@ -70,6 +72,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
       electrical: { domain: 'electrical', nodes: [], links: [] },
       fire: { domain: 'fire', nodes: [], links: [] },
       audio: { domain: 'audio', nodes: [], links: [] },
+      gpon: { domain: 'gpon', nodes: [], links: [] },
     }
     if (startDoc) empty[startDoc.domain] = startDoc
     return empty

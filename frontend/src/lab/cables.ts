@@ -98,6 +98,18 @@ export const SPK_LINK_PARAMS = [
     help: 'خط الـ١٠٠ فولت انخترع أصلاً عشان المسافات الطويلة — بس الخسارة تبقى موجودة.' },
 ]
 
+/** ═══ خصائص وصلة الليف الضوئي ═══
+ *
+ *  ⚠️ الليف يتقاس **بالكيلومتر** مو بالمتر: مسافات FTTH بالكيلومترات،
+ *  وخانة بالمتر تعني الفني يكتب ١٢٠٠٠ ويغلط بصفر. واللحامات تنعدّ
+ *  لأن كل لحام ياكل من الميزانية. */
+export const FIBER_LINK_PARAMS = [
+  { id: 'lengthKm', label: 'طول الليف', unit: 'كم', kind: 'number' as const, default: 0.5, min: 0.01, max: 60,
+    help: 'التوهين ٠٫٢٨ ديسيبل لكل كيلومتر بطول موجة النزول.' },
+  { id: 'splices', label: 'عدد اللحامات', kind: 'number' as const, default: 0, min: 0, max: 40,
+    help: 'كل لحام ياكل ٠٫١ ديسيبل — واللحام الوسخ ياكل أكثر بكثير.' },
+]
+
 /** ═══ أي خصائص تنعطى لوصلة بين منفذين؟ ═══
  *
  *  ⚠️ مركزية عمداً: بدونها كل محرّك يخمّن شكل خصائص وصلاته، وأول
@@ -105,6 +117,7 @@ export const SPK_LINK_PARAMS = [
 export function linkParamsFor(kind: PortKind) {
   if (kind === 'eth' || kind === 'sfp') return LINK_PARAMS
   if (kind === 'spk') return SPK_LINK_PARAMS
+  if (kind === 'fiber') return FIBER_LINK_PARAMS
   return null
 }
 

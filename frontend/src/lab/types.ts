@@ -9,7 +9,7 @@
 // بدون هالفصل، أول ما نضيف مجالاً رابعاً ينكسر كلشي.
 
 /** نوع المنفذ — يقرّر شنو ينربط بشنو. */
-export type PortKind = 'dc' | 'ac' | 'eth' | 'sfp' | 'signal' | 'spk'
+export type PortKind = 'dc' | 'ac' | 'eth' | 'sfp' | 'signal' | 'spk' | 'fiber'
 
 export interface PortDef {
   id: string
@@ -76,7 +76,7 @@ export interface PartDef {
   danger?: string
 }
 
-export type DomainId = 'electrical' | 'solar' | 'network' | 'fire' | 'audio'
+export type DomainId = 'electrical' | 'solar' | 'network' | 'fire' | 'audio' | 'gpon'
 
 /** نسخة قطعة موضوعة باللوح. */
 export interface LabNode {

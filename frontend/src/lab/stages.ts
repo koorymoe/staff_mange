@@ -31,6 +31,14 @@ export const GENERIC_STAGES: Stage[] = [
   { id: 'diag', label: 'التشخيص', hint: 'صلّح الأخطاء الخطيرة.' },
 ]
 
+export const GPON_STAGES: Stage[] = [
+  { id: 'build', label: 'بناء الشبكة', hint: 'حط OLT وسبليتر ووحدات ONT.' },
+  { id: 'fiber', label: 'مد الليف', hint: 'وصّل منفذ PON بالسبليتر، ومخارج السبليتر بالONT.' },
+  { id: 'budget', label: 'الميزانية الضوئية', hint: 'القدرة الواصلة لكل ONT ضمن حساسيته.' },
+  { id: 'config', label: 'تهيئة الخدمة', hint: 'اضبط وضع WAN والـVLAN — لازم يطابق الي بالOLT.' },
+  { id: 'diag', label: 'التشخيص', hint: 'ماكو أخطاء — كل المشتركين يسجّلون وعندهم خدمة.' },
+]
+
 export interface StageState {
   stages: Stage[]
   /** رقم المرحلة الحالية — أول وحدة ما اكتملت. */
@@ -47,7 +55,8 @@ export interface StageState {
  * الشريط أخضر.
  */
 export function computeStages(doc: LabDoc, result: SimResult | null): StageState {
-  const stages = doc.domain === 'solar' ? SOLAR_STAGES : GENERIC_STAGES
+  const stages = doc.domain === 'solar' ? SOLAR_STAGES
+    : doc.domain === 'gpon' ? GPON_STAGES : GENERIC_STAGES
   const has = (partId: string) => doc.nodes.some((n) => n.partId === partId)
   const errors = (result?.messages ?? []).filter((m) => m.kind === 'error').length
 
@@ -67,6 +76,17 @@ export function computeStages(doc: LabDoc, result: SimResult | null): StageState
     done.push(built && wired)
     done.push(built && wired && !!result && !cfgWarn)
     done.push(!!result)
+    done.push(!!result && errors === 0)
+  } else if (doc.domain === 'gpon') {
+    const built = has('olt') && has('ont')
+    const fiber = doc.links.length > 0
+    const msgs = result?.messages ?? []
+    const budgetOk = !!result && !msgs.some((m) => m.kind === 'error' && /القدرة الواصلة|ما يسجّل|إشباع/.test(m.text))
+    const cfgOk = !!result && !msgs.some((m) => m.kind === 'error' && /PPPoE|VLAN/.test(m.text))
+    done.push(built)
+    done.push(built && fiber)
+    done.push(budgetOk && built && fiber)
+    done.push(cfgOk && built && fiber)
     done.push(!!result && errors === 0)
   } else {
     done.push(doc.nodes.length > 0)
@@ -137,6 +157,18 @@ export function quickTest(doc: LabDoc, result: SimResult | null): QuickTest {
     checks.push(mk('backup', 'الاحتياطي والإنتاج اليومي',
       !hasWarn(/تغطّي الأحمال/) && !hasWarn(/ما يكفي، تحتاج ألواحاً/),
       'الاحتياطي أو الإنتاج اليومي ما يكفي الأحمال.'))
+  } else if (doc.domain === 'gpon') {
+    checks.push(mk('budget', 'الميزانية الضوئية لكل مشترك',
+      !msgs.some((m) => m.kind === 'error' && /القدرة الواصلة/.test(m.text)),
+      'اكو مشترك برّا حدود الحساسية — ما يسجّل أو مشبع.'))
+    checks.push(mk('margin', 'هامش ٣ ديسيبل على الأقل',
+      !hasWarn(/بلا هامش/), 'مسار بلا هامش — أي لحام أو اتساخ يطيّح الخدمة.'))
+    checks.push(mk('capacity', 'سعة منفذ PON', !hasErr(/سعته/),
+      'مشتركون أكثر من سعة المنفذ — الزيادة ما تنسجّل.'))
+    checks.push(mk('service', 'تهيئة الخدمة (WAN وVLAN)',
+      !hasErr(/PPPoE|VLAN/), 'ONT مسجّل ضوئياً بلا خدمة — الضوء أخضر وماكو إنترنت.'))
+    checks.push(mk('splitter', 'مخارج السبليتر ضمن نسبته', !hasErr(/أكثر من مخارجه/),
+      'سبليتر عليه مخارج أكثر من نسبته.'))
   } else {
     checks.push(mk('errors', 'ماكو أخطاء خطيرة', msgs.filter((m) => m.kind === 'error').length === 0,
       'بعدها أخطاء خطيرة بالمخطط.'))

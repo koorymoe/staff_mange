@@ -278,7 +278,54 @@ const MicSym = ({ w, h, accent }: SymProps) => (
   </g>
 )
 
+// ═══ الألياف الضوئية ═══
+const Olt = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <rect x={0} y={0} width={w} height={h} rx={4} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    {/* صف منافذ PON — العلامة الي تميّز الOLT */}
+    {[...Array(8)].map((_, i) => (
+      <rect key={i} x={w * (0.08 + i * 0.1)} y={h * 0.36} width={w * 0.06} height={h * 0.28} rx={1}
+        fill="#0b1220" stroke={STROKE} strokeWidth={0.6} />
+    ))}
+    <text x={w * 0.5} y={h * 0.88} fontSize={9} fill="#94a3b8" textAnchor="middle">OLT</text>
+    {live && <circle cx={w * 0.94} cy={h * 0.16} r={3} fill="#4ade80" />}
+  </g>
+)
+
+const Splitter = ({ w, h, accent, params }: SymProps) => (
+  <g>
+    {/* مثلث تفرّع — رمز المقسّم البصري */}
+    <path d={`M ${w * 0.18} ${h * 0.5} L ${w * 0.52} ${h * 0.16} L ${w * 0.52} ${h * 0.84} Z`}
+      fill={FILL} stroke={accent} strokeWidth={1.5} strokeLinejoin="round" />
+    {[0.24, 0.41, 0.59, 0.76].map((f, i) => (
+      <line key={i} x1={w * 0.52} y1={h * f} x2={w * 0.86} y2={h * f} stroke={STROKE} strokeWidth={1.2} />
+    ))}
+    <line x1={w * 0.04} y1={h * 0.5} x2={w * 0.18} y2={h * 0.5} stroke={STROKE} strokeWidth={1.6} />
+    <text x={w * 0.35} y={h * 0.55} fontSize={9} fill="#e2e8f0" textAnchor="middle" fontWeight="bold">
+      1:{String(params.ratio ?? '8')}
+    </text>
+  </g>
+)
+
+const Ont = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <rect x={w * 0.06} y={h * 0.22} width={w * 0.88} height={h * 0.56} rx={5} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    {[0.2, 0.32, 0.44].map((f, i) => (
+      <circle key={i} cx={w * f} cy={h * 0.5} r={2.6} fill={live ? ['#4ade80', '#4ade80', '#38bdf8'][i] : '#334155'} />
+    ))}
+    {/* موجات WiFi */}
+    {[0.62, 0.72].map((f, i) => (
+      <path key={i} d={`M ${w * f} ${h * 0.38} Q ${w * (f + 0.06)} ${h * 0.5} ${w * f} ${h * 0.62}`}
+        fill="none" stroke={live ? '#4ade80' : STROKE} strokeWidth={1.3} />
+    ))}
+    <text x={w * 0.5} y={h * 0.94} fontSize={8.5} fill="#94a3b8" textAnchor="middle">ONT</text>
+  </g>
+)
+
 const SYMBOLS: Record<string, (p: SymProps) => React.ReactElement> = {
+  olt: Olt,
+  splitter: Splitter,
+  ont: Ont,
   amplifier: Amplifier,
   speaker: SpeakerSym,
   horn: HornSym,
