@@ -30,6 +30,9 @@ import type { DomainEngine, DomainId, LabDoc, ParamDef, SimResult } from './type
 // ⚠️ الترمنال `lazy`: أغلب من يفتح اللوح ما يفتح كونسولاً، وتحميل
 // محرّك الأوامر مع الصفحة يثقّلها بلا فايدة.
 const CliTerminal = lazy(() => import('../cli/CliTerminal'))
+// ⚠️ المشهد الثلاثي `lazy` هم: Babylon حزمة ثقيلة، وأغلب الشغل
+// يصير بالمنظر التخطيطي. تحميلها مع الاستوديو يثقّل فتحه بلا فايدة.
+const Scene3D = lazy(() => import('./Scene3D'))
 
 /** السويچات الي تنهيّأ بالكونسول. */
 const CLI_PARTS = new Set(['switch_l2', 'switch_poe', 'switch_l3'])
@@ -77,6 +80,8 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [fitSignal, setFitSignal] = useState(0)
   const [zoomPct, setZoomPct] = useState(100)
   const [search, setSearch] = useState('')
+  /** ⚠️ المنظران يقرآن **نفس** `doc` — مصدر واحد للحقيقة (المخطط ١٩). */
+  const [view, setView] = useState<'plan' | '3d'>('plan')
   const [tab, setTab] = useState<'props' | 'ports' | 'state'>('props')
 
   // ═══ المخططات المحفوظة ═══
@@ -297,10 +302,21 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
               className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 disabled:opacity-40">
               ■ إيقاف
             </button>
-            <button onClick={() => setFitSignal((n) => n + 1)}
-              className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700">
-              ⤢ ضبط العرض
-            </button>
+            <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-700">
+              {([['plan', '🗺️ مخطط'], ['3d', '🧊 ثلاثي الأبعاد']] as const).map(([v, label]) => (
+                <button key={v} onClick={() => setView(v)}
+                  className={`px-3 py-1.5 text-xs font-bold transition ${
+                    view === v ? 'bg-slate-700 text-white' : 'bg-[#0b1220] text-slate-400 hover:text-slate-200'}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            {view === 'plan' && (
+              <button onClick={() => setFitSignal((n) => n + 1)}
+                className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700">
+                ⤢ ضبط العرض
+              </button>
+            )}
             <button onClick={clearAll}
               className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-300 ring-1 ring-red-500/30 hover:bg-red-500/20">
               🗑 تفريغ اللوح
@@ -402,13 +418,23 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                 (والـSVG بـ`h-full` جوّا حاوية بلا ارتفاع = صفر
                 تقريباً). طلعت شريطاً نحيفاً بنص شاشة فاضية. */}
             <div className="relative flex min-h-[440px] flex-1 p-2">
-              <Canvas
-                doc={doc} setDoc={setDoc} result={result}
-                selected={selected} setSelected={setSelected}
-                pendingPart={pendingPart} onPlaced={() => setPendingPart(null)}
-                fitSignal={fitSignal}
-                onZoom={setZoomPct}
-              />
+              {view === '3d' ? (
+                <Suspense fallback={
+                  <div className="flex h-full w-full items-center justify-center rounded-xl bg-[#070c14] text-slate-500">
+                    جاري تحميل المشهد الثلاثي…
+                  </div>
+                }>
+                  <Scene3D doc={doc} result={result} selected={selected} setSelected={setSelected} />
+                </Suspense>
+              ) : (
+                <Canvas
+                  doc={doc} setDoc={setDoc} result={result}
+                  selected={selected} setSelected={setSelected}
+                  pendingPart={pendingPart} onPlaced={() => setPendingPart(null)}
+                  fitSignal={fitSignal}
+                  onZoom={setZoomPct}
+                />
+              )}
 
               {/* أدوات على اللوح */}
               <div className="pointer-events-none absolute right-5 top-5 flex items-center gap-2">
@@ -419,14 +445,16 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                 </span>
               </div>
 
+              {view === 'plan' && (
               <div className="pointer-events-auto absolute left-5 top-5 flex items-center gap-1 rounded-lg bg-[#0e1626]/95 p-1 ring-1 ring-slate-700">
                 <button onClick={() => setFitSignal((n) => n + 1)} title="ضبط العرض"
                   className="rounded px-2 py-0.5 text-[13px] text-slate-300 hover:bg-slate-700">⤢</button>
                 <span className="px-1.5 font-mono text-[11px] tabular-nums text-slate-400">{zoomPct}٪</span>
               </div>
+              )}
 
               {/* خريطة مصغّرة */}
-              {doc.nodes.length > 0 && (
+              {view === 'plan' && doc.nodes.length > 0 && (
                 <div className="pointer-events-none absolute bottom-5 left-5 h-20 w-28 overflow-hidden rounded-lg bg-[#0e1626]/95 ring-1 ring-slate-700">
                   <Minimap doc={doc} />
                 </div>

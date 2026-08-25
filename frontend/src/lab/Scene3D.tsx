@@ -1,0 +1,340 @@
+// ═══ المنظر الفيزيائي لمساحة العمل ═══
+//
+// «أريد محاكاة قوية وثري دي لهاي الأشياء».
+//
+// ⚠️ **نفس المستند بالضبط** الي يقراه المنظر التخطيطي — مصدر واحد
+// للحقيقة (المخطط ١٩). تحرّك قطعة بالمخطط تتحرك هنا، وتضغط قطعة هنا
+// تنحدّد هناك. ولا منظر يخزن شي لحاله.
+//
+// ⚠️ ويعيد استعمال `buildDevice` من محرّك التوصيل **كما هي**: نفس
+// المولّد الي يبني القفل وجهاز التتبّع يبني اللوح الشمسي والإنفرتر.
+// كتابة مولّد ثانٍ للمشاهد الشمسية يعني شكلين يفترقان بأول تصحيح.
+
+import { useCallback, useEffect, useRef, useState } from 'react'
+
+import '@babylonjs/core/Culling/ray' // ⚠️ إجباري للالتقاط
+import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera'
+import { Engine } from '@babylonjs/core/Engines/engine'
+import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
+import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
+import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
+import { HighlightLayer } from '@babylonjs/core/Layers/highlightLayer'
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
+import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
+import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder'
+import { CreateTube } from '@babylonjs/core/Meshes/Builders/tubeBuilder'
+import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
+import { PointerEventTypes } from '@babylonjs/core/Events/pointerEvents'
+import { Scene as BabylonScene } from '@babylonjs/core/scene'
+import type { Mesh } from '@babylonjs/core/Meshes/mesh'
+
+import { buildDevice, type TerminalAnchor } from '../sim3d/deviceGeometry'
+import type { SimDevice, Terminal } from '../sim/types'
+import { PART_BY_ID } from './catalog'
+import type { LabDoc, LabNode, PartDef, SimResult } from './types'
+
+interface Props {
+  doc: LabDoc
+  result: SimResult | null
+  selected: string | null
+  setSelected: (id: string | null) => void
+}
+
+/** ═══ من قطعة اللوح إلى جهاز يفهمه المولّد ═══
+ *
+ *  ⚠️ محوّل رقيق عمداً: `buildDevice` تشتغل على `SimDevice`، وقطعة
+ *  اللوح `PartDef`. المحوّل يترجم بينهما بدل ما ننسخ المولّد.
+ *
+ *  ⚠️ والقطعة بلا `geo3d` تاخذ صندوقاً محسوباً من أبعادها التخطيطية
+ *  (١٠٠ وحدة لوح ≈ ٢٠ سم) — فإضافة قطعة جديدة ما تكسر المشهد، تطلع
+ *  صندوقاً بحجم معقول لحد ما تنكتب هندستها.
+ */
+function toDevice(part: PartDef, node: LabNode): SimDevice {
+  const g = part.geo3d
+  const sizeM = g?.sizeM ?? { w: (part.w / 100) * 0.2, h: (part.h / 100) * 0.2, d: 0.06 }
+  return {
+    id: part.id,
+    categoryId: '',
+    brand: '',
+    model: String(node.params.name ?? node.params.hostname ?? part.name),
+    name: part.name,
+    engineKind: 'WIRING',
+    spec: {},
+    // منافذ اللوح (نسبة ٠..١ من الرمز) تصير أطرافاً بنفس النسبة على الوجه
+    terminals: part.ports.map<Terminal>((p) => ({
+      id: p.id,
+      label: p.label,
+      colorHex: p.polarity === 'pos' ? '#dc2626' : p.polarity === 'neg' ? '#111827'
+        : p.kind === 'ac' ? '#f59e0b' : p.kind === 'spk' ? '#a855f7' : '#0ea5e9',
+      kind: p.kind.toUpperCase(),
+      x: p.x, y: p.y,
+    })),
+    ui: {},
+    geometry: {
+      sizeM,
+      bodyColorHex: g?.bodyColorHex ?? '#3f4756',
+      faceColorHex: g?.faceColorHex ?? '#232a36',
+      terminalPost: { radiusM: Math.min(0.006, sizeM.w * 0.03), heightM: 0.006 },
+      features: (g?.features ?? []) as never,
+    },
+    status: 'DRAFT',
+    version: 1,
+    verified: false,
+  }
+}
+
+/** لون الكيبل من قطبية منفذه — أحمر/أسود للمستمر وأصفر للمتناوب.
+ *  ⚠️ نفس اصطلاح الميدان: الفني يتتبّع اللون مو التسمية. */
+function cableColor(part: PartDef | undefined, portId: string): string {
+  const p = part?.ports.find((x) => x.id === portId)
+  if (!p) return '#94a3b8'
+  if (p.kind === 'ac') return '#f59e0b'
+  if (p.kind === 'eth' || p.kind === 'sfp') return '#38bdf8'
+  if (p.kind === 'spk') return '#a855f7'
+  return p.polarity === 'pos' ? '#dc2626' : p.polarity === 'neg' ? '#1f2937' : '#64748b'
+}
+
+/** وحدات اللوح ← أمتار. اللوح مساحة رسم، والمشهد عالم حقيقي.
+ *
+ *  ⚠️ الرقم انضبط **بالصورة مو بالحساب**: بـ٠٫٠١٢ الأجهزة تنباعد
+ *  سبعة أمتار واللوح الشمسي ٢٫٢٨ متر — فاللوح يهيمن والباقي يطلع
+ *  نقاطاً. المسافات بالمنظومة الحقيقية أقرب من هيچ: الإنفرتر
+ *  والبطاريات بغرفة وحدة. */
+const M_PER_UNIT = 0.0055
+
+export default function Scene3D({ doc, result, selected, setSelected }: Props) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const sceneRef = useRef<BabylonScene | null>(null)
+  const anchorsRef = useRef<Map<string, TerminalAnchor>>(new Map())
+  const rootsRef = useRef<Map<string, Mesh[]>>(new Map())
+  const cablesRef = useRef<Mesh[]>([])
+  const hlRef = useRef<HighlightLayer | null>(null)
+  const [ready, setReady] = useState(false)
+  const [hover, setHover] = useState<string | null>(null)
+
+  const cb = useRef({ setSelected })
+  useEffect(() => { cb.current = { setSelected } })
+
+  // ═══ بناء المشهد ═══
+  //
+  // ⚠️ يعاد بناؤه لمن **تتغيّر مجموعة القطع أو الوصلات** — مو مع كل
+  // تعديل خاصية. إعادة البناء مع كل ضغطة مفتاح بخانة رقمية تخلّي
+  // المشهد يترمّش، والكاميرا ترجع لمحلها الأول.
+  const topology = doc.nodes.map((n) => `${n.id}:${n.partId}:${n.x},${n.y}`).join('|') +
+    '#' + doc.links.map((l) => `${l.from.node}.${l.from.port}-${l.to.node}.${l.to.port}`).join('|')
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const engine = new Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true })
+    const bs = new BabylonScene(engine)
+    // ⚠️ اليد اليمنى — نفس سبب مشهد التوصيل: بلاها كل شي ينقلب مرآة.
+    bs.useRightHandedSystem = true
+    bs.clearColor = new Color4(0.03, 0.05, 0.09, 1)
+    sceneRef.current = bs
+
+    const camera = new ArcRotateCamera('cam', Math.PI / 2.4, Math.PI / 3.4, 6, new Vector3(0, 0.4, 0), bs)
+    camera.attachControl(canvas, true)
+    camera.lowerRadiusLimit = 1.2
+    camera.upperRadiusLimit = 24
+    camera.upperBetaLimit = Math.PI / 2.05
+    camera.wheelPrecision = 18
+    camera.panningSensibility = 120
+    camera.minZ = 0.05
+
+    new HemisphericLight('hemi', new Vector3(0, 1, 0), bs).intensity = 0.85
+    // ⚠️ الشمس تجي من زاوية عالية: الألواح مائلة، وضوء عمودي يخلّيها
+    // تبين مسطّحة بلا عمق.
+    const sun = new DirectionalLight('sun', new Vector3(-0.45, -1, -0.35), bs)
+    sun.position = new Vector3(6, 12, 5)
+    sun.intensity = 1.15
+    const shadows = new ShadowGenerator(1024, sun)
+    shadows.useBlurExponentialShadowMap = true
+    shadows.blurScale = 2
+
+    const ground = CreateGround('ground', { width: 24, height: 24 }, bs)
+    const gm = new StandardMaterial('m_ground', bs)
+    gm.diffuseColor = Color3.FromHexString('#0d1522')
+    gm.specularColor = new Color3(0.02, 0.02, 0.02)
+    ground.material = gm
+    ground.receiveShadows = true
+    ground.isPickable = false
+
+    hlRef.current = new HighlightLayer('hl3d', bs)
+
+    // ═══ القطع ═══
+    const anchors = new Map<string, TerminalAnchor>()
+    const roots = new Map<string, Mesh[]>()
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
+
+    for (const n of doc.nodes) {
+      const part = PART_BY_ID[n.partId]
+      if (!part) continue
+      const dev = toDevice(part, n)
+      const size = dev.geometry?.sizeM ?? { w: 0.2, h: 0.2, d: 0.06 }
+      // موقع اللوح (x يمين، y نزول) ← أرضية المشهد (X, Z)
+      const wx = (n.x + part.w / 2) * M_PER_UNIT
+      const wz = (n.y + part.h / 2) * M_PER_UNIT
+      minX = Math.min(minX, wx); maxX = Math.max(maxX, wx)
+      minZ = Math.min(minZ, wz); maxZ = Math.max(maxZ, wz)
+
+      const built = buildDevice(bs, dev, n.id, new Vector3(wx, size.h / 2 + 0.02, wz), 0)
+
+      // ⚠️ الميلان **بعد** البناء: `buildDevice` تبني بالمستوي الرأسي،
+      // واللوح الشمسي ينصب مائلاً. الميلان على الجذر يشيل الأطراف
+      // وياه، ونقاط السنّ تنعاد حسابها تحت.
+      const tilt = part.geo3d?.tiltDeg
+      if (tilt) {
+        built.root.rotation.x = -(90 - tilt) * (Math.PI / 180)
+        built.root.position.y = size.h * Math.sin((tilt * Math.PI) / 180) / 2 + 0.35
+        // قائم يسند اللوح — بدونه يطوف بالهوا.
+        const leg = CreateBox(`leg_${n.id}`, { width: 0.05, height: 0.7, depth: 0.05 }, bs)
+        leg.material = new StandardMaterial(`m_leg_${n.id}`, bs)
+        ;(leg.material as StandardMaterial).diffuseColor = Color3.FromHexString('#475569')
+        leg.position = new Vector3(wx, 0.35, wz + size.h * 0.25)
+        leg.isPickable = false
+        shadows.addShadowCaster(leg)
+      }
+
+      built.root.computeWorldMatrix(true)
+      const meshes = built.root.getChildMeshes() as Mesh[]
+      for (const m of meshes) { shadows.addShadowCaster(m); m.computeWorldMatrix(true) }
+      roots.set(n.id, meshes)
+
+      for (const a of built.anchors) {
+        a.post.computeWorldMatrix(true)
+        a.point = a.post.getAbsolutePosition().clone()
+        anchors.set(`${n.id}:${a.terminal.id}`, a)
+        // ⚠️ كل جسم بالقطعة يحمل معرّفها: الضغط على جسم اللوح نفسه
+        // لازم يحدّدها، مو بس الضغط على طرف.
+      }
+      for (const m of meshes) {
+        m.isPickable = true
+        m.metadata = { ...(m.metadata ?? {}), nodeId: n.id }
+      }
+    }
+    anchorsRef.current = anchors
+    rootsRef.current = roots
+
+    // ═══ الكيابل ═══
+    for (const l of doc.links) {
+      const a = anchors.get(`${l.from.node}:${l.from.port}`)
+      const b = anchors.get(`${l.to.node}:${l.to.port}`)
+      if (!a || !b) continue
+      const dist = Vector3.Distance(a.point, b.point)
+      const sag = Math.min(0.22, dist * 0.16)
+      const pts: Vector3[] = []
+      for (let i = 0; i <= 24; i++) {
+        const t = i / 24
+        const p = Vector3.Lerp(a.point, b.point, t)
+        p.y -= Math.sin(Math.PI * t) * sag
+        pts.push(p)
+      }
+      const tube = CreateTube(`cab_${l.id}`, { path: pts, radius: 0.016, tessellation: 8 }, bs)
+      const tm = new StandardMaterial(`m_cab_${l.id}`, bs)
+      tm.diffuseColor = Color3.FromHexString(cableColor(PART_BY_ID[doc.nodes.find((n) => n.id === l.from.node)?.partId ?? ''], l.from.port))
+      tm.specularColor = new Color3(0.2, 0.2, 0.2)
+      tube.material = tm
+      tube.isPickable = false
+      shadows.addShadowCaster(tube)
+      cablesRef.current.push(tube)
+    }
+
+    // ═══ ضبط الكاميرا على المحتوى ═══
+    if (Number.isFinite(minX)) {
+      const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2
+      const span = Math.max(maxX - minX, maxZ - minZ, 2)
+      camera.setTarget(new Vector3(cx, 0.55, cz))
+      camera.radius = Math.max(3.2, span * 1.15 + 2.2)
+    }
+
+    // ═══ التفاعل ═══
+    bs.onPointerObservable.add((info) => {
+      const meta = info.pickInfo?.pickedMesh?.metadata as { nodeId?: string } | undefined
+      if (info.type === PointerEventTypes.POINTERMOVE) {
+        setHover(meta?.nodeId ?? null)
+        canvas.style.cursor = meta?.nodeId ? 'pointer' : 'grab'
+        return
+      }
+      // ⚠️ `POINTERTAP` مو `POINTERPICK`: الثاني ما ينطلق إلا لمن
+      // ينضغط **جسم**، فالضغط على الفراغ ما يلغي التحديد أبداً —
+      // والفني يضل يدوّر شلون يلغيه. و`TAP` ما ينطلق بعد سحب
+      // الكاميرا، فتدوير المشهد ما يلغي تحديدك.
+      if (info.type !== PointerEventTypes.POINTERTAP) return
+      cb.current.setSelected(meta?.nodeId ?? null)
+    })
+
+    engine.runRenderLoop(() => bs.render())
+    const onResize = () => engine.resize()
+    window.addEventListener('resize', onResize)
+    setReady(true)
+
+    if (import.meta.env.DEV) {
+      ;(window as unknown as { __labScene?: Engine }).__labScene = engine
+    }
+
+    return () => {
+      window.removeEventListener('resize', onResize)
+      engine.stopRenderLoop()
+      bs.dispose()
+      engine.dispose()
+      sceneRef.current = null
+      cablesRef.current = []
+      setReady(false)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [topology])
+
+  // ═══ التمييز ═══
+  const highlight = useCallback(() => {
+    const hl = hlRef.current
+    if (!hl) return
+    hl.removeAllMeshes()
+    for (const [id, color] of [[selected, '#38bdf8'], [hover, '#94a3b8']] as const) {
+      if (!id || (id === hover && hover === selected)) continue
+      for (const m of rootsRef.current.get(id) ?? []) hl.addMesh(m, Color3.FromHexString(color))
+    }
+  }, [selected, hover])
+  useEffect(() => { if (ready) highlight() }, [ready, highlight])
+
+  const sel = doc.nodes.find((n) => n.id === (hover ?? selected))
+  const selPart = sel ? PART_BY_ID[sel.partId] : null
+  const readings = sel ? result?.nodeReadings[sel.id] ?? [] : []
+
+  return (
+    <div className="relative h-full w-full overflow-hidden rounded-xl bg-[#070c14] ring-1 ring-slate-800">
+      <canvas ref={canvasRef} className="block h-full w-full touch-none outline-none" />
+
+      {doc.nodes.length === 0 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <p className="text-[12px] text-slate-600">اللوح فاضي — حط قطعاً من المكتبة.</p>
+        </div>
+      )}
+
+      {/* بطاقة القطعة تحت المؤشر */}
+      {sel && selPart && (
+        <div className="pointer-events-none absolute bottom-3 right-3 max-w-xs rounded-xl bg-black/70 px-3 py-2 text-xs text-slate-100 backdrop-blur">
+          <b>{String(sel.params.name ?? sel.params.hostname ?? selPart.name)}</b>
+          {selPart.model && <span className="block text-[10px] text-slate-400">{selPart.model}</span>}
+          {readings.map((r, i) => (
+            <span key={i} className={`mt-0.5 block font-mono text-[11px] ${
+              r.tone === 'bad' ? 'text-red-300' : r.tone === 'warn' ? 'text-amber-300' : 'text-emerald-300'}`}>
+              {r.text}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* مفتاح ألوان الأسلاك — الفني يتتبّع اللون مو التسمية */}
+      <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/55 px-2.5 py-2 text-[10px] text-slate-300 backdrop-blur">
+        {[['#dc2626', 'موجب DC'], ['#1f2937', 'سالب DC'], ['#f59e0b', 'تيار متناوب']].map(([c, t]) => (
+          <span key={t} className="flex items-center gap-1.5">
+            <span className="inline-block h-1.5 w-4 rounded" style={{ background: c }} />
+            {t}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -54,6 +54,22 @@ export interface PartDef {
   h: number
   ports: PortDef[]
   params: ParamDef[]
+  /** ═══ الهندسة ثلاثية الأبعاد ═══
+   *
+   *  نفس شكل `DeviceGeometry` بمحرّك التوصيل — **عمداً**: هذا الي
+   *  يخلّي `buildDevice` تنعاد استعمالها كما هي بلا محوّل ولا نسخة
+   *  ثانية من مولّد الأجسام.
+   *
+   *  ⚠️ الوحدة **متر** ١:١ مثل بقية المشاهد الثلاثية. القطعة بلا
+   *  هندسة تنرسم صندوقاً عاماً — فإضافة قطعة ما تكسر المشهد. */
+  geo3d?: {
+    sizeM: { w: number; h: number; d: number }
+    bodyColorHex?: string
+    faceColorHex?: string
+    /** ميلان حول المحور الأفقي — الألواح تنصب مائلة مو مسطّحة. */
+    tiltDeg?: number
+    features?: unknown[]
+  }
   /** شرح قصير يطلع بلوحة الخصائص وبالكتالوگ. */
   about?: string
   /** تحذير سلامة يطلع لمن تنحط القطعة. */

@@ -83,7 +83,8 @@ const ELECTRICAL: PartDef[] = [
 const SOLAR: PartDef[] = [
   {
     id: 'pv_panel', domain: 'solar', name: 'لوح شمسي', model: '٥٥٠ واط · Vmp ٤١٫٥', symbol: 'pv',
-    w: 110, h: 75, about: 'لوح كهروضوئي — خرجه يتبع الإشعاع ودرجة الحرارة.',
+    w: 110, h: 75, geo3d: { sizeM: { w: 1.13, h: 2.28, d: 0.035 }, bodyColorHex: '#1e293b', faceColorHex: '#0f2744', tiltDeg: 28, features: [{ kind: 'pvCells', cols: 6, rows: 12 }] },
+    about: 'لوح كهروضوئي — خرجه يتبع الإشعاع ودرجة الحرارة.',
     ports: [
       { id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 1, y: 0.3 },
       { id: 'neg', label: '−', kind: 'dc', polarity: 'neg', x: 1, y: 0.7 },
@@ -99,6 +100,7 @@ const SOLAR: PartDef[] = [
   {
     id: 'inverter', domain: 'solar', name: 'إنفرتر هجين', model: 'هجين ٥ كيلوواط · MPPT', symbol: 'inverter',
     w: 120, h: 110,
+    geo3d: { sizeM: { w: 0.42, h: 0.58, d: 0.17 }, bodyColorHex: '#cbd5e1', faceColorHex: '#94a3b8', features: [{ kind: 'screen', x: 0.5, y: 0.34, w: 0.5, h: 0.2 }, { kind: 'statusLed', x: 0.3, y: 0.62 }, { kind: 'statusLed', x: 0.5, y: 0.62 }, { kind: 'statusLed', x: 0.7, y: 0.62 }] },
     ports: [
       { id: 'pv_pos', label: 'PV +', kind: 'dc', polarity: 'pos', x: 0, y: 0.22 },
       { id: 'pv_neg', label: 'PV −', kind: 'dc', polarity: 'neg', x: 0, y: 0.42 },
@@ -120,6 +122,7 @@ const SOLAR: PartDef[] = [
   {
     id: 'battery', domain: 'solar', name: 'بطارية', model: 'بنك ٤٨ فولت · ١٠٠ أمبير·ساعة', symbol: 'battery_bank',
     w: 110, h: 80,
+    geo3d: { sizeM: { w: 0.44, h: 0.22, d: 0.40 }, bodyColorHex: '#0f172a', faceColorHex: '#1e293b', features: [{ kind: 'screen', x: 0.5, y: 0.45, w: 0.34, h: 0.3 }] },
     ports: [
       { id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 1, y: 0.3 },
       { id: 'neg', label: '−', kind: 'dc', polarity: 'neg', x: 1, y: 0.7 },
@@ -135,6 +138,7 @@ const SOLAR: PartDef[] = [
   {
     id: 'load', domain: 'solar', name: 'حمل', model: 'حمل تيار متناوب', symbol: 'load',
     w: 95, h: 70,
+    geo3d: { sizeM: { w: 0.36, h: 0.50, d: 0.14 }, bodyColorHex: '#334155', faceColorHex: '#1e293b', features: [{ kind: 'breakerRow', count: 6 }] },
     ports: [{ id: 'ac_in', label: 'AC', kind: 'ac', polarity: 'none', x: 0, y: 0.5 }],
     params: [
       { id: 'p', label: 'القدرة', unit: 'W', kind: 'number', default: 1200, min: 1 },

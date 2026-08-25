@@ -86,6 +86,47 @@ function labelPlate(scene: Scene, text: string, wPx: number, hPx: number, bg: st
   return tex
 }
 
+/** نسيج خلايا اللوح — شبكة خطوط على أزرق داكن.
+ *
+ *  ⚠️ ينبني **مرة وحدة لكل شكل** ويتشارك بين كل الألواح: نسيج لكل
+ *  لوح يعني ذاكرة GPU تتضاعف مع كل لوح ينضاف للمشهد. */
+const pvTexCache = new Map<string, DynamicTexture>()
+function pvTexture(scene: Scene, cols: number, rows: number): DynamicTexture {
+  const key = `${cols}x${rows}`
+  // ⚠️ المفتاح يشمل **المشهد**: المشهد ينهدم لمن تسكّر الصفحة،
+  // والنسيج ينهدم وياه — فنسيج مخبّأ من مشهد ميت يعطي لوحاً أسود.
+  const hit = pvTexCache.get(key)
+  if (hit && hit.getScene() === scene) return hit
+  const W = 256, H = 512
+  const tex = new DynamicTexture(`pv_${key}`, { width: W, height: H }, scene, false)
+  const ctx = tex.getContext() as CanvasRenderingContext2D
+  ctx.fillStyle = '#0f2744'
+  ctx.fillRect(0, 0, W, H)
+  ctx.fillStyle = '#12325a'
+  const cw = W / cols, ch = H / rows
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      ctx.fillRect(c * cw + 1.5, r * ch + 1.5, cw - 3, ch - 3)
+    }
+  }
+  // شريط الأشرطة الموصلة — تفصيلة صغيرة بس هي الي تخلّيه يشبه لوحاً
+  ctx.strokeStyle = '#93a4bd'
+  ctx.lineWidth = 1
+  for (let c = 0; c < cols; c++) {
+    for (const f of [0.33, 0.66]) {
+      ctx.beginPath()
+      ctx.moveTo(c * cw + cw * f, 0)
+      ctx.lineTo(c * cw + cw * f, H)
+      ctx.stroke()
+    }
+  }
+  tex.update()
+  tex.vScale = -1
+  tex.vOffset = 1
+  pvTexCache.set(key, tex)
+  return tex
+}
+
 /**
  * يبني جهازاً كاملاً بالمشهد.
  *
@@ -171,6 +212,40 @@ export function buildDevice(
             t.isPickable = false
           }
         }
+      }
+    } else if (f.kind === 'pvCells') {
+      // ═══ خلايا اللوح ═══
+      //
+      // ⚠️ الخلايا **جسم واحد بشبكة خطوط** مو ٧٢ صندوقاً: لوح واحد
+      // بـ٧٢ خلية × عشرة ألواح بالمشهد = ٧٢٠ جسماً، والمشهد ينهار.
+      // الخطوط تعطي نفس الانطباع بجسم واحد.
+      const cell = CreateBox(`cells_${deviceRef}`, { width: w * 0.94, height: h * 0.94, depth: 0.001 }, scene)
+      const cm = new StandardMaterial(`m_cells_${deviceRef}`, scene)
+      cm.diffuseTexture = pvTexture(scene, f.cols, f.rows)
+      cm.specularColor = new Color3(0.4, 0.45, 0.55)
+      cell.material = cm
+      cell.position = new Vector3(0, 0, faceZ + 0.0008)
+      cell.parent = root
+      cell.isPickable = false
+    } else if (f.kind === 'screen') {
+      const sw = f.w * w, sh = f.h * h
+      const scr = CreateBox(`scr_${deviceRef}`, { width: sw, height: sh, depth: 0.002 }, scene)
+      const sm = new StandardMaterial(`m_scr_${deviceRef}`, scene)
+      sm.diffuseColor = Color3.FromHexString('#0b2b22')
+      sm.emissiveColor = Color3.FromHexString('#0b3a2c')
+      scr.material = sm
+      scr.position = onFace(f.x, f.y, faceZ + 0.0016)
+      scr.parent = root
+      scr.isPickable = false
+    } else if (f.kind === 'breakerRow') {
+      // صف قواطع — الرمز الي يميّز لوحة التوزيع بلمحة.
+      const bw = (w * 0.8) / f.count
+      for (let i = 0; i < f.count; i++) {
+        const br = CreateBox(`brk_${deviceRef}_${i}`, { width: bw * 0.7, height: h * 0.16, depth: 0.004 }, scene)
+        br.material = mat(scene, `m_brk_${deviceRef}`, '#e2e8f0')
+        br.position = new Vector3(-w * 0.4 + bw * (i + 0.5), h * 0.1, faceZ + 0.003)
+        br.parent = root
+        br.isPickable = false
       }
     } else if (f.kind === 'statusLed') {
       const led = CreateCylinder(`led_${deviceRef}`, { diameter: 0.006, height: 0.002 }, scene)

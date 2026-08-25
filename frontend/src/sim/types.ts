@@ -43,6 +43,10 @@ export type GeometryFeature =
   | { kind: 'keypad'; x: number; y: number; w: number; h: number; cols: number; rows: number }
   | { kind: 'statusLed'; x: number; y: number; channel?: string }
   | { kind: 'terminalPlate'; x0: number; y0: number; x1: number; y1: number }
+  // ═══ ملامح المنظومة الشمسية ═══
+  | { kind: 'pvCells'; cols: number; rows: number }
+  | { kind: 'screen'; x: number; y: number; w: number; h: number }
+  | { kind: 'breakerRow'; count: number }
 
 /** ═══ نوع الموصّل ═══
  *

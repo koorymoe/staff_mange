@@ -159,6 +159,11 @@ export default function Canvas({ doc, setDoc, result, selected, setSelected, pen
   }
 
   const onNodeDown = (e: React.MouseEvent, n: LabNode) => {
+    // ⚠️ قطعة مسلّحة بالمكتبة ← الضغط **يحط** حتى لو صادف قطعة
+    // موجودة. بدون هذا، أي ضغط يصادف قطعة يحدّدها بدل ما يحط، والفني
+    // يظن المكتبة خربانة — خصوصاً بعد ضبط العرض لمن تكبر القطع وتغطّي
+    // نص اللوح. نتركه يفوت للخلفية وهي تحط.
+    if (pendingPart) return
     e.stopPropagation()
     setSelected(n.id)
     const b = toBoard(e.clientX, e.clientY)
@@ -308,8 +313,8 @@ export default function Canvas({ doc, setDoc, result, selected, setSelected, pen
                     تنحدّد أبداً. */}
                 <g
                   onMouseDown={(e) => onNodeDown(e, n)}
-                  onClick={(e) => e.stopPropagation()}
-                  className="cursor-grab"
+                  onClick={(e) => { if (!pendingPart) e.stopPropagation() }}
+                  className={pendingPart ? 'cursor-copy' : 'cursor-grab'}
                 >
                   <Symbol symbol={part.symbol} w={part.w} h={part.h} accent={accent} live={live} params={n.params} />
                 </g>
