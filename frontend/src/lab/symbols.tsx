@@ -235,7 +235,54 @@ const Eol = ({ w, h, accent }: SymProps) => (
   </g>
 )
 
+// ═══ الصوت ═══
+const Amplifier = ({ w, h, accent, live, params }: SymProps) => (
+  <g>
+    <rect x={0} y={0} width={w} height={h} rx={5} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    {/* مثلث التكبير — الرمز المتعارف */}
+    <path d={`M ${w * 0.2} ${h * 0.25} L ${w * 0.6} ${h * 0.5} L ${w * 0.2} ${h * 0.75} Z`}
+      fill="none" stroke={STROKE} strokeWidth={1.8} strokeLinejoin="round" />
+    <text x={w * 0.76} y={h * 0.44} fontSize={10} fill="#94a3b8" textAnchor="middle">
+      {String(params.mode ?? '100v') === '100v' ? '100V' : 'LOW-Z'}
+    </text>
+    <text x={w * 0.76} y={h * 0.66} fontSize={10} fill="#64748b" textAnchor="middle">{String(params.pRated ?? '')}W</text>
+    {live && <circle cx={w * 0.08} cy={h * 0.12} r={3} fill="#4ade80" />}
+  </g>
+)
+
+const SpeakerSym = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <rect x={w * 0.18} y={h * 0.3} width={w * 0.18} height={h * 0.4} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    <path d={`M ${w * 0.36} ${h * 0.3} L ${w * 0.62} ${h * 0.12} L ${w * 0.62} ${h * 0.88} L ${w * 0.36} ${h * 0.7} Z`}
+      fill={live ? '#334155' : FILL} stroke={accent} strokeWidth={1.5} strokeLinejoin="round" />
+    {live && [0.7, 0.82].map((f, i) => (
+      <path key={i} d={`M ${w * f} ${h * (0.3 + i * 0.05)} Q ${w * (f + 0.07)} ${h * 0.5} ${w * f} ${h * (0.7 - i * 0.05)}`}
+        fill="none" stroke="#4ade80" strokeWidth={1.4} />
+    ))}
+  </g>
+)
+
+const HornSym = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <path d={`M ${w * 0.14} ${h * 0.38} L ${w * 0.38} ${h * 0.38} L ${w * 0.72} ${h * 0.1} L ${w * 0.72} ${h * 0.9} L ${w * 0.38} ${h * 0.62} L ${w * 0.14} ${h * 0.62} Z`}
+      fill={live ? '#334155' : FILL} stroke={accent} strokeWidth={1.5} strokeLinejoin="round" />
+    <line x1={w * 0.72} y1={h * 0.1} x2={w * 0.72} y2={h * 0.9} stroke={STROKE} strokeWidth={1.4} />
+  </g>
+)
+
+const MicSym = ({ w, h, accent }: SymProps) => (
+  <g>
+    <rect x={w * 0.36} y={h * 0.12} width={w * 0.28} height={h * 0.42} rx={w * 0.14} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    <path d={`M ${w * 0.24} ${h * 0.46} a ${w * 0.26} ${h * 0.26} 0 0 0 ${w * 0.52} 0`} fill="none" stroke={STROKE} strokeWidth={1.6} />
+    <line x1={w / 2} y1={h * 0.72} x2={w / 2} y2={h * 0.88} stroke={STROKE} strokeWidth={1.6} />
+  </g>
+)
+
 const SYMBOLS: Record<string, (p: SymProps) => React.ReactElement> = {
+  amplifier: Amplifier,
+  speaker: SpeakerSym,
+  horn: HornSym,
+  mic: MicSym,
   fire_panel: FirePanel,
   detector: Detector,
   mcp: Mcp,

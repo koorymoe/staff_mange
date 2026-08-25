@@ -12,7 +12,7 @@
 // باللمس هم.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { LINK_PARAMS } from './cables'
+import { linkParamsFor } from './cables'
 import { PART_BY_ID } from './catalog'
 import { Symbol } from './symbols'
 import type { LabDoc, LabNode, SimResult } from './types'
@@ -224,11 +224,12 @@ export default function Canvas({ doc, setDoc, result, selected, setSelected, pen
         id: `l${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`,
         from: { node: armed.node, port: armed.port },
         to: { node: nodeId, port: portId },
-        // ⚠️ الوصلات الشبكية بس تاخذ خصائص كيبل — وصلة تغذية مستمرة
-        // ما إلها «نوع كيبل Cat6».
-        params: a.kind === 'eth' || a.kind === 'sfp'
-          ? Object.fromEntries(LINK_PARAMS.map((lp) => [lp.id, lp.default]))
-          : undefined,
+        // ⚠️ الخصائص حسب **نوع المنفذ**: كيبل شبكة إله نوع وترانسيفر،
+        // وخط سماعات إله مقطع وطول، ووصلة تغذية مستمرة ماكو إلها شي.
+        params: (() => {
+          const defs = linkParamsFor(a.kind)
+          return defs ? Object.fromEntries(defs.map((lp) => [lp.id, lp.default])) : undefined
+        })(),
       }],
     }))
     setArmed(null)

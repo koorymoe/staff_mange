@@ -17,9 +17,10 @@ import { api } from '../api'
 import { CISCO_LIKE } from '../cli/ciscoLike'
 import SimGate from '../sim/SimGate'
 import Canvas from './Canvas'
-import { CABLE_BY_ID, LINK_PARAMS, MEDIUM_AR } from './cables'
+import { CABLE_BY_ID, linkParamsFor, MEDIUM_AR } from './cables'
 import { DOMAINS, PARTS, PART_BY_ID } from './catalog'
 import { electricalEngine } from './engines/electrical'
+import { audioEngine } from './engines/audio'
 import { fireEngine } from './engines/fire'
 import { networkEngine } from './engines/network'
 import { solarEngine } from './engines/solar'
@@ -38,6 +39,7 @@ const ENGINES: Record<DomainId, DomainEngine> = {
   solar: solarEngine,
   network: networkEngine,
   fire: fireEngine,
+  audio: audioEngine,
 }
 
 export default function LabWorkbench() {
@@ -63,6 +65,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
       solar: { domain: 'solar', nodes: [], links: [] },
       electrical: { domain: 'electrical', nodes: [], links: [] },
       fire: { domain: 'fire', nodes: [], links: [] },
+      audio: { domain: 'audio', nodes: [], links: [] },
     }
     if (startDoc) empty[startDoc.domain] = startDoc
     return empty
@@ -403,19 +406,25 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
           {/* ═══ خصائص الكيبل ═══
               ⚠️ هنا الفرق الحقيقي عن Packet Tracer: الكيبل مو خط —
               له نوع وطول وترانسيفر بكل طرف، وكلهن ينفحصن. */}
-          {selLink && selLink.params && (
+          {selLink && selLink.params && (() => {
+            const fromKind = PART_BY_ID[doc.nodes.find((n) => n.id === selLink.from.node)?.partId ?? '']
+              ?.ports.find((p) => p.id === selLink.from.port)?.kind ?? 'eth'
+            const defs = linkParamsFor(fromKind) ?? []
+            const net = CABLE_BY_ID[String(selLink.params.cable ?? '')]
+            return (
             <div className="space-y-3">
               <div>
-                <p className="text-sm font-bold text-brand-900">🔌 كيبل</p>
-                <p className="mt-0.5 text-[11px] text-slate-500">
-                  {CABLE_BY_ID[String(selLink.params.cable)]?.about}
-                </p>
-                <p className="mt-1 text-[10.5px] text-slate-400">
-                  الوسط: {MEDIUM_AR[CABLE_BY_ID[String(selLink.params.cable)]?.medium ?? 'copper']} ·
-                  الحد {CABLE_BY_ID[String(selLink.params.cable)]?.maxM} م
-                </p>
+                <p className="text-sm font-bold text-brand-900">🔌 {fromKind === 'spk' ? 'خط سماعات' : 'كيبل'}</p>
+                {net && (
+                  <>
+                    <p className="mt-0.5 text-[11px] text-slate-500">{net.about}</p>
+                    <p className="mt-1 text-[10.5px] text-slate-400">
+                      الوسط: {MEDIUM_AR[net.medium]} · الحد {net.maxM} م
+                    </p>
+                  </>
+                )}
               </div>
-              {LINK_PARAMS.map((lp) => (
+              {defs.map((lp) => (
                 <Field key={lp.id} def={lp} value={selLink.params?.[lp.id]} onChange={(v) => setLinkParam(lp.id, v)} />
               ))}
               <button
@@ -425,7 +434,8 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                 🗑 احذف الكيبل
               </button>
             </div>
-          )}
+            )
+          })()}
           {selNode && selPart && (
             <div className="space-y-3">
               <div>

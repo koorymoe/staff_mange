@@ -13,6 +13,9 @@
 // ٣) **ترانسيفرات مو متطابقة بالطرفين.** SX على LX ما يشتغلون سوا.
 // ٤) **ترانسيفر بمنفذ نحاس أو كيبل نحاس بقفص SFP** — ما ينركّب أصلاً.
 
+import { CABLE_GAUGES } from '../sim3d/cable'
+import type { PortKind } from './types'
+
 /** وسط النقل — النحاس والليف ما يتبادلون. */
 export type Medium = 'copper' | 'mmf' | 'smf' | 'console'
 
@@ -82,6 +85,28 @@ export const LINK_PARAMS = [
   { id: 'sfpB', label: 'ترانسيفر الطرف الثاني', kind: 'select' as const, default: 'none',
     options: SFPS.map((s) => ({ value: s.id, label: s.name })) },
 ]
+
+/** ═══ خصائص خط السماعات ═══
+ *
+ *  ⚠️ خط الصوت **مو كيبل شبكة**: ما إله Cat6 ولا ترانسيفر — إله
+ *  **مقطع بالمليمتر المربّع** وطول، ومنهما تنحسب خسارة الخط. عرض
+ *  خانة «نوع الكيبل Cat6» على خط سماعات يربك الفني ويعلّم غلط. */
+export const SPK_LINK_PARAMS = [
+  { id: 'gauge', label: 'مقطع السلك', kind: 'select' as const, default: 'mm15',
+    options: CABLE_GAUGES.map((g) => ({ value: g.id, label: g.label })) },
+  { id: 'lengthM', label: 'طول الخط', unit: 'م', kind: 'number' as const, default: 30, min: 1, max: 2000,
+    help: 'خط الـ١٠٠ فولت انخترع أصلاً عشان المسافات الطويلة — بس الخسارة تبقى موجودة.' },
+]
+
+/** ═══ أي خصائص تنعطى لوصلة بين منفذين؟ ═══
+ *
+ *  ⚠️ مركزية عمداً: بدونها كل محرّك يخمّن شكل خصائص وصلاته، وأول
+ *  مجال جديد يكتب صيغة رابعة. */
+export function linkParamsFor(kind: PortKind) {
+  if (kind === 'eth' || kind === 'sfp') return LINK_PARAMS
+  if (kind === 'spk') return SPK_LINK_PARAMS
+  return null
+}
 
 export interface LinkCheck {
   ok: boolean

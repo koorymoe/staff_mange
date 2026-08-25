@@ -339,7 +339,70 @@ const FIRE: PartDef[] = [
   },
 ]
 
-export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE]
+// ═══ الصوت والإذاعة ═══
+//
+// ⚠️ منافذ السماعات نوعها `spk` مو `signal`: هذا الي يخلّي اللوح
+// يعطي الوصلة **خصائص خط سماعات** (مقطع وطول) بدل خصائص كيبل شبكة،
+// ويمنع ربط سماعة بمنفذ شبكة.
+const AUDIO: PartDef[] = [
+  {
+    id: 'amplifier', domain: 'audio', name: 'مكبّر صوت', symbol: 'amplifier',
+    w: 130, h: 80,
+    about: 'خط ١٠٠ فولت للمسافات الطويلة والمناطق، أو مقاومة منخفضة للقاعات القريبة.',
+    ports: [
+      { id: 'out1', label: 'مخرج ١', kind: 'spk', x: 1, y: 0.35 },
+      { id: 'out2', label: 'مخرج ٢', kind: 'spk', x: 1, y: 0.68 },
+      { id: 'mic', label: 'ميكروفون', kind: 'signal', x: 0, y: 0.5 },
+    ],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'AMP1' },
+      { id: 'pRated', label: 'القدرة', unit: 'W', kind: 'number', default: 120, min: 10 },
+      { id: 'mode', label: 'وضع المخرج', kind: 'select', default: '100v',
+        options: [{ value: '100v', label: 'خط ١٠٠ فولت' }, { value: 'lowz', label: 'مقاومة منخفضة' }] },
+      { id: 'minOhm', label: 'أدنى مقاومة (وضع لو-Z)', unit: 'Ω', kind: 'number', default: 4, min: 1,
+        help: 'النزول تحتها يعني تيار زائد — فصل أو احتراق.' },
+    ],
+    danger: 'ربط مخرجَي مكبّرين ببعض يحرق الاثنين.',
+  },
+  {
+    id: 'ceiling_speaker', domain: 'audio', name: 'سماعة سقف', symbol: 'speaker',
+    w: 80, h: 75,
+    ports: [
+      { id: 'in', label: 'داخل', kind: 'spk', x: 0, y: 0.5 },
+      { id: 'out', label: 'خارج', kind: 'spk', x: 1, y: 0.5 },
+    ],
+    params: [
+      { id: 'mode', label: 'الوضع', kind: 'select', default: '100v',
+        options: [{ value: '100v', label: 'بمحوّل ١٠٠ فولت' }, { value: 'lowz', label: 'مقاومة منخفضة' }] },
+      { id: 'tapW', label: 'التاب', unit: 'W', kind: 'select', default: 6,
+        options: [{ value: '3', label: '٣ واط' }, { value: '6', label: '٦ واط' }, { value: '12', label: '١٢ واط' }, { value: '24', label: '٢٤ واط' }] },
+      { id: 'ohm', label: 'المقاومة (وضع لو-Z)', unit: 'Ω', kind: 'number', default: 8, min: 1 },
+    ],
+  },
+  {
+    id: 'horn_speaker', domain: 'audio', name: 'بوق خارجي', symbol: 'horn',
+    w: 85, h: 70, about: 'للساحات والمخازن — صوت عالٍ ومدى بعيد.',
+    ports: [
+      { id: 'in', label: 'داخل', kind: 'spk', x: 0, y: 0.5 },
+      { id: 'out', label: 'خارج', kind: 'spk', x: 1, y: 0.5 },
+    ],
+    params: [
+      { id: 'mode', label: 'الوضع', kind: 'select', default: '100v',
+        options: [{ value: '100v', label: 'بمحوّل ١٠٠ فولت' }, { value: 'lowz', label: 'مقاومة منخفضة' }] },
+      { id: 'tapW', label: 'التاب', unit: 'W', kind: 'select', default: 24,
+        options: [{ value: '10', label: '١٠ واط' }, { value: '15', label: '١٥ واط' }, { value: '24', label: '٢٤ واط' }, { value: '30', label: '٣٠ واط' }] },
+      { id: 'ohm', label: 'المقاومة (وضع لو-Z)', unit: 'Ω', kind: 'number', default: 8, min: 1 },
+    ],
+  },
+  {
+    id: 'paging_mic', domain: 'audio', name: 'ميكروفون نداء', symbol: 'mic',
+    w: 75, h: 70,
+    ports: [{ id: 'out', label: 'خرج', kind: 'signal', x: 1, y: 0.5 }],
+    params: [{ id: 'name', label: 'الاسم', kind: 'text', default: 'MIC1' }],
+  },
+]
+
+export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE, ...AUDIO]
 
 export const PART_BY_ID: Record<string, PartDef> = Object.fromEntries(PARTS.map((p) => [p.id, p]))
 
@@ -348,6 +411,7 @@ export const DOMAINS: { id: DomainId; name: string; icon: string; about: string 
   { id: 'solar', name: 'الطاقة الشمسية', icon: '☀️', about: 'ألواح وإنفرتر وبطاريات وأحمال — افحص الستring والتوازن قبل الميدان.' },
   { id: 'electrical', name: 'الدوائر الكهربائية', icon: '⚡', about: 'مصادر ومقاومات ولمبات ومفاتيح — الدائرة تنحل فعلاً بقوانين كيرشوف.' },
   { id: 'fire', name: 'إنذار الحريق', icon: '🔥', about: 'زونات ومقاومة نهاية وصفّارات وبطارية — اللوحة تقرا عطلاً لو الخط غلط.' },
+  { id: 'audio', name: 'الصوت والإذاعة', icon: '🔊', about: 'مكبّرات وسماعات وخط ١٠٠ فولت — التحميل الزائد يحرق المكبّر.' },
 ]
 
 /** القيم الابتدائية لقطعة — تنسخ من الكتالوگ لمن تنحط باللوح. */
