@@ -21,7 +21,7 @@ import { ShadowGenerator } from '@babylonjs/core/Lights/Shadows/shadowGenerator'
 import { HighlightLayer } from '@babylonjs/core/Layers/highlightLayer'
 import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
 import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
-import { Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { CreateGround } from '@babylonjs/core/Meshes/Builders/groundBuilder'
 import { CreateTube } from '@babylonjs/core/Meshes/Builders/tubeBuilder'
 import { CreateBox } from '@babylonjs/core/Meshes/Builders/boxBuilder'
@@ -109,6 +109,10 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
   const anchorsRef = useRef<Map<string, TerminalAnchor>>(new Map())
   const rootsRef = useRef<Map<string, Mesh[]>>(new Map())
   const cablesRef = useRef<Mesh[]>([])
+  /** أعلى كل قطعة بالفضاء العالمي — منها تنموضع اللافتة. */
+  const topsRef = useRef<Map<string, Vector3>>(new Map())
+  const labelsRef = useRef<HTMLDivElement>(null)
+  const labelEls = useRef<Map<string, HTMLDivElement>>(new Map())
   const hlRef = useRef<HighlightLayer | null>(null)
   const [ready, setReady] = useState(false)
   const [hover, setHover] = useState<string | null>(null)
@@ -166,6 +170,7 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
     // ═══ القطع ═══
     const anchors = new Map<string, TerminalAnchor>()
     const roots = new Map<string, Mesh[]>()
+    const tops = new Map<string, Vector3>()
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
 
     for (const n of doc.nodes) {
@@ -198,6 +203,13 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
       }
 
       built.root.computeWorldMatrix(true)
+      // ⚠️ نقطة اللافتة **فوگ** الجسم مو بمركزه: لافتة بالمركز تغطّي
+      // القطعة نفسها، والفني يقرا الرقم وما يشوف الي يقيسه.
+      tops.set(n.id, new Vector3(
+        built.root.position.x,
+        built.root.position.y + (tilt ? size.h * Math.sin((tilt * Math.PI) / 180) : size.h) / 2 + 0.16,
+        built.root.position.z,
+      ))
       const meshes = built.root.getChildMeshes() as Mesh[]
       for (const m of meshes) { shadows.addShadowCaster(m); m.computeWorldMatrix(true) }
       roots.set(n.id, meshes)
@@ -216,6 +228,7 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
     }
     anchorsRef.current = anchors
     rootsRef.current = roots
+    topsRef.current = tops
 
     // ═══ الكيابل ═══
     for (const l of doc.links) {
@@ -265,6 +278,30 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
       cb.current.setSelected(meta?.nodeId ?? null)
     })
 
+    // ═══ موضعة اللافتات ═══
+    //
+    // ⚠️ تنكتب على **DOM مباشرة** مو بحالة React: الموضعة تصير مع كل
+    // رسمة (٦٠ مرة بالثانية وأنت تدوّر الكاميرا)، ورفعها لحالة React
+    // يعني ٦٠ رندراً بالثانية للاستوديو كله — الصفحة تختنق.
+    //
+    // ⚠️ ولافتة **ورا الكاميرا** تنخفى: الإسقاط يرجّع إحداثيات صالحة
+    // حتى للي ورا الظهر، فبلا هالفحص تطلع لافتات مقلوبة بالزوايا.
+    bs.onAfterRenderObservable.add(() => {
+      const w = engine.getRenderWidth(), h = engine.getRenderHeight()
+      const vp = bs.activeCamera?.viewport.toGlobal(w, h)
+      if (!vp) return
+      const rect = canvas.getBoundingClientRect()
+      const sx = rect.width / w, sy = rect.height / h
+      for (const [id, el] of labelEls.current) {
+        const pos = topsRef.current.get(id)
+        if (!pos) { el.style.display = 'none'; continue }
+        const q = Vector3.Project(pos, Matrix.Identity(), bs.getTransformMatrix(), vp)
+        if (q.z > 1 || q.z < 0) { el.style.display = 'none'; continue }
+        el.style.display = ''
+        el.style.transform = `translate(-50%,-100%) translate(${q.x * sx}px, ${q.y * sy}px)`
+      }
+    })
+
     engine.runRenderLoop(() => bs.render())
     const onResize = () => engine.resize()
     window.addEventListener('resize', onResize)
@@ -286,6 +323,40 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [topology])
 
+  // ═══ اللافتات ═══
+  //
+  // ⚠️ تنبنى لمن **تتغيّر النتيجة** بس — مو مع كل رسمة. الموضعة
+  // شي والمحتوى شي: المحتوى يتغيّر لمن تشغّل المحاكاة، والموضعة
+  // تتغيّر لمن تدوّر الكاميرا.
+  useEffect(() => {
+    const host = labelsRef.current
+    if (!host) return
+    host.replaceChildren()
+    labelEls.current.clear()
+    if (!result) return
+
+    for (const n of doc.nodes) {
+      const rs = result.nodeReadings[n.id] ?? []
+      if (rs.length === 0) continue
+      const el = document.createElement('div')
+      el.className = 'absolute left-0 top-0 rounded-lg bg-black/70 px-2 py-1 text-center leading-tight backdrop-blur-sm ring-1 ring-white/10'
+      el.style.willChange = 'transform'
+      const name = document.createElement('div')
+      name.className = 'text-[10px] font-bold text-slate-300'
+      name.textContent = String(n.params.name ?? n.params.hostname ?? PART_BY_ID[n.partId]?.name ?? '')
+      el.appendChild(name)
+      for (const r of rs.slice(0, 3)) {
+        const v = document.createElement('div')
+        v.className = `font-mono text-[11.5px] font-bold ${
+          r.tone === 'bad' ? 'text-red-300' : r.tone === 'warn' ? 'text-amber-300' : 'text-emerald-300'}`
+        v.textContent = r.text
+        el.appendChild(v)
+      }
+      host.appendChild(el)
+      labelEls.current.set(n.id, el)
+    }
+  }, [result, doc.nodes, ready])
+
   // ═══ التمييز ═══
   const highlight = useCallback(() => {
     const hl = hlRef.current
@@ -305,6 +376,10 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
   return (
     <div className="relative h-full w-full overflow-hidden rounded-xl bg-[#070c14] ring-1 ring-slate-800">
       <canvas ref={canvasRef} className="block h-full w-full touch-none outline-none" />
+
+      {/* ⚠️ `pointer-events-none` على الحاوية: اللافتات تطوف فوگ اللوح،
+          وبدونها تحجب الضغط على القطع الي تحتها. */}
+      <div ref={labelsRef} className="pointer-events-none absolute inset-0 overflow-hidden" />
 
       {doc.nodes.length === 0 && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
