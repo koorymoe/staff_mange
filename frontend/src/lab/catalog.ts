@@ -8,7 +8,7 @@
 // موديل بعينه. ولهذا كل محتوى المختبر `verified = FALSE` لحد ما فني
 // يجرّبه على جهاز حقيقي.
 
-import type { PartDef } from './types'
+import type { DomainId, PartDef } from './types'
 
 // ═══ الدوائر الكهربائية ═══
 const ELECTRICAL: PartDef[] = [
@@ -240,14 +240,114 @@ const NETWORK: PartDef[] = [
   },
 ]
 
-export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK]
+// ═══ أنظمة إنذار الحريق ═══
+//
+// ⚠️ أجهزة الزون عدها منفذان (`in`/`out`) لأنها تنربط **بالسلسلة**
+// مو بالتوازي — والسلسلة هي الي تخلّي اللوحة تراقب الخط كله بمقاومة
+// نهاية وحدة.
+const FIRE: PartDef[] = [
+  {
+    id: 'fire_panel', domain: 'fire', name: 'لوحة إنذار تقليدية', symbol: 'fire_panel',
+    w: 130, h: 105, about: 'لوحة زونات: كل زون خط كواشف، ولكل دائرة إنذار صفّاراتها.',
+    ports: [
+      { id: 'z1', label: 'زون ١', kind: 'signal', x: 0, y: 0.22 },
+      { id: 'z2', label: 'زون ٢', kind: 'signal', x: 0, y: 0.45 },
+      { id: 's1', label: 'إنذار ١', kind: 'signal', x: 0, y: 0.72 },
+      { id: 'bat', label: 'بطارية', kind: 'dc', polarity: 'pos', x: 1, y: 0.72 },
+    ],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'FACP' },
+      { id: 'zones', label: 'عدد الزونات', kind: 'number', default: 2, min: 1, max: 2 },
+      { id: 'sounderCircuits', label: 'دوائر الإنذار', kind: 'number', default: 1, min: 1, max: 1 },
+      { id: 'standbyMa', label: 'سحب اللوحة بالاستعداد', unit: 'mA', kind: 'number', default: 60, min: 0 },
+      { id: 'alarmMa', label: 'سحب اللوحة بالإنذار', unit: 'mA', kind: 'number', default: 120, min: 0 },
+    ],
+    danger: 'خلط الصفّارات مع الكواشف بنفس الزون يخلّي اللوحة تحسبها كاشفاً معطّلاً.',
+  },
+  {
+    id: 'smoke_detector', domain: 'fire', name: 'كاشف دخان', symbol: 'detector',
+    w: 70, h: 70,
+    ports: [
+      { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
+      { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
+    ],
+    params: [
+      { id: 'standbyMa', label: 'سحب الاستعداد', unit: 'mA', kind: 'number', default: 0.05, min: 0 },
+      { id: 'alarmMa', label: 'سحب الإنذار', unit: 'mA', kind: 'number', default: 0.5, min: 0 },
+      { id: 'triggered', label: 'مفعّل (محاكاة حريق)', kind: 'bool', default: false },
+      { id: 'shorted', label: 'قصر بالدائرة (محاكاة عطل)', kind: 'bool', default: false },
+    ],
+  },
+  {
+    id: 'heat_detector', domain: 'fire', name: 'كاشف حرارة', symbol: 'detector',
+    w: 70, h: 70, about: 'للمطابخ والمرائب — الدخان بيها يعطي إنذارات كاذبة.',
+    ports: [
+      { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
+      { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
+    ],
+    params: [
+      { id: 'standbyMa', label: 'سحب الاستعداد', unit: 'mA', kind: 'number', default: 0.05, min: 0 },
+      { id: 'alarmMa', label: 'سحب الإنذار', unit: 'mA', kind: 'number', default: 0.5, min: 0 },
+      { id: 'triggered', label: 'مفعّل (محاكاة حريق)', kind: 'bool', default: false },
+    ],
+  },
+  {
+    id: 'mcp', domain: 'fire', name: 'نقطة إنذار يدوية', symbol: 'mcp',
+    w: 70, h: 70, about: 'الصندوق الأحمر عند المخارج — ينكسر زجاجه بالإنذار اليدوي.',
+    ports: [
+      { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
+      { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
+    ],
+    params: [
+      { id: 'standbyMa', label: 'سحب الاستعداد', unit: 'mA', kind: 'number', default: 0.05, min: 0 },
+      { id: 'triggered', label: 'مفعّل', kind: 'bool', default: false },
+    ],
+  },
+  {
+    id: 'sounder', domain: 'fire', name: 'صفّارة', symbol: 'sounder',
+    w: 75, h: 70,
+    ports: [
+      { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
+      { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
+    ],
+    params: [{ id: 'alarmMa', label: 'سحب الإنذار', unit: 'mA', kind: 'number', default: 20, min: 0 }],
+    danger: 'تنربط على **دائرة إنذار** مو على زون كواشف.',
+  },
+  {
+    id: 'eol_resistor', domain: 'fire', name: 'مقاومة نهاية (EOL)', symbol: 'eol',
+    w: 70, h: 46,
+    about: 'تنحط بآخر جهاز بالخط. بدونها اللوحة ما تگدر تفرّق بين خط سليم وخط مقطوع.',
+    // ⚠️ **منفذان** مو واحد: المقاومة الحقيقية إلها رِجلان، والفني
+    // يگدر يحطها بنص الخط غلطاً — وهذا بالضبط الغلط الي نريد نعلّمه.
+    // بمنفذ واحد يصير الغلط **مستحيل البناء**، والمحاكي يخفي درساً
+    // بدل ما يعلّمه.
+    ports: [
+      { id: 'in', label: 'رِجل ١', kind: 'signal', x: 0, y: 0.5 },
+      { id: 'out', label: 'رِجل ٢', kind: 'signal', x: 1, y: 0.5 },
+    ],
+    params: [{ id: 'r', label: 'القيمة', unit: 'Ω', kind: 'number', default: 4700, min: 100 }],
+    danger: 'محلها **آخر الخط** — أي جهاز وراها يبقى خارج الحماية تماماً.',
+  },
+  {
+    id: 'fire_battery', domain: 'fire', name: 'بطارية احتياط', symbol: 'battery_bank',
+    w: 100, h: 70,
+    ports: [{ id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 0, y: 0.5 }],
+    params: [
+      { id: 'ah', label: 'السعة', unit: 'Ah', kind: 'number', default: 7, min: 1 },
+      { id: 'soc', label: 'حالة الشحن', unit: '%', kind: 'number', default: 100, min: 0, max: 100 },
+    ],
+  },
+]
+
+export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE]
 
 export const PART_BY_ID: Record<string, PartDef> = Object.fromEntries(PARTS.map((p) => [p.id, p]))
 
-export const DOMAINS: { id: 'electrical' | 'solar' | 'network'; name: string; icon: string; about: string }[] = [
+export const DOMAINS: { id: DomainId; name: string; icon: string; about: string }[] = [
   { id: 'network', name: 'الشبكات', icon: '🌐', about: 'سويچات وراوترات وحاسبات وكاميرات — وصّل وهيّئ واختبر الاتصال.' },
   { id: 'solar', name: 'الطاقة الشمسية', icon: '☀️', about: 'ألواح وإنفرتر وبطاريات وأحمال — افحص الستring والتوازن قبل الميدان.' },
   { id: 'electrical', name: 'الدوائر الكهربائية', icon: '⚡', about: 'مصادر ومقاومات ولمبات ومفاتيح — الدائرة تنحل فعلاً بقوانين كيرشوف.' },
+  { id: 'fire', name: 'إنذار الحريق', icon: '🔥', about: 'زونات ومقاومة نهاية وصفّارات وبطارية — اللوحة تقرا عطلاً لو الخط غلط.' },
 ]
 
 /** القيم الابتدائية لقطعة — تنسخ من الكتالوگ لمن تنحط باللوح. */

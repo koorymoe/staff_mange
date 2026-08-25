@@ -20,6 +20,7 @@ import Canvas from './Canvas'
 import { CABLE_BY_ID, LINK_PARAMS, MEDIUM_AR } from './cables'
 import { DOMAINS, PARTS, PART_BY_ID } from './catalog'
 import { electricalEngine } from './engines/electrical'
+import { fireEngine } from './engines/fire'
 import { networkEngine } from './engines/network'
 import { solarEngine } from './engines/solar'
 import { Symbol } from './symbols'
@@ -36,6 +37,7 @@ const ENGINES: Record<DomainId, DomainEngine> = {
   electrical: electricalEngine,
   solar: solarEngine,
   network: networkEngine,
+  fire: fireEngine,
 }
 
 export default function LabWorkbench() {
@@ -60,6 +62,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
       network: { domain: 'network', nodes: [], links: [] },
       solar: { domain: 'solar', nodes: [], links: [] },
       electrical: { domain: 'electrical', nodes: [], links: [] },
+      fire: { domain: 'fire', nodes: [], links: [] },
     }
     if (startDoc) empty[startDoc.domain] = startDoc
     return empty

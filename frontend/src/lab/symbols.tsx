@@ -186,7 +186,61 @@ const NetCam = ({ w, h, accent, live }: SymProps) => (
   </g>
 )
 
+// ═══ إنذار الحريق ═══
+const FirePanel = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <rect x={0} y={0} width={w} height={h} rx={6} fill="#3f1616" stroke={accent} strokeWidth={1.5} />
+    <rect x={w * 0.12} y={h * 0.1} width={w * 0.76} height={h * 0.3} rx={3} fill="#0b1220" />
+    {/* شريط مؤشرات — أحمر/أصفر/أخضر مثل اللوحة الحقيقية */}
+    {[['#ef4444', 0.2], ['#f59e0b', 0.34], [live ? '#22c55e' : '#334155', 0.48]].map(([c, x], i) => (
+      <circle key={i} cx={w * (x as number)} cy={h * 0.55} r={4} fill={c as string} />
+    ))}
+    <text x={w / 2} y={h * 0.86} fontSize={11} fill="#fca5a5" textAnchor="middle" fontWeight="bold">FACP</text>
+  </g>
+)
+
+const Detector = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <circle cx={w / 2} cy={h / 2} r={Math.min(w, h) * 0.38} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    <circle cx={w / 2} cy={h / 2} r={Math.min(w, h) * 0.22} fill="none" stroke={STROKE} strokeWidth={1.2} />
+    <circle cx={w / 2} cy={h / 2} r={3} fill={live ? '#ef4444' : '#475569'} />
+  </g>
+)
+
+const Mcp = ({ w, h, accent }: SymProps) => (
+  <g>
+    <rect x={w * 0.16} y={h * 0.16} width={w * 0.68} height={h * 0.68} rx={4} fill="#7f1d1d" stroke={accent} strokeWidth={1.5} />
+    <rect x={w * 0.28} y={h * 0.3} width={w * 0.44} height={h * 0.24} rx={2} fill="#e2e8f0" opacity={0.85} />
+    <text x={w / 2} y={h * 0.74} fontSize={9} fill="#fecaca" textAnchor="middle" fontWeight="bold">MCP</text>
+  </g>
+)
+
+const Sounder = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    {/* بوق — مثلث مع موجات صوت */}
+    <path d={`M ${w * 0.18} ${h * 0.38} L ${w * 0.42} ${h * 0.38} L ${w * 0.62} ${h * 0.18} L ${w * 0.62} ${h * 0.82} L ${w * 0.42} ${h * 0.62} L ${w * 0.18} ${h * 0.62} Z`}
+      fill={live ? '#ef4444' : FILL} stroke={accent} strokeWidth={1.5} strokeLinejoin="round" />
+    {[0.72, 0.84].map((f, i) => (
+      <path key={i} d={`M ${w * f} ${h * (0.34 + i * 0.04)} Q ${w * (f + 0.08)} ${h * 0.5} ${w * f} ${h * (0.66 - i * 0.04)}`}
+        fill="none" stroke={live ? '#fca5a5' : STROKE} strokeWidth={1.4} />
+    ))}
+  </g>
+)
+
+const Eol = ({ w, h, accent }: SymProps) => (
+  <g>
+    <rect x={w * 0.1} y={h * 0.28} width={w * 0.8} height={h * 0.44} rx={4} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    <polyline points={`${w * 0.2},${h / 2} ${w * 0.32},${h * 0.32} ${w * 0.46},${h * 0.68} ${w * 0.6},${h * 0.32} ${w * 0.72},${h * 0.68} ${w * 0.82},${h / 2}`}
+      fill="none" stroke="#fbbf24" strokeWidth={1.8} strokeLinejoin="round" />
+  </g>
+)
+
 const SYMBOLS: Record<string, (p: SymProps) => React.ReactElement> = {
+  fire_panel: FirePanel,
+  detector: Detector,
+  mcp: Mcp,
+  sounder: Sounder,
+  eol: Eol,
   battery: Battery,
   resistor: Resistor,
   lamp: Lamp,
