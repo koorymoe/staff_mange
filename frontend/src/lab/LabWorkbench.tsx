@@ -23,7 +23,8 @@ import { electricalEngine } from './engines/electrical'
 import { audioEngine } from './engines/audio'
 import { fireEngine } from './engines/fire'
 import { networkEngine } from './engines/network'
-import { solarEngine } from './engines/solar'
+import { portVoltages, solarEngine } from './engines/solar'
+import { computeStages } from './stages'
 import { Symbol } from './symbols'
 import type { DomainEngine, DomainId, LabDoc, ParamDef, SimResult } from './types'
 
@@ -212,6 +213,10 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
       return true
     })
   }, [result])
+  // ⚠️ المراحل تنحسب من **المستند والنتيجة** — ماكو زر «التالي».
+  const stageState = useMemo(() => computeStages(doc, result), [doc, result])
+  const portV = useMemo(() => (domain === 'solar' ? portVoltages(doc) : {}), [domain, doc])
+
   const errors = msgs.filter((m) => m.kind === 'error')
   const warns = msgs.filter((m) => m.kind === 'warn')
 
@@ -366,6 +371,38 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
           </div>
         )}
 
+        {/* ═══ شريط المراحل ═══
+            ⚠️ ما ينضغط: المرحلة تتقدّم لمن يكتمل **شرطها** مو لمن
+            يقرّر المتدرّب إنه خلّص. شريط ينضغط يعطي إحساس إنجاز
+            بلا إنجاز. */}
+        <div className="flex flex-wrap items-center gap-1 border-b border-slate-800 bg-[#0b1220] px-3 py-2">
+          {stageState.stages.map((st, i) => {
+            const done = stageState.done[i]
+            const cur = i === stageState.current
+            return (
+              <div key={st.id} className="flex items-center gap-1">
+                <span title={st.hint}
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-bold transition ${
+                    done ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/30'
+                      : cur ? 'bg-sky-500/15 text-sky-300 ring-1 ring-sky-500/40'
+                      : 'bg-slate-800/60 text-slate-500'}`}>
+                  <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] ${
+                    done ? 'bg-emerald-500 text-black' : cur ? 'bg-sky-500 text-black' : 'bg-slate-700 text-slate-400'}`}>
+                    {done ? '✓' : i + 1}
+                  </span>
+                  {st.label}
+                </span>
+                {i < stageState.stages.length - 1 && (
+                  <span className={`h-px w-4 ${done ? 'bg-emerald-500/40' : 'bg-slate-700'}`} />
+                )}
+              </div>
+            )
+          })}
+          <span className="mr-auto text-[11px] text-slate-500">
+            {stageState.stages[stageState.current]?.hint}
+          </span>
+        </div>
+
         {/* ═══ الأعمدة الثلاثة ═══ */}
         <div className="grid gap-0 lg:grid-cols-[16rem_1fr_17rem]">
           {/* ─── مكتبة الأجهزة ─── */}
@@ -424,7 +461,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                     جاري تحميل المشهد الثلاثي…
                   </div>
                 }>
-                  <Scene3D doc={doc} result={result} selected={selected} setSelected={setSelected} />
+                  <Scene3D doc={doc} result={result} selected={selected} setSelected={setSelected} portV={portV} />
                 </Suspense>
               ) : (
                 <Canvas

@@ -26,6 +26,53 @@ const num = (v: unknown, d: number) => {
 const COLD_C = 0
 const VOC_TEMP_COEF = 0.0033
 
+/** ═══ جهد كل منفذ بالمنظومة ═══
+ *
+ *  ⚠️ هذا الي يخلّي **الأڤوميتر يشتغل**: بلا جهد لكل منفذ، الأداة
+ *  تصير رسمة. والقيم محسوبة من نفس منطق المحرّك — مو جدولاً ثانياً
+ *  يفترق عنه.
+ *
+ *  ⚠️ والقياس **بين طرفين** مثل الميدان: الأڤوميتر ما يعطي «جهد
+ *  نقطة» — يعطي **فرق** بين مسبارين. لهذا نرجّع جهد كل منفذ نسبةً
+ *  لمرجع مشترك، والفرق ينحسب بالطرح.
+ */
+export function portVoltages(doc: LabDoc): Record<string, number> {
+  const v: Record<string, number> = {}
+  const inv = doc.nodes.find((n) => n.partId === 'inverter')
+
+  for (const n of doc.nodes) {
+    if (n.partId === 'pv_panel') {
+      // ⚠️ الجهد المقاس على أطراف اللوح = Vmp لمن يشتغل تحت حمل،
+      // و**Voc** لمن يكون مفصولاً. والفرق بينهما هو الي يخدع الفني:
+      // يقيس ستring مفصولاً فيشوف رقماً أعلى من الي يتوقعه.
+      const count = Math.max(1, num(n.params.count, 1))
+      const connected = doc.links.some((l) =>
+        (l.from.node === n.id && l.to.node === inv?.id) || (l.to.node === n.id && l.from.node === inv?.id))
+      const val = connected ? num(n.params.vmp, 41.5) * count : num(n.params.voc, 49.8) * count
+      v[`${n.id}:pos`] = val
+      v[`${n.id}:neg`] = 0
+    } else if (n.partId === 'battery') {
+      const bv = num(n.params.v, 48)
+      const soc = num(n.params.soc, 80) / 100
+      // جهد البنك يتبع حالة الشحن — تقريب خطّي شائع ±١٠٪.
+      v[`${n.id}:pos`] = bv * (0.9 + 0.2 * soc)
+      v[`${n.id}:neg`] = 0
+    } else if (n.partId === 'inverter') {
+      const bat = doc.nodes.find((x) => x.partId === 'battery')
+      const pv = doc.nodes.find((x) => x.partId === 'pv_panel')
+      v[`${n.id}:pv_pos`] = pv ? (v[`${pv.id}:pos`] ?? 0) : 0
+      v[`${n.id}:pv_neg`] = 0
+      v[`${n.id}:bat_pos`] = bat ? (v[`${bat.id}:pos`] ?? 0) : 0
+      v[`${n.id}:bat_neg`] = 0
+      // مخرج التيار المتناوب — قيمة فعّالة، ما تنقاس بمسبار DC عادي.
+      v[`${n.id}:ac_out`] = 230
+    } else if (n.partId === 'load') {
+      v[`${n.id}:ac_in`] = 230
+    }
+  }
+  return v
+}
+
 export const solarEngine: DomainEngine = {
   id: 'solar',
   name: 'محرّك الطاقة الشمسية',

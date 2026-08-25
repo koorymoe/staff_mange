@@ -39,6 +39,8 @@ interface Props {
   result: SimResult | null
   selected: string | null
   setSelected: (id: string | null) => void
+  /** جهد كل منفذ — الأڤوميتر يطرح بين مسبارين. */
+  portV?: Record<string, number>
 }
 
 /** ═══ من قطعة اللوح إلى جهاز يفهمه المولّد ═══
@@ -103,7 +105,7 @@ function cableColor(part: PartDef | undefined, portId: string): string {
  *  والبطاريات بغرفة وحدة. */
 const M_PER_UNIT = 0.0055
 
-export default function Scene3D({ doc, result, selected, setSelected }: Props) {
+export default function Scene3D({ doc, result, selected, setSelected, portV }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const sceneRef = useRef<BabylonScene | null>(null)
   const anchorsRef = useRef<Map<string, TerminalAnchor>>(new Map())
@@ -116,9 +118,14 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
   const hlRef = useRef<HighlightLayer | null>(null)
   const [ready, setReady] = useState(false)
   const [hover, setHover] = useState<string | null>(null)
+  /** ═══ الأڤوميتر ═══
+   *  ⚠️ مسباران مثل الجهاز الحقيقي: الأول أحمر والثاني أسود، والقراءة
+   *  **فرق** بينهما. أداة تعطي «جهد نقطة» تعلّم عادة ما توجد بالميدان. */
+  const [meter, setMeter] = useState(false)
+  const [probes, setProbes] = useState<string[]>([])
 
-  const cb = useRef({ setSelected })
-  useEffect(() => { cb.current = { setSelected } })
+  const cb = useRef({ setSelected, meter: false })
+  useEffect(() => { cb.current = { setSelected, meter } })
 
   // ═══ بناء المشهد ═══
   //
@@ -275,6 +282,17 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
       // والفني يضل يدوّر شلون يلغيه. و`TAP` ما ينطلق بعد سحب
       // الكاميرا، فتدوير المشهد ما يلغي تحديدك.
       if (info.type !== PointerEventTypes.POINTERTAP) return
+
+      // ⚠️ بوضع القياس الضغط **يلمس طرفاً** مو يحدّد قطعة: خلط
+      // الوضعين يعني كل لمسة مسبار تبدّل لوحة الخصائص وتشتّت الفني.
+      if (cb.current.meter) {
+        const t = info.pickInfo?.pickedMesh?.metadata as { terminalId?: string; deviceRef?: string } | undefined
+        if (t?.terminalId) {
+          const id = `${t.deviceRef}:${t.terminalId}`
+          setProbes((prev) => (prev.length >= 2 ? [id] : [...prev, id]))
+        }
+        return
+      }
       cb.current.setSelected(meta?.nodeId ?? null)
     })
 
@@ -366,8 +384,27 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
       if (!id || (id === hover && hover === selected)) continue
       for (const m of rootsRef.current.get(id) ?? []) hl.addMesh(m, Color3.FromHexString(color))
     }
-  }, [selected, hover])
+    // المسبارات: الأول أحمر والثاني أسود — نفس ألوان الجهاز الحقيقي.
+    probes.forEach((pid, i) => {
+      const a = anchorsRef.current.get(pid)
+      if (a) hl.addMesh(a.post, Color3.FromHexString(i === 0 ? '#ef4444' : '#e2e8f0'))
+    })
+  }, [selected, hover, probes])
   useEffect(() => { if (ready) highlight() }, [ready, highlight])
+
+  // ⚠️ القراءة **فرق** بين المسبارين — والسالب يعني إنك عاكس
+  // المسبارين، مثل الجهاز الحقيقي بالضبط.
+  const reading = probes.length === 2 && portV
+    ? (portV[probes[0]] ?? 0) - (portV[probes[1]] ?? 0)
+    : null
+  const probeLabel = (i: number) => {
+    const id = probes[i]
+    if (!id) return ''
+    const [nodeId, portId] = id.split(':')
+    const nd = doc.nodes.find((n) => n.id === nodeId)
+    const pt = PART_BY_ID[nd?.partId ?? '']?.ports.find((x) => x.id === portId)
+    return pt?.label ?? portId
+  }
 
   const sel = doc.nodes.find((n) => n.id === (hover ?? selected))
   const selPart = sel ? PART_BY_ID[sel.partId] : null
@@ -400,6 +437,37 @@ export default function Scene3D({ doc, result, selected, setSelected }: Props) {
           ))}
         </div>
       )}
+
+      {/* ═══ الأڤوميتر ═══ */}
+      <div className="absolute right-3 top-3 w-56">
+        <button
+          onClick={() => { setMeter((v) => !v); setProbes([]) }}
+          className={`w-full rounded-lg px-3 py-1.5 text-[11.5px] font-bold transition ${
+            meter ? 'bg-amber-500 text-black' : 'bg-black/60 text-slate-300 ring-1 ring-slate-700 backdrop-blur hover:bg-black/80'}`}
+        >
+          🔌 {meter ? 'أطفِ الأڤوميتر' : 'أڤوميتر'}
+        </button>
+
+        {meter && (
+          <div className="mt-1.5 rounded-xl bg-black/80 p-3 text-center ring-1 ring-amber-500/40 backdrop-blur">
+            <p className="font-mono text-2xl font-black tabular-nums text-amber-300">
+              {reading === null ? '— — —' : `${reading.toFixed(1)} V`}
+            </p>
+            <p className="mt-1 text-[10.5px] leading-relaxed text-slate-400">
+              {probes.length === 0 && 'المس الطرف الأول (مسبار أحمر)'}
+              {probes.length === 1 && 'المس الطرف الثاني (مسبار أسود)'}
+              {probes.length === 2 && (
+                <>
+                  {probeLabel(0)} ↔ {probeLabel(1)}
+                  <button onClick={() => setProbes([])} className="mt-1 block w-full text-amber-400 underline">
+                    قياس جديد
+                  </button>
+                </>
+              )}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* مفتاح ألوان الأسلاك — الفني يتتبّع اللون مو التسمية */}
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/55 px-2.5 py-2 text-[10px] text-slate-300 backdrop-blur">
