@@ -219,8 +219,9 @@ const NETWORK: PartDef[] = [
       { id: 'ip', label: 'العنوان', kind: 'text', default: '192.168.1.10' },
       { id: 'mask', label: 'القناع', kind: 'text', default: '255.255.255.0' },
       { id: 'gw', label: 'البوابة', kind: 'text', default: '192.168.1.1' },
-      { id: 'vlan', label: 'الـVLAN', kind: 'number', default: 1, min: 1, max: 4094 },
     ],
+    // ⚠️ ماكو خانة VLAN هنا عمداً: الجهاز الطرفي ما يختار VLANه —
+    // **منفذ السويچ** هو الي يحطّه بيه. الخانة هنا تعلّم عادة غلط.
   },
   {
     id: 'ip_camera', domain: 'network', name: 'كاميرا شبكة', symbol: 'net_cam',
@@ -231,7 +232,6 @@ const NETWORK: PartDef[] = [
       { id: 'ip', label: 'العنوان', kind: 'text', default: '192.168.1.51' },
       { id: 'mask', label: 'القناع', kind: 'text', default: '255.255.255.0' },
       { id: 'gw', label: 'البوابة', kind: 'text', default: '192.168.1.1' },
-      { id: 'vlan', label: 'الـVLAN', kind: 'number', default: 1, min: 1, max: 4094 },
       { id: 'poeW', label: 'سحب PoE', unit: 'W', kind: 'number', default: 8, min: 0 },
     ],
   },

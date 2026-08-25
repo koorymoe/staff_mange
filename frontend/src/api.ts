@@ -2844,6 +2844,18 @@ export interface SimFinishBody extends SimProgressBody {
   durationSec: number
 }
 
+/** مخطط محفوظ بمساحة العمل. */
+export interface SimProject {
+  id: string
+  employeeId: string
+  name: string
+  domain: string
+  doc: unknown
+  notes?: string
+  createdAt: string
+  updatedAt: string
+}
+
 export const api = {
   // ── مختبر المحاكاة: للمالك وحده ──
   // المسارات محمية بـRequireOwner وترجّع 404 لأي حساب ثاني (حتى ADMIN) —
@@ -2860,6 +2872,16 @@ export const api = {
     request<SimAtt>(`/sim/attempts/${attemptId}/finish`, { method: 'PUT', body: JSON.stringify(body) }),
   getMySimAttempts: (limit?: number) =>
     request<SimAtt[]>(`/sim/attempts/mine${limit ? `?limit=${limit}` : ''}`),
+
+  // ── مخططات مساحة العمل ──
+  // ⚠️ السيرفر يجبر مالك المخطط من التوكن مو من الجسم، فالحفظ ما يگدر
+  // ينكتب باسم موظف ثاني حتى لو انبعث `employeeId`.
+  listSimProjects: () => request<SimProject[]>('/sim/projects'),
+  getSimProject: (id: string) => request<SimProject>(`/sim/projects/${id}`),
+  saveSimProject: (body: { id?: string; name: string; domain: string; doc: unknown }) =>
+    request<SimProject>('/sim/projects', { method: 'POST', body: JSON.stringify(body) }),
+  deleteSimProject: (id: string) =>
+    request<{ ok: boolean }>(`/sim/projects/${id}`, { method: 'DELETE' }),
 
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.

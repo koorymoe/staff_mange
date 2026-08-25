@@ -219,3 +219,18 @@ type FinishAttemptRequest struct {
 	DurationSec int                    `json:"durationSec"`
 	Events      []SaveAttemptEventItem `json:"events"`
 }
+
+// ═══ مخطط مساحة العمل ═══
+//
+// ⚠️ `Doc` مستند كامل بـJSON: العقد والوصلات وحالة كل جهاز (بضمنها
+// جلسة سطر الأوامر). ما ينفكّ لأعمدة — شكله يتغيّر مع كل قطعة جديدة.
+type SimProject struct {
+	ID         string          `db:"id" json:"id"`
+	EmployeeID string          `db:"employeeId" json:"employeeId"`
+	Name       string          `db:"name" json:"name"`
+	Domain     string          `db:"domain" json:"domain"`
+	Doc        json.RawMessage `db:"doc" json:"doc"`
+	Notes      *string         `db:"notes" json:"notes,omitempty"`
+	CreatedAt  time.Time       `db:"createdAt" json:"createdAt"`
+	UpdatedAt  time.Time       `db:"updatedAt" json:"updatedAt"`
+}

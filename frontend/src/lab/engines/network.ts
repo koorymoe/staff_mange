@@ -15,6 +15,7 @@
 // ARP ولا STP ولا زمن. تكفي لتشخيص التوصيل والعنونة والعزل، وما
 // تكفي لدرس بروتوكولات.
 
+import { expandIfName } from '../../cli/engine'
 import { CABLE_BY_ID, checkLink } from '../cables'
 import { PART_BY_ID } from '../catalog'
 import type { DomainEngine, LabDoc, SimResult } from '../types'
@@ -35,6 +36,9 @@ function ipToInt(ip: string): number | null {
 
 /** أجهزة طرفية لها عنوان — الحاسبات والكاميرات. */
 const ENDPOINTS = new Set(['pc', 'ip_camera'])
+
+/** السويچات الي تفهم VLAN — غير المدار ما يفهم. */
+const MANAGED = new Set(['switch_l2', 'switch_poe', 'switch_l3'])
 
 export const networkEngine: DomainEngine = {
   id: 'network',
@@ -103,6 +107,10 @@ export const networkEngine: DomainEngine = {
     }
 
     // ═══ ٢) ميزانية PoE ═══
+    /** اسم السويچ — من الكونسول إذا انهيّأ، وإلا من الخصائص. */
+    const swName = (sw: { params: Record<string, unknown>; cliState?: Record<string, unknown> }) =>
+      str(sw.cliState?.hostname ?? sw.params.hostname, 'SW')
+
     for (const sw of switches) {
       const cams = doc.links
         .filter((l) => l.from.node === sw.id || l.to.node === sw.id)
@@ -118,7 +126,7 @@ export const networkEngine: DomainEngine = {
           add(sw.id, 'بلا PoE', 'bad')
           messages.push({
             kind: 'error',
-            text: `«${str(sw.params.hostname, sw.id)}» ما يدعم PoE و${cams.length} كاميرا مربوطة عليه — الكاميرات ما تشتغل بلا محوّل تغذية لكل وحدة.`,
+            text: `«${swName(sw)}» ما يدعم PoE و${cams.length} كاميرا مربوطة عليه — الكاميرات ما تشتغل بلا محوّل تغذية لكل وحدة.`,
           })
           continue
         }
@@ -130,6 +138,37 @@ export const networkEngine: DomainEngine = {
           })
         }
       }
+    }
+
+    // ═══ الـVLAN يجي من **منفذ السويچ** ═══
+    //
+    // ⚠️ هذا الي يربط الكونسول باللوح. الفني يكتب بجلسة السويچ:
+    //     interface gi0/2 → switchport access vlan 20
+    // ومحرّك الشبكة يقراها من `cliState` مالت السويچ ويحطّ الجهاز
+    // المربوط بهذاك المنفذ بـVLAN 20. ماكو خانة «اختر VLAN» بالجهاز
+    // الطرفي — لأن ماكو وحدة بالميدان.
+    //
+    // ⚠️ اسم المنفذ ينوسّع (`gi0/2` ← `GigabitEthernet0/2`) لأن
+    // الكونسول يخزنه موسّعاً. بلا التوسيع، كل تهيئة تنكتب باختصار
+    // ما تنلگه — والفني يشوف أمره نُفّذ وما تغيّر شي.
+    const vlanOf = (endpointId: string): number => {
+      for (const l of doc.links) {
+        const mine = l.from.node === endpointId ? l.from : l.to.node === endpointId ? l.to : null
+        if (!mine) continue
+        const other = l.from.node === endpointId ? l.to : l.from
+        const sw = doc.nodes.find((n) => n.id === other.node)
+        if (!sw || !MANAGED.has(sw.partId)) continue
+        const ifs = (sw.cliState?.interfaces ?? {}) as Record<string, Record<string, unknown>>
+        const cfg = ifs[expandIfName(other.port)]
+        const v = Number(cfg?.accessVlan)
+        if (Number.isFinite(v) && v > 0) return v
+      }
+      return 1
+    }
+    const vlanCache = new Map<string, number>()
+    const vlan = (id: string) => {
+      if (!vlanCache.has(id)) vlanCache.set(id, vlanOf(id))
+      return vlanCache.get(id)!
     }
 
     // ═══ ٣) الوصولية بين الأجهزة الطرفية ═══
@@ -164,12 +203,12 @@ export const networkEngine: DomainEngine = {
         }
 
         // نفس الـVLAN؟
-        const va = num(a.params.vlan, 1), vb = num(b.params.vlan, 1)
+        const va = vlan(a.id), vb = vlan(b.id)
         if (va !== vb) {
           pairsBad++
           messages.push({
             kind: 'error',
-            text: `${an} ⇄ ${bn}: الكيبل سليم والأضوية خضر، بس ${an} بـVLAN ${va} و${bn} بـVLAN ${vb} — معزولين منطقياً. هذا أخبث عطل بالشبكات لأن كلشي يبدو تمام.`,
+            text: `${an} ⇄ ${bn}: الكيبل سليم والأضوية خضر، بس منفذ ${an} بـVLAN ${va} ومنفذ ${bn} بـVLAN ${vb} — معزولين منطقياً. هذا أخبث عطل بالشبكات لأن كلشي يبدو تمام.`,
           })
           continue
         }
@@ -201,7 +240,7 @@ export const networkEngine: DomainEngine = {
 
     for (const e of endpoints) {
       if (linkedNodes.has(e.id)) add(e.id, str(e.params.ip, '—'), 'ok')
-      add(e.id, `VLAN ${num(e.params.vlan, 1)}`)
+      add(e.id, `VLAN ${vlan(e.id)}`)
     }
 
     // ═══ السويچ غير المدار يكسر العزل ═══
@@ -211,7 +250,7 @@ export const networkEngine: DomainEngine = {
         .map((l) => (l.from.node === sw.id ? l.to.node : l.from.node))
         .map((id) => doc.nodes.find((n) => n.id === id))
         .filter((n) => n && ENDPOINTS.has(n.partId))
-      const vlans = new Set(attached.map((n) => num(n!.params.vlan, 1)))
+      const vlans = new Set(attached.map((n) => vlan(n!.id)))
       if (vlans.size > 1) {
         add(sw.id, 'يكسر عزل الـVLAN', 'bad')
         messages.push({

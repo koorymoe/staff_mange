@@ -290,5 +290,35 @@ func simLabMigrations() []Migration {
 				WHERE id = 'simdev_psu_12v' AND geometry = '{}'::jsonb;
 			`,
 		},
+		{
+			// ═══ مخططات مساحة العمل ═══
+			//
+			// اللوح بلا حفظ يعني شغل يروح مع تسكير الصفحة. والمخطط مو
+			// رسمة: هو **تصميم مشروع** — الفني يبني توبولوجي مشروع
+			// حقيقي، يفحصه، ويرجعله بعدين.
+			//
+			// ⚠️ `employeeId` مو `ownerId`: المرحلة الحالية للمالك وحده
+			// بس الجدول ما ينبنى على هالافتراض. لمن ينفتح للفنيين، كل
+			// واحد يشوف مخططاته بلا ترحيل جديد.
+			//
+			// ⚠️ المستند كله `jsonb` عمداً: شكله يتغيّر مع كل قطعة
+			// جديدة تنضاف للكتالوگ، وأعمدة مفصّلة تعني ترحيلاً بكل
+			// إضافة.
+			Version: "0256_sim_project",
+			SQL: `
+				CREATE TABLE IF NOT EXISTS "SimProject" (
+					id           TEXT PRIMARY KEY,
+					"employeeId" TEXT NOT NULL REFERENCES "Employee"(id) ON DELETE CASCADE,
+					name         TEXT NOT NULL,
+					domain       TEXT NOT NULL,
+					doc          JSONB NOT NULL DEFAULT '{}'::jsonb,
+					notes        TEXT,
+					"createdAt"  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+					"updatedAt"  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+				);
+				CREATE INDEX IF NOT EXISTS "SimProject_emp_idx"
+					ON "SimProject"("employeeId", "updatedAt" DESC);
+			`,
+		},
 	}
 }

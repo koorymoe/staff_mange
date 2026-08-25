@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -124,4 +125,57 @@ func (h *SimHandler) MyAttempts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// ═══ مخططات مساحة العمل ═══
+
+// GET /api/sim/projects
+func (h *SimHandler) ListProjects(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.ListProjects(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المخططات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// GET /api/sim/projects/{id}
+func (h *SimHandler) GetProject(w http.ResponseWriter, r *http.Request) {
+	p, err := h.repo.GetProject(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, p)
+}
+
+// POST /api/sim/projects  (ينشئ أو يحدّث حسب وجود id بالجسم)
+func (h *SimHandler) SaveProject(w http.ResponseWriter, r *http.Request) {
+	var req model.SimProject
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	if strings.TrimSpace(req.Name) == "" {
+		WriteError(w, http.StatusBadRequest, "لازم اسم للمخطط")
+		return
+	}
+	// ⚠️ المالك ينجبر من السياق مو من الجسم: لو انقرا من الجسم، أي واحد
+	// يگدر يحفظ مخططاً باسم موظف ثاني.
+	req.EmployeeID = middleware.EmployeeIDFromContext(r)
+	p, err := h.repo.SaveProject(&req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, p)
+}
+
+// DELETE /api/sim/projects/{id}
+func (h *SimHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
+	if err := h.repo.DeleteProject(r.PathValue("id"), middleware.EmployeeIDFromContext(r)); err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

@@ -1223,6 +1223,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/sim/attempts/{id}/progress", middleware.Chain(http.HandlerFunc(simHandler.SaveProgress), requireAuth, simOwner))
 	mux.Handle("PUT /api/sim/attempts/{id}/finish", middleware.Chain(http.HandlerFunc(simHandler.FinishAttempt), requireAuth, simOwner))
 	mux.Handle("GET /api/sim/attempts/mine", middleware.Chain(http.HandlerFunc(simHandler.MyAttempts), requireAuth, simOwner))
+	// مخططات مساحة العمل — نفس البوابة: المالك وحده بهالمرحلة.
+	mux.Handle("GET /api/sim/projects", middleware.Chain(http.HandlerFunc(simHandler.ListProjects), requireAuth, simOwner))
+	mux.Handle("GET /api/sim/projects/{id}", middleware.Chain(http.HandlerFunc(simHandler.GetProject), requireAuth, simOwner))
+	mux.Handle("POST /api/sim/projects", middleware.Chain(http.HandlerFunc(simHandler.SaveProject), requireAuth, simOwner))
+	mux.Handle("DELETE /api/sim/projects/{id}", middleware.Chain(http.HandlerFunc(simHandler.DeleteProject), requireAuth, simOwner))
 
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))

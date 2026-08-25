@@ -477,3 +477,63 @@ func nullableJSON(v json.RawMessage) any {
 	}
 	return []byte(v)
 }
+
+// ═══ مخططات مساحة العمل ═══
+//
+// ⚠️ كل الدوال تشترط `employeeId` بالاستعلام نفسه مو بالمعالج: مخطط
+// موظف ما يوصل موظفاً ثانياً حتى لو انسرّب المعرّف. نفس قاعدة الرؤية
+// بأعلى الملف — الاستعلام ما ينسى.
+
+func (r *SimRepository) ListProjects(employeeID string) ([]model.SimProject, error) {
+	rows := []model.SimProject{}
+	err := r.db.Select(&rows, `
+		SELECT * FROM "SimProject" WHERE "employeeId" = $1
+		ORDER BY "updatedAt" DESC LIMIT 200`, employeeID)
+	return rows, err
+}
+
+func (r *SimRepository) GetProject(id, employeeID string) (*model.SimProject, error) {
+	var p model.SimProject
+	err := r.db.Get(&p, `SELECT * FROM "SimProject" WHERE id = $1 AND "employeeId" = $2`, id, employeeID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, errors.New("المخطط مو موجود")
+	}
+	return &p, err
+}
+
+func (r *SimRepository) SaveProject(p *model.SimProject) (*model.SimProject, error) {
+	if p.ID == "" {
+		p.ID = "simprj_" + uuid.NewString()
+		if _, err := r.db.Exec(`
+			INSERT INTO "SimProject" (id, "employeeId", name, domain, doc, notes)
+			VALUES ($1, $2, $3, $4, $5, $6)`,
+			p.ID, p.EmployeeID, p.Name, p.Domain, p.Doc, p.Notes); err != nil {
+			return nil, err
+		}
+		return r.GetProject(p.ID, p.EmployeeID)
+	}
+	// ⚠️ `employeeId` بشرط التحديث هم — بدونه أي واحد يعرف معرّف مخطط
+	// يگدر يكتب فوگه.
+	res, err := r.db.Exec(`
+		UPDATE "SimProject" SET name = $3, domain = $4, doc = $5, notes = $6, "updatedAt" = NOW()
+		WHERE id = $1 AND "employeeId" = $2`,
+		p.ID, p.EmployeeID, p.Name, p.Domain, p.Doc, p.Notes)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("المخطط مو موجود")
+	}
+	return r.GetProject(p.ID, p.EmployeeID)
+}
+
+func (r *SimRepository) DeleteProject(id, employeeID string) error {
+	res, err := r.db.Exec(`DELETE FROM "SimProject" WHERE id = $1 AND "employeeId" = $2`, id, employeeID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("المخطط مو موجود")
+	}
+	return nil
+}

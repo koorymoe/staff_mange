@@ -11,8 +11,10 @@
 // المستمرة تخلّي اللوح يترمّش وأنت تسحب قطعة، وتخفي متى تغيّرت
 // النتيجة فعلاً.
 
-import { useCallback, useMemo, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { api } from '../api'
+import { CISCO_LIKE } from '../cli/ciscoLike'
 import SimGate from '../sim/SimGate'
 import Canvas from './Canvas'
 import { CABLE_BY_ID, LINK_PARAMS, MEDIUM_AR } from './cables'
@@ -22,6 +24,13 @@ import { networkEngine } from './engines/network'
 import { solarEngine } from './engines/solar'
 import { Symbol } from './symbols'
 import type { DomainEngine, DomainId, LabDoc, ParamDef, SimResult } from './types'
+
+// ⚠️ الترمنال `lazy`: أغلب من يفتح اللوح ما يفتح كونسولاً، وتحميل
+// محرّك الأوامر مع الصفحة يثقّلها بلا فايدة.
+const CliTerminal = lazy(() => import('../cli/CliTerminal'))
+
+/** السويچات الي تنهيّأ بالكونسول. */
+const CLI_PARTS = new Set(['switch_l2', 'switch_poe', 'switch_l3'])
 
 const ENGINES: Record<DomainId, DomainEngine> = {
   electrical: electricalEngine,
@@ -43,6 +52,25 @@ function Bench() {
   const [selected, setSelected] = useState<string | null>(null)
   const [pendingPart, setPendingPart] = useState<string | null>(null)
   const [result, setResult] = useState<SimResult | null>(null)
+  const [console_, setConsole] = useState<string | null>(null)
+
+  // ═══ المخططات المحفوظة ═══
+  const [projects, setProjects] = useState<{ id: string; name: string; domain: string; updatedAt: string }[]>([])
+  const [projectId, setProjectId] = useState<string | null>(null)
+  const [projectName, setProjectName] = useState('')
+  const [busy, setBusy] = useState<string | null>(null)
+  const [reload, setReload] = useState(0)
+
+  useEffect(() => {
+    let alive = true
+    void (async () => {
+      try {
+        const rows = await api.listSimProjects()
+        if (alive) setProjects(rows)
+      } catch { /* القائمة مو حرجة — اللوح يشتغل بدونها */ }
+    })()
+    return () => { alive = false }
+  }, [reload])
 
   const doc = docs[domain]
   const setDoc = useCallback((updater: (d: LabDoc) => LabDoc) => {
@@ -58,6 +86,55 @@ function Bench() {
   const selLink = doc.links.find((l) => l.id === selected)
 
   const run = () => setResult(ENGINES[domain].run(doc, PART_BY_ID))
+
+  /** ⚠️ حالة الكونسول تنكتب بالعقدة مو بحالة منفصلة: لو انخزنت
+   *  برّا، تضيع بأول تبديل مجال وما تنحفظ مع المخطط. */
+  const saveCli = useCallback((nodeId: string, state: Record<string, unknown>) => {
+    setDocs((all) => ({
+      ...all,
+      [all[domain].domain]: {
+        ...all[domain],
+        nodes: all[domain].nodes.map((n) =>
+          n.id === nodeId
+            ? { ...n, cliState: state, params: { ...n.params, hostname: String(state.hostname ?? n.params.hostname) } }
+            : n),
+      },
+    }))
+    setResult(null)
+  }, [domain])
+
+  const saveProject = async () => {
+    const name = projectName.trim() || `مخطط ${DOMAINS.find((d) => d.id === domain)?.name}`
+    setBusy('يحفظ…')
+    try {
+      const p = await api.saveSimProject({ id: projectId ?? undefined, name, domain, doc })
+      setProjectId(p.id)
+      setProjectName(p.name)
+      setReload((n) => n + 1)
+      setBusy('انحفظ ✅')
+      window.setTimeout(() => setBusy(null), 1800)
+    } catch (e) {
+      setBusy(e instanceof Error ? e.message : 'تعذر الحفظ')
+    }
+  }
+
+  const openProject = async (id: string) => {
+    if (!id) return
+    setBusy('يفتح…')
+    try {
+      const p = await api.getSimProject(id)
+      const d = p.doc as LabDoc
+      setDocs((all) => ({ ...all, [d.domain]: d }))
+      setDomain(d.domain)
+      setProjectId(p.id)
+      setProjectName(p.name)
+      setSelected(null)
+      setResult(null)
+      setBusy(null)
+    } catch (e) {
+      setBusy(e instanceof Error ? e.message : 'تعذر الفتح')
+    }
+  }
   const clearAll = () => { setDoc(() => ({ domain, nodes: [], links: [] })); setSelected(null) }
 
   const setParam = (id: string, value: string | number | boolean) => {
@@ -132,6 +209,54 @@ function Bench() {
         </div>
       </div>
 
+      {/* ═══ المخططات المحفوظة ═══
+          ⚠️ اللوح بلا حفظ يعني شغل يروح مع تسكير الصفحة — والمخطط مو
+          رسمة، هو تصميم مشروع الفني يرجعله. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2.5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+        <span className="text-xs font-bold text-slate-500">المخطط</span>
+        <input
+          value={projectName} onChange={(e) => setProjectName(e.target.value)}
+          placeholder="اسم المخطط"
+          className="w-52 rounded-lg border border-slate-300 px-2.5 py-1.5 text-[12px]"
+        />
+        <button onClick={saveProject}
+          className="rounded-lg bg-brand-700 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-brand-800">
+          💾 {projectId ? 'احفظ التعديلات' : 'احفظ جديداً'}
+        </button>
+        {projectId && (
+          <button
+            onClick={() => { setProjectId(null); setProjectName('') }}
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
+          >
+            نسخة جديدة
+          </button>
+        )}
+        <select
+          value={projectId ?? ''} onChange={(e) => void openProject(e.target.value)}
+          className="rounded-lg border border-slate-300 px-2 py-1.5 text-[12px]"
+        >
+          <option value="">— افتح مخططاً محفوظاً —</option>
+          {projects.map((pr) => (
+            <option key={pr.id} value={pr.id}>
+              {pr.name} · {DOMAINS.find((d) => d.id === pr.domain)?.name ?? pr.domain}
+            </option>
+          ))}
+        </select>
+        {projectId && (
+          <button
+            onClick={async () => {
+              if (!projectId) return
+              await api.deleteSimProject(projectId).catch(() => {})
+              setProjectId(null); setProjectName(''); setReload((n) => n + 1)
+            }}
+            className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200"
+          >
+            احذف المخطط
+          </button>
+        )}
+        {busy && <span className="text-xs font-bold text-slate-500">{busy}</span>}
+      </div>
+
       <p className="text-xs text-slate-500">{DOMAINS.find((d) => d.id === domain)?.about}</p>
 
       {/* ⚠️ اللوح يحتاج مساحة — بالموبايل ما يشتغل، والرسالة الصريحة
@@ -170,6 +295,39 @@ function Bench() {
             selected={selected} setSelected={setSelected}
             pendingPart={pendingPart} onPlaced={() => setPendingPart(null)}
           />
+
+          {/* ═══ الكونسول ═══ */}
+          {console_ && (() => {
+            const nd = doc.nodes.find((n) => n.id === console_)
+            if (!nd) return null
+            return (
+              <div className="rounded-xl bg-white p-2.5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                <div className="mb-2 flex items-center justify-between">
+                  <button onClick={() => setConsole(null)} className="text-[11px] font-bold text-slate-500 hover:text-slate-800">
+                    ✕ سكّر
+                  </button>
+                  <p className="text-xs font-bold text-brand-900">
+                    🖥️ كونسول {String(nd.cliState?.hostname ?? nd.params.hostname ?? '')}
+                  </p>
+                </div>
+                <Suspense fallback={<div className="h-[300px] rounded-xl bg-[#080c10]" />}>
+                  {/* ⚠️ `key` بمعرّف الجهاز: بدونه تبديل الجهاز يعيد
+                      استعمال نفس الترمنال بحالة الجهاز السابق. */}
+                  <CliTerminal
+                    key={nd.id}
+                    grammar={CISCO_LIKE}
+                    initialState={nd.cliState ?? { hostname: String(nd.params.hostname ?? 'Switch') }}
+                    onStateChange={(st) => saveCli(nd.id, st)}
+                    heightClass="h-[300px]"
+                  />
+                </Suspense>
+                <p className="mt-1.5 text-[10.5px] text-slate-400">
+                  مثال: <span dir="ltr" className="font-mono">en → conf t → int gi0/2 → switchport access vlan 20 → end</span>
+                  {' '}ثم شغّل المحاكاة وشوف العزل.
+                </p>
+              </div>
+            )
+          })()}
 
           {/* ═══ شريط النتائج ═══ */}
           <div className="max-h-44 overflow-y-auto rounded-xl bg-white p-3 text-[12px] shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -241,6 +399,20 @@ function Bench() {
                 <p className="rounded-lg bg-red-50 px-2.5 py-1.5 text-[11px] leading-relaxed font-bold text-red-700">
                   ⚠️ {selPart.danger}
                 </p>
+              )}
+
+              {/* ═══ الكونسول ═══
+                  ⚠️ هنا انربط الترمنال باللوح: التهيئة الي تكتبها هنا
+                  **تغيّر نتيجة المحاكاة** — منفذ تحطّه بـVLAN 20 يعزل
+                  الجهاز المربوط بيه فعلاً. */}
+              {CLI_PARTS.has(selNode.partId) && (
+                <button
+                  onClick={() => setConsole(console_ === selNode.id ? null : selNode.id)}
+                  className={`w-full rounded-lg py-2 text-[12px] font-bold transition ${
+                    console_ === selNode.id ? 'bg-slate-700 text-white' : 'bg-slate-900 text-emerald-300 hover:bg-slate-800'}`}
+                >
+                  🖥️ {console_ === selNode.id ? 'سكّر الكونسول' : 'افتح الكونسول'}
+                </button>
               )}
 
               {selPart.params.map((pd) => (

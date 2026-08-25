@@ -256,7 +256,17 @@ export default function Canvas({ doc, setDoc, result, selected, setSelected, pen
             const accent = isSel ? '#38bdf8' : live ? '#4ade80' : '#475569'
             return (
               <g key={n.id} transform={`translate(${n.x},${n.y}) rotate(${n.rot},${part.w / 2},${part.h / 2})`}>
-                <g onMouseDown={(e) => onNodeDown(e, n)} className="cursor-grab">
+                {/* ⚠️ `onClick` لازم يوگّف الانتشار هم مو بس `onMouseDown`:
+                    `stopPropagation` بالـmousedown ما تمنع حدث الـclick
+                    من الوصول لخلفية الـSVG، وهناك `onCanvasClick` تلغي
+                    التحديد. النتيجة: تضغط القطعة، تنحدّد بالـmousedown،
+                    وتنلغي بالـclick بعدها بميلي ثانية — فتحس إنها ما
+                    تنحدّد أبداً. */}
+                <g
+                  onMouseDown={(e) => onNodeDown(e, n)}
+                  onClick={(e) => e.stopPropagation()}
+                  className="cursor-grab"
+                >
                   <Symbol symbol={part.symbol} w={part.w} h={part.h} accent={accent} live={live} params={n.params} />
                 </g>
 
