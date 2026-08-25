@@ -80,3 +80,72 @@ export function computeStages(doc: LabDoc, result: SimResult | null): StageState
   const current = done.findIndex((d) => !d)
   return { stages, done, current: current === -1 ? stages.length - 1 : current }
 }
+
+// ═══ معايير السلامة والاختبار السريع ═══
+//
+// ⚠️ **قائمة تنعلّم لحالها من نتيجة المحرّك** — مو خانات يأشّر عليها
+// المتدرّب. قائمة سلامة يأشّر عليها المستخدم بنفسه تنعبّي بثانيتين
+// بلا ما ينفحص شي، وتصير ورقة تُملأ مو فحصاً يُجرى. وهذا بالضبط الي
+// يصير بالميدان لمن يكون النموذج ورقياً.
+
+export interface SafetyCheck {
+  id: string
+  label: string
+  /** يمر · ينتظر (ماكو بيانات بعد) · يفشل */
+  state: 'pass' | 'idle' | 'fail'
+  why?: string
+}
+
+export interface QuickTest {
+  checks: SafetyCheck[]
+  /** الدرجة من ١٠٠ — نسبة الفحوص الناجحة من المفحوصة فعلاً. */
+  score: number
+  /** كم فحص انفحص فعلاً (مو `idle`). */
+  tested: number
+}
+
+/**
+ * ⚠️ الدرجة تنحسب من **الفحوص الي انفحصت فعلاً** بس. لو حسبنا
+ * الـ`idle` كفشل، مخطط ما انشغّل بعد يعطي صفراً ويخوّف المتدرّب بلا
+ * سبب. ولو حسبناها كنجاح، لوح فاضي يعطي ١٠٠ — وهذا أسوأ.
+ */
+export function quickTest(doc: LabDoc, result: SimResult | null): QuickTest {
+  const msgs = result?.messages ?? []
+  const hasErr = (re: RegExp) => msgs.some((m) => m.kind === 'error' && re.test(m.text))
+  const hasWarn = (re: RegExp) => msgs.some((m) => m.kind !== 'info' && re.test(m.text))
+  const ran = !!result
+
+  const mk = (id: string, label: string, ok: boolean, why?: string): SafetyCheck =>
+    ({ id, label, state: !ran ? 'idle' : ok ? 'pass' : 'fail', why: ok ? undefined : why })
+
+  const checks: SafetyCheck[] = []
+
+  if (doc.domain === 'solar') {
+    checks.push(mk('polarity', 'القطبية ومداخل الإنفرتر', !hasErr(/مدخل البطارية|مدخل PV/),
+      'ألواح على مدخل بطارية أو العكس — يحرق الإنفرتر فوراً.'))
+    checks.push(mk('voc', 'جهد الستring ببرد الشتاء', !hasErr(/Voc/),
+      'Voc بالبرد فوگ حد الإنفرتر — يحرقه بأول صباح بارد.'))
+    checks.push(mk('mppt', 'نافذة MPPT', !hasWarn(/MPPT/),
+      'الستring برّا نافذة MPPT — الإنفرتر ما يشتغل بأعلى كفاءة أو ما يبدي أصلاً.'))
+    checks.push(mk('bank', 'مطابقة جهد بنك البطاريات', !hasErr(/بنك البطاريات/),
+      'جهد البنك مو مطابق لإعداد الإنفرتر — ما يشحن ولا يشتغل.'))
+    checks.push(mk('load', 'قدرة الأحمال ضمن الحد', !hasErr(/قدرة الإنفرتر/),
+      'الأحمال فوگ قدرة الإنفرتر — يفصل على حمل زائد.'))
+    // ⚠️ `&&` مو `||`: الشرطان **لازم** الاثنان — الاحتياطي يكفي
+    // **و** الإنتاج اليومي يكفي. بـ`||` الفحص ينجح لو واحد منهما
+    // تمام، فمنظومة احتياطها ساعة ونص تطلع «سليمة».
+    checks.push(mk('backup', 'الاحتياطي والإنتاج اليومي',
+      !hasWarn(/تغطّي الأحمال/) && !hasWarn(/ما يكفي، تحتاج ألواحاً/),
+      'الاحتياطي أو الإنتاج اليومي ما يكفي الأحمال.'))
+  } else {
+    checks.push(mk('errors', 'ماكو أخطاء خطيرة', msgs.filter((m) => m.kind === 'error').length === 0,
+      'بعدها أخطاء خطيرة بالمخطط.'))
+    checks.push(mk('links', 'كل الوصلات سليمة',
+      Object.values(result?.linkState ?? {}).every((s) => s !== 'bad'),
+      'اكو وصلة مكسورة.'))
+  }
+
+  const tested = checks.filter((c) => c.state !== 'idle').length
+  const passed = checks.filter((c) => c.state === 'pass').length
+  return { checks, tested, score: tested ? Math.round((passed / tested) * 100) : 0 }
+}

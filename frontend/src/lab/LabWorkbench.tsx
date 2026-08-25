@@ -24,7 +24,7 @@ import { audioEngine } from './engines/audio'
 import { fireEngine } from './engines/fire'
 import { networkEngine } from './engines/network'
 import { portVoltages, solarEngine } from './engines/solar'
-import { computeStages } from './stages'
+import { computeStages, quickTest } from './stages'
 import { Symbol } from './symbols'
 import type { DomainEngine, DomainId, LabDoc, ParamDef, SimResult } from './types'
 
@@ -216,6 +216,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   // ⚠️ المراحل تنحسب من **المستند والنتيجة** — ماكو زر «التالي».
   const stageState = useMemo(() => computeStages(doc, result), [doc, result])
   const portV = useMemo(() => (domain === 'solar' ? portVoltages(doc) : {}), [domain, doc])
+  const qt = useMemo(() => quickTest(doc, result), [doc, result])
 
   const errors = msgs.filter((m) => m.kind === 'error')
   const warns = msgs.filter((m) => m.kind === 'warn')
@@ -665,6 +666,38 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                 </div>
               )
             })()}
+
+            {/* ═══ الاختبار السريع ═══
+                ⚠️ **يتعلّم من نتيجة المحرّك** — ماكو خانة يأشّر عليها
+                المتدرّب. قائمة سلامة يملأها المستخدم بنفسه تنعبّي
+                بثانيتين بلا ما ينفحص شي، وتصير ورقة تُملأ مو فحصاً
+                يُجرى. */}
+            <div className="mt-3 rounded-xl bg-[#0b1220] p-3 ring-1 ring-slate-800">
+              <div className="mb-2 flex items-center justify-between">
+                <span className={`font-mono text-[15px] font-black tabular-nums ${
+                  qt.tested === 0 ? 'text-slate-600' : qt.score === 100 ? 'text-emerald-400'
+                    : qt.score >= 70 ? 'text-amber-300' : 'text-red-400'}`}>
+                  {qt.tested === 0 ? '—' : `${qt.score}/100`}
+                </span>
+                <h4 className="text-[12px] font-bold text-slate-300">الاختبار السريع</h4>
+              </div>
+              <div className="space-y-1">
+                {qt.checks.map((c) => (
+                  <div key={c.id} className="flex items-start gap-1.5" title={c.why}>
+                    <span className="mt-px shrink-0 text-[11px]">
+                      {c.state === 'pass' ? '✅' : c.state === 'fail' ? '❌' : '⏳'}
+                    </span>
+                    <span className={`flex-1 text-[10.5px] leading-relaxed ${
+                      c.state === 'fail' ? 'text-red-300' : c.state === 'pass' ? 'text-slate-400' : 'text-slate-600'}`}>
+                      {c.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {qt.tested === 0 && (
+                <p className="mt-1.5 text-[10px] text-slate-600">شغّل المحاكاة حتى تنفحص.</p>
+              )}
+            </div>
 
             <div className="mt-4 border-t border-slate-800 pt-2.5 text-[10px] leading-relaxed text-slate-600">
               <b className="text-slate-500">الاختصارات</b><br />
