@@ -75,6 +75,9 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [result, setResult] = useState<SimResult | null>(null)
   const [console_, setConsole] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
+  const [zoomPct, setZoomPct] = useState(100)
+  const [search, setSearch] = useState('')
+  const [tab, setTab] = useState<'props' | 'ports' | 'state'>('props')
 
   // ═══ المخططات المحفوظة ═══
   const [projects, setProjects] = useState<{ id: string; name: string; domain: string; updatedAt: string }[]>([])
@@ -103,15 +106,17 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   }, [domain])
 
   const parts = useMemo(() => PARTS.filter((p) => p.domain === domain), [domain])
+  /** ⚠️ البحث بالاسم **وبالموديل**: الفني يدوّر «PoE» أو «١٠٠ فولت»
+   *  أكثر ما يدوّر باسم القطعة الكامل. */
+  const shownParts = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    if (!q) return parts
+    return parts.filter((p) => (p.name + ' ' + (p.model ?? '')).toLowerCase().includes(q))
+  }, [parts, search])
   const selNode = doc.nodes.find((n) => n.id === selected)
   const selPart = selNode ? PART_BY_ID[selNode.partId] : null
   const selLink = doc.links.find((l) => l.id === selected)
 
-  const run = () => {
-    const r = ENGINES[domain].run(doc, PART_BY_ID)
-    setResult(r)
-    onResult?.(doc, r)
-  }
 
   /** ⚠️ حالة الكونسول تنكتب بالعقدة مو بحالة منفصلة: لو انخزنت
    *  برّا، تضيع بأول تبديل مجال وما تنحفظ مع المخطط. */
@@ -164,6 +169,19 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   }
   const clearAll = () => { setDoc(() => ({ domain, nodes: [], links: [] })); setSelected(null) }
 
+  // ⚠️ تبديل القطعة يرجّع التبويب لـ«الخصائص»: لو بقيت بتبويب
+  // «الحالة» وضغطت قطعة ما إلها قراءات، تشوف لوحة فاضية وتظن
+  // التحديد ما اشتغل.
+  //
+  // ⚠️ التصفير **أثناء الرندر** مو بتأثير — هذا النمط الموثّق بـReact
+  // لتصفير حالة عند تغيّر مدخل. `useEffect` يسبّب رندراً متسلسلاً:
+  // رندر بالتبويب القديم ثم رندر ثانٍ بالجديد، والمستخدم يشوف ومضة.
+  const [tabFor, setTabFor] = useState<string | null>(null)
+  if (tabFor !== selected) {
+    setTabFor(selected)
+    setTab('props')
+  }
+
   const setParam = (id: string, value: string | number | boolean) => {
     if (!selNode) return
     setDoc((d) => ({ ...d, nodes: d.nodes.map((n) => (n.id === selNode.id ? { ...n, params: { ...n.params, [id]: value } } : n)) }))
@@ -192,17 +210,49 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const errors = msgs.filter((m) => m.kind === 'error')
   const warns = msgs.filter((m) => m.kind === 'warn')
 
+  // ═══ سجل الأحداث ═══
+  //
+  // ⚠️ **سجل** مو قائمة رسائل: كل تشغيل يترك أثراً بوقته، فالفني
+  // يشوف «شنو تغيّر بعد آخر تعديل» بدل ما يقارن قائمتين بعينه.
+  // ⚠️ والوقت ينختم **وقت التشغيل** مو بالرندر — الرندر يتكرّر
+  // فيتغيّر الوقت بلا ما يصير شي.
+  const [log, setLog] = useState<{ t: string; kind: string; text: string }[]>([])
+
+  const runAndLog = useCallback(() => {
+    const r = ENGINES[domain].run(doc, PART_BY_ID)
+    setResult(r)
+    onResult?.(doc, r)
+    const now = new Date()
+    const t = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
+    const seen = new Set<string>()
+    const fresh = r.messages.filter((m) => {
+      const k = m.kind + '|' + m.text
+      if (seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    setLog((prev) => [
+      ...fresh.map((m) => ({ t, kind: m.kind, text: m.text })),
+      { t, kind: 'run', text: `بدأت المحاكاة بوضع ${DOMAINS.find((d) => d.id === domain)?.name}` },
+      ...prev,
+    ].slice(0, 80))
+  }, [domain, doc, onResult])
+
+  const KIND_CHIP: Record<string, { label: string; cls: string }> = {
+    error: { label: 'خطأ', cls: 'bg-red-500/15 text-red-300 ring-red-500/30' },
+    warn: { label: 'تحذير', cls: 'bg-amber-500/15 text-amber-300 ring-amber-500/30' },
+    info: { label: 'نجاح', cls: 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30' },
+    run: { label: 'معلومات', cls: 'bg-sky-500/15 text-sky-300 ring-sky-500/30' },
+  }
+
   return (
     <div dir="rtl" className="space-y-3">
-      {/* ⚠️ داخل تمرين: شريط السلامة والعنوان موجودين بصفحة التمرين
-          أصلاً، وتكرارهم يزحم الشاشة ويخلّي المتدرّب يتجاهلهم. */}
       {!embedded && (
         <>
-          <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-[12.5px] font-bold text-amber-900 ring-1 ring-amber-200">
+          <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-[12.5px] font-bold leading-relaxed text-amber-900 ring-1 ring-amber-200">
             ⚠️ محاكاة تدريب — القيم نمطية عامة مو كتالوگ موديل بعينه. الرجوع لكتالوگ
             الشركة المصنّعة إلزامي قبل أي تنفيذ حقيقي.
           </div>
-
           <div className="flex flex-wrap items-center justify-between gap-3">
             <Link to="/simulator-lab" className="text-sm text-brand-700 hover:underline">← رجوع للمختبر</Link>
             <h2 className="text-xl font-bold text-brand-900">🧰 مساحة عمل المحاكاة</h2>
@@ -210,314 +260,445 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
         </>
       )}
 
-      {/* ═══ شريط الأدوات ═══ */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2.5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-        <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-300">
-          {DOMAINS.map((d) => (
-            <button
-              key={d.id}
-              onClick={() => { setDomain(d.id); setSelected(null); setPendingPart(null); setResult(null) }}
-              className={`px-3.5 py-1.5 text-xs font-bold transition ${
-                domain === d.id ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
-            >
-              {d.icon} {d.name}
-            </button>
-          ))}
-        </div>
-
-        <div className="mr-auto flex items-center gap-2">
-          <button onClick={run}
-            className="rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-700">
-            ▶ تشغيل المحاكاة
-          </button>
-          <button onClick={() => setResult(null)} disabled={!result}
-            className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40">
-            ⏹ إيقاف
-          </button>
-          <button onClick={() => setFitSignal((n) => n + 1)}
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200">
-            ⤢ ضبط العرض
-          </button>
-          <button onClick={clearAll}
-            className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200 hover:bg-red-50">
-            🗑 تفريغ اللوح
-          </button>
-        </div>
-      </div>
-
-      {!embedded && (
-      <>
-      {/* ═══ المخططات المحفوظة ═══
-          ⚠️ اللوح بلا حفظ يعني شغل يروح مع تسكير الصفحة — والمخطط مو
-          رسمة، هو تصميم مشروع الفني يرجعله. */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2.5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-        <span className="text-xs font-bold text-slate-500">المخطط</span>
-        <input
-          value={projectName} onChange={(e) => setProjectName(e.target.value)}
-          placeholder="اسم المخطط"
-          className="w-52 rounded-lg border border-slate-300 px-2.5 py-1.5 text-[12px]"
-        />
-        <button onClick={saveProject}
-          className="rounded-lg bg-brand-700 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-brand-800">
-          💾 {projectId ? 'احفظ التعديلات' : 'احفظ جديداً'}
-        </button>
-        {projectId && (
-          <button
-            onClick={() => { setProjectId(null); setProjectName('') }}
-            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-600"
-          >
-            نسخة جديدة
-          </button>
-        )}
-        <select
-          value={projectId ?? ''} onChange={(e) => void openProject(e.target.value)}
-          className="rounded-lg border border-slate-300 px-2 py-1.5 text-[12px]"
-        >
-          <option value="">— افتح مخططاً محفوظاً —</option>
-          {projects.map((pr) => (
-            <option key={pr.id} value={pr.id}>
-              {pr.name} · {DOMAINS.find((d) => d.id === pr.domain)?.name ?? pr.domain}
-            </option>
-          ))}
-        </select>
-        {projectId && (
-          <button
-            onClick={async () => {
-              if (!projectId) return
-              await api.deleteSimProject(projectId).catch(() => {})
-              setProjectId(null); setProjectName(''); setReload((n) => n + 1)
-            }}
-            className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200"
-          >
-            احذف المخطط
-          </button>
-        )}
-        {busy && <span className="text-xs font-bold text-slate-500">{busy}</span>}
-      </div>
-      </>
-      )}
-
-      <p className="text-xs text-slate-500">{DOMAINS.find((d) => d.id === domain)?.about}</p>
-
-      {/* ⚠️ اللوح يحتاج مساحة — بالموبايل ما يشتغل، والرسالة الصريحة
-          أنظف من محرّر مصغّر ما ينستعمل. */}
+      {/* ⚠️ اللوح يحتاج مساحة — بالموبايل ما يشتغل. */}
       <div className="rounded-2xl bg-white p-8 text-center shadow md:hidden">
         <p className="text-lg font-bold text-slate-700">🖥️ افتحه من الحاسبة</p>
         <p className="mt-2 text-sm text-slate-500">مساحة العمل تحتاج شاشة كبيرة — سحب قطع وربط بشاشة ٦ إنچ ما يشتغل.</p>
       </div>
 
-      <div className="hidden gap-3 md:grid md:grid-cols-[13rem_1fr_17rem]">
-        {/* ═══ الكتالوگ ═══ */}
-        <div className="rounded-xl bg-white p-3 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <h3 className="mb-2 text-xs font-bold text-slate-500">القطع — اضغط قطعة ثم اضغط باللوح</h3>
-          <div className="space-y-1.5">
-            {parts.map((p) => (
+      {/* ═══ الاستوديو ═══
+          ⚠️ سطح **داكن** عمداً: أدوات المحاكاة والتصميم (MATLAB،
+          KiCad، Packet Tracer بوضعه الفيزيائي) كلها داكنة، لأن
+          المخطط الملوّن يُقرا أحسن على خلفية داكنة والعين ما تتعب
+          بجلسة طويلة. وباقي النظام يبقى فاتحاً — هاي **أداة** جوّا
+          نظام، مو صفحة إدارية. */}
+      <div className="hidden overflow-hidden rounded-2xl bg-[#0b1220] shadow-[0_10px_40px_rgba(2,8,23,0.35)] ring-1 ring-slate-800 md:block">
+        {/* شريط الأدوات */}
+        <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-[#0e1626] px-3 py-2.5">
+          <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-700">
+            {DOMAINS.map((d) => (
               <button
-                key={p.id}
-                onClick={() => setPendingPart(pendingPart === p.id ? null : p.id)}
-                className={`flex w-full items-center gap-2 rounded-lg border p-2 text-right transition ${
-                  pendingPart === p.id ? 'border-emerald-500 bg-emerald-50' : 'border-slate-200 hover:border-brand-400 hover:bg-slate-50'}`}
+                key={d.id}
+                onClick={() => { setDomain(d.id); setSelected(null); setPendingPart(null); setResult(null); setTab('props') }}
+                className={`px-3 py-1.5 text-xs font-bold transition ${
+                  domain === d.id ? 'bg-sky-600 text-white' : 'bg-[#0b1220] text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
               >
-                <svg viewBox={`0 0 ${p.w} ${p.h}`} width={38} height={26} className="shrink-0">
-                  <Symbol symbol={p.symbol} w={p.w} h={p.h} accent="#64748b"
-                    params={Object.fromEntries(p.params.map((x) => [x.id, x.default]))} />
-                </svg>
-                <span className="flex-1 text-[12px] font-bold text-slate-700">{p.name}</span>
+                {d.icon} {d.name}
               </button>
             ))}
           </div>
+
+          <div className="mr-auto flex items-center gap-2">
+            <button onClick={runAndLog}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-500">
+              ▶ تشغيل المحاكاة
+            </button>
+            <button onClick={() => { setResult(null) }} disabled={!result}
+              className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 disabled:opacity-40">
+              ■ إيقاف
+            </button>
+            <button onClick={() => setFitSignal((n) => n + 1)}
+              className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700">
+              ⤢ ضبط العرض
+            </button>
+            <button onClick={clearAll}
+              className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-300 ring-1 ring-red-500/30 hover:bg-red-500/20">
+              🗑 تفريغ اللوح
+            </button>
+          </div>
         </div>
 
-        {/* ═══ اللوح ═══ */}
-        <div className="flex min-h-[560px] flex-col gap-2">
-          <Canvas
-            doc={doc} setDoc={setDoc} result={result}
-            selected={selected} setSelected={setSelected}
-            pendingPart={pendingPart} onPlaced={() => setPendingPart(null)}
-            fitSignal={fitSignal}
-          />
+        {/* شريط المخططات */}
+        {!embedded && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-800 bg-[#0b1220] px-3 py-2">
+            <span className="text-[11px] font-bold text-slate-500">المخطط</span>
+            <input
+              value={projectName} onChange={(e) => setProjectName(e.target.value)}
+              placeholder="اسم المخطط"
+              className="w-48 rounded-lg border border-slate-700 bg-[#0e1626] px-2.5 py-1.5 text-[12px] text-slate-200 placeholder:text-slate-600"
+            />
+            <button onClick={saveProject}
+              className="rounded-lg bg-sky-600 px-3.5 py-1.5 text-xs font-bold text-white hover:bg-sky-500">
+              💾 {projectId ? 'احفظ التعديلات' : 'احفظ جديداً'}
+            </button>
+            {projectId && (
+              <button onClick={() => { setProjectId(null); setProjectName('') }}
+                className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300">نسخة جديدة</button>
+            )}
+            <select
+              value={projectId ?? ''} onChange={(e) => void openProject(e.target.value)}
+              className="rounded-lg border border-slate-700 bg-[#0e1626] px-2 py-1.5 text-[12px] text-slate-200"
+            >
+              <option value="">— افتح مخططاً محفوظاً —</option>
+              {projects.map((pr) => (
+                <option key={pr.id} value={pr.id}>
+                  {pr.name} · {DOMAINS.find((d) => d.id === pr.domain)?.name ?? pr.domain}
+                </option>
+              ))}
+            </select>
+            {projectId && (
+              <button
+                onClick={async () => {
+                  if (!projectId) return
+                  await api.deleteSimProject(projectId).catch(() => {})
+                  setProjectId(null); setProjectName(''); setReload((n) => n + 1)
+                }}
+                className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-300 ring-1 ring-red-500/30"
+              >احذف المخطط</button>
+            )}
+            {busy && <span className="text-xs font-bold text-slate-400">{busy}</span>}
+          </div>
+        )}
 
-          {/* ═══ الكونسول ═══ */}
-          {console_ && (() => {
-            const nd = doc.nodes.find((n) => n.id === console_)
-            if (!nd) return null
-            return (
-              <div className="rounded-xl bg-white p-2.5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-                <div className="mb-2 flex items-center justify-between">
-                  <button onClick={() => setConsole(null)} className="text-[11px] font-bold text-slate-500 hover:text-slate-800">
-                    ✕ سكّر
-                  </button>
-                  <p className="text-xs font-bold text-brand-900">
-                    🖥️ كونسول {String(nd.cliState?.hostname ?? nd.params.hostname ?? '')}
-                  </p>
-                </div>
-                <Suspense fallback={<div className="h-[300px] rounded-xl bg-[#080c10]" />}>
-                  {/* ⚠️ `key` بمعرّف الجهاز: بدونه تبديل الجهاز يعيد
-                      استعمال نفس الترمنال بحالة الجهاز السابق. */}
-                  <CliTerminal
-                    key={nd.id}
-                    grammar={CISCO_LIKE}
-                    initialState={nd.cliState ?? { hostname: String(nd.params.hostname ?? 'Switch') }}
-                    onStateChange={(st) => saveCli(nd.id, st)}
-                    heightClass="h-[300px]"
-                  />
-                </Suspense>
-                <p className="mt-1.5 text-[10.5px] text-slate-400">
-                  مثال: <span dir="ltr" className="font-mono">en → conf t → int gi0/2 → switchport access vlan 20 → end</span>
-                  {' '}ثم شغّل المحاكاة وشوف العزل.
-                </p>
+        {/* ═══ الأعمدة الثلاثة ═══ */}
+        <div className="grid gap-0 lg:grid-cols-[16rem_1fr_17rem]">
+          {/* ─── مكتبة الأجهزة ─── */}
+          <div className="order-2 border-l border-slate-800 bg-[#0e1626] p-3 lg:order-1">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] text-slate-600">{parts.length} جهاز</span>
+              <h3 className="text-[13px] font-bold text-slate-200">مكتبة الأجهزة</h3>
+            </div>
+
+            <input
+              value={search} onChange={(e) => setSearch(e.target.value)}
+              placeholder="🔍 ابحث عن جهاز…"
+              className="mb-2.5 w-full rounded-lg border border-slate-700 bg-[#0b1220] px-2.5 py-1.5 text-[12px] text-slate-200 placeholder:text-slate-600"
+            />
+
+            <div className="grid max-h-[400px] gap-1.5 overflow-y-auto pl-1">
+              {shownParts.length === 0 && (
+                <p className="py-6 text-center text-[11px] text-slate-600">ماكو جهاز يطابق البحث.</p>
+              )}
+              {shownParts.map((pt) => (
+                <button
+                  key={pt.id}
+                  onClick={() => setPendingPart(pendingPart === pt.id ? null : pt.id)}
+                  className={`flex items-center gap-2 rounded-lg border p-2 text-right transition ${
+                    pendingPart === pt.id
+                      ? 'border-emerald-500 bg-emerald-500/10'
+                      : 'border-slate-800 bg-[#0b1220] hover:border-sky-600 hover:bg-slate-800/50'}`}
+                >
+                  <svg viewBox={`0 0 ${pt.w} ${pt.h}`} width={34} height={26} className="shrink-0">
+                    <Symbol symbol={pt.symbol} w={pt.w} h={pt.h} accent="#64748b"
+                      params={Object.fromEntries(pt.params.map((x) => [x.id, x.default]))} />
+                  </svg>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[11.5px] font-bold text-slate-200">{pt.name}</span>
+                    {pt.model && <span className="block truncate text-[10px] text-slate-500">{pt.model}</span>}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-2.5 rounded-lg border border-dashed border-slate-700 px-3 py-2.5 text-center text-[11px] text-slate-500">
+              ☝︎ اختر جهازاً ثم اضغط باللوح
+            </div>
+          </div>
+
+          {/* ─── اللوح ─── */}
+          <div className="order-1 flex min-h-[620px] flex-col lg:order-2">
+            {/* ⚠️ `flex` على الحاوية إجبارية: `flex-1` جوّا حاوية
+                **بلوك** ما تسوي شي، فاللوح ينكمش لارتفاع محتواه
+                (والـSVG بـ`h-full` جوّا حاوية بلا ارتفاع = صفر
+                تقريباً). طلعت شريطاً نحيفاً بنص شاشة فاضية. */}
+            <div className="relative flex min-h-[440px] flex-1 p-2">
+              <Canvas
+                doc={doc} setDoc={setDoc} result={result}
+                selected={selected} setSelected={setSelected}
+                pendingPart={pendingPart} onPlaced={() => setPendingPart(null)}
+                fitSignal={fitSignal}
+                onZoom={setZoomPct}
+              />
+
+              {/* أدوات على اللوح */}
+              <div className="pointer-events-none absolute right-5 top-5 flex items-center gap-2">
+                <span className={`pointer-events-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold ring-1 ${
+                  result ? 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30' : 'bg-slate-800/80 text-slate-400 ring-slate-700'}`}>
+                  <span className={`inline-block h-2 w-2 rounded-full ${result ? 'animate-pulse bg-emerald-400' : 'bg-slate-500'}`} />
+                  {result ? 'وضع المحاكاة' : 'وضع التحرير'}
+                </span>
               </div>
-            )
-          })()}
 
-          {/* ═══ شريط النتائج ═══ */}
-          <div className="max-h-44 overflow-y-auto rounded-xl bg-white p-3 text-[12px] shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            {!result && <p className="text-slate-400">اضغط «تشغيل المحاكاة» حتى تشوف النتيجة.</p>}
-            {result && msgs.length === 0 && <p className="text-slate-400">ماكو ملاحظات.</p>}
-            {result && (
-              <>
-                {errors.length > 0 && (
-                  <p className="mb-2 rounded-lg bg-red-50 px-3 py-1.5 font-bold text-red-700">
-                    {errors.length} مشكلة خطيرة — تنقرا تحت.
-                  </p>
+              <div className="pointer-events-auto absolute left-5 top-5 flex items-center gap-1 rounded-lg bg-[#0e1626]/95 p-1 ring-1 ring-slate-700">
+                <button onClick={() => setFitSignal((n) => n + 1)} title="ضبط العرض"
+                  className="rounded px-2 py-0.5 text-[13px] text-slate-300 hover:bg-slate-700">⤢</button>
+                <span className="px-1.5 font-mono text-[11px] tabular-nums text-slate-400">{zoomPct}٪</span>
+              </div>
+
+              {/* خريطة مصغّرة */}
+              {doc.nodes.length > 0 && (
+                <div className="pointer-events-none absolute bottom-5 left-5 h-20 w-28 overflow-hidden rounded-lg bg-[#0e1626]/95 ring-1 ring-slate-700">
+                  <Minimap doc={doc} />
+                </div>
+              )}
+            </div>
+
+            {/* ─── سجل الأحداث ─── */}
+            <div className="border-t border-slate-800 bg-[#0e1626]">
+              <div className="flex items-center justify-between px-3 py-1.5">
+                <button onClick={() => setLog([])} className="text-[10px] text-slate-600 hover:text-slate-400">تفريغ</button>
+                <h3 className="text-[12px] font-bold text-slate-300">سجل الأحداث</h3>
+              </div>
+              <div className="max-h-40 overflow-y-auto px-2 pb-2">
+                {log.length === 0 && (
+                  <p className="px-2 py-3 text-[11px] text-slate-600">اضغط «تشغيل المحاكاة» — النتائج تنسجّل هنا بوقتها.</p>
                 )}
-                <ul className="space-y-1.5">
-                  {msgs.map((m, i) => (
-                    <li key={i} className={`rounded-lg px-3 py-1.5 leading-relaxed ${
-                      m.kind === 'error' ? 'bg-red-50 font-bold text-red-700'
-                        : m.kind === 'warn' ? 'bg-amber-50 text-amber-800'
-                        : 'bg-slate-50 text-slate-600'}`}>
-                      {m.text}
-                    </li>
-                  ))}
-                </ul>
+                {log.map((e, i) => {
+                  const chip = KIND_CHIP[e.kind] ?? KIND_CHIP.run
+                  return (
+                    <div key={i} className="flex items-start gap-2 border-b border-slate-800/60 px-1.5 py-1.5 last:border-0">
+                      <span className="mt-0.5 shrink-0 font-mono text-[10px] tabular-nums text-slate-600">{e.t}</span>
+                      <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[9.5px] font-bold ring-1 ${chip.cls}`}>{chip.label}</span>
+                      <span className="flex-1 text-[11.5px] leading-relaxed text-slate-300">{e.text}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* ─── الخصائص ─── */}
+          <div className="order-3 border-r border-slate-800 bg-[#0e1626] p-3">
+            {!selNode && !selLink && (
+              <>
+                <h3 className="mb-2 text-[13px] font-bold text-slate-200">الخصائص</h3>
+                <p className="rounded-lg border border-dashed border-slate-700 px-3 py-8 text-center text-[11px] text-slate-500">
+                  اضغط قطعة أو كيبلاً باللوح
+                </p>
               </>
             )}
-          </div>
-        </div>
 
-        {/* ═══ الخصائص ═══ */}
-        <div className="rounded-xl bg-white p-3 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-          <h3 className="mb-2 text-xs font-bold text-slate-500">الخصائص</h3>
-          {!selNode && !selLink && (
-            <p className="text-[12px] text-slate-400">اضغط قطعة أو كيبلاً باللوح حتى تشوف خصائصه.</p>
-          )}
-
-          {/* ═══ خصائص الكيبل ═══
-              ⚠️ هنا الفرق الحقيقي عن Packet Tracer: الكيبل مو خط —
-              له نوع وطول وترانسيفر بكل طرف، وكلهن ينفحصن. */}
-          {selLink && selLink.params && (() => {
-            const fromKind = PART_BY_ID[doc.nodes.find((n) => n.id === selLink.from.node)?.partId ?? '']
-              ?.ports.find((p) => p.id === selLink.from.port)?.kind ?? 'eth'
-            const defs = linkParamsFor(fromKind) ?? []
-            const net = CABLE_BY_ID[String(selLink.params.cable ?? '')]
-            return (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-bold text-brand-900">🔌 {fromKind === 'spk' ? 'خط سماعات' : 'كيبل'}</p>
-                {net && (
-                  <>
-                    <p className="mt-0.5 text-[11px] text-slate-500">{net.about}</p>
-                    <p className="mt-1 text-[10.5px] text-slate-400">
-                      الوسط: {MEDIUM_AR[net.medium]} · الحد {net.maxM} م
+            {selNode && selPart && (
+              <>
+                {/* رأس البطاقة */}
+                <div className="mb-2.5 flex items-center gap-2.5 rounded-lg bg-[#0b1220] p-2.5 ring-1 ring-slate-800">
+                  <svg viewBox={`0 0 ${selPart.w} ${selPart.h}`} width={44} height={32} className="shrink-0">
+                    <Symbol symbol={selPart.symbol} w={selPart.w} h={selPart.h} accent="#38bdf8"
+                      params={selNode.params} />
+                  </svg>
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-bold text-slate-100">
+                      {String(selNode.params.name ?? selNode.params.hostname ?? selPart.name)}
                     </p>
-                  </>
-                )}
-              </div>
-              {defs.map((lp) => (
-                <Field key={lp.id} def={lp} value={selLink.params?.[lp.id]} onChange={(v) => setLinkParam(lp.id, v)} />
-              ))}
-              <button
-                onClick={() => { setDoc((d) => ({ ...d, links: d.links.filter((l) => l.id !== selLink.id) })); setSelected(null) }}
-                className="w-full rounded-lg bg-red-50 py-1.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200 hover:bg-red-100"
-              >
-                🗑 احذف الكيبل
-              </button>
-            </div>
-            )
-          })()}
-          {selNode && selPart && (
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm font-bold text-brand-900">{selPart.name}</p>
-                {selPart.about && <p className="mt-0.5 text-[11px] leading-relaxed text-slate-500">{selPart.about}</p>}
-              </div>
+                    {selPart.model && <p className="truncate text-[10px] text-slate-500">{selPart.model}</p>}
+                  </div>
+                </div>
 
-              {selPart.danger && (
-                <p className="rounded-lg bg-red-50 px-2.5 py-1.5 text-[11px] leading-relaxed font-bold text-red-700">
-                  ⚠️ {selPart.danger}
-                </p>
-              )}
-
-              {/* ═══ الكونسول ═══
-                  ⚠️ هنا انربط الترمنال باللوح: التهيئة الي تكتبها هنا
-                  **تغيّر نتيجة المحاكاة** — منفذ تحطّه بـVLAN 20 يعزل
-                  الجهاز المربوط بيه فعلاً. */}
-              {CLI_PARTS.has(selNode.partId) && (
-                <button
-                  onClick={() => setConsole(console_ === selNode.id ? null : selNode.id)}
-                  className={`w-full rounded-lg py-2 text-[12px] font-bold transition ${
-                    console_ === selNode.id ? 'bg-slate-700 text-white' : 'bg-slate-900 text-emerald-300 hover:bg-slate-800'}`}
-                >
-                  🖥️ {console_ === selNode.id ? 'سكّر الكونسول' : 'افتح الكونسول'}
-                </button>
-              )}
-
-              {selPart.params.map((pd) => (
-                <Field key={pd.id} def={pd} value={selNode.params[pd.id]} onChange={(v) => setParam(pd.id, v)} />
-              ))}
-
-              {result?.nodeReadings[selNode.id] && (
-                <div className="rounded-lg bg-slate-900 p-2.5">
-                  <p className="mb-1 text-[10px] text-slate-400">القياس</p>
-                  {result.nodeReadings[selNode.id].map((r, i) => (
-                    <p key={i} className={`font-mono text-[13px] font-bold ${
-                      r.tone === 'bad' ? 'text-red-400' : r.tone === 'warn' ? 'text-amber-300' : 'text-emerald-400'}`}>
-                      {r.text}
-                    </p>
+                {/* التبويبات */}
+                <div className="mb-2.5 flex rounded-lg bg-[#0b1220] p-0.5 ring-1 ring-slate-800">
+                  {([['props', 'الخصائص'], ['ports', 'المنافذ'], ['state', 'الحالة']] as const).map(([id, label]) => (
+                    <button key={id} onClick={() => setTab(id)}
+                      className={`flex-1 rounded px-2 py-1 text-[11px] font-bold transition ${
+                        tab === id ? 'bg-sky-600 text-white' : 'text-slate-400 hover:text-slate-200'}`}>
+                      {label}
+                    </button>
                   ))}
                 </div>
-              )}
 
-              <button
-                onClick={() => {
-                  setDoc((d) => ({
-                    ...d,
-                    nodes: d.nodes.filter((n) => n.id !== selNode.id),
-                    links: d.links.filter((l) => l.from.node !== selNode.id && l.to.node !== selNode.id),
-                  }))
-                  setSelected(null)
-                }}
-                className="w-full rounded-lg bg-red-50 py-1.5 text-[11px] font-bold text-red-600 ring-1 ring-red-200 hover:bg-red-100"
-              >
-                🗑 احذف القطعة
-              </button>
+                {tab === 'props' && (
+                  <div className="space-y-2.5">
+                    {selPart.about && <p className="text-[11px] leading-relaxed text-slate-500">{selPart.about}</p>}
+                    {selPart.danger && (
+                      <p className="rounded-lg bg-red-500/10 px-2.5 py-1.5 text-[10.5px] font-bold leading-relaxed text-red-300 ring-1 ring-red-500/25">
+                        ⚠️ {selPart.danger}
+                      </p>
+                    )}
+                    {CLI_PARTS.has(selNode.partId) && (
+                      <button
+                        onClick={() => setConsole(console_ === selNode.id ? null : selNode.id)}
+                        className={`w-full rounded-lg py-2 text-[12px] font-bold transition ${
+                          console_ === selNode.id ? 'bg-slate-700 text-white' : 'bg-black text-emerald-300 ring-1 ring-emerald-800 hover:bg-slate-900'}`}
+                      >
+                        🖥️ {console_ === selNode.id ? 'سكّر الكونسول' : 'افتح الكونسول'}
+                      </button>
+                    )}
+                    {selPart.params.map((pd) => (
+                      <Field key={pd.id} def={pd} value={selNode.params[pd.id]} onChange={(v) => setParam(pd.id, v)} dark />
+                    ))}
+                  </div>
+                )}
+
+                {tab === 'ports' && (
+                  <div className="space-y-1.5">
+                    {selPart.ports.map((pt) => {
+                      const linked = doc.links.filter(
+                        (l) => (l.from.node === selNode.id && l.from.port === pt.id) ||
+                               (l.to.node === selNode.id && l.to.port === pt.id))
+                      const peer = linked[0]
+                        ? doc.nodes.find((n) => n.id === (linked[0].from.node === selNode.id ? linked[0].to.node : linked[0].from.node))
+                        : null
+                      return (
+                        <div key={pt.id} className="flex items-center gap-2 rounded-lg bg-[#0b1220] px-2.5 py-1.5 ring-1 ring-slate-800">
+                          <span className={`inline-block h-2 w-2 shrink-0 rounded-full ${linked.length ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-[11.5px] font-bold text-slate-200">{pt.label}</span>
+                            <span className="block truncate text-[10px] text-slate-500">
+                              {PORT_KIND_AR[pt.kind] ?? pt.kind}
+                              {peer ? ` → ${String(peer.params.name ?? peer.params.hostname ?? '')}` : ' · فاضي'}
+                            </span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {tab === 'state' && (
+                  <div className="space-y-1.5">
+                    {!result && <p className="text-[11px] text-slate-500">شغّل المحاكاة حتى تظهر القراءات.</p>}
+                    {result && (result.nodeReadings[selNode.id] ?? []).length === 0 && (
+                      <p className="text-[11px] text-slate-500">ماكو قراءات لهالقطعة.</p>
+                    )}
+                    {(result?.nodeReadings[selNode.id] ?? []).map((r, i) => (
+                      <div key={i} className="rounded-lg bg-[#0b1220] px-2.5 py-2 ring-1 ring-slate-800">
+                        <p className={`font-mono text-[14px] font-bold ${
+                          r.tone === 'bad' ? 'text-red-400' : r.tone === 'warn' ? 'text-amber-300' : 'text-emerald-400'}`}>
+                          {r.text}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setDoc((d) => ({
+                      ...d,
+                      nodes: d.nodes.filter((n) => n.id !== selNode.id),
+                      links: d.links.filter((l) => l.from.node !== selNode.id && l.to.node !== selNode.id),
+                    }))
+                    setSelected(null)
+                  }}
+                  className="mt-3 w-full rounded-lg bg-red-500/10 py-1.5 text-[11px] font-bold text-red-300 ring-1 ring-red-500/25 hover:bg-red-500/20"
+                >🗑 احذف القطعة</button>
+              </>
+            )}
+
+            {selLink && selLink.params && (() => {
+              const fromKind = PART_BY_ID[doc.nodes.find((n) => n.id === selLink.from.node)?.partId ?? '']
+                ?.ports.find((p) => p.id === selLink.from.port)?.kind ?? 'eth'
+              const defs = linkParamsFor(fromKind) ?? []
+              const net = CABLE_BY_ID[String(selLink.params.cable ?? '')]
+              return (
+                <div className="space-y-2.5">
+                  <div className="rounded-lg bg-[#0b1220] p-2.5 ring-1 ring-slate-800">
+                    <p className="text-[13px] font-bold text-slate-100">🔌 {fromKind === 'spk' ? 'خط سماعات' : 'كيبل'}</p>
+                    {net && (
+                      <p className="mt-1 text-[10px] text-slate-500">
+                        {MEDIUM_AR[net.medium]} · الحد {net.maxM} م
+                      </p>
+                    )}
+                  </div>
+                  {net?.about && <p className="text-[11px] leading-relaxed text-slate-500">{net.about}</p>}
+                  {defs.map((lp) => (
+                    <Field key={lp.id} def={lp} value={selLink.params?.[lp.id]} onChange={(v) => setLinkParam(lp.id, v)} dark />
+                  ))}
+                  <button
+                    onClick={() => { setDoc((d) => ({ ...d, links: d.links.filter((l) => l.id !== selLink.id) })); setSelected(null) }}
+                    className="w-full rounded-lg bg-red-500/10 py-1.5 text-[11px] font-bold text-red-300 ring-1 ring-red-500/25"
+                  >🗑 احذف الكيبل</button>
+                </div>
+              )
+            })()}
+
+            <div className="mt-4 border-t border-slate-800 pt-2.5 text-[10px] leading-relaxed text-slate-600">
+              <b className="text-slate-500">الاختصارات</b><br />
+              منفذ ثم منفذ = وصلة · Esc يلغي<br />
+              Delete يحذف · عجلة الماوس تكبّر<br />
+              الزر الأيمن + سحب يحرّك اللوح
             </div>
-          )}
-
-          <div className="mt-4 border-t border-slate-100 pt-3 text-[10.5px] leading-relaxed text-slate-400">
-            <b className="text-slate-500">الاختصارات</b><br />
-            اضغط منفذاً ثم منفذاً ثانياً حتى توصّل · Esc يلغي<br />
-            Delete يحذف المحدّد · عجلة الماوس تكبّر<br />
-            الزر الأيمن مع السحب يحرّك اللوح
           </div>
         </div>
+
+        {/* ═══ الكونسول ═══ */}
+        {console_ && (() => {
+          const nd = doc.nodes.find((n) => n.id === console_)
+          if (!nd) return null
+          return (
+            <div className="border-t border-slate-800 bg-[#0b1220] p-3">
+              <div className="mb-2 flex items-center justify-between">
+                <button onClick={() => setConsole(null)} className="text-[11px] font-bold text-slate-500 hover:text-slate-300">✕ سكّر</button>
+                <p className="text-xs font-bold text-slate-200">
+                  🖥️ كونسول {String(nd.cliState?.hostname ?? nd.params.hostname ?? '')}
+                </p>
+              </div>
+              <Suspense fallback={<div className="h-[280px] rounded-xl bg-black" />}>
+                <CliTerminal
+                  key={nd.id}
+                  grammar={CISCO_LIKE}
+                  initialState={nd.cliState ?? { hostname: String(nd.params.hostname ?? 'Switch') }}
+                  onStateChange={(st) => saveCli(nd.id, st)}
+                  heightClass="h-[280px]"
+                />
+              </Suspense>
+              <p className="mt-1.5 text-[10.5px] text-slate-600">
+                مثال: <span dir="ltr" className="font-mono">en → conf t → int gi0/2 → switchport access vlan 20 → end</span>
+              </p>
+            </div>
+          )
+        })()}
       </div>
 
-      {warns.length > 0 && result && (
-        <p className="hidden text-xs text-slate-400 md:block">{warns.length} ملاحظة تحذيرية.</p>
+      {errors.length > 0 && (
+        <p className="hidden text-xs text-slate-400 md:block">{errors.length} مشكلة خطيرة · {warns.length} تحذير</p>
       )}
     </div>
   )
 }
 
-function Field({ def, value, onChange }: {
+/** ═══ خريطة مصغّرة ═══
+ *
+ *  ⚠️ ما تعرض تفاصيل — تعرض **الشكل العام** بس: وين القطع وكم بعيدة
+ *  عن بعض. بمخطط فيه ٤٠ قطعة والفني مكبّر على ركن، هاي الي تكله وين
+ *  هو. */
+function Minimap({ doc }: { doc: LabDoc }) {
+  const boxes = doc.nodes.map((n) => {
+    const part = PART_BY_ID[n.partId]
+    return { x: n.x, y: n.y, w: part?.w ?? 60, h: part?.h ?? 40 }
+  })
+  if (boxes.length === 0) return null
+  const x0 = Math.min(...boxes.map((b) => b.x)) - 20
+  const y0 = Math.min(...boxes.map((b) => b.y)) - 20
+  const x1 = Math.max(...boxes.map((b) => b.x + b.w)) + 20
+  const y1 = Math.max(...boxes.map((b) => b.y + b.h)) + 20
+  return (
+    <svg viewBox={`${x0} ${y0} ${x1 - x0} ${y1 - y0}`} className="h-full w-full" preserveAspectRatio="xMidYMid meet">
+      {doc.links.map((l) => {
+        const a = doc.nodes.find((n) => n.id === l.from.node)
+        const b = doc.nodes.find((n) => n.id === l.to.node)
+        if (!a || !b) return null
+        const pa = PART_BY_ID[a.partId], pb = PART_BY_ID[b.partId]
+        return (
+          <line key={l.id}
+            x1={a.x + (pa?.w ?? 60) / 2} y1={a.y + (pa?.h ?? 40) / 2}
+            x2={b.x + (pb?.w ?? 60) / 2} y2={b.y + (pb?.h ?? 40) / 2}
+            stroke="#334155" strokeWidth={6} />
+        )
+      })}
+      {boxes.map((b, i) => (
+        <rect key={i} x={b.x} y={b.y} width={b.w} height={b.h} rx={6} fill="#38bdf8" opacity={0.75} />
+      ))}
+    </svg>
+  )
+}
+
+const PORT_KIND_AR: Record<string, string> = {
+  dc: 'تغذية مستمرة', ac: 'تيار متناوب', eth: 'شبكة RJ45',
+  sfp: 'قفص SFP', spk: 'خط سماعات', signal: 'إشارة',
+}
+
+function Field({ def, value, onChange, dark }: {
   def: ParamDef
   value: string | number | boolean | undefined
   onChange: (v: string | number | boolean) => void
+  /** نسخة داكنة لاستوديو المحاكاة. */
+  dark?: boolean
 }) {
+  const inputCls = dark
+    ? 'w-full rounded-lg border border-slate-700 bg-[#0b1220] px-2 py-1.5 text-[12px] text-slate-200'
+    : 'w-full rounded-lg border border-slate-300 px-2 py-1.5 text-[12px]'
   const label = (
-    <span className="mb-1 flex items-baseline gap-1 text-[11px] font-bold text-slate-600">
+    <span className={`mb-1 flex items-baseline gap-1 text-[11px] font-bold ${dark ? 'text-slate-400' : 'text-slate-600'}`}>
       {def.label}
       {def.unit && <span className="text-slate-400">({def.unit})</span>}
     </span>
@@ -530,7 +711,7 @@ function Field({ def, value, onChange }: {
           type="button"
           onClick={() => onChange(!value)}
           className={`w-full rounded-lg px-3 py-1.5 text-[12px] font-bold transition ${
-            value ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`}
+            value ? 'bg-emerald-600 text-white' : dark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
         >
           {value ? 'مغلق ✓' : 'مفتوح'}
         </button>
@@ -538,7 +719,7 @@ function Field({ def, value, onChange }: {
         <select
           value={String(value ?? def.default)}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-[12px]"
+          className={inputCls}
         >
           {def.options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
@@ -549,10 +730,10 @@ function Field({ def, value, onChange }: {
           min={def.min} max={def.max}
           dir={def.kind === 'number' ? 'ltr' : undefined}
           onChange={(e) => onChange(def.kind === 'number' ? Number(e.target.value) : e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-[12px]"
+          className={inputCls}
         />
       )}
-      {def.help && <span className="mt-0.5 block text-[10px] leading-relaxed text-slate-400">{def.help}</span>}
+      {def.help && <span className={`mt-0.5 block text-[10px] leading-relaxed ${dark ? 'text-slate-500' : 'text-slate-400'}`}>{def.help}</span>}
     </label>
   )
 }

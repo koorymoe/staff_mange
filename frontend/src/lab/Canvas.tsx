@@ -28,12 +28,16 @@ interface Props {
   onPlaced: () => void
   /** يتغيّر ← اللوح يضبط عرضه ليبيّن كل القطع. */
   fitSignal?: number
+  /** يبلّغ نسبة التكبير — الشريط العلوي يعرضها.
+   *  ⚠️ التكبير يعيش باللوح مو بالأب: الأب ما يحتاجه إلا للعرض، ورفعه
+   *  لفوگ يعني رندر كامل للاستوديو مع كل حركة عجلة. */
+  onZoom?: (pct: number) => void
 }
 
 const GRID = 20
 const snap = (v: number) => Math.round(v / GRID) * GRID
 
-export default function Canvas({ doc, setDoc, result, selected, setSelected, pendingPart, onPlaced, fitSignal }: Props) {
+export default function Canvas({ doc, setDoc, result, selected, setSelected, pendingPart, onPlaced, fitSignal, onZoom }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [view, setView] = useState({ x: 0, y: 0, k: 1 })
   const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null)
@@ -60,6 +64,8 @@ export default function Canvas({ doc, setDoc, result, selected, setSelected, pen
     if (!part || !p) return null
     return { x: n.x + p.x * part.w, y: n.y + p.y * part.h }
   }, [nodeById])
+
+  useEffect(() => { onZoom?.(Math.round(view.k * 100)) }, [view.k, onZoom])
 
   // ═══ ضبط العرض ═══
   //
@@ -367,8 +373,9 @@ export default function Canvas({ doc, setDoc, result, selected, setSelected, pen
           اضغط باللوح حتى تحط: {PART_BY_ID[pendingPart]?.name}
         </div>
       )}
-      <div className="pointer-events-none absolute left-3 top-3 rounded-md bg-black/40 px-2 py-1 font-mono text-[10px] text-slate-400">
-        {Math.round(view.k * 100)}٪ · {doc.nodes.length} قطعة · {doc.links.length} وصلة
+      {/* عدّاد القطع — التكبير ينعرض بشريط الاستوديو مو هنا. */}
+      <div className="pointer-events-none absolute bottom-3 right-3 rounded-md bg-black/40 px-2 py-1 font-mono text-[10px] text-slate-500">
+        {doc.nodes.length} قطعة · {doc.links.length} وصلة
       </div>
     </div>
   )

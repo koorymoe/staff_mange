@@ -13,7 +13,7 @@ import type { DomainId, PartDef } from './types'
 // ═══ الدوائر الكهربائية ═══
 const ELECTRICAL: PartDef[] = [
   {
-    id: 'dc_source', domain: 'electrical', name: 'مصدر تغذية مستمر', symbol: 'battery',
+    id: 'dc_source', domain: 'electrical', name: 'مصدر تغذية مستمر', model: 'مصدر جهد · مقاومة داخلية', symbol: 'battery',
     w: 90, h: 60, about: 'مصدر جهد مستمر — البطارية أو المحوّل.',
     ports: [
       { id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 1, y: 0.32 },
@@ -26,7 +26,7 @@ const ELECTRICAL: PartDef[] = [
     ],
   },
   {
-    id: 'resistor', domain: 'electrical', name: 'مقاومة', symbol: 'resistor',
+    id: 'resistor', domain: 'electrical', name: 'مقاومة', model: 'عنصر خطّي', symbol: 'resistor',
     w: 90, h: 40,
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
@@ -35,7 +35,7 @@ const ELECTRICAL: PartDef[] = [
     params: [{ id: 'r', label: 'المقاومة', unit: 'Ω', kind: 'number', default: 100, min: 0.001 }],
   },
   {
-    id: 'lamp', domain: 'electrical', name: 'لمبة', symbol: 'lamp',
+    id: 'lamp', domain: 'electrical', name: 'لمبة', model: 'حمل مقاوم · عتبة احتراق', symbol: 'lamp',
     w: 70, h: 70, about: 'تضوّي لمن يمر بيها تيار كافٍ، وتحترق لو زاد على حدّها.',
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
@@ -47,7 +47,7 @@ const ELECTRICAL: PartDef[] = [
     ],
   },
   {
-    id: 'switch', domain: 'electrical', name: 'مفتاح', symbol: 'switch',
+    id: 'switch', domain: 'electrical', name: 'مفتاح', model: 'مفتاح مفرد', symbol: 'switch',
     w: 80, h: 40,
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
@@ -56,7 +56,7 @@ const ELECTRICAL: PartDef[] = [
     params: [{ id: 'closed', label: 'مغلق', kind: 'bool', default: false }],
   },
   {
-    id: 'fuse', domain: 'electrical', name: 'فيوز', symbol: 'fuse',
+    id: 'fuse', domain: 'electrical', name: 'فيوز', model: 'حماية تيار زائد', symbol: 'fuse',
     w: 80, h: 40, about: 'ينقطع لمن يزيد التيار على حدّه — يحمي الي وراه.',
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
@@ -65,7 +65,7 @@ const ELECTRICAL: PartDef[] = [
     params: [{ id: 'iMax', label: 'تيار الفصل', unit: 'A', kind: 'number', default: 5, min: 0.1 }],
   },
   {
-    id: 'motor', domain: 'electrical', name: 'محرّك DC', symbol: 'motor',
+    id: 'motor', domain: 'electrical', name: 'محرّك DC', model: 'حمل حثّي مبسّط', symbol: 'motor',
     w: 80, h: 70,
     ports: [
       { id: 'a', label: '+', kind: 'dc', polarity: 'pos', x: 0, y: 0.5 },
@@ -82,7 +82,7 @@ const ELECTRICAL: PartDef[] = [
 // ═══ الطاقة الشمسية ═══
 const SOLAR: PartDef[] = [
   {
-    id: 'pv_panel', domain: 'solar', name: 'لوح شمسي', symbol: 'pv',
+    id: 'pv_panel', domain: 'solar', name: 'لوح شمسي', model: '٥٥٠ واط · Vmp ٤١٫٥', symbol: 'pv',
     w: 110, h: 75, about: 'لوح كهروضوئي — خرجه يتبع الإشعاع ودرجة الحرارة.',
     ports: [
       { id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 1, y: 0.3 },
@@ -97,7 +97,7 @@ const SOLAR: PartDef[] = [
     ],
   },
   {
-    id: 'inverter', domain: 'solar', name: 'إنفرتر هجين', symbol: 'inverter',
+    id: 'inverter', domain: 'solar', name: 'إنفرتر هجين', model: 'هجين ٥ كيلوواط · MPPT', symbol: 'inverter',
     w: 120, h: 110,
     ports: [
       { id: 'pv_pos', label: 'PV +', kind: 'dc', polarity: 'pos', x: 0, y: 0.22 },
@@ -118,7 +118,7 @@ const SOLAR: PartDef[] = [
     danger: 'ربط PV بمداخل البطارية يحرق الإنفرتر فوراً — المداخل تشبه بعضها بأغلب الموديلات.',
   },
   {
-    id: 'battery', domain: 'solar', name: 'بطارية', symbol: 'battery_bank',
+    id: 'battery', domain: 'solar', name: 'بطارية', model: 'بنك ٤٨ فولت · ١٠٠ أمبير·ساعة', symbol: 'battery_bank',
     w: 110, h: 80,
     ports: [
       { id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 1, y: 0.3 },
@@ -133,7 +133,7 @@ const SOLAR: PartDef[] = [
     ],
   },
   {
-    id: 'load', domain: 'solar', name: 'حمل', symbol: 'load',
+    id: 'load', domain: 'solar', name: 'حمل', model: 'حمل تيار متناوب', symbol: 'load',
     w: 95, h: 70,
     ports: [{ id: 'ac_in', label: 'AC', kind: 'ac', polarity: 'none', x: 0, y: 0.5 }],
     params: [
@@ -161,14 +161,14 @@ const swPorts = (n: number, sfp: number) => [
 
 const NETWORK: PartDef[] = [
   {
-    id: 'switch_unmanaged', domain: 'network', name: 'سويچ ٨ منافذ غير مدار', symbol: 'net_switch',
+    id: 'switch_unmanaged', domain: 'network', name: 'سويچ ٨ منافذ غير مدار', model: '٨ منافذ · بلا إدارة', symbol: 'net_switch',
     w: 120, h: 52, about: 'سويچ بسيط — ما يتهيّأ ولا يعرف VLAN. الشائع بالبيوت والمحلات الصغيرة.',
     ports: swPorts(4, 0),
     params: [{ id: 'hostname', label: 'الاسم', kind: 'text', default: 'SW-DUMB' }],
     danger: 'ما يدعم VLAN — أي عزل منطقي تبنيه بالمشروع ينهار لمن يمر بهذا السويچ.',
   },
   {
-    id: 'switch_l2', domain: 'network', name: 'سويچ ٢٤ منفذ مدار', symbol: 'net_switch',
+    id: 'switch_l2', domain: 'network', name: 'سويچ ٢٤ منفذ مدار', model: '٢٤ منفذ · طبقة ٢ · SFP×٢', symbol: 'net_switch',
     w: 140, h: 60, about: 'سويچ طبقة ٢ قابل للإدارة — VLAN وترنك، ويتهيّأ بسطر الأوامر.',
     ports: swPorts(4, 2),
     params: [
@@ -178,7 +178,7 @@ const NETWORK: PartDef[] = [
     ],
   },
   {
-    id: 'switch_poe', domain: 'network', name: 'سويچ ٢٤ منفذ PoE+', symbol: 'net_switch',
+    id: 'switch_poe', domain: 'network', name: 'سويچ ٢٤ منفذ PoE+', model: '٢٤ منفذ · PoE+ ١٨٥ واط', symbol: 'net_switch',
     w: 140, h: 60, about: 'يغذّي الكاميرات ونقاط الوصول بنفس كيبل الشبكة.',
     ports: swPorts(4, 2),
     params: [
@@ -188,7 +188,7 @@ const NETWORK: PartDef[] = [
     ],
   },
   {
-    id: 'switch_l3', domain: 'network', name: 'سويچ طبقة ٣', symbol: 'net_switch',
+    id: 'switch_l3', domain: 'network', name: 'سويچ طبقة ٣', model: '٢٤ منفذ · توجيه داخلي', symbol: 'net_switch',
     w: 145, h: 62, about: 'يوجّه بين الـVLANات بلا راوتر خارجي.',
     ports: swPorts(4, 2),
     params: [
@@ -198,7 +198,7 @@ const NETWORK: PartDef[] = [
     ],
   },
   {
-    id: 'router', domain: 'network', name: 'راوتر', symbol: 'net_router',
+    id: 'router', domain: 'network', name: 'راوتر', model: 'منفذان · توجيه بين شبكتين', symbol: 'net_router',
     w: 120, h: 65,
     ports: [
       { id: 'gi0/0', label: 'Gi0/0', kind: 'eth', x: 0.2, y: 1 },
@@ -214,7 +214,7 @@ const NETWORK: PartDef[] = [
     about: 'يربط شبكتين فرعيتين. كل منفذ يحتاج عنواناً **داخل** شبكته، والأجهزة تحتاج بوابتها تؤشّر عليه.',
   },
   {
-    id: 'pc', domain: 'network', name: 'حاسبة', symbol: 'net_pc',
+    id: 'pc', domain: 'network', name: 'حاسبة', model: 'محطة عمل', symbol: 'net_pc',
     w: 85, h: 70,
     ports: [{ id: 'eth0', label: 'Eth0', kind: 'eth', x: 0.5, y: 1 }],
     params: [
@@ -227,7 +227,7 @@ const NETWORK: PartDef[] = [
     // **منفذ السويچ** هو الي يحطّه بيه. الخانة هنا تعلّم عادة غلط.
   },
   {
-    id: 'ip_camera', domain: 'network', name: 'كاميرا شبكة', symbol: 'net_cam',
+    id: 'ip_camera', domain: 'network', name: 'كاميرا شبكة', model: 'كاميرا IP · PoE', symbol: 'net_cam',
     w: 90, h: 65, about: 'كاميرا IP تتغذّى بـPoE من السويچ.',
     ports: [{ id: 'eth0', label: 'Eth0', kind: 'eth', x: 0.5, y: 1 }],
     params: [
@@ -247,7 +247,7 @@ const NETWORK: PartDef[] = [
 // نهاية وحدة.
 const FIRE: PartDef[] = [
   {
-    id: 'fire_panel', domain: 'fire', name: 'لوحة إنذار تقليدية', symbol: 'fire_panel',
+    id: 'fire_panel', domain: 'fire', name: 'لوحة إنذار تقليدية', model: 'زونان · دائرة إنذار', symbol: 'fire_panel',
     w: 130, h: 105, about: 'لوحة زونات: كل زون خط كواشف، ولكل دائرة إنذار صفّاراتها.',
     ports: [
       { id: 'z1', label: 'زون ١', kind: 'signal', x: 0, y: 0.22 },
@@ -265,7 +265,7 @@ const FIRE: PartDef[] = [
     danger: 'خلط الصفّارات مع الكواشف بنفس الزون يخلّي اللوحة تحسبها كاشفاً معطّلاً.',
   },
   {
-    id: 'smoke_detector', domain: 'fire', name: 'كاشف دخان', symbol: 'detector',
+    id: 'smoke_detector', domain: 'fire', name: 'كاشف دخان', model: 'ضوئي · سلسلة', symbol: 'detector',
     w: 70, h: 70,
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
@@ -279,7 +279,7 @@ const FIRE: PartDef[] = [
     ],
   },
   {
-    id: 'heat_detector', domain: 'fire', name: 'كاشف حرارة', symbol: 'detector',
+    id: 'heat_detector', domain: 'fire', name: 'كاشف حرارة', model: 'حراري · سلسلة', symbol: 'detector',
     w: 70, h: 70, about: 'للمطابخ والمرائب — الدخان بيها يعطي إنذارات كاذبة.',
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
@@ -292,7 +292,7 @@ const FIRE: PartDef[] = [
     ],
   },
   {
-    id: 'mcp', domain: 'fire', name: 'نقطة إنذار يدوية', symbol: 'mcp',
+    id: 'mcp', domain: 'fire', name: 'نقطة إنذار يدوية', model: 'نقطة يدوية · سلسلة', symbol: 'mcp',
     w: 70, h: 70, about: 'الصندوق الأحمر عند المخارج — ينكسر زجاجه بالإنذار اليدوي.',
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
@@ -304,7 +304,7 @@ const FIRE: PartDef[] = [
     ],
   },
   {
-    id: 'sounder', domain: 'fire', name: 'صفّارة', symbol: 'sounder',
+    id: 'sounder', domain: 'fire', name: 'صفّارة', model: 'صفّارة · دائرة إنذار', symbol: 'sounder',
     w: 75, h: 70,
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
@@ -314,7 +314,7 @@ const FIRE: PartDef[] = [
     danger: 'تنربط على **دائرة إنذار** مو على زون كواشف.',
   },
   {
-    id: 'eol_resistor', domain: 'fire', name: 'مقاومة نهاية (EOL)', symbol: 'eol',
+    id: 'eol_resistor', domain: 'fire', name: 'مقاومة نهاية (EOL)', model: '٤٫٧ كيلو أوم · رِجلان', symbol: 'eol',
     w: 70, h: 46,
     about: 'تنحط بآخر جهاز بالخط. بدونها اللوحة ما تگدر تفرّق بين خط سليم وخط مقطوع.',
     // ⚠️ **منفذان** مو واحد: المقاومة الحقيقية إلها رِجلان، والفني
@@ -329,7 +329,7 @@ const FIRE: PartDef[] = [
     danger: 'محلها **آخر الخط** — أي جهاز وراها يبقى خارج الحماية تماماً.',
   },
   {
-    id: 'fire_battery', domain: 'fire', name: 'بطارية احتياط', symbol: 'battery_bank',
+    id: 'fire_battery', domain: 'fire', name: 'بطارية احتياط', model: 'احتياط ٧ أمبير·ساعة', symbol: 'battery_bank',
     w: 100, h: 70,
     ports: [{ id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 0, y: 0.5 }],
     params: [
@@ -346,7 +346,7 @@ const FIRE: PartDef[] = [
 // ويمنع ربط سماعة بمنفذ شبكة.
 const AUDIO: PartDef[] = [
   {
-    id: 'amplifier', domain: 'audio', name: 'مكبّر صوت', symbol: 'amplifier',
+    id: 'amplifier', domain: 'audio', name: 'مكبّر صوت', model: '١٢٠ واط · ١٠٠ فولت أو لو-Z', symbol: 'amplifier',
     w: 130, h: 80,
     about: 'خط ١٠٠ فولت للمسافات الطويلة والمناطق، أو مقاومة منخفضة للقاعات القريبة.',
     ports: [
@@ -365,7 +365,7 @@ const AUDIO: PartDef[] = [
     danger: 'ربط مخرجَي مكبّرين ببعض يحرق الاثنين.',
   },
   {
-    id: 'ceiling_speaker', domain: 'audio', name: 'سماعة سقف', symbol: 'speaker',
+    id: 'ceiling_speaker', domain: 'audio', name: 'سماعة سقف', model: 'سقفية · تاب قابل للاختيار', symbol: 'speaker',
     w: 80, h: 75,
     ports: [
       { id: 'in', label: 'داخل', kind: 'spk', x: 0, y: 0.5 },
@@ -380,7 +380,7 @@ const AUDIO: PartDef[] = [
     ],
   },
   {
-    id: 'horn_speaker', domain: 'audio', name: 'بوق خارجي', symbol: 'horn',
+    id: 'horn_speaker', domain: 'audio', name: 'بوق خارجي', model: 'بوق خارجي · ٢٤ واط', symbol: 'horn',
     w: 85, h: 70, about: 'للساحات والمخازن — صوت عالٍ ومدى بعيد.',
     ports: [
       { id: 'in', label: 'داخل', kind: 'spk', x: 0, y: 0.5 },
@@ -395,7 +395,7 @@ const AUDIO: PartDef[] = [
     ],
   },
   {
-    id: 'paging_mic', domain: 'audio', name: 'ميكروفون نداء', symbol: 'mic',
+    id: 'paging_mic', domain: 'audio', name: 'ميكروفون نداء', model: 'ميكروفون نداء', symbol: 'mic',
     w: 75, h: 70,
     ports: [{ id: 'out', label: 'خرج', kind: 'signal', x: 1, y: 0.5 }],
     params: [{ id: 'name', label: 'الاسم', kind: 'text', default: 'MIC1' }],
