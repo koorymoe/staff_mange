@@ -93,6 +93,10 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := seedSimCli(db); err != nil {
 		return err
 	}
+	// محتوى GPS — تركيب جهاز تتبّع بالسيارة. غير محقّق هم.
+	if err := seedSimGps(db); err != nil {
+		return err
+	}
 	if err := grantGpsSystemToMonitors(db); err != nil {
 		return err
 	}

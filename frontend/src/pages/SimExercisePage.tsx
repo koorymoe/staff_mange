@@ -239,9 +239,24 @@ function Runner() {
         const dev = (ex?.devices ?? []).find((d) => d.id === sd.deviceId)
         return dev ? match(dev) : false
       })?.ref
-    const lockRef = refOf((d) => d.engineKind === 'WIRING' && (d.terminals?.length ?? 0) > 4)
-    const psuRef = refOf((d) => (d.terminals?.length ?? 0) <= 4)
-    if (!lockRef || !psuRef) return { state: 'OFF' as const, volts: 0 }
+    // ⚠️ الأڤوميتر **مبني لدائرة القفل بالذات** (أطراف `t_red`/`t_black`
+    // ومغذّي `out_pos`/`out_neg`). أول ما انضاف تمرين توصيل ثانٍ (جهاز
+    // التتبّع) طلع الأڤوميتر عليه وهو يعرض «ماكو تغذية واصلة» — قراءة
+    // ما تخص الي قدّام المتدرّب أصلاً.
+    //
+    // فبدل ما نخمّن الأدوار من عدد الأطراف، نشترط **وجود الأطراف
+    // نفسها**. ما نلگاها ← `null` ← اللوحة تنخفي. وقراءة ما تخص أسوأ
+    // من ما اكو قراءة.
+    const hasTerm = (ref: string | undefined, id: string) => {
+      if (!ref) return false
+      const sd = (ex?.scene.devices ?? []).find((x) => x.ref === ref)
+      const dev = (ex?.devices ?? []).find((d) => d.id === sd?.deviceId)
+      return (dev?.terminals ?? []).some((t) => t.id === id)
+    }
+    const lockRef = refOf((d) => (d.terminals ?? []).some((t) => t.id === 't_red'))
+    const psuRef = refOf((d) => (d.terminals ?? []).some((t) => t.id === 'out_pos'))
+    if (!lockRef || !psuRef) return null
+    if (!hasTerm(lockRef, 't_black') || !hasTerm(psuRef, 'out_neg')) return null
 
     const has = (a: string, b: string) =>
       wires.some((w) => (w.from === a && w.to === b) || (w.from === b && w.to === a))
@@ -310,7 +325,9 @@ function Runner() {
           {/* ⚠️ أدوات التوصيل (المنظران، المقطع، الطول) تخص تمارين
               **التوصيل** بس. عرضها بتمرين سطر أوامر يخلّي المتدرّب
               يدوّر علاقة بين مقطع السلك وأمر `vlan` — وماكو. */}
-          {ex.engineKind !== 'CLI' && ex.engineKind !== 'LAB' && (
+          {/* ⚠️ أدوات التمديد تختفي وياه: تغيير مقطع ما يأثّر على أي
+              قراءة ظاهرة يعني خانة تخدع المتدرّب. */}
+          {ex.engineKind !== 'CLI' && ex.engineKind !== 'LAB' && power && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-300">
               {([['physical', '🧊 منظر فيزيائي'], ['logical', '🗺️ منظر منطقي']] as const).map(([v, label]) => (
@@ -410,7 +427,7 @@ function Runner() {
           {/* ═══ الأڤوميتر (١٠) ═══
               «المتدرّب ما يشوف الجواب — يقيسه». القراءة محسوبة من المقطع
               والطول والسحب، فتتغيّر لمن يتغيّر أي واحد منهن. */}
-          {ex.engineKind !== 'CLI' && ex.engineKind !== 'LAB' && (
+          {ex.engineKind !== 'CLI' && ex.engineKind !== 'LAB' && power && (
           <div className="mt-3 rounded-xl bg-slate-900 p-4 text-slate-100 ring-1 ring-slate-700">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-slate-400">قياس على أطراف اللوحة</span>
