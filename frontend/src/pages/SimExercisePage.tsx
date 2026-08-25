@@ -10,6 +10,7 @@ import { CABLE_GAUGES, voltageAtLoad, type Cable, type CableGaugeId } from '../s
 // ⚠️ Babylon تنزّل **بس** لمن يفتح المنظر الفيزيائي: الحزمة ثقيلة،
 // وأغلب من يفتح المختبر يبدي بالمنطقي. `lazy` تخلّيها خارج حزمة الدخول.
 const Workbench3D = lazy(() => import('../sim3d/Workbench3D'))
+const CliTerminal = lazy(() => import('../cli/CliTerminal'))
 
 // ═══ شاشة التمرين ═══
 //
@@ -167,6 +168,36 @@ function Runner() {
     } finally { setSaving(false) }
   }
 
+  // ═══ تقييم تمارين سطر الأوامر ═══
+  //
+  // ⚠️ التقييم على **الحالة** مو على نص الأمر: الفني يوصل لنفس النتيجة
+  // بمسارات مختلفة (ينشئ الـVLAN قبل المنفذ أو بعده)، وأي تقييم يطابق
+  // الحروف المكتوبة يعاقبه على طريق صحيح تماماً. وهذا الي يفرّق بين
+  // «محاكي» و«امتحان يحفظ الأوامر».
+  const onCliState = useCallback((state: Record<string, unknown>, lastCommand: string, mode: string) => {
+    const st = ex?.steps?.[stepIndex]
+    if (!st || st.expect.op !== 'STATE_EQ' || !st.expect.path) return
+
+    // `__mode` مسار خاص: النمط الحالي مو قيمة بالحالة.
+    const actual = st.expect.path === '__mode'
+      ? undefined
+      : st.expect.path.split('.').reduce<unknown>(
+          (a, k) => (typeof a === 'object' && a !== null ? (a as Record<string, unknown>)[k] : undefined), state)
+
+    const ok = st.expect.path === '__mode'
+      // ⚠️ `mode` الواصل مو `cliMode` بالحالة: `setCliMode` ما تنطبّق
+      // إلا بالرندر الجاي، فقراءة الحالة هنا تعطي النمط **السابق** —
+      // والخطوة ما تنجح إلا بأمر زائد بعدها.
+      ? mode === st.expect.value
+      : String(actual ?? '') === String(st.expect.value ?? '')
+    if (!ok) return
+
+    pending.current.push({ kind: 'PASS', stepIndex, atMs: Date.now() - startedAt.current })
+    if (lastCommand) { /* الأمر الي نجّح الخطوة — يفيد بالمراجعة لاحقاً */ }
+    setFeedback(null)
+    setStepIndex((i) => i + 1)
+  }, [ex, stepIndex])
+
   // ═══ محرّك كهربائي مبسّط ═══
   //
   // ⚠️ هذا **مو** جدول جاهز ولا رسالة مكتوبة سلفاً: القراءة تنحسب من
@@ -255,6 +286,10 @@ function Runner() {
               نفس الحالة بالضبط — `wires` وحدة للاثنين. المنظر الفيزيائي
               للتركيب، والمنطقي للسرعة والقراءة. ولا واحد منهما يخزن شي
               لحاله، فالتبديل ما يضيّع ولا سلك. */}
+          {/* ⚠️ أدوات التوصيل (المنظران، المقطع، الطول) تخص تمارين
+              **التوصيل** بس. عرضها بتمرين سطر أوامر يخلّي المتدرّب
+              يدوّر علاقة بين مقطع السلك وأمر `vlan` — وماكو. */}
+          {ex.engineKind !== 'CLI' && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-300">
               {([['physical', '🧊 منظر فيزيائي'], ['logical', '🗺️ منظر منطقي']] as const).map(([v, label]) => (
@@ -285,8 +320,28 @@ function Runner() {
               />
             </label>
           </div>
+          )}
 
-          {view === 'physical' ? (
+          {ex.engineKind === 'CLI' ? (
+            <Suspense fallback={
+              <div className="flex h-[420px] items-center justify-center rounded-xl bg-[#080c10] text-slate-500">
+                جاري فتح الجلسة…
+              </div>
+            }>
+              {ex.cliGrammar ? (
+                <CliTerminal
+                  grammar={ex.cliGrammar}
+                  initialState={{ hostname: 'Switch' }}
+                  onStateChange={onCliState}
+                  readOnly={done || !!finished}
+                />
+              ) : (
+                <p className="rounded-xl bg-red-50 p-4 text-red-600">
+                  ما وصل نحو الأوامر لهذا الجهاز — التمرين ما يشتغل بدونه.
+                </p>
+              )}
+            </Suspense>
+          ) : view === 'physical' ? (
             <Suspense fallback={
               <div className="flex h-[520px] items-center justify-center rounded-2xl bg-[#0e1219] text-slate-400">
                 جاري تحميل المشهد الثلاثي…
@@ -310,7 +365,9 @@ function Runner() {
           )}
 
           <p className="mt-2 text-[11px] text-slate-400">
-            {view === 'physical'
+            {ex.engineKind === 'CLI'
+              ? 'اضغط داخل الشاشة السوداء حتى تكتب · `?` تعطيك الأوامر المتاحة · Tab يكمّل · ↑ يرجّع آخر أمر · Ctrl-Z يطلّعك للنمط المميّز'
+              : view === 'physical'
               ? 'اسحب بالماوس حتى تدور حول الطاولة · عجلة الماوس تقرّب · اضغط طرفاً ثم طرفاً ثانياً حتى توصّلهما · اضغط سلكاً حتى تحذفه'
               : 'اضغط طرفاً ثم طرفاً ثانياً حتى توصّلهما · اضغط سلكاً حتى تحذفه · مرّر على الطرف حتى تشوف وظيفته'}
           </p>
@@ -318,6 +375,7 @@ function Runner() {
           {/* ═══ الأڤوميتر (١٠) ═══
               «المتدرّب ما يشوف الجواب — يقيسه». القراءة محسوبة من المقطع
               والطول والسحب، فتتغيّر لمن يتغيّر أي واحد منهن. */}
+          {ex.engineKind !== 'CLI' && (
           <div className="mt-3 rounded-xl bg-slate-900 p-4 text-slate-100 ring-1 ring-slate-700">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-slate-400">قياس على أطراف اللوحة</span>
@@ -337,6 +395,7 @@ function Runner() {
               {power.state === 'REVERSED' && '🔥 القطبية معكوسة — بالميدان هذي تحرق اللوحة.'}
             </p>
           </div>
+          )}
         </div>
 
         <aside className="space-y-3">

@@ -144,6 +144,12 @@ type SimExercise struct {
 	// محسوبة وقت الجلب: أجهزة المشهد كاملة، حتى الواجهة ما تنادي
 	// نداءً لكل جهاز.
 	Devices []SimDevice `db:"-" json:"devices,omitempty"`
+
+	// CliGrammar شجرة أوامر الجهاز — تنجاب مع التمرين بنفس النداء.
+	// ⚠️ ماكو مسار مستقل عمداً: الترمنال ما يگدر يقبل أول حرف قبل ما
+	// يعرف النحو، فنداء ثانٍ يعني ترمنال ميّت لجزء من الثانية — وهذا
+	// أول شي يلاحظه المتدرّب.
+	CliGrammar json.RawMessage `db:"-" json:"cliGrammar,omitempty"`
 	// أفضل نتيجة للموظف الحالي على هذا التمرين.
 	BestScore *int `db:"-" json:"bestScore,omitempty"`
 	Passed    bool `db:"-" json:"passed"`

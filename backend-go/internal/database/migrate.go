@@ -89,6 +89,10 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 	if err := seedSimLock(db); err != nil {
 		return err
 	}
+	// محتوى الشبكات — سويچ بسطر أوامر. غير محقّق هم.
+	if err := seedSimCli(db); err != nil {
+		return err
+	}
 	if err := grantGpsSystemToMonitors(db); err != nil {
 		return err
 	}

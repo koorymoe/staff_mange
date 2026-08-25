@@ -135,7 +135,37 @@ func (r *SimRepository) GetExercise(id string, isOwner bool) (*model.SimExercise
 		return nil, err
 	}
 	e.Devices = devs
+
+	// ⚠️ النحو يتبع **الجهاز** مو التمرين: نفس السويچ ممكن يجي بعشر
+	// تمارين، وأي تمرين ينسخ نحوه لحاله يعني عشر نسخ تفترق.
+	if g, err := r.cliGrammarForDevices(devs); err != nil {
+		return nil, err
+	} else if g != nil {
+		e.CliGrammar = g
+	}
 	return &e, nil
+}
+
+// cliGrammarForDevices يلگي نحو أول جهاز بالمشهد عنده `ui.grammarId`.
+func (r *SimRepository) cliGrammarForDevices(devs []model.SimDevice) (json.RawMessage, error) {
+	for _, d := range devs {
+		var ui struct {
+			GrammarID string `json:"grammarId"`
+		}
+		if err := json.Unmarshal(d.UI, &ui); err != nil || ui.GrammarID == "" {
+			continue
+		}
+		var tree json.RawMessage
+		err := r.db.Get(&tree, `SELECT tree FROM "SimCliGrammar" WHERE id = $1`, ui.GrammarID)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		return tree, nil
+	}
+	return nil, nil
 }
 
 // devicesForScene يجيب كل جهاز مذكور بمشهد التمرين.

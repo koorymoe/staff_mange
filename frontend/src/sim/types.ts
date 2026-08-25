@@ -163,6 +163,8 @@ export interface SimExercise {
   verified: boolean
   /** أجهزة المشهد كاملة — السيرفر يجيبهن مع التمرين بنداء واحد. */
   devices?: SimDevice[]
+  /** شجرة أوامر الجهاز لتمارين `CLI` — تجي مع نفس النداء. */
+  cliGrammar?: import('../cli/grammar').CliGrammar
   bestScore?: number
   passed: boolean
 }
