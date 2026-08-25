@@ -2821,7 +2821,45 @@ export interface SaveTrainingProgramInput {
 export const DEPARTMENTS = ['الفنية', 'المبيعات', 'الصيانة', 'الإدارة', 'المستودع']
 export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحتاج تحسين']
 
+/** ═══ مختبر المحاكاة — للمالك وحده بهالمرحلة ═══
+ *  الأنواع التفصيلية بـ`src/sim/types.ts` (المحرّك يقراها). هنا بس
+ *  الي تحتاجه دوال النداء. */
+export type {
+  SimCategory, SimDevice, SimExercise, SimLesson, SimAttempt,
+} from './sim/types'
+import type {
+  SimCategory as SimCat, SimExercise as SimEx, SimLesson as SimLes,
+  SimAttempt as SimAtt, SimEvent, BoardState,
+} from './sim/types'
+
+export interface SimProgressBody {
+  state: BoardState
+  stepsPassed: number
+  hintsUsed: number
+  wrongCount: number
+  events: SimEvent[]
+}
+export interface SimFinishBody extends SimProgressBody {
+  durationSec: number
+}
+
 export const api = {
+  // ── مختبر المحاكاة: للمالك وحده ──
+  // المسارات محمية بـRequireOwner وترجّع 404 لأي حساب ثاني (حتى ADMIN) —
+  // مقصود، حتى ما ينكشف وجود الميزة أصلاً.
+  getSimCategories: () => request<SimCat[]>('/sim/categories'),
+  getSimExercises: (categoryId: string) => request<SimEx[]>(`/sim/categories/${categoryId}/exercises`),
+  getSimLessons: (categoryId: string) => request<SimLes[]>(`/sim/categories/${categoryId}/lessons`),
+  getSimExercise: (id: string) => request<SimEx>(`/sim/exercises/${id}`),
+  startSimAttempt: (exerciseId: string) =>
+    request<SimAtt>(`/sim/exercises/${exerciseId}/attempts`, { method: 'POST' }),
+  saveSimProgress: (attemptId: string, body: SimProgressBody) =>
+    request<{ ok: boolean }>(`/sim/attempts/${attemptId}/progress`, { method: 'PUT', body: JSON.stringify(body) }),
+  finishSimAttempt: (attemptId: string, body: SimFinishBody) =>
+    request<SimAtt>(`/sim/attempts/${attemptId}/finish`, { method: 'PUT', body: JSON.stringify(body) }),
+  getMySimAttempts: (limit?: number) =>
+    request<SimAtt[]>(`/sim/attempts/mine${limit ? `?limit=${limit}` : ''}`),
+
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
   // السيرفر يرجّع توكن جديد ولازم نخزنه فوراً، وإلا كل طلب بعدها يطلع

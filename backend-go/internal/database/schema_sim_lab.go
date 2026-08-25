@@ -215,5 +215,29 @@ func simLabMigrations() []Migration {
 				INSERT INTO "SimLabConfig" (id) VALUES ('singleton') ON CONFLICT (id) DO NOTHING;
 			`,
 		},
+		{
+			// ═══ تصحيح مواقع المشهد ═══
+			//
+			// بالبذرة الأولى القفل چان **يسار** المشهد وأطرافه على حافّته
+			// **اليسرى**، والمغذّي **يمين** وأطرافه على حافّته **اليمنى**.
+			// يعني كل سلك لازم يلف حول الجهازين بدل ما يمشي بالفراغ بينهما.
+			//
+			// الإصلاح بالمواقع بس (الأطراف تبقى مثل ما هي): القفل يمين
+			// والمغذّي يسار — فأطراف القفل اليسرى تقابل أطراف المغذّي
+			// اليمنى مباشرة. وهذا يقرا صح بواجهة عربية (الأساسي يمين).
+			//
+			// ⚠️ ترحيل مستقل مو تعديل البذرة: البذرة `ON CONFLICT DO NOTHING`
+			// فما تكتب فوق الموجود، والترحيلات للأمام بس.
+			Version: "0254_sim_lock_scene_fix",
+			SQL: `
+				UPDATE "SimExercise"
+				SET scene = jsonb_set(
+				      jsonb_set(scene, '{devices,0,x}', '0.68'::jsonb),
+				      '{devices,1,x}', '0.22'::jsonb),
+				    "updatedAt" = NOW()
+				WHERE id = 'simex_ac_keypad_wiring'
+				  AND scene #>> '{devices,0,x}' = '0.30';
+			`,
+		},
 	}
 }

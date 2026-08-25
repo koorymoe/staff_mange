@@ -25,6 +25,10 @@ const SolarPage = lazy(() => import('./pages/SolarPage'))
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazy(() => import('./pages/OwnerBackups'))
 const CommandCodePage = lazy(() => import('./pages/CommandCodePage'))
+// مختبر المحاكاة — للمالك وحده بهالمرحلة. الصفحة نفسها تتحقق من
+// actualRole === 'OWNER' (sim/SimGate.tsx) والمسار بالباك إند يرجّع 404.
+const SimLab = lazy(() => import('./pages/SimLab'))
+const SimExercisePage = lazy(() => import('./pages/SimExercisePage'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
 const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
@@ -140,6 +144,8 @@ function App() {
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
           <Route path="command-code" element={<CommandCodePage />} />
+          <Route path="simulator-lab" element={<SimLab />} />
+          <Route path="simulator-lab/exercise/:id" element={<SimExercisePage />} />
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           <Route path="bookings-archive" element={<BookingsArchive />} />
