@@ -16,12 +16,13 @@ import (
 
 // أسعار الأعمال الإضافية — من معادلة D18 بالشيت.
 const (
-	extraScreenLarge43Price = 15000 // تثبيت شاشة حجم 43 واكبر
-	extraScreenSmall43Price = 7500  // تثبيت شاشة اصغر من 43
-	extraRackPrice          = 15000 // تثبيت راك
-	extraBoardPrice         = 7500  // تثبيت بورد
-	extraVipInternetPerM    = 400   // مد كيبل انترنيت بالمتر VIP
-	extraNormalInternetPerM = 200   // مد كيبل انترنيت بالمتر عادي
+	extraScreenLarge43Price  = 15000 // تثبيت شاشة حجم 43 واكبر
+	extraScreenSmall43Price  = 7500  // تثبيت شاشة اصغر من 43
+	extraRackPrice           = 15000 // تثبيت راك
+	extraBoardPrice          = 7500  // تثبيت بورد
+	extraIpCameraChangePrice = 15000 // تغيير أو إضافة IP كاميرا
+	extraVipInternetPerM     = 400   // مد كيبل انترنيت بالمتر VIP
+	extraNormalInternetPerM  = 200   // مد كيبل انترنيت بالمتر عادي
 )
 
 // CameraCostNote الملاحظة المكتوبة بالشيت نفسه (B17) — تنعرض بالواجهة وبالطباعة.
@@ -152,6 +153,7 @@ func CalculateCameraCost(req model.CameraCostRequest) (*model.CameraCostResponse
 		float64(e.ScreenSmall43Count)*extraScreenSmall43Price +
 		float64(e.RackCount)*extraRackPrice +
 		float64(e.BoardCount)*extraBoardPrice +
+		float64(e.IpCameraChangeCount)*extraIpCameraChangePrice +
 		float64(e.VipInternetMeters)*extraVipInternetPerM +
 		float64(e.NormalInternetM)*extraNormalInternetPerM +
 		e.ProgrammingAmount + e.OtherAmount

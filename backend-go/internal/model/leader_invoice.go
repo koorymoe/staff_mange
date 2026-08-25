@@ -92,7 +92,7 @@ type LeaderInvoice struct {
 	ExternalInvoiceNumber *string    `db:"externalInvoiceNumber" json:"externalInvoiceNumber"`
 	ExternalInvoiceAt     *time.Time `db:"externalInvoiceAt" json:"externalInvoiceAt"`
 	// تعديل المحاسب على المبالغ: سببه ووقته. ⚠️ أعمدة بالجدول.
-	AdjustedReason *string    `db:"adjustedReason" json:"adjustedReason"`
+	AdjustedReason *string `db:"adjustedReason" json:"adjustedReason"`
 
 	// ═══ التدقيق ═══
 	// حكم المحاسب قبل الاعتماد: مطابق / غير مطابق / خطأ بالسعر.
@@ -111,9 +111,9 @@ type LeaderInvoice struct {
 	RevokeReason *string    `db:"revokeReason" json:"revokeReason,omitempty"`
 	RevokedCount int        `db:"revokedCount" json:"revokedCount"`
 
-	AuditedByName *string `db:"-" json:"auditedByName,omitempty"`
-	RevokedByName *string `db:"-" json:"revokedByName,omitempty"`
-	AdjustedAt     *time.Time `db:"adjustedAt" json:"adjustedAt"`
+	AuditedByName *string    `db:"-" json:"auditedByName,omitempty"`
+	RevokedByName *string    `db:"-" json:"revokedByName,omitempty"`
+	AdjustedAt    *time.Time `db:"adjustedAt" json:"adjustedAt"`
 
 	// تفاصيل يحتاجها المحاسب: منو الليدر الي رفعها، ومنو اعتمدها،
 	// وأي حجز تخص. تنعبّى بالتهيئة مو من الجدول.
@@ -221,14 +221,15 @@ type CameraCostRow struct {
 
 // CameraCostExtras الأعمال الإضافية بأسفل الاستمارة.
 type CameraCostExtras struct {
-	ScreenLarge43Count int     `json:"screenLarge43Count"`   // تثبيت شاشة 43 وأكبر × 15000
-	ScreenSmall43Count int     `json:"screenSmall43Count"`   // تثبيت شاشة أصغر من 43 × 7500
-	RackCount          int     `json:"rackCount"`            // تثبيت راك × 15000
-	BoardCount         int     `json:"boardCount"`           // تثبيت بورد × 7500
-	VipInternetMeters  int     `json:"vipInternetMeters"`    // مد كيبل انترنيت VIP × 400
-	NormalInternetM    int     `json:"normalInternetMeters"` // مد كيبل انترنيت عادي × 200
-	ProgrammingAmount  float64 `json:"programmingAmount"`    // برمجة — مبلغ يُدخل يدوي
-	OtherAmount        float64 `json:"otherAmount"`          // غيرها — مبلغ يُدخل يدوي
+	ScreenLarge43Count  int     `json:"screenLarge43Count"`   // تثبيت شاشة 43 وأكبر × 15000
+	ScreenSmall43Count  int     `json:"screenSmall43Count"`   // تثبيت شاشة أصغر من 43 × 7500
+	RackCount           int     `json:"rackCount"`            // تثبيت راك × 15000
+	BoardCount          int     `json:"boardCount"`           // تثبيت بورد × 7500
+	IpCameraChangeCount int     `json:"ipCameraChangeCount"`  // تغيير أو إضافة IP كاميرا × 15000
+	VipInternetMeters   int     `json:"vipInternetMeters"`    // مد كيبل انترنيت VIP × 400
+	NormalInternetM     int     `json:"normalInternetMeters"` // مد كيبل انترنيت عادي × 200
+	ProgrammingAmount   float64 `json:"programmingAmount"`    // برمجة — مبلغ يُدخل يدوي
+	OtherAmount         float64 `json:"otherAmount"`          // غيرها — مبلغ يُدخل يدوي
 }
 
 // CameraCostRequest طلب حساب استمارة كاميرات المراقبة.
@@ -316,7 +317,6 @@ type FreeWorkReason struct {
 	NeedsNote bool   `db:"needsNote" json:"needsNote"`
 }
 
-
 // LeaderInvoiceAdjustment سطر واحد بسجل تعديلات المحاسب على الفاتورة.
 //
 // نحفظ المبالغ الأربعة **قبل وبعد** حتى لو ما انتغيّر إلا واحد —
@@ -345,9 +345,10 @@ type LeaderInvoiceAdjustment struct {
 // ═══ أحكام التدقيق ═══
 //
 // «بالتدقيق: مطابق / غير مطابق / خطأ بالسعر».
-//   مطابق      = سعر الفاتورة نفسه المبلغ الي داخل
-//   غير مطابق  = الفاتورة سعرها يختلف عن المبلغ الداخل
-//   خطأ بالسعر = الموظف غلط، جاب أعلى من الفاتورة أو أوطى
+//
+//	مطابق      = سعر الفاتورة نفسه المبلغ الي داخل
+//	غير مطابق  = الفاتورة سعرها يختلف عن المبلغ الداخل
+//	خطأ بالسعر = الموظف غلط، جاب أعلى من الفاتورة أو أوطى
 const (
 	AuditVerdictMatched    = "MATCHED"
 	AuditVerdictMismatch   = "MISMATCH"

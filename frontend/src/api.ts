@@ -1616,6 +1616,7 @@ export interface CameraCostExtras {
   screenSmall43Count: number
   rackCount: number
   boardCount: number
+  ipCameraChangeCount: number
   vipInternetMeters: number
   normalInternetMeters: number
   programmingAmount: number
