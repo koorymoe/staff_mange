@@ -523,6 +523,11 @@ export const navItems: NavItem[] = [
     icon: icon('M9 3v2m6-2v2M5 8h14M6 8v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8M10 12v5m4-5v5'),
     ownerOnly: true,
   },
+  {
+    to: '/simulator-lab/workbench', label: '🧰 مساحة عمل المحاكاة',
+    icon: icon('M4 7h16M4 12h16M4 17h10'),
+    ownerOnly: true,
+  },
 ]
 
 

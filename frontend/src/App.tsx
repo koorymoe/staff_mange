@@ -29,6 +29,7 @@ const CommandCodePage = lazy(() => import('./pages/CommandCodePage'))
 // actualRole === 'OWNER' (sim/SimGate.tsx) والمسار بالباك إند يرجّع 404.
 const SimLab = lazy(() => import('./pages/SimLab'))
 const SimExercisePage = lazy(() => import('./pages/SimExercisePage'))
+const LabWorkbench = lazy(() => import('./lab/LabWorkbench'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
 const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
@@ -146,6 +147,7 @@ function App() {
           <Route path="command-code" element={<CommandCodePage />} />
           <Route path="simulator-lab" element={<SimLab />} />
           <Route path="simulator-lab/exercise/:id" element={<SimExercisePage />} />
+          <Route path="simulator-lab/workbench" element={<LabWorkbench />} />
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           <Route path="bookings-archive" element={<BookingsArchive />} />
