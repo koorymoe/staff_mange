@@ -5,12 +5,15 @@ import SimGate from '../sim/SimGate'
 import WiringBoard from '../sim/WiringBoard'
 import { evaluateAction, wireExists } from '../sim/evaluate'
 import type { SimAction, SimAttempt, SimDevice, SimEvent, SimExercise, Wire } from '../sim/types'
+import { runChecks } from '../lab/checks'
+import type { LabDoc, SimResult } from '../lab/types'
 import { CABLE_GAUGES, voltageAtLoad, type Cable, type CableGaugeId } from '../sim3d/cable'
 
 // ⚠️ Babylon تنزّل **بس** لمن يفتح المنظر الفيزيائي: الحزمة ثقيلة،
 // وأغلب من يفتح المختبر يبدي بالمنطقي. `lazy` تخلّيها خارج حزمة الدخول.
 const Workbench3D = lazy(() => import('../sim3d/Workbench3D'))
 const CliTerminal = lazy(() => import('../cli/CliTerminal'))
+const LabBench = lazy(() => import('../lab/LabWorkbench').then((m) => ({ default: m.Bench })))
 
 // ═══ شاشة التمرين ═══
 //
@@ -168,6 +171,24 @@ function Runner() {
     } finally { setSaving(false) }
   }
 
+  // ═══ تقييم تحديات مساحة العمل ═══
+  //
+  // ⚠️ التقييم ينشتغل لمن يضغط **تشغيل المحاكاة** مو مع كل حركة:
+  // التحدي «خلّي الكاميرات تشتغل» ما ينقاس على مخطط نص مبني، والفحص
+  // المستمر يخلّي الخطوة تنجح بالصدفة وهو يسحب قطعة.
+  const onLabResult = useCallback((labDoc: LabDoc, res: SimResult) => {
+    const st = ex?.steps?.[stepIndex]
+    if (!st || st.expect.op !== 'LAB_CHECK' || !st.expect.checks) return
+    const v = runChecks(st.expect.checks, labDoc, res)
+    if (!v.ok) {
+      setFeedback({ say: v.why ?? 'بعده ما اكتمل.' })
+      return
+    }
+    pending.current.push({ kind: 'PASS', stepIndex, atMs: Date.now() - startedAt.current })
+    setFeedback(null)
+    setStepIndex((i) => i + 1)
+  }, [ex, stepIndex])
+
   // ═══ تقييم تمارين سطر الأوامر ═══
   //
   // ⚠️ التقييم على **الحالة** مو على نص الأمر: الفني يوصل لنفس النتيجة
@@ -289,7 +310,7 @@ function Runner() {
           {/* ⚠️ أدوات التوصيل (المنظران، المقطع، الطول) تخص تمارين
               **التوصيل** بس. عرضها بتمرين سطر أوامر يخلّي المتدرّب
               يدوّر علاقة بين مقطع السلك وأمر `vlan` — وماكو. */}
-          {ex.engineKind !== 'CLI' && (
+          {ex.engineKind !== 'CLI' && ex.engineKind !== 'LAB' && (
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-300">
               {([['physical', '🧊 منظر فيزيائي'], ['logical', '🗺️ منظر منطقي']] as const).map(([v, label]) => (
@@ -322,7 +343,19 @@ function Runner() {
           </div>
           )}
 
-          {ex.engineKind === 'CLI' ? (
+          {ex.engineKind === 'LAB' ? (
+            <Suspense fallback={
+              <div className="flex h-[560px] items-center justify-center rounded-xl bg-[#0b1017] text-slate-500">
+                جاري فتح مساحة العمل…
+              </div>
+            }>
+              <LabBench
+                embedded
+                startDoc={(ex.scene as unknown as { startDoc?: LabDoc }).startDoc}
+                onResult={onLabResult}
+              />
+            </Suspense>
+          ) : ex.engineKind === 'CLI' ? (
             <Suspense fallback={
               <div className="flex h-[420px] items-center justify-center rounded-xl bg-[#080c10] text-slate-500">
                 جاري فتح الجلسة…
@@ -365,7 +398,9 @@ function Runner() {
           )}
 
           <p className="mt-2 text-[11px] text-slate-400">
-            {ex.engineKind === 'CLI'
+            {ex.engineKind === 'LAB'
+              ? 'ابنِ المطلوب باللوح ثم اضغط «▶ تشغيل المحاكاة» — التقييم يصير على **نتيجة** المحاكاة، فأي طريق صحيح ينجح'
+              : ex.engineKind === 'CLI'
               ? 'اضغط داخل الشاشة السوداء حتى تكتب · `?` تعطيك الأوامر المتاحة · Tab يكمّل · ↑ يرجّع آخر أمر · Ctrl-Z يطلّعك للنمط المميّز'
               : view === 'physical'
               ? 'اسحب بالماوس حتى تدور حول الطاولة · عجلة الماوس تقرّب · اضغط طرفاً ثم طرفاً ثانياً حتى توصّلهما · اضغط سلكاً حتى تحذفه'
@@ -375,7 +410,7 @@ function Runner() {
           {/* ═══ الأڤوميتر (١٠) ═══
               «المتدرّب ما يشوف الجواب — يقيسه». القراءة محسوبة من المقطع
               والطول والسحب، فتتغيّر لمن يتغيّر أي واحد منهن. */}
-          {ex.engineKind !== 'CLI' && (
+          {ex.engineKind !== 'CLI' && ex.engineKind !== 'LAB' && (
           <div className="mt-3 rounded-xl bg-slate-900 p-4 text-slate-100 ring-1 ring-slate-700">
             <div className="flex items-center justify-between gap-3">
               <span className="text-[11px] text-slate-400">قياس على أطراف اللوحة</span>

@@ -26,12 +26,14 @@ interface Props {
   /** القطعة المختارة من الكتالوگ حتى تنحط بالضغط على اللوح. */
   pendingPart: string | null
   onPlaced: () => void
+  /** يتغيّر ← اللوح يضبط عرضه ليبيّن كل القطع. */
+  fitSignal?: number
 }
 
 const GRID = 20
 const snap = (v: number) => Math.round(v / GRID) * GRID
 
-export default function Canvas({ doc, setDoc, result, selected, setSelected, pendingPart, onPlaced }: Props) {
+export default function Canvas({ doc, setDoc, result, selected, setSelected, pendingPart, onPlaced, fitSignal }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [view, setView] = useState({ x: 0, y: 0, k: 1 })
   const [drag, setDrag] = useState<{ id: string; dx: number; dy: number } | null>(null)
@@ -58,6 +60,41 @@ export default function Canvas({ doc, setDoc, result, selected, setSelected, pen
     if (!part || !p) return null
     return { x: n.x + p.x * part.w, y: n.y + p.y * part.h }
   }, [nodeById])
+
+  // ═══ ضبط العرض ═══
+  //
+  // ⚠️ هذا **مو تحسيناً شكلياً**: مخطط ينفتح بقطع برّا الحافة يعني
+  // متدرّب ما يشوف نص التحدي ولا يگدر يوصلها. انكشف بتحدي «اعزل
+  // شبكة الضيوف» — حاسبة الضيف چانت تحت حافة اللوح المضمّن، والفحص
+  // الآلي گدر «يضغطها» بس الإنسان ما يشوفها أصلاً.
+  const fit = useCallback(() => {
+    const r = svgRef.current?.getBoundingClientRect()
+    if (!r || doc.nodes.length === 0) return
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity
+    for (const n of doc.nodes) {
+      const part = PART_BY_ID[n.partId]
+      if (!part) continue
+      x0 = Math.min(x0, n.x); y0 = Math.min(y0, n.y)
+      x1 = Math.max(x1, n.x + part.w); y1 = Math.max(y1, n.y + part.h + 20)
+    }
+    if (!Number.isFinite(x0)) return
+    const pad = 40
+    const k = Math.min(1.4, Math.max(0.35, Math.min((r.width - pad * 2) / (x1 - x0), (r.height - pad * 2) / (y1 - y0))))
+    setView({ k, x: (r.width - (x1 - x0) * k) / 2 - x0 * k, y: (r.height - (y1 - y0) * k) / 2 - y0 * k })
+  }, [doc.nodes])
+
+  // ضبط أول مرة يوصل بيها مخطط فيه قطع — وبعدين بس لمن ينطلب.
+  const fittedRef = useRef(false)
+  useEffect(() => {
+    if (fittedRef.current || doc.nodes.length === 0) return
+    fittedRef.current = true
+    fit()
+  }, [doc.nodes.length, fit])
+  useEffect(() => {
+    if (fitSignal === undefined) return
+    fit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fitSignal])
 
   // ═══ الحذف بالمفتاح ═══
   useEffect(() => {

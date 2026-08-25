@@ -147,8 +147,80 @@ func seedSimCli(db *sqlx.DB) error {
 		return err
 	}
 
+	// ═══ تحديات مساحة العمل ═══
+	//
+	// ⚠️ التحدي يوصف **الهدف** مو الخطوات: «خلّي الكاميرات الثلاث
+	// تشتغل» مو «حط سويچاً هنا وكيبلاً هناك». والتقييم على نتيجة
+	// المحرّك، فأي طريق صحيح ينجح — وهذا الفرق بين تدريب وامتحان حفظ.
+	if _, err := db.Exec(`
+		INSERT INTO "SimExercise" (id, "categoryId", title, brief, "engineKind", difficulty,
+		                           "passScore", scene, steps, status, "sourceRef", verified, "sortOrder")
+		VALUES ($1, $2, 'تحدي: ثلاث كاميرات على سويچ PoE',
+		        'ابنِ المنظومة بنفسك — سويچ PoE وثلاث كاميرات تشتغل كلهن بلا تجاوز الميزانية.',
+		        'LAB', 2, 80, $3, $4, 'DRAFT', $5, FALSE, 30)
+		ON CONFLICT (id) DO NOTHING`,
+		"simex_lab_poe_cameras", catID,
+		`{"startDoc":{"domain":"network","nodes":[],"links":[]}}`,
+		labStepsPoe,
+		"قيم PoE نمطية عامة — مو كتالوگ موديل بعينه. غير محقّق ميدانياً.",
+	); err != nil {
+		return err
+	}
+
+	if _, err := db.Exec(`
+		INSERT INTO "SimExercise" (id, "categoryId", title, brief, "engineKind", difficulty,
+		                           "passScore", scene, steps, status, "sourceRef", verified, "sortOrder")
+		VALUES ($1, $2, 'تحدي: اعزل شبكة الضيوف',
+		        'حاسبتان على سويچ واحد — اعزلهن منطقياً بالـVLAN من الكونسول، مو بقطع الكيبل.',
+		        'LAB', 3, 80, $3, $4, 'DRAFT', $5, FALSE, 31)
+		ON CONFLICT (id) DO NOTHING`,
+		"simex_lab_guest_vlan", catID,
+		labSceneGuest,
+		labStepsGuest,
+		"أعراف شبكات منشورة. غير محقّق ميدانياً.",
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
+
+const labStepsPoe = `[
+  {"index":1,"title":"السويچ والكاميرات","instruction":"حط سويچ ٢٤ منفذ PoE+ وثلاث كاميرات شبكة باللوح، وربط كل كاميرا بمنفذ.",
+   "expect":{"op":"LAB_CHECK","checks":[
+     {"c":"hasPart","partId":"switch_poe","min":1},
+     {"c":"hasPart","partId":"ip_camera","min":3},
+     {"c":"allLinksOk"}]},
+   "hint":"اختر القطعة من الكتالوگ ثم اضغط باللوح · اضغط منفذاً ثم منفذاً ثانياً حتى توصّل.","weight":40},
+
+  {"index":2,"title":"كلهن يشتغلن","instruction":"شغّل المحاكاة — لازم ماكو ولا مشكلة خطيرة، وكل الكاميرات توصل. لو تجاوزت ميزانية الـPoE قلّل سحب الكاميرات أو زيد الميزانية بخصائص السويچ.",
+   "expect":{"op":"LAB_CHECK","checks":[
+     {"c":"noErrors"},
+     {"c":"allPairsConnected"}]},
+   "hint":"مجموع سحب الكاميرات لازم يبقى تحت ميزانية السويچ — الميزانية للكل مو لكل منفذ.","weight":60,
+   "wrong":[{"matchAny":true,"say":"⚠️ ميزانية الـPoE **مجموع** لكل المنافذ مو لكل منفذ. تجاوزها بالميدان يخلّي الكاميرات تفصل وترجع بالتناوب — وكل وحدة لحالها تشتغل تمام، فالعطل يضيّع أيام.","penalty":5}]}
+]`
+
+const labSceneGuest = `{"startDoc":{"domain":"network","nodes":[
+  {"id":"lgsw","partId":"switch_l2","x":300,"y":120,"rot":0,
+   "params":{"hostname":"SW1","poeBudget":0}},
+  {"id":"lgp1","partId":"pc","x":140,"y":360,"rot":0,
+   "params":{"name":"STAFF","ip":"192.168.1.10","mask":"255.255.255.0","gw":"192.168.1.1"}},
+  {"id":"lgp2","partId":"pc","x":460,"y":360,"rot":0,
+   "params":{"name":"GUEST","ip":"192.168.1.20","mask":"255.255.255.0","gw":"192.168.1.1"}}
+ ],"links":[
+  {"id":"lgl1","from":{"node":"lgsw","port":"gi0/1"},"to":{"node":"lgp1","port":"eth0"},
+   "params":{"cable":"cat6","lengthM":15,"sfpA":"none","sfpB":"none"}},
+  {"id":"lgl2","from":{"node":"lgsw","port":"gi0/2"},"to":{"node":"lgp2","port":"eth0"},
+   "params":{"cable":"cat6","lengthM":15,"sfpA":"none","sfpB":"none"}}
+ ]}}`
+
+const labStepsGuest = `[
+  {"index":1,"title":"العزل المنطقي","instruction":"اعزل GUEST عن STAFF بالـVLAN: افتح كونسول السويچ وحط منفذ GUEST بـVLAN غير الـ١. ⚠️ قطع الكيبل مو عزل — الضيف لازم يبقى موصولاً.",
+   "expect":{"op":"LAB_CHECK","checks":[{"c":"isolated","a":"STAFF","b":"GUEST"}]},
+   "hint":"اضغط السويچ ← افتح الكونسول ← en · conf t · vlan 20 · exit · int gi0/2 · switchport access vlan 20 · end. وبعدها شغّل المحاكاة.","weight":100,
+   "wrong":[{"matchAny":true,"say":"⚠️ العزل المطلوب **منطقي** مو بقطع الكيبل. بالمشروع الحقيقي شبكة الضيوف لازم تبقى شغّالة وتوصل للإنترنت — بس ما توصل للشبكة الداخلية. قطع الكيبل يعني ضيفاً بلا خدمة.","fatal":false,"penalty":5}]}
+]`
 
 // ⚠️ مولّد — شوف التعليق فوگ.
 const cliGrammarIOSLike = `{

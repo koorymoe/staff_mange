@@ -115,11 +115,16 @@ export interface Scene {
 
 /** المتوقّع من الخطوة. بهالمرحلة `CONNECT` بس — الباقي يجي مع محرّكات لاحقة. */
 export interface Expect {
-  op: 'CONNECT' | 'DISCONNECT' | 'STATE_EQ' | 'ENERGIZE' | string
+  op: 'CONNECT' | 'DISCONNECT' | 'STATE_EQ' | 'ENERGIZE' | 'LAB_CHECK' | string
   from?: string
   to?: string
   path?: string
   value?: unknown
+  /** فحوص تحديات مساحة العمل — **كلها** لازم تنجح.
+   *  ⚠️ الفحص على **نتيجة المحرّك** مو على شكل المخطط: التحدي يكول
+   *  «خلّي الكاميرات تشتغل» مو «حط سويچاً بالإحداثي الفلاني»، فأي
+   *  طريق صحيح ينجح. */
+  checks?: import('../lab/checks').LabCheck[]
 }
 
 /** تفسير غلط محدّد — `match` يطابق حركة بعينها، و`matchAny` يمسك الباقي. */

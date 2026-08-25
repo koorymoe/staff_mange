@@ -42,17 +42,33 @@ export default function LabWorkbench() {
   return <SimGate><Bench /></SimGate>
 }
 
-function Bench() {
-  const [domain, setDomain] = useState<DomainId>('network')
-  const [docs, setDocs] = useState<Record<DomainId, LabDoc>>({
-    network: { domain: 'network', nodes: [], links: [] },
-    solar: { domain: 'solar', nodes: [], links: [] },
-    electrical: { domain: 'electrical', nodes: [], links: [] },
+export interface BenchProps {
+  /** مضمّنة داخل تمرين: بلا شريط سلامة ولا عنوان ولا حفظ مخططات. */
+  embedded?: boolean
+  /** مخطط ابتدائي يبدي بيه التحدي. */
+  startDoc?: LabDoc
+  /** ينندى بعد كل تشغيل — التمرين يقيّم النتيجة. */
+  onResult?: (doc: LabDoc, result: SimResult) => void
+}
+
+/** ⚠️ مصدَّرة بلا بوابة عمداً: صفحة التمرين تضمّنها وهي أصلاً جوّا
+ *  `SimGate`، وتغليفها مرتين يعني فحص ملكية مكرّراً بكل رندر. */
+export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
+  const [domain, setDomain] = useState<DomainId>(startDoc?.domain ?? 'network')
+  const [docs, setDocs] = useState<Record<DomainId, LabDoc>>(() => {
+    const empty: Record<DomainId, LabDoc> = {
+      network: { domain: 'network', nodes: [], links: [] },
+      solar: { domain: 'solar', nodes: [], links: [] },
+      electrical: { domain: 'electrical', nodes: [], links: [] },
+    }
+    if (startDoc) empty[startDoc.domain] = startDoc
+    return empty
   })
   const [selected, setSelected] = useState<string | null>(null)
   const [pendingPart, setPendingPart] = useState<string | null>(null)
   const [result, setResult] = useState<SimResult | null>(null)
   const [console_, setConsole] = useState<string | null>(null)
+  const [fitSignal, setFitSignal] = useState(0)
 
   // ═══ المخططات المحفوظة ═══
   const [projects, setProjects] = useState<{ id: string; name: string; domain: string; updatedAt: string }[]>([])
@@ -85,7 +101,11 @@ function Bench() {
   const selPart = selNode ? PART_BY_ID[selNode.partId] : null
   const selLink = doc.links.find((l) => l.id === selected)
 
-  const run = () => setResult(ENGINES[domain].run(doc, PART_BY_ID))
+  const run = () => {
+    const r = ENGINES[domain].run(doc, PART_BY_ID)
+    setResult(r)
+    onResult?.(doc, r)
+  }
 
   /** ⚠️ حالة الكونسول تنكتب بالعقدة مو بحالة منفصلة: لو انخزنت
    *  برّا، تضيع بأول تبديل مجال وما تنحفظ مع المخطط. */
@@ -130,6 +150,7 @@ function Bench() {
       setProjectName(p.name)
       setSelected(null)
       setResult(null)
+      setFitSignal((n) => n + 1)   // المخطط المفتوح ممكن يكون أوسع من اللوح
       setBusy(null)
     } catch (e) {
       setBusy(e instanceof Error ? e.message : 'تعذر الفتح')
@@ -167,16 +188,21 @@ function Bench() {
 
   return (
     <div dir="rtl" className="space-y-3">
-      {/* ⚠️ شريط السلامة دائم — نفس قاعدة بقية المختبر. */}
-      <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-[12.5px] font-bold text-amber-900 ring-1 ring-amber-200">
-        ⚠️ محاكاة تدريب — القيم نمطية عامة مو كتالوگ موديل بعينه. الرجوع لكتالوگ
-        الشركة المصنّعة إلزامي قبل أي تنفيذ حقيقي.
-      </div>
+      {/* ⚠️ داخل تمرين: شريط السلامة والعنوان موجودين بصفحة التمرين
+          أصلاً، وتكرارهم يزحم الشاشة ويخلّي المتدرّب يتجاهلهم. */}
+      {!embedded && (
+        <>
+          <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-[12.5px] font-bold text-amber-900 ring-1 ring-amber-200">
+            ⚠️ محاكاة تدريب — القيم نمطية عامة مو كتالوگ موديل بعينه. الرجوع لكتالوگ
+            الشركة المصنّعة إلزامي قبل أي تنفيذ حقيقي.
+          </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link to="/simulator-lab" className="text-sm text-brand-700 hover:underline">← رجوع للمختبر</Link>
-        <h2 className="text-xl font-bold text-brand-900">🧰 مساحة عمل المحاكاة</h2>
-      </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Link to="/simulator-lab" className="text-sm text-brand-700 hover:underline">← رجوع للمختبر</Link>
+            <h2 className="text-xl font-bold text-brand-900">🧰 مساحة عمل المحاكاة</h2>
+          </div>
+        </>
+      )}
 
       {/* ═══ شريط الأدوات ═══ */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2.5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
@@ -202,6 +228,10 @@ function Bench() {
             className="rounded-lg bg-slate-200 px-3 py-1.5 text-xs font-bold text-slate-700 disabled:opacity-40">
             ⏹ إيقاف
           </button>
+          <button onClick={() => setFitSignal((n) => n + 1)}
+            className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200">
+            ⤢ ضبط العرض
+          </button>
           <button onClick={clearAll}
             className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-red-600 ring-1 ring-red-200 hover:bg-red-50">
             🗑 تفريغ اللوح
@@ -209,6 +239,8 @@ function Bench() {
         </div>
       </div>
 
+      {!embedded && (
+      <>
       {/* ═══ المخططات المحفوظة ═══
           ⚠️ اللوح بلا حفظ يعني شغل يروح مع تسكير الصفحة — والمخطط مو
           رسمة، هو تصميم مشروع الفني يرجعله. */}
@@ -256,6 +288,8 @@ function Bench() {
         )}
         {busy && <span className="text-xs font-bold text-slate-500">{busy}</span>}
       </div>
+      </>
+      )}
 
       <p className="text-xs text-slate-500">{DOMAINS.find((d) => d.id === domain)?.about}</p>
 
@@ -294,6 +328,7 @@ function Bench() {
             doc={doc} setDoc={setDoc} result={result}
             selected={selected} setSelected={setSelected}
             pendingPart={pendingPart} onPlaced={() => setPendingPart(null)}
+            fitSignal={fitSignal}
           />
 
           {/* ═══ الكونسول ═══ */}
