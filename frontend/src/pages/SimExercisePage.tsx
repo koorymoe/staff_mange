@@ -1,10 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../api'
 import SimGate from '../sim/SimGate'
 import WiringBoard from '../sim/WiringBoard'
 import { evaluateAction, wireExists } from '../sim/evaluate'
 import type { SimAction, SimAttempt, SimDevice, SimEvent, SimExercise, Wire } from '../sim/types'
+import { CABLE_GAUGES, voltageAtLoad, type Cable, type CableGaugeId } from '../sim3d/cable'
+
+// ⚠️ Babylon تنزّل **بس** لمن يفتح المنظر الفيزيائي: الحزمة ثقيلة،
+// وأغلب من يفتح المختبر يبدي بالمنطقي. `lazy` تخلّيها خارج حزمة الدخول.
+const Workbench3D = lazy(() => import('../sim3d/Workbench3D'))
 
 // ═══ شاشة التمرين ═══
 //
@@ -37,6 +42,12 @@ function Runner() {
   const [feedback, setFeedback] = useState<{ say: string; fatal?: boolean } | null>(null)
   const [finished, setFinished] = useState<SimAttempt | null>(null)
   const [saving, setSaving] = useState(false)
+
+  // ═══ المنظران (١٩) ═══ نفس الحالة بالضبط — `wires` وحدة للاثنين.
+  const [view, setView] = useState<'physical' | 'logical'>('physical')
+  // ═══ خصائص التمديد ═══ المقطع والطول يقرّران هبوط الفولتية.
+  const [gauge, setGauge] = useState<CableGaugeId>('awg20')
+  const [runLengthM, setRunLengthM] = useState(12)
 
   // ⚠️ ما ننادي Date.now() **أثناء الرندر**: الرندر لازم يكون نقياً
   // (وهذا الي تمنعه قاعدة react-hooks). ننصّبها بأول تأثير.
@@ -156,6 +167,51 @@ function Runner() {
     } finally { setSaving(false) }
   }
 
+  // ═══ محرّك كهربائي مبسّط ═══
+  //
+  // ⚠️ هذا **مو** جدول جاهز ولا رسالة مكتوبة سلفاً: القراءة تنحسب من
+  // مقطع السلك وطوله وسحب الجهاز. غيّر المقطع لـ٢٢ ومدّد ٤٠ متر ← تشوف
+  // الفولتية تنزل تحت حد التحرير والقفل ما ينفتح **مع إن التوصيل صحيح**.
+  // هذا بالضبط العطل الي يوگف الفني ساعتين بالميدان.
+  //
+  // ⚠️ درجة الدقة هنا `F1` بسلّم الـFidelity (٦): مقاومة أومية بس، بلا
+  // تيار اندفاع ولا حرارة. تكفي لهذا الدرس وما تكفي لامتحان أعطال طاقة —
+  // ولمن نحتاج أعلى، الطبقة تتبدّل بلا ما تتغيّر هوية التمرين.
+  const power = useMemo(() => {
+    // ⚠️ المراجع **ما تنكتب بالكود**: اسم الجهاز بالمشهد (`ref`) يقرّره
+    // مؤلّف التمرين مو المحرّك — بهذا التمرين `lock1`/`psu1` مو
+    // `lock`/`psu`. ترميزها يدوياً يخلّي المحرّك ما يلگي ولا سلك
+    // ويقرا «ماكو تغذية» للأبد. نلگاهن من نوع الجهاز بالمشهد.
+    const refOf = (match: (d: SimDevice) => boolean) =>
+      (ex?.scene.devices ?? []).find((sd) => {
+        const dev = (ex?.devices ?? []).find((d) => d.id === sd.deviceId)
+        return dev ? match(dev) : false
+      })?.ref
+    const lockRef = refOf((d) => d.engineKind === 'WIRING' && (d.terminals?.length ?? 0) > 4)
+    const psuRef = refOf((d) => (d.terminals?.length ?? 0) <= 4)
+    if (!lockRef || !psuRef) return { state: 'OFF' as const, volts: 0 }
+
+    const has = (a: string, b: string) =>
+      wires.some((w) => (w.from === a && w.to === b) || (w.from === b && w.to === a))
+    const posOk = has(`${lockRef}:t_red`, `${psuRef}:out_pos`)
+    const negOk = has(`${lockRef}:t_black`, `${psuRef}:out_neg`)
+    const reversed = has(`${lockRef}:t_red`, `${psuRef}:out_neg`) && has(`${lockRef}:t_black`, `${psuRef}:out_pos`)
+    if (reversed) return { state: 'REVERSED' as const, volts: 0 }
+    if (!posOk || !negOk) return { state: 'OFF' as const, volts: 0 }
+
+    const spec = (ex?.devices ?? []).find((d) => d.id.includes('keypad'))?.spec as
+      | { power?: { currentA?: number } } | undefined
+    const loadA = spec?.power?.currentA ?? 0.5
+    const cables: Cable[] = [
+      { id: 'c+', fromRef: psuRef, fromTerminal: 'out_pos', toRef: lockRef, toTerminal: 't_red', gauge, lengthM: runLengthM, colorHex: '#dc2626' },
+      { id: 'c-', fromRef: psuRef, fromTerminal: 'out_neg', toRef: lockRef, toTerminal: 't_black', gauge, lengthM: runLengthM, colorHex: '#111827' },
+    ]
+    // ⚠️ الذهاب والإياب محسوبان جوّا `cableResistance` — فنمرّر كيبلاً
+    // واحداً للحساب وإلا الطول ينحسب أربع مرات.
+    const volts = voltageAtLoad(12, loadA, [cables[0]])
+    return { state: volts >= 10.8 ? ('OK' as const) : ('LOW' as const), volts }
+  }, [wires, gauge, runLengthM, ex])
+
   if (loading) return <p className="text-slate-400">جاري التحميل…</p>
   if (err && !ex) return <p className="rounded-lg bg-red-50 p-4 text-red-600">{err}</p>
   if (!ex) return null
@@ -195,15 +251,92 @@ function Runner() {
 
       <div className="hidden gap-4 md:grid md:grid-cols-[1fr_20rem]">
         <div>
-          <WiringBoard
-            scene={ex.scene} devices={deviceMap} wires={wires}
-            onAction={onAction} onRemoveWire={removeWire}
-            highlight={showHint && step?.expect.from ? [step.expect.from, step.expect.to ?? ''] : []}
-            readOnly={done || !!finished}
-          />
+          {/* ═══ مبدّل المنظر (١٩) ═══
+              نفس الحالة بالضبط — `wires` وحدة للاثنين. المنظر الفيزيائي
+              للتركيب، والمنطقي للسرعة والقراءة. ولا واحد منهما يخزن شي
+              لحاله، فالتبديل ما يضيّع ولا سلك. */}
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <div className="inline-flex overflow-hidden rounded-lg ring-1 ring-slate-300">
+              {([['physical', '🧊 منظر فيزيائي'], ['logical', '🗺️ منظر منطقي']] as const).map(([v, label]) => (
+                <button
+                  key={v} onClick={() => setView(v)}
+                  className={`px-3 py-1.5 text-xs font-bold transition ${
+                    view === v ? 'bg-brand-700 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                >{label}</button>
+              ))}
+            </div>
+
+            {/* خصائص التمديد — تأثيرها حقيقي على القياس، مو زينة */}
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-600">
+              مقطع السلك
+              <select
+                value={gauge} onChange={(e) => setGauge(e.target.value as CableGaugeId)}
+                className="rounded-md border border-slate-300 px-2 py-1 text-[11px]"
+              >
+                {CABLE_GAUGES.map((g) => <option key={g.id} value={g.id}>{g.label}</option>)}
+              </select>
+            </label>
+            <label className="flex items-center gap-1.5 text-[11px] text-slate-600">
+              طول التمديد (م)
+              <input
+                type="number" min={1} max={120} value={runLengthM}
+                onChange={(e) => setRunLengthM(Math.max(1, Number(e.target.value) || 1))}
+                className="w-16 rounded-md border border-slate-300 px-2 py-1 text-[11px]"
+              />
+            </label>
+          </div>
+
+          {view === 'physical' ? (
+            <Suspense fallback={
+              <div className="flex h-[520px] items-center justify-center rounded-2xl bg-[#0e1219] text-slate-400">
+                جاري تحميل المشهد الثلاثي…
+              </div>
+            }>
+              <Workbench3D
+                scene={ex.scene} devices={deviceMap} wires={wires}
+                onAction={onAction} onRemoveWire={removeWire}
+                highlight={showHint && step?.expect.from ? [step.expect.from, step.expect.to ?? ''] : []}
+                readOnly={done || !!finished}
+                gauge={gauge} runLengthM={runLengthM}
+              />
+            </Suspense>
+          ) : (
+            <WiringBoard
+              scene={ex.scene} devices={deviceMap} wires={wires}
+              onAction={onAction} onRemoveWire={removeWire}
+              highlight={showHint && step?.expect.from ? [step.expect.from, step.expect.to ?? ''] : []}
+              readOnly={done || !!finished}
+            />
+          )}
+
           <p className="mt-2 text-[11px] text-slate-400">
-            اضغط طرفاً ثم طرفاً ثانياً حتى توصّلهما · اضغط سلكاً حتى تحذفه · مرّر على الطرف حتى تشوف وظيفته
+            {view === 'physical'
+              ? 'اسحب بالماوس حتى تدور حول الطاولة · عجلة الماوس تقرّب · اضغط طرفاً ثم طرفاً ثانياً حتى توصّلهما · اضغط سلكاً حتى تحذفه'
+              : 'اضغط طرفاً ثم طرفاً ثانياً حتى توصّلهما · اضغط سلكاً حتى تحذفه · مرّر على الطرف حتى تشوف وظيفته'}
           </p>
+
+          {/* ═══ الأڤوميتر (١٠) ═══
+              «المتدرّب ما يشوف الجواب — يقيسه». القراءة محسوبة من المقطع
+              والطول والسحب، فتتغيّر لمن يتغيّر أي واحد منهن. */}
+          <div className="mt-3 rounded-xl bg-slate-900 p-4 text-slate-100 ring-1 ring-slate-700">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] text-slate-400">قياس على أطراف اللوحة</span>
+              <span className="font-mono text-2xl font-bold tabular-nums" style={{
+                color: power.state === 'OK' ? '#4ade80' : power.state === 'LOW' ? '#fbbf24' : '#f87171',
+              }}>
+                {power.state === 'OFF' ? '— — —' : `${power.volts.toFixed(2)} V`}
+              </span>
+            </div>
+            <p className="mt-1.5 text-[11px] leading-relaxed text-slate-300">
+              {power.state === 'OFF' && 'ماكو تغذية واصلة — اللوحة مطفية. وصّل الموجب والسالب.'}
+              {power.state === 'OK' && '✅ التغذية سليمة — اللوحة تشتغل والقفل يتحرّر.'}
+              {power.state === 'LOW' && (
+                <>⚠️ <b>هبوط فولتية</b>: واصل أقل من ١٠٫٨ فولت. التوصيل صحيح بس المقطع نحيف أو
+                التمديد طويل — اللوحة تشتغل والقفل ما يتحرّر. زيد المقطع أو قصّر التمديد.</>
+              )}
+              {power.state === 'REVERSED' && '🔥 القطبية معكوسة — بالميدان هذي تحرق اللوحة.'}
+            </p>
+          </div>
         </div>
 
         <aside className="space-y-3">

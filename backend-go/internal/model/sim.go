@@ -71,6 +71,10 @@ type SimDevice struct {
 	Terminals json.RawMessage `db:"terminals" json:"terminals"`
 	UI        json.RawMessage `db:"ui" json:"ui"`
 
+	// Geometry هندسة الجهاز بالمتر — منها يتولّد الجسم ثلاثي الأبعاد بالكود.
+	// الشكل مجرد View لنفس الجهاز، فالهندسة تعيش وياه مو بالواجهة.
+	Geometry json.RawMessage `db:"geometry" json:"geometry"`
+
 	Status  string `db:"status" json:"status"`
 	Version int    `db:"version" json:"version"`
 

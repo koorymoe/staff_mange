@@ -25,6 +25,32 @@ export interface Terminal {
   maxConnections?: number
 }
 
+/** ═══ الهندسة ثلاثية الأبعاد ═══
+ *
+ *  الوحدة **متر** ومقياس ١:١ — مثل ما يفرض المخطط الرئيسي (٧٫٢). الجسم
+ *  يتولّد بالكود من هذي المواصفة، فماكو ملف موديل ينزّل ولا فنان ٣د
+ *  ينتظر. ولمن تجي موديلات مصنّعة حقيقية تنركّب فوگ نفس المراسي. */
+export interface DeviceGeometry {
+  shape?: 'wall_box' | 'psu_brick' | string
+  sizeM?: { w: number; h: number; d: number }
+  bodyColorHex?: string
+  faceColorHex?: string
+  terminalPost?: { radiusM: number; heightM: number }
+  features?: GeometryFeature[]
+}
+
+export type GeometryFeature =
+  | { kind: 'keypad'; x: number; y: number; w: number; h: number; cols: number; rows: number }
+  | { kind: 'statusLed'; x: number; y: number; channel?: string }
+  | { kind: 'terminalPlate'; x0: number; y0: number; x1: number; y1: number }
+
+/** ═══ نوع الموصّل ═══
+ *
+ *  التوصيل لازم يكون **مصنّفاً** (٩): RJ45 ما يسنّب على بلوك براغي.
+ *  حالياً كل أطرافنا براغي، فالفحص يمر دائماً — بس المحرّك موجود، فأول
+ *  جهاز شبكة ينضاف يشتغل الرفض لحاله بلا تعديل بالمحرّك. */
+export type ConnectorKind = 'screw_terminal' | 'rj45' | 'dc_jack' | 'sfp' | 'usb'
+
 export interface SimDevice {
   id: string
   categoryId: string
@@ -37,6 +63,7 @@ export interface SimDevice {
   spec: Record<string, unknown>
   terminals: Terminal[]
   ui: Record<string, unknown>
+  geometry?: DeviceGeometry
   status: string
   version: number
   sourceRef?: string

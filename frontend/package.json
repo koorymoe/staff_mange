@@ -11,6 +11,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
+    "@babylonjs/core": "^9.22.2",
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
     "react": "^19.2.6",

@@ -239,5 +239,56 @@ func simLabMigrations() []Migration {
 				  AND scene #>> '{devices,0,x}' = '0.30';
 			`,
 		},
+		{
+			// ═══ الهندسة ثلاثية الأبعاد للجهاز ═══
+			//
+			// المخطط الرئيسي (القسم ٣) يعتبر الجهاز **توأماً رقمياً** له
+			// Geometry، والشكل ثلاثي الأبعاد مجرد View لنفس الكائن. فالهندسة
+			// تعيش بالخلفية مع الجهاز — مو مكتوبة بالواجهة.
+			//
+			// ⚠️ الوحدة **متر دائماً** ومقياس ١:١ (القسم ٧٫٢). الأبعاد
+			// أدناه تقريب عام لحجم لوحة كيباد جدارية ومحوّل صغير — مثل
+			// باقي محتوى هذا الجهاز **غير محقّقة** من كتالوگ موديل بعينه.
+			//
+			// ⚠️ ماكو ملف موديل مصنّع: الأجسام **تتولّد بالكود** من هذي
+			// المواصفة. ولمن تجي موديلات حقيقية بعدين تنركّب فوگ نفس
+			// المراسي الدلالية بلا إعادة عمل (القسم ٧٫٣).
+			//
+			// ⚠️ ماكو إحداثيات ثلاثية للأطراف: الطرف يبقى (x,y) نسبة من
+			// **وجه** الجهاز — نفس الأرقام الي يستعملها المنظر المنطقي.
+			// منظر واحد ما يقدر يزيح الثاني (القسم ١٩).
+			Version: "0255_sim_device_geometry",
+			SQL: `
+				ALTER TABLE "SimDevice"
+				  ADD COLUMN IF NOT EXISTS geometry jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+				UPDATE "SimDevice" SET geometry = '{
+				  "shape": "wall_box",
+				  "sizeM": {"w": 0.145, "h": 0.145, "d": 0.030},
+				  "bodyColorHex": "#3f4756",
+				  "faceColorHex": "#232a36",
+				  "terminalPost": {"radiusM": 0.0035, "heightM": 0.0055},
+				  "features": [
+				    {"kind": "keypad", "x": 0.62, "y": 0.52, "w": 0.30, "h": 0.62, "cols": 3, "rows": 4},
+				    {"kind": "statusLed", "x": 0.62, "y": 0.10, "channel": "status_led"},
+				    {"kind": "terminalPlate", "x0": 0.03, "y0": 0.08, "x1": 0.26, "y1": 0.94}
+				  ]
+				}'::jsonb, "updatedAt" = NOW()
+				WHERE id = 'simdev_ac_keypad_15w' AND geometry = '{}'::jsonb;
+
+				UPDATE "SimDevice" SET geometry = '{
+				  "shape": "psu_brick",
+				  "sizeM": {"w": 0.110, "h": 0.075, "d": 0.045},
+				  "bodyColorHex": "#4b5563",
+				  "faceColorHex": "#2b3242",
+				  "terminalPost": {"radiusM": 0.0035, "heightM": 0.0055},
+				  "features": [
+				    {"kind": "statusLed", "x": 0.35, "y": 0.72, "channel": "status_led"},
+				    {"kind": "terminalPlate", "x0": 0.68, "y0": 0.16, "x1": 0.94, "y1": 0.60}
+				  ]
+				}'::jsonb, "updatedAt" = NOW()
+				WHERE id = 'simdev_psu_12v' AND geometry = '{}'::jsonb;
+			`,
+		},
 	}
 }
