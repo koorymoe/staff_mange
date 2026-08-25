@@ -83,13 +83,16 @@ export function argMatches(kind: ArgKind, token: string): boolean {
 // `GigabitEthernet0/1`، وكل خرج `show` يطلعها موسّعة. بدون هالتوسيع
 // `show run` تطلع `interface gi0/1` — وأي فني شبكات يشوفها يعرف إنه
 // مو جهاز حقيقي بثانية. تفصيلة صغيرة بس هي الي تفرّق.
+// ⚠️ الترتيب مهم: `te` قبل `t`، و`ge` قبل `g`. والحروف المفردة
+// (`g`, `f`, `e`) لازم تنقبل — فني هواوي يكتب `int g0/0/1` عادةً،
+// وبدونها الاسم ينخزن مختصراً و`display` تطلعه مختصراً فتنكشف اللعبة.
 const IF_FAMILIES: [RegExp, string][] = [
-  [/^(te|ten|tengig(abit)?(ethernet)?)$/i, 'TenGigabitEthernet'],
-  [/^(gi|gig|gigabit(ethernet)?)$/i, 'GigabitEthernet'],
-  [/^(fa|fast(ethernet)?)$/i, 'FastEthernet'],
-  [/^(et|eth|ethernet)$/i, 'Ethernet'],
+  [/^(te|ten|xge|tengig(abit)?(ethernet)?)$/i, 'TenGigabitEthernet'],
+  [/^(g|gi|gig|ge|gigabit(ethernet)?)$/i, 'GigabitEthernet'],
+  [/^(f|fa|fast(ethernet)?)$/i, 'FastEthernet'],
+  [/^(e|et|eth|ethernet)$/i, 'Ethernet'],
   [/^(vl|vlan)$/i, 'Vlan'],
-  [/^(po|port-channel)$/i, 'Port-channel'],
+  [/^(po|port-channel|eth-trunk)$/i, 'Port-channel'],
 ]
 
 export function expandIfName(token: string): string {
@@ -149,6 +152,10 @@ export function prompt(grammar: CliGrammar, session: CliSession): string {
   const host = String(getPath(session.state, 'hostname') ?? 'Switch')
   const top = session.modeStack[session.modeStack.length - 1]
   const mode = grammar.modes.find((m) => m.id === top.mode)
+  // القالب الكامل يسبق اللاحقة — يخدم الأنظمة الي **تحيط** الاسم.
+  if (mode?.promptTemplate) {
+    return mode.promptTemplate.replace(/\$host/g, host).replace(/\$ctx/g, top.ctx ?? '')
+  }
   const suffix = (mode?.promptSuffix ?? '>').replace('$ctx', top.ctx ?? '')
   return host + suffix
 }
@@ -216,7 +223,7 @@ export function execute(grammar: CliGrammar, session: CliSession, line: string):
   if (!node) return { output: [], session: s }
 
   // أمر ناقص: العقدة ما عدها أثر وعدها أبناء إلزاميون.
-  const terminal = node.set || node.show || node.enter || node.exit || node.endAll || node.say
+  const terminal = node.set || node.show || node.enter || node.exit || node.endTo || node.say
   if (!terminal) {
     return { output: ['% Incomplete command.', ''], session: s }
   }
@@ -229,10 +236,12 @@ export function execute(grammar: CliGrammar, session: CliSession, line: string):
   if (node.exit) {
     if (s.modeStack.length > 1) s.modeStack.pop()
   }
-  if (node.endAll) {
-    s.modeStack = [s.modeStack[0], ...(s.modeStack.length > 1 ? [s.modeStack[1]] : [])].slice(0, 1)
-    // `end` ترجّع لـEXEC المميّز مو للمستخدم — أول نمط بعد الجذر.
-    s.modeStack = [{ mode: grammar.modes[1]?.id ?? grammar.startMode }]
+  if (node.endTo) {
+    // ⚠️ الوجهة **تنسمّى بالنحو** مو تنستنتج من ترتيب الأنماط. أول
+    // نسخة چانت تفترض `modes[1]` — صح بسيسكو (`end` ترجّع لـEXEC
+    // المميّز) وغلط بـVRP (`return` ترجّع لنمط **المستخدم**). أي
+    // نظام ثالث چان يكسرها من جديد.
+    s.modeStack = [{ mode: node.endTo }]
   }
   if (node.set) {
     const path = subst(node.set, args, ctx)
@@ -296,6 +305,26 @@ function renderShow(kind: string, state: CliState, grammar: CliGrammar): string[
   const ifs = (getPath(state, 'interfaces') as Record<string, Record<string, unknown>>) ?? {}
 
   if (kind === 'running-config') {
+    // ⚠️ نفس الحالة بالضبط تنعرض بلغتين — الجهاز واحد والعرض يختلف.
+    if (grammar.showStyle === 'vrp') {
+      const L = ['#', `sysname ${host}`, '#']
+      for (const [id, v] of Object.entries(vlans)) {
+        L.push(`vlan ${id}`)
+        if (v?.name) L.push(` description ${v.name}`)
+        L.push('#')
+      }
+      for (const [name, cfg] of Object.entries(ifs)) {
+        L.push(`interface ${name}`)
+        if (cfg.description) L.push(` description ${String(cfg.description)}`)
+        if (cfg.mode) L.push(` port link-type ${String(cfg.mode)}`)
+        if (cfg.accessVlan) L.push(` port default vlan ${String(cfg.accessVlan)}`)
+        if (cfg.trunkVlans) L.push(` port trunk allow-pass vlan ${String(cfg.trunkVlans)}`)
+        if (cfg.shutdown) L.push(' shutdown')
+        L.push('#')
+      }
+      L.push('return')
+      return L
+    }
     const L = ['Building configuration...', '', `Current configuration : ${400 + Object.keys(ifs).length * 60} bytes`, '!', `hostname ${host}`, '!']
     for (const [id, v] of Object.entries(vlans)) {
       L.push(`vlan ${id}`)
@@ -312,6 +341,19 @@ function renderShow(kind: string, state: CliState, grammar: CliGrammar): string[
       L.push('!')
     }
     L.push('end')
+    return L
+  }
+
+  if (kind === 'vlan-brief' && grammar.showStyle === 'vrp') {
+    const L = ['VID  Type    Ports']
+    const all: Record<string, string> = { 1: 'common' }
+    for (const id of Object.keys(vlans)) all[id] = 'common'
+    for (const id of Object.keys(all).sort((a, b) => Number(a) - Number(b))) {
+      const ports = Object.entries(ifs)
+        .filter(([, c]) => String(c.accessVlan ?? '1') === id)
+        .map(([n]) => shortIf(n))
+      L.push(`${id.padEnd(5)}${all[id].padEnd(8)}${ports.join(' ')}`)
+    }
     return L
   }
 

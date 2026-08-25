@@ -96,6 +96,57 @@ func seedSimCli(db *sqlx.DB) error {
 		return err
 	}
 
+	// ═══ نحو VRP وجهازه ═══
+	//
+	// ⚠️ هذا **الإثبات** إن المعمار بيانات مو كود: نظام ثاني كامل
+	// بأنماطه ومحثه المحيط وصيغة عرضه — ومحرّك الأوامر ما انلمس.
+	if _, err := db.Exec(`
+		INSERT INTO "SimCliGrammar" (id, name, os, tree, status, "sourceRef")
+		VALUES ($1, 'Training VRP-style OS', 'V200R-TRAINING', $2, 'DRAFT', $3)
+		ON CONFLICT (id) DO NOTHING`,
+		"simcli_vrp_like_switch",
+		cliGrammarVrpLike,
+		"أوامر شائعة منشورة بمناهج الشبكات — مو كتالوگ ولا صورة مصنّع. غير محقّق ميدانياً.",
+	); err != nil {
+		return err
+	}
+
+	if _, err := db.Exec(`
+		INSERT INTO "SimDevice" (id, "categoryId", brand, model, name, summary, "engineKind",
+		                         spec, terminals, ui, geometry, status, "sourceRef", "localPractice", verified)
+		VALUES ($1, $2, 'نموذج تدريبي', 'SW-24P-VRP',
+		        'سويچ إدارة ٢٤ منفذ — نمط VRP',
+		        'نفس السويچ بنظام تشغيل ثاني: system-view وport link-type وdisplay.',
+		        'CLI', $3, $4, $5, $6, 'DRAFT', $7, $8, FALSE)
+		ON CONFLICT (id) DO NOTHING`,
+		"simdev_switch_24p_vrp", catID,
+		`{"ports":24,"uplinks":2,"layer":2,"cliGrammarId":"simcli_vrp_like_switch"}`,
+		`[]`,
+		`{"kind":"CLI","grammarId":"simcli_vrp_like_switch"}`,
+		`{"shape":"rack_1u","sizeM":{"w":0.44,"h":0.044,"d":0.20},"bodyColorHex":"#2b3440","faceColorHex":"#1b222c"}`,
+		"أوامر شائعة منشورة — مو كتالوگ موديل بعينه.",
+		"عدنا بالعراق هواوي شائعة بمشاريع المقاولات والحكومة، وسيسكو بالبنوك والشركات.",
+	); err != nil {
+		return err
+	}
+
+	// ⚠️ نفس هدف التمرين السابق بالضبط، ونظام ثاني: الفني الي يتعلّم
+	// **المفهوم** ينقل بين الأنظمة، والي يحفظ **الأوامر** ما ينقل.
+	if _, err := db.Exec(`
+		INSERT INTO "SimExercise" (id, "categoryId", title, brief, "engineKind", difficulty,
+		                           "passScore", scene, steps, status, "sourceRef", verified, "sortOrder")
+		VALUES ($1, $2, 'تهيئة VLAN ومنفذ وصول — نمط VRP',
+		        'نفس الهدف بنظام ثاني: system-view وport link-type access وport default vlan.',
+		        'CLI', 3, 80, $3, $4, 'DRAFT', $5, FALSE, 21)
+		ON CONFLICT (id) DO NOTHING`,
+		"simex_vlan_access_port_vrp", catID,
+		`{"devices":[{"ref":"sw1","deviceId":"simdev_switch_24p_vrp","x":0.50,"y":0.50}],"cliDeviceRef":"sw1"}`,
+		cliStepsVlanVrp,
+		"أوامر شائعة منشورة بمناهج الشبكات. غير محقّق ميدانياً.",
+	); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -288,7 +339,7 @@ const cliGrammarIOSLike = `{
     {
      "t": "end",
      "help": "Exit to privileged EXEC mode",
-     "endAll": true
+     "endTo": "priv"
     }
    ]
   },
@@ -317,7 +368,7 @@ const cliGrammarIOSLike = `{
     {
      "t": "end",
      "help": "Exit to privileged EXEC mode",
-     "endAll": true
+     "endTo": "priv"
     }
    ]
   },
@@ -420,7 +471,7 @@ const cliGrammarIOSLike = `{
     {
      "t": "end",
      "help": "Exit to privileged EXEC mode",
-     "endAll": true
+     "endTo": "priv"
     }
    ]
   }
@@ -445,4 +496,346 @@ const cliStepsVlan = `[
    "expect":{"op":"STATE_EQ","path":"interfaces.GigabitEthernet0/1.accessVlan","value":"10"},
    "hint":"interface gi0/1 ثم switchport mode access ثم switchport access vlan 10.","weight":40,
    "wrong":[{"matchAny":true,"say":"⚠️ ربط الـVLAN بمنفذ بلا ما تحوّله access يشتغل بالمحاكي بس بالميدان الجهاز يتجاهله لمن يشتغل الـtrunk التلقائي. حوّله access أول.","penalty":5}]}
+]`
+
+// ⚠️ مولّد من `frontend/src/cli/huaweiVrp.ts` — لا تعدّله بالإيد.
+const cliGrammarVrpLike = `{
+ "id": "simcli_vrp_like_switch",
+ "name": "Training VRP-style OS",
+ "os": "V200R-TRAINING",
+ "startMode": "user",
+ "showStyle": "vrp",
+ "banner": [
+  "  ⚠️  نظام تدريبي — مو صورة مصنّع. الأوامر شائعة ومنشورة.",
+  "",
+  "Info: The max number of VTY users is 10.",
+  ""
+ ],
+ "modes": [
+  {
+   "id": "user",
+   "promptSuffix": ">",
+   "promptTemplate": "<$host>",
+   "root": [
+    {
+     "t": "system-view",
+     "help": "Enter system view",
+     "enter": {
+      "mode": "system"
+     }
+    },
+    {
+     "t": "display",
+     "help": "Display information",
+     "children": [
+      {
+       "t": "version",
+       "help": "Display version information",
+       "show": "version"
+      },
+      {
+       "t": "current-configuration",
+       "help": "Display current configuration",
+       "show": "running-config"
+      },
+      {
+       "t": "vlan",
+       "help": "Display VLAN information",
+       "children": [
+        {
+         "t": "brief",
+         "help": "Brief VLAN information",
+         "show": "vlan-brief"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "t": "quit",
+     "help": "Exit from current mode",
+     "exit": true
+    }
+   ]
+  },
+  {
+   "id": "system",
+   "promptSuffix": "]",
+   "promptTemplate": "[$host]",
+   "root": [
+    {
+     "t": "sysname",
+     "help": "Set the host name",
+     "children": [
+      {
+       "t": "<arg>",
+       "arg": "word",
+       "help": "Host name",
+       "set": "hostname",
+       "val": "$1"
+      }
+     ]
+    },
+    {
+     "t": "vlan",
+     "help": "Create VLAN or enter VLAN view",
+     "children": [
+      {
+       "t": "<arg>",
+       "arg": "num",
+       "help": "VLAN ID <1-4094>",
+       "set": "vlans.$1.exists",
+       "val": "true",
+       "enter": {
+        "mode": "vlan-view",
+        "ctx": "$1"
+       }
+      }
+     ]
+    },
+    {
+     "t": "interface",
+     "help": "Enter interface view",
+     "children": [
+      {
+       "t": "<arg>",
+       "arg": "ifname",
+       "help": "Interface name, e.g. GigabitEthernet0/0/1",
+       "set": "interfaces.$1.exists",
+       "val": "true",
+       "enter": {
+        "mode": "if-view",
+        "ctx": "$1"
+       }
+      }
+     ]
+    },
+    {
+     "t": "display",
+     "help": "Display information",
+     "children": [
+      {
+       "t": "current-configuration",
+       "help": "Display current configuration",
+       "show": "running-config"
+      },
+      {
+       "t": "this",
+       "help": "Display configuration of current view",
+       "show": "running-config"
+      },
+      {
+       "t": "vlan",
+       "help": "Display VLAN information",
+       "children": [
+        {
+         "t": "brief",
+         "help": "Brief VLAN information",
+         "show": "vlan-brief"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "t": "save",
+     "help": "Save current configuration",
+     "say": "Are you sure to continue? [Y/N]:y\nIt will take several minutes to save configuration file, please wait...\nConfiguration file had been saved successfully"
+    },
+    {
+     "t": "quit",
+     "help": "Return to user view",
+     "exit": true
+    },
+    {
+     "t": "return",
+     "help": "Return to user view",
+     "endTo": "user"
+    }
+   ]
+  },
+  {
+   "id": "vlan-view",
+   "promptSuffix": "]",
+   "promptTemplate": "[$host-vlan$ctx]",
+   "root": [
+    {
+     "t": "description",
+     "help": "Specify VLAN description",
+     "children": [
+      {
+       "t": "<arg>",
+       "arg": "word",
+       "help": "Description",
+       "set": "vlans.$ctx.name",
+       "val": "$1"
+      }
+     ]
+    },
+    {
+     "t": "name",
+     "help": "Specify VLAN name",
+     "children": [
+      {
+       "t": "<arg>",
+       "arg": "word",
+       "help": "VLAN name",
+       "set": "vlans.$ctx.name",
+       "val": "$1"
+      }
+     ]
+    },
+    {
+     "t": "quit",
+     "help": "Return to system view",
+     "exit": true
+    },
+    {
+     "t": "return",
+     "help": "Return to user view",
+     "endTo": "user"
+    }
+   ]
+  },
+  {
+   "id": "if-view",
+   "promptSuffix": "]",
+   "promptTemplate": "[$host-$ctx]",
+   "root": [
+    {
+     "t": "port",
+     "help": "Port configuration",
+     "children": [
+      {
+       "t": "link-type",
+       "help": "Set the link type of the port",
+       "children": [
+        {
+         "t": "access",
+         "help": "Access port",
+         "set": "interfaces.$ctx.mode",
+         "val": "access"
+        },
+        {
+         "t": "trunk",
+         "help": "Trunk port",
+         "set": "interfaces.$ctx.mode",
+         "val": "trunk"
+        },
+        {
+         "t": "hybrid",
+         "help": "Hybrid port",
+         "set": "interfaces.$ctx.mode",
+         "val": "hybrid"
+        }
+       ]
+      },
+      {
+       "t": "default",
+       "help": "Set the default VLAN of the port",
+       "children": [
+        {
+         "t": "vlan",
+         "help": "Default VLAN of the access port",
+         "children": [
+          {
+           "t": "<arg>",
+           "arg": "num",
+           "help": "VLAN ID <1-4094>",
+           "set": "interfaces.$ctx.accessVlan",
+           "val": "$1"
+          }
+         ]
+        }
+       ]
+      },
+      {
+       "t": "trunk",
+       "help": "Trunk port configuration",
+       "children": [
+        {
+         "t": "allow-pass",
+         "help": "Allow VLANs to pass",
+         "children": [
+          {
+           "t": "vlan",
+           "help": "VLANs allowed on the trunk",
+           "children": [
+            {
+             "t": "<arg>",
+             "arg": "vlanlist",
+             "help": "VLAN IDs",
+             "set": "interfaces.$ctx.trunkVlans",
+             "val": "$1"
+            }
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "t": "description",
+     "help": "Specify the description of the interface",
+     "children": [
+      {
+       "t": "<arg>",
+       "arg": "word",
+       "help": "Description",
+       "set": "interfaces.$ctx.description",
+       "val": "$1"
+      }
+     ]
+    },
+    {
+     "t": "shutdown",
+     "help": "Shut down the interface",
+     "set": "interfaces.$ctx.shutdown",
+     "val": "true"
+    },
+    {
+     "t": "display",
+     "help": "Display information",
+     "children": [
+      {
+       "t": "this",
+       "help": "Configuration of current view",
+       "show": "running-config"
+      }
+     ]
+    },
+    {
+     "t": "quit",
+     "help": "Return to system view",
+     "exit": true
+    },
+    {
+     "t": "return",
+     "help": "Return to user view",
+     "endTo": "user"
+    }
+   ]
+  }
+ ]
+}`
+
+const cliStepsVlanVrp = `[
+  {"index":1,"title":"نمط النظام","instruction":"ادخل نمط النظام (system view). المحث لازم يصير بين قوسين مربّعين.",
+   "expect":{"op":"STATE_EQ","path":"__mode","value":"system"},
+   "hint":"الأمر system-view — مو configure terminal، هذا نظام ثاني.","weight":10},
+
+  {"index":2,"title":"اسم الجهاز","instruction":"غيّر اسم الجهاز إلى SW-ALAMANI.",
+   "expect":{"op":"STATE_EQ","path":"hostname","value":"SW-ALAMANI"},
+   "hint":"sysname متبوعاً بالاسم — مو hostname.","weight":20},
+
+  {"index":3,"title":"إنشاء الـVLAN","instruction":"أنشئ VLAN رقم 20 وسمّه GUEST.",
+   "expect":{"op":"STATE_EQ","path":"vlans.20.name","value":"GUEST"},
+   "hint":"vlan 20 يدخّلك نمط الـVLAN، وبعدها description GUEST.","weight":30},
+
+  {"index":4,"title":"منفذ الوصول","instruction":"حوّل المنفذ GigabitEthernet0/0/2 لنوع access واربطه بـVLAN 20.",
+   "expect":{"op":"STATE_EQ","path":"interfaces.GigabitEthernet0/0/2.accessVlan","value":"20"},
+   "hint":"interface g0/0/2 ثم port link-type access ثم port default vlan 20 — خطوتان منفصلتان.","weight":40,
+   "wrong":[{"matchAny":true,"say":"⚠️ بهذا النظام التهيئة **خطوتان**: نوع المنفذ أول (port link-type access) وبعدها الـVLAN (port default vlan 20). أمر واحد ما يكفي.","penalty":4}]}
 ]`

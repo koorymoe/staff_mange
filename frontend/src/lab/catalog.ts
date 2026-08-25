@@ -206,9 +206,12 @@ const NETWORK: PartDef[] = [
     ],
     params: [
       { id: 'hostname', label: 'اسم الجهاز', kind: 'text', default: 'R1' },
-      { id: 'ip0', label: 'عنوان Gi0/0', kind: 'text', default: '192.168.1.1' },
-      { id: 'ip1', label: 'عنوان Gi0/1', kind: 'text', default: '10.0.0.1' },
+      { id: 'ip_gi0/0', label: 'عنوان Gi0/0', kind: 'text', default: '192.168.1.1' },
+      { id: 'mask_gi0/0', label: 'قناع Gi0/0', kind: 'text', default: '255.255.255.0' },
+      { id: 'ip_gi0/1', label: 'عنوان Gi0/1', kind: 'text', default: '10.0.0.1' },
+      { id: 'mask_gi0/1', label: 'قناع Gi0/1', kind: 'text', default: '255.255.255.0' },
     ],
+    about: 'يربط شبكتين فرعيتين. كل منفذ يحتاج عنواناً **داخل** شبكته، والأجهزة تحتاج بوابتها تؤشّر عليه.',
   },
   {
     id: 'pc', domain: 'network', name: 'حاسبة', symbol: 'net_pc',

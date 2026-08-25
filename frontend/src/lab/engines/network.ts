@@ -34,6 +34,10 @@ function ipToInt(ip: string): number | null {
   return ((o[0] << 24) >>> 0) + (o[1] << 16) + (o[2] << 8) + o[3]
 }
 
+function intToIp(n: number): string {
+  return [(n >>> 24) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.')
+}
+
 /** أجهزة طرفية لها عنوان — الحاسبات والكاميرات. */
 const ENDPOINTS = new Set(['pc', 'ip_camera'])
 
@@ -175,6 +179,76 @@ export const networkEngine: DomainEngine = {
     //
     // ⚠️ نفحص **كل زوج** مو الزوج الأول: الشبكة ممكن تكون شغّالة بين
     // جهازين ومكسورة بين غيرهم، وتقرير «الشبكة تمام» يخفي هذا.
+    /** الراوترات الي **يوصلها** الجهاز (بحث بالعرض يمر بالسويچات).
+     *
+     *  ⚠️ مو «الي بالمسار بين الاثنين» بالضبط: الوصولية بين الطرفين
+     *  متأكّدة قبل هالنداء، فأي راوتر يوصله الطرف الأول يصلح مرشّحاً —
+     *  والفحص الحقيقي هو تطابق منافذه مع الشبكتين، وهو الي يصفّي. */
+    const routersOnPath = (fromId: string): string[] => {
+      const seen = new Set([fromId])
+      const queue = [fromId]
+      const routers: string[] = []
+      while (queue.length) {
+        const cur = queue.shift()!
+        const nd = doc.nodes.find((n) => n.id === cur)
+        if (nd?.partId === 'router' && cur !== fromId) routers.push(cur)
+        for (const l of doc.links) {
+          if (deadLinks.has(l.id)) continue
+          const nxt = l.from.node === cur ? l.to.node : l.to.node === cur ? l.from.node : null
+          if (nxt && !seen.has(nxt)) { seen.add(nxt); queue.push(nxt) }
+        }
+      }
+      return routers
+    }
+
+    const routeBetween = (
+      aId: string, bId: string, ia: number, ma: number, ib: number, mb: number,
+    ): { ok: boolean; kind: 'warn' | 'error'; why: string } => {
+      const A = doc.nodes.find((n) => n.id === aId)!
+      const B = doc.nodes.find((n) => n.id === bId)!
+      const routers = routersOnPath(aId)
+      if (routers.length === 0) {
+        return { ok: false, kind: 'warn', why: 'شبكتان فرعيتان مختلفتان وماكو راوتر بالمسار بينهم.' }
+      }
+      for (const rid of routers) {
+        const R = doc.nodes.find((n) => n.id === rid)!
+        const ports = PART_BY_ID[R.partId]?.ports ?? []
+        // منافذ الراوتر بعناوينها
+        const ifaces = ports
+          .map((pt) => ({
+            port: pt.id,
+            ip: ipToInt(str(R.params[`ip_${pt.id}`])),
+            mask: ipToInt(str(R.params[`mask_${pt.id}`], '255.255.255.0')),
+          }))
+          .filter((x) => x.ip !== null && x.mask !== null)
+
+        const legA = ifaces.find((x) => ((x.ip! & ma) >>> 0) === ((ia & ma) >>> 0))
+        const legB = ifaces.find((x) => ((x.ip! & mb) >>> 0) === ((ib & mb) >>> 0))
+        if (!legA || !legB) continue
+
+        const gwA = ipToInt(str(A.params.gw))
+        const gwB = ipToInt(str(B.params.gw))
+        const rn = str(R.params.hostname, 'الراوتر')
+        if (gwA !== legA.ip) {
+          return {
+            ok: false, kind: 'error',
+            why: `الراوتر «${rn}» موجود وعنوانه بهالشبكة ${intToIp(legA.ip!)}، بس بوابة ${str(A.params.name)} مضبوطة على ${str(A.params.gw) || '—'}. الجهاز ما يعرف وين يرسل، فيبقى داخل شبكته.`,
+          }
+        }
+        if (gwB !== legB.ip) {
+          return {
+            ok: false, kind: 'error',
+            why: `بوابة ${str(B.params.name)} مضبوطة على ${str(B.params.gw) || '—'} والمفروض ${intToIp(legB.ip!)} (منفذ «${rn}» بشبكته).`,
+          }
+        }
+        return { ok: true, kind: 'warn', why: '' }
+      }
+      return {
+        ok: false, kind: 'error',
+        why: 'الراوتر بالمسار بس ماكو منفذ عنده **داخل** إحدى الشبكتين — صحّح عناوين منافذه.',
+      }
+    }
+
     let pairsOk = 0, pairsBad = 0
     for (let i = 0; i < endpoints.length; i++) {
       for (let j = i + 1; j < endpoints.length; j++) {
@@ -227,11 +301,19 @@ export const networkEngine: DomainEngine = {
           continue
         }
         if (((ia & ma) >>> 0) !== ((ib & mb) >>> 0)) {
+          // ═══ شبكتان مختلفتان: لازم راوتر بينهم ═══
+          //
+          // ⚠️ ماكو «راوتر موجود = تمام». التوجيه يشتغل بثلاثة شروط
+          // **كلها**، وأي واحد ناقص يعطي نفس العرض بالضبط (كلشي أخضر
+          // وما يوصل):
+          //   ١) الراوتر بالمسار بين الاثنين.
+          //   ٢) عنده منفذ **داخل** كل شبكة من الشبكتين.
+          //   ٣) بوابة كل جهاز تؤشّر على **عنوان منفذ الراوتر بشبكته**.
+          // والثالث هو الي ينساه الفني أكثر شي.
+          const r = routeBetween(a.id, b.id, ia, ma, ib, mb)
+          if (r.ok) { pairsOk++; continue }
           pairsBad++
-          messages.push({
-            kind: 'warn',
-            text: `${an} (${str(a.params.ip)}) و${bn} (${str(b.params.ip)}): شبكتان فرعيتان مختلفتان — يحتاجون راوتر بينهم أو تصحيح العنونة.`,
-          })
+          messages.push({ kind: r.kind, text: `${an} ⇄ ${bn}: ${r.why}` })
           continue
         }
         pairsOk++

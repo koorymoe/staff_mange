@@ -36,8 +36,9 @@ export interface CliNode {
   enter?: { mode: string; ctx?: string }
   /** يطلع نمطاً واحداً للورا. */
   exit?: boolean
-  /** يطلع لنمط EXEC مباشرة (`end` / Ctrl-Z). */
-  endAll?: boolean
+  /** يطلع مباشرة للنمط المسمّى — `end` بسيسكو ترجّع لـEXEC المميّز،
+   *  و`return` بـVRP ترجّع لنمط المستخدم. الوجهة تنسمّى صراحةً. */
+  endTo?: string
   /** يطبع خرجاً محسوباً من الحالة. */
   show?: string
   /** نص ثابت يطلع بعد التنفيذ (مثل تحذير). */
@@ -48,6 +49,16 @@ export interface CliMode {
   id: string
   /** لاحقة المحث: `>` أو `#` أو `(config)#` … */
   promptSuffix: string
+  /** ═══ قالب المحث الكامل ═══
+   *
+   *  بعض الأنظمة **تحيط** الاسم بدل ما تلحقه: هواوي VRP تكتب
+   *  `<Huawei>` بنمط المستخدم و`[Huawei]` بنمط النظام
+   *  و`[Huawei-GigabitEthernet0/0/1]` بنمط المنفذ. اللاحقة لحالها
+   *  ما تگدر تسوي هذا.
+   *
+   *  يقبل `$host` و`$ctx`. إذا مو موجود، يبقى `host + promptSuffix`
+   *  — فالأنظمة الموجودة ما تتأثر. */
+  promptTemplate?: string
   /** يستعمل سياق النمط باللاحقة، مثل `(config-if)#`. */
   root: CliNode[]
 }
@@ -61,6 +72,14 @@ export interface CliGrammar {
   modes: CliMode[]
   /** سطور ترحيب تطلع أول ما يفتح الترمنال. */
   banner?: string[]
+  /** ═══ صيغة خرج `show`/`display` ═══
+   *
+   *  ⚠️ الحالة **وحدة** لكل الأنظمة (`hostname`, `interfaces.X.accessVlan`)
+   *  — وهذا صح، الجهاز واحد والي يتغيّر هو **لغة عرضه**. بلا هالحقل،
+   *  `display current-configuration` على جهاز VRP تطلع
+   *  `switchport mode access` بصيغة سيسكو — وأي فني هواوي يعرف
+   *  إنها لعبة بثانية. */
+  showStyle?: 'ios' | 'vrp'
 }
 
 /** حالة الجهاز — شجرة بسيطة يكتب بيها `set` ويقرا منها `show`. */

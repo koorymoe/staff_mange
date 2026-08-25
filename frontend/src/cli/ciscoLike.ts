@@ -127,7 +127,7 @@ export const CISCO_LIKE: CliGrammar = {
           ],
         },
         { t: 'exit', help: 'Exit from configure mode', exit: true },
-        { t: 'end', help: 'Exit to privileged EXEC mode', endAll: true },
+        { t: 'end', help: 'Exit to privileged EXEC mode', endTo: 'priv' },
       ],
     },
 
@@ -142,7 +142,7 @@ export const CISCO_LIKE: CliGrammar = {
           children: [{ t: '<arg>', arg: 'word', help: 'The ascii name for the VLAN', set: 'vlans.$ctx.name', val: '$1' }],
         },
         { t: 'exit', help: 'Exit from VLAN configuration', exit: true },
-        { t: 'end', help: 'Exit to privileged EXEC mode', endAll: true },
+        { t: 'end', help: 'Exit to privileged EXEC mode', endTo: 'priv' },
       ],
     },
 
@@ -202,7 +202,7 @@ export const CISCO_LIKE: CliGrammar = {
         },
         { t: 'shutdown', help: 'Shutdown the selected interface', set: 'interfaces.$ctx.shutdown', val: 'true' },
         { t: 'exit', help: 'Exit from interface configuration mode', exit: true },
-        { t: 'end', help: 'Exit to privileged EXEC mode', endAll: true },
+        { t: 'end', help: 'Exit to privileged EXEC mode', endTo: 'priv' },
       ],
     },
   ],
