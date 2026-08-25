@@ -14,7 +14,8 @@ import type { DomainId, PartDef } from './types'
 const ELECTRICAL: PartDef[] = [
   {
     id: 'dc_source', domain: 'electrical', name: 'مصدر تغذية مستمر', model: 'مصدر جهد · مقاومة داخلية', symbol: 'battery',
-    w: 90, h: 60, about: 'مصدر جهد مستمر — البطارية أو المحوّل.',
+    w: 90, h: 60, geo3d: { sizeM: { w: 0.12, h: 0.08, d: 0.06 }, bodyColorHex: '#334155', faceColorHex: '#1e293b', features: [{ kind: 'screen', x: 0.4, y: 0.4, w: 0.4, h: 0.3 }] },
+    about: 'مصدر جهد مستمر — البطارية أو المحوّل.',
     ports: [
       { id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 1, y: 0.32 },
       { id: 'neg', label: '−', kind: 'dc', polarity: 'neg', x: 1, y: 0.72 },
@@ -28,6 +29,7 @@ const ELECTRICAL: PartDef[] = [
   {
     id: 'resistor', domain: 'electrical', name: 'مقاومة', model: 'عنصر خطّي', symbol: 'resistor',
     w: 90, h: 40,
+    geo3d: { sizeM: { w: 0.05, h: 0.015, d: 0.015 }, bodyColorHex: '#a16207', faceColorHex: '#78350f' },
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
       { id: 'b', label: 'B', kind: 'dc', polarity: 'none', x: 1, y: 0.5 },
@@ -36,7 +38,8 @@ const ELECTRICAL: PartDef[] = [
   },
   {
     id: 'lamp', domain: 'electrical', name: 'لمبة', model: 'حمل مقاوم · عتبة احتراق', symbol: 'lamp',
-    w: 70, h: 70, about: 'تضوّي لمن يمر بيها تيار كافٍ، وتحترق لو زاد على حدّها.',
+    w: 70, h: 70, geo3d: { sizeM: { w: 0.07, h: 0.07, d: 0.07 }, bodyColorHex: '#fde68a', faceColorHex: '#fcd34d', features: [{ kind: 'disc', x: 0.5, y: 0.5, r: 0.4, color: '#fef3c7' }] },
+    about: 'تضوّي لمن يمر بيها تيار كافٍ، وتحترق لو زاد على حدّها.',
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
       { id: 'b', label: 'B', kind: 'dc', polarity: 'none', x: 1, y: 0.5 },
@@ -49,6 +52,7 @@ const ELECTRICAL: PartDef[] = [
   {
     id: 'switch', domain: 'electrical', name: 'مفتاح', model: 'مفتاح مفرد', symbol: 'switch',
     w: 80, h: 40,
+    geo3d: { sizeM: { w: 0.07, h: 0.07, d: 0.03 }, bodyColorHex: '#e2e8f0', faceColorHex: '#cbd5e1' },
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
       { id: 'b', label: 'B', kind: 'dc', polarity: 'none', x: 1, y: 0.5 },
@@ -57,7 +61,8 @@ const ELECTRICAL: PartDef[] = [
   },
   {
     id: 'fuse', domain: 'electrical', name: 'فيوز', model: 'حماية تيار زائد', symbol: 'fuse',
-    w: 80, h: 40, about: 'ينقطع لمن يزيد التيار على حدّه — يحمي الي وراه.',
+    w: 80, h: 40, geo3d: { sizeM: { w: 0.05, h: 0.03, d: 0.03 }, bodyColorHex: '#64748b', faceColorHex: '#475569' },
+    about: 'ينقطع لمن يزيد التيار على حدّه — يحمي الي وراه.',
     ports: [
       { id: 'a', label: 'A', kind: 'dc', polarity: 'none', x: 0, y: 0.5 },
       { id: 'b', label: 'B', kind: 'dc', polarity: 'none', x: 1, y: 0.5 },
@@ -166,14 +171,16 @@ const swPorts = (n: number, sfp: number) => [
 const NETWORK: PartDef[] = [
   {
     id: 'switch_unmanaged', domain: 'network', name: 'سويچ ٨ منافذ غير مدار', model: '٨ منافذ · بلا إدارة', symbol: 'net_switch',
-    w: 120, h: 52, about: 'سويچ بسيط — ما يتهيّأ ولا يعرف VLAN. الشائع بالبيوت والمحلات الصغيرة.',
+    w: 120, h: 52, geo3d: { sizeM: { w: 0.22, h: 0.028, d: 0.10 }, bodyColorHex: '#334155', faceColorHex: '#1e293b', features: [{ kind: 'portRow', count: 8, y: 0.5 }, { kind: 'statusLed', x: 0.94, y: 0.5 }] },
+    about: 'سويچ بسيط — ما يتهيّأ ولا يعرف VLAN. الشائع بالبيوت والمحلات الصغيرة.',
     ports: swPorts(4, 0),
     params: [{ id: 'hostname', label: 'الاسم', kind: 'text', default: 'SW-DUMB' }],
     danger: 'ما يدعم VLAN — أي عزل منطقي تبنيه بالمشروع ينهار لمن يمر بهذا السويچ.',
   },
   {
     id: 'switch_l2', domain: 'network', name: 'سويچ ٢٤ منفذ مدار', model: '٢٤ منفذ · طبقة ٢ · SFP×٢', symbol: 'net_switch',
-    w: 140, h: 60, about: 'سويچ طبقة ٢ قابل للإدارة — VLAN وترنك، ويتهيّأ بسطر الأوامر.',
+    w: 140, h: 60, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.20 }, bodyColorHex: '#2b3440', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
+    about: 'سويچ طبقة ٢ قابل للإدارة — VLAN وترنك، ويتهيّأ بسطر الأوامر.',
     ports: swPorts(4, 2),
     params: [
       { id: 'hostname', label: 'اسم الجهاز', kind: 'text', default: 'SW1' },
@@ -183,7 +190,8 @@ const NETWORK: PartDef[] = [
   },
   {
     id: 'switch_poe', domain: 'network', name: 'سويچ ٢٤ منفذ PoE+', model: '٢٤ منفذ · PoE+ ١٨٥ واط', symbol: 'net_switch',
-    w: 140, h: 60, about: 'يغذّي الكاميرات ونقاط الوصول بنفس كيبل الشبكة.',
+    w: 140, h: 60, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.22 }, bodyColorHex: '#33404f', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }, { kind: 'statusLed', x: 0.96, y: 0.7 }] },
+    about: 'يغذّي الكاميرات ونقاط الوصول بنفس كيبل الشبكة.',
     ports: swPorts(4, 2),
     params: [
       { id: 'hostname', label: 'اسم الجهاز', kind: 'text', default: 'SW-POE' },
@@ -193,7 +201,8 @@ const NETWORK: PartDef[] = [
   },
   {
     id: 'switch_l3', domain: 'network', name: 'سويچ طبقة ٣', model: '٢٤ منفذ · توجيه داخلي', symbol: 'net_switch',
-    w: 145, h: 62, about: 'يوجّه بين الـVLANات بلا راوتر خارجي.',
+    w: 145, h: 62, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.24 }, bodyColorHex: '#3b4a5c', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
+    about: 'يوجّه بين الـVLANات بلا راوتر خارجي.',
     ports: swPorts(4, 2),
     params: [
       { id: 'hostname', label: 'اسم الجهاز', kind: 'text', default: 'SW-L3' },
@@ -204,6 +213,7 @@ const NETWORK: PartDef[] = [
   {
     id: 'router', domain: 'network', name: 'راوتر', model: 'منفذان · توجيه بين شبكتين', symbol: 'net_router',
     w: 120, h: 65,
+    geo3d: { sizeM: { w: 0.34, h: 0.044, d: 0.22 }, bodyColorHex: '#2f3b4a', faceColorHex: '#151b24', features: [{ kind: 'portRow', count: 4, y: 0.5 }, { kind: 'statusLed', x: 0.92, y: 0.5 }] },
     ports: [
       { id: 'gi0/0', label: 'Gi0/0', kind: 'eth', x: 0.2, y: 1 },
       { id: 'gi0/1', label: 'Gi0/1', kind: 'eth', x: 0.8, y: 1 },
@@ -220,6 +230,7 @@ const NETWORK: PartDef[] = [
   {
     id: 'pc', domain: 'network', name: 'حاسبة', model: 'محطة عمل', symbol: 'net_pc',
     w: 85, h: 70,
+    geo3d: { sizeM: { w: 0.19, h: 0.42, d: 0.42 }, bodyColorHex: '#1e293b', faceColorHex: '#0f172a', features: [{ kind: 'statusLed', x: 0.5, y: 0.12 }] },
     ports: [{ id: 'eth0', label: 'Eth0', kind: 'eth', x: 0.5, y: 1 }],
     params: [
       { id: 'name', label: 'الاسم', kind: 'text', default: 'PC1' },
@@ -232,7 +243,8 @@ const NETWORK: PartDef[] = [
   },
   {
     id: 'ip_camera', domain: 'network', name: 'كاميرا شبكة', model: 'كاميرا IP · PoE', symbol: 'net_cam',
-    w: 90, h: 65, about: 'كاميرا IP تتغذّى بـPoE من السويچ.',
+    w: 90, h: 65, geo3d: { sizeM: { w: 0.09, h: 0.09, d: 0.16 }, bodyColorHex: '#e2e8f0', faceColorHex: '#cbd5e1', features: [{ kind: 'lens', x: 0.5, y: 0.5, r: 0.3, len: 0.9 }] },
+    about: 'كاميرا IP تتغذّى بـPoE من السويچ.',
     ports: [{ id: 'eth0', label: 'Eth0', kind: 'eth', x: 0.5, y: 1 }],
     params: [
       { id: 'name', label: 'الاسم', kind: 'text', default: 'CAM1' },
@@ -252,7 +264,8 @@ const NETWORK: PartDef[] = [
 const FIRE: PartDef[] = [
   {
     id: 'fire_panel', domain: 'fire', name: 'لوحة إنذار تقليدية', model: 'زونان · دائرة إنذار', symbol: 'fire_panel',
-    w: 130, h: 105, about: 'لوحة زونات: كل زون خط كواشف، ولكل دائرة إنذار صفّاراتها.',
+    w: 130, h: 105, geo3d: { sizeM: { w: 0.32, h: 0.40, d: 0.09 }, bodyColorHex: '#7f1d1d', faceColorHex: '#450a0a', features: [{ kind: 'screen', x: 0.5, y: 0.26, w: 0.6, h: 0.22 }, { kind: 'statusLed', x: 0.3, y: 0.56 }, { kind: 'statusLed', x: 0.5, y: 0.56 }, { kind: 'statusLed', x: 0.7, y: 0.56 }] },
+    about: 'لوحة زونات: كل زون خط كواشف، ولكل دائرة إنذار صفّاراتها.',
     ports: [
       { id: 'z1', label: 'زون ١', kind: 'signal', x: 0, y: 0.22 },
       { id: 'z2', label: 'زون ٢', kind: 'signal', x: 0, y: 0.45 },
@@ -271,6 +284,7 @@ const FIRE: PartDef[] = [
   {
     id: 'smoke_detector', domain: 'fire', name: 'كاشف دخان', model: 'ضوئي · سلسلة', symbol: 'detector',
     w: 70, h: 70,
+    geo3d: { sizeM: { w: 0.10, h: 0.10, d: 0.045 }, bodyColorHex: '#f1f5f9', faceColorHex: '#e2e8f0', features: [{ kind: 'disc', x: 0.5, y: 0.5, r: 0.36, color: '#cbd5e1' }, { kind: 'statusLed', x: 0.5, y: 0.5 }] },
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
       { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
@@ -284,7 +298,8 @@ const FIRE: PartDef[] = [
   },
   {
     id: 'heat_detector', domain: 'fire', name: 'كاشف حرارة', model: 'حراري · سلسلة', symbol: 'detector',
-    w: 70, h: 70, about: 'للمطابخ والمرائب — الدخان بيها يعطي إنذارات كاذبة.',
+    w: 70, h: 70, geo3d: { sizeM: { w: 0.10, h: 0.10, d: 0.045 }, bodyColorHex: '#e2e8f0', faceColorHex: '#cbd5e1', features: [{ kind: 'disc', x: 0.5, y: 0.5, r: 0.3, color: '#94a3b8' }] },
+    about: 'للمطابخ والمرائب — الدخان بيها يعطي إنذارات كاذبة.',
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
       { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
@@ -297,7 +312,8 @@ const FIRE: PartDef[] = [
   },
   {
     id: 'mcp', domain: 'fire', name: 'نقطة إنذار يدوية', model: 'نقطة يدوية · سلسلة', symbol: 'mcp',
-    w: 70, h: 70, about: 'الصندوق الأحمر عند المخارج — ينكسر زجاجه بالإنذار اليدوي.',
+    w: 70, h: 70, geo3d: { sizeM: { w: 0.09, h: 0.09, d: 0.04 }, bodyColorHex: '#dc2626', faceColorHex: '#991b1b', features: [{ kind: 'screen', x: 0.5, y: 0.45, w: 0.55, h: 0.35 }] },
+    about: 'الصندوق الأحمر عند المخارج — ينكسر زجاجه بالإنذار اليدوي.',
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
       { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
@@ -310,6 +326,7 @@ const FIRE: PartDef[] = [
   {
     id: 'sounder', domain: 'fire', name: 'صفّارة', model: 'صفّارة · دائرة إنذار', symbol: 'sounder',
     w: 75, h: 70,
+    geo3d: { sizeM: { w: 0.10, h: 0.10, d: 0.06 }, bodyColorHex: '#dc2626', faceColorHex: '#7f1d1d', features: [{ kind: 'grille', x: 0.5, y: 0.5, r: 0.38, rings: 3 }] },
     ports: [
       { id: 'in', label: 'داخل', kind: 'signal', x: 0, y: 0.5 },
       { id: 'out', label: 'خارج', kind: 'signal', x: 1, y: 0.5 },
@@ -320,6 +337,7 @@ const FIRE: PartDef[] = [
   {
     id: 'eol_resistor', domain: 'fire', name: 'مقاومة نهاية (EOL)', model: '٤٫٧ كيلو أوم · رِجلان', symbol: 'eol',
     w: 70, h: 46,
+    geo3d: { sizeM: { w: 0.035, h: 0.012, d: 0.012 }, bodyColorHex: '#a16207', faceColorHex: '#78350f' },
     about: 'تنحط بآخر جهاز بالخط. بدونها اللوحة ما تگدر تفرّق بين خط سليم وخط مقطوع.',
     // ⚠️ **منفذان** مو واحد: المقاومة الحقيقية إلها رِجلان، والفني
     // يگدر يحطها بنص الخط غلطاً — وهذا بالضبط الغلط الي نريد نعلّمه.
@@ -335,6 +353,7 @@ const FIRE: PartDef[] = [
   {
     id: 'fire_battery', domain: 'fire', name: 'بطارية احتياط', model: 'احتياط ٧ أمبير·ساعة', symbol: 'battery_bank',
     w: 100, h: 70,
+    geo3d: { sizeM: { w: 0.15, h: 0.10, d: 0.065 }, bodyColorHex: '#0f172a', faceColorHex: '#1e293b' },
     ports: [{ id: 'pos', label: '+', kind: 'dc', polarity: 'pos', x: 0, y: 0.5 }],
     params: [
       { id: 'ah', label: 'السعة', unit: 'Ah', kind: 'number', default: 7, min: 1 },
@@ -352,6 +371,7 @@ const AUDIO: PartDef[] = [
   {
     id: 'amplifier', domain: 'audio', name: 'مكبّر صوت', model: '١٢٠ واط · ١٠٠ فولت أو لو-Z', symbol: 'amplifier',
     w: 130, h: 80,
+    geo3d: { sizeM: { w: 0.44, h: 0.088, d: 0.32 }, bodyColorHex: '#1f2937', faceColorHex: '#111827', features: [{ kind: 'screen', x: 0.35, y: 0.5, w: 0.3, h: 0.4 }, { kind: 'statusLed', x: 0.9, y: 0.35 }, { kind: 'statusLed', x: 0.9, y: 0.65 }] },
     about: 'خط ١٠٠ فولت للمسافات الطويلة والمناطق، أو مقاومة منخفضة للقاعات القريبة.',
     ports: [
       { id: 'out1', label: 'مخرج ١', kind: 'spk', x: 1, y: 0.35 },
@@ -371,6 +391,7 @@ const AUDIO: PartDef[] = [
   {
     id: 'ceiling_speaker', domain: 'audio', name: 'سماعة سقف', model: 'سقفية · تاب قابل للاختيار', symbol: 'speaker',
     w: 80, h: 75,
+    geo3d: { sizeM: { w: 0.20, h: 0.20, d: 0.09 }, bodyColorHex: '#f8fafc', faceColorHex: '#e2e8f0', features: [{ kind: 'grille', x: 0.5, y: 0.5, r: 0.42, rings: 4 }] },
     ports: [
       { id: 'in', label: 'داخل', kind: 'spk', x: 0, y: 0.5 },
       { id: 'out', label: 'خارج', kind: 'spk', x: 1, y: 0.5 },
@@ -385,7 +406,8 @@ const AUDIO: PartDef[] = [
   },
   {
     id: 'horn_speaker', domain: 'audio', name: 'بوق خارجي', model: 'بوق خارجي · ٢٤ واط', symbol: 'horn',
-    w: 85, h: 70, about: 'للساحات والمخازن — صوت عالٍ ومدى بعيد.',
+    w: 85, h: 70, geo3d: { sizeM: { w: 0.22, h: 0.16, d: 0.24 }, bodyColorHex: '#475569', faceColorHex: '#334155', features: [{ kind: 'grille', x: 0.5, y: 0.5, r: 0.38, rings: 2 }] },
+    about: 'للساحات والمخازن — صوت عالٍ ومدى بعيد.',
     ports: [
       { id: 'in', label: 'داخل', kind: 'spk', x: 0, y: 0.5 },
       { id: 'out', label: 'خارج', kind: 'spk', x: 1, y: 0.5 },
@@ -401,6 +423,7 @@ const AUDIO: PartDef[] = [
   {
     id: 'paging_mic', domain: 'audio', name: 'ميكروفون نداء', model: 'ميكروفون نداء', symbol: 'mic',
     w: 75, h: 70,
+    geo3d: { sizeM: { w: 0.11, h: 0.05, d: 0.13 }, bodyColorHex: '#1e293b', faceColorHex: '#0f172a', features: [{ kind: 'statusLed', x: 0.5, y: 0.5 }] },
     ports: [{ id: 'out', label: 'خرج', kind: 'signal', x: 1, y: 0.5 }],
     params: [{ id: 'name', label: 'الاسم', kind: 'text', default: 'MIC1' }],
   },

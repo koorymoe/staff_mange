@@ -247,6 +247,50 @@ export function buildDevice(
         br.parent = root
         br.isPickable = false
       }
+    } else if (f.kind === 'portRow') {
+      // ═══ صف منافذ RJ45 ═══
+      //
+      // ⚠️ هذا الي يخلّي السويچ **يُعرف بلمحة**: صندوق ١U بلا صف
+      // منافذ يشبه أي جهاز رفّي ثاني. والمنافذ تنرسم **بجسمين**
+      // (فتحة وإطار) مو بأربعة وعشرين جسماً منفصلاً.
+      const pw = (w * 0.86) / f.count
+      for (let i = 0; i < f.count; i++) {
+        const px = -w * 0.43 + pw * (i + 0.5)
+        const hole = CreateBox(`port_${deviceRef}_${i}`, { width: pw * 0.68, height: h * 0.42, depth: 0.004 }, scene)
+        hole.material = mat(scene, `m_port_${deviceRef}`, '#05070b')
+        hole.position = new Vector3(px, (0.5 - f.y) * h, faceZ + 0.002)
+        hole.parent = root
+        hole.isPickable = false
+      }
+    } else if (f.kind === 'disc') {
+      // جهاز سقفي مدوّر — كاشف أو سماعة سقف.
+      const disc = CreateCylinder(`disc_${deviceRef}`, { diameter: f.r * 2 * w, height: d * 0.5 }, scene)
+      disc.rotation.x = Math.PI / 2
+      disc.position = onFace(f.x, f.y, faceZ + d * 0.25)
+      disc.material = mat(scene, `m_disc_${deviceRef}`, f.color ?? '#e2e8f0')
+      disc.parent = root
+      disc.isPickable = false
+    } else if (f.kind === 'lens') {
+      // عدسة الكاميرا — أسطوانة بارزة، وهي علامة الكاميرا الوحيدة.
+      const lens = CreateCylinder(`lens_${deviceRef}`, { diameter: f.r * 2 * w, height: f.len * d }, scene)
+      lens.rotation.x = Math.PI / 2
+      lens.position = onFace(f.x, f.y, faceZ + (f.len * d) / 2)
+      lens.material = mat(scene, `m_lens_${deviceRef}`, '#0b1220', { spec: 0.7 })
+      lens.parent = root
+      lens.isPickable = false
+    } else if (f.kind === 'grille') {
+      // شبك السماعة — حلقات متداخلة.
+      const rings = f.rings ?? 3
+      for (let i = 1; i <= rings; i++) {
+        const ring = CreateCylinder(`gr_${deviceRef}_${i}`, {
+          diameter: f.r * 2 * w * (i / rings), height: 0.002,
+        }, scene)
+        ring.rotation.x = Math.PI / 2
+        ring.position = onFace(f.x, f.y, faceZ + 0.002 + i * 0.0006)
+        ring.material = mat(scene, `m_gr_${deviceRef}_${i}`, i % 2 ? '#475569' : '#1e293b')
+        ring.parent = root
+        ring.isPickable = false
+      }
     } else if (f.kind === 'statusLed') {
       const led = CreateCylinder(`led_${deviceRef}`, { diameter: 0.006, height: 0.002 }, scene)
       led.rotation.x = Math.PI / 2

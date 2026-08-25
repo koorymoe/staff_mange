@@ -47,6 +47,11 @@ export type GeometryFeature =
   | { kind: 'pvCells'; cols: number; rows: number }
   | { kind: 'screen'; x: number; y: number; w: number; h: number }
   | { kind: 'breakerRow'; count: number }
+  // ═══ ملامح الشبكات والحريق والصوت ═══
+  | { kind: 'portRow'; count: number; y: number }
+  | { kind: 'disc'; x: number; y: number; r: number; color?: string }
+  | { kind: 'lens'; x: number; y: number; r: number; len: number }
+  | { kind: 'grille'; x: number; y: number; r: number; rings?: number }
 
 /** ═══ نوع الموصّل ═══
  *

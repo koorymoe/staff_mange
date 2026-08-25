@@ -97,6 +97,15 @@ function cableColor(part: PartDef | undefined, portId: string): string {
   return p.polarity === 'pos' ? '#dc2626' : p.polarity === 'neg' ? '#1f2937' : '#64748b'
 }
 
+/** مفتاح الألوان لكل مجال — الفني يتتبّع اللون مو التسمية. */
+const LEGEND: Record<string, [string, string][]> = {
+  solar: [['#dc2626', 'موجب DC'], ['#1f2937', 'سالب DC'], ['#f59e0b', 'تيار متناوب']],
+  electrical: [['#dc2626', 'موجب'], ['#1f2937', 'سالب'], ['#64748b', 'بلا قطبية']],
+  network: [['#0ea5e9', 'شبكة RJ45'], ['#38bdf8', 'قفص SFP']],
+  fire: [['#64748b', 'خط زون'], ['#f59e0b', 'دائرة إنذار'], ['#dc2626', 'تغذية']],
+  audio: [['#a855f7', 'خط سماعات'], ['#f59e0b', 'إشارة ميكروفون']],
+}
+
 /** وحدات اللوح ← أمتار. اللوح مساحة رسم، والمشهد عالم حقيقي.
  *
  *  ⚠️ الرقم انضبط **بالصورة مو بالحساب**: بـ٠٫٠١٢ الأجهزة تنباعد
@@ -406,6 +415,8 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
     return pt?.label ?? portId
   }
 
+  const hasVoltages = !!portV && Object.keys(portV).length > 0
+
   const sel = doc.nodes.find((n) => n.id === (hover ?? selected))
   const selPart = sel ? PART_BY_ID[sel.partId] : null
   const readings = sel ? result?.nodeReadings[sel.id] ?? [] : []
@@ -438,7 +449,10 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
         </div>
       )}
 
-      {/* ═══ الأڤوميتر ═══ */}
+      {/* الأڤوميتر — ما يطلع إلا بمجال عنده جهود محسوبة.
+          ⚠️ أداة قياس على مشهد شبكات تقرا «0.0 V» على منفذ RJ45 —
+          رقم غلط، والرقم الغلط أسوأ من ما اكو رقم. */}
+      {hasVoltages && (
       <div className="absolute right-3 top-3 w-56">
         <button
           onClick={() => { setMeter((v) => !v); setProbes([]) }}
@@ -468,10 +482,13 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
           </div>
         )}
       </div>
+      )}
 
-      {/* مفتاح ألوان الأسلاك — الفني يتتبّع اللون مو التسمية */}
+      {/* مفتاح ألوان الأسلاك — حسب المجال.
+          ⚠️ مفتاح «موجب DC / سالب DC» على مشهد شبكات ما إله معنى —
+          الكيابل هناك نحاس وألياف. مفتاح ما يخص يشوّش مو يوضّح. */}
       <div className="pointer-events-none absolute bottom-3 left-3 rounded-lg bg-black/55 px-2.5 py-2 text-[10px] text-slate-300 backdrop-blur">
-        {[['#dc2626', 'موجب DC'], ['#1f2937', 'سالب DC'], ['#f59e0b', 'تيار متناوب']].map(([c, t]) => (
+        {(LEGEND[doc.domain] ?? LEGEND.electrical).map(([c, t]) => (
           <span key={t} className="flex items-center gap-1.5">
             <span className="inline-block h-1.5 w-4 rounded" style={{ background: c }} />
             {t}
