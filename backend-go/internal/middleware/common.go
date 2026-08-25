@@ -23,7 +23,12 @@ func CORS(allowedOrigins []string) func(http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 			}
 			w.Header().Set("Vary", "Origin")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			// ⚠️ `PATCH` مو موجودة چانت، فأي مسار PATCH ينفشل من المتصفح
+			// بـ«Failed to fetch» **قبل ما يوصل السيرفر أصلاً** — الطلب
+			// التمهيدي (preflight) يرفضه المتصفح لحاله. وينجح بـcurl
+			// (ماكو preflight)، فالفرق بين «يشتغل بالفحص» و«ما يشتغل
+			// بالواجهة» يضيّع ساعات. انكشف بأول مسار PATCH بالنظام.
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
 			if r.Method == http.MethodOptions {

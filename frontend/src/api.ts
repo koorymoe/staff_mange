@@ -2844,6 +2844,18 @@ export interface SimFinishBody extends SimProgressBody {
   durationSec: number
 }
 
+/** صف بقائمة مراجعة المحتوى. */
+export interface SimReviewRow {
+  kind: 'devices' | 'exercises' | string
+  id: string
+  title: string
+  status: string
+  verified: boolean
+  sourceRef?: string
+  localPractice?: string
+  verifiedAt?: string
+}
+
 /** مخطط محفوظ بمساحة العمل. */
 export interface SimProject {
   id: string
@@ -2882,6 +2894,19 @@ export const api = {
     request<SimProject>('/sim/projects', { method: 'POST', body: JSON.stringify(body) }),
   deleteSimProject: (id: string) =>
     request<{ ok: boolean }>(`/sim/projects/${id}`, { method: 'DELETE' }),
+
+  // ── الاعتماد والنشر ──
+  // ⚠️ هاي **الإجراءات الوحيدة** الي تخلّي محتوى المختبر يوصل متدرّباً:
+  // استعلامات المستودع تشترط `verified = TRUE` و`status = 'PUBLISHED'`.
+  getSimReview: () => request<SimReviewRow[]>('/sim/review'),
+  setSimVerified: (kind: string, id: string, verified: boolean, note?: string) =>
+    request<{ ok: boolean }>(`/sim/${kind}/${id}/verify`, {
+      method: 'PATCH', body: JSON.stringify({ verified, note: note ?? '' }),
+    }),
+  setSimPublished: (kind: string, id: string, published: boolean) =>
+    request<{ ok: boolean }>(`/sim/${kind}/${id}/publish`, {
+      method: 'PATCH', body: JSON.stringify({ published }),
+    }),
 
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.

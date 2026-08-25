@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -536,4 +537,111 @@ func (r *SimRepository) DeleteProject(id, employeeID string) error {
 		return errors.New("المخطط مو موجود")
 	}
 	return nil
+}
+
+// ═══ الاعتماد والنشر ═══
+//
+// ⚠️ هاي **الإجراءات الوحيدة** الي تخلّي المحتوى يوصل متدرّباً:
+// `visibilityClause` بأعلى الملف تشترط `verified = TRUE` و
+// `status = 'PUBLISHED'`. بلا هالمسارات، كل محتوى المختبر يبقى
+// للمالك للأبد — وهذا صح بالبناء وغلط بالنهاية.
+//
+// ⚠️ الاعتماد **يسجّل منو اعتمد ومتى**. لو انكشف بعدين إن معلومة
+// غلط حرقت جهازاً، لازم نعرف منو جرّبها ومتى — «اعتُمد» بلا اسم
+// وتاريخ ما تسوى شي.
+
+var simVerifyKinds = map[string]string{
+	"devices":   "SimDevice",
+	"exercises": "SimExercise",
+	"lessons":   "SimLesson",
+}
+
+// SetVerified يعتمد محتوى أو يسحب اعتماده.
+func (r *SimRepository) SetVerified(kind, id, employeeID string, verified bool, note string) error {
+	table, ok := simVerifyKinds[kind]
+	if !ok || table == "SimLesson" {
+		// الدروس ما عدها أعمدة اعتماد — تنشر وبس.
+		return errors.New("هذا النوع ما ينعتمد")
+	}
+	var res sql.Result
+	var err error
+	if verified {
+		res, err = r.db.Exec(`
+			UPDATE "`+table+`"
+			SET verified = TRUE, "verifiedById" = $2, "verifiedAt" = NOW(),
+			    "localPractice" = COALESCE(NULLIF($3, ''), "localPractice"),
+			    "updatedAt" = NOW()
+			WHERE id = $1`, id, employeeID, note)
+	} else {
+		// ⚠️ سحب الاعتماد **يسحب النشر وياه**: محتوى انسحب اعتماده
+		// ويبقى منشوراً يعني متدرّب يشوف معلومة إحنه شاكّين بيها.
+		res, err = r.db.Exec(`
+			UPDATE "`+table+`"
+			SET verified = FALSE, "verifiedById" = NULL, "verifiedAt" = NULL,
+			    status = 'DRAFT', "updatedAt" = NOW()
+			WHERE id = $1`, id)
+	}
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("المحتوى مو موجود")
+	}
+	return nil
+}
+
+// SetPublished ينشر محتوى أو يرجّعه مسودّة.
+func (r *SimRepository) SetPublished(kind, id string, published bool) error {
+	table, ok := simVerifyKinds[kind]
+	if !ok {
+		return errors.New("هذا النوع ما ينعرف")
+	}
+	if published && table != "SimLesson" {
+		// ⚠️ **ما ينشر غير المحقّق.** هذا الشرط بالاستعلام مو بالواجهة:
+		// الواجهة ممكن تتغيّر أو ينضاف مسار ثاني، والاستعلام ما ينسى.
+		var verified bool
+		if err := r.db.Get(&verified, `SELECT verified FROM "`+table+`" WHERE id = $1`, id); err != nil {
+			return errors.New("المحتوى مو موجود")
+		}
+		if !verified {
+			return errors.New("ما ينشر قبل ما ينعتمد — اعتمده أول")
+		}
+	}
+	status := "DRAFT"
+	if published {
+		status = "PUBLISHED"
+	}
+	res, err := r.db.Exec(`UPDATE "`+table+`" SET status = $2, "updatedAt" = NOW() WHERE id = $1`, id, status)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("المحتوى مو موجود")
+	}
+	return nil
+}
+
+// PendingReview كل المحتوى الي ينتظر اعتماداً — شاشة المالك.
+type SimPendingRow struct {
+	Kind          string     `db:"kind" json:"kind"`
+	ID            string     `db:"id" json:"id"`
+	Title         string     `db:"title" json:"title"`
+	Status        string     `db:"status" json:"status"`
+	Verified      bool       `db:"verified" json:"verified"`
+	SourceRef     *string    `db:"sourceRef" json:"sourceRef,omitempty"`
+	LocalPractice *string    `db:"localPractice" json:"localPractice,omitempty"`
+	VerifiedAt    *time.Time `db:"verifiedAt" json:"verifiedAt,omitempty"`
+}
+
+func (r *SimRepository) PendingReview() ([]SimPendingRow, error) {
+	rows := []SimPendingRow{}
+	err := r.db.Select(&rows, `
+		SELECT 'devices' AS kind, id, name AS title, status, verified, "sourceRef", "localPractice", "verifiedAt"
+		FROM "SimDevice"
+		UNION ALL
+		SELECT 'exercises', id, title, status, verified, "sourceRef", "localPractice", "verifiedAt"
+		FROM "SimExercise"
+		ORDER BY verified, status, title
+		LIMIT 500`)
+	return rows, err
 }

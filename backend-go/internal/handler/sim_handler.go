@@ -179,3 +179,50 @@ func (h *SimHandler) DeleteProject(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// ═══ الاعتماد والنشر ═══
+
+// GET /api/sim/review
+func (h *SimHandler) PendingReview(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.PendingReview()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب المحتوى")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// PATCH /api/sim/{kind}/{id}/verify
+func (h *SimHandler) SetVerified(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Verified bool   `json:"verified"`
+		Note     string `json:"note"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	err := h.repo.SetVerified(r.PathValue("kind"), r.PathValue("id"),
+		middleware.EmployeeIDFromContext(r), req.Verified, strings.TrimSpace(req.Note))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// PATCH /api/sim/{kind}/{id}/publish
+func (h *SimHandler) SetPublished(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Published bool `json:"published"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	if err := h.repo.SetPublished(r.PathValue("kind"), r.PathValue("id"), req.Published); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
