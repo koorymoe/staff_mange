@@ -30,6 +30,7 @@ import { Scene as BabylonScene } from '@babylonjs/core/scene'
 import type { Mesh } from '@babylonjs/core/Meshes/mesh'
 
 import { buildDevice, type TerminalAnchor } from '../sim3d/deviceGeometry'
+import { buildRack, type BuiltRack } from '../sim3d/rack'
 import type { SimDevice, Terminal } from '../sim/types'
 import { PART_BY_ID } from './catalog'
 import type { LabDoc, LabNode, PartDef, SimResult } from './types'
@@ -132,6 +133,14 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
    *  ⚠️ مسباران مثل الجهاز الحقيقي: الأول أحمر والثاني أسود، والقراءة
    *  **فرق** بينهما. أداة تعطي «جهد نقطة» تعلّم عادة ما توجد بالميدان. */
   const [meter, setMeter] = useState(false)
+  /** ═══ ترتيب الأجهزة بالرفّ ═══
+   *  ⚠️ **خيار عرض جوّا الثلاثي مو منظر رابع**: حطّه بشريط
+   *  «مخطط/ثلاثي» يوهم إنه بديل عنهما، وهو مو بديل — هو نفس المشهد
+   *  بتموضع ثانٍ. */
+  const [rackMode, setRackMode] = useState(false)
+  const [doorOpen, setDoorOpen] = useState(true)
+  const rackRef = useRef<BuiltRack | null>(null)
+  const rackable3d = doc.nodes.filter((n) => !!PART_BY_ID[n.partId]?.geo3d?.rackU).length
   const [probes, setProbes] = useState<string[]>([])
 
   const cb = useRef({ setSelected, meter: false })
@@ -190,6 +199,46 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
     const tops = new Map<string, Vector3>()
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
 
+    // ═══ الرفّ ═══
+    //
+    // ⚠️ **الرفّ استراتيجية تموضع مو راسم أجهزة**: `buildDevice` تبقى
+    // كما هي، والي يتغيّر هو `position` بس. راسم خاص بالرف يعني
+    // السويچ يطلع بشكلين حسب المنظر، وأول تصحيح يوصل واحداً منهما.
+    const rackable = rackMode
+      ? doc.nodes.filter((n) => !!PART_BY_ID[n.partId]?.geo3d?.rackU)
+      : []
+    // ⚠️ الارتفاع محسوب مو ثابتاً: رفّ ٤٢U وفيه ثلاثة أجهزة يخلّي
+    // الأجهزة **نقاطاً** بالشاشة، لأن الكاميرا تأطّر الرفّ كله.
+    const usedU = rackable.reduce((sum, n) => sum + (PART_BY_ID[n.partId]!.geo3d!.rackU ?? 1), 0)
+    const rackUnits = Math.min(42, Math.max(12, usedU + 6))
+    let rack: BuiltRack | null = null
+    const slotOf = new Map<string, { u: number; hU: number }>()
+    if (rackable.length > 0) {
+      // ⚠️ الرفّ يتموضع **بمركز الأجهزة الي راح تنركّب بيه** — مو على
+      // جنب المشهد. الأجهزة الرفّية أصلاً موضوعة بمنطقة غرفة المعدات
+      // باللوح، فالرفّ يقعد مكانها والأجهزة الأرضية تبقى حواليه.
+      // دفعه لجنب يفرّق المشهد ويخلّي الكاميرا تأطّر فراغاً بالوسط.
+      const rx = rackable.map((n) => (n.x + (PART_BY_ID[n.partId]?.w ?? 100) / 2) * M_PER_UNIT)
+      const rz = rackable.map((n) => (n.y + (PART_BY_ID[n.partId]?.h ?? 60) / 2) * M_PER_UNIT)
+      const rackX = rx.reduce((a, b) => a + b, 0) / rx.length
+      const rackZ = rz.reduce((a, b) => a + b, 0) / rz.length
+      rack = buildRack(bs, { units: rackUnits, position: new Vector3(rackX, 0, rackZ) })
+      rack.setDoor(doorOpen)
+      // ⚠️ الترتيب **بترتيب المستند**: جهاز جديد ينضاف تحت الي قبله
+      // فما يعيد ترتيب الي فوقه. ترتيب بالحجم أو النوع يخلّي إضافة
+      // سويچ تقفز كل الأجهزة لمحلات جديدة، والمتدرّب الي حفظ «المسجّل
+      // بالوحدة ٦» يلگاه انتقل بلا سبب.
+      let u = 1
+      for (const n of rackable) {
+        const hU = PART_BY_ID[n.partId]!.geo3d!.rackU ?? 1
+        slotOf.set(n.id, { u, hU })
+        u += hU
+      }
+      minX = Math.min(minX, rackX - 0.4); maxX = Math.max(maxX, rackX + 0.4)
+      minZ = Math.min(minZ, rackZ - 0.4); maxZ = Math.max(maxZ, rackZ + 0.4)
+    }
+    rackRef.current = rack
+
     for (const n of doc.nodes) {
       const part = PART_BY_ID[n.partId]
       if (!part) continue
@@ -201,7 +250,29 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
       minX = Math.min(minX, wx); maxX = Math.max(maxX, wx)
       minZ = Math.min(minZ, wz); maxZ = Math.max(maxZ, wz)
 
-      const built = buildDevice(bs, dev, n.id, new Vector3(wx, size.h / 2 + 0.02, wz), 0)
+      // ⚠️ الأجهزة الي **ما تنركّب برف** تبقى مكانها على الأرض —
+      // ولا وحدة تختفي. منظر «رفّ بس» يخفي نص المنظومة، والمتدرّب
+      // يظن إن الي انخفى مو موجود.
+      const slot = slotOf.get(n.id)
+      const pos = slot && rack
+        ? new Vector3(rack.root.position.x, rack.slotY(slot.u, slot.hU), rack.root.position.z + rack.faceZ - size.d / 2)
+        : new Vector3(wx, size.h / 2 + 0.02, wz)
+      const built = buildDevice(bs, dev, n.id, pos, 0)
+
+      // ⚠️ آذان التثبيت للأجهزة الأضيق من ١٩ إنچ (الراوتر والمسجّل):
+      // هذا **صحيح واقعياً** — ينركّبون بآذان أو رفّ ثابت. رسمها أصدق
+      // من تكبير عرض الجهاز كذباً.
+      if (slot && rack && size.w < 0.46) {
+        for (const sx of [-1, 1]) {
+          const ear = CreateBox(`ear_${n.id}_${sx}`, { width: (0.4826 - size.w) / 2 + 0.02, height: size.h * 0.9, depth: 0.004 }, bs)
+          const em = new StandardMaterial(`m_ear_${n.id}_${sx}`, bs)
+          em.diffuseColor = Color3.FromHexString('#94a3b8')
+          ear.material = em
+          ear.position = new Vector3(pos.x + sx * (size.w / 2 + ((0.4826 - size.w) / 2 + 0.02) / 2), pos.y, pos.z + size.d / 2)
+          ear.isPickable = false
+          shadows.addShadowCaster(ear)
+        }
+      }
 
       // ⚠️ الميلان **بعد** البناء: `buildDevice` تبني بالمستوي الرأسي،
       // واللوح الشمسي ينصب مائلاً. الميلان على الجذر يشيل الأطراف
@@ -252,14 +323,34 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
       const a = anchors.get(`${l.from.node}:${l.from.port}`)
       const b = anchors.get(`${l.to.node}:${l.to.port}`)
       if (!a || !b) continue
-      const dist = Vector3.Distance(a.point, b.point)
-      const sag = Math.min(0.22, dist * 0.16)
+      // ═══ مسار الكيبل ═══
+      //
+      // ⚠️ الكيبل الي طرفه بجهاز مركّب بالرف يمر **بالريل الجانبي**:
+      // خط مستقيم يخترق الرفّ ويطلع من جهته الثانية يعلّم عكس أول شي
+      // ينتعلّم بالرفوف — الكيابل تنزل بالجانب مو بالوسط.
+      const inRack = (id: string) => slotOf.has(id)
+      const waypoints: Vector3[] = [a.point]
+      if (rack && (inRack(l.from.node) || inRack(l.to.node))) {
+        // الجهة الأقرب للطرف الخارجي — الكيبل يلف من هناك.
+        const outer = inRack(l.from.node) ? b.point : a.point
+        const side: 1 | -1 = outer.x >= rack.root.position.x ? 1 : -1
+        if (inRack(l.from.node)) waypoints.push(rack.railPoint(a.point.y - rack.root.position.y, side))
+        if (inRack(l.to.node)) waypoints.push(rack.railPoint(b.point.y - rack.root.position.y, side))
+      }
+      waypoints.push(b.point)
+
       const pts: Vector3[] = []
-      for (let i = 0; i <= 24; i++) {
-        const t = i / 24
-        const p = Vector3.Lerp(a.point, b.point, t)
-        p.y -= Math.sin(Math.PI * t) * sag
-        pts.push(p)
+      for (let seg = 0; seg < waypoints.length - 1; seg++) {
+        const p0 = waypoints[seg], p1 = waypoints[seg + 1]
+        const dist = Vector3.Distance(p0, p1)
+        const sag = Math.min(0.22, dist * 0.16)
+        const steps = waypoints.length > 2 ? 12 : 24
+        for (let i = seg === 0 ? 0 : 1; i <= steps; i++) {
+          const t = i / steps
+          const p = Vector3.Lerp(p0, p1, t)
+          p.y -= Math.sin(Math.PI * t) * sag
+          pts.push(p)
+        }
       }
       const tube = CreateTube(`cab_${l.id}`, { path: pts, radius: 0.016, tessellation: 8 }, bs)
       const tm = new StandardMaterial(`m_cab_${l.id}`, bs)
@@ -275,8 +366,21 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
     if (Number.isFinite(minX)) {
       const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2
       const span = Math.max(maxX - minX, maxZ - minZ, 2)
-      camera.setTarget(new Vector3(cx, 0.55, cz))
-      camera.radius = Math.max(3.2, span * 1.15 + 2.2)
+      if (rack) {
+        // ⚠️ بوضع الرفّ الكاميرا تأطّر **الرفّ نفسه** مو كل المشهد:
+        // الي يشغّل هالوضع يريد يشوف الرفّ، وتأطير المشهد كله يخلّي
+        // الرفّ (نص متر) نقطة وسط أرضية ٢٤ متراً. والأجهزة الأرضية
+        // تبقى ظاهرة حواليه — بس مو هي الي تحكم الإطار.
+        const rackH = rackUnits * 0.04445
+        camera.setTarget(new Vector3(rack.root.position.x, rackH * 0.5, rack.root.position.z))
+        camera.radius = Math.max(1.6, rackH * 2.6)
+        // ⚠️ ونظرة **أقرب للأفقية**: الرفّ يتقرا من قدّامه مو من فوگه،
+        // ونظرة علوية تخلّي الوحدات تنطبق فوگ بعض بالمنظور.
+        camera.beta = Math.PI / 2.7
+      } else {
+        camera.setTarget(new Vector3(cx, 0.55, cz))
+        camera.radius = Math.max(3.2, span * 1.15 + 2.2)
+      }
     }
 
     // ═══ التفاعل ═══
@@ -349,7 +453,7 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
       setReady(false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topology])
+  }, [topology, rackMode])
 
   // ═══ اللافتات ═══
   //
@@ -447,6 +551,30 @@ export default function Scene3D({ doc, result, selected, setSelected, portV }: P
               {r.text}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* ═══ الرفّ ═══
+          ⚠️ الزر يظهر **بس إذا اكو جهاز ينركّب برف** — زر يشتغل وما
+          يتغيّر شي يخلّي المتدرّب يظن الميزة مكسورة، والحقيقة إن ماكو
+          جهاز رفّي بالمخطط أصلاً. */}
+      {rackable3d > 0 && (
+        <div className="absolute left-3 top-16 flex flex-col gap-1.5">
+          <button
+            onClick={() => setRackMode((v) => !v)}
+            className={`rounded-lg px-3 py-1.5 text-[11.5px] font-bold transition ${
+              rackMode ? 'bg-sky-600 text-white' : 'bg-black/60 text-slate-300 ring-1 ring-slate-700 backdrop-blur hover:bg-black/80'}`}
+          >
+            🗄️ {rackMode ? `بالرفّ (${rackable3d})` : 'رتّب بالرفّ'}
+          </button>
+          {rackMode && (
+            <button
+              onClick={() => { setDoorOpen((v) => !v); rackRef.current?.setDoor(!doorOpen) }}
+              className="rounded-lg bg-black/60 px-3 py-1.5 text-[11.5px] font-bold text-slate-300 ring-1 ring-slate-700 backdrop-blur hover:bg-black/80"
+            >
+              🚪 {doorOpen ? 'سكّر الباب' : 'افتح الباب'}
+            </button>
+          )}
         </div>
       )}
 

@@ -179,7 +179,7 @@ const NETWORK: PartDef[] = [
   },
   {
     id: 'switch_l2', domain: 'network', name: 'سويچ ٢٤ منفذ مدار', model: '٢٤ منفذ · طبقة ٢ · SFP×٢', symbol: 'net_switch',
-    w: 140, h: 60, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.20 }, bodyColorHex: '#2b3440', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
+    w: 140, h: 60, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.20 }, rackU: 1, bodyColorHex: '#2b3440', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
     about: 'سويچ طبقة ٢ قابل للإدارة — VLAN وترنك، ويتهيّأ بسطر الأوامر.',
     ports: swPorts(4, 2),
     params: [
@@ -190,7 +190,7 @@ const NETWORK: PartDef[] = [
   },
   {
     id: 'switch_poe', domain: 'network', name: 'سويچ ٢٤ منفذ PoE+', model: '٢٤ منفذ · PoE+ ١٨٥ واط', symbol: 'net_switch',
-    w: 140, h: 60, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.22 }, bodyColorHex: '#33404f', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }, { kind: 'statusLed', x: 0.96, y: 0.7 }] },
+    w: 140, h: 60, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.22 }, rackU: 1, bodyColorHex: '#33404f', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }, { kind: 'statusLed', x: 0.96, y: 0.7 }] },
     about: 'يغذّي الكاميرات ونقاط الوصول بنفس كيبل الشبكة.',
     ports: swPorts(4, 2),
     params: [
@@ -201,7 +201,7 @@ const NETWORK: PartDef[] = [
   },
   {
     id: 'switch_l3', domain: 'network', name: 'سويچ طبقة ٣', model: '٢٤ منفذ · توجيه داخلي', symbol: 'net_switch',
-    w: 145, h: 62, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.24 }, bodyColorHex: '#3b4a5c', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
+    w: 145, h: 62, geo3d: { sizeM: { w: 0.44, h: 0.044, d: 0.24 }, rackU: 1, bodyColorHex: '#3b4a5c', faceColorHex: '#161d27', features: [{ kind: 'portRow', count: 12, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
     about: 'يوجّه بين الـVLANات بلا راوتر خارجي.',
     ports: swPorts(4, 2),
     params: [
@@ -213,7 +213,7 @@ const NETWORK: PartDef[] = [
   {
     id: 'router', domain: 'network', name: 'راوتر', model: 'منفذان · توجيه بين شبكتين', symbol: 'net_router',
     w: 120, h: 65,
-    geo3d: { sizeM: { w: 0.34, h: 0.044, d: 0.22 }, bodyColorHex: '#2f3b4a', faceColorHex: '#151b24', features: [{ kind: 'portRow', count: 4, y: 0.5 }, { kind: 'statusLed', x: 0.92, y: 0.5 }] },
+    geo3d: { sizeM: { w: 0.34, h: 0.044, d: 0.22 }, rackU: 1, bodyColorHex: '#2f3b4a', faceColorHex: '#151b24', features: [{ kind: 'portRow', count: 4, y: 0.5 }, { kind: 'statusLed', x: 0.92, y: 0.5 }] },
     ports: [
       { id: 'gi0/0', label: 'Gi0/0', kind: 'eth', x: 0.2, y: 1 },
       { id: 'gi0/1', label: 'Gi0/1', kind: 'eth', x: 0.8, y: 1 },
@@ -389,7 +389,7 @@ const AUDIO: PartDef[] = [
   {
     id: 'amplifier', domain: 'audio', name: 'مكبّر صوت', model: '١٢٠ واط · ١٠٠ فولت أو لو-Z', symbol: 'amplifier',
     w: 130, h: 80,
-    geo3d: { sizeM: { w: 0.44, h: 0.088, d: 0.32 }, bodyColorHex: '#1f2937', faceColorHex: '#111827', features: [{ kind: 'screen', x: 0.35, y: 0.5, w: 0.3, h: 0.4 }, { kind: 'statusLed', x: 0.9, y: 0.35 }, { kind: 'statusLed', x: 0.9, y: 0.65 }] },
+    geo3d: { sizeM: { w: 0.44, h: 0.088, d: 0.32 }, rackU: 2, bodyColorHex: '#1f2937', faceColorHex: '#111827', features: [{ kind: 'screen', x: 0.35, y: 0.5, w: 0.3, h: 0.4 }, { kind: 'statusLed', x: 0.9, y: 0.35 }, { kind: 'statusLed', x: 0.9, y: 0.65 }] },
     about: 'خط ١٠٠ فولت للمسافات الطويلة والمناطق، أو مقاومة منخفضة للقاعات القريبة.',
     ports: [
       { id: 'out1', label: 'مخرج ١', kind: 'spk', x: 1, y: 0.35 },
@@ -455,7 +455,7 @@ const GPON: PartDef[] = [
   {
     id: 'olt', domain: 'gpon', name: 'OLT — طرفية الخط الضوئي', model: 'GPON Class B+ · ٨ منافذ PON',
     symbol: 'olt', w: 145, h: 62,
-    geo3d: { sizeM: { w: 0.44, h: 0.088, d: 0.30 }, bodyColorHex: '#243244', faceColorHex: '#141b26',
+    geo3d: { sizeM: { w: 0.44, h: 0.088, d: 0.30 }, rackU: 2, bodyColorHex: '#243244', faceColorHex: '#141b26',
       features: [{ kind: 'portRow', count: 8, y: 0.5 }, { kind: 'statusLed', x: 0.96, y: 0.3 }] },
     about: 'الجهاز الي بالمقسّم — يغذّي مئات المشتركين بليف واحد لكل منفذ PON.',
     ports: [
@@ -532,7 +532,7 @@ const CCTV: PartDef[] = [
   {
     id: 'nvr', domain: 'cctv', name: 'مسجّل شبكي NVR', model: 'قنوات · قرص · منافذ PoE', symbol: 'nvr',
     w: 150, h: 62,
-    geo3d: { sizeM: { w: 0.38, h: 0.05, d: 0.32 }, bodyColorHex: '#28313d', faceColorHex: '#141a22', features: [{ kind: 'portRow', count: 8, y: 0.5 }, { kind: 'statusLed', x: 0.94, y: 0.35 }, { kind: 'disc', x: 0.2, y: 0.5, r: 0.12 }] },
+    geo3d: { sizeM: { w: 0.38, h: 0.05, d: 0.32 }, rackU: 2, bodyColorHex: '#28313d', faceColorHex: '#141a22', features: [{ kind: 'portRow', count: 8, y: 0.5 }, { kind: 'statusLed', x: 0.94, y: 0.35 }, { kind: 'disc', x: 0.2, y: 0.5, r: 0.12 }] },
     about: 'قلب المنظومة: يسجّل ويخزّن، وحدوده (القنوات والإدخال وPoE) هي الي تقرّر شكد كاميرا تنفع.',
     ports: [
       { id: 'lan', label: 'LAN', kind: 'eth', x: 0.1, y: 1 },
