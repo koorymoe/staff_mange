@@ -78,7 +78,11 @@ export function opticalPaths(doc: LabDoc): OpticalPath[] {
 
         // ⚠️ فقد الوصلة نفسها: طول الليف + كونكترين بطرفيه.
         const km = num(l.params?.lengthKm, 0.5)
+        // ⚠️ `extraLossDb` يجي من **الأعطال المحقونة** (كونكتر وسخ،
+        // ليف مثني، لحام رديء). المحرّك ما يعرف إنه عطل — يشوف فقداً
+        // زائداً ويحسبه. وهذا بالضبط الي يشوفه الفني بالميدان.
         let add = km * FIBER_DB_PER_KM + CONNECTOR_DB * 2 + num(l.params?.splices, 0) * SPLICE_DB
+          + num(l.params?.extraLossDb, 0)
         let splits = cur.splits
         if (nd.partId === 'splitter') {
           add += SPLIT_LOSS[str(nd.params.ratio, '8')] ?? 10.5

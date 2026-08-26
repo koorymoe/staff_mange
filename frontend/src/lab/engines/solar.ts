@@ -141,7 +141,9 @@ export const solarEngine: DomainEngine = {
       const voc = num(pv.params.voc, 49.8) * count
       // ⚠️ الحساب على **Voc بالبرد** مو على Vmp — هذا الفرق الي يحرق.
       const vocCold = voc * (1 + VOC_TEMP_COEF * (25 - COLD_C))
-      pvPower += num(pv.params.pmax, 550) * count
+      // ⚠️ `shadeFactor` من الأعطال: ظل على الستring. المحرّك يشوف
+      // قدرة أقل ويحسبها — ما يعرف إنه ظل، مثل الإنفرتر الحقيقي.
+      pvPower += num(pv.params.pmax, 550) * count * num(pv.params.shadeFactor, 1)
 
       add(pv.id, `Vmp ${vmp.toFixed(0)} V`)
       add(pv.id, `Voc البرد ${vocCold.toFixed(0)} V`, vocCold > vdcMax ? 'bad' : 'ok')

@@ -68,8 +68,10 @@ export const fireEngine: DomainEngine = {
       const usedLinks = new Set<string>()
 
       for (let guard = 0; guard < 60; guard++) {
+        // ⚠️ `open` من الأعطال: دائرة مفتوحة. الوصلة موجودة بالرسم
+        // بس ما تمرّر — مثل سلك مقطوع جوّا المجرى، تشوفه ومو شغّال.
         const here = doc.links.filter(
-          (l) => !usedLinks.has(l.id) &&
+          (l) => !usedLinks.has(l.id) && !l.params?.open &&
             ((l.from.node === curNode && l.from.port === curPort) ||
              (l.to.node === curNode && l.to.port === curPort)),
         )

@@ -28,6 +28,7 @@ import { opticalPaths } from './engines/gpon'
 import { portVoltages, solarEngine } from './engines/solar'
 import { ONT_PANEL } from '../panel/ontPanel'
 import type { PanelSchema } from '../panel/schema'
+import { countFaults, FAULT_BY_ID, faultsFor, withFaults } from './faults'
 import { computeStages, quickTest } from './stages'
 import { Symbol } from './symbols'
 import type { DomainEngine, DomainId, LabDoc, ParamDef, SimResult } from './types'
@@ -90,6 +91,10 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [result, setResult] = useState<SimResult | null>(null)
   const [console_, setConsole] = useState<string | null>(null)
   const [panel, setPanel] = useState<string | null>(null)
+  /** ═══ وضع التشخيص ═══
+   *  ⚠️ عطل مكتوب على الشاشة **مو عطل — هو إجابة**. بهذا الوضع
+   *  الأعطال تنخفي، والمتدرّب يشوف العَرَض بس ويلگي السبب بالقياس. */
+  const [diagMode, setDiagMode] = useState(false)
   const [fitSignal, setFitSignal] = useState(0)
   const [zoomPct, setZoomPct] = useState(100)
   const [search, setSearch] = useState('')
@@ -227,8 +232,12 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   }, [result])
   // ⚠️ المراحل تنحسب من **المستند والنتيجة** — ماكو زر «التالي».
   const stageState = useMemo(() => computeStages(doc, result), [doc, result])
-  const portV = useMemo(() => (domain === 'solar' ? portVoltages(doc) : {}), [domain, doc])
+  // ⚠️ الأدوات تشوف المنظومة **بأعطالها**: أڤوميتر يقرا قيمة سليمة
+  // على دائرة معطوبة يعني أداة تكذب — والمتدرّب يستبعد السبب الصح.
+  const faulted = useMemo(() => withFaults(doc), [doc])
+  const portV = useMemo(() => (domain === 'solar' ? portVoltages(faulted) : {}), [domain, faulted])
   const qt = useMemo(() => quickTest(doc, result), [doc, result])
+  const faultCount = countFaults(doc)
 
   /** ═══ القيم المقيسة الي تعرضها واجهة الجهاز ═══
    *
@@ -239,7 +248,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
     if (!panel) return {}
     const nd = doc.nodes.find((n) => n.id === panel)
     if (!nd) return {}
-    const path = opticalPaths(doc).find((x) => x.ontId === nd.id)
+    const path = opticalPaths(withFaults(doc)).find((x) => x.ontId === nd.id)
     const minRx = Number(nd.params.rxMin ?? -27)
     const maxRx = Number(nd.params.rxMax ?? -8)
     const registered = !!path && path.rxDbm >= minRx && path.rxDbm <= maxRx
@@ -275,7 +284,9 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [log, setLog] = useState<{ t: string; kind: string; text: string }[]>([])
 
   const runAndLog = useCallback(() => {
-    const r = ENGINES[domain].run(doc, PART_BY_ID)
+    // ⚠️ الدمج **وقت التشغيل**: العطل ما يدخل المستند أبداً، فما
+    // يتحفظ مع المخطط ولا يطلع كأنه اختيار المستخدم.
+    const r = ENGINES[domain].run(withFaults(doc), PART_BY_ID)
     setResult(r)
     onResult?.(doc, r)
     const now = new Date()
@@ -368,6 +379,13 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                 ⤢ ضبط العرض
               </button>
             )}
+            <button
+              onClick={() => setDiagMode((v) => !v)}
+              title="يخفي الأعطال المحقونة — المتدرّب يشوف العَرَض ويلگي السبب"
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                diagMode ? 'bg-amber-500 text-black' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+              🔎 وضع التشخيص{faultCount > 0 && !diagMode ? ` (${faultCount})` : ''}
+            </button>
             <button onClick={clearAll}
               className="rounded-lg bg-red-500/10 px-3 py-1.5 text-xs font-bold text-red-300 ring-1 ring-red-500/30 hover:bg-red-500/20">
               🗑 تفريغ اللوح
@@ -680,6 +698,15 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                   </div>
                 )}
 
+                <FaultPicker
+                  domain={domain} target="node" partId={selNode.partId}
+                  value={selNode.fault} hidden={diagMode}
+                  onChange={(fid) => setDoc((d) => ({
+                    ...d,
+                    nodes: d.nodes.map((n) => (n.id === selNode.id ? { ...n, fault: fid } : n)),
+                  }))}
+                />
+
                 <button
                   onClick={() => {
                     setDoc((d) => ({
@@ -713,6 +740,14 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                   {defs.map((lp) => (
                     <Field key={lp.id} def={lp} value={selLink.params?.[lp.id]} onChange={(v) => setLinkParam(lp.id, v)} dark />
                   ))}
+                  <FaultPicker
+                    domain={domain} target="link"
+                    value={selLink.fault} hidden={diagMode}
+                    onChange={(fid) => setDoc((d) => ({
+                      ...d,
+                      links: d.links.map((l) => (l.id === selLink.id ? { ...l, fault: fid } : l)),
+                    }))}
+                  />
                   <button
                     onClick={() => { setDoc((d) => ({ ...d, links: d.links.filter((l) => l.id !== selLink.id) })); setSelected(null) }}
                     className="w-full rounded-lg bg-red-500/10 py-1.5 text-[11px] font-bold text-red-300 ring-1 ring-red-500/25"
@@ -865,6 +900,38 @@ function Minimap({ doc }: { doc: LabDoc }) {
 const PORT_KIND_AR: Record<string, string> = {
   dc: 'تغذية مستمرة', ac: 'تيار متناوب', eth: 'شبكة RJ45',
   sfp: 'قفص SFP', spk: 'خط سماعات', signal: 'إشارة',
+}
+
+/** ═══ حاقن الأعطال ═══
+ *
+ *  ⚠️ ينخفي كلياً بوضع التشخيص — مو «يتعطّل». قائمة أعطال معطّلة
+ *  ظاهرة تكفي حتى يخمّن المتدرّب من الأسماء شنو محقون. */
+function FaultPicker({ domain, target, partId, value, hidden, onChange }: {
+  domain: DomainId
+  target: 'node' | 'link'
+  partId?: string
+  value?: string
+  hidden: boolean
+  onChange: (fid: string | undefined) => void
+}) {
+  const list = faultsFor(domain, target, partId)
+  if (hidden || list.length === 0) return null
+  const active = value ? FAULT_BY_ID[value] : null
+  return (
+    <div className="mt-3 rounded-lg bg-amber-500/5 p-2.5 ring-1 ring-amber-500/20">
+      <p className="mb-1.5 text-[11px] font-bold text-amber-300">🔧 حقن عطل (للمدرّب)</p>
+      <select
+        value={value ?? ''} onChange={(e) => onChange(e.target.value || undefined)}
+        className="w-full rounded-lg border border-slate-700 bg-[#0b1220] px-2 py-1.5 text-[11.5px] text-slate-200"
+      >
+        <option value="">— سليم —</option>
+        {list.map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+      </select>
+      {active && (
+        <p className="mt-1.5 text-[10.5px] leading-relaxed text-amber-200/80">{active.symptom}</p>
+      )}
+    </div>
+  )
 }
 
 function Field({ def, value, onChange, dark }: {

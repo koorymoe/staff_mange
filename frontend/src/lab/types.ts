@@ -98,6 +98,12 @@ export interface LabNode {
    *  **منفذ السويچ**. أي محاكي يخلّي الـVLAN خاصية بالحاسبة يعلّم
    *  عادة غلط، ولمن يجي الفني بالميدان ما يعرف وين يدوّر. */
   cliState?: Record<string, unknown>
+  /** ═══ عطل محقون ═══
+   *
+   *  ⚠️ يبقى **منفصلاً** عن `params`: العطل مو خاصية صمّمها المستخدم،
+   *  هو شي المدرّب حقنه. دمجه بالخصائص يخلّيه يتحفظ مع المخطط كأنه
+   *  اختيار، وما تگدر تشيله. الدمج يصير **وقت التشغيل** بـ`withFaults`. */
+  fault?: string
 }
 
 export interface LabLink {
@@ -108,6 +114,8 @@ export interface LabLink {
    *  هذا الي يخلّي «الشبكة ما تشتغل بعد ١٤٠ متر» و«ترانسيفر multimode
    *  على ألياف singlemode» أعطالاً تنكشف بالمحاكي مو بالميدان. */
   params?: Record<string, string | number | boolean>
+  /** عطل محقون على الوصلة — نفس قاعدة العقدة. */
+  fault?: string
 }
 
 export interface LabDoc {

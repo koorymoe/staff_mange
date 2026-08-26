@@ -68,6 +68,8 @@ export const networkEngine: DomainEngine = {
         const nd = doc.nodes.find((n) => n.id === nodeId)
         return PART_BY_ID[nd?.partId ?? '']?.ports.find((p) => p.id === portId)?.kind
       }
+      const an0 = doc.nodes.find((x) => x.id === l.from.node)
+      const bn0 = doc.nodes.find((x) => x.id === l.to.node)
       const chk = checkLink(
         String(P.cable ?? 'cat6'),
         Number(P.lengthM ?? 15),
@@ -76,11 +78,15 @@ export const networkEngine: DomainEngine = {
         portKind(l.from.node, l.from.port) === 'sfp',
         portKind(l.to.node, l.to.port) === 'sfp',
       )
-      const an = str(doc.nodes.find((n) => n.id === l.from.node)?.params.name
-        ?? doc.nodes.find((n) => n.id === l.from.node)?.params.hostname, l.from.node)
-      const bn = str(doc.nodes.find((n) => n.id === l.to.node)?.params.name
-        ?? doc.nodes.find((n) => n.id === l.to.node)?.params.hostname, l.to.node)
-      if (chk.ok) {
+      const an = str(an0?.params.name ?? an0?.params.hostname, l.from.node)
+      const bn = str(bn0?.params.name ?? bn0?.params.hostname, l.to.node)
+      // ⚠️ `forceDown` من الأعطال المحقونة: الكيبل «مقطوع» — المحرّك
+      // يعامله مثل أي رابط مكسور بلا ما يعرف إنه عطل مقصود.
+      if (P.forceDown) {
+        linkState[l.id] = 'bad'
+        deadLinks.add(l.id)
+        messages.push({ kind: 'error', text: `كيبل ${an} ⇄ ${bn}: الرابط مقطوع — ماكو إشارة.` })
+      } else if (chk.ok) {
         linkState[l.id] = 'ok'
       } else {
         linkState[l.id] = 'bad'
