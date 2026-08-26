@@ -121,6 +121,7 @@ const BookingDeleteRequestsPage = lazy(() => import('./pages/BookingDeleteReques
 const AuditIssuesPage = lazy(() => import('./pages/AuditIssuesPage'))
 const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
+const LessonPage = lazy(() => import('./lesson/LessonPage'))
 
 function RouteLoading() {
   return (
@@ -148,6 +149,10 @@ function App() {
           <Route path="simulator-lab" element={<SimLab />} />
           <Route path="simulator-lab/exercise/:id" element={<SimExercisePage />} />
           <Route path="simulator-lab/workbench" element={<LabWorkbench />} />
+          {/* ⚠️ الدرس قبل التطبيق: صفحة وحدة بمرحلتين، مو مسارين.
+              مسار منفصل للتطبيق يعني رابطاً يتخطّى الشرح — والفصل
+              الي بنيناه ينهدم بأول رابط ينحفظ بالمتصفح. */}
+          <Route path="simulator-lab/lesson/:id" element={<LessonPage />} />
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           <Route path="bookings-archive" element={<BookingsArchive />} />

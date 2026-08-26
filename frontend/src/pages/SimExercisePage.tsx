@@ -286,7 +286,7 @@ function Runner() {
   const unverified = (ex.devices ?? []).some((d) => !d.verified) || !ex.verified
 
   return (
-    <div dir="rtl" className="space-y-4">
+    <div dir="rtl" className="space-y-4 p-3 md:p-5">
       {/* ⚠️ شريط السلامة **دائم** مو نافذة تنضغط مرة: النافذة تنضغط
           بأول أسبوع وتنتسى، وهذا تدريب على أسلاك وكهرباء. */}
       <div className="rounded-xl bg-amber-50 px-4 py-3 text-[12.5px] font-bold leading-relaxed text-amber-900 ring-1 ring-amber-200">

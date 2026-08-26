@@ -316,7 +316,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   }
 
   return (
-    <div dir="rtl" className="space-y-3">
+    <div dir="rtl" className={embedded ? 'space-y-3' : 'space-y-3 p-3 md:p-5'}>
       {!embedded && (
         <>
           <div className="rounded-xl bg-amber-50 px-4 py-2.5 text-[12.5px] font-bold leading-relaxed text-amber-900 ring-1 ring-amber-200">

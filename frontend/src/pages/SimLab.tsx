@@ -13,6 +13,7 @@
 // الحالة الفارغة صريحة.
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { LESSONS } from '../lesson/lessons'
 import { Link } from 'react-router-dom'
 import { api, type SimProject, type SimReviewRow } from '../api'
 import SimGate from '../sim/SimGate'
@@ -97,8 +98,10 @@ function Academy() {
   const verified = review.filter((r) => r.verified).length
   const published = review.filter((r) => r.status === 'PUBLISHED').length
 
+  // ⚠️ بلا هوامش سالبة: المختبر صار بقشرته المعزولة، فما عاد يحتاج
+  // «يهرب» من حشوة النظام — وتركها يعني حواف مقصوصة.
   return (
-    <div dir="rtl" className="-m-3 min-h-screen bg-[#070b14] p-3 text-slate-200 md:-m-6 md:p-6">
+    <div dir="rtl" className="min-h-[calc(100vh-3.5rem)] bg-[#070b14] p-3 text-slate-200 md:p-6">
       {/* ═══ البانر ═══ */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-l from-[#0d1830] via-[#0b1424] to-[#0a1020] p-6 ring-1 ring-slate-800 md:p-9">
         {/* توهّج خلفي — طبقتان بلا صور. */}
@@ -145,6 +148,34 @@ function Academy() {
             الحالة: <b>{verified}</b> معتمد · <b>{published}</b> منشور · <b>{review.length - verified}</b> ينتظر تجربتك.
           </span>
         )}
+      </div>
+
+      {/* ═══ الدروس ═══
+          ⚠️ **فوگ التمارين عمداً.** المتدرّب الي يشوف التمارين أول
+          يبدي يحرّك قطعاً بلا ما يقرا — ونرجع للمحاكي الي يعلّم
+          بالتخمين. الترتيب البصري هو الي يفرض «افهم بعدين طبّق». */}
+      <div className="mt-5">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[11px] text-slate-500">اقرا الشرح، بعدها طبّق — والغلط يرجّعك للخطوة الي شرحته</span>
+          <h3 className="text-[15px] font-bold text-slate-100">📚 الدروس</h3>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          {LESSONS.map((l) => (
+            <Link
+              key={l.id}
+              to={`/simulator-lab/lesson/${l.id}`}
+              className="group rounded-2xl bg-[#0d1421] p-5 ring-1 ring-slate-800 transition hover:bg-[#101a2b] hover:ring-sky-600/50"
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-[10.5px] text-slate-500">{l.minutes} دقيقة · {l.steps.length} خطوات</span>
+                <span className="text-[11px] font-bold text-sky-400">درس</span>
+              </div>
+              <h4 className="mt-2 text-[15px] font-bold text-white group-hover:text-sky-200">{l.title}</h4>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-slate-400">{l.summary}</p>
+              <p className="mt-3 text-[11.5px] font-bold text-emerald-400">ابدأ ←</p>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {err && <p className="mt-4 rounded-xl bg-red-500/10 p-4 text-red-300 ring-1 ring-red-500/25">{err}</p>}

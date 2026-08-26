@@ -546,6 +546,54 @@ export default function Layout() {
     )
   }
 
+  // ═══ المختبر: عالم معزول جوّا النظام ═══
+  //
+  // «أريد المختبر يكون فدشي معزول عن النظام بداخل النظام».
+  //
+  // ⚠️ **معزول بالقشرة مو بالصلاحية**: نفس `SessionContext` ونفس
+  // التحقق من الدخول ونفس البوابات — يتغيّر **بس** الي حواليه. لو
+  // عزلناه بمسار برّا `Layout` چان انقطع عنه فحص الدخول وبوابة
+  // الخصوصية، ويصير باباً خلفياً بلا ما ننتبه.
+  //
+  // ⚠️ ليش أصلاً: المختبر **حالة ذهنية ثانية**. الموظف داخله يتدرّب
+  // ويغلط عمداً ويجرّب — وشريط جانبي فيه «الحجوزات» و«الرواتب»
+  // وإشعارات تنطّ يسحبه برّا التمرين كل دقيقة. أدوات التدريب الجدّية
+  // كلها تاخذ الشاشة كاملة لنفس السبب.
+  if (location.pathname.startsWith('/simulator-lab')) {
+    return (
+      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
+        <PrivacyPolicyGate />
+        <div dir="rtl" className="min-h-screen bg-[#070c14] text-slate-200">
+          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-800 bg-[#0b1220]/95 px-4 backdrop-blur-xl">
+            <div className="flex items-center gap-3">
+              <span className="text-[15px] font-extrabold tracking-tight text-white">
+                🧪 مختبر المحاكاة
+              </span>
+              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10.5px] font-bold text-sky-300 ring-1 ring-sky-500/30">
+                بيئة تدريب — ماكو أي أثر على بيانات الشركة
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-[12px] text-slate-400">{employee.name}</span>
+              {/* ⚠️ **مخرج واضح** إجباري: شاشة كاملة بلا طريق رجوع
+                  تحبس الموظف، ويطلع منها بزر الرجوع أو بإعادة تحميل —
+                  ويضيّع شغله. */}
+              <button
+                onClick={() => navigate('/')}
+                className="rounded-lg bg-slate-800 px-3 py-1.5 text-[12px] font-bold text-slate-300 hover:bg-slate-700"
+              >
+                ← رجوع للنظام
+              </button>
+            </div>
+          </header>
+          <main>
+            <Outlet />
+          </main>
+        </div>
+      </SessionContext.Provider>
+    )
+  }
+
   return (
     <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
       {/* سياسة الخصوصية: تنعرض أول دخول ولما تنضاف نقاط جديدة */}
