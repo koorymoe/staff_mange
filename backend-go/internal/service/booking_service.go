@@ -111,6 +111,14 @@ func (s *BookingService) ListAssignedTo(employeeID string) ([]model.Booking, err
 	return s.repo.ListForAssignedEmployee(employeeID, 200)
 }
 
+// ListManagerPaperwork حجوزات خدماتي المؤشّرة الي ورقها عليّ.
+func (s *BookingService) ListManagerPaperwork(employeeID string) ([]model.Booking, error) {
+	if employeeID == "" {
+		return []model.Booking{}, nil
+	}
+	return s.repo.ListManagerPaperwork(employeeID, 200)
+}
+
 func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking, error) {
 	if req.CustomerID == "" {
 		return nil, errors.New("customerId is required")

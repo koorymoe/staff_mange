@@ -114,6 +114,39 @@ func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int
 	return bookings, nil
 }
 
+// ListManagerPaperwork يرجّع الحجوزات المكتملة الي **ورقها عليّ كمسؤول
+// خدمة** — يعني خدماتها مؤشّرة `managerHandlesPaperwork` وأنا مسؤولها.
+//
+// ⚠️ **مسار مستقل مو معامل على استعلام الحجوزات العام.** استعلام
+// الحجوزات تعتمد عليه شاشات كثيرة، وأي معامل جديد عليه يعني احتمال
+// كسر بمكان ما ننتبه له. وهنا الحصر بالبناء: الاستعلام نفسه ما يرجّع
+// إلا خدماتي، فما اكو طريق يسرّب حجز خدمة ثانية حتى لو انغلط بالنداء.
+//
+// ⚠️ وما نصفّي `hasReport/hasInvoice` بالـSQL: تنحسب بالـhydrate،
+// والواجهة تعرض الي خلص كـ«✅ تمت» — عرض الحجز كامل الورق لثانية
+// أوضح من اختفائه فجأة بلا ما يعرف المسؤول إنه خلص.
+func (r *BookingRepository) ListManagerPaperwork(employeeID string, limit int) ([]model.Booking, error) {
+	bookings := []model.Booking{}
+	err := r.db.Select(&bookings, `
+		SELECT b.* FROM "Booking" b
+		JOIN "Service" s ON s.id = b."serviceId"
+		JOIN "ServiceManager" sm ON sm."serviceId" = s.id
+		WHERE b."archivedAt" IS NULL
+		  AND b.status = 'COMPLETED'
+		  AND s."managerHandlesPaperwork" = true
+		  AND sm."employeeId" = $1
+		ORDER BY b."completedAt" DESC NULLS LAST
+		LIMIT $2
+	`, employeeID, limit)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
+		return nil, err
+	}
+	return bookings, nil
+}
+
 // toPointers تحول []model.Booking إلى []*model.Booking تشاور نفس عناصر المصفوفة
 // الأصلية — لازم نمرر مؤشرات لـ hydrateAll حتى التعديلات (Customer, Service...)
 // توصل فعلاً للسلايس الي يرجعه الكولر، مو لنسخة مؤقتة تنرمى بعد ما تخلص الدالة.

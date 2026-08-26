@@ -171,10 +171,34 @@ export default function MyTasks() {
     return !!employee.isLeader && b.assignments.some((a) => a.employee.id === employee.id)
   }
 
+  // ═══ الورق على مسؤول الخدمة ═══
+  //
+  // ⚠️ **العلم يجي مع الحجز نفسه** (`b.service.managerHandlesPaperwork`)
+  // — مو من قائمة خدمات ننزّلها ونطابقها بالاسم. المطابقة بالاسم هي
+  // بالضبط الي تنطفي بصمت أول ما يتغيّر اسم خدمة بحرف.
+  const paperworkOnManager = (b: Booking) => !!b.service?.managerHandlesPaperwork
+
+  // ═══ ورق يخصّني كمسؤول خدمة ═══
+  //
+  // ⚠️ **مسار مستقل مو ترشيح لقائمة مهامي**: مسؤول الخدمة **مو مكلّف**
+  // بالحجز أصلاً — الفني هو المكلّف. فقائمة «مهامي» ما تحتوي هالحجوزات
+  // نهائياً، وأي ترشيح عليها يرجّع فاضياً دائماً. (هذا بالضبط الي طلع
+  // بالفحص: السلّة چانت فاضية والمنطق «صحيح».)
+  const [managerPaperwork, setManagerPaperwork] = useState<Booking[]>([])
+  useEffect(() => {
+    if (!employee) return
+    let alive = true
+    api.getManagerPaperwork()
+      .then((rows) => { if (alive) setManagerPaperwork(rows.filter((b) => !b.hasInvoice || !b.hasReport)) })
+      .catch(() => { /* مو مسؤول خدمة — السلّة ما تظهر وبس */ })
+    return () => { alive = false }
+  }, [employee])
+
   const isMine = (b: Booking) =>
     b.assignments.some((a) => a.employee.id === employee?.id) ||
     b.projectSupervisor?.id === employee?.id
   const myTasks = bookings.filter((b) => isMine(b) && b.status !== 'COMPLETED')
+
   // شغلي الي خلّصته — يضل ظاهر بتفاصيله وبحالة ورقه
   const myDone = bookings
     .filter((b) => isMine(b) && b.status === 'COMPLETED')
@@ -625,7 +649,7 @@ export default function MyTasks() {
                         )}
                         <div className="hidden">
                         </div>
-                        {employee?.isLeader && (
+                        {employee?.isLeader && !paperworkOnManager(b) && (
                           <button
                             onClick={() => navigate(`/leader-invoices/new?mode=booking&bookingId=${b.id}`)}
                             className="mt-2 w-full rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100"
@@ -766,6 +790,18 @@ export default function MyTasks() {
                 : 'باقي عليك ورقتين حتى يطلع الحجز «منجز بشكل كامل»:'}
             </p>
             <div className="mt-4 space-y-2">
+              {/* ⚠️ زر يفشل لمن ينضغط **أسوأ من ماكو زر**: الفني يظن
+                  النظام خربان ويتصل بالإدارة، والسبب إن أحد ما گله إن
+                  هذا مو شغله أصلاً. فنبدّل الزرّين بسطر يقول منو يسويه. */}
+              {paperworkOnManager(paperwork.booking) ? (
+                <p className="rounded-xl border-2 border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold leading-relaxed text-sky-800">
+                  📋 ورق هذا الحجز على <b>مسؤول الخدمة</b> — مو عليك.
+                  <span className="mt-1 block text-[12px] font-normal text-sky-700">
+                    خلّصت شغلك. التقرير والفاتورة يسويهن مسؤول الخدمة.
+                  </span>
+                </p>
+              ) : (
+              <>
               {!paperwork.stopped && (
                 <button
                   onClick={() => navigate(`/leader-invoices/new?mode=booking&bookingId=${paperwork.booking.id}`)}
@@ -780,6 +816,8 @@ export default function MyTasks() {
               >
                 📝 سوّي تقرير العمل الآن
               </button>
+              </>
+              )}
               <button
                 onClick={() => setPaperwork(null)}
                 className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500"
@@ -797,6 +835,58 @@ export default function MyTasks() {
       {/* ═══ شغلي الي خلّصته ═══
           قبل، الحجز يختفي من الشاشة أول ما ينضغط «تم الإنجاز» — فالموظف
           ما عاد يشوف شغله ولا تفاصيله ولا يعرف باقي عليه ورق لو لا. */}
+      {/* ═══ ورق يخصّني كمسؤول خدمة ═══
+          ⚠️ **فوگ شغلي المنجز عمداً**: هذا ورق ناس ثانين ينتظرني —
+          والحجز يبقى ناقصاً لحد ما أخلّصه. لو انحط بالآخر، ينزل تحت
+          قائمة طويلة وما ينشاف. */}
+      {managerPaperwork.length > 0 && (
+        <div className="mt-8">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="rounded-full bg-sky-100 px-3 py-1 text-[11px] font-bold text-sky-700">
+              مسؤول الخدمة
+            </span>
+            <h3 className="font-bold text-brand-800">📋 ورق ينتظرني ({managerPaperwork.length})</h3>
+          </div>
+          <p className="mb-2 text-[12px] text-slate-500">
+            حجوزات خدماتك خلّصها الفني، والتقرير والفاتورة عليك.
+          </p>
+          <div className="flex flex-col gap-2">
+            {managerPaperwork.map((b) => (
+              <div key={b.id} className="rounded-xl border-2 border-sky-200 bg-sky-50/50 p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs text-slate-500">
+                    {b.service?.name} · {b.completedAt ? new Date(b.completedAt).toLocaleDateString('ar-IQ') : '—'}
+                  </span>
+                  <span className="font-bold text-[#0f2040]">{b.customer?.name ?? b.code}</span>
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {!b.hasInvoice && (
+                    <button
+                      onClick={() => navigate(`/leader-invoices/new?mode=booking&bookingId=${b.id}`)}
+                      className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-3 py-1.5 text-xs font-bold text-white"
+                    >
+                      🧾 سوّي الفاتورة
+                    </button>
+                  )}
+                  {!b.hasReport && (
+                    <button
+                      onClick={() => navigate(`/work-reports?bookingId=${b.id}`)}
+                      className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-xs font-bold text-brand-700"
+                    >
+                      📝 سوّي التقرير
+                    </button>
+                  )}
+                  {/* ⚠️ نبيّن الي خلص هم — بلاها المسؤول ما يعرف إذا
+                      باقي عليه وحدة لو الثنتين. */}
+                  {b.hasInvoice && <span className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">✅ الفاتورة تمت</span>}
+                  {b.hasReport && <span className="rounded-lg bg-emerald-50 px-3 py-1.5 text-xs font-bold text-emerald-700">✅ التقرير تم</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {myDone.length > 0 && (
         <div className="mt-8">
           <h3 className="mb-3 font-bold text-brand-800">✅ شغلي المنجز ({myDone.length})</h3>
@@ -816,7 +906,12 @@ export default function MyTasks() {
                   {b.completionNotes && <p className="sm:col-span-2">📝 {b.completionNotes}</p>}
                 </div>
                 {/* الورق الباقي — يضل قدامه لين يخلّصه */}
-                {(!b.hasInvoice || !b.hasReport) && amLeaderOf(b) && (
+                {(!b.hasInvoice || !b.hasReport) && paperworkOnManager(b) && (
+                  <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700">
+                    📋 الورق على مسؤول الخدمة
+                  </p>
+                )}
+                {(!b.hasInvoice || !b.hasReport) && !paperworkOnManager(b) && amLeaderOf(b) && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {!b.hasInvoice && (
                       <button

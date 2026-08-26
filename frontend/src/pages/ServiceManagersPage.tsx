@@ -12,6 +12,7 @@ export default function ServiceManagersPage() {
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
+  const [paperworkBusy, setPaperworkBusy] = useState<string | null>(null)
 
   const load = () => {
     Promise.all([api.getServiceManagers(), api.getEmployees(), api.getServices()])
@@ -52,6 +53,46 @@ export default function ServiceManagersPage() {
       <p className="mb-6 text-sm text-slate-500">
         امنح أي موظف مسؤولية خدمة أو مجموعة خدمات مع بعض (مثال: GPS + منظومات الصوت + الحريق) — يصير هو المسؤول الوحيد عن تفعيلها وجدولتها.
       </p>
+
+      {/* ═══ الورق على مسؤول الخدمة ═══
+          ⚠️ **هنا مو بشاشة الخدمات**: هذا الإعداد ما يعني شي بلا مسؤول
+          معيّن — والقرار الاثنان سوا («منو المسؤول» و«شنو عليه»). فصلهما
+          بشاشتين يخلّي واحداً ينضبط والثاني ينُسى، فيصير ورق ما إله
+          مسؤول. */}
+      <div className="mb-6 rounded-2xl border border-sky-200 bg-sky-50/60 p-5">
+        <h3 className="mb-1 text-[15px] font-bold text-sky-900">📋 الورق على مسؤول الخدمة</h3>
+        <p className="mb-3 text-[12.5px] leading-relaxed text-sky-800">
+          اكو خدمات ما تستدعي فريقاً كاملاً — يروح فني واحد وينصّب (الجي بي اس، الداش كام).
+          بهاي الخدمات <b>التقرير والفاتورة على مسؤول الخدمة مو على الفني</b>، والفني يشوف
+          سطراً يقوله هذا مو شغله بدل زر يفشل بيده.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {services.map((sv) => (
+            <button
+              key={sv.id}
+              disabled={paperworkBusy === sv.id}
+              onClick={async () => {
+                setPaperworkBusy(sv.id)
+                try {
+                  const next = !sv.managerHandlesPaperwork
+                  await api.setServiceManagerPaperwork(sv.id, next)
+                  setServices((prev) => prev.map((x) => (x.id === sv.id ? { ...x, managerHandlesPaperwork: next } : x)))
+                } finally { setPaperworkBusy(null) }
+              }}
+              className={`rounded-xl px-3 py-2 text-[12.5px] font-bold transition disabled:opacity-50 ${
+                sv.managerHandlesPaperwork
+                  ? 'bg-sky-600 text-white shadow'
+                  : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {sv.managerHandlesPaperwork ? '✓ ' : ''}{sv.name}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-[11.5px] text-sky-700">
+          ⚠️ الخدمات غير المؤشّرة تبقى مثل ما هي حرفياً — الفني يسوي ورقه مثل اليوم.
+        </p>
+      </div>
 
       {loading && <p className="py-16 text-center text-slate-400">جاري التحميل...</p>}
 

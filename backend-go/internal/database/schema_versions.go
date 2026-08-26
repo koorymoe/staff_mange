@@ -277,6 +277,8 @@ func versionedMigrations() []Migration {
 	// مخفي عن الجميع إلا المالك لحد ما يكتمل. الأجهزة والتمارين بيانات
 	// مو كود، حتى فنيو الشركة يكمّلونه بأنفسهم.
 	result = append(result, simLabMigrations()...)
+	// 0257: الورق (تقرير + فاتورة) على مسؤول الخدمة بخدمات محددة.
+	result = append(result, servicePaperworkMigrations()...)
 	return result
 }
 

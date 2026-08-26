@@ -31,6 +31,15 @@ func (r *ServiceRepository) List() ([]model.Service, error) {
 	return services, nil
 }
 
+// SetManagerHandlesPaperwork يأشّر/يشيل قاعدة «الورق على مسؤول الخدمة».
+//
+// ⚠️ قرار صاحب العمل بالبيانات مو بالكود: يأشّر الجي بي اس والداش كام
+// من الشاشة، وأي خدمة جديدة تنضاف بضغطة — بلا نشر ولا تعديل كود.
+func (r *ServiceRepository) SetManagerHandlesPaperwork(serviceID string, on bool) error {
+	_, err := r.db.Exec(`UPDATE "Service" SET "managerHandlesPaperwork" = $1 WHERE id = $2`, on, serviceID)
+	return err
+}
+
 func (r *ServiceRepository) Create(s *model.Service) error {
 	_, err := r.db.NamedExec(`
 		INSERT INTO "Service" (id, name, category, division)

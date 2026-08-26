@@ -180,7 +180,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	quotationService := service.NewQuotationService(quotationRepo, permissionRepo)
 	productService := service.NewProductService(productRepo)
 	gpsService := service.NewGpsService(gpsRepo)
-	workReportService := service.NewWorkReportService(workReportRepo)
+	// ⚠️ حارس واحد للتقرير والفاتورة — بخدمات مؤشّرة الورق على مسؤول
+	// الخدمة مو على الفني. فحصان منفصلان يفترقان بأول تعديل.
+	paperworkGuard := service.NewPaperworkGuard(db)
+	workReportService := service.NewWorkReportService(workReportRepo, paperworkGuard)
 	statsService := service.NewStatsService(statsRepo)
 	vehicleService := service.NewVehicleService(vehicleRepo)
 	vehicleMissionService := service.NewVehicleMissionService(vehicleMissionRepo, vehicleRepo)
@@ -381,6 +384,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
 	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
+	requireLeaderOrServiceManager := middleware.RequireLeaderOrBookingServiceManager(
+		employeeRepo, notificationRepo, paperworkGuard.IsBookingManager)
 	requireInventoryView := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "inventory")
 	requireToolRequest := middleware.RequireLeaderOrPermission(permissionRepo, employeeRepo, notificationRepo, "tool_requests")
 	// حساب كلفة التنفيذ: صلاحية تنعطى وتنسحب، مو دور ثابت
@@ -552,6 +557,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/services", middleware.Chain(http.HandlerFunc(serviceHandler.Create), requireAuth, requireContentTech))
 	mux.Handle("POST /api/services/{id}/skills", middleware.Chain(http.HandlerFunc(serviceHandler.CreateSkill), requireAuth, requireContentTech))
 	mux.Handle("DELETE /api/services/{id}", middleware.Chain(http.HandlerFunc(serviceHandler.Delete), requireAuth, requireAdmin))
+	// ⚠️ إداري بس: هذا يحدد **منو مسؤول عن ورق** خدمة كاملة — قرار
+	// تنظيمي مو تفضيل شخصي.
+	// ⚠️ `requireAuth` بس ومقصود: الاستعلام محصور بالبناء على خدمات
+	// المُستدعي — موظف مو مسؤول خدمة يرجع بقائمة فاضية، مو بخطأ.
+	mux.Handle("GET /api/bookings/manager-paperwork", middleware.Chain(http.HandlerFunc(bookingHandler.ManagerPaperwork), requireAuth))
+	mux.Handle("PUT /api/services/{id}/manager-paperwork", middleware.Chain(http.HandlerFunc(serviceHandler.SetManagerPaperwork), requireAuth, requireAdmin))
 
 	// العملاء — أي مسجل دخول يقدر يبحث وينشئ عميل (يطابق سلوك المبيعات بالباك إند القديم)
 	mux.Handle("GET /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth))
@@ -1395,7 +1406,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/materials", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListMaterials), requireAuth))
 	mux.Handle("GET /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.List), requireAuth, requireLeaderBasket))
 	mux.Handle("GET /api/leader-invoices/{id}", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Get), requireAuth, requireLeaderBasket))
-	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeader))
+	// ⚠️ الليدر مثل اليوم، **وزيادةً** مسؤول خدمة الحجز: بخدمات مثل
+	// الجي بي اس والداش كام الفاتورة على مسؤول الخدمة، وهو مو
+	// بالضرورة ليدر. والي مو الاثنين تنسجّل مخالفته مثل ما چان.
+	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeaderOrServiceManager))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد

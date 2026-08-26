@@ -28,6 +28,12 @@ type Service struct {
 	// غيرها بلا تعديل كود.
 	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
 	RequiresDeviceInfo bool `db:"requiresDeviceInfo" json:"requiresDeviceInfo"`
+	// ManagerHandlesPaperwork التقرير والفاتورة على **مسؤول الخدمة**
+	// مو على الفني — للخدمات الي يكفيها فني واحد (جي بي اس، داش كام).
+	// ⚠️ منفصل عن RequiresDeviceInfo عمداً: معنيان مختلفان، ودمجهما
+	// يخلّي خدمة جديدة تاخذ قاعدة الورق بالصدفة.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
+	ManagerHandlesPaperwork bool `db:"managerHandlesPaperwork" json:"managerHandlesPaperwork"`
 	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
 	Skills    []Skill   `db:"-" json:"skills"`
 }

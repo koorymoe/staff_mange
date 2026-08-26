@@ -9,15 +9,24 @@ import (
 
 type WorkReportService struct {
 	repo *repository.WorkReportRepository
+	// guard يقرّر منو يحق يسوي ورق الحجز — nil يعني بلا قاعدة (سلوك قديم).
+	guard *PaperworkGuard
 }
 
-func NewWorkReportService(repo *repository.WorkReportRepository) *WorkReportService {
-	return &WorkReportService{repo: repo}
+func NewWorkReportService(repo *repository.WorkReportRepository, guard *PaperworkGuard) *WorkReportService {
+	return &WorkReportService{repo: repo, guard: guard}
 }
 
-func (s *WorkReportService) Create(employeeID string, req model.CreateWorkReportRequest) (*model.WorkReport, error) {
+func (s *WorkReportService) Create(employeeID, role string, req model.CreateWorkReportRequest) (*model.WorkReport, error) {
 	if req.BookingID == "" {
 		return nil, errors.New("bookingId مطلوب")
+	}
+	// ⚠️ بخدمات مؤشّرة، التقرير على **مسؤول الخدمة** مو على الفني.
+	// وبقية الخدمات ما تنلمس — الحارس يمرّرها بلا أي فحص.
+	if s.guard != nil {
+		if err := s.guard.Check(req.BookingID, employeeID, role); err != nil {
+			return nil, err
+		}
 	}
 	if req.WorkStatus != "COMPLETED" && req.WorkStatus != "STOPPED" {
 		return nil, errors.New("حالة العمل غير صحيحة")

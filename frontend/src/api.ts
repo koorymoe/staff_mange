@@ -59,6 +59,10 @@ export interface Service {
   skills: Skill[]
   /** الخدمة تطلب عدد أجهزة ونوع مركبة وقت الحجز (جي بي اس) */
   requiresDeviceInfo?: boolean
+  /** ═══ الورق (تقرير + فاتورة) على مسؤول الخدمة مو على الفني ═══
+   *  للخدمات الي يكفيها فني واحد — جي بي اس وداش كام.
+   *  ⚠️ منفصل عن `requiresDeviceInfo` عمداً: معنيان مختلفان. */
+  managerHandlesPaperwork?: boolean
 }
 
 export interface ServiceManager {
@@ -3020,6 +3024,11 @@ export const api = {
   getServiceManagers: () => request<ServiceManager[]>('/service-managers'),
   setServiceManagers: (employeeId: string, serviceIds: string[]) =>
     request<ServiceManager[]>('/service-managers', { method: 'PUT', body: JSON.stringify({ employeeId, serviceIds }) }),
+  /** حجوزات خدماتي المؤشّرة الي ورقها عليّ كمسؤول خدمة. */
+  getManagerPaperwork: () => request<Booking[]>('/bookings/manager-paperwork'),
+  /** الورق (تقرير + فاتورة) على مسؤول الخدمة مو على الفني. */
+  setServiceManagerPaperwork: (serviceId: string, enabled: boolean) =>
+    request<{ enabled: boolean }>(`/services/${serviceId}/manager-paperwork`, { method: 'PUT', body: JSON.stringify({ enabled }) }),
 
   // تتبع الموقع الحي
   createLocationPing: (data: { latitude: number; longitude: number; bookingId?: string | null }) =>

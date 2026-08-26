@@ -18,6 +18,15 @@ func NewServiceCatalogService(repo *repository.ServiceRepository) *ServiceCatalo
 	return &ServiceCatalogService{repo: repo}
 }
 
+// SetManagerHandlesPaperwork يأشّر إن ورق هالخدمة (تقرير + فاتورة) على
+// مسؤولها مو على الفني.
+func (s *ServiceCatalogService) SetManagerHandlesPaperwork(serviceID string, on bool) error {
+	if serviceID == "" {
+		return errors.New("معرّف الخدمة مطلوب")
+	}
+	return s.repo.SetManagerHandlesPaperwork(serviceID, on)
+}
+
 func (s *ServiceCatalogService) List() ([]model.Service, error) {
 	return s.repo.List()
 }

@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
+	"strings"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -22,8 +24,15 @@ func (h *WorkReportHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	report, err := h.service.Create(middleware.EmployeeIDFromContext(r), req)
+	report, err := h.service.Create(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), req)
 	if err != nil {
+		// ⚠️ الرفض بسبب الصلاحية يطلع ٤٠٣ مو ٤٠٠: الواجهة تفرّق
+		// بينهما، و«بيانات الطلب غير صحيحة» على منع صلاحية تخلّي
+		// الفني يعيد كتابة تقريره عشر مرات بلا فايدة.
+		if errors.Is(err, service.ErrPaperworkNotYours) || strings.Contains(err.Error(), "مسؤول الخدمة") {
+			WriteError(w, http.StatusForbidden, err.Error())
+			return
+		}
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}

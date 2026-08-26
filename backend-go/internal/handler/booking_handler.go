@@ -31,6 +31,19 @@ func NewBookingHandler(s *service.BookingService, p *repository.PermissionReposi
 // SetReminderService يربط خدمة التذكير بعد البناء.
 func (h *BookingHandler) SetReminderService(r *service.BookingReminderService) { h.reminders = r }
 
+// GET /api/bookings/manager-paperwork — حجوزات خدماتي الي ورقها عليّ.
+//
+// ⚠️ بلا معرّف موظف بالطلب: **الي بالتوكن هو الي ينحسب**. لو أخذناه
+// من الرابط، أي موظف يبدّل الرقم ويشوف حجوزات غيره.
+func (h *BookingHandler) ManagerPaperwork(w http.ResponseWriter, r *http.Request) {
+	bookings, err := h.service.ListManagerPaperwork(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الورق")
+		return
+	}
+	WriteJSON(w, http.StatusOK, bookings)
+}
+
 // GET /api/v1/bookings?status=&customerId=&assignedTo=me
 //
 // الفني يريد مهامه هو — كانت الواجهة تنزّل كل حجوزات الشركة (بكل

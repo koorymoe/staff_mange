@@ -58,6 +58,22 @@ func (h *ServiceHandler) CreateSkill(w http.ResponseWriter, r *http.Request) {
 }
 
 // DELETE /api/services/{id}
+// PUT /api/services/{id}/manager-paperwork — الورق على مسؤول الخدمة.
+func (h *ServiceHandler) SetManagerPaperwork(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Enabled bool `json:"enabled"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	if err := h.service.SetManagerHandlesPaperwork(r.PathValue("id"), req.Enabled); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الإعداد")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"enabled": req.Enabled})
+}
+
 func (h *ServiceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Delete(r.PathValue("id")); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

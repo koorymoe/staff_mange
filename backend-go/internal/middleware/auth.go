@@ -1,8 +1,10 @@
 package middleware
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"fmt"
 	"net/http"
 	"strings"
@@ -301,6 +303,66 @@ func RequireLeader(employees *repository.EmployeeRepository, notifications *repo
 				return
 			}
 			next.ServeHTTP(w, r)
+		})
+	}
+}
+
+// RequireLeaderOrBookingServiceManager نفس RequireLeader بالضبط، بس
+// يسمح زيادةً لـ**مسؤول خدمة الحجز** الي بالطلب.
+//
+// ليش موجود: بخدمات مثل الجي بي اس والداش كام، الفاتورة على مسؤول
+// الخدمة مو على الفني — ومسؤول الخدمة مو بالضرورة ليدر.
+//
+// ⚠️⚠️ **الحارس يتوسّع ما ينفكّ.** الي مو ليدر ولا مسؤول الخدمة يبقى
+// يمر بنفس `recordViolationAndBlock` — يعني تنسجّل مخالفته ويتقرّب من
+// الحظر التلقائي، بالضبط مثل اليوم. لو نقلنا الفحص جوّا الهاندلر
+// (أسهل بكثير) چان ضاع هالجزء بصمت: الرفض يصير رسالة خطأ عادية،
+// والي يجرّب يفوّت الحارس مية مرة ما ينحظر ولا أحد ينتبه.
+//
+// ⚠️ ويقرا الجسم ويرجّعه: `bookingId` ما يجي بالمسار، يجي بجسم الطلب.
+// بلا الإرجاع، الهاندلر يلگه جسماً فاضياً — وتصير الفاتورة تفشل
+// بـ«بيانات الطلب غير صحيحة» بلا أي علاقة بالسبب الحقيقي.
+func RequireLeaderOrBookingServiceManager(
+	employees *repository.EmployeeRepository,
+	notifications *repository.NotificationRepository,
+	isManagerOfBooking func(employeeID, bookingID string) (bool, error),
+) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" || role == "OWNER" {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID := EmployeeIDFromContext(r)
+
+			if isLeader, err := employees.IsLeaderFreshByID(employeeID); err == nil && isLeader {
+				next.ServeHTTP(w, r)
+				return
+			}
+
+			// مو ليدر — نشوف إذا مسؤول خدمة هالحجز
+			bookingID := ""
+			if r.Body != nil {
+				raw, err := io.ReadAll(io.LimitReader(r.Body, 4<<20))
+				_ = r.Body.Close()
+				if err == nil {
+					r.Body = io.NopCloser(bytes.NewReader(raw))
+					var probe struct {
+						BookingID string `json:"bookingId"`
+					}
+					_ = json.Unmarshal(raw, &probe)
+					bookingID = probe.BookingID
+				}
+			}
+			if bookingID != "" && isManagerOfBooking != nil {
+				if ok, err := isManagerOfBooking(employeeID, bookingID); err == nil && ok {
+					next.ServeHTTP(w, r)
+					return
+				}
+			}
+
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
 		})
 	}
 }
