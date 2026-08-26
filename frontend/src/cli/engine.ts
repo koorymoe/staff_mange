@@ -299,7 +299,11 @@ export function complete(grammar: CliGrammar, session: CliSession, line: string)
 //
 // ⚠️ ينبني **من الحالة** مو من نص محفوظ: لو انكتب نصاً جاهزاً، الفني
 // يغيّر إعداداً ويشوف `show run` ما تتغيّر — وتنكشف اللعبة بثانية.
-function renderShow(kind: string, state: CliState, grammar: CliGrammar): string[] {
+/** ⚠️ مصدَّرة حتى تبويب «الإعداد» بلوحة الكونسول يعرض **نفس** النص
+ *  الي يعرضه أمر `show running-config` بالضبط. لو انكتب مولّد ثانٍ
+ *  للتبويب، الاثنان يفترقان بأول تعديل — والمتدرّب يشوف إعدادين
+ *  مختلفين لنفس الجهاز وما يعرف منو الصح. */
+export function renderShow(kind: string, state: CliState, grammar: CliGrammar): string[] {
   const host = String(getPath(state, 'hostname') ?? 'Switch')
   const vlans = (getPath(state, 'vlans') as Record<string, { name?: string }>) ?? {}
   const ifs = (getPath(state, 'interfaces') as Record<string, Record<string, unknown>>) ?? {}

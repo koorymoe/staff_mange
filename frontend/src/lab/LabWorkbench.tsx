@@ -35,9 +35,6 @@ import { computeStages, quickTest } from './stages'
 import { Symbol } from './symbols'
 import type { DomainEngine, DomainId, LabDoc, ParamDef, SimResult } from './types'
 
-// ⚠️ الترمنال `lazy`: أغلب من يفتح اللوح ما يفتح كونسولاً، وتحميل
-// محرّك الأوامر مع الصفحة يثقّلها بلا فايدة.
-const CliTerminal = lazy(() => import('../cli/CliTerminal'))
 // ⚠️ المشهد الثلاثي `lazy` هم: Babylon حزمة ثقيلة، وأغلب الشغل
 // يصير بالمنظر التخطيطي. تحميلها مع الاستوديو يثقّل فتحه بلا فايدة.
 const Scene3D = lazy(() => import('./Scene3D'))
@@ -45,6 +42,8 @@ const Scene3D = lazy(() => import('./Scene3D'))
 const PanelUI = lazy(() => import('../panel/PanelUI'))
 // ⚠️ أدوات الفحص `lazy` هي هم — نفس السبب.
 const ToolsPanel = lazy(() => import('./tools/ToolsPanel'))
+// ⚠️ لوحة الكونسول `lazy` هي هم — تجرّ محرّك الأوامر وراها.
+const ConsolePanel = lazy(() => import('./ConsolePanel'))
 
 /** السويچات الي تنهيّأ بالكونسول. */
 const CLI_PARTS = new Set(['switch_l2', 'switch_poe', 'switch_l3'])
@@ -100,6 +99,15 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [console_, setConsole] = useState<string | null>(null)
   const [panel, setPanel] = useState<string | null>(null)
   const [tools, setTools] = useState(false)
+  const [logFilter, setLogFilter] = useState<'all' | 'error' | 'warn' | 'info'>('all')
+  /** ═══ مؤقّت التشغيل ═══
+   *  ⚠️ يبدي من **أول تشغيل فعلي** مو من فتح الصفحة: «المختبر شغّال
+   *  ٤٥ دقيقة» وإنت فاتح التبويب ونايم رقم يكذب.
+   *  ⚠️ والثواني بالحالة مو محسوبة وقت الرسم: `Date.now()` بالرسم
+   *  يخلّي المكوّن غير نقي، والرقم يتغيّر مع أي إعادة رسم بلا علاقة
+   *  بالوقت. */
+  const [running, setRunning] = useState(false)
+  const [elapsed, setElapsed] = useState(0)
   /** ═══ وضع التشخيص ═══
    *  ⚠️ عطل مكتوب على الشاشة **مو عطل — هو إجابة**. بهذا الوضع
    *  الأعطال تنخفي، والمتدرّب يشوف العَرَض بس ويلگي السبب بالقياس. */
@@ -202,7 +210,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
       setBusy(e instanceof Error ? e.message : 'تعذر الفتح')
     }
   }
-  const clearAll = () => { setDoc(() => ({ domain, nodes: [], links: [] })); setSelected(null) }
+  const clearAll = () => { setDoc(() => ({ domain, nodes: [], links: [] })); setSelected(null); setRunning(false); setElapsed(0) }
 
   // ⚠️ تبديل القطعة يرجّع التبويب لـ«الخصائص»: لو بقيت بتبويب
   // «الحالة» وضغطت قطعة ما إلها قراءات، تشوف لوحة فاضية وتظن
@@ -251,6 +259,29 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const qt = useMemo(() => quickTest(doc, result), [doc, result])
   const faultCount = countFaults(doc)
 
+  // ═══ شريط المقاييس ═══
+  //
+  // ⚠️⚠️ **ماكو عدادات CPU وذاكرة وقرص.** التصميم الي بعثه صاحب
+  // النظام فيه ثلاثة — وهاي **أرقام مخترعة**: المحاكي ماكو عنده معالج
+  // ولا قرص، ومؤشر متحرك يعني نعلّم الفني **يقرا رقماً يكذب**، وهاي
+  // أسوأ عادة ممكن نزرعها بيه. بدلها أرقام كل وحدة منها تنطلع بحساب
+  // يدوي من المخطط.
+  const metrics = useMemo(() => {
+    const links = doc.links.length
+    const live = result ? doc.links.filter((l) => result.linkState[l.id] === 'ok').length : 0
+    const errs = (result?.messages ?? []).filter((m) => m.kind === 'error').length
+    const warns = (result?.messages ?? []).filter((m) => m.kind === 'warn').length
+    return [
+      { k: 'الأجهزة', v: String(doc.nodes.length) },
+      { k: 'الوصلات', v: result ? `${live}/${links}` : String(links), bad: !!result && live < links },
+      { k: 'أخطاء', v: String(errs), bad: errs > 0 },
+      { k: 'تحذيرات', v: String(warns), warn: warns > 0 },
+      { k: 'الدرجة', v: result ? `${qt.score}٪` : '—', bad: !!result && qt.score < 60 },
+      ...(faultCount > 0 && !diagMode ? [{ k: 'أعطال محقونة', v: String(faultCount), warn: true }] : []),
+    ]
+  }, [doc, result, qt.score, faultCount, diagMode])
+
+
   /** ═══ القيم المقيسة الي تعرضها واجهة الجهاز ═══
    *
    *  ⚠️ **محسوبة من المحرّك مو مخزونة**: قدرة الاستقبال تُقاس بالجهاز
@@ -295,11 +326,18 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   // فيتغيّر الوقت بلا ما يصير شي.
   const [log, setLog] = useState<{ t: string; kind: string; text: string }[]>([])
 
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(() => setElapsed((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [running])
+
   const runAndLog = useCallback(() => {
     // ⚠️ الدمج **وقت التشغيل**: العطل ما يدخل المستند أبداً، فما
     // يتحفظ مع المخطط ولا يطلع كأنه اختيار المستخدم.
     const r = ENGINES[domain].run(withFaults(doc), PART_BY_ID)
     setResult(r)
+    setRunning(true)
     onResult?.(doc, r)
     const now = new Date()
     const t = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`
@@ -372,7 +410,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
               className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-1.5 text-xs font-bold text-white shadow hover:bg-emerald-500">
               ▶ تشغيل المحاكاة
             </button>
-            <button onClick={() => { setResult(null) }} disabled={!result}
+            <button onClick={() => { setResult(null); setRunning(false); setElapsed(0) }} disabled={!result}
               className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 disabled:opacity-40">
               ■ إيقاف
             </button>
@@ -564,6 +602,13 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                   result ? 'bg-emerald-500/15 text-emerald-300 ring-emerald-500/30' : 'bg-slate-800/80 text-slate-400 ring-slate-700'}`}>
                   <span className={`inline-block h-2 w-2 rounded-full ${result ? 'animate-pulse bg-emerald-400' : 'bg-slate-500'}`} />
                   {result ? 'وضع المحاكاة' : 'وضع التحرير'}
+                  {/* ⚠️ المؤقّت يبدي من **أول تشغيل فعلي**: عدّاد يمشي
+                      وإنت فاتح التبويب ونايم رقم يكذب. */}
+                  {running && (
+                    <span className="font-mono tabular-nums text-emerald-200/90">
+                      {String(Math.floor(elapsed / 60)).padStart(2, '0')}:{String(elapsed % 60).padStart(2, '0')}
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -583,17 +628,48 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
               )}
             </div>
 
+            {/* ─── شريط المقاييس ─── */}
+            <div className="flex flex-wrap items-center gap-2 border-t border-slate-800 bg-[#0b1220] px-3 py-2">
+              <span className="ml-auto text-[10px] font-bold text-slate-600">مقاييس حيّة</span>
+              {metrics.map((m) => (
+                <div key={m.k}
+                  className={`flex items-baseline gap-1.5 rounded-lg px-2.5 py-1 ring-1 ${
+                    m.bad ? 'bg-red-500/10 ring-red-500/30'
+                      : m.warn ? 'bg-amber-500/10 ring-amber-500/25'
+                        : 'bg-[#0e1626] ring-slate-800'}`}>
+                  <span className={`font-mono text-[13px] font-bold tabular-nums ${
+                    m.bad ? 'text-red-300' : m.warn ? 'text-amber-300' : 'text-slate-100'}`}>{m.v}</span>
+                  <span className="text-[10px] text-slate-500">{m.k}</span>
+                </div>
+              ))}
+            </div>
+
             {/* ─── سجل الأحداث ─── */}
             <div className="border-t border-slate-800 bg-[#0e1626]">
               <div className="flex items-center justify-between px-3 py-1.5">
-                <button onClick={() => setLog([])} className="text-[10px] text-slate-600 hover:text-slate-400">تفريغ</button>
+                <div className="flex items-center gap-1">
+                  <button onClick={() => setLog([])} className="mr-1 text-[10px] text-slate-600 hover:text-slate-400">تفريغ</button>
+                  {/* ⚠️ العدّاد على كل مرشّح: مرشّح بلا رقم يخلّي المتدرّب
+                      يضغطه ويلگاه فاضياً — والرقم يوريه وين اللي يهم قبل
+                      ما يضغط. */}
+                  {([['all', 'الكل'], ['error', 'أخطاء'], ['warn', 'تحذيرات'], ['info', 'نجاح']] as const).map(([id, label]) => {
+                    const n = id === 'all' ? log.length : log.filter((e) => e.kind === id).length
+                    return (
+                      <button key={id} onClick={() => setLogFilter(id)}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-bold transition ${
+                          logFilter === id ? 'bg-slate-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}>
+                        {label} {n > 0 && <span className="tabular-nums opacity-70">{n}</span>}
+                      </button>
+                    )
+                  })}
+                </div>
                 <h3 className="text-[12px] font-bold text-slate-300">سجل الأحداث</h3>
               </div>
               <div className="max-h-40 overflow-y-auto px-2 pb-2">
                 {log.length === 0 && (
                   <p className="px-2 py-3 text-[11px] text-slate-600">اضغط «تشغيل المحاكاة» — النتائج تنسجّل هنا بوقتها.</p>
                 )}
-                {log.map((e, i) => {
+                {log.filter((e) => logFilter === 'all' || e.kind === logFilter).map((e, i) => {
                   const chip = KIND_CHIP[e.kind] ?? KIND_CHIP.run
                   return (
                     <div key={i} className="flex items-start gap-2 border-b border-slate-800/60 px-1.5 py-1.5 last:border-0">
@@ -846,31 +922,21 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
           )
         })()}
 
-        {/* ═══ الكونسول ═══ */}
+        {/* ═══ الكونسول بتبويباته ═══ */}
         {console_ && (() => {
           const nd = doc.nodes.find((n) => n.id === console_)
           if (!nd) return null
           return (
-            <div className="border-t border-slate-800 bg-[#0b1220] p-3">
-              <div className="mb-2 flex items-center justify-between">
-                <button onClick={() => setConsole(null)} className="text-[11px] font-bold text-slate-500 hover:text-slate-300">✕ سكّر</button>
-                <p className="text-xs font-bold text-slate-200">
-                  🖥️ كونسول {String(nd.cliState?.hostname ?? nd.params.hostname ?? '')}
-                </p>
-              </div>
-              <Suspense fallback={<div className="h-[280px] rounded-xl bg-black" />}>
-                <CliTerminal
-                  key={nd.id}
-                  grammar={CISCO_LIKE}
-                  initialState={nd.cliState ?? { hostname: String(nd.params.hostname ?? 'Switch') }}
-                  onStateChange={(st) => saveCli(nd.id, st)}
-                  heightClass="h-[280px]"
-                />
-              </Suspense>
-              <p className="mt-1.5 text-[10.5px] text-slate-600">
-                مثال: <span dir="ltr" className="font-mono">en → conf t → int gi0/2 → switchport access vlan 20 → end</span>
-              </p>
-            </div>
+            <Suspense fallback={<div className="h-[340px] border-t border-slate-800 bg-[#0b1220]" />}>
+              <ConsolePanel
+                node={nd}
+                doc={doc}
+                result={result}
+                grammar={CISCO_LIKE}
+                onStateChange={(st) => saveCli(nd.id, st)}
+                onClose={() => setConsole(null)}
+              />
+            </Suspense>
           )
         })()}
 
