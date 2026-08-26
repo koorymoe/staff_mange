@@ -24,7 +24,10 @@ import { audioEngine } from './engines/audio'
 import { fireEngine } from './engines/fire'
 import { gponEngine } from './engines/gpon'
 import { networkEngine } from './engines/network'
+import { opticalPaths } from './engines/gpon'
 import { portVoltages, solarEngine } from './engines/solar'
+import { ONT_PANEL } from '../panel/ontPanel'
+import type { PanelSchema } from '../panel/schema'
 import { computeStages, quickTest } from './stages'
 import { Symbol } from './symbols'
 import type { DomainEngine, DomainId, LabDoc, ParamDef, SimResult } from './types'
@@ -35,9 +38,14 @@ const CliTerminal = lazy(() => import('../cli/CliTerminal'))
 // ⚠️ المشهد الثلاثي `lazy` هم: Babylon حزمة ثقيلة، وأغلب الشغل
 // يصير بالمنظر التخطيطي. تحميلها مع الاستوديو يثقّل فتحه بلا فايدة.
 const Scene3D = lazy(() => import('./Scene3D'))
+// ⚠️ واجهة الجهاز `lazy` هي هم — نفس سبب الكونسول والمشهد.
+const PanelUI = lazy(() => import('../panel/PanelUI'))
 
 /** السويچات الي تنهيّأ بالكونسول. */
 const CLI_PARTS = new Set(['switch_l2', 'switch_poe', 'switch_l3'])
+
+/** الأجهزة الي إلها **واجهة ويب** — تنفتح بالمتصفّح مثل الميدان. */
+const PANEL_PARTS: Record<string, PanelSchema> = { ont: ONT_PANEL }
 
 const ENGINES: Record<DomainId, DomainEngine> = {
   electrical: electricalEngine,
@@ -81,6 +89,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [pendingPart, setPendingPart] = useState<string | null>(null)
   const [result, setResult] = useState<SimResult | null>(null)
   const [console_, setConsole] = useState<string | null>(null)
+  const [panel, setPanel] = useState<string | null>(null)
   const [fitSignal, setFitSignal] = useState(0)
   const [zoomPct, setZoomPct] = useState(100)
   const [search, setSearch] = useState('')
@@ -220,6 +229,39 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const stageState = useMemo(() => computeStages(doc, result), [doc, result])
   const portV = useMemo(() => (domain === 'solar' ? portVoltages(doc) : {}), [domain, doc])
   const qt = useMemo(() => quickTest(doc, result), [doc, result])
+
+  /** ═══ القيم المقيسة الي تعرضها واجهة الجهاز ═══
+   *
+   *  ⚠️ **محسوبة من المحرّك مو مخزونة**: قدرة الاستقبال تُقاس بالجهاز
+   *  الحقيقي، فلو انخزنت كخاصية چان الفني يگدر «يعدّلها» — وهذا
+   *  مستحيل بالميدان، ويعلّم عادة ما توجد. */
+  const panelComputed = useMemo((): Record<string, { text: string; tone?: 'ok' | 'warn' | 'bad' }> => {
+    if (!panel) return {}
+    const nd = doc.nodes.find((n) => n.id === panel)
+    if (!nd) return {}
+    const path = opticalPaths(doc).find((x) => x.ontId === nd.id)
+    const minRx = Number(nd.params.rxMin ?? -27)
+    const maxRx = Number(nd.params.rxMax ?? -8)
+    const registered = !!path && path.rxDbm >= minRx && path.rxDbm <= maxRx
+    const olt = doc.nodes.find((n) => n.partId === 'olt')
+    const vlanOk = Number(nd.params.wanVlan ?? 0) === Number(olt?.params.serviceVlan ?? 35)
+    const credOk = String(nd.params.wanMode ?? 'pppoe') !== 'pppoe'
+      || String(nd.params.pppoeUser ?? '').trim().length > 0
+    return {
+      ponStatus: path
+        ? { text: registered ? 'مسجّل (Online)' : 'ما يسجّل', tone: registered ? 'ok' as const : 'bad' as const }
+        : { text: 'ماكو ليف', tone: 'bad' as const },
+      rxDbm: path
+        ? { text: path.rxDbm.toFixed(2), tone: registered ? 'ok' as const : 'bad' as const }
+        : { text: '—' },
+      lossDb: path ? { text: path.lossDb.toFixed(2) } : { text: '—' },
+      splitters: path ? { text: String(path.splitters) } : { text: '—' },
+      serviceStatus: registered && vlanOk && credOk
+        ? { text: 'متصل', tone: 'ok' as const }
+        : { text: registered ? 'مسجّل بلا إنترنت' : 'مقطوع', tone: 'bad' as const },
+      wanIp: registered && vlanOk && credOk ? { text: '10.42.7.113', tone: 'ok' as const } : { text: '—' },
+    }
+  }, [panel, doc])
 
   const errors = msgs.filter((m) => m.kind === 'error')
   const warns = msgs.filter((m) => m.kind === 'warn')
@@ -572,6 +614,15 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                         ⚠️ {selPart.danger}
                       </p>
                     )}
+                    {PANEL_PARTS[selNode.partId] && (
+                      <button
+                        onClick={() => setPanel(panel === selNode.id ? null : selNode.id)}
+                        className={`w-full rounded-lg py-2 text-[12px] font-bold transition ${
+                          panel === selNode.id ? 'bg-slate-700 text-white' : 'bg-sky-950 text-sky-300 ring-1 ring-sky-800 hover:bg-sky-900'}`}
+                      >
+                        🌐 {panel === selNode.id ? 'سكّر واجهة الجهاز' : 'افتح واجهة الجهاز'}
+                      </button>
+                    )}
                     {CLI_PARTS.has(selNode.partId) && (
                       <button
                         onClick={() => setConsole(console_ === selNode.id ? null : selNode.id)}
@@ -710,6 +761,34 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
             </div>
           </div>
         </div>
+
+        {/* ═══ واجهة الجهاز ═══ */}
+        {panel && (() => {
+          const nd = doc.nodes.find((n) => n.id === panel)
+          const schema = nd ? PANEL_PARTS[nd.partId] : null
+          if (!nd || !schema) return null
+          return (
+            <div className="border-t border-slate-800 bg-[#0b1220] p-3">
+              <Suspense fallback={<div className="h-[320px] rounded-xl bg-[#0f1420]" />}>
+                <PanelUI
+                  key={nd.id}
+                  schema={schema}
+                  params={nd.params}
+                  computed={panelComputed}
+                  onClose={() => setPanel(null)}
+                  onApply={(next) => {
+                    // ⚠️ الكتابة تروح لنفس `params` الي يقرا منه المحرّك —
+                    // فالتطبيق يغيّر نتيجة المحاكاة بلا أي ربط إضافي.
+                    setDoc((d) => ({
+                      ...d,
+                      nodes: d.nodes.map((n) => (n.id === nd.id ? { ...n, params: next as typeof n.params } : n)),
+                    }))
+                  }}
+                />
+              </Suspense>
+            </div>
+          )
+        })()}
 
         {/* ═══ الكونسول ═══ */}
         {console_ && (() => {
