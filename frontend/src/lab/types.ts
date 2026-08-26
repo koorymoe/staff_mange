@@ -76,7 +76,7 @@ export interface PartDef {
   danger?: string
 }
 
-export type DomainId = 'electrical' | 'solar' | 'network' | 'fire' | 'audio' | 'gpon' | 'cctv'
+export type DomainId = 'electrical' | 'solar' | 'network' | 'fire' | 'audio' | 'gpon' | 'cctv' | 'access'
 
 /** نسخة قطعة موضوعة باللوح. */
 export interface LabNode {

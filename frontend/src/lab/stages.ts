@@ -47,6 +47,14 @@ export const CCTV_STAGES: Stage[] = [
   { id: 'diag', label: 'التشخيص', hint: 'ماكو أخطاء — المنظومة تسجّل كل الكاميرات المدة المطلوبة.' },
 ]
 
+export const ACCESS_STAGES: Stage[] = [
+  { id: 'build', label: 'بناء الباب', hint: 'حط قفلاً ووحدة تحكم ومغذّياً — وأشّر رقم الباب على كل قطعة.' },
+  { id: 'egress', label: 'مسار الخروج', hint: 'كل باب لازم عليه زر خروج أو حسّاس أو كسر زجاج.' },
+  { id: 'safety', label: 'السلامة', hint: 'مخارج الطوارئ بأقفال مغناطيسية، ومربوطة بتماس الحريق.' },
+  { id: 'power', label: 'التغذية والبطارية', hint: 'الجهد يوصل للقفل، والبطارية تغطّي ٢٤ ساعة.' },
+  { id: 'diag', label: 'التشخيص', hint: 'ماكو أخطاء — كل باب آمن ويشتغل.' },
+]
+
 export interface StageState {
   stages: Stage[]
   /** رقم المرحلة الحالية — أول وحدة ما اكتملت. */
@@ -69,7 +77,8 @@ export interface StageState {
 export function computeStages(doc: LabDoc, result: SimResult | null): StageState {
   const stages = doc.domain === 'solar' ? SOLAR_STAGES
     : doc.domain === 'gpon' ? GPON_STAGES
-    : doc.domain === 'cctv' ? CCTV_STAGES : GENERIC_STAGES
+    : doc.domain === 'cctv' ? CCTV_STAGES
+    : doc.domain === 'access' ? ACCESS_STAGES : GENERIC_STAGES
   const has = (partId: string) => doc.nodes.some((n) => n.partId === partId)
   const errors = (result?.messages ?? []).filter((m) => m.kind === 'error').length
 
@@ -89,6 +98,20 @@ export function computeStages(doc: LabDoc, result: SimResult | null): StageState
     done.push(built && wired)
     done.push(built && wired && !!result && !cfgWarn)
     done.push(!!result && built && wired)
+    done.push(!!result && errors === 0 && done.every(Boolean))
+  } else if (doc.domain === 'access') {
+    const built = (has('mag_lock') || has('electric_strike')) && has('ac_controller') && has('ac_psu')
+    const msgs = result?.messages ?? []
+    // ⚠️ الأنماط تطابق **نص المحرّك حرفياً** — النمط الي ما ينطابق
+    // يعني مرحلة تبقى خضراء دائماً، وهذا انلقى مرتين بمرحلة الكاميرات.
+    const noErr = (re: RegExp) => !!result && !msgs.some((m) => m.kind === 'error' && re.test(m.text))
+    const egressOk = noErr(/وسيلة خروج حر|كسر الزجاج/)
+    const safeOk = noErr(/مخرج طوارئ وعليه قفل كهربائي|بلا ربط بإنذار الحريق|تماس الحريق \*\*مجسور\*\*/)
+    const powerOk = noErr(/الجهد الواصل|أمبير·ساعة|فوگ طاقته|دايود/)
+    done.push(built)
+    done.push(built && egressOk)
+    done.push(built && safeOk)
+    done.push(built && powerOk)
     done.push(!!result && errors === 0 && done.every(Boolean))
   } else if (doc.domain === 'cctv') {
     const built = has('ip_camera') && has('nvr')
@@ -184,6 +207,28 @@ export function quickTest(doc: LabDoc, result: SimResult | null): QuickTest {
     checks.push(mk('backup', 'الاحتياطي والإنتاج اليومي',
       !hasWarn(/تغطّي الأحمال/) && !hasWarn(/ما يكفي، تحتاج ألواحاً/),
       'الاحتياطي أو الإنتاج اليومي ما يكفي الأحمال.'))
+  } else if (doc.domain === 'access') {
+    // ⚠️ **القاتل أول واحد** بالقائمة: ترتيب الفحوص هو ترتيب
+    // الأولوية الي يقراها المتدرّب، وفحص يموّت ما ينحط بالآخر.
+    checks.push(mk('failsafe', '☠️ مخارج الطوارئ تنفتح بانقطاع التيار',
+      !hasErr(/مخرج طوارئ وعليه قفل كهربائي/),
+      'باب مخرج طوارئ بقفل يبقى مقفلاً بانقطاع التيار — يحبس الناس.'))
+    checks.push(mk('egress', 'كل باب عليه مخرج حر',
+      !hasErr(/وسيلة خروج حر/) && !hasErr(/كسر الزجاج/),
+      'باب بلا زر خروج أو حسّاس أو زجاج — أو زجاج مربوط بالوحدة.'))
+    // ⚠️ النمط بقدر الجملة الي تخصّه: `/إنذار الحريق/` لحاله يخطف
+    // رسالة البطارية (تذكر «حساب على طريقة إنذار الحريق» كمقارنة)
+    // فيفشّل فحصاً سليماً — وفحص يفشل بلا سبب يخلّي المتدرّب يدوّر
+    // على عطل ما موجود.
+    checks.push(mk('fire', 'الأقفال تفصل بإنذار الحريق',
+      !hasErr(/بلا ربط بإنذار الحريق/) && !hasErr(/تماس الحريق \*\*مجسور\*\*/),
+      'قفل مغناطيسي بلا تماس حريق — الحريق يصير والكهرباء شغّالة.'))
+    checks.push(mk('voltage', 'الجهد يوصل للقفل', !hasErr(/الجهد الواصل/),
+      'هبوط جهد على مسافة القفل — يمسك ضعيفاً أو ما يفتح.'))
+    checks.push(mk('battery', 'البطارية تغطّي ٢٤ ساعة', !hasErr(/أمبير·ساعة/) && !hasErr(/فوگ طاقته/),
+      'البطارية ما تكفي أو السحب فوگ طاقة المغذّي.'))
+    checks.push(mk('diode', 'دايود على كل ملف قفل', !hasErr(/دايود/),
+      'بلا دايود، نبضة الرجوع تاكل اللوحة خلال أشهر.'))
   } else if (doc.domain === 'cctv') {
     checks.push(mk('channels', 'عدد القنوات يكفي الكاميرات', !hasErr(/على مسجّل \d+ قنوات/),
       'كاميرات أكثر من قنوات المسجّل — الزيادة ما تنسجّل أصلاً.'))

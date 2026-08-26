@@ -116,6 +116,41 @@ export const FAULTS: FaultDef[] = [
     symptom: 'التحميل يزيد بلا ما يلاحظ الفني — يظهر لمن يجمع الخط.',
     params: { tapW: 30 },
   },
+
+  // ═══ التحكم بالدخول ═══
+  //
+  // ⚠️ الأعطال هنا **كلها متأخّرة الأثر**: بلا دايود تخرب اللوحة بعد
+  // أشهر، وبطارية ضعيفة تنكشف بأول انقطاع طويل، وتمديد طويل يشتغل
+  // بالفحص القريب. ماكو ولا واحد منها ينكشف يوم التسليم — وهذا
+  // بالضبط ليش المحاكي يعلّمها أحسن من الميدان.
+  {
+    id: 'no_diode', label: 'قفل بلا دايود', domains: ['access'], target: 'node',
+    parts: ['mag_lock', 'electric_strike'],
+    symptom: 'اللوحة «تخرب بلا سبب» بعد أشهر، وتبديلها يرجّع نفس العطل.',
+    params: { diode: false },
+  },
+  {
+    id: 'weak_ac_battery', label: 'بطارية تحكّم ضعيفة', domains: ['access'], target: 'node',
+    parts: ['ac_psu'],
+    symptom: 'الأقفال تفتح لحالها بعد ساعة من انقطاع الكهرباء.',
+    params: { ah: 1.2 },
+  },
+  {
+    id: 'lock_long_run', label: 'تمديد قفل طويل ورفيع', domains: ['access'], target: 'link',
+    symptom: 'الباب يبين مقفلاً وينفتح بدفعة، أو القفل يطقطق وما يفتح.',
+    params: { lengthM: 60, gauge: 'awg22' },
+  },
+  {
+    id: 'reader_far', label: 'قارئ بعيد', domains: ['access'], target: 'link',
+    symptom: 'القارئ يقرا مرة ويطنّش مرتين — والبطاقة سليمة.',
+    params: { lengthM: 220 },
+  },
+  {
+    id: 'fire_relay_bypassed', label: 'تماس الحريق مجسور', domains: ['access'], target: 'node',
+    parts: ['fire_relay'],
+    symptom: 'ماكو عَرَض أصلاً — المنظومة تبدو شغّالة تماماً.',
+    params: { bypassed: true },
+  },
 ]
 
 export function faultsFor(domain: DomainId, target: 'node' | 'link', partId?: string): FaultDef[] {

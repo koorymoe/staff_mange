@@ -22,6 +22,7 @@ import { DOMAINS, partsForDomain, PART_BY_ID } from './catalog'
 import { electricalEngine } from './engines/electrical'
 import { audioEngine } from './engines/audio'
 import { fireEngine } from './engines/fire'
+import { accessEngine } from './engines/access'
 import { cctvEngine } from './engines/cctv'
 import { gponEngine } from './engines/gpon'
 import { networkEngine } from './engines/network'
@@ -59,6 +60,7 @@ const ENGINES: Record<DomainId, DomainEngine> = {
   audio: audioEngine,
   gpon: gponEngine,
   cctv: cctvEngine,
+  access: accessEngine,
 }
 
 export default function LabWorkbench() {
@@ -87,6 +89,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
       audio: { domain: 'audio', nodes: [], links: [] },
       gpon: { domain: 'gpon', nodes: [], links: [] },
       cctv: { domain: 'cctv', nodes: [], links: [] },
+      access: { domain: 'access', nodes: [], links: [] },
     }
     if (startDoc) empty[startDoc.domain] = startDoc
     return empty
@@ -988,7 +991,11 @@ function Field({ def, value, onChange, dark }: {
           className={`w-full rounded-lg px-3 py-1.5 text-[12px] font-bold transition ${
             value ? 'bg-emerald-600 text-white' : dark ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}
         >
-          {value ? 'مغلق ✓' : 'مفتوح'}
+          {/* ⚠️ **نعم/لا مو مفتوح/مغلق.** الخانة تجاوب سؤالاً كتبه
+              الكتالوگ («الباب مخرج طوارئ؟» · «دايود على الملف» ·
+              «مجسور»)، و«مفتوح» على سؤال مثل هذا ما يعني شي —
+              المتدرّب يقراها وما يعرف جاوب بنعم لو بلا. */}
+          {value ? 'نعم ✓' : 'لا'}
         </button>
       ) : def.kind === 'select' ? (
         <select

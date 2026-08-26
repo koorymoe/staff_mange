@@ -346,7 +346,147 @@ const Monitor = ({ w, h, accent, live }: SymProps) => (
   </g>
 )
 
+// ═══ التحكم بالدخول ═══
+//
+// ⚠️⚠️ **المغناطيسي والاسترايك لازم يفترقون بلمحة.** هما القطعتان
+// الي الخلط بينهما قاتل، ورمزان متشابهان يخلّون المخطط **يخفي**
+// الخطأ بدل ما يبيّنه. فالمغناطيسي لوح عريض بخطوط مجال، والاسترايك
+// لسان نحيف بفتحة — وشكلهما الحقيقي بالميدان هيچ فعلاً.
+
+const AcCtrl = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <rect x={0} y={h * 0.12} width={w} height={h * 0.64} rx={5} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    {/* ريلايان — الي يقطعون تغذية الأقفال */}
+    {[0.3, 0.6].map((fx, i) => (
+      <g key={i}>
+        <rect x={w * fx} y={h * 0.26} width={w * 0.14} height={h * 0.2} rx={2} fill="none" stroke={STROKE} strokeWidth={1.2} />
+        <line x1={w * (fx + 0.02)} y1={h * 0.42} x2={w * (fx + 0.12)} y2={h * 0.3} stroke={STROKE} strokeWidth={1.2} />
+      </g>
+    ))}
+    <text x={w * 0.14} y={h * 0.4} fontSize={10} fill="#94a3b8" textAnchor="middle" fontWeight="bold">AC</text>
+    <line x1={w * 0.1} y1={h * 0.62} x2={w * 0.9} y2={h * 0.62} stroke="#475569" strokeWidth={4} strokeDasharray="3 3" />
+    {live && <circle cx={w * 0.9} cy={h * 0.24} r={3} fill="#4ade80" />}
+  </g>
+)
+
+const MagLock = ({ w, h, accent, params }: SymProps) => {
+  const egress = params.isEgress === true || params.isEgress === 'true'
+  return (
+    <g>
+      {/* لوح عريض — الشكل الحقيقي للمغناطيسي */}
+      <rect x={w * 0.06} y={h * 0.3} width={w * 0.88} height={h * 0.34} rx={3}
+        fill={FILL} stroke={accent} strokeWidth={2} />
+      {/* خطوط المجال المغناطيسي — تفرّقه عن أي قطعة ثانية بلمحة */}
+      {[0.25, 0.45, 0.65].map((fx, i) => (
+        <path key={i} d={`M ${w * fx} ${h * 0.34} Q ${w * (fx + 0.06)} ${h * 0.47} ${w * fx} ${h * 0.6}`}
+          fill="none" stroke="#38bdf8" strokeWidth={1.3} />
+      ))}
+      <text x={w * 0.5} y={h * 0.84} fontSize={9} fill={egress ? '#4ade80' : '#94a3b8'} textAnchor="middle" fontWeight="bold">
+        {egress ? 'مخرج طوارئ ✓' : 'مغناطيسي'}
+      </text>
+    </g>
+  )
+}
+
+const Strike = ({ w, h, accent, params }: SymProps) => {
+  // ⚠️ باب مخرج طوارئ بهالقفل = خطأ قاتل، والرمز يصرخ بيه أحمر
+  // قبل ما يشغّل المتدرّب المحاكاة أصلاً.
+  const bad = params.isEgress === true || params.isEgress === 'true'
+  return (
+    <g>
+      {/* لسان نحيف بفتحة — الشكل الحقيقي للاسترايك */}
+      <rect x={w * 0.38} y={h * 0.18} width={w * 0.24} height={h * 0.5} rx={2}
+        fill={FILL} stroke={bad ? '#f87171' : accent} strokeWidth={2} />
+      <path d={`M ${w * 0.44} ${h * 0.3} L ${w * 0.56} ${h * 0.3} L ${w * 0.56} ${h * 0.48} L ${w * 0.44} ${h * 0.56} Z`}
+        fill="none" stroke={STROKE} strokeWidth={1.3} />
+      <text x={w * 0.5} y={h * 0.86} fontSize={9} fill={bad ? '#f87171' : '#94a3b8'} textAnchor="middle" fontWeight="bold">
+        {bad ? '☠️ يحبس' : 'استرايك'}
+      </text>
+    </g>
+  )
+}
+
+const Reader = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <rect x={w * 0.28} y={h * 0.1} width={w * 0.44} height={h * 0.62} rx={5} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    {/* موجات القراءة */}
+    {[0.1, 0.16].map((r, i) => (
+      <path key={i} d={`M ${w * (0.5 - r)} ${h * 0.3} Q ${w * 0.5} ${h * 0.2} ${w * (0.5 + r)} ${h * 0.3}`}
+        fill="none" stroke="#38bdf8" strokeWidth={1.2} />
+    ))}
+    <rect x={w * 0.38} y={h * 0.42} width={w * 0.24} height={h * 0.14} rx={2} fill="none" stroke={STROKE} strokeWidth={1.2} />
+    {live && <circle cx={w * 0.5} cy={h * 0.64} r={2.5} fill="#4ade80" />}
+  </g>
+)
+
+const ExitBtn = ({ w, h, accent }: SymProps) => (
+  <g>
+    <rect x={w * 0.24} y={h * 0.12} width={w * 0.52} height={h * 0.6} rx={5} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    <circle cx={w * 0.5} cy={h * 0.4} r={h * 0.16} fill="#16a34a" stroke="#4ade80" strokeWidth={1.5} />
+    <text x={w * 0.5} y={h * 0.88} fontSize={9} fill="#4ade80" textAnchor="middle" fontWeight="bold">خروج</text>
+  </g>
+)
+
+const Rex = ({ w, h, accent }: SymProps) => (
+  <g>
+    <rect x={w * 0.18} y={h * 0.2} width={w * 0.64} height={h * 0.3} rx={4} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    {/* مخروط الكشف */}
+    <path d={`M ${w * 0.5} ${h * 0.5} L ${w * 0.28} ${h * 0.86} L ${w * 0.72} ${h * 0.86} Z`}
+      fill="#38bdf8" fillOpacity={0.12} stroke="#38bdf8" strokeWidth={1} strokeDasharray="2 2" />
+  </g>
+)
+
+const BreakGlass = ({ w, h, accent }: SymProps) => (
+  <g>
+    <rect x={w * 0.22} y={h * 0.12} width={w * 0.56} height={h * 0.6} rx={4} fill="#450a0a" stroke={accent} strokeWidth={1.8} />
+    {/* شرخ الزجاج */}
+    <path d={`M ${w * 0.34} ${h * 0.2} L ${w * 0.5} ${h * 0.42} L ${w * 0.4} ${h * 0.46} L ${w * 0.62} ${h * 0.66}`}
+      fill="none" stroke="#fca5a5" strokeWidth={1.5} />
+    <text x={w * 0.5} y={h * 0.9} fontSize={8.5} fill="#fca5a5" textAnchor="middle" fontWeight="bold">اكسر</text>
+  </g>
+)
+
+const AcPsu = ({ w, h, accent, params }: SymProps) => (
+  <g>
+    <rect x={0} y={h * 0.1} width={w} height={h * 0.66} rx={5} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    <text x={w * 0.3} y={h * 0.4} fontSize={11} fill="#94a3b8" textAnchor="middle" fontWeight="bold">
+      {String(params.voltage ?? 12)}V
+    </text>
+    {/* بطارية داخلية */}
+    <rect x={w * 0.54} y={h * 0.26} width={w * 0.32} height={h * 0.3} rx={2} fill="none" stroke={STROKE} strokeWidth={1.2} />
+    <rect x={w * 0.86} y={h * 0.34} width={w * 0.04} height={h * 0.14} fill={STROKE} />
+    <text x={w * 0.7} y={h * 0.47} fontSize={9} fill="#cbd5e1" textAnchor="middle">{String(params.ah ?? 7)}Ah</text>
+    <line x1={w * 0.1} y1={h * 0.64} x2={w * 0.9} y2={h * 0.64} stroke="#475569" strokeWidth={3} />
+  </g>
+)
+
+const FireRelay = ({ w, h, accent, params }: SymProps) => {
+  const bypassed = params.bypassed === true || params.bypassed === 'true'
+  return (
+    <g>
+      <rect x={w * 0.12} y={h * 0.18} width={w * 0.76} height={h * 0.48} rx={4}
+        fill="#450a0a" stroke={bypassed ? '#f87171' : accent} strokeWidth={1.6} />
+      {/* تماس NC — مفتوح لمن يشتغل الإنذار */}
+      <line x1={w * 0.24} y1={h * 0.42} x2={w * 0.42} y2={h * 0.42} stroke={STROKE} strokeWidth={1.4} />
+      <line x1={w * 0.42} y1={h * 0.42} x2={w * 0.62} y2={bypassed ? h * 0.42 : h * 0.32} stroke={bypassed ? '#f87171' : STROKE} strokeWidth={1.4} />
+      <line x1={w * 0.62} y1={h * 0.42} x2={w * 0.78} y2={h * 0.42} stroke={STROKE} strokeWidth={1.4} />
+      <text x={w * 0.5} y={h * 0.84} fontSize={8.5} fill={bypassed ? '#f87171' : '#fca5a5'} textAnchor="middle" fontWeight="bold">
+        {bypassed ? '⚠️ مجسور' : 'حريق NC'}
+      </text>
+    </g>
+  )
+}
+
 const SYMBOLS: Record<string, (p: SymProps) => React.ReactElement> = {
+  ac_ctrl: AcCtrl,
+  mag_lock: MagLock,
+  strike: Strike,
+  reader: Reader,
+  exit_btn: ExitBtn,
+  rex: Rex,
+  break_glass: BreakGlass,
+  ac_psu: AcPsu,
+  fire_relay: FireRelay,
   nvr: Nvr,
   monitor: Monitor,
   olt: Olt,

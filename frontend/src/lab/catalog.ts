@@ -564,7 +564,137 @@ const CCTV: PartDef[] = [
   },
 ]
 
-export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE, ...AUDIO, ...GPON, ...CCTV]
+
+// ═══ التحكم بالدخول والأقفال ═══
+//
+// ⚠️ **رقم الباب خاصية على كل قطعة** — لأن الفحص يشتغل على «الباب»
+// مو على «القطعة». بلاه، زر خروج على باب A يبين كأنه يغطّي باب B،
+// والمنظومة تمر بفحص وهي فيها باب بلا مخرج. وهذا بالضبط شلون تنكتب
+// مخططات التحكم بالدخول بالميدان: كل شي مؤشّر عليه رقم بابه.
+const doorParam = { id: 'door', label: 'رقم الباب', kind: 'number' as const, default: 1, min: 1,
+  help: 'كل قطع الباب الواحد لازم نفس الرقم — الفحوص تنحسب لكل باب على حدة.' }
+
+const ACCESS: PartDef[] = [
+  {
+    id: 'ac_controller', domain: 'access', name: 'وحدة تحكم بالدخول', model: 'وحدة بابين · ريلايات', symbol: 'ac_ctrl',
+    w: 140, h: 66,
+    geo3d: { sizeM: { w: 0.26, h: 0.19, d: 0.06 }, bodyColorHex: '#334155', faceColorHex: '#1e293b', features: [{ kind: 'terminalPlate', x: 0.5, y: 0.7, w: 0.8, h: 0.3 }, { kind: 'statusLed', x: 0.88, y: 0.2 }] },
+    about: 'تقرأ البطاقة وتقرّر، وريلايها يقطع تغذية القفل. ⚠️ عدنا الريلاي يقطع **الموجب** مو السالب.',
+    ports: [
+      { id: 'pwr', label: 'تغذية', kind: 'dc', x: 0.1, y: 0 },
+      { id: 'lock1', label: 'قفل', kind: 'dc', x: 0.3, y: 1 },
+      { id: 'rdr1', label: 'قارئ', kind: 'signal', x: 0.55, y: 1 },
+      { id: 'rex1', label: 'خروج', kind: 'signal', x: 0.78, y: 1 },
+    ],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'وحدة التحكم' },
+      { id: 'standbyMa', label: 'سحب الوحدة', unit: 'mA', kind: 'number', default: 120, min: 0 },
+    ],
+  },
+  {
+    id: 'mag_lock', domain: 'access', name: 'قفل مغناطيسي', model: 'fail-safe · يسحب باستمرار', symbol: 'mag_lock',
+    w: 120, h: 56,
+    geo3d: { sizeM: { w: 0.25, h: 0.04, d: 0.04 }, bodyColorHex: '#94a3b8', faceColorHex: '#64748b', features: [{ kind: 'terminalPlate', x: 0.85, y: 0.5, w: 0.2, h: 0.6 }] },
+    about: 'يحتاج كهرباء حتى **يقفل** — فينفتح بانقطاع التيار. هذا المطلوب على مخارج الطوارئ.',
+    ports: [{ id: 'in', label: 'تغذية', kind: 'dc', x: 0.5, y: 0 }],
+    params: [
+      { id: 'name', label: 'اسم الباب', kind: 'text', default: 'الباب الرئيسي' },
+      doorParam,
+      // ⚠️ السؤال **بلغة الميدان**: الفني يعرف إذا الباب مخرج طوارئ،
+      // وما يعرف بالضرورة شنو يعني fail-safe. المحاكي هو الي يستنتج.
+      { id: 'isEgress', label: 'الباب مخرج طوارئ؟', kind: 'bool', default: false,
+        help: 'مخرج الطوارئ لازم قفله ينفصل بانقطاع التيار — وإلا يحبس الناس.' },
+      { id: 'holdMa', label: 'سحب الإمساك', unit: 'mA', kind: 'number', default: 500, min: 0,
+        help: 'يسحبه **٢٤ ساعة** — لأنه يسحب حتى يبقى مقفلاً.' },
+      { id: 'minV', label: 'أقل جهد للإمساك', unit: 'V', kind: 'number', default: 10.5, min: 0 },
+      { id: 'diode', label: 'دايود على الملف', kind: 'bool', default: true,
+        help: 'بلاه، نبضة الرجوع تاكل تلامسات الريلاي — والعطل يظهر بعد أشهر.' },
+    ],
+    danger: 'على مخرج طوارئ لازم يكون هذا النوع — والنوع الثاني يحبس الناس بالحريق.',
+  },
+  {
+    id: 'electric_strike', domain: 'access', name: 'قفل كهربائي (استرايك)', model: 'fail-secure · يسحب لحظة الفتح', symbol: 'strike',
+    w: 110, h: 56,
+    geo3d: { sizeM: { w: 0.03, h: 0.13, d: 0.03 }, bodyColorHex: '#cbd5e1', faceColorHex: '#94a3b8', features: [] },
+    about: 'يحتاج كهرباء حتى **يفتح** — فيبقى مقفلاً بانقطاع التيار. ⚠️ ما ينفع على مخرج طوارئ.',
+    ports: [{ id: 'in', label: 'تغذية', kind: 'dc', x: 0.5, y: 0 }],
+    params: [
+      { id: 'name', label: 'اسم الباب', kind: 'text', default: 'باب المخزن' },
+      doorParam,
+      { id: 'isEgress', label: 'الباب مخرج طوارئ؟', kind: 'bool', default: false },
+      { id: 'pulseMa', label: 'سحب الفتح', unit: 'mA', kind: 'number', default: 350, min: 0,
+        help: 'لحظياً بس — ساكن بلا تيار، عكس المغناطيسي.' },
+      { id: 'minV', label: 'أقل جهد للفتح', unit: 'V', kind: 'number', default: 10, min: 0 },
+      { id: 'diode', label: 'دايود على الملف', kind: 'bool', default: true },
+    ],
+    danger: 'يبقى **مقفلاً** بانقطاع التيار — ممنوع على مخارج الطوارئ.',
+  },
+  {
+    id: 'card_reader', domain: 'access', name: 'قارئ بطاقات', model: 'Wiegand · حد ~١٥٠ متر', symbol: 'reader',
+    w: 80, h: 66,
+    geo3d: { sizeM: { w: 0.08, h: 0.12, d: 0.02 }, bodyColorHex: '#1e293b', faceColorHex: '#0f172a', features: [{ kind: 'statusLed', x: 0.5, y: 0.2 }] },
+    about: 'يقرا البطاقة ويرسلها للوحدة. ⚠️ فوگ ~١٥٠ متر الإشارة تصير متقطعة.',
+    ports: [{ id: 'data', label: 'بيانات', kind: 'signal', x: 0.5, y: 1 }],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'قارئ' },
+      doorParam,
+      { id: 'standbyMa', label: 'سحب القارئ', unit: 'mA', kind: 'number', default: 60, min: 0 },
+    ],
+  },
+  {
+    id: 'exit_button', domain: 'access', name: 'زر خروج', model: 'تماس جاف', symbol: 'exit_btn',
+    w: 76, h: 56,
+    geo3d: { sizeM: { w: 0.08, h: 0.08, d: 0.02 }, bodyColorHex: '#e2e8f0', faceColorHex: '#22c55e', features: [{ kind: 'disc', x: 0.5, y: 0.5, r: 0.3 }] },
+    about: 'الخروج من جوّا بلا بطاقة — ⚠️ إلزامي على كل باب.',
+    ports: [{ id: 'out', label: 'تماس', kind: 'signal', x: 0.5, y: 1 }],
+    params: [{ id: 'name', label: 'الاسم', kind: 'text', default: 'زر خروج' }, doorParam],
+  },
+  {
+    id: 'rex_motion', domain: 'access', name: 'حسّاس خروج', model: 'حركة · فوگ الباب', symbol: 'rex',
+    w: 84, h: 56,
+    geo3d: { sizeM: { w: 0.11, h: 0.05, d: 0.05 }, bodyColorHex: '#f1f5f9', faceColorHex: '#cbd5e1', features: [{ kind: 'lens', x: 0.5, y: 0.5, r: 0.25, len: 0.6 }] },
+    about: 'يفتح تلقائياً لمن أحد يقرب من جوّا — بديل زر الخروج.',
+    ports: [{ id: 'out', label: 'تماس', kind: 'signal', x: 0.5, y: 1 }],
+    params: [{ id: 'name', label: 'الاسم', kind: 'text', default: 'حسّاس خروج' }, doorParam],
+  },
+  {
+    id: 'break_glass', domain: 'access', name: 'كسر زجاج للطوارئ', model: 'يقطع تغذية القفل مباشرة', symbol: 'break_glass',
+    w: 80, h: 62,
+    geo3d: { sizeM: { w: 0.09, h: 0.09, d: 0.03 }, bodyColorHex: '#dc2626', faceColorHex: '#991b1b', features: [{ kind: 'disc', x: 0.5, y: 0.5, r: 0.28 }] },
+    about: 'آخر خط دفاع. ⚠️ لازم يقطع **تغذية القفل مباشرة** — مو يمر بوحدة التحكم.',
+    ports: [{ id: 'out', label: 'قطع', kind: 'dc', x: 0.5, y: 1 }],
+    params: [{ id: 'name', label: 'الاسم', kind: 'text', default: 'كسر زجاج' }, doorParam],
+    danger: 'مربوط بوحدة التحكم = إحساس أمان كاذب: وحدة معلّقة تخلّيه بلا فايدة.',
+  },
+  {
+    id: 'ac_psu', domain: 'access', name: 'مغذّي مع بطارية', model: '١٢ فولت · بطارية احتياط', symbol: 'ac_psu',
+    w: 120, h: 66,
+    geo3d: { sizeM: { w: 0.2, h: 0.25, d: 0.09 }, bodyColorHex: '#475569', faceColorHex: '#1e293b', features: [{ kind: 'terminalPlate', x: 0.5, y: 0.75, w: 0.7, h: 0.25 }, { kind: 'statusLed', x: 0.85, y: 0.2 }] },
+    about: 'يغذّي المنظومة ويشحن البطارية. ⚠️ البطارية هي الي تقرّر شكد تصمد المنظومة بانقطاع.',
+    ports: [{ id: 'out', label: 'خرج', kind: 'dc', x: 0.5, y: 1 }],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'مغذّي' },
+      { id: 'voltage', label: 'الجهد', unit: 'V', kind: 'number', default: 12, min: 0 },
+      { id: 'maxA', label: 'أقصى تيار', unit: 'A', kind: 'number', default: 3, min: 0 },
+      { id: 'ah', label: 'سعة البطارية', unit: 'Ah', kind: 'number', default: 7, min: 0 },
+    ],
+  },
+  {
+    id: 'fire_relay', domain: 'access', name: 'تماس إنذار الحريق', model: 'يقطع الأقفال بالإنذار', symbol: 'fire_relay',
+    w: 100, h: 56,
+    geo3d: { sizeM: { w: 0.09, h: 0.06, d: 0.03 }, bodyColorHex: '#7f1d1d', faceColorHex: '#450a0a', features: [{ kind: 'statusLed', x: 0.5, y: 0.5 }] },
+    about: 'تماس من لوحة الحريق يقطع تغذية الأقفال المغناطيسية. ⚠️ الحريق يصير **والكهرباء شغّالة**.',
+    ports: [{ id: 'nc', label: 'NC', kind: 'dc', x: 0.5, y: 1 }],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'تماس الحريق' },
+      { id: 'bypassed', label: 'مجسور', kind: 'bool', default: false,
+        help: 'أحد يجسّره حتى «يوگف الإزعاج» — والمنظومة تبدو شغّالة تماماً.' },
+    ],
+    danger: 'جسره يعني الأقفال ما تفصل بالحريق — والمنظومة تبدو سليمة.',
+  },
+]
+
+export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE, ...AUDIO, ...GPON, ...CCTV, ...ACCESS]
 
 /** ═══ قطع مشتركة بين مجالين ═══
  *
@@ -594,6 +724,7 @@ export const DOMAINS: { id: DomainId; name: string; icon: string; about: string 
   { id: 'audio', name: 'الصوت والإذاعة', icon: '🔊', about: 'مكبّرات وسماعات وخط ١٠٠ فولت — التحميل الزائد يحرق المكبّر.' },
   { id: 'gpon', name: 'الألياف الضوئية', icon: '🔬', about: 'OLT وسبليترات وONT — الميزانية الضوئية تقرّر منو يسجّل ومنو لا.' },
   { id: 'cctv', name: 'الكاميرات والمراقبة', icon: '📹', about: 'كاميرات ومسجّل وقرص — النطاق وأيام التخزين وسحب PoE الليلي تنحسب فعلاً.' },
+  { id: 'access', name: 'الأقفال والتحكم بالدخول', icon: '🔐', about: 'أبواب وأقفال وقارئات — والفحص يقرا كل باب على حدة، لأن باباً واحداً غلط يكفي.' },
 ]
 
 /** القيم الابتدائية لقطعة — تنسخ من الكتالوگ لمن تنحط باللوح. */
