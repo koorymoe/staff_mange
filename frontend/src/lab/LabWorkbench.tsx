@@ -41,6 +41,8 @@ const CliTerminal = lazy(() => import('../cli/CliTerminal'))
 const Scene3D = lazy(() => import('./Scene3D'))
 // ⚠️ واجهة الجهاز `lazy` هي هم — نفس سبب الكونسول والمشهد.
 const PanelUI = lazy(() => import('../panel/PanelUI'))
+// ⚠️ أدوات الفحص `lazy` هي هم — نفس السبب.
+const ToolsPanel = lazy(() => import('./tools/ToolsPanel'))
 
 /** السويچات الي تنهيّأ بالكونسول. */
 const CLI_PARTS = new Set(['switch_l2', 'switch_poe', 'switch_l3'])
@@ -91,6 +93,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [result, setResult] = useState<SimResult | null>(null)
   const [console_, setConsole] = useState<string | null>(null)
   const [panel, setPanel] = useState<string | null>(null)
+  const [tools, setTools] = useState(false)
   /** ═══ وضع التشخيص ═══
    *  ⚠️ عطل مكتوب على الشاشة **مو عطل — هو إجابة**. بهذا الوضع
    *  الأعطال تنخفي، والمتدرّب يشوف العَرَض بس ويلگي السبب بالقياس. */
@@ -377,6 +380,15 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
               <button onClick={() => setFitSignal((n) => n + 1)}
                 className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700">
                 ⤢ ضبط العرض
+              </button>
+            )}
+            {domain === 'network' && (
+              <button
+                onClick={() => setTools((v) => !v)}
+                title="ping · traceroute · فحص الوصلة — تنطي عَرَضاً مو تشخيصاً"
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  tools ? 'bg-sky-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                🧪 أدوات الفحص
               </button>
             )}
             <button
@@ -852,6 +864,16 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
             </div>
           )
         })()}
+
+        {/* ═══ أدوات الفحص ═══
+            ⚠️ تاخذ `faulted` مو `doc`: الأداة لازم تشوف المنظومة
+            **بأعطالها**. أداة تقرا نسخة سليمة تعطي جواباً صحيحاً على
+            شبكة معطوبة — والمتدرّب يستبعد السبب الصح ويضيع. */}
+        {tools && domain === 'network' && (
+          <Suspense fallback={<div className="h-[300px] border-t border-slate-800 bg-[#0b1220]" />}>
+            <ToolsPanel doc={faulted} onClose={() => setTools(false)} />
+          </Suspense>
+        )}
       </div>
 
       {errors.length > 0 && (
