@@ -251,7 +251,25 @@ const NETWORK: PartDef[] = [
       { id: 'ip', label: 'العنوان', kind: 'text', default: '192.168.1.51' },
       { id: 'mask', label: 'القناع', kind: 'text', default: '255.255.255.0' },
       { id: 'gw', label: 'البوابة', kind: 'text', default: '192.168.1.1' },
-      { id: 'poeW', label: 'سحب PoE', unit: 'W', kind: 'number', default: 8, min: 0 },
+      { id: 'poeW', label: 'سحب PoE نهاراً', unit: 'W', kind: 'number', default: 8, min: 0 },
+      // ⚠️ سحب الأشعة **منفصل**: هو الي يخلّي المنظومة تمر نهاراً
+      // وتفصل ليلاً. لو جمعناه بالسحب الأساسي، الدرس كله ينمحي.
+      { id: 'irW', label: 'زيادة سحب الأشعة (ليلاً)', unit: 'W', kind: 'number', default: 4, min: 0,
+        help: 'تشتغل بالظلام بس — وهاي أسوأ حالة، وعليها ينبني التصميم.' },
+      { id: 'res', label: 'الدقة', kind: 'select', default: '2mp',
+        options: [
+          { value: '2mp', label: '٢ ميغابكسل · 1080p' },
+          { value: '4mp', label: '٤ ميغابكسل' },
+          { value: '5mp', label: '٥ ميغابكسل' },
+          { value: '8mp', label: '٨ ميغابكسل · 4K' },
+        ] },
+      { id: 'fps', label: 'الإطارات بالثانية', kind: 'number', default: 15, min: 1, max: 60,
+        help: 'المراقبة ما تحتاج فوگ ١٥ عادةً — الزيادة تاكل قرصاً ونطاقاً.' },
+      { id: 'codec', label: 'الكودك', kind: 'select', default: 'h264',
+        options: [
+          { value: 'h264', label: 'H.264' },
+          { value: 'h265', label: 'H.265 · نصف الحجم تقريباً' },
+        ] },
     ],
   },
 ]
@@ -501,9 +519,72 @@ const GPON: PartDef[] = [
   },
 ]
 
-export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE, ...AUDIO, ...GPON]
+
+// ═══ الكاميرات والمراقبة ═══
+//
+// ⚠️ الكاميرا هنا **نفس** قطعة الشبكات بالضبط (`ip_camera`) — مو
+// نسخة ثانية. نسختان تعني خاصية تنضاف لوحدة وتنسى بالثانية، وفني
+// يتدرّب على كاميرا ما تشبه الي بمختبر الشبكات.
+//
+// الي ينضاف هنا هو **الي يفرق بمنظومة مراقبة**: المسجّل والقرص
+// والشاشة.
+const CCTV: PartDef[] = [
+  {
+    id: 'nvr', domain: 'cctv', name: 'مسجّل شبكي NVR', model: 'قنوات · قرص · منافذ PoE', symbol: 'nvr',
+    w: 150, h: 62,
+    geo3d: { sizeM: { w: 0.38, h: 0.05, d: 0.32 }, bodyColorHex: '#28313d', faceColorHex: '#141a22', features: [{ kind: 'portRow', count: 8, y: 0.5 }, { kind: 'statusLed', x: 0.94, y: 0.35 }, { kind: 'disc', x: 0.2, y: 0.5, r: 0.12 }] },
+    about: 'قلب المنظومة: يسجّل ويخزّن، وحدوده (القنوات والإدخال وPoE) هي الي تقرّر شكد كاميرا تنفع.',
+    ports: [
+      { id: 'lan', label: 'LAN', kind: 'eth', x: 0.1, y: 1 },
+      ...Array.from({ length: 4 }, (_, i) => ({
+        id: `poe${i + 1}`, label: `PoE${i + 1}`, kind: 'eth' as const, x: 0.34 + i * 0.16, y: 1,
+      })),
+    ],
+    params: [
+      { id: 'name', label: 'الاسم', kind: 'text', default: 'NVR1' },
+      { id: 'channels', label: 'عدد القنوات', kind: 'number', default: 8, min: 1,
+        help: 'الكاميرات فوگ هذا العدد ما تنسجّل — والمنظومة تبدو شغّالة.' },
+      { id: 'maxInMbps', label: 'حد الإدخال', unit: 'Mbps', kind: 'number', default: 80, min: 1,
+        help: 'مجموع بثّ كل الكاميرات لازم يبقى تحته.' },
+      { id: 'diskTb', label: 'سعة القرص', unit: 'TB', kind: 'number', default: 4, min: 0 },
+      { id: 'retentionDays', label: 'أيام التسجيل المطلوبة', unit: 'يوم', kind: 'number', default: 30, min: 1 },
+      { id: 'poePorts', label: 'منافذ PoE', kind: 'number', default: 4, min: 0 },
+      { id: 'poeBudget', label: 'ميزانية PoE', unit: 'W', kind: 'number', default: 50, min: 0,
+        help: 'ميزانية المسجّل أصغر من ميزانية السويچ عادةً — وهذا الي يفاجئ الفني.' },
+    ],
+    danger: 'الحدود الثلاثة (قنوات · إدخال · PoE) تنكسر بصمت: المنظومة تشتغل جزئياً وتبدو سليمة.',
+  },
+  {
+    id: 'cctv_monitor', domain: 'cctv', name: 'شاشة عرض', model: 'شاشة مراقبة', symbol: 'monitor',
+    w: 100, h: 70,
+    geo3d: { sizeM: { w: 0.6, h: 0.36, d: 0.05 }, bodyColorHex: '#1e293b', faceColorHex: '#0b1220', features: [{ kind: 'screen', x: 0.5, y: 0.45, w: 0.86, h: 0.72 }] },
+    about: 'شاشة العرض — ما تأثّر على التسجيل، بس بلاها ماكو مراقبة حيّة.',
+    ports: [{ id: 'hdmi', label: 'HDMI', kind: 'signal', x: 0.5, y: 1 }],
+    params: [{ id: 'name', label: 'الاسم', kind: 'text', default: 'شاشة' }],
+  },
+]
+
+export const PARTS: PartDef[] = [...ELECTRICAL, ...SOLAR, ...NETWORK, ...FIRE, ...AUDIO, ...GPON, ...CCTV]
+
+/** ═══ قطع مشتركة بين مجالين ═══
+ *
+ * ⚠️ **نفس الكائن بمعرّف واحد** — الكتالوگ يفهرس بالمعرّف، فالنسخة
+ * الثانية چانت تدهس الأولى. الي نسويه: نخلّي الكتالوگ يعرض القطعة
+ * بمجالين، بلا ما ننسخ تعريفها.
+ *
+ * ليش يفرق: كاميرا بخصائص مختلفة بين مختبرين تعني فنياً يتدرّب على
+ * جهاز ما موجود — وأول خاصية تنضاف لوحدة وتنسى بالثانية تكسر الدرس.
+ */
+export const SHARED_IN_CCTV = ['ip_camera', 'switch_poe', 'switch_l2']
 
 export const PART_BY_ID: Record<string, PartDef> = Object.fromEntries(PARTS.map((p) => [p.id, p]))
+
+/** قطع مجال معيّن — تحسب المشتركة. */
+export function partsForDomain(domain: DomainId): PartDef[] {
+  const own = PARTS.filter((p) => p.domain === domain)
+  if (domain !== 'cctv') return own
+  return [...SHARED_IN_CCTV.map((id) => PART_BY_ID[id]).filter(Boolean), ...own]
+}
 
 export const DOMAINS: { id: DomainId; name: string; icon: string; about: string }[] = [
   { id: 'network', name: 'الشبكات', icon: '🌐', about: 'سويچات وراوترات وحاسبات وكاميرات — وصّل وهيّئ واختبر الاتصال.' },
@@ -512,6 +593,7 @@ export const DOMAINS: { id: DomainId; name: string; icon: string; about: string 
   { id: 'fire', name: 'إنذار الحريق', icon: '🔥', about: 'زونات ومقاومة نهاية وصفّارات وبطارية — اللوحة تقرا عطلاً لو الخط غلط.' },
   { id: 'audio', name: 'الصوت والإذاعة', icon: '🔊', about: 'مكبّرات وسماعات وخط ١٠٠ فولت — التحميل الزائد يحرق المكبّر.' },
   { id: 'gpon', name: 'الألياف الضوئية', icon: '🔬', about: 'OLT وسبليترات وONT — الميزانية الضوئية تقرّر منو يسجّل ومنو لا.' },
+  { id: 'cctv', name: 'الكاميرات والمراقبة', icon: '📹', about: 'كاميرات ومسجّل وقرص — النطاق وأيام التخزين وسحب PoE الليلي تنحسب فعلاً.' },
 ]
 
 /** القيم الابتدائية لقطعة — تنسخ من الكتالوگ لمن تنحط باللوح. */

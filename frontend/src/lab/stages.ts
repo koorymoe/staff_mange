@@ -39,6 +39,14 @@ export const GPON_STAGES: Stage[] = [
   { id: 'diag', label: 'التشخيص', hint: 'ماكو أخطاء — كل المشتركين يسجّلون وعندهم خدمة.' },
 ]
 
+export const CCTV_STAGES: Stage[] = [
+  { id: 'build', label: 'بناء المنظومة', hint: 'حط كاميرات ومسجّلاً وسويچاً إذا احتجت.' },
+  { id: 'wire', label: 'التوصيل', hint: 'وصّل الكاميرات بمنافذ PoE أو بالسويچ، والسويچ بالمسجّل.' },
+  { id: 'spec', label: 'ضبط الجودة', hint: 'اضبط الدقة والإطارات والكودك — هي الي تقرّر النطاق والتخزين.' },
+  { id: 'budget', label: 'التخزين والطاقة', hint: 'أيام التسجيل تكفي، والسحب الليلي ضمن ميزانية PoE.' },
+  { id: 'diag', label: 'التشخيص', hint: 'ماكو أخطاء — المنظومة تسجّل كل الكاميرات المدة المطلوبة.' },
+]
+
 export interface StageState {
   stages: Stage[]
   /** رقم المرحلة الحالية — أول وحدة ما اكتملت. */
@@ -54,9 +62,14 @@ export interface StageState {
  * منفصلة تنخزن. يعني ما تگدر «تخلّص» مرحلة وترجع تكسر شرطها ويبقى
  * الشريط أخضر.
  */
+// ⚠️⚠️ **مرحلة التشخيص ما تكتمل إلا إذا كل الي قبلها اكتملت.**
+// بلا هالشرط، لوح فيه قطعة وحدة يعطي «صفر أخطاء» فتطلع آخر مرحلة
+// خضراء — والمتدرّب يقرا «خلّصت» وهو ما بنى شي. الشريط الي يكذب
+// بمرحلة وحدة يفقد معناه كله.
 export function computeStages(doc: LabDoc, result: SimResult | null): StageState {
   const stages = doc.domain === 'solar' ? SOLAR_STAGES
-    : doc.domain === 'gpon' ? GPON_STAGES : GENERIC_STAGES
+    : doc.domain === 'gpon' ? GPON_STAGES
+    : doc.domain === 'cctv' ? CCTV_STAGES : GENERIC_STAGES
   const has = (partId: string) => doc.nodes.some((n) => n.partId === partId)
   const errors = (result?.messages ?? []).filter((m) => m.kind === 'error').length
 
@@ -75,8 +88,22 @@ export function computeStages(doc: LabDoc, result: SimResult | null): StageState
     done.push(built)
     done.push(built && wired)
     done.push(built && wired && !!result && !cfgWarn)
-    done.push(!!result)
-    done.push(!!result && errors === 0)
+    done.push(!!result && built && wired)
+    done.push(!!result && errors === 0 && done.every(Boolean))
+  } else if (doc.domain === 'cctv') {
+    const built = has('ip_camera') && has('nvr')
+    const wired = doc.links.length > 0
+    const msgs = result?.messages ?? []
+    // ⚠️ «ضبط الجودة» يكتمل لمن ما يبقى تحذير إطارات — مو لمن يلمس
+    // المستخدم الخانة. المرحلة تقرا الشرط مو النية.
+    const specOk = !!result && !msgs.some((m) => /إطاراً/.test(m.text))
+    const budgetOk = !!result && !msgs.some((m) =>
+      m.kind === 'error' && /(يوم تسجيل|بالليل|منفذ PoE|حد إدخال|قنوات)/.test(m.text))
+    done.push(built)
+    done.push(built && wired)
+    done.push(built && wired && specOk)
+    done.push(built && wired && budgetOk)
+    done.push(!!result && errors === 0 && done.every(Boolean))
   } else if (doc.domain === 'gpon') {
     const built = has('olt') && has('ont')
     const fiber = doc.links.length > 0
@@ -87,12 +114,12 @@ export function computeStages(doc: LabDoc, result: SimResult | null): StageState
     done.push(built && fiber)
     done.push(budgetOk && built && fiber)
     done.push(cfgOk && built && fiber)
-    done.push(!!result && errors === 0)
+    done.push(!!result && errors === 0 && done.every(Boolean))
   } else {
     done.push(doc.nodes.length > 0)
     done.push(doc.links.length > 0)
-    done.push(!!result)
-    done.push(!!result && errors === 0)
+    done.push(!!result && doc.links.length > 0)
+    done.push(!!result && errors === 0 && done.every(Boolean))
   }
 
   // ⚠️ المرحلة الحالية = أول وحدة **ما اكتملت**، مو آخر وحدة اكتملت:
@@ -157,6 +184,17 @@ export function quickTest(doc: LabDoc, result: SimResult | null): QuickTest {
     checks.push(mk('backup', 'الاحتياطي والإنتاج اليومي',
       !hasWarn(/تغطّي الأحمال/) && !hasWarn(/ما يكفي، تحتاج ألواحاً/),
       'الاحتياطي أو الإنتاج اليومي ما يكفي الأحمال.'))
+  } else if (doc.domain === 'cctv') {
+    checks.push(mk('channels', 'عدد القنوات يكفي الكاميرات', !hasErr(/على مسجّل \d+ قنوات/),
+      'كاميرات أكثر من قنوات المسجّل — الزيادة ما تنسجّل أصلاً.'))
+    checks.push(mk('inrate', 'إدخال المسجّل يستوعب البث', !hasErr(/حد إدخال/),
+      'مجموع البث فوگ حد المسجّل — تسجيل متقطّع.'))
+    checks.push(mk('storage', 'أيام التسجيل المطلوبة', !hasErr(/يوم تسجيل/),
+      'القرص ما يكفي المدة — المسجّل يمسح الأقدم تلقائياً.'))
+    checks.push(mk('poeNight', 'سحب PoE **ليلاً**', !hasErr(/بالليل/),
+      'السحب الليلي فوگ الميزانية — الكاميرات تفصل بالظلام بس.'))
+    checks.push(mk('uplink', 'الرابط الصاعد ما يخنق البث', !hasErr(/عنق الزجاجة/),
+      'كل الكاميرات تمر برابط سعته أقل من مجموع بثها.'))
   } else if (doc.domain === 'gpon') {
     checks.push(mk('budget', 'الميزانية الضوئية لكل مشترك',
       !msgs.some((m) => m.kind === 'error' && /القدرة الواصلة/.test(m.text)),

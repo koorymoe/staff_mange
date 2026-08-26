@@ -322,7 +322,33 @@ const Ont = ({ w, h, accent, live }: SymProps) => (
   </g>
 )
 
+// ═══ المراقبة ═══
+const Nvr = ({ w, h, accent, live, params }: SymProps) => (
+  <g>
+    <rect x={0} y={h * 0.2} width={w} height={h * 0.6} rx={5} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    {/* قرص — العنصر الي يفرق بمسجّل عن سويچ */}
+    <circle cx={w * 0.2} cy={h * 0.5} r={h * 0.15} fill="none" stroke={STROKE} strokeWidth={1.5} />
+    <circle cx={w * 0.2} cy={h * 0.5} r={2} fill={STROKE} />
+    <text x={w * 0.56} y={h * 0.46} fontSize={10} fill="#94a3b8" textAnchor="middle" fontWeight="bold">NVR</text>
+    <text x={w * 0.56} y={h * 0.68} fontSize={9} fill="#64748b" textAnchor="middle">
+      {String(params.channels ?? '')}ch · {String(params.diskTb ?? '')}TB
+    </text>
+    {live && <circle cx={w * 0.9} cy={h * 0.32} r={3} fill="#4ade80" />}
+  </g>
+)
+
+const Monitor = ({ w, h, accent, live }: SymProps) => (
+  <g>
+    <rect x={w * 0.05} y={h * 0.12} width={w * 0.9} height={h * 0.56} rx={4} fill={FILL} stroke={accent} strokeWidth={1.5} />
+    <rect x={w * 0.12} y={h * 0.2} width={w * 0.76} height={h * 0.4} fill={live ? '#0b2f24' : '#0b1220'} />
+    <line x1={w * 0.5} y1={h * 0.68} x2={w * 0.5} y2={h * 0.84} stroke={STROKE} strokeWidth={2} />
+    <line x1={w * 0.3} y1={h * 0.86} x2={w * 0.7} y2={h * 0.86} stroke={STROKE} strokeWidth={2.5} />
+  </g>
+)
+
 const SYMBOLS: Record<string, (p: SymProps) => React.ReactElement> = {
+  nvr: Nvr,
+  monitor: Monitor,
   olt: Olt,
   splitter: Splitter,
   ont: Ont,

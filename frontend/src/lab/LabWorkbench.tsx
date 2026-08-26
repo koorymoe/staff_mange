@@ -18,10 +18,11 @@ import { CISCO_LIKE } from '../cli/ciscoLike'
 import SimGate from '../sim/SimGate'
 import Canvas from './Canvas'
 import { CABLE_BY_ID, linkParamsFor, MEDIUM_AR } from './cables'
-import { DOMAINS, PARTS, PART_BY_ID } from './catalog'
+import { DOMAINS, partsForDomain, PART_BY_ID } from './catalog'
 import { electricalEngine } from './engines/electrical'
 import { audioEngine } from './engines/audio'
 import { fireEngine } from './engines/fire'
+import { cctvEngine } from './engines/cctv'
 import { gponEngine } from './engines/gpon'
 import { networkEngine } from './engines/network'
 import { opticalPaths } from './engines/gpon'
@@ -57,6 +58,7 @@ const ENGINES: Record<DomainId, DomainEngine> = {
   fire: fireEngine,
   audio: audioEngine,
   gpon: gponEngine,
+  cctv: cctvEngine,
 }
 
 export default function LabWorkbench() {
@@ -84,6 +86,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
       fire: { domain: 'fire', nodes: [], links: [] },
       audio: { domain: 'audio', nodes: [], links: [] },
       gpon: { domain: 'gpon', nodes: [], links: [] },
+      cctv: { domain: 'cctv', nodes: [], links: [] },
     }
     if (startDoc) empty[startDoc.domain] = startDoc
     return empty
@@ -131,7 +134,10 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
     setResult(null)
   }, [domain])
 
-  const parts = useMemo(() => PARTS.filter((p) => p.domain === domain), [domain])
+  // ⚠️ `partsForDomain` مو ترشيح مباشر: مجال المراقبة يعرض الكاميرا
+  // والسويچ PoE **بنفس تعريفهما** من مجال الشبكات — نسخة ثانية تعني
+  // خاصية تنضاف لوحدة وتنسى بالثانية.
+  const parts = useMemo(() => partsForDomain(domain), [domain])
   /** ⚠️ البحث بالاسم **وبالموديل**: الفني يدوّر «PoE» أو «١٠٠ فولت»
    *  أكثر ما يدوّر باسم القطعة الكامل. */
   const shownParts = useMemo(() => {
