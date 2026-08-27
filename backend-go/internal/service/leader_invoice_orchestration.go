@@ -23,6 +23,14 @@ type LeaderInvoiceService struct {
 	durations   *JobDurationEstimatorService
 	// monitor: صندوق المراقب. اختياري.
 	monitor MonitorFeed
+	// notifications: إشعارات المراقب والمحاسب. اختيارية — نفس سبب
+	// `monitor`: فشل إشعار ما يصير يمنع عملية مالية.
+	notifications *repository.NotificationRepository
+}
+
+// SetNotifications يربط الإشعارات بعد البناء — نفس نمط صندوق المراقب.
+func (s *LeaderInvoiceService) SetNotifications(n *repository.NotificationRepository) {
+	s.notifications = n
 }
 
 // SetMonitorFeed يربط صندوق المراقب بعد بناء الخدمات.
@@ -413,6 +421,97 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 		title, summary := monitorInvoiceSummary(inv)
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceAfterAudit, inv.ID, title,
 			summary+" • رقم الفاتورة المحاسبية: "+externalNumber, "FINANCE", &approverEmployeeID)
+	}
+	return inv, nil
+}
+
+// ═══ المحاسب يرسلها للمراقب ═══
+//
+// «يطلعله خيار وي الاعتماد: إرساله للمراقب حتى المراقب يراجعها
+// ويدققها».
+//
+// ⚠️ الطريق الثالث للشك: بلاه المحاسب محصور بين «اعتمدها» و«اتركها
+// معلّقة». والمعلّقة بلا سبب مكتوب تبقى معلّقة شهوراً، وما أحد يعرف
+// إنها تنتظر رأياً — لأن الانتظار ما انسجّل بمكان.
+func (s *LeaderInvoiceService) RequestMonitorReview(id, byEmployeeID, note string) (*model.LeaderInvoice, error) {
+	inv, err := s.invoices.RequestMonitorReview(id, byEmployeeID, strings.TrimSpace(note))
+	if err != nil {
+		return nil, err
+	}
+	// ⚠️ **إشعار للمراقب مو صف بصندوقه**: صندوق المراقب قراره
+	// «سليم/ملاحظة» على **حدث**، وهنا القرار على **فاتورة** ويرجّعها
+	// للمحاسب. سطحان للقرار على نفس الشي يعني مراقباً يبتّ بمكان
+	// والفاتورة تبقى واگفة بالمكان الثاني.
+	if s.notifications != nil {
+		msg := "🧾 المحاسب يطلب مراجعتك لفاتورة " + inv.AccountingCode
+		if n := strings.TrimSpace(note); n != "" {
+			msg += " — " + n
+		}
+		_ = s.notifications.CreateForRole("MONITOR", "invoice_monitor", msg)
+		_ = s.notifications.CreateForRole("ADMIN", "invoice_monitor", msg)
+	}
+	if s.monitor != nil {
+		title, summary := monitorInvoiceSummary(inv)
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, inv.ID, title,
+			summary+" • ⏳ المحاسب طلب مراجعة المراقب", "MONITOR", &byEmployeeID)
+	}
+	return inv, nil
+}
+
+// ═══ المراقب يبتّ ═══
+func (s *LeaderInvoiceService) DecideMonitorReview(id, verdict, note, byEmployeeID string) (*model.LeaderInvoice, error) {
+	verdict = strings.ToUpper(strings.TrimSpace(verdict))
+	if verdict != "OK" && verdict != "FLAGGED" {
+		return nil, fmt.Errorf("الحكم لازم يكون: سليمة أو عندي ملاحظة")
+	}
+	note = strings.TrimSpace(note)
+	// ⚠️ الملاحظة إجبارية بالتأشير — نفس قاعدة صندوق المراقب. «عندي
+	// ملاحظة» بلا نص يوگف الفاتورة بلا ما يعرف المحاسب شنو يصلّح.
+	if verdict == "FLAGGED" && utf8.RuneCountInString(note) < 5 {
+		return nil, fmt.Errorf("اكتب ملاحظتك — المحاسب لازم يعرف شنو يصلّح")
+	}
+	inv, err := s.invoices.DecideMonitorReview(id, verdict, note, byEmployeeID)
+	if err != nil {
+		return nil, err
+	}
+	if s.notifications != nil {
+		lbl := "✅ سليمة"
+		if verdict == "FLAGGED" {
+			lbl = "⚠️ عليها ملاحظة: " + note
+		}
+		_ = s.notifications.CreateForRole("FINANCE", "invoice_monitor",
+			"👁️ المراقب راجع فاتورة "+inv.AccountingCode+" — "+lbl)
+	}
+	return inv, nil
+}
+
+// ═══ المالك يرجّعها للمحاسب ═══
+//
+// «الفواتير الي راحن قبل هذا التعديل — صلاحية فقط للمالك أرجعهن
+// للمحاسب حتى يرتبهن من جديد».
+//
+// ⚠️ **للمالك وحده ولا حتى الإداري**: هاي تشيل اعتماداً صار وترجّع
+// فاتورة لأول الطابور. صلاحية بهالوزن بيد أكثر من واحد تعني إن
+// المالك ما يعرف منو غيّر شنو.
+func (s *LeaderInvoiceService) ReturnToAccountant(id, byEmployeeID, reason string) (*model.LeaderInvoice, error) {
+	reason = strings.TrimSpace(reason)
+	// ⚠️ السبب إجباري: الفاتورة راح ترجع للمحاسب وهو ما يعرف ليش —
+	// فيعيد نفس الشغل بنفس الطريقة، وترجع له مرة ثانية.
+	if utf8.RuneCountInString(reason) < 5 {
+		return nil, fmt.Errorf("اكتب سبب الإرجاع — المحاسب لازم يعرف شنو يرتّب")
+	}
+	inv, err := s.invoices.ReturnToAccountant(id, byEmployeeID, reason)
+	if err != nil {
+		return nil, err
+	}
+	if s.notifications != nil {
+		_ = s.notifications.CreateForRole("FINANCE", "invoice_returned",
+			"↩️ المالك رجّع فاتورة "+inv.AccountingCode+" للترتيب من جديد — السبب: "+reason)
+	}
+	if s.monitor != nil {
+		title, summary := monitorInvoiceSummary(inv)
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceAdjusted, inv.ID+":ret", title,
+			summary+" • ↩️ المالك رجّعها للمحاسب — السبب: "+reason, "FINANCE", &byEmployeeID)
 	}
 	return inv, nil
 }

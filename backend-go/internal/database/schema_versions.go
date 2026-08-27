@@ -279,6 +279,8 @@ func versionedMigrations() []Migration {
 	result = append(result, simLabMigrations()...)
 	// 0257: الورق (تقرير + فاتورة) على مسؤول الخدمة بخدمات محددة.
 	result = append(result, servicePaperworkMigrations()...)
+	// 0258: الفاتورة تروح للمراقب وترجع، والمالك يرجّع القديمة للمحاسب.
+	result = append(result, invoiceMonitorMigrations()...)
 	return result
 }
 

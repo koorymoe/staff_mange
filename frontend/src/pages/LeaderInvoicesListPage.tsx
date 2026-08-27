@@ -120,6 +120,12 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
 export default function LeaderInvoicesListPage() {
   const { employee } = useSession()
   const canApprove = employee?.role === 'ADMIN' || employee?.role === 'FINANCE'
+  /** ⚠️ المراقب يبتّ بطلب المحاسب — والمحاسب ما يبتّ بطلبه بنفسه،
+   *  وإلا الإرسال للمراقب يصير شكلياً. (والخادم يمنعه فعلياً.) */
+  const isMonitor = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
+  /** ⚠️ `actualRole` مو `role`: المالك ينوصل كـADMIN بالواجهة،
+   *  ودوره الحقيقي بـ`actualRole`. */
+  const isOwner = employee?.actualRole === 'OWNER'
   const [invoices, setInvoices] = useState<LeaderInvoice[]>([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -147,7 +153,15 @@ export default function LeaderInvoicesListPage() {
   // و**بعده** بنفس المكان بالضبط، والضغط على أي حكم ما ينقلها ولا
   // ملّيمتر. والمحاسب ما يگدر يفرّق بين شغل باقي عليه تدقيق وشغل
   // باقي عليه قرار.
-  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'NO_NUMBER' | 'APPROVED' | 'ALL'>('AUDIT')
+  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'MONITOR' | 'NO_NUMBER' | 'APPROVED' | 'ALL'>('AUDIT')
+  // إرسال للمراقب · بتّ المراقب · إرجاع المالك
+  const [monitorFor, setMonitorFor] = useState<LeaderInvoice | null>(null)
+  const [monitorNote, setMonitorNote] = useState('')
+  const [monitorErr, setMonitorErr] = useState<string | null>(null)
+  const [decideFor, setDecideFor] = useState<LeaderInvoice | null>(null)
+  const [decideVerdict, setDecideVerdict] = useState<'OK' | 'FLAGGED'>('OK')
+  const [decideNote, setDecideNote] = useState('')
+  const [decideErr, setDecideErr] = useState<string | null>(null)
   // ربط رقم لفاتورة معتمدة قبل ما يصير الرقم إجبارياً
   const [linkFor, setLinkFor] = useState<LeaderInvoice | null>(null)
   const [linkNo, setLinkNo] = useState('')
@@ -202,22 +216,58 @@ export default function LeaderInvoicesListPage() {
   /** ⚠️ نفس اشتقاق الخادم بالضبط — المرحلة تنحسب من الحالة والحكم
    *  سوا، مو من عمود ثالث ينحرف. */
   const audited = (inv: LeaderInvoice) => !!inv.auditVerdict && inv.auditVerdict.trim() !== ''
+  /** ⚠️ نفس اشتقاق الخادم: طُلبت ولا انبتّ بيها = عند المراقب الآن. */
+  const atMonitor = (inv: LeaderInvoice) => !!inv.monitorRequestedAt && !inv.monitorDecidedAt
   const inTab = (inv: LeaderInvoice) => {
     if (tab === 'ALL') return true
     if (tab === 'AUDIT') return inv.status !== 'APPROVED' && !audited(inv)
-    if (tab === 'PENDING') return inv.status !== 'APPROVED' && audited(inv)
+    if (tab === 'MONITOR') return inv.status !== 'APPROVED' && atMonitor(inv)
+    if (tab === 'PENDING') return inv.status !== 'APPROVED' && audited(inv) && !atMonitor(inv)
     if (tab === 'APPROVED') return inv.status === 'APPROVED'
     return inv.status === 'APPROVED' && !inv.externalInvoiceNumber
   }
   const shown = invoices.filter((i) => inTab(i) && matchesSearch(i))
   const counts = {
     AUDIT: invoices.filter((i) => i.status !== 'APPROVED' && !audited(i)).length,
-    PENDING: invoices.filter((i) => i.status !== 'APPROVED' && audited(i)).length,
+    MONITOR: invoices.filter((i) => i.status !== 'APPROVED' && atMonitor(i)).length,
+    PENDING: invoices.filter((i) => i.status !== 'APPROVED' && audited(i) && !atMonitor(i)).length,
     NO_NUMBER: invoices.filter((i) => i.status === 'APPROVED' && !i.externalInvoiceNumber).length,
     APPROVED: invoices.filter((i) => i.status === 'APPROVED').length,
     ALL: invoices.length,
   }
   const sumShown = shown.reduce((t, i) => t + i.netTotal, 0)
+  /** المحاسب يرسلها للمراقب — الطريق الثالث للشك. */
+  const sendToMonitor = async () => {
+    if (!monitorFor) return
+    setBusyId(monitorFor.id); setMonitorErr(null)
+    try {
+      await api.requestInvoiceMonitorReview(monitorFor.id, monitorNote.trim())
+      setMonitorFor(null); setMonitorNote(''); load()
+    } catch (e) { setMonitorErr(e instanceof Error ? e.message : 'تعذر الإرسال للمراقب') }
+    finally { setBusyId(null) }
+  }
+
+  /** المراقب يبتّ — وترجع للمحاسب بحكمها. */
+  const decideMonitor = async () => {
+    if (!decideFor) return
+    setBusyId(decideFor.id); setDecideErr(null)
+    try {
+      await api.decideInvoiceMonitorReview(decideFor.id, decideVerdict, decideNote.trim())
+      setDecideFor(null); setDecideNote(''); setDecideVerdict('OK'); load()
+    } catch (e) { setDecideErr(e instanceof Error ? e.message : 'تعذر حفظ الحكم') }
+    finally { setBusyId(null) }
+  }
+
+  /** ⚠️ المالك وحده — والسبب إجباري بالخادم. */
+  const returnToAccountant = async (inv: LeaderInvoice) => {
+    const reason = window.prompt('سبب الإرجاع للمحاسب (المحاسب راح يقراه):')
+    if (reason === null) return
+    setBusyId(inv.id)
+    try { await api.returnInvoiceToAccountant(inv.id, reason.trim()); load() }
+    catch (e) { window.alert(e instanceof Error ? e.message : 'تعذر الإرجاع') }
+    finally { setBusyId(null) }
+  }
+
   const saveAudit = async () => {
     if (!auditFor) return
     setAuditErr(null)
@@ -323,6 +373,7 @@ export default function LeaderInvoicesListPage() {
         {([
           { k: 'AUDIT' as const, t: '🔍 بانتظار التدقيق', c: counts.AUDIT },
           { k: 'PENDING' as const, t: '⏳ بانتظار الاعتماد', c: counts.PENDING },
+          { k: 'MONITOR' as const, t: '👁️ عند المراقب', c: counts.MONITOR },
           { k: 'NO_NUMBER' as const, t: '🔗 معتمدة بلا رقم فاتورة', c: counts.NO_NUMBER },
           { k: 'APPROVED' as const, t: '✔ معتمدة', c: counts.APPROVED },
           { k: 'ALL' as const, t: 'الكل', c: counts.ALL },
@@ -406,7 +457,9 @@ export default function LeaderInvoicesListPage() {
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${
                       inv.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                     }`}>
-                      {inv.status === 'APPROVED' ? '✔ معتمدة' : 'بانتظار الاعتماد'}
+                      {inv.status === 'APPROVED' ? '✔ معتمدة'
+                        : atMonitor(inv) ? '👁️ عند المراقب'
+                          : audited(inv) ? 'بانتظار الاعتماد' : '🔍 بانتظار التدقيق'}
                     </span>
                     {/* حكم التدقيق — «يطلعن وينن بفواتير الليدر» */}
                     {inv.auditVerdict && (
@@ -419,6 +472,24 @@ export default function LeaderInvoicesListPage() {
                     {inv.externalInvoiceNumber && (
                       <span className="mt-1 block text-center font-mono text-[10.5px] text-slate-500">
                         {inv.externalInvoiceNumber}
+                      </span>
+                    )}
+                    {/* ═══ حكم المراقب ═══
+                        ⚠️ يظهر **بعد ما ترجع** للمحاسب: هذا الي طلب
+                        الرأي لأجله، وإخفاؤه يخلّي الإرسال للمراقب بلا
+                        فايدة — يرسلها ويرجعها وما يعرف شنو قال. */}
+                    {inv.monitorDecidedAt && (
+                      <span className={`mt-1 block rounded-lg px-2 py-0.5 text-center text-[10.5px] font-bold ${
+                        inv.monitorVerdict === 'FLAGGED' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>
+                        👁️ المراقب: {inv.monitorVerdict === 'FLAGGED' ? 'ملاحظة' : 'سليمة'}
+                        {inv.monitorNote ? ` — ${inv.monitorNote}` : ''}
+                      </span>
+                    )}
+                    {/* ⚠️ رجّعها المالك: المحاسب لازم يعرف **ليش** رجعت
+                        — وإلا يعيد نفس الشغل بنفس الطريقة وترجع مرة ثانية. */}
+                    {(inv.returnedCount ?? 0) > 0 && (
+                      <span className="mt-1 block rounded-lg bg-amber-50 px-2 py-0.5 text-center text-[10.5px] font-bold text-amber-800">
+                        ↩️ رجّعها المالك {inv.returnedCount} مرة{inv.returnReason ? ` — ${inv.returnReason}` : ''}
                       </span>
                     )}
                     {/* انسحب اعتمادها قبل — إشارة تحتاج انتباه */}
@@ -487,12 +558,55 @@ export default function LeaderInvoicesListPage() {
                           {busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
                         </button>
                       )}
+                      {/* ⚠️ **الطريق الثالث** جنب الاعتماد: المحاسب
+                          الي عنده شك ما يبقى محصوراً بين «اعتمدها»
+                          و«اتركها معلّقة». والمعلّقة بلا سبب مكتوب
+                          تبقى معلّقة شهوراً وما أحد يعرف إنها تنتظر
+                          رأياً — لأن الانتظار ما انسجّل بمكان. */}
+                      {canApprove && inv.status !== 'APPROVED' && audited(inv) && !atMonitor(inv) && (
+                        <button
+                          onClick={() => { setMonitorFor(inv); setMonitorNote(''); setMonitorErr(null) }}
+                          disabled={busyId === inv.id}
+                          className="rounded-lg border border-indigo-300 bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50"
+                        >
+                          👁️ أرسلها للمراقب
+                        </button>
+                      )}
+                      {/* المراقب يبتّ — وهو وحده يشوف هالزر */}
+                      {isMonitor && atMonitor(inv) && (
+                        <button
+                          onClick={() => { setDecideFor(inv); setDecideVerdict('OK'); setDecideNote(''); setDecideErr(null) }}
+                          disabled={busyId === inv.id}
+                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+                        >
+                          👁️ راجعها
+                        </button>
+                      )}
+                      {/* ⚠️ المالك وحده: يرجّعها للمحاسب حتى يرتّبها من
+                          جديد — للفواتير الي مرّت قبل فصل الطوابير. */}
+                      {isOwner && (
+                        <button
+                          onClick={() => returnToAccountant(inv)}
+                          disabled={busyId === inv.id}
+                          className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 hover:bg-amber-100 disabled:opacity-50"
+                        >
+                          ↩️ أرجعها للمحاسب
+                        </button>
+                      )}
                       {/* ⚠️ وبدل ما يختفي الزر بلا تفسير: سطر يقول
                           **ليش** والخطوة الجاية. زر يختفي بصمت يخلّي
                           المحاسب يدوّر عليه. */}
                       {canApprove && inv.status !== 'APPROVED' && !audited(inv) && (
                         <span className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200">
                           دقّقها أول
+                        </span>
+                      )}
+                      {/* ⚠️ المحاسب يشوف **وين** هي مو زراً معطّلاً:
+                          «عند المراقب» تقول له ينتظر منو، والزر
+                          المعطّل يقول «ممنوع» بلا ما يقول ليش. */}
+                      {canApprove && !isMonitor && atMonitor(inv) && (
+                        <span className="rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-bold text-indigo-700 ring-1 ring-indigo-200">
+                          👁️ عند المراقب
                         </span>
                       )}
                       {/* الفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً —
@@ -709,6 +823,85 @@ export default function LeaderInvoicesListPage() {
         </div>
       )}
 
+      {/* ═══ إرسال للمراقب ═══ */}
+      {monitorFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setMonitorFor(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-[#0f2040]">👁️ إرسال للمراقب</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              الفاتورة راح تنتقل لطابور المراقب حتى يراجعها ويدققها، وترجعلك بحكمه.
+              حكمك ({AUDIT_VERDICTS.find((v) => v.key === monitorFor.auditVerdict)?.label ?? '—'}) يبقى محفوظاً.
+            </p>
+            <label className="mt-4 block text-sm font-medium text-slate-600">شنو تريد المراقب ينتبهله؟</label>
+            <textarea
+              value={monitorNote}
+              onChange={(e) => setMonitorNote(e.target.value)}
+              rows={3}
+              autoFocus
+              placeholder="مثال: المبلغ يحتاج تأكيد من الزبون"
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            />
+            {monitorErr && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{monitorErr}</p>}
+            <div className="mt-4 flex gap-2">
+              <button onClick={sendToMonitor} disabled={busyId === monitorFor.id}
+                className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                👁️ أرسلها للمراقب
+              </button>
+              <button onClick={() => setMonitorFor(null)}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ المراقب يبتّ ═══ */}
+      {decideFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setDecideFor(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-[#0f2040]">👁️ مراجعة المراقب</h3>
+            <p className="mt-1 text-sm text-slate-600">
+              فاتورة <b>{decideFor.accountingCode}</b> — {(decideFor.netTotal ?? 0).toLocaleString()} د.ع
+            </p>
+            {decideFor.monitorRequestNote && (
+              <p className="mt-2 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
+                طلب المحاسب: {decideFor.monitorRequestNote}
+              </p>
+            )}
+            <div className="mt-4 flex gap-2">
+              {([['OK', '✅ سليمة'], ['FLAGGED', '⚠️ عندي ملاحظة']] as const).map(([k, lbl]) => (
+                <button key={k} onClick={() => setDecideVerdict(k)}
+                  className={`flex-1 rounded-xl px-3 py-2.5 text-sm font-bold transition ${
+                    decideVerdict === k ? 'bg-indigo-600 text-white' : 'border border-slate-300 text-slate-600 hover:bg-slate-50'}`}>
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            <label className="mt-4 block text-sm font-medium text-slate-600">
+              الملاحظة {decideVerdict === 'FLAGGED' && <span className="text-red-500">*</span>}
+            </label>
+            <textarea
+              value={decideNote}
+              onChange={(e) => setDecideNote(e.target.value)}
+              rows={3}
+              placeholder={decideVerdict === 'FLAGGED' ? 'المحاسب لازم يعرف شنو يصلّح' : 'اختيارية'}
+              className="mt-1 w-full rounded-xl border border-slate-300 px-3 py-2 text-sm"
+            />
+            {decideErr && <p className="mt-2 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{decideErr}</p>}
+            <p className="mt-2 text-[11px] text-slate-500">
+              ⚠️ الفاتورة ترجع للمحاسب بحكمك — القرار المالي يبقى بيده.
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button onClick={decideMonitor} disabled={busyId === decideFor.id}
+                className="flex-1 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                سجّل حكمي
+              </button>
+              <button onClick={() => setDecideFor(null)}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-500">إلغاء</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {approveFor && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
@@ -786,7 +979,9 @@ export default function LeaderInvoicesListPage() {
                 <p>الدور: {details.employeeRole || '—'}</p>
                 <p dir="ltr" className="text-right">الهاتف: {details.employeePhone || '—'}</p>
                 <p>التاريخ: {new Date(details.createdAt).toLocaleString('ar-IQ')}</p>
-                <p>الحالة: {details.status === 'APPROVED' ? '✔ معتمدة' : 'بانتظار الاعتماد'}</p>
+                <p>الحالة: {details.status === 'APPROVED' ? '✔ معتمدة'
+                  : atMonitor(details) ? '👁️ عند المراقب'
+                    : audited(details) ? 'بانتظار الاعتماد' : '🔍 بانتظار التدقيق'}</p>
                 {details.approvedByName && <p>اعتمدها: <b>{details.approvedByName}</b></p>}
                 {details.adjustedReason && (
                   <p className="col-span-2 rounded-lg bg-amber-50 px-2 py-1 text-amber-800">

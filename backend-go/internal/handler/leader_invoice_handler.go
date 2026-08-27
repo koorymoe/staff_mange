@@ -270,6 +270,55 @@ func (h *LeaderInvoiceHandler) RevokeApproval(w http.ResponseWriter, r *http.Req
 	WriteJSON(w, http.StatusOK, inv)
 }
 
+// PUT /api/leader-invoices/{id}/monitor-request — المحاسب يرسلها للمراقب.
+func (h *LeaderInvoiceHandler) RequestMonitorReview(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Note string `json:"note"`
+	}
+	_ = DecodeJSON(r, &req)
+	inv, err := h.service.RequestMonitorReview(r.PathValue("id"), middleware.EmployeeIDFromContext(r), req.Note)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}
+
+// PUT /api/leader-invoices/{id}/monitor-decide — المراقب يبتّ.
+func (h *LeaderInvoiceHandler) DecideMonitorReview(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Verdict string `json:"verdict"`
+		Note    string `json:"note"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	inv, err := h.service.DecideMonitorReview(r.PathValue("id"), req.Verdict, req.Note, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}
+
+// PUT /api/leader-invoices/{id}/return — المالك يرجّعها للمحاسب.
+func (h *LeaderInvoiceHandler) ReturnToAccountant(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Reason string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	inv, err := h.service.ReturnToAccountant(r.PathValue("id"), middleware.EmployeeIDFromContext(r), req.Reason)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, inv)
+}
+
 // GET /api/leader-invoices/approved-without-number — الفجوة الي كلّفت.
 func (h *LeaderInvoiceHandler) ApprovedWithoutNumber(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.service.ListApprovedWithoutNumber()

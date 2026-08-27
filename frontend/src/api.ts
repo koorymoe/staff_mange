@@ -1202,6 +1202,22 @@ export interface LeaderInvoice {
   auditedAt?: string
   /** المبلغ الي دخل فعلاً — أساس المطابقة */
   auditedAmount?: number
+  // ═══ مراجعة المراقب ═══
+  //
+  // ⚠️ الحالة تنشتق من الطوابع: `monitorRequestedAt` موجود و
+  // `monitorDecidedAt` فارغ = الفاتورة **عند المراقب الآن**.
+  monitorRequestedAt?: string
+  monitorRequestedByName?: string
+  monitorRequestNote?: string
+  monitorDecidedAt?: string
+  monitorDecidedByName?: string
+  monitorVerdict?: 'OK' | 'FLAGGED'
+  monitorNote?: string
+  // ═══ إرجاع المالك للمحاسب ═══
+  returnedAt?: string
+  returnedByName?: string
+  returnReason?: string
+  returnedCount?: number
   // ═══ سحب الاعتماد ═══
   revokedAt?: string
   revokedByName?: string
@@ -3379,6 +3395,15 @@ export const api = {
   setInvoiceAuditVerdict: (id: string, data: { verdict: string; note: string; auditedAmount?: number | null }) =>
     request<LeaderInvoice>(`/leader-invoices/${id}/audit`, { method: 'PUT', body: JSON.stringify(data) }),
   /** سحب اعتماد فاتورة انعتمدت بالغلط — السبب إجباري */
+  /** المحاسب يرسلها للمراقب حتى يراجعها ويدققها. */
+  requestInvoiceMonitorReview: (id: string, note: string) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/monitor-request`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  /** المراقب يبتّ: OK أو FLAGGED (والملاحظة إجبارية بالثانية). */
+  decideInvoiceMonitorReview: (id: string, verdict: 'OK' | 'FLAGGED', note: string) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/monitor-decide`, { method: 'PUT', body: JSON.stringify({ verdict, note }) }),
+  /** ⚠️ المالك وحده: يرجّعها للمحاسب حتى يرتّبها من جديد. */
+  returnInvoiceToAccountant: (id: string, reason: string) =>
+    request<LeaderInvoice>(`/leader-invoices/${id}/return`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   revokeInvoiceApproval: (id: string, reason: string) =>
     request<LeaderInvoice>(`/leader-invoices/${id}/revoke`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   /** الفواتير المعتمدة بلا رقم فاتورة محاسبية — الفجوة الي كلّفت */

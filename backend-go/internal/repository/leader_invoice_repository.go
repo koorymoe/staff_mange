@@ -278,15 +278,25 @@ func (r *LeaderInvoiceRepository) GetByID(id string) (*model.LeaderInvoice, erro
 const (
 	StageAwaitingAudit    = "AWAITING_AUDIT"
 	StageAwaitingApproval = "AWAITING_APPROVAL"
+	StageAwaitingMonitor  = "AWAITING_MONITOR"
 	StageApproved         = "APPROVED"
 )
+
+/** ⚠️ «عند المراقب الآن» = طُلبت ولا انبتّ بيها. الشرط يتكرر بأكثر
+ *  من استعلام، فينكتب مرة وحدة — نسختان تفترقان بأول تعديل. */
+const atMonitorSQL = `"monitorRequestedAt" IS NOT NULL AND "monitorDecidedAt" IS NULL`
 
 func stageClause(stage string) string {
 	switch stage {
 	case StageAwaitingAudit:
 		return ` AND status <> 'APPROVED' AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '')`
 	case StageAwaitingApproval:
-		return ` AND status <> 'APPROVED' AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> ''`
+		// ⚠️ الفاتورة الي عند المراقب **تطلع** من طابور الاعتماد:
+		// لو بقت بالاثنين، المحاسب يعتمدها وهي عند المراقب — ويصير
+		// إرسالها للمراقب بلا معنى.
+		return ` AND status <> 'APPROVED' AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> '' AND NOT (` + atMonitorSQL + `)`
+	case StageAwaitingMonitor:
+		return ` AND status <> 'APPROVED' AND ` + atMonitorSQL
 	case StageApproved:
 		return ` AND status = 'APPROVED'`
 	default:
@@ -509,6 +519,79 @@ func (r *LeaderInvoiceRepository) FindByExternalNumber(number string) (*model.Le
 
 // SetExternalNumber يربط رقم الفاتورة المحاسبية بفاتورة معتمدة أصلاً —
 // للفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً.
+// ═══ المحاسب يرسلها للمراقب ═══
+//
+// ⚠️ **يمسح قرار المراقب السابق**: فاتورة انرسلت مرة ثانية بعد ما
+// انبتّ بيها لازم تبدي نظيفة — وإلا تظهر «عند المراقب» وعليها حكمه
+// القديم، والمراقب يظن أحداً بتّ بيها قبله.
+func (r *LeaderInvoiceRepository) RequestMonitorReview(id, byEmployeeID, note string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "monitorRequestedAt" = CURRENT_TIMESTAMP,
+		    "monitorRequestedById" = $2,
+		    "monitorRequestNote" = NULLIF($3, ''),
+		    "monitorDecidedAt" = NULL, "monitorDecidedById" = NULL,
+		    "monitorVerdict" = NULL, "monitorNote" = NULL
+		WHERE id = $1 AND status <> 'APPROVED'
+		  AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> ''`, id, byEmployeeID, note)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة معتمدة أصلاً أو ما انتدققت بعد")
+	}
+	return r.GetByID(id)
+}
+
+// ═══ المراقب يبتّ بيها ═══
+//
+// ⚠️ ترجع للمحاسب **بحكمها ظاهراً** — ما تنعتمد ولا تنرفض تلقائياً.
+// المراقب يراجع ويأشّر، والقرار المالي يبقى بيد المحاسب.
+func (r *LeaderInvoiceRepository) DecideMonitorReview(id, verdict, note, byEmployeeID string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "monitorDecidedAt" = CURRENT_TIMESTAMP,
+		    "monitorDecidedById" = $2, "monitorVerdict" = $3, "monitorNote" = NULLIF($4, '')
+		WHERE id = $1 AND `+atMonitorSQL, id, byEmployeeID, verdict, note)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة مو عند المراقب — أو انبتّ بيها من قبل")
+	}
+	return r.GetByID(id)
+}
+
+// ═══ المالك يرجّعها للمحاسب ═══
+//
+// ⚠️ **تمسح الحكم وترجّعها لأول الطابور**: الغرض إن المحاسب «يرتّبها
+// من جديد»، وإرجاعها بحكمها القديم يخلّيها بطابور الاعتماد مباشرة —
+// يعني ما رجعت فعلياً.
+//
+// ⚠️ ورقم الفاتورة المحاسبية **يبقى**: صادر من نظام المحاسب فعلاً،
+// ومحوه عدنا ما يمحيه عنده. نفس قاعدة سحب الاعتماد الموجودة.
+func (r *LeaderInvoiceRepository) ReturnToAccountant(id, byEmployeeID, reason string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET status = 'SUBMITTED',
+		    "auditVerdict" = NULL, "auditNote" = NULL, "auditedById" = NULL,
+		    "auditedAt" = NULL, "auditedAmount" = NULL,
+		    "approvedByEmployeeId" = NULL, "approvedAt" = NULL,
+		    "monitorRequestedAt" = NULL, "monitorRequestedById" = NULL, "monitorRequestNote" = NULL,
+		    "monitorDecidedAt" = NULL, "monitorDecidedById" = NULL,
+		    "monitorVerdict" = NULL, "monitorNote" = NULL,
+		    "returnedAt" = CURRENT_TIMESTAMP, "returnedById" = $2,
+		    "returnReason" = $3, "returnedCount" = "returnedCount" + 1
+		WHERE id = $1`, id, byEmployeeID, reason)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة غير موجودة")
+	}
+	return r.GetByID(id)
+}
+
 func (r *LeaderInvoiceRepository) SetExternalNumber(id, number string) (*model.LeaderInvoice, error) {
 	var inv model.LeaderInvoice
 	err := r.db.Get(&inv, `

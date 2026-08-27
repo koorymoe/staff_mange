@@ -94,6 +94,30 @@ type LeaderInvoice struct {
 	// تعديل المحاسب على المبالغ: سببه ووقته. ⚠️ أعمدة بالجدول.
 	AdjustedReason *string `db:"adjustedReason" json:"adjustedReason"`
 
+	// ═══ مراجعة المراقب ═══
+	//
+	// ⚠️ الحالة تنشتق من الطوابع: `monitorRequestedAt` موجود و
+	// `monitorDecidedAt` فارغ = الفاتورة **عند المراقب الآن**. عمود
+	// «مرحلة» منفصل يعني حقيقتين لنفس الشي.
+	MonitorRequestedAt   *time.Time `db:"monitorRequestedAt" json:"monitorRequestedAt,omitempty"`
+	MonitorRequestedByID *string    `db:"monitorRequestedById" json:"monitorRequestedById,omitempty"`
+	MonitorRequestNote   *string    `db:"monitorRequestNote" json:"monitorRequestNote,omitempty"`
+	MonitorDecidedAt     *time.Time `db:"monitorDecidedAt" json:"monitorDecidedAt,omitempty"`
+	MonitorDecidedByID   *string    `db:"monitorDecidedById" json:"monitorDecidedById,omitempty"`
+	MonitorVerdict       *string    `db:"monitorVerdict" json:"monitorVerdict,omitempty"`
+	MonitorNote          *string    `db:"monitorNote" json:"monitorNote,omitempty"`
+
+	// ═══ إرجاع المالك للمحاسب ═══
+	ReturnedAt    *time.Time `db:"returnedAt" json:"returnedAt,omitempty"`
+	ReturnedByID  *string    `db:"returnedById" json:"returnedById,omitempty"`
+	ReturnReason  *string    `db:"returnReason" json:"returnReason,omitempty"`
+	ReturnedCount int        `db:"returnedCount" json:"returnedCount"`
+
+	// أسماء للعرض — ما تنخزن
+	MonitorRequestedByName *string `db:"-" json:"monitorRequestedByName,omitempty"`
+	MonitorDecidedByName   *string `db:"-" json:"monitorDecidedByName,omitempty"`
+	ReturnedByName         *string `db:"-" json:"returnedByName,omitempty"`
+
 	// ═══ التدقيق ═══
 	// حكم المحاسب قبل الاعتماد: مطابق / غير مطابق / خطأ بالسعر.
 	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).

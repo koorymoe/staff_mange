@@ -306,6 +306,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	aiMetricsService := service.NewAiMetricsService(aiRepo)
 	aiHandler := handler.NewAiHandler(aiRepo, aiBrainService, aiMetricsService)
 	bookingService.SetAiRecorder(aiRepo)
+	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
 	// المشتريات وقت صرف الفلوس، الجودة وقت الحكم السلبي،
@@ -1443,6 +1444,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ تدقيق الفاتورة ═══
 	// الحكم قبل الاعتماد، وسحب الاعتماد لما ينصار بالغلط.
 	mux.Handle("PUT /api/leader-invoices/{id}/audit", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetAuditVerdict), requireAuth, requireFinance))
+	// ⚠️ المحاسب يرسل للمراقب — نفس حارس بقية عمليات المحاسب.
+	mux.Handle("PUT /api/leader-invoices/{id}/monitor-request", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.RequestMonitorReview), requireAuth, requireFinance))
+	// ⚠️ والمراقب يبتّ — حارس المراقب مو المحاسب: المحاسب ما يبتّ
+	// بطلبه بنفسه، وإلا الإرسال للمراقب يصير شكلياً.
+	mux.Handle("PUT /api/leader-invoices/{id}/monitor-decide", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.DecideMonitorReview), requireAuth, requireMonitor))
+	// ⚠️⚠️ الإرجاع للمحاسب: **المالك وحده ولا حتى الإداري**. هاي تشيل
+	// اعتماداً صار وترجّع فاتورة لأول الطابور — صلاحية بهالوزن بيد
+	// أكثر من واحد تعني إن المالك ما يعرف منو غيّر شنو.
+	mux.Handle("PUT /api/leader-invoices/{id}/return", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ReturnToAccountant), requireAuth,
+		middleware.RequireOwnerOnly("إرجاع الفواتير للمحاسب بيد المالك وحده")))
 	mux.Handle("PUT /api/leader-invoices/{id}/revoke", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.RevokeApproval), requireAuth, requireFinance))
 	mux.Handle("GET /api/leader-invoices/approved-without-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ApprovedWithoutNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/external-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetExternalNumber), requireAuth, requireFinance))
