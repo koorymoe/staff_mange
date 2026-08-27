@@ -44,6 +44,8 @@ const PanelUI = lazy(() => import('../panel/PanelUI'))
 const ToolsPanel = lazy(() => import('./tools/ToolsPanel'))
 // ⚠️ لوحة الكونسول `lazy` هي هم — تجرّ محرّك الأوامر وراها.
 const ConsolePanel = lazy(() => import('./ConsolePanel'))
+// ⚠️ عارض المنحنيات `lazy` هم — أغلب من يفتح اللوح ما يفتحه.
+const CurveView = lazy(() => import('./physics/CurveView'))
 
 /** السويچات الي تنهيّأ بالكونسول. */
 const CLI_PARTS = new Set(['switch_l2', 'switch_poe', 'switch_l3'])
@@ -99,6 +101,7 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
   const [console_, setConsole] = useState<string | null>(null)
   const [panel, setPanel] = useState<string | null>(null)
   const [tools, setTools] = useState(false)
+  const [curves, setCurves] = useState(false)
   const [logFilter, setLogFilter] = useState<'all' | 'error' | 'warn' | 'info'>('all')
   /** ═══ مؤقّت التشغيل ═══
    *  ⚠️ يبدي من **أول تشغيل فعلي** مو من فتح الصفحة: «المختبر شغّال
@@ -427,6 +430,15 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
               <button onClick={() => setFitSignal((n) => n + 1)}
                 className="rounded-lg bg-slate-800 px-3 py-1.5 text-xs font-bold text-slate-300 hover:bg-slate-700">
                 ⤢ ضبط العرض
+              </button>
+            )}
+            {domain === 'solar' && (
+              <button
+                onClick={() => setCurves((v) => !v)}
+                title="منحنى I–V و P–V ومنحنى اليوم — من نفس النموذج الي يحسب عليه المحرّك"
+                className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${
+                  curves ? 'bg-violet-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}>
+                📈 المنحنيات
               </button>
             )}
             {domain === 'network' && (
@@ -935,6 +947,37 @@ export function Bench({ embedded, startDoc, onResult }: BenchProps = {}) {
                 grammar={CISCO_LIKE}
                 onStateChange={(st) => saveCli(nd.id, st)}
                 onClose={() => setConsole(null)}
+              />
+            </Suspense>
+          )
+        })()}
+
+        {/* ═══ منحنيات اللوح ═══
+            ⚠️ تاخذ مواصفة **اللوح المحدَّد** إذا اكو، وإلا أول لوح
+            باللوح: المتدرّب الي يضغط لوحاً ويفتح المنحنيات يتوقع
+            يشوف منحنى **ذاك اللوح** مو غيره. */}
+        {curves && domain === 'solar' && (() => {
+          const sel = doc.nodes.find((n) => n.id === selected && n.partId === 'pv_panel')
+          const pv = sel ?? doc.nodes.find((n) => n.partId === 'pv_panel')
+          if (!pv) {
+            return (
+              <div className="border-t border-slate-800 bg-[#0b1220] p-4 text-center text-[12px] text-slate-500">
+                حط لوحاً شمسياً باللوح حتى تظهر منحنياته.
+              </div>
+            )
+          }
+          const nm = (k: string, d: number) => {
+            const v = pv.params[k]
+            const x = typeof v === 'number' ? v : parseFloat(String(v))
+            return Number.isFinite(x) ? x : d
+          }
+          return (
+            <Suspense fallback={<div className="h-[420px] border-t border-slate-800 bg-[#0b1220]" />}>
+              <CurveView
+                spec={{ voc: nm('voc', 49.8), isc: nm('isc', 13.9), vmp: nm('vmp', 41.5), imp: nm('imp', 13.26), cells: nm('cells', 72) }}
+                count={Math.max(1, nm('count', 6))}
+                ambientC={nm('ambientC', 35)}
+                onClose={() => setCurves(false)}
               />
             </Suspense>
           )

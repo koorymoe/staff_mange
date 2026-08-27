@@ -11,20 +11,44 @@
 // ٣) **بنك بطاريات مو مطابق.** ٢٤ فولت على إنفرتر مضبوط ٤٨ يعني
 //    ما يشحن ولا يشتغل، والزبون يظن الألواح خربانة.
 //
-// ⚠️ درجة الدقة `F1`: توازن قدرة بحالة مستقرة. ماكو منحنى IV ولا
-// MPPT يتتبّع لحظياً ولا حرارة ديناميكية — يكفي لفحص التصميم
-// والتوصيل، وما يكفي لدرس كفاءة MPPT.
+// ⚠️ درجة الدقة `F3`: **منحنى IV بنموذج الدايود الأحادي** معاير على
+// نقاط لوحة اللوح + حرارة خلية بمعادلة NOCT + تتبّع MPP بالبحث على
+// المنحنى + **تكامل** ليوم كامل بخطوات نصف ساعة.
+//
+// والي لسه برّا النطاق ومكتوب صراحة: فقد الاتساخ التراكمي، وزاوية
+// السقوط، وتدهور LID/PID، وتعدّد قمم المنحنى بالتظليل المعقّد،
+// وكفاءة الإنفرتر المتغيّرة مع الحمل. ولهذا الأرقام تطلع **أعلى من
+// الواقع بنسبة ثابتة** — نعوّضها بمعامل نظام معلن، مو مخبّى.
 
+import { panelModel, findMpp, simulateDay, type PanelSpec } from '../physics/pv'
 import type { DomainEngine, LabDoc, SimResult } from '../types'
+
+/** ═══ معامل النظام ═══
+ *  ⚠️ **معلن مو مخبّى**: يغطّي الي ما ننمذجه (اتساخ · زاوية سقوط ·
+ *  فقد الأسلاك · كفاءة الإنفرتر). رقم واحد ظاهر أصدق من نموذج يدّعي
+ *  الكمال وينحرف بصمت. القيمة عرف صناعي منشور لمنظومات نظيفة الصيانة.
+ */
+const SYSTEM_DERATE = 0.82
+
+/** مواصفة اللوح من خصائصه — القيم مطبوعة على ظهر أي لوح. */
+function specOf(params: Record<string, unknown>): PanelSpec {
+  return {
+    voc: num(params.voc, 49.8),
+    isc: num(params.isc, 13.9),
+    vmp: num(params.vmp, 41.5),
+    imp: num(params.imp, 13.26),
+    cells: num(params.cells, 72),
+  }
+}
 
 const num = (v: unknown, d: number) => {
   const n = typeof v === 'number' ? v : parseFloat(String(v))
   return Number.isFinite(n) ? n : d
 }
 
-/** معامل ارتفاع Voc بالبرد — تقريب شائع: ٠٫٣٪ لكل درجة تحت ٢٥. */
+/** ⚠️ حرارة الجو بأبرد صباح — الأساس الي ينحسب عليه Voc الخطِر.
+ *  معامل الحرارة نفسه صار داخل نموذج اللوح، مو رقماً هنا. */
 const COLD_C = 0
-const VOC_TEMP_COEF = 0.0033
 
 /** ═══ جهد كل منفذ بالمنظومة ═══
  *
@@ -138,12 +162,22 @@ export const solarEngine: DomainEngine = {
     for (const pv of pvConnected) {
       const count = Math.max(1, num(pv.params.count, 1))
       const vmp = num(pv.params.vmp, 41.5) * count
-      const voc = num(pv.params.voc, 49.8) * count
-      // ⚠️ الحساب على **Voc بالبرد** مو على Vmp — هذا الفرق الي يحرق.
-      const vocCold = voc * (1 + VOC_TEMP_COEF * (25 - COLD_C))
+      // ⚠️ Voc بالبرد **من النموذج** مو من ضرب معامل: النموذج يحسب
+      // حرارة الخلية بصباح شتوي صافي (جو ٠ + إشعاع ٤٠٠ = خلية ١٢٫٥)
+      // ويرجّع الجهد الفعلي عندها. الضرب بمعامل ثابت يتجاهل إن
+      // الإشعاع الواطي يخفّض Voc هم — فيطلع رقماً أعلى من الحقيقة.
+      const spec = specOf(pv.params)
+      const coldModel = panelModel(spec, 400, COLD_C)
+      const vocCold = coldModel.voc * count
       // ⚠️ `shadeFactor` من الأعطال: ظل على الستring. المحرّك يشوف
       // قدرة أقل ويحسبها — ما يعرف إنه ظل، مثل الإنفرتر الحقيقي.
-      pvPower += num(pv.params.pmax, 550) * count * num(pv.params.shadeFactor, 1)
+      // ⚠️ القدرة من **قمة المنحنى** مو من الرقم المكتوب على اللوح:
+      // اللوح ما يعطي قدرته الاسمية إلا بالظروف القياسية (خلية ٢٥
+      // درجة)، وبالميدان الخلية ٦٠+ فالقدرة أقل — والفرق يظهر لحاله
+      // بلا ما نكتب له قاعدة، لأن النقطة العظمى نفسها انتقلت.
+      const shade = num(pv.params.shadeFactor, 1)
+      const noonModel = panelModel(spec, 1000 * shade, num(pv.params.ambientC, 35))
+      pvPower += findMpp(noonModel).pmax * count
 
       add(pv.id, `Vmp ${vmp.toFixed(0)} V`)
       add(pv.id, `Voc البرد ${vocCold.toFixed(0)} V`, vocCold > vdcMax ? 'bad' : 'ok')
@@ -222,8 +256,22 @@ export const solarEngine: DomainEngine = {
       })
     }
     if (loadWh > 0 && pvPower > 0) {
-      // إنتاج يومي تقريبي: القدرة × ٤٫٥ ساعة شمس مكافئة (تقريب للعراق) × ٠٫٨ كفاءة
-      const dailyWh = pvPower * 4.5 * 0.8
+      // ═══ الإنتاج اليومي = **تكامل** المنحنى ═══
+      //
+      // ⚠️ چان: `القدرة × ٤٫٥ ساعة × ٠٫٨`. و«ساعات الشمس المكافئة»
+      // رقم مفيد للتقدير السريع وكارثة للتصميم: يعطي **نفس الرقم**
+      // ليوم ربيعي معتدل ويوم صيفي حار، وهما يختلفان ٪٩ بالحرارة
+      // وحدها. وأسوأ منه إنه يخفي إن الحمل الي يشتغل الساعة ٧ صباحاً
+      // يشوف ٪٢٠ من القدرة مو ٪١٠٠.
+      const firstPv = pvConnected[0]
+      const totalPanels = pvConnected.reduce((sum, p) => sum + Math.max(1, num(p.params.count, 1)), 0)
+      const day = simulateDay(specOf(firstPv.params), {
+        panels: totalPanels,
+        peakIrr: 1000 * num(firstPv.params.shadeFactor, 1),
+        minC: num(firstPv.params.ambientC, 35) - 12,
+        maxC: num(firstPv.params.ambientC, 35) + 6,
+      })
+      const dailyWh = day.kwh * 1000 * SYSTEM_DERATE
       messages.push({
         kind: dailyWh < loadWh ? 'warn' : 'info',
         text: `الإنتاج اليومي التقريبي ${Math.round(dailyWh)} واط·ساعة والاستهلاك ${Math.round(loadWh)} — ${dailyWh < loadWh ? 'ما يكفي، تحتاج ألواحاً أكثر.' : 'يكفي بهامش.'}`,

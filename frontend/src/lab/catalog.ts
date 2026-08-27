@@ -99,6 +99,17 @@ const SOLAR: PartDef[] = [
       { id: 'vmp', label: 'جهد أعظم قدرة Vmp', unit: 'V', kind: 'number', default: 41.5, min: 1 },
       { id: 'voc', label: 'جهد الدارة المفتوحة Voc', unit: 'V', kind: 'number', default: 49.8, min: 1,
         help: 'Voc يرتفع لمن تبرد الأجواء — وهو الي يحرق الإنفرتر بالشتاء لو الستring طويل.' },
+      { id: 'isc', label: 'تيار القصر Isc', unit: 'A', kind: 'number', default: 13.9, min: 0.1,
+        help: 'مطبوع على ظهر اللوح. النموذج يعاير عليه — بلاه يطلع منحنى غلط.' },
+      { id: 'imp', label: 'تيار أعظم قدرة Imp', unit: 'A', kind: 'number', default: 13.26, min: 0.1 },
+      // ⚠️ **الخلايا بالسلسلة مو عدد الخلايا الظاهر.** لوح «١٤٤ خلية»
+      // هو ١٤٤ **نصف** خلية = ٧٢ بالسلسلة. وهاي بالضبط الي خرّبت أول
+      // معايرة عندي: حطّيت ١٤٤ فطلعت القدرة ٤٩٥ بدل ٥٥٠. الرقم الصح
+      // = Voc ÷ ٠٫٦٩ تقريباً.
+      { id: 'cells', label: 'الخلايا بالسلسلة', kind: 'number', default: 72, min: 12, max: 200,
+        help: 'لوح ١٤٤ نصف-خلية = ٧٢ بالسلسلة. القاعدة: Voc ÷ ٠٫٦٩ تقريباً.' },
+      { id: 'ambientC', label: 'حرارة الجو بالظهر', unit: '°C', kind: 'number', default: 35, min: -20, max: 60,
+        help: 'حرارة الخلية تطلع ٢٥–٣٠ درجة فوگ الجو — وهي الي تقرّر الإنتاج.' },
       { id: 'count', label: 'عدد الألواح بالسلسلة', kind: 'number', default: 6, min: 1, max: 30 },
     ],
   },
