@@ -201,6 +201,23 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 		return nil, err
 	}
 
+	// ═══ الفاتورة تورّث حكم المحاسب على حجزها ═══
+	//
+	// ⚠️⚠️ **الترتيب الزمني بالميدان معكوس**: المحاسب يدقّق الحجز يوم
+	// إنجازه، والليدر يرفع فاتورته بعدها بيوم أو أسبوع. فحكم «خطأ
+	// بالسعر» چان ينكتب على الحجز **قبل** ما توجد الفاتورة — والفاتورة
+	// الي تجي بعده تبدي نظيفة، فتروح لطابور التدقيق والمحاسب يعيد نفس
+	// الحكم مرة ثانية. وهذا الي بلّغ بيه صاحب النظام.
+	//
+	// ⚠️ والتوريث **ما يدهس حكماً موجوداً** (الشرط بالـSQL): لو المحاسب
+	// أشّر على الفاتورة نفسها بعدين، رأيه الأحدث يبقى.
+	if saved.BookingID != nil && *saved.BookingID != "" {
+		s.invoices.InheritBookingVerdict(saved.ID, *saved.BookingID)
+		if fresh, err := s.invoices.GetByID(saved.ID); err == nil && fresh != nil {
+			saved = fresh
+		}
+	}
+
 	s.computeAndSaveCommissions(saved)
 	s.recordDurationSample(saved)
 

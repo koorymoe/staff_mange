@@ -96,6 +96,29 @@ func (r *LeaderInvoiceRepository) Create(inv *model.LeaderInvoice, materials []m
 
 // CountForEmployeeMonth يرجّع عدد فواتير الليدر (المبيعات) لموظف معيّن خلال
 // شهر معيّن (monthPrefix بصيغة "YYYY-MM").
+// InheritBookingVerdict يورّث حكم المحاسب من الحجز للفاتورة الجديدة.
+//
+// ⚠️ **ينفّذ بعد الإنشاء مو داخله**: الإنشاء معاملة فيها إدراج المواد
+// وتوليد الكود المحاسبي، وأي فشل بقراءة الحكم ما يصير يلغي فاتورة
+// انكتبت صح. الحكم إضافة على الفاتورة، مو شرط لوجودها.
+func (r *LeaderInvoiceRepository) InheritBookingVerdict(invoiceID, bookingID string) {
+	verdict, note, amount, byID := r.bookingVerdict(bookingID)
+	if verdict == "" {
+		return
+	}
+	// ⚠️ `auditedById` يبقى **المحاسب الي أشّر فعلاً** — مو الليدر الي
+	// رفع الفاتورة. نسبة الحكم لغير صاحبه تخرّب أي مساءلة بعدين.
+	_, _ = r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "auditVerdict" = $2,
+		    "auditNote" = NULLIF($3, ''),
+		    "auditedById" = NULLIF($4, ''),
+		    "auditedAt" = CURRENT_TIMESTAMP,
+		    "auditedAmount" = $5
+		WHERE id = $1 AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '')`,
+		invoiceID, verdict, note, byID, amount)
+}
+
 func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
 	var count int
 	err := r.db.Get(&count, `
@@ -519,6 +542,60 @@ func (r *LeaderInvoiceRepository) FindByExternalNumber(number string) (*model.Le
 
 // SetExternalNumber يربط رقم الفاتورة المحاسبية بفاتورة معتمدة أصلاً —
 // للفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً.
+// ═══ حكم المحاسب الي انتأشّر على الحجز قبل ما توصل الفاتورة ═══
+//
+// ⚠️⚠️ **الفجوة الي تسدّها**: المحاسب يدقّق الحجز يوم إنجازه، والليدر
+// يرفع فاتورته بعدها بيوم أو أسبوع. فلمن أشّر «خطأ بالسعر» ما چان
+// اكو فاتورة تنختم — والفاتورة الي وصلت بعده بدت **نظيفة بلا حكم**،
+// فراحت لطابور التدقيق والمحاسب لازم يعيد نفس الحكم مرة ثانية.
+//
+// ⚠️ والترتيب مقصود: **البلاغ يسبق التدقيق**. حجز عليه بلاغ «خطأ
+// بالسعر» **وأيضاً** مؤشّر مدقق (لأن المحاسب صحّح المبلغ بعدها)
+// يورّث البلاغ — الحكم السلبي أولى بالانتباه من الإيجابي.
+func (r *LeaderInvoiceRepository) bookingVerdict(bookingID string) (verdict, note string, amount *float64, byID string) {
+	if bookingID == "" {
+		return "", "", nil, ""
+	}
+	var row struct {
+		Kind    *string  `db:"kind"`
+		Note    *string  `db:"note"`
+		Actual  *float64 `db:"actualAmount"`
+		Raised  *string  `db:"raisedById"`
+		Verif   bool     `db:"amountVerified"`
+		Collect *float64 `db:"amountCollected"`
+	}
+	err := r.db.Get(&row, `
+		SELECT i.kind, i.note, i."actualAmount", i."raisedById",
+		       b."amountVerified", b."amountCollected"
+		FROM "Booking" b
+		LEFT JOIN LATERAL (
+			SELECT kind, note, "actualAmount", "raisedById"
+			FROM "BookingAuditIssue"
+			WHERE "bookingId" = b.id AND status = 'OPEN'
+			ORDER BY "createdAt" DESC LIMIT 1
+		) i ON TRUE
+		WHERE b.id = $1`, bookingID)
+	if err != nil {
+		return "", "", nil, ""
+	}
+	if row.Kind != nil && *row.Kind != "" {
+		n := ""
+		if row.Note != nil {
+			n = *row.Note
+		}
+		by := ""
+		if row.Raised != nil {
+			by = *row.Raised
+		}
+		// نفس مفردات حكم الفاتورة — MISMATCH و PRICE_ERROR بنفس الاسم
+		return *row.Kind, n, row.Actual, by
+	}
+	if row.Verif {
+		return "MATCHED", "", row.Collect, ""
+	}
+	return "", "", nil, ""
+}
+
 // ═══ المحاسب يرسلها للمراقب ═══
 //
 // ⚠️ **يمسح قرار المراقب السابق**: فاتورة انرسلت مرة ثانية بعد ما

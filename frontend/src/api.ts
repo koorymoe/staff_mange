@@ -1146,6 +1146,18 @@ export interface ExecutionCostItem {
   notes?: string
 }
 
+/** ═══ وين هذا الحجز؟ ═══
+ *  يرجّع **مكاناً** مو بيانات — الوصول للتفاصيل يبقى بصلاحية الشاشة. */
+export interface LocateResult {
+  found: boolean
+  code?: string
+  where?: string
+  route?: string
+  hint?: string
+  invoiceStage?: string
+  invoiceRoute?: string
+}
+
 export interface LeaderInvoiceMaterialItem {
   id: string
   leaderInvoiceId: string
@@ -3769,6 +3781,8 @@ export const api = {
     request<Material[]>(`/materials${code ? `?code=${encodeURIComponent(code)}` : ''}`),
   getInvoiceAdjustments: (id: string) =>
     request<LeaderInvoiceAdjustment[]>(`/leader-invoices/${id}/adjustments`),
+  /** يدوّر على الحجز بكل الأماكن ويقول وين هو. */
+  locate: (q: string) => request<LocateResult>(`/locate?q=${encodeURIComponent(q)}`),
   getLeaderInvoices: (employeeId?: string) =>
     request<LeaderInvoice[]>(`/leader-invoices${employeeId ? `?employeeId=${encodeURIComponent(employeeId)}` : ''}`),
   getLeaderInvoice: (id: string) => request<LeaderInvoice>(`/leader-invoices/${id}`),

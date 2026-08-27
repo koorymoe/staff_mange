@@ -200,6 +200,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	permissionHandler := handler.NewPermissionHandler(permissionService, lockoutRepo)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
+	locateHandler := handler.NewLocateHandler(db)
 	bookingHandler := handler.NewBookingHandler(bookingService, permissionRepo)
 	bookingHandler.SetReminderService(bookingReminderService)
 	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService)
@@ -562,6 +563,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تنظيمي مو تفضيل شخصي.
 	// ⚠️ `requireAuth` بس ومقصود: الاستعلام محصور بالبناء على خدمات
 	// المُستدعي — موظف مو مسؤول خدمة يرجع بقائمة فاضية، مو بخطأ.
+	// ⚠️ `requireAuth` بس: يرجّع **مكاناً** مو بيانات. والوصول
+	// للتفاصيل يبقى محكوماً بصلاحية الشاشة نفسها — البحث ما يصير
+	// باباً خلفياً.
+	mux.Handle("GET /api/locate", middleware.Chain(http.HandlerFunc(locateHandler.Locate), requireAuth))
 	mux.Handle("GET /api/bookings/manager-paperwork", middleware.Chain(http.HandlerFunc(bookingHandler.ManagerPaperwork), requireAuth))
 	mux.Handle("PUT /api/services/{id}/manager-paperwork", middleware.Chain(http.HandlerFunc(serviceHandler.SetManagerPaperwork), requireAuth, requireAdmin))
 

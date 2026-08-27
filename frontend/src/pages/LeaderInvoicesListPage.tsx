@@ -6,6 +6,7 @@ import { formatCustomerCode } from '../utils/identity'
 import { useSession } from '../session'
 import { matches } from '../utils/search'
 import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
+import LocateHint from '../components/LocateHint'
 
 // ═══ طباعة فاتورة الليدر ═══
 //
@@ -401,6 +402,8 @@ export default function LeaderInvoicesListPage() {
           </span>
         )}
       </div>
+
+      <LocateHint query={search} localCount={shown.length} currentRoute="/leader-invoices" />
 
       {/* البحث برقم فاتورة المحاسب — هذا سبب أرشفة الرقم: يلكاها بيه */}
       <input

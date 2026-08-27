@@ -3,6 +3,7 @@ import { api, type Booking } from '../api'
 import { useSession } from '../session'
 import BookingLifecycleActions from '../components/BookingLifecycleActions'
 import { matches } from '../utils/search'
+import LocateHint from '../components/LocateHint'
 
 // ═══ أرشيف الحجوزات ═══
 //
@@ -72,6 +73,7 @@ export default function BookingsArchive() {
           </div>
         </div>
 
+        <LocateHint query={search} localCount={filtered.length} currentRoute="/bookings-archive" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}

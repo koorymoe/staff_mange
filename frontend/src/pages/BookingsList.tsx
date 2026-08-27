@@ -11,6 +11,7 @@ import { BOOKING_STAGES, currentStage } from '../bookingStage'
 import { BUCKET_HEADINGS, DONE_FILTERS, type BookingBucket, type DoneFilter } from './bookingBuckets'
 import Pager from '../components/Pager'
 import BookingLocator from '../components/BookingLocator'
+import LocateHint from '../components/LocateHint'
 
 export type { BookingBucket } from './bookingBuckets'
 
@@ -374,6 +375,9 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
           ))}
         </div>
       )}
+
+      {/* ⚠️ يظهر بس لمن يفشل البحث المحلي. */}
+      <LocateHint query={search} localCount={filtered.length} currentRoute="/bookings" />
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <input
