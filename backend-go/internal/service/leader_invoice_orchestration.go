@@ -466,6 +466,11 @@ func (s *LeaderInvoiceService) RequestMonitorReview(id, byEmployeeID, note strin
 		}
 		_ = s.notifications.CreateForRole("MONITOR", "invoice_monitor", msg)
 		_ = s.notifications.CreateForRole("ADMIN", "invoice_monitor", msg)
+		// ⚠️⚠️ **المالك دوره `OWNER` مو `ADMIN`** بقاعدة البيانات،
+		// و`CreateForRole("ADMIN")` تطابق العمود حرفياً — يعني المالك
+		// **ما چان يوصله ولا إشعار** عن فاتورة راحت للمراقب. وهو
+		// الوحيد الي يگدر يرجّعها للمحاسب، فما يعرف بشي يحتاج قراره.
+		_ = s.notifications.CreateForRole("OWNER", "invoice_monitor", msg)
 	}
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
@@ -496,8 +501,11 @@ func (s *LeaderInvoiceService) DecideMonitorReview(id, verdict, note, byEmployee
 		if verdict == "FLAGGED" {
 			lbl = "⚠️ عليها ملاحظة: " + note
 		}
-		_ = s.notifications.CreateForRole("FINANCE", "invoice_monitor",
-			"👁️ المراقب راجع فاتورة "+inv.AccountingCode+" — "+lbl)
+		note := "👁️ المراقب راجع فاتورة " + inv.AccountingCode + " — " + lbl
+		_ = s.notifications.CreateForRole("FINANCE", "invoice_monitor", note)
+		// ⚠️ والمالك يتابع الدورة كاملة: راحت للمراقب ورجعت بحكمه.
+		// إشعار بالذهاب بلا إشعار بالرجوع يخلّيه يظن إنها لسه واگفة.
+		_ = s.notifications.CreateForRole("OWNER", "invoice_monitor", note)
 	}
 	return inv, nil
 }
@@ -522,8 +530,11 @@ func (s *LeaderInvoiceService) ReturnToAccountant(id, byEmployeeID, reason strin
 		return nil, err
 	}
 	if s.notifications != nil {
-		_ = s.notifications.CreateForRole("FINANCE", "invoice_returned",
-			"↩️ المالك رجّع فاتورة "+inv.AccountingCode+" للترتيب من جديد — السبب: "+reason)
+		back := "↩️ المالك رجّع فاتورة " + inv.AccountingCode + " للترتيب من جديد — السبب: " + reason
+		_ = s.notifications.CreateForRole("FINANCE", "invoice_returned", back)
+		// ⚠️ والمراقب هم: لو چانت عنده وانسحبت منه، لازم يعرف ليش
+		// اختفت من طابوره — وإلا يدوّر عليها ويظن النظام بلعها.
+		_ = s.notifications.CreateForRole("MONITOR", "invoice_returned", back)
 	}
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)

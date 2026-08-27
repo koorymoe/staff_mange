@@ -353,6 +353,15 @@ export default function LeaderInvoicesListPage() {
           {/* ⚠️ عدّادان مو واحد: «باقي تدقيق» و«باقي قرار» شغلتان
               مختلفتان، ورقم واحد يجمعهما يخفي أيّهما الي واگف. */}
           <div className="flex gap-2">
+            {/* ⚠️ **المالك يشوف الي عند المراقب بلا ما يدوّر**: هو
+                الوحيد الي يگدر يرجّعها للمحاسب، فلو ما عرف إنها هناك
+                تبقى واگفة بلا قرار. والعدّاد يوصل قبل ما يفتح التبويب. */}
+            {isOwner && counts.MONITOR > 0 && (
+              <div className="rounded-xl bg-indigo-400/20 px-4 py-2 text-center ring-1 ring-indigo-200/40 backdrop-blur">
+                <p className="text-2xl font-black leading-none text-indigo-100">{counts.MONITOR}</p>
+                <p className="mt-1 text-[11px] text-indigo-50">عند المراقب</p>
+              </div>
+            )}
             {counts.AUDIT > 0 && (
               <div className="rounded-xl bg-sky-400/20 px-4 py-2 text-center ring-1 ring-sky-200/40 backdrop-blur">
                 <p className="text-2xl font-black leading-none text-sky-100">{counts.AUDIT}</p>
