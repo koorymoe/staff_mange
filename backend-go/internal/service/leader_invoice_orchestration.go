@@ -369,6 +369,32 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	if externalNumber == "" {
 		return nil, fmt.Errorf("رقم الفاتورة المحاسبية مطلوب قبل الاعتماد")
 	}
+
+	// ═══ التدقيق قبل الاعتماد — إجباري ═══
+	//
+	// ⚠️⚠️ **الفحص بالخادم مو بإخفاء الزر.** الواجهة تخفي زر الاعتماد
+	// عن الفواتير الي ما انتدققت، بس الإخفاء **مو منع**: نداء مباشر
+	// على المسار يتخطّاه. وهاي فاتورة مالية — الي ينحرس بالواجهة وحدها
+	// محروس بالنية مو بالكود.
+	//
+	// ⚠️ والأحكام الثلاثة **كلها تمرّ**: مطابق وغير مطابق وخطأ بالسعر.
+	// النظام يطلب **قراراً**، ما يطلب **موافقة** — حجب الاعتماد عن
+	// «غير مطابق» يعني نظاماً ياخذ قراراً مالياً بدل صاحبه. المحاسب
+	// يشوف الحكم قدّامه ويقرر.
+	current, err := s.invoices.GetByID(id)
+	if err != nil {
+		return nil, err
+	}
+	if current == nil {
+		return nil, fmt.Errorf("الفاتورة غير موجودة")
+	}
+	if current.AuditVerdict == nil || strings.TrimSpace(*current.AuditVerdict) == "" {
+		// ⚠️ الرسالة تقول **شنو يسوي** مو «ممنوع»: المحاسب الي يقرا
+		// «ما عندك صلاحية» يتصل بالإدارة، والي يقرا «دقّق أول» يعرف
+		// الخطوة الجاية بلا ما يسأل أحداً.
+		return nil, fmt.Errorf("دقّق الفاتورة أول — اختر مطابق أو غير مطابق أو خطأ بالسعر، وبعدها تنتقل لطابور الاعتماد")
+	}
+
 	inv, err := s.invoices.Approve(id, approverEmployeeID, externalNumber)
 	if err != nil {
 		// الرقم فريد — لو انستعمل بفاتورة ثانية نوضّح السبب بدل رسالة
@@ -476,6 +502,11 @@ func (s *LeaderInvoiceService) Get(id string) (*model.LeaderInvoice, error) {
 		return nil, fmt.Errorf("الفاتورة غير موجودة")
 	}
 	return inv, nil
+}
+
+// ListByStage فواتير مرحلة معيّنة — فارغة تعني الكل.
+func (s *LeaderInvoiceService) ListByStage(employeeID, stage string) ([]model.LeaderInvoice, error) {
+	return s.invoices.ListByStage(employeeID, stage)
 }
 
 func (s *LeaderInvoiceService) List(employeeID string) ([]model.LeaderInvoice, error) {

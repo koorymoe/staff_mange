@@ -142,7 +142,12 @@ export default function LeaderInvoicesListPage() {
   // الشاشة جانت جدول واحد طويل فيه كل شي مخلوط: المعتمد وغير المعتمد،
   // والمربوط برقم وغير المربوط. المحاسب يدوّر بعينه. هسه تبويبات
   // تحصر شغله بالي محتاجه، وبطاقات فوق تكله بالأرقام وين الشغل.
-  const [tab, setTab] = useState<'PENDING' | 'NO_NUMBER' | 'APPROVED' | 'ALL'>('PENDING')
+  // ⚠️⚠️ **مرحلتان مو وحدة.** قبل هيچ چان تبويب واحد «بانتظار
+  // الاعتماد» = كل فاتورة مو معتمدة — يعني الفاتورة **قبل** التدقيق
+  // و**بعده** بنفس المكان بالضبط، والضغط على أي حكم ما ينقلها ولا
+  // ملّيمتر. والمحاسب ما يگدر يفرّق بين شغل باقي عليه تدقيق وشغل
+  // باقي عليه قرار.
+  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'NO_NUMBER' | 'APPROVED' | 'ALL'>('AUDIT')
   // ربط رقم لفاتورة معتمدة قبل ما يصير الرقم إجبارياً
   const [linkFor, setLinkFor] = useState<LeaderInvoice | null>(null)
   const [linkNo, setLinkNo] = useState('')
@@ -194,15 +199,20 @@ export default function LeaderInvoicesListPage() {
   const matchesSearch = (inv: LeaderInvoice) => {
     return matches([inv.externalInvoiceNumber, inv.accountingCode, inv.customerName, inv.employeeName], search)
   }
+  /** ⚠️ نفس اشتقاق الخادم بالضبط — المرحلة تنحسب من الحالة والحكم
+   *  سوا، مو من عمود ثالث ينحرف. */
+  const audited = (inv: LeaderInvoice) => !!inv.auditVerdict && inv.auditVerdict.trim() !== ''
   const inTab = (inv: LeaderInvoice) => {
     if (tab === 'ALL') return true
-    if (tab === 'PENDING') return inv.status !== 'APPROVED'
+    if (tab === 'AUDIT') return inv.status !== 'APPROVED' && !audited(inv)
+    if (tab === 'PENDING') return inv.status !== 'APPROVED' && audited(inv)
     if (tab === 'APPROVED') return inv.status === 'APPROVED'
     return inv.status === 'APPROVED' && !inv.externalInvoiceNumber
   }
   const shown = invoices.filter((i) => inTab(i) && matchesSearch(i))
   const counts = {
-    PENDING: invoices.filter((i) => i.status !== 'APPROVED').length,
+    AUDIT: invoices.filter((i) => i.status !== 'APPROVED' && !audited(i)).length,
+    PENDING: invoices.filter((i) => i.status !== 'APPROVED' && audited(i)).length,
     NO_NUMBER: invoices.filter((i) => i.status === 'APPROVED' && !i.externalInvoiceNumber).length,
     APPROVED: invoices.filter((i) => i.status === 'APPROVED').length,
     ALL: invoices.length,
@@ -280,24 +290,38 @@ export default function LeaderInvoicesListPage() {
         <div className="relative flex flex-wrap items-end justify-between gap-4">
           <div>
             <h2 className="text-2xl font-black text-white">🧾 فواتير الليدر</h2>
-            <p className="mt-1 max-w-xl text-sm text-blue-100">
-              الفاتورة الي تأشّرت <b className="text-white">مطابق</b> بالتدقيق اليومي توصل هنا
-              بتبويب «بانتظار الاعتماد». الاعتماد يطلب <b className="text-white">رقم الفاتورة</b> من
-              نظامك الثاني.
+            {/* ⚠️ النص چان يقول «الفاتورة الي تأشّرت مطابق توصل هنا»
+                وهذا **ما چان منفَّذ** — الشاشة تقول شي والكود يسوي
+                شي ثاني. صار يوصف المسار الحقيقي بالضبط. */}
+            <p className="mt-1 max-w-2xl text-sm text-blue-100">
+              الفاتورة تجي أول لـ<b className="text-white">بانتظار التدقيق</b> — تأشّر عليها
+              مطابق أو غير مطابق أو خطأ بالسعر، فتنتقل لـ<b className="text-white">بانتظار الاعتماد</b>.
+              وهناك تقرر: تعتمدها بـ<b className="text-white">رقم الفاتورة</b> من نظامك الثاني، أو تتركها.
             </p>
           </div>
-          {counts.PENDING > 0 && (
-            <div className="rounded-xl bg-amber-400/20 px-4 py-2 text-center ring-1 ring-amber-200/40 backdrop-blur">
-              <p className="text-2xl font-black leading-none text-amber-100">{counts.PENDING}</p>
-              <p className="mt-1 text-[11px] text-amber-50">بانتظار اعتمادك</p>
-            </div>
-          )}
+          {/* ⚠️ عدّادان مو واحد: «باقي تدقيق» و«باقي قرار» شغلتان
+              مختلفتان، ورقم واحد يجمعهما يخفي أيّهما الي واگف. */}
+          <div className="flex gap-2">
+            {counts.AUDIT > 0 && (
+              <div className="rounded-xl bg-sky-400/20 px-4 py-2 text-center ring-1 ring-sky-200/40 backdrop-blur">
+                <p className="text-2xl font-black leading-none text-sky-100">{counts.AUDIT}</p>
+                <p className="mt-1 text-[11px] text-sky-50">بانتظار تدقيقك</p>
+              </div>
+            )}
+            {counts.PENDING > 0 && (
+              <div className="rounded-xl bg-amber-400/20 px-4 py-2 text-center ring-1 ring-amber-200/40 backdrop-blur">
+                <p className="text-2xl font-black leading-none text-amber-100">{counts.PENDING}</p>
+                <p className="mt-1 text-[11px] text-amber-50">بانتظار اعتمادك</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
       {/* التبويبات: كل تبويب شغلة وحدة يشتغلها المحاسب */}
       <div className="mt-4 flex flex-wrap gap-2">
         {([
+          { k: 'AUDIT' as const, t: '🔍 بانتظار التدقيق', c: counts.AUDIT },
           { k: 'PENDING' as const, t: '⏳ بانتظار الاعتماد', c: counts.PENDING },
           { k: 'NO_NUMBER' as const, t: '🔗 معتمدة بلا رقم فاتورة', c: counts.NO_NUMBER },
           { k: 'APPROVED' as const, t: '✔ معتمدة', c: counts.APPROVED },
@@ -420,7 +444,10 @@ export default function LeaderInvoicesListPage() {
                       >
                         📋 التفاصيل
                       </button>
-                      {/* الحكم قبل الاعتماد — «أول شي بالتدقيق» */}
+                      {/* ⚠️ زر التدقيق يبقى ظاهراً **حتى بعد الحكم**:
+                          المحاسب يگدر يبدّل حكمه قبل الاعتماد. حجبه
+                          بعد أول ضغطة يخلّي الحكم الغلط بلا طريق رجوع
+                          إلا سحب اعتماد ما صار. */}
                       {canApprove && inv.status !== 'APPROVED' && (
                         <button
                           onClick={() => {
@@ -446,7 +473,12 @@ export default function LeaderInvoicesListPage() {
                           ↩ اسحب الاعتماد
                         </button>
                       )}
-                      {canApprove && inv.status !== 'APPROVED' && (
+                      {/* ═══ الاعتماد — بعد الحكم بس ═══
+                          ⚠️ الإخفاء **راحة للمحاسب مو حماية**: المنع
+                          الحقيقي بالخادم (نداء مباشر يتخطّى أي إخفاء).
+                          والي نكسبه هنا إن الشاشة ما تعرض زراً يفشل —
+                          زر يفشل يخلّي المحاسب يظن النظام خربان. */}
+                      {canApprove && inv.status !== 'APPROVED' && audited(inv) && (
                         <button
                           onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
                           disabled={busyId === inv.id}
@@ -454,6 +486,14 @@ export default function LeaderInvoicesListPage() {
                         >
                           {busyId === inv.id ? 'جاري الاعتماد...' : 'اعتماد'}
                         </button>
+                      )}
+                      {/* ⚠️ وبدل ما يختفي الزر بلا تفسير: سطر يقول
+                          **ليش** والخطوة الجاية. زر يختفي بصمت يخلّي
+                          المحاسب يدوّر عليه. */}
+                      {canApprove && inv.status !== 'APPROVED' && !audited(inv) && (
+                        <span className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200">
+                          دقّقها أول
+                        </span>
                       )}
                       {/* الفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً —
                           المحاسب يربطها بأرقامها بأثر رجعي */}

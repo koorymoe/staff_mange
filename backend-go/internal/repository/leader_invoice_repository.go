@@ -265,13 +265,51 @@ func (r *LeaderInvoiceRepository) GetByID(id string) (*model.LeaderInvoice, erro
 }
 
 // List يرجّع الفواتير، مصفّاة حسب الموظف لو تم تمريره.
+// ═══ مراحل الفاتورة الثلاث ═══
+//
+// ⚠️⚠️ **المرحلة تنحسب من الحالة والحكم سوا — مو من عمود ثالث.**
+// عمود «مرحلة» منفصل يعني حقيقتين لنفس الشي: فاتورة معتمدة ومرحلتها
+// «بانتظار التدقيق» لأن أحداً نسى يحدّث العمود. الاشتقاق ما ينحرف
+// أبداً.
+//
+//	بانتظار التدقيق : status='SUBMITTED' و auditVerdict فارغ
+//	بانتظار الاعتماد: status='SUBMITTED' و auditVerdict موجود
+//	معتمدة          : status='APPROVED'
+const (
+	StageAwaitingAudit    = "AWAITING_AUDIT"
+	StageAwaitingApproval = "AWAITING_APPROVAL"
+	StageApproved         = "APPROVED"
+)
+
+func stageClause(stage string) string {
+	switch stage {
+	case StageAwaitingAudit:
+		return ` AND status <> 'APPROVED' AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '')`
+	case StageAwaitingApproval:
+		return ` AND status <> 'APPROVED' AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> ''`
+	case StageApproved:
+		return ` AND status = 'APPROVED'`
+	default:
+		return ""
+	}
+}
+
 func (r *LeaderInvoiceRepository) List(employeeID string) ([]model.LeaderInvoice, error) {
+	return r.ListByStage(employeeID, "")
+}
+
+// ListByStage يرجّع فواتير مرحلة معيّنة.
+//
+// ⚠️ الترشيح **بالخادم** مو بالمتصفح: القائمة چانت تنزّل **كل**
+// الفواتير وترشّح بالجافاسكربت. بألف فاتورة، الشاشة تنزّل الألف كلها
+// حتى تعرض عشرة — والمحاسب ينتظر بلا سبب.
+func (r *LeaderInvoiceRepository) ListByStage(employeeID, stage string) ([]model.LeaderInvoice, error) {
 	invoices := []model.LeaderInvoice{}
 	var err error
 	if employeeID == "" {
-		err = r.db.Select(&invoices, `SELECT * FROM "LeaderInvoice" ORDER BY "createdAt" DESC`)
+		err = r.db.Select(&invoices, `SELECT * FROM "LeaderInvoice" WHERE TRUE`+stageClause(stage)+` ORDER BY "createdAt" DESC`)
 	} else {
-		err = r.db.Select(&invoices, `SELECT * FROM "LeaderInvoice" WHERE "employeeId" = $1 ORDER BY "createdAt" DESC`, employeeID)
+		err = r.db.Select(&invoices, `SELECT * FROM "LeaderInvoice" WHERE "employeeId" = $1`+stageClause(stage)+` ORDER BY "createdAt" DESC`, employeeID)
 	}
 	if err != nil {
 		return nil, err

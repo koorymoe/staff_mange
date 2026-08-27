@@ -35,7 +35,9 @@ func (h *LeaderInvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
 	if !canReviewInvoices(r) {
 		employeeID = middleware.EmployeeIDFromContext(r)
 	}
-	invoices, err := h.service.List(employeeID)
+	// ⚠️ المرحلة معامل اختياري: بلاها ترجع الكل — فأي نداء قديم يشتغل
+	// مثل ما چان بالضبط.
+	invoices, err := h.service.ListByStage(employeeID, r.URL.Query().Get("stage"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب فواتير الليدر")
 		return
