@@ -6,7 +6,12 @@ import { api, type Booking } from '../api'
 // يقدر المراقب يقارن ويدقق هل الإداري تواصل فعلاً مع الزبون وأقفل الاتفاق قبل
 // التثبيت (حقل confirmationContactedAt) أو لسه ما تواصل، من مصدر مستقل عن
 // المسار العام /api/bookings.
-export default function MonitorCrewBookingsPage() {
+/** ⚠️ `embedded`: نفس الشاشة بالضبط بلا ترويستها — تنضمّ بمكتب
+ *  المراقب. **ما ننسخ المحتوى**: نسختان تفترقان بأول تصحيح، فالمراقب
+ *  يشوف صفاً بشاشة ومحلولاً بالثانية ويفقد الثقة بالاثنتين. */
+interface EmbeddedProps { embedded?: boolean }
+
+export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}) {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -20,11 +25,15 @@ export default function MonitorCrewBookingsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">تدقيق تنسيق الحجوزات</h2>
-      <p className="mt-1 text-slate-500">
-        الحجوزات الموجّهة من المبيعات (أو غيرهم) وما زالت بانتظار تثبيت الإداري — لمقارنة
-        هل الإداري تواصل فعلاً مع الزبون وأقفل الاتفاق قبل التثبيت.
-      </p>
+      {!embedded && (
+        <>
+          <h2 className="text-2xl font-bold text-brand-900">تدقيق تنسيق الحجوزات</h2>
+          <p className="mt-1 text-slate-500">
+            الحجوزات الموجّهة من المبيعات (أو غيرهم) وما زالت بانتظار تثبيت الإداري — لمقارنة
+            هل الإداري تواصل فعلاً مع الزبون وأقفل الاتفاق قبل التثبيت.
+          </p>
+        </>
+      )}
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">تعذر الاتصال بالخادم: {error}</p>}

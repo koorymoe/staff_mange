@@ -264,6 +264,9 @@ export const navItems: NavItem[] = [
 
   // صندوق المراقب أول شي بباب المراقبة: هو الي «يوصله» شغل، وبقية
   // الشاشات تفرّج بس.
+  // ⚠️ المكتب **أول** بند: هو الباب الي نريد المراقب يدخل منه، وحطّه
+  // بالآخر يخلّيه يفتح الأبواب القديمة بالعادة ولا يشوفه أبداً.
+  { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   { to: '/monitor-inbox', label: '👁️ صندوق المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   { to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
@@ -418,6 +421,7 @@ export const navItems: NavItem[] = [
     to: '/unit-monitoring', label: 'وحدة الرقابة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
     unitPermission: 'unit_monitoring',
     children: [
+      { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/monitor-inbox', label: '👁️ صندوق المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },

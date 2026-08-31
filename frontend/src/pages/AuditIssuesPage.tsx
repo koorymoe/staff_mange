@@ -14,7 +14,12 @@ import { useSession } from '../session'
 
 const fmt = (n: number | null) => (n == null ? '—' : n.toLocaleString('en-IQ') + ' د.ع')
 
-export default function AuditIssuesPage() {
+/** ⚠️ `embedded`: نفس الشاشة بالضبط بلا ترويستها — تنضمّ بمكتب
+ *  المراقب. **ما ننسخ المحتوى**: نسختان تفترقان بأول تصحيح، فالمراقب
+ *  يشوف صفاً بشاشة ومحلولاً بالثانية ويفقد الثقة بالاثنتين. */
+interface EmbeddedProps { embedded?: boolean }
+
+export default function AuditIssuesPage({ embedded }: EmbeddedProps = {}) {
   // ═══ المحاسب مو مراقب ═══
   // نفس الشاشة، بس معناها يختلف: عند المحاسب **صادر** — هو الي أشّر
   // الأخطاء ويتابع شنو صار بيها. وعند المراقب **وارد للتدقيق** — يروح
@@ -48,32 +53,34 @@ export default function AuditIssuesPage() {
 
   return (
     <div dir="rtl" className="space-y-6">
-      <div
-        className="relative overflow-hidden rounded-2xl p-6 shadow-md"
-        style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #24507e 55%, #2f6ba8 100%)' }}
-      >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, #c8a45a 0%, transparent 70%)' }}
-        />
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-white">
-              {asAccountant ? '💸 أخطاء الفواتير الي أشّرتها' : '💸 بلاغات أخطاء التدقيق'}
-            </h1>
-            <p className="mt-1 max-w-xl text-sm text-blue-100">
-              {asAccountant
-                ? 'هاي البلاغات الي أرسلتها إنت وأنت تدقق — تابع شنو صار بيها.'
-                : 'أشّرها المحاسب وهو يدقق الحجوزات — تدقّق بيها على الليدر.'}
-            </p>
-          </div>
-          <div className="rounded-xl bg-amber-400/20 px-4 py-2 text-center ring-1 ring-amber-200/40 backdrop-blur">
-            <p className="text-2xl font-black leading-none text-amber-100">{open.length}</p>
-            <p className="mt-1 text-[11px] text-amber-50">لسه مفتوح</p>
+      {!embedded && (
+        <div
+          className="relative overflow-hidden rounded-2xl p-6 shadow-md"
+          style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #24507e 55%, #2f6ba8 100%)' }}
+        >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #c8a45a 0%, transparent 70%)' }}
+          />
+          <div className="relative flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h1 className="text-2xl font-black text-white">
+                {asAccountant ? '💸 أخطاء الفواتير الي أشّرتها' : '💸 بلاغات أخطاء التدقيق'}
+              </h1>
+              <p className="mt-1 max-w-xl text-sm text-blue-100">
+                {asAccountant
+                  ? 'هاي البلاغات الي أرسلتها إنت وأنت تدقق — تابع شنو صار بيها.'
+                  : 'أشّرها المحاسب وهو يدقق الحجوزات — تدقّق بيها على الليدر.'}
+              </p>
+            </div>
+            <div className="rounded-xl bg-amber-400/20 px-4 py-2 text-center ring-1 ring-amber-200/40 backdrop-blur">
+              <p className="text-2xl font-black leading-none text-amber-100">{open.length}</p>
+              <p className="mt-1 text-[11px] text-amber-50">لسه مفتوح</p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {loading && <p className="text-center text-slate-400">جاري التحميل...</p>}
 

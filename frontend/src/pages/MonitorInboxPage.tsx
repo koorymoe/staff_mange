@@ -36,7 +36,12 @@ const ROLE_LABELS: Record<string, string> = {
   SERVICE_MANAGER: 'مسؤول الخدمة',
 }
 
-export default function MonitorInboxPage() {
+/** ⚠️ `embedded`: نفس الشاشة بالضبط بلا ترويستها — تنضمّ بمكتب
+ *  المراقب. **ما ننسخ المحتوى**: نسختان تفترقان بأول تصحيح، فالمراقب
+ *  يشوف صفاً بشاشة ومحلولاً بالثانية ويفقد الثقة بالاثنتين. */
+interface EmbeddedProps { embedded?: boolean }
+
+export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const [stage, setStage] = useState<MonitorStage>('INVOICE_BEFORE_AUDIT')
   const [showDone, setShowDone] = useState(false)
   const [ownerRole, setOwnerRole] = useState('')
@@ -109,12 +114,14 @@ export default function MonitorInboxPage() {
 
   return (
     <div dir="rtl" className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-bold text-brand-900">👁️ صندوق المراقب</h2>
-        <p className="mt-1 text-slate-500">
-          الشغل يجيك بمحطاته. كل صف إما «سليم» أو «عندي ملاحظة» — والملاحظة توصل صاحب الشغل والإدارة.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h2 className="text-2xl font-bold text-brand-900">👁️ صندوق المراقب</h2>
+          <p className="mt-1 text-slate-500">
+            الشغل يجيك بمحطاته. كل صف إما «سليم» أو «عندي ملاحظة» — والملاحظة توصل صاحب الشغل والإدارة.
+          </p>
+        </div>
+      )}
 
       {error && <p className="rounded-lg bg-red-50 p-4 text-red-600">{error}</p>}
 

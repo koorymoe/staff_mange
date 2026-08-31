@@ -22,7 +22,12 @@ const statusColors: Record<QualityFollowUp['status'], string> = {
   CLOSED: 'bg-gray-100 text-gray-800',
 }
 
-export default function QualityFollowUpsPage() {
+/** ⚠️ `embedded`: نفس الشاشة بالضبط بلا ترويستها — تنضمّ بمكتب
+ *  المراقب. **ما ننسخ المحتوى**: نسختان تفترقان بأول تصحيح، فالمراقب
+ *  يشوف صفاً بشاشة ومحلولاً بالثانية ويفقد الثقة بالاثنتين. */
+interface EmbeddedProps { embedded?: boolean }
+
+export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
   const { employee } = useSession()
   // مهندس الجودة (والأدمن) يتواصلون مع الزبون مباشرة ويشوفون تفاصيله كاملة.
   // المراقب المدقق يشوف بس تقرير عام (كم متابعة قيد الانتظار وكم فيها مشكلة).
@@ -89,8 +94,12 @@ export default function QualityFollowUpsPage() {
     const issues = items.filter((i) => i.status === 'CONTACTED_ISSUE').length
     return (
       <div>
-        <h2 className="text-2xl font-bold text-brand-900">متابعة الجودة بعد الحجوزات</h2>
-        <p className="mt-1 text-slate-500">تقرير عام — التواصل مع الزبائن مسؤولية مهندس الجودة.</p>
+        {!embedded && (
+          <>
+            <h2 className="text-2xl font-bold text-brand-900">متابعة الجودة بعد الحجوزات</h2>
+            <p className="mt-1 text-slate-500">تقرير عام — التواصل مع الزبائن مسؤولية مهندس الجودة.</p>
+          </>
+        )}
         {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
         {!loading && (
           <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -110,8 +119,12 @@ export default function QualityFollowUpsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">متابعة الجودة بعد الحجوزات</h2>
-      <p className="mt-1 text-slate-500">تواصل مع الزبائن اللي اكتمل حجزهم، وتأكد ما اكو مشاكل.</p>
+      {!embedded && (
+        <>
+          <h2 className="text-2xl font-bold text-brand-900">متابعة الجودة بعد الحجوزات</h2>
+          <p className="mt-1 text-slate-500">تواصل مع الزبائن اللي اكتمل حجزهم، وتأكد ما اكو مشاكل.</p>
+        </>
+      )}
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && (

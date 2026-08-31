@@ -122,6 +122,7 @@ const AuditIssuesPage = lazy(() => import('./pages/AuditIssuesPage'))
 const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
 const LessonPage = lazy(() => import('./lesson/LessonPage'))
+const MonitorDeskPage = lazy(() => import('./pages/MonitorDeskPage'))
 
 function RouteLoading() {
   return (
@@ -146,6 +147,10 @@ function App() {
           <Route path="owner-security" element={<SecurityDashboardPage />} />
           <Route path="owner-backups" element={<OwnerBackups />} />
           <Route path="command-code" element={<CommandCodePage />} />
+          {/* ⚠️ مكتب المراقب **مسار جديد** والشاشات القديمة تبقى
+              بمساراتها: اكو روابط محفوظة بمتصفحات الموظفين، وحذف
+              مسار يعني صفحة بيضاء بلا تفسير. */}
+          <Route path="monitor-desk" element={<MonitorDeskPage />} />
           <Route path="simulator-lab" element={<SimLab />} />
           <Route path="simulator-lab/exercise/:id" element={<SimExercisePage />} />
           <Route path="simulator-lab/workbench" element={<LabWorkbench />} />

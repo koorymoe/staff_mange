@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api, type Booking, type Employee, type Stats, type VehicleScoreSummary, type TechnicianWashSummary, type FinanceSummary } from '../api'
 import { useSession } from '../session'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 type Tab = 'overview' | 'crews' | 'audit' | 'finance' | 'vehicles'
 
@@ -352,7 +352,13 @@ export default function MonitorDashboard() {
                 if (noCrew.length === 0) return null
                 return (
                   <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-5">
-                    <h3 className="mb-3 text-lg font-bold text-amber-800">حجوزات مثبتة بدون كادر</h3>
+                    <div className="mb-3 flex items-center justify-between gap-3">
+                      <h3 className="text-lg font-bold text-amber-800">حجوزات مثبتة بدون كادر</h3>
+                      <Link to="/bookings"
+                        className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700">
+                        كلّفهن ({noCrew.length}) ←
+                      </Link>
+                    </div>
                     <div className="space-y-2">
                       {noCrew.map(b => (
                         <div key={b.id} className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
@@ -372,8 +378,21 @@ export default function MonitorDashboard() {
 
               {/* Completed but unverified */}
               <div className="rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]">
-                <h3 className="mb-1 text-lg font-bold text-brand-900">تدقيق المبالغ</h3>
-                <p className="mb-4 text-sm text-slate-400">حجوزات مكتملة بانتظار تدقيق المحاسب</p>
+                {/* ⚠️ الرقم يصير **رابطاً**: المراقب چان يقرا «١٢ حجز
+                    بلا تدقيق» ويطلع يدوّر عليهن بشاشة ثانية بيده.
+                    رقم ما ينضغط يوصف مشكلة وما يودّي لحلها. */}
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-bold text-brand-900">تدقيق المبالغ</h3>
+                    <p className="text-sm text-slate-400">حجوزات مكتملة بانتظار تدقيق المحاسب</p>
+                  </div>
+                  {unverifiedBookings.length > 0 && (
+                    <Link to="/daily-audit"
+                      className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-700">
+                      دقّقهن ({unverifiedBookings.length}) ←
+                    </Link>
+                  )}
+                </div>
 
                 {unverifiedBookings.length === 0 ? (
                   <div className="rounded-xl bg-emerald-50 p-4 text-center text-sm font-bold text-emerald-600">
