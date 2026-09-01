@@ -67,13 +67,25 @@ export default function DailyAuditPage() {
   const [rep, setRep] = useState<DailyAuditReport | null>(null)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
+  const [loadErr, setLoadErr] = useState<string | null>(null)
   // إرجاع الحجز للتدقيق: صلاحية مدير النظام حصراً (المالك يتطبّع لمدير
   // بالجلسة، فتشمله تلقائياً).
   const { employee } = useSession()
   const isAdmin = employee?.role === 'ADMIN'
+  // ⚠️ المراقب ياخذ صلاحية «المالية» بدوره افتراضياً، فچانت أزرار
+  // القرار تطلعله وهو مفروض **يراجع** قرار المحاسب مو يصدره.
+  // الخادم يرفضها الآن، والإخفاء هنا حتى ما يضغط ويطلعله رفض.
+  const isMonitor = employee?.role === 'MONITOR' 
 
+  // ⚠️ الخطأ چان ينبلع وrep تنرجع null — وnull هي **نفس** حالة ما
+  // قبل التحميل، فأي رفض صلاحية أو خطأ خادم يطلع «جاري التحميل...»
+  // للأبد. الموظف ينتظر بيانات وصلت أصلاً برفض.
+  // ⚠️ ماكو setState بجسم الدالة قبل الطلب: هاي تنستدعى من useEffect،
+  // وReact يمنع setState متزامناً هناك. التصفير يصير بالنتيجة.
   const load = (d: string) => {
-    api.getDailyAudit(d).then(setRep).catch(() => setRep(null))
+    api.getDailyAudit(d)
+      .then((r) => { setRep(r); setLoadErr(null) })
+      .catch((e) => { setRep(null); setLoadErr(e instanceof Error ? e.message : 'تعذر جلب تدقيق اليوم') })
   }
   useEffect(() => { load(date) }, [date])
 
@@ -175,18 +187,30 @@ export default function DailyAuditPage() {
         </a>
       </div>
 
-      {!rep && <p className="py-10 text-center text-slate-400">جاري التحميل...</p>}
+      {!rep && loadErr && (
+        <div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3">
+          <p className="text-sm font-extrabold text-red-800">⚠️ ما وصلت بيانات اليوم</p>
+          <p className="mt-0.5 text-xs text-red-700">{loadErr}</p>
+        </div>
+      )}
+      {!rep && !loadErr && <p className="py-10 text-center text-slate-400">جاري التحميل...</p>}
 
       {rep && (
         <>
           {/* المجاميع الأربعة */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Tile label="١) المبالغ المستلمة" value={money(rep.collectedTotal)}
+            {/* ⚠️ ①و③ چانن **نفس الرقم بالضبط** بعنوانين مختلفين:
+                collectedTotal يجمع كل الصفوف، وallAmountsTotal =
+                مدقق + غير مدقق = نفس كل الصفوف. رقمان متطابقان
+                بعنوانين يخلّون المحاسب يظن إنهن قياسان مستقلان.
+                و② چان عنوانها «ما تم تدقيقه» وهي تحمل **غير**
+                المدقق — العنوان يناقض الرقم والتلميح سوا. */}
+            <Tile label="١) المستلم اليوم" value={money(rep.collectedTotal)}
               hint={`من ${rep.completedCount} حجز مكتمل`} color="#15803d" ink="var(--t-success)" tint="var(--sf-success)" icon="💰" />
-            <Tile label="٢) ما تم تدقيقه" value={money(rep.notVerifiedTotal)}
-              hint="لسه بانتظار قرارك" color="#b45309" ink="var(--t-warning)" tint="var(--tint-warning)" icon="⏳" />
-            <Tile label="٣) كل المبالغ (مدقق + غير مدقق)" value={money(rep.allAmountsTotal)}
-              hint={`المدقق منها: ${money(rep.verifiedTotal)}`} color="#1a3a5c" ink="var(--t-title)" tint="var(--sf-info)" icon="🧮" />
+            <Tile label="٢) المدقق منه" value={money(rep.verifiedTotal)}
+              hint={`الباقي بانتظار قرارك: ${money(rep.notVerifiedTotal)}`} color="#1a3a5c" ink="var(--t-title)" tint="var(--sf-info)" icon="✔" />
+            <Tile label="٣) بانتظار التدقيق" value={money(rep.notVerifiedTotal)}
+              hint="لسه ما انتّخذ بيه قرار" color="#b45309" ink="var(--t-warning)" tint="var(--tint-warning)" icon="⏳" />
             <Tile label="٤) الإجمالي المتوقع لليوم" value={money(rep.expectedTotal)}
               hint="من فواتير الليدرز وتقديرات الإداري" color="#a67c2e" ink="var(--gold-ink)" tint="var(--tint-warning)" icon="🎯" />
           </div>
@@ -297,7 +321,14 @@ export default function DailyAuditPage() {
                   </div>
                 </div>
 
-                {!row.amountVerified && (
+                {!row.amountVerified && isMonitor && (
+                  <p className="mt-3 rounded-xl border px-3 py-2 text-[11px]"
+                    style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
+                    ⓘ إنت تشوف وتراجع — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) للمحاسب.
+                  </p>
+                )}
+
+                {!row.amountVerified && !isMonitor && (
                   <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <input
                       type="number" min="0" inputMode="numeric"

@@ -37,7 +37,21 @@ func (r *DailyAuditRepository) Day(date string) (*model.DailyAuditReport, error)
 			COALESCE(c.phone, '') AS "customerPhone",
 			COALESCE(s.name, '—') AS "serviceName",
 			b."amountVerified",
-			COALESCE(b."amountCollected", 0) + COALESCE(b."advancePaid", 0) AS collected,
+			-- ⚠️⚠️ العربون چان ينحسب **مرتين**.
+			--
+			-- قبل التدقيق: المستلم = العربون + الي سجّله الليدر. صح.
+			-- بس المحاسب لمن يدقّق يكتب **إجمالي** مبلغ الفاتورة
+			-- (شامل العربون) وينخزن بـamountCollected — فجمعه مع
+			-- العربون مرة ثانية يضخّم اليوم كله بمقدار كل عربون.
+			-- مقيس: عربون ٥٠ ألف وفاتورة ٢٠٠ ألف طلعوا ٢٥٠ ألف.
+			--
+			-- بعد التدقيق الرقم المكتوب هو الإجمالي، فيؤخذ لحاله.
+			-- وهذا يصلّح الصفوف القديمة هم، لأن المحاسب چان يكتب
+			-- الإجمالي بنفس الطريقة قبل اليوم.
+			CASE WHEN b."amountVerified"
+				THEN COALESCE(b."amountCollected", 0)
+				ELSE COALESCE(b."amountCollected", 0) + COALESCE(b."advancePaid", 0)
+			END AS collected,
 			COALESCE(b."quotedPrice", 0) AS "quotedPrice",
 			li."netTotal" AS "invoiceTotal",
 			li."accountingCode" AS "invoiceCode",

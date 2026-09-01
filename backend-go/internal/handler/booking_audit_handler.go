@@ -60,6 +60,23 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 	bookingID := r.PathValue("id")
 	empID := middleware.EmployeeIDFromContext(r)
 
+	// ⚠️⚠️ المراقب المدقق يشوف ولا يقرّر.
+	//
+	// المراقب ياخذ صلاحية «finance» افتراضياً بدوره
+	// (RoleDefaultPermissions)، والحارس على هذا المسار يطلب نفس
+	// الصلاحية بالضبط — فچان يقدر يضغط «مطابق» ويختم الفاتورة
+	// ويرحّلها لطابور الاعتماد، يعني يسوي شغل المحاسب نفسه.
+	// وهذا يكسر الفصل الي انبنى بفواتير الليدر: المراقب مفروض
+	// **يراجع** قرار المحاسب مو يصدره.
+	//
+	// ⚠️ ونستعمل رفضاً صريحاً مو تسجيل مخالفة: الأزرار چانت
+	// معروضة إله، فضغطه عليها مو محاولة تجاوز.
+	if middleware.RoleFromContext(r) == "MONITOR" {
+		WriteError(w, http.StatusForbidden,
+			"المراقب يراجع قرارات التدقيق ولا يصدرها — القرار للمحاسب")
+		return
+	}
+
 	switch req.Action {
 	case model.AuditVerify:
 		if err := h.repo.Verify(bookingID, req.AmountCollected, req.AdvancePaid); err != nil {
