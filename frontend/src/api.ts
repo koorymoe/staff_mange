@@ -771,6 +771,33 @@ export interface GpsCustomerListItem extends Customer {
   subscriptionEnd: string | null
 }
 
+export type AuditVerdict = 'NEEDS_FOLLOWUP' | 'RECHECK_RATING' | 'APPROVED'
+
+export const auditVerdictLabels: Record<AuditVerdict, string> = {
+  NEEDS_FOLLOWUP: 'مطلوب متابعة',
+  RECHECK_RATING: 'مراجعة التقييم',
+  APPROVED: 'معتمد',
+}
+
+export interface ComplaintEvent {
+  id: string
+  complaintId: string
+  kind: 'CREATED' | 'CONTACTED' | 'RATED' | 'NOTED' | 'ASSIGNED' | 'AUDITED' | 'RESOLVED'
+  detail: string | null
+  byName: string | null
+  createdAt: string
+}
+
+export const eventKindLabels: Record<ComplaintEvent['kind'], string> = {
+  CREATED: 'انفتحت الشكوى',
+  CONTACTED: 'تواصل مع الزبون',
+  RATED: 'سجّل تقييم الزبون',
+  NOTED: 'كتب ملاحظات',
+  ASSIGNED: 'انكلّف مهندس',
+  AUDITED: 'تدقيق',
+  RESOLVED: 'انحلّت',
+}
+
 export interface ComplaintCustomerStat {
   customerId: string
   customerName: string
@@ -778,6 +805,15 @@ export interface ComplaintCustomerStat {
   complaintCount: number
   openCount: number
   notContactedCount: number
+  /** ⚠️ null لمن ماكو ولا تقييم — **مو صفر**. اعرضها «—». */
+  avgRating: number | null
+  lastContactAt: string | null
+  contactedLast30: number
+  needsAuditCount: number
+  /** حالة ومهندس **آخر** شكوى للزبون — الصف مجمّع. */
+  latestStatus: Complaint['status'] | null
+  latestEngineer: string | null
+  latestComplaintId: string | null
 }
 
 export interface BookingCrewMember {
@@ -2432,6 +2468,12 @@ export interface Complaint {
   resolution: string | null
   /** حالة الاتصال بالزبون — منو اتصل ومتى */
   contactedAt: string | null
+  /** تقييم الزبون ١..٥ — null يعني «ما انسأل» مو «صفر» */
+  customerRating: number | null
+  auditVerdict: AuditVerdict | null
+  auditNote: string | null
+  auditedAt: string | null
+  auditedBy: { id: string; name: string } | null
   contactedByName: string | null
   notes: string | null
   createdAt: string
@@ -3135,8 +3177,19 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  setComplaintContacted: (id: string, contacted: boolean) =>
-    request<Complaint>(`/complaints/${id}/contact`, { method: 'PUT', body: JSON.stringify({ contacted }) }),
+  // التقييم يمشي **بنفس** طلب التواصل: مهندس الجودة يسأل الزبون وهو
+  // بالمكالمة، فتقسيمهن لخطوتين يعني نص التقييمات ما تنسجّل.
+  setComplaintContacted: (id: string, contacted: boolean, rating?: number | null) =>
+    request<Complaint>(`/complaints/${id}/contact`, {
+      method: 'PUT',
+      body: JSON.stringify({ contacted, rating: rating ?? null }),
+    }),
+  auditComplaint: (id: string, verdict: AuditVerdict, note?: string) =>
+    request<Complaint>(`/complaints/${id}/audit`, {
+      method: 'PUT', body: JSON.stringify({ verdict, note: note || null }),
+    }),
+  getComplaintEvents: (id: string) =>
+    request<ComplaintEvent[]>(`/complaints/${id}/events`),
   setComplaintNotes: (id: string, notes: string) =>
     request<Complaint>(`/complaints/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
   getDailyAudit: (date?: string) =>
