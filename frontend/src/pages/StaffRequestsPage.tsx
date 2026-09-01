@@ -1,6 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type StaffRequest } from '../api'
 import { useSession } from '../session'
+import { useSaveGuard } from '../useSaveGuard'
+import { matches } from '../utils/search'
+import PageHeader from '../components/PageHeader'
+import StatTile from '../components/StatTile'
+import EmptyState from '../components/EmptyState'
+import SaveError from '../components/SaveError'
+import SearchBar from '../components/SearchBar'
 
 const statusLabel: Record<string, string> = {
   PENDING: 'قيد الانتظار',
@@ -8,6 +15,10 @@ const statusLabel: Record<string, string> = {
   REJECTED: 'مرفوض',
   FULFILLED: 'تم التلبية',
 }
+const STATUS_ORDER = ['PENDING', 'APPROVED', 'FULFILLED', 'REJECTED'] as const
+const statusTone = {
+  PENDING: 'warning', APPROVED: 'info', FULFILLED: 'success', REJECTED: 'danger',
+} as const
 const statusStyle: Record<string, string> = {
   PENDING: 'bg-amber-50 text-amber-700',
   APPROVED: 'bg-blue-50 text-blue-700',
@@ -26,6 +37,11 @@ export default function StaffRequestsPage() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [saving, setSaving] = useState(false)
+  // چانت الأخطاء تطلع بـalert() بأربع مواضع — تقطع الشغل وما تنقرا
+  // بالموبايل. نفس حارس الحفظ الي تستعمله باقي الشاشات.
+  const guard = useSaveGuard()
+  const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('')
 
   // نموذج الطلب
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -38,15 +54,9 @@ export default function StaffRequestsPage() {
     const jobs: Promise<unknown>[] = [api.getStaffRequests().then(setRequests)]
     if (canRequest) {
       jobs.push(api.getEmployees().then(all => setTechnicians(all.filter(e => e.role === 'TECHNICIAN' && e.status === 'ACTIVE'))))
-      const token = localStorage.getItem('authToken')
-      jobs.push(
-        fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/projects`, {
-          headers: token ? { Authorization: `Bearer ${token}` } : {},
-        })
-          .then(r => (r.ok ? r.json() : null))
-          .then(d => setProjects(d?.projects || []))
-          .catch(() => {})
-      )
+      // ⚠️ چان fetch خام بهيدر مبني بالإيد — ما تسري عليه معالجة
+      // الجلسة والأخطاء الموحّدة. والدالة موجودة أصلاً بـapi.ts.
+      jobs.push(api.getProjectsBrief().then(setProjects).catch(() => {}))
     }
     Promise.all(jobs).finally(() => setLoading(false))
   }
@@ -56,8 +66,8 @@ export default function StaffRequestsPage() {
     setSelectedIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]))
 
   const submit = async () => {
-    if (selectedIds.length === 0) return alert('اختر موظف واحد على الأقل')
-    if (!neededAt) return alert('حدد وقت الحاجة للكادر')
+    if (selectedIds.length === 0) return guard.run('إرسال الطلب', async () => { throw new Error('اختر موظف واحد على الأقل') })
+    if (!neededAt) return guard.run('إرسال الطلب', async () => { throw new Error('حدد وقت الحاجة للكادر') })
     setSaving(true)
     try {
       await api.createStaffRequest({
@@ -71,35 +81,76 @@ export default function StaffRequestsPage() {
       setSelectedIds([]); setNeededAt(''); setDurationHours('8'); setNotes(''); setProjectId('')
       load()
     } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر إرسال الطلب')
+      guard.run('إرسال الطلب', async () => { throw e })
     } finally {
       setSaving(false)
     }
   }
 
   const setStatus = async (id: string, status: 'APPROVED' | 'REJECTED' | 'FULFILLED') => {
-    try {
-      await api.updateStaffRequestStatus(id, status)
-      load()
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'تعذر تحديث الحالة')
-    }
+    const ok = await guard.run('تحديث حالة الطلب', () =>
+      api.updateStaffRequestStatus(id, status))
+    if (ok !== undefined) load()
   }
 
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {}
+    for (const r of requests) c[r.status] = (c[r.status] ?? 0) + 1
+    return c
+  }, [requests])
+
+  // ⚠️ البحث بـmatches مو includes: يعالج الهمزة والتاء المربوطة
+  // والأرقام الهندية، فـ«احمد» تلگي «أحمد».
+  const shown = requests
+    .filter(r => !statusFilter || r.status === statusFilter)
+    .filter(r => !query.trim() || matches(
+      [r.requester?.name, r.projectName, r.notes, ...r.employees.map(e => e.name)], query))
+
   return (
-    <div>
-      <div className="mb-6 flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-brand-900">طلبات الكادر 👷</h2>
-        {canRequest && (
+    <div className="space-y-4">
+      <SaveError message={guard.error} onClose={guard.clear} />
+
+      <PageHeader
+        title="👷 طلبات الكادر"
+        subtitle="طلبات إدارة المشاريع للفنيين — من الطلب للموافقة للتلبية"
+        aside={canRequest && (
           <button onClick={() => setShowForm(f => !f)}
-            className="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-600">
+            className="rounded-xl bg-white/20 px-5 py-2.5 text-sm font-bold text-white hover:bg-white/30">
             {showForm ? 'إغلاق' : '+ طلب كادر جديد'}
           </button>
         )}
+      />
+
+      {/* بطاقات العدّ — وكل وحدة ترشّح القائمة، حتى الرقم يودّي لشغله */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        {STATUS_ORDER.map((k) => (
+          <StatTile
+            key={k}
+            label={statusLabel[k]}
+            value={counts[k] ?? 0}
+            tone={statusTone[k]}
+            hint={statusFilter === k ? 'مفعّلة — اضغط للإلغاء' : 'اضغط للتصفية'}
+            onClick={() => setStatusFilter(statusFilter === k ? '' : k)}
+          />
+        ))}
       </div>
 
+      <SearchBar
+        value={query}
+        onChange={setQuery}
+        placeholder="ابحث باسم مقدّم الطلب أو المشروع أو الموظف..."
+      >
+        {statusFilter && (
+          <button onClick={() => setStatusFilter('')}
+            className="rounded-xl border px-4 py-2.5 text-sm font-medium"
+            style={{ borderColor: 'var(--bd-line)', color: 'var(--t-body)' }}>
+            امسح التصفية ✕
+          </button>
+        )}
+      </SearchBar>
+
       {isHandler && (
-        <p className="mb-4 rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
+        <p className="rounded-xl bg-blue-50 p-3 text-sm text-blue-800">
           الطلبات الواردة من إدارة المشاريع — وافق عليها وبلّغ الموظفين، وبعد ما يلتحقون بالموقع علّمها "تم التلبية".
         </p>
       )}
@@ -153,15 +204,19 @@ export default function StaffRequestsPage() {
       )}
 
       {loading && <p className="py-16 text-center text-slate-400">جاري التحميل...</p>}
-      {!loading && requests.length === 0 && (
-        <div className="rounded-2xl bg-white py-16 text-center shadow-sm">
-          <div className="mb-3 text-5xl">📭</div>
-          <p className="text-slate-400">لا توجد طلبات كادر بعد</p>
+      {!loading && shown.length === 0 && (
+        <div className="rounded-2xl border" style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
+          <EmptyState
+            title={requests.length === 0 ? 'لا توجد طلبات كادر بعد' : 'ماكو طلب يطابق البحث أو التصفية'}
+            reason={requests.length === 0
+              ? 'الطلبات تجي من إدارة المشاريع لمن تحتاج فنيين لموقع.'
+              : `اكو ${requests.length} طلب بالمجموع — امسح البحث أو التصفية حتى تشوفهن.`}
+          />
         </div>
       )}
 
       <div className="flex flex-col gap-3">
-        {requests.map(req => (
+        {shown.map(req => (
           <div key={req.id} className="rounded-2xl bg-white p-5 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-3">

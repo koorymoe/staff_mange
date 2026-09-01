@@ -3712,7 +3712,16 @@ export const api = {
   getPerformanceReviews: () => request<PerformanceReview[]>('/performance-reviews'),
   getRatableEmployees: () => request<{ id: string; name: string }[]>('/performance-reviews/ratable'),
   /** حجوزات الليدر المنجزة وكادر كل وحدة وحالة تقييمهم. */
-  getMyBookingsForReview: () => request<BookingAwaitingReview[]>('/performance-reviews/my-bookings'),
+  // النطاق يمرّ للخادم مو ينترشح محلياً: الخادم چان يقصّ على آخر ٣٠
+  // يوم قبل ما توصل البيانات للواجهة، فاختيار تاريخ أقدم ما يجيب ولا شي.
+  getMyBookingsForReview: (from?: string, to?: string) => {
+    const q = new URLSearchParams()
+    if (from) q.set('from', from)
+    if (to) q.set('to', to)
+    const qs = q.toString()
+    return request<BookingAwaitingReview[]>(
+      `/performance-reviews/my-bookings${qs ? `?${qs}` : ''}`)
+  },
   getPerformanceReviewsForEmployee: (employeeId: string) => request<PerformanceReview[]>(`/performance-reviews/employee/${employeeId}`),
 
   // Products

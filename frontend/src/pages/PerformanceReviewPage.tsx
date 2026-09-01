@@ -1,4 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react'
+import { matches } from '../utils/search'
+import { useSession } from '../session'
+import EmptyState from '../components/EmptyState'
 import { api, REVIEW_RATINGS, type BookingAwaitingReview, type CrewReviewState, type ReviewRating } from '../api'
 
 // ═══ تقييم الأداء — لكل حجز ═══
@@ -50,13 +53,24 @@ export default function PerformanceReviewPage() {
   const [toDate, setToDate] = useState('')
   const [service, setService] = useState('')
   const [err, setErr] = useState<string | null>(null)
+  const { employee, permissions } = useSession()
+  // نفس تفريع الخادم (performance_review_service.go): هذولا يشوفون كل
+  // حجوزات الشركة، والليدر يشوف حجوزاته هو. الشاشة لازم تحچي بلسان
+  // النطاق الصحيح وإلا التلميحات تصير كذب على المراقب.
+  const seesAll =
+    employee?.role === 'ADMIN' ||
+    employee?.actualRole === 'OWNER' ||
+    employee?.role === 'MONITOR' ||
+    permissions.includes('performance_review')
 
   const load = useCallback(() => {
-    api.getMyBookingsForReview()
+    api.getMyBookingsForReview(fromDate || undefined, toDate || undefined)
       .then(setBookings)
       .catch((e) => setErr(e instanceof Error ? e.message : 'تعذر جلب الحجوزات'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [fromDate, toDate])
+  // تبديل التاريخ يعيد الجلب من الخادم — الافتراضي عنده آخر ٣٠ يوم،
+  // وأي فترة يختارها المستخدم تنزل للاستعلام نفسه.
   useEffect(() => { load() }, [load])
 
   const isDone = (b: BookingAwaitingReview) => b.crew.length > 0 && b.crew.every((c) => c.rating)
@@ -87,16 +101,9 @@ export default function PerformanceReviewPage() {
     .filter((b) => filter === 'all' || (filter === 'done' ? isDone(b) : !isDone(b)))
     .filter((b) => (service ? b.serviceName === service : true))
     .filter((b) => {
-      if (!b.completedAt) return !fromDate && !toDate
-      const day = new Date(b.completedAt).toISOString().slice(0, 10)
-      if (fromDate && day < fromDate) return false
-      if (toDate && day > toDate) return false
-      return true
-    })
-    .filter((b) => {
       const q = search.trim()
       if (!q) return true
-      return `${b.code} ${b.customerName}`.includes(q)
+      return matches([b.code, b.customerName, b.serviceName], q)
     })
 
   if (loading) return <p className="p-6 text-center text-slate-400">جارٍ التحميل...</p>
@@ -125,7 +132,7 @@ export default function PerformanceReviewPage() {
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
         <Stat icon="📋" label="حجوزات بحاجة تقييم" hint="مكتملة بانتظار التقييم" value={stats.pending} tone="amber" />
         <Stat icon="✅" label="تم تقييمها اليوم" hint="حتى الآن" value={stats.doneToday} tone="emerald" />
-        <Stat icon="👥" label="موظفون بانتظار التقييم" hint="موزّعين على حجوزاتك" value={stats.waitingPeople} tone="violet" />
+        <Stat icon="👥" label="موظفون بانتظار التقييم" hint={seesAll ? "بكل الحجوزات" : "موزّعين على حجوزاتك"} value={stats.waitingPeople} tone="violet" />
         <Stat icon="📊" label="تقييمات هذا الأسبوع" hint="خلال آخر ٧ أيام" value={stats.weekReviews} tone="sky" />
       </div>
 
@@ -194,14 +201,29 @@ export default function PerformanceReviewPage() {
 
       {/* ═══ الحجوزات ═══ */}
       {shown.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center">
-          <p className="text-3xl">🎉</p>
-          <p className="mt-2 text-sm font-bold text-slate-600">
-            {filter === 'pending' ? 'ماكو حجز ينتظر تقييم — كلشي مغطّى' : 'ماكو حجوزات بهذي التصفية'}
-          </p>
-          {filter === 'pending' && (
-            <p className="mt-1 text-xs text-slate-400">تظهر هنا حجوزاتك المنجزة بآخر ٣٠ يوم الي طلع وياك بيها غيرك</p>
-          )}
+        <div className="rounded-2xl border border-slate-200 bg-white">
+          {/* ⚠️ حالة الفراغ لازم تكول **السبب**. چانت تكول «ماكو حجوزات
+              بهذي التصفية» حتى لمن تكون كل المرشّحات فارغة، فالمستخدم
+              يدوّر بالمرشّحات والعلّة بمكان ثاني تماماً. */}
+          <EmptyState
+            icon={bookings.length === 0 ? '🗂️' : '🎉'}
+            title={
+              bookings.length === 0
+                ? 'ماكو حجوزات منجزة بهذي الفترة'
+                : filter === 'pending'
+                  ? 'ماكو حجز ينتظر تقييم — كلشي مغطّى'
+                  : 'ماكو حجز يطابق البحث أو التصفية'
+            }
+            reason={
+              bookings.length === 0
+                ? (fromDate || toDate
+                    ? 'جرّب توسّع «تاريخ الإنجاز» — الفترة المختارة ماكو بيها حجز منجز.'
+                    : seesAll
+                      ? 'تُعرض الحجوزات المنجزة بآخر ٣٠ يوم افتراضياً. وسّع «تاريخ الإنجاز» حتى تشوف أقدم.'
+                      : 'تظهر هنا حجوزاتك المنجزة بآخر ٣٠ يوم الي طلع وياك بيها غيرك. إذا ما كنت مكلّف بحجز منجز، الصفحة تبقى فارغة.')
+                : 'المرشّحات فوك هي الي تخفي الباقي — صفّرها حتى تشوف الكل.'
+            }
+          />
         </div>
       ) : (
         <div className="space-y-4">
