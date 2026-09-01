@@ -112,3 +112,16 @@ func (h *PermissionHandler) ApplyDefaults(w http.ResponseWriter, r *http.Request
 func (h *PermissionHandler) RoleDefaults(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, h.service.RoleDefaults())
 }
+
+// GET /api/permissions/audit-defaults — منو ناقصه صلاحيات دوره.
+//
+// ⚠️ للمالك والمدير بس: القائمة تكشف منو يقدر يوصل لشنو، وهاي
+// خريطة مفيدة لمن يريد يتجاوز.
+func (h *PermissionHandler) AuditDefaults(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.AuditRoleDefaults()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر فحص الصلاحيات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

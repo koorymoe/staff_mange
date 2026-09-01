@@ -1,9 +1,19 @@
 import { useEffect, useState } from 'react'
-import { api, type Employee, type Permission } from '../api'
+import { api, type Employee, type MissingRoleDefault, type Permission } from '../api'
 import { roleLabels } from '../session'
 import { matches } from '../utils/search'
 
 export default function PermissionsPage() {
+  // ═══ فحص الصلاحيات الناقصة ═══
+  //
+  // ⚠️ خريطة صلاحيات الأدوار بالكود **اقتراح مو قاعدة منفَّذة**:
+  // إنشاء موظف ما يمنحه ولا صلاحية منها، والتطبيق بضغطة يدوية.
+  // فموظف بدور المحاسب ممكن يكون بلا صلاحية «المالية» — والقائمة
+  // تعرضله شاشات وكل طلباته تنرفض، وهو ما يعرف ليش.
+  //
+  // ماكو مكان بالنظام يبيّن هذا، فانضاف هنا.
+  const [audit, setAudit] = useState<MissingRoleDefault[] | null>(null)
+  const [auditBusy, setAuditBusy] = useState(false)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
@@ -160,6 +170,80 @@ export default function PermissionsPage() {
     <div dir="rtl">
       <h2 className="text-2xl font-bold text-brand-900">إدارة الصلاحيات</h2>
       <p className="mt-1 text-slate-500">تحديد صلاحيات الوصول لكل موظف في الأنظمة المختلفة.</p>
+
+      {/* فحص: منو ناقصه صلاحيات دوره */}
+      <div className="mt-4 rounded-xl border p-4"
+        style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-sm font-bold" style={{ color: 'var(--t-title)' }}>
+              🔎 فحص الصلاحيات الناقصة
+            </p>
+            <p className="mt-0.5 text-xs" style={{ color: 'var(--t-muted)' }}>
+              يقارن صلاحيات كل موظف نشط بصلاحيات دوره الافتراضية. الي ناقصه
+              شي، الشاشات تطلعله بالقائمة وطلباته تنرفض بلا ما يعرف ليش.
+            </p>
+          </div>
+          <button
+            disabled={auditBusy}
+            onClick={() => {
+              setAuditBusy(true)
+              api.auditRoleDefaults().then(setAudit)
+                .catch(() => setAudit(null))
+                .finally(() => setAuditBusy(false))
+            }}
+            className="rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+            {auditBusy ? 'جاري الفحص...' : 'افحص الآن'}
+          </button>
+        </div>
+
+        {audit && audit.length === 0 && (
+          <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-700">
+            ✅ كل موظف نشط عنده صلاحيات دوره كاملة.
+          </p>
+        )}
+
+        {audit && audit.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-bold text-red-700">
+              {audit.length} موظف ناقصه صلاحيات دوره:
+            </p>
+            {audit.map((r) => (
+              <div key={r.employeeId}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2"
+                style={{ backgroundColor: 'var(--sf-sunken)', borderColor: 'var(--bd-line)' }}>
+                <div className="min-w-0">
+                  <p className="text-sm font-bold" style={{ color: 'var(--t-title)' }}>
+                    {r.employeeName}{' '}
+                    <span className="text-xs font-normal" style={{ color: 'var(--t-muted)' }}>
+                      ({roleLabels[r.role] || r.role})
+                    </span>
+                  </p>
+                  <p className="text-xs" style={{ color: 'var(--t-body)' }}>
+                    ناقصه {r.missing.length}: {r.missingLabels.join('، ')}
+                  </p>
+                  {r.notSeeded && r.notSeeded.length > 0 && (
+                    /* ⚠️ فرق مهم: هاي مو «الموظف ناقصه» — هاي صلاحية
+                       مو موجودة بقاعدة البيانات أصلاً. */
+                    <p className="mt-0.5 text-[11px] font-bold text-amber-700">
+                      ⚠️ منهن {r.notSeeded.length} مو معرّفة بقاعدة البيانات أصلاً
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    api.applyDefaultPermissions(r.employeeId)
+                      .then(() => api.auditRoleDefaults().then(setAudit))
+                      .catch((e) => alert(e instanceof Error ? e.message : 'تعذر التطبيق'))
+                  }}
+                  className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white">
+                  طبّق الافتراضي
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && (

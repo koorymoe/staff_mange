@@ -95,3 +95,84 @@ func (s *PermissionService) ApplyDefaults(employeeID string) ([]model.Permission
 func (s *PermissionService) RoleDefaults() map[string][]string {
 	return model.RoleDefaultPermissions
 }
+
+// MissingRoleDefault موظف ناقصه شي من صلاحيات دوره الافتراضية.
+type MissingRoleDefault struct {
+	EmployeeID   string   `json:"employeeId"`
+	EmployeeName string   `json:"employeeName"`
+	Role         string   `json:"role"`
+	Missing      []string `json:"missing"`
+	MissingLabel []string `json:"missingLabels"`
+	// ⚠️ صلاحيات مذكورة بخريطة الأدوار وماكو إلها صف بقاعدة البيانات
+	// أصلاً — هاي مو «موظف ناقصه»، هاي «الصلاحية مو منزرعة بالنظام».
+	// الفرق مهم: الأولى تنحل بمنح، والثانية لازم تنزرع أول.
+	NotSeeded []string `json:"notSeeded"`
+}
+
+// AuditRoleDefaults يكشف منو من الموظفين ناقصه صلاحيات دوره.
+//
+// ⚠️⚠️ ليش هاي موجودة: `RoleDefaultPermissions` **خريطة اقتراح مو
+// قاعدة منفَّذة**. إنشاء موظف جديد ما يمنحه ولا صلاحية منها،
+// والتطبيق يصير بضغطة يدوية من المدير (`ApplyDefaults`). واكو زرع
+// بأثر رجعي بس لأزواج محددة انتذكّرها أحد.
+//
+// فالنتيجة: موظف بدور MONITOR أو FINANCE ممكن يكون **بلا** صلاحية
+// «المالية» — والقائمة تعرضله «التدقيق اليومي» وكل طلباته تنرفض.
+// وهاي ما تظهر بأي مكان: مو خطأ بالكود، بيانات ناقصة بحساب واحد.
+//
+// ⚠️ والفحص **قراءة بس** — ما يمنح ولا صلاحية لحاله. منح صلاحية
+// لعشرات الحسابات دفعة وحدة قرار مالك مو قرار فحص.
+func (s *PermissionService) AuditRoleDefaults() ([]MissingRoleDefault, error) {
+	employees, err := s.employees.List()
+	if err != nil {
+		return nil, err
+	}
+	all, err := s.permissions.ListAll()
+	if err != nil {
+		return nil, err
+	}
+	labelOf := make(map[string]string, len(all))
+	for _, p := range all {
+		labelOf[p.Name] = p.Label
+	}
+
+	out := []MissingRoleDefault{}
+	for _, e := range employees {
+		// الموقوفون ما ينحسبون: حسابه مقفل أصلاً فنقص صلاحياته مو خلل.
+		if e.Status != "ACTIVE" {
+			continue
+		}
+		defaults := model.RoleDefaultPermissions[e.Role]
+		if len(defaults) == 0 {
+			continue
+		}
+		have, err := s.permissions.ListForEmployee(e.ID)
+		if err != nil {
+			return nil, err
+		}
+		haveSet := make(map[string]bool, len(have))
+		for _, p := range have {
+			haveSet[p.Name] = true
+		}
+		var missing, labels, notSeeded []string
+		for _, name := range defaults {
+			if haveSet[name] {
+				continue
+			}
+			missing = append(missing, name)
+			lbl, seeded := labelOf[name]
+			if !seeded || lbl == "" {
+				lbl = name
+				notSeeded = append(notSeeded, name)
+			}
+			labels = append(labels, lbl)
+		}
+		if len(missing) > 0 {
+			out = append(out, MissingRoleDefault{
+				EmployeeID: e.ID, EmployeeName: e.Name, Role: e.Role,
+				Missing: missing, MissingLabel: labels, NotSeeded: notSeeded,
+			})
+		}
+	}
+	return out, nil
+}

@@ -544,6 +544,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// قائمة كل صلاحيات النظام = خارطة للمهاجم يعرف بيها شنو موجود وشنو
 	// يستهدف. الموظف ما يحتاجها — صلاحياته هو تجي بـ/permissions/employee/{id}
 	mux.Handle("GET /api/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth, requireAdmin))
+	// فحص: منو من الموظفين ناقصه صلاحيات دوره. قراءة بس، ما يمنح شي.
+	mux.Handle("GET /api/permissions/audit-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.AuditDefaults), requireAuth, requireAdmin))
 	mux.Handle("GET /api/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
 	// قائمة الموظفين الي يوصلون لصلاحية معيّنة — لتعبئة القوائم المنسدلة
 	// (مثلاً: مين المسؤول عن المشروع، ومين يسوي الكشف)

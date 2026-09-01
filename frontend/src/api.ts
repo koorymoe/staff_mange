@@ -798,6 +798,16 @@ export const eventKindLabels: Record<ComplaintEvent['kind'], string> = {
   RESOLVED: 'انحلّت',
 }
 
+export interface MissingRoleDefault {
+  employeeId: string
+  employeeName: string
+  role: string
+  missing: string[]
+  missingLabels: string[]
+  /** صلاحيات مو معرّفة بقاعدة البيانات أصلاً — مو «الموظف ناقصه». */
+  notSeeded: string[] | null
+}
+
 export interface ComplaintCustomerStat {
   customerId: string
   customerName: string
@@ -3938,6 +3948,8 @@ export const api = {
     }),
   applyDefaultPermissions: (employeeId: string) =>
     request<Permission[]>(`/permissions/employee/${employeeId}/apply-defaults`, { method: 'POST' }),
+  // فحص: منو ناقصه صلاحيات دوره. قراءة بس — ما يمنح ولا صلاحية.
+  auditRoleDefaults: () => request<MissingRoleDefault[]>('/permissions/audit-defaults'),
   getRoleDefaults: () =>
     request<Record<string, string[]>>('/permissions/role-defaults'),
 
