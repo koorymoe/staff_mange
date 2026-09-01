@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import { api, type KpiCriterion, type KpiEvaluation, type Employee, type TechnicianKpi } from '../api'
 import { useSession } from '../session'
 import KpiBreakdownChart from '../components/KpiBreakdownChart'
+import Pager from '../components/Pager'
+import SearchBar from '../components/SearchBar'
+import { matches } from '../utils/search'
 
 // نقاط الكي بي اي صارت تتحمّل من الباك إند (قابلة للإضافة والحذف من الواجهة
 // بدل ما تكون مثبتة هنا بالكود) — راجع KpiCriterion بـ api.ts.
@@ -48,7 +51,9 @@ function TechnicianTab() {
   const [chartFor, setChartFor] = useState<{ id: string; name: string } | null>(null)
   const [month, setMonth] = useState(getCurrentMonth)
   const [loading, setLoading] = useState(true)
-  const [selectedTech, setSelectedTech] = useState<TechnicianKpi | null>(null)
+  // ⚠️ نخزن المعرّف مو نسخة الصف. چان يخزن الكائن نفسه، فلمن يتبدّل
+  // الشهر يتحدّث الجدول والبطاقة تضل مفتوحة تعرض أرقام الشهر القديم.
+  const [expandedId, setExpandedId] = useState<string | null>(null)
 
   useEffect(() => {
     // month can change after mount; re-arm loading via a microtask so the setState
@@ -122,9 +127,11 @@ function TechnicianTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {leaderboard.map((tech, i) => (
+                  {leaderboard.map((tech, i) => {
+                    const open = expandedId === tech.employeeId
+                    return (
+                    <Fragment key={tech.employeeId}>
                     <tr
-                      key={tech.employeeId}
                       className={`transition-colors hover:bg-slate-50 ${i < 3 ? 'bg-slate-50/50' : ''}`}
                     >
                       <td className="px-4 py-3">{rankBadge(i)}</td>
@@ -153,86 +160,92 @@ function TechnicianTab() {
                       </td>
                       <td className="px-4 py-3">
                         <button
-                          onClick={() =>
-                            setSelectedTech(
-                              selectedTech?.employeeId === tech.employeeId ? null : tech,
-                            )
-                          }
-                          className="rounded-lg bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-100"
+                          onClick={() => setExpandedId(open ? null : tech.employeeId)}
+                          className="flex items-center gap-1 rounded-lg bg-brand-50 px-3 py-1 text-sm font-medium text-brand-700 transition-colors hover:bg-brand-100"
                         >
-                          {selectedTech?.employeeId === tech.employeeId ? 'إخفاء' : 'عرض'}
+                          {open ? 'إخفاء' : 'عرض'}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" strokeWidth="2.5"
+                            className={`transition-transform ${open ? 'rotate-180' : ''}`}>
+                            <polyline points="6 9 12 15 18 9" />
+                          </svg>
                         </button>
                       </td>
                     </tr>
-                  ))}
+
+                    {/* التفاصيل تنفتح جوّا اسم الفني نفسه. چانت تنرسم
+                        بطاقة وحدة بعد الجدول كله، فالضغط على آخر فني
+                        يخلي المراقب ينزل لآخر الصفحة حتى يقراها. */}
+                    {open && (
+                      <tr>
+                        <td colSpan={7} className="bg-slate-50 px-4 py-4">
+                          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                            {(
+                              Object.keys(tech.breakdown) as Array<
+                                keyof TechnicianKpi['breakdown']
+                              >
+                            ).map((key) => {
+                              const item = tech.breakdown[key]
+                              return (
+                                <div
+                                  key={key}
+                                  className="rounded-xl border border-slate-200 bg-white p-3 text-center"
+                                >
+                                  <p className="text-xs font-medium text-slate-500">
+                                    {BREAKDOWN_LABELS[key]}
+                                  </p>
+                                  <p
+                                    className={`mt-1 text-xl font-extrabold ${
+                                      item.points >= 0 ? 'text-brand-700' : 'text-red-600'
+                                    }`}
+                                  >
+                                    {item.points > 0 ? `+${item.points}` : item.points}
+                                  </p>
+                                  {'count' in item && (
+                                    <p className="mt-0.5 text-[11px] text-slate-400">
+                                      العدد: {item.count}
+                                    </p>
+                                  )}
+                                  {'avgMinutes' in item && item.avgMinutes > 0 && (
+                                    <p className="mt-0.5 text-[11px] text-slate-400">
+                                      متوسط: {item.avgMinutes} دقيقة
+                                    </p>
+                                  )}
+                                  {'daysPresent' in item && (
+                                    <p className="mt-0.5 text-[11px] text-slate-400">
+                                      {item.daysPresent}/{item.totalDays} يوم
+                                    </p>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-3">
+                            <p className="text-sm text-white/80">
+                              إجمالي النقاط:{' '}
+                              <span className="text-xl font-extrabold text-white">
+                                {tech.totalPoints}
+                              </span>
+                            </p>
+                            {/* المخطط يبيّن العمود الواطي بنظرة وحدة — الرقم لوحده
+                                ما يكول للموظف شنو يسوي حتى يحسّنه. */}
+                            <button
+                              onClick={() => setChartFor({ id: tech.employeeId, name: tech.employeeName })}
+                              className="rounded-lg bg-white/20 px-4 py-1.5 text-sm font-bold text-white hover:bg-white/30"
+                            >
+                              📊 شوف المخطط مفصّل
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
+                    )
+                  })}
                 </tbody>
               </table>
             </div>
           </div>
-
-          {/* Detail card */}
-          {selectedTech && (
-            <div className="mt-6 rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-              <h3 className="mb-4 text-lg font-bold text-brand-800">
-                تفاصيل نقاط: {selectedTech.employeeName}
-              </h3>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-                {(
-                  Object.keys(selectedTech.breakdown) as Array<
-                    keyof TechnicianKpi['breakdown']
-                  >
-                ).map((key) => {
-                  const item = selectedTech.breakdown[key]
-                  return (
-                    <div
-                      key={key}
-                      className="rounded-xl border border-slate-100 bg-slate-50 p-4 text-center"
-                    >
-                      <p className="text-sm font-medium text-slate-500">
-                        {BREAKDOWN_LABELS[key]}
-                      </p>
-                      <p
-                        className={`mt-2 text-2xl font-extrabold ${
-                          item.points >= 0 ? 'text-brand-700' : 'text-red-600'
-                        }`}
-                      >
-                        {item.points > 0 ? `+${item.points}` : item.points}
-                      </p>
-                      {'count' in item && (
-                        <p className="mt-1 text-xs text-slate-400">
-                          العدد: {item.count}
-                        </p>
-                      )}
-                      {'avgMinutes' in item && item.avgMinutes > 0 && (
-                        <p className="mt-1 text-xs text-slate-400">
-                          متوسط: {item.avgMinutes} دقيقة
-                        </p>
-                      )}
-                      {'daysPresent' in item && (
-                        <p className="mt-1 text-xs text-slate-400">
-                          {item.daysPresent}/{item.totalDays} يوم
-                        </p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="mt-4 rounded-xl bg-gradient-to-l from-brand-500 to-brand-800 p-4 text-center">
-                <p className="text-sm text-white/80">إجمالي النقاط</p>
-                <p className="text-3xl font-extrabold text-white">
-                  {selectedTech.totalPoints}
-                </p>
-                {/* المخطط يبيّن العمود الواطي بنظرة وحدة — الرقم لوحده
-                    ما يكول للموظف شنو يسوي حتى يحسّنه. */}
-                <button
-                  onClick={() => setChartFor({ id: selectedTech.employeeId, name: selectedTech.employeeName })}
-                  className="mt-3 rounded-lg bg-white/20 px-4 py-1.5 text-sm font-bold text-white hover:bg-white/30"
-                >
-                  📊 شوف المخطط مفصّل
-                </button>
-              </div>
-            </div>
-          )}
 
           {chartFor && (
             <KpiBreakdownChart
@@ -265,6 +278,12 @@ function AdministrativeTab() {
   const [announceDeduction, setAnnounceDeduction] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [newCriterionLabel, setNewCriterionLabel] = useState('')
+  // ملخص الأسبوع چان يعرض كل موظف نشط — ٤٥ صف أغلبهم 8/8 وبلا خصم،
+  // وهذا الجدار هو الي يخلي الصفحة تنزل قبل ما توصل للسجل.
+  const [showAllWeekly, setShowAllWeekly] = useState(false)
+  const [historyQuery, setHistoryQuery] = useState('')
+  const [historyPage, setHistoryPage] = useState(1)
+  const [historyPerPage, setHistoryPerPage] = useState(10)
 
   const isEvaluator = currentUser && (EVALUATOR_ROLES.includes(currentUser.role) || permissions.includes('auditing') || permissions.includes('kpi_management'))
   const canManageCriteria = currentUser?.role === 'ADMIN' || permissions.includes('kpi_criteria_management')
@@ -332,9 +351,34 @@ function AdministrativeTab() {
     return acc
   }, {})
 
+  // صفوف ملخص الأسبوع: الي انخصم منهم بس، والباقين ينعدّون بسطر تحت
+  // الجدول مع زر يعرضهم. المعلومة ما تضيع، بس الصفحة ما تبقى جداراً
+  // من ٤٥ صف كلهم 8/8 وبلا خصم.
+  const allWeeklyRows = employees
+    .filter((e) => e.status === 'ACTIVE')
+    .map((emp) => {
+      const data = weeklyByEmployee[emp.id]
+      const deducted = data?.totalPoints || 0
+      return { emp, deducted, remaining: POINTS_PER_WEEK - deducted, iqd: data?.totalIQD || 0 }
+    })
+    .sort((a, b) => b.deducted - a.deducted)
+  const cleanWeeklyCount = allWeeklyRows.filter((r) => r.deducted === 0).length
+  const weeklyRows = showAllWeekly ? allWeeklyRows : allWeeklyRows.filter((r) => r.deducted > 0)
+
   const myWeekly = currentUser ? weeklyByEmployee[currentUser.id] : null
   const myDeductedPoints = myWeekly?.totalPoints || 0
   const myRemainingPoints = POINTS_PER_WEEK - myDeductedPoints
+
+  // السجل چان ينرسم كامل بلا حد ويكبر للأبد. بحث + ترقيم بنفس مكوّن
+  // Pager الي تستعمله شاشات الحجوزات والعملاء.
+  // ⚠️ الترشيح بـmatches مو includes: يعالج الهمزة والتاء المربوطة
+  // والأرقام الهندية، فالبحث بـ«احمد» يلگي «أحمد».
+  const filteredEvals = evaluations.filter((ev) =>
+    !historyQuery.trim() ||
+    matches([ev.employee.name, ev.evaluator.name, ev.reason], historyQuery),
+  )
+  const historyStart = (historyPage - 1) * historyPerPage
+  const pagedEvals = filteredEvals.slice(historyStart, historyStart + historyPerPage)
 
   const getPointColor = (deducted: number) => {
     if (deducted === 0) return 'text-green-600'
@@ -664,16 +708,7 @@ function AdministrativeTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {employees
-                    .filter((e) => e.status === 'ACTIVE')
-                    .map((emp) => {
-                      const data = weeklyByEmployee[emp.id]
-                      const deducted = data?.totalPoints || 0
-                      const remaining = POINTS_PER_WEEK - deducted
-                      return { emp, deducted, remaining, iqd: data?.totalIQD || 0 }
-                    })
-                    .sort((a, b) => b.deducted - a.deducted)
-                    .map(({ emp, deducted, remaining, iqd }) => (
+                  {weeklyRows.map(({ emp, deducted, remaining, iqd }) => (
                       <tr key={emp.id} className="transition-colors hover:bg-slate-50">
                         <td className="px-4 py-3 font-medium">{emp.name}</td>
                         <td className="px-4 py-3">
@@ -716,16 +751,28 @@ function AdministrativeTab() {
                         </td>
                       </tr>
                     ))}
-                  {employees.filter((e) => e.status === 'ACTIVE').length === 0 && (
+                  {weeklyRows.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-4 py-6 text-center text-slate-400">
-                        لا يوجد موظفون
+                        {cleanWeeklyCount > 0
+                          ? 'ماكو ولا خصم هذا الأسبوع — كلهم نظاف 👌'
+                          : 'لا يوجد موظفون'}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+            {cleanWeeklyCount > 0 && (
+              <button
+                onClick={() => setShowAllWeekly(!showAllWeekly)}
+                className="w-full border-t border-slate-100 px-5 py-3 text-sm font-medium text-brand-700 transition-colors hover:bg-slate-50"
+              >
+                {showAllWeekly
+                  ? 'اخفي الي بلا خصم'
+                  : `${cleanWeeklyCount} موظف بلا خصم هذا الأسبوع — اعرضهم`}
+              </button>
+            )}
           </div>
 
           {/* ملخص الشهر — جنب ملخص الأسبوع. الأسبوعي يبيّن الحالة
@@ -739,7 +786,7 @@ function AdministrativeTab() {
                   مخالفات: {monthlyEvals.length}
                 </span>
                 <span className="rounded-full bg-red-100 px-3 py-1 text-red-700">
-                  نقاط مخصومة: {-monthTotalPoints}
+                  نقاط مخصومة: {monthTotalPoints}
                 </span>
                 <span className="rounded-full bg-amber-100 px-3 py-1 text-amber-800">
                   إجمالي الخصم: {monthTotalIQD.toLocaleString()} د.ع
@@ -812,8 +859,21 @@ function AdministrativeTab() {
 
           {/* Full history */}
           <div className="mt-6 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-            <div className="p-5">
-              <h3 className="text-lg font-bold text-brand-800">سجل التقييمات</h3>
+            <div className="space-y-3 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-lg font-bold text-brand-800">سجل التقييمات</h3>
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                  {filteredEvals.length} تقييم
+                </span>
+              </div>
+              <SearchBar
+                value={historyQuery}
+                onChange={(v) => {
+                  setHistoryQuery(v)
+                  setHistoryPage(1)
+                }}
+                placeholder="ابحث باسم الموظف أو المقيّم أو السبب..."
+              />
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-right">
@@ -829,7 +889,7 @@ function AdministrativeTab() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {evaluations.map((ev) => (
+                  {pagedEvals.map((ev) => (
                     <tr key={ev.id} className={`transition-colors hover:bg-slate-50 ${ev.cancelled ? 'opacity-50' : ''}`}>
                       <td className="px-4 py-3 font-medium">{ev.employee.name}</td>
                       <td className="px-4 py-3 text-slate-500">{ev.evaluator.name}</td>
@@ -873,16 +933,30 @@ function AdministrativeTab() {
                       </td>
                     </tr>
                   ))}
-                  {evaluations.length === 0 && (
+                  {filteredEvals.length === 0 && (
                     <tr>
                       <td colSpan={7} className="px-4 py-6 text-center text-slate-400">
-                        لا توجد تقييمات بعد
+                        {historyQuery.trim()
+                          ? `ماكو تقييم يطابق «${historyQuery}»`
+                          : 'لا توجد تقييمات بعد'}
                       </td>
                     </tr>
                   )}
                 </tbody>
               </table>
             </div>
+            {filteredEvals.length > 0 && (
+              <div className="border-t border-slate-100 px-5 py-3">
+                <Pager
+                  page={historyPage}
+                  perPage={historyPerPage}
+                  total={filteredEvals.length}
+                  unit="تقييم"
+                  onPage={setHistoryPage}
+                  onPerPage={setHistoryPerPage}
+                />
+              </div>
+            )}
           </div>
         </>
       )}
