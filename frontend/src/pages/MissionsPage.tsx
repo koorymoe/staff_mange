@@ -39,18 +39,77 @@ interface Mission {
 // ينقرا على البطاقة الغامقة)، و`fill` لخلفية الشارة الي عليها نص
 // أبيض (يبقى غامقاً بالوضعين — قلبه يخلّي أبيض على فاتح).
 // نفس فخّ `--color-white` الي انكوينا بيه مرتين قبل.
-const STAGES: Record<string, { label: string; ink: string; fill: string; icon: string }> = {
-  ASSIGNED:        { label: 'تم الإسناد',   ink: 'var(--t-muted)',   fill: '#475569', icon: '📋' },
-  MATERIALS_PREP:  { label: 'تجهيز المواد', ink: 'var(--t-warning)', fill: '#b45309', icon: '📦' },
-  MATERIALS_READY: { label: 'المواد جاهزة', ink: 'var(--t-info)',    fill: '#1d4ed8', icon: '✅' },
-  EN_ROUTE:        { label: 'بالطريق',      ink: 'var(--t-violet)',  fill: '#6d28d9', icon: '🚗' },
-  ARRIVED:         { label: 'وصل الموقع',   ink: 'var(--t-cyan)',    fill: '#0e7490', icon: '📍' },
-  WORK_STARTED:    { label: 'جاري العمل',   ink: 'var(--t-warning)', fill: '#b45309', icon: '⚡' },
-  COMPLETED:       { label: 'مكتمل',        ink: 'var(--t-success)', fill: '#15803d', icon: '🏆' },
-  STOPPED:         { label: 'متوقف',        ink: 'var(--t-danger)',  fill: '#b91c1c', icon: '⏸️' },
+//
+// `word` كلمة حالة البطاقة، و`empty` الي تنعرض لمن يكون العدد صفر
+// («لا توجد الآن» أوضح من «نشطة: 0»). و`tint` خلفية دائرة الأيقونة.
+// كلهن بيانات بالخريطة مو شروط بالكود — إضافة مرحلة جديدة ما
+// تحتاج تلمس العرض.
+const STAGES: Record<string, {
+  label: string; ink: string; fill: string; icon: string
+  word: string; empty: string; tint: string
+}> = {
+  ASSIGNED:        { label: 'تم الإسناد',   ink: 'var(--t-muted)',   fill: '#475569', icon: '📋',
+                     word: 'موزعة',          empty: 'ماكو إسناد',     tint: 'var(--sf-sunken)' },
+  MATERIALS_PREP:  { label: 'تجهيز المواد', ink: 'var(--t-warning)', fill: '#b45309', icon: '📦',
+                     word: 'بانتظار التجهيز', empty: 'ماكو تجهيز',    tint: 'var(--tint-warning)' },
+  MATERIALS_READY: { label: 'المواد جاهزة', ink: 'var(--t-info)',    fill: '#1d4ed8', icon: '✅',
+                     word: 'جاهزة',          empty: 'ماكو جاهز',      tint: 'var(--sf-info)' },
+  EN_ROUTE:        { label: 'بالطريق',      ink: 'var(--t-violet)',  fill: '#6d28d9', icon: '🚗',
+                     word: 'متحرّكة',        empty: 'لا توجد الآن',   tint: 'var(--sf-violet)' },
+  ARRIVED:         { label: 'وصل الموقع',   ink: 'var(--t-cyan)',    fill: '#0e7490', icon: '📍',
+                     word: 'فعال',           empty: 'ماكو وصول',      tint: 'var(--sf-info)' },
+  WORK_STARTED:    { label: 'جاري العمل',   ink: 'var(--t-warning)', fill: '#b45309', icon: '⚡',
+                     word: 'نشطة',           empty: 'ماكو شغل جارٍ',  tint: 'var(--tint-warning)' },
+  COMPLETED:       { label: 'مكتمل',        ink: 'var(--t-success)', fill: '#15803d', icon: '🏆',
+                     word: 'منجز',           empty: 'ماكو إنجاز',     tint: 'var(--sf-success)' },
+  STOPPED:         { label: 'متوقف',        ink: 'var(--t-danger)',  fill: '#b91c1c', icon: '⏸️',
+                     word: 'متوقفة',         empty: 'ماكو متوقف',     tint: 'var(--sf-danger)' },
 }
 
+// ترتيب بطاقات الحالات: من الشغل الجاري للمنجز — الأهم أول.
+// ⚠️ غير `stageOrder` تحت: هذاك مسار المهمة بالخط الزمني.
+const TILE_ORDER = ['WORK_STARTED', 'ARRIVED', 'EN_ROUTE', 'MATERIALS_READY',
+  'MATERIALS_PREP', 'ASSIGNED', 'COMPLETED']
+
 const stageOrder = ['ASSIGNED', 'MATERIALS_PREP', 'MATERIALS_READY', 'EN_ROUTE', 'ARRIVED', 'WORK_STARTED', 'COMPLETED']
+
+// حلقة النسبة — SVG خالص. دائرتان: مسار باهت وقوس فوقه بطول
+// `stroke-dasharray` يساوي النسبة من المحيط.
+// شريحة صغيرة بالترويسة — شفافة على المتدرّج الغامق، فالنص أبيض
+// دائماً وما تحتاج رموز الوضع الليلي.
+function HeroChip({ icon, label, value }: { icon: string; label: string; value: string }) {
+  return (
+    <span className="flex items-center gap-2 rounded-xl bg-white/10 px-3 py-2">
+      <span className="text-base">{icon}</span>
+      <span className="leading-tight">
+        <span className="block text-[10px] text-blue-200/80">{label}</span>
+        <span className="block text-sm font-bold text-white">{value}</span>
+      </span>
+    </span>
+  )
+}
+
+function ProgressRing({ pct }: { pct: number }) {
+  const R = 34
+  const C = 2 * Math.PI * R
+  const safe = Math.max(0, Math.min(100, pct))
+  return (
+    <div className="relative shrink-0" style={{ width: 84, height: 84 }}>
+      <svg width="84" height="84" viewBox="0 0 84 84" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx="42" cy="42" r={R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="8" />
+        <circle
+          cx="42" cy="42" r={R} fill="none" stroke="#4ade80" strokeWidth="8"
+          strokeLinecap="round"
+          strokeDasharray={`${(safe / 100) * C} ${C}`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-xl font-extrabold text-white">{Math.round(safe)}%</span>
+        <span className="text-[9px] text-blue-200/80">نسبة الإنجاز</span>
+      </div>
+    </div>
+  )
+}
 
 function timeSince(dateStr: string) {
   const mins = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000)
@@ -153,8 +212,16 @@ export default function MissionsPage() {
     setSelectedMission(null)
   }
 
+  // ⚠️ «نسبة الإنجاز» **مو تعريفاً جديداً**: نفس الي تستعمله شاشة
+  // الإحصائيات (StatsPage.tsx: المنجز ÷ المسند). كلمة وحدة بمعنى
+  // واحد بكل الشاشات — وإلا يصير رقمان بنفس الاسم، وهاي بالضبط
+  // العلّة الي دا نصلّحها بشاشات ثانية.
   const activeMissions = missions.filter(m => !['COMPLETED', 'STOPPED'].includes(m.stage))
   const completedMissions = missions.filter(m => ['COMPLETED', 'STOPPED'].includes(m.stage))
+
+  const donePct = missions.length
+    ? (missions.filter(m => m.stage === 'COMPLETED').length / missions.length) * 100
+    : 0
 
   const getDelayStatus = (m: Mission) => {
     if (!m.estimatedMinutes) return 'normal'
@@ -167,26 +234,63 @@ export default function MissionsPage() {
     return 'normal'
   }
 
+  // ⚠️ «حالة اليوم» حكم على الشغل، فلازم عتباته تكون مكتوبة صريحة
+  // مو مخبّاة: تنبني على المهام **المتأخرة فعلاً** (getDelayStatus
+  // الي تقارن الوقت المستغرق بـestimatedMinutes)، مو على مزاج.
+  const lateCount = activeMissions.filter(m => getDelayStatus(m) === 'late').length
+  const dayHealth = lateCount === 0
+    ? { word: 'ممتاز', tone: 'var(--t-success)' }
+    : lateCount <= 2
+      ? { word: 'جيد', tone: 'var(--t-warning)' }
+      : { word: 'يحتاج متابعة', tone: 'var(--t-danger)' }
+
   if (loading) return <div className="flex items-center justify-center p-12"><div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" /></div>
 
   return (
     <div className="mx-auto max-w-7xl space-y-6">
       {/* Header */}
       <div className="rounded-2xl bg-gradient-to-l from-[#0f2040] to-[#1a3a6c] p-6 text-white">
-        <h1 className="text-2xl font-bold">🎯 نظام تتبع المهام الميدانية</h1>
-        <p className="mt-1 text-blue-200/80">تتبع حي لجميع المهام والفرق الميدانية</p>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">🎯 نظام تتبع المهام الميدانية</h1>
+            <p className="mt-1 text-blue-200/80">
+              تتبع جميع المهام وفرق العمل في الميدان لحظة بلحظة
+            </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <HeroChip icon="🗓️" label="حالة اليوم" value={dayHealth.word} />
+              <HeroChip icon="👥" label="المهام النشطة" value={String(activeMissions.length)} />
+              <HeroChip icon="📈" label="نسبة الإنجاز" value={`${Math.round(donePct)}%`} />
+            </div>
+          </div>
+          <ProgressRing pct={donePct} />
+        </div>
       </div>
 
       {/* Stats */}
       {isAdmin && (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-          {Object.entries(STAGES).filter(([k]) => k !== 'STOPPED').map(([key, s]) => {
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          {TILE_ORDER.map((key) => {
+            const st = STAGES[key]
             const count = missions.filter(m => m.stage === key).length
             return (
-              <div key={key} className="rounded-xl bg-white p-4 shadow-sm text-center">
-                <span className="text-2xl">{s.icon}</span>
-                <p className="mt-1 text-2xl font-bold" style={{ color: s.ink }}>{count}</p>
-                <p className="text-xs text-slate-500">{s.label}</p>
+              <div key={key}
+                className="rounded-xl border p-4 text-center shadow-sm"
+                style={{
+                  backgroundColor: 'var(--sf-card)',
+                  borderColor: key === 'COMPLETED' ? st.ink : 'var(--bd-line)',
+                }}>
+                <span
+                  className="mx-auto flex h-10 w-10 items-center justify-center rounded-full text-xl"
+                  style={{ backgroundColor: st.tint }}>
+                  {st.icon}
+                </span>
+                <p className="mt-2 text-2xl font-extrabold" style={{ color: st.ink }}>{count}</p>
+                <p className="text-xs" style={{ color: 'var(--t-muted)' }}>{st.label}</p>
+                {/* ⚠️ «نشطة: 0» تضليل — لمن يكون صفراً نكول ماكو شي. */}
+                <p className="mt-0.5 text-[10px] font-bold"
+                  style={{ color: count > 0 ? st.ink : 'var(--t-faint)' }}>
+                  {count > 0 ? st.word : st.empty}
+                </p>
               </div>
             )
           })}

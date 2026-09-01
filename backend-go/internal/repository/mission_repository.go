@@ -362,12 +362,20 @@ func (r *MissionRepository) CreateEvent(missionID, employeeID, action string, la
 }
 
 func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission, error) {
+	// ⚠️⚠️ چان `SELECT * FROM "Mission"` بلا اسم مستعار، والشرط تحته
+	// يشير لـ`m."leaderId"` — SQL غلط، فالمسار **يرجّع خطأ دائماً**.
+	// يعني كل فني وليدر يفتح «تتبع المهام» ما تجيه ولا مهمة، والشاشة
+	// تطلعله فارغة بلا ما يعرف السبب. (المالك والمدير ما انتبهوا لأن
+	// مسارهم غير: /missions مو /missions/my.)
+	//
+	// ونستعمل missionSelect مو استعلاماً خاصاً: هو الي يحسب المرحلة
+	// الحقيقية (missionStageExpr) ويجيب أوقات الحجز — و`SELECT *`
+	// چان يرجّع m.stage الخام حتى لو انصلّح الاسم المستعار.
 	missions := []model.Mission{}
-	err := r.db.Select(&missions, `
-		SELECT * FROM "Mission"
+	err := r.db.Select(&missions, missionSelect+`
 		WHERE (m."leaderId" = $1 OR $1 = ANY(m."memberIds"))
 		  AND `+missionStageExpr+` NOT IN ('COMPLETED', 'STOPPED')
-		ORDER BY "createdAt" DESC
+		ORDER BY m."createdAt" DESC
 	`, employeeID)
 	if err != nil {
 		return nil, err
