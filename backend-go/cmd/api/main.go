@@ -212,7 +212,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
 	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret))
 	cartHandler := handler.NewCartHandler(cartService)
-	expenseHandler := handler.NewExpenseHandler(expenseService)
+	expenseHandler := handler.NewExpenseHandler(expenseService, permissionRepo)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
 	revolvingFundHandler := handler.NewRevolvingFundHandler(revolvingFundRepo)
 	dashboardHandler := handler.NewDashboardHandler(db)

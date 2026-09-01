@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Expense } from '../api'
 import { matches } from '../utils/search'
@@ -56,16 +57,15 @@ export default function Finance() {
 
     setAuditBusy(b.id)
     try {
-      const res = await api.auditBooking(b.id, { action, amountCollected: amount, note })
-      if (action === 'VERIFY') {
-        setBookings((prev) => prev.map((x) => (x.id === b.id ? (res as Booking) : x)))
-      } else {
+      await api.auditBooking(b.id, { action, amountCollected: amount, note })
+      if (action !== 'VERIFY') {
         alert('انسجّل البلاغ وانوجّه للمعني — الحجز يبقى غير مدقق لحد ما ينحسم')
-        if (amount !== undefined) {
-          setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, amountCollected: amount } : x)))
-        }
       }
       setInvoiceAmounts((prev) => ({ ...prev, [b.id]: '' }))
+      // ⚠️ **إعادة تحميل مو ترقيع محلي**: الترقيع يحدّث الحجز بس،
+      // والمصاريف والمواد تبقى قديمة طول الجلسة — فالمحاسب يشوف
+      // إجمالياً محسوباً على بيانات عمرها ساعات ويقرّر عليه.
+      load()
     } catch (err) {
       alert(err instanceof Error ? err.message : 'تعذر تنفيذ التدقيق')
     } finally {
@@ -90,29 +90,75 @@ export default function Finance() {
   const pendingCount = bookings.filter((b) => !b.amountVerified).length
   const verifiedCount = bookings.filter((b) => b.amountVerified).length
 
-  // Get expenses for the expense-responsible employee of a booking
-  const getBookingExpenses = (b: Booking): Expense[] => {
+  // ═══ مصاريف الحجز ═══
+  //
+  // ⚠️⚠️ **هنا چان أخطر خطأ بالشاشة.** قبل هالتعديل، المصاريف چانت
+  // تنتنسب **بالموظف مو بالحجز**:
+  //
+  //     e.employeeId === b.expenseResponsibleId
+  //
+  // يعني كل مصاريف الليدر المعتمدة تنحسب على **كل حجز** هو مسؤول عنه.
+  // ليدر عنده ١٠ حجوزات ومصروف واحد بـ٥٠ ألف ← المصروف ينحسب **١٠
+  // مرات**، فيطلع «نقص» بحجوزات مبالغها سليمة تماماً — والمحاسب يدوّر
+  // على فلوس **ما ضاعت**.
+  //
+  // هسه المصروف عنده `bookingId` حقيقي يختاره الليدر وقت التسجيل.
+  const getBookingExpenses = (b: Booking): Expense[] =>
+    expenses.filter((e) => e.bookingId === b.id && e.status === 'APPROVED')
+
+  // ═══ المصاريف القديمة — تظهر ولا تنحسب ═══
+  //
+  // ⚠️⚠️ المسجّلة قبل الربط ما إلها `bookingId`. واكو ثلاث طرق،
+  // اثنتان منها **تكذبان**:
+  //   • نحسبها بالطريقة القديمة ← نبقّي الخطأ بالبيانات القديمة
+  //   • نتجاهلها بصمت ← أرقام تاريخية تتغيّر بلا ما يعرف أحد
+  // فالصح: تنعرض بجدول منفصل بعنوان صريح، والمحاسب يشوفها ويعرف ليش
+  // برّا الحساب.
+  const legacyExpenses = (b: Booking): Expense[] => {
     if (!b.expenseResponsibleId) return []
     return expenses.filter(
-      (e) => e.employeeId === b.expenseResponsibleId && e.status === 'APPROVED',
+      (e) => !e.bookingId && e.employeeId === b.expenseResponsibleId && e.status === 'APPROVED',
     )
   }
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold text-brand-900">تدقيق الحسابات</h2>
-      <p className="mt-1 text-slate-500">
-        مراجعة المبالغ المستلمة من الحجوزات المنجزة وتدقيقها.
-      </p>
+    <div dir="rtl" className="space-y-4">
+      {/* ═══ الترويسة ═══
+          ⚠️ **نفس هوية التدقيق اليومي** (نفس التدرّج): الشاشتان شغل
+          واحد، واختلاف الهوية بينهما يخلّي المحاسب يحس إنه انتقل
+          لنظام ثاني. */}
+      <div
+        className="relative overflow-hidden rounded-2xl p-6 shadow-md"
+        style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #24507e 55%, #2f6ba8 100%)' }}
+      >
+        <span aria-hidden className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #c8a45a 0%, transparent 70%)' }} />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-white">📊 تدقيق الحسابات</h1>
+            {/* ⚠️ **يوضّح متى تستعمل أي شاشة**: شاشتان تسوّيان نفس
+                القرار بلا ما تقول أيّهما لأي شي تخلّي المحاسب يشتغل
+                بوحدة ويظن الثانية مكسورة. */}
+            <p className="mt-1 max-w-2xl text-sm text-blue-100">
+              <b className="text-white">كل الأرشيف</b> بتفاصيله الكاملة — المواد والمصاريف ومطابقة المبالغ.
+              وللشغل اليومي استعمل <b className="text-white">التدقيق اليومي</b>.
+            </p>
+          </div>
+          <Link to="/daily-audit"
+            className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur hover:bg-white/25">
+            📅 التدقيق اليومي ←
+          </Link>
+        </div>
+      </div>
 
       {/* Stats bar */}
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         <button
           onClick={() => setFilter('all')}
           className={`rounded-xl border p-3 text-center transition-all ${
             filter === 'all'
               ? 'border-brand-500 bg-brand-50 shadow-sm'
-              : 'border-slate-200 bg-white'
+              : 'border-slate-200 bg-[var(--sf-card)]'
           }`}
         >
           <p className="text-2xl font-bold text-brand-900">{bookings.length}</p>
@@ -123,7 +169,7 @@ export default function Finance() {
           className={`rounded-xl border p-3 text-center transition-all ${
             filter === 'pending'
               ? 'border-amber-400 bg-amber-50 shadow-sm'
-              : 'border-slate-200 bg-white'
+              : 'border-slate-200 bg-[var(--sf-card)]'
           }`}
         >
           <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
@@ -134,7 +180,7 @@ export default function Finance() {
           className={`rounded-xl border p-3 text-center transition-all ${
             filter === 'verified'
               ? 'border-emerald-400 bg-emerald-50 shadow-sm'
-              : 'border-slate-200 bg-white'
+              : 'border-slate-200 bg-[var(--sf-card)]'
           }`}
         >
           <p className="text-2xl font-bold text-emerald-600">{verifiedCount}</p>
@@ -142,7 +188,7 @@ export default function Finance() {
         </button>
       </div>
 
-      <div className="mt-6 rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+      <div className="rounded-xl border border-slate-200 bg-[var(--sf-card)] p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -169,6 +215,7 @@ export default function Finance() {
             0,
           )
           const bookingExpenses = getBookingExpenses(b)
+          const legacyRows = legacyExpenses(b)
           const expensesTotal = bookingExpenses.reduce(
             (sum, e) => sum + e.amount,
             0,
@@ -336,7 +383,7 @@ export default function Finance() {
                   {bookingExpenses.length > 0 && (
                     <div className="mt-4">
                       <h4 className="mb-2 text-sm font-bold text-brand-900">
-                        مصاريف الليدر
+                        مصاريف هذا الحجز
                         {b.expenseResponsible && (
                           <span className="mr-2 text-xs font-normal text-slate-500">
                             ({b.expenseResponsible.name})
@@ -377,6 +424,32 @@ export default function Finance() {
                           </tbody>
                         </table>
                         </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ═══ مصاريف قديمة بلا حجز ═══
+                      ⚠️ **تظهر ولا تنحسب**: مسجّلة قبل ما ينربط
+                      المصروف بحجزه. حسابها يبقّي الخطأ القديم،
+                      وإخفاؤها يغيّر أرقاماً تاريخية بصمت. */}
+                  {legacyRows.length > 0 && (
+                    <div className="mt-4 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/60 p-4">
+                      <h4 className="text-sm font-bold text-amber-900">
+                        ⚠️ مصاريف قديمة بلا حجز ({legacyRows.length})
+                      </h4>
+                      <p className="mt-0.5 text-xs leading-relaxed text-amber-800">
+                        مسجّلة قبل ما يصير المصروف مربوطاً بحجزه — <b>ما تنحسب بالإجمالي</b>،
+                        لأن ماكو دليل إنها تخص هذا الحجز بالذات. تحتاج ربطاً يدوياً.
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        {legacyRows.map((exp) => (
+                          <div key={exp.id} className="flex items-center justify-between rounded-lg bg-white/70 px-3 py-1.5 text-xs">
+                            <span className="font-bold tabular-nums text-amber-900">
+                              {exp.amount.toLocaleString()} د.ع
+                            </span>
+                            <span className="text-slate-600">{exp.description || 'بدون وصف'}</span>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -497,8 +570,17 @@ export default function Finance() {
             </div>
           )
         })}
-        {!loading && bookings.length === 0 && (
-          <p className="text-slate-400">لا توجد حجوزات منجزة بعد.</p>
+        {/* ⚠️ **القائمة المرشّحة مو الكاملة**: قبل هيچ، ترشيح على
+            «تم التدقيق» وماكو ولا واحد يعطي **صفحة بيضاء بلا رسالة** —
+            والمحاسب يظن الشاشة مكسورة. */}
+        {!loading && filtered.length === 0 && (
+          <p className="text-slate-400">{bookings.length === 0
+              ? 'لا توجد حجوزات منجزة بعد.'
+              : search.trim()
+                ? `ماكو نتيجة لـ«${search}» بهذا الترشيح.`
+                : filter === 'pending' ? '✅ ماكو حجز بانتظار التدقيق — كلها مدققة.'
+                  : filter === 'verified' ? 'ماكو حجز مدقق بعد.'
+                    : 'ماكو حجوزات.'}</p>
         )}
       </div>
     </div>

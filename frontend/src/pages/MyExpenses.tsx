@@ -14,6 +14,26 @@ const statusColors: Record<string, string> = {
   REJECTED: 'bg-red-100 text-red-700',
 }
 
+/** ═══ منو مسؤول عن مصاريف هذا الحجز؟ ═══
+ *
+ *  ⚠️ **دالة وحدة يستعملها المكانان**: النموذج يظهر لو اكو حجز
+ *  واحد على الأقل، والقائمة تعرض نفس الحجوزات بالضبط. شرطان
+ *  منفصلان يفترقان بأول تعديل، والنتيجة نموذج بلا خيارات.
+ *
+ *  ⚠️ والشرط هنا **مرآة لفحص الخادم** (`IsExpenseResponsible`) —
+ *  واختلافهما يعني قائمة تعرض حجزاً يرفضه الخادم. */
+function isResponsibleFor(b: Booking, employee: { id: string; isLeader?: boolean } | null): boolean {
+  if (!employee) return false
+  if (b.expenseResponsibleId === employee.id) return true
+  if (b.projectSupervisor?.id === employee.id) return true
+  if (!b.expenseResponsibleId && !b.projectSupervisor) {
+    const alone = b.assignments.length === 1 && b.assignments[0].employee.id === employee.id
+    if (alone) return true
+    if (employee.isLeader && b.assignments.some((a) => a.employee.id === employee.id)) return true
+  }
+  return false
+}
+
 export default function MyExpenses() {
   const { employee } = useSession()
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -22,6 +42,7 @@ export default function MyExpenses() {
   const [submitting, setSubmitting] = useState(false)
   const [activeBookings, setActiveBookings] = useState<Booking[]>([])
   const [canExpense, setCanExpense] = useState(false)
+  const [bookingId, setBookingId] = useState('')
 
   const load = () => {
     if (!employee) return
@@ -36,16 +57,12 @@ export default function MyExpenses() {
       )
       setActiveBookings(active)
 
-      const isResponsible = active.some(b => {
-        if (b.expenseResponsibleId === employee.id) return true
-        if (!b.expenseResponsibleId) {
-          const isAlone = b.assignments.length === 1 && b.assignments[0].employee.id === employee.id && !b.projectSupervisor
-          if (isAlone) return true
-          if (employee.isLeader && !b.projectSupervisor) return true
-        }
-        return false
-      })
-      setCanExpense(isResponsible || employee.isLeader)
+      // ⚠️⚠️ **شرط واحد للمسؤولية — چانوا اثنين متعارضين.** هذا
+      // الشرط چان أوسع من الي يبني قائمة الحجوزات تحت، فيصير ليدر
+      // يشوف النموذج **وقائمته فاضية**. وبعد ما صار اختيار الحجز
+      // جزءاً من النموذج، التعارض يتحوّل من إزعاج لـ**نموذج ما
+      // يگدر يرسله أبداً**.
+      setCanExpense(active.some((b) => isResponsibleFor(b, employee)) || employee.isLeader)
     })
   }
 
@@ -60,22 +77,18 @@ export default function MyExpenses() {
         employeeId: employee.id,
         amount: Number(amount),
         description: description || undefined,
+        bookingId: bookingId || undefined,
       })
       setAmount('')
       setDescription('')
+      setBookingId('')
       load()
     } finally {
       setSubmitting(false)
     }
   }
 
-  const responsibleBookings = activeBookings.filter(b =>
-    b.expenseResponsibleId === employee?.id ||
-    (!b.expenseResponsibleId && (
-      (b.assignments.length === 1 && b.assignments[0].employee.id === employee?.id && !b.projectSupervisor) ||
-      (employee?.isLeader && b.projectSupervisor?.id === employee?.id)
-    ))
-  )
+  const responsibleBookings = activeBookings.filter((b) => isResponsibleFor(b, employee))
 
   return (
     <div>
@@ -120,7 +133,36 @@ export default function MyExpenses() {
               className="w-full rounded-lg border border-slate-300 px-3 py-2 outline-none focus:border-brand-500"
             />
           </div>
+          {/* ═══ على أي حجز؟ ═══
+              ⚠️⚠️ **هذا الي يصلّح حساب المحاسب.** قبله، المصروف
+              چان ينتنسب بالموظف — فمصروف واحد ينحسب على **كل حجوزات
+              الليدر**، ويطلع «نقص» بحجوزات مبالغها سليمة.
+              ⚠️ **واختياري عمداً**: اكو مصاريف عامة ما تخص حجزاً
+              (وقود، أدوات ورشة)، وإجباره يخلّي الليدر يختار حجزاً
+              عشوائياً حتى يرسل — ونرجع لأرقام غلط بطريقة ثانية. */}
           <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium text-slate-600">
+              على أي حجز؟ <span className="text-xs font-normal text-slate-400">(اختياري — اتركه فاضياً للمصاريف العامة)</span>
+            </label>
+            <select
+              value={bookingId}
+              onChange={(e) => setBookingId(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:border-brand-500"
+            >
+              <option value="">— مصروف عام بلا حجز —</option>
+              {responsibleBookings.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.code} — {b.customer?.name ?? 'بلا اسم'}
+                </option>
+              ))}
+            </select>
+            {responsibleBookings.length === 0 && (
+              <p className="mt-1 text-[11px] text-amber-700">
+                ماكو حجز نشط إنت مسؤول عن مصاريفه — تگدر تسجّل مصروفاً عاماً.
+              </p>
+            )}
+          </div>
+          <div className="sm:col-span-3">
             <label className="mb-1 block text-sm font-medium text-slate-600">سبب الصرف</label>
             <input
               value={description}

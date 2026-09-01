@@ -107,6 +107,16 @@ export default function ExpensesReview() {
                 <div>
                   <p className="text-sm font-bold text-brand-900">{exp.employee.name}</p>
                   {exp.employee.position && <p className="text-[10px] text-slate-400">{exp.employee.position}</p>}
+                  {/* ⚠️ **كود الحجز جنب الاسم**: «مصروف ٥٠ ألف لفلان»
+                      بلا حجز يُعتمد بالثقة مو بالمراجعة — والي يعتمد
+                      لازم يعرف على أي شغل ينصرف. */}
+                  {exp.bookingCode ? (
+                    <p className="mt-0.5 rounded bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+                      🗂️ {exp.bookingCode}
+                    </p>
+                  ) : (
+                    <p className="mt-0.5 text-[10px] text-amber-600">مصروف عام بلا حجز</p>
+                  )}
                 </div>
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-sm font-black text-brand-600">
                   {exp.employee.name.charAt(0)}

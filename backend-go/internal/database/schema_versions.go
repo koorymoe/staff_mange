@@ -281,6 +281,8 @@ func versionedMigrations() []Migration {
 	result = append(result, servicePaperworkMigrations()...)
 	// 0258: الفاتورة تروح للمراقب وترجع، والمالك يرجّع القديمة للمحاسب.
 	result = append(result, invoiceMonitorMigrations()...)
+	// 0259: المصروف ينربط بحجزه — قبلها چان ينحسب على كل حجوزات الليدر.
+	result = append(result, expenseBookingMigrations()...)
 	return result
 }
 

@@ -737,6 +737,11 @@ export interface Expense {
   description: string | null
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
   createdAt: string
+  /** ═══ الحجز الي انصرف عليه ═══
+   *  ⚠️ **قابل للفراغ**: المصاريف المسجّلة قبل الربط ما إلها حجز،
+   *  وتنعرض بجدول منفصل «ما تنحسب» بدل ما تنحسب غلط أو تختفي بصمت. */
+  bookingId?: string | null
+  bookingCode?: string
 }
 
 export interface Customer {
@@ -3564,7 +3569,7 @@ export const api = {
 
   getExpenses: (employeeId?: string) =>
     request<Expense[]>(`/expenses${employeeId ? `?employeeId=${employeeId}` : ''}`),
-  createExpense: (data: { employeeId: string; amount: number; description?: string }) =>
+  createExpense: (data: { employeeId: string; amount: number; description?: string; bookingId?: string }) =>
     request<Expense>('/expenses', { method: 'POST', body: JSON.stringify(data) }),
   updateExpenseStatus: (id: string, status: 'APPROVED' | 'REJECTED') =>
     request<Expense>(`/expenses/${id}/status`, {
