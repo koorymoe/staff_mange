@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import {
   api, auditVerdictLabels, eventKindLabels,
   type AuditVerdict, type Complaint, type ComplaintCustomerStat,
@@ -12,6 +12,7 @@ import EmptyState from './EmptyState'
 import SearchBar from './SearchBar'
 import SaveError from './SaveError'
 import Pager from './Pager'
+import RowActions from './RowActions'
 
 // ═══ متابعة الشكاوى وتدقيق مهندسي الجودة ═══
 //
@@ -75,6 +76,10 @@ export default function ComplaintsTracking({
   const [perPage, setPerPage] = useState(10)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [panelOpen, setPanelOpen] = useState(true)
+  // ⚠️ الملخص يتمدّد **جوّا الصف**. چانت التفاصيل تنفتح بلوحة
+  // أسفل الصفحة بس، فالضغط على صف بعيد يخلي المستخدم ينزل
+  // يدوّرها — نفس الشكوى الي انصلّحت بشاشة الكي بي اي.
+  const [expandedCustomer, setExpandedCustomer] = useState<string | null>(null)
   const [events, setEvents] = useState<ComplaintEvent[] | null>(null)
   const [rating, setRating] = useState<string>('')
   const [auditNote, setAuditNote] = useState('')
@@ -222,9 +227,12 @@ export default function ComplaintsTracking({
                     const latest = complaints.find((c) => c.id === s.latestComplaintId)
                     const v = latest?.auditVerdict ?? null
                     const isSel = selected?.customer?.id === s.customerId
+                    const rowOpen = expandedCustomer === s.customerId
+                    const list = byCustomer.get(s.customerId) ?? []
                     return (
-                      <tr key={s.customerId}
-                        onClick={() => openRow(s)}
+                    <Fragment key={s.customerId}>
+                      <tr
+                        onClick={() => { setExpandedCustomer(rowOpen ? null : s.customerId); openRow(s) }}
                         className={`cursor-pointer transition-colors hover:bg-slate-50 ${
                           isSel ? 'bg-brand-50/60' : ''}`}>
                         <td className="px-3 py-2.5 font-medium">{s.customerName}</td>
@@ -262,12 +270,71 @@ export default function ComplaintsTracking({
                           )}
                         </td>
                         <td className="px-3 py-2.5">
-                          <button onClick={(e) => { e.stopPropagation(); openRow(s) }}
-                            className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600 hover:bg-slate-200">
-                            •••
-                          </button>
+                          {/* ⚠️ چان هذا الزر يستدعي openRow() بس — يعني
+                              يفتح لوحة بأسفل الصفحة، فالمستخدم يضغط
+                              وما يشوف شي يتحرّك ويظن الزر ميّت. */}
+                          <RowActions actions={[
+                            {
+                              label: rowOpen ? 'اخفي الملخص' : 'الملخص هنا',
+                              icon: rowOpen ? '▲' : '▼',
+                              onClick: () => { setExpandedCustomer(rowOpen ? null : s.customerId); openRow(s) },
+                            },
+                            {
+                              label: 'التفاصيل الكاملة',
+                              icon: '🗂️',
+                              onClick: () => {
+                                openRow(s)
+                                setPanelOpen(true)
+                                // ننزّله للوحة بدل ما ندور عليها.
+                                setTimeout(() => document
+                                  .getElementById('complaint-detail-panel')
+                                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+                              },
+                            },
+                            {
+                              label: 'عرض السجل',
+                              icon: '📄',
+                              onClick: () => {
+                                openRow(s)
+                                setPanelOpen(true)
+                                const id = s.latestComplaintId ?? list[0]?.id
+                                if (id) api.getComplaintEvents(id).then(setEvents).catch(() => setEvents([]))
+                                setTimeout(() => document
+                                  .getElementById('complaint-detail-panel')
+                                  ?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 60)
+                              },
+                            },
+                          ]} />
                         </td>
                       </tr>
+
+                      {rowOpen && (
+                        <tr>
+                          <td colSpan={10} className="bg-slate-50 px-4 py-3">
+                            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-xs">
+                              <span style={{ color: 'var(--t-muted)' }}>
+                                شكاوى الزبون: <b style={{ color: 'var(--t-title)' }}>{s.complaintCount}</b>
+                              </span>
+                              <span style={{ color: 'var(--t-muted)' }}>
+                                مفتوحة: <b style={{ color: 'var(--t-title)' }}>{s.openCount}</b>
+                              </span>
+                              <span style={{ color: 'var(--t-muted)' }}>
+                                ما انتصل بيها: <b className={s.notContactedCount > 0 ? 'text-red-600' : 'text-emerald-600'}>
+                                  {s.notContactedCount}</b>
+                              </span>
+                              <span style={{ color: 'var(--t-muted)' }}>
+                                تحتاج تدقيق: <b style={{ color: 'var(--t-title)' }}>{s.needsAuditCount}</b>
+                              </span>
+                              {latest && (
+                                <span className="truncate" style={{ color: 'var(--t-muted)' }}>
+                                  آخر شكوى: <b style={{ color: 'var(--t-body)' }}>{latest.description}</b>
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
                     )
                   })}
                 </tbody>
@@ -282,7 +349,7 @@ export default function ComplaintsTracking({
       </div>
 
       {selected && (
-        <div className="overflow-hidden rounded-2xl border"
+        <div id="complaint-detail-panel" className="overflow-hidden rounded-2xl border"
           style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
           <div className="flex flex-wrap items-center justify-between gap-2 border-b px-4 py-3"
             style={{ borderColor: 'var(--bd-line)' }}>
