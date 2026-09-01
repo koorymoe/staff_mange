@@ -34,6 +34,17 @@ type Complaint struct {
 	CreatedAt       time.Time  `db:"createdAt" json:"createdAt"`
 	ResolvedAt      *time.Time `db:"resolvedAt" json:"resolvedAt"`
 
+	// تقييم الزبون للخدمة (١..٥) — يسجّله مهندس الجودة وقت التواصل.
+	// ⚠️ nullable بقصد: «ما انسأل» مو «تقييمه صفر»، والصفر يهبّط
+	// المتوسط ويظلم المهندس على شكوى ماكو بيها تقييم أصلاً.
+	CustomerRating *int `db:"customerRating" json:"customerRating"`
+	// حكم المدقق على شغل مهندس الجودة بهذي الشكوى.
+	AuditVerdict *string        `db:"auditVerdict" json:"auditVerdict"`
+	AuditNote    *string        `db:"auditNote" json:"auditNote"`
+	AuditedAt    *time.Time     `db:"auditedAt" json:"auditedAt"`
+	AuditedByID  *string        `db:"auditedById" json:"-"`
+	AuditedBy    *EmployeeBrief `db:"-" json:"auditedBy"`
+
 	Customer           *Customer      `db:"-" json:"customer"`
 	Booking            *Booking       `db:"-" json:"booking"`
 	CreatedByEmployee  *EmployeeBrief `db:"-" json:"createdByEmployee"`
@@ -60,6 +71,56 @@ type ResolveComplaintRequest struct {
 	Resolution *string `json:"resolution"`
 }
 
+// أحكام المدقق الثلاثة — نفس الي بالتصميم.
+const (
+	AuditNeedsFollowUp = "NEEDS_FOLLOWUP"
+	AuditRecheckRating = "RECHECK_RATING"
+	AuditApproved      = "APPROVED"
+)
+
+var AuditVerdictLabels = map[string]string{
+	AuditNeedsFollowUp: "مطلوب متابعة",
+	AuditRecheckRating: "مراجعة التقييم",
+	AuditApproved:      "معتمد",
+}
+
+// AuditComplaintRequest حكم المدقق على شغل مهندس الجودة.
+type AuditComplaintRequest struct {
+	Verdict string  `json:"verdict"`
+	Note    *string `json:"note"`
+}
+
+// SetContactedRequest — التواصل والتقييم بطلب واحد.
+//
+// ⚠️ التقييم **مع** التواصل مو بمسار لحاله: مهندس الجودة يسأل
+// الزبون وهو بالمكالمة، فتقسيمهن لخطوتين يعني نصف التقييمات ما
+// تنسجّل. Rating فاضي مسموح — يعني ما سأل.
+type SetContactedRequest struct {
+	Contacted bool `json:"contacted"`
+	Rating    *int `json:"rating"`
+}
+
+// ComplaintEvent سطر بسجل إجراءات الشكوى — يُكتب ولا يُعدّل.
+type ComplaintEvent struct {
+	ID           string    `db:"id" json:"id"`
+	ComplaintID  string    `db:"complaintId" json:"complaintId"`
+	Kind         string    `db:"kind" json:"kind"`
+	Detail       *string   `db:"detail" json:"detail"`
+	ByEmployeeID *string   `db:"byEmployeeId" json:"-"`
+	ByName       *string   `db:"byName" json:"byName"`
+	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+}
+
+const (
+	EventCreated   = "CREATED"
+	EventContacted = "CONTACTED"
+	EventRated     = "RATED"
+	EventNoted     = "NOTED"
+	EventAssigned  = "ASSIGNED"
+	EventAudited   = "AUDITED"
+	EventResolved  = "RESOLVED"
+)
+
 // ComplaintCustomerStat يلخص كم مرة اشتكى زبون معيّن — تقرير منفصل عن إحصائيات الحجوزات.
 type ComplaintCustomerStat struct {
 	CustomerID        string `db:"customerId" json:"customerId"`
@@ -68,4 +129,16 @@ type ComplaintCustomerStat struct {
 	ComplaintCount    int    `db:"complaintCount" json:"complaintCount"`
 	NotContactedCount int    `db:"notContactedCount" json:"notContactedCount"`
 	OpenCount         int    `db:"openCount" json:"openCount"`
+
+	// ⚠️ AvgRating يبقى nil لمن ماكو ولا تقييم — **مو صفر**. الواجهة
+	// تعرض «—»، لأن رقم مخترع أسوأ من ماكو رقم.
+	AvgRating       *float64   `db:"avgRating" json:"avgRating"`
+	LastContactAt   *time.Time `db:"lastContactAt" json:"lastContactAt"`
+	ContactedLast30 int        `db:"contactedLast30" json:"contactedLast30"`
+	NeedsAuditCount int        `db:"needsAuditCount" json:"needsAuditCount"`
+	// حالة ومهندس **آخر** شكوى للزبون — الصف مجمّع، فبلا هذا
+	// التوضيح تصير قراءتان مختلفتان لنفس السطر.
+	LatestStatus      *string `db:"latestStatus" json:"latestStatus"`
+	LatestEngineer    *string `db:"latestEngineer" json:"latestEngineer"`
+	LatestComplaintID *string `db:"latestComplaintId" json:"latestComplaintId"`
 }

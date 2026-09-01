@@ -69,16 +69,17 @@ func (h *ComplaintHandler) Update(w http.ResponseWriter, r *http.Request) {
 // PUT /api/v1/complaints/{id}/resolve
 // PUT /api/complaints/{id}/contact — أي موظف يأشر إنه اتصل بالزبون
 func (h *ComplaintHandler) SetContacted(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		Contacted bool `json:"contacted"`
-	}
+	// التقييم يجي بنفس الطلب: مهندس الجودة يسأل الزبون وهو بالمكالمة.
+	var req model.SetContactedRequest
 	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	out, err := h.service.SetContacted(r.PathValue("id"), req.Contacted, middleware.EmployeeIDFromContext(r))
+	out, err := h.service.SetContacted(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, "تعذر تحديث حالة الاتصال")
+		// ⚠️ نمرّر نص الخطأ: «التقييم لازم يكون من ١ إلى ٥» تفيد
+		// المستخدم، و«تعذر التحديث» ما تكوله شنو يصلّح.
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	WriteJSON(w, http.StatusOK, out)
@@ -93,7 +94,7 @@ func (h *ComplaintHandler) SetNotes(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	out, err := h.service.SetNotes(r.PathValue("id"), req.Notes)
+	out, err := h.service.SetNotes(r.PathValue("id"), req.Notes, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر حفظ الملاحظات")
 		return
@@ -107,10 +108,38 @@ func (h *ComplaintHandler) Resolve(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	complaint, err := h.service.Resolve(r.PathValue("id"), req)
+	complaint, err := h.service.Resolve(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	WriteJSON(w, http.StatusOK, complaint)
+}
+
+// PUT /api/complaints/{id}/audit — حكم المدقق على شغل مهندس الجودة.
+//
+// ⚠️ الحارس بالمسار يحصره بالمالك والمراقب والمدير: مهندس الجودة
+// ما يدقّق نفسه.
+func (h *ComplaintHandler) Audit(w http.ResponseWriter, r *http.Request) {
+	var req model.AuditComplaintRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	out, err := h.service.Audit(r.PathValue("id"), req, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// GET /api/complaints/{id}/events — سجل إجراءات الشكوى.
+func (h *ComplaintHandler) Events(w http.ResponseWriter, r *http.Request) {
+	events, err := h.service.Events(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب السجل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, events)
 }

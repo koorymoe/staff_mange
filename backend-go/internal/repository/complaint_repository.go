@@ -1,6 +1,9 @@
 package repository
 
 import (
+	"errors"
+
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -40,6 +43,9 @@ func (r *ComplaintRepository) hydrate(c *model.Complaint) {
 	if c.RelatedEmployeeID != nil {
 		c.RelatedEmployee = r.loadEmployeeBrief(*c.RelatedEmployeeID)
 	}
+	if c.AuditedByID != nil {
+		c.AuditedBy = r.loadEmployeeBrief(*c.AuditedByID)
+	}
 	// منو اتصل بالزبون — لازم يبين كدام الشكوى مثل ما انطلب
 	if c.ContactedByID != nil {
 		if e := r.loadEmployeeBrief(*c.ContactedByID); e != nil {
@@ -51,20 +57,85 @@ func (r *ComplaintRepository) hydrate(c *model.Complaint) {
 
 // SetContacted يأشر إن أحد اتصل بالزبون (أو يشيل التأشير)، ويخزن منو
 // اتصل ومتى. أي موظف يقدر — المهم نعرف منو.
-func (r *ComplaintRepository) SetContacted(id string, contacted bool, byID string) (*model.Complaint, error) {
+func (r *ComplaintRepository) SetContacted(
+	id string, contacted bool, byID string, rating *int,
+) (*model.Complaint, error) {
+	// ⚠️ التقييم يتفحّص هنا **زيادة** على قيد قاعدة البيانات مو بديلاً
+	// عنه: القيد هو الي يحمي من نداء مباشر أو مسار ثاني ينكتب بكرة.
+	if rating != nil && (*rating < 1 || *rating > 5) {
+		return nil, errors.New("التقييم لازم يكون من ١ إلى ٥")
+	}
 	var q string
 	var args []any
 	if contacted {
-		q = `UPDATE "Complaint" SET "contactedAt" = now(), "contactedById" = $2 WHERE id = $1`
-		args = []any{id, byID}
+		// التقييم ينكتب بس لمن ينعطى: nil يعني «ما سأل» فنخلي
+		// القديم مثل ما هو بدل ما نمحيه بكل تأشيرة تواصل.
+		if rating != nil {
+			q = `UPDATE "Complaint" SET "contactedAt" = now(), "contactedById" = $2,
+			     "customerRating" = $3 WHERE id = $1`
+			args = []any{id, byID, *rating}
+		} else {
+			q = `UPDATE "Complaint" SET "contactedAt" = now(), "contactedById" = $2 WHERE id = $1`
+			args = []any{id, byID}
+		}
 	} else {
-		q = `UPDATE "Complaint" SET "contactedAt" = NULL, "contactedById" = NULL WHERE id = $1`
+		// شيل التأشير = شيل التقييم وياه: تقييم بلا مكالمة ما إله مصدر.
+		q = `UPDATE "Complaint" SET "contactedAt" = NULL, "contactedById" = NULL,
+		     "customerRating" = NULL WHERE id = $1`
 		args = []any{id}
 	}
 	if _, err := r.db.Exec(q, args...); err != nil {
 		return nil, err
 	}
 	return r.Find(id)
+}
+
+// Audit حكم المدقق على شغل مهندس الجودة بهذي الشكوى.
+func (r *ComplaintRepository) Audit(
+	id, verdict string, note *string, byID string,
+) (*model.Complaint, error) {
+	if _, ok := model.AuditVerdictLabels[verdict]; !ok {
+		return nil, errors.New("حكم تدقيق غير معروف")
+	}
+	_, err := r.db.Exec(`
+		UPDATE "Complaint"
+		SET "auditVerdict" = $2, "auditNote" = NULLIF($3,''),
+		    "auditedAt" = now(), "auditedById" = $4
+		WHERE id = $1`, id, verdict, deref(note), byID)
+	if err != nil {
+		return nil, err
+	}
+	return r.Find(id)
+}
+
+// AddEvent يكتب سطراً بسجل الشكوى.
+//
+// ⚠️ ماكو دالة تعديل ولا حذف بقصد — سجل ينعدّل مو سجل.
+// ⚠️ وفشل الكتابة **ما يلغي** العملية الأصلية: التواصل صار فعلاً،
+// وضياع سطر بالسجل أهون من رفض عملية نجحت.
+func (r *ComplaintRepository) AddEvent(complaintID, kind string, detail *string, byID string) {
+	// الاسم ينحلّ هنا وينحفظ نصاً: لو انحذف الموظف بعدين يبقى السطر
+	// مقروءاً بدل «—».
+	byName := ""
+	if byID != "" {
+		if e := r.loadEmployeeBrief(byID); e != nil {
+			byName = e.Name
+		}
+	}
+	_, _ = r.db.Exec(`
+		INSERT INTO "ComplaintEvent" (id, "complaintId", kind, detail, "byEmployeeId", "byName")
+		VALUES ($1, $2, $3, NULLIF($4,''), NULLIF($5,''), NULLIF($6,''))`,
+		uuid.NewString(), complaintID, kind, deref(detail), byID, byName)
+}
+
+// Events أحداث الشكوى — الأحدث أولاً.
+func (r *ComplaintRepository) Events(complaintID string) ([]model.ComplaintEvent, error) {
+	events := []model.ComplaintEvent{}
+	err := r.db.Select(&events, `
+		SELECT * FROM "ComplaintEvent"
+		WHERE "complaintId" = $1
+		ORDER BY "createdAt" DESC`, complaintID)
+	return events, err
 }
 
 // SetNotes ملاحظات الزبون — نستفاد منها بالتحسين.
@@ -128,20 +199,51 @@ func (r *ComplaintRepository) Update(id string, status, assignedToEmployeeID, re
 
 // StatsByCustomer يرجع عدد الشكاوى لكل زبون اشتكى (مرة واحدة على الأقل)، مرتبة من
 // الأكثر شكاوى — تقرير منفصل تماماً عن إحصائيات الحجوزات.
+// StatsByCustomer صف لكل زبون — هذا الي تعرضه شاشة الشكاوى.
+//
+// ⚠️ الصف **مجمّع**، والتصميم يطلب «حالة الشكوى» و«مهندس الجودة»
+// مفردين — فنجيبهن من **آخر** شكوى للزبون (`DISTINCT ON`) ونسمّيهن
+// latest* حتى الواجهة تكتبها صراحةً. بلا هذا تصير قراءتان مختلفتان
+// لنفس السطر: «٤ شكاوى» وحالة وحدة، وما يبين إلى أي وحدة تعود.
 func (r *ComplaintRepository) StatsByCustomer() ([]model.ComplaintCustomerStat, error) {
 	stats := []model.ComplaintCustomerStat{}
 	err := r.db.Select(&stats, `
+		WITH latest AS (
+			SELECT DISTINCT ON (c."customerId")
+				c."customerId", c.id AS "complaintId", c.status, e.name AS "engineerName"
+			FROM "Complaint" c
+			LEFT JOIN "Employee" e ON e.id = c."assignedToEmployeeId"
+			ORDER BY c."customerId", c."createdAt" DESC
+		)
 		SELECT
-			cu.id AS "customerId",
-			cu.name AS "customerName",
+			cu.id    AS "customerId",
+			cu.name  AS "customerName",
 			cu.phone AS "customerPhone",
 			COUNT(c.id) AS "complaintCount",
 			COUNT(*) FILTER (WHERE c.status IN ('NEW', 'IN_PROGRESS')) AS "openCount",
-		       COUNT(*) FILTER (WHERE c."contactedAt" IS NULL) AS "notContactedCount"
+			COUNT(*) FILTER (WHERE c."contactedAt" IS NULL)            AS "notContactedCount",
+			COUNT(*) FILTER (WHERE c."contactedAt" >= now() - interval '30 days')
+				AS "contactedLast30",
+			-- ⚠️ التدقيق مطلوب بس على الشكاوى الي انتصل بيها فعلاً:
+			-- شكوى ما انتصل بيها ماكو شغل مهندس جودة حتى يتدقّق.
+			COUNT(*) FILTER (
+				WHERE c."contactedAt" IS NOT NULL
+				  AND COALESCE(c."auditVerdict", '') <> 'APPROVED'
+			) AS "needsAuditCount",
+			MAX(c."contactedAt") AS "lastContactAt",
+			-- ⚠️ AVG بلا FILTER يحسب الفاضيات صفراً ويهبّط المتوسط.
+			-- ولمن ماكو ولا تقييم يرجّع NULL — وهاي مقصودة: الواجهة
+			-- تعرض «—» مو «٠».
+			AVG(c."customerRating") FILTER (WHERE c."customerRating" IS NOT NULL)
+				AS "avgRating",
+			MAX(l.status)         AS "latestStatus",
+			MAX(l."engineerName") AS "latestEngineer",
+			MAX(l."complaintId")  AS "latestComplaintId"
 		FROM "Complaint" c
 		JOIN "Customer" cu ON cu.id = c."customerId"
+		LEFT JOIN latest l ON l."customerId" = cu.id
 		GROUP BY cu.id, cu.name, cu.phone
-		ORDER BY "complaintCount" DESC
+		ORDER BY "notContactedCount" DESC, "complaintCount" DESC
 	`)
 	return stats, err
 }

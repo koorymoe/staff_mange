@@ -879,6 +879,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/complaints/{id}/notes", middleware.Chain(http.HandlerFunc(complaintHandler.SetNotes), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth, requireQuality))
 	mux.Handle("GET /api/complaints/stats", middleware.Chain(http.HandlerFunc(complaintHandler.Stats), requireAuth))
+	// ⚠️ التدقيق للمالك والمراقب والمدير **بس** — مهندس الجودة ما
+	// يدقّق نفسه، هو الي انتقيّم شغله بهذي الشاشة.
+	mux.Handle("PUT /api/complaints/{id}/audit", middleware.Chain(http.HandlerFunc(complaintHandler.Audit), requireAuth,
+		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "MONITOR")))
+	mux.Handle("GET /api/complaints/{id}/events", middleware.Chain(http.HandlerFunc(complaintHandler.Events), requireAuth))
 	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth, requireQuality))
 	mux.Handle("PUT /api/quality-follow-ups/{id}", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Update), requireAuth, requireQuality))
 	// حكم الجودة: تقرير إيجابي/سلبي، والكشف الميداني. نفس صلاحية الشاشة

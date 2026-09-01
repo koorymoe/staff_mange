@@ -283,6 +283,11 @@ func versionedMigrations() []Migration {
 	result = append(result, invoiceMonitorMigrations()...)
 	// 0259: المصروف ينربط بحجزه — قبلها چان ينحسب على كل حجوزات الليدر.
 	result = append(result, expenseBookingMigrations()...)
+	// 0260: تقييم الزبون وحكم المدقق على الشكوى — قبلها التصميم
+	// يطلب متوسط تقييم وماكو ولا حقل تقييم بالنظام.
+	result = append(result, complaintQualityMigrations()...)
+	// 0261: سجل إجراءات الشكوى — يُكتب ولا يُعدّل.
+	result = append(result, complaintEventMigrations()...)
 	return result
 }
 

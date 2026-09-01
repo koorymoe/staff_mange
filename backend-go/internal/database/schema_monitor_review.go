@@ -13,11 +13,12 @@ package database
 // ينتظر منه، وكل صف إما «سليم» أو «عندي ملاحظة».
 //
 // المحطات (stage) — هاي الي طلبها صاحب العمل بالضبط:
-//   INVOICE_BEFORE_AUDIT  الفاتورة قبل ما يدققها المحاسب
-//   INVOICE_AFTER_AUDIT   الفاتورة بعد التدقيق
-//   BOOKING_BEFORE_CONFIRM الحجز وموعده قبل التثبيت
-//   BOOKING_AFTER_CONFIRM  بعد التثبيت (الكادر والموعد النهائي)
-//   BOOKING_AFTER_COMPLETE بعد الإنجاز
+//
+//	INVOICE_BEFORE_AUDIT  الفاتورة قبل ما يدققها المحاسب
+//	INVOICE_AFTER_AUDIT   الفاتورة بعد التدقيق
+//	BOOKING_BEFORE_CONFIRM الحجز وموعده قبل التثبيت
+//	BOOKING_AFTER_CONFIRM  بعد التثبيت (الكادر والموعد النهائي)
+//	BOOKING_AFTER_COMPLETE بعد الإنجاز
 //
 // ownerRole = شغل منو: المحاسب، إداري الحجوزات، الفني... حتى المراقب
 // يفلتر «وريني شغل المحاسب بس».
