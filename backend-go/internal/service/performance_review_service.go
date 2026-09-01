@@ -3,6 +3,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
@@ -149,7 +150,9 @@ func (s *PerformanceReviewService) authorizeReview(evaluator, target *model.Empl
 	if evaluator.ID == target.ID {
 		return errors.New("ما تكدر تقيّم نفسك")
 	}
-	if evaluator.Role == "ADMIN" {
+	// ⚠️ المالك والمراقب المدقق ينضافون: الشاشة أصلاً معروضة إلهم
+	// بالقائمة، وبدون هذا تنفتح إلهم وكل أزرارها ترجّع رفضاً.
+	if evaluator.Role == "ADMIN" || evaluator.Role == "OWNER" || evaluator.Role == "MONITOR" {
 		return nil
 	}
 	if evaluator.Role == "HR_COORDINATOR" {
@@ -185,6 +188,31 @@ func (s *PerformanceReviewService) List() ([]model.PerformanceReview, error) {
 }
 
 // BookingsAwaitingReview حجوزات الليدر المنجزة وكادر كل وحدة.
-func (s *PerformanceReviewService) BookingsAwaitingReview(leaderID string) ([]model.BookingAwaitingReview, error) {
-	return s.repo.BookingsAwaitingReview(leaderID)
+//
+// ⚠️ المالك/المدير/المراقب يشوفون كل الحجوزات المنجزة مو حجوزاتهم:
+// هذولا مو مكلّفين بأي حجز، فالنطاق القديم (الي يطلب يكونون بالفريق)
+// چان يرجّعلهم صفراً دائماً والشاشة تطلع فارغة بأربع أصفار. نفس
+// التفريع الموجود بـRatableEmployees فوك.
+//
+// والليدر يبقى على نطاقه: حجوزاته هو وبس.
+//
+// from/to اختياريان — إذا الاثنان فاضيان نرجع للافتراضي: آخر ٣٠ يوم.
+// تقييم شغلة صارت قبل أشهر ما يفيد، بس لمن يختار المدير فترة صراحةً
+// نجيبها إله، لأن «تجيب الداتا الي عدنه» ما تنفع بنافذة مقفلة.
+func (s *PerformanceReviewService) BookingsAwaitingReview(
+	viewerID, from, to string,
+) ([]model.BookingAwaitingReview, error) {
+	viewer, err := s.employees.FindByID(viewerID)
+	if err != nil || viewer == nil {
+		return nil, errors.New("تعذر تحديد هوية المستخدم")
+	}
+	if from == "" && to == "" {
+		from = time.Now().AddDate(0, 0, -30).Format("2006-01-02")
+	}
+	return s.repo.BookingsAwaitingReview(viewerID, seesAllBookings(viewer.Role), from, to)
+}
+
+// seesAllBookings منو يشوف كل حجوزات الشركة مو حجوزاته هو.
+func seesAllBookings(role string) bool {
+	return role == "ADMIN" || role == "OWNER" || role == "MONITOR"
 }

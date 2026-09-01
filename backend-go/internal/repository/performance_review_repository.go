@@ -75,7 +75,6 @@ func (r *PerformanceReviewRepository) hydrate(pr *model.PerformanceReview) {
 	}
 }
 
-
 // ═══ حجوزات الليدر الي تنتظر تقييم كادرها ═══
 //
 // «الليدر يكدر يقيّم فريقه لكل حجز يطلعوله، مو مرة وحدة باليوم».
@@ -88,7 +87,37 @@ func (r *PerformanceReviewRepository) hydrate(pr *model.PerformanceReview) {
 // ⚠️ ونحدّها بآخر ٣٠ يوم: تقييم شغلة صارت قبل ثلاثة أشهر ما يفيد —
 // الليدر ما يتذكرها، والملاحظة تطلع من الذاكرة مو من الواقع. والقائمة
 // الي تطول للأبد تنتجاهل كلها.
-func (r *PerformanceReviewRepository) BookingsAwaitingReview(leaderID string) ([]model.BookingAwaitingReview, error) {
+func (r *PerformanceReviewRepository) BookingsAwaitingReview(
+	viewerID string, allBookings bool, from, to string,
+) ([]model.BookingAwaitingReview, error) {
+	// ⚠️ المدير/المراقب مو طرف بأي حجز، فلو خلّينا شرط «لازم يكون هو
+	// بالفريق» يشوفون صفراً دائماً — وهاي چانت علّة الشاشة الفارغة.
+	// ولنفس السبب شرط «لازم وياه غيره» ينشال إلهم: هما أصلاً برّا
+	// الفريق، فحجز الفني الواحد (جي بي اس وداش كام) إله منو يتقيّم.
+	var args []any
+	var scope, soloGuard, fromP, toP string
+	if allBookings {
+		args = []any{from, to}
+		fromP, toP = "$1", "$2"
+		soloGuard = `
+		  -- لازم يكون مكلّف بيه أحد أصلاً، ولو واحد
+		  AND EXISTS (
+		      SELECT 1 FROM "BookingAssignment" any_one
+		      WHERE any_one."bookingId" = b.id
+		  )`
+	} else {
+		args = []any{viewerID, from, to}
+		fromP, toP = "$2", "$3"
+		scope = `
+		JOIN "BookingAssignment" mine ON mine."bookingId" = b.id AND mine."employeeId" = $1`
+		soloGuard = `
+		  -- لازم يكون وياه غيره: حجز طلع بيه لحاله ماكو منو يتقيّم
+		  AND EXISTS (
+		      SELECT 1 FROM "BookingAssignment" other
+		      WHERE other."bookingId" = b.id AND other."employeeId" <> $1
+		  )`
+	}
+
 	rows := []model.BookingAwaitingReview{}
 	err := r.db.Select(&rows, `
 		SELECT DISTINCT
@@ -99,21 +128,16 @@ func (r *PerformanceReviewRepository) BookingsAwaitingReview(leaderID string) ([
 			c.phone         AS "customerPhone",
 			c.location      AS "customerAddress",
 			b."completedAt" AS "completedAt"
-		FROM "Booking" b
-		JOIN "BookingAssignment" mine ON mine."bookingId" = b.id AND mine."employeeId" = $1
+		FROM "Booking" b`+scope+`
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service"  s ON s.id = b."serviceId"
 		WHERE b.status = 'COMPLETED'
 		  AND b."archivedAt" IS NULL
-		  AND b."completedAt" >= now() - interval '30 days'
-		  -- لازم يكون وياه غيره: حجز طلع بيه لحاله ماكو منو يتقيّم
-		  AND EXISTS (
-		      SELECT 1 FROM "BookingAssignment" other
-		      WHERE other."bookingId" = b.id AND other."employeeId" <> $1
-		  )
+		  AND (`+fromP+` = '' OR b."completedAt" >= `+fromP+`::timestamp)
+		  AND (`+toP+` = '' OR b."completedAt" < (`+toP+`::date + interval '1 day'))`+soloGuard+`
 		ORDER BY b."completedAt" DESC
 		LIMIT 100
-	`, leaderID)
+	`, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +155,7 @@ func (r *PerformanceReviewRepository) BookingsAwaitingReview(leaderID string) ([
 			      AND pr."employeeId" = e.id
 			WHERE ba."bookingId" = $1 AND e.id <> $2
 			ORDER BY e.name
-		`, rows[i].BookingID, leaderID); err != nil {
+		`, rows[i].BookingID, viewerID); err != nil {
 			return nil, err
 		}
 		rows[i].Crew = crew

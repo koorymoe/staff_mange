@@ -46,21 +46,23 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 
 	employee, empErr := s.employees.FindByID(req.EmployeeID)
 
-	var monthAgo string
-	var oldTopID string
-	if empErr == nil && employee != nil {
-		monthAgo = time.Now().AddDate(0, -1, 0).Format("2006-01-02")
-		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo, ""); err == nil && len(board) > 0 {
-			oldTopID = board[0].EmployeeID
-		}
+	// ⚠️ الخصم يتقرّر بالمقدار مو بالإشارة. الواجهة تدزّ النقاط
+	// بالموجب (١..٨) والشرط القديم چان `*req.Points < 0`، فما چان
+	// ينطبق ولا مرة: الموظف ما چان يوصله إشعار بالخصم، و«انشرها
+	// بلوحة الإعلانات» چان صندوقاً ميتاً — يتأشّر وماكو شي ينتشر.
+	// نقرأ المقدار حتى يشتغل بالحالتين، والمخزون ما يتغيّر: نمرّر
+	// req.Points مثل ما إجت حتى البيانات القديمة تبقى مقروءة بنفس
+	// الطريقة.
+	magnitude := *req.Points
+	if magnitude < 0 {
+		magnitude = -magnitude
 	}
-
-	deductionAmount := float64(*req.Points) * 10000
+	deductionAmount := float64(magnitude) * 10000
 	eval, err := s.repo.Create(req.EmployeeID, req.EvaluatorID, *req.Points, req.Reason, deductionAmount)
 	if err != nil {
 		return nil, err
 	}
-	if *req.Points < 0 {
+	if magnitude > 0 {
 		_ = s.employees.SetTrainee(req.EmployeeID, true)
 		reason := req.Reason
 		if reason == "" {
@@ -68,28 +70,30 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 		}
 		if s.notifications != nil {
 			_ = s.notifications.Create(req.EmployeeID, "kpi_deduction",
-				"⚠️ تم خصم "+strconv.Itoa(-*req.Points)+" نقطة من رصيدك (السبب: "+reason+")")
+				"⚠️ تم خصم "+strconv.Itoa(magnitude)+" نقطة من رصيدك (السبب: "+reason+")")
 		}
 		// نشر المخالفة بلوحة الإعلانات — بطلب المدير وقت التسجيل، ولمدة
 		// ثلاثة أيام بس. فشل النشر ما يلغي التقييم، التقييم انسجل أصلاً.
 		if req.Announce && s.announcements != nil && empErr == nil && employee != nil {
 			body := "⚠️ مخالفة: " + employee.Name + " — خصم " +
-				strconv.Itoa(-*req.Points) + " نقطة (" + reason + ")"
+				strconv.Itoa(magnitude) + " نقطة (" + reason + ")"
 			if _, err := s.announcements.Create(body, req.EvaluatorID, model.AnnouncementPenaltyDays); err != nil {
 				log.Printf("نشر مخالفة %s بلوحة الإعلانات: %v", req.EmployeeID, err)
 			}
 		}
 	}
 
-	if empErr == nil && employee != nil && s.notifications != nil {
-		if board, err := s.repo.RoleLeaderboard(employee.Role, monthAgo, ""); err == nil && len(board) > 0 {
-			newTop := board[0]
-			if newTop.EmployeeID != oldTopID {
-				_ = s.notifications.CreateForRole(employee.Role, "kpi_leaderboard",
-					"🏆 "+newTop.EmployeeName+" تصدر التصنيف الشهري بالمركز الأول!")
-			}
-		}
-	}
+	// ⚠️⚠️ إشعار «تصدّر التصنيف» انشال — چان يهنّي أكثر واحد انخصم منه.
+	// RoleLeaderboard يرتّب `ORDER BY SUM(points) DESC` (kpi_repository.go:255)،
+	// والخصومات مخزونة بالموجب، فأكثر موظف انعاقب يطلع board[0] —
+	// والنظام چان يدزّ لكل زملائه بنفس الدور «🏆 فلان تصدر التصنيف
+	// الشهري بالمركز الأول!». يعني الي انعاقب ينهنّى علناً كدامهم.
+	//
+	// وما ينفع نعكس الترتيب: نفس العمود يحمل الخصم والمكافأة
+	// (CompleteTraining يسجّل +1 مكافأةً) بلا أي شي يفرّقهن، فالبيانات
+	// نفسها ما تكدر تجاوب منو المتصدّر. إعلان متصدّر غلط أسوأ من
+	// عدم إعلان أحد — فينشال لحد ما ينفصل الخصم عن المكافأة بعمود
+	// أو نوع صريح، وبعدها يرجع صح.
 
 	return eval, nil
 }

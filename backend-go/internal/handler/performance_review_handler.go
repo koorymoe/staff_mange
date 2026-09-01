@@ -68,7 +68,14 @@ func (h *PerformanceReviewHandler) List(w http.ResponseWriter, r *http.Request) 
 // يحتاج يدور على موظفيه بقائمة، النظام يگله «هذني شغلاتك ومنو طلع
 // وياك بكل وحدة».
 func (h *PerformanceReviewHandler) MyBookings(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.service.BookingsAwaitingReview(middleware.EmployeeIDFromContext(r))
+	// نطاق تاريخ الإنجاز يجي من مرشّح الشاشة. چان الترشيح يصير
+	// بالواجهة بعد ما الخادم قصّ على ٣٠ يوم، فاختيار تاريخ قديم
+	// ما چان يجيب ولا شي.
+	rows, err := h.service.BookingsAwaitingReview(
+		middleware.EmployeeIDFromContext(r),
+		r.URL.Query().Get("from"),
+		r.URL.Query().Get("to"),
+	)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الحجوزات")
 		return
