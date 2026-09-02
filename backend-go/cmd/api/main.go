@@ -713,6 +713,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/booking-delete-requests/{id}/decide", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Decide), requireAuth, requireDeleteApprove))
 	mux.Handle("PUT /api/booking-delete-requests/{id}/needs-info", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.NeedsInfo), requireAuth, requireDeleteApprove))
 	mux.Handle("GET /api/booking-delete-requests/counts", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Counts), requireAuth, requireDeleteApprove))
+
+	// تنسيق الحجوزات: المراقب يسجّل تقصير الإداري بتثبيت الحجز، وبالعاشر
+	// ينشر إعلان يسمّي الإداري والحجز — نفس حارس تبويب التنسيق (crew_management).
+	coordinationAlertRepo := repository.NewCoordinationAlertRepository(db)
+	coordinationAlertHandler := handler.NewCoordinationAlertHandler(coordinationAlertRepo, bookingRepo, disciplineRepo, announcementRepo, notificationRepo, employeeRepo)
+	mux.Handle("POST /api/bookings/{id}/coordination-alerts", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.Add), requireAuth, requireCrewManagement))
+	mux.Handle("PUT /api/bookings/{id}/coordination-alerts/resolve", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.Resolve), requireAuth, requireCrewManagement))
+	mux.Handle("GET /api/bookings/{id}/coordination-alerts", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.ListForBooking), requireAuth, requireCrewManagement))
+	mux.Handle("GET /api/coordination-alerts/summaries", middleware.Chain(http.HandlerFunc(coordinationAlertHandler.Summaries), requireAuth, requireCrewManagement))
+
 	// التدقيق: المحاسب ما يقدر يمرر حجز بلا مبلغ — إما يكتب المبلغ من
 	// الفاتورة، أو يأشر خطأ والنظام يوجّهه للمعني (غير مطابق → رقابة
 	// وجودة، خطأ سعر → رقابة وإداري).

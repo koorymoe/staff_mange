@@ -1360,6 +1360,28 @@ export interface BookingDeleteRequestCounts {
   total: number
 }
 
+/** تنسيق الحجوزات: تنبيه تقصير الإداري بتثبيت الحجز. */
+export interface CoordinationAlert {
+  id: string
+  bookingId: string
+  coordinatorName: string | null
+  reason: string | null
+  byName: string | null
+  createdAt: string
+  resolvedAt: string | null
+  resolvedByName: string | null
+  resolveNote: string | null
+}
+
+export const COORDINATION_ALERT_THRESHOLD = 10
+
+export interface CoordinationAlertSummary {
+  bookingId: string
+  openCount: number
+  totalCount: number
+  lastAlertAt: string | null
+}
+
 /** التدقيق اليومي: حجوزات يوم واحد بمجاميعه الأربعة */
 export interface DailyAuditRow {
   id: string
@@ -3688,6 +3710,14 @@ export const api = {
   markConfirmationContacted: (id: string) =>
     request<Booking>(`/bookings/${id}/confirmation-contacted`, { method: 'PUT', body: JSON.stringify({}) }),
   getPendingAudit: () => request<Booking[]>('/bookings/pending-audit'),
+  addCoordinationAlert: (bookingId: string, reason: string) =>
+    request<{ openCount: number }>(`/bookings/${bookingId}/coordination-alerts`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  resolveCoordinationAlerts: (bookingId: string, note: string) =>
+    request<{ ok: boolean }>(`/bookings/${bookingId}/coordination-alerts/resolve`, { method: 'PUT', body: JSON.stringify({ note }) }),
+  getCoordinationAlertsForBooking: (bookingId: string) =>
+    request<CoordinationAlert[]>(`/bookings/${bookingId}/coordination-alerts`),
+  getCoordinationAlertSummaries: () =>
+    request<CoordinationAlertSummary[]>('/coordination-alerts/summaries'),
   getBookingToolChecks: (id: string) => request<BookingToolCheck[]>(`/bookings/${id}/tool-checks`),
   getStats: () => request<Stats>('/stats'),
 
