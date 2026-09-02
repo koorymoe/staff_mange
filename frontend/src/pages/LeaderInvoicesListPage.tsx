@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { onEnter } from '../utils/enterKey'
 import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
+import StatTile from '../components/StatTile'
+import Pager from '../components/Pager'
 import { formatCustomerCode } from '../utils/identity'
 import { useSession } from '../session'
 import { matches } from '../utils/search'
@@ -145,6 +147,15 @@ export default function LeaderInvoicesListPage() {
   const [invoiceNo, setInvoiceNo] = useState('')
   const [approveErr, setApproveErr] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  // ⚠️ أي مرشّح يتغيّر لازم يرجّع الصفحة لواحد — وإلا يبقى المستخدم
+  // بصفحة ٧ ونتيجة الترشيح ثلاث فواتير، فيشوف فراغاً ويظن ماكو نتائج.
+  const [page, setPage] = useState(1)
+  const [perPage, setPerPage] = useState(10)
+  const [fLeader, setFLeader] = useState('')
+  const [fCustomer, setFCustomer] = useState('')
+  const [fSystem, setFSystem] = useState('')
+  const [fMonth, setFMonth] = useState('')
+  const resetPage = () => setPage(1)
   // ═══ ترتيب شاشة المحاسب ═══
   // الشاشة جانت جدول واحد طويل فيه كل شي مخلوط: المعتمد وغير المعتمد،
   // والمربوط برقم وغير المربوط. المحاسب يدوّر بعينه. هسه تبويبات
@@ -227,7 +238,13 @@ export default function LeaderInvoicesListPage() {
     if (tab === 'APPROVED') return inv.status === 'APPROVED'
     return inv.status === 'APPROVED' && !inv.externalInvoiceNumber
   }
-  const shown = invoices.filter((i) => inTab(i) && matchesSearch(i))
+  // ⚠️ المرشّحات تتراكم مع البحث مو تستبدله.
+  const matchesFilters = (i: LeaderInvoice) =>
+    (!fLeader || i.employeeName === fLeader) &&
+    (!fCustomer || i.customerName === fCustomer) &&
+    (!fSystem || (i.systems || []).includes(fSystem)) &&
+    (!fMonth || i.createdAt.slice(0, 7) === fMonth)
+  const shown = invoices.filter((i) => inTab(i) && matchesSearch(i) && matchesFilters(i))
   const counts = {
     AUDIT: invoices.filter((i) => i.status !== 'APPROVED' && !audited(i)).length,
     MONITOR: invoices.filter((i) => i.status !== 'APPROVED' && atMonitor(i)).length,
@@ -237,6 +254,13 @@ export default function LeaderInvoicesListPage() {
     ALL: invoices.length,
   }
   const sumShown = shown.reduce((t, i) => t + i.netTotal, 0)
+  const pageStart = (page - 1) * perPage
+  const paged = shown.slice(pageStart, pageStart + perPage)
+
+  // خيارات القوائم تنشتق من المحمّل — بلا مسار ولا معامل خادم.
+  const leaderOptions = Array.from(new Set(invoices.map((i) => i.employeeName).filter(Boolean) as string[])).sort()
+  const customerOptions = Array.from(new Set(invoices.map((i) => i.customerName).filter(Boolean) as string[])).sort()
+  const systemOptions = Array.from(new Set(invoices.flatMap((i) => i.systems || []))).sort()
   /** المحاسب يرسلها للمراقب — الطريق الثالث للشك. */
   const sendToMonitor = async () => {
     if (!monitorFor) return
@@ -350,32 +374,27 @@ export default function LeaderInvoicesListPage() {
               وهناك تقرر: تعتمدها بـ<b className="text-white">رقم الفاتورة</b> من نظامك الثاني، أو تتركها.
             </p>
           </div>
-          {/* ⚠️ عدّادان مو واحد: «باقي تدقيق» و«باقي قرار» شغلتان
-              مختلفتان، ورقم واحد يجمعهما يخفي أيّهما الي واگف. */}
-          <div className="flex gap-2">
-            {/* ⚠️ **المالك يشوف الي عند المراقب بلا ما يدوّر**: هو
-                الوحيد الي يگدر يرجّعها للمحاسب، فلو ما عرف إنها هناك
-                تبقى واگفة بلا قرار. والعدّاد يوصل قبل ما يفتح التبويب. */}
-            {isOwner && counts.MONITOR > 0 && (
-              <div className="rounded-xl bg-indigo-400/20 px-4 py-2 text-center ring-1 ring-indigo-200/40 backdrop-blur">
-                <p className="text-2xl font-black leading-none text-indigo-100">{counts.MONITOR}</p>
-                <p className="mt-1 text-[11px] text-indigo-50">عند المراقب</p>
-              </div>
-            )}
-            {counts.AUDIT > 0 && (
-              <div className="rounded-xl bg-sky-400/20 px-4 py-2 text-center ring-1 ring-sky-200/40 backdrop-blur">
-                <p className="text-2xl font-black leading-none text-sky-100">{counts.AUDIT}</p>
-                <p className="mt-1 text-[11px] text-sky-50">بانتظار تدقيقك</p>
-              </div>
-            )}
-            {counts.PENDING > 0 && (
-              <div className="rounded-xl bg-amber-400/20 px-4 py-2 text-center ring-1 ring-amber-200/40 backdrop-blur">
-                <p className="text-2xl font-black leading-none text-amber-100">{counts.PENDING}</p>
-                <p className="mt-1 text-[11px] text-amber-50">بانتظار اعتمادك</p>
-              </div>
-            )}
-          </div>
         </div>
+      </div>
+
+      {/* ⚠️ البطاقات الخمس تظهر **كلها دائماً**.
+          قبلها چانت ثلاث، كل وحدة تنخفي لمن يصير عدّها صفراً،
+          و«عند المراقب» محصورة بالمالك. وبطاقة تختفي لمن تصفّر
+          تخلّي المستخدم يظن الشاشة تغيّرت — وما يعرف إذا صفر لو
+          الميزة اختفت. و«صفر عند المراقب» معلومة مثل غيرها.
+          وكل بطاقة **مرشّح**: الرقم يودّي لشغله. */}
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        {([
+          { k: 'ALL' as const, label: 'الكل', icon: '📚', tone: 'default' as const, c: counts.ALL },
+          { k: 'APPROVED' as const, label: 'معتمدة', icon: '✔', tone: 'success' as const, c: counts.APPROVED },
+          { k: 'MONITOR' as const, label: 'عند المراقب', icon: '👁️', tone: 'violet' as const, c: counts.MONITOR },
+          { k: 'PENDING' as const, label: 'بانتظار الاعتماد', icon: '⏳', tone: 'warning' as const, c: counts.PENDING },
+          { k: 'AUDIT' as const, label: 'بانتظار التدقيق', icon: '🔍', tone: 'info' as const, c: counts.AUDIT },
+        ]).map((t) => (
+          <StatTile key={t.k} label={t.label} value={t.c} icon={t.icon} tone={t.tone}
+            hint={tab === t.k ? 'معروضة الآن' : 'اضغط للعرض'}
+            onClick={() => { setTab(t.k); resetPage() }} />
+        ))}
       </div>
 
       {/* التبويبات: كل تبويب شغلة وحدة يشتغلها المحاسب */}
@@ -390,7 +409,7 @@ export default function LeaderInvoicesListPage() {
         ]).map((o) => (
           <button
             key={o.k}
-            onClick={() => setTab(o.k)}
+            onClick={() => { setTab(o.k); resetPage() }}
             className={`rounded-xl border px-4 py-2 text-sm font-bold transition-all ${
               tab === o.k
                 ? 'border-brand-500 bg-brand-50 text-brand-800'
@@ -402,8 +421,40 @@ export default function LeaderInvoicesListPage() {
         ))}
       </div>
 
+      {/* المرشّحات الأربعة — خياراتها من المحمّل، بلا مسار خادم.
+          ⚠️ وكلها ترجّع الصفحة لواحد. */}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {([
+          { v: fCustomer, set: setFCustomer, all: 'كل الزبائن', opts: customerOptions },
+          { v: fLeader, set: setFLeader, all: 'كل الليدرز', opts: leaderOptions },
+          { v: fSystem, set: setFSystem, all: 'كل المنظومات', opts: systemOptions },
+        ]).map((f) => (
+          <select key={f.all} value={f.v}
+            onChange={(e) => { f.set(e.target.value); resetPage() }}
+            className="rounded-xl border px-3 py-2 text-sm"
+            style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)', color: 'var(--t-body)' }}>
+            <option value="">{f.all}</option>
+            {f.opts.map((o) => <option key={o} value={o}>{o}</option>)}
+          </select>
+        ))}
+        <input type="month" value={fMonth}
+          onChange={(e) => { setFMonth(e.target.value); resetPage() }}
+          className="rounded-xl border px-3 py-2 text-sm"
+          style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)', color: 'var(--t-body)' }} />
+        {(fCustomer || fLeader || fSystem || fMonth) && (
+          <button onClick={() => { setFCustomer(''); setFLeader(''); setFSystem(''); setFMonth(''); resetPage() }}
+            className="rounded-xl border px-4 py-2 text-sm font-bold"
+            style={{ borderColor: 'var(--bd-line)', color: 'var(--t-body)' }}>
+            امسح التصفية ✕
+          </button>
+        )}
+      </div>
+
       <div className="mt-3 rounded-xl border border-white bg-white px-4 py-3 text-sm shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-        المعروض: <b className="text-brand-800">{shown.length}</b> فاتورة ·
+        العرض: <b className="text-brand-800">{shown.length}</b> فاتورة
+        {/* «من إجمالي» چان ناقصاً — بدونه ما تعرف إذا الرقم كل شي
+            لو نتيجة ترشيح. */}
+        <span className="text-slate-400"> من إجمالي {counts.ALL} فاتورة</span> ·
         مجموعها: <b className="text-brand-800">{sumShown.toLocaleString()} د.ع</b>
         {counts.NO_NUMBER > 0 && tab !== 'NO_NUMBER' && (
           <span className="mr-3 text-amber-700">
@@ -443,7 +494,7 @@ export default function LeaderInvoicesListPage() {
               </tr>
             </thead>
             <tbody>
-              {shown.map((inv) => (
+              {paged.map((inv) => (
                 <tr key={inv.id} className="border-b border-slate-50 last:border-0">
                   <td className="px-4 py-3 font-mono text-brand-700">{inv.accountingCode}</td>
                   <td className="px-4 py-3">
@@ -655,6 +706,19 @@ export default function LeaderInvoicesListPage() {
               )}
             </tbody>
           </table>
+        </div>
+
+      )}
+
+      {/* ⚠️ الصفحة چانت ترسم **كل** فاتورة بلا حد — والاستعلام
+          بالخادم هم بلا LIMIT. بـ١٢١ فاتورة تمشي، ما تبقى تمشي.
+          الترقيم بالواجهة لأن العدّادات الخمس تنحسب من القائمة
+          الكاملة، ولو صار بالخادم تنكسر كلها. */}
+      {shown.length > 0 && (
+        <div className="mt-3 rounded-xl border px-4 py-3"
+          style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
+          <Pager page={page} perPage={perPage} total={shown.length} unit="فاتورة"
+            onPage={setPage} onPerPage={setPerPage} />
         </div>
       )}
 
