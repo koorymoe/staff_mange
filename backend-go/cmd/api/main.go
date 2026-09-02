@@ -285,6 +285,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	monitorReviewRepo := repository.NewMonitorReviewRepository(db)
 	monitorReviewService := service.NewMonitorReviewService(monitorReviewRepo, employeeRepo, notificationRepo)
 	monitorReviewHandler := handler.NewMonitorReviewHandler(monitorReviewService)
+	monitorDeskRepo := repository.NewMonitorDeskRepository(db)
+	monitorDeskHandler := handler.NewMonitorDeskHandler(monitorDeskRepo, monitorReviewRepo)
 	bookingService.SetMonitorFeed(monitorReviewService)
 	// ═══ نواة الذكاء الاصطناعي ═══
 	// نفس أسلوب صندوق المراقب: الربط بعد البناء حتى ما يصير اعتماد
@@ -1461,6 +1463,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/monitor-reviews", middleware.Chain(http.HandlerFunc(monitorReviewHandler.List), requireAuth, requireMonitor))
 	mux.Handle("GET /api/monitor-reviews/counts", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Counts), requireAuth, requireMonitor))
 	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMonitor))
+	mux.Handle("GET /api/monitor-desk/counts", middleware.Chain(http.HandlerFunc(monitorDeskHandler.Counts), requireAuth, requireMonitor))
 
 	// ── تكلفة الشبكات ──
 	// الاستمارة والحساب: نفس قيد حاسبة الكاميرات (صلاحية حساب التنفيذ).

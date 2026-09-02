@@ -1696,6 +1696,15 @@ export interface BookingTimeline {
   delays: DelayMetric[]
 }
 
+/** عدّاد حي لطوابير مكتب المراقب الخمسة. */
+export interface MonitorDeskCounts {
+  inbox: number
+  issues: number
+  invoices: number
+  quality: number
+  crew: number
+}
+
 export interface MonitorReview {
   id: string
   stage: MonitorStage
@@ -3988,6 +3997,7 @@ export const api = {
     return request<MonitorReview[]>(`/monitor-reviews${qs ? `?${qs}` : ''}`)
   },
   getMonitorReviewCounts: () => request<{ stage: MonitorStage; count: number }[]>('/monitor-reviews/counts'),
+  getMonitorDeskCounts: () => request<MonitorDeskCounts>('/monitor-desk/counts'),
   decideMonitorReview: (id: string, data: { flag: boolean; note: string }) =>
     request<MonitorReview>(`/monitor-reviews/${id}/decide`, { method: 'POST', body: JSON.stringify(data) }),
 

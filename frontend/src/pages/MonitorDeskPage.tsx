@@ -20,7 +20,7 @@
 
 import { lazy, Suspense, useEffect, useState } from 'react'
 
-import { api } from '../api'
+import { api, type MonitorDeskCounts } from '../api'
 import { useSession } from '../session'
 
 const MonitorInboxPage = lazy(() => import('./MonitorInboxPage'))
@@ -47,21 +47,28 @@ const SECTIONS: Section[] = [
   { id: 'crew', label: 'تنسيق الحجوزات', icon: '📋', todo: 'حجوزات تنتظر تثبيت الإداري' },
 ]
 
+// عدّاد كل قسم — واحد لكل طابور، من مسار عدّ واحد يجمع الخمسة
+// (`GET /monitor-desk/counts`) بدل ما يفتح المراقب كل تبويب ليشوف
+// بنفسه. تعريف كل رقم منسوخ من نفس فلترة الشاشة المستقلة بالخادم —
+// مو محسوب هنا بمنطق ثانٍ.
+const COUNT_KEY: Record<SectionId, keyof MonitorDeskCounts> = {
+  inbox: 'inbox', issues: 'issues', invoices: 'invoices', quality: 'quality', crew: 'crew',
+}
+
 export default function MonitorDeskPage() {
   const { employee, permissions } = useSession()
   const [active, setActive] = useState<SectionId>('inbox')
-  /** عدّاد صندوق المراقب — الوحيد الي عنده مسار عدّ جاهز بالخادم. */
-  const [inboxCount, setInboxCount] = useState<number | null>(null)
+  const [counts, setCounts] = useState<MonitorDeskCounts | null>(null)
 
   useEffect(() => {
     let alive = true
-    api.getMonitorReviewCounts()
-      .then((rows) => {
-        if (alive) setInboxCount(rows.reduce((sum, r) => sum + (r.count ?? 0), 0))
-      })
+    api.getMonitorDeskCounts()
+      .then((c) => { if (alive) setCounts(c) })
       .catch(() => { /* العدّاد زينة — غيابه ما يمنع الشغل */ })
     return () => { alive = false }
   }, [])
+
+  const inboxCount = counts?.inbox ?? null
 
   // ⚠️⚠️ **دور أو صلاحية — نفس منطق القائمة.** الاعتماد على الصلاحية
   // وحدها يخفي القسم عن مراقب حقيقي: صفوف الصلاحيات تنعطى بالطلب،
@@ -125,9 +132,9 @@ export default function MonitorDeskPage() {
             }`}
           >
             {s.icon} {s.label}
-            {s.id === 'inbox' && inboxCount !== null && inboxCount > 0 && (
+            {counts && counts[COUNT_KEY[s.id]] > 0 && (
               <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10.5px] tabular-nums ${
-                active === s.id ? 'bg-white/25' : 'bg-amber-100 text-amber-800'}`}>{inboxCount}</span>
+                active === s.id ? 'bg-white/25' : 'bg-amber-100 text-amber-800'}`}>{counts[COUNT_KEY[s.id]]}</span>
             )}
           </button>
         ))}
@@ -144,7 +151,7 @@ export default function MonitorDeskPage() {
       <Suspense fallback={<p className="py-16 text-center text-slate-400">جاري التحميل…</p>}>
         {active === 'inbox' && <MonitorInboxPage embedded />}
         {active === 'issues' && <AuditIssuesPage embedded />}
-        {active === 'invoices' && <LeaderInvoicesListPage />}
+        {active === 'invoices' && <LeaderInvoicesListPage embedded />}
         {active === 'quality' && canQuality && <QualityFollowUpsPage embedded />}
         {active === 'crew' && canCrew && <MonitorCrewBookingsPage embedded />}
       </Suspense>

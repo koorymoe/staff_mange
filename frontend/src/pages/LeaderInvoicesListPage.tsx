@@ -120,7 +120,12 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
 // قائمة بسيطة لعرض فواتير الليدر السابقة (كل الفواتير أو حسب الموظف).
 // الفاتورة تضل SUBMITTED (ظاهرة عند الليدر) لين مدير/محاسب يعتمدها لـAPPROVED —
 // الليدر ما يقدر يعتمد فاتورته بنفسه (زر "اعتماد" ما يظهر إلا لـADMIN/FINANCE).
-export default function LeaderInvoicesListPage() {
+/** ⚠️ `embedded`: نفس الشاشة بالضبط بلا ترويستها — تنضمّ بمكتب
+ *  المراقب. **ما ننسخ المحتوى**: نسختان تفترقان بأول تصحيح، فالمراقب
+ *  يشوف صفاً بشاشة ومحلولاً بالثانية ويفقد الثقة بالاثنتين. */
+interface EmbeddedProps { embedded?: boolean }
+
+export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {}) {
   const { employee } = useSession()
   const canApprove = employee?.role === 'ADMIN' || employee?.role === 'FINANCE'
   /** ⚠️ المراقب يبتّ بطلب المحاسب — والمحاسب ما يبتّ بطلبه بنفسه،
@@ -352,30 +357,34 @@ export default function LeaderInvoicesListPage() {
       {/* الرأس بنفس عائلة شاشات المحاسب (التدقيق اليومي/البلاغات)، ويگول
           صراحةً إنه هذا **طابور الاعتماد** — سؤال صاحب العمل «وين ألگه
           الفواتير الي بانتظار الاعتماد؟» جوابه هاي الشاشة، بس الاسم
-          «فواتير الليدر» ما جان يدل عليها. */}
-      <div
-        className="relative overflow-hidden rounded-2xl p-6 shadow-md"
-        style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #24507e 55%, #2f6ba8 100%)' }}
-      >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full opacity-20"
-          style={{ background: 'radial-gradient(circle, #c8a45a 0%, transparent 70%)' }}
-        />
-        <div className="relative flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h2 className="text-2xl font-black text-white">🧾 فواتير الليدر</h2>
-            {/* ⚠️ النص چان يقول «الفاتورة الي تأشّرت مطابق توصل هنا»
-                وهذا **ما چان منفَّذ** — الشاشة تقول شي والكود يسوي
-                شي ثاني. صار يوصف المسار الحقيقي بالضبط. */}
-            <p className="mt-1 max-w-2xl text-sm text-blue-100">
-              الفاتورة تجي أول لـ<b className="text-white">بانتظار التدقيق</b> — تأشّر عليها
-              مطابق أو غير مطابق أو خطأ بالسعر، فتنتقل لـ<b className="text-white">بانتظار الاعتماد</b>.
-              وهناك تقرر: تعتمدها بـ<b className="text-white">رقم الفاتورة</b> من نظامك الثاني، أو تتركها.
-            </p>
+          «فواتير الليدر» ما جان يدل عليها.
+          ⚠️ تختفي لمن `embedded`: مكتب المراقب عنده ترويسته الخاصة،
+          وترويستان متدرّجتان فوق بعض تبدو خللاً لا تصميماً. */}
+      {!embedded && (
+        <div
+          className="relative overflow-hidden rounded-2xl p-6 shadow-md"
+          style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #24507e 55%, #2f6ba8 100%)' }}
+        >
+          <span
+            aria-hidden
+            className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full opacity-20"
+            style={{ background: 'radial-gradient(circle, #c8a45a 0%, transparent 70%)' }}
+          />
+          <div className="relative flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-white">🧾 فواتير الليدر</h2>
+              {/* ⚠️ النص چان يقول «الفاتورة الي تأشّرت مطابق توصل هنا»
+                  وهذا **ما چان منفَّذ** — الشاشة تقول شي والكود يسوي
+                  شي ثاني. صار يوصف المسار الحقيقي بالضبط. */}
+              <p className="mt-1 max-w-2xl text-sm text-blue-100">
+                الفاتورة تجي أول لـ<b className="text-white">بانتظار التدقيق</b> — تأشّر عليها
+                مطابق أو غير مطابق أو خطأ بالسعر، فتنتقل لـ<b className="text-white">بانتظار الاعتماد</b>.
+                وهناك تقرر: تعتمدها بـ<b className="text-white">رقم الفاتورة</b> من نظامك الثاني، أو تتركها.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* ⚠️ البطاقات الخمس تظهر **كلها دائماً**.
           قبلها چانت ثلاث، كل وحدة تنخفي لمن يصير عدّها صفراً،
