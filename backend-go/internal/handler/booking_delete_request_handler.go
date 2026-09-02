@@ -31,7 +31,15 @@ func (h *BookingDeleteRequestHandler) Create(w http.ResponseWriter, r *http.Requ
 		WriteError(w, http.StatusBadRequest, "اكتب سبب الحذف — المراقب يحتاجه حتى يقرر")
 		return
 	}
-	out, err := h.repo.Create(r.PathValue("id"), middleware.EmployeeIDFromContext(r), strings.TrimSpace(req.Reason))
+	if _, ok := model.BookingDeleteChannelLabels[req.Channel]; !ok {
+		WriteError(w, http.StatusBadRequest, "اختر القناة الي جاء منها الطلب")
+		return
+	}
+	if _, ok := model.BookingDeleteTypeLabels[req.RequestType]; !ok {
+		WriteError(w, http.StatusBadRequest, "اختر نوع الطلب")
+		return
+	}
+	out, err := h.repo.Create(r.PathValue("id"), middleware.EmployeeIDFromContext(r), strings.TrimSpace(req.Reason), req.Channel, req.RequestType)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -81,4 +89,39 @@ func (h *BookingDeleteRequestHandler) Decide(w http.ResponseWriter, r *http.Requ
 		_ = h.notify.Create(out.RequestedByID, "booking_delete_decision", msg)
 	}
 	WriteJSON(w, http.StatusOK, out)
+}
+
+// PUT /api/booking-delete-requests/{id}/needs-info — يعلّم الطلب «معلقة»
+func (h *BookingDeleteRequestHandler) NeedsInfo(w http.ResponseWriter, r *http.Request) {
+	var req model.NeedsInfoBookingDeleteRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	// الملاحظة إجبارية — «معلقة بلا سبب» ما يفرق عن التجاهل
+	if strings.TrimSpace(req.Note) == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب شنو المعلومة الناقصة")
+		return
+	}
+	out, err := h.repo.SetNeedsInfo(r.PathValue("id"), strings.TrimSpace(req.Note), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if h.notify != nil && out != nil && out.RequestedByID != "" {
+		_ = h.notify.Create(out.RequestedByID, "booking_delete_decision",
+			"ℹ️ طلب حذف الحجز "+out.BookingCode+" يحتاج توضيحاً: "+strings.TrimSpace(req.Note))
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// GET /api/booking-delete-requests/counts — عدّ البطاقات الخمس
+func (h *BookingDeleteRequestHandler) Counts(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.repo.Counts()
+	if err != nil {
+		log.Printf("count booking delete requests: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب عدّ طلبات الحذف")
+		return
+	}
+	WriteJSON(w, http.StatusOK, counts)
 }

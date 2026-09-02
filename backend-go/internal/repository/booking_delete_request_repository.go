@@ -18,31 +18,67 @@ func NewBookingDeleteRequestRepository(db *sqlx.DB) *BookingDeleteRequestReposit
 
 const bookingDeleteSelect = `SELECT r.*, b.code AS "bookingCode", b.status::text AS "bookingStatus",
 		COALESCE(c.name, '') AS "customerName",
-		e.name AS "requestedByName", d.name AS "decidedByName"
+		e.name AS "requestedByName", d.name AS "decidedByName", n.name AS "needsInfoByName"
 	FROM "BookingDeleteRequest" r
 	JOIN "Booking" b ON b.id = r."bookingId"
 	LEFT JOIN "Customer" c ON c.id = b."customerId"
 	JOIN "Employee" e ON e.id = r."requestedById"
-	LEFT JOIN "Employee" d ON d.id = r."decidedById"`
+	LEFT JOIN "Employee" d ON d.id = r."decidedById"
+	LEFT JOIN "Employee" n ON n.id = r."needsInfoById"`
 
 func decorateDeleteRequests(rows []model.BookingDeleteRequest) []model.BookingDeleteRequest {
 	for i := range rows {
 		rows[i].StatusLabel = model.BookingDeleteStatusLabels[rows[i].Status]
+		if rows[i].Channel != nil {
+			rows[i].ChannelLabel = model.BookingDeleteChannelLabels[*rows[i].Channel]
+		}
+		if rows[i].RequestType != nil {
+			rows[i].RequestTypeLabel = model.BookingDeleteTypeLabels[*rows[i].RequestType]
+		}
 	}
 	return rows
 }
 
-func (r *BookingDeleteRequestRepository) Create(bookingID, requestedByID, reason string) (*model.BookingDeleteRequest, error) {
+func (r *BookingDeleteRequestRepository) Create(bookingID, requestedByID, reason, channel, requestType string) (*model.BookingDeleteRequest, error) {
 	var id string
 	err := r.db.Get(&id, `
-		INSERT INTO "BookingDeleteRequest" (id, "bookingId", "requestedById", reason)
-		VALUES (gen_random_uuid()::text, $1, $2, $3)
-		RETURNING id`, bookingID, requestedByID, reason)
+		INSERT INTO "BookingDeleteRequest" (id, "bookingId", "requestedById", reason, channel, "requestType")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5)
+		RETURNING id`, bookingID, requestedByID, reason, channel, requestType)
 	if err != nil {
 		// الفهرس الفريد يمنع طلبين معلقين لنفس الحجز
 		return nil, fmt.Errorf("أكو طلب حذف معلّق على هذا الحجز أصلاً")
 	}
 	return r.Get(id)
+}
+
+// SetNeedsInfo تعلّم الطلب «معلقة» — ناقصه معلومات ولسه ما انبتّ فيه.
+// شرط PENDING داخل التحديث يمنع تعليم طلب انبتّ فيه أصلاً.
+func (r *BookingDeleteRequestRepository) SetNeedsInfo(id, note, byID string) (*model.BookingDeleteRequest, error) {
+	var bookingID string
+	if err := r.db.Get(&bookingID, `
+		UPDATE "BookingDeleteRequest"
+		SET "needsInfo" = true, "needsInfoNote" = $2, "needsInfoAt" = now(), "needsInfoById" = $3
+		WHERE id = $1 AND status = 'PENDING'
+		RETURNING "bookingId"`, id, note, byID); err != nil {
+		return nil, fmt.Errorf("الطلب مو موجود أو انبتّ بيه من قبل")
+	}
+	return r.Get(id)
+}
+
+// Counts عدّ مجمَّع واحد للبطاقات الخمس — يبقى مطابقاً للقائمة الكاملة
+// حتى لو الواجهة تعرض صفحة واحدة منها.
+func (r *BookingDeleteRequestRepository) Counts() (model.BookingDeleteRequestCounts, error) {
+	var c model.BookingDeleteRequestCounts
+	err := r.db.Get(&c, `
+		SELECT
+			COUNT(*) FILTER (WHERE status = 'APPROVED')                       AS approved,
+			COUNT(*) FILTER (WHERE status = 'PENDING' AND "needsInfo")        AS "needsInfo",
+			COUNT(*) FILTER (WHERE status = 'PENDING' AND NOT "needsInfo")    AS "awaitingReview",
+			COUNT(*) FILTER (WHERE status = 'REJECTED')                       AS rejected,
+			COUNT(*)                                                          AS total
+		FROM "BookingDeleteRequest"`)
+	return c, err
 }
 
 func (r *BookingDeleteRequestRepository) Get(id string) (*model.BookingDeleteRequest, error) {

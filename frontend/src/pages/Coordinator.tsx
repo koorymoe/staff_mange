@@ -11,6 +11,13 @@ import { COMPLETION_ORDER, completionLabel } from '../components/completionState
 import { matches as searchMatches } from '../utils/search'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingTimelineView from '../components/BookingTimeline'
+import { promptChoice } from '../utils/promptChoice'
+import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
+
+const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
+  (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
+const DELETE_TYPE_OPTIONS: [BookingDeleteRequestType, string][] =
+  (Object.entries(bookingDeleteTypeLabels) as [BookingDeleteRequestType, string][])
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -312,8 +319,12 @@ export default function Coordinator() {
   const requestDelete = async (booking: Booking) => {
     const reason = prompt(`سبب طلب حذف الحجز ${booking.code}؟ (تجريبي، ملغى، مكرر...)`)
     if (!reason || !reason.trim()) return
+    const channel = promptChoice('من وين اجه طلب الحذف؟', DELETE_CHANNEL_OPTIONS)
+    if (!channel) return
+    const requestType = promptChoice('شنو نوع الطلب؟', DELETE_TYPE_OPTIONS)
+    if (!requestType) return
     try {
-      await api.requestBookingDelete(booking.id, reason.trim())
+      await api.requestBookingDelete(booking.id, reason.trim(), channel, requestType)
       setSaveError(null)
       alert('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه')
     } catch (e) {

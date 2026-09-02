@@ -711,6 +711,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/bookings/{id}/delete-request", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Create), requireAuth, requireDeleteRequest))
 	mux.Handle("GET /api/booking-delete-requests", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.List), requireAuth, requireDeleteApprove))
 	mux.Handle("PUT /api/booking-delete-requests/{id}/decide", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Decide), requireAuth, requireDeleteApprove))
+	mux.Handle("PUT /api/booking-delete-requests/{id}/needs-info", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.NeedsInfo), requireAuth, requireDeleteApprove))
+	mux.Handle("GET /api/booking-delete-requests/counts", middleware.Chain(http.HandlerFunc(bookingDeleteHandler.Counts), requireAuth, requireDeleteApprove))
 	// التدقيق: المحاسب ما يقدر يمرر حجز بلا مبلغ — إما يكتب المبلغ من
 	// الفاتورة، أو يأشر خطأ والنظام يوجّهه للمعني (غير مطابق → رقابة
 	// وجودة، خطأ سعر → رقابة وإداري).

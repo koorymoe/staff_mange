@@ -294,6 +294,12 @@ func versionedMigrations() []Migration {
 	// 0264: إغلاق بلاغ التدقيق ما يصير إلا بإجراء — وينحفظ منو
 	// أغلقه وليش. قبلها الزر ماچان يوصّل لشي.
 	result = append(result, auditIssueCloseMigrations()...)
+	// 0265: تنبيهات تقصير الإداري بتثبيت الحجز — جدول أحداث مو
+	// عمود عدّاد، حتى «آخر تنبيه» والسجل يجون منه.
+	result = append(result, coordinationAlertMigrations()...)
+	// 0266: القناة ونوع الطلب حقلان فعليان بطلب حذف الحجز، و«معلقة»
+	// تصنيف فرعي داخل PENDING يحدّده المعتمِد.
+	result = append(result, bookingDeleteRequestExtraMigrations()...)
 	return result
 }
 

@@ -12,6 +12,13 @@ import { BUCKET_HEADINGS, DONE_FILTERS, type BookingBucket, type DoneFilter } fr
 import Pager from '../components/Pager'
 import BookingLocator from '../components/BookingLocator'
 import LocateHint from '../components/LocateHint'
+import { promptChoice } from '../utils/promptChoice'
+import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
+
+const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
+  (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
+const DELETE_TYPE_OPTIONS: [BookingDeleteRequestType, string][] =
+  (Object.entries(bookingDeleteTypeLabels) as [BookingDeleteRequestType, string][])
 
 export type { BookingBucket } from './bookingBuckets'
 
@@ -110,8 +117,12 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   const requestDelete = async (bookingId: string, code: string) => {
     const reason = prompt(`سبب طلب حذف الحجز ${code}؟ (تجريبي، ملغى، مكرر...)`)
     if (!reason || !reason.trim()) return
+    const channel = promptChoice('من وين اجه طلب الحذف؟', DELETE_CHANNEL_OPTIONS)
+    if (!channel) return
+    const requestType = promptChoice('شنو نوع الطلب؟', DELETE_TYPE_OPTIONS)
+    if (!requestType) return
     try {
-      await api.requestBookingDelete(bookingId, reason.trim())
+      await api.requestBookingDelete(bookingId, reason.trim(), channel, requestType)
       alert('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه')
     } catch (e) {
       alert(e instanceof Error ? e.message : 'تعذر رفع الطلب')

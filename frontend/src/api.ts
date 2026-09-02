@@ -1314,6 +1314,21 @@ export const AUDIT_VERDICTS: { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR'; labe
   { key: 'PRICE_ERROR', label: '❌ خطأ بالسعر', cls: 'bg-red-100 text-red-800' },
 ]
 
+export type BookingDeleteChannel = 'WEBSITE' | 'MOBILE_APP' | 'CALL_CENTER'
+export type BookingDeleteRequestType = 'RECURRING_DUPLICATE' | 'CUSTOMER_CANCEL' | 'DATA_CORRECTION'
+
+export const bookingDeleteChannelLabels: Record<BookingDeleteChannel, string> = {
+  WEBSITE: 'موقع ويب',
+  MOBILE_APP: 'تطبيق الجوال',
+  CALL_CENTER: 'مركز الاتصال',
+}
+
+export const bookingDeleteTypeLabels: Record<BookingDeleteRequestType, string> = {
+  RECURRING_DUPLICATE: 'حجز متكرر',
+  CUSTOMER_CANCEL: 'إلغاء من الزبون',
+  DATA_CORRECTION: 'تصحيح بيانات',
+}
+
 export interface BookingDeleteRequest {
   id: string
   bookingId: string
@@ -1327,6 +1342,22 @@ export interface BookingDeleteRequest {
   bookingStatus: string
   requestedByName: string
   decidedByName: string | null
+  channel: BookingDeleteChannel | null
+  requestType: BookingDeleteRequestType | null
+  channelLabel: string
+  requestTypeLabel: string
+  needsInfo: boolean
+  needsInfoNote: string | null
+  needsInfoAt: string | null
+  needsInfoByName: string | null
+}
+
+export interface BookingDeleteRequestCounts {
+  approved: number
+  needsInfo: number
+  awaitingReview: number
+  rejected: number
+  total: number
 }
 
 /** التدقيق اليومي: حجوزات يوم واحد بمجاميعه الأربعة */
@@ -3951,12 +3982,16 @@ export const api = {
   getVipCustomerIds: () => request<string[]>('/vip-customers/ids'),
   // phone بديل عن customerId بالإضافة اليدوية — السيرفر يطلع الزبون من رقمه
   // طلب حذف حجز: الإداري يطلب، والمراقب/المدير يبت
-  requestBookingDelete: (bookingId: string, reason: string) =>
-    request<BookingDeleteRequest>(`/bookings/${bookingId}/delete-request`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  requestBookingDelete: (bookingId: string, reason: string, channel: BookingDeleteChannel, requestType: BookingDeleteRequestType) =>
+    request<BookingDeleteRequest>(`/bookings/${bookingId}/delete-request`, { method: 'POST', body: JSON.stringify({ reason, channel, requestType }) }),
   getBookingDeleteRequests: (status?: string) =>
     request<BookingDeleteRequest[]>(`/booking-delete-requests${status ? `?status=${status}` : ''}`),
+  getBookingDeleteRequestCounts: () =>
+    request<BookingDeleteRequestCounts>('/booking-delete-requests/counts'),
   decideBookingDelete: (id: string, approve: boolean, note?: string) =>
     request<BookingDeleteRequest>(`/booking-delete-requests/${id}/decide`, { method: 'PUT', body: JSON.stringify({ approve, note: note || null }) }),
+  setBookingDeleteNeedsInfo: (id: string, note: string) =>
+    request<BookingDeleteRequest>(`/booking-delete-requests/${id}/needs-info`, { method: 'PUT', body: JSON.stringify({ note }) }),
 
   markVipCustomer: (data: { customerId?: string; phone?: string; name?: string; location?: string | null; locationUrl?: string | null; boughtFromUs?: boolean; bookingId?: string; requestSummary?: string; customerPosition?: string; note?: string }) =>
     request<VipCustomer>('/vip-customers', { method: 'POST', body: JSON.stringify(data) }),
