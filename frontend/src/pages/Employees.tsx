@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { api, type Employee, type Service, type Stats } from '../api'
+import { api, LEADER_SKILLS, type Employee, type Service, type Stats } from '../api'
 import EmployeeHRPanel from '../components/EmployeeHRPanel'
 import EmployeeAvatar from '../components/EmployeeAvatar'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import StatTile from '../components/StatTile'
 import AddEmployeeWizard from '../components/AddEmployeeWizard'
 import { openManagerChat } from '../components/openManagerChat'
 import { matches } from '../utils/search'
@@ -97,7 +98,12 @@ export default function Employees() {
   const [showAddForm, setShowAddForm] = useState(false)
 
   const [skillTab, setSkillTab] = useState<'technical' | 'leader'>('technical')
+  // ⚠️⚠️ چانت حالة محلية ما تنحفظ ولا تنجلب — والتصفير عند تبديل
+  // الموظف ما چان يشملها، فالمدير يقيّم واحداً ويشوف نفس درجاته
+  // على الي بعده. صارت تنجلب من الخادم وتنصفّر بالتبديل.
   const [leaderRatings, setLeaderRatings] = useState<Record<string, number>>({})
+  const [leaderSaved, setLeaderSaved] = useState<Record<string, number>>({})
+  const [leaderBusy, setLeaderBusy] = useState(false)
   const [editSalary, setEditSalary] = useState('')
   const [editShiftStart, setEditShiftStart] = useState('')
   const [editShiftEnd, setEditShiftEnd] = useState('')
@@ -125,7 +131,9 @@ export default function Employees() {
 
   useEffect(load, [])
   useEffect(() => {
-    if (isHR) api.getStats().then(setStats).catch(() => setStats(null))
+    // ⚠️ چانت `if (isHR)` — فالمالك والمدير ما يجلبونها أصلاً
+    // وعدّادات «إحصائيات الموظف» تطلعلهم **صفراً دائماً**.
+    api.getStats().then(setStats).catch(() => setStats(null))
   }, [isHR])
   useEffect(() => {
     if (isAdmin && showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(() => setArchivedEmployees([]))
@@ -139,6 +147,12 @@ export default function Employees() {
   })
 
   const selectedEmployee = [...employees, ...archivedEmployees].find((emp) => emp.id === selectedId) || null
+
+  // ⚠️ نفس قائمة الخادم بالضبط (main.go: ADMIN/OWNER/HR_COORDINATOR)،
+  // والمالك يوصل بدوره المطبَّع ADMIN. والخادم يرفض تقييم النفس هم.
+  const canRateLeader = !!currentUser
+    && ['ADMIN', 'OWNER', 'HR_COORDINATOR'].includes(currentUser.role)
+    && currentUser.id !== selectedEmployee?.id
 
   const handleArchive = async (status: 'ARCHIVED' | 'DELETED' | 'ACTIVE') => {
     if (!selectedEmployee) return
@@ -180,6 +194,25 @@ export default function Employees() {
     }
   }
 
+  // جلب تقييم القيادة للموظف المختار.
+  // ⚠️ تأثير مستقل عن تصفير النموذج: التصفير مزامنة حالة، وهذا
+  // جلب بيانات — خلطهما يخلي React يشتكي من setState متزامن.
+  useEffect(() => {
+    const id = selectedEmployee?.id
+    if (!id) return
+    let alive = true
+    api.getLeaderSkills(id)
+      .then((rows) => {
+        if (!alive) return
+        const map: Record<string, number> = {}
+        for (const r of rows) map[r.skill] = r.score
+        setLeaderRatings(map)
+        setLeaderSaved(map)
+      })
+      .catch(() => { /* ما تنعرض درجات = ماكو تقييم بعد */ })
+    return () => { alive = false }
+  }, [selectedEmployee?.id])
+
   useEffect(() => {
     // Resetting the edit-form fields whenever the selected employee changes is a
     // derived-state sync from a prop, not data fetching.
@@ -198,6 +231,10 @@ export default function Employees() {
     setEditCertificate('')
     setShowCompare(false)
     setCompareId(null)
+    // ⚠️ هاي السطر هو إصلاح التسريب: بدونه درجات الموظف السابق
+    // تبقى معروضة على الي بعده.
+    setLeaderRatings({})
+    setLeaderSaved({})
     setSkillTab('technical')
   }, [selectedId, selectedEmployee?.isLeader, selectedEmployee?.username])
 
@@ -241,7 +278,13 @@ export default function Employees() {
 
   const getEmployeeStats = (empId: string) => {
     const techStat = stats?.technicianStats.find((s) => s.employeeId === empId)
-    return { completed: techStat?.completed || 0, inProgress: techStat?.totalAssigned || 0, overtime: 0 }
+    // ⚠️ «الجارية» چانت totalAssigned — يعني **كل** المسند مو
+    // الجاري، فالعنوان يناقض رقمه. والفرق هو الجاري فعلاً.
+    // ⚠️ و«ساعات إضافية» انشالت: چانت 0 مثبتة بالكود، وصفر دائم
+    // يوهم إن ماكو ساعات إضافية بينما ماكو بيانات أصلاً.
+    const done = techStat?.completed || 0
+    const assigned = techStat?.totalAssigned || 0
+    return { completed: done, inProgress: Math.max(0, assigned - done) }
   }
 
 
@@ -744,19 +787,13 @@ export default function Employees() {
                     {(() => {
                       const empStats = getEmployeeStats(selectedEmployee.id)
                       return (
-                        <div className="grid grid-cols-3 gap-3">
-                          <div className="rounded-xl bg-emerald-50/80 p-3 text-center ring-1 ring-emerald-100/50">
-                            <p className="text-[10px] text-emerald-500 font-medium">المهام المنجزة</p>
-                            <p className="mt-1 text-xl font-extrabold text-emerald-700">{empStats.completed}</p>
-                          </div>
-                          <div className="rounded-xl bg-blue-50/80 p-3 text-center ring-1 ring-blue-100/50">
-                            <p className="text-[10px] text-blue-500 font-medium">المهام الجارية</p>
-                            <p className="mt-1 text-xl font-extrabold text-blue-700">{empStats.inProgress}</p>
-                          </div>
-                          <div className="rounded-xl bg-amber-50/80 p-3 text-center ring-1 ring-amber-100/50">
-                            <p className="text-[10px] text-amber-500 font-medium">ساعات إضافية</p>
-                            <p className="mt-1 text-xl font-extrabold text-amber-700">{empStats.overtime}</p>
-                          </div>
+                        /* ⚠️ عدّادان مو ثلاثة: «ساعات إضافية» انشالت
+                           لأن ماكو وراها بيانات — چانت صفراً مثبتاً. */
+                        <div className="grid grid-cols-2 gap-3">
+                          <StatTile label="المهام المنجزة" icon="✅" tone="success"
+                            value={empStats.completed} />
+                          <StatTile label="المهام الجارية" icon="⏳" tone="info"
+                            value={empStats.inProgress} hint="المسند ناقص المنجز" />
                         </div>
                       )
                     })()}
@@ -790,7 +827,6 @@ export default function Employees() {
                                   {[
                                     ['المهام المنجزة', statsA.completed, statsB.completed],
                                     ['المهام الجارية', statsA.inProgress, statsB.inProgress],
-                                    ['ساعات إضافية', statsA.overtime, statsB.overtime],
                                     ['عدد المهارات', skillCountA, skillCountB],
                                   ].map(([label, a, b]) => (
                                     <tr key={label as string}>
@@ -877,15 +913,57 @@ export default function Employees() {
                     )}
                     {skillTab === 'leader' && (
                       <div className="flex flex-col gap-3">
-                        {['القيادة', 'إدارة الفريق', 'حل المشكلات', 'التواصل', 'اتخاذ القرار'].map(skill => (
+                        {LEADER_SKILLS.map(skill => (
                           <div key={skill} className="flex items-center gap-3">
                             <span className="w-24 text-xs font-medium text-slate-500">{skill}</span>
-                            <input type="range" min={1} max={10} value={leaderRatings[skill] || 5}
+                            <input type="range" min={1} max={10}
+                              value={leaderRatings[skill] ?? 5}
+                              disabled={!canRateLeader}
                               onChange={(e) => setLeaderRatings(prev => ({ ...prev, [skill]: Number(e.target.value) }))}
-                              className="flex-1 accent-[#2c5aad]" />
-                            <span className="w-8 text-center text-sm font-extrabold text-[#2c5aad]">{leaderRatings[skill] || 5}</span>
+                              className="flex-1 accent-[#2c5aad] disabled:opacity-60" />
+                            <span className="w-8 text-center text-sm font-extrabold text-[#2c5aad]">
+                              {leaderRatings[skill] ?? 5}
+                            </span>
                           </div>
                         ))}
+
+                        {canRateLeader ? (
+                          <div className="flex items-center justify-between gap-2">
+                            {/* ⚠️ «ماكو تقييم» مو «كلها ٥»: الأشرطة تبدي
+                                بـ٥ لأنها منتصف المدى، فلازم يبين إذا
+                                هذا رأي أحد لو مجرد وضع ابتدائي. */}
+                            <span className="text-[11px] text-slate-400">
+                              {Object.keys(leaderSaved).length === 0
+                                ? 'ما انسجّل تقييم بعد — الأشرطة على منتصف المدى'
+                                : `محفوظ ${Object.keys(leaderSaved).length} من ${LEADER_SKILLS.length}`}
+                            </span>
+                            <button
+                              type="button"
+                              disabled={leaderBusy}
+                              onClick={async () => {
+                                if (!selectedEmployee) return
+                                setLeaderBusy(true)
+                                const scores: Record<string, number> = {}
+                                for (const k of LEADER_SKILLS) scores[k] = leaderRatings[k] ?? 5
+                                const rows = await guard.run('حفظ تقييم القيادة', () =>
+                                  api.setLeaderSkills(selectedEmployee.id, scores))
+                                if (rows) {
+                                  const map: Record<string, number> = {}
+                                  for (const r of rows) map[r.skill] = r.score
+                                  setLeaderRatings(map)
+                                  setLeaderSaved(map)
+                                }
+                                setLeaderBusy(false)
+                              }}
+                              className="rounded-lg bg-gradient-to-l from-[#2c5aad] to-[#0f2040] px-4 py-1.5 text-xs font-bold text-white disabled:opacity-50">
+                              {leaderBusy ? 'جاري الحفظ...' : 'احفظ التقييم'}
+                            </button>
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-slate-400">
+                            التقييم للمالك والمدير وإداري الكوادر — إنت تشوف بس.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>

@@ -197,6 +197,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// Handlers
 	authHandler := handler.NewAuthHandler(authService)
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
+	leaderSkillHandler := handler.NewLeaderSkillHandler(repository.NewLeaderSkillRepository(db))
 	permissionHandler := handler.NewPermissionHandler(permissionService, lockoutRepo)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
@@ -545,6 +546,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// يستهدف. الموظف ما يحتاجها — صلاحياته هو تجي بـ/permissions/employee/{id}
 	mux.Handle("GET /api/permissions", middleware.Chain(http.HandlerFunc(permissionHandler.ListAll), requireAuth, requireAdmin))
 	// فحص: منو من الموظفين ناقصه صلاحيات دوره. قراءة بس، ما يمنح شي.
+	// تقييم مهارات القيادة — چانت أشرطة ما تنحفظ وتنتقل من موظف لموظف.
+	// ⚠️ القراءة لأي مسجَّل (الموظف يشوف تقييمه)، والكتابة للمالك
+	// والمدير وإداري الكوادر بس.
+	mux.Handle("GET /api/employees/{id}/leader-skills", middleware.Chain(http.HandlerFunc(leaderSkillHandler.List), requireAuth))
+	mux.Handle("PUT /api/employees/{id}/leader-skills", middleware.Chain(http.HandlerFunc(leaderSkillHandler.Set), requireAuth,
+		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "HR_COORDINATOR")))
 	mux.Handle("GET /api/permissions/audit-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.AuditDefaults), requireAuth, requireAdmin))
 	mux.Handle("GET /api/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
 	// قائمة الموظفين الي يوصلون لصلاحية معيّنة — لتعبئة القوائم المنسدلة

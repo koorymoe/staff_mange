@@ -288,6 +288,9 @@ func versionedMigrations() []Migration {
 	result = append(result, complaintQualityMigrations()...)
 	// 0261: سجل إجراءات الشكوى — يُكتب ولا يُعدّل.
 	result = append(result, complaintEventMigrations()...)
+	// 0262: تقييم مهارات القيادة — چانت أشرطة ما تنحفظ وتنتقل
+	// من موظف لموظف.
+	result = append(result, leaderSkillMigrations()...)
 	return result
 }
 

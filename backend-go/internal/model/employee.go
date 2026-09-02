@@ -218,3 +218,35 @@ type SecurityEvent struct {
 	UserAgent    *string   `db:"userAgent" json:"userAgent"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
 }
+
+// ═══ مهارات القيادة ═══
+//
+// ⚠️ القائمة **مصدر واحد** بالخادم: الواجهة چانت تعرّفها بنفسها،
+// فأي اسم ينكتب غلط يخزن مهارة ما تنقرا بأي مكان ثاني.
+var LeaderSkills = []string{
+	"القيادة", "إدارة الفريق", "حل المشكلات", "التواصل", "اتخاذ القرار",
+}
+
+func IsLeaderSkill(s string) bool {
+	for _, k := range LeaderSkills {
+		if k == s {
+			return true
+		}
+	}
+	return false
+}
+
+type LeaderSkillRating struct {
+	ID          string    `db:"id" json:"id"`
+	EmployeeID  string    `db:"employeeId" json:"employeeId"`
+	Skill       string    `db:"skill" json:"skill"`
+	Score       int       `db:"score" json:"score"`
+	RatedByID   *string   `db:"ratedById" json:"-"`
+	RatedByName *string   `db:"ratedByName" json:"ratedByName"`
+	RatedAt     time.Time `db:"ratedAt" json:"ratedAt"`
+}
+
+// SetLeaderSkillsRequest الدرجات بطلب واحد: {"القيادة": 7, ...}
+type SetLeaderSkillsRequest struct {
+	Scores map[string]int `json:"scores"`
+}

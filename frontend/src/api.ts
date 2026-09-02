@@ -798,6 +798,18 @@ export const eventKindLabels: Record<ComplaintEvent['kind'], string> = {
   RESOLVED: 'انحلّت',
 }
 
+/** مهارات القيادة الخمس — نفس القائمة بالخادم (model.LeaderSkills). */
+export const LEADER_SKILLS = ['القيادة', 'إدارة الفريق', 'حل المشكلات', 'التواصل', 'اتخاذ القرار'] as const
+
+export interface LeaderSkillRating {
+  id: string
+  employeeId: string
+  skill: string
+  score: number
+  ratedByName: string | null
+  ratedAt: string
+}
+
 export interface MissingRoleDefault {
   employeeId: string
   employeeName: string
@@ -3950,6 +3962,12 @@ export const api = {
     request<Permission[]>(`/permissions/employee/${employeeId}/apply-defaults`, { method: 'POST' }),
   // فحص: منو ناقصه صلاحيات دوره. قراءة بس — ما يمنح ولا صلاحية.
   auditRoleDefaults: () => request<MissingRoleDefault[]>('/permissions/audit-defaults'),
+  getLeaderSkills: (employeeId: string) =>
+    request<LeaderSkillRating[]>(`/employees/${employeeId}/leader-skills`),
+  setLeaderSkills: (employeeId: string, scores: Record<string, number>) =>
+    request<LeaderSkillRating[]>(`/employees/${employeeId}/leader-skills`, {
+      method: 'PUT', body: JSON.stringify({ scores }),
+    }),
   getRoleDefaults: () =>
     request<Record<string, string[]>>('/permissions/role-defaults'),
 
