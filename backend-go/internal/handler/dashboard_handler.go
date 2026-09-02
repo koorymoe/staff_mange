@@ -60,6 +60,7 @@ type financeSummary struct {
 	UnverifiedCount   int     `db:"unverifiedCount" json:"unverifiedCount"`
 	VerifiedCount     int     `db:"verifiedCount" json:"verifiedCount"`
 	TodayCompleted    int     `db:"todayCompleted" json:"todayCompleted"`
+	TodayCreated      int     `db:"todayCreated" json:"todayCreated"`
 	PendingCount      int     `db:"pendingCount" json:"pendingCount"`
 	ConfirmedCount    int     `db:"confirmedCount" json:"confirmedCount"`
 	InProgressCount   int     `db:"inProgressCount" json:"inProgressCount"`
@@ -81,7 +82,15 @@ func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request
 			COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND NOT b."amountVerified")   AS "unverifiedCount",
 			COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."amountVerified")       AS "verifiedCount",
 			COUNT(*) FILTER (WHERE b.status = 'COMPLETED'
-			                 AND b."completedAt"::date = CURRENT_DATE)                  AS "todayCompleted",
+			-- ⚠️ چان ::date = CURRENT_DATE — يعني «اليوم» بنظر الخادم
+			-- مو بنظر بغداد. حجز ينخلص ١٢:٣٠ ليلاً بغداد چان ينحسب
+			-- **أمس** هنا و**اليوم** بشاشة التدقيق اليومي (الي تستعمل
+			-- baghdad_date)، فالشاشتان تختلفان على نفس الحجز.
+			                 AND baghdad_date(b."completedAt") = baghdad_today())       AS "todayCompleted",
+			-- «انفتحن اليوم»: چانت تنعدّ بالواجهة من قائمة مقصوصة عند
+			-- ٢٠٠ حجز مكتمل، فأي حجز اليوم برّا أحدث ٢٠٠ ما ينعدّ
+			-- والرقم يطلع أقل من الحقيقة بلا ما يبيّن.
+			COUNT(*) FILTER (WHERE baghdad_date(b."createdAt") = baghdad_today())       AS "todayCreated",
 			COUNT(*) FILTER (WHERE b.status = 'PENDING')                                AS "pendingCount",
 			COUNT(*) FILTER (WHERE b.status = 'CONFIRMED')                              AS "confirmedCount",
 			COUNT(*) FILTER (WHERE b.status = 'IN_PROGRESS')                            AS "inProgressCount",

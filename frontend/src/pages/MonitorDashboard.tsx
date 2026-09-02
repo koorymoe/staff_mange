@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api, type Booking, type Employee, type Stats, type VehicleScoreSummary, type TechnicianWashSummary, type FinanceSummary } from '../api'
 import { useSession } from '../session'
+import StatTile from '../components/StatTile'
 import { Link, useNavigate } from 'react-router-dom'
 
 type Tab = 'overview' | 'crews' | 'audit' | 'finance' | 'vehicles'
@@ -50,9 +51,9 @@ export default function MonitorDashboard() {
   useEffect(load, [load])
 
   if (!currentUser) return null
-
-  const todayStr = new Date().toDateString()
-  const todayBookings = bookings.filter(b => new Date(b.createdAt).toDateString() === todayStr)
+  // ⚠️ انشالت `todayBookings`: چانت تنعدّ من `bookings` الي تضم
+  // شريحة مقصوصة عند ٢٠٠ حجز مكتمل، فالرقم يطلع أقل من الحقيقة.
+  // العدّ صار بالخادم (finance.todayCreated / todayCompleted).
   const activeBookings = bookings.filter(b => b.status === 'CONFIRMED' || b.status === 'IN_PROGRESS')
   const completedBookings = bookings.filter(b => b.status === 'COMPLETED')
   const pendingBookings = bookings.filter(b => b.status === 'PENDING')
@@ -111,24 +112,35 @@ export default function MonitorDashboard() {
           {/* ═══ Overview Tab ═══ */}
           {tab === 'overview' && (
             <div className="space-y-6">
-              {/* Summary Cards */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  { label: 'حجوزات اليوم', value: todayBookings.length, color: 'text-blue-600', bg: 'bg-blue-50' },
-                  { label: 'بانتظار التثبيت', value: pendingBookings.length, color: 'text-amber-600', bg: 'bg-amber-50' },
-                  { label: 'جاري التنفيذ', value: activeBookings.length, color: 'text-violet-600', bg: 'bg-violet-50' },
-                  { label: 'موظفين بالدوام', value: onDutyEmployees.length, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                ].map(c => (
-                  <div key={c.label} className={`rounded-2xl ${c.bg} p-4 text-center`}>
-                    <p className={`text-3xl font-black ${c.color}`}>{c.value}</p>
-                    <p className="mt-1 text-xs font-medium text-slate-500">{c.label}</p>
-                  </div>
-                ))}
+              {/* ⚠️⚠️ «حجوزات اليوم» چانت تنعدّ من قائمة **مقصوصة عند
+                  ٢٠٠** حجز مكتمل — فأي حجز اليوم برّا أحدث ٢٠٠ ما ينعدّ
+                  والرقم يطلع أقل من الحقيقة بلا ما يبيّن. صارت من
+                  الخادم، وانفصلت لبطاقتين لأن «انفتح» و«انجز» شغلتان
+                  مختلفتان: وحدة تقيس المبيعات والثانية تقيس الميدان. */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+                <StatTile label="موظفين بالدوام" icon="👥" tone="success"
+                  value={onDutyEmployees.length} />
+                <StatTile label="جاري التنفيذ" icon="⏱️" tone="violet"
+                  value={finance ? finance.confirmedCount + finance.inProgressCount : activeBookings.length}
+                  hint="مثبّتة وقيد التنفيذ" />
+                <StatTile label="بانتظار التثبيت" icon="⏳" tone="warning"
+                  value={finance?.pendingCount ?? pendingBookings.length} />
+                <StatTile label="انفتحن اليوم" icon="📅" tone="info"
+                  value={finance?.todayCreated ?? '—'} hint="حجوزات جديدة" />
+                <StatTile label="انجزن اليوم" icon="✅" tone="success"
+                  value={finance?.todayCompleted ?? '—'} hint="خلّصها الميدان" />
               </div>
 
               {/* Employee Status Grid */}
               <div className="rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]">
-                <h3 className="mb-4 text-lg font-bold text-brand-900">حالة الموظفين</h3>
+                <div className="mb-4 flex items-center gap-2">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg text-base"
+                    style={{ backgroundColor: 'var(--sf-info)' }}>👥</span>
+                  <div>
+                    <h3 className="text-lg font-bold text-brand-900">حالة الموظفين</h3>
+                    <p className="text-[11px] text-slate-400">منو بالدوام الآن، حسب القسم</p>
+                  </div>
+                </div>
                 <div className="space-y-4">
                   {/* By Role */}
                   {[

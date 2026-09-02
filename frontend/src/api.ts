@@ -2723,6 +2723,8 @@ export interface FinanceSummary {
   unverifiedCount: number
   verifiedCount: number
   todayCompleted: number
+  /** انفتحن اليوم — محسوبة بالخادم بتوقيت بغداد */
+  todayCreated: number
   pendingCount: number
   confirmedCount: number
   inProgressCount: number
