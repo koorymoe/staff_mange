@@ -810,6 +810,14 @@ export interface LeaderSkillRating {
   ratedAt: string
 }
 
+/** إجراء إغلاق بلاغ التدقيق — نفس ثوابت الخادم. */
+export type AuditCloseAction = 'PENALIZE' | 'NO_FAULT'
+
+export const auditCloseLabels: Record<AuditCloseAction, string> = {
+  PENALIZE: 'سجّل مخالفة انضباط',
+  NO_FAULT: 'تأكدت — ماكو خطأ',
+}
+
 export interface MissingRoleDefault {
   employeeId: string
   employeeName: string
@@ -1368,6 +1376,10 @@ export interface AuditIssue {
   raisedByName: string
   // الليدر صاحب فاتورة الحجز — للمراقب حتى يتأكد منه ليش عنده أخطاء
   leaderName?: string | null
+  // منو أغلق البلاغ وليش وشنو سوّى
+  resolvedByName?: string | null
+  resolveReason?: string | null
+  actionKind?: AuditCloseAction | null
 }
 
 export interface Announcement {
@@ -3222,8 +3234,12 @@ export const api = {
     request<Booking | AuditIssue>(`/bookings/${id}/audit`, { method: 'PUT', body: JSON.stringify(data) }),
   getAuditIssues: (status?: string) =>
     request<AuditIssue[]>(`/audit-issues${status ? `?status=${status}` : ''}`),
-  resolveAuditIssue: (id: string) =>
-    request<{ ok: boolean }>(`/audit-issues/${id}/resolve`, { method: 'PUT' }),
+  // ⚠️ الإغلاق يتطلب إجراءً وسبباً — الخادم يرفض بدونهما. قبلها
+  // چان الزر يسكّر البلاغ بلا أثر ولا أحد يدري شنو صار بيه.
+  resolveAuditIssue: (id: string, data: { action: AuditCloseAction; reason: string; points?: number }) =>
+    request<{ ok: boolean }>(`/audit-issues/${id}/resolve`, {
+      method: 'PUT', body: JSON.stringify(data),
+    }),
 
   // شريط الإعلانات
   getAnnouncements: (all?: boolean) =>

@@ -45,7 +45,13 @@ type BookingAuditIssue struct {
 	RaisedByID string     `db:"raisedById" json:"raisedById"`
 	Status     string     `db:"status" json:"status"`
 	ResolvedAt *time.Time `db:"resolvedAt" json:"resolvedAt"`
-	CreatedAt  time.Time  `db:"createdAt" json:"createdAt"`
+	// منو أغلقه وليش وشنو سوّى. قبلها چان ينغلق بلا أثر —
+	// «أغلق البلاغ» ما چان يوصّل لشي.
+	ResolvedByID   *string   `db:"resolvedById" json:"-"`
+	ResolvedByName *string   `db:"resolvedByName" json:"resolvedByName"`
+	ResolveReason  *string   `db:"resolveReason" json:"resolveReason"`
+	ActionKind     *string   `db:"actionKind" json:"actionKind"`
+	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
 
 	BookingCode  string `db:"bookingCode" json:"bookingCode"`
 	CustomerName string `db:"customerName" json:"customerName"`
@@ -53,8 +59,8 @@ type BookingAuditIssue struct {
 	// الليدر صاحب فاتورة الحجز — المراقب يتابع البلاغ **عليه** مو على
 	// المحاسب الي سجّله: «حتى يتأكد من الليدر ليش عنده أخطاء».
 	LeaderName *string `db:"leaderName" json:"leaderName,omitempty"`
-	KindLabel    string `db:"-" json:"kindLabel"`
-	RoutedTo     string `db:"-" json:"routedTo"`
+	KindLabel  string  `db:"-" json:"kindLabel"`
+	RoutedTo   string  `db:"-" json:"routedTo"`
 }
 
 // AuditBookingRequest قرار المحاسب على حجز واحد.
@@ -91,4 +97,30 @@ func AuditRoutedLabel(kind string) string {
 	default:
 		return ""
 	}
+}
+
+// ═══ إغلاق البلاغ ═══
+//
+// ⚠️ ما ينغلق إلا بإجراء: إما مخالفة انضباط على الليدر، أو
+// تصريح صريح إن ماكو خطأ. «يسكّره بلا ما يقرا» ما يبقى خياراً.
+const (
+	// AuditActionPenalize مخالفة انضباط على الليدر — تنربط بالحجز
+	// وتنعرض بلوحة الإعلانات وتنحط بسجله الانضباطي.
+	AuditActionPenalize = "PENALIZE"
+	// AuditActionNoFault المراقب تأكد وماكو خطأ فعلاً — والسبب
+	// إجباري، حتى ما يصير باباً خلفياً للإغلاق الروتيني.
+	AuditActionNoFault = "NO_FAULT"
+)
+
+var AuditActionLabels = map[string]string{
+	AuditActionPenalize: "سُجّلت مخالفة انضباط",
+	AuditActionNoFault:  "تأكد المراقب — ماكو خطأ",
+}
+
+// ResolveAuditIssueRequest طلب إغلاق بلاغ.
+type ResolveAuditIssueRequest struct {
+	Action string `json:"action"`
+	Reason string `json:"reason"`
+	// نقاط الخصم الانضباطي — تنستعمل مع PENALIZE بس.
+	Points int `json:"points"`
 }

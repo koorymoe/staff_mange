@@ -113,11 +113,45 @@ func (r *BookingAuditRepository) List(status string, kinds []string, raisedByID 
 	return decorateAuditIssues(rows), err
 }
 
-func (r *BookingAuditRepository) Resolve(id string) error {
+// Resolve يغلق البلاغ **مع** أثره: منو وليش وشنو سوّى.
+//
+// ⚠️ چان يكتب `status` و`resolvedAt` بس — فالبلاغ يختفي وماكو
+// طريقة تعرف منو سكّره ولا ليش.
+func (r *BookingAuditRepository) Resolve(
+	id, byID, byName, action, reason string,
+) error {
 	_, err := r.db.Exec(`
-		UPDATE "BookingAuditIssue" SET status = 'RESOLVED', "resolvedAt" = now()
-		WHERE id = $1 AND status = 'OPEN'`, id)
+		UPDATE "BookingAuditIssue"
+		SET status = 'RESOLVED', "resolvedAt" = now(),
+		    "resolvedById" = $2, "resolvedByName" = NULLIF($3,''),
+		    "actionKind" = $4, "resolveReason" = NULLIF($5,'')
+		WHERE id = $1 AND status = 'OPEN'`, id, byID, byName, action, reason)
 	return err
+}
+
+// LeaderIDForBooking ليدر الحجز — من فاتورته، نفس منطق اسم الليدر
+// بالاستعلام فوگ. البلاغ يتابع **على الليدر** مو على المحاسب.
+//
+// ⚠️ يرجّع فاضياً بلا خطأ لمن ماكو فاتورة: حجز بلا فاتورة ليدر
+// ماكو عليه منو ينعاقب، والمستدعي يقرر شنو يسوي.
+func (r *BookingAuditRepository) LeaderIDForBooking(bookingID string) (string, error) {
+	var id string
+	err := r.db.Get(&id, `
+		SELECT "employeeId" FROM "LeaderInvoice"
+		WHERE "bookingId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, bookingID)
+	if err != nil {
+		return "", nil
+	}
+	return id, nil
+}
+
+// Find بلاغ واحد — نحتاجه حتى نعرف الليدر والحجز قبل الإغلاق.
+func (r *BookingAuditRepository) Find(id string) (*model.BookingAuditIssue, error) {
+	var issue model.BookingAuditIssue
+	if err := r.db.Get(&issue, auditIssueSelect+` WHERE i.id = $1`, id); err != nil {
+		return nil, err
+	}
+	return &issue, nil
 }
 
 // KindOf نوع البلاغ — نحتاجه حتى نتأكد إن الي يغلقه من الجهة المعنية.

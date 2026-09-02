@@ -291,6 +291,9 @@ func versionedMigrations() []Migration {
 	// 0262: تقييم مهارات القيادة — چانت أشرطة ما تنحفظ وتنتقل
 	// من موظف لموظف.
 	result = append(result, leaderSkillMigrations()...)
+	// 0264: إغلاق بلاغ التدقيق ما يصير إلا بإجراء — وينحفظ منو
+	// أغلقه وليش. قبلها الزر ماچان يوصّل لشي.
+	result = append(result, auditIssueCloseMigrations()...)
 	return result
 }
 

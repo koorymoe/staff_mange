@@ -15,10 +15,14 @@ type BookingAuditHandler struct {
 	bookings *repository.BookingRepository
 	notify   *repository.NotificationRepository
 	invoices *repository.LeaderInvoiceRepository
+	// إغلاق البلاغ بمخالفة انضباط — نعيد استعمال نظام الانضباط
+	// الموجود بدل ما نبني عقوبة موازية.
+	discipline *repository.DisciplineRepository
+	employees  *repository.EmployeeRepository
 }
 
-func NewBookingAuditHandler(r *repository.BookingAuditRepository, b *repository.BookingRepository, n *repository.NotificationRepository, inv *repository.LeaderInvoiceRepository) *BookingAuditHandler {
-	return &BookingAuditHandler{repo: r, bookings: b, notify: n, invoices: inv}
+func NewBookingAuditHandler(r *repository.BookingAuditRepository, b *repository.BookingRepository, n *repository.NotificationRepository, inv *repository.LeaderInvoiceRepository, d *repository.DisciplineRepository, e *repository.EmployeeRepository) *BookingAuditHandler {
+	return &BookingAuditHandler{repo: r, bookings: b, notify: n, invoices: inv, discipline: d, employees: e}
 }
 
 // stampInvoiceVerdict ينزّل حكم التدقيق اليومي على فاتورة الحجز.
@@ -193,9 +197,74 @@ func (h *BookingAuditHandler) ResolveIssue(w http.ResponseWriter, r *http.Reques
 		WriteError(w, http.StatusForbidden, "هذا البلاغ ما ينغلق إلا من "+model.AuditRoutedLabel(kind))
 		return
 	}
-	if err := h.repo.Resolve(r.PathValue("id")); err != nil {
+	// ⚠️⚠️ ما ينغلق إلا بإجراء. قبلها چان سطراً واحداً يأشّره
+	// «محلول» — بلا منو ولا ليش ولا أثر على أحد، فالبلاغ يختفي
+	// وينتهي. صاحب النظام سأل «وين يروح؟» والجواب چان: ماكو مكان.
+	var req model.ResolveAuditIssueRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	if _, ok := model.AuditActionLabels[req.Action]; !ok {
+		WriteError(w, http.StatusBadRequest,
+			"لازم تختار إجراء: مخالفة انضباط، أو تأكيد إنه ماكو خطأ")
+		return
+	}
+	// ⚠️ السبب إجباري بالحالتين: بدونه «تأكدت ماكو خطأ» تصير باباً
+	// خلفياً للإغلاق الروتيني — يضغط ويسكّر بلا ما يقرا.
+	if strings.TrimSpace(req.Reason) == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب سبب الإغلاق")
+		return
+	}
+
+	issue, err := h.repo.Find(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "البلاغ غير موجود")
+		return
+	}
+
+	byID := middleware.EmployeeIDFromContext(r)
+	byName := ""
+	if e, err := h.employees.FindByID(byID); err == nil && e != nil {
+		byName = e.Name
+	}
+
+	// مخالفة الانضباط تنسجّل **قبل** الإغلاق: لو فشلت ما نريد بلاغاً
+	// مسكّراً بلا العقوبة الي انسكّر على أساسها.
+	if req.Action == model.AuditActionPenalize {
+		leaderID, err := h.repo.LeaderIDForBooking(issue.BookingID)
+		if err != nil || leaderID == "" {
+			WriteError(w, http.StatusBadRequest, "ما لكيت ليدر مرتبط بهذا الحجز")
+			return
+		}
+		points := req.Points
+		if points <= 0 {
+			points = 1
+		}
+		reason := model.AuditIssueLabels[issue.Kind] + " — " + req.Reason
+		bookingID := issue.BookingID
+		if _, _, err := h.discipline.Penalize(leaderID, "AUDIT_ISSUE", reason, &bookingID, points); err != nil {
+			WriteError(w, http.StatusBadRequest, "تعذر تسجيل المخالفة: "+err.Error())
+			return
+		}
+	}
+
+	if err := h.repo.Resolve(r.PathValue("id"), byID, byName, req.Action, req.Reason); err != nil {
 		WriteError(w, http.StatusBadRequest, "تعذر إغلاق البلاغ")
 		return
 	}
+
+	// ⚠️ إشعار للمحاسب الي سجّل البلاغ: بدونه يسجّل بلاغاً وما يدري
+	// أبداً شنو صار بيه.
+	if h.notify != nil {
+		msg := "بلاغ " + issue.BookingCode + " (" + model.AuditIssueLabels[issue.Kind] +
+			") انغلق — " + model.AuditActionLabels[req.Action] + ": " + req.Reason +
+			" · أغلقه " + byName
+		_ = h.notify.Create(issue.RaisedByID, "audit_issue_closed", msg)
+		if leaderID, err := h.repo.LeaderIDForBooking(issue.BookingID); err == nil && leaderID != "" {
+			_ = h.notify.Create(leaderID, "audit_issue_closed", msg)
+		}
+	}
+
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
