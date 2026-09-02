@@ -31,7 +31,23 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
   const { employee } = useSession()
   // مهندس الجودة (والأدمن) يتواصلون مع الزبون مباشرة ويشوفون تفاصيله كاملة.
   // المراقب المدقق يشوف بس تقرير عام (كم متابعة قيد الانتظار وكم فيها مشكلة).
+  // ⚠️⚠️ حاجزان مو واحد.
+  //
+  // چان `canContact` وحده يحكم **الرؤية والتصرّف سوا**، فالمراقب
+  // يدخل فرعاً يرجّعله **رقمين بس** بلا ولا صف. وصاحب النظام طلب
+  // صراحةً «المراقب لازم يشوف متابعة الجودة كاملة».
+  //
+  // وقراره: **يشوف ويدقّق — ما يتصل بالزبون**. لأنه لو اتصل وحكم
+  // يصير يدقّق شغلاً سوّاه هو، نفس الخلط الي شلناه بالتدقيق
+  // اليومي وبفواتير الليدر.
+  //
+  // ⚠️ والخادم يفرض نفس الفصل (quality_follow_up_handler.go:
+  // blockMonitorWrite) — التعطيل هنا حتى ما يضغط ويطلعله رفض،
+  // مو حماية.
   const canContact = employee?.role === 'QUALITY_ENGINEER' || employee?.role === 'ADMIN'
+  const canSeeDetail = canContact
+    || employee?.role === 'MONITOR'
+    || employee?.actualRole === 'OWNER' 
 
   const [items, setItems] = useState<QualityFollowUp[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,11 +105,18 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
     }
   }
 
-  if (!canContact) {
+  if (!canSeeDetail) {
     const pending = items.filter((i) => i.status === 'PENDING').length
     const issues = items.filter((i) => i.status === 'CONTACTED_ISSUE').length
     return (
       <div>
+      {/* ⚠️ زر مطفي بلا تفسير يخلي المستخدم يظن الشاشة خربانة. */}
+      {!canContact && (
+        <p className="mb-3 rounded-xl border px-4 py-2.5 text-[11px] leading-relaxed"
+          style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
+          ⓘ إنت تشوف وتدقّق كل التفاصيل — التواصل مع الزبون وتسجيل الحكم والكشف مسؤولية مهندس الجودة.
+        </p>
+      )}
         {!embedded && (
           <>
             <h2 className="text-2xl font-bold text-brand-900">متابعة الجودة بعد الحجوزات</h2>
@@ -222,14 +245,14 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                   <div className="flex flex-wrap gap-2">
                     <button
                       onClick={() => verdict(item.id, 'POSITIVE')}
-                      disabled={busy === item.id}
+                      disabled={busy === item.id || !canContact}
                       className="rounded-lg bg-green-100 px-4 py-2 text-sm font-bold text-green-800 hover:bg-green-200 disabled:opacity-50"
                     >
                       ✅ تقرير إيجابي
                     </button>
                     <button
                       onClick={() => verdict(item.id, 'NEGATIVE')}
-                      disabled={busy === item.id}
+                      disabled={busy === item.id || !canContact}
                       className="rounded-lg bg-red-100 px-4 py-2 text-sm font-bold text-red-800 hover:bg-red-200 disabled:opacity-50"
                     >
                       ⛔ تقرير سلبي — خصم نقطة من الليدر
@@ -239,7 +262,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                         الزبون سلاح يستعمله كل مرة. */}
                     <button
                       onClick={() => verdict(item.id, 'NEGATIVE', true)}
-                      disabled={busy === item.id}
+                      disabled={busy === item.id || !canContact}
                       className="rounded-lg border border-amber-400 bg-amber-50 px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
                     >
                       🔍 سلبي — بس يحتاج كشف (بلا خصم الحين)
@@ -267,14 +290,14 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                   <div className="mt-2 flex flex-wrap gap-2">
                     <button
                       onClick={() => inspect(item.id, 'CUSTOMER_RIGHT')}
-                      disabled={busy === item.id}
+                      disabled={busy === item.id || !canContact}
                       className="rounded-lg bg-red-100 px-4 py-2 text-sm font-bold text-red-800 hover:bg-red-200 disabled:opacity-50"
                     >
                       كلام الزبون صح — يتغرّم الليدر
                     </button>
                     <button
                       onClick={() => inspect(item.id, 'CUSTOMER_WRONG')}
-                      disabled={busy === item.id}
+                      disabled={busy === item.id || !canContact}
                       className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-bold text-slate-800 hover:bg-slate-200 disabled:opacity-50"
                     >
                       كلام الزبون كذب — علامة على الزبون

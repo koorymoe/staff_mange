@@ -17,6 +17,28 @@ func NewQualityFollowUpHandler(s *service.QualityFollowUpService) *QualityFollow
 }
 
 // GET /api/quality-follow-ups
+
+// blockMonitorWrite يمنع المراقب المدقق من مسارات الكتابة.
+//
+// ⚠️⚠️ المراقب ياخذ صلاحية `quality_control` افتراضياً بدوره، وكل
+// مسارات الجودة عليها نفس الحارس — فچان **يقدر يتصل بالزبون
+// ويسجّل الحكم والكشف** مثل مهندس الجودة بالضبط.
+//
+// وصاحب النظام قرر: المراقب **يشوف كلشي ويدقّق شغل المهندس، بس
+// ما يتصل بالزبون**. لأنه لو اتصل وحكم، يصير يدقّق شغلاً سوّاه
+// هو — نفس الخلط الي شلناه بالتدقيق اليومي وبفواتير الليدر.
+//
+// ⚠️ ورفض صريح مو تسجيل مخالفة: الأزرار چانت معروضة إله، فضغطه
+// عليها مو محاولة تجاوز.
+func blockMonitorWrite(w http.ResponseWriter, r *http.Request) bool {
+	if middleware.RoleFromContext(r) == "MONITOR" {
+		WriteError(w, http.StatusForbidden,
+			"المراقب يشوف ويدقّق — التواصل مع الزبون وتسجيل الحكم لمهندس الجودة")
+		return true
+	}
+	return false
+}
+
 func (h *QualityFollowUpHandler) List(w http.ResponseWriter, r *http.Request) {
 	items, err := h.service.List()
 	if err != nil {
@@ -28,6 +50,9 @@ func (h *QualityFollowUpHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/quality-follow-ups/{id}
 func (h *QualityFollowUpHandler) Update(w http.ResponseWriter, r *http.Request) {
+	if blockMonitorWrite(w, r) {
+		return
+	}
 	var req model.UpdateQualityFollowUpRequest
 	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
@@ -47,6 +72,9 @@ func (h *QualityFollowUpHandler) Update(w http.ResponseWriter, r *http.Request) 
 // تقرير سلبي: تنخصم نقطة «شكوى الزبائن» من الليدر فوراً — إلا إذا
 // طلب كشف، وقتها الغرامة تنتظر النتيجة (الزبون ممكن يكون يجذب).
 func (h *QualityFollowUpHandler) Verdict(w http.ResponseWriter, r *http.Request) {
+	if blockMonitorWrite(w, r) {
+		return
+	}
 	var req model.QualityVerdictRequest
 	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
@@ -72,6 +100,9 @@ func (h *QualityFollowUpHandler) Verdict(w http.ResponseWriter, r *http.Request)
 
 // POST /api/quality-follow-ups/{id}/inspect — نتيجة الكشف الميداني.
 func (h *QualityFollowUpHandler) Inspect(w http.ResponseWriter, r *http.Request) {
+	if blockMonitorWrite(w, r) {
+		return
+	}
 	var req model.QualityInspectionRequest
 	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")

@@ -893,7 +893,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/complaints/{id}/audit", middleware.Chain(http.HandlerFunc(complaintHandler.Audit), requireAuth,
 		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "MONITOR")))
 	mux.Handle("GET /api/complaints/{id}/events", middleware.Chain(http.HandlerFunc(complaintHandler.Events), requireAuth))
-	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth, requireQuality))
+	// ⚠️ القراءة تقبل **الدور** مو الصلاحية بس: صاحب النظام طلب
+	// «المراقب لازم يشوف متابعة الجودة كاملة»، وخريطة صلاحيات
+	// الأدوار **ما تنطبّق تلقائياً** — فمراقب ما انضغط عليه «طبّق
+	// الافتراضي» چان ينرفض بالقراءة أصلاً.
+	// والكتابة تبقى على requireQuality، وblockMonitorWrite يمنع
+	// المراقب منها حتى لو عنده الصلاحية.
+	mux.Handle("GET /api/quality-follow-ups", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.List), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER"}, "quality_control")))
 	mux.Handle("PUT /api/quality-follow-ups/{id}", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Update), requireAuth, requireQuality))
 	// حكم الجودة: تقرير إيجابي/سلبي، والكشف الميداني. نفس صلاحية الشاشة
 	// نفسها — الي يشوف المتابعة هو الي يحكم بيها.
