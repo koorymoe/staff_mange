@@ -5,6 +5,7 @@ import TodayBoard from '../components/TodayBoard'
 import { api } from '../api'
 import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse } from '../api'
 import { useSession, hasGpsSkill } from '../session'
+import { navItems, collectMonitorExtraLinks } from '../components/navTree'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { timeGreeting, GREETING_HOLD_MS } from '../greeting'
@@ -884,6 +885,35 @@ export default function Dashboard() {
                   </div>
                 </button>
               )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {/* ═══ صلاحيات إضافية مخوّلة للمراقب ═══
+          ⚠️ الروابط تُشتق من `navItems` نفسها (`collectMonitorExtraLinks`)
+          بلا قائمة يدوية ثانية — أي صلاحية تُمنح له لاحقاً تظهر هنا
+          تلقائياً بنفس الاسم والمسار الظاهرين بالقائمة الجانبية. */}
+      {(() => {
+        const extraLinks = collectMonitorExtraLinks(navItems, { employee, permissions, gpsServiceId })
+        if (extraLinks.length === 0) return null
+        return (
+          <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-b from-amber-50/60 to-white p-5">
+            <h3 className="mb-1 flex items-center gap-2 text-base font-extrabold text-amber-900">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2l2.5 6.5H21l-5.5 4 2 6.5-5.5-4-5.5 4 2-6.5L3 8.5h6.5z" /></svg>
+              صلاحيات إضافية مخوّلة لك
+            </h3>
+            <p className="mb-3 text-xs text-amber-700/80">
+              هذي شاشات ما من صلب شغلك كمراقب — مسموحلك تسويها لأنه انمنحت لك زيادة.
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {extraLinks.map((item) => (
+                <button key={item.to} onClick={() => navigate(item.to)}
+                  className="flex items-center gap-2 rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-right text-sm font-bold text-amber-900 transition hover:border-amber-300 hover:shadow-sm">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700">{item.icon}</span>
+                  <span className="flex-1">{item.label}</span>
+                </button>
+              ))}
             </div>
           </div>
         )

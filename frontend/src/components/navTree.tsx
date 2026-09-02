@@ -629,3 +629,78 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
   return true
 }
 
+// ═══ عزل شغل المراقب الأساسي عن الصلاحيات الإضافية ═══
+//
+// «هذا المراقب اني منطي هواي صلاحيات... بس جاي يتهيه بينهن وبين
+// الشغل الرئيسي مالته» — صاحب النظام يمنح المراقب صلاحيات تشغيلية
+// زايدة عن دوره (تنسيق الحجوزات، طلبات حذف الحجوزات، ...)، وصار
+// ما يميّز وين شغله الأساسي (الإشراف) ينتهي ووين يبدي شغله كمنفّذ
+// لصلاحية ممنوحة. القرار: فصل بصري بس — بلا لمس أي صلاحية ولا حارس.
+//
+// ⚠️ نسخة طبق الأصل عن `RoleDefaultPermissions["MONITOR"]`
+// (`internal/model/permission.go:100`) — أي تعديل هناك يلزم تعديلها هنا.
+const MONITOR_CORE_PERMISSIONS = new Set([
+  'staff_management', 'edit_employee_profile', 'kpi_management',
+  'view_bookings', 'manage_customers', 'manage_services', 'mission_tracking',
+  'inventory', 'complaints', 'finance', 'monitoring', 'auditing',
+  'quality_control', 'gps_system',
+])
+
+// صلاحيات العنصر الي **تقيّد فعلاً** — بعكس `unlockPermission` الي
+// «تفتح ولا تقيّد» (تعليق `NavItem.unlockPermission` أعلاه): عنصر
+// إله `unlockPermission` بس وموجود بـ`roles` المراقب يظهر له دائماً
+// بغض النظر عن الصلاحية، فما نعتبرها شرط فتح حقيقي هنا.
+function structuralPermissions(item: NavItem): string[] {
+  const list: string[] = []
+  if (item.permission) list.push(item.permission)
+  if (item.anyPermission) list.push(...item.anyPermission)
+  if (item.unitPermission) list.push(item.unitPermission)
+  return list
+}
+
+/**
+ * isExtraForMonitor: هل هذا العنصر ظاهر للمراقب **بسبب صلاحية ممنوحة
+ * زيادة**، مو بشغله الاعتيادي؟
+ *
+ * ⚠️ ما نقارن بمصفوفة صلاحيات افتراضية بالتجريد (`RoleDefaultPermissions`
+ * بالخادم **ما تُطبَّق تلقائياً** — موظف حقيقي ممكن يوصل يشتغل بدون
+ * حتى صلاحياته الأساسية مطبَّقة، وقتها أي مقارنة "لو عنده الافتراضي
+ * بس" تعطي نتيجة مضلِّلة). بدلها: نفحص **شروط فتح العنصر نفسه**
+ * (`permission`/`anyPermission`/`unitPermission`، لا `unlockPermission`
+ * الي ما يقيّد أصلاً): لو أي شرط منها صلاحية أساسية، العنصر جزء من
+ * شغله الاعتيادي — ولو كل الشروط صلاحيات زايدة، فهو ظاهر له بسببها بس.
+ */
+export function isExtraForMonitor(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
+  if (ctx.employee?.role !== 'MONITOR') return false
+  if (!isNavVisible(item, ctx, unitGranted)) return false
+  const structural = structuralPermissions(item)
+  if (structural.length === 0) return false
+  return !structural.some((p) => MONITOR_CORE_PERMISSIONS.has(p))
+}
+
+/**
+ * collectMonitorExtraLinks: كل شاشة ظاهرة للمراقب بصلاحية إضافية —
+ * دفعة وحدة، مرتّبة كما تظهر بالقائمة. تستعملها الرئيسية حتى تعرض
+ * **نفس** الروابط الي عليها شارة «إضافية» بالقائمة الجانبية، بلا
+ * قائمة يدوية ثانية تفترق عن الأولى بأول تعديل.
+ */
+export function collectMonitorExtraLinks(items: NavItem[], ctx: NavContext, unitGranted = false): NavItem[] {
+  if (ctx.employee?.role !== 'MONITOR') return []
+  const seen = new Set<string>()
+  const out: NavItem[] = []
+  const walk = (list: NavItem[], granted: boolean) => {
+    for (const item of list) {
+      if (item.divider) continue
+      if (!isNavVisible(item, ctx, granted)) continue
+      const childGranted =
+        granted ||
+        (!!item.unitPermission && (ctx.employee?.role === 'ADMIN' || ctx.permissions.includes(item.unitPermission)))
+      if (item.children) { walk(item.children, childGranted); continue }
+      if (!item.to || seen.has(item.to)) continue
+      if (isExtraForMonitor(item, ctx, granted)) { seen.add(item.to); out.push(item) }
+    }
+  }
+  walk(items, unitGranted)
+  return out
+}
+

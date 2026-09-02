@@ -42,7 +42,7 @@ const notifTargets: Record<string, string> = {
   extra_task_cancelled: '/my-extra-tasks',
 }
 import AnnouncementTicker from './AnnouncementTicker'
-import { navItems, isNavVisible, type NavItem } from './navTree'
+import { navItems, isNavVisible, isExtraForMonitor, type NavItem } from './navTree'
 
 
 const loadStoredEmployee = (): Employee | null => {
@@ -311,6 +311,11 @@ export default function Layout() {
   const role = employee?.role
   const isVisible = (item: NavItem, unitGranted = false): boolean =>
     isNavVisible(item, { employee, permissions: employeePermissions, gpsServiceId }, unitGranted)
+  // ⚠️ عزل شغل المراقب: عنصر ظاهر بصلاحية ممنوحة زيادة عن دوره، مو
+  // من صميم شغله (الإشراف). يُشار له بشارة صغيرة بس — بلا نقل ولا
+  // إخفاء، حتى ما تفترق القائمة عن الوصول الفعلي.
+  const isExtra = (item: NavItem, unitGranted = false): boolean =>
+    isExtraForMonitor(item, { employee, permissions: employeePermissions, gpsServiceId }, unitGranted)
   // الفني العادي (مو ليدر): قائمته مسطّحة — تنستعمل بترتيب العرض تحت
   const isPlainTechnician = (role === 'TECHNICIAN' || role === 'TECHNICAL') && !employee?.isLeader
 
@@ -392,6 +397,9 @@ export default function Layout() {
   // تنعرض له بدون فحص صلاحياتها التفصيلية.
   // العنصر وصلنا منضّف من prune — ما نفلتر ولا نحسب صلاحيات هنا من جديد.
   const renderNavItem = (item: PrunedItem, depth: number = 0): React.ReactNode => {
+    // ⚠️ صلاحية ممنوحة زيادة عن دور المراقب — شارة بصرية بس، بلا
+    // تأثير على الظهور أو الترتيب.
+    const extra = !item.divider && isExtra(item, item.granted)
 
     if (item.divider) {
       // عنوان قسم بسيط (بلا خطوط) مقابل الفاصل الي يفصل مجموعتين
@@ -491,7 +499,17 @@ export default function Layout() {
               {/* شريط أزرق على الحافة اليسرى للعنصر النشط */}
               {/* شعاع الإنارة على الحافة: يمشي مع العنصر النشط */}
               {isActive && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-sky-300 shadow-[0_0_10px_2px_rgba(125,211,252,0.9)]" />}
-              {!collapsed && <span className="flex-1 text-right">{item.label}</span>}
+              {!collapsed && (
+                <span className="flex flex-1 items-center gap-1.5 text-right">
+                  {item.label}
+                  {extra && (
+                    <span title="صلاحية إضافية عن دورك الأساسي كمراقب"
+                      className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-200 ring-1 ring-amber-300/40">
+                      إضافية
+                    </span>
+                  )}
+                </span>
+              )}
               <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md transition-all duration-300 ${
                 isActive ? 'bg-white/25 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/[0.12]'
               }`}>{item.icon}</span>
@@ -513,7 +531,15 @@ export default function Layout() {
           }>
           {({ isActive }) => (
             <>
-              <span className="flex-1 text-right">{item.label}</span>
+              <span className="flex flex-1 items-center gap-1.5 text-right">
+                {item.label}
+                {extra && (
+                  <span title="صلاحية إضافية عن دورك الأساسي كمراقب"
+                    className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-200 ring-1 ring-amber-300/40">
+                    إضافية
+                  </span>
+                )}
+              </span>
               {isActive && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" style={{ flexShrink: 0 }}/>}
             </>
           )}
@@ -539,7 +565,15 @@ export default function Layout() {
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full transition-all duration-300 ${
               isActive ? 'bg-sky-300 shadow-[0_0_8px_2px_rgba(125,211,252,0.8)]' : 'bg-white/20 group-hover:bg-white/40'
             }`} />
-            <span className="flex-1 text-right">{item.label}</span>
+            <span className="flex flex-1 items-center gap-1.5 text-right">
+              {item.label}
+              {extra && (
+                <span title="صلاحية إضافية عن دورك الأساسي كمراقب"
+                  className="rounded-full bg-amber-400/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-200 ring-1 ring-amber-300/40">
+                  إضافية
+                </span>
+              )}
+            </span>
           </>
         )}
       </NavLink>
