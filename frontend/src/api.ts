@@ -1529,7 +1529,7 @@ export interface DirectedProject {
 /** ═══ صندوق المراقب ═══
  *  كل حدث لازم عين المراقب عليه ينوصل هنا كصف بانتظار قرار. */
 export type MonitorStage =
-  | 'INVOICE_BEFORE_AUDIT' | 'INVOICE_AFTER_AUDIT'
+  | 'INVOICE_BEFORE_AUDIT' | 'INVOICE_AFTER_AUDIT' | 'INVOICE_ADJUSTED'
   | 'BOOKING_BEFORE_CONFIRM' | 'BOOKING_AFTER_CONFIRM' | 'BOOKING_AFTER_COMPLETE'
   | 'PROCUREMENT_FULFILLED' | 'QUALITY_VERDICT' | 'GPS_DEVICE_DONE'
   | 'SOLAR_QUOTED'
@@ -3978,11 +3978,12 @@ export const api = {
   getProjectsDirectedToMe: () =>
     request<{ projects: DirectedProject[] }>('/projects/delegated-to-me'),
   // ── صندوق المراقب ──
-  getMonitorReviews: (params: { stage?: string; status?: string; ownerRole?: string } = {}) => {
+  getMonitorReviews: (params: { stage?: string; status?: string; ownerRole?: string; limit?: number } = {}) => {
     const q = new URLSearchParams()
     if (params.stage) q.set('stage', params.stage)
     if (params.status) q.set('status', params.status)
     if (params.ownerRole) q.set('ownerRole', params.ownerRole)
+    if (params.limit) q.set('limit', String(params.limit))
     const qs = q.toString()
     return request<MonitorReview[]>(`/monitor-reviews${qs ? `?${qs}` : ''}`)
   },
