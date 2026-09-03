@@ -241,8 +241,13 @@ export const navItems: NavItem[] = [
         // المحاسب أصلاً، فما يتكرر عندهم شي.
         hideForRoles: ['FINANCE'],
         children: [
-          { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
-      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
+          // ⚠️⚠️ مخفيّتان عن المراقب صراحة — شغل المحاسب الشخصي (يأشّر
+          // "مطابق/غير مطابق" بنفسه)، والخادم أصلاً يرفض المراقب لو
+          // حاول يدقق حجزاً مباشرة ("المراقب يراجع، ما يصدر القرار").
+          // فبقاؤهما بقائمته يفتح شاشة أزرارها كلها مرفوضة، بلا فايدة —
+          // شغلته الحقيقية هنا "بلاغات أخطاء التدقيق" تحتها بس.
+          { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
+      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues' },
@@ -467,8 +472,11 @@ export const navItems: NavItem[] = [
     to: '/unit-finance', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
     unitPermission: 'unit_finance',
     children: [
-      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
-      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance' },
+      // ⚠️⚠️ مخفيّتان عن المراقب صراحة — راجع نفس التعليق بـ«إدارة
+      // الحسابات» فوگ. شغل المحاسب الشخصي، والخادم يرفض المراقب لو
+      // حاول يدقق حجزاً مباشرة أصلاً.
+      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
+      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
       { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues' },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
