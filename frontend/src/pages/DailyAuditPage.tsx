@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type DailyAuditReport, type DailyAuditRow } from '../api'
 import { useSession } from '../session'
+import SearchBar from '../components/SearchBar'
+import EmptyState from '../components/EmptyState'
+import { matches } from '../utils/search'
 
 /**
  * التدقيق اليومي.
@@ -64,6 +67,7 @@ function Tile({ label, value, hint, color, ink, tint, icon }: {
 export default function DailyAuditPage() {
   const navigate = useNavigate()
   const [date, setDate] = useState(todayStr())
+  const [search, setSearch] = useState('')
   const [rep, setRep] = useState<DailyAuditReport | null>(null)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
@@ -167,10 +171,10 @@ export default function DailyAuditPage() {
           اليوم بلا ما يرجع لفوگ. */}
       <div className="sticky top-2 z-10 flex flex-wrap items-center gap-3 rounded-2xl border border-slate-100 bg-white/90 p-4 shadow-sm backdrop-blur">
         <label className="text-sm font-bold text-slate-600">📆 التاريخ</label>
-        <input type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)}
+        <input type="date" value={date} onChange={(e) => { if (e.target.value) { setDate(e.target.value); setSearch('') } }}
           className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100" />
         {date !== todayStr() && (
-          <button onClick={() => setDate(todayStr())}
+          <button onClick={() => { setDate(todayStr()); setSearch('') }}
             className="rounded-lg border border-brand-500 px-4 py-2 text-sm font-bold text-brand-700 transition hover:bg-brand-50">
             ارجع لليوم
           </button>
@@ -186,6 +190,13 @@ export default function DailyAuditPage() {
           🧾 الفواتير بانتظار الاعتماد ←
         </a>
       </div>
+
+      {/* بحث برقم الحجز أو اسم الزبون أو رقم هاتفه — `matches` تعالج
+          الهمزة والأرقام المكتوبة عربي، وتفصل الأرقام تلقائياً فتقارن
+          رقم الهاتف برقم مهما كتبه المحاسب بشرطات أو مسافات. */}
+      {rep && rep.rows.length > 0 && (
+        <SearchBar value={search} onChange={setSearch} placeholder="بحث برقم الحجز أو اسم الزبون أو رقم هاتفه..." />
+      )}
 
       {!rep && loadErr && (
         <div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3">
@@ -261,7 +272,9 @@ export default function DailyAuditPage() {
           </div>
 
           <div className="space-y-3">
-            {rep.rows.map((row) => (
+            {rep.rows
+              .filter((row) => matches([row.code, row.customerName, row.customerPhone], search))
+              .map((row) => (
               <div
                 key={row.id}
                 /* شريط جانبي بلون الحالة: أحمر إذا محوّل للرقابة، أخضر
@@ -355,6 +368,9 @@ export default function DailyAuditPage() {
                 )}
               </div>
             ))}
+            {rep.rows.length > 0 && rep.rows.filter((row) => matches([row.code, row.customerName, row.customerPhone], search)).length === 0 && (
+              <EmptyState icon="🔍" title="ماكو نتيجة" reason="ماكو حجز اليوم يطابق البحث برقم الحجز أو اسم الزبون أو هاتفه" />
+            )}
             {rep.rows.length === 0 && (
               /* الفراغ لازم يفسّر نفسه: القائمة منجزة بس، فـ«ماكو حجوزات»
                  لحاله يخلي المحاسب يظن إنه النظام ما جاب البيانات. */
