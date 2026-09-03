@@ -75,7 +75,14 @@ export default function MyRanking() {
     if (!employee) return
     // بلا صلاحية تصنيف، نرجع للدور — حتى ما يشوف الموظف شاشة فاضية
     // بينما هو فعلاً عنده زملاء بنفس الدور.
-    const p = activeTrack
+    // ⚠️ مسار المبيعات استثناء: صاحب النظام رفض "نفس الشغل" هنا
+    // تحديداً — إداري الكوادر ومهندس الجودة يحملون صلاحية
+    // sales_booking بحكم دورهم، فكانوا يدخلون ترتيب المبيعات ويخلطونه
+    // مع موظفي المبيعات الحقيقيين. `strictRole` يرجعه لترتيب الدور
+    // الصارم بدل ترتيب الصلاحية.
+    const p = activeTrack?.strictRole
+      ? api.getRoleKpiLeaderboard(activeTrack.strictRole)
+      : activeTrack
       ? api.getPermissionKpiLeaderboard(activeTrack.permission)
       : api.getRoleKpiLeaderboard(employee.role)
     p.then(setBoard).catch(() => setBoard(null))
@@ -298,7 +305,9 @@ export default function MyRanking() {
       )}
 
       <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-        ⓘ الترتيب بين الي يشتغلون <b>نفس الشغل</b> ({roleLabel}) — مو حسب مسمّى الدور.
+        {activeTrack?.strictRole
+          ? <>ⓘ الترتيب بين موظفي <b>{roleLabel}</b> فقط (حسب الدور) — بلا خلط مع أدوار ثانية عندها نفس الصلاحية.</>
+          : <>ⓘ الترتيب بين الي يشتغلون <b>نفس الشغل</b> ({roleLabel}) — مو حسب مسمّى الدور.</>}
         {' '}آخر {periodDays} يوم، والمقارنة مع {periodLabel}.
         {myTracks.length > 1 && ` وإنت تشتغل ${myTracks.length} شغلات، فعندك ${myTracks.length} تصنيفات.`}
       </p>

@@ -21,6 +21,16 @@ export type RankingTrack = {
   /** اسم المسار بالواجهة */
   label: string
   icon: string
+  /**
+   * ⚠️ استثناء صريح لمسار المبيعات — صاحب النظام رفض مبدأ "نفس
+   * الشغل" هنا تحديداً: صلاحية `sales_booking` يحملها أصلاً إداري
+   * الكوادر ومهندس الجودة بحكم دورهم (`RoleDefaultPermissions`)،
+   * فترتيب المبيعات كان يخلطهم مع موظفي المبيعات الحقيقيين. لمّن
+   * `strictRole` موجودة، المسار يرجع لترتيب الدور الصارم
+   * (`RoleLeaderboard`) بدل ترتيب الصلاحية — بس لهذا المسار، بقية
+   * المسارات تبقى «حسب الشغل» متل ما هي.
+   */
+  strictRole?: string
 }
 
 /**
@@ -33,7 +43,7 @@ export type RankingTrack = {
 export const RANKING_TRACKS: RankingTrack[] = [
   { permission: 'coordinator',        label: 'تنسيق الحجوزات',   icon: '🗂️' },
   { permission: 'staff_management',   label: 'إدارة الكوادر',    icon: '👥' },
-  { permission: 'sales_booking',      label: 'المبيعات',         icon: '🤝' },
+  { permission: 'sales_booking',      label: 'المبيعات',         icon: '🤝', strictRole: 'SALES' },
   { permission: 'quality_control',    label: 'الجودة',           icon: '⭐' },
   { permission: 'finance',            label: 'الحسابات',         icon: '💰' },
   { permission: 'procurement',        label: 'المشتريات',        icon: '📦' },
