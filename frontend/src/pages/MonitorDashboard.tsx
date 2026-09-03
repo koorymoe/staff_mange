@@ -2,7 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import { api, type Booking, type Employee, type Stats, type VehicleScoreSummary, type TechnicianWashSummary, type FinanceSummary } from '../api'
 import { useSession } from '../session'
 import StatTile from '../components/StatTile'
+import SearchBar from '../components/SearchBar'
+import Pager from '../components/Pager'
+import EmptyState from '../components/EmptyState'
+import { matches } from '../utils/search'
 import { Link, useNavigate } from 'react-router-dom'
+
+const PAGE_SIZE = 10
 
 type Tab = 'overview' | 'crews' | 'audit' | 'finance' | 'vehicles'
 
@@ -17,6 +23,17 @@ export default function MonitorDashboard() {
   const [loading, setLoading] = useState(true)
   const [vehicleScores, setVehicleScores] = useState<VehicleScoreSummary[]>([])
   const [techWashSummaries, setTechWashSummaries] = useState<TechnicianWashSummary[]>([])
+
+  // ⚠️ بحث وترقيم بالواجهة فقط — منطق جلب/فلترة activeBookings/
+  // unverifiedBookings/completedBookings نفسه ما يتغيّر.
+  const [crewSearch, setCrewSearch] = useState('')
+  const [crewPage, setCrewPage] = useState(1)
+  const [noCrewPage, setNoCrewPage] = useState(1)
+  const [unverifiedPage, setUnverifiedPage] = useState(1)
+  const [techAuditSearch, setTechAuditSearch] = useState('')
+  const [techAuditPage, setTechAuditPage] = useState(1)
+  const [financeSearch, setFinanceSearch] = useState('')
+  const [financePage, setFinancePage] = useState(1)
 
   const load = useCallback(() => {
     const monthAgo = new Date()
@@ -64,6 +81,20 @@ export default function MonitorDashboard() {
   const techs = employees.filter(e => e.role === 'TECHNICIAN' || e.role === 'PROJECT_MANAGER')
   const coordinators = employees.filter(e => e.role === 'HR_COORDINATOR')
   const sales = employees.filter(e => e.role === 'SALES')
+
+  const filteredCrew = activeBookings.filter(b => matches([b.code, b.customer?.name], crewSearch))
+  const pagedCrew = filteredCrew.slice((crewPage - 1) * PAGE_SIZE, crewPage * PAGE_SIZE)
+
+  const noCrew = activeBookings.filter(b => b.assignments.length === 0)
+  const pagedNoCrew = noCrew.slice((noCrewPage - 1) * PAGE_SIZE, noCrewPage * PAGE_SIZE)
+
+  const pagedUnverified = unverifiedBookings.slice((unverifiedPage - 1) * PAGE_SIZE, unverifiedPage * PAGE_SIZE)
+
+  const filteredTechAudit = completedBookings.filter(b => matches([b.code, b.customer?.name], techAuditSearch))
+  const pagedTechAudit = filteredTechAudit.slice((techAuditPage - 1) * PAGE_SIZE, techAuditPage * PAGE_SIZE)
+
+  const filteredFinance = completedBookings.filter(b => matches([b.code, b.customer?.name], financeSearch))
+  const pagedFinance = filteredFinance.slice((financePage - 1) * PAGE_SIZE, financePage * PAGE_SIZE)
 
   const tabs: { key: Tab; label: string; count?: number }[] = [
     { key: 'overview', label: 'نظرة عامة' },
@@ -204,14 +235,18 @@ export default function MonitorDashboard() {
               )}
 
               {/* Stats Summary */}
+              {/* ⚠️ الإيرادات من finance.totalCollected/unverifiedAmount — نفس
+                  الرقم الظاهر بلوحة الرئيسية («إجمالي المحصّل»)، مو
+                  stats.totals.totalRevenue الي يحسب بلا فلترة حالة وبلا
+                  المقدم فيطلع رقماً مختلفاً لنفس المفهوم. */}
               {stats && (
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {[
                     { label: 'إجمالي الحجوزات', value: stats.totals.totalBookings },
                     { label: 'إجمالي العملاء', value: stats.totals.totalCustomers },
                     { label: 'المنجزة', value: stats.totals.completedBookings },
-                    { label: 'إجمالي الإيرادات', value: `${(stats.totals.totalRevenue || 0).toLocaleString('ar-IQ')} د.ع` },
-                    { label: 'إيرادات غير مدققة', value: `${(stats.totals.unverifiedRevenue || 0).toLocaleString('ar-IQ')} د.ع` },
+                    { label: 'إجمالي الإيرادات', value: `${(finance?.totalCollected || 0).toLocaleString('ar-IQ')} د.ع` },
+                    { label: 'إيرادات غير مدققة', value: `${(finance?.unverifiedAmount || 0).toLocaleString('ar-IQ')} د.ع` },
                     { label: 'حجوزات عاجلة', value: stats.totals.urgentPending },
                   ].map(s => (
                     <div key={s.label} className="rounded-xl bg-white p-4 text-center shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
@@ -227,15 +262,20 @@ export default function MonitorDashboard() {
           {/* ═══ Crews Tab ═══ */}
           {tab === 'crews' && (
             <div className="space-y-4">
-              <div className="rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]">
-                <h3 className="mb-1 text-lg font-bold text-brand-900">الكوادر الميدانية الحالية</h3>
-                <p className="mb-4 text-sm text-slate-400">الحجوزات المثبتة والجاري تنفيذها مع الكوادر المعينة</p>
+              <div className="rounded-2xl p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]" style={{ backgroundColor: 'var(--sf-card)' }}>
+                <h3 className="mb-1 text-lg font-bold" style={{ color: 'var(--t-heading)' }}>الكوادر الميدانية الحالية</h3>
+                <p className="mb-4 text-sm" style={{ color: 'var(--t-faint)' }}>الحجوزات المثبتة والجاري تنفيذها مع الكوادر المعينة</p>
 
-                {activeBookings.length === 0 ? (
-                  <p className="rounded-xl bg-slate-50 p-8 text-center text-slate-400">لا توجد حجوزات نشطة حالياً</p>
+                <div className="mb-4">
+                  <SearchBar value={crewSearch} onChange={(v) => { setCrewSearch(v); setCrewPage(1) }} placeholder="بحث بالكود أو اسم الزبون..." />
+                </div>
+
+                {filteredCrew.length === 0 ? (
+                  <EmptyState icon="🚐" title="لا توجد حجوزات نشطة"
+                    reason={activeBookings.length === 0 ? 'ماكو حجز مثبّت أو جاري التنفيذ حالياً' : 'ماكو نتيجة تطابق البحث'} />
                 ) : (
                   <div className="space-y-3">
-                    {activeBookings.map(b => (
+                    {pagedCrew.map(b => (
                       <div key={b.id} className={`rounded-xl border-2 p-4 ${
                         b.status === 'IN_PROGRESS' ? 'border-violet-200 bg-violet-50/30' : 'border-blue-200 bg-blue-50/30'
                       }`}>
@@ -295,6 +335,11 @@ export default function MonitorDashboard() {
                         </div>
                       </div>
                     ))}
+                  </div>
+                )}
+                {filteredCrew.length > 0 && (
+                  <div className="mt-4">
+                    <Pager page={crewPage} perPage={PAGE_SIZE} total={filteredCrew.length} unit="حجز" onPage={setCrewPage} onPerPage={() => {}} perPageOptions={[PAGE_SIZE]} />
                   </div>
                 )}
               </div>
@@ -359,34 +404,33 @@ export default function MonitorDashboard() {
               </div>
 
               {/* Bookings without crew */}
-              {(() => {
-                const noCrew = activeBookings.filter(b => b.assignments.length === 0)
-                if (noCrew.length === 0) return null
-                return (
-                  <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-5">
-                    <div className="mb-3 flex items-center justify-between gap-3">
-                      <h3 className="text-lg font-bold text-amber-800">حجوزات مثبتة بدون كادر</h3>
-                      <Link to="/bookings"
-                        className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700">
-                        كلّفهن ({noCrew.length}) ←
-                      </Link>
-                    </div>
-                    <div className="space-y-2">
-                      {noCrew.map(b => (
-                        <div key={b.id} className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
-                            <span className="text-sm text-slate-700">{b.customer?.name}</span>
-                          </div>
-                          <button onClick={() => navigate('/coordinator')} className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-white hover:bg-amber-600">
-                            توجيه كادر
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+              {noCrew.length > 0 && (
+                <div className="rounded-2xl border-2 border-amber-200 bg-amber-50 p-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <h3 className="text-lg font-bold text-amber-800">حجوزات مثبتة بدون كادر</h3>
+                    <Link to="/bookings"
+                      className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700">
+                      كلّفهن ({noCrew.length}) ←
+                    </Link>
                   </div>
-                )
-              })()}
+                  <div className="space-y-2">
+                    {pagedNoCrew.map(b => (
+                      <div key={b.id} className="flex items-center justify-between rounded-xl bg-white px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
+                          <span className="text-sm text-slate-700">{b.customer?.name}</span>
+                        </div>
+                        <button onClick={() => navigate('/coordinator')} className="rounded-lg bg-amber-500 px-3 py-1 text-xs font-bold text-white hover:bg-amber-600">
+                          توجيه كادر
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-3">
+                    <Pager page={noCrewPage} perPage={PAGE_SIZE} total={noCrew.length} unit="حجز" onPage={setNoCrewPage} onPerPage={() => {}} perPageOptions={[PAGE_SIZE]} />
+                  </div>
+                </div>
+              )}
 
               {/* Completed but unverified */}
               <div className="rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]">
@@ -411,21 +455,26 @@ export default function MonitorDashboard() {
                     جميع المبالغ مدققة
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {unverifiedBookings.map(b => (
-                      <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
-                          <span className="text-sm text-slate-700">{b.customer?.name}</span>
+                  <>
+                    <div className="space-y-2">
+                      {pagedUnverified.map(b => (
+                        <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50/50 px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <span className="font-mono text-sm font-bold text-brand-600">{b.code}</span>
+                            <span className="text-sm text-slate-700">{b.customer?.name}</span>
+                          </div>
+                          <div className="flex items-center gap-3 text-sm">
+                            <span className="text-slate-500">المستلم: <strong className="text-brand-700">{(b.amountCollected || 0).toLocaleString('ar-IQ')}</strong></span>
+                            <span className="text-slate-500">المقدم: <strong className="text-brand-700">{(b.advancePaid || 0).toLocaleString('ar-IQ')}</strong></span>
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">بانتظار التدقيق</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3 text-sm">
-                          <span className="text-slate-500">المستلم: <strong className="text-brand-700">{(b.amountCollected || 0).toLocaleString('ar-IQ')}</strong></span>
-                          <span className="text-slate-500">المقدم: <strong className="text-brand-700">{(b.advancePaid || 0).toLocaleString('ar-IQ')}</strong></span>
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">بانتظار التدقيق</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                    <div className="mt-3">
+                      <Pager page={unverifiedPage} perPage={PAGE_SIZE} total={unverifiedBookings.length} unit="حجز" onPage={setUnverifiedPage} onPerPage={() => {}} perPageOptions={[PAGE_SIZE]} />
+                    </div>
+                  </>
                 )}
               </div>
 
@@ -434,11 +483,16 @@ export default function MonitorDashboard() {
                 <h3 className="mb-1 text-lg font-bold text-brand-900">تدقيق إنجاز الفنيين</h3>
                 <p className="mb-4 text-sm text-slate-400">الحجوزات المكتملة وتفاصيل الإنجاز</p>
 
-                {completedBookings.length === 0 ? (
-                  <p className="text-sm text-slate-400">لا توجد حجوزات مكتملة</p>
+                <div className="mb-3">
+                  <SearchBar value={techAuditSearch} onChange={(v) => { setTechAuditSearch(v); setTechAuditPage(1) }} placeholder="بحث بالكود أو اسم الزبون..." />
+                </div>
+
+                {filteredTechAudit.length === 0 ? (
+                  <EmptyState icon="🧾" title="لا توجد حجوزات"
+                    reason={completedBookings.length === 0 ? 'ماكو حجز مكتمل بعد' : 'ماكو نتيجة تطابق البحث'} />
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {completedBookings.slice(0, 20).map(b => (
+                  <div className="space-y-2">
+                    {pagedTechAudit.map(b => (
                       <div key={b.id} className="rounded-xl border border-slate-100 px-4 py-3">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-3">
@@ -471,6 +525,11 @@ export default function MonitorDashboard() {
                     ))}
                   </div>
                 )}
+                {filteredTechAudit.length > 0 && (
+                  <div className="mt-3">
+                    <Pager page={techAuditPage} perPage={PAGE_SIZE} total={filteredTechAudit.length} unit="حجز" onPage={setTechAuditPage} onPerPage={() => {}} perPageOptions={[PAGE_SIZE]} />
+                  </div>
+                )}
               </div>
 
               {/* Sales audit */}
@@ -499,20 +558,18 @@ export default function MonitorDashboard() {
           {/* ═══ Finance Tab ═══ */}
           {tab === 'finance' && (
             <div className="space-y-4">
-              {stats && (
+              {/* ⚠️ الثلاثة من finance.* بنفس نطاق Booking.status='COMPLETED' —
+                  نفس المصدر المستعمل بلوحة الرئيسية («إجمالي المحصّل»)،
+                  والمجموع (غير مدققة + مدققة) يطابق الإجمالي دائماً لأنهن
+                  مشتقّتان من نفس الاستعلام بنفس الشرط. */}
+              {finance && (
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl bg-gradient-to-bl from-emerald-500 to-emerald-600 p-5 text-white">
-                    <p className="text-sm font-medium text-emerald-100">إجمالي الإيرادات</p>
-                    <p className="mt-1 text-2xl font-black">{(stats.totals.totalRevenue || 0).toLocaleString('ar-IQ')} <span className="text-sm">د.ع</span></p>
-                  </div>
-                  <div className="rounded-2xl bg-gradient-to-bl from-amber-500 to-amber-600 p-5 text-white">
-                    <p className="text-sm font-medium text-amber-100">غير مدققة</p>
-                    <p className="mt-1 text-2xl font-black">{(stats.totals.unverifiedRevenue || 0).toLocaleString('ar-IQ')} <span className="text-sm">د.ع</span></p>
-                  </div>
-                  <div className="rounded-2xl bg-gradient-to-bl from-blue-500 to-blue-600 p-5 text-white">
-                    <p className="text-sm font-medium text-blue-100">مدققة</p>
-                    <p className="mt-1 text-2xl font-black">{((stats.totals.totalRevenue || 0) - (stats.totals.unverifiedRevenue || 0)).toLocaleString('ar-IQ')} <span className="text-sm">د.ع</span></p>
-                  </div>
+                  <StatTile label="إجمالي الإيرادات" icon="💰" tone="success"
+                    value={`${finance.totalCollected.toLocaleString('ar-IQ')} د.ع`} hint="حجوزات منجزة، شامل المقدم" />
+                  <StatTile label="غير مدققة" icon="⏳" tone="warning"
+                    value={`${finance.unverifiedAmount.toLocaleString('ar-IQ')} د.ع`} />
+                  <StatTile label="مدققة" icon="✔" tone="info"
+                    value={`${finance.verifiedAmount.toLocaleString('ar-IQ')} د.ع`} />
                 </div>
               )}
 
@@ -543,39 +600,48 @@ export default function MonitorDashboard() {
               {/* Completed bookings revenue detail */}
               <div className="rounded-2xl bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.04)]">
                 <h3 className="mb-4 text-lg font-bold text-brand-900">تفاصيل الإيرادات</h3>
-                {completedBookings.length === 0 ? (
-                  <p className="text-sm text-slate-400">لا توجد حجوزات مكتملة</p>
+                <div className="mb-3">
+                  <SearchBar value={financeSearch} onChange={(v) => { setFinanceSearch(v); setFinancePage(1) }} placeholder="بحث بالكود أو اسم الزبون..." />
+                </div>
+                {filteredFinance.length === 0 ? (
+                  <EmptyState icon="💵" title="لا توجد حجوزات"
+                    reason={completedBookings.length === 0 ? 'ماكو حجز مكتمل بعد' : 'ماكو نتيجة تطابق البحث'} />
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-slate-100 text-right text-xs text-slate-400">
-                          <th className="pb-2 pr-3">الكود</th>
-                          <th className="pb-2">الزبون</th>
-                          <th className="pb-2">التكلفة المقدرة</th>
-                          <th className="pb-2">المستلم</th>
-                          <th className="pb-2">المقدم</th>
-                          <th className="pb-2">الحالة</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {completedBookings.slice(0, 30).map(b => (
-                          <tr key={b.id} className="border-b border-slate-50">
-                            <td className="py-2 pr-3 font-mono font-bold text-brand-600">{b.code}</td>
-                            <td className="text-slate-700">{b.customer?.name}</td>
-                            <td className="text-slate-600">{(b.quotedPrice || 0).toLocaleString('ar-IQ')}</td>
-                            <td className="font-bold text-brand-700">{(b.amountCollected || 0).toLocaleString('ar-IQ')}</td>
-                            <td className="text-slate-600">{(b.advancePaid || 0).toLocaleString('ar-IQ')}</td>
-                            <td>
-                              <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                                b.amountVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                              }`}>{b.amountVerified ? 'مدقق' : 'بانتظار'}</span>
-                            </td>
+                  <>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100 text-right text-xs text-slate-400">
+                            <th className="pb-2 pr-3">الكود</th>
+                            <th className="pb-2">الزبون</th>
+                            <th className="pb-2">التكلفة المقدرة</th>
+                            <th className="pb-2">المستلم</th>
+                            <th className="pb-2">المقدم</th>
+                            <th className="pb-2">الحالة</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {pagedFinance.map(b => (
+                            <tr key={b.id} className="border-b border-slate-50">
+                              <td className="py-2 pr-3 font-mono font-bold text-brand-600">{b.code}</td>
+                              <td className="text-slate-700">{b.customer?.name}</td>
+                              <td className="text-slate-600">{(b.quotedPrice || 0).toLocaleString('ar-IQ')}</td>
+                              <td className="font-bold text-brand-700">{(b.amountCollected || 0).toLocaleString('ar-IQ')}</td>
+                              <td className="text-slate-600">{(b.advancePaid || 0).toLocaleString('ar-IQ')}</td>
+                              <td>
+                                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                                  b.amountVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                }`}>{b.amountVerified ? 'مدقق' : 'بانتظار'}</span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="mt-3">
+                      <Pager page={financePage} perPage={PAGE_SIZE} total={filteredFinance.length} unit="حجز" onPage={setFinancePage} onPerPage={() => {}} perPageOptions={[PAGE_SIZE]} />
+                    </div>
+                  </>
                 )}
               </div>
             </div>
@@ -614,7 +680,7 @@ export default function MonitorDashboard() {
                         </tr>
                       ))}
                       {vehicleScores.length === 0 && (
-                        <tr><td colSpan={3} className="py-6 text-center text-slate-400">لا توجد تقييمات مسجلة آخر 30 يوم</td></tr>
+                        <tr><td colSpan={3}><EmptyState icon="🚗" title="لا توجد تقييمات" reason="ماكو تقييم سيارة مسجّل آخر ٣٠ يوم" /></td></tr>
                       )}
                     </tbody>
                   </table>
@@ -646,7 +712,7 @@ export default function MonitorDashboard() {
                         </tr>
                       ))}
                       {techWashSummaries.length === 0 && (
-                        <tr><td colSpan={4} className="py-6 text-center text-slate-400">لا توجد تقييمات غسيل مسجلة آخر 30 يوم</td></tr>
+                        <tr><td colSpan={4}><EmptyState icon="🧽" title="لا توجد تقييمات" reason="ماكو تقييم غسيل مسجّل آخر ٣٠ يوم" /></td></tr>
                       )}
                     </tbody>
                   </table>

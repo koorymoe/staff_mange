@@ -99,7 +99,9 @@ func (r *StatsRepository) SalesStats(startOfToday, startOfMonth time.Time) ([]mo
 		if err != nil {
 			return nil, err
 		}
-		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND "createdAt" >= $2`, e.EmployeeID, startOfToday)
+		// ⚠️ باغداد لا توقيت عملية الخادم — وإلا «اليوم» هنا يختلف عن
+		// بطاقة «انفتحن اليوم» بلوحة المراقبة قرب منتصف الليل.
+		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND baghdad_date("createdAt") = baghdad_today()`, e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
@@ -135,7 +137,8 @@ func (r *StatsRepository) CoordinatorStats(startOfToday, startOfMonth time.Time)
 		if err != nil {
 			return nil, err
 		}
-		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND "createdAt" >= $2`, e.EmployeeID, startOfToday)
+		// ⚠️ باغداد لا توقيت عملية الخادم — نفس فحص المبيعات أعلاه.
+		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND baghdad_date("createdAt") = baghdad_today()`, e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}

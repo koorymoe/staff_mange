@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type TodayBoardData } from '../api'
+import { api, type TodayBoardData, type FinanceSummary } from '../api'
 import EmployeeAvatar from './EmployeeAvatar'
 
 // ═══ لوحة اليوم ═══
@@ -19,7 +19,7 @@ import EmployeeAvatar from './EmployeeAvatar'
 const NUMBERS = 'tabular-nums'
 
 function StatCard({ icon, label, value, tone }: {
-  icon: string; label: string; value: number; tone: 'blue' | 'amber' | 'emerald' | 'violet'
+  icon: string; label: string; value: React.ReactNode; tone: 'blue' | 'amber' | 'emerald' | 'violet'
 }) {
   const tones = {
     blue: 'border-sky-200 bg-sky-50/70 text-sky-800',
@@ -87,7 +87,7 @@ function MiniChart({ points }: { points: { day: string; count: number }[] }) {
   )
 }
 
-export default function TodayBoard() {
+export default function TodayBoard({ finance }: { finance?: FinanceSummary | null } = {}) {
   const [d, setD] = useState<TodayBoardData | null>(null)
 
   useEffect(() => {
@@ -109,10 +109,11 @@ export default function TodayBoard() {
       <div>
         <h3 className="mb-2 text-sm font-extrabold text-[#0f2040]">📅 شنو صاير اليوم</h3>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          <StatCard icon="🗓️" label="حجوزات اليوم" value={d.bookingsToday} tone="blue" />
-          <StatCard icon="🚚" label="بالميدان هسه" value={d.inField} tone="violet" />
-          <StatCard icon="🏁" label="خلّصوا اليوم" value={d.completedToday} tone="emerald" />
           <StatCard icon="✨" label="حجوزات وصلت اليوم" value={d.newToday} tone="amber" />
+          <StatCard icon="🏁" label="خلّصوا اليوم" value={d.completedToday} tone="emerald" />
+          {/* ⚠️ نفس `d.inField` (حجوزات IN_PROGRESS) — تسمية بس، البيانات ما تغيّرت */}
+          <StatCard icon="🚚" label="بالطريق (الصيانة)" value={d.inField} tone="violet" />
+          <StatCard icon="🗓️" label="حجوزات اليوم" value={d.bookingsToday} tone="blue" />
         </div>
       </div>
 
@@ -122,6 +123,22 @@ export default function TodayBoard() {
           🎯 شغلي اليوم
           {totalWaiting === 0 && <span className="mr-2 text-xs font-normal text-emerald-600">— ماكو شي ينتظرك ✓</span>}
         </h3>
+
+        {/* ⚠️ «نجاح الأسبوع»/«تدقيق الاستلام»/«مهام لسه» — أرقام تخبّر
+            مو تنتظر تصرّف، فهي أقرب لصف «شنو صاير» لكن مطلوبة هنا
+            بالتصميم. الصفر المزيّف أسوأ من فراغ: «—» لو ماكو حجوزات
+            هذا الأسبوع أصلاً. */}
+        <div className="mb-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+          <StatCard icon="📈" label="نجاح الأسبوع"
+            value={d.weekTotal > 0 ? `${Math.round((d.weekCompleted / d.weekTotal) * 100)}٪` : '—'}
+            tone="emerald" />
+          {finance != null && (
+            <StatCard icon="💵" label="تدقيق استلام المبالغ"
+              value={finance.unverifiedCount} tone="amber" />
+          )}
+          <StatCard icon="🎯" label="عدد المهام لسه" value={totalWaiting} tone="blue" />
+        </div>
+
         {totalWaiting > 0 && (
           <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
             <TaskCard icon="📞" label="ينتظرون تواصل وتثبيت" value={d.needsContact}

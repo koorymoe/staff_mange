@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse } from '../api'
+import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
 import { useSession, hasGpsSkill } from '../session'
 import { navItems, collectMonitorExtraLinks } from '../components/navTree'
 import { useSaveGuard } from '../useSaveGuard'
@@ -129,6 +129,9 @@ export default function Dashboard() {
   const [taskNotes, setTaskNotes] = useState<Record<string, string>>({})
   const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
+  // ⚠️ للمراقب بس — «منسّقين بالعمل» بلوحة «نظرة عامة للمراقب».
+  // ما يُجلب لباقي الأدوار حتى ما يثقّل الرئيسية بلا فايدة.
+  const [monitorEmployees, setMonitorEmployees] = useState<Employee[]>([])
   const [finance, setFinance] = useState<FinanceSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentTime, setCurrentTime] = useState(formatTime())
@@ -207,8 +210,10 @@ export default function Dashboard() {
       needsFinance ? api.getBookings({ status: 'COMPLETED', limit: 200 }).catch(() => [] as Booking[]) : Promise.resolve([] as Booking[]),
       needsFinance ? api.getExpenses().catch(() => [] as Expense[]) : Promise.resolve([] as Expense[]),
       needsFinance ? api.getFinanceSummary().catch(() => null) : Promise.resolve(null),
-    ]).then(([gps, bk, summary, cb, exp, fin]) => {
+      permissions.includes('monitoring') ? api.getEmployees().catch(() => [] as Employee[]) : Promise.resolve([] as Employee[]),
+    ]).then(([gps, bk, summary, cb, exp, fin, monEmp]) => {
       setFinance(fin as FinanceSummary | null)
+      setMonitorEmployees(monEmp as Employee[])
       const allBookings = bk
       setGpsStats(gps as GpsStats | null)
       setBookings(bk as Booking[])
@@ -516,7 +521,7 @@ export default function Dashboard() {
           ينتظر كادر»، وعرضها له يحوّل الرئيسية لضجيج. */}
       {(isAdmin || employee.role === 'OWNER' || employee.role === 'HR_COORDINATOR'
         || employee.role === 'MONITOR' || ['coordinator', 'view_bookings', 'monitoring'].some((p) => permissions.includes(p))) && (
-        <TodayBoard />
+        <TodayBoard finance={finance} />
       )}
 
       {/* ═══ KPI Cards - ADMIN ═══ */}
@@ -745,6 +750,7 @@ export default function Dashboard() {
         const nActiveTechs = finance?.activeCrewCount ?? new Set(inProgress.flatMap(b => b.assignments.map(a => a.employee.id))).size
         const totalCollected = finance?.totalCollected ?? 0
         const nPendingExpenses = finance?.pendingExpenses ?? expenses.filter(e => e.status === 'PENDING').length
+        const nCoordinatorsOnDuty = monitorEmployees.filter(e => e.role === 'HR_COORDINATOR' && e.onDuty && e.status === 'ACTIVE').length
 
         return (
           <div className="space-y-4">
@@ -756,35 +762,46 @@ export default function Dashboard() {
               </h3>
             </div>
 
-            {/* Stats grid */}
+            {/* ⚠️ نظرة مراقبة سريعة — الصف الأول بترتيب الصورة بالضبط
+                (نشطين · منسّقين بالعمل · بانتظار تنسيق · حجوزات اليوم)،
+                والبيانات الموجودة أصلاً تبقى بصف ثانٍ تحته — حذفها
+                لمجرد مطابقة عدد بطاقات الصورة إفقار بلا داعي. */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-b from-violet-50 to-white p-4 text-center">
-                <p className="text-3xl font-black text-violet-600">{nInProgress}</p>
-                <p className="mt-1 text-xs font-medium text-violet-500">مهام قيد التنفيذ</p>
-              </div>
               <div className="rounded-2xl border-2 border-blue-200 bg-gradient-to-b from-blue-50 to-white p-4 text-center">
                 <p className="text-3xl font-black text-blue-600">{nActiveTechs}</p>
-                <p className="mt-1 text-xs font-medium text-blue-500">فنيين في الميدان</p>
-              </div>
-              <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white p-4 text-center">
-                <p className="text-3xl font-black text-amber-600">{nUnverified}</p>
-                <p className="mt-1 text-xs font-medium text-amber-500">بانتظار تدقيق مالي</p>
+                <p className="mt-1 text-xs font-medium text-blue-500">فنيين نشطين</p>
               </div>
               <div className="rounded-2xl border-2 border-emerald-200 bg-gradient-to-b from-emerald-50 to-white p-4 text-center">
-                <p className="text-3xl font-black text-emerald-600">{nTodayCompleted}</p>
-                <p className="mt-1 text-xs font-medium text-emerald-500">أنجزت اليوم</p>
+                <p className="text-3xl font-black text-emerald-600">{nCoordinatorsOnDuty}</p>
+                <p className="mt-1 text-xs font-medium text-emerald-500">منسّقين بالعمل</p>
+              </div>
+              <div className="rounded-2xl border-2 border-amber-200 bg-gradient-to-b from-amber-50 to-white p-4 text-center">
+                <p className="text-3xl font-black text-amber-600">{nConfirmed}</p>
+                <p className="mt-1 text-xs font-medium text-amber-500">بانتظار تنسيق</p>
+              </div>
+              <div className="rounded-2xl border-2 border-violet-200 bg-gradient-to-b from-violet-50 to-white p-4 text-center">
+                <p className="text-3xl font-black text-violet-600">{finance?.todayCreated ?? bookings.length}</p>
+                <p className="mt-1 text-xs font-medium text-violet-500">حجوزات اليوم</p>
               </div>
             </div>
 
-            {/* Secondary stats */}
+            {/* Secondary stats — نفس الأرقام الموجودة، تبقى كاملة */}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-violet-600">{nInProgress}</p>
+                <p className="text-[10px] text-slate-400">مهام قيد التنفيذ</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-amber-600">{nUnverified}</p>
+                <p className="text-[10px] text-slate-400">بانتظار تدقيق مالي</p>
+              </div>
+              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
+                <p className="text-xl font-bold text-emerald-600">{nTodayCompleted}</p>
+                <p className="text-[10px] text-slate-400">أنجزت اليوم</p>
+              </div>
               <div className="rounded-xl bg-white p-3 text-center shadow-sm">
                 <p className="text-xl font-bold text-brand-700">{nPending}</p>
                 <p className="text-[10px] text-slate-400">بانتظار التثبيت</p>
-              </div>
-              <div className="rounded-xl bg-white p-3 text-center shadow-sm">
-                <p className="text-xl font-bold text-brand-700">{nConfirmed}</p>
-                <p className="text-[10px] text-slate-400">مثبتة (بحاجة تنسيق)</p>
               </div>
               <div className="rounded-xl bg-white p-3 text-center shadow-sm">
                 <p className="text-xl font-bold text-emerald-600">{nVerified}</p>

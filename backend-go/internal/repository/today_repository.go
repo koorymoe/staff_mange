@@ -52,6 +52,11 @@ type TodayBoard struct {
 	NeedsPaper   int `json:"needsPaper"`
 	NeedsFinish  int `json:"needsFinish"`
 
+	// ⚠️ نافذة ٧ أيام متدحرجة تنتهي اليوم — تتفادى نقاش «أول يوم
+	// بالأسبوع» (أحد أو اثنين)، ونفس أسلوب `Last14` بالملف.
+	WeekTotal     int `json:"weekTotal"`
+	WeekCompleted int `json:"weekCompleted"`
+
 	TopCrew []TopCrewMember `json:"topCrew"`
 	Last14  []DayPoint      `json:"last14"`
 }
@@ -71,6 +76,8 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		NeedsCrew      int `db:"needsCrew"`
 		NeedsPaper     int `db:"needsPaper"`
 		NeedsFinish    int `db:"needsFinish"`
+		WeekTotal      int `db:"weekTotal"`
+		WeekCompleted  int `db:"weekCompleted"`
 	}{}
 	err := r.db.Get(&row, `
 		SELECT
@@ -83,13 +90,18 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		  -- منجز وناقصه فاتورة أو تقرير: هذا الي يجيب الغرامات
 		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."settledLegacyAt" IS NULL
 		                     AND (NOT `+hasInvoiceSQL+` OR NOT `+hasReportSQL+`)) AS "needsPaper",
-		  COUNT(*) FILTER (WHERE b.status = 'PARTIAL') AS "needsFinish"
+		  COUNT(*) FILTER (WHERE b.status = 'PARTIAL') AS "needsFinish",
+		  COUNT(*) FILTER (WHERE baghdad_date(b."createdAt")
+		             BETWEEN baghdad_date(now()) - interval '6 days' AND baghdad_date(now())) AS "weekTotal",
+		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND baghdad_date(b."createdAt")
+		             BETWEEN baghdad_date(now()) - interval '6 days' AND baghdad_date(now())) AS "weekCompleted"
 		FROM "Booking" b WHERE b."archivedAt" IS NULL`)
 	if err != nil {
 		return nil, err
 	}
 	b.BookingsToday, b.InField, b.CompletedToday, b.NewToday = row.BookingsToday, row.InField, row.CompletedToday, row.NewToday
 	b.NeedsContact, b.NeedsCrew, b.NeedsPaper, b.NeedsFinish = row.NeedsContact, row.NeedsCrew, row.NeedsPaper, row.NeedsFinish
+	b.WeekTotal, b.WeekCompleted = row.WeekTotal, row.WeekCompleted
 
 	// ═══ لوحة الشرف ═══
 	// ⚠️ المقياس **الطلعات** مو الحجوزات: هذا الي اتفقنا عليه لمن

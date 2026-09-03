@@ -673,6 +673,9 @@ export interface TodayBoardData {
   needsCrew: number
   needsPaper: number
   needsFinish: number
+  /** نافذة ٧ أيام متدحرجة تنتهي اليوم — لحساب «نسبة الإنجاز الأسبوعية» */
+  weekTotal: number
+  weekCompleted: number
   topCrew: { employeeId: string; name: string; photoUrl: string | null; visits: number; done: number }[]
   last14: { day: string; count: number }[]
 }
@@ -2792,6 +2795,10 @@ export interface FinanceSummary {
   inProgressCount: number
   activeCrewCount: number
   totalCollected: number
+  /** غير مدققة — بنفس نطاق totalCollected (COMPLETED فعلاً، شامل المقدم) */
+  unverifiedAmount: number
+  /** مدققة — بنفس نطاق totalCollected */
+  verifiedAmount: number
   totalQuoted: number
   totalCartValue: number
   pendingExpenses: number

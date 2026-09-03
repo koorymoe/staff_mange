@@ -66,6 +66,8 @@ type financeSummary struct {
 	InProgressCount   int     `db:"inProgressCount" json:"inProgressCount"`
 	ActiveCrewCount   int     `db:"activeCrewCount" json:"activeCrewCount"`
 	TotalCollected    float64 `db:"totalCollected" json:"totalCollected"`
+	UnverifiedAmount  float64 `db:"unverifiedAmount" json:"unverifiedAmount"`
+	VerifiedAmount    float64 `db:"verifiedAmount" json:"verifiedAmount"`
 	TotalQuoted       float64 `db:"totalQuoted" json:"totalQuoted"`
 	TotalCartValue    float64 `db:"totalCartValue" json:"totalCartValue"`
 	PendingExpenses   int     `db:"pendingExpenses" json:"pendingExpenses"`
@@ -99,6 +101,14 @@ func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request
 			  WHERE b2.status = 'IN_PROGRESS')                                          AS "activeCrewCount",
 			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
 			         FILTER (WHERE b.status = 'COMPLETED'), 0)                          AS "totalCollected",
+			-- ⚠️ «غير مدققة»/«مدققة» بنفس نطاق totalCollected أعلاه
+			-- (COMPLETED فعلاً، شامل المقدم) — لا تحسب Booking.amountCollected
+			-- الخام بلا فلترة حالة (هذاك مصدر رقم مختلف بـstats_repository.go
+			-- كان يعطي رقماً غير هذا لنفس المفهوم).
+			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
+			         FILTER (WHERE b.status = 'COMPLETED' AND NOT b."amountVerified"), 0) AS "unverifiedAmount",
+			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
+			         FILTER (WHERE b.status = 'COMPLETED' AND b."amountVerified"), 0)     AS "verifiedAmount",
 			COALESCE(SUM(COALESCE(b."quotedPrice",0))
 			         FILTER (WHERE b.status = 'COMPLETED'), 0)                          AS "totalQuoted",
 			(SELECT COALESCE(SUM(ci."totalPrice"), 0) FROM "CartItem" ci
