@@ -23,6 +23,18 @@ function relTime(iso: string | null) {
   return new Date(iso).toLocaleString('ar-IQ', { dateStyle: 'short', timeStyle: 'short' })
 }
 
+// شكد صار وقت من لحظة معيّنة — بفرع الأيام (نفس نمط `elapsedSince`
+// الموجود بـ`Dashboard.tsx`/`AttendancePage.tsx`/`MyTasks.tsx`، مع
+// إضافة الأيام حتى حجز عمره يومين ما يطلع "٤٨ ساعة").
+function elapsedSince(iso: string): string {
+  const diffMin = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
+  const days = Math.floor(diffMin / 1440)
+  const h = Math.floor((diffMin % 1440) / 60)
+  const m = diffMin % 60
+  if (days > 0) return `${days} يوم${h > 0 ? ` و${h} ساعة` : ''}`
+  return h > 0 ? `${h} ساعة و ${m} دقيقة` : `${m} دقيقة`
+}
+
 export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}) {
   const [bookings, setBookings] = useState<Booking[]>([])
   const [summaries, setSummaries] = useState<Record<string, CoordinationAlertSummary>>({})
@@ -141,6 +153,7 @@ export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}
                     ) : (
                       <div className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700">
                         ⏳ الإداري لسه ما تواصل مع الزبون (ما ضغط "تم")
+                        {b.createdAt && <> — ⏰ صار {elapsedSince(b.createdAt)} من إنشاء الحجز</>}
                       </div>
                     )}
                   </div>
