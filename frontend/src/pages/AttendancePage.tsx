@@ -48,7 +48,7 @@ function dayLabel(iso: string): string {
 
 /* ───── Component ───── */
 
-export default function AttendancePage() {
+export default function AttendancePage({ embedded }: { embedded?: boolean } = {}) {
   const { employee, permissions } = useSession()
   const navigate = useNavigate()
 
@@ -164,20 +164,23 @@ export default function AttendancePage() {
   const movements = movementsOf(todayRecord)
 
   return (
-    <div dir="rtl" className="mx-auto max-w-6xl space-y-5 p-4">
-      {/* ═══ العنوان ═══ */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-xl">🕐</span>
-          <div>
-            <h1 className="text-2xl font-black text-[#0f2040]">جدول دوامي</h1>
-            <p className="text-xs text-slate-500">متابعة حضورك وانصرافك وطلبات الإجازة من مكان واحد</p>
+    <div dir="rtl" className="w-full space-y-5 p-4">
+      {/* ═══ العنوان ═══ — يختفي لمن الشاشة مضمَّنة (مثلاً بالرئيسية)،
+          حتى ما تصير ترويستان فوگ بعض. */}
+      {!embedded && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-sky-50 text-xl">🕐</span>
+            <div>
+              <h1 className="text-2xl font-black text-[#0f2040]">جدول دوامي</h1>
+              <p className="text-xs text-slate-500">متابعة حضورك وانصرافك وطلبات الإجازة من مكان واحد</p>
+            </div>
           </div>
+          <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
+            📅 {new Date().toLocaleDateString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+          </span>
         </div>
-        <span className="rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-slate-600 shadow-sm">
-          📅 {new Date().toLocaleDateString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-        </span>
-      </div>
+      )}
 
       {error && (
         <div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>

@@ -1,31 +1,16 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
+import AttendancePage from './AttendancePage'
 import { api } from '../api'
-import type { Booking, Expense, AttendanceRecord, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
+import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
 import { useSession, hasGpsSkill } from '../session'
 import { navItems, collectMonitorExtraLinks } from '../components/navTree'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { timeGreeting, GREETING_HOLD_MS } from '../greeting'
 import { MapViewer } from '../components/MapLazy'
-
-/* ───── Attendance helpers ───── */
-
-function elapsedSince(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
-  if (diffMs < 0) return '٠ دقائق'
-  const diffMin = Math.floor(diffMs / 60000)
-  const hours = Math.floor(diffMin / 60)
-  const mins = diffMin % 60
-  if (hours === 0) return `${mins} دقيقة`
-  return `${hours} ساعة و ${mins} دقيقة`
-}
-
-function fmtTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
-}
 
 function formatTime(): string {
   return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
@@ -271,54 +256,6 @@ export default function Dashboard() {
     // `fieldOnly` مشتقّة من `employee` الي فوگ بالقائمة — مذكورة
     // صراحةً حتى القاعدة تتأكد ماكو قيمة تتغيّر بلا ما ينعاد الجلب.
   }, [employee, permissions, fieldOnly])
-
-  /* ── Attendance widget state ── */
-  const [activeRecord, setActiveRecord] = useState<AttendanceRecord | null>(null)
-  const [todayTotalMinutes, setTodayTotalMinutes] = useState(0)
-  const [elapsed, setElapsed] = useState('')
-  const [showCheckoutConfirm, setShowCheckoutConfirm] = useState(false)
-
-  const refreshOpenSession = useCallback(() => {
-    if (!employee) return
-    api.getMyOpenSession()
-      .then(res => {
-        setActiveRecord(res.open)
-        setTodayTotalMinutes(res.totalMinutes)
-      })
-      .catch(() => setActiveRecord(null))
-  }, [employee])
-
-  useEffect(() => {
-    refreshOpenSession()
-  }, [refreshOpenSession])
-
-  useEffect(() => {
-    if (!activeRecord?.checkIn || activeRecord.checkOut) return
-    // Same intentional immediate-init as AttendancePage's elapsed timer.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setElapsed(elapsedSince(activeRecord.checkIn))
-    const interval = setInterval(() => {
-      setElapsed(elapsedSince(activeRecord.checkIn))
-      setTodayTotalMinutes(m => m + 1)
-    }, 60000)
-    return () => clearInterval(interval)
-  }, [activeRecord])
-
-  const handleAttCheckIn = useCallback(async () => {
-    if (!employee) return
-    const rec = await api.checkIn()
-    setActiveRecord(rec)
-    refreshOpenSession()
-  }, [employee, refreshOpenSession])
-
-  const handleAttCheckOut = useCallback(async () => {
-    if (!employee || !activeRecord) return
-    await api.checkOut()
-    setActiveRecord(null)
-    setShowCheckoutConfirm(false)
-    refreshOpenSession()
-  }, [employee, activeRecord, refreshOpenSession])
-
 
   const handleTaskStart = async (b: Booking) => {
     const updated = await guard.run('بدء المهمة', () => api.startBooking(b.id))
@@ -1124,52 +1061,11 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* ═══ Compact Attendance Bar ═══ */}
-      <div className="flex items-center justify-between rounded-xl bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="flex items-center gap-2">
-          {activeRecord ? (
-            <>
-              <div className="relative">
-                <button onClick={() => setShowCheckoutConfirm(!showCheckoutConfirm)}
-                  className="rounded-lg bg-red-600 px-3 py-1 text-xs font-bold text-white hover:bg-red-700">
-                  انصراف
-                </button>
-                {showCheckoutConfirm && (
-                  <div className="absolute right-4 top-full z-[60] mt-2 w-44 rounded-xl border border-slate-100 bg-white p-3 shadow-2xl">
-                    <p className="mb-2 text-xs font-semibold text-gray-800">تسجيل انصراف؟</p>
-                    <div className="flex gap-2">
-                      <button onClick={handleAttCheckOut} className="flex-1 rounded-lg bg-red-600 px-2 py-1 text-xs font-bold text-white">نعم</button>
-                      <button onClick={() => setShowCheckoutConfirm(false)} className="flex-1 rounded-lg border border-slate-200 px-2 py-1 text-xs text-slate-600">إلغاء</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </>
-          ) : (
-            <button onClick={handleAttCheckIn}
-              className="rounded-lg bg-emerald-500 px-3 py-1 text-xs font-bold text-white hover:bg-emerald-700">
-              تسجيل حضور
-            </button>
-          )}
-        </div>
-        <div className="flex items-center gap-3 text-right">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-          {activeRecord ? (
-            <span className="flex items-center gap-2 text-xs">
-              <span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" /></span>
-              <span className="font-bold text-emerald-700">متواجد</span>
-              <span className="text-slate-400">منذ {fmtTime(activeRecord.checkIn)} • {elapsed}</span>
-            </span>
-          ) : (
-            <span className="text-xs text-slate-400">{todayTotalMinutes > 0 ? 'خارج الدوام حالياً' : 'لم تسجل حضورك بعد'}</span>
-          )}
-          {todayTotalMinutes > 0 && (
-            <span className="text-xs font-semibold text-[#0f2040]">
-              دوامك اليوم: {Math.floor(todayTotalMinutes / 60)} ساعة و{todayTotalMinutes % 60} دقيقة
-            </span>
-          )}
-        </div>
-      </div>
+      {/* ═══ جدول دوامي — نفس تصميم الشاشة المستقلة بالكامل، مضمَّناً
+          هنا بدل الشريط المصغّر القديم (تسجيل حضور/انصراف بس بلا
+          بطاقات ولا جدول شهري). نفس نمط `embedded` المعتمد بشاشات
+          ثانية — الحالة والحفظ يشتغلون بمكان واحد بس. */}
+      <AttendancePage embedded />
 
       {/* ═══ شريط الفني: جرد أدواته + طلب إجازة ═══
           الفني ما إله شاشات إدارية يتنقل بيها، فالشغلتين الي يحتاجهن
