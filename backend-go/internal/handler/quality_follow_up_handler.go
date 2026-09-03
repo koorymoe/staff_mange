@@ -5,20 +5,23 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
 type QualityFollowUpHandler struct {
-	service *service.QualityFollowUpService
+	service     *service.QualityFollowUpService
+	permissions *repository.PermissionRepository
 }
 
-func NewQualityFollowUpHandler(s *service.QualityFollowUpService) *QualityFollowUpHandler {
-	return &QualityFollowUpHandler{service: s}
+func NewQualityFollowUpHandler(s *service.QualityFollowUpService, p *repository.PermissionRepository) *QualityFollowUpHandler {
+	return &QualityFollowUpHandler{service: s, permissions: p}
 }
 
 // GET /api/quality-follow-ups
 
-// blockMonitorWrite يمنع المراقب المدقق من مسارات الكتابة.
+// blockMonitorWrite يمنع المراقب المدقق (أو مو موظف وصل الشاشة
+// بصلاحية monitoring/auditing) من مسارات الكتابة.
 //
 // ⚠️⚠️ المراقب ياخذ صلاحية `quality_control` افتراضياً بدوره، وكل
 // مسارات الجودة عليها نفس الحارس — فچان **يقدر يتصل بالزبون
@@ -28,10 +31,29 @@ func NewQualityFollowUpHandler(s *service.QualityFollowUpService) *QualityFollow
 // ما يتصل بالزبون**. لأنه لو اتصل وحكم، يصير يدقّق شغلاً سوّاه
 // هو — نفس الخلط الي شلناه بالتدقيق اليومي وبفواتير الليدر.
 //
+// ⚠️⚠️ ونفس القيد لازم ينطبق على موظف وصل الشاشة بمنح صلاحية
+// `monitoring`/`auditing` فردياً (مثل ليدر انمنحها ليوم واحد) —
+// وإلا صار أوسع صلاحية من المراقب الحقيقي نفسه.
+//
 // ⚠️ ورفض صريح مو تسجيل مخالفة: الأزرار چانت معروضة إله، فضغطه
 // عليها مو محاولة تجاوز.
-func blockMonitorWrite(w http.ResponseWriter, r *http.Request) bool {
-	if middleware.RoleFromContext(r) == "MONITOR" {
+func (h *QualityFollowUpHandler) blockMonitorWrite(w http.ResponseWriter, r *http.Request) bool {
+	role := middleware.RoleFromContext(r)
+	if role == "ADMIN" || role == "OWNER" || role == "QUALITY_ENGINEER" {
+		return false
+	}
+	blocked := role == "MONITOR"
+	if !blocked && h.permissions != nil {
+		if perms, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r)); err == nil {
+			for _, p := range perms {
+				if p.Name == "monitoring" || p.Name == "auditing" {
+					blocked = true
+					break
+				}
+			}
+		}
+	}
+	if blocked {
 		WriteError(w, http.StatusForbidden,
 			"المراقب يشوف ويدقّق — التواصل مع الزبون وتسجيل الحكم لمهندس الجودة")
 		return true
@@ -50,7 +72,7 @@ func (h *QualityFollowUpHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/quality-follow-ups/{id}
 func (h *QualityFollowUpHandler) Update(w http.ResponseWriter, r *http.Request) {
-	if blockMonitorWrite(w, r) {
+	if h.blockMonitorWrite(w, r) {
 		return
 	}
 	var req model.UpdateQualityFollowUpRequest
@@ -72,7 +94,7 @@ func (h *QualityFollowUpHandler) Update(w http.ResponseWriter, r *http.Request) 
 // تقرير سلبي: تنخصم نقطة «شكوى الزبائن» من الليدر فوراً — إلا إذا
 // طلب كشف، وقتها الغرامة تنتظر النتيجة (الزبون ممكن يكون يجذب).
 func (h *QualityFollowUpHandler) Verdict(w http.ResponseWriter, r *http.Request) {
-	if blockMonitorWrite(w, r) {
+	if h.blockMonitorWrite(w, r) {
 		return
 	}
 	var req model.QualityVerdictRequest
@@ -100,7 +122,7 @@ func (h *QualityFollowUpHandler) Verdict(w http.ResponseWriter, r *http.Request)
 
 // POST /api/quality-follow-ups/{id}/inspect — نتيجة الكشف الميداني.
 func (h *QualityFollowUpHandler) Inspect(w http.ResponseWriter, r *http.Request) {
-	if blockMonitorWrite(w, r) {
+	if h.blockMonitorWrite(w, r) {
 		return
 	}
 	var req model.QualityInspectionRequest

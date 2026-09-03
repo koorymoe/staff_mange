@@ -204,7 +204,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	locateHandler := handler.NewLocateHandler(db)
 	bookingHandler := handler.NewBookingHandler(bookingService, permissionRepo)
 	bookingHandler.SetReminderService(bookingReminderService)
-	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService)
+	qualityFollowUpHandler := handler.NewQualityFollowUpHandler(qualityFollowUpService, permissionRepo)
 	securityHandler := handler.NewSecurityHandler(db, loginAuditRepo, lockoutRepo, startedAt)
 
 	// تخزين الملفات: R2 إذا انضبطت إعداداته، وإلا القرص المحلي. الاثنين
@@ -355,7 +355,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	staffRequestHandler.SetNotificationRepository(notificationRepo)
 	serviceManagerHandler := handler.NewServiceManagerHandler(serviceManagerRepo)
 	locationPingHandler := handler.NewLocationPingHandler(locationPingRepo)
-	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo, bookingRepo, notificationRepo)
+	performanceReviewService := service.NewPerformanceReviewService(performanceReviewRepo, employeeRepo, bookingRepo, notificationRepo, permissionRepo)
 	performanceReviewHandler := handler.NewPerformanceReviewHandler(performanceReviewService)
 	deviceMaintenanceHandler := handler.NewDeviceMaintenanceHandler(deviceMaintenanceService)
 	teamInventoryCheckHandler := handler.NewTeamInventoryCheckHandler(teamInventoryCheckService)
@@ -425,11 +425,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireBookingsArchive := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "bookings_archive")
 	requireExtraTaskAssign := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "extra_tasks_assign")
 	requireTrainingManage := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "training_manage")
-	requireMonitor := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "MONITOR")
+	// ⚠️ RequireRoleOrAnyPermission لا RequireRole: صاحب النظام يريد يمنح
+	// "يتابع ويدقّق" (monitoring/auditing) لموظف واحد بلا ما يحوّل دوره
+	// لمراقب فعلياً — نفس مبدأ الصلاحيات الفردية المعتمد بكل الشاشة.
+	requireMonitor := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"}, "monitoring", "auditing")
 	requireProjectManager := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "PROJECT_MANAGER")
 	// إدارة المشاريع: بالدور أو بصلاحية project_management الممنوحة يدوياً
 	requireProjectMgmt := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "PROJECT_MANAGER"}, "project_management")
-	requireFieldMonitor := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER")
+	requireFieldMonitor := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR", "PROJECT_MANAGER"}, "monitoring", "auditing")
 	requireGpsAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "GPS_ADMIN")
 	requireContentTech := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "content_technician")
 	// الموردون بصلاحية مستقلة (انفصلت عن content_technician الواسعة)
@@ -740,7 +743,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/announcements", middleware.Chain(http.HandlerFunc(announcementHandler.Create), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/announcements/{id}/active", middleware.Chain(http.HandlerFunc(announcementHandler.SetActive), requireAuth, requireAdmin))
 	mux.Handle("DELETE /api/announcements/{id}", middleware.Chain(http.HandlerFunc(announcementHandler.Delete), requireAuth, requireAdmin))
-	mux.Handle("GET /api/audit-issues", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ListIssues), requireAuth))
+	// ⚠️⚠️ قبل هذا السطر ماكو حارس صلاحية إطلاقاً هنا — أي موظف مسجّل
+	// دخول (حتى فني بالميدان) يقدر يستدعي المسار ويشوف كل البلاغات،
+	// لأن `ListIssues` تفلتر حسب الدور بس (جودة/كوادر/محاسب) وتترك
+	// أي دور ثاني يمرّ بلا تصفية = يشوف الكل. نفس الفحص المستخدم
+	// لبقية شاشات المراقبة، وبنفس منفذ monitoring/auditing.
+	mux.Handle("GET /api/audit-issues", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ListIssues), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing")))
 	mux.Handle("PUT /api/audit-issues/{id}/resolve", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ResolveIssue), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// إرجاع الحجز للتدقيق: التدقيق جان قرار نهائي ما إله رجعة. مدير
@@ -905,7 +915,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ التدقيق للمالك والمراقب والمدير **بس** — مهندس الجودة ما
 	// يدقّق نفسه، هو الي انتقيّم شغله بهذي الشاشة.
 	mux.Handle("PUT /api/complaints/{id}/audit", middleware.Chain(http.HandlerFunc(complaintHandler.Audit), requireAuth,
-		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "MONITOR")))
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "MONITOR"}, "monitoring", "auditing")))
 	mux.Handle("GET /api/complaints/{id}/events", middleware.Chain(http.HandlerFunc(complaintHandler.Events), requireAuth))
 	// ⚠️ القراءة تقبل **الدور** مو الصلاحية بس: صاحب النظام طلب
 	// «المراقب لازم يشوف متابعة الجودة كاملة»، وخريطة صلاحيات
@@ -1102,7 +1112,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// «تقييم بين الإداريين» — ADMIN/OWNER/MONITOR بس (منو يقارن
 	// إداري الكوادر ببعض)، مو إداري الكوادر نفسه ولا التيم ليدر.
 	mux.Handle("GET /api/performance-reviews/evaluator-leaderboard", middleware.Chain(http.HandlerFunc(performanceReviewHandler.EvaluatorLeaderboard), requireAuth,
-		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "MONITOR")))
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "MONITOR"}, "monitoring", "auditing")))
 
 	// المشتريات (procurement)
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth, requireProcurement))

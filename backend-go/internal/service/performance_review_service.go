@@ -16,6 +16,7 @@ type PerformanceReviewService struct {
 	// إشعار الإدارة ببلاغات المخالفة والالتزام. اختياري — بدونه
 	// التقييم ينسجّل عادي بس ماكو منو ينتبه للبلاغ.
 	notifications *repository.NotificationRepository
+	permissions   *repository.PermissionRepository
 }
 
 func NewPerformanceReviewService(
@@ -23,8 +24,31 @@ func NewPerformanceReviewService(
 	employees *repository.EmployeeRepository,
 	bookings *repository.BookingRepository,
 	notifications *repository.NotificationRepository,
+	permissions *repository.PermissionRepository,
 ) *PerformanceReviewService {
-	return &PerformanceReviewService{repo: repo, employees: employees, bookings: bookings, notifications: notifications}
+	return &PerformanceReviewService{repo: repo, employees: employees, bookings: bookings, notifications: notifications, permissions: permissions}
+}
+
+// hasMonitorAccess: نفس صلاحيات ADMIN/OWNER/MONITOR بالتقييم — أو
+// موظف انمنح monitoring/auditing فردياً (مثل ليدر ليوم واحد) بلا
+// ما يتحول دوره فعلياً. نفس مبدأ RequireRoleOrAnyPermission بالخادم.
+func (s *PerformanceReviewService) hasMonitorAccess(e *model.Employee) bool {
+	if e.Role == "ADMIN" || e.Role == "OWNER" || e.Role == "MONITOR" {
+		return true
+	}
+	if s.permissions == nil {
+		return false
+	}
+	perms, err := s.permissions.ListForEmployee(e.ID)
+	if err != nil {
+		return false
+	}
+	for _, p := range perms {
+		if p.Name == "monitoring" || p.Name == "auditing" {
+			return true
+		}
+	}
+	return false
 }
 
 // RatableEmployees يرجّع الموظفين الي المستخدم الحالي يقدر يقيّمهم حسب السلسلة
@@ -41,7 +65,7 @@ func (s *PerformanceReviewService) RatableEmployees(evaluatorID string) ([]model
 	// أي أحد بلا قيد. كانت هذي الحالة تسقط للفرع الأخير (قائمة فارغة)
 	// لعدم تطابقها مع أي شرط هنا — يعني المراقب والمالك يفتحون شاشة
 	// التقييم ويشوفون قائمة فاضية رغم إن الخادم يقبل تقييمهم لأي أحد.
-	if evaluator.Role == "ADMIN" || evaluator.Role == "OWNER" || evaluator.Role == "MONITOR" {
+	if s.hasMonitorAccess(evaluator) {
 		all, err := s.employees.List()
 		if err != nil {
 			return nil, err
@@ -173,7 +197,7 @@ func (s *PerformanceReviewService) authorizeReview(evaluator, target *model.Empl
 	}
 	// ⚠️ المالك والمراقب المدقق ينضافون: الشاشة أصلاً معروضة إلهم
 	// بالقائمة، وبدون هذا تنفتح إلهم وكل أزرارها ترجّع رفضاً.
-	if evaluator.Role == "ADMIN" || evaluator.Role == "OWNER" || evaluator.Role == "MONITOR" {
+	if s.hasMonitorAccess(evaluator) {
 		return nil
 	}
 	// ⚠️ أبو الكوادر يقيّم الليدرية والفنيين العاديين سوا — كان محصوراً
@@ -233,12 +257,7 @@ func (s *PerformanceReviewService) BookingsAwaitingReview(
 	if from == "" && to == "" {
 		from = time.Now().AddDate(0, 0, -30).Format("2006-01-02")
 	}
-	return s.repo.BookingsAwaitingReview(viewerID, seesAllBookings(viewer.Role), from, to)
-}
-
-// seesAllBookings منو يشوف كل حجوزات الشركة مو حجوزاته هو.
-func seesAllBookings(role string) bool {
-	return role == "ADMIN" || role == "OWNER" || role == "MONITOR"
+	return s.repo.BookingsAwaitingReview(viewerID, s.hasMonitorAccess(viewer), from, to)
 }
 
 // EvaluatorLeaderboard ترتيب الإداريين حسب نشاط المراجعة (كم حجز

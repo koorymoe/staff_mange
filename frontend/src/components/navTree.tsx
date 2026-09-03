@@ -45,6 +45,12 @@ export interface NavItem {
   // execution_cost) جانت تفتح أبناءه فيطلع للمحاسب «العمل» **مرتين**:
   // واحدة مالته وواحدة مال الفني. مدير النظام ما ينتأثر.
   fieldStaffOnly?: boolean
+  // requireOwnGrant: يمنع هذا العنصر تحديداً من "المرور المجاني" لمن
+  // عنده صلاحية الوحدة كاملة (`unitPermission`) — يحتاج منح صلاحيته
+  // هو بالإيد، حتى لو الموظف عنده كل صلاحيات الوحدة. الاستثناء
+  // الوحيد على قاعدة "الوحدة تفتح كل أبناءها" — لعنصر حسّاس صاحب
+  // النظام يريد يتحكم فيه شخص-شخص، مو دفعة وحدة مع الوحدة.
+  requireOwnGrant?: boolean
   children?: NavItem[]
   divider?: boolean
   /** عنوان قسم بلا خطوط جانبية — «التنقل الرئيسي» بأعلى القائمة */
@@ -353,7 +359,7 @@ export const navItems: NavItem[] = [
   // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
   // المشاريع الموجّهة لي: أي موظف ينوجّهله مشروع يشوفه هنا بكل مراحله — بدون
   // ما ننطيه صلاحية إدارة المشاريع العامة. الصفحة تطلع فاضية لو ماكو شي.
-  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, unlockPermission: 'my_projects', hideForRoles: ['FINANCE'] },
+  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, permission: 'my_projects', hideForRoles: ['FINANCE'] },
 
   // للمحاسب ما بقى فوگ الفاصل ولا شي (الإدارة انحجبت عنه لأنها مكرّرة)،
   // فالفاصل يصير خط يفصل الفراغ عن «العمل» — ضجيج بلا معنى.
@@ -480,7 +486,7 @@ export const navItems: NavItem[] = [
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
       // المشاريع الموجّهة لي: محلها هنا للمحاسب — والنسخة العامة فوگ
       // منحجوبة عنه بـhideForRoles حتى ما تتكرر.
-      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, unlockPermission: 'my_projects' },
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true },
     ],
   },
   {
@@ -607,7 +613,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
       if (!TECHNICIAN_NAV.includes(path)) return false
     }
     const granted =
-      unitGranted ||
+      (unitGranted && !item.requireOwnGrant) ||
       (!!item.unitPermission && (role === 'ADMIN' || ctx.permissions.includes(item.unitPermission)))
     if (!granted) {
       // الصلاحية الممنوحة فعلياً تكفي بحالها. قبل، العنصر كان يشترط الدور
