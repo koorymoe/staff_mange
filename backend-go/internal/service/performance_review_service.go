@@ -28,22 +28,43 @@ func NewPerformanceReviewService(
 }
 
 // RatableEmployees يرجّع الموظفين الي المستخدم الحالي يقدر يقيّمهم حسب السلسلة
-// الهرمية — الأدمن/إداري الكوادر يشوفون كل التيم ليدرات، أما التيم ليدر فيشوف
-// بس فنيي حجوزاته الفعليين (زملاءه بالحجز، مو كل فنيي النظام).
+// الهرمية — الأدمن/المالك/المراقب يشوفون كل الموظفين، إداري الكوادر يشوف
+// الليدرية والفنيين، أما التيم ليدر فيشوف بس فنيي حجوزاته الفعليين (زملاءه
+// بالحجز، مو كل فنيي النظام).
 func (s *PerformanceReviewService) RatableEmployees(evaluatorID string) ([]model.EmployeeBrief, error) {
 	evaluator, err := s.employees.FindByID(evaluatorID)
 	if err != nil || evaluator == nil {
 		return nil, errors.New("تعذر تحديد هوية المقيّم")
 	}
 
-	if evaluator.Role == "ADMIN" || evaluator.Role == "HR_COORDINATOR" {
+	// ⚠️ نفس فرع `authorizeReview` بالضبط — ADMIN/OWNER/MONITOR يقيّمون
+	// أي أحد بلا قيد. كانت هذي الحالة تسقط للفرع الأخير (قائمة فارغة)
+	// لعدم تطابقها مع أي شرط هنا — يعني المراقب والمالك يفتحون شاشة
+	// التقييم ويشوفون قائمة فاضية رغم إن الخادم يقبل تقييمهم لأي أحد.
+	if evaluator.Role == "ADMIN" || evaluator.Role == "OWNER" || evaluator.Role == "MONITOR" {
 		all, err := s.employees.List()
 		if err != nil {
 			return nil, err
 		}
 		result := make([]model.EmployeeBrief, 0, len(all))
 		for _, e := range all {
-			if e.IsLeader {
+			if e.ID != evaluatorID {
+				result = append(result, model.EmployeeBrief{ID: e.ID, Name: e.Name})
+			}
+		}
+		return result, nil
+	}
+
+	// ⚠️ نفس فرع `authorizeReview` — أبو الكوادر يقيّم الليدرية
+	// والفنيين العاديين سوا.
+	if evaluator.Role == "HR_COORDINATOR" {
+		all, err := s.employees.List()
+		if err != nil {
+			return nil, err
+		}
+		result := make([]model.EmployeeBrief, 0, len(all))
+		for _, e := range all {
+			if e.IsLeader || e.Role == "TECHNICIAN" {
 				result = append(result, model.EmployeeBrief{ID: e.ID, Name: e.Name})
 			}
 		}
@@ -155,11 +176,14 @@ func (s *PerformanceReviewService) authorizeReview(evaluator, target *model.Empl
 	if evaluator.Role == "ADMIN" || evaluator.Role == "OWNER" || evaluator.Role == "MONITOR" {
 		return nil
 	}
+	// ⚠️ أبو الكوادر يقيّم الليدرية والفنيين العاديين سوا — كان محصوراً
+	// بالليدرية بس («تيم ليدرات الفرق»)، وصاحب النظام قرر توسيعها: هو
+	// المسؤول عن الطاقم الميداني كله لا شريحة منه بس.
 	if evaluator.Role == "HR_COORDINATOR" {
-		if target.IsLeader {
+		if target.IsLeader || target.Role == "TECHNICIAN" {
 			return nil
 		}
-		return errors.New("إداري الكوادر يقيّم تيم ليدرات الفرق فقط")
+		return errors.New("إداري الكوادر يقيّم الليدرية والفنيين فقط")
 	}
 	if evaluator.IsLeader {
 		if target.Role != "TECHNICIAN" || target.IsLeader {
@@ -215,4 +239,39 @@ func (s *PerformanceReviewService) BookingsAwaitingReview(
 // seesAllBookings منو يشوف كل حجوزات الشركة مو حجوزاته هو.
 func seesAllBookings(role string) bool {
 	return role == "ADMIN" || role == "OWNER" || role == "MONITOR"
+}
+
+// EvaluatorLeaderboard ترتيب الإداريين حسب نشاط المراجعة (كم حجز
+// راجعوا) أسبوعياً وشهرياً — «تقييم بين الإداريين». ⚠️ نفس نمط
+// `KpiService.RoleLeaderboard` بالضبط (فترة حالية + فترة سابقة
+// للمقارنة عبر `applyDeltas` المشتركة بالحزمة).
+func (s *PerformanceReviewService) EvaluatorLeaderboard() (*model.RoleKpiLeaderboard, error) {
+	const day = "2006-01-02"
+	now := time.Now()
+	weekAgo := now.AddDate(0, 0, -7).Format(day)
+	monthAgo := now.AddDate(0, -1, 0).Format(day)
+	twoWeeksAgo := now.AddDate(0, 0, -14).Format(day)
+	twoMonthsAgo := now.AddDate(0, -2, 0).Format(day)
+
+	weekly, err := s.repo.ReviewerLeaderboard(weekAgo, "")
+	if err != nil {
+		return nil, err
+	}
+	monthly, err := s.repo.ReviewerLeaderboard(monthAgo, "")
+	if err != nil {
+		return nil, err
+	}
+	prevWeekly, err := s.repo.ReviewerLeaderboard(twoWeeksAgo, weekAgo)
+	if err != nil {
+		return nil, err
+	}
+	prevMonthly, err := s.repo.ReviewerLeaderboard(twoMonthsAgo, monthAgo)
+	if err != nil {
+		return nil, err
+	}
+
+	applyDeltas(weekly, prevWeekly)
+	applyDeltas(monthly, prevMonthly)
+
+	return &model.RoleKpiLeaderboard{Role: "EVALUATORS", Weekly: weekly, Monthly: monthly}, nil
 }

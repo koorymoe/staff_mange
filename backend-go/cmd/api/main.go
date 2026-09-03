@@ -1099,6 +1099,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/performance-reviews/ratable", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Ratable), requireAuth))
 	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/performance-reviews/my-bookings", middleware.Chain(http.HandlerFunc(performanceReviewHandler.MyBookings), requireAuth))
+	// «تقييم بين الإداريين» — ADMIN/OWNER/MONITOR بس (منو يقارن
+	// إداري الكوادر ببعض)، مو إداري الكوادر نفسه ولا التيم ليدر.
+	mux.Handle("GET /api/performance-reviews/evaluator-leaderboard", middleware.Chain(http.HandlerFunc(performanceReviewHandler.EvaluatorLeaderboard), requireAuth,
+		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "MONITOR")))
 
 	// المشتريات (procurement)
 	mux.Handle("GET /api/procurement", middleware.Chain(http.HandlerFunc(procurementHandler.List), requireAuth, requireProcurement))

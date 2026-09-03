@@ -162,3 +162,30 @@ func (r *PerformanceReviewRepository) BookingsAwaitingReview(
 	}
 	return rows, nil
 }
+
+// ReviewerLeaderboard ترتيب الإداريين (ADMIN/OWNER/MONITOR/HR_COORDINATOR)
+// حسب نشاط المراجعة — كم حجز راجعوا بالفترة. ⚠️ يُعاد استعمال
+// `KpiLeaderboardEntry` بمعنى مختلف عمداً: `Points`/`EvaluationCount`
+// هنا **عدد المراجعات المسجَّلة**، مو نقاط KPI — لا يوجد مفهوم
+// «نقاط» أو «التزام دوام» لموظف بصفته مقيِّماً، فـ`AttendedDays`/
+// `AssignedBookings` تبقى صفراً بقصد ولا تُعرض بالواجهة لهذا الجدول.
+func (r *PerformanceReviewRepository) ReviewerLeaderboard(since, until string) ([]model.KpiLeaderboardEntry, error) {
+	entries := []model.KpiLeaderboardEntry{}
+	fromP, toP := "$1", "$2"
+	err := r.db.Select(&entries, `
+		SELECT e.id AS "employeeId", e.name AS "employeeName",
+		       COUNT(*) AS points,
+		       COUNT(*) AS "evaluationCount",
+		       COUNT(DISTINCT pr."bookingId") AS "completedBookings",
+		       0 AS "assignedBookings",
+		       0 AS "attendedDays"
+		FROM "PerformanceReview" pr
+		JOIN "Employee" e ON e.id = pr."evaluatorId"
+		WHERE e.role IN ('ADMIN', 'OWNER', 'MONITOR', 'HR_COORDINATOR')
+		  AND (`+fromP+` = '' OR pr."createdAt" >= `+fromP+`::timestamp)
+		  AND (`+toP+` = '' OR pr."createdAt" < (`+toP+`::date + interval '1 day'))
+		GROUP BY e.id, e.name
+		ORDER BY points DESC
+	`, since, until)
+	return entries, err
+}

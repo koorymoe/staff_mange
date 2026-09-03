@@ -24,15 +24,25 @@ const BOOKINGS_PER_RANK = 10
 // نفس نمط «مهامي» و«الجرد»: بند واحد بالقائمة، والخيارات من فوگ.
 export default function MyRanking() {
   const { employee, permissions } = useSession()
-  // «تقييم فريقي» ما يطلع إلا لمن يقيّم فعلاً — الليدر أو من عنده
+  // «تقييم الموظفين» ما يطلع إلا لمن يقيّم فعلاً — الليدر أو من عنده
   // الصلاحية. تبويب يفتح شاشة تگله «ممنوع» أسوأ من تبويب ما موجود.
   const canReviewTeam = employee?.role === 'ADMIN'
     || !!employee?.isLeader
     || (permissions ?? []).includes('performance_review')
-  const [view, setView] = useState<'mine' | 'team'>('mine')
+  // «تقييم بين الإداريين» — منو يقارن أبو الكوادر والمراقبين ببعض،
+  // مو أبو الكوادر نفسه. نفس حارس الخادم بالضبط
+  // (`RequireRole("ADMIN","OWNER","MONITOR")`).
+  const canSeeEvaluators = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'MONITOR'
+  const [view, setView] = useState<'mine' | 'team' | 'evaluators'>('mine')
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)
+  const [evalBoard, setEvalBoard] = useState<RoleKpiLeaderboard | null>(null)
+  const [evalPeriod, setEvalPeriod] = useState<'weekly' | 'monthly'>('weekly')
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly')
+
+  useEffect(() => {
+    if (view === 'evaluators') api.getEvaluatorLeaderboard().then(setEvalBoard).catch(() => setEvalBoard(null))
+  }, [view])
 
   const isTechnician = employee?.role === 'TECHNICIAN'
 
@@ -100,7 +110,9 @@ export default function MyRanking() {
           <div>
             <h2 className="text-2xl font-black text-[#0f2040]">التقييم</h2>
             <p className="text-xs text-slate-500">
-              {view === 'mine' ? `تقييمي وتصنيفي — مقارنة بين الي يشتغلون ${roleLabel}` : 'قيّم فريقك عن كل حجز'}
+              {view === 'mine' ? `تقييمي وتصنيفي — مقارنة بين الي يشتغلون ${roleLabel}`
+                : view === 'team' ? 'قيّم فريقك عن كل حجز'
+                : 'مقارنة نشاط المراجعة بين الإداريين'}
             </p>
           </div>
         </div>
@@ -121,13 +133,14 @@ export default function MyRanking() {
         )}
       </div>
 
-      {/* ═══ خياران من فوگ ═══
+      {/* ═══ خيارات من فوگ ═══
           نفس نمط «مهامي» و«الجرد»: بند واحد بالقائمة والاختيار هنا. */}
-      {canReviewTeam && (
+      {(canReviewTeam || canSeeEvaluators) && (
         <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-flex sm:gap-2">
           {([
             { k: 'mine' as const, label: '🏆 تقييمي وتصنيفي' },
-            { k: 'team' as const, label: '⭐ تقييم فريقي' },
+            ...(canReviewTeam ? [{ k: 'team' as const, label: '👥 تقييم الموظفين' }] : []),
+            ...(canSeeEvaluators ? [{ k: 'evaluators' as const, label: '📋 تقييم بين الإداريين' }] : []),
           ]).map((o) => (
             <button
               key={o.k}
@@ -146,6 +159,109 @@ export default function MyRanking() {
 
       {/* تقييم الفريق يعيد استعمال نفس الشاشة بلا نسخ منطقها */}
       {view === 'team' && <PerformanceReviewPage />}
+
+      {/* ═══ تقييم بين الإداريين ═══
+          ⚠️ «نقاط»/«حجوزات مراجعة» هنا **عدد المراجعات المسجَّلة**
+          لا نقاط KPI ولا حجوزات مُنجزة — لا معنى لـ«الالتزام بالدوام»
+          أو «معدل الإنجاز» لموظف بصفته مقيِّماً، فهذا الجدول أبسط
+          من جدول «تقييمي وتصنيفي» بقصد. وما نعرض «دقة التقييم»
+          الظاهرة بالتصميم لأنها **غير معرَّفة بالنظام** — لا يوجد
+          مقياس فعلي لصحة حكم المقيِّم، وعرض رقم مخترع أسوأ من عدم عرضه. */}
+      {view === 'evaluators' && (
+        <div className="space-y-4">
+          <div className="flex justify-end gap-2">
+            {(['monthly', 'weekly'] as const).map((p) => (
+              <button
+                key={p}
+                onClick={() => setEvalPeriod(p)}
+                className={`rounded-lg px-4 py-2 text-xs font-bold transition ${
+                  evalPeriod === p ? 'bg-[#2c5aad] text-white shadow-md' : 'border border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+              >
+                📅 {p === 'weekly' ? 'أسبوعي' : 'شهري'}
+              </button>
+            ))}
+          </div>
+
+          {(() => {
+            const evalList = evalBoard ? (evalPeriod === 'weekly' ? evalBoard.weekly : evalBoard.monthly) : []
+            const myEvalIndex = evalList.findIndex((e) => e.employeeId === employee?.id)
+            const myEvalEntry = myEvalIndex >= 0 ? evalList[myEvalIndex] : null
+            return (
+              <>
+                <div className="grid grid-cols-2 gap-3 lg:grid-cols-2">
+                  <RankCard
+                    icon="🗂️" label="حجوزات راجعتها"
+                    value={myEvalEntry ? String(myEvalEntry.points) : '—'}
+                    tone="sky"
+                    delta={myEvalEntry?.pointsDelta ?? 0}
+                    deltaSuffix="مراجعة"
+                  />
+                  <RankCard
+                    icon="🏆" label="ترتيبي الحالي"
+                    value={myEvalIndex >= 0 ? `#${myEvalIndex + 1}` : '—'}
+                    tone="emerald"
+                    delta={myEvalEntry?.rankDelta ?? 0}
+                    deltaSuffix="مركز"
+                    note={myEvalIndex >= 0 ? `من ${evalList.length}` : undefined}
+                  />
+                </div>
+
+                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                  <div className="border-b border-slate-100 px-5 py-4">
+                    <h3 className="text-sm font-extrabold text-[#0f2040]">👥 ترتيب الإداريين حسب نشاط المراجعة</h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-right text-xs">
+                      <thead className="bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="px-4 py-2.5 font-bold">#</th>
+                          <th className="px-4 py-2.5 font-bold">الإداري</th>
+                          <th className="px-4 py-2.5 font-bold">الحجوزات المراجعة</th>
+                          <th className="px-4 py-2.5 font-bold">التغيير</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {evalList.map((e, i) => {
+                          const isMe = e.employeeId === employee?.id
+                          return (
+                            <tr key={e.employeeId} className={isMe ? 'bg-sky-50/60' : 'hover:bg-slate-50'}>
+                              <td className="px-4 py-3">
+                                <span className={`inline-flex h-6 w-6 items-center justify-center rounded-md text-[11px] font-black ${
+                                  i === 0 ? 'bg-amber-100 text-amber-800'
+                                  : i === 1 ? 'bg-slate-200 text-slate-700'
+                                  : i === 2 ? 'bg-orange-100 text-orange-800'
+                                  : 'text-slate-400'
+                                }`}>{i + 1}</span>
+                              </td>
+                              <td className="px-4 py-3 font-bold text-slate-800">
+                                {e.employeeName}{isMe && <span className="mr-1 text-[10px] text-sky-600">(أنت)</span>}
+                              </td>
+                              <td className="px-4 py-3 font-black text-slate-800">{e.points}</td>
+                              <td className="px-4 py-3">
+                                {e.pointsDelta === 0 ? (
+                                  <span className="text-slate-400">0 —</span>
+                                ) : (
+                                  <span className={`font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                    {e.pointsDelta > 0 ? '▲' : '▼'} {e.pointsDelta > 0 ? '+' : ''}{e.pointsDelta}
+                                  </span>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                        {evalList.length === 0 && (
+                          <tr><td colSpan={4} className="p-6 text-center text-slate-400">ماكو مراجعات مسجّلة بهذي الفترة</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </>
+            )
+          })()}
+        </div>
+      )}
 
       {view === 'mine' && (<>
       {/* ═══ مسارات التصنيف ═══

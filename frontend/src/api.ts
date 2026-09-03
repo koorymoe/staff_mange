@@ -4274,6 +4274,10 @@ export const api = {
   getKpiLeaderboard: (month?: string) =>
     request<TechnicianKpi[]>(`/smart-kpi/leaderboard${month ? `?month=${month}` : ''}`),
   getRoleKpiLeaderboard: (role: string) => request<RoleKpiLeaderboard>(`/kpi/leaderboard/${role}`),
+  /** «تقييم بين الإداريين» — ترتيب ADMIN/OWNER/MONITOR/HR_COORDINATOR حسب
+   *  عدد الحجوزات الي راجعوها. `points`/`evaluationCount` هنا عدد
+   *  المراجعات لا نقاط KPI. */
+  getEvaluatorLeaderboard: () => request<RoleKpiLeaderboard>('/performance-reviews/evaluator-leaderboard'),
   /** الترتيب حسب الشغل — أصحاب نفس الصلاحية ينقارنون ببعض. */
   getPermissionKpiLeaderboard: (permission: string) =>
     request<RoleKpiLeaderboard>(`/kpi/leaderboard-by-permission/${permission}`),

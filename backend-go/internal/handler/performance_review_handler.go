@@ -82,3 +82,14 @@ func (h *PerformanceReviewHandler) MyBookings(w http.ResponseWriter, r *http.Req
 	}
 	WriteJSON(w, http.StatusOK, rows)
 }
+
+// GET /api/performance-reviews/evaluator-leaderboard — «تقييم بين الإداريين»:
+// ترتيب ADMIN/OWNER/MONITOR/HR_COORDINATOR حسب عدد الحجوزات الي راجعوها.
+func (h *PerformanceReviewHandler) EvaluatorLeaderboard(w http.ResponseWriter, r *http.Request) {
+	board, err := h.service.EvaluatorLeaderboard()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب ترتيب المراجعين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, board)
+}
