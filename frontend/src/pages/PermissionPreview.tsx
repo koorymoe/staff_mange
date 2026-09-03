@@ -85,10 +85,21 @@ export default function PermissionPreview() {
       return rows
     })
 
+  // ⚠️ نفس تسلسل `walk()` بالضبط (تمرير `unitGranted` للأبناء) —
+  // كانت تُحسب بفلترة قائمة مسطّحة بلا `unitGranted`، فعنصر يظهر
+  // فعلياً بعلامة ✓ بالشجرة (بحكم وحدة أبوه ممنوحة بالكامل) كان
+  // يُحسب «غير ظاهر» بالعدّاد — عدّاد يكذب بصمت عن الشجرة تحته.
+  const countVisible = (items: NavItem[], unitGranted = false): number =>
+    items.reduce((sum, item) => {
+      if (item.divider) return sum
+      const visible = emp ? isNavVisible(item, ctx, unitGranted) : false
+      const childGranted = unitGranted || (!!item.unitPermission && perms.includes(item.unitPermission))
+      return sum + (visible ? 1 : 0) + (item.children ? countVisible(item.children, childGranted) : 0)
+    }, 0)
+  const visibleCount = emp ? countVisible(navItems) : 0
   const flat = (items: NavItem[]): NavItem[] =>
     items.flatMap((i) => (i.divider ? [] : [i, ...(i.children ? flat(i.children) : [])]))
   const all = flat(navItems)
-  const visibleCount = emp ? all.filter((i) => isNavVisible(i, ctx)).length : 0
 
   return (
     <div dir="rtl" className="space-y-5">

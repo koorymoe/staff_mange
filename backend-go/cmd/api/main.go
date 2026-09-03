@@ -1341,8 +1341,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	mux.Handle("GET /api/gps/stats", middleware.Chain(http.HandlerFunc(gpsHandler.Stats), requireAuth))
 
-	// الإحصائيات العامة (stats) — لوحة معلومات المدير/المشرف
-	mux.Handle("GET /api/stats", middleware.Chain(http.HandlerFunc(statsHandler.Overview), requireAuth))
+	// الإحصائيات العامة (stats) — إيرادات وأرباح الشركة وتفصيل أداء كل
+	// موظف بالاسم. ⚠️⚠️ كان بلا `requireAdmin` — أي موظف مسجّل دخول
+	// (حتى فني بالميدان) يقدر يستدعيه مباشرة ويحصل على كل هذا رغم إن
+	// الواجهة (`StatsPage.tsx`) تقفل على غير ADMIN. الحارس هنا صار
+	// يطابق القفل الفعلي بالواجهة.
+	mux.Handle("GET /api/stats", middleware.Chain(http.HandlerFunc(statsHandler.Overview), requireAuth, requireAdmin))
 
 	// إدارة المركبات — وقود/تنظيف/تبديل زيت، أعطال وأضرار، حالة شهرية
 	// قائمة مبسطة لاختيار سيارة لحجز — بلا صلاحية إدارة الأسطول

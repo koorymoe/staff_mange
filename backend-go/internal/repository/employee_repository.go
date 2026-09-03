@@ -162,42 +162,88 @@ func (r *EmployeeRepository) Create(e *model.Employee) error {
 	return err
 }
 
+const employeeUpdateSQL = `
+	UPDATE "Employee" SET
+		name = :name,
+		certificate = :certificate,
+		"photoUrl" = :photoUrl,
+		position = :position,
+		phone = :phone,
+		status = :status,
+		role = :role,
+		"onDuty" = :onDuty,
+		username = :username,
+		password = COALESCE(NULLIF(:password, ''), password),
+		"hasDrivingLicense" = :hasDrivingLicense,
+		"hasSafetyCertificate" = :hasSafetyCertificate,
+		"isLeader" = :isLeader,
+		"isTrainee" = :isTrainee,
+		salary = :salary,
+		shift = :shift,
+		"shiftStart" = :shiftStart,
+		"shiftEnd" = :shiftEnd,
+		"monthlyLeaves" = :monthlyLeaves,
+		"jobTitle" = :jobTitle,
+		"authzViolations" = :authzViolations,
+		-- ملف الموارد البشرية المنقول من نظام الطاقة الشمسية
+		department = :department,
+		"hireDate" = :hireDate,
+		"experienceYears" = :experienceYears,
+		"lastReview" = :lastReview,
+		"careerStatus" = :careerStatus,
+		"jobLevel" = :jobLevel,
+		"nextRole" = :nextRole,
+		"trainingNeeds" = :trainingNeeds
+	WHERE id = :id
+`
+
 func (r *EmployeeRepository) Update(e *model.Employee) error {
-	_, err := r.db.NamedExec(`
-		UPDATE "Employee" SET
-			name = :name,
-			certificate = :certificate,
-			"photoUrl" = :photoUrl,
-			position = :position,
-			phone = :phone,
-			status = :status,
-			role = :role,
-			"onDuty" = :onDuty,
-			username = :username,
-			password = COALESCE(NULLIF(:password, ''), password),
-			"hasDrivingLicense" = :hasDrivingLicense,
-			"hasSafetyCertificate" = :hasSafetyCertificate,
-			"isLeader" = :isLeader,
-			"isTrainee" = :isTrainee,
-			salary = :salary,
-			shift = :shift,
-			"shiftStart" = :shiftStart,
-			"shiftEnd" = :shiftEnd,
-			"monthlyLeaves" = :monthlyLeaves,
-			"jobTitle" = :jobTitle,
-			"authzViolations" = :authzViolations,
-			-- ملف الموارد البشرية المنقول من نظام الطاقة الشمسية
-			department = :department,
-			"hireDate" = :hireDate,
-			"experienceYears" = :experienceYears,
-			"lastReview" = :lastReview,
-			"careerStatus" = :careerStatus,
-			"jobLevel" = :jobLevel,
-			"nextRole" = :nextRole,
-			"trainingNeeds" = :trainingNeeds
-		WHERE id = :id
-	`, e)
+	_, err := r.db.NamedExec(employeeUpdateSQL, e)
 	return err
+}
+
+// UpdateWithLock يقرأ الموظف بقفل صف (`FOR UPDATE`) ويعدّله بدالة `mutate`
+// ويحفظه — كله بمعاملة واحدة.
+//
+// ⚠️⚠️ بدون القفل: `Update` أعلاه يكتب **كل أعمدة الموظف** من نسخة قُرئت
+// بذاكرة العملية قبل شوي. فلمن يصير تعديلان بنفس اللحظة تقريباً — مثلاً
+// رفع صورة (`photoUrl`) وحفظ حقل نصي عند فقدان التركيز (`onBlur`) —
+// الاثنان يقرآن الصف قبل ما أي وحدة تكتب، وبعدين يكتب كل وحدة **الصف
+// الكامل** من نسختها. الي يكتب أخيراً يمحي صمتاً أي حقل غيّره التعديل
+// الآخر، لأن نسخته بالذاكرة ما تعرف عن التغيير. هذا بالضبط سبب اختفاء
+// صورة موظف بعد ما تُرفع وتُحفظ وتُحدَّث الصفحة — تعديل حقل ثاني (حتى لو
+// غير مرتبط بالصورة إطلاقاً) كتب فوگها بنسخة قديمة بلا صورة.
+//
+// القفل يخلي التعديل الثاني ينتظر لين الأول يخلص ويلتزم، فيقرا نسخة
+// طرية فيها تغيير الأول — بلا فقدان صامت لأي حقل.
+func (r *EmployeeRepository) UpdateWithLock(id string, mutate func(*model.Employee) error) (*model.Employee, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+
+	var e model.Employee
+	if err := tx.Get(&e, `SELECT * FROM "Employee" WHERE id = $1 FOR UPDATE`, id); err != nil {
+		return nil, err
+	}
+	skills, err := r.SkillsForEmployee(e.ID)
+	if err != nil {
+		return nil, err
+	}
+	e.Skills = skills
+
+	if err := mutate(&e); err != nil {
+		return nil, err
+	}
+
+	if _, err := tx.NamedExec(employeeUpdateSQL, &e); err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	return &e, nil
 }
 
 // Supervisors يرجّع تيم ليدرز ومدراء المشاريع النشطين المؤهلين للإشراف على تكليف الفنيين

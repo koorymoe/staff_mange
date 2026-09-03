@@ -140,7 +140,11 @@ export const navItems: NavItem[] = [
           // «جدول دوامي» مباشرة. بس المدير لازم يضل يوصل صندوق الطلبات
           // حتى يوافق — بلا هذا المدخل الطلبات تنتراكم وماكو منو يشوفها.
           { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
-          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_stats' },
+          // ⚠️ ADMIN بس — StatsPage.tsx نفسها تقفل على غير ADMIN
+          // (role !== 'ADMIN')، وكان المراقب يشوف الرابط هنا ويفتح
+          // دائماً على «غير مصرح». والخادم (`GET /api/stats`) صار
+          // محمياً بـ`requireAdmin` نفسه — القفلان يطابقان القائمة.
+          { to: '/stats', label: 'إحصائيات الموظفين', icon: <></>, roles: ['ADMIN'] },
           { to: '/employee-stats', label: 'إحصائيات الموظفين الشهرية', icon: <></>, roles: ['ADMIN'], unlockPermission: 'employee_stats' },
         ],
       },

@@ -115,144 +115,144 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 	return employee, nil
 }
 
+// Update يعدّل موظفاً — بقفل صف (`UpdateWithLock`) حتى تعديلان بنفس
+// اللحظة ما يبطل أحدهما الثاني بصمت (شوف تعليق `UpdateWithLock`
+// بـ`employee_repository.go`).
 func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*model.Employee, error) {
-	employee, err := s.repo.FindByID(id)
-	if err != nil {
-		return nil, err
-	}
-
-	if req.Name != nil {
-		employee.Name = *req.Name
-	}
-	if req.Certificate != nil {
-		employee.Certificate = req.Certificate
-	}
-	if req.Position != nil {
-		employee.Position = req.Position
-	}
-	if req.Phone != nil {
-		employee.Phone = req.Phone
-	}
-	if req.Status != nil {
-		employee.Status = *req.Status
-		// استرجاع حساب موقوف (SUSPENDED) يصفّر عداد محاولات الاختراق —
-		// نعطيه بداية جديدة بعد ما الأدمن راجع الموضوع ووافق يرجّعه
-		if *req.Status == "ACTIVE" {
-			employee.AuthzViolations = 0
+	_, err := s.repo.UpdateWithLock(id, func(employee *model.Employee) error {
+		if req.Name != nil {
+			employee.Name = *req.Name
 		}
-	}
-	if req.Role != nil {
-		if *req.Role == "OWNER" && employee.Role != "OWNER" {
-			return nil, errors.New("دور المالك محجوز لحساب واحد بس، ما ينمنح من الواجهة")
+		if req.Certificate != nil {
+			employee.Certificate = req.Certificate
 		}
-		if *req.Role == "ENGINEER" && employee.Role != "ENGINEER" {
-			if err := requireEngineeringSkills(employee); err != nil {
-				return nil, err
+		if req.Position != nil {
+			employee.Position = req.Position
+		}
+		if req.Phone != nil {
+			employee.Phone = req.Phone
+		}
+		if req.Status != nil {
+			employee.Status = *req.Status
+			// استرجاع حساب موقوف (SUSPENDED) يصفّر عداد محاولات الاختراق —
+			// نعطيه بداية جديدة بعد ما الأدمن راجع الموضوع ووافق يرجّعه
+			if *req.Status == "ACTIVE" {
+				employee.AuthzViolations = 0
 			}
 		}
-		employee.Role = *req.Role
-	}
-	if req.OnDuty != nil {
-		employee.OnDuty = *req.OnDuty
-	}
-	if req.Username != nil {
-		employee.Username = req.Username
-	}
-	if req.HasDrivingLicense != nil {
-		employee.HasDrivingLicense = *req.HasDrivingLicense
-	}
-	if req.HasSafetyCertificate != nil {
-		employee.HasSafetyCertificate = *req.HasSafetyCertificate
-	}
-	if req.IsLeader != nil {
-		employee.IsLeader = *req.IsLeader
-	}
-	if req.IsTrainee != nil {
-		employee.IsTrainee = *req.IsTrainee
-	}
-	// ⚠️ نص فاضي = **شيل الصورة** (يرجع للحرف الأول)، وغياب الحقل
-	// كلياً = لا تلمسها. بلا هذا الفرق ما تكدر تشيل صورة انرفعت غلط.
-	if req.PhotoURL != nil {
-		if *req.PhotoURL == "" {
-			employee.PhotoURL = nil
+		if req.Role != nil {
+			if *req.Role == "OWNER" && employee.Role != "OWNER" {
+				return errors.New("دور المالك محجوز لحساب واحد بس، ما ينمنح من الواجهة")
+			}
+			if *req.Role == "ENGINEER" && employee.Role != "ENGINEER" {
+				if err := requireEngineeringSkills(employee); err != nil {
+					return err
+				}
+			}
+			employee.Role = *req.Role
+		}
+		if req.OnDuty != nil {
+			employee.OnDuty = *req.OnDuty
+		}
+		if req.Username != nil {
+			employee.Username = req.Username
+		}
+		if req.HasDrivingLicense != nil {
+			employee.HasDrivingLicense = *req.HasDrivingLicense
+		}
+		if req.HasSafetyCertificate != nil {
+			employee.HasSafetyCertificate = *req.HasSafetyCertificate
+		}
+		if req.IsLeader != nil {
+			employee.IsLeader = *req.IsLeader
+		}
+		if req.IsTrainee != nil {
+			employee.IsTrainee = *req.IsTrainee
+		}
+		// ⚠️ نص فاضي = **شيل الصورة** (يرجع للحرف الأول)، وغياب الحقل
+		// كلياً = لا تلمسها. بلا هذا الفرق ما تكدر تشيل صورة انرفعت غلط.
+		if req.PhotoURL != nil {
+			if *req.PhotoURL == "" {
+				employee.PhotoURL = nil
+			} else {
+				employee.PhotoURL = req.PhotoURL
+			}
+		}
+		if req.Salary != nil {
+			employee.Salary = req.Salary
+		}
+		if req.Shift != nil {
+			employee.Shift = req.Shift
+		}
+		if req.ShiftStart != nil {
+			employee.ShiftStart = req.ShiftStart
+		}
+		if req.ShiftEnd != nil {
+			employee.ShiftEnd = req.ShiftEnd
+		}
+		if req.MonthlyLeaves != nil {
+			employee.MonthlyLeaves = *req.MonthlyLeaves
+		}
+		if req.JobTitle != nil {
+			employee.JobTitle = req.JobTitle
+		}
+
+		// ═══ ملف الموارد البشرية ═══
+		if req.Department != nil {
+			employee.Department = req.Department
+		}
+		if req.HireDate != nil {
+			if t, err := time.Parse("2006-01-02", *req.HireDate); err == nil {
+				employee.HireDate = &t
+			} else if *req.HireDate == "" {
+				employee.HireDate = nil
+			}
+		}
+		if req.ExperienceYears != nil {
+			employee.ExperienceYears = req.ExperienceYears
+		}
+		if req.LastReview != nil {
+			employee.LastReview = req.LastReview
+		}
+		if req.JobLevel != nil && *req.JobLevel >= 1 && *req.JobLevel <= 10 {
+			employee.JobLevel = *req.JobLevel
+		}
+		if req.NextRole != nil {
+			employee.NextRole = req.NextRole
+		}
+		if req.TrainingNeeds != nil {
+			employee.TrainingNeeds = req.TrainingNeeds
+		}
+		// الحالة الوظيفية تنحسب بالسيرفر من الخبرة والمستوى والتقييم — قاعدة
+		// وحدة للكل. الإداري يقدر يفرض «تحت المراقبة» يدوياً، وهاي الوحيدة
+		// الي ما تنحسب لأنها قرار مو نتيجة.
+		if req.CareerStatus != nil && *req.CareerStatus == model.CareerWatched {
+			employee.CareerStatus = model.CareerWatched
 		} else {
-			employee.PhotoURL = req.PhotoURL
+			exp := 0.0
+			if employee.ExperienceYears != nil {
+				exp = *employee.ExperienceYears
+			}
+			review := ""
+			if employee.LastReview != nil {
+				review = *employee.LastReview
+			}
+			employee.CareerStatus = model.EvaluateCareerStatus(exp, employee.JobLevel, review)
 		}
-	}
-	if req.Salary != nil {
-		employee.Salary = req.Salary
-	}
-	if req.Shift != nil {
-		employee.Shift = req.Shift
-	}
-	if req.ShiftStart != nil {
-		employee.ShiftStart = req.ShiftStart
-	}
-	if req.ShiftEnd != nil {
-		employee.ShiftEnd = req.ShiftEnd
-	}
-	if req.MonthlyLeaves != nil {
-		employee.MonthlyLeaves = *req.MonthlyLeaves
-	}
-	if req.JobTitle != nil {
-		employee.JobTitle = req.JobTitle
-	}
 
-	// ═══ ملف الموارد البشرية ═══
-	if req.Department != nil {
-		employee.Department = req.Department
-	}
-	if req.HireDate != nil {
-		if t, err := time.Parse("2006-01-02", *req.HireDate); err == nil {
-			employee.HireDate = &t
-		} else if *req.HireDate == "" {
-			employee.HireDate = nil
+		if req.Password != nil && *req.Password != "" {
+			hashed, err := HashPassword(*req.Password)
+			if err != nil {
+				return err
+			}
+			employee.Password = &hashed
+		} else {
+			empty := ""
+			employee.Password = &empty
 		}
-	}
-	if req.ExperienceYears != nil {
-		employee.ExperienceYears = req.ExperienceYears
-	}
-	if req.LastReview != nil {
-		employee.LastReview = req.LastReview
-	}
-	if req.JobLevel != nil && *req.JobLevel >= 1 && *req.JobLevel <= 10 {
-		employee.JobLevel = *req.JobLevel
-	}
-	if req.NextRole != nil {
-		employee.NextRole = req.NextRole
-	}
-	if req.TrainingNeeds != nil {
-		employee.TrainingNeeds = req.TrainingNeeds
-	}
-	// الحالة الوظيفية تنحسب بالسيرفر من الخبرة والمستوى والتقييم — قاعدة
-	// وحدة للكل. الإداري يقدر يفرض «تحت المراقبة» يدوياً، وهاي الوحيدة
-	// الي ما تنحسب لأنها قرار مو نتيجة.
-	if req.CareerStatus != nil && *req.CareerStatus == model.CareerWatched {
-		employee.CareerStatus = model.CareerWatched
-	} else {
-		exp := 0.0
-		if employee.ExperienceYears != nil {
-			exp = *employee.ExperienceYears
-		}
-		review := ""
-		if employee.LastReview != nil {
-			review = *employee.LastReview
-		}
-		employee.CareerStatus = model.EvaluateCareerStatus(exp, employee.JobLevel, review)
-	}
-
-	if req.Password != nil && *req.Password != "" {
-		hashed, err := HashPassword(*req.Password)
-		if err != nil {
-			return nil, err
-		}
-		employee.Password = &hashed
-	} else {
-		empty := ""
-		employee.Password = &empty
-	}
-
-	if err := s.repo.Update(employee); err != nil {
+		return nil
+	})
+	if err != nil {
 		return nil, err
 	}
 	// تغيير الدور أو صفة الليدر يغيّر الاستحقاق للعدة القياسية: فني ينتقل

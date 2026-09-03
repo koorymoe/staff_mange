@@ -201,7 +201,10 @@ export default function EmployeeMonthlyStatsPage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={14} style={{ ...tdStyle, textAlign: 'center', color: 'var(--t-faint)', padding: '40px' }}>
+                  {/* ⚠️ ١٨ عمود فعلي بالرأس (thead) — كان ١٤ فقط ويقصّر
+                      الصف عن العرض الحقيقي بعد إضافة أعمدة لاحقاً
+                      (النوع، الأعمال الداخلية، التقييم اليدوي). */}
+                  <td colSpan={18} style={{ ...tdStyle, textAlign: 'center', color: 'var(--t-faint)', padding: '40px' }}>
                     لا توجد بيانات لهذا الشهر
                   </td>
                 </tr>
@@ -210,7 +213,11 @@ export default function EmployeeMonthlyStatsPage() {
             {rows.length > 0 && (
               <tfoot>
                 <tr>
-                  <td style={{ ...tdStyle, fontWeight: 'bold' }} colSpan={12}>الإجمالي</td>
+                  {/* ⚠️ العمود ١٧ («إجمالي العمولة») هو الي فيه المجموع —
+                      العنوان يمتد لحدّه (١٦ عمود)، وعمود ١٨ («منحنى
+                      الأداء») يبقى فاضياً. كان colSpan={12} يخلي
+                      العنوان والرقم ينزاحان تحت أعمدة غلط. */}
+                  <td style={{ ...tdStyle, fontWeight: 'bold' }} colSpan={16}>الإجمالي</td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: PRIMARY_TEXT }}>{fmt(totalCommissionSum)} د.ع</td>
                   <td style={tdStyle} />
                 </tr>
