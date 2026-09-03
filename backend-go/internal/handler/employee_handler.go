@@ -110,6 +110,17 @@ func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// ⚠️ نفس نمط بيانات الدخول أعلاه بالضبط: صاحب النظام قرر إن صورة
+	// الموظف يحطّها المالك بس — لا ADMIN. والواجهة تخفي زر الرفع عن
+	// ADMIN أصلاً، بس المنع الحقيقي هنا لأن إخفاء الزر لحاله ما يمنع
+	// نداءً مباشراً بيد أي حساب ADMIN.
+	if req.PhotoURL != nil {
+		if role, _ := r.Context().Value(middleware.ContextRole).(string); role != "OWNER" {
+			WriteError(w, http.StatusForbidden, "تغيير صورة الموظف للمالك وحده")
+			return
+		}
+	}
+
 	employee, err := h.service.Update(id, req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

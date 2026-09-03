@@ -425,13 +425,18 @@ export default function Employees() {
                           «اقفلها بيد الإدارة بس» — والسيرفر يفرضها
                           كمان: `PUT /employees/{id}` محصور بمدير
                           النظام. فالشرط هنا يطابق حارس السيرفر، مو
-                          يعتمد عليه بس. */}
+                          يعتمد عليه بس.
+                          ⚠️ وصورة الموظف تحديداً حصراً بالمالك —
+                          `actualRole` لا `role` (`role` تنزّل OWNER
+                          لـADMIN حتى تشتغل بقية الشاشة، نفس
+                          `canCreateAccounts` فوگ)، ونفس القيد مفروض
+                          بالسيرفر (`req.PhotoURL` بـ`employee_handler.go`). */}
                       <EmployeeAvatar
                         name={selectedEmployee.name}
                         photoUrl={selectedEmployee.photoUrl}
                         size="xl"
                         rounded="xl"
-                        canEdit={isAdmin}
+                        canEdit={currentUser?.actualRole === 'OWNER'}
                         onPhotoChange={(url) => savePhoto(selectedEmployee.id, url)}
                         className="shrink-0 ring-4 ring-white/20 rounded-2xl"
                       />
