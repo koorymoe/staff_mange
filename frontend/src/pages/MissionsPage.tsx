@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '../session'
+import ExtraTasksPage from './ExtraTasksPage'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -128,7 +129,7 @@ export default function MissionsPage() {
   const { employee, permissions } = useSession()
   const [missions, setMissions] = useState<Mission[]>([])
   const [loading, setLoading] = useState(true)
-  const [tab, setTab] = useState<'active' | 'completed' | 'monitor'>('active')
+  const [tab, setTab] = useState<'active' | 'completed' | 'monitor' | 'extra'>('active')
   const [selectedMission, setSelectedMission] = useState<Mission | null>(null)
   const [pathMission, setPathMission] = useState<Mission | null>(null)
   // Ticking clock so delay-status calculations stay pure during render (no Date.now() in render body)
@@ -140,6 +141,10 @@ export default function MissionsPage() {
   }, [])
 
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  // ⚠️ نفس حارس بند "توجيه المهام الإضافية" القديم بالقائمة الجانبية
+  // بالضبط (navTree.tsx كان: roles: ['ADMIN'], permission:
+  // 'extra_tasks_assign') — مو `isAdmin` الأوسع فوگ.
+  const canAssignExtraTasks = employee?.role === 'ADMIN' || permissions.includes('extra_tasks_assign')
 
   const load = useCallback(async () => {
     try {
@@ -310,7 +315,16 @@ export default function MissionsPage() {
             🖥️ لوحة المراقبة
           </button>
         )}
+        {canAssignExtraTasks && (
+          <button onClick={() => setTab('extra')} className={`rounded-xl px-5 py-2.5 text-sm font-bold transition ${tab === 'extra' ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600'}`}>
+            📋 مهام إضافية
+          </button>
+        )}
       </div>
+
+      {/* المهام الإضافية — توجيه ومتابعة، نفس الشاشة المستقلة
+          (/extra-tasks) مضمَّنة هنا بدل بند القائمة الجانبية. */}
+      {tab === 'extra' && <ExtraTasksPage embedded />}
 
       {/* Active Missions */}
       {tab === 'active' && (

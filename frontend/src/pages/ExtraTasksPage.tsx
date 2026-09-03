@@ -19,7 +19,7 @@ const STATUS_STYLE: Record<string, string> = {
   CANCELLED: 'bg-slate-200 text-slate-600',
 }
 
-export default function ExtraTasksPage() {
+export default function ExtraTasksPage({ embedded }: { embedded?: boolean } = {}) {
   const [tasks, setTasks] = useState<ExtraTask[]>([])
   const [employees, setEmployees] = useState<Employee[]>([])
   const [statusFilter, setStatusFilter] = useState('')
@@ -92,12 +92,14 @@ export default function ExtraTasksPage() {
 
   return (
     <div dir="rtl" className="space-y-5">
-      <div>
-        <h2 className="text-2xl font-bold text-brand-900">📋 المهام الإضافية</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          وجّه شغل لموظف — شغل مو مربوط بحجز. يوصله بإشعار ويطلع بشاشته.
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h2 className="text-2xl font-bold text-brand-900">📋 المهام الإضافية</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            وجّه شغل لموظف — شغل مو مربوط بحجز. يوصله بإشعار ويطلع بشاشته.
+          </p>
+        </div>
+      )}
 
       {err && <p className="rounded-lg bg-red-50 p-4 text-red-600">{err}</p>}
 
