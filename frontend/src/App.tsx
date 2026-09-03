@@ -123,6 +123,7 @@ const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
 const LessonPage = lazy(() => import('./lesson/LessonPage'))
 const MonitorDeskPage = lazy(() => import('./pages/MonitorDeskPage'))
+const StaffManagementDeskPage = lazy(() => import('./pages/StaffManagementDeskPage'))
 
 function RouteLoading() {
   return (
@@ -151,6 +152,7 @@ function App() {
               بمساراتها: اكو روابط محفوظة بمتصفحات الموظفين، وحذف
               مسار يعني صفحة بيضاء بلا تفسير. */}
           <Route path="monitor-desk" element={<MonitorDeskPage />} />
+          <Route path="staff-management-desk" element={<StaffManagementDeskPage />} />
           <Route path="simulator-lab" element={<SimLab />} />
           <Route path="simulator-lab/exercise/:id" element={<SimExercisePage />} />
           <Route path="simulator-lab/workbench" element={<LabWorkbench />} />

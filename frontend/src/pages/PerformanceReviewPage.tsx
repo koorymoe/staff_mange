@@ -44,7 +44,7 @@ const emptyDraft = (c: CrewReviewState): Draft => ({
   quality: c.qualityScore,
 })
 
-export default function PerformanceReviewPage() {
+export default function PerformanceReviewPage({ embedded }: { embedded?: boolean } = {}) {
   const [bookings, setBookings] = useState<BookingAwaitingReview[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'pending' | 'done'>('all')
@@ -110,7 +110,10 @@ export default function PerformanceReviewPage() {
 
   return (
     <div dir="rtl" className="mx-auto max-w-6xl space-y-4">
-      {/* ═══ العنوان ═══ */}
+      {/* ═══ العنوان ═══
+          ⚠️ يختفي لمّن الشاشة مضمَّنة بشاشة أخرى (مثلاً «التقييم» أو
+          مكتب إدارة الموظفين) — وإلا ترويستان فوگ بعض. */}
+      {!embedded && (
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-violet-50 text-lg sm:h-11 sm:w-11 sm:text-xl">⭐</span>
@@ -123,6 +126,7 @@ export default function PerformanceReviewPage() {
           ⓘ يتم تقييم الموظفين ضمن الحجز نفسه وليس كتقييم دائم مستقل
         </p>
       </div>
+      )}
 
       {err && (
         <div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{err}</div>

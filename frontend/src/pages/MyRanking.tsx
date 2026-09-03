@@ -33,6 +33,12 @@ export default function MyRanking() {
   // مو أبو الكوادر نفسه. نفس حارس الخادم بالضبط
   // (`RequireRole("ADMIN","OWNER","MONITOR")`).
   const canSeeEvaluators = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'MONITOR'
+  // ⚠️⚠️ الإداريون العليا (ADMIN/OWNER) ماعندهم تصنيف شخصي — «عندهم
+  // كل الصلاحيات بحكم موقعهم، فيطلعون بكل تصنيف ويزاحمون الي يشتغل
+  // الشغل فعلاً» (نفس مبدأ استثناء PermissionLeaderboard بالخادم).
+  // بلا هذا الشرط، ADMIN بلا `tracksFor` مطابق يسقط لمقارنة كل
+  // حسابات ADMIN ببعض بنقاط KPI/حجوزات — مقارنة بلا معنى لعمل إداري.
+  const isTopAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
   const [view, setView] = useState<'mine' | 'team' | 'evaluators'>('mine')
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)
@@ -40,9 +46,15 @@ export default function MyRanking() {
   const [evalPeriod, setEvalPeriod] = useState<'weekly' | 'monthly'>('weekly')
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly')
 
+  // ⚠️ `employee` يجي متأخر من الجلسة — الحالة الافتراضية 'mine' تنكتب
+  // وقت أول رسم قبل ما نعرف الدور. لمن يوصل ويطلع إداري عليا، هذا
+  // المشتق (لا حالة إضافية ولا Effect) يحوّل العرض لتبويب يشتغل إله
+  // فعلاً بدل ما يبقى واقف على تبويب ما راح يظهر أصلاً.
+  const effectiveView = isTopAdmin && view === 'mine' ? (canReviewTeam ? 'team' : 'evaluators') : view
+
   useEffect(() => {
-    if (view === 'evaluators') api.getEvaluatorLeaderboard().then(setEvalBoard).catch(() => setEvalBoard(null))
-  }, [view])
+    if (effectiveView === 'evaluators') api.getEvaluatorLeaderboard().then(setEvalBoard).catch(() => setEvalBoard(null))
+  }, [effectiveView])
 
   const isTechnician = employee?.role === 'TECHNICIAN'
 
@@ -110,13 +122,13 @@ export default function MyRanking() {
           <div>
             <h2 className="text-2xl font-black text-[#0f2040]">التقييم</h2>
             <p className="text-xs text-slate-500">
-              {view === 'mine' ? `تقييمي وتصنيفي — مقارنة بين الي يشتغلون ${roleLabel}`
-                : view === 'team' ? 'قيّم فريقك عن كل حجز'
+              {effectiveView === 'mine' ? `تقييمي وتصنيفي — مقارنة بين الي يشتغلون ${roleLabel}`
+                : effectiveView === 'team' ? 'قيّم فريقك عن كل حجز'
                 : 'مقارنة نشاط المراجعة بين الإداريين'}
             </p>
           </div>
         </div>
-        {view === 'mine' && (
+        {effectiveView === 'mine' && (
         <div className="flex gap-2">
           {(['monthly', 'weekly'] as const).map((p) => (
             <button
@@ -138,7 +150,7 @@ export default function MyRanking() {
       {(canReviewTeam || canSeeEvaluators) && (
         <div className="grid grid-cols-2 gap-1.5 rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:inline-flex sm:gap-2">
           {([
-            { k: 'mine' as const, label: '🏆 تقييمي وتصنيفي' },
+            ...(isTopAdmin ? [] : [{ k: 'mine' as const, label: '🏆 تقييمي وتصنيفي' }]),
             ...(canReviewTeam ? [{ k: 'team' as const, label: '👥 تقييم الموظفين' }] : []),
             ...(canSeeEvaluators ? [{ k: 'evaluators' as const, label: '📋 تقييم بين الإداريين' }] : []),
           ]).map((o) => (
@@ -146,7 +158,7 @@ export default function MyRanking() {
               key={o.k}
               onClick={() => setView(o.k)}
               className={`rounded-xl px-3 py-2 text-[11px] font-extrabold transition sm:px-5 sm:text-xs ${
-                view === o.k
+                effectiveView === o.k
                   ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow-md'
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
@@ -158,7 +170,7 @@ export default function MyRanking() {
       )}
 
       {/* تقييم الفريق يعيد استعمال نفس الشاشة بلا نسخ منطقها */}
-      {view === 'team' && <PerformanceReviewPage />}
+      {effectiveView === 'team' && <PerformanceReviewPage embedded />}
 
       {/* ═══ تقييم بين الإداريين ═══
           ⚠️ «نقاط»/«حجوزات مراجعة» هنا **عدد المراجعات المسجَّلة**
@@ -167,7 +179,7 @@ export default function MyRanking() {
           من جدول «تقييمي وتصنيفي» بقصد. وما نعرض «دقة التقييم»
           الظاهرة بالتصميم لأنها **غير معرَّفة بالنظام** — لا يوجد
           مقياس فعلي لصحة حكم المقيِّم، وعرض رقم مخترع أسوأ من عدم عرضه. */}
-      {view === 'evaluators' && (
+      {effectiveView === 'evaluators' && (
         <div className="space-y-4">
           <div className="flex justify-end gap-2">
             {(['monthly', 'weekly'] as const).map((p) => (
@@ -263,7 +275,7 @@ export default function MyRanking() {
         </div>
       )}
 
-      {view === 'mine' && (<>
+      {effectiveView === 'mine' && (<>
       {/* ═══ مسارات التصنيف ═══
           الموظف الي يشتغل أكثر من شغلة يظهر بأكثر من تصنيف — وهذا
           واقعه، مو خلل. التصنيف الواحد حسب الدور كان يخفيه. */}

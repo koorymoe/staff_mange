@@ -123,19 +123,25 @@ export const navItems: NavItem[] = [
           // شلناه من قوائم الأدوار. صاحب الصلاحية يشوفها، والي ما عنده
           // ما يشوفها — مهما كان اسم دوره.
           //
-          // ⚠️ ADMIN و MONITOR بقوا: هذني إدارة النظام نفسه، وشيلهم
-          // يقفل الباب على الي ينطي الصلاحيات أصلاً.
-          { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'staff_management' },
+          // ⚠️⚠️ أربعة بنود (إدارة الكوادر · نقاط الكي بي اي · تقييم
+          // الأداء · طلبات الكادر) صارت بند واحد يفتح مكتباً بتبويبات
+          // — نفس نمط «مكتب المراقب» بالضبط. الشرط هنا **اتحاد OR**
+          // لشروط الأربعة الأصلية: ADMIN/MONITOR بالدور، أو أي وحدة
+          // من الصلاحيات الأربعة ممنوحة (`permission`/`unlockPermission`
+          // يتصرفان نفس التصرف بـ`isNavVisible` — تفتح العنصر بغض
+          // النظر عن الدور)، فـ`anyPermission` تغطي الاثنين سوا.
+          // والشاشات الأربع القديمة تبقى بمساراتها (`/employees` وغيرها)
+          // — المكتب يضمّها بخاصية `embedded`، ما ينسخها.
+          {
+            to: '/staff-management-desk', label: 'إدارة الموظفين', icon: <></>,
+            roles: ['ADMIN', 'MONITOR'],
+            anyPermission: ['staff_management', 'kpi_management', 'performance_review', 'staff_requests'],
+          },
           // الصلاحيات جانت مدفونة جوّا مجموعة «إدارة الصلاحيات» — يعني
           // خمس مستويات للوصول لشاشة وحدة. المجموعة انشالت والشاشتين
           // صعدن هنا مباشرة.
           { to: '/permissions', label: 'الصلاحيات', icon: <></>, roles: ['ADMIN'] },
           { to: '/permission-preview', label: '🔎 شوف بعين الموظف', icon: <></>, roles: ['ADMIN'] },
-          { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
-          // تقييم الأداء (منفصل عن الكي بي اي) — تيم ليدرات الفرق
-          { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['ADMIN', 'MONITOR'], unlockPermission: 'performance_review' },
-          // طلبات الكادر الواردة من إدارة المشاريع
-          { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['ADMIN', 'MONITOR'], unlockPermission: 'staff_requests' },
           // ⚠️ الإجازات انشالت من القائمة العلوية: الموظف يطلبها من
           // «جدول دوامي» مباشرة. بس المدير لازم يضل يوصل صندوق الطلبات
           // حتى يوافق — بلا هذا المدخل الطلبات تنتراكم وماكو منو يشوفها.

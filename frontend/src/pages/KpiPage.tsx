@@ -966,15 +966,17 @@ function AdministrativeTab() {
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
-export default function KpiPage() {
+export default function KpiPage({ embedded }: { embedded?: boolean } = {}) {
   const [activeTab, setActiveTab] = useState<'technician' | 'admin'>('technician')
 
   return (
     <div>
+      {!embedded && (
       <div>
         <h2 className="text-2xl font-bold text-brand-900">تقييم الأداء (KPI)</h2>
         <p className="mt-1 text-slate-500">نظام النقاط الذكي للفنيين والنقاط الإدارية</p>
       </div>
+      )}
 
       {/* Tabs */}
       <div className="mt-6 flex gap-2">

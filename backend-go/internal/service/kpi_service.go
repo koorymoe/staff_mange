@@ -120,7 +120,17 @@ func (s *KpiService) Cancel(id, cancelledByEmployeeID string) (*model.KpiEvaluat
 }
 
 // RoleLeaderboard يرجع ترتيب موظفي دور معيّن أسبوعياً وشهرياً معاً
+//
+// ⚠️⚠️ ADMIN/OWNER مستثنون — نفس مبدأ الاستثناء الموجود أصلاً بـ
+// PermissionLeaderboard (عندهم كل الصلاحيات بحكم موقعهم، فيطلعون
+// بكل تصنيف ويزاحمون الي يشتغل الشغل فعلاً). بدون هذا الرفض، حساب
+// إداري عليا بلا مسار عمل حقيقي يقارَن بحسابات ADMIN/OWNER الثانية
+// بنقاط KPI/حجوزات — مقارنة بلا معنى لعمل إداري. الحارس هنا دفاع من
+// العمق: حتى نداء مباشر بلا فتح الواجهة يُرفض.
 func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, error) {
+	if role == "ADMIN" || role == "OWNER" {
+		return nil, errors.New("لا تصنيف شخصي للإداريين العليا")
+	}
 	const day = "2006-01-02"
 	now := time.Now()
 	weekAgo := now.AddDate(0, 0, -7).Format(day)

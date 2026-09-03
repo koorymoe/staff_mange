@@ -57,7 +57,7 @@ const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
 // ⚠️ تدرّجات الأفاتار انشالت: الصورة صارت من `EmployeeAvatar`
 // (صورة الموظف، وإلا حرفه بلون ثابت من اسمه).
 
-export default function Employees() {
+export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
   const { employee: currentUser, permissions: userPermissions } = useSession()
@@ -294,12 +294,15 @@ export default function Employees() {
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
     <div className="max-w-[1400px] mx-auto">
-      {/* Header */}
+      {/* Header — ⚠️ العنوان يختفي لمّن الشاشة مضمَّنة (مكتب إدارة
+          الموظفين)، وشريط البحث/الفلتر يبقى. */}
       <div className="flex items-center justify-between mb-6">
+        {!embedded && (
         <div>
           <h2 className="text-2xl font-extrabold text-[#0f2040]">إدارة الكوادر</h2>
           <p className="mt-1 text-sm text-slate-400">إدارة بيانات الموظفين وتحديد المهارات</p>
         </div>
+        )}
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.04)]">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>

@@ -26,7 +26,7 @@ const statusStyle: Record<string, string> = {
   FULFILLED: 'bg-emerald-50 text-emerald-700',
 }
 
-export default function StaffRequestsPage() {
+export default function StaffRequestsPage({ embedded }: { embedded?: boolean } = {}) {
   const { employee, permissions } = useSession()
   const isHandler = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR'
   const canRequest = employee?.role === 'ADMIN' || permissions.includes('project_management')
@@ -110,6 +110,9 @@ export default function StaffRequestsPage() {
     <div className="space-y-4">
       <SaveError message={guard.error} onClose={guard.clear} />
 
+      {/* ⚠️ تختفي لمّن الشاشة مضمَّنة (مكتب إدارة الموظفين) — وإلا
+          ترويستان فوگ بعض. */}
+      {!embedded && (
       <PageHeader
         title="👷 طلبات الكادر"
         subtitle="طلبات إدارة المشاريع للفنيين — من الطلب للموافقة للتلبية"
@@ -120,6 +123,15 @@ export default function StaffRequestsPage() {
           </button>
         )}
       />
+      )}
+      {embedded && canRequest && (
+        <div className="flex justify-end">
+          <button onClick={() => setShowForm(f => !f)}
+            className="rounded-xl bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700">
+            {showForm ? 'إغلاق' : '+ طلب كادر جديد'}
+          </button>
+        </div>
+      )}
 
       {/* بطاقات العدّ — وكل وحدة ترشّح القائمة، حتى الرقم يودّي لشغله */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

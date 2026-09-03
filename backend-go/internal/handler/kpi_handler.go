@@ -66,8 +66,15 @@ func (h *KpiHandler) CompleteTraining(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/kpi/leaderboard/{role}
 func (h *KpiHandler) RoleLeaderboard(w http.ResponseWriter, r *http.Request) {
-	board, err := h.service.RoleLeaderboard(r.PathValue("role"))
+	role := r.PathValue("role")
+	board, err := h.service.RoleLeaderboard(role)
 	if err != nil {
+		// ⚠️ ADMIN/OWNER مرفوضان بقصد (RoleLeaderboard) — ٤٠٠ لا ٥٠٠،
+		// هذا رفض منطقي مو عطل بالخادم.
+		if role == "ADMIN" || role == "OWNER" {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب لوحة الترتيب")
 		return
 	}
