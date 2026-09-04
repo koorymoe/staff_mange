@@ -3,6 +3,7 @@ import { api, COORDINATION_ALERT_THRESHOLD, type Booking, type CoordinationAlert
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import EmptyState from '../components/EmptyState'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 // صفحة تدقيق للمراقب (صلاحية crew_management) — تعرض الحجوزات الموجّهة/المسندة
 // من موظف مبيعات (أو غيره) لكن لسه ما ثبّتها الإداري (حالة PENDING). الهدف:
@@ -117,7 +118,7 @@ export default function MonitorCrewBookingsPage({ embedded }: EmbeddedProps = {}
                     isOverThreshold ? 'border-red-300' : 'border-amber-200'}`}
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-mono text-sm font-semibold text-brand-600">{b.code}</span>
+                    <span className="font-mono text-sm font-semibold text-brand-600"><BookingCodeChip code={b.code} /></span>
                     <div className="flex items-center gap-2">
                       <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-700">
                         بانتظار التثبيت

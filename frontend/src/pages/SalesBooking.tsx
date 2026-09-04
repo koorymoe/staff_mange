@@ -5,6 +5,7 @@ import { useSession } from '../session'
 import MultiSelect from '../components/MultiSelect'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { LocationPicker } from '../components/MapLazy'
+import PhoneActions from '../components/PhoneActions'
 
 type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
@@ -483,6 +484,15 @@ export default function SalesBooking() {
                 }`}
               />
               {phoneError && <p className="mt-1 text-xs text-red-600">{phoneError}</p>}
+              {/* ═══ اتصال + واتساب تحت الرقم ═══
+                  «من يجي حجز جديد أريد هاي الأزرار وي الحجز تجي».
+                  ⚠️ ما تظهر إلا لمن يكتمل الرقم (١١ خانة) — زر اتصال
+                  على رقم ناقص يودّي لمكالمة فاشلة. */}
+              {!phoneError && /^\d{11}$/.test(phone.trim()) && (
+                <div className="mt-1.5">
+                  <PhoneActions phone={phone.trim()} />
+                </div>
+              )}
               {!phoneError && existingCustomer && (
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">

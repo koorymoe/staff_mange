@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import BookingLifecycleActions from '../components/BookingLifecycleActions'
 import { matches } from '../utils/search'
 import LocateHint from '../components/LocateHint'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 // ═══ أرشيف الحجوزات ═══
 //
@@ -100,7 +101,7 @@ export default function BookingsArchive() {
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-black text-white">{b.code}</span>
+                  <span className="rounded-lg bg-slate-800 px-2.5 py-1 text-xs font-black text-white"><BookingCodeChip code={b.code} /></span>
                   <span className="text-sm font-bold text-[#0f2040]">{b.customer?.name || '—'}</span>
                   {b.customer?.phone && <span className="text-xs text-slate-500" dir="ltr">{b.customer.phone}</span>}
                 </div>

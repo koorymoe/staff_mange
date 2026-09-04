@@ -13,6 +13,7 @@ import EntityIdentity from '../components/EntityIdentity'
 import BookingTimelineView from '../components/BookingTimeline'
 import { promptChoice } from '../utils/promptChoice'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
+import PhoneActions from '../components/PhoneActions'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -812,9 +813,11 @@ export default function Coordinator() {
                     <span className="text-slate-400">الزبون: </span>
                     <span className="font-medium text-brand-800">{booking.customer?.name || 'زبون غير معروف'}</span>
                   </div>
-                  <div>
+                  <div className="flex flex-wrap items-center gap-2">
                     <span className="text-slate-400">الهاتف: </span>
                     {booking.customer?.phone || '-'}
+                    {/* اتصال + واتساب — هنا الإداري يتواصل ويّا الزبون فعلاً */}
+                    <PhoneActions phone={booking.customer?.phone} />
                   </div>
                   <div>
                     <span className="text-slate-400">الموقع المسجل: </span>

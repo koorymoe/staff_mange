@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type BookingProgressReport, type SuggestedCrewMember } from '../api'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 // ═══ حجوزات تحتاج إكمال ═══
 //
@@ -165,7 +166,7 @@ export default function PartialBookings() {
           <div key={b.id} className="overflow-hidden rounded-2xl bg-white shadow-[0_2px_12px_rgba(15,32,64,0.06)]">
             {/* ═══ الرأس ═══ */}
             <div className="flex flex-wrap items-center gap-3 px-5 py-3.5">
-              <span className="font-mono text-sm font-black text-[#2c5aad]">{b.code}</span>
+              <span className="font-mono text-sm font-black text-[#2c5aad]"><BookingCodeChip code={b.code} /></span>
               <span className="text-sm font-extrabold text-[#0f2040]">{b.customer?.name || 'زبون غير معروف'}</span>
 
               <div className="flex flex-1 flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-slate-500">

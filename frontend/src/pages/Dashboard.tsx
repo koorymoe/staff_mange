@@ -11,6 +11,7 @@ import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import { timeGreeting, GREETING_HOLD_MS } from '../greeting'
 import { MapViewer } from '../components/MapLazy'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 function formatTime(): string {
   return new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })
@@ -627,7 +628,7 @@ export default function Dashboard() {
                       </div>
                       <div className="flex items-center gap-3 text-right">
                         <div>
-                          <span className="text-sm font-bold text-amber-700">{b.code}</span>
+                          <span className="text-sm font-bold text-amber-700"><BookingCodeChip code={b.code} /></span>
                           <span className="mr-2 text-sm font-medium text-slate-700">{b.customer?.name}</span>
                         </div>
                         {b.service && <span className="rounded-lg bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">{b.service.name}</span>}
@@ -766,7 +767,7 @@ export default function Dashboard() {
                         ))}
                       </div>
                       <div className="flex items-center gap-3 text-right">
-                        <span className="text-sm font-bold text-brand-700">{b.code}</span>
+                        <span className="text-sm font-bold text-brand-700"><BookingCodeChip code={b.code} /></span>
                         <span className="text-xs text-slate-500">{b.customer?.name}</span>
                         {b.service && <span className="rounded-md bg-brand-50 px-2 py-0.5 text-[10px] text-brand-600">{b.service.name}</span>}
                       </div>
@@ -795,7 +796,7 @@ export default function Dashboard() {
                           {cartTotal > 0 && <span className="text-[10px] text-slate-400">مواد: {cartTotal.toLocaleString()}</span>}
                         </div>
                         <div className="flex items-center gap-2 text-right">
-                          <span className="text-sm font-bold text-emerald-700">{b.code}</span>
+                          <span className="text-sm font-bold text-emerald-700"><BookingCodeChip code={b.code} /></span>
                           <span className="text-xs text-slate-600">{b.customer?.name}</span>
                         </div>
                       </div>
@@ -1019,7 +1020,7 @@ export default function Dashboard() {
                             <td className="p-2 text-center font-bold text-emerald-700">{collected > 0 ? collected.toLocaleString() : '—'}</td>
                             <td className="p-2 text-center text-slate-600">{b.quotedPrice ? b.quotedPrice.toLocaleString() : '—'}</td>
                             <td className="p-2 text-slate-700">{b.customer?.name}</td>
-                            <td className="p-2 font-mono font-bold text-brand-600">{b.code}</td>
+                            <td className="p-2 font-mono font-bold text-brand-600"><BookingCodeChip code={b.code} /></td>
                           </tr>
                         )
                       })}
@@ -1213,7 +1214,7 @@ export default function Dashboard() {
                         </span>
                       </div>
                       <div className="flex items-center gap-3 text-white">
-                        <span className="text-sm font-bold">{b.code}</span>
+                        <span className="text-sm font-bold"><BookingCodeChip code={b.code} /></span>
                         <span className="text-xs">{b.status === 'IN_PROGRESS' ? '🔄 جاري التنفيذ' : '📋 بانتظار الاستلام'}</span>
                       </div>
                     </div>
@@ -1417,7 +1418,7 @@ export default function Dashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setMapTask(null)}>
           <div className="w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-bold text-brand-900">موقع المهمة {mapTask.code}</h3>
+              <h3 className="font-bold text-brand-900">موقع المهمة <BookingCodeChip code={mapTask.code} /></h3>
               <button onClick={() => setMapTask(null)} className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100">✕ إغلاق</button>
             </div>
             <MapViewer lat={mapTask.mapLatitude} lng={mapTask.mapLongitude} height={380} />

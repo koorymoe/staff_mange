@@ -1,5 +1,6 @@
 import type { Booking } from '../api'
 import { identityOf, formatWhen, type IdentityFields } from '../utils/identity'
+import BookingCodeChip from './BookingCodeChip'
 
 // ═══ رأس الهوية الموحّد ═══
 //
@@ -40,7 +41,14 @@ export default function EntityIdentity({ booking, fields, variant = 'compact', c
       className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs ${className}`}
       dir="rtl"
     >
-      {id.bookingCode && <Chip strong>🔖 {id.bookingCode}</Chip>}
+      {/* ⚠️ زر النسخ هنا يخدم تسع شاشات دفعة وحدة — كل مكان يستعمل
+          رأس الهوية هذا (التقارير، الفواتير، الجودة، صندوق المراقب،
+          التنسيق، مهامي...). */}
+      {id.bookingCode && (
+        <Chip strong>
+          🔖 <BookingCodeChip code={id.bookingCode} />
+        </Chip>
+      )}
       {id.customerCode && <Chip strong>{id.customerCode}</Chip>}
       {id.customerName && <Chip strong>{id.customerName}</Chip>}
       {id.customerPhone && (

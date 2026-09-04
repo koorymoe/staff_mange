@@ -14,6 +14,7 @@ import BookingLocator from '../components/BookingLocator'
 import LocateHint from '../components/LocateHint'
 import { promptChoice } from '../utils/promptChoice'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -238,7 +239,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
    *  المشاريع (يبقى مقفل عندهم لحد ما يوصل مرحلة التنفيذ). */
   const confirmAndTransfer = async (booking: Booking, toProjects: boolean) => {
     const where = toProjects ? 'إدارة المشاريع' : 'كادر الشد'
-    if (!confirm(`تثبيت الحجز ${booking.code} وترحيله لـ${where}؟`)) return
+    if (!confirm(`تثبيت الحجز $<BookingCodeChip code={booking.code} /> وترحيله لـ${where}؟`)) return
     setFlowBusy(booking.id)
     try {
       const updated = await api.confirmBooking(booking.id, {
@@ -533,7 +534,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                 <Fragment key={b.id}>
                   <tr>
                     <td className="px-4 py-3 font-mono text-sm font-semibold text-brand-600">
-                      {b.code}
+                      <BookingCodeChip code={b.code} />
                     </td>
                     <td className="px-4 py-3">{b.customer?.name || 'زبون غير معروف'}</td>
                     <td className="px-4 py-3 font-mono text-sm text-slate-500">{formatCustomerCode(b.customer) || '-'}</td>
@@ -893,7 +894,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setMapBooking(null)}>
           <div className="w-full max-w-2xl rounded-2xl bg-white p-4 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="font-bold text-brand-900">موقع الحجز {mapBooking.code}</h3>
+              <h3 className="font-bold text-brand-900">موقع الحجز <BookingCodeChip code={mapBooking.code} /></h3>
               <button onClick={() => setMapBooking(null)} className="rounded-lg px-3 py-1 text-sm text-slate-500 hover:bg-slate-100">✕ إغلاق</button>
             </div>
             <MapViewer lat={mapBooking.mapLatitude} lng={mapBooking.mapLongitude} height={380} />
