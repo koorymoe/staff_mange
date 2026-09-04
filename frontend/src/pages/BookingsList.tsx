@@ -120,6 +120,19 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
     permissions.includes('booking_delete_request')
 
+  // الزبون ما رد: ينزاح الحجز لطابور «ما وصلت للتنفيذ» فوراً بلا
+  // موافقة — ويبقى محفوظاً. ما ينحذف ولا ينأرشف.
+  const markNoAnswer = async (bookingId: string, code: string) => {
+    const note = prompt(`الزبون ما رد على الحجز ${code}؟ اكتب ملاحظة (اختياري)`, 'اتصلنا وما رد')
+    if (note === null) return
+    try {
+      await api.markBookingWaiting(bookingId, note.trim())
+      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور «ما وصلت للتنفيذ»، ترجّعه أو تحذفه من هناك')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تأشير «الزبون ما رد»')
+    }
+  }
+
   const requestDelete = async (bookingId: string, code: string) => {
     const reason = prompt(`سبب طلب حذف الحجز ${code}؟ (تجريبي، ملغى، مكرر...)`)
     if (!reason || !reason.trim()) return
@@ -629,6 +642,18 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                                 }`}
                               >
                                 {vipIds.includes(b.customer.id) ? '⭐ شخصية مهمة' : '☆ تعليم كشخصية مهمة'}
+                              </button>
+                            )}
+                            {/* «الزبون ما رد» زر مستقل — چان خياراً ثالثاً
+                                مدفوناً جوّا نموذج طلب الحذف فمحد يوصله.
+                                وهو مو حذف: الحجز ينزاح لطابور «ما وصلت
+                                للتنفيذ» ويبقى محفوظاً. */}
+                            {canRequestDelete && (
+                              <button
+                                onClick={() => markNoAnswer(b.id, b.code)}
+                                className="mt-1 mr-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                              >
+                                📞 الزبون ما رد
                               </button>
                             )}
                             {canRequestDelete && (

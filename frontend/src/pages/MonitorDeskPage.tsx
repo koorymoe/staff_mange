@@ -30,6 +30,7 @@ const QualityFollowUpsPage = lazy(() => import('./QualityFollowUpsPage'))
 const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
 const MonitorGpsPage = lazy(() => import('./MonitorGpsPage'))
 const MonitorInventoryPage = lazy(() => import('./MonitorInventoryPage'))
+const ComplaintsPage = lazy(() => import('./ComplaintsPage'))
 
 type SectionId = 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory'
 
@@ -45,7 +46,9 @@ const SECTIONS: Section[] = [
   { id: 'inbox', label: 'صندوق المراقب', icon: '👁️', todo: 'كل صف: سليم أو عندي ملاحظة' },
   { id: 'issues', label: 'بلاغات التدقيق', icon: '💸', todo: 'دقّق البلاغ على الليدر وسكّره' },
   { id: 'invoices', label: 'الفواتير', icon: '🧾', todo: 'الفواتير الي أرسلها المحاسب لمراجعتك' },
-  { id: 'quality', label: 'متابعة الجودة', icon: '⭐', todo: 'تواصل مع الزبون وسجّل الحكم' },
+  // ⚠️ الجودة والشكاوى **شاشة وحدة** للمراقب — «ماريد خيارين بلقائمة
+  // الجانبية». الاثنان شغل جودة واحد: الشكوى تجي، والمتابعة تحسمها.
+  { id: 'quality', label: 'الجودة والشكاوى', icon: '⭐', todo: 'تواصل مع الزبون وسجّل الحكم · والشكاوى الواردة' },
   { id: 'crew', label: 'تنسيق الحجوزات', icon: '📋', todo: 'حجوزات تنتظر تثبيت الإداري' },
   // ⚠️ الجي بي اس **نتائج بس**: ست شاشات تشغيلية انخفت عن المراقب
   // بالقائمة، وصارت تبويباً واحداً هنا. وما انزادت ولا محطة بصندوقه —
@@ -171,7 +174,14 @@ export default function MonitorDeskPage() {
         {active === 'inbox' && <MonitorInboxPage embedded />}
         {active === 'issues' && <AuditIssuesPage embedded />}
         {active === 'invoices' && <LeaderInvoicesListPage embedded />}
-        {active === 'quality' && canQuality && <QualityFollowUpsPage embedded />}
+        {active === 'quality' && canQuality && (
+          <div className="space-y-4">
+            <QualityFollowUpsPage embedded />
+            {/* ⚠️ الشكاوى تحتها بنفس التبويب — انشالت من القائمة
+                الجانبية للمراقب، فلو ما انعرضت هنا يخسر وصوله كلياً. */}
+            <ComplaintsPage />
+          </div>
+        )}
         {active === 'crew' && canCrew && <MonitorCrewBookingsPage embedded />}
         {active === 'gps' && canGps && <MonitorGpsPage embedded />}
         {active === 'inventory' && canInventory && <MonitorInventoryPage embedded />}

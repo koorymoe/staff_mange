@@ -37,7 +37,7 @@ function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('ar-IQ', { dateStyle: 'short', timeStyle: 'short' })
 }
 
-export default function BookingDeleteRequestsPage() {
+export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boolean } = {}) {
   const [rows, setRows] = useState<BookingDeleteRequest[]>([])
   const [counts, setCounts] = useState<BookingDeleteRequestCounts | null>(null)
   const [loading, setLoading] = useState(true)
@@ -116,10 +116,14 @@ export default function BookingDeleteRequestsPage() {
     <div dir="rtl" className="space-y-4">
       <SaveError message={guard.error} onClose={guard.clear} />
 
+      {/* ⚠️ مضمَّنة بخانة «بانتظار قرار الحذف» بشاشة الحجوزات —
+          ترويستها تنخفي حتى ما تصير ترويستان فوگ بعض. */}
+      {!embedded && (
       <PageHeader
         title="🗑️ طلبات حذف الحجوزات"
         subtitle="الحجوزات التجريبية والملغاة تنتقل لموافقة لحذف الحجز نهائياً وما ترجع."
       />
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <StatTile label="موافق عليها" icon="✅" tone="success" value={counts?.approved ?? '—'}

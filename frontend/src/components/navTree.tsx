@@ -193,13 +193,17 @@ export const navItems: NavItem[] = [
           { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
-          { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
-          { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control' },
+          { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints', hideForRoles: ['MONITOR'] },
+          { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control', hideForRoles: ['MONITOR'] },
           // شاشة البت بطلبات حذف الحجوزات. كانت مدفونة جوّا وحدة العلاقات
           // العامة، ووحدة كاملة تنحجب عن أي واحد ما عنده صلاحية الوحدة —
           // فالمالك كان يوصله إشعار الطلب وما يلكه مكان يوافق بيه. محلها
           // المنطقي هنا: هي قرار على حجز.
-      { to: '/booking-delete-requests', label: '🗑️ طلبات حذف الحجوزات', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR'], permission: 'booking_delete_approve' },
+      // ⚠️ «طلبات حذف الحجوزات» انشالت من القائمة — صارت **خانة وحدة**
+      // بشاشة الحجوزات نفسها («بانتظار قرار الحذف»)، وين الحجز موجود
+      // أصلاً. بندان لنفس الشغلة يخلّي الإداري يدوّر بمكانين.
+      // ⚠️ والمسار `/booking-delete-requests` يبقى شغّالاً — روابط
+      // محفوظة وإشعارات تودّي إله.
       {
         // الجي بي اس صارت خدمة بتحكم صلاحية "gps_system" — مو دور وظيفي منفصل،
         // فأي موظف عنده هذي الصلاحية (مسؤول خدمة الجي بي اس أو المراقب) يشوفها.
@@ -299,7 +303,10 @@ export const navItems: NavItem[] = [
   // ⚠️ المكتب **أول** بند: هو الباب الي نريد المراقب يدخل منه، وحطّه
   // بالآخر يخلّيه يفتح الأبواب القديمة بالعادة ولا يشوفه أبداً.
   { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-  { to: '/monitor-inbox', label: '👁️ صندوق المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+  // ⚠️ «صندوق المراقب» انشال من القائمة — هو **نفس الشاشة** الي تنعرض
+  // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
+  // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
+  // المحفوظة والإشعارات.
   { to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
@@ -445,7 +452,7 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/quality', label: 'الجودة', icon: <></>, permission: 'quality_control' },
       { to: '/work-reports-review', label: 'مراجعة تقارير العمل', icon: <></>, anyPermission: ['monitoring', 'quality_control'] },
-      { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control' },
+      { to: '/quality-follow-ups', label: 'متابعة الجودة', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER'], permission: 'quality_control', hideForRoles: ['MONITOR'] },
     ],
   },
   {
@@ -454,10 +461,13 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_monitoring',
     children: [
       { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
-      { to: '/monitor-inbox', label: '👁️ صندوق المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      // ⚠️ «صندوق المراقب» انشال من القائمة — هو **نفس الشاشة** الي تنعرض
+  // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
+  // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
+  // المحفوظة والإشعارات.
       { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
-      { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints' },
+      { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints', hideForRoles: ['MONITOR'] },
       // إدارة سياسة الخصوصية (إضافة/تعديل النقاط) — صلاحية مستقلة تماماً عن
       // قراءتها. القراءة متاحة لكل موظف من الرابط فوق "تسجيل الخروج".
       { to: '/privacy-policy', label: '🔒 إدارة سياسة الخصوصية', icon: <></>, permission: 'privacy_policy_manage' },

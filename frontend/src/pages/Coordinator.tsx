@@ -330,6 +330,21 @@ export default function Coordinator() {
   // ⚠️ **طلب** حذف مو حذف: المراقب أو مدير النظام هو الي يبتّ. نفس
   // المسار الي بشاشة الحجوزات بالضبط — ما نسوي مسار ثاني للشغلة
   // الوحدة.
+  // الزبون ما رد: ينزاح الحجز لطابور «ما وصلت للتنفيذ» فوراً بلا
+  // موافقة — ويبقى محفوظاً. ما ينحذف ولا ينأرشف.
+  const markNoAnswer = async (bookingId: string, code: string) => {
+    const note = prompt(`الزبون ما رد على الحجز ${code}؟ اكتب ملاحظة (اختياري)`, 'اتصلنا وما رد')
+    if (note === null) return
+    try {
+      await api.markBookingWaiting(bookingId, note.trim())
+      setSaveError(null)
+      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور «ما وصلت للتنفيذ»، ترجّعه أو تحذفه من هناك')
+      load()
+    } catch (e) {
+      setSaveError(`تعذر تأشير «الزبون ما رد»: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+    }
+  }
+
   const requestDelete = async (booking: Booking) => {
     const reason = prompt(`سبب طلب حذف الحجز ${booking.code}؟ (تجريبي، ملغى، مكرر...)`)
     if (!reason || !reason.trim()) return
@@ -796,6 +811,20 @@ export default function Coordinator() {
                         title="حجز قديم ما نعرف كادره ولا تكلفته — ينقفل منجزاً بلا تفاصيل، ومستثنى من الغرامات"
                       >
                         ✅ تم الإنجاز (بدون تفاصيل)
+                      </button>
+                    )}
+                    {/* ═══ «الزبون ما رد» — زر مستقل، ضغطة وحدة ═══
+                        چان خياراً ثالثاً جوّا نموذج طلب الحذف (بعد
+                        السبب والقناة)، فمحد يوصله. وهو **مو حذف**
+                        أصلاً: الحجز ينزاح لطابور «ما وصلت للتنفيذ»
+                        ويبقى محفوظاً — يتصلون مرة ثانية، وإذا ما رد
+                        يحذفونه. فمكانه زر مستقل مو خيار مدفون. */}
+                    {canRequestDelete && (
+                      <button
+                        onClick={() => markNoAnswer(booking.id, booking.code)}
+                        className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
+                      >
+                        📞 الزبون ما رد
                       </button>
                     )}
                     {canRequestDelete && (

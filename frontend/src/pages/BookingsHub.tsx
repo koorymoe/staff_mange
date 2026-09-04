@@ -6,6 +6,7 @@ import Coordinator from './Coordinator'
 import SalesBooking from './SalesBooking'
 import PartialBookings from './PartialBookings'
 import StageBucketsPage from './StageBucketsPage'
+import BookingDeleteRequestsPage from './BookingDeleteRequestsPage'
 
 // ═══ «الحجوزات» — ثلاث شاشات بمدخل واحد ═══
 //
@@ -103,6 +104,10 @@ export default function BookingsHub() {
     return () => { alive = false; clearTimeout(t); clearInterval(iv) }
   }, [tab])
 
+  // نفس حارس البند القديم بالقائمة بالضبط — مو حارساً أوسع ولا أضيق.
+  const canDecideDelete = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+    || employee?.role === 'MONITOR' || permissions.includes('booking_delete_approve')
+
   // مفتاح العدّاد لكل محطة (الي ما إلها عدّاد ما تعرض رقم)
   const countKey: Partial<Record<TabKey, string>> = {
     pending: 'pending', confirmed: 'confirmed', assigned: 'assigned',
@@ -178,7 +183,13 @@ export default function BookingsHub() {
       {tab === 'partial' && <PartialBookings />}
       {tab === 'done' && <BookingsList key="done" bucket="done" />}
       {tab === 'projects' && <BookingsList key="projects" bucket="at_projects" />}
-      {tab === 'deleting' && <BookingsList key="deleting" bucket="delete_pending" />}
+      {/* ⚠️ خانة وحدة بدل بندين: منو عنده صلاحية البتّ يشوف **شاشة
+          القرار** (وافق/ارفض/اطلب معلومات) — الي چانت بالقائمة
+          الجانبية. وغيره يشوف قائمة الحجوزات المطلوب حذفها بس.
+          بندان لنفس الشغلة يخلّي الإداري يدوّر بمكانين. */}
+      {tab === 'deleting' && (canDecideDelete
+        ? <BookingDeleteRequestsPage key="deleting-decide" embedded />
+        : <BookingsList key="deleting" bucket="delete_pending" />)}
       {tab === 'stuck' && <StageBucketsPage />}
     </div>
   )
