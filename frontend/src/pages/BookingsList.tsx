@@ -292,8 +292,28 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     }
   }
 
-  const handleReassign = async (booking: Booking, role: 'TECH_1' | 'TECH_2' | 'TECH_3', employeeId: string) => {
-    if (!employeeId) return
+  const handleReassign = async (
+    booking: Booking,
+    role: 'TECH_1' | 'TECH_2' | 'TECH_3',
+    employeeId: string,
+    assignedName?: string,
+  ) => {
+    // ⚠️ الخيار الفارغ چان ما يسوي شي بصمت — والإداري ما عنده أي طريق
+    // ثاني يفرّغ بيه الخانة من هالشاشة. هسه يفرّغها فعلاً.
+    if (!employeeId) {
+      if (!assignedName) return
+      if (!confirm(`إلغاء تكليف «${assignedName}» من هذا الحجز؟\nالحجز يبقى مثبّت، بس بلا كادر بهاي الخانة.`)) return
+      setAssigning(true)
+      try {
+        const updated = await api.unassignTechnician(booking.id, role)
+        setBookings((prev) => prev.map((b) => (b.id === updated.id ? updated : b)))
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'تعذر إلغاء التكليف')
+      } finally {
+        setAssigning(false)
+      }
+      return
+    }
     setAssigning(true)
     try {
       const updated = await api.assignTechnician(booking.id, { employeeId, role })
@@ -720,10 +740,10 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                                       <select
                                         value={current?.employee.id || ''}
                                         disabled={assigning}
-                                        onChange={(e) => handleReassign(b, tr.key, e.target.value)}
+                                        onChange={(e) => handleReassign(b, tr.key, e.target.value, current?.employee.name)}
                                         className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm outline-none focus:border-brand-500"
                                       >
-                                        <option value="">-- اختر --</option>
+                                        <option value="">{current ? '— فرّغ الخانة' : '-- اختر --'}</option>
                                         {technicians.map((t) => (
                                           <option key={t.id} value={t.id}>{t.name}{t.isLeader ? ' (ليدر)' : ''}</option>
                                         ))}

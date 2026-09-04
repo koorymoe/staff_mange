@@ -22,20 +22,40 @@ func NewMonitorReviewRepository(db *sqlx.DB) *MonitorReviewRepository {
 
 // Enqueue يضيف صف للصندوق.
 //
-// ON CONFLICT DO NOTHING مقصود: المحطة الوحدة ما تتكرر لنفس الشي.
-// لو الحجز انثبّت وانلغى وانثبّت مرة ثانية، ما نريد صفين — الصف
-// الأول لسه معلق ونفس الشغلة.
+// ═══ ⚠️⚠️ صف وحد لكل (شي × محطة) — بس **يتحدّث** ما ينبلع ═══
+//
+// چان `ON CONFLICT DO NOTHING`، والنية سليمة: المحطة الوحدة ما تتكرر
+// لنفس الشي. بس النتيجة چانت علّة صامتة:
+//
+// الفاتورة تاخذ صفاً بمحطة INVOICE_BEFORE_AUDIT **يوم إنشائها**.
+// وبعدين المحاسب يدقّقها ويكتب ملاحظته — والخدمة تدزّ صفاً بنفس
+// المحطة يحمل الملاحظة. فينرفض بالتعارض **وينبلع بصمت**، والمراقب
+// يضل شايف ملخّص الإنشاء (الأرقام بس) وما يشوف ولا حرف من ملاحظة
+// المحاسب. ونفس الشي يبلع «المحاسب طلب مراجعة المراقب».
+//
+// هسه: لو الصف **لسه معلّق** (ما بتّ فيه المراقب)، ننعش عنوانه
+// وملخّصه وعجلته — لأن المعلومة الأحدث هي الي يحتاجها. ولو انبتّ
+// (OK/FLAGGED) ما نلمسه: قراره صار على نص معيّن، وتغييره تحته
+// يخلّي السجل يكذب.
+//
+// ⚠️ والعجلة **ما تنطفي**: `urgent = urgent OR EXCLUDED.urgent` —
+// صف صار عاجلاً يبقى عاجلاً لحد ما ينبتّ فيه، وإلا تحديث روتيني
+// يخفي التنبيه.
 //
 // ⚠️ ما يرجّع خطأ يوقف العملية الأصلية: فشل إضافة صف مراقبة ما يصير
 // يمنع تثبيت حجز أو إصدار فاتورة. نرجّع الخطأ والمنادي يسجّله بس.
 func (r *MonitorReviewRepository) Enqueue(in model.EnqueueMonitorReview) error {
 	_, err := r.db.Exec(`
 		INSERT INTO "MonitorReview"
-			(id, stage, "entityType", "entityId", title, summary, "ownerRole", "ownerEmployeeId")
-		VALUES ($1,$2,$3,$4,$5,NULLIF($6,''),NULLIF($7,''),$8)
-		ON CONFLICT ("entityType", "entityId", stage) DO NOTHING`,
+			(id, stage, "entityType", "entityId", title, summary, "ownerRole", "ownerEmployeeId", urgent)
+		VALUES ($1,$2,$3,$4,$5,NULLIF($6,''),NULLIF($7,''),$8,$9)
+		ON CONFLICT ("entityType", "entityId", stage) DO UPDATE SET
+			title   = EXCLUDED.title,
+			summary = COALESCE(EXCLUDED.summary, "MonitorReview".summary),
+			urgent  = "MonitorReview".urgent OR EXCLUDED.urgent
+		WHERE "MonitorReview".status = 'PENDING'`,
 		uuid.NewString(), in.Stage, in.EntityType, in.EntityID, in.Title,
-		in.Summary, in.OwnerRole, in.OwnerEmployeeID)
+		in.Summary, in.OwnerRole, in.OwnerEmployeeID, in.Urgent)
 	return err
 }
 
@@ -63,8 +83,8 @@ func (r *MonitorReviewRepository) List(stage, status, ownerRole string, limit in
 	if len(where) > 0 {
 		q += ` WHERE ` + strings.Join(where, " AND ")
 	}
-	// المعلّق أول: هو الي ينتظر قرار، والباقي تاريخ.
-	q += ` ORDER BY (status = 'PENDING') DESC, "createdAt" DESC LIMIT ?`
+	// المعلّق أول، والعاجل بأول المعلّق: «غير مطابق» ما تنتظر دورها.
+	q += ` ORDER BY (status = 'PENDING') DESC, urgent DESC, "createdAt" DESC LIMIT ?`
 	args = append(args, limit)
 
 	rows := []model.MonitorReview{}

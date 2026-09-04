@@ -208,9 +208,20 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
         <>
           <div className="space-y-3">
             {paged.map((row) => (
-              <div key={row.id} className="rounded-xl border p-4" style={{ backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
+              /* ⚠️ الصف العاجل («غير مطابق» بفاتورة) يتميّز بإطار أحمر
+                 وشارة — والترتيب يجي من الخادم أصلاً (العاجل بأول
+                 المعلّق)، فما اكو فرزان يفترقان. */
+              <div key={row.id} className="rounded-xl border p-4"
+                style={row.urgent && row.status === 'PENDING'
+                  ? { backgroundColor: 'var(--sf-card)', borderColor: '#dc2626', borderWidth: 2 }
+                  : { backgroundColor: 'var(--sf-card)', borderColor: 'var(--bd-line)' }}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
+                    {row.urgent && row.status === 'PENDING' && (
+                      <span className="mb-1 block w-fit rounded-full bg-red-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
+                        🔴 عاجل — يحتاج قرارك الآن
+                      </span>
+                    )}
                     <Link to={linkOf(row)} className="font-bold underline" style={{ color: 'var(--t-title)' }}>{row.title}</Link>
                     <p className="text-xs" style={{ color: 'var(--t-muted)' }}>{row.summary}</p>
                     <p className="mt-1 text-[11px]" style={{ color: 'var(--t-faint)' }}>

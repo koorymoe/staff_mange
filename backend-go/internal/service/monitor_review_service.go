@@ -16,7 +16,9 @@ import (
 // اعتماد دائري ولا يوقف الشغل الأصلي لو انكسر شي بالمراقبة.
 type MonitorFeed interface {
 	BookingStage(stage string, b *model.Booking, ownerRole string, ownerEmployeeID *string)
-	InvoiceStage(stage, invoiceID, title, summary, ownerRole string, ownerEmployeeID *string)
+	// ⚠️ `urgent` آخر معامل بقصد: كل النداءات القديمة تمرّر `false`
+	// صراحةً، فما يصير صف يطلع عاجلاً بالغلط لأن أحد نسى معاملاً.
+	InvoiceStage(stage, invoiceID, title, summary, ownerRole string, ownerEmployeeID *string, urgent bool)
 	// Stage عام لبقية الأقسام (مشتريات، جودة، جي بي اس، طاقة شمسية) —
 	// كلها نفس الشكل: عنوان وملخص ومنو صاحب الشغل.
 	Stage(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string)
@@ -92,7 +94,7 @@ func (s *MonitorReviewService) Stage(stage, entityType, entityID, title, summary
 }
 
 // InvoiceStage يدزّ فاتورة لمحطة مراقبة.
-func (s *MonitorReviewService) InvoiceStage(stage, invoiceID, title, summary, ownerRole string, ownerEmployeeID *string) {
+func (s *MonitorReviewService) InvoiceStage(stage, invoiceID, title, summary, ownerRole string, ownerEmployeeID *string, urgent bool) {
 	err := s.repo.Enqueue(model.EnqueueMonitorReview{
 		Stage:           stage,
 		EntityType:      "LEADER_INVOICE",
@@ -101,6 +103,7 @@ func (s *MonitorReviewService) InvoiceStage(stage, invoiceID, title, summary, ow
 		Summary:         summary,
 		OwnerRole:       ownerRole,
 		OwnerEmployeeID: ownerEmployeeID,
+		Urgent:          urgent,
 	})
 	if err != nil {
 		log.Printf("[monitor] تعذر إضافة صف مراقبة للفاتورة %s: %v", invoiceID, err)

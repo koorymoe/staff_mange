@@ -1793,6 +1793,8 @@ export interface MonitorReview {
   note: string | null
   reviewedAt: string | null
   createdAt: string
+  /** صف عاجل — «غير مطابق» بالفواتير. يطلع بأول الصندوق بشارة حمرا. */
+  urgent: boolean
   ownerEmployee?: { id: string; name: string }
   reviewedBy?: { id: string; name: string }
   /** هوية الحجز وراء الصف — تنبني بالسيرفر. غايبة لو الصف ما إله حجز. */

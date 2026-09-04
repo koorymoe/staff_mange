@@ -541,6 +541,15 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         {AUDIT_VERDICTS.find((v) => v.key === inv.auditVerdict)?.label}
                       </span>
                     )}
+                    {/* ⚠️ نصّ ملاحظة التدقيق — چان ينقرا **بس** جوّا نموذج
+                        المحاسب (محصور بـcanApprove)، فالمراقب يشوف الحكم
+                        بلا سببه. حكم بلا سبب ما يفيد أحد. */}
+                    {inv.auditNote && (
+                      <span className="mt-1 block rounded-lg px-2 py-1 text-[10.5px] leading-relaxed"
+                        style={{ backgroundColor: 'var(--sf-sunken)', color: 'var(--t-body)' }}>
+                        📝 {inv.auditNote}
+                      </span>
+                    )}
                     {inv.externalInvoiceNumber && (
                       <span className="mt-1 block text-center font-mono text-[10.5px] text-slate-500">
                         {inv.externalInvoiceNumber}

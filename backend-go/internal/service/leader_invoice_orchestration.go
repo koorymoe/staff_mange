@@ -225,7 +225,7 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 	// الأرقام الأصلية قبل أي تعديل، وهذا كل الفايدة.
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(saved)
-		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title, summary, "TECHNICIAN", &saved.EmployeeID)
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title, summary, "TECHNICIAN", &saved.EmployeeID, false)
 	}
 
 	return saved, nil
@@ -437,7 +437,7 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceAfterAudit, inv.ID, title,
-			summary+" • رقم الفاتورة المحاسبية: "+externalNumber, "FINANCE", &approverEmployeeID)
+			summary+" • رقم الفاتورة المحاسبية: "+externalNumber, "FINANCE", &approverEmployeeID, false)
 	}
 	return inv, nil
 }
@@ -475,7 +475,7 @@ func (s *LeaderInvoiceService) RequestMonitorReview(id, byEmployeeID, note strin
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, inv.ID, title,
-			summary+" • ⏳ المحاسب طلب مراجعة المراقب", "MONITOR", &byEmployeeID)
+			summary+" • ⏳ المحاسب طلب مراجعة المراقب", "MONITOR", &byEmployeeID, false)
 	}
 	return inv, nil
 }
@@ -539,7 +539,7 @@ func (s *LeaderInvoiceService) ReturnToAccountant(id, byEmployeeID, reason strin
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceAdjusted, inv.ID+":ret", title,
-			summary+" • ↩️ المالك رجّعها للمحاسب — السبب: "+reason, "FINANCE", &byEmployeeID)
+			summary+" • ↩️ المالك رجّعها للمحاسب — السبب: "+reason, "FINANCE", &byEmployeeID, false)
 	}
 	return inv, nil
 }
@@ -678,14 +678,35 @@ func (s *LeaderInvoiceService) SetAuditVerdict(id string, req model.AuditVerdict
 	if err != nil {
 		return nil, err
 	}
+	// ⚠️⚠️ «غير مطابق» تعني إن بالفاتورة مشكلة حقيقية، مو تصليح رقم.
+	// فترتفع للمراقب **عاجلة**: صف عاجل بصندوقه + إشعار فوري.
+	// و«خطأ بالسعر» تمرّ عادية — قراره الصريح.
+	//
+	// ⚠️ والثلاثة الأحكام كلهن يبقن يروحن لـ«بانتظار الاعتماد» مثل
+	// ما هن: التصعيد **تنبيه إضافي**، مو تحويل مسار الفاتورة.
+	urgent := req.Verdict == model.AuditVerdictMismatch
 	if s.monitor != nil && inv != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		detail := " • حكم التدقيق: " + model.AuditVerdictLabel(req.Verdict)
+		if urgent {
+			detail = " • 🔴 عاجل" + detail
+		}
 		if note != "" {
 			detail += " — " + note
 		}
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, inv.ID, title,
-			summary+detail, "FINANCE", &byEmployeeID)
+			summary+detail, "FINANCE", &byEmployeeID, urgent)
+	}
+	if urgent && s.notifications != nil && inv != nil {
+		msg := "🔴 المحاسب أشّر «غير مطابق» على فاتورة " + inv.AccountingCode
+		if note != "" {
+			msg += " — " + note
+		}
+		// ⚠️ الثلاثة سوا: المالك دوره `OWNER` مو `ADMIN`، و
+		// `CreateForRole` تطابق العمود حرفياً — بدون سطره ما يوصله شي.
+		_ = s.notifications.CreateForRole("MONITOR", "invoice_mismatch", msg)
+		_ = s.notifications.CreateForRole("ADMIN", "invoice_mismatch", msg)
+		_ = s.notifications.CreateForRole("OWNER", "invoice_mismatch", msg)
 	}
 	return inv, nil
 }
@@ -706,7 +727,7 @@ func (s *LeaderInvoiceService) RevokeApproval(id, reason, byEmployeeID string) (
 	if s.monitor != nil && inv != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceAfterAudit, inv.ID, title,
-			summary+" • ⚠️ انسحب الاعتماد — السبب: "+reason, "FINANCE", &byEmployeeID)
+			summary+" • ⚠️ انسحب الاعتماد — السبب: "+reason, "FINANCE", &byEmployeeID, false)
 	}
 	return inv, nil
 }

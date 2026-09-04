@@ -306,6 +306,8 @@ func versionedMigrations() []Migration {
 	// 0268: استثناء أداة من عدة موظف بعينه — الأداة المحذوفة من عدته
 	// چانت ترجع فوراً بتقرير النواقص لأن اسمها لسه بالقالب القياسي.
 	result = append(result, personalToolExemptionMigrations()...)
+	// 0269: صف عاجل بصندوق المراقب — «غير مطابق» ترفع الفاتورة عاجلة.
+	result = append(result, monitorUrgentMigrations()...)
 	return result
 }
 

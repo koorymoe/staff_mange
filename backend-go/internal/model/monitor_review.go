@@ -27,6 +27,8 @@ type MonitorReview struct {
 	// «فاتورة الليدر» بلا كود حجز ولا زبون — فالمراقب لازم يفتح كل صف
 	// حتى يعرف عن منو يحچي. طلب صاحب العمل: «مامربوط شي بشي لازم ينربط».
 	Identity *MonitorIdentity `db:"-" json:"identity,omitempty"`
+	// Urgent صف عاجل — يطلع بأول الصندوق بشارة حمرا.
+	Urgent bool `db:"urgent" json:"urgent"`
 }
 
 // MonitorIdentity هوية الحجز وراء صف الصندوق — نفس حقول رأس الهوية
@@ -117,6 +119,10 @@ type EnqueueMonitorReview struct {
 	Summary         string
 	OwnerRole       string
 	OwnerEmployeeID *string
+	// Urgent صف يطلع بأول الصندوق بشارة حمرا — «غير مطابق» بالفواتير.
+	// ⚠️ ما ينطفي بتحديث لاحق: صف صار عاجلاً مرة يبقى عاجلاً لحد ما
+	// يبتّ فيه المراقب. وإلا تحديث روتيني يخفي التنبيه.
+	Urgent bool
 }
 
 // DecideMonitorReviewRequest قرار المراقب على صف.

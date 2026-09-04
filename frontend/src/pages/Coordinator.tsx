@@ -465,8 +465,15 @@ export default function Coordinator() {
     booking: Booking,
     role: 'TECH_1' | 'TECH_2' | 'TECH_3',
     employeeId: string,
+    assignedName?: string,
   ) => {
-    if (!employeeId) return
+    // ⚠️ الخيار الفارغ چان **ما يسوي شي بصمت**: الإداري يختاره حتى
+    // يفرّغ الخانة، وماكو شي يصير، وماكو رسالة — فيظن النظام مكسور.
+    // هسه يفرّغها فعلاً (نفس مسار زر ✖).
+    if (!employeeId) {
+      if (assignedName) await handleUnassign(booking, role, assignedName)
+      return
+    }
     // ⚠️ أخطر وحدة بالقائمة: فشلها الصامت يخلي الإداري يظن الفني
     // مكلّف، والفني ما يوصله شي — فالحجز يوصل يومه وماكو أحد رايح له.
     await applyUpdate('تكليف الفني', () => api.assignTechnician(booking.id, { employeeId, role }))
@@ -1113,10 +1120,10 @@ export default function Coordinator() {
                               </div>
                               <select
                                 value={assigned?.employee.id || ''}
-                                onChange={(e) => handleAssign(booking, tr.key, e.target.value)}
+                                onChange={(e) => handleAssign(booking, tr.key, e.target.value, assigned?.employee.name)}
                                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
                               >
-                                <option value="">-- اختر فني --</option>
+                                <option value="">{assigned ? '— فرّغ الخانة' : '-- اختر فني --'}</option>
                                 {candidates.length === 0 && (
                                   <option value="" disabled>
                                     {matches[booking.id] ? 'ماكو كادر متاح' : 'جاري تحميل الكوادر...'}
