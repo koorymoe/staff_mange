@@ -29,8 +29,9 @@ const MonitorCrewBookingsPage = lazy(() => import('./MonitorCrewBookingsPage'))
 const QualityFollowUpsPage = lazy(() => import('./QualityFollowUpsPage'))
 const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
 const MonitorGpsPage = lazy(() => import('./MonitorGpsPage'))
+const MonitorInventoryPage = lazy(() => import('./MonitorInventoryPage'))
 
-type SectionId = 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps'
+type SectionId = 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory'
 
 interface Section {
   id: SectionId
@@ -50,6 +51,10 @@ const SECTIONS: Section[] = [
   // بالقائمة، وصارت تبويباً واحداً هنا. وما انزادت ولا محطة بصندوقه —
   // «ما تخلي وحدة هيج، ماريد أزيد ازدحامها».
   { id: 'gps', label: 'الجي بي اس', icon: '📡', todo: 'اشتراكات قربت تنتهي ومشاكل مفتوحة — عرض بلا تنفيذ' },
+  // ⚠️ **متابعة** الجرد، مو شاشة `/inventory` مال أبو الكميات (الي
+  // يضيف ويحذف أدوات ويوافق على الطلبات). المراقب يشوف منو جرد ومنو
+  // ما جرد وشنو ناقص وليش — ويحاسب، ما ينفّذ.
+  { id: 'inventory', label: 'متابعة الجرد', icon: '📦', todo: 'منو جرد ومنو ما جرد، وشنو ناقص وليش' },
 ]
 
 // عدّاد كل قسم — واحد لكل طابور، من مسار عدّ واحد يجمع الخمسة
@@ -94,10 +99,14 @@ export default function MonitorDeskPage() {
   const canCrew = permissions.includes('crew_management')
   // نفس منطق بقية الأقسام: دور المراقب أو صلاحية الجي بي اس صراحةً.
   const canGps = isMon || permissions.includes('gps_system')
+  // «متابعة الجرد» صلاحية مستقلة تنمنح فرد-فرد · و`inventory` صلاحية
+  // المراقب الافتراضية · والليدر يشوف جروده هو (الخادم يفرّق).
+  const canInventory = isMon || permissions.includes('inventory_follow') || permissions.includes('inventory')
   // ⚠️ القسم الي ما عنده صلاحيته **ما يظهر أصلاً**: قسم فاضي بلا
   // تفسير يخلّي المراقب يظن النظام مكسوراً، وقسم يفتح ويرفض أسوأ.
   const shown = SECTIONS.filter((s) =>
-    (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew) && (s.id !== 'gps' || canGps))
+    (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew) && (s.id !== 'gps' || canGps)
+    && (s.id !== 'inventory' || canInventory))
 
   const cur = shown.find((s) => s.id === active) ?? shown[0]
 
@@ -165,6 +174,7 @@ export default function MonitorDeskPage() {
         {active === 'quality' && canQuality && <QualityFollowUpsPage embedded />}
         {active === 'crew' && canCrew && <MonitorCrewBookingsPage embedded />}
         {active === 'gps' && canGps && <MonitorGpsPage embedded />}
+        {active === 'inventory' && canInventory && <MonitorInventoryPage embedded />}
       </Suspense>
     </div>
   )

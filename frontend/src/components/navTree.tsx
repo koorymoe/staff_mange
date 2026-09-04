@@ -263,13 +263,13 @@ export const navItems: NavItem[] = [
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
-      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues' },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues', hideForRoles: ['MONITOR'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view' },
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view', hideForRoles: ['MONITOR'] },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
         ],
       },
@@ -278,7 +278,7 @@ export const navItems: NavItem[] = [
         children: [
           { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
           // جرد الأدوات جان تحت «إدارة الموظفين» — وهو مخزن مو ملف موظف
-          { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
+          { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
           { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
         ],
       },
@@ -469,7 +469,7 @@ export const navItems: NavItem[] = [
     children: [
       { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
       { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
-      { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory' },
+      { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
       // إدارة المركبات تظهر هنا كمان (مو بس بمجموعتها) — المخازن مسؤولة عنها
       { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
       // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
@@ -491,7 +491,7 @@ export const navItems: NavItem[] = [
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
-      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues' },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues', hideForRoles: ['MONITOR'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
       { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
@@ -501,7 +501,7 @@ export const navItems: NavItem[] = [
       { to: '/camera-cost', label: '📷 حساب كلفة الكاميرات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'execution_cost' },
       // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
       // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view' },
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view', hideForRoles: ['MONITOR'] },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
       // المشاريع الموجّهة لي: محلها هنا للمحاسب — والنسخة العامة فوگ
       // منحجوبة عنه بـhideForRoles حتى ما تتكرر.

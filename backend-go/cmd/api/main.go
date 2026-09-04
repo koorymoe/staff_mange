@@ -1474,9 +1474,27 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/device-maintenance/{id}", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Update), requireAuth, requireLeader))
 
 	// جرد الفريق ("جرد العدد") — حصراً للـليدر أيضاً
-	mux.Handle("GET /api/team-inventory/tools", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.ListTools), requireAuth, requireLeader))
+	// ═══ قراءة الجرد: الليدر أو منو انمنح متابعة الجرد ═══
+	//
+	// ⚠️ چانت مقفولة على علامة «ليدر» بس — بلا أي منفذ صلاحية. يعني
+	// حتى لو انمنح إداري الكوادر أو المراقب «متابعة الجرد»، الخادم
+	// يرفضه لأنه مو ليدر مسجّل. وهذا ضد «اعزل كل شغلة بصلاحية».
+	//
+	// ⚠️ و`inventory` مذكورة معاها لأنها صلاحية المراقب الافتراضية —
+	// بدونها يخسر وصوله للجرد لمن ننشل البند من قائمته.
+	//
+	// ⚠️ والكتابة (POST) تبقى `requireLeader`: المتابِع **يتابع**،
+	// الي يجرد هو الليدر.
+	// ⚠️ الدور مذكور صراحةً — الصلاحيات تنقرأ من صفوف EmployeePermission
+	// فقط، فمراقب حسابه ماكو إله صف `inventory` چان يخسر وصوله كلياً
+	// لمن انشلنا البند من قائمته. الحارس يطابق شرط العرض بمكتبه بالضبط.
+	requireInventoryFollow := middleware.RequireLeaderOrRoleOrAnyPermission(
+		permissionRepo, employeeRepo, notificationRepo,
+		[]string{"MONITOR", "HR_COORDINATOR", "PROCUREMENT_ADMIN"},
+		"inventory_follow", "inventory")
+	mux.Handle("GET /api/team-inventory/tools", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.ListTools), requireAuth, requireInventoryFollow))
 	mux.Handle("POST /api/team-inventory/tools", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.CreateTool), requireAuth, requireLeader))
-	mux.Handle("GET /api/team-inventory/checks", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.List), requireAuth, requireLeader))
+	mux.Handle("GET /api/team-inventory/checks", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.List), requireAuth, requireInventoryFollow))
 	mux.Handle("POST /api/team-inventory/checks", middleware.Chain(http.HandlerFunc(teamInventoryCheckHandler.Create), requireAuth, requireLeader))
 
 	// فوترة الليدر (تحل محل شيت جوجل) — القراءة (الكتالوج/المواد/عرض الفواتير)

@@ -548,6 +548,51 @@ func RequireLeaderOrAnyPermission(permissions *repository.PermissionRepository, 
 	}
 }
 
+// RequireLeaderOrRoleOrAnyPermission يمرّر: الليدر · أو دوراً من القائمة ·
+// أو منو عنده وحدة من الصلاحيات.
+//
+// ⚠️ ليش انبنت؟ الصلاحيات بهذا النظام تنقرأ من صفوف "EmployeePermission"
+// **فقط** — `RoleDefaultPermissions` تنطبّق وقت إنشاء الموظف مو وقت
+// الفحص. يعني حارس مبني على الصلاحية وحدها **ما يمرّر المراقب بدوره**
+// لو حسابه ماكو إله الصف (حسابات قديمة، أو انمسح الصف بتعديل صلاحيات).
+//
+// وهذا خطر حقيقي لمن ننشل بنداً من قائمته ونحوّله لمكتبه: الواجهة
+// تعرض التبويب حسب الدور، والخادم يرفض حسب الصلاحية — فيفتح المراقب
+// شاشة فاضية ويظن النظام مكسوراً. الحارس لازم يطابق شرط العرض بالضبط.
+func RequireLeaderOrRoleOrAnyPermission(permissions *repository.PermissionRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, roles []string, permissionNames ...string) func(http.Handler) http.Handler {
+	allowedRoles := make(map[string]bool, len(roles))
+	for _, rr := range roles {
+		allowedRoles[rr] = true
+	}
+	allowed := make(map[string]bool, len(permissionNames))
+	for _, n := range permissionNames {
+		allowed[n] = true
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, _ := r.Context().Value(ContextRole).(string)
+			if role == "ADMIN" || role == "OWNER" || allowedRoles[role] {
+				next.ServeHTTP(w, r)
+				return
+			}
+			employeeID := EmployeeIDFromContext(r)
+			if isLeader, err := employees.IsLeaderFreshByID(employeeID); err == nil && isLeader {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if perms, err := permissions.ListForEmployee(employeeID); err == nil {
+				for _, p := range perms {
+					if allowed[p.Name] {
+						next.ServeHTTP(w, r)
+						return
+					}
+				}
+			}
+			recordViolationAndBlock(w, r, employees, notifications, employeeID)
+		})
+	}
+}
+
 func EmployeeIDFromContext(r *http.Request) string {
 	id, _ := r.Context().Value(ContextEmployeeID).(string)
 	return id
