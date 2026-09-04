@@ -2,6 +2,7 @@ import { Fragment, useState, useEffect, useContext } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { api, procurementTypeLabels, type ProcurementRequest, type ProcurementRequestType, type ProcurementStats, type Booking } from '../api'
 import { SessionContext } from '../session'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار التوفير',
@@ -303,7 +304,7 @@ export default function ProcurementPage() {
                   <option value="">بدون حجز</option>
                   {bookings.map(b => (
                     <option key={b.id} value={b.id}>
-                      {b.code} - {b.customer?.name || ''}
+                      <BookingCodeChip code={b.code} /> - {b.customer?.name || ''}
                     </option>
                   ))}
                 </select>

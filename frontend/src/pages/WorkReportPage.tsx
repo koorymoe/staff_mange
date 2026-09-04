@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Booking, type WorkReport } from '../api'
 import { useSession } from '../session'
 import EntityIdentity from '../components/EntityIdentity'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 type WorkStatus = 'COMPLETED' | 'STOPPED' | null
 
@@ -152,7 +153,7 @@ export default function WorkReportPage() {
                     {booking.sequenceNumber || '#'}
                   </div>
                   <div className="min-w-0">
-                    <p className="font-mono text-sm font-black text-brand-900 sm:text-base">{booking.code}</p>
+                    <p className="font-mono text-sm font-black text-brand-900 sm:text-base"><BookingCodeChip code={booking.code} /></p>
                     <p className="truncate text-xs text-slate-500 sm:text-sm">{booking.customer?.name}</p>
                     {booking.customer?.phone && (
                       <a href={`tel:${booking.customer.phone}`} className="text-[11px] font-bold text-brand-700 underline sm:hidden">
@@ -430,7 +431,7 @@ export default function WorkReportPage() {
               {doneList.map((b) => (
                 <div key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
                   <div className="min-w-0">
-                    <p className="font-mono text-sm font-black text-emerald-900">{b.code}</p>
+                    <p className="font-mono text-sm font-black text-emerald-900"><BookingCodeChip code={b.code} /></p>
                     <p className="truncate text-xs text-emerald-700">{b.customer?.name}</p>
                   </div>
                   <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-bold text-emerald-700">✅ انرفع التقرير</span>

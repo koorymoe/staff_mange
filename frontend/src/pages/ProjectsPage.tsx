@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
 import { matches } from '../utils/search'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -478,7 +479,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
             {transferred.map(b => (
               <div key={b.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-white p-4 shadow-sm">
                 <div>
-                  <p className="font-bold text-slate-800">{b.customer.name} <span className="text-xs font-normal text-slate-400">({b.code})</span></p>
+                  <p className="font-bold text-slate-800">{b.customer.name} <span className="text-xs font-normal text-slate-400">(<BookingCodeChip code={b.code} />)</span></p>
                   <p className="text-sm text-slate-500">
                     📞 {b.customer.phone}
                     {b.service ? ` · 🛠️ ${b.service.name}` : ''}
@@ -551,7 +552,7 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" dir="rtl">
           <div className="max-h-[88vh] w-full max-w-lg overflow-auto rounded-2xl bg-white p-6 shadow-2xl">
             <h3 className="text-lg font-bold text-violet-900">تفاصيل الحجز</h3>
-            <p className="mt-1 text-sm text-slate-400">{detailBooking.code}</p>
+            <p className="mt-1 text-sm text-slate-400"><BookingCodeChip code={detailBooking.code} /></p>
 
             <div className="mt-4 space-y-2 rounded-xl bg-slate-50 p-4 text-sm">
               {[

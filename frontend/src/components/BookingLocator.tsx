@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
+import BookingCodeChip from './BookingCodeChip'
 
 // ═══ «وين هذا الحجز؟» ═══
 //
@@ -62,7 +63,7 @@ export default function BookingLocator({ term, currentStation }: {
       <div className="mt-2 space-y-1.5">
         {found.map((f) => (
           <div key={f.code} className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-3 py-2">
-            <span className="font-mono text-xs font-black text-brand-700">{f.code}</span>
+            <span className="font-mono text-xs font-black text-brand-700"><BookingCodeChip code={f.code} /></span>
             {f.customerName && <span className="text-xs font-bold text-slate-700">{f.customerName}</span>}
             <span className="mr-auto rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-900">
               📍 {f.station}

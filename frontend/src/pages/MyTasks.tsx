@@ -16,6 +16,7 @@ import MyExpenses from './MyExpenses'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 // ═══ خيارات «مهامي» ═══
 // الحجوزات = شغلك · فواتيري = فواتير شغلك · تقاريري = تقارير شغلك ·
@@ -469,7 +470,7 @@ export default function MyTasks() {
                     )}
                     <div className="flex items-center justify-between">
                       <span className="font-mono text-sm font-semibold text-brand-600">
-                        {b.code}
+                        <BookingCodeChip code={b.code} />
                       </span>
                       <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">
                         {myRole === 'TECH_1'
@@ -683,7 +684,7 @@ export default function MyTasks() {
       {toolsModalBooking && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-brand-900">تأكيد استلام الحجز {toolsModalBooking.code}</h3>
+            <h3 className="text-lg font-bold text-brand-900">تأكيد استلام الحجز <BookingCodeChip code={toolsModalBooking.code} /></h3>
             <p className="mt-1 text-sm font-medium text-amber-700">
               علّم فقط الأداة الناقصة عندك — الباقي مؤشر مسبقاً كموجود.
             </p>
@@ -746,7 +747,7 @@ export default function MyTasks() {
       {stopFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
-            <h3 className="text-lg font-bold text-[#0f2040]">⏸ توقف العمل — حجز {stopFor.code}</h3>
+            <h3 className="text-lg font-bold text-[#0f2040]">⏸ توقف العمل — حجز <BookingCodeChip code={stopFor.code} /></h3>
             <p className="mt-1 text-xs text-slate-500">
               اكتب سبب التوقف. بدونه ما ينفع لا للمتابعة ولا للتقرير.
             </p>
@@ -782,7 +783,7 @@ export default function MyTasks() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
             <h3 className="text-lg font-bold text-[#0f2040]">
-              {paperwork.stopped ? '⏸ العمل توقف' : '✅ تم الإنجاز'} — حجز {paperwork.booking.code}
+              {paperwork.stopped ? '⏸ العمل توقف' : '✅ تم الإنجاز'} — حجز <BookingCodeChip code={paperwork.booking.code} />
             </h3>
             <p className="mt-1 text-sm text-slate-600">
               {paperwork.stopped
@@ -894,7 +895,7 @@ export default function MyTasks() {
             {myDone.map((b) => (
               <div key={b.id} className="rounded-xl border border-white bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="font-mono text-sm font-semibold text-brand-600">{b.code}</span>
+                  <span className="font-mono text-sm font-semibold text-brand-600"><BookingCodeChip code={b.code} /></span>
                   <span className="text-sm font-bold text-slate-700">{b.customer?.name || '—'}</span>
                   <span className="text-xs text-slate-400">{(b.services?.length ? b.services.map((s) => s.name).join(" + ") : b.service?.name) || "—"}</span>
                   <span className="mr-auto"><CompletionBadge booking={b} /></span>

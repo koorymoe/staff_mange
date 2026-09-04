@@ -6,6 +6,7 @@ import { api } from '../api'
 import type { Booking } from '../api'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 const KARBALA: [number, number] = [32.6160, 44.0249]
 
@@ -367,7 +368,7 @@ export default function MapPage() {
           {routeInfo && selectedBooking && (
             <div className="border-b border-blue-200 bg-blue-50 p-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-blue-800">المسار إلى {selectedBooking.code}</span>
+                <span className="text-sm font-bold text-blue-800">المسار إلى <BookingCodeChip code={selectedBooking.code} /></span>
                 <button onClick={() => { routeLayerRef.current?.remove(); setRouteInfo(null) }} className="text-blue-500 text-xs">إغلاق</button>
               </div>
               <div className="mt-2 flex gap-4">
@@ -393,7 +394,7 @@ export default function MapPage() {
                 {bookingsWithoutLocation.slice(0, 5).map(b => (
                   <div key={b.id} className="flex items-center justify-between bg-white rounded px-2 py-1.5 text-xs">
                     <div>
-                      <span className="font-bold text-amber-700">{b.code}</span>
+                      <span className="font-bold text-amber-700"><BookingCodeChip code={b.code} /></span>
                       <span className="text-slate-600 mr-1">{b.customer?.name}</span>
                     </div>
                     <button
@@ -466,7 +467,7 @@ export default function MapPage() {
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="font-bold text-sm" style={{ color: MARKER_COLORS[booking.status] }}>
-                    {booking.code}
+                    <BookingCodeChip code={booking.code} />
                   </span>
                   <span className="text-[10px] rounded-full px-2 py-0.5" style={{
                     background: MARKER_COLORS[booking.status] + '20',

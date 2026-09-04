@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type DailyStats, type WeeklyStats, type ProjectStageStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -367,7 +368,7 @@ function InternalWorksTab() {
               <tbody>
                 {rep.works.map((w) => (
                   <tr key={w.code} style={{ borderBottom: '1px solid var(--bd-line)' }}>
-                    <td style={{ padding: '9px 12px', fontSize: '13px' }}>{w.code}</td>
+                    <td style={{ padding: '9px 12px', fontSize: '13px' }}><BookingCodeChip code={w.code} /></td>
                     <td style={{ padding: '9px 12px', fontSize: '13px' }}>{w.serviceName}</td>
                     <td style={{ padding: '9px 12px', fontSize: '13px' }}>
                       {w.completedAt ? new Date(w.completedAt).toLocaleDateString('ar-IQ') : '—'}

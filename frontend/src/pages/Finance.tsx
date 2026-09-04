@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Expense } from '../api'
 import { matches } from '../utils/search'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 export default function Finance() {
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -238,7 +239,7 @@ export default function Finance() {
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold text-brand-600">
-                    {b.code}
+                    <BookingCodeChip code={b.code} />
                   </span>
                   <span className="text-sm font-medium text-brand-800">
                     {b.customer?.name}

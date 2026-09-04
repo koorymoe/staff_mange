@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Expense, type Booking } from '../api'
 import { useSession } from '../session'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار الاعتماد',
@@ -103,7 +104,7 @@ export default function MyExpenses() {
           <ul className="mt-2 list-inside list-disc text-sm text-emerald-700">
             {responsibleBookings.map(b => (
               <li key={b.id}>
-                {b.code} — {b.customer?.name} ({b.service?.name || 'بدون خدمة'})
+                <BookingCodeChip code={b.code} /> — {b.customer?.name} ({b.service?.name || 'بدون خدمة'})
               </li>
             ))}
           </ul>
@@ -152,7 +153,7 @@ export default function MyExpenses() {
               <option value="">— مصروف عام بلا حجز —</option>
               {responsibleBookings.map((b) => (
                 <option key={b.id} value={b.id}>
-                  {b.code} — {b.customer?.name ?? 'بلا اسم'}
+                  <BookingCodeChip code={b.code} /> — {b.customer?.name ?? 'بلا اسم'}
                 </option>
               ))}
             </select>

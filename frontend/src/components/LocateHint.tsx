@@ -14,6 +14,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 
 import { api, type LocateResult } from '../api'
+import BookingCodeChip from './BookingCodeChip'
 
 interface Props {
   /** نص البحث الي كتبه الموظف. */
@@ -50,7 +51,7 @@ export default function LocateHint({ query, localCount, currentRoute }: Props) {
   return (
     <div className="mb-3 rounded-2xl border-2 border-sky-200 bg-sky-50 px-4 py-3">
       <p className="text-sm font-bold text-sky-900">
-        🔎 الحجز <b className="font-mono">{hit.code}</b> موجود — بس مو بهذي الشاشة.
+        🔎 الحجز <b className="font-mono"><BookingCodeChip code={hit.code} /></b> موجود — بس مو بهذي الشاشة.
       </p>
       {hit.hint && <p className="mt-1 text-[12.5px] leading-relaxed text-sky-800">{hit.hint}</p>}
       <div className="mt-2 flex flex-wrap gap-2">

@@ -5,6 +5,7 @@ import { useSession } from '../session'
 import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
 import { matches } from '../utils/search'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 /**
  * التدقيق اليومي.
@@ -293,7 +294,7 @@ export default function DailyAuditPage() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-slate-800">
-                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-sm text-slate-700">{row.code}</span>
+                      <span className="rounded-lg bg-slate-100 px-2 py-0.5 font-mono text-sm text-slate-700"><BookingCodeChip code={row.code} /></span>
                       <span className="mr-2 text-sm font-normal text-slate-500">{row.customerName || 'زبون غير معروف'}</span>
                     </p>
                     <p className="mt-1 text-xs text-slate-400" dir="ltr">{row.customerPhone}</p>

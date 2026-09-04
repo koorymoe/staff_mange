@@ -3,6 +3,7 @@ import { matches } from '../utils/search'
 import { useSession } from '../session'
 import EmptyState from '../components/EmptyState'
 import { api, REVIEW_RATINGS, type BookingAwaitingReview, type CrewReviewState, type ReviewRating } from '../api'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 // ═══ تقييم الأداء — لكل حجز ═══
 //
@@ -322,7 +323,7 @@ function BookingReviewCard({ booking, onSaved }: { booking: BookingAwaitingRevie
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50/60 px-3 py-3 sm:px-4">
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-[10px] text-slate-400">رقم الحجز</span>
-          <span className="font-mono text-sm font-black text-[#0f2040]">{booking.code}</span>
+          <span className="font-mono text-sm font-black text-[#0f2040]"><BookingCodeChip code={booking.code} /></span>
           {booking.serviceName && <span className="text-xs text-slate-600">🔧 {booking.serviceName}</span>}
           <span className="text-xs text-slate-500">📅 {when}{time && ` · ${time}`}</span>
           <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">مكتمل</span>

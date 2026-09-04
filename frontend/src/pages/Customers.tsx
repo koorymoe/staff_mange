@@ -5,6 +5,7 @@ import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { matches } from '../utils/search'
 // تسمية الحالة من مصدر واحد للنظام كله
 import { bookingStatusLabel, bookingStatusColor } from '../bookingStatus'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 function splitFullName(fullName: string): [string, string, string, string] {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -680,7 +681,7 @@ function CustomerDetails({ customer, history, loading }: {
         <div className="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white">
           {history.map((b) => (
             <div key={b.id} className="flex flex-wrap items-center gap-2 border-b border-slate-100 px-3 py-2 text-[11px] last:border-0">
-              <span className="font-mono font-bold text-brand-600">{b.code}</span>
+              <span className="font-mono font-bold text-brand-600"><BookingCodeChip code={b.code} /></span>
               <span className="text-slate-600">{b.service?.name || '—'}</span>
               <span className="text-slate-400">{new Date(b.createdAt).toLocaleDateString('ar-IQ')}</span>
               <span className={`mr-auto rounded-full px-2 py-0.5 font-bold ${bookingStatusColor(b.status)}`}>

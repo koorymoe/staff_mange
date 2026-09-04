@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Booking, type BookingCrewInventoryState } from '../api'
 import { acceptedBookings } from '../utils/acceptedBookings'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 // ═══ جرد أدوات فريقي ═══
 //
@@ -82,7 +83,7 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
           <div className="rounded-2xl border-2 border-brand-200 bg-brand-50/50 p-4">
             <p className="text-[11px] font-bold text-brand-700">🔧 الحجز الي استلمته</p>
             <p className="mt-1 font-black text-[#0f2040]">
-              {booking.code && <span className="font-mono">{booking.code} · </span>}
+              {booking.code && <span className="font-mono"><BookingCodeChip code={booking.code} /> · </span>}
               {booking.customer?.name || 'بدون اسم'}
             </p>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-600">

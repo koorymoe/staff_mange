@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type WorkReport } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import EntityIdentity from '../components/EntityIdentity'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 export default function WorkReportsReview() {
   const [reports, setReports] = useState<WorkReport[]>([])
@@ -44,7 +45,7 @@ export default function WorkReportsReview() {
           <div key={r.id} className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-mono font-bold text-brand-700">{r.booking?.code}</span>
+                <span className="font-mono font-bold text-brand-700"><BookingCodeChip code={r.booking?.code} /></span>
                 <span className="mr-2 text-sm text-slate-500">{r.booking?.customerName}</span>
                 {/* رقم هاتف الزبون — حتى مهندس الجودة يتصل مباشرة من التقرير */}
                 {r.booking?.customerPhone && (

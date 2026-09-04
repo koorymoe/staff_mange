@@ -7,6 +7,7 @@ import {
 import { useSession } from '../session'
 import TeamInventoryCheckPage from './TeamInventoryCheckPage'
 import { acceptedBookings } from '../utils/acceptedBookings'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 type TabKey = 'checklist' | 'team' | 'vehicle' | 'request' | 'my-requests'
 
@@ -236,7 +237,7 @@ export default function MyInventory() {
                 <div className="mb-4 rounded-xl border-2 border-brand-200 bg-brand-50/50 p-4">
                   <p className="text-[11px] font-bold text-brand-700">🔧 الحجز الي استلمته — تجرد عدتك إله</p>
                   <p className="mt-1 font-black text-[#0f2040]">
-                    {activeBooking.code && <span className="font-mono">{activeBooking.code} · </span>}
+                    {activeBooking.code && <span className="font-mono"><BookingCodeChip code={activeBooking.code} /> · </span>}
                     {activeBooking.customer?.name || 'بدون اسم'}
                   </p>
                   <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-slate-600">

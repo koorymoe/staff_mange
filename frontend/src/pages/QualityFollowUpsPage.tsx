@@ -5,6 +5,7 @@ import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
 import BookingExecutionSummary from '../components/BookingExecutionSummary'
 import { useSession } from '../session'
+import BookingCodeChip from '../components/BookingCodeChip'
 
 const statusLabels: Record<QualityFollowUp['status'], string> = {
   PENDING: 'بانتظار التواصل',
@@ -164,7 +165,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                     {item.customer.name} — {item.customer.phone}
                   </p>
                   <p className="text-sm text-slate-500">
-                    الحجز: {item.booking.code} — {item.booking.service?.name || 'بدون خدمة محددة'}
+                    الحجز: <BookingCodeChip code={item.booking.code} /> — {item.booking.service?.name || 'بدون خدمة محددة'}
                   </p>
                   {/* هوية كاملة: مهندس الجودة كان يشوف كود الحجز والخدمة بس */}
                   <EntityIdentity

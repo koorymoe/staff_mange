@@ -239,7 +239,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
    *  المشاريع (يبقى مقفل عندهم لحد ما يوصل مرحلة التنفيذ). */
   const confirmAndTransfer = async (booking: Booking, toProjects: boolean) => {
     const where = toProjects ? 'إدارة المشاريع' : 'كادر الشد'
-    if (!confirm(`تثبيت الحجز $<BookingCodeChip code={booking.code} /> وترحيله لـ${where}؟`)) return
+    if (!confirm(`تثبيت الحجز ${booking.code} وترحيله لـ${where}؟`)) return
     setFlowBusy(booking.id)
     try {
       const updated = await api.confirmBooking(booking.id, {
