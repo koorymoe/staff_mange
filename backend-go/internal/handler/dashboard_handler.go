@@ -5,6 +5,8 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+
+	"staffmange-api/internal/repository"
 )
 
 // DashboardHandler أرقام اللوحة الرئيسية.
@@ -117,7 +119,10 @@ func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request
 			(SELECT COUNT(*) FROM "Expense" WHERE status = 'PENDING')                   AS "pendingExpenses",
 			(SELECT COUNT(*) FROM "Expense" WHERE status = 'APPROVED')                  AS "approvedExpenses",
 			(SELECT COALESCE(SUM(amount),0) FROM "Expense" WHERE status = 'APPROVED')   AS "totalExpenseValue"
-		FROM "Booking" b`)
+		-- ⚠️ المطلوب حذفه مستثنى: بدونه بطاقة «بانتظار التثبيت» هنا
+		-- تعطي رقماً غير الرقم بشاشة الحجوزات (هي تستثنيه أصلاً) —
+		-- نفس المفهوم برقمين، وهاي الي نطاردها بكل النظام.
+		FROM "Booking" b WHERE NOT ` + repository.BookingDeletePendingSQL("b"))
 	if err != nil {
 		log.Printf("finance summary: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الملخص المالي")
@@ -155,10 +160,11 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 	err := h.db.Get(&s, `
 		SELECT
 			(SELECT COUNT(*) FROM "Booking"
-			  WHERE "archivedAt" IS NULL AND "scheduledAt"::date = CURRENT_DATE)     AS "todayBookings",
+			  WHERE "archivedAt" IS NULL` + repository.NotDeletePendingSQL(`"Booking"`) + `
+			    AND "scheduledAt"::date = CURRENT_DATE)                              AS "todayBookings",
 			-- أمس للمقارنة: رقم بلا مرجع ما يگول شي. ١٢ حجز زين لو خبل؟
 			(SELECT COUNT(*) FROM "Booking"
-			  WHERE "archivedAt" IS NULL
+			  WHERE "archivedAt" IS NULL` + repository.NotDeletePendingSQL(`"Booking"`) + `
 			    AND "scheduledAt"::date = CURRENT_DATE - 1)                          AS "yesterdayBookings",
 			-- المهام المفتوحة: الي لسه بالميدان، مو المنجزة ولا المتوقفة
 			(SELECT COUNT(*) FROM "Mission"
@@ -166,7 +172,8 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			(SELECT COUNT(*) FROM "Complaint" WHERE status = 'NEW')                  AS "newComplaints",
 			-- مثبّت بس بلا موعد أو بلا كادر — هذا الي يحتاج شغل الإداري
 			(SELECT COUNT(*) FROM "Booking" b
-			  WHERE b."archivedAt" IS NULL AND b.status = 'CONFIRMED'
+			  WHERE b."archivedAt" IS NULL` + repository.NotDeletePendingSQL("b") + `
+			    AND b.status = 'CONFIRMED'
 			    AND (b."scheduledAt" IS NULL
 			         OR NOT EXISTS (SELECT 1 FROM "BookingAssignment" ba
 			                         WHERE ba."bookingId" = b.id)))                  AS "needsCoordination",

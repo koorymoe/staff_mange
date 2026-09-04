@@ -1349,6 +1349,23 @@ export const bookingDeleteTypeLabels: Record<BookingDeleteRequestType, string> =
   DATA_CORRECTION: 'تصحيح بيانات',
 }
 
+/**
+ * ═══ «الزبون ما رد» — خيار بنفس قائمة نوع الطلب، بس مو طلب حذف ═══
+ *
+ * «اريد منك خيار الزبون مارد حته مناك ننطي مارد… زبون مارد ماريده
+ * يضهرلي بمكانين، اريده يضهر فقط بالمكان مال الزبون مارد».
+ *
+ * ⚠️ ما ينفتح إله طلب حذف ولا يمرّ على المراقب — قراره صريح: **ينشال
+ * فوراً**. اختياره ينقل الحجز لحالة WAITING الموجودة أصلاً
+ * (`markBookingWaiting`)، فيختفي من طابور الشغل ويظهر بمكانه الواحد،
+ * وصاحب النظام يرجّعه يدوياً وقت ما يريد. **ما ينحذف ولا ينأرشف.**
+ *
+ * لهذا هو **مو** قيمة بـBookingDeleteRequestType ولا يوصل الخادم
+ * كنوع طلب — لو انضاف هناك، صار طلب حذف وهو مو حذف.
+ */
+export const BOOKING_NO_ANSWER_CHOICE = 'CUSTOMER_NO_ANSWER'
+export const bookingNoAnswerLabel = 'الزبون ما رد — ينزاح للانتظار فوراً'
+
 export interface BookingDeleteRequest {
   id: string
   bookingId: string

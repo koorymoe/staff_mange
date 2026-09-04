@@ -12,12 +12,17 @@ import { matches as searchMatches } from '../utils/search'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingTimelineView from '../components/BookingTimeline'
 import { promptChoice } from '../utils/promptChoice'
-import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
+import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
-const DELETE_TYPE_OPTIONS: [BookingDeleteRequestType, string][] =
-  (Object.entries(bookingDeleteTypeLabels) as [BookingDeleteRequestType, string][])
+// ⚠️ «الزبون ما رد» خيار بنفس القائمة بس **مو طلب حذف** — يُعالَج
+// بفرع مستقل ينقل الحجز للانتظار فوراً، بلا ما يوصل الخادم كنوع طلب.
+type DeleteTypeChoice = BookingDeleteRequestType | typeof BOOKING_NO_ANSWER_CHOICE
+const DELETE_TYPE_OPTIONS: [DeleteTypeChoice, string][] = [
+  ...(Object.entries(bookingDeleteTypeLabels) as [BookingDeleteRequestType, string][]),
+  [BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel],
+]
 
 // أسماء كل خدمات الحجز (الزبون ممكن يطلب أكثر من منظومة بنفس الحجز)
 function serviceNames(b: { service?: { name: string } | null; services?: { name: string }[] }): string {
@@ -243,9 +248,18 @@ export default function Coordinator() {
       // نجيب الحجوزات الفعّالة بس (قيد التنسيق) لا كل الأرشيف التاريخي — هذي الصفحة
       // ما تستخدم إطلاقاً حجوزات IN_PROGRESS/COMPLETED/CANCELLED، وجلبها كلها كان يبطّئ
       // الصفحة كثير مع تراكم آلاف الحجوزات القديمة.
-      // WAITING بعد: الزبون ما رد، والحجز لازم يضل مرئي للمنسّق حتى
-      // يعاود الاتصال — لو ما جبناه صار يختفي بلا ما ينحل.
-      .getBookings({ status: ['PENDING', 'CONFIRMED', 'WAITING'] })
+      // ═══ ⚠️ WAITING انشالت من هنا — قرار لاحق يعدّل قراراً أسبق ═══
+      //
+      // چانت تنجاب حتى «يضل الحجز مرئي للمنسّق حتى يعاود الاتصال».
+      // بس صاحب النظام رجع وقال صراحة: «زبون ما رد ماريده يضهرلي
+      // بمكانين، اريده يضهر فقط بالمكان مال الزبون ما رد… اني بعدين
+      // ارجعله يدويا».
+      //
+      // فالحجز الي الزبون ما رد عليه صار له **مكان واحد**: طابور
+      // «زبون ما رد» بشاشة المحطات (NO_ANSWER_BEFORE/AFTER_CONFIRM)،
+      // ومنه يرجّعه صاحب النظام يدوياً. ظهوره هنا وهناك سوا چان
+      // يخلّي المنسّق يشتغل على حجز مؤجَّل قصداً.
+      .getBookings({ status: ['PENDING', 'CONFIRMED'] })
       .then((all) => {
         // ═══ الي بدا التنفيذ ما يبقى بشاشة التنسيق ═══
         //
@@ -268,8 +282,6 @@ export default function Coordinator() {
         // يشوف حجوزات ما أحد حچى وية زبونها، ويبدي يدوّر مواعيد
         // وكوادر لشغل يمكن ما يصير أصلاً.
         //
-        // و`WAITING` تبقى: هذا حجز **انثبّت** وبعدين الزبون ما رد —
-        // لازم يضل قدّام المنسّق حتى يعاود الاتصال.
         const data = all.filter((b) => !executionStarted(b) && !!b.confirmedAt)
         setBookings(data)
         // حجز المشاريع **المفتوح** (وصل التنفيذ) ياخذ مرشحين مثل أي
@@ -323,6 +335,18 @@ export default function Coordinator() {
     if (!channel) return
     const requestType = promptChoice('شنو نوع الطلب؟', DELETE_TYPE_OPTIONS)
     if (!requestType) return
+    // «الزبون ما رد» مسار مختلف تماماً: ما ينفتح طلب حذف ولا ينطر
+    // قرار المراقب — الحجز ينزاح فوراً لطابور الانتظار الموجود أصلاً.
+    if (requestType === BOOKING_NO_ANSWER_CHOICE) {
+      try {
+        await api.markBookingWaiting(booking.id, reason.trim())
+      setSaveError(null)
+      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور الانتظار، ترجّعه يدوياً وقت ما تريد')
+      } catch (e) {
+      setSaveError(`تعذر تأشير «الزبون ما رد»: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+      }
+      return
+    }
     try {
       await api.requestBookingDelete(booking.id, reason.trim(), channel, requestType)
       setSaveError(null)

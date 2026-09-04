@@ -13,12 +13,17 @@ import Pager from '../components/Pager'
 import BookingLocator from '../components/BookingLocator'
 import LocateHint from '../components/LocateHint'
 import { promptChoice } from '../utils/promptChoice'
-import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
+import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
-const DELETE_TYPE_OPTIONS: [BookingDeleteRequestType, string][] =
-  (Object.entries(bookingDeleteTypeLabels) as [BookingDeleteRequestType, string][])
+// ⚠️ «الزبون ما رد» خيار بنفس القائمة بس **مو طلب حذف** — يُعالَج
+// بفرع مستقل ينقل الحجز للانتظار فوراً، بلا ما يوصل الخادم كنوع طلب.
+type DeleteTypeChoice = BookingDeleteRequestType | typeof BOOKING_NO_ANSWER_CHOICE
+const DELETE_TYPE_OPTIONS: [DeleteTypeChoice, string][] = [
+  ...(Object.entries(bookingDeleteTypeLabels) as [BookingDeleteRequestType, string][]),
+  [BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel],
+]
 
 export type { BookingBucket } from './bookingBuckets'
 
@@ -121,6 +126,17 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     if (!channel) return
     const requestType = promptChoice('شنو نوع الطلب؟', DELETE_TYPE_OPTIONS)
     if (!requestType) return
+    // «الزبون ما رد» مسار مختلف تماماً: ما ينفتح طلب حذف ولا ينطر
+    // قرار المراقب — الحجز ينزاح فوراً لطابور الانتظار الموجود أصلاً.
+    if (requestType === BOOKING_NO_ANSWER_CHOICE) {
+      try {
+        await api.markBookingWaiting(bookingId, reason.trim())
+      alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور الانتظار، ترجّعه يدوياً وقت ما تريد')
+      } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تأشير «الزبون ما رد»')
+      }
+      return
+    }
     try {
       await api.requestBookingDelete(bookingId, reason.trim(), channel, requestType)
       alert('انرفع طلب الحذف — المراقب أو مدير النظام راح يبت بيه')

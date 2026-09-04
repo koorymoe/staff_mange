@@ -25,7 +25,11 @@ func NewBookingRepository(db *sqlx.DB) *BookingRepository {
 // List يرجّع الحجوزات العاملة. المؤرشفة (المحذوفة) مستثناة دائماً —
 // تنجاب بـ ListArchived لوحدها.
 func (r *BookingRepository) List(status, customerID, date string, limit int) ([]model.Booking, error) {
-	query := `SELECT * FROM "Booking" WHERE "archivedAt" IS NULL`
+	// ⚠️ المطلوب حذفه ينستثنى من هنا هم — مو من شاشة «الحجوزات» وحدها.
+	// هاي الدالة تخدم التنسيق والبحث وغيرهن، وبدون الشرط الحجز يختفي
+	// من مكان ويضل ظاهراً بمكان ثاني (وهاي چانت العلّة).
+	query := `SELECT * FROM "Booking" WHERE "archivedAt" IS NULL` +
+		NotDeletePendingSQL(`"Booking"`)
 	args := []any{}
 	if date != "" {
 		// نفس منطق "موعد الحجز الفعلي" بالواجهة: scheduledAt لو موجود، وإلا createdAt —

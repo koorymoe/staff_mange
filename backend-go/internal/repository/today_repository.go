@@ -95,7 +95,7 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		             BETWEEN baghdad_date(now()) - interval '6 days' AND baghdad_date(now())) AS "weekTotal",
 		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND baghdad_date(b."createdAt")
 		             BETWEEN baghdad_date(now()) - interval '6 days' AND baghdad_date(now())) AS "weekCompleted"
-		FROM "Booking" b WHERE b."archivedAt" IS NULL`)
+		FROM "Booking" b WHERE b."archivedAt" IS NULL` + NotDeletePendingSQL("b"))
 	if err != nil {
 		return nil, err
 	}
@@ -128,6 +128,7 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		       COUNT(b.id) AS count
 		FROM generate_series(baghdad_date(now()) - interval '13 days', baghdad_date(now()), interval '1 day') AS d(day)
 		LEFT JOIN "Booking" b ON b."archivedAt" IS NULL
+		     AND NOT ` + BookingDeletePendingSQL("b") + `
 		     AND baghdad_date(b."createdAt") = d.day::date
 		GROUP BY d.day ORDER BY d.day`)
 

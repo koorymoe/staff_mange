@@ -288,6 +288,7 @@ func (r *MissionRepository) BackfillFromAssignments() (int, error) {
 			LEFT JOIN "Mission" m       ON m."bookingId" = b.id
 			WHERE m.id IS NULL
 			  AND b."archivedAt" IS NULL
+			  AND NOT ` + BookingDeletePendingSQL("b") + `
 			  AND b.status NOT IN ('COMPLETED', 'CANCELLED')
 			GROUP BY b.id, b.address, b."mapLatitude", b."mapLongitude"
 		), numbered AS (

@@ -85,8 +85,10 @@ func bucketCondition(bucket string) string {
 // ⚠️ ينشال من محطته الطبيعية: الإداري ما يجوز يضيّع وقته يدوّر كادراً
 // لحجز يمكن ينحذف بعد ساعة. وإذا انرفض الطلب، يرجع لمحطته لحاله لأن
 // المحطة تنحسب من حالته مو من علامة ثابتة.
-const deletePendingSQL = `EXISTS (SELECT 1 FROM "BookingDeleteRequest" dr
-	WHERE dr."bookingId" = b.id AND dr.status = 'PENDING')`
+// ⚠️ التعريف انتقل لـbooking_delete_filter.go حتى تستعمله كل المصادر
+// الثانية (التنسيق، الرئيسية، اليوم، المهام) — قبل چان هنا وحده،
+// فالحجز ينختفي من هاي الشاشة ويضل ظاهراً بالباقي.
+var deletePendingSQL = BookingDeletePendingSQL("b")
 
 // ═══ محبوس عند إدارة المشاريع ═══
 //
