@@ -303,6 +303,9 @@ func versionedMigrations() []Migration {
 	// 0267: الكيان — شخصية مولّدة لكل موظف تراقبه وتساعده. جدول
 	// مستقل لأن الشخصية تتولّد وتتبدّل بمعزل عن بيانات الموظف.
 	result = append(result, employeeCharacterMigrations()...)
+	// 0268: استثناء أداة من عدة موظف بعينه — الأداة المحذوفة من عدته
+	// چانت ترجع فوراً بتقرير النواقص لأن اسمها لسه بالقالب القياسي.
+	result = append(result, personalToolExemptionMigrations()...)
 	return result
 }
 

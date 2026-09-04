@@ -1,6 +1,13 @@
 import { Fragment, useEffect, useState, useMemo } from 'react'
-import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
+import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem,
+  type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
 import { useSession, roleLabels } from '../session'
+
+// تطبيع اسم الأداة للمقارنة: قصّ الأطراف وتوحيد المسافات الداخلية.
+// ⚠️ كل مطابقة بهذي الشاشة نصية (ماكو معرّف مشترك بين العدة القياسية
+// وعدة الموظف ومخزن الكميات) — ففرق مسافة وحدة يخلي الأداة تطلع
+// «ناقصة» أو «خالصة من المخزن» وهي موجودة.
+const normName = (n: string) => n.trim().replace(/\s+/g, ' ')
 
 type TabKey = 'todaychecks' | 'personal' | 'vehicle' | 'ondemand' | 'requests' | 'template' | 'reports'
 
@@ -144,6 +151,9 @@ export default function InventoryPage() {
 
   // العدة القياسية (PersonalToolTemplateItem)
   const [templateItems, setTemplateItems] = useState<PersonalToolTemplateItem[]>([])
+  // ⚠️ استثناءات: أداة انحذفت من عدة موظف بعينه — تنطرح من نواقصه هو
+  // بس. بدونها الأداة المحذوفة ترجع فوراً «خالصة من المخزن».
+  const [exemptions, setExemptions] = useState<PersonalToolExemption[]>([])
   const [templateName, setTemplateName] = useState('')
   const [templateSubmitting, setTemplateSubmitting] = useState(false)
   // زر "إضافة أداة" الموحّد: يسأل أول شي قياسية لو خاصة. القياسية تروح لكل
@@ -175,6 +185,17 @@ export default function InventoryPage() {
   // نفس شرط السيرفر (toolKitEligibleSQL) بالضبط. بدونه الشاشة تعرض
   // «ناقص 37» للمحاسب وموظف المبيعات وإداري الكوادر — ناس ما عندهم
   // عدة أصلاً ولا يتحاسبون عليها، فالتقرير كله يصير ضوضاء.
+  // استثناءات كل موظف — أسماء انشالت من نواقصه هو بس (بعد الحذف).
+  const exemptByEmployee = useMemo(() => {
+    const m = new Map<string, Set<string>>()
+    for (const x of exemptions) {
+      const set = m.get(x.employeeId)
+      if (set) set.add(x.toolName.trim())
+      else m.set(x.employeeId, new Set([x.toolName.trim()]))
+    }
+    return m
+  }, [exemptions])
+
   const kitSummaries = useMemo(() => {
     const byEmployee = new Map<string, PersonalTool[]>()
     for (const t of personalTools) {
@@ -183,20 +204,28 @@ export default function InventoryPage() {
       else byEmployee.set(t.employeeId, [t])
     }
     return employees
-      .filter((emp) => emp.role === 'TECHNICIAN' || emp.isLeader)
+      // ⚠️ `TECHNICAL` چان ناقصاً هنا بينما السيرفر يشمله
+      // (toolKitEligibleSQL: role IN ('TECHNICIAN','TECHNICAL') OR isLeader) —
+      // يعني فنيو TECHNICAL ما يطلعون بتقرير النواقص إطلاقاً، وعدّتهم
+      // ما تنراقب. توحّدنا على تعريف السيرفر.
+      .filter((emp) => emp.role === 'TECHNICIAN' || emp.role === 'TECHNICAL' || emp.isLeader)
       .map((emp) => {
         const tools = byEmployee.get(emp.id) || []
         const owned = new Set(tools.map((t) => t.name.trim()))
+        const exempt = exemptByEmployee.get(emp.id) || new Set<string>()
         return {
           employee: emp,
           tools,
-          missing: [...templateNames].filter((n) => !owned.has(n)),
+          // ⚠️ المستثناة تنطرح: أبو الكميات حذف الأداة من عدة هذا
+          // الموظف قصداً — رجوعها كـ«ناقصة» يخلي الحذف بلا معنى.
+          missing: [...templateNames].filter((n) => !owned.has(n) && !exempt.has(n)),
+          exempt: [...exempt],
           extra: tools.filter((t) => !templateNames.has(t.name.trim())),
         }
       })
       // الي عنده نقص أول القائمة — هذا الي يحتاج انتباه الإداري
       .sort((a, b) => b.missing.length - a.missing.length || a.employee.name.localeCompare(b.employee.name, 'ar'))
-  }, [employees, personalTools, templateNames])
+  }, [employees, personalTools, templateNames, exemptByEmployee])
 
   const openToolEdit = (t: PersonalTool) => {
     setToolEdit(t)
@@ -266,8 +295,9 @@ export default function InventoryPage() {
       // قائمة السيارات لازمة للقائمة المنسدلة بأدوات المركبات — لو الموظف
       // ما عنده صلاحية المركبات نكمل بقائمة فاضية بدل ما تفشل الصفحة كلها.
       api.getVehicles().catch(() => [] as Vehicle[]),
+      api.getToolExemptions().catch(() => [] as PersonalToolExemption[]),
     ])
-      .then(([pt, vt, od, tr, emps, tmpl, vhs]) => {
+      .then(([pt, vt, od, tr, emps, tmpl, vhs, exs]) => {
         setPersonalTools(pt)
         setVehicleTools(vt)
         setOnDemandTools(od)
@@ -275,6 +305,7 @@ export default function InventoryPage() {
         setEmployees(emps)
         setTemplateItems(tmpl)
         setVehicles(vhs)
+        setExemptions(exs)
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
@@ -689,7 +720,12 @@ export default function InventoryPage() {
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {k.missing.map((m) => {
-                              const inStock = onDemandTools.find((t) => t.name.trim() === m)
+                              // ⚠️ المطابقة بالاسم النصي، فنطبّع المسافات
+                              // الداخلية بعد: «مفتاح  صباغ» و«مفتاح صباغ»
+                              // چانوا اثنين، فتطلع «خالصة من المخزن»
+                              // والمخزن مليان — رقم كاذب يخلي إداري
+                              // الكميات يشتري شي موجود عنده.
+                              const inStock = onDemandTools.find((t) => normName(t.name) === normName(m))
                               const qty = inStock?.availableQuantity ?? 0
                               return (
                                 <tr key={m}>
@@ -717,6 +753,43 @@ export default function InventoryPage() {
                     ) : (
                       <div className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 font-bold text-emerald-700">
                         ✓ عدة هذا الموظف مكتملة — كل العدة القياسية موجودة عنده
+                      </div>
+                    )}
+
+                    {/* ═══ أدوات مستثناة من نواقص هذا الموظف ═══
+                        أبو الكميات حذفها من عدته قصداً، فما ترجع
+                        «ناقصة». تنعرض هنا صراحةً لا تنخفي — استثناء
+                        مخفي يخلي تقرير النواقص يكذب بصمت. والإرجاع
+                        بضغطة، حتى ما يخاف يضغط الحذف. */}
+                    {k.exempt.length > 0 && (
+                      <div className="mb-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div className="mb-2 text-sm font-bold text-slate-700">
+                          🚫 مستثناة من نواقصه ({k.exempt.length})
+                          <span className="mr-2 text-xs font-normal text-slate-500">
+                            — انحذفت من عدته، فما تنحسب عليه. تبقى بالعدة القياسية لباقي الموظفين.
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {k.exempt.map((name) => (
+                            <span key={name}
+                              className="flex items-center gap-2 rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-600">
+                              {name}
+                              <button
+                                onClick={async () => {
+                                  if (!confirm(`ترجّع «${name}» لنواقص ${k.employee.name}؟`)) return
+                                  try {
+                                    await api.unexemptTool(k.employee.id, name)
+                                    load()
+                                  } catch (e) {
+                                    setError(e instanceof Error ? e.message : 'تعذر إرجاع الأداة')
+                                  }
+                                }}
+                                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-brand-700 hover:bg-brand-50">
+                                ↩︎ رجّعها
+                              </button>
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
 

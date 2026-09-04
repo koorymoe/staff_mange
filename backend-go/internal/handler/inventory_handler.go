@@ -111,6 +111,43 @@ func (h *InventoryHandler) UpdatePersonalTool(w http.ResponseWriter, r *http.Req
 	WriteJSON(w, http.StatusOK, tool)
 }
 
+// ═══ استثناءات العدة القياسية لموظف بعينه ═══
+
+// GET /api/inventory/tool-exemptions
+func (h *InventoryHandler) ListToolExemptions(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.ListPersonalToolExemptions()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الاستثناءات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/inventory/tool-exemptions — يشيل أداة من نواقص موظف
+func (h *InventoryHandler) CreateToolExemption(w http.ResponseWriter, r *http.Request) {
+	var req model.CreatePersonalToolExemptionRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صحيحة")
+		return
+	}
+	if err := h.service.ExemptPersonalTool(req.EmployeeID, req.ToolName, req.Note, actorID(r)); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, map[string]bool{"ok": true})
+}
+
+// DELETE /api/inventory/tool-exemptions — يرجّع الأداة لنواقصه
+func (h *InventoryHandler) DeleteToolExemption(w http.ResponseWriter, r *http.Request) {
+	employeeID := r.URL.Query().Get("employeeId")
+	toolName := r.URL.Query().Get("toolName")
+	if err := h.service.UnexemptPersonalTool(employeeID, toolName); err != nil {
+		WriteError(w, http.StatusBadRequest, "تعذر إرجاع الأداة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func (h *InventoryHandler) DeletePersonalTool(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.DeletePersonalTool(r.PathValue("id"), actorID(r)); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

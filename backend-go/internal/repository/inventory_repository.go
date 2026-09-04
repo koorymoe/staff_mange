@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"fmt"
+	"log"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
@@ -238,11 +240,67 @@ func (r *InventoryRepository) UpdatePersonalTool(id string, req model.UpdatePers
 
 func (r *InventoryRepository) DeletePersonalTool(id string, actorID *string) error {
 	// نسجّل الحذف قبل ما ننفذه — بعده ما نعرف اسم الأداة ولا صاحبها
-	if t, err := r.GetPersonalTool(id); err == nil {
+	t, getErr := r.GetPersonalTool(id)
+	if getErr == nil {
 		r.logToolEvent(t, model.ToolEventDeleted, &t.Status, nil, nil, actorID)
 	}
-	_, err := r.db.Exec(`DELETE FROM "PersonalTool" WHERE id = $1`, id)
+	if _, err := r.db.Exec(`DELETE FROM "PersonalTool" WHERE id = $1`, id); err != nil {
+		return err
+	}
+	// ═══ ⚠️ الحذف يستثنيها من نواقص هذا الموظف بنفس الوقت ═══
+	//
+	// بدون هذا السطر، حذف الأداة **هو الي يخلقها نقصاً**: اسمها لسه
+	// بالقالب القياسي، فترجع فوراً بتقرير النواقص كـ«خالصة من
+	// المخزن». وهاي بالضبط شكوى أبو الكميات — يحذفها وترجعله.
+	//
+	// ⚠️ والاستثناء لهذا الموظف وحده — القالب مشترك، وحذفها منه
+	// يعني ماكو ولا فني يتحاسب عليها.
+	//
+	// ⚠️ وما نفشّل الحذف لو فشل الاستثناء: الأداة انحذفت فعلاً،
+	// وإرجاع خطأ هنا يخلّي أبو الكميات يظن إنها ما انحذفت فيعيد.
+	// بس ما ننبلع الخطأ بصمت — ينسجّل بالسجل.
+	if getErr == nil {
+		if err := r.ExemptPersonalTool(t.EmployeeID, t.Name, nil, actorID); err != nil {
+			log.Printf("استثناء الأداة بعد الحذف فشل (employee=%s tool=%s): %v", t.EmployeeID, t.Name, err)
+		}
+	}
+	return nil
+}
+
+// ExemptPersonalTool يشيل أداة من نواقص موظف بعينه (بلا مساس بالقالب).
+//
+// ⚠️ الاسم ينخزن **مقصوصاً** — نفس ما يتحسب النقص بالضبط (بالمقارنة
+// النصية بعد `trim`)، وإلا «مفتاح » ما تطابق «مفتاح» والاستثناء ما
+// يشتغل والمستخدم ما يفهم ليش.
+func (r *InventoryRepository) ExemptPersonalTool(employeeID, toolName string, note, actorID *string) error {
+	name := strings.TrimSpace(toolName)
+	if employeeID == "" || name == "" {
+		return fmt.Errorf("لازم تحدد الموظف واسم الأداة")
+	}
+	byName := ""
+	if actorID != nil {
+		_ = r.db.Get(&byName, `SELECT name FROM "Employee" WHERE id = $1`, *actorID)
+	}
+	_, err := r.db.Exec(`
+		INSERT INTO "PersonalToolExemption" (id, "employeeId", "toolName", note, "byEmployeeId", "byName")
+		VALUES (gen_random_uuid()::text, $1, $2, NULLIF($3,''), $4, $5)
+		ON CONFLICT ("employeeId", "toolName") DO NOTHING`,
+		employeeID, name, deref(note), actorID, byName)
 	return err
+}
+
+// UnexemptPersonalTool يرجّع الأداة لنواقص الموظف — تراجع عن الاستثناء.
+func (r *InventoryRepository) UnexemptPersonalTool(employeeID, toolName string) error {
+	_, err := r.db.Exec(`DELETE FROM "PersonalToolExemption"
+		WHERE "employeeId" = $1 AND "toolName" = $2`, employeeID, strings.TrimSpace(toolName))
+	return err
+}
+
+// ListPersonalToolExemptions كل الاستثناءات — الواجهة تطرحها من النواقص.
+func (r *InventoryRepository) ListPersonalToolExemptions() ([]model.PersonalToolExemption, error) {
+	rows := []model.PersonalToolExemption{}
+	err := r.db.Select(&rows, `SELECT * FROM "PersonalToolExemption" ORDER BY "createdAt" DESC`)
+	return rows, err
 }
 
 const toolEventSelect = `SELECT ev.*, a.name AS "actorName", e.name AS "employeeName"

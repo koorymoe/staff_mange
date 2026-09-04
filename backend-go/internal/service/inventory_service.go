@@ -117,6 +117,20 @@ func (s *InventoryService) DeletePersonalTool(id string, actorID *string) error 
 	return s.repo.DeletePersonalTool(id, actorID)
 }
 
+// ═══ استثناء أداة من نواقص موظف بعينه ═══
+// الحذف يستثنيها تلقائياً؛ هذولا للتراجع وللعرض.
+func (s *InventoryService) ListPersonalToolExemptions() ([]model.PersonalToolExemption, error) {
+	return s.repo.ListPersonalToolExemptions()
+}
+
+func (s *InventoryService) ExemptPersonalTool(employeeID, toolName string, note, actorID *string) error {
+	return s.repo.ExemptPersonalTool(employeeID, toolName, note, actorID)
+}
+
+func (s *InventoryService) UnexemptPersonalTool(employeeID, toolName string) error {
+	return s.repo.UnexemptPersonalTool(employeeID, toolName)
+}
+
 func (s *InventoryService) ListToolEvents(toolID, employeeID string) ([]model.PersonalToolEvent, error) {
 	return s.repo.ListToolEvents(toolID, employeeID)
 }

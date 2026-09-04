@@ -3,14 +3,14 @@ package model
 import "time"
 
 type InventoryCheck struct {
-	ID           string     `db:"id" json:"id"`
-	EmployeeID   string     `db:"employeeId" json:"employeeId"`
-	Complete     bool       `db:"complete" json:"complete"`
-	MissingItems *string    `db:"missingItems" json:"missingItems"`
-	CheckedAt    time.Time  `db:"checkedAt" json:"checkedAt"`
+	ID           string    `db:"id" json:"id"`
+	EmployeeID   string    `db:"employeeId" json:"employeeId"`
+	Complete     bool      `db:"complete" json:"complete"`
+	MissingItems *string   `db:"missingItems" json:"missingItems"`
+	CheckedAt    time.Time `db:"checkedAt" json:"checkedAt"`
 	// الحجز الي انجرد قبله. فاضي بالجرود القديمة وبالجرد العام
 	// الي ما ينربط بشغل معيّن.
-	BookingID *string `db:"bookingId" json:"bookingId"`
+	BookingID    *string    `db:"bookingId" json:"bookingId"`
 	Resolved     bool       `db:"resolved" json:"resolved"`
 	ResolvedByID *string    `db:"resolvedById" json:"resolvedById"`
 	ResolvedAt   *time.Time `db:"resolvedAt" json:"resolvedAt"`
@@ -332,6 +332,28 @@ type PersonalToolTemplateItem struct {
 
 type CreatePersonalToolTemplateItemRequest struct {
 	Name string `json:"name"`
+}
+
+// ═══ استثناء أداة من عدة موظف بعينه ═══
+//
+// «الناقص» يتحسب = أسماء العدة القياسية ناقص الي يملكه الموظف. فحذف
+// الأداة من عدته **هو الي يخلقها نقصاً** — اسمها لسه بالقالب. أبو
+// الكميات يريدها تنشال من نواقص **هذا الموظف** بلا ما تنشال من
+// القالب المشترك (وإلا ماكو ولا فني يتحاسب عليها).
+type PersonalToolExemption struct {
+	ID           string    `db:"id" json:"id"`
+	EmployeeID   string    `db:"employeeId" json:"employeeId"`
+	ToolName     string    `db:"toolName" json:"toolName"`
+	Note         *string   `db:"note" json:"note"`
+	ByEmployeeID *string   `db:"byEmployeeId" json:"byEmployeeId"`
+	ByName       string    `db:"byName" json:"byName"`
+	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+}
+
+type CreatePersonalToolExemptionRequest struct {
+	EmployeeID string  `json:"employeeId"`
+	ToolName   string  `json:"toolName"`
+	Note       *string `json:"note"`
 }
 
 // VehicleToolCheck لقطة تسجّل الأدوات العامة الناقصة بمركبة معينة عند لحظة

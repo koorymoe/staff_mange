@@ -2458,6 +2458,17 @@ export interface PersonalToolTemplateItem {
   createdAt: string
 }
 
+/** استثناء أداة من نواقص موظف بعينه — الأداة تبقى بالقالب لغيره */
+export interface PersonalToolExemption {
+  id: string
+  employeeId: string
+  toolName: string
+  note: string | null
+  byEmployeeId: string | null
+  byName: string
+  createdAt: string
+}
+
 // لقطة أدوات المركبة العامة الناقصة عند بدء مهمة من قبل ليدر (نفس فكرة
 // BookingToolCheck بس لأدوات المركبة، ومقصورة على الليدر فقط).
 export interface VehicleToolCheck {
@@ -4439,6 +4450,24 @@ export const api = {
     request<ToolRequestItem>(`/inventory/requests/${id}/reject`, { method: 'PUT', body: JSON.stringify({}) }),
   // العدة القياسية (PersonalToolTemplateItem)
   getPersonalToolTemplate: () => request<PersonalToolTemplateItem[]>('/inventory/personal-template'),
+
+  /**
+   * ═══ استثناءات العدة القياسية لموظف بعينه ═══
+   *
+   * حذف أداة من عدة موظف **يستثنيها تلقائياً** بالخادم — بدون هذا،
+   * اسمها لسه بالقالب القياسي فترجع فوراً بتقرير النواقص كـ«خالصة
+   * من المخزن»، وهاي بالضبط شكوى أبو الكميات.
+   *
+   * ⚠️ الاستثناء لهذا الموظف وحده — القالب مشترك، وحذفها منه يعني
+   * ماكو ولا فني يتحاسب عليها.
+   */
+  getToolExemptions: () => request<PersonalToolExemption[]>('/inventory/tool-exemptions'),
+  /** يرجّع الأداة لنواقص الموظف — تراجع عن الاستثناء */
+  unexemptTool: (employeeId: string, toolName: string) =>
+    request<{ ok: boolean }>(
+      `/inventory/tool-exemptions?employeeId=${encodeURIComponent(employeeId)}&toolName=${encodeURIComponent(toolName)}`,
+      { method: 'DELETE' },
+    ),
   createPersonalToolTemplateItem: (name: string) =>
     request<PersonalToolTemplateItem>('/inventory/personal-template', { method: 'POST', body: JSON.stringify({ name }) }),
   deletePersonalToolTemplateItem: (id: string) =>

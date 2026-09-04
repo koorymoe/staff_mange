@@ -828,6 +828,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/inventory/personal-template", middleware.Chain(http.HandlerFunc(inventoryHandler.CreatePersonalToolTemplateItem), requireAuth, requireHROrInventory))
 	mux.Handle("DELETE /api/inventory/personal-template/{id}", middleware.Chain(http.HandlerFunc(inventoryHandler.DeletePersonalToolTemplateItem), requireAuth, requireHROrInventory))
 
+	// ═══ استثناء أداة من نواقص موظف بعينه ═══
+	// الحذف يستثنيها تلقائياً؛ هذولا للعرض وللتراجع. نفس حارس حذف
+	// الأداة نفسه — منو يحذف هو منو يرجّع.
+	mux.Handle("GET /api/inventory/tool-exemptions", middleware.Chain(http.HandlerFunc(inventoryHandler.ListToolExemptions), requireAuth, requireHROrInventory))
+	mux.Handle("POST /api/inventory/tool-exemptions", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateToolExemption), requireAuth, requireHROrInventory))
+	mux.Handle("DELETE /api/inventory/tool-exemptions", middleware.Chain(http.HandlerFunc(inventoryHandler.DeleteToolExemption), requireAuth, requireHROrInventory))
+
 	// جرد يومي: الموظف يؤكد جرد عدته الخاصة، الإداري يشوف نتائج اليوم لكل الموظفين
 	mux.Handle("POST /api/inventory/checks", middleware.Chain(http.HandlerFunc(inventoryHandler.CreateInventoryCheck), requireAuth))
 	// نتائج جرد كل الفنيين = شاشة متابعة، مو شغل الفني. جانت مفتوحة لأي
