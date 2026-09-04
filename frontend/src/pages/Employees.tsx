@@ -202,6 +202,23 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
     openManagerChat(`أعطني تقرير شامل عن الموظف ${selectedEmployee.name}`)
   }
 
+  // ═══ توليد شخصية الكيان ═══
+  // الشخصية تنولد بالطلب لموظف واحد — ونعرض سبب الفشل بدل ما ننبلعه،
+  // لأن المدير لازم يعرف ليش ما انولدت حتى يعيد المحاولة.
+  const [generatingCharacter, setGeneratingCharacter] = useState(false)
+  const handleGenerateCharacter = async () => {
+    if (!selectedEmployee) return
+    setGeneratingCharacter(true)
+    try {
+      await api.generateEntityCharacter(selectedEmployee.id)
+      alert(`تولّدت شخصية الكيان لـ${selectedEmployee.name} — راح تظهر عنده أول ما يفتح النظام`)
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر توليد الشخصية')
+    } finally {
+      setGeneratingCharacter(false)
+    }
+  }
+
   const [linkingHistorical, setLinkingHistorical] = useState(false)
   const handleLinkHistorical = async () => {
     if (!selectedEmployee) return
@@ -511,6 +528,18 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                             className="rounded-lg bg-amber-500/20 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-500/30 disabled:opacity-50"
                           >
                             {linkingHistorical ? 'جاري الربط...' : '🔗 ربط السجلات التاريخية'}
+                          </button>
+                        )}
+                        {/* ⚠️ التوليد ينادي مولّد الصور ثلاث مرات لهذا
+                            الموظف — بالطلب لا للجميع دفعة وحدة، لأن سقف
+                            المزوّد اليومي محدود. */}
+                        {isAdmin && (
+                          <button
+                            onClick={handleGenerateCharacter}
+                            disabled={generatingCharacter}
+                            className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-200 hover:bg-emerald-500/30 disabled:opacity-50"
+                          >
+                            {generatingCharacter ? 'جاري توليد الشخصية...' : '🧬 ولّد شخصية الكيان'}
                           </button>
                         )}
                       </div>

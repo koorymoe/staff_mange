@@ -1172,3 +1172,27 @@ html.dark {
   }
   .lx-card { transform: none !important; }
 }
+
+/* ═══ الكيان — المراقب/المساعد الشخصي ═══
+   الطفو والاهتزاز هما الي يخلّونه يحسّ حي: كيان ثابت يصير أيقونة،
+   والحركة هي الي تعطي إحساس «أكو أحد يراقب». */
+@keyframes entity-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+@keyframes entity-alert {
+  0%, 100%   { transform: translateY(0) rotate(0deg); }
+  20%        { transform: translateY(-3px) rotate(-4deg); }
+  40%        { transform: translateY(0) rotate(4deg); }
+  60%        { transform: translateY(-2px) rotate(-3deg); }
+  80%        { transform: translateY(0) rotate(3deg); }
+}
+/* ⚠️ الحركة على غلاف داخلي مو على العنصر نفسه: العنصر يحمل
+   `scaleX` للالتفات ناحية المؤشر، ولو حطينا الاثنين بنفس المكان
+   واحد يمحي الثاني. */
+.entity-float > * { animation: entity-float 3.6s ease-in-out infinite; }
+.entity-alert > * { animation: entity-alert 1.1s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .entity-float > *, .entity-alert > * { animation: none !important; }
+}

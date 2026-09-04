@@ -20,6 +20,10 @@ type Config struct {
 	UploadsDir     string
 	GeminiAPIKey   string
 	GeminiDailyCap int
+	// GeminiImageModel موديل توليد صور شخصية الكيان. من البيئة مو
+	// مكتوب بالكود: أسماء موديلات الصور تتبدّل، وتثبيت الاسم يعني
+	// ميزة تنكسر بلا ما نلمس سطر.
+	GeminiImageModel string
 	TutorialsDir   string
 	// بيانات دخول حساب المالك (OWNER) — لازم تنقرأ من البيئة، ممنوع أي قيمة افتراضية
 	// ثابتة بالكود (كانت هذي ثغرة حرجة: username/password مكتوبين نص صريح بالكود
@@ -42,6 +46,9 @@ func Load() *Config {
 		UploadsDir:     getEnv("UPLOADS_DIR", "data/uploads"),
 		GeminiAPIKey:   getEnv("GEMINI_API_KEY", ""),
 		GeminiDailyCap: getEnvInt("GEMINI_DAILY_CAP", 300),
+		// الافتراضي موديل الصور الحالي من نفس المزوّد — ويُضبط بالبيئة
+		// لو تبدّل الاسم بلا ما نعدّل كود.
+		GeminiImageModel: getEnv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image"),
 		// TutorialsDir: مسار مجلد أدلة الاستخدام (tutorial-*.html و guide-*.txt) اللي
 		// يقرأها المساعد الذكي حتى يعرف يشرح للموظف شلون يستخدم النظام فعلياً.
 		// الافتراضي "../tutorials" يناسب التطوير المحلي (تشغيل go run من داخل backend-go

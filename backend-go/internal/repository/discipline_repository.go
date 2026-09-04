@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 
@@ -299,6 +301,78 @@ func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, 
 		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
 		  )
 	`, hours)
+	return rows, err
+}
+
+// PendingPaperwork حجز منجز ورقه ناقص — **قبل** ما تنزل الغرامة.
+//
+// ⚠️ نفس شروط `OverdueLeaderPaperwork`/`OverduePaperwork` حرفياً
+// (تاريخ تشغيل النظام، استثناء المسوّى إدارياً، نقص فاتورة أو تقرير)
+// بس بلا شرط «مرّت المهلة» — لأن الكيان يحذّر **قبل** الغرامة.
+// أي فرق بين الشرطين يعني تحذير ما وراه غرامة، أو غرامة بلا تحذير،
+// والاثنان يخلّون الموظف يفقد الثقة بالكيان.
+type PendingPaperwork struct {
+	BookingID   string    `db:"bookingId"`
+	BookingCode string    `db:"code"`
+	CompletedAt time.Time `db:"completedAt"`
+	HasInvoice  bool      `db:"hasInvoice"`
+	HasReport   bool      `db:"hasReport"`
+	// AsLeader صحيح لو الموظف هو ليدر الحجز (مهلته ٢٤)، وإلا فهو
+	// الإداري الي كلّف (مهلته ٤٨).
+	AsLeader bool `db:"asLeader"`
+}
+
+// PendingPaperworkForEmployee ورق هذا الموظف الناقص — كليدر أو كإداري.
+func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([]PendingPaperwork, error) {
+	rows := []PendingPaperwork{}
+	err := r.db.Select(&rows, `
+		SELECT b.id AS "bookingId", b.code, b."completedAt",
+		       EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id) AS "hasInvoice",
+		       EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id) AS "hasReport",
+		       (COALESCE(
+		          (SELECT vc."employeeId"
+		           FROM "BookingVisitCrew" vc
+		           JOIN "BookingVisit" v ON v.id = vc."visitId"
+		           WHERE v."bookingId" = b.id AND vc."isLeader"
+		           ORDER BY v."visitNumber" DESC LIMIT 1),
+		          (SELECT ba."employeeId" FROM "BookingAssignment" ba
+		           JOIN "Employee" le ON le.id = ba."employeeId"
+		           WHERE ba."bookingId" = b.id AND le."isLeader"
+		           ORDER BY ba.role LIMIT 1)
+		        ) = $1) AS "asLeader"
+		FROM "Booking" b
+		WHERE b.status = 'COMPLETED'
+		  AND b."completedAt" IS NOT NULL
+		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  AND b."settledLegacyAt" IS NULL
+		  AND (
+		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		  )
+		  AND (
+		    -- ليدر آخر طلعة (أو التكليف الحالي لو ماكو طلعة مسجّلة)
+		    COALESCE(
+		      (SELECT vc."employeeId"
+		       FROM "BookingVisitCrew" vc
+		       JOIN "BookingVisit" v ON v.id = vc."visitId"
+		       WHERE v."bookingId" = b.id AND vc."isLeader"
+		       ORDER BY v."visitNumber" DESC LIMIT 1),
+		      (SELECT ba."employeeId" FROM "BookingAssignment" ba
+		       JOIN "Employee" le ON le.id = ba."employeeId"
+		       WHERE ba."bookingId" = b.id AND le."isLeader"
+		       ORDER BY ba.role LIMIT 1)
+		    ) = $1
+		    OR
+		    -- الإداري الي كلّف
+		    COALESCE(
+		      (SELECT ba."assignedById" FROM "BookingAssignment" ba
+		       WHERE ba."bookingId" = b.id AND ba."assignedById" IS NOT NULL
+		       ORDER BY ba."createdAt" LIMIT 1),
+		      b."confirmedByEmployeeId"
+		    ) = $1
+		  )
+		ORDER BY b."completedAt"
+	`, employeeID)
 	return rows, err
 }
 

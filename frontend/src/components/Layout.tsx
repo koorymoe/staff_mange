@@ -11,8 +11,7 @@ import { ensureFileToken } from '../api'
 import Login from '../pages/Login'
 import CommandApp from '../command/CommandApp'
 import TrainingPage from '../pages/TrainingPage'
-import AssistantWidget from './AssistantWidget'
-import ManagerAssistantChat from './ManagerAssistantChat'
+import EntityCompanion from './EntityCompanion'
 import SettingsPanel from './SettingsPanel'
 
 // وجهة كل نوع إشعار: ضغطة على الإشعار توديك للشاشة الي تخصه بدل ما
@@ -945,9 +944,10 @@ export default function Layout() {
           </div>
         </aside>
       </div>
-      {(employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || employee?.actualRole === 'OWNER')
-        ? <ManagerAssistantChat />
-        : <AssistantWidget />}
+      {/* ═══ الكيان ═══ يحل محل البوتين القديمين (المساعد الذكي ومساعد
+          المدير) — بوت واحد بالشاشة مو اثنين، والمحادثة جوّاه تروح
+          لنفس المسارين حسب الدور بلا تغيير سلوك. */}
+      <EntityCompanion />
     </SessionContext.Provider>
   )
 }

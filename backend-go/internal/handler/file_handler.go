@@ -107,6 +107,8 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 var allowedFolders = map[string]bool{
 	"products": true, "receipts": true, "vehicles": true, "projects": true,
 	"reports": true, "exhibitions": true, "gps": true, "incidents": true,
+	// صور شخصيات الكيان المولّدة
+	"characters": true,
 	"misc": true, "sim": true,
 }
 

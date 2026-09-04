@@ -1642,6 +1642,44 @@ export interface AiWorkWindow {
 /** ═══ المهام الإضافية ═══
  *  شغل موجّه من المدير لموظف، مو مربوط بحجز: «خرّج فواتير الشهر»،
  *  «رتّب المخزن». تطلع عند الموظف الي انتوجّهت له. */
+// ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
+//
+// ⚠️ كل رقم بهذي الأنواع محسوب بالخادم من نفس بيانات الغرامة الفعلية
+// (مهلة الورق، قيمة النقطة بالدينار، رصيد الانضباط). الواجهة تعرض
+// بس — ما تحسب غرامة ولا مهلة بنفسها، حتى ما يفترق كلام الكيان عن
+// الي راح ينزل فعلاً.
+export type EntityMood = 'HAPPY' | 'WATCHING' | 'ANGRY'
+
+export interface EntityLine {
+  kind: 'PAPERWORK' | 'EXTRA_TASK' | 'BOOKING' | 'DISCIPLINE'
+  text: string
+  link?: string
+  /** الغرامة نزلت فعلاً أو المهلة خلصت — يهزّ الكيان ويقلبه غاضب. */
+  urgent: boolean
+}
+
+export interface EntityBriefing {
+  mood: EntityMood
+  greeting: string
+  persona?: string
+  points: number
+  dinarAtRisk: number
+  lines: EntityLine[]
+  calmUrl?: string
+  happyUrl?: string
+  angryUrl?: string
+  characterState: 'NONE' | 'PENDING' | 'READY' | 'FAILED'
+}
+
+export interface EmployeeCharacter {
+  id: string
+  employeeId: string
+  persona: string | null
+  status: 'PENDING' | 'READY' | 'FAILED'
+  error: string | null
+  generatedAt: string | null
+}
+
 export interface ExtraTask {
   id: string
   title: string
@@ -3394,6 +3432,13 @@ export const api = {
     request<{ reply: string }>('/assistant/ask', { method: 'POST', body: JSON.stringify({ message }) }),
   managerChatAssistant: (message: string, history: { role: 'user' | 'assistant'; text: string }[]) =>
     request<{ reply: string }>('/assistant/manager-chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
+
+  // ═══ الكيان ═══
+  /** تقرير الكيان لصاحب التوكن — بياناته هو بس (ماكو معامل موظف بقصد). */
+  getEntityBriefing: () => request<EntityBriefing>('/entity/briefing'),
+  getMyEntityCharacter: () => request<EmployeeCharacter | null>('/entity/character/me'),
+  generateEntityCharacter: (employeeId: string) =>
+    request<EmployeeCharacter>(`/entity/character/${employeeId}/generate`, { method: 'POST' }),
 
   getAssistantConversations: (params: { employeeId?: string; from?: string; to?: string; limit?: number; offset?: number }) => {
     const q = new URLSearchParams()

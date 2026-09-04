@@ -300,6 +300,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	extraTaskRepo := repository.NewExtraTaskRepository(db)
 	extraTaskHandler := handler.NewExtraTaskHandler(extraTaskRepo, notificationRepo)
 
+	// ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
+	// «كيان يهابه الموظف، يرحّب بيه، ويحذّره قبل ما تنزل الغرامة».
+	// ⚠️ يُبنى بعد extraTaskRepo لأنه يقرا منه، وكل أرقامه من مصادر
+	// موجودة (الانضباط، المهام، الحجوزات) — ما يخترع رقماً.
+	entityCharacterRepo := repository.NewEmployeeCharacterRepository(db)
+	entityService := service.NewEntityService(entityCharacterRepo, employeeRepo, disciplineRepo,
+		extraTaskRepo, bookingRepo, kpiRepo, permissionRepo, assistantService, fileStore,
+		cfg.GeminiAPIKey, cfg.GeminiImageModel)
+	entityHandler := handler.NewEntityHandler(entityService)
+
 	// مختبر المحاكاة — للمالك وحده بهالمرحلة (شوف مسارات /api/sim تحت).
 	simRepo := repository.NewSimRepository(db)
 	simHandler := handler.NewSimHandler(simRepo)
@@ -892,6 +902,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMonitor))
 	mux.Handle("GET /api/assistant/conversations", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversations), requireAuth, requireOwner))
 	mux.Handle("GET /api/assistant/conversations/employees", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversationEmployees), requireAuth, requireOwner))
+	// ═══ الكيان ═══
+	// ⚠️ التقرير والشخصية **للموظف نفسه** — الهوية من التوكن بلا أي
+	// معامل، فما اكو طريق يجيب فيها موظف تقرير زميله.
+	mux.Handle("GET /api/entity/briefing", middleware.Chain(http.HandlerFunc(entityHandler.Briefing), requireAuth))
+	mux.Handle("GET /api/entity/character/me", middleware.Chain(http.HandlerFunc(entityHandler.MyCharacter), requireAuth))
+	// ⚠️ التوليد بيد المالك/المدير بس: ينادي مولّد صور خارجي ثلاث مرات
+	// لكل موظف، وسقف المزوّد اليومي محدود.
+	mux.Handle("POST /api/entity/character/{employeeId}/generate", middleware.Chain(http.HandlerFunc(entityHandler.GenerateCharacter), requireAuth, requireAdmin))
 	mux.Handle("POST /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Create), requireAuth, requireKpiCriteria))
 	mux.Handle("DELETE /api/kpi-criteria/{id}", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Delete), requireAuth, requireKpiCriteria))
 

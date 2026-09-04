@@ -300,6 +300,9 @@ func versionedMigrations() []Migration {
 	// 0266: القناة ونوع الطلب حقلان فعليان بطلب حذف الحجز، و«معلقة»
 	// تصنيف فرعي داخل PENDING يحدّده المعتمِد.
 	result = append(result, bookingDeleteRequestExtraMigrations()...)
+	// 0267: الكيان — شخصية مولّدة لكل موظف تراقبه وتساعده. جدول
+	// مستقل لأن الشخصية تتولّد وتتبدّل بمعزل عن بيانات الموظف.
+	result = append(result, employeeCharacterMigrations()...)
 	return result
 }
 
