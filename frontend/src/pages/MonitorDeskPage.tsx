@@ -28,8 +28,9 @@ const AuditIssuesPage = lazy(() => import('./AuditIssuesPage'))
 const MonitorCrewBookingsPage = lazy(() => import('./MonitorCrewBookingsPage'))
 const QualityFollowUpsPage = lazy(() => import('./QualityFollowUpsPage'))
 const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
+const MonitorGpsPage = lazy(() => import('./MonitorGpsPage'))
 
-type SectionId = 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices'
+type SectionId = 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps'
 
 interface Section {
   id: SectionId
@@ -45,13 +46,20 @@ const SECTIONS: Section[] = [
   { id: 'invoices', label: 'الفواتير', icon: '🧾', todo: 'الفواتير الي أرسلها المحاسب لمراجعتك' },
   { id: 'quality', label: 'متابعة الجودة', icon: '⭐', todo: 'تواصل مع الزبون وسجّل الحكم' },
   { id: 'crew', label: 'تنسيق الحجوزات', icon: '📋', todo: 'حجوزات تنتظر تثبيت الإداري' },
+  // ⚠️ الجي بي اس **نتائج بس**: ست شاشات تشغيلية انخفت عن المراقب
+  // بالقائمة، وصارت تبويباً واحداً هنا. وما انزادت ولا محطة بصندوقه —
+  // «ما تخلي وحدة هيج، ماريد أزيد ازدحامها».
+  { id: 'gps', label: 'الجي بي اس', icon: '📡', todo: 'اشتراكات قربت تنتهي ومشاكل مفتوحة — عرض بلا تنفيذ' },
 ]
 
 // عدّاد كل قسم — واحد لكل طابور، من مسار عدّ واحد يجمع الخمسة
 // (`GET /monitor-desk/counts`) بدل ما يفتح المراقب كل تبويب ليشوف
 // بنفسه. تعريف كل رقم منسوخ من نفس فلترة الشاشة المستقلة بالخادم —
 // مو محسوب هنا بمنطق ثانٍ.
-const COUNT_KEY: Record<SectionId, keyof MonitorDeskCounts> = {
+// ⚠️ الجي بي اس **مو بالخريطة قصداً**: هذا قسم عرض لا طابور قرار،
+// وشارة رقمية عليه توحي إن اكو شي ينتظر ضغطة وماكو. وحطّه على
+// `inbox` چان يعرض عدّاد الصندوق على تبويب الجي بي اس — رقم كاذب.
+const COUNT_KEY: Partial<Record<SectionId, keyof MonitorDeskCounts>> = {
   inbox: 'inbox', issues: 'issues', invoices: 'invoices', quality: 'quality', crew: 'crew',
 }
 
@@ -84,10 +92,12 @@ export default function MonitorDeskPage() {
   //
   // (والفحص مسكها: التبويب ظهر لمراقب والشاشة المستقلة رفضته.)
   const canCrew = permissions.includes('crew_management')
+  // نفس منطق بقية الأقسام: دور المراقب أو صلاحية الجي بي اس صراحةً.
+  const canGps = isMon || permissions.includes('gps_system')
   // ⚠️ القسم الي ما عنده صلاحيته **ما يظهر أصلاً**: قسم فاضي بلا
   // تفسير يخلّي المراقب يظن النظام مكسوراً، وقسم يفتح ويرفض أسوأ.
   const shown = SECTIONS.filter((s) =>
-    (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew))
+    (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew) && (s.id !== 'gps' || canGps))
 
   const cur = shown.find((s) => s.id === active) ?? shown[0]
 
@@ -132,9 +142,9 @@ export default function MonitorDeskPage() {
             }`}
           >
             {s.icon} {s.label}
-            {counts && counts[COUNT_KEY[s.id]] > 0 && (
+            {counts && COUNT_KEY[s.id] && counts[COUNT_KEY[s.id]!] > 0 && (
               <span className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[10.5px] tabular-nums ${
-                active === s.id ? 'bg-white/25' : 'bg-amber-100 text-amber-800'}`}>{counts[COUNT_KEY[s.id]]}</span>
+                active === s.id ? 'bg-white/25' : 'bg-amber-100 text-amber-800'}`}>{counts[COUNT_KEY[s.id]!]}</span>
             )}
           </button>
         ))}
@@ -154,6 +164,7 @@ export default function MonitorDeskPage() {
         {active === 'invoices' && <LeaderInvoicesListPage embedded />}
         {active === 'quality' && canQuality && <QualityFollowUpsPage embedded />}
         {active === 'crew' && canCrew && <MonitorCrewBookingsPage embedded />}
+        {active === 'gps' && canGps && <MonitorGpsPage embedded />}
       </Suspense>
     </div>
   )

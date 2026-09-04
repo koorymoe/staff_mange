@@ -205,15 +205,28 @@ export const navItems: NavItem[] = [
         // فأي موظف عنده هذي الصلاحية (مسؤول خدمة الجي بي اس أو المراقب) يشوفها.
         to: '/mgmt-services', label: 'إدارة الخدمات', icon: <></>,
         children: [
-          { to: '/gps', label: 'نظام GPS', icon: <></>, permission: 'gps_system' },
-          { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, permission: 'gps_system' },
+          // ═══ ⚠️ الست شاشات مخفية عن المراقب ═══
+          //
+          // «ماريدها تضهر بهاي الطريقة للمراقب — أريد تضهر كنتائج:
+          // يشوف أسماء الزبائن والمشاكل والاشتراكات وشوكت تخلص. ما
+          // تخلي وحدة هيج، ماريد أزيد ازدحامها».
+          //
+          // هذي شاشات **تشغيل** (يوافق على طلب، يحرق شريحة، يجدّد
+          // اشتراك) — شغل مسؤول الجي بي اس، مو شغل مراقب. المراقب
+          // ياخذ النتائج بتبويب واحد جوّا مكتبه بدل ست بنود بقائمته.
+          //
+          // ⚠️ `hideForRoles` يشتغل **قبل أي منح** — فحتى لو انمنح
+          // المراقب `gps_system` (وهي من صلاحياته الافتراضية)، ما
+          // يشوف هذي البنود. وإداري الجي بي اس ما يتأثر إطلاقاً.
+          { to: '/gps', label: 'نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
+          { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
           // متابعة التجديد تخص مسؤول الجي بي اس ومهندس الجودة سوا
-          { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, anyPermission: ['gps_system', 'quality_control'] },
+          { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, anyPermission: ['gps_system', 'quality_control'], hideForRoles: ['MONITOR'] },
           // شاشة الشرائح كانت موجودة بالمسارات بس بلا رابط بالقائمة —
           // يعني تحرير الشريحة وحرقها ما كان يوصلهن أحد إلا بكتابة الرابط
-          { to: '/gps/sims', label: '📶 شرائح GPS', icon: <></>, permission: 'gps_system' },
-          { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, permission: 'gps_system' },
-          { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, permission: 'gps_system' },
+          { to: '/gps/sims', label: '📶 شرائح GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
+          { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
+          { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
           { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'service_managers' },
           // أسعار الشبكات — تنعدّل من الشاشة لأنها لسه تتبني وتتغيّر
           { to: '/network-prices', label: 'أسعار الشبكات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'network_prices' },

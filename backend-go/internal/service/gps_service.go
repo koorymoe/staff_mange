@@ -194,3 +194,12 @@ func (s *GpsService) CreateFollowUp(deviceRequestID string, calledByID *string, 
 func (s *GpsService) ListFollowUps(deviceRequestID string) ([]model.GpsRenewalFollowUp, error) {
 	return s.repo.ListFollowUps(deviceRequestID)
 }
+
+// MonitorSnapshot نتائج الجي بي اس للمراقب — قراءة فقط.
+//
+// ⚠️ ما يمر على صندوق المراقب: (ع) قال صراحةً «ما تخلي وحدة هيج،
+// ماريد أزيد ازدحامها». تبويب واحد بمكتبه يجمع الثلاثة بدل عشر
+// محطات جديدة تغرق الصندوق وتخلّيه ينتجاهل.
+func (s *GpsService) MonitorSnapshot(windowDays int) (*model.GpsMonitorSnapshot, error) {
+	return s.repo.MonitorSnapshot(windowDays)
+}

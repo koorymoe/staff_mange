@@ -764,3 +764,66 @@ func (r *GpsRepository) SyncSimsNeedingBurn() error {
 	`, model.GpsFollowUpCallAfter, model.FollowUpOutcomeRefused)
 	return err
 }
+
+// ═══ نتائج الجي بي اس للمراقب — قراءة فقط ═══
+//
+// ⚠️ «قربت تنتهي» **ما چان إلها استعلام أصلاً**: الموجود
+// (ListSubscriptionFollowUps) يجيب `subscriptionEnd <= baghdad_today()`
+// يعني **المنتهية فعلاً**. والمراقب يريد يشوف الي راح تنتهي **قبل** ما
+// تنتهي — وإلا شغله يصير بعد فوات الأوان.
+func (r *GpsRepository) MonitorSnapshot(windowDays int) (*model.GpsMonitorSnapshot, error) {
+	if windowDays <= 0 {
+		windowDays = 30
+	}
+	out := &model.GpsMonitorSnapshot{ExpiringWindowDays: windowDays}
+
+	const subSelect = `
+		SELECT d.id AS "deviceRequestId",
+			COALESCE(c."fullName", '') AS "customerName",
+			COALESCE(c.phone, '')      AS "customerPhone",
+			d."gpsNumber", d."subscriptionEnd",
+			d."subscriptionType"::text AS "subscriptionType",
+			(d."subscriptionEnd"::date - baghdad_today()) AS "daysLeft"
+		FROM "GpsDeviceRequest" d
+		LEFT JOIN "GpsCustomer" c ON c.id = d."customerId"
+		WHERE d."subscriptionEnd" IS NOT NULL
+		  AND COALESCE(d."subscriptionStatus"::text, '') <> 'CANCELLED'`
+
+	// قربت تنتهي: من اليوم لحد نهاية النافذة
+	if err := r.db.Select(&out.Expiring, subSelect+`
+		  AND d."subscriptionEnd"::date >= baghdad_today()
+		  AND d."subscriptionEnd"::date <= baghdad_today() + ($1 || ' days')::interval
+		ORDER BY d."subscriptionEnd" ASC`, windowDays); err != nil {
+		return nil, err
+	}
+	// انتهت وما انجدّدت
+	if err := r.db.Select(&out.Expired, subSelect+`
+		  AND d."subscriptionEnd"::date < baghdad_today()
+		ORDER BY d."subscriptionEnd" ASC`); err != nil {
+		return nil, err
+	}
+	// مشاكل مفتوحة — المكتملة ما تزعج المراقب
+	if err := r.db.Select(&out.Problems, `
+		SELECT m.id,
+			COALESCE(c."fullName", '') AS "customerName",
+			COALESCE(c.phone, '')      AS "customerPhone",
+			COALESCE(m."problemDescription", '') AS "problemDescription",
+			m.status::text AS status, m."createdAt", m."resolvedAt",
+			(baghdad_today() - baghdad_date(m."createdAt")) AS "ageDays"
+		FROM "GpsMaintenanceRequest" m
+		LEFT JOIN "GpsCustomer" c ON c.id = m."customerId"
+		WHERE m.status::text IN ('PENDING', 'IN_PROGRESS')
+		ORDER BY m."createdAt" ASC`); err != nil {
+		return nil, err
+	}
+	if out.Expiring == nil {
+		out.Expiring = []model.GpsMonitorSubscription{}
+	}
+	if out.Expired == nil {
+		out.Expired = []model.GpsMonitorSubscription{}
+	}
+	if out.Problems == nil {
+		out.Problems = []model.GpsMonitorProblem{}
+	}
+	return out, nil
+}

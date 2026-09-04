@@ -1351,6 +1351,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// متابعة التجديد: القائمة يشوفها الاثنين (مهندس الجودة يتصل، ومسؤول
 	// الجي بي اس يشوف منو يحتاج حرق)، وتسجيل نتيجة الاتصال لمهندس الجودة.
+	// نتائج الجي بي اس للمراقب — قراءة فقط، بحارس المراقب نفسه.
+	mux.Handle("GET /api/gps/monitor-snapshot", middleware.Chain(http.HandlerFunc(gpsHandler.MonitorSnapshot), requireAuth, requireMonitor))
 	mux.Handle("GET /api/gps/subscriptions/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.SubscriptionFollowUps), requireAuth, requireGpsOrQuality))
 	mux.Handle("GET /api/gps/devices/{id}/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.ListFollowUps), requireAuth, requireGpsOrQuality))
 	mux.Handle("POST /api/gps/devices/{id}/follow-up", middleware.Chain(http.HandlerFunc(gpsHandler.CreateFollowUp), requireAuth, requireGpsOrQuality))

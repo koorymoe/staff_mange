@@ -3877,6 +3877,12 @@ export const api = {
     request<{ bookingsLinked: number; complaintsLinked: number }>(`/employees/${id}/link-historical`, { method: 'POST' }),
 
   // GPS
+  /**
+   * نتائج الجي بي اس للمراقب: قربت تنتهي · انتهت وما انجدّدت ·
+   * مشاكل مفتوحة. **قراءة فقط** — التنفيذ بشاشات مسؤول الجي بي اس.
+   */
+  getGpsMonitorSnapshot: (windowDays?: number) =>
+    request<GpsMonitorSnapshot>(`/gps/monitor-snapshot${windowDays ? `?windowDays=${windowDays}` : ''}`),
   getGpsStats: () => request<GpsStats>('/gps/stats'),
   getGpsCustomers: () => request<GpsCustomer[]>('/gps/customers'),
   createGpsCustomer: (data: Partial<GpsCustomer>) =>
@@ -4697,4 +4703,35 @@ export interface EmployeeLetter {
   employee: { id: string; name: string } | null
   decidedBy: { id: string; name: string } | null
   employeeJobTitle: string | null
+}
+
+/** نتائج الجي بي اس كما يشوفها المراقب — عرض بلا تنفيذ */
+export interface GpsMonitorSnapshot {
+  expiring: GpsMonitorSubscription[]
+  expired: GpsMonitorSubscription[]
+  problems: GpsMonitorProblem[]
+  /** نافذة «قربت تنتهي» بالأيام — تنكتب بالشاشة حتى يعرف شنو يعني «قربت» */
+  expiringWindowDays: number
+}
+
+export interface GpsMonitorSubscription {
+  deviceRequestId: string
+  customerName: string
+  customerPhone: string
+  gpsNumber: string | null
+  subscriptionEnd: string | null
+  subscriptionType: string | null
+  /** موجب = باقي أيام · سالب = فاتت أيام */
+  daysLeft: number
+}
+
+export interface GpsMonitorProblem {
+  id: string
+  customerName: string
+  customerPhone: string
+  problemDescription: string
+  status: string
+  createdAt: string
+  resolvedAt: string | null
+  ageDays: number
 }

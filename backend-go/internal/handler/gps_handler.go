@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"staffmange-api/internal/middleware"
 
@@ -334,4 +335,23 @@ func (h *GpsHandler) ListFollowUps(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// GET /api/gps/monitor-snapshot?windowDays=30
+//
+// نتائج الجي بي اس للمراقب: اشتراكات قربت تنتهي · انتهت وما انجدّدت ·
+// مشاكل مفتوحة. **قراءة فقط** — التنفيذ يبقى بشاشات مسؤول الجي بي اس.
+func (h *GpsHandler) MonitorSnapshot(w http.ResponseWriter, r *http.Request) {
+	window := 30
+	if v := r.URL.Query().Get("windowDays"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 365 {
+			window = n
+		}
+	}
+	snap, err := h.service.MonitorSnapshot(window)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب نتائج الجي بي اس")
+		return
+	}
+	WriteJSON(w, http.StatusOK, snap)
 }
