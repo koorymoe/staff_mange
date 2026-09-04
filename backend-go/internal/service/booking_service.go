@@ -25,6 +25,8 @@ type BookingService struct {
 	discipline AssignmentBalanceChecker
 	// solar: سعر المنظومة لحجز الطاقة الشمسية. اختياري.
 	solar SolarPricer
+	// departments: سجل الأقسام ومسؤوليها — للحجز داخل الشركة. اختياري.
+	departments *repository.DepartmentRepository
 	// monitor: صندوق المراقب. اختياري — بدونه النظام يشتغل عادي بس
 	// المراقب ما يوصله شي.
 	monitor MonitorFeed
@@ -62,6 +64,10 @@ type SolarPricer interface {
 
 // SetSolarPricer يربط تسعير المنظومات.
 func (s *BookingService) SetSolarPricer(p SolarPricer) { s.solar = p }
+
+// SetDepartments يربط سجل الأقسام — يخدم الحجز الداخلي بس.
+// اختياري: بدونه الحجز الداخلي يشتغل بالاسم الي يجي من الواجهة.
+func (s *BookingService) SetDepartments(d *repository.DepartmentRepository) { s.departments = d }
 
 // ═══ ليش شاشة «تتبع المهام» كانت فارغة للأبد ═══
 //
@@ -189,6 +195,31 @@ func (s *BookingService) Create(req model.CreateBookingRequest) (*model.Booking,
 		b.InternalEmployeePhone = req.InternalEmployeePhone
 		b.InternalDepartment = req.InternalDepartment
 		b.InternalApproved = req.InternalApproved
+		b.InternalDepartmentID = req.InternalDepartmentID
+		b.InternalHeadID = req.InternalHeadID
+		b.InternalHrNote = req.InternalHrNote
+		// ═══ اسم الطالب يجي من السجل، ما ينكتب بالإيد ═══
+		//
+		// «مسؤول القسم شلون راح يطلع اسمه؟ اذا هوه الي مسوي الحجز
+		// يطلع اسمه مباشرة، بس اذا موظف مبيعات هوه الي مسوي الحجز
+		// ف ينطلب اسم مسؤول القسم».
+		//
+		// ⚠️ الاسم والهاتف ينتنسخان **نصاً** من السجل: لو انحذف
+		// المسؤول أو انتغيّر رقمه بعدين، الحجز القديم يبقى يگول منو
+		// طلبه فعلاً وقتها — مو يتغيّر بأثر رجعي.
+		if s.departments != nil && req.InternalHeadID != nil && *req.InternalHeadID != "" {
+			if head, dept, err := s.departments.HeadWithDepartment(*req.InternalHeadID); err == nil && head != nil {
+				b.InternalEmployeeName = &head.Name
+				if head.Phone != nil && *head.Phone != "" {
+					b.InternalEmployeePhone = head.Phone
+				}
+				b.InternalDepartmentID = &head.DepartmentID
+				if dept != nil {
+					name := dept.Name
+					b.InternalDepartment = &name
+				}
+			}
+		}
 	}
 
 	// ═══ الحقول الإجبارية حسب الخدمة ═══

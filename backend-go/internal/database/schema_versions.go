@@ -308,6 +308,9 @@ func versionedMigrations() []Migration {
 	result = append(result, personalToolExemptionMigrations()...)
 	// 0269: صف عاجل بصندوق المراقب — «غير مطابق» ترفع الفاتورة عاجلة.
 	result = append(result, monitorUrgentMigrations()...)
+	// 0270: سجل الأقسام ومسؤوليها — الحجز داخل الشركة چان يكتب اسم
+	// القسم نصاً حراً، فنفس القسم يطلع صفوفاً مختلفة بالتقارير.
+	result = append(result, departmentMigrations()...)
 	return result
 }
 

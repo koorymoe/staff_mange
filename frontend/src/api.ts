@@ -614,6 +614,13 @@ export interface Booking {
   systemCount: number | null
   deviceCount: number | null
   bookingType: string
+  /** حجز داخل الشركة — الطالب وقسمه وملاحظة إداري الكوادر. */
+  internalEmployeeName?: string | null
+  internalEmployeePhone?: string | null
+  internalDepartment?: string | null
+  internalDepartmentId?: string | null
+  internalHeadId?: string | null
+  internalHrNote?: string | null
   customer: Customer | null
   service: Service | null
   // كل الخدمات المطلوبة بنفس الحجز (الزبون ممكن يطلب أكثر من منظومة)
@@ -1778,6 +1785,25 @@ export interface MonitorDeskCounts {
   invoices: number
   quality: number
   crew: number
+}
+
+/** ═══ سجل الأقسام ومسؤوليها — للحجز داخل الشركة ═══ */
+export interface DepartmentHead {
+  id: string
+  departmentId: string
+  name: string
+  phone: string | null
+  employeeId: string | null
+  active: boolean
+  createdAt: string
+}
+export interface Department {
+  id: string
+  name: string
+  active: boolean
+  createdAt: string
+  /** أكثر من مسؤول للقسم الواحد — كلهم يكدرون يطلبون حجزاً له. */
+  heads?: DepartmentHead[]
 }
 
 export interface MonitorReview {
@@ -3771,6 +3797,10 @@ export const api = {
     internalEmployeePhone?: string
     internalDepartment?: string
     internalApproved?: boolean
+    /** القسم من السجل — الاسم النصي فوق يبقى منسوخاً للتقارير القديمة. */
+    internalDepartmentId?: string
+    /** مسؤول القسم الطالب — اسمه وهاتفه ينتنسخان بالسيرفر من السجل. */
+    internalHeadId?: string
   }) => request<Booking>('/bookings', { method: 'POST', body: JSON.stringify(data) }),
   confirmBooking: (
     id: string,
@@ -3788,7 +3818,7 @@ export const api = {
     request<Booking>(`/bookings/${id}/schedule`, { method: 'PUT', body: JSON.stringify({ scheduledAt, changedById }) }),
   updateBookingDetails: (
     id: string,
-    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; mapLatitude?: number | null; mapLongitude?: number | null; expenseResponsibleId?: string | null; serviceIds?: string[] },
+    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; mapLatitude?: number | null; mapLongitude?: number | null; expenseResponsibleId?: string | null; serviceIds?: string[]; internalHrNote?: string },
   ) => request<Booking>(`/bookings/${id}/details`, { method: 'PUT', body: JSON.stringify(data) }),
   /** إلغاء تكليف موظف من خانة كادر — الحجز يبقى مثبّت بلا كادر. */
   unassignTechnician: (id: string, role: string) =>
@@ -4182,6 +4212,18 @@ export const api = {
     request<Permission[]>(`/permissions/employee/${employeeId}/apply-defaults`, { method: 'POST' }),
   // فحص: منو ناقصه صلاحيات دوره. قراءة بس — ما يمنح ولا صلاحية.
   auditRoleDefaults: () => request<MissingRoleDefault[]>('/permissions/audit-defaults'),
+  // ⚠️ `all=1` للشاشة الإدارية (يشمل المعطّل)، ومنتقي الحجز ياخذ
+  // الفعّال بس حتى ما ينحجز لقسم انلغى.
+  getDepartments: (all?: boolean) =>
+    request<Department[]>(`/departments${all ? '?all=1' : ''}`),
+  createDepartment: (name: string) =>
+    request<Department>('/departments', { method: 'POST', body: JSON.stringify({ name }) }),
+  updateDepartment: (id: string, body: { name?: string; active?: boolean }) =>
+    request<Department>(`/departments/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  createDepartmentHead: (body: { departmentId: string; name: string; phone?: string }) =>
+    request<DepartmentHead>('/department-heads', { method: 'POST', body: JSON.stringify(body) }),
+  updateDepartmentHead: (id: string, body: { name?: string; phone?: string; active?: boolean }) =>
+    request<DepartmentHead>(`/department-heads/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   getLeaderSkills: (employeeId: string) =>
     request<LeaderSkillRating[]>(`/employees/${employeeId}/leader-skills`),
   setLeaderSkills: (employeeId: string, scores: Record<string, number>) =>

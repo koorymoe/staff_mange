@@ -67,6 +67,13 @@ type Booking struct {
 	InternalEmployeeName  *string `db:"internalEmployeeName" json:"internalEmployeeName,omitempty"`
 	InternalEmployeePhone *string `db:"internalEmployeePhone" json:"internalEmployeePhone,omitempty"`
 	InternalDepartment    *string `db:"internalDepartment" json:"internalDepartment,omitempty"`
+	// ⚠️ القسم صار سجلاً: الاسم يبقى منسوخاً نصاً (فوق) حتى الحجوزات
+	// القديمة تبقى مقروءة، والمفتاح ينضاف حتى التقارير تجمّع صح.
+	InternalDepartmentID *string `db:"internalDepartmentId" json:"internalDepartmentId,omitempty"`
+	InternalHeadID       *string `db:"internalHeadId" json:"internalHeadId,omitempty"`
+	// ملاحظات إداري الكوادر على الحجز الداخلي — منفصلة عن ملاحظات
+	// الحجز العامة حتى ما يضيع منو كتب شنو.
+	InternalHrNote *string `db:"internalHrNote" json:"internalHrNote,omitempty"`
 	InternalApproved      *bool   `db:"internalApproved" json:"internalApproved,omitempty"`
 	// حجز طاقة شمسية: المنظومة الي اتفق عليها المبيعات مع الزبون (اختيارية —
 	// ممكن تتحدد بعد المعاينة)، واستهلاك الزبون الشهري لحساب السعة المناسبة.
@@ -274,6 +281,9 @@ type CreateBookingRequest struct {
 	InternalEmployeeName  *string  `json:"internalEmployeeName,omitempty"`
 	InternalEmployeePhone *string  `json:"internalEmployeePhone,omitempty"`
 	InternalDepartment    *string  `json:"internalDepartment,omitempty"`
+	InternalDepartmentID  *string  `json:"internalDepartmentId,omitempty"`
+	InternalHeadID        *string  `json:"internalHeadId,omitempty"`
+	InternalHrNote        *string  `json:"internalHrNote,omitempty"`
 	InternalApproved      *bool    `json:"internalApproved,omitempty"`
 }
 
@@ -319,6 +329,9 @@ type UpdateBookingDetailsRequest struct {
 	LocationUrl *string `json:"locationUrl,omitempty"`
 	// قائمة الخدمات المطلوبة بالحجز (لو انرسلت، تستبدل القائمة الحالية)
 	ServiceIDs []string `json:"serviceIds"`
+	// ملاحظات إداري الكوادر على الحجز الداخلي — تتعدّل بعد الإنشاء،
+	// لأن الملاحظة تجي وقت ما تجي مو لحظة تسجيل الحجز.
+	InternalHrNote *string `json:"internalHrNote,omitempty"`
 }
 
 type CompleteBookingRequest struct {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { api, type Customer, type Service, type SolarSystem } from '../api'
+import { api, type Customer, type Department, type Service, type SolarSystem } from '../api'
 import { useSession } from '../session'
 import MultiSelect from '../components/MultiSelect'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
@@ -68,6 +68,10 @@ export default function SalesBooking() {
   const [intPhone, setIntPhone] = useState('')
   const [intDept, setIntDept] = useState('')
   const [intApproved, setIntApproved] = useState(false)
+  // سجل الأقسام ومسؤوليها — القسم ينتخب منه بدل ما ينكتب نصاً حراً.
+  const [departments, setDepartments] = useState<Department[]>([])
+  const [intDeptId, setIntDeptId] = useState('')
+  const [intHeadId, setIntHeadId] = useState('')
   // خدمات متعددة: الزبون ممكن يطلب أكثر من منظومة بنفس الحجز
   // (مثلاً منظومة صوت + كاميرات). أول خدمة تنعتبر الرئيسية.
   const [serviceIds, setServiceIds] = useState<string[]>([])
@@ -96,8 +100,15 @@ export default function SalesBooking() {
 
   const [searchParams] = useSearchParams()
 
+  // مسؤولو القسم المختار — مصدر واحد للفحص وللعرض، لا حسابان يفترقان.
+  const selectedDeptHeads = departments.find((d) => d.id === intDeptId)?.heads ?? []
+
   useEffect(() => {
     api.getServices().then(setServices)
+    // الأقسام الفعّالة بس — ما ينحجز لقسم انلغى.
+    // ⚠️ الفشل ما ينبلع: بلا الأقسام، منتقي «حجز داخل الشركة» يطلع
+    // فارغاً والموظف يظن ماكو أقسام بينما السجل مليان.
+    api.getDepartments().then(setDepartments).catch(() => setDepartments([]))
   }, [])
 
   // إذا وصلنا من "تحويل شكوى/متابعة جودة لحجز جديد" نعبّي بيانات الزبون تلقائياً
@@ -232,13 +243,17 @@ export default function SalesBooking() {
       }
     }
 
-    if (!addressDesc.trim()) {
-      setMessage('يرجى إدخال وصف الموقع')
-      return
-    }
-    if (!mapPoint) {
-      setMessage('يرجى تحديد موقع الزبون على الخريطة')
-      return
+    // ⚠️ الحجز داخل الشركة **ما بيه موقع**: الشغل بمقر الشركة نفسها،
+    // فطلب وصف موقع وتأشير على الخريطة چان يوقف الحجز بلا معنى.
+    if (bookingType !== 'INTERNAL') {
+      if (!addressDesc.trim()) {
+        setMessage('يرجى إدخال وصف الموقع')
+        return
+      }
+      if (!mapPoint) {
+        setMessage('يرجى تحديد موقع الزبون على الخريطة')
+        return
+      }
     }
 
     if (bookingType === 'REGULAR' && !urgency) {
@@ -250,17 +265,32 @@ export default function SalesBooking() {
       return
     }
     if (bookingType === 'INTERNAL') {
-      if (!intName.trim() || !intDept.trim()) {
-        setMessage('اكتب اسم الموظف الثلاثي والقسم الي يشتغل بيه')
+      if (!intDeptId) {
+        setMessage('اختر القسم من القائمة')
         return
       }
-      if (intName.trim().split(/\s+/).length < 3) {
-        setMessage('اسم الموظف لازم يكون ثلاثي (٣ أسماء على الأقل)')
+      // ⚠️ لو القسم عنده مسؤولون بالسجل، الطالب **ينتخب منهم** —
+      // اسمه ورقمه ينجيبان من السجل بالسيرفر، فما ينكتبان بالإيد
+      // ولا ينختلفان بين حجز وحجز. والقسم الي لسه ما انسجّل إله
+      // مسؤول، الاسم والرقم ينكتبان يدوياً مثل ما چانوا.
+      const hasHeads = selectedDeptHeads.length > 0
+      if (hasHeads && !intHeadId) {
+        setMessage('اختر مسؤول القسم الي طلب الحجز')
         return
       }
-      if (!/^\d{11}$/.test(intPhone.trim())) {
-        setMessage('رقم هاتف الموظف لازم يكون ١١ رقم')
-        return
+      if (!hasHeads) {
+        if (!intName.trim()) {
+          setMessage('اكتب اسم الموظف الطالب')
+          return
+        }
+        if (intName.trim().split(/\s+/).length < 3) {
+          setMessage('اسم الموظف لازم يكون ثلاثي (٣ أسماء على الأقل)')
+          return
+        }
+        if (!/^\d{11}$/.test(intPhone.trim())) {
+          setMessage('رقم هاتف الموظف لازم يكون ١١ رقم')
+          return
+        }
       }
     }
     if (bookingType === 'MAINTENANCE' && !maintenanceType) {
@@ -274,9 +304,13 @@ export default function SalesBooking() {
       // (وإلا ما ينفتح حجز أصلاً) — فنستعملها بيانات الموظف الطالب
       // نفسه: اسمه الثلاثي ورقمه. رقمه هو المفتاح، فلو حجز مرة ثانية
       // ينربط بنفس السجل ويطلع تاريخه كله سوه.
+      // الطالب الي انتخب من السجل: اسمه ورقمه من السجل، وإلا الي انكتب.
+      const chosenHead = selectedDeptHeads.find((h) => h.id === intHeadId)
+      const requesterName = chosenHead?.name || intName.trim()
+      const requesterPhone = chosenHead?.phone || intPhone.trim()
       const customer =
         bookingType === 'INTERNAL'
-          ? await api.createCustomer({ name: intName.trim(), phone: intPhone.trim() })
+          ? await api.createCustomer({ name: requesterName, phone: requesterPhone })
           : await api.createCustomer({ name, phone })
       // الزبون القديم: createCustomer يرجّعه بالاسم القديم ويتجاهل الي
       // كتبناه. فلو الموظف اختار يصحّح، نحدّث سجله فعلياً — الاسم
@@ -287,8 +321,8 @@ export default function SalesBooking() {
           name,
           phone,
           location: addressDesc.trim() || null,
-          mapLatitude: mapPoint.lat,
-          mapLongitude: mapPoint.lng,
+          mapLatitude: mapPoint?.lat ?? null,
+          mapLongitude: mapPoint?.lng ?? null,
           locationUrl: locationUrl.trim() || null,
         })
       }
@@ -303,16 +337,19 @@ export default function SalesBooking() {
         locationUrl: locationUrl.trim() || undefined,
         transferEmployeeId: employee?.id,
         notes: buildNotesString() || undefined,
-        address: addressDesc.trim(),
-        mapLatitude: mapPoint.lat,
-        mapLongitude: mapPoint.lng,
+        // الحجز الداخلي بلا موقع — الشغل بمقر الشركة.
+        address: bookingType === 'INTERNAL' ? undefined : addressDesc.trim(),
+        mapLatitude: mapPoint?.lat,
+        mapLongitude: mapPoint?.lng,
         bookingType: bookingType ?? undefined,
         // المنظومة والاستهلاك — السعر المقدّر ينحسب بالسيرفر من الكتالوك
         solarSystemId: bookingType === 'SOLAR' && solarSystemId ? solarSystemId : undefined,
         solarMonthlyKwh: bookingType === 'SOLAR' && solarMonthlyKwh ? Number(solarMonthlyKwh) : undefined,
-        internalEmployeeName: bookingType === 'INTERNAL' ? intName.trim() : undefined,
-        internalEmployeePhone: bookingType === 'INTERNAL' ? intPhone.trim() : undefined,
-        internalDepartment: bookingType === 'INTERNAL' ? intDept.trim() : undefined,
+        internalEmployeeName: bookingType === 'INTERNAL' ? requesterName : undefined,
+        internalEmployeePhone: bookingType === 'INTERNAL' ? requesterPhone : undefined,
+        internalDepartment: bookingType === 'INTERNAL' ? intDept.trim() || undefined : undefined,
+        internalDepartmentId: bookingType === 'INTERNAL' ? intDeptId : undefined,
+        internalHeadId: bookingType === 'INTERNAL' && intHeadId ? intHeadId : undefined,
         internalApproved: bookingType === 'INTERNAL' ? intApproved : undefined,
       })
       setSuccess({ customerCode: customer.code, bookingCode: booking.code })
@@ -539,27 +576,59 @@ export default function SalesBooking() {
           <div className="rounded-2xl border border-emerald-200 bg-emerald-50/40 p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <SectionHeader num={2} title="🏢 معلومات الموظف الطالب" />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* ⚠️ القسم من السجل مو نصاً حراً: «قسم الاجهزه» و«قسم
+                  الأجهزة» چانن صفّين مختلفين بالتقارير. */}
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-sm font-medium text-slate-600">اسم الموظف الثلاثي *</label>
-                <input value={intName} onChange={(e) => setIntName(e.target.value)}
-                  placeholder="مثال: أحمد علي حسين"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+                <label className="mb-1 block text-sm font-medium text-slate-600">القسم *</label>
+                <select
+                  value={intDeptId}
+                  onChange={(e) => { setIntDeptId(e.target.value); setIntHeadId(''); setIntDept(e.target.selectedOptions[0]?.text || '') }}
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500">
+                  <option value="">-- اختر القسم --</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </select>
+                {departments.length === 0 && (
+                  <p className="mt-1 text-[11px] text-amber-600">
+                    ماكو أقسام بالسجل — تنضاف من شاشة «الأقسام ومسؤوليها».
+                  </p>
+                )}
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">القسم الي يشتغل بيه *</label>
-                <input value={intDept} onChange={(e) => setIntDept(e.target.value)}
-                  placeholder="مثال: وحدة التقنيين"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-600">رقم هاتفه *</label>
-                <input value={intPhone} onChange={(e) => setIntPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-                  dir="ltr" inputMode="numeric" placeholder="07XXXXXXXXX"
-                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
-                <p className="mt-1 text-[11px] text-slate-400">
-                  رقم اتصال واحد لازم — الفني يحتاجه يوصله يوم الشغل.
-                </p>
-              </div>
+              {/* ⚠️ الطالب ينتخب من مسؤولي القسم — اسمه ورقمه ينجيبان
+                  من السجل بالسيرفر، فما ينكتبان بالإيد ولا يختلفان
+                  بين حجز وحجز. والقسم الي لسه بلا مسؤولين، ينكتبان
+                  يدوياً مثل ما چانوا (ما ننكسر أي حجز شغّال اليوم). */}
+              {selectedDeptHeads.length > 0 ? (
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-slate-600">الشخص الي طلب الحجز *</label>
+                  <select
+                    value={intHeadId}
+                    onChange={(e) => setIntHeadId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500">
+                    <option value="">-- اختر المسؤول --</option>
+                    {selectedDeptHeads.map((h) => (
+                      <option key={h.id} value={h.id}>{h.name}{h.phone ? ` — ${h.phone}` : ''}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <>
+                  <div className="sm:col-span-2">
+                    <label className="mb-1 block text-sm font-medium text-slate-600">اسم الموظف الثلاثي *</label>
+                    <input value={intName} onChange={(e) => setIntName(e.target.value)}
+                      placeholder="مثال: أحمد علي حسين"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-slate-600">رقم هاتفه *</label>
+                    <input value={intPhone} onChange={(e) => setIntPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
+                      dir="ltr" inputMode="numeric" placeholder="07XXXXXXXXX"
+                      className="w-full rounded-xl border border-slate-300 px-4 py-2.5 outline-none focus:border-emerald-500" />
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      رقم اتصال واحد لازم — الفني يحتاجه يوصله يوم الشغل.
+                    </p>
+                  </div>
+                </>
+              )}
               <div className="sm:col-span-2">
                 <label className="flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm">
                   <input type="checkbox" checked={intApproved} onChange={(e) => setIntApproved(e.target.checked)} />
@@ -570,6 +639,10 @@ export default function SalesBooking() {
           </div>
         )}
 
+        {/* ⚠️ الحجز داخل الشركة **ما بيه موقع** — الشغل بمقر الشركة
+            نفسها. عرض خانة عنوان وخريطة إجباريتين چان يوقف الحجز
+            بلا معنى، ويخلي الموظف يأشّر موقعاً وهمياً حتى يمرّ. */}
+        {bookingType !== 'INTERNAL' && (<>
         {/* Step 3: Address */}
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <SectionHeader num={3} title="العنوان والموقع" />
@@ -621,6 +694,7 @@ export default function SalesBooking() {
             </div>
           </div>
         </div>
+        </>)}
 
         {/* Step 4: Service */}
         <div className="rounded-2xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">

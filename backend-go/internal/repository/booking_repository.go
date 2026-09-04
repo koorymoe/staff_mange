@@ -512,9 +512,11 @@ func (r *BookingRepository) NextSequenceNumber() (int, error) {
 func (r *BookingRepository) Create(b *model.Booking) error {
 	_, err := r.db.NamedExec(`
 		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId", address, "mapLatitude", "mapLongitude", "locationUrl",
-			"bookingType", "workLocation", "internalEmployeeName", "internalEmployeePhone", "internalDepartment", "internalApproved", "updatedAt")
+			"bookingType", "workLocation", "internalEmployeeName", "internalEmployeePhone", "internalDepartment", "internalApproved",
+			"internalDepartmentId", "internalHeadId", "internalHrNote", "updatedAt")
 		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId, :address, :mapLatitude, :mapLongitude, :locationUrl,
-			:bookingType, :workLocation, :internalEmployeeName, :internalEmployeePhone, :internalDepartment, :internalApproved, now())
+			:bookingType, :workLocation, :internalEmployeeName, :internalEmployeePhone, :internalDepartment, :internalApproved,
+			:internalDepartmentId, :internalHeadId, :internalHrNote, now())
 	`, b)
 	return err
 }
@@ -607,9 +609,10 @@ func (r *BookingRepository) UpdateDetails(id string, req model.UpdateBookingDeta
 			"mapLatitude" = COALESCE($6, "mapLatitude"),
 			"mapLongitude" = COALESCE($7, "mapLongitude"),
 			"expenseResponsibleId" = COALESCE($8, "expenseResponsibleId"),
-			"locationUrl" = COALESCE($9, "locationUrl")
+			"locationUrl" = COALESCE($9, "locationUrl"),
+			"internalHrNote" = COALESCE($10, "internalHrNote")
 		WHERE id = $1
-	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID, req.LocationUrl)
+	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID, req.LocationUrl, req.InternalHrNote)
 	return err
 }
 

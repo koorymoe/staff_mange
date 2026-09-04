@@ -53,6 +53,7 @@ const MyInventory = lazy(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage'))
 const TeamInventoryCheckPage = lazy(() => import('./pages/TeamInventoryCheckPage'))
 const PermissionsPage = lazy(() => import('./pages/PermissionsPage'))
+const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'))
 const QuotationsPage = lazy(() => import('./pages/QuotationsPage'))
 const QuotationNew = lazy(() => import('./pages/QuotationNew'))
 const LeaderInvoiceNew = lazy(() => import('./pages/LeaderInvoiceNew'))
@@ -201,6 +202,10 @@ function App() {
           <Route path="inventory" element={<RequirePermission permission="inventory"><InventoryPage /></RequirePermission>} />
           <Route path="my-inventory" element={<MyInventory />} />
           <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />
+          {/* سجل الأقسام ومسؤوليها — «التعديل فقط لمالك ومدير النظام
+              حالياً، وخليها صلاحية». الحارس بالسيرفر هو الفاصل؛ هذا
+              يمنع فتح شاشة ما تشتغل أزرارها. */}
+          <Route path="departments" element={<RequirePermission permission="departments_manage"><DepartmentsPage /></RequirePermission>} />
           <Route path="quotations" element={<QuotationsPage />} />
           <Route path="quotations/new" element={<QuotationNew />} />
           <Route path="quotations/:id/edit" element={<QuotationNew />} />

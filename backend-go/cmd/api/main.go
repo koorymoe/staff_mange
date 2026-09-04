@@ -198,6 +198,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	authHandler := handler.NewAuthHandler(authService)
 	employeeHandler := handler.NewEmployeeHandler(employeeService)
 	leaderSkillHandler := handler.NewLeaderSkillHandler(repository.NewLeaderSkillRepository(db))
+	departmentRepo := repository.NewDepartmentRepository(db)
+	departmentHandler := handler.NewDepartmentHandler(departmentRepo)
 	permissionHandler := handler.NewPermissionHandler(permissionService, lockoutRepo)
 	serviceHandler := handler.NewServiceHandler(serviceCatalogService)
 	customerHandler := handler.NewCustomerHandler(customerService)
@@ -268,6 +270,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	backupHandler := handler.NewBackupHandler(backupRunRepo)
 	// سعر المنظومة لحجز الطاقة الشمسية — ينحسب من الكتالوك مو ينكتب بالإيد
 	bookingService.SetSolarPricer(solarRepo)
+	// اسم طالب الحجز الداخلي يجي من سجل الأقسام، ما ينكتب بالإيد.
+	bookingService.SetDepartments(departmentRepo)
 	// تكليف الكادر يولّد مهمة ميدانية. بلا هذا السطر شاشة «تتبع المهام»
 	// تضل فارغة للأبد مهما اشتغلت الشركة — وهذا الي كان صاير.
 	bookingService.SetMissionStarter(missionService)
@@ -567,6 +571,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/employees/{id}/leader-skills", middleware.Chain(http.HandlerFunc(leaderSkillHandler.List), requireAuth))
 	mux.Handle("PUT /api/employees/{id}/leader-skills", middleware.Chain(http.HandlerFunc(leaderSkillHandler.Set), requireAuth,
 		middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "OWNER", "HR_COORDINATOR")))
+	// ═══ سجل الأقسام ومسؤوليها — للحجز داخل الشركة ═══
+	//
+	// ⚠️ القراءة لأي مسجَّل: منتقي القسم بشاشة الحجز يحتاجها، وحصرها
+	// بصلاحية يخلّي المنتقي فارغاً لمن يفتحه — «ماكو أقسام» بينما
+	// السجل مليان.
+	// ⚠️ والتعديل «فقط لمالك ومدير النظام حالياً، وخليها صلاحية
+	// أيضاً» — نفس نمط الحراس المزدوجة بالنظام.
+	requireDepartmentsManage := middleware.RequireRoleOrAnyPermission(
+		permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER"}, "departments_manage")
+	mux.Handle("GET /api/departments", middleware.Chain(http.HandlerFunc(departmentHandler.List), requireAuth))
+	mux.Handle("POST /api/departments", middleware.Chain(http.HandlerFunc(departmentHandler.Create), requireAuth, requireDepartmentsManage))
+	mux.Handle("PUT /api/departments/{id}", middleware.Chain(http.HandlerFunc(departmentHandler.Update), requireAuth, requireDepartmentsManage))
+	mux.Handle("POST /api/department-heads", middleware.Chain(http.HandlerFunc(departmentHandler.CreateHead), requireAuth, requireDepartmentsManage))
+	mux.Handle("PUT /api/department-heads/{id}", middleware.Chain(http.HandlerFunc(departmentHandler.UpdateHead), requireAuth, requireDepartmentsManage))
 	mux.Handle("GET /api/permissions/audit-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.AuditDefaults), requireAuth, requireAdmin))
 	mux.Handle("GET /api/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
 	// قائمة الموظفين الي يوصلون لصلاحية معيّنة — لتعبئة القوائم المنسدلة
