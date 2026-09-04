@@ -218,7 +218,21 @@ export default function RevolvingFundPage() {
                     <td className="px-4 py-3 font-medium">{b.employeeName}<span className="block text-xs text-slate-400">{b.jobTitle}</span></td>
                     <td className="px-4 py-3 text-slate-600">{money(b.totalTaken)}</td>
                     <td className="px-4 py-3 text-slate-600">{money(b.totalSettled)}</td>
-                    <td className={`px-4 py-3 font-bold ${b.outstanding > 0 ? 'text-red-600' : 'text-emerald-600'}`}>{money(b.outstanding)}</td>
+                    {/* ⚠️ مطلوب منه — **مفصَّلاً لكل دوار**.
+                        الرقم المجموع وحده يخلّي المحاسب ما يعرف وين
+                        ترجع الفلوس: موظف «عليه ٣٠ ألف» ممكن تكون ١٠
+                        من دوار الطاقة و٢٠ من دوار الشعبة، وكل مبلغ
+                        يرجع لدواره هو. */}
+                    <td className={`px-4 py-3 font-bold ${b.outstanding > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {money(b.outstanding)}
+                      {(b.funds || []).filter((f) => f.outstanding > 0.001).length > 1 && (
+                        <span className="mt-1 block space-y-0.5 text-xs font-normal text-slate-500">
+                          {(b.funds || []).filter((f) => f.outstanding > 0.001).map((f) => (
+                            <span key={f.fundId} className="block">{f.fundName}: {money(f.outstanding)}</span>
+                          ))}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3">{b.pendingSettlements > 0
                       ? <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800">{b.pendingSettlements}</span>
                       : <span className="text-slate-400">—</span>}</td>

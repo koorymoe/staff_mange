@@ -148,13 +148,23 @@ func (r *RevolvingFundRepository) SubmitSettlement(employeeID string, req model.
 	if total <= 0 {
 		return nil, fmt.Errorf("لازم تحدد المبلغ المصروف أو المرتجع")
 	}
-	outstanding, err := r.EmployeeOutstanding(employeeID)
+	// ═══ التسوية لدوار واحد بعينه ═══
+	//
+	// ⚠️ الواجهة چانت **تخمّن** الدوار من آخر عملية تسليم، فتسوية
+	// تغطي دوارين تنختم بالدوار الي دفع آخر مرة، والفلوس ترجع كلها
+	// إله. هسه الدوار إجباري، والتحقق على رصيد **ذاك الدوار** لا
+	// على المجموع.
+	if strings.TrimSpace(req.FundID) == "" {
+		return nil, fmt.Errorf("لازم تحدد من أي دوار هاي التسوية")
+	}
+	outstanding, err := r.EmployeeOutstandingInFund(employeeID, req.FundID)
 	if err != nil {
 		return nil, err
 	}
-	// ما نخلي الموظف يسوّي أكثر من الي بيده — وإلا يطلع رصيده بالسالب
+	// ما نخلي الموظف يسوّي أكثر من الي بيده **من هذا الدوار** — وإلا
+	// يرجع لدوار فلوس ما طلعت منه، ويطلع رصيد الدوار الثاني بالسالب
 	if total > outstanding+0.001 {
-		return nil, fmt.Errorf("المبلغ (%.0f) أكبر من الي بيدك (%.0f)", total, outstanding)
+		return nil, fmt.Errorf("المبلغ (%.0f) أكبر من الي بيدك من هذا الدوار (%.0f)", total, outstanding)
 	}
 	if req.SpentAmount > 0 && (req.ReceiptImage == nil || *req.ReceiptImage == "") {
 		return nil, fmt.Errorf("لازم ترفع صورة الوصل للمبلغ المصروف")
@@ -301,7 +311,54 @@ func (r *RevolvingFundRepository) DischargeAccounts() ([]string, error) {
 	return rows, err
 }
 
-// EmployeeOutstanding شكد بيد هذا الموظف وما انتسوّى.
+// employeeFundLinesSQL الي بيد الموظف مفصَّلاً **لكل دوار**.
+//
+// ⚠️ هذا أساس الإصلاح كله: قبل، الرصيد جان يتحسب `WHERE "employeeId" = $1`
+// بلا `fundId` بالمرة — فالنظام يعرف «عليه ٣٠ ألف» وما يعرف ١٠ من وين
+// و٢٠ من وين. وبلا هالبيانة، ما اكو طريقة نرجّع كل مبلغ لدواره.
+//
+// نفس معادلة EmployeeOutstanding بالضبط، بس مجمّعة على الدوار:
+// المستلم − (المصروف + المرتجع) للتسويات **المقبولة** فقط.
+const employeeFundLinesSQL = `
+	SELECT f.id AS "fundId", f.name AS "fundName",
+		COALESCE(SUM(CASE WHEN t.kind = 'DISBURSE' THEN t.amount ELSE 0 END), 0) AS "totalTaken",
+		COALESCE(SUM(CASE WHEN t.kind = 'DISBURSE' THEN t.amount
+			WHEN t.kind = 'SETTLEMENT' AND t.status = 'APPROVED'
+			THEN -(t."spentAmount" + t."returnedAmount") ELSE 0 END), 0) AS outstanding,
+		COALESCE(SUM(CASE WHEN t.kind = 'SETTLEMENT' AND t.status = 'PENDING' THEN 1 ELSE 0 END), 0) AS "pendingSettlements"
+	FROM "RevolvingFundTxn" t
+	JOIN "RevolvingFund" f ON f.id = t."fundId"
+	WHERE t."employeeId" = $1
+	GROUP BY f.id, f.name
+	HAVING COALESCE(SUM(CASE WHEN t.kind = 'DISBURSE' THEN t.amount ELSE 0 END), 0) > 0
+	ORDER BY outstanding DESC, f.name`
+
+// EmployeeFundLines الي بيد الموظف من كل دوار على حِدة.
+func (r *RevolvingFundRepository) EmployeeFundLines(employeeID string) ([]model.EmployeeFundLine, error) {
+	rows := []model.EmployeeFundLine{}
+	err := r.db.Select(&rows, employeeFundLinesSQL, employeeID)
+	return rows, err
+}
+
+// EmployeeOutstandingInFund شكد بيد الموظف من **دوار واحد** بعينه.
+//
+// ⚠️ هاي الي تتحقق منها التسوية — لا المجموع. بلاها، موظف أخذ ١٠ من
+// دوار الطاقة يقدر يرفع تسوية ٣٠ ألف عليه (لأن مجموعه ٣٠)، فيرجع
+// لدوار الطاقة ٢٠ ألف ما طلعت منه أصلاً.
+func (r *RevolvingFundRepository) EmployeeOutstandingInFund(employeeID, fundID string) (float64, error) {
+	var v float64
+	err := r.db.Get(&v, `
+		SELECT COALESCE(SUM(CASE WHEN kind = 'DISBURSE' THEN amount ELSE 0 END), 0)
+		     - COALESCE(SUM(CASE WHEN kind = 'SETTLEMENT' AND status = 'APPROVED'
+		                         THEN "spentAmount" + "returnedAmount" ELSE 0 END), 0)
+		FROM "RevolvingFundTxn" WHERE "employeeId" = $1 AND "fundId" = $2`, employeeID, fundID)
+	return v, err
+}
+
+// EmployeeOutstanding شكد بيد هذا الموظف وما انتسوّى — **مجموع كل الدوارات**.
+//
+// ⚠️ للعرض بس (بطاقة «مطلوب منك»). أي تحقق قبل حركة فلوس لازم يستعمل
+// EmployeeOutstandingInFund، وإلا الفلوس ترجع لدوار غلط.
 func (r *RevolvingFundRepository) EmployeeOutstanding(employeeID string) (float64, error) {
 	var v float64
 	err := r.db.Get(&v, `
@@ -331,6 +388,11 @@ func (r *RevolvingFundRepository) EmployeeBalance(employeeID string) (*model.Emp
 	if err != nil {
 		return nil, err
 	}
+	// التفصيل لكل دوار — بلاه الموظف ما يعرف من وين يسوّي، والواجهة
+	// تضطر تخمّن الدوار (وهاي چانت العلّة).
+	if lines, err := r.EmployeeFundLines(employeeID); err == nil {
+		b.Funds = lines
+	}
 	return &b, nil
 }
 
@@ -351,7 +413,17 @@ func (r *RevolvingFundRepository) EmployeeBalances() ([]model.EmployeeFundBalanc
 		GROUP BY e.id, e.name, e."jobTitle"
 		HAVING COALESCE(SUM(CASE WHEN t.kind = 'DISBURSE' THEN t.amount ELSE 0 END), 0) > 0
 		ORDER BY outstanding DESC, e.name`)
-	return rows, err
+	if err != nil {
+		return nil, err
+	}
+	// نفس التفصيل للمحاسب — يشوف الموظف عليه شكد **من كل دوار**، مو
+	// رقماً واحداً مجموعاً ما يدل على وين ترجع الفلوس.
+	for i := range rows {
+		if lines, e := r.EmployeeFundLines(rows[i].EmployeeID); e == nil {
+			rows[i].Funds = lines
+		}
+	}
+	return rows, nil
 }
 
 // ListTxns حركات الدوار. employeeID فاضي = الكل (للمحاسب).

@@ -233,6 +233,23 @@ export interface EmployeeFundBalance {
   totalSettled: number
   outstanding: number
   pendingSettlements: number
+  /**
+   * الرصيد مفصَّلاً لكل دوار.
+   *
+   * ⚠️ المجموع وحده ما يكفي: موظف أخذ من دوارين «عليه ٣٠ ألف»، بس
+   * كل مبلغ لازم يرجع للدوار الي طلع منه. بلا هذا التفصيل الواجهة
+   * تضطر تخمّن الدوار — وهاي چانت العلّة الي رجّعت الفلوس لدوار غلط.
+   */
+  funds: EmployeeFundLine[]
+}
+
+/** الي بيد الموظف من دوار واحد بعينه */
+export interface EmployeeFundLine {
+  fundId: string
+  fundName: string
+  totalTaken: number
+  outstanding: number
+  pendingSettlements: number
 }
 
 

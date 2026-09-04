@@ -105,6 +105,25 @@ type EmployeeFundBalance struct {
 	Outstanding  float64 `db:"outstanding" json:"outstanding"`
 	// PendingSettlements عدد التسويات المرفوعة وناطرة تدقيق المحاسب
 	PendingSettlements int `db:"pendingSettlements" json:"pendingSettlements"`
+
+	// ═══ الرصيد مفصَّل لكل دوار ═══
+	//
+	// ⚠️ المجموع وحده ما يكفي. موظف أخذ ١٠ آلاف من دوار الطاقة و٢٠
+	// ألف من دوار الشعبة «عليه ٣٠ ألف» — بس كل مبلغ لازم يرجع
+	// **للدوار الي طلع منه**. بلا هذا التفصيل، التسوية تنختم بدوار
+	// واحد والفلوس ترجع لمكان غلط: دوار يطلع عنده فائض وهمي وآخر
+	// عليه دَين وهمي، والاثنان يبقون غلط للأبد.
+	Funds []EmployeeFundLine `db:"-" json:"funds"`
+}
+
+// EmployeeFundLine الي بيد الموظف من دوار **واحد** بعينه.
+type EmployeeFundLine struct {
+	FundID      string  `db:"fundId" json:"fundId"`
+	FundName    string  `db:"fundName" json:"fundName"`
+	TotalTaken  float64 `db:"totalTaken" json:"totalTaken"`
+	Outstanding float64 `db:"outstanding" json:"outstanding"`
+	// PendingSettlements تسويات مرفوعة على هذا الدوار وناطرة التدقيق
+	PendingSettlements int `db:"pendingSettlements" json:"pendingSettlements"`
 }
 
 type UpsertFundRequest struct {
