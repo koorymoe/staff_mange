@@ -2244,6 +2244,27 @@ export interface TechnicianWashSummary {
   monthlyCap: number
 }
 
+/** إحصاء غسل سيارة واحدة بشهر واحد */
+export interface VehicleWashMonthly {
+  vehicleId: string
+  vehicleName: string
+  plateNumber: string
+  /** YYYY-MM */
+  month: string
+  /** عدد أيام الغسل (فيها غاسل مسمّى) */
+  washCount: number
+  /** متوسط درجة الغسل ٠–٤ — null لو ماكو ولا درجة. ⚠️ null مو صفر. */
+  avgQuality: number | null
+  washers: VehicleWasherCount[]
+}
+
+export interface VehicleWasherCount {
+  employeeId: string
+  employeeName: string
+  times: number
+  totalPoints: number
+}
+
 export interface VehicleIncident {
   id: string
   vehicleId: string
@@ -4315,6 +4336,18 @@ export const api = {
   },
   getTechnicianWashSummaries: (since?: string) =>
     request<TechnicianWashSummary[]>(`/vehicles/ratings/technician-summary${since ? `?since=${since}` : ''}`),
+
+  /**
+   * كم مرة انغسلت كل سيارة بشهر معيّن ومنو غسلها.
+   *
+   * ⚠️ «انغسلت» = اكو شخص مسمّى غسلها (صف VehicleWashRating) — مو
+   * `wash > 0`. عمود wash درجة جودة ٠–٤ وممكن يكون فارغاً، وصف
+   * التقييم ينكتب حتى بيوم ماكو غسل.
+   */
+  getVehicleWashMonthly: (month: string, vehicleId?: string) =>
+    request<VehicleWashMonthly[]>(
+      `/vehicles/ratings/wash-monthly?month=${encodeURIComponent(month)}${vehicleId ? `&vehicleId=${vehicleId}` : ''}`,
+    ),
 
   // Quality
   getQualityIssues: (category?: 'EXECUTION' | 'OVERSIGHT') =>

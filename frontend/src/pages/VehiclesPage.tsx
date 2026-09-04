@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat } from '../api'
+import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
@@ -83,7 +83,24 @@ export default function VehiclesPage() {
   const [incidentAttachments, setIncidentAttachments] = useState<Record<string, VehicleIncidentAttachment[]>>({})
   const [alerts, setAlerts] = useState<VehicleAlert[]>([])
   const [alertsOpen, setAlertsOpen] = useState(false)
-  const [tab, setTab] = useState<'logs' | 'oil' | 'incidents' | 'monthly' | 'rating'>('logs')
+  const [tab, setTab] = useState<'logs' | 'oil' | 'incidents' | 'monthly' | 'rating' | 'washstats'>('logs')
+  // ═══ إحصاء الغسل: كل سيارة × شهر ═══
+  // ⚠️ الشهر إجباري بالواجهة هم — «كل التاريخ» مو إحصاء شهري.
+  const [washMonth, setWashMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  // null = لسه ما انجاب (جاري التحميل) · [] = انجاب وماكو نتيجة.
+  // ⚠️ التفريق مقصود: «جاري الحساب» غير «ماكو ولا غسلة».
+  const [washStats, setWashStats] = useState<VehicleWashMonthly[] | null>(null)
+
+  // ⚠️ ما نجيب الإحصاء إلا لمن يفتح تبويبه — استعلامان لكل سيارة،
+  // ما نحمّلهن على كل من يفتح شاشة المركبات.
+  useEffect(() => {
+    if (tab !== 'washstats') return
+    let alive = true
+    api.getVehicleWashMonthly(washMonth)
+      .then((rows) => { if (alive) setWashStats(rows) })
+      .catch(() => { if (alive) setWashStats([]) })
+    return () => { alive = false }
+  }, [tab, washMonth])
 
   // add-vehicle form
   const [showAddVehicle, setShowAddVehicle] = useState(false)
@@ -634,6 +651,7 @@ export default function VehiclesPage() {
                   { key: 'incidents', label: 'أعطال وأضرار' },
                   { key: 'monthly', label: 'الحالة الشهرية' },
                   { key: 'rating', label: 'التقييم اليومي والتنظيف' },
+                  { key: 'washstats', label: '🧽 إحصائيات الغسل' },
                 ] as const).map((t) => (
                   <button
                     key={t.key}
@@ -974,6 +992,71 @@ export default function VehiclesPage() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              )}
+
+              {/* ═══ إحصائيات الغسل: كل سيارة × شهر ═══
+                  شكوى أبو الكميات: «النظام مال غسل السيارات جيد ولكن
+                  يفتقر للإحصائيات المفصّلة — السيارة الأربيلية كم مرة
+                  انغسلت بالشهر ومنو الي غسلها».
+                  ⚠️ «انغسلت» = اكو شخص مسمّى غسلها، مو درجة الجودة. */}
+              {tab === 'washstats' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                    <div>
+                      <p className="text-sm font-bold text-slate-700">🧽 كم مرة انغسلت كل سيارة — ومنو غسلها</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        «انغسلت» تعني اكو موظف مسمّى غسلها بذاك اليوم. درجة الجودة (٠–٤) تنعرض جنبها.
+                      </p>
+                    </div>
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                      الشهر:
+                      <input type="month" value={washMonth} onChange={(e) => setWashMonth(e.target.value)}
+                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                    </label>
+                  </div>
+
+                  {washStats === null ? (
+                    <div className="rounded-xl bg-white p-8 text-center text-slate-400">جاري الحساب...</div>
+                  ) : washStats.length === 0 ? (
+                    <div className="rounded-xl border border-slate-200 bg-white p-8 text-center">
+                      <div className="text-3xl">🧽</div>
+                      <p className="mt-2 font-bold text-slate-600">ماكو ولا غسلة مسجّلة بهذا الشهر</p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        الغسلة تنسجّل من تبويب «التقييم اليومي والتنظيف» لمن يتحدد منو غسل السيارة.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {washStats.map((v) => (
+                        <div key={v.vehicleId} className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-bold text-slate-800">{v.vehicleName}</p>
+                              <p className="text-xs text-slate-500">{v.plateNumber}</p>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                              <span className="rounded-full bg-brand-50 px-3 py-1 text-brand-700">
+                                انغسلت {v.washCount} مرة
+                              </span>
+                              {/* ⚠️ «—» لا «٠»: ماكو درجة مسجّلة غير درجتها صفر */}
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-slate-600">
+                                جودة الغسل: {v.avgQuality == null ? '—' : `${v.avgQuality.toFixed(1)} / 4`}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {v.washers.map((wr) => (
+                              <span key={wr.employeeId}
+                                className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-700">
+                                {wr.employeeName} — {wr.times} مرة
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 

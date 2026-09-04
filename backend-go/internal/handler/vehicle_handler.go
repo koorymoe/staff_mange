@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -330,6 +331,25 @@ func (h *VehicleHandler) TechnicianWashSummaries(w http.ResponseWriter, r *http.
 		return
 	}
 	WriteJSON(w, http.StatusOK, summaries)
+}
+
+// GET /api/vehicles/ratings/wash-monthly?month=YYYY-MM&vehicleId=
+//
+// ⚠️ الشهر إجباري: بدونه نرجّع «كل التاريخ» ونسميه شهراً — رقم غلط
+// أسوأ من ماكو رقم. ولو ما انبعث، ناخذ الشهر الحالي بتوقيت بغداد.
+func (h *VehicleHandler) VehicleWashMonthly(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	if month == "" {
+		// توقيت بغداد = UTC+3 ثابت (ماكو توقيت صيفي بالعراق) — نفس
+		// ما تحسبه دوال baghdad_date بقاعدة البيانات.
+		month = time.Now().UTC().Add(3 * time.Hour).Format("2006-01")
+	}
+	rows, err := h.service.VehicleWashMonthlyStats(month, r.URL.Query().Get("vehicleId"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب إحصاء الغسل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
 }
 
 // ── VehicleIncidentAttachment ──

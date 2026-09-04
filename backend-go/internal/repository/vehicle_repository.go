@@ -515,6 +515,72 @@ func (r *VehicleRepository) TechnicianWashSummaries(since string, pointValue, mo
 	return summaries, nil
 }
 
+// VehicleWashMonthlyStats إحصاء الغسل لكل سيارة بشهر محدد.
+//
+// month بصيغة "YYYY-MM". vehicleID فاضي = كل السيارات.
+//
+// ⚠️ «انغسلت» = اكو صف `VehicleWashRating` (شخص مسمّى غسلها) —
+// مو `wash > 0`. عمود `wash` درجة جودة ٠–٤ وممكن يكون فارغاً، وصف
+// التقييم ينكتب حتى بيوم ماكو غسل. تعريف ثاني يخترع رقماً.
+//
+// ⚠️ ونطاق الشهر بتوقيت بغداد (`baghdad_date`) — نفس ما تتحسب كل
+// أعمدة «اليوم»/«الشهر» بالنظام، وإلا حول منتصف الليل يطلع رقمان
+// مختلفان لنفس الشهر.
+func (r *VehicleRepository) VehicleWashMonthlyStats(month, vehicleID string) ([]model.VehicleWashMonthly, error) {
+	type row struct {
+		VehicleID   string   `db:"vehicleId"`
+		VehicleName string   `db:"vehicleName"`
+		PlateNumber string   `db:"plateNumber"`
+		WashCount   int      `db:"washCount"`
+		AvgQuality  *float64 `db:"avgQuality"`
+	}
+	rows := []row{}
+	err := r.db.Select(&rows, `
+		SELECT v.id AS "vehicleId", v.name AS "vehicleName", v."plateNumber",
+			COUNT(DISTINCT d.id)                                    AS "washCount",
+			-- ⚠️ AVG يرجّع NULL لمن ماكو ولا درجة — ونخليها NULL
+			-- قصداً وتنعرض «—». صفر معناه «قِيس وطلع صفر».
+			AVG(d.wash) FILTER (WHERE d.wash IS NOT NULL)           AS "avgQuality"
+		FROM "VehicleWashRating" w
+		JOIN "VehicleDailyRating" d ON d.id = w."dailyRatingId"
+		JOIN "Vehicle" v            ON v.id = d."vehicleId"
+		WHERE to_char(d."ratedDate", 'YYYY-MM') = $1
+		  AND ($2 = '' OR v.id = $2)
+		GROUP BY v.id, v.name, v."plateNumber"
+		ORDER BY "washCount" DESC, v.name`, month, vehicleID)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]model.VehicleWashMonthly, len(rows))
+	for i, rr := range rows {
+		out[i] = model.VehicleWashMonthly{
+			VehicleID: rr.VehicleID, VehicleName: rr.VehicleName,
+			PlateNumber: rr.PlateNumber, Month: month,
+			WashCount: rr.WashCount, AvgQuality: rr.AvgQuality,
+			Washers: []model.VehicleWasherCount{},
+		}
+		// منو غسلها وكم مرة — هذا نص السؤال، مو تفصيلاً زائداً.
+		// ⚠️ الخطأ **ما ينبلع**: قائمة غاسلين فاضية بلا سبب تخلي
+		// أبو الكميات يظن ماكو أحد غسلها، وهو الي يسأل عنه أصلاً.
+		washers := []model.VehicleWasherCount{}
+		if err := r.db.Select(&washers, `
+			SELECT e.id AS "employeeId", e.name AS "employeeName",
+				COUNT(DISTINCT w."dailyRatingId") AS times,
+				COALESCE(SUM(w.score), 0)         AS "totalPoints"
+			FROM "VehicleWashRating" w
+			JOIN "VehicleDailyRating" d ON d.id = w."dailyRatingId"
+			JOIN "Employee" e           ON e.id = w."employeeId"
+			WHERE d."vehicleId" = $1 AND to_char(d."ratedDate", 'YYYY-MM') = $2
+			GROUP BY e.id, e.name
+			ORDER BY times DESC, e.name`, rr.VehicleID, month); err != nil {
+			return nil, err
+		}
+		out[i].Washers = washers
+	}
+	return out, nil
+}
+
 // ── VehicleIncidentAttachment ──
 
 func (r *VehicleRepository) ListIncidentAttachments(incidentID string) ([]model.VehicleIncidentAttachment, error) {

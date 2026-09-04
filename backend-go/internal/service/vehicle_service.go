@@ -214,6 +214,11 @@ func (s *VehicleService) TechnicianWashSummaries(since string) ([]model.Technici
 	return s.repo.TechnicianWashSummaries(since, VehicleWashPointValue, VehicleWashMonthlyCap)
 }
 
+// VehicleWashMonthlyStats كم مرة انغسلت كل سيارة بشهر معيّن ومنو غسلها.
+func (s *VehicleService) VehicleWashMonthlyStats(month, vehicleID string) ([]model.VehicleWashMonthly, error) {
+	return s.repo.VehicleWashMonthlyStats(month, vehicleID)
+}
+
 // ── VehicleIncidentAttachment ──
 
 func (s *VehicleService) ListIncidentAttachments(incidentID string) ([]model.VehicleIncidentAttachment, error) {

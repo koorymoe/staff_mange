@@ -507,6 +507,48 @@ type TechnicianWashSummary struct {
 	MonthlyCap     float64 `json:"monthlyCap"`
 }
 
+// ═══ إحصاء الغسل: كل سيارة × كل شهر ═══
+//
+// طلب أبو الكميات: «نظام غسل السيارات جيد ولكن يفتقر للإحصائيات
+// المفصّلة — مثلاً السيارة الأربيلية كم مرة انغسلت بالشهر ومنو الي
+// غسلها».
+//
+// ⚠️ البيانة موجودة أصلاً: `VehicleWashRating.employeeId` هو **منو
+// غسل** (منفصل عن `VehicleDailyRating.recordedById` = منو قيّم).
+// الناقص چان التجميع: `TechnicianWashSummaries` تجمع بالموظف بس
+// وترمي `vehicleId` كلياً، وماكو ولا معامل شهر بأي مسار.
+//
+// ⚠️⚠️ **تعريف «انغسلت» مكتوب صراحةً**: عمود `wash` هو **درجة جودة
+// ٠–٤** وممكن يكون فارغاً، وصف التقييم اليومي ينكتب حتى بيوم ماكو
+// غسل أصلاً. فعدّه كـ«مرة غسل» يخترع رقماً.
+//
+// التعريف المعتمد: **انغسلت = اكو صف `VehicleWashRating`** — يعني
+// اكو شخص مسمّى غسلها. أي تعريف ثاني يعطي رقماً ما وراه بيانة.
+type VehicleWashMonthly struct {
+	VehicleID   string `json:"vehicleId"`
+	VehicleName string `json:"vehicleName"`
+	PlateNumber string `json:"plateNumber"`
+	// Month بصيغة YYYY-MM بتوقيت بغداد
+	Month string `json:"month"`
+	// WashCount عدد أيام الغسل (صفوف تقييم يومي فيها غاسل مسمّى)
+	WashCount int `json:"washCount"`
+	// AvgQuality متوسط درجة الغسل ٠–٤ — nil لو ماكو ولا درجة مسجّلة.
+	// ⚠️ nil مو صفر: «ما انقيّم» غير «تقييمه صفر».
+	AvgQuality *float64             `json:"avgQuality"`
+	Washers    []VehicleWasherCount `json:"washers"`
+}
+
+// VehicleWasherCount منو غسل هالسيارة وكم مرة بهذا الشهر
+// ⚠️ `db` tags إجبارية: sqlx يطابق العمود باسم الحقل بحروف صغيرة لو
+// ماكو tag، فـ`EmployeeID` يصير `employeeid` وما يطابق `"employeeId"`
+// — والنتيجة قائمة فاضية بلا أي خطأ ظاهر.
+type VehicleWasherCount struct {
+	EmployeeID   string `db:"employeeId" json:"employeeId"`
+	EmployeeName string `db:"employeeName" json:"employeeName"`
+	Times        int    `db:"times" json:"times"`
+	TotalPoints  int    `db:"totalPoints" json:"totalPoints"`
+}
+
 // VehicleExpenseRow مصروف سيارة واحدة ضمن ملخص لوحة التحكم الشاملة (اسم السيارة +
 // إجمالي التكلفة للفترة الحالية).
 type VehicleExpenseRow struct {
