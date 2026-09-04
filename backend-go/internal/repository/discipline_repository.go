@@ -319,6 +319,13 @@ type PendingPaperwork struct {
 	HasReport   bool      `db:"hasReport"`
 	// AsLeader صحيح لو الموظف هو ليدر الحجز (مهلته ٢٤)، وإلا فهو
 	// الإداري الي كلّف (مهلته ٤٨).
+	//
+	// ⚠️ المقارنة بالـSQL ترجّع NULL لو الحجز ماكو إله ليدر مسجّل
+	// أصلاً (`COALESCE(...) = $1` بين NULL وقيمة = NULL مو false).
+	// خلّيها `bool` عادية جان يفشل الاستعلام كله بـScan error، ويبلع
+	// **كل** تحذيرات الورق بصمت — الموظف يشوف كيان يكله "شغلك نظيف"
+	// وهو عليه ورق متأخر. `COALESCE(..., false)` بالاستعلام يقفل
+	// الباب من أصله.
 	AsLeader bool `db:"asLeader"`
 }
 
@@ -329,17 +336,20 @@ func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([
 		SELECT b.id AS "bookingId", b.code, b."completedAt",
 		       EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id) AS "hasInvoice",
 		       EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id) AS "hasReport",
-		       (COALESCE(
-		          (SELECT vc."employeeId"
-		           FROM "BookingVisitCrew" vc
-		           JOIN "BookingVisit" v ON v.id = vc."visitId"
-		           WHERE v."bookingId" = b.id AND vc."isLeader"
-		           ORDER BY v."visitNumber" DESC LIMIT 1),
-		          (SELECT ba."employeeId" FROM "BookingAssignment" ba
-		           JOIN "Employee" le ON le.id = ba."employeeId"
-		           WHERE ba."bookingId" = b.id AND le."isLeader"
-		           ORDER BY ba.role LIMIT 1)
-		        ) = $1) AS "asLeader"
+		       COALESCE(
+		         (COALESCE(
+		            (SELECT vc."employeeId"
+		             FROM "BookingVisitCrew" vc
+		             JOIN "BookingVisit" v ON v.id = vc."visitId"
+		             WHERE v."bookingId" = b.id AND vc."isLeader"
+		             ORDER BY v."visitNumber" DESC LIMIT 1),
+		            (SELECT ba."employeeId" FROM "BookingAssignment" ba
+		             JOIN "Employee" le ON le.id = ba."employeeId"
+		             WHERE ba."bookingId" = b.id AND le."isLeader"
+		             ORDER BY ba.role LIMIT 1)
+		          ) = $1),
+		         false
+		       ) AS "asLeader"
 		FROM "Booking" b
 		WHERE b.status = 'COMPLETED'
 		  AND b."completedAt" IS NOT NULL
