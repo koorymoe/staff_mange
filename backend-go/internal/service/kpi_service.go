@@ -16,12 +16,26 @@ type announcementPublisher interface {
 	Create(body, byID string, expiresInDays int) (*model.Announcement, error)
 }
 
+// storyEmitter محرّك القصص — واجهة صغيرة بنفس نمط `announcementPublisher`
+// فوق: نربط الخدمة بالي تحتاجه بس، مو بالمحرّك كامل.
+type storyEmitter interface {
+	Emit(req model.EmitStoryRequest)
+}
+
 type KpiService struct {
 	repo          *repository.KpiRepository
 	employees     *repository.EmployeeRepository
 	notifications *repository.NotificationRepository
 	announcements announcementPublisher
+	stories       storyEmitter
 }
+
+// SetStories يركّب محرّك القصص بعد الإنشاء.
+//
+// ⚠️ **بـsetter مو بالمُنشئ بقصد**: القصة **إضافة على** الخصم، مو
+// شرط له. خدمة الكي بي اي تشتغل كاملة بلا محرّك قصص — ولو ربطناه
+// بالمُنشئ نخلي إجراءً مالياً/إدارياً يعتمد على ميزة عرض.
+func (s *KpiService) SetStories(e storyEmitter) { s.stories = e }
 
 func NewKpiService(repo *repository.KpiRepository, employees *repository.EmployeeRepository, notifications *repository.NotificationRepository, announcements announcementPublisher) *KpiService {
 	return &KpiService{repo: repo, employees: employees, notifications: notifications, announcements: announcements}
@@ -81,6 +95,38 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 				log.Printf("نشر مخالفة %s بلوحة الإعلانات: %v", req.EmployeeID, err)
 			}
 		}
+	}
+
+	// ⚠️ **القصة بعد ما ينجح التقييم ويترسّخ** — «الحركة لا تسبق
+	// نجاح العملية». وفشلها ما يلغي الخصم: `Emit` ما ترجّع خطأ،
+	// تسجّله بالسجل.
+	//
+	// ⚠️ **واسم المُقيِّم ينمرّر**: قرار (ع) الصريح إن الموظف يعرف
+	// منو خصمه — تغيير سياسة، اليوم الإشعار يوصل بلا اسم.
+	if s.stories != nil && magnitude > 0 && eval != nil {
+		reason := req.Reason
+		if reason == "" {
+			reason = "بدون سبب مذكور"
+		}
+		senderName := ""
+		if ev, err := s.employees.FindByID(req.EvaluatorID); err == nil && ev != nil {
+			senderName = ev.Name
+		}
+		evaluatorID := req.EvaluatorID
+		s.stories.Emit(model.EmitStoryRequest{
+			EventID:     eval.ID,
+			EventKind:   model.StoryEventPointDeducted,
+			SenderID:    &evaluatorID,
+			SenderName:  senderName,
+			RecipientID: req.EmployeeID,
+			Payload: map[string]any{
+				"title":  "انخصمت منك " + strconv.Itoa(magnitude) + " نقطة",
+				"reason": reason,
+				"points": magnitude,
+				"dinar":  deductionAmount,
+				"link":   "/kpi",
+			},
+		})
 	}
 
 	// ⚠️⚠️ إشعار «تصدّر التصنيف» انشال — چان يهنّي أكثر واحد انخصم منه.

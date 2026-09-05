@@ -313,6 +313,9 @@ func versionedMigrations() []Migration {
 	result = append(result, departmentMigrations()...)
 	// 0271: معرض التصاميم — المصممة ترفع شغلها ويبقى محفوظاً.
 	result = append(result, designAssetMigrations()...)
+	// 0272: محرّك القصص — الكيان ينفّذ مشهداً بين واجهتين بدل تنبيه
+	// ينقرا وينتسى. جدول قصص واحد، وصفر جدول أحداث جديد.
+	result = append(result, storyMigrations()...)
 	return result
 }
 

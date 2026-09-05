@@ -155,6 +155,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	attendanceService := service.NewAttendanceService(attendanceRepo)
 	notificationService := service.NewNotificationService(notificationRepo)
 	kpiService := service.NewKpiService(kpiRepo, employeeRepo, notificationRepo, announcementRepo)
+
+	// محرّك القصص — الكيان ينفّذ مشهداً بدل تنبيه ينقرا وينتسى.
+	// ⚠️ يُركَّب بـsetter: القصة **إضافة على** الإجراء الإداري مو شرط
+	// له، فالخصم يشتغل كامل حتى لو انطفى المحرّك.
+	storyRepo := repository.NewStoryRepository(db)
+	storyService := service.NewStoryService(storyRepo, employeeRepo)
+	storyHandler := handler.NewStoryHandler(storyService)
+	kpiService.SetStories(storyService)
 	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
@@ -956,6 +964,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ الكيان ═══
 	// ⚠️ التقرير والشخصية **للموظف نفسه** — الهوية من التوكن بلا أي
 	// معامل، فما اكو طريق يجيب فيها موظف تقرير زميله.
+	// قصص الكيان — كلها **لصاحب الجلسة حصراً**، ماكو ولا مسار ياخذ
+	// رقم موظف من الرابط. الهوية من التوكن وحده.
+	mux.Handle("GET /api/stories/next", middleware.Chain(http.HandlerFunc(storyHandler.Next), requireAuth))
+	mux.Handle("GET /api/stories/mine", middleware.Chain(http.HandlerFunc(storyHandler.Mine), requireAuth))
+	mux.Handle("POST /api/stories/{id}/advance", middleware.Chain(http.HandlerFunc(storyHandler.Advance), requireAuth))
+
 	mux.Handle("GET /api/entity/briefing", middleware.Chain(http.HandlerFunc(entityHandler.Briefing), requireAuth))
 	mux.Handle("GET /api/entity/character/me", middleware.Chain(http.HandlerFunc(entityHandler.MyCharacter), requireAuth))
 	// ⚠️ التوليد بيد المالك/المدير بس: ينادي مولّد صور خارجي ثلاث مرات
