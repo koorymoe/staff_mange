@@ -50,6 +50,21 @@ func (h *StoryHandler) Mine(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, rows)
 }
 
+// POST /api/stories/{id}/claim — تحجزها هذي النافذة.
+//
+// ⚠️ **يرجّع `claimed=false` مو خطأ** لمن تسبقنا نافذة ثانية: هذي
+// حالة طبيعية (الموظف فاتح تبويبين)، مو عطل. النافذة الخاسرة تسكت
+// وما تعرض المشهد.
+func (h *StoryHandler) Claim(w http.ResponseWriter, r *http.Request) {
+	ok, err := h.service.Claim(r.PathValue("id"), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		log.Printf("story claim: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر حجز القصة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"claimed": ok})
+}
+
 // advanceRequest المرحلة الجديدة وآخر خطوة انعرضت (checkpoint).
 type advanceRequest struct {
 	Status string `json:"status"`

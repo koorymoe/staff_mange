@@ -73,13 +73,25 @@ func (s *StoryService) Emit(req model.EmitStoryRequest) {
 		raw = []byte(`{}`)
 	}
 
+	// ⚠️ **الاسم منسوخ نصاً وقت الإنشاء**: لو انحذف الحساب بكرة،
+	// السطر يبقى مقروءاً بدل ما يصير «مجهول». نفس نمط `byName`
+	// المطبَّق بـComplaintEvent وCoordinationAlert وDesignAsset.
+	recipientName := req.RecipientName
+	if recipientName == "" && s.employees != nil {
+		if e, err := s.employees.FindByID(req.RecipientID); err == nil && e != nil {
+			recipientName = e.Name
+		}
+	}
+	recipientID := req.RecipientID
 	story := model.StoryInstance{
 		EventID:             req.EventID,
 		EventKind:           req.EventKind,
 		StoryType:           req.EventKind,
 		SenderEmployeeID:    req.SenderID,
 		SenderName:          req.SenderName,
-		RecipientEmployeeID: req.RecipientID,
+		RecipientEmployeeID: &recipientID,
+		RecipientRef:        req.RecipientID,
+		RecipientName:       recipientName,
 		Priority:            model.StoryPriority[req.EventKind],
 		Physical:            physical,
 		GroupKey:            req.GroupKey,
@@ -110,6 +122,11 @@ func (s *StoryService) Next(employeeID string) (*model.StoryWithScene, error) {
 		Scene:         model.SceneFor(story.EventKind),
 		Label:         model.StoryEventLabel[story.EventKind],
 	}, nil
+}
+
+// Claim يحجز القصة لهذي النافذة — نافذة وحدة تشغّل المشهد.
+func (s *StoryService) Claim(id, employeeID string) (bool, error) {
+	return s.repo.Claim(id, employeeID)
 }
 
 // Advance ينقل قصة الموظف نفسه لمرحلة أبعد.

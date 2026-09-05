@@ -316,6 +316,9 @@ func versionedMigrations() []Migration {
 	// 0272: محرّك القصص — الكيان ينفّذ مشهداً بين واجهتين بدل تنبيه
 	// ينقرا وينتسى. جدول قصص واحد، وصفر جدول أحداث جديد.
 	result = append(result, storyMigrations()...)
+	// 0273: حذف الموظف ما يمحي دليل وصول العقوبة — مرجع ثابت واسم
+	// منسوخ بدل CASCADE، والفهرس الفريد يشمل نوع الحدث.
+	result = append(result, storyFixMigrations()...)
 	return result
 }
 

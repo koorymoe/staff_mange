@@ -968,6 +968,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// رقم موظف من الرابط. الهوية من التوكن وحده.
 	mux.Handle("GET /api/stories/next", middleware.Chain(http.HandlerFunc(storyHandler.Next), requireAuth))
 	mux.Handle("GET /api/stories/mine", middleware.Chain(http.HandlerFunc(storyHandler.Mine), requireAuth))
+	mux.Handle("POST /api/stories/{id}/claim", middleware.Chain(http.HandlerFunc(storyHandler.Claim), requireAuth))
 	mux.Handle("POST /api/stories/{id}/advance", middleware.Chain(http.HandlerFunc(storyHandler.Advance), requireAuth))
 
 	mux.Handle("GET /api/entity/briefing", middleware.Chain(http.HandlerFunc(entityHandler.Briefing), requireAuth))

@@ -1742,7 +1742,10 @@ export interface StoryInstance {
   senderEmployeeId?: string
   /** ⚠️ اسم المُرسِل ظاهر بقصد — قرار صاحب النظام: الموظف يعرف منو خصمه. */
   senderName: string
-  recipientEmployeeId: string
+  /** ⚠️ يصير null لو انحذف الحساب — والصف يبقى بدليله المنسوخ. */
+  recipientEmployeeId?: string
+  recipientRef: string
+  recipientName: string
   status: StoryStatus
   priority: number
   /** false = تجاوز السقف اليومي ← تنعرض هادئة بالصندوق بلا مشهد. */
@@ -3602,6 +3605,14 @@ export const api = {
   getNextStory: () => request<{ story: StoryWithScene | null; pending: number }>('/stories/next'),
   /** صندوق القصص — سجل مقروء حتى بعد ما ينتهي المشهد. */
   getMyStories: (limit = 50) => request<StoryInstance[]>(`/stories/mine?limit=${limit}`),
+  /**
+   * تحجز القصة لهذي النافذة.
+   *
+   * ⚠️ `claimed:false` **مو خطأ** — يعني نافذة ثانية لنفس الموظف
+   * سبقتنا. بلا الحجز، التبويبان يعرضان نفس العقوبة مرتين.
+   */
+  claimStory: (id: string) =>
+    request<{ claimed: boolean }>(`/stories/${id}/claim`, { method: 'POST' }),
   /** ⚠️ `ACKNOWLEDGED` إقرار الموظف بضغطة — مو استنتاج من إن المشهد انعرض. */
   advanceStory: (id: string, status: StoryStatus, step: number) =>
     request<{ ok: boolean }>(`/stories/${id}/advance`, {

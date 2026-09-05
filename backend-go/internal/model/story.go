@@ -168,12 +168,24 @@ func SceneFor(eventKind string) []StoryStep {
 
 // StoryDailyPhysicalCap سقف المشاهد الجسدية لكل موظف باليوم.
 //
+// ⚠️⚠️ **الرقم غير مقاس**: اقترحت ٤ واقترح (م) ٣، وولا واحد منهما
+// مبني على قياس. أخذنا ٣ ويبقى **بمكان واحد** لحد ما ينزل على ناس
+// حقيقيين ونشوف شكد يستحملون — نفس قاعدة «رقم غلط أسوأ من ماكو رقم»
+// بس مطبَّقة على إعداد: نقوله صراحةً إنه تخمين بدل ما ندّعي قياساً.
+//
 // ⚠️⚠️ **شرط بقاء مو تحسين**: (ع) قرر إن **الأحداث السبعة كلها**
 // تاخذ قصة. سبعة مصادر تعني عدة مشاهد باليوم الواحد — وموظف يستلم
 // ركضاً وورقاً عشر مرات يبطّل ينتبه، **ووقتها العقوبة نفسها تفقد
 // أثرها**. بعد السقف القصة **تبقى محفوظة** وتنعرض هادئة بالصندوق،
 // **ما تنلغى ولا تضيع**.
-const StoryDailyPhysicalCap = 4
+const StoryDailyPhysicalCap = 3
+
+// StoryCalmGapMs هدوء إجباري بين قصتين جسديتين.
+//
+// ⚠️ **بلا فاصل يصير عرضاً مستمراً**: قصة تخلص وثانية تنط فوراً،
+// فالموظف ما يفرّق وين انتهت وحدة وبدت الثانية — ويبطّل ينتبه
+// للاثنتين.
+const StoryCalmGapMs = 9000
 
 // StoryInstance قصة وحدة بمراحلها.
 type StoryInstance struct {
@@ -184,7 +196,13 @@ type StoryInstance struct {
 	Version             int             `db:"version" json:"version"`
 	SenderEmployeeID    *string         `db:"senderEmployeeId" json:"senderEmployeeId,omitempty"`
 	SenderName          string          `db:"senderName" json:"senderName"`
-	RecipientEmployeeID string          `db:"recipientEmployeeId" json:"recipientEmployeeId"`
+	// ⚠️ يصير NULL لو انحذف الحساب — **والصف يبقى**. الدليل محفوظ
+	// بـ`RecipientRef` و`RecipientName` تحت.
+	RecipientEmployeeID *string `db:"recipientEmployeeId" json:"recipientEmployeeId,omitempty"`
+	// RecipientRef مرجع ثابت منسوخ وقت الإنشاء — عليه الفهرس الفريد،
+	// حتى ضمانة «نفس الحدث ما ينشئ قصتين» تبقى شغّالة بعد الحذف.
+	RecipientRef  string `db:"recipientRef" json:"recipientRef"`
+	RecipientName string `db:"recipientName" json:"recipientName"`
 	Status              string          `db:"status" json:"status"`
 	Priority            int             `db:"priority" json:"priority"`
 	Physical            bool            `db:"physical" json:"physical"`
@@ -218,7 +236,8 @@ type EmitStoryRequest struct {
 	EventKind   string
 	SenderID    *string
 	SenderName  string
-	RecipientID string
-	GroupKey    *string
+	RecipientID   string
+	RecipientName string
+	GroupKey      *string
 	Payload     map[string]any
 }

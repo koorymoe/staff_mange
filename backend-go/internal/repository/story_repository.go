@@ -32,8 +32,8 @@ const openStatuses = `('QUEUED','DELIVERED','PLAYING')`
 // بـ`MergeIntoGroup`. الفهرس الأول يمنع **التكرار**، والثاني يمنع
 // **الازدحام**.
 func (r *StoryRepository) Enqueue(s model.StoryInstance) (created bool, err error) {
-	if s.EventID == "" || s.RecipientEmployeeID == "" {
-		return false, errors.New("eventId و recipientEmployeeId إجباريان")
+	if s.EventID == "" || s.RecipientRef == "" {
+		return false, errors.New("eventId و recipientRef إجباريان")
 	}
 	if s.ID == "" {
 		s.ID = uuid.NewString()
@@ -44,11 +44,13 @@ func (r *StoryRepository) Enqueue(s model.StoryInstance) (created bool, err erro
 	res, err := r.db.Exec(`
 		INSERT INTO "StoryInstance"
 			(id, "eventId", "eventKind", "storyType", version, "senderEmployeeId", "senderName",
-			 "recipientEmployeeId", status, priority, physical, "groupKey", "currentStep", payload)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'QUEUED',$9,$10,$11,0,$12)
+			 "recipientEmployeeId", "recipientRef", "recipientName",
+			 status, priority, physical, "groupKey", "currentStep", payload)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'QUEUED',$11,$12,$13,0,$14)
 		ON CONFLICT DO NOTHING
 	`, s.ID, s.EventID, s.EventKind, s.StoryType, 1, s.SenderEmployeeID, s.SenderName,
-		s.RecipientEmployeeID, s.Priority, s.Physical, s.GroupKey, s.Payload)
+		s.RecipientEmployeeID, s.RecipientRef, s.RecipientName,
+		s.Priority, s.Physical, s.GroupKey, s.Payload)
 	if err != nil {
 		return false, err
 	}
@@ -69,7 +71,7 @@ func (r *StoryRepository) MergeIntoGroup(recipientID, groupKey, line string) (me
 		                  to_jsonb(COALESCE((payload->>'mergedCount')::int, 1) + 1)),
 		        '{lines}',
 		        COALESCE(payload->'lines', '[]'::jsonb) || to_jsonb($3::text))
-		WHERE "recipientEmployeeId" = $1 AND "groupKey" = $2
+		WHERE "recipientRef" = $1 AND "groupKey" = $2
 		  AND status IN `+openStatuses, recipientID, groupKey, line)
 	if err != nil {
 		return false, err
@@ -85,7 +87,7 @@ func (r *StoryRepository) CountPhysicalToday(recipientID string) (int, error) {
 	var n int
 	err := r.db.Get(&n, `
 		SELECT COUNT(*) FROM "StoryInstance"
-		WHERE "recipientEmployeeId" = $1 AND physical = true
+		WHERE "recipientRef" = $1 AND physical = true
 		  AND baghdad_date("createdAt") = baghdad_today()`, recipientID)
 	return n, err
 }
@@ -103,7 +105,7 @@ func (r *StoryRepository) NextForEmployee(recipientID string) (*model.StoryInsta
 	var s model.StoryInstance
 	err := r.db.Get(&s, `
 		SELECT * FROM "StoryInstance"
-		WHERE "recipientEmployeeId" = $1 AND status IN `+openStatuses+`
+		WHERE "recipientRef" = $1 AND status IN `+openStatuses+`
 		  AND ("expiresAt" IS NULL OR "expiresAt" > now())
 		ORDER BY priority DESC, "createdAt" ASC
 		LIMIT 1`, recipientID)
@@ -116,12 +118,38 @@ func (r *StoryRepository) NextForEmployee(recipientID string) (*model.StoryInsta
 	return &s, nil
 }
 
+// Claim يحجز القصة لنافذة وحدة — **عملية ذرّية**.
+//
+// ⚠️⚠️ **بلا هذا، نافذتان لنفس الموظف تشغّلان نفس المشهد**: نفس
+// العقوبة تنعرض مرتين، والإقرار ينسجّل من وحدة والثانية تبقى عالقة
+// تعرض شي انبتّ فيه. `RETURNING` يخلّي الحجز والفحص **عملية وحدة**
+// بالقاعدة — نافذة تربح وحدة بس، والثانية تاخذ `false` وتسكت.
+//
+// ⚠️ **والحجز ما يعيد قصة تشتغل**: الشرط `status <> 'PLAYING'` يمنع
+// نافذة ثانية من خطفها وسط المشهد.
+func (r *StoryRepository) Claim(id, recipientRef string) (claimed bool, err error) {
+	var got string
+	err = r.db.Get(&got, `
+		UPDATE "StoryInstance"
+		SET status = 'PLAYING', "deliveredAt" = COALESCE("deliveredAt", now())
+		WHERE id = $1 AND "recipientRef" = $2
+		  AND status IN ('QUEUED','DELIVERED')
+		RETURNING id`, id, recipientRef)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil // نافذة ثانية سبقتنا، أو انبتّ فيها — مو خطأ
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 // PendingCount عدد الي ينتظر الموظف — يخدم عدّاد الصندوق.
 func (r *StoryRepository) PendingCount(recipientID string) (int, error) {
 	var n int
 	err := r.db.Get(&n, `
 		SELECT COUNT(*) FROM "StoryInstance"
-		WHERE "recipientEmployeeId" = $1 AND status IN `+openStatuses, recipientID)
+		WHERE "recipientRef" = $1 AND status IN `+openStatuses, recipientID)
 	return n, err
 }
 
@@ -133,7 +161,7 @@ func (r *StoryRepository) ListForEmployee(recipientID string, limit int) ([]mode
 	rows := []model.StoryInstance{}
 	err := r.db.Select(&rows, `
 		SELECT * FROM "StoryInstance"
-		WHERE "recipientEmployeeId" = $1
+		WHERE "recipientRef" = $1
 		ORDER BY "createdAt" DESC LIMIT $2`, recipientID, limit)
 	return rows, err
 }
@@ -176,7 +204,7 @@ func (r *StoryRepository) Advance(id, recipientID, status string, step int) erro
 	}
 	res, err := r.db.Exec(`
 		UPDATE "StoryInstance" SET `+set+`
-		WHERE id = $1 AND "recipientEmployeeId" = $2
+		WHERE id = $1 AND "recipientRef" = $2
 		  AND $5 > CASE status
 		        WHEN 'QUEUED' THEN 0 WHEN 'DELIVERED' THEN 1 WHEN 'PLAYING' THEN 2
 		        WHEN 'SEEN' THEN 3 WHEN 'OPENED' THEN 4 WHEN 'ACKNOWLEDGED' THEN 5

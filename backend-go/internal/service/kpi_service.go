@@ -112,13 +112,18 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 		if ev, err := s.employees.FindByID(req.EvaluatorID); err == nil && ev != nil {
 			senderName = ev.Name
 		}
+		recipientName := ""
+		if employee != nil {
+			recipientName = employee.Name
+		}
 		evaluatorID := req.EvaluatorID
 		s.stories.Emit(model.EmitStoryRequest{
 			EventID:     eval.ID,
 			EventKind:   model.StoryEventPointDeducted,
 			SenderID:    &evaluatorID,
 			SenderName:  senderName,
-			RecipientID: req.EmployeeID,
+			RecipientID:   req.EmployeeID,
+			RecipientName: recipientName,
 			Payload: map[string]any{
 				"title":  "انخصمت منك " + strconv.Itoa(magnitude) + " نقطة",
 				"reason": reason,

@@ -34,6 +34,14 @@ const IDLE_POLL_MS = 15000
  * خمس ثوانٍ تأخير أقصى، والموظف أصلاً ما يعرف متى انضغط الزر.
  */
 const ACTIVE_POLL_MS = 5000
+/**
+ * هدوء إجباري بين قصتين.
+ *
+ * ⚠️ **بلا فاصل يصير عرضاً مستمراً**: قصة تخلص وثانية تنط فوراً،
+ * فالموظف ما يفرّق وين انتهت وحدة وبدت الثانية — ويبطّل ينتبه
+ * للاثنتين.
+ */
+const CALM_GAP_MS = 9000
 
 function prefersReducedMotion(): boolean {
   try {
@@ -64,13 +72,20 @@ export default function StoryScene() {
   const reduced = useMemo(() => prefersReducedMotion(), [])
   // نمنع تكرار إعلان «وصلت» لنفس القصة عند كل استطلاع
   const announced = useRef<string | null>(null)
+  // وقت انتهاء آخر قصة — نسكت لحد ما يمرّ فاصل الهدوء
+  const calmUntil = useRef<number>(0)
 
   const load = useCallback(() => {
     if (!employee) return
     api.getNextStory()
-      .then((res) => {
-        setStory((prev) => (prev && prev.id === res.story?.id ? prev : res.story))
+      .then(async (res) => {
         setPending(res.pending)
+        if (!res.story) { setStory(null); return }
+        if (Date.now() < calmUntil.current) return   // فاصل الهدوء
+        setStory((prev) => {
+          if (prev && prev.id === res.story?.id) return prev
+          return res.story
+        })
       })
       .catch(() => { /* المشهد ما يكسر الشاشة — الإشعارات تبقى تشتغل */ })
   }, [employee])
@@ -99,15 +114,40 @@ export default function StoryScene() {
     if (!story || announced.current === story.id) return
     announced.current = story.id
     setPhase('arriving')
-    void api.advanceStory(story.id, 'DELIVERED', 0).catch(() => {})
-    // الحركة زينة والمعنى إلزامي: على `reduced-motion` نقفز للقراءة فوراً
-    const delay = reduced ? 0 : (story.scene[0]?.durationMs ?? 800)
-    const t = setTimeout(() => {
-      setPhase('reading')
-      void api.advanceStory(story.id, 'SEEN', 1).catch(() => {})
-    }, delay)
-    return () => clearTimeout(t)
+    let timer: number | undefined
+    let cancelled = false
+
+    // ⚠️ **الحجز أول شي**: نافذتان لنفس الموظف تجيبان نفس القصة.
+    // بلا حجز ذرّي، التبويبان يعرضان نفس العقوبة مرتين، والإقرار
+    // ينسجّل من وحدة والثانية تبقى تعرض شي انبتّ فيه.
+    void api.claimStory(story.id)
+      .then((res) => {
+        if (cancelled) return
+        if (!res.claimed) { setStory(null); return }  // نافذة ثانية سبقتنا
+        // الحركة زينة والمعنى إلزامي: على `reduced-motion` نقفز فوراً
+        const delay = reduced ? 0 : (story.scene[0]?.durationMs ?? 800)
+        timer = window.setTimeout(() => {
+          if (cancelled) return
+          setPhase('reading')
+          // ⚠️ **«انعرض» حقيقة مسجَّلة**: تسجيلها والتبويب مخفي كذب
+          // بالسجل — نقول إنه شاف وهو مو موجود أصلاً.
+          if (!document.hidden) void api.advanceStory(story.id, 'SEEN', 1).catch(() => {})
+        }, delay)
+      })
+      .catch(() => { /* فشل الحجز ما يكسر الشاشة */ })
+
+    return () => { cancelled = true; if (timer) clearTimeout(timer) }
   }, [story, reduced])
+
+  // التبويب رجع ظاهراً والمشهد معروض ← هسه صار «انعرض» فعلاً
+  useEffect(() => {
+    if (!story || phase !== 'reading') return
+    const onVisible = () => {
+      if (!document.hidden) void api.advanceStory(story.id, 'SEEN', 1).catch(() => {})
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
+  }, [story, phase])
 
   const acknowledge = useCallback(async () => {
     if (!story || busy) return
@@ -115,6 +155,7 @@ export default function StoryScene() {
     try {
       await api.advanceStory(story.id, 'ACKNOWLEDGED', story.scene.length)
       announced.current = null
+      calmUntil.current = Date.now() + CALM_GAP_MS
       setStory(null)
       load()
     } finally {
