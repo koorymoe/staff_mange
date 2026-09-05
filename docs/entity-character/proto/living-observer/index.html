@@ -1,113 +1,20 @@
-<!doctype html>
-<html lang="ar" dir="rtl">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>الجولة A — اختيار نسب شخصية الموظف</title>
-  <link rel="stylesheet" href="scene.css" />
-</head>
-<body>
-  <main class="shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">المراقب الحي · الجولة A</p>
-        <h1>اختيار شكل جسم الشخصية</h1>
-        <p class="lede">ثلاثة اتجاهات من نفس الموظف والهوية. نثبت واحدًا قبل بناء الطبقات والعظام والحركات.</p>
-      </div>
-      <div class="brand-chip" aria-label="شركة الأماني"><span class="brand-mark">∞</span><span>شركة الأماني</span></div>
-    </header>
-
-    <section class="reference-strip" aria-label="الثوابت البصرية">
-      <span>وجه بالغ وودود</span><span>شعر أسود جانبي</span><span>لحية مرتبة</span>
-      <span>سترة أزرق الأماني</span><span>ملابس سوداء فقط</span>
-    </section>
-
-    <section class="directions" aria-label="خيارات نسب الشخصية">
-      <article class="direction" data-option="A">
-        <div class="badge">A</div>
-        <div class="artboard professional" aria-label="متوازن احترافي">
-          <div class="avatar" role="img" aria-label="شخصية موظف كارتونية متوازنة واحترافية"></div>
-        </div>
-        <div class="copy"><h2>متوازن احترافي</h2><p>شبه أعلى وحضور رسمي. مناسب للملفات والتنبيهات الجدية.</p></div>
-        <button type="button" class="choose">اختيار A</button>
-      </article>
-
-      <article class="direction recommended" data-option="B">
-        <div class="recommend-label">ترشيح (م)</div>
-        <div class="badge">B</div>
-        <div class="artboard mascot" aria-label="ماسكوت حي">
-          <div class="avatar" role="img" aria-label="شخصية موظف ماسكوت لطيفة ومتوازنة"></div>
-        </div>
-        <div class="copy"><h2>ماسكوت حي</h2><p>رأس أكبر وحركات أوضح بحجم الواجهة، من دون مظهر طفولي.</p></div>
-        <button type="button" class="choose">اختيار B</button>
-      </article>
-
-      <article class="direction" data-option="C">
-        <div class="badge">C</div>
-        <div class="artboard compact" aria-label="رفيق مصغر">
-          <div class="avatar" role="img" aria-label="شخصية موظف كارتونية صغيرة ولطيفة"></div>
-        </div>
-        <div class="copy"><h2>رفيق مصغّر</h2><p>أخف وألطف بصريًا، لكنه يبتعد أكثر عن النسب الواقعية.</p></div>
-        <button type="button" class="choose">اختيار C</button>
-      </article>
-    </section>
-
-    <section class="size-check">
-      <div><p class="eyebrow">اختبار الحجم الحقيقي</p><h2>هكذا سيظهر داخل النظام</h2><p>التعبير والشعار لازم يبقيان مقروءين بهذا الحجم، مو فقط في الصورة الكبيرة.</p></div>
-      <div class="mock-ui">
-        <div class="mock-top"><i></i><i></i><i></i></div>
-        <div class="mock-lines"><i></i><i></i><i></i></div>
-        <div class="tiny-stage"><div id="tinyAvatar" class="avatar tiny"></div><div class="bubble">هلا، أني متابع وياك</div></div>
-      </div>
-    </section>
-
-    <section class="decision" aria-live="polite">
-      <p id="decisionText">لم يُثبت اختيار بعد. اضغط A أو B أو C للمقارنة.</p>
-      <button id="clearChoice" type="button">مسح الاختيار</button>
-    </section>
-  </main>
-
-  <template id="avatarTemplate">
-    <svg viewBox="0 0 260 430" aria-hidden="true">
-      <defs>
-        <linearGradient id="vest" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#1680ff"/><stop offset="1" stop-color="#034ac7"/></linearGradient>
-        <linearGradient id="skin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#d99a78"/><stop offset="1" stop-color="#bd7659"/></linearGradient>
-        <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-opacity=".25"/></filter>
-      </defs>
-      <ellipse cx="130" cy="410" rx="77" ry="12" fill="#071327" opacity=".22"/>
-      <g class="character" filter="url(#shadow)">
-        <g class="legs">
-          <path d="M87 290h42l-7 91H78z" fill="#111827"/><path d="M132 290h42l10 91h-45z" fill="#0a101c"/>
-          <path d="M74 372h51v24c-4 9-17 13-51 10-12-1-15-11-7-18z" fill="#05070b"/>
-          <path d="M139 372h48l13 17c6 9 0 17-12 17h-49z" fill="#05070b"/>
-          <path d="M78 384h46M143 384h47" stroke="#334155" stroke-width="3"/>
-        </g>
-        <g class="body">
-          <path d="M70 176q60-26 120 0l-8 123H78z" fill="#080d17"/>
-          <path d="M78 177q20-21 52-20 33-1 52 20l-5 113H83z" fill="url(#vest)"/>
-          <path d="M130 161v129" stroke="#d8e4ef" stroke-width="4"/><path d="M126 173l4-9 5 9" fill="#d8e4ef"/>
-          <path d="M91 239h29v38H91zM141 239h29v38h-29z" fill="#0758d6" stroke="#3b91ff"/>
-          <g class="logo" transform="translate(143 204)"><path d="M0 8c7-13 17-13 24 0s17 13 24 0" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/><path d="M0 8c7 13 17 13 24 0s17-13 24 0" fill="none" stroke="white" stroke-width="4" stroke-linecap="round"/></g>
-        </g>
-        <g class="arms">
-          <path d="M75 182q-22 22-24 105l29 2 17-99z" fill="#090f19"/><path d="M185 182q22 22 24 105l-29 2-17-99z" fill="#090f19"/>
-          <path d="M50 283q3 35 17 38 16 0 14-34zM180 287q-2 34 14 34 14-3 17-38z" fill="url(#skin)"/>
-        </g>
-        <g class="head">
-          <path class="neck" d="M111 144h38v32q-19 18-38 0z" fill="url(#skin)"/>
-          <ellipse cx="130" cy="102" rx="63" ry="66" fill="url(#skin)"/>
-          <path d="M70 91q0-70 60-70 62 0 63 70-17-15-24-39-45 21-91 20z" fill="#101522"/>
-          <path d="M73 77q18-57 62-52 38 4 51 39-29-24-67-15-19 5-46 28z" fill="#1d2634"/>
-          <path d="M74 112q8 57 56 58 48-1 57-58-9 29-29 38-12 7-28 7-17 0-29-8-20-10-27-37z" fill="#17202b"/>
-          <path d="M80 113q8 51 50 51t50-51q-8 25-25 31-11 5-25 5t-25-5q-17-7-25-31z" fill="#111923"/>
-          <g class="eyes"><ellipse cx="105" cy="101" rx="16" ry="19" fill="white"/><ellipse cx="155" cy="101" rx="16" ry="19" fill="white"/><circle cx="107" cy="104" r="9" fill="#3b2419"/><circle cx="153" cy="104" r="9" fill="#3b2419"/><circle cx="108" cy="101" r="4" fill="#090909"/><circle cx="152" cy="101" r="4" fill="#090909"/><circle cx="111" cy="98" r="2" fill="white"/><circle cx="155" cy="98" r="2" fill="white"/></g>
-          <path d="M89 80q16-10 32 0M139 80q16-10 32 0" fill="none" stroke="#18202a" stroke-width="7" stroke-linecap="round"/>
-          <path d="M130 105q-7 18 2 22" fill="none" stroke="#9b5e4b" stroke-width="3" stroke-linecap="round"/>
-          <path d="M110 134q20 15 40 0" fill="none" stroke="#7b3340" stroke-width="4" stroke-linecap="round"/>
-        </g>
-      </g>
-    </svg>
-  </template>
-  <script src="scene.js"></script>
-</body>
-</html>
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>المراقب الحي</title><link rel="stylesheet" href="scene.css"></head><body>
+<main><header><div><small>شركة الأماني · مختبر الشخصية</small><h1>النموذج الذهبي الرجالي</h1><p>اختبار الحركة بالحجم الحقيقي قبل إنتاج مكتبة الشخصيات.</p></div><b id="status">جاهز</b></header>
+<section class="workspace"><article><h2>واجهة المراقب</h2><div class="card">نقاط الموظف<strong>96</strong></div><div class="source">−1</div></article>
+<div class="world"><div class="route"></div><div id="actor" class="actor"><div id="bubble" class="bubble">أني حاضر ومتابع</div>
+<svg viewBox="0 0 280 430" role="img" aria-label="شخصية موظف الأماني المتحركة"><defs><radialGradient id="skin"><stop stop-color="#ffd0ae"/><stop offset="1" stop-color="#ad6247"/></radialGradient><linearGradient id="vest"><stop stop-color="#168cff"/><stop offset="1" stop-color="#033b9d"/></linearGradient><linearGradient id="dark"><stop stop-color="#222b38"/><stop offset="1" stop-color="#05070b"/></linearGradient><filter id="shadow"><feDropShadow dy="7" stdDeviation="6" flood-opacity=".5"/></filter></defs>
+<ellipse id="ground" cx="140" cy="411" rx="76" ry="11" fill="#020713" opacity=".6"/><g class="rig" filter="url(#shadow)">
+<g id="thighL" class="leg a" transform="translate(99 286)"><path d="M0 0h39l-5 67H-2z" fill="url(#dark)"/><g id="shinL" transform="translate(0 61)"><path d="M-2 0h35l-2 46H-6z" fill="#090e16"/><g id="footL" transform="translate(-9 38)"><path d="M0 0h43l9 18q0 11-15 11H0q-14-3-8-16z" fill="#030507"/></g></g></g>
+<g id="thighR" class="leg b" transform="translate(143 286)"><path d="M0 0h39l7 67H5z" fill="url(#dark)"/><g id="shinR" transform="translate(7 61)"><path d="M0 0h35l7 46H5z" fill="#070b12"/><g id="footR" transform="translate(0 38)"><path d="M0 0h41l15 17q4 12-13 12H4q-11-3-8-15z" fill="#030507"/></g></g></g>
+<g id="chest"><path d="M82 181q58-28 116 0l-7 112H89z" fill="#080d16"/><path d="M90 178q50-22 100 0l-5 106H95z" fill="url(#vest)" stroke="#49a4ff"/><path d="M140 164v120" stroke="#e5efff" stroke-width="3"/><path d="M103 238h30v36h-30zM149 238h30v36h-30z" fill="#0751bd" stroke="#43a0ff"/><g transform="translate(151 205)" stroke="white" stroke-width="3" fill="none"><path d="M0 7c6-10 13-10 19 0s13 10 19 0"/><path d="M0 7c6 10 13 10 19 0s13-10 19 0"/></g></g>
+<g id="upperArmL" class="arm b" transform="translate(91 188)"><path d="M0 0q-29 25-27 67l26 2 18-59z" fill="url(#dark)"/><g id="forearmL" transform="translate(-25 54)"><path d="M0 0h25l5 46H5z" fill="#090e16"/><g id="handL" transform="translate(5 38)"><path d="M0 0q11-8 21 0l2 24q-11 15-23 0z" fill="url(#skin)"/></g></g></g>
+<g id="upperArmR" class="arm a" transform="translate(190 188)"><path d="M0 0q29 25 27 67l-26 2-18-59z" fill="url(#dark)"/><g id="forearmR" transform="translate(0 54)"><path d="M0 0h25l-5 46H-5z" fill="#090e16"/><g id="handR" transform="translate(-4 38)"><path d="M0 0q11-8 21 0l2 24q-11 15-23 0z" fill="url(#skin)"/></g></g></g>
+<g id="head" transform="translate(140 108)"><path d="M-18 54h36v40q-18 16-36 0z" fill="url(#skin)"/><ellipse cx="-58" cy="4" rx="10" ry="17" fill="url(#skin)"/><ellipse cx="58" cy="4" rx="10" ry="17" fill="url(#skin)"/><ellipse rx="64" ry="71" fill="url(#skin)"/><g id="hairBack"><path d="M-62-4q-2-71 62-74 64 3 62 73-14-29-30-43-48 23-88 15z" fill="#100d0c"/></g><g id="hairFront"><path d="M-57-29q15-49 57-51 34 0 52 28-43-20-98 33z" fill="#2c1e18"/><path d="M-40-53q33-30 70-15" stroke="#69483b" stroke-width="5" fill="none" opacity=".6"/></g>
+<path id="browL" d="M-45-13q16-10 30 0" stroke="#211713" stroke-width="7" fill="none"/><path id="browR" d="M15-13q16-10 30 0" stroke="#211713" stroke-width="7" fill="none"/>
+<g id="eyeL"><ellipse cx="-29" cy="10" rx="18" ry="20" fill="white"/><circle id="pupilL" cx="-27" cy="12" r="10" fill="#62391f"/><circle cx="-25" cy="10" r="4"/><path id="eyelidL" d="M-47 8q18-18 36 0" fill="url(#skin)" opacity="0"/></g><g id="eyeR"><ellipse cx="29" cy="10" rx="18" ry="20" fill="white"/><circle id="pupilR" cx="27" cy="12" r="10" fill="#62391f"/><circle cx="25" cy="10" r="4"/><path id="eyelidR" d="M11 8q18-18 36 0" fill="url(#skin)" opacity="0"/></g>
+<path d="M0 12q-7 20 2 24" stroke="#a85f48" stroke-width="3" fill="none"/><g id="beard"><path d="M-52 28q7 46 52 48 45-2 52-48-14 31-52 33-38-2-52-33z" fill="#171210"/></g><g id="mouth"><path d="M-18 44q18 14 36 0" stroke="#8b3440" stroke-width="4" fill="none"/><path d="M-10 46q10 5 20 0" stroke="white" stroke-width="3"/></g></g>
+<g id="documentAnchor" transform="translate(211 295)"><g id="document" opacity="0"><rect x="-20" y="-28" width="40" height="55" rx="4" fill="white"/><path d="M-12-14h24M-12-5h18M-12 4h22" stroke="#9aaac0" stroke-width="3"/><circle cy="16" r="7" fill="#ef4444"/></g></g>
+<g class="anchors" opacity="0"><circle id="shoulderL"/><circle id="shoulderR"/><circle id="elbowL"/><circle id="elbowR"/><circle id="wristL"/><circle id="wristR"/><circle id="hipL"/><circle id="hipR"/><circle id="kneeL"/><circle id="kneeR"/><circle id="uiTarget"/></g></g></svg></div></div>
+<article><h2>واجهة الموظف</h2><div class="profile"></div><div class="card">الإشعارات<strong id="notice">لا توجد ملاحظات</strong></div></article></section>
+<section class="controls"><button id="play" class="primary">تشغيل قصة الخصم</button><button data-test="walk">المشي</button><button data-test="blink">الرمش</button><button data-test="wave">التلويح</button><button id="reset">إعادة</button><label><input id="reduced" type="checkbox"> حركة مخففة</label></section>
+<section class="log"><div><small>الحالة الحالية</small><strong id="state">IDLE</strong></div><ol id="events"><li>النموذج جاهز للاختبار</li></ol></section></main><script src="scene.js"></script></body></html>
