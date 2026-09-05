@@ -259,6 +259,19 @@ func (r *DisciplineRepository) OverdueLeaderPaperwork(hours int) ([]OverdueLeade
 		  -- وما إله فاتورة ولا تقرير أصلاً، وغرامة عليه تعاقب ناس
 		  -- ما إلهم ذنب على ورق محد طالبهم بيه.
 		  AND b."settledLegacyAt" IS NULL
+		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
+		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
+		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
+		  -- يرفضه)، ومع ذلك المكنسة چانت تغرّمه على ورق ما يگدر
+		  -- يسوّيه — عقوبة على شي مستحيل. تنستثنى هنا، ويغرّم
+		  -- مسؤولها بمكنسته الخاصة (OverdueManagedPaperwork).
+		  AND NOT EXISTS (
+		    SELECT 1 FROM "Service" s
+		    WHERE s."managerHandlesPaperwork"
+		      AND (s.id = b."serviceId"
+		           OR EXISTS (SELECT 1 FROM "BookingService" bs
+		                      WHERE bs."bookingId" = b.id AND bs."serviceId" = s.id))
+		  )
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
 		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
@@ -296,6 +309,19 @@ func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, 
 		  -- وما إله فاتورة ولا تقرير أصلاً، وغرامة عليه تعاقب ناس
 		  -- ما إلهم ذنب على ورق محد طالبهم بيه.
 		  AND b."settledLegacyAt" IS NULL
+		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
+		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
+		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
+		  -- يرفضه)، ومع ذلك المكنسة چانت تغرّمه على ورق ما يگدر
+		  -- يسوّيه — عقوبة على شي مستحيل. تنستثنى هنا، ويغرّم
+		  -- مسؤولها بمكنسته الخاصة (OverdueManagedPaperwork).
+		  AND NOT EXISTS (
+		    SELECT 1 FROM "Service" s
+		    WHERE s."managerHandlesPaperwork"
+		      AND (s.id = b."serviceId"
+		           OR EXISTS (SELECT 1 FROM "BookingService" bs
+		                      WHERE bs."bookingId" = b.id AND bs."serviceId" = s.id))
+		  )
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
 		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
@@ -355,6 +381,19 @@ func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([
 		  AND b."completedAt" IS NOT NULL
 		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
 		  AND b."settledLegacyAt" IS NULL
+		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
+		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
+		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
+		  -- يرفضه)، ومع ذلك المكنسة چانت تغرّمه على ورق ما يگدر
+		  -- يسوّيه — عقوبة على شي مستحيل. تنستثنى هنا، ويغرّم
+		  -- مسؤولها بمكنسته الخاصة (OverdueManagedPaperwork).
+		  AND NOT EXISTS (
+		    SELECT 1 FROM "Service" s
+		    WHERE s."managerHandlesPaperwork"
+		      AND (s.id = b."serviceId"
+		           OR EXISTS (SELECT 1 FROM "BookingService" bs
+		                      WHERE bs."bookingId" = b.id AND bs."serviceId" = s.id))
+		  )
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
 		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
@@ -470,6 +509,57 @@ func (r *DisciplineRepository) OverdueAudit(hours int) ([]OverduePaperwork, erro
 		  AND b."settledLegacyAt" IS NULL
 		  -- التدقيق يحتاج فاتورة. بلا فاتورة، التقصير مو تقصير المحاسب.
 		  AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+	`, hours)
+	return rows, err
+}
+
+// ═══ ورق الخدمة المؤشّرة — على مسؤولها ═══
+//
+// الحجوزات الي خدمتها managerHandlesPaperwork انستثنت من مكنستي
+// الليدر والإداري (الفني ممنوع يسوي ورقها أصلاً). بس **الاستثناء
+// وحده يعني ماكو أحد يتحاسب** — والورق يبقى ناقصاً بلا ما يعرف
+// أحد. فمسؤول الخدمة نفسه هو الي ينتحاسب هنا.
+//
+// ⚠️ منو المسؤول: جدول "ServiceManager" — مسؤول **هذي الخدمة**
+// بالذات، مو أي واحد دوره SERVICE_MANAGER. نفس منطق PaperworkGuard
+// بالضبط، حتى الحارس والغرامة يتفقون: ما ينفع نمنع واحد من الورق
+// ونغرّم غيره عليه.
+//
+// ⚠️ وخدمة بلا مسؤول مسجَّل **ما تغرّم أحداً** — ما نخترع مسؤولاً.
+type OverdueManagedPaperwork struct {
+	BookingID   string `db:"bookingId"`
+	BookingCode string `db:"code"`
+	ManagerID   string `db:"managerId"`
+	ManagerName string `db:"managerName"`
+	ServiceName string `db:"serviceName"`
+	HasInvoice  bool   `db:"hasInvoice"`
+	HasReport   bool   `db:"hasReport"`
+}
+
+func (r *DisciplineRepository) OverdueManagedPaperwork(hours int) ([]OverdueManagedPaperwork, error) {
+	rows := []OverdueManagedPaperwork{}
+	err := r.db.Select(&rows, `
+		SELECT DISTINCT b.id AS "bookingId", b.code,
+		       mgr.id AS "managerId", mgr.name AS "managerName",
+		       s.name AS "serviceName",
+		       EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id) AS "hasInvoice",
+		       EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id) AS "hasReport"
+		FROM "Booking" b
+		JOIN "Service" s ON s."managerHandlesPaperwork"
+		  AND (s.id = b."serviceId"
+		       OR EXISTS (SELECT 1 FROM "BookingService" bs
+		                  WHERE bs."bookingId" = b.id AND bs."serviceId" = s.id))
+		JOIN "ServiceManager" sm ON sm."serviceId" = s.id
+		JOIN "Employee" mgr ON mgr.id = sm."employeeId" AND mgr.status = 'ACTIVE'
+		WHERE b.status = 'COMPLETED'
+		  AND b."completedAt" IS NOT NULL
+		  AND b."completedAt" < now() - ($1::text || ' hours')::interval
+		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  AND b."settledLegacyAt" IS NULL
+		  AND (
+		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		  )
 	`, hours)
 	return rows, err
 }

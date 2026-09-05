@@ -16,6 +16,9 @@ type LeaderInvoiceHandler struct {
 	service   *service.LeaderInvoiceService
 	catalog   *repository.SystemPriceCatalogRepository
 	materials *repository.MaterialRepository
+	// permissions: فحص صلاحية نوع فاتورة الخدمة (جي بي اس/داش كام).
+	// اختياري — بدونه المالك والمدير بس يفوترون.
+	permissions *repository.PermissionRepository
 }
 
 func NewLeaderInvoiceHandler(
@@ -25,6 +28,9 @@ func NewLeaderInvoiceHandler(
 ) *LeaderInvoiceHandler {
 	return &LeaderInvoiceHandler{service: s, catalog: catalog, materials: materials}
 }
+
+// SetPermissions يربط مستودع الصلاحيات بعد البناء.
+func (h *LeaderInvoiceHandler) SetPermissions(p *repository.PermissionRepository) { h.permissions = p }
 
 // GET /api/leader-invoices?employeeId=
 func (h *LeaderInvoiceHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -80,6 +86,44 @@ func (h *LeaderInvoiceHandler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	employeeID := middleware.EmployeeIDFromContext(r)
 	inv, err := h.service.Create(employeeID, req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, inv)
+}
+
+// POST /api/leader-invoices/service — فاتورة جي بي اس أو داش كام
+// بسعر يكتبه مسؤول الخدمة.
+//
+// ⚠️⚠️ **الصلاحية تنفحص حسب النوع هنا، مو بالمسار**: حارس المسار
+// يگدر يفحص «وحدة من الاثنتين» بس، ولو وقفنا عنده يصير مسؤول
+// الجي بي اس يفوتر داش كام. النوع يجي بالطلب، فالفحص لازم يكون
+// بعد ما ينقرا.
+func (h *LeaderInvoiceHandler) CreateServiceInvoice(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateServiceInvoiceRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	perm, ok := model.ServiceInvoicePermission[req.Kind]
+	if !ok {
+		WriteError(w, http.StatusBadRequest, "نوع الفاتورة لازم يكون جي بي اس أو داش كام")
+		return
+	}
+	employeeID := middleware.EmployeeIDFromContext(r)
+	role := middleware.RoleFromContext(r)
+	allowed := role == "ADMIN" || role == "OWNER"
+	if !allowed && h.permissions != nil {
+		if has, err := h.permissions.HasPermission(employeeID, perm); err == nil && has {
+			allowed = true
+		}
+	}
+	if !allowed {
+		WriteError(w, http.StatusForbidden, "ما عندك صلاحية «"+model.ServiceInvoiceKindLabel[req.Kind]+"»")
+		return
+	}
+	inv, err := h.service.CreateServiceInvoice(employeeID, req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return

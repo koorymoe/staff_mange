@@ -4214,6 +4214,17 @@ export const api = {
   auditRoleDefaults: () => request<MissingRoleDefault[]>('/permissions/audit-defaults'),
   // ⚠️ `all=1` للشاشة الإدارية (يشمل المعطّل)، ومنتقي الحجز ياخذ
   // الفعّال بس حتى ما ينحجز لقسم انلغى.
+  /** فاتورة جي بي اس / داش كام بسعر يكتبه مسؤول الخدمة — مسار منفصل
+   *  عن فاتورة الليدر (الي تلزم منظومات وبنود وسعرها ينحسب بالسيرفر). */
+  createServiceInvoice: (data: {
+    kind: 'GPS' | 'DASHCAM'
+    price: number
+    bookingId?: string
+    customerName?: string
+    customerPhone?: string
+    customerAddress?: string
+    note?: string
+  }) => request<LeaderInvoice>('/leader-invoices/service', { method: 'POST', body: JSON.stringify(data) }),
   getDepartments: (all?: boolean) =>
     request<Department[]>(`/departments${all ? '?all=1' : ''}`),
   createDepartment: (name: string) =>

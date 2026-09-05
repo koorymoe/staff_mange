@@ -191,6 +191,38 @@ func (s *DisciplineService) RunPaperworkSweep() {
 	}
 }
 
+// RunManagedPaperworkSweep ورق الخدمات الي على مسؤولها (جي بي اس،
+// داش كام).
+//
+// ⚠️ ليش مكنسة ثالثة مو شرط زايد بالثنتين: الي ينتحاسب **شخص
+// مختلف** (مسؤول الخدمة مو ليدر الحجز ولا الإداري المكلِّف)، وحشر
+// الثلاثة باستعلام واحد يخلي أي تعديل مستقبلي يغرّم الغلط.
+//
+// ⚠️ ونفس مهلة الليدر (٢٤ ساعة): الورق نفسه والمدة نفسها — الي
+// يتغيّر منو مسؤول عنه.
+func (s *DisciplineService) RunManagedPaperworkSweep() {
+	rows, err := s.repo.OverdueManagedPaperwork(model.DisciplineLeaderPaperworkHours)
+	if err != nil {
+		log.Printf("[discipline] تعذر فحص ورق الخدمات المُدارة: %v", err)
+		return
+	}
+	for i := range rows {
+		r := rows[i]
+		missing := "الفاتورة والتقرير"
+		switch {
+		case r.HasInvoice && !r.HasReport:
+			missing = "التقرير"
+		case !r.HasInvoice && r.HasReport:
+			missing = "الفاتورة"
+		}
+		bid := r.BookingID
+		s.penalize(r.ManagerID, r.ManagerName, model.DisciplineLeaderLatePaperwork,
+			fmt.Sprintf("مرّت %d ساعة على إنجاز الحجز %s (%s) وما سوّيت %s — ورق هذي الخدمة عليك",
+				model.DisciplineLeaderPaperworkHours, r.BookingCode, r.ServiceName, missing),
+			&bid)
+	}
+}
+
 // RunAuditSweep يمر على الحجوزات المنجزة الي مبلغها ما انتدقّق بعد
 // ٣٦ ساعة ويغرّم المحاسب. نفس آلية غرامة الورق بالضبط، بس المهلة
 // أطول لأن التدقيق يحتاج الفاتورة تكون جاهزة أصلاً.
@@ -281,6 +313,9 @@ func (s *DisciplineService) StartBackgroundSweeps() {
 		// ⚠️ كنسة الليدر أول: هو أول من ينغرم بالوقت (٢٤ مقابل ٤٨)،
 		// والترتيب يخلّي إعلان الغرامتين يطلع بتسلسله المنطقي.
 		safeguard.Run("كنسة أوراق الليدر", s.RunLeaderPaperworkSweep)
+		// ورق الجي بي اس والداش كام — على مسؤول الخدمة، والفني
+		// انستثنى من الكنستين الي فوق وتحت.
+		safeguard.Run("كنسة أوراق الخدمات المُدارة", s.RunManagedPaperworkSweep)
 		safeguard.Run("كنسة الأوراق", s.RunPaperworkSweep)
 		safeguard.Run("كنسة التدقيق", s.RunAuditSweep)
 		safeguard.Run("كنسة الاسترجاع", s.RunRestoreSweep)

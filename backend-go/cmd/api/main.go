@@ -282,6 +282,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	productHandler := handler.NewProductHandler(productService)
 	leaderInvoiceService := service.NewLeaderInvoiceService(leaderInvoiceRepo, systemPriceCatalogRepo, materialRepo, employeeCommissionRepo, bookingRepo, employeeRepo, jobDurationEstimatorService)
 	leaderInvoiceHandler := handler.NewLeaderInvoiceHandler(leaderInvoiceService, systemPriceCatalogRepo, materialRepo)
+	// فحص صلاحية نوع فاتورة الخدمة (جي بي اس/داش كام) — النوع يجي
+	// بالطلب، فالفحص بالمعالج مو بالمسار.
+	leaderInvoiceHandler.SetPermissions(permissionRepo)
 	networkPriceRepo := repository.NewNetworkPriceRepository(db)
 	// ── صندوق المراقب ──
 	// الربط بـSetMonitorFeed بعد البناء (مو بالمنشئ) حتى ما يصير اعتماد
@@ -1537,6 +1540,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الجي بي اس والداش كام الفاتورة على مسؤول الخدمة، وهو مو
 	// بالضرورة ليدر. والي مو الاثنين تنسجّل مخالفته مثل ما چان.
 	mux.Handle("POST /api/leader-invoices", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Create), requireAuth, requireLeaderOrServiceManager))
+	// فاتورة الجي بي اس / الداش كام بسعر يدوي — الحارس هنا «أي وحدة
+	// من الصلاحيتين»، والمعالج يفحص **أي** وحدة بالضبط حسب النوع
+	// المطلوب، حتى مسؤول الجي بي اس ما يفوتر داش كام.
+	mux.Handle("POST /api/leader-invoices/service", middleware.Chain(
+		http.HandlerFunc(leaderInvoiceHandler.CreateServiceInvoice), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER"}, "invoice_gps", "invoice_dashcam")))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد

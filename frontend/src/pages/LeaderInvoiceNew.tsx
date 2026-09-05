@@ -32,8 +32,22 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // تفصيل الحساب (المعادلات والحدود الدنيا) للمالك ومدير النظام فقط —
   // الليدر يشوف المبلغ وبس. هذي أسعار داخلية ما تنعرض لكل من يحسب كلفة.
   // (المالك ينطبّع دوره لـADMIN بالجلسة، فالشرط يغطي الاثنين.)
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const canSeeBreakdown = employee?.role === 'ADMIN'
+
+  // ═══ وضع «فاتورة خدمة» — جي بي اس / داش كام ═══
+  //
+  // «هذا ما يرادله تيم وليدر… والي يسوّي الفاتورة هو مسؤول الخدمة
+  // نفسها، واني أخلي السعر بكيفي». صلاحيتان منفصلتان: مسؤول الجي بي
+  // اس ما يفوتر داش كام.
+  const isTopAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const canGps = isTopAdmin || permissions.includes('invoice_gps')
+  const canDashcam = isTopAdmin || permissions.includes('invoice_dashcam')
+  const canServiceInvoice = canGps || canDashcam
+  const [serviceMode, setServiceMode] = useState(false)
+  const [serviceKind, setServiceKind] = useState<'GPS' | 'DASHCAM'>(canGps ? 'GPS' : 'DASHCAM')
+  const [servicePrice, setServicePrice] = useState('')
+  const [serviceNote, setServiceNote] = useState('')
 
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -309,6 +323,33 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
 
   const handleSave = async () => {
     setError(null)
+    // ⚠️ فاتورة الخدمة تتجاوز إلزامي المنظومات والبنود — وهذا **كل
+    // الفرق**. إلزامي فاتورة الليدر يبقى مثل ما هو تحت.
+    if (serviceMode) {
+      const price = Number(servicePrice)
+      if (!Number.isFinite(price) || price <= 0) {
+        setError('اكتب سعر الفاتورة')
+        return
+      }
+      setSaving(true)
+      try {
+        const invoice = await api.createServiceInvoice({
+          kind: serviceKind,
+          price,
+          bookingId,
+          customerName: customerName || undefined,
+          customerPhone: customerPhone || undefined,
+          customerAddress: customerAddress || undefined,
+          note: serviceNote.trim() || undefined,
+        })
+        setResult(invoice)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'تعذر حفظ الفاتورة')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
     if (systems.length === 0) {
       setError('اختر منظومة واحدة على الأقل')
       return
@@ -571,6 +612,46 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           ? 'ⓘ استفسار: اختر نوع العمل وأضف العناصر وتطلعلك الكلفة — نفس محرك الفاتورة بالضبط، بس بلا حفظ ولا ربط.'
           : 'ⓘ مربوط بحجز: اختر الحجز أول، وبيانات الزبون تنملي لحالها، والفاتورة تترحّل للمحاسب.'}
       </p>
+
+      {/* ═══ فاتورة خدمة بسعر يدوي — جي بي اس / داش كام ═══
+          تظهر بس لصاحب الصلاحية. ⚠️ ما تلمس فاتورة الليدر: هي مسار
+          ثاني بالسيرفر، وإلزامي المنظومات والبنود يبقى عليها. */}
+      {canServiceInvoice && !estimateOnly && (
+        <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50/60 p-3">
+          <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-sky-900">
+            <input type="checkbox" checked={serviceMode} onChange={(e) => setServiceMode(e.target.checked)} />
+            🛰️ فاتورة خدمة بسعر يدوي (جي بي اس / داش كام)
+          </label>
+          {serviceMode && (
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">نوع الخدمة</label>
+                <select value={serviceKind} onChange={(e) => setServiceKind(e.target.value as 'GPS' | 'DASHCAM')}
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500">
+                  {canGps && <option value="GPS">فاتورة الجي بي اس</option>}
+                  {canDashcam && <option value="DASHCAM">فاتورة الداش كام</option>}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">السعر (د.ع) *</label>
+                <input value={servicePrice} onChange={(e) => setServicePrice(e.target.value.replace(/[^\d]/g, ''))}
+                  dir="ltr" inputMode="numeric" placeholder="0"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">ملاحظة (اختيارية)</label>
+                <input value={serviceNote} onChange={(e) => setServiceNote(e.target.value)}
+                  placeholder="شنو انركّب بالضبط"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500" />
+              </div>
+              <p className="text-[11px] leading-relaxed text-sky-800 sm:col-span-3">
+                ⓘ هذي الخدمات ما إلهن جدول كلفة — السعر تحطّه أنت، والفاتورة
+                تروح للمحاسب وتظهر بصندوق المراقب مثل أي فاتورة.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {hasDraft && items.length === 0 && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">

@@ -170,6 +170,44 @@ type CreateLeaderInvoiceRequest struct {
 	DiscountValue   float64                     `json:"discountValue"`
 }
 
+// ═══ فاتورة خدمة بسعر يدوي (جي بي اس / داش كام) ═══
+//
+// «هذا ما يرادله تيم وليدر، يرادله فني واحد فقط… والي يسوّي الفاتورة
+// هو مسؤول الخدمة نفسها، واني أخلي السعر بكيفي».
+//
+// ⚠️ **نوع منفصل مو علم على فاتورة الليدر**: فاتورة الليدر تلزم
+// منظومات وبنود تنفيذ وسعرها ينحسب بالسيرفر — وهذا مقصود ويبقى.
+// خلط الاثنين بمسار واحد يفتح باب «فاتورة بسعر بالإيد» لكل أحد،
+// ويفرّغ حساب الكلفة من معناه.
+type CreateServiceInvoiceRequest struct {
+	BookingID       *string  `json:"bookingId"`
+	Kind            string   `json:"kind"` // GPS | DASHCAM
+	CustomerName    *string  `json:"customerName"`
+	CustomerPhone   *string  `json:"customerPhone"`
+	CustomerAddress *string  `json:"customerAddress"`
+	// السعر يحطّه مسؤول الخدمة — ماكو جدول كلفة لهذي الخدمات.
+	Price float64 `json:"price"`
+	Note  *string `json:"note"`
+}
+
+const (
+	ServiceInvoiceGps     = "GPS"
+	ServiceInvoiceDashcam = "DASHCAM"
+)
+
+// ServiceInvoiceKindLabel التسمية العربية — بيانات لا شرط مكرَّر.
+var ServiceInvoiceKindLabel = map[string]string{
+	ServiceInvoiceGps:     "فاتورة الجي بي اس",
+	ServiceInvoiceDashcam: "فاتورة الداش كام",
+}
+
+// ServiceInvoicePermission الصلاحية الي تخوّل كل نوع — «صلاحيتين
+// أنطيها للشخص الي يعجبني»، فكل خدمة معزولة بصلاحيتها.
+var ServiceInvoicePermission = map[string]string{
+	ServiceInvoiceGps:     "invoice_gps",
+	ServiceInvoiceDashcam: "invoice_dashcam",
+}
+
 // EstimateExecutionCostRequest طلب "حساب كلفة" سريع بدون ربط بحجز ولا حفظ —
 // يستخدمه الليدر لما زبون يستفسر عن سعر تقريبي، بنفس محرك الحساب بالضبط.
 type EstimateExecutionCostRequest struct {

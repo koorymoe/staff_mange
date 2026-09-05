@@ -711,6 +711,65 @@ func (s *LeaderInvoiceService) SetAuditVerdict(id string, req model.AuditVerdict
 	return inv, nil
 }
 
+// ═══ فاتورة خدمة بسعر يدوي (جي بي اس / داش كام) ═══
+//
+// «هذا ما يرادله تيم وليدر… والي يسوّي الفاتورة هو مسؤول الخدمة
+// نفسها، واني أخلي السعر بكيفي».
+//
+// ⚠️ **مسار منفصل عن فاتورة الليدر بقصد**: فاتورة الليدر تلزم
+// منظومات وبنود تنفيذ وسعرها ينحسب بالسيرفر من الكتالوگ — وهذا
+// مقصود ويبقى. لو فكّينا الإلزام عنها حتى تخدم هالحالة، صار كل
+// أحد يگدر يكتب سعراً بالإيد وانفرغ حساب الكلفة من معناه.
+//
+// ⚠️ **والحارس بالمسار**: `invoice_gps` أو `invoice_dashcam` حسب
+// النوع — مسؤول الجي بي اس ما يفوتر داش كام.
+func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model.CreateServiceInvoiceRequest) (*model.LeaderInvoice, error) {
+	if _, ok := model.ServiceInvoicePermission[req.Kind]; !ok {
+		return nil, fmt.Errorf("نوع الفاتورة لازم يكون جي بي اس أو داش كام")
+	}
+	// ⚠️ السعر حر بس مو سالباً ولا صفراً: فاتورة بصفر تعني «مجاني»
+	// وهذا مسار ثاني إله سببه المكتوب — خلطهما يخفي كلفة الضمان.
+	if req.Price <= 0 {
+		return nil, fmt.Errorf("اكتب سعر الفاتورة")
+	}
+	kindLabel := model.ServiceInvoiceKindLabel[req.Kind]
+	inv := &model.LeaderInvoice{
+		BookingID:       req.BookingID,
+		EmployeeID:      employeeID,
+		CustomerName:    req.CustomerName,
+		CustomerPhone:   req.CustomerPhone,
+		CustomerAddress: req.CustomerAddress,
+		// ⚠️ المنظومة تنكتب باسم الخدمة حتى الفاتورة تبيّن **شنو هي**
+		// بكل الشاشات الموجودة بلا ما نضيف عموداً ونعدّل كل شاشة.
+		Systems:          []string{kindLabel},
+		Items:            []model.ExecutionCostItem{},
+		TotalDeviceCount: 0,
+		// السعر كله «تنفيذ»: ماكو مواد ولا خصم بهذي الخدمات.
+		ExecutionCost:  req.Price,
+		MaterialsTotal: 0,
+		DiscountValue:  0,
+		NetTotal:       req.Price,
+		Status:         "SUBMITTED",
+	}
+	saved, err := s.invoices.Create(inv, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.computeAndSaveCommissions(saved)
+	// نفس مسار المراقب مثل أي فاتورة — السعر اليدوي **بالذات** يستاهل
+	// عينه، لأنه ماكو جدول كلفة يراجعه.
+	if s.monitor != nil {
+		title, summary := monitorInvoiceSummary(saved)
+		detail := " • " + kindLabel + " — السعر بالإيد من مسؤول الخدمة"
+		if req.Note != nil && strings.TrimSpace(*req.Note) != "" {
+			detail += " — " + strings.TrimSpace(*req.Note)
+		}
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title,
+			summary+detail, "SERVICE_MANAGER", &saved.EmployeeID, false)
+	}
+	return saved, nil
+}
+
 // RevokeApproval يسحب اعتماد فاتورة انعتمدت بالغلط.
 func (s *LeaderInvoiceService) RevokeApproval(id, reason, byEmployeeID string) (*model.LeaderInvoice, error) {
 	reason = strings.TrimSpace(reason)
