@@ -124,6 +124,15 @@ var DefaultPermissions = []Permission{
 	// (يعني الوحدة تنفتح، وشنو يشوف جواها ينحدد بصلاحياته التفصيلية).
 	{Name: "unit_service", Label: "وحدة الخدمة"},
 	{Name: "unit_design", Label: "وحدة التصميم"},
+	// ═══ شغل المصممة ═══
+	//
+	// ⚠️⚠️ `design_forms` چانت مستعملة بـnavTree من زمان — يعني
+	// الواجهة تفتح البند لمن يملكها — بس **مو مسجّلة بالكتالوگ**،
+	// فما تظهر بشاشة الصلاحيات وما انمنحت لأي أحد أبداً. ومسارات
+	// الخادم التسعة كلها `requireAdmin`. يعني دور `DESIGNER` موجود
+	// بالنظام وشاشاته مبنية، **والمصممة ما تگدر تشتغل ولا شغلة**.
+	{Name: "design_forms", Label: "فورمة التصميم"},
+	{Name: "design_gallery", Label: "معرض التصاميم"},
 	{Name: "unit_pr", Label: "وحدة الإعلام والعلاقات العامة"},
 	{Name: "unit_quality", Label: "وحدة الجودة والسلامة المهنية"},
 	{Name: "unit_monitoring", Label: "وحدة الرقابة"},
@@ -146,6 +155,8 @@ var RoleDefaultPermissions = map[string][]string{
 	"QUALITY_ENGINEER":  {"auditing", "complaints", "quality_control", "sales_booking", "kpi_management"},
 	"ENGINEER":          {"expenses", "quotation_manage_all", "project_management"},
 	"PROCUREMENT_ADMIN": {"procurement", "inventory", "tool_requests_approve"},
-	"DESIGNER":          {},
+	// ⚠️ بلا `view_bookings`: قراره الصريح إن المصممة **ما تشوف
+	// الحجوزات** — شغلها الفورمة والتصاميم والمهام الموجّهة لها.
+	"DESIGNER":          {"design_forms", "design_gallery", "unit_design"},
 	"SERVICE_MANAGER":   {"content_technician", "manage_services"},
 }

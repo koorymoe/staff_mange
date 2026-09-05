@@ -311,6 +311,8 @@ func versionedMigrations() []Migration {
 	// 0270: سجل الأقسام ومسؤوليها — الحجز داخل الشركة چان يكتب اسم
 	// القسم نصاً حراً، فنفس القسم يطلع صفوفاً مختلفة بالتقارير.
 	result = append(result, departmentMigrations()...)
+	// 0271: معرض التصاميم — المصممة ترفع شغلها ويبقى محفوظاً.
+	result = append(result, designAssetMigrations()...)
 	return result
 }
 

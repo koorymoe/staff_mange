@@ -357,6 +357,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	serviceStudyRepo := repository.NewServiceStudyRepository(db)
 	serviceStudyService := service.NewServiceStudyService(serviceStudyRepo)
 	serviceStudyHandler := handler.NewServiceStudyHandler(serviceStudyService)
+	designAssetHandler := handler.NewDesignAssetHandler(repository.NewDesignAssetRepository(db), employeeRepo)
 	designFormRepo := repository.NewDesignFormRepository(db)
 	designFormService := service.NewDesignFormService(designFormRepo)
 	designFormHandler := handler.NewDesignFormHandler(designFormService)
@@ -1100,15 +1101,37 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/service-studies/{id}/archive", middleware.Chain(http.HandlerFunc(serviceStudyHandler.Archive), requireAuth, requireAdmin))
 
 	// وحدة التصميم — عدة استمارات مستقلة، كل وحدة بأسئلتها وبرابطها العام الخاص
-	mux.Handle("GET /api/design-forms", middleware.Chain(http.HandlerFunc(designFormHandler.ListForms), requireAuth, requireAdmin))
-	mux.Handle("POST /api/design-forms", middleware.Chain(http.HandlerFunc(designFormHandler.CreateForm), requireAuth, requireAdmin))
-	mux.Handle("DELETE /api/design-forms/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.DeleteForm), requireAuth, requireAdmin))
-	mux.Handle("GET /api/design-forms/{formId}/submissions", middleware.Chain(http.HandlerFunc(designFormHandler.ListSubmissions), requireAuth, requireAdmin))
-	mux.Handle("GET /api/design-forms/{formId}/questions", middleware.Chain(http.HandlerFunc(designFormHandler.List), requireAuth, requireAdmin))
-	mux.Handle("POST /api/design-forms/{formId}/questions", middleware.Chain(http.HandlerFunc(designFormHandler.Create), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Update), requireAuth, requireAdmin))
-	mux.Handle("DELETE /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Delete), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/design-form/questions/reorder", middleware.Chain(http.HandlerFunc(designFormHandler.Reorder), requireAuth, requireAdmin))
+	// ═══ معرض التصاميم ═══
+	//
+	// معرض **مستقل** ما ينربط بحجز — قراره، لأن المصممة ما تشوف
+	// الحجوزات. والصلاحية معزولة عن فورمة التصميم: ممكن تريد واحداً
+	// يشوف المعرض بلا ما يحرّر الفورمة.
+	requireDesignGallery := middleware.RequireRoleOrAnyPermission(
+		permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER"}, "design_gallery")
+	mux.Handle("GET /api/design-assets", middleware.Chain(http.HandlerFunc(designAssetHandler.List), requireAuth, requireDesignGallery))
+	mux.Handle("GET /api/design-assets/categories", middleware.Chain(http.HandlerFunc(designAssetHandler.Categories), requireAuth, requireDesignGallery))
+	mux.Handle("POST /api/design-assets", middleware.Chain(http.HandlerFunc(designAssetHandler.Create), requireAuth, requireDesignGallery))
+	mux.Handle("PUT /api/design-assets/{id}/archive", middleware.Chain(http.HandlerFunc(designAssetHandler.SetArchived), requireAuth, requireDesignGallery))
+
+	// ═══ فورمة التصميم — تنفتح للمصممة ═══
+	//
+	// ⚠️ التسعة كلهن چانن `requireAdmin` حصراً، **صفر منفذ صلاحية** —
+	// يعني حتى لو انمنحت المصممة كل شي بالواجهة، الخادم يرفضها ٤٠٣.
+	// ⚠️ **إضافة منفذ، بلا سحب وصول**: مدير النظام يبقى يوصلهن مثل
+	// ما هو بالضبط.
+	requireDesignForms := middleware.RequireRoleOrAnyPermission(
+		permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER"}, "design_forms")
+	mux.Handle("GET /api/design-forms", middleware.Chain(http.HandlerFunc(designFormHandler.ListForms), requireAuth, requireDesignForms))
+	mux.Handle("POST /api/design-forms", middleware.Chain(http.HandlerFunc(designFormHandler.CreateForm), requireAuth, requireDesignForms))
+	mux.Handle("DELETE /api/design-forms/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.DeleteForm), requireAuth, requireDesignForms))
+	mux.Handle("GET /api/design-forms/{formId}/submissions", middleware.Chain(http.HandlerFunc(designFormHandler.ListSubmissions), requireAuth, requireDesignForms))
+	mux.Handle("GET /api/design-forms/{formId}/questions", middleware.Chain(http.HandlerFunc(designFormHandler.List), requireAuth, requireDesignForms))
+	mux.Handle("POST /api/design-forms/{formId}/questions", middleware.Chain(http.HandlerFunc(designFormHandler.Create), requireAuth, requireDesignForms))
+	mux.Handle("PUT /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Update), requireAuth, requireDesignForms))
+	mux.Handle("DELETE /api/design-form/questions/{id}", middleware.Chain(http.HandlerFunc(designFormHandler.Delete), requireAuth, requireDesignForms))
+	mux.Handle("PUT /api/design-form/questions/reorder", middleware.Chain(http.HandlerFunc(designFormHandler.Reorder), requireAuth, requireDesignForms))
 
 	// رابط عام للزبون (بدون تسجيل دخول) — يشوف الاستمارة ويرسل جوابه فقط
 	// النماذج العامة: بلا تسجيل دخول، فلازم حد صارم — بدونه أي واحد عنده

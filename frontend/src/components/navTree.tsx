@@ -442,10 +442,15 @@ export const navItems: NavItem[] = [
   // وحدة) — تطلعان لمدير النظام بس، وتفتحان صفحة "قريباً" بدل ما تختفيان بالكامل.
   {
     to: '/unit-design-group', label: 'وحدة التصميم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a4.5 4.5 0 0 0 0 9 4.5 4.5 0 0 1 0 9"/></svg>, roles: ['ADMIN'],
+    // ⚠️ `roles: ['ADMIN']` وحده چان يحجب المجموعة كلها عن المصممة
+    // مهما انمنحت — فالبنود جوّاها ما تظهر أبداً. `anyPermission`
+    // يفتح المجموعة لصاحب أي صلاحية تصميم، والبنود تبقى بحراسها.
+    anyPermission: ['design_forms', 'design_gallery'],
     unitPermission: 'unit_design',
     children: [
       { to: '/design-forms/quick-add', label: 'إضافة سؤال', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
       { to: '/design-forms', label: 'فورمة التصميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_forms' },
+      { to: '/design-gallery', label: '🎨 معرض التصاميم', icon: <></>, roles: ['ADMIN'], unlockPermission: 'design_gallery' },
     ],
   },
   {

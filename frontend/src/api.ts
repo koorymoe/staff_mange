@@ -1787,6 +1787,22 @@ export interface MonitorDeskCounts {
   crew: number
 }
 
+/** ═══ معرض التصاميم ═══
+ *  معرض **مستقل** ما ينربط بحجز — المصممة ما تشوف الحجوزات. */
+export interface DesignAsset {
+  id: string
+  title: string
+  category: string
+  notes: string | null
+  /** مفتاح التخزين (مسار /api/files/…) — الصورة مو بقاعدة البيانات. */
+  fileKey: string
+  fileType: string | null
+  uploadedById: string | null
+  uploadedByName: string
+  createdAt: string
+  archivedAt: string | null
+}
+
 /** ═══ سجل الأقسام ومسؤوليها — للحجز داخل الشركة ═══ */
 export interface DepartmentHead {
   id: string
@@ -4225,6 +4241,21 @@ export const api = {
     customerAddress?: string
     note?: string
   }) => request<LeaderInvoice>('/leader-invoices/service', { method: 'POST', body: JSON.stringify(data) }),
+  getDesignAssets: (archived?: boolean) =>
+    request<DesignAsset[]>(`/design-assets${archived ? '?archived=1' : ''}`),
+  /** التصنيفات من الخادم — تسمية وحدة بالمكانين. */
+  getDesignCategories: () => request<Record<string, string>>('/design-assets/categories'),
+  createDesignAsset: (data: {
+    title: string
+    category: string
+    fileKey: string
+    fileType?: string
+    notes?: string
+  }) => request<DesignAsset>('/design-assets', { method: 'POST', body: JSON.stringify(data) }),
+  setDesignAssetArchived: (id: string, archived: boolean) =>
+    request<DesignAsset>(`/design-assets/${id}/archive`, {
+      method: 'PUT', body: JSON.stringify({ archived }),
+    }),
   getDepartments: (all?: boolean) =>
     request<Department[]>(`/departments${all ? '?all=1' : ''}`),
   createDepartment: (name: string) =>

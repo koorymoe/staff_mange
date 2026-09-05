@@ -54,6 +54,7 @@ const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage')
 const TeamInventoryCheckPage = lazy(() => import('./pages/TeamInventoryCheckPage'))
 const PermissionsPage = lazy(() => import('./pages/PermissionsPage'))
 const DepartmentsPage = lazy(() => import('./pages/DepartmentsPage'))
+const DesignGalleryPage = lazy(() => import('./pages/DesignGalleryPage'))
 const QuotationsPage = lazy(() => import('./pages/QuotationsPage'))
 const QuotationNew = lazy(() => import('./pages/QuotationNew'))
 const LeaderInvoiceNew = lazy(() => import('./pages/LeaderInvoiceNew'))
@@ -235,11 +236,15 @@ function App() {
           <Route path="exhibitions" element={<RequirePermission permission="content_technician"><ExhibitionsPage /></RequirePermission>} />
           <Route path="product-requests" element={<RequirePermission permission="content_technician"><ProductRequestsPage /></RequirePermission>} />
           <Route path="service-studies" element={<RequirePermission permission="content_technician"><ServiceStudiesPage /></RequirePermission>} />
-          <Route path="unit-design" element={<RequireAdmin><DesignFormsListPage /></RequireAdmin>} />
-          <Route path="design-forms" element={<RequireAdmin><DesignFormsListPage /></RequireAdmin>} />
-          <Route path="design-forms/quick-add" element={<RequireAdmin><DesignFormQuickAddPage /></RequireAdmin>} />
-          <Route path="design-forms/:formId" element={<RequireAdmin><DesignFormBuilderPage /></RequireAdmin>} />
-          <Route path="design-forms/:formId/submissions" element={<RequireAdmin><DesignFormSubmissionsPage /></RequireAdmin>} />
+          {/* ⚠️ چانن كلهن `RequireAdmin` — يعني حتى بعد ما ينفتح
+              الخادم للمصممة، الواجهة تحجبها قبل ما يوصل النداء.
+              صارت الصلاحية نفسها الي يفحصها الخادم. */}
+          <Route path="unit-design" element={<RequirePermission permission="design_forms"><DesignFormsListPage /></RequirePermission>} />
+          <Route path="design-forms" element={<RequirePermission permission="design_forms"><DesignFormsListPage /></RequirePermission>} />
+          <Route path="design-forms/quick-add" element={<RequirePermission permission="design_forms"><DesignFormQuickAddPage /></RequirePermission>} />
+          <Route path="design-forms/:formId" element={<RequirePermission permission="design_forms"><DesignFormBuilderPage /></RequirePermission>} />
+          <Route path="design-forms/:formId/submissions" element={<RequirePermission permission="design_forms"><DesignFormSubmissionsPage /></RequirePermission>} />
+          <Route path="design-gallery" element={<RequirePermission permission="design_gallery"><DesignGalleryPage /></RequirePermission>} />
           <Route path="unit-pr" element={<ComingSoonUnit title="وحدة الإعلام والعلاقات العامة" />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />
