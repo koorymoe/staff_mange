@@ -1,0 +1,904 @@
+package repository
+
+import (
+	"database/sql"
+	"encoding/json"
+	"errors"
+
+	"github.com/lib/pq"
+
+	"github.com/jmoiron/sqlx"
+
+	"staffmange-api/internal/model"
+)
+
+// LeaderInvoiceRepository يخزّن فواتير الليدر وبنود المواد التابعة لها.
+type LeaderInvoiceRepository struct {
+	db *sqlx.DB
+}
+
+func NewLeaderInvoiceRepository(db *sqlx.DB) *LeaderInvoiceRepository {
+	return &LeaderInvoiceRepository{db: db}
+}
+
+// Create يحفظ فاتورة ليدر جديدة مع كل بنود موادها بمعاملة واحدة (كلها تنجح أو
+// كلها تفشل معاً).
+func (r *LeaderInvoiceRepository) Create(inv *model.LeaderInvoice, materials []model.LeaderInvoiceMaterialItem) (*model.LeaderInvoice, error) {
+	systemsJSON, err := json.Marshal(inv.Systems)
+	if err != nil {
+		return nil, err
+	}
+	itemsJSON, err := json.Marshal(inv.Items)
+	if err != nil {
+		return nil, err
+	}
+
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// الكود المحاسبي النهائي يعتمد على معرف الفاتورة (gen_random_uuid) وتاريخ
+	// الإنشاء، وكلاهما لا يُعرف إلا بعد الإدراج — لذا نستخدم كوداً مؤقتاً فريداً
+	// بالإدراج الأول ثم نحدّثه بالكود الحقيقي بنفس المعاملة.
+	var saved model.LeaderInvoice
+	err = tx.Get(&saved, `
+		INSERT INTO "LeaderInvoice" (
+			id, "bookingId", "employeeId", "customerName", "customerPhone", "customerAddress",
+			systems, items, "totalDeviceCount", "executionCost", "materialsTotal",
+			"discountValue", "netTotal", "accountingCode", status,
+			"isFree", "freeReasonId", "freeReasonNote"
+		) VALUES (
+			gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, gen_random_uuid()::text, $13,
+			$14, $15, NULLIF($16,'')
+		) RETURNING *
+	`,
+		inv.BookingID, inv.EmployeeID, inv.CustomerName, inv.CustomerPhone, inv.CustomerAddress,
+		string(systemsJSON), string(itemsJSON), inv.TotalDeviceCount, inv.ExecutionCost, inv.MaterialsTotal,
+		inv.DiscountValue, inv.NetTotal, inv.Status,
+		inv.IsFree, inv.FreeReasonID, derefStr(inv.FreeReasonNote),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	for i := range materials {
+		materials[i].LeaderInvoiceID = saved.ID
+		var savedItem model.LeaderInvoiceMaterialItem
+		err = tx.Get(&savedItem, `
+			INSERT INTO "LeaderInvoiceMaterialItem" (
+				id, "leaderInvoiceId", "materialId", name, quantity, "unitPrice", "profitPerUnit", "lineTotal"
+			) VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7)
+			RETURNING *
+		`, materials[i].LeaderInvoiceID, materials[i].MaterialID, materials[i].Name,
+			materials[i].Quantity, materials[i].UnitPrice, materials[i].ProfitPerUnit, materials[i].LineTotal)
+		if err != nil {
+			return nil, err
+		}
+		saved.Materials = append(saved.Materials, savedItem)
+	}
+
+	finalCode := model.GenerateAccountingCode(saved.ID, saved.CreatedAt)
+	if _, err := tx.Exec(`UPDATE "LeaderInvoice" SET "accountingCode" = $2 WHERE id = $1`, saved.ID, finalCode); err != nil {
+		return nil, err
+	}
+	saved.AccountingCode = finalCode
+
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+
+	saved.Systems = inv.Systems
+	saved.Items = inv.Items
+	return &saved, nil
+}
+
+// CountForEmployeeMonth يرجّع عدد فواتير الليدر (المبيعات) لموظف معيّن خلال
+// شهر معيّن (monthPrefix بصيغة "YYYY-MM").
+// InheritBookingVerdict يورّث حكم المحاسب من الحجز للفاتورة الجديدة.
+//
+// ⚠️ **ينفّذ بعد الإنشاء مو داخله**: الإنشاء معاملة فيها إدراج المواد
+// وتوليد الكود المحاسبي، وأي فشل بقراءة الحكم ما يصير يلغي فاتورة
+// انكتبت صح. الحكم إضافة على الفاتورة، مو شرط لوجودها.
+func (r *LeaderInvoiceRepository) InheritBookingVerdict(invoiceID, bookingID string) {
+	verdict, note, amount, byID := r.bookingVerdict(bookingID)
+	if verdict == "" {
+		return
+	}
+	// ⚠️ `auditedById` يبقى **المحاسب الي أشّر فعلاً** — مو الليدر الي
+	// رفع الفاتورة. نسبة الحكم لغير صاحبه تخرّب أي مساءلة بعدين.
+	_, _ = r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "auditVerdict" = $2,
+		    "auditNote" = NULLIF($3, ''),
+		    "auditedById" = NULLIF($4, ''),
+		    "auditedAt" = CURRENT_TIMESTAMP,
+		    "auditedAmount" = $5
+		WHERE id = $1 AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '')`,
+		invoiceID, verdict, note, byID, amount)
+}
+
+func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM "LeaderInvoice"
+		WHERE "employeeId" = $1 AND to_char("createdAt", 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	return count, err
+}
+
+// CountForEmployeeRange نفس CountForEmployeeMonth لكن لمدى تاريخ حر (from/to
+// بصيغة "YYYY-MM-DD").
+func (r *LeaderInvoiceRepository) CountForEmployeeRange(employeeID, from, to string) (int, error) {
+	var count int
+	err := r.db.Get(&count, `
+		SELECT COUNT(*) FROM "LeaderInvoice"
+		WHERE "employeeId" = $1 AND baghdad_date("createdAt") BETWEEN $2::date AND $3::date
+	`, employeeID, from, to)
+	return count, err
+}
+
+// SumNetTotalForRange يرجّع مجموع "netTotal" لكل فواتير الليدر خلال مدى تاريخ
+// حر — إجمالي حجم المبيعات بالإحصائية الأسبوعية.
+func (r *LeaderInvoiceRepository) SumNetTotalForRange(from, to string) (float64, error) {
+	var total sql.NullFloat64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date
+	`, from, to)
+	if err != nil {
+		return 0, err
+	}
+	return total.Float64, nil
+}
+
+// SumNetTotalMorningEveningForRange يرجّع مجموع "netTotal" مقسوماً صباحي
+// (قبل الساعة 12 ظهراً حسب وقت إنشاء الفاتورة) ومسائي خلال مدى تاريخ حر.
+func (r *LeaderInvoiceRepository) SumNetTotalMorningEveningForRange(from, to string) (morning float64, evening float64, err error) {
+	var m, e sql.NullFloat64
+	if err = r.db.Get(&m, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
+		WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") < 12
+	`, from, to); err != nil {
+		return 0, 0, err
+	}
+	if err = r.db.Get(&e, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
+		WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") >= 12
+	`, from, to); err != nil {
+		return 0, 0, err
+	}
+	return m.Float64, e.Float64, nil
+}
+
+// SumNetTotalForDate يرجّع مجموع "netTotal" لكل فواتير الليدر المنشأة بتاريخ
+// معيّن — يُستخدم كـ"إجمالي المبيعات" اليومي.
+func (r *LeaderInvoiceRepository) SumNetTotalForDate(date string) (float64, error) {
+	var total sql.NullFloat64
+	err := r.db.Get(&total, `
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE baghdad_date("createdAt") = $1::date
+	`, date)
+	return total.Float64, err
+}
+
+// Approve يعتمد فاتورة SUBMITTED فقط (لا يسمح باعتماد فاتورة معتمدة أصلاً
+// مرة ثانية) — يرجّع nil لو الفاتورة غير موجودة أو معتمدة أصلاً.
+func (r *LeaderInvoiceRepository) Approve(id, approverEmployeeID, externalNumber string) (*model.LeaderInvoice, error) {
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `
+		UPDATE "LeaderInvoice"
+		SET status = 'APPROVED',
+		    "approvedByEmployeeId" = $2,
+		    "approvedAt" = CURRENT_TIMESTAMP,
+		    "externalInvoiceNumber" = $3,
+		    "externalInvoiceAt" = CURRENT_TIMESTAMP
+		WHERE id = $1 AND status != 'APPROVED'
+		RETURNING *
+	`, id, approverEmployeeID, externalNumber)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+func (r *LeaderInvoiceRepository) hydrate(inv *model.LeaderInvoice) error {
+	if inv.SystemsJSON != "" {
+		_ = json.Unmarshal([]byte(inv.SystemsJSON), &inv.Systems)
+	}
+	if inv.ItemsJSON != "" {
+		_ = json.Unmarshal([]byte(inv.ItemsJSON), &inv.Items)
+	}
+	materials := []model.LeaderInvoiceMaterialItem{}
+	if err := r.db.Select(&materials, `SELECT * FROM "LeaderInvoiceMaterialItem" WHERE "leaderInvoiceId" = $1 ORDER BY "createdAt"`, inv.ID); err != nil {
+		return err
+	}
+	inv.Materials = materials
+
+	// التفاصيل الي يحتاجها المحاسب: منو رفعها ومنو اعتمدها وأي حجز
+	// تخص. بدونها الجدول يعرض «—» بمكان الزبون والليدر.
+	var emp struct {
+		Name  string  `db:"name"`
+		Role  string  `db:"role"`
+		Phone *string `db:"phone"`
+	}
+	if err := r.db.Get(&emp, `SELECT name, role::text, phone FROM "Employee" WHERE id = $1`, inv.EmployeeID); err == nil {
+		inv.EmployeeName = emp.Name
+		inv.EmployeeRole = emp.Role
+		inv.EmployeePhone = emp.Phone
+	}
+	if inv.ApprovedByEmployeeID != nil {
+		var name string
+		if err := r.db.Get(&name, `SELECT name FROM "Employee" WHERE id = $1`, *inv.ApprovedByEmployeeID); err == nil {
+			inv.ApprovedByName = &name
+		}
+	}
+	if inv.BookingID != nil {
+		var b model.Booking
+		if err := r.db.Get(&b, `SELECT * FROM "Booking" WHERE id = $1`, *inv.BookingID); err == nil {
+			code := b.Code
+			inv.BookingCode = &code
+			// نعبّي الزبون والخدمة والكادر حتى المحاسب يشوف كل شي بمكان واحد
+			var c model.Customer
+			if err := r.db.Get(&c, `SELECT * FROM "Customer" WHERE id = $1`, b.CustomerID); err == nil {
+				b.Customer = &c
+			}
+			if b.ServiceID != nil {
+				var sv model.Service
+				if err := r.db.Get(&sv, `SELECT * FROM "Service" WHERE id = $1`, *b.ServiceID); err == nil {
+					b.Service = &sv
+				}
+			}
+			assignments := []model.BookingAssignment{}
+			if err := r.db.Select(&assignments, `
+				SELECT a.* FROM "BookingAssignment" a WHERE a."bookingId" = $1`, b.ID); err == nil {
+				for i := range assignments {
+					var e model.Employee
+					if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE id = $1`, assignments[i].EmployeeID); err == nil {
+						assignments[i].Employee = e
+					}
+				}
+				b.Assignments = assignments
+			}
+			inv.Booking = &b
+		}
+	}
+	return nil
+}
+
+// GetByID يرجّع فاتورة واحدة مع بنودها.
+func (r *LeaderInvoiceRepository) GetByID(id string) (*model.LeaderInvoice, error) {
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `SELECT * FROM "LeaderInvoice" WHERE id = $1`, id)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+// List يرجّع الفواتير، مصفّاة حسب الموظف لو تم تمريره.
+// ═══ مراحل الفاتورة الثلاث ═══
+//
+// ⚠️⚠️ **المرحلة تنحسب من الحالة والحكم سوا — مو من عمود ثالث.**
+// عمود «مرحلة» منفصل يعني حقيقتين لنفس الشي: فاتورة معتمدة ومرحلتها
+// «بانتظار التدقيق» لأن أحداً نسى يحدّث العمود. الاشتقاق ما ينحرف
+// أبداً.
+//
+//	بانتظار التدقيق : status='SUBMITTED' و auditVerdict فارغ
+//	بانتظار الاعتماد: status='SUBMITTED' و auditVerdict موجود
+//	معتمدة          : status='APPROVED'
+const (
+	StageAwaitingAudit    = "AWAITING_AUDIT"
+	StageAwaitingApproval = "AWAITING_APPROVAL"
+	StageAwaitingMonitor  = "AWAITING_MONITOR"
+	StageApproved         = "APPROVED"
+)
+
+/** ⚠️ «عند المراقب الآن» = طُلبت ولا انبتّ بيها. الشرط يتكرر بأكثر
+ *  من استعلام، فينكتب مرة وحدة — نسختان تفترقان بأول تعديل. */
+const atMonitorSQL = `"monitorRequestedAt" IS NOT NULL AND "monitorDecidedAt" IS NULL`
+
+func stageClause(stage string) string {
+	switch stage {
+	case StageAwaitingAudit:
+		return ` AND status <> 'APPROVED' AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '')`
+	case StageAwaitingApproval:
+		// ⚠️ الفاتورة الي عند المراقب **تطلع** من طابور الاعتماد:
+		// لو بقت بالاثنين، المحاسب يعتمدها وهي عند المراقب — ويصير
+		// إرسالها للمراقب بلا معنى.
+		return ` AND status <> 'APPROVED' AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> '' AND NOT (` + atMonitorSQL + `)`
+	case StageAwaitingMonitor:
+		return ` AND status <> 'APPROVED' AND ` + atMonitorSQL
+	case StageApproved:
+		return ` AND status = 'APPROVED'`
+	default:
+		return ""
+	}
+}
+
+func (r *LeaderInvoiceRepository) List(employeeID string) ([]model.LeaderInvoice, error) {
+	return r.ListByStage(employeeID, "")
+}
+
+// ListByStage يرجّع فواتير مرحلة معيّنة.
+//
+// ⚠️ الترشيح **بالخادم** مو بالمتصفح: القائمة چانت تنزّل **كل**
+// الفواتير وترشّح بالجافاسكربت. بألف فاتورة، الشاشة تنزّل الألف كلها
+// حتى تعرض عشرة — والمحاسب ينتظر بلا سبب.
+func (r *LeaderInvoiceRepository) ListByStage(employeeID, stage string) ([]model.LeaderInvoice, error) {
+	invoices := []model.LeaderInvoice{}
+	var err error
+	if employeeID == "" {
+		err = r.db.Select(&invoices, `SELECT * FROM "LeaderInvoice" WHERE TRUE`+stageClause(stage)+` ORDER BY "createdAt" DESC`)
+	} else {
+		err = r.db.Select(&invoices, `SELECT * FROM "LeaderInvoice" WHERE "employeeId" = $1`+stageClause(stage)+` ORDER BY "createdAt" DESC`, employeeID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	// أسماء أسباب المجانية بدفعة وحدة — القائمة صغيرة وثابتة، فنجيبها
+	// كلها مرة وحدة بدل استعلام لكل فاتورة.
+	r.attachFreeReasonLabels(invoices)
+	if err := r.hydrateAll(invoices); err != nil {
+		return nil, err
+	}
+	return invoices, nil
+}
+
+// hydrateAll يعبّي كل الفواتير سوه بعدد ثابت من الاستعلامات، بدل ما ينادي
+// hydrate لكل فاتورة على حدة.
+//
+// hydrate الواحدة تسوي ٨ استعلامات (مواد، ليدر، معتمد، حجز، زبون، خدمة،
+// تعيينات، وموظف لكل تعيين). فمعناها القائمة جانت تسوي ٨×عدد الفواتير:
+// ٥٠٠ فاتورة = ٤٠٠٠ رحلة لقاعدة البيانات بفتحة وحدة للصفحة. وكل ما
+// ينضاف شهر شغل تصير الصفحة أبطأ لين توقف تحمّل.
+//
+// هنا نجمع المفاتيح كلها أول، وننزّل كل جدول بطلب واحد (WHERE id = ANY)،
+// وندمج بالذاكرة. النتيجة نفسها بالضبط — بس بعدد استعلامات ثابت مهما
+// كبرت القائمة.
+func (r *LeaderInvoiceRepository) hydrateAll(invoices []model.LeaderInvoice) error {
+	if len(invoices) == 0 {
+		return nil
+	}
+
+	invoiceIDs := make([]string, 0, len(invoices))
+	employeeIDs := map[string]bool{}
+	bookingIDs := []string{}
+	for i := range invoices {
+		inv := &invoices[i]
+		if inv.SystemsJSON != "" {
+			_ = json.Unmarshal([]byte(inv.SystemsJSON), &inv.Systems)
+		}
+		if inv.ItemsJSON != "" {
+			_ = json.Unmarshal([]byte(inv.ItemsJSON), &inv.Items)
+		}
+		inv.Materials = []model.LeaderInvoiceMaterialItem{}
+		invoiceIDs = append(invoiceIDs, inv.ID)
+		employeeIDs[inv.EmployeeID] = true
+		if inv.ApprovedByEmployeeID != nil {
+			employeeIDs[*inv.ApprovedByEmployeeID] = true
+		}
+		if inv.BookingID != nil {
+			bookingIDs = append(bookingIDs, *inv.BookingID)
+		}
+	}
+
+	// ① المواد — كلها بطلب واحد ثم نوزّعها على فواتيرها
+	materials := []model.LeaderInvoiceMaterialItem{}
+	if err := r.db.Select(&materials, `
+		SELECT * FROM "LeaderInvoiceMaterialItem"
+		WHERE "leaderInvoiceId" = ANY($1) ORDER BY "createdAt"`, pq.Array(invoiceIDs)); err != nil {
+		return err
+	}
+	byInvoice := map[string][]model.LeaderInvoiceMaterialItem{}
+	for _, m := range materials {
+		byInvoice[m.LeaderInvoiceID] = append(byInvoice[m.LeaderInvoiceID], m)
+	}
+
+	// ② الحجوزات وما يتعلق بيها (زبون، خدمة، كادر منفّذ)
+	bookings := map[string]*model.Booking{}
+	assignmentsByBooking := map[string][]model.BookingAssignment{}
+	if len(bookingIDs) > 0 {
+		rows := []model.Booking{}
+		if err := r.db.Select(&rows, `SELECT * FROM "Booking" WHERE id = ANY($1)`, pq.Array(bookingIDs)); err != nil {
+			return err
+		}
+		customerIDs := []string{}
+		serviceIDs := []string{}
+		foundIDs := make([]string, 0, len(rows))
+		for i := range rows {
+			b := &rows[i]
+			bookings[b.ID] = b
+			foundIDs = append(foundIDs, b.ID)
+			customerIDs = append(customerIDs, b.CustomerID)
+			if b.ServiceID != nil {
+				serviceIDs = append(serviceIDs, *b.ServiceID)
+			}
+		}
+
+		customers := []model.Customer{}
+		if err := r.db.Select(&customers, `SELECT * FROM "Customer" WHERE id = ANY($1)`, pq.Array(customerIDs)); err != nil {
+			return err
+		}
+		customerByID := map[string]*model.Customer{}
+		for i := range customers {
+			customerByID[customers[i].ID] = &customers[i]
+		}
+
+		serviceByID := map[string]*model.Service{}
+		if len(serviceIDs) > 0 {
+			services := []model.Service{}
+			if err := r.db.Select(&services, `SELECT * FROM "Service" WHERE id = ANY($1)`, pq.Array(serviceIDs)); err != nil {
+				return err
+			}
+			for i := range services {
+				serviceByID[services[i].ID] = &services[i]
+			}
+		}
+
+		assignments := []model.BookingAssignment{}
+		if err := r.db.Select(&assignments, `
+			SELECT * FROM "BookingAssignment" WHERE "bookingId" = ANY($1)`, pq.Array(foundIDs)); err != nil {
+			return err
+		}
+		for _, a := range assignments {
+			employeeIDs[a.EmployeeID] = true
+			assignmentsByBooking[a.BookingID] = append(assignmentsByBooking[a.BookingID], a)
+		}
+
+		for id, b := range bookings {
+			b.Customer = customerByID[b.CustomerID]
+			if b.ServiceID != nil {
+				b.Service = serviceByID[*b.ServiceID]
+			}
+			b.Assignments = assignmentsByBooking[id]
+		}
+	}
+
+	// ③ الموظفون — الليدرات والمعتمدون والكادر المنفّذ، كلهم بطلب واحد
+	ids := make([]string, 0, len(employeeIDs))
+	for id := range employeeIDs {
+		ids = append(ids, id)
+	}
+	employees := []model.Employee{}
+	if len(ids) > 0 {
+		if err := r.db.Select(&employees, `SELECT * FROM "Employee" WHERE id = ANY($1)`, pq.Array(ids)); err != nil {
+			return err
+		}
+	}
+	employeeByID := map[string]*model.Employee{}
+	for i := range employees {
+		employeeByID[employees[i].ID] = &employees[i]
+	}
+
+	// الكادر المنفّذ ينلزق بتعييناته بعد ما صار عدنا كل الموظفين
+	for _, list := range assignmentsByBooking {
+		for i := range list {
+			if e := employeeByID[list[i].EmployeeID]; e != nil {
+				list[i].Employee = *e
+			}
+		}
+	}
+
+	// ④ الدمج النهائي
+	for i := range invoices {
+		inv := &invoices[i]
+		if m := byInvoice[inv.ID]; m != nil {
+			inv.Materials = m
+		}
+		if e := employeeByID[inv.EmployeeID]; e != nil {
+			inv.EmployeeName = e.Name
+			inv.EmployeeRole = e.Role
+			inv.EmployeePhone = e.Phone
+		}
+		if inv.ApprovedByEmployeeID != nil {
+			if e := employeeByID[*inv.ApprovedByEmployeeID]; e != nil {
+				name := e.Name
+				inv.ApprovedByName = &name
+			}
+		}
+		if inv.BookingID != nil {
+			if b := bookings[*inv.BookingID]; b != nil {
+				code := b.Code
+				inv.BookingCode = &code
+				inv.Booking = b
+			}
+		}
+	}
+	return nil
+}
+
+// FindByExternalNumber يدوّر فاتورة برقم المحاسب الخارجي — هذا سبب
+// أرشفة الرقم أصلاً: يلكاها بيه لمن يحتاجها.
+func (r *LeaderInvoiceRepository) FindByExternalNumber(number string) (*model.LeaderInvoice, error) {
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `
+		SELECT * FROM "LeaderInvoice"
+		WHERE lower(btrim("externalInvoiceNumber")) = lower(btrim($1))
+		LIMIT 1
+	`, number)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+// SetExternalNumber يربط رقم الفاتورة المحاسبية بفاتورة معتمدة أصلاً —
+// للفواتير الي انعتمدت قبل ما يصير الرقم إجبارياً.
+// ═══ حكم المحاسب الي انتأشّر على الحجز قبل ما توصل الفاتورة ═══
+//
+// ⚠️⚠️ **الفجوة الي تسدّها**: المحاسب يدقّق الحجز يوم إنجازه، والليدر
+// يرفع فاتورته بعدها بيوم أو أسبوع. فلمن أشّر «خطأ بالسعر» ما چان
+// اكو فاتورة تنختم — والفاتورة الي وصلت بعده بدت **نظيفة بلا حكم**،
+// فراحت لطابور التدقيق والمحاسب لازم يعيد نفس الحكم مرة ثانية.
+//
+// ⚠️ والترتيب مقصود: **البلاغ يسبق التدقيق**. حجز عليه بلاغ «خطأ
+// بالسعر» **وأيضاً** مؤشّر مدقق (لأن المحاسب صحّح المبلغ بعدها)
+// يورّث البلاغ — الحكم السلبي أولى بالانتباه من الإيجابي.
+func (r *LeaderInvoiceRepository) bookingVerdict(bookingID string) (verdict, note string, amount *float64, byID string) {
+	if bookingID == "" {
+		return "", "", nil, ""
+	}
+	var row struct {
+		Kind    *string  `db:"kind"`
+		Note    *string  `db:"note"`
+		Actual  *float64 `db:"actualAmount"`
+		Raised  *string  `db:"raisedById"`
+		Verif   bool     `db:"amountVerified"`
+		Collect *float64 `db:"amountCollected"`
+	}
+	err := r.db.Get(&row, `
+		SELECT i.kind, i.note, i."actualAmount", i."raisedById",
+		       b."amountVerified", b."amountCollected"
+		FROM "Booking" b
+		LEFT JOIN LATERAL (
+			SELECT kind, note, "actualAmount", "raisedById"
+			FROM "BookingAuditIssue"
+			WHERE "bookingId" = b.id AND status = 'OPEN'
+			ORDER BY "createdAt" DESC LIMIT 1
+		) i ON TRUE
+		WHERE b.id = $1`, bookingID)
+	if err != nil {
+		return "", "", nil, ""
+	}
+	if row.Kind != nil && *row.Kind != "" {
+		n := ""
+		if row.Note != nil {
+			n = *row.Note
+		}
+		by := ""
+		if row.Raised != nil {
+			by = *row.Raised
+		}
+		// نفس مفردات حكم الفاتورة — MISMATCH و PRICE_ERROR بنفس الاسم
+		return *row.Kind, n, row.Actual, by
+	}
+	if row.Verif {
+		return "MATCHED", "", row.Collect, ""
+	}
+	return "", "", nil, ""
+}
+
+// ═══ المحاسب يرسلها للمراقب ═══
+//
+// ⚠️ **يمسح قرار المراقب السابق**: فاتورة انرسلت مرة ثانية بعد ما
+// انبتّ بيها لازم تبدي نظيفة — وإلا تظهر «عند المراقب» وعليها حكمه
+// القديم، والمراقب يظن أحداً بتّ بيها قبله.
+func (r *LeaderInvoiceRepository) RequestMonitorReview(id, byEmployeeID, note string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "monitorRequestedAt" = CURRENT_TIMESTAMP,
+		    "monitorRequestedById" = $2,
+		    "monitorRequestNote" = NULLIF($3, ''),
+		    "monitorDecidedAt" = NULL, "monitorDecidedById" = NULL,
+		    "monitorVerdict" = NULL, "monitorNote" = NULL
+		WHERE id = $1 AND status <> 'APPROVED'
+		  AND "auditVerdict" IS NOT NULL AND btrim("auditVerdict") <> ''`, id, byEmployeeID, note)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة معتمدة أصلاً أو ما انتدققت بعد")
+	}
+	return r.GetByID(id)
+}
+
+// ═══ المراقب يبتّ بيها ═══
+//
+// ⚠️ ترجع للمحاسب **بحكمها ظاهراً** — ما تنعتمد ولا تنرفض تلقائياً.
+// المراقب يراجع ويأشّر، والقرار المالي يبقى بيد المحاسب.
+func (r *LeaderInvoiceRepository) DecideMonitorReview(id, verdict, note, byEmployeeID string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "monitorDecidedAt" = CURRENT_TIMESTAMP,
+		    "monitorDecidedById" = $2, "monitorVerdict" = $3, "monitorNote" = NULLIF($4, '')
+		WHERE id = $1 AND `+atMonitorSQL, id, byEmployeeID, verdict, note)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة مو عند المراقب — أو انبتّ بيها من قبل")
+	}
+	return r.GetByID(id)
+}
+
+// ═══ المالك يرجّعها للمحاسب ═══
+//
+// ⚠️ **تمسح الحكم وترجّعها لأول الطابور**: الغرض إن المحاسب «يرتّبها
+// من جديد»، وإرجاعها بحكمها القديم يخلّيها بطابور الاعتماد مباشرة —
+// يعني ما رجعت فعلياً.
+//
+// ⚠️ ورقم الفاتورة المحاسبية **يبقى**: صادر من نظام المحاسب فعلاً،
+// ومحوه عدنا ما يمحيه عنده. نفس قاعدة سحب الاعتماد الموجودة.
+func (r *LeaderInvoiceRepository) ReturnToAccountant(id, byEmployeeID, reason string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET status = 'SUBMITTED',
+		    "auditVerdict" = NULL, "auditNote" = NULL, "auditedById" = NULL,
+		    "auditedAt" = NULL, "auditedAmount" = NULL,
+		    "approvedByEmployeeId" = NULL, "approvedAt" = NULL,
+		    "monitorRequestedAt" = NULL, "monitorRequestedById" = NULL, "monitorRequestNote" = NULL,
+		    "monitorDecidedAt" = NULL, "monitorDecidedById" = NULL,
+		    "monitorVerdict" = NULL, "monitorNote" = NULL,
+		    "returnedAt" = CURRENT_TIMESTAMP, "returnedById" = $2,
+		    "returnReason" = $3, "returnedCount" = "returnedCount" + 1
+		WHERE id = $1`, id, byEmployeeID, reason)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة غير موجودة")
+	}
+	return r.GetByID(id)
+}
+
+func (r *LeaderInvoiceRepository) SetExternalNumber(id, number string) (*model.LeaderInvoice, error) {
+	var inv model.LeaderInvoice
+	err := r.db.Get(&inv, `
+		UPDATE "LeaderInvoice"
+		SET "externalInvoiceNumber" = $2, "externalInvoiceAt" = CURRENT_TIMESTAMP
+		WHERE id = $1
+		RETURNING *
+	`, id, number)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+// AdjustAmounts يعدّل مبالغ الفاتورة — للمحاسب حصراً.
+// تقدير الإداري يطلع غلط أحياناً والفاتورة الي بيد الليدر هي الصح،
+// فالمحاسب لازم يكدر يطابق. نخزن سبب التعديل حتى يبقى أثر.
+func (r *LeaderInvoiceRepository) AdjustAmounts(id string, executionCost, materialsTotal, discountValue float64, reason, byEmployeeID string) (*model.LeaderInvoice, error) {
+	net := executionCost + materialsTotal - discountValue
+	if net < 0 {
+		net = 0
+	}
+
+	// ⚠️ معاملة وحدة: السجل والتعديل سوة أو ولا واحد.
+	// لو انحفظ التعديل وفشل السجل، ضاعت الأرقام الأصلية للأبد وما
+	// نعرف حتى إنها ضاعت — وهذا بالضبط الخلل الي نصلّحه.
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	// نقفل الصف ونقرا القيم **قبل** التعديل
+	var before model.LeaderInvoice
+	if err := tx.Get(&before, `SELECT * FROM "LeaderInvoice" WHERE id = $1 FOR UPDATE`, id); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	if _, err := tx.Exec(`
+		INSERT INTO "LeaderInvoiceAdjustment"
+			(id, "invoiceId",
+			 "oldExecutionCost", "newExecutionCost",
+			 "oldMaterialsTotal", "newMaterialsTotal",
+			 "oldDiscountValue", "newDiscountValue",
+			 "oldNetTotal", "newNetTotal",
+			 reason, "adjustedById")
+		VALUES (gen_random_uuid()::text, $1, $2,$3, $4,$5, $6,$7, $8,$9, $10, NULLIF($11,''))`,
+		id,
+		before.ExecutionCost, executionCost,
+		before.MaterialsTotal, materialsTotal,
+		before.DiscountValue, discountValue,
+		before.NetTotal, net,
+		reason, byEmployeeID); err != nil {
+		return nil, err
+	}
+
+	var inv model.LeaderInvoice
+	err = tx.Get(&inv, `
+		UPDATE "LeaderInvoice"
+		SET "executionCost" = $2, "materialsTotal" = $3, "discountValue" = $4, "netTotal" = $5,
+		    "adjustedReason" = $6, "adjustedAt" = CURRENT_TIMESTAMP
+		WHERE id = $1
+		RETURNING *
+	`, id, executionCost, materialsTotal, discountValue, net, reason)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	if err := r.hydrate(&inv); err != nil {
+		return nil, err
+	}
+	return &inv, nil
+}
+
+// FreeReason سبب مجانية واحد بالمعرّف.
+func (r *LeaderInvoiceRepository) FreeReason(id string) (*model.FreeWorkReason, error) {
+	var fr model.FreeWorkReason
+	if err := r.db.Get(&fr, `SELECT id, label, "sortOrder", active, "needsNote" FROM "FreeWorkReason" WHERE id = $1 AND active`, id); err != nil {
+		return nil, err
+	}
+	return &fr, nil
+}
+
+// FreeReasons قائمة أسباب المجانية الفعّالة — تعبّي القائمة بالواجهة.
+func (r *LeaderInvoiceRepository) FreeReasons() ([]model.FreeWorkReason, error) {
+	rows := []model.FreeWorkReason{}
+	err := r.db.Select(&rows, `
+		SELECT id, label, "sortOrder", active, "needsNote"
+		FROM "FreeWorkReason" WHERE active ORDER BY "sortOrder" ASC, label ASC`)
+	return rows, err
+}
+
+// attachFreeReasonLabels يعبّي اسم سبب المجانية للعرض.
+func (r *LeaderInvoiceRepository) attachFreeReasonLabels(invoices []model.LeaderInvoice) {
+	need := false
+	for i := range invoices {
+		if invoices[i].FreeReasonID != nil {
+			need = true
+			break
+		}
+	}
+	if !need {
+		return
+	}
+	reasons, err := r.FreeReasons()
+	if err != nil {
+		return
+	}
+	byID := map[string]string{}
+	for _, x := range reasons {
+		byID[x.ID] = x.Label
+	}
+	for i := range invoices {
+		if invoices[i].FreeReasonID != nil {
+			if label, ok := byID[*invoices[i].FreeReasonID]; ok {
+				l := label
+				invoices[i].FreeReasonLabel = &l
+			}
+		}
+	}
+}
+
+
+// Adjustments سجل تعديلات فاتورة — الأحدث أول.
+func (r *LeaderInvoiceRepository) Adjustments(invoiceID string) ([]model.LeaderInvoiceAdjustment, error) {
+	rows := []model.LeaderInvoiceAdjustment{}
+	err := r.db.Select(&rows, `
+		SELECT a.*, e.name AS "adjustedByName"
+		FROM "LeaderInvoiceAdjustment" a
+		LEFT JOIN "Employee" e ON e.id = a."adjustedById"
+		WHERE a."invoiceId" = $1
+		ORDER BY a."createdAt" DESC`, invoiceID)
+	return rows, err
+}
+
+// ListByBooking فواتير حجز — للخط الزمني ولصفوف المراقب.
+//
+// ⚠️ "bookingId" ما كان ينستعمل بأي WHERE قبل هذا، مع إنه عمود
+// مفهرس — يعني الربط كان موجود بالبيانات وما ينستغل.
+func (r *LeaderInvoiceRepository) ListByBooking(bookingID string) ([]model.LeaderInvoice, error) {
+	rows := []model.LeaderInvoice{}
+	err := r.db.Select(&rows, `
+		SELECT * FROM "LeaderInvoice" WHERE "bookingId" = $1 ORDER BY "createdAt" ASC`, bookingID)
+	return rows, err
+}
+
+// ═══ التدقيق ═══
+
+// SetAuditVerdict يحفظ حكم المحاسب — قبل الاعتماد.
+//
+// ⚠️ ما ينحفظ على فاتورة معتمدة: الحكم خطوة **قبل** الاعتماد، وتغييره
+// بعده يخلي الاعتماد مبنياً على حكم انتبدّل ورا ظهره.
+func (r *LeaderInvoiceRepository) SetAuditVerdict(id, verdict, note, byEmployeeID string, amount *float64) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "auditVerdict" = $2, "auditNote" = NULLIF($3,''), "auditedById" = $4,
+		    "auditedAt" = now(), "auditedAmount" = $5
+		WHERE id = $1 AND status <> 'APPROVED'`,
+		id, verdict, note, byEmployeeID, amount)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة معتمدة أصلاً — اسحب الاعتماد قبل ما تغيّر الحكم")
+	}
+	return r.GetByID(id)
+}
+
+// RevokeApproval يسحب اعتماد فاتورة انعتمدت بالغلط.
+//
+// «سوّه اعتماد لفاتورة وبالغلط راحت… لازم تخليلي خيار أكدر أرجعله
+// الفواتير الما معتمدة».
+//
+// ⚠️ ما نمحي رقم الفاتورة المحاسبية: الرقم انصدر بالنظام الثاني فعلاً،
+// ومحوه هنا يخلي التطابق بين النظامين مستحيل بعدين. يبقى بالسجل مع
+// سبب السحب ومنو سحب.
+//
+// ⚠️ وما نصفّر الحكم: المحاسب يشوف على شنو انبنى الاعتماد الملغي.
+//
+// ⚠️ revokedCount يتزايد: فاتورة انسحب اعتمادها ثلاث مرات علامة على
+// خلل — إما بالتدقيق أو بالفاتورة نفسها.
+func (r *LeaderInvoiceRepository) RevokeApproval(id, reason, byEmployeeID string) (*model.LeaderInvoice, error) {
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET status = 'SUBMITTED',
+		    "revokedAt" = now(), "revokedById" = $2, "revokeReason" = $3,
+		    "revokedCount" = "revokedCount" + 1,
+		    "approvedByEmployeeId" = NULL, "approvedAt" = NULL
+		WHERE id = $1 AND status = 'APPROVED'`,
+		id, byEmployeeID, reason)
+	if err != nil {
+		return nil, err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil, errors.New("الفاتورة مو معتمدة أصلاً")
+	}
+	return r.GetByID(id)
+}
+
+// ListApprovedWithoutNumber الفواتير المعتمدة بلا رقم فاتورة محاسبية.
+//
+// هذي **الفجوة الي كلّفت**: انعتمدت قبل ما يصير الرقم إجبارياً، أو
+// بمسار ما فحص. المحاسب لازم يشوفها ويعالجها — إما يحط الرقم أو
+// يسحب الاعتماد.
+func (r *LeaderInvoiceRepository) ListApprovedWithoutNumber() ([]model.LeaderInvoice, error) {
+	rows := []model.LeaderInvoice{}
+	err := r.db.Select(&rows, `
+		SELECT * FROM "LeaderInvoice"
+		WHERE status = 'APPROVED'
+		  AND ("externalInvoiceNumber" IS NULL OR btrim("externalInvoiceNumber") = '')
+		ORDER BY "approvedAt" DESC NULLS LAST`)
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		_ = r.hydrate(&rows[i])
+	}
+	return rows, nil
+}

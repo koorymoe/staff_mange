@@ -1,0 +1,89 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: staffmange
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: staffmange
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U staffmange"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend-go
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DATABASE_URL: postgresql://staffmange:${DB_PASSWORD}@db:5432/staffmange?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      R2_BUCKET: ${R2_BUCKET:-}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY:-}
+      R2_SECRET_KEY: ${R2_SECRET_KEY:-}
+      R2_ENDPOINT: ${R2_ENDPOINT:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
+      TUTORIALS_DIR: /app/tutorials
+      # مجلد رفع الملفات — لازم يكون فوليوم دائم، مو داخل الصورة، وإلا
+      # كل الصور والوصولات تروح مع أول إعادة نشر.
+      UPLOADS_DIR: /app/uploads
+      # بيانات دخول حساب المالك — تنقرأ من .env بالسيرفر فقط، أبداً من الكود.
+      OWNER_USERNAME: ${OWNER_USERNAME:-}
+      OWNER_PASSWORD: ${OWNER_PASSWORD:-}
+    volumes:
+      # المساعد الذكي يقرأ أدلة الاستخدام (tutorial-*.html و guide-*.txt) وقت التشغيل
+      # حتى يشرح للموظفين شلون يستخدمون النظام — bind-mount بدل نسخها بالصورة حتى
+      # نقدر نحدّث محتوى الأدلة بدون إعادة بناء صورة الباك اند.
+      - ./tutorials:/app/tutorials:ro
+      # الملفات المرفوعة (صور المنتجات، الوصولات، وثائق السيارات)
+      - uploads_data:/app/uploads
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        # service_healthy مو مجرد service started — لازم /api/health يرد فعلاً
+        # قبل ما فرونت إند/كادي يعتمدون على الباك إند شغّال، مو بس الحاوية بدأت.
+        condition: service_healthy
+    # ملاحظة أمنية: نربط المنفذ بالعنوان المحلي فقط. قبل، "8081:80" جان
+    # يفتحه على كل الواجهات — يعني ممكن الوصول للنظام مباشرةً بـHTTP بلا
+    # تشفير، متجاوزاً Caddy وHTTPS. الوصول الخارجي يجي عبر Caddy حصراً.
+    ports:
+      - "127.0.0.1:8081:80"
+
+  # عكس-وكيل (reverse proxy) بشهادة أمان تلقائية مجانية (HTTPS) عن طريق
+  # الدومين — Caddy يجدد الشهادة تلقائياً بدون أي تدخل يدوي (بخلاف certbot).
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - frontend
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  db_data:
+  uploads_data:
+  caddy_data:
+  caddy_config:
