@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"staffmange-api/internal/middleware"
 	"net/http"
 
 	"staffmange-api/internal/model"
@@ -17,9 +18,12 @@ func NewTrainingHandler(s *service.TrainingService) *TrainingHandler {
 
 // GET /api/v1/training/materials/mine?employeeId=
 func (h *TrainingHandler) MaterialsMine(w http.ResponseWriter, r *http.Request) {
-	employeeID := r.URL.Query().Get("employeeId")
+	// ⚠️⚠️ اسمه «مالتي» بس چان ياخذ الرقم **من الرابط** مو من
+	// الجلسة — يعني أي موظف يبدّل الرقم ويقرا مواد تدريب زميله.
+	// الرقم صار من الجلسة دائماً، والي بالرابط ينتجاهل.
+	employeeID := middleware.EmployeeIDFromContext(r)
 	if employeeID == "" {
-		WriteError(w, http.StatusBadRequest, "employeeId is required")
+		WriteError(w, http.StatusUnauthorized, "جلسة غير صالحة")
 		return
 	}
 	result, err := h.service.MaterialsMine(employeeID)
@@ -32,6 +36,10 @@ func (h *TrainingHandler) MaterialsMine(w http.ResponseWriter, r *http.Request) 
 
 // GET /api/v1/training/assignments/{employeeId}
 func (h *TrainingHandler) Assignments(w http.ResponseWriter, r *http.Request) {
+	// تعيينات تدريب موظف = سجل شخصي: صاحبه أو مشرفه.
+	if !requireSelfOrSupervisor(w, r, r.PathValue("employeeId")) {
+		return
+	}
 	services, err := h.service.Assignments(r.PathValue("employeeId"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب التعيينات")

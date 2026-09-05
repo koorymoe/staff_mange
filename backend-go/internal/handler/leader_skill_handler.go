@@ -21,6 +21,11 @@ func NewLeaderSkillHandler(r *repository.LeaderSkillRepository) *LeaderSkillHand
 // القراءة لأي موظف مسجَّل: الموظف نفسه يشوف تقييمه، وتقييم يشوفه
 // صاحبه أنفع من تقييم مخبّى عنه.
 func (h *LeaderSkillHandler) List(w http.ResponseWriter, r *http.Request) {
+	// ⚠️ «الموظف يشوف تقييمه» صح — بس چان يشوف تقييم **أي زميل**
+	// بتبديل الرقم بالرابط. صاحبه أو مشرفه، لا غير.
+	if !requireSelfOrSupervisor(w, r, r.PathValue("id")) {
+		return
+	}
 	rows, err := h.repo.ListForEmployee(r.PathValue("id"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب تقييم القيادة")

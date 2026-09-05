@@ -43,6 +43,10 @@ func (h *ComplaintHandler) Create(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
+	// ⚠️⚠️ هوية الفاعل چانت تجي **من جسم الطلب** — يعني تنترك فاضية
+	// أو تنكتب باسم موظف ثاني، والشكوى تنسجّل بلا أثر منو سوّاها.
+	// هسه من الجلسة دائماً، والي بالجسم ينتجاهل.
+	req.CreatedByEmployeeID = middleware.EmployeeIDFromContext(r)
 	complaint, err := h.service.Create(req)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

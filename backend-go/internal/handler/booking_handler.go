@@ -28,6 +28,60 @@ func NewBookingHandler(s *service.BookingService, p *repository.PermissionReposi
 	return &BookingHandler{service: s, permissions: p}
 }
 
+// requireAllBookings يرفض من ما يشوف حجوزات الشركة.
+//
+// ⚠️ تنستعمل للمسارات الي **ماكو إلها نطاق شخصي** (بحث بكل
+// الحجوزات، عدّادات المحطات، الخط الزمني، سجل التعديلات) —
+// وكلها تنستدعى من شاشات ذات صلاحية عريضة أصلاً، فالترفيض هنا
+// ما يكسر أحداً. بعكس القائمة الي تضيق لصاحبها.
+func (h *BookingHandler) requireAllBookings(w http.ResponseWriter, r *http.Request) bool {
+	if h.canSeeAllBookings(r) {
+		return true
+	}
+	WriteError(w, http.StatusForbidden, "ما عندك صلاحية تشوف حجوزات غيرك")
+	return false
+}
+
+// ═══ منو يشوف حجوزات الشركة كلها؟ ═══
+//
+// ⚠️⚠️ `GET /api/bookings` چان عليه `requireAuth` **بس** — يعني أي
+// موظف مسجّل دخول يقرا كل حجوزات الشركة بأسماء الزبائن وأرقامهم
+// وعناوينهم بنداء مباشر، حتى لو القائمة الجانبية ما تعرضله الشاشة.
+//
+// ⚠️⚠️ **وليش ما نحط حارس بسيط بالمسار**: القائمة تنستدعى من ١٥
+// موضع بالواجهة، وثلاثة منهن لناس **ما عندهم `view_bookings`
+// إطلاقاً** — الليدر بحساب الكلفة (`execution_cost`)، وأبو الكميات
+// بطلبات المواد (`procurement`)، والفني بتقرير العمل (بلا أي
+// حارس). حارس بالمسار يفرّغ هالثلاث شاشات لناس شغّالين اليوم.
+//
+// فالحل **يضيق النطاق لا يترفض**: الي ما عنده صلاحية شاملة يشوف
+// **حجوزاته هو** بدل حجوزات الشركة. نفس نمط `ExpenseHandler.canSeeAll`
+// الموجود أصلاً بالمشروع — ما ينبنى نمط جديد.
+func (h *BookingHandler) canSeeAllBookings(r *http.Request) bool {
+	switch middleware.RoleFromContext(r) {
+	case "ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE",
+		"PROJECT_MANAGER", "PROCUREMENT_ADMIN":
+		return true
+	}
+	if h.permissions == nil {
+		return false
+	}
+	rows, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		// ⚠️ فشل القراءة يضيّق ما يوسّع: خطأ بقاعدة البيانات ما يصير
+		// يفتح كل حجوزات الشركة.
+		return false
+	}
+	for _, p := range rows {
+		switch p.Name {
+		case "view_bookings", "coordinator", "sales_booking", "crew_management",
+			"mission_tracking", "procurement", "monitoring", "finance":
+			return true
+		}
+	}
+	return false
+}
+
 // SetReminderService يربط خدمة التذكير بعد البناء.
 func (h *BookingHandler) SetReminderService(r *service.BookingReminderService) { h.reminders = r }
 
@@ -59,6 +113,19 @@ func (h *BookingHandler) List(w http.ResponseWriter, r *http.Request) {
 		bookings, err := h.service.ListAssignedTo(middleware.EmployeeIDFromContext(r))
 		if err != nil {
 			WriteError(w, http.StatusInternalServerError, "تعذر جلب مهامك")
+			return
+		}
+		WriteJSON(w, http.StatusOK, bookings)
+		return
+	}
+	// ⚠️ بلا صلاحية شاملة ← حجوزاته هو، مو ٤٠٣: تقرير العمل وحساب
+	// الكلفة وطلبات المواد كلهن ينادون هالمسار لناس ما عندهم
+	// `view_bookings`. الترفيض يفرّغ شاشاتهم؛ التضييق يخليهم
+	// يشوفون شغلهم هم — وهذا الصح أصلاً.
+	if !h.canSeeAllBookings(r) {
+		bookings, err := h.service.ListAssignedTo(middleware.EmployeeIDFromContext(r))
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزاتك")
 			return
 		}
 		WriteJSON(w, http.StatusOK, bookings)
@@ -148,6 +215,9 @@ func (h *BookingHandler) UpdateDetails(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/bookings/{id}/schedule-log
 func (h *BookingHandler) ScheduleLog(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAllBookings(w, r) {
+		return
+	}
 	logs, err := h.service.ScheduleLog(r.PathValue("id"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل التعديلات")
@@ -341,6 +411,9 @@ func (h *BookingHandler) Complete(w http.ResponseWriter, r *http.Request) {
 // ⚠️ مسار مستقل مو تعديل على `/bookings`: عشرات الشاشات تنادي الأصلي
 // وتتوقع مصفوفة. تغيير شكل جوابه يكسرهن كلهن بضربة وحدة.
 func (h *BookingHandler) Paged(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAllBookings(w, r) {
+		return
+	}
 	q := r.URL.Query()
 	page, _ := strconv.Atoi(q.Get("page"))
 	pageSize, _ := strconv.Atoi(q.Get("pageSize"))
@@ -368,6 +441,9 @@ func (h *BookingHandler) Paged(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/bookings/locate?q=... — «وين هذا الحجز؟»
 func (h *BookingHandler) Locate(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAllBookings(w, r) {
+		return
+	}
 	items, err := h.service.LocateBookings(r.URL.Query().Get("q"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر البحث")
@@ -381,6 +457,9 @@ func (h *BookingHandler) Locate(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/bookings/station-counts — كم حجز بكل محطة.
 func (h *BookingHandler) StationCounts(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAllBookings(w, r) {
+		return
+	}
 	counts, err := h.service.StationCounts()
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر حساب العدّادات")
@@ -655,6 +734,9 @@ func (h *BookingHandler) StageBucketCounts(w http.ResponseWriter, r *http.Reques
 
 // GET /api/bookings/{id}/timeline — قصة الحجز كاملة + التأخيرات.
 func (h *BookingHandler) Timeline(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAllBookings(w, r) {
+		return
+	}
 	if h.timeline == nil {
 		WriteError(w, http.StatusServiceUnavailable, "الخط الزمني مو مربوط")
 		return

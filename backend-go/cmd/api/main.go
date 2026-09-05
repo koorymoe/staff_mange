@@ -217,6 +217,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService, permissionRepo)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
+	// أبو الكميات ومتابع الجرد يشوفون عدة غيرهم بصلاحيتهم.
+	inventoryHandler.SetPermissions(permissionRepo)
 	revolvingFundHandler := handler.NewRevolvingFundHandler(revolvingFundRepo)
 	dashboardHandler := handler.NewDashboardHandler(db)
 	leaveHandler := handler.NewLeaveRequestHandler(repository.NewLeaveRequestRepository(db), permissionRepo, notificationRepo)
@@ -363,6 +365,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	designFormHandler := handler.NewDesignFormHandler(designFormService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
+	// مهندس الجودة يراجع تقارير غيره بصلاحيته، مو بدوره.
+	workReportHandler.SetPermissions(permissionRepo)
 	statsHandler := handler.NewStatsHandler(statsService)
 	vehicleHandler := handler.NewVehicleHandler(vehicleService)
 	vehicleMissionHandler := handler.NewVehicleMissionHandler(vehicleMissionService, vehicleMissionRatingService, vehicleBookingService, inventoryService, employeeRepo)
@@ -594,7 +598,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/permissions/role-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.RoleDefaults), requireAuth))
 	// قائمة الموظفين الي يوصلون لصلاحية معيّنة — لتعبئة القوائم المنسدلة
 	// (مثلاً: مين المسؤول عن المشروع، ومين يسوي الكشف)
-	mux.Handle("GET /api/permissions/employees", middleware.Chain(http.HandlerFunc(permissionHandler.EmployeesWithPermission), requireAuth))
+	mux.Handle("GET /api/permissions/employees", middleware.Chain(http.HandlerFunc(permissionHandler.EmployeesWithPermission), requireAuth, requireAdmin))
 	mux.Handle("GET /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.ListForEmployee), requireAuth))
 	mux.Handle("PUT /api/permissions/employee/{id}", middleware.Chain(http.HandlerFunc(permissionHandler.SetForEmployee), requireAuth, requireAdmin))
 	mux.Handle("POST /api/permissions/employee/{id}/apply-defaults", middleware.Chain(http.HandlerFunc(permissionHandler.ApplyDefaults), requireAuth, requireAdmin))
@@ -618,9 +622,23 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/services/{id}/manager-paperwork", middleware.Chain(http.HandlerFunc(serviceHandler.SetManagerPaperwork), requireAuth, requireAdmin))
 
 	// العملاء — أي مسجل دخول يقدر يبحث وينشئ عميل (يطابق سلوك المبيعات بالباك إند القديم)
-	mux.Handle("GET /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth))
-	mux.Handle("GET /api/customers/gps", middleware.Chain(http.HandlerFunc(customerHandler.ListGps), requireAuth))
-	mux.Handle("GET /api/customers/lookup", middleware.Chain(http.HandlerFunc(customerHandler.Lookup), requireAuth))
+	// ═══ بيانات الزبائن — أسماء وأرقام هواتف وعناوين ═══
+	//
+	// ⚠️⚠️ چانت `requireAuth` بس: أي موظف مسجّل يسحب دليل زبائن
+	// الشركة كامل بنداء واحد. وماكو «نطاق شخصي» للزبائن (بعكس
+	// الحجوزات)، فالحارس هنا يرفض.
+	//
+	// ⚠️ `complaints` و`quality_control` و`monitoring` **إجبارية**
+	// بالقائمة: شاشة الشكاوى تستدعي الزبائن وصاحبها عنده
+	// `complaints` مو `manage_customers` — بدونهن تنكسر شاشة شغّالة.
+	requireCustomerRead := middleware.RequireRoleOrAnyPermission(
+		permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE"},
+		"manage_customers", "sales_booking", "coordinator",
+		"complaints", "quality_control", "monitoring")
+	mux.Handle("GET /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth, requireCustomerRead))
+	mux.Handle("GET /api/customers/gps", middleware.Chain(http.HandlerFunc(customerHandler.ListGps), requireAuth, requireCustomerRead))
+	mux.Handle("GET /api/customers/lookup", middleware.Chain(http.HandlerFunc(customerHandler.Lookup), requireAuth, requireCustomerRead))
 	mux.Handle("POST /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.FindOrCreate), requireAuth, requireCustomerMgmt))
 	mux.Handle("PUT /api/customers/{id}", middleware.Chain(http.HandlerFunc(customerHandler.Update), requireAuth, requireCustomerMgmt))
 
@@ -915,7 +933,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/attendance/export/today", middleware.Chain(http.HandlerFunc(attendanceHandler.ExportToday), requireAuth, requireMonitor))
 	mux.Handle("PUT /api/attendance/{id}", middleware.Chain(http.HandlerFunc(attendanceHandler.Correct), requireAuth, requireMonitor))
 
-	mux.Handle("GET /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth))
+	// كل تقييمات الشركة — حارسها يطابق حارس شاشة «نقاط الكي بي اي».
+	mux.Handle("GET /api/kpi", middleware.Chain(http.HandlerFunc(kpiHandler.List), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "MONITOR"}, "kpi_management")))
 	mux.Handle("GET /api/kpi/employee/{employeeId}", middleware.Chain(http.HandlerFunc(kpiHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/kpi/leaderboard/{role}", middleware.Chain(http.HandlerFunc(kpiHandler.RoleLeaderboard), requireAuth))
 	mux.Handle("GET /api/kpi/leaderboard-by-permission/{permission}", middleware.Chain(http.HandlerFunc(kpiHandler.PermissionLeaderboard), requireAuth))
@@ -948,8 +969,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/smart-kpi/leaderboard", middleware.Chain(http.HandlerFunc(smartKpiHandler.Leaderboard), requireAuth))
 
 	// الشكاوى
-	mux.Handle("GET /api/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.List), requireAuth))
-	mux.Handle("POST /api/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.Create), requireAuth))
+	mux.Handle("GET /api/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.List), requireAuth, requireCustomerRead))
+	mux.Handle("POST /api/complaints", middleware.Chain(http.HandlerFunc(complaintHandler.Create), requireAuth, requireCustomerRead))
 	// تحديث حالة الشكوى وحلّها يقتصران على من يملك صلاحية "quality_control" (نفس
 	// أدوار المتابعة بالواجهة: مهندس الجودة/المراقب/الأدمن) — لا أي موظف مسجل دخول
 	// (مثلاً موظف مبيعات عنده صلاحية "complaints" بس لتسجيل شكوى جديدة فقط).
@@ -959,12 +980,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/complaints/{id}/contact", middleware.Chain(http.HandlerFunc(complaintHandler.SetContacted), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/notes", middleware.Chain(http.HandlerFunc(complaintHandler.SetNotes), requireAuth, requireComplaintContact))
 	mux.Handle("PUT /api/complaints/{id}/resolve", middleware.Chain(http.HandlerFunc(complaintHandler.Resolve), requireAuth, requireQuality))
-	mux.Handle("GET /api/complaints/stats", middleware.Chain(http.HandlerFunc(complaintHandler.Stats), requireAuth))
+	mux.Handle("GET /api/complaints/stats", middleware.Chain(http.HandlerFunc(complaintHandler.Stats), requireAuth, requireCustomerRead))
 	// ⚠️ التدقيق للمالك والمراقب والمدير **بس** — مهندس الجودة ما
 	// يدقّق نفسه، هو الي انتقيّم شغله بهذي الشاشة.
 	mux.Handle("PUT /api/complaints/{id}/audit", middleware.Chain(http.HandlerFunc(complaintHandler.Audit), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "MONITOR"}, "monitoring", "auditing")))
-	mux.Handle("GET /api/complaints/{id}/events", middleware.Chain(http.HandlerFunc(complaintHandler.Events), requireAuth))
+	mux.Handle("GET /api/complaints/{id}/events", middleware.Chain(http.HandlerFunc(complaintHandler.Events), requireAuth, requireCustomerRead))
 	// ⚠️ القراءة تقبل **الدور** مو الصلاحية بس: صاحب النظام طلب
 	// «المراقب لازم يشوف متابعة الجودة كاملة»، وخريطة صلاحيات
 	// الأدوار **ما تنطبّق تلقائياً** — فمراقب ما انضغط عليه «طبّق
@@ -1175,7 +1196,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// باب — يخلي الي عنده الحق يوصله.
 	mux.Handle("POST /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Create), requireAuth,
 		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "kpi_management", "performance_review")))
-	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth))
+	// كل تقييمات الأداء — سجلات شخصية، للإدارة والمراقبة.
+	mux.Handle("GET /api/performance-reviews", middleware.Chain(http.HandlerFunc(performanceReviewHandler.List), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "MONITOR", "HR_COORDINATOR"}, "performance_review", "kpi_management", "staff_management")))
 	mux.Handle("GET /api/performance-reviews/ratable", middleware.Chain(http.HandlerFunc(performanceReviewHandler.Ratable), requireAuth))
 	mux.Handle("GET /api/performance-reviews/employee/{employeeId}", middleware.Chain(http.HandlerFunc(performanceReviewHandler.ListForEmployee), requireAuth))
 	mux.Handle("GET /api/performance-reviews/my-bookings", middleware.Chain(http.HandlerFunc(performanceReviewHandler.MyBookings), requireAuth))
@@ -1618,7 +1642,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/leader-invoices/approved-without-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ApprovedWithoutNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/external-number", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.SetExternalNumber), requireAuth, requireFinance))
 	mux.Handle("PUT /api/leader-invoices/{id}/adjust", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjust), requireAuth, requireFinance))
-	mux.Handle("GET /api/leader-invoices/{id}/adjustments", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.Adjustments), requireAuth))
+	// ⚠️ الحارس يطابق حارس شاشة فواتير الليدر بالضبط
+	// (`navTree.tsx`: ADMIN·FINANCE·MONITOR + `leader_invoices_view`).
+	// حارس المراقبة وحده **يكسر المحاسب** — وهو الي يدقّق المبالغ
+	// ويطبع الفاتورة بتعديلاتها.
+	mux.Handle("GET /api/leader-invoices/{id}/adjustments", middleware.Chain(
+		http.HandlerFunc(leaderInvoiceHandler.Adjustments), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"},
+			"leader_invoices_view", "finance", "monitoring", "auditing")))
 
 	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER
 	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).

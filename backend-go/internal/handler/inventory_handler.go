@@ -5,15 +5,46 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
 type InventoryHandler struct {
 	service *service.InventoryService
+	// permissions: منو يشوف عدة غيره (أبو الكميات ومتابع الجرد).
+	permissions *repository.PermissionRepository
 }
 
 func NewInventoryHandler(s *service.InventoryService) *InventoryHandler {
 	return &InventoryHandler{service: s}
+}
+
+// SetPermissions يربط مستودع الصلاحيات بعد البناء.
+func (h *InventoryHandler) SetPermissions(p *repository.PermissionRepository) { h.permissions = p }
+
+// canSeeOthersTools منو يشوف عدة موظف غيره.
+//
+// ⚠️ الأدوار وحدها ما تكفي: **أبو الكميات** (`PROCUREMENT_ADMIN`) مو
+// ضمن `canSeeOperational`، وهو صاحب شاشة الجرد الأصلية — فالاعتماد
+// على الدور بس يكسر شغله.
+func (h *InventoryHandler) canSeeOthersTools(r *http.Request) bool {
+	if canSeeOperational(middleware.RoleFromContext(r)) ||
+		middleware.RoleFromContext(r) == "PROCUREMENT_ADMIN" {
+		return true
+	}
+	if h.permissions == nil {
+		return false
+	}
+	rows, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		return false
+	}
+	for _, p := range rows {
+		if p.Name == "inventory" || p.Name == "inventory_follow" {
+			return true
+		}
+	}
+	return false
 }
 
 // ── Inventory Checks ──────────────────────────────────────────────────────────
@@ -75,7 +106,15 @@ func (h *InventoryHandler) ResolveInventoryCheck(w http.ResponseWriter, r *http.
 // ── Personal Tools ──────────────────────────────────────────────────────────
 
 func (h *InventoryHandler) ListPersonalTools(w http.ResponseWriter, r *http.Request) {
-	tools, err := h.service.ListPersonalTools(r.URL.Query().Get("employeeId"))
+	// ⚠️ چان أي موظف يبدّل الرقم بالرابط ويقرا عدة أي زميل — أو
+	// يتركه فاضي فيجيب عدة الشركة كلها. هسه: صاحب الجرد يشوف الكل،
+	// وغيره **عدته هو** مهما كتب.
+	employeeID := r.URL.Query().Get("employeeId")
+	self := middleware.EmployeeIDFromContext(r)
+	if employeeID != self && !h.canSeeOthersTools(r) {
+		employeeID = self
+	}
+	tools, err := h.service.ListPersonalTools(employeeID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الأدوات الشخصية")
 		return

@@ -6,16 +6,48 @@ import (
 	"strings"
 
 	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/service"
 )
 
 type WorkReportHandler struct {
 	service *service.WorkReportService
+	// permissions: منو يراجع تقارير غيره. اختياري — بدونه المراجعة
+	// تنحصر بالأدوار الإشرافية.
+	permissions *repository.PermissionRepository
 }
 
 func NewWorkReportHandler(s *service.WorkReportService) *WorkReportHandler {
 	return &WorkReportHandler{service: s}
+}
+
+// SetPermissions يربط مستودع الصلاحيات بعد البناء.
+func (h *WorkReportHandler) SetPermissions(p *repository.PermissionRepository) { h.permissions = p }
+
+// canReviewReports منو يشوف تقارير غيره.
+//
+// ⚠️⚠️ `selfOrSupervisor` وحدها **ما تكفي هنا**: شاشة «مراجعة تقارير
+// العمل» حارسها `monitoring`/`quality_control`، ومهندس الجودة **مو**
+// ضمن الأدوار الإشرافية بـ`canSeeOperational` — فالاعتماد عليها
+// يفرّغ شاشته وهو شغّال اليوم.
+func (h *WorkReportHandler) canReviewReports(r *http.Request) bool {
+	if canSeeOperational(middleware.RoleFromContext(r)) {
+		return true
+	}
+	if h.permissions == nil {
+		return false
+	}
+	rows, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		return false
+	}
+	for _, p := range rows {
+		if p.Name == "monitoring" || p.Name == "quality_control" || p.Name == "auditing" {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *WorkReportHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -41,7 +73,15 @@ func (h *WorkReportHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/work-reports?employeeId= — بدون employeeId: كل التقارير (للمراقب/الجودة)
 func (h *WorkReportHandler) List(w http.ResponseWriter, r *http.Request) {
-	reports, err := h.service.List(r.URL.Query().Get("employeeId"))
+	// ⚠️ چان `employeeId` فاضي يرجّع **كل تقارير الشركة** لأي موظف
+	// مسجّل. هسه: المراجِع (مراقبة/جودة) يشوف الكل، وغيره يشوف
+	// تقاريره هو مهما كتب بالرابط — نفس نمط `ExpenseHandler`.
+	employeeID := r.URL.Query().Get("employeeId")
+	self := middleware.EmployeeIDFromContext(r)
+	if employeeID != self && !h.canReviewReports(r) {
+		employeeID = self
+	}
+	reports, err := h.service.List(employeeID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب تقارير العمل")
 		return
