@@ -12,6 +12,7 @@ import Login from '../pages/Login'
 import CommandApp from '../command/CommandApp'
 import TrainingPage from '../pages/TrainingPage'
 import EntityCompanion from './EntityCompanion'
+import StoryScene from './StoryScene'
 import SettingsPanel from './SettingsPanel'
 
 // وجهة كل نوع إشعار: ضغطة على الإشعار توديك للشاشة الي تخصه بدل ما
@@ -948,6 +949,9 @@ export default function Layout() {
           المدير) — بوت واحد بالشاشة مو اثنين، والمحادثة جوّاه تروح
           لنفس المسارين حسب الدور بلا تغيير سلوك. */}
       <EntityCompanion />
+      {/* مشهد القصة — يظهر بس لمّا يكون بالطابور شي، وينغلق بإقرار
+          الموظف. ⚠️ فوق الكيان بقصد: قصة العقوبة ما تنحجب وراه. */}
+      <StoryScene />
     </SessionContext.Provider>
   )
 }

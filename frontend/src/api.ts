@@ -1715,6 +1715,52 @@ export interface EntityBriefing {
   characterState: 'NONE' | 'PENDING' | 'READY' | 'FAILED'
 }
 
+// ═══ قصص الكيان ═══
+//
+// الكيان ما يعرض تنبيهاً ويخلص — ينفّذ **مشهداً**: شخصية المراقب
+// تدخل من الحافة حاملة ورقة، تسلّمها، والأفتار يفتحها ويقراها.
+//
+// ⚠️ **المشهد يجي من الخادم**: الواجهة **تنفّذ** ما تبني. مصدر واحد
+// للمشهد يعني تعديل خطوة يوصل كل الأجهزة بلا نشر واجهة جديدة.
+export type StoryStatus =
+  | 'QUEUED' | 'DELIVERED' | 'PLAYING' | 'SEEN' | 'OPENED' | 'ACKNOWLEDGED' | 'FAILED'
+
+export interface StoryStep {
+  action: string
+  /** MESSENGER = شخصية المُرسِل · SELF = أفتار الموظف نفسه. */
+  actor: 'MESSENGER' | 'SELF'
+  durationMs: number
+  /** نقطة استئناف آمنة: انقطع الاتصال ← نرجع لهنا مو لأول المشهد. */
+  checkpoint: boolean
+}
+
+export interface StoryInstance {
+  id: string
+  eventId: string
+  eventKind: string
+  storyType: string
+  senderEmployeeId?: string
+  /** ⚠️ اسم المُرسِل ظاهر بقصد — قرار صاحب النظام: الموظف يعرف منو خصمه. */
+  senderName: string
+  recipientEmployeeId: string
+  status: StoryStatus
+  priority: number
+  /** false = تجاوز السقف اليومي ← تنعرض هادئة بالصندوق بلا مشهد. */
+  physical: boolean
+  currentStep: number
+  payload: Record<string, unknown>
+  deliveredAt?: string
+  seenAt?: string
+  openedAt?: string
+  acknowledgedAt?: string
+  createdAt: string
+}
+
+export interface StoryWithScene extends StoryInstance {
+  scene: StoryStep[]
+  label: string
+}
+
 export interface EmployeeCharacter {
   id: string
   employeeId: string
@@ -3550,6 +3596,18 @@ export const api = {
   /** تقرير الكيان لصاحب التوكن — بياناته هو بس (ماكو معامل موظف بقصد). */
   getEntityBriefing: () => request<EntityBriefing>('/entity/briefing'),
   getMyEntityCharacter: () => request<EmployeeCharacter | null>('/entity/character/me'),
+
+  // ═══ قصص الكيان — كلها لصاحب الجلسة حصراً ═══
+  /** القصة الي دورها الآن (وحدة بس) وعدد الي ينتظر. */
+  getNextStory: () => request<{ story: StoryWithScene | null; pending: number }>('/stories/next'),
+  /** صندوق القصص — سجل مقروء حتى بعد ما ينتهي المشهد. */
+  getMyStories: (limit = 50) => request<StoryInstance[]>(`/stories/mine?limit=${limit}`),
+  /** ⚠️ `ACKNOWLEDGED` إقرار الموظف بضغطة — مو استنتاج من إن المشهد انعرض. */
+  advanceStory: (id: string, status: StoryStatus, step: number) =>
+    request<{ ok: boolean }>(`/stories/${id}/advance`, {
+      method: 'POST',
+      body: JSON.stringify({ status, step }),
+    }),
   generateEntityCharacter: (employeeId: string) =>
     request<EmployeeCharacter>(`/entity/character/${employeeId}/generate`, { method: 'POST' }),
 
