@@ -162,3 +162,74 @@
 
 إذا وافق (ز) على النقطتين، هذا العقد يصبح أساس `02-decision.md` ولا يبدأ دمج
 الإنتاج قبل نجاح Spike موظف واحد.
+
+---
+
+## 13. الملحق المعتمد: Rig ثانٍ للمراقب الحي
+
+بعد قرار (ع) في `11` ورد (ز) في `12`، صار الملف يحتوي actorين واضحين:
+
+- Artboard أفتار الموظف: `EmployeeObserver` (الاسم القديم يبقى حتى لا نكسر العقد).
+- Artboard شخصية المراقب: `MonitorCourier`.
+- State Machine للأول: `ObserverSM`.
+- State Machine للثاني: `CourierSM`.
+
+`MonitorCourier` يستعمل نفس جودة الفن ونسب الجسم، لكن بهوية مراقب واضحة
+بالملابس/الشارة ولا يستعمل وجه الموظف المستلم. لا تكفي إعادة تلوين أفتار الموظف
+إذا بقي الاثنان يلتبسان بصرياً.
+
+### مدخلات `CourierSM`
+
+تتكرر المدخلات المشتركة من `ObserverSM`:
+
+`lookX` · `lookY` · `walkSpeed` · `talkLevel` · `mood` ·
+`reducedMotion` · `isVisible` · `blink` · `wave` · `point` · `react`.
+
+وتضاف المدخلات التالية، بنفس الكتابة:
+
+| الاسم | النوع | المجال/القيمة | المعنى |
+|---|---|---|---|
+| `runSpeed` | Number | `0..1` | دورة الركض؛ تتوقف عند صفر |
+| `carryWeight` | Number | `0..1` | مقدار تأثر الذراعين بحمل الـprop، لا وزن حقيقي |
+| `enter` | Trigger | — | دخول قصير من حالة offstage |
+| `exit` | Trigger | — | خروج قصير إلى حالة offstage |
+| `receive` | Trigger | — | استلام مستند/prop باليد |
+| `deliver` | Trigger | — | تسليم المستند إلى actor آخر |
+| `openDocument` | Trigger | — | فتح الورقة والاستعداد للقراءة |
+| `cancelAction` | Trigger | — | رجوع آمن عند navigation أو إلغاء المشهد |
+
+### حالات الحركة الإضافية
+
+الأسماء التعاقدية للحركات داخل المصممة:
+
+`IDLE` · `WALK` · `RUN` · `ENTER` · `EXIT` · `RECEIVE` · `CARRY` ·
+`DELIVER` · `OPEN_DOCUMENT` · `POINT_AT_UI` · `READ_FOCUS`.
+
+- `ENTER/EXIT` يحركان الجسم داخل حدود الـArtboard فقط؛ حركة الحاوية عبر الشاشة
+  تبقى CSS ويتزامن معها الكود.
+- `CARRY` loop خفيف يمكن أن يركب فوق WALK/RUN، ولا يبدل الرسم كله.
+- `RECEIVE/DELIVER/OPEN_DOCUMENT` one-shot وتعود إلى وضعية مستقرة.
+- `cancelAction` يترك اليدين والجسم في pose طبيعي خلال ≤200ms، ولا يجمد prop
+  في الهواء.
+- عند `reducedMotion=true` تختصر القصة إلى دخول/ظهور هادئ وتسليم/عرض مباشر؛
+  المعنى لا يسقط حتى لو أُلغي الركض.
+
+### نقاط التعليق التعاقدية
+
+يجب أن توجد Nodes/Targets بهذه الأسماء داخل Artboard المراقب:
+
+- `handL`
+- `handR`
+- `documentAnchor`
+- `uiTarget`
+
+`documentAnchor` مربوط بوضعية الحمل والتسليم، لكنه لا يحتوي النص العربي.
+`uiTarget` هدف اتجاه/تأشير داخل الـArtboard، وإحداثيات الصفحة يحولها runtime.
+لا تدمج الورقة باليد في رسم واحد لأن React يحتاج إخفاءها/استبدالها حسب القصة.
+
+### اختبار التسليم بين الـrigين
+
+يجب أن تستطيع المصممة عرض `MonitorCourier` يحمل prop فارغاً ويسلمه إلى
+`EmployeeObserver`، ثم ينفذ أفتار الموظف `OPEN_DOCUMENT`/`READ_FOCUS` عبر
+حركة مقابلة أو pose متوافق. لا يبدأ تحسين المشهد قبل إثبات نقاط الارتكاز وعدم
+قفز الورقة بين اليدين.
