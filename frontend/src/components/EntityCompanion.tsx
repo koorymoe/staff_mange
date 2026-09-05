@@ -300,11 +300,15 @@ function moodImage(b: EntityBriefing | null, mood: string): string | undefined {
 function moodHeader(mood: string): string {
   if (mood === 'ANGRY') return 'bg-gradient-to-br from-red-500 to-red-800'
   if (mood === 'WATCHING') return 'bg-gradient-to-br from-amber-500 to-amber-700'
+  // ⚠️ `POSITIVE` لازم **يبيّن** بلون مختلف — مزاج ما ينشاف يعني
+  // حالة موجودة بالبيانات وماكو إلها أثر بالشاشة.
+  if (mood === 'POSITIVE') return 'bg-gradient-to-br from-emerald-500 to-emerald-700'
   return 'bg-gradient-to-br from-brand-500 to-brand-800'
 }
 
 function moodTitle(mood: string): string {
   if (mood === 'ANGRY') return '⛔ عندك تأخير — لازم نحچي'
   if (mood === 'WATCHING') return '👀 آني أراقب شغلك'
+  if (mood === 'POSITIVE') return '🎉 عاش! شفت شغلك اليوم'
   return '🙂 شغلك نظيف — كمّل هيچ'
 }

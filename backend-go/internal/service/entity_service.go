@@ -98,18 +98,44 @@ func (s *EntityService) Briefing(employeeID string) (*model.EntityBriefing, erro
 	s.appendBookingLines(employeeID, emp, out)
 
 	// ④ الانضباط: الرصيد والخصم الجديد
-	recentPenalty := s.appendDisciplineLines(employeeID, out)
+	recentPenalty, restoredPoint := s.appendDisciplineLines(employeeID, out)
 
 	// المزاج يُشتق من نفس البيانات — مو عشوائي ولا مزيّن.
+	//
+	// ⚠️ الترتيب مقصود: التحذير يسبق الفرح. موظف عنده تأخير وبنفس
+	// الوقت خلّص ورقة ثانية **ما يفرح** — الي يحتاج يشوفه هو
+	// التأخير.
 	switch {
 	case recentPenalty || urgentPaperwork || urgentTasks:
 		out.Mood = model.EntityMoodAngry
 	case len(out.Lines) > 0:
 		out.Mood = model.EntityMoodWatching
+	case restoredPoint || s.recentPaperworkDone(employeeID):
+		// نظيف **وصار شي إيجابي حقيقي** بآخر ٢٤ ساعة.
+		out.Mood = model.EntityMoodPositive
 	}
 
 	s.attachCharacter(employeeID, out)
 	return out, nil
+}
+
+// recentPaperworkDone هل خلّص ورق حجز بآخر ٢٤ ساعة؟
+//
+// ⚠️ الإشارة الثانية للفرح. الفشل يرجّع `false` — يعني **ما يفرح**
+// عند الشك. الاحتفال الكاذب أسوأ من فرح ضايع.
+//
+// ⚠️ وتنسأل **بس** لمن يكون الموظف نظيفاً أصلاً (آخر فرع بالمزاج)،
+// فما تنضاف نداة قاعدة بيانات لكل بريفينغ.
+func (s *EntityService) recentPaperworkDone(employeeID string) bool {
+	if s.bookings == nil {
+		return false
+	}
+	done, err := s.bookings.RecentPaperworkDone(employeeID, time.Now().Add(-24*time.Hour))
+	if err != nil {
+		log.Printf("[entity] تعذر فحص الورق المنجَز للموظف %s: %v", employeeID, err)
+		return false
+	}
+	return done
 }
 
 // appendPaperworkLines يحذّر من ورق الحجوزات الناقص — قبل الغرامة
@@ -250,7 +276,8 @@ func (s *EntityService) doesCoordination(employeeID string, emp *model.Employee)
 
 // appendDisciplineLines الرصيد والخصم الجديد. يرجّع صحيح لو انخصم
 // منه شي بآخر ٢٤ ساعة — وهذا الي يقلب وجه الكيان لغاضب.
-func (s *EntityService) appendDisciplineLines(employeeID string, out *model.EntityBriefing) bool {
+// يرجّع: (انخصم منه بآخر ٢٤ ساعة، رجعتله نقطة بآخر ٢٤ ساعة).
+func (s *EntityService) appendDisciplineLines(employeeID string, out *model.EntityBriefing) (bool, bool) {
 	all, err := s.discipline.List()
 	if err == nil {
 		for i := range all {
@@ -262,12 +289,22 @@ func (s *EntityService) appendDisciplineLines(employeeID string, out *model.Enti
 	}
 	events, err := s.discipline.Events(employeeID, 20)
 	if err != nil {
-		return false
+		return false, false
 	}
 	recent := false
+	restored := false
 	for i := range events {
 		e := events[i]
-		if e.Delta >= 0 || time.Since(e.CreatedAt) > 24*time.Hour {
+		if time.Since(e.CreatedAt) > 24*time.Hour {
+			continue
+		}
+		// ⚠️ نقطة رجعتله = حدث إيجابي حقيقي مؤرّخ. نلتقطه بنفس
+		// الجولة — بلا استعلام ثاني.
+		if e.Delta > 0 {
+			restored = true
+			continue
+		}
+		if e.Delta == 0 {
 			continue
 		}
 		recent = true
@@ -283,7 +320,7 @@ func (s *EntityService) appendDisciplineLines(employeeID string, out *model.Enti
 	if out.Points < model.DisciplineStartingPoints {
 		out.DinarAtRisk += 0 // الخصم صار فعلاً، مو «معرّض» — يبقى بالرصيد
 	}
-	return recent
+	return recent, restored
 }
 
 // attachCharacter يعلّق صور الشخصية إذا انولدت.

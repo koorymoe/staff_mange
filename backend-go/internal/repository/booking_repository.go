@@ -1693,3 +1693,27 @@ func (r *BookingRepository) AnyServiceRequiresDeviceInfo(serviceIDs []string) (b
 		WHERE id = ANY($1) AND "requiresDeviceInfo"`, pq.Array(serviceIDs))
 	return n > 0, err
 }
+
+// RecentPaperworkDone هل هذا الموظف خلّص ورق حجز (فاتورة أو تقرير
+// عمل) خلال المدة الأخيرة؟
+//
+// ⚠️ يخدم مزاج الكيان «POSITIVE»: الفرح لازم يكون **إله سبب حقيقي
+// مؤرّخ**، وإلا يصير احتفالاً بلا سبب — وهذا كذب بواجهة المستخدم.
+//
+// ⚠️ استعلام واحد بـUNION ALL و`LIMIT 1`: ما نحتاج العدد، نحتاج
+// «صار أو ما صار» — فما نجرّ صفوفاً بلا فايدة.
+func (r *BookingRepository) RecentPaperworkDone(employeeID string, since time.Time) (bool, error) {
+	if employeeID == "" {
+		return false, nil
+	}
+	var exists bool
+	err := r.db.Get(&exists, `
+		SELECT EXISTS (
+			SELECT 1 FROM "LeaderInvoice"
+			WHERE "employeeId" = $1 AND "createdAt" >= $2
+			UNION ALL
+			SELECT 1 FROM "WorkReport"
+			WHERE "employeeId" = $1 AND "createdAt" >= $2
+		)`, employeeID, since)
+	return exists, err
+}

@@ -1689,7 +1689,10 @@ export interface AiWorkWindow {
 // (مهلة الورق، قيمة النقطة بالدينار، رصيد الانضباط). الواجهة تعرض
 // بس — ما تحسب غرامة ولا مهلة بنفسها، حتى ما يفترق كلام الكيان عن
 // الي راح ينزل فعلاً.
-export type EntityMood = 'HAPPY' | 'WATCHING' | 'ANGRY'
+/** ⚠️ `POSITIVE` = نظيف **وصار شي إيجابي بآخر ٢٤ ساعة** (نقطة
+ *  رجعتله أو ورق حجز انخلص). بلا سبب حقيقي يبقى `HAPPY` — الخادم
+ *  هو الي يقرر، والواجهة تعرض بس. */
+export type EntityMood = 'HAPPY' | 'POSITIVE' | 'WATCHING' | 'ANGRY'
 
 export interface EntityLine {
   kind: 'PAPERWORK' | 'EXTRA_TASK' | 'BOOKING' | 'DISCIPLINE'
