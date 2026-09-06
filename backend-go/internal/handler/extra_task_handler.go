@@ -11,15 +11,24 @@ import (
 	"staffmange-api/internal/repository"
 )
 
+// storyEmitter محرّك القصص — واجهة صغيرة: المعالج يعرف Emit بس.
+type storyEmitter interface {
+	Emit(req model.EmitStoryRequest)
+}
+
 // ExtraTaskHandler المهام الإضافية — المدير يوجّه شغل لموظف.
 type ExtraTaskHandler struct {
 	repo          *repository.ExtraTaskRepository
 	notifications *repository.NotificationRepository
+	stories       storyEmitter
 }
 
 func NewExtraTaskHandler(r *repository.ExtraTaskRepository, n *repository.NotificationRepository) *ExtraTaskHandler {
 	return &ExtraTaskHandler{repo: r, notifications: n}
 }
+
+// SetStories يركّب محرّك القصص بعد الإنشاء — اختياري، والتوجيه يشتغل بدونه.
+func (h *ExtraTaskHandler) SetStories(e storyEmitter) { h.stories = e }
 
 // POST /api/extra-tasks — توجيه مهمة (للمدير).
 func (h *ExtraTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
@@ -44,6 +53,26 @@ func (h *ExtraTaskHandler) Create(w http.ResponseWriter, r *http.Request) {
 		}
 		_ = h.notifications.Create(task.AssignedToID, "extra_task",
 			fmt.Sprintf("📋 %sمهمة جديدة موجّهة إلك: %s", urgent, task.Title))
+	}
+
+	// ⚠️ القصة **بعد** ما تنحفظ المهمة، ومرسِلها هو الموجِّه نفسه —
+	// نفس قرار (ع): الموظف يعرف منو دزّها إله، مو «رسالة من النظام».
+	if h.stories != nil && task != nil {
+		reason := "بلا تفاصيل إضافية"
+		if task.Description != nil && strings.TrimSpace(*task.Description) != "" {
+			reason = *task.Description
+		}
+		h.stories.Emit(model.EmitStoryRequest{
+			EventID:     task.ID,
+			EventKind:   model.StoryEventAdminMessage,
+			SenderID:    task.AssignedByID,
+			RecipientID: task.AssignedToID,
+			Payload: map[string]any{
+				"title":  "مهمة موجّهة إلك: " + task.Title,
+				"reason": reason,
+				"link":   "/my-extra-tasks",
+			},
+		})
 	}
 	WriteJSON(w, http.StatusCreated, task)
 }

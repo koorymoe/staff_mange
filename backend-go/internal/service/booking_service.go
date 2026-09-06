@@ -36,6 +36,8 @@ type BookingService struct {
 	// missions: توليد مهمة الميدان عند تكليف الكادر. اختياري —
 	// بدونه شاشة تتبع المهام تضل فارغة (وهذا الي كان صاير).
 	missions MissionStarter
+	// stories: محرّك القصص. اختياري — بدونه كلشي يشتغل بس ماكو مشهد.
+	stories storyEmitter
 }
 
 // AiSignalRecorder يفصل خدمة الحجوزات عن نواة الذكاء الاصطناعي حتى
@@ -49,6 +51,12 @@ func (s *BookingService) SetAiRecorder(a AiSignalRecorder) { s.ai = a }
 
 // SetMonitorFeed يربط صندوق المراقب بعد بناء الخدمتين.
 func (s *BookingService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
+
+// SetStories يركّب محرّك القصص بعد الإنشاء.
+//
+// ⚠️ **بـsetter مو بالمُنشئ بقصد**: القصة **إضافة على** إكمال الحجز،
+// مو شرط له. الحجز ينكمل كامل بلا محرّك قصص.
+func (s *BookingService) SetStories(e storyEmitter) { s.stories = e }
 
 // AssignmentBalanceChecker يفصل خدمة الحجوزات عن خدمة الانضباط حتى ما
 // يصير اعتماد دائري بين الاثنين.
@@ -773,6 +781,35 @@ func (s *BookingService) Complete(id string, req model.CompleteBookingRequest) (
 	// بعد الإنجاز: المراقب يشوف شنو انعمل فعلاً قبل ما تصير فاتورة.
 	if s.monitor != nil {
 		s.monitor.BookingStage(model.MonitorStageBookingAfterComplete, booking, "TECHNICIAN", booking.ProjectSupervisorID)
+	}
+
+	// ⚠️ قصة «شغل انخلص» **لكل عضو بالكادر المكلَّف** — مو للّيدر بس.
+	// الفهرس الفريد `(eventKind, eventId, recipientRef)` يخلي نفس
+	// الحجز يوصل عدة أشخاص بلا تكرار على أي واحد منهم.
+	//
+	// ⚠️ وفشل هذا كله ما يمسّ إكمال الحجز: `Emit` ما ترجّع خطأ،
+	// وفشل جلب الكادر ينسجّل ويُتجاوز.
+	if s.stories != nil && booking != nil {
+		if crew, err := s.repo.ListAssignments(booking.ID); err != nil {
+			log.Printf("[booking] تعذر جلب الكادر لقصة الإنجاز: %v", err)
+		} else {
+			for _, a := range crew {
+				if a.EmployeeID == "" {
+					continue
+				}
+				s.stories.Emit(model.EmitStoryRequest{
+					EventID:     booking.ID,
+					EventKind:   model.StoryEventWorkCompleted,
+					SenderName:  "النظام",
+					RecipientID: a.EmployeeID,
+					Payload: map[string]any{
+						"title":  "انخلص شغل حجز " + booking.Code,
+						"reason": "انسجّل الإنجاز — باقي الورق (التقرير والفاتورة) قبل ما تنزل غرامة.",
+						"link":   "/bookings",
+					},
+				})
+			}
+		}
 	}
 	return booking, nil
 }

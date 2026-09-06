@@ -243,7 +243,7 @@ func (h *BookingAuditHandler) ResolveIssue(w http.ResponseWriter, r *http.Reques
 		}
 		reason := model.AuditIssueLabels[issue.Kind] + " — " + req.Reason
 		bookingID := issue.BookingID
-		if _, _, err := h.discipline.Penalize(leaderID, "AUDIT_ISSUE", reason, &bookingID, points); err != nil {
+		if _, _, _, err := h.discipline.Penalize(leaderID, "AUDIT_ISSUE", reason, &bookingID, points); err != nil {
 			WriteError(w, http.StatusBadRequest, "تعذر تسجيل المخالفة: "+err.Error())
 			return
 		}

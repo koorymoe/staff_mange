@@ -146,6 +146,24 @@ var StoryScenes = map[string][]StoryStep{
 		{Action: ActionSpeak, Actor: ActorSelf, DurationMs: 0, Checkpoint: true},
 		{Action: ActionRunToEdge, Actor: ActorMessenger, DurationMs: 700},
 	},
+	// ⚠️ الفرح ينزل بحدث فرح: «شغل انخلص» ياخذ CELEBRATE مثل رجوع
+	// النقطة — بلا هذا يسقط على المشهد الاحتياطي ويطلع بارداً مثل
+	// التحذير بالضبط، فيضيع الفرق بين المدح والعقوبة.
+	StoryEventWorkCompleted: {
+		{Action: ActionEnterFromEdge, Actor: ActorMessenger, DurationMs: 900, Checkpoint: true},
+		{Action: ActionCelebrate, Actor: ActorSelf, DurationMs: 800},
+		{Action: ActionSpeak, Actor: ActorSelf, DurationMs: 0, Checkpoint: true},
+		{Action: ActionRunToEdge, Actor: ActorMessenger, DurationMs: 700},
+	},
+	// ⚠️ الرسالة الإدارية **تنسلّم بالإيد** ولا تحتفل ولا تحذّر —
+	// هي شغل موجَّه، والمشهد لازم يطابق معناها.
+	StoryEventAdminMessage: {
+		{Action: ActionEnterFromEdge, Actor: ActorMessenger, DurationMs: 900, Checkpoint: true},
+		{Action: ActionDeliverDocument, Actor: ActorMessenger, DurationMs: 600, Checkpoint: true},
+		{Action: ActionOpenDocument, Actor: ActorSelf, DurationMs: 500},
+		{Action: ActionSpeak, Actor: ActorSelf, DurationMs: 0, Checkpoint: true},
+		{Action: ActionRunToEdge, Actor: ActorMessenger, DurationMs: 700},
+	},
 }
 
 // scenesFallback مشهد بسيط لأي نوع ما إله مشهد مخصّص.

@@ -82,13 +82,21 @@ func (s *StoryService) Emit(req model.EmitStoryRequest) {
 			recipientName = e.Name
 		}
 	}
+	// ونفس الشي للمرسِل: لو انمرّر معرّفه بلا اسم، نكمّله من الجدول
+	// **مرة وحدة هنا** بدل ما كل مستدعٍ يجيبه بنفسه.
+	senderName := req.SenderName
+	if senderName == "" && req.SenderID != nil && *req.SenderID != "" && s.employees != nil {
+		if e, err := s.employees.FindByID(*req.SenderID); err == nil && e != nil {
+			senderName = e.Name
+		}
+	}
 	recipientID := req.RecipientID
 	story := model.StoryInstance{
 		EventID:             req.EventID,
 		EventKind:           req.EventKind,
 		StoryType:           req.EventKind,
 		SenderEmployeeID:    req.SenderID,
-		SenderName:          req.SenderName,
+		SenderName:          senderName,
 		RecipientEmployeeID: &recipientID,
 		RecipientRef:        req.RecipientID,
 		RecipientName:       recipientName,

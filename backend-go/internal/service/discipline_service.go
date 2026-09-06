@@ -28,7 +28,15 @@ type DisciplineService struct {
 	announcements *repository.AnnouncementRepository
 	notifications *repository.NotificationRepository
 	employees     *repository.EmployeeRepository
+	stories       storyEmitter
 }
+
+// SetStories يركّب محرّك القصص بعد الإنشاء.
+//
+// ⚠️ **بـsetter مو بالمُنشئ بقصد**: القصة **إضافة على** الغرامة، مو
+// شرط لها. نظام الانضباط يشتغل كامل بلا محرّك قصص — وربطه بالمُنشئ
+// يخلي عقوبة مالية تعتمد على ميزة عرض.
+func (s *DisciplineService) SetStories(e storyEmitter) { s.stories = e }
 
 func NewDisciplineService(
 	repo *repository.DisciplineRepository,
@@ -113,7 +121,7 @@ func (s *DisciplineService) announce(body string) {
 
 // penalize يخصم نقطة ويعلنها ويشعّر صاحبها.
 func (s *DisciplineService) penalize(employeeID, employeeName, kind, reason string, bookingID *string) {
-	applied, left, err := s.repo.Penalize(employeeID, kind, reason, bookingID, 1)
+	applied, left, eventID, err := s.repo.Penalize(employeeID, kind, reason, bookingID, 1)
 	if err != nil {
 		log.Printf("[discipline] تعذر تسجيل الغرامة: %v", err)
 		return
@@ -128,6 +136,28 @@ func (s *DisciplineService) penalize(employeeID, employeeName, kind, reason stri
 	s.announce(body)
 	if s.notifications != nil {
 		_ = s.notifications.Create(employeeID, "discipline_penalty", body)
+	}
+
+	// ⚠️ القصة **بعد** ما تترسّخ الغرامة بالقاعدة — «الحركة لا تسبق
+	// نجاح العملية». و`Emit` ما ترجّع خطأ، فما تكدر تكسر الغرامة.
+	//
+	// ⚠️ والمرسِل هنا **النظام مو شخص**: هاي غرامة آلية، وكتابة اسم
+	// موظف عليها كذب — الموظف لازم يعرف إن الي غرّمه قاعدة مو إنسان.
+	if s.stories != nil && eventID != "" {
+		s.stories.Emit(model.EmitStoryRequest{
+			EventID:       eventID,
+			EventKind:     model.StoryEventPaperMissing,
+			SenderName:    "النظام",
+			RecipientID:   employeeID,
+			RecipientName: employeeName,
+			Payload: map[string]any{
+				"title":  "انخصمت منك نقطة انضباط",
+				"reason": reason,
+				"points": 1,
+				"dinar":  float64(model.DisciplineDinarPerPoint),
+				"link":   "/discipline",
+			},
+		})
 	}
 	log.Printf("[discipline] غرامة: %s — %s (بقي %d)", employeeName, reason, left)
 }
@@ -261,11 +291,28 @@ func (s *DisciplineService) RunRestoreSweep() {
 			continue
 		}
 		reason := fmt.Sprintf("اشتغل %d أيام بلا أي غرامة", model.DisciplineCleanDaysToRestore)
-		if err := s.repo.RestoreOne(id, reason); err != nil {
+		eventID, err := s.repo.RestoreOne(id, reason)
+		if err != nil {
 			log.Printf("[discipline] تعذر إرجاع نقطة: %v", err)
 			continue
 		}
 		s.announce(fmt.Sprintf("✅ رجعت نقطة وحدة إلى %s — %s.", emp.Name, reason))
+		if s.stories != nil && eventID != "" {
+			s.stories.Emit(model.EmitStoryRequest{
+				EventID:       eventID,
+				EventKind:     model.StoryEventPointRestored,
+				SenderName:    "النظام",
+				RecipientID:   id,
+				RecipientName: emp.Name,
+				Payload: map[string]any{
+					"title":  "رجعتلك نقطة انضباط",
+					"reason": reason,
+					"points": 1,
+					"dinar":  float64(model.DisciplineDinarPerPoint),
+					"link":   "/discipline",
+				},
+			})
+		}
 		log.Printf("[discipline] رجوع نقطة: %s", emp.Name)
 	}
 }

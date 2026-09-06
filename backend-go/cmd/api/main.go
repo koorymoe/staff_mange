@@ -163,6 +163,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	storyService := service.NewStoryService(storyRepo, employeeRepo)
 	storyHandler := handler.NewStoryHandler(storyService)
 	kpiService.SetStories(storyService)
+	// ⚠️ كل ربط بـsetter: القصة **إضافة** على الإجراء مو شرط له —
+	// وأي خدمة منهن تشتغل كاملة لو انشال المحرّك.
+	disciplineService.SetStories(storyService)
+	bookingService.SetStories(storyService)
 	kpiCriterionService := service.NewKpiCriterionService(kpiCriterionRepo)
 	smartKpiService := service.NewSmartKpiService(smartKpiRepo)
 	complaintService := service.NewComplaintService(complaintRepo)
@@ -316,6 +320,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// المهام الإضافية — المدير يوجّه شغل لموظف، مو مربوط بحجز
 	extraTaskRepo := repository.NewExtraTaskRepository(db)
 	extraTaskHandler := handler.NewExtraTaskHandler(extraTaskRepo, notificationRepo)
+	extraTaskHandler.SetStories(storyService)
 
 	// ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
 	// «كيان يهابه الموظف، يرحّب بيه، ويحذّره قبل ما تنزل الغرامة».

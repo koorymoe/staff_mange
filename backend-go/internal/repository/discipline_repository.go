@@ -25,24 +25,28 @@ func NewDisciplineRepository(db *sqlx.DB) *DisciplineRepository {
 // مرة تمر على نفس الحجز المتأخر.
 //
 // يرجّع applied=false لو الغرامة مكررة (مو خطأ).
-func (r *DisciplineRepository) Penalize(employeeID, kind, reason string, bookingID *string, points int) (applied bool, remaining int, err error) {
+func (r *DisciplineRepository) Penalize(employeeID, kind, reason string, bookingID *string, points int) (applied bool, remaining int, eventID string, err error) {
 	tx, err := r.db.Beginx()
 	if err != nil {
-		return false, 0, err
+		return false, 0, "", err
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// نولّد الـid هنا ونرجّعه: هو id صف حقيقي بـDisciplineEvent، ومحرّك
+	// القصص يبني عليه مفتاح الـidempotency مالته. بدونه ما نكدر نربط
+	// القصة بحدثها الرسمي.
+	newID := uuid.NewString()
 	res, err := tx.Exec(`
 		INSERT INTO "DisciplineEvent" (id, "employeeId", "bookingId", kind, delta, reason)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT DO NOTHING
-	`, uuid.NewString(), employeeID, bookingID, kind, -points, reason)
+	`, newID, employeeID, bookingID, kind, -points, reason)
 	if err != nil {
-		return false, 0, err
+		return false, 0, "", err
 	}
 	n, _ := res.RowsAffected()
 	if n == 0 {
-		return false, 0, nil // انسجّلت قبل — ما نخصم مرة ثانية
+		return false, 0, "", nil // انسجّلت قبل — ما نخصم مرة ثانية
 	}
 
 	// الرصيد ما ينزل تحت الصفر — الغرامة عقوبة مو دين
@@ -55,12 +59,12 @@ func (r *DisciplineRepository) Penalize(employeeID, kind, reason string, booking
 		RETURNING points
 	`, employeeID, model.DisciplineStartingPoints, points)
 	if err != nil {
-		return false, 0, err
+		return false, 0, "", err
 	}
 	if err := tx.Commit(); err != nil {
-		return false, 0, err
+		return false, 0, "", err
 	}
-	return true, left, nil
+	return true, left, newID, nil
 }
 
 // Adjust تعديل يدوي على رصيد موظف — زيادة أو نقصان — من المالك أو مدير
@@ -120,27 +124,32 @@ func (r *DisciplineRepository) Adjust(employeeID string, delta int, reason, byEm
 }
 
 // RestoreOne يرجّع نقطة وحدة لموظف اشتغل نظيف. ما يتجاوز الرصيد الأصلي.
-func (r *DisciplineRepository) RestoreOne(employeeID, reason string) error {
+func (r *DisciplineRepository) RestoreOne(employeeID, reason string) (eventID string, err error) {
 	tx, err := r.db.Beginx()
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer func() { _ = tx.Rollback() }()
 
+	// نفس سبب Penalize: الـid يرجع حتى تنربط القصة بحدثها الرسمي.
+	newID := uuid.NewString()
 	if _, err := tx.Exec(`
 		INSERT INTO "DisciplineEvent" (id, "employeeId", "bookingId", kind, delta, reason)
 		VALUES ($1, $2, NULL, $3, 1, $4)
-	`, uuid.NewString(), employeeID, model.DisciplineRestore, reason); err != nil {
-		return err
+	`, newID, employeeID, model.DisciplineRestore, reason); err != nil {
+		return "", err
 	}
 	if _, err := tx.Exec(`
 		UPDATE "DisciplinePoints"
 		SET points = LEAST(points + 1, $2::int), "lastRestoredAt" = now(), "updatedAt" = now()
 		WHERE "employeeId" = $1
 	`, employeeID, model.DisciplineStartingPoints); err != nil {
-		return err
+		return "", err
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return "", err
+	}
+	return newID, nil
 }
 
 // List يرجّع أرصدة كل الموظفين الي عندهم سجل — الناقصين أول.
