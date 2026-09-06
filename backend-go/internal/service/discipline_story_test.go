@@ -24,6 +24,13 @@ func (f *fakeStories) Emit(req model.EmitStoryRequest) { f.got = append(f.got, r
 //    الحاسم: القصة إضافة على العقوبة مو شرط لها، وأي انقلاب بهالترتيب
 //    يخلي إجراءً مالياً يعتمد على ميزة عرض.
 func TestDisciplinePenalizeStory_Live(t *testing.T) {
+	// ⚠️ الخصم التلقائي موقوف مؤقتاً بقرار (ع)، فما اكو غرامة تنزل
+	// حتى ينفحص عليها هذا الحارس. **يتخطّى ولا ينحذف**: أول ما
+	// يرجع `DisciplineAutoPenaltyPaused = false` يرجع الحارس يشتغل
+	// لحاله بلا ما ننتبه إله.
+	if model.DisciplineAutoPenaltyPaused {
+		t.Skip("الخصم التلقائي موقوف — يرجع هذا الفحص وقت ما يرجع الخصم")
+	}
 	dsn := os.Getenv("DATABASE_URL")
 	if dsn == "" {
 		t.Skip("DATABASE_URL غير موجود بالبيئة — تخطي اختبار القاعدة الحية")

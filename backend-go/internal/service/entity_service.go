@@ -166,22 +166,41 @@ func (s *EntityService) appendPaperworkLines(employeeID string, emp *model.Emplo
 		}
 		passed := time.Since(r.CompletedAt).Hours()
 		remaining := float64(limit) - passed
+
+		// ⚠️⚠️ **مبلغ الغرامة ما ينذكر وقت التوقيف**: الخصم التلقائي
+		// موقوف (`DisciplineAutoPenaltyPaused`)، فتهديد الموظف بمبلغ
+		// **ما راح ينزل** هو رقم كاذب — ونفس قاعدتنا: «رقم غلط أسوأ
+		// من ماكو رقم».
+		//
+		// ⚠️ **والتحذير نفسه يبقى** لأنه **صحيح**: الورق ناقص فعلاً،
+		// والمهلة فاتت فعلاً. الي ينشال هو المبلغ بس.
+		paused := model.DisciplineAutoPenaltyPaused
 		if remaining <= 0 {
 			overdue = true
-			out.DinarAtRisk += model.DisciplineDinarPerPoint
+			text := fmt.Sprintf("الحجز %s فاتت مهلته (%d ساعة %s) وباقي عليه %s.",
+				r.BookingCode, limit, who, missing)
+			if !paused {
+				out.DinarAtRisk += model.DisciplineDinarPerPoint
+				text = fmt.Sprintf("الحجز %s فاتت مهلته (%d ساعة %s) وباقي عليه %s — الغرامة %s د.ع.",
+					r.BookingCode, limit, who, missing, formatDinar(model.DisciplineDinarPerPoint))
+			}
 			out.Lines = append(out.Lines, model.EntityLine{
-				Kind: model.EntityLinePaperwork,
-				Text: fmt.Sprintf("الحجز %s فاتت مهلته (%d ساعة %s) وباقي عليه %s — الغرامة %s د.ع.",
-					r.BookingCode, limit, who, missing, formatDinar(model.DisciplineDinarPerPoint)),
+				Kind:   model.EntityLinePaperwork,
+				Text:   text,
 				Link:   "/bookings",
 				Urgent: true,
 			})
 			continue
 		}
+		text := fmt.Sprintf("لا تنسَ %s للحجز %s — باقي %s على المهلة.",
+			missing, r.BookingCode, humanHours(remaining))
+		if !paused {
+			text = fmt.Sprintf("لا تنسَ %s للحجز %s — باقي %s قبل غرامة %s د.ع.",
+				missing, r.BookingCode, humanHours(remaining), formatDinar(model.DisciplineDinarPerPoint))
+		}
 		out.Lines = append(out.Lines, model.EntityLine{
 			Kind: model.EntityLinePaperwork,
-			Text: fmt.Sprintf("لا تنسَ %s للحجز %s — باقي %s قبل غرامة %s د.ع.",
-				missing, r.BookingCode, humanHours(remaining), formatDinar(model.DisciplineDinarPerPoint)),
+			Text: text,
 			Link: "/bookings",
 		})
 	}

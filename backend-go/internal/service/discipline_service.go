@@ -121,6 +121,18 @@ func (s *DisciplineService) announce(body string) {
 
 // penalize يخصم نقطة ويعلنها ويشعّر صاحبها.
 func (s *DisciplineService) penalize(employeeID, employeeName, kind, reason string, bookingID *string) {
+	// ⚠️⚠️ **بوابة التوقيف — بمكان واحد بقصد**: كل الخصم التلقائي يمرّ
+	// من هنا (المكانس الأربعة + CheckAssignmentBalance)، **وحتى الزر
+	// اليدوي `POST /api/discipline/run`** لأنه يشغّل نفس المكانس. لو
+	// وقّفنا الحلقة بدل هالسطر، يبقى الزر يخصم ويصير التوقيف كذبة.
+	//
+	// ⚠️ **وينسجّل ما ينبلع بصمت**: نعرف شكد غرامة انتخطّت بفترة
+	// التوقيف — وهذا بالضبط الرقم الي نحتاجه وقت قرار الأثر الرجعي.
+	if model.DisciplineAutoPenaltyPaused {
+		log.Printf("[discipline] الخصم التلقائي موقوف — انتخطّت غرامة على %s (%s): %s",
+			employeeName, kind, reason)
+		return
+	}
 	applied, left, eventID, err := s.repo.Penalize(employeeID, kind, reason, bookingID, 1)
 	if err != nil {
 		log.Printf("[discipline] تعذر تسجيل الغرامة: %v", err)
