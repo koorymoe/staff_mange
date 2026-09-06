@@ -104,6 +104,13 @@
       const lid=el('g',{id:`${prefix}-eyelid${side}`,'data-layer':'eyelid'+side,class:'layer'},window);
       groups['eyelid'+side]=lid;
       sample(lid,cx-8,cy+24,16,5,cx-24,cy-16,48,34);
+      // Compress the original eye edge into a lash crease. This retains the
+      // source's eyelash colour and curve rather than drawing a new closed eye.
+      const crease=el('g',{
+        transform:`translate(0 ${cy+5}) scale(1 .065) translate(0 ${-cy})`,
+        'data-eyelid-crease':side
+      },lid);
+      el('use',{href:`#${prefix}-source`,'clip-path':`url(#${prefix}-aperture-${side})`},crease);
       lid.style.transform='scaleY(0)';
     }
     const doc=el('g',{id:`${prefix}-documentAnchor`,'data-layer':'documentAnchor',class:'layer',visibility:'hidden'},groups.handL);
@@ -164,8 +171,11 @@
     const swing=Math.sin(t*10);
     for(const s of ['L','R']){
       const sign=s==='L'?1:-1;
-      rig.groups['thigh'+s].style.transform=`rotate(${sign*swing*4}deg)`;
-      rig.groups['shin'+s].style.transform=`rotate(${Math.max(0,sign*swing)*7}deg)`;
+      const hip=sign*swing*4,knee=Math.max(0,sign*swing)*7;
+      rig.groups['thigh'+s].style.transform=`rotate(${hip}deg)`;
+      rig.groups['shin'+s].style.transform=`rotate(${knee}deg)`;
+      // Counter-rotate at the ankle to keep the sole level through the step.
+      rig.groups['foot'+s].style.transform=`rotate(${-hip-knee}deg)`;
       if(!(carry&&s==='L'))rig.groups['upperArm'+s].style.transform=`rotate(${-sign*swing*5}deg)`;
     }
   }
@@ -191,10 +201,15 @@
       const progress=Math.min(1,elapsed/durations[phase]);
       // Transfer the courier into the employee panel halfway through the journey.
       const target=recipient.host.parentElement;
-      if(progress<.5){courier.host.style.transform=`translateX(${progress*240}px)`;}
+      if(progress<.5){
+        const distance=origin.clientWidth*.5+80;
+        courier.host.style.transform=`translateX(${progress*2*distance}px)`;
+      }
       else{
         if(courier.host.parentElement!==target)target.append(courier.host);
-        courier.host.style.left='4%';courier.host.style.transform=`translateX(${(progress-.5)*90}px)`;
+        courier.host.style.left='4%';
+        const remaining=1-(progress-.5)*2;
+        courier.host.style.transform=`translateX(${-remaining*180}px)`;
       }
     }
     if(phase>=3){
@@ -204,6 +219,8 @@
     if(phase===3)courier.groups.head.style.transform='rotate(-3deg)';
     if(phase===4){
       carry(courier,true);
+      carry(recipient,true);
+      recipient.groups.documentAnchor.setAttribute('visibility','hidden');
       const progress=Math.min(1,elapsed/durations[phase]);
       const from=courier.groups.documentAnchor.parentElement.getScreenCTM();
       const to=recipient.groups.documentAnchor.parentElement.getScreenCTM();
@@ -239,7 +256,12 @@
   document.querySelector('#debug').onchange=e=>document.body.classList.toggle('debug',e.target.checked);
   const select=document.querySelector('#layer');
   Object.keys(courier.groups).forEach(name=>{const o=document.createElement('option');o.value=name;o.textContent=name;select.append(o);});
-  select.onchange=()=>{for(const [name,g]of Object.entries(lens.groups))g.style.opacity=!select.value||name===select.value||g.contains(lens.groups[select.value])?'1':'.14';};
+  select.onchange=()=>{
+    const chosen=lens.groups[select.value];
+    for(const [name,g]of Object.entries(lens.groups)) {
+      g.style.opacity=!chosen||name===select.value||g.contains(chosen)||chosen.contains(g)?'1':'.14';
+    }
+  };
   document.querySelector('#export').onclick=async()=>{
     const response=await fetch(sourceURL);if(!response.ok)return;
     const data=await response.blob();const reader=new FileReader();
