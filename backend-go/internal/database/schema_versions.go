@@ -319,6 +319,9 @@ func versionedMigrations() []Migration {
 	// 0273: حذف الموظف ما يمحي دليل وصول العقوبة — مرجع ثابت واسم
 	// منسوخ بدل CASCADE، والفهرس الفريد يشمل نوع الحدث.
 	result = append(result, storyFixMigrations()...)
+	// 0274: الكلفة اليدوية بفاتورة الليدر — شغل برّا جدول الكلفة چان
+	// إما ينتسعّر غلط بأقرب بند أو ما تنسوّى إله فاتورة أصلاً.
+	result = append(result, manualInvoiceMigrations()...)
 	return result
 }
 

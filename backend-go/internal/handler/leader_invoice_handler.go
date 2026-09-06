@@ -100,6 +100,25 @@ func (h *LeaderInvoiceHandler) Create(w http.ResponseWriter, r *http.Request) {
 // يگدر يفحص «وحدة من الاثنتين» بس، ولو وقفنا عنده يصير مسؤول
 // الجي بي اس يفوتر داش كام. النوع يجي بالطلب، فالفحص لازم يكون
 // بعد ما ينقرا.
+// POST /api/leader-invoices/manual — فاتورة بكلفة يدوية.
+//
+// ⚠️ الحارس على المسار (`invoice_manual`) هو الي يقرر، والمعالج ما
+// يعيد فحصه: هنا صلاحية وحدة مو صلاحيتان حسب النوع مثل فاتورة
+// الخدمة، فماكو فرع داخلي يستحق التكرار.
+func (h *LeaderInvoiceHandler) CreateManualInvoice(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateManualInvoiceRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	inv, err := h.service.CreateManualInvoice(middleware.EmployeeIDFromContext(r), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, inv)
+}
+
 func (h *LeaderInvoiceHandler) CreateServiceInvoice(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateServiceInvoiceRequest
 	if err := DecodeJSON(r, &req); err != nil {

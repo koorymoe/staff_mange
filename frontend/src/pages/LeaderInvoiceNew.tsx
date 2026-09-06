@@ -49,6 +49,18 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const [servicePrice, setServicePrice] = useState('')
   const [serviceNote, setServiceNote] = useState('')
 
+  // ═══ الكلفة اليدوية ═══
+  //
+  // شغل برّا جدول الكلفة: الليدر يكتب شنو اشتغل ويحطّ السعر بنفسه.
+  // ⚠️ صلاحية معزولة تنمنح فرد-فرد — السعر الحر يشيل الحارس الوحيد
+  // على التسعير، فما ينفتح لكل ليدر بالدور.
+  const canManualInvoice = isTopAdmin || permissions.includes('invoice_manual')
+  const [manualMode, setManualMode] = useState(false)
+  const [manualWork, setManualWork] = useState('')
+  const [manualPrice, setManualPrice] = useState('')
+  const [manualNote, setManualNote] = useState('')
+  const MANUAL_WORK_MIN = 10
+
   const [params] = useSearchParams()
   const navigate = useNavigate()
   // الحجز ممكن ييجي من الرابط (لما ينضغط من شاشة الحجز) أو ينختار من قائمة
@@ -350,6 +362,39 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       }
       return
     }
+    // ⚠️ نفس مبدأ فاتورة الخدمة: مسار منفصل يتجاوز إلزامي المنظومات
+    // والبنود — وإلزامي فاتورة الليدر العادية يبقى مثل ما هو تحت.
+    if (manualMode) {
+      const work = manualWork.trim()
+      if (work.length < MANUAL_WORK_MIN) {
+        setError(`اكتب شنو اشتغلت للزبون بالتفصيل (${MANUAL_WORK_MIN} حرف على الأقل)`)
+        return
+      }
+      const price = Number(manualPrice)
+      if (!Number.isFinite(price) || price <= 0) {
+        setError('اكتب سعر الفاتورة')
+        return
+      }
+      setSaving(true)
+      try {
+        const invoice = await api.createManualInvoice({
+          work,
+          price,
+          bookingId,
+          customerName: customerName || undefined,
+          customerPhone: customerPhone || undefined,
+          customerAddress: customerAddress || undefined,
+          systems: systems.length > 0 ? systems : undefined,
+          note: manualNote.trim() || undefined,
+        })
+        setResult(invoice)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'تعذر حفظ الفاتورة')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
     if (systems.length === 0) {
       setError('اختر منظومة واحدة على الأقل')
       return
@@ -613,13 +658,60 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           : 'ⓘ مربوط بحجز: اختر الحجز أول، وبيانات الزبون تنملي لحالها، والفاتورة تترحّل للمحاسب.'}
       </p>
 
+      {/* ═══ فاتورة بكلفة يدوية ═══
+          للشغل الي ماكو إله بند بجدول الكلفة. تظهر بس لصاحب صلاحية
+          `invoice_manual`. ⚠️ ما تلمس فاتورة الليدر العادية: مسار
+          ثاني بالسيرفر، وإلزامي المنظومات والبنود يبقى عليها. */}
+      {canManualInvoice && !estimateOnly && (
+        <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-3">
+          <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-amber-900">
+            <input type="checkbox" checked={manualMode}
+              onChange={(e) => { setManualMode(e.target.checked); if (e.target.checked) setServiceMode(false) }} />
+            ✍️ كلفة يدوية — أكتب شنو اشتغلت وأحدّد السعر بنفسي
+          </label>
+          {manualMode && (
+            <div className="mt-3 grid grid-cols-1 gap-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  شنو اشتغلت للزبون؟ * <span className="text-slate-400">({manualWork.trim().length}/{MANUAL_WORK_MIN} حرف على الأقل)</span>
+                </label>
+                <textarea value={manualWork} onChange={(e) => setManualWork(e.target.value)} rows={3}
+                  placeholder="مثال: تبديل مغذي كاميرات وتمديد ٣٠ متر كيبل داخل السقف الثانوي وترتيب الكابينة"
+                  className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500" />
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">السعر (د.ع) *</label>
+                  <input value={manualPrice} onChange={(e) => setManualPrice(e.target.value.replace(/[^\d]/g, ''))}
+                    dir="ltr" inputMode="numeric" placeholder="0"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">ملاحظة (اختيارية)</label>
+                  <input value={manualNote} onChange={(e) => setManualNote(e.target.value)}
+                    placeholder="ليش السعر هيج"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500" />
+                </div>
+              </div>
+              <p className="text-[11px] leading-relaxed text-amber-900">
+                ⓘ هذا الوضع للشغل الي <b>ماكو إله بند بجدول الكلفة</b>. الوصف الي
+                تكتبه هو <b>المرجع الوحيد</b> الي يدقّق بيه المحاسب — والفاتورة
+                توسم «كلفة يدوية» وتنزل بصندوق المراقب بوصفها.
+                والمنظومات الي تختارها فوق (إن اخترت) تنحفظ <b>للتصنيف بس</b>، ما تدخل بأي حساب.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ═══ فاتورة خدمة بسعر يدوي — جي بي اس / داش كام ═══
           تظهر بس لصاحب الصلاحية. ⚠️ ما تلمس فاتورة الليدر: هي مسار
           ثاني بالسيرفر، وإلزامي المنظومات والبنود يبقى عليها. */}
       {canServiceInvoice && !estimateOnly && (
         <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50/60 p-3">
           <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-sky-900">
-            <input type="checkbox" checked={serviceMode} onChange={(e) => setServiceMode(e.target.checked)} />
+            <input type="checkbox" checked={serviceMode}
+              onChange={(e) => { setServiceMode(e.target.checked); if (e.target.checked) setManualMode(false) }} />
             🛰️ فاتورة خدمة بسعر يدوي (جي بي اس / داش كام)
           </label>
           {serviceMode && (

@@ -505,7 +505,18 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
             <tbody>
               {paged.map((inv) => (
                 <tr key={inv.id} className="border-b border-slate-50 last:border-0">
-                  <td className="px-4 py-3 font-mono text-brand-700">{inv.accountingCode}</td>
+                  <td className="px-4 py-3 font-mono text-brand-700">
+                    {inv.accountingCode}
+                    {/* ⚠️ الفاتورة اليدوية ما وراها جدول كلفة يراجعها —
+                        فتنوسم بالصف نفسه، ووصف الشغل تحتها هو مرجع
+                        التدقيق الوحيد. بلا الوسم تندسّ بين فواتير الجدول. */}
+                    {inv.pricingMode === 'MANUAL' && (
+                      <div className="mt-1 font-sans text-[10px] font-black text-amber-700">✍️ كلفة يدوية</div>
+                    )}
+                    {inv.manualWork && (
+                      <div className="mt-0.5 max-w-[220px] font-sans text-[11px] font-normal leading-snug text-slate-500">{inv.manualWork}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {inv.externalInvoiceNumber
                       ? <span className="rounded-lg bg-emerald-50 px-2 py-1 font-mono text-xs font-bold text-emerald-800">{inv.externalInvoiceNumber}</span>

@@ -48,16 +48,19 @@ func (r *LeaderInvoiceRepository) Create(inv *model.LeaderInvoice, materials []m
 			id, "bookingId", "employeeId", "customerName", "customerPhone", "customerAddress",
 			systems, items, "totalDeviceCount", "executionCost", "materialsTotal",
 			"discountValue", "netTotal", "accountingCode", status,
-			"isFree", "freeReasonId", "freeReasonNote"
+			"isFree", "freeReasonId", "freeReasonNote",
+			"pricingMode", "manualWork", "manualPriceNote"
 		) VALUES (
 			gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, gen_random_uuid()::text, $13,
-			$14, $15, NULLIF($16,'')
+			$14, $15, NULLIF($16,''),
+			COALESCE(NULLIF($17,''), 'CATALOG'), NULLIF($18,''), NULLIF($19,'')
 		) RETURNING *
 	`,
 		inv.BookingID, inv.EmployeeID, inv.CustomerName, inv.CustomerPhone, inv.CustomerAddress,
 		string(systemsJSON), string(itemsJSON), inv.TotalDeviceCount, inv.ExecutionCost, inv.MaterialsTotal,
 		inv.DiscountValue, inv.NetTotal, inv.Status,
 		inv.IsFree, inv.FreeReasonID, derefStr(inv.FreeReasonNote),
+		inv.PricingMode, derefStr(inv.ManualWork), derefStr(inv.ManualPriceNote),
 	)
 	if err != nil {
 		return nil, err

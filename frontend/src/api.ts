@@ -1297,6 +1297,11 @@ export interface LeaderInvoice {
   discountValue: number
   netTotal: number
   accountingCode: string
+  /** CATALOG = السعر من جدول الكلفة · MANUAL = كتبه صاحب الصلاحية بإيده. */
+  pricingMode?: 'CATALOG' | 'MANUAL'
+  /** شنو انعمل للزبون — يجي بالفاتورة اليدوية بس، وهو مرجع تدقيقها. */
+  manualWork?: string
+  manualPriceNote?: string
   status: string
   createdAt: string
   approvedByEmployeeId: string | null
@@ -4313,6 +4318,19 @@ export const api = {
     customerAddress?: string
     note?: string
   }) => request<LeaderInvoice>('/leader-invoices/service', { method: 'POST', body: JSON.stringify(data) }),
+  /** فاتورة بكلفة يدوية: الليدر يكتب شنو اشتغل ويحطّ السعر بنفسه —
+   *  للشغل الي ماكو إله بند بجدول الكلفة. مسار منفصل بصلاحيته
+   *  (`invoice_manual`)، حتى ما ينفكّ الإلزام عن الفاتورة العادية. */
+  createManualInvoice: (data: {
+    work: string
+    price: number
+    bookingId?: string
+    customerName?: string
+    customerPhone?: string
+    customerAddress?: string
+    systems?: string[]
+    note?: string
+  }) => request<LeaderInvoice>('/leader-invoices/manual', { method: 'POST', body: JSON.stringify(data) }),
   getDesignAssets: (archived?: boolean) =>
     request<DesignAsset[]>(`/design-assets${archived ? '?archived=1' : ''}`),
   /** التصنيفات من الخادم — تسمية وحدة بالمكانين. */

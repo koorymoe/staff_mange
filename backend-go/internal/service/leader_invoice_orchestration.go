@@ -750,6 +750,9 @@ func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model
 		DiscountValue:  0,
 		NetTotal:       req.Price,
 		Status:         "SUBMITTED",
+		// ⚠️ فاتورة الخدمة **يدوية فعلاً** من يوم انبنت: سعرها بالإيد
+		// وبنودها فاضية. توسيمها يخلي التصنيف يقول الحقيقة.
+		PricingMode: model.PricingModeManual,
 	}
 	saved, err := s.invoices.Create(inv, nil)
 	if err != nil {
@@ -766,6 +769,99 @@ func (s *LeaderInvoiceService) CreateServiceInvoice(employeeID string, req model
 		}
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title,
 			summary+detail, "SERVICE_MANAGER", &saved.EmployeeID, false)
+	}
+	return saved, nil
+}
+
+// CreateManualInvoice فاتورة بكلفة يدوية: الليدر يكتب شنو اشتغل
+// للزبون، ويحطّ السعر بنفسه.
+//
+// ═══ ليش انبنى هذا المسار ═══
+//
+// جدول الكلفة يغطي المنظومات الثمانية ببنودها المعروفة. وأي شغل
+// **برّا الجدول** — صيانة غير نمطية، تمديد ما إله بند، شغل مركّب —
+// ما إله سعر يطلع من الحساب. فالليدر إما يجبره على أقرب بند
+// (**فيطلع سعر غلط بالسجل**)، أو ما يسوي فاتورة أصلاً (**فينغرم على
+// ورق متأخر عن شغل سوّاه فعلاً**). الاثنان أسوأ من سعر مكتوب بالإيد
+// وموسوم إنه بالإيد.
+//
+// ⚠️⚠️ **مسار منفصل بحارسه — ما نفكّ الإلزام عن الفاتورة العادية**:
+// لو خلّينا `Create` تقبل سعراً حراً، ينفتح باب فاتورة بلا تفصيل
+// **لكل ليدر**، ويموت جدول الكلفة كله بالتدريج. نفس المبدأ الي
+// انبنت عليه فاتورة الخدمة (`CreateServiceInvoice`).
+func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.CreateManualInvoiceRequest) (*model.LeaderInvoice, error) {
+	work := strings.TrimSpace(req.Work)
+	// ⚠️ **الوصف إجباري وبطول معقول**: هو **المرجع الوحيد** الي
+	// يقدر المحاسب يدقّق بيه سعراً ما جا من جدول. كلمة «صيانة»
+	// ما تنفع مرجعاً بعد شهر.
+	if utf8.RuneCountInString(work) < model.ManualWorkMinRunes {
+		return nil, fmt.Errorf("اكتب شنو اشتغلت للزبون بالتفصيل (%d حرف على الأقل)", model.ManualWorkMinRunes)
+	}
+	// ⚠️ السعر حر بس مو سالباً ولا صفراً: فاتورة بصفر تعني «مجاني»
+	// وهذا مسار ثاني إله سببه المكتوب — خلطهما يخفي كلفة الضمان.
+	if req.Price <= 0 {
+		return nil, fmt.Errorf("اكتب سعر الفاتورة")
+	}
+
+	// المنظومات للعرض والتصنيف بس — ما تدخل بأي حساب.
+	systems := []string{}
+	for _, sys := range req.Systems {
+		if v := strings.TrimSpace(sys); v != "" {
+			systems = append(systems, v)
+		}
+	}
+	if len(systems) == 0 {
+		systems = []string{model.PricingModeLabel[model.PricingModeManual]}
+	}
+	if len(systems) > 3 {
+		return nil, fmt.Errorf("لا يمكن اختيار أكثر من 3 منظومات بالفاتورة الواحدة")
+	}
+
+	var note *string
+	if req.Note != nil {
+		if v := strings.TrimSpace(*req.Note); v != "" {
+			note = &v
+		}
+	}
+
+	inv := &model.LeaderInvoice{
+		BookingID:       req.BookingID,
+		EmployeeID:      employeeID,
+		CustomerName:    req.CustomerName,
+		CustomerPhone:   req.CustomerPhone,
+		CustomerAddress: req.CustomerAddress,
+		Systems:         systems,
+		// ⚠️ بنود فاضية **بقصد**: ماكو بند جدول وراء هذا السعر،
+		// وتعبئتها ببنود وهمية تخلي الفاتورة تكذب.
+		Items:            []model.ExecutionCostItem{},
+		TotalDeviceCount: 0,
+		// السعر كله «تنفيذ»: المواد والخصم مسارهما الفاتورة العادية.
+		ExecutionCost:   req.Price,
+		MaterialsTotal:  0,
+		DiscountValue:   0,
+		NetTotal:        req.Price,
+		Status:          "SUBMITTED",
+		PricingMode:     model.PricingModeManual,
+		ManualWork:      &work,
+		ManualPriceNote: note,
+	}
+	saved, err := s.invoices.Create(inv, nil)
+	if err != nil {
+		return nil, err
+	}
+	s.computeAndSaveCommissions(saved)
+
+	// ⚠️ **المراقب هو الحارس الوحيد الباقي**: ماكو جدول كلفة يراجع
+	// هذا السعر، فالصف ينزل بصندوقه **ووصف الشغل جوّاه** — بلا
+	// الوصف يصير الصف رقماً بلا مرجع.
+	if s.monitor != nil {
+		title, summary := monitorInvoiceSummary(saved)
+		detail := " • كلفة يدوية — السعر بالإيد، ماكو جدول كلفة يراجعه — الشغل: " + work
+		if note != nil {
+			detail += " — ملاحظة: " + *note
+		}
+		s.monitor.InvoiceStage(model.MonitorStageInvoiceBeforeAudit, saved.ID, title,
+			summary+detail, "FINANCE", &saved.EmployeeID, false)
 	}
 	return saved, nil
 }

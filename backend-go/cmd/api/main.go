@@ -1614,6 +1614,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		http.HandlerFunc(leaderInvoiceHandler.CreateServiceInvoice), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"ADMIN", "OWNER"}, "invoice_gps", "invoice_dashcam")))
+	// فاتورة بكلفة يدوية — شغل برّا جدول الكلفة. صلاحية وحدة معزولة
+	// تنمنح فرد-فرد، لأن السعر الحر يشيل الحارس الوحيد على التسعير.
+	mux.Handle("POST /api/leader-invoices/manual", middleware.Chain(
+		http.HandlerFunc(leaderInvoiceHandler.CreateManualInvoice), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER"}, "invoice_manual")))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد

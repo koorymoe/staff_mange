@@ -81,6 +81,15 @@ type LeaderInvoice struct {
 	FreeReasonNote *string `db:"freeReasonNote" json:"freeReasonNote"`
 	// اسم السبب للعرض — ينجلب بالربط مو من الجدول
 	FreeReasonLabel      *string    `db:"-" json:"freeReasonLabel"`
+	// ═══ الكلفة اليدوية ═══
+	//
+	// ⚠️ `PricingMode` يميّز الفاتورة **للأبد**: بلاه تندسّ الفاتورة
+	// اليدوية بين فواتير الجدول، وما يعرف المحاسب ليش سعرها هيج.
+	// ⚠️ أعمدة بالجدول → لازم حقول هنا (الجلب SELECT *).
+	PricingMode     string  `db:"pricingMode" json:"pricingMode"`
+	ManualWork      *string `db:"manualWork" json:"manualWork,omitempty"`
+	ManualPriceNote *string `db:"manualPriceNote" json:"manualPriceNote,omitempty"`
+
 	AccountingCode       string     `db:"accountingCode" json:"accountingCode"`
 	Status               string     `db:"status" json:"status"` // SUBMITTED | APPROVED
 	CreatedAt            time.Time  `db:"createdAt" json:"createdAt"`
@@ -188,6 +197,49 @@ type CreateServiceInvoiceRequest struct {
 	// السعر يحطّه مسؤول الخدمة — ماكو جدول كلفة لهذي الخدمات.
 	Price float64 `json:"price"`
 	Note  *string `json:"note"`
+}
+
+// أنماط التسعير.
+const (
+	// PricingModeCatalog السعر انحسب من جدول الكلفة — الوضع الطبيعي.
+	PricingModeCatalog = "CATALOG"
+	// PricingModeManual السعر كتبه صاحب الصلاحية بإيده.
+	PricingModeManual = "MANUAL"
+)
+
+// PricingModeLabel التسمية العربية — بيانات لا شرط مكرَّر بكل شاشة.
+var PricingModeLabel = map[string]string{
+	PricingModeCatalog: "من جدول الكلفة",
+	PricingModeManual:  "كلفة يدوية",
+}
+
+// PermissionInvoiceManual الصلاحية الي تخوّل الفاتورة اليدوية.
+//
+// ⚠️ **معزولة وتنمنح فرد-فرد**: سعر حر يشيل الحارس الوحيد على
+// التسعير، فما تنضاف لأي دور افتراضي — ولا حتى لدور الليدر.
+const PermissionInvoiceManual = "invoice_manual"
+
+// ManualWorkMinRunes أقصر وصف مقبول لشنو انعمل.
+//
+// ⚠️ **الوصف مو تزيين**: هو **المرجع الوحيد** الي يقدر المحاسب
+// يدقّق بيه سعراً ما جا من جدول. «صيانة» ما تنفع مرجعاً بعد شهر.
+const ManualWorkMinRunes = 10
+
+// CreateManualInvoiceRequest فاتورة بكلفة يدوية: الليدر يكتب شنو
+// اشتغل للزبون، ويحطّ السعر بنفسه.
+type CreateManualInvoiceRequest struct {
+	BookingID       *string  `json:"bookingId"`
+	CustomerName    *string  `json:"customerName"`
+	CustomerPhone   *string  `json:"customerPhone"`
+	CustomerAddress *string  `json:"customerAddress"`
+	// Work شنو انعمل للزبون بالضبط — إجباري.
+	Work string `json:"work"`
+	// Price السعر الي يريده — إجباري وأكبر من صفر.
+	Price float64 `json:"price"`
+	// Systems المنظومات المشمولة (اختيارية) — للعرض والتصنيف بس،
+	// ما تدخل بأي حساب.
+	Systems []string `json:"systems"`
+	Note    *string  `json:"note"`
 }
 
 const (
