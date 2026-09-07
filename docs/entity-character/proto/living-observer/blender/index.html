@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>الأماني — نموذج مجسّم 01</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#091522;color:#eef5ff;font-family:Tahoma,Arial,sans-serif;line-height:1.8}main{max-width:1100px;margin:auto;padding:28px}h1{margin:0;font-size:28px}p{color:#aabed5}a,button{display:inline-block;color:white;background:#175ab1;border:1px solid #4c80bd;border-radius:9px;padding:8px 16px;font:inherit;text-decoration:none;cursor:pointer}.grid{display:grid;grid-template-columns:1.4fr 1fr;gap:18px;margin-top:22px}section{background:#112339;border:1px solid #29405b;border-radius:18px;padding:18px}img{display:block;max-width:100%;height:auto;border-radius:12px}h2{font-size:17px;margin:0 0 12px}.small{font-size:13px}.tag{color:#7dc0ff}button:focus-visible,a:focus-visible{outline:3px solid white}footer{margin-top:20px}@media(max-width:700px){.grid{grid-template-columns:1fr}main{padding:16px}}
+</style>
+<main><span class="tag">نموذج أولي · مجسّم فعلي · ليس تصميماً معتمداً</span><h1>يلتفت أولاً، ثم يمشي باتجاهه</h1>
+<p>شخصية جديدة مبنية داخل Blender. هذه معاينة للشكل والحركة، وليست نسخة مطابقة للصورة المرجعية.</p>
+<a href="output/amani-3d-study.blend" download>تنزيل ملف Blender</a>
+<div class="grid"><section><h2>تجربة الالتفات والمشي</h2><img id="motion" src="output/front.png" alt="مجسّم كرتوني بالسترة الزرقاء"><p><button id="play">تشغيل الحركة</button> <button id="stop">إيقاف</button></p><p class="small">7.5 ثوانٍ: وقوف ← التفات يمين ← مشي ← توقف ← مواجهة المشاهد. عند تكرار المعاينة يرجع إلى نقطة البداية، ولا يمشي رحلة عودة. إضاءة الحركة مبسطة لتسريع المعاينة.</p></section>
+<section><h2>فحص الجانب أثناء المشي</h2><img src="output/side-walk.png" alt="منظر جانبي للمجسّم أثناء الخطوة"><p class="small">الشعر واللحية والوجه واليدين تقريب أولي. الشارة مؤقتة وليست شعار الشركة الرسمي. الرمش وتسليم الورقة غير منفذين بهذا النموذج.</p></section></div>
+<footer class="small">ملف Blender يحتوي المجسّم والخامات والحركة. افتحه واضغط Space داخل مساحة العرض. لم يتغير النظام الفعلي.</footer></main>
+<script>
+const motion=document.querySelector('#motion');
+document.querySelector('#play').onclick=()=>{motion.src='output/turn-and-walk.gif';};
+document.querySelector('#stop').onclick=()=>{motion.src='output/front.png';};
+document.addEventListener('visibilitychange',()=>{if(document.hidden)motion.src='output/front.png';});
+</script></html>
