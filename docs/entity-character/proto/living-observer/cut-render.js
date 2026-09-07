@@ -125,9 +125,11 @@
     }
     const rig={svg,groups,flap,host,prefix};rigs.push(rig);
     for(const [name,g]of Object.entries(groups)) {
-      const b=g.getBBox(),[x,y]=pivots[name];
-      g.style.transformBox='fill-box';
-      g.style.transformOrigin=`${b.width?(x-b.x)/b.width*100:50}% ${b.height?(y-b.y)/b.height*100:50}%`;
+      const [x,y]=pivots[name],box=svg.viewBox.baseVal;
+      // A parent's fill-box changes when its children rotate. Anchoring to it
+      // makes the hip/knee drift; the SVG viewport is a stable reference.
+      g.style.transformBox='view-box';
+      g.style.transformOrigin=`${x-box.x}px ${y-box.y}px`;
     }
     return rig;
   }
@@ -138,7 +140,7 @@
   const label=document.querySelector('#state'),message=document.querySelector('#message'),ack=document.querySelector('#ack');
   const phaseNames=['RECEIVED','PICKED_UP','WALKING','OPENED','DELIVERED','ACK_WAIT'];
   const durations=[900,1000,2500,1400,900,Infinity];
-  let phase=-1,elapsed=0,clock=0,raf=0,timer=0,last=0,mode='',testUntil=0,entries=[],wasReduced=false;
+  let phase=-1,elapsed=0,clock=0,raf=0,timer=0,last=0,mode='',testUntil=0,testStart=0,entries=[],wasReduced=false;
   const noMotion=()=>reduced.checked||media.matches;
   function state(name,text){
     label.textContent=name;message.textContent=text;
@@ -149,6 +151,7 @@
   }
   function controls(){
     document.querySelectorAll('#play,#gaze,#blink,#walk').forEach(b=>b.disabled=phase>=0);
+    document.querySelectorAll('#walkHold,#walkFrame').forEach(b=>b.disabled=phase>=0);
     ack.disabled=phase!==5;
   }
   function advance(){
@@ -167,17 +170,32 @@
       rig.groups['eyelid'+s].style.transform=`scaleY(${blink})`;
     }
   }
-  function walking(rig,t,carry){
-    const swing=Math.sin(t*10);
+  function walking(rig,cycle,carry,weight=1){
+    const pose=CutoutWalk.pose(pivots,cycle,weight);
+    const swing=Math.sin(cycle*2*Math.PI)*weight;
     for(const s of ['L','R']){
       const sign=s==='L'?1:-1;
-      const hip=sign*swing*4,knee=Math.max(0,sign*swing)*7;
+      const {hip,knee,foot}=pose[s];
       rig.groups['thigh'+s].style.transform=`rotate(${hip}deg)`;
       rig.groups['shin'+s].style.transform=`rotate(${knee}deg)`;
-      // Counter-rotate at the ankle to keep the sole level through the step.
-      rig.groups['foot'+s].style.transform=`rotate(${-hip-knee}deg)`;
-      if(!(carry&&s==='L'))rig.groups['upperArm'+s].style.transform=`rotate(${-sign*swing*5}deg)`;
+      rig.groups['foot'+s].style.transform=`rotate(${foot}deg)`;
+      if(!(carry&&s==='L'))rig.groups['upperArm'+s].style.transform=`rotate(${-sign*swing*3}deg)`;
     }
+    if(document.querySelector('#walkHold').checked){
+      const inverse=rig.svg.getScreenCTM()?.inverse();
+      if(inverse){
+        const measured={};
+        for(const s of ['L','R']){
+          const actual=new DOMPoint(...pivots['foot'+s]).matrixTransform(rig.groups['foot'+s].getScreenCTM()).matrixTransform(inverse);
+          measured[s]={target:pose[s].target,actual:[actual.x,actual.y],stance:pose[s].stance};
+        }
+        rig.host.dataset.walkMeasurement=JSON.stringify(measured);
+      }
+    }
+  }
+  function walkWeight(age,duration){
+    const ramp=Math.max(0,Math.min(1,age/240,(duration-age)/240));
+    return ramp*ramp*(3-2*ramp);
   }
   function carry(rig,opened=false){
     rig.groups.forearmL.style.transform='rotate(-12deg)';
@@ -194,10 +212,14 @@
     const blink=mode==='blink'&&clock<testUntil?Math.sin(Math.min(1,(testUntil-clock)/450)*Math.PI):autoBlink;
     const look=(mode==='gaze'&&clock<testUntil?Math.sin(time*3)*5:Math.sin(time*.8)*2);
     rigs.forEach(r=>gaze(r,look,document.querySelector('#lidHold').checked?1:Math.max(0,blink)));
-    if(mode==='walk'&&clock<testUntil)walking(courier,time,false);
+    if(phase<0&&document.querySelector('#walkHold').checked){
+      walking(courier,Number(document.querySelector('#walkFrame').value)/100,false);
+    }else if(mode==='walk'&&clock<testUntil){
+      walking(courier,(clock-testStart)/1100,false,walkWeight(clock-testStart,3500));
+    }
     if(phase>=1&&phase<=3)carry(courier,phase===3);
     if(phase===2){
-      walking(courier,time,true);
+      walking(courier,elapsed/1100,true,walkWeight(elapsed,durations[phase]));
       const progress=Math.min(1,elapsed/durations[phase]);
       // Transfer the courier into the employee panel halfway through the journey.
       const target=recipient.host.parentElement;
@@ -245,11 +267,13 @@
     schedule();
   }
   const origin=courier.host.parentElement;
-  function reset(){phase=-1;elapsed=0;mode='';origin.append(courier.host);courier.host.style.left='calc(50% - 80px)';rigs.forEach(neutral);state('IDLE','بانتظار وصول الرسالة');controls();draw();}
+  function reset(){phase=-1;elapsed=0;mode='';document.querySelector('#walkHold').checked=false;origin.append(courier.host);courier.host.style.left='calc(50% - 80px)';rigs.forEach(neutral);state('IDLE','بانتظار وصول الرسالة');controls();draw();}
   document.querySelector('#play').onclick=()=>{reset();advance();last=0;schedule();};
   document.querySelector('#reset').onclick=reset;
   ack.onclick=()=>{reset();message.textContent='تم الإقرار بالاطلاع في المعاينة فقط.';};
-  ['gaze','blink','walk'].forEach(name=>document.querySelector('#'+name).onclick=()=>{mode=name;testUntil=clock+(name==='blink'?450:3500);});
+  document.querySelector('#walkFrame').oninput=draw;
+  document.querySelector('#walkHold').onchange=()=>{mode='';draw();};
+  ['gaze','blink','walk'].forEach(name=>document.querySelector('#'+name).onclick=()=>{document.querySelector('#walkHold').checked=false;mode=name;testStart=clock;testUntil=clock+(name==='blink'?450:3500);});
   function preference(){cancelAnimationFrame(raf);clearTimeout(timer);raf=0;timer=0;last=0;document.querySelector('#pause').textContent=noMotion()?'الحركة متوقفة؛ الرسالة والإقرار يعملان.':'';draw();schedule();}
   reduced.onchange=preference;media.addEventListener('change',preference);
   document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);clearTimeout(timer);raf=0;timer=0;last=0;schedule();});
