@@ -7,7 +7,9 @@ const statusMap: Record<string, { label: string; className: string }> = {
   COMPLETED: { label: 'مكتمل', className: 'bg-emerald-50 text-emerald-700' },
 }
 
-export default function GpsMaintenanceReview() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean } = {}) {
   const [requests, setRequests] = useState<GpsMaintenanceRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<GpsMaintenanceRequest | null>(null)
@@ -38,7 +40,9 @@ export default function GpsMaintenanceReview() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات الصيانة 🔧</h2>
+      {!embedded && (
+        <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات الصيانة 🔧</h2>
+      )}
 
       {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
       {!loading && requests.length === 0 && (

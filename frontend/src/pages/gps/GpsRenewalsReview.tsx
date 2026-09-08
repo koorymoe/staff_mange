@@ -42,7 +42,9 @@ function printRenewal(renewal: GpsRenewalRequest, newEnd: Date) {
   win.document.close()
 }
 
-export default function GpsRenewalsReview() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } = {}) {
   const [renewals, setRenewals] = useState<GpsRenewalRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<GpsRenewalRequest | null>(null)
@@ -79,7 +81,9 @@ export default function GpsRenewalsReview() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات تجديد الاشتراك 🔄</h2>
+      {!embedded && (
+        <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات تجديد الاشتراك 🔄</h2>
+      )}
 
       {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
       {!loading && renewals.length === 0 && (

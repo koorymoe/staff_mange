@@ -11,7 +11,9 @@ const emptyFulfill = {
   receiptImage: '', payerKind: 'COMPANY' as PayerKind, customerNote: '',
 }
 
-export default function ProductRequestsPage() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function ProductRequestsPage({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
   const canAdd = employee?.role === 'ADMIN' || employee?.role === 'PROCUREMENT_ADMIN' || permissions.includes('unit_technicians')
   const isAdmin = employee?.role === 'ADMIN'
@@ -149,7 +151,9 @@ export default function ProductRequestsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">طلبات المنتجات</h2>
+      {!embedded && (
+        <h2 className="text-2xl font-bold text-brand-900">طلبات المنتجات</h2>
+      )}
       <p className="mt-1 text-slate-500">
         التقني يطلب منتج، وأبو الحسابات (نفسه أبو الكميات) يجهّزه من الدوار — ويبقى معلّق لحد ما المبلغ يرجع للدوار.
       </p>

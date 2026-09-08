@@ -66,6 +66,8 @@ const PermissionPreview = lazy(() => import('./pages/PermissionPreview'))
 const ProjectStatisticsPage = lazy(() => import('./pages/ProjectStatisticsPage'))
 const LeaderInvoicesListPage = lazy(() => import('./pages/LeaderInvoicesListPage'))
 const ProductsPage = lazy(() => import('./pages/ProductsPage'))
+const TechProductsHub = lazy(() => import('./pages/TechProductsHub'))
+const TechContentHub = lazy(() => import('./pages/TechContentHub'))
 const GpsDashboard = lazy(() => import('./pages/gps/GpsDashboard'))
 const GpsCustomers = lazy(() => import('./pages/gps/GpsCustomers'))
 const GpsDevices = lazy(() => import('./pages/gps/GpsDevices'))
@@ -78,6 +80,7 @@ const GpsMaintenance = lazy(() => import('./pages/gps/GpsMaintenance'))
 const GpsEmployee = lazy(() => import('./pages/gps/GpsEmployee'))
 const GpsPurchase = lazy(() => import('./pages/gps/GpsPurchase'))
 const GpsRequestsReview = lazy(() => import('./pages/gps/GpsRequestsReview'))
+const GpsRequestsHub = lazy(() => import('./pages/gps/GpsRequestsHub'))
 const GpsDelivery = lazy(() => import('./pages/gps/GpsDelivery'))
 const GpsRenewal = lazy(() => import('./pages/gps/GpsRenewal'))
 const GpsRenewalsReview = lazy(() => import('./pages/gps/GpsRenewalsReview'))
@@ -220,6 +223,10 @@ function App() {
           {/* المشاريع الموجّهة للموظف — نفس واجهة إدارة المشاريع بس على مشاريعه */}
           <Route path="my-projects" element={<ProjectsPage mode="delegated" />} />
           <Route path="project-statistics" element={<ProjectStatisticsPage />} />
+          {/* ⚠️ مدخلان موحّدان — والمسارات المفردة تبقى شغّالة فما ينكسر
+              رابط محفوظ ولا مدزوز. */}
+          <Route path="tech-products" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><TechProductsHub /></RequirePermission>} />
+          <Route path="tech-content" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><TechContentHub /></RequirePermission>} />
           <Route path="products" element={<ProductsPage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="work-reports" element={<WorkReportPage />} />
@@ -233,9 +240,9 @@ function App() {
           <Route path="project-work-types" element={<ProjectWorkTypesSettingsPage />} />
           <Route path="checklists" element={<ChecklistsPage />} />
           <Route path="tech-showcase" element={<TechShowcasePage />} />
-          <Route path="exhibitions" element={<RequirePermission permission="content_technician"><ExhibitionsPage /></RequirePermission>} />
-          <Route path="product-requests" element={<RequirePermission permission="content_technician"><ProductRequestsPage /></RequirePermission>} />
-          <Route path="service-studies" element={<RequirePermission permission="content_technician"><ServiceStudiesPage /></RequirePermission>} />
+          <Route path="exhibitions" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><ExhibitionsPage /></RequirePermission>} />
+          <Route path="product-requests" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><ProductRequestsPage /></RequirePermission>} />
+          <Route path="service-studies" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><ServiceStudiesPage /></RequirePermission>} />
           {/* ⚠️ چانن كلهن `RequireAdmin` — يعني حتى بعد ما ينفتح
               الخادم للمصممة، الواجهة تحجبها قبل ما يوصل النداء.
               صارت الصلاحية نفسها الي يفحصها الخادم. */}
@@ -271,6 +278,9 @@ function App() {
           <Route path="gps/maintenance" element={<GpsMaintenance />} />
           <Route path="gps/employee" element={<GpsEmployee />} />
           <Route path="gps/purchase" element={<GpsPurchase />} />
+          {/* ⚠️ المسارات القديمة الثلاثة تبقى شغّالة: أي رابط محفوظ أو
+              مدزوز بالتلغرام ما ينكسر. الجديد يلمّهن بمدخل واحد. */}
+          <Route path="gps/requests-hub" element={<GpsRequestsHub />} />
           <Route path="gps/requests" element={<GpsRequestsReview />} />
           <Route path="gps/delivery" element={<GpsDelivery />} />
           <Route path="gps/renewal" element={<GpsRenewal />} />
@@ -278,7 +288,7 @@ function App() {
           <Route path="gps/maintenance-request" element={<GpsMaintenanceRequestPage />} />
           <Route path="gps/maintenance-review" element={<GpsMaintenanceReview />} />
           <Route path="training" element={<TrainingPage />} />
-          <Route path="training-management" element={<RequirePermission permission="content_technician"><TrainingManagement /></RequirePermission>} />
+          <Route path="training-management" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><TrainingManagement /></RequirePermission>} />
           <Route path="vehicles" element={<RequirePermission permission="vehicle_management"><VehiclesPage /></RequirePermission>} />
           <Route path="fleet-dashboard" element={<RequirePermission permission="vehicle_management"><FleetDashboardPage /></RequirePermission>} />
           <Route path="quality" element={<RequirePermission permission="quality_control"><QualityPage /></RequirePermission>} />

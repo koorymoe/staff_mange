@@ -1,6 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type GpsStats, type GpsDeviceRequest, type GpsSimCard } from '../../api'
+import PageHeader from '../../components/PageHeader'
+import GpsSims from './GpsSims'
+import GpsFollowUp from './GpsFollowUp'
 
 type SubscriptionStatus = 'unknown' | 'active' | 'expiring' | 'expired40' | 'expired80'
 
@@ -13,7 +16,7 @@ export default function GpsDashboard() {
   const [sims, setSims] = useState<GpsSimCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'overview' | 'subscriptions' | 'assets'>('overview')
+  const [tab, setTab] = useState<'overview' | 'subscriptions' | 'sims' | 'followup'>('overview')
   const [filter, setFilter] = useState('all')
   const [selectedDevice, setSelectedDevice] = useState<GpsDeviceRequest | null>(null)
 
@@ -62,7 +65,6 @@ export default function GpsDashboard() {
     return '#7c2d12'
   }
 
-  const operatorLabel: Record<string, string> = { ZAIN: 'زين', ASIACELL: 'آسياسيل', KOREK: 'كورك', OTHER: 'أخرى' }
 
   if (loading) return <div className="flex items-center justify-center p-12"><div className="text-lg text-slate-500">جاري التحميل...</div></div>
   if (error) return <div className="rounded-2xl bg-red-50 p-6 text-red-600 shadow-sm">{error}</div>
@@ -70,7 +72,8 @@ export default function GpsDashboard() {
   const tabs = [
     { key: 'overview', label: 'نظرة عامة', icon: '📊' },
     { key: 'subscriptions', label: 'الاشتراكات', icon: '📋' },
-    { key: 'assets', label: 'أصول الشركة', icon: '📡' },
+    { key: 'sims', label: 'شرائح GPS', icon: '📶' },
+    { key: 'followup', label: 'متابعة التجديد', icon: '🔄' },
   ]
 
   const expiringSoon = devices.filter(d => {
@@ -86,10 +89,10 @@ export default function GpsDashboard() {
 
   return (
     <div dir="rtl">
-      {/* Header */}
-      <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
-        <h1 className="text-2xl font-bold text-white">📡 لوحة المراقبة</h1>
-        <p className="mt-1 text-blue-200 text-sm">نظام تتبع المركبات GPS</p>
+      {/* ⚠️ الترويسة المشتركة بدل نسخة يدوية بلون مكتوب بالإيد —
+          نفس ترويسة باقي الشاشات، فتتوحّد الشاشة مع النظام. */}
+      <div className="mb-6">
+        <PageHeader title="📡 لوحة المراقبة" subtitle="نظام تتبع المركبات GPS" />
       </div>
 
       {/* Tabs */}
@@ -305,59 +308,17 @@ export default function GpsDashboard() {
         </div>
       )}
 
-      {/* Assets Tab */}
-      {tab === 'assets' && (
-        <div className="space-y-6">
-          {/* SIM Stats */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">📱 إجمالي الشرائح</p>
-              <p className="text-3xl font-bold" style={{ color: 'var(--t-title)' }}>{sims.length}</p>
-            </div>
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">🟢 متوفرة</p>
-              <p className="text-3xl font-bold text-green-600">{sims.filter(s => s.status !== 'ACTIVE').length}</p>
-            </div>
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-sm text-slate-500">🔵 مستخدمة</p>
-              <p className="text-3xl font-bold text-blue-600">{sims.filter(s => s.status === 'ACTIVE').length}</p>
-            </div>
-          </div>
+      {/* ⚠️⚠️ «أصول الشركة» **انشال**: چان نسخة ثانية من شاشة الشرائح،
+          وكانت تحمل عيباً مصلَّحاً بالشاشة الأصلية — تحسب «مستخدمة»
+          بـ`status === 'ACTIVE'` و**`ACTIVE` مو حالة شريحة أصلاً**
+          (الحالات: AVAILABLE · IN_USE · NEEDS_BURN · BURNED). فالنتيجة
+          «مستخدمة = صفر» دائماً، و«متوفرة» تضم المحروقة والي تحتاج حرق —
+          مسؤول الخدمة يظن عنده رصيد ما موجود.
+          نسختان لنفس الشغلة تفترقن أول تعديل — فصارت **الشاشة الأصلية
+          نفسها** تبويباً هنا، وحدة تنصلح ووحدة تنعرض. */}
+      {tab === 'sims' && <GpsSims embedded />}
+      {tab === 'followup' && <GpsFollowUp embedded />}
 
-          {/* SIM Table */}
-          <div className="overflow-hidden rounded-2xl bg-white shadow-sm">
-            <div className="overflow-x-auto">
-            <table className="w-full text-right">
-              <thead>
-                <tr style={{ backgroundColor: '#1a3a5c' }}>
-                  <th className="px-4 py-3 text-sm font-semibold text-white">رقم الشريحة</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-white">المشغل</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-white">الحالة</th>
-                  <th className="px-4 py-3 text-sm font-semibold text-white">الزبون</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {sims.map(s => (
-                  <tr key={s.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium">{s.simNumber}</td>
-                    <td className="px-4 py-3 text-slate-600">{operatorLabel[s.operator] || s.operator}</td>
-                    <td className="px-4 py-3">
-                      <span className={`rounded-full px-3 py-1 text-xs font-bold ${s.status === 'ACTIVE' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'}`}>
-                        {s.status === 'ACTIVE' ? 'مستخدمة' : 'متوفرة'}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-slate-600">{s.customer?.fullName || '-'}</td>
-                  </tr>
-                ))}
-                {sims.length === 0 && (
-                  <tr><td colSpan={4} className="p-8 text-center text-slate-400">لا يوجد شرائح</td></tr>
-                )}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
