@@ -79,6 +79,26 @@ export default function BookingsHub() {
   const canCoord = isAdmin || perms.includes('coordinator')
   const canCreate = isAdmin || perms.includes('sales_booking')
 
+  // ═══ منو يشوف محطات حجوزات الشركة؟ ═══
+  //
+  // ⚠️⚠️ **العيب الي انصلح**: المحطات (بانتظار التثبيت · تم التثبيت ·
+  // مكلّف · تم الإنجاز) چانت تطلع بشرط «مو حجز جديد ومو تنسيق…» —
+  // يعني **بلا أي فحص صلاحية**. فمسؤول الخدمة الي عنده
+  // `sales_booking` حتى يسجّل حجز، يوصل الشاشة ويلگه أمامه محطات
+  // تنسيق الشركة كلها بعدّاداتها.
+  //
+  // «هاي الواجهة مال مسؤول خدمة… ليش تضهرله الحجوزات؟ مع انو اني
+  // ماناطي صلاحية تنسيق حجوزات».
+  //
+  // ⚠️ والقائمة هنا **تطابق `canSeeAllBookings` بالسيرفر بالضبط** —
+  // بلا `sales_booking` بالاثنين. تبويب يفتح شاشة فارغة أو يرجّع ٤٠٣
+  // أسوأ من تبويب ما موجود.
+  const canViewAll = isAdmin
+    || ['HR_COORDINATOR', 'MONITOR', 'FINANCE', 'PROJECT_MANAGER', 'PROCUREMENT_ADMIN']
+      .includes(employee?.role ?? '')
+    || ['view_bookings', 'coordinator', 'crew_management', 'mission_tracking',
+      'procurement', 'monitoring', 'finance'].some((p) => perms.includes(p))
+
   // نبدي بـ«بانتظار التثبيت» لأنها الي تحتاج تصرّف: «حجز جديد»
   // شاشة إدخال، وفتحها افتراضياً يعني الإداري يفتح النظام ويلگه
   // نموذج فاضي بدل شغله الي ينتظره.
@@ -125,8 +145,16 @@ export default function BookingsHub() {
     || (t.key === 'deleting' && canCoord)
     // متابعة المحبوس عند المشاريع شغل تنسيق
     || (t.key === 'projects' && canCoord)
-    || (t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting' && t.key !== 'projects'),
+    // ⚠️ باقي المحطات (بانتظار التثبيت · تم التثبيت · مكلّف · تم
+    // الإنجاز) تحتاج صلاحية شاملة — چانت مفتوحة للكل بلا فحص.
+    || (canViewAll && t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting' && t.key !== 'projects'),
   )
+
+  // ⚠️ التبويب الافتراضي `pending` صار ممكن ما يكون ضمن المسموح —
+  // فالي عنده «حجز جديد» بس چان راح يفتح الشاشة على تبويب مخفي
+  // ويلگه فراغ. **نشتقّه ما نخزّنه**: حالة محسوبة من `shown` أنظف من
+  // `setState` جوّا `useEffect` الي يسبب دورة رسم زائدة.
+  const activeTab: TabKey = shown.some((t) => t.key === tab) ? tab : (shown[0]?.key ?? tab)
 
   return (
     <div dir="rtl">
@@ -144,7 +172,7 @@ export default function BookingsHub() {
               key={t.key}
               onClick={() => setTab(t.key)}
               className={`rounded-xl px-3 py-2 text-[11px] font-extrabold transition sm:px-5 sm:text-xs ${
-                tab === t.key
+                activeTab === t.key
                   ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow-md'
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
@@ -158,7 +186,7 @@ export default function BookingsHub() {
                 if (!n) return null
                 return (
                   <span className={`mr-1 rounded-full px-1.5 py-0.5 text-[9px] font-black ${
-                    tab === t.key ? 'bg-white/25 text-white' : 'bg-brand-50 text-brand-700'
+                    activeTab === t.key ? 'bg-white/25 text-white' : 'bg-brand-50 text-brand-700'
                   }`}>
                     {n}
                   </span>
@@ -172,25 +200,25 @@ export default function BookingsHub() {
       {/* ⚠️ نبني الشاشة المختارة بس (مو نخفي الباقي بـCSS): الثلاثة
           تجيب بيانات من السيرفر، وبناؤهن كلهن يعني ثلاثة أضعاف
           النداءات بكل فتحة وشاشة ثقيلة على الموبايل. */}
-      {tab === 'new' && canCreate && <SalesBooking />}
-      {tab === 'coord' && canCoord && <Coordinator />}
+      {activeTab === 'new' && canCreate && <SalesBooking />}
+      {activeTab === 'coord' && canCoord && <Coordinator />}
       {/* كل سلّة تفتح نفس القائمة بفلاترها (بحث · يوم · شهر) —
           والسلّة تقرر شنو يطلع. `key` تجبر React يبني القائمة من
           جديد عند التبديل، وإلا تضل فلاتر السلّة السابقة شغّالة. */}
-      {tab === 'pending' && <BookingsList key="pending" bucket="pending" />}
-      {tab === 'confirmed' && <BookingsList key="confirmed" bucket="confirmed" />}
-      {tab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
-      {tab === 'partial' && <PartialBookings />}
-      {tab === 'done' && <BookingsList key="done" bucket="done" />}
-      {tab === 'projects' && <BookingsList key="projects" bucket="at_projects" />}
+      {activeTab === 'pending' && <BookingsList key="pending" bucket="pending" />}
+      {activeTab === 'confirmed' && <BookingsList key="confirmed" bucket="confirmed" />}
+      {activeTab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
+      {activeTab === 'partial' && <PartialBookings />}
+      {activeTab === 'done' && <BookingsList key="done" bucket="done" />}
+      {activeTab === 'projects' && <BookingsList key="projects" bucket="at_projects" />}
       {/* ⚠️ خانة وحدة بدل بندين: منو عنده صلاحية البتّ يشوف **شاشة
           القرار** (وافق/ارفض/اطلب معلومات) — الي چانت بالقائمة
           الجانبية. وغيره يشوف قائمة الحجوزات المطلوب حذفها بس.
           بندان لنفس الشغلة يخلّي الإداري يدوّر بمكانين. */}
-      {tab === 'deleting' && (canDecideDelete
+      {activeTab === 'deleting' && (canDecideDelete
         ? <BookingDeleteRequestsPage key="deleting-decide" embedded />
         : <BookingsList key="deleting" bucket="delete_pending" />)}
-      {tab === 'stuck' && <StageBucketsPage />}
+      {activeTab === 'stuck' && <StageBucketsPage />}
     </div>
   )
 }

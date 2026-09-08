@@ -1147,9 +1147,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// معرض **مستقل** ما ينربط بحجز — قراره، لأن المصممة ما تشوف
 	// الحجوزات. والصلاحية معزولة عن فورمة التصميم: ممكن تريد واحداً
 	// يشوف المعرض بلا ما يحرّر الفورمة.
+	//
+	// ⚠️ و`unit_design` مقبولة بعد: صلاحية الوحدة معناها بالنظام «تفتح
+	// الوحدة كاملة بكل صفحاتها»، فهي تفتح البند بالقائمة الجانبية. لو
+	// السيرفر ما يقبلها، المصممة تشوف «معرض التصاميم» وتضغطه وترجعها
+	// الصفحة «غير مصرح لك» — والحارسان يتناقضان.
 	requireDesignGallery := middleware.RequireRoleOrAnyPermission(
 		permissionRepo, employeeRepo, notificationRepo,
-		[]string{"ADMIN", "OWNER"}, "design_gallery")
+		[]string{"ADMIN", "OWNER"}, "design_gallery", "unit_design")
 	mux.Handle("GET /api/design-assets", middleware.Chain(http.HandlerFunc(designAssetHandler.List), requireAuth, requireDesignGallery))
 	mux.Handle("GET /api/design-assets/categories", middleware.Chain(http.HandlerFunc(designAssetHandler.Categories), requireAuth, requireDesignGallery))
 	mux.Handle("POST /api/design-assets", middleware.Chain(http.HandlerFunc(designAssetHandler.Create), requireAuth, requireDesignGallery))

@@ -244,7 +244,7 @@ function App() {
           <Route path="design-forms/quick-add" element={<RequirePermission permission="design_forms"><DesignFormQuickAddPage /></RequirePermission>} />
           <Route path="design-forms/:formId" element={<RequirePermission permission="design_forms"><DesignFormBuilderPage /></RequirePermission>} />
           <Route path="design-forms/:formId/submissions" element={<RequirePermission permission="design_forms"><DesignFormSubmissionsPage /></RequirePermission>} />
-          <Route path="design-gallery" element={<RequirePermission permission="design_gallery"><DesignGalleryPage /></RequirePermission>} />
+          <Route path="design-gallery" element={<RequirePermission permission="design_gallery" anyOf={['unit_design']}><DesignGalleryPage /></RequirePermission>} />
           <Route path="unit-pr" element={<ComingSoonUnit title="وحدة الإعلام والعلاقات العامة" />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />
