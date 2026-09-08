@@ -144,6 +144,17 @@ export default function PermissionsPage() {
       perms: ['monitoring', 'auditing', 'quality_control', 'crew_management'],
     },
     {
+      // ⚠️⚠️ المجموعة هاي **چانت مفقودة كلياً** من الشاشة: `design_forms`
+      // و`design_gallery` موجودات بكتالوگ الصلاحيات وبحراس السيرفر
+      // وبالقائمة الجانبية — بس ما إلهن مربع هنا، يعني **ما كان بالإمكان
+      // منحهن لأحد إطلاقاً** من الواجهة.
+      //
+      // «معرض التصاميم الي المفروض المصممة ترفع بي الصور… سوي صلاحية خل
+      // انطي الها صلاحية الوصول لهاي الصفحة».
+      title: 'وحدة التصميم',
+      perms: ['design_forms', 'design_gallery'],
+    },
+    {
       title: 'سلة الليدر',
       perms: ['leader_basket'],
     },
