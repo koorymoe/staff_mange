@@ -3517,6 +3517,10 @@ export const api = {
       method: 'PUT', body: JSON.stringify(data),
     }),
 
+  // أخبار اليوم للشريط — أرقام مجرّدة بلا أسماء
+  getDisciplineTodayHeadline: () =>
+    request<{ penalized: number; restored: number }>('/discipline/today-headline'),
+
   // شريط الإعلانات
   getAnnouncements: (all?: boolean) =>
     request<Announcement[]>(`/announcements${all ? '?all=1' : ''}`),

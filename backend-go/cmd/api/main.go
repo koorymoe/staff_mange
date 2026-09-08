@@ -563,6 +563,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	mux.Handle("GET /api/discipline", middleware.Chain(http.HandlerFunc(disciplineHandler.List), requireAuth))
 	mux.Handle("GET /api/discipline/events", middleware.Chain(http.HandlerFunc(disciplineHandler.Events), requireAuth))
+	// أرقام مجرّدة بلا أسماء — تنعرض بشريط الإعلانات لكل الموظفين
+	mux.Handle("GET /api/discipline/today-headline", middleware.Chain(http.HandlerFunc(disciplineHandler.TodayHeadline), requireAuth))
 	// التعديل اليدوي: المالك ومدير النظام بس. requireAdmin يمرّر OWNER أصلاً.
 	mux.Handle("POST /api/discipline/adjust", middleware.Chain(http.HandlerFunc(disciplineHandler.Adjust), requireAuth, requireAdmin))
 	mux.Handle("POST /api/discipline/run", middleware.Chain(http.HandlerFunc(disciplineHandler.Run), requireAuth, requireAdmin))

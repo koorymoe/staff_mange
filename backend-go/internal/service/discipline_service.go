@@ -51,6 +51,15 @@ func (s *DisciplineService) List() ([]model.DisciplinePoints, error) {
 	return s.repo.List()
 }
 
+// TodayHeadline أرقام أخبار اليوم — بلا أسماء، للشريط العام.
+//
+// ⚠️ يبقى صادقاً وقت ما يكون الخصم التلقائي موقوفاً: الرقم ينعكس على
+// العقوبات اليدوية بس، وصفر يعني **ما صار خصم اليوم** مو إن الشاشة
+// خربانة.
+func (s *DisciplineService) TodayHeadline() (repository.DisciplineHeadline, error) {
+	return s.repo.TodayHeadline()
+}
+
 func (s *DisciplineService) Events(employeeID string, limit int) ([]model.DisciplineEvent, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
