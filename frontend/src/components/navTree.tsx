@@ -34,6 +34,15 @@ export interface NavItem {
   // بس ما جان ينفتح بأي منح — وهاي المشكلة الي شكه منها صاحب العمل:
   // «صلاحية من أنطيها لأحد يلا تظهر إله».
   unlockPermission?: string
+  // labelFor: اسم البند يتبدّل حسب الي يشوفه.
+  //
+  // ⚠️ الحاجة إلها: البند الواحد ممكن يفتح شغلاً مختلفاً حسب الصلاحية.
+  // «الحجوزات» لمن عنده `sales_booking` بس ما تفتح محطات الشركة —
+  // تفتح نموذج تسجيل حجز وبس. فاسم «الحجوزات» **يكذب عليه**، ويخليه
+  // يظن إن الشاشة ناقصة. «بدل الحجوزات يطلعلي إنشاء حجز».
+  //
+  // ⚠️ اسماً بس — ما تفتح ولا تقيّد ولا تبدّل المسار.
+  labelFor?: (ctx: NavContext) => string
   // ownerOnly: الاستثناء الوحيد الي المنح ما يكسره — شاشات المالك.
   ownerOnly?: boolean
   // hideForRoles: منع صريح لدور معيّن — يشتغل **قبل** كل شي، حتى قبل
@@ -183,7 +192,22 @@ export const navItems: NavItem[] = [
       // «الحجوزات» و«حجز جديد» و«تنسيق الحجوزات» صارن **بند واحد**،
       // والثلاثة خيارات من فوگ بالشاشة. الثلاثة نفس الشغلة: حجز
       // تسجّله، تنسّقه، وتتابعه.
-      { to: '/bookings', label: '📋 الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], anyPermission: ['view_bookings', 'coordinator', 'sales_booking'], unlockPermission: 'view_bookings' },
+      {
+        to: '/bookings', label: '📋 الحجوزات', icon: <></>,
+        roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'],
+        anyPermission: ['view_bookings', 'coordinator', 'sales_booking'],
+        unlockPermission: 'view_bookings',
+        // منو عنده حق **التسجيل** بس، الشاشة تفتحله «حجز جديد» وبس —
+        // فالاسم يگول شغله الحقيقي بدل ما يوهمه بمحطات ما يشوفها.
+        labelFor: (ctx) => {
+          const canViewAll = ctx.employee?.role === 'ADMIN' || ctx.employee?.role === 'OWNER'
+            || ['HR_COORDINATOR', 'MONITOR', 'FINANCE', 'PROJECT_MANAGER', 'PROCUREMENT_ADMIN']
+              .includes(ctx.employee?.role ?? '')
+            || ['view_bookings', 'coordinator', 'crew_management', 'mission_tracking',
+              'procurement', 'monitoring', 'finance'].some((p) => ctx.permissions.includes(p))
+          return canViewAll ? '📋 الحجوزات' : '＋ إنشاء حجز'
+        },
+      },
       { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       // ⚠️ «📅 الحجوزات المؤجلة» انشالت: نفس حجوزاتها تطلع بسلّة
       // «حجوزات مؤجّلة» جوّا «ما وصلت للتنفيذ» بشاشة الحجوزات، مع
@@ -234,15 +258,25 @@ export const navItems: NavItem[] = [
           // ⚠️ `hideForRoles` يشتغل **قبل أي منح** — فحتى لو انمنح
           // المراقب `gps_system` (وهي من صلاحياته الافتراضية)، ما
           // يشوف هذي البنود. وإداري الجي بي اس ما يتأثر إطلاقاً.
-          { to: '/gps', label: 'نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
-          { to: '/gps/requests', label: 'طلبات GPS المعلقة', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
-          // متابعة التجديد تخص مسؤول الجي بي اس ومهندس الجودة سوا
-          { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, anyPermission: ['gps_system', 'quality_control'], hideForRoles: ['MONITOR'] },
-          // شاشة الشرائح كانت موجودة بالمسارات بس بلا رابط بالقائمة —
-          // يعني تحرير الشريحة وحرقها ما كان يوصلهن أحد إلا بكتابة الرابط
-          { to: '/gps/sims', label: '📶 شرائح GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
-          { to: '/gps/renewals-review', label: 'طلبات تجديد GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
-          { to: '/gps/maintenance-review', label: 'طلبات صيانة GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
+          // ═══ ستة بنود صارن اثنين ═══
+          //
+          // «المفروض يتوزعن ع الواجهات: طلبات الصيانة وطلبات جديد
+          // وطلبات معلقة يكونن بواجهة وحدهن، والشرائح والمتابعة ونظام
+          // الجي بي اس يكونن بواجهة وحدهن».
+          //
+          // فالتقسيم صار بالشغل مو بالشاشة:
+          //  • «نظام GPS» = المتابعة والحالة (نظرة عامة · الاشتراكات ·
+          //    الشرائح · متابعة التجديد) — تبويبات جوّا الشاشة.
+          //  • «طلبات GPS» = البتّ (معلقة · تجديد · صيانة).
+          //
+          // ⚠️ الشاشات نفسها ما انلمست — نفس الملفات تنعرض بـ`embedded`،
+          // ومسارتها القديمة باقية شغّالة فما ينكسر رابط محفوظ.
+          { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
+          { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
+          // ⚠️ متابعة التجديد بند مستقل **بعد** لمهندس الجودة: هو عنده
+          // `quality_control` بلا `gps_system`، فلو انشال البند يفقد
+          // شغله كله — والتبويب جوّا «نظام GPS» ما يوصله.
+          { to: '/gps/follow-up', label: '🔄 متابعة تجديد الاشتراكات', icon: <></>, permission: 'quality_control', hideForRoles: ['MONITOR'] },
           { to: '/service-managers', label: 'مسؤولو الخدمات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'service_managers' },
           // أسعار الشبكات — تنعدّل من الشاشة لأنها لسه تتبني وتتغيّر
           { to: '/network-prices', label: 'أسعار الشبكات', icon: <></>, roles: ['ADMIN'], unlockPermission: 'network_prices' },
@@ -427,15 +461,19 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_technicians',
     permission: 'unit_technicians',
     children: [
-      { to: '/exhibitions', label: 'إدارة المعارض', icon: <></>, permission: 'unit_technicians' },
-      // شغلتان مختلفتان: «إضافة منتج» تضيفه لكتالوج النظام مباشرة
-      // بكل مزاياه (التوفر، الخدمة، المواصفات، المصدر، الموديل)،
-      // و«طلبات المنتجات» اقتراح ينتظر موافقة المدير.
-      { to: '/products', label: '📦 المنتجات', icon: <></>, permission: 'unit_technicians' },
-      { to: '/product-requests', label: 'طلبات المنتجات', icon: <></>, permission: 'unit_technicians' },
-      { to: '/service-studies', label: 'دراسات الخدمات', icon: <></>, permission: 'unit_technicians' },
-      { to: '/training-management', label: 'مفردات التدريب', icon: <></>, permission: 'content_technician' },
-      { to: '/tech-showcase', label: 'معرض الأعمال', icon: <></>, permission: 'content_technician' },
+      // ═══ ستة بنود صارن اثنين ═══
+      //
+      // «هاي بوحدة التقنيين ذن يكونن بواجهة وحدة، ما أريدهن يكونن هيج
+      // بالقائمة الجانبية… وهذن بواجهة ثانية».
+      //
+      // التقسيم بالشغل مو بالشاشة:
+      //  • «المنتجات والمعارض» = سلسلة المنتج (يقترح ← ينضاف ← ينعرض).
+      //  • «المحتوى التقني» = الي يُكتب ويُنشر (دراسة · مفردة · عمل).
+      //
+      // ⚠️ الشاشات نفسها ما انلمست — تنعرض بـ`embedded`، ومسارتها
+      // المفردة باقية شغّالة فما ينكسر رابط محفوظ.
+      { to: '/tech-products', label: '📦 المنتجات والمعارض', icon: <></>, permission: 'unit_technicians' },
+      { to: '/tech-content', label: '📚 المحتوى التقني', icon: <></>, anyPermission: ['unit_technicians', 'content_technician'] },
     ],
   },
   // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل

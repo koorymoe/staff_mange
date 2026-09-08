@@ -3,7 +3,9 @@ import { api, type Employee, type Service, type TrainingMaterial } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 
-export default function TrainingManagement() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function TrainingManagement({ embedded }: { embedded?: boolean } = {}) {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -83,7 +85,9 @@ export default function TrainingManagement() {
     <>
       <SaveError message={guard.error} onClose={guard.clear} />
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">إدارة التدريب</h2>
+      {!embedded && (
+        <h2 className="text-2xl font-bold text-brand-900">إدارة التدريب</h2>
+      )}
       <p className="mt-1 text-slate-500">حدد صلاحية التدريب للموظفين الجدد والمواد التي يشاهدونها حسب تخصصهم.</p>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">

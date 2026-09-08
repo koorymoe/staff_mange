@@ -34,7 +34,9 @@ const OUTCOMES: { value: GpsFollowUpOutcome; label: string; hint: string }[] = [
   { value: 'NO_ANSWER', label: 'ما رد على الاتصال', hint: 'يضل بقائمة الاتصال' },
 ]
 
-export default function GpsFollowUp() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
   const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
   const canBurn = isAdmin || permissions.includes('gps_system')
@@ -172,6 +174,7 @@ export default function GpsFollowUp() {
 
   return (
     <div dir="rtl" className="space-y-6">
+      {!embedded && (
       <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
         <h1 className="text-2xl font-bold text-white">🔄 متابعة تجديد الاشتراكات</h1>
         <p className="mt-1 text-sm text-blue-200">
@@ -179,6 +182,7 @@ export default function GpsFollowUp() {
           ثانية وبعدها الشريحة تحتاج حرق.
         </p>
       </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {([

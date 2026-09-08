@@ -11,7 +11,9 @@ function fileToBase64(file: File): Promise<string> {
   })
 }
 
-export default function TechShowcasePage() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function TechShowcasePage({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
   const canAdd = employee?.role === 'ADMIN' || permissions.includes('content_technician')
   const [items, setItems] = useState<TechShowcaseItem[]>([])
@@ -59,7 +61,9 @@ export default function TechShowcasePage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">معرض أعمال التقنيين</h2>
+      {!embedded && (
+        <h2 className="text-2xl font-bold text-brand-900">معرض أعمال التقنيين</h2>
+      )}
       <p className="mt-1 text-slate-500">
         نماذج أعمال وأفكار وتصاميم جديدة يعرضها الفنيون — إلهام لكل الفريق.
       </p>

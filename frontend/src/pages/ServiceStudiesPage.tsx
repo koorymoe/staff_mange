@@ -6,7 +6,9 @@ function splitList(v: string) {
   return v.split(',').map((s) => s.trim()).filter(Boolean)
 }
 
-export default function ServiceStudiesPage() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
   const canAdd = employee?.role === 'ADMIN' || permissions.includes('unit_technicians')
   const isAdmin = employee?.role === 'ADMIN'
@@ -81,7 +83,9 @@ export default function ServiceStudiesPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">إدارة الخدمات</h2>
+      {!embedded && (
+        <h2 className="text-2xl font-bold text-brand-900">إدارة الخدمات</h2>
+      )}
       <p className="mt-1 text-slate-500">خدمة جديدة مقترحة تحتاج دراسة — المدير يوكّل تقنيين محددين، وكل موكَّل يرفع تقارير.</p>
 
       {canAdd && (

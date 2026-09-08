@@ -21,7 +21,9 @@ const NEED: { value: ProductAvailability; label: string }[] = [
 ]
 const needLabel = (v: ProductAvailability) => NEED.find((n) => n.value === v)?.label ?? v
 
-export default function ProductsPage() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -133,6 +135,7 @@ export default function ProductsPage() {
 
   return (
     <div style={{ direction: 'rtl', fontFamily: "'Segoe UI', Tahoma, Arial, sans-serif" }}>
+      {!embedded && (
       <div style={{
         background: `linear-gradient(135deg, ${PRIMARY}, #283593)`,
         color: 'white', padding: '20px 30px', borderRadius: '12px', marginBottom: '24px',
@@ -142,6 +145,7 @@ export default function ProductsPage() {
           المنتجات الي يضيفها التقنيين — وتظهر تلقائياً بعرض السعر
         </span>
       </div>
+      )}
 
       <form
         onSubmit={handleAdd}

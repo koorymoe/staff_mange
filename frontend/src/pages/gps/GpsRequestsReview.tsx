@@ -5,7 +5,9 @@ import { useSession, hasGpsSkill } from '../../session'
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
 
-export default function GpsRequestsReview() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function GpsRequestsReview({ embedded }: { embedded?: boolean } = {}) {
   const { gpsServiceId } = useSession()
   const [requests, setRequests] = useState<GpsDeviceRequest[]>([])
   const [gpsTechnicians, setGpsTechnicians] = useState<Employee[]>([])
@@ -130,7 +132,9 @@ export default function GpsRequestsReview() {
 
   return (
     <div>
-      <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات GPS المعلقة 📋</h2>
+      {!embedded && (
+        <h2 className="mb-6 text-2xl font-bold text-brand-900">طلبات GPS المعلقة 📋</h2>
+      )}
 
       {loading && <p className="py-20 text-center text-slate-400">جاري التحميل...</p>}
       {!loading && requests.length === 0 && (

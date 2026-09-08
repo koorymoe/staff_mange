@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { api, type GpsSimCard, type GpsCustomer } from '../../api'
 
-export default function GpsSims() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function GpsSims({ embedded }: { embedded?: boolean } = {}) {
   const [sims, setSims] = useState<GpsSimCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -85,11 +87,12 @@ export default function GpsSims() {
 
   return (
     <div dir="rtl">
-      {/* Header */}
-      <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
-        <h1 className="text-2xl font-bold text-white">📱 إدارة شرائح SIM</h1>
-        <p className="mt-1 text-blue-200 text-sm">إضافة وإدارة شرائح الاتصال</p>
-      </div>
+      {!embedded && (
+        <div className="mb-6 rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
+          <h1 className="text-2xl font-bold text-white">📱 إدارة شرائح SIM</h1>
+          <p className="mt-1 text-blue-200 text-sm">إضافة وإدارة شرائح الاتصال</p>
+        </div>
+      )}
 
       {/* Stats Cards */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-4">

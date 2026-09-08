@@ -396,7 +396,12 @@ export default function Layout() {
   // unitGranted ينتقل للأولاد: لما الموظف عنده صلاحية الوحدة، كل صفحاتها
   // تنعرض له بدون فحص صلاحياتها التفصيلية.
   // العنصر وصلنا منضّف من prune — ما نفلتر ولا نحسب صلاحيات هنا من جديد.
-  const renderNavItem = (item: PrunedItem, depth: number = 0): React.ReactNode => {
+  const renderNavItem = (rawItem: PrunedItem, depth: number = 0): React.ReactNode => {
+    // اسم البند حسب الي يشوفه — `labelFor` تبدّل الاسم وبس، ما تفتح
+    // ولا تقيّد ولا تبدّل المسار.
+    const item: PrunedItem = rawItem.labelFor
+      ? { ...rawItem, label: rawItem.labelFor({ employee, permissions: employeePermissions, gpsServiceId }) }
+      : rawItem
     // ⚠️ صلاحية ممنوحة زيادة عن دور المراقب — شارة بصرية بس، بلا
     // تأثير على الظهور أو الترتيب.
     const extra = !item.divider && isExtra(item, item.granted)

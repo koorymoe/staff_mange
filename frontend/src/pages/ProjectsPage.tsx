@@ -260,6 +260,25 @@ function parseRejection(task: string | null): { reason: string; notes: string; c
 export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'all' | 'delegated' } = {}) {
   const { employee, permissions } = useSession()
   const role = employee?.role
+  const goto = useNavigate()
+
+  // ═══ خانة «عرض سعر» ═══
+  //
+  // «ما أريدها إدارة المشاريع — أريد تسويلي خانة هنانه بدل كل
+  // المشاريع تخليلي عرض سعر حتى يكدرون يسوون عرض سعر… وهاي الخانة
+  // تطلع مال عرض السعر: من أني أنطي صلاحية عرض سعر تطلعله هنانه».
+  //
+  // ⚠️ **بالصلاحية مو بالدور**: تطلع لصاحب أي صلاحية عرض سعر، ومنو
+  // ما عنده ما يشوفها أصلاً — بدل ما يضغط ويرجع «غير مصرح لك».
+  //
+  // ⚠️ وبرّه شرط `canManage`: صاحب عرض السعر ممكن ما يدير مشاريع
+  // إطلاقاً، فلو خلّيناها جوّا شريط الخيارين ما تظهرله أبداً.
+  //
+  // ⚠️ وما ننسخ شاشة عرض السعر هنا — الخانة **تودّي** لشاشتها
+  // `/quotations` الموجودة بحارسها. نسختان تفترقن أول تعديل.
+  const canQuote = role === 'ADMIN' || role === 'OWNER'
+    || ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system']
+      .some((p) => permissions.includes(p))
   const [mode, setMode] = useState<'all' | 'delegated'>(initialMode)
   const delegatedMode = mode === 'delegated'
   const canManage = delegatedMode
@@ -465,6 +484,19 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
           >
             ＋ إضافة مشروع
           </button>
+        </div>
+      )}
+
+      {/* خانة «عرض سعر» — تطلع بالصلاحية وحدها، حتى لمن ما يدير مشاريع */}
+      {canQuote && (
+        <div className="inline-flex flex-wrap items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-1.5 shadow-sm">
+          <button
+            onClick={() => goto('/quotations')}
+            className="rounded-xl bg-amber-600 px-4 py-2 text-xs font-extrabold text-white shadow-md transition hover:bg-amber-700"
+          >
+            📄 عرض سعر
+          </button>
+          <span className="px-2 text-[11px] font-bold text-amber-800">سوّي عرض سعر للزبون</span>
         </div>
       )}
 

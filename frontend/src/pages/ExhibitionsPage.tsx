@@ -36,7 +36,9 @@ function groupNominees(employees: Employee[]) {
   return [...groups, { label: 'باقي الموظفين', members: rest }].filter((g) => g.members.length > 0)
 }
 
-export default function ExhibitionsPage() {
+// ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
+// الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
+export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
   const canAdd = employee?.role === 'ADMIN' || permissions.includes('unit_technicians')
   const isAdmin = employee?.role === 'ADMIN'
@@ -144,7 +146,9 @@ export default function ExhibitionsPage() {
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-brand-900">إدارة المعارض</h2>
+      {!embedded && (
+        <h2 className="text-2xl font-bold text-brand-900">إدارة المعارض</h2>
+      )}
       <p className="mt-1 text-slate-500">معارض تجارية تحضرها الشركة — التاريخ، الشركات، المنتجات، والترشيح.</p>
 
       {canAdd && (

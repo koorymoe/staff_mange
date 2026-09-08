@@ -113,6 +113,10 @@ export default function BookingsHub() {
   // شاشة تصير حملاً أثقل من الي شلناه بالترقيم.
   const [counts, setCounts] = useState<Record<string, number>>({})
   useEffect(() => {
+    // ⚠️ بلا صلاحية شاملة، السيرفر يرجّع ٤٠٣ على العدّادات — فما ننادي
+    // أصلاً. النداء الفاشل كل دقيقة ضجيج بالكونسول وحمل بلا فايدة،
+    // والي ما يشوف المحطات ما عنده وين يعرض رقمها.
+    if (!canViewAll) return
     let alive = true
     const load = () => api.getBookingStationCounts()
       .then((c) => { if (alive) setCounts(c) })
@@ -122,7 +126,7 @@ export default function BookingsHub() {
     // الصفحة — فيقعد ساعة وهو يظن ماكو شغل جديد.
     const iv = setInterval(load, 60_000)
     return () => { alive = false; clearTimeout(t); clearInterval(iv) }
-  }, [tab])
+  }, [tab, canViewAll])
 
   // نفس حارس البند القديم بالقائمة بالضبط — مو حارساً أوسع ولا أضيق.
   const canDecideDelete = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
