@@ -27,6 +27,19 @@ func (h *DisciplineHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /api/discipline/events?employeeId=&limit= — سجل الغرامات والرجوعات
+// GET /api/discipline/today-headline — أرقام أخبار اليوم للشريط العام.
+//
+// ⚠️ متاح لأي موظف مسجّل دخول — وهذا آمن لأنه **أرقام مجرّدة بلا
+// أسماء ولا مبالغ**: «انغرموا اليوم: ٢» ما تكشف منو ولا كم.
+func (h *DisciplineHandler) TodayHeadline(w http.ResponseWriter, r *http.Request) {
+	out, err := h.service.TodayHeadline()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب أخبار اليوم")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 func (h *DisciplineHandler) Events(w http.ResponseWriter, r *http.Request) {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	items, err := h.service.Events(r.URL.Query().Get("employeeId"), limit)

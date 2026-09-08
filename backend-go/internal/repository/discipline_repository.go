@@ -572,3 +572,33 @@ func (r *DisciplineRepository) OverdueManagedPaperwork(hours int) ([]OverdueMana
 	`, hours)
 	return rows, err
 }
+
+// TodayHeadline ملخّص حركات الانضباط بيوم بغداد الحالي.
+//
+// «الأخبار لازم تضل تظهر — مثلاً أخبار اليوم: كم شخص تغرم، كم شخص
+// رجعتله النقاط مالته؟»
+//
+// ⚠️⚠️ **أرقام بس، بلا أسماء**: الشريط يشوفه **كل موظفي الشركة**،
+// ونشر اسم المغرَّم على الجميع عقوبة ثانية ما طلبها أحد. الموظف
+// يشوف تفاصيل عقوبته هو بصفحته، مو بشريط عام.
+//
+// ⚠️ ونعدّ **موظفين مميّزين** مو حركات: واحد انغرم ثلاث مرات باليوم
+// خبر واحد مو ثلاثة، وإلا الرقم يضخّم الواقع.
+//
+// ⚠️ وتاريخ بغداد مو UTC — `baghdad_date` نفس الي يستعمله باقي النظام،
+// وإلا أخبار اليوم تتبدّل الساعة ٩ بالليل بدل منتصف الليل.
+type DisciplineHeadline struct {
+	Penalized int `db:"penalized" json:"penalized"`
+	Restored  int `db:"restored" json:"restored"`
+}
+
+func (r *DisciplineRepository) TodayHeadline() (DisciplineHeadline, error) {
+	out := DisciplineHeadline{}
+	err := r.db.Get(&out, `
+		SELECT
+		  COUNT(DISTINCT "employeeId") FILTER (WHERE delta < 0) AS penalized,
+		  COUNT(DISTINCT "employeeId") FILTER (WHERE delta > 0) AS restored
+		FROM "DisciplineEvent"
+		WHERE baghdad_date("createdAt") = baghdad_today()`)
+	return out, err
+}

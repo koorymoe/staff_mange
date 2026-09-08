@@ -41,6 +41,31 @@ func bucketCondition(bucket string) string {
 	// ⚠️ والمحبوس عند المشاريع ينستثنى بعد — نفس السبب: طابور الشغل
 	// ما يجوز يمتلئ بحجوزات الإداري ما يكدر يلمسها.
 	notDeleting += ` AND NOT ` + atProjectsSQL
+	// ⚠️⚠️ **والمتوقّف ينستثنى من محطتَي الاتصال والتثبيت** — العيب الي
+	// اشتكوا منه الموظفون:
+	//
+	// «الحجز الي الزبون مالته ما يرد المفروض ينتقل من بانتظار التثبيت
+	//  إلى ما وصلت للتنفيذ. الي جاي يصير: تنتقل نسخة لما وصل للتنفيذ
+	//  وتبقى نسخة بانتظار التثبيت، ويرجع الموظف الغافل يتصل ع الزبون
+	//  من جديد وما يدري».
+	//
+	// السبب: التأشير يحط `status='WAITING'` و`waitingSince`، بس هالسلّة
+	// چانت تستثني الملغى والمنجز **وبس** — فالحجز يبقى هنا (`confirmedAt`
+	// لسه فاضي وماكو كادر) **ويطلع بمحطة «ما وصلت للتنفيذ»** بنفس الوقت.
+	// نسختان لنفس الحجز، فالزبون ينتصل عليه مرتين وثلاثة.
+	//
+	// القاعدة الصح: **الحجز يكون بمحطة وحدة، مو بثنتين.**
+	//
+	// ⚠️ والمؤجَّل معاه بقرار (ع): «انقله بعد — محطة وحدة بس».
+	//
+	// ⚠️ وما ينضاع ولا ينحبس: `ResumeFromWaiting` تصفّي `waitingSince`،
+	// وتحديد موعد جديد يطفّي `awaitingReschedule` — فالحجز **يرجع
+	// لمحطته لحاله** أول ما الزبون يرد أو ينتحدد موعده.
+	//
+	// ⚠️ ومحصورة بـ«بانتظار التثبيت» و«تم التثبيت» — **مو «مكلّف»**:
+	// حجز عليه كادر مجدول لازم يبقى مرئي بطابور الكادر حتى لو الزبون
+	// ما رد، وإلا الكادر يطلع لموقع ما أحد يعرف بيه.
+	notStuck := ` AND b."waitingSince" IS NULL AND NOT b."awaitingReschedule"`
 
 	switch bucket {
 	// محطة مستقلة: ينتظر قرار المراقب
@@ -52,11 +77,11 @@ func bucketCondition(bucket string) string {
 	// ١ — انسجّل وما انثبّت بعد: ولا كادر ولا تنفيذ
 	case "pending":
 		return `b."confirmedAt" IS NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting + notStuck
 	// ٢ — انثبّت وينتظر موعداً وكادراً
 	case "confirmed":
 		return `b."confirmedAt" IS NOT NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting + notStuck
 	// ٤ — عليه كادر أو بدا التنفيذ، وما خلص
 	// ⚠️ «أو» مو «و»: حجز باشر بيه الليدر بلا تكليف رسمي لازم يبقى مرئي.
 	case "assigned":
