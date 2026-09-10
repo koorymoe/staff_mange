@@ -1542,6 +1542,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إحصاء الغسل لكل سيارة بشهر: كم مرة انغسلت ومنو غسلها.
 	// نفس حارس إدارة المركبات — أبو الكميات والإداري يفتحونها.
 	mux.Handle("GET /api/vehicles/ratings/wash-monthly", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleWashMonthly), requireAuth, requireVehicleMgmt))
+	// تصدير نفس الإحصاء إكسل — نفس الحارس بالضبط، التصدير ما يوسّع الوصول.
+	mux.Handle("GET /api/vehicles/ratings/wash-monthly/export", middleware.Chain(http.HandlerFunc(vehicleHandler.ExportVehicleWashMonthly), requireAuth, requireVehicleMgmt))
 
 	// المرحلة 2: مرفقات الأعطال/الأضرار، متابعة الإطارات والبطاريات، تنبيهات الاستحقاق
 	mux.Handle("GET /api/vehicle-incidents/{id}/attachments", middleware.Chain(http.HandlerFunc(vehicleHandler.ListIncidentAttachments), requireAuth, requireVehicleMgmt))

@@ -1,8 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
+
+	"github.com/xuri/excelize/v2"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -350,6 +355,75 @@ func (h *VehicleHandler) VehicleWashMonthly(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	WriteJSON(w, http.StatusOK, rows)
+}
+
+// ExportVehicleWashMonthly ينزّل إحصاء الغسل الشهري كملف إكسل.
+// GET /api/vehicles/ratings/wash-monthly/export?month=YYYY-MM&vehicleId=
+//
+// نفس بيانة الشاشة بالضبط ونفس الحارس — التصدير ما يوسّع الوصول.
+// ⚠️ «ما انقيّم» غير «تقييمه صفر»: AvgQuality nil تُكتب «—» مو ٠،
+// لأن رقم غلط أسوأ من ماكو رقم.
+func (h *VehicleHandler) ExportVehicleWashMonthly(w http.ResponseWriter, r *http.Request) {
+	month := r.URL.Query().Get("month")
+	if month == "" {
+		month = time.Now().UTC().Add(3 * time.Hour).Format("2006-01")
+	}
+	rows, err := h.service.VehicleWashMonthlyStats(month, r.URL.Query().Get("vehicleId"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب إحصاء الغسل")
+		return
+	}
+
+	f := excelize.NewFile()
+	sheet := "إحصائيات الغسل"
+	f.SetSheetName("Sheet1", sheet)
+	headers := []string{"السيارة", "رقم اللوحة", "الشهر", "عدد الغسلات", "متوسط الجودة (٠–٤)", "منو غسلها (وكم مرة)", "مجموع النقاط"}
+	for i, head := range headers {
+		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
+		_ = f.SetCellValue(sheet, cell, head)
+	}
+	setExcelHeaderStyle(f, sheet, "G")
+
+	bodyStyle, _ := f.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "right", WrapText: true}})
+
+	for i, v := range rows {
+		row := i + 2
+		quality := "—"
+		if v.AvgQuality != nil {
+			quality = fmt.Sprintf("%.2f", *v.AvgQuality)
+		}
+		washers := make([]string, 0, len(v.Washers))
+		points := 0
+		for _, wr := range v.Washers {
+			washers = append(washers, fmt.Sprintf("%s (%d)", wr.EmployeeName, wr.Times))
+			points += wr.TotalPoints
+		}
+		washersText := "—"
+		if len(washers) > 0 {
+			washersText = strings.Join(washers, " · ")
+		}
+		values := []interface{}{
+			v.VehicleName, v.PlateNumber, v.Month, v.WashCount, quality, washersText, points,
+		}
+		for c, val := range values {
+			cell, _ := excelize.CoordinatesToCellName(c+1, row)
+			_ = f.SetCellValue(sheet, cell, val)
+			_ = f.SetCellStyle(sheet, cell, cell, bodyStyle)
+		}
+	}
+	_ = f.SetColWidth(sheet, "A", "A", 26)
+	_ = f.SetColWidth(sheet, "B", "C", 16)
+	_ = f.SetColWidth(sheet, "D", "E", 20)
+	_ = f.SetColWidth(sheet, "F", "F", 44)
+	_ = f.SetColWidth(sheet, "G", "G", 16)
+
+	filename := fmt.Sprintf("wash-stats-%s.xlsx", month)
+	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, url.QueryEscape(filename)))
+	if err := f.Write(w); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر إنشاء ملف الإكسل")
+		return
+	}
 }
 
 // ── VehicleIncidentAttachment ──

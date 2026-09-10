@@ -716,6 +716,9 @@ export default function InventoryPage() {
                               <th className="px-4 py-2 font-semibold text-slate-600">الأداة الناقصة</th>
                               <th className="px-4 py-2 font-semibold text-slate-600">متوفرة بمخزن الكميات؟</th>
                               <th className="px-4 py-2 font-semibold text-slate-600">الإجراء</th>
+                              {canManageInventory && (
+                                <th className="px-4 py-2 font-semibold text-slate-600">حذف</th>
+                              )}
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
@@ -744,6 +747,30 @@ export default function InventoryPage() {
                                   <td className="px-4 py-2 text-xs text-slate-500">
                                     {qty > 0 ? 'ينطيها إداري الكميات من الرف' : 'لازم تنشترى'}
                                   </td>
+                                  {/* حذف الأداة من نواقص هذا الموظف وحده — القالب
+                                      يبقى مشترك، والحذف يبيّن بقائمة «مستثناة من
+                                      نواقصه» فوق ويُرجَّع بضغطة. مو حذفاً نهائياً. */}
+                                  {canManageInventory && (
+                                    <td className="px-4 py-2">
+                                      <button
+                                        onClick={async () => {
+                                          if (!confirm(
+                                            `تحذف «${m}» من نواقص ${k.employee.name}؟\n\n`
+                                            + 'ما تنحسب عليه بعدها، وتبقى بالعدة القياسية لباقي الفنيين. '
+                                            + 'وتگدر ترجّعها بضغطة من «مستثناة من نواقصه».',
+                                          )) return
+                                          try {
+                                            await api.exemptTool(k.employee.id, m)
+                                            load()
+                                          } catch (e) {
+                                            setError(e instanceof Error ? e.message : 'تعذر حذف الأداة من نواقصه')
+                                          }
+                                        }}
+                                        className="rounded-lg border border-red-200 bg-red-50 px-3 py-1 text-xs font-bold text-red-700 hover:bg-red-100">
+                                        🗑 احذفها من نواقصه
+                                      </button>
+                                    </td>
+                                  )}
                                 </tr>
                               )
                             })}
