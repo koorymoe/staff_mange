@@ -90,6 +90,7 @@ export default function VehiclesPage() {
   // null = لسه ما انجاب (جاري التحميل) · [] = انجاب وماكو نتيجة.
   // ⚠️ التفريق مقصود: «جاري الحساب» غير «ماكو ولا غسلة».
   const [washStats, setWashStats] = useState<VehicleWashMonthly[] | null>(null)
+  const [washExporting, setWashExporting] = useState(false)
 
   // ⚠️ ما نجيب الإحصاء إلا لمن يفتح تبويبه — استعلامان لكل سيارة،
   // ما نحمّلهن على كل من يفتح شاشة المركبات.
@@ -1009,11 +1010,30 @@ export default function VehiclesPage() {
                         «انغسلت» تعني اكو موظف مسمّى غسلها بذاك اليوم. درجة الجودة (٠–٤) تنعرض جنبها.
                       </p>
                     </div>
-                    <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
-                      الشهر:
-                      <input type="month" value={washMonth} onChange={(e) => setWashMonth(e.target.value)}
-                        className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                    </label>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-2 text-sm font-medium text-slate-600">
+                        الشهر:
+                        <input type="month" value={washMonth} onChange={(e) => setWashMonth(e.target.value)}
+                          className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+                      </label>
+                      {/* التصدير ينزّل نفس صفوف الشاشة — لو الشهر فاضي
+                          ما ينفع ملف فاضي، فالزر ينطفي. */}
+                      <button
+                        onClick={async () => {
+                          setWashExporting(true)
+                          try {
+                            await api.exportVehicleWashMonthly(washMonth)
+                          } catch (e) {
+                            alert(e instanceof Error ? e.message : 'تعذر تصدير الملف')
+                          } finally {
+                            setWashExporting(false)
+                          }
+                        }}
+                        disabled={washExporting || !washStats || washStats.length === 0}
+                        className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+                        {washExporting ? 'جارٍ التصدير...' : '📊 تصدير إكسل'}
+                      </button>
+                    </div>
                   </div>
 
                   {washStats === null ? (

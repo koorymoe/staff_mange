@@ -4534,6 +4534,12 @@ export const api = {
     request<VehicleWashMonthly[]>(
       `/vehicles/ratings/wash-monthly?month=${encodeURIComponent(month)}${vehicleId ? `&vehicleId=${vehicleId}` : ''}`,
     ),
+  /** ينزّل نفس إحصاء الغسل ملف إكسل — نفس البيانة ونفس الحارس */
+  exportVehicleWashMonthly: (month: string, vehicleId?: string) =>
+    downloadFile(
+      `/vehicles/ratings/wash-monthly/export?month=${encodeURIComponent(month)}${vehicleId ? `&vehicleId=${vehicleId}` : ''}`,
+      `wash-stats-${month}.xlsx`,
+    ),
 
   // Quality
   getQualityIssues: (category?: 'EXECUTION' | 'OVERSIGHT') =>
@@ -4681,6 +4687,16 @@ export const api = {
    * ماكو ولا فني يتحاسب عليها.
    */
   getToolExemptions: () => request<PersonalToolExemption[]>('/inventory/tool-exemptions'),
+  /**
+   * يحذف أداة من نواقص موظف بعينه (استثناء) — القالب يبقى مشترك، فالأداة
+   * تبقى محسوبة على باقي الفنيين. الحذف يظهر بقائمة «مستثناة من نواقصه»
+   * ويُرجَّع بضغطة، حتى ما يصير استثناء مخفي يخلي التقرير يكذب بصمت.
+   */
+  exemptTool: (employeeId: string, toolName: string, note?: string) =>
+    request<{ ok: boolean }>('/inventory/tool-exemptions', {
+      method: 'POST',
+      body: JSON.stringify({ employeeId, toolName, note: note ?? null }),
+    }),
   /** يرجّع الأداة لنواقص الموظف — تراجع عن الاستثناء */
   unexemptTool: (employeeId: string, toolName: string) =>
     request<{ ok: boolean }>(
