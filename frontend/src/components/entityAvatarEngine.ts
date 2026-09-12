@@ -49,6 +49,7 @@ export async function mountAvatar(
   canvas: HTMLCanvasElement,
   url: string,
   initial: ClipName,
+  framing: 'bust' | 'full' = 'bust',
 ): Promise<AvatarHandle> {
   const engine = new Engine(canvas, true, { preserveDrawingBuffer: false, stencil: false })
   const scene = new Scene(engine)
@@ -64,9 +65,14 @@ export async function mountAvatar(
   // ⚠️ التأطير مقاس على الشاشة مو مخمَّن: بنصف قطر ٣.٠ وهدف ١.١٥
   // طلعت الشخصية صغيرة والوجه ما يبين. الصدر-فوق أوضح — الموظف
   // يحتاج يشوف الوجه والإيد الي تشاور، مو الأرجل.
-  const camera = new ArcRotateCamera('cam', Math.PI / 2 + 0.30, Math.PI / 2 - 0.04, 1.75,
-    new Vector3(0, 1.32, 0), scene)
-  camera.fov = 0.72
+  // `full` للبوت العائم الصغير: كل الجسم حتى تبين الوقفة والحركة،
+  // بلاه تطلع رقبة بمربّع. و`bust` لورقة القصة — الوجه والإيد.
+  const camera = framing === 'full'
+    ? new ArcRotateCamera('cam', Math.PI / 2 + 0.22, Math.PI / 2 - 0.02, 3.15,
+      new Vector3(0, 0.92, 0), scene)
+    : new ArcRotateCamera('cam', Math.PI / 2 + 0.30, Math.PI / 2 - 0.04, 1.75,
+      new Vector3(0, 1.32, 0), scene)
+  camera.fov = framing === 'full' ? 0.62 : 0.72
   camera.minZ = 0.05
 
   const amb = new HemisphericLight('amb', new Vector3(0, 1, 0), scene)
