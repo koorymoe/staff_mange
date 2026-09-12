@@ -112,6 +112,53 @@ function dateParts(iso?: string | null) {
   }
 }
 
+/**
+ * يحوّل الرقم العراقي لصيغة دولية تنفتح بواتساب وتلغرام.
+ * `07XXXXXXXXX` → `9647XXXXXXXXX`
+ *
+ * ⚠️ **التحويل إلزامي مو تجميلي**: `wa.me/07...` يفتح ويفشل صامتاً —
+ * الزبون ما ينفتح وما تطلع رسالة خطأ، فالإداري يحسب إنه أرسل وهو لا.
+ * ويرجّع `null` للرقم المو صالح، حتى ما نعرض زراً مكسوراً.
+ */
+function intlPhone(raw: string | null | undefined): string | null {
+  if (!raw) return null
+  const d = raw.replace(/[^\d+]/g, '').replace(/^\+/, '')
+  if (/^964\d{9,10}$/.test(d)) return d
+  if (/^0\d{9,10}$/.test(d)) return `964${d.slice(1)}`
+  if (/^7\d{8,9}$/.test(d)) return `964${d}`
+  return null
+}
+
+/**
+ * نسخ للحافظة مع بديل.
+ *
+ * ⚠️ `navigator.clipboard` ما تشتغل إلا على أصل آمن (https أو
+ * localhost)، والنظام يُفتح بـ`http` على الشبكة الداخلية — فبلا
+ * البديل الزر **يسكت بلا خطأ** والمستخدم يحسب إنه نسخ.
+ */
+async function copyText(v: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(v)
+      return true
+    }
+  } catch { /* نكمل على البديل */ }
+  try {
+    const ta = document.createElement('textarea')
+    ta.value = v
+    ta.setAttribute('readonly', '')
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    const ok = document.execCommand('copy')
+    ta.remove()
+    return ok
+  } catch {
+    return false
+  }
+}
+
 export default function StageBucketsPage() {
   const [bucket, setBucket] = useState<StageBucket>('POSTPONED_AFTER_CONFIRM')
   const [rows, setRows] = useState<Booking[]>([])
@@ -126,6 +173,8 @@ export default function StageBucketsPage() {
   const [dateDrafts, setDateDrafts] = useState<Record<string, string>>({})
   const [busyId, setBusyId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
+
+  const [copied, setCopied] = useState<string | null>(null)
 
   const isPostponed = bucket === 'POSTPONED_AFTER_CONFIRM'
   // ═══ ورجوع الزبون الي ما رد ═══
@@ -167,6 +216,32 @@ export default function StageBucketsPage() {
       setCounts((c) => ({ ...c, [bucket]: Math.max(0, (c[bucket] || 1) - 1) }))
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'تعذر تحديد الموعد')
+    } finally { setBusyId(null) }
+  }
+
+  /** يسجّل محاولة اتصال فاشلة من نفس الصف.
+   *
+   *  ⚠️ **ليش لازمة**: الصف يعرض «٢ محاولة» بس ماكو طريقة يسجّل
+   *  محاولة جديدة من هنا — فالإداري يتصل وما يرد، والعدّاد يبقى
+   *  كذّاباً. والمسار الموجود `waiting` يزيد `contactAttempts + 1`
+   *  ويخلّي الحجز بنفس الطابور، فما نحتاج شي خادمي جديد.
+   */
+  const markNoAnswer = async (id: string, name: string, attempts: number) => {
+    if (!confirm(
+      `تسجّل محاولة جديدة على «${name}»؟\n\n`
+      + `المحاولات الحالية: ${attempts}. راح تصير ${attempts + 1}، `
+      + 'والحجز يبقى بنفس الطابور.',
+    )) return
+    setBusyId(id)
+    setActionError(null)
+    try {
+      await api.markBookingWaiting(id, 'اتصلنا وما رد')
+      // نحدّث العدّاد محلياً — إعادة تحميل كل شي تومض الصفحة بلا داعي
+      setRows((prev) => prev.map((b) => (
+        b.id === id ? { ...b, contactAttempts: (b.contactAttempts || 0) + 1 } : b
+      )))
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'تعذر تسجيل المحاولة')
     } finally { setBusyId(null) }
   }
 
@@ -290,7 +365,10 @@ export default function StageBucketsPage() {
                     <th className="px-4 py-3 font-bold">{info.reasonHead}</th>
                     <th className="px-4 py-3 font-bold">{info.whenHead}</th>
                     {isPostponed && <th className="px-4 py-3 font-bold">موعد جديد</th>}
-                    {isNoAnswer && <th className="px-4 py-3 font-bold">إجراء</th>}
+                    {/* ⚠️ العمود يلتصق: قست على عرض ١٢٨٠ فطلع زر «مارد»
+                        خارج الإطار (يساره −٦px) — يعني الإداري ما يشوف
+                        الزر الي كل الشاشة مبنية عليه. */}
+                    {isNoAnswer && <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-bold">إجراء</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -308,7 +386,78 @@ export default function StageBucketsPage() {
                             </span>
                             <div className="min-w-0">
                               <p className="truncate text-[13px] font-bold text-[#0f2040]">{name}</p>
-                              <p className="text-[11px] text-slate-400" dir="ltr">{b.customer?.phone || '—'}</p>
+                              {/* رقم الحجز + نسخه بضغطة — الإداري يحتاجه
+                                  بالمحادثة ويكتبه بالإيد ويغلط بيه. */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-slate-500" dir="ltr">#{b.code}</span>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    if (await copyText(b.code)) {
+                                      setCopied(`code:${b.id}`)
+                                      setTimeout(() => setCopied(null), 2000)
+                                    } else setActionError('تعذر النسخ — انسخه بالإيد')
+                                  }}
+                                  title="انسخ رقم الحجز"
+                                  className="rounded px-1 text-[10px] text-brand-600 hover:bg-brand-50"
+                                >
+                                  {copied === `code:${b.id}` ? '✓ انتسخ' : '⧉'}
+                                </button>
+                              </div>
+                              {/* الرقم + نسخه + واتساب وتلغرام — الاتصال
+                                  يصير من هنا بلا تنقّل بين الشاشات. */}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[11px] text-slate-400" dir="ltr">{b.customer?.phone || '—'}</span>
+                                {b.customer?.phone && (
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      if (await copyText(b.customer!.phone!)) {
+                                        setCopied(`tel:${b.id}`)
+                                        setTimeout(() => setCopied(null), 2000)
+                                      } else setActionError('تعذر النسخ — انسخه بالإيد')
+                                    }}
+                                    title="انسخ رقم التلفون"
+                                    className="rounded px-1 text-[10px] text-brand-600 hover:bg-brand-50"
+                                  >
+                                    {copied === `tel:${b.id}` ? '✓ انتسخ' : '⧉'}
+                                  </button>
+                                )}
+                              </div>
+                              {/* ⚠️ الأزرار تنعرض **بس** لمّا الرقم
+                                  يتحوّل لصيغة دولية صالحة — زر يفتح
+                                  ويفشل صامتاً أسوأ من زر مو موجود. */}
+                              {(() => {
+                                const intl = intlPhone(b.customer?.phone)
+                                if (!intl) return null
+                                return (
+                                  <div className="mt-0.5 flex items-center gap-1">
+                                    <a
+                                      href={`https://wa.me/${intl}`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      title="واتساب"
+                                      className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100"
+                                    >
+                                      💬 واتس
+                                    </a>
+                                    <a
+                                      href={`https://t.me/+${intl}`}
+                                      target="_blank" rel="noopener noreferrer"
+                                      title="تلغرام"
+                                      className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100"
+                                    >
+                                      ✈ تلغرام
+                                    </a>
+                                    <a
+                                      href={`tel:${b.customer?.phone}`}
+                                      title="اتصال"
+                                      className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-200"
+                                    >
+                                      📞
+                                    </a>
+                                  </div>
+                                )
+                              })()}
                             </div>
                           </div>
                         </td>
@@ -369,14 +518,26 @@ export default function StageBucketsPage() {
                           ) : <span className="text-slate-300">—</span>}
                         </td>
                         {isNoAnswer && (
-                          <td className="px-4 py-3">
-                            <button
-                              onClick={() => resume(b.id, name)}
-                              disabled={busyId === b.id}
-                              className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
-                            >
-                              {busyId === b.id ? '...' : '📞 الزبون رد'}
-                            </button>
+                          <td className="sticky left-0 z-10 bg-white px-4 py-3 shadow-[6px_0_8px_-6px_rgba(15,32,64,0.18)]">
+                            <div className="flex flex-col gap-1.5">
+                              <button
+                                onClick={() => resume(b.id, name)}
+                                disabled={busyId === b.id}
+                                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-800 disabled:opacity-50"
+                              >
+                                {busyId === b.id ? '...' : '📞 الزبون رد'}
+                              </button>
+                              {/* محاولة جديدة تنسجّل من نفس الصف — بلاها
+                                  العدّاد يبقى كذّاباً. ولونها مختلف عن
+                                  «رد» حتى ما تنضغط غلطاً. */}
+                              <button
+                                onClick={() => markNoAnswer(b.id, name, b.contactAttempts || 0)}
+                                disabled={busyId === b.id}
+                                className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                              >
+                                {busyId === b.id ? '...' : '✖ مارد'}
+                              </button>
+                            </div>
                             {b.contactAttempts > 0 && (
                               <p className="mt-1 text-[10px] text-slate-400">{b.contactAttempts} محاولة</p>
                             )}

@@ -69,6 +69,13 @@ export default function DailyAuditPage() {
   const navigate = useNavigate()
   const [date, setDate] = useState(todayStr())
   const [search, setSearch] = useState('')
+  /**
+   * true = النتائج جايّة من بحث بكل الأيام مو من تقرير يوم واحد.
+   * ⚠️ **مشتقّة مو محفوظة**: تخزينها بحالة يعني `setState` جوّا أثر
+   * (قاعدة `react-hooks/set-state-in-effect`)، والاشتقاق يشيل
+   * الحالة ويشيل احتمال تناقضها مع نصّ البحث.
+   */
+  const searching = search.trim().length >= 2
   const [rep, setRep] = useState<DailyAuditReport | null>(null)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
@@ -92,7 +99,23 @@ export default function DailyAuditPage() {
       .then((r) => { setRep(r); setLoadErr(null) })
       .catch((e) => { setRep(null); setLoadErr(e instanceof Error ? e.message : 'تعذر جلب تدقيق اليوم') })
   }
-  useEffect(() => { load(date) }, [date])
+  useEffect(() => { if (!searching) load(date) }, [date, searching])
+
+  // ═══ بحث بلا تاريخ ═══
+  // ⚠️ البحث چان يرشّح **صفوف اليوم المعروض بس**، فالمحاسب لمن يدوّر
+  // على حجز قديم لازم يعرف تاريخه أولاً — وهو ما يعرفه، فيقلّب الأيام
+  // يوماً يوماً. هسه الاستعلام يروح للخادم ويبحث بكل الأيام.
+  useEffect(() => {
+    const q = search.trim()
+    if (q.length < 2) return
+    // مهلة قصيرة حتى ما ننادي الخادم على كل حرف
+    const t = setTimeout(() => {
+      api.searchDailyAudit(q)
+        .then((r) => { setRep(r); setLoadErr(null) })
+        .catch((e) => { setRep(null); setLoadErr(e instanceof Error ? e.message : 'تعذر البحث') })
+    }, 350)
+    return () => clearTimeout(t)
+  }, [search])
 
   // ═══ إرجاع الحجز للتدقيق ═══
   // التدقيق جان قرار نهائي ما إله رجعة: أول ما ينضغط «مطابق» تختفي
@@ -195,9 +218,21 @@ export default function DailyAuditPage() {
       {/* بحث برقم الحجز أو اسم الزبون أو رقم هاتفه — `matches` تعالج
           الهمزة والأرقام المكتوبة عربي، وتفصل الأرقام تلقائياً فتقارن
           رقم الهاتف برقم مهما كتبه المحاسب بشرطات أو مسافات. */}
-      {rep && rep.rows.length > 0 && (
-        <SearchBar value={search} onChange={setSearch} placeholder="بحث برقم الحجز أو اسم الزبون أو رقم هاتفه..." />
-      )}
+      {/* ⚠️ الشريط يبقى ظاهراً حتى لو يوم اليوم فاضي: قبلها چان
+          مشروطاً بوجود صفوف، فيوم فاضي يعني **ما يكدر يبحث أصلاً** —
+          وهذا بالضبط اليوم الي يحتاج بيه البحث. */}
+      <div className="space-y-1.5">
+        <SearchBar value={search} onChange={setSearch} placeholder="بحث برقم الحجز أو اسم الزبون أو رقم هاتفه — بكل الأيام..." />
+        {searching && (
+          <p className="px-1 text-xs font-bold text-brand-700">
+            🔎 نتائج البحث بكل الأيام ({rep?.rows.length ?? 0}) — التاريخ منتجاهَل.
+            <button onClick={() => { setSearch(''); load(date) }}
+              className="mr-2 rounded px-2 py-0.5 text-[11px] underline">
+              ارجع لتدقيق اليوم
+            </button>
+          </p>
+        )}
+      </div>
 
       {!rep && loadErr && (
         <div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3">
