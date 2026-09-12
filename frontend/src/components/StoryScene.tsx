@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type StoryWithScene } from '../api'
+import EntityAvatar from './EntityAvatar'
 import { useSession } from '../session'
 
 // ═══ مشهد الكيان — القصة تنعرض وتُقَرّ ═══
@@ -194,6 +195,13 @@ export default function StoryScene() {
         } transition-opacity duration-300`}
         style={{ background: 'var(--sf-1, #fff)', color: 'var(--t-1, #0f172a)' }}
       >
+        {/* ── الشخصية: تمشي وهي جايّة، وتشاور على الورقة وهي تقرا ──
+            ⚠️ على `reduced-motion` ما تنعرض إطلاقاً — الحركة زينة
+            والمعنى إلزامي، والقصة تبقى مقروءة كاملة بدونها. */}
+        {!reduced && (
+          <EntityAvatar clip={phase === 'reading' ? (warning ? 'SHOW_WARNING' : 'SPEAK') : 'WALK_TO_TARGET'} />
+        )}
+
         {/* ── المُرسِل: اسمه ظاهر بقصد ── */}
         <div
           className="flex items-center gap-3 px-5 py-4"
