@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"strings"
+
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -30,7 +32,19 @@ func NewDailyAuditRepository(db *sqlx.DB) *DailyAuditRepository {
 func (r *DailyAuditRepository) Day(date string) (*model.DailyAuditReport, error) {
 	rep := &model.DailyAuditReport{Date: date, Rows: []model.DailyAuditRow{}}
 
-	err := r.db.Select(&rep.Rows, `
+	err := r.db.Select(&rep.Rows, auditRowsSQL+`
+		  AND baghdad_date(COALESCE(b."completedAt", b."scheduledAt", b."createdAt")) = $1::date
+		ORDER BY b."createdAt" DESC`, date)
+	if err != nil {
+		return nil, err
+	}
+	r.rollUp(rep)
+	return rep, nil
+}
+
+// auditRowsSQL نفس صفوف التدقيق — يُشترك بين تقرير اليوم والبحث،
+// حتى ما يصير استعلامان يحسبان المبلغ بطريقتين مختلفتين.
+const auditRowsSQL = `
 		SELECT
 			b.id, b.code, b.status::text AS status,
 			COALESCE(c.name, '')  AS "customerName",
@@ -66,13 +80,10 @@ func (r *DailyAuditRepository) Day(date string) (*model.DailyAuditReport, error)
 			SELECT "netTotal", "accountingCode" FROM "LeaderInvoice"
 			WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1
 		) li ON true
-		WHERE b.status = 'COMPLETED'
-		  AND baghdad_date(COALESCE(b."completedAt", b."scheduledAt", b."createdAt")) = $1::date
-		ORDER BY b."createdAt" DESC`, date)
-	if err != nil {
-		return nil, err
-	}
+		WHERE b.status = 'COMPLETED'`
 
+// rollUp يحسب مجاميع التقرير من صفوفه.
+func (r *DailyAuditRepository) rollUp(rep *model.DailyAuditReport) {
 	for _, row := range rep.Rows {
 		// ١) المبالغ: الي انجمعت فعلاً من الحجوزات المكتملة
 		if row.Status == "COMPLETED" {
@@ -94,5 +105,31 @@ func (r *DailyAuditRepository) Day(date string) (*model.DailyAuditReport, error)
 		}
 	}
 	rep.AllAmountsTotal = rep.VerifiedTotal + rep.NotVerifiedTotal
+}
+
+// Search يبحث بحجوزات التدقيق **بلا تاريخ** — برقم الحجز أو اسم
+// الزبون أو رقم هاتفه، عبر كل الأيام.
+//
+// ⚠️ ليش لازم: شاشة التدقيق چانت تفرض يوماً واحداً، والمحاسب لمن
+// يدوّر على حجز قديم لازم يعرف تاريخه أولاً — وهو ما يعرفه، فيقلّب
+// الأيام يوماً يوماً. «يكتب اسم الزبون أو الحجز يطلعله».
+//
+// ⚠️ **السقف ٣٠٠ صف**: بلا سقف، بحث بحرف واحد يسحب كل تاريخ الشركة
+// ويعلّق الشاشة. والمحاسب يضيّق بحثه إذا ما لگى.
+func (r *DailyAuditRepository) Search(q string) (*model.DailyAuditReport, error) {
+	rep := &model.DailyAuditReport{Date: "", Rows: []model.DailyAuditRow{}}
+	like := "%" + strings.ToLower(strings.TrimSpace(q)) + "%"
+	err := r.db.Select(&rep.Rows, auditRowsSQL+`
+		  AND (
+			LOWER(b.code) LIKE $1
+			OR LOWER(COALESCE(c.name, '')) LIKE $1
+			OR REPLACE(COALESCE(c.phone, ''), ' ', '') LIKE $1
+		  )
+		ORDER BY COALESCE(b."completedAt", b."scheduledAt", b."createdAt") DESC
+		LIMIT 300`, like)
+	if err != nil {
+		return nil, err
+	}
+	r.rollUp(rep)
 	return rep, nil
 }

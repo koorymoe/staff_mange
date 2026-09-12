@@ -3504,6 +3504,12 @@ export const api = {
     request<Complaint>(`/complaints/${id}/notes`, { method: 'PUT', body: JSON.stringify({ notes }) }),
   getDailyAudit: (date?: string) =>
     request<DailyAuditReport>(`/finance/daily-audit${date ? `?date=${date}` : ''}`),
+  /**
+   * بحث بحجوزات التدقيق **بلا تاريخ** — برقم الحجز أو اسم الزبون أو
+   * هاتفه، عبر كل الأيام. المحاسب يدوّر على حجز ما يعرف تاريخه.
+   */
+  searchDailyAudit: (q: string) =>
+    request<DailyAuditReport>(`/finance/daily-audit?q=${encodeURIComponent(q)}`),
 
   // التدقيق: قرار المحاسب — مطابق أو بلاغ خطأ ينوجّه للمعني
   auditBooking: (id: string, data: { action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR'; amountCollected?: number; advancePaid?: number; note?: string }) =>
