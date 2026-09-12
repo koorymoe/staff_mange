@@ -66,12 +66,17 @@ type BookingDeleteRequest struct {
 	NeedsInfoAt   *time.Time `db:"needsInfoAt" json:"needsInfoAt"`
 	NeedsInfoByID *string    `db:"needsInfoById" json:"needsInfoById"`
 
-	BookingCode     string  `db:"bookingCode" json:"bookingCode"`
-	CustomerName    string  `db:"customerName" json:"customerName"`
-	BookingStatus   string  `db:"bookingStatus" json:"bookingStatus"`
-	RequestedByName string  `db:"requestedByName" json:"requestedByName"`
-	DecidedByName   *string `db:"decidedByName" json:"decidedByName"`
-	NeedsInfoByName *string `db:"needsInfoByName" json:"needsInfoByName"`
+	BookingCode  string `db:"bookingCode" json:"bookingCode"`
+	CustomerName string `db:"customerName" json:"customerName"`
+	// ⚠️ رقم الزبون: الي يوافق على الحذف يتصل يتأكد. مكشوف لحارس
+	// «اعتماد الحذف» بس (requireDeleteApprove) مثل باقي الحقول.
+	CustomerPhone      string     `db:"customerPhone" json:"customerPhone"`
+	ServiceNames       string     `db:"serviceNames" json:"serviceNames"`
+	BookingScheduledAt *time.Time `db:"bookingScheduledAt" json:"bookingScheduledAt"`
+	BookingStatus      string     `db:"bookingStatus" json:"bookingStatus"`
+	RequestedByName    string     `db:"requestedByName" json:"requestedByName"`
+	DecidedByName      *string    `db:"decidedByName" json:"decidedByName"`
+	NeedsInfoByName    *string    `db:"needsInfoByName" json:"needsInfoByName"`
 
 	StatusLabel      string `db:"-" json:"statusLabel"`
 	ChannelLabel     string `db:"-" json:"channelLabel"`

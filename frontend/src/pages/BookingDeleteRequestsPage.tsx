@@ -12,6 +12,8 @@ import SearchBar from '../components/SearchBar'
 import SaveError from '../components/SaveError'
 import Pager from '../components/Pager'
 import RowActions from '../components/RowActions'
+import PhoneActions from '../components/PhoneActions'
+import { copyText } from '../utils/clipboard'
 
 /**
  * طلبات حذف الحجوزات.
@@ -49,6 +51,8 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
   const [dateFilter, setDateFilter] = useState('')
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [channelFilter, setChannelFilter] = useState<BookingDeleteChannel | ''>('')
+  /** معرّف الطلب الي انتسخ رقمه توّاً — لتأكيد بصري لحظي. */
+  const [copiedId, setCopiedId] = useState<string | null>(null)
   const [typeFilter, setTypeFilter] = useState<BookingDeleteRequestType | ''>('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
@@ -202,6 +206,41 @@ export default function BookingDeleteRequestsPage({ embedded }: { embedded?: boo
                               {r.bookingCode}
                               <span className="mr-2 text-sm font-normal" style={{ color: 'var(--t-muted)' }}>{r.customerName}</span>
                             </p>
+                            {/* ═══ معلومات الزبون والخدمة ═══
+                                الي يوافق على الحذف يحتاج يتصل بالزبون
+                                يتأكد إنه فعلاً ألغى، ويعرف شنو الخدمة
+                                الي طلبها — بلاهن القرار على سبب مكتوب
+                                بلا تحقّق. */}
+                            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                              <span className="font-bold" style={{ color: 'var(--t-body)' }}>
+                                🧰 {r.serviceNames || '—'}
+                              </span>
+                              {r.bookingScheduledAt && (
+                                <span style={{ color: 'var(--t-faint)' }}>📅 {fmtDate(r.bookingScheduledAt)}</span>
+                              )}
+                              {r.customerPhone ? (
+                                <>
+                                  <span className="font-bold" dir="ltr" style={{ color: 'var(--t-body)' }}>
+                                    📱 {r.customerPhone}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={async () => {
+                                      const ok = await copyText(r.customerPhone)
+                                      setCopiedId(ok ? r.id : null)
+                                      if (ok) setTimeout(() => setCopiedId(null), 2000)
+                                    }}
+                                    title="انسخ رقم الزبون"
+                                    className="rounded px-1 text-brand-600 hover:bg-brand-50"
+                                  >
+                                    {copiedId === r.id ? '✓ انتسخ' : '⧉'}
+                                  </button>
+                                  <PhoneActions phone={r.customerPhone} telegram />
+                                </>
+                              ) : (
+                                <span style={{ color: 'var(--t-faint)' }}>📱 —</span>
+                              )}
+                            </div>
                             <p className="mt-1 text-sm" style={{ color: 'var(--t-body)' }}>📝 {r.reason}</p>
                             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs" style={{ color: 'var(--t-faint)' }}>
                               <span>🌐 {r.channelLabel || '—'}</span>
