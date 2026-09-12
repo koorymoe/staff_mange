@@ -322,6 +322,9 @@ func versionedMigrations() []Migration {
 	// 0274: الكلفة اليدوية بفاتورة الليدر — شغل برّا جدول الكلفة چان
 	// إما ينتسعّر غلط بأقرب بند أو ما تنسوّى إله فاتورة أصلاً.
 	result = append(result, manualInvoiceMigrations()...)
+	// 0275: أهداف المقاييس لكل دور — بلا جدول أهداف، عمود «النسبة»
+	// بورقة (ع) مستحيل يُحسب، والمنجز لحاله ما يقول ناجح أو لا.
+	result = append(result, roleMetricTargetMigrations()...)
 	return result
 }
 

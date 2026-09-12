@@ -57,6 +57,12 @@ export default function EmployeeMonthlyStatsPage() {
   }
 
   const totalCommissionSum = rows.reduce((sum, r) => sum + r.totalCommission, 0)
+  const revenueSum = rows.reduce((sum, r) => sum + r.revenueBrought, 0)
+  // ⚠️ الرواتب الفاضية تنطرح من المجموع **ومن المقام سوا** — لو
+  // جمعناها صفراً تطلع نسبة تغطية كاذبة عالية (إيراد على مقام أصغر).
+  const salarySum = rows.reduce((sum, r) => sum + (r.salary ?? 0), 0)
+  const revenueOfSalaried = rows.reduce((sum, r) => sum + (r.salary ? r.revenueBrought : 0), 0)
+  const coverageAll = salarySum > 0 ? (revenueOfSalaried / salarySum) * 100 : null
 
   const thStyle: React.CSSProperties = {
     padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white',
@@ -132,6 +138,14 @@ export default function EmployeeMonthlyStatsPage() {
                 <th style={thStyle} title="النقاط الكاملة: الحجوزات + السرعة + التقارير + الحضور + الشكاوى + التقييم اليدوي">نقاط الكي بي اي</th>
                 <th style={thStyle} title="التقييمات اليدوية بس (خصومات/مكافآت المدير)">تقييم يدوي</th>
                 <th style={thStyle}>قيمة النقاط اليدوية</th>
+                {/* ═══ المال: شنو دخّل مقابل شكد ياخذ ═══
+                    (ع): «كل موظف يدخل إجمالي مبالغ أكثر من راتبه».
+                    ⚠️ الشاشة چانت تعرض **العمولة** بس — وهي الي
+                    ياخذها الموظف، مو الي يدخّله للشركة. فالسؤال الي
+                    تتخذ عليه قرارات الرواتب چان بلا رقم. */}
+                <th style={thStyle} title="صافي فواتير الليدر الي رفعها هو بهذا الشهر — بلا تكرار: الفاتورة إلها صاحب واحد">المبالغ الي دخّلها</th>
+                <th style={thStyle}>راتبه</th>
+                <th style={thStyle} title="الإيراد ÷ الراتب — والمطلوب يعبر ١٠٠٪ (يغطّي راتبه)">تغطية الراتب</th>
                 <th style={thStyle}>إجمالي العمولة (حجم المبيعات)</th>
                 <th style={thStyle}>منحنى الأداء</th>
               </tr>
@@ -188,6 +202,20 @@ export default function EmployeeMonthlyStatsPage() {
                     {r.kpiPoints > 0 ? `+${r.kpiPoints}` : r.kpiPoints}
                   </td>
                   <td style={tdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold' }}>{fmt(r.revenueBrought)} د.ع</td>
+                  {/* ⚠️ «—» مو «٠»: موظف بلا راتب مكتوب يعني **ماكو
+                      مقارنة**، مو راتب صفر. */}
+                  <td style={tdStyle}>{r.salary === null ? '—' : `${fmt(r.salary)} د.ع`}</td>
+                  <td style={{
+                    ...tdStyle,
+                    fontWeight: 'bold',
+                    color: r.salaryCoverage === null ? '#94a3b8'
+                      : r.salaryCoverage >= 100 ? '#15803d' : '#b91c1c',
+                  }}>
+                    {r.salaryCoverage === null
+                      ? '—'
+                      : `${r.salaryCoverage.toFixed(1)}%`}
+                  </td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: GOLD_TEXT }}>{fmt(r.totalCommission)} د.ع</td>
                   <td style={tdStyle}>
                     <button
@@ -217,7 +245,15 @@ export default function EmployeeMonthlyStatsPage() {
                       العنوان يمتد لحدّه (١٦ عمود)، وعمود ١٨ («منحنى
                       الأداء») يبقى فاضياً. كان colSpan={12} يخلي
                       العنوان والرقم ينزاحان تحت أعمدة غلط. */}
+                  {/* ⚠️ `colSpan` محسوب يدوياً وكان انزاح قبل: صار ١٦
+                      → **١٦ يبقى** لأن الأعمدة الثلاثة الجديدة تنعرض
+                      بمجاميعها مو مطويّة تحت العنوان. */}
                   <td style={{ ...tdStyle, fontWeight: 'bold' }} colSpan={16}>الإجمالي</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold', color: PRIMARY_TEXT }}>{fmt(revenueSum)} د.ع</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold' }}>{fmt(salarySum)} د.ع</td>
+                  <td style={{ ...tdStyle, fontWeight: 'bold', color: coverageAll === null ? '#94a3b8' : coverageAll >= 100 ? '#15803d' : '#b91c1c' }}>
+                    {coverageAll === null ? '—' : `${coverageAll.toFixed(1)}%`}
+                  </td>
                   <td style={{ ...tdStyle, fontWeight: 'bold', color: PRIMARY_TEXT }}>{fmt(totalCommissionSum)} د.ع</td>
                   <td style={tdStyle} />
                 </tr>

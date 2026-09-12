@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/xuri/excelize/v2"
@@ -76,15 +77,26 @@ func (h *EmployeeStatsHandler) MonthlyExport(w http.ResponseWriter, r *http.Requ
 	f := excelize.NewFile()
 	sheet := "إحصائيات الموظفين"
 	f.SetSheetName("Sheet1", sheet)
+	// ⚠️ **الإكسل چان يصدّر ١٠ أعمدة والشاشة تعرض ١٨** — الصيانة
+	// المجانية وأعمال داخل الشركة وعدد الخدمات ونقاط الكي بي اي
+	// الكاملة كانوا **مفقودين من الملف**. و(ع) يطبع هذا الملف
+	// ويقارنه بورقته، فملف ناقص يعني قرار على نصف صورة.
+	//
+	// الترتيب **نفس ترتيب الشاشة** بالضبط — عمود ينزاح بالملف عن
+	// الشاشة يخلي المقارنة تكذب بلا ما أحد يلاحظ.
 	headers := []string{
-		"الموظف", "الدور", "نقاط الكي بي اي", "سرعة العمل", "نظافة السيارة",
-		"عدد تقييمات السيارة", "الشكاوى", "عدد المبيعات", "الحجوزات المكتملة", "إجمالي العمولة",
+		"الموظف", "الدور", "عدد الخدمات التي يعرفها", "سرعة العمل",
+		"نظافة السيارة", "عدد تقييمات السيارة", "الشكاوى", "عدد المبيعات",
+		"الحجوزات المكتملة", "كل الحجوزات المسندة", "حجوزات الصيانة",
+		"صيانات مجانية", "أعمال داخل الشركة", "أنواع الأعمال",
+		"نقاط الكي بي اي", "تقييم يدوي", "قيمة النقاط اليدوية",
+		"المبالغ الي دخّلها", "راتبه", "تغطية الراتب %", "إجمالي العمولة",
 	}
 	for i, hd := range headers {
 		cell, _ := excelize.CoordinatesToCellName(i+1, 1)
 		_ = f.SetCellValue(sheet, cell, hd)
 	}
-	setExcelHeaderStyle(f, sheet, "J")
+	setExcelHeaderStyle(f, sheet, "U")
 
 	bodyStyle, _ := f.NewStyle(&excelize.Style{Alignment: &excelize.Alignment{Horizontal: "right", WrapText: true}})
 
@@ -98,9 +110,27 @@ func (h *EmployeeStatsHandler) MonthlyExport(w http.ResponseWriter, r *http.Requ
 		if s.VehicleCleanlinessScore != nil {
 			cleanliness = fmt.Sprintf("%.2f", *s.VehicleCleanlinessScore)
 		}
+		// ⚠️ **«—» مو «٠»** بالملف مثل الشاشة: راتب مو مكتوب يعني
+		// ماكو مقارنة، ونسبة على راتب صفر لا نهاية.
+		salary := "—"
+		if s.Salary != nil {
+			salary = fmt.Sprintf("%.0f", *s.Salary)
+		}
+		coverage := "—"
+		if s.SalaryCoverage != nil {
+			coverage = fmt.Sprintf("%.1f", *s.SalaryCoverage)
+		}
+		workTypes := "—"
+		if len(s.InHouseWorkTypes) > 0 {
+			workTypes = strings.Join(s.InHouseWorkTypes, " · ")
+		}
 		values := []interface{}{
-			s.EmployeeName, s.Role, s.KpiPoints, workSpeed, cleanliness,
-			s.VehicleRatingsCount, s.ComplaintsCount, s.SalesCount, s.CompletedBookingsCount,
+			s.EmployeeName, s.Role, s.ServicesKnownCount, workSpeed,
+			cleanliness, s.VehicleRatingsCount, s.ComplaintsCount, s.SalesCount,
+			s.CompletedBookingsCount, s.TotalBookingsCount, s.MaintenanceBookingsCount,
+			s.FreeMaintenanceCount, s.InHouseWorksCount, workTypes,
+			s.SmartKpiPoints, s.KpiPoints, fmt.Sprintf("%.0f", s.KpiPointsValue),
+			fmt.Sprintf("%.0f", s.RevenueBrought), salary, coverage,
 			fmt.Sprintf("%.2f", s.TotalCommission),
 		}
 		for c, v := range values {
@@ -110,7 +140,9 @@ func (h *EmployeeStatsHandler) MonthlyExport(w http.ResponseWriter, r *http.Requ
 		}
 	}
 	_ = f.SetColWidth(sheet, "A", "A", 22)
-	_ = f.SetColWidth(sheet, "B", "J", 16)
+	_ = f.SetColWidth(sheet, "B", "U", 16)
+	_ = f.SetColWidth(sheet, "N", "N", 30)
+	_ = f.SetColWidth(sheet, "R", "T", 18)
 
 	filename := fmt.Sprintf("employee-stats-%s.xlsx", month)
 	w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
