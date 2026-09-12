@@ -1388,6 +1388,12 @@ export interface BookingDeleteRequest {
   createdAt: string
   bookingCode: string
   customerName: string
+  /** رقم الزبون — الي يوافق على الحذف يتصل يتأكد إنه فعلاً ألغى */
+  customerPhone: string
+  /** الخدمة الي طلبها الزبون (والإضافية معها إذا الحجز متعدد) */
+  serviceNames: string
+  /** موعد الحجز — يفرّق بين حجز باچر وحجز فات */
+  bookingScheduledAt: string | null
   bookingStatus: string
   requestedByName: string
   decidedByName: string | null

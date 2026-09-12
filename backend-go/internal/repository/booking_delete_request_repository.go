@@ -16,8 +16,22 @@ func NewBookingDeleteRequestRepository(db *sqlx.DB) *BookingDeleteRequestReposit
 	return &BookingDeleteRequestRepository{db: db}
 }
 
+// ⚠️ رقم الزبون والخدمة والموعد **لازمين للقرار**: الي يوافق على
+// الحذف يحتاج يتصل بالزبون يتأكد إنه فعلاً ألغى، ويعرف شنو الخدمة الي
+// طلبها. بلاهن القرار يتّخذ على سبب مكتوب بلا تحقّق.
+//
+// الخدمات: `Booking.serviceId` الأساسية + `BookingService` الإضافية —
+// نجمعهن بنص واحد مفصول بـ« · » حتى الحجز المتعدد يبين كامل مو ناقصاً.
 const bookingDeleteSelect = `SELECT r.*, b.code AS "bookingCode", b.status::text AS "bookingStatus",
 		COALESCE(c.name, '') AS "customerName",
+		COALESCE(c.phone, '') AS "customerPhone",
+		b."scheduledAt" AS "bookingScheduledAt",
+		COALESCE(NULLIF(TRIM(BOTH ' · ' FROM CONCAT_WS(' · ',
+			(SELECT s.name FROM "Service" s WHERE s.id = b."serviceId"),
+			(SELECT STRING_AGG(s2.name, ' · ' ORDER BY bs."createdAt")
+			   FROM "BookingService" bs JOIN "Service" s2 ON s2.id = bs."serviceId"
+			  WHERE bs."bookingId" = b.id AND bs."serviceId" <> b."serviceId")
+		)), ''), '—') AS "serviceNames",
 		e.name AS "requestedByName", d.name AS "decidedByName", n.name AS "needsInfoByName"
 	FROM "BookingDeleteRequest" r
 	JOIN "Booking" b ON b.id = r."bookingId"

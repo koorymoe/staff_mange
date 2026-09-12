@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type StageBucket } from '../api'
+import PhoneActions from '../components/PhoneActions'
+import { copyText } from '../utils/clipboard'
 
 // ═══ سلال المراحل ═══
 //
@@ -109,53 +111,6 @@ function dateParts(iso?: string | null) {
     weekday: d.toLocaleDateString('ar-IQ', { weekday: 'long' }),
     time: d.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit', hour12: true }).replace(/[صم].*$/, '').trim(),
     period: d.getHours() < 12 ? 'صباحاً' : d.getHours() < 17 ? 'عصراً' : 'مساءً',
-  }
-}
-
-/**
- * يحوّل الرقم العراقي لصيغة دولية تنفتح بواتساب وتلغرام.
- * `07XXXXXXXXX` → `9647XXXXXXXXX`
- *
- * ⚠️ **التحويل إلزامي مو تجميلي**: `wa.me/07...` يفتح ويفشل صامتاً —
- * الزبون ما ينفتح وما تطلع رسالة خطأ، فالإداري يحسب إنه أرسل وهو لا.
- * ويرجّع `null` للرقم المو صالح، حتى ما نعرض زراً مكسوراً.
- */
-function intlPhone(raw: string | null | undefined): string | null {
-  if (!raw) return null
-  const d = raw.replace(/[^\d+]/g, '').replace(/^\+/, '')
-  if (/^964\d{9,10}$/.test(d)) return d
-  if (/^0\d{9,10}$/.test(d)) return `964${d.slice(1)}`
-  if (/^7\d{8,9}$/.test(d)) return `964${d}`
-  return null
-}
-
-/**
- * نسخ للحافظة مع بديل.
- *
- * ⚠️ `navigator.clipboard` ما تشتغل إلا على أصل آمن (https أو
- * localhost)، والنظام يُفتح بـ`http` على الشبكة الداخلية — فبلا
- * البديل الزر **يسكت بلا خطأ** والمستخدم يحسب إنه نسخ.
- */
-async function copyText(v: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(v)
-      return true
-    }
-  } catch { /* نكمل على البديل */ }
-  try {
-    const ta = document.createElement('textarea')
-    ta.value = v
-    ta.setAttribute('readonly', '')
-    ta.style.position = 'fixed'
-    ta.style.opacity = '0'
-    document.body.appendChild(ta)
-    ta.select()
-    const ok = document.execCommand('copy')
-    ta.remove()
-    return ok
-  } catch {
-    return false
   }
 }
 
@@ -424,40 +379,9 @@ export default function StageBucketsPage() {
                                   </button>
                                 )}
                               </div>
-                              {/* ⚠️ الأزرار تنعرض **بس** لمّا الرقم
-                                  يتحوّل لصيغة دولية صالحة — زر يفتح
-                                  ويفشل صامتاً أسوأ من زر مو موجود. */}
-                              {(() => {
-                                const intl = intlPhone(b.customer?.phone)
-                                if (!intl) return null
-                                return (
-                                  <div className="mt-0.5 flex items-center gap-1">
-                                    <a
-                                      href={`https://wa.me/${intl}`}
-                                      target="_blank" rel="noopener noreferrer"
-                                      title="واتساب"
-                                      className="rounded-md bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100"
-                                    >
-                                      💬 واتس
-                                    </a>
-                                    <a
-                                      href={`https://t.me/+${intl}`}
-                                      target="_blank" rel="noopener noreferrer"
-                                      title="تلغرام"
-                                      className="rounded-md bg-sky-50 px-1.5 py-0.5 text-[10px] font-bold text-sky-700 hover:bg-sky-100"
-                                    >
-                                      ✈ تلغرام
-                                    </a>
-                                    <a
-                                      href={`tel:${b.customer?.phone}`}
-                                      title="اتصال"
-                                      className="rounded-md bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-600 hover:bg-slate-200"
-                                    >
-                                      📞
-                                    </a>
-                                  </div>
-                                )
-                              })()}
+                              {/* المكوّن المشترك: يتحقّق من الرقم
+                                  ويخفي نفسه إذا مو صالح. */}
+                              <PhoneActions phone={b.customer?.phone} telegram className="mt-0.5" />
                             </div>
                           </div>
                         </td>
