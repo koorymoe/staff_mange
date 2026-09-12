@@ -12,10 +12,19 @@ import type { AvatarHandle, ClipName } from './entityAvatarEngine'
 // تنحمّل إلا لمّا تُفتح قصة فعلاً.
 
 interface Props {
-  /** المقطع المطلوب — يتغيّر مع مرحلة القصة. */
+  /** المقطع المطلوب — يتغيّر مع مرحلة القصة أو مزاج الكيان. */
   clip: ClipName
   /** تُستدعى لمّا يفشل العرض، حتى الأب يعرف إنه على النصي. */
   onUnavailable?: () => void
+  /** أصناف الإطار — للتحكم بالحجم من المستدعي. */
+  className?: string
+  /** خلفية الإطار. `transparent` للبوت العائم حتى يبين بلا مربّع. */
+  background?: string
+  /**
+   * تأطير الكاميرا: `bust` للصدر-فوق (ورقة القصة)، و`full` لكل
+   * الجسم (البوت العائم الصغير — بلاه تبين الرقبة بس).
+   */
+  framing?: 'bust' | 'full'
 }
 
 /**
@@ -32,7 +41,11 @@ function webglSupported(): boolean {
   }
 }
 
-export default function EntityAvatar({ clip, onUnavailable }: Props) {
+export default function EntityAvatar({
+  clip, onUnavailable, className = 'h-52 w-full',
+  background = 'linear-gradient(180deg,#0f2a4a 0%,#16395f 100%)',
+  framing = 'bust',
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const handleRef = useRef<AvatarHandle | null>(null)
   const hasWebGL = useMemo(() => webglSupported(), [])
@@ -47,7 +60,7 @@ export default function EntityAvatar({ clip, onUnavailable }: Props) {
 
     import('./entityAvatarEngine')
       .then(({ mountAvatar }) =>
-        mountAvatar(canvas, `${import.meta.env.BASE_URL}amani-tech-v4.glb`, clip))
+        mountAvatar(canvas, `${import.meta.env.BASE_URL}amani-tech-v4.glb`, clip, framing))
       .then((h) => {
         if (cancelled) { h.dispose(); return }
         handleRef.current = h
@@ -77,8 +90,8 @@ export default function EntityAvatar({ clip, onUnavailable }: Props) {
 
   return (
     <div
-      className="relative h-52 w-full overflow-hidden"
-      style={{ background: 'linear-gradient(180deg,#0f2a4a 0%,#16395f 100%)' }}
+      className={`relative overflow-hidden ${className}`}
+      style={{ background }}
       data-avatar-state={ready ? 'ready' : 'loading'}
     >
       <canvas

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, fileUrl, ensureFileToken, type EntityBriefing, type EntityLine } from '../api'
 import { useSession } from '../session'
+import EntityAvatar from './EntityAvatar'
 
 // ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
 //
@@ -35,6 +36,12 @@ export default function EntityCompanion() {
   const isManager = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || employee?.actualRole === 'OWNER'
 
   const [brief, setBrief] = useState<EntityBriefing | null>(null)
+  /**
+   * true = الشخصية ثلاثية الأبعاد ما تنعرض (بلا WebGL أو الملف ما
+   * وصل) ← نرجع للإيموجي.
+   * ⚠️ بلا هالحالة الاثنان ينعرضون سوة ويتراكبون.
+   */
+  const [avatarDown, setAvatarDown] = useState(false)
   const [open, setOpen] = useState(false)
   const [bubble, setBubble] = useState<string | null>(null)
   const [lineIdx, setLineIdx] = useState(0)
@@ -266,19 +273,35 @@ export default function EntityCompanion() {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         title="اسحبني، أو اضغط تشوف واجباتك"
-        className={`relative h-[86px] w-[76px] cursor-grab active:cursor-grabbing ${mood === 'ANGRY' ? 'entity-alert' : 'entity-float'}`}
+        className={`relative h-[112px] w-[96px] cursor-grab active:cursor-grabbing ${mood === 'ANGRY' ? 'entity-alert' : 'entity-float'}`}
         style={{ transform: `scaleX(${facing})` }}
       >
-        {photo ? (
+        {/* ═══ الشخصية ثلاثية الأبعاد ═══
+            ⚠️ **هاي كانت إيموجي الموظف (نسر)** لأن الشخصية ما چانت
+            موجودة وقتها — التعليق القديم چان يقول «الميزة ما تنتظر
+            التوليد». الشخصية وصلت، فحلّت محله.
+            والمقطع يتبع المزاج: غاضب يشاور بالتحذير، مراقب يشاور
+            بالشاشة، فرحان يصفّق.
+            ⚠️ وإذا فشل العرض (بلا WebGL أو الملف ما وصل) المكوّن
+            يرجّع null، فالكتلة الي بعده تشتغل — البوت ما يختفي. */}
+        {!avatarDown && (
+          <EntityAvatar
+            clip={avatarClipFor(mood)}
+            framing="full"
+            background="transparent"
+            className="absolute inset-0 h-full w-full"
+            onUnavailable={() => setAvatarDown(true)}
+          />
+        )}
+        {avatarDown && (photo ? (
           <img src={fileUrl(photo)} alt="" draggable={false}
             className="h-full w-full rounded-2xl object-cover shadow-xl ring-2 ring-white/60" />
         ) : (
-          // ⚠️ الشخصية ما انولدت بعد — الكيان يشتغل بإيموجي الموظف
-          // المعتمد أصلاً بدل ما يختفي. الميزة ما تنتظر التوليد.
+          // بديل لمّا الشخصية ما تنعرض: إيموجي الموظف المعتمد.
           <div className={`flex h-full w-full items-center justify-center rounded-2xl text-3xl shadow-xl ring-2 ring-white/60 ${moodHeader(mood)}`}>
             {employee.attendanceIcon || '🤖'}
           </div>
-        )}
+        ))}
         {urgentCount > 0 && (
           <span className="absolute -top-1 -right-1 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-black text-white ring-2 ring-white">
             {urgentCount}
@@ -287,6 +310,20 @@ export default function EntityCompanion() {
       </div>
     </div>
   )
+}
+
+/**
+ * المقطع الي يمثّل المزاج.
+ *
+ * ⚠️ **الهدوء مشكلة معروفة**: ماكو مقطع «وقفة سكون» بالملف — ميكسامو
+ * ما نُزّلت منه `Idle` بعد. فالهدوء يستخدم مشية بديلة (تبين حيّة بلا
+ * ما تنط بالعين)، وينتبدل بـ`RETURN_TO_IDLE` أول ما ينوصل.
+ */
+function avatarClipFor(mood: string): 'SHOW_WARNING' | 'POINT_AT_UI' | 'CELEBRATE' | 'WALK_ALT' {
+  if (mood === 'ANGRY') return 'SHOW_WARNING'
+  if (mood === 'WATCHING') return 'POINT_AT_UI'
+  if (mood === 'POSITIVE') return 'CELEBRATE'
+  return 'WALK_ALT'
 }
 
 /** صورة الملامح حسب المزاج — وترجع لهادئ لو الملمح المطلوب ما انولد. */
