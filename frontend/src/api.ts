@@ -1128,6 +1128,16 @@ export interface EmployeeMonthlyStats {
   complaintsCount: number
   salesCount: number
   completedBookingsCount: number
+  /** المبالغ الي دخّلها فعلاً — صافي فواتير الليدر الي رفعها هو بالشهر */
+  revenueBrought: number
+  /** راتبه الشهري — ⚠️ `null` يعني ماكو راتب مكتوب، **مو راتب صفر** */
+  salary: number | null
+  /**
+   * نسبة تغطية الراتب = الإيراد ÷ الراتب × ١٠٠.
+   * ⚠️ `null` لمّا الراتب فاضي أو صفر — تُعرض «—» مو ٠٪.
+   * وقرار (ع): **١٠٠٪ تكفي** (يعبر راتبه)، مو أضعافاً.
+   */
+  salaryCoverage: number | null
   totalCommission: number
   totalBookingsCount: number
   maintenanceBookingsCount: number

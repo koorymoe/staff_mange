@@ -131,6 +131,30 @@ func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix 
 	return count, err
 }
 
+// SumNetTotalForEmployeeMonth مجموع صافي فواتير الليدر الي **رفعها هو**
+// بالشهر — وهذا «المبالغ الي دخّلها» بورقة (ع).
+//
+// ⚠️ **بلا تكرار**: الفاتورة إلها صاحب واحد (`employeeId`)، فمجموع
+// كل الموظفين = مجموع الفواتير بالضبط. ولهذا هاي الي تنقاس عليها
+// تغطية الراتب للليدر.
+//
+// ⚠️ **وماكو مرشّح حالة — بقصد**: فحصت المستودع فماكو حالة إلغاء
+// لفاتورة الليدر إطلاقاً (الحالات المستخدمة `SUBMITTED` و`APPROVED`
+// بس). فكل فاتورة مرفوعة مبلغ وصل، وأي مرشّح «ملغاة» يكون حماية
+// من حالة ما توجد — أي شرط ميت يضلّل من يقرا الكود بعدين.
+func (r *LeaderInvoiceRepository) SumNetTotalForEmployeeMonth(employeeID, monthPrefix string) (float64, error) {
+	var total *float64
+	err := r.db.Get(&total, `
+		SELECT SUM("netTotal") FROM "LeaderInvoice"
+		WHERE "employeeId" = $1
+		  AND to_char("createdAt", 'YYYY-MM') = $2
+	`, employeeID, monthPrefix)
+	if err != nil || total == nil {
+		return 0, err
+	}
+	return *total, nil
+}
+
 // CountForEmployeeRange نفس CountForEmployeeMonth لكن لمدى تاريخ حر (from/to
 // بصيغة "YYYY-MM-DD").
 func (r *LeaderInvoiceRepository) CountForEmployeeRange(employeeID, from, to string) (int, error) {
@@ -807,7 +831,6 @@ func (r *LeaderInvoiceRepository) attachFreeReasonLabels(invoices []model.Leader
 		}
 	}
 }
-
 
 // Adjustments سجل تعديلات فاتورة — الأحدث أول.
 func (r *LeaderInvoiceRepository) Adjustments(invoiceID string) ([]model.LeaderInvoiceAdjustment, error) {

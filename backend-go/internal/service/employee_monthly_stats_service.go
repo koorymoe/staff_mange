@@ -123,6 +123,19 @@ func (s *EmployeeMonthlyStatsService) Monthly(month string) ([]model.EmployeeMon
 			stats.TotalCommission = total
 		}
 
+		// ═══ الإيراد مقابل الراتب ═══
+		// ⚠️ الترتيب مهم: الراتب يُقرأ من الموظف نفسه (قابل للفراغ)،
+		// والنسبة **ما تُحسب إلا إذا الراتب موجود وأكبر من صفر** —
+		// وإلا تطلع لا نهاية أو صفراً كاذباً.
+		if rev, rerr := s.leaderInvoices.SumNetTotalForEmployeeMonth(e.ID, month); rerr == nil {
+			stats.RevenueBrought = rev
+		}
+		stats.Salary = e.Salary
+		if e.Salary != nil && *e.Salary > 0 {
+			pct := stats.RevenueBrought / *e.Salary * 100
+			stats.SalaryCoverage = &pct
+		}
+
 		if count, err := s.bookings.CountAssignedForEmployeeMonth(e.ID, month); err == nil {
 			stats.TotalBookingsCount = count
 		}
