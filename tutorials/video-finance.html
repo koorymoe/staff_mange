@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فيديو تعليمي — المحاسب</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0f172a;color:#e2e8f0;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.stage{flex:1;position:relative;overflow:hidden;display:flex}
+.sidebar{width:220px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;padding:12px 0;overflow-y:auto}
+.sidebar .logo{text-align:center;padding:10px;font-weight:700;font-size:15px;color:#2563eb;border-bottom:1px solid #334155;margin-bottom:8px}
+.sidebar a{display:flex;align-items:center;gap:8px;padding:9px 18px;color:#94a3b8;text-decoration:none;font-size:13px;transition:all .25s;border-radius:6px 0 0 6px;margin:1px 0}
+.sidebar a:hover,.sidebar a.active{background:#2563eb22;color:#60a5fa}
+.sidebar a.active{border-left:3px solid #2563eb;font-weight:600}
+.sidebar a .icon{font-size:16px;min-width:22px;text-align:center}
+.content{flex:1;display:flex;flex-direction:column;position:relative;background:#0f172a}
+.topbar{height:48px;background:#1e293b;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.topbar .user-info{display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8}
+.topbar .user-avatar{width:30px;height:30px;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.topbar .page-title{font-size:15px;font-weight:600;color:#e2e8f0}
+.main-area{flex:1;padding:20px;overflow-y:auto;position:relative}
+.stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.stat-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;flex:1;min-width:140px}
+.stat-card .label{font-size:11px;color:#64748b;margin-bottom:4px}
+.stat-card .value{font-size:22px;font-weight:700;color:#2563eb}
+.stat-card .sub{font-size:11px;color:#22c55e;margin-top:2px}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;background:#1e293b;border-radius:8px;overflow:hidden}
+.data-table th{background:#334155;color:#94a3b8;padding:8px 10px;text-align:right;font-weight:600}
+.data-table td{padding:8px 10px;border-bottom:1px solid #1e293b55;color:#cbd5e1}
+.data-table tr:nth-child(even){background:#1e293b99}
+.data-table tr.highlight{background:#2563eb22;outline:2px solid #2563eb}
+.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
+.badge-green{background:#22c55e22;color:#22c55e}
+.badge-yellow{background:#eab30822;color:#eab308}
+.badge-red{background:#ef444422;color:#ef4444}
+.badge-blue{background:#2563eb22;color:#60a5fa}
+.section-title{font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:20;opacity:0;pointer-events:none;transition:opacity .4s}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;width:450px;max-width:90%}
+.modal h3{color:#e2e8f0;margin-bottom:12px;font-size:15px}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:11px;color:#64748b;margin-bottom:3px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px}
+.btn{padding:7px 18px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-success{background:#22c55e;color:#fff}
+.login-screen{position:absolute;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:30;transition:opacity .5s}
+.login-screen.hidden{opacity:0;pointer-events:none}
+.login-box{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:36px;width:340px;text-align:center}
+.login-box h2{color:#2563eb;margin-bottom:6px;font-size:20px}
+.login-box p{color:#64748b;font-size:12px;margin-bottom:20px}
+.login-box .form-row{text-align:right}
+.cursor{position:absolute;width:24px;height:24px;z-index:100;pointer-events:none;transition:all .8s cubic-bezier(.4,0,.2,1);opacity:0}
+.cursor::before{content:'';position:absolute;width:0;height:0;border-style:solid;border-width:0 4px 18px 14px;border-color:transparent transparent #2563eb transparent;transform:rotate(-25deg)}
+.cursor::after{content:'';position:absolute;top:14px;right:6px;width:8px;height:8px;background:#2563eb;border-radius:50%;opacity:0;animation:click-ring .4s ease-out}
+.cursor.clicking::after{opacity:1}
+@keyframes click-ring{0%{transform:scale(0);opacity:1}100%{transform:scale(3);opacity:0}}
+.cursor.visible{opacity:1}
+.narration{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1e293bee,#0f172aee);border:1px solid #2563eb55;border-radius:12px;padding:14px 24px;max-width:600px;width:90%;text-align:center;font-size:14px;color:#e2e8f0;line-height:1.8;z-index:50;backdrop-filter:blur(8px);opacity:0;transition:opacity .4s}
+.narration.show{opacity:1}
+.narration .step-num{display:inline-block;background:#2563eb;color:#fff;border-radius:50%;width:24px;height:24px;line-height:24px;font-size:11px;font-weight:700;margin-left:8px}
+.controls{height:52px;background:#1e293b;border-top:1px solid #334155;display:flex;align-items:center;gap:10px;padding:0 16px;z-index:60}
+.controls button{background:#334155;border:none;color:#e2e8f0;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:background .2s}
+.controls button:hover{background:#2563eb}
+.controls .progress-wrap{flex:1;height:6px;background:#334155;border-radius:3px;overflow:hidden;cursor:pointer}
+.controls .progress-bar{height:100%;background:#2563eb;border-radius:3px;transition:width .3s}
+.controls .counter{font-size:12px;color:#94a3b8;min-width:60px;text-align:center}
+.ai-chat{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;max-width:500px}
+.ai-msg{margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.6}
+.ai-msg.user{background:#2563eb22;color:#60a5fa;margin-left:40px;text-align:left}
+.ai-msg.bot{background:#33415544;color:#cbd5e1;margin-right:40px}
+.typing-dots::after{content:'...';animation:dots 1s steps(3) infinite}
+@keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
+.verified-anim{animation:verifyPulse .6s ease}
+@keyframes verifyPulse{0%{transform:scale(1)}50%{transform:scale(1.15);color:#22c55e}100%{transform:scale(1)}}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="sidebar">
+    <div class="logo">نظام إدارة الموظفين</div>
+    <a href="#" class="active" data-page="home"><span class="icon">🏠</span>الرئيسية</a>
+    <a href="#" data-page="finance"><span class="icon">💰</span>تدقيق الحسابات</a>
+    <a href="#" data-page="expenses"><span class="icon">📑</span>إدارة المصاريف</a>
+    <a href="#" data-page="bookings"><span class="icon">📅</span>الحجوزات</a>
+    <a href="#" data-page="attendance"><span class="icon">⏰</span>الحضور</a>
+    <a href="#" data-page="profile"><span class="icon">👤</span>تصنيفي</a>
+  </div>
+
+  <div class="content">
+    <div class="topbar">
+      <span class="page-title" id="pageTitle">الرئيسية</span>
+      <div class="user-info"><span>omar_finance</span><div class="user-avatar">ع</div></div>
+    </div>
+    <div class="main-area" id="mainArea"></div>
+    <div class="login-screen" id="loginScreen">
+      <div class="login-box">
+        <h2>تسجيل الدخول</h2>
+        <p>نظام إدارة الموظفين</p>
+        <div class="form-row"><label>اسم المستخدم</label><input id="loginUser" value="" readonly></div>
+        <div class="form-row"><label>كلمة المرور</label><input type="password" id="loginPass" value="" readonly></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px" id="loginBtn">دخول</button>
+      </div>
+    </div>
+    <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalContent"></div></div>
+  </div>
+  <div class="cursor" id="cursor"></div>
+  <div class="narration" id="narration"></div>
+</div>
+
+<div class="controls">
+  <button id="btnPrev">⏮ السابق</button>
+  <button id="btnPlay">⏸ إيقاف</button>
+  <button id="btnNext">التالي ⏭</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="counter" id="counter">1 / 5</div>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const cursor=$('#cursor'),narration=$('#narration'),mainArea=$('#mainArea'),pageTitle=$('#pageTitle'),loginScreen=$('#loginScreen'),modalOverlay=$('#modalOverlay'),modalContent=$('#modalContent'),progressBar=$('#progressBar'),counterEl=$('#counter');
+let currentScene=0,playing=true,sceneTimer=null;
+function sleep(ms){return new Promise(r=>sceneTimer=setTimeout(r,ms))}
+function showNarration(s,t){narration.innerHTML=`<span class="step-num">${s}</span> ${t}`;narration.classList.add('show')}
+function hideNarration(){narration.classList.remove('show')}
+function moveCursor(x,y){cursor.style.right=x+'px';cursor.style.top=y+'px';cursor.classList.add('visible')}
+function hideCursor(){cursor.classList.remove('visible')}
+function clickEffect(){cursor.classList.add('clicking');setTimeout(()=>cursor.classList.remove('clicking'),500)}
+function setActive(p){$$('.sidebar a').forEach(a=>a.classList.toggle('active',a.dataset.page===p))}
+function setPage(t){pageTitle.textContent=t}
+function showModal(h){modalContent.innerHTML=h;modalOverlay.classList.add('show')}
+function hideModal(){modalOverlay.classList.remove('show')}
+function updateControls(){counterEl.textContent=`${currentScene+1} / ${scenes.length}`;progressBar.style.width=((currentScene+1)/scenes.length*100)+'%'}
+
+const scenes=[
+  // 1 - Login
+  async function(){
+    loginScreen.classList.remove('hidden');mainArea.innerHTML='';hideModal();
+    showNarration(1,'مرحباً! سنسجل الدخول كمحاسب باستخدام الحساب omar_finance');
+    await sleep(1200);
+    moveCursor(280,340);await sleep(600);$('#loginUser').value='omar_finance';
+    await sleep(500);moveCursor(280,390);await sleep(400);$('#loginPass').value='••••••••';
+    await sleep(500);moveCursor(260,430);clickEffect();await sleep(800);
+    loginScreen.classList.add('hidden');setPage('الرئيسية');setActive('home');
+    mainArea.innerHTML=`<div class="stats-row">
+      <div class="stat-card"><div class="label">إجمالي اليوم</div><div class="value">18,600</div><div class="sub">ر.س</div></div>
+      <div class="stat-card"><div class="label">تم التحقق</div><div class="value" style="color:#22c55e">14,200</div></div>
+      <div class="stat-card"><div class="label">بانتظار</div><div class="value" style="color:#eab308">4,400</div></div>
+      <div class="stat-card"><div class="label">مصاريف معلقة</div><div class="value" style="color:#ef4444">3</div></div>
+    </div>`;
+    await sleep(2000);
+  },
+  // 2 - تدقيق الحسابات (PRIMARY)
+  async function(){
+    showNarration(2,'تدقيق الحسابات — المهمة الأساسية: التحقق من المبالغ المحصلة والمدفوعات المقدمة');
+    moveCursor(140,80);await sleep(600);clickEffect();
+    setActive('finance');setPage('تدقيق الحسابات');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">💰 الحجوزات المكتملة — تدقيق مالي</div>
+      <table class="data-table" id="finTable"><tr><th>#</th><th>العميل</th><th>الخدمة</th><th>المبلغ المحصل</th><th>الدفعة المقدمة</th><th>المتبقي</th><th>الحالة</th><th>إجراء</th></tr>
+        <tr><td>1024</td><td>محمد العلي</td><td>تركيب GPS</td><td>450 ر.س</td><td>200 ر.س</td><td>250 ر.س</td><td><span class="badge badge-green">تم التحقق ✓</span></td><td>—</td></tr>
+        <tr id="verifyRow"><td>1025</td><td>سارة أحمد</td><td>صيانة</td><td>380 ر.س</td><td>100 ر.س</td><td>280 ر.س</td><td id="verifyStatus"><span class="badge badge-yellow">بانتظار التحقق</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px" id="verifyBtn">تحقق</button></td></tr>
+        <tr><td>1026</td><td>عبدالله خالد</td><td>تجديد</td><td>200 ر.س</td><td>200 ر.س</td><td>0</td><td><span class="badge badge-yellow">بانتظار التحقق</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px">تحقق</button></td></tr>
+      </table>`;
+    await sleep(1500);
+    moveCursor(350,240);clickEffect();
+    showNarration(2,'ننقر على الحجز 1025 للتحقق من المبلغ المحصل ومطابقته');
+    await sleep(800);
+    showModal(`<h3>تفاصيل الحجز #1025 — تدقيق مالي</h3>
+      <div class="form-row"><label>العميل</label><input value="سارة أحمد" readonly></div>
+      <div class="form-row"><label>المبلغ المحصل</label><input value="380 ر.س" readonly style="border-color:#22c55e"></div>
+      <div class="form-row"><label>الدفعة المقدمة</label><input value="100 ر.س" readonly></div>
+      <div class="form-row"><label>ملاحظات التدقيق</label><textarea readonly>المبلغ مطابق للفاتورة — تم التأكد</textarea></div>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-success" id="confirmVerify">تأكيد التحقق ✓</button><button class="btn" style="background:#334155;color:#e2e8f0">إلغاء</button></div>`);
+    await sleep(2000);
+    moveCursor(340,450);clickEffect();
+    await sleep(600);
+    hideModal();
+    const vs=$('#verifyStatus');if(vs)vs.innerHTML='<span class="badge badge-green verified-anim">تم التحقق ✓</span>';
+    showNarration(2,'تم تأكيد التحقق بنجاح — المبلغ مطابق ✓');
+    await sleep(2000);
+  },
+  // 3 - إدارة المصاريف
+  async function(){
+    showNarration(3,'إدارة المصاريف — مراجعة طلبات المصاريف من الموظفين والموافقة أو الرفض');
+    moveCursor(140,115);await sleep(600);clickEffect();
+    setActive('expenses');setPage('إدارة المصاريف');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📑 طلبات المصاريف</div>
+      <table class="data-table"><tr><th>الموظف</th><th>النوع</th><th>المبلغ</th><th>التاريخ</th><th>المرفقات</th><th>الحالة</th><th>إجراء</th></tr>
+        <tr><td>أحمد خالد</td><td>وقود</td><td>150 ر.س</td><td>2026-07-21</td><td>فاتورة ✓</td><td><span class="badge badge-yellow">معلق</span></td><td><button class="btn btn-success" style="font-size:10px;padding:3px 8px">موافقة</button> <button class="btn btn-danger" style="font-size:10px;padding:3px 8px">رفض</button></td></tr>
+        <tr><td>سعيد محمد</td><td>أدوات</td><td>320 ر.س</td><td>2026-07-20</td><td>لا يوجد ✗</td><td><span class="badge badge-yellow">معلق</span></td><td><button class="btn btn-success" style="font-size:10px;padding:3px 8px">موافقة</button> <button class="btn btn-danger" style="font-size:10px;padding:3px 8px">رفض</button></td></tr>
+        <tr><td>علي حسن</td><td>مواصلات</td><td>80 ر.س</td><td>2026-07-22</td><td>فاتورة ✓</td><td><span class="badge badge-green">تمت الموافقة</span></td><td>—</td></tr>
+      </table>`;
+    await sleep(1500);
+    moveCursor(300,260);clickEffect();
+    showNarration(3,'طلب سعيد بدون مرفقات — سنرفضه حتى يرفق الفاتورة');
+    await sleep(2500);
+  },
+  // 4 - الحجوزات
+  async function(){
+    showNarration(4,'الحجوزات — مقارنة الأسعار المعروضة بالمبالغ المحصلة فعلياً');
+    moveCursor(140,150);await sleep(600);clickEffect();
+    setActive('bookings');setPage('الحجوزات');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📅 مقارنة الأسعار</div>
+      <table class="data-table"><tr><th>#</th><th>العميل</th><th>السعر المعروض</th><th>المبلغ المحصل</th><th>الفرق</th><th>الحالة</th></tr>
+        <tr><td>1024</td><td>محمد العلي</td><td>450 ر.س</td><td>450 ر.س</td><td style="color:#22c55e">0</td><td><span class="badge badge-green">مطابق</span></td></tr>
+        <tr class="highlight"><td>1019</td><td>فهد سالم</td><td>600 ر.س</td><td>550 ر.س</td><td style="color:#ef4444">-50 ر.س</td><td><span class="badge badge-red">فرق !</span></td></tr>
+        <tr><td>1018</td><td>نورة عبدالله</td><td>300 ر.س</td><td>300 ر.س</td><td style="color:#22c55e">0</td><td><span class="badge badge-green">مطابق</span></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(450,240);clickEffect();
+    showNarration(4,'الحجز 1019 يوجد فرق 50 ر.س بين السعر المعروض والمحصل — يحتاج تحقيق');
+    await sleep(2500);
+  },
+  // 5 - الذكاء الاصطناعي
+  async function(){
+    showNarration(5,'الذكاء الاصطناعي — الاستفسار عن ملخصات مالية');
+    hideCursor();setActive('home');setPage('الذكاء الاصطناعي');
+    mainArea.innerHTML=`<div class="section-title">🤖 المدير الذكي</div><div class="ai-chat" id="aiChat"></div>`;
+    const chat=$('#aiChat');
+    await sleep(800);
+    chat.innerHTML+=`<div class="ai-msg user">ما هو إجمالي الإيرادات هذا الأسبوع؟</div>`;
+    await sleep(1200);
+    chat.innerHTML+=`<div class="ai-msg bot"><span class="typing-dots">جاري التحليل</span></div>`;
+    await sleep(1500);
+    chat.lastElementChild.innerHTML=`إجمالي الإيرادات هذا الأسبوع: <strong>87,400 ر.س</strong><br>تم التحقق من: 72,100 ر.س (82%)<br>بانتظار التحقق: 15,300 ر.س<br>المصاريف المعتمدة: 4,200 ر.س<br>صافي الإيراد: <strong style="color:#22c55e">83,200 ر.س</strong>`;
+    await sleep(3000);
+  }
+];
+
+async function playScene(i){if(i<0||i>=scenes.length)return;currentScene=i;updateControls();hideNarration();hideModal();await scenes[i]()}
+async function autoPlay(){while(playing&&currentScene<scenes.length){await playScene(currentScene);if(!playing)break;await sleep(1000);currentScene++}}
+$('#btnPlay').onclick=()=>{playing=!playing;$('#btnPlay').textContent=playing?'⏸ إيقاف':'▶ تشغيل';if(playing){currentScene=Math.min(currentScene,scenes.length-1);autoPlay()}else clearTimeout(sceneTimer)};
+$('#btnNext').onclick=()=>{playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.min(currentScene+1,scenes.length-1);playScene(currentScene)};
+$('#btnPrev').onclick=()=>{playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.max(currentScene-1,0);playScene(currentScene)};
+$('#progressWrap').onclick=e=>{const r=e.target.getBoundingClientRect();const p=(e.clientX-r.left)/r.width;playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.floor(p*scenes.length);playScene(currentScene)};
+updateControls();autoPlay();
+})();
+</script>
+</body>
+</html>

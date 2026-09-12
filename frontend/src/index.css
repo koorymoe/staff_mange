@@ -1,0 +1,1198 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Tajawal', system-ui, sans-serif;
+
+  --color-brand-50: #eef3fb;
+  --color-brand-100: #d6e2f5;
+  --color-brand-200: #adc5eb;
+  --color-brand-300: #7da3de;
+  --color-brand-400: #4a7bcb;
+  --color-brand-500: #2c5aad;
+  --color-brand-600: #1f4488;
+  --color-brand-700: #1a376e;
+  --color-brand-800: #152c58;
+  --color-brand-900: #0f2040;
+
+}
+
+html {
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+}
+
+body {
+  margin: 0;
+  background: linear-gradient(180deg, #eef2fa 0%, #dde6f5 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* أي جدول بأي صفحة ينلف بحاوية قابلة للتمرير الأفقي بمكانها فقط،
+   بدل ما تتحرك الصفحة كلها يمين ويسار بالموبايل (خصوصاً لو الجدول عريض). */
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* الهيكل الرئيسي للنظام (القائمة الجانبية + المحتوى) ياخذ ارتفاع الشاشة الحقيقي
+   (100dvh) بدل 100vh العادي، ويمنع تمرير الصفحة كلها — التمرير يصير بس داخل
+   منطقة المحتوى (main). هذا يمنع مشكلة قفز/ارتفاع القائمة الجانبية مع المحتوى
+   بمتصفحات الموبايل (خصوصاً آيفون) لما يتحرك شريط العنوان أثناء التمرير. */
+.app-shell {
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* القائمة الجانبية بالموبايل (position: fixed) لازم نفس الشي — ارتفاع حقيقي
+   ثابت بدل 100vh، حتى ما تتحرك مع تحرك شريط عنوان المتصفح أثناء التمرير. */
+.app-sidebar {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ═══ خلفية شاشة تسجيل الدخول — كرات زجاجية متحركة بألوان هوية الشركة ═══ */
+
+@layer components {
+  .inp {
+    width: 100%;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    outline: none;
+    background: #fff;
+  }
+  .inp:focus {
+    border-color: var(--color-brand-500);
+    box-shadow: 0 0 0 2px rgba(44, 90, 173, 0.15);
+  }
+
+  /* ═══ لمسة "زيتية" لماعة — نفس ألوان الهوية، بس بإحساس أعمق واحترافي أكثر ═══
+     تضيف طبقة انعكاس ضوئي فوق أي خلفية ملونة موجودة أصلاً، بدون تغيير اللون نفسه. */
+  .glossy-btn {
+    background-image:
+      linear-gradient(160deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0.06) 42%, rgba(255, 255, 255, 0) 58%),
+      radial-gradient(140% 100% at 20% 0%, rgba(255, 255, 255, 0.28), transparent 55%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.35),
+      inset 0 -10px 16px -12px rgba(0, 0, 0, 0.45);
+    transition: filter 0.15s ease, box-shadow 0.15s ease;
+  }
+  .glossy-btn:hover {
+    filter: brightness(1.06);
+  }
+  .glossy-btn:active {
+    filter: brightness(0.96);
+  }
+
+  .glossy-dark {
+    background-image:
+      radial-gradient(120% 55% at 18% -8%, rgba(255, 255, 255, 0.14), transparent 60%),
+      linear-gradient(160deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 30%, rgba(255, 255, 255, 0) 55%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* أي زر/عنصر بلون العلامة الأساسي (bg-brand-500/600/700) ياخذ اللمعة الزيتية تلقائياً
+   بكل الصفحات — بدون الحاجة نلمس كل ملف واحد واحد. بس تراكب فوق اللون (خلفية إضافية)
+   حتى ما تكسر أي shadow-* مضاف أصلاً على نفس العنصر. */
+.bg-brand-500,
+.bg-brand-600,
+.bg-brand-700 {
+  background-image:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0.05) 40%, rgba(255, 255, 255, 0) 58%),
+    radial-gradient(140% 100% at 20% 0%, rgba(255, 255, 255, 0.25), transparent 55%);
+}
+
+/* ═══ حركة تبديل التحية بالرئيسية ═══
+   التحية الزمنية تطلع أول، وبعد ثواني تستقر على «مرحباً».
+   الحركة ناعمة ومرة وحدة — التبديل الي ينط يلفت النظر بالطريقة الغلط.
+
+   ⚠️ prefers-reduced-motion محترم: أكو ناس الحركة تدوّخهم فعلاً،
+   وهاي شاشة يفتحونها كل يوم. */
+@keyframes greet-swap-in {
+  from { opacity: 0; transform: translateY(-0.4rem); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes greet-icon-wave {
+  0%, 100% { transform: rotate(0deg); }
+  25%      { transform: rotate(12deg); }
+  75%      { transform: rotate(-8deg); }
+}
+.greet-swap { animation: greet-swap-in 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.greet-icon { animation: greet-icon-wave 1.6s ease-in-out 2; transform-origin: 70% 70%; }
+
+@media (prefers-reduced-motion: reduce) {
+  .greet-swap, .greet-icon { animation: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   الوضع الليلي
+   ═══════════════════════════════════════════════════════════════
+
+   «سوي الوضع الليلي».
+
+   الموظف الي يشتغل بالليل من تلفونه، الشاشة البيضاء تعمي عينه —
+   خصوصاً الفني بالميدان والليدر الي يكتب تقريره آخر الليل.
+
+   ⚠️ ليش هنا بملف واحد مو `dark:` بكل شاشة؟ لأن النظام فيه أكثر من
+   ١٥٠ شاشة ومكوّن. إضافة `dark:` لكل صنف تعني آلاف التعديلات، وأي
+   شاشة تنبني بكرة وتنسى `dark:` تطلع بيضاء ناصعة بنص الوضع الليلي —
+   يعني وضع ليلي «أغلبه» شغّال، وهذا أسوأ من ما اكو.
+
+   وTailwind v4 يخلّي كل لون **متغيّر CSS** (`bg-white` تساوي
+   `var(--color-white)`)، فقلب اللوحة بمكان واحد يقلب النظام كله —
+   والشاشة الجديدة تجي مظلمة لحالها بلا ما أحد ينتبهلها.
+
+   ⚠️ والقلب مو عشوائي: نعكس **سلّم الرمادي** (slate) ونثبّت الأبيض
+   على رمادي غامق، فالنص الغامق يصير فاتح والخلفية الفاتحة تصير
+   غامقة — وتبقى الفروق بين الدرجات محفوظة مثل ما هي بالنهار.
+
+   ⚠️ وألوان المعاني (أحمر/أخضر/أصفر) تنخفّف بس ما تنقلب: الأحمر لازم
+   يبقى أحمر — تحذير ينقلب لأخضر بالليل يعني قرار غلط بالفلوس. */
+
+html.dark {
+  color-scheme: dark;
+
+  /* ═══ سلّم الرمادي منعكس ═══
+     هذا الي يخدم آلاف الاستعمالات (`text-slate-500` لحالها ٦٢٣ مرة).
+     ⚠️ بس المتغيّر يخدم النص والخلفية سوا، فالمناطق الغامقة **بالوضعين**
+     (القائمة الجانبية) تنستثنى تحت — نفس درس `--color-white`. */
+  --color-slate-50:  #161d2e;
+  --color-slate-100: #1c2437;
+  --color-slate-200: #26304a;
+  --color-slate-300: #4a5670;
+  --color-slate-400: #8f9bb5;
+  --color-slate-500: #a8b3c9;
+  --color-slate-600: #c2cbdc;
+  --color-slate-700: #d5dce9;
+  --color-slate-800: #e6ecf5;
+  --color-slate-900: #f3f7fc;
+
+  /* ⚠️ و`gray` عائلة **ثانية** غير `slate` بـTailwind — و١٦٠ استعمال
+     بالنظام يستعملونها (خصوصاً `border-gray-300` ٥٧ مرة). نسيانها
+     يعني حدود بيضة تلمع على بطاقة غامقة، ونص رمادي غامق ما ينقرا.
+     نقلبها بنفس درجات `slate` حتى الشاشة الي تخلط بينهن تطلع
+     متناسقة مو مبقّعة. */
+  --color-gray-50:  #161d2e;
+  --color-gray-100: #1c2437;
+  --color-gray-200: #26304a;
+  --color-gray-300: #4a5670;
+  --color-gray-400: #8f9bb5;
+  --color-gray-500: #a8b3c9;
+  --color-gray-600: #c2cbdc;
+  --color-gray-700: #d5dce9;
+  --color-gray-800: #e6ecf5;
+  --color-gray-900: #f3f7fc;
+
+  /* ⚠️ المستوى `-50` يتقلب بالمتغيّر مو بالصنف — لأنه أكثر مستوى
+     ينستعمل بصيغة الشفافية (`bg-sky-50/70`, `bg-amber-50/50` …
+     ٢١٤ استعمال بالنظام). وصيغة الشفافية **صنف ثاني تماماً**
+     (`.bg-sky-50\/70`)، فقاعدة على `.bg-sky-50` ما تصيدها — وهذا
+     الي چان يخلّي بطاقات «شنو صاير اليوم» تطلع نص فاتح على خلفية
+     فاتحة. المتغيّر يغطّيهن كلهن بضربة وحدة.
+     ⚠️ التعارض الوحيد `text-amber-50` (مرّتين) — منرجّعه تحت. */
+  --color-red-50: #271212;
+  --color-rose-50: #271215;
+  --color-orange-50: #271b12;
+  --color-amber-50: #272112;
+  --color-yellow-50: #272412;
+  --color-green-50: #12271a;
+  --color-emerald-50: #122720;
+  --color-teal-50: #122725;
+  --color-sky-50: #122027;
+  --color-blue-50: #121a27;
+  --color-indigo-50: #121227;
+  --color-violet-50: #181227;
+  --color-purple-50: #1d1227;
+  --color-brand-50: #121a27;
+}
+
+html.dark body {
+  background: linear-gradient(180deg, #0b1020 0%, #10182b 100%);
+}
+
+/* ⚠️ خلفية البطاقات تنقلب بالصنف مو بالمتغيّر: `--color-white` يخدم
+   **الاثنين** — خلفية البطاقة (`bg-white`) ونص الأزرار والقائمة
+   الجانبية (`text-white`). قلبه بالمتغيّر يخلّي نص القائمة الجانبية
+   غامقاً على خلفية غامقة — يعني قائمة ما تنقرا.
+   فنقلب خلفيات الأبيض بس، والنص الأبيض يبقى أبيض. */
+html.dark .bg-white { background-color: #131a2a; }
+html.dark .bg-white\/95 { background-color: rgba(19, 26, 42, 0.95); }
+html.dark .bg-white\/90 { background-color: rgba(19, 26, 42, 0.9); }
+html.dark .bg-white\/80 { background-color: rgba(19, 26, 42, 0.8); }
+html.dark .bg-white\/60 { background-color: rgba(19, 26, 42, 0.6); }
+
+/* ═══════════════════════════════════════════════════════════════
+   ألوان المعاني بالوضع الليلي
+   ═══════════════════════════════════════════════════════════════
+
+   «أغلب الكلام ماواضح».
+
+   ⚠️ ليش بالصنف مو بالمتغيّر؟ لأن `--color-red-600` يخدم **الاثنين**:
+   `text-red-600` (نص أحمر غامق على بطاقة بيضة) و`bg-red-600` (زر
+   أحمر صامت عليه نص أبيض). قلب المتغيّر يصلّح الأول ويكسر الثاني —
+   نفس فخّ `--color-white` بالضبط.
+
+   فنقلب **بس** الي لازم ينقلب:
+     • الخلفيات الخفيفة 50/100/200 (أسطح ملوّنة) → أسطح غامقة
+     • النصوص 500..900 (كلام ملوّن على تلك الأسطح) → نصوص فاتحة
+     • الحدود 50..300 → حدود غامقة
+   ونترك بحالها:
+     • الأزرار الصامتة bg-*-500/600/700 (نصها أبيض ويبقى مقروء)
+     • النصوص الفاتحة text-*-100..400 (أصلاً نص فاتح فوگ زر ملوّن)
+
+   ⚠️ والأرقام مو مذوّقة بالعين: كل تركيبة نص/خلفية هنا محسوبة، وأوطى
+   وحدة بيها ٤.٦٧ والمطلوب ٤.٥ (معيار WCAG AA). الفني يقرا هالشاشة
+   بالشمس وبالليل، والرقم الي ما ينقرا يعني قرار غلط بالفلوس.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* red */
+html.dark .border-red-50 { border-color: #4b2222; }
+html.dark .bg-red-100 { background-color: #341818; }
+html.dark .border-red-100 { border-color: #572929; }
+html.dark .bg-red-200 { background-color: #452424; }
+html.dark .border-red-200 { border-color: #673535; }
+html.dark .border-red-300 { border-color: #633636; }
+html.dark .text-red-500 { color: #df8686; }
+html.dark .text-red-600 { color: #e49595; }
+html.dark .text-red-700 { color: #eba8a8; }
+html.dark .text-red-800 { color: #f2bdbd; }
+html.dark .text-red-900 { color: #f8d1d1; }
+
+/* rose */
+html.dark .border-rose-50 { border-color: #4b2228; }
+html.dark .bg-rose-100 { background-color: #34181d; }
+html.dark .border-rose-100 { border-color: #572930; }
+html.dark .bg-rose-200 { background-color: #452429; }
+html.dark .border-rose-200 { border-color: #67353d; }
+html.dark .border-rose-300 { border-color: #63363d; }
+html.dark .text-rose-500 { color: #df8695; }
+html.dark .text-rose-600 { color: #e495a2; }
+html.dark .text-rose-700 { color: #eba8b3; }
+html.dark .text-rose-800 { color: #f2bdc6; }
+html.dark .text-rose-900 { color: #f8d1d7; }
+
+/* orange */
+html.dark .border-orange-50 { border-color: #4b3322; }
+html.dark .bg-orange-100 { background-color: #342418; }
+html.dark .border-orange-100 { border-color: #573c29; }
+html.dark .bg-orange-200 { background-color: #453124; }
+html.dark .border-orange-200 { border-color: #674a35; }
+html.dark .border-orange-300 { border-color: #634936; }
+html.dark .text-orange-500 { color: #dfab86; }
+html.dark .text-orange-600 { color: #e4b695; }
+html.dark .text-orange-700 { color: #ebc4a8; }
+html.dark .text-orange-800 { color: #f2d3bd; }
+html.dark .text-orange-900 { color: #f8e1d1; }
+
+/* amber */
+html.dark .border-amber-50 { border-color: #4b3f22; }
+html.dark .bg-amber-100 { background-color: #342c18; }
+html.dark .border-amber-100 { border-color: #574a29; }
+html.dark .bg-amber-200 { background-color: #453c24; }
+html.dark .border-amber-200 { border-color: #675935; }
+html.dark .border-amber-300 { border-color: #635636; }
+html.dark .text-amber-500 { color: #dfc686; }
+html.dark .text-amber-600 { color: #e4ce95; }
+html.dark .text-amber-700 { color: #ebd8a8; }
+html.dark .text-amber-800 { color: #f2e3bd; }
+html.dark .text-amber-900 { color: #f8edd1; }
+
+/* yellow */
+html.dark .border-yellow-50 { border-color: #4b4422; }
+html.dark .bg-yellow-100 { background-color: #342f18; }
+html.dark .border-yellow-100 { border-color: #574f29; }
+html.dark .bg-yellow-200 { background-color: #453f24; }
+html.dark .border-yellow-200 { border-color: #675e35; }
+html.dark .border-yellow-300 { border-color: #635c36; }
+html.dark .text-yellow-500 { color: #dfd086; }
+html.dark .text-yellow-600 { color: #e4d795; }
+html.dark .text-yellow-700 { color: #ebe0a8; }
+html.dark .text-yellow-800 { color: #f2e9bd; }
+html.dark .text-yellow-900 { color: #f8f1d1; }
+
+/* green */
+html.dark .border-green-50 { border-color: #224b31; }
+html.dark .bg-green-100 { background-color: #183423; }
+html.dark .border-green-100 { border-color: #29573a; }
+html.dark .bg-green-200 { background-color: #244530; }
+html.dark .border-green-200 { border-color: #356747; }
+html.dark .border-green-300 { border-color: #366346; }
+html.dark .text-green-500 { color: #86dfa7; }
+html.dark .text-green-600 { color: #95e4b2; }
+html.dark .text-green-700 { color: #a8ebc1; }
+html.dark .text-green-800 { color: #bdf2d1; }
+html.dark .text-green-900 { color: #d1f8df; }
+
+/* emerald */
+html.dark .border-emerald-50 { border-color: #224b3d; }
+html.dark .bg-emerald-100 { background-color: #18342b; }
+html.dark .border-emerald-100 { border-color: #295747; }
+html.dark .bg-emerald-200 { background-color: #24453a; }
+html.dark .border-emerald-200 { border-color: #356756; }
+html.dark .border-emerald-300 { border-color: #366354; }
+html.dark .text-emerald-500 { color: #86dfc1; }
+html.dark .text-emerald-600 { color: #95e4ca; }
+html.dark .text-emerald-700 { color: #a8ebd5; }
+html.dark .text-emerald-800 { color: #bdf2e0; }
+html.dark .text-emerald-900 { color: #d1f8eb; }
+
+/* teal */
+html.dark .border-teal-50 { border-color: #224b46; }
+html.dark .bg-teal-100 { background-color: #183431; }
+html.dark .border-teal-100 { border-color: #295752; }
+html.dark .bg-teal-200 { background-color: #244542; }
+html.dark .border-teal-200 { border-color: #356762; }
+html.dark .border-teal-300 { border-color: #36635f; }
+html.dark .text-teal-500 { color: #86dfd6; }
+html.dark .text-teal-600 { color: #95e4dd; }
+html.dark .text-teal-700 { color: #a8ebe4; }
+html.dark .text-teal-800 { color: #bdf2ec; }
+html.dark .text-teal-900 { color: #d1f8f4; }
+
+/* sky */
+html.dark .border-sky-50 { border-color: #223d4b; }
+html.dark .bg-sky-100 { background-color: #182b34; }
+html.dark .border-sky-100 { border-color: #294757; }
+html.dark .bg-sky-200 { background-color: #243a45; }
+html.dark .border-sky-200 { border-color: #355667; }
+html.dark .border-sky-300 { border-color: #365463; }
+html.dark .text-sky-500 { color: #86c1df; }
+html.dark .text-sky-600 { color: #95cae4; }
+html.dark .text-sky-700 { color: #a8d5eb; }
+html.dark .text-sky-800 { color: #bde0f2; }
+html.dark .text-sky-900 { color: #d1ebf8; }
+
+/* blue */
+html.dark .border-blue-50 { border-color: #22314b; }
+html.dark .bg-blue-100 { background-color: #182334; }
+html.dark .border-blue-100 { border-color: #293a57; }
+html.dark .bg-blue-200 { background-color: #243045; }
+html.dark .border-blue-200 { border-color: #354867; }
+html.dark .border-blue-300 { border-color: #364763; }
+html.dark .text-blue-500 { color: #86a8df; }
+html.dark .text-blue-600 { color: #95b3e4; }
+html.dark .text-blue-700 { color: #a8c2eb; }
+html.dark .text-blue-800 { color: #bdd1f2; }
+html.dark .text-blue-900 { color: #d1e0f8; }
+
+/* indigo */
+html.dark .border-indigo-50 { border-color: #22224b; }
+html.dark .bg-indigo-100 { background-color: #181934; }
+html.dark .border-indigo-100 { border-color: #292a57; }
+html.dark .bg-indigo-200 { background-color: #242445; }
+html.dark .border-indigo-200 { border-color: #353667; }
+html.dark .border-indigo-300 { border-color: #363663; }
+html.dark .text-indigo-500 { color: #8688df; }
+html.dark .text-indigo-600 { color: #9596e4; }
+html.dark .text-indigo-700 { color: #a8a9eb; }
+html.dark .text-indigo-800 { color: #bdbef2; }
+html.dark .text-indigo-900 { color: #d1d2f8; }
+
+/* violet */
+html.dark .border-violet-50 { border-color: #2e224b; }
+html.dark .bg-violet-100 { background-color: #211834; }
+html.dark .border-violet-100 { border-color: #372957; }
+html.dark .bg-violet-200 { background-color: #2e2445; }
+html.dark .border-violet-200 { border-color: #443567; }
+html.dark .border-violet-300 { border-color: #433663; }
+html.dark .text-violet-500 { color: #a186df; }
+html.dark .text-violet-600 { color: #ad95e4; }
+html.dark .text-violet-700 { color: #bca8eb; }
+html.dark .text-violet-800 { color: #cdbdf2; }
+html.dark .text-violet-900 { color: #ddd1f8; }
+
+/* purple */
+html.dark .border-purple-50 { border-color: #37224b; }
+html.dark .bg-purple-100 { background-color: #271834; }
+html.dark .border-purple-100 { border-color: #412957; }
+html.dark .bg-purple-200 { background-color: #352445; }
+html.dark .border-purple-200 { border-color: #4f3567; }
+html.dark .border-purple-300 { border-color: #4d3663; }
+html.dark .text-purple-500 { color: #b486df; }
+html.dark .text-purple-600 { color: #be95e4; }
+html.dark .text-purple-700 { color: #cba8eb; }
+html.dark .text-purple-800 { color: #d8bdf2; }
+html.dark .text-purple-900 { color: #e5d1f8; }
+
+/* brand */
+html.dark .border-brand-50 { border-color: #22314b; }
+html.dark .bg-brand-100 { background-color: #182334; }
+html.dark .border-brand-100 { border-color: #293a57; }
+html.dark .bg-brand-200 { background-color: #243045; }
+html.dark .border-brand-200 { border-color: #354867; }
+html.dark .border-brand-300 { border-color: #364763; }
+html.dark .text-brand-500 { color: #86a8df; }
+html.dark .text-brand-600 { color: #95b3e4; }
+html.dark .text-brand-700 { color: #a8c2eb; }
+html.dark .text-brand-800 { color: #bdd1f2; }
+html.dark .text-brand-900 { color: #d1e0f8; }
+
+
+/* ⚠️ الشفافيات الواطية (٥٪–٢٥٪) ما تنلمس: هي زينة **فوگ خلفيات
+   غامقة أصلاً** (القائمة الجانبية والرؤوس الملوّنة)، وقلبها يطفّي
+   التفاصيل الي تفصل عناصرها. */
+
+/* ⚠️ الألوان المكتوبة بالقيمة (`text-[#0f2040]`) ما تتبع المتغيّرات:
+   ١٢٧ عنوان بالنظام مكتوب بيها، وكلها تبقى كحلية غامقة على خلفية
+   غامقة — يعني عناوين ما تنقرا بنص الشاشات. نقلبها بالصنف نفسه بدل
+   ما ندور على ١٢٧ ملف ونبدّلهن (وننسى وحدة). */
+html.dark .text-\[\#0f2040\] { color: #dbe6f7; }
+html.dark .text-\[\#2c5aad\] { color: #9fc0ee; }
+html.dark .text-\[\#1a237e\] { color: #b9c6f2; }
+
+/* ⚠️ وصيغة `text-[var(--color-brand-900)]` بعد: تسع عناوين بالنظام
+   تقرا **المتغيّر** مباشرة بدل الصنف `text-brand-900`. بما إن قلب
+   لون العلامة صار بالصنف (حتى ما ينكسر `bg-brand-*`)، هاي الصيغة
+   چانت تفوت من الشبچة — والنتيجة عنوان بلون الخلفية بالضبط، يعني
+   مخفي تماماً. */
+html.dark .text-\[var\(--color-brand-900\)\] { color: #cadbf6; }
+html.dark .text-\[var\(--color-brand-500\)\] { color: #85a8e0; }
+html.dark .bg-\[\#f0f4f9\] { background-color: #182034; }
+
+/* الظلال ما تبين على الغامق — نبدّلها بحدود خفيفة تفصل البطاقات */
+html.dark [class*="shadow-"] {
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* ⚠️ خانات الإدخال: المتصفح يرسم خلفيتها بنفسه بالكثير من الحالات
+   (خصوصاً الملء التلقائي)، فنفرضها صراحةً — وإلا تطلع خانة بيضا
+   بنص شاشة غامقة. */
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: #1a2236;
+  color: #e2e8f2;
+  border-color: #38445f;
+}
+html.dark input::placeholder,
+html.dark textarea::placeholder { color: #7d8aa5; }
+
+/* التقويم والساعة بخانات التاريخ تطلع سودة على غامق — نقلبها */
+html.dark input[type="date"]::-webkit-calendar-picker-indicator,
+html.dark input[type="time"]::-webkit-calendar-picker-indicator,
+html.dark input[type="month"]::-webkit-calendar-picker-indicator,
+html.dark input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8);
+}
+
+/* ⚠️ الصور والشعارات ما تنلمس: قلب ألوانها يشوّه صورة الموظف
+   وشعار الشركة. */
+/* ⚠️ التعارض الوحيد: `text-amber-50` نص فاتح فوگ خلفية عنبرية صامتة
+   — يرجع لأصله بعد ما انقلب المتغيّر. نفس درس `--color-white`. */
+html.dark .text-amber-50 { color: #fffbeb; }
+
+html.dark img { opacity: 0.94; }
+
+/* ═══ استثناء: المناطق الغامقة **بالوضعين** ═══
+   القائمة الجانبية خلفيتها `#0f2040` بالنهار والليل سوا، ونصّها
+   `text-slate-300/400` — يعني نص فاتح على غامق **أصلاً**.
+   قلب سلّم الرمادي يخلّيه غامقاً على غامق، فتنعمى القائمة كلها.
+   نفس القصة مع الأزرار الصامتة الملوّنة (نصها `text-*-100/200`)،
+   وهذنه متروكات أصلاً بجدول فوگ.
+   ⚠️ الاستثناء **بالمكان** مو بالصنف: أي شاشة جديدة تنبني جوّا
+   القائمة تاخذ نفس المعاملة بلا ما أحد ينتبهلها. */
+/* ⚠️ الدرجات الغامقة (700/800/900) ما تنقلب: هاي أزرار وأسطح
+   **غامقة أصلاً** بالنهار وعليها نص أبيض — قلبها يخلّيها فاتحة
+   فيختفي نصّها. (زر «الكل» بشاشة المشاريع چان يختفي تماماً:
+   تباين ١.١٩.) ثالث مرة ينضرب نفس الفخّ — المتغيّر يخدم النص
+   والخلفية سوا. */
+/* ⚠️ والدرجات الوسطى (400/500/600) نفس القصة: هاي **تعبئة صامتة**
+   لشارات وأزرار عليها نص أبيض (شارة «مرفوض» بالمشاريع مثلاً)، مو
+   أسطح فاتحة. الي ينقلب هو 50/100/200/300 — تلك أسطح فعلاً. */
+html.dark .bg-slate-400, html.dark .bg-gray-400 { background-color: #94a3b8; }
+html.dark .bg-slate-500, html.dark .bg-gray-500 { background-color: #64748b; }
+html.dark .bg-slate-600, html.dark .bg-gray-600 { background-color: #475569; }
+html.dark .bg-slate-700, html.dark .bg-gray-700 { background-color: #334155; }
+html.dark .bg-slate-800, html.dark .bg-gray-800 { background-color: #1e293b; }
+html.dark .bg-slate-900, html.dark .bg-gray-900 { background-color: #0f172a; }
+/* ⚠️ ونصوصها الفاتحة (100/200) ترجع لأصلها: هي نص فاتح فوگ تلك
+   الأسطح الغامقة، وقلبها يخلّيها غامقة على غامق — كتلة الأوامر
+   بشاشة النسخ الاحتياطية چانت تباينها ١.١٥، يعني مخفية. */
+html.dark .text-slate-100, html.dark .text-gray-100 { color: #f1f5f9; }
+html.dark .text-slate-200, html.dark .text-gray-200 { color: #e2e8f0; }
+html.dark .border-slate-700, html.dark .border-gray-700 { border-color: #334155; }
+html.dark .border-slate-800, html.dark .border-gray-800 { border-color: #1e293b; }
+
+html.dark .app-sidebar .text-slate-300 { color: #cbd5e1; }
+html.dark .app-sidebar .text-slate-400 { color: #94a3b8; }
+html.dark .app-sidebar .text-slate-500 { color: #64748b; }
+
+/* الرأس الملوّن بأعلى الصفحة الرئيسية — نفس الحالة: غامق بالوضعين */
+html.dark .bg-\[\#0f2040\] .text-slate-300 { color: #cbd5e1; }
+
+
+.login-card::before {
+  content: '';
+  position: absolute;
+  inset: 8px;
+  z-index: -1;
+  border: 1px solid rgba(98, 176, 255, .13);
+  border-radius: 1.9rem;
+  pointer-events: none;
+}
+
+@media (min-width: 1280px) and (max-height: 760px) {
+  .login-card { transform: scale(.92); }
+}
+
+@media (max-width: 520px) {
+  .login-card { margin-block: auto; border-radius: 1.7rem; }
+  .login-card::before { border-radius: 1.45rem; }
+}
+
+@keyframes login-stars-drift {
+  to { background-position: 67px 67px, 112px 120px; }
+}
+@keyframes login-card-enter {
+  from { opacity: 0; transform: translateY(28px) scale(.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes login-card-glow {
+  50% { border-color: rgba(105, 191, 255, .96); box-shadow: inset 0 0 0 1px rgba(157,210,255,.16), inset 0 0 52px rgba(31,105,230,.16), 0 0 7px rgba(78,174,255,1), 0 0 46px rgba(32,105,255,.52), 0 0 125px rgba(12,73,196,.26), 0 34px 80px rgba(0,0,0,.66); }
+}
+@keyframes login-logo-breathe {
+  50% { transform: translateY(-3px); box-shadow: 0 0 0 7px rgba(38,112,255,.08), 0 0 45px rgba(67,162,255,.86), 0 14px 30px rgba(0,0,0,.55); }
+}
+@keyframes login-art-float {
+  50% { transform: translateY(-7px); }
+}
+@keyframes login-orbit-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes login-scan {
+  0%,100% { transform: translateX(-38px); opacity: .12; }
+  50% { transform: translateX(38px); opacity: .7; }
+}
+@keyframes login-node-travel {
+  0%,100% { left: 0; opacity: .25; }
+  50% { left: calc(100% - 7px); opacity: 1; }
+}
+
+/* Login V3: animated background layer + real responsive HTML form. */
+
+
+/* ═══════════════════════════════════════════════════════════════
+   نص الأزرار الفاتحة
+   ═══════════════════════════════════════════════════════════════
+
+   زر أصفر أو أخضر فاتح عليه نص أبيض ما ينقرا — `bg-amber-500` مع
+   `text-white` تباينها **٢.١٣** والمطلوب ٤.٥. وهاي مو مشكلة وضع
+   ليلي: نفس الرقم بالنهار والليل، وموجودة من زمان.
+
+   ⚠️ ما نغيّر لون الزر نفسه: اللون الأصفر **هو** التحذير، وتغميقه
+   يضيّع المعنى ويغيّر شكل النظام كله. نغيّر لون النص بس — «زر فاتح
+   = نص غامق» قاعدة متعارفة، والزر يبقى بلونه.
+
+   ⚠️ والمُحدِّد مركّب (`.bg-amber-500.text-white`) حتى يغلب
+   `.text-white` لحالها بلا `!important`. وما يكسر الـhover: هاي
+   الأزرار تبدّل **خلفيتها** بالمرور مو نصّها (متأكد — صفر منها
+   تستعمل `hover:text-`)، والنص الغامق يبقى مقروء على الدرجة الأغمق
+   بعد (حبر على `amber-600` = ٥.٥٤).
+
+   الأرقام بعد التبديل: ٥.٥٤ إلى ١٠.٣ — كلها فوگ الحد.
+   ═══════════════════════════════════════════════════════════════ */
+
+.bg-amber-400.text-white,
+.bg-amber-500.text-white { color: #422006; }
+.bg-yellow-600.text-white { color: #422006; }
+.bg-orange-500.text-white { color: #431407; }
+.bg-green-500.text-white  { color: #052e16; }
+.bg-teal-500.text-white   { color: #042f2e; }
+.bg-emerald-500.text-white { color: #022c22; }
+.bg-slate-400.text-white  { color: #0f172a; }
+
+/* ⚠️ وبالوضع الليلي نفس الشي بالضبط: خلفية الزر ما تنقلب (هي زر
+   صامت مو سطح)، فالنص الغامق يبقى هو الصح. ننصّ عليها حتى قلب
+   `--color-slate-900` ما يجرّ لون النص وياه. */
+html.dark .bg-slate-400.text-white { color: #0f172a; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ألوان مكتوبة داخل style — ٢٦ ملف
+   ═══════════════════════════════════════════════════════════════
+
+   ٢٦ ملف (صفحات GPS وعروض الأسعار وإدارة الإحصائيات وغيرهن) چانن
+   يكتبن ألوانهن سطرياً: `style={{ color: '#1a3a5c' }}`.
+
+   ⚠️ والتنسيق السطري **يغلب أي قاعدة CSS** — يعني قلب الوضع الليلي
+   ما يوصلهن مهما كتبنا. النتيجة چانت عناوين وأزرار كحلية غامقة على
+   خلفية غامقة: «⚡ إجراءات سريعة» تباينها ١.٤٩ — شبه مخفية.
+
+   ⚠️ الحل مو حذف السطري (٢٥٩ موضع) بل تحويله لمتغيّرات. والمتغيّر
+   السطري (`var(--t-title)`) يقرا قيمته من اللوحة، فينقلب وياها.
+
+   ⚠️ وقيم **النهار هي الأصلية بالضبط** — الي يشتغل بالنهار ما يشوف
+   ولا فرق. الي انجمعن سوا كانن درجات رمادي متطابقة تقريباً
+   (`#666` و`#4b5563` مثلاً)، وتوحيدهن يخلّي الشاشات متناسقة بدل
+   ما كل صفحة تختار رماديها.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --t-title:     #1a3a5c;
+  --t-title-alt: #1a237e;
+  --t-body:      #1f2937;
+  --t-muted:     #4b5563;
+  --t-faint:     #9ca3af;
+  --t-danger:    #dc2626;
+  --t-success:   #16a34a;
+  --t-warning:   #d97706;
+  --t-info:      #2563eb;
+  --t-violet:    #7c3aed;
+  --t-cyan:      #0891b2;
+
+  --sf-card:     #ffffff;
+  --sf-sunken:   #f8fafc;
+  --sf-danger:   #fef2f2;
+  --sf-success:  #f0fdf4;
+  --sf-info:     #eff6ff;
+  --sf-violet:   #f5f3ff;
+  --tint-warning: #fffbeb;
+  --bd-line:     #e5e7eb;
+
+  /* ثوابت ألوان معرّفة بأعلى الملفات (`const PRIMARY = '#1a237e'`).
+     ⚠️ نفس الثابت يخدم عنواناً غامقاً على أبيض **ورأس جدول كحلي**
+     عليه نص أبيض. فُصل لنسختين: هاي للنص وتنقلب، والأصل يبقى
+     للأسطح. نفس فخّ `--color-white`. */
+  --brand-ink:     #1a237e;
+  --design-ink:    #47528f;
+  --gold-ink:      #c8a45a;
+  --gold-warm-ink: #c97a3a;
+}
+
+html.dark {
+  /* نصوص: تنقلب لفاتح، والمعنى يبقى (الأحمر أحمر) */
+  --t-title:     #dbe6f7;
+  --t-title-alt: #c3ccf5;
+  --t-body:      #d5dce9;
+  --t-muted:     #b6c0d4;
+  --t-faint:     #8f9bb5;
+  --t-danger:    #eba8a8;
+  --t-success:   #9ce8ce;
+  --t-warning:   #e8d29c;
+  --t-info:      #9cb9e8;
+  --t-violet:    #b39ce8;
+  --t-cyan:      #9ce8e0;
+
+  /* أسطح: تنغمق بنفس درجات بطاقات النظام */
+  --sf-card:     #131a2a;
+  --sf-sunken:   #182034;
+  --sf-danger:   #271212;
+  --sf-success:  #122820;
+  --sf-info:     #121b28;
+  --sf-violet:   #191228;
+  --tint-warning: #272112;
+  --bd-line:     #26304a;
+
+  --brand-ink:     #c3ccf5;
+  --design-ink:    #b9c0e8;
+  --gold-ink:      #e2c98f;
+  --gold-warm-ink: #e6b183;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   شاشة الدخول — مضيئة، بالنص، وترد على المستخدم
+   ═══════════════════════════════════════════════════════════════
+
+   «واجهة مضيئة قويه… أشياء متحركة ورياكشن… بالنصف… والشعار
+   واضح وجميل».
+
+   ⚠️ «رياكشن» يعني الشاشة **ترد** مو بس تتحرك لحالها: البطاقة
+   تميل ورا الماوس، وضوء يتبع المؤشر عليها، والتسمية ترتفع لمن
+   تكتب، والزر ينضغط. الحركة الي ما ترد تصير خلفية متحركة —
+   والموظف يمل منها بأسبوع وهو يفتحها كل يوم.
+
+   ⚠️ وألوانها مكتوبة صراحةً مو من اللوحة: الشاشة مضيئة **بالوضعين**
+   (ماكو نهار وليل بشاشة الدخول)، فقلب الوضع الليلي ما يلمسها.
+
+   ⚠️ الحركة كلها `transform`/`opacity` — الوحيدتان الي المتصفح
+   يحرّكهن على كارت الشاشة بلا إعادة حساب التخطيط.
+   ═══════════════════════════════════════════════════════════════ */
+
+.lx {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 28px 20px;
+  overflow: hidden;
+  /* ⚠️ زركة صافية بلا بنفسجي: البنفسجي چان يسحبها للّيلكي.
+     التدرّج من فاتح جداً فوگ لأزرق أعمق تحت — يعطي عمقاً بلا ما
+     يطفّي الإضاءة. */
+  background: linear-gradient(168deg, #eaf3ff 0%, #d3e6ff 42%, #b3d4fb 78%, #9cc7f7 100%);
+  place-items: center;
+  perspective: 1400px;
+}
+
+/* ═══ الخلفية المضيئة ═══ */
+.lx-sky { position: absolute; z-index: -1; inset: 0; overflow: hidden; pointer-events: none; }
+
+/* كتل لون مشبعة تتموّج — «مضيئة» تجي من هنا */
+.lx-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  will-change: transform;
+}
+.lx-b1 {
+  top: -16%; right: -6%; width: 44vw; height: 44vw;
+  background: radial-gradient(circle, rgba(37, 99, 235, .62) 0%, transparent 68%);
+  animation: lx-f1 24s ease-in-out infinite alternate;
+}
+.lx-b2 {
+  bottom: -20%; left: -8%; width: 48vw; height: 48vw;
+  background: radial-gradient(circle, rgba(14, 165, 233, .55) 0%, transparent 68%);
+  animation: lx-f2 30s ease-in-out infinite alternate;
+}
+.lx-b3 {
+  top: 24%; left: 30%; width: 34vw; height: 34vw;
+  background: radial-gradient(circle, rgba(6, 182, 212, .48) 0%, transparent 70%);
+  animation: lx-f3 36s ease-in-out infinite alternate;
+}
+@keyframes lx-f1 { to { transform: translate3d(-7vw, 6vh, 0) scale(1.2); } }
+@keyframes lx-f2 { to { transform: translate3d(8vw, -5vh, 0) scale(1.14); } }
+@keyframes lx-f3 { to { transform: translate3d(-6vw, -5vh, 0) scale(.84); } }
+
+/* شبكة ناعمة تعطي بنية للضوء بدل ما يطلع ضبابياً */
+.lx-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(28, 68, 150, .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 68, 150, .08) 1px, transparent 1px);
+  background-size: 54px 54px;
+  mask-image: radial-gradient(130% 105% at 50% 45%, #000 30%, transparent 78%);
+}
+
+/* ومضات صغيرة تطلع وتنطفي */
+/* ═══ الترتيبات ═══
+   ⚠️ الخلفية بلا بنية تطلع «ضباب ملوّن». هاي العناصر تعطيها هيكلاً:
+   حلقات متراكزة ورا البطاقة، أرضية شبكية بمنظور، وشعاعان مائلان
+   يعبران. كلها هندسية ومنتظمة — القوة تجي من الترتيب مو من الزحمة. */
+
+/* حلقات متراكزة ورا البطاقة */
+.lx-rings {
+  position: absolute;
+  top: 50%; left: 50%;
+  width: 760px; height: 760px;
+  transform: translate(-50%, -50%);
+}
+.lx-rings i {
+  position: absolute;
+  inset: 0;
+  border: 1.5px solid rgba(37, 99, 235, .13);
+  border-radius: 50%;
+  animation: lx-ring-breathe 7s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+.lx-rings i:nth-child(2) { inset: 13%; border-color: rgba(37, 99, 235, .1);  animation-delay: -1.4s; }
+.lx-rings i:nth-child(3) { inset: 26%; border-color: rgba(6, 182, 212, .12); animation-delay: -2.8s; border-style: dashed; }
+.lx-rings i:nth-child(4) { inset: 39%; border-color: rgba(37, 99, 235, .08); animation-delay: -4.2s; }
+@keyframes lx-ring-breathe {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: 1;   transform: scale(1.028); }
+}
+
+/* أرضية شبكية بمنظور — تمشي باتجاه الناظر */
+.lx-floor {
+  position: absolute;
+  right: -50%; bottom: -6%;
+  width: 200%; height: 50%;
+  background-image:
+    linear-gradient(rgba(29, 78, 216, .16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(29, 78, 216, .16) 1px, transparent 1px);
+  background-size: 66px 66px;
+  transform: perspective(360px) rotateX(66deg);
+  transform-origin: 50% 100%;
+  mask-image: linear-gradient(to top, #000 2%, transparent 72%);
+  animation: lx-floor-run 5s linear infinite;
+  will-change: background-position;
+}
+@keyframes lx-floor-run { to { background-position: 0 66px, 0 0; } }
+
+/* شعاعان مائلان يعبران المشهد */
+.lx-beam {
+  position: absolute;
+  top: -50%;
+  width: 30%; height: 200%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .5), transparent);
+  transform: rotate(16deg);
+  animation: lx-beam-run 11s cubic-bezier(.45, 0, .55, 1) infinite;
+  will-change: transform, opacity;
+}
+.lx-beam-2 { animation-delay: -5.5s; opacity: .6; }
+@keyframes lx-beam-run {
+  0%       { transform: rotate(16deg) translateX(-120%); opacity: 0; }
+  15%      { opacity: 1; }
+  70%      { opacity: 1; }
+  85%, 100%{ transform: rotate(16deg) translateX(420%); opacity: 0; }
+}
+
+.lx-spark {
+  position: absolute;
+  top: calc(8% + (var(--n) * 6.3%));
+  right: calc(5% + (var(--n) * 6.6%));
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 12px 3px rgba(59, 130, 246, .9);
+  opacity: 0;
+  animation: lx-spark-go calc(7s + (var(--n) * .6s)) ease-in-out infinite;
+  animation-delay: calc(var(--n) * -.7s);
+  will-change: transform, opacity;
+}
+@keyframes lx-spark-go {
+  0%, 100% { opacity: 0; transform: scale(.4); }
+  45%      { opacity: .95; transform: scale(1); }
+}
+
+/* ═══════════ البطاقة ═══════════ */
+.lx-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 452px;
+  padding: 46px 40px 34px;
+  border: 1px solid rgba(255, 255, 255, .85);
+  border-radius: 30px;
+  background: rgba(255, 255, 255, .74);
+  backdrop-filter: blur(22px) saturate(1.5);
+  box-shadow:
+    0 34px 70px -22px rgba(38, 68, 140, .32),
+    0 4px 18px -6px rgba(38, 68, 140, .16),
+    0 1px 0 rgba(255, 255, 255, .9) inset;
+  /* ⚠️ الميلان ياخذ قيمه من متغيّرات يكتبها JS مباشرة على العنصر —
+     بلا إعادة رسم React مع كل حركة ماوس. */
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transform-style: preserve-3d;
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+  animation: lx-card-in .8s cubic-bezier(.22, 1, .36, 1) both;
+}
+@keyframes lx-card-in {
+  from { opacity: 0; transform: translateY(26px) scale(.96); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ضوء يتبع المؤشر فوگ البطاقة */
+.lx-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 0%),
+              rgba(90, 150, 255, .18), transparent 62%);
+  opacity: 0;
+  transition: opacity .3s;
+  pointer-events: none;
+}
+.lx-card:hover .lx-glow { opacity: 1; }
+
+/* ═══ الشعار ═══ واضح وكبير، بحلقة متدرّجة تدور وهالة تنبض */
+.lx-logo {
+  position: relative;
+  display: grid;
+  width: 116px; height: 116px;
+  margin: 0 auto;
+  place-items: center;
+}
+.lx-logo-ring {
+  position: absolute;
+  inset: 0;
+  padding: 2.5px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #1d4ed8, #38bdf8, #06b6d4, #1d4ed8);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  animation: lx-spin 7s linear infinite;
+  will-change: transform;
+}
+@keyframes lx-spin { to { transform: rotate(360deg); } }
+.lx-logo-pulse {
+  position: absolute;
+  inset: 0;
+  border: 2px solid rgba(59, 130, 246, .5);
+  border-radius: 50%;
+  animation: lx-pulse 2.8s ease-out infinite;
+  will-change: transform, opacity;
+}
+@keyframes lx-pulse {
+  0%   { opacity: .7; transform: scale(1); }
+  100% { opacity: 0;  transform: scale(1.35); }
+}
+.lx-logo-disc {
+  display: grid;
+  width: 92px; height: 92px;
+  border-radius: 50%;
+  background: #fff;
+  place-items: center;
+  box-shadow: 0 12px 30px -10px rgba(38, 68, 140, .45), 0 0 0 1px rgba(255, 255, 255, .9);
+  transition: transform .35s cubic-bezier(.22, 1, .36, 1);
+}
+.lx-card:hover .lx-logo-disc { transform: scale(1.06); }
+.lx-logo-disc img { width: 62px; height: 62px; object-fit: contain; }
+
+.lx-title {
+  margin: 20px 0 0;
+  color: #10224a;
+  font-size: 33px;
+  font-weight: 900;
+  letter-spacing: -.7px;
+  text-align: center;
+}
+.lx-tag {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin: 8px 0 0;
+  color: #5b7ba6;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.lx-tag::before, .lx-tag::after {
+  content: '';
+  width: 26px; height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, .55));
+}
+.lx-tag::after { background: linear-gradient(90deg, rgba(59, 130, 246, .55), transparent); }
+
+/* ═══════════ الخانات ═══════════ */
+.lx-form { margin-top: 32px; }
+
+.lx-field {
+  position: relative;
+  display: flex;
+  height: 58px;
+  align-items: center;
+  margin-bottom: 20px;
+  padding: 0 46px 0 12px;
+  border: 1.5px solid rgba(150, 175, 215, .5);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, .78);
+  transition: border-color .2s, box-shadow .25s, background-color .2s;
+}
+.lx-field:focus-within {
+  border-color: #3b82f6;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, .13);
+}
+.lx-field > svg {
+  position: absolute;
+  right: 15px;
+  width: 19px; height: 19px;
+  fill: none;
+  stroke: #8aa2c4;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke .2s, transform .25s;
+}
+.lx-field:focus-within > svg { stroke: #2f74e8; transform: scale(1.08); }
+
+.lx-field input {
+  width: 100%;
+  padding-top: 12px;
+  border: 0;
+  background: transparent;
+  color: #12244c;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  outline: none;
+  text-align: right;
+}
+/* ⚠️ التعبئة التلقائية بكروم تفرض خلفية زركة — نطفّيها بظل داخلي. */
+.lx-field input:-webkit-autofill,
+.lx-field input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #12244c;
+  box-shadow: 0 0 0 60px #fff inset;
+  transition: background-color 9999s;
+}
+
+/* التسمية ترتفع لمن تكتب أو تركّز — «رياكشن» */
+.lx-field label {
+  position: absolute;
+  right: 46px;
+  color: #7f97ba;
+  font-size: 14px;
+  font-weight: 600;
+  pointer-events: none;
+  transform-origin: right center;
+  transition: transform .22s cubic-bezier(.22, 1, .36, 1), color .2s;
+}
+.lx-field:focus-within label,
+.lx-field.has-val label,
+/* ⚠️ `:not(:placeholder-shown)` هي الي تضمن الصح فعلاً:
+   الخانة عندها `placeholder=" "` (فراغ)، فهاي القاعدة تنطبق لحظة ما
+   يصير بالخانة **أي نص** — سواء كتبه المستخدم، أو عبّاه المتصفح
+   تلقائياً، أو حطّه مدير كلمات السر.
+   الصنف `has-val` يعتمد على حالة React، وReact **ما يعرف** بالتعبئة
+   التلقائية (ما تشغّل حدث تغيير) — فالتسمية چانت تبقى مكانها **فوگ
+   النص المعبّى** والاثنان يتداخلان. وأي موظف بياناته محفوظة بالمتصفح
+   يشوف هالتداخل كل مرة يفتح النظام. */
+.lx-field input:not(:placeholder-shown) + label {
+  color: #2f74e8;
+  transform: translateY(-15px) scale(.78);
+}
+
+/* خط ينرسم تحت الخانة من النص للطرفين */
+.lx-underline {
+  position: absolute;
+  right: 50%; bottom: -1.5px; left: 50%;
+  height: 2.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #06b6d4, #3b82f6, #1d4ed8);
+  transition: right .3s cubic-bezier(.22, 1, .36, 1), left .3s cubic-bezier(.22, 1, .36, 1);
+}
+.lx-field:focus-within .lx-underline { right: 14px; left: 14px; }
+
+.lx-eye {
+  position: absolute;
+  left: 10px;
+  display: grid;
+  width: 34px; height: 34px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #8aa2c4;
+  cursor: pointer;
+  place-items: center;
+  transition: color .18s, background-color .18s, transform .18s;
+}
+.lx-eye:hover { background: rgba(59, 130, 246, .1); color: #2f74e8; transform: scale(1.06); }
+.lx-eye svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══════════ الزر ═══════════ */
+.lx-submit {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 56px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 15px;
+  background: none;
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 16.5px;
+  font-weight: 800;
+  box-shadow: 0 14px 30px -12px rgba(47, 116, 232, .95);
+  transition: transform .16s, box-shadow .22s;
+}
+.lx-submit:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 20px 40px -14px rgba(47, 116, 232, 1); }
+.lx-submit:active:not(:disabled) { transform: translateY(0) scale(.985); }
+.lx-submit:disabled { cursor: progress; filter: saturate(.7) brightness(.95); }
+/* التدرّج يتحرك جوّا الزر — يخلّيه حيّاً بلا وميض مزعج */
+.lx-submit-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, #1d4ed8, #2f74e8, #06b6d4, #1d4ed8);
+  background-size: 300% 100%;
+  animation: lx-shift 7s linear infinite;
+  will-change: background-position;
+}
+@keyframes lx-shift { to { background-position: -300% 0; } }
+.lx-submit-txt {
+  position: relative;
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.lx-arrow { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; transition: transform .22s; }
+.lx-submit:hover:not(:disabled) .lx-arrow { transform: translateX(-5px); }
+.lx-spin {
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255, 255, 255, .35);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: lx-spin .7s linear infinite;
+}
+
+.lx-msg {
+  margin: 18px 0 0;
+  padding: 12px 15px;
+  border-radius: 12px;
+  background: #fff7e2;
+  color: #8a6100;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  box-shadow: 0 0 0 1px rgba(217, 158, 0, .28) inset;
+  animation: lx-msg-in .3s cubic-bezier(.22, 1, .36, 1) both;
+}
+.lx-msg.is-error { background: #ffeef0; color: #b3231f; box-shadow: 0 0 0 1px rgba(220, 38, 38, .25) inset; }
+@keyframes lx-msg-in { from { opacity: 0; transform: translateY(-7px); } to { opacity: 1; transform: none; } }
+
+.lx-secure {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 26px 0 0;
+  color: #7c93b5;
+  font-size: 12px;
+  font-weight: 600;
+}
+.lx-secure svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ═══════════ الموبايل ═══════════
+   ⚠️ الميلان ينطفي (ماكو مؤشر باللمس)، والومضات تنقص، وكتلة لون
+   وحدة تنطفي — هاي أثقل الحركات والموبايل يدفعها بطارية. */
+@media (max-width: 640px) {
+  .lx { padding: 20px 16px max(24px, env(safe-area-inset-bottom)); }
+  .lx-card { padding: 34px 22px 26px; border-radius: 26px; }
+  .lx-b3, .lx-floor, .lx-beam { display: none; }
+  .lx-rings { width: 520px; height: 520px; }
+  .lx-spark:nth-child(n + 9) { display: none; }
+  .lx-logo { width: 96px; height: 96px; }
+  .lx-logo-disc { width: 78px; height: 78px; }
+  .lx-logo-disc img { width: 52px; height: 52px; }
+  .lx-title { font-size: 27px; }
+  .lx-form { margin-top: 26px; }
+}
+@media (hover: none) {
+  .lx-card { transform: none !important; }
+}
+
+/* ⚠️ أكو ناس الحركة تدوّخهم فعلاً، وهاي شاشة تنفتح كل يوم. */
+@media (prefers-reduced-motion: reduce) {
+  .lx *, .lx *::before, .lx *::after {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+  .lx-card { transform: none !important; }
+}
+
+/* ═══ الكيان — المراقب/المساعد الشخصي ═══
+   الطفو والاهتزاز هما الي يخلّونه يحسّ حي: كيان ثابت يصير أيقونة،
+   والحركة هي الي تعطي إحساس «أكو أحد يراقب». */
+@keyframes entity-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-7px); }
+}
+@keyframes entity-alert {
+  0%, 100%   { transform: translateY(0) rotate(0deg); }
+  20%        { transform: translateY(-3px) rotate(-4deg); }
+  40%        { transform: translateY(0) rotate(4deg); }
+  60%        { transform: translateY(-2px) rotate(-3deg); }
+  80%        { transform: translateY(0) rotate(3deg); }
+}
+/* ⚠️ الحركة على غلاف داخلي مو على العنصر نفسه: العنصر يحمل
+   `scaleX` للالتفات ناحية المؤشر، ولو حطينا الاثنين بنفس المكان
+   واحد يمحي الثاني. */
+.entity-float > * { animation: entity-float 3.6s ease-in-out infinite; }
+.entity-alert > * { animation: entity-alert 1.1s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .entity-float > *, .entity-alert > * { animation: none !important; }
+}

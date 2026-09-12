@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فيديو تعليمي — المدقق / المراقب</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0f172a;color:#e2e8f0;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+/* MAIN STAGE */
+.stage{flex:1;position:relative;overflow:hidden;display:flex}
+/* SIDEBAR */
+.sidebar{width:220px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;padding:12px 0;overflow-y:auto}
+.sidebar .logo{text-align:center;padding:10px;font-weight:700;font-size:15px;color:#2563eb;border-bottom:1px solid #334155;margin-bottom:8px}
+.sidebar a{display:flex;align-items:center;gap:8px;padding:9px 18px;color:#94a3b8;text-decoration:none;font-size:13px;transition:all .25s;border-radius:6px 0 0 6px;margin:1px 0}
+.sidebar a:hover,.sidebar a.active{background:#2563eb22;color:#60a5fa}
+.sidebar a.active{border-left:3px solid #2563eb;font-weight:600}
+.sidebar a .icon{font-size:16px;min-width:22px;text-align:center}
+/* CONTENT AREA */
+.content{flex:1;display:flex;flex-direction:column;position:relative;background:#0f172a}
+.topbar{height:48px;background:#1e293b;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.topbar .user-info{display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8}
+.topbar .user-avatar{width:30px;height:30px;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.topbar .page-title{font-size:15px;font-weight:600;color:#e2e8f0}
+.main-area{flex:1;padding:20px;overflow-y:auto;position:relative}
+/* CARDS & TABLES */
+.stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.stat-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;flex:1;min-width:140px}
+.stat-card .label{font-size:11px;color:#64748b;margin-bottom:4px}
+.stat-card .value{font-size:22px;font-weight:700;color:#2563eb}
+.stat-card .sub{font-size:11px;color:#22c55e;margin-top:2px}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;background:#1e293b;border-radius:8px;overflow:hidden}
+.data-table th{background:#334155;color:#94a3b8;padding:8px 10px;text-align:right;font-weight:600}
+.data-table td{padding:8px 10px;border-bottom:1px solid #1e293b55;color:#cbd5e1}
+.data-table tr:nth-child(even){background:#1e293b99}
+.data-table tr.highlight{background:#2563eb22;outline:2px solid #2563eb}
+.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
+.badge-green{background:#22c55e22;color:#22c55e}
+.badge-yellow{background:#eab30822;color:#eab308}
+.badge-red{background:#ef444422;color:#ef4444}
+.badge-blue{background:#2563eb22;color:#60a5fa}
+.section-title{font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.chart-placeholder{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:20px;margin-bottom:16px;position:relative;min-height:140px}
+.bar-chart{display:flex;align-items:flex-end;gap:10px;height:100px;padding-top:10px}
+.bar{background:linear-gradient(to top,#2563eb,#60a5fa);border-radius:4px 4px 0 0;min-width:28px;transition:height .6s}
+.bar-label{text-align:center;font-size:9px;color:#64748b;margin-top:4px}
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:20;opacity:0;pointer-events:none;transition:opacity .4s}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;width:420px;max-width:90%}
+.modal h3{color:#e2e8f0;margin-bottom:12px;font-size:15px}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:11px;color:#64748b;margin-bottom:3px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px}
+.btn{padding:7px 18px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:#2563eb;color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-danger{background:#ef4444;color:#fff}
+.btn-success{background:#22c55e;color:#fff}
+/* LOGIN SCREEN */
+.login-screen{position:absolute;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:30;transition:opacity .5s}
+.login-screen.hidden{opacity:0;pointer-events:none}
+.login-box{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:36px;width:340px;text-align:center}
+.login-box h2{color:#2563eb;margin-bottom:6px;font-size:20px}
+.login-box p{color:#64748b;font-size:12px;margin-bottom:20px}
+.login-box .form-row{text-align:right}
+/* CURSOR */
+.cursor{position:absolute;width:24px;height:24px;z-index:100;pointer-events:none;transition:all .8s cubic-bezier(.4,0,.2,1);opacity:0}
+.cursor::before{content:'';position:absolute;width:0;height:0;border-style:solid;border-width:0 4px 18px 14px;border-color:transparent transparent #2563eb transparent;transform:rotate(-25deg)}
+.cursor::after{content:'';position:absolute;top:14px;right:6px;width:8px;height:8px;background:#2563eb;border-radius:50%;opacity:0;animation:click-ring .4s ease-out}
+.cursor.clicking::after{opacity:1}
+@keyframes click-ring{0%{transform:scale(0);opacity:1}100%{transform:scale(3);opacity:0}}
+.cursor.visible{opacity:1}
+/* NARRATION */
+.narration{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1e293bee,#0f172aee);border:1px solid #2563eb55;border-radius:12px;padding:14px 24px;max-width:600px;width:90%;text-align:center;font-size:14px;color:#e2e8f0;line-height:1.8;z-index:50;backdrop-filter:blur(8px);opacity:0;transition:opacity .4s}
+.narration.show{opacity:1}
+.narration .step-num{display:inline-block;background:#2563eb;color:#fff;border-radius:50%;width:24px;height:24px;line-height:24px;font-size:11px;font-weight:700;margin-left:8px}
+/* CONTROLS BAR */
+.controls{height:52px;background:#1e293b;border-top:1px solid #334155;display:flex;align-items:center;gap:10px;padding:0 16px;z-index:60}
+.controls button{background:#334155;border:none;color:#e2e8f0;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:background .2s}
+.controls button:hover{background:#2563eb}
+.controls .progress-wrap{flex:1;height:6px;background:#334155;border-radius:3px;overflow:hidden;cursor:pointer}
+.controls .progress-bar{height:100%;background:#2563eb;border-radius:3px;transition:width .3s}
+.controls .counter{font-size:12px;color:#94a3b8;min-width:60px;text-align:center}
+/* AI CHAT */
+.ai-chat{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;max-width:500px}
+.ai-msg{margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.6}
+.ai-msg.user{background:#2563eb22;color:#60a5fa;margin-left:40px;text-align:left}
+.ai-msg.bot{background:#33415544;color:#cbd5e1;margin-right:40px}
+.typing-dots::after{content:'...';animation:dots 1s steps(3) infinite}
+@keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo">نظام إدارة الموظفين</div>
+    <a href="#" class="active" data-page="home"><span class="icon">🏠</span>الرئيسية</a>
+    <a href="#" data-page="monitor"><span class="icon">📡</span>لوحة المراقبة</a>
+    <a href="#" data-page="employees"><span class="icon">👥</span>إدارة الكوادر</a>
+    <a href="#" data-page="kpi"><span class="icon">📊</span>KPI</a>
+    <a href="#" data-page="stats"><span class="icon">📈</span>إحصائيات</a>
+    <a href="#" data-page="bookings"><span class="icon">📅</span>الحجوزات</a>
+    <a href="#" data-page="customers"><span class="icon">🏢</span>العملاء</a>
+    <a href="#" data-page="missions"><span class="icon">📍</span>المهام</a>
+    <a href="#" data-page="quality"><span class="icon">✅</span>متابعة الجودة</a>
+    <a href="#" data-page="finance"><span class="icon">💰</span>الحسابات</a>
+    <a href="#" data-page="inventory"><span class="icon">🔧</span>جرد الأدوات</a>
+    <a href="#" data-page="complaints"><span class="icon">📢</span>الشكاوى</a>
+    <a href="#" data-page="reports"><span class="icon">📋</span>تقارير العمل</a>
+    <a href="#" data-page="procurement"><span class="icon">🛒</span>المشتريات</a>
+    <a href="#" data-page="suppliers"><span class="icon">🏭</span>الموردون</a>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+    <div class="topbar">
+      <span class="page-title" id="pageTitle">الرئيسية</span>
+      <div class="user-info">
+        <span>rami_monitor</span>
+        <div class="user-avatar">ر</div>
+      </div>
+    </div>
+    <div class="main-area" id="mainArea"></div>
+    <!-- LOGIN -->
+    <div class="login-screen" id="loginScreen">
+      <div class="login-box">
+        <h2>تسجيل الدخول</h2>
+        <p>نظام إدارة الموظفين</p>
+        <div class="form-row"><label>اسم المستخدم</label><input id="loginUser" value="" readonly></div>
+        <div class="form-row"><label>كلمة المرور</label><input type="password" id="loginPass" value="" readonly></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px" id="loginBtn">دخول</button>
+      </div>
+    </div>
+    <!-- MODAL -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal" id="modalContent"></div>
+    </div>
+  </div>
+  <!-- CURSOR -->
+  <div class="cursor" id="cursor"></div>
+  <!-- NARRATION -->
+  <div class="narration" id="narration"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <button id="btnPrev">⏮ السابق</button>
+  <button id="btnPlay">⏸ إيقاف</button>
+  <button id="btnNext">التالي ⏭</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="counter" id="counter">1 / 10</div>
+</div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const cursor = $('#cursor');
+const narration = $('#narration');
+const mainArea = $('#mainArea');
+const pageTitle = $('#pageTitle');
+const loginScreen = $('#loginScreen');
+const modalOverlay = $('#modalOverlay');
+const modalContent = $('#modalContent');
+const progressBar = $('#progressBar');
+const counter = $('#counter');
+
+let currentScene = 0;
+let playing = true;
+let sceneTimer = null;
+
+function sleep(ms){return new Promise(r=> sceneTimer = setTimeout(r,ms));}
+function showNarration(step, text){
+  narration.innerHTML = `<span class="step-num">${step}</span> ${text}`;
+  narration.classList.add('show');
+}
+function hideNarration(){narration.classList.remove('show');}
+function moveCursor(x,y){cursor.style.right=x+'px';cursor.style.top=y+'px';cursor.classList.add('visible');}
+function hideCursor(){cursor.classList.remove('visible');}
+function clickEffect(){cursor.classList.add('clicking');setTimeout(()=>cursor.classList.remove('clicking'),500);}
+function setActiveSidebar(page){
+  $$('.sidebar a').forEach(a=>{a.classList.toggle('active',a.dataset.page===page)});
+}
+function setPage(title){pageTitle.textContent=title;}
+function showModal(html){modalContent.innerHTML=html;modalOverlay.classList.add('show');}
+function hideModal(){modalOverlay.classList.remove('show');}
+function updateControls(){
+  counter.textContent = `${currentScene+1} / ${scenes.length}`;
+  progressBar.style.width = ((currentScene+1)/scenes.length*100)+'%';
+}
+
+// ============= SCENES =============
+const scenes = [
+  // 1 - Login
+  async function(){
+    loginScreen.classList.remove('hidden');
+    mainArea.innerHTML='';
+    hideModal();
+    showNarration(1,'مرحباً! سنبدأ بتسجيل الدخول كمدقق / مراقب باستخدام الحساب rami_monitor');
+    await sleep(1200);
+    moveCursor(280,340);await sleep(600);
+    $('#loginUser').value='rami_monitor';
+    await sleep(500);
+    moveCursor(280,390);await sleep(400);
+    $('#loginPass').value='••••••••';
+    await sleep(500);
+    moveCursor(260,430);clickEffect();
+    await sleep(800);
+    loginScreen.classList.add('hidden');
+    setPage('الرئيسية');setActiveSidebar('home');
+    mainArea.innerHTML=`<div class="stats-row">
+      <div class="stat-card"><div class="label">الحجوزات اليوم</div><div class="value">24</div><div class="sub">↑ 12%</div></div>
+      <div class="stat-card"><div class="label">المهام النشطة</div><div class="value">8</div></div>
+      <div class="stat-card"><div class="label">الموظفون المتصلون</div><div class="value">15</div></div>
+      <div class="stat-card"><div class="label">تنبيهات</div><div class="value" style="color:#ef4444">3</div></div>
+    </div><p style="color:#64748b;font-size:13px">تم تسجيل الدخول بنجاح. مرحباً رامي!</p>`;
+    await sleep(2000);
+  },
+  // 2 - لوحة المراقبة
+  async function(){
+    showNarration(2,'لوحة المراقبة — مركز الرقابة الرئيسي مع إحصائيات آنية ونشاط الموظفين');
+    moveCursor(140,100);await sleep(600);clickEffect();
+    setActiveSidebar('monitor');setPage('لوحة المراقبة');
+    await sleep(400);
+    mainArea.innerHTML=`
+      <div class="section-title">📡 مراقبة النظام — بث مباشر</div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">مستخدمون نشطون</div><div class="value">18</div></div>
+        <div class="stat-card"><div class="label">عمليات اليوم</div><div class="value">142</div></div>
+        <div class="stat-card"><div class="label">تنبيهات</div><div class="value" style="color:#eab308">5</div></div>
+        <div class="stat-card"><div class="label">مخالفات</div><div class="value" style="color:#ef4444">2</div></div>
+      </div>
+      <div class="chart-placeholder"><div class="section-title">نشاط الموظفين — آخر 7 أيام</div>
+        <div class="bar-chart">
+          <div><div class="bar" style="height:70px"></div><div class="bar-label">سبت</div></div>
+          <div><div class="bar" style="height:90px"></div><div class="bar-label">أحد</div></div>
+          <div><div class="bar" style="height:60px"></div><div class="bar-label">اثنين</div></div>
+          <div><div class="bar" style="height:80px"></div><div class="bar-label">ثلاثاء</div></div>
+          <div><div class="bar" style="height:95px"></div><div class="bar-label">أربعاء</div></div>
+          <div><div class="bar" style="height:50px"></div><div class="bar-label">خميس</div></div>
+          <div><div class="bar" style="height:30px"></div><div class="bar-label">جمعة</div></div>
+        </div>
+      </div>
+      <table class="data-table"><tr><th>الموظف</th><th>الحالة</th><th>آخر نشاط</th><th>الموقع</th></tr>
+        <tr><td>أحمد خالد</td><td><span class="badge badge-green">متصل</span></td><td>الآن</td><td>الرياض</td></tr>
+        <tr><td>سعيد محمد</td><td><span class="badge badge-green">متصل</span></td><td>قبل 5 دقائق</td><td>جدة</td></tr>
+        <tr><td>فيصل عمر</td><td><span class="badge badge-yellow">مشغول</span></td><td>قبل 12 دقيقة</td><td>الدمام</td></tr>
+        <tr><td>خالد ناصر</td><td><span class="badge badge-red">غير متصل</span></td><td>قبل ساعة</td><td>—</td></tr>
+      </table>`;
+    await sleep(3000);
+  },
+  // 3 - إدارة الكوادر
+  async function(){
+    showNarration(3,'إدارة الكوادر — مراجعة بيانات الموظفين من منظور رقابي');
+    moveCursor(140,130);await sleep(600);clickEffect();
+    setActiveSidebar('employees');setPage('إدارة الكوادر');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">👥 قائمة الموظفين</div>
+      <table class="data-table"><tr><th>الاسم</th><th>الدور</th><th>التقييم</th><th>المخالفات</th><th>الحالة</th></tr>
+        <tr><td>أحمد خالد</td><td>فني</td><td>87%</td><td>0</td><td><span class="badge badge-green">نشط</span></td></tr>
+        <tr class="highlight"><td>سعيد محمد</td><td>فني</td><td>62%</td><td>3</td><td><span class="badge badge-yellow">تحت المراقبة</span></td></tr>
+        <tr><td>فاطمة أحمد</td><td>مبيعات</td><td>91%</td><td>0</td><td><span class="badge badge-green">نشط</span></td></tr>
+        <tr><td>علي حسن</td><td>فني</td><td>78%</td><td>1</td><td><span class="badge badge-green">نشط</span></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(500,230);clickEffect();
+    await sleep(600);
+    showNarration(3,'لاحظ أن سعيد محمد لديه 3 مخالفات وتقييم منخفض — يمكن متابعته عبر KPI');
+    await sleep(2500);
+  },
+  // 4 - KPI
+  async function(){
+    showNarration(4,'KPI — تقييم الأداء وخصم النقاط مع توثيق الأسباب');
+    moveCursor(140,160);await sleep(600);clickEffect();
+    setActiveSidebar('kpi');setPage('تقييم الأداء — KPI');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📊 تقييمات الأداء</div>
+      <table class="data-table" id="kpiTable"><tr><th>الموظف</th><th>النقاط</th><th>الفئة</th><th>إجراء</th></tr>
+        <tr><td>أحمد خالد</td><td>87/100</td><td><span class="badge badge-green">ممتاز</span></td><td>—</td></tr>
+        <tr id="kpiRow"><td>سعيد محمد</td><td id="kpiPoints">72/100</td><td><span class="badge badge-yellow">مقبول</span></td><td><button class="btn btn-danger" style="font-size:10px;padding:3px 10px">خصم نقاط</button></td></tr>
+        <tr><td>فاطمة أحمد</td><td>91/100</td><td><span class="badge badge-green">ممتاز</span></td><td>—</td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(350,250);clickEffect();
+    await sleep(600);
+    showModal(`<h3>خصم نقاط — سعيد محمد</h3>
+      <div class="form-row"><label>عدد النقاط المخصومة</label><input value="5" readonly></div>
+      <div class="form-row"><label>السبب</label><textarea readonly>تأخر متكرر عن مواعيد الحجوزات — 3 مرات هذا الأسبوع</textarea></div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn-danger">تأكيد الخصم</button><button class="btn" style="background:#334155;color:#e2e8f0">إلغاء</button></div>`);
+    showNarration(4,'نخصم 5 نقاط من سعيد بسبب التأخر المتكرر مع توثيق السبب');
+    await sleep(2000);
+    moveCursor(350,400);clickEffect();
+    await sleep(600);
+    hideModal();
+    $('#kpiPoints').textContent='67/100';
+    await sleep(1500);
+  },
+  // 5 - الحجوزات
+  async function(){
+    showNarration(5,'الحجوزات — التحقق من حالات الحجز واكتمال البيانات');
+    moveCursor(140,220);await sleep(600);clickEffect();
+    setActiveSidebar('bookings');setPage('الحجوزات');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📅 جميع الحجوزات</div>
+      <table class="data-table"><tr><th>#</th><th>العميل</th><th>الخدمة</th><th>الفني</th><th>الحالة</th><th>المبلغ</th><th>التحقق</th></tr>
+        <tr><td>1024</td><td>محمد العلي</td><td>تركيب GPS</td><td>أحمد خالد</td><td><span class="badge badge-green">مكتمل</span></td><td>450 ر.س</td><td><span class="badge badge-green">✓</span></td></tr>
+        <tr class="highlight"><td>1025</td><td>سارة أحمد</td><td>صيانة</td><td>سعيد محمد</td><td><span class="badge badge-yellow">قيد التنفيذ</span></td><td>—</td><td><span class="badge badge-red">✗ ناقص</span></td></tr>
+        <tr><td>1026</td><td>عبدالله خالد</td><td>تجديد اشتراك</td><td>—</td><td><span class="badge badge-blue">جديد</span></td><td>200 ر.س</td><td><span class="badge badge-green">✓</span></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(400,250);clickEffect();
+    showNarration(5,'الحجز 1025 ناقص البيانات — لم يتم تسجيل المبلغ بعد. يمكن متابعة ذلك');
+    await sleep(2500);
+  },
+  // 6 - تتبع المهام
+  async function(){
+    showNarration(6,'تتبع المهام — مراقبة جميع المهام الميدانية والتحقق من الإنجاز');
+    moveCursor(140,280);await sleep(600);clickEffect();
+    setActiveSidebar('missions');setPage('تتبع المهام');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📍 المهام الميدانية</div>
+      <table class="data-table"><tr><th>المهمة</th><th>الفني</th><th>الموقع</th><th>البدء</th><th>الحالة</th></tr>
+        <tr><td>تركيب جهاز GPS</td><td>أحمد خالد</td><td>الرياض — حي النزهة</td><td>09:00</td><td><span class="badge badge-green">مكتمل</span></td></tr>
+        <tr><td>صيانة جهاز</td><td>سعيد محمد</td><td>الرياض — حي الملقا</td><td>10:30</td><td><span class="badge badge-yellow">جاري</span></td></tr>
+        <tr><td>فحص دوري</td><td>علي حسن</td><td>جدة — حي الصفا</td><td>11:00</td><td><span class="badge badge-blue">لم يبدأ</span></td></tr>
+      </table>`;
+    await sleep(2500);
+  },
+  // 7 - متابعة الجودة
+  async function(){
+    showNarration(7,'متابعة الجودة — مراجعة نتائج المتابعة بعد اكتمال الحجوزات');
+    moveCursor(140,310);await sleep(600);clickEffect();
+    setActiveSidebar('quality');setPage('متابعة الجودة');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">✅ متابعات الجودة</div>
+      <table class="data-table"><tr><th>الحجز</th><th>العميل</th><th>الفني</th><th>حالة المتابعة</th><th>النتيجة</th></tr>
+        <tr><td>1020</td><td>خالد سعد</td><td>أحمد خالد</td><td><span class="badge badge-green">تم التواصل</span></td><td>راضي ✓</td></tr>
+        <tr><td>1021</td><td>نوف عبدالله</td><td>سعيد محمد</td><td><span class="badge badge-red">تم التواصل — مشكلة</span></td><td>يوجد خلل</td></tr>
+        <tr><td>1022</td><td>ماجد فهد</td><td>علي حسن</td><td><span class="badge badge-yellow">بانتظار</span></td><td>—</td></tr>
+      </table>`;
+    await sleep(2500);
+  },
+  // 8 - تدقيق الحسابات
+  async function(){
+    showNarration(8,'تدقيق الحسابات — التحقق من البيانات المالية ومطابقة المبالغ');
+    moveCursor(140,340);await sleep(600);clickEffect();
+    setActiveSidebar('finance');setPage('تدقيق الحسابات');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">💰 تدقيق الحسابات</div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">إجمالي اليوم</div><div class="value">12,400</div><div class="sub">ر.س</div></div>
+        <div class="stat-card"><div class="label">تم التحقق</div><div class="value" style="color:#22c55e">9,800</div></div>
+        <div class="stat-card"><div class="label">بانتظار التحقق</div><div class="value" style="color:#eab308">2,600</div></div>
+      </div>
+      <table class="data-table"><tr><th>الحجز</th><th>المبلغ المحصل</th><th>المبلغ المعروض</th><th>الفرق</th><th>الحالة</th></tr>
+        <tr><td>1024</td><td>450 ر.س</td><td>450 ر.س</td><td>0</td><td><span class="badge badge-green">مطابق ✓</span></td></tr>
+        <tr class="highlight"><td>1019</td><td>380 ر.س</td><td>400 ر.س</td><td style="color:#ef4444">-20</td><td><span class="badge badge-red">فرق !</span></td></tr>
+        <tr><td>1018</td><td>600 ر.س</td><td>600 ر.س</td><td>0</td><td><span class="badge badge-green">مطابق ✓</span></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(400,310);clickEffect();
+    showNarration(8,'اكتشفنا فرقاً في الحجز 1019 — المبلغ المحصل أقل من المعروض بـ 20 ر.س');
+    await sleep(2500);
+  },
+  // 9 - تقارير العمل
+  async function(){
+    showNarration(9,'مراجعة تقارير العمل — الاطلاع على تقارير الفنيين والتحقق منها');
+    moveCursor(140,400);await sleep(600);clickEffect();
+    setActiveSidebar('reports');setPage('تقارير العمل');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📋 تقارير الفنيين</div>
+      <table class="data-table"><tr><th>الفني</th><th>التاريخ</th><th>عدد المهام</th><th>المكتمل</th><th>الملاحظات</th><th>الحالة</th></tr>
+        <tr><td>أحمد خالد</td><td>2026-07-22</td><td>4</td><td>4</td><td>لا يوجد</td><td><span class="badge badge-green">مراجع ✓</span></td></tr>
+        <tr><td>سعيد محمد</td><td>2026-07-22</td><td>3</td><td>1</td><td>تأخر عن موعدين</td><td><span class="badge badge-yellow">قيد المراجعة</span></td></tr>
+        <tr><td>علي حسن</td><td>2026-07-22</td><td>3</td><td>3</td><td>لا يوجد</td><td><span class="badge badge-green">مراجع ✓</span></td></tr>
+      </table>`;
+    await sleep(2500);
+  },
+  // 10 - الذكاء الاصطناعي
+  async function(){
+    showNarration(10,'الذكاء الاصطناعي — محادثة مع المدير الذكي للاستفسار عن أداء الموظفين');
+    hideCursor();
+    setActiveSidebar('home');setPage('الذكاء الاصطناعي');
+    mainArea.innerHTML=`<div class="section-title">🤖 المدير الذكي</div><div class="ai-chat" id="aiChat"></div>`;
+    const chat=$('#aiChat');
+    await sleep(800);
+    chat.innerHTML+=`<div class="ai-msg user">ما هو أداء سعيد محمد هذا الشهر؟</div>`;
+    await sleep(1200);
+    chat.innerHTML+=`<div class="ai-msg bot"><span class="typing-dots">جاري التحليل</span></div>`;
+    await sleep(1500);
+    chat.lastElementChild.innerHTML=`سعيد محمد — تقييم الشهر: <strong>62%</strong><br>المخالفات: 3 (تأخر متكرر)<br>المهام المكتملة: 12 من 18 (67%)<br>التوصية: <span style="color:#eab308">يحتاج متابعة مكثفة وإنذار رسمي</span>`;
+    await sleep(3000);
+  }
+];
+
+// ============= ENGINE =============
+async function playScene(index){
+  if(index<0||index>=scenes.length)return;
+  currentScene=index;
+  updateControls();
+  hideNarration();hideModal();
+  await scenes[index]();
+}
+
+async function autoPlay(){
+  while(playing && currentScene<scenes.length){
+    await playScene(currentScene);
+    if(!playing)break;
+    await sleep(1000);
+    currentScene++;
+  }
+}
+
+$('#btnPlay').onclick=()=>{
+  playing=!playing;
+  $('#btnPlay').textContent=playing?'⏸ إيقاف':'▶ تشغيل';
+  if(playing){currentScene=Math.min(currentScene,scenes.length-1);autoPlay();}
+  else{clearTimeout(sceneTimer);}
+};
+$('#btnNext').onclick=()=>{
+  playing=false;$('#btnPlay').textContent='▶ تشغيل';
+  clearTimeout(sceneTimer);
+  currentScene=Math.min(currentScene+1,scenes.length-1);
+  playScene(currentScene);
+};
+$('#btnPrev').onclick=()=>{
+  playing=false;$('#btnPlay').textContent='▶ تشغيل';
+  clearTimeout(sceneTimer);
+  currentScene=Math.max(currentScene-1,0);
+  playScene(currentScene);
+};
+$('#progressWrap').onclick=(e)=>{
+  const rect=e.target.getBoundingClientRect();
+  const pct=(e.clientX-rect.left)/rect.width;
+  playing=false;$('#btnPlay').textContent='▶ تشغيل';
+  clearTimeout(sceneTimer);
+  currentScene=Math.floor(pct*scenes.length);
+  playScene(currentScene);
+};
+
+updateControls();
+autoPlay();
+})();
+</script>
+</body>
+</html>
