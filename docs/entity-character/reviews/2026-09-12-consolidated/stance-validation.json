@@ -1,0 +1,28 @@
+{
+  "segments": [
+    {
+      "side": "Left",
+      "start": 11,
+      "end": 27,
+      "toe_xy_travel_before_m": 0.02694573138028084,
+      "toe_xy_travel_after_m": 0.006571780689286879
+    },
+    {
+      "side": "Right",
+      "start": 1,
+      "end": 12,
+      "toe_xy_travel_before_m": 0.038330313568470484,
+      "toe_xy_travel_after_m": 0.018878316472485338
+    },
+    {
+      "side": "Right",
+      "start": 27,
+      "end": 34,
+      "toe_xy_travel_before_m": 0.01293356958873396,
+      "toe_xy_travel_after_m": 0.005787711166218929
+    }
+  ],
+  "leg_max_step_before_degrees": 20.45755549823229,
+  "leg_max_step_after_degrees": 20.45751622464456,
+  "warning": "Toe-marker travel is a proxy, not a full sole-contact/sliding proof."
+}
