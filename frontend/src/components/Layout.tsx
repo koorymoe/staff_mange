@@ -192,12 +192,21 @@ export default function Layout() {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') close() }
     document.addEventListener('pointerdown', onDown)
     window.addEventListener('keydown', onKey)
+    // ⚠️ التمرير **جوّا اللوحة** ما يغلقها — وهذا عيب مقاس: القائمة
+    // فيها `max-h-96 overflow-y-auto`، والمستمع بمرحلة الالتقاط چان
+    // يغلقها على **أي** تمرير، يعني الموظف ما يكدر ينزل يقرا إشعاراته
+    // إطلاقاً. الي يغلقها هو تمرير الصفحة وراها بس.
+    const onScroll = (e: Event) => {
+      const t = e.target as Node | null
+      if (t && notifPanelRef.current?.contains(t)) return
+      close()
+    }
     // `true` = مرحلة الالتقاط: التمرير داخل `main` ما يوصل `window` بالفقاعة
-    document.addEventListener('scroll', close, true)
+    document.addEventListener('scroll', onScroll, true)
     return () => {
       document.removeEventListener('pointerdown', onDown)
       window.removeEventListener('keydown', onKey)
-      document.removeEventListener('scroll', close, true)
+      document.removeEventListener('scroll', onScroll, true)
     }
   }, [notifOpen])
 
@@ -293,7 +302,7 @@ export default function Layout() {
     return (
       <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
         <div dir="rtl" className="min-h-screen bg-[#f0f4f9]">
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-8">
+          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-8">
             <span className="text-lg font-extrabold text-[#0f2040] tracking-tight">نظام شركة الأماني — التدريب</span>
             <button onClick={() => setEmployee(null)}
               className="rounded-lg px-3 py-1.5 text-sm font-bold text-red-500 hover:bg-red-50">
@@ -603,7 +612,7 @@ export default function Layout() {
       <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
         <PrivacyPolicyGate />
         <div dir="rtl" className="min-h-screen bg-[#070c14] text-slate-200">
-          <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-slate-800 bg-[#0b1220]/95 px-4 backdrop-blur-xl">
+          <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-slate-800 bg-[#0b1220]/95 px-4 backdrop-blur-xl">
             <div className="flex items-center gap-3">
               <span className="text-[15px] font-extrabold tracking-tight text-white">
                 🧪 مختبر المحاكاة
@@ -642,7 +651,7 @@ export default function Layout() {
         {/* ===== Main Area ===== */}
         <div dir="rtl" className="flex min-w-0 flex-1 flex-col">
           {/* Top Header — Glass effect */}
-          <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-3 sm:px-5 lg:px-8">
+          <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200/60 bg-white/80 backdrop-blur-xl px-3 sm:px-5 lg:px-8">
             <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={toggleSidebar}

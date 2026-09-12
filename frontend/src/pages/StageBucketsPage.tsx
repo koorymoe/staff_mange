@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type StageBucket } from '../api'
 import PhoneActions from '../components/PhoneActions'
+import { useSession } from '../session'
 import { copyText } from '../utils/clipboard'
 
 // ═══ سلال المراحل ═══
@@ -130,6 +131,17 @@ export default function StageBucketsPage() {
   const [actionError, setActionError] = useState<string | null>(null)
 
   const [copied, setCopied] = useState<string | null>(null)
+  /** حجوزات انطلب حذفها بهاي الجلسة — الزر ينطفي بدل ما ينضغط مرتين. */
+  const [deleteAsked, setDeleteAsked] = useState<Record<string, boolean>>({})
+  const { employee, permissions } = useSession()
+  /**
+   * ⚠️ مطابق لحارس الخادم بالضبط (`requireDeleteRequest`):
+   * ADMIN · OWNER · HR_COORDINATOR · MONITOR أو صلاحية
+   * `booking_delete_request`. زر يطلع ويرجع «غير مصرح» أسوأ من زر
+   * مو موجود.
+   */
+  const canAskDelete = ['ADMIN', 'OWNER', 'HR_COORDINATOR', 'MONITOR']
+    .includes(employee?.role ?? '') || permissions.includes('booking_delete_request')
 
   const isPostponed = bucket === 'POSTPONED_AFTER_CONFIRM'
   // ═══ ورجوع الزبون الي ما رد ═══
@@ -171,6 +183,34 @@ export default function StageBucketsPage() {
       setCounts((c) => ({ ...c, [bucket]: Math.max(0, (c[bucket] || 1) - 1) }))
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'تعذر تحديد الموعد')
+    } finally { setBusyId(null) }
+  }
+
+  /**
+   * يطلب حذف الحجز من نفس الصف — يطلع **بعد ٣ محاولات فاشلة**.
+   *
+   * ⚠️ ليش مشروط بالعدد: الحذف قرار ثقيل وما يرجع. ثلاث محاولات
+   * مسجّلة بالبيانة هي **الدليل** إن الزبون فعلاً ما يرد — فالطلب
+   * ينبني على رقم محسوب مو على مزاج الإداري.
+   *
+   * ⚠️ والطلب **ما يحذف**: يروح لطابور «بانتظار قرار الحذف»
+   * والمراقب/المدير هو الي يبت. نفس المسار الموجود.
+   */
+  const askDelete = async (id: string, name: string, attempts: number) => {
+    const reason = `الزبون ما رد بعد ${attempts} محاولات اتصال مسجّلة`
+    if (!confirm(
+      `تطلب حذف حجز «${name}»؟\n\nالسبب المسجّل: ${reason}\n\n`
+      + 'الطلب يروح لطابور «بانتظار قرار الحذف» — المراقب أو المدير هو الي يحذف، مو انت.',
+    )) return
+    setBusyId(id)
+    setActionError(null)
+    try {
+      await api.requestBookingDelete(id, reason, 'CALL_CENTER', 'CUSTOMER_CANCEL')
+      setDeleteAsked((p) => ({ ...p, [id]: true }))
+    } catch (e) {
+      // ⚠️ الفهرس الفريد يمنع طلبين معلقين — الرسالة تجي من الخادم
+      // وتنعرض كما هي بدل ما نخترع نصاً.
+      setActionError(e instanceof Error ? e.message : 'تعذر إرسال طلب الحذف')
     } finally { setBusyId(null) }
   }
 
@@ -461,6 +501,25 @@ export default function StageBucketsPage() {
                               >
                                 {busyId === b.id ? '...' : '✖ مارد'}
                               </button>
+                              {/* ═══ بعد ٣ محاولات: طلب حذف ═══
+                                  ثلاث محاولات مسجّلة = دليل إن الزبون
+                                  ما يرد. الزر ما يحذف — يرفع طلباً
+                                  للمراقب. */}
+                              {canAskDelete && (b.contactAttempts || 0) >= 3 && (
+                                deleteAsked[b.id] ? (
+                                  <span className="rounded-lg bg-slate-100 px-2 py-1 text-center text-[10px] font-bold text-slate-500">
+                                    ✓ انطلب الحذف
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => askDelete(b.id, name, b.contactAttempts || 0)}
+                                    disabled={busyId === b.id}
+                                    className="rounded-lg bg-red-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-red-800 disabled:opacity-50"
+                                  >
+                                    {busyId === b.id ? '...' : '🗑 طلب حذف الحجز'}
+                                  </button>
+                                )
+                              )}
                             </div>
                             {b.contactAttempts > 0 && (
                               <p className="mt-1 text-[10px] text-slate-400">{b.contactAttempts} محاولة</p>
