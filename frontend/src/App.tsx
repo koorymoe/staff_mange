@@ -28,6 +28,9 @@ const CommandCodePage = lazy(() => import('./pages/CommandCodePage'))
 // مختبر المحاكاة — للمالك وحده بهالمرحلة. الصفحة نفسها تتحقق من
 // actualRole === 'OWNER' (sim/SimGate.tsx) والمسار بالباك إند يرجّع 404.
 const SimLab = lazy(() => import('./pages/SimLab'))
+// ⚠️ مختبر الكائن: تجربة معزولة **للمالك وحده وقابلة للإطفاء**
+// (`LAB_ENABLED` داخل الملف). ما ينضاف للقائمة — يُفتح بالرابط.
+const EntityLabPage = lazy(() => import('./pages/EntityLabPage'))
 const SimExercisePage = lazy(() => import('./pages/SimExercisePage'))
 const LabWorkbench = lazy(() => import('./lab/LabWorkbench'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
@@ -158,6 +161,7 @@ function App() {
               مسار يعني صفحة بيضاء بلا تفسير. */}
           <Route path="monitor-desk" element={<MonitorDeskPage />} />
           <Route path="staff-management-desk" element={<StaffManagementDeskPage />} />
+          <Route path="entity-lab" element={<EntityLabPage />} />
           <Route path="simulator-lab" element={<SimLab />} />
           <Route path="simulator-lab/exercise/:id" element={<SimExercisePage />} />
           <Route path="simulator-lab/workbench" element={<LabWorkbench />} />
