@@ -341,6 +341,22 @@ export async function mountAvatar(
   // فتغيير حجم النافذة بلا إعادة تأطير يقصّ الشخصية من الجانب.
   const onResize = () => { engine.resize(); frameCamera() }
   window.addEventListener('resize', onResize)
+  /**
+   * ⚠️ **مراقب حجم الكانفس نفسه — مو النافذة وحدها.**
+   *
+   * الودجة العائمة (`EntityCompanion`) كانفسها **٩٦×١١٢** وتُركَّب
+   * وهي لسه بانتقال شفافية، فأبعادها وقت التركيب ممكن تكون صفراً.
+   * والتأطير يدخل فيه **نسبة الكانفس**، فيُحسب على نسبة غلط ويضلّ
+   * عليها — لأن `resize` مال النافذة **ما يُطلَق** لمن يتغيّر حجم
+   * عنصر داخلي. والنتيجة مقاسة: الشخصية طلعت **شبه خارج إطار
+   * الودجة** بينما بالمختبر (كانفس كبير مستقر) طلعت مضبوطة.
+   *
+   * وهاي الشاشة **يشوفها كل موظف**، فالعيب ما ينزل للإنتاج.
+   */
+  const ro = typeof ResizeObserver !== 'undefined'
+    ? new ResizeObserver(() => { engine.resize(); frameCamera() })
+    : null
+  ro?.observe(canvas)
 
   return {
     headPixel() {
@@ -421,6 +437,7 @@ export async function mountAvatar(
     stats,
     setInfluencers(n) { setInfluencers(n); stats.influencers = n },
     dispose() {
+      ro?.disconnect()
       window.removeEventListener('resize', onResize)
       motion?.dispose()
       restoreRoot?.()
