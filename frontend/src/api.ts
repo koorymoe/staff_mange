@@ -955,6 +955,30 @@ export function isTokenExpired(): boolean {
   return exp !== null && Date.now() >= exp
 }
 
+/** مجسّم كيان مرفوع من داخل النظام. */
+export interface EntityAvatarModel {
+  id: string
+  label: string
+  /** مفتاح التخزين — يُحوَّل لرابط بـ`entityModelUrl`. */
+  fileKey: string
+  fileType: string
+  sizeBytes: number
+  uploadedById: string | null
+  archivedAt: string | null
+  createdAt: string
+}
+
+/**
+ * رابط تحميل المجسّم — يحمل وسم الملفات بنفسه.
+ *
+ * ⚠️ `fileUrl` يتعامل مع قيم تبدي بـ`/api/files/`، والمجسّم مخزون
+ * كـ**مفتاح** خام (`models/abc.glb`) فنبني المسار هنا.
+ */
+export function entityModelUrl(fileKey: string): string {
+  const base = API_URL.replace(/\/api$/, '')
+  return `${base}/api/files/${fileKey}${fileToken ? `?ft=${encodeURIComponent(fileToken)}` : ''}`
+}
+
 // وسم الملفات: ينجاب مرة وحدة ويتجدد قبل ما ينتهي. وسم <img> ما يرسل
 // ترويسة Authorization، فالرابط لازم يحمل الوسم بنفسه.
 let fileToken = ''
@@ -4181,6 +4205,27 @@ export const api = {
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الملف')
     return res.json() as Promise<{ key: string; url: string; size: number; type: string }>
   },
+
+  // ═══ مجسّمات الكيان ثلاثية الأبعاد ═══
+  // ⚠️ **رفعها بمسار خاص مو `uploadFile` العام**: العام مفتوح لأي
+  // موظف مسجّل، والمجسّم يوصل ١٠ م.ب — فالرفع مقيَّد بالمالك بالخادم.
+  getEntityModels: () => request<EntityAvatarModel[]>('/entity/models'),
+  uploadEntityModel: async (file: File, label: string) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('label', label)
+    const token = currentToken()
+    // ماكو Content-Type: المتصفح يحطه بنفسه مع حدود multipart
+    const res = await fetch(`${API_URL}/entity/models`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: form,
+    })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع المجسّم')
+    return res.json() as Promise<EntityAvatarModel>
+  },
+  archiveEntityModel: (id: string) =>
+    request<{ ok: boolean }>(`/entity/models/${id}/archive`, { method: 'PUT' }),
 
   // المضاف من شاشة «إضافة منتج» بس — بدون كتالوج عروض الأسعار القديم
   getAddedProducts: () => request<Product[]>('/products?added=1'),

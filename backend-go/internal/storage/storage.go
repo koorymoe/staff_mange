@@ -67,6 +67,8 @@ func extensionFor(contentType string) string {
 		return ".webp"
 	case "application/pdf":
 		return ".pdf"
+	case "model/gltf-binary":
+		return ".glb"
 	}
 	if exts, err := mime.ExtensionsByType(contentType); err == nil && len(exts) > 0 {
 		return exts[0]
@@ -81,6 +83,10 @@ var AllowedContentTypes = map[string]bool{
 	"image/png":       true,
 	"image/webp":      true,
 	"application/pdf": true,
+	// مجسّمات الكيان ثلاثية الأبعاد. ⚠️ وهي **بيانات خاملة** ما
+	// تُنفَّذ: المتصفح يقرأها بمحمّل glTF داخل المشهد، ومو سكربت.
+	// ورفعها مقيَّد بالمالك بمسار منفصل — انظر entity_model_handler.
+	"model/gltf-binary": true,
 }
 
 // DecodeDataURL يفك سلسلة data:...;base64,... ويرجّع المحتوى ونوعه.
@@ -125,6 +131,13 @@ func SniffContentType(data []byte) string {
 	}
 	if len(data) >= 12 && bytes.Equal(data[:4], []byte("RIFF")) && bytes.Equal(data[8:12], []byte("WEBP")) {
 		return "image/webp"
+	}
+	// مجسّم ثلاثي الأبعاد (glTF ثنائي، .glb): بصمته الحرفان "glTF"
+	// بأول أربع بايتات. بدون هالفحص كان الرفع **يُرفَض** لأن النوع
+	// ينحدد من المحتوى، وأي ملف مو معروف يرجّع "" فيطيح بالقائمة
+	// البيضاء — وهذا الي منع رفع المجسّم من داخل النظام.
+	if len(data) >= 4 && bytes.Equal(data[:4], []byte("glTF")) {
+		return "model/gltf-binary"
 	}
 	return ""
 }

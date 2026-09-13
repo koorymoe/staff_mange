@@ -226,6 +226,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	fileStore := buildFileStore(cfg)
 	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
 	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret))
+	entityModelHandler := handler.NewEntityModelHandler(
+		repository.NewEntityModelRepository(db), fileStore)
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService, permissionRepo)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
@@ -535,6 +537,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// العرض ما يمر بـrequireAuth لأن <img> ما يرسل ترويسة Authorization —
 	// التحقق يصير بالوسم الموقّع بالمعالج نفسه.
 	mux.Handle("GET /api/files/", http.HandlerFunc(fileHandler.Serve))
+
+	// ═══ مجسّمات الكيان ثلاثية الأبعاد ═══
+	// القائمة لأي موظف مسجّل (العارض يحتاجها)، والرفع والأرشفة
+	// **للمالك حصراً**: الملف يوصل ١٠ م.ب، ولو فتحناه لكل موظف
+	// يتحوّل تخزيننا لمكب ملفات.
+	requireOwnerModels := middleware.RequireOwnerOnly("رفع المجسّمات للمالك وحده")
+	mux.Handle("GET /api/entity/models", middleware.Chain(
+		http.HandlerFunc(entityModelHandler.List), requireAuth))
+	mux.Handle("POST /api/entity/models", middleware.Chain(
+		http.HandlerFunc(entityModelHandler.Create), requireAuth, requireOwnerModels))
+	mux.Handle("PUT /api/entity/models/{id}/archive", middleware.Chain(
+		http.HandlerFunc(entityModelHandler.Archive), requireAuth, requireOwnerModels))
 
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
 	// تغيير كلمة المرور لمدير النظام والمالك بس. الموظف ما يغيّر سره

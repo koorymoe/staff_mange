@@ -54,7 +54,7 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	// النوع ينحدد من محتوى الملف نفسه — الترويسة المرسلة تنزوّر بسهولة
 	contentType := storage.SniffContentType(data)
 	if !storage.AllowedContentTypes[contentType] {
-		WriteError(w, http.StatusBadRequest, "نوع الملف مو مسموح — صور (JPG/PNG/WEBP) أو PDF بس")
+		WriteError(w, http.StatusBadRequest, "نوع الملف مو مسموح — صور (JPG/PNG/WEBP) أو PDF أو مجسّم (GLB)")
 		return
 	}
 
@@ -109,6 +109,8 @@ var allowedFolders = map[string]bool{
 	"reports": true, "exhibitions": true, "gps": true, "incidents": true,
 	// صور شخصيات الكيان المولّدة
 	"characters": true,
+	// مجسّمات الكيان ثلاثية الأبعاد (.glb) — الرفع للمالك حصراً
+	"models": true,
 	"misc": true, "sim": true,
 }
 

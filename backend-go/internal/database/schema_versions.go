@@ -325,6 +325,9 @@ func versionedMigrations() []Migration {
 	// 0275: أهداف المقاييس لكل دور — بلا جدول أهداف، عمود «النسبة»
 	// بورقة (ع) مستحيل يُحسب، والمنجز لحاله ما يقول ناجح أو لا.
 	result = append(result, roleMetricTargetMigrations()...)
+	// 0276: مجسّمات الكيان تُرفَع من داخل النظام — قبلها كان المجسّم
+	// ملفاً ثابتاً يحتاج نسخاً يدوياً للسيرفر وبناءَ حاوية لكل تغيير.
+	result = append(result, entityModelMigrations()...)
 	return result
 }
 

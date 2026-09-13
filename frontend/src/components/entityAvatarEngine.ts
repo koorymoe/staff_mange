@@ -158,7 +158,11 @@ export async function mountAvatar(
   // المعاكس**، وخطأ الإشارة ١٦٠° بدل ما يكون دون ١٠°.
   scene.useRightHandedSystem = true
 
-  const result = await SceneLoader.ImportMeshAsync('', url, '', scene)
+  // ⚠️ **نمرّر الامتداد صراحةً (`'.glb'`)**: بابل يختار محمّل الملف
+  // **من امتداد الرابط**، ومجسّماتنا المرفوعة تُخدَم برابط فيه وسم
+  // (`/api/files/models/abc.glb?ft=…`) ومو منتهي بالامتداد. وبلا
+  // هالوسيط ما يلگى محمّلاً ويفشل التحميل برسالة غامضة.
+  const result = await SceneLoader.ImportMeshAsync('', url, '', scene, null, '.glb')
   const groups: AnimationGroup[] = result.animationGroups
 
   // ⚠️ **التأثيرات قبل أي شي**: بابل افتراضه ٤ لكل رأس، وملفنا فيه

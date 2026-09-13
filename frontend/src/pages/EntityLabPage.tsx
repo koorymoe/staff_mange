@@ -11,11 +11,12 @@
 // ⚠️ **وكل رقم بهالشاشة مقاس لحظة الضغط، ماكو ولا رقم مكتوب**. شاشة
 // تجربة تعرض «٩٨٪ دقة» ثابتة أسوأ من ماكو شاشة — تخلينا نعتمد شي
 // ما قِسناه. ولو القياس مو ممكن، يُعرض **«—»** مع سبب.
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from '../session'
 import PageHeader from '../components/PageHeader'
 import type { AvatarHandle, AvatarStats, ClipName } from '../components/entityAvatarEngine'
 import type { Tracker } from '../components/faceTracking'
+import { api, entityModelUrl, ensureFileToken, type EntityAvatarModel } from '../api'
 
 /**
  * ⚠️ **مفتاح الإطفاء.** النظام ماكو بيه منظومة رايات ميزات (فحصتها:
@@ -26,18 +27,19 @@ import type { Tracker } from '../components/faceTracking'
 const LAB_ENABLED = true
 
 /**
- * المجسّمات المتوفّرة للمقارنة **جنب بعض** — وهاي الطريقة الوحيدة
- * الي يحكم بيها (ع) بعينه بدل ما نتناقش بالكلام.
+ * المجسّمات المدمجة بالتطبيق — موجودة دايماً بلا رفع.
  *
- * ⚠️ **ملف `cartoon-boy` مستثنى من گيت**: رخصة تيربو سكويد Standard
- * تسمح بالاستخدام التجاري داخل برنامج، بس تمنع **إتاحة المجسّم
- * نفسه** — ومستودعنا عام. فينزل على السيرفر ويُخدَم بعد الدخول.
+ * ⚠️ **وأي مجسّم غيرها يُرفَع من الشاشة نفسها**، ما ينسخ بالإيد
+ * للسيرفر. الطريقة القديمة (ملف ثابت بـ`public/`) كانت تطلب من مالك
+ * النظام SSH ونسخاً يدوياً وبناءَ حاوية بترتيب معيّن — وهاي شغلة
+ * مبرمج، وفعلاً ما انفهمت لمن طلبتها. والرفع من الشاشة يشيلها كلياً.
  */
-const MODELS = [
-  { key: 'amani', label: 'الحالي (أماني v4)', file: 'amani-tech-v4.glb' },
-  { key: 'boy', label: 'الجديد (كارتون بوي)', file: 'cartoon-boy-v1.glb' },
+const BUILT_IN = [
+  { id: 'builtin:amani', label: 'الحالي (أماني v4)', file: 'amani-tech-v4.glb' },
 ] as const
-type ModelKey = typeof MODELS[number]['key']
+
+/** مجسّم بالقائمة: مدمج أو مرفوع — الشاشة تتعامل معهم بنفس الشكل. */
+type ModelChoice = { id: string; label: string; url: string; uploaded: boolean; sizeBytes?: number }
 
 type Log = { at: string; text: string; bad?: boolean }
 
@@ -68,7 +70,10 @@ function Lab() {
   // (`bust`) والودجة العائمة (`full`) — وأي تغيير بالمشهد (مثل
   // تحويله لنظام يميني) لازم يتأكد بالعين إنه ما قلب الكاميرا.
   const [framing, setFraming] = useState<'bust' | 'full'>('full')
-  const [model, setModel] = useState<ModelKey>('amani')
+  const [modelId, setModelId] = useState<string>(BUILT_IN[0].id)
+  const [uploaded, setUploaded] = useState<EntityAvatarModel[] | null>(null)
+  const [uploadBusy, setUploadBusy] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   // ═══ الكاميرا: حالة منفصلة تماماً، ومطفَيّة بالافتراضي ═══
   // 🔒 **ما تشتغل إلا بضغط المالك**، والإطفاء يوقف المسارات فعلياً
   // (ضوء الكاميرا ينطفي) مو يخفي المعاينة بس.
@@ -101,14 +106,46 @@ function Lab() {
     }
   }, [say])
 
+  // ═══ المجسّمات: المدمجة + المرفوعة ═══
+  // ⚠️ **الوسم يُجاب قبل القائمة**: رابط الملف المُخدَّم يحمل وسماً
+  // موقَّعاً بنفسه (العارض يجيب الملف بلا ترويسة `Authorization`)،
+  // وبلا الوسم يرجع ٤٠١ والمجسّم ما يُحمَّل. فالترتيب مضمون:
+  // وسم ← قائمة ← روابط.
+  const loadUploaded = useCallback(
+    () => ensureFileToken()
+      .then(() => api.getEntityModels())
+      .then(setUploaded)
+      .catch((e: unknown) => {
+        say(`تعذر جلب المجسّمات المرفوعة: ${e instanceof Error ? e.message : String(e)}`, true)
+        setUploaded([])
+      }),
+    [say],
+  )
+  useEffect(() => { loadUploaded() }, [loadUploaded])
+
+  // ⚠️ `useMemo` إلزامي: القائمة تدخل باعتماديات مراقب التركيب، ومصفوفة
+  // جديدة كل رسم تعني **إعادة تحميل المجسّم كل رسم** — وهذا مو بطء
+  // بس، بل وميض بالمشهد وتحميل ٥ م.ب متكرر.
+  const choices: ModelChoice[] = useMemo(() => [
+    ...BUILT_IN.map((m) => ({
+      id: m.id, label: m.label, uploaded: false,
+      url: `${import.meta.env.BASE_URL}${m.file}`,
+    })),
+    ...(uploaded ?? []).map((m) => ({
+      id: m.id, label: m.label, uploaded: true, sizeBytes: m.sizeBytes,
+      url: entityModelUrl(m.fileKey),
+    })),
+  ], [uploaded])
+
   useEffect(() => {
     let disposed = false
     const canvas = canvasRef.current
     if (!canvas) return
     // ⚠️ الاستيراد مؤجَّل: العارض ١.٢ م.ب، وما ينحمّل إلا لمن
     // المالك يفتح هاي الشاشة فعلاً.
-    const file = MODELS.find((m) => m.key === model)?.file ?? MODELS[0].file
-    const url = `${import.meta.env.BASE_URL}${file}`
+    const chosen = choices.find((m) => m.id === modelId) ?? choices[0]
+    if (!chosen) return
+    const url = chosen.url
     import('../components/entityAvatarEngine')
       .then((mod) => mod.mountAvatar(canvas, url, 'WALK_ALT', framing, { influencers: 8, motion: true }))
       .then((h) => {
@@ -120,7 +157,15 @@ function Lab() {
         ;(window as unknown as { __entityLab?: AvatarHandle }).__entityLab = h
         // قياس التأطير: وين يطلع الرأس والحوض **بالبكسل** — حتى
         // «الشخصية مزيّحة» تصير رقماً مو انطباعاً.
-        say(`تأطير: الرأس عند ${h.headPixel() ? `${Math.round(h.headPixel()!.x)}×${Math.round(h.headPixel()!.y)}` : '—'} من ${h.canvasSize().w}×${h.canvasSize().h}`)
+        // ⚠️ **«—» مو NaN**: القياس يصير قبل أول رسمة، ومصفوفة العرض
+        // لسه ما انحسبت فالإسقاط يرجّع NaN. وطبع «NaN×NaN» بسجل
+        // قياسات **أسوأ من ما نطبع شي** — يخلي المالك يحسب إن العارض
+        // مكسور وهو سليم. فنفحص العدد ونعرض «—» مع السبب.
+        const hp = h.headPixel()
+        const okPixel = hp && Number.isFinite(hp.x) && Number.isFinite(hp.y)
+        say(`تأطير: الرأس عند ${
+          okPixel ? `${Math.round(hp.x)}×${Math.round(hp.y)}` : '— (قبل أول رسمة)'
+        } من ${h.canvasSize().w}×${h.canvasSize().h}`)
         setStats({ ...h.stats })
         say(`تحمّل بـ${h.stats.loadMs} م.ث · ${h.stats.joints} مفصل · ${h.stats.clips.length} مقطع`)
         if (!h.motion) say('منظومة الحركة ما انبنت — ماكو هيكل عظمي بالملف', true)
@@ -134,7 +179,38 @@ function Lab() {
       handleRef.current?.dispose()
       handleRef.current = null
     }
-  }, [say, framing, model])
+  }, [say, framing, modelId, choices])
+
+
+  const pickFile = () => fileInputRef.current?.click()
+  const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''            // حتى اختيار نفس الملف مرة ثانية يشتغل
+    if (!file) return
+    setUploadBusy(true)
+    try {
+      const label = file.name.replace(/\.glb$/i, '')
+      const row = await api.uploadEntityModel(file, label)
+      say(`رُفع «${row.label}» — ${(row.sizeBytes / 1048576).toFixed(2)} م.ب`)
+      await loadUploaded()
+      setModelId(row.id)           // نبدّل إله فوراً حتى يشوفه
+    } catch (err) {
+      say(err instanceof Error ? err.message : String(err), true)
+    } finally {
+      setUploadBusy(false)
+    }
+  }
+
+  const archiveModel = async (m: ModelChoice) => {
+    try {
+      await api.archiveEntityModel(m.id)
+      say(`أُرشف «${m.label}»`)
+      if (modelId === m.id) setModelId(BUILT_IN[0].id)
+      await loadUploaded()
+    } catch (err) {
+      say(err instanceof Error ? err.message : String(err), true)
+    }
+  }
 
   /** الذاكرة مقاسة — ⚠️ `performance.memory` كرومية فقط، ولو ماكو **«—»**. */
   const measureHeap = () => {
@@ -293,21 +369,55 @@ function Lab() {
 
         <div className="space-y-3">
           <div className="rounded-2xl bg-white p-4 shadow">
-            <h3 className="mb-2 text-sm font-bold text-slate-700">المجسّم</h3>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className="text-sm font-bold text-slate-700">المجسّم</h3>
+              <button
+                onClick={pickFile}
+                disabled={uploadBusy}
+                className="rounded-xl bg-emerald-600 px-3 py-2 text-xs font-bold text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {uploadBusy ? 'يرفع…' : '⬆ ارفع مجسّم'}
+              </button>
+              {/* الامتداد بالمُنتقي راحة بس — الخادم يفحص **محتوى**
+                  الملف مو اسمه، لأن الاسم يتغيّر بثانية. */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".glb,model/gltf-binary"
+                onChange={onFilePicked}
+                className="hidden"
+              />
+            </div>
+            <p className="mb-3 text-[11px] leading-5 text-slate-500">
+              تختار الملف من حاسبتك وبس — <b>ما تحتاج تنسخ شي للسيرفر</b>.
+              الحد ١٠ ميغا، والصيغة <b>GLB</b>.
+            </p>
             <div className="flex flex-wrap gap-2">
-              {MODELS.map((m) => (
-                <button
-                  key={m.key}
-                  onClick={() => setModel(m.key)}
-                  className={`rounded-xl px-3 py-2 text-xs font-bold ${
-                    model === m.key
-                      ? 'bg-sky-600 text-white'
-                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                  }`}
-                >
-                  {m.label}
-                </button>
+              {choices.map((m) => (
+                <span key={m.id} className="inline-flex items-center">
+                  <button
+                    onClick={() => setModelId(m.id)}
+                    className={`rounded-xl px-3 py-2 text-xs font-bold ${
+                      modelId === m.id
+                        ? 'bg-sky-600 text-white'
+                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    }`}
+                  >
+                    {m.label}
+                    {m.sizeBytes ? ` · ${(m.sizeBytes / 1048576).toFixed(1)}م` : ''}
+                  </button>
+                  {m.uploaded && (
+                    <button
+                      onClick={() => void archiveModel(m)}
+                      title="أرشفة"
+                      className="ms-1 rounded-lg bg-slate-100 px-2 py-2 text-xs text-slate-500 hover:bg-red-50 hover:text-red-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </span>
               ))}
+              {uploaded === null && <span className="text-xs text-slate-500">…</span>}
             </div>
           </div>
 
