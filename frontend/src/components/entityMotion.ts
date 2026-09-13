@@ -28,6 +28,7 @@ import { AnimationGroupMask, AnimationGroupMaskMode } from '@babylonjs/core/Anim
 import type { AnimationGroup } from '@babylonjs/core/Animations/animationGroup'
 import { BoneIKController } from '@babylonjs/core/Bones/boneIKController'
 import { BoneLookController } from '@babylonjs/core/Bones/boneLookController'
+import { Space } from '@babylonjs/core/Maths/math.axis'
 
 /** أسماء عظام ميكسامو الي نحتاجها — مقاسة موجودة بالشخصية. */
 const BONE = {
@@ -38,6 +39,13 @@ const BONE = {
   leftArm: 'mixamorig:LeftArm',
   leftForeArm: 'mixamorig:LeftForeArm',
 } as const
+
+/**
+ * أقصى انثناء لمفصل إصبع واحد (راديان ≈ ٧٧°).
+ * ⚠️ ثلاث مفاصل × ٧٧° تنطي قبضة كاملة. رفعها أعلى يخلي الإصبع
+ * **يدخل بالكف** — والتصادم ما ينحسب بالـrig، فالحد هنا وقاية.
+ */
+const FINGER_MAX_BEND = 1.35
 
 export interface MotionRig {
   /**
@@ -95,6 +103,40 @@ export interface MotionRig {
   walkBy(dx: number, dz: number, speed?: number): Promise<void>
   /** موقع الجذر — لقياس مسافة السير (هل تتضاعف ولا لا). */
   rootPosition(): { x: number; y: number; z: number }
+  /**
+   * يوجّه الرأس بزوايا مباشرة (راديان) — مصدرها كاميرا الجهاز.
+   *
+   * ⚠️ **وهذا مسار منفصل عن `lookAt`**: `lookAt` يحتاج نقطة بالعالم،
+   * والكاميرا تنطي **زوايا** جاهزة. وتحويل الزوايا لنقطة وهمية ثم
+   * رجوعها لزوايا يضيف خطأ بلا فايدة. `null` يرجّع الرأس للمقطع.
+   */
+  setHeadPose(pose: { yaw: number; pitch: number; roll: number } | null): void
+  /**
+   * يقبض الأصابع: `0` ممدود و`1` مقبوض — مصدرها كاميرا الجهاز.
+   *
+   * 🔴 **غير مكتمل — ولا يُعتمد عليه بعد.** القياس (مو الانطباع):
+   * طرف السبّابة تحرّك **٠ مم** ومفصلها الوسطي **٠ مم** والإبهام
+   * **٠ مم** بين قبضة كاملة ويد مفتوحة، وتغيّر الصورة **٠٪**.
+   * السبب نفس سبب الرأس: **الكتابة اليدوية على العظام داخل حلقة
+   * التحديث ما تُرفع للرسم** لمن ما يكون اكو مقطع شغّال. والرأس
+   * انحلّ لأن بابل عنده `BoneLookController` جاهز، وماكو مقابل
+   * للأصابع — فتحتاج حلاً مستقلاً.
+   *
+   * ⚠️ **وهي محجوبة أصلاً بالمجسّم**: الوسطى والبنصر والخنصر
+   * **بلا عظام** (`fingerBoneReport()` يطلّع الأرقام)، فالقبضة
+   * الكاملة مستحيلة على هذا المجسّم مهما انصلّح الكود. فالترتيب
+   * الصحيح: **المجسّم الجديد أول**، وبعده هاي.
+   */
+  setFingerCurl(hand: 'right' | 'left', curls: Partial<Record<string, number>>): void
+  /**
+   * **يقيس** عظام أصابع كل يد — الأداة الي تحكم على أي مجسّم:
+   * الحالي، والمجسّم الجديد لمن يجي. رقم مو انطباع.
+   */
+  fingerBoneReport(): Record<string, number>
+  /** أسماء التعابير المتوفرة بالمجسّم — فاضية يعني ماكو تعابير. */
+  expressionNames(): string[]
+  /** يطبّق وزن تعبير — يُهمَل لو التعبير مو موجود بالمجسّم. */
+  setExpression(name: string, weight: number): void
   dispose(): void
 }
 
@@ -107,20 +149,52 @@ export interface MotionRig {
  *
  * يرجّع دالة تُرجع الإزاحة لو احتجناها (مثلاً لمقطع يُعرض لحاله).
  */
-export function neutralizeRootMotion(skeleton: Skeleton): () => void {
+export function neutralizeRootMotion(
+  skeleton: Skeleton,
+  carrier: TransformNode,
+  mesh: AbstractMesh,
+): () => void {
   const hips = skeleton.bones.find((b) => b.name === BONE.hips)
   if (!hips) return () => {}
-  // نجمّد الإزاحة الأفقية ونخلي العمودية (النزول والطلوع بالخطوة).
-  const original = hips.getPosition().clone()
+
+  // ⚠️ **التحييد يصير على عقدة حاملة، مو بالكتابة على عظمة الحوض.**
+  //
+  // جرّبت الكتابة على العظمة بطريقتين وفشلتا **بالقياس**:
+  //   ① مرجع من الوضع الحالي وقت البناء ← نقطة عشوائية على مسار
+  //      المشي، تختلف كل تحميل: قمة الرأس طلعت z = ٠.٥١ و٠.٦٢
+  //      و٠.٧٧ و**١.٨٨** بأربع تحميلات.
+  //   ② مرجع من `getRestMatrix()` ثم `getBindMatrix()` ← الحوض
+  //      طلع عند **z ≈ ٢.٢٣ م** والرأس عند **−٠.١٣ م**، أي حوض
+  //      يبعد مترين عن راسه — إحداثيات العظام هنا **بفضاء مقيّس**
+  //      (ميكسامو يجي بالسنتيمترات مع مقياس على الجذر)، فالأرقام
+  //      الي أكتبها بالأمتار تخرّب الهيكل. ومعها انزاحت الشخصية
+  //      **١.٢٧ م** وطلعت بحاشية الإطار.
+  //
+  // فالحل ما يكتب على العظام إطلاقاً: نقيس **إزاحة الحوض بالعالم**
+  // (وهاي وحدات المشهد، معروفة) ونطرحها من عقدة حاملة. فالمقطع
+  // يمشي بحرّيته، والجسم يبقى بمكانه — ولا نحتاج نعرف فضاء العظام.
+  let baseline: { x: number; z: number } | null = null
   const observer = () => {
-    const p = hips.getPosition()
-    hips.setPosition(new Vector3(original.x, p.y, original.z))
+    skeleton.computeAbsoluteMatrices(true)
+    mesh.computeWorldMatrix(true)
+    const w = hips.getAbsolutePosition(mesh)
+    if (!baseline) {
+      // أول إطار **بعد** تشغيل المقطع = إطار المقطع صفر دائماً،
+      // فالمرجع ثابت بين التحميلات (وهذا الي كان ناقصاً).
+      baseline = { x: w.x, z: w.z }
+      return
+    }
+    // تصحيح مباشر: إزاحة العقدة تنعكس ١:١ على العالم، فخطوة واحدة
+    // تكفي ولا نحتاج حلقة تقارب.
+    carrier.position.x -= w.x - baseline.x
+    carrier.position.z -= w.z - baseline.z
   }
-  // ⚠️ **بعد** تحديث الهياكل مو قبله — وإلا المقطع يكتب فوق تصحيحنا
-  // والتحييد ما ينفّذ (وهاي غلطة تطلع كأنها «التحييد ما نفع»).
   const scene = skeleton.getScene()
   scene.onAfterAnimationsObservable.add(observer)
-  return () => { scene.onAfterAnimationsObservable.removeCallback(observer) }
+  return () => {
+    scene.onAfterAnimationsObservable.removeCallback(observer)
+    carrier.position.set(0, 0, 0)
+  }
 }
 
 /**
@@ -231,6 +305,39 @@ export function buildMotionRig(
   const polePointFor = (hand: 'right' | 'left', sh: Vector3) =>
     sh.add(new Vector3(hand === 'right' ? 0.45 : -0.45, -0.8, -0.25))
 
+  // ═══ الأصابع: مقاسة مو مفترضة ═══
+  // ⚠️ **ميكسامو يسمّي سلاسل الأصابع بنمط ثابت** (`RightHandIndex1..4`)،
+  // **بس وجودها مو مضمون**: قِستها على شخصيتنا — الإبهام والسبّابة
+  // موجودان، والوسطى والبنصر والخنصر **صفر عظام**. فالكود يشتغل على
+  // الموجود ويسكت عن الناقص، و`fingerBoneReport()` يطلّع الحقيقة.
+  const FINGER_KEYS = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'] as const
+  /** عظام إصبع واحد بالترتيب من القاعدة — بلا عظمة الطرف (ما تنثني). */
+  const fingerBones = (hand: 'right' | 'left', finger: string) => {
+    const side = hand === 'right' ? 'Right' : 'Left'
+    const out = []
+    for (let i = 1; i <= 3; i++) {
+      const b = bone(`mixamorig:${side}Hand${finger}${i}`)
+      if (b) out.push(b)
+    }
+    return out
+  }
+  /** الوضع الأصلي لكل عظمة إصبع — حتى نرجّعها لمن يوقف التتبّع. */
+  const fingerRest = new Map<string, Quaternion>()
+  const rememberRest = (name: string, q: Quaternion) => {
+    if (!fingerRest.has(name)) fingerRest.set(name, q.clone())
+  }
+
+  /**
+   * انحناء الأصابع المطلوب هذا الإطار. يُطبَّق بحلقة التحديث مو
+   * فوراً، لأن المقطع يكتب على العظام كل إطار — فالتطبيق المباشر
+   * **يُمحى** (نفس سبب ترتيب الـIK).
+   */
+  const curlWanted: Record<'right' | 'left', Record<string, number>> =
+    { right: {}, left: {} }
+
+  /** التعابير — `null` يعني المجسّم بلا أي تعبير (الحالة الحالية). */
+  const morphs = skinnedMesh.morphTargetManager ?? null
+
   let pointing: 'right' | 'left' | null = null
   /** بكسلات الزر — التصحيح النهائي يصير عليها (فضاء الشاشة). */
   let pointPixel: { x: number; y: number } | null = null
@@ -300,6 +407,48 @@ export function buildMotionRig(
       ik[pointing]!.update()
     }
     if (looking && look) look.update()
+    // ═══ انحناء الأصابع من الكاميرا ═══
+    let wroteFingers = false
+    for (const hand of ['right', 'left'] as const) {
+      const wanted = curlWanted[hand]
+      for (const finger of FINGER_KEYS) {
+        const v = wanted[finger]
+        if (v === undefined) continue
+        const bones = fingerBones(hand, finger)
+        for (const b of bones) {
+          const q = b.rotationQuaternion ?? Quaternion.Identity()
+          rememberRest(b.name, q)
+          const rest = fingerRest.get(b.name) ?? Quaternion.Identity()
+          // ⚠️ **محور الانثناء مقاس مو مخمّن** — انظر تعليق
+          // `setFingerCurl`. والدوران يُضاف **على وضع الراحة** مو
+          // على الوضع الحالي، وإلا يتراكم كل إطار وينلوي الإصبع.
+          const bend = Quaternion.RotationAxis(
+            new Vector3(0, 0, 1), -v * FINGER_MAX_BEND,
+          )
+          b.setRotationQuaternion(rest.multiply(bend), Space.LOCAL, skinnedMesh)
+          wroteFingers = true
+        }
+      }
+    }
+    // ⚠️ **دفع الهياكل للرسم إلزامي لمن ماكو مقطع شغّال.**
+    //
+    // قِستها من داخل المحرّك (مو بلقطة متصفح): لفّة الرأس وقبض
+    // الأصابع غيّرتا **صفر بالمئة** من الإطار وقت ما المقاطع
+    // موقوفة، **ونفس الكود** غيّر **١٩.٢٪** لمن يكون اكو مقطع
+    // شغّال. والسبب إن نظام الحركات هو الي يعلّم الهيكل «متسّخ»
+    // كل إطار فتُرفع مصفوفات العظام للكارت؛ وبلا مقطع، كتابتنا
+    // تضلّ بالذاكرة **وما تُرفع** — فالعظمة تتحرّك بالحساب
+    // والصورة ما تتغيّر. و`prepare(true)` يتجاهل فحص الإطار
+    // ويرفعها. وبالإنتاج دايماً اكو مقطع سكون شغّال، فهاي تحمينا
+    // من حالة ما تبيّن إلا بالتجربة.
+    if (wroteFingers) {
+      // نحدّث المصفوفات **المطلقة** من المحلية الي كتبناها هالآن،
+      // ثم ندفعها للرسم. الترتيب مهم: `prepare` وحده يرفع مصفوفات
+      // **مخزّنة** من تمرير الحركات، فكتابتنا ما تبان.
+      skeleton.computeAbsoluteMatrices(true)
+      skinnedMesh.computeWorldMatrix(true)
+      skeleton.prepare(true)
+    }
     if (walk) {
       const dir = walk.to.subtract(root.position)
       dir.y = 0
@@ -412,6 +561,78 @@ export function buildMotionRig(
       return v ? { x: v.x, y: v.y, z: v.z } : null
     },
     rootPosition: () => ({ x: root.position.x, y: root.position.y, z: root.position.z }),
+    setHeadPose(pose) {
+      // ⚠️ **زوايا الكاميرا تتحوّل لنقطة نظر، والتوجيه يصير
+      // بـ`BoneLookController` مال بابل — مو بكتابة يدوية على
+      // العظمة.**
+      //
+      // الكتابة اليدوية (`setYawPitchRoll` داخل حلقة التحديث)
+      // **ما تُرفع للرسم**، وهذا مقاس من داخل المحرّك مو استنتاج:
+      // بنفس الإطار واللحظة، الإشارة بالـIK غيّرت **١٨.٩٨٪** من
+      // الصورة، وكتابتي على الرأس غيّرت **٠٪** وقمة الرأس
+      // تحرّكت **٠ مم**. ونفس الاستدعاء من برّا الحلقة يحرّكها
+      // **٧١ مم** — يعني الكتابة صحيحة بس ضايعة بين تمرير
+      // الحركات والرسم. وبدل ما أحاول أجبر الرفع بثلاث طرق
+      // (`prepare(true)` و`computeAbsoluteMatrices` والاثنين
+      // سوا — وكلها طلعت **٠٪**)، أستخدم الأداة الي القياس يثبت
+      // إنها تُرسم.
+      if (!pose) { looking = false; return }
+      const head = worldOf(headBone)
+      if (!head) return
+      // اتجاه الوجه يُقاس من محور الكتفين، وعليه تنطبق الزوايا.
+      let side = new Vector3(1, 0, 0)
+      const la = worldOf(bone(BONE.leftArm))
+      const ra = worldOf(bone(BONE.rightArm))
+      if (la && ra) {
+        side = ra.subtract(la)
+        side.y = 0
+        if (side.lengthSquared() > 1e-6) side.normalize()
+      }
+      const fwd = Vector3.Cross(new Vector3(0, 1, 0), side)
+      if (fwd.lengthSquared() < 1e-6) return
+      fwd.normalize()
+      // ⚠️ الميل موجب = ينظر **للأسفل** (نفس اصطلاح ميدياپايپ)،
+      // فالإشارة معكوسة على y.
+      const dir = fwd.scale(Math.cos(pose.yaw)).add(side.scale(Math.sin(pose.yaw)))
+      dir.y = -Math.sin(pose.pitch)
+      dir.normalize()
+      // متر واحد كافي: `BoneLookController` يهمّه الاتجاه.
+      this.lookAt(head.add(dir.scale(1.0)))
+    },
+    setFingerCurl(hand, curls) {
+      const dest = curlWanted[hand]
+      for (const [k, v] of Object.entries(curls)) {
+        if (typeof v !== 'number') continue
+        // أسماء ميدياپايپ صغيرة (`index`) وأسماء ميكسامو بحرف كبير
+        // (`Index`) — التطبيع هنا حتى الشاشة ما تهتم بالفرق.
+        const key = k.charAt(0).toUpperCase() + k.slice(1)
+        dest[key] = Math.min(1, Math.max(0, v))
+      }
+    },
+    fingerBoneReport() {
+      const out: Record<string, number> = {}
+      for (const hand of ['right', 'left'] as const) {
+        for (const f of FINGER_KEYS) {
+          out[`${hand}.${f}`] = fingerBones(hand, f).length
+        }
+      }
+      return out
+    },
+    expressionNames() {
+      if (!morphs) return []
+      const out: string[] = []
+      for (let i = 0; i < morphs.numTargets; i++) {
+        out.push(morphs.getTarget(i).name)
+      }
+      return out
+    },
+    setExpression(name, weight) {
+      if (!morphs) return
+      for (let i = 0; i < morphs.numTargets; i++) {
+        const t = morphs.getTarget(i)
+        if (t.name === name) { t.influence = Math.min(1, Math.max(0, weight)); return }
+      }
+    },
     lookAt(target) {
       if (!target || !look) { looking = false; return }
       lookTarget.position.copyFrom(target)
@@ -428,6 +649,15 @@ export function buildMotionRig(
     },
     dispose() {
       applyArmMask(null)
+      // نوقف التوجيه والكتابة على الأصابع قبل فكّ المراقب، وإلا
+      // تبقى العظام على آخر وضع كتبناه والمقطع ما يسترجعها.
+      looking = false
+      curlWanted.right = {}
+      curlWanted.left = {}
+      for (const [name, q] of fingerRest) {
+        const b = bone(name)
+        b?.setRotationQuaternion(q, Space.LOCAL, skinnedMesh)
+      }
       scene.onAfterAnimationsObservable.remove(observer)
       ikTarget.dispose(); poleTarget.dispose(); lookTarget.dispose()
     },

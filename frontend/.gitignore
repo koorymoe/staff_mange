@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# ملفات WASM مال ميدياپايپ — تُنسخ من node_modules بـprebuild.
+# ٢٣ م.ب، وما تدخل گيت حتى المستودع ما يثقل للأبد.
+public/mp/wasm/

@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSession } from '../session'
 import PageHeader from '../components/PageHeader'
 import type { AvatarHandle, AvatarStats, ClipName } from '../components/entityAvatarEngine'
+import type { Tracker } from '../components/faceTracking'
 
 /**
  * ⚠️ **مفتاح الإطفاء.** النظام ماكو بيه منظومة رايات ميزات (فحصتها:
@@ -55,6 +56,16 @@ function Lab() {
   // (`bust`) والودجة العائمة (`full`) — وأي تغيير بالمشهد (مثل
   // تحويله لنظام يميني) لازم يتأكد بالعين إنه ما قلب الكاميرا.
   const [framing, setFraming] = useState<'bust' | 'full'>('full')
+  // ═══ الكاميرا: حالة منفصلة تماماً، ومطفَيّة بالافتراضي ═══
+  // 🔒 **ما تشتغل إلا بضغط المالك**، والإطفاء يوقف المسارات فعلياً
+  // (ضوء الكاميرا ينطفي) مو يخفي المعاينة بس.
+  const trackerRef = useRef<Tracker | null>(null)
+  const previewRef = useRef<HTMLDivElement | null>(null)
+  const [camOn, setCamOn] = useState(false)
+  const [camBusy, setCamBusy] = useState(false)
+  const [track, setTrack] = useState<{ fps: number; ms: number; head: string; hands: number; expr: number } | null>(null)
+  const [fingerReport, setFingerReport] = useState<Record<string, number> | null>(null)
+  const [exprNames, setExprNames] = useState<string[] | null>(null)
 
   const say = useCallback((text: string, bad = false) => {
     setLogs((prev) => [{ at: new Date().toLocaleTimeString('en-GB'), text, bad }, ...prev].slice(0, 60))
@@ -156,6 +167,86 @@ function Lab() {
     }, 1400)
   }
 
+  // ═══ تشغيل/إطفاء الكاميرا ═══
+  const stopCam = useCallback(() => {
+    trackerRef.current?.stop()
+    trackerRef.current = null
+    // نرجّع الرأس والأصابع للمقطع، وإلا تبقى على آخر قراءة مجمّدة.
+    handleRef.current?.motion?.setHeadPose(null)
+    setCamOn(false)
+    setTrack(null)
+    say('الكاميرا انطفت — المسارات موقوفة والضوء ينطفي')
+  }, [say])
+
+  const startCam = async () => {
+    const h = handleRef.current
+    if (!h?.motion) { say('منظومة الحركة ما انبنت — الكاميرا بلا فايدة', true); return }
+    setCamBusy(true)
+    try {
+      // ⚠️ الاستيراد مؤجَّل: المكتبة ٨٦٠ ك.ب والـWASM ١١.٧ م.ب،
+      // فما تنحمّل إلا لمن المالك يضغط الزر فعلاً.
+      const mod = await import('../components/faceTracking')
+      let last = 0
+      const t = await mod.startTracking({
+        hands: true,
+        onError: (m) => say(`تتبّع: ${m}`, true),
+        onReading: (r) => {
+          const rig = handleRef.current?.motion
+          if (!rig) return
+          if (r.head) rig.setHeadPose(r.head)
+          for (const hand of r.hands) {
+            rig.setFingerCurl(hand.right ? 'right' : 'left', hand.curls)
+          }
+          // ⚠️ تحديث الحالة **مخنوق لعشر مرات بالثانية**: لو حدّثنا
+          // كل إطار، إعادة رسم رياكت تصير هي عنق الزجاجة وتطلّع
+          // fps واطي — فيصير القياس عن رياكت مو عن التتبّع.
+          const now = performance.now()
+          if (now - last < 100) return
+          last = now
+          setTrack({
+            fps: t.fps(),
+            ms: t.inferenceMs(),
+            head: r.head
+              ? `${((r.head.yaw * 180) / Math.PI).toFixed(0)}° / ${((r.head.pitch * 180) / Math.PI).toFixed(0)}°`
+              : '—',
+            hands: r.hands.length,
+            expr: Object.keys(r.expressions).length,
+          })
+        },
+      })
+      trackerRef.current = t
+      // معاينة للمالك حتى يشوف شنو تشوفه الكاميرا — مو مخزّنة.
+      t.video.className = 'w-full rounded-xl'
+      previewRef.current?.replaceChildren(t.video)
+      setCamOn(true)
+      say('الكاميرا اشتغلت — النموذج محمّل من نطاقنا، ولا بايت يطلع من الجهاز')
+    } catch (e) {
+      say(e instanceof Error ? e.message : String(e), true)
+    } finally {
+      setCamBusy(false)
+    }
+  }
+
+  // 🔒 إطفاء إلزامي عند مغادرة الشاشة — بلاه الكاميرا تبقى شاغلة.
+  useEffect(() => () => { trackerRef.current?.stop(); trackerRef.current = null }, [])
+
+  /** يقيس أي أصابع إلها عظام فعلاً — الأداة الي تحكم على أي مجسّم. */
+  const measureRig = () => {
+    const rig = handleRef.current?.motion
+    if (!rig) return
+    const rep = rig.fingerBoneReport()
+    setFingerReport(rep)
+    const names = rig.expressionNames()
+    setExprNames(names)
+    const zero = Object.entries(rep).filter(([, n]) => n === 0).map(([k]) => k)
+    say(`عظام الأصابع: ${Object.entries(rep).map(([k, n]) => `${k}=${n}`).join(' · ')}`)
+    if (zero.length) say(`أصابع بلا عظام (${zero.length}): ${zero.join(', ')} — الإمساك مستحيل عليها`, true)
+    say(names.length === 0
+      ? 'التعابير: صفر — المجسّم بلا morph targets، فالرمشة والابتسامة مستحيلتان'
+      : `التعابير المتوفرة (${names.length}): ${names.slice(0, 8).join(', ')}`,
+      names.length === 0)
+  }
+
   /** ⚠️ قياس المشي: هل إزاحة الجذر تتضاعف ولا التحييد نافع. */
   const walkTest = async () => {
     const h = handleRef.current
@@ -208,6 +299,54 @@ function Lab() {
             <Btn onClick={() => setFraming((f) => (f === 'full' ? 'bust' : 'full'))}>
               {framing === 'full' ? 'تأطير الصدر (القصة)' : 'تأطير كامل (الودجة)'}
             </Btn>
+          </div>
+
+          {/* ═══ الكاميرا ═══ */}
+          <div className="rounded-2xl bg-white p-4 shadow">
+            <h3 className="mb-1 text-sm font-bold text-slate-700">
+              الكاميرا — الرأس والأصابع
+            </h3>
+            <p className="mb-3 text-[11px] leading-5 text-slate-500">
+              النموذج والـWASM محمّلان <b>من نطاقنا</b> مو من گوگل، والاستنتاج
+              كلّه <b>داخل جهازك</b>. ولا صورة تُرفع ولا إطار يُخزَّن.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              <Btn onClick={camOn ? stopCam : startCam}>
+                {camBusy ? 'لحظة…' : camOn ? 'أطفِ الكاميرا' : 'شغّل الكاميرا'}
+              </Btn>
+              <Btn onClick={measureRig}>قِس الأصابع والتعابير</Btn>
+            </div>
+            <div ref={previewRef} className={camOn ? 'mt-3' : 'hidden'} />
+            {camOn && (
+              <dl className="mt-3 space-y-1 text-sm">
+                <Row k="إطارات/ثانية" v={track ? String(track.fps) : '—'} />
+                <Row k="زمن الاستنتاج" v={track ? `${track.ms} م.ث` : '—'} />
+                <Row k="زاوية الرأس (لف/ميل)" v={track?.head ?? '—'} />
+                <Row k="إيدين مكتشفة" v={track ? String(track.hands) : '—'} />
+                <Row k="قنوات التعابير المقروءة" v={track ? String(track.expr) : '—'} />
+              </dl>
+            )}
+            {exprNames !== null && exprNames.length === 0 && (
+              <p className="mt-3 rounded-lg bg-amber-50 p-2 text-[11px] font-semibold leading-5 text-amber-800">
+                ⚠️ التعابير تُقرأ من وجهك بس <b>ما تنطبّق</b>: هذا المجسّم فيه
+                صفر تعابير. الرمشة والابتسامة تحتاج مجسّماً جديداً.
+              </p>
+            )}
+            {fingerReport && (
+              <div className="mt-3">
+                <h4 className="mb-1 text-xs font-bold text-slate-600">عظام الأصابع (مقاسة)</h4>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px]">
+                  {Object.entries(fingerReport).map(([k, n]) => (
+                    <div key={k} className="flex justify-between">
+                      <span className="text-slate-500">{k}</span>
+                      <span className={n === 0 ? 'font-bold text-red-600' : 'font-bold text-emerald-700'}>
+                        {n === 0 ? 'ماكو' : `${n} عظام`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="rounded-2xl bg-white p-4 shadow">
