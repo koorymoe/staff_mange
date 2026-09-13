@@ -2,6 +2,12 @@
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
+# ⚠️ **مجلد السكربتات ينتقل قبل `npm ci`** — و`npm ci` يشغّل
+# `postinstall` (ينسخ WASM مال ميدياپايپ من node_modules لـpublic).
+# بلا هالسطر يفشل البناء بـ`Cannot find module 'scripts/…'` لأن
+# `COPY . .` يجي **بعد** التركيب. والبناء المحلي ما يكشفها لأن
+# الملفات كلها موجودة أصلاً — العيب يظهر بحاوية نظيفة حصراً.
+COPY scripts ./scripts
 RUN npm ci
 COPY . .
 # بالسيرفر الفعلي الموقع يكون على جذر الدومين مباشرة، والباك إند وراء نفس
