@@ -17,6 +17,7 @@ import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import type { AnimationGroup } from '@babylonjs/core/Animations/animationGroup'
 import type { Skeleton } from '@babylonjs/core/Bones/skeleton'
 import { buildMotionRig, neutralizeRootMotion, type MotionRig } from './entityMotion'
+import { detectNaming } from './skeletonNaming'
 import '@babylonjs/loaders/glTF'
 
 /**
@@ -193,9 +194,11 @@ export async function mountAvatar(
     const b = skel?.bones.find((x) => x.name === name)
     return b && skinnedForAim ? b.getAbsolutePosition(skinnedForAim) : null
   }
-  const hipsPos = boneAt('mixamorig:Hips')
-  const lArm = boneAt('mixamorig:LeftArm')
-  const rArm = boneAt('mixamorig:RightArm')
+  // نمط الأسماء يُكتشَف — المحرّك يخدم ميكسامو وRigify سوا.
+  const naming = detectNaming(skel?.bones.map((b) => b.name) ?? [])
+  const hipsPos = boneAt(naming.hips)
+  const lArm = boneAt(naming.arm('left'))
+  const rArm = boneAt(naming.arm('right'))
   const center = hipsPos ?? new Vector3(0, 0.92, 0)
   const target = framing === 'full'
     ? new Vector3(center.x, 0.92, center.z)
@@ -341,7 +344,7 @@ export async function mountAvatar(
 
   return {
     headPixel() {
-      const head = skel?.bones.find((b) => b.name === 'mixamorig:Head')
+      const head = skel?.bones.find((b) => b.name === naming.head)
       if (!head || !skinnedForAim || !scene.activeCamera) return null
       const w = engine.getRenderWidth(), h = engine.getRenderHeight()
       const v = Vector3.Project(

@@ -25,7 +25,19 @@ import type { Tracker } from '../components/faceTracking'
  */
 const LAB_ENABLED = true
 
-const GLB = `${import.meta.env.BASE_URL}amani-tech-v4.glb`
+/**
+ * المجسّمات المتوفّرة للمقارنة **جنب بعض** — وهاي الطريقة الوحيدة
+ * الي يحكم بيها (ع) بعينه بدل ما نتناقش بالكلام.
+ *
+ * ⚠️ **ملف `cartoon-boy` مستثنى من گيت**: رخصة تيربو سكويد Standard
+ * تسمح بالاستخدام التجاري داخل برنامج، بس تمنع **إتاحة المجسّم
+ * نفسه** — ومستودعنا عام. فينزل على السيرفر ويُخدَم بعد الدخول.
+ */
+const MODELS = [
+  { key: 'amani', label: 'الحالي (أماني v4)', file: 'amani-tech-v4.glb' },
+  { key: 'boy', label: 'الجديد (كارتون بوي)', file: 'cartoon-boy-v1.glb' },
+] as const
+type ModelKey = typeof MODELS[number]['key']
 
 type Log = { at: string; text: string; bad?: boolean }
 
@@ -56,6 +68,7 @@ function Lab() {
   // (`bust`) والودجة العائمة (`full`) — وأي تغيير بالمشهد (مثل
   // تحويله لنظام يميني) لازم يتأكد بالعين إنه ما قلب الكاميرا.
   const [framing, setFraming] = useState<'bust' | 'full'>('full')
+  const [model, setModel] = useState<ModelKey>('amani')
   // ═══ الكاميرا: حالة منفصلة تماماً، ومطفَيّة بالافتراضي ═══
   // 🔒 **ما تشتغل إلا بضغط المالك**، والإطفاء يوقف المسارات فعلياً
   // (ضوء الكاميرا ينطفي) مو يخفي المعاينة بس.
@@ -94,8 +107,10 @@ function Lab() {
     if (!canvas) return
     // ⚠️ الاستيراد مؤجَّل: العارض ١.٢ م.ب، وما ينحمّل إلا لمن
     // المالك يفتح هاي الشاشة فعلاً.
+    const file = MODELS.find((m) => m.key === model)?.file ?? MODELS[0].file
+    const url = `${import.meta.env.BASE_URL}${file}`
     import('../components/entityAvatarEngine')
-      .then((mod) => mod.mountAvatar(canvas, GLB, 'WALK_ALT', framing, { influencers: 8, motion: true }))
+      .then((mod) => mod.mountAvatar(canvas, url, 'WALK_ALT', framing, { influencers: 8, motion: true }))
       .then((h) => {
         if (disposed) { h.dispose(); return }
         handleRef.current = h
@@ -119,7 +134,7 @@ function Lab() {
       handleRef.current?.dispose()
       handleRef.current = null
     }
-  }, [say, framing])
+  }, [say, framing, model])
 
   /** الذاكرة مقاسة — ⚠️ `performance.memory` كرومية فقط، ولو ماكو **«—»**. */
   const measureHeap = () => {
@@ -278,6 +293,25 @@ function Lab() {
 
         <div className="space-y-3">
           <div className="rounded-2xl bg-white p-4 shadow">
+            <h3 className="mb-2 text-sm font-bold text-slate-700">المجسّم</h3>
+            <div className="flex flex-wrap gap-2">
+              {MODELS.map((m) => (
+                <button
+                  key={m.key}
+                  onClick={() => setModel(m.key)}
+                  className={`rounded-xl px-3 py-2 text-xs font-bold ${
+                    model === m.key
+                      ? 'bg-sky-600 text-white'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-white p-4 shadow">
             <h3 className="mb-2 text-sm font-bold text-slate-700">القياسات</h3>
             <dl className="space-y-1 text-sm">
               <Row k="زمن التحميل" v={stats ? `${stats.loadMs} م.ث` : '—'} />
@@ -286,6 +320,7 @@ function Lab() {
               <Row k="تأثيرات العظام" v={String(influencers)} />
               <Row k="الذاكرة" v={heapMB === null ? '—' : `${heapMB.toFixed(1)} م.ب`} />
               <Row k="المقاطع" v={stats ? String(stats.clips.length) : '—'} />
+              <Row k="التعابير" v={exprNames === null ? '—' : String(exprNames.length)} />
             </dl>
           </div>
 

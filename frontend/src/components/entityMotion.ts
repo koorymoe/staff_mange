@@ -30,15 +30,7 @@ import { BoneIKController } from '@babylonjs/core/Bones/boneIKController'
 import { BoneLookController } from '@babylonjs/core/Bones/boneLookController'
 import { Space } from '@babylonjs/core/Maths/math.axis'
 
-/** أسماء عظام ميكسامو الي نحتاجها — مقاسة موجودة بالشخصية. */
-const BONE = {
-  hips: 'mixamorig:Hips',
-  head: 'mixamorig:Head',
-  rightArm: 'mixamorig:RightArm',
-  rightForeArm: 'mixamorig:RightForeArm',
-  leftArm: 'mixamorig:LeftArm',
-  leftForeArm: 'mixamorig:LeftForeArm',
-} as const
+import { detectNaming, FINGER_KEYS, type BoneNaming, type FingerKey } from './skeletonNaming'
 
 /**
  * أقصى انثناء لمفصل إصبع واحد (راديان ≈ ٧٧°).
@@ -154,7 +146,8 @@ export function neutralizeRootMotion(
   carrier: TransformNode,
   mesh: AbstractMesh,
 ): () => void {
-  const hips = skeleton.bones.find((b) => b.name === BONE.hips)
+  const naming = detectNaming(skeleton.bones.map((b) => b.name))
+  const hips = skeleton.bones.find((b) => b.name === naming.hips)
   if (!hips) return () => {}
 
   // ⚠️ **التحييد يصير على عقدة حاملة، مو بالكتابة على عظمة الحوض.**
@@ -211,6 +204,13 @@ export function buildMotionRig(
 ): MotionRig {
   const skinnedMesh = mesh
   const bone = (n: string) => skeleton.bones.find((b) => b.name === n) ?? null
+  const firstBone = (names: readonly string[]) => {
+    for (const n of names) { const b = bone(n); if (b) return b }
+    return null
+  }
+  // نمط الأسماء يُكتشَف من الهيكل نفسه — انظر `skeletonNaming.ts`.
+  const naming: BoneNaming = detectNaming(skeleton.bones.map((b) => b.name))
+  const fingerAxis = new Vector3(...naming.fingerBendAxis)
 
   // ═══ أهداف الحركة: عُقد غير مرئية يتبعها الـIK ═══
   const ikTarget = new TransformNode('entity-ik-target', scene)
@@ -221,7 +221,7 @@ export function buildMotionRig(
 
   const ik: Record<'right' | 'left', BoneIKController | null> = { right: null, left: null }
   for (const side of ['right', 'left'] as const) {
-    const fore = bone(side === 'right' ? BONE.rightForeArm : BONE.leftForeArm)
+    const fore = bone(naming.foreArm(side))
     if (!fore) continue
     ik[side] = new BoneIKController(mesh, fore, {
       targetMesh: ikTarget,
@@ -243,7 +243,7 @@ export function buildMotionRig(
     ik[side]!.slerpAmount = 1
   }
 
-  const headBone = bone(BONE.head)
+  const headBone = bone(naming.head)
   const look = headBone
     ? new BoneLookController(mesh, headBone, lookTarget.position, {
       // حدود بشرية: الرأس ما يلتف ٩٠° ولا يرفع لفوق بلا حد
@@ -259,19 +259,17 @@ export function buildMotionRig(
   const worldOf = (b: ReturnType<typeof bone>) =>
     b ? b.getAbsolutePosition(skinnedMesh) : null
   const fingertip = (hand: 'right' | 'left') => {
-    const side = hand === 'right' ? 'Right' : 'Left'
     // آخر عظمة بالسلسلة هي **طرف** الإصبع بميكسامو (`...Index4`)؛
     // القياس من `Index1` يخلي الإشارة تبين أدق من واقعها.
-    return worldOf(bone(`mixamorig:${side}HandIndex4`) ?? bone(`mixamorig:${side}HandIndex3`))
+    return worldOf(firstBone(naming.fingerTip(hand)))
   }
   const shoulder = (hand: 'right' | 'left') =>
-    worldOf(bone(hand === 'right' ? BONE.rightArm : BONE.leftArm))
+    worldOf(bone(naming.arm(hand)))
   /** مدى الذراع مقاس من العظام نفسها — مو ثابتاً مكتوباً. */
   const reachOf = (hand: 'right' | 'left'): number | null => {
-    const side = hand === 'right' ? 'Right' : 'Left'
-    const a = worldOf(bone(hand === 'right' ? BONE.rightArm : BONE.leftArm))
-    const b = worldOf(bone(hand === 'right' ? BONE.rightForeArm : BONE.leftForeArm))
-    const c = worldOf(bone(`mixamorig:${side}Hand`))
+    const a = worldOf(bone(naming.arm(hand)))
+    const b = worldOf(bone(naming.foreArm(hand)))
+    const c = worldOf(bone(naming.hand(hand)))
     if (!a || !b || !c) return null
     return Vector3.Distance(a, b) + Vector3.Distance(b, c)
   }
@@ -284,10 +282,8 @@ export function buildMotionRig(
    * الـIK يمسك الذراع وباقي الجسم يكمل مشيه.
    */
   const armChainNames = (hand: 'right' | 'left'): string[] => {
-    const side = hand === 'right' ? 'Right' : 'Left'
-    return skeleton.bones
-      .map((b) => b.name)
-      .filter((n) => new RegExp(`^mixamorig:${side}(Shoulder|Arm|ForeArm|Hand)`).test(n))
+    const re = naming.armChain(hand)
+    return skeleton.bones.map((b) => b.name).filter((n) => re.test(n))
   }
   const applyArmMask = (hand: 'right' | 'left' | null) => {
     for (const g of groups) {
@@ -310,22 +306,17 @@ export function buildMotionRig(
   // **بس وجودها مو مضمون**: قِستها على شخصيتنا — الإبهام والسبّابة
   // موجودان، والوسطى والبنصر والخنصر **صفر عظام**. فالكود يشتغل على
   // الموجود ويسكت عن الناقص، و`fingerBoneReport()` يطلّع الحقيقة.
-  const FINGER_KEYS = ['Thumb', 'Index', 'Middle', 'Ring', 'Pinky'] as const
   /** عظام إصبع واحد بالترتيب من القاعدة — بلا عظمة الطرف (ما تنثني). */
-  const fingerBones = (hand: 'right' | 'left', finger: string) => {
-    const side = hand === 'right' ? 'Right' : 'Left'
+  const fingerBones = (hand: 'right' | 'left', finger: FingerKey) => {
     const out = []
-    for (let i = 1; i <= 3; i++) {
-      const b = bone(`mixamorig:${side}Hand${finger}${i}`)
+    for (const n of naming.fingerBones(hand, finger)) {
+      const b = bone(n)
       if (b) out.push(b)
     }
     return out
   }
-  /** الوضع الأصلي لكل عظمة إصبع — حتى نرجّعها لمن يوقف التتبّع. */
-  const fingerRest = new Map<string, Quaternion>()
-  const rememberRest = (name: string, q: Quaternion) => {
-    if (!fingerRest.has(name)) fingerRest.set(name, q.clone())
-  }
+  /** الزاوية المطبَّقة فعلاً على كل عظمة إصبع — للدوران التفاضلي. */
+  const fingerAngle = new Map<string, number>()
 
   /**
    * انحناء الأصابع المطلوب هذا الإطار. يُطبَّق بحلقة التحديث مو
@@ -335,8 +326,18 @@ export function buildMotionRig(
   const curlWanted: Record<'right' | 'left', Record<string, number>> =
     { right: {}, left: {} }
 
-  /** التعابير — `null` يعني المجسّم بلا أي تعبير (الحالة الحالية). */
-  const morphs = skinnedMesh.morphTargetManager ?? null
+  /**
+   * التعابير: نبحث بكل الأجسام مو بواحد.
+   *
+   * ⚠️ **غلطة قِستها**: كان الكود يقرأ `skinnedMesh.morphTargetManager`
+   * والـ`skinnedMesh` هو **أول** جسم مكسوّ يلگاه المحمّل — وبالمجسّم
+   * الجديد طلع **الشعر** (٢٢ ألف رأس، بلا تعابير)، فرجّع «صفر
+   * تعابير» والمجسّم فيه **٣١** على جسم اسمه `CC_Base_Body`. والوجه
+   * ما يكون دايماً أول جسم، فالبحث لازم يشمل الكل.
+   */
+  const morphOwners = scene.meshes
+    .filter((m) => m.morphTargetManager && m.morphTargetManager.numTargets > 0)
+    .map((m) => m.morphTargetManager!)
 
   let pointing: 'right' | 'left' | null = null
   /** بكسلات الزر — التصحيح النهائي يصير عليها (فضاء الشاشة). */
@@ -416,17 +417,20 @@ export function buildMotionRig(
         if (v === undefined) continue
         const bones = fingerBones(hand, finger)
         for (const b of bones) {
-          const q = b.rotationQuaternion ?? Quaternion.Identity()
-          rememberRest(b.name, q)
-          const rest = fingerRest.get(b.name) ?? Quaternion.Identity()
-          // ⚠️ **محور الانثناء مقاس مو مخمّن** — انظر تعليق
-          // `setFingerCurl`. والدوران يُضاف **على وضع الراحة** مو
-          // على الوضع الحالي، وإلا يتراكم كل إطار وينلوي الإصبع.
-          const bend = Quaternion.RotationAxis(
-            new Vector3(0, 0, 1), -v * FINGER_MAX_BEND,
-          )
-          b.setRotationQuaternion(rest.multiply(bend), Space.LOCAL, skinnedMesh)
-          wroteFingers = true
+          // ⚠️ **مسار `rotate` مو `setRotationQuaternion`**: الثاني
+          // (بفضاء محلي) ما يوصل للرسم — قِسته: صفر مم حركة وصفر
+          // تغيّر بالصورة، وجرّبت معاه إجبار التركيب و`prepare` ولا
+          // شي نفع. و`rotate` يكتب على المصفوفة مباشرة بمسار ثاني.
+          // والدوران **تفاضلي**: نتذكر الزاوية المطبَّقة وندوّر
+          // بالفرق بس، وإلا تتراكم كل إطار وينلوي الإصبع.
+          const applied = fingerAngle.get(b.name) ?? 0
+          const goal = v * FINGER_MAX_BEND
+          const delta = goal - applied
+          if (Math.abs(delta) > 1e-4) {
+            b.rotate(fingerAxis, -delta, Space.LOCAL)
+            fingerAngle.set(b.name, goal)
+            wroteFingers = true
+          }
         }
       }
     }
@@ -581,8 +585,8 @@ export function buildMotionRig(
       if (!head) return
       // اتجاه الوجه يُقاس من محور الكتفين، وعليه تنطبق الزوايا.
       let side = new Vector3(1, 0, 0)
-      const la = worldOf(bone(BONE.leftArm))
-      const ra = worldOf(bone(BONE.rightArm))
+      const la = worldOf(bone(naming.arm('left')))
+      const ra = worldOf(bone(naming.arm('right')))
       if (la && ra) {
         side = ra.subtract(la)
         side.y = 0
@@ -619,18 +623,22 @@ export function buildMotionRig(
       return out
     },
     expressionNames() {
-      if (!morphs) return []
-      const out: string[] = []
-      for (let i = 0; i < morphs.numTargets; i++) {
-        out.push(morphs.getTarget(i).name)
+      const out = new Set<string>()
+      for (const mgr of morphOwners) {
+        for (let i = 0; i < mgr.numTargets; i++) out.add(mgr.getTarget(i).name)
       }
-      return out
+      return [...out]
     },
     setExpression(name, weight) {
-      if (!morphs) return
-      for (let i = 0; i < morphs.numTargets; i++) {
-        const t = morphs.getTarget(i)
-        if (t.name === name) { t.influence = Math.min(1, Math.max(0, weight)); return }
+      const w = Math.min(1, Math.max(0, weight))
+      // نطبّقه على **كل** جسم فيه نفس التعبير: الوجه والذقن والحواجب
+      // أجسام منفصلة، ولو حرّكنا الوجه وحده تصير الابتسامة والذقن
+      // مو متطابقين.
+      for (const mgr of morphOwners) {
+        for (let i = 0; i < mgr.numTargets; i++) {
+          const t = mgr.getTarget(i)
+          if (t.name === name) t.influence = w
+        }
       }
     },
     lookAt(target) {
@@ -654,10 +662,12 @@ export function buildMotionRig(
       looking = false
       curlWanted.right = {}
       curlWanted.left = {}
-      for (const [name, q] of fingerRest) {
+      // نرجّع كل إصبع بالدوران المعاكس لنفس المقدار المطبَّق.
+      for (const [name, ang] of fingerAngle) {
         const b = bone(name)
-        b?.setRotationQuaternion(q, Space.LOCAL, skinnedMesh)
+        if (b && Math.abs(ang) > 1e-4) b.rotate(fingerAxis, ang, Space.LOCAL)
       }
+      fingerAngle.clear()
       scene.onAfterAnimationsObservable.remove(observer)
       ikTarget.dispose(); poleTarget.dispose(); lookTarget.dispose()
     },
