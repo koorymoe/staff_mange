@@ -17,6 +17,7 @@ import PageHeader from '../components/PageHeader'
 import type { AvatarHandle, AvatarStats, ClipName } from '../components/entityAvatarEngine'
 import type { Tracker } from '../components/faceTracking'
 import { api, entityModelUrl, ensureFileToken, type EntityAvatarModel } from '../api'
+import { forgetActiveModel } from '../components/EntityAvatar'
 
 /**
  * ⚠️ **مفتاح الإطفاء.** النظام ماكو بيه منظومة رايات ميزات (فحصتها:
@@ -39,7 +40,7 @@ const BUILT_IN = [
 ] as const
 
 /** مجسّم بالقائمة: مدمج أو مرفوع — الشاشة تتعامل معهم بنفس الشكل. */
-type ModelChoice = { id: string; label: string; url: string; uploaded: boolean; sizeBytes?: number }
+type ModelChoice = { id: string; label: string; url: string; uploaded: boolean; sizeBytes?: number; isActive: boolean }
 
 type Log = { at: string; text: string; bad?: boolean }
 
@@ -130,10 +131,14 @@ function Lab() {
     ...BUILT_IN.map((m) => ({
       id: m.id, label: m.label, uploaded: false,
       url: `${import.meta.env.BASE_URL}${m.file}`,
+      // المدمج «شخصية النظام» لمّا ماكو ولا مرفوع نشط — لأن هذا
+      // بالضبط شنو يشوفه الموظف وقتها.
+      isActive: !(uploaded ?? []).some((u) => u.isActive),
     })),
     ...(uploaded ?? []).map((m) => ({
       id: m.id, label: m.label, uploaded: true, sizeBytes: m.sizeBytes,
       url: entityModelUrl(m.fileKey),
+      isActive: m.isActive,
     })),
   ], [uploaded])
 
@@ -198,6 +203,26 @@ function Lab() {
       say(err instanceof Error ? err.message : String(err), true)
     } finally {
       setUploadBusy(false)
+    }
+  }
+
+  /**
+   * يخلي هذا المجسّم **شخصية النظام** لكل موظف.
+   *
+   * 🔴 هذا الزر هو الي كان ناقصاً: المجسّم يُرفَع ويُقارَن هنا، بس
+   * الودجة الي يشوفها الموظف كان اسم ملفها **ثابتاً بالكود** — فما
+   * وصل ولا مجسّم جديد لولا موظف.
+   */
+  const activateModel = async (m: ModelChoice) => {
+    try {
+      await api.activateEntityModel(m.uploaded ? m.id : 'builtin')
+      // ⚠️ ننسّي المخزون بالودجة: الرابط محفوظ بوعد على مستوى الوحدة،
+      // فبلا هذا يبقى (ع) يشوف القديمة حتى بعد التفعيل ويحسبه ما اشتغل.
+      forgetActiveModel()
+      say(`«${m.label}» صارت شخصية النظام — تبيّن لكل الموظفين بعد إعادة تحميل الصفحة`)
+      await loadUploaded()
+    } catch (err) {
+      say(err instanceof Error ? err.message : String(err), true)
     }
   }
 
@@ -406,6 +431,22 @@ function Lab() {
                     {m.label}
                     {m.sizeBytes ? ` · ${(m.sizeBytes / 1048576).toFixed(1)}م` : ''}
                   </button>
+                  {m.isActive ? (
+                    <span
+                      className="ms-1 rounded-lg bg-emerald-50 px-2 py-2 text-[11px] font-bold text-emerald-700"
+                      title="هاي الشخصية الي يشوفها كل الموظفين"
+                    >
+                      شخصية النظام
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => void activateModel(m)}
+                      title="خليها شخصية النظام لكل الموظفين"
+                      className="ms-1 rounded-lg bg-emerald-600 px-2 py-2 text-[11px] font-bold text-white hover:bg-emerald-700"
+                    >
+                      خليها شخصية النظام
+                    </button>
+                  )}
                   {m.uploaded && (
                     <button
                       onClick={() => void archiveModel(m)}

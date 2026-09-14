@@ -11,6 +11,7 @@ import { ArcRotateCamera } from '@babylonjs/core/Cameras/arcRotateCamera'
 import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
+import { BoneLookController } from '@babylonjs/core/Bones/boneLookController'
 import { Color4 } from '@babylonjs/core/Maths/math.color'
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader'
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
@@ -346,6 +347,53 @@ export async function mountAvatar(
     restoreRoot = neutralizeRootMotion(skeleton, carrier, skinned)
     motion = buildMotionRig(scene, skeleton, skinned, root, groups)
   }
+  // ═══ وضعية راحة معقولة لمجسّم بلا مقاطع ═══
+  //
+  // 🔴 **ليش هذا موجود**: مجسّمنا الجديد فيه **صفر مقاطع** — فحّصت
+  // ملف الـglTF مباشرةً (`animations: 0`؛ المصدّر ما حفظ وقفاته).
+  // فالي يُعرض هو **وضعية الراحة**: أذرع مفتوحة بزاوية **٥٩.٢°** عن
+  // العمود (مقاسة من هيكل الملف). ومالك النظام راح يشوفها
+  // **مكسورة** مو «واقفة ساكنة» — وهذا أسوأ من الشخصية القديمة.
+  //
+  // ⚠️ **وليش بمتحكّم مو بكتابة مباشرة**: جرّبت `bone.rotate` و
+  // `node.rotate` على العقدة المربوطة — الكتلة تُنفَّذ، والعظام
+  // تنلگى (مقاس: `DEF-upper_arm.L/R` موجودتان)، و**ولا بكسل يتغيّر**.
+  // ومتحكّمات بابل (`BoneLookController`) هي **الوحيدة** الي قياسها
+  // أثبت إنها توصل للرسم (١٣.٠٩٪ من البكسلات بلفّة الرأس). وهذا
+  // نفس سبب صفر الأصابع — المشكلة بالمكانيكية مو بالمحور.
+  if (groups.length === 0 && skeleton && skinned && naming.restArmDrop) {
+    const mesh = skinned
+    const holders: BoneLookController[] = []
+    for (const hand of ['right', 'left'] as const) {
+      const bone = skeleton.bones.find((b) => b.name === naming.arm(hand))
+      // بهدوء لو ما انلگت: نمط مجهول ما يستاهل خطأً بشاشة موظف.
+      if (!bone) continue
+      const sh = bone.getAbsolutePosition(mesh)
+      // الهدف **تحت الكتف وشوي للخارج** — ١٤° فرجة عن الجسم حتى
+      // الذراع ما تنغرز بالخصر.
+      // ⚠️ **`adjustPitch` مو تجميلاً — بلاه الأذرع تطلع فوق الرأس.**
+      // المتحكّم ما يوجّه محور العظمة الطويل (`Y` بـRigify) نحو
+      // الهدف، فالهدف «تحت الكتف» لحاله طلّع اليد **فوق** الكتف
+      // (مقاس: يد y=1.988 مقابل كتف y=1.489). وجرّبت الإشارتين
+      // **بنفس التحميل** — واحدة لكل ذراع — فبيّنت إن `+π/2` هي
+      // الصحيحة (يد y=0.990) و`−π/2` تطلّعها فوق.
+      //
+      // والنتيجة مقاسة: اليد تنزل **٢٣.٦ سم** وتقرب **٣٢ سم** للجسم،
+      // والزاوية عن العمود **١٣.٨°** — وقفة إنسان بدل وضعية T.
+      const target = new Vector3(sh.x + (hand === 'left' ? 0.12 : -0.12), sh.y - 0.48, sh.z)
+      holders.push(new BoneLookController(mesh, bone, target, {
+        adjustPitch: Math.PI / 2,
+      }))
+    }
+    if (holders.length) {
+      // ⚠️ **بعد الحركات**: نفس ترتيب بقية المنظومة — الحركات تكتب
+      // على العظام أولاً ثم نكتب فوقها، وبلا هالترتيب يُمحى شغلنا.
+      scene.onAfterAnimationsObservable.add(() => {
+        for (const h of holders) h.update()
+      })
+    }
+  }
+
   play(initial)
   // ⚠️ **بعد** بناء المنظومة وتشغيل المقطع: التأطير يقرأ الصندوق
   // المحيط وقتها، فيوصف الوضع الي راح ينرسم فعلاً.

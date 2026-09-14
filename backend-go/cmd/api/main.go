@@ -547,6 +547,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		http.HandlerFunc(entityModelHandler.List), requireAuth))
 	mux.Handle("POST /api/entity/models", middleware.Chain(
 		http.HandlerFunc(entityModelHandler.Create), requireAuth, requireOwnerModels))
+	// شخصية النظام النشطة: القراءة لكل موظف (الودجة تحتاجها بكل تحميل)،
+	// والتفعيل **للمالك حصراً** لأنه يبدّل الي يشوفه كل موظف.
+	mux.Handle("GET /api/entity/models/active", middleware.Chain(
+		http.HandlerFunc(entityModelHandler.Active), requireAuth))
+	mux.Handle("PUT /api/entity/models/{id}/activate", middleware.Chain(
+		http.HandlerFunc(entityModelHandler.Activate), requireAuth, requireOwnerModels))
 	mux.Handle("PUT /api/entity/models/{id}/archive", middleware.Chain(
 		http.HandlerFunc(entityModelHandler.Archive), requireAuth, requireOwnerModels))
 

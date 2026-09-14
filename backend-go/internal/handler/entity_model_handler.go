@@ -34,6 +34,44 @@ func (h *EntityModelHandler) List(w http.ResponseWriter, _ *http.Request) {
 	WriteJSON(w, http.StatusOK, rows)
 }
 
+// GET /api/entity/models/active — شخصية النظام الحالية.
+//
+// ⚠️ **مسار لحاله مو ترشيح من القائمة**: هذا النداء يصير لـ**كل موظف**
+// بكل تحميل للودجة، فلازم يرجّع صفاً واحداً مو القائمة كلها. ولأن
+// الودجة تنبني قبل ما يختار (ع) شخصية، **ماكو نشط حالة طبيعية** ونرجّع
+// `204` — والواجهة تقع على المجسّم المدمج بهدوء.
+//
+// والقراءة لأي موظف مسجّل (مو للمالك): كل موظف يحتاجها حتى يشوف شخصيته.
+func (h *EntityModelHandler) Active(w http.ResponseWriter, _ *http.Request) {
+	row, err := h.repo.GetActive()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب شخصية النظام")
+		return
+	}
+	if row == nil {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	WriteJSON(w, http.StatusOK, row)
+}
+
+// PUT /api/entity/models/{id}/activate — خلّي هذا المجسّم شخصية النظام.
+//
+// 🔒 **للمالك حصراً**: هذا يبدّل الشخصية الي يشوفها **كل** موظف بالنظام.
+// و`id` = `builtin` يعني رجوعاً للمجسّم المدمج — يعني خطة تراجع بضغطة
+// زر، بلا نشر ولا تعديل كود.
+func (h *EntityModelHandler) Activate(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "builtin" {
+		id = ""
+	}
+	if err := h.repo.Activate(id); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 // POST /api/entity/models — رفع مجسّم (multipart: file + label).
 //
 // الرفع والتسجيل **بنداء واحد**: لو فصلناهم يصير ملف مخزون بلا صف

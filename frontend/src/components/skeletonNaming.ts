@@ -45,6 +45,21 @@ export interface BoneNaming {
    * ملّيمتر، وما تبيّن بالصورة. والانثناء الحقيقي حول `X`.
    */
   fingerBendAxis: readonly [number, number, number]
+  /**
+   * تصحيح وضعية الراحة لمّا المجسّم **ما بيه ولا مقطع حركة**.
+   *
+   * 🔴 **السبب مقاس من الملف نفسه**: مجسّم Rigify الي رفعناه فيه
+   * **صفر مقاطع** (المصدّر ما حفظ وقفاته)، فوضعية الراحة هي الي
+   * تُعرض — وهي **أذرع مفتوحة بزاوية ٥٩.٢° عن العمود**. وهاي تبيّن
+   * للموظف كأن الشخصية **مكسورة** مو «واقفة ساكنة».
+   *
+   * والأرقام محسوبة من هيكل الـglTF مو مخمّنة: العظمة ممتدة على
+   * `Y` المحلي، ومحور الإنزال هو `Z` المحلي (مقاس: `[0,0,∓1]`)،
+   * والزاوية الطبيعية تخلي الذراع ~١٤° عن الجسم.
+   *
+   * `null` يعني «ما يحتاج تصحيحاً» — ميكسامو عنده مقاطعه.
+   */
+  restArmDrop: { angleRad: number } | null
 }
 
 const MIXAMO: BoneNaming = {
@@ -68,6 +83,8 @@ const MIXAMO: BoneNaming = {
   armChain: (h) =>
     new RegExp(`^mixamorig:${h === 'right' ? 'Right' : 'Left'}(Shoulder|Arm|ForeArm|Hand)`),
   fingerBendAxis: [0, 0, 1],
+  // ميكسامو عنده ١١ مقطعاً يكتبون على العظام — فأي تصحيح ينمحي.
+  restArmDrop: null,
 }
 
 /**
@@ -97,6 +114,8 @@ const RIGIFY: BoneNaming = {
   armChain: (h) =>
     new RegExp(`^DEF-(shoulder|upper_arm|forearm|hand)\\.${h === 'right' ? 'R' : 'L'}`),
   fingerBendAxis: [1, 0, 0],
+  // ٥٩.٢° مقاسة − ١٤° نبقّيها فرجة عن الجسم = ٤٥°.
+  restArmDrop: { angleRad: (45 * Math.PI) / 180 },
 }
 
 /**

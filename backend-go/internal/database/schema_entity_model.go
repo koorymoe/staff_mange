@@ -15,6 +15,10 @@ package database
 // تسجيل الدخول بوسم موقَّع** — وهذا ألزم لرخصة المجسّمات المشتراة
 // من أسواق ثلاثية الأبعاد، لأنها تمنع **إتاحة المجسّم كملف** للعموم،
 // والملف الثابت بـ`public/` كان مكشوفاً لأي أحد.
+// 🔴 و**خانة «نشط»** (ترحيل 0277) هي الي تخلي التبديل فعلياً: قبلها
+// كان اسم الملف مكتوباً **ثابتاً** بـ`EntityAvatar.tsx`، فالمجسّم
+// المرفوع ما يوصل لأي موظف — يبين بشاشة المختبر وحدها. ومالك النظام
+// شكى إنه **ما شاف الشخصية الجديدة أبداً بالنظام**، وكان محقاً.
 func entityModelMigrations() []Migration {
 	return []Migration{
 		{
@@ -35,6 +39,18 @@ CREATE TABLE IF NOT EXISTS "EntityAvatarModel" (
 );
 CREATE INDEX IF NOT EXISTS "EntityAvatarModel_active_idx"
   ON "EntityAvatarModel" ("archivedAt", "createdAt" DESC);
+`,
+		},
+		{
+			Version: "0277_entity_avatar_model_active",
+			SQL: `
+ALTER TABLE "EntityAvatarModel"
+  ADD COLUMN IF NOT EXISTS "isActive" BOOLEAN NOT NULL DEFAULT false;
+-- 🔴 نشط **واحد حصراً** — والقيد بقاعدة البيانات مو بالكود: لو صارت
+-- نشطين، الودجة تعرض مجسّماً يتغيّر حسب ترتيب الاستعلام، وهذا عيب
+-- ما يبيّن إلا بالإنتاج.
+CREATE UNIQUE INDEX IF NOT EXISTS "EntityAvatarModel_one_active_idx"
+  ON "EntityAvatarModel" ("isActive") WHERE "isActive";
 `,
 		},
 	}

@@ -965,6 +965,8 @@ export interface EntityAvatarModel {
   sizeBytes: number
   uploadedById: string | null
   archivedAt: string | null
+  /** شخصية النظام الحالية — الي يشوفها كل موظف بالودجة وورقة القصة. */
+  isActive: boolean
   createdAt: string
 }
 
@@ -4226,6 +4228,32 @@ export const api = {
   },
   archiveEntityModel: (id: string) =>
     request<{ ok: boolean }>(`/entity/models/${id}/archive`, { method: 'PUT' }),
+  /**
+   * شخصية النظام النشطة، أو `null` لو ماكو.
+   *
+   * ⚠️ **مكتوبة بـ`fetch` مو بـ`request`**: الخادم يرجّع **٢٠٤ بلا
+   * جسم** لمّا ماكو مجسّم نشط (وهاي حالة طبيعية)، و`request` ينادي
+   * `res.json()` دائماً — فيرمي على جسم فاضي ويطلع كأنه خطأ.
+   *
+   * 🔴 و**أي فشل يرجّع `null` مو استثناءً**: المستدعي هو الودجة الي
+   * يشوفها كل موظف، والفشل لازم يعني «استخدم المجسّم المدمج» مو
+   * «شخصية مكسورة». وبالذات لو الخادم أقدم من الواجهة (٤٠٤).
+   */
+  getActiveEntityModel: async (): Promise<EntityAvatarModel | null> => {
+    try {
+      const token = currentToken()
+      const res = await fetch(`${API_URL}/entity/models/active`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (res.status === 204 || !res.ok) return null
+      return (await res.json()) as EntityAvatarModel
+    } catch {
+      return null
+    }
+  },
+  /** `id` = `builtin` يعني رجوعاً للمجسّم المدمج. */
+  activateEntityModel: (id: string) =>
+    request<{ ok: boolean }>(`/entity/models/${id}/activate`, { method: 'PUT' }),
 
   // المضاف من شاشة «إضافة منتج» بس — بدون كتالوج عروض الأسعار القديم
   getAddedProducts: () => request<Product[]>('/products?added=1'),

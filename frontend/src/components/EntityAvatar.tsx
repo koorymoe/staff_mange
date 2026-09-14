@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AvatarHandle, ClipName } from './entityAvatarEngine'
+import { api, ensureFileToken, entityModelUrl } from '../api'
 
 // ═══ شخصية الكيان فوق ورقة القصة ═══
 //
@@ -32,6 +33,46 @@ interface Props {
  * إننا نقع على النصي فوراً. ويُحسب خارج الـeffect حتى ما نضبط حالة
  * بشكل متزامن داخله.
  */
+/** المجسّم المدمج — الاحتياطي الي **ما ينكسر أبداً**. */
+const BUILTIN_MODEL = `${import.meta.env.BASE_URL}amani-tech-v4.glb`
+
+/**
+ * رابط المجسّم الي يُعرض لهذا الموظف.
+ *
+ * 🔴 **ليش هالدالة موجودة أصلاً**: قبلها كان اسم الملف مكتوباً
+ * **ثابتاً** هنا، ومعناها إن أي مجسّم يُرفَع من داخل النظام **ما يوصل
+ * لولا موظف** — يبين بشاشة المختبر وحدها. ومالك النظام شكى إنه
+ * «ما شاف الشخصية الجديدة أبداً بالنظام»، وكان محقاً: هذا المكوّن هو
+ * **كل** ما يشوفه الموظف (الودجة العائمة وورقة القصة)، وهو ما كان
+ * يعرف إن اكو شخصية جديدة أصلاً.
+ *
+ * ⚠️ **الترتيب إلزامي**: الوسم (`ensureFileToken`) **قبل** بناء
+ * الرابط — `entityModelUrl` يقرأ الوسم من متغيّر بالوحدة، فلو انبنى
+ * قبله يطلع رابط بلا وسم و`GET /api/files` يرد ٤٠١.
+ *
+ * 🔴 **وكل مسار فشل يرجّع المدمج مو استثناءً**: هاي شاشة كل موظف.
+ * ماكو نشط · وسم فشل · خادم أقدم من الواجهة (٤٠٤) · شبكة مقطوعة —
+ * كلها تعني «اعرض القديم»، مو «لا تعرض شي».
+ */
+let modelUrlPromise: Promise<string> | null = null
+function resolveModelUrl(): Promise<string> {
+  // ⚠️ **الوعد يُخزَّن على مستوى الوحدة** لأن الودجة العائمة وورقة
+  // القصة ممكن تتركّبان مع بعض: بلا خزن يصير نداءان لكل موظف بكل
+  // تنقّل، وكلهم يرجّعون نفس الجواب.
+  if (!modelUrlPromise) {
+    modelUrlPromise = ensureFileToken()
+      .then(() => api.getActiveEntityModel())
+      .then((m) => (m ? entityModelUrl(m.fileKey) : BUILTIN_MODEL))
+      .catch(() => BUILTIN_MODEL)
+  }
+  return modelUrlPromise
+}
+
+/** يُنسى المخزون لمّا يبدّل (ع) الشخصية، حتى التحميل الجاي يجيب الجديد. */
+export function forgetActiveModel(): void {
+  modelUrlPromise = null
+}
+
 function webglSupported(): boolean {
   try {
     return !!document.createElement('canvas').getContext('webgl2')
@@ -58,9 +99,10 @@ export default function EntityAvatar({
     const canvas = canvasRef.current
     if (!canvas) return
 
-    import('./entityAvatarEngine')
-      .then(({ mountAvatar }) =>
-        mountAvatar(canvas, `${import.meta.env.BASE_URL}amani-tech-v4.glb`, clip, framing))
+    // المحرّك ورابط المجسّم بالتوازي — الاثنان مستقلان، والتسلسل
+    // يضيف رحلةَ شبكة على وقت ظهور الشخصية بلا فائدة.
+    Promise.all([import('./entityAvatarEngine'), resolveModelUrl()])
+      .then(([{ mountAvatar }, url]) => mountAvatar(canvas, url, clip, framing))
       .then((h) => {
         if (cancelled) { h.dispose(); return }
         handleRef.current = h

@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"fmt"
 	"strings"
 	"time"
@@ -18,7 +19,13 @@ type EntityAvatarModel struct {
 	SizeBytes    int64      `db:"sizeBytes" json:"sizeBytes"`
 	UploadedByID *string    `db:"uploadedById" json:"uploadedById"`
 	ArchivedAt   *time.Time `db:"archivedAt" json:"archivedAt"`
-	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
+	// IsActive شخصية النظام الحالية — الودجة وورقة القصة تحمّلان هذا.
+	//
+	// ⚠️ **إضافة الخانة هنا إلزامية مو تجميلاً**: كل الاستعلامات بهذا
+	// الملف `SELECT *`، و`sqlx` يفشل على عمود ما يلگى إله حقلاً —
+	// فخانة ناقصة بالبنية تكسر القراءة كلها بلا علاقة بالميزة.
+	IsActive  bool      `db:"isActive" json:"isActive"`
+	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
 }
 
 type EntityModelRepository struct{ db *sqlx.DB }
@@ -68,10 +75,67 @@ func (r *EntityModelRepository) Create(label, fileKey, fileType string, size int
 	return &row, nil
 }
 
+// GetActive شخصية النظام الحالية.
+//
+// ⚠️ **ماكو نشط ≠ خطأ**: هاي الحالة الطبيعية لنظام ما بدّل شخصيته بعد،
+// فنرجّع `(nil, nil)` والواجهة تقع على المجسّم المدمج. لو رجّعناها خطأً
+// چان كل موظف يشوف خطأً بالكونسول بلا سبب.
+func (r *EntityModelRepository) GetActive() (*EntityAvatarModel, error) {
+	var row EntityAvatarModel
+	err := r.db.Get(&row, `
+		SELECT * FROM "EntityAvatarModel"
+		WHERE "isActive" AND "archivedAt" IS NULL`)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &row, nil
+}
+
+// Activate يخلي مجسّماً شخصيةَ النظام لكل الموظفين.
+//
+// ⚠️ **بمعاملة واحدة**: التصفير والتفعيل لازم يصيرون معاً. لو صفّرنا
+// ثم فشل التفعيل، يبقى النظام **بلا شخصية نشطة** وكل موظف يرجع
+// للمجسّم المدمج — تراجع صامت. والفهرس الفريد يمنع نشطين، فالتصفير
+// **قبل** التفعيل مو اختياراً.
+//
+// وID فاضي = «رجّعني للمجسّم المدمج»: نصفّر بس.
+func (r *EntityModelRepository) Activate(id string) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.Exec(`UPDATE "EntityAvatarModel" SET "isActive" = false WHERE "isActive"`); err != nil {
+		return err
+	}
+	if strings.TrimSpace(id) != "" {
+		res, err := tx.Exec(`
+			UPDATE "EntityAvatarModel" SET "isActive" = true
+			WHERE id = $1 AND "archivedAt" IS NULL`, id)
+		if err != nil {
+			return err
+		}
+		// 🔴 المؤرشف ما ينفعّل: ملفه ممكن يكون مقصوداً للحذف، وتفعيله
+		// يعني شخصيةً تختفي بلا ما نعرف ليش.
+		if n, _ := res.RowsAffected(); n == 0 {
+			return fmt.Errorf("المجسّم غير موجود أو مؤرشف")
+		}
+	}
+	return tx.Commit()
+}
+
 // Archive أرشفة ناعمة — ما نحذف ملفاً ممكن يكون معروضاً.
 func (r *EntityModelRepository) Archive(id string) error {
 	res, err := r.db.Exec(`
-		UPDATE "EntityAvatarModel" SET "archivedAt" = CURRENT_TIMESTAMP
+		UPDATE "EntityAvatarModel"
+		-- ⚠️ والتصفير **مع** الأرشفة: بلاه يبقى صفٌّ مؤرشف نشطاً،
+		-- والودجة تطلب ملفاً مقصوداً للإخفاء — كسرة صامتة بشاشة كل
+		-- موظف.
+		SET "archivedAt" = CURRENT_TIMESTAMP, "isActive" = false
 		WHERE id = $1 AND "archivedAt" IS NULL`, id)
 	if err != nil {
 		return err
