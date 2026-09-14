@@ -713,6 +713,45 @@ export function buildMotionRig(
       look.target = lookTarget.position
       looking = true
     },
+    hasEyeBones() {
+      return !!(eyeLook.right || eyeLook.left)
+    },
+    gazeAt(target) {
+      // ⚠️ **يرجّع `false` لو ماكو عظام عيون** بدل ما يسكت ويوهم
+      // إن الميزة شغّالة: ميكسامو ما ينطي عظام عيون إطلاقاً (مقاس)،
+      // فالمستدعي يعرف إن هذا المجسّم ما يتبع المؤشر.
+      if (!eyeLook.right && !eyeLook.left) return false
+      if (!target) { gazing = false; return true }
+      eyeTarget.position.copyFrom(target)
+      for (const side of ['right', 'left'] as const) {
+        const c = eyeLook[side]
+        if (c) c.target = eyeTarget.position
+      }
+      gazing = true
+      return true
+    },
+    gazeAtScreen(px, py) {
+      if (!eyeLook.right && !eyeLook.left) return false
+      const cam = scene.activeCamera
+      const headBoneNow = headBone
+      if (!cam || !headBoneNow) return false
+      // ⚠️ **نفس الإسقاط المستقر مال `pointAtScreen`** — شعاع من
+      // الكاميرا ببكسل المؤشر، مقطوعاً بمستوى يمرّ **بالرأس** وعمودي
+      // على نظر الكاميرا. والطريقتان المجرّبتان قبله فشلتا بالقياس
+      // (عمق ثابت ← الوقفة ما تتغيّر؛ ومحاور مخمّنة ← خطأ ١٥٢°).
+      const eng = scene.getEngine()
+      const w = eng.getRenderWidth(), h = eng.getRenderHeight()
+      const view = cam.getViewMatrix(), proj = cam.getProjectionMatrix()
+      const near = Vector3.Unproject(new Vector3(px, py, 0), w, h, Matrix.Identity(), view, proj)
+      const far = Vector3.Unproject(new Vector3(px, py, 1), w, h, Matrix.Identity(), view, proj)
+      const dir = far.subtract(near)
+      const n = cam.getDirection(Vector3.Forward())
+      const denom = Vector3.Dot(dir, n)
+      if (Math.abs(denom) < 1e-6) return false
+      const headPos = headBoneNow.getAbsolutePosition(skinnedMesh)
+      const t = Vector3.Dot(headPos.subtract(near), n) / denom
+      return this.gazeAt(near.add(dir.scale(t)))
+    },
     walkTo(target, speed = 0.9) {
       // ⚠️ مشية جديدة تلغي الي قبلها بلا ما يبقى وعد معلّق للأبد
       if (walk) { const old = walk.done; walk = null; old() }
