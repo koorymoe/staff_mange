@@ -1,6 +1,22 @@
-import bpy, os
+import bpy, os, sys
 
-bpy.ops.wm.open_mainfile(filepath='/tmp/blendcheck/Cartoon boy_Blend/cartoon boy.blend')
+# ═══ المسارات وسائط، مو مكتوبة ثابتاً ═══
+#
+# 🔴 **السبب**: (م) رفع نسخته المعدّلة (`amani-wave.blend`) وفيها
+# **حركة تلويح وعظام عيون**، وحجمها **١٩.٨٩ م.ب** — يعني **أكبر من
+# حد الرفع بخادمنا (١٠ م.ب)** فما تُرفَع أصلاً. والسبب **٩٥١ تعبيراً**
+# (كل تعبير نسخة كاملة من مواقع الرؤوس) — ونفس المشكلة الي هالسكربت
+# حلّها سابقاً (٥٠٧ ← ٣١). فبدل ما نكتب سكربتاً ثانياً، نخلي المدخل
+# والمخرج **وسيطين** ونشغّله على ملفه.
+#
+# ⚠️ و**نحفظ الحركات** (`--keep-anim`): ملف (م) فيه تلويحته، وحذفها
+# يعني نخسر شغله. وبالملف الأصلي ماكو حركات فالوسيط ما يفرّق.
+ARGS = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+SRC = ARGS[0] if ARGS else '/tmp/blendcheck/Cartoon boy_Blend/cartoon boy.blend'
+OUT = ARGS[1] if len(ARGS) > 1 else '/tmp/blendcheck/cartoon_boy_web.glb'
+KEEP_ANIM = '--keep-anim' in ARGS
+
+bpy.ops.wm.open_mainfile(filepath=SRC)
 
 for o in bpy.data.objects:
     try:
@@ -114,7 +130,20 @@ for mat in bpy.data.materials:
 print('materials rebuilt:', rebuilt)
 
 # ═══ ③ الخامات: تصغير ═══
+#
+# ⚠️ **السقف حسب دور الصورة مو حجماً واحداً للكل**، والسبب مقاس:
+# نسخة (م) طلعت **١٩.٨٩ م.ب** وبعد تقليم التعابير بقت **١٠.٧٣** —
+# لا تزال فوق **حد الرفع بخادمنا (١٠ م.ب)** فما تُرفَع. والباقي
+# خامات: خريطة نتوء البنطرون وحدها **٠.٩٤ م.ب** وخريطة الحذاء
+# **٠.٨٥**.
+#
+# 🔴 و**خرائط النتوء واللمعان تفاصيل ثانوية**: الشخصية تُعرض بصندوق
+# **٩٦×١١٢** بودجة الموظف، فنتوء بدقة ١٠٢٤ **ما يبيّن ولا بكسل**
+# منه. واللون (`Diffuse`) هو الي يبيّن فعلاً — فيبقى أعلى.
 SMALL = ('Teeth', 'Nails', 'Tongue', 'Cornea', 'Eyelash', 'TearLine', 'Occlusion')
+# الجلد والرأس يبقون ١٠٢٤: الوجه هو الي يتفرّس بيه المستخدم.
+FACE = ('Skin_Head', 'Std_Eye', 'Eyebrow')
+DETAIL = ('Normal', 'Specular', 'Roughness', 'Metallic', 'AO', 'Occlusion')
 for im in bpy.data.images:
     if im.size[0] == 0:
         try:
@@ -124,7 +153,16 @@ for im in bpy.data.images:
     w, h = im.size
     if w == 0:
         continue
-    cap = 512 if any(k in im.name for k in SMALL) else 1024
+    if any(k in im.name for k in SMALL):
+        cap = 512
+    elif any(k in im.name for k in DETAIL):
+        # تفاصيل ثانوية — ٥١٢ للوجه و٢٥٦ لغيره
+        cap = 512 if any(k in im.name for k in FACE) else 256
+    elif any(k in im.name for k in FACE):
+        cap = 1024
+    else:
+        # لون الملابس والشعر — ٧٦٨ كافية بحجم الودجة
+        cap = 768
     if max(w, h) > cap:
         s = cap / max(w, h)
         im.scale(max(1, int(w * s)), max(1, int(h * s)))
@@ -140,7 +178,7 @@ for o in keep:
     o.select_set(True)
 bpy.context.view_layer.objects.active = keep[0]
 
-out = '/tmp/blendcheck/cartoon_boy_web.glb'
+out = OUT
 bpy.ops.export_scene.gltf(
     filepath=out,
     export_format='GLB',
@@ -150,7 +188,22 @@ bpy.ops.export_scene.gltf(
     export_morph_normal=False,
     export_morph_tangent=False,
     export_skins=True,
-    export_animations=False,
+    export_animations=KEEP_ANIM,
+    # 🔴 **الخبز إلزامي، وبلاه الحركة تطلع «موجودة» وما تتحرّك.**
+    #
+    # قِستها: صدّرت تلويحة (م) بلا خبز، والمقطع ظهر بقائمة المقاطع
+    # بعارضنا، وضغطته، والنتيجة **صفر بالمية من البكسلات تتغيّر**.
+    # والسبب: حركة Rigify مكتوبة على **عظام التحكّم** (`hand_fk.R`
+    # و`upper_arm_fk.L` — المصدّر نفسه حذّر منها)، و`export_def_bones`
+    # يصدّر **عظام التشويه وحدها**. فالمسارات تشير لعقد **غير
+    # موجودة** بالملف — حركة ميتة.
+    #
+    # والخبز يحسب وضع عظام التشويه **كل إطار** بعد القيود، فتنكتب
+    # عليها مباشرةً.
+    export_force_sampling=True,
+    export_bake_animation=True,
+    export_animation_mode='ACTIONS',
+    export_nla_strips=False,
     export_apply=False,
 )
 print('OUT SIZE MB: %.2f' % (os.path.getsize(out) / 1048576))
