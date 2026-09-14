@@ -63,6 +63,22 @@ export interface MotionRig {
   stopPointing(): void
   /** الرأس يتوجّه لنقطة — ⚠️ **توجّه رأس**، مو تتبّع عيون. */
   lookAt(target: Vector3 | null): void
+  /**
+   * **العيون** تتوجّه لنقطة بالعالم — تتبّع عيون حقيقي، مو لفّة رأس.
+   *
+   * 🔴 **وهذا الي طلبه مالك النظام**: «يتبع الموشر مال الحاسبة».
+   * وشكواه «أكو مشكلة بالعيون» كانت على مجسّم **عيونه مرسومة على
+   * الصورة** (صفر عظمة عين) — فما گدر يتبع ولا يرمش أبداً.
+   *
+   * `null` يوقف التتبّع ويرجّع النظر لوضعه الطبيعي.
+   * ⚠️ ويرجّع `false` لو الهيكل **ما عنده عظام عيون** — والمستدعي
+   * يعرف إن الميزة مو متوفرة بهذا المجسّم بدل ما يظن إنها شغّالة.
+   */
+  gazeAt(target: Vector3 | null): boolean
+  /** نفس `gazeAt` بس بإحداثيات بكسل نسبة للكانفس (موضع المؤشر). */
+  gazeAtScreen(px: number, py: number): boolean
+  /** هل هذا المجسّم عنده عظام عيون أصلاً؟ — للعرض الصادق بالمختبر. */
+  hasEyeBones(): boolean
   /** يمشي للهدف بسرعة متر/ثانية — يرجّع وعداً ينتهي بالوصول. */
   walkTo(target: Vector3, speed?: number): Promise<void>
   /**
@@ -253,6 +269,35 @@ export function buildMotionRig(
     })
     : null
 
+  // ═══ العيون ═══
+  //
+  // ⚠️ **بـ`BoneLookController` مثل الرأس** — وهذا **المسار الوحيد
+  // المقاس إنه يوصل للرسم**: الكتابة اليدوية على العظام رجّعت **صفر
+  // مم وصفر تغيّر بالصورة** بكل محاولة (نفس علّة قبض الأصابع).
+  //
+  // ⚠️ و**حدود العين أضيق هواي من الرأس**: العين تلف ~٣٠° أفقياً
+  // و~٢٠° عمودياً وبعدها **يلتفت الرأس**. وبلا هالحدود تطلع نظرة
+  // «الشيطان» — العين تلف لآخر المحجر وتبين مرعبة مو منتبهة.
+  //
+  // ⚠️ ويُبنى **بس لو الهيكل عنده عظام عيون**: ميكسامو ما ينطي
+  // عظام عيون إطلاقاً (`naming.eye()` يرجّع `null`)، فالميزة
+  // **تسكت بهدوء** بدل ما تكسر.
+  const eyeLook: Record<'right' | 'left', BoneLookController | null> = { right: null, left: null }
+  const eyeTarget = new TransformNode('entity-eye-target', scene)
+  for (const side of ['right', 'left'] as const) {
+    const name = naming.eye(side)
+    const eyeBone = name ? bone(name) : null
+    if (!eyeBone) continue
+    eyeLook[side] = new BoneLookController(mesh, eyeBone, eyeTarget.position, {
+      maxYaw: Math.PI * 0.17,
+      maxPitch: Math.PI * 0.11,
+      // ⚠️ أسرع من الرأس (٠.٢٢): العين تسبق الرأس عند البشر، ولو
+      // تحرّكت بنفس بطئه تبين كأنها زجاجية.
+      slerpAmount: 0.35,
+    })
+  }
+  let gazing = false
+
   // ⚠️ **الإحداثيات لازم تمرّ بالمجسم**: `getAbsolutePosition()` بلا
   // تمرير المجسم ترجّع فضاء الهيكل مو العالم — وهاي غلطة قِستها:
   // طلعت أخطاء الإشارة **١٨٦–٢٢٣ سم** وهي أصلاً غلط قياس مو غلط IK.
@@ -408,6 +453,9 @@ export function buildMotionRig(
       ik[pointing]!.update()
     }
     if (looking && look) look.update()
+    if (gazing) {
+      for (const side of ['right', 'left'] as const) eyeLook[side]?.update()
+    }
     // ═══ انحناء الأصابع من الكاميرا ═══
     let wroteFingers = false
     for (const hand of ['right', 'left'] as const) {
