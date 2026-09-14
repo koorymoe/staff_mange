@@ -36,7 +36,8 @@ const LAB_ENABLED = true
  * مبرمج، وفعلاً ما انفهمت لمن طلبتها. والرفع من الشاشة يشيلها كلياً.
  */
 const BUILT_IN = [
-  { id: 'builtin:amani', label: 'الحالي (أماني v4)', file: 'amani-tech-v4.glb' },
+  { id: 'builtin:amani', label: 'أماني v5 — متحرّكة (١١ مقطع)', file: 'amani-tech-v5.glb' },
+  { id: 'builtin:amani-v4', label: 'أماني v4 (الأقدم)', file: 'amani-tech-v4.glb' },
 ] as const
 
 /** مجسّم بالقائمة: مدمج أو مرفوع — الشاشة تتعامل معهم بنفس الشكل. */
@@ -196,7 +197,14 @@ function Lab() {
     try {
       const label = file.name.replace(/\.glb$/i, '')
       const row = await api.uploadEntityModel(file, label)
-      say(`رُفع «${row.label}» — ${(row.sizeBytes / 1048576).toFixed(2)} م.ب`)
+      // الخادم يفعّل **أول** مجسّم تلقائياً — فالرسالة تقول شنو صار
+      // فعلاً، مو شنو نتمنى إنه صار.
+      say(row.isActive
+        ? `رُفع «${row.label}» وصار **شخصية النظام** — ${(row.sizeBytes / 1048576).toFixed(2)} م.ب`
+        : `رُفع «${row.label}» — ${(row.sizeBytes / 1048576).toFixed(2)} م.ب`)
+      // ⚠️ ننسّي المخزون بالودجة: الرابط محفوظ بوعد على مستوى الوحدة،
+      // فبلاه تبقى الودجة على القديم حتى بعد التفعيل التلقائي.
+      if (row.isActive) forgetActiveModel()
       await loadUploaded()
       setModelId(row.id)           // نبدّل إله فوراً حتى يشوفه
     } catch (err) {
@@ -413,9 +421,22 @@ function Lab() {
                 className="hidden"
               />
             </div>
-            <p className="mb-3 text-[11px] leading-5 text-slate-500">
+            <p className="mb-2 text-[11px] leading-5 text-slate-500">
               تختار الملف من حاسبتك وبس — <b>ما تحتاج تنسخ شي للسيرفر</b>.
-              الحد ١٠ ميغا، والصيغة <b>GLB</b>.
+              الحد ١٠ ميغا، والصيغة <b>GLB</b>. وأول مجسّم ترفعه
+              <b> يصير شخصية النظام مباشرةً</b>.
+            </p>
+            {/* ⚠️ **سطر يقول الحقيقة**: اليوم صار لبس — المجسّم مرفوع
+                على حاسبة المبرمج ومو على السيرفر، والمالك يشوف القديمة
+                ويحسب التحديث ما وصل. فالشاشة تقول **شنو معروض فعلاً**
+                بدل ما يخمّن أو يسأل. */}
+            <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
+              الي يشوفه الموظفون الآن:{' '}
+              <span className="text-emerald-700">
+                {uploaded === null
+                  ? '…'
+                  : (uploaded.find((m) => m.isActive)?.label ?? 'أماني v5 المدمجة (متحرّكة)')}
+              </span>
             </p>
             <div className="flex flex-wrap gap-2">
               {choices.map((m) => (

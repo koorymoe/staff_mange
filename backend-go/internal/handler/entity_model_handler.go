@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
@@ -125,6 +126,25 @@ func (h *EntityModelHandler) Create(w http.ResponseWriter, r *http.Request) {
 		_ = h.store.Delete(r.Context(), key)
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+	// 🔴 **أول مجسّم يُرفَع يصير شخصية النظام تلقائياً.**
+	//
+	// السبب من الواقع: مالك النظام رفع/سحب وباق يشوف القديمة، لأن
+	// الرفع والتفعيل چانوا **زرّين**. وهو ما يرفع مجسّماً حتى «يكون
+	// موجوداً» — يرفعه حتى **يُعرض**. فالخطوة الثانية كانت مصيدة.
+	//
+	// ⚠️ **وبشرط ماكو نشط**: بلا الشرط، أي رفعة لاحقة — ولو تجريبية —
+	// تبدّل الشخصية على شاشة **كل موظف** بلا ما يطلبها أحد. والتبديل
+	// بعد أول واحد يبقى بالزر، وهو قرار واعٍ.
+	if active, aerr := h.repo.GetActive(); aerr == nil && active == nil {
+		// ⚠️ وفشل التفعيل **ما يفشّل الرفعة**: الملف مخزون والصف
+		// موجود فعلاً، فإرجاع خطأ هنا يخلي المالك يعيد الرفع ويصير
+		// عندنا صفّان لنفس المجسّم. نسجّلها ونكمل — والزر موجود.
+		if err := h.repo.Activate(row.ID); err != nil {
+			log.Printf("entity model auto-activate %q: %v", row.ID, err)
+		} else {
+			row.IsActive = true
+		}
 	}
 	WriteJSON(w, http.StatusCreated, row)
 }
