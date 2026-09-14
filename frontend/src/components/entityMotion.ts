@@ -182,7 +182,23 @@ export function neutralizeRootMotion(
   // فالحل ما يكتب على العظام إطلاقاً: نقيس **إزاحة الحوض بالعالم**
   // (وهاي وحدات المشهد، معروفة) ونطرحها من عقدة حاملة. فالمقطع
   // يمشي بحرّيته، والجسم يبقى بمكانه — ولا نحتاج نعرف فضاء العظام.
-  let baseline: { x: number; z: number } | null = null
+  /**
+   * أقصى ارتفاع مسموح للحوض فوق مرجعه قبل ما نصحّح — **١٥ سم**.
+   *
+   * 🔴 **وليش بحدّ مو تحييداً كاملاً للعمود**: مقاطع `SIT_IDLE` و
+   * `SIT_SPEAK` و`LAYING_IDLE` **تنزل عمودياً بنيّة**، والتحييد
+   * الكامل يخلي الشخصية «تجلس بالهوا». فالحدّ يمسك **الارتفاع
+   * الغلط** ويترك النزول المقصود.
+   *
+   * ⚠️ **وبالاتجاه الواحد**: نصحّح الصعود بس، مو الهبوط.
+   *
+   * والسبب مقاس: مقاطع منقولة لهيكل ثانٍ رفعت الجسم لدرجة إن قمة
+   * الرأس طلعت **برّا الكانفس** (y = −٢٣ بكسل بعد ما كانت +٦٤).
+   * والتحييد كان يعالج `x` و`z` **بس** فما لگى من يوقف الصعود.
+   */
+  const MAX_RISE = 0.15
+
+  let baseline: { x: number; y: number; z: number } | null = null
   const observer = () => {
     skeleton.computeAbsoluteMatrices(true)
     mesh.computeWorldMatrix(true)
@@ -190,13 +206,15 @@ export function neutralizeRootMotion(
     if (!baseline) {
       // أول إطار **بعد** تشغيل المقطع = إطار المقطع صفر دائماً،
       // فالمرجع ثابت بين التحميلات (وهذا الي كان ناقصاً).
-      baseline = { x: w.x, z: w.z }
+      baseline = { x: w.x, y: w.y, z: w.z }
       return
     }
     // تصحيح مباشر: إزاحة العقدة تنعكس ١:١ على العالم، فخطوة واحدة
     // تكفي ولا نحتاج حلقة تقارب.
     carrier.position.x -= w.x - baseline.x
     carrier.position.z -= w.z - baseline.z
+    const rise = w.y - baseline.y
+    if (rise > MAX_RISE) carrier.position.y -= rise - MAX_RISE
   }
   const scene = skeleton.getScene()
   scene.onAfterAnimationsObservable.add(observer)
