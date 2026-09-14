@@ -399,6 +399,21 @@ export async function mountAvatar(
   // المحيط وقتها، فيوصف الوضع الي راح ينرسم فعلاً.
   frameCamera()
 
+  // 🔴 **وإعادة تأطير مرة وحدة بعد أول إطار محسوب** — والسبب مقاس:
+  // `play()` يشغّل المقطع، بس **العظام ما تحرّكت بعد** لمّا ينفّذ
+  // `frameCamera()` بنفس النبضة، فالصندوق المحيط يُقرأ على **وضعية
+  // الراحة**. وبمجسّم وضعية راحته مختلفة عن أول إطار حركة، النتيجة
+  // إن **الرأس ينقص من فوق**: قِستها على المجسّم الجديد — قمة الرأس
+  // بـ**y = −٢١ بكسل** (برّا الكانفس)، وبعد إعادة التأطير **+٩٠**
+  // (داخله). وهاي تصير **مرة وحدة** فما تكلّف شي بالتشغيل.
+  let reframed = false
+  const firstFrameFraming = scene.onAfterAnimationsObservable.add(() => {
+    if (reframed) return
+    reframed = true
+    frameCamera()
+    scene.onAfterAnimationsObservable.remove(firstFrameFraming)
+  })
+
   const stats: AvatarStats = {
     loadMs: Math.round(performance.now() - t0),
     joints: skeleton?.bones.length ?? 0,
