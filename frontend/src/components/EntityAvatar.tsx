@@ -26,6 +26,15 @@ interface Props {
    * الجسم (البوت العائم الصغير — بلاه تبين الرقبة بس).
    */
   framing?: 'bust' | 'full'
+  /**
+   * تُستدعى بأسماء المقاطع الموجودة فعلاً بالملف.
+   *
+   * 🔴 **ليش المستدعي يحتاجها**: المشي بالصفحة **ما ينفع بلا مقطع
+   * مشي** — الشخصية تنزلق مثل قطعة أثاث. وبعض مجسّماتنا فيها ١١
+   * مقطعاً وبعضها **صفر** (مقاس من الملفات). فالمستدعي يسأل قبل ما
+   * يشغّل المشي، بدل ما نوهم بحركة ما موجودة.
+   */
+  onClips?: (clips: readonly string[]) => void
 }
 
 /**
@@ -97,7 +106,7 @@ function webglSupported(): boolean {
 }
 
 export default function EntityAvatar({
-  clip, onUnavailable, className = 'h-52 w-full',
+  clip, onUnavailable, onClips, className = 'h-52 w-full',
   background = 'linear-gradient(180deg,#0f2a4a 0%,#16395f 100%)',
   framing = 'bust',
 }: Props) {
@@ -121,6 +130,7 @@ export default function EntityAvatar({
         if (cancelled) { h.dispose(); return }
         handleRef.current = h
         setReady(true)
+        onClips?.(h.stats.clips)
       })
       .catch(() => {
         if (cancelled) return

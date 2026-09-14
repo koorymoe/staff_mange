@@ -74,6 +74,8 @@ function Lab() {
   const [framing, setFraming] = useState<'bust' | 'full'>('full')
   const [modelId, setModelId] = useState<string>(BUILT_IN[0].id)
   const [uploaded, setUploaded] = useState<EntityAvatarModel[] | null>(null)
+  /** اسم ملف المجسّم المحمّل فعلاً بهذي الشاشة — للعرض الصادق. */
+  const [loadedFile, setLoadedFile] = useState<string | null>(null)
   const [uploadBusy, setUploadBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   // ═══ الكاميرا: حالة منفصلة تماماً، ومطفَيّة بالافتراضي ═══
@@ -152,6 +154,10 @@ function Lab() {
     const chosen = choices.find((m) => m.id === modelId) ?? choices[0]
     if (!chosen) return
     const url = chosen.url
+    // ⚠️ **اسم الملف الحقيقي مو اسم الزر**: المرفوع يُخدَم بمفتاح
+    // عشوائي (`models/abc.glb`)، والفرق بينه وبين التسمية هو الي
+    // يكشف «أي مجسّم معروض فعلاً».
+    setLoadedFile(url.split('?')[0].split('/').slice(-1)[0] || url)
     import('../components/entityAvatarEngine')
       .then((mod) => mod.mountAvatar(canvas, url, 'WALK_ALT', framing, { influencers: 8, motion: true }))
       .then((h) => {
@@ -430,14 +436,37 @@ function Lab() {
                 على حاسبة المبرمج ومو على السيرفر، والمالك يشوف القديمة
                 ويحسب التحديث ما وصل. فالشاشة تقول **شنو معروض فعلاً**
                 بدل ما يخمّن أو يسأل. */}
-            <p className="mb-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
-              الي يشوفه الموظفون الآن:{' '}
-              <span className="text-emerald-700">
-                {uploaded === null
-                  ? '…'
-                  : (uploaded.find((m) => m.isActive)?.label ?? 'أماني v5 المدمجة (متحرّكة)')}
-              </span>
-            </p>
+            {/* ⚠️ **ثلاث حقائق يقرأها المالك بنفسه** — والسبب من الواقع:
+                سؤال «هل وصل التحديث؟» تكرّر **ثلاث مرات بيوم واحد**،
+                وكل مرة انصرف وقت بجدال. وأسوأ حالة صارت: إصلاح مرفوع
+                ومقاس ما بيّن عنده لأن `docker compose up -d` **يعيد
+                استخدام صورة الواجهة القديمة** بلا `--build` — فالخادم
+                جديد والواجهة قديمة، وماكو شي بالشاشة يكشفها.
+                فالنظام يجاوب بدل ما نخمّن. */}
+            <div className="mb-3 space-y-1 rounded-lg bg-slate-50 px-3 py-2 text-[11px] font-bold text-slate-600">
+              <p>
+                الي يشوفه الموظفون الآن:{' '}
+                <span className="text-emerald-700">
+                  {uploaded === null
+                    ? '…'
+                    : (uploaded.find((m) => m.isActive)?.label ?? 'أماني v5 المدمجة (متحرّكة)')}
+                </span>
+              </p>
+              <p className="font-normal text-slate-500">
+                الملف المحمّل الآن بهذي الشاشة:{' '}
+                <span className="font-bold text-slate-700">{loadedFile ?? '…'}</span>
+                {stats ? ` · ${stats.clips.length} مقطع · ${stats.joints} مفصل` : ''}
+              </p>
+              <p className="font-normal text-slate-500">
+                بناء الواجهة: <span className="font-mono">{__BUILD_COMMIT__}</span>
+                {' · '}
+                {new Date(__BUILD_TIME__).toLocaleString('ar-IQ', { dateStyle: 'short', timeStyle: 'short' })}
+                {' — '}
+                <span className="text-slate-400">
+                  لو هذا الرقم مو آخر رفعة، الحاوية تحتاج بناءً من جديد (‎--build‎)
+                </span>
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {choices.map((m) => (
                 <span key={m.id} className="inline-flex items-center">

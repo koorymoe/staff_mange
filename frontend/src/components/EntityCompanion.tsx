@@ -3,6 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { api, fileUrl, ensureFileToken, type EntityBriefing, type EntityLine } from '../api'
 import { useSession } from '../session'
 import EntityAvatar from './EntityAvatar'
+import {
+  findLinkTarget, pickStandSpot, interactiveHits, userIsTyping, reducedMotion,
+  clampToViewport, walk, type Spot,
+} from './entityWalk'
 
 // ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
 //
@@ -61,6 +65,46 @@ export default function EntityCompanion() {
   })
   const drag = useRef<{ dx: number; dy: number; moved: boolean } | null>(null)
 
+  // ═══ الاشتقاقات **قبل** التأثيرات ═══
+  //
+  // 🔴 **مو تنظيماً — عيب مقاس**: كانت مكتوبة بعد التأثيرات، ولمّا
+  // صار تأثير المشي يعتمد على `activeLine?.link` **بمصفوفة
+  // اعتمادياته**، انفّذت المصفوفة وقت الرسم **قبل** تعريف المتغيّر
+  // فرمى `ReferenceError` و**الودجة كلها ما ظهرت** — الكيان اختفى
+  // من كل شاشة، مو بس المشي. كشفها الفحص الحي (الودجة ما انلگت
+  // بالصفحة أبداً)، وهي غلطة **يمسكها المتصفح بس**: المترجم ما
+  // يعترض لأن الوصول داخل دالة.
+  const mood = brief?.mood || 'HAPPY'
+  const lines = brief?.lines || []
+  const activeLine: EntityLine | undefined = lines[lineIdx % Math.max(1, lines.length)]
+  const urgentCount = lines.filter((l) => l.urgent).length
+  const photo = moodImage(brief, mood)
+
+  // ═══ المشي داخل الصفحة ═══
+  //
+  // 🔴 «ما تكون طايفة… ما ريدها تمثال ومحطوط» — مالك النظام. وقبل
+  // هذا، الكيان صندوق ثابت بزاوية الشاشة.
+  //
+  // **بيته** هو المكان الي حطّه المستخدم (أو الافتراضي): يمشي للعنصر
+  // الي يحچي عنه، ويرجع. ⚠️ وبلا الرجوع، أول مشية تسرق مكانه الي
+  // اختاره باليد ويضيع للأبد.
+  const homeRef = useRef<Spot>(pos)
+  const [walking, setWalking] = useState(false)
+  const cancelWalkRef = useRef<() => void>(() => {})
+  /**
+   * أسماء مقاطع المجسّم المحمّل — نسأل عنها قبل ما نمشي.
+   *
+   * ⚠️ **حالة مو مرجعاً، والسبب عيب مقاس**: خليتها `useRef` أولاً،
+   * فتأثير المشي انفّذ **قبل** ما يخلص تحميل المجسّم (ثانية–ثانيتين)
+   * ولگى القائمة فاضية فخرج، و**ما انعاد أبداً** لأن المرجع ما
+   * يحرّك إعادة الرسم. النتيجة: الكيان ما مشى ولا مرة، والفحص الحي
+   * سجّل **صفر حركة من ٢٦ قراءة**. وبالحالة، وصول المقاطع يعيد
+   * تشغيل التأثير.
+   */
+  const [clips, setClips] = useState<readonly string[]>([])
+  /** آخر سطر مشينا إله — حتى ما نمشي لنفس الشي كل دورة فقاعة. */
+  const walkedForRef = useRef<string | null>(null)
+
   // ── جلب التقرير ──
   const load = useCallback(() => {
     if (!employee) return
@@ -109,11 +153,88 @@ export default function EntityCompanion() {
   }, [])
 
   // ── الالتفات ناحية المؤشر ──
+  // ⚠️ **ما يتدخّل أثناء المشي**: وهو ماشي، الاتجاه يجي من **اتجاه
+  // المشي** — وإلا يمشي لجهة ووجهه للجهة الثانية، ويبين يزحف للورا.
   useEffect(() => {
-    const onMove = (e: PointerEvent) => setFacing(e.clientX < pos.x + 40 ? -1 : 1)
+    const onMove = (e: PointerEvent) => {
+      if (walking) return
+      setFacing(e.clientX < pos.x + 40 ? -1 : 1)
+    }
     window.addEventListener('pointermove', onMove)
     return () => window.removeEventListener('pointermove', onMove)
-  }, [pos.x])
+  }, [pos.x, walking])
+
+  // ═══ يمشي للعنصر الي يحچي عنه ═══
+  //
+  // ⚠️ **يُطلَق من تغيّر السطر المعروض مو من كل نبضة استطلاع**:
+  // الاستطلاع كل دقيقة، ولو مشى كل مرة يصير مزعجاً. والمشي يصير
+  // **مرة لكل سطر**.
+  //
+  // 🔴 **وشروط الاحترام تُفحَص كلها قبل أي خطوة**، وكل واحدة منها
+  // سببها إن كسرها يخلي الميزة عقوبة على الموظف:
+  //   · ما عدنا مقطع مشي → الشخصية **تنزلق** مثل أثاث، فأحسن تبقى.
+  //   · الموظف يكتب → الحركة تسحب عينه من السطر الي يكتبه.
+  //   · اللوحة مفتوحة → المشي يسحب اللوحة من تحت إيده.
+  //   · «قلّل الحركة» بالجهاز → احترام إعداد إمكانية وصول.
+  //   · ماكو عنصر ظاهر بالصفحة → يمشي لمكان فاضي ويشاور على لا شي.
+  useEffect(() => {
+    const link = activeLine?.link
+    if (!link || walkedForRef.current === link) return
+    if (!clips.includes('WALK_ALT')) return
+    if (open || userIsTyping() || reducedMotion()) return
+    const el = findLinkTarget(link)
+    if (!el) return
+
+    walkedForRef.current = link
+    setWalking(true)
+    cancelWalkRef.current()
+
+    const step = (from: Spot, to: Spot, done: () => void) => {
+      cancelWalkRef.current = walk(from, to, (p, dir) => { setPos(p); setFacing(dir) }, done)
+    }
+    const goHome = (from: Spot) => {
+      // ⚠️ **يرجع لبيته بعد ثوانٍ مو فوراً**: الموظف يحتاج وقتاً
+      // يشوف على شنو يشاور. وثلاث ثوانٍ كافية للقراءة.
+      window.setTimeout(() => {
+        if (userIsTyping()) return       // ما نقاطعه وهو يكتب
+        setWalking(true)
+        step(from, homeRef.current, () => setWalking(false))
+      }, 3000)
+    }
+
+    const spot = pickStandSpot(el.getBoundingClientRect(), el)
+    step(pos, spot, () => {
+      setWalking(false)
+      // 🔴 **نعيد الفحص عند الوصول، والسبب عيب مقاس**: المكان
+      // يُختار لمّا يظهر السطر، و**القائمة الجانبية تنرسم بعده**
+      // (تعتمد على بيانات تجي بنداء ثانٍ). فالمكان الي كان فاضياً
+      // وقت الاختيار صار فوق زرّين وقت الوصول — قِستها: وقف وغطّى
+      // «التقييم» و«العمل» مع إن الفحص وقتها رجّع صفراً.
+      // ⚠️ **ومحاولة إعادة وحدة بس**: حلقة «افحص وانتقل» تخلي
+      // الكيان يتنقنق بالشاشة بلا نهاية لو كانت الصفحة مزدحمة.
+      if (interactiveHits(spot) > 0) {
+        const better = pickStandSpot(el.getBoundingClientRect(), el)
+        if (better.x !== spot.x || better.y !== spot.y) {
+          setWalking(true)
+          step(spot, better, () => { setWalking(false); goHome(better) })
+          return
+        }
+      }
+      goHome(spot)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeLine?.link, open, clips])
+
+  // تنظيف: أي مشية جارية تنقطع عند التفكيك
+  useEffect(() => () => cancelWalkRef.current(), [])
+
+  // ⚠️ تغيير حجم النافذة أثناء الوقوف: نرجّع الكيان داخل الشاشة.
+  // بلاه يبقى برّا الحدود بعد تصغير النافذة ويختفي.
+  useEffect(() => {
+    const onResize = () => setPos((p) => clampToViewport(p))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   // ── السحب باليد ──
   const onPointerDown = (e: React.PointerEvent) => {
@@ -133,6 +254,7 @@ export default function EntityCompanion() {
     // لوحته بوجه المستخدم، فيصير سحبه عقوبة مو ميزة.
     const moved = drag.current.moved
     drag.current = null
+    if (moved) homeRef.current = pos    // مكانه الجديد صار بيته
     try { localStorage.setItem(POS_KEY, JSON.stringify(pos)) } catch { /* تخزين مقفول */ }
     if (!moved) setOpen((o) => !o)
   }
@@ -158,14 +280,9 @@ export default function EntityCompanion() {
 
   if (!employee) return null
 
-  const mood = brief?.mood || 'HAPPY'
-  const lines = brief?.lines || []
-  const activeLine: EntityLine | undefined = lines[lineIdx % Math.max(1, lines.length)]
-  const urgentCount = lines.filter((l) => l.urgent).length
-  const photo = moodImage(brief, mood)
-
   return (
     <div
+      data-entity-root
       className="fixed z-[65] select-none"
       style={{ left: pos.x, top: pos.y }}
     >
@@ -286,7 +403,8 @@ export default function EntityCompanion() {
             يرجّع null، فالكتلة الي بعده تشتغل — البوت ما يختفي. */}
         {!avatarDown && (
           <EntityAvatar
-            clip={avatarClipFor(mood)}
+            clip={walking ? 'WALK_ALT' : avatarClipFor(mood)}
+            onClips={setClips}
             framing="full"
             background="transparent"
             className="absolute inset-0 h-full w-full"
