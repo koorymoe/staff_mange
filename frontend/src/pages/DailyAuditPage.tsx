@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type DailyAuditReport, type DailyAuditRow } from '../api'
-import { useSession } from '../session'
+import { useSession, canAuditFinance } from '../session'
 import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
 import { matches } from '../utils/search'
@@ -82,12 +82,13 @@ export default function DailyAuditPage() {
   const [loadErr, setLoadErr] = useState<string | null>(null)
   // إرجاع الحجز للتدقيق: صلاحية مدير النظام حصراً (المالك يتطبّع لمدير
   // بالجلسة، فتشمله تلقائياً).
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const isAdmin = employee?.role === 'ADMIN'
-  // ⚠️ المراقب ياخذ صلاحية «المالية» بدوره افتراضياً، فچانت أزرار
-  // القرار تطلعله وهو مفروض **يراجع** قرار المحاسب مو يصدره.
-  // الخادم يرفضها الآن، والإخفاء هنا حتى ما يضغط ويطلعله رفض.
-  const isMonitor = employee?.role === 'MONITOR' 
+  // ⚠️ جان `employee?.role === 'MONITOR'` — **دور**، مو قدرة. فلمّا
+  // المالك ينطي مفتاح التدقيق لمراقب حتى يكمل بدل المحاسب، الأزرار
+  // تبقى مخفية وما ينفع المنح بشي. هسه القرار بالمفتاح:
+  // `finance_audit` (أو المحاسب/المدير)، ومنو ما عنده **يشوف ولا يعدّل**.
+  const canDecide = canAuditFinance(employee?.role, permissions)
 
   // ⚠️ الخطأ چان ينبلع وrep تنرجع null — وnull هي **نفس** حالة ما
   // قبل التحميل، فأي رفض صلاحية أو خطأ خادم يطلع «جاري التحميل...»
@@ -370,14 +371,14 @@ export default function DailyAuditPage() {
                   </div>
                 </div>
 
-                {!row.amountVerified && isMonitor && (
+                {!row.amountVerified && !canDecide && (
                   <p className="mt-3 rounded-xl border px-3 py-2 text-[11px]"
                     style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
                     ⓘ إنت تشوف وتراجع — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) للمحاسب.
                   </p>
                 )}
 
-                {!row.amountVerified && !isMonitor && (
+                {!row.amountVerified && canDecide && (
                   <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <input
                       type="number" min="0" inputMode="numeric"

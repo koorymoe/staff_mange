@@ -454,3 +454,11 @@ type BookingVisitCrewMember struct {
 	Role       string `db:"role" json:"role"`
 	IsLeader   bool   `db:"isLeader" json:"isLeader"`
 }
+
+// BookingTypeInternal شغل داخل الشركة — ماكو زبون خارجي: القسم
+// وصاحب الطلب محلّ الزبون، وماكو عنوان ولا موقع على الخريطة.
+//
+// ⚠️ القيمة جانت مكتوبة نصاً بأربع محلات (`booking_handler.go` ·
+// `booking_service.go` · `booking_repository.go`) — وأي خطأ حرف
+// بواحدة منها يخلي الحجز الداخلي يتعامل معاملة حجز زبون بهدوء.
+const BookingTypeInternal = "INTERNAL"

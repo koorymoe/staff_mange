@@ -119,6 +119,25 @@ func (h *LeaderInvoiceHandler) CreateManualInvoice(w http.ResponseWriter, r *htt
 	WriteJSON(w, http.StatusCreated, inv)
 }
 
+// POST /api/leader-invoices/internal — فاتورة شغل داخل الشركة.
+//
+// ⚠️ الحارس على المسار (`invoice_internal`) يقرر **منو** يفوتر،
+// والخدمة تقرر **شنو** ينفوتر: ترفض أي حجز نوعه مو INTERNAL. فالعزل
+// بحكم الكود مو بحكم النية — صاحب الصلاحية ما يكدر يفوتر شغل زبون بيها.
+func (h *LeaderInvoiceHandler) CreateInternalInvoice(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateInternalInvoiceRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	inv, err := h.service.CreateInternalInvoice(middleware.EmployeeIDFromContext(r), req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, inv)
+}
+
 func (h *LeaderInvoiceHandler) CreateServiceInvoice(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateServiceInvoiceRequest
 	if err := DecodeJSON(r, &req); err != nil {

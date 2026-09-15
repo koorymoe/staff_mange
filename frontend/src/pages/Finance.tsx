@@ -2,15 +2,24 @@ import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api, type Booking, type Expense } from '../api'
 import { matches } from '../utils/search'
+import { useSession, canAuditFinance } from '../session'
+import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import BookingCodeChip from '../components/BookingCodeChip'
 
 export default function Finance() {
+  // ⚠️⚠️ هاي الشاشة چانت **بلا أي فحص**: أزرار «مطابق» و«غير مطابق»
+  // و«خطأ بالسعر» تُعرض لأي واحد يفتحها، والرفض يجي من الخادم بعد
+  // الضغط. ومنو يصدر القرار هسه محسوم بالمفتاح مو بالدور.
+  const { employee, permissions } = useSession()
+  const canDecide = canAuditFinance(employee?.role, permissions)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [filter, setFilter] = useState<'all' | 'pending' | 'verified'>('all')
+  /** ⚠️ `internal` **معزول**: الشغل داخل الشركة ما ينحسب إيراد زبون،
+   *  فما يطلع بـ«الكل» ولا بطابور التدقيق — إله بطاقته لحاله. */
+  const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'internal'>('all')
   const [search, setSearch] = useState('')
 
   const load = () => {
@@ -81,15 +90,21 @@ export default function Finance() {
   const matchesSearch = (b: Booking) => {
     return matches([b.code, b.customer?.code, b.customer?.phone, b.customer?.name], search)
   }
+  const isInternal = (b: Booking) => b.bookingType === 'INTERNAL'
   const filtered = bookings.filter((b) => {
     if (!matchesSearch(b)) return false
+    if (filter === 'internal') return isInternal(b)
+    // 🔴 العزل حقيقي مو شكلي: الداخلي ينشال من كل البطاقات الثانية.
+    if (isInternal(b)) return false
     if (filter === 'pending') return !b.amountVerified
     if (filter === 'verified') return b.amountVerified
     return true
   })
 
-  const pendingCount = bookings.filter((b) => !b.amountVerified).length
-  const verifiedCount = bookings.filter((b) => b.amountVerified).length
+  const internalCount = bookings.filter((b) => b.bookingType === 'INTERNAL').length
+  const external = bookings.filter((b) => b.bookingType !== 'INTERNAL')
+  const pendingCount = external.filter((b) => !b.amountVerified).length
+  const verifiedCount = external.filter((b) => b.amountVerified).length
 
   // ═══ مصاريف الحجز ═══
   //
@@ -153,7 +168,7 @@ export default function Finance() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <button
           onClick={() => setFilter('all')}
           className={`rounded-xl border p-3 text-center transition-all ${
@@ -162,7 +177,7 @@ export default function Finance() {
               : 'border-slate-200 bg-[var(--sf-card)]'
           }`}
         >
-          <p className="text-2xl font-bold text-brand-900">{bookings.length}</p>
+          <p className="text-2xl font-bold text-brand-900">{external.length}</p>
           <p className="text-xs text-slate-500">الكل</p>
         </button>
         <button
@@ -186,6 +201,17 @@ export default function Finance() {
         >
           <p className="text-2xl font-bold text-emerald-600">{verifiedCount}</p>
           <p className="text-xs text-slate-500">تم التدقيق</p>
+        </button>
+        <button
+          onClick={() => setFilter('internal')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'internal'
+              ? 'border-indigo-400 bg-indigo-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-indigo-600">{internalCount}</p>
+          <p className="text-xs text-slate-500">🏢 داخل الشركة</p>
         </button>
       </div>
 
@@ -288,6 +314,18 @@ export default function Finance() {
               {/* Expanded details */}
               {isOpen && (
                 <div className="border-t border-slate-100 p-4">
+                  {/* الشغل داخل الشركة: ماكو زبون — القسم ومسؤولوه محلّه،
+                      وأرقامهم لازم تكون بالإيد لمن يدقّق أو يتصل. */}
+                  {isInternal(b) && (
+                    <div className="mb-3">
+                      <InternalDepartmentContacts
+                        departmentId={b.internalDepartmentId}
+                        departmentName={b.internalDepartment}
+                        requesterName={b.internalEmployeeName}
+                        requesterPhone={b.internalEmployeePhone}
+                      />
+                    </div>
+                  )}
                   {/* Booking info */}
                   <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
                     <InfoRow label="رقم الزبون" value={b.customer ? `CUST-${String(b.customer.customerCode).padStart(5, '0')}` : 'زبون غير معروف'} />
@@ -519,8 +557,15 @@ export default function Finance() {
                     </div>
                   </div>
 
+                  {!b.amountVerified && !canDecide && (
+                    <p className="mt-4 rounded-xl border px-3 py-2 text-[11px]"
+                      style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
+                      👁️ عرض فقط — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) بيد المحاسب.
+                    </p>
+                  )}
+
                   {/* التدقيق: مبلغ الفاتورة إجباري، أو بلاغ خطأ ينوجّه للمعني */}
-                  {!b.amountVerified && (
+                  {!b.amountVerified && canDecide && (
                     <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
                       <label className="mb-1 block text-xs font-bold text-slate-600">
                         المبلغ حسب الفاتورة *

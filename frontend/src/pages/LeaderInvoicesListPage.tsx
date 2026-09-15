@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { onEnter } from '../utils/enterKey'
 import { api, AUDIT_VERDICTS, type LeaderInvoice, type LeaderInvoiceAdjustment } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import StatTile from '../components/StatTile'
 import Pager from '../components/Pager'
 import { formatCustomerCode } from '../utils/identity'
-import { useSession } from '../session'
+import { useSession, canAuditFinance } from '../session'
 import { matches } from '../utils/search'
 import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
 import LocateHint from '../components/LocateHint'
@@ -126,8 +127,16 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
 interface EmbeddedProps { embedded?: boolean }
 
 export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {}) {
-  const { employee } = useSession()
-  const canApprove = employee?.role === 'ADMIN' || employee?.role === 'FINANCE'
+  const [params] = useSearchParams()
+  // تنزيل إكسل الشهر — بتبويب «داخل الشركة» وبس.
+  const [expMonth, setExpMonth] = useState(() => new Date().toISOString().slice(0, 7))
+  const [expBusy, setExpBusy] = useState(false)
+  const [expErr, setExpErr] = useState<string | null>(null)
+  const { employee, permissions } = useSession()
+  /** ⚠️ `finance_audit` جنب الدور: مفتاح المالك حتى موظف يكمل شغل
+   *  المحاسب لمّا ياخذ إجازة — وبلاه المنح ما ينفع بشي هنا (الاعتماد
+   *  يبقى مرفوض والفاتورة ما تمشي). */
+  const canApprove = canAuditFinance(employee?.role, permissions)
   /** ⚠️ المراقب يبتّ بطلب المحاسب — والمحاسب ما يبتّ بطلبه بنفسه،
    *  وإلا الإرسال للمراقب يصير شكلياً. (والخادم يمنعه فعلياً.) */
   const isMonitor = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
@@ -170,7 +179,14 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   // و**بعده** بنفس المكان بالضبط، والضغط على أي حكم ما ينقلها ولا
   // ملّيمتر. والمحاسب ما يگدر يفرّق بين شغل باقي عليه تدقيق وشغل
   // باقي عليه قرار.
-  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'MONITOR' | 'NO_NUMBER' | 'APPROVED' | 'ALL'>('AUDIT')
+  /**
+   * ⚠️ `INTERNAL` تبويب **معزول**: (ع) يريد الشغل داخل الشركة لحاله
+   * «لأن نهاية الشهر نريد إكسل خاص بحجوزات داخل الشركة». وعزله
+   * حقيقي: فواتير الشغل الداخلي **تنشال من كل التبويبات الثانية**
+   * (`inTab` جوّه) — وإلا العزل شكلي والمبالغ تنعدّ مرتين بعين المحاسب.
+   */
+  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'MONITOR' | 'NO_NUMBER' | 'APPROVED' | 'ALL' | 'INTERNAL'>(
+    () => (params.get('tab') === 'INTERNAL' ? 'INTERNAL' : 'AUDIT'))
   // إرسال للمراقب · بتّ المراقب · إرجاع المالك
   const [monitorFor, setMonitorFor] = useState<LeaderInvoice | null>(null)
   const [monitorNote, setMonitorNote] = useState('')
@@ -235,7 +251,13 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   const audited = (inv: LeaderInvoice) => !!inv.auditVerdict && inv.auditVerdict.trim() !== ''
   /** ⚠️ نفس اشتقاق الخادم: طُلبت ولا انبتّ بيها = عند المراقب الآن. */
   const atMonitor = (inv: LeaderInvoice) => !!inv.monitorRequestedAt && !inv.monitorDecidedAt
+  /** فاتورة شغل داخل الشركة — نقراها من **نوع الحجز نفسه**، مو من
+   *  علم مكرَّر بالفاتورة ينحرف عن الحجز بأول تعديل. */
+  const isInternal = (inv: LeaderInvoice) => inv.booking?.bookingType === 'INTERNAL'
   const inTab = (inv: LeaderInvoice) => {
+    if (tab === 'INTERNAL') return isInternal(inv)
+    // 🔴 العزل: الداخلي ما يطلع بأي تبويب ثانٍ — ولا بـ«الكل».
+    if (isInternal(inv)) return false
     if (tab === 'ALL') return true
     if (tab === 'AUDIT') return inv.status !== 'APPROVED' && !audited(inv)
     if (tab === 'MONITOR') return inv.status !== 'APPROVED' && atMonitor(inv)
@@ -250,13 +272,24 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     (!fSystem || (i.systems || []).includes(fSystem)) &&
     (!fMonth || i.createdAt.slice(0, 7) === fMonth)
   const shown = invoices.filter((i) => inTab(i) && matchesSearch(i) && matchesFilters(i))
+  /**
+   * 🔴 **العدّادات تنحسب على `external` مو على `invoices`**: تبويب
+   * «الكل» صار **ما يعرض** الفواتير الداخلية (العزل بـ`inTab`)، فلو
+   * بقى العدّاد يعدّهن تطلع البطاقة تقول «٤» والقائمة تعرض «٣».
+   * وهذا انقاس فعلاً قبل الإصلاح.
+   *
+   * 🔴 و«رقم غلط أسوأ من ماكو رقم»: العدّاد لازم يعدّ **نفس** الي
+   * الضغط عليه يعرضه، بلا استثناء.
+   */
+  const external = invoices.filter((i) => !isInternal(i))
   const counts = {
-    AUDIT: invoices.filter((i) => i.status !== 'APPROVED' && !audited(i)).length,
-    MONITOR: invoices.filter((i) => i.status !== 'APPROVED' && atMonitor(i)).length,
-    PENDING: invoices.filter((i) => i.status !== 'APPROVED' && audited(i) && !atMonitor(i)).length,
-    NO_NUMBER: invoices.filter((i) => i.status === 'APPROVED' && !i.externalInvoiceNumber).length,
-    APPROVED: invoices.filter((i) => i.status === 'APPROVED').length,
-    ALL: invoices.length,
+    INTERNAL: invoices.filter(isInternal).length,
+    AUDIT: external.filter((i) => i.status !== 'APPROVED' && !audited(i)).length,
+    MONITOR: external.filter((i) => i.status !== 'APPROVED' && atMonitor(i)).length,
+    PENDING: external.filter((i) => i.status !== 'APPROVED' && audited(i) && !atMonitor(i)).length,
+    NO_NUMBER: external.filter((i) => i.status === 'APPROVED' && !i.externalInvoiceNumber).length,
+    APPROVED: external.filter((i) => i.status === 'APPROVED').length,
+    ALL: external.length,
   }
   const sumShown = shown.reduce((t, i) => t + i.netTotal, 0)
   const pageStart = (page - 1) * perPage
@@ -415,6 +448,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           { k: 'NO_NUMBER' as const, t: '🔗 معتمدة بلا رقم فاتورة', c: counts.NO_NUMBER },
           { k: 'APPROVED' as const, t: '✔ معتمدة', c: counts.APPROVED },
           { k: 'ALL' as const, t: 'الكل', c: counts.ALL },
+          { k: 'INTERNAL' as const, t: '🏢 داخل الشركة', c: counts.INTERNAL },
         ]).map((o) => (
           <button
             key={o.k}
@@ -429,6 +463,37 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           </button>
         ))}
       </div>
+
+      {/* ═══ إكسل الشهر — شغل داخل الشركة ═══
+          «نهاية الشهر احنه نريد إكسل خاص بحجوزات داخل الشركة، يكون
+          بي كل الفواتير والمبالغ». والملف يجي **من الخادم** مو من
+          الصفحة: يشمل حتى الحجوزات الداخلية الي **ماكو إلها فاتورة**
+          — وهاي بالضبط الي يريد يشوفها المالك. */}
+      {tab === 'INTERNAL' && (
+        <div className="mt-3 flex flex-wrap items-end gap-2 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3">
+          <div>
+            <label className="mb-1 block text-[11px] font-bold text-indigo-900">شهر التقرير</label>
+            <input type="month" value={expMonth} onChange={(e) => setExpMonth(e.target.value)}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+          </div>
+          <button
+            onClick={async () => {
+              setExpErr(null); setExpBusy(true)
+              try { await api.exportInternalBookings(expMonth) }
+              catch (e) { setExpErr(e instanceof Error ? e.message : 'تعذر تنزيل الملف') }
+              finally { setExpBusy(false) }
+            }}
+            disabled={expBusy}
+            className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700 disabled:opacity-50"
+          >
+            {expBusy ? 'جاري التحضير…' : '⬇ تنزيل إكسل الشهر'}
+          </button>
+          <p className="text-[11px] text-indigo-800">
+            الملف يشمل الحجوزات الداخلية **بلا فاتورة** بعد — تطلع بخانة «ماكو فاتورة».
+          </p>
+          {expErr && <p className="w-full text-[11px] font-bold text-red-600">{expErr}</p>}
+        </div>
+      )}
 
       {/* المرشّحات الأربعة — خياراتها من المحمّل، بلا مسار خادم.
           ⚠️ وكلها ترجّع الصفحة لواحد. */}

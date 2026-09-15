@@ -95,6 +95,26 @@ func (h *BookingHandler) canSeeAllBookings(r *http.Request) bool {
 	return false
 }
 
+// GET /api/bookings/internal?status=COMPLETED — حجوزات الشغل داخل
+// الشركة وبس.
+//
+// ⚠️ ليش مسار مستقل: `GET /api/bookings` يضيّق النطاق لحجوزات الموظف
+// نفسه لمن ما عنده صلاحية قراءة شاملة (`canSeeAllBookings` فوگ) —
+// وهذا **قيد أمان مقصود**، ما ننطي أسماء زبائن الشركة وأرقامهم
+// مقابل صلاحية فاتورة. فالي عنده `invoice_internal` جان يفتح سلّة
+// الحجوزات ويلگاها **فاضية**، والصلاحية تبقى شكلية.
+//
+// والحجز الداخلي ماكو بيه زبون خارجي أصلاً — القسم وصاحب الطلب محلّه
+// — فقراءته ما تكشف بيانات أي زبون.
+func (h *BookingHandler) ListInternal(w http.ResponseWriter, r *http.Request) {
+	bookings, err := h.service.ListInternal(r.URL.Query().Get("status"), 0)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزات الشغل داخل الشركة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, bookings)
+}
+
 // SetReminderService يربط خدمة التذكير بعد البناء.
 func (h *BookingHandler) SetReminderService(r *service.BookingReminderService) { h.reminders = r }
 

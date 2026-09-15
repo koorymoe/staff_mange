@@ -137,11 +137,17 @@ export default function PermissionsPage() {
     },
     {
       title: 'الحسابات',
-      perms: ['finance', 'expenses', 'complaints'],
+      // ⚠️ الشاشة تبني نفسها من هاي القائمة المكتوبة بالإيد — فأي
+      // صلاحية موجودة بالكتالوگ وما مذكورة هنا **ما تنمنح أبداً**.
+      // وهذا الي صار: خمس صلاحيات حسابات جانن مقفولات بلا مفتاح.
+      perms: [
+        'finance', 'finance_audit', 'expenses', 'expenses_manage',
+        'revolving_fund', 'gps_install_costs', 'invoice_internal', 'complaints',
+      ],
     },
     {
       title: 'المراقبة والتدقيق',
-      perms: ['monitoring', 'auditing', 'quality_control', 'crew_management'],
+      perms: ['monitoring', 'auditing', 'quality_control', 'crew_management', 'audit_issues', 'leader_invoices_view'],
     },
     {
       // ⚠️⚠️ المجموعة هاي **چانت مفقودة كلياً** من الشاشة: `design_forms`

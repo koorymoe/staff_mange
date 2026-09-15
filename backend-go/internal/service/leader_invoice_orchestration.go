@@ -891,3 +891,60 @@ func (s *LeaderInvoiceService) RevokeApproval(id, reason, byEmployeeID string) (
 func (s *LeaderInvoiceService) ListApprovedWithoutNumber() ([]model.LeaderInvoice, error) {
 	return s.invoices.ListApprovedWithoutNumber()
 }
+
+// CreateInternalInvoice فاتورة شغل داخل الشركة.
+//
+// ═══ ليش مسار بحارس مستقل ═══
+//
+// (ع): «ياما يقدرها إداري الكوادر ياما الليدر». وإداري الكوادر **مو
+// ليدر**، فحارس الفاتورة العادية يرفضه؛ والفاتورة اليدوية
+// (`invoice_manual`) تفتح له **كل** الفواتير الحرة مو الداخلية بس.
+// فصلاحية `invoice_internal` معزولة هنا **بحكم الكود**: بلا حجز
+// داخلي ماكو فاتورة.
+//
+// ⚠️ والزبون ينسحب من **سجل الأقسام** مو من إدخال يدوي: القسم
+// وصاحب الطلب ورقمه مصوَّرين بالحجز أصلاً
+// (`booking_service.go` يعيد استخراجهن من `DepartmentHead`)، فالفاتورة
+// تطابق الحجز ولا تفتح باب اسم مكتوب غلط.
+func (s *LeaderInvoiceService) CreateInternalInvoice(employeeID string, req model.CreateInternalInvoiceRequest) (*model.LeaderInvoice, error) {
+	bookingID := strings.TrimSpace(req.BookingID)
+	if bookingID == "" {
+		return nil, fmt.Errorf("اختر الحجز الداخلي أول")
+	}
+	booking, err := s.bookings.FindByID(bookingID)
+	if err != nil {
+		return nil, err
+	}
+	if booking == nil {
+		return nil, fmt.Errorf("الحجز غير موجود")
+	}
+	// 🔴 **هنا العزل**: صاحب `invoice_internal` ما يفوتر شغل زبون.
+	if booking.BookingType != model.BookingTypeInternal {
+		return nil, fmt.Errorf("هاي الصلاحية للحجوزات داخل الشركة بس — هذا الحجز مو داخلي")
+	}
+
+	// «الزبون» = القسم وصاحب الطلب. نعرضهن بالفاتورة حتى يعرف
+	// المحاسب على منو تنحسب الكلفة.
+	name := "شغل داخل الشركة"
+	if booking.InternalDepartment != nil && strings.TrimSpace(*booking.InternalDepartment) != "" {
+		name = "داخل الشركة — " + strings.TrimSpace(*booking.InternalDepartment)
+	}
+	manual := model.CreateManualInvoiceRequest{
+		BookingID:     &bookingID,
+		CustomerName:  &name,
+		CustomerPhone: booking.InternalEmployeePhone,
+		Work:          req.Work,
+		Price:         req.Price,
+		Systems:       []string{"شغل داخل الشركة"},
+		Note:          req.Note,
+	}
+	if booking.InternalEmployeeName != nil {
+		if v := strings.TrimSpace(*booking.InternalEmployeeName); v != "" {
+			manual.CustomerAddress = &v
+		}
+	}
+	// ⚠️ نعيد استعمال آلة الفاتورة اليدوية بالكامل — نفس التحقّقات
+	// (وصف بطول معقول، سعر أكبر من صفر) ونفس صف صندوق المراقب.
+	// بناء مسار حفظ ثانٍ يعني تحقّقين يفترقون بأول تعديل.
+	return s.CreateManualInvoice(employeeID, manual)
+}

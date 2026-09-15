@@ -509,14 +509,26 @@ func (r *BookingRepository) NextSequenceNumber() (int, error) {
 	return int(seq.Int64) + 1, nil
 }
 
+// Create يحفظ الحجز.
+//
+// ⚠️⚠️ **`deviceCount` و`solarSystemId` و`solarMonthlyKwh` جانن ناقصات
+// من قائمة الأعمدة هنا** — تنقرا من الطلب وتنحطّ على الموديل
+// (booking_service.go)، والخدمة **تلزم** عدد الأجهزة وترفض الحجز بلاه
+// — وبعدها ينضيع بهدوء لأن العمود مو مكتوب بالإنسرت. فالبائع يكتب
+// «4 أجهزة»، والحجز ينحفظ، وبالتقارير والفواتير يطلع فاضي.
+//
+// ⚠️ وولا تعليق SQL جوّا النص: sqlx يفسّر أي `:كلمة` بالتعليق
+// كمعامل مسمّى ويطيح الاستعلام كله («could not find name»).
 func (r *BookingRepository) Create(b *model.Booking) error {
 	_, err := r.db.NamedExec(`
 		INSERT INTO "Booking" (id, code, "sequenceNumber", "customerId", "serviceId", notes, "vehicleType", priority, "transferEmployeeId", address, "mapLatitude", "mapLongitude", "locationUrl",
 			"bookingType", "workLocation", "internalEmployeeName", "internalEmployeePhone", "internalDepartment", "internalApproved",
-			"internalDepartmentId", "internalHeadId", "internalHrNote", "updatedAt")
+			"internalDepartmentId", "internalHeadId", "internalHrNote",
+			"deviceCount", "solarSystemId", "solarMonthlyKwh", "updatedAt")
 		VALUES (:id, :code, :sequenceNumber, :customerId, :serviceId, :notes, :vehicleType, :priority, :transferEmployeeId, :address, :mapLatitude, :mapLongitude, :locationUrl,
 			:bookingType, :workLocation, :internalEmployeeName, :internalEmployeePhone, :internalDepartment, :internalApproved,
-			:internalDepartmentId, :internalHeadId, :internalHrNote, now())
+			:internalDepartmentId, :internalHeadId, :internalHrNote,
+			:deviceCount, :solarSystemId, :solarMonthlyKwh, now())
 	`, b)
 	return err
 }
@@ -929,10 +941,10 @@ func (r *BookingRepository) ListAssignments(bookingID string) ([]model.BookingAs
 // العدّ القديم كان: احسب **الحجوزات** المنجزة المربوطة بالموظف عبر
 // `BookingAssignment`. وهذا يظلم مرتين:
 //
-//   ١) `BookingAssignment` جدول **الحالة الحالية** — صف واحد لكل دور.
-//      لمن الإداري يبدّل الكادر للطلعة الثانية، الكادر الأول ينمحي
-//      من الحجز وكأنه ما طلع أبداً.
-//   ٢) وحتى لو ما تبدّل: أربع طلعات على نفس الحجز = حجز واحد بالعدّ.
+//	١) `BookingAssignment` جدول **الحالة الحالية** — صف واحد لكل دور.
+//	   لمن الإداري يبدّل الكادر للطلعة الثانية، الكادر الأول ينمحي
+//	   من الحجز وكأنه ما طلع أبداً.
+//	٢) وحتى لو ما تبدّل: أربع طلعات على نفس الحجز = حجز واحد بالعدّ.
 //
 // هسه العدّ من `BookingVisit`: كل طلعة تنعدّ لكادرها الي طلع بيها،
 // بلا فرق إذا خلّصت الحجز أو قفلت يوم شغل.
@@ -1716,4 +1728,41 @@ func (r *BookingRepository) RecentPaperworkDone(employeeID string, since time.Ti
 			WHERE "employeeId" = $1 AND "createdAt" >= $2
 		)`, employeeID, since)
 	return exists, err
+}
+
+// ListInternal يرجّع حجوزات **الشغل داخل الشركة** وبس.
+//
+// ⚠️ ليش استعلام مستقل مو معامل على `List`: الي يسوي فاتورة الشغل
+// الداخلي (ليدر أو إداري كوادر) ما عنده صلاحية قراءة كل الحجوزات —
+// وهذا **قيد أمان مقصود** (تعليق `canSeeAllBookings`): ما ننطي أحد
+// أسماء زبائن الشركة وأرقامهم من مسار عام مقابل صلاحية فاتورة.
+// والحجز الداخلي **ماكو بيه زبون خارجي أصلاً** — القسم وصاحب الطلب
+// محلّه — فقراءته ما تكشف بيانات أي زبون.
+//
+// 🔴 وبلا هذا المسار الصلاحية شكلية: سلّة الحجوزات تطلع **فاضية**
+// فما يكدر يختار حجزاً، والفاتورة ما تنكتب أبداً. انقاس فعلاً.
+func (r *BookingRepository) ListInternal(status string, limit int) ([]model.Booking, error) {
+	query := `SELECT * FROM "Booking" WHERE "archivedAt" IS NULL AND "bookingType" = 'INTERNAL'` +
+		NotDeletePendingSQL(`"Booking"`)
+	args := []any{}
+	if status != "" {
+		args = append(args, status)
+		query += fmt.Sprintf(` AND status = $%d`, len(args))
+	}
+	query += ` ORDER BY "createdAt" DESC`
+	if limit <= 0 || limit > 500 {
+		limit = 500
+	}
+	args = append(args, limit)
+	query += fmt.Sprintf(` LIMIT $%d`, len(args))
+
+	rows := []model.Booking{}
+	if err := r.db.Select(&rows, query, args...); err != nil {
+		return nil, err
+	}
+	// نفس تعبئة بقية القوائم — الشاشة تحتاج الخدمة والزبون المرتبط.
+	if err := r.hydrateAll(toPointers(rows)); err != nil {
+		return nil, err
+	}
+	return rows, nil
 }

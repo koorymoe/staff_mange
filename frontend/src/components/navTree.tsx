@@ -34,6 +34,14 @@ export interface NavItem {
   // بس ما جان ينفتح بأي منح — وهاي المشكلة الي شكه منها صاحب العمل:
   // «صلاحية من أنطيها لأحد يلا تظهر إله».
   unlockPermission?: string
+  // unlockAnyPermission: نفس `unlockPermission` بالضبط — **تفتح ولا
+  // تقيّد** — بس بأكثر من مفتاح. لازمناها لمّا صار عندنا مفتاحان
+  // يفتحون نفس الشاشة (مفتاح الشاشة نفسها + مفتاح التدقيق العام).
+  //
+  // ⚠️ ولا تُستبدل بـ`anyPermission`: هاذيچ **شرط** — حوّلناها مرة
+  // وانكشف بالقياس إن المراقب **فقد** بنداً چان يشوفه بدوره
+  // («بلاغات أخطاء التدقيق»)، لأن الشرط انطبق عليه بلا ما عنده مفتاح.
+  unlockAnyPermission?: string[]
   // labelFor: اسم البند يتبدّل حسب الي يشوفه.
   //
   // ⚠️ الحاجة إلها: البند الواحد ممكن يفتح شغلاً مختلفاً حسب الصلاحية.
@@ -304,22 +312,25 @@ export const navItems: NavItem[] = [
         // المحاسب أصلاً، فما يتكرر عندهم شي.
         hideForRoles: ['FINANCE'],
         children: [
-          // ⚠️⚠️ مخفيّتان عن المراقب صراحة — شغل المحاسب الشخصي (يأشّر
-          // "مطابق/غير مطابق" بنفسه)، والخادم أصلاً يرفض المراقب لو
-          // حاول يدقق حجزاً مباشرة ("المراقب يراجع، ما يصدر القرار").
-          // فبقاؤهما بقائمته يفتح شاشة أزرارها كلها مرفوضة، بلا فايدة —
-          // شغلته الحقيقية هنا "بلاغات أخطاء التدقيق" تحتها بس.
-          { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
-      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
+          // ⚠️ جانن مخفيّات عن المراقب بحجة إن «الخادم يرفضه» — وهاي
+          // **غلط**: المراقب عنده صلاحية «المالية» بافتراضي دوره فالخادم
+          // يقبله أصلاً. والأسوأ إن `hideForRoles` تُفحص **قبل** قاعدة
+          // «المنح يفتح»، فصار المالك ينطي صلاحية وما تظهر ولا شاشة —
+          // ويجيب رابط الشاشة باليد من المحاسب ويدزّه للمراقب.
+          // هسه: يشوفهن، والقرار داخلهن بيد صاحب `finance_audit` وبس.
+          // ⚠️ ونسخ نفس البنود بمجموعة «وحدة الحسابات» جوّه تبقى
+          // محجوبة عن المراقب — هذا الي يمنع تكرار الشاشة بمحلين.
+          { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
+      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'] },
           // فواتير الليدر تترحّل للمحاسب بتفاصيلها حتى يدققها ويعتمدها
           { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
-      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues', hideForRoles: ['MONITOR'] },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view', hideForRoles: ['MONITOR'] },
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['leader_invoices_view', 'finance_audit'] },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
         ],
       },
@@ -454,6 +465,13 @@ export const navItems: NavItem[] = [
   // ⚠️ والخادم يقصّر القائمة على فواتير صاحبها حصراً (`List` يفرض
   // معرّف الطالب لكل من ما يملك مراجعة) — فما يشوف فواتير غيره.
   { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', icon: icon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },
+  // ═══ فاتورة الشغل داخل الشركة ═══
+  //
+  // «لازم الليدر يسوي فاتورة حتى للحجوزات داخل الشركة — ياما يقدرها
+  // إداري الكوادر ياما الليدر». فالباب `anyPermission` بلا شرط دور:
+  // إداري الكوادر **مو ليدر**، وأي شرط ليدرية يقفله بوجهه.
+  { to: '/leader-invoices/new?internal=1', label: '🏢 فاتورة شغل داخل الشركة', icon: icon('M3 21h18M5 21V7l7-4 7 4v14M9 21v-6h6v6M9 11h.01M15 11h.01'), anyPermission: ['invoice_internal'] },
+  { to: '/leader-invoices?tab=INTERNAL', label: '🧾 فواتير الشغل الداخلي', icon: icon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'), anyPermission: ['invoice_internal'] },
 
   // للمحاسب ما بقى فوگ الفاصل ولا شي (الإدارة انحجبت عنه لأنها مكرّرة)،
   // فالفاصل يصير خط يفصل الفراغ عن «العمل» — ضجيج بلا معنى.
@@ -708,6 +726,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     if (!item.ownerOnly) {
       const grantedExplicitly =
         (!!item.unlockPermission && ctx.permissions.includes(item.unlockPermission)) ||
+        (!!item.unlockAnyPermission && item.unlockAnyPermission.some((p) => ctx.permissions.includes(p))) ||
         (!!item.permission && ctx.permissions.includes(item.permission)) ||
         (!!item.anyPermission && item.anyPermission.some((p) => ctx.permissions.includes(p))) ||
         (!!item.unitPermission && ctx.permissions.includes(item.unitPermission))

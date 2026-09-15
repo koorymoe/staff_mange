@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { onEnter } from '../utils/enterKey'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import { useSession } from '../session'
 import {
   api,
@@ -88,6 +89,20 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // على التسعير، فما ينفتح لكل ليدر بالدور.
   const canManualInvoice = isTopAdmin || permissions.includes('invoice_manual')
   const [manualMode, setManualMode] = useState(false)
+
+  // ═══ فاتورة شغل داخل الشركة ═══
+  //
+  // (ع): «لازم الليدر يسوي فاتورة حتى للحجوزات داخل الشركة — ياما
+  // يقدرها إداري الكوادر ياما الليدر». فالصلاحية وحدة والاثنان
+  // يشتغلون بيها، وماكو زبون ولا جدول كلفة: المبلغ **تقدير**.
+  //
+  // ⚠️ تنفتح من الرابط `?internal=1` (نفس نمط `?service=1`): البند
+  // بالقائمة يوصل لهنا، فالوضع الي يحتاجه يكون جاهزاً قبل ما يبحث عنه.
+  const canInternalInvoice = isTopAdmin || permissions.includes('invoice_internal')
+  const [internalMode, setInternalMode] = useState(() => params.get('internal') === '1')
+  const [internalWork, setInternalWork] = useState('')
+  const [internalPrice, setInternalPrice] = useState('')
+  const [internalNote, setInternalNote] = useState('')
   const [manualWork, setManualWork] = useState('')
   const [manualPrice, setManualPrice] = useState('')
   const [manualNote, setManualNote] = useState('')
@@ -99,6 +114,18 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const [selectedBookingId, setSelectedBookingId] = useState(params.get('bookingId') || '')
   const bookingId = selectedBookingId || undefined
   const [completedBookings, setCompletedBookings] = useState<Booking[]>([])
+  /**
+   * ⚠️ بوضع الشغل الداخلي السلة تعرض **الحجوزات الداخلية وبس**:
+   * الخادم يرفض أي حجز ثاني، فعرضه يعني خيار يطلع ٤٠٠ بعد التعب.
+   * وبالوضع العادي نشيل الداخلية — إلها بابها ومبلغها تقدير.
+   *
+   * 🔴 قيمة مشتقّة بكل رسم مو `useState`: `internalMode` يتغيّر
+   * بالمربّع، وأي حالة محسوبة مرة تبقى على أول قيمة.
+   */
+  const pickableBookings = completedBookings.filter((b) =>
+    internalMode ? b.bookingType === 'INTERNAL' : b.bookingType !== 'INTERNAL')
+  const internalBooking = completedBookings.find(
+    (b) => b.id === selectedBookingId && b.bookingType === 'INTERNAL')
   // المشاريع الموجّهة لهذا الموظف — هذي هي المصدر الأساسي للفاتورة: الليدر
   // يسوي فاتورة للشغل الموجّه له، مو من قائمة عامة بكل الحجوزات.
   const [myProjects, setMyProjects] = useState<DirectedProject[]>([])
@@ -125,7 +152,15 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // ما يحفظ شي. فبلا هالسطر الباب الجديد يوصّل الموظف لشاشة
   // **ما بيها شي يسويه**، وهاي انقاست فعلاً: صفر مربّع بالشاشة.
   const [mode, setMode] = useState<'estimate' | 'booking'>(
-    initialMode ?? (params.get('mode') === 'booking' || params.get('service') === '1' ? 'booking' : 'estimate'),
+    // ⚠️ `internal=1` لازم تجبر وضع «مربوط بحجز» مثل `service=1`
+    // بالضبط: الشاشة تنفتح افتراضياً على «استفسار» (`estimate`)،
+    // و`estimateOnly` **تخفي كتلة الفاتورة الداخلية وسلة الحجوزات
+    // كلها** — فالبند بالقائمة يفتح شاشة ماكو بيها شي يسويه الموظف.
+    // نفس العيب الي انقاس بفاتورة الخدمة، وانقاس هنا مرة ثانية.
+    initialMode ??
+      (params.get('mode') === 'booking' || params.get('service') === '1' || params.get('internal') === '1'
+        ? 'booking'
+        : 'estimate'),
   )
   const estimateOnly = mode === 'estimate'
 
@@ -158,15 +193,23 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   }, [])
 
   // الحجوزات المكتملة الي يقدر الليدر يسويلها فاتورة — ما تنجلب بوضع الاستفسار
+  //
+  // 🔴 **وبوضع الشغل الداخلي مسار ثانٍ**: `getBookings` يضيّق النطاق
+  // لحجوزات الموظف نفسه لمن ما عنده صلاحية قراءة شاملة (قيد أمان
+  // بالخادم) — فصاحب `invoice_internal` جان يلگى السلّة **فاضية**
+  // والصلاحية شكلية. `getInternalBookings` يرجّع الحجوزات الداخلية
+  // وبس، وهي ماكو بيها زبون خارجي فما تكشف بيانات أحد.
   useEffect(() => {
     if (estimateOnly) return
-    api.getBookings({ status: 'COMPLETED' })
-      .then(setCompletedBookings)
-      .catch(() => setCompletedBookings([]))
+    const load = internalMode
+      ? api.getInternalBookings('COMPLETED')
+      : api.getBookings({ status: 'COMPLETED' })
+    load.then(setCompletedBookings).catch(() => setCompletedBookings([]))
+    if (internalMode) { setMyProjects([]); return }
     api.getProjectsDirectedToMe()
       .then((r) => setMyProjects(r.projects))
       .catch(() => setMyProjects([]))
-  }, [estimateOnly])
+  }, [estimateOnly, internalMode])
 
   const allSystemNames = useMemo(
     () => Array.from(new Set(catalog.map((c) => c.systemName))).sort(),
@@ -373,6 +416,37 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
     setError(null)
     // ⚠️ فاتورة الخدمة تتجاوز إلزامي المنظومات والبنود — وهذا **كل
     // الفرق**. إلزامي فاتورة الليدر يبقى مثل ما هو تحت.
+    // ⚠️ قبل كل الفروع: الحجز الداخلي **إجباري** هنا — وهو الي يعزل
+    // الصلاحية. والخادم يفحصه بعد (يرفض أي حجز مو داخلي)، فالفحص
+    // هنا حتى الموظف يشوف السبب بلا رحلة للخادم.
+    if (internalMode) {
+      if (!bookingId) {
+        setError('اختر الحجز الداخلي أول — فاتورة الشغل داخل الشركة لازم تكون مربوطة بحجز')
+        return
+      }
+      const work = internalWork.trim()
+      if (work.length < MANUAL_WORK_MIN) {
+        setError(`اكتب شنو انعمل بالتفصيل (${MANUAL_WORK_MIN} حرف على الأقل)`)
+        return
+      }
+      const price = Number(internalPrice)
+      if (!Number.isFinite(price) || price <= 0) {
+        setError('اكتب مبلغ الفاتورة')
+        return
+      }
+      setSaving(true)
+      try {
+        const invoice = await api.createInternalInvoice({
+          bookingId, work, price, note: internalNote.trim() || undefined,
+        })
+        setResult(invoice)
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'تعذر حفظ الفاتورة')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
     if (serviceMode) {
       const price = Number(servicePrice)
       if (!Number.isFinite(price) || price <= 0) {
@@ -781,6 +855,61 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         </div>
       )}
 
+      {/* ═══ فاتورة شغل داخل الشركة ═══
+          ماكو زبون ولا جدول كلفة — الحجز الداخلي والمبلغ المقدَّر وبس. */}
+      {canInternalInvoice && !estimateOnly && (
+        <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3">
+          <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-indigo-900">
+            <input type="checkbox" checked={internalMode}
+              onChange={(e) => {
+                setInternalMode(e.target.checked)
+                if (e.target.checked) { setManualMode(false); setServiceMode(false) }
+              }} />
+            🏢 فاتورة شغل داخل الشركة
+          </label>
+          {internalMode && (
+            <div className="mt-3 space-y-3">
+              {internalBooking ? (
+                <InternalDepartmentContacts
+                  departmentId={internalBooking.internalDepartmentId}
+                  departmentName={internalBooking.internalDepartment}
+                  requesterName={internalBooking.internalEmployeeName}
+                  requesterPhone={internalBooking.internalEmployeePhone}
+                />
+              ) : (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[11px] font-bold text-amber-900">
+                  اختر الحجز الداخلي من قائمة «الحجوزات» جوّه — الفاتورة لازم تكون مربوطة بحجز.
+                </p>
+              )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <div className="sm:col-span-2">
+                  <label className="mb-1 block text-xs font-medium text-slate-600">شنو انعمل بالتفصيل *</label>
+                  <input value={internalWork} onChange={(e) => setInternalWork(e.target.value)}
+                    placeholder="مثلاً: شد 4 كاميرات بمخزن القسم + تمديد 60 متر"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-medium text-slate-600">المبلغ المقدَّر (د.ع) *</label>
+                  <input value={internalPrice} onChange={(e) => setInternalPrice(e.target.value.replace(/[^\d]/g, ''))}
+                    dir="ltr" inputMode="numeric" placeholder="0"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="mb-1 block text-xs font-medium text-slate-600">ملاحظة (اختيارية)</label>
+                  <input value={internalNote} onChange={(e) => setInternalNote(e.target.value)}
+                    placeholder="أي شي يحتاجه المحاسب"
+                    className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500" />
+                </div>
+                <p className="text-[11px] leading-relaxed text-indigo-800 sm:col-span-3">
+                  ⓘ ماكو زبون ولا جدول كلفة بالشغل الداخلي — المبلغ تقدير تحطّه أنت،
+                  والفاتورة تنعرض للمحاسب والمراقب بتبويب «داخل الشركة» لحاله.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {hasDraft && items.length === 0 && (
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
           <p className="text-[11px] font-bold text-amber-900">📝 عندك مسودة محفوظة من آخر مرة</p>
@@ -802,6 +931,11 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           الشاشة طويلة وبيها خانات كثيرة. بلا شريط خطوات، الليدر ما
           يعرف وين واصل ولا شكد باقي عليه — فيوقف بالنص أو ينسى بند.
           الشريط يگله بالضبط بأي مرحلة هو، وتتقدّم لحالها من الحالة. */}
+      {/* ⚠️ الشريط والخطوات الي بعده (نوع العمل · العناصر · المواد ·
+          الخصم) **كلهن ما تخص الشغل داخل الشركة**: سعره تقدير يدوي
+          وماكو جدول كلفة وراه. وعرضهن لإداري الكوادر يخليه يعبّي
+          منظومات وبنود ويحسب إنها تدخل بالمبلغ — وهي ما تدخل. */}
+      {!internalMode && (
       <ol className="mt-4 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3 sm:gap-2">
         {[
           { n: 1, label: 'اختيار نوع العمل', done: systems.length > 0 },
@@ -831,6 +965,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           )
         })}
       </ol>
+      )}
 
       {/* ═══ عمودين: الشغل يمين والملخّص يسار ═══
           بالتصميم الملخّص جنب الحقول مو تحتهن — لأن الليدر يحتاج يشوف
@@ -877,9 +1012,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
                 ))}
               </optgroup>
             )}
-            {completedBookings.length > 0 && (
-              <optgroup label="حجوزات مكتملة">
-                {completedBookings.map((b) => (
+            {pickableBookings.length > 0 && (
+              <optgroup label={internalMode ? 'حجوزات داخل الشركة' : 'حجوزات مكتملة'}>
+                {pickableBookings.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.code ? `${b.code} — ` : ''}{b.customer?.name || 'بدون اسم'}
                     {b.scheduledAt ? ` (${new Date(b.scheduledAt).toLocaleDateString('ar-IQ')})` : ''}
@@ -926,6 +1061,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       )}
 
       {/* ═══ (١) اختيار نوع العمل ═══ */}
+      {!internalMode && (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
       <h3 className="mb-1 flex flex-wrap items-center gap-2 font-bold text-brand-800">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2c5aad] text-[11px] font-black text-white">1</span>
@@ -974,13 +1110,14 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         الشبكات وكاميرات المراقبة سعرهن بالشرائح — تنحسب كل وحدة بحاسبتها الخاصة وتطلع منها الفاتورة أو استفسار الزبون.
       </p>
       </div>
+      )}
 
       {/* ═══ (٢) العناصر المختارة ═══
           بالتصميم البنود **بطاقات** جنب بعض مو صفوف طويلة — وهذا مو
           شكل بس: الصف الطويل بالموبايل يصير عمود من ٨ خانات بلا عنوان
           يجمعهن، فالليدر يضيع أي خانة تخص أي بند. البطاقة بيها راس
           باسم البند، فتضل مفهومة حتى بشاشة ٥ إنچ. */}
-      {systems.length > 0 && (
+      {systems.length > 0 && !internalMode && (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h3 className="flex items-center gap-2 font-bold text-brand-800">
@@ -1160,7 +1297,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       </div>
       )}
 
-      {!estimateOnly && (
+      {!estimateOnly && !internalMode && (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
         <div className="flex items-center justify-between">
           <h4 className="font-bold text-brand-800">المواد</h4>
@@ -1217,7 +1354,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       </div>
       )}
 
-      {!estimateOnly && (
+      {!estimateOnly && !internalMode && (
         <>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <input
@@ -1293,7 +1430,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
             فاللوحة تعرض له «حسابك ما عنده صلاحية حساب الكلفة
             التلقائي — راجع الإدارة» — وهي **ما تخص شغله** وتخليه
             يوقف ويتصل بالإدارة بلا سبب. */}
-        {!serviceMode && (
+        {!serviceMode && !internalMode && (
         <aside className="order-first lg:sticky lg:top-4 lg:order-last">
           <div className="rounded-2xl border-2 border-sky-200 bg-white p-4 shadow-lg">
             <div className="flex items-center justify-between gap-2">

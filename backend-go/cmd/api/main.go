@@ -405,12 +405,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireOwner := middleware.RequireRole(employeeRepo, notificationRepo, "OWNER")
 	// فتح الحسابات: المالك وحده، بلا تسجيل مخالفة على مدير النظام
 	requireOwnerAccounts := middleware.RequireOwnerOnly("فتح الحسابات للمالك وحده")
-	requireFinance := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "FINANCE")
+	// ⚠️ جان `RequireRole("ADMIN","FINANCE")` بلا أي باب صلاحية — يعني
+	// اعتماد فاتورة الليدر وحكم التدقيق وسحب الاعتماد والتعديل وحالة
+	// المصروف **كلها بالدور حصراً**. فلمّا المحاسب ياخذ إجازة ما عندنا
+	// طريق نخلي غيره يكمل: المالك ينطي صلاحية والاعتماد يبقى مرفوض
+	// والفاتورة ما تمشي. الإضافة **زيادة مو تضييق** — ولا حارس ينضيّق،
+	// فما تنكسر صلاحية أي موظف شغّال.
+	requireFinance := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "FINANCE"}, "finance_audit")
 	// تدقيق مبلغ الحجز يعتمد على صلاحية "finance" الممنوحة فعلياً للموظف (مو بس دوره
 	// الوظيفي) — المراقب مثلاً عنده هذي الصلاحية افتراضياً ويشوف زر "تدقيق" بالواجهة،
 	// فلازم الباك إند يتحقق من نفس الصلاحية بدل دور صارم، وإلا يترفض الطلب ويتسبب
 	// بإيقاف حساب الموظف تلقائياً بعد 3 محاولات (حماية أمنية ضد التلاعب بالجلسة).
-	requireVerifyBooking := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "finance")
+	// و`finance_audit` جنبها: المفتاح الي المالك ينطيه لمن يريده حتى
+	// يأشّر «مطابق/غير مطابق» بدل المحاسب.
+	requireVerifyBooking := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "finance", "finance_audit")
 	requireCoordinator := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "coordinator")
 	requireCrewManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "crew_management")
 	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
@@ -692,6 +701,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// الحجوزات — دورة حياة الحجز الكاملة، كل خطوة تتطلب تسجيل دخول فقط (الصلاحية الدقيقة تُفرض بالواجهة حالياً)
 	mux.Handle("GET /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.List), requireAuth))
+	// حجوزات الشغل داخل الشركة — لمن يسوي فاتورتها أو يدقّقها.
+	// ⚠️ لازم تجي **قبل** `GET /api/bookings/{id}` وإلا "internal"
+	// تنحسب معرّف حجز.
+	mux.Handle("GET /api/bookings/internal", middleware.Chain(http.HandlerFunc(bookingHandler.ListInternal), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"},
+			"invoice_internal", "finance", "finance_audit", "monitoring", "auditing")))
 	mux.Handle("POST /api/bookings", middleware.Chain(http.HandlerFunc(bookingHandler.Create), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/confirm", middleware.Chain(http.HandlerFunc(bookingHandler.Confirm), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/details", middleware.Chain(http.HandlerFunc(bookingHandler.UpdateDetails), requireAuth, requireBookingEdit))
@@ -850,7 +866,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/audit-issues", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ListIssues), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing")))
-	mux.Handle("PUT /api/audit-issues/{id}/resolve", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ResolveIssue), requireAuth))
+	// ⚠️⚠️ جان حارسه `requireAuth` **وبس** — أي موظف مسجّل دخول، حتى
+	// فني بالميدان، يكدر يحلّ بلاغ خطأ تدقيق ويغلقه. نفس حارس القراءة
+	// فوق بالضبط.
+	mux.Handle("PUT /api/audit-issues/{id}/resolve", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ResolveIssue), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing", "finance_audit")))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// إرجاع الحجز للتدقيق: التدقيق جان قرار نهائي ما إله رجعة. مدير
 	// النظام حصراً يكدر يفتحه من جديد حتى ينصلّح أي غلط بالمبلغ.
@@ -1652,7 +1673,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ والإضافة **زيادة مو تبديل**: ولا حارس ينضيّق، فما تنكسر
 	// صلاحية ولا موظف شغّال.
 	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
-		"leader_basket", "finance", "invoice_gps", "invoice_dashcam")
+		"leader_basket", "finance", "finance_audit", "invoice_gps", "invoice_dashcam", "invoice_internal")
 	// أسباب الشغل المجاني — يقراها أي موظف يسوي فاتورة
 	mux.Handle("GET /api/free-work-reasons", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FreeReasons), requireAuth))
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
@@ -1676,6 +1697,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		http.HandlerFunc(leaderInvoiceHandler.CreateManualInvoice), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"ADMIN", "OWNER"}, "invoice_manual")))
+	// ═══ إكسل حجوزات داخل الشركة ═══
+	// المالك والمدير والمحاسب والمراقب (قرار (ع)). و`finance_audit`
+	// جنبهم حتى الي يكمل شغل المحاسب يطلعه الملف بعد.
+	internalExportHandler := handler.NewInternalBookingExportHandler(repository.NewInternalBookingReportRepository(db))
+	mux.Handle("GET /api/internal-bookings/export", middleware.Chain(http.HandlerFunc(internalExportHandler.ExportMonth), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "finance_audit", "monitoring", "auditing")))
+	// فاتورة الشغل داخل الشركة: صلاحية وحدة ينطيها المالك للليدر
+	// **أو** لإداري الكوادر — إداري الكوادر مو ليدر فحارس الفاتورة
+	// العادية يرفضه، والفاتورة اليدوية تفتح له كل الفواتير الحرة.
+	mux.Handle("POST /api/leader-invoices/internal", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CreateInternalInvoice), requireAuth,
+		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "invoice_internal")))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)
 	// حساب تكلفة التنصيب للتنفيذ: فقرة رئيسية بكل الحسابات وكل الأدوار،
 	// فما بيها قيد غير تسجيل الدخول — هي حاسبة ما تكشف بيانات أحد

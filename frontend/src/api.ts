@@ -4454,6 +4454,22 @@ export const api = {
     systems?: string[]
     note?: string
   }) => request<LeaderInvoice>('/leader-invoices/manual', { method: 'POST', body: JSON.stringify(data) }),
+  /** حجوزات الشغل داخل الشركة — مسار مستقل لأن قائمة الحجوزات
+   *  العامة تنضيّق لحجوزات الموظف نفسه بلا صلاحية قراءة شاملة. */
+  getInternalBookings: (status?: string) =>
+    request<Booking[]>(`/bookings/internal${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  /** فاتورة شغل داخل الشركة — الحجز إجباري، والخادم يرفض أي حجز
+   *  نوعه مو «داخل الشركة». */
+  createInternalInvoice: (data: {
+    bookingId: string
+    work: string
+    price: number
+    note?: string
+  }) => request<LeaderInvoice>('/leader-invoices/internal', { method: 'POST', body: JSON.stringify(data) }),
+  /** إكسل حجوزات داخل الشركة لشهر — المالك والمدير والمحاسب والمراقب. */
+  exportInternalBookings: (month: string) =>
+    downloadFile(`/internal-bookings/export?month=${encodeURIComponent(month)}`,
+      `حجوزات-داخل-الشركة-${month}.xlsx`),
   getDesignAssets: (archived?: boolean) =>
     request<DesignAsset[]>(`/design-assets${archived ? '?archived=1' : ''}`),
   /** التصنيفات من الخادم — تسمية وحدة بالمكانين. */

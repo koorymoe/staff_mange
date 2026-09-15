@@ -1001,3 +1001,8 @@ func (s *BookingService) StageBucketCounts() (map[string]int, error) {
 func (s *BookingService) Get(id string) (*model.Booking, error) {
 	return s.repo.FindByID(id)
 }
+
+// ListInternal حجوزات الشغل داخل الشركة — لمن عنده صلاحية فاتورتها.
+func (s *BookingService) ListInternal(status string, limit int) ([]model.Booking, error) {
+	return s.repo.ListInternal(status, limit)
+}
