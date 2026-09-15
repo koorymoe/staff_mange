@@ -70,6 +70,23 @@ function lines(text?: string | null): string[] {
   return text.split(/[\n،؛]|\s-\s/).map((s) => s.trim()).filter(Boolean).slice(0, 3)
 }
 
+// اسم الدور بلغة الشغل — الإداري يلازمه يعرف منو الليدر من الشريحة
+// نفسها مو من التلميح لما يوقف عليها بالماوس.
+const CREW_ROLE_LABELS: Record<string, string> = {
+  LEADER: 'ليدر',
+  TECH_1: 'فني ١',
+  TECH_2: 'فني ٢',
+  TECH_3: 'فني ٣',
+  REPORTER: 'كتب تقرير',
+}
+const crewRoleLabel = (role: string) => CREW_ROLE_LABELS[role] ?? role
+
+// ⚠️ ما نگول «اشتغل صفر يوم» لأنه كذب: المعروف عندنا كم
+// تقرير كتبه هو، مو كم يوم طلع. واللي ماكو إله تقرير
+// نگول «مكلّف» وخلاص — رقم غلط أسوأ من ماكو رقم.
+const crewDaysLabel = (days: number) =>
+  days > 0 ? `كتب ${days} تقرير يوم` : 'مكلّف بالحجز'
+
 const STAT_STYLES = {
   all: 'border-slate-200 bg-white text-[#2c5aad]',
   waiting: 'border-amber-200 bg-amber-50/60 text-amber-700',
@@ -218,12 +235,14 @@ export default function PartialBookings() {
                         key={c.employeeId}
                         // ⚠️ اللون يگول متاح لو لا: الإداري ما يجدول
                         // يوماً على واحد بإجازة وبعدين يكتشفها.
-                        className={`rounded-lg px-2 py-0.5 text-[11px] font-bold ${
+                        // والليدر إله إطار يميّزه — الإداري يدور عليه هو أولاً.
+                        className={`inline-flex items-center gap-1 rounded-lg px-2 py-0.5 text-[11px] font-bold ${
                           c.available ? 'bg-emerald-50 text-emerald-800' : 'bg-red-50 text-red-700'
-                        }`}
-                        title={c.available ? `${c.role} · اشتغل ${c.daysWorked} يوم` : c.note}
+                        } ${c.role === 'LEADER' ? 'ring-1 ring-emerald-400' : ''}`}
+                        title={c.available ? `${crewRoleLabel(c.role)} · ${crewDaysLabel(c.daysWorked)}` : c.note}
                       >
                         {c.name}
+                        <em className="not-italic opacity-60">{crewRoleLabel(c.role)}</em>
                       </span>
                     ))}
                   </div>

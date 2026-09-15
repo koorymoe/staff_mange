@@ -163,17 +163,48 @@ func (r *BookingProgressRepository) Reports(bookingID string) ([]model.BookingPr
 // SuggestedCrew الكادر الي اشتغل على الحجز بالأيام الفائتة — النظام
 // يقترحهم لأنهم يعرفون الشغل والزبون والطريق، والإداري إله الحق يبدّل.
 //
-// نجيبهم من التكليفات الحالية ومن لقطات التقارير سوه؟ لا — من التكليفات
-// بس. اللقطة نص أسماء للعرض، والتكليف هو الربط الحقيقي بالموظف.
+// نجيبهم من ثلاث مصادر حقيقية، وكلها ربط بموظف مو نص:
+//
+//  1. الليدر المسؤول — ينحفظ بعمود "projectSupervisorId" على الحجز
+//     نفسه، مو بجدول التكليفات. وهذا كان سبب اختفائه: الاستعلام
+//     القديم يقرا "BookingAssignment" وحده، وجدول التكليفات نوع
+//     دوره "TechnicianRole" يعني TECH_1..TECH_3 بس — فالليدر ماكو
+//     محل يدخل بيه أصلاً، ويطلع الفني بلا ليدره.
+//  2. التكليفات — الفنيين.
+//  3. الي كتب تقرير يوم ("reportedById") — أقوى دليل إنه طلع فعلاً،
+//     لأنه هو الي سجّل شغل ذاك اليوم.
+//
+// ولو واحد جا من أكثر من مصدر ننسبه لأعلى دور إله (الليدر قبل الفني
+// قبل كاتب التقرير) حتى ما يتكرر بالقائمة.
+//
+// ⚠️ و"daysWorked" يعدّ التقارير الي كتبها **هو** — قبل كان يعدّ كل
+// تقارير الحجز لكل واحد، فالكل يطلع بنفس الرقم وهو رقم غلط.
+// الي ماكو إله تقرير يرجع صفر، والواجهة تگول «مكلَّف» ما تگول «صفر يوم».
 func (r *BookingProgressRepository) SuggestedCrew(bookingID string) ([]model.SuggestedCrewMember, error) {
 	rows := []model.SuggestedCrewMember{}
 	err := r.db.Select(&rows, `
-		SELECT a."employeeId", e.name, a.role::text AS role,
-		       (SELECT COUNT(*) FROM "BookingProgressReport" p WHERE p."bookingId" = a."bookingId") AS "daysWorked"
-		FROM "BookingAssignment" a
-		JOIN "Employee" e ON e.id = a."employeeId"
-		WHERE a."bookingId" = $1
-		ORDER BY a.role
+		WITH picks AS (
+			SELECT b."projectSupervisorId" AS emp, 'LEADER' AS role, 0 AS ord
+			FROM "Booking" b
+			WHERE b.id = $1 AND b."projectSupervisorId" IS NOT NULL
+			UNION ALL
+			SELECT a."employeeId", a.role::text, 1
+			FROM "BookingAssignment" a
+			WHERE a."bookingId" = $1
+			UNION ALL
+			SELECT p."reportedById", 'REPORTER', 2
+			FROM "BookingProgressReport" p
+			WHERE p."bookingId" = $1 AND p."reportedById" IS NOT NULL
+		), best AS (
+			SELECT DISTINCT ON (emp) emp, role, ord
+			FROM picks ORDER BY emp, ord
+		)
+		SELECT k.emp AS "employeeId", e.name, k.role AS role,
+		       (SELECT COUNT(*) FROM "BookingProgressReport" p
+		         WHERE p."bookingId" = $1 AND p."reportedById" = k.emp) AS "daysWorked"
+		FROM best k
+		JOIN "Employee" e ON e.id = k.emp
+		ORDER BY k.ord, e.name
 	`, bookingID)
 	if err != nil {
 		return nil, err
