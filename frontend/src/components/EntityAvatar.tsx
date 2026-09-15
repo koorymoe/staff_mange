@@ -124,8 +124,27 @@ export default function EntityAvatar({
 
     // المحرّك ورابط المجسّم بالتوازي — الاثنان مستقلان، والتسلسل
     // يضيف رحلةَ شبكة على وقت ظهور الشخصية بلا فائدة.
+    //
+    // 🔴 **والفشل على مجسّم مرفوع يرجع للمدمج مو يخفي الكيان**:
+    // قبلها، أي فشل بتحميل المجسّم النشط كان يشيل الشخصية **من كل
+    // الشاشات** — والسبب ممكن يكون بسيطاً وخارج إيدنا: الملف انمحى
+    // من قرص السيرفر، أو الوسم انتهى، أو خادم أقدم من الواجهة.
+    // وهاي انكشفت بالقياس فعلاً: صف نشط يشير لملف مو موجود ← ٤٠٤
+    // ← الكيان **اختفى بالكامل** بلا سبب ظاهر للموظف ولا للمالك.
+    //
+    // ⚠️ والمحاولة الثانية **بالمدمج حصراً ومرة وحدة**: إعادة نفس
+    // الرابط تعيد نفس الفشل، ودورة محاولات على شاشة موظف أسوأ من
+    // الفشل نفسه.
     Promise.all([import('./entityAvatarEngine'), resolveModelUrl()])
-      .then(([{ mountAvatar }, url]) => mountAvatar(canvas, url, clip, framing))
+      .then(([{ mountAvatar }, url]) =>
+        mountAvatar(canvas, url, clip, framing).catch((err) => {
+          if (cancelled || url === BUILTIN_MODEL) throw err
+          // ⚠️ ننسى المخزون حتى المحاولة الجاية تسأل الخادم من جديد
+          // (ممكن (ع) رجّع الملف أو بدّل النشط بينها وبين الآن).
+          forgetActiveModel()
+          console.warn('[entity] فشل المجسّم المرفوع — رجعنا للمدمج', err)
+          return mountAvatar(canvas, BUILTIN_MODEL, clip, framing)
+        }))
       .then((h) => {
         if (cancelled) { h.dispose(); return }
         handleRef.current = h
