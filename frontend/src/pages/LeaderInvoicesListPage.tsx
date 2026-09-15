@@ -142,6 +142,15 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   /** ⚠️ المراقب يبتّ بطلب المحاسب — والمحاسب ما يبتّ بطلبه بنفسه،
    *  وإلا الإرسال للمراقب يصير شكلياً. (والخادم يمنعه فعلياً.) */
   const isMonitor = employee?.role === 'ADMIN' || employee?.role === 'MONITOR'
+  /**
+   * monitorSeat: هل الي فاتح الشاشة يشتغل **بعين المراقب**؟
+   *
+   * ⚠️ مو نفس `isMonitor` فوق (هذيچ تشمل المدير لأنه يبتّ بعد) —
+   * هاي **مقعد**: مراقب بدوره، أو الشاشة مدمجة بمكتب المراقب
+   * (`embedded` ما يجي إلا من هناك). وعليها يتعيّن التبويب الافتراضي
+   * ونصّ الإرشاد.
+   */
+  const monitorSeat = !!embedded || employee?.role === 'MONITOR'
   /** ⚠️ `actualRole` مو `role`: المالك ينوصل كـADMIN بالواجهة،
    *  ودوره الحقيقي بـ`actualRole`. */
   const isOwner = employee?.actualRole === 'OWNER'
@@ -187,8 +196,25 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
    * حقيقي: فواتير الشغل الداخلي **تنشال من كل التبويبات الثانية**
    * (`inTab` جوّه) — وإلا العزل شكلي والمبالغ تنعدّ مرتين بعين المحاسب.
    */
-  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'MONITOR' | 'NO_NUMBER' | 'APPROVED' | 'ALL' | 'INTERNAL'>(
-    () => (params.get('tab') === 'INTERNAL' ? 'INTERNAL' : 'AUDIT'))
+  /**
+   * 🔴 **الافتراضي يختلف حسب منو فاتح الشاشة** — وهاي كانت سبب
+   * «المراقب ميدري شيسوي»:
+   *
+   * مكتب المراقب يعرض **نفس** هاي الشاشة مدمجة (`MonitorDeskPage`)،
+   * والافتراضي جان `AUDIT` — وهاي **كومة المحاسب قبل التدقيق**، مو
+   * شغل المراقب أبداً. فهو يفتح القسم، يشوف فواتير مو مالته، وما
+   * يلگى شغله. وشارة القسم تعدّ **المعلّقة عنده** وبس، فالرقم يقول
+   * «٣» ويفتح ويلگى كومة ثانية.
+   *
+   * فالمراقب يفتح على **طابوره** (`MONITOR`)، والمحاسب مثل ما هو.
+   */
+  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'MONITOR' | 'REVIEWED' | 'NO_NUMBER' | 'APPROVED' | 'ALL' | 'INTERNAL'>(
+    () => {
+      const q = params.get('tab')
+      if (q === 'INTERNAL') return 'INTERNAL'
+      if (q === 'MONITOR' || q === 'REVIEWED' || q === 'APPROVED') return q
+      return monitorSeat ? 'MONITOR' : 'AUDIT'
+    })
   // إرسال للمراقب · بتّ المراقب · إرجاع المالك
   const [monitorFor, setMonitorFor] = useState<LeaderInvoice | null>(null)
   const [monitorNote, setMonitorNote] = useState('')
@@ -253,6 +279,15 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   const audited = (inv: LeaderInvoice) => !!inv.auditVerdict && inv.auditVerdict.trim() !== ''
   /** ⚠️ نفس اشتقاق الخادم: طُلبت ولا انبتّ بيها = عند المراقب الآن. */
   const atMonitor = (inv: LeaderInvoice) => !!inv.monitorRequestedAt && !inv.monitorDecidedAt
+  /**
+   * monitorReviewed: المراقب بتّ بيها فعلاً.
+   *
+   * 🔴 بلا هذا التبويب، أول ما يبتّ المراقب بفاتورة **تختفي منه
+   * تماماً**: `monitorDecidedAt` تنملي فتطلع من «بانتظار تدقيقه»
+   * وترجع لطابور المحاسب — فهو يشتغل وما يبقى ولا أثر يشوفه. يعني
+   * يبتّ بعشر فواتير ويطلع بنص اليوم ما يعرف شنو سوّى.
+   */
+  const monitorReviewed = (inv: LeaderInvoice) => !!inv.monitorDecidedAt
   /** فاتورة شغل داخل الشركة — نقراها من **نوع الحجز نفسه**، مو من
    *  علم مكرَّر بالفاتورة ينحرف عن الحجز بأول تعديل. */
   const isInternal = (inv: LeaderInvoice) => inv.booking?.bookingType === 'INTERNAL'
@@ -263,6 +298,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     if (tab === 'ALL') return true
     if (tab === 'AUDIT') return inv.status !== 'APPROVED' && !audited(inv)
     if (tab === 'MONITOR') return inv.status !== 'APPROVED' && atMonitor(inv)
+    if (tab === 'REVIEWED') return monitorReviewed(inv)
     if (tab === 'PENDING') return inv.status !== 'APPROVED' && audited(inv) && !atMonitor(inv)
     if (tab === 'APPROVED') return inv.status === 'APPROVED'
     return inv.status === 'APPROVED' && !inv.externalInvoiceNumber
@@ -288,6 +324,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     INTERNAL: invoices.filter(isInternal).length,
     AUDIT: external.filter((i) => i.status !== 'APPROVED' && !audited(i)).length,
     MONITOR: external.filter((i) => i.status !== 'APPROVED' && atMonitor(i)).length,
+    REVIEWED: external.filter(monitorReviewed).length,
     PENDING: external.filter((i) => i.status !== 'APPROVED' && audited(i) && !atMonitor(i)).length,
     NO_NUMBER: external.filter((i) => i.status === 'APPROVED' && !i.externalInvoiceNumber).length,
     APPROVED: external.filter((i) => i.status === 'APPROVED').length,
@@ -430,8 +467,8 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {([
           { k: 'ALL' as const, label: 'الكل', icon: '📚', tone: 'default' as const, c: counts.ALL },
-          { k: 'APPROVED' as const, label: 'معتمدة', icon: '✔', tone: 'success' as const, c: counts.APPROVED },
-          { k: 'MONITOR' as const, label: 'عند المراقب', icon: '👁️', tone: 'violet' as const, c: counts.MONITOR },
+          { k: 'APPROVED' as const, label: 'الفواتير المكتملة', icon: '✔', tone: 'success' as const, c: counts.APPROVED },
+          { k: 'MONITOR' as const, label: 'بانتظار تدقيق المراقب', icon: '👁️', tone: 'violet' as const, c: counts.MONITOR },
           { k: 'PENDING' as const, label: 'بانتظار الاعتماد', icon: '⏳', tone: 'warning' as const, c: counts.PENDING },
           { k: 'AUDIT' as const, label: 'بانتظار التدقيق', icon: '🔍', tone: 'info' as const, c: counts.AUDIT },
         ]).map((t) => (
@@ -441,14 +478,21 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         ))}
       </div>
 
-      {/* التبويبات: كل تبويب شغلة وحدة يشتغلها المحاسب */}
+      {/* ═══ التبويبات = مسار الشغل بترتيبه الحقيقي ═══
+          «أني إذا أجي بالنظام وما أعرف وين أروح، هاي مشكلة بحد ذاتها».
+          فالصف يقرا من أول الطابور لآخره:
+            بانتظار التدقيق → بانتظار الاعتماد → بانتظار تدقيق المراقب
+            → الي دقّقها المراقب → **الفواتير المكتملة** → معتمدة بلا رقم
+          ⚠️ و«المكتملة» و«بانتظار تدقيق المراقب» جان يفرّقهن «معتمدة
+          بلا رقم» بالنص — وهو طلبهن **بصفّ بعض**. */}
       <div className="mt-4 flex flex-wrap gap-2">
         {([
           { k: 'AUDIT' as const, t: '🔍 بانتظار التدقيق', c: counts.AUDIT },
           { k: 'PENDING' as const, t: '⏳ بانتظار الاعتماد', c: counts.PENDING },
-          { k: 'MONITOR' as const, t: '👁️ عند المراقب', c: counts.MONITOR },
+          { k: 'MONITOR' as const, t: '👁️ بانتظار تدقيق المراقب', c: counts.MONITOR },
+          { k: 'REVIEWED' as const, t: '✅ الي دقّقها المراقب', c: counts.REVIEWED },
+          { k: 'APPROVED' as const, t: '✔ الفواتير المكتملة', c: counts.APPROVED },
           { k: 'NO_NUMBER' as const, t: '🔗 معتمدة بلا رقم فاتورة', c: counts.NO_NUMBER },
-          { k: 'APPROVED' as const, t: '✔ معتمدة', c: counts.APPROVED },
           { k: 'ALL' as const, t: 'الكل', c: counts.ALL },
           { k: 'INTERNAL' as const, t: '🏢 داخل الشركة', c: counts.INTERNAL },
         ]).map((o) => (
@@ -465,6 +509,31 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           </button>
         ))}
       </div>
+
+      {/* ═══ «شنو المطلوب منك» — سطر يتبدّل مع التبويب ═══
+          «كل موظف لازم يعرف شغله شنو… حالياً ميدرون شيسووون».
+          ⚠️ ومحلّه **جوّا كتلة التبويبات مو بالترويسة**: الترويسة
+          تنخفي بالوضع المدمج (مكتب المراقب) — وهي بالضبط الي چانت
+          تشرح المسار، فالمراقب چان يوصل بلا ولا كلمة تدلّه. */}
+      <p className="mt-3 rounded-xl border px-3 py-2 text-[12px] font-bold leading-relaxed"
+        style={{ borderColor: 'var(--bd-line)', color: 'var(--t-body)' }}>
+        {tab === 'AUDIT' && (monitorSeat
+          ? 'ⓘ هاي كومة المحاسب قبل التدقيق — مو شغلك. شغلك بتبويب «بانتظار تدقيق المراقب».'
+          : 'ⓘ شغلك هنا: افتح الفاتورة، طابق مبلغها، وأشّر الحكم (مطابق / غير مطابق / خطأ بالسعر). وبعد الحكم تنتقل لـ«بانتظار الاعتماد».')}
+        {tab === 'PENDING' && (monitorSeat
+          ? 'ⓘ هاي رجعت للمحاسب حتى يعتمدها — دورك خلص بيها.'
+          : 'ⓘ هاي انحكم عليها وتنتظر اعتمادك. تكدر تعتمدها برقم الفاتورة المحاسبية، أو تدزّها للمراقب لو تريد عين ثانية.')}
+        {tab === 'MONITOR' && (monitorSeat
+          ? 'ⓘ هاي شغلك: المحاسب دزّها إلك. افتح الفاتورة، اقرا حكمه ومبالغها، وأشّر «سليم» أو «ملاحظة» بسببها. وبعد ما تأشّر تلگاها بتبويب «الي دقّقها المراقب».'
+          : 'ⓘ هاي دزّيتها للمراقب وتنتظر بتّه. لمّا يبتّ ترجعلك بـ«بانتظار الاعتماد» بحكمه ظاهراً.')}
+        {tab === 'REVIEWED' && (monitorSeat
+          ? 'ⓘ هاي الي دقّقتها إنت — للاطلاع والرجعة، وحكمك وملاحظتك مكتوبين بكل صف.'
+          : 'ⓘ هاي بتّ بيها المراقب فعلاً — حكمه وملاحظته ظاهرين بالصف.')}
+        {tab === 'APPROVED' && 'ⓘ هاي خلصت: انعتمدت وطلع إلها رقم محاسبي. للاطلاع بس — ولو انعتمدت بالغلط، سحب الاعتماد يرجّعها للطابور.'}
+        {tab === 'NO_NUMBER' && 'ⓘ معتمدة بس ماكو إلها رقم فاتورة محاسبية — اربط الرقم حتى تخلص ورقتها.'}
+        {tab === 'ALL' && 'ⓘ كل الفواتير بكل مراحلها (ما عدا الشغل داخل الشركة — إله تبويبه).'}
+        {tab === 'INTERNAL' && 'ⓘ الشغل داخل الشركة معزول هنا: ماكو زبون، والمبلغ تقدير. ومنه تنزّل إكسل الشهر.'}
+      </p>
 
       {/* ═══ إكسل الشهر — شغل داخل الشركة ═══
           «نهاية الشهر احنه نريد إكسل خاص بحجوزات داخل الشركة، يكون
@@ -611,8 +680,8 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                     <span className={`rounded-full px-3 py-1 text-xs font-bold ${
                       inv.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
                     }`}>
-                      {inv.status === 'APPROVED' ? '✔ معتمدة'
-                        : atMonitor(inv) ? '👁️ عند المراقب'
+                      {inv.status === 'APPROVED' ? '✔ مكتملة'
+                        : atMonitor(inv) ? '👁️ بانتظار تدقيق المراقب'
                           : audited(inv) ? 'بانتظار الاعتماد' : '🔍 بانتظار التدقيق'}
                     </span>
                     {/* حكم التدقيق — «يطلعن وينن بفواتير الليدر» */}
@@ -646,6 +715,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         inv.monitorVerdict === 'FLAGGED' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'}`}>
                         👁️ المراقب: {inv.monitorVerdict === 'FLAGGED' ? 'ملاحظة' : 'سليمة'}
                         {inv.monitorNote ? ` — ${inv.monitorNote}` : ''}
+                        {/* التاريخ حتى تبويب «الي دقّقها المراقب» يكون إله معنى:
+                            منو بتّ ومتى، مو بس «انبتّ». */}
+                        {` · ${new Date(inv.monitorDecidedAt).toLocaleDateString('ar-IQ')}`}
                       </span>
                     )}
                     {/* ⚠️ رجّعها المالك: المحاسب لازم يعرف **ليش** رجعت
@@ -1160,8 +1232,8 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 <p>الدور: {details.employeeRole || '—'}</p>
                 <p dir="ltr" className="text-right">الهاتف: {details.employeePhone || '—'}</p>
                 <p>التاريخ: {new Date(details.createdAt).toLocaleString('ar-IQ')}</p>
-                <p>الحالة: {details.status === 'APPROVED' ? '✔ معتمدة'
-                  : atMonitor(details) ? '👁️ عند المراقب'
+                <p>الحالة: {details.status === 'APPROVED' ? '✔ مكتملة (معتمدة)'
+                  : atMonitor(details) ? '👁️ بانتظار تدقيق المراقب'
                     : audited(details) ? 'بانتظار الاعتماد' : '🔍 بانتظار التدقيق'}</p>
                 {details.approvedByName && <p>اعتمدها: <b>{details.approvedByName}</b></p>}
                 {details.adjustedReason && (
