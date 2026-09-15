@@ -48,9 +48,28 @@ export default function Finance() {
     return b.amountCollected ?? 0
   }
 
-  const doAudit = async (b: Booking, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR') => {
+  const doAudit = async (b: Booking, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE') => {
     const typed = invoiceAmounts[b.id]
     const amount = typed !== undefined && typed !== '' ? Number(typed) : undefined
+
+    // ═══ صيانة مجانية ═══
+    // ماكو مبلغ ولا سبب إجباري. وبلا هذا الطريق كان المحاسب مجبوراً
+    // يكتب مبلغاً ما انستلم، أو يأشّر «غير مطابق» فتنفتح مخالفة على
+    // شغل ضمان سليم.
+    // ⚠️ وشريحة سبب المجانية محلها «التدقيق اليومي»: الحجز نفسه ما
+    // يحمل علم مجانية الفاتورة، وصفّ التدقيق اليومي يحمله بجوينه.
+    if (action === 'FREE') {
+      setAuditBusy(b.id)
+      try {
+        await api.auditBooking(b.id, { action })
+        load()
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
+      } finally {
+        setAuditBusy(null)
+      }
+      return
+    }
 
     if (action === 'VERIFY' && amountFor(b) <= 0) {
       alert('اكتب المبلغ من الفاتورة أول — ما ينفع تدقق حجز بلا مبلغ')
@@ -583,7 +602,14 @@ export default function Finance() {
                         </p>
                       )}
 
-                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                        <button
+                          disabled={auditBusy === b.id}
+                          onClick={() => doAudit(b, 'FREE')}
+                          className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                        >
+                          🎁 صيانة مجانية
+                        </button>
                         <button
                           disabled={auditBusy === b.id}
                           onClick={() => doAudit(b, 'VERIFY')}
@@ -607,7 +633,7 @@ export default function Finance() {
                         </button>
                       </div>
                       <p className="mt-2 text-[11px] text-slate-400">
-                        «غير مطابق» يروح للرقابة والجودة · «خطأ بالسعر» يروح للرقابة والإداري
+                        «صيانة مجانية» تغلق الحجز بصفر بلا بلاغ · «غير مطابق» يروح للرقابة والجودة · «خطأ بالسعر» للرقابة والإداري
                       </p>
                     </div>
                   )}

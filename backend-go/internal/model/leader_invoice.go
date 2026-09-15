@@ -463,10 +463,15 @@ type LeaderInvoiceAdjustment struct {
 //	مطابق      = سعر الفاتورة نفسه المبلغ الي داخل
 //	غير مطابق  = الفاتورة سعرها يختلف عن المبلغ الداخل
 //	خطأ بالسعر = الموظف غلط، جاب أعلى من الفاتورة أو أوطى
+//	مجاني      = الزبون ما دفع **بقصد** (ضمان/إعادة عمل/تعويض)
 const (
 	AuditVerdictMatched    = "MATCHED"
 	AuditVerdictMismatch   = "MISMATCH"
 	AuditVerdictPriceError = "PRICE_ERROR"
+	// AuditVerdictFree الصافي صفر وهو **الصح** — مو فرق بالمبلغ.
+	// بلاه المحاسب لازم يأشّر فاتورة الضمان «غير مطابق» فتنفتح
+	// مخالفة على شغل سليم.
+	AuditVerdictFree = "FREE"
 )
 
 func AuditVerdictLabel(v string) string {
@@ -477,12 +482,15 @@ func AuditVerdictLabel(v string) string {
 		return "غير مطابق"
 	case AuditVerdictPriceError:
 		return "خطأ بالسعر"
+	case AuditVerdictFree:
+		return "🎁 صيانة مجانية"
 	}
 	return v
 }
 
 func ValidAuditVerdict(v string) bool {
-	return v == AuditVerdictMatched || v == AuditVerdictMismatch || v == AuditVerdictPriceError
+	return v == AuditVerdictMatched || v == AuditVerdictMismatch ||
+		v == AuditVerdictPriceError || v == AuditVerdictFree
 }
 
 // AuditVerdictRequest حكم المحاسب على الفاتورة.

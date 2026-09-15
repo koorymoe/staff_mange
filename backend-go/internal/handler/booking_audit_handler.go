@@ -19,10 +19,19 @@ type BookingAuditHandler struct {
 	// الموجود بدل ما نبني عقوبة موازية.
 	discipline *repository.DisciplineRepository
 	employees  *repository.EmployeeRepository
+	// permissions: حتى نعرف إذا المالك نطى المراقب مفتاح التدقيق
+	// (`finance_audit`) — بلاها الرفض يبقى بالدور حصراً.
+	permissions *repository.PermissionRepository
 }
 
 func NewBookingAuditHandler(r *repository.BookingAuditRepository, b *repository.BookingRepository, n *repository.NotificationRepository, inv *repository.LeaderInvoiceRepository, d *repository.DisciplineRepository, e *repository.EmployeeRepository) *BookingAuditHandler {
 	return &BookingAuditHandler{repo: r, bookings: b, notify: n, invoices: inv, discipline: d, employees: e}
+}
+
+// SetPermissions يربط مستودع الصلاحيات بعد البناء — نفس نمط
+// `SetNotifications` بباقي المعالجات، حتى ما نكسر كل نداءات البناء.
+func (h *BookingAuditHandler) SetPermissions(p *repository.PermissionRepository) {
+	h.permissions = p
 }
 
 // stampInvoiceVerdict ينزّل حكم التدقيق اليومي على فاتورة الحجز.
@@ -34,6 +43,35 @@ func NewBookingAuditHandler(r *repository.BookingAuditRepository, b *repository.
 //
 // ⚠️ ما يعدّل فاتورة معتمدة (SetAuditVerdict ترفض) ولا يفشّل التدقيق
 // إذا ماكو فاتورة أصلاً — أكو حجوزات تنتدقق بتقدير الإداري بلا فاتورة.
+// hasAuditKey هل الموظف عنده مفتاح التدقيق الي ينطيه المالك بيده؟
+//
+// ⚠️ فشل القراءة **يضيّق ما يوسّع**: خطأ بقاعدة البيانات ما يصير
+// يفتح قرار التدقيق لمن مو مخوّل (نفس مبدأ `canSeeAllBookings`).
+func (h *BookingAuditHandler) hasAuditKey(employeeID string) bool {
+	if h.permissions == nil || employeeID == "" {
+		return false
+	}
+	has, err := h.permissions.HasPermission(employeeID, "finance_audit")
+	return err == nil && has
+}
+
+// freeInvoiceForBooking يرجّع: هل أحدث فاتورة للحجز مؤشَّرة مجانية
+// من الليدر، ومعرّفها.
+//
+// ⚠️ نفس اختيار «الأحدث» الي يستعمله `stampInvoiceVerdict` بالضبط —
+// حتى ما نأشّر فاتورة ونختم ثانية.
+func (h *BookingAuditHandler) freeInvoiceForBooking(bookingID string) (bool, string) {
+	if h.invoices == nil {
+		return false, ""
+	}
+	rows, err := h.invoices.ListByBooking(bookingID)
+	if err != nil || len(rows) == 0 {
+		return false, ""
+	}
+	latest := rows[len(rows)-1]
+	return latest.IsFree, latest.ID
+}
+
 func (h *BookingAuditHandler) stampInvoiceVerdict(bookingID, verdict string, note *string, empID string, amount *float64) {
 	if h.invoices == nil {
 		return
@@ -75,9 +113,16 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 	//
 	// ⚠️ ونستعمل رفضاً صريحاً مو تسجيل مخالفة: الأزرار چانت
 	// معروضة إله، فضغطه عليها مو محاولة تجاوز.
-	if middleware.RoleFromContext(r) == "MONITOR" {
+	// ⚠️⚠️ والاستثناء: **مفتاح المالك**. صاحب النظام طلب صراحةً
+	// «أريد عنده خيار أيضاً يدقّق مثله مثل المحاسب» — فلمّا ينطي
+	// المراقب صلاحية `finance_audit` بيده، الرفض هذا يصير **عائقاً
+	// بلا معنى**: الشاشة تعرضله الأزرار (الصلاحية تفتحها) والخادم
+	// يرجّعه ٤٠٣ — يعني منح ما ينفع بشي، وهو نفس العيب الي طلعنا منه.
+	//
+	// 🔴 والافتراضي يبقى الرفض: المراقب بلا مفتاح **يشوف ولا يقرّر**.
+	if middleware.RoleFromContext(r) == "MONITOR" && !h.hasAuditKey(empID) {
 		WriteError(w, http.StatusForbidden,
-			"المراقب يراجع قرارات التدقيق ولا يصدرها — القرار للمحاسب")
+			"المراقب يراجع قرارات التدقيق ولا يصدرها — القرار للمحاسب، إلا إذا المالك نطاه صلاحية «تدقيق ومطابقة الحسابات»")
 		return
 	}
 
@@ -89,6 +134,47 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 		}
 		// «مطابق» يرحّل الفاتورة لطابور الاعتماد بحكمها مثبّت.
 		h.stampInvoiceVerdict(bookingID, model.AuditVerdictMatched, req.Note, empID, req.AmountCollected)
+
+	case model.AuditFree:
+		// ═══ صيانة مجانية ═══
+		//
+		// الليدر يأشّر فاتورته مجانية بسبب من القائمة، وقتها صافيها
+		// **صفر** — و«مطابق» يرفضها لأن حارس الأرباح يطلب مبلغاً
+		// أكبر من صفر. فچان المحاسب إما يكتب مبلغاً ما انستلم، أو
+		// يأشّر «غير مطابق» فتنفتح مخالفة على شغل سليم.
+		//
+		// 🔴 ولا بلاغ ولا إشعار رقابة/جودة هنا: المجانية **شغل
+		// موثَّق بسببه**، مو خطأ.
+		freeInvoice, invoiceID := h.freeInvoiceForBooking(bookingID)
+		if err := h.repo.VerifyFree(bookingID, freeInvoice); err != nil {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		// ⚠️ لو المحاسب هو الي أشّرها (والليدر نساها) نأشّر الفاتورة
+		// مجانية بعد — وإلا يصير الحجز مجانياً وفاتورته مو مجانية،
+		// علمان متناقضان والمالك ما يعرف أي واحد يصدّق.
+		if invoiceID != "" && !freeInvoice {
+			reason := ""
+			if req.FreeReasonID != nil {
+				reason = strings.TrimSpace(*req.FreeReasonID)
+			}
+			if err := h.invoices.MarkFree(invoiceID, reason); err != nil {
+				log.Printf("mark invoice free (booking %s): %v", bookingID, err)
+			}
+		}
+		zero := 0.0
+		h.stampInvoiceVerdict(bookingID, model.AuditVerdictFree, req.Note, empID, &zero)
+		// 🔴 إشعار **للمالك وحده**: إسقاط مبلغ قرار مالي يستاهل
+		// يُعرف منو أشّره ومتى — بلا ما ينحسب غلطاً على أحد.
+		if h.notify != nil {
+			if b, err := h.bookings.FindByID(bookingID); err == nil && b != nil {
+				msg := "🎁 صيانة مجانية بالحجز " + b.Code + " — أشّرها المحاسب بالتدقيق"
+				if req.Note != nil && strings.TrimSpace(*req.Note) != "" {
+					msg += ": " + strings.TrimSpace(*req.Note)
+				}
+				_ = h.notify.CreateForRole("OWNER", "audit_issue", msg)
+			}
+		}
 
 	case model.AuditMismatch, model.AuditPriceError:
 		// المبلغ الي كتبه المحاسب ينحفظ حتى لو أشّر خطأ — هو الرقم

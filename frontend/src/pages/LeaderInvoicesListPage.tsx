@@ -10,6 +10,7 @@ import { useSession, canAuditFinance } from '../session'
 import { matches } from '../utils/search'
 import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
 import LocateHint from '../components/LocateHint'
+import FreeWorkBadge from '../components/FreeWorkBadge'
 
 // ═══ طباعة فاتورة الليدر ═══
 //
@@ -103,6 +104,7 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
     <div><span>الخصم</span><b>${esc(money(inv.discountValue))}</b></div>
     <div class="net"><span>المجموع الصافي</span><span>${esc(money(inv.netTotal))}</span></div>
   </div>
+  ${inv.isFree ? `<p><b>🎁 شغل مجاني — ${esc(inv.freeReasonLabel || 'بلا سبب مسجَّل')}</b>${inv.freeReasonNote ? ` · ${esc(inv.freeReasonNote)}` : ''}</p>` : ''}
   ${adjRows ? `<h2>تعديلات المحاسب</h2>${adjRows}` : ''}
 </body></html>`
 
@@ -581,6 +583,10 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                     {inv.manualWork && (
                       <div className="mt-0.5 max-w-[220px] font-sans text-[11px] font-normal leading-snug text-slate-500">{inv.manualWork}</div>
                     )}
+                    {/* 🔴 المجانية چانت **مخفية تماماً**: المحاسب يشوف
+                        صافياً صفراً وخصماً يساوي الكلفة كلها — يعني
+                        شكلها فاتورة أحد فضّاها، مو ضماناً بسبب موثَّق. */}
+                    <FreeWorkBadge isFree={inv.isFree} reason={inv.freeReasonLabel} note={inv.freeReasonNote} className="mt-1 font-sans font-normal" />
                   </td>
                   <td className="px-4 py-3">
                     {inv.externalInvoiceNumber
@@ -680,7 +686,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                         <button
                           onClick={() => {
                             setAuditFor(inv)
-                            setAuditVerdict(inv.auditVerdict || 'MATCHED')
+                            setAuditVerdict(inv.auditVerdict === 'FREE' ? 'MATCHED' : (inv.auditVerdict || 'MATCHED'))
                             setAuditNote(inv.auditNote || '')
                             setAuditAmount(inv.auditedAmount != null ? String(inv.auditedAmount) : '')
                             setAuditErr(null)
@@ -939,8 +945,13 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
               مبلغ الفاتورة: <b>{auditFor.netTotal.toLocaleString()} د.ع</b>
             </p>
 
+            {/* ⚠️ «صيانة مجانية» **مو** بهاي القائمة بقصد: هي قرار
+                يغلق **الحجز** بعد (يأشّره مدقَّقاً بصفر) ومحلها شاشة
+                التدقيق. لو انحطّت هنا كحكم فاتورة لحالها، تصير
+                الفاتورة «مجانية» والحجز باقي «بانتظار التدقيق» —
+                حقيقتان متناقضتان. */}
             <div className="mt-3 flex flex-wrap gap-2">
-              {AUDIT_VERDICTS.map((v) => (
+              {AUDIT_VERDICTS.filter((v): v is typeof v & { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' } => v.key !== 'FREE').map((v) => (
                 <button
                   key={v.key}
                   onClick={() => setAuditVerdict(v.key)}

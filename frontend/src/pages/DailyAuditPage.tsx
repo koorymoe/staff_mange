@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { api, type DailyAuditReport, type DailyAuditRow } from '../api'
+import { api, type DailyAuditReport, type DailyAuditRow, type FreeWorkReason } from '../api'
+import FreeWorkBadge from '../components/FreeWorkBadge'
 import { useSession, canAuditFinance } from '../session'
 import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
@@ -78,6 +79,10 @@ export default function DailyAuditPage() {
   const searching = search.trim().length >= 2
   const [rep, setRep] = useState<DailyAuditReport | null>(null)
   const [amounts, setAmounts] = useState<Record<string, string>>({})
+  // سبب المجانية لكل صف — اختياري، ويُرسل لمّا المحاسب يأشّرها بنفسه.
+  const [freeReason, setFreeReason] = useState<Record<string, string>>({})
+  const [freeReasons, setFreeReasons] = useState<FreeWorkReason[]>([])
+  useEffect(() => { api.getFreeWorkReasons().then(setFreeReasons).catch(() => {}) }, [])
   const [busy, setBusy] = useState<string | null>(null)
   const [loadErr, setLoadErr] = useState<string | null>(null)
   // إرجاع الحجز للتدقيق: صلاحية مدير النظام حصراً (المالك يتطبّع لمدير
@@ -135,12 +140,29 @@ export default function DailyAuditPage() {
     }
   }
 
-  const audit = async (row: DailyAuditRow, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR') => {
+  const audit = async (row: DailyAuditRow, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE') => {
     const typed = amounts[row.id]
     // بلا مبلغ مكتوب: ننزل على المعتمد (فاتورة الليدر أو تقدير الإداري)
     const amount = typed !== undefined && typed !== ''
       ? Number(typed)
       : (row.collected > 0 ? undefined : row.expectedAmount || undefined)
+
+    // ═══ صيانة مجانية ═══
+    // ماكو مبلغ ولا ملاحظة إجبارية — والسبب اختياري بقرار صاحب
+    // النظام. والخادم هو الي يأشّر الفاتورة مجانية لو الليدر نساها.
+    if (action === 'FREE') {
+      setBusy(row.id)
+      try {
+        await api.auditBooking(row.id, { action, freeReasonId: freeReason[row.id] || undefined })
+        setFreeReason((prev) => ({ ...prev, [row.id]: '' }))
+        load(date)
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
+      } finally {
+        setBusy(null)
+      }
+      return
+    }
 
     let note: string | undefined
     if (action !== 'VERIFY') {
@@ -343,6 +365,10 @@ export default function DailyAuditPage() {
                         ? <> · فاتورة الليدر: <b>{money(row.invoiceTotal)}</b> <span className="text-xs text-slate-400">({row.invoiceCode})</span></>
                         : <> · <span className="text-amber-700">ماكو فاتورة ليدر — المعتمد تقدير الإداري: <b>{money(row.quotedPrice)}</b></span></>}
                     </p>
+                    {/* 🔴 بلا هاي الشريحة، «مستلم صفر وفاتورة صفر»
+                        تشبه فاتورة أحد فضّاها — والمحاسب يأشّرها
+                        «غير مطابق» فتنفتح مخالفة على شغل ضمان سليم. */}
+                    <FreeWorkBadge isFree={row.invoiceIsFree} reason={row.invoiceFreeReason} className="mt-2" />
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     {/* القائمة صارت **منجزة بس** (فلتر بالسيرفر)، فكل صف
@@ -374,23 +400,52 @@ export default function DailyAuditPage() {
                 {!row.amountVerified && !canDecide && (
                   <p className="mt-3 rounded-xl border px-3 py-2 text-[11px]"
                     style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
-                    ⓘ إنت تشوف وتراجع — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) للمحاسب.
+                    ⓘ إنت تشوف وتراجع — قرار التدقيق (مطابق / صيانة مجانية / غير مطابق / خطأ بالسعر) للمحاسب.
                   </p>
                 )}
 
                 {!row.amountVerified && canDecide && (
                   <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
-                    <input
-                      type="number" min="0" inputMode="numeric"
-                      value={amounts[row.id] ?? ''}
-                      onChange={(e) => setAmounts((prev) => ({ ...prev, [row.id]: e.target.value }))}
-                      placeholder={`المبلغ حسب الفاتورة${row.expectedAmount ? ` (المعتمد: ${row.expectedAmount})` : ''}`}
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                    />
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                      <button disabled={busy === row.id} onClick={() => audit(row, 'VERIFY')}
+                    {/* 🔴 شغل مجاني: «اكتب المبلغ حسب الفاتورة» طلب
+                        **مستحيل** — ماكو مبلغ أصلاً. فالخانة تنخفي
+                        والقرار الواضح هو «صيانة مجانية». */}
+                    {row.invoiceIsFree ? (
+                      <p className="mb-2 text-[11px] font-bold text-emerald-800">
+                        🎁 فاتورة هذا الحجز مؤشَّرة مجانية
+                        {row.invoiceFreeReason ? ` — ${row.invoiceFreeReason}` : ''} · ماكو مبلغ يُكتب.
+                      </p>
+                    ) : (
+                      <input
+                        type="number" min="0" inputMode="numeric"
+                        value={amounts[row.id] ?? ''}
+                        onChange={(e) => setAmounts((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                        placeholder={`المبلغ حسب الفاتورة${row.expectedAmount ? ` (المعتمد: ${row.expectedAmount})` : ''}`}
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                      />
+                    )}
+                    {/* سبب المجانية — اختياري، ويطلع بس لمّا الفاتورة
+                        **مو** مؤشَّرة مجانية (يعني المحاسب هو الي
+                        يأشّرها والليدر نساها). */}
+                    {!row.invoiceIsFree && (
+                      <select
+                        value={freeReason[row.id] ?? ''}
+                        onChange={(e) => setFreeReason((prev) => ({ ...prev, [row.id]: e.target.value }))}
+                        className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 text-xs outline-none focus:border-emerald-500"
+                      >
+                        <option value="">— سبب المجانية (اختياري، للزر الأخضر) —</option>
+                        {freeReasons.map((fr) => (
+                          <option key={fr.id} value={fr.id}>{fr.label}</option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                      <button disabled={busy === row.id || row.invoiceIsFree} onClick={() => audit(row, 'VERIFY')}
                         className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">
                         ✔ مطابق
+                      </button>
+                      <button disabled={busy === row.id} onClick={() => audit(row, 'FREE')}
+                        className="rounded-lg bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50">
+                        🎁 صيانة مجانية
                       </button>
                       <button disabled={busy === row.id} onClick={() => audit(row, 'MISMATCH')}
                         className="rounded-lg bg-amber-500 px-3 py-2 text-sm font-medium text-white disabled:opacity-50">

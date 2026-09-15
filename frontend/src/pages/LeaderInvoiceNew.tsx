@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { onEnter } from '../utils/enterKey'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
+import FreeWorkBadge from '../components/FreeWorkBadge'
 import { useSession } from '../session'
 import {
   api,
@@ -689,6 +690,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         <div className="mt-4 rounded-xl border border-white bg-white p-6 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <p className="text-sm text-slate-500">كود المحاسبة</p>
           <p className="font-mono text-lg font-bold text-brand-800">{result.accountingCode}</p>
+          {/* الليدر يشوف بعينه إن مجانيته انحفظت — قبل هيچ كان يأشّر
+              المربّع ويطلعله صافي صفر بلا أي تأكيد إنها انسجّلت مجانية. */}
+          <FreeWorkBadge isFree={result.isFree} reason={result.freeReasonLabel} note={result.freeReasonNote} className="mt-2" />
           <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
             <div>
               <span className="text-slate-400">تكاليف التنفيذ: </span>

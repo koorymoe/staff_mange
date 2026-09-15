@@ -17,6 +17,23 @@ const (
 	// AuditPriceError السعر نفسه مكتوب غلط (الإداري قدّره غلط أو
 	// الليدر كتبه غلط) → يروح للرقابة والإداري حتى يصلحون التسعير.
 	AuditPriceError = "PRICE_ERROR"
+	// AuditFree صيانة مجانية — الزبون ما دفع شي **بقصد**: ضمان، أو
+	// إعادة عمل، أو تعويض شكوى، أو صيانة ضمن الاتفاق.
+	//
+	// ═══ ليش انبنى هذا القرار ═══
+	//
+	// الليدر يكدر يأشّر فاتورته «مجانية» بسبب من القائمة، وقتها
+	// صافيها **صفر** — و`Verify` يرفض أي حجز بلا مبلغ (الشرط جوّا
+	// الـUPDATE). فالمحاسب أمامه طريقان وكلاهما غلط: يكتب مبلغاً
+	// **ما انستلم** حتى يعبر التدقيق، أو يأشّر «غير مطابق» — وهاي
+	// **تفتح بلاغ خطأ تدقيق وتدزّ إشعارات للرقابة والجودة** على شغل
+	// ماكو بيه ولا خطأ. يعني النظام چان يخلي الشغل المجاني **مخالفة**.
+	//
+	// 🔴 وهذا القرار **مو بلاغ**: ما ينضاف لـ`AuditIssueLabels` ولا
+	// لـ`AuditRoutedRoles` — إضافته هناك ترجّعه لنفس المسار الي
+	// نهرب منه. إشعاره للمالك وحده: إسقاط مبلغ قرار مالي يستاهل
+	// يُعرف منو أشّره، بلا ما ينحسب غلطاً على أحد.
+	AuditFree = "FREE"
 )
 
 var AuditIssueLabels = map[string]string{
@@ -65,12 +82,16 @@ type BookingAuditIssue struct {
 
 // AuditBookingRequest قرار المحاسب على حجز واحد.
 type AuditBookingRequest struct {
-	Action string `json:"action"` // VERIFY | MISMATCH | PRICE_ERROR
+	Action string `json:"action"` // VERIFY | MISMATCH | PRICE_ERROR | FREE
 	// المحاسب يقدر يصحّح المبلغ وهو يدقق — لازم للحجوزات القديمة
 	// المستوردة بقيم صفر: يفتح فاتورة النظام القديم ويكتب سعرها.
 	AmountCollected *float64 `json:"amountCollected"`
 	AdvancePaid     *float64 `json:"advancePaid"`
 	Note            *string  `json:"note"`
+	// FreeReasonID سبب المجانية لمّا المحاسب يأشّرها بنفسه —
+	// **اختياري** بقرار صاحب النظام. ولو انجه، ينأشّر على الفاتورة
+	// حتى تبقى الحقيقة بمحل واحد.
+	FreeReasonID *string `json:"freeReasonId"`
 }
 
 // AuditRoutedRoles وين يروح كل نوع خطأ.

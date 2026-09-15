@@ -1358,8 +1358,8 @@ export interface LeaderInvoice {
   items: ExecutionCostItem[]
   materials: LeaderInvoiceMaterialItem[]
   // ═══ التدقيق ═══
-  /** MATCHED مطابق · MISMATCH غير مطابق · PRICE_ERROR خطأ بالسعر */
-  auditVerdict?: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR'
+  /** MATCHED مطابق · MISMATCH غير مطابق · PRICE_ERROR خطأ بالسعر · FREE صيانة مجانية */
+  auditVerdict?: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE'
   auditNote?: string
   auditedByName?: string
   auditedAt?: string
@@ -1388,10 +1388,12 @@ export interface LeaderInvoice {
   revokedCount?: number
 }
 
-export const AUDIT_VERDICTS: { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR'; label: string; cls: string }[] = [
+export const AUDIT_VERDICTS: { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE'; label: string; cls: string }[] = [
   { key: 'MATCHED', label: '✅ مطابق', cls: 'bg-emerald-100 text-emerald-800' },
   { key: 'MISMATCH', label: '⚠️ غير مطابق', cls: 'bg-amber-100 text-amber-800' },
   { key: 'PRICE_ERROR', label: '❌ خطأ بالسعر', cls: 'bg-red-100 text-red-800' },
+  /** الصافي صفر وهو **الصح** — مو فرق بالمبلغ */
+  { key: 'FREE', label: '🎁 صيانة مجانية', cls: 'bg-teal-100 text-teal-800' },
 ]
 
 export type BookingDeleteChannel = 'WEBSITE' | 'MOBILE_APP' | 'CALL_CENTER'
@@ -1498,6 +1500,9 @@ export interface DailyAuditRow {
   quotedPrice: number
   invoiceTotal: number | null
   invoiceCode: string | null
+  /** فاتورة الحجز مؤشَّرة مجانية (ضمان/إعادة عمل/…) وسببها */
+  invoiceIsFree: boolean
+  invoiceFreeReason: string | null
   expectedAmount: number
   openIssues: number
 }
@@ -3567,7 +3572,10 @@ export const api = {
     request<DailyAuditReport>(`/finance/daily-audit?q=${encodeURIComponent(q)}`),
 
   // التدقيق: قرار المحاسب — مطابق أو بلاغ خطأ ينوجّه للمعني
-  auditBooking: (id: string, data: { action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR'; amountCollected?: number; advancePaid?: number; note?: string }) =>
+  /** FREE: صيانة مجانية — الصافي صفر **بقصد** (ضمان/إعادة عمل/تعويض).
+   *  بلاها المحاسب لازم يكتب مبلغاً ما انستلم أو يأشّر «غير مطابق»
+   *  فتنفتح مخالفة على شغل سليم. والسبب اختياري. */
+  auditBooking: (id: string, data: { action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE'; amountCollected?: number; advancePaid?: number; note?: string; freeReasonId?: string }) =>
     request<Booking | AuditIssue>(`/bookings/${id}/audit`, { method: 'PUT', body: JSON.stringify(data) }),
   getAuditIssues: (status?: string) =>
     request<AuditIssue[]>(`/audit-issues${status ? `?status=${status}` : ''}`),

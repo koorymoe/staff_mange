@@ -15,6 +15,10 @@ type DailyAuditRow struct {
 	QuotedPrice    float64  `db:"quotedPrice" json:"quotedPrice"`
 	InvoiceTotal   *float64 `db:"invoiceTotal" json:"invoiceTotal"`
 	InvoiceCode    *string  `db:"invoiceCode" json:"invoiceCode"`
+	// المجانية: شغل ما انستلم عليه فلوس **بقصد** (ضمان/إعادة عمل).
+	// بلا هالعلمين، «متوقع صفر» يشبه فاتورة منفضّية.
+	InvoiceIsFree     bool    `db:"invoiceIsFree" json:"invoiceIsFree"`
+	InvoiceFreeReason *string `db:"invoiceFreeReason" json:"invoiceFreeReason"`
 	// ExpectedAmount المعتمد: فاتورة الليدر إذا موجودة، وإلا تقدير الإداري
 	ExpectedAmount float64 `db:"expectedAmount" json:"expectedAmount"`
 	OpenIssues     int     `db:"openIssues" json:"openIssues"`

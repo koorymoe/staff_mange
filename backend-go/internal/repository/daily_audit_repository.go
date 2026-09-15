@@ -69,6 +69,12 @@ const auditRowsSQL = `
 			COALESCE(b."quotedPrice", 0) AS "quotedPrice",
 			li."netTotal" AS "invoiceTotal",
 			li."accountingCode" AS "invoiceCode",
+			-- 🔴 المجانية لازم تبان بالصف: بلاها المحاسب يشوف «متوقع
+			-- صفر» ويحسبها فاتورة أحد فضّاها، فيأشّر «غير مطابق»
+			-- وتنفتح مخالفة على شغل ضمان سليم. ومن نفس اللاترال —
+			-- بلا استعلام زائد.
+			COALESCE(li."isFree", false) AS "invoiceIsFree",
+			li."freeReasonLabel" AS "invoiceFreeReason",
 			-- المعتمد: فاتورة الليدر أولاً، وإلا تقدير الإداري
 			COALESCE(li."netTotal", NULLIF(b."quotedPrice", 0), 0) AS "expectedAmount",
 			(SELECT COUNT(*) FROM "BookingAuditIssue" i
@@ -77,8 +83,10 @@ const auditRowsSQL = `
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service"  s ON s.id = b."serviceId"
 		LEFT JOIN LATERAL (
-			SELECT "netTotal", "accountingCode" FROM "LeaderInvoice"
-			WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1
+			SELECT i."netTotal", i."accountingCode", i."isFree", fwr.label AS "freeReasonLabel"
+			FROM "LeaderInvoice" i
+			LEFT JOIN "FreeWorkReason" fwr ON fwr.id = i."freeReasonId"
+			WHERE i."bookingId" = b.id ORDER BY i."createdAt" DESC LIMIT 1
 		) li ON true
 		WHERE b.status = 'COMPLETED'`
 

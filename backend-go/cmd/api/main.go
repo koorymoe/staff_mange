@@ -848,6 +848,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// وجودة، خطأ سعر → رقابة وإداري).
 	bookingAuditRepo := repository.NewBookingAuditRepository(db)
 	bookingAuditHandler := handler.NewBookingAuditHandler(bookingAuditRepo, bookingRepo, notificationRepo, leaderInvoiceRepo, disciplineRepo, employeeRepo)
+	// مفتاح التدقيق: لمّا المالك ينطي المراقب `finance_audit`، المعالج
+	// لازم يعرف — وإلا رفضه للمراقب يبقى بالدور حصراً والمنح ما ينفع.
+	bookingAuditHandler.SetPermissions(permissionRepo)
 	// التدقيق اليومي: نفس واجهة التدقيق بس بيوم واحد، مع مجاميع اليوم
 	dailyAuditHandler := handler.NewDailyAuditHandler(repository.NewDailyAuditRepository(db))
 	mux.Handle("GET /api/finance/daily-audit", middleware.Chain(http.HandlerFunc(dailyAuditHandler.Day), requireAuth, requireVerifyBooking))

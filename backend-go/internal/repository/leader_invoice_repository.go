@@ -311,6 +311,12 @@ func (r *LeaderInvoiceRepository) GetByID(id string) (*model.LeaderInvoice, erro
 	if err := r.hydrate(&inv); err != nil {
 		return nil, err
 	}
+	// ⚠️ اسم سبب المجانية چان ينتعبّى **بالقائمة وبس** — فالفاتورة
+	// الواحدة (بعد الإنشاء أو بفتح تفاصيلها) ترجّع `isFree: true`
+	// و`freeReasonLabel: null`، فالشريحة تطلع «مجاني — » بلا سبب.
+	one := []model.LeaderInvoice{inv}
+	r.attachFreeReasonLabels(one)
+	inv.FreeReasonLabel = one[0].FreeReasonLabel
 	return &inv, nil
 }
 
@@ -875,6 +881,39 @@ func (r *LeaderInvoiceRepository) SetAuditVerdict(id, verdict, note, byEmployeeI
 		return nil, errors.New("الفاتورة معتمدة أصلاً — اسحب الاعتماد قبل ما تغيّر الحكم")
 	}
 	return r.GetByID(id)
+}
+
+// MarkFree يأشّر الفاتورة مجانية لمّا **المحاسب** يكتشف إنها مجانية
+// والليدر نساها.
+//
+// ⚠️ مصدر حقيقة واحد: بلاها يصير الحجز «مجاني» والفاتورة «مو مجانية»
+// — علمان متناقضان، والمالك يفتح التقرير ويلگه صافياً صفراً بلا سبب.
+//
+// 🔴 والخصم يصير الكلفة كلها والصافي صفر — **نفس** ما يسويه مسار
+// الليدر (`leader_invoice_orchestration.go`): الكلفة الحقيقية تبقى
+// مكتوبة (شغل الكادر والمواد انصرفن فعلاً)، والي ينزل صفر هو الي
+// على الزبون.
+//
+// ⚠️ وما تلمس فاتورة معتمدة: نفس قيد `SetAuditVerdict`.
+func (r *LeaderInvoiceRepository) MarkFree(id, reasonID string) error {
+	var reason any
+	if reasonID != "" {
+		reason = reasonID
+	}
+	res, err := r.db.Exec(`
+		UPDATE "LeaderInvoice"
+		SET "isFree" = true,
+		    "freeReasonId" = COALESCE($2, "freeReasonId"),
+		    "discountValue" = "executionCost" + "materialsTotal",
+		    "netTotal" = 0
+		WHERE id = $1 AND status <> 'APPROVED'`, id, reason)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الفاتورة معتمدة أصلاً")
+	}
+	return nil
 }
 
 // RevokeApproval يسحب اعتماد فاتورة انعتمدت بالغلط.

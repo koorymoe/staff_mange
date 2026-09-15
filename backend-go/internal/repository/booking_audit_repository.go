@@ -59,6 +59,33 @@ func (r *BookingAuditRepository) Verify(bookingID string, amount, advance *float
 	return nil
 }
 
+// VerifyFree يأشّر حجزاً مجانياً مدقَّقاً — صافيه صفر وهذا **الصح**.
+//
+// ⚠️ ليش مو `Verify` بمعامل: شرط `> 0` جوّا الـUPDATE هو **حارس
+// الأرباح** كله (التعليق فوگ)، وتمريره بعلم يفتح باب «دقّق بلا مبلغ»
+// لأي نداء. فدالة مستقلة بحارسها الخاص.
+//
+// 🔴 **وحارسها حماية الفلوس**: `COALESCE("amountCollected",0) = 0` —
+// حجز عنده مبلغ **مستلم فعلاً** ما ينمسح بضغطة «مجاني». و`allowReset`
+// يتخطاه **بس** لمّا فاتورة الحجز مؤشَّرة مجانية من الليدر أصلاً
+// (وقتها الصفر يطابق الفاتورة، والمبلغ المكتوب هو الغلط).
+func (r *BookingAuditRepository) VerifyFree(bookingID string, allowReset bool) error {
+	var got string
+	err := r.db.Get(&got, `
+		UPDATE "Booking" SET
+			"amountCollected" = 0,
+			"advancePaid" = 0,
+			"amountVerified" = true
+		WHERE id = $1
+		  AND status = 'COMPLETED'
+		  AND ($2 OR COALESCE("amountCollected", 0) = 0)
+		RETURNING id`, bookingID, allowReset)
+	if err != nil {
+		return fmt.Errorf("هذا الحجز عنده مبلغ مستلم — ما ينفع تأشّره مجانياً. صحّح المبلغ أو أشّر خطأ")
+	}
+	return nil
+}
+
 // SetAmount يصحّح المبلغ بلا تدقيق — للحجوزات القديمة الي المحاسب
 // يمشي عليها وحدة وحدة من فواتير النظام القديم.
 func (r *BookingAuditRepository) SetAmount(bookingID string, amount, advance *float64) error {
