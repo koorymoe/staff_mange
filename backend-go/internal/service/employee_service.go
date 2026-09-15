@@ -90,7 +90,11 @@ func (s *EmployeeService) Create(req model.CreateEmployeeRequest) (*model.Employ
 		ShiftEnd:    req.ShiftEnd,
 		Role:        role,
 		Division:    division,
-		Skills:      []model.EmployeeSkillDetail{},
+		// 🔴 التعقيم **بالخادم**: يشيل المجهول والمكرَّر والدور الأساسي
+		// نفسه، و**يمنع OWNER وADMIN** — قيد الواجهة وحده يُتخطّى بطلب
+		// مباشر على المسار.
+		SecondaryRoles: model.SanitizeSecondaryRoles(role, req.SecondaryRoles),
+		Skills:         []model.EmployeeSkillDetail{},
 	}
 
 	if req.Password != nil && *req.Password != "" {
@@ -150,6 +154,12 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 				}
 			}
 			employee.Role = *req.Role
+			// ⚠️ تبديل الدور الأساسي **يعيد تعقيم** الثانوية: لو صار
+			// دوره الأساسي هو نفسه أحد ثانوياته، تبقى مكرَّرة بلا معنى.
+			employee.SecondaryRoles = model.SanitizeSecondaryRoles(employee.Role, employee.SecondaryRoles)
+		}
+		if req.SecondaryRoles != nil {
+			employee.SecondaryRoles = model.SanitizeSecondaryRoles(employee.Role, *req.SecondaryRoles)
 		}
 		if req.OnDuty != nil {
 			employee.OnDuty = *req.OnDuty

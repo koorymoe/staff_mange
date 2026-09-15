@@ -156,8 +156,8 @@ func (r *EmployeeRepository) SetAttendanceIcon(id, icon string) error {
 
 func (r *EmployeeRepository) Create(e *model.Employee) error {
 	_, err := r.db.NamedExec(`
-		INSERT INTO "Employee" (id, name, certificate, position, phone, username, password, "jobTitle", salary, shift, "shiftStart", "shiftEnd", role, division)
-		VALUES (:id, :name, :certificate, :position, :phone, :username, :password, :jobTitle, :salary, :shift, :shiftStart, :shiftEnd, :role, :division)
+		INSERT INTO "Employee" (id, name, certificate, position, phone, username, password, "jobTitle", salary, shift, "shiftStart", "shiftEnd", role, division, "secondaryRoles")
+		VALUES (:id, :name, :certificate, :position, :phone, :username, :password, :jobTitle, :salary, :shift, :shiftStart, :shiftEnd, :role, :division, :secondaryRoles)
 	`, e)
 	return err
 }
@@ -171,6 +171,7 @@ const employeeUpdateSQL = `
 		phone = :phone,
 		status = :status,
 		role = :role,
+		"secondaryRoles" = :secondaryRoles,
 		"onDuty" = :onDuty,
 		username = :username,
 		password = COALESCE(NULLIF(:password, ''), password),

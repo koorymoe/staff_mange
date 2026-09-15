@@ -159,6 +159,15 @@ export default function PermissionsPage() {
       perms: ['leader_basket'],
     },
     {
+      // ⚠️ **إجباري تنضاف هنا**: الشاشة تبني نفسها من هالقائمة
+      // المكتوبة بالإيد، وأي صلاحية مو مذكورة بمجموعة **ما تظهر
+      // أبداً** — فما تنمنح لأي أحد. وهذا نفس الي صار بـ`design_forms`
+      // (شوف التعليق فوق): دور موجود وشاشاته مبنية وصاحبه ما يگدر
+      // يشتغل، لأن الصلاحية ما إلها محل بهالشاشة.
+      title: 'تقنية المعلومات (IT)',
+      perms: ['it_assets', 'it_stats'],
+    },
+    {
       // الوحدات: كل وحدة إدارية بالقائمة الجانبية (تحت فاصل "── الوحدات ──")
       // إلها صلاحية خاصة بيها تتحكم بظهورها كاملة — منفصلة عن صلاحيات
       // الصفحات الداخلية، حتى منح موظف صلاحية داخلية وحدة ما يفتحله وحدات
@@ -169,6 +178,7 @@ export default function PermissionsPage() {
       perms: [
         'unit_service', 'unit_technicians', 'unit_design', 'unit_pr', 'unit_quality',
         'unit_monitoring', 'unit_procurement', 'unit_finance', 'unit_hr', 'unit_projects',
+        'unit_it',
       ],
     },
     {

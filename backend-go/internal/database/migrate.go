@@ -151,6 +151,21 @@ func Migrate(db *sqlx.DB, ownerUsername, ownerPassword string) error {
 			return err
 		}
 	}
+	// دور الدعم التقني (IT): الوحدة والجرد والإحصائيات تنفتح له بالدور
+	// نفسه، بلا ما المالك يمنحها بالإيد كل مرة يضيف موظف IT جديد.
+	//
+	// ⚠️ وهذا **يصبّ على الموجودين** بعد: لو (ع) بدّل دور موظف قائم
+	// لـIT من شاشة الموظفين، تبديل الدور لحاله ما يمنح صلاحيات —
+	// فبلا هالسطور يصير دور بلا شاشات ويحسب إن الميزة ما نزلت.
+	for _, perm := range []struct{ name, label string }{
+		{"unit_it", "وحدة تقنية المعلومات"},
+		{"it_assets", "جرد أجهزة تقنية المعلومات"},
+		{"it_stats", "إحصائيات تقنية المعلومات"},
+	} {
+		if err := grantRolePermission(db, "IT_SUPPORT", perm.name, perm.label); err != nil {
+			return err
+		}
+	}
 	// التخريج وتعويض الدوار — للمحاسب.
 	if err := grantRolePermission(db, "FINANCE", "fund_discharge", "تخريج المواد وتعويض الدوار"); err != nil {
 		return err

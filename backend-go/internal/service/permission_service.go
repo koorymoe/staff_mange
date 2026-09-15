@@ -59,7 +59,11 @@ func (s *PermissionService) ApplyDefaults(employeeID string) ([]model.Permission
 		return nil, err
 	}
 
-	defaults := model.RoleDefaultPermissions[employee.Role]
+	// ⚠️ **الأدوار الثانوية داخلة هنا**: الدور الثاني حزمة صلاحيات،
+	// ومحل صبّها هو هذا بالضبط. ولو بقت خارج الاتحاد، يصير موظف
+	// مأشّر «فني + دعم تقني» وما عنده ولا شاشة IT — وهاي أسوأ من
+	// ماكو ميزة، لأن الشاشة تكذب عليه.
+	defaults := roleDefaultsUnion(employee.EffectiveRoles())
 	if len(defaults) == 0 {
 		return []model.Permission{}, nil
 	}
@@ -142,7 +146,7 @@ func (s *PermissionService) AuditRoleDefaults() ([]MissingRoleDefault, error) {
 		if e.Status != "ACTIVE" {
 			continue
 		}
-		defaults := model.RoleDefaultPermissions[e.Role]
+		defaults := roleDefaultsUnion(e.EffectiveRoles())
 		if len(defaults) == 0 {
 			continue
 		}
@@ -175,4 +179,21 @@ func (s *PermissionService) AuditRoleDefaults() ([]MissingRoleDefault, error) {
 		}
 	}
 	return out, nil
+}
+
+// roleDefaultsUnion اتحاد الصلاحيات الافتراضية لعدة أدوار، بلا تكرار
+// وبترتيب ثابت (حتى رسائل التدقيق ما تتبدّل من نداء لنداء).
+func roleDefaultsUnion(roles []string) []string {
+	out := []string{}
+	seen := map[string]bool{}
+	for _, role := range roles {
+		for _, name := range model.RoleDefaultPermissions[role] {
+			if seen[name] {
+				continue
+			}
+			seen[name] = true
+			out = append(out, name)
+		}
+	}
+	return out
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { api, type Division, type Employee, type EmployeeRole, type Permission } from '../api'
-import { ROLE_LABELS, ASSIGNABLE_ROLES } from '../roleLabels'
+import { ROLE_LABELS, ASSIGNABLE_ROLES, SECONDARY_ASSIGNABLE_ROLES } from '../roleLabels'
 
 
 // ⚠️ **منو ينمنح ومنو لا** انتقل لـ`roleLabels.ts` وياه سببه:
@@ -36,6 +36,8 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
   const [shiftStart, setShiftStart] = useState('08:00')
   const [shiftEnd, setShiftEnd] = useState('16:00')
   const [role, setRole] = useState<EmployeeRole>('TECHNICIAN')
+  // أدوار إضافية — اختيارية تماماً، والافتراضي فاضي.
+  const [secondaryRoles, setSecondaryRoles] = useState<EmployeeRole[]>([])
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
@@ -77,16 +79,25 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
         shiftEnd,
         role: effectiveRole,
         division: division ?? 'ENGINEERING',
+        // ⚠️ موظف الديكور دوره مثبّت «فني» — فما ننطيه أدواراً ثانية
+        // بعد، حتى ما ينفتح له باب ما قرره (ع).
+        secondaryRoles: isDecor ? [] : secondaryRoles.filter((r) => r !== effectiveRole),
         username,
         password,
       })
       setCreatedEmployee(created)
       const perms = await api.getPermissions()
       setAllPermissions(perms)
-      const roleNames = new Set(
-        // نعرض تلقائياً الصلاحيات الافتراضية لهذا الدور كبداية مقترحة، والمدير يقدر يعدلها
-        (await api.getRoleDefaults())[effectiveRole] || []
-      )
+      // نعرض تلقائياً الصلاحيات الافتراضية كبداية مقترحة، والمدير يعدّلها.
+      //
+      // ⚠️ و**الأدوار الثانوية داخلة بالاتحاد**: الخادم يصبّها فعلاً،
+      // فلو عرضنا الأساسي وحده تبين الشاشة أقل من الواقع — والمدير
+      // يحفظ فيشيل صلاحيات ما اختار يشيلها.
+      const defaults = await api.getRoleDefaults()
+      const roleNames = new Set<string>([
+        ...(defaults[effectiveRole] || []),
+        ...(isDecor ? [] : secondaryRoles.flatMap((r) => defaults[r] || [])),
+      ])
       setSelectedPermIds(perms.filter(p => roleNames.has(p.name)).map(p => p.id))
       next()
     } catch (e) {
@@ -238,6 +249,34 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
                             role === key ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
                           }`}>
                           {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                  {/* ── أدوار إضافية ──
+                      🔴 الواحد عندنا يسوي أكثر من شغلة: فني بالميدان
+                      ويتولى حاسبات المكتب. وقبلها الحل الوحيد إن (ع)
+                      يمنح الصلاحيات بالإيد، فيصير موظف عنده شاشات ما
+                      أحد يعرف ليش عنده ولا تبين بقائمة الموظفين. */}
+                  <label className="mt-4 text-xs font-bold text-slate-500">
+                    أدوار إضافية <span className="font-normal text-slate-400">(اختياري)</span>
+                  </label>
+                  <p className="text-[11px] leading-5 text-slate-400">
+                    الدور الإضافي <b>حزمة صلاحيات</b> — يفتح شاشات ذاك الدور وبس،
+                    وما يبدّل دوره الأساسي ولا رتبته. والمالك ومدير النظام
+                    ما ينمنحون كدور إضافي أبداً.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {SECONDARY_ASSIGNABLE_ROLES.filter(k => k !== role).map(key => {
+                      const on = secondaryRoles.includes(key)
+                      return (
+                        <button key={key} type="button"
+                          onClick={() => setSecondaryRoles(prev =>
+                            on ? prev.filter(r => r !== key) : [...prev, key])}
+                          className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${
+                            on ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-500 hover:bg-slate-50'
+                          }`}>
+                          {on ? '✓ ' : ''}{ROLE_LABELS[key]}
                         </button>
                       )
                     })}

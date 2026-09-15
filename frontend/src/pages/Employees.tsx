@@ -10,7 +10,7 @@ import AddEmployeeWizard from '../components/AddEmployeeWizard'
 import { openManagerChat } from '../components/openManagerChat'
 import { matches } from '../utils/search'
 import { toIntlPhone } from '../utils/phone'
-import { roleLabel, roleChipColor, ROLE_LABELS, ASSIGNABLE_ROLES } from '../roleLabels'
+import { roleLabel, roleChipColor, ROLE_LABELS, ASSIGNABLE_ROLES, SECONDARY_ASSIGNABLE_ROLES } from '../roleLabels'
 
 // زرّا واتساب وتلغرام جنب رقم الهاتف — دائماً الاثنان معاً (ماكو
 // حقل بالنظام يحدد أي تطبيق يستخدمه الموظف)، ويظهران بس لمن الهاتف موجود.
@@ -396,6 +396,12 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                       <span className={`inline-flex items-center gap-1 rounded-full ${rc.bg} px-2 py-0.5 text-[10px] font-semibold ${rc.text}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${rc.dot}`}/>
                         {roleLabel(emp.role)}
+                        {(emp.secondaryRoles || []).length > 0 && (
+                          <span className="ms-1 rounded bg-emerald-100 px-1 text-[10px] font-bold text-emerald-700"
+                            title={`أدوار إضافية: ${(emp.secondaryRoles || []).map(roleLabel).join(' · ')}`}>
+                            +{(emp.secondaryRoles || []).length}
+                          </span>
+                        )}
                       </span>
                       {skillCount > 0 && (
                         <span className="text-[10px] text-slate-400">{skillCount} مهارة</span>
@@ -753,6 +759,45 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                           {(selectedEmployee.role === 'GPS_ADMIN' ? [...ASSIGNABLE_ROLES, 'GPS_ADMIN' as const] : ASSIGNABLE_ROLES)
                             .map((k) => <option key={k} value={k}>{ROLE_LABELS[k]}</option>)}
                         </select>
+                      </div>
+                    )}
+                    {isAdmin && (
+                      <div className="sm:col-span-2">
+                        <label className="mb-1 block text-xs font-medium text-slate-400">
+                          أدوار إضافية <span className="text-slate-300">(حزمة صلاحيات — ما تبدّل دوره)</span>
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                          {SECONDARY_ASSIGNABLE_ROLES.filter(k => k !== selectedEmployee.role).map((k) => {
+                            const on = (selectedEmployee.secondaryRoles || []).includes(k)
+                            return (
+                              <button key={k} type="button"
+                                onClick={async () => {
+                                  const cur = selectedEmployee.secondaryRoles || []
+                                  const nextRoles = on ? cur.filter(r => r !== k) : [...cur, k]
+                                  const updated = await guard.run(
+                                    on ? `سحب دور ${ROLE_LABELS[k]}` : `إضافة دور ${ROLE_LABELS[k]}`,
+                                    () => api.updateEmployee(selectedEmployee.id, { secondaryRoles: nextRoles }))
+                                  if (!updated) return
+                                  setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
+                                }}
+                                className={`rounded-xl border px-3 py-1.5 text-xs font-bold transition-colors ${
+                                  on ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-200 text-slate-400 hover:bg-slate-50'
+                                }`}>
+                                {on ? '✓ ' : '+ '}{ROLE_LABELS[k]}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {/* ⚠️ الصلاحيات **ما تنصبّ بمجرد المنح**: `RoleDefaultPermissions`
+                            خريطة اقتراح، والصبّ يصير بزر «تطبيق الافتراضيات» بشاشة
+                            الصلاحيات. وبلا هالسطر (ع) يمنح الدور ويحسب إن الشاشات
+                            انفتحت — وهي لا. */}
+                        {(selectedEmployee.secondaryRoles || []).length > 0 && (
+                          <p className="mt-1.5 text-[11px] text-amber-700">
+                            ⓘ الدور الإضافي يحدّد الصلاحيات <b>المقترحة</b> — لازم تضغط
+                            «تطبيق الافتراضيات» بشاشة الصلاحيات حتى تنصبّ فعلاً.
+                          </p>
+                        )}
                       </div>
                     )}
                     <div>

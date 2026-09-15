@@ -103,6 +103,7 @@ export type EmployeeRole =
   | 'PROCUREMENT_ADMIN'
   | 'DESIGNER'
   | 'SERVICE_MANAGER'
+  | 'IT_SUPPORT'
   | 'OWNER'
 
 export interface Employee {
@@ -132,6 +133,17 @@ export interface Employee {
   monthlyLeaves: number
   jobTitle: string | null
   division: Division
+  /**
+   * أدوار إضافية — **حزمة صلاحيات مو رتبة**.
+   *
+   * 🔴 الواحد عندنا يسوي أكثر من شغلة: فني بالميدان ويتولى حاسبات
+   * المكتب. والدور الثاني يصبّ صلاحيات دوره وبس — ما يبدّل `role`
+   * ولا يمرّ بأي حارس يقرا الدور.
+   *
+   * ⚠️ و**ما يكون OWNER ولا ADMIN أبداً** — الخادم يشيلهم من القائمة
+   * مهما انبعثت، فالقيد مو على الواجهة وحدها.
+   */
+  secondaryRoles?: EmployeeRole[]
   attendanceIcon?: string | null
 
   // ═══ ملف الموارد البشرية ═══
@@ -3477,6 +3489,7 @@ export const api = {
       shiftEnd?: string
       role?: EmployeeRole
       division?: Division
+      secondaryRoles?: EmployeeRole[]
     },
   ) => request<Employee>('/employees', { method: 'POST', body: JSON.stringify(data) }),
   login: async (username: string, password: string) => {
@@ -4044,6 +4057,7 @@ export const api = {
         | 'isLeader' | 'salary' | 'shift' | 'shiftStart' | 'shiftEnd' | 'monthlyLeaves' | 'jobTitle'
         // ملف الموارد البشرية — careerStatus ما تنرسل: تنحسب بالسيرفر
         | 'department' | 'hireDate' | 'experienceYears' | 'lastReview' | 'jobLevel' | 'nextRole' | 'trainingNeeds'
+        | 'secondaryRoles'
       >
     > & {
       username?: string

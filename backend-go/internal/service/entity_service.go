@@ -575,6 +575,7 @@ var roleLabels = map[string]string{
 	"PROJECT_MANAGER": "مدير مشاريع", "MONITOR": "مراقب", "FINANCE": "محاسب",
 	"GPS_ADMIN": "مسؤول GPS", "QUALITY_ENGINEER": "مهندس جودة", "ENGINEER": "مهندس",
 	"PROCUREMENT_ADMIN": "إداري الكميات", "DESIGNER": "مصمم", "SERVICE_MANAGER": "مسؤول خدمة",
+	"IT_SUPPORT": "الدعم التقني",
 }
 
 func roleLabel(role string) string {

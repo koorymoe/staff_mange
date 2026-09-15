@@ -144,6 +144,17 @@ var DefaultPermissions = []Permission{
 	{Name: "unit_finance", Label: "وحدة الحسابات"},
 	{Name: "unit_hr", Label: "وحدة الكوادر التنفيذية"},
 	{Name: "unit_projects", Label: "وحدة إدارة المشاريع"},
+	// ═══ تقنية المعلومات ═══
+	//
+	// شغل الـIT موجود بالشركة فعلاً (حاسبات ومخدّمات وشبكة داخلية)،
+	// وما كان له دور ولا صلاحيات — فالي يشتغل بيه ينحط «تقني» وتنمنح
+	// له صلاحيات ما تخص شغله.
+	//
+	// ⚠️ والوحدة منفصلة عن الصلاحيتين بقصد: المالك يكدر يفتح الوحدة
+	// لموظف بلا ما ينطيه الجرد، أو ينطيه الجرد بلا ما تبين الوحدة.
+	{Name: "unit_it", Label: "وحدة تقنية المعلومات"},
+	{Name: "it_assets", Label: "جرد أجهزة تقنية المعلومات"},
+	{Name: "it_stats", Label: "إحصائيات تقنية المعلومات"},
 }
 
 // RoleDefaultPermissions هي الصلاحيات الافتراضية لكل دور وظيفي
@@ -161,6 +172,45 @@ var RoleDefaultPermissions = map[string][]string{
 	"PROCUREMENT_ADMIN": {"procurement", "inventory", "tool_requests_approve"},
 	// ⚠️ بلا `view_bookings`: قراره الصريح إن المصممة **ما تشوف
 	// الحجوزات** — شغلها الفورمة والتصاميم والمهام الموجّهة لها.
-	"DESIGNER":          {"design_forms", "design_gallery", "unit_design"},
-	"SERVICE_MANAGER":   {"content_technician", "manage_services"},
+	"DESIGNER":        {"design_forms", "design_gallery", "unit_design"},
+	"SERVICE_MANAGER": {"content_technician", "manage_services"},
+	// ⚠️ **بلا فلوس وبلا كوادر وبلا حجوزات**: الـIT يشوف أجهزته
+	// وإحصائياته وبس. وأي شي غير هذا ينمنح بالإيد من شاشة الصلاحيات.
+	"IT_SUPPORT": {"unit_it", "it_assets", "it_stats"},
+}
+
+// SecondaryRoleForbidden الأدوار الي **ما تنمنح أبداً** كدور ثانوي.
+//
+// 🔴 المالك ومدير النظام: دورهما يفتح كل شي بالنظام — الفلوس والصلاحيات
+// والحذف والأرشفة. ومنحهما «كدور ثاني» يعني ترقية كاملة بلا ما تبين
+// بقائمة الموظفين (الدور الأساسي يبقى «فني»). وهذا بالضبط الي يخلي
+// تسريب صلاحية صامتاً.
+//
+// ⚠️ والمنع **بالخادم مو بالواجهة**: قيد بالواجهة وحدها يُتخطّى بطلب
+// مباشر على المسار.
+var SecondaryRoleForbidden = map[string]bool{
+	"OWNER": true,
+	"ADMIN": true,
+}
+
+// SanitizeSecondaryRoles ينظّف قائمة الأدوار الثانوية الجاية من الواجهة:
+// يشيل المجهول والممنوع والمكرَّر والدور الأساسي نفسه.
+//
+// ⚠️ ويرجّع قائمة فاضية مو nil — العمود `NOT NULL DEFAULT '{}'`.
+func SanitizeSecondaryRoles(primary string, in []string) []string {
+	out := make([]string, 0, len(in))
+	seen := map[string]bool{primary: true}
+	for _, r := range in {
+		if r == "" || seen[r] || SecondaryRoleForbidden[r] {
+			continue
+		}
+		// مجهول = ما نعرف صلاحياته، فما نخزنه. وأي دور بالنظام موجود
+		// بهالخريطة (حتى لو حزمته فاضية مثل ADMIN).
+		if _, known := RoleDefaultPermissions[r]; !known {
+			continue
+		}
+		seen[r] = true
+		out = append(out, r)
+	}
+	return out
 }

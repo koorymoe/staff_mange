@@ -38,6 +38,7 @@ export const ROLE_LABELS: Record<EmployeeRole, string> = {
   PROCUREMENT_ADMIN: 'إداري الكميات',
   DESIGNER: 'مصمم',
   SERVICE_MANAGER: 'مسؤول خدمة',
+  IT_SUPPORT: 'الدعم التقني',
 }
 
 /**
@@ -59,6 +60,7 @@ const SHORT_LABELS: Partial<Record<EmployeeRole, string>> = {
   MONITOR: 'رقابة',
   HR_COORDINATOR: 'كوادر',
   PROCUREMENT_ADMIN: 'مخازن',
+  IT_SUPPORT: 'IT',
 }
 
 /**
@@ -97,6 +99,21 @@ export function roleLabelShort(role: string | null | undefined): string {
 export const ASSIGNABLE_ROLES: EmployeeRole[] =
   (Object.keys(ROLE_LABELS) as EmployeeRole[]).filter((r) => r !== 'OWNER' && r !== 'GPS_ADMIN')
 
+/**
+ * الأدوار الي تنمنح **كدور ثانٍ**.
+ *
+ * 🔴 **بلا OWNER وبلا ADMIN**: دورهما يفتح كل شي — الفلوس والصلاحيات
+ * والحذف. ومنحه «كدور ثاني» يعني ترقية كاملة **ما تبين** بقائمة
+ * الموظفين، لأن الدور الأساسي يبقى «فني». وهذا بالضبط شكل تسريب
+ * الصلاحية الصامت.
+ *
+ * ⚠️ والخادم يمنعهما بعد (`SanitizeSecondaryRoles`) — هاي القائمة
+ * **راحة للمستخدم مو حماية**: أي قيد بالواجهة وحدها يُتخطّى بطلب
+ * مباشر على المسار.
+ */
+export const SECONDARY_ASSIGNABLE_ROLES: EmployeeRole[] =
+  ASSIGNABLE_ROLES.filter((r) => r !== 'ADMIN')
+
 /** ألوان شريحة الدور بقائمة الموظفين. */
 export const ROLE_CHIP_COLORS: Record<EmployeeRole, { bg: string; text: string; dot: string }> = {
   OWNER: { bg: 'bg-yellow-50', text: 'text-yellow-800', dot: 'bg-yellow-500' },
@@ -114,6 +131,7 @@ export const ROLE_CHIP_COLORS: Record<EmployeeRole, { bg: string; text: string; 
   PROCUREMENT_ADMIN: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
   DESIGNER: { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-500' },
   SERVICE_MANAGER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
+  IT_SUPPORT: { bg: 'bg-slate-100', text: 'text-slate-700', dot: 'bg-slate-600' },
 }
 
 const NEUTRAL_CHIP = { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-500' }
@@ -145,6 +163,7 @@ export const ROLE_GRADIENTS: Record<EmployeeRole, string> = {
   PROCUREMENT_ADMIN: 'from-orange-500 to-amber-600',
   DESIGNER: 'from-pink-500 to-rose-600',
   SERVICE_MANAGER: 'from-teal-500 to-emerald-600',
+  IT_SUPPORT: 'from-slate-500 to-slate-700',
 }
 
 export function roleGradient(role: string | null | undefined): string {

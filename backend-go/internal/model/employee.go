@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/lib/pq"
+)
 
 // EngineeringSkillNames هي المهارات الأربع المشروطة قبل ما ينعطى موظف دور "مهندس"
 // (ENGINEER) — يشتغل عليها كل من زرع بيانات الهندسة الأولية والتحقق وقت تغيير الدور.
@@ -78,8 +82,31 @@ type Employee struct {
 	NextRole      *string `db:"nextRole" json:"nextRole"`
 	TrainingNeeds *string `db:"trainingNeeds" json:"trainingNeeds"`
 
+	// SecondaryRoles أدوار إضافية — **حزمة صلاحيات مو رتبة**.
+	//
+	// 🔴 بشركة بحجمنا الواحد يسوي أكثر من شغلة: فني بالميدان ويتولى
+	// حاسبات المكتب. وقبلها الحل الوحيد إن (ع) يمنح الصلاحيات بالإيد،
+	// فيصير موظف عنده شاشات ما أحد يعرف ليش عنده.
+	//
+	// ⚠️ **ما تبدّل `Role` ولا تمرّ بأي حارس يقرا الدور**: كل الي
+	// تسويه إنها تصبّ صلاحيات أدوارها الافتراضية وقت الإنشاء والتعديل.
+	// و`SanitizeSecondaryRoles` تمنع OWNER وADMIN منها **بالخادم**.
+	//
+	// ⚠️ وعمود بالجدول → حقل هنا إلزامي (الجلب `SELECT *`).
+	SecondaryRoles pq.StringArray `db:"secondaryRoles" json:"secondaryRoles"`
+
 	Skills           []EmployeeSkillDetail `db:"-" json:"skills"`
 	HasRequiredSkill *bool                 `db:"-" json:"hasRequiredSkill,omitempty"`
+}
+
+// EffectiveRoles الدور الأساسي ومعاه أدواره الثانوية — تُستعمل **حصراً**
+// لصبّ الصلاحيات الافتراضية، مو للحراسة.
+func (e *Employee) EffectiveRoles() []string {
+	roles := []string{e.Role}
+	for _, r := range SanitizeSecondaryRoles(e.Role, e.SecondaryRoles) {
+		roles = append(roles, r)
+	}
+	return roles
 }
 
 type EmployeeSkillDetail struct {
@@ -116,6 +143,9 @@ type CreateEmployeeRequest struct {
 	// Division: "ENGINEERING" (افتراضي) أو "DECOR" — أول سؤال يظهر بفورم إضافة
 	// موظف جديد بالواجهة، قبل ما تظهر بقية الحقول.
 	Division *string `json:"division"`
+	// SecondaryRoles أدوار إضافية — تُعقَّم بالخادم
+	// (`SanitizeSecondaryRoles`) قبل الحفظ.
+	SecondaryRoles []string `json:"secondaryRoles"`
 }
 
 type UpdateEmployeeRequest struct {
@@ -149,6 +179,10 @@ type UpdateEmployeeRequest struct {
 	JobLevel        *int     `json:"jobLevel"`
 	NextRole        *string  `json:"nextRole"`
 	TrainingNeeds   *string  `json:"trainingNeeds"`
+	// ⚠️ **مؤشّر على مصفوفة بقصد**: nil = الطلب ما ذكرها فما نلمسها،
+	// و`[]` = (ع) شال كل الأدوار الثانوية فعلاً. بلا التفريق، أي حفظ
+	// حقل ثاني (مثل رقم الهاتف) يمحي أدواره الثانوية بصمت.
+	SecondaryRoles *[]string `json:"secondaryRoles"`
 }
 
 // ═══ أهلية الترقية ═══

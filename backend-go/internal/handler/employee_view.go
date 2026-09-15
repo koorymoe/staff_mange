@@ -31,6 +31,15 @@ func basePublicFields(e *model.Employee) employeeView {
 		"leaderSkillLevel": e.LeaderSkillLevel,
 		"createdAt":        e.CreatedAt,
 	}
+	// ⚠️ **الأدوار الثانوية عامة مثل الدور**: هي وصف شغل مو سرّاً —
+	// وإخفاؤها يرجّع نفس المشكلة الي انبنت لإلها: موظف عنده شاشات
+	// ما أحد يعرف ليش عنده. ومصفوفة **دائماً** (فاضية لو ماكو، مو
+	// محذوفة) — نفس درس `skills` الي طيّح صفحة الموظفين كلها.
+	if e.SecondaryRoles == nil {
+		v["secondaryRoles"] = []string{}
+	} else {
+		v["secondaryRoles"] = e.SecondaryRoles
+	}
 	putIfSet(v, "jobTitle", e.JobTitle)
 	putIfSet(v, "position", e.Position)
 	putIfSet(v, "attendanceIcon", e.AttendanceIcon)

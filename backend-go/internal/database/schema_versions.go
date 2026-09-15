@@ -328,6 +328,7 @@ func versionedMigrations() []Migration {
 	// 0276: مجسّمات الكيان تُرفَع من داخل النظام — قبلها كان المجسّم
 	// ملفاً ثابتاً يحتاج نسخاً يدوياً للسيرفر وبناءَ حاوية لكل تغيير.
 	result = append(result, entityModelMigrations()...)
+	result = append(result, itRoleMigrations()...)
 	return result
 }
 
