@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Employee, type EmployeeRole, type Permission } from '../api'
 import { navItems, isNavVisible, type NavItem } from '../components/navTree'
+import { ROLE_LABELS } from '../roleLabels'
 
 // ═══ دليل الأدوار والصلاحيات ═══
 //
@@ -19,23 +20,6 @@ import { navItems, isNavVisible, type NavItem } from '../components/navTree'
 // القارئ يخمّن الباقي — وأخطر سؤال بالصلاحيات هو «هل هذا الدور يوصل
 // للفلوس؟» ولازم ينجاوب صراحةً.
 
-const ROLE_LABELS: Record<string, string> = {
-  OWNER: 'المالك',
-  ADMIN: 'مدير النظام',
-  HR_COORDINATOR: 'إداري الكوادر / الحجوزات',
-  FINANCE: 'المحاسب',
-  MONITOR: 'المراقب',
-  TECHNICIAN: 'فني',
-  TECHNICAL: 'تقني',
-  PROJECT_MANAGER: 'مدير مشاريع',
-  QUALITY_ENGINEER: 'مهندس جودة',
-  ENGINEER: 'مهندس',
-  PROCUREMENT_ADMIN: 'إداري الكميات',
-  GPS_ADMIN: 'مسؤول جي بي اس',
-  DESIGNER: 'مصمم',
-  SALES: 'موظف مبيعات',
-  SERVICE_MANAGER: 'مسؤول خدمة',
-}
 
 // ⚠️ الشاشات الحسّاسة تتأشّر صراحةً: «هل هذا الدور يوصل للفلوس أو
 // للصلاحيات أو للحذف؟» أهم سؤال، ولازم ما ينلزم القارئ يستنتجه.
@@ -98,7 +82,7 @@ export default function RolesGuidePage() {
     const lines: string[] = ['# دليل الأدوار والصلاحيات', '',
       '> متولّد من الكود (`navItems` + `isNavVisible`) — نفس المصدر الي',
       '> يبني القائمة الحقيقية. أي تعديل بالصلاحيات ينعكس هنا تلقائياً.', '']
-    for (const r of Object.keys(ROLE_LABELS)) {
+    for (const r of Object.keys(ROLE_LABELS) as EmployeeRole[]) {
       const c = ctxFor(r, [])
       const vis = all.filter((i) => isNavVisible(i, c))
       const hid = all.filter((i) => !isNavVisible(i, c))

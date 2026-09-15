@@ -6,7 +6,8 @@ import LiveAlerts from './LiveAlerts'
 import ThemeToggle from './ThemeToggle'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { api, type Employee } from '../api'
-import { SessionContext, roleLabels } from '../session'
+import { SessionContext } from '../session'
+import { roleLabel, roleGradient } from '../roleLabels'
 import { ensureFileToken } from '../api'
 import Login from '../pages/Login'
 import CommandApp from '../command/CommandApp'
@@ -56,18 +57,6 @@ function hasActiveChild(item: NavItem, pathname: string): boolean {
   return item.children.some(c => hasActiveChild(c, pathname))
 }
 
-const roleColors: Record<string, string> = {
-  ADMIN: 'from-amber-500 to-orange-600',
-  SALES: 'from-emerald-500 to-teal-600',
-  HR_COORDINATOR: 'from-violet-500 to-purple-600',
-  TECHNICIAN: 'from-sky-500 to-blue-600',
-  PROJECT_MANAGER: 'from-rose-500 to-pink-600',
-  MONITOR: 'from-cyan-500 to-teal-600',
-  FINANCE: 'from-lime-500 to-green-600',
-  GPS_ADMIN: 'from-indigo-500 to-blue-600',
-  QUALITY_ENGINEER: 'from-fuchsia-500 to-purple-600',
-  ENGINEER: 'from-teal-500 to-cyan-700',
-}
 
 // ═══ منو يشوف شنو — مصدر وحيد ═══
 //
@@ -400,7 +389,7 @@ export default function Layout() {
 
   const toggle = (label: string) => setExpandedGroups((p) => ({ ...p, [label]: !p[label] }))
 
-  const gradientClass = roleColors[employee.role] || 'from-blue-500 to-indigo-600'
+  const gradientClass = roleGradient(employee.role)
 
   // unitGranted ينتقل للأولاد: لما الموظف عنده صلاحية الوحدة، كل صفحاتها
   // تنعرض له بدون فحص صلاحياتها التفصيلية.
@@ -751,7 +740,7 @@ export default function Layout() {
               <div className="flex items-center gap-2 rounded-xl bg-slate-50/80 px-2 py-1.5 transition-colors hover:bg-slate-100 sm:gap-3 sm:px-3">
                 <div className="hidden text-left sm:block">
                   <p className="text-sm font-bold text-slate-800">{employee.name}</p>
-                  <p className="text-[11px] text-slate-400">{roleLabels[employee.actualRole || employee.role]}</p>
+                  <p className="text-[11px] text-slate-400">{roleLabel(employee.actualRole || employee.role)}</p>
                 </div>
                 <div className={`relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${gradientClass} text-sm font-bold text-white shadow-md sm:h-10 sm:w-10`}>
                   {employee.attendanceIcon || employee.name.charAt(0)}
@@ -815,7 +804,7 @@ export default function Layout() {
               <div className="flex items-center gap-3">
                 <div className="flex-1 text-right">
                   <p className="text-sm font-bold text-white">{employee.name}</p>
-                  <p className="text-[11px] text-blue-300/80">{roleLabels[employee.actualRole || employee.role]}</p>
+                  <p className="text-[11px] text-blue-300/80">{roleLabel(employee.actualRole || employee.role)}</p>
                 </div>
                 {/* ═══ صورة الموظف — عرض بس ═══
                     «اقفلها بيد الإدارة بس».
@@ -838,7 +827,7 @@ export default function Layout() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"/>
                 <span className="text-[10px] text-emerald-400/80 font-medium">متصل الآن</span>
                 <span className={`mr-auto rounded-full bg-gradient-to-l ${gradientClass} px-2.5 py-0.5 text-[10px] font-bold text-white shadow-sm`}>
-                  {roleLabels[employee.actualRole || employee.role]}
+                  {roleLabel(employee.actualRole || employee.role)}
                 </span>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type DailyStats, type WeeklyStats, type ProjectStageStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { roleLabelShort } from '../roleLabels'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -15,10 +16,6 @@ const GOLD_TEXT = 'var(--gold-ink)'
 
 const fmt = (n: number) => n.toLocaleString('en-IQ')
 
-const roleLabels: Record<string, string> = {
-  TECHNICIAN: 'فني/ليدر',
-  SALES: 'مبيعات',
-}
 
 function todayStr() {
   const d = new Date()
@@ -191,7 +188,7 @@ function WeeklyTab() {
                   {stats.employees.map((r) => (
                     <tr key={r.employeeId}>
                       <td style={weeklyTdStyle}>{r.employeeName}</td>
-                      <td style={weeklyTdStyle}>{roleLabels[r.role] || r.role}</td>
+                      <td style={weeklyTdStyle}>{roleLabelShort(r.role)}</td>
                       <td style={weeklyTdStyle}>{r.kpiPoints}</td>
                       <td style={weeklyTdStyle}>{r.workSpeedScore != null ? r.workSpeedScore.toFixed(2) : '—'}</td>
                       <td style={weeklyTdStyle}>{r.vehicleCleanlinessScore != null ? `${r.vehicleCleanlinessScore.toFixed(2)} (${r.vehicleRatingsCount})` : '—'}</td>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Employee } from '../api'
-import { useSession, roleLabels } from '../session'
+import { useSession } from '../session'
+import { roleLabel } from '../roleLabels'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -108,7 +109,7 @@ export default function StatsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
               {stats.roleCounts.map(r => (
                 <div key={r.role} className="flex items-center justify-between bg-gray-50 rounded-lg p-3">
-                  <span className="text-sm text-gray-700">{roleLabels[r.role as keyof typeof roleLabels] || r.role}</span>
+                  <span className="text-sm text-gray-700">{roleLabel(r.role)}</span>
                   <span className="text-lg font-bold text-[var(--color-brand-500)]">{r.count}</span>
                 </div>
               ))}

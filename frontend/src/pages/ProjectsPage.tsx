@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
 import { matches } from '../utils/search'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { roleLabelShort } from '../roleLabels'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -112,15 +113,8 @@ interface ProjectCandidate {
 
 // اسم المرشح بالقائمة يبيّن دوره وحالته — المدير لازم يتأكد إنه اختار
 // الشخص الصح، وإذا الموظف لسه متدرب لازم يعرف قبل ما يوجّهه مشروع.
-const ROLE_AR: Record<string, string> = {
-  ADMIN: 'مدير النظام', OWNER: 'المالك', TECHNICIAN: 'فني', TECHNICAL: 'تقني',
-  ENGINEER: 'مهندس', QUALITY_ENGINEER: 'مهندس جودة', SALES: 'مبيعات',
-  HR_COORDINATOR: 'كوادر', FINANCE: 'حسابات', MONITOR: 'رقابة',
-  PROCUREMENT_ADMIN: 'مخازن', GPS_ADMIN: 'مسؤول GPS', DESIGNER: 'مصمم',
-  PROJECT_MANAGER: 'مدير مشاريع',
-}
 function candidateLabel(c: ProjectCandidate): string {
-  const bits = [ROLE_AR[c.role] || c.role]
+  const bits = [roleLabelShort(c.role)]
   if (c.isLeader) bits.push('تيم ليدر')
   if (c.isTrainee) bits.push('⚠ متدرب')
   return `${c.name} — ${bits.join('، ')}`

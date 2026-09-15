@@ -1,32 +1,11 @@
 import { useState } from 'react'
 import { api, type Division, type Employee, type EmployeeRole, type Permission } from '../api'
+import { ROLE_LABELS, ASSIGNABLE_ROLES } from '../roleLabels'
 
-const roleLabels: Record<EmployeeRole, string> = {
-  ADMIN: 'مدير النظام',
-  SALES: 'موظف مبيعات',
-  HR_COORDINATOR: 'إداري الكوادر',
-  TECHNICIAN: 'فني',
-  PROJECT_MANAGER: 'مدير مشاريع',
-  MONITOR: 'مراقب / مدقق',
-  FINANCE: 'محاسب',
-  GPS_ADMIN: 'مسؤول GPS',
-  QUALITY_ENGINEER: 'مهندس جودة',
-  ENGINEER: 'مهندس',
-  PROCUREMENT_ADMIN: 'إداري الكميات',
-  DESIGNER: 'مصمم',
-  SERVICE_MANAGER: 'مسؤول خدمة',
-  TECHNICAL: 'تقني',
-  OWNER: 'مالك النظام',
-}
 
-// دور OWNER محجوز لحساب مالك النظام الوحيد المزروع مباشرة بقاعدة البيانات —
-// محد يقدر يمنحه لموظف من الواجهة، حتى الأدمن نفسه.
-// دور "مسؤول GPS" ما ينعطى بعد الآن لموظف جديد — الجي بي اس صارت خدمة وحدة
-// بين عدة خدمات، والمسؤولية عنها تنعطى عن طريق "مسؤولو الخدمات" (صلاحية
-// gps_system) مو دور وظيفي منفصل، حتى تنسجم مع "مسؤول خدمة" العام.
-// "مهندس" و"مصمم" ينعطون مباشرة وقت الإنشاء بدون صلاحيات افتراضية —
-// تُمنح لهم يدوياً من خطوة الصلاحيات بآخر الفورم (نفس نمط إداري الكميات).
-const creatableRoles = (Object.keys(roleLabels) as EmployeeRole[]).filter(r => r !== 'OWNER' && r !== 'GPS_ADMIN')
+// ⚠️ **منو ينمنح ومنو لا** انتقل لـ`roleLabels.ts` وياه سببه:
+// المالك محجوز للحساب المزروع، ومسؤول GPS صار صلاحية مو دوراً.
+const creatableRoles = ASSIGNABLE_ROLES
 
 function calcHours(start: string, end: string): number | null {
   if (!start || !end) return null
@@ -252,7 +231,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
                   <label className="text-xs font-bold text-slate-500">الدور الوظيفي بالنظام</label>
                   <div className="grid grid-cols-2 gap-2">
                     {creatableRoles.map(key => {
-                      const label = roleLabels[key]
+                      const label = ROLE_LABELS[key]
                       return (
                         <button key={key} type="button" onClick={() => setRole(key)}
                           className={`rounded-xl border px-3 py-2.5 text-xs font-bold transition-all ${

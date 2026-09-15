@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useState, useMemo } from 'react'
 import { api, type PersonalTool, type VehicleTool, type OnDemandTool, type ToolRequest, type ToolRequestItem, type Employee, type InventoryCheck, type PersonalToolTemplateItem,
   type PersonalToolExemption, type BookingToolCheck, type VehicleToolCheck, type Vehicle, type PersonalToolEvent, type PersonalToolStatus, personalToolStatusLabels, personalToolStatusColors } from '../api'
-import { useSession, roleLabels } from '../session'
+import { useSession } from '../session'
+import { roleLabel } from '../roleLabels'
 
 // تطبيع اسم الأداة للمقارنة: قصّ الأطراف وتوحيد المسافات الداخلية.
 // ⚠️ كل مطابقة بهذي الشاشة نصية (ماكو معرّف مشترك بين العدة القياسية
@@ -635,7 +636,7 @@ export default function InventoryPage() {
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <div className="font-bold text-brand-900">{k.employee.name}</div>
-                            <div className="text-xs text-slate-400">{roleLabels[k.employee.role] || k.employee.role}</div>
+                            <div className="text-xs text-slate-400">{roleLabel(k.employee.role)}</div>
                           </div>
                           <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
                             k.missing.length ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'
@@ -669,7 +670,7 @@ export default function InventoryPage() {
                     <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
                       <div>
                         <h3 className="text-xl font-bold text-brand-900">عدة: {k.employee.name}</h3>
-                        <p className="text-sm text-slate-400">{roleLabels[k.employee.role] || k.employee.role}</p>
+                        <p className="text-sm text-slate-400">{roleLabel(k.employee.role)}</p>
                       </div>
                       <button
                         onClick={() => setSelectedKitEmployeeId(null)}

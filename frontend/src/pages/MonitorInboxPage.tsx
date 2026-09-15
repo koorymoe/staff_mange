@@ -12,6 +12,7 @@ import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
 import SaveError from '../components/SaveError'
 import Pager from '../components/Pager'
+import { roleLabel, roleLabelShort } from '../roleLabels'
 
 // ═══ صندوق المراقب ═══
 //
@@ -41,15 +42,10 @@ const STAGES: { key: MonitorStage; label: string; hint: string }[] = [
   { key: 'SOLAR_QUOTED', label: '☀️ منظومة شمسية انتسعّرت', hint: 'السعر انحسب تلقائياً من المخزن — محد شافه قبل الزبون' },
 ]
 
-const ROLE_LABELS: Record<string, string> = {
-  HR_COORDINATOR: 'إداري الحجوزات',
-  FINANCE: 'المحاسب',
-  TECHNICIAN: 'الفني / الليدر',
-  QUALITY_ENGINEER: 'مهندس الجودة',
-  PROCUREMENT_ADMIN: 'إداري الكميات',
-  GPS_ADMIN: 'إداري الجي بي اس',
-  SERVICE_MANAGER: 'مسؤول الخدمة',
-}
+// ⚠️ **قائمة مرشّح مو خريطة أسماء**: هذولا أدوار أصحاب الشغل الي
+// يمرّ بطوابير المراقب — والأسماء نفسها تجي من المصدر الوحيد.
+const REVIEWABLE_ROLES = ['HR_COORDINATOR', 'FINANCE', 'TECHNICIAN', 'QUALITY_ENGINEER',
+  'PROCUREMENT_ADMIN', 'GPS_ADMIN', 'SERVICE_MANAGER'] as const
 
 /** ⚠️ `embedded`: نفس الشاشة بالضبط بلا ترويستها — تنضمّ بمكتب
  *  المراقب. **ما ننسخ المحتوى**: نسختان تفترقان بأول تصحيح، فالمراقب
@@ -190,7 +186,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
           style={{ borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
         >
           <option value="">شغل كل الأدوار</option>
-          {Object.entries(ROLE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {REVIEWABLE_ROLES.map((k) => <option key={k} value={k}>{roleLabelShort(k)}</option>)}
         </select>
       </SearchBar>
 
@@ -225,7 +221,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
                     <Link to={linkOf(row)} className="font-bold underline" style={{ color: 'var(--t-title)' }}>{row.title}</Link>
                     <p className="text-xs" style={{ color: 'var(--t-muted)' }}>{row.summary}</p>
                     <p className="mt-1 text-[11px]" style={{ color: 'var(--t-faint)' }}>
-                      {row.ownerRole && <>شغل: {ROLE_LABELS[row.ownerRole] || row.ownerRole} </>}
+                      {row.ownerRole && <>شغل: {roleLabel(row.ownerRole)} </>}
                       {row.ownerEmployee && <>({row.ownerEmployee.name}) </>}
                       • {new Date(row.createdAt).toLocaleString('en-GB')}
                     </p>

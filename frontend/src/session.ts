@@ -27,20 +27,6 @@ export const hasMonitorAccess = (role?: string, permissions: string[] = []) =>
 export const hasAuditAccess = (role?: string, permissions: string[] = []) =>
   role === 'ADMIN' || role === 'MONITOR' || permissions.includes('auditing')
 
-export const roleLabels: Record<string, string> = {
-  ADMIN: 'مدير النظام',
-  SALES: 'موظف مبيعات',
-  HR_COORDINATOR: 'إداري الكوادر',
-  TECHNICIAN: 'فني',
-  PROJECT_MANAGER: 'مدير مشاريع',
-  MONITOR: 'مدقق / مراقب',
-  FINANCE: 'محاسب',
-  GPS_ADMIN: 'مسؤول GPS',
-  QUALITY_ENGINEER: 'مهندس جودة',
-  ENGINEER: 'مهندس',
-  PROCUREMENT_ADMIN: 'إداري الكميات',
-  DESIGNER: 'مصمم',
-  SERVICE_MANAGER: 'مسؤول خدمة',
-  TECHNICAL: 'تقني',
-  OWNER: 'مالك النظام 👑',
-}
+// ⚠️ **أسماء الأدوار مو هنا**: انتقلن لـ`roleLabels.ts` وياهن ألوان
+// الأدوار — مصدر وحيد بنوع محكوم، حتى الدور الجديد يوقّف البناء
+// إذا انساه أحد بدل ما يعرض رمزاً إنكليزياً لموظف.

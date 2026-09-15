@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession } from '../session'
-import { roleLabels } from '../session'
+import { roleLabel as arabicRole } from '../roleLabels'
 import { tracksFor } from '../rankingTracks'
 import PerformanceReviewPage from './PerformanceReviewPage'
 
@@ -110,7 +110,7 @@ export default function MyRanking() {
   // ── أرقام الموظف بالفترة المختارة ──
   const myRank = myIndex >= 0 ? myIndex + 1 : null
   // اسم المجموعة = المسار (الشغل)، وإذا ماكو مسار نرجع لاسم الدور
-  const roleLabel = activeTrack ? activeTrack.label : (employee ? roleLabels[employee.role] : '')
+  const roleLabel = activeTrack ? activeTrack.label : (employee ? arabicRole(employee.role) : '')
   // معدل الإنجاز: المنجز من الي انكلّف بيه. الي خلّص ٨ من ٨ مو مثل
   // الي خلّص ٨ من ٢٠ — والرقم المطلق لحاله يخفي هذا الفرق.
   const completionRate = myEntry && myEntry.assignedBookings > 0

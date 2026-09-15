@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Employee, type MissingRoleDefault, type Permission } from '../api'
-import { roleLabels } from '../session'
+import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
 
 export default function PermissionsPage() {
@@ -227,7 +227,7 @@ export default function PermissionsPage() {
                   <p className="text-sm font-bold" style={{ color: 'var(--t-title)' }}>
                     {r.employeeName}{' '}
                     <span className="text-xs font-normal" style={{ color: 'var(--t-muted)' }}>
-                      ({roleLabels[r.role] || r.role})
+                      ({roleLabel(r.role)})
                     </span>
                   </p>
                   <p className="text-xs" style={{ color: 'var(--t-body)' }}>
@@ -288,7 +288,7 @@ export default function PermissionsPage() {
               <option value="">-- اختر موظف --</option>
               {filteredEmployees.map((emp) => (
                 <option key={emp.id} value={emp.id}>
-                  {emp.name} — {roleLabels[emp.role] || emp.role}
+                  {emp.name} — {roleLabel(emp.role)}
                 </option>
               ))}
             </select>
@@ -302,7 +302,7 @@ export default function PermissionsPage() {
                     صلاحيات: {selectedEmployee.name}
                   </h3>
                   <p className="text-sm text-slate-400">
-                    الدور: {roleLabels[selectedEmployee.role] || selectedEmployee.role}
+                    الدور: {roleLabel(selectedEmployee.role)}
                   </p>
                 </div>
                 {defaults.length > 0 && (

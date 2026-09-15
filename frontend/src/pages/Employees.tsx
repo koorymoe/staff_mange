@@ -10,6 +10,7 @@ import AddEmployeeWizard from '../components/AddEmployeeWizard'
 import { openManagerChat } from '../components/openManagerChat'
 import { matches } from '../utils/search'
 import { toIntlPhone } from '../utils/phone'
+import { roleLabel, roleChipColor, ROLE_LABELS, ASSIGNABLE_ROLES } from '../roleLabels'
 
 // زرّا واتساب وتلغرام جنب رقم الهاتف — دائماً الاثنان معاً (ماكو
 // حقل بالنظام يحدد أي تطبيق يستخدمه الموظف)، ويظهران بس لمن الهاتف موجود.
@@ -43,39 +44,6 @@ const levels = [
 
 const BOOKINGS_PER_RANK = 10
 
-const roleLabels: Record<string, string> = {
-  ADMIN: 'مدير النظام',
-  SALES: 'موظف مبيعات',
-  HR_COORDINATOR: 'إداري الكوادر',
-  TECHNICIAN: 'فني',
-  PROJECT_MANAGER: 'مدير مشاريع',
-  MONITOR: 'مراقب',
-  FINANCE: 'محاسب',
-  GPS_ADMIN: 'مسؤول GPS',
-  QUALITY_ENGINEER: 'مهندس جودة',
-  ENGINEER: 'مهندس',
-  PROCUREMENT_ADMIN: 'إداري الكميات',
-  DESIGNER: 'مصمم',
-  SERVICE_MANAGER: 'مسؤول خدمة',
-  // التقني يتولى أكثر من خدمة — منفصل عن «فني» الي يشتغل بخدمة وحدة
-  TECHNICAL: 'تقني',
-}
-
-const roleColors: Record<string, { bg: string; text: string; dot: string }> = {
-  ADMIN: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-500' },
-  SALES: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-500' },
-  HR_COORDINATOR: { bg: 'bg-violet-50', text: 'text-violet-700', dot: 'bg-violet-500' },
-  TECHNICIAN: { bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-500' },
-  PROJECT_MANAGER: { bg: 'bg-rose-50', text: 'text-rose-700', dot: 'bg-rose-500' },
-  MONITOR: { bg: 'bg-cyan-50', text: 'text-cyan-700', dot: 'bg-cyan-500' },
-  FINANCE: { bg: 'bg-lime-50', text: 'text-lime-700', dot: 'bg-lime-500' },
-  GPS_ADMIN: { bg: 'bg-indigo-50', text: 'text-indigo-700', dot: 'bg-indigo-500' },
-  QUALITY_ENGINEER: { bg: 'bg-fuchsia-50', text: 'text-fuchsia-700', dot: 'bg-fuchsia-500' },
-  ENGINEER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
-  PROCUREMENT_ADMIN: { bg: 'bg-orange-50', text: 'text-orange-700', dot: 'bg-orange-500' },
-  DESIGNER: { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-500' },
-  SERVICE_MANAGER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
-}
 
 // ⚠️ تدرّجات الأفاتار انشالت: الصورة صارت من `EmployeeAvatar`
 // (صورة الموظف، وإلا حرفه بلون ثابت من اسمه).
@@ -364,7 +332,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
               className="rounded-xl bg-white px-3 py-2.5 text-sm text-slate-600 shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.04)] outline-none"
             >
               <option value="">كل الأدوار</option>
-              {uniqueRoles.map(r => <option key={r} value={r}>{roleLabels[r] || r}</option>)}
+              {uniqueRoles.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
             </select>
           )}
           {isAdmin && (
@@ -403,7 +371,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
           <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pl-2 scrollbar-thin">
             <p className="text-xs font-medium text-slate-400 mb-2">{visibleEmployees.length} موظف</p>
             {visibleEmployees.map((emp) => {
-              const rc = roleColors[emp.role] || { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-500' }
+              const rc = roleChipColor(emp.role)
               const skillCount = emp.skills.filter(s => s.canPerform).length
               const isSelected = selectedId === emp.id
               return (
@@ -427,7 +395,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                     <div className="mt-1 flex items-center gap-2">
                       <span className={`inline-flex items-center gap-1 rounded-full ${rc.bg} px-2 py-0.5 text-[10px] font-semibold ${rc.text}`}>
                         <span className={`h-1.5 w-1.5 rounded-full ${rc.dot}`}/>
-                        {roleLabels[emp.role] || emp.role}
+                        {roleLabel(emp.role)}
                       </span>
                       {skillCount > 0 && (
                         <span className="text-[10px] text-slate-400">{skillCount} مهارة</span>
@@ -491,7 +459,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                         <h3 className="text-xl font-extrabold">{selectedEmployee.name}</h3>
                         <div className="mt-1.5 flex flex-wrap items-center gap-2">
                           <span className="rounded-full bg-white/15 backdrop-blur-sm px-3 py-1 text-xs font-semibold">
-                            {roleLabels[selectedEmployee.role] || selectedEmployee.role}
+                            {roleLabel(selectedEmployee.role)}
                           </span>
                           <span className="text-sm text-blue-200/80">{selectedEmployee.position || '-'}</span>
                           {selectedEmployee?.isLeader && (
@@ -782,7 +750,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                             }
                           }}
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white">
-                          {Object.entries(roleLabels).filter(([k]) => k !== 'OWNER' && (k !== 'GPS_ADMIN' || selectedEmployee.role === 'GPS_ADMIN')).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                          {(selectedEmployee.role === 'GPS_ADMIN' ? [...ASSIGNABLE_ROLES, 'GPS_ADMIN' as const] : ASSIGNABLE_ROLES)
+                            .map((k) => <option key={k} value={k}>{ROLE_LABELS[k]}</option>)}
                         </select>
                       </div>
                     )}
