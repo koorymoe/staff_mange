@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { api, type Announcement } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import OwnerSwitch from '../components/OwnerSwitch'
+import { SWITCH_ANNOUNCEMENTS } from '../systemSwitches'
 
 /**
  * إدارة الإعلانات — المالك ومدير النظام حصراً.
@@ -56,10 +58,18 @@ export default function AnnouncementsPage() {
       <div className="rounded-2xl p-6 shadow-sm" style={{ backgroundColor: '#1a3a5c' }}>
         <h1 className="text-2xl font-bold text-white">📢 لوحة الإعلانات</h1>
         <p className="mt-1 text-sm text-blue-200">
-          الإعلان الشغّال يمر بشريط متحرك كدام كل الموظفين. الموظف يقدر يخفيه، بس يرجع
-          يظهرله بعد ما يسجّل خروج ويرجع يدخل.
+          الإعلان الشغّال يمر بشريط متحرك كدام كل الموظفين — وماكو زر إخفاء
+          عند الموظف، فما يوقف إلا بيدك.
         </p>
       </div>
+
+      {/* مفتاح المالك: يطفّي **الشريط كله** — الإعلانات وأخبار اليوم
+          سوا — بلا ما يمحي ولا إعلان. فلمّا يرجع يشغّله، كل شي محله. */}
+      <OwnerSwitch
+        switchKey={SWITCH_ANNOUNCEMENTS}
+        label="شريط الإعلانات"
+        hint="لمّا ينطفي: الشريط الفوك يختفي عن كل الموظفين — الإعلانات وأخبار اليوم سوا. والإعلانات تبقى محفوظة، ولمّا تشغّله ترجع مثل ما كانت."
+      />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
         <label className="mb-2 block text-sm font-bold text-slate-700">نص الإعلان الجديد</label>

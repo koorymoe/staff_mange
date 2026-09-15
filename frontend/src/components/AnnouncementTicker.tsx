@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Announcement } from '../api'
+import { isEnabled, SWITCH_ANNOUNCEMENTS } from '../systemSwitches'
 
 /**
  * شريط الإعلانات المتحرك.
@@ -19,6 +20,20 @@ const LEGACY_DISMISS_KEY = 'announcements-dismissed'
 
 export default function AnnouncementTicker() {
   const [items, setItems] = useState<Announcement[]>([])
+  /**
+   * هل الشريط مسموح؟ `null` = لسّه ما عرفنا — وما نعرض شي بهالحالة
+   * حتى ما يومض الشريط ويختفي.
+   *
+   * ⚠️ والإطفاء يغطّي **أخبار اليوم** وياه: (ع) كال «الإعلانات كلهن
+   * مال الشريط الفوك»، وخبر الغرامات يطلع بنفس الشريط — فتركه معناه
+   * إن الشريط ما انطفى فعلاً.
+   */
+  const [allowed, setAllowed] = useState<boolean | null>(null)
+  useEffect(() => {
+    let alive = true
+    isEnabled(SWITCH_ANNOUNCEMENTS).then((v) => { if (alive) setAllowed(v) })
+    return () => { alive = false }
+  }, [])
   // ═══ أخبار اليوم ═══
   //
   // «الأخبار لازم تضل تظهر — مثلاً أخبار اليوم: كم شخص تغرم، كم شخص
@@ -61,6 +76,7 @@ export default function AnnouncementTicker() {
     if (news.restored > 0) newsLines.push(`📈 أخبار اليوم: ${news.restored} موظف رجعتله نقاطه`)
   }
 
+  if (allowed !== true) return null
   if (items.length === 0 && newsLines.length === 0) return null
 
   // كل إعلان بند مستقل مفصول بنجمة — تكدر تضيف أكثر من موضوع

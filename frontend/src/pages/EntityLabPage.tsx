@@ -14,6 +14,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSession } from '../session'
 import PageHeader from '../components/PageHeader'
+import OwnerSwitch from '../components/OwnerSwitch'
+import { SWITCH_ENTITY } from '../systemSwitches'
 import type { AvatarHandle, AvatarStats, ClipName } from '../components/entityAvatarEngine'
 import type { Tracker } from '../components/faceTracking'
 import { api, entityModelUrl, ensureFileToken, type EntityAvatarModel } from '../api'
@@ -394,6 +396,14 @@ function Lab() {
       <PageHeader
         title="مختبر الكائن"
         subtitle="تجربة معزولة للمالك — كل رقم هنا مقاس لحظة الضغط"
+      />
+
+      {/* ⚠️ **المفتاح بأعلى الشاشة مو بآخرها**: «ماريد أي شخصية
+          تظهر» — فأول شي يحتاجه (ع) هنا هو الإطفاء، مو التجارب. */}
+      <OwnerSwitch
+        switchKey={SWITCH_ENTITY}
+        label="شخصية الكائن"
+        hint="لمّا تنطفي: ولا موظف يشوف الشخصية — لا الودجة العائمة ولا الإيموجي ولا شخصية ورقة القصة. والقصص تبقى مقروءة نصاً."
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">

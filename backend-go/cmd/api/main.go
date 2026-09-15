@@ -226,6 +226,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	fileStore := buildFileStore(cfg)
 	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
 	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret))
+	// مفاتيح إطفاء الميزات — جدول عام صغير، القراءة للكل والكتابة للمالك.
+	systemSwitchHandler := handler.NewSystemSwitchHandler(repository.NewSystemSwitchRepository(db))
 	entityModelHandler := handler.NewEntityModelHandler(
 		repository.NewEntityModelRepository(db), fileStore)
 	cartHandler := handler.NewCartHandler(cartService)
@@ -555,6 +557,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		http.HandlerFunc(entityModelHandler.Activate), requireAuth, requireOwnerModels))
 	mux.Handle("PUT /api/entity/models/{id}/archive", middleware.Chain(
 		http.HandlerFunc(entityModelHandler.Archive), requireAuth, requireOwnerModels))
+
+	// ═══ مفاتيح النظام ═══
+	//
+	// ⚠️ **القراءة لكل موظف**: واجهة كل موظف تحتاج تعرف هل الميزة
+	// مطفية، وإلا تبقى تعرضها. و**الكتابة للمالك حصراً** — إطفاء ميزة
+	// قرار يسري على الشركة كلها.
+	requireOwnerSwitches := middleware.RequireOwnerOnly("إطفاء الميزات للمالك وحده")
+	mux.Handle("GET /api/system/switches", middleware.Chain(
+		http.HandlerFunc(systemSwitchHandler.List), requireAuth))
+	mux.Handle("PUT /api/system/switches/{key}", middleware.Chain(
+		http.HandlerFunc(systemSwitchHandler.Set), requireAuth, requireOwnerSwitches))
 
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
 	// تغيير كلمة المرور لمدير النظام والمالك بس. الموظف ما يغيّر سره

@@ -7,6 +7,7 @@ import {
   findLinkTarget, pickStandSpot, interactiveHits, userIsTyping, reducedMotion,
   clampToViewport, walk, type Spot,
 } from './entityWalk'
+import { isEnabled, SWITCH_ENTITY } from '../systemSwitches'
 
 // ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
 //
@@ -38,6 +39,20 @@ export default function EntityCompanion() {
   const { employee } = useSession()
   const navigate = useNavigate()
   const isManager = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || employee?.actualRole === 'OWNER'
+
+  /**
+   * هل الكائن مسموح أصلاً؟ `null` = لسّه ما عرفنا.
+   *
+   * 🔴 **`null` مو `true`**: لو بدينا بـ`true` تبين الشخصية لحظة
+   * وبعدها تختفي لمّا يوصل الجواب — ووميض شخصية أسوأ من ظهورها.
+   * والمفتاح مطفي = **ولا شي ينعرض**: لا الودجة ولا الإيموجي.
+   */
+  const [allowed, setAllowed] = useState<boolean | null>(null)
+  useEffect(() => {
+    let alive = true
+    isEnabled(SWITCH_ENTITY).then((v) => { if (alive) setAllowed(v) })
+    return () => { alive = false }
+  }, [])
 
   const [brief, setBrief] = useState<EntityBriefing | null>(null)
   /**
@@ -279,6 +294,8 @@ export default function EntityCompanion() {
   }
 
   if (!employee) return null
+  // ⚠️ **قبل أي شي ثاني**: المفتاح مطفي أو لسّه ما وصل = صفر عرض.
+  if (allowed !== true) return null
 
   return (
     <div

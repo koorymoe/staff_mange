@@ -3583,6 +3583,16 @@ export const api = {
     request<{ penalized: number; restored: number }>('/discipline/today-headline'),
 
   // شريط الإعلانات
+  /**
+   * مفاتيح إطفاء الميزات — القراءة لكل موظف، والكتابة للمالك حصراً
+   * (الخادم يرد ٤٠٣ لغيره).
+   */
+  getSystemSwitches: () => request<Record<string, boolean>>('/system/switches'),
+  setSystemSwitch: (key: string, enabled: boolean) =>
+    request<Record<string, boolean>>(`/system/switches/${key}`, {
+      method: 'PUT', body: JSON.stringify({ enabled }),
+    }),
+
   getAnnouncements: (all?: boolean) =>
     request<Announcement[]>(`/announcements${all ? '?all=1' : ''}`),
   createAnnouncement: (body: string) =>
