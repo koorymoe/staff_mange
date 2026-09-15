@@ -34,6 +34,10 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // (المالك ينطبّع دوره لـADMIN بالجلسة، فالشرط يغطي الاثنين.)
   const { employee, permissions } = useSession()
   const canSeeBreakdown = employee?.role === 'ADMIN'
+  // ⚠️ **يُقرا قبل كل الحالات**: `serviceMode` و`selectedBookingId`
+  // و`mode` كلهن يبدون من الرابط، فتعريفه لازم يسبقهن — وإلا
+  // «استُعمل قبل التعريف».
+  const [params] = useSearchParams()
 
   // ═══ وضع «فاتورة خدمة» — جي بي اس / داش كام ═══
   //
@@ -44,8 +48,36 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const canGps = isTopAdmin || permissions.includes('invoice_gps')
   const canDashcam = isTopAdmin || permissions.includes('invoice_dashcam')
   const canServiceInvoice = canGps || canDashcam
-  const [serviceMode, setServiceMode] = useState(false)
+  /**
+   * ⚠️ **يفتح من الرابط `?service=1`**: بند القائمة مال صاحب صلاحية
+   * الفاتورة يوصله لهالشاشة، وهي شاشة **حساب كلفة** أصلاً — فلو
+   * انفتحت على وضعها العادي يشوف جدول منظومات وبنود تنفيذ ما تخصه
+   * ويحسب إنه غلط بالمحل. فالوضع الي يحتاجه يكون مفتوحاً قبل ما
+   * يبحث عنه.
+   */
+  const [serviceMode, setServiceMode] = useState(() => params.get('service') === '1')
+  /**
+   * 🔴 **عيب انكشف بالتشغيل الحيّ، وهو الي شكى منه مالك النظام**:
+   * هالحالة تُحسب **بأول رسم**، و`permissions` بهاللحظة **فاضية**
+   * (تنجلب بـeffect بـ`Layout`) — فـ`canGps` تطلع false وتثبّت
+   * الحالة على `DASHCAM`. وبعدها تجي الصلاحيات، فالقائمة تعرض
+   * «فاتورة الجي بي اس» **وحدها** والمتصفح يبيّن أول خيار — بس
+   * الحالة بقت `DASHCAM`.
+   *
+   * والنتيجة: موظف عنده صلاحية الجي بي اس **وبس** يشوف «جي بي اس»
+   * بالشاشة، ويضغط حفظ، فيرجعله **٤٠٣ «ما عندك صلاحية فاتورة الداش
+   * كام»** — رفض بشي ما اختاره أصلاً. (والي عنده الداش كام وحدها
+   * يشتغل **بالغلط** لأن الافتراضي صادف صحيحاً.)
+   *
+   * ⚠️ فالتصحيح **إجباري بـeffect مو بقيمة ابتدائية**: `useState`
+   * ما تُعاد حسبتها لمّا توصل الصلاحيات.
+   */
   const [serviceKind, setServiceKind] = useState<'GPS' | 'DASHCAM'>(canGps ? 'GPS' : 'DASHCAM')
+  useEffect(() => {
+    if (serviceKind === 'DASHCAM' && !canDashcam && canGps) setServiceKind('GPS')
+    else if (serviceKind === 'GPS' && !canGps && canDashcam) setServiceKind('DASHCAM')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canGps, canDashcam])
   const [servicePrice, setServicePrice] = useState('')
   const [serviceNote, setServiceNote] = useState('')
 
@@ -61,7 +93,6 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const [manualNote, setManualNote] = useState('')
   const MANUAL_WORK_MIN = 10
 
-  const [params] = useSearchParams()
   const navigate = useNavigate()
   // الحجز ممكن ييجي من الرابط (لما ينضغط من شاشة الحجز) أو ينختار من قائمة
   // الحجوزات المكتملة تحت — الليدر ما يحتاج يعرف رابط ولا معرّف.
@@ -88,8 +119,13 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // الي ما يحفظ أسلم كافتراضي من الي يحفظ.
   // الوضع يجي إما من مكان النداء (لما تنفتح جوّا «فواتيري» تبدي
   // مربوطة بحجز مباشرة) أو من الرابط.
+  //
+  // ⚠️ **و`?service=1` تعني «فاتورة» مو «استفسار»**: مربّع فاتورة
+  // الخدمة محجوب بوضع الاستفسار (`!estimateOnly`) — لأن الاستفسار
+  // ما يحفظ شي. فبلا هالسطر الباب الجديد يوصّل الموظف لشاشة
+  // **ما بيها شي يسويه**، وهاي انقاست فعلاً: صفر مربّع بالشاشة.
   const [mode, setMode] = useState<'estimate' | 'booking'>(
-    initialMode ?? (params.get('mode') === 'booking' ? 'booking' : 'estimate'),
+    initialMode ?? (params.get('mode') === 'booking' || params.get('service') === '1' ? 'booking' : 'estimate'),
   )
   const estimateOnly = mode === 'estimate'
 
@@ -1249,7 +1285,15 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         </div>
 
         {/* ═══ ملخّص الكلفة التقريبية ═══
-            لاصق بالكمبيوتر (يضل ظاهر وأنت تنزل بالبنود)، وفوگ بالموبايل. */}
+            لاصق بالكمبيوتر (يضل ظاهر وأنت تنزل بالبنود)، وفوگ بالموبايل.
+
+            🔴 **ويختفي بوضع فاتورة الخدمة**: سعر فاتورة الجي بي اس
+            والداش كام **يدوي** — ماكو كلفة تُحسب إلها أصلاً. وأهم:
+            صاحب صلاحية الفاتورة عادةً ما عنده `execution_cost`،
+            فاللوحة تعرض له «حسابك ما عنده صلاحية حساب الكلفة
+            التلقائي — راجع الإدارة» — وهي **ما تخص شغله** وتخليه
+            يوقف ويتصل بالإدارة بلا سبب. */}
+        {!serviceMode && (
         <aside className="order-first lg:sticky lg:top-4 lg:order-last">
           <div className="rounded-2xl border-2 border-sky-200 bg-white p-4 shadow-lg">
             <div className="flex items-center justify-between gap-2">
@@ -1299,6 +1343,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
             )}
           </div>
         </aside>
+        )}
       </div>
 
       {error && <p className="mt-3 text-sm font-bold text-red-600">{error}</p>}

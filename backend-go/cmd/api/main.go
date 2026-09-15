@@ -1638,7 +1638,21 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فعلياً (requireLeaderOrPermission يسمح بالاثنين).
 	// فواتير الليدر: يشوفها الليدر نفسه، وصاحب صلاحية سلة الليدر، *والمحاسب* —
 	// لأنه الفاتورة لازم ترحّل له بتفاصيلها حتى يدققها ويعتمدها.
-	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, "leader_basket", "finance")
+	//
+	// ⚠️ **وصاحب صلاحية فاتورة الخدمة** (جي بي اس / داش كام): بلاه
+	// يحفظ الفاتورة ويشوف رقمها **مرة وحدة** وخلاص — ما يكدر يرجعلها
+	// ولا يعرف وين وصلت بالتدقيق. وهاي انكشفت لمّا منح المالك
+	// الصلاحيتين لموظفين اثنين وما طلع عدهم شي.
+	//
+	// 🔴 **وما يشوف فواتير غيره**: `List` يفرض معرّف الطالب لكل من
+	// `canReviewInvoices` ما يرجّع صح له — والأدوار الي تشوف الكل هي
+	// ADMIN/OWNER/FINANCE/MONITOR وبس. فالقيد بالمعالج مو بالحارس،
+	// ويصمد لو حاول يحط معرّف زميله بالرابط.
+	//
+	// ⚠️ والإضافة **زيادة مو تبديل**: ولا حارس ينضيّق، فما تنكسر
+	// صلاحية ولا موظف شغّال.
+	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		"leader_basket", "finance", "invoice_gps", "invoice_dashcam")
 	// أسباب الشغل المجاني — يقراها أي موظف يسوي فاتورة
 	mux.Handle("GET /api/free-work-reasons", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FreeReasons), requireAuth))
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
