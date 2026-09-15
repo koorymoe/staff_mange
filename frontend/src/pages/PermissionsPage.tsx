@@ -20,6 +20,13 @@ export default function PermissionsPage() {
   const [employeePerms, setEmployeePerms] = useState<string[]>([])
   const [roleDefaults, setRoleDefaults] = useState<Record<string, string[]>>({})
   const [search, setSearch] = useState('')
+  // بحث **بأسماء الصلاحيات** — منفصل عن بحث الموظفين فوق.
+  //
+  // 🔴 «ما لگيت الخانة بشاشة الصلاحيات» — والسبب إن الشاشة تعرض
+  // قريب المئة صلاحية بـ١٢ مجموعة، وخانة البحث الموجودة تصفّي
+  // **الموظفين** وبس. فالمالك يدوّر بعينه ويفوته المفتاح.
+  const [permSearch, setPermSearch] = useState('')
+  const [permsLoadFailed, setPermsLoadFailed] = useState(false)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [applyingDefaults, setApplyingDefaults] = useState(false)
@@ -42,11 +49,18 @@ export default function PermissionsPage() {
     if (!selectedEmployeeId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmployeePerms([])
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setPermsLoadFailed(false)
       return
     }
+    setPermsLoadFailed(false)
     api.getEmployeePermissions(selectedEmployeeId)
       .then((perms) => setEmployeePerms(perms.map((p) => p.name)))
-      .catch(() => setEmployeePerms([]))
+      // 🔴🔴 «ما انجلبت» **مو** «ماكو صلاحيات»: الحفظ يرسل القائمة
+      // كاملة والخادم **يحذف كل صفوف الموظف** ويعيد إدخال المؤشَّر
+      // بس. فطلب فاشل واحد + ضغطة حفظ = **الموظف يفقد كل صلاحياته**
+      // بهدوء. فنعلّمها ونقفل الحفظ بدل ما نبلع الخطأ بمصفوفة فاضية.
+      .catch(() => { setEmployeePerms([]); setPermsLoadFailed(true) })
   }, [selectedEmployeeId])
 
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)
@@ -69,6 +83,11 @@ export default function PermissionsPage() {
 
   const handleSave = async () => {
     if (!selectedEmployeeId) return
+    // 🔴 الحفظ **استبدال** مو إضافة — فما نحفظ على قائمة ما وصلتنا.
+    if (permsLoadFailed) {
+      setError('ما كدرنا نجلب صلاحيات هذا الموظف — حدّث الصفحة قبل ما تحفظ، وإلا الحفظ يمسح صلاحياته')
+      return
+    }
     setSaving(true)
     setSuccessMsg(null)
     setError(null)
@@ -332,6 +351,58 @@ export default function PermissionsPage() {
                 )}
               </div>
 
+              {/* 🔴 «ما لگيت الخانة بشاشة الصلاحيات» — والسبب إن ماكو
+                  بحث بالصلاحيات إطلاقاً: خانة البحث فوق تصفّي
+                  **الموظفين**، وهنا قريب مئة صلاحية بـ١٢ مجموعة. */}
+              <div className="mb-4">
+                <input
+                  value={permSearch}
+                  onChange={(e) => setPermSearch(e.target.value)}
+                  placeholder="🔎 دوّر بالصلاحيات… (مثلاً: تدقيق · فاتورة · مخزن)"
+                  className="w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
+                />
+                {permSearch.trim() !== '' && (
+                  <button
+                    onClick={() => setPermSearch('')}
+                    className="mt-1 text-[11px] font-bold text-brand-700 hover:underline"
+                  >
+                    ✕ شيل البحث واعرض الكل
+                  </button>
+                )}
+              </div>
+
+              {/* 🔴 الجلب فشل: الحفظ **استبدال** فيمسح كل صلاحياته */}
+              {permsLoadFailed && (
+                <div className="mb-4 rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm font-bold text-red-800">
+                  ⚠️ ما كدرنا نجلب صلاحيات هذا الموظف. الحفظ مقفول —
+                  حدّث الصفحة أول، وإلا الحفظ **يمسح** صلاحياته كلها.
+                </div>
+              )}
+
+              {/* دلالة صريحة للمراقب: هو أكثر دور صاحب النظام يبدّل
+                  صلاحيته، وهاي الي دوّر عليها ولگاها. */}
+              {selectedEmployee?.role === 'MONITOR' && !employeePerms.includes('finance_audit') && (
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+                  <p className="text-sm text-brand-900">
+                    🔑 تريده يدقّق ويعتمد <b>بدل المحاسب</b>؟ الخانة اسمها
+                    <b> «تدقيق ومطابقة الحسابات (بدل المحاسب)» </b>
+                    بمجموعة <b>الحسابات</b>.
+                  </p>
+                  <button
+                    onClick={() => { togglePermission('finance_audit'); setPermSearch('تدقيق ومطابقة') }}
+                    className="rounded-lg bg-brand-700 px-3 py-1.5 text-xs font-bold text-white hover:bg-brand-800"
+                  >
+                    أشّرها إلي
+                  </button>
+                </div>
+              )}
+              {selectedEmployee?.role === 'MONITOR' && employeePerms.includes('finance_audit') && (
+                <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">
+                  ✔ مؤشَّرة: يدقّق ويعتمد مثل المحاسب.
+                  {' '}<span className="font-normal">واحفظ، وبعدها خلّيه <b>يحدّث صفحته</b> حتى تطلعله الأزرار.</span>
+                </div>
+              )}
+
               {[
                 ...permissionGroups,
                 {
@@ -343,7 +414,11 @@ export default function PermissionsPage() {
                     .filter(name => !permissionGroups.some(g => g.perms.includes(name))),
                 },
               ].map((group) => {
-                const groupPerms = permissions.filter(p => group.perms.includes(p.name))
+                // ⚠️ البحث يصفّي **داخل** المجموعات ويخفي الفاضية —
+                // بدل ما المالك يمرّر ١٢ مجموعة بعينه.
+                const groupPerms = permissions.filter(p =>
+                  group.perms.includes(p.name) &&
+                  matches([p.name, p.label], permSearch))
                 if (!groupPerms.length) return null
                 return (
                   <div key={group.title} className="mb-6">
@@ -394,6 +469,15 @@ export default function PermissionsPage() {
                 )
               })}
 
+              {/* 🔴 قائمة فاضية بلا تفسير تخلي المالك يحسب إن الصلاحية
+                  **ما موجودة بالنظام** — وهاي بالضبط الي صارت. */}
+              {permSearch.trim() !== '' && !permissions.some((pp) => matches([pp.name, pp.label], permSearch)) && (
+                <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">
+                  ما لگينا صلاحية اسمها «{permSearch.trim()}» — جرّب كلمة أقصر،
+                  أو شيل البحث واعرض الكل.
+                </p>
+              )}
+
               {successMsg && (
                 <p className="mt-4 rounded-lg bg-emerald-50 p-3 text-sm font-medium text-emerald-700">
                   {successMsg}
@@ -403,7 +487,7 @@ export default function PermissionsPage() {
               <div className="mt-6">
                 <button
                   onClick={handleSave}
-                  disabled={saving}
+                  disabled={saving || permsLoadFailed}
                   className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-10 py-2.5 font-medium text-white shadow-md shadow-brand-900/20 transition-all hover:shadow-lg hover:shadow-brand-900/30 disabled:opacity-50"
                 >
                   {saving ? 'جاري الحفظ...' : 'حفظ الصلاحيات'}

@@ -43,7 +43,12 @@ export const hasAuditAccess = (role?: string, permissions: string[] = []) =>
  * بكل رسم وبس.
  */
 export const canAuditFinance = (role?: string, permissions: string[] = []) =>
-  role === 'ADMIN' || role === 'FINANCE' || permissions.includes('finance_audit')
+  // 🔴 `OWNER` جان **ناقصاً**: الخادم يمرّر المالك دائماً
+  // (`RequireRole` يتخطاه بلا شرط)، فالواجهة چانت تخفي أزراره
+  // وتعرضله «عرض فقط» — يفتح شاشة التدقيق ويحسب إن الشغل ما انفّذ
+  // أصلاً، مع إن طلبه ينقبل لو وصل. واجهة تكذب على صاحب النظام.
+  role === 'ADMIN' || role === 'OWNER' || role === 'FINANCE' ||
+  permissions.includes('finance_audit')
 
 // ⚠️ **أسماء الأدوار مو هنا**: انتقلن لـ`roleLabels.ts` وياهن ألوان
 // الأدوار — مصدر وحيد بنوع محكوم، حتى الدور الجديد يوقّف البناء

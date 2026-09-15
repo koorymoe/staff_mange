@@ -419,7 +419,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بإيقاف حساب الموظف تلقائياً بعد 3 محاولات (حماية أمنية ضد التلاعب بالجلسة).
 	// و`finance_audit` جنبها: المفتاح الي المالك ينطيه لمن يريده حتى
 	// يأشّر «مطابق/غير مطابق» بدل المحاسب.
-	requireVerifyBooking := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "finance", "finance_audit")
+	//
+	// 🔴 **والدور يمرّ هنا بقصد**: `RequireAnyPermission` تسجّل **مخالفة**
+	// عند الرفض، و**ثلاث محاولات توقّف الحساب تلقائياً** (فوگ). وخريطة
+	// افتراضي الأدوار **اقتراح مو إلزام** — فمراقب ما انصبّت له
+	// صلاحياته يفتح شاشته ويضغط ثلاث ضغطات و**ينقفل حسابه** على رفض
+	// مفروض يكون هادئاً. والقراءة (جلب التدقيق اليومي) على نفس الحارس!
+	//
+	// فالتوسيع هنا **بالقراءة**، والتضييق يبقى **بالقرار**:
+	// `booking_audit_handler.go` يفحص المفتاح للمراقب ويرجّعه ٤٠٣ نظيفاً
+	// بلا مخالفة ولا قفل.
+	requireVerifyBooking := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "finance_audit")
 	requireCoordinator := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "coordinator")
 	requireCrewManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "crew_management")
 	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
