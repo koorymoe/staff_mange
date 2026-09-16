@@ -155,7 +155,11 @@ func (h *BookingHandler) ServicePaperworkByKind(w http.ResponseWriter, r *http.R
 
 // mayInvoiceKind هل هذا الموظف إله فواتير هذا النوع؟
 //
-// ⚠️ فشل قراءة الصلاحيات **يمنع** ما يسمح: خطأ بالقاعدة ما يصير
+// ⚠️ نفس فحص `CreateServiceInvoice` بالضبط (خريطة النوع←الصلاحية +
+// `HasPermission`): لو انكتب منطقان، أول تعديل يوصل واحد وينسى
+// الثاني — فيصير الموظف يشوف قائمة نوع ما يگدر يفوتره، أو بالعكس.
+//
+// ⚠️ وفشل قراءة الصلاحيات **يمنع** ما يسمح: خطأ بالقاعدة ما يصير
 // يفتح زبائن نوع ثاني.
 func (h *BookingHandler) mayInvoiceKind(r *http.Request, kind string) bool {
 	switch middleware.RoleFromContext(r) {
@@ -165,20 +169,12 @@ func (h *BookingHandler) mayInvoiceKind(r *http.Request, kind string) bool {
 	if h.permissions == nil {
 		return false
 	}
-	rows, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r))
-	if err != nil {
+	perm, ok := model.ServiceInvoicePermission[kind]
+	if !ok {
 		return false
 	}
-	want := "invoice_gps"
-	if kind == model.ServiceInvoiceDashcam {
-		want = "invoice_dashcam"
-	}
-	for _, p := range rows {
-		if p.Name == want {
-			return true
-		}
-	}
-	return false
+	has, err := h.permissions.HasPermission(middleware.EmployeeIDFromContext(r), perm)
+	return err == nil && has
 }
 
 // SetReminderService يربط خدمة التذكير بعد البناء.
