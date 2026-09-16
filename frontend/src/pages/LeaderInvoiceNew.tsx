@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { onEnter } from '../utils/enterKey'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import FreeWorkBadge from '../components/FreeWorkBadge'
 import { useSession } from '../session'
@@ -229,6 +229,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // والبديل **أدق وأرخص**: أسماء زبائن **حجوزاته هو** — واصلة
   // أصلاً مع `completedBookings`، بلا أي نداء زيادة وبلا صلاحية.
   // وهي الي يحتاجها فعلاً: زبائن شغله، مو كل زبائن الشركة.
+  const serviceKindLabel = serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'
   const knownCustomers = completedBookings
     .map((b) => b.customer)
     .filter((c): c is NonNullable<typeof c> => !!c && !!c.name)
@@ -1198,12 +1199,29 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           <p className="mt-1 text-xs text-slate-500">
             {serviceMode
               ? pickableBookings.length > 0
-                ? `${pickableBookings.length} حجز ${serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'} منجز — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
-                : `ماكو حجز ${serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'} منجز يستحق فاتورة. الأسباب المحتملة: إنك مو مسجَّل مسؤول الخدمة عليها (المالك يسجّلك من شاشة «مسؤولي الخدمات») · أو الخدمة ما انتأشّر نوعها بنفس الشاشة · أو الورق مو مأشّر عليها إنه على مسؤول الخدمة · أو ماكو حجز منجز إلها. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
+                ? `${pickableBookings.length} حجز ${serviceKindLabel} منجز — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
+                : services.some((sv) => sv.serviceKind === serviceKind)
+                  ? `ماكو حجز ${serviceKindLabel} ينتظر فاتورة — يا كلهن انسوّت إلهن فواتير، يا ماكو حجز منجز لحد هسه. القائمة تعرض المنجز الي ما إله فاتورة وبس، والحجز يختفي منها أول ما تحفظ فاتورته. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
+                  : `🔴 ماكو ولا خدمة مأشَّرة ${serviceKindLabel} بالنظام — وبلا التأشير النظام ما يعرف أي حجز هو ${serviceKindLabel}. العلاج ضغطة وحدة من الرابط الي تحت.`
               : myProjects.length > 0
                 ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
                 : 'ما اكو مشروع موجّه لك حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
           </p>
+          {/* 🔴 رابط مباشر بدل «روح لشاشة ثانية ودوّر»: (ع) وصل هنا
+              مرتين والرسالة تدلّه على شاشة ثانية — والدلالة بلا طريق
+              تخلّي العلاج نظرياً. والرابط يطلع للي يكدر يأشّر وبس
+              (الشاشة محروسة `RequireAdmin`)، فما ننطي غيره رابطاً
+              يوصله لمنع. */}
+          {serviceMode && pickableBookings.length === 0
+            && !services.some((sv) => sv.serviceKind === serviceKind)
+            && (employee?.role === 'ADMIN' || employee?.role === 'OWNER') && (
+            <Link
+              to="/service-managers"
+              className="mt-2 inline-block rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"
+            >
+              🛰️ افتح شاشة تأشير نوع الخدمة
+            </Link>
+          )}
         </div>
       )}
 
