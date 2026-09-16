@@ -164,20 +164,40 @@ func (r *BookingRepository) ListManagerPaperwork(employeeID string, limit int) (
 //
 // ⚠️ والحصر بالبناء مثل أصلها: الاستعلام ما يرجّع إلا خدمات هذا
 // الموظف، فماكو طريق يسرّب حجز خدمة ثانية حتى لو انغلط بالنداء.
+//
+// 🔴 و`employeeID` فاضي = **بلا حصر بمسؤول الخدمة** (المالك والمدير).
+// السبب: (ع) فتح الشاشة بحساب المالك ولگى القائمة **فاضية** — الحارس
+// يمرّر المالك، بس الاستعلام چان يحصر بـ`ServiceManager`، والمالك
+// **مو مسجَّل مسؤول خدمة على أي خدمة**. يعني صلاحية تنمنح وقائمة
+// فاضية تطلع، وهاي أسوأ من منع صريح لأنها تخلّي النظام يبين مكسوراً.
+//
+// 🔴 والربط صار على **الخدمات المتعددة** هم مو على عمود الخدمة
+// الواحدة: الحجز يقبل أكثر من خدمة (`BookingService`)، فحجز خدمته
+// الرئيسية «كاميرات» وفيه داش كام كإضافة **چان يختفي تماماً** عن
+// مسؤول الداش كام. ونفس عائلة العلّة بحساب «أكثر الخدمات طلباً».
 func (r *BookingRepository) ListServicePaperworkByKind(employeeID, kind string, limit int) ([]model.Booking, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 200
 	}
 	bookings := []model.Booking{}
+	// ⚠️ `EXISTS` مو `JOIN`: الخدمة إلها أكثر من مسؤول، والوصل
+	// المباشر يكرّر نفس الحجز بالقائمة مرة لكل مسؤول.
+	// ⚠️ و`$1 = ''` تنكتب هيچي حتى **كل المعاملات تنستعمل** — الإشارة
+	// لـ`$2` بلا استعمال `$1` ترجّع «there is no parameter $2».
 	err := r.db.Select(&bookings, `
 		SELECT b.* FROM "Booking" b
-		JOIN "Service" s ON s.id = b."serviceId"
-		JOIN "ServiceManager" sm ON sm."serviceId" = s.id
 		WHERE b."archivedAt" IS NULL
 		  AND b.status = 'COMPLETED'
-		  AND s."managerHandlesPaperwork" = true
-		  AND sm."employeeId" = $1
-		  AND (s."serviceKind" = $2 OR s."serviceKind" IS NULL)`+
+		  AND EXISTS (
+		      SELECT 1 FROM "Service" s
+		      WHERE s."managerHandlesPaperwork" = true
+		        AND (s."serviceKind" = $2 OR s."serviceKind" IS NULL)
+		        AND (s.id = b."serviceId"
+		             OR EXISTS (SELECT 1 FROM "BookingService" bs
+		                        WHERE bs."bookingId" = b.id AND bs."serviceId" = s.id))
+		        AND ($1 = '' OR EXISTS (SELECT 1 FROM "ServiceManager" sm
+		                        WHERE sm."serviceId" = s.id AND sm."employeeId" = $1))
+		  )`+
 		NotDeletePendingSQL(`b`)+`
 		ORDER BY b."completedAt" DESC NULLS LAST
 		LIMIT $3

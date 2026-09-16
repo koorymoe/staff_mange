@@ -140,7 +140,20 @@ func (h *BookingHandler) ServicePaperworkByKind(w http.ResponseWriter, r *http.R
 		WriteError(w, http.StatusBadRequest, "نوع الخدمة لازم يكون جي بي اس أو داش كام")
 		return
 	}
-	bookings, err := h.service.ListServicePaperworkByKind(middleware.EmployeeIDFromContext(r), kind)
+	// 🔴 المالك والمدير **بلا حصر**: الحارس يمرّرهم، ولو حصرناهم
+	// بـ`ServiceManager` تطلعلهم قائمة فاضية لأنهم مو مسجَّلين
+	// مسؤولي خدمة — وهذا الي صار فعلاً. ونفس نمط `ListInternal`
+	// فوگ حتى ما نبني منطق حصر ثاني.
+	//
+	// ⚠️ والمحاسب والمراقب **يبقون محصورين**: هما يوصلون هنا بصلاحية
+	// فاتورة الخدمة، يعني يشتغلون كمسؤول خدمة مو كمراقب — وقائمة
+	// كل خدمات الشركة تكشف زبائن مو من شغلهم.
+	party := middleware.EmployeeIDFromContext(r)
+	switch middleware.RoleFromContext(r) {
+	case "ADMIN", "OWNER":
+		party = ""
+	}
+	bookings, err := h.service.ListServicePaperworkByKind(party, kind)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزات الخدمة")
 		return
