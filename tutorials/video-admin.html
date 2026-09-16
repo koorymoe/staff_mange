@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>دليل مدير النظام - محاكاة تفاعلية</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--blue:#2563eb;--blue-d:#1d4ed8;--bg:#f0f4f8;--card:#fff;--text:#1e293b;--text2:#64748b;--green:#16a34a;--red:#ef4444;--orange:#f59e0b;--purple:#7c3aed;--border:#e2e8f0;--sidebar-w:220px}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#1a1a2e;color:var(--text);overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#simulator{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
+/* SIMULATED UI */
+#sim-wrap{flex:1;display:flex;flex-direction:column;background:var(--bg);position:relative;overflow:hidden}
+#sim-header{height:52px;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 20px;z-index:5}
+#sim-header .logo{font-size:18px;font-weight:700}
+#sim-header .user-info{display:flex;align-items:center;gap:8px;font-size:14px}
+#sim-header .badge{background:rgba(255,255,255,.2);padding:2px 10px;border-radius:12px;font-size:12px}
+#sim-body{flex:1;display:flex;overflow:hidden;position:relative}
+#sidebar{width:var(--sidebar-w);background:#1e293b;color:#cbd5e1;overflow-y:auto;flex-shrink:0;padding-top:8px}
+#sidebar .nav-item{padding:10px 16px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .2s}
+#sidebar .nav-item:hover,#sidebar .nav-item.active{background:var(--blue);color:#fff}
+#sidebar .nav-item .icon{width:20px;text-align:center;font-size:14px}
+#content{flex:1;padding:20px;overflow-y:auto;position:relative}
+/* Scene content containers */
+.scene-content{display:none;animation:fadeScene .4s}
+.scene-content.active{display:block}
+@keyframes fadeScene{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+/* Cards & tables */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:20px}
+.stat-card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.stat-card .num{font-size:28px;font-weight:700;color:var(--blue)}
+.stat-card .label{font-size:12px;color:var(--text2);margin-top:4px}
+table{width:100%;border-collapse:collapse;background:var(--card);border-radius:10px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+th,td{padding:10px 14px;text-align:right;font-size:13px;border-bottom:1px solid var(--border)}
+th{background:#f8fafc;font-weight:600;color:var(--text2)}
+.badge-status{padding:2px 10px;border-radius:10px;font-size:11px;font-weight:600;color:#fff;display:inline-block}
+.badge-green{background:var(--green)}.badge-orange{background:var(--orange)}.badge-red{background:var(--red)}.badge-blue{background:var(--blue)}.badge-purple{background:var(--purple)}
+.btn{padding:8px 18px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--blue-d)}
+.btn-success{background:var(--green);color:#fff}
+.btn-sm{padding:5px 12px;font-size:12px}
+.form-group{margin-bottom:14px}
+.form-group label{display:block;font-size:12px;color:var(--text2);margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;background:var(--card)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+h2{font-size:20px;margin-bottom:16px;color:var(--text)}
+h3{font-size:16px;margin-bottom:12px}
+/* Checkboxes grid */
+.perm-grid{background:var(--card);border-radius:10px;overflow:auto;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.perm-grid table th:first-child{min-width:120px}
+.perm-grid input[type=checkbox]{width:16px;height:16px;accent-color:var(--blue)}
+/* Booking card */
+.booking-card{background:var(--card);border-radius:10px;padding:14px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);border-right:4px solid var(--blue)}
+/* Map placeholder */
+.map-box{width:100%;height:200px;background:linear-gradient(135deg,#e0f2fe,#bfdbfe);border-radius:12px;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:14px}
+.map-pin{position:absolute;font-size:28px}
+/* AI Chat */
+#ai-widget{position:absolute;bottom:16px;left:16px;z-index:20}
+#ai-btn{width:50px;height:50px;border-radius:50%;background:var(--blue);color:#fff;border:none;font-size:22px;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,.4)}
+#ai-chat{display:none;position:absolute;bottom:60px;left:0;width:320px;background:var(--card);border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.15);overflow:hidden}
+#ai-chat.open{display:flex;flex-direction:column}
+#ai-chat .chat-header{background:var(--blue);color:#fff;padding:12px 16px;font-size:14px;font-weight:600}
+#ai-chat .chat-body{padding:12px;min-height:160px;max-height:200px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:85%;padding:8px 12px;border-radius:12px;font-size:13px;line-height:1.5}
+.chat-msg.user{background:#eff6ff;align-self:flex-end;border-bottom-left-radius:4px}
+.chat-msg.ai{background:#f0fdf4;align-self:flex-start;border-bottom-right-radius:4px}
+#ai-chat .chat-input{display:flex;border-top:1px solid var(--border);padding:8px}
+#ai-chat .chat-input input{flex:1;border:none;padding:8px;font-size:13px;font-family:inherit;outline:none}
+#ai-chat .chat-input button{background:var(--blue);color:#fff;border:none;padding:6px 14px;border-radius:8px;font-size:13px;cursor:pointer}
+/* LOGIN OVERLAY */
+#login-overlay{position:absolute;inset:0;background:linear-gradient(135deg,#1e3a5f,#2563eb);z-index:50;display:flex;align-items:center;justify-content:center}
+#login-box{background:var(--card);border-radius:16px;padding:36px;width:340px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+#login-box h2{color:var(--blue);margin-bottom:6px}
+#login-box p{font-size:13px;color:var(--text2);margin-bottom:20px}
+#login-box .form-group{text-align:right}
+/* CURSOR */
+#cursor{position:absolute;width:20px;height:20px;border-radius:50%;background:rgba(239,68,68,.7);border:2px solid #fff;z-index:100;pointer-events:none;transition:none;box-shadow:0 0 10px rgba(239,68,68,.5)}
+#cursor.clicking{transform:scale(.6);background:rgba(239,68,68,1)}
+/* NARRATION */
+#narration{position:absolute;bottom:60px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.82);color:#fff;padding:12px 24px;border-radius:12px;font-size:15px;z-index:90;max-width:600px;text-align:center;line-height:1.7;opacity:0;transition:opacity .4s;pointer-events:none;backdrop-filter:blur(4px)}
+#narration.show{opacity:1}
+/* SUCCESS TOAST */
+#toast{position:absolute;top:70px;left:50%;transform:translateX(-50%);background:var(--green);color:#fff;padding:10px 24px;border-radius:10px;font-size:14px;z-index:80;opacity:0;transition:opacity .3s}
+#toast.show{opacity:1}
+/* CONTROLS */
+#controls{height:52px;background:#111827;display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0}
+#controls button{background:none;border:none;color:#fff;font-size:18px;cursor:pointer;padding:6px 10px;border-radius:6px;transition:background .2s}
+#controls button:hover{background:rgba(255,255,255,.1)}
+#progress-wrap{flex:1;height:6px;background:#374151;border-radius:3px;cursor:pointer;position:relative}
+#progress-bar{height:100%;background:var(--blue);border-radius:3px;transition:width .3s}
+#scene-label{color:#94a3b8;font-size:13px;min-width:80px;text-align:center}
+</style>
+</head>
+<body>
+<div id="simulator">
+<div id="sim-wrap">
+<!-- LOGIN OVERLAY -->
+<div id="login-overlay">
+<div id="login-box">
+<h2>نظام إدارة الكوادر</h2>
+<p>Staff Management System</p>
+<div class="form-group"><label>اسم المستخدم</label><input id="login-user" type="text" autocomplete="off"></div>
+<div class="form-group"><label>كلمة المرور</label><input id="login-pass" type="password" autocomplete="off"></div>
+<button class="btn btn-primary" id="login-btn" style="width:100%;margin-top:8px">تسجيل الدخول</button>
+</div>
+</div>
+<!-- HEADER -->
+<div id="sim-header">
+<div class="logo">نظام إدارة الكوادر</div>
+<div class="user-info"><span class="badge">مدير</span><span>مدير النظام</span><span style="font-size:20px">&#9786;</span></div>
+</div>
+<!-- BODY -->
+<div id="sim-body">
+<div id="sidebar"></div>
+<div id="content"></div>
+</div>
+<!-- AI Widget -->
+<div id="ai-widget">
+<button id="ai-btn">&#129302;</button>
+<div id="ai-chat">
+<div class="chat-header">&#129302; المساعد الذكي</div>
+<div class="chat-body" id="chat-body"></div>
+<div class="chat-input"><input id="chat-input" placeholder="اكتب سؤالك..."><button id="chat-send">&#10148;</button></div>
+</div>
+</div>
+</div>
+<div id="cursor"></div>
+<div id="narration"></div>
+<div id="toast"></div>
+</div>
+<!-- CONTROLS -->
+<div id="controls">
+<button id="btn-prev">&#9664;&#9664;</button>
+<button id="btn-play">&#9208;</button>
+<button id="btn-next">&#9654;&#9654;</button>
+<div id="progress-wrap"><div id="progress-bar"></div></div>
+<div id="scene-label">1 / 10</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const cursor = $('#cursor');
+const narration = $('#narration');
+const toast = $('#toast');
+const content = $('#content');
+const sidebar = $('#sidebar');
+const loginOverlay = $('#login-overlay');
+
+const navItems = [
+  {id:'home',label:'الرئيسية',icon:'&#9751;'},
+  {id:'staff',label:'إدارة الكوادر',icon:'&#9782;'},
+  {id:'perms',label:'الصلاحيات',icon:'&#9881;'},
+  {id:'bookings',label:'تنسيق الحجوزات',icon:'&#9993;'},
+  {id:'services',label:'الخدمات',icon:'&#9733;'},
+  {id:'missions',label:'المهام',icon:'&#9873;'},
+  {id:'gps',label:'نظام GPS',icon:'&#9906;'},
+  {id:'projects',label:'المشاريع',icon:'&#9632;'},
+  {id:'accounts',label:'الحسابات',icon:'&#9830;'},
+  {id:'monitor',label:'المراقبة',icon:'&#9673;'},
+  {id:'kpi',label:'KPI',icon:'&#9733;'},
+  {id:'complaints',label:'الشكاوى',icon:'&#9888;'},
+  {id:'vehicles',label:'المركبات',icon:'&#9951;'},
+  {id:'purchases',label:'المشتريات',icon:'&#9903;'},
+  {id:'suppliers',label:'الموردون',icon:'&#9898;'},
+];
+
+// Build sidebar
+navItems.forEach(n => {
+  const d = document.createElement('div');
+  d.className = 'nav-item';
+  d.dataset.id = n.id;
+  d.innerHTML = `<span class="icon">${n.icon}</span>${n.label}`;
+  sidebar.appendChild(d);
+});
+
+function setActiveNav(id){
+  $$('#sidebar .nav-item').forEach(n=>n.classList.toggle('active',n.dataset.id===id));
+}
+
+// Cursor animation
+let cursorX=100,cursorY=100;
+function moveCursor(x,y,dur=600){
+  return new Promise(r=>{
+    cursor.style.transition=`left ${dur}ms cubic-bezier(.4,0,.2,1), top ${dur}ms cubic-bezier(.4,0,.2,1)`;
+    cursor.style.left=x+'px';cursor.style.top=y+'px';
+    cursorX=x;cursorY=y;
+    setTimeout(r,dur+50);
+  });
+}
+function clickAnim(){
+  return new Promise(r=>{cursor.classList.add('clicking');setTimeout(()=>{cursor.classList.remove('clicking');r()},200)});
+}
+async function moveAndClick(el,dur=600){
+  const rect=el.getBoundingClientRect();
+  await moveCursor(rect.left+rect.width/2, rect.top+rect.height/2, dur);
+  await clickAnim();
+}
+
+function showNarration(txt){narration.textContent=txt;narration.classList.add('show')}
+function hideNarration(){narration.classList.remove('show')}
+function showToast(txt,dur=1500){toast.textContent=txt;toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),dur)}
+
+function typeText(el,txt,speed=60){
+  return new Promise(r=>{let i=0;el.value='';const iv=setInterval(()=>{if(i<txt.length){el.value+=txt[i];i++}else{clearInterval(iv);r()}},speed)});
+}
+
+function setContent(html){content.innerHTML=html}
+
+function wait(ms){return new Promise(r=>setTimeout(r,ms))}
+
+// SCENES
+const scenes = [];
+
+// Scene 1: Login
+scenes.push(async ()=>{
+  loginOverlay.style.display='flex';
+  hideNarration();
+  showNarration('مرحبا! هذا دليل مدير النظام. أول شي — تسجيل الدخول');
+  await wait(800);
+  const u=$('#login-user'), p=$('#login-pass'), b=$('#login-btn');
+  await moveAndClick(u);
+  await typeText(u,'admin',80);
+  await wait(300);
+  await moveAndClick(p);
+  await typeText(p,'••••••',100);
+  await wait(400);
+  await moveAndClick(b);
+  await wait(300);
+  loginOverlay.style.display='none';
+  showToast('تم تسجيل الدخول بنجاح');
+  await wait(1200);
+});
+
+// Scene 2: Dashboard
+scenes.push(async ()=>{
+  hideNarration();
+  loginOverlay.style.display='none';
+  setActiveNav('home');
+  setContent(`
+    <h2>لوحة التحكم</h2>
+    <div class="stats-row">
+      <div class="stat-card"><div class="num">42</div><div class="label">إجمالي الموظفين</div></div>
+      <div class="stat-card"><div class="num">18</div><div class="label">حجوزات اليوم</div></div>
+      <div class="stat-card"><div class="num">7</div><div class="label">مهام نشطة</div></div>
+      <div class="stat-card"><div class="num">96%</div><div class="label">نسبة الحضور</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="stat-card"><h3>الحضور</h3><p style="color:var(--text2);font-size:13px;margin-bottom:10px">سجّل حضورك اليوم</p><button class="btn btn-success" id="attend-btn">تسجيل الحضور</button></div>
+      <div class="stat-card"><h3>آخر الحجوزات</h3><p style="font-size:13px;color:var(--text2)">حجز #1042 — تنظيف مكيفات<br>حجز #1041 — صيانة كهربائية<br>حجز #1040 — تركيب سخان</p></div>
+    </div>
+  `);
+  showNarration('الصفحة الرئيسية — تشوف إحصائيات النظام وتسجّل حضورك');
+  await wait(1500);
+  const ab=$('#attend-btn');
+  if(ab){await moveAndClick(ab);showToast('تم تسجيل الحضور بنجاح ✓');}
+  await wait(2000);
+});
+
+// Scene 3: Staff list
+scenes.push(async ()=>{
+  hideNarration();
+  const nav=sidebar.querySelector('[data-id="staff"]');
+  await moveAndClick(nav);
+  setActiveNav('staff');
+  setContent(`
+    <h2>إدارة الكوادر</h2>
+    <button class="btn btn-primary" id="add-emp-btn" style="margin-bottom:14px">+ إضافة موظف</button>
+    <table id="emp-table">
+      <thead><tr><th>الاسم</th><th>الدور</th><th>الحالة</th><th>الهاتف</th><th>إجراءات</th></tr></thead>
+      <tbody>
+        <tr><td>أحمد المهندس</td><td><span class="badge-status badge-blue">فني</span></td><td><span class="badge-status badge-green">نشط</span></td><td>0771234567</td><td><button class="btn btn-sm btn-primary">تعديل</button></td></tr>
+        <tr><td>علي السائق</td><td><span class="badge-status badge-purple">سائق</span></td><td><span class="badge-status badge-green">نشط</span></td><td>0779876543</td><td><button class="btn btn-sm btn-primary">تعديل</button></td></tr>
+        <tr><td>فاطمة الإدارية</td><td><span class="badge-status badge-orange">إداري</span></td><td><span class="badge-status badge-green">نشط</span></td><td>0775551234</td><td><button class="btn btn-sm btn-primary">تعديل</button></td></tr>
+        <tr><td>حسن المشرف</td><td><span class="badge-status badge-blue">مشرف</span></td><td><span class="badge-status badge-red">إجازة</span></td><td>0773334455</td><td><button class="btn btn-sm btn-primary">تعديل</button></td></tr>
+      </tbody>
+    </table>
+  `);
+  showNarration('هنا تشوف كل موظفين الشركة وتكدر تعدل بياناتهم');
+  await wait(3500);
+});
+
+// Scene 4: Add employee
+scenes.push(async ()=>{
+  hideNarration();
+  setActiveNav('staff');
+  setContent(`
+    <h2>إضافة موظف جديد</h2>
+    <div style="background:var(--card);border-radius:12px;padding:20px;max-width:500px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+      <div class="form-row">
+        <div class="form-group"><label>الاسم الكامل</label><input id="f-name"></div>
+        <div class="form-group"><label>الهاتف</label><input id="f-phone"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>الدور</label><select id="f-role"><option value="">اختر...</option><option value="TECHNICIAN">فني - TECHNICIAN</option><option value="DRIVER">سائق</option><option value="ADMIN">إداري</option></select></div>
+        <div class="form-group"><label>اسم المستخدم</label><input id="f-user"></div>
+      </div>
+      <div class="form-group"><label>كلمة المرور</label><input id="f-pass" type="password"></div>
+      <button class="btn btn-primary" id="save-emp" style="width:100%;margin-top:4px">حفظ الموظف</button>
+    </div>
+  `);
+  showNarration('نملأ بيانات الموظف الجديد');
+  await wait(600);
+  const fn=$('#f-name'),fp=$('#f-phone'),fr=$('#f-role'),fu=$('#f-user'),fpass=$('#f-pass');
+  await moveAndClick(fn);await typeText(fn,'سعد الفني',60);
+  await moveAndClick(fp);await typeText(fp,'0771112233',50);
+  await moveAndClick(fr);fr.value='TECHNICIAN';await wait(300);
+  await moveAndClick(fu);await typeText(fu,'saad_tech',50);
+  await moveAndClick(fpass);await typeText(fpass,'••••••',80);
+  const sv=$('#save-emp');await moveAndClick(sv);
+  showToast('تمت إضافة الموظف بنجاح');
+  await wait(2000);
+});
+
+// Scene 5: Permissions
+scenes.push(async ()=>{
+  hideNarration();
+  const nav=sidebar.querySelector('[data-id="perms"]');
+  await moveAndClick(nav);
+  setActiveNav('perms');
+  const emps=['أحمد المهندس','علي السائق','سعد الفني','فاطمة الإدارية'];
+  const perms=['الحجوزات','المهام','GPS','التقارير','المشتريات'];
+  let rows=emps.map((e,i)=>`<tr><td style="font-weight:600">${e}</td>${perms.map((p,j)=>`<td style="text-align:center"><input type="checkbox" class="perm-cb" data-r="${i}" data-c="${j}" ${(i+j)%2===0?'checked':''}></td>`).join('')}</tr>`).join('');
+  setContent(`
+    <h2>الصلاحيات</h2>
+    <div class="perm-grid"><table><thead><tr><th>الموظف</th>${perms.map(p=>`<th style="text-align:center">${p}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
+  `);
+  showNarration('من هنا تتحكم بصلاحيات كل موظف — شنو يكدر يشوف وشنو لا');
+  await wait(1200);
+  const cbs=$$('.perm-cb');
+  for(let k=0;k<3;k++){
+    const cb=cbs[k*2+1];if(!cb)continue;
+    await moveAndClick(cb,400);cb.checked=!cb.checked;await wait(400);
+  }
+  await wait(1500);
+});
+
+// Scene 6: Bookings
+scenes.push(async ()=>{
+  hideNarration();
+  const nav=sidebar.querySelector('[data-id="bookings"]');
+  await moveAndClick(nav);
+  setActiveNav('bookings');
+  setContent(`
+    <h2>تنسيق الحجوزات</h2>
+    <div class="booking-card" id="bk1">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <strong>حجز #1042 — تنظيف مكيفات سبليت</strong>
+        <span class="badge-status badge-orange">بانتظار التنسيق</span>
+      </div>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:10px">العميل: محمد علي | الموقع: بغداد - المنصور | التاريخ المطلوب: 2026-07-23</p>
+      <div id="bk-details" style="display:none">
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group"><label>فني 1</label><select id="tech1"><option>اختر...</option><option value="saad">سعد الفني</option><option value="ahmad">أحمد المهندس</option></select></div>
+          <div class="form-group"><label>فني 2</label><select id="tech2"><option>اختر...</option><option value="saad">سعد الفني</option><option value="ahmad">أحمد المهندس</option></select></div>
+        </div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group"><label>تاريخ الجدولة</label><input id="sched-date" type="date" value="2026-07-23"></div>
+          <div class="form-group"><label>الوردية</label><select id="shift-sel"><option>صباحية</option><option>مسائية</option></select></div>
+        </div>
+        <button class="btn btn-success" id="confirm-bk">تأكيد الحجز</button>
+      </div>
+    </div>
+    <div class="booking-card"><div style="display:flex;justify-content:space-between;align-items:center"><strong>حجز #1041 — صيانة كهربائية</strong><span class="badge-status badge-green">مؤكد</span></div></div>
+    <div class="booking-card"><div style="display:flex;justify-content:space-between;align-items:center"><strong>حجز #1040 — تركيب سخان</strong><span class="badge-status badge-green">مؤكد</span></div></div>
+  `);
+  showNarration('هنا تثبت الحجوزات وتعين الفنيين');
+  await wait(800);
+  const bk=$('#bk1');await moveAndClick(bk);$('#bk-details').style.display='block';
+  await wait(500);
+  const t1=$('#tech1');await moveAndClick(t1,400);t1.value='saad';await wait(300);
+  const t2=$('#tech2');await moveAndClick(t2,400);t2.value='ahmad';await wait(300);
+  const cb=$('#confirm-bk');await moveAndClick(cb);
+  showToast('تم تأكيد الحجز وتعيين الفنيين');
+  await wait(2000);
+});
+
+// Scene 7: Missions
+scenes.push(async ()=>{
+  hideNarration();
+  const nav=sidebar.querySelector('[data-id="missions"]');
+  await moveAndClick(nav);
+  setActiveNav('missions');
+  setContent(`
+    <h2>المهام الميدانية</h2>
+    <table>
+      <thead><tr><th>رقم المهمة</th><th>الفني</th><th>العميل</th><th>الحالة</th><th>تفاصيل</th></tr></thead>
+      <tbody>
+        <tr><td>#M-201</td><td>سعد الفني</td><td>محمد علي</td><td><span class="badge-status badge-blue">ASSIGNED</span></td><td><button class="btn btn-sm btn-primary mission-detail">عرض</button></td></tr>
+        <tr><td>#M-200</td><td>أحمد المهندس</td><td>سارة أحمد</td><td><span class="badge-status badge-orange">EN_ROUTE</span></td><td><button class="btn btn-sm btn-primary mission-detail">عرض</button></td></tr>
+        <tr><td>#M-199</td><td>سعد الفني</td><td>خالد حسن</td><td><span class="badge-status badge-green">ARRIVED</span></td><td><button class="btn btn-sm btn-primary mission-detail">عرض</button></td></tr>
+        <tr><td>#M-198</td><td>أحمد المهندس</td><td>نور محمد</td><td><span class="badge-status badge-purple">WORK_STARTED</span></td><td><button class="btn btn-sm btn-primary mission-detail">عرض</button></td></tr>
+      </tbody>
+    </table>
+    <div id="mission-map" style="display:none;margin-top:14px">
+      <h3>موقع المهمة #M-201</h3>
+      <div class="map-box">
+        <span class="map-pin" style="top:30%;right:40%">&#128205;</span>
+        <span class="map-pin" style="top:60%;right:55%;color:var(--green)">&#128663;</span>
+        <span style="opacity:.5">خريطة تتبع الفني</span>
+      </div>
+    </div>
+  `);
+  showNarration('تابع فريقك بالميدان خطوة بخطوة');
+  await wait(1000);
+  const db=$$('.mission-detail')[0];
+  if(db){await moveAndClick(db);$('#mission-map').style.display='block';}
+  await wait(3000);
+});
+
+// Scene 8: GPS
+scenes.push(async ()=>{
+  hideNarration();
+  const nav=sidebar.querySelector('[data-id="gps"]');
+  await moveAndClick(nav);
+  setActiveNav('gps');
+  setContent(`
+    <h2>نظام GPS</h2>
+    <div class="stats-row">
+      <div class="stat-card"><div class="num">3</div><div class="label">طلبات معلقة</div></div>
+      <div class="stat-card"><div class="num">12</div><div class="label">اشتراكات نشطة</div></div>
+      <div class="stat-card"><div class="num">5</div><div class="label">أجهزة متصلة</div></div>
+    </div>
+    <h3>طلبات معلقة</h3>
+    <div class="booking-card" id="gps-req">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><strong>طلب #G-55</strong><br><span style="font-size:12px;color:var(--text2)">العميل: شركة النور | الجهاز: GT-06N | المركبة: تويوتا هايلكس</span></div>
+        <div style="display:flex;gap:6px"><button class="btn btn-sm btn-success" id="gps-approve">موافقة</button><button class="btn btn-sm" style="background:var(--red);color:#fff">رفض</button></div>
+      </div>
+    </div>
+  `);
+  showNarration('نظام GPS — تدير الطلبات والاشتراكات');
+  await wait(1200);
+  const ab=$('#gps-approve');await moveAndClick(ab);
+  showToast('تمت الموافقة على الطلب');
+  await wait(2000);
+});
+
+// Scene 9: KPI
+scenes.push(async ()=>{
+  hideNarration();
+  const nav=sidebar.querySelector('[data-id="kpi"]');
+  await moveAndClick(nav);
+  setActiveNav('kpi');
+  setContent(`
+    <h2>تقييم الأداء (KPI)</h2>
+    <div style="background:var(--card);border-radius:12px;padding:20px;max-width:480px;box-shadow:0 1px 3px rgba(0,0,0,.08)">
+      <div class="form-group"><label>اختر الموظف</label><select id="kpi-emp"><option>اختر...</option><option value="saad">سعد الفني</option><option value="ahmad">أحمد المهندس</option></select></div>
+      <div class="form-group"><label>النقاط (1-100)</label><input id="kpi-pts" type="number" min="1" max="100"></div>
+      <div class="form-group"><label>السبب / الملاحظات</label><textarea id="kpi-reason" rows="3"></textarea></div>
+      <button class="btn btn-primary" id="kpi-save" style="width:100%">حفظ التقييم</button>
+    </div>
+  `);
+  showNarration('قيّم أداء الموظفين وسجّل ملاحظاتك');
+  await wait(600);
+  const emp=$('#kpi-emp');await moveAndClick(emp,400);emp.value='saad';await wait(300);
+  const pts=$('#kpi-pts');await moveAndClick(pts,400);await typeText(pts,'85',80);
+  const reason=$('#kpi-reason');await moveAndClick(reason,400);await typeText(reason,'أداء ممتاز — التزام بالمواعيد وجودة عالية',40);
+  const sv=$('#kpi-save');await moveAndClick(sv);
+  showToast('تم حفظ التقييم بنجاح');
+  await wait(2000);
+});
+
+// Scene 10: AI Chat
+scenes.push(async ()=>{
+  hideNarration();
+  showNarration('اسأل الذكاء الاصطناعي عن أي موظف بالاسم');
+  await wait(800);
+  const abtn=$('#ai-btn');
+  await moveAndClick(abtn);
+  $('#ai-chat').classList.add('open');
+  await wait(500);
+  const inp=$('#chat-input');
+  await moveAndClick(inp);
+  await typeText(inp,'شنو أداء سعد الفني هالشهر؟',50);
+  await wait(400);
+  const send=$('#chat-send');
+  await moveAndClick(send);
+  const body=$('#chat-body');
+  body.innerHTML='<div class="chat-msg user">شنو أداء سعد الفني هالشهر؟</div>';
+  await wait(800);
+  body.innerHTML+='<div class="chat-msg ai">سعد الفني أكمل 14 مهمة هالشهر بمعدل تقييم 4.7/5 من العملاء. نسبة الالتزام بالمواعيد 92%. أداؤه ممتاز مقارنة بالشهر الماضي (تحسن 12%).</div>';
+  body.scrollTop=body.scrollHeight;
+  await wait(4000);
+  $('#ai-chat').classList.remove('open');
+});
+
+// PLAYER ENGINE
+let current=0, playing=true, scenePromise=null, aborted=false;
+
+function updateUI(){
+  $('#scene-label').textContent=`${current+1} / ${scenes.length}`;
+  $('#progress-bar').style.width=((current+1)/scenes.length*100)+'%';
+  $('#btn-play').innerHTML=playing?'&#9208;':'&#9654;';
+}
+
+async function playScene(idx){
+  if(idx<0||idx>=scenes.length)return;
+  current=idx;aborted=false;updateUI();
+  hideNarration();
+  scenePromise=scenes[idx]();
+  await scenePromise;
+  if(!aborted&&playing&&current<scenes.length-1){
+    await wait(500);
+    if(!aborted&&playing)playScene(current+1);
+  }
+}
+
+function stopCurrent(){aborted=true}
+
+$('#btn-play').onclick=()=>{playing=!playing;updateUI();if(playing)playScene(current)};
+$('#btn-next').onclick=()=>{stopCurrent();playing=true;updateUI();playScene(Math.min(current+1,scenes.length-1))};
+$('#btn-prev').onclick=()=>{stopCurrent();playing=true;updateUI();playScene(Math.max(current-1,0))};
+$('#progress-wrap').onclick=e=>{
+  const r=$('#progress-wrap').getBoundingClientRect();
+  const pct=(e.clientX-r.left)/r.width;
+  const idx=Math.floor(pct*scenes.length);
+  stopCurrent();playing=true;updateUI();playScene(Math.max(0,Math.min(idx,scenes.length-1)));
+};
+
+// Start
+cursor.style.left='50%';cursor.style.top='50%';
+playScene(0);
+</script>
+</body>
+</html>

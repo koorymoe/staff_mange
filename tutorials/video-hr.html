@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شرح نظام إداري الكوادر — HR Coordinator Tutorial</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#2563eb;--primary-dark:#1d4ed8;--bg:#f1f5f9;--sidebar-bg:#1e293b;--card:#fff;--text:#1e293b;--text-light:#64748b;--success:#16a34a;--danger:#dc2626;--warning:#f59e0b;--border:#e2e8f0;--radius:10px;--shadow:0 2px 12px rgba(0,0,0,.08)}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0f172a;color:var(--text);overflow:hidden;height:100vh;display:flex;flex-direction:column;user-select:none}
+#tutorial-container{flex:1;display:flex;flex-direction:column;max-width:1400px;margin:0 auto;width:100%;position:relative}
+#screen-area{flex:1;position:relative;overflow:hidden;background:var(--bg);border-radius:12px 12px 0 0;margin:8px 8px 0}
+
+/* Simulated System UI */
+#system-ui{width:100%;height:100%;display:flex;position:relative}
+#sidebar{width:220px;background:var(--sidebar-bg);color:#fff;display:flex;flex-direction:column;height:100%;flex-shrink:0}
+#sidebar-header{padding:16px;border-bottom:1px solid rgba(255,255,255,.1);text-align:center}
+#sidebar-header h3{font-size:14px;color:var(--primary);margin-bottom:4px}
+#sidebar-header small{color:#94a3b8;font-size:11px}
+.nav-item{padding:11px 18px;font-size:13px;cursor:pointer;transition:all .3s;border-right:3px solid transparent;display:flex;align-items:center;gap:8px}
+.nav-item:hover,.nav-item.active{background:rgba(37,99,235,.15);border-right-color:var(--primary);color:var(--primary)}
+.nav-item .icon{width:18px;text-align:center;font-size:14px}
+#main-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+#topbar{height:50px;background:#fff;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+#topbar .user-info{display:flex;align-items:center;gap:8px;font-size:13px}
+#topbar .user-avatar{width:32px;height:32px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:14px}
+#topbar .page-title{font-weight:700;font-size:15px;color:var(--text)}
+#content-area{flex:1;padding:20px;overflow-y:auto;position:relative}
+
+/* Cards & Tables */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+.stat-card .label{font-size:11px;color:var(--text-light);margin-bottom:6px}
+.stat-card .value{font-size:24px;font-weight:700;color:var(--primary)}
+.stat-card .sub{font-size:10px;color:var(--text-light);margin-top:4px}
+.data-table{width:100%;border-collapse:collapse;background:#fff;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.data-table th{background:#f8fafc;padding:10px 14px;font-size:12px;color:var(--text-light);text-align:right;border-bottom:2px solid var(--border)}
+.data-table td{padding:10px 14px;font-size:13px;border-bottom:1px solid var(--border)}
+.data-table tr:hover{background:#f8fafc}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-pending{background:#fef3c7;color:#92400e}
+.badge-confirmed{background:#d1fae5;color:#065f46}
+.badge-progress{background:#dbeafe;color:#1e40af}
+.section-title{font-size:16px;font-weight:700;margin-bottom:14px;color:var(--text)}
+.btn{padding:8px 18px;border:none;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;transition:all .2s}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-success{background:var(--success);color:#fff}
+.btn-sm{padding:5px 12px;font-size:12px}
+
+/* Detail Panel */
+.detail-panel{background:#fff;border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-top:14px}
+.detail-panel h3{font-size:15px;margin-bottom:14px;color:var(--primary);border-bottom:2px solid var(--primary);padding-bottom:8px;display:inline-block}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:11px;color:var(--text-light);font-weight:600}
+.form-group select,.form-group input{padding:7px 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:inherit;background:#fff}
+.form-group select:focus,.form-group input:focus{border-color:var(--primary);outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+
+/* Login */
+#login-screen{position:absolute;inset:0;background:linear-gradient(135deg,#1e3a5f,#2563eb);display:flex;align-items:center;justify-content:center;z-index:100}
+.login-box{background:#fff;border-radius:16px;padding:40px;width:360px;box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center}
+.login-box h2{color:var(--primary);margin-bottom:6px;font-size:20px}
+.login-box p{color:var(--text-light);font-size:12px;margin-bottom:24px}
+.login-box .input-group{margin-bottom:14px;text-align:right}
+.login-box .input-group label{display:block;font-size:12px;color:var(--text-light);margin-bottom:4px}
+.login-box .input-group input{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;text-align:right}
+.login-box .login-btn{width:100%;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;margin-top:8px}
+
+/* Cursor */
+#cursor{position:absolute;width:20px;height:20px;border-radius:50%;background:rgba(37,99,235,.5);border:2px solid var(--primary);z-index:999;pointer-events:none;transition:all .6s cubic-bezier(.25,.1,.25,1);box-shadow:0 0 12px rgba(37,99,235,.4)}
+#cursor.clicking{transform:scale(.6);background:rgba(37,99,235,.8)}
+
+/* Narration */
+#narration{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:14px 28px;border-radius:12px;font-size:15px;line-height:1.7;max-width:600px;text-align:center;z-index:200;opacity:0;transition:opacity .5s;backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1)}
+#narration.visible{opacity:1}
+
+/* Controls */
+#controls{background:#1e293b;padding:10px 20px;display:flex;align-items:center;gap:14px;margin:0 8px 8px;border-radius:0 0 12px 12px}
+#progress-bar{flex:1;height:5px;background:#334155;border-radius:3px;cursor:pointer;position:relative}
+#progress-fill{height:100%;background:var(--primary);border-radius:3px;transition:width .3s;width:0}
+.ctrl-btn{background:none;border:none;color:#94a3b8;font-size:18px;cursor:pointer;padding:6px;transition:color .2s}
+.ctrl-btn:hover{color:#fff}
+#scene-counter{color:#94a3b8;font-size:12px;min-width:60px;text-align:center}
+#scene-title{color:#cbd5e1;font-size:13px;font-weight:600}
+
+/* Animations */
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pulse{0%,100%{box-shadow:0 0 12px rgba(37,99,235,.4)}50%{box-shadow:0 0 24px rgba(37,99,235,.7)}}
+.fade-in{animation:fadeIn .4s ease}
+#cursor{animation:pulse 2s infinite}
+
+/* Success toast */
+.toast{position:absolute;top:20px;left:50%;transform:translateX(-50%);background:var(--success);color:#fff;padding:12px 24px;border-radius:8px;font-size:14px;font-weight:600;z-index:300;opacity:0;transition:all .4s}
+.toast.show{opacity:1}
+
+/* Grid cards */
+.emp-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.emp-card{background:#fff;border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);cursor:pointer;transition:all .2s;border:2px solid transparent}
+.emp-card:hover,.emp-card.selected{border-color:var(--primary);box-shadow:0 4px 20px rgba(37,99,235,.15)}
+.emp-card .name{font-weight:700;font-size:14px;margin-bottom:4px}
+.emp-card .role{font-size:11px;color:var(--text-light)}
+.emp-card .avatar-sm{width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;display:flex;align-items:center;justify-content:center;margin-bottom:8px;font-size:16px}
+
+/* AI Chat */
+.ai-widget{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;max-width:500px;margin:0 auto}
+.ai-header{background:var(--primary);color:#fff;padding:12px 16px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.ai-body{padding:16px;min-height:200px}
+.ai-msg{margin-bottom:12px;display:flex;gap:8px}
+.ai-msg.user{flex-direction:row-reverse}
+.ai-bubble{padding:10px 14px;border-radius:12px;font-size:13px;max-width:80%;line-height:1.6}
+.ai-msg.user .ai-bubble{background:var(--primary);color:#fff;border-bottom-left-radius:4px}
+.ai-msg.bot .ai-bubble{background:#f1f5f9;color:var(--text);border-bottom-right-radius:4px}
+.ai-input-row{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border)}
+.ai-input-row input{flex:1;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit}
+.ai-input-row button{padding:8px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer}
+
+/* Attendance btn */
+.att-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:var(--success);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;margin-top:10px}
+
+/* Inventory */
+.inv-row{display:flex;align-items:center;gap:12px;padding:10px 14px;background:#fff;border-radius:8px;margin-bottom:8px;box-shadow:var(--shadow)}
+.inv-row .status-icon{font-size:18px}
+</style>
+</head>
+<body>
+<div id="tutorial-container">
+  <div id="screen-area">
+    <div id="system-ui">
+      <!-- Sidebar -->
+      <div id="sidebar" style="opacity:0">
+        <div id="sidebar-header">
+          <h3>نظام إدارة الكوادر</h3>
+          <small>Staff Management System</small>
+        </div>
+        <div class="nav-item active" data-nav="home"><span class="icon">🏠</span> الرئيسية</div>
+        <div class="nav-item" data-nav="staff"><span class="icon">👥</span> إدارة الكوادر</div>
+        <div class="nav-item" data-nav="bookings"><span class="icon">📋</span> تنسيق الحجوزات</div>
+        <div class="nav-item" data-nav="new-booking"><span class="icon">➕</span> حجز جديد</div>
+        <div class="nav-item" data-nav="clients"><span class="icon">🏢</span> العملاء</div>
+        <div class="nav-item" data-nav="services"><span class="icon">⚙️</span> الخدمات</div>
+        <div class="nav-item" data-nav="missions"><span class="icon">📍</span> المهام</div>
+        <div class="nav-item" data-nav="inventory"><span class="icon">🔧</span> جرد الأدوات</div>
+        <div class="nav-item" data-nav="complaints"><span class="icon">📢</span> الشكاوى</div>
+        <div class="nav-item" data-nav="requests"><span class="icon">📩</span> طلبات الكادر</div>
+        <div class="nav-item" data-nav="performance"><span class="icon">⭐</span> تقييم الأداء</div>
+        <div class="nav-item" data-nav="attendance"><span class="icon">⏰</span> الحضور</div>
+        <div class="nav-item" data-nav="category"><span class="icon">🏷️</span> تصنيفي</div>
+      </div>
+      <!-- Main -->
+      <div id="main-content" style="opacity:0">
+        <div id="topbar">
+          <span class="page-title" id="page-title">الرئيسية</span>
+          <div class="user-info">
+            <span>فاطمة الحسني</span>
+            <div class="user-avatar">ف</div>
+          </div>
+        </div>
+        <div id="content-area"></div>
+      </div>
+    </div>
+    <!-- Login -->
+    <div id="login-screen">
+      <div class="login-box">
+        <h2>تسجيل الدخول</h2>
+        <p>نظام إدارة الكوادر — Staff Management</p>
+        <div class="input-group">
+          <label>اسم المستخدم</label>
+          <input type="text" id="login-user" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label>كلمة المرور</label>
+          <input type="password" id="login-pass">
+        </div>
+        <button class="login-btn" id="login-btn">دخول</button>
+      </div>
+    </div>
+    <!-- Cursor -->
+    <div id="cursor"></div>
+    <!-- Narration -->
+    <div id="narration"></div>
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+  </div>
+  <!-- Controls -->
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-prev">⏮</button>
+    <button class="ctrl-btn" id="btn-play">▶</button>
+    <button class="ctrl-btn" id="btn-next">⏭</button>
+    <div id="progress-bar"><div id="progress-fill"></div></div>
+    <span id="scene-counter">1 / 10</span>
+    <span id="scene-title">تسجيل الدخول</span>
+  </div>
+</div>
+
+<script>
+(function(){
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const cursor = $('#cursor');
+const narration = $('#narration');
+const content = $('#content-area');
+const toast = $('#toast');
+const progressFill = $('#progress-fill');
+const sceneCounter = $('#scene-counter');
+const sceneTitleEl = $('#scene-title');
+const pageTitle = $('#page-title');
+
+let currentScene = 0;
+let playing = true;
+let sceneTimeout = null;
+
+// Cursor
+function moveCursor(x, y) {
+  return new Promise(r => {
+    cursor.style.left = x + 'px';
+    cursor.style.top = y + 'px';
+    setTimeout(r, 700);
+  });
+}
+function click() {
+  return new Promise(r => {
+    cursor.classList.add('clicking');
+    setTimeout(() => { cursor.classList.remove('clicking'); r(); }, 300);
+  });
+}
+
+function showNarration(text) {
+  narration.textContent = text;
+  narration.classList.add('visible');
+}
+function hideNarration() { narration.classList.remove('visible'); }
+
+function showToast(text) {
+  toast.textContent = text;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+function setNav(name) {
+  $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.nav === name));
+}
+
+function typeText(el, text, speed = 40) {
+  return new Promise(r => {
+    let i = 0;
+    el.value = '';
+    const iv = setInterval(() => {
+      el.value += text[i++];
+      if (i >= text.length) { clearInterval(iv); r(); }
+    }, speed);
+  });
+}
+
+function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function setContent(html) {
+  content.innerHTML = '';
+  content.insertAdjacentHTML('beforeend', html);
+  content.querySelector('.fade-in')?.offsetHeight; // trigger reflow
+}
+
+// --- SCENES ---
+const scenes = [
+  // Scene 1: Login
+  {
+    title: 'تسجيل الدخول',
+    duration: 7000,
+    async run() {
+      $('#login-screen').style.display = 'flex';
+      $('#sidebar').style.opacity = '0';
+      $('#main-content').style.opacity = '0';
+      cursor.style.left = '700px'; cursor.style.top = '300px';
+      await wait(500);
+      const uInput = $('#login-user');
+      const pInput = $('#login-pass');
+      // Move to username
+      const rect1 = uInput.getBoundingClientRect();
+      await moveCursor(rect1.left + 100, rect1.top + 15);
+      await click();
+      uInput.focus();
+      await typeText(uInput, 'fatima_hr');
+      await wait(300);
+      // Move to password
+      const rect2 = pInput.getBoundingClientRect();
+      await moveCursor(rect2.left + 100, rect2.top + 15);
+      await click();
+      pInput.focus();
+      await typeText(pInput, '••••••••');
+      await wait(300);
+      // Click login
+      const btn = $('#login-btn');
+      const rect3 = btn.getBoundingClientRect();
+      await moveCursor(rect3.left + 80, rect3.top + 15);
+      await click();
+      showNarration('مرحباً فاطمة — جاري تسجيل الدخول...');
+      await wait(800);
+      $('#login-screen').style.display = 'none';
+      $('#sidebar').style.opacity = '1';
+      $('#main-content').style.opacity = '1';
+      hideNarration();
+    }
+  },
+  // Scene 2: Dashboard
+  {
+    title: 'الصفحة الرئيسية',
+    duration: 7000,
+    async run() {
+      setNav('home');
+      pageTitle.textContent = 'الرئيسية';
+      setContent(`<div class="fade-in">
+        <div class="stats-row">
+          <div class="stat-card"><div class="label">حجوزات معلقة</div><div class="value">12</div><div class="sub">بانتظار التنسيق</div></div>
+          <div class="stat-card"><div class="label">الفنيين المتاحين</div><div class="value">8</div><div class="sub">من أصل 15</div></div>
+          <div class="stat-card"><div class="label">مهام اليوم</div><div class="value">5</div><div class="sub">3 جارية — 2 مكتملة</div></div>
+          <div class="stat-card"><div class="label">نسبة الحضور</div><div class="value">93%</div><div class="sub">اليوم</div></div>
+        </div>
+        <button class="att-btn" id="att-btn">⏰ تسجيل الحضور</button>
+      </div>`);
+      showNarration('الصفحة الرئيسية تعرض ملخص سريع لأهم الأرقام');
+      await wait(2000);
+      // Click attendance
+      const btn = document.getElementById('att-btn');
+      if(btn){
+        const r = btn.getBoundingClientRect();
+        await moveCursor(r.left+60, r.top+15);
+        await click();
+        btn.style.background = '#059669';
+        btn.textContent = '✓ تم تسجيل الحضور — 08:02 ص';
+      }
+    }
+  },
+  // Scene 3: Booking Coordination
+  {
+    title: 'تنسيق الحجوزات — المهمة الرئيسية',
+    duration: 12000,
+    async run() {
+      setNav('bookings');
+      pageTitle.textContent = 'تنسيق الحجوزات';
+      setContent(`<div class="fade-in">
+        <div class="section-title">الحجوزات المعلقة</div>
+        <table class="data-table"><thead><tr><th>رقم</th><th>الخدمة</th><th>العميل</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody>
+          <tr id="bk-row" style="cursor:pointer"><td>BK-0425</td><td>طاقة شمسية</td><td>محمد أحمد</td><td>2026-07-24</td><td><span class="badge badge-pending">معلق</span></td></tr>
+          <tr><td>BK-0426</td><td>تكييف مركزي</td><td>علي حسن</td><td>2026-07-25</td><td><span class="badge badge-pending">معلق</span></td></tr>
+          <tr><td>BK-0427</td><td>كاميرات</td><td>سارة يوسف</td><td>2026-07-25</td><td><span class="badge badge-confirmed">مؤكد</span></td></tr>
+        </tbody></table>
+        <div class="detail-panel" id="booking-detail" style="display:none">
+          <h3>تفاصيل الحجز BK-0425</h3>
+          <div class="form-row">
+            <div class="form-group"><label>الحالة</label><select id="f-status"><option>معلق</option><option>تأكيد</option><option>ملغي</option></select></div>
+            <div class="form-group"><label>الوردية</label><select id="f-shift"><option>اختر...</option><option>صباحي</option><option>مسائي</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>TECH_1</label><select id="f-t1"><option>اختر...</option><option>سعد</option><option>خالد</option></select></div>
+            <div class="form-group"><label>TECH_2</label><select id="f-t2"><option>اختر...</option><option>أحمد</option><option>يوسف</option></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>TECH_3</label><select id="f-t3"><option>اختر...</option><option>حسين</option><option>عمر</option></select></div>
+            <div class="form-group"><label>تاريخ التنفيذ</label><input type="date" id="f-date" value="2026-07-24"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>حالة التجهيز</label><select id="f-equip"><option>غير جاهز</option><option>تم التجهيز ✓</option></select></div>
+            <div class="form-group" style="justify-content:flex-end"><button class="btn btn-primary" id="save-coord">حفظ التنسيق</button></div>
+          </div>
+        </div>
+      </div>`);
+      showNarration('هذي مهمتك الرئيسية — تنسق الحجوزات وتعين الفنيين');
+      await wait(1000);
+      // Click booking row
+      const row = document.getElementById('bk-row');
+      if(row){const r=row.getBoundingClientRect();await moveCursor(r.left+200,r.top+15);await click();}
+      document.getElementById('booking-detail').style.display='block';
+      await wait(600);
+      // Fill form
+      const fs=$('#f-status');if(fs){const r=fs.getBoundingClientRect();await moveCursor(r.left+60,r.top+10);await click();fs.value='تأكيد';}
+      await wait(300);
+      const ft1=$('#f-t1');if(ft1){const r=ft1.getBoundingClientRect();await moveCursor(r.left+60,r.top+10);await click();ft1.value='سعد';}
+      await wait(300);
+      const ft2=$('#f-t2');if(ft2){const r=ft2.getBoundingClientRect();await moveCursor(r.left+60,r.top+10);await click();ft2.value='أحمد';}
+      await wait(300);
+      const ft3=$('#f-t3');if(ft3){const r=ft3.getBoundingClientRect();await moveCursor(r.left+60,r.top+10);await click();ft3.value='حسين';}
+      await wait(300);
+      const fsh=$('#f-shift');if(fsh){const r=fsh.getBoundingClientRect();await moveCursor(r.left+60,r.top+10);await click();fsh.value='صباحي';}
+      await wait(300);
+      const feq=$('#f-equip');if(feq){const r=feq.getBoundingClientRect();await moveCursor(r.left+60,r.top+10);await click();feq.value='تم التجهيز ✓';}
+      await wait(400);
+      // Save
+      const sv=$('#save-coord');if(sv){const r=sv.getBoundingClientRect();await moveCursor(r.left+40,r.top+12);await click();}
+      showToast('✓ تم حفظ التنسيق بنجاح');
+    }
+  },
+  // Scene 4: Staff Management
+  {
+    title: 'إدارة الكوادر',
+    duration: 8000,
+    async run() {
+      setNav('staff');
+      pageTitle.textContent = 'إدارة الكوادر';
+      setContent(`<div class="fade-in">
+        <div class="section-title">الموظفين</div>
+        <div class="emp-grid">
+          <div class="emp-card" id="emp1"><div class="avatar-sm">س</div><div class="name">سعد العلي</div><div class="role">فني طاقة شمسية</div></div>
+          <div class="emp-card" id="emp2"><div class="avatar-sm">أ</div><div class="name">أحمد محمود</div><div class="role">فني تكييف</div></div>
+          <div class="emp-card"><div class="avatar-sm">ح</div><div class="name">حسين كاظم</div><div class="role">فني كاميرات</div></div>
+          <div class="emp-card"><div class="avatar-sm">خ</div><div class="name">خالد ناصر</div><div class="role">فني كهرباء</div></div>
+          <div class="emp-card"><div class="avatar-sm">ع</div><div class="name">عمر فاضل</div><div class="role">فني شبكات</div></div>
+          <div class="emp-card"><div class="avatar-sm">ي</div><div class="name">يوسف حيدر</div><div class="role">فني تكييف</div></div>
+        </div>
+        <div class="detail-panel" id="emp-detail" style="display:none">
+          <h3>بيانات الموظف — سعد العلي</h3>
+          <div class="form-row">
+            <div class="form-group"><label>الاسم</label><input value="سعد العلي"></div>
+            <div class="form-group"><label>الهاتف</label><input value="0771234567"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>التخصص</label><select><option>طاقة شمسية</option><option>تكييف</option></select></div>
+            <div class="form-group"><label>المهارات</label><input value="تركيب ألواح, صيانة انفرتر" id="skills-input"></div>
+          </div>
+          <button class="btn btn-primary btn-sm" id="save-emp">حفظ التعديلات</button>
+        </div>
+      </div>`);
+      showNarration('تكدر تشوف وتعدل بيانات كل موظف');
+      await wait(1500);
+      const emp = document.getElementById('emp1');
+      if(emp){const r=emp.getBoundingClientRect();await moveCursor(r.left+60,r.top+30);await click();emp.classList.add('selected');}
+      document.getElementById('emp-detail').style.display='block';
+      await wait(1000);
+      const sk=$('#skills-input');
+      if(sk){const r=sk.getBoundingClientRect();await moveCursor(r.left+80,r.top+10);await click();sk.value+=', فحص بطاريات';}
+      await wait(600);
+      const sv=$('#save-emp');if(sv){const r=sv.getBoundingClientRect();await moveCursor(r.left+40,r.top+10);await click();}
+      showToast('✓ تم حفظ بيانات الموظف');
+    }
+  },
+  // Scene 5: Services
+  {
+    title: 'الخدمات والمهارات',
+    duration: 7000,
+    async run() {
+      setNav('services');
+      pageTitle.textContent = 'الخدمات';
+      setContent(`<div class="fade-in">
+        <div class="section-title">الخدمات المتاحة</div>
+        <table class="data-table"><thead><tr><th>الخدمة</th><th>المهارات</th><th>عدد الفنيين</th><th>إجراء</th></tr></thead><tbody>
+          <tr><td>طاقة شمسية</td><td>تركيب ألواح, صيانة انفرتر, فحص بطاريات</td><td>4</td><td><button class="btn btn-sm btn-primary">تعديل</button></td></tr>
+          <tr><td>تكييف مركزي</td><td>تركيب, صيانة, غسيل</td><td>3</td><td><button class="btn btn-sm btn-primary">تعديل</button></td></tr>
+          <tr><td>كاميرات مراقبة</td><td>تركيب, برمجة DVR, تمديد كيبل</td><td>2</td><td><button class="btn btn-sm btn-primary">تعديل</button></td></tr>
+          <tr id="svc-row"><td>شبكات</td><td id="svc-skills">تمديد, تركيب راوتر</td><td>2</td><td><button class="btn btn-sm btn-primary" id="svc-edit">تعديل</button></td></tr>
+        </tbody></table>
+      </div>`);
+      showNarration('هنا تدير الخدمات ومهاراتها — وتربطها بالموظفين');
+      await wait(2000);
+      const btn=document.getElementById('svc-edit');
+      if(btn){const r=btn.getBoundingClientRect();await moveCursor(r.left+20,r.top+10);await click();}
+      await wait(400);
+      const sk=document.getElementById('svc-skills');
+      if(sk)sk.textContent='تمديد, تركيب راوتر, فحص سيرفر';
+      showToast('✓ تمت إضافة مهارة جديدة');
+    }
+  },
+  // Scene 6: Missions
+  {
+    title: 'تتبع المهام الميدانية',
+    duration: 7000,
+    async run() {
+      setNav('missions');
+      pageTitle.textContent = 'المهام';
+      setContent(`<div class="fade-in">
+        <div class="section-title">المهام الميدانية</div>
+        <table class="data-table"><thead><tr><th>المهمة</th><th>الفريق</th><th>المرحلة</th><th>الوقت</th></tr></thead><tbody>
+          <tr id="mission-row" style="cursor:pointer"><td>MSN-301</td><td>سعد, أحمد</td><td><span class="badge badge-progress">في الطريق</span></td><td>08:45</td></tr>
+          <tr><td>MSN-302</td><td>حسين, عمر</td><td><span class="badge badge-confirmed">وصل الموقع</span></td><td>09:10</td></tr>
+          <tr><td>MSN-303</td><td>خالد</td><td><span class="badge badge-pending">لم يغادر</span></td><td>—</td></tr>
+        </tbody></table>
+        <div class="detail-panel" id="mission-detail" style="display:none">
+          <h3>تفاصيل المهمة MSN-301</h3>
+          <div style="display:flex;gap:20px;align-items:center;margin-top:10px">
+            <div style="flex:1">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                <span style="font-size:12px;color:var(--text-light)">المغادرة</span>
+                <span style="font-size:12px;color:var(--text-light)">في الطريق</span>
+                <span style="font-size:12px;color:var(--text-light)">الوصول</span>
+                <span style="font-size:12px;color:var(--text-light)">بدء العمل</span>
+              </div>
+              <div style="height:6px;background:#e2e8f0;border-radius:3px;position:relative">
+                <div id="mission-progress" style="height:100%;background:var(--primary);border-radius:3px;width:45%;transition:width 1s"></div>
+              </div>
+            </div>
+          </div>
+          <p style="margin-top:12px;font-size:13px;color:var(--text-light)">الموقع: بغداد — الكرادة — شارع 52</p>
+        </div>
+      </div>`);
+      showNarration('تابع فرقك بالميدان — من لحظة المغادرة للوصول');
+      await wait(1500);
+      const row=document.getElementById('mission-row');
+      if(row){const r=row.getBoundingClientRect();await moveCursor(r.left+150,r.top+15);await click();}
+      document.getElementById('mission-detail').style.display='block';
+      await wait(1000);
+      const mp=document.getElementById('mission-progress');
+      if(mp)mp.style.width='70%';
+    }
+  },
+  // Scene 7: Inventory
+  {
+    title: 'جرد الأدوات',
+    duration: 7000,
+    async run() {
+      setNav('inventory');
+      pageTitle.textContent = 'جرد الأدوات';
+      setContent(`<div class="fade-in">
+        <div class="section-title">جرد أدوات اليوم — 2026/07/22</div>
+        <div class="inv-row"><span class="status-icon">✅</span><span style="flex:1;font-weight:600">سعد العلي</span><span style="font-size:12px;color:var(--success)">مكتمل — كل الأدوات متوفرة</span></div>
+        <div class="inv-row"><span class="status-icon">✅</span><span style="flex:1;font-weight:600">أحمد محمود</span><span style="font-size:12px;color:var(--success)">مكتمل — كل الأدوات متوفرة</span></div>
+        <div class="inv-row" id="inv-missing"><span class="status-icon">❌</span><span style="flex:1;font-weight:600">حسين كاظم</span><span style="font-size:12px;color:var(--danger)">نقص: مفك كهربائي, شريط عازل</span></div>
+        <div class="inv-row"><span class="status-icon">✅</span><span style="flex:1;font-weight:600">خالد ناصر</span><span style="font-size:12px;color:var(--success)">مكتمل</span></div>
+        <div class="inv-row"><span class="status-icon">⏳</span><span style="flex:1;font-weight:600">عمر فاضل</span><span style="font-size:12px;color:var(--warning)">لم يسلم الجرد بعد</span></div>
+      </div>`);
+      showNarration('شوف نتائج جرد أدوات كل الفنيين — لو اكو نقص وفر البديل');
+      await wait(2000);
+      const m=document.getElementById('inv-missing');
+      if(m){const r=m.getBoundingClientRect();await moveCursor(r.left+200,r.top+15);await click();m.style.border='2px solid var(--danger)';m.style.borderRadius='8px';}
+    }
+  },
+  // Scene 8: Complaints
+  {
+    title: 'الشكاوى',
+    duration: 7000,
+    async run() {
+      setNav('complaints');
+      pageTitle.textContent = 'الشكاوى';
+      setContent(`<div class="fade-in">
+        <div class="section-title">شكاوى الزبائن</div>
+        <table class="data-table"><thead><tr><th>رقم</th><th>العميل</th><th>الموضوع</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
+          <tr id="comp-row" style="cursor:pointer"><td>CMP-89</td><td>أحمد جبار</td><td>تأخر الفريق عن الموعد</td><td><span class="badge badge-pending">جديدة</span></td><td><button class="btn btn-sm btn-primary" id="comp-assign">تعيين مسؤول</button></td></tr>
+          <tr><td>CMP-88</td><td>نور الهدى</td><td>جودة التركيب</td><td><span class="badge badge-progress">قيد المعالجة</span></td><td><button class="btn btn-sm btn-primary">متابعة</button></td></tr>
+        </tbody></table>
+        <div class="detail-panel" id="comp-detail" style="display:none">
+          <h3>تفاصيل الشكوى CMP-89</h3>
+          <p style="font-size:13px;margin-bottom:10px;line-height:1.7">العميل أحمد جبار يشتكي من تأخر فريق التركيب ساعتين عن الموعد المحدد. يطالب بتعويض.</p>
+          <div class="form-row">
+            <div class="form-group"><label>تعيين لـ</label><select id="comp-assign-sel"><option>اختر موظف...</option><option>سعد العلي</option><option>أحمد محمود</option></select></div>
+            <div class="form-group" style="justify-content:flex-end"><button class="btn btn-primary btn-sm" id="comp-save">حفظ</button></div>
+          </div>
+        </div>
+      </div>`);
+      showNarration('تابع شكاوى الزبائن وعين المسؤول عن حلها');
+      await wait(1500);
+      const btn=document.getElementById('comp-assign');
+      if(btn){const r=btn.getBoundingClientRect();await moveCursor(r.left+30,r.top+10);await click();}
+      document.getElementById('comp-detail').style.display='block';
+      await wait(600);
+      const sel=$('#comp-assign-sel');if(sel){const r=sel.getBoundingClientRect();await moveCursor(r.left+60,r.top+10);await click();sel.value='سعد العلي';}
+      await wait(400);
+      const sv=$('#comp-save');if(sv){const r=sv.getBoundingClientRect();await moveCursor(r.left+20,r.top+10);await click();}
+      showToast('✓ تم تعيين المسؤول');
+    }
+  },
+  // Scene 9: Staff Requests
+  {
+    title: 'طلبات الكادر',
+    duration: 7000,
+    async run() {
+      setNav('requests');
+      pageTitle.textContent = 'طلبات الكادر';
+      setContent(`<div class="fade-in">
+        <div class="section-title">طلبات من مدراء المشاريع</div>
+        <table class="data-table"><thead><tr><th>رقم الطلب</th><th>المشروع</th><th>العدد المطلوب</th><th>التخصص</th><th>الحالة</th><th>إجراء</th></tr></thead><tbody>
+          <tr id="req-row"><td>REQ-55</td><td>مشروع الكرادة</td><td>3 فنيين</td><td>طاقة شمسية</td><td><span class="badge badge-pending">بانتظار</span></td><td><button class="btn btn-sm btn-success" id="req-approve">موافقة</button></td></tr>
+          <tr><td>REQ-54</td><td>مشروع المنصور</td><td>2 فنيين</td><td>تكييف</td><td><span class="badge badge-confirmed">تمت الموافقة</span></td><td><button class="btn btn-sm btn-primary">تفاصيل</button></td></tr>
+        </tbody></table>
+      </div>`);
+      showNarration('مدير المشاريع يطلب كادر — وانت تلبي الطلب');
+      await wait(2000);
+      const btn=document.getElementById('req-approve');
+      if(btn){const r=btn.getBoundingClientRect();await moveCursor(r.left+30,r.top+10);await click();}
+      await wait(300);
+      const row=document.getElementById('req-row');
+      if(row){
+        const badge=row.querySelector('.badge');
+        if(badge){badge.className='badge badge-confirmed';badge.textContent='تمت الموافقة';}
+        if(btn)btn.disabled=true;btn.textContent='تم';btn.style.opacity='.5';
+      }
+      showToast('✓ تمت الموافقة على الطلب');
+    }
+  },
+  // Scene 10: AI Assistant
+  {
+    title: 'الذكاء الاصطناعي',
+    duration: 9000,
+    async run() {
+      setNav('home');
+      pageTitle.textContent = 'المساعد الذكي';
+      setContent(`<div class="fade-in">
+        <div class="ai-widget">
+          <div class="ai-header">🤖 المساعد الذكي</div>
+          <div class="ai-body" id="ai-body"></div>
+          <div class="ai-input-row">
+            <button id="ai-send">إرسال</button>
+            <input id="ai-input" placeholder="اكتب سؤالك...">
+          </div>
+        </div>
+      </div>`);
+      showNarration('اسأل المساعد الذكي عن أي شي بالنظام');
+      await wait(1000);
+      const inp=$('#ai-input');
+      if(inp){const r=inp.getBoundingClientRect();await moveCursor(r.left+100,r.top+12);await click();}
+      await typeText(inp, 'شنو الحجوزات الي ما منسقة؟');
+      await wait(400);
+      const sb=$('#ai-send');
+      if(sb){const r=sb.getBoundingClientRect();await moveCursor(r.left+20,r.top+10);await click();}
+      const body=$('#ai-body');
+      if(body){
+        body.innerHTML='<div class="ai-msg user"><div class="ai-bubble">شنو الحجوزات الي ما منسقة؟</div></div>';
+        await wait(800);
+        body.innerHTML+='<div class="ai-msg bot"><div class="ai-bubble">عدك 12 حجز معلق:<br>• BK-0425 — طاقة شمسية — محمد أحمد<br>• BK-0426 — تكييف — علي حسن<br>• BK-0428 — كاميرات — زينب عادل<br>• BK-0429 — شبكات — حسام كريم<br>و 8 حجوزات أخرى...<br><br>تريدني أرتبهم حسب الأولوية؟</div></div>';
+      }
+    }
+  }
+];
+
+// --- ENGINE ---
+function updateUI() {
+  const total = scenes.length;
+  sceneCounter.textContent = `${currentScene + 1} / ${total}`;
+  sceneTitleEl.textContent = scenes[currentScene].title;
+  progressFill.style.width = ((currentScene + 1) / total * 100) + '%';
+  $('#btn-play').textContent = playing ? '⏸' : '▶';
+}
+
+async function runScene(idx) {
+  if (idx < 0 || idx >= scenes.length) return;
+  currentScene = idx;
+  hideNarration();
+  updateUI();
+  await scenes[idx].run();
+  updateUI();
+  if (playing && currentScene < scenes.length - 1) {
+    sceneTimeout = setTimeout(() => runScene(currentScene + 1), scenes[idx].duration);
+  }
+}
+
+$('#btn-play').addEventListener('click', () => {
+  playing = !playing;
+  updateUI();
+  if (playing) runScene(currentScene < scenes.length - 1 ? currentScene + 1 : 0);
+  else clearTimeout(sceneTimeout);
+});
+$('#btn-next').addEventListener('click', () => { clearTimeout(sceneTimeout); playing = true; runScene(Math.min(currentScene + 1, scenes.length - 1)); });
+$('#btn-prev').addEventListener('click', () => { clearTimeout(sceneTimeout); playing = true; runScene(Math.max(currentScene - 1, 0)); });
+$('#progress-bar').addEventListener('click', e => {
+  const rect = e.target.getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  const idx = Math.floor(pct * scenes.length);
+  clearTimeout(sceneTimeout);
+  playing = true;
+  runScene(Math.max(0, Math.min(idx, scenes.length - 1)));
+});
+
+// Start
+cursor.style.left = '400px';
+cursor.style.top = '300px';
+updateUI();
+setTimeout(() => runScene(0), 500);
+})();
+</script>
+</body>
+</html>

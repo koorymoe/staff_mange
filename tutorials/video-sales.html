@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شرح نظام المبيعات — فيديو تعليمي</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#0f172a;color:#e2e8f0;overflow:hidden;height:100vh;width:100vw;display:flex;flex-direction:column;user-select:none}
+
+/* === SIMULATED SCREEN === */
+#screen{flex:1;position:relative;overflow:hidden;background:#f1f5f9}
+
+/* === CURSOR === */
+#cursor{position:absolute;width:24px;height:24px;border-radius:50%;background:rgba(239,68,68,0.7);border:3px solid #fff;box-shadow:0 0 12px rgba(239,68,68,0.5);z-index:9999;pointer-events:none;transition:left 0.7s cubic-bezier(.4,0,.2,1),top 0.7s cubic-bezier(.4,0,.2,1);transform:translate(-50%,-50%)}
+#cursor.click{animation:cursorClick .3s}
+@keyframes cursorClick{0%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(0.6)}100%{transform:translate(-50%,-50%) scale(1)}}
+
+/* === SYSTEM UI FRAME === */
+#system-ui{position:absolute;inset:0;display:none;flex-direction:row-reverse}
+#sidebar{width:220px;background:#1e293b;color:#fff;display:flex;flex-direction:column;padding-top:10px;flex-shrink:0}
+#sidebar .logo{text-align:center;padding:14px 10px;font-size:18px;font-weight:700;color:#60a5fa;border-bottom:1px solid #334155;margin-bottom:6px}
+#sidebar .nav-item{padding:11px 20px;font-size:14px;cursor:pointer;transition:background .2s;display:flex;align-items:center;gap:10px}
+#sidebar .nav-item:hover,#sidebar .nav-item.active{background:#334155}
+#sidebar .nav-item .icon{width:20px;text-align:center}
+#topbar{height:52px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+#topbar .user-info{display:flex;align-items:center;gap:10px;font-size:14px;color:#1e293b}
+#topbar .role-badge{background:#dbeafe;color:#2563eb;padding:3px 10px;border-radius:12px;font-size:12px;font-weight:600}
+#topbar .page-title{font-size:16px;font-weight:700;color:#1e293b}
+#main-area{flex:1;display:flex;flex-direction:column}
+#content{flex:1;padding:20px;overflow-y:auto;background:#f1f5f9;position:relative}
+
+/* === LOGIN SCENE === */
+#login-page{position:absolute;inset:0;background:linear-gradient(135deg,#1e3a5f,#2563eb);display:flex;align-items:center;justify-content:center}
+.login-box{background:#fff;border-radius:16px;padding:40px;width:380px;max-width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3)}
+.login-box h2{text-align:center;color:#1e293b;margin-bottom:8px;font-size:22px}
+.login-box .subtitle{text-align:center;color:#64748b;margin-bottom:28px;font-size:14px}
+.login-box .field{margin-bottom:18px}
+.login-box label{display:block;margin-bottom:6px;font-size:13px;color:#475569;font-weight:600}
+.login-box input{width:100%;padding:10px 14px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;direction:ltr;text-align:left;outline:none;transition:border-color .2s}
+.login-box input:focus{border-color:#2563eb}
+.login-box .btn{width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;margin-top:8px}
+.login-box .spinner{display:none;text-align:center;margin-top:16px}
+.login-box .spinner::after{content:'';display:inline-block;width:28px;height:28px;border:3px solid #e2e8f0;border-top-color:#2563eb;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* === DASHBOARD === */
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-top:16px}
+.dash-card{background:#fff;border-radius:12px;padding:20px;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,0.06);cursor:pointer;transition:transform .2s}
+.dash-card:hover{transform:translateY(-2px)}
+.dash-card .card-icon{font-size:32px;margin-bottom:8px}
+.dash-card .card-label{font-size:14px;color:#475569;font-weight:600}
+.attendance-widget{background:#fff;border-radius:12px;padding:20px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+.attendance-widget .att-info{font-size:14px;color:#475569}
+.attendance-widget .att-info strong{display:block;font-size:16px;color:#1e293b;margin-bottom:4px}
+.att-btn{padding:10px 24px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+.att-btn.done{background:#16a34a}
+
+/* === FORMS === */
+.form-section{background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-top:12px}
+.form-section h3{margin-bottom:16px;color:#1e293b;font-size:17px}
+.form-row{display:flex;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.form-group{flex:1;min-width:200px}
+.form-group label{display:block;font-size:13px;color:#475569;font-weight:600;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;outline:none;font-family:inherit;background:#fff}
+.form-group input:focus,.form-group select:focus{border-color:#2563eb}
+.form-group textarea{resize:vertical;min-height:60px}
+.btn-primary{padding:10px 28px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px}
+.search-dropdown{position:absolute;background:#fff;border:2px solid #2563eb;border-radius:8px;width:calc(100% - 24px);max-width:400px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:100;display:none}
+.search-dropdown .dd-item{padding:10px 14px;cursor:pointer;font-size:13px;color:#1e293b;border-bottom:1px solid #f1f5f9;transition:background .15s}
+.search-dropdown .dd-item:hover,.search-dropdown .dd-item.highlight{background:#eff6ff}
+.success-toast{position:fixed;top:20px;left:50%;transform:translateX(-50%);background:#16a34a;color:#fff;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;box-shadow:0 4px 16px rgba(22,163,106,0.4);z-index:10000;display:none;animation:toastIn .4s}
+@keyframes toastIn{from{opacity:0;top:0}to{opacity:1;top:20px}}
+
+/* === TABLE === */
+.data-table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+.data-table th{background:#f8fafc;padding:10px;text-align:right;color:#475569;font-weight:600;border-bottom:2px solid #e2e8f0}
+.data-table td{padding:10px;border-bottom:1px solid #f1f5f9;color:#1e293b}
+.data-table tr:hover{background:#f8fafc}
+.badge{display:inline-block;padding:3px 10px;border-radius:10px;font-size:11px;font-weight:700}
+.badge-new{background:#dbeafe;color:#2563eb}
+.badge-code{background:#f0fdf4;color:#16a34a;font-family:monospace}
+
+/* === CUSTOMERS LIST === */
+.list-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.search-bar{padding:9px 14px;border:2px solid #e2e8f0;border-radius:8px;font-size:14px;width:260px;max-width:100%}
+.btn-add{padding:9px 20px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer}
+
+/* === MODAL === */
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal-box{background:#fff;border-radius:14px;padding:28px;width:440px;max-width:92%;box-shadow:0 20px 60px rgba(0,0,0,0.2)}
+.modal-box h3{margin-bottom:18px;color:#1e293b}
+
+/* === QUOTATION TABLE === */
+.items-table{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px}
+.items-table th{background:#f8fafc;padding:8px;text-align:right;color:#475569;border-bottom:2px solid #e2e8f0}
+.items-table td{padding:8px;border-bottom:1px solid #f1f5f9}
+.items-table .total-row{font-weight:700;background:#eff6ff}
+
+/* === AI CHAT === */
+.ai-fab{position:absolute;bottom:20px;left:20px;width:52px;height:52px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;box-shadow:0 4px 16px rgba(37,99,235,0.4)}
+.ai-chat{position:absolute;bottom:80px;left:20px;width:340px;max-width:80%;background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,0.15);display:none;flex-direction:column;overflow:hidden;z-index:150}
+.ai-chat-header{background:#2563eb;color:#fff;padding:12px 16px;font-size:14px;font-weight:700}
+.ai-chat-body{padding:14px;min-height:160px;max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.ai-msg{padding:10px 14px;border-radius:10px;font-size:13px;max-width:85%;line-height:1.6}
+.ai-msg.user{background:#eff6ff;color:#1e293b;align-self:flex-end}
+.ai-msg.bot{background:#f1f5f9;color:#1e293b;align-self:flex-start}
+.ai-chat-input{display:flex;border-top:1px solid #e2e8f0;padding:10px}
+.ai-chat-input input{flex:1;border:none;outline:none;font-size:13px;padding:6px;font-family:inherit}
+.ai-chat-input button{background:#2563eb;color:#fff;border:none;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer}
+
+/* === NARRATION === */
+#narration{position:absolute;bottom:0;left:0;right:0;background:rgba(15,23,42,0.88);color:#fff;padding:14px 24px;font-size:15px;line-height:1.7;text-align:center;backdrop-filter:blur(6px);z-index:500;min-height:50px;display:flex;align-items:center;justify-content:center;transition:opacity .3s}
+
+/* === CONTROLS BAR === */
+#controls{height:56px;background:#1e293b;display:flex;align-items:center;justify-content:center;gap:14px;padding:0 16px;flex-shrink:0}
+#controls button{background:none;border:none;color:#e2e8f0;font-size:20px;cursor:pointer;padding:6px 10px;border-radius:6px;transition:background .2s}
+#controls button:hover{background:#334155}
+#progress-wrap{flex:1;max-width:500px;height:6px;background:#334155;border-radius:3px;cursor:pointer;position:relative}
+#progress-bar{height:100%;background:#2563eb;border-radius:3px;width:0;transition:width .3s}
+#scene-counter{color:#94a3b8;font-size:13px;min-width:50px;text-align:center}
+
+/* === FADE TRANSITION === */
+.scene-container{position:absolute;inset:0;opacity:0;transition:opacity .4s;pointer-events:none}
+.scene-container.active{opacity:1;pointer-events:auto}
+
+/* === RESPONSIVE === */
+@media(max-width:640px){
+  #sidebar{width:160px;font-size:12px}
+  #sidebar .nav-item{padding:9px 12px;font-size:12px}
+  .login-box{padding:24px;width:90%}
+  .form-row{flex-direction:column}
+  .ai-chat{width:280px}
+  #narration{font-size:13px;padding:10px 14px}
+}
+</style>
+</head>
+<body>
+
+<div id="screen">
+  <div id="cursor" style="left:-40px;top:-40px"></div>
+  <div id="narration"></div>
+  <div class="success-toast" id="toast"></div>
+
+  <!-- All scenes rendered here by JS -->
+</div>
+
+<div id="controls">
+  <button id="btn-prev" title="السابق">&#9198;</button>
+  <button id="btn-play" title="تشغيل / إيقاف">&#9654;</button>
+  <button id="btn-next" title="التالي">&#9197;</button>
+  <div id="progress-wrap"><div id="progress-bar"></div></div>
+  <div id="scene-counter">1/9</div>
+</div>
+
+<script>
+(function(){
+
+const $ = s => document.querySelector(s);
+const cursor = $('#cursor');
+const narrationEl = $('#narration');
+const toast = $('#toast');
+const screen = $('#screen');
+const progressBar = $('#progress-bar');
+const sceneCounter = $('#scene-counter');
+
+let currentScene = 0;
+let playing = true;
+let sceneTimeout = null;
+let stepQueue = [];
+let stepTimer = null;
+
+// ======== SIDEBAR NAV ITEMS ========
+const navItems = [
+  {icon:'🏠', label:'الرئيسية', id:'nav-home'},
+  {icon:'📋', label:'حجز جديد', id:'nav-booking'},
+  {icon:'👥', label:'العملاء', id:'nav-customers'},
+  {icon:'💰', label:'عروض الأسعار', id:'nav-quotes'},
+  {icon:'📡', label:'نظام GPS', id:'nav-gps'},
+  {icon:'📢', label:'الشكاوى', id:'nav-complaints'},
+  {icon:'⏰', label:'الحضور', id:'nav-attendance'},
+  {icon:'⭐', label:'تصنيفي', id:'nav-rating'},
+];
+
+function buildSystemUI(){
+  return `<div id="system-ui" style="display:flex;position:absolute;inset:0;flex-direction:row-reverse">
+    <div id="sidebar">
+      <div class="logo">📊 نظام الإدارة</div>
+      ${navItems.map(n=>`<div class="nav-item" id="${n.id}"><span class="icon">${n.icon}</span>${n.label}</div>`).join('')}
+    </div>
+    <div id="main-area" style="flex:1;display:flex;flex-direction:column">
+      <div id="topbar">
+        <div class="page-title" id="page-title">الرئيسية</div>
+        <div class="user-info"><span class="role-badge">موظف مبيعات</span> أحمد المبيعات</div>
+      </div>
+      <div id="content"></div>
+    </div>
+  </div>`;
+}
+
+// ======== SCENE DEFINITIONS ========
+const scenes = [
+  // 0: LOGIN
+  {
+    title:'تسجيل الدخول',
+    setup(){
+      screen.innerHTML = `<div id="login-page">
+        <div class="login-box">
+          <h2>📊 نظام الإدارة</h2>
+          <p class="subtitle">تسجيل الدخول إلى حسابك</p>
+          <div class="field"><label>اسم المستخدم</label><input id="inp-user" type="text" placeholder="أدخل اسم المستخدم" dir="ltr"></div>
+          <div class="field"><label>كلمة المرور</label><input id="inp-pass" type="password" placeholder="أدخل كلمة المرور" dir="ltr"></div>
+          <button class="btn" id="btn-login">تسجيل الدخول</button>
+          <div class="spinner" id="login-spinner"></div>
+        </div>
+      </div>${narrationHTML('قم بإدخال اسم المستخدم وكلمة المرور لتسجيل الدخول')}`;
+      reattach();
+    },
+    steps:[
+      {delay:600, action:()=> moveTo('#inp-user')},
+      {delay:800, action:()=> clickEl('#inp-user')},
+      {delay:300, action:()=> typeInto('#inp-user','ahmed_sales',60)},
+      {delay:1200, action:()=> moveTo('#inp-pass')},
+      {delay:500, action:()=> clickEl('#inp-pass')},
+      {delay:300, action:()=> typeInto('#inp-pass','••••••••',80)},
+      {delay:1200, action:()=> moveTo('#btn-login')},
+      {delay:500, action:()=> { clickEl('#btn-login'); setTimeout(()=>{ if($('#login-spinner')) $('#login-spinner').style.display='block'; if($('#btn-login')) $('#btn-login').style.opacity='0.6'; },100); }},
+      {delay:1800, action:()=> nextScene()},
+    ]
+  },
+  // 1: DASHBOARD
+  {
+    title:'الصفحة الرئيسية',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('أول شي تسوي لما تفتح النظام — سجل حضورك');
+      reattach();
+      setActiveNav('nav-home');
+      setPageTitle('الرئيسية');
+      $('#content').innerHTML = `
+        <div class="attendance-widget" style="margin-bottom:20px">
+          <div class="att-info"><strong>تسجيل الحضور والانصراف</strong>الثلاثاء 2026/07/22 — 08:00 ص</div>
+          <button class="att-btn" id="btn-attend">تسجيل الحضور ☀️</button>
+        </div>
+        <div class="dash-cards">
+          <div class="dash-card" id="dc-booking"><div class="card-icon">📋</div><div class="card-label">حجز جديد</div></div>
+          <div class="dash-card" id="dc-quotes"><div class="card-icon">💰</div><div class="card-label">عروض الأسعار</div></div>
+          <div class="dash-card" id="dc-complaints"><div class="card-icon">📢</div><div class="card-label">الشكاوى</div></div>
+          <div class="dash-card" id="dc-gps"><div class="card-icon">📡</div><div class="card-label">نظام GPS</div></div>
+        </div>`;
+    },
+    steps:[
+      {delay:800, action:()=> moveTo('#btn-attend')},
+      {delay:800, action:()=> { clickEl('#btn-attend'); setTimeout(()=>{ let b=$('#btn-attend'); if(b){b.textContent='تم تسجيل الحضور ✓';b.classList.add('done');} },200); }},
+      {delay:600, action:()=> showToast('تم تسجيل حضورك ✓')},
+      {delay:2500, action:()=> nextScene()},
+    ]
+  },
+  // 2: NEW BOOKING - SEARCH
+  {
+    title:'حجز جديد — البحث عن زبون',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('ابحث عن الزبون بالاسم أو رقم الهاتف');
+      reattach();
+      setActiveNav('nav-booking');
+      setPageTitle('حجز جديد');
+      $('#content').innerHTML = `<div class="form-section"><h3>حجز خدمة جديد</h3>
+        <div class="form-group" style="position:relative"><label>بحث عن العميل</label><input id="inp-custsearch" placeholder="اكتب اسم أو رقم العميل..." style="max-width:420px">
+          <div class="search-dropdown" id="cust-dd">
+            <div class="dd-item" id="dd1">محمد أحمد العلي — 07801234567</div>
+            <div class="dd-item">محمد سالم — 07712345678</div>
+            <div class="dd-item">محمد علي حسن — 07901112233</div>
+          </div>
+        </div>
+        <div id="booking-form-rest" style="display:none">
+          <div class="form-row"><div class="form-group"><label>نوع الخدمة</label><select id="sel-service"><option value="">— اختر —</option><option>طاقة شمسية</option><option>كاميرات مراقبة</option><option>GPS</option></select></div>
+          <div class="form-group"><label>نوع المركبة</label><input id="inp-vehicle" placeholder=""></div></div>
+          <div class="form-row"><div class="form-group"><label>الأولوية</label><select id="sel-urgency"><option value="">— اختر —</option><option>عادي</option><option>عاجل</option><option>طوارئ</option></select></div>
+          <div class="form-group"><label>ملاحظات</label><textarea id="inp-notes" rows="2"></textarea></div></div>
+          <button class="btn-primary" id="btn-save-booking">حفظ الحجز</button>
+        </div>
+      </div>`;
+    },
+    steps:[
+      {delay:600, action:()=> moveTo('#inp-custsearch')},
+      {delay:600, action:()=> clickEl('#inp-custsearch')},
+      {delay:200, action:()=> typeInto('#inp-custsearch','محمد',100)},
+      {delay:900, action:()=>{ let dd=$('#cust-dd'); if(dd) dd.style.display='block'; }},
+      {delay:1000, action:()=> moveTo('#dd1')},
+      {delay:600, action:()=>{ clickEl('#dd1'); let dd=$('#cust-dd'); if(dd) dd.style.display='none'; let inp=$('#inp-custsearch'); if(inp) inp.value='محمد أحمد العلي — 07801234567'; }},
+      {delay:800, action:()=> nextScene()},
+    ]
+  },
+  // 3: BOOKING - FILL
+  {
+    title:'حجز جديد — تعبئة البيانات',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('عبّي بيانات الحجز واحفظها');
+      reattach();
+      setActiveNav('nav-booking');
+      setPageTitle('حجز جديد');
+      $('#content').innerHTML = `<div class="form-section"><h3>حجز خدمة جديد</h3>
+        <div class="form-group" style="margin-bottom:14px"><label>العميل</label><input value="محمد أحمد العلي — 07801234567" disabled style="background:#f8fafc;max-width:420px"></div>
+        <div class="form-row"><div class="form-group"><label>نوع الخدمة</label><select id="sel-service"><option value="">— اختر —</option><option value="solar">طاقة شمسية</option><option>كاميرات مراقبة</option></select></div>
+        <div class="form-group"><label>نوع المركبة</label><input id="inp-vehicle" placeholder=""></div></div>
+        <div class="form-row"><div class="form-group"><label>الأولوية</label><select id="sel-urgency"><option value="">— اختر —</option><option>عادي</option><option value="urgent">عاجل</option></select></div>
+        <div class="form-group"><label>ملاحظات</label><textarea id="inp-notes" rows="2"></textarea></div></div>
+        <button class="btn-primary" id="btn-save-booking">حفظ الحجز</button>
+      </div>`;
+    },
+    steps:[
+      {delay:500, action:()=> moveTo('#sel-service')},
+      {delay:600, action:()=>{ clickEl('#sel-service'); let s=$('#sel-service'); if(s) s.value='solar'; }},
+      {delay:800, action:()=> moveTo('#inp-vehicle')},
+      {delay:500, action:()=> clickEl('#inp-vehicle')},
+      {delay:200, action:()=> typeInto('#inp-vehicle','تويوتا',90)},
+      {delay:900, action:()=> moveTo('#sel-urgency')},
+      {delay:500, action:()=>{ clickEl('#sel-urgency'); let s=$('#sel-urgency'); if(s) s.value='urgent'; }},
+      {delay:700, action:()=> moveTo('#inp-notes')},
+      {delay:400, action:()=> clickEl('#inp-notes')},
+      {delay:200, action:()=> typeInto('#inp-notes','يحتاج تركيب سريع',70)},
+      {delay:1000, action:()=> moveTo('#btn-save-booking')},
+      {delay:600, action:()=>{ clickEl('#btn-save-booking'); showToast('تم حفظ الحجز بنجاح ✓'); }},
+      {delay:2000, action:()=> nextScene()},
+    ]
+  },
+  // 4: ADD CUSTOMER
+  {
+    title:'إضافة زبون جديد',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('تكدر تضيف زبون جديد من صفحة العملاء');
+      reattach();
+      setActiveNav('nav-customers');
+      setPageTitle('العملاء');
+      $('#content').innerHTML = `
+        <div class="list-header">
+          <input class="search-bar" placeholder="بحث عن عميل...">
+          <button class="btn-add" id="btn-add-cust">+ إضافة زبون</button>
+        </div>
+        <table class="data-table"><thead><tr><th>الكود</th><th>الاسم</th><th>الهاتف</th><th>الموقع</th></tr></thead>
+        <tbody id="cust-tbody">
+          <tr><td><span class="badge badge-code">CUST-00039</span></td><td>سعد كاظم</td><td>07801111111</td><td>بغداد — المنصور</td></tr>
+          <tr><td><span class="badge badge-code">CUST-00040</span></td><td>زينب عبد الله</td><td>07702222222</td><td>بغداد — الكرادة</td></tr>
+          <tr><td><span class="badge badge-code">CUST-00041</span></td><td>حيدر نور</td><td>07903333333</td><td>البصرة</td></tr>
+        </tbody></table>
+        <div id="modal-area"></div>`;
+    },
+    steps:[
+      {delay:700, action:()=> moveTo('#btn-add-cust')},
+      {delay:700, action:()=>{
+        clickEl('#btn-add-cust');
+        setTimeout(()=>{
+          let m=$('#modal-area');
+          if(m) m.innerHTML=`<div class="modal-overlay"><div class="modal-box"><h3>إضافة زبون جديد</h3>
+            <div class="form-group" style="margin-bottom:12px"><label>الاسم الكامل</label><input id="inp-cname"></div>
+            <div class="form-group" style="margin-bottom:12px"><label>رقم الهاتف</label><input id="inp-cphone" dir="ltr"></div>
+            <div class="form-group" style="margin-bottom:12px"><label>الموقع</label><input id="inp-cloc"></div>
+            <button class="btn-primary" id="btn-save-cust">حفظ</button>
+          </div></div>`;
+        },200);
+      }},
+      {delay:1000, action:()=> moveTo('#inp-cname')},
+      {delay:400, action:()=> clickEl('#inp-cname')},
+      {delay:200, action:()=> typeInto('#inp-cname','علي كريم',80)},
+      {delay:800, action:()=> moveTo('#inp-cphone')},
+      {delay:400, action:()=> clickEl('#inp-cphone')},
+      {delay:200, action:()=> typeInto('#inp-cphone','07901234567',50)},
+      {delay:900, action:()=> moveTo('#inp-cloc')},
+      {delay:400, action:()=> clickEl('#inp-cloc')},
+      {delay:200, action:()=> typeInto('#inp-cloc','بغداد — الكرادة',70)},
+      {delay:1000, action:()=> moveTo('#btn-save-cust')},
+      {delay:600, action:()=>{
+        clickEl('#btn-save-cust');
+        let m=$('#modal-area'); if(m) m.innerHTML='';
+        let tb=$('#cust-tbody');
+        if(tb){
+          let tr=document.createElement('tr');
+          tr.innerHTML='<td><span class="badge badge-code">CUST-00042</span></td><td>علي كريم</td><td>07901234567</td><td>بغداد — الكرادة</td>';
+          tr.style.background='#eff6ff';
+          tb.prepend(tr);
+        }
+        showToast('تم إضافة العميل بنجاح ✓');
+      }},
+      {delay:2200, action:()=> nextScene()},
+    ]
+  },
+  // 5: QUOTATION
+  {
+    title:'عروض الأسعار — إنشاء عرض',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('أنشئ عرض سعر جديد وأضف المنتجات');
+      reattach();
+      setActiveNav('nav-quotes');
+      setPageTitle('عروض الأسعار');
+      $('#content').innerHTML = `<div class="form-section"><h3>عرض سعر جديد</h3>
+        <div class="form-group" style="margin-bottom:14px;max-width:400px"><label>العميل</label><input id="inp-qcust" placeholder="اختر العميل"></div>
+        <table class="items-table"><thead><tr><th>المنتج</th><th>الكمية</th><th>السعر</th><th>المجموع</th></tr></thead>
+        <tbody id="q-tbody"></tbody>
+        <tfoot><tr class="total-row"><td colspan="3">الإجمالي</td><td id="q-total">0</td></tr></tfoot></table>
+        <button class="btn-primary" id="btn-save-quote" style="margin-top:14px">حفظ وطباعة</button>
+      </div>`;
+    },
+    steps:[
+      {delay:500, action:()=> moveTo('#inp-qcust')},
+      {delay:500, action:()=> clickEl('#inp-qcust')},
+      {delay:200, action:()=> typeInto('#inp-qcust','محمد أحمد العلي',60)},
+      {delay:1000, action:()=>{
+        let tb=$('#q-tbody');
+        if(tb) tb.innerHTML='<tr><td>كاميرا مراقبة</td><td>4</td><td>75,000</td><td>300,000</td></tr>';
+        narrationEl.textContent='أضف المنتجات والكميات والأسعار';
+      }},
+      {delay:1200, action:()=>{
+        let tb=$('#q-tbody');
+        if(tb) tb.innerHTML+='<tr><td>جهاز تسجيل DVR</td><td>1</td><td>120,000</td><td>120,000</td></tr>';
+        let t=$('#q-total'); if(t) t.textContent='420,000 د.ع';
+      }},
+      {delay:1200, action:()=> moveTo('#btn-save-quote')},
+      {delay:600, action:()=>{ clickEl('#btn-save-quote'); showToast('تم حفظ عرض السعر ✓'); }},
+      {delay:2000, action:()=> nextScene()},
+    ]
+  },
+  // 6: GPS
+  {
+    title:'نظام GPS — طلب جديد',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('سجّل طلب GPS جديد للعميل');
+      reattach();
+      setActiveNav('nav-gps');
+      setPageTitle('نظام GPS');
+      $('#content').innerHTML = `<div class="form-section"><h3>طلب GPS جديد</h3>
+        <div class="form-row"><div class="form-group"><label>العميل</label><select id="sel-gcust"><option value="">— اختر —</option><option value="m">محمد أحمد العلي</option><option>سعد كاظم</option></select></div>
+        <div class="form-group"><label>نوع الشراء</label><select id="sel-gptype"><option value="">— اختر —</option><option value="new">جديد</option><option>تجديد</option></select></div></div>
+        <div class="form-row"><div class="form-group"><label>نوع الاشتراك</label><select id="sel-gsub"><option value="">— اختر —</option><option value="y">سنوي</option><option>شهري</option></select></div>
+        <div class="form-group"><label>رقم الجهاز</label><input id="inp-gdev" placeholder=""></div></div>
+        <button class="btn-primary" id="btn-gps-save">تسجيل الطلب</button>
+      </div>`;
+    },
+    steps:[
+      {delay:500, action:()=> moveTo('#sel-gcust')},
+      {delay:500, action:()=>{ clickEl('#sel-gcust'); let s=$('#sel-gcust'); if(s)s.value='m'; }},
+      {delay:700, action:()=> moveTo('#sel-gptype')},
+      {delay:500, action:()=>{ clickEl('#sel-gptype'); let s=$('#sel-gptype'); if(s)s.value='new'; }},
+      {delay:700, action:()=> moveTo('#sel-gsub')},
+      {delay:500, action:()=>{ clickEl('#sel-gsub'); let s=$('#sel-gsub'); if(s)s.value='y'; }},
+      {delay:700, action:()=> moveTo('#inp-gdev')},
+      {delay:400, action:()=> clickEl('#inp-gdev')},
+      {delay:200, action:()=> typeInto('#inp-gdev','GPS-20260722',50)},
+      {delay:900, action:()=> moveTo('#btn-gps-save')},
+      {delay:500, action:()=>{ clickEl('#btn-gps-save'); showToast('تم تسجيل طلب GPS ✓'); }},
+      {delay:2000, action:()=> nextScene()},
+    ]
+  },
+  // 7: AI
+  {
+    title:'الذكاء الاصطناعي',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('تكدر تسأل الذكاء الاصطناعي عن أي شي يخص شغلك');
+      reattach();
+      setActiveNav('nav-home');
+      setPageTitle('الرئيسية');
+      $('#content').innerHTML = `
+        <div class="attendance-widget"><div class="att-info"><strong>مرحباً أحمد</strong>لديك 5 حجوزات اليوم</div><button class="att-btn done">تم تسجيل الحضور ✓</button></div>
+        <div class="ai-fab" id="ai-fab">🤖</div>
+        <div class="ai-chat" id="ai-chat">
+          <div class="ai-chat-header">🤖 المساعد الذكي</div>
+          <div class="ai-chat-body" id="ai-body"></div>
+          <div class="ai-chat-input"><input id="ai-inp" placeholder="اكتب سؤالك..."><button id="ai-send">إرسال</button></div>
+        </div>`;
+    },
+    steps:[
+      {delay:700, action:()=> moveTo('#ai-fab')},
+      {delay:600, action:()=>{ clickEl('#ai-fab'); let c=$('#ai-chat'); if(c) c.style.display='flex'; }},
+      {delay:700, action:()=> moveTo('#ai-inp')},
+      {delay:500, action:()=> clickEl('#ai-inp')},
+      {delay:200, action:()=> typeInto('#ai-inp','شنو حجوزاتي اليوم؟',80)},
+      {delay:1200, action:()=> moveTo('#ai-send')},
+      {delay:500, action:()=>{
+        clickEl('#ai-send');
+        let b=$('#ai-body');
+        if(b) b.innerHTML='<div class="ai-msg user">شنو حجوزاتي اليوم؟</div>';
+        let inp=$('#ai-inp'); if(inp) inp.value='';
+      }},
+      {delay:1200, action:()=>{
+        let b=$('#ai-body');
+        if(b) b.innerHTML+='<div class="ai-msg bot">عندك 5 حجوزات اليوم:<br>1. محمد العلي — طاقة شمسية (عاجل)<br>2. سعد كاظم — كاميرات<br>3. زينب عبد الله — GPS<br>4. حيدر نور — صيانة<br>5. علي كريم — تركيب جديد</div>';
+      }},
+      {delay:3000, action:()=> nextScene()},
+    ]
+  },
+  // 8: CHECKOUT
+  {
+    title:'تسجيل الانصراف',
+    setup(){
+      screen.innerHTML = buildSystemUI() + narrationHTML('في نهاية الدوام سجّل انصرافك');
+      reattach();
+      setActiveNav('nav-home');
+      setPageTitle('الرئيسية');
+      $('#content').innerHTML = `
+        <div class="attendance-widget">
+          <div class="att-info"><strong>تسجيل الحضور والانصراف</strong>تم تسجيل الحضور — 08:00 ص</div>
+          <button class="att-btn" id="btn-checkout" style="background:#dc2626">تسجيل الانصراف 🌙</button>
+        </div>
+        <div class="dash-cards" style="margin-top:20px">
+          <div class="dash-card"><div class="card-icon">✅</div><div class="card-label">5 حجوزات مكتملة</div></div>
+          <div class="dash-card"><div class="card-icon">💰</div><div class="card-label">2 عروض أسعار</div></div>
+          <div class="dash-card"><div class="card-icon">📡</div><div class="card-label">1 طلب GPS</div></div>
+        </div>`;
+    },
+    steps:[
+      {delay:800, action:()=> moveTo('#btn-checkout')},
+      {delay:800, action:()=>{ clickEl('#btn-checkout'); let b=$('#btn-checkout'); if(b){b.textContent='تم تسجيل الانصراف ✓';b.style.background='#16a34a';} showToast('تم تسجيل انصرافك ✓ — أحسنت!'); }},
+      {delay:2500, action:()=>{ narrationEl.textContent='🎉 انتهى الشرح! تكدر تعيد المشاهدة من الأزرار بالأسفل'; playing=false; updatePlayBtn(); }},
+    ]
+  },
+];
+
+function narrationHTML(t){ return ''; /* narration set via reattach */ }
+function reattach(){
+  // reattach cursor and narration to screen
+  if(!screen.contains(cursor)) screen.appendChild(cursor);
+  if(!screen.contains(narrationEl)) screen.appendChild(narrationEl);
+  if(!screen.contains(toast)) screen.appendChild(toast);
+}
+
+function setActiveNav(id){
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  let el=document.getElementById(id); if(el) el.classList.add('active');
+}
+function setPageTitle(t){ let el=$('#page-title'); if(el) el.textContent=t; }
+
+function moveTo(sel){
+  let el=document.querySelector(sel);
+  if(!el) return;
+  let r=el.getBoundingClientRect();
+  let sr=screen.getBoundingClientRect();
+  cursor.style.left=(r.left - sr.left + r.width/2)+'px';
+  cursor.style.top=(r.top - sr.top + r.height/2)+'px';
+}
+
+function clickEl(sel){
+  cursor.classList.remove('click');
+  void cursor.offsetWidth;
+  cursor.classList.add('click');
+  let el=document.querySelector(sel);
+  if(el) el.focus && el.focus();
+}
+
+function typeInto(sel, text, speed){
+  let el=document.querySelector(sel);
+  if(!el) return;
+  el.value='';
+  let i=0;
+  let iv=setInterval(()=>{
+    if(i<text.length){ el.value+=text[i]; i++; } else clearInterval(iv);
+  }, speed||80);
+}
+
+function showToast(msg){
+  toast.textContent=msg;
+  toast.style.display='block';
+  setTimeout(()=>{ toast.style.display='none'; },2200);
+}
+
+function updateProgress(){
+  let pct=((currentScene)/(scenes.length-1))*100;
+  progressBar.style.width=pct+'%';
+  sceneCounter.textContent=(currentScene+1)+'/'+scenes.length;
+}
+
+function updatePlayBtn(){
+  $('#btn-play').innerHTML = playing ? '&#9646;&#9646;' : '&#9654;';
+}
+
+function runScene(idx){
+  if(idx<0||idx>=scenes.length) return;
+  clearTimeout(sceneTimeout);
+  clearTimeout(stepTimer);
+  currentScene=idx;
+  updateProgress();
+  let scene=scenes[idx];
+  scene.setup();
+  narrationEl.textContent=scene.title;
+  // run steps
+  if(playing) runSteps(scene.steps, 0);
+}
+
+function runSteps(steps, i){
+  if(!playing||i>=steps.length) return;
+  stepTimer=setTimeout(()=>{
+    steps[i].action();
+    runSteps(steps, i+1);
+  }, steps[i].delay);
+}
+
+function nextScene(){
+  if(currentScene<scenes.length-1) runScene(currentScene+1);
+}
+
+// Controls
+$('#btn-play').addEventListener('click',()=>{
+  playing=!playing;
+  updatePlayBtn();
+  if(playing) runScene(currentScene);
+});
+$('#btn-next').addEventListener('click',()=>{
+  if(currentScene<scenes.length-1){ playing=true; updatePlayBtn(); runScene(currentScene+1); }
+});
+$('#btn-prev').addEventListener('click',()=>{
+  if(currentScene>0){ playing=true; updatePlayBtn(); runScene(currentScene-1); }
+});
+$('#progress-wrap').addEventListener('click',(e)=>{
+  let r=$('#progress-wrap').getBoundingClientRect();
+  let pct=(e.clientX-r.left)/r.width;
+  let idx=Math.round(pct*(scenes.length-1));
+  playing=true; updatePlayBtn();
+  runScene(Math.max(0,Math.min(idx,scenes.length-1)));
+});
+
+// Start
+updatePlayBtn();
+playing=true;
+updatePlayBtn();
+runScene(0);
+
+})();
+</script>
+</body>
+</html>

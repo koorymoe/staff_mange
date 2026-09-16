@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Entity SVG prototype</title>
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #17212b; }
+  svg { width: min(360px, 86vw); filter: drop-shadow(0 20px 24px #0008); }
+  .pupil { transition: transform 70ms linear; }
+  .brow { transition: transform 160ms ease; }
+  svg:hover .brow { transform: rotate(-15deg); }
+</style>
+<svg id="avatar" viewBox="0 0 300 300" role="img" aria-label="Interactive entity avatar prototype">
+  <defs>
+    <radialGradient id="face" cx="35%" cy="25%"><stop stop-color="#ffe2c1"/><stop offset="1" stop-color="#d99772"/></radialGradient>
+  </defs>
+  <circle cx="150" cy="150" r="118" fill="#263648"/>
+  <circle cx="150" cy="152" r="93" fill="url(#face)"/>
+  <path d="M70 117Q92 48 150 57Q208 48 230 117V96Q218 30 150 30Q82 30 70 96Z" fill="#263648"/>
+  <g class="brow" transform-origin="108 112"><path d="M79 111Q108 93 132 108" fill="none" stroke="#552d25" stroke-width="11" stroke-linecap="round"/></g>
+  <g class="brow" transform-origin="192 112"><path d="M168 108Q192 93 221 111" fill="none" stroke="#552d25" stroke-width="11" stroke-linecap="round"/></g>
+  <g fill="white"><ellipse cx="108" cy="138" rx="27" ry="24"/><ellipse cx="192" cy="138" rx="27" ry="24"/></g>
+  <g class="pupil" id="pupils"><circle cx="108" cy="138" r="10" fill="#20252c"/><circle cx="192" cy="138" r="10" fill="#20252c"/><circle cx="105" cy="134" r="3" fill="white"/><circle cx="189" cy="134" r="3" fill="white"/></g>
+  <path d="M119 205Q150 220 181 205" fill="none" stroke="#7f3f48" stroke-width="9" stroke-linecap="round"/>
+</svg>
+<script>
+  const svg = document.querySelector('#avatar');
+  const pupils = document.querySelector('#pupils');
+  svg.addEventListener('pointermove', (event) => {
+    const box = svg.getBoundingClientRect();
+    const x = Math.max(-1, Math.min(1, (event.clientX - box.left) / box.width * 2 - 1));
+    const y = Math.max(-1, Math.min(1, (event.clientY - box.top) / box.height * 2 - 1));
+    pupils.setAttribute('transform', `translate(${x * 8} ${y * 6})`);
+  });
+  svg.addEventListener('pointerleave', () => pupils.setAttribute('transform', 'translate(0 0)'));
+</script>
