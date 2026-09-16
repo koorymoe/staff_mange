@@ -74,3 +74,13 @@ func (h *QuotationHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"success": true})
 }
+
+// GET /api/quotations/{id}/versions — النسخ القديمة المؤرشفة
+func (h *QuotationHandler) Versions(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.Versions(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب النسخ القديمة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

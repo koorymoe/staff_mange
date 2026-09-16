@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type Quotation } from '../api'
 import { useSession } from '../session'
+import QuotationVersions from '../components/QuotationVersions'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -31,6 +32,8 @@ export default function QuotationsPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  /** العرض الي انفتح تاريخه — واحد بس، حتى الجدول ما يتمدّد كله. */
+  const [historyId, setHistoryId] = useState<string | null>(null)
 
   const load = (searchValue: string) => {
     api.getQuotations(searchValue)
@@ -170,6 +173,19 @@ export default function QuotationsPage() {
                         >
                           👁️ معاينة
                         </button>
+                        {/* 🔴 باب الأرشيف: التعديل چان يمحي النسخة
+                            القديمة تماماً، وهسه تنحفظ — بس أرشيف بلا
+                            باب ما إله قيمة. */}
+                        <button
+                          onClick={() => setHistoryId(historyId === q.id ? null : q.id)}
+                          style={{
+                            background: 'var(--sf-sunken)', color: 'var(--t-muted)', border: 'none',
+                            padding: '6px 14px', borderRadius: '6px', cursor: 'pointer',
+                            fontSize: '12px', fontWeight: 'bold',
+                          }}
+                        >
+                          📚 النسخ القديمة
+                        </button>
                         <button
                           onClick={() => navigate(`/quotations/${q.id}/edit`)}
                           style={{
@@ -197,6 +213,15 @@ export default function QuotationsPage() {
                   </tr>
                 )
               })}
+              {/* صف التاريخ ينفتح تحت العرض نفسه — مو بنافذة، حتى
+                  يقرا الأرقام القديمة وهو يشوف الجديدة بنفس الشاشة. */}
+              {historyId && quotations.some((q) => q.id === historyId) && (
+                <tr>
+                  <td colSpan={9} style={{ padding: '12px 16px', background: 'var(--sf-sunken)' }}>
+                    <QuotationVersions quotationId={historyId} />
+                  </td>
+                </tr>
+              )}
               {quotations.length === 0 && (
                 <tr>
                   <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: 'var(--t-faint)' }}>

@@ -333,6 +333,9 @@ func versionedMigrations() []Migration {
 	// 0280: «الزبون يرجع خبر» — نوع الانتظار، حتى «ما رد» و«ينتظر
 	// قرار الزبون» ما ينخلطون بطابور واحد.
 	result = append(result, customerDecisionMigrations()...)
+	// 0281 وما بعدها: عروض الأسعار — ترتيب البنود (چانن يُقرأن بلا أي
+	// ORDER BY) وأرشيف النسخ (التعديل چان يمحي النسخة المرسلة للزبون).
+	result = append(result, quotationVersionMigrations()...)
 	return result
 }
 

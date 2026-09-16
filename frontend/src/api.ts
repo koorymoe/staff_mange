@@ -2098,6 +2098,8 @@ export interface QuotationItem {
   quantity: number
   unitPrice: number
   totalPrice: number
+  /** ترتيب البند بالعرض — محله بالقائمة المحفوظة */
+  sortIndex?: number
 }
 
 export interface Quotation {
@@ -2116,6 +2118,30 @@ export interface Quotation {
   notes: string | null
   status: 'NEW' | 'SENT' | 'ACCEPTED' | 'REJECTED'
   createdAt: string
+}
+
+/** ═══ نسخة مؤرشفة من عرض سعر ═══
+ *  `snapshot` لقطة كاملة للعرض قبل التعديل — تجي **مرمّزة base64**
+ *  لأن الخادم يخزّنها JSONB خاماً (`[]byte` بـGo). استعمل
+ *  `parseQuotationSnapshot` لفكّها، ما تقراها مباشرة. */
+export interface QuotationVersion {
+  id: string
+  quotationId: string
+  version: number
+  snapshot: string
+  archivedByName: string | null
+  archivedAt: string
+}
+
+/** يفكّ لقطة النسخة المؤرشفة. يرجّع null لو انكسرت — الوثيقة
+ *  التاريخية ما تسقّط الشاشة، تنعرض «تعذّر قراءتها». */
+export function parseQuotationSnapshot(snapshot: string): Quotation | null {
+  try {
+    const json = typeof atob === 'function' ? atob(snapshot) : snapshot
+    return JSON.parse(decodeURIComponent(escape(json))) as Quotation
+  } catch {
+    try { return JSON.parse(snapshot) as Quotation } catch { return null }
+  }
 }
 
 /** سطر بسجل تعديلات المحاسب على فاتورة — قبل وبعد */
@@ -4317,6 +4343,9 @@ export const api = {
   // Quotations
   getQuotations: (search?: string) => request<Quotation[]>(`/quotations${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   getQuotation: (id: string) => request<Quotation>(`/quotations/${id}`),
+  /** النسخ القديمة المؤرشفة — الأحدث أولاً */
+  getQuotationVersions: (id: string) =>
+    request<QuotationVersion[]>(`/quotations/${id}/versions`),
   createQuotation: (data: {
     customerName: string
     customerPhone?: string

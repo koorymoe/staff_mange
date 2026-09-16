@@ -133,9 +133,16 @@ func (s *QuotationService) Update(id, actorID, role string, req model.UpdateQuot
 			}
 		}
 	}
-	return s.repo.Update(id, req)
+	// actorID ينمرّر حتى النسخة المؤرشفة تعرف منو عدّل — «منو بدّل
+	// السعر» سؤال يجي متأخر ولازم إله جواب.
+	return s.repo.Update(id, req, actorID)
 }
 
 func (s *QuotationService) Delete(id string) error {
 	return s.repo.Delete(id)
+}
+
+// Versions النسخ المؤرشفة لعرض — نفس صلاحية قراءة العرض نفسه.
+func (s *QuotationService) Versions(id string) ([]model.QuotationVersion, error) {
+	return s.repo.Versions(id)
 }

@@ -26,6 +26,13 @@ const emptyItem = (): ItemRow => ({
 
 const fmt = (n: number) => n.toLocaleString('en-IQ')
 
+// زرّا الترتيب — بديل السحب للموبايل وللكيبورد.
+const arrowBtnStyle = (disabled: boolean): React.CSSProperties => ({
+  border: 'none', background: 'transparent', cursor: disabled ? 'default' : 'pointer',
+  padding: 0, lineHeight: 0.9, fontSize: 9, fontFamily: 'inherit',
+  color: disabled ? 'var(--bd-line)' : 'var(--t-muted)',
+})
+
 export default function QuotationNew() {
   const { employee } = useSession()
   const { id } = useParams()
@@ -52,6 +59,35 @@ export default function QuotationNew() {
   const [customerAddress, setCustomerAddress] = useState(searchParams.get('customerAddress') || '')
   const [projectName, setProjectName] = useState(searchParams.get('projectName') || '')
   const [items, setItems] = useState<ItemRow[]>([emptyItem()])
+  // ═══ سحب وإفلات لترتيب البنود ═══
+  //
+  // (ع): «أريد أرتب أماكن الأجهزة، أريد أخلي الأول أخير والأخير أول —
+  // لازم أكو زر سحب وإفلات بجانب كل رقم».
+  //
+  // ⚠️ السحب بالماوس وحده ما يكفي: صفوف الجدول على الموبايل ما تنسحب
+  // مريحاً، والعرض ينتسوّى بالموبايل هم. فأكو **زرّان ▲▼** بصف
+  // المقبض — نفس النتيجة بضغطة، ويشتغلون بالكيبورد.
+  // ⚠️ **مرجع مو حالة للمنطق**: `onDrop` يقرا القيمة من إغلاق
+  // الرندر الي انبنى بيه. ولو بدا السحب وانتهى قبل ما React يعيد
+  // الرسم (سحب سريع، أو جهاز بطيء يجمّع الأحداث)، المُعالج يقرا
+  // `null` فالإفلات يضيع بهدوء ويحسب الموظف إن الترتيب ما ينحفظ.
+  // المرجع دائماً بآخر قيمة. والحالة تبقى للمنظر وحده (الظل والتظليل).
+  const dragIndexRef = useRef<number | null>(null)
+  const [dragIndex, setDragIndex] = useState<number | null>(null)
+  const [overIndex, setOverIndex] = useState<number | null>(null)
+  const startDrag = (i: number) => { dragIndexRef.current = i; setDragIndex(i) }
+  const endDrag = () => { dragIndexRef.current = null; setDragIndex(null); setOverIndex(null) }
+
+  /** ينقل البند من محل لمحل — مصدر وحد لكل طرق الترتيب. */
+  const moveItem = (from: number, to: number) => {
+    setItems((prev) => {
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev
+      const next = [...prev]
+      const [row] = next.splice(from, 1)
+      next.splice(to, 0, row)
+      return next
+    })
+  }
 
   // نجلب المنظومة ونحوّلها سطور عرض سعر. الأسعار تجي من الباك إند
   // محسوبة بأسعار المخزن اليوم — نفس الرقم الي يشوفه الإداري بالكتالوك.
@@ -60,7 +96,11 @@ export default function QuotationNew() {
     api.getSolarSystem(solarSystemId).then((sys) => {
       const rows: ItemRow[] = []
       const push = (name: string, qty: number, unitPrice: number, unit = 'قطعة') => {
-        if (qty <= 0 || unitPrice <= 0) return
+        // 🔴 چان `unitPrice <= 0` — يعني أي بند سعره صفر **ينرمى**
+        // بالكامل من العرض المستورد. و(ع) كال: «أكو مرات يكون السعر
+        // بالبوينتات لو السعر صفر». البند المجاني (هدية أو ضمان) لازم
+        // يطلع بالعرض بصفره، لأن الزبون لازم يشوف إنه داخل بالاتفاق.
+        if (qty <= 0 || unitPrice < 0) return
         rows.push({ productName: name, unit, quantity: qty, unitPrice, totalPrice: qty * unitPrice })
       }
       if (sys.panel) push(sys.panel.name, sys.panelQty, sys.panel.price, 'لوح')
@@ -173,7 +213,9 @@ export default function QuotationNew() {
   const today = new Date().toISOString().split('T')[0]
 
   const grandTotal = items.reduce((sum, item) => sum + item.totalPrice, 0)
-  const discountValue = Math.round(grandTotal * (discountPercent / 100))
+  // ⚠️ بلا Math.round: الخادم يحسبها بلا تقريب، فالتقريب هنا يخلي
+  // الي يشوفه الموظف بالشاشة غير الي ينحفظ ويطلع بالعرض المطبوع.
+  const discountValue = grandTotal * (discountPercent / 100)
   const netTotal = grandTotal - discountValue
 
   const updateItem = (index: number, changes: Partial<ItemRow>) => {
@@ -799,7 +841,7 @@ ${pageShell(`
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
             <thead>
               <tr>
-                <th style={thStyle({ width: '5%' })}>م</th>
+                <th style={thStyle({ width: '8%' })}>م / الترتيب</th>
                 <th style={thStyle({ width: '28%' })}>البيان / المنتج / الخدمة</th>
                 <th style={thStyle({ width: '13%' })}>الوحدة</th>
                 <th style={thStyle({ width: '13%' })}>العدد</th>
@@ -810,8 +852,55 @@ ${pageShell(`
             </thead>
             <tbody>
               {items.map((item, index) => (
-                <tr key={index} style={{ borderBottom: '1px solid var(--bd-line)' }}>
-                  <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: 'var(--t-title-alt)' }}>{index + 1}</td>
+                <tr
+                  key={index}
+                  // ⚠️ الإفلات لازم يمنع السلوك الافتراضي بـonDragOver،
+                  // وإلا المتصفح ما يعتبر الصف هدفاً أصلاً.
+                  onDragOver={(e) => { e.preventDefault(); if (dragIndexRef.current !== null) setOverIndex(index) }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const from = dragIndexRef.current
+                    if (from !== null) moveItem(from, index)
+                    endDrag()
+                  }}
+                  style={{
+                    borderBottom: '1px solid var(--bd-line)',
+                    background: overIndex === index && dragIndex !== null && dragIndex !== index
+                      ? 'rgba(44,90,173,0.08)' : undefined,
+                    opacity: dragIndex === index ? 0.45 : 1,
+                  }}
+                >
+                  <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: 'var(--t-title-alt)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+                      {/* المقبض هو الي ينسحب مو الصف كله: لو الصف كله
+                          قابل للسحب، أي تحديد نص بخانة يبدي سحباً. */}
+                      <span
+                        draggable
+                        onDragStart={(e) => {
+                          startDrag(index)
+                          // ⚠️ setData لازم: فَيَرفُكس (وبعض المتصفحات)
+                          // ما يبدي سحباً أصلاً بلا بيانات بالحدث،
+                          // فالمقبض يطلع كأنه معطّل عند بعض الموظفين.
+                          e.dataTransfer.effectAllowed = 'move'
+                          try { e.dataTransfer.setData('text/plain', String(index)) } catch { /* بعض البيئات تمنعها */ }
+                        }}
+                        onDragEnd={endDrag}
+                        title="اسحبني لترتيب البند"
+                        style={{ cursor: 'grab', fontSize: 15, lineHeight: 1, color: 'var(--t-muted)', userSelect: 'none' }}
+                      >⋮⋮</span>
+                      <span>{index + 1}</span>
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                        <button type="button" aria-label="حرّكه فوق"
+                          disabled={index === 0}
+                          onClick={() => moveItem(index, index - 1)}
+                          style={arrowBtnStyle(index === 0)}>▲</button>
+                        <button type="button" aria-label="حرّكه تحت"
+                          disabled={index === items.length - 1}
+                          onClick={() => moveItem(index, index + 1)}
+                          style={arrowBtnStyle(index === items.length - 1)}>▼</button>
+                      </span>
+                    </div>
+                  </td>
                   <td style={{ padding: '10px 6px', position: 'relative' }}>
                     <div ref={(el) => { autocompleteRefs.current[index] = el }} style={{ position: 'relative' }}>
                       <input
@@ -868,7 +957,15 @@ ${pageShell(`
                       style={{ ...tableInputStyle, width: '80px' }} />
                   </td>
                   <td style={{ padding: '10px 6px' }}>
-                    <input type="number" min={0} value={item.unitPrice} onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) })} style={{ ...tableInputStyle, width: '110px' }} />
+                    {/* ⚠️ step="any" لازم: بلاه المتصفح يفرض خطوة ١
+                        ويرفض الكسور — و«١٥٠٠٠.٥» ما تنكتب أصلاً.
+                        والصفر مسموح: بند مجاني أو محسوب بالبوينتات. */}
+                    <input type="number" min={0} step="any" value={item.unitPrice}
+                      onChange={(e) => {
+                        const n = Number(e.target.value)
+                        updateItem(index, { unitPrice: Number.isFinite(n) && n >= 0 ? n : 0 })
+                      }}
+                      style={{ ...tableInputStyle, width: '110px' }} />
                   </td>
                   <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: 'var(--t-title-alt)' }}>{fmt(item.totalPrice)}</td>
                   <td style={{ padding: '10px 6px', textAlign: 'center' }}>

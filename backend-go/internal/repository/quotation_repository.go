@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"strings"
@@ -30,7 +31,10 @@ func (r *QuotationRepository) loadEmployeeBrief(id string) *model.EmployeeBrief 
 
 func (r *QuotationRepository) hydrate(q *model.Quotation) error {
 	items := []model.QuotationItem{}
-	if err := r.db.Select(&items, `SELECT * FROM "QuotationItem" WHERE "quotationId" = $1`, q.ID); err != nil {
+	// ⚠️ id فارز ثانوي: البنود القديمة كلها sortIndex=0، وبلا فارز
+	// ثاني ترتيبهن يبقى غير مضمون بين قراءة وقراءة.
+	if err := r.db.Select(&items, `SELECT * FROM "QuotationItem" WHERE "quotationId" = $1
+		ORDER BY "sortIndex", id`, q.ID); err != nil {
 		return err
 	}
 	q.Items = items
@@ -83,7 +87,8 @@ func (r *QuotationRepository) hydrateAll(quotations []model.Quotation) error {
 
 	// ── البنود بدفعة وحدة ──
 	items := []model.QuotationItem{}
-	q, args, err := sqlx.In(`SELECT * FROM "QuotationItem" WHERE "quotationId" IN (?)`, ids)
+	q, args, err := sqlx.In(`SELECT * FROM "QuotationItem" WHERE "quotationId" IN (?)
+		ORDER BY "quotationId", "sortIndex", id`, ids)
 	if err != nil {
 		return err
 	}
@@ -169,14 +174,19 @@ func padLeft(s string, length int, pad byte) string {
 	return s
 }
 
+// insertItems يدخل البنود **بترتيب القائمة الي وصلت** — محل البند
+// بالمصفوفة هو ترتيبه، فسحب البند بالواجهة يصير حفظاً للترتيب.
+//
+// 🔴 قبل هذا، الترتيب ماكان ينحفظ ولا ينقرا: العرض المطبوع للزبون
+// ترتيب أجهزته هو الي ترجّعه القاعدة، ويتبدّل بين قراءة وقراءة.
 func (r *QuotationRepository) insertItems(tx *sqlx.Tx, quotationID string, items []model.QuotationItemInput) error {
-	for _, item := range items {
+	for i, item := range items {
 		totalPrice := float64(item.Quantity) * item.UnitPrice
 		if _, err := tx.Exec(`
-			INSERT INTO "QuotationItem" (id, "quotationId", "productName", unit, quantity, "unitPrice", "totalPrice", "imageBase64")
-			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''))
+			INSERT INTO "QuotationItem" (id, "quotationId", "productName", unit, quantity, "unitPrice", "totalPrice", "imageBase64", "sortIndex")
+			VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, NULLIF($7,''), $8)
 		`, quotationID, item.ProductName, item.Unit, item.Quantity, item.UnitPrice, totalPrice,
-			derefStr(item.ImageBase64)); err != nil {
+			derefStr(item.ImageBase64), i); err != nil {
 			return err
 		}
 	}
@@ -235,7 +245,17 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 	return &q, nil
 }
 
-func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest) (*model.Quotation, error) {
+// Update يعدّل العرض — ويأرشف النسخة السابقة قبل ما يلمسها.
+//
+// 🔴 قبل هذا، التعديل يسوي DELETE على كل البنود ويعيد إدخالهن:
+// فالعرض الي انرسل للزبون بتاريخ معيّن، بأسعاره وبنوده، **يضيع
+// للأبد** أول ما أحد يعدّل. وخسارة مستمرة مو احتمال: كل تعديل يمحي
+// وثيقة انرسلت فعلاً، والزبون يرجع يسأل «إنت كتلي كذا» وماكو إثبات.
+//
+// الأرشفة **جوّا نفس المعاملة**: لو فشل الحفظ ترجع اللقطة معاه، ولو
+// فشلت اللقطة ما ينمحي شي. بلا هذا يصير أرشيف لنسخة انحفظت أو
+// تعديل بلا أرشيف — والاثنان أسوأ من ماكو أرشيف.
+func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest, editorID string) (*model.Quotation, error) {
 	existing, err := r.FindByID(id)
 	if err != nil {
 		return nil, err
@@ -255,6 +275,27 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 	}
 	defer tx.Rollback()
 
+	// ═══ اللقطة — قبل أي لمسة ═══
+	// `existing` مهدرَج كاملاً (الرأس والبنود بترتيبهن)، فاللقطة هي
+	// العرض مثل ما هو بهاي اللحظة بالضبط.
+	snapshot, err := json.Marshal(existing)
+	if err != nil {
+		return nil, err
+	}
+	// رقم النسخة: التالي لأعلى رقم مؤرشف. COALESCE حتى أول أرشفة
+	// تصير ١ مو صفراً.
+	var nextVersion int
+	if err := tx.Get(&nextVersion, `
+		SELECT COALESCE(MAX(version), 0) + 1 FROM "QuotationVersion" WHERE "quotationId" = $1`, id); err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(`
+		INSERT INTO "QuotationVersion" (id, "quotationId", version, snapshot, "archivedById")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4)
+	`, id, nextVersion, snapshot, nullIfEmpty(editorID)); err != nil {
+		return nil, err
+	}
+
 	var grandTotal, discountValue, netTotal *float64
 	if req.Items != nil {
 		if _, err := tx.Exec(`DELETE FROM "QuotationItem" WHERE "quotationId" = $1`, id); err != nil {
@@ -264,6 +305,20 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 			return nil, err
 		}
 		gt, dv, nt := computeTotals(req.Items, discountPercent)
+		grandTotal, discountValue, netTotal = &gt, &dv, &nt
+	} else if req.DiscountPercent != nil && *req.DiscountPercent != existing.DiscountPercent {
+		// 🔴 تبديل الخصم وحده ماكان يعيد الحساب: الأعمدة تبقى
+		// COALESCE على القديم، فالعرض يطلع «خصم ١٠٪» والصافي هو
+		// **نفس** المجموع بلا نقص. مقيس: خصم ١٠٪ ومجموع ٨٨٠,٠٠٠
+		// والصافي بقى ٨٨٠,٠٠٠ — والزبون يشوف رقماً غلط بوثيقة سعر.
+		//
+		// نعيد الحساب من بنود العرض الموجودة (مهدرَجة بـexisting)
+		// بنفس دالة الحساب الوحدة — مو بصيغة ثانية تنفرز عنها.
+		items := make([]model.QuotationItemInput, 0, len(existing.Items))
+		for _, it := range existing.Items {
+			items = append(items, model.QuotationItemInput{Quantity: it.Quantity, UnitPrice: it.UnitPrice})
+		}
+		gt, dv, nt := computeTotals(items, discountPercent)
 		grandTotal, discountValue, netTotal = &gt, &dv, &nt
 	}
 
@@ -302,4 +357,21 @@ func (r *QuotationRepository) Update(id string, req model.UpdateQuotationRequest
 func (r *QuotationRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "Quotation" WHERE id = $1`, id)
 	return err
+}
+
+// Versions النسخ المؤرشفة لعرض واحد — الأحدث أولاً.
+//
+// ⚠️ ترجّع اللقطة خاماً (JSON) مو كائن عرض: النسخة القديمة وثيقة
+// تاريخية، ولو أرجعناها بنفس نوع العرض الحالي يصير أي تعديل بشكل
+// العرض يغيّر كيف تُقرا وثائق الماضي — ويوهم إنها تنعدّل.
+func (r *QuotationRepository) Versions(quotationID string) ([]model.QuotationVersion, error) {
+	rows := []model.QuotationVersion{}
+	err := r.db.Select(&rows, `
+		SELECT v.id, v."quotationId", v.version, v.snapshot, v."archivedById",
+		       v."archivedAt", e.name AS "archivedByName"
+		FROM "QuotationVersion" v
+		LEFT JOIN "Employee" e ON e.id = v."archivedById"
+		WHERE v."quotationId" = $1
+		ORDER BY v.version DESC`, quotationID)
+	return rows, err
 }

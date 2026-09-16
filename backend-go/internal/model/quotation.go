@@ -24,8 +24,8 @@ type Quotation struct {
 }
 
 type QuotationItem struct {
-	ID          string  `db:"id" json:"id"`
-	QuotationID string  `db:"quotationId" json:"quotationId"`
+	ID          string `db:"id" json:"id"`
+	QuotationID string `db:"quotationId" json:"quotationId"`
 	// مرجع صورة المنتج وقت إصدار العرض (مسار ملف أو data: قديمة).
 	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
 	ImageBase64 *string `db:"imageBase64" json:"imageBase64"`
@@ -34,6 +34,9 @@ type QuotationItem struct {
 	Quantity    int     `db:"quantity" json:"quantity"`
 	UnitPrice   float64 `db:"unitPrice" json:"unitPrice"`
 	TotalPrice  float64 `db:"totalPrice" json:"totalPrice"`
+	// SortIndex ترتيب البند بالعرض — محله بالقائمة الي انحفظت.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
+	SortIndex int `db:"sortIndex" json:"sortIndex"`
 }
 
 type QuotationItemInput struct {
@@ -68,4 +71,20 @@ type UpdateQuotationRequest struct {
 	Duration        *string              `json:"duration"`
 	Status          *string              `json:"status"`
 	Items           []QuotationItemInput `json:"items"`
+}
+
+// ═══ نسخة مؤرشفة من عرض سعر ═══
+//
+// (ع): «أريد ينحفظ بدل القديم بس القديم يضل مؤرشف بغير مكان».
+//
+// Snapshot لقطة كاملة بـJSON للعرض مثل ما كان قبل التعديل — الرأس
+// والبنود بترتيبهن وأسعارهن. نص خام مقصود: الوثيقة تُقرا ما تُعدَّل.
+type QuotationVersion struct {
+	ID             string    `db:"id" json:"id"`
+	QuotationID    string    `db:"quotationId" json:"quotationId"`
+	Version        int       `db:"version" json:"version"`
+	Snapshot       []byte    `db:"snapshot" json:"snapshot"`
+	ArchivedByID   *string   `db:"archivedById" json:"-"`
+	ArchivedByName *string   `db:"archivedByName" json:"archivedByName"`
+	ArchivedAt     time.Time `db:"archivedAt" json:"archivedAt"`
 }
