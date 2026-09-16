@@ -129,36 +129,56 @@ func (h *BookingHandler) ListInternal(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/bookings/service-paperwork?kind=GPS|DASHCAM
 //
-// حجوزات **خدماتي** المنجزة الي ورقها عليّ، مرشّحة بالنوع — منتقي
-// الربط بشاشة فاتورة الخدمة.
+// حجوزات النوع المنجزة — منتقي الربط بشاشة فاتورة الخدمة.
 //
-// ⚠️ الموظف من **التوكن** مو من الرابط: بلاها يبدّل الرقم ويشوف
-// حجوزات مسؤول خدمة ثاني (نفس سبب `ManagerPaperwork`).
+// ⚠️ **النوع لازم يطابق الصلاحية**: حارس المسار يقبل
+// `invoice_gps` **أو** `invoice_dashcam`، فبلا فحص هنا صاحب فاتورة
+// الجي بي اس يبدّل الرابط لـ`kind=DASHCAM` ويشوف زبائن مو من شغله.
+// والمالك والمدير يشوفون الاثنين.
 func (h *BookingHandler) ServicePaperworkByKind(w http.ResponseWriter, r *http.Request) {
 	kind := r.URL.Query().Get("kind")
 	if kind != model.ServiceInvoiceGps && kind != model.ServiceInvoiceDashcam {
 		WriteError(w, http.StatusBadRequest, "نوع الخدمة لازم يكون جي بي اس أو داش كام")
 		return
 	}
-	// 🔴 المالك والمدير **بلا حصر**: الحارس يمرّرهم، ولو حصرناهم
-	// بـ`ServiceManager` تطلعلهم قائمة فاضية لأنهم مو مسجَّلين
-	// مسؤولي خدمة — وهذا الي صار فعلاً. ونفس نمط `ListInternal`
-	// فوگ حتى ما نبني منطق حصر ثاني.
-	//
-	// ⚠️ والمحاسب والمراقب **يبقون محصورين**: هما يوصلون هنا بصلاحية
-	// فاتورة الخدمة، يعني يشتغلون كمسؤول خدمة مو كمراقب — وقائمة
-	// كل خدمات الشركة تكشف زبائن مو من شغلهم.
-	party := middleware.EmployeeIDFromContext(r)
-	switch middleware.RoleFromContext(r) {
-	case "ADMIN", "OWNER":
-		party = ""
+	if !h.mayInvoiceKind(r, kind) {
+		WriteError(w, http.StatusForbidden, "ما عندك صلاحية فواتير هذا النوع")
+		return
 	}
-	bookings, err := h.service.ListServicePaperworkByKind(party, kind)
+	bookings, err := h.service.ListServicePaperworkByKind(kind)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزات الخدمة")
 		return
 	}
 	WriteJSON(w, http.StatusOK, bookings)
+}
+
+// mayInvoiceKind هل هذا الموظف إله فواتير هذا النوع؟
+//
+// ⚠️ فشل قراءة الصلاحيات **يمنع** ما يسمح: خطأ بالقاعدة ما يصير
+// يفتح زبائن نوع ثاني.
+func (h *BookingHandler) mayInvoiceKind(r *http.Request, kind string) bool {
+	switch middleware.RoleFromContext(r) {
+	case "ADMIN", "OWNER":
+		return true
+	}
+	if h.permissions == nil {
+		return false
+	}
+	rows, err := h.permissions.ListForEmployee(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		return false
+	}
+	want := "invoice_gps"
+	if kind == model.ServiceInvoiceDashcam {
+		want = "invoice_dashcam"
+	}
+	for _, p := range rows {
+		if p.Name == want {
+			return true
+		}
+	}
+	return false
 }
 
 // SetReminderService يربط خدمة التذكير بعد البناء.

@@ -229,6 +229,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // والبديل **أدق وأرخص**: أسماء زبائن **حجوزاته هو** — واصلة
   // أصلاً مع `completedBookings`، بلا أي نداء زيادة وبلا صلاحية.
   // وهي الي يحتاجها فعلاً: زبائن شغله، مو كل زبائن الشركة.
+  const serviceKindLabel = serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'
   const knownCustomers = completedBookings
     .map((b) => b.customer)
     .filter((c): c is NonNullable<typeof c> => !!c && !!c.name)
@@ -1198,8 +1199,10 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           <p className="mt-1 text-xs text-slate-500">
             {serviceMode
               ? pickableBookings.length > 0
-                ? `${pickableBookings.length} حجز ${serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'} منجز — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
-                : `ماكو حجز ${serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'} منجز يستحق فاتورة. الأسباب المحتملة: إنك مو مسجَّل مسؤول الخدمة عليها (المالك يسجّلك من شاشة «مسؤولي الخدمات») · أو الخدمة ما انتأشّر نوعها بنفس الشاشة · أو الورق مو مأشّر عليها إنه على مسؤول الخدمة · أو ماكو حجز منجز إلها. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
+                ? `${pickableBookings.length} حجز ${serviceKindLabel} منجز — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
+                : services.some((sv) => sv.serviceKind === serviceKind)
+                  ? `ماكو حجز ${serviceKindLabel} **منجز** لحد هسه. القائمة تعرض المنجز وبس — الفاتورة بعد ما يخلص الشغل. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
+                  : `🔴 ماكو ولا خدمة مأشَّرة ${serviceKindLabel} بالنظام — وبلا التأشير النظام ما يعرف أي حجز هو ${serviceKindLabel}. العلاج ضغطة وحدة: شاشة «مسؤولي الخدمات» ← «🛰️ نوع الخدمة» ← أشّر الخدمة ${serviceKindLabel}.`
               : myProjects.length > 0
                 ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
                 : 'ما اكو مشروع موجّه لك حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}

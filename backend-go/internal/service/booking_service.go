@@ -1011,8 +1011,8 @@ func (s *BookingService) Get(id string) (*model.Booking, error) {
 
 // ListServicePaperworkByKind حجوزات خدماتي المنجزة مرشّحة بنوع الخدمة
 // (جي بي اس / داش كام) — منتقي الربط بفاتورة الخدمة.
-func (s *BookingService) ListServicePaperworkByKind(employeeID, kind string) ([]model.Booking, error) {
-	return s.repo.ListServicePaperworkByKind(employeeID, kind, 0)
+func (s *BookingService) ListServicePaperworkByKind(kind string) ([]model.Booking, error) {
+	return s.repo.ListServicePaperworkByKind(kind, 0)
 }
 
 // ListInternal حجوزات الشغل داخل الشركة.

@@ -101,15 +101,21 @@ export default function ServiceManagersPage() {
             حجوزات الشركة.
             ⚠️ والتأشير هنا **بنفس الصف والتنسيق** مو شاشة جديدة —
             نفس المحل الي يأشّر بيه المالك «الورق على المسؤول». */}
-        {services.some((sv) => sv.managerHandlesPaperwork) && (
+        {/* 🔴 چان مشروطاً بـ`managerHandlesPaperwork` — يعني الخدمة
+            الي ما انتأشّر ورقها **ما يطلعلها منتقي نوع**، فالمالك ما
+            يكدر يأشّر الداش كام إطلاقاً، والقائمة تبقى فاضية وهو ما
+            عنده طريق يصلّحها. صار يطلع دائماً ولكل الخدمات. */}
+        {services.length > 0 && (
           <div className="mt-4 border-t border-sky-200 pt-3">
-            <h4 className="mb-1 text-[13.5px] font-bold text-sky-900">🛰️ نوع الخدمة — للي ورقها على المسؤول</h4>
+            <h4 className="mb-1 text-[13.5px] font-bold text-sky-900">🛰️ نوع الخدمة — منو الجي بي اس ومنو الداش كام</h4>
             <p className="mb-2 text-[12px] leading-relaxed text-sky-800">
-              أشّر أي خدمة هي <b>جي بي اس</b> وأيّها <b>داش كام</b>. ومن يسوي
-              مسؤول الخدمة فاتورة، القائمة تعرضله <b>حجوزات ذاك النوع وبس</b>.
+              أشّر أي خدمة هي <b>جي بي اس</b> وأيّها <b>داش كام</b> — ضغطتين
+              بس، ومرة وحدة. ومن يسوي صاحب صلاحية «فاتورة الجي بي اس»
+              فاتورة، القائمة تعرضله <b>حجوزات الجي بي اس وبس</b>، ونفس الشي
+              للداش كام.
             </p>
             <div className="space-y-2">
-              {services.filter((sv) => sv.managerHandlesPaperwork).map((sv) => (
+              {[...services].sort((a, b) => (a.serviceKind ? 0 : 1) - (b.serviceKind ? 0 : 1) || a.name.localeCompare(b.name, 'ar')).map((sv) => (
                 <div key={sv.id} className="flex flex-wrap items-center gap-2">
                   <span className="min-w-[120px] text-[12.5px] font-bold text-slate-700">{sv.name}</span>
                   <select
@@ -135,8 +141,11 @@ export default function ServiceManagersPage() {
               ))}
             </div>
             <p className="mt-2 text-[11.5px] text-sky-700">
-              ⚠️ الخدمة غير المؤشَّرة حجوزاتها تطلع <b>بالنوعين</b> — ما تنخفي.
-              إخفاؤها يعني المسؤول يفتح القائمة ويلگاها فاضية ويحسب النظام مكسوراً.
+              ⚠️ الخدمة غير المؤشَّرة <b>ما تطلع بأي قائمة</b> — لأن «تطلع
+              بالنوعين» چان يعني قائمة الداش كام تعرض حجوزات الصباغة
+              والنجارة، وقائمة غلط أسوأ من فاضية.
+              {services.some((sv) => sv.serviceKind === 'GPS') ? '' : ' 🔴 ماكو خدمة مؤشَّرة جي بي اس.'}
+              {services.some((sv) => sv.serviceKind === 'DASHCAM') ? '' : ' 🔴 ماكو خدمة مؤشَّرة داش كام.'}
             </p>
           </div>
         )}
