@@ -14,7 +14,9 @@ import {
   type FreeWorkReason,
   type Booking,
   type DirectedProject,
+  type Service,
 } from '../api'
+import { readMoney } from '../utils/money'
 import EntityIdentity from '../components/EntityIdentity'
 
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
@@ -106,6 +108,14 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const [internalNote, setInternalNote] = useState('')
   const [manualWork, setManualWork] = useState('')
   const [manualPrice, setManualPrice] = useState('')
+  /** الخدمة الي تخص الكلفة اليدوية — منها يتعلّم النظام المعدّل. */
+  const [manualServiceId, setManualServiceId] = useState('')
+  // ⚠️ `GET /api/services` حارسه `requireAuth` وبس، فالمنتقي يوصله
+  // كل موظف يوصل هاي الشاشة — ماكو باب ميّت.
+  // والفشل يخلّي القائمة فاضية بهدوء: الخدمة **اختيارية**، فما يصير
+  // خلل بجلب قائمة يمنع الليدر من فاتورته.
+  const [services, setServices] = useState<Service[]>([])
+  useEffect(() => { api.getServices().then(setServices).catch(() => setServices([])) }, [])
   const [manualNote, setManualNote] = useState('')
   const MANUAL_WORK_MIN = 10
 
@@ -496,6 +506,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           customerPhone: customerPhone || undefined,
           customerAddress: customerAddress || undefined,
           systems: systems.length > 0 ? systems : undefined,
+          serviceId: manualServiceId || undefined,
           note: manualNote.trim() || undefined,
         })
         setResult(invoice)
@@ -796,9 +807,40 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600">السعر (د.ع) *</label>
-                  <input value={manualPrice} onChange={(e) => setManualPrice(e.target.value.replace(/[^\d]/g, ''))}
-                    dir="ltr" inputMode="numeric" placeholder="0"
+                  {/* 🔴 چان `replace(/[^\d]/g,'')` — يمحي أي فاصلة،
+                      فـ«١.٥» تصير «١٥» و«١٧٠٠٠.٥» تصير «١٧٠٠٠٥».
+                      يعني الكسور ما تنكتب أصلاً، و«١.٥ = ألف ونص» ما
+                      إلها أي معنى بهاي الخانة. */}
+                  <input value={manualPrice}
+                    onChange={(e) => setManualPrice(e.target.value.replace(/[^\d.]/g, ''))}
+                    onBlur={(e) => {
+                      const m = readMoney(e.target.value)
+                      if (m.converted) setManualPrice(String(m.value))
+                    }}
+                    dir="ltr" inputMode="decimal" placeholder="0"
                     className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500" />
+                  {/* «١.٥ ← ١٬٥٠٠» — التبديل بالفلوس ما يصير بالخفية */}
+                  {Number(manualPrice) > 0 && (
+                    <p className="mt-1 text-[11px] font-bold text-amber-800">
+                      المبلغ: {Number(manualPrice).toLocaleString('en-US', { maximumFractionDigits: 2 })} د.ع
+                    </p>
+                  )}
+                </div>
+                <div>
+                  {/* ═══ الخدمة — هي الي تخلي النظام يتعلّم ═══
+                      «النظام يدرس ويحلل هاي الأرقام حتى يطلع سعر
+                      أفيرج حسب معدل الأخذ من الزبائن السابقين».
+                      ⚠️ اختيارية بقصد: أكو شغل فعلاً ماكو إله خدمة
+                      مسجّلة، ولو أجبرناها يختار الليدر أي خدمة حتى
+                      يخلص — فتتلوّث كل العيّنات. */}
+                  <label className="mb-1 block text-xs font-medium text-slate-600">
+                    الخدمة (اختيارية) <span className="text-slate-400">— حتى النظام يتعلّم سعرها</span>
+                  </label>
+                  <select value={manualServiceId} onChange={(e) => setManualServiceId(e.target.value)}
+                    className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-amber-500">
+                    <option value="">— ما أحددها</option>
+                    {services.map((sv) => <option key={sv.id} value={sv.id}>{sv.name}</option>)}
+                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-medium text-slate-600">ملاحظة (اختيارية)</label>

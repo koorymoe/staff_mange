@@ -26,6 +26,14 @@ type LeaderInvoiceService struct {
 	// notifications: إشعارات المراقب والمحاسب. اختيارية — نفس سبب
 	// `monitor`: فشل إشعار ما يصير يمنع عملية مالية.
 	notifications *repository.NotificationRepository
+	// priceLearning: عيّنات أسعار الخدمات. اختيارية — نفس سبب
+	// `monitor`: ميزة تحليلية ما يصير تمنع موظفاً من فاتورته.
+	priceLearning *repository.ServicePriceLearningRepository
+}
+
+// SetPriceLearning يربط تعلّم الأسعار بعد البناء.
+func (s *LeaderInvoiceService) SetPriceLearning(p *repository.ServicePriceLearningRepository) {
+	s.priceLearning = p
 }
 
 // SetNotifications يربط الإشعارات بعد البناء — نفس نمط صندوق المراقب.
@@ -652,7 +660,6 @@ func (s *LeaderInvoiceService) FreeReasons() ([]model.FreeWorkReason, error) {
 	return s.invoices.FreeReasons()
 }
 
-
 // Adjustments سجل تعديلات فاتورة — «شنو كان وشنو صار ومنو غيّره».
 func (s *LeaderInvoiceService) Adjustments(invoiceID string) ([]model.LeaderInvoiceAdjustment, error) {
 	return s.invoices.Adjustments(invoiceID)
@@ -843,6 +850,7 @@ func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.
 		Status:          "SUBMITTED",
 		PricingMode:     model.PricingModeManual,
 		ManualWork:      &work,
+		ManualServiceID: req.ServiceID,
 		ManualPriceNote: note,
 	}
 	saved, err := s.invoices.Create(inv, nil)
@@ -850,6 +858,26 @@ func (s *LeaderInvoiceService) CreateManualInvoice(employeeID string, req model.
 		return nil, err
 	}
 	s.computeAndSaveCommissions(saved)
+
+	// ═══ العيّنة تنولد هنا — ما تنستخرج بأثر رجعي ═══
+	// «النظام يدرس ويحلل هاي الأرقام حتى يطلع سعر أفيرج حسب معدل
+	// الأخذ من الزبائن السابقين». والمعدّل يحتاج عيّنات، والعيّنة
+	// تنولد لحظة الفاتورة — فكل فاتورة تمر بلا خدمة = عيّنة تضيع
+	// للأبد.
+	//
+	// ⚠️ الخطأ ينتجاهل بقصد: العيّنة تحسين، والفاتورة شغل الموظف.
+	if s.priceLearning != nil && req.ServiceID != nil && *req.ServiceID != "" {
+		_ = s.priceLearning.AddSample(*req.ServiceID, saved.ID, employeeID, req.Price)
+		// وبعد الحد (٥ عيّنات بقرار المالك) يتولّد **اقتراح** —
+		// مو سعراً. واقتراح واحد لكل خدمة بالعمر كله.
+		if n, err := s.priceLearning.ProposeReady(); err == nil && n > 0 && s.notifications != nil {
+			// «الموظف يعرف وين يروح»: اقتراح ما أحد يعرف بيه يبقى
+			// بطابور ما ينفتح. والمحاسب هو أول خطوة بالمسار.
+			// ⚠️ فشل الإشعار ما يوقف الفاتورة — ينتجاهل بقصد.
+			_ = s.notifications.CreateForRole("FINANCE", "PRICE_SUGGESTION",
+				"النظام طلّع سعراً مقترحاً لخدمة من معدّل الفواتير اليدوية — راجعه بتبويب «أسعار يقترحها النظام» بفواتير الليدر")
+		}
+	}
 
 	// ⚠️ **المراقب هو الحارس الوحيد الباقي**: ماكو جدول كلفة يراجع
 	// هذا السعر، فالصف ينزل بصندوقه **ووصف الشغل جوّاه** — بلا

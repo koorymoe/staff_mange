@@ -2089,6 +2089,37 @@ export interface CreateLeaderInvoiceRequest {
   freeReasonNote?: string
 }
 
+/** خلاصة عيّنات سعر خدمة — الرقم مع عدد عيّناته دائماً */
+export interface ServicePriceStats {
+  serviceId: string
+  serviceName: string
+  sampleCount: number
+  avgAmount: number
+  minAmount: number
+  maxAmount: number
+  /** كم عيّنة باقية حتى يطلع الاقتراح — صفر يعني جاهز */
+  remaining: number
+}
+
+/** اقتراح سعر من النظام — ما يصير سعراً رسمياً إلا باعتماد المالك */
+export interface ServicePriceSuggestion {
+  id: string
+  serviceId: string
+  serviceName: string | null
+  avgAmount: number
+  sampleCount: number
+  minAmount: number
+  maxAmount: number
+  source: string
+  status: 'PROPOSED' | 'REVIEWED' | 'APPROVED' | 'REJECTED'
+  reviewedName: string | null
+  reviewedAt: string | null
+  reviewNote: string | null
+  decidedName: string | null
+  decidedAt: string | null
+  createdAt: string
+}
+
 export interface QuotationItem {
   id?: string
   /** مرجع صورة المنتج وقت إصدار العرض — مرّرها عبر fileUrl() قبل الـsrc */
@@ -4342,6 +4373,21 @@ export const api = {
 
   // Quotations
   getQuotations: (search?: string) => request<Quotation[]>(`/quotations${search ? `?search=${encodeURIComponent(search)}` : ''}`),
+  /** ═══ تعلّم أسعار الخدمات ═══ */
+  getServicePriceSamples: () => request<ServicePriceStats[]>('/service-prices/samples'),
+  getServicePriceSuggestions: (status?: string) =>
+    request<ServicePriceSuggestion[]>(`/service-prices/suggestions${status ? `?status=${status}` : ''}`),
+  /** المحاسب يراجع الاقتراح — خطوة إلزامية قبل المالك */
+  reviewServicePrice: (id: string, note?: string) =>
+    request<{ success: boolean }>(`/service-prices/suggestions/${id}/review`, {
+      method: 'PUT', body: JSON.stringify({ note: note ?? '' }),
+    }),
+  /** المالك يعتمد أو يرفض */
+  decideServicePrice: (id: string, approve: boolean) =>
+    request<{ success: boolean }>(`/service-prices/suggestions/${id}/decide`, {
+      method: 'PUT', body: JSON.stringify({ approve }),
+    }),
+
   getQuotation: (id: string) => request<Quotation>(`/quotations/${id}`),
   /** النسخ القديمة المؤرشفة — الأحدث أولاً */
   getQuotationVersions: (id: string) =>
@@ -4506,6 +4552,8 @@ export const api = {
     customerPhone?: string
     customerAddress?: string
     systems?: string[]
+    /** الخدمة الي تخص هاي الكلفة — منها يبني النظام معدّل السعر */
+    serviceId?: string
     note?: string
   }) => request<LeaderInvoice>('/leader-invoices/manual', { method: 'POST', body: JSON.stringify(data) }),
   /** حجوزات الشغل داخل الشركة — مسار مستقل لأن قائمة الحجوزات

@@ -336,6 +336,10 @@ func versionedMigrations() []Migration {
 	// 0281 وما بعدها: عروض الأسعار — ترتيب البنود (چانن يُقرأن بلا أي
 	// ORDER BY) وأرشيف النسخ (التعديل چان يمحي النسخة المرسلة للزبون).
 	result = append(result, quotationVersionMigrations()...)
+	// 0283 وما بعدها: النظام يتعلّم سعر الخدمات الي ماكو إلها جدول —
+	// ربط الفاتورة اليدوية بخدمة، وعيّنات الأسعار، واقتراح المعدّل
+	// (يقترح ويُراجع ويُعتمد، ما ينشر لحاله).
+	result = append(result, servicePriceLearningMigrations()...)
 	return result
 }
 

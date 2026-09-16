@@ -11,6 +11,7 @@ import { matches } from '../utils/search'
 import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity'
 import LocateHint from '../components/LocateHint'
 import FreeWorkBadge from '../components/FreeWorkBadge'
+import ServicePriceSuggestions from '../components/ServicePriceSuggestions'
 
 // ═══ طباعة فاتورة الليدر ═══
 //
@@ -208,10 +209,11 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
    *
    * فالمراقب يفتح على **طابوره** (`MONITOR`)، والمحاسب مثل ما هو.
    */
-  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'MONITOR' | 'REVIEWED' | 'NO_NUMBER' | 'APPROVED' | 'ALL' | 'INTERNAL'>(
+  const [tab, setTab] = useState<'AUDIT' | 'PENDING' | 'MONITOR' | 'REVIEWED' | 'NO_NUMBER' | 'APPROVED' | 'ALL' | 'INTERNAL' | 'PRICES'>(
     () => {
       const q = params.get('tab')
       if (q === 'INTERNAL') return 'INTERNAL'
+      if (q === 'PRICES') return 'PRICES'
       if (q === 'MONITOR' || q === 'REVIEWED' || q === 'APPROVED') return q
       return monitorSeat ? 'MONITOR' : 'AUDIT'
     })
@@ -495,6 +497,10 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           { k: 'NO_NUMBER' as const, t: '🔗 معتمدة بلا رقم فاتورة', c: counts.NO_NUMBER },
           { k: 'ALL' as const, t: 'الكل', c: counts.ALL },
           { k: 'INTERNAL' as const, t: '🏢 داخل الشركة', c: counts.INTERNAL },
+          // ⚠️ بلا عدّاد بقصد: العدّاد لازم يعدّ **نفس** الي يعرضه
+          // الضغط عليه، والاقتراحات تجي من مسار ثاني ما ينحسب مع
+          // الفواتير. رقم يخالف الي تحته أسوأ من ماكو رقم.
+          { k: 'PRICES' as const, t: '🧠 أسعار يقترحها النظام', c: undefined },
         ]).map((o) => (
           <button
             key={o.k}
@@ -505,7 +511,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                 : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
             }`}
           >
-            {o.t} <span className="text-xs">({o.c})</span>
+            {o.t}{o.c !== undefined && <span className="text-xs"> ({o.c})</span>}
           </button>
         ))}
       </div>
@@ -533,6 +539,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         {tab === 'NO_NUMBER' && 'ⓘ معتمدة بس ماكو إلها رقم فاتورة محاسبية — اربط الرقم حتى تخلص ورقتها.'}
         {tab === 'ALL' && 'ⓘ كل الفواتير بكل مراحلها (ما عدا الشغل داخل الشركة — إله تبويبه).'}
         {tab === 'INTERNAL' && 'ⓘ الشغل داخل الشركة معزول هنا: ماكو زبون، والمبلغ تقدير. ومنه تنزّل إكسل الشهر.'}
+        {tab === 'PRICES' && 'ⓘ هاي مو فواتير: أسعار يقترحها النظام من معدّل الفواتير اليدوية. راجعها إذا إنت المحاسب، وبعدها المالك يعتمدها.'}
       </p>
 
       {/* ═══ إكسل الشهر — شغل داخل الشركة ═══
@@ -567,8 +574,10 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
       )}
 
       {/* المرشّحات الأربعة — خياراتها من المحمّل، بلا مسار خادم.
-          ⚠️ وكلها ترجّع الصفحة لواحد. */}
-      <div className="mt-3 flex flex-wrap gap-2">
+          ⚠️ وكلها ترجّع الصفحة لواحد.
+          ⚠️ وتنخفي بتبويب الأسعار: ترشيح بزبون وليدر ومنظومة ما إله
+          معنى بقائمة أسعار خدمات. */}
+      <div className={`mt-3 flex flex-wrap gap-2 ${tab === 'PRICES' ? 'hidden' : ''}`}>
         {([
           { v: fCustomer, set: setFCustomer, all: 'كل الزبائن', opts: customerOptions },
           { v: fLeader, set: setFLeader, all: 'كل الليدرز', opts: leaderOptions },
@@ -595,7 +604,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         )}
       </div>
 
-      <div className="mt-3 rounded-xl border border-white bg-white px-4 py-3 text-sm shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+      <div className={`mt-3 rounded-xl border border-white bg-white px-4 py-3 text-sm shadow-[0_4px_20px_rgba(15,32,64,0.06)] ${tab === 'PRICES' ? 'hidden' : ''}`}>
         العرض: <b className="text-brand-800">{shown.length}</b> فاتورة
         {/* «من إجمالي» چان ناقصاً — بدونه ما تعرف إذا الرقم كل شي
             لو نتيجة ترشيح. */}
@@ -615,12 +624,22 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         placeholder="🔍 بحث برقم الفاتورة المحاسبية، كود المحاسبة، الزبون، أو الليدر..."
-        className="mt-4 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
+        className={`mt-4 w-full rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand-500 ${tab === 'PRICES' ? 'hidden' : ''}`}
       />
 
-      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {/* ═══ تبويب الأسعار المقترحة — مو فواتير ═══
+          ⚠️ البحث والجدول ينخفون هنا: بحث بكود فاتورة ما إله معنى
+          بقائمة أسعار خدمات، وجدول فواتير فاضي تحت الاقتراحات يوهم
+          إن أكو شي ما وصل. */}
+      {tab === 'PRICES' && (
+        <div className="mt-6">
+          <ServicePriceSuggestions />
+        </div>
+      )}
 
-      {!loading && (
+      {loading && tab !== 'PRICES' && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+
+      {!loading && tab !== 'PRICES' && (
         <div className="mt-6 overflow-x-auto rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <table className="w-full min-w-[820px] text-sm">
             <thead>

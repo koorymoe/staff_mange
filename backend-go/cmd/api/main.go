@@ -97,6 +97,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	procurementRepo := repository.NewProcurementRepository(db)
 	supplierRepo := repository.NewSupplierRepository(db)
 	quotationRepo := repository.NewQuotationRepository(db)
+	servicePriceLearningRepo := repository.NewServicePriceLearningRepository(db)
 	solarRepo := repository.NewSolarRepository(db)
 	backupRunRepo := repository.NewBackupRunRepository(db)
 	trainingProgramRepo := repository.NewTrainingProgramRepository(db)
@@ -284,6 +285,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	privacyPolicyHandler := handler.NewPrivacyPolicyHandler(repository.NewPrivacyPolicyRepository(db))
 	mapLinkHandler := handler.NewMapLinkHandler()
 	quotationHandler := handler.NewQuotationHandler(quotationService)
+	servicePriceHandler := handler.NewServicePriceLearningHandler(servicePriceLearningRepo)
 	solarHandler := handler.NewSolarHandler(solarRepo)
 	backupHandler := handler.NewBackupHandler(backupRunRepo)
 	// سعر المنظومة لحجز الطاقة الشمسية — ينحسب من الكتالوك مو ينكتب بالإيد
@@ -862,6 +864,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// مفتاح التدقيق: لمّا المالك ينطي المراقب `finance_audit`، المعالج
 	// لازم يعرف — وإلا رفضه للمراقب يبقى بالدور حصراً والمنح ما ينفع.
 	bookingAuditHandler.SetPermissions(permissionRepo)
+	leaderInvoiceService.SetPriceLearning(servicePriceLearningRepo)
 	// التدقيق اليومي: نفس واجهة التدقيق بس بيوم واحد، مع مجاميع اليوم
 	dailyAuditHandler := handler.NewDailyAuditHandler(repository.NewDailyAuditRepository(db))
 	mux.Handle("GET /api/finance/daily-audit", middleware.Chain(http.HandlerFunc(dailyAuditHandler.Day), requireAuth, requireVerifyBooking))
@@ -1345,6 +1348,24 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Get), requireAuth))
 	// النسخ المؤرشفة — نفس حارس قراءة العرض: الي يشوف العرض يشوف تاريخه
 	mux.Handle("GET /api/quotations/{id}/versions", middleware.Chain(http.HandlerFunc(quotationHandler.Versions), requireAuth))
+
+	// ═══ تعلّم أسعار الخدمات ═══
+	// ⚠️ `invoice_manual` جنبهم: صاحبها هو الي **فواتيره تولّد
+	// العيّنات**، فلازم يشوف شنو يتجمّع من شغله.
+	requireServicePriceRead := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"},
+		"execution_cost", "invoice_manual", "finance", "finance_audit")
+	// القراءة لصاحب حساب الكلفة والمحاسب والمراقب والمالك — الي
+	// يشتغل بالأسعار يشوف عيّناتها. المراجعة **للمحاسب** والاعتماد
+	// **للمالك ومدير النظام** — ترتيب (ع) نصاً.
+	mux.Handle("GET /api/service-prices/samples", middleware.Chain(http.HandlerFunc(servicePriceHandler.Samples), requireAuth,
+		requireServicePriceRead))
+	mux.Handle("GET /api/service-prices/suggestions", middleware.Chain(http.HandlerFunc(servicePriceHandler.Suggestions), requireAuth,
+		requireServicePriceRead))
+	mux.Handle("PUT /api/service-prices/suggestions/{id}/review", middleware.Chain(http.HandlerFunc(servicePriceHandler.Review), requireAuth, requireFinance))
+	// ⚠️ الاعتماد للمالك ومدير النظام وبس: سعر الخدمة قرار إدارة،
+	// ولو انفتح لغيرهم يصير المعدّل الآلي سعراً رسمياً بلا قرار.
+	mux.Handle("PUT /api/service-prices/suggestions/{id}/decide", middleware.Chain(http.HandlerFunc(servicePriceHandler.Decide), requireAuth, requireAdmin))
 	// الموظف الموجّه له مشروع لازم يقدر يسوي عرض سعر لمشروعه — التوجيه نفسه
 	// هو الصلاحية. غيره يضل محتاج صلاحية عروض الأسعار.
 	allowQuotationOrDelegate := func(next http.Handler) http.Handler {
