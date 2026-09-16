@@ -1,0 +1,127 @@
+package handler
+
+import (
+	"log"
+	"net/http"
+	"strings"
+
+	"staffmange-api/internal/middleware"
+	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
+)
+
+type BookingDeleteRequestHandler struct {
+	repo   *repository.BookingDeleteRequestRepository
+	notify *repository.NotificationRepository
+}
+
+func NewBookingDeleteRequestHandler(r *repository.BookingDeleteRequestRepository, n *repository.NotificationRepository) *BookingDeleteRequestHandler {
+	return &BookingDeleteRequestHandler{repo: r, notify: n}
+}
+
+// POST /api/bookings/{id}/delete-request — الإداري يطلب حذف حجز
+func (h *BookingDeleteRequestHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var req model.CreateBookingDeleteRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	// السبب إجباري: بدونه المراقب يبت على العمياني
+	if strings.TrimSpace(req.Reason) == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب سبب الحذف — المراقب يحتاجه حتى يقرر")
+		return
+	}
+	if _, ok := model.BookingDeleteChannelLabels[req.Channel]; !ok {
+		WriteError(w, http.StatusBadRequest, "اختر القناة الي جاء منها الطلب")
+		return
+	}
+	if _, ok := model.BookingDeleteTypeLabels[req.RequestType]; !ok {
+		WriteError(w, http.StatusBadRequest, "اختر نوع الطلب")
+		return
+	}
+	out, err := h.repo.Create(r.PathValue("id"), middleware.EmployeeIDFromContext(r), strings.TrimSpace(req.Reason), req.Channel, req.RequestType)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if h.notify != nil {
+		msg := "🗑️ طلب حذف الحجز " + out.BookingCode + " من " + out.RequestedByName + " — السبب: " + out.Reason
+		_ = h.notify.CreateForRole("MONITOR", "booking_delete_request", msg)
+		_ = h.notify.CreateForRole("ADMIN", "booking_delete_request", msg)
+		_ = h.notify.CreateForRole("OWNER", "booking_delete_request", msg)
+	}
+	WriteJSON(w, http.StatusCreated, out)
+}
+
+// GET /api/booking-delete-requests?status=PENDING
+func (h *BookingDeleteRequestHandler) List(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.List(r.URL.Query().Get("status"))
+	if err != nil {
+		log.Printf("list booking delete requests: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب طلبات الحذف")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// PUT /api/booking-delete-requests/{id}/decide — المراقب أو المدير يبت
+func (h *BookingDeleteRequestHandler) Decide(w http.ResponseWriter, r *http.Request) {
+	var req model.DecideBookingDeleteRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	out, err := h.repo.Decide(r.PathValue("id"), req.Approve, req.Note, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// ⚠️ الإنشاء كان يشعر المراقب والمدير، والقرار ما يشعر **الطالب**
+	// — فالإداري يطلب حذف حجز وما يعرف أبداً شنو صار بطلبه.
+	if h.notify != nil && out != nil && out.RequestedByID != "" {
+		msg := "❌ انرفض طلب حذف الحجز"
+		if req.Approve {
+			msg = "✅ انوافق على طلب حذف الحجز"
+		}
+		if req.Note != nil && *req.Note != "" {
+			msg += " — " + *req.Note
+		}
+		_ = h.notify.Create(out.RequestedByID, "booking_delete_decision", msg)
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// PUT /api/booking-delete-requests/{id}/needs-info — يعلّم الطلب «معلقة»
+func (h *BookingDeleteRequestHandler) NeedsInfo(w http.ResponseWriter, r *http.Request) {
+	var req model.NeedsInfoBookingDeleteRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	// الملاحظة إجبارية — «معلقة بلا سبب» ما يفرق عن التجاهل
+	if strings.TrimSpace(req.Note) == "" {
+		WriteError(w, http.StatusBadRequest, "اكتب شنو المعلومة الناقصة")
+		return
+	}
+	out, err := h.repo.SetNeedsInfo(r.PathValue("id"), strings.TrimSpace(req.Note), middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if h.notify != nil && out != nil && out.RequestedByID != "" {
+		_ = h.notify.Create(out.RequestedByID, "booking_delete_decision",
+			"ℹ️ طلب حذف الحجز "+out.BookingCode+" يحتاج توضيحاً: "+strings.TrimSpace(req.Note))
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
+// GET /api/booking-delete-requests/counts — عدّ البطاقات الخمس
+func (h *BookingDeleteRequestHandler) Counts(w http.ResponseWriter, r *http.Request) {
+	counts, err := h.repo.Counts()
+	if err != nil {
+		log.Printf("count booking delete requests: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب عدّ طلبات الحذف")
+		return
+	}
+	WriteJSON(w, http.StatusOK, counts)
+}

@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فيديو تعليمي — مالك النظام</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0f172a;color:#e2e8f0;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.stage{flex:1;position:relative;overflow:hidden;display:flex}
+.sidebar{width:220px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;padding:12px 0;overflow-y:auto}
+.sidebar .logo{text-align:center;padding:10px;font-weight:700;font-size:15px;color:#2563eb;border-bottom:1px solid #334155;margin-bottom:8px}
+.sidebar a{display:flex;align-items:center;gap:8px;padding:9px 18px;color:#94a3b8;text-decoration:none;font-size:13px;transition:all .25s;border-radius:6px 0 0 6px;margin:1px 0}
+.sidebar a:hover,.sidebar a.active{background:#2563eb22;color:#60a5fa}
+.sidebar a.active{border-left:3px solid #2563eb;font-weight:600}
+.sidebar a .icon{font-size:16px;min-width:22px;text-align:center}
+.sidebar a.owner-exclusive{color:#f59e0b;border-right:2px solid #f59e0b}
+.content{flex:1;display:flex;flex-direction:column;position:relative;background:#0f172a}
+.topbar{height:48px;background:#1e293b;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.topbar .user-info{display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8}
+.topbar .user-avatar{width:30px;height:30px;border-radius:50%;background:#f59e0b;display:flex;align-items:center;justify-content:center;color:#000;font-size:13px;font-weight:700}
+.topbar .page-title{font-size:15px;font-weight:600;color:#e2e8f0}
+.main-area{flex:1;padding:20px;overflow-y:auto;position:relative}
+.stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.stat-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;flex:1;min-width:140px}
+.stat-card .label{font-size:11px;color:#64748b;margin-bottom:4px}
+.stat-card .value{font-size:22px;font-weight:700;color:#2563eb}
+.stat-card .sub{font-size:11px;color:#22c55e;margin-top:2px}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;background:#1e293b;border-radius:8px;overflow:hidden}
+.data-table th{background:#334155;color:#94a3b8;padding:8px 10px;text-align:right;font-weight:600}
+.data-table td{padding:8px 10px;border-bottom:1px solid #1e293b55;color:#cbd5e1}
+.data-table tr:nth-child(even){background:#1e293b99}
+.data-table tr.highlight{background:#2563eb22;outline:2px solid #2563eb}
+.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
+.badge-green{background:#22c55e22;color:#22c55e}.badge-yellow{background:#eab30822;color:#eab308}.badge-red{background:#ef444422;color:#ef4444}.badge-blue{background:#2563eb22;color:#60a5fa}.badge-orange{background:#f59e0b22;color:#f59e0b}
+.section-title{font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:20;opacity:0;pointer-events:none;transition:opacity .4s}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;width:480px;max-width:90%}
+.modal h3{color:#e2e8f0;margin-bottom:12px;font-size:15px}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:11px;color:#64748b;margin-bottom:3px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px}
+.btn{padding:7px 18px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:#2563eb;color:#fff}.btn-danger{background:#ef4444;color:#fff}.btn-success{background:#22c55e;color:#fff}.btn-warning{background:#f59e0b;color:#000}
+.login-screen{position:absolute;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:30;transition:opacity .5s}
+.login-screen.hidden{opacity:0;pointer-events:none}
+.login-box{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:36px;width:340px;text-align:center}
+.login-box h2{color:#f59e0b;margin-bottom:6px;font-size:20px}
+.login-box p{color:#64748b;font-size:12px;margin-bottom:20px}
+.login-box .form-row{text-align:right}
+.cursor{position:absolute;width:24px;height:24px;z-index:100;pointer-events:none;transition:all .8s cubic-bezier(.4,0,.2,1);opacity:0}
+.cursor::before{content:'';position:absolute;width:0;height:0;border-style:solid;border-width:0 4px 18px 14px;border-color:transparent transparent #f59e0b transparent;transform:rotate(-25deg)}
+.cursor::after{content:'';position:absolute;top:14px;right:6px;width:8px;height:8px;background:#f59e0b;border-radius:50%;opacity:0;animation:click-ring .4s ease-out}
+.cursor.clicking::after{opacity:1}
+@keyframes click-ring{0%{transform:scale(0);opacity:1}100%{transform:scale(3);opacity:0}}
+.cursor.visible{opacity:1}
+.narration{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1e293bee,#0f172aee);border:1px solid #f59e0b55;border-radius:12px;padding:14px 24px;max-width:600px;width:90%;text-align:center;font-size:14px;color:#e2e8f0;line-height:1.8;z-index:50;backdrop-filter:blur(8px);opacity:0;transition:opacity .4s}
+.narration.show{opacity:1}
+.narration .step-num{display:inline-block;background:#f59e0b;color:#000;border-radius:50%;width:24px;height:24px;line-height:24px;font-size:11px;font-weight:700;margin-left:8px}
+.controls{height:52px;background:#1e293b;border-top:1px solid #334155;display:flex;align-items:center;gap:10px;padding:0 16px;z-index:60}
+.controls button{background:#334155;border:none;color:#e2e8f0;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:background .2s}
+.controls button:hover{background:#f59e0b;color:#000}
+.controls .progress-wrap{flex:1;height:6px;background:#334155;border-radius:3px;overflow:hidden;cursor:pointer}
+.controls .progress-bar{height:100%;background:#f59e0b;border-radius:3px;transition:width .3s}
+.controls .counter{font-size:12px;color:#94a3b8;min-width:60px;text-align:center}
+.ai-chat{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;max-width:500px}
+.ai-msg{margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.6}
+.ai-msg.user{background:#f59e0b22;color:#f59e0b;margin-left:40px;text-align:left}
+.ai-msg.bot{background:#33415544;color:#cbd5e1;margin-right:40px}
+.typing-dots::after{content:'...';animation:dots 1s steps(3) infinite}
+@keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
+.exclusive-banner{background:linear-gradient(135deg,#f59e0b22,#ef444422);border:1px solid #f59e0b55;border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:#f59e0b;display:flex;align-items:center;gap:8px}
+.security-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:14px;margin-bottom:10px}
+.security-card h4{color:#e2e8f0;font-size:13px;margin-bottom:6px}
+.security-card p{color:#64748b;font-size:11px;line-height:1.6}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="sidebar">
+    <div class="logo">نظام إدارة الموظفين</div>
+    <a href="#" class="active" data-page="home"><span class="icon">🏠</span>الرئيسية</a>
+    <a href="#" data-page="backend-monitor" class="owner-exclusive"><span class="icon">🛡️</span>لوحة المراقبة الخلفية</a>
+    <a href="#" data-page="employees"><span class="icon">👥</span>إدارة الموظفين</a>
+    <a href="#" data-page="security"><span class="icon">🔒</span>الأمان</a>
+    <a href="#" data-page="monitor"><span class="icon">📡</span>لوحة المراقبة</a>
+    <a href="#" data-page="bookings"><span class="icon">📅</span>الحجوزات</a>
+    <a href="#" data-page="finance"><span class="icon">💰</span>الحسابات</a>
+    <a href="#" data-page="kpi"><span class="icon">📊</span>KPI</a>
+    <a href="#" data-page="reports"><span class="icon">📋</span>التقارير</a>
+  </div>
+
+  <div class="content">
+    <div class="topbar">
+      <span class="page-title" id="pageTitle">الرئيسية</span>
+      <div class="user-info"><span>owner</span><div class="user-avatar">م</div></div>
+    </div>
+    <div class="main-area" id="mainArea"></div>
+    <div class="login-screen" id="loginScreen">
+      <div class="login-box">
+        <h2>تسجيل الدخول — المالك</h2><p>نظام إدارة الموظفين</p>
+        <div class="form-row"><label>اسم المستخدم</label><input id="loginUser" value="" readonly></div>
+        <div class="form-row"><label>كلمة المرور</label><input type="password" id="loginPass" value="" readonly></div>
+        <button class="btn btn-warning" style="width:100%;margin-top:12px">دخول</button>
+      </div>
+    </div>
+    <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalContent"></div></div>
+  </div>
+  <div class="cursor" id="cursor"></div>
+  <div class="narration" id="narration"></div>
+</div>
+
+<div class="controls">
+  <button id="btnPrev">⏮ السابق</button>
+  <button id="btnPlay">⏸ إيقاف</button>
+  <button id="btnNext">التالي ⏭</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="counter" id="counter">1 / 5</div>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const cursor=$('#cursor'),narration=$('#narration'),mainArea=$('#mainArea'),pageTitle=$('#pageTitle'),loginScreen=$('#loginScreen'),modalOverlay=$('#modalOverlay'),modalContent=$('#modalContent'),progressBar=$('#progressBar'),counterEl=$('#counter');
+let currentScene=0,playing=true,sceneTimer=null;
+function sleep(ms){return new Promise(r=>sceneTimer=setTimeout(r,ms))}
+function showNarration(s,t){narration.innerHTML=`<span class="step-num">${s}</span> ${t}`;narration.classList.add('show')}
+function hideNarration(){narration.classList.remove('show')}
+function moveCursor(x,y){cursor.style.right=x+'px';cursor.style.top=y+'px';cursor.classList.add('visible')}
+function hideCursor(){cursor.classList.remove('visible')}
+function clickEffect(){cursor.classList.add('clicking');setTimeout(()=>cursor.classList.remove('clicking'),500)}
+function setActive(p){$$('.sidebar a').forEach(a=>a.classList.toggle('active',a.dataset.page===p))}
+function setPage(t){pageTitle.textContent=t}
+function showModal(h){modalContent.innerHTML=h;modalOverlay.classList.add('show')}
+function hideModal(){modalOverlay.classList.remove('show')}
+function updateControls(){counterEl.textContent=`${currentScene+1} / ${scenes.length}`;progressBar.style.width=((currentScene+1)/scenes.length*100)+'%'}
+
+const scenes=[
+  // 1 - Login
+  async function(){
+    loginScreen.classList.remove('hidden');mainArea.innerHTML='';hideModal();
+    showNarration(1,'مرحباً! سنسجل الدخول كمالك النظام — أعلى مستوى صلاحيات');
+    await sleep(1200);moveCursor(280,340);await sleep(600);$('#loginUser').value='owner';
+    await sleep(500);moveCursor(280,390);await sleep(400);$('#loginPass').value='••••••••••••';
+    await sleep(500);moveCursor(260,430);clickEffect();await sleep(800);
+    loginScreen.classList.add('hidden');setPage('الرئيسية');setActive('home');
+    mainArea.innerHTML=`<div class="exclusive-banner">🛡️ مرحباً بك يا مالك النظام — لديك صلاحيات كاملة بما في ذلك لوحة المراقبة الخلفية</div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">الموظفون</div><div class="value">24</div></div>
+        <div class="stat-card"><div class="label">نشطون الآن</div><div class="value" style="color:#22c55e">18</div></div>
+        <div class="stat-card"><div class="label">موقوفون</div><div class="value" style="color:#ef4444">2</div></div>
+        <div class="stat-card"><div class="label">تنبيهات أمنية</div><div class="value" style="color:#f59e0b">4</div></div>
+      </div>`;
+    await sleep(2000);
+  },
+  // 2 - لوحة المراقبة الخلفية (EXCLUSIVE)
+  async function(){
+    showNarration(2,'لوحة المراقبة الخلفية — ميزة حصرية للمالك: سجل الدخول، المخالفات الأمنية، الحسابات الموقوفة');
+    moveCursor(140,80);await sleep(600);clickEffect();
+    setActive('backend-monitor');setPage('لوحة المراقبة الخلفية');
+    await sleep(400);
+    mainArea.innerHTML=`
+      <div class="exclusive-banner">🛡️ هذه الصفحة حصرية لمالك النظام فقط — لا يمكن لأي دور آخر الوصول إليها</div>
+
+      <div class="section-title">📋 سجل تدقيق الدخول — Login Audit Log</div>
+      <table class="data-table"><tr><th>المستخدم</th><th>IP</th><th>الوقت</th><th>النتيجة</th></tr>
+        <tr><td>ahmed_tech</td><td>192.168.1.45</td><td>2026-07-22 09:15:32</td><td><span class="badge badge-green">نجح</span></td></tr>
+        <tr><td>omar_finance</td><td>192.168.1.52</td><td>2026-07-22 09:12:18</td><td><span class="badge badge-green">نجح</span></td></tr>
+        <tr class="highlight" style="background:#ef444422"><td>unknown_user</td><td>85.214.33.101</td><td>2026-07-22 08:55:41</td><td><span class="badge badge-red">فشل — 5 محاولات</span></td></tr>
+        <tr><td>rami_monitor</td><td>192.168.1.38</td><td>2026-07-22 08:45:10</td><td><span class="badge badge-green">نجح</span></td></tr>
+        <tr class="highlight" style="background:#ef444422"><td>saeed_tech</td><td>10.0.0.99</td><td>2026-07-22 03:22:05</td><td><span class="badge badge-red">فشل — IP مشبوه</span></td></tr>
+      </table>
+
+      <div class="section-title" style="margin-top:20px">⚠️ مخالفات الصلاحيات — Authorization Violations</div>
+      <table class="data-table"><tr><th>المستخدم</th><th>الصفحة المحظورة</th><th>الوقت</th><th>الإجراء</th></tr>
+        <tr><td>saeed_tech</td><td>/admin/employees</td><td>2026-07-21 14:30</td><td><span class="badge badge-red">محظور + تنبيه</span></td></tr>
+        <tr><td>fatima_sales</td><td>/finance/accounts</td><td>2026-07-20 11:15</td><td><span class="badge badge-yellow">محظور</span></td></tr>
+      </table>
+
+      <div class="section-title" style="margin-top:20px">🚫 الحسابات الموقوفة</div>
+      <table class="data-table"><tr><th>المستخدم</th><th>السبب</th><th>تاريخ الإيقاف</th><th>الحالة</th></tr>
+        <tr><td>khalid_old</td><td>انتهاء العقد</td><td>2026-07-01</td><td><span class="badge badge-red">موقوف</span></td></tr>
+        <tr><td>test_user</td><td>محاولات اختراق متكررة</td><td>2026-07-15</td><td><span class="badge badge-red">موقوف — تلقائي</span></td></tr>
+      </table>`;
+    await sleep(1500);
+    moveCursor(500,200);clickEffect();
+    showNarration(2,'لاحظ محاولة دخول فاشلة من IP خارجي — 5 محاولات. وسعيد حاول الوصول لصفحة محظورة');
+    await sleep(3000);
+  },
+  // 3 - إدارة الموظفين الموقوفين
+  async function(){
+    showNarration(3,'إدارة الموظفين الموقوفين — استعادة موظف موقوف');
+    moveCursor(140,120);await sleep(600);clickEffect();
+    setActive('employees');setPage('إدارة الموظفين');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">👥 الموظفون — فلتر: موقوف</div>
+      <div style="margin-bottom:12px"><span class="badge badge-red" style="font-size:12px;padding:4px 12px">فلتر: موقوف فقط</span></div>
+      <table class="data-table"><tr><th>الاسم</th><th>الدور</th><th>سبب الإيقاف</th><th>التاريخ</th><th>إجراء</th></tr>
+        <tr id="suspRow" class="highlight"><td>خالد القديم</td><td>فني</td><td>انتهاء العقد</td><td>2026-07-01</td><td><button class="btn btn-success" style="font-size:10px;padding:3px 10px" id="restoreBtn">استعادة</button></td></tr>
+        <tr><td>test_user</td><td>—</td><td>محاولات اختراق</td><td>2026-07-15</td><td><button class="btn" style="font-size:10px;padding:3px 10px;background:#334155;color:#64748b" disabled>لا يمكن الاستعادة</button></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(350,240);clickEffect();await sleep(600);
+    showModal(`<h3>استعادة موظف — خالد القديم</h3>
+      <div class="form-row"><label>سبب الاستعادة</label><textarea readonly>تجديد العقد — تمت الموافقة من الإدارة</textarea></div>
+      <div class="form-row"><label>تاريخ العقد الجديد</label><input value="2026-07-22 إلى 2027-07-22" readonly></div>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-success">تأكيد الاستعادة</button><button class="btn" style="background:#334155;color:#e2e8f0">إلغاء</button></div>`);
+    showNarration(3,'نستعيد خالد القديم بعد تجديد عقده — نوثق السبب ونؤكد');
+    await sleep(2000);
+    moveCursor(340,400);clickEffect();await sleep(600);hideModal();
+    const sr=$('#suspRow');if(sr){sr.classList.remove('highlight');sr.querySelector('td:last-child').innerHTML='<span class="badge badge-green">تمت الاستعادة ✓</span>';}
+    await sleep(1500);
+  },
+  // 4 - الأمان
+  async function(){
+    showNarration(4,'الأمان — نظرة على آليات الحماية: الجلسات، تحديد المعدل، الإيقاف التلقائي');
+    moveCursor(140,155);await sleep(600);clickEffect();
+    setActive('security');setPage('الأمان');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">🔒 آليات الأمان في النظام</div>
+
+      <div class="security-card">
+        <h4>🔄 Session Self-Healing — إصلاح الجلسات الذاتي</h4>
+        <p>عند انقطاع الاتصال أو انتهاء صلاحية الجلسة، يقوم النظام تلقائياً بتجديد الجلسة دون الحاجة لإعادة تسجيل الدخول. يتم التحقق من هوية المستخدم وصلاحياته في كل طلب.</p>
+      </div>
+
+      <div class="security-card">
+        <h4>⏱️ Rate Limiting — تحديد معدل الطلبات</h4>
+        <p>يحدد النظام عدد الطلبات المسموح بها لكل مستخدم: 100 طلب/دقيقة للعمليات العادية، 5 محاولات/دقيقة لتسجيل الدخول. تجاوز الحد يؤدي لحظر مؤقت 15 دقيقة.</p>
+      </div>
+
+      <div class="security-card">
+        <h4>🚫 Auto-Suspension — الإيقاف التلقائي</h4>
+        <p>بعد 10 محاولات دخول فاشلة متتالية، يتم إيقاف الحساب تلقائياً وإرسال تنبيه للمالك. كما يتم إيقاف أي حساب يحاول الوصول لصفحات محظورة أكثر من 3 مرات.</p>
+      </div>
+
+      <div class="security-card">
+        <h4>📝 Audit Trail — مسار التدقيق</h4>
+        <p>يتم تسجيل كل عملية دخول، تعديل بيانات، حذف، أو تغيير صلاحيات مع: المستخدم، الوقت، IP، ونوع العملية. السجلات محمية ولا يمكن حذفها.</p>
+      </div>`;
+    await sleep(3500);
+  },
+  // 5 - الذكاء الاصطناعي
+  async function(){
+    showNarration(5,'الذكاء الاصطناعي — الاستفسار عن أمان النظام');
+    hideCursor();setActive('home');setPage('الذكاء الاصطناعي');
+    mainArea.innerHTML=`<div class="section-title">🤖 المدير الذكي</div><div class="ai-chat" id="aiChat"></div>`;
+    const chat=$('#aiChat');
+    await sleep(800);
+    chat.innerHTML+=`<div class="ai-msg user">هل هناك تهديدات أمنية اليوم؟</div>`;
+    await sleep(1200);
+    chat.innerHTML+=`<div class="ai-msg bot"><span class="typing-dots">جاري التحليل الأمني</span></div>`;
+    await sleep(1500);
+    chat.lastElementChild.innerHTML=`تقرير الأمان اليومي:<br><br>
+      <strong style="color:#ef4444">تهديدات مكتشفة: 2</strong><br>
+      1. محاولة دخول من IP خارجي (85.214.33.101) — 5 محاولات فاشلة الساعة 08:55<br>
+      2. محاولة وصول غير مصرح بها من saeed_tech لصفحة الإدارة<br><br>
+      <strong style="color:#22c55e">الإجراءات المتخذة:</strong><br>
+      - تم حظر IP الخارجي تلقائياً<br>
+      - تم إرسال تنبيه لحساب saeed_tech<br><br>
+      <strong>التوصية:</strong> مراجعة صلاحيات saeed_tech والتحقق من سبب محاولة الوصول`;
+    await sleep(3500);
+  }
+];
+
+async function playScene(i){if(i<0||i>=scenes.length)return;currentScene=i;updateControls();hideNarration();hideModal();await scenes[i]()}
+async function autoPlay(){while(playing&&currentScene<scenes.length){await playScene(currentScene);if(!playing)break;await sleep(1000);currentScene++}}
+$('#btnPlay').onclick=()=>{playing=!playing;$('#btnPlay').textContent=playing?'⏸ إيقاف':'▶ تشغيل';if(playing){currentScene=Math.min(currentScene,scenes.length-1);autoPlay()}else clearTimeout(sceneTimer)};
+$('#btnNext').onclick=()=>{playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.min(currentScene+1,scenes.length-1);playScene(currentScene)};
+$('#btnPrev').onclick=()=>{playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.max(currentScene-1,0);playScene(currentScene)};
+$('#progressWrap').onclick=e=>{const r=e.target.getBoundingClientRect();const p=(e.clientX-r.left)/r.width;playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.floor(p*scenes.length);playScene(currentScene)};
+updateControls();autoPlay();
+})();
+</script>
+</body>
+</html>

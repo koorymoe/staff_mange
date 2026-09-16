@@ -1,0 +1,33 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ملفات WASM مال ميدياپايپ — تُنسخ من node_modules بـprebuild.
+# ٢٣ م.ب، وما تدخل گيت حتى المستودع ما يثقل للأبد.
+public/mp/wasm/
+
+# مجسّمات مرخّصة من أسواق تجارية — رخصة تيربو سكويد Standard تمنع
+# **إتاحة المجسّم نفسه** للناس، ومستودعنا عام. فتنزل على السيرفر
+# وتُخدَم بعد تسجيل الدخول، وما تدخل گيت إطلاقاً.
+public/cartoon-boy-*.glb
