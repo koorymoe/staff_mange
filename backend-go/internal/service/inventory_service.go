@@ -131,6 +131,11 @@ func (s *InventoryService) UnexemptPersonalTool(employeeID, toolName string) err
 	return s.repo.UnexemptPersonalTool(employeeID, toolName)
 }
 
+// ToolBelongsTo تمرير لفحص ملكية الأداة — يستعمله المعالج بالتضييق.
+func (s *InventoryService) ToolBelongsTo(toolID, employeeID string) (bool, error) {
+	return s.repo.ToolBelongsTo(toolID, employeeID)
+}
+
 func (s *InventoryService) ListToolEvents(toolID, employeeID string) ([]model.PersonalToolEvent, error) {
 	return s.repo.ListToolEvents(toolID, employeeID)
 }
