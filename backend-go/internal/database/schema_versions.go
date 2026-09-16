@@ -340,6 +340,9 @@ func versionedMigrations() []Migration {
 	// ربط الفاتورة اليدوية بخدمة، وعيّنات الأسعار، واقتراح المعدّل
 	// (يقترح ويُراجع ويُعتمد، ما ينشر لحاله).
 	result = append(result, servicePriceLearningMigrations()...)
+	// 0286: نوع الخدمة (جي بي اس / داش كام) — ماكان أكو شي يفرّقهن،
+	// فقائمة الربط بحجز ما تكدر ترشّح.
+	result = append(result, serviceKindMigrations()...)
 	return result
 }
 

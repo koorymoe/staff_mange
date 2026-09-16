@@ -690,6 +690,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/locate", middleware.Chain(http.HandlerFunc(locateHandler.Locate), requireAuth))
 	mux.Handle("GET /api/bookings/manager-paperwork", middleware.Chain(http.HandlerFunc(bookingHandler.ManagerPaperwork), requireAuth))
 	mux.Handle("PUT /api/services/{id}/manager-paperwork", middleware.Chain(http.HandlerFunc(serviceHandler.SetManagerPaperwork), requireAuth, requireAdmin))
+	// نوع الخدمة (جي بي اس / داش كام) — نفس حارس «الورق على المسؤول»:
+	// تأشير كتالوك يخص المالك ومدير النظام.
+	mux.Handle("PUT /api/services/{id}/kind", middleware.Chain(http.HandlerFunc(serviceHandler.SetKind), requireAuth, requireAdmin))
 
 	// العملاء — أي مسجل دخول يقدر يبحث وينشئ عميل (يطابق سلوك المبيعات بالباك إند القديم)
 	// ═══ بيانات الزبائن — أسماء وأرقام هواتف وعناوين ═══
@@ -717,6 +720,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// حجوزات الشغل داخل الشركة — لمن يسوي فاتورتها أو يدقّقها.
 	// ⚠️ لازم تجي **قبل** `GET /api/bookings/{id}` وإلا "internal"
 	// تنحسب معرّف حجز.
+	// حجوزات خدمتي مرشّحة بالنوع — نفس حارس فاتورة الخدمة بالضبط،
+	// حتى ما يصير باب يشوف بيه حجوزات وما يكدر يفوترها.
+	mux.Handle("GET /api/bookings/service-paperwork", middleware.Chain(
+		http.HandlerFunc(bookingHandler.ServicePaperworkByKind), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+			[]string{"ADMIN", "OWNER"}, "invoice_gps", "invoice_dashcam")))
 	mux.Handle("GET /api/bookings/internal", middleware.Chain(http.HandlerFunc(bookingHandler.ListInternal), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 			[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR"},
@@ -1350,11 +1359,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/quotations/{id}/versions", middleware.Chain(http.HandlerFunc(quotationHandler.Versions), requireAuth))
 
 	// ═══ تعلّم أسعار الخدمات ═══
-	// ⚠️ `invoice_manual` جنبهم: صاحبها هو الي **فواتيره تولّد
-	// العيّنات**، فلازم يشوف شنو يتجمّع من شغله.
+	// 🔴 **للمحاسب والمراقب والمالك والمدير وبس** — قرار صاحب النظام
+	// (١٦ أيلول ٢٠٢٦): «المفروض تطلع فقط للمراقب وللمحاسب… يعني أكيد
+	// تطلع للمالك وللمدير».
+	//
+	// ⚠️ چانت مفتوحة لـ`execution_cost` و`invoice_manual` بحجة إن
+	// صاحب الفاتورة اليدوية يشوف عيّناته — والنتيجة إن **فني** عنده
+	// حساب الكلفة طلعله تبويب أسعار الشركة كله. وسعر الخدمة قرار
+	// إدارة، مو معلومة كل من يسوي فاتورة.
 	requireServicePriceRead := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 		[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"},
-		"execution_cost", "invoice_manual", "finance", "finance_audit")
+		"finance", "finance_audit")
 	// القراءة لصاحب حساب الكلفة والمحاسب والمراقب والمالك — الي
 	// يشتغل بالأسعار يشوف عيّناتها. المراجعة **للمحاسب** والاعتماد
 	// **للمالك ومدير النظام** — ترتيب (ع) نصاً.

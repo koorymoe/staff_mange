@@ -76,12 +76,25 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
    * ⚠️ فالتصحيح **إجباري بـeffect مو بقيمة ابتدائية**: `useState`
    * ما تُعاد حسبتها لمّا توصل الصلاحيات.
    */
-  const [serviceKind, setServiceKind] = useState<'GPS' | 'DASHCAM'>(canGps ? 'GPS' : 'DASHCAM')
-  useEffect(() => {
-    if (serviceKind === 'DASHCAM' && !canDashcam && canGps) setServiceKind('GPS')
-    else if (serviceKind === 'GPS' && !canGps && canDashcam) setServiceKind('DASHCAM')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canGps, canDashcam])
+  // ═══ نوع الخدمة — 🔴 كان متجمّداً على «داش كام» ═══
+  //
+  // `useState(canGps ? 'GPS' : 'DASHCAM')` تنحسب **بأول رسم**، وبذاك
+  // الوقت `Layout` لسه ما جلب الصلاحيات — فـ`canGps` تكون `false`
+  // والقيمة تتجمّد على `DASHCAM`. والأثر التصحيحي ماكان يصلّحها
+  // لأنه يفحص «ما عنده داش كام» وهو عنده.
+  //
+  // النتيجة: **مسؤول الجي بي اس يفتح الشاشة ويلگى نفسه على داش
+  // كام** — وماكان يبيّن قبل لأن القائمة ماكانت ترشّح أصلاً. أول ما
+  // صارت ترشّح، طلعت حجوزات النوع الغلط.
+  //
+  // ⚠️ نفس الفخ الي انعضّينا منه **ثلاث مرات** بهذا النظام: أي
+  // حالة تنحسب من `permissions` لازم **تنشتق بكل رسم** مو تنجمّد.
+  const [serviceKindPick, setServiceKindPick] = useState<'GPS' | 'DASHCAM' | null>(null)
+  const serviceKind: 'GPS' | 'DASHCAM' =
+    serviceKindPick === 'GPS' && canGps ? 'GPS'
+      : serviceKindPick === 'DASHCAM' && canDashcam ? 'DASHCAM'
+        : canGps ? 'GPS' : 'DASHCAM'
+  const setServiceKind = setServiceKindPick
   const [servicePrice, setServicePrice] = useState('')
   const [serviceNote, setServiceNote] = useState('')
 
@@ -133,8 +146,12 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
    * 🔴 قيمة مشتقّة بكل رسم مو `useState`: `internalMode` يتغيّر
    * بالمربّع، وأي حالة محسوبة مرة تبقى على أول قيمة.
    */
-  const pickableBookings = completedBookings.filter((b) =>
-    internalMode ? b.bookingType === 'INTERNAL' : b.bookingType !== 'INTERNAL')
+  // ⚠️ بوضع الخدمة ما نرشّح محلياً: الخادم رجّع خدماتي بالنوع
+  // المضبوط أصلاً، وأي ترشيح زائد هنا يشيل حجوزات صحيحة.
+  const pickableBookings = serviceMode
+    ? completedBookings
+    : completedBookings.filter((b) =>
+      internalMode ? b.bookingType === 'INTERNAL' : b.bookingType !== 'INTERNAL')
   const internalBooking = completedBookings.find(
     (b) => b.id === selectedBookingId && b.bookingType === 'INTERNAL')
   // المشاريع الموجّهة لهذا الموظف — هذي هي المصدر الأساسي للفاتورة: الليدر
@@ -175,6 +192,67 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   )
   const estimateOnly = mode === 'estimate'
 
+  // ═══ الخيار الواحد ═══
+  //
+  // الأوضاع الأربعة (استفسار · حجز · خدمة · يدوية · داخلية) كانت
+  // موزّعة على بطاقتين وثلاث مربّعات، وهي **متعارضة** — فنجمعها
+  // بقيمة وحدة مشتقّة، والضغط يضبط الأربعة سوه.
+  //
+  // 🔴 **مشتقّة بكل رسم مو `useState`**: الأوضاع تتبدّل من أماكن
+  // ثانية (الرابط `?service=1` و`?internal=1`)، وحالة محسوبة مرة
+  // تبقى على أول قيمة — نفس العلّة الي انعضّينا منها ثلاث مرات.
+  const workKind: 'estimate' | 'booking' | 'service' | 'manual' | 'internal' =
+    estimateOnly ? 'estimate'
+      : serviceMode ? 'service'
+        : manualMode ? 'manual'
+          : internalMode ? 'internal'
+            : 'booking'
+
+  // ═══ اسم الزبون يكمّل نفسه ═══
+  //
+  // (ع): «ماريد إملاء يدوي — لو يختار من القائمة المنسدلة وتلقائياً
+  // الخانات تنملي، لو يكتب الاسم والنظام يحدده ويملّي بقية
+  // المربعات».
+  //
+  // الاختيار من قائمة الحجوزات يعبّي أصلاً. وهذا الطريق الثاني:
+  // يكتب الاسم، والمتصفح يقترح عليه من `datalist` (اقتراح أصلي —
+  // بلا مكوّن جديد ولا تصميم)، وأول ما يطابق اسماً موجوداً ينملي
+  // الهاتف والعنوان.
+  //
+  // ⚠️ نمط منقول من `ComplaintsPage.tsx:98-107` مو مبني من جديد.
+  // 🔴 **ما ننادي `getCustomers` هنا أبداً**: مساره محروس بحارس
+  // يسجّل **مخالفة** لكل رفض، و**ثلاث مخالفات تقفل حساب الموظف
+  // تلقائياً**. والفني ومسؤول الخدمة ماكو عندهم صلاحية قراءة
+  // الزبائن — يعني كل فتحة شاشة تاخذ مخالفة، وبالثالثة ينقفل
+  // حسابه وهو ما سوّى شي. (انكشفت بالقياس: ٤٠٣ بالكونسول.)
+  //
+  // والبديل **أدق وأرخص**: أسماء زبائن **حجوزاته هو** — واصلة
+  // أصلاً مع `completedBookings`، بلا أي نداء زيادة وبلا صلاحية.
+  // وهي الي يحتاجها فعلاً: زبائن شغله، مو كل زبائن الشركة.
+  const knownCustomers = completedBookings
+    .map((b) => b.customer)
+    .filter((c): c is NonNullable<typeof c> => !!c && !!c.name)
+    .filter((c, i, all) => all.findIndex((x) => x.id === c.id) === i)
+
+  /** يكتب الاسم → لو طابق زبوناً موجوداً، الهاتف والعنوان ينملّون. */
+  const onCustomerNameChange = (value: string) => {
+    setCustomerName(value)
+    const match = knownCustomers.find((c) => c.name.trim() === value.trim())
+    if (!match) return
+    setCustomerPhone(match.phone || '')
+    // ⚠️ العنوان ما ينمسح لو الزبون ماكو إله عنوان مسجّل — الي
+    // كتبه الموظف بإيده أدق من فراغ بالقاعدة.
+    if (match.location) setCustomerAddress(match.location)
+  }
+
+  /** ضغطة وحدة تضبط كل الأوضاع — بدل ما يفهم الموظف العلاقة بينهن. */
+  const pickWorkKind = (k: 'estimate' | 'booking' | 'service' | 'manual' | 'internal') => {
+    setMode(k === 'estimate' ? 'estimate' : 'booking')
+    setServiceMode(k === 'service')
+    setManualMode(k === 'manual')
+    setInternalMode(k === 'internal')
+  }
+
   const [catalog, setCatalog] = useState<SystemPriceCatalog[]>([])
   const [systems, setSystems] = useState<string[]>([])
   const [items, setItems] = useState<DraftItem[]>([])
@@ -212,15 +290,26 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // وبس، وهي ماكو بيها زبون خارجي فما تكشف بيانات أحد.
   useEffect(() => {
     if (estimateOnly) return
+    // 🔴 بوضع فاتورة الخدمة: **حجوزات خدمتي بالنوع المختار وبس**.
+    // (ع): «من أختار الجي بي اس تطلعلي بس حجوزات الجي بي اس، ومن
+    // أختار داش كام تطلعلي بس حجوزات الداش كام». چان يجيب **كل**
+    // الحجوزات المكتملة بالشركة.
     const load = internalMode
       ? api.getInternalBookings('COMPLETED')
-      : api.getBookings({ status: 'COMPLETED' })
+      : serviceMode
+        ? api.getServicePaperwork(serviceKind)
+        : api.getBookings({ status: 'COMPLETED' })
     load.then(setCompletedBookings).catch(() => setCompletedBookings([]))
-    if (internalMode) { setMyProjects([]); return }
+    // ⚠️ والمشاريع الموجّهة تنخفي بالوضعين: ماكو علاقة بين مشروع
+    // إنشائي وفاتورة جي بي اس، وعرض ٥١ مشروعاً بالقائمة هو الي
+    // خلّى الموظف يدوخ. قرار (ع): «تنخفي تماماً».
+    if (internalMode || serviceMode) { setMyProjects([]); return }
     api.getProjectsDirectedToMe()
       .then((r) => setMyProjects(r.projects))
       .catch(() => setMyProjects([]))
-  }, [estimateOnly, internalMode])
+    // ⚠️ `serviceKind` بالاعتماديات: بلاها تبديل جي بي اس ↔ داش كام
+    // ما يعيد الجلب، فالقائمة تبقى على النوع الأول بهدوء.
+  }, [estimateOnly, internalMode, serviceMode, serviceKind])
 
   const allSystemNames = useMemo(
     () => Array.from(new Set(catalog.map((c) => c.systemName))).sort(),
@@ -459,7 +548,11 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       return
     }
     if (serviceMode) {
-      const price = Number(servicePrice)
+      // ⚠️ التوسيع بالحفظ هم مو بالخروج من الخانة وبس: لو ضغط
+      // «حفظ» بلا ما يطلع من الخانة (أو بجهاز ما يطلّق blur)،
+      // «١.٥» تنحفظ **دينار ونص** — مقيس فعلاً بالفحص. والحفظ هو
+      // آخر باب، فالحراسة تكون عنده.
+      const price = readMoney(servicePrice).value
       if (!Number.isFinite(price) || price <= 0) {
         setError('اكتب سعر الفاتورة')
         return
@@ -491,7 +584,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         setError(`اكتب شنو اشتغلت للزبون بالتفصيل (${MANUAL_WORK_MIN} حرف على الأقل)`)
         return
       }
-      const price = Number(manualPrice)
+      const price = readMoney(manualPrice).value
       if (!Number.isFinite(price) || price <= 0) {
         setError('اكتب سعر الفاتورة')
         return
@@ -743,34 +836,48 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         </div>
       </div>
 
-      {/* ═══ استفسار ولا حجز؟ ═══
+      {/* ═══ سؤال واحد: شنو تريد تسوي؟ ═══
           الاختيار من فوگ قبل أي شي، لأنه يغيّر شنو ينحفظ. لو انحط
-          بالآخر، الليدر يعبّي كلشي وبعدين يكتشف إنه بالوضع الغلط. */}
+          بالآخر، الليدر يعبّي كلشي وبعدين يكتشف إنه بالوضع الغلط.
+
+          🔴 **چانن خمس خيارات موزّعة**: بطاقتان هنا وثلاث مربّعات
+          متفرقة تحت (كلفة يدوية · فاتورة خدمة · داخل الشركة). وهنّ
+          **متعارضات أصلاً بالكود** (اختيار وحدة يطفّي الثانية) —
+          يعني سؤال واحد معروض كخمسة، والموظف لازم يفهم العلاقة
+          بينهن بنفسه. (ع): «ماريد الموظف يدوخ بيها».
+          هسه كلهن بصف واحد بنفس شكل البطاقات ولونها — ما انبنى
+          تصميم جديد، بس انجمع السؤال.
+
+          ⚠️ والموظف العادي يشوف **بطاقتين وبس**: الزائدة تطلع
+          لصاحب صلاحيتها حصراً. */}
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {([
-          { k: 'estimate', icon: '💬', title: 'استفسار زبون', desc: 'رقم تقريبي بس — ما ينحفظ ولا ينربط بحجز' },
-          { k: 'booking',  icon: '🔖', title: 'مربوط بحجز',   desc: 'نفس الحساب، وينترحّل فاتورة للمحاسب' },
-        ] as const).map((o) => (
+          { k: 'estimate', icon: '💬', title: 'استفسار زبون', desc: 'رقم تقريبي بس — ما ينحفظ ولا ينربط بحجز', show: true },
+          { k: 'booking',  icon: '🔖', title: 'فاتورة لحجز',  desc: 'الحساب من جدول الكلفة، وتترحّل للمحاسب', show: true },
+          { k: 'service',  icon: '🛰️', title: 'فاتورة خدمة', desc: 'جي بي اس أو داش كام — السعر تحطّه أنت', show: canServiceInvoice },
+          { k: 'manual',   icon: '✍️', title: 'كلفة يدوية',   desc: 'شغل ماكو إله بند بجدول الكلفة', show: canManualInvoice },
+          { k: 'internal', icon: '🏢', title: 'شغل داخل الشركة', desc: 'ماكو زبون — المبلغ تقدير', show: canInternalInvoice },
+        ] as const).filter((o) => o.show).map((o) => (
           <button
             key={o.k}
-            onClick={() => setMode(o.k)}
+            onClick={() => pickWorkKind(o.k)}
             className={`rounded-2xl border-2 p-3.5 text-right transition ${
-              mode === o.k
+              workKind === o.k
                 ? 'border-[#2c5aad] bg-sky-50 shadow-md'
                 : 'border-slate-200 bg-white hover:border-slate-300'
             }`}
           >
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
-                <p className={`text-sm font-extrabold ${mode === o.k ? 'text-[#0f2040]' : 'text-slate-700'}`}>
+                <p className={`text-sm font-extrabold ${workKind === o.k ? 'text-[#0f2040]' : 'text-slate-700'}`}>
                   {o.icon} {o.title}
                 </p>
                 <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">{o.desc}</p>
               </div>
               <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
-                mode === o.k ? 'border-[#2c5aad] bg-[#2c5aad]' : 'border-slate-300'
+                workKind === o.k ? 'border-[#2c5aad] bg-[#2c5aad]' : 'border-slate-300'
               }`}>
-                {mode === o.k && <span className="text-[10px] font-black text-white">✓</span>}
+                {workKind === o.k && <span className="text-[10px] font-black text-white">✓</span>}
               </span>
             </div>
           </button>
@@ -787,13 +894,12 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           للشغل الي ماكو إله بند بجدول الكلفة. تظهر بس لصاحب صلاحية
           `invoice_manual`. ⚠️ ما تلمس فاتورة الليدر العادية: مسار
           ثاني بالسيرفر، وإلزامي المنظومات والبنود يبقى عليها. */}
-      {canManualInvoice && !estimateOnly && (
+      {/* ⚠️ المربّع انشال — الاختيار صار من بطاقات «شنو تريد تسوي»
+          فوگ. والكتلة تنعرض بس لمّا يكون هذا الوضع مختاراً، فماكو
+          مربّع فاضي يزحم الشاشة. التنسيق نفسه ما انتغيّر. */}
+      {manualMode && (
         <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50/60 p-3">
-          <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-amber-900">
-            <input type="checkbox" checked={manualMode}
-              onChange={(e) => { setManualMode(e.target.checked); if (e.target.checked) setServiceMode(false) }} />
-            ✍️ كلفة يدوية — أكتب شنو اشتغلت وأحدّد السعر بنفسي
-          </label>
+          <p className="text-sm font-bold text-amber-900">✍️ كلفة يدوية — أكتب شنو اشتغلت وحدّد السعر</p>
           {manualMode && (
             <div className="mt-3 grid grid-cols-1 gap-3">
               <div>
@@ -863,13 +969,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       {/* ═══ فاتورة خدمة بسعر يدوي — جي بي اس / داش كام ═══
           تظهر بس لصاحب الصلاحية. ⚠️ ما تلمس فاتورة الليدر: هي مسار
           ثاني بالسيرفر، وإلزامي المنظومات والبنود يبقى عليها. */}
-      {canServiceInvoice && !estimateOnly && (
+      {serviceMode && (
         <div className="mt-3 rounded-2xl border border-sky-200 bg-sky-50/60 p-3">
-          <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-sky-900">
-            <input type="checkbox" checked={serviceMode}
-              onChange={(e) => { setServiceMode(e.target.checked); if (e.target.checked) setManualMode(false) }} />
-            🛰️ فاتورة خدمة بسعر يدوي (جي بي اس / داش كام)
-          </label>
+          <p className="text-sm font-bold text-sky-900">🛰️ فاتورة خدمة — جي بي اس أو داش كام</p>
           {serviceMode && (
             <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
               <div>
@@ -882,9 +984,21 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">السعر (د.ع) *</label>
-                <input value={servicePrice} onChange={(e) => setServicePrice(e.target.value.replace(/[^\d]/g, ''))}
-                  dir="ltr" inputMode="numeric" placeholder="0"
+                {/* 🔴 چان `replace(/[^\d]/g,'')` يمحي أي فاصلة، فـ«١.٥»
+                    تصير «١٥». و«١.٥ هيه نفسها ألف ونص» بكلامه. */}
+                <input value={servicePrice}
+                  onChange={(e) => setServicePrice(e.target.value.replace(/[^\d.]/g, ''))}
+                  onBlur={(e) => {
+                    const m = readMoney(e.target.value)
+                    if (m.converted) setServicePrice(String(m.value))
+                  }}
+                  dir="ltr" inputMode="decimal" placeholder="0"
                   className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500" />
+                {Number(servicePrice) > 0 && (
+                  <p className="mt-1 text-[11px] font-bold text-sky-800">
+                    المبلغ: {Number(servicePrice).toLocaleString('en-US', { maximumFractionDigits: 2 })} د.ع
+                  </p>
+                )}
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-600">ملاحظة (اختيارية)</label>
@@ -903,16 +1017,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
 
       {/* ═══ فاتورة شغل داخل الشركة ═══
           ماكو زبون ولا جدول كلفة — الحجز الداخلي والمبلغ المقدَّر وبس. */}
-      {canInternalInvoice && !estimateOnly && (
+      {internalMode && (
         <div className="mt-3 rounded-2xl border border-indigo-200 bg-indigo-50/60 p-3">
-          <label className="flex flex-wrap items-center gap-2 text-sm font-bold text-indigo-900">
-            <input type="checkbox" checked={internalMode}
-              onChange={(e) => {
-                setInternalMode(e.target.checked)
-                if (e.target.checked) { setManualMode(false); setServiceMode(false) }
-              }} />
-            🏢 فاتورة شغل داخل الشركة
-          </label>
+          <p className="text-sm font-bold text-indigo-900">🏢 فاتورة شغل داخل الشركة</p>
           {internalMode && (
             <div className="mt-3 space-y-3">
               {internalBooking ? (
@@ -981,7 +1088,14 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           الخصم) **كلهن ما تخص الشغل داخل الشركة**: سعره تقدير يدوي
           وماكو جدول كلفة وراه. وعرضهن لإداري الكوادر يخليه يعبّي
           منظومات وبنود ويحسب إنها تدخل بالمبلغ — وهي ما تدخل. */}
-      {!internalMode && (
+      {/* 🔴 ينخفي بأوضاع السعر اليدوي هم: «إضافة العناصر» و«مراجعة
+          الكلفة» ما إلهم أي معنى لمّا السعر يكتبه الموظف بإيده —
+          ماكو عناصر تنضاف ولا كلفة تنحسب. چان مشروطاً بـ
+          `internalMode` وبس، فالموظف بوضع فاتورة الخدمة يشوف أربع
+          خطوات وقائمة منظومات ويحسب إنه لازم يعبّيهن. وهذا أكبر
+          سبب للدوخة الي شكى منها (ع). */
+      }
+      {!internalMode && !manualMode && !serviceMode && (
       <ol className="mt-4 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3 sm:gap-2">
         {[
           { n: 1, label: 'اختيار نوع العمل', done: systems.length > 0 },
@@ -1075,10 +1189,20 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
             const linked = completedBookings.find((x) => x.id === selectedBookingId)
             return linked ? <EntityIdentity booking={linked} variant="full" className="mt-2" /> : null
           })()}
+          {/* 🔴 القائمة الفاضية لازم تگول **ليش** فاضية.
+              (ع) فتحها بحساب المالك ولگى «— بدون ربط —» وحدها وسأل
+              «ليش ما جاي تطلع؟» — والسطر الي چان تحته يحچي عن
+              المشاريع، وهي منخفية أصلاً بوضع الخدمة، فما دلّه على
+              شي. وقائمة فاضية بلا سبب تخلّي النظام يبين مكسوراً،
+              وهذا أسوأ من منع صريح. */}
           <p className="mt-1 text-xs text-slate-500">
-            {myProjects.length > 0
-              ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
-              : 'ما اكو مشروع موجّه لك حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
+            {serviceMode
+              ? pickableBookings.length > 0
+                ? `${pickableBookings.length} حجز ${serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'} منجز — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
+                : `ماكو حجز ${serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'} منجز يستحق فاتورة. الأسباب المحتملة: إنك مو مسجَّل مسؤول الخدمة عليها (المالك يسجّلك من شاشة «مسؤولي الخدمات») · أو الخدمة ما انتأشّر نوعها بنفس الشاشة · أو الورق مو مأشّر عليها إنه على مسؤول الخدمة · أو ماكو حجز منجز إلها. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
+              : myProjects.length > 0
+                ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
+                : 'ما اكو مشروع موجّه لك حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
           </p>
         </div>
       )}
@@ -1086,11 +1210,17 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       {!estimateOnly && (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <input
-            placeholder="اسم الزبون"
+            placeholder="اسم الزبون — اكتب واختر من الاقتراحات"
             value={customerName}
-            onChange={(e) => setCustomerName(e.target.value)}
+            onChange={(e) => onCustomerNameChange(e.target.value)}
+            list="lic-known-customers"
             className="rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
           />
+          {/* اقتراحات أصلية بالمتصفح — تشتغل بالموبايل هم، وبلا
+              مكتبة ولا مكوّن ولا تنسيق جديد. */}
+          <datalist id="lic-known-customers">
+            {knownCustomers.map((c) => <option key={c.id} value={c.name} />)}
+          </datalist>
           <input
             placeholder="هاتف الزبون"
             value={customerPhone}
@@ -1107,7 +1237,14 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       )}
 
       {/* ═══ (١) اختيار نوع العمل ═══ */}
-      {!internalMode && (
+      {/* 🔴 ينخفي بأوضاع السعر اليدوي هم: «إضافة العناصر» و«مراجعة
+          الكلفة» ما إلهم أي معنى لمّا السعر يكتبه الموظف بإيده —
+          ماكو عناصر تنضاف ولا كلفة تنحسب. چان مشروطاً بـ
+          `internalMode` وبس، فالموظف بوضع فاتورة الخدمة يشوف أربع
+          خطوات وقائمة منظومات ويحسب إنه لازم يعبّيهن. وهذا أكبر
+          سبب للدوخة الي شكى منها (ع). */
+      }
+      {!internalMode && !manualMode && !serviceMode && (
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_4px_20px_rgba(15,32,64,0.05)]">
       <h3 className="mb-1 flex flex-wrap items-center gap-2 font-bold text-brand-800">
         <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#2c5aad] text-[11px] font-black text-white">1</span>

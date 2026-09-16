@@ -22,7 +22,7 @@ type Service struct {
 	// Division: "ENGINEERING" (افتراضي، كل الخدمات القديمة) أو "DECOR" (المهن
 	// السبعة الجديدة: حدادة/نجارة/صباغة/سيراميك/لبخ/تأسيس ماء ومجاري/جبس بورد) —
 	// نفس تقسيم model.Employee.Division، يحدد أي كتالوج مهارات يظهر لأي شعبة.
-	Division  string    `db:"division" json:"division"`
+	Division string `db:"division" json:"division"`
 	// RequiresDeviceInfo الخدمة تطلب تفاصيل الأجهزة وقت الحجز (عدد
 	// الأجهزة ونوع المركبة) — جي بي اس أول حالة. صاحب العمل يأشّر
 	// غيرها بلا تعديل كود.
@@ -34,8 +34,16 @@ type Service struct {
 	// يخلّي خدمة جديدة تاخذ قاعدة الورق بالصدفة.
 	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
 	ManagerHandlesPaperwork bool `db:"managerHandlesPaperwork" json:"managerHandlesPaperwork"`
-	CreatedAt time.Time `db:"createdAt" json:"createdAt"`
-	Skills    []Skill   `db:"-" json:"skills"`
+	// ServiceKind نوع خدمة الفاتورة اليدوية: "GPS" أو "DASHCAM".
+	// فارغ = ما انتأشّرت، وحجوزاتها تطلع بالقائمتين مع تنبيه.
+	//
+	// ⚠️ منفصل عن `ManagerHandlesPaperwork` بقصد: ذاك يگول «الورق على
+	// المسؤول» والاثنان مؤشَّران بيه، فما يفرّقهن. وبلا هذا العمود
+	// ماكو بالنظام **أي** شي يميّز حجز الجي بي اس من الداش كام.
+	// ⚠️ عمود بالجدول → لازم حقل هنا (SELECT *).
+	ServiceKind *string   `db:"serviceKind" json:"serviceKind"`
+	CreatedAt   time.Time `db:"createdAt" json:"createdAt"`
+	Skills      []Skill   `db:"-" json:"skills"`
 }
 
 type CreateServiceRequest struct {

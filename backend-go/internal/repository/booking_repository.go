@@ -151,6 +151,66 @@ func (r *BookingRepository) ListManagerPaperwork(employeeID string, limit int) (
 	return bookings, nil
 }
 
+// ListServicePaperworkByKind نفس `ListManagerPaperwork` بالضبط — حجوزات
+// **خدماتي** المنجزة الي ورقها عليّ — بس مرشّحة بنوع الخدمة.
+//
+// (ع): «من أختار الجي بي اس تطلعلي بس حجوزات الجي بي اس، ومن أختار
+// داش كام تطلعلي بس حجوزات الداش كام».
+//
+// ⚠️ **الخدمة غير المؤشَّرة تطلع بالنوعين** (`IS NULL`): إخفاؤها يعني
+// مسؤول خدمة يفتح القائمة ويلگاها فاضية ويحسب النظام مكسوراً ويوقف
+// عن شغله. وقائمة فيها زيادة أهون من شغل واقف — والحل الحقيقي إن
+// المالك يأشّر الخدمة بضغطة، والتنبيه بالواجهة يدلّه.
+//
+// ⚠️ والحصر بالبناء مثل أصلها: الاستعلام ما يرجّع إلا خدمات هذا
+// الموظف، فماكو طريق يسرّب حجز خدمة ثانية حتى لو انغلط بالنداء.
+//
+// 🔴 و`employeeID` فاضي = **بلا حصر بمسؤول الخدمة** (المالك والمدير).
+// السبب: (ع) فتح الشاشة بحساب المالك ولگى القائمة **فاضية** — الحارس
+// يمرّر المالك، بس الاستعلام چان يحصر بـ`ServiceManager`، والمالك
+// **مو مسجَّل مسؤول خدمة على أي خدمة**. يعني صلاحية تنمنح وقائمة
+// فاضية تطلع، وهاي أسوأ من منع صريح لأنها تخلّي النظام يبين مكسوراً.
+//
+// 🔴 والربط صار على **الخدمات المتعددة** هم مو على عمود الخدمة
+// الواحدة: الحجز يقبل أكثر من خدمة (`BookingService`)، فحجز خدمته
+// الرئيسية «كاميرات» وفيه داش كام كإضافة **چان يختفي تماماً** عن
+// مسؤول الداش كام. ونفس عائلة العلّة بحساب «أكثر الخدمات طلباً».
+func (r *BookingRepository) ListServicePaperworkByKind(employeeID, kind string, limit int) ([]model.Booking, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 200
+	}
+	bookings := []model.Booking{}
+	// ⚠️ `EXISTS` مو `JOIN`: الخدمة إلها أكثر من مسؤول، والوصل
+	// المباشر يكرّر نفس الحجز بالقائمة مرة لكل مسؤول.
+	// ⚠️ و`$1 = ''` تنكتب هيچي حتى **كل المعاملات تنستعمل** — الإشارة
+	// لـ`$2` بلا استعمال `$1` ترجّع «there is no parameter $2».
+	err := r.db.Select(&bookings, `
+		SELECT b.* FROM "Booking" b
+		WHERE b."archivedAt" IS NULL
+		  AND b.status = 'COMPLETED'
+		  AND EXISTS (
+		      SELECT 1 FROM "Service" s
+		      WHERE s."managerHandlesPaperwork" = true
+		        AND (s."serviceKind" = $2 OR s."serviceKind" IS NULL)
+		        AND (s.id = b."serviceId"
+		             OR EXISTS (SELECT 1 FROM "BookingService" bs
+		                        WHERE bs."bookingId" = b.id AND bs."serviceId" = s.id))
+		        AND ($1 = '' OR EXISTS (SELECT 1 FROM "ServiceManager" sm
+		                        WHERE sm."serviceId" = s.id AND sm."employeeId" = $1))
+		  )`+
+		NotDeletePendingSQL(`b`)+`
+		ORDER BY b."completedAt" DESC NULLS LAST
+		LIMIT $3
+	`, employeeID, kind, limit)
+	if err != nil {
+		return nil, err
+	}
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
+		return nil, err
+	}
+	return bookings, nil
+}
+
 // toPointers تحول []model.Booking إلى []*model.Booking تشاور نفس عناصر المصفوفة
 // الأصلية — لازم نمرر مؤشرات لـ hydrateAll حتى التعديلات (Customer, Service...)
 // توصل فعلاً للسلايس الي يرجعه الكولر، مو لنسخة مؤقتة تنرمى بعد ما تخلص الدالة.
@@ -1237,6 +1297,28 @@ func (r *BookingRepository) ReturnToCrew(id string, note *string) error {
 	return err
 }
 
+// BookingPartySQL شرط «الموظف طرف بهذا الحجز» — تعريف **واحد**
+// يستعمله فحص الصلاحية (`IsAssignedTo`) وترشيح القوائم سوه.
+//
+// ⚠️ نسختان تتفرّقان بأول تعديل: يصير موظف **يشوف** حجزاً وما يكدر
+// يشتغل عليه، أو العكس — يشتغل على حجز ما يفروض يشوفه.
+//
+// ⚠️ `n` رقم المعامل الي بيه معرّف الموظف — النادي هو الي يحدده.
+// چان الرقم مثبَّتاً على `$2` فاضطر النادي يحجز `$1` فارغاً، وبوستكرس
+// يرفض استعلاماً يشير لـ`$2` بلا ما يستعمل `$1`: «there is no
+// parameter $2». التمرير يشيل الحيلة من أصلها.
+func BookingPartySQL(q string, n int) string {
+	p := fmt.Sprintf("$%d", n)
+	return `(` + q + `."expenseResponsibleId" = ` + p + `
+			OR ` + q + `."projectSupervisorId" = ` + p + `
+			OR ` + q + `."transferEmployeeId" = ` + p + `
+			OR ` + q + `."inspectionSupervisorId" = ` + p + `
+			OR EXISTS (
+				SELECT 1 FROM "BookingAssignment" ba
+				WHERE ba."bookingId" = ` + q + `.id AND ba."employeeId" = ` + p + `
+			))`
+}
+
 // IsAssignedTo يفحص إذا الموظف مكلّف فعلاً بهذا الحجز — أساس التحقق قبل أي
 // إجراء على مسار العمل (وصلت/بدأت/أنهيت). بدونه أي موظف مسجّل دخول يقدر
 // "ينهي" حجز موظف ثاني أو يغيّر موعده (ثغرة IDOR).
@@ -1247,16 +1329,7 @@ func (r *BookingRepository) IsAssignedTo(bookingID, employeeID string) (bool, er
 	var n int
 	err := r.db.Get(&n, `
 		SELECT COUNT(*) FROM "Booking" b
-		WHERE b.id = $1 AND (
-			b."expenseResponsibleId" = $2
-			OR b."projectSupervisorId" = $2
-			OR b."transferEmployeeId" = $2
-			OR b."inspectionSupervisorId" = $2
-			OR EXISTS (
-				SELECT 1 FROM "BookingAssignment" ba
-				WHERE ba."bookingId" = b.id AND ba."employeeId" = $2
-			)
-		)`, bookingID, employeeID)
+		WHERE b.id = $1 AND `+BookingPartySQL("b", 2), bookingID, employeeID)
 	return n > 0, err
 }
 
@@ -1778,15 +1851,26 @@ func (r *BookingRepository) RecentPaperworkDone(employeeID string, since time.Ti
 //
 // 🔴 وبلا هذا المسار الصلاحية شكلية: سلّة الحجوزات تطلع **فاضية**
 // فما يكدر يختار حجزاً، والفاتورة ما تنكتب أبداً. انقاس فعلاً.
-func (r *BookingRepository) ListInternal(status string, limit int) ([]model.Booking, error) {
-	query := `SELECT * FROM "Booking" WHERE "archivedAt" IS NULL AND "bookingType" = 'INTERNAL'` +
-		NotDeletePendingSQL(`"Booking"`)
+// partyEmployeeID فاضي = كل الحجوزات الداخلية (المالك والمدير
+// والمحاسب والمراقب وإداري الكوادر). ومملوء = **حجوزاته هو وبس**.
+//
+// 🔴 صاحب النظام: «ماريد تطلعله كل الحجوزات داخل الشركة، يطلعله
+// فقط الحجز الي توجّه اله». قبل هذا، أي واحد عنده صلاحية الفاتورة
+// الداخلية يشوف **كل** حجوزات الشركة الداخلية بأسماء طالبيها
+// وأقسامهم.
+func (r *BookingRepository) ListInternal(status, partyEmployeeID string, limit int) ([]model.Booking, error) {
+	query := `SELECT * FROM "Booking" b WHERE b."archivedAt" IS NULL AND b."bookingType" = 'INTERNAL'` +
+		NotDeletePendingSQL(`b`)
 	args := []any{}
+	if partyEmployeeID != "" {
+		args = append(args, partyEmployeeID)
+		query += ` AND ` + BookingPartySQL("b", len(args))
+	}
 	if status != "" {
 		args = append(args, status)
-		query += fmt.Sprintf(` AND status = $%d`, len(args))
+		query += fmt.Sprintf(` AND b.status = $%d`, len(args))
 	}
-	query += ` ORDER BY "createdAt" DESC`
+	query += ` ORDER BY b."createdAt" DESC`
 	if limit <= 0 || limit > 500 {
 		limit = 500
 	}

@@ -1009,7 +1009,16 @@ func (s *BookingService) Get(id string) (*model.Booking, error) {
 	return s.repo.FindByID(id)
 }
 
-// ListInternal حجوزات الشغل داخل الشركة — لمن عنده صلاحية فاتورتها.
-func (s *BookingService) ListInternal(status string, limit int) ([]model.Booking, error) {
-	return s.repo.ListInternal(status, limit)
+// ListServicePaperworkByKind حجوزات خدماتي المنجزة مرشّحة بنوع الخدمة
+// (جي بي اس / داش كام) — منتقي الربط بفاتورة الخدمة.
+func (s *BookingService) ListServicePaperworkByKind(employeeID, kind string) ([]model.Booking, error) {
+	return s.repo.ListServicePaperworkByKind(employeeID, kind, 0)
+}
+
+// ListInternal حجوزات الشغل داخل الشركة.
+//
+// partyEmployeeID فاضي = الكل (للي عنده رؤية شاملة)، ومملوء =
+// حجوزاته هو وبس.
+func (s *BookingService) ListInternal(status, partyEmployeeID string, limit int) ([]model.Booking, error) {
+	return s.repo.ListInternal(status, partyEmployeeID, limit)
 }
