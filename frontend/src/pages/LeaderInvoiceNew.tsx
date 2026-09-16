@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { onEnter } from '../utils/enterKey'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import FreeWorkBadge from '../components/FreeWorkBadge'
 import { useSession } from '../session'
@@ -1202,11 +1202,26 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
                 ? `${pickableBookings.length} حجز ${serviceKindLabel} منجز — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
                 : services.some((sv) => sv.serviceKind === serviceKind)
                   ? `ماكو حجز ${serviceKindLabel} ينتظر فاتورة — يا كلهن انسوّت إلهن فواتير، يا ماكو حجز منجز لحد هسه. القائمة تعرض المنجز الي ما إله فاتورة وبس، والحجز يختفي منها أول ما تحفظ فاتورته. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
-                  : `🔴 ماكو ولا خدمة مأشَّرة ${serviceKindLabel} بالنظام — وبلا التأشير النظام ما يعرف أي حجز هو ${serviceKindLabel}. العلاج ضغطة وحدة: شاشة «مسؤولي الخدمات» ← «🛰️ نوع الخدمة» ← أشّر الخدمة ${serviceKindLabel}.`
+                  : `🔴 ماكو ولا خدمة مأشَّرة ${serviceKindLabel} بالنظام — وبلا التأشير النظام ما يعرف أي حجز هو ${serviceKindLabel}. العلاج ضغطة وحدة من الرابط الي تحت.`
               : myProjects.length > 0
                 ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
                 : 'ما اكو مشروع موجّه لك حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
           </p>
+          {/* 🔴 رابط مباشر بدل «روح لشاشة ثانية ودوّر»: (ع) وصل هنا
+              مرتين والرسالة تدلّه على شاشة ثانية — والدلالة بلا طريق
+              تخلّي العلاج نظرياً. والرابط يطلع للي يكدر يأشّر وبس
+              (الشاشة محروسة `RequireAdmin`)، فما ننطي غيره رابطاً
+              يوصله لمنع. */}
+          {serviceMode && pickableBookings.length === 0
+            && !services.some((sv) => sv.serviceKind === serviceKind)
+            && (employee?.role === 'ADMIN' || employee?.role === 'OWNER') && (
+            <Link
+              to="/service-managers"
+              className="mt-2 inline-block rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"
+            >
+              🛰️ افتح شاشة تأشير نوع الخدمة
+            </Link>
+          )}
         </div>
       )}
 

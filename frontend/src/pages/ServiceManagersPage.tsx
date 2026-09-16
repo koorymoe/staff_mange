@@ -13,6 +13,7 @@ export default function ServiceManagersPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
   const [kindBusy, setKindBusy] = useState<string | null>(null)
+  const [kindFilter, setKindFilter] = useState('')
   const [paperworkBusy, setPaperworkBusy] = useState<string | null>(null)
 
   const load = () => {
@@ -116,8 +117,19 @@ export default function ServiceManagersPage() {
               <b>② وقائمة الفاتورة</b> تعرض لصاحب صلاحية «فاتورة الجي بي اس»
               <b>حجوزات الجي بي اس وبس</b>، ونفس الشي للداش كام.
             </p>
+            {/* 🔴 مربع بحث: (ع) «اكو هواي داش كام بس مكتوبه بالانلكيزي» —
+                والقائمة ٣٠ خدمة، فالتأشير انكلب من ضغطة الى تفتيش.
+                والبحث يلگي العربي والإنكليزي سوه. */}
+            <input
+              value={kindFilter}
+              onChange={(e) => setKindFilter(e.target.value)}
+              placeholder="🔍 دوّر على الخدمة بالاسم — عربي أو إنكليزي"
+              className="mb-2 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-[12.5px] outline-none focus:border-sky-500"
+            />
             <div className="space-y-2">
-              {[...services].sort((a, b) => (a.serviceKind ? 0 : 1) - (b.serviceKind ? 0 : 1) || a.name.localeCompare(b.name, 'ar')).map((sv) => (
+              {[...services]
+                .filter((sv) => !kindFilter.trim() || sv.name.toLowerCase().includes(kindFilter.trim().toLowerCase()))
+                .sort((a, b) => (a.serviceKind ? 0 : 1) - (b.serviceKind ? 0 : 1) || a.name.localeCompare(b.name, 'ar')).map((sv) => (
                 <div key={sv.id} className="flex flex-wrap items-center gap-2">
                   <span className="min-w-[120px] text-[12.5px] font-bold text-slate-700">{sv.name}</span>
                   <select
