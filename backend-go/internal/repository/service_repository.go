@@ -40,6 +40,18 @@ func (r *ServiceRepository) SetManagerHandlesPaperwork(serviceID string, on bool
 	return err
 }
 
+// SetKind يأشّر نوع خدمة الفاتورة اليدوية — جي بي اس ولا داش كام.
+//
+// ⚠️ نفس مبدأ `SetManagerHandlesPaperwork`: قرار بالبيانات مو بالكود،
+// يأشّره المالك من الشاشة بضغطة بلا نشر.
+//
+// kind فارغ يمسح التأشير (يرجّعها «ما انتأشّرت»).
+func (r *ServiceRepository) SetKind(serviceID, kind string) error {
+	_, err := r.db.Exec(
+		`UPDATE "Service" SET "serviceKind" = NULLIF($1, '') WHERE id = $2`, kind, serviceID)
+	return err
+}
+
 func (r *ServiceRepository) Create(s *model.Service) error {
 	_, err := r.db.NamedExec(`
 		INSERT INTO "Service" (id, name, category, division)

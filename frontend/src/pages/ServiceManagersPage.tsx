@@ -12,6 +12,7 @@ export default function ServiceManagersPage() {
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('')
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
+  const [kindBusy, setKindBusy] = useState<string | null>(null)
   const [paperworkBusy, setPaperworkBusy] = useState<string | null>(null)
 
   const load = () => {
@@ -92,6 +93,53 @@ export default function ServiceManagersPage() {
         <p className="mt-3 text-[11.5px] text-sky-700">
           ⚠️ الخدمات غير المؤشّرة تبقى مثل ما هي حرفياً — الفني يسوي ورقه مثل اليوم.
         </p>
+
+        {/* ═══ نوع خدمة الفاتورة: جي بي اس ولا داش كام ═══
+            🔴 ماكان أكو بالنظام **أي** شي يفرّق حجز الجي بي اس من
+            حجز الداش كام — الاثنان مؤشَّران فوگ بنفس العلامة. فمنتقي
+            الربط بفاتورة الخدمة ماكان يكدر يرشّح، وكان يعرض كل
+            حجوزات الشركة.
+            ⚠️ والتأشير هنا **بنفس الصف والتنسيق** مو شاشة جديدة —
+            نفس المحل الي يأشّر بيه المالك «الورق على المسؤول». */}
+        {services.some((sv) => sv.managerHandlesPaperwork) && (
+          <div className="mt-4 border-t border-sky-200 pt-3">
+            <h4 className="mb-1 text-[13.5px] font-bold text-sky-900">🛰️ نوع الخدمة — للي ورقها على المسؤول</h4>
+            <p className="mb-2 text-[12px] leading-relaxed text-sky-800">
+              أشّر أي خدمة هي <b>جي بي اس</b> وأيّها <b>داش كام</b>. ومن يسوي
+              مسؤول الخدمة فاتورة، القائمة تعرضله <b>حجوزات ذاك النوع وبس</b>.
+            </p>
+            <div className="space-y-2">
+              {services.filter((sv) => sv.managerHandlesPaperwork).map((sv) => (
+                <div key={sv.id} className="flex flex-wrap items-center gap-2">
+                  <span className="min-w-[120px] text-[12.5px] font-bold text-slate-700">{sv.name}</span>
+                  <select
+                    value={sv.serviceKind ?? ''}
+                    disabled={kindBusy === sv.id}
+                    onChange={async (e) => {
+                      const next = e.target.value as 'GPS' | 'DASHCAM' | ''
+                      setKindBusy(sv.id)
+                      try {
+                        await api.setServiceKind(sv.id, next)
+                        setServices((prev) => prev.map((x) => (x.id === sv.id ? { ...x, serviceKind: next || null } : x)))
+                      } catch (err) {
+                        alert(err instanceof Error ? err.message : 'تعذر حفظ نوع الخدمة')
+                      } finally { setKindBusy(null) }
+                    }}
+                    className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-[12.5px] outline-none focus:border-sky-500 disabled:opacity-50"
+                  >
+                    <option value="">— ما انتأشّرت</option>
+                    <option value="GPS">جي بي اس</option>
+                    <option value="DASHCAM">داش كام</option>
+                  </select>
+                </div>
+              ))}
+            </div>
+            <p className="mt-2 text-[11.5px] text-sky-700">
+              ⚠️ الخدمة غير المؤشَّرة حجوزاتها تطلع <b>بالنوعين</b> — ما تنخفي.
+              إخفاؤها يعني المسؤول يفتح القائمة ويلگاها فاضية ويحسب النظام مكسوراً.
+            </p>
+          </div>
+        )}
       </div>
 
       {loading && <p className="py-16 text-center text-slate-400">جاري التحميل...</p>}

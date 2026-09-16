@@ -107,9 +107,42 @@ func (h *BookingHandler) canSeeAllBookings(r *http.Request) bool {
 // والحجز الداخلي ماكو بيه زبون خارجي أصلاً — القسم وصاحب الطلب محلّه
 // — فقراءته ما تكشف بيانات أي زبون.
 func (h *BookingHandler) ListInternal(w http.ResponseWriter, r *http.Request) {
-	bookings, err := h.service.ListInternal(r.URL.Query().Get("status"), 0)
+	// 🔴 «ماريد تطلعله كل الحجوزات داخل الشركة، يطلعله فقط الحجز
+	// الي توجّه اله». فالي عنده رؤية شاملة (المالك · المدير ·
+	// المحاسب · المراقب · إداري الكوادر) يشوف الكل، وغيرهم — يعني
+	// صاحب صلاحية الفاتورة الداخلية — يشوف **حجوزاته هو**.
+	//
+	// ⚠️ والموظف ينجي من **التوكن** مو من الرابط: بلاها يبدّل الرقم
+	// ويشوف حجوزات غيره (نفس سبب `ManagerPaperwork`).
+	party := middleware.EmployeeIDFromContext(r)
+	switch middleware.RoleFromContext(r) {
+	case "ADMIN", "OWNER", "FINANCE", "MONITOR", "HR_COORDINATOR":
+		party = ""
+	}
+	bookings, err := h.service.ListInternal(r.URL.Query().Get("status"), party, 0)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزات الشغل داخل الشركة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, bookings)
+}
+
+// GET /api/bookings/service-paperwork?kind=GPS|DASHCAM
+//
+// حجوزات **خدماتي** المنجزة الي ورقها عليّ، مرشّحة بالنوع — منتقي
+// الربط بشاشة فاتورة الخدمة.
+//
+// ⚠️ الموظف من **التوكن** مو من الرابط: بلاها يبدّل الرقم ويشوف
+// حجوزات مسؤول خدمة ثاني (نفس سبب `ManagerPaperwork`).
+func (h *BookingHandler) ServicePaperworkByKind(w http.ResponseWriter, r *http.Request) {
+	kind := r.URL.Query().Get("kind")
+	if kind != model.ServiceInvoiceGps && kind != model.ServiceInvoiceDashcam {
+		WriteError(w, http.StatusBadRequest, "نوع الخدمة لازم يكون جي بي اس أو داش كام")
+		return
+	}
+	bookings, err := h.service.ListServicePaperworkByKind(middleware.EmployeeIDFromContext(r), kind)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزات الخدمة")
 		return
 	}
 	WriteJSON(w, http.StatusOK, bookings)

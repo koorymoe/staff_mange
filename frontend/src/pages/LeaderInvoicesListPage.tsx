@@ -152,6 +152,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
    * ونصّ الإرشاد.
    */
   const monitorSeat = !!embedded || employee?.role === 'MONITOR'
+  // ⚠️ مطابق لحارس الخادم `requireServicePriceRead` حرفياً. و`role`
+  // يتطبّع لـ'ADMIN' للمالك بالجلسة، فهذا يغطي الاثنين.
+  const canSeePrices = ['ADMIN', 'OWNER', 'FINANCE', 'MONITOR'].includes(employee?.role ?? '')
   /** ⚠️ `actualRole` مو `role`: المالك ينوصل كـADMIN بالواجهة،
    *  ودوره الحقيقي بـ`actualRole`. */
   const isOwner = employee?.actualRole === 'OWNER'
@@ -213,7 +216,9 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
     () => {
       const q = params.get('tab')
       if (q === 'INTERNAL') return 'INTERNAL'
-      if (q === 'PRICES') return 'PRICES'
+      // ⚠️ الرابط ما يفتح باباً مقفولاً: `?tab=PRICES` من غير مصرّح
+      // يرجع لتبويبه الطبيعي بدل شاشة فاضية أو نداء يرجع ٤٠٣.
+      if (q === 'PRICES' && ['ADMIN', 'OWNER', 'FINANCE', 'MONITOR'].includes(employee?.role ?? '')) return 'PRICES'
       if (q === 'MONITOR' || q === 'REVIEWED' || q === 'APPROVED') return q
       return monitorSeat ? 'MONITOR' : 'AUDIT'
     })
@@ -500,7 +505,12 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
           // ⚠️ بلا عدّاد بقصد: العدّاد لازم يعدّ **نفس** الي يعرضه
           // الضغط عليه، والاقتراحات تجي من مسار ثاني ما ينحسب مع
           // الفواتير. رقم يخالف الي تحته أسوأ من ماكو رقم.
-          { k: 'PRICES' as const, t: '🧠 أسعار يقترحها النظام', c: undefined },
+          //
+          // 🔴 ويطلع **للمحاسب والمراقب والمالك والمدير وبس** —
+          // مطابقاً لحارس الخادم بالضبط. چان يطلع لأي واحد عنده
+          // حساب الكلفة، فطلع لفني. وزر يطلع ويرجع «غير مصرح»
+          // أسوأ من زر مو موجود.
+          ...(canSeePrices ? [{ k: 'PRICES' as const, t: '🧠 أسعار يقترحها النظام', c: undefined }] : []),
         ]).map((o) => (
           <button
             key={o.k}

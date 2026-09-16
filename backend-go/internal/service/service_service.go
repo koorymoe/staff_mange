@@ -27,6 +27,20 @@ func (s *ServiceCatalogService) SetManagerHandlesPaperwork(serviceID string, on 
 	return s.repo.SetManagerHandlesPaperwork(serviceID, on)
 }
 
+// SetKind يأشّر نوع الخدمة (GPS / DASHCAM) أو يمسح التأشير.
+//
+// ⚠️ القيمة تنتحقّق هنا: نص حر على العمود يخلي «gps» و«Gps» و«جي بي
+// اس» ثلاث قيم مختلفة، والترشيح يفشل بهدوء بعد شهر.
+func (s *ServiceCatalogService) SetKind(serviceID, kind string) error {
+	if serviceID == "" {
+		return errors.New("معرّف الخدمة مطلوب")
+	}
+	if kind != "" && kind != model.ServiceInvoiceGps && kind != model.ServiceInvoiceDashcam {
+		return errors.New("نوع الخدمة لازم يكون جي بي اس أو داش كام")
+	}
+	return s.repo.SetKind(serviceID, kind)
+}
+
 func (s *ServiceCatalogService) List() ([]model.Service, error) {
 	return s.repo.List()
 }

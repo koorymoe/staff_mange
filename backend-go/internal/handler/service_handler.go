@@ -74,6 +74,24 @@ func (h *ServiceHandler) SetManagerPaperwork(w http.ResponseWriter, r *http.Requ
 	WriteJSON(w, http.StatusOK, map[string]bool{"enabled": req.Enabled})
 }
 
+// PUT /api/services/{id}/kind — نوع خدمة الفاتورة اليدوية
+func (h *ServiceHandler) SetKind(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Kind string `json:"kind"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	if err := h.service.SetKind(r.PathValue("id"), req.Kind); err != nil {
+		// ⚠️ ٤٠٠ مو ٥٠٠: نوع غلط رفض منطقي، والرسالة تنوصل للمالك
+		// بلغته بدل «تعذر حفظ الإعداد» الي ما يگوله شنو الغلط.
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"kind": req.Kind})
+}
+
 func (h *ServiceHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	if err := h.service.Delete(r.PathValue("id")); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

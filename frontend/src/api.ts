@@ -54,6 +54,8 @@ export type Division = 'ENGINEERING' | 'DECOR'
 export interface Service {
   id: string
   name: string
+  /** نوع خدمة الفاتورة اليدوية: جي بي اس أو داش كام. null = ما انتأشّرت */
+  serviceKind?: 'GPS' | 'DASHCAM' | null
   category: string | null
   division: Division
   skills: Skill[]
@@ -3536,9 +3538,16 @@ export const api = {
     request<ServiceManager[]>('/service-managers', { method: 'PUT', body: JSON.stringify({ employeeId, serviceIds }) }),
   /** حجوزات خدماتي المؤشّرة الي ورقها عليّ كمسؤول خدمة. */
   getManagerPaperwork: () => request<Booking[]>('/bookings/manager-paperwork'),
+  /** حجوزات خدمتي المنجزة مرشّحة بالنوع — منتقي الربط بفاتورة الخدمة.
+   *  ⚠️ الموظف من التوكن بالخادم، فما ينمرّر هنا. */
+  getServicePaperwork: (kind: 'GPS' | 'DASHCAM') =>
+    request<Booking[]>(`/bookings/service-paperwork?kind=${kind}`),
   /** الورق (تقرير + فاتورة) على مسؤول الخدمة مو على الفني. */
   setServiceManagerPaperwork: (serviceId: string, enabled: boolean) =>
     request<{ enabled: boolean }>(`/services/${serviceId}/manager-paperwork`, { method: 'PUT', body: JSON.stringify({ enabled }) }),
+  /** نوع خدمة الفاتورة اليدوية — `''` يمسح التأشير. */
+  setServiceKind: (serviceId: string, kind: 'GPS' | 'DASHCAM' | '') =>
+    request<{ kind: string }>(`/services/${serviceId}/kind`, { method: 'PUT', body: JSON.stringify({ kind }) }),
 
   // تتبع الموقع الحي
   createLocationPing: (data: { latitude: number; longitude: number; bookingId?: string | null }) =>
