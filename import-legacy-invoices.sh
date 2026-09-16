@@ -101,6 +101,15 @@ SELECT
      JOIN "LeaderInvoice" li ON li."bookingId" = b.id)                    AS "الحجز عنده فاتورة أصلاً";
 
 \echo ''
+\echo '» رقم الفاتورة الخارجي (المعتمدة لازم إلها رقم — قيد leader_invoice_approved_needs_number):'
+SELECT
+  (SELECT count(*) FROM inv_import WHERE NULLIF(btrim(external_number),'') IS NOT NULL)  AS "عدها رقم ← تنكتب APPROVED",
+  (SELECT count(*) FROM inv_import WHERE NULLIF(btrim(external_number),'') IS NULL)      AS "بلا رقم ← تنكتب SUBMITTED",
+  (SELECT count(*) FROM inv_import i JOIN "LeaderInvoice" li
+      ON lower(btrim(li."externalInvoiceNumber")) = lower(btrim(i.external_number))
+   WHERE NULLIF(btrim(i.external_number),'') IS NOT NULL)                                AS "رقمها مستعمل أصلاً ← تنتخطى";
+
+\echo ''
 \echo '» أول ١٠ حجوزات مفقودة (إن وجدت):'
 SELECT i.booking_code AS "كود الحجز", i.customer_name AS "الزبون", i.accounting_code AS "الرقم المحاسبي"
   FROM inv_import i LEFT JOIN "Booking" b ON b.code = i.booking_code
@@ -136,13 +145,21 @@ SELECT
   0,
   COALESCE(i.net_total, 0),
   btrim(i.accounting_code),
-  'APPROVED',
+  -- ⚠️ الفاتورة المعتمدة لازم إلها رقم فاتورة خارجي — قيد
+  -- leader_invoice_approved_needs_number، وهو ضابط مالي انحط بعد
+  -- حادثة كلّفت فاتورة. فالصف الي ما إله رقم بالدفتر يدخل SUBMITTED
+  -- مو APPROVED: مبلغه ينحسب ويطلع الحجز من طابور الورق، ونقص الدليل
+  -- يبقى **مكشوف** بطابور التدقيق بدل ما ينخفي وراء ختم اعتماد كاذب.
+  CASE WHEN NULLIF(btrim(i.external_number), '') IS NOT NULL
+       THEN 'APPROVED' ELSE 'SUBMITTED' END,
   'MANUAL',
   'تسوية محاسبية لشغل قبل النظام — المصدر: دفتر تدقيق الحسابات',
-  o.id,
-  COALESCE(NULLIF(i.invoice_date, '')::timestamptz, now()),
+  CASE WHEN NULLIF(btrim(i.external_number), '') IS NOT NULL THEN o.id END,
+  CASE WHEN NULLIF(btrim(i.external_number), '') IS NOT NULL
+       THEN COALESCE(NULLIF(i.invoice_date, '')::timestamptz, now()) END,
   NULLIF(btrim(i.external_number), ''),
-  COALESCE(NULLIF(i.invoice_date, '')::timestamptz, now()),
+  CASE WHEN NULLIF(btrim(i.external_number), '') IS NOT NULL
+       THEN COALESCE(NULLIF(i.invoice_date, '')::timestamptz, now()) END,
   COALESCE(NULLIF(i.invoice_date, '')::timestamptz, now())
 FROM inv_import i
 JOIN "Booking" b   ON b.code = i.booking_code
@@ -150,15 +167,25 @@ CROSS JOIN owner_pick o
 WHERE NOT EXISTS (
         SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id
       )
+  -- ⚠️ ورقم الفاتورة الخارجي فريد (leader_invoice_external_number_unique):
+  -- الصف الي رقمه مستعمل أصلاً ينتخطى بهدوء بدل ما يفشل الاستيراد كله.
+  AND NOT EXISTS (
+        SELECT 1 FROM "LeaderInvoice" li2
+        WHERE NULLIF(btrim(i.external_number), '') IS NOT NULL
+          AND lower(btrim(li2."externalInvoiceNumber")) = lower(btrim(i.external_number))
+      )
 ON CONFLICT ("accountingCode") DO NOTHING
-RETURNING id, "netTotal"
+RETURNING id, "netTotal", status
 )
 SELECT * FROM ins;
 
 \echo ''
 \echo '───────────── نتيجة الإدخال ─────────────'
 \echo ''
-SELECT count(*) AS "فواتير انضافت", COALESCE(sum("netTotal"),0) AS "مجموع المبالغ"
+SELECT count(*) AS "فواتير انضافت",
+       COALESCE(sum("netTotal"),0) AS "مجموع المبالغ",
+       count(*) FILTER (WHERE status = 'APPROVED')  AS "معتمدة",
+       count(*) FILTER (WHERE status = 'SUBMITTED') AS "بانتظار التدقيق (بلا رقم فاتورة)"
   FROM inserted_ids;
 
 \echo ''
