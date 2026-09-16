@@ -1109,18 +1109,23 @@ const dailyHourExpr = `EXTRACT(HOUR FROM ` + dailyDateExpr + ` + interval '3 hou
 // CountForDate يرجّع عدد كل الحجوزات (بكل الحالات) بتاريخ معيّن.
 func (r *BookingRepository) CountForDate(date string) (int, error) {
 	var count int
-	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date`, date)
+	// 🔴 المؤرشف والمطلوب حذفه مستثنيان: جدول اليوم ما يعرضهم، فلو
+	// انعدّوا يطلع «١٢ حجز اليوم» والجدول يعرض ٩.
+	err := r.db.Get(&count, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date
+		AND `+BookingCountableSQL("b"), date)
 	return count, err
 }
 
 // CountMorningEveningForDate يرجّع عدد الحجوزات الصباحية (قبل الساعة 12
 // ظهراً) والمسائية بتاريخ معيّن.
 func (r *BookingRepository) CountMorningEveningForDate(date string) (morning int, evening int, err error) {
-	err = r.db.Get(&morning, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date AND `+dailyHourExpr+` < 12`, date)
+	err = r.db.Get(&morning, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date AND `+dailyHourExpr+` < 12
+		AND `+BookingCountableSQL("b"), date)
 	if err != nil {
 		return 0, 0, err
 	}
-	err = r.db.Get(&evening, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date AND `+dailyHourExpr+` >= 12`, date)
+	err = r.db.Get(&evening, `SELECT COUNT(*) FROM "Booking" b WHERE `+dailyDayExpr+` = $1::date AND `+dailyHourExpr+` >= 12
+		AND `+BookingCountableSQL("b"), date)
 	return morning, evening, err
 }
 
@@ -1175,6 +1180,7 @@ func (r *BookingRepository) CountEnteredThisWeekForEmployee(transferEmployeeID s
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "Booking"
 		WHERE "transferEmployeeId" = $1 AND "createdAt" >= now() - interval '7 days'
+		  AND `+BookingCountableSQL(`"Booking"`)+`
 	`, transferEmployeeID)
 	return count, err
 }

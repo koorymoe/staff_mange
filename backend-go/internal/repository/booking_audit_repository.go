@@ -194,6 +194,8 @@ func (r *BookingAuditRepository) PendingZeroAmount() (int, error) {
 	var n int
 	err := r.db.Get(&n, `
 		SELECT COUNT(*) FROM "Booking"
-		WHERE status = 'COMPLETED' AND COALESCE("amountCollected", 0) = 0`)
+		WHERE status = 'COMPLETED' AND COALESCE("amountCollected", 0) = 0
+		  AND `+BookingCountableSQL(`"Booking"`)+`
+	`)
 	return n, err
 }

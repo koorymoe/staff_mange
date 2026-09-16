@@ -29,7 +29,10 @@ func (r *MonitorDeskRepository) Counts() (issues, invoices, quality, crew int, e
 	if err = r.db.Get(&quality, `SELECT COUNT(*) FROM "QualityFollowUp" WHERE "inspectionStatus" = 'PENDING'`); err != nil {
 		return
 	}
-	if err = r.db.Get(&crew, `SELECT COUNT(*) FROM "Booking" WHERE status = 'PENDING'`); err != nil {
+	// 🔴 الشارة چانت تعدّ المؤرشف والمطلوب حذفه، والقسم الي تفتحه
+	// يستثنيهم — فتگول «٥» ويفتح ويلگى ٣. نفس نطاق دالة List.
+	if err = r.db.Get(&crew, `SELECT COUNT(*) FROM "Booking" WHERE status = 'PENDING'
+		AND `+BookingCountableSQL(`"Booking"`)); err != nil {
 		return
 	}
 	return
