@@ -1201,7 +1201,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
               ? pickableBookings.length > 0
                 ? `${pickableBookings.length} حجز ${serviceKindLabel} منجز — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
                 : services.some((sv) => sv.serviceKind === serviceKind)
-                  ? `ماكو حجز ${serviceKindLabel} **منجز** لحد هسه. القائمة تعرض المنجز وبس — الفاتورة بعد ما يخلص الشغل. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
+                  ? `ماكو حجز ${serviceKindLabel} ينتظر فاتورة — يا كلهن انسوّت إلهن فواتير، يا ماكو حجز منجز لحد هسه. القائمة تعرض المنجز الي ما إله فاتورة وبس، والحجز يختفي منها أول ما تحفظ فاتورته. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
                   : `🔴 ماكو ولا خدمة مأشَّرة ${serviceKindLabel} بالنظام — وبلا التأشير النظام ما يعرف أي حجز هو ${serviceKindLabel}. العلاج ضغطة وحدة: شاشة «مسؤولي الخدمات» ← «🛰️ نوع الخدمة» ← أشّر الخدمة ${serviceKindLabel}.`
               : myProjects.length > 0
                 ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
