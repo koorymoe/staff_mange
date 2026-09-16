@@ -295,6 +295,21 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
     // (ع): «من أختار الجي بي اس تطلعلي بس حجوزات الجي بي اس، ومن
     // أختار داش كام تطلعلي بس حجوزات الداش كام». چان يجيب **كل**
     // الحجوزات المكتملة بالشركة.
+    // 🔴 **ما ننادي قبل ما توصل الصلاحيات**: `permissions` تنجلب
+    // بـeffect بـ`Layout`، وبأول رسم تكون **فاضية** — فـ`canGps`
+    // تطلع false و`serviceKind` تنزل على «داش كام»، والنداء يطلع
+    // بالنوع الغلط. ومقيس: موظف عنده `invoice_gps` وبس طلع عنده
+    // **٤٠٣ بكل فتحة شاشة** على `service-paperwork?kind=DASHCAM`.
+    //
+    // ⚠️ و٤٠٣ من مسار محروس بحارس الصلاحيات **يسجّل مخالفة، وثلاث
+    // مخالفات تقفل الحساب**. هنا ما انقفل لأن الترفيض جاي من داخل
+    // المعالج بعد ما مرّر الحارس (الموظف عنده وحدة من الصلاحيتين) —
+    // بس الاعتماد على هالتفصيل خطر: أي تشديد بالحارس يخلي فتح
+    // الشاشة **يقفل حساب الموظف**.
+    //
+    // فالشرط: ما نجلب قوائم الخدمة إلا لمن تكون الصلاحية **معروفة**.
+    // وأول ما تصل، `serviceKind` تنشتق صح والـeffect يعاد بنفسه.
+    if (serviceMode && !canServiceInvoice) { setCompletedBookings([]); setMyProjects([]); return }
     const load = internalMode
       ? api.getInternalBookings('COMPLETED')
       : serviceMode
@@ -310,7 +325,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       .catch(() => setMyProjects([]))
     // ⚠️ `serviceKind` بالاعتماديات: بلاها تبديل جي بي اس ↔ داش كام
     // ما يعيد الجلب، فالقائمة تبقى على النوع الأول بهدوء.
-  }, [estimateOnly, internalMode, serviceMode, serviceKind])
+  }, [estimateOnly, internalMode, serviceMode, serviceKind, canServiceInvoice])
 
   const allSystemNames = useMemo(
     () => Array.from(new Set(catalog.map((c) => c.systemName))).sort(),
