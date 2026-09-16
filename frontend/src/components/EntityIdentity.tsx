@@ -60,6 +60,9 @@ export default function EntityIdentity({ booking, fields, variant = 'compact', c
 
       {variant === 'full' && (
         <>
+          {/* «منو الإداري الي أكّده» — سؤاله الي ماكان إله جواب بولا
+              شاشة. يطلع بالتفاصيل والطباعة، مو بالبطاقات المزدحمة. */}
+          {id.confirmedByName && <Chip>✅ أكّده: {id.confirmedByName}</Chip>}
           {id.serviceName && <Chip>🛠️ {id.serviceName}</Chip>}
           {id.address && <Chip>📍 {id.address}</Chip>}
           {when && <Chip>📅 {when}</Chip>}

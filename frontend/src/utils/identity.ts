@@ -42,6 +42,8 @@ export type IdentityFields = {
   customerPhone?: string
   address?: string
   leaderName?: string
+  /** الإداري الي أكّد الحجز — «منو الإداري الي أكّده» */
+  confirmedByName?: string
   serviceName?: string
   scheduledAt?: string | null
 }
@@ -58,6 +60,9 @@ export function identityOf(booking?: Partial<Booking> | null): IdentityFields {
     // عنوان الحجز أدق من عنوان الزبون: الزبون ممكن يطلب شغل بمحل ثاني
     address: booking.address || booking.customer?.location || undefined,
     leaderName: bookingLeaderName(booking),
+    // الكائن المهدرَج أولاً، وإلا الاسم المنسوخ نصاً على الحجز
+    // (الحجوزات القديمة ما عندها ربط، عندها الاسم وبس).
+    confirmedByName: booking.confirmedByEmployee?.name || booking.confirmedByName || undefined,
     serviceName: services.map((s) => s.name).join('، ') || undefined,
     scheduledAt: booking.scheduledAt,
   }

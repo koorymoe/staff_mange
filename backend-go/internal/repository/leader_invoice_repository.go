@@ -292,6 +292,20 @@ func (r *LeaderInvoiceRepository) hydrate(inv *model.LeaderInvoice) error {
 				}
 				b.Assignments = assignments
 			}
+			// نفس السبب: بلا هذولا، «بلا ليدر» تنكتب على فاتورة
+			// حجزها إله ليدر.
+			if b.ProjectSupervisorID != nil {
+				var e model.Employee
+				if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE id = $1`, *b.ProjectSupervisorID); err == nil {
+					b.ProjectSupervisor = &e
+				}
+			}
+			if b.ConfirmedByEmployeeID != nil {
+				var e model.Employee
+				if err := r.db.Get(&e, `SELECT * FROM "Employee" WHERE id = $1`, *b.ConfirmedByEmployeeID); err == nil {
+					b.ConfirmedByEmployee = &e
+				}
+			}
 			inv.Booking = &b
 		}
 	}
@@ -490,12 +504,43 @@ func (r *LeaderInvoiceRepository) hydrateAll(invoices []model.LeaderInvoice) err
 			assignmentsByBooking[a.BookingID] = append(assignmentsByBooking[a.BookingID], a)
 		}
 
+		// 🔴 الليدر والإداري المؤكِّد — كانا ناقصين من التهدرِج.
+		// النتيجة مو «حقل فاضي» وحسب: رأس الهوية يقرا الليدر من
+		// المشرف المعيّن، ولمّا ما يوصله يكتب **«بلا ليدر»** على
+		// فاتورة حجزها إله ليدر فعلاً — يعني الورقة تگول شي غلط،
+		// وهذا أسوأ من ما تگول ولا شي.
+		supIDs := []string{}
+		for _, b := range bookings {
+			if b.ProjectSupervisorID != nil {
+				supIDs = append(supIDs, *b.ProjectSupervisorID)
+			}
+			if b.ConfirmedByEmployeeID != nil {
+				supIDs = append(supIDs, *b.ConfirmedByEmployeeID)
+			}
+		}
+		peopleByID := map[string]*model.Employee{}
+		if len(supIDs) > 0 {
+			people := []model.Employee{}
+			if err := r.db.Select(&people, `SELECT * FROM "Employee" WHERE id = ANY($1)`, pq.Array(supIDs)); err != nil {
+				return err
+			}
+			for i := range people {
+				peopleByID[people[i].ID] = &people[i]
+			}
+		}
+
 		for id, b := range bookings {
 			b.Customer = customerByID[b.CustomerID]
 			if b.ServiceID != nil {
 				b.Service = serviceByID[*b.ServiceID]
 			}
 			b.Assignments = assignmentsByBooking[id]
+			if b.ProjectSupervisorID != nil {
+				b.ProjectSupervisor = peopleByID[*b.ProjectSupervisorID]
+			}
+			if b.ConfirmedByEmployeeID != nil {
+				b.ConfirmedByEmployee = peopleByID[*b.ConfirmedByEmployeeID]
+			}
 		}
 	}
 

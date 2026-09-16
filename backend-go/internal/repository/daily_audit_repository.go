@@ -44,7 +44,7 @@ func (r *DailyAuditRepository) Day(date string) (*model.DailyAuditReport, error)
 
 // auditRowsSQL نفس صفوف التدقيق — يُشترك بين تقرير اليوم والبحث،
 // حتى ما يصير استعلامان يحسبان المبلغ بطريقتين مختلفتين.
-const auditRowsSQL = `
+var auditRowsSQL = `
 		SELECT
 			b.id, b.code, b.status::text AS status,
 			COALESCE(c.name, '')  AS "customerName",
@@ -78,7 +78,15 @@ const auditRowsSQL = `
 			-- المعتمد: فاتورة الليدر أولاً، وإلا تقدير الإداري
 			COALESCE(li."netTotal", NULLIF(b."quotedPrice", 0), 0) AS "expectedAmount",
 			(SELECT COUNT(*) FROM "BookingAuditIssue" i
-			  WHERE i."bookingId" = b.id AND i.status = 'OPEN') AS "openIssues"
+			  WHERE i."bookingId" = b.id AND i.status = 'OPEN') AS "openIssues",
+			-- 🔴 القصة: منو الليدر ومنو الإداري الي أكّد.
+			-- بلا هذولا، المحاسب يشوف حجز منجز وجايبة فلوس وماكو
+			-- فاتورة — وما يعرف بمنو يتصل، فيضل الحجز معلّقاً أسابيع
+			-- أو يروح يسأل واحد واحد. الليدر: المشرف المعيّن، وإلا
+			-- الموظف المكلّف المؤشّر «تيم ليدر» (نفس منطق الواجهة).
+			COALESCE(sup.name, crew.name) AS "leaderName",
+			COALESCE(sup.phone, crew.phone) AS "leaderPhone",
+			conf.name AS "confirmedByName"
 		FROM "Booking" b
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service"  s ON s.id = b."serviceId"
@@ -88,7 +96,18 @@ const auditRowsSQL = `
 			LEFT JOIN "FreeWorkReason" fwr ON fwr.id = i."freeReasonId"
 			WHERE i."bookingId" = b.id ORDER BY i."createdAt" DESC LIMIT 1
 		) li ON true
-		WHERE b.status = 'COMPLETED'`
+		LEFT JOIN "Employee" sup  ON sup.id  = b."projectSupervisorId"
+		LEFT JOIN "Employee" conf ON conf.id = b."confirmedByEmployeeId"
+		LEFT JOIN LATERAL (
+			SELECT e.name, e.phone FROM "BookingAssignment" a
+			JOIN "Employee" e ON e.id = a."employeeId"
+			WHERE a."bookingId" = b.id AND e."isLeader"
+			ORDER BY a.role LIMIT 1
+		) crew ON true
+		-- 🔴 المؤرشف (المحذوف) والمطلوب حذفه كانا يطلعان بطابور
+		-- التدقيق: المحاسب يشوف حجزاً بـ٣٠٠ ألف ويروح يطابقه، وهو
+		-- حجز محذوف ما يطلع بولا شاشة ثانية. نفس نطاق دالة List.
+		WHERE b.status = 'COMPLETED' AND ` + BookingCountableSQL("b")
 
 // rollUp يحسب مجاميع التقرير من صفوفه.
 func (r *DailyAuditRepository) rollUp(rep *model.DailyAuditReport) {

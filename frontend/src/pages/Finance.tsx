@@ -5,6 +5,8 @@ import { matches } from '../utils/search'
 import { useSession, canAuditFinance } from '../session'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import BookingCodeChip from '../components/BookingCodeChip'
+import EntityIdentity from '../components/EntityIdentity'
+import MoneyNoInvoice from '../components/MoneyNoInvoice'
 
 export default function Finance() {
   // ⚠️⚠️ هاي الشاشة چانت **بلا أي فحص**: أزرار «مطابق» و«غير مطابق»
@@ -333,6 +335,20 @@ export default function Finance() {
               {/* Expanded details */}
               {isOpen && (
                 <div className="border-t border-slate-100 p-4">
+                  {/* 🔴 القصة الكاملة أول شي بالتفاصيل: كود الحجز وكود
+                      الزبون وهاتفه، **والليدر المسؤول والإداري الي
+                      أكّد**. نفس رأس الهوية الي بتسع شاشات، فالمحاسب
+                      يقرا نفس الترتيب بكل مكان. */}
+                  <EntityIdentity booking={b} variant="full" className="mb-3" />
+                  {/* «ليش جايبة فلوس بدون فاتورة» — الجواب بالحقائق:
+                      منو يلازم يسوّيها ورقمه، مو رسالة عامة. */}
+                  <MoneyNoInvoice
+                    collected={(b.amountCollected ?? 0) + (b.advancePaid ?? 0)}
+                    hasInvoice={b.hasInvoice}
+                    leaderName={b.projectSupervisor?.name}
+                    leaderPhone={b.projectSupervisor?.phone}
+                    className="mb-3"
+                  />
                   {/* الشغل داخل الشركة: ماكو زبون — القسم ومسؤولوه محلّه،
                       وأرقامهم لازم تكون بالإيد لمن يدقّق أو يتصل. */}
                   {isInternal(b) && (

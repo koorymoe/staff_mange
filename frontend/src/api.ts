@@ -1505,6 +1505,10 @@ export interface DailyAuditRow {
   invoiceFreeReason: string | null
   expectedAmount: number
   openIssues: number
+  /** القصة: منو الليدر المسؤول ومنو الإداري الي أكّد الحجز */
+  leaderName: string | null
+  leaderPhone: string | null
+  confirmedByName: string | null
 }
 
 export interface DailyAuditReport {

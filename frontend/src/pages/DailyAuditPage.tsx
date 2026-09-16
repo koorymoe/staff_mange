@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, type DailyAuditReport, type DailyAuditRow, type FreeWorkReason } from '../api'
 import FreeWorkBadge from '../components/FreeWorkBadge'
+import MoneyNoInvoice from '../components/MoneyNoInvoice'
 import { useSession, canAuditFinance } from '../session'
 import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
@@ -369,6 +370,36 @@ export default function DailyAuditPage() {
                         تشبه فاتورة أحد فضّاها — والمحاسب يأشّرها
                         «غير مطابق» فتنفتح مخالفة على شغل ضمان سليم. */}
                     <FreeWorkBadge isFree={row.invoiceIsFree} reason={row.invoiceFreeReason} className="mt-2" />
+                    {/* 🔴 القصة: منو الليدر ومنو الإداري الي أكّد.
+                        الصفّ چان بلا ولا اسم إنسان، فالمحاسب يشوف
+                        فلوس بلا فاتورة وما يعرف بمنو يتصل. */}
+                    <p className="mt-1.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] font-bold text-slate-600">
+                      <span>
+                        👷 الليدر:{' '}
+                        {row.leaderName ? (
+                          <>
+                            <b className="text-[#0f2040]">{row.leaderName}</b>
+                            {row.leaderPhone && (
+                              <a href={`tel:${row.leaderPhone}`} className="ms-1 text-brand-700 underline">☎</a>
+                            )}
+                          </>
+                        ) : <span className="text-amber-700">—</span>}
+                      </span>
+                      <span>
+                        ✅ أكّده:{' '}
+                        {row.confirmedByName
+                          ? <b className="text-[#0f2040]">{row.confirmedByName}</b>
+                          : <span className="text-amber-700">—</span>}
+                      </span>
+                    </p>
+                    <MoneyNoInvoice
+                      collected={row.collected}
+                      hasInvoice={row.invoiceTotal != null}
+                      isFree={row.invoiceIsFree}
+                      leaderName={row.leaderName}
+                      leaderPhone={row.leaderPhone}
+                      className="mt-2"
+                    />
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     {/* القائمة صارت **منجزة بس** (فلتر بالسيرفر)، فكل صف

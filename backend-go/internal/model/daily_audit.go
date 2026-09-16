@@ -22,6 +22,13 @@ type DailyAuditRow struct {
 	// ExpectedAmount المعتمد: فاتورة الليدر إذا موجودة، وإلا تقدير الإداري
 	ExpectedAmount float64 `db:"expectedAmount" json:"expectedAmount"`
 	OpenIssues     int     `db:"openIssues" json:"openIssues"`
+	// ═══ القصة الكاملة — منو مسؤول ═══
+	// «المحاسب يجي يشوف أكو حجز كامل وجايه فلوس بس ماجايه فاتورة —
+	// منو الإداري الي أكّده ومنو الليدر المسؤول». الصفّ چان بلا ولا
+	// اسم إنسان، فالسؤال ما إله جواب بالشاشة.
+	LeaderName      *string `db:"leaderName" json:"leaderName"`
+	LeaderPhone     *string `db:"leaderPhone" json:"leaderPhone"`
+	ConfirmedByName *string `db:"confirmedByName" json:"confirmedByName"`
 }
 
 type DailyAuditReport struct {
