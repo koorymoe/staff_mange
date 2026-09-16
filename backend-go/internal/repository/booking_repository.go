@@ -252,6 +252,27 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 	return bookings, nil
 }
 
+// HasNoLeader هل الحجز ماكو بيه ليدر إطلاقاً؟
+//
+// (ع): «اكو حجوزات مامحددين الهن ليدر، هذا الحجز كله مابي ليدر،
+// لازم فني واحد بس يشتغله». فبهيچ حجز الفني المكلَّف يسوق بنفسه —
+// ماكو أحد ثاني يسوق.
+//
+// ⚠️ «ماكو ليدر» = ماكو مشرف مشروع **ولا** مكلَّف واحد مؤشَّر ليدر.
+// وبس وحدة منهن موجودة، القيادة تبقى للليدر.
+func (r *BookingRepository) HasNoLeader(bookingID string) (bool, error) {
+	var none bool
+	err := r.db.Get(&none, `
+		SELECT b."projectSupervisorId" IS NULL
+		   AND NOT EXISTS (
+		       SELECT 1 FROM "BookingAssignment" a
+		       JOIN "Employee" e ON e.id = a."employeeId"
+		       WHERE a."bookingId" = b.id AND e."isLeader"
+		   )
+		FROM "Booking" b WHERE b.id = $1`, bookingID)
+	return none, err
+}
+
 // toPointers تحول []model.Booking إلى []*model.Booking تشاور نفس عناصر المصفوفة
 // الأصلية — لازم نمرر مؤشرات لـ hydrateAll حتى التعديلات (Customer, Service...)
 // توصل فعلاً للسلايس الي يرجعه الكولر، مو لنسخة مؤقتة تنرمى بعد ما تخلص الدالة.
