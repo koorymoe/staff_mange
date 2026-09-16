@@ -886,12 +886,13 @@ func (s *BookingService) ListPostponed() ([]model.Booking, error) {
 	return s.repo.ListPostponed()
 }
 
-// MarkWaiting يحط الحجز بحالة «في الانتظار» — اتصلنا بالزبون وما رد.
-func (s *BookingService) MarkWaiting(id, note, byEmployeeID string) (*model.Booking, error) {
+// MarkWaiting يحط الحجز بحالة «في الانتظار»: يا اتصلنا وما رد، يا
+// الزبون يستفسر ويرجعلنا خبر — و`kind` يفرّقهم.
+func (s *BookingService) MarkWaiting(id, note, byEmployeeID, kind string) (*model.Booking, error) {
 	if err := s.ensureNotProjectLocked(id); err != nil {
 		return nil, err
 	}
-	if err := s.repo.MarkWaiting(id, note, byEmployeeID); err != nil {
+	if err := s.repo.MarkWaiting(id, note, byEmployeeID, kind); err != nil {
 		return nil, err
 	}
 	return s.repo.FindByID(id)

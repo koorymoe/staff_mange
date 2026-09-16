@@ -769,6 +769,7 @@ func (r *BookingRepository) SettleLegacy(id, byEmployeeID, note string) error {
 			"settledLegacyNote" = NULLIF($3, ''),
 			"awaitingReschedule" = false,
 			"waitingSince" = NULL,
+			"waitingKind" = NULL,
 			"updatedAt" = now()
 		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED') AND "archivedAt" IS NULL
 	`, id, byEmployeeID, note)
@@ -1408,22 +1409,35 @@ func (r *BookingRepository) ListPostponed() ([]model.Booking, error) {
 // طابور الشغل ويضل محفوظ.
 //
 // عدد المحاولات يزيد كل مرة — زبون ما رد مرة غير زبون ما رد خمس مرات.
-func (r *BookingRepository) MarkWaiting(id, note, byEmployeeID string) error {
+//
+// و`kind` يفرّق السببين: NO_ANSWER اتصلنا وما رد ·
+// CUSTOMER_DECISION الزبون يستفسر ويرجعلنا خبر. نفس الآلية بالضبط
+// (التذكير والإرجاع والبحث) بس بطابورين منفصلين، لأن الاثنين شغل
+// مختلف: الأول نلحقه بمكالمة، والثاني ننتظر قراره.
+//
+// ⚠️ وعدّاد المحاولات ما يزيد لانتظار قرار الزبون: هاي مو محاولة
+// اتصال فاشلة، وعدّها بيها يخلي «زبون ما رد ٥ مرات» كذباً.
+func (r *BookingRepository) MarkWaiting(id, note, byEmployeeID, kind string) error {
+	if kind != model.WaitingKindCustomerDecision {
+		kind = model.WaitingKindNoAnswer
+	}
+	decision := kind == model.WaitingKindCustomerDecision
 	res, err := r.db.Exec(`
 		UPDATE "Booking"
 		SET status = 'WAITING',
 		    "waitingSince" = COALESCE("waitingSince", now()),
 		    "waitingNote" = NULLIF($2, ''),
 		    "waitingById" = $3,
-		    "contactAttempts" = "contactAttempts" + 1,
-		    "lastContactAttemptAt" = now(),
+		    "waitingKind" = $4,
+		    "contactAttempts" = "contactAttempts" + CASE WHEN $5 THEN 0 ELSE 1 END,
+		    "lastContactAttemptAt" = CASE WHEN $5 THEN "lastContactAttemptAt" ELSE now() END,
 		    -- محاولة اتصال جديدة تبدي سلّم التذكير من الأول: الإداري
 		    -- توّه اتصل، ما ينفع نذكّره بعد ساعة.
 		    "lastWaitingReminderAt" = NULL,
 		    "waitingReminderCount" = 0,
 		    "updatedAt" = now()
 		WHERE id = $1 AND status NOT IN ('COMPLETED', 'CANCELLED') AND "archivedAt" IS NULL`,
-		id, note, nullIfEmpty(byEmployeeID))
+		id, note, nullIfEmpty(byEmployeeID), kind, decision)
 	if err != nil {
 		return err
 	}
@@ -1443,6 +1457,9 @@ func (r *BookingRepository) ResumeFromWaiting(id string) error {
 		SET status = CASE WHEN "confirmedAt" IS NOT NULL THEN 'CONFIRMED'::"BookingStatus"
 		                  ELSE 'PENDING'::"BookingStatus" END,
 		    "waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
+		    -- ⚠️ النوع ينمسح معاهم: بلاها الحجز يرجع لطابور الشغل
+		    -- وهو باقي مأشّر «ينتظر قرار الزبون».
+		    "waitingKind" = NULL,
 		    "lastWaitingReminderAt" = NULL, "waitingReminderCount" = 0,
 		    "updatedAt" = now()
 		WHERE id = $1 AND status = 'WAITING'`, id)
@@ -1637,10 +1654,16 @@ func (r *BookingRepository) ListByStageBucket(bucket string, limit int) ([]model
 		cond = `status = 'CANCELLED' AND "confirmedAt" IS NULL`
 	case model.StageBucketCancelledAfter:
 		cond = `status = 'CANCELLED' AND "confirmedAt" IS NOT NULL`
+	// 🔴 سلّتا «ما رد» تستثنيان انتظار قرار الزبون: الاثنان عندهم
+	// waitingSince، فبلا الاستثناء يطلع نفس الحجز بسلّتين — والإداري
+	// يشتغل عليه مرتين ويحسبه اثنين.
 	case model.StageBucketNoAnswerBefore:
-		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL`
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION'`
 	case model.StageBucketNoAnswerAfter:
-		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL`
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION'`
+	// «الزبون يرجع خبر» — بلا شرط تثبيت: ينتظر قراره سواء انثبت لو لا.
+	case model.StageBucketCustomerDecision:
+		cond = `status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "waitingKind" = 'CUSTOMER_DECISION'`
 	// ⚠️ بلا شرط `confirmedAt`: السلّة وحدة، والحجز المؤجل الي
 	// (بسبب بيانات قديمة) ما عليه تثبيت لازم يبقى مرئي مو ينضاع.
 	case model.StageBucketPostponed:
@@ -1669,25 +1692,28 @@ func (r *BookingRepository) StageBucketCounts() (map[string]int, error) {
 		CancelAfter  int `db:"cancelAfter"`
 		NoAnsBefore  int `db:"noAnsBefore"`
 		NoAnsAfter   int `db:"noAnsAfter"`
+		CustDecision int `db:"custDecision"`
 		Postponed    int `db:"postponed"`
 	}{}
 	err := r.db.Get(&row, `
 		SELECT
 		  COUNT(*) FILTER (WHERE status = 'CANCELLED' AND "confirmedAt" IS NULL) AS "cancelBefore",
 		  COUNT(*) FILTER (WHERE status = 'CANCELLED' AND "confirmedAt" IS NOT NULL) AS "cancelAfter",
-		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL) AS "noAnsBefore",
-		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL) AS "noAnsAfter",
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION') AS "noAnsBefore",
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "confirmedAt" IS NOT NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION') AS "noAnsAfter",
+		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NOT NULL AND "waitingKind" = 'CUSTOMER_DECISION') AS "custDecision",
 		  COUNT(*) FILTER (WHERE status <> 'CANCELLED' AND "waitingSince" IS NULL AND "awaitingReschedule") AS "postponed"
 		FROM "Booking" WHERE "archivedAt" IS NULL`)
 	if err != nil {
 		return nil, err
 	}
 	return map[string]int{
-		model.StageBucketCancelledBefore: row.CancelBefore,
-		model.StageBucketCancelledAfter:  row.CancelAfter,
-		model.StageBucketNoAnswerBefore:  row.NoAnsBefore,
-		model.StageBucketNoAnswerAfter:   row.NoAnsAfter,
-		model.StageBucketPostponed:       row.Postponed,
+		model.StageBucketCancelledBefore:  row.CancelBefore,
+		model.StageBucketCancelledAfter:   row.CancelAfter,
+		model.StageBucketNoAnswerBefore:   row.NoAnsBefore,
+		model.StageBucketNoAnswerAfter:    row.NoAnsAfter,
+		model.StageBucketCustomerDecision: row.CustDecision,
+		model.StageBucketPostponed:        row.Postponed,
 	}, nil
 }
 

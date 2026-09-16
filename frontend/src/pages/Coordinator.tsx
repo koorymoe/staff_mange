@@ -345,6 +345,24 @@ export default function Coordinator() {
     }
   }
 
+  // «الزبون يرجع خبر»: استفسر وطلب وقت يفكر — طابور غير «ما رد»،
+  // لأن هذا ننتظر خبره وذاك نلحقه بمكالمة.
+  const markAwaitingCustomer = async (bookingId: string, code: string) => {
+    const note = prompt(
+      `الزبون رايح يرجعلك خبر على الحجز ${code}؟ اكتب شنو استفسر عنه (اختياري)`,
+      'استفسر عن السعر ورايح يرجعلنا خبر',
+    )
+    if (note === null) return
+    try {
+      await api.markBookingWaiting(bookingId, note.trim(), 'CUSTOMER_DECISION')
+      setSaveError(null)
+      alert('انزاح لطابور «بانتظار موافقة الزبون» — أول ما يوافق اضغط «الزبون رد» فيرجع للطابور')
+      load()
+    } catch (e) {
+      setSaveError(`تعذر تأشير «الزبون يرجع خبر»: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+    }
+  }
+
   const requestDelete = async (booking: Booking) => {
     const reason = prompt(`سبب طلب حذف الحجز ${booking.code}؟ (تجريبي، ملغى، مكرر...)`)
     if (!reason || !reason.trim()) return
@@ -832,6 +850,14 @@ export default function Coordinator() {
                         className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
                       >
                         📞 الزبون ما رد
+                      </button>
+                    )}
+                    {canRequestDelete && (
+                      <button
+                        onClick={() => markAwaitingCustomer(booking.id, booking.code)}
+                        className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100"
+                      >
+                        🤔 الزبون يرجع خبر
                       </button>
                     )}
                     {canRequestDelete && (

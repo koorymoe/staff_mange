@@ -1655,6 +1655,8 @@ export type StageBucket =
   | 'NO_ANSWER_AFTER_CONFIRM'
   | 'CANCELLED_BEFORE_CONFIRM'
   | 'CANCELLED_AFTER_CONFIRM'
+  // «الزبون يستفسر وبعدين يرجع خبر» — ننتظر قراره، مو إنه ما رد
+  | 'AWAITING_CUSTOMER_DECISION'
 
 export const STAGE_BUCKETS: { key: StageBucket; label: string; icon: string }[] = [
   // ⚠️ ماكو «مؤجّل قبل التثبيت»: «ما عدي هيج شي، شلون أأجّل موعد
@@ -1664,6 +1666,7 @@ export const STAGE_BUCKETS: { key: StageBucket; label: string; icon: string }[] 
   { key: 'NO_ANSWER_AFTER_CONFIRM', label: 'ما رد — بعد التثبيت', icon: '📵' },
   { key: 'CANCELLED_BEFORE_CONFIRM', label: 'ملغى قبل التثبيت', icon: '✖️' },
   { key: 'CANCELLED_AFTER_CONFIRM', label: 'ملغى بعد التثبيت', icon: '✖️' },
+  { key: 'AWAITING_CUSTOMER_DECISION', label: 'بانتظار موافقة الزبون', icon: '🤔' },
 ]
 
 /** ═══ نواة الذكاء الاصطناعي ═══
@@ -3829,8 +3832,15 @@ export const api = {
     request<Booking>(`/bookings/${id}/postpone`, { method: 'PUT', body: JSON.stringify({ scheduledAt, reason }) }),
 
   /** اتصلنا بالزبون وما رد — الحجز ينزاح من طابور الشغل ويضل محفوظ */
-  markBookingWaiting: (id: string, note?: string) =>
-    request<Booking>(`/bookings/${id}/waiting`, { method: 'PUT', body: JSON.stringify({ note: note ?? '' }) }),
+  /** ينزيح الحجز لطابور الانتظار. `kind`:
+   *  - `NO_ANSWER` (افتراضي) اتصلنا وما رد → «ما وصلت للتنفيذ»
+   *  - `CUSTOMER_DECISION` استفسر ورايح يرجعلنا خبر → «بانتظار موافقة الزبون»
+   *  ⚠️ الافتراضي «ما رد» حتى أي نداء قديم يبقى بمعناه. */
+  markBookingWaiting: (id: string, note?: string, kind?: 'NO_ANSWER' | 'CUSTOMER_DECISION') =>
+    request<Booking>(`/bookings/${id}/waiting`, {
+      method: 'PUT',
+      body: JSON.stringify({ note: note ?? '', kind: kind ?? 'NO_ANSWER' }),
+    }),
   /** ═══ تسوية إدارية لحجز قديم — «تم الإنجاز بدون تفاصيل» ═══
    *  للمالك وحده (السيرفر يفرضها). الحجز ينقفل منجزاً بلا كادر ولا
    *  مبالغ، وينعلّم حتى ينستثنى من غرامات الفاتورة والتقرير. */

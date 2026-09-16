@@ -133,6 +133,22 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     }
   }
 
+  // «الزبون يرجع خبر»: استفسر وطلب وقت يفكر. مسار منفصل عن «ما رد»
+  // لأنه شغل مختلف — هذا ننتظر خبره، وذاك نلحقه بمكالمة.
+  const markAwaitingCustomer = async (bookingId: string, code: string) => {
+    const note = prompt(
+      `الزبون رايح يرجعلك خبر على الحجز ${code}؟ اكتب شنو استفسر عنه (اختياري)`,
+      'استفسر عن السعر ورايح يرجعلنا خبر',
+    )
+    if (note === null) return
+    try {
+      await api.markBookingWaiting(bookingId, note.trim(), 'CUSTOMER_DECISION')
+      alert('انزاح لطابور «بانتظار موافقة الزبون» — أول ما يوافق اضغط «الزبون رد» فيرجع للطابور')
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر تأشير «الزبون يرجع خبر»')
+    }
+  }
+
   const requestDelete = async (bookingId: string, code: string) => {
     const reason = prompt(`سبب طلب حذف الحجز ${code}؟ (تجريبي، ملغى، مكرر...)`)
     if (!reason || !reason.trim()) return
@@ -674,6 +690,14 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                                 className="mt-1 mr-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
                               >
                                 📞 الزبون ما رد
+                              </button>
+                            )}
+                            {canRequestDelete && (
+                              <button
+                                onClick={() => markAwaitingCustomer(b.id, b.code)}
+                                className="mt-1 mr-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100"
+                              >
+                                🤔 الزبون يرجع خبر
                               </button>
                             )}
                             {canRequestDelete && (

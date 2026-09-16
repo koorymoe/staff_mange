@@ -73,8 +73,8 @@ type Booking struct {
 	InternalHeadID       *string `db:"internalHeadId" json:"internalHeadId,omitempty"`
 	// ملاحظات إداري الكوادر على الحجز الداخلي — منفصلة عن ملاحظات
 	// الحجز العامة حتى ما يضيع منو كتب شنو.
-	InternalHrNote *string `db:"internalHrNote" json:"internalHrNote,omitempty"`
-	InternalApproved      *bool   `db:"internalApproved" json:"internalApproved,omitempty"`
+	InternalHrNote   *string `db:"internalHrNote" json:"internalHrNote,omitempty"`
+	InternalApproved *bool   `db:"internalApproved" json:"internalApproved,omitempty"`
 	// حجز طاقة شمسية: المنظومة الي اتفق عليها المبيعات مع الزبون (اختيارية —
 	// ممكن تتحدد بعد المعاينة)، واستهلاك الزبون الشهري لحساب السعة المناسبة.
 	// ⚠️ أعمدة بالجدول → لازم حقول هنا (SELECT *).
@@ -104,9 +104,14 @@ type Booking struct {
 	// اتصلنا بالزبون بعد التثبيت حتى نطلعله وما رد. الحجز ينزاح من طابور
 	// الشغل ويضل محفوظ لحد ما يرد. عدد المحاولات يفرّق بين زبون ما رد
 	// مرة وزبون ما رد خمس مرات — الثاني قرار مو انتظار.
-	WaitingSince         *time.Time `db:"waitingSince" json:"waitingSince,omitempty"`
-	WaitingNote          *string    `db:"waitingNote" json:"waitingNote,omitempty"`
-	WaitingByID          *string    `db:"waitingById" json:"waitingById,omitempty"`
+	WaitingSince *time.Time `db:"waitingSince" json:"waitingSince,omitempty"`
+	WaitingNote  *string    `db:"waitingNote" json:"waitingNote,omitempty"`
+	WaitingByID  *string    `db:"waitingById" json:"waitingById,omitempty"`
+	// WaitingKind نوع الانتظار: NO_ANSWER اتصلنا وما رد ·
+	// CUSTOMER_DECISION الزبون يستفسر ويرجعلنا خبر. فارغ = NO_ANSWER
+	// (الصفوف القديمة انحطّت بالانتظار وماكان أكو سبب ثاني).
+	// ⚠️ عمود بالجدول → لازم حقل هنا (الجلب SELECT *).
+	WaitingKind          *string    `db:"waitingKind" json:"waitingKind,omitempty"`
 	ContactAttempts      int        `db:"contactAttempts" json:"contactAttempts"`
 	LastContactAttemptAt *time.Time `db:"lastContactAttemptAt" json:"lastContactAttemptAt,omitempty"`
 	// تذكير المعاودة: آخر مرة ذكّرنا الإداري وكم مرة. للحد من الإزعاج
@@ -380,6 +385,8 @@ const (
 	StageBucketNoAnswerAfter   = "NO_ANSWER_AFTER_CONFIRM"
 	StageBucketCancelledBefore = "CANCELLED_BEFORE_CONFIRM"
 	StageBucketCancelledAfter  = "CANCELLED_AFTER_CONFIRM"
+	// «الزبون يرجع خبر» — ينتظر قراره، مو إنه ما رد.
+	StageBucketCustomerDecision = "AWAITING_CUSTOMER_DECISION"
 )
 
 // StageBucketLabel التسمية العربية — مصدر واحد للسيرفر والواجهة.
@@ -387,6 +394,8 @@ func StageBucketLabel(bucket string) string {
 	switch bucket {
 	case StageBucketPostponed:
 		return "مؤجّلة"
+	case StageBucketCustomerDecision:
+		return "بانتظار موافقة الزبون"
 	case StageBucketNoAnswerBefore:
 		return "الزبون ما رد — قبل التثبيت"
 	case StageBucketNoAnswerAfter:
@@ -409,6 +418,18 @@ func StageBucketLabel(bucket string) string {
 // ⚠️ الفرز «قبل/بعد» يعتمد على confirmedAt مو على الحالة الحالية:
 // الحالة تتغيّر (الملغى صار CANCELLED)، بس confirmedAt يبقى شاهد إنه
 // كان مثبتاً يوم انلغى.
+// أنواع الانتظار — محصورة بالكود لأن العمود نص.
+const (
+	WaitingKindNoAnswer         = "NO_ANSWER"
+	WaitingKindCustomerDecision = "CUSTOMER_DECISION"
+)
+
+// AwaitingCustomerDecision الزبون طلب وقت يفكر ويرجعلنا خبر.
+func (b *Booking) AwaitingCustomerDecision() bool {
+	return b.WaitingSince != nil && b.WaitingKind != nil &&
+		*b.WaitingKind == WaitingKindCustomerDecision
+}
+
 func (b *Booking) ComputeStageBucket() string {
 	after := b.ConfirmedAt != nil
 	switch {
@@ -417,6 +438,10 @@ func (b *Booking) ComputeStageBucket() string {
 			return StageBucketCancelledAfter
 		}
 		return StageBucketCancelledBefore
+	// 🔴 قبل فرع «ما رد»: الاثنان عندهم waitingSince، فلو انعكس
+	// الترتيب ينبلع «ينتظر قرار الزبون» جوّا «ما رد» ويختفي.
+	case b.AwaitingCustomerDecision():
+		return StageBucketCustomerDecision
 	case b.WaitingSince != nil:
 		if after {
 			return StageBucketNoAnswerAfter

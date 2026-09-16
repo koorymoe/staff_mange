@@ -330,6 +330,9 @@ func versionedMigrations() []Migration {
 	result = append(result, entityModelMigrations()...)
 	result = append(result, itRoleMigrations()...)
 	result = append(result, systemSwitchMigrations()...)
+	// 0280: «الزبون يرجع خبر» — نوع الانتظار، حتى «ما رد» و«ينتظر
+	// قرار الزبون» ما ينخلطون بطابور واحد.
+	result = append(result, customerDecisionMigrations()...)
 	return result
 }
 

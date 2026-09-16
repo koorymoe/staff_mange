@@ -277,14 +277,27 @@ func (r *BookingRepository) StationCounts() (map[string]int, error) {
 		out["partial"] = partial
 	}
 
-	// «ما وصلت للتنفيذ»: الملغى والمؤجل والي ما رد
+	// «ما وصلت للتنفيذ»: الملغى والمؤجل والي ما رد.
+	// 🔴 وانتظار قرار الزبون **مستثنى**: إله تبويبه الخاص، ولو انعدّ
+	// بالاثنين يطلع نفس الحجز بمكانين والمجموع أكبر من الحقيقة.
 	var stuck int
 	if err := r.db.Get(&stuck, `
 		SELECT COUNT(*) FROM "Booking"
 		WHERE "archivedAt" IS NULL
-		  AND (status = 'CANCELLED' OR "waitingSince" IS NOT NULL OR "awaitingReschedule")
+		  AND (status = 'CANCELLED' OR "awaitingReschedule"
+		       OR ("waitingSince" IS NOT NULL AND COALESCE("waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION'))
 	`); err == nil {
 		out["stuck"] = stuck
+	}
+
+	// «بانتظار موافقة الزبون» — استفسر ورايح يرجعلنا خبر
+	var awaitingCustomer int
+	if err := r.db.Get(&awaitingCustomer, `
+		SELECT COUNT(*) FROM "Booking"
+		WHERE "archivedAt" IS NULL AND status <> 'CANCELLED'
+		  AND "waitingSince" IS NOT NULL AND "waitingKind" = 'CUSTOMER_DECISION'
+	`); err == nil {
+		out["awaitingCustomer"] = awaitingCustomer
 	}
 	return out, nil
 }
@@ -334,7 +347,10 @@ func (r *BookingRepository) Locate(term string) ([]BookingLocation, error) {
 		SELECT b.id, b.code, c.name AS "customerName",
 		       b.status::text AS status,
 		       (b.status = 'PARTIAL' OR (b."partialCount" > 0 AND b.status = 'CONFIRMED')) AS partial,
-		       (b.status = 'CANCELLED' OR b."waitingSince" IS NOT NULL OR b."awaitingReschedule") AS stuck,
+		       (b.status = 'CANCELLED' OR b."awaitingReschedule"
+		        OR (b."waitingSince" IS NOT NULL AND COALESCE(b."waitingKind", 'NO_ANSWER') <> 'CUSTOMER_DECISION')) AS stuck,
+		       (b.status <> 'CANCELLED' AND b."waitingSince" IS NOT NULL
+		        AND b."waitingKind" = 'CUSTOMER_DECISION') AS "awaitingCustomer",
 		       `+strings.Join(sel, ", ")+`
 		FROM "Booking" b
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
@@ -365,6 +381,8 @@ func (r *BookingRepository) Locate(term string) ([]BookingLocation, error) {
 		// تغلب (حجز منجز جزئياً مو «مكلّف»، والملغى مو «منجز»).
 		if b, _ := m["partial"].(bool); b {
 			loc.Station = "تحتاج إكمال"
+		} else if b, _ := m["awaitingCustomer"].(bool); b {
+			loc.Station = "بانتظار موافقة الزبون"
 		} else if b, _ := m["stuck"].(bool); b {
 			loc.Station = "ما وصلت للتنفيذ"
 		} else {

@@ -61,6 +61,9 @@ const TABS = [
   // محبوس عند إدارة المشاريع — يرجع لحاله أول ما يوصل التنفيذ
   { key: 'projects' as const, label: 'عند إدارة المشاريع', icon: '🏗️' },
   { key: 'stuck' as const, label: 'ما وصلت للتنفيذ', icon: '🚫' },
+  // ٨ب — «الزبون يستفسر وبعدين يرجع خبر»: خانة وحدها، مو جوّا «ما
+  // وصلت للتنفيذ». الفرق شغل مو تسمية: هذا ننتظر خبره، وذاك نلحقه.
+  { key: 'awaiting_customer' as const, label: 'بانتظار موافقة الزبون', icon: '🤔' },
   // ٩ — مخرج ثاني: انطلب حذفه وينتظر قرار المراقب
   // «الحجوزات الي ينحذفن أريدهن يترحّلن بعد، ما أريد يضلن بمكان واحد».
   { key: 'deleting' as const, label: 'بانتظار قرار الحذف', icon: '🗑️' },
@@ -137,12 +140,15 @@ export default function BookingsHub() {
     pending: 'pending', confirmed: 'confirmed', assigned: 'assigned',
     done: 'done', partial: 'partial', projects: 'at_projects',
     deleting: 'delete_pending', stuck: 'stuck',
+    awaiting_customer: 'awaitingCustomer',
   }
   const shown = TABS.filter((t) =>
     (t.key === 'new' && canCreate)
     || (t.key === 'coord' && canCoord)
     // «ما وصلت للتنفيذ» شغل تنسيق: منو يتابع الزبون الي ما رد
     || (t.key === 'stuck' && canCoord)
+    // نفس الشغل ونفس الناس: متابعة الزبون الي رايح يرجع خبر
+    || (t.key === 'awaiting_customer' && canCoord)
     // «تحتاج إكمال» شغل تنسيق: منو يحدد موعد الإكمال
     || (t.key === 'partial' && canCoord)
     // متابعة طلبات الحذف شغل تنسيق/إشراف
@@ -151,7 +157,7 @@ export default function BookingsHub() {
     || (t.key === 'projects' && canCoord)
     // ⚠️ باقي المحطات (بانتظار التثبيت · تم التثبيت · مكلّف · تم
     // الإنجاز) تحتاج صلاحية شاملة — چانت مفتوحة للكل بلا فحص.
-    || (canViewAll && t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting' && t.key !== 'projects'),
+    || (canViewAll && t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting' && t.key !== 'projects' && t.key !== 'awaiting_customer'),
   )
 
   // ⚠️ التبويب الافتراضي `pending` صار ممكن ما يكون ضمن المسموح —
@@ -223,6 +229,7 @@ export default function BookingsHub() {
         ? <BookingDeleteRequestsPage key="deleting-decide" embedded />
         : <BookingsList key="deleting" bucket="delete_pending" />)}
       {activeTab === 'stuck' && <StageBucketsPage />}
+      {activeTab === 'awaiting_customer' && <StageBucketsPage only="AWAITING_CUSTOMER_DECISION" />}
     </div>
   )
 }

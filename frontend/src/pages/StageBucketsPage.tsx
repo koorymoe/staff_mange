@@ -30,6 +30,11 @@ const BUCKET_META: Record<StageBucket, { note: string; reasonHead: string; whenH
     reasonHead: 'سبب التأجيل',
     whenHead: 'تاريخ التأجيل',
   },
+  AWAITING_CUSTOMER_DECISION: {
+    note: 'الزبون استفسر ورايح يرجعلنا خبر — ننتظر قراره. مو إنه ما رد: هو رد وتكلّم وطلب وقت يفكر.',
+    reasonHead: 'شنو استفسر عنه',
+    whenHead: 'ينتظر قراره من',
+  },
   NO_ANSWER_BEFORE_CONFIRM: {
     note: 'اتصلنا بالزبون قبل التثبيت وما رد — الحجز ما كلّفنا شي لحد الآن.',
     reasonHead: 'ملاحظة الانتظار',
@@ -76,6 +81,13 @@ const GROUPS: Group[] = [
       { key: 'NO_ANSWER_AFTER_CONFIRM', label: 'بعد التثبيت' },
     ],
   },
+  // «الزبون يستفسر وبعدين يرجع خبر — الحجز ينتقل إلى خانة اسمها
+  // بانتظار موافقة الزبون». مجموعة وحدها: هاي مو «ما رد» — الزبون
+  // رد وتكلّم، بس طلب وقت يفكر. وشغلها مختلف: ننتظر خبره مو نلحقه.
+  {
+    key: 'AWAITING_CUSTOMER', icon: '🤔', label: 'بانتظار موافقة الزبون',
+    buckets: [{ key: 'AWAITING_CUSTOMER_DECISION', label: 'بانتظار موافقة الزبون' }],
+  },
   {
     key: 'CANCELLED', icon: '✖️', label: 'حجوزات ملغية',
     buckets: [
@@ -115,8 +127,13 @@ function dateParts(iso?: string | null) {
   }
 }
 
-export default function StageBucketsPage() {
-  const [bucket, setBucket] = useState<StageBucket>('POSTPONED_AFTER_CONFIRM')
+// `only` يقصر الشاشة على سلّة وحدة — حتى التبويب المستقل
+// («بانتظار موافقة الزبون» بشاشة الحجوزات) يعيد استخدام **نفس** هذا
+// العارض بكل أزراره، بدل نسخة ثانية تنفرز عنه بأول تعديل.
+type Props = { only?: StageBucket }
+
+export default function StageBucketsPage({ only }: Props = {}) {
+  const [bucket, setBucket] = useState<StageBucket>(only ?? 'POSTPONED_AFTER_CONFIRM')
   const [rows, setRows] = useState<Booking[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -150,7 +167,10 @@ export default function StageBucketsPage() {
   // ⚠️ بدون هذا الزر الحجز يبقى بـ«ما رد» للأبد حتى لو الزبون رد
   // بعد ساعة — والإداري يضطر يسجّل حجزاً جديداً بدله، فينفقد تاريخ
   // المحاولات وينعد الزبون مرتين.
-  const isNoAnswer = bucket.startsWith('NO_ANSWER')
+  // ويطبّق على انتظار قرار الزبون هم: رجع خبره بالموافقة → يرجع
+  // للطابور بضغطة. بلاها يبقى معلّقاً للأبد ويسجّل الإداري حجزاً
+  // جديداً بدله فيضيع تاريخ المحاولات وينعد الزبون مرتين.
+  const isNoAnswer = bucket.startsWith('NO_ANSWER') || bucket === 'AWAITING_CUSTOMER_DECISION'
 
   const load = useCallback(() => {
     // ⚠️ التحميل بـtimeout مو بجسم الأثر: `setState` مباشرة جوّا الأثر
@@ -264,22 +284,36 @@ export default function StageBucketsPage() {
   /** السبب والوقت يفرقون حسب السلّة — نفس العمود، مصدر مختلف. */
   const reasonOf = (b: Booking) =>
     bucket.startsWith('CANCELLED') ? b.cancelReason
-      : bucket.startsWith('NO_ANSWER') ? b.waitingNote
+      : (bucket.startsWith('NO_ANSWER') || bucket === 'AWAITING_CUSTOMER_DECISION') ? b.waitingNote
         : b.postponeReason
   const whenOf = (b: Booking) =>
     bucket.startsWith('CANCELLED') ? b.cancelledAt
-      : bucket.startsWith('NO_ANSWER') ? b.waitingSince
+      : (bucket.startsWith('NO_ANSWER') || bucket === 'AWAITING_CUSTOMER_DECISION') ? b.waitingSince
         : b.lastPostponedAt
 
   return (
     <div dir="rtl">
-      <h2 className="text-xl font-extrabold text-[#0f2040]">🗂️ حجوزات ما وصلت للتنفيذ</h2>
-      <p className="mt-1 text-sm text-slate-500">
-        المؤجّل والي ما رد والملغى — الإلغاء وعدم الرد مفروزين: صار <b>قبل</b> التثبيت لو <b>بعده</b>.
-      </p>
+      {only === 'AWAITING_CUSTOMER_DECISION' ? (
+        <>
+          <h2 className="text-xl font-extrabold text-[#0f2040]">🤔 بانتظار موافقة الزبون</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            الزبون استفسر ورايح يرجعلنا خبر. <b>ننتظر قراره</b> — مو إنه ما رد.
+            أول ما يوافق اضغط <b>«الزبون رد»</b> فيرجع للطابور بتاريخ محاولاته.
+          </p>
+        </>
+      ) : (
+        <>
+          <h2 className="text-xl font-extrabold text-[#0f2040]">🗂️ حجوزات ما وصلت للتنفيذ</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            المؤجّل والي ما رد والملغى — الإلغاء وعدم الرد مفروزين: صار <b>قبل</b> التثبيت لو <b>بعده</b>.
+          </p>
+        </>
+      )}
 
-      {/* الخيارات — تلتف بالموبايل بدل ما تطلع شريط ينقص من الجهة */}
-      <div className="mt-4 flex flex-wrap gap-2">
+      {/* الخيارات — تلتف بالموبايل بدل ما تطلع شريط ينقص من الجهة.
+          ⚠️ تنخفي بالوضع المقصور: خيار واحد ما إله معنى، ويوهم
+          الإداري إن أكو محل ثاني يروحه. */}
+      <div className={`mt-4 flex flex-wrap gap-2 ${only ? 'hidden' : ''}`}>
         {GROUPS.map((g) => {
           const total = g.buckets.reduce((n, b) => n + (counts[b.key] || 0), 0)
           const active = g.key === group.key

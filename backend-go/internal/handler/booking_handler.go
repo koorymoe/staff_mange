@@ -648,9 +648,13 @@ func (h *BookingHandler) ListPostponed(w http.ResponseWriter, r *http.Request) {
 func (h *BookingHandler) MarkWaiting(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Note string `json:"note"`
+		// kind: NO_ANSWER (افتراضي) أو CUSTOMER_DECISION.
+		// ⚠️ الافتراضي «ما رد» مقصود: أي نداء قديم من شاشة ما
+		// انتحدّثت بعد يبقى يشتغل بمعناه الأصلي بلا ما ينقلب معناه.
+		Kind string `json:"kind"`
 	}
 	_ = DecodeJSON(r, &body)
-	b, err := h.service.MarkWaiting(r.PathValue("id"), body.Note, middleware.EmployeeIDFromContext(r))
+	b, err := h.service.MarkWaiting(r.PathValue("id"), body.Note, middleware.EmployeeIDFromContext(r), body.Kind)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
