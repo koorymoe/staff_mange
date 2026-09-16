@@ -331,6 +331,12 @@ func (s *BookingService) UpdateDetails(id string, req model.UpdateBookingDetails
 	if req.QuotedPrice != nil && *req.QuotedPrice < 0 {
 		return nil, errors.New("المبلغ المقدّر ما يصير يكون بالسالب")
 	}
+	// ⚠️ الفترة تنتحقّق هنا مو بالقاعدة: قيمة غلط على عمود enum
+	// ترجّع خطأ بوستكرس خام بالإنكليزي، والإداري يشوف طلسماً.
+	if req.Shift != nil && *req.Shift != "" &&
+		*req.Shift != "MORNING" && *req.Shift != "EVENING" {
+		return nil, errors.New("الفترة لازم تكون صباحي أو مسائي")
+	}
 	// تعديل قائمة الخدمات (لو انرسلت) — الزبون ممكن يزيد منظومة أو يشيل وحدة
 	if req.ServiceIDs != nil {
 		if err := s.repo.SetServices(id, req.ServiceIDs); err != nil {

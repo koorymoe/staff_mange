@@ -15,6 +15,7 @@ import { promptChoice } from '../utils/promptChoice'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 import PhoneActions from '../components/PhoneActions'
 import BookingCodeChip from '../components/BookingCodeChip'
+import ShiftBadge from '../components/ShiftBadge'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -816,6 +817,9 @@ export default function Coordinator() {
                     <span className="mr-3 rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">
                       تم التثبيت
                     </span>
+                    {/* الفترة تبان وهو يوجّه: الكادر مقسوم صباحي ومسائي،
+                        فما ينفع يختار فنياً مسائياً لشغل صباحي. */}
+                    <ShiftBadge shift={booking.shift} className="mr-2" />
                     {booking.priority === 'URGENT' && (
                       <span className="mr-2 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
                         عاجل

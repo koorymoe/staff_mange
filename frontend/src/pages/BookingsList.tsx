@@ -15,6 +15,7 @@ import LocateHint from '../components/LocateHint'
 import { promptChoice } from '../utils/promptChoice'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
+import ShiftBadge from '../components/ShiftBadge'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -594,6 +595,9 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                       {b.scheduledAt
                         ? formatScheduleWindow(b.scheduledAt, b.scheduledEndAt)
                         : <span className="text-amber-600">لم يُنسَّق بعد ({new Date(b.createdAt).toLocaleDateString('ar-IQ')})</span>}
+                      {/* الفترة بصف الموعد: الكادر مقسوم صباحي ومسائي،
+                          والإداري يقرا الاثنين سوه لمّا يوجّه. */}
+                      <ShiftBadge shift={b.shift} className="ms-1.5" />
                     </td>
                     <td className="px-4 py-3">
                       {/* الحالة التفصيلية بدل «مثبت/منجز» الخام: تبيّن هل

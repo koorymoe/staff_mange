@@ -337,6 +337,13 @@ type UpdateBookingDetailsRequest struct {
 	// ملاحظات إداري الكوادر على الحجز الداخلي — تتعدّل بعد الإنشاء،
 	// لأن الملاحظة تجي وقت ما تجي مو لحظة تسجيل الحجز.
 	InternalHrNote *string `json:"internalHrNote,omitempty"`
+	// Shift فترة الشغل: MORNING صباحي · EVENING مسائي.
+	//
+	// 🔴 العمود موجود بجدول الحجز من أول النظام و«Shift» نوع معرّف —
+	// بس ماكان **ولا سطر** يكتبه ولا يقرأه، فالحقل كان ميّتاً.
+	// و«ماكو» هنا معنى حقيقي: حجز قديم ما انتحدّدت فترته، وما نخمّنها
+	// إله. فالنص الفاضي يمسحها ويرجّعها «غير محدَّدة».
+	Shift *string `json:"shift,omitempty"`
 }
 
 type CompleteBookingRequest struct {

@@ -60,6 +60,8 @@ export default function BookingEditPanel({
   const [serviceIds, setServiceIds] = useState<string[]>(
     (booking.services?.length ? booking.services : booking.service ? [booking.service] : []).map((s) => s.id),
   )
+  // القائمة الأصلية — نقارن بيها حتى نعرف هل الموظف لمس الخدمات
+  const originalServiceIds = (booking.services?.length ? booking.services : booking.service ? [booking.service] : []).map((sv) => sv.id)
   const [price, setPrice] = useState(booking.quotedPrice != null ? String(booking.quotedPrice) : '')
   // datetime-local يريد "YYYY-MM-DDTHH:mm" بتوقيت محلي
   const toLocalInput = (iso: string | null) => {
@@ -69,6 +71,16 @@ export default function BookingEditPanel({
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
   }
   const [when, setWhen] = useState(toLocalInput(booking.scheduledAt))
+  // ═══ الفترة: صباحي لو مسائي ═══
+  //
+  // 🔴 العمود موجود بجدول الحجز من أول النظام بس ماكان **ولا سطر**
+  // يكتبه ولا يقرأه — حقل ميّت. وهو محتاج فعلاً: الساعة لحالها ما
+  // تكفي لأن أغلب الحجوزات تنسجّل بلا موعد بالساعة، والكادر مقسوم
+  // صباحي ومسائي — فالإداري لازم يعرف لأي فترة يوجّهه.
+  //
+  // و«غير محدَّدة» خيار حقيقي مو نقص: حجوزات قديمة بلا فترة، وما
+  // نخمّن إلها وحدة.
+  const [shift, setShift] = useState<'MORNING' | 'EVENING' | ''>(booking.shift ?? '')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
 
@@ -76,13 +88,30 @@ export default function BookingEditPanel({
 
 
   const save = async () => {
-    if (serviceIds.length === 0) { setMsg('اختار خدمة وحدة على الأقل'); return }
+    // 🔴 الحارس كان يرفض أي حفظ لمّا القائمة فاضية — حتى لو الموظف
+    // ما لمس الخدمات أصلاً. والنتيجة: حجز «بدون خدمة محددة» (وأكو
+    // منه هواي) ما تنحفظ عليه **ولا** خانة — لا سعر ولا موعد ولا
+    // فترة. مقيس: اخترت «صباحي» وضغطت حفظ، والقاعدة بقت «مسائي».
+    //
+    // وقصد الحارس محفوظ: يمنع **مسح** خدمات موجودة، مو يمنع الحفظ
+    // على حجز ماكان إله خدمات من الأساس.
+    const sameServices =
+      serviceIds.length === originalServiceIds.length &&
+      [...serviceIds].sort().join(',') === [...originalServiceIds].sort().join(',')
+    if (!sameServices && serviceIds.length === 0) {
+      setMsg('ما يصير تشيل كل الخدمات — اختار خدمة وحدة على الأقل')
+      return
+    }
     setSaving(true)
     setMsg(null)
     try {
       let updated = await api.updateBookingDetails(booking.id, {
-        serviceIds,
+        // بلا تبديل ما ننرسلها: إرسال قائمة فاضية يمسح الخدمات
+        ...(sameServices ? {} : { serviceIds }),
         quotedPrice: price.trim() === '' ? undefined : Number(price),
+        // ⚠️ ننرسلها بس إذا انتبدّلت: إرسالها دائماً يخلي أي حفظ
+        // يكتب نفس القيمة، وإرسال '' بالغلط يمحي فترة محدَّدة.
+        ...(shift !== (booking.shift ?? '') ? { shift } : {}),
       })
       // الموعد إله مسار مستقل لأنه ينسجّل بسجل تغييرات المواعيد
       if (when && when !== toLocalInput(booking.scheduledAt)) {
@@ -153,6 +182,19 @@ export default function BookingEditPanel({
             placeholder="غير محددة"
             className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">الفترة</label>
+          <select
+            value={shift}
+            onChange={(e) => setShift(e.target.value as 'MORNING' | 'EVENING' | '')}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+          >
+            <option value="">— غير محدَّدة</option>
+            <option value="MORNING">🌅 صباحي</option>
+            <option value="EVENING">🌙 مسائي</option>
+          </select>
         </div>
 
         <div>

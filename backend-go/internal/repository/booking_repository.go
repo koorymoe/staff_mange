@@ -622,9 +622,14 @@ func (r *BookingRepository) UpdateDetails(id string, req model.UpdateBookingDeta
 			"mapLongitude" = COALESCE($7, "mapLongitude"),
 			"expenseResponsibleId" = COALESCE($8, "expenseResponsibleId"),
 			"locationUrl" = COALESCE($9, "locationUrl"),
-			"internalHrNote" = COALESCE($10, "internalHrNote")
+			"internalHrNote" = COALESCE($10, "internalHrNote"),
+			shift = CASE
+				WHEN $11::text IS NULL THEN shift
+				WHEN $11::text = '' THEN NULL
+				ELSE $11::"Shift"
+			END
 		WHERE id = $1
-	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID, req.LocationUrl, req.InternalHrNote)
+	`, id, req.QuotedPrice, req.Address, req.AssignedVehicle, req.MapLocation, req.MapLatitude, req.MapLongitude, req.ExpenseResponsibleID, req.LocationUrl, req.InternalHrNote, req.Shift)
 	return err
 }
 

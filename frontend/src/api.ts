@@ -626,6 +626,8 @@ export interface Booking {
   systemCount: number | null
   deviceCount: number | null
   bookingType: string
+  /** فترة الشغل: صباحي أو مسائي. `null` = غير محدَّدة (ما نخمّنها). */
+  shift: 'MORNING' | 'EVENING' | null
   /** حجز داخل الشركة — الطالب وقسمه وملاحظة إداري الكوادر. */
   internalEmployeeName?: string | null
   internalEmployeePhone?: string | null
@@ -4008,7 +4010,8 @@ export const api = {
     request<Booking>(`/bookings/${id}/schedule`, { method: 'PUT', body: JSON.stringify({ scheduledAt, changedById }) }),
   updateBookingDetails: (
     id: string,
-    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; mapLatitude?: number | null; mapLongitude?: number | null; expenseResponsibleId?: string | null; serviceIds?: string[]; internalHrNote?: string },
+    /** `shift: ''` يمسح الفترة ويرجّعها «غير محدَّدة»؛ وعدم إرسالها يخليها مثل ما هي. */
+    data: { quotedPrice?: number | null; address?: string; assignedVehicle?: string; mapLocation?: string; mapLatitude?: number | null; mapLongitude?: number | null; expenseResponsibleId?: string | null; serviceIds?: string[]; internalHrNote?: string; shift?: 'MORNING' | 'EVENING' | '' },
   ) => request<Booking>(`/bookings/${id}/details`, { method: 'PUT', body: JSON.stringify(data) }),
   /** إلغاء تكليف موظف من خانة كادر — الحجز يبقى مثبّت بلا كادر. */
   unassignTechnician: (id: string, role: string) =>
