@@ -252,8 +252,29 @@ export default function MyTasks() {
   // جرد الفني: يفتح نفس مودال الأدوات بس ما يبدي العمل — البدء بيد
   // الليدر. toolsOnly تفرّق بين الحالتين.
   const [toolsOnly, setToolsOnly] = useState(false)
+  // ═══ جرد الأدوات ينشال عن الجي بي اس والداش كام ═══
+  //
+  // (ع) سأل «شنو الموضوع مالته؟» لمن طلعله الجرد بحجز داش كام، وقرّر
+  // **ينشال**.
+  //
+  // والسبب معقول: الجرد انبنى للشغل الي يطلع بيه الفريق بعُدّة
+  // السيارة (كاميرات · شبكات · طاقة) — يتأكد إن أدوات الشركة رجعت
+  // وياه. وتركيب جهاز جي بي اس أو داش كام طلعة فني واحد بعُدّة
+  // بسيطة، فالجرد صار سؤالاً بلا معنى يوقف الشغل.
+  //
+  // ⚠️ والعلامة **نوع الخدمة** (`serviceKind`) مو علامة الورق: هاي
+  // تگول «هاي جي بي اس أو داش كام» بالضبط، وذيچ تگول «ورقه على
+  // مسؤوله» — وممكن المالك يأشّر ورق خدمة ثانية على مسؤولها وهي
+  // **تحتاج** جرد.
+  //
+  // ⚠️ وما ننسى إن الجرد هو نفسه **بوابة بدء العمل**: فبهالخدمات
+  // البدء يصير مباشرةً بلا مودال — إخفاء المودال بلا هالسطر يعني
+  // زر «بدأنا بالعمل» ما يسوّي شي.
+  const noToolsCheck = (b: Booking) => !!b.service?.serviceKind
+
   const openToolsCheck = async (booking: Booking, onlyTools: boolean) => {
     setToolsOnly(onlyTools)
+    if (noToolsCheck(booking)) { if (!onlyTools) await doStart(booking.id); return }
     if (!employee) { if (!onlyTools) await doStart(booking.id); return }
     setToolsModalBooking(booking)
     setToolsLoading(true)
@@ -603,12 +624,17 @@ export default function MyTasks() {
                             الانطلاق وبدء العمل بيد الليدر — ما تحتاج تضغط شي.
                           </span>
                         </div>
-                        <button
-                          onClick={() => openToolsCheck(b, true)}
-                          className="w-full rounded-lg bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
-                        >
-                          🧰 جردت أدواتي وأدوات السيارة — تم
-                        </button>
+                        {/* ⚠️ الزر ينخفي بخدمات الجي بي اس والداش كام:
+                            بلا هذا يبقى زر يضغطه الفني وما يسوّي ولا
+                            شي — وزر ميّت أسوأ من ماكو زر. */}
+                        {!noToolsCheck(b) && (
+                          <button
+                            onClick={() => openToolsCheck(b, true)}
+                            className="w-full rounded-lg bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                          >
+                            🧰 جردت أدواتي وأدوات السيارة — تم
+                          </button>
+                        )}
                       </div>
                       )
                     ) : (
