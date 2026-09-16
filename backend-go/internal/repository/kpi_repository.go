@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"github.com/lib/pq"
+
 	"github.com/jmoiron/sqlx"
 
 	"staffmange-api/internal/model"
@@ -178,6 +180,11 @@ func (r *KpiRepository) PermissionLeaderboard(permission string, since, until st
 				WHERE ba."employeeId" = h.id AND b.status = 'COMPLETED'
 				  AND b."completedAt" >= $2::timestamp
 				  AND ($3 = '' OR b."completedAt" < $3::timestamp)
+				  -- 🔴 المؤرشف (المحذوف) والمطلوب حذفه كانا ينعدّان: حجز
+				  -- محذوف يزيد رصيد موظف بالترتيب. والنقاط تنبني عليها
+				  -- تقييمات وقرارات، فالرقم لازم يكون بنفس نطاق الي
+				  -- تعرضه الشاشات.
+				  AND `+BookingCountableSQL("b")+`
 			), 0) AS "completedBookings",
 			COALESCE((
 				SELECT COUNT(*) FROM "BookingAssignment" ba
@@ -186,6 +193,7 @@ func (r *KpiRepository) PermissionLeaderboard(permission string, since, until st
 				  AND b."createdAt" >= $2::timestamp
 				  AND ($3 = '' OR b."createdAt" < $3::timestamp)
 				  AND b.status <> 'CANCELLED'
+				  AND `+BookingCountableSQL("b")+`
 			), 0) AS "assignedBookings",
 			COALESCE((
 				SELECT COUNT(DISTINCT a.date) FROM "Attendance" a
@@ -211,7 +219,13 @@ func (r *KpiRepository) PermissionLeaderboard(permission string, since, until st
 // (الأسبوع الي قبله) للمقارنة. والرقم بلا مقارنة ما يگول شي — «٨٦
 // نقطة» زين لو خبل؟ السهم الي يگول «+٧ عن الأسبوع الماضي» هو الي
 // يخلي الموظف يعرف هل هو يتحسّن لو ينزل.
-func (r *KpiRepository) RoleLeaderboard(role string, since, until string) ([]model.KpiLeaderboardEntry, error) {
+// ⚠️ **عائلة أدوار مو دوراً واحداً**: (ع) طلب التقييمات تنفصل
+// بعوائل («موظفين المبيعات وحد، والتقنيين ومسؤولي الخدمات وحد،
+// والفنيين والليدريه وحد، والمحاسب والمراقب وحد…»). فالمحاسب
+// والمراقب لازم يطلعون بنفس اللوحة، ودور واحد ما يمثّل عائلة.
+//
+// والقائمة بعنصر واحد تشتغل مثل قبل بالضبط — فما ينكسر نداء قائم.
+func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string) ([]model.KpiLeaderboardEntry, error) {
 	entries := []model.KpiLeaderboardEntry{}
 	err := r.db.Select(&entries, `
 		SELECT
@@ -225,6 +239,11 @@ func (r *KpiRepository) RoleLeaderboard(role string, since, until string) ([]mod
 				WHERE ba."employeeId" = e.id AND b.status = 'COMPLETED'
 				  AND b."completedAt" >= $2::timestamp
 				  AND ($3 = '' OR b."completedAt" < $3::timestamp)
+				  -- 🔴 المؤرشف (المحذوف) والمطلوب حذفه كانا ينعدّان: حجز
+				  -- محذوف يزيد رصيد موظف بالترتيب. والنقاط تنبني عليها
+				  -- تقييمات وقرارات، فالرقم لازم يكون بنفس نطاق الي
+				  -- تعرضه الشاشات.
+				  AND `+BookingCountableSQL("b")+`
 			), 0) AS "completedBookings",
 			-- كل الحجوزات الي انكلّف بيها بالفترة (مو المنجزة بس) —
 			-- بدونها ما نكدر نحسب معدل الإنجاز، والمعدل هو الي يميّز
@@ -236,6 +255,7 @@ func (r *KpiRepository) RoleLeaderboard(role string, since, until string) ([]mod
 				  AND b."createdAt" >= $2::timestamp
 				  AND ($3 = '' OR b."createdAt" < $3::timestamp)
 				  AND b.status <> 'CANCELLED'
+				  AND `+BookingCountableSQL("b")+`
 			), 0) AS "assignedBookings",
 			-- أيام حضور بالفترة: أساس «الالتزام بالدوام»
 			COALESCE((
@@ -250,9 +270,9 @@ func (r *KpiRepository) RoleLeaderboard(role string, since, until string) ([]mod
 		      AND k."createdAt" >= $2::timestamp
 		      AND ($3 = '' OR k."createdAt" < $3::timestamp)
 		      AND k.cancelled = false
-		WHERE e.role = $1 AND e.status = 'ACTIVE'
+		WHERE e.role = ANY($1) AND e.status = 'ACTIVE'
 		GROUP BY e.id, e.name
 		ORDER BY points DESC, "completedBookings" DESC
-	`, role, since, until)
+	`, pq.Array(roles), since, until)
 	return entries, err
 }

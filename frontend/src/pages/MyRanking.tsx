@@ -67,7 +67,9 @@ export default function MyRanking() {
   // مسارات الموظف = صلاحياته الفعلية. الي عنده «تنسيق الحجوزات»
   // ينقارن بمنسّقي الحجوزات مهما كان اسم دوره — والي يشتغل شغلتين
   // يظهر بتصنيفين.
-  const myTracks = tracksFor(permissions)
+  // ⚠️ الدور ينمرّر: عائلته هي المسار الأول — بلاه يرجع الترشيح
+  // بالصلاحية وحدها وتطلع علّة «إداري الكوادر بتقييمات المبيعات».
+  const myTracks = tracksFor(permissions, employee?.role)
   const [trackIdx, setTrackIdx] = useState(0)
   const activeTrack = myTracks[trackIdx] ?? null
 
@@ -78,10 +80,11 @@ export default function MyRanking() {
     // ⚠️ مسار المبيعات استثناء: صاحب النظام رفض "نفس الشغل" هنا
     // تحديداً — إداري الكوادر ومهندس الجودة يحملون صلاحية
     // sales_booking بحكم دورهم، فكانوا يدخلون ترتيب المبيعات ويخلطونه
-    // مع موظفي المبيعات الحقيقيين. `strictRole` يرجعه لترتيب الدور
+    // مع موظفي المبيعات الحقيقيين. `strictRoles` يرجعه لترتيب عائلة
     // الصارم بدل ترتيب الصلاحية.
-    const p = activeTrack?.strictRole
-      ? api.getRoleKpiLeaderboard(activeTrack.strictRole)
+    const p = activeTrack?.strictRoles?.length
+      // العائلة تنرسل مفصولة بفاصلة — الخادم يرشّح `role = ANY(...)`
+      ? api.getRoleKpiLeaderboard(activeTrack.strictRoles.join(','))
       : activeTrack
       ? api.getPermissionKpiLeaderboard(activeTrack.permission)
       : api.getRoleKpiLeaderboard(employee.role)
@@ -305,8 +308,8 @@ export default function MyRanking() {
       )}
 
       <p className="rounded-lg bg-slate-50 px-3 py-2 text-[11px] text-slate-500">
-        {activeTrack?.strictRole
-          ? <>ⓘ الترتيب بين موظفي <b>{roleLabel}</b> فقط (حسب الدور) — بلا خلط مع أدوار ثانية عندها نفس الصلاحية.</>
+        {activeTrack?.strictRoles?.length
+          ? <>ⓘ الترتيب بين <b>{activeTrack.label}</b> فقط (عائلة أدوار محدَّدة) — بلا خلط مع أدوار ثانية عندها نفس الصلاحية.</>
           : <>ⓘ الترتيب بين الي يشتغلون <b>نفس الشغل</b> ({roleLabel}) — مو حسب مسمّى الدور.</>}
         {' '}آخر {periodDays} يوم، والمقارنة مع {periodLabel}.
         {myTracks.length > 1 && ` وإنت تشتغل ${myTracks.length} شغلات، فعندك ${myTracks.length} تصنيفات.`}

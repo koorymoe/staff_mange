@@ -1,6 +1,8 @@
 package service
 
 import (
+	"strings"
+
 	"errors"
 	"log"
 	"strconv"
@@ -118,10 +120,10 @@ func (s *KpiService) Create(req model.CreateKpiEvaluationRequest) (*model.KpiEva
 		}
 		evaluatorID := req.EvaluatorID
 		s.stories.Emit(model.EmitStoryRequest{
-			EventID:     eval.ID,
-			EventKind:   model.StoryEventPointDeducted,
-			SenderID:    &evaluatorID,
-			SenderName:  senderName,
+			EventID:       eval.ID,
+			EventKind:     model.StoryEventPointDeducted,
+			SenderID:      &evaluatorID,
+			SenderName:    senderName,
 			RecipientID:   req.EmployeeID,
 			RecipientName: recipientName,
 			Payload: map[string]any{
@@ -178,9 +180,18 @@ func (s *KpiService) Cancel(id, cancelledByEmployeeID string) (*model.KpiEvaluat
 // إداري عليا بلا مسار عمل حقيقي يقارَن بحسابات ADMIN/OWNER الثانية
 // بنقاط KPI/حجوزات — مقارنة بلا معنى لعمل إداري. الحارس هنا دفاع من
 // العمق: حتى نداء مباشر بلا فتح الواجهة يُرفض.
-func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, error) {
-	if role == "ADMIN" || role == "OWNER" {
-		return nil, errors.New("لا تصنيف شخصي للإداريين العليا")
+// roles عائلة أدوار تتنافس سوه (مثلاً المحاسب والمراقب). قائمة
+// بعنصر واحد = السلوك القديم بالضبط.
+func (s *KpiService) RoleLeaderboard(roles []string) (*model.RoleKpiLeaderboard, error) {
+	if len(roles) == 0 {
+		return nil, errors.New("ماكو دور للتصنيف")
+	}
+	// ⚠️ الرفض يفحص **كل** عنصر: بلاه، عائلة فيها ADMIN تمرّر
+	// المالك من الباب الخلفي ويزاحم الي يشتغل الشغل فعلاً.
+	for _, role := range roles {
+		if role == "ADMIN" || role == "OWNER" {
+			return nil, errors.New("لا تصنيف شخصي للإداريين العليا")
+		}
 	}
 	const day = "2006-01-02"
 	now := time.Now()
@@ -190,19 +201,19 @@ func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, er
 	twoWeeksAgo := now.AddDate(0, 0, -14).Format(day)
 	twoMonthsAgo := now.AddDate(0, -2, 0).Format(day)
 
-	weekly, err := s.repo.RoleLeaderboard(role, weekAgo, "")
+	weekly, err := s.repo.RoleLeaderboard(roles, weekAgo, "")
 	if err != nil {
 		return nil, err
 	}
-	monthly, err := s.repo.RoleLeaderboard(role, monthAgo, "")
+	monthly, err := s.repo.RoleLeaderboard(roles, monthAgo, "")
 	if err != nil {
 		return nil, err
 	}
-	prevWeekly, err := s.repo.RoleLeaderboard(role, twoWeeksAgo, weekAgo)
+	prevWeekly, err := s.repo.RoleLeaderboard(roles, twoWeeksAgo, weekAgo)
 	if err != nil {
 		return nil, err
 	}
-	prevMonthly, err := s.repo.RoleLeaderboard(role, twoMonthsAgo, monthAgo)
+	prevMonthly, err := s.repo.RoleLeaderboard(roles, twoMonthsAgo, monthAgo)
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +221,9 @@ func (s *KpiService) RoleLeaderboard(role string) (*model.RoleKpiLeaderboard, er
 	applyDeltas(weekly, prevWeekly)
 	applyDeltas(monthly, prevMonthly)
 
-	return &model.RoleKpiLeaderboard{Role: role, Weekly: weekly, Monthly: monthly}, nil
+	// اسم اللوحة = العائلة كلها مفصولة بفاصلة، حتى الواجهة تعرف
+	// بالضبط منو داخل بالمقارنة.
+	return &model.RoleKpiLeaderboard{Role: strings.Join(roles, ","), Weekly: weekly, Monthly: monthly}, nil
 }
 
 // PermissionLeaderboard ترتيب حسب الشغل — كل صاحب صلاحية معيّنة

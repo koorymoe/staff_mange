@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strings"
+
 	"net/http"
 
 	"staffmange-api/internal/middleware"
@@ -66,12 +68,20 @@ func (h *KpiHandler) CompleteTraining(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/kpi/leaderboard/{role}
 func (h *KpiHandler) RoleLeaderboard(w http.ResponseWriter, r *http.Request) {
+	// ⚠️ يقبل **عائلة** مفصولة بفاصلة («FINANCE,MONITOR») — التقييمات
+	// انفصلت بعوائل بطلب (ع). ودور واحد بلا فاصلة يبقى يشتغل مثل قبل.
 	role := r.PathValue("role")
-	board, err := h.service.RoleLeaderboard(role)
+	roles := []string{}
+	for _, part := range strings.Split(role, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			roles = append(roles, p)
+		}
+	}
+	board, err := h.service.RoleLeaderboard(roles)
 	if err != nil {
 		// ⚠️ ADMIN/OWNER مرفوضان بقصد (RoleLeaderboard) — ٤٠٠ لا ٥٠٠،
 		// هذا رفض منطقي مو عطل بالخادم.
-		if role == "ADMIN" || role == "OWNER" {
+		if strings.Contains(role, "ADMIN") || strings.Contains(role, "OWNER") {
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
