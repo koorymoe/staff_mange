@@ -431,7 +431,9 @@ export default function DailyAuditPage() {
                 {!row.amountVerified && !canDecide && (
                   <p className="mt-3 rounded-xl border px-3 py-2 text-[11px]"
                     style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
-                    ⓘ إنت تشوف وتراجع — قرار التدقيق (مطابق / صيانة مجانية / غير مطابق / خطأ بالسعر) للمحاسب.
+                    ⓘ إنت تشوف وتراجع — قرار التدقيق (مطابق / صيانة مجانية / غير مطابق / خطأ بالسعر)
+                    للمحاسب، <b>إلا إذا المالك نطاك صلاحية «تدقيق ومطابقة الحسابات (بدل المحاسب)»</b> —
+                    وقتها تطلعلك نفس أزرار المحاسب هنا.
                   </p>
                 )}
 

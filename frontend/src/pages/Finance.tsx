@@ -595,7 +595,8 @@ export default function Finance() {
                   {!b.amountVerified && !canDecide && (
                     <p className="mt-4 rounded-xl border px-3 py-2 text-[11px]"
                       style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
-                      👁️ عرض فقط — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) بيد المحاسب.
+                      👁️ عرض فقط — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) بيد المحاسب،
+                      <b>إلا إذا المالك نطاك صلاحية «تدقيق ومطابقة الحسابات (بدل المحاسب)»</b>.
                     </p>
                   )}
 
