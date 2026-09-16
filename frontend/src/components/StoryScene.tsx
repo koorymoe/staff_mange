@@ -135,7 +135,17 @@ export default function StoryScene() {
           if (!document.hidden) void api.advanceStory(story.id, 'SEEN', 1).catch(() => {})
         }, delay)
       })
-      .catch(() => { /* فشل الحجز ما يكسر الشاشة */ })
+      .catch(() => {
+        // ⚠️ **لازم تنتصفّى القصة هنا**: الطبقة السودة تحت تبلع كل
+        // الضغطات، والورقة تحتها `opacity-0` لحد ما توصل `reading`.
+        // فلو فشل الحجز وتركنا `story` معيّنة، تبقى `phase` على
+        // `arriving` للأبد — شاشة سودة فاضية ما تنضغط ولا تنفك إلا
+        // بإعادة تحميل. وتصفية `announced` تخلّي الاستطلاع الجاي
+        // يعيد المحاولة، فالفشل العابر ما يضيّع القصة.
+        if (cancelled) return
+        announced.current = null
+        setStory(null)
+      })
 
     return () => { cancelled = true; if (timer) clearTimeout(timer) }
   }, [story, reduced])
@@ -172,6 +182,19 @@ export default function StoryScene() {
   }, [story, navigate])
 
   if (!story) return null
+  // 🔴 **ما ننصب الطبقة السودة إلا والورقة جاهزة تنشاف.**
+  //
+  // الطبقة (`fixed inset-0 bg-black/50`) تغطي الشاشة كلها وتبلع كل
+  // ضغطة، والورقة الي بيها زر «موافق» تبقى `opacity-0` لحد ما
+  // توصل `reading`. يعني أي سبب يمنع الوصول لـ`reading` يخلّي
+  // الموظف كدام شاشة مضلَّلة فاضية ما يكدر يسوي بيها شي.
+  //
+  // وهذا صار فعلاً: قصة عالقة بحالة `PLAYING` (تبويب انسكّر قبل
+  // الإقرار) يرجّعها `NextForEmployee` كل استطلاع، و`Claim` يرفضها،
+  // وحارس `announced` يمنع إعادة المحاولة — فتضل الطبقة معلّقة.
+  // انصلّحت الجذور بالخادم، وهذا الحارس يخلّي العلّة **ما تنعرض
+  // أبداً** حتى لو رجع سببها من طريق ثاني.
+  if (!reduced && phase !== 'reading') return null
 
   const title = text(story.payload, 'title') || story.label
   const reason = text(story.payload, 'reason')

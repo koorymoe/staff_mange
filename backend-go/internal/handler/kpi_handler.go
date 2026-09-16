@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"slices"
 	"strings"
 
 	"net/http"
@@ -81,7 +82,12 @@ func (h *KpiHandler) RoleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// ⚠️ ADMIN/OWNER مرفوضان بقصد (RoleLeaderboard) — ٤٠٠ لا ٥٠٠،
 		// هذا رفض منطقي مو عطل بالخادم.
-		if strings.Contains(role, "ADMIN") || strings.Contains(role, "OWNER") {
+		// ⚠️ والمطابقة على **عنصر كامل** مو على نص العائلة: `Contains`
+		// چانت تصيد `GPS_ADMIN` و`PROCUREMENT_ADMIN` بعد — وعائلة
+		// المراقب نفسها بيها `GPS_ADMIN`. فأي عطل حقيقي بلوحتهم چان
+		// يطلع ٤٠٠ «لا تصنيف شخصي للإداريين العليا»، رسالة كاذبة
+		// تخبّي السبب الحقيقي.
+		if slices.Contains(roles, "ADMIN") || slices.Contains(roles, "OWNER") {
 			WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}

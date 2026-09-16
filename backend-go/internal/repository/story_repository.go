@@ -125,15 +125,30 @@ func (r *StoryRepository) NextForEmployee(recipientID string) (*model.StoryInsta
 // تعرض شي انبتّ فيه. `RETURNING` يخلّي الحجز والفحص **عملية وحدة**
 // بالقاعدة — نافذة تربح وحدة بس، والثانية تاخذ `false` وتسكت.
 //
-// ⚠️ **والحجز ما يعيد قصة تشتغل**: الشرط `status <> 'PLAYING'` يمنع
-// نافذة ثانية من خطفها وسط المشهد.
+// ⚠️ **والحجز ما يخطف قصة تشتغل هسه** — بس **بمهلة، مو للأبد**.
+// منع `PLAYING` منعاً مطلقاً چان يخلّي القصة تعلگ إلى الأبد: تبويب
+// ينسكّر قبل الإقرار يترك الصف على `PLAYING`، و`NextForEmployee`
+// يرجّعه بكل استطلاع (`openStatuses` بيها `PLAYING`)، والحجز يرفضه
+// — فالموظف يبقى كدام طبقة سودة ما تنضغط. دقيقتان تحمي المشهد
+// الشغّال فعلاً (الاستطلاع كل ٥-١٥ث) وتحرّر المهجور لحاله.
 func (r *StoryRepository) Claim(id, recipientRef string) (claimed bool, err error) {
 	var got string
 	err = r.db.Get(&got, `
 		UPDATE "StoryInstance"
 		SET status = 'PLAYING', "deliveredAt" = COALESCE("deliveredAt", now())
 		WHERE id = $1 AND "recipientRef" = $2
-		  AND status IN ('QUEUED','DELIVERED')
+		  AND (status IN ('QUEUED','DELIVERED')
+		       -- المهم: القصة العالقة بحالة PLAYING لازم تنفك.
+		       -- NextForEmployee يرجّع PLAYING ضمن المعلّقة، بس الحجز
+		       -- چان يرفضها — فتبويب انسكّر قبل الإقرار يخلّي القصة
+		       -- تنرجع بكل استطلاع وما تنحجز أبداً، والواجهة تعلگ
+		       -- بطبقة سودة ما تنضغط.
+		       -- والمهلة تحافظ على الغرض الأصلي: نافذتان مفتوحتان
+		       -- بنفس الوقت تبقى وحدة تلعبها (الاستطلاع كل ٥-١٥ث،
+		       -- والمهلة دقيقتان) — وبعدها تتحرر لحالها.
+		       OR (status = 'PLAYING'
+		           AND "deliveredAt" IS NOT NULL
+		           AND "deliveredAt" < now() - interval '2 minutes'))
 		RETURNING id`, id, recipientRef)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil // نافذة ثانية سبقتنا، أو انبتّ فيها — مو خطأ
