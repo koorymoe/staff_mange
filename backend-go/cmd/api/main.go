@@ -1343,6 +1343,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// عروض الأسعار (quotations)
 	mux.Handle("GET /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.List), requireAuth))
 	mux.Handle("GET /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Get), requireAuth))
+	// النسخ المؤرشفة — نفس حارس قراءة العرض: الي يشوف العرض يشوف تاريخه
+	mux.Handle("GET /api/quotations/{id}/versions", middleware.Chain(http.HandlerFunc(quotationHandler.Versions), requireAuth))
 	// الموظف الموجّه له مشروع لازم يقدر يسوي عرض سعر لمشروعه — التوجيه نفسه
 	// هو الصلاحية. غيره يضل محتاج صلاحية عروض الأسعار.
 	allowQuotationOrDelegate := func(next http.Handler) http.Handler {
