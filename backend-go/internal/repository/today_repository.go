@@ -87,9 +87,11 @@ func (r *TodayRepository) Board() (*TodayBoard, error) {
 		  COUNT(*) FILTER (WHERE baghdad_date(b."createdAt") = baghdad_date(now())) AS "newToday",
 		  COUNT(*) FILTER (WHERE `+bucketCondition("pending")+`) AS "needsContact",
 		  COUNT(*) FILTER (WHERE `+bucketCondition("confirmed")+`) AS "needsCrew",
-		  -- منجز وناقصه فاتورة أو تقرير: هذا الي يجيب الغرامات
+		  -- منجز وناقصه ورق: هذا الي يجيب الغرامات.
+		  -- ⚠️ «ناقصه ورق» ينحسب بـpaperworkDoneSQL مو بشرط مكتوب هنا:
+		  -- الشاشة والطابور لازم يتفقون، وشرطان منفصلان يفترقون بأول تعديل.
 		  COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."settledLegacyAt" IS NULL
-		                     AND (NOT `+hasInvoiceSQL+` OR NOT `+hasReportSQL+`)) AS "needsPaper",
+		                     AND NOT `+paperworkDoneSQL+`) AS "needsPaper",
 		  COUNT(*) FILTER (WHERE b.status = 'PARTIAL') AS "needsFinish",
 		  COUNT(*) FILTER (WHERE baghdad_date(b."createdAt")
 		             BETWEEN baghdad_date(now()) - interval '6 days' AND baghdad_date(now())) AS "weekTotal",

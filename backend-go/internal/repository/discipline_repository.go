@@ -283,7 +283,12 @@ func (r *DisciplineRepository) OverdueLeaderPaperwork(hours int) ([]OverdueLeade
 		  )
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
-		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		    -- ⚠️ حجز الاستيراد التاريخي ('OLD-…') ما ينغرّم على تقرير:
+		    -- شغله صار قبل النظام ومحد يعرف منو طلع ولا شنو صار، فالتقرير
+		    -- مستحيل يُكتب — وغرامة على شي مستحيل ظلم. فاتورته تنطلب
+		    -- عادي لأن مبلغها موجود بدفتر الحسابات.
+		    OR (NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		        AND b.code NOT LIKE 'OLD-%')
 		  )
 	`, hours)
 	return rows, err
@@ -333,7 +338,12 @@ func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, 
 		  )
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
-		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		    -- ⚠️ حجز الاستيراد التاريخي ('OLD-…') ما ينغرّم على تقرير:
+		    -- شغله صار قبل النظام ومحد يعرف منو طلع ولا شنو صار، فالتقرير
+		    -- مستحيل يُكتب — وغرامة على شي مستحيل ظلم. فاتورته تنطلب
+		    -- عادي لأن مبلغها موجود بدفتر الحسابات.
+		    OR (NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		        AND b.code NOT LIKE 'OLD-%')
 		  )
 	`, hours)
 	return rows, err
@@ -405,7 +415,12 @@ func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([
 		  )
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
-		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		    -- ⚠️ حجز الاستيراد التاريخي ('OLD-…') ما ينغرّم على تقرير:
+		    -- شغله صار قبل النظام ومحد يعرف منو طلع ولا شنو صار، فالتقرير
+		    -- مستحيل يُكتب — وغرامة على شي مستحيل ظلم. فاتورته تنطلب
+		    -- عادي لأن مبلغها موجود بدفتر الحسابات.
+		    OR (NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		        AND b.code NOT LIKE 'OLD-%')
 		  )
 		  AND (
 		    -- ليدر آخر طلعة (أو التكليف الحالي لو ماكو طلعة مسجّلة)
@@ -567,7 +582,12 @@ func (r *DisciplineRepository) OverdueManagedPaperwork(hours int) ([]OverdueMana
 		  AND b."settledLegacyAt" IS NULL
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
-		    OR NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		    -- ⚠️ حجز الاستيراد التاريخي ('OLD-…') ما ينغرّم على تقرير:
+		    -- شغله صار قبل النظام ومحد يعرف منو طلع ولا شنو صار، فالتقرير
+		    -- مستحيل يُكتب — وغرامة على شي مستحيل ظلم. فاتورته تنطلب
+		    -- عادي لأن مبلغها موجود بدفتر الحسابات.
+		    OR (NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		        AND b.code NOT LIKE 'OLD-%')
 		  )
 	`, hours)
 	return rows, err

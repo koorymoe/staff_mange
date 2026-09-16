@@ -92,13 +92,18 @@ func bucketCondition(bucket string) string {
 		return `b.status = 'COMPLETED'`
 	// تفرّعات المنجز — تنحسب من وجود الفاتورة والتقرير فعلاً
 	case "done_full":
-		return `b.status = 'COMPLETED' AND ` + hasInvoiceSQL + ` AND ` + hasReportSQL
+		return `b.status = 'COMPLETED' AND ` + paperworkDoneSQL
 	case "done_no_invoice":
-		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL + ` AND ` + hasReportSQL
+		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL +
+			` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `)`
+	// ⚠️ التاريخي ينستثنى من محطتَي «ناقصه تقرير»: تقريره مستحيل، فبقاؤه
+	// هنا يعني طابوراً محد يگدر يفرغه.
 	case "done_no_report":
-		return `b.status = 'COMPLETED' AND ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL
+		return `b.status = 'COMPLETED' AND ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL +
+			` AND NOT (` + isLegacyImportSQL + `)`
 	case "done_no_both":
-		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL
+		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL +
+			` AND NOT (` + isLegacyImportSQL + `)`
 	}
 	return ""
 }
@@ -135,6 +140,29 @@ const atProjectsSQL = `(b."transferToProjects" AND b."projectExecutionAt" IS NUL
 
 const hasInvoiceSQL = `EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`
 const hasReportSQL = `EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)`
+
+// ═══ شغل صار قبل النظام: فاتورة بس، بلا تقرير ═══
+//
+// حجوزات الاستيراد التاريخي وصلت من النظام القديم وهي منجزة أصلاً.
+// مبالغها موجودة بدفتر تدقيق الحسابات فالفاتورة تنكتب وتنعدّ — بس
+// **التقرير مستحيل**: منو طلع، وشنو شغّل، وشكد صرف… ولا وحدة منهن
+// انوثقت ولا راح تنوثق. فطلب تقرير منهن يخلّي ٢١٩٠ حجز واقفين بطابور
+// «ناقصها ورق» للأبد يزاحمون شغلاً حقيقياً يكدر أحد يكمّله.
+//
+// ⚠️ العلامة كود الحجز: التاريخي 'OLD-…' والعادي 'B<رقم>'
+// (booking_service.go) — فما ينخلطون ولا يحتاج عمود جديد.
+//
+// ⚠️ وليش ما نأشّرهن «مسوّاة إدارياً» (settledLegacyAt) وخلص؟ لأن
+// التسوية تقفل الحجز **بلا مبلغ**، والمالك يريد يدقّق شكد انستلم من
+// كل حجز. فالفاتورة لازم تنكتب وتنحسب بالإيراد، والناقص هو التقرير بس.
+const isLegacyImportSQL = `b.code LIKE 'OLD-%'`
+
+// paperworkDoneSQL — ورق الحجز مكتمل: فاتورة دائماً، وتقرير إلا إذا
+// چان شغلاً قبل النظام.
+//
+// ⚠️ ينكتب مرة وحدة وينستعمل بكل مكان يسأل «ناقصه ورق؟»: نسختان
+// تفترقان بأول تعديل، فتطلع الشاشة رقماً والطابور رقماً ثانياً.
+const paperworkDoneSQL = `(` + hasInvoiceSQL + ` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `))`
 
 // BookingPageQuery شنو تطلبه الشاشة.
 type BookingPageQuery struct {
