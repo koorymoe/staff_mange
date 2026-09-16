@@ -677,8 +677,9 @@ export default function Dashboard() {
         // الأرقام من ملخّص السيرفر (محسوبة على الأرشيف الكامل)، والقوائم
         // من الشغل الحيّ ومن آخر ٢٠٠ منجز — للعرض بس.
         const inProgress = bookings.filter(b => b.status === 'IN_PROGRESS')
-        const completed = completedBookings
-        const todayCompleted = completed.filter(b => b.completedAt && new Date(b.completedAt).toDateString() === new Date().toDateString())
+        // ⚠️ «منجز اليوم» على خط الشغل الكامل — نفس نطاق السيرفر،
+        // لأن شاشة الحجوزات تعرض الداخلي بتبويب «تم الإنجاز».
+        const todayCompleted = completedBookings.filter(b => b.completedAt && new Date(b.completedAt).toDateString() === new Date().toDateString())
         const nPending = finance?.pendingCount ?? bookings.filter(b => b.status === 'PENDING').length
         const nConfirmed = finance?.confirmedCount ?? bookings.filter(b => b.status === 'CONFIRMED').length
         const nInProgress = finance?.inProgressCount ?? inProgress.length
@@ -878,7 +879,11 @@ export default function Dashboard() {
       {employee.role === 'FINANCE' && (() => {
         // المجاميع تجي من السيرفر محسوبة على كل الأرشيف المنجز — دقيقة
         // بالكامل. القائمة المعروضة تحت (آخر ٨) تكفيها آخر دفعة نزلت.
-        const completed = completedBookings
+        // 🔴 الشغل داخل الشركة منشول من هنا: عدّاداته تجي من ملخّص
+        // السيرفر وهو يستثنيه (عزل بطلب المالك، إله تبويبه وإكسله)،
+        // فلو القائمة تعرضه تطلع البطاقة «٢» والجدول تحتها ثلاث صفوف.
+        // والعدّاد لازم يعدّ بالضبط الي يعرضه الضغط عليه.
+        const completed = completedBookings.filter((b) => b.bookingType !== 'INTERNAL')
         const nUnverified = finance?.unverifiedCount ?? 0
         const nVerified = finance?.verifiedCount ?? 0
         const nCompleted = finance?.completedCount ?? completed.length

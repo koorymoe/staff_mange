@@ -38,7 +38,11 @@ func (h *DashboardHandler) Summary(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			(SELECT COUNT(*) FROM "Employee" WHERE status = 'ACTIVE')  AS "employeeCount",
 			(SELECT COUNT(*) FROM "Customer")                          AS "customerCount",
-			(SELECT COUNT(*) FROM "Booking")                           AS "bookingCount",
+			-- 🔴 چانت COUNT(*) بلا أي ترشيح: تعدّ المؤرشف والمطلوب
+			-- حذفه، والضغط عليها يودّي لشاشة تستثنيهم. فالبطاقة
+			-- تگول رقماً والشاشة تعرض أقل منه.
+			(SELECT COUNT(*) FROM "Booking" b
+			  WHERE `+repository.BookingCountableSQL("b")+`)      AS "bookingCount",
 			(SELECT COUNT(*) FROM "GpsDeviceRequest")                  AS "gpsDeviceCount"`)
 	if err != nil {
 		log.Printf("dashboard summary: %v", err)
@@ -79,12 +83,17 @@ type financeSummary struct {
 
 // GET /api/dashboard/finance-summary
 func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request) {
+	// 🔴 الشغل داخل الشركة مستثنى من بطاقات المحاسب وأرقامه: شاشة
+	// «إدارة الحسابات» تستثنيه أصلاً (عزل بطلب المالك، إله تبويبه
+	// وإكسله الشهري)، فلو الملخّص يعدّه تطلع البطاقة برقم والشاشة
+	// برقم ثاني لنفس المفهوم. وأرقام خط الشغل (بانتظار التثبيت،
+	// مكلّف، منجز اليوم) تبقى شاملة — لأن شاشة الحجوزات تعرضه.
 	var s financeSummary
 	err := h.db.Get(&s, `
 		SELECT
-			COUNT(*) FILTER (WHERE b.status = 'COMPLETED')                              AS "completedCount",
-			COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND NOT b."amountVerified")   AS "unverifiedCount",
-			COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."amountVerified")       AS "verifiedCount",
+			COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."bookingType" <> 'INTERNAL')   AS "completedCount",
+			COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND NOT b."amountVerified" AND b."bookingType" <> 'INTERNAL') AS "unverifiedCount",
+			COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."amountVerified" AND b."bookingType" <> 'INTERNAL') AS "verifiedCount",
 			COUNT(*) FILTER (WHERE b.status = 'COMPLETED'
 			-- ⚠️ چان ::date = CURRENT_DATE — يعني «اليوم» بنظر الخادم
 			-- مو بنظر بغداد. حجز ينخلص ١٢:٣٠ ليلاً بغداد چان ينحسب
@@ -102,27 +111,31 @@ func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request
 			  JOIN "Booking" b2 ON b2.id = ba."bookingId"
 			  WHERE b2.status = 'IN_PROGRESS')                                          AS "activeCrewCount",
 			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
-			         FILTER (WHERE b.status = 'COMPLETED'), 0)                          AS "totalCollected",
+			         FILTER (WHERE b.status = 'COMPLETED' AND b."bookingType" <> 'INTERNAL'), 0) AS "totalCollected",
 			-- ⚠️ «غير مدققة»/«مدققة» بنفس نطاق totalCollected أعلاه
 			-- (COMPLETED فعلاً، شامل المقدم) — لا تحسب Booking.amountCollected
 			-- الخام بلا فلترة حالة (هذاك مصدر رقم مختلف بـstats_repository.go
 			-- كان يعطي رقماً غير هذا لنفس المفهوم).
 			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
-			         FILTER (WHERE b.status = 'COMPLETED' AND NOT b."amountVerified"), 0) AS "unverifiedAmount",
+			         FILTER (WHERE b.status = 'COMPLETED' AND NOT b."amountVerified" AND b."bookingType" <> 'INTERNAL'), 0) AS "unverifiedAmount",
 			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
-			         FILTER (WHERE b.status = 'COMPLETED' AND b."amountVerified"), 0)     AS "verifiedAmount",
+			         FILTER (WHERE b.status = 'COMPLETED' AND b."amountVerified" AND b."bookingType" <> 'INTERNAL'), 0) AS "verifiedAmount",
 			COALESCE(SUM(COALESCE(b."quotedPrice",0))
-			         FILTER (WHERE b.status = 'COMPLETED'), 0)                          AS "totalQuoted",
+			         FILTER (WHERE b.status = 'COMPLETED' AND b."bookingType" <> 'INTERNAL'), 0) AS "totalQuoted",
 			(SELECT COALESCE(SUM(ci."totalPrice"), 0) FROM "CartItem" ci
 			  JOIN "Booking" b3 ON b3.id = ci."bookingId"
-			  WHERE b3.status = 'COMPLETED')                                            AS "totalCartValue",
+			  WHERE b3.status = 'COMPLETED' AND b3."bookingType" <> 'INTERNAL'
+			    AND `+repository.BookingCountableSQL("b3")+`)  AS "totalCartValue",
 			(SELECT COUNT(*) FROM "Expense" WHERE status = 'PENDING')                   AS "pendingExpenses",
 			(SELECT COUNT(*) FROM "Expense" WHERE status = 'APPROVED')                  AS "approvedExpenses",
 			(SELECT COALESCE(SUM(amount),0) FROM "Expense" WHERE status = 'APPROVED')   AS "totalExpenseValue"
 		-- ⚠️ المطلوب حذفه مستثنى: بدونه بطاقة «بانتظار التثبيت» هنا
 		-- تعطي رقماً غير الرقم بشاشة الحجوزات (هي تستثنيه أصلاً) —
 		-- نفس المفهوم برقمين، وهاي الي نطاردها بكل النظام.
-		FROM "Booking" b WHERE NOT ` + repository.BookingDeletePendingSQL("b"))
+		-- 🔴 والمؤرشف (المحذوف) چان ينعدّ هم: «إجمالي المنجزة» و
+		-- «إجمالي المحصّل» يشملون حجوزات محذوفة ما تطلع بولا شاشة.
+		-- النطاق هسه **نفس** نطاق دالة List بالضبط.
+		FROM "Booking" b WHERE `+repository.BookingCountableSQL("b"))
 	if err != nil {
 		log.Printf("finance summary: %v", err)
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الملخص المالي")
@@ -160,11 +173,11 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 	err := h.db.Get(&s, `
 		SELECT
 			(SELECT COUNT(*) FROM "Booking"
-			  WHERE "archivedAt" IS NULL` + repository.NotDeletePendingSQL(`"Booking"`) + `
+			  WHERE "archivedAt" IS NULL`+repository.NotDeletePendingSQL(`"Booking"`)+`
 			    AND "scheduledAt"::date = CURRENT_DATE)                              AS "todayBookings",
 			-- أمس للمقارنة: رقم بلا مرجع ما يگول شي. ١٢ حجز زين لو خبل؟
 			(SELECT COUNT(*) FROM "Booking"
-			  WHERE "archivedAt" IS NULL` + repository.NotDeletePendingSQL(`"Booking"`) + `
+			  WHERE "archivedAt" IS NULL`+repository.NotDeletePendingSQL(`"Booking"`)+`
 			    AND "scheduledAt"::date = CURRENT_DATE - 1)                          AS "yesterdayBookings",
 			-- المهام المفتوحة: الي لسه بالميدان، مو المنجزة ولا المتوقفة
 			(SELECT COUNT(*) FROM "Mission"
@@ -172,7 +185,7 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 			(SELECT COUNT(*) FROM "Complaint" WHERE status = 'NEW')                  AS "newComplaints",
 			-- مثبّت بس بلا موعد أو بلا كادر — هذا الي يحتاج شغل الإداري
 			(SELECT COUNT(*) FROM "Booking" b
-			  WHERE b."archivedAt" IS NULL` + repository.NotDeletePendingSQL("b") + `
+			  WHERE b."archivedAt" IS NULL`+repository.NotDeletePendingSQL("b")+`
 			    AND b.status = 'CONFIRMED'
 			    AND (b."scheduledAt" IS NULL
 			         OR NOT EXISTS (SELECT 1 FROM "BookingAssignment" ba

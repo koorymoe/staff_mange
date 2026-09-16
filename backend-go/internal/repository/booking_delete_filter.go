@@ -25,3 +25,24 @@ func BookingDeletePendingSQL(qualifier string) string {
 func NotDeletePendingSQL(qualifier string) string {
 	return ` AND NOT ` + BookingDeletePendingSQL(qualifier)
 }
+
+// BookingCountableSQL نطاق «الحجز الي ينعدّ» — تعريف **واحد** لكل
+// النظام، ومطابق حرفياً للنطاق الي ترجّعه `BookingRepository.List`
+// (يعني الي تعرضه الشاشات فعلاً).
+//
+// 🔴 ليش لازم يكون واحداً: الشاشات تستثني المؤرشف والمطلوب حذفه،
+// وطبقة الإحصائيات چانت ما تستثني ولا واحد منهم. فنفس المفهوم يطلع
+// برقمين: اللوحة تگول «٦٢٠ حجز» والشاشة تعرض ٥٤٠، والفرق حجوزات
+// محذوفة يعدّها العدّاد وما يعرضها الضغط عليه. ورقم غلط أسوأ من
+// ماكو رقم.
+//
+// يُستعمل بعد `WHERE` مباشرة (يرجّع شرطاً موجباً بلا AND بادئة).
+func BookingCountableSQL(qualifier string) string {
+	return qualifier + `."archivedAt" IS NULL AND NOT ` + BookingDeletePendingSQL(qualifier)
+}
+
+// BookingCountableAndSQL نفس الشرط بـAND بادئة — للاستعمال بعد شرط
+// موجود بـWHERE.
+func BookingCountableAndSQL(qualifier string) string {
+	return ` AND ` + BookingCountableSQL(qualifier)
+}

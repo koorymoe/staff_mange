@@ -33,35 +33,35 @@ func (r *StatsRepository) Totals() (*model.StatsTotals, error) {
 	if err != nil {
 		return nil, err
 	}
-	totalBookings, err := r.count(`SELECT COUNT(*) FROM "Booking"`)
+	totalBookings, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE ` + BookingCountableSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	pending, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'PENDING'`)
+	pending, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'PENDING'` + BookingCountableAndSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	confirmed, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'CONFIRMED'`)
+	confirmed, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'CONFIRMED'` + BookingCountableAndSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	completed, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'COMPLETED'`)
+	completed, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'COMPLETED'` + BookingCountableAndSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	cancelled, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'CANCELLED'`)
+	cancelled, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'CANCELLED'` + BookingCountableAndSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	urgentPending, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'PENDING' AND priority = 'URGENT'`)
+	urgentPending, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE status = 'PENDING' AND priority = 'URGENT'` + BookingCountableAndSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	revenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL`)
+	revenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL` + BookingCountableAndSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	unverifiedRevenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL AND "amountVerified" = false`)
+	unverifiedRevenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL AND "amountVerified" = false` + BookingCountableAndSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
@@ -91,21 +91,21 @@ func (r *StatsRepository) SalesStats(startOfToday, startOfMonth time.Time) ([]mo
 
 	stats := make([]model.SalesStat, 0, len(employees))
 	for _, e := range employees {
-		total, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1`, e.EmployeeID)
+		total, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
-		confirmed, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND status NOT IN ('PENDING', 'CANCELLED')`, e.EmployeeID)
+		confirmed, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND status NOT IN ('PENDING', 'CANCELLED')`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
 		// ⚠️ باغداد لا توقيت عملية الخادم — وإلا «اليوم» هنا يختلف عن
 		// بطاقة «انفتحن اليوم» بلوحة المراقبة قرب منتصف الليل.
-		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND baghdad_date("createdAt") = baghdad_today()`, e.EmployeeID)
+		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND baghdad_date("createdAt") = baghdad_today()`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
-		thisMonth, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND "createdAt" >= $2`, e.EmployeeID, startOfMonth)
+		thisMonth, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "transferEmployeeId" = $1 AND "createdAt" >= $2`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID, startOfMonth)
 		if err != nil {
 			return nil, err
 		}
@@ -133,16 +133,16 @@ func (r *StatsRepository) CoordinatorStats(startOfToday, startOfMonth time.Time)
 
 	stats := make([]model.CoordinatorStat, 0, len(employees))
 	for _, e := range employees {
-		total, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1`, e.EmployeeID)
+		total, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
 		// ⚠️ باغداد لا توقيت عملية الخادم — نفس فحص المبيعات أعلاه.
-		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND baghdad_date("createdAt") = baghdad_today()`, e.EmployeeID)
+		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND baghdad_date("createdAt") = baghdad_today()`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
-		thisMonth, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND "createdAt" >= $2`, e.EmployeeID, startOfMonth)
+		thisMonth, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND "createdAt" >= $2`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID, startOfMonth)
 		if err != nil {
 			return nil, err
 		}
@@ -230,6 +230,7 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 			           WHERE ci."bookingId" = b.id
 			       ), 0) AS cost
 			FROM "Booking" b
+			WHERE `+BookingCountableSQL(`"b"`)+`
 		)
 		SELECT pb."serviceId", s.name,
 		       COUNT(*) AS count,
@@ -281,6 +282,7 @@ func (r *StatsRepository) RecentBookings(limit int) ([]model.RecentBookingEntry,
 		FROM "Booking" b
 		JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		WHERE `+BookingCountableSQL(`"b"`)+`
 		ORDER BY b."createdAt" DESC
 		LIMIT $1
 	`, limit)
