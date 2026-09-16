@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { readMoney, money as fmtMoney } from '../utils/money'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { api, type Product, fileUrl } from '../api'
 import { useSession } from '../session'
@@ -72,6 +73,8 @@ export default function QuotationNew() {
   // الرسم (سحب سريع، أو جهاز بطيء يجمّع الأحداث)، المُعالج يقرا
   // `null` فالإفلات يضيع بهدوء ويحسب الموظف إن الترتيب ما ينحفظ.
   // المرجع دائماً بآخر قيمة. والحالة تبقى للمنظر وحده (الظل والتظليل).
+  /** الصفوف الي انتوسّع سعرهن («١.٥ ← ١٬٥٠٠») — نگوله شنو انحفظ. */
+  const [expanded, setExpanded] = useState<Record<number, string>>({})
   const dragIndexRef = useRef<number | null>(null)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [overIndex, setOverIndex] = useState<number | null>(null)
@@ -960,12 +963,34 @@ ${pageShell(`
                     {/* ⚠️ step="any" لازم: بلاه المتصفح يفرض خطوة ١
                         ويرفض الكسور — و«١٥٠٠٠.٥» ما تنكتب أصلاً.
                         والصفر مسموح: بند مجاني أو محسوب بالبوينتات. */}
+                    {/* ⚠️ التوسيع عند **الخروج** من الخانة مو عند كل
+                        حرف: لو توسّع وهو يكتب، «١.» تصير رقماً وتقفز
+                        الخانة تحت إيده. */}
                     <input type="number" min={0} step="any" value={item.unitPrice}
                       onChange={(e) => {
                         const n = Number(e.target.value)
                         updateItem(index, { unitPrice: Number.isFinite(n) && n >= 0 ? n : 0 })
                       }}
+                      onBlur={(e) => {
+                        const m = readMoney(e.target.value)
+                        if (m.converted) {
+                          updateItem(index, { unitPrice: m.value })
+                          setExpanded((prev) => ({ ...prev, [index]: `${m.typed} ← ${fmtMoney(m.value)}` }))
+                        } else {
+                          setExpanded((prev) => {
+                            if (!(index in prev)) return prev
+                            const next = { ...prev }; delete next[index]; return next
+                          })
+                        }
+                      }}
                       style={{ ...tableInputStyle, width: '110px' }} />
+                    {/* «كتبت ١.٥ وحفظناها ١٬٥٠٠» — التبديل بالفلوس
+                        ما يصير بالخفية ولو كان صحيحاً. */}
+                    {expanded[index] && (
+                      <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--t-info)', marginTop: 2 }}>
+                        {expanded[index]} د.ع
+                      </div>
+                    )}
                   </td>
                   <td style={{ padding: '10px 6px', textAlign: 'center', fontWeight: 700, color: 'var(--t-title-alt)' }}>{fmt(item.totalPrice)}</td>
                   <td style={{ padding: '10px 6px', textAlign: 'center' }}>
