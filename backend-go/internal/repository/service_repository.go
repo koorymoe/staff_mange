@@ -46,9 +46,22 @@ func (r *ServiceRepository) SetManagerHandlesPaperwork(serviceID string, on bool
 // يأشّره المالك من الشاشة بضغطة بلا نشر.
 //
 // kind فارغ يمسح التأشير (يرجّعها «ما انتأشّرت»).
+// ⚠️ **وتأشير النوع يشيل الورق عن الفني بنفس الضغطة**: الخدمة الي
+// نأشّرها «جي بي اس» أو «داش كام» هي بالتعريف خدمة ورقها على
+// مسؤولها، فما ينفع المالك يتعلّم إعدادين يعنون نفس الشي — وواحد
+// منهن مطفي افتراضياً فينسى يأشّره ويبقى الفني ينطلب منه ورق.
+//
+// ⚠️ وإزالة النوع **ما تطفّي العلامة**: العلامة موجودة بالنظام من
+// قبل النوع، وممكن خدمة ورقها على مسؤولها بلا ما تكون جي بي اس ولا
+// داش كام. إطفاؤها هنا يشيل قاعدة المالك أشّرها بمحل ثاني.
 func (r *ServiceRepository) SetKind(serviceID, kind string) error {
-	_, err := r.db.Exec(
-		`UPDATE "Service" SET "serviceKind" = NULLIF($1, '') WHERE id = $2`, kind, serviceID)
+	_, err := r.db.Exec(`
+		UPDATE "Service" SET
+			"serviceKind" = NULLIF($1, ''),
+			"managerHandlesPaperwork" = CASE
+				WHEN NULLIF($1, '') IS NOT NULL THEN true
+				ELSE "managerHandlesPaperwork" END
+		WHERE id = $2`, kind, serviceID)
 	return err
 }
 

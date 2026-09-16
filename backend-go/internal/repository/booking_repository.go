@@ -198,6 +198,10 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		SELECT b.* FROM "Booking" b
 		WHERE b."archivedAt" IS NULL
 		  AND b.status = 'COMPLETED'
+		  -- ⚠️ الحجز المسوّى كـ«قديم» ينشال: (ع) «حجوزات قديمه جدا
+		  -- من النظام القديم ماريدهني ضهرن، المفروض نرفع اكسل
+		  -- يعادل الوضعيه». فالي انتسوّى حسابه ماعاد يستحق فاتورة.
+		  AND b."settledLegacyAt" IS NULL
 		  AND EXISTS (
 		      SELECT 1 FROM "Service" s
 		      WHERE s."serviceKind" = $1
