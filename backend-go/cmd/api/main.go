@@ -343,7 +343,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	simHandler := handler.NewSimHandler(simRepo)
 
 	aiRepo := repository.NewAiRepository(db)
-	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo)
+	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo, leaderInvoiceRepo, bookingProgressRepo)
 	aiBrainService := service.NewAiBrainService(aiRepo, aiEvidenceService)
 	aiMetricsService := service.NewAiMetricsService(aiRepo)
 	// ═══ توصيل النموذج ═══
@@ -363,6 +363,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	aiBrainService.StartBackgroundLoop()
 	aiHandler := handler.NewAiHandler(aiRepo, aiBrainService, aiMetricsService)
 	bookingService.SetAiRecorder(aiRepo)
+	leaderInvoiceService.SetAiRecorder(aiRepo)
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -620,6 +621,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	employeeLetterHandler := handler.NewEmployeeLetterHandler(employeeLetterRepo, notificationRepo)
 	bookingVisitRepo := repository.NewBookingVisitRepository(db)
 	bookingProgressHandler := handler.NewBookingProgressHandler(bookingProgressRepo, bookingRepo, notificationRepo, bookingVisitRepo)
+	bookingProgressHandler.SetAiRecorder(aiRepo)
 	// نقاط الانضباط: كل موظف يشوف الأرصدة (الشفافية جزء من العقوبة)،
 	// وتشغيل الفحص يدوياً للمدير حصراً.
 	// ── الطلبات: كتاب رسمي من الموظف للإدارة ──

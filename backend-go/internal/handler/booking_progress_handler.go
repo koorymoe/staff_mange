@@ -1,12 +1,14 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 	"strings"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/service"
 	"staffmange-api/internal/timeutil"
 )
 
@@ -16,6 +18,9 @@ type BookingProgressHandler struct {
 	bookings *repository.BookingRepository
 	notify   *repository.NotificationRepository
 	visits   *repository.BookingVisitRepository
+	// ai: إشارة إنجاز جزئي متكرر لماتركس. اختيارية — نفس سبب notify:
+	// فشل تسجيل إشارة تحليل ما يصير يمنع تقرير الكادر.
+	ai service.AiSignalRecorder
 }
 
 func NewBookingProgressHandler(
@@ -26,6 +31,9 @@ func NewBookingProgressHandler(
 ) *BookingProgressHandler {
 	return &BookingProgressHandler{repo: repo, bookings: bookings, notify: notify, visits: visits}
 }
+
+// SetAiRecorder يربط نواة الذكاء الاصطناعي بعد البناء.
+func (h *BookingProgressHandler) SetAiRecorder(a service.AiSignalRecorder) { h.ai = a }
 
 // GET /api/bookings/{id}/visits — كل طلعة صارت على هذا الحجز.
 //
@@ -61,23 +69,42 @@ func (h *BookingProgressHandler) PartialComplete(w http.ResponseWriter, r *http.
 	req.WorkDone = strings.TrimSpace(req.WorkDone)
 	req.RemainingWork = strings.TrimSpace(req.RemainingWork)
 
-	report, err := h.repo.PartialComplete(id, middleware.EmployeeIDFromContext(r), req)
+	reportedByID := middleware.EmployeeIDFromContext(r)
+	report, err := h.repo.PartialComplete(id, reportedByID, req)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر تسجيل الإنجاز الجزئي")
 		return
+	}
+
+	booking, err := h.bookings.FindByID(id)
+	if err != nil {
+		booking = nil
 	}
 
 	// الإداري لازم يعرف فوراً — الحجز رجعله وينتظر تنسيق ليوم جديد.
 	// بدون هذا الإشعار الحجز يقعد ساكت بقائمة ومحد ينتبهله.
 	if h.notify != nil {
 		code := id
-		if b, err := h.bookings.FindByID(id); err == nil && b != nil {
-			code = b.Code
+		if booking != nil {
+			code = booking.Code
 		}
 		_ = h.notify.CreateForRole("HR_COORDINATOR", "booking_partial",
 			"🔄 الحجز "+code+" انجز جزئياً ("+itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")
 		_ = h.notify.CreateForRole("ADMIN", "booking_partial",
 			"🔄 الحجز "+code+" انجز جزئياً ("+itoa(report.PercentDone)+"٪) ويحتاج تنسيق ليوم جديد")
+	}
+
+	// إشارة إنجاز جزئي متكرر — أول مرة ظرف طبيعي، ثاني مرة يستاهل
+	// تحليل: يمكن الكشف الأولي قدّر حجم الشغل غلط من البداية.
+	if h.ai != nil && booking != nil && booking.PartialCount >= 2 && reportedByID != "" {
+		if _, err := h.ai.RecordSignal(model.AiSignal{
+			Kind:       model.AiSignalRepeatPartial,
+			EntityType: "BOOKING",
+			EntityID:   id,
+			EmployeeID: &reportedByID,
+		}); err != nil {
+			log.Printf("[ai] تعذر تسجيل إشارة إنجاز جزئي متكرر للحجز %s: %v", id, err)
+		}
 	}
 
 	WriteJSON(w, http.StatusOK, report)

@@ -631,7 +631,27 @@ func (s *BookingService) StartWithToolsCheck(id, employeeID string, missingToolI
 			}
 		}
 	}
-	return s.Start(id)
+	booking, err := s.Start(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// إشارة تأخر الخروج — نفس حد DEPART الموجود بالخط الزمني (ساعة).
+	// ⚠️ بلا موعد مجدول ما نگدر نحسب تأخير أصلاً، فالإشارة ما تنسجّل.
+	if s.ai != nil && employeeID != "" && booking != nil && booking.ScheduledAt != nil && booking.StartedAt != nil {
+		late := booking.StartedAt.Sub(*booking.ScheduledAt).Minutes()
+		if int(late) > model.DelayDepartMinutes {
+			if _, err := s.ai.RecordSignal(model.AiSignal{
+				Kind:       model.AiSignalLateStart,
+				EntityType: "BOOKING",
+				EntityID:   id,
+				EmployeeID: &employeeID,
+			}); err != nil {
+				log.Printf("[ai] تعذر تسجيل إشارة تأخر الخروج للحجز %s: %v", id, err)
+			}
+		}
+	}
+	return booking, nil
 }
 
 // MarkProjectExecution يفتح حجز المشاريع للتنسيق — تناديها خدمة
@@ -899,7 +919,28 @@ func (s *BookingService) Postpone(id, newTime, reason, byEmployeeID string) (*mo
 	if err := s.repo.Postpone(id, newTime, reason, byEmployeeID); err != nil {
 		return nil, err
 	}
-	return s.repo.FindByID(id)
+	booking, err := s.repo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	// إشارة تأجيل متكرر — أول تأجيل ظرف عادي، ثاني مرة يستاهل تحليل.
+	// ⚠️ EmployeeID بس لمن مسجّل الحركة موجود — الحكم نفسه ما يلصق
+	// تهمة بيه (شوف تعليق judgeRepeatPostpone).
+	if s.ai != nil && booking != nil && booking.PostponeCount >= 2 {
+		sig := model.AiSignal{
+			Kind:       model.AiSignalRepeatPostpone,
+			EntityType: "BOOKING",
+			EntityID:   id,
+		}
+		if byEmployeeID != "" {
+			sig.EmployeeID = &byEmployeeID
+		}
+		if _, err := s.ai.RecordSignal(sig); err != nil {
+			log.Printf("[ai] تعذر تسجيل إشارة تأجيل متكرر للحجز %s: %v", id, err)
+		}
+	}
+	return booking, nil
 }
 
 // ListPostponed الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري.

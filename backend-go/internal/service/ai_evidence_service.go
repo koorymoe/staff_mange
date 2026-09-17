@@ -30,10 +30,17 @@ import (
 type AiEvidenceService struct {
 	db       *repository.AiRepository
 	bookings *repository.BookingRepository
+	invoices *repository.LeaderInvoiceRepository
+	progress *repository.BookingProgressRepository
 }
 
-func NewAiEvidenceService(db *repository.AiRepository, bookings *repository.BookingRepository) *AiEvidenceService {
-	return &AiEvidenceService{db: db, bookings: bookings}
+func NewAiEvidenceService(
+	db *repository.AiRepository,
+	bookings *repository.BookingRepository,
+	invoices *repository.LeaderInvoiceRepository,
+	progress *repository.BookingProgressRepository,
+) *AiEvidenceService {
+	return &AiEvidenceService{db: db, bookings: bookings, invoices: invoices, progress: progress}
 }
 
 // CollectForWorkStop يجمع أدلة توقف العمل — المسار الي وصفه صاحب العمل.
@@ -115,6 +122,160 @@ func (s *AiEvidenceService) CollectForWorkStop(signal model.AiSignal) (*model.Ai
 		}
 	} else {
 		gaps = append(gaps, "الإشارة بلا موظف")
+	}
+
+	facts, _ := json.Marshal(ev)
+	gapsJSON, _ := json.Marshal(gaps)
+	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
+}
+
+// CollectFor يوزّع على الجامع الصحيح حسب صنف الإشارة. نقطة دخول واحدة
+// حتى البرين ما يحتاج يعرف تفاصيل كل صنف.
+func (s *AiEvidenceService) CollectFor(signal model.AiSignal) (*model.AiEvidence, error) {
+	switch signal.Kind {
+	case model.AiSignalWorkStopped:
+		return s.CollectForWorkStop(signal)
+	case model.AiSignalLateStart:
+		return s.CollectForLateStart(signal)
+	case model.AiSignalRepeatPostpone:
+		return s.CollectForRepeatPostpone(signal)
+	case model.AiSignalInvoiceAdjusted:
+		return s.CollectForInvoiceAdjusted(signal)
+	case model.AiSignalRepeatPartial:
+		return s.CollectForRepeatPartial(signal)
+	}
+	return nil, fmt.Errorf("ماكو جامع أدلة لصنف %q", signal.Kind)
+}
+
+// CollectForLateStart أدلة تأخر الخروج للحجز.
+//
+// ⚠️ نفس حساب «تأخر الخروج» بجدول الخط الزمني (DEPART) — هنا يوصل
+// للتحليل بدل ما يبقى رقماً بشاشة وحدها.
+func (s *AiEvidenceService) CollectForLateStart(signal model.AiSignal) (*model.AiEvidence, error) {
+	ev := model.LateStartEvidence{ThresholdMinutes: model.DelayDepartMinutes}
+	gaps := []string{}
+
+	booking, err := s.bookings.FindByID(signal.EntityID)
+	if err != nil || booking == nil {
+		return nil, fmt.Errorf("الحجز مو موجود")
+	}
+
+	if booking.ScheduledAt != nil && booking.StartedAt != nil {
+		late := int(booking.StartedAt.Sub(*booking.ScheduledAt).Minutes())
+		if late < 0 {
+			// طلع قبل موعده — مو تأخير، نصفّرها بدل رقم سالب يربك القارئ.
+			late = 0
+		}
+		ev.MinutesLate = late
+	} else {
+		gaps = append(gaps, "ماكو موعد مجدول أو وقت بداية شغل مسجّل")
+	}
+
+	if signal.EmployeeID != nil {
+		n, err := s.db.SignalCountForEmployee(model.AiSignalLateStart, *signal.EmployeeID, 30)
+		if err != nil {
+			gaps = append(gaps, "ما قدرنا نقرا سجل تأخر الموظف")
+		} else {
+			ev.LateCountLast30Days = n
+		}
+	} else {
+		gaps = append(gaps, "الإشارة بلا موظف")
+	}
+
+	facts, _ := json.Marshal(ev)
+	gapsJSON, _ := json.Marshal(gaps)
+	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
+}
+
+// CollectForRepeatPostpone أدلة تأجيل نفس الحجز أكثر من مرة.
+//
+// ⚠️ ماكو عدّاد «موظف» هنا عمداً: التأجيل غالباً قرار الزبون أو إداري
+// الحجوزات مو الكادر الميداني — الحكم يصير من السبب المكتوب مو من لصق
+// تهمة بمسجّل الحركة.
+func (s *AiEvidenceService) CollectForRepeatPostpone(signal model.AiSignal) (*model.AiEvidence, error) {
+	ev := model.RepeatPostponeEvidence{}
+	gaps := []string{}
+
+	booking, err := s.bookings.FindByID(signal.EntityID)
+	if err != nil || booking == nil {
+		return nil, fmt.Errorf("الحجز مو موجود")
+	}
+	ev.PostponeCount = booking.PostponeCount
+	ev.AwaitingReschedule = booking.AwaitingReschedule
+	if booking.PostponeReason != nil {
+		ev.LastReason = *booking.PostponeReason
+	} else {
+		gaps = append(gaps, "ماكو سبب تأجيل مسجّل لآخر مرة")
+	}
+
+	facts, _ := json.Marshal(ev)
+	gapsJSON, _ := json.Marshal(gaps)
+	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
+}
+
+// CollectForInvoiceAdjusted أدلة تعديل مبالغ فاتورة بعد ما انسجّلت.
+//
+// ⚠️ EntityID هنا معرّف **الفاتورة** مو الحجز — الإشارة تنسجّل وقت
+// التعديل، والمعرّف بالإشارة هو الليدر صاحب الفاتورة (شوف تعليق
+// InvoiceAdjustedEvidence بالموديل).
+func (s *AiEvidenceService) CollectForInvoiceAdjusted(signal model.AiSignal) (*model.AiEvidence, error) {
+	ev := model.InvoiceAdjustedEvidence{}
+	gaps := []string{}
+
+	adjustments, err := s.invoices.Adjustments(signal.EntityID)
+	if err != nil || len(adjustments) == 0 {
+		return nil, fmt.Errorf("سجل تعديل الفاتورة مو موجود")
+	}
+	last := adjustments[0] // الأحدث أول (ORDER BY createdAt DESC)
+	ev.OldNetTotal = last.OldNetTotal
+	ev.NewNetTotal = last.NewNetTotal
+	ev.DifferenceAmount = last.NewNetTotal - last.OldNetTotal
+	if last.OldNetTotal != 0 {
+		ev.DifferencePct = (ev.DifferenceAmount / last.OldNetTotal) * 100
+	} else {
+		gaps = append(gaps, "المبلغ الأصلي كان صفر — النسبة ما تنحسب")
+	}
+	ev.Reason = last.Reason
+
+	if signal.EmployeeID != nil {
+		n, err := s.db.SignalCountForEmployee(model.AiSignalInvoiceAdjusted, *signal.EmployeeID, 30)
+		if err != nil {
+			gaps = append(gaps, "ما قدرنا نقرا سجل تعديلات فواتير هذا الليدر")
+		} else {
+			ev.AdjustCountLast30Days = n
+		}
+	} else {
+		gaps = append(gaps, "الإشارة بلا موظف")
+	}
+
+	facts, _ := json.Marshal(ev)
+	gapsJSON, _ := json.Marshal(gaps)
+	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
+}
+
+// CollectForRepeatPartial أدلة إنجاز جزئي متكرر بنفس الحجز.
+func (s *AiEvidenceService) CollectForRepeatPartial(signal model.AiSignal) (*model.AiEvidence, error) {
+	ev := model.RepeatPartialEvidence{}
+	gaps := []string{}
+
+	booking, err := s.bookings.FindByID(signal.EntityID)
+	if err != nil || booking == nil {
+		return nil, fmt.Errorf("الحجز مو موجود")
+	}
+	ev.PartialCount = booking.PartialCount
+
+	reports, err := s.progress.Reports(booking.ID)
+	if err != nil {
+		gaps = append(gaps, "ما قدرنا نقرا تقارير الإنجاز الجزئي")
+	} else if len(reports) == 0 {
+		gaps = append(gaps, "ماكو تقارير إنجاز مسجّلة رغم عدّاد الإنجاز الجزئي")
+	} else {
+		last := reports[len(reports)-1] // ASC حسب رقم اليوم — آخر عنصر هو الأحدث
+		ev.LastPercentDone = last.PercentDone
+		ev.LastRemaining = last.RemainingWork
+		if last.Blockers != nil {
+			ev.LastBlockers = *last.Blockers
+		}
 	}
 
 	facts, _ := json.Marshal(ev)

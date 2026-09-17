@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -29,7 +30,14 @@ type LeaderInvoiceService struct {
 	// priceLearning: عيّنات أسعار الخدمات. اختيارية — نفس سبب
 	// `monitor`: ميزة تحليلية ما يصير تمنع موظفاً من فاتورته.
 	priceLearning *repository.ServicePriceLearningRepository
+	// ai: إشارة تعديل فاتورة لماتركس. اختيارية — نفس سبب `monitor`:
+	// فشل تسجيل إشارة تحليل ما يصير يمنع معاملة مالية.
+	ai AiSignalRecorder
 }
+
+// SetAiRecorder يربط نواة الذكاء الاصطناعي بعد البناء — نفس نمط
+// SetMonitorFeed أعلاه.
+func (s *LeaderInvoiceService) SetAiRecorder(a AiSignalRecorder) { s.ai = a }
 
 // SetPriceLearning يربط تعلّم الأسعار بعد البناء.
 func (s *LeaderInvoiceService) SetPriceLearning(p *repository.ServicePriceLearningRepository) {
@@ -604,6 +612,20 @@ func (s *LeaderInvoiceService) AdjustAmounts(id string, req model.AdjustLeaderIn
 		}
 		s.monitor.Stage(model.MonitorStageInvoiceAdjusted, "INVOICE_ADJUSTMENT", entityID, title,
 			summary+" • سبب التعديل: "+strings.TrimSpace(req.Reason), "FINANCE", &byEmployeeID)
+	}
+
+	// إشارة لماتركس — بالضبط سؤال صاحب العمل: «ليش هلكد ناقص عن
+	// الفاتورة». المعرّف هو الليدر صاحب الفاتورة مو المحاسب المصحّح.
+	if s.ai != nil {
+		leaderID := inv.EmployeeID
+		if _, err := s.ai.RecordSignal(model.AiSignal{
+			Kind:       model.AiSignalInvoiceAdjusted,
+			EntityType: "LEADER_INVOICE",
+			EntityID:   inv.ID,
+			EmployeeID: &leaderID,
+		}); err != nil {
+			log.Printf("[ai] تعذر تسجيل إشارة تعديل الفاتورة %s: %v", inv.ID, err)
+		}
 	}
 	return inv, nil
 }

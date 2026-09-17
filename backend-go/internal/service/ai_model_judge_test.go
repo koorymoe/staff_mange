@@ -155,7 +155,7 @@ func TestBuildEvidencePrompt_LeaksNoIdentity(t *testing.T) {
 // محرّك القواعد ما يخترع حكماً لصنف ما يعرفه — يرجع خطأ فينسجّل.
 func TestRulesJudge_UnknownKindReturnsError(t *testing.T) {
 	sig, ev := workStopSignal()
-	sig.Kind = model.AiSignalInvoiceAdjusted
+	sig.Kind = "SOME_FUTURE_SIGNAL_KIND"
 
 	v, err := RulesJudge{}.Judge(sig, ev)
 	if err == nil {

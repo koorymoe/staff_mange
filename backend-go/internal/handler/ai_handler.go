@@ -139,14 +139,14 @@ func (h *AiHandler) Catalog(w http.ResponseWriter, r *http.Request) {
 	signals := []item{
 		{model.AiSignalWorkStopped, model.AiSignalLabel(model.AiSignalWorkStopped), true,
 			"يجمع الأدلة كاملة: الساعة ونهاية الدوام، طلبات المواد، سلة الزبون، وسجل الموظف"},
-		{model.AiSignalLateStart, model.AiSignalLabel(model.AiSignalLateStart), false,
-			"ينتظر: ربط وقت الخروج بالموعد"},
-		{model.AiSignalRepeatPostpone, model.AiSignalLabel(model.AiSignalRepeatPostpone), false,
-			"ينتظر: جامع أدلة التأجيل"},
-		{model.AiSignalInvoiceAdjusted, model.AiSignalLabel(model.AiSignalInvoiceAdjusted), false,
-			"ينتظر: جامع أدلة الفواتير"},
-		{model.AiSignalRepeatPartial, model.AiSignalLabel(model.AiSignalRepeatPartial), false,
-			"ينتظر: جامع أدلة الإنجاز الجزئي"},
+		{model.AiSignalLateStart, model.AiSignalLabel(model.AiSignalLateStart), true,
+			"ينسجّل عند استلام الحجز إذا تأخر عن الموعد المجدول أكثر من ساعة، ويجمع سجل تأخر الموظف"},
+		{model.AiSignalRepeatPostpone, model.AiSignalLabel(model.AiSignalRepeatPostpone), true,
+			"ينسجّل من ثاني تأجيل لنفس الحجز، مع السبب المكتوب وحالة الجدولة"},
+		{model.AiSignalInvoiceAdjusted, model.AiSignalLabel(model.AiSignalInvoiceAdjusted), true,
+			"ينسجّل عند تعديل المحاسب لمبالغ فاتورة، مع الفرق وسجل تعديلات نفس الليدر"},
+		{model.AiSignalRepeatPartial, model.AiSignalLabel(model.AiSignalRepeatPartial), true,
+			"ينسجّل من ثاني إنجاز جزئي لنفس الحجز، مع آخر نسبة إنجاز والمعوّقات"},
 	}
 	metrics := []item{
 		{model.AiMetricStopRate, model.AiMetricLabel(model.AiMetricStopRate), false, "ينتظر: حاسبة المؤشرات"},

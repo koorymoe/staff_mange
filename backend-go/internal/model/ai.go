@@ -107,6 +107,54 @@ type WorkStopEvidence struct {
 	StopsLast30Days int `json:"stopsLast30Days"`
 }
 
+// LateStartEvidence الأدلة لتأخر الخروج للحجز.
+//
+// ⚠️ الحساب نفسه موجود أصلاً بجدول الخط الزمني (`DelayMetric` بمفتاح
+// "DEPART") — هنا يوصل للتحليل بدل ما يبقى رقماً بشاشة وحدها.
+type LateStartEvidence struct {
+	// شكد دقيقة تأخر عن الموعد المجدول، والحد المعلن (نفس
+	// DelayDepartMinutes — ساعة).
+	MinutesLate      int `json:"minutesLate"`
+	ThresholdMinutes int `json:"thresholdMinutes"`
+	// نفس الموظف تأخر كم مرة بآخر ٣٠ يوم؟
+	LateCountLast30Days int `json:"lateCountLast30Days"`
+}
+
+// RepeatPostponeEvidence الأدلة لتأجيل نفس الحجز أكثر من مرة.
+type RepeatPostponeEvidence struct {
+	PostponeCount int `json:"postponeCount"`
+	// آخر سبب تأجيل مكتوب — قرار الأجّل بيد الزبون غير قرار داخلي.
+	LastReason string `json:"lastReason,omitempty"`
+	// انأجّل بلا موعد بديل؟ يعني الزبون نفسه ما محدّد وقته — نمط
+	// مختلف عن حجز يتأجل داخلياً كل مرة.
+	AwaitingReschedule bool `json:"awaitingReschedule"`
+}
+
+// InvoiceAdjustedEvidence الأدلة لتعديل مبالغ فاتورة بعد ما انسجّلت.
+//
+// ⚠️ الفاتورة مسجّلة باسم الليدر (معرّف الإشارة) والتعديل يصير من
+// المحاسب — فالإشارة عن **الليدر** الي فاتورته احتاجت تصحيح، مو عن
+// المحاسب الي صحّحها.
+type InvoiceAdjustedEvidence struct {
+	OldNetTotal float64 `json:"oldNetTotal"`
+	NewNetTotal float64 `json:"newNetTotal"`
+	// سالب = نزلت (الليدر بالغ بالتقدير)، موجب = زادت (نقّص).
+	DifferenceAmount float64 `json:"differenceAmount"`
+	DifferencePct    float64 `json:"differencePct"`
+	Reason           string  `json:"reason"`
+	// كم مرة انعدّلت فاتورة نفس هذا الليدر بآخر ٣٠ يوم؟
+	AdjustCountLast30Days int `json:"adjustCountLast30Days"`
+}
+
+// RepeatPartialEvidence الأدلة لإنجاز جزئي متكرر بنفس الحجز.
+type RepeatPartialEvidence struct {
+	PartialCount int `json:"partialCount"`
+	// آخر نسبة إنجاز مسجّلة، وشنو باقي وشنو المعوّقات حسب آخر تقرير.
+	LastPercentDone int    `json:"lastPercentDone"`
+	LastRemaining   string `json:"lastRemaining,omitempty"`
+	LastBlockers    string `json:"lastBlockers,omitempty"`
+}
+
 // ═══ الحكم ═══
 
 type AiVerdict struct {

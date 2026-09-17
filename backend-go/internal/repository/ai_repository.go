@@ -260,12 +260,18 @@ func (r *AiRepository) CartSummary(bookingID string, startedAt *time.Time) (int,
 // StopCountForEmployee كم مرة وقّف هذا الموظف الشغل بآخر كذا يوم.
 // مرة = ظرف، خمس مرات = نمط.
 func (r *AiRepository) StopCountForEmployee(employeeID string, days int) (int, error) {
+	return r.SignalCountForEmployee(model.AiSignalWorkStopped, employeeID, days)
+}
+
+// SignalCountForEmployee كم مرة تكررت نفس الإشارة لهذا الموظف بآخر
+// كذا يوم — نفس فكرة «مرة ظرف، خمس مرات نمط» بس لأي صنف إشارة.
+func (r *AiRepository) SignalCountForEmployee(kind, employeeID string, days int) (int, error) {
 	var n int
 	err := r.db.Get(&n, `
 		SELECT COUNT(*) FROM "AiSignal"
 		WHERE kind = $1 AND "employeeId" = $2
 		  AND "occurredAt" > now() - ($3 || ' days')::interval`,
-		model.AiSignalWorkStopped, employeeID, days)
+		kind, employeeID, days)
 	return n, err
 }
 

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -71,15 +72,9 @@ func (s *AiBrainService) Process(limit int) (int, error) {
 	}
 	done := 0
 	for _, sig := range signals {
-		if sig.Kind != model.AiSignalWorkStopped {
-			// بقية الأنواع لسه ما إلها جامع أدلة — نأشرها متخطّاة
-			// بدل ما تبقى معلّقة للأبد وتخفي الشغل الحقيقي.
-			_ = s.repo.SetSignalStatus(sig.ID, "SKIPPED")
-			continue
-		}
-		ev, err := s.evidence.CollectForWorkStop(sig)
+		ev, err := s.evidence.CollectFor(sig)
 		if err != nil {
-			log.Printf("[ai] فشل جمع الأدلة لإشارة %s: %v", sig.ID, err)
+			log.Printf("[ai] فشل جمع الأدلة لإشارة %s (%s): %v", sig.ID, sig.Kind, err)
 			continue
 		}
 		_ = s.repo.SetSignalStatus(sig.ID, "COLLECTED")
@@ -133,17 +128,42 @@ type RulesJudge struct{}
 
 func (RulesJudge) Name() string { return "rules-v1" }
 
-// Judge يفك الحقائق حسب صنف الإشارة. اليوم يعرف صنفاً واحداً —
-// والباقي يرجع nil، فالبرين يسجّل إنه ماكو حكم بدل ما يخترع واحداً.
+// Judge يفك الحقائق حسب صنف الإشارة، ويحوّلها لدالة القاعدة المناسبة.
+// صنف ما يعرفه يرجع خطأ بدل ما يخترع حكماً.
 func (r RulesJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVerdict, error) {
-	if sig.Kind != model.AiSignalWorkStopped {
-		return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
+	switch sig.Kind {
+	case model.AiSignalWorkStopped:
+		var facts model.WorkStopEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeWorkStop(sig, facts)
+	case model.AiSignalLateStart:
+		var facts model.LateStartEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeLateStart(sig, facts)
+	case model.AiSignalRepeatPostpone:
+		var facts model.RepeatPostponeEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeRepeatPostpone(sig, facts)
+	case model.AiSignalInvoiceAdjusted:
+		var facts model.InvoiceAdjustedEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeInvoiceAdjusted(sig, facts)
+	case model.AiSignalRepeatPartial:
+		var facts model.RepeatPartialEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeRepeatPartial(sig, facts)
 	}
-	var facts model.WorkStopEvidence
-	if err := json.Unmarshal(ev.Facts, &facts); err != nil {
-		return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
-	}
-	return r.judgeWorkStop(sig, facts)
+	return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
 }
 
 func (RulesJudge) judgeWorkStop(sig model.AiSignal, ev model.WorkStopEvidence) (*model.AiVerdict, error) {
@@ -221,5 +241,132 @@ func (RulesJudge) judgeWorkStop(sig model.AiSignal, ev model.WorkStopEvidence) (
 	if suggestion != "" {
 		v.Suggestion = &suggestion
 	}
+	return v, nil
+}
+
+// judgeLateStart «تأخر بالخروج للزبون» — نفس حد DEPART بالخط الزمني.
+func (RulesJudge) judgeLateStart(sig model.AiSignal, ev model.LateStartEvidence) (*model.AiVerdict, error) {
+	v := &model.AiVerdict{
+		Source:          model.AiSourceRules,
+		Headline:        "تأخر بالخروج للزبون",
+		Severity:        model.AiSeverityWatch,
+		Confidence:      75,
+		BlameEmployeeID: sig.EmployeeID,
+	}
+	reason := fmt.Sprintf("طلع للحجز متأخر %d دقيقة عن الموعد المجدول (الحد المسموح %d دقيقة).",
+		ev.MinutesLate, ev.ThresholdMinutes)
+	suggestion := "اسأل الفني ليش تأخر — أزمة طريق، حجز سابق طوّل، أو تأخير بلا سبب."
+
+	// «مرة» ظرف و«أربع مرات» نمط — نفس منطق توقف العمل بالأعلى.
+	if ev.LateCountLast30Days >= 4 {
+		v.Severity = model.AiSeverityCritical
+		v.Confidence = 90
+		reason += fmt.Sprintf(" ⚠️ ونفس الموظف تأخر %d مرات بآخر ٣٠ يوم — هذا نمط مو حادثة.",
+			ev.LateCountLast30Days)
+	}
+
+	v.Reasoning = &reason
+	v.Suggestion = &suggestion
+	return v, nil
+}
+
+// judgeRepeatPostpone «تأجيل متكرر لنفس الحجز».
+//
+// ⚠️ ما نلصق التهمة بموظف: التأجيل غالباً قرار الزبون أو تنسيق داخلي
+// متعثر، والدليل المتوفر ما يفرّق بينهم. «ما نعرف» أشرف من تخمين.
+func (RulesJudge) judgeRepeatPostpone(sig model.AiSignal, ev model.RepeatPostponeEvidence) (*model.AiVerdict, error) {
+	v := &model.AiVerdict{
+		Source:     model.AiSourceRules,
+		Headline:   "تأجيل متكرر لنفس الحجز",
+		Severity:   model.AiSeverityWatch,
+		Confidence: 60,
+	}
+	reason := fmt.Sprintf("هذا الحجز انأجّل %d مرة.", ev.PostponeCount)
+	if ev.LastReason != "" {
+		reason += " آخر سبب مسجّل: " + ev.LastReason + "."
+	}
+	if ev.AwaitingReschedule {
+		reason += " والحجز حالياً بلا موعد بديل — الزبون نفسه ما محدّد وقته."
+	}
+	suggestion := "راجع مع الزبون: هل التأجيل بطلبه، أو تنسيق داخلي متعثر؟"
+
+	if ev.PostponeCount >= 4 {
+		v.Severity = model.AiSeverityWarn
+		v.Confidence = 75
+		reason += " ⚠️ أربع تأجيلات وأكثر لحجز وحد يستاهل مراجعة إدارية مباشرة."
+	}
+
+	v.Reasoning = &reason
+	v.Suggestion = &suggestion
+	return v, nil
+}
+
+// judgeInvoiceAdjusted «تعديل على فاتورة» — هذا بالضبط سؤال صاحب
+// العمل: «ليش هلكد ناقص عن الفاتورة».
+//
+// ⚠️ النزول هو الأخطر: يعني الفاتورة الأصلية كانت زايدة عن الحقيقة —
+// فلوس دخلت وما انحسبت. الزيادة (نزول مبلغ الليدر من جيبه) أهون.
+func (RulesJudge) judgeInvoiceAdjusted(sig model.AiSignal, ev model.InvoiceAdjustedEvidence) (*model.AiVerdict, error) {
+	v := &model.AiVerdict{
+		Source:     model.AiSourceRules,
+		Headline:   "تعديل على فاتورة",
+		Severity:   model.AiSeverityInfo,
+		Confidence: 65,
+	}
+	direction := "زادت"
+	if ev.DifferenceAmount < 0 {
+		direction = "نزلت"
+	}
+	reason := fmt.Sprintf("المحاسب عدّل الفاتورة: %s من %.0f إلى %.0f (فرق %.0f، %.1f٪).",
+		direction, ev.OldNetTotal, ev.NewNetTotal, math.Abs(ev.DifferenceAmount), math.Abs(ev.DifferencePct))
+	if ev.Reason != "" {
+		reason += " السبب المسجّل: " + ev.Reason
+	}
+	suggestion := "راجع فاتورة الليدر الأصلية مقابل سبب التعديل المسجّل."
+
+	if ev.DifferenceAmount < 0 {
+		v.Severity = model.AiSeverityWarn
+		v.Confidence = 75
+		v.BlameEmployeeID = sig.EmployeeID
+	}
+	if ev.AdjustCountLast30Days >= 3 {
+		v.Severity = model.AiSeverityCritical
+		v.Confidence = 88
+		v.BlameEmployeeID = sig.EmployeeID
+		reason += fmt.Sprintf(" ⚠️ وفواتير نفس الليدر انعدّلت %d مرات بآخر ٣٠ يوم — نمط مو غلطة وحدة.",
+			ev.AdjustCountLast30Days)
+	}
+
+	v.Reasoning = &reason
+	v.Suggestion = &suggestion
+	return v, nil
+}
+
+// judgeRepeatPartial «إنجاز جزئي متكرر بنفس الحجز».
+//
+// ⚠️ ماكو لوم تلقائي: تكرار الإنجاز الجزئي غالباً معناه الكشف الأولي
+// قدّر حجم الشغل غلط، مو إن الكادر متكاسل.
+func (RulesJudge) judgeRepeatPartial(sig model.AiSignal, ev model.RepeatPartialEvidence) (*model.AiVerdict, error) {
+	v := &model.AiVerdict{
+		Source:     model.AiSourceRules,
+		Headline:   "إنجاز جزئي متكرر",
+		Severity:   model.AiSeverityWatch,
+		Confidence: 55,
+	}
+	reason := fmt.Sprintf("هذا الحجز انسجّل عليه إنجاز جزئي %d مرة. آخر نسبة إنجاز مسجّلة: %d٪.",
+		ev.PartialCount, ev.LastPercentDone)
+	if ev.LastBlockers != "" {
+		reason += " المعوّق المسجّل آخر مرة: " + ev.LastBlockers
+	}
+	suggestion := "راجع مع الكادر: هل نفس المعوّق يتكرر، أو حجم الشغل فعلاً أكبر من يوم وحد؟"
+
+	if ev.PartialCount >= 3 {
+		v.Severity = model.AiSeverityWarn
+		v.Confidence = 70
+		reason += " ⚠️ ثلاث مرات وأكثر يستاهل مراجعة الكشف الأولي — يمكن حجم الشغل انقدّر غلط من البداية."
+	}
+
+	v.Reasoning = &reason
+	v.Suggestion = &suggestion
 	return v, nil
 }
