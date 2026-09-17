@@ -21,7 +21,9 @@ const load = () => {
   if (!cache) cache = api.getDepartments().catch(() => [] as Department[])
   return cache
 }
-export function forgetDepartments(): void { cache = null }
+// ⚠️ **ما ننشر مبطِّل مخزون ماكو من يناديه**: دالة تصدير ميتة
+// بملف مكوّن تكسر `react-refresh`، وتخلّي القارئ يظن إن أكو مسار
+// يبطّل المخزون وهو ماكو. أول من يحتاجها يكتبها بوحدة مستقلة.
 
 type Props = {
   departmentId?: string | null

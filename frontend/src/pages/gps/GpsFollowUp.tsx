@@ -38,7 +38,7 @@ const OUTCOMES: { value: GpsFollowUpOutcome; label: string; hint: string }[] = [
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
 export default function GpsFollowUp({ embedded }: { embedded?: boolean } = {}) {
   const { permissions, employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   const canBurn = isAdmin || permissions.includes('gps_system')
   const canCall = isAdmin || permissions.includes('quality_control') || permissions.includes('gps_system')
 

@@ -49,18 +49,32 @@ export default function PermissionsPage() {
     if (!selectedEmployeeId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmployeePerms([])
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPermsLoadFailed(false)
       return
     }
     setPermsLoadFailed(false)
+    // 🔴🔴 **حارس سباق**: بلاه، تبديل الموظف بسرعة (أ ← ب) يخلي رد
+    // «أ» ينزل **بعد** رد «ب»، فالقائمة تعرض صلاحيات «أ» والمختار
+    // «ب» — وضغطة حفظ وحدة **تمنح ب صلاحيات أ**. والحفظ يحذف كل
+    // صفوف الموظف ويعيد إدخال المعروض، فالنتيجة تنكتب كاملة بلا أي
+    // تحذير.
+    //
+    // ⚠️ وهاي مو نظرية: الخادم يرجّع بأزمنة مختلفة حسب عدد صفوف كل
+    // موظف، والمالك يتنقل بين الموظفين بسرعة وهو يقارن صلاحياتهم —
+    // وهذا بالضبط النمط الي يطلّع السباق.
+    //
+    // ⚠️ والعلامة `alive` مو `AbortController`: نفس النمط المستعمل
+    // بباقي الشاشات (`MyTasks.tsx`)، ورد ملغى ما يحدّث حالة شاشة
+    // انتغيّر مختارها.
+    let alive = true
     api.getEmployeePermissions(selectedEmployeeId)
-      .then((perms) => setEmployeePerms(perms.map((p) => p.name)))
+      .then((perms) => { if (alive) setEmployeePerms(perms.map((p) => p.name)) })
       // 🔴🔴 «ما انجلبت» **مو** «ماكو صلاحيات»: الحفظ يرسل القائمة
       // كاملة والخادم **يحذف كل صفوف الموظف** ويعيد إدخال المؤشَّر
       // بس. فطلب فاشل واحد + ضغطة حفظ = **الموظف يفقد كل صلاحياته**
       // بهدوء. فنعلّمها ونقفل الحفظ بدل ما نبلع الخطأ بمصفوفة فاضية.
-      .catch(() => { setEmployeePerms([]); setPermsLoadFailed(true) })
+      .catch(() => { if (alive) { setEmployeePerms([]); setPermsLoadFailed(true) } })
+    return () => { alive = false }
   }, [selectedEmployeeId])
 
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)

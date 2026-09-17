@@ -48,7 +48,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // «هذا ما يرادله تيم وليدر… والي يسوّي الفاتورة هو مسؤول الخدمة
   // نفسها، واني أخلي السعر بكيفي». صلاحيتان منفصلتان: مسؤول الجي بي
   // اس ما يفوتر داش كام.
-  const isTopAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const isTopAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   const canGps = isTopAdmin || permissions.includes('invoice_gps')
   const canDashcam = isTopAdmin || permissions.includes('invoice_dashcam')
   const canServiceInvoice = canGps || canDashcam
@@ -229,6 +229,8 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   // والبديل **أدق وأرخص**: أسماء زبائن **حجوزاته هو** — واصلة
   // أصلاً مع `completedBookings`، بلا أي نداء زيادة وبلا صلاحية.
   // وهي الي يحتاجها فعلاً: زبائن شغله، مو كل زبائن الشركة.
+  // المشاريع الموجّهة ما إلها معنى بأوضاع السعر اليدوي — تنخفي بالاشتقاق.
+  const visibleProjects = internalMode || serviceMode ? [] : myProjects
   const serviceKindLabel = serviceKind === 'GPS' ? 'جي بي اس' : 'داش كام'
   const knownCustomers = completedBookings
     .map((b) => b.customer)
@@ -309,7 +311,10 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
     //
     // فالشرط: ما نجلب قوائم الخدمة إلا لمن تكون الصلاحية **معروفة**.
     // وأول ما تصل، `serviceKind` تنشتق صح والـeffect يعاد بنفسه.
-    if (serviceMode && !canServiceInvoice) { setCompletedBookings([]); setMyProjects([]); return }
+    // ⚠️ **ما نصفّر حالة هنا**: القيمة الابتدائية فاضية أصلاً،
+    // والصلاحية تمشي من «مجهولة» لـ«معروفة» وبس — فالتصفير نداء
+    // بلا فائدة يطلّع رسوماً متتالية (`react-hooks/set-state-in-effect`).
+    if (serviceMode && !canServiceInvoice) return
     const load = internalMode
       ? api.getInternalBookings('COMPLETED')
       : serviceMode
@@ -319,7 +324,12 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
     // ⚠️ والمشاريع الموجّهة تنخفي بالوضعين: ماكو علاقة بين مشروع
     // إنشائي وفاتورة جي بي اس، وعرض ٥١ مشروعاً بالقائمة هو الي
     // خلّى الموظف يدوخ. قرار (ع): «تنخفي تماماً».
-    if (internalMode || serviceMode) { setMyProjects([]); return }
+    //
+    // ⚠️ **الإخفاء بالاشتقاق مو بتصفير الحالة** (`visibleProjects`
+    // تحت): التصفير داخل الـeffect يطلّع رسوماً متتالية
+    // (`react-hooks/set-state-in-effect`)، ويخلّي «شنو معروض» يعتمد
+    // على ترتيب تنفيذ الـeffects بدل ما يعتمد على الوضع الحالي.
+    if (internalMode || serviceMode) return
     api.getProjectsDirectedToMe()
       .then((r) => setMyProjects(r.projects))
       .catch(() => setMyProjects([]))
@@ -1169,7 +1179,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
                 setCustomerAddress(b.customer?.location || '')
                 return
               }
-              const pr = myProjects.find((x) => x.bookingId === id || `project:${x.id}` === id)
+              const pr = visibleProjects.find((x) => x.bookingId === id || `project:${x.id}` === id)
               if (pr) {
                 setCustomerName(pr.name || '')
                 setCustomerPhone(pr.phone || '')
@@ -1179,9 +1189,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
           >
             <option value="">— بدون ربط (فاتورة مستقلة) —</option>
-            {myProjects.length > 0 && (
+            {visibleProjects.length > 0 && (
               <optgroup label="📤 المشاريع الموجّهة لي">
-                {myProjects.map((p) => (
+                {visibleProjects.map((p) => (
                   <option key={p.id} value={p.bookingId || `project:${p.id}`}>
                     {p.code} — {p.name}{p.stage ? ` (${p.stage})` : ''}
                   </option>
@@ -1218,8 +1228,8 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
                 : services.some((sv) => sv.serviceKind === serviceKind)
                   ? `ماكو حجز ${serviceKindLabel} ينتظر فاتورة — يا كلهن انسوّت إلهن فواتير، يا ماكو حجز منجز لحد هسه. القائمة تعرض المنجز الي ما إله فاتورة وبس، والحجز يختفي منها أول ما تحفظ فاتورته. وتكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون.`
                   : `🔴 ماكو ولا خدمة مأشَّرة ${serviceKindLabel} بالنظام — وبلا التأشير النظام ما يعرف أي حجز هو ${serviceKindLabel}. العلاج ضغطة وحدة من الرابط الي تحت.`
-              : myProjects.length > 0
-                ? `${myProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
+              : visibleProjects.length > 0
+                ? `${visibleProjects.length} مشروع موجّه لك — لما تختار واحد تنملي معلومات الزبون تلقائياً.`
                 : 'ما اكو مشروع موجّه لك حالياً — تكدر تسوي فاتورة مستقلة وتكتب معلومات الزبون يدوياً.'}
           </p>
           {/* 🔴 رابط مباشر بدل «روح لشاشة ثانية ودوّر»: (ع) وصل هنا
@@ -1229,7 +1239,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
               يوصله لمنع. */}
           {serviceMode && pickableBookings.length === 0
             && !services.some((sv) => sv.serviceKind === serviceKind)
-            && (employee?.role === 'ADMIN' || employee?.role === 'OWNER') && (
+            && (employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER') && (
             <Link
               to="/service-managers"
               className="mt-2 inline-block rounded-lg border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-bold text-amber-800 transition-colors hover:bg-amber-100"

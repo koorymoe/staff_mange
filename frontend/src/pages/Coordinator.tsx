@@ -56,11 +56,11 @@ export default function Coordinator() {
   const { employee: currentUser, permissions } = useSession()
   // منو يكدر يطلب حذف حجز — نفس قائمة شاشة الحجوزات بالضبط، حتى ما
   // يصير الزر يطلع بشاشة ويختفي بالثانية لنفس الموظف.
-  const canRequestDelete = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER'
+  const canRequestDelete = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
     || currentUser?.role === 'HR_COORDINATOR' || currentUser?.role === 'MONITOR'
     || (permissions ?? []).includes('booking_delete_request')
   // الحذف (الأرشفة) قرار إداري — المنسّق يأجّل ويحط بالانتظار، بس ما يحذف
-  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.role === 'OWNER'
+  const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
   const [bookings, setBookings] = useState<Booking[]>([])
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
   // الحجز الي قيد التثبيت حالياً — الأزرار كانت بلا أي إشارة انتظار، فالمستخدم
@@ -409,7 +409,7 @@ export default function Coordinator() {
   // يشتغل كل شي مبني على `role === 'ADMIN'` تلقائياً، والدور الحقيقي
   // ينحفظ بـ`actualRole`. فحص `role === 'OWNER'` ما ينجح **أبداً** —
   // وهذا الي خلّى الزر ما يطلع للمالك نفسه.
-  const isOwner = currentUser?.actualRole === 'OWNER' || currentUser?.role === 'OWNER'
+  const isOwner = currentUser?.actualRole === 'OWNER'
 
   const settleLegacy = async (booking: Booking) => {
     if (!confirm(

@@ -15,7 +15,7 @@ import BookingCodeChip from '../components/BookingCodeChip'
 // ترجّعه لو الزبون غيّر رأيه.
 export default function BookingsArchive() {
   const { employee } = useSession()
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
 
   const [rows, setRows] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)

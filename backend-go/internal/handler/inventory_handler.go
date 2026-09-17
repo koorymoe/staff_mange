@@ -206,7 +206,31 @@ func actorID(r *http.Request) *string {
 // ToolEvents سجل حركة الأدوات: لأداة وحدة (?toolId=) أو لموظف (?employeeId=)
 // أو الكل. هنا يبين متى انفقدت كل أداة ومنو سجّل الفقدان.
 func (h *InventoryHandler) ToolEvents(w http.ResponseWriter, r *http.Request) {
-	events, err := h.service.ListToolEvents(r.URL.Query().Get("toolId"), r.URL.Query().Get("employeeId"))
+	// 🔴🔴 **چان مفتوحاً لكل موظف مسجّل دخول**: المسار عليه
+	// `requireAuth` وبس، والاستعلام يقدّم `toolId` على `employeeId` —
+	// فأي فني يبدّل رقم الأداة بالرابط ويقرا تاريخ عدّة أي زميل (منو
+	// فقدها ومتى وشنو انكتب عليه)، ولو خلّى المعاملين فاضيين يجيب
+	// **آخر ٢٠٠ حركة بالشركة كلها**.
+	//
+	// ⚠️ والعلاج **تضييق مو ترفيض** — نفس نمط `ListPersonalTools`
+	// فوگ بهذا الملف بالضبط: صاحب الجرد يشوف الكل، وغيره **عدّته
+	// هو** مهما كتب بالرابط. والترفيض هنا چان يسجّل مخالفة على فني
+	// شاشته هي الي نادت، و**ثلاث مخالفات تقفل الحساب**.
+	toolID := r.URL.Query().Get("toolId")
+	employeeID := r.URL.Query().Get("employeeId")
+	self := middleware.EmployeeIDFromContext(r)
+	if !h.canSeeOthersTools(r) {
+		// أداة غير أدواته تنشال من الطلب، وما تنرفض — ويرجع سجله هو.
+		if toolID != "" {
+			if mine, err := h.service.ToolBelongsTo(toolID, self); err != nil || !mine {
+				toolID = ""
+			}
+		}
+		if toolID == "" {
+			employeeID = self
+		}
+	}
+	events, err := h.service.ListToolEvents(toolID, employeeID)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل حركة الأدوات")
 		return

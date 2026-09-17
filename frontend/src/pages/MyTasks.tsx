@@ -172,6 +172,35 @@ export default function MyTasks() {
     return !!employee.isLeader && b.assignments.some((a) => a.employee.id === employee.id)
   }
 
+  // ═══ الحجز الي ماكو بيه ليدر أصلاً — الفني يسوقه بنفسه ═══
+  //
+  // (ع): «اكو حجوزات مامحددين الهن ليدر، أضغط تم الإنجاز ويطلع
+  // «انت مو الليدر لهذا الحجز، لازم تنتضر الليدر يجمع المواد». زين
+  // هوه هذا الحجز كله مابي ليدر، لازم فني واحد بس يشتغله، ينتضر
+  // شنو؟».
+  //
+  // 🔴 والعلّة إن `amLeaderOf` تشترط `isLeader`، فالفني الوحيد يوقع
+  // بفرع «انتظر الليدر» — وذاك الفرع **ماكو بيه ولا زر** غير جرد
+  // الأدوات. يعني الحجز **يوقف للأبد**: ماكو منو يجهّز المواد ولا
+  // يأشّر الوصول ولا ينهي العمل، والفني يفتح ويقرا «انتظر» وماكو
+  // أحد ينتظره. والخادم أصلاً **يقبل** منه الإنهاء (الحارس
+  // `requireBookingParty` يمرّر أي مكلَّف) — يعني المنع بالواجهة
+  // وحدها، ومقيس: نداء الإنهاء بحساب فني مو ليدر يرجّع ٢٠٠.
+  //
+  // ⚠️ «ماكو ليدر» تنفحص على **الحجز كله** مو على الي فاتح الشاشة:
+  // لو أكو ليدر مكلَّف وياه، القيادة تبقى للليدر وما ينسحبها الفني.
+  const bookingHasNoLeader = (b: Booking) =>
+    !b.projectSupervisor?.id && !b.assignments.some((a) => a.employee.isLeader)
+
+  // amDriverOf منو يسوق الحجز: الليدر، أو الفني المكلَّف بحجز بلا ليدر.
+  //
+  // ⚠️ **منفصلة عن `amLeaderOf` بقصد**: لو وسّعت `amLeaderOf` نفسها،
+  // تنفتح وياها مطالبة **الفاتورة** للفني (أكو موضعان يعرضون «باقي
+  // عليك الفاتورة» بشرطها) — و(ع) كال صراحةً «الفني ميسوي فاتورة،
+  // فقط يكدر يسويله تم الإنجاز». فهاي تنطي **قيادة التنفيذ** وبس.
+  const amDriverOf = (b: Booking) =>
+    amLeaderOf(b) || (!!employee && bookingHasNoLeader(b) && b.assignments.some((a) => a.employee.id === employee.id))
+
   // ═══ الورق على مسؤول الخدمة ═══
   //
   // ⚠️ **العلم يجي مع الحجز نفسه** (`b.service.managerHandlesPaperwork`)
@@ -223,8 +252,29 @@ export default function MyTasks() {
   // جرد الفني: يفتح نفس مودال الأدوات بس ما يبدي العمل — البدء بيد
   // الليدر. toolsOnly تفرّق بين الحالتين.
   const [toolsOnly, setToolsOnly] = useState(false)
+  // ═══ جرد الأدوات ينشال عن الجي بي اس والداش كام ═══
+  //
+  // (ع) سأل «شنو الموضوع مالته؟» لمن طلعله الجرد بحجز داش كام، وقرّر
+  // **ينشال**.
+  //
+  // والسبب معقول: الجرد انبنى للشغل الي يطلع بيه الفريق بعُدّة
+  // السيارة (كاميرات · شبكات · طاقة) — يتأكد إن أدوات الشركة رجعت
+  // وياه. وتركيب جهاز جي بي اس أو داش كام طلعة فني واحد بعُدّة
+  // بسيطة، فالجرد صار سؤالاً بلا معنى يوقف الشغل.
+  //
+  // ⚠️ والعلامة **نوع الخدمة** (`serviceKind`) مو علامة الورق: هاي
+  // تگول «هاي جي بي اس أو داش كام» بالضبط، وذيچ تگول «ورقه على
+  // مسؤوله» — وممكن المالك يأشّر ورق خدمة ثانية على مسؤولها وهي
+  // **تحتاج** جرد.
+  //
+  // ⚠️ وما ننسى إن الجرد هو نفسه **بوابة بدء العمل**: فبهالخدمات
+  // البدء يصير مباشرةً بلا مودال — إخفاء المودال بلا هالسطر يعني
+  // زر «بدأنا بالعمل» ما يسوّي شي.
+  const noToolsCheck = (b: Booking) => !!b.service?.serviceKind
+
   const openToolsCheck = async (booking: Booking, onlyTools: boolean) => {
     setToolsOnly(onlyTools)
+    if (noToolsCheck(booking)) { if (!onlyTools) await doStart(booking.id); return }
     if (!employee) { if (!onlyTools) await doStart(booking.id); return }
     setToolsModalBooking(booking)
     setToolsLoading(true)
@@ -524,7 +574,7 @@ export default function MyTasks() {
                     )}
 
                     {b.status === 'CONFIRMED' ? (
-                      amLeaderOf(b) ? (
+                      amDriverOf(b) ? (
                       /* ═══ الليدر يسوق المسار ═══ */
                       <div className="mt-3 space-y-2">
                         {b.materialsReadyAt ? (
@@ -574,12 +624,17 @@ export default function MyTasks() {
                             الانطلاق وبدء العمل بيد الليدر — ما تحتاج تضغط شي.
                           </span>
                         </div>
-                        <button
-                          onClick={() => openToolsCheck(b, true)}
-                          className="w-full rounded-lg bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
-                        >
-                          🧰 جردت أدواتي وأدوات السيارة — تم
-                        </button>
+                        {/* ⚠️ الزر ينخفي بخدمات الجي بي اس والداش كام:
+                            بلا هذا يبقى زر يضغطه الفني وما يسوّي ولا
+                            شي — وزر ميّت أسوأ من ماكو زر. */}
+                        {!noToolsCheck(b) && (
+                          <button
+                            onClick={() => openToolsCheck(b, true)}
+                            className="w-full rounded-lg bg-gradient-to-l from-emerald-500 to-emerald-700 px-4 py-3 text-sm font-bold text-white shadow-md transition-all hover:shadow-lg"
+                          >
+                            🧰 جردت أدواتي وأدوات السيارة — تم
+                          </button>
+                        )}
                       </div>
                       )
                     ) : (

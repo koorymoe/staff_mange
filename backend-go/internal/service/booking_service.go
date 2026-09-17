@@ -756,8 +756,23 @@ func (s *BookingService) SetMaterialsReady(id, employeeID string) (*model.Bookin
 	if employee == nil {
 		return nil, errors.New("الموظف غير موجود")
 	}
+	// ⚠️ **والحجز الي ماكو بيه ليدر يسوقه الفني المكلَّف**: (ع) «هذا
+	// الحجز كله مابي ليدر، لازم فني واحد بس يشتغله، ينتضر شنو؟».
+	// وبلا هالاستثناء الحجز **يوقف للأبد** — ماكو منو يأشّر تجهيز
+	// المواد، والشاشة تگول «انتظر الليدر» وماكو ليدر ينتظره.
+	//
+	// ⚠️ والفحص على **الحجز** مو على الطالب: لو أكو ليدر مكلَّف وياه،
+	// الترفيض يبقى وما ينسحب القرار من الليدر.
 	if !employee.IsLeader && employee.Role != "ADMIN" && employee.Role != "MONITOR" {
-		return nil, errors.New("هذا الإجراء يقتصر على تيم ليدر الفريق أو الإدارة")
+		solo := false
+		if none, err := s.repo.HasNoLeader(id); err == nil && none {
+			if assigned, err := s.repo.IsAssignedTo(id, employeeID); err == nil && assigned {
+				solo = true
+			}
+		}
+		if !solo {
+			return nil, errors.New("هذا الإجراء يقتصر على تيم ليدر الفريق أو الإدارة")
+		}
 	}
 	if err := s.repo.SetMaterialsReady(id, employeeID); err != nil {
 		return nil, err

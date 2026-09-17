@@ -32,13 +32,13 @@ export default function MyRanking() {
   // «تقييم بين الإداريين» — منو يقارن أبو الكوادر والمراقبين ببعض،
   // مو أبو الكوادر نفسه. نفس حارس الخادم بالضبط
   // (`RequireRole("ADMIN","OWNER","MONITOR")`).
-  const canSeeEvaluators = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'MONITOR'
+  const canSeeEvaluators = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'MONITOR'
   // ⚠️⚠️ الإداريون العليا (ADMIN/OWNER) ماعندهم تصنيف شخصي — «عندهم
   // كل الصلاحيات بحكم موقعهم، فيطلعون بكل تصنيف ويزاحمون الي يشتغل
   // الشغل فعلاً» (نفس مبدأ استثناء PermissionLeaderboard بالخادم).
   // بلا هذا الشرط، ADMIN بلا `tracksFor` مطابق يسقط لمقارنة كل
   // حسابات ADMIN ببعض بنقاط KPI/حجوزات — مقارنة بلا معنى لعمل إداري.
-  const isTopAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const isTopAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   const [view, setView] = useState<'mine' | 'team' | 'evaluators'>('mine')
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)
@@ -87,9 +87,17 @@ export default function MyRanking() {
       ? api.getRoleKpiLeaderboard(activeTrack.strictRoles.join(','))
       : activeTrack
       ? api.getPermissionKpiLeaderboard(activeTrack.permission)
+      // 🔴 **والإداري العليا ما ننادي إله أصلاً**: الخادم يرفض
+      // ADMIN/OWNER بـ٤٠٠ **بقصد** (ماكو تصنيف شخصي للإداريين)،
+      // والشاشة تعرف هذا أصلاً (`isTopAdmin` فوگ) — فالنداء چان
+      // يطلّع ٤٠٠ بكل فتحة شاشة للمالك، ويخلي الكونسول يمتلي
+      // بأخطاء متوقّعة **تخبّي الأخطاء الحقيقية**.
+      : isTopAdmin
+      ? null
       : api.getRoleKpiLeaderboard(employee.role)
+    if (!p) { return }
     p.then(setBoard).catch(() => setBoard(null))
-  }, [employee, activeTrack])
+  }, [employee, activeTrack, isTopAdmin])
 
   const skillCount = employee?.skills.filter((s) => s.canPerform).length || 0
   const currentLevel = [...levels].reverse().find((l) => skillCount >= l.min) || levels[0]

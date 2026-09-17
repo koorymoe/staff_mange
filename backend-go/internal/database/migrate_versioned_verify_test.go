@@ -20,6 +20,25 @@ import (
 	_ "github.com/lib/pq"
 )
 
+// ═══ 🔴 الاختبار الحيّ ما يكتب حساب المالك ═══
+//
+// **علّة انكشفت بالغلط، وانا الي وقعت بيها**: شغّلت
+// `go test ./...` ووياها `DATABASE_URL` على قاعدة المختبر، وبعدها
+// **ماعاد أكدر أدخل بحساب المالك**. والسبب إن هالاختبار چان ينادي
+// `Migrate(db, "testowner", "testpassword123")`، و`seedOwnerAccount`
+// يسوّي `ON CONFLICT (id) DO UPDATE SET username = $1, password = $2`
+// — يعني **يكتب فوق اسم المالك وكلمة سره** بأي قاعدة ينشار عليها.
+//
+// 🔴 وخطورتها مو بالمختبر: (ع) عنده فريق، وأي واحد يشغّل
+// الاختبارات ووياها `DATABASE_URL` مشيّر على الإنتاج **يبدّل اسم
+// المالك وكلمة سره لقيمتين مكتوبتين بالكود** — وما يدري، لأن
+// الاختبار ينجح ويطلع أخضر.
+//
+// والعلاج: اسم وكلمة فاضيان. `seedOwnerAccount` يرجع فوراً لمن
+// يكونان فاضيين، فالترحيلات تنطبّق كاملة **وحساب المالك ما ينلمس**
+// — وهذا كل الي يقيسه هالاختبار أصلاً.
+const ownerSeedSkipped = ""
+
 // TestMigrateIsIdempotent_Live يتأكد إن تشغيل Migrate مرتين على نفس القاعدة الحية
 // ينجح بالمرتين وإن التشغيلة الثانية ما تعيد تطبيق أي ترحيل (skip-through فقط).
 func TestMigrateIsIdempotent_Live(t *testing.T) {
@@ -33,7 +52,7 @@ func TestMigrateIsIdempotent_Live(t *testing.T) {
 	}
 	defer db.Close()
 
-	if err := Migrate(db, "testowner", "testpassword123"); err != nil {
+	if err := Migrate(db, ownerSeedSkipped, ownerSeedSkipped); err != nil {
 		t.Fatalf("first Migrate run failed: %v", err)
 	}
 
@@ -45,7 +64,7 @@ func TestMigrateIsIdempotent_Live(t *testing.T) {
 		t.Fatalf("expected at least one applied migration to be recorded after first run")
 	}
 
-	if err := Migrate(db, "testowner", "testpassword123"); err != nil {
+	if err := Migrate(db, ownerSeedSkipped, ownerSeedSkipped); err != nil {
 		t.Fatalf("second Migrate run (should be a clean no-op skip-through) failed: %v", err)
 	}
 
@@ -97,7 +116,7 @@ func TestMigrateOnFreshSchema_Live(t *testing.T) {
 	}
 	defer freshDB.Close()
 
-	if err := Migrate(freshDB, "testowner", "testpassword123"); err != nil {
+	if err := Migrate(freshDB, ownerSeedSkipped, ownerSeedSkipped); err != nil {
 		t.Fatalf("Migrate on fresh empty database failed: %v", err)
 	}
 

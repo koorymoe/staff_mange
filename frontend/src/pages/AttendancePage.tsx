@@ -71,7 +71,7 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
   }, [])
   useEffect(() => { loadMyLeaves() }, [loadMyLeaves])
 
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
   // تصدير جدول الدوام مو لكل موظف — للمراقب ومدير النظام والمالك بس،
   // أو لمن ينطيه المدير صلاحية المراقبة صراحةً.
   const canExport = isAdmin

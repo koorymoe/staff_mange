@@ -323,6 +323,19 @@ func (r *InventoryRepository) decorateEvents(events []model.PersonalToolEvent) [
 
 // ListToolEvents سجل حركة: لأداة وحدة (toolID)، أو لكل أدوات موظف
 // (employeeID)، أو الأحداث كلها لما الاثنين فاضيين.
+// ToolBelongsTo هل هذي الأداة عدّة هذا الموظف؟
+//
+// ⚠️ تنستعمل بتضييق سجل الحركة: بلاها الفني يبدّل رقم الأداة بالرابط
+// ويقرا تاريخ عدّة أي زميل (منو فقدها ومتى).
+func (r *InventoryRepository) ToolBelongsTo(toolID, employeeID string) (bool, error) {
+	if toolID == "" || employeeID == "" {
+		return false, nil
+	}
+	var n int
+	err := r.db.Get(&n, `SELECT COUNT(*) FROM "PersonalTool" WHERE id = $1 AND "employeeId" = $2`, toolID, employeeID)
+	return n > 0, err
+}
+
 func (r *InventoryRepository) ListToolEvents(toolID, employeeID string) ([]model.PersonalToolEvent, error) {
 	events := []model.PersonalToolEvent{}
 	var err error

@@ -208,7 +208,7 @@ export const navItems: NavItem[] = [
         // منو عنده حق **التسجيل** بس، الشاشة تفتحله «حجز جديد» وبس —
         // فالاسم يگول شغله الحقيقي بدل ما يوهمه بمحطات ما يشوفها.
         labelFor: (ctx) => {
-          const canViewAll = ctx.employee?.role === 'ADMIN' || ctx.employee?.role === 'OWNER'
+          const canViewAll = ctx.employee?.role === 'ADMIN' || ctx.employee?.actualRole === 'OWNER'
             || ['HR_COORDINATOR', 'MONITOR', 'FINANCE', 'PROJECT_MANAGER', 'PROCUREMENT_ADMIN']
               .includes(ctx.employee?.role ?? '')
             || ['view_bookings', 'coordinator', 'crew_management', 'mission_tracking',

@@ -136,6 +136,26 @@ func (s *EmployeeService) Update(id string, req model.UpdateEmployeeRequest) (*m
 		if req.Phone != nil {
 			employee.Phone = req.Phone
 		}
+		// 🔴🔴 **حساب المالك محمي من مدير النظام.**
+		//
+		// الكود چان يمنع **منح** دور المالك (تحت) وما يمنع **تنزيله**
+		// ولا إيقافه — والمسار محروس بـ`requireAdmin` وبس. يعني أي
+		// مدير نظام يقدر يوقف حساب المالك أو ينزّل دوره لفني،
+		// و**المالك يفقد نظامه بضغطة** بلا ما يقدر يرجّعه: فتح
+		// الحسابات نفسه محجوز للمالك.
+		//
+		// ⚠️ والمنع **على الهدف مو على الطالب**: المالك يقدر يعدّل
+		// حسابه هو (اسمه، هاتفه، صورته) — الممنوع تغيير **دوره**
+		// و**حالته**، ومن أي أحد، حتى لو انسوّى بالغلط.
+		// ⚠️ والقاعدة هنا بالخدمة مو بالمعالج: كل مسارات التعديل
+		// تمرّ من هنا، وحارس بمعالج واحد ينفلت منه الثاني.
+		isOwnerTarget := employee.Role == "OWNER"
+		if isOwnerTarget && req.Status != nil && *req.Status != employee.Status {
+			return errors.New("حساب المالك ما ينوقف — هو الي يفتح الحسابات كلها")
+		}
+		if isOwnerTarget && req.Role != nil && *req.Role != "OWNER" {
+			return errors.New("دور المالك ما ينزّل من الواجهة")
+		}
 		if req.Status != nil {
 			employee.Status = *req.Status
 			// استرجاع حساب موقوف (SUSPENDED) يصفّر عداد محاولات الاختراق —
