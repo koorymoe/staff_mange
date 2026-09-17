@@ -695,6 +695,56 @@ html.dark {
 }
 
 /* ═══════════════════════════════════════════════════════════════
+   عين الأماني — ثيم ثالث، طابع تقني/ذكاء اصطناعي
+   ═══════════════════════════════════════════════════════════════
+
+   خيار صريح إضافي بجنب الليلي والنهاري — كحلي أغمق وأزرق من
+   الليلي العادي، مع تمييز سماوي فسفوري للعناصر الحيّة (مراقبة،
+   تنبيهات، حالة «شغّال الآن»). غامق دايماً — ماكو نسخة نهارية له.
+
+   ⚠️ `applyTheme` بـ`utils/theme.ts` تحط صنف `dark` **مع**
+   `theme-amani-eye` سوا، فكل تجاوز `html.dark` فوق يشتغل أولاً
+   كأساس (سلّم الرمادي المعكوس، ألوان المعاني، خانات الإدخال...)،
+   وهذا البلوك يجي بعده بترتيب الكتابة فيبدّل بس الدرجة الأساسية
+   للبطاقات والحدود والتمييز — بلا إعادة كتابة كل شي من الصفر. */
+html.theme-amani-eye {
+  color-scheme: dark;
+
+  --t-title:     #eaf3ff;
+  --t-title-alt: #bfe4f5;
+  --t-body:      #d7e6f7;
+  --t-muted:     #93a8c9;
+  --t-faint:     #6c81a3;
+  --t-info:      #22d3ee;
+  --t-cyan:      #22d3ee;
+
+  --sf-card:     #101c30;
+  --sf-sunken:   #0a1420;
+  --sf-info:     #0d2233;
+  --bd-line:     #1e3a5f;
+
+  --brand-ink:  #7dd8ee;
+}
+
+html.theme-amani-eye body {
+  background: linear-gradient(180deg, #060b16 0%, #0a1420 100%);
+}
+
+html.theme-amani-eye .bg-white { background-color: #101c30; }
+html.theme-amani-eye .bg-white\/95 { background-color: rgba(16, 28, 48, 0.95); }
+html.theme-amani-eye .bg-white\/90 { background-color: rgba(16, 28, 48, 0.9); }
+html.theme-amani-eye .bg-white\/80 { background-color: rgba(16, 28, 48, 0.8); }
+html.theme-amani-eye .bg-white\/60 { background-color: rgba(16, 28, 48, 0.6); }
+
+/* الحدود الرمادية العامة (border-slate و border-gray، الأكثر
+   استعمالاً بالبطاقات) بلون سماوي خافت — بلا لمس حدود المعاني
+   (border-red و border-green وأخواتهن) لأنها **بالصنف** لا
+   بالمتغيّر، ولمسها هنا يقلب تحذيراً أحمر لحدّ سماوي، وهذا قرار
+   غلط بالفلوس. */
+html.theme-amani-eye .border-slate-200,
+html.theme-amani-eye .border-gray-200 { border-color: #1e3a5f; }
+
+/* ═══════════════════════════════════════════════════════════════
    شاشة الدخول — مضيئة، بالنص، وترد على المستخدم
    ═══════════════════════════════════════════════════════════════
 
