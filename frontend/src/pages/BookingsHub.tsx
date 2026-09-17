@@ -75,7 +75,7 @@ type TabKey = (typeof TABS)[number]['key']
 export default function BookingsHub() {
   const { employee, permissions } = useSession()
   const perms = permissions ?? []
-  const isAdmin = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
 
   // ⚠️ التبويب ما يطلع إلا لمن عنده صلاحيته — تبويب يفتح شاشة تگله
   // «ممنوع» أسوأ من تبويب ما موجود.
@@ -132,7 +132,7 @@ export default function BookingsHub() {
   }, [tab, canViewAll])
 
   // نفس حارس البند القديم بالقائمة بالضبط — مو حارساً أوسع ولا أضيق.
-  const canDecideDelete = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const canDecideDelete = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
     || employee?.role === 'MONITOR' || permissions.includes('booking_delete_approve')
 
   // مفتاح العدّاد لكل محطة (الي ما إلها عدّاد ما تعرض رقم)

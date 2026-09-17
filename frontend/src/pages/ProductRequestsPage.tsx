@@ -18,7 +18,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
   const canAdd = employee?.role === 'ADMIN' || employee?.role === 'PROCUREMENT_ADMIN' || permissions.includes('unit_technicians')
   const isAdmin = employee?.role === 'ADMIN'
   // أبو الحسابات نفسه أبو الكميات — صلاحية الدوار هي الي تحدده
-  const canFulfill = isAdmin || employee?.role === 'OWNER' || permissions.includes('revolving_fund')
+  const canFulfill = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('revolving_fund')
 
   const [items, setItems] = useState<ProductRequest[]>([])
   const [procurements, setProcurements] = useState<ProductProcurement[]>([])

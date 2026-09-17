@@ -110,14 +110,14 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   //
   // ⚠️ القوائم هنا تطابق حراس السيرفر بالضبط: زر يطلع وينرفض بـ٤٠٣
   // أسوأ من زر ما يطلع.
-  const owner = employee?.role === 'OWNER'
+  const owner = employee?.actualRole === 'OWNER'
   const canEditDetails = isAdmin || owner
     || ['coordinator', 'crew_management', 'view_bookings', 'mission_tracking', 'sales_booking']
       .some((p) => permissions.includes(p))
   const canEditCrew = isAdmin || owner
     || ['coordinator', 'crew_management'].some((p) => permissions.includes(p))
   // طلب حذف حجز: الإداري والمراقب ومدير النظام، أو أي واحد ينمنح الصلاحية
-  const canRequestDelete = isAdmin || employee?.role === 'OWNER' ||
+  const canRequestDelete = isAdmin || employee?.actualRole === 'OWNER' ||
     employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
     permissions.includes('booking_delete_request')
 

@@ -457,7 +457,7 @@ export default function Dashboard() {
           «شنو صاير اليوم» و«شغلي اليوم» ولوحة الشرف ومخطط الحركة.
           ⚠️ لمن عنده شغل بالحجوزات بس — الفني ما يهمه «شكد مثبّت
           ينتظر كادر»، وعرضها له يحوّل الرئيسية لضجيج. */}
-      {(isAdmin || employee.role === 'OWNER' || employee.role === 'HR_COORDINATOR'
+      {(isAdmin || employee.actualRole === 'OWNER' || employee.role === 'HR_COORDINATOR'
         || employee.role === 'MONITOR' || ['coordinator', 'view_bookings', 'monitoring'].some((p) => permissions.includes(p))) && (
         <TodayBoard finance={finance} />
       )}

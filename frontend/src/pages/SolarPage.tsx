@@ -23,7 +23,7 @@ type Tab = 'dashboard' | 'systems' | 'inventory' | 'customers'
 export default function SolarPage() {
   const { employee, permissions } = useSession()
   const canEdit =
-    employee?.role === 'ADMIN' || employee?.role === 'OWNER' || permissions.includes('solar_system')
+    employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('solar_system')
 
   const [tab, setTab] = useState<Tab>('dashboard')
   const [stats, setStats] = useState<SolarStats | null>(null)

@@ -21,8 +21,8 @@ export default function ProcurementPage() {
   const { employee, permissions } = useContext(SessionContext)
   // توفير المواد وتحديد حالتها (توفير/رفض) يقتصر على إداري الكميات والأدمن فقط —
   // أي موظف ثاني (فني، مدير مشاريع، مراقب...) يشوف الطلبات وحالتها بس بدون تحكم.
-  const canManageProcurement = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'PROCUREMENT_ADMIN'
-  const isAdminLike = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+  const canManageProcurement = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'PROCUREMENT_ADMIN'
+  const isAdminLike = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   // كل نوع طلب له صلاحية مستقلة تُمنح يدوياً بصفحة الصلاحيات — ما تنجر مع أي دور.
   // الأدمن/المالك يقدر ينشئ الاثنين دائماً.
   const canCreatePersonal = isAdminLike || permissions.includes('procurement_personal')

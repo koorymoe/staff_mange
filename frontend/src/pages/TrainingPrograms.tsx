@@ -23,7 +23,7 @@ const iqd = (n: number) => `${Math.round(n || 0).toLocaleString('en-US')} د.ع`
 export default function TrainingPrograms() {
   const { employee, permissions } = useSession()
   const canManage =
-    employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'HR_COORDINATOR' ||
+    employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || employee?.role === 'HR_COORDINATOR' ||
     permissions.includes('staff_management') || permissions.includes('content_technician')
 
   const [programs, setPrograms] = useState<TrainingProgram[]>([])
