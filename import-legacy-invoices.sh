@@ -179,6 +179,37 @@ RETURNING id, "netTotal", status
 )
 SELECT * FROM ins;
 
+-- ═══ مزامنة الحجز — هذا كان الثغرة ═══
+--
+-- 🔴 الإصدار الأول من هذا السكربت كان يكتب الفاتورة بس، وما يلمس
+-- حجزها. شاشة «تدقيق الحسابات» (Finance.tsx) ما تعرف شي عن
+-- LeaderInvoice أبداً — تحكم بس من Booking.amountCollected/
+-- amountVerified. فالفاتورة تدخل، والحجز يبقى يقول «ماكو مبلغ، ماكو
+-- تدقيق»، فيطلع بطابور «بانتظار التدقيق» بخانة فاضية والمحاسب مطالب
+-- يعيد كتابة مبلغ موجود أصلاً. وإجمالي الإيرادات (SUM(amountCollected))
+-- ما يعكس هالمبالغ لحد الآن.
+--
+-- ⚠️ دفتر تدقيق الحسابات (الإكسل) هو نفسه مصدر التدقيق — طلب صاحب
+-- النظام صراحة: «أي فلوس مربوطة بحجز بزبون اعتبرها مدققة»، بغض
+-- النظر عن وجود رقم فاتورة خارجي (APPROVED أو SUBMITTED سوا).
+--
+-- ⚠️ ما نلمس حجزاً دقّقه إنسان مسبقاً بمبلغ حقيقي — رقمه هو الصحيح.
+-- ⚠️ RETURNING يمسك **بالضبط** الصفوف الي هذا التشغيل لمسها — تقرير
+-- دقيق بدل ما نحسب على كل الحجوزات المستوردة (بعضها كان مدقق من
+-- زمان بمبلغ حقيقي، وحسابه ضمن «مزامنة هذا التشغيل» يكذب).
+CREATE TEMP TABLE synced_bookings AS
+WITH upd AS (
+UPDATE "Booking" b
+SET "amountCollected" = ins."netTotal",
+    "amountVerified"  = true
+FROM inserted_ids ins
+WHERE b.id = (SELECT "bookingId" FROM "LeaderInvoice" WHERE id = ins.id)
+  AND (b."amountCollected" IS NULL OR b."amountCollected" = 0)
+  AND b."amountVerified" = false
+RETURNING b.id, b."amountCollected"
+)
+SELECT * FROM upd;
+
 \echo ''
 \echo '───────────── نتيجة الإدخال ─────────────'
 \echo ''
@@ -187,6 +218,11 @@ SELECT count(*) AS "فواتير انضافت",
        count(*) FILTER (WHERE status = 'APPROVED')  AS "معتمدة",
        count(*) FILTER (WHERE status = 'SUBMITTED') AS "بانتظار التدقيق (بلا رقم فاتورة)"
   FROM inserted_ids;
+
+\echo ''
+\echo '» مزامنة الحجز — شكد حجز صار مبلغه مدقق تلقائياً (نزل من طابور «تدقيق الحسابات»):'
+SELECT count(*) AS "حجوزات انصلحت", COALESCE(sum("amountCollected"), 0) AS "زيادة إجمالي الإيرادات"
+  FROM synced_bookings;
 
 \echo ''
 \echo '» أثر التغيير على خانة «منجزة وناقصها ورق»:'
