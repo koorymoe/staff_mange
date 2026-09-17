@@ -52,8 +52,12 @@ func (h *CustomerHandler) List(w http.ResponseWriter, r *http.Request) {
 	// بلا وسائط يرجّع كل الزبائن متل ما كان — أي مستدعي قديم ما ينكسر.
 	search := r.URL.Query().Get("search")
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	if limit > 2000 {
-		limit = 2000
+	// ⚠️ الحد كان ٢٠٠٠، وعدد الزبائن الفعليين صار ٢٢٩٠+ — فأي طلب
+	// بحد ٣٠٠٠ (شاشة الزبائن) كان يُقصّ عند ٢٠٠٠ بصمت وتضيع آخر ~٢٩٠
+	// زبون من التصفّح والفلاتر بلا أي تنبيه. رفعناه لـ٥٠٠٠ (هامش
+	// فوگ العدد الحالي، نفس منطق الحد بالواجهة).
+	if limit > 5000 {
+		limit = 5000
 	}
 	customers, err := h.service.Search(search, limit)
 	if err != nil {
