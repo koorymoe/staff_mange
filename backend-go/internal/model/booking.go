@@ -183,6 +183,17 @@ type Booking struct {
 	//   DONE_FULL        تم الإنجاز بشكل كامل
 	CompletionState string `db:"-" json:"completionState"`
 
+	// ═══ منو دقّق الحجز مالياً ═══
+	// «أكّده» (ConfirmedByName فوق) يعني منو ثبّت إنجاز الشغل الفني —
+	// سؤال مختلف كلياً عن منو راجع الفلوس وطابقها. هذا يجي من
+	// LeaderInvoice.auditedById (يتسجّل وقت "مطابق"/"غير مطابق"/
+	// "خطأ سعر"/"مجاني" بشاشة التدقيق اليومي)، آخر فاتورة للحجز.
+	// ⚠️ يبقى فاضي لحجوزات صُحّحت بسكربتات تسوية جماعية (دفتر تدقيق
+	// الحسابات القديم) لأنها ما مرّت بشاشة التدقيق اليومي أصلاً —
+	// الواجهة تعرض هذا صراحة، بلا تخمين اسم.
+	FinanceAuditedByName *string    `db:"-" json:"financeAuditedByName,omitempty"`
+	FinanceAuditedAt     *time.Time `db:"-" json:"financeAuditedAt,omitempty"`
+
 	AddressDescription      *string    `db:"addressDescription" json:"addressDescription,omitempty"`
 	CreatedAt               time.Time  `db:"createdAt" json:"createdAt"`
 	UpdatedAt               time.Time  `db:"updatedAt" json:"updatedAt"`
