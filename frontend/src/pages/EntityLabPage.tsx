@@ -19,7 +19,7 @@ import { SWITCH_ENTITY } from '../systemSwitches'
 import type { AvatarHandle, AvatarStats, ClipName } from '../components/entityAvatarEngine'
 import type { Tracker } from '../components/faceTracking'
 import { api, entityModelUrl, ensureFileToken, type EntityAvatarModel } from '../api'
-import { forgetActiveModel } from '../components/EntityAvatar'
+import { forgetActiveModel } from '../components/entityModelSource'
 
 /**
  * ⚠️ **مفتاح الإطفاء.** النظام ماكو بيه منظومة رايات ميزات (فحصتها:
@@ -77,7 +77,6 @@ function Lab() {
   const [modelId, setModelId] = useState<string>(BUILT_IN[0].id)
   const [uploaded, setUploaded] = useState<EntityAvatarModel[] | null>(null)
   /** اسم ملف المجسّم المحمّل فعلاً بهذي الشاشة — للعرض الصادق. */
-  const [loadedFile, setLoadedFile] = useState<string | null>(null)
   const [uploadBusy, setUploadBusy] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   // ═══ الكاميرا: حالة منفصلة تماماً، ومطفَيّة بالافتراضي ═══
@@ -147,6 +146,21 @@ function Lab() {
     })),
   ], [uploaded])
 
+  // ⚠️ **اسم الملف الحقيقي مو اسم الزر**: المرفوع يُخدَم بمفتاح
+  // عشوائي (`models/abc.glb`)، والفرق بينه وبين التسمية هو الي يكشف
+  // «أي مجسّم معروض فعلاً».
+  //
+  // ⚠️ **مشتقّ مو حالة**: چان ينكتب بـ`setState` داخل الـeffect
+  // (`react-hooks/set-state-in-effect`)، وچان ينكتب **قبل** تركيب
+  // العارض أصلاً — يعني ماكان يقيس «انتركّب» بل «هذا الي انختار».
+  // فالاشتقاق نفس المعنى بلا رسم إضافي.
+  const loadedFile = (() => {
+    const c = choices.find((m) => m.id === modelId) ?? choices[0]
+    if (!c) return null
+    const u = c.url.split('?')[0].split('/').slice(-1)[0]
+    return u || c.url
+  })()
+
   useEffect(() => {
     let disposed = false
     const canvas = canvasRef.current
@@ -156,10 +170,6 @@ function Lab() {
     const chosen = choices.find((m) => m.id === modelId) ?? choices[0]
     if (!chosen) return
     const url = chosen.url
-    // ⚠️ **اسم الملف الحقيقي مو اسم الزر**: المرفوع يُخدَم بمفتاح
-    // عشوائي (`models/abc.glb`)، والفرق بينه وبين التسمية هو الي
-    // يكشف «أي مجسّم معروض فعلاً».
-    setLoadedFile(url.split('?')[0].split('/').slice(-1)[0] || url)
     import('../components/entityAvatarEngine')
       .then((mod) => mod.mountAvatar(canvas, url, 'WALK_ALT', framing, { influencers: 8, motion: true }))
       .then((h) => {

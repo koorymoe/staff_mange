@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AvatarHandle, ClipName } from './entityAvatarEngine'
-import { api, ensureFileToken, entityModelUrl } from '../api'
+import { BUILTIN_MODEL, forgetActiveModel, resolveModelUrl } from './entityModelSource'
 
 // ═══ شخصية الكيان فوق ورقة القصة ═══
 //
@@ -57,44 +57,8 @@ interface Props {
  * ⚠️ **وv4 تبقى بالمستودع**: نسخة مبنية قديمة بمتصفح موظف ممكن
  * تطلبها، وحذف الملف يعني ٤٠٤ على شاشته.
  */
-const BUILTIN_MODEL = `${import.meta.env.BASE_URL}amani-tech-v5.glb`
 
-/**
- * رابط المجسّم الي يُعرض لهذا الموظف.
- *
- * 🔴 **ليش هالدالة موجودة أصلاً**: قبلها كان اسم الملف مكتوباً
- * **ثابتاً** هنا، ومعناها إن أي مجسّم يُرفَع من داخل النظام **ما يوصل
- * لولا موظف** — يبين بشاشة المختبر وحدها. ومالك النظام شكى إنه
- * «ما شاف الشخصية الجديدة أبداً بالنظام»، وكان محقاً: هذا المكوّن هو
- * **كل** ما يشوفه الموظف (الودجة العائمة وورقة القصة)، وهو ما كان
- * يعرف إن اكو شخصية جديدة أصلاً.
- *
- * ⚠️ **الترتيب إلزامي**: الوسم (`ensureFileToken`) **قبل** بناء
- * الرابط — `entityModelUrl` يقرأ الوسم من متغيّر بالوحدة، فلو انبنى
- * قبله يطلع رابط بلا وسم و`GET /api/files` يرد ٤٠١.
- *
- * 🔴 **وكل مسار فشل يرجّع المدمج مو استثناءً**: هاي شاشة كل موظف.
- * ماكو نشط · وسم فشل · خادم أقدم من الواجهة (٤٠٤) · شبكة مقطوعة —
- * كلها تعني «اعرض القديم»، مو «لا تعرض شي».
- */
-let modelUrlPromise: Promise<string> | null = null
-function resolveModelUrl(): Promise<string> {
-  // ⚠️ **الوعد يُخزَّن على مستوى الوحدة** لأن الودجة العائمة وورقة
-  // القصة ممكن تتركّبان مع بعض: بلا خزن يصير نداءان لكل موظف بكل
-  // تنقّل، وكلهم يرجّعون نفس الجواب.
-  if (!modelUrlPromise) {
-    modelUrlPromise = ensureFileToken()
-      .then(() => api.getActiveEntityModel())
-      .then((m) => (m ? entityModelUrl(m.fileKey) : BUILTIN_MODEL))
-      .catch(() => BUILTIN_MODEL)
-  }
-  return modelUrlPromise
-}
 
-/** يُنسى المخزون لمّا يبدّل (ع) الشخصية، حتى التحميل الجاي يجيب الجديد. */
-export function forgetActiveModel(): void {
-  modelUrlPromise = null
-}
 
 function webglSupported(): boolean {
   try {
@@ -137,7 +101,7 @@ export default function EntityAvatar({
     // الفشل نفسه.
     Promise.all([import('./entityAvatarEngine'), resolveModelUrl()])
       .then(([{ mountAvatar }, url]) =>
-        mountAvatar(canvas, url, clip, framing).catch((err) => {
+        mountAvatar(canvas, url, clip, framing).catch((err: unknown) => {
           if (cancelled || url === BUILTIN_MODEL) throw err
           // ⚠️ ننسى المخزون حتى المحاولة الجاية تسأل الخادم من جديد
           // (ممكن (ع) رجّع الملف أو بدّل النشط بينها وبين الآن).

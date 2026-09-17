@@ -52,9 +52,25 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
+// dummyBcryptHash تجزئة حقيقية بنفس كلفة تجزئات النظام — تنستعمل
+// لموازنة زمن الرد لمن الاسم مو موجود. القيمة لكلمة سر عشوائية
+// انتنسّت، فما تطابق أي شي.
+const dummyBcryptHash = "$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy"
+
 func (s *AuthService) Login(username, password, ip, userAgent string) (*model.Employee, string, error) {
 	employee, err := s.employees.FindByUsername(username)
 	if err != nil || employee == nil || employee.Password == nil {
+		// 🔴 **موازنة زمن الرد**: بلاها الاسم غير الموجود يرجع
+		// **فوراً** (~١ م.ث) والاسم الموجود يستنّى مقارنة bcrypt
+		// (~٥٠-٣٠٠ م.ث). والفرق هذا **يكشف أسماء مستخدمي الشركة**
+		// لأي واحد يقيس الزمن: يجرّب قائمة أسماء بكلمة سر أي شي،
+		// والي يتأخّر رده يعني «هذا الاسم موجود» — وبعدها يركّز
+		// تخمينه عليه.
+		//
+		// ⚠️ والتجزئة **حقيقية بنفس الكلفة** مو `time.Sleep`: النوم
+		// بمدة ثابتة يبين كنمط منتظم، وكلفة الـbcrypt نفسها هي
+		// الي تخلّي الزمنين متقاربين مهما تغيّرت سرعة السيرفر.
+		_ = bcrypt.CompareHashAndPassword([]byte(dummyBcryptHash), []byte(password))
 		_ = s.loginAudit.Record(username, nil, false, ip, userAgent)
 		return nil, "", ErrInvalidCredentials
 	}

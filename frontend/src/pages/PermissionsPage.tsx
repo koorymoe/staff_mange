@@ -49,7 +49,6 @@ export default function PermissionsPage() {
     if (!selectedEmployeeId) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setEmployeePerms([])
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPermsLoadFailed(false)
       return
     }

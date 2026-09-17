@@ -1,5 +1,16 @@
 package repository
 
+// ⚠️⚠️ **تواريخ الاشتراك تنقارن بتاريخ بغداد مو بتاريخ السيرفر.**
+//
+// `"subscriptionEnd"` عموده `timestamp without time zone`، و`::date`
+// الخام يقطعه **بتوقيت السيرفر** — بينما الطرف الثاني بالمقارنة
+// `baghdad_today()`. فاشتراك ينتهي الليل (بعد ٩ مساءً بتوقيت
+// السيرفر = اليوم التالي ببغداد) **ينحسب بيوم غلط**: يطلع منتهياً
+// وهو ما انتهى، أو بالعكس. وهذا رقم يشوفه الزبون ويتصل عليه موظف.
+//
+// فكل قطع تاريخ هنا يمرّ بـ`baghdad_date()` — نفس دالة المشروع
+// المستعملة بالحجوزات، وهي IMMUTABLE فتنفع بالفهارس.
+
 import (
 	"fmt"
 
@@ -622,7 +633,7 @@ func (r *GpsRepository) ListSubscriptionFollowUps() ([]model.GpsSubscriptionFoll
 			COALESCE(c."fullName", '')             AS "customerName",
 			COALESCE(c.phone, '')                  AS "customerPhone",
 			d."subscriptionEnd"                    AS "subscriptionEnd",
-			(baghdad_today() - d."subscriptionEnd"::date) AS "daysSinceExpiry",
+			(baghdad_today() - baghdad_date(d."subscriptionEnd")) AS "daysSinceExpiry",
 			(baghdad_today() - baghdad_date(f."calledAt"))    AS "daysSinceLastCall",
 			d."simCardId"                          AS "simCardId",
 			s."simNumber"                          AS "simNumber",
@@ -638,7 +649,7 @@ func (r *GpsRepository) ListSubscriptionFollowUps() ([]model.GpsSubscriptionFoll
 			WHERE "deviceRequestId" = d.id ORDER BY "calledAt" DESC LIMIT 1
 		) f ON true
 		WHERE d."subscriptionEnd" IS NOT NULL
-		  AND d."subscriptionEnd"::date <= baghdad_today()
+		  AND baghdad_date(d."subscriptionEnd") <= baghdad_today()
 		ORDER BY d."subscriptionEnd" ASC
 	`)
 	if err != nil {
@@ -713,7 +724,7 @@ func (r *GpsRepository) CreateFollowUp(deviceRequestID string, calledByID *strin
 	err := r.db.Get(&f, `
 		INSERT INTO "GpsRenewalFollowUp" (id, "deviceRequestId", "customerId", "calledById", outcome, notes, "daysSinceExpiry")
 		SELECT gen_random_uuid()::text, d.id, d."customerId", $2, $3, $4,
-			(baghdad_today() - d."subscriptionEnd"::date)
+			(baghdad_today() - baghdad_date(d."subscriptionEnd"))
 		FROM "GpsDeviceRequest" d WHERE d.id = $1
 		RETURNING *
 	`, deviceRequestID, calledByID, req.Outcome, req.Notes)
@@ -783,7 +794,7 @@ func (r *GpsRepository) MonitorSnapshot(windowDays int) (*model.GpsMonitorSnapsh
 			COALESCE(c.phone, '')      AS "customerPhone",
 			d."gpsNumber", d."subscriptionEnd",
 			d."subscriptionType"::text AS "subscriptionType",
-			(d."subscriptionEnd"::date - baghdad_today()) AS "daysLeft"
+			(baghdad_date(d."subscriptionEnd") - baghdad_today()) AS "daysLeft"
 		FROM "GpsDeviceRequest" d
 		LEFT JOIN "GpsCustomer" c ON c.id = d."customerId"
 		WHERE d."subscriptionEnd" IS NOT NULL
@@ -791,14 +802,14 @@ func (r *GpsRepository) MonitorSnapshot(windowDays int) (*model.GpsMonitorSnapsh
 
 	// قربت تنتهي: من اليوم لحد نهاية النافذة
 	if err := r.db.Select(&out.Expiring, subSelect+`
-		  AND d."subscriptionEnd"::date >= baghdad_today()
-		  AND d."subscriptionEnd"::date <= baghdad_today() + ($1 || ' days')::interval
+		  AND baghdad_date(d."subscriptionEnd") >= baghdad_today()
+		  AND baghdad_date(d."subscriptionEnd") <= baghdad_today() + ($1 || ' days')::interval
 		ORDER BY d."subscriptionEnd" ASC`, windowDays); err != nil {
 		return nil, err
 	}
 	// انتهت وما انجدّدت
 	if err := r.db.Select(&out.Expired, subSelect+`
-		  AND d."subscriptionEnd"::date < baghdad_today()
+		  AND baghdad_date(d."subscriptionEnd") < baghdad_today()
 		ORDER BY d."subscriptionEnd" ASC`); err != nil {
 		return nil, err
 	}
