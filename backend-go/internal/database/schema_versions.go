@@ -343,6 +343,10 @@ func versionedMigrations() []Migration {
 	// 0286: نوع الخدمة (جي بي اس / داش كام) — ماكان أكو شي يفرّقهن،
 	// فقائمة الربط بحجز ما تكدر ترشّح.
 	result = append(result, serviceKindMigrations()...)
+	// 0288: دفتر ذمة الموظف — «الليدر يخلي فلوس بالكاشير بدون ما يسوي
+	// فاتورة». الفلوس الطالعة چانت متتبّعة والداخلة ماكو إلها أثر.
+	// الدفتر محمي بمُشغّلات قاعدة البيانات: ما ينعدّل ولا ينمسح.
+	result = append(result, employeeLedgerMigrations()...)
 	return result
 }
 
