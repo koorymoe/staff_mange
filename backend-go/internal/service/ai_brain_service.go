@@ -4,11 +4,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"time"
 
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
-	"staffmange-api/internal/safeguard"
 )
 
 // ═══ العقل ═══
@@ -27,22 +25,9 @@ import (
 // نص الملاحظات، وربط أنماط متفرقة، وصياغة تقرير يقراه بني آدم.
 
 // Judge منو يحكم على الأدلة. القواعد أو المنصّة — نفس التوقيع.
-//
-// ⚠️ التوقيع ياخذ `AiEvidence` الخام مو `WorkStopEvidence` المفكوكة،
-// لسببين:
-//
-//	١. **أصناف الإشارات خمسة مو واحد.** تثبيت نوع أدلة واحد بالتوقيع
-//	   يعني كل صنف جديد يكسر الواجهة وكل تنفيذ يتعدّل معاها.
-//
-//	٢. **الفجوات (`Gaps`) لازم توصل للحاكم.** مكتوب برأس
-//	   schema_ai_core.go: «الفراغ المعلن أأمن من الفراغ الصامت —
-//	   النموذج لازم يعرف شنو ما شافه بدل ما يفترض إنه ماكو». وهي
-//	   چانت تنضيع قبل ما توصل لأن البرين يفك الحقائق بس.
-//
-// وكل تنفيذ يفك الحقائق حسب `signal.Kind`.
 type Judge interface {
 	Name() string
-	Judge(signal model.AiSignal, ev model.AiEvidence) (*model.AiVerdict, error)
+	Judge(signal model.AiSignal, ev model.WorkStopEvidence) (*model.AiVerdict, error)
 }
 
 type AiBrainService struct {
@@ -84,9 +69,13 @@ func (s *AiBrainService) Process(limit int) (int, error) {
 		}
 		_ = s.repo.SetSignalStatus(sig.ID, "COLLECTED")
 
-		verdict, err := s.judge.Judge(sig, *ev)
+		var facts model.WorkStopEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			log.Printf("[ai] أدلة مو مقروءة لإشارة %s: %v", sig.ID, err)
+			continue
+		}
+		verdict, err := s.judge.Judge(sig, facts)
 		if err != nil || verdict == nil {
-			log.Printf("[ai] ماكو حكم لإشارة %s: %v", sig.ID, err)
 			continue
 		}
 		verdict.SignalID = sig.ID
@@ -100,31 +89,6 @@ func (s *AiBrainService) Process(limit int) (int, error) {
 	return done, nil
 }
 
-// StartBackgroundLoop يخلّي النظام **يفكر لحاله**.
-//
-// ⚠️ قبل هذا، `Process` چانت تنشتغل بس لما أحد يضرب `POST /api/ai/process`
-// بالإيد — يعني الإشارات تتكدس بالطابور وماكو أحد يشوفها. الهيكل چان
-// جاهز والمحرّك مطفي.
-//
-// الفترة كل ١٥ دقيقة: التحليل ما يستعجل (الموظف كمّل شغله من زمان)، بس
-// المراقب لازم يشوف الخلل بنفس الدوام مو باچر. والدفعة ٢٠ إشارة حتى
-// طابور متراكم ينمشي على دورات بدل ما يضرب الحد اليومي بدورة وحدة.
-//
-// ⚠️ ولازم تمر بـ`safeguard.Loop` مو goroutine عارية: أي panic هنا
-// (رد مشوّه، أدلة ناقصة) چان يقتل السيرفر كله.
-func (s *AiBrainService) StartBackgroundLoop() {
-	safeguard.Loop("كنسة تحليل الذكاء", 4*time.Minute, 15*time.Minute, func() {
-		n, err := s.Process(20)
-		if err != nil {
-			log.Printf("[ai] كنسة التحليل فشلت: %v", err)
-			return
-		}
-		if n > 0 {
-			log.Printf("[ai] انحللت %d إشارة", n)
-		}
-	})
-}
-
 // ═══ محرّك القواعد ═══
 //
 // كل قاعدة هنا تجاوب على سؤال طرحه صاحب العمل حرفياً.
@@ -133,20 +97,7 @@ type RulesJudge struct{}
 
 func (RulesJudge) Name() string { return "rules-v1" }
 
-// Judge يفك الحقائق حسب صنف الإشارة. اليوم يعرف صنفاً واحداً —
-// والباقي يرجع nil، فالبرين يسجّل إنه ماكو حكم بدل ما يخترع واحداً.
-func (r RulesJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVerdict, error) {
-	if sig.Kind != model.AiSignalWorkStopped {
-		return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
-	}
-	var facts model.WorkStopEvidence
-	if err := json.Unmarshal(ev.Facts, &facts); err != nil {
-		return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
-	}
-	return r.judgeWorkStop(sig, facts)
-}
-
-func (RulesJudge) judgeWorkStop(sig model.AiSignal, ev model.WorkStopEvidence) (*model.AiVerdict, error) {
+func (RulesJudge) Judge(sig model.AiSignal, ev model.WorkStopEvidence) (*model.AiVerdict, error) {
 	v := &model.AiVerdict{
 		Source:     model.AiSourceRules,
 		Severity:   model.AiSeverityInfo,
