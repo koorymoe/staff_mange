@@ -19,6 +19,11 @@ const serviceLabels: Record<string, string> = {
 export default function Customers() {
   const [tab, setTab] = useState<'all' | 'gps'>('all')
   const [customers, setCustomers] = useState<Customer[]>([])
+  // ⚠️ `customers` محمّلة بحد أعلى (INITIAL_LIMIT) لتسريع الفتح —
+  // فطولها مو العدد الحقيقي الكلي. `totalCount` من مسار خفيف
+  // (COUNT فقط، بلا تنزيل صفوف) يعرض الرقم الصحيح ببطاقة/تبويب
+  // «كل الزبائن»، بدل ما نوهم (ع) إن العدد نقص لمّا هو بس محمَّل جزئياً.
+  const [totalCount, setTotalCount] = useState(0)
   const [gpsCustomers, setGpsCustomers] = useState<GpsCustomerListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,6 +95,9 @@ export default function Customers() {
   }, [search])
 
   useEffect(load, [])
+  useEffect(() => {
+    api.getDashboardSummary().then((s) => setTotalCount(s.customerCount)).catch(() => {})
+  }, [])
 
   const openEdit = (c: Customer) => {
     setEditingCustomer(c)
@@ -208,7 +216,13 @@ export default function Customers() {
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
   const newThisMonth = customers.filter((c) => c.createdAt && new Date(c.createdAt) >= monthStart).length
   const vipCount = customers.filter((c) => !!c.position).length
-  const pct = (n: number) => (customers.length ? Math.round((n / customers.length) * 1000) / 10 : 0)
+  // ⚠️ أثناء بحث نشط، customers.length هو عدد نتائج البحث فعلاً
+  // (صحيح لعرضه). بلا بحث، customers.length مقصوص بحد التحميل —
+  // فنستعمل العدد الحقيقي من totalCount، ونرجع لطول القائمة لو
+  // العدّاد الخفيف لسا ما وصل (فتح أول للشاشة).
+  const isSearching = search.trim().length >= 2
+  const allCount = isSearching ? customers.length : (totalCount || customers.length)
+  const pct = (n: number) => (allCount ? Math.round((n / allCount) * 1000) / 10 : 0)
 
   return (
     <div dir="rtl">
@@ -225,7 +239,7 @@ export default function Customers() {
 
       {/* ═══ الأرقام ═══ */}
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
-        <StatCard icon="👥" tone="sky" label="كل الزبائن" value={customers.length} hint="100% من إجمالي الزبائن" />
+        <StatCard icon="👥" tone="sky" label="كل الزبائن" value={allCount} hint="100% من إجمالي الزبائن" />
         <StatCard icon="🧑‍💼" tone="emerald" label="جدد هذا الشهر" value={newThisMonth} hint={`${pct(newThisMonth)}% من إجمالي الزبائن`} />
         <StatCard icon="👑" tone="amber" label="شخصيات مهمة / VIP" value={vipCount} hint={`${pct(vipCount)}% من إجمالي الزبائن`} />
       </div>
@@ -305,7 +319,7 @@ export default function Customers() {
                 tab === 'all' ? 'bg-brand-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
               }`}
             >
-              كل الزبائن ({customers.length})
+              كل الزبائن ({allCount})
             </button>
             <button
               onClick={() => setTab('gps')}
