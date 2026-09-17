@@ -5,18 +5,21 @@
 #
 # ⚠️⚠️ هذا السكربت **قراءة فقط** — ما يكتب ولا حرف بقاعدة البيانات مهما
 # صار (يشتغل كله داخل معاملة تنتهي بـROLLBACK دائماً، بلا وضع --apply).
-# شغله جمع الأدلة بس: منو من صفوف الدفتر يطابق حجزاً موجوداً، ومنو لا.
 #
-# ⚠️ الفرق عن import-legacy-invoices.sh: هذا الدفتر تواريخه توصل لقبل
-# شهرين بس (يوليو ٢٠٢٦) — يعني أغلب صفوفه على الأغلب حجوزات **حقيقية
-# موجودة أصلاً بالنظام بكود عادي** (مو OLD-)، فالمطابقة تصير برقم
-# الهاتف + قرب التاريخ، مو بمعادلة كود ثابتة.
+# ⚠️ نسخة ثانية — طلب صاحب العمل: «أني جاي أدقق الحجوزات مو الزبائن.
+# الزيارة إذا تكررت، دوّر بالنظام هل متكررة نفس العدد. إذا متكررة
+# بنفس العدد، طابقها بالترتيب من الإكسل. وإذا مو متكررة (عدد مختلف)
+# خلّي الموجود — يعني ما تخمّن، اعرضها للمراجعة».
 #
-# التصنيف لكل صف:
-#   أ. حجز موجود ومبلغه مدقق أصلاً (amountVerified=true)  → ولا لمسة
-#   ب. حجز موجود وغير مدقق                                 → مرشّح للتصحيح
-#   ج. ماكو حجز يطابق (هاتف فاضي أو ماكو حجز بنفس الهاتف)   → قرار بشري
-#   د. أكثر من حجز يطابق (نفس الهاتف، تواريخ قريبة)         → قرار بشري
+# يعني المطابقة **بمستوى الزبون** مو الصف: لكل هاتف، نقارن عدد زياراته
+# بالدفتر (excel_n) مقابل عدد حجوزاته المكتملة بالنظام بنفس الفترة
+# الزمنية (system_n):
+#
+#   excel_n = system_n  → نرتب الطرفين بالتاريخ ونطابق وحدة وحدة
+#   excel_n ≠ system_n  → ما نخمّن، نعرض التفصيل للمراجعة اليدوية
+#
+# وبعد المطابقة، كل زوج (صف إكسل ↔ حجز) ينقسم لنفس فئتين سابقتين:
+#   حجز مدقق أصلاً (ولا لمسة) · حجز غير مدقق (مرشّح للتصحيح)
 #
 # الاستخدام:
 #   ./match-audit-ledger.sh <ملف.csv>
@@ -69,70 +72,88 @@ SELECT count(*) AS "صفوف الملف", COALESCE(sum(amount_received),0) AS "�
 SELECT count(*) AS "بلا هاتف" FROM audit_import
  WHERE phone IS NULL OR btrim(phone) = '';
 
--- ⚠️ نافذة ±٧ أيام: تاريخ المشروع بالدفتر مو بالضرورة نفس تاريخ
--- الجدولة أو الإنجاز بالنظام (فرق أيام بسبب التنسيق أو التأجيل)،
--- فنافذة ضيقة جداً تفوّت مطابقات حقيقية، وواسعة جداً تخلق مطابقات
--- وهمية. سبعة أيام حل وسط — والمطابقات المتعددة تنكشف بعمود العدد
--- تحت مو تُخفى.
-CREATE TEMP TABLE candidates AS
-SELECT
-  a.ctid AS row_id,
-  b.id AS booking_id
-FROM audit_import a
-JOIN "Customer" c ON c.phone = a.phone
-JOIN "Booking" b ON b."customerId" = c.id
-WHERE a.phone IS NOT NULL AND btrim(a.phone) <> ''
-  AND COALESCE(b."scheduledAt", b."completedAt", b."createdAt")::date
-      BETWEEN a.project_date - 7 AND a.project_date + 7;
+-- ═══ عدد الزيارات لكل زبون — بالإكسل ═══
+CREATE TEMP TABLE excel_counts AS
+SELECT phone, count(*) AS excel_n, min(project_date) AS d_min, max(project_date) AS d_max
+FROM audit_import
+WHERE phone IS NOT NULL AND btrim(phone) <> ''
+GROUP BY phone;
 
-CREATE TEMP TABLE classified AS
-SELECT
-  a.*,
-  (SELECT count(*) FROM candidates cand WHERE cand.row_id = a.ctid) AS candidate_count,
-  (SELECT b.id FROM candidates cand JOIN "Booking" b ON b.id = cand.booking_id
-     WHERE cand.row_id = a.ctid LIMIT 1) AS matched_booking_id
-FROM audit_import a;
+-- ═══ عدد الحجوزات المكتملة لنفس الزبون بنفس الفترة — بالنظام ═══
+-- ⚠️ الفترة = مدى تواريخ زياراته بالدفتر ± أسبوع، مو كل تاريخه —
+-- زبون قديم عنده عشرات الحجوزات عبر السنين، وحصر الفترة يمنع خلط
+-- حجوزات برّا نطاق هذا الدفتر أصلاً.
+CREATE TEMP TABLE system_counts AS
+SELECT c.phone, count(*) AS system_n
+FROM excel_counts ec
+JOIN "Customer" c ON c.phone = ec.phone
+JOIN "Booking" b ON b."customerId" = c.id
+WHERE b.status = 'COMPLETED'
+  AND COALESCE(b."scheduledAt", b."completedAt", b."createdAt")::date
+      BETWEEN ec.d_min - 7 AND ec.d_max + 7
+GROUP BY c.phone;
 
 \echo ''
-\echo '───────────── التصنيف ─────────────'
+\echo '───────────── مطابقة العدد لكل زبون ─────────────'
+\echo ''
+\echo '» زبائن عدد زياراتهم بالدفتر = عدد حجوزاتهم المكتملة بالنظام (يتطابقون تلقائياً):'
+SELECT count(DISTINCT ec.phone) AS "عدد الزبائن", sum(ec.excel_n) AS "عدد الصفوف"
+FROM excel_counts ec JOIN system_counts sc ON sc.phone = ec.phone AND sc.system_n = ec.excel_n;
+
+\echo ''
+\echo '» زبائن العدد عندهم مختلف (يحتاج مراجعتك — ما نخمّن):'
+SELECT ec.phone AS "الهاتف", ec.excel_n AS "زياراته بالدفتر",
+       COALESCE(sc.system_n, 0) AS "حجوزاته المكتملة بالنظام"
+FROM excel_counts ec LEFT JOIN system_counts sc ON sc.phone = ec.phone
+WHERE ec.excel_n <> COALESCE(sc.system_n, 0)
+ORDER BY ec.excel_n DESC;
+
+-- ═══ المطابقة الفعلية: ترتيب بالتاريخ لكل طرف، ثم زوج بزوج ═══
+CREATE TEMP TABLE excel_ranked AS
+SELECT a.*, row_number() OVER (PARTITION BY a.phone ORDER BY a.project_date) AS rn
+FROM audit_import a
+JOIN excel_counts ec ON ec.phone = a.phone
+JOIN system_counts sc ON sc.phone = ec.phone AND sc.system_n = ec.excel_n;
+
+CREATE TEMP TABLE booking_ranked AS
+SELECT b.id, b."amountVerified", b."amountCollected", c.phone,
+       row_number() OVER (PARTITION BY c.phone
+         ORDER BY COALESCE(b."scheduledAt", b."completedAt", b."createdAt")) AS rn
+FROM "Booking" b
+JOIN "Customer" c ON c.id = b."customerId"
+JOIN excel_counts ec ON ec.phone = c.phone
+JOIN system_counts sc ON sc.phone = ec.phone AND sc.system_n = ec.excel_n
+WHERE b.status = 'COMPLETED'
+  AND COALESCE(b."scheduledAt", b."completedAt", b."createdAt")::date
+      BETWEEN ec.d_min - 7 AND ec.d_max + 7;
+
+CREATE TEMP TABLE paired AS
+SELECT e.*, br.id AS matched_booking_id, br."amountVerified" AS matched_verified,
+       br."amountCollected" AS matched_amount
+FROM excel_ranked e
+JOIN booking_ranked br ON br.phone = e.phone AND br.rn = e.rn;
+
+\echo ''
+\echo '───────────── التصنيف النهائي (بعد المطابقة بالترتيب) ─────────────'
 \echo ''
 \echo '» أ. حجز موجود ومبلغه مدقق أصلاً — ولا لمسة:'
-SELECT count(*) AS "العدد"
-FROM classified cl JOIN "Booking" b ON b.id = cl.matched_booking_id
-WHERE cl.candidate_count = 1 AND b."amountVerified" = true;
+SELECT count(*) AS "العدد" FROM paired WHERE matched_verified = true;
 
 \echo ''
-\echo '» ب. حجز موجود وغير مدقق — مرشّح للتصحيح (هذا الي راح يتصلح):'
-SELECT count(*) AS "العدد", COALESCE(sum(cl.amount_received),0) AS "المبلغ الي راح يزاد للإيرادات"
-FROM classified cl JOIN "Booking" b ON b.id = cl.matched_booking_id
-WHERE cl.candidate_count = 1 AND b."amountVerified" = false;
+\echo '» ب. حجز موجود وغير مدقق — مرشّح للتصحيح:'
+SELECT count(*) AS "العدد", COALESCE(sum(amount_received),0) AS "المبلغ الي راح يزاد للإيرادات"
+FROM paired WHERE matched_verified = false;
 
 \echo ''
-\echo '» ج. ماكو حجز يطابق أبداً — يحتاج قرارك:'
-SELECT count(*) AS "العدد", COALESCE(sum(cl.amount_received),0) AS "المبلغ اليتيم"
-FROM classified cl WHERE cl.candidate_count = 0;
+\echo '» ج. زبون بلا حجوزات مكتملة بالنظام إطلاقاً بهذي الفترة (excel_n موجود، system_n=0):'
+SELECT count(*) AS "العدد", COALESCE(sum(a.amount_received),0) AS "المبلغ اليتيم"
+FROM audit_import a
+JOIN excel_counts ec ON ec.phone = a.phone
+LEFT JOIN system_counts sc ON sc.phone = ec.phone
+WHERE sc.phone IS NULL;
 
 \echo ''
-\echo '» تفاصيل الفئة (ج) — أول ٣٠ صف بلا مطابقة (مرتبة بالمبلغ):'
-SELECT project_date AS "التاريخ", customer_name AS "الزبون", phone AS "الهاتف",
-       accounting_code AS "كود المحاسبة", amount_received AS "المبلغ"
-FROM classified WHERE candidate_count = 0
-ORDER BY amount_received DESC LIMIT 30;
-
-\echo ''
-\echo '» د. أكثر من حجز يطابق — يحتاج قرارك (ما نخمّن):'
-SELECT count(*) AS "العدد", COALESCE(sum(amount_received),0) AS "المبلغ"
-FROM classified WHERE candidate_count > 1;
-
-\echo ''
-\echo '» تفاصيل الفئة (د):'
-SELECT project_date AS "التاريخ", customer_name AS "الزبون", phone AS "الهاتف",
-       candidate_count AS "عدد الحجوزات المطابقة", amount_received AS "المبلغ"
-FROM classified WHERE candidate_count > 1
-ORDER BY candidate_count DESC LIMIT 30;
-
-\echo ''
-\echo '» صفوف فيها ملاحظة "راجع" مسبقة (كتبتها أثناء التحويل من النص — تدقيق يدوي مطلوب):'
+\echo '» صفوف فيها ملاحظة "راجع" مسبقة (كتبتها أثناء التحويل من النص — تدقيق يدوي مطلوب، تُستثنى من أي تصحيح تلقائي):'
 SELECT project_date AS "التاريخ", customer_name AS "الزبون", accounting_code AS "كود المحاسبة", notes AS "الملاحظة"
 FROM audit_import WHERE notes ILIKE '%راجع%';
 
