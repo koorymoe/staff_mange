@@ -463,6 +463,31 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		}
 	}
 
+	// ═══ منو دقّق الحجز مالياً ═══
+	// آخر فاتورة للحجز المؤشَّرة بحكم تدقيق (auditedById) — DISTINCT
+	// ON بترتيب الإنشاء تنازلياً يعطي أحدث فاتورة، نفس اختيار
+	// «الأحدث» المستخدم بـ stampInvoiceVerdict بالضبط.
+	type financeAuditInfo struct {
+		BookingID string    `db:"bookingId"`
+		Name      string    `db:"auditedByName"`
+		At        time.Time `db:"auditedAt"`
+	}
+	financeAuditByBooking := map[string]financeAuditInfo{}
+	if len(bookingIDs) > 0 {
+		rows := []financeAuditInfo{}
+		if err := r.db.Select(&rows, `
+			SELECT DISTINCT ON (li."bookingId") li."bookingId" AS "bookingId",
+			       e.name AS "auditedByName", li."auditedAt" AS "auditedAt"
+			FROM "LeaderInvoice" li
+			JOIN "Employee" e ON e.id = li."auditedById"
+			WHERE li."bookingId" = ANY($1) AND li."auditedById" IS NOT NULL
+			ORDER BY li."bookingId", li."createdAt" DESC`, pq.Array(bookingIDs)); err == nil {
+			for _, row := range rows {
+				financeAuditByBooking[row.BookingID] = row
+			}
+		}
+	}
+
 	assignmentsByBooking := map[string][]model.BookingAssignment{}
 	if len(bookingIDs) > 0 {
 		rows := []model.BookingAssignment{}
@@ -555,6 +580,11 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		}
 		b.HasInvoice = withInvoice[b.ID]
 		b.HasReport = withReport[b.ID]
+		if fa, ok := financeAuditByBooking[b.ID]; ok {
+			name, at := fa.Name, fa.At
+			b.FinanceAuditedByName = &name
+			b.FinanceAuditedAt = &at
+		}
 
 		b.TransferEmployee = getEmp(b.TransferEmployeeID)
 		b.ProjectSupervisor = getEmp(b.ProjectSupervisorID)

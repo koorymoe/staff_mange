@@ -607,6 +607,11 @@ export interface Booking {
   hasInvoice: boolean
   hasReport: boolean
   completionState: CompletionState
+  /** منو راجع الفلوس وطابقها بشاشة التدقيق اليومي (آخر فاتورة للحجز) —
+   *  غير «أكّده» بالهوية (ذاك إنجاز الشغل الفني). فاضي لو الحجز صُحّح
+   *  بسكربت تسوية جماعية ولا مرّ بشاشة التدقيق أصلاً. */
+  financeAuditedByName?: string | null
+  financeAuditedAt?: string | null
   sequenceNumber: number | null
   scheduledAt: string | null
   // نهاية المدى المتفق عليه مع الزبون (ساعة بعد البداية) — الموعد

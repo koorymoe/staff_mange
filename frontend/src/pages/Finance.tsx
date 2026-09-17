@@ -421,6 +421,14 @@ export default function Finance() {
                       }
                     />
                     <InfoRow label="العنوان" value={b.address || 'غير محدد'} />
+                    <InfoRow
+                      label="من دقّق الحجز مالياً"
+                      value={
+                        b.financeAuditedByName
+                          ? `${b.financeAuditedByName}${b.financeAuditedAt ? ' — ' + new Date(b.financeAuditedAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' }) : ''}`
+                          : 'لم يُدقّق بعد بشاشة التدقيق (أو صُحّح بتسوية جماعية)'
+                      }
+                    />
                     {b.completionNotes && (
                       <div className="col-span-full">
                         <InfoRow label="ملاحظات الفني" value={b.completionNotes} />
