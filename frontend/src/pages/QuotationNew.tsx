@@ -1017,7 +1017,15 @@ ${pageShell(`
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', maxWidth: '650px', margin: '0 auto' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>نسبة الخصم (%)</label>
-            <input type="number" min={0} max={100} value={discountPercent} onChange={(e) => setDiscountPercent(Number(e.target.value))} style={inputStyle({})} />
+            {/* ⚠️ step="any" لازم: بلاه المتصفح يفرض خطوة ١ ويرفض الكسور
+                (نفس درس سعر الوحدة) — و«١.٥٪» ما تنكتب أصلاً بلوحة
+                مفاتيح الموبايل. */}
+            <input type="number" min={0} max={100} step="any" value={discountPercent}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                setDiscountPercent(Number.isFinite(n) ? n : 0)
+              }}
+              style={inputStyle({})} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>قيمة الخصم (د.ع)</label>
