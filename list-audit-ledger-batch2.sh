@@ -36,6 +36,7 @@ CREATE TEMP TABLE audit_import (
   customer_name    TEXT,
   phone            TEXT,
   phone2           TEXT,
+  location         TEXT,
   work_type        TEXT,
   accounting_code  TEXT,
   customer_code    TEXT,
@@ -45,6 +46,10 @@ CREATE TEMP TABLE audit_import (
   notes            TEXT
 );
 \copy audit_import FROM '/tmp/audit_ledger_batch2.csv' WITH (FORMAT csv, HEADER true)
+
+-- ⚠️ معرّف صف فريد — بدونه ما نگدر نحدد بالضبط أي صف من الملف انطابق
+-- وأيه ما انطابق (accounting_code لحاله مو ضمانة فريدة كافية).
+ALTER TABLE audit_import ADD COLUMN row_id BIGSERIAL;
 
 CREATE TEMP TABLE unique_names AS
   SELECT name, min(id) AS id FROM "Customer" GROUP BY name HAVING count(*) = 1;
@@ -95,29 +100,47 @@ WHERE e.rn <= LEAST(e.excel_n, e.system_n);
 
 \echo ''
 \echo '════════ القائمة ١ — مدققة أصلاً (فاتورتها موجودة من قبل، مو منّا) ════════'
-SELECT p.project_date AS "التاريخ", p.customer_name AS "الزبون", p.accounting_code AS "كود المحاسبة",
-       p.amount_received AS "المبلغ"
+SELECT p.project_date AS "التاريخ", p.customer_name AS "الزبون", p.phone AS "الهاتف بالدفتر",
+       b.code AS "كود الحجز بالنظام", p.location AS "الموقع", p.work_type AS "نوع العمل",
+       p.accounting_code AS "كود المحاسبة", p.amount_received AS "المبلغ"
 FROM paired p
 JOIN "LeaderInvoice" li ON li."bookingId" = p.matched_booking_id
+JOIN "Booking" b ON b.id = p.matched_booking_id
 WHERE li."manualPriceNote" IS DISTINCT FROM '$OUR_NOTE'
 ORDER BY p.project_date;
 
 \echo ''
 \echo '════════ القائمة ٢ — انطابقت وصحّحناها اليوم (إحنا ضفنا فاتورتها) ════════'
-SELECT p.project_date AS "التاريخ", p.customer_name AS "الزبون", p.accounting_code AS "كود المحاسبة",
-       p.amount_received AS "المبلغ", li."externalInvoiceNumber" AS "رقم الفاتورة الخارجي"
+SELECT p.project_date AS "التاريخ", p.customer_name AS "الزبون", p.phone AS "الهاتف بالدفتر",
+       b.code AS "كود الحجز بالنظام", p.location AS "الموقع", p.work_type AS "نوع العمل",
+       p.accounting_code AS "كود المحاسبة", p.amount_received AS "المبلغ",
+       li."externalInvoiceNumber" AS "رقم الفاتورة الخارجي"
 FROM paired p
 JOIN "LeaderInvoice" li ON li."bookingId" = p.matched_booking_id
+JOIN "Booking" b ON b.id = p.matched_booking_id
 WHERE li."manualPriceNote" = '$OUR_NOTE'
 ORDER BY p.project_date;
 
 \echo ''
 \echo '════════ القائمة ٣ — انطابقت بس ماكو إلها فاتورة (رقم فاتورة مكرر — تحتاج مراجعتك) ════════'
-SELECT p.project_date AS "التاريخ", p.customer_name AS "الزبون", p.accounting_code AS "كود المحاسبة",
-       p.amount_received AS "المبلغ", p.invoice_number AS "رقم الفاتورة بالدفتر"
+SELECT p.project_date AS "التاريخ", p.customer_name AS "الزبون", p.phone AS "الهاتف بالدفتر",
+       b.code AS "كود الحجز بالنظام", p.location AS "الموقع", p.work_type AS "نوع العمل",
+       p.accounting_code AS "كود المحاسبة", p.amount_received AS "المبلغ",
+       p.invoice_number AS "رقم الفاتورة بالدفتر"
 FROM paired p
+JOIN "Booking" b ON b.id = p.matched_booking_id
 WHERE NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
 ORDER BY p.project_date;
+
+\echo ''
+\echo '════════ القائمة ٤ — ما انطابقت بحجز إطلاقاً (بلا هوية زبون، أو زبون بلا حجز) — تحتاج مراجعتك ════════'
+SELECT a.project_date AS "التاريخ", a.customer_name AS "الزبون", a.phone AS "الهاتف بالدفتر",
+       a.location AS "الموقع", a.work_type AS "نوع العمل", a.accounting_code AS "كود المحاسبة",
+       a.amount_received AS "المبلغ"
+FROM audit_import a
+LEFT JOIN paired p ON p.row_id = a.row_id
+WHERE p.matched_booking_id IS NULL
+ORDER BY a.project_date;
 
 ROLLBACK;
 SQL
