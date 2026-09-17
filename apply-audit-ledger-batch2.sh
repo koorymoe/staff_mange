@@ -23,12 +23,18 @@
 #    الفجوة الحقيقية. تصحيح `amountVerified` بس ما يطلّع الحجز من
 #    خانة «منجزة وناقصها ورق» (`PendingPaperworkForEmployee` بالكود) —
 #    تلك الخانة تتأكد من **وجود فاتورة فعلية**، مو من علم `amountVerified`.
-#    فبدون فاتورة، الحجز يبقى معلّقاً والليدر يبقى معرّض غرامة رغم إن
-#    فلوسه مدقّقة بشاشة المحاسب. الفاتورة تُنشأ باسم **الليدر الحقيقي
-#    لهذا الحجز تحديداً** (نفس منطق تحديد "الليدر" المستخدم بكيان
-#    الورق الناقص نفسه: آخر طلعة `BookingVisitCrew.isLeader`، وإلا
-#    `BookingAssignment` بدور ليدر) — **مو باسم المالك** (هذا مو استيراد
-#    تاريخي قبل النظام، هذي حجوزات حقيقية إلها ليدر حقيقي).
+#
+#    ⚠️ **تصحيح مهم**: أول نسخة حاولت تحدد "الليدر الحقيقي" لكل حجز
+#    (كادر الحجز، وإلا اسم عمود "اسم المجهز" بالدفتر). طلعت غلط —
+#    "اسم المجهز" هو **المحاسب** الي سجّل الدفتر (مرتضى عباس بـ٩٥٪ من
+#    الصفوف)، مو الفني الي سوى الشغل بالميدان. وكادر الحجز نفسه ماكو
+#    إله تسجيل لأغلب هذي الحجوزات (شغل صار خارج تتبع التطبيق). صاحب
+#    النظام صحّحني وطلب صراحة: «ماريد ليدر اريد فقط الفاتورة».
+#
+#    فالفاتورة تُنشأ باسم **المالك** (`OWNER`) — **نفس حل الدفعة الأولى**
+#    بالضبط (`import-legacy-invoices.sh`): تسوية محاسبية لشغل ما نگدر
+#    نوثّق منو نفّذه بالضبط، وحطّها باسم موظف تقني يزوّر إحصائيات أدائه
+#    وأرباحه.
 #
 # ⚠️ وبصراحة لازم تعرفها: خانة «منجزة وناقصها ورق» تشترط **فاتورة
 # وتقرير عمل معاً** (`WorkReport`) لغير حجوزات `OLD-`. هذا السكربت
@@ -192,71 +198,24 @@ FROM paired p
 WHERE NOT (p.matched_verified = true
            AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id));
 
--- ═══ اسم موظف يحدد موظف واحد بالضبط — نفس مبدأ الاسم الفريد للزبون ═══
-CREATE TEMP TABLE unique_employee_names AS
-  SELECT name, min(id) AS id FROM "Employee" GROUP BY name HAVING count(*) = 1;
+-- ═══ المالك: صاحب الفواتير الي ما نگدر نحدد ليدرها الحقيقي ═══
+-- نفس نمط import-legacy-invoices.sh بالضبط — لو ماكو حساب مالك واحد
+-- بالضبط نوقف، لأن الفواتير لازم تنكتب على حساب معروف.
+CREATE TEMP TABLE owner_pick AS
+  SELECT id, name FROM "Employee" WHERE role = 'OWNER' ORDER BY "createdAt" LIMIT 1;
 
--- ═══ تحديد الليدر الحقيقي لكل حجز مرشّح ═══
--- الأولوية: كادر الحجز الفعلي (نفس منطق كيان الورق الناقص) → وإلا
--- اسم المجهز المكتوب بالدفتر نفسه (عمود "اسم المجهز") لو يحدد موظف
--- واحد بالضبط. هذا مو تخمين — الدفتر نفسه يذكر منو سوى الشغل، وهذا
--- بالضبط حال أغلب حجوزات هذي الدفعة (شغل صار خارج تتبع الكادر
--- بالتطبيق، بس الدفتر مسجّل منو الليدر بوضوح).
-CREATE TEMP TABLE booking_leader AS
-SELECT b.id AS booking_id,
-       COALESCE(
-         (SELECT vc."employeeId"
-          FROM "BookingVisitCrew" vc
-          JOIN "BookingVisit" v ON v.id = vc."visitId"
-          WHERE v."bookingId" = b.id AND vc."isLeader"
-          ORDER BY v."visitNumber" DESC LIMIT 1),
-         (SELECT ba."employeeId" FROM "BookingAssignment" ba
-          JOIN "Employee" le ON le.id = ba."employeeId"
-          WHERE ba."bookingId" = b.id AND le."isLeader"
-          ORDER BY ba.role LIMIT 1),
-         (SELECT uen.id FROM unique_employee_names uen
-          WHERE uen.name = btrim(p.leader_name))
-       ) AS employee_id
-FROM "Booking" b
-JOIN paired p ON p.matched_booking_id = b.id;
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM owner_pick) THEN
+    RAISE EXCEPTION 'ماكو حساب بصلاحية OWNER — ما أگدر أحدد صاحب الفواتير';
+  END IF;
+END \$\$;
 
 \echo ''
-\echo '» طريقة تحديد الليدر لصفوف التصحيح (كادر الحجز الفعلي / اسم المجهز بالدفتر / ما تحدد):'
-SELECT
-  (SELECT count(*) FROM paired p
-     WHERE NOT (p.matched_verified = true
-                AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
-       AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
-       AND EXISTS (
-         SELECT 1 FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
-         WHERE v."bookingId" = p.matched_booking_id AND vc."isLeader"
-         UNION SELECT 1 FROM "BookingAssignment" ba JOIN "Employee" le ON le.id = ba."employeeId"
-         WHERE ba."bookingId" = p.matched_booking_id AND le."isLeader")
-  ) AS "كادر الحجز",
-  (SELECT count(*) FROM paired p
-     JOIN booking_leader bl ON bl.booking_id = p.matched_booking_id
-     WHERE NOT (p.matched_verified = true
-                AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
-       AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
-       AND bl.employee_id IS NOT NULL
-       AND NOT EXISTS (
-         SELECT 1 FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
-         WHERE v."bookingId" = p.matched_booking_id AND vc."isLeader"
-         UNION SELECT 1 FROM "BookingAssignment" ba JOIN "Employee" le ON le.id = ba."employeeId"
-         WHERE ba."bookingId" = p.matched_booking_id AND le."isLeader")
-  ) AS "اسم المجهز بالدفتر";
+\echo '» حساب المالك الي راح تنكتب الفواتير باسمه:'
+SELECT name AS "الاسم", id AS "المعرّف" FROM owner_pick;
 
-\echo ''
-\echo '» من المرشّح للتصحيح: ماكو فاتورة وماكو ليدر نگدر نحدده (تُستثنى، مراجعة يدوية):'
-SELECT count(*) AS "العدد", COALESCE(sum(p.amount_received),0) AS "المبلغ"
-FROM paired p
-JOIN booking_leader bl ON bl.booking_id = p.matched_booking_id
-WHERE NOT (p.matched_verified = true
-           AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
-  AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
-  AND bl.employee_id IS NULL;
-
--- ═══ التصحيح: إنشاء الفاتورة الناقصة (لو نگدر نحدد الليدر) ═══
+-- ═══ التصحيح: إنشاء الفاتورة الناقصة باسم المالك ═══
 CREATE TEMP TABLE created_invoices AS
 WITH ins AS (
 INSERT INTO "LeaderInvoice" (
@@ -269,7 +228,7 @@ INSERT INTO "LeaderInvoice" (
 SELECT
   gen_random_uuid()::text,
   p.matched_booking_id,
-  bl.employee_id,
+  o.id,
   NULLIF(btrim(p.customer_name), ''),
   NULLIF(btrim(p.phone), ''),
   '[]'::jsonb, '[]'::jsonb,
@@ -279,7 +238,7 @@ SELECT
        THEN 'APPROVED' ELSE 'SUBMITTED' END,
   'MANUAL',
   'تسوية محاسبية — دفعة ثانية من دفتر تدقيق الحسابات (مطابقة مرخّاة)',
-  CASE WHEN NULLIF(btrim(p.invoice_number), '') IS NOT NULL THEN bl.employee_id END,
+  CASE WHEN NULLIF(btrim(p.invoice_number), '') IS NOT NULL THEN o.id END,
   CASE WHEN NULLIF(btrim(p.invoice_number), '') IS NOT NULL
        THEN p.project_date::timestamptz ELSE NULL END,
   NULLIF(btrim(p.invoice_number), ''),
@@ -287,34 +246,25 @@ SELECT
        THEN p.project_date::timestamptz ELSE NULL END,
   p.project_date::timestamptz
 FROM paired p
-JOIN booking_leader bl ON bl.booking_id = p.matched_booking_id
+CROSS JOIN owner_pick o
 WHERE NOT (p.matched_verified = true
            AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
   AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
-  AND bl.employee_id IS NOT NULL
 ON CONFLICT ("accountingCode") DO NOTHING
 RETURNING id, "bookingId", "netTotal"
 )
 SELECT * FROM ins;
 
 -- ═══ مزامنة الحجز — نفس ضمان السكربتات السابقة: ما نلمس مبلغاً حقيقياً مدقّق يدوياً ═══
---
--- 🔴 شرط إضافي لازم: ما نأشّر الحجز "مدقق" إلا لو **فعلاً عنده فاتورة**
--- (موجودة مسبقاً أو راح تنضاف هالتشغيلة). لو ماكو ليدر نگدر نحدده،
--- ما ننشئ فاتورة (فوق) — وهنا لازم **نفس الشرط بالضبط** وإلا الحجز
--- ينأشّر "مدقق" بلا أي فاتورة وراه، وهذا يناقض كل الهدف من هالسكربت.
 CREATE TEMP TABLE fixed_rows AS
 WITH upd AS (
   UPDATE "Booking" b
   SET "amountCollected" = p.amount_received,
       "amountVerified"  = true
   FROM paired p
-  JOIN booking_leader bl ON bl.booking_id = p.matched_booking_id
   WHERE b.id = p.matched_booking_id
     AND NOT (p.matched_verified = true
              AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
-    AND (EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
-         OR bl.employee_id IS NOT NULL)
     AND (b."amountCollected" IS NULL OR b."amountCollected" = 0)
     AND b."amountVerified" = false
   RETURNING b.id, b."amountCollected"
