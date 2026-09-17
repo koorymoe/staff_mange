@@ -710,6 +710,16 @@ html.dark {
 html.theme-amani-eye {
   color-scheme: dark;
 
+  /* سلّم الرمادي الأساسي — أغمق وأزرق من الليلي العادي (كان
+     #161d2e/#1c2437/#26304a)، حتى أوسع سطح بالشاشة (خلفيات
+     البطاقات bg-slate-50/100/200) يطلع كحلي واضح مو رمادي مغمّق. */
+  --color-slate-50:  #0d1626;
+  --color-slate-100: #101c30;
+  --color-slate-200: #16233c;
+  --color-gray-50:   #0d1626;
+  --color-gray-100:  #101c30;
+  --color-gray-200:  #16233c;
+
   --t-title:     #eaf3ff;
   --t-title-alt: #bfe4f5;
   --t-body:      #d7e6f7;
@@ -743,6 +753,21 @@ html.theme-amani-eye .bg-white\/60 { background-color: rgba(16, 28, 48, 0.6); }
    غلط بالفلوس. */
 html.theme-amani-eye .border-slate-200,
 html.theme-amani-eye .border-gray-200 { border-color: #1e3a5f; }
+
+/* ⚠️ **أهم سطح بالشاشة كان ناقص**: هيكل الصفحة الرئيسي
+   (`Layout.tsx` app-shell + `ErrorBoundary.tsx`) مكتوب بقيمة حرفية
+   `bg-[#f0f4f9]` مو صنف Tailwind عادي — نفس فخّ العناوين تحت. هذا
+   بالضبط سبب «ماكو فرق عن الليلي»: أوسع خلفية بالشاشة كانت تاخذ
+   قيمة الليلي العادي حرفياً بدون ما تدخل تجاوزات عين الأماني فوق. */
+html.theme-amani-eye .bg-\[\#f0f4f9\] { background-color: #0a1420; }
+
+/* نفس تجاوزات العناوين المكتوبة بقيمة حرفية (index.css:445-456)
+   بس بدرجة سماوية بدل الأزرق العادي — تناسق مع باقي الثيم. */
+html.theme-amani-eye .text-\[\#0f2040\] { color: #eaf3ff; }
+html.theme-amani-eye .text-\[\#2c5aad\] { color: #67d8ee; }
+html.theme-amani-eye .text-\[\#1a237e\] { color: #7dd8ee; }
+html.theme-amani-eye .text-\[var\(--color-brand-900\)\] { color: #eaf3ff; }
+html.theme-amani-eye .text-\[var\(--color-brand-500\)\] { color: #22d3ee; }
 
 /* ═══════════════════════════════════════════════════════════════
    شاشة الدخول — مضيئة، بالنص، وترد على المستخدم
