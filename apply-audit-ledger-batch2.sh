@@ -192,7 +192,16 @@ FROM paired p
 WHERE NOT (p.matched_verified = true
            AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id));
 
--- ═══ تحديد الليدر الحقيقي لكل حجز مرشّح — نفس منطق كيان الورق الناقص ═══
+-- ═══ اسم موظف يحدد موظف واحد بالضبط — نفس مبدأ الاسم الفريد للزبون ═══
+CREATE TEMP TABLE unique_employee_names AS
+  SELECT name, min(id) AS id FROM "Employee" GROUP BY name HAVING count(*) = 1;
+
+-- ═══ تحديد الليدر الحقيقي لكل حجز مرشّح ═══
+-- الأولوية: كادر الحجز الفعلي (نفس منطق كيان الورق الناقص) → وإلا
+-- اسم المجهز المكتوب بالدفتر نفسه (عمود "اسم المجهز") لو يحدد موظف
+-- واحد بالضبط. هذا مو تخمين — الدفتر نفسه يذكر منو سوى الشغل، وهذا
+-- بالضبط حال أغلب حجوزات هذي الدفعة (شغل صار خارج تتبع الكادر
+-- بالتطبيق، بس الدفتر مسجّل منو الليدر بوضوح).
 CREATE TEMP TABLE booking_leader AS
 SELECT b.id AS booking_id,
        COALESCE(
@@ -204,10 +213,38 @@ SELECT b.id AS booking_id,
          (SELECT ba."employeeId" FROM "BookingAssignment" ba
           JOIN "Employee" le ON le.id = ba."employeeId"
           WHERE ba."bookingId" = b.id AND le."isLeader"
-          ORDER BY ba.role LIMIT 1)
+          ORDER BY ba.role LIMIT 1),
+         (SELECT uen.id FROM unique_employee_names uen
+          WHERE uen.name = btrim(p.leader_name))
        ) AS employee_id
 FROM "Booking" b
 JOIN paired p ON p.matched_booking_id = b.id;
+
+\echo ''
+\echo '» طريقة تحديد الليدر لصفوف التصحيح (كادر الحجز الفعلي / اسم المجهز بالدفتر / ما تحدد):'
+SELECT
+  (SELECT count(*) FROM paired p
+     WHERE NOT (p.matched_verified = true
+                AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
+       AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
+       AND EXISTS (
+         SELECT 1 FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
+         WHERE v."bookingId" = p.matched_booking_id AND vc."isLeader"
+         UNION SELECT 1 FROM "BookingAssignment" ba JOIN "Employee" le ON le.id = ba."employeeId"
+         WHERE ba."bookingId" = p.matched_booking_id AND le."isLeader")
+  ) AS "كادر الحجز",
+  (SELECT count(*) FROM paired p
+     JOIN booking_leader bl ON bl.booking_id = p.matched_booking_id
+     WHERE NOT (p.matched_verified = true
+                AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
+       AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
+       AND bl.employee_id IS NOT NULL
+       AND NOT EXISTS (
+         SELECT 1 FROM "BookingVisitCrew" vc JOIN "BookingVisit" v ON v.id = vc."visitId"
+         WHERE v."bookingId" = p.matched_booking_id AND vc."isLeader"
+         UNION SELECT 1 FROM "BookingAssignment" ba JOIN "Employee" le ON le.id = ba."employeeId"
+         WHERE ba."bookingId" = p.matched_booking_id AND le."isLeader")
+  ) AS "اسم المجهز بالدفتر";
 
 \echo ''
 \echo '» من المرشّح للتصحيح: ماكو فاتورة وماكو ليدر نگدر نحدده (تُستثنى، مراجعة يدوية):'
