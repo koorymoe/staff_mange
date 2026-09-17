@@ -14,6 +14,10 @@ export default function Finance() {
   // الضغط. ومنو يصدر القرار هسه محسوم بالمفتاح مو بالدور.
   const { employee, permissions } = useSession()
   const canDecide = canAuditFinance(employee?.role, permissions)
+  /** ⚠️ المالك وحده — حذف (أرشفة) حجوزات مكررة/خطأ من هالشاشة مباشرة،
+   *  بلا طلب/موافقة (نفس نمط `returnToAccountant` بـ`LeaderInvoicesListPage`). */
+  const isOwner = employee?.actualRole === 'OWNER'
+  const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,6 +52,25 @@ export default function Finance() {
     const typed = invoiceAmounts[b.id]
     if (typed !== undefined && typed !== '') return Number(typed)
     return b.amountCollected ?? 0
+  }
+
+  /** ⚠️ للمالك وحده — حذف مباشر (أرشفة) لحجز مكرر أو خطأ، بلا طلب/
+   *  موافقة. يستخدم نفس مسار الأرشفة الموجود أصلاً (`DELETE /api/
+   *  bookings/{id}`) — السبب إجباري بالخادم، والحجز يختفي من هالقائمة
+   *  ويبقى بالأرشيف (`/bookings/archived`) لا يُمحى فعلياً. */
+  const archiveBooking = async (b: Booking) => {
+    const reason = window.prompt(`سبب حذف الحجز ${b.code} (يُحفظ بالأرشيف):`)
+    if (reason === null) return
+    if (!reason.trim()) { window.alert('اكتب سبب الحذف'); return }
+    setArchiveBusyId(b.id)
+    try {
+      await api.archiveBooking(b.id, reason.trim())
+      setBookings((prev) => prev.filter((x) => x.id !== b.id))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'تعذر حذف الحجز')
+    } finally {
+      setArchiveBusyId(null)
+    }
   }
 
   const doAudit = async (b: Booking, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE') => {
@@ -280,9 +303,10 @@ export default function Finance() {
               className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
             >
               {/* Header - always visible */}
+              <div className="flex items-center">
               <button
                 onClick={() => toggle(b.id)}
-                className="flex w-full items-center justify-between p-4 text-start transition-colors hover:bg-slate-50"
+                className="flex flex-1 items-center justify-between p-4 text-start transition-colors hover:bg-slate-50"
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-sm font-semibold text-brand-600">
@@ -331,6 +355,17 @@ export default function Finance() {
                   </svg>
                 </div>
               </button>
+              {isOwner && (
+                <button
+                  onClick={() => archiveBooking(b)}
+                  disabled={archiveBusyId === b.id}
+                  title="حذف الحجز (للمالك حصراً)"
+                  className="mx-2 shrink-0 rounded-lg border border-red-300 bg-red-50 px-2.5 py-1.5 text-sm text-red-700 hover:bg-red-100 disabled:opacity-50"
+                >
+                  🗑️
+                </button>
+              )}
+              </div>
 
               {/* Expanded details */}
               {isOpen && (
