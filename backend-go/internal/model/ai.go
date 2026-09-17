@@ -187,6 +187,18 @@ const (
 // قرار. رقم معلن أحسن من عتبة مخبّاية بالكود.
 const AiConfidenceTrusted = 70
 
+// MonitorFeedbackExample حكم سابق + قرار المراقب الحقيقي عليه —
+// مادة التعلّم. ⚠️ ماكو جدول جديد لهذا: قرار المراقب مخزون أصلاً
+// بصندوقه (`MonitorReview`، محطة `AI_VERDICT`) — هذا استعلام قراءة بس.
+type MonitorFeedbackExample struct {
+	Headline  string  `db:"headline" json:"headline"`
+	Reasoning *string `db:"reasoning" json:"reasoning,omitempty"`
+	Facts     []byte  `db:"facts" json:"-"`
+	// MonitorStatus: OK (ما اكو مشكلة حقيقية) أو FLAGGED (فعلاً مشكلة).
+	MonitorStatus string  `db:"monitorStatus" json:"monitorStatus"`
+	MonitorNote   *string `db:"monitorNote" json:"monitorNote,omitempty"`
+}
+
 // ═══ المؤشرات ═══
 
 type AiMetric struct {
@@ -212,6 +224,10 @@ const (
 	AiMetricScopeCreepRate    = "SCOPE_CREEP_RATE"    // الزبون طلب زيادة بالموقع
 	AiMetricProcurementDelay  = "PROCUREMENT_DELAY"   // تأخر إداري الكميات
 	AiMetricLateStartRate     = "LATE_START_RATE"     // نسبة التأخر بالخروج
+	// AiMetricMonitorAgreement: شكد من أحكام ماتركس المراقب وافق
+	// عليها (ما اكو مشكلة حقيقية) — هذا مقياس الدقة الي طلبه صاحب
+	// النظام: «وافق المراقب على ٨٢٪ من أحكام الأسبوع».
+	AiMetricMonitorAgreement = "MONITOR_AGREEMENT_RATE"
 )
 
 func AiMetricLabel(key string) string {
@@ -228,6 +244,8 @@ func AiMetricLabel(key string) string {
 		return "تأخر توفير المواد"
 	case AiMetricLateStartRate:
 		return "نسبة التأخر بالخروج للزبون"
+	case AiMetricMonitorAgreement:
+		return "دقّة ماتركس — وافق المراقب على أحكامه"
 	}
 	return key
 }

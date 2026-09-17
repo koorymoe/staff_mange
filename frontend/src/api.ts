@@ -1648,7 +1648,7 @@ export type MonitorStage =
   | 'INVOICE_BEFORE_AUDIT' | 'INVOICE_AFTER_AUDIT' | 'INVOICE_ADJUSTED'
   | 'BOOKING_BEFORE_CONFIRM' | 'BOOKING_AFTER_CONFIRM' | 'BOOKING_AFTER_COMPLETE'
   | 'PROCUREMENT_FULFILLED' | 'QUALITY_VERDICT' | 'GPS_DEVICE_DONE'
-  | 'SOLAR_QUOTED'
+  | 'SOLAR_QUOTED' | 'AI_VERDICT'
 
 /** ═══ سلال مراحل الحجز ═══
  *  «هاي تصير بيها حالتين — قبل التثبيت وبعد التثبيت»: زبون ألغى قبل ما

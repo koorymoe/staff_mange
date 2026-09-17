@@ -51,6 +51,9 @@ type AiBrainService struct {
 	evidence *AiEvidenceService
 	// judge ينبدل بالمنصّة لما ننشترك — نقطة التوصيل الوحيدة.
 	judge Judge
+	// monitor: صندوق المراقب. اختياري — نفس سبب بقية الخدمات: فشل
+	// صف مراقبة ما يصير يوقف التحليل نفسه.
+	monitor MonitorFeed
 }
 
 func NewAiBrainService(repo *repository.AiRepository, evidence *AiEvidenceService) *AiBrainService {
@@ -59,6 +62,9 @@ func NewAiBrainService(repo *repository.AiRepository, evidence *AiEvidenceServic
 
 // SetJudge يبدّل الحاكم — هنا تنوصل منصّة الذكاء الاصطناعي.
 func (s *AiBrainService) SetJudge(j Judge) { s.judge = j }
+
+// SetMonitorFeed يربط صندوق المراقب بعد البناء — كل حكم يوصله.
+func (s *AiBrainService) SetMonitorFeed(m MonitorFeed) { s.monitor = m }
 
 // Process يمشي بالإشارات المعلّقة: يجمع الأدلة، بعدين يحكم.
 //
@@ -85,14 +91,42 @@ func (s *AiBrainService) Process(limit int) (int, error) {
 			continue
 		}
 		verdict.SignalID = sig.ID
-		if _, err := s.repo.SaveVerdict(*verdict); err != nil {
+		saved, err := s.repo.SaveVerdict(*verdict)
+		if err != nil {
 			log.Printf("[ai] فشل حفظ الحكم لإشارة %s: %v", sig.ID, err)
 			continue
 		}
 		_ = s.repo.SetSignalStatus(sig.ID, "ANALYZED")
+		s.stageForMonitor(sig, saved)
 		done++
 	}
 	return done, nil
+}
+
+// stageForMonitor يوصّل الحكم لصندوق المراقب — نفس الصندوق الي
+// تستعمله بقية الأقسام، بمحطة جديدة `AI_VERDICT`.
+//
+// ⚠️ entityId معرّف **الحكم** مو الحجز: فهرس الصندوق فريد على
+// (stage, entityType, entityId)، ولو استعملنا معرّف الحجز، حكم ثاني
+// لنفس الحجز ينبلع بصمت (نفس حل تعديلات الفاتورة الموجود أصلاً).
+func (s *AiBrainService) stageForMonitor(sig model.AiSignal, v *model.AiVerdict) {
+	if s.monitor == nil || v == nil {
+		return
+	}
+	summary := ""
+	if v.Reasoning != nil {
+		summary = *v.Reasoning
+	}
+	if v.Suggestion != nil && *v.Suggestion != "" {
+		summary += " ← الإجراء المقترح: " + *v.Suggestion
+	}
+	ownerRole := "TECHNICIAN"
+	if sig.Kind == model.AiSignalInvoiceAdjusted {
+		ownerRole = "FINANCE"
+	}
+	urgent := v.Severity == model.AiSeverityCritical || v.Severity == model.AiSeverityWarn
+	s.monitor.StageUrgent(model.MonitorStageAiVerdict, "AI_VERDICT", v.ID,
+		v.Headline, summary, ownerRole, v.BlameEmployeeID, urgent)
 }
 
 // StartBackgroundLoop يخلّي النظام **يفكر لحاله**.

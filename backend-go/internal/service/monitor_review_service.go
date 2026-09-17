@@ -22,6 +22,9 @@ type MonitorFeed interface {
 	// Stage عام لبقية الأقسام (مشتريات، جودة، جي بي اس، طاقة شمسية) —
 	// كلها نفس الشكل: عنوان وملخص ومنو صاحب الشغل.
 	Stage(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string)
+	// StageUrgent نفس Stage بس بعلم العجلة — لمحطات تحتاج ترتيب
+	// بالخطورة (أحكام ماتركس مثلاً) بلا ما تلمس تواقيع Stage القديمة.
+	StageUrgent(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string, urgent bool)
 }
 
 // MonitorReviewService صندوق المراقب — إضافة وقرار.
@@ -79,6 +82,12 @@ func (s *MonitorReviewService) BookingStage(stage string, b *model.Booking, owne
 // Stage يدزّ أي شي ثاني لمحطة مراقبة — نفس منطق الحجز والفاتورة
 // بالضبط، بس بلا معرفة بنوع الكيان.
 func (s *MonitorReviewService) Stage(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string) {
+	s.StageUrgent(stage, entityType, entityID, title, summary, ownerRole, ownerEmployeeID, false)
+}
+
+// StageUrgent نفس Stage بعلم العجلة — الصف العاجل يطلع أول المعلّق
+// بإطار أحمر (آلية موجودة أصلاً لمحطة الفواتير).
+func (s *MonitorReviewService) StageUrgent(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string, urgent bool) {
 	err := s.repo.Enqueue(model.EnqueueMonitorReview{
 		Stage:           stage,
 		EntityType:      entityType,
@@ -87,6 +96,7 @@ func (s *MonitorReviewService) Stage(stage, entityType, entityID, title, summary
 		Summary:         summary,
 		OwnerRole:       ownerRole,
 		OwnerEmployeeID: ownerEmployeeID,
+		Urgent:          urgent,
 	})
 	if err != nil {
 		log.Printf("[monitor] تعذر إضافة صف مراقبة (%s %s): %v", entityType, entityID, err)

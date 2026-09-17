@@ -34,9 +34,23 @@ func NewAiMetricsService(repo *repository.AiRepository) *AiMetricsService {
 // ⚠️ إعادة الحساب تحدّث نفس الصف (فهرس فريد على المفتاح+النطاق+الفترة)
 // مو تضيف صفاً ثانياً — وإلا كل ضغطة تضاعف الأرقام.
 func (s *AiMetricsService) Recompute(from, to time.Time) (int, error) {
+	saved := 0
+
+	// دقّة ماتركس — مستقل عن بقية المؤشرات (تعتمد قرارات المراقب مو
+	// أدلة توقف العمل)، فتُحسب وتُحفظ لحالها حتى لو ماكو توقفات بالفترة.
+	if agreed, total, err := s.repo.MonitorAgreementCounts(from, to); err == nil && total > 0 {
+		raw, _ := json.Marshal(map[string]any{"agreed": agreed, "of": total})
+		if err := s.repo.UpsertMetric(model.AiMetric{
+			MetricKey: model.AiMetricMonitorAgreement, Scope: "COMPANY", PeriodStart: from, PeriodEnd: to,
+			Value: float64(agreed) * 100 / float64(total), SampleCount: total, Details: raw,
+		}); err == nil {
+			saved++
+		}
+	}
+
 	signals, err := s.repo.ListSignals(model.AiSignalWorkStopped, 300)
 	if err != nil {
-		return 0, err
+		return saved, err
 	}
 
 	// نمشي بالإشارات الي **إلها أدلة** بس: الإشارة بلا أدلة ما نعرف
@@ -71,7 +85,7 @@ func (s *AiMetricsService) Recompute(from, to time.Time) (int, error) {
 	// والحقيقة إننا ما قسنا أصلاً. الفرق مهم لأن الأول يطمّن والثاني
 	// يعني «انتظر بيانات».
 	if n == 0 {
-		return 0, nil
+		return saved, nil
 	}
 
 	pct := func(count int) float64 { return float64(count) * 100 / float64(n) }
@@ -96,7 +110,6 @@ func (s *AiMetricsService) Recompute(from, to time.Time) (int, error) {
 		totalMinutes += f.WorkedMinutes
 	}
 
-	saved := 0
 	for _, m := range []struct {
 		key   string
 		value float64

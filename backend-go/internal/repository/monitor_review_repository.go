@@ -207,6 +207,16 @@ func (r *MonitorReviewRepository) hydrateIdentity(rows []model.MonitorReview) {
 		"INVOICE_ADJUSTMENT": `SELECT 'INVOICE_ADJUSTMENT|' || a.id AS key, i."bookingId", i."externalInvoiceNumber" AS "externalNo" FROM "LeaderInvoiceAdjustment" a JOIN "LeaderInvoice" i ON i.id = a."invoiceId" WHERE a.id IN (?) AND i."bookingId" IS NOT NULL`,
 		"PROCUREMENT":        `SELECT 'PROCUREMENT|' || id AS key, "bookingId", NULL::text AS "externalNo" FROM "ProcurementRequest" WHERE id IN (?) AND "bookingId" IS NOT NULL`,
 		"QUALITY_FOLLOW_UP":  `SELECT 'QUALITY_FOLLOW_UP|' || id AS key, "bookingId", NULL::text AS "externalNo" FROM "QualityFollowUp" WHERE id IN (?)`,
+		// حكم ماتركس: entityId معرّف الحكم، والحجز يجي عبر الإشارة —
+		// إشارات الحجز (BOOKING) والفاتورة (LEADER_INVOICE) الاثنين.
+		"AI_VERDICT": `
+			SELECT 'AI_VERDICT|' || v.id AS key,
+			       CASE s."entityType" WHEN 'BOOKING' THEN s."entityId" ELSE li."bookingId" END AS "bookingId",
+			       li."externalInvoiceNumber" AS "externalNo"
+			FROM "AiVerdict" v
+			JOIN "AiSignal" s ON s.id = v."signalId"
+			LEFT JOIN "LeaderInvoice" li ON s."entityType" = 'LEADER_INVOICE' AND li.id = s."entityId"
+			WHERE v.id IN (?)`,
 	}
 
 	type link struct {

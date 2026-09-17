@@ -136,12 +136,31 @@ func TestBuildEvidencePrompt_LeaksNoIdentity(t *testing.T) {
 	sig, ev := workStopSignal()
 	sig.EmployeeName = &empName
 
-	prompt := buildEvidencePrompt(sig, ev)
+	prompt := buildEvidencePrompt(sig, ev, nil)
 
 	for _, secret := range []string{"يوسف احمد", "07701101274", "emp-1"} {
 		if strings.Contains(prompt, secret) {
 			t.Errorf("تسرّبت هوية للمزوّد الخارجي: %q موجودة بالنص", secret)
 		}
+	}
+}
+
+// أمثلة قرارات المراقب الحقيقية لازم توصل النموذج — هذا حلقة التعلّم.
+func TestBuildEvidencePrompt_IncludesMonitorFeedback(t *testing.T) {
+	sig, ev := workStopSignal()
+	note := "هذا فعلاً تقصير — راجعت الكادر"
+	examples := []model.MonitorFeedbackExample{
+		{Headline: "توقف عمل يحتاج مراجعة", Facts: []byte(`{"workedMinutes":5}`),
+			MonitorStatus: model.MonitorStatusFlagged, MonitorNote: &note},
+	}
+
+	prompt := buildEvidencePrompt(sig, ev, examples)
+
+	if !strings.Contains(prompt, "قرارات المراقب") {
+		t.Error("كتلة أمثلة المراقب ما وصلت — حلقة التعلّم مو شغالة")
+	}
+	if !strings.Contains(prompt, "فعلاً تقصير") {
+		t.Error("ملاحظة المراقب الحقيقية ما وصلت بالنص")
 	}
 	// وبنفس الوقت لازم الفجوات توصل — «الفراغ المعلن أأمن من الصامت».
 	if !strings.Contains(prompt, "ما قدرنا نقرا سلة الزبون") {

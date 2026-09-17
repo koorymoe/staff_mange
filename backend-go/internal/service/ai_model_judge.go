@@ -37,11 +37,21 @@ import (
 // القواعد ما تقدر عليه: يربط أنماط متفرقة، ويصيغ كلاماً يفهمه المراقب
 // ويقنع الموظف. الاثنان يشتغلان سوا مو واحد بدل الثاني.
 
+// FeedbackSource يجيب أمثلة حقيقية: حكم سابق + قرار المراقب الحقيقي
+// عليه — مادة التعلّم. نفس فصل `AiSignalRecorder` بـbooking_service.go:
+// واجهة ضيّقة حتى `ModelJudge` ما يعتمد على مستودع كامل.
+type FeedbackSource interface {
+	RecentJudgedFeedback(kind string, limit int) ([]model.MonitorFeedbackExample, error)
+}
+
 // ModelJudge يفسّر الأدلة بنموذج خارجي، ويرجع للقواعد عند أي عثرة.
 type ModelJudge struct {
 	client   anthropic.Client
 	model    string
 	fallback Judge
+	// feedback: أمثلة حقيقية من قرارات المراقب — اختياري. بدونه
+	// النموذج يشتغل عادي بس بلا تعلّم من التاريخ.
+	feedback FeedbackSource
 
 	// ═══ الحد اليومي ═══
 	// ⚠️ حارس فاتورة مو حارس جودة: إشارات تنفجر بيوم واحد (خلل بالنظام،
@@ -72,6 +82,10 @@ func NewModelJudge(apiKey, modelName string, dailyCap int, fallback Judge) *Mode
 }
 
 func (j *ModelJudge) Name() string { return "model:" + j.model }
+
+// SetFeedbackSource يربط حلقة التعلّم بعد البناء — نفس نمط بقية
+// الروابط الاختيارية بالنظام.
+func (j *ModelJudge) SetFeedbackSource(f FeedbackSource) { j.feedback = f }
 
 // UsageToday شكد انستهلك اليوم وشكد الحد — للعرض بشاشة المالك.
 func (j *ModelJudge) UsageToday() (used, cap_ int) {
@@ -177,6 +191,15 @@ func (j *ModelJudge) ask(sig model.AiSignal, ev model.AiEvidence) (*modelVerdict
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 	defer cancel()
 
+	// أمثلة حقيقية من قرارات المراقب — بأفضل جهد: فشل جلبها ما يوقف
+	// التحليل، بس النموذج يشتغل بلا تعلّم من التاريخ.
+	var examples []model.MonitorFeedbackExample
+	if j.feedback != nil {
+		if ex, err := j.feedback.RecentJudgedFeedback(sig.Kind, 5); err == nil {
+			examples = ex
+		}
+	}
+
 	resp, err := j.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(j.model),
 		MaxTokens: 1024,
@@ -188,7 +211,7 @@ func (j *ModelJudge) ask(sig model.AiSignal, ev model.AiEvidence) (*modelVerdict
 			Format: anthropic.JSONOutputFormatParam{Schema: modelVerdictSchema},
 		},
 		Messages: []anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(buildEvidencePrompt(sig, ev))),
+			anthropic.NewUserMessage(anthropic.NewTextBlock(buildEvidencePrompt(sig, ev, examples))),
 		},
 	})
 	if err != nil {
@@ -220,7 +243,7 @@ func (j *ModelJudge) ask(sig model.AiSignal, ev model.AiEvidence) (*modelVerdict
 //   - **خصوصية**: البيانات تمر بمزوّد خارجي، والتحليل ما يحتاج أسماء —
 //     «وقّف بعد ٢٠ دقيقة وما طلب مادة» تنفهم بلا ما نعرف منو.
 //   - **دقة**: الاسم يجرّ النموذج لأحكام مسبقة بدل الأدلة.
-func buildEvidencePrompt(sig model.AiSignal, ev model.AiEvidence) string {
+func buildEvidencePrompt(sig model.AiSignal, ev model.AiEvidence, examples []model.MonitorFeedbackExample) string {
 	var b strings.Builder
 	b.WriteString("صنف الحدث: ")
 	b.WriteString(signalKindLabel(sig.Kind))
@@ -243,6 +266,31 @@ func buildEvidencePrompt(sig model.AiSignal, ev model.AiEvidence) string {
 		for _, g := range gaps {
 			b.WriteString("- ")
 			b.WriteString(g)
+			b.WriteString("\n")
+		}
+	}
+
+	// ═══ حلقة التعلّم ═══
+	// ⚠️ عقل النموذج نفسه ما يتغيّر — الي يتراكم هو الأمثلة الحقيقية
+	// من قرارات المراقب الي ننطيها إياه كل مرة. تتغيّر كل طلب، فتروح
+	// بالرسالة مو بالتعليمات الثابتة (وإلا التخزين المؤقت ينكسر).
+	if len(examples) > 0 {
+		b.WriteString("\n\nأمثلة حقيقية من قرارات المراقب على نفس صنف الحدث سابقاً:\n")
+		for _, ex := range examples {
+			status := "سليم — ما اكو مشكلة حقيقية"
+			if ex.MonitorStatus == model.MonitorStatusFlagged {
+				status = "فعلاً مشكلة"
+			}
+			b.WriteString("- حكم سابق «" + ex.Headline + "» بحقائق: ")
+			if len(ex.Facts) > 0 {
+				b.Write(ex.Facts)
+			} else {
+				b.WriteString("{}")
+			}
+			b.WriteString(" ← قرار المراقب: " + status)
+			if ex.MonitorNote != nil && *ex.MonitorNote != "" {
+				b.WriteString(" — ملاحظته: " + *ex.MonitorNote)
+			}
 			b.WriteString("\n")
 		}
 	}

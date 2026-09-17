@@ -351,9 +351,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// وحتى بوجود المفتاح، `ModelJudge` يرجع للقواعد عند أي عثرة
 	// (شبكة، حد يومي، رد مشوّه). القواعد شبكة أمان دائمة.
 	if cfg.AnthropicAPIKey != "" {
-		aiBrainService.SetJudge(service.NewModelJudge(
-			cfg.AnthropicAPIKey, cfg.AIModel, cfg.AIDailyCap, service.RulesJudge{},
-		))
+		modelJudge := service.NewModelJudge(cfg.AnthropicAPIKey, cfg.AIModel, cfg.AIDailyCap, service.RulesJudge{})
+		// حلقة التعلّم: أمثلة حقيقية من قرارات المراقب — بلا جدول
+		// جديد، لأن القرار مخزون أصلاً بصندوق المراقب.
+		modelJudge.SetFeedbackSource(aiRepo)
+		aiBrainService.SetJudge(modelJudge)
 		log.Printf("[ai] حاكم التحليل: %s (سقف يومي %d)", cfg.AIModel, cfg.AIDailyCap)
 	} else {
 		log.Printf("[ai] ماكو ANTHROPIC_API_KEY — التحليل بمحرّك القواعد")
@@ -362,6 +364,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// چانت تتكدس بلا حكم لأن ماكو أحد يشغّل التحليل.
 	aiBrainService.StartBackgroundLoop()
 	aiHandler := handler.NewAiHandler(aiRepo, aiBrainService, aiMetricsService)
+	aiBrainService.SetMonitorFeed(monitorReviewService)
 	bookingService.SetAiRecorder(aiRepo)
 	leaderInvoiceService.SetAiRecorder(aiRepo)
 	leaderInvoiceService.SetNotifications(notificationRepo)

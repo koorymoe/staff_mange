@@ -207,6 +207,42 @@ func (r *AiRepository) SaveVerdict(v model.AiVerdict) (*model.AiVerdict, error) 
 	return &row, nil
 }
 
+// RecentJudgedFeedback أمثلة حقيقية: حكم سابق لنفس صنف الإشارة + قرار
+// المراقب الحقيقي عليه. هذي مادة التعلّم — بلا جدول جديد، لأن قرار
+// المراقب مخزون أصلاً بصندوقه (`MonitorReview`، محطة `AI_VERDICT`).
+func (r *AiRepository) RecentJudgedFeedback(kind string, limit int) ([]model.MonitorFeedbackExample, error) {
+	if limit <= 0 || limit > 20 {
+		limit = 5
+	}
+	rows := []model.MonitorFeedbackExample{}
+	err := r.db.Select(&rows, `
+		SELECT v.headline, v.reasoning, e.facts,
+		       mr.status AS "monitorStatus", mr.note AS "monitorNote"
+		FROM "AiVerdict" v
+		JOIN "AiSignal" s ON s.id = v."signalId"
+		JOIN "AiEvidence" e ON e."signalId" = s.id
+		JOIN "MonitorReview" mr ON mr."entityType" = 'AI_VERDICT' AND mr."entityId" = v.id
+		WHERE s.kind = $1 AND mr.status <> 'PENDING'
+		ORDER BY mr."reviewedAt" DESC
+		LIMIT $2`, kind, limit)
+	return rows, err
+}
+
+// MonitorAgreementCounts شكد من أحكام ماتركس بفترة معيّنة وافق عليها
+// المراقب (OK) من أصل الي بتّ فيها. مقياس الدقة — بلا جدول جديد.
+func (r *AiRepository) MonitorAgreementCounts(from, to time.Time) (agreed, total int, err error) {
+	var row struct {
+		Agreed int `db:"agreed"`
+		Total  int `db:"total"`
+	}
+	err = r.db.Get(&row, `
+		SELECT COUNT(*) FILTER (WHERE status = 'OK') AS agreed, COUNT(*) AS total
+		FROM "MonitorReview"
+		WHERE "entityType" = 'AI_VERDICT' AND status <> 'PENDING'
+		  AND "reviewedAt" >= $1 AND "reviewedAt" <= $2`, from, to)
+	return row.Agreed, row.Total, err
+}
+
 // ═══ الأدلة الخام — استعلامات الحقائق ═══
 
 // ProcurementCounts أرقام طلبات المواد لحجز.

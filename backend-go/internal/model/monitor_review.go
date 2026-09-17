@@ -74,6 +74,10 @@ const (
 	// الزبون بعرض سعر وما ينكشف الخطأ إلا بعد ما يوافق. المراقب يشوفه
 	// بلحظة التسعير — قبل ما ينبني عليه اتفاق.
 	MonitorStageSolarQuoted = "SOLAR_QUOTED"
+	// أحكام ماتركس — حكم النموذج/القواعد على إشارة تحليل. entityId
+	// هو معرّف الحكم (`AiVerdict.ID`) مو الحجز، نفس منطق تعديلات
+	// الفاتورة (شوف تعليق `INVOICE_ADJUSTMENT` بمستودع الهوية).
+	MonitorStageAiVerdict = "AI_VERDICT"
 )
 
 const (
@@ -106,6 +110,8 @@ func MonitorStageLabel(stage string) string {
 		return "جهاز جي بي اس انخلص"
 	case MonitorStageSolarQuoted:
 		return "منظومة شمسية انتسعّرت"
+	case MonitorStageAiVerdict:
+		return "حكم ماتركس"
 	}
 	return stage
 }
