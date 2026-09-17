@@ -83,6 +83,7 @@ CREATE TEMP TABLE audit_import (
   customer_name    TEXT,
   phone            TEXT,
   phone2           TEXT,
+  location         TEXT,
   work_type        TEXT,
   accounting_code  TEXT,
   customer_code    TEXT,
