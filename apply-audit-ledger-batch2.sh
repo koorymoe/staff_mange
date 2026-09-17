@@ -215,6 +215,17 @@ END \$\$;
 \echo '» حساب المالك الي راح تنكتب الفواتير باسمه:'
 SELECT name AS "الاسم", id AS "المعرّف" FROM owner_pick;
 
+-- ═══ رقم فاتورة داخلي مكرر بين صفين بنفس الدفعة — ناخذ أولهم بالتاريخ ═══
+-- (فريد بمستوى القاعدة أصلاً `leader_invoice_external_number_unique`؛
+-- بدون هذا التصنيف، صفّين بنفس الرقم بنفس دفعة الـINSERT يفشّلوا
+-- بعضهم داخل نفس الاستعلام، مو بس ضد فواتير موجودة سابقاً).
+CREATE TEMP TABLE invoice_number_ranked AS
+SELECT p.*,
+       CASE WHEN NULLIF(btrim(p.invoice_number), '') IS NOT NULL THEN
+         row_number() OVER (PARTITION BY lower(btrim(p.invoice_number)) ORDER BY p.project_date)
+       ELSE 1 END AS inv_rn
+FROM paired p;
+
 -- ═══ التصحيح: إنشاء الفاتورة الناقصة باسم المالك ═══
 CREATE TEMP TABLE created_invoices AS
 WITH ins AS (
@@ -245,17 +256,33 @@ SELECT
   CASE WHEN NULLIF(btrim(p.invoice_number), '') IS NOT NULL
        THEN p.project_date::timestamptz ELSE NULL END,
   p.project_date::timestamptz
-FROM paired p
+FROM invoice_number_ranked p
 CROSS JOIN owner_pick o
 WHERE NOT (p.matched_verified = true
            AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
   AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
+  AND p.inv_rn = 1
+  -- ⚠️ رقم الفاتورة الخارجي فريد (leader_invoice_external_number_unique)
+  -- بمستوى القاعدة نفسها — بلا هذا الشرط، رقم مستعمل أصلاً بفاتورة
+  -- موجودة سابقاً يفشّل الـINSERT بأكمله ويطيح المعاملة كلها. نتخطاه
+  -- بهدوء بدل ما نكسر باقي التصحيح.
+  AND NOT EXISTS (
+        SELECT 1 FROM "LeaderInvoice" li2
+        WHERE NULLIF(btrim(p.invoice_number), '') IS NOT NULL
+          AND lower(btrim(li2."externalInvoiceNumber")) = lower(btrim(p.invoice_number))
+      )
 ON CONFLICT ("accountingCode") DO NOTHING
 RETURNING id, "bookingId", "netTotal"
 )
 SELECT * FROM ins;
 
 -- ═══ مزامنة الحجز — نفس ضمان السكربتات السابقة: ما نلمس مبلغاً حقيقياً مدقّق يدوياً ═══
+--
+-- 🔴 شرط `EXISTS(LeaderInvoice)` هنا **إجباري**: هذا الاستعلام يشتغل
+-- بعد الـINSERT فوق مباشرة بنفس المعاملة، فيشوف الفواتير المضافة
+-- توّها. صف استُثني من الإنشاء (رقم فاتورة مكرر بالدفعة، مثلاً) ما
+-- يصير يتأشّر "مدقق" بلا فاتورة وراه — نفس الغلط الي انصلح قبل مع
+-- حالة "بلا ليدر".
 CREATE TEMP TABLE fixed_rows AS
 WITH upd AS (
   UPDATE "Booking" b
@@ -265,6 +292,7 @@ WITH upd AS (
   WHERE b.id = p.matched_booking_id
     AND NOT (p.matched_verified = true
              AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id))
+    AND EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = p.matched_booking_id)
     AND (b."amountCollected" IS NULL OR b."amountCollected" = 0)
     AND b."amountVerified" = false
   RETURNING b.id, b."amountCollected"
