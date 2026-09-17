@@ -73,7 +73,13 @@ export default function Customers() {
   // الطلب القديم حتى نتيجة متأخرة ما تدوس على نتيجة أحدث.
   useEffect(() => {
     const q = search.trim()
-    if (q.length < 2) return
+    if (q.length < 2) {
+      // ⚠️ مسح خانة البحث لازم يرجّع القائمة الكاملة — وإلا الشاشة
+      // تبقى عالقة على آخر نتيجة بحث (وبطاقات الملخص فوگ، الي
+      // تُحسب من نفس customers، تنكمش وياها بالغلط).
+      load()
+      return
+    }
     let alive = true
     const t = setTimeout(() => {
       api.getCustomers({ search: q, limit: 200 })
@@ -404,7 +410,9 @@ export default function Customers() {
                       {c.code}
                     </td>
                     <td className="px-4 py-3">{c.name}</td>
-                    <td className="px-4 py-3 text-slate-500">{c.phone}</td>
+                    <td className="px-4 py-3 text-slate-500">
+                      <BookingCodeChip code={c.phone} title="انسخ رقم الهاتف" />
+                    </td>
                     {tab === 'all' && (
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
