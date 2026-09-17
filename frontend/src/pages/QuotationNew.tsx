@@ -948,14 +948,14 @@ ${pageShell(`
                     <input value={item.unit} onChange={(e) => updateItem(index, { unit: e.target.value })} style={{ ...tableInputStyle, width: '80px' }} />
                   </td>
                   <td style={{ padding: '10px 6px' }}>
-                    {/* ⚠️ Number('') = صفر. الموظف يمسح الخانة حتى يكتب
-                        رقم جديد، فتنصفّر، وسعر البند يصير صفر — والمجموع
-                        الكلي يطلع صفر بعرض كامل يوصل الزبون. صار أقل شي
-                        واحد، لأن بند بلا عدد ما إله معنى أصلاً. */}
-                    <input type="number" min={1} value={item.quantity}
+                    {/* ⚠️ الصفر مسموح بقرار (ع): بند يذكر اسم المادة بس
+                        بلا سعر ولا كمية بعد — الزبون يشوف أول شي شنو
+                        هو محتاج قبل ما يتحدد التسعير. Number('') = صفر
+                        أصلاً، فالخانة الفاضية تتصرف نفس تصرف "٠" الصريح. */}
+                    <input type="number" min={0} value={item.quantity}
                       onChange={(e) => {
                         const n = Number(e.target.value)
-                        updateItem(index, { quantity: Number.isFinite(n) && n >= 1 ? n : 1 })
+                        updateItem(index, { quantity: Number.isFinite(n) && n >= 0 ? n : 0 })
                       }}
                       style={{ ...tableInputStyle, width: '80px' }} />
                   </td>
