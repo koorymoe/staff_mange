@@ -612,6 +612,9 @@ export interface Booking {
    *  بسكربت تسوية جماعية ولا مرّ بشاشة التدقيق أصلاً. */
   financeAuditedByName?: string | null
   financeAuditedAt?: string | null
+  /** ربط بحجز آخر كإنجاز جزئي لنفس الشغلة — شغلة حقيقية استوردت
+   *  تاريخياً كصفوف منفصلة ليوم ١ ويوم ٢... غير حالة PARTIAL الحية. */
+  partialJobBooking?: { id: string; code: string } | null
   sequenceNumber: number | null
   scheduledAt: string | null
   // نهاية المدى المتفق عليه مع الزبون (ساعة بعد البداية) — الموعد
@@ -3893,6 +3896,10 @@ export const api = {
     request<Booking>(`/bookings/${id}`, { method: 'DELETE', body: JSON.stringify({ reason }) }),
   restoreBooking: (id: string) =>
     request<Booking>(`/bookings/${id}/restore`, { method: 'PUT' }),
+  /** ربط/فك ربط هذا الحجز بحجز آخر كإنجاز جزئي لنفس الشغلة — code
+   *  فاضي يفك الربط. حراستها صلاحية `booking_partial_link` بالخادم. */
+  setPartialJobLink: (id: string, code: string) =>
+    request<Booking>(`/bookings/${id}/partial-job-link`, { method: 'PUT', body: JSON.stringify({ code }) }),
 
   /** تأجيل الموعد بطلب الزبون — السبب إجباري وينعد بعدد التأجيلات */
   /** الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري */

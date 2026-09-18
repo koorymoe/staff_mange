@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type Expense } from '../api'
 import { matches } from '../utils/search'
-import { useSession, canAuditFinance } from '../session'
+import { useSession, canAuditFinance, canLinkPartialBooking } from '../session'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
 import BookingCodeChip from '../components/BookingCodeChip'
 import EntityIdentity from '../components/EntityIdentity'
@@ -17,7 +17,12 @@ export default function Finance() {
   /** ⚠️ المالك وحده — حذف (أرشفة) حجوزات مكررة/خطأ من هالشاشة مباشرة،
    *  بلا طلب/موافقة (نفس نمط `returnToAccountant` بـ`LeaderInvoicesListPage`). */
   const isOwner = employee?.actualRole === 'OWNER'
+  /** ⚠️ صلاحية مستقلة مو حصراً بالمالك — «سوي الزر صلاحية واني انطي
+   *  بعدين» (طلب صاحب النظام). ربط حجزين تاريخيين منفصلين كإنجاز
+   *  جزئي لنفس الشغلة (شغلة طوّلت أكثر من يوم واستوردت كصفوف منفصلة). */
+  const canLinkPartial = canLinkPartialBooking(employee?.role, permissions)
   const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null)
+  const [partialLinkBusyId, setPartialLinkBusyId] = useState<string | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,6 +75,28 @@ export default function Finance() {
       window.alert(e instanceof Error ? e.message : 'تعذر حذف الحجز')
     } finally {
       setArchiveBusyId(null)
+    }
+  }
+
+  /** ربط هذا الحجز بحجز آخر كإنجاز جزئي لنفس الشغلة (شغلة طوّلت
+   *  أكثر من يوم واستوردت كصفوف منفصلة — مو تكرار حقيقي). صاحب
+   *  النظام يكتب كود الحجز الآخر الي يشوفه بالشاشة؛ الخادم يحل الكود
+   *  ويرفض لو ماكو حجز بهذا الكود أو لو حاول ربط الحجز بنفسه. حقل
+   *  فاضي يفك الربط. */
+  const setPartialLink = async (b: Booking) => {
+    const code = window.prompt(
+      'كود الحجز الأصلي لنفس الشغلة (اتركه فاضي لإزالة الربط):\nمثال: OLD-355f9a5eb1f1',
+      b.partialJobBooking?.code || '',
+    )
+    if (code === null) return
+    setPartialLinkBusyId(b.id)
+    try {
+      const updated = await api.setPartialJobLink(b.id, code.trim())
+      setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'تعذر ربط الحجز')
+    } finally {
+      setPartialLinkBusyId(null)
     }
   }
 
@@ -129,6 +156,19 @@ export default function Finance() {
 
   const toggle = (id: string) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+
+  // ═══ حجز اليوم الأول لشغلة متعددة الأيام ═══
+  // «ما اكدر احذف اليوم الاول لان محسوب علي» — هذا الحساب المحلي (بلا
+  // نداء خادم إضافي) يجمع كل الحجوزات المُشار إليها كـ«الأصل» من
+  // حجوزات أخرى محمّلة أصلاً بالشاشة، حتى يطمّن صاحب النظام إنه ما
+  // يحتاج يحذف الحجز الأول — هذا بالضبط سبب طلبه.
+  const partialLinkAnchorIds = useMemo(() => {
+    const ids = new Set<string>()
+    for (const b of bookings) {
+      if (b.partialJobBooking?.id) ids.add(b.partialJobBooking.id)
+    }
+    return ids
+  }, [bookings])
 
   // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
   const matchesSearch = (b: Booking) => {
@@ -329,6 +369,19 @@ export default function Finance() {
                   }`}>
                     🏁 الانتهاء: {b.completedAt ? new Date(b.completedAt).toLocaleDateString('ar-IQ') : 'لم ينتهِ بعد'}
                   </span>
+                  {/* ⚠️ الحل لمشكلة «هذا مكرر لو لأ بنظرة وحدة» — بدون فتح
+                      التفاصيل: شارة على الحجز التابع (فيها كود الأصل)،
+                      وشارة عكسية على الحجز الأصل نفسه («ما تحتاج تحذفني»). */}
+                  {b.partialJobBooking && (
+                    <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                      🔗 يوم إضافي — الأصل: {b.partialJobBooking.code}
+                    </span>
+                  )}
+                  {partialLinkAnchorIds.has(b.id) && (
+                    <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                      🔗 مرتبط بأيام إضافية — لا تحذفه
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <span
@@ -355,6 +408,16 @@ export default function Finance() {
                   </svg>
                 </div>
               </button>
+              {canLinkPartial && (
+                <button
+                  onClick={() => setPartialLink(b)}
+                  disabled={partialLinkBusyId === b.id}
+                  title="ربط بحجز آخر كإنجاز جزئي لنفس الشغلة (شغلة طوّلت أكثر من يوم)"
+                  className="mx-2 shrink-0 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-sm text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                >
+                  🔗
+                </button>
+              )}
               {isOwner && (
                 <button
                   onClick={() => archiveBooking(b)}
@@ -429,6 +492,12 @@ export default function Finance() {
                           : 'لم يُدقّق بعد بشاشة التدقيق (أو صُحّح بتسوية جماعية)'
                       }
                     />
+                    {b.partialJobBooking && (
+                      <InfoRow
+                        label="جزء من شغلة متعددة الأيام"
+                        value={`اليوم الأول (أو الحجز الأصلي): ${b.partialJobBooking.code}`}
+                      />
+                    )}
                     {b.completionNotes && (
                       <div className="col-span-full">
                         <InfoRow label="ملاحظات الفني" value={b.completionNotes} />

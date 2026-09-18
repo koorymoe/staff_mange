@@ -194,6 +194,15 @@ type Booking struct {
 	FinanceAuditedByName *string    `db:"-" json:"financeAuditedByName,omitempty"`
 	FinanceAuditedAt     *time.Time `db:"-" json:"financeAuditedAt,omitempty"`
 
+	// ═══ إنجاز جزئي بين حجوزات تاريخية منفصلة ═══
+	// شغلة حقيقية طوّلت أكثر من يوم استوردت (`import-history.sh`) كصفوف
+	// منفصلة بلا أي علاقة بينها — تبين تكراراً على شاشة تدقيق الحسابات
+	// وهي مو تكرار. هذا **غير** حالة `PARTIAL` الحية (`schema_partial_
+	// completion.go`) — ذيچ حجز واحد شغّال، وهذا صفّان مكتملان تاريخياً
+	// يشير أحدهما (أو أكثر) لمعرّف الآخر بالإيد.
+	PartialJobBookingID *string                `db:"partialJobBookingId" json:"-"`
+	PartialJobBooking   *PartialJobBookingLink `db:"-" json:"partialJobBooking,omitempty"`
+
 	AddressDescription      *string    `db:"addressDescription" json:"addressDescription,omitempty"`
 	CreatedAt               time.Time  `db:"createdAt" json:"createdAt"`
 	UpdatedAt               time.Time  `db:"updatedAt" json:"updatedAt"`
@@ -496,6 +505,13 @@ type BookingVisitCrewMember struct {
 	Name       string `db:"name" json:"name"`
 	Role       string `db:"role" json:"role"`
 	IsLeader   bool   `db:"isLeader" json:"isLeader"`
+}
+
+// PartialJobBookingLink هوية مختصرة للحجز المربوط به هذا الحجز
+// كإنجاز جزئي لنفس الشغلة (شوف PartialJobBookingID فوق).
+type PartialJobBookingLink struct {
+	ID   string `db:"id" json:"id"`
+	Code string `db:"code" json:"code"`
 }
 
 // BookingTypeInternal شغل داخل الشركة — ماكو زبون خارجي: القسم

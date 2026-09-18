@@ -433,6 +433,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بلا مخالفة ولا قفل.
 	requireVerifyBooking := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 		[]string{"ADMIN", "OWNER", "FINANCE", "MONITOR"}, "finance", "finance_audit")
+	// ربط حجزين تاريخيين منفصلين كإنجاز جزئي لنفس الشغلة — صلاحية
+	// مستقلة (نفس فلسفة finance_audit): المالك ينطيها فرد-فرد، مو دور.
+	requirePartialLink := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "booking_partial_link")
 	requireCoordinator := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "coordinator")
 	requireCrewManagement := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "crew_management")
 	requireHR := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN", "HR_COORDINATOR")
@@ -762,6 +765,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الحذف صار أرشفة: الحجز يختفي من الشاشات ويضل بالأرشيف بسببه
 	mux.Handle("DELETE /api/bookings/{id}", middleware.Chain(http.HandlerFunc(bookingHandler.ArchiveBooking), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/restore", middleware.Chain(http.HandlerFunc(bookingHandler.RestoreBooking), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/bookings/{id}/partial-job-link", middleware.Chain(http.HandlerFunc(bookingHandler.SetPartialJobLink), requireAuth, requirePartialLink))
 	// الكنسة اليدوية للإدارة والفحص — التلقائية تشتغل بالخلفية
 	mux.Handle("POST /api/bookings/waiting-reminder-sweep", middleware.Chain(http.HandlerFunc(bookingHandler.RunWaitingReminderSweep), requireAuth, requireAdmin))
 	// باسورد مركز القيادة — المالك بس بهاي المرحلة
