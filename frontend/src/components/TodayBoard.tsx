@@ -60,29 +60,87 @@ function TaskCard({ icon, label, value, to, hint }: {
   )
 }
 
-/** مخطط بسيط — أعمدة، بلا مكتبة. */
+const MONTH_AR = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر']
+
+/** مخطط خطي — بلا مكتبة، نفس قاعدة النظام (SVG يدوي، صفر تبعيات جديدة).
+ *
+ * ⚠️ نسبة المقارنة محسوبة من نفس الـ١٤ يوم المتوفرة (أول ٧ مقابل
+ * آخر ٧) — ماكو مصدر بيانات لفترة سابقة منفصلة بعد، فهذا أقرب رقم
+ * صادق نقدر نطلّعه بلا تعديل بالخادم. */
 function MiniChart({ points }: { points: { day: string; count: number }[] }) {
+  const width = 700
+  const height = 220
+  const padX = 28
+  const padTop = 34
+  const padBottom = 34
+  const innerW = width - padX * 2
+  const innerH = height - padTop - padBottom
   const max = Math.max(1, ...points.map((p) => p.count))
+  const n = points.length || 1
+
+  const coords = points.map((p, i) => ({
+    x: padX + (n === 1 ? innerW / 2 : (innerW * i) / (n - 1)),
+    y: padTop + innerH - (p.count / max) * innerH,
+    ...p,
+  }))
+
+  const linePath = coords.map((c, i) => `${i === 0 ? 'M' : 'L'}${c.x.toFixed(1)},${c.y.toFixed(1)}`).join(' ')
+  const areaPath = coords.length
+    ? `${linePath} L${coords[coords.length - 1].x.toFixed(1)},${(padTop + innerH).toFixed(1)} L${coords[0].x.toFixed(1)},${(padTop + innerH).toFixed(1)} Z`
+    : ''
+
+  const total = points.reduce((s, p) => s + p.count, 0)
+  const half = Math.floor(n / 2)
+  const firstHalf = points.slice(0, half).reduce((s, p) => s + p.count, 0)
+  const secondHalf = points.slice(half).reduce((s, p) => s + p.count, 0)
+  const trendPct = firstHalf > 0 ? Math.round(((secondHalf - firstHalf) / firstHalf) * 100) : null
+
   return (
-    <div className="flex h-24 items-end gap-1">
-      {points.map((p) => {
-        const h = Math.round((p.count / max) * 100)
-        const d = new Date(`${p.day}T00:00:00`)
-        return (
-          <div key={p.day} className="group flex flex-1 flex-col items-center gap-1">
-            <div className="flex w-full flex-1 items-end">
-              {/* ⚠️ اليوم الفاضي يبقى عمود بارتفاع أدنى: العمود
-                  المفقود يخلّي العين تظن إن اليوم مو موجود أصلاً. */}
-              <div
-                className={`w-full rounded-t-md transition-all ${p.count ? 'bg-brand-500 group-hover:bg-brand-700' : 'bg-slate-200'}`}
-                style={{ height: `${Math.max(h, 4)}%` }}
-                title={`${d.toLocaleDateString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long' })}: ${p.count} حجز`}
-              />
-            </div>
-            <span className="text-[8px] text-slate-400">{d.getDate()}</span>
-          </div>
-        )
-      })}
+    <div>
+      {trendPct !== null && (
+        <div className={`mb-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${
+          trendPct >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+        }`}>
+          <span>{trendPct >= 0 ? '↗' : '↘'}</span>
+          <span>{trendPct >= 0 ? '+' : ''}{trendPct}٪</span>
+          <span className="font-normal text-slate-400">مقارنة بالفترة السابقة</span>
+        </div>
+      )}
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full" style={{ height: 180 }}>
+        <defs>
+          <linearGradient id="bookingTrendFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#2c5aad" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#2c5aad" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {/* خطوط الشبكة الأفقية */}
+        {[0, 0.5, 1].map((f) => (
+          <line key={f} x1={padX} x2={width - padX}
+            y1={padTop + innerH * f} y2={padTop + innerH * f}
+            stroke="#e2e8f0" strokeDasharray="4 4" strokeWidth={1} />
+        ))}
+        {areaPath && <path d={areaPath} fill="url(#bookingTrendFill)" />}
+        {linePath && <path d={linePath} fill="none" stroke="#2c5aad" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" />}
+        {coords.map((c) => {
+          const d = new Date(`${c.day}T00:00:00`)
+          return (
+            <g key={c.day}>
+              <circle cx={c.x} cy={c.y} r={4} fill="#fff" stroke="#2c5aad" strokeWidth={2.5}>
+                <title>{`${d.toLocaleDateString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'long' })}: ${c.count} حجز`}</title>
+              </circle>
+              <text x={c.x} y={c.y - 12} textAnchor="middle" fontSize="12" fontWeight="700" fill="#1a3a5c">{c.count}</text>
+              <text x={c.x} y={height - padBottom + 18} textAnchor="middle" fontSize="10" fill="#94a3b8">
+                {d.getDate()} {MONTH_AR[d.getMonth()]}
+              </text>
+            </g>
+          )
+        })}
+      </svg>
+      <div className="mt-1 flex justify-end">
+        <span className="inline-flex items-center gap-1.5 rounded-xl bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600">
+          📅 المجموع <b className={`text-sm text-[#0f2040] ${NUMBERS}`}>{total}</b> حجز
+        </span>
+      </div>
     </div>
   )
 }
@@ -181,9 +239,6 @@ export default function TodayBoard({ finance }: { finance?: FinanceSummary | nul
           <div className="mt-3">
             <MiniChart points={d.last14} />
           </div>
-          <p className="mt-2 text-[11px] text-slate-400">
-            المجموع: <b className="text-slate-600">{d.last14.reduce((s, p) => s + p.count, 0)}</b> حجز
-          </p>
         </div>
       </div>
     </div>

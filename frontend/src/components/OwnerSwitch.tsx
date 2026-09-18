@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
-import { getSwitches, forgetSwitches } from '../systemSwitches'
+import { getSwitches, forgetSwitches, SWITCH_ANNOUNCEMENTS } from '../systemSwitches'
 
-// ═══ زر إطفاء ميزة — للمالك حصراً ═══
+// ═══ زر إطفاء ميزة — للمالك دايماً، ولمدير النظام بمفاتيح معيّنة ═══
 //
 // ⚠️ **مكوّن واحد مو نسختان**: مفتاحان اليوم (الكائن والإعلانات)
 // والطلبات جايّة. ونسختان تتفرّقان بأول تصحيح — فيصير مفتاح يعرض
 // «انطفى» وهو ما انطفى.
 //
-// 🔴 **والزر يختفي عن غير المالك بالكامل**: عرضه معطَّلاً يقول لكل
+// 🔴 **والزر يختفي عن غير المخوَّل بالكامل**: عرضه معطَّلاً يقول لكل
 // موظف «أكو مفتاح يطفّي هذا الشي» — ومحد يحتاج يعرف. والخادم يرد
-// ٤٠٣ لغير المالك أصلاً، فهذا **راحة عرض مو حماية**.
+// ٤٠٣ لغير المخوَّل أصلاً، فهذا **راحة عرض مو حماية**.
+//
+// ⚠️ **من يقدر يبدّل شنو**: نفس القائمة البيضاء الي بالخادم
+// (`model.SystemSwitchAdminAllowed`) — شريط الإعلانات مفتوح لمدير
+// النظام كمان بطلب صريح من (ع)، وشخصية الكائن تبقى للمالك حصراً.
+const adminAllowedSwitches = new Set<string>([SWITCH_ANNOUNCEMENTS])
 
 interface Props {
   /** مفتاح النظام — من `systemSwitches.ts`. */
@@ -25,18 +30,23 @@ interface Props {
 export default function OwnerSwitch({ switchKey, label, hint }: Props) {
   const { employee } = useSession()
   const isOwner = employee?.actualRole === 'OWNER'
+  // ⚠️ actualRole ماكو غير للمالك (تطبيع Layout.tsx) — مدير النظام
+  // الحقيقي role يبقى 'ADMIN' بلا actualRole، فنفحص role مباشرة
+  // ونستثني المالك (مغطّى فوق بـisOwner أصلاً).
+  const isAllowedAdmin = !isOwner && employee?.role === 'ADMIN' && adminAllowedSwitches.has(switchKey)
+  const canToggle = isOwner || isAllowedAdmin
   const [on, setOn] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!isOwner) return
+    if (!canToggle) return
     let alive = true
     getSwitches().then((all) => { if (alive) setOn(all[switchKey] !== false) })
     return () => { alive = false }
-  }, [isOwner, switchKey])
+  }, [canToggle, switchKey])
 
-  if (!isOwner) return null
+  if (!canToggle) return null
 
   const toggle = async () => {
     if (on === null || busy) return

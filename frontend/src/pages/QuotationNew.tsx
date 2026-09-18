@@ -948,14 +948,14 @@ ${pageShell(`
                     <input value={item.unit} onChange={(e) => updateItem(index, { unit: e.target.value })} style={{ ...tableInputStyle, width: '80px' }} />
                   </td>
                   <td style={{ padding: '10px 6px' }}>
-                    {/* ⚠️ Number('') = صفر. الموظف يمسح الخانة حتى يكتب
-                        رقم جديد، فتنصفّر، وسعر البند يصير صفر — والمجموع
-                        الكلي يطلع صفر بعرض كامل يوصل الزبون. صار أقل شي
-                        واحد، لأن بند بلا عدد ما إله معنى أصلاً. */}
-                    <input type="number" min={1} value={item.quantity}
+                    {/* ⚠️ الصفر مسموح بقرار (ع): بند يذكر اسم المادة بس
+                        بلا سعر ولا كمية بعد — الزبون يشوف أول شي شنو
+                        هو محتاج قبل ما يتحدد التسعير. Number('') = صفر
+                        أصلاً، فالخانة الفاضية تتصرف نفس تصرف "٠" الصريح. */}
+                    <input type="number" min={0} value={item.quantity}
                       onChange={(e) => {
                         const n = Number(e.target.value)
-                        updateItem(index, { quantity: Number.isFinite(n) && n >= 1 ? n : 1 })
+                        updateItem(index, { quantity: Number.isFinite(n) && n >= 0 ? n : 0 })
                       }}
                       style={{ ...tableInputStyle, width: '80px' }} />
                   </td>
@@ -1017,7 +1017,15 @@ ${pageShell(`
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', maxWidth: '650px', margin: '0 auto' }}>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>نسبة الخصم (%)</label>
-            <input type="number" min={0} max={100} value={discountPercent} onChange={(e) => setDiscountPercent(Number(e.target.value))} style={inputStyle({})} />
+            {/* ⚠️ step="any" لازم: بلاه المتصفح يفرض خطوة ١ ويرفض الكسور
+                (نفس درس سعر الوحدة) — و«١.٥٪» ما تنكتب أصلاً بلوحة
+                مفاتيح الموبايل. */}
+            <input type="number" min={0} max={100} step="any" value={discountPercent}
+              onChange={(e) => {
+                const n = Number(e.target.value)
+                setDiscountPercent(Number.isFinite(n) ? n : 0)
+              }}
+              style={inputStyle({})} />
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--t-body)', marginBottom: '6px' }}>قيمة الخصم (د.ع)</label>
