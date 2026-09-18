@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"staffmange-api/internal/model"
@@ -98,5 +99,78 @@ func TestAiEvidenceService_CollectFor_UnknownKindErrors(t *testing.T) {
 	_, err := s.CollectFor(model.AiSignal{Kind: "SOME_FUTURE_SIGNAL_KIND"})
 	if err == nil {
 		t.Fatal("صنف ما نعرفه لازم يرجع خطأ")
+	}
+}
+
+// ═══ التصعيد بالاتجاهين — النصف الثاني: التساهل بعد فترة نظيفة ═══
+//
+// النصف الأول (التشديد بالتكرار) مختبر أصلاً فوق
+// (TestJudgeLateStart_PatternEscalatesToCritical وما يقابلها بتوقف
+// العمل). هذا يثبت النصف الثاني: رجوع الموظف بعد فترة نظيفة طويلة
+// يضيف ملاحظة متساهلة بالسبب — بلا ما يمس الخطورة أو يتفعّل لو
+// الفترة قصيرة أو ماكو سجل سابق إطلاقاً.
+func intPtr(n int) *int { return &n }
+
+func TestJudgeWorkStop_CleanStreakAddsLenientNote(t *testing.T) {
+	empID := "emp-1"
+	sig := model.AiSignal{ID: "s1", Kind: model.AiSignalWorkStopped, EmployeeID: &empID}
+
+	// فترة نظيفة طويلة (٢٠ يوم) وماكو نمط (توقفين بس بآخر ٣٠ يوم) — ملاحظة متساهلة.
+	clean := model.WorkStopEvidence{MinutesToShiftEnd: 120, StopsLast30Days: 2, DaysSinceLastStop: intPtr(20)}
+	v, err := RulesJudge{}.judgeWorkStop(sig, clean)
+	if err != nil {
+		t.Fatalf("خطأ غير متوقع: %v", err)
+	}
+	if v.Reasoning == nil || !strings.Contains(*v.Reasoning, "فترة نظيفة") {
+		t.Error("فترة نظيفة ٢٠ يوم لازم تضيف ملاحظة متساهلة بالسبب")
+	}
+	if v.Severity == model.AiSeverityCritical {
+		t.Error("الملاحظة المتساهلة ما تشدّد الخطورة")
+	}
+
+	// فترة قصيرة (٥ أيام) — ماكو ملاحظة متساهلة.
+	recent := model.WorkStopEvidence{MinutesToShiftEnd: 120, StopsLast30Days: 2, DaysSinceLastStop: intPtr(5)}
+	v2, _ := RulesJudge{}.judgeWorkStop(sig, recent)
+	if v2.Reasoning != nil && strings.Contains(*v2.Reasoning, "فترة نظيفة") {
+		t.Error("فترة ٥ أيام قصيرة — ما تستاهل ملاحظة متساهلة")
+	}
+
+	// ماكو سجل سابق إطلاقاً (nil) — ماكو ملاحظة متساهلة (ماكو فترة نقارنها).
+	first := model.WorkStopEvidence{MinutesToShiftEnd: 120, StopsLast30Days: 1, DaysSinceLastStop: nil}
+	v3, _ := RulesJudge{}.judgeWorkStop(sig, first)
+	if v3.Reasoning != nil && strings.Contains(*v3.Reasoning, "فترة نظيفة") {
+		t.Error("أول مرة إطلاقاً — ماكو فترة نظيفة نحچي عنها")
+	}
+
+	// نمط متكرر (٤+ بآخر ٣٠ يوم) يتفوق على الملاحظة المتساهلة حتى لو
+	// DaysSinceLastStop طويلة (تناقض بيانات نظرياً، بس القاعدة لازم
+	// تعطي أولوية للتشديد لو صار).
+	pattern := model.WorkStopEvidence{MinutesToShiftEnd: 120, StopsLast30Days: 5, DaysSinceLastStop: intPtr(20)}
+	v4, _ := RulesJudge{}.judgeWorkStop(sig, pattern)
+	if v4.Severity != model.AiSeverityCritical {
+		t.Error("النمط المتكرر لازم يتفوق ويصعّد رغم وجود فترة نظيفة اسمية")
+	}
+	if v4.Reasoning != nil && strings.Contains(*v4.Reasoning, "فترة نظيفة") {
+		t.Error("التشديد لازم يمنع ظهور الملاحظة المتساهلة بنفس الحكم")
+	}
+}
+
+func TestJudgeLateStart_CleanStreakAddsLenientNote(t *testing.T) {
+	empID := "emp-1"
+	sig := model.AiSignal{ID: "s1", Kind: model.AiSignalLateStart, EmployeeID: &empID}
+
+	clean := model.LateStartEvidence{MinutesLate: 90, ThresholdMinutes: 60, LateCountLast30Days: 1, DaysSinceLastLate: intPtr(30)}
+	v, err := RulesJudge{}.judgeLateStart(sig, clean)
+	if err != nil {
+		t.Fatalf("خطأ غير متوقع: %v", err)
+	}
+	if v.Reasoning == nil || !strings.Contains(*v.Reasoning, "فترة نظيفة") {
+		t.Error("فترة نظيفة ٣٠ يوم لازم تضيف ملاحظة متساهلة")
+	}
+
+	recent := model.LateStartEvidence{MinutesLate: 90, ThresholdMinutes: 60, LateCountLast30Days: 1, DaysSinceLastLate: intPtr(3)}
+	v2, _ := RulesJudge{}.judgeLateStart(sig, recent)
+	if v2.Reasoning != nil && strings.Contains(*v2.Reasoning, "فترة نظيفة") {
+		t.Error("فترة ٣ أيام قصيرة — ما تستاهل ملاحظة متساهلة")
 	}
 }

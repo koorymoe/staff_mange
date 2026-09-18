@@ -105,6 +105,10 @@ type WorkStopEvidence struct {
 	// ═══ سجل الموظف ═══
 	// نفس الموظف وقّف كم مرة بآخر ٣٠ يوم؟ مرة = ظرف، خمس مرات = نمط.
 	StopsLast30Days int `json:"stopsLast30Days"`
+	// ⚠️ نصف التصعيد الثاني — التساهل: شكد يوم مرّ من آخر توقف لنفس
+	// الموظف قبل هذا. nil يعني أول مرة إطلاقاً (ماكو فترة نظيفة
+	// نحچي عنها أصلاً).
+	DaysSinceLastStop *int `json:"daysSinceLastStop,omitempty"`
 }
 
 // LateStartEvidence الأدلة لتأخر الخروج للحجز.
@@ -118,6 +122,8 @@ type LateStartEvidence struct {
 	ThresholdMinutes int `json:"thresholdMinutes"`
 	// نفس الموظف تأخر كم مرة بآخر ٣٠ يوم؟
 	LateCountLast30Days int `json:"lateCountLast30Days"`
+	// نفس فكرة `DaysSinceLastStop` أعلاه — بس لتأخر الخروج.
+	DaysSinceLastLate *int `json:"daysSinceLastLate,omitempty"`
 }
 
 // RepeatPostponeEvidence الأدلة لتأجيل نفس الحجز أكثر من مرة.

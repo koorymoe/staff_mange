@@ -158,6 +158,12 @@ func (s *AiBrainService) StartBackgroundLoop() {
 //
 // كل قاعدة هنا تجاوب على سؤال طرحه صاحب العمل حرفياً.
 
+// escalationCleanStreakDays حد «الفترة النظيفة» — رجوع الموظف بعد
+// هذا العدد من الأيام بلا نفس المخالفة يستاهل نبرة متساهلة بالسبب،
+// مو تصعيداً. نصف التصعيد بالاتجاهين الثاني (التساهل)؛ التشديد
+// (النمط المتكرر) موجود من زمان بعتبات كل قاعدة أدناه.
+const escalationCleanStreakDays = 14
+
 type RulesJudge struct{}
 
 func (RulesJudge) Name() string { return "rules-v1" }
@@ -268,6 +274,13 @@ func (RulesJudge) judgeWorkStop(sig model.AiSignal, ev model.WorkStopEvidence) (
 		reason += fmt.Sprintf(" ⚠️ ونفس الموظف وقّف %d مرات بآخر ٣٠ يوم — هذا نمط مو حادثة.",
 			ev.StopsLast30Days)
 		v.BlameEmployeeID = sig.EmployeeID
+	} else if ev.DaysSinceLastStop != nil && *ev.DaysSinceLastStop >= escalationCleanStreakDays {
+		// ═══ التصعيد بالاتجاهين — النصف الثاني: التساهل ═══
+		// صفر توقفات بآخر ٣٠ يوم وحدها ما تفرّق بين «أول مرة إطلاقاً»
+		// و«رجع بعد فترة نظيفة طويلة» — والثانية تستاهل تنقال بصراحة،
+		// مو بس السكوت عنها.
+		reason += fmt.Sprintf(" ✅ وآخر توقف لنفس الموظف كان من %d يوم — أول ملاحظة بعد فترة نظيفة، مو نمط متكرر.",
+			*ev.DaysSinceLastStop)
 	}
 
 	// الفجوات تنزّل الثقة: حكم على أدلة ناقصة ما يستاهل نفس الوزن.
@@ -297,6 +310,9 @@ func (RulesJudge) judgeLateStart(sig model.AiSignal, ev model.LateStartEvidence)
 		v.Confidence = 90
 		reason += fmt.Sprintf(" ⚠️ ونفس الموظف تأخر %d مرات بآخر ٣٠ يوم — هذا نمط مو حادثة.",
 			ev.LateCountLast30Days)
+	} else if ev.DaysSinceLastLate != nil && *ev.DaysSinceLastLate >= escalationCleanStreakDays {
+		reason += fmt.Sprintf(" ✅ وآخر تأخر لنفس الموظف كان من %d يوم — أول ملاحظة بعد فترة نظيفة، مو نمط متكرر.",
+			*ev.DaysSinceLastLate)
 	}
 
 	v.Reasoning = &reason

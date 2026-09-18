@@ -120,6 +120,11 @@ func (s *AiEvidenceService) CollectForWorkStop(signal model.AiSignal) (*model.Ai
 		} else {
 			ev.StopsLast30Days = n
 		}
+		// ⚠️ نصف التصعيد الثاني (التساهل) — بأفضل جهد: فشلها ما يوقف
+		// التحليل، بس بلا ملاحظة «فترة نظيفة» بالحكم.
+		if days, err := s.db.DaysSinceLastSignal(model.AiSignalWorkStopped, *signal.EmployeeID, signal.OccurredAt); err == nil {
+			ev.DaysSinceLastStop = days
+		}
 	} else {
 		gaps = append(gaps, "الإشارة بلا موظف")
 	}
@@ -177,6 +182,9 @@ func (s *AiEvidenceService) CollectForLateStart(signal model.AiSignal) (*model.A
 			gaps = append(gaps, "ما قدرنا نقرا سجل تأخر الموظف")
 		} else {
 			ev.LateCountLast30Days = n
+		}
+		if days, err := s.db.DaysSinceLastSignal(model.AiSignalLateStart, *signal.EmployeeID, signal.OccurredAt); err == nil {
+			ev.DaysSinceLastLate = days
 		}
 	} else {
 		gaps = append(gaps, "الإشارة بلا موظف")

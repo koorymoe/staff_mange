@@ -356,6 +356,31 @@ func (r *AiRepository) SignalCountForEmployee(kind, employeeID string, days int)
 	return n, err
 }
 
+// DaysSinceLastSignal شكد يوم مرّ من آخر إشارة من نفس الصنف لنفس
+// الموظف **قبل** لحظة معيّنة (عادة وقت الإشارة الحالية — نقارن
+// بالتاريخ الحقيقي للحدث مو بوقت معالجتها، لأن الكنسة ممكن تتأخر
+// دقايق). `nil` يعني هذي أول مرة إطلاقاً — ماكو سجل قبلها، فما
+// نقدر نحچي عن «فترة نظيفة» أصلاً.
+//
+// ⚠️ هذا نصف التصعيد بالاتجاهين: النصف الأول (التشديد) موجود من
+// زمان بـ`StopsLast30Days`/`LateCountLast30Days`. هذا يضيف النصف
+// الثاني — التساهل بعد فترة نظيفة، مو التشديد بس بالتكرار.
+func (r *AiRepository) DaysSinceLastSignal(kind, employeeID string, before time.Time) (*int, error) {
+	var maxOccurred sql.NullTime
+	err := r.db.Get(&maxOccurred, `
+		SELECT MAX("occurredAt") FROM "AiSignal"
+		WHERE kind = $1 AND "employeeId" = $2 AND "occurredAt" < $3`,
+		kind, employeeID, before)
+	if err != nil {
+		return nil, err
+	}
+	if !maxOccurred.Valid {
+		return nil, nil
+	}
+	days := int(before.Sub(maxOccurred.Time).Hours() / 24)
+	return &days, nil
+}
+
 // ═══ ساعات الدوام ═══
 
 func (r *AiRepository) WorkWindow() (*model.AiWorkWindow, error) {
