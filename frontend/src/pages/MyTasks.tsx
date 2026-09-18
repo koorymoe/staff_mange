@@ -209,6 +209,14 @@ export default function MyTasks() {
   // بالضبط الي تنطفي بصمت أول ما يتغيّر اسم خدمة بحرف.
   const paperworkOnManager = (b: Booking) => !!b.service?.managerHandlesPaperwork
 
+  // ═══ حجز «كشف» — بلا ورق مطلوب أصلاً، مو ورق على شخص ثاني ═══
+  //
+  // ⚠️ فرع مستقل عن `paperworkOnManager` بمعنى مختلف: ذاك يقول «شخص
+  // ثاني يسوّي الورق»، وهذا يقول «ماكو ورق يُسوّى إطلاقاً». دمجهما
+  // بنفس الشرط يخلّي رسالة «الورق على مسؤول الخدمة» تطلع لحجز كشف —
+  // غلط، محد يسوّي فاتورة ولا تقرير لزيارة معاينة.
+  const isSurvey = (b: Booking) => b.bookingType === 'SURVEY'
+
   // ═══ ورق يخصّني كمسؤول خدمة ═══
   //
   // ⚠️ **مسار مستقل مو ترشيح لقائمة مهامي**: مسؤول الخدمة **مو مكلّف**
@@ -719,7 +727,7 @@ export default function MyTasks() {
                         )}
                         <div className="hidden">
                         </div>
-                        {employee?.isLeader && !paperworkOnManager(b) && (
+                        {employee?.isLeader && !paperworkOnManager(b) && !isSurvey(b) && (
                           <button
                             onClick={() => navigate(`/leader-invoices/new?mode=booking&bookingId=${b.id}`)}
                             className="mt-2 w-full rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700 transition-all hover:bg-brand-100"
@@ -875,7 +883,14 @@ export default function MyTasks() {
               {/* ⚠️ زر يفشل لمن ينضغط **أسوأ من ماكو زر**: الفني يظن
                   النظام خربان ويتصل بالإدارة، والسبب إن أحد ما گله إن
                   هذا مو شغله أصلاً. فنبدّل الزرّين بسطر يقول منو يسويه. */}
-              {paperworkOnManager(paperwork.booking) ? (
+              {isSurvey(paperwork.booking) ? (
+                <p className="rounded-xl border-2 border-teal-200 bg-teal-50 px-4 py-3 text-sm font-bold leading-relaxed text-teal-800">
+                  🔍 هذا حجز كشف — ما يحتاج فاتورة ولا تقرير عمل.
+                  <span className="mt-1 block text-[12px] font-normal text-teal-700">
+                    لا تنسى تسلّم نتائج المعاينة (شنو يريد الزبون) من زر «📝 نتائج المعاينة».
+                  </span>
+                </p>
+              ) : paperworkOnManager(paperwork.booking) ? (
                 <p className="rounded-xl border-2 border-sky-200 bg-sky-50 px-4 py-3 text-sm font-bold leading-relaxed text-sky-800">
                   📋 ورق هذا الحجز على <b>مسؤول الخدمة</b> — مو عليك.
                   <span className="mt-1 block text-[12px] font-normal text-sky-700">
@@ -988,12 +1003,20 @@ export default function MyTasks() {
                   {b.completionNotes && <p className="sm:col-span-2">📝 {b.completionNotes}</p>}
                 </div>
                 {/* الورق الباقي — يضل قدامه لين يخلّصه */}
-                {(!b.hasInvoice || !b.hasReport) && paperworkOnManager(b) && (
+                {/* ⚠️ حجز الكشف ما راح يحصل عليه فاتورة ولا تقرير عمل
+                    أبداً — هذا مقصود مو نقص، فتنبيه "باقي عليك" هنا
+                    يطارد الفني بلا داعي بلا هذا الاستثناء. */}
+                {(!b.hasInvoice || !b.hasReport) && isSurvey(b) && (
+                  <p className="mt-2 rounded-lg border border-teal-200 bg-teal-50 px-3 py-1.5 text-xs font-bold text-teal-700">
+                    🔍 حجز كشف — بلا ورق مطلوب
+                  </p>
+                )}
+                {(!b.hasInvoice || !b.hasReport) && !isSurvey(b) && paperworkOnManager(b) && (
                   <p className="mt-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700">
                     📋 الورق على مسؤول الخدمة
                   </p>
                 )}
-                {(!b.hasInvoice || !b.hasReport) && !paperworkOnManager(b) && amLeaderOf(b) && (
+                {(!b.hasInvoice || !b.hasReport) && !isSurvey(b) && !paperworkOnManager(b) && amLeaderOf(b) && (
                   <div className="mt-2 flex flex-wrap gap-2">
                     {!b.hasInvoice && (
                       <button
