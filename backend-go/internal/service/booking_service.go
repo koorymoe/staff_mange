@@ -889,6 +889,35 @@ func (s *BookingService) Archive(id, byEmployeeID, reason string) (*model.Bookin
 	return s.repo.FindByID(id)
 }
 
+// SetPartialJobLink يربط هذا الحجز بحجز آخر كإنجاز جزئي لنفس الشغلة
+// (شغلة استوردت تاريخياً كصفوف منفصلة ليوم ١ ويوم ٢...). صاحب العمل
+// يكتب كود الحجز الآخر الي يشوفه بالشاشة — نحل الكود لمعرّف حقيقي
+// بلا تخمين، ونرفض لو ماكو حجز بهذا الكود أو لو حاول ربط الحجز بنفسه.
+// كود فاضي = فك الربط.
+func (s *BookingService) SetPartialJobLink(id, code string) (*model.Booking, error) {
+	code = strings.TrimSpace(code)
+	if code == "" {
+		if err := s.repo.SetPartialJobBookingID(id, nil); err != nil {
+			return nil, err
+		}
+		return s.repo.FindByID(id)
+	}
+	target, err := s.repo.FindByCode(code)
+	if err != nil {
+		return nil, err
+	}
+	if target == nil {
+		return nil, errors.New("كود الحجز \"" + code + "\" غير موجود بالنظام")
+	}
+	if target.ID == id {
+		return nil, errors.New("ما تكدر تربط الحجز بنفسه")
+	}
+	if err := s.repo.SetPartialJobBookingID(id, &target.ID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
 // Restore يرجّع حجز من الأرشيف للعمل.
 func (s *BookingService) Restore(id string) (*model.Booking, error) {
 	if err := s.repo.Restore(id); err != nil {

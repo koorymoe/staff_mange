@@ -653,6 +653,24 @@ func (h *BookingHandler) ArchiveBooking(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, b)
 }
 
+// PUT /api/bookings/{id}/partial-job-link — ربط/فك ربط بحجز آخر كإنجاز
+// جزئي لنفس الشغلة (حراستها صلاحية `booking_partial_link` بالخادم).
+func (h *BookingHandler) SetPartialJobLink(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	b, err := h.service.SetPartialJobLink(r.PathValue("id"), body.Code)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
 // PUT /api/bookings/{id}/restore
 func (h *BookingHandler) RestoreBooking(w http.ResponseWriter, r *http.Request) {
 	b, err := h.service.Restore(r.PathValue("id"))

@@ -50,6 +50,18 @@ export const canAuditFinance = (role?: string, permissions: string[] = []) =>
   role === 'ADMIN' || role === 'OWNER' || role === 'FINANCE' ||
   permissions.includes('finance_audit')
 
+/**
+ * canLinkPartialBooking: منو يقدر يربط حجزين تاريخيين منفصلين كإنجاز
+ * جزئي لنفس الشغلة (شغلة طوّلت أكثر من يوم واستوردت كصفوف منفصلة)؟
+ *
+ * صاحب النظام طلبها صراحة **صلاحية مستقلة يمنحها بعدين لمن يريد**،
+ * مو حصراً بدور معيّن — نفس مطابقة `middleware.RequirePermission`
+ * بالخادم بالضبط: `ADMIN`/`OWNER` يمرّون دائماً، وغيرهم يحتاج المفتاح
+ * `booking_partial_link` بالإيد (بلا افتراض حتى لـ`FINANCE`).
+ */
+export const canLinkPartialBooking = (role?: string, permissions: string[] = []) =>
+  role === 'ADMIN' || role === 'OWNER' || permissions.includes('booking_partial_link')
+
 // ⚠️ **أسماء الأدوار مو هنا**: انتقلن لـ`roleLabels.ts` وياهن ألوان
 // الأدوار — مصدر وحيد بنوع محكوم، حتى الدور الجديد يوقّف البناء
 // إذا انساه أحد بدل ما يعرض رمزاً إنكليزياً لموظف.

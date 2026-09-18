@@ -299,6 +299,36 @@ func (r *BookingRepository) FindByID(id string) (*model.Booking, error) {
 	return &b, nil
 }
 
+// FindByCode يدوّر حجز بكوده الظاهر بالشاشات (مثل OLD-xxxx) — يستخدمها
+// ربط "إنجاز جزئي" حتى يحل كود يكتبه صاحب العمل بإيده لمعرّف حقيقي،
+// بلا تخمين. بلا hydrate: نداءها للتحقق من الوجود بس، مو للعرض.
+func (r *BookingRepository) FindByCode(code string) (*model.Booking, error) {
+	var b model.Booking
+	err := r.db.Get(&b, `SELECT * FROM "Booking" WHERE code = $1`, code)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &b, nil
+}
+
+// SetPartialJobBookingID يربط/يفك ربط هذا الحجز بحجز آخر (نفس الشغلة،
+// يوم مختلف). targetID فارغ = فك الربط.
+func (r *BookingRepository) SetPartialJobBookingID(id string, targetID *string) error {
+	res, err := r.db.Exec(
+		`UPDATE "Booking" SET "partialJobBookingId" = $2 WHERE id = $1`,
+		id, targetID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return errors.New("الحجز مو موجود")
+	}
+	return nil
+}
+
 // FindByIDs يجلب مجموعة حجوزات بعلاقاتها كاملة بعدد استعلامات ثابت.
 // يفيد المناداة الي تحتاج حجوزات كثيرة سوه (مثل قائمة المهام) بدل
 // FindByID بحلقة — كل نداء منها يسوي حزمة استعلامات لحاله.
@@ -488,6 +518,28 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		}
 	}
 
+	// ═══ إنجاز جزئي بين حجوزات تاريخية منفصلة ═══
+	// نجمع كل الأهداف المُشار إليها بدفعة الحجوزات هذي، ونجيب أكوادهم
+	// باستعلام وحد — بلا استعلام لكل حجز.
+	partialLinkTargets := map[string]model.PartialJobBookingLink{}
+	{
+		targetIDs := make([]string, 0)
+		for _, b := range bookings {
+			if b.PartialJobBookingID != nil && *b.PartialJobBookingID != "" {
+				targetIDs = append(targetIDs, *b.PartialJobBookingID)
+			}
+		}
+		if len(targetIDs) > 0 {
+			rows := []model.PartialJobBookingLink{}
+			if err := r.db.Select(&rows, `
+				SELECT id, code FROM "Booking" WHERE id = ANY($1)`, pq.Array(targetIDs)); err == nil {
+				for _, row := range rows {
+					partialLinkTargets[row.ID] = row
+				}
+			}
+		}
+	}
+
 	assignmentsByBooking := map[string][]model.BookingAssignment{}
 	if len(bookingIDs) > 0 {
 		rows := []model.BookingAssignment{}
@@ -584,6 +636,12 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 			name, at := fa.Name, fa.At
 			b.FinanceAuditedByName = &name
 			b.FinanceAuditedAt = &at
+		}
+		if b.PartialJobBookingID != nil {
+			if link, ok := partialLinkTargets[*b.PartialJobBookingID]; ok {
+				linkCopy := link
+				b.PartialJobBooking = &linkCopy
+			}
 		}
 
 		b.TransferEmployee = getEmp(b.TransferEmployeeID)

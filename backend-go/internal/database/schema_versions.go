@@ -347,6 +347,9 @@ func versionedMigrations() []Migration {
 	// فاتورة». الفلوس الطالعة چانت متتبّعة والداخلة ماكو إلها أثر.
 	// الدفتر محمي بمُشغّلات قاعدة البيانات: ما ينعدّل ولا ينمسح.
 	result = append(result, employeeLedgerMigrations()...)
+	// 0289: ربط حجزين تاريخيين منفصلين كإنجاز جزئي لنفس الشغلة — شغلة
+	// طوّلت أكثر من يوم واستوردت كصفوف منفصلة، ما تنطابق مع تكرار حقيقي.
+	result = append(result, bookingPartialLinkMigration()...)
 	return result
 }
 
