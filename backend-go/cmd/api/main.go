@@ -608,13 +608,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ مفاتيح النظام ═══
 	//
 	// ⚠️ **القراءة لكل موظف**: واجهة كل موظف تحتاج تعرف هل الميزة
-	// مطفية، وإلا تبقى تعرضها. و**الكتابة للمالك حصراً** — إطفاء ميزة
-	// قرار يسري على الشركة كلها.
-	requireOwnerSwitches := middleware.RequireOwnerOnly("إطفاء الميزات للمالك وحده")
+	// مطفية، وإلا تبقى تعرضها. **والكتابة تختلف بالمفتاح**: بعض
+	// المفاتيح (شخصية الكائن) تبقى للمالك حصراً، وبعضها (شريط
+	// الإعلانات) مفتوح لمدير النظام كمان بطلب صريح من (ع) — لهذا
+	// القرار داخل SystemSwitchHandler.Set نفسه مو حارساً واحداً هنا.
 	mux.Handle("GET /api/system/switches", middleware.Chain(
 		http.HandlerFunc(systemSwitchHandler.List), requireAuth))
 	mux.Handle("PUT /api/system/switches/{key}", middleware.Chain(
-		http.HandlerFunc(systemSwitchHandler.Set), requireAuth, requireOwnerSwitches))
+		http.HandlerFunc(systemSwitchHandler.Set), requireAuth))
 
 	mux.Handle("GET /api/auth/me", middleware.Chain(http.HandlerFunc(authHandler.Me), requireAuth))
 	// تغيير كلمة المرور لمدير النظام والمالك بس. الموظف ما يغيّر سره

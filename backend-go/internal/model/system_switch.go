@@ -33,3 +33,19 @@ func KnownSystemSwitch(key string) bool {
 	_, ok := SystemSwitchLabels[key]
 	return ok
 }
+
+// systemSwitchAdminAllowed المفاتيح الي مدير النظام (ADMIN) يقدر
+// يبدّلها هو الثاني — مو المالك حصراً.
+//
+// ⚠️ **قائمة بيضاء بالاسم مو قاعدة عامة**: شريط الإعلانات قرار
+// تشغيلي يومي، بينما شخصية الكائن مرتبطة بقرارات (ع) الشخصية
+// (الصور، الترخيص) وتبقى له حصراً حتى لو مدير النظام موجود.
+var systemSwitchAdminAllowed = map[string]bool{
+	SwitchAnnouncements: true,
+}
+
+// SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل
+// هذا المفتاح، إضافة على المالك الي مسموح له كل المفاتيح دايماً؟
+func SystemSwitchAdminAllowed(key string) bool {
+	return systemSwitchAdminAllowed[key]
+}

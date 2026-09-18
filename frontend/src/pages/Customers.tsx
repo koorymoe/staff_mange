@@ -19,6 +19,11 @@ const serviceLabels: Record<string, string> = {
 export default function Customers() {
   const [tab, setTab] = useState<'all' | 'gps'>('all')
   const [customers, setCustomers] = useState<Customer[]>([])
+  // ⚠️ `customers` محمّلة بحد أعلى (INITIAL_LIMIT) لتسريع الفتح —
+  // فطولها مو العدد الحقيقي الكلي. `totalCount` من مسار خفيف
+  // (COUNT فقط، بلا تنزيل صفوف) يعرض الرقم الصحيح ببطاقة/تبويب
+  // «كل الزبائن»، بدل ما نوهم (ع) إن العدد نقص لمّا هو بس محمَّل جزئياً.
+  const [totalCount, setTotalCount] = useState(0)
   const [gpsCustomers, setGpsCustomers] = useState<GpsCustomerListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,9 +61,20 @@ export default function Customers() {
   // كانت الصفحة تنزّل **كل** الزبائن بكل فتحة وتفلترهم بالمتصفح — بـ٥٠٠٠
   // زبون هذا ١٫٤ ميغا كل مرة، وعلى 4G ثواني ينتظرها الموظف بلا فايدة.
   //
-  // هسه: نجيب أول ٥٠٠ للتصفح، وأول ما يكتب حرفين نسأل السيرفر. السيرفر
+  // هسه: نجيب أول دفعة للتصفح، وأول ما يكتب حرفين نسأل السيرفر. السيرفر
   // يطبّع النص بنفس طريقة الواجهة بالضبط (ar_norm) فالنتيجة وحدة.
-  const INITIAL_LIMIT = 500
+  //
+  // ⚠️ **الحد لازم يغطّي العدد الحقيقي**: كان ٥٠٠، والزبائن الفعليين
+  // صاروا ٢٢٩٠+ — فالتصفّح (Pager) والفلاتر (تصنيف/موقع/بلاغات، وكلهن
+  // يشتغلون بالمتصفح على كل الزبائن المحمَّلين سوا) كانوا يشتغلون على
+  // أول ٥٠٠ بس ويتجاهلون الباقي بصمت. رفعناه لـ٣٠٠٠ (هامش فوگ العدد
+  // الحالي) — الحمل يصير ~٧٠٠ كيلوبايت تقريباً، أقل بكثير من سيناريو
+  // الـ٥٠٠٠/١.٤ ميغا المرفوض فوگ.
+  //
+  // 🔴 **هذا حل مربوط بحجم البيانات الحالي مو حل نهائي**: لو عدد
+  // الزبائن قارب ٥٠٠٠+، لازم مشروع فلترة وترقيم حقيقي من الخادم
+  // (نقل الفلاتر نفسها للسيرفر، مو رفع الحد بلا نهاية).
+  const INITIAL_LIMIT = 3000
   const load = () => {
     Promise.all([api.getCustomers({ limit: INITIAL_LIMIT }), api.getCustomersByGpsService()])
       .then(([all, gps]) => {
@@ -73,7 +89,13 @@ export default function Customers() {
   // الطلب القديم حتى نتيجة متأخرة ما تدوس على نتيجة أحدث.
   useEffect(() => {
     const q = search.trim()
-    if (q.length < 2) return
+    if (q.length < 2) {
+      // ⚠️ مسح خانة البحث لازم يرجّع القائمة الكاملة — وإلا الشاشة
+      // تبقى عالقة على آخر نتيجة بحث (وبطاقات الملخص فوگ، الي
+      // تُحسب من نفس customers، تنكمش وياها بالغلط).
+      load()
+      return
+    }
     let alive = true
     const t = setTimeout(() => {
       api.getCustomers({ search: q, limit: 200 })
@@ -84,6 +106,9 @@ export default function Customers() {
   }, [search])
 
   useEffect(load, [])
+  useEffect(() => {
+    api.getDashboardSummary().then((s) => setTotalCount(s.customerCount)).catch(() => {})
+  }, [])
 
   const openEdit = (c: Customer) => {
     setEditingCustomer(c)
@@ -202,7 +227,13 @@ export default function Customers() {
   const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0)
   const newThisMonth = customers.filter((c) => c.createdAt && new Date(c.createdAt) >= monthStart).length
   const vipCount = customers.filter((c) => !!c.position).length
-  const pct = (n: number) => (customers.length ? Math.round((n / customers.length) * 1000) / 10 : 0)
+  // ⚠️ أثناء بحث نشط، customers.length هو عدد نتائج البحث فعلاً
+  // (صحيح لعرضه). بلا بحث، customers.length مقصوص بحد التحميل —
+  // فنستعمل العدد الحقيقي من totalCount، ونرجع لطول القائمة لو
+  // العدّاد الخفيف لسا ما وصل (فتح أول للشاشة).
+  const isSearching = search.trim().length >= 2
+  const allCount = isSearching ? customers.length : (totalCount || customers.length)
+  const pct = (n: number) => (allCount ? Math.round((n / allCount) * 1000) / 10 : 0)
 
   return (
     <div dir="rtl">
@@ -219,7 +250,7 @@ export default function Customers() {
 
       {/* ═══ الأرقام ═══ */}
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-3 sm:gap-3">
-        <StatCard icon="👥" tone="sky" label="كل الزبائن" value={customers.length} hint="100% من إجمالي الزبائن" />
+        <StatCard icon="👥" tone="sky" label="كل الزبائن" value={allCount} hint="100% من إجمالي الزبائن" />
         <StatCard icon="🧑‍💼" tone="emerald" label="جدد هذا الشهر" value={newThisMonth} hint={`${pct(newThisMonth)}% من إجمالي الزبائن`} />
         <StatCard icon="👑" tone="amber" label="شخصيات مهمة / VIP" value={vipCount} hint={`${pct(vipCount)}% من إجمالي الزبائن`} />
       </div>
@@ -299,7 +330,7 @@ export default function Customers() {
                 tab === 'all' ? 'bg-brand-600 text-white shadow-md' : 'bg-white text-slate-500 hover:bg-slate-100'
               }`}
             >
-              كل الزبائن ({customers.length})
+              كل الزبائن ({allCount})
             </button>
             <button
               onClick={() => setTab('gps')}
@@ -404,7 +435,9 @@ export default function Customers() {
                       {c.code}
                     </td>
                     <td className="px-4 py-3">{c.name}</td>
-                    <td className="px-4 py-3 text-slate-500">{c.phone}</td>
+                    <td className="px-4 py-3 text-slate-500">
+                      <BookingCodeChip code={c.phone} title="انسخ رقم الهاتف" />
+                    </td>
                     {tab === 'all' && (
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">

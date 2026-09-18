@@ -34,13 +34,19 @@ func (h *SystemSwitchHandler) List(w http.ResponseWriter, _ *http.Request) {
 	WriteJSON(w, http.StatusOK, switches)
 }
 
-// PUT /api/system/switches/{key} — المالك حصراً (الحارس بالمسار).
+// PUT /api/system/switches/{key} — المالك دايماً، ومدير النظام
+// (ADMIN) بس بالمفاتيح المسموحة له (model.SystemSwitchAdminAllowed).
 func (h *SystemSwitchHandler) Set(w http.ResponseWriter, r *http.Request) {
 	key := strings.TrimPrefix(r.URL.Path, "/api/system/switches/")
 	if !model.KnownSystemSwitch(key) {
 		// ⚠️ اسم غلط يرجع خطأ صريح مو نجاحاً صامتاً: النجاح الصامت
 		// يخلي (ع) يحسب إنه أطفى شي وهو ما انطفى.
 		WriteError(w, http.StatusBadRequest, "مفتاح غير معروف")
+		return
+	}
+	role, _ := r.Context().Value(middleware.ContextRole).(string)
+	if role != "OWNER" && !(role == "ADMIN" && model.SystemSwitchAdminAllowed(key)) {
+		WriteError(w, http.StatusForbidden, "هذا المفتاح للمالك حصراً")
 		return
 	}
 	var body struct {
