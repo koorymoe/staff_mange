@@ -350,6 +350,9 @@ func versionedMigrations() []Migration {
 	// النظام، ما ترفع لـ`prod` بعد) — القفزة بالترقيم توثيقية بس، ترتيب
 	// التنفيذ الفعلي محكوم بمكان الاستدعاء بهاي القائمة لا برقم الاسم.
 	result = append(result, bookingPartialLinkMigration()...)
+	// 0290-0291: حجز «كشف» — زيارة معاينة بلا فاتورة ولا عُدّة، مع تقرير
+	// نتائج بسيط (شنو يريد الزبون، مساحة الموقع، تفاصيل حرة).
+	result = append(result, surveyBookingMigration()...)
 	return result
 }
 

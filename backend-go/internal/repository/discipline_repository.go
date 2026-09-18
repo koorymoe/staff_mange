@@ -268,6 +268,9 @@ func (r *DisciplineRepository) OverdueLeaderPaperwork(hours int) ([]OverdueLeade
 		  -- وما إله فاتورة ولا تقرير أصلاً، وغرامة عليه تعاقب ناس
 		  -- ما إلهم ذنب على ورق محد طالبهم بيه.
 		  AND b."settledLegacyAt" IS NULL
+		  -- ⚠️ حجز «كشف» (زيارة معاينة) ما يحتاج فاتورة ولا تقرير أصلاً
+		  -- — قرار عمل، مو نقص. استثناء كامل، مو جزئي متل 'OLD-%'.
+		  AND b."bookingType" <> 'SURVEY'
 		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
 		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
 		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
@@ -323,6 +326,9 @@ func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, 
 		  -- وما إله فاتورة ولا تقرير أصلاً، وغرامة عليه تعاقب ناس
 		  -- ما إلهم ذنب على ورق محد طالبهم بيه.
 		  AND b."settledLegacyAt" IS NULL
+		  -- ⚠️ حجز «كشف» (زيارة معاينة) ما يحتاج فاتورة ولا تقرير أصلاً
+		  -- — قرار عمل، مو نقص. استثناء كامل، مو جزئي متل 'OLD-%'.
+		  AND b."bookingType" <> 'SURVEY'
 		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
 		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
 		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
@@ -400,6 +406,9 @@ func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([
 		  AND b."completedAt" IS NOT NULL
 		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
 		  AND b."settledLegacyAt" IS NULL
+		  -- ⚠️ حجز «كشف» (زيارة معاينة) ما يحتاج فاتورة ولا تقرير أصلاً
+		  -- — قرار عمل، مو نقص. استثناء كامل، مو جزئي متل 'OLD-%'.
+		  AND b."bookingType" <> 'SURVEY'
 		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
 		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
 		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard

@@ -95,15 +95,16 @@ func bucketCondition(bucket string) string {
 		return `b.status = 'COMPLETED' AND ` + paperworkDoneSQL
 	case "done_no_invoice":
 		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL +
-			` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `)`
+			` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
 	// ⚠️ التاريخي ينستثنى من محطتَي «ناقصه تقرير»: تقريره مستحيل، فبقاؤه
-	// هنا يعني طابوراً محد يگدر يفرغه.
+	// هنا يعني طابوراً محد يگدر يفرغه. وحجز الكشف ينستثنى من الثلاثة:
+	// ما يحتاج فاتورة ولا تقرير أصلاً.
 	case "done_no_report":
 		return `b.status = 'COMPLETED' AND ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL +
-			` AND NOT (` + isLegacyImportSQL + `)`
+			` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
 	case "done_no_both":
 		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL + ` AND NOT ` + hasReportSQL +
-			` AND NOT (` + isLegacyImportSQL + `)`
+			` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
 	}
 	return ""
 }
@@ -157,12 +158,18 @@ const hasReportSQL = `EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId"
 // كل حجز. فالفاتورة لازم تنكتب وتنحسب بالإيراد، والناقص هو التقرير بس.
 const isLegacyImportSQL = `b.code LIKE 'OLD-%'`
 
+// ═══ زيارة معاينة («كشف»): بلا فاتورة وبلا تقرير أصلاً — قرار عمل ═══
+// الإداري يأشّرها وقت التكليف: الكادر ما يسوي فاتورة ولا تقرير عمل
+// لهذا الحجز، فبقاؤها بطابور «ناقصها ورق» ظلم — استثناء كامل، مو
+// جزئي متل isLegacyImportSQL الي يعفي التقرير بس ويبقي الفاتورة.
+const isSurveySQL = `b."bookingType" = 'SURVEY'`
+
 // paperworkDoneSQL — ورق الحجز مكتمل: فاتورة دائماً، وتقرير إلا إذا
-// چان شغلاً قبل النظام.
+// چان شغلاً قبل النظام، أو أصلاً زيارة كشف ما تحتاج ورقاً إطلاقاً.
 //
 // ⚠️ ينكتب مرة وحدة وينستعمل بكل مكان يسأل «ناقصه ورق؟»: نسختان
 // تفترقان بأول تعديل، فتطلع الشاشة رقماً والطابور رقماً ثانياً.
-const paperworkDoneSQL = `(` + hasInvoiceSQL + ` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `))`
+const paperworkDoneSQL = `((` + hasInvoiceSQL + ` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `)) OR ` + isSurveySQL + `)`
 
 // BookingPageQuery شنو تطلبه الشاشة.
 type BookingPageQuery struct {

@@ -23,6 +23,7 @@ export default function Finance() {
   const canLinkPartial = canLinkPartialBooking(employee?.role, permissions)
   const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null)
   const [partialLinkBusyId, setPartialLinkBusyId] = useState<string | null>(null)
+  const [surveyMarkBusyId, setSurveyMarkBusyId] = useState<string | null>(null)
   const [bookings, setBookings] = useState<Booking[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,7 +31,7 @@ export default function Finance() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   /** ⚠️ `internal` **معزول**: الشغل داخل الشركة ما ينحسب إيراد زبون،
    *  فما يطلع بـ«الكل» ولا بطابور التدقيق — إله بطاقته لحاله. */
-  const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'internal' | 'partial_linked'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'internal' | 'partial_linked' | 'survey'>('all')
   const [search, setSearch] = useState('')
 
   const load = () => {
@@ -100,6 +101,30 @@ export default function Finance() {
     }
   }
 
+  /** تأشير حجز قديم ككشف بأثر رجعي (فاته التصنيف وقت التنسيق) —
+   *  الزيارة كانت معاينة بس مو شغل حقيقي، بلا فاتورة ولا تقرير. يسأل
+   *  "كشف لأي حجز بالضبط؟" ويربطه بالحجز الحقيقي الي نتج عنه (لو
+   *  موجود). لو الحجز أصلاً كشف، نعدّل الربط بس (نفس مسار الإنجاز
+   *  الجزئي) لأن الخادم يرفض تأشير نوع مكرر. */
+  const markAsSurvey = async (b: Booking) => {
+    const code = window.prompt(
+      'كشف لأي حجز بالضبط؟ (كود الحجز الحقيقي الي نتج عن هذي المعاينة — اتركه فاضي لو ما صار عمل بعد):',
+      b.partialJobBooking?.code || '',
+    )
+    if (code === null) return
+    setSurveyMarkBusyId(b.id)
+    try {
+      const updated = b.bookingType === 'SURVEY'
+        ? await api.setPartialJobLink(b.id, code.trim())
+        : await api.markBookingAsSurvey(b.id, code.trim())
+      setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'تعذر تأشير الحجز ككشف')
+    } finally {
+      setSurveyMarkBusyId(null)
+    }
+  }
+
   const doAudit = async (b: Booking, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE') => {
     const typed = invoiceAmounts[b.id]
     const amount = typed !== undefined && typed !== '' ? Number(typed) : undefined
@@ -157,46 +182,60 @@ export default function Finance() {
   const toggle = (id: string) =>
     setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
 
-  // ═══ حجز اليوم الأول لشغلة متعددة الأيام ═══
-  // «ما اكدر احذف اليوم الاول لان محسوب علي» — هذا الحساب المحلي (بلا
-  // نداء خادم إضافي) يجمع كل الحجوزات المُشار إليها كـ«الأصل» من
-  // حجوزات أخرى محمّلة أصلاً بالشاشة، حتى يطمّن صاحب النظام إنه ما
-  // يحتاج يحذف الحجز الأول — هذا بالضبط سبب طلبه.
-  const partialLinkAnchorIds = useMemo(() => {
-    const ids = new Set<string>()
+  const isInternal = (b: Booking) => b.bookingType === 'INTERNAL'
+  /** حجز كشف — زيارة معاينة بلا فاتورة ولا عُدّة ولا تقرير عمل، مؤشَّر
+   *  وقت التكليف أو بأثر رجعي من هالشاشة (زر 🔍). */
+  const isSurvey = (b: Booking) => b.bookingType === 'SURVEY'
+  /** ⚠️ «ما اخذت فلوس منفصلة باليوم الثاني — الفلوس كلها بفاتورة اليوم
+   *  الأول» — حجز مربوط (يوم إضافي بشغلة متعددة الأيام) ماله مبلغ
+   *  مستقل يُدقَّق، فما يصح يطالبنا الشاشة بتدقيقه أو نحسبه معلّقاً.
+   *  العزل هنا **بس بهالشاشة** (نفس تنبيه صاحب النظام صراحة) — ما
+   *  يغيّر amountVerified الحقيقي ولا أي حساب ثاني بالنظام.
+   *  🔴 حجز الكشف نفسه **مستثنى من هذا التعريف**: `partialJobBooking`
+   *  عليه يعني «كشف لهذا الحجز» لا «يوم إضافي له» — معنى مختلف كلياً
+   *  رغم إنه نفس العمود بالخادم (بالحفاظ على انفراد النوعين ببعضهم). */
+  const isPartialLinked = (b: Booking) => !isSurvey(b) && !!b.partialJobBooking
+
+  // ═══ حجز اليوم الأول لشغلة متعددة الأيام / الحجز الي عليه كشف مسبق ═══
+  // «ما اكدر احذف الحجز الأول لان محسوب علي» — هذا الحساب المحلي (بلا
+  // نداء خادم إضافي) يجمع كل الحجوزات المُشار إليها كـ«أصل» من حجوزات
+  // أخرى محمّلة أصلاً بالشاشة، حتى يطمّن صاحب النظام إنه ما يحتاج يحذفه
+  // — هذا بالضبط سبب طلبه. مقسومة بنوع الحجز **المُشير** لأن المعنى
+  // يختلف: يوم إضافي بشغلة، أو كشف سبق هذا الحجز الحقيقي.
+  const { continuationAnchorIds, surveyAnchorIds } = useMemo(() => {
+    const continuation = new Set<string>()
+    const survey = new Set<string>()
     for (const b of bookings) {
-      if (b.partialJobBooking?.id) ids.add(b.partialJobBooking.id)
+      if (!b.partialJobBooking?.id) continue
+      if (isSurvey(b)) survey.add(b.partialJobBooking.id)
+      else continuation.add(b.partialJobBooking.id)
     }
-    return ids
+    return { continuationAnchorIds: continuation, surveyAnchorIds: survey }
   }, [bookings])
 
   // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
   const matchesSearch = (b: Booking) => {
     return matches([b.code, b.customer?.code, b.customer?.phone, b.customer?.name], search)
   }
-  const isInternal = (b: Booking) => b.bookingType === 'INTERNAL'
-  /** ⚠️ «ما اخذت فلوس منفصلة باليوم الثاني — الفلوس كلها بفاتورة اليوم
-   *  الأول» — حجز مربوط (يوم إضافي بشغلة متعددة الأيام) ماله مبلغ
-   *  مستقل يُدقَّق، فما يصح يطالبنا الشاشة بتدقيقه أو نحسبه معلّقاً.
-   *  العزل هنا **بس بهالشاشة** (نفس تنبيه صاحب النظام صراحة) — ما
-   *  يغيّر amountVerified الحقيقي ولا أي حساب ثاني بالنظام. */
-  const isPartialLinked = (b: Booking) => !!b.partialJobBooking
   const filtered = bookings.filter((b) => {
     if (!matchesSearch(b)) return false
     if (filter === 'internal') return isInternal(b)
     if (filter === 'partial_linked') return isPartialLinked(b)
-    // 🔴 العزل حقيقي مو شكلي: الداخلي والمربوط جزئياً ينشالون من كل
-    // البطاقات الثانية — نفس مبدأ عزل «داخل الشركة» تماماً.
+    if (filter === 'survey') return isSurvey(b)
+    // 🔴 العزل حقيقي مو شكلي: الداخلي والمربوط جزئياً والكشف ينشالون
+    // من كل البطاقات الثانية — نفس مبدأ عزل «داخل الشركة» تماماً.
     if (isInternal(b)) return false
     if (isPartialLinked(b)) return false
+    if (isSurvey(b)) return false
     if (filter === 'pending') return !b.amountVerified
     if (filter === 'verified') return b.amountVerified
     return true
   })
 
-  const internalCount = bookings.filter((b) => b.bookingType === 'INTERNAL').length
+  const internalCount = bookings.filter(isInternal).length
   const partialLinkedCount = bookings.filter(isPartialLinked).length
-  const external = bookings.filter((b) => b.bookingType !== 'INTERNAL' && !isPartialLinked(b))
+  const surveyCount = bookings.filter(isSurvey).length
+  const external = bookings.filter((b) => !isInternal(b) && !isPartialLinked(b) && !isSurvey(b))
   const pendingCount = external.filter((b) => !b.amountVerified).length
   const verifiedCount = external.filter((b) => b.amountVerified).length
 
@@ -262,7 +301,7 @@ export default function Finance() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
         <button
           onClick={() => setFilter('all')}
           className={`rounded-xl border p-3 text-center transition-all ${
@@ -317,6 +356,17 @@ export default function Finance() {
         >
           <p className="text-2xl font-bold text-violet-600">{partialLinkedCount}</p>
           <p className="text-xs text-slate-500">🔗 مربوطة بشغلة أخرى</p>
+        </button>
+        <button
+          onClick={() => setFilter('survey')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'survey'
+              ? 'border-teal-400 bg-teal-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-teal-600">{surveyCount}</p>
+          <p className="text-xs text-slate-500">🔍 زيارات كشف</p>
         </button>
       </div>
 
@@ -392,20 +442,33 @@ export default function Finance() {
                   </span>
                   {/* ⚠️ الحل لمشكلة «هذا مكرر لو لأ بنظرة وحدة» — بدون فتح
                       التفاصيل: شارة على الحجز التابع (فيها كود الأصل)،
-                      وشارة عكسية على الحجز الأصل نفسه («ما تحتاج تحذفني»). */}
+                      وشارة عكسية على الحجز الأصل نفسه («ما تحتاج تحذفني»).
+                      نفس العمود يخدم معنيين مختلفين حسب نوع الحجز
+                      المُشير: يوم إضافي بشغلة، أو كشف سبق حجزاً حقيقياً. */}
                   {b.partialJobBooking && (
                     <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                      🔗 يوم إضافي — الأصل: {b.partialJobBooking.code}
+                      {isSurvey(b)
+                        ? `🔍 كشف لهذا الحجز: ${b.partialJobBooking.code}`
+                        : `🔗 يوم إضافي — الأصل: ${b.partialJobBooking.code}`}
                     </span>
                   )}
-                  {partialLinkAnchorIds.has(b.id) && (
+                  {continuationAnchorIds.has(b.id) && (
                     <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
                       🔗 مرتبط بأيام إضافية — لا تحذفه
                     </span>
                   )}
+                  {surveyAnchorIds.has(b.id) && (
+                    <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                      🔍 عليه كشف مسبق — راجع نتائجه
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  {isPartialLinked(b) ? (
+                  {isSurvey(b) ? (
+                    <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-700">
+                      🔍 زيارة كشف — بلا فاتورة
+                    </span>
+                  ) : isPartialLinked(b) ? (
                     <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
                       🔗 ضمن شغلة {b.partialJobBooking?.code}
                     </span>
@@ -443,6 +506,16 @@ export default function Finance() {
                   className="mx-2 shrink-0 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-sm text-violet-700 hover:bg-violet-100 disabled:opacity-50"
                 >
                   🔗
+                </button>
+              )}
+              {canLinkPartial && (
+                <button
+                  onClick={() => markAsSurvey(b)}
+                  disabled={surveyMarkBusyId === b.id}
+                  title="تأشير ككشف بأثر رجعي + ربطه بالحجز الحقيقي الي نتج عنه"
+                  className="mx-2 shrink-0 rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1.5 text-sm text-teal-700 hover:bg-teal-100 disabled:opacity-50"
+                >
+                  🔍
                 </button>
               )}
               {isOwner && (
@@ -521,8 +594,12 @@ export default function Finance() {
                     />
                     {b.partialJobBooking && (
                       <InfoRow
-                        label="جزء من شغلة متعددة الأيام"
-                        value={`اليوم الأول (أو الحجز الأصلي): ${b.partialJobBooking.code}`}
+                        label={isSurvey(b) ? 'كشف لحجز حقيقي' : 'جزء من شغلة متعددة الأيام'}
+                        value={
+                          isSurvey(b)
+                            ? `الحجز الحقيقي الي نتج عن المعاينة: ${b.partialJobBooking.code}`
+                            : `اليوم الأول (أو الحجز الأصلي): ${b.partialJobBooking.code}`
+                        }
                       />
                     )}
                     {b.completionNotes && (
@@ -731,7 +808,14 @@ export default function Finance() {
                     </div>
                   </div>
 
-                  {isPartialLinked(b) ? (
+                  {isSurvey(b) ? (
+                    <p className="mt-4 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-[11px] text-teal-700">
+                      🔍 هذا حجز كشف (زيارة معاينة) — بلا فاتورة ولا عُدّة ولا تقرير عمل،
+                      فما يطالبك بتدقيق أو فاتورة هنا. نتائج المعاينة (شنو يريد الزبون
+                      وتفاصيل الموقع) تُسلَّم من شاشة مهامي.
+                      {b.partialJobBooking && <> نتج عنه الحجز الحقيقي {b.partialJobBooking.code}.</>}
+                    </p>
+                  ) : isPartialLinked(b) ? (
                     <p className="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] text-violet-700">
                       🔗 هذا يوم إضافي بشغلة متعددة الأيام — فلوسه مو منفصلة (كلها بفاتورة
                       الحجز الأصلي {b.partialJobBooking?.code})، فما يطالبك بتدقيق أو فاتورة
