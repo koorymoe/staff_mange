@@ -30,7 +30,7 @@ export default function Finance() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   /** ⚠️ `internal` **معزول**: الشغل داخل الشركة ما ينحسب إيراد زبون،
    *  فما يطلع بـ«الكل» ولا بطابور التدقيق — إله بطاقته لحاله. */
-  const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'internal'>('all')
+  const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'internal' | 'partial_linked'>('all')
   const [search, setSearch] = useState('')
 
   const load = () => {
@@ -175,18 +175,28 @@ export default function Finance() {
     return matches([b.code, b.customer?.code, b.customer?.phone, b.customer?.name], search)
   }
   const isInternal = (b: Booking) => b.bookingType === 'INTERNAL'
+  /** ⚠️ «ما اخذت فلوس منفصلة باليوم الثاني — الفلوس كلها بفاتورة اليوم
+   *  الأول» — حجز مربوط (يوم إضافي بشغلة متعددة الأيام) ماله مبلغ
+   *  مستقل يُدقَّق، فما يصح يطالبنا الشاشة بتدقيقه أو نحسبه معلّقاً.
+   *  العزل هنا **بس بهالشاشة** (نفس تنبيه صاحب النظام صراحة) — ما
+   *  يغيّر amountVerified الحقيقي ولا أي حساب ثاني بالنظام. */
+  const isPartialLinked = (b: Booking) => !!b.partialJobBooking
   const filtered = bookings.filter((b) => {
     if (!matchesSearch(b)) return false
     if (filter === 'internal') return isInternal(b)
-    // 🔴 العزل حقيقي مو شكلي: الداخلي ينشال من كل البطاقات الثانية.
+    if (filter === 'partial_linked') return isPartialLinked(b)
+    // 🔴 العزل حقيقي مو شكلي: الداخلي والمربوط جزئياً ينشالون من كل
+    // البطاقات الثانية — نفس مبدأ عزل «داخل الشركة» تماماً.
     if (isInternal(b)) return false
+    if (isPartialLinked(b)) return false
     if (filter === 'pending') return !b.amountVerified
     if (filter === 'verified') return b.amountVerified
     return true
   })
 
   const internalCount = bookings.filter((b) => b.bookingType === 'INTERNAL').length
-  const external = bookings.filter((b) => b.bookingType !== 'INTERNAL')
+  const partialLinkedCount = bookings.filter(isPartialLinked).length
+  const external = bookings.filter((b) => b.bookingType !== 'INTERNAL' && !isPartialLinked(b))
   const pendingCount = external.filter((b) => !b.amountVerified).length
   const verifiedCount = external.filter((b) => b.amountVerified).length
 
@@ -252,7 +262,7 @@ export default function Finance() {
       </div>
 
       {/* Stats bar */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <button
           onClick={() => setFilter('all')}
           className={`rounded-xl border p-3 text-center transition-all ${
@@ -296,6 +306,17 @@ export default function Finance() {
         >
           <p className="text-2xl font-bold text-indigo-600">{internalCount}</p>
           <p className="text-xs text-slate-500">🏢 داخل الشركة</p>
+        </button>
+        <button
+          onClick={() => setFilter('partial_linked')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'partial_linked'
+              ? 'border-violet-400 bg-violet-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-violet-600">{partialLinkedCount}</p>
+          <p className="text-xs text-slate-500">🔗 مربوطة بشغلة أخرى</p>
         </button>
       </div>
 
@@ -384,15 +405,21 @@ export default function Finance() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      b.amountVerified
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-amber-100 text-amber-700'
-                    }`}
-                  >
-                    {b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}
-                  </span>
+                  {isPartialLinked(b) ? (
+                    <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
+                      🔗 ضمن شغلة {b.partialJobBooking?.code}
+                    </span>
+                  ) : (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        b.amountVerified
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}
+                    </span>
+                  )}
                   <svg
                     className={`h-5 w-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
                     fill="none"
@@ -704,67 +731,77 @@ export default function Finance() {
                     </div>
                   </div>
 
-                  {!b.amountVerified && !canDecide && (
-                    <p className="mt-4 rounded-xl border px-3 py-2 text-[11px]"
-                      style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
-                      👁️ عرض فقط — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) بيد المحاسب،
-                      <b>إلا إذا المالك نطاك صلاحية «تدقيق ومطابقة الحسابات (بدل المحاسب)»</b>.
+                  {isPartialLinked(b) ? (
+                    <p className="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] text-violet-700">
+                      🔗 هذا يوم إضافي بشغلة متعددة الأيام — فلوسه مو منفصلة (كلها بفاتورة
+                      الحجز الأصلي {b.partialJobBooking?.code})، فما يطالبك بتدقيق أو فاتورة
+                      أو تقرير مستقل. الإعفاء هنا بس بشاشة تدقيق الحسابات.
                     </p>
-                  )}
-
-                  {/* التدقيق: مبلغ الفاتورة إجباري، أو بلاغ خطأ ينوجّه للمعني */}
-                  {!b.amountVerified && canDecide && (
-                    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                      <label className="mb-1 block text-xs font-bold text-slate-600">
-                        المبلغ حسب الفاتورة *
-                      </label>
-                      <input
-                        type="number" min="0" inputMode="numeric"
-                        value={invoiceAmounts[b.id] ?? ''}
-                        onChange={(e) => setInvoiceAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
-                        placeholder={b.amountCollected ? String(b.amountCollected) : 'اكتب المبلغ من الفاتورة'}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-                      />
-                      {(b.amountCollected ?? 0) === 0 && (
-                        <p className="mt-1 text-xs text-amber-700">
-                          ⚠️ هذا الحجز بلا مبلغ (مستورد من النظام القديم) — افتح فاتورته واكتب سعرها.
+                  ) : (
+                    <>
+                      {!b.amountVerified && !canDecide && (
+                        <p className="mt-4 rounded-xl border px-3 py-2 text-[11px]"
+                          style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
+                          👁️ عرض فقط — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) بيد المحاسب،
+                          <b>إلا إذا المالك نطاك صلاحية «تدقيق ومطابقة الحسابات (بدل المحاسب)»</b>.
                         </p>
                       )}
 
-                      <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                        <button
-                          disabled={auditBusy === b.id}
-                          onClick={() => doAudit(b, 'FREE')}
-                          className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-                        >
-                          🎁 صيانة مجانية
-                        </button>
-                        <button
-                          disabled={auditBusy === b.id}
-                          onClick={() => doAudit(b, 'VERIFY')}
-                          className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
-                        >
-                          ✔ مطابق — أكّد التدقيق
-                        </button>
-                        <button
-                          disabled={auditBusy === b.id}
-                          onClick={() => doAudit(b, 'MISMATCH')}
-                          className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
-                        >
-                          ⚠️ غير مطابق
-                        </button>
-                        <button
-                          disabled={auditBusy === b.id}
-                          onClick={() => doAudit(b, 'PRICE_ERROR')}
-                          className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                        >
-                          ✕ خطأ بالسعر
-                        </button>
-                      </div>
-                      <p className="mt-2 text-[11px] text-slate-400">
-                        «صيانة مجانية» تغلق الحجز بصفر بلا بلاغ · «غير مطابق» يروح للرقابة والجودة · «خطأ بالسعر» للرقابة والإداري
-                      </p>
-                    </div>
+                      {/* التدقيق: مبلغ الفاتورة إجباري، أو بلاغ خطأ ينوجّه للمعني */}
+                      {!b.amountVerified && canDecide && (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <label className="mb-1 block text-xs font-bold text-slate-600">
+                            المبلغ حسب الفاتورة *
+                          </label>
+                          <input
+                            type="number" min="0" inputMode="numeric"
+                            value={invoiceAmounts[b.id] ?? ''}
+                            onChange={(e) => setInvoiceAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                            placeholder={b.amountCollected ? String(b.amountCollected) : 'اكتب المبلغ من الفاتورة'}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          />
+                          {(b.amountCollected ?? 0) === 0 && (
+                            <p className="mt-1 text-xs text-amber-700">
+                              ⚠️ هذا الحجز بلا مبلغ (مستورد من النظام القديم) — افتح فاتورته واكتب سعرها.
+                            </p>
+                          )}
+
+                          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'FREE')}
+                              className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              🎁 صيانة مجانية
+                            </button>
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'VERIFY')}
+                              className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+                            >
+                              ✔ مطابق — أكّد التدقيق
+                            </button>
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'MISMATCH')}
+                              className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                            >
+                              ⚠️ غير مطابق
+                            </button>
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'PRICE_ERROR')}
+                              className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                              ✕ خطأ بالسعر
+                            </button>
+                          </div>
+                          <p className="mt-2 text-[11px] text-slate-400">
+                            «صيانة مجانية» تغلق الحجز بصفر بلا بلاغ · «غير مطابق» يروح للرقابة والجودة · «خطأ بالسعر» للرقابة والإداري
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
