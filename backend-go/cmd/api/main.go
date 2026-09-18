@@ -386,6 +386,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("[duplicate] حجوزات جديدة: %d، زبائن جدد: %d", bookings, customers)
 		}
 	})
+
+	// ═══ الفضفضة اليومية (ماتركس) ═══ — ملخص أحكام اليوم للمالك ومدير
+	// النظام، مرة وحدة بعد ٨ مساءً بغداد (العلامة تمنع إرسالها مرتين).
+	dailyDebriefService := service.NewDailyDebriefService(aiRepo, notificationRepo)
+	safeguard.Loop("الفضفضة اليومية", 10*time.Minute, 30*time.Minute, func() {
+		if err := dailyDebriefService.RunIfDue(); err != nil {
+			log.Printf("daily debrief: %v", err)
+		}
+	})
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —

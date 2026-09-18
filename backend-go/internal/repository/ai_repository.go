@@ -228,6 +228,51 @@ func (r *AiRepository) RecentJudgedFeedback(kind string, limit int) ([]model.Mon
 	return rows, err
 }
 
+// VerdictSeverityCounts أحكام ماتركس بفترة معيّنة مبوّبة بالخطورة —
+// مادة الفضفضة اليومية.
+type VerdictSeverityCounts struct {
+	Critical int `db:"critical"`
+	Warn     int `db:"warn"`
+	Watch    int `db:"watch"`
+	Info     int `db:"info"`
+	Total    int `db:"total"`
+}
+
+func (r *AiRepository) VerdictSeverityCounts(from, to time.Time) (VerdictSeverityCounts, error) {
+	var c VerdictSeverityCounts
+	err := r.db.Get(&c, `
+		SELECT
+			COUNT(*) FILTER (WHERE severity = 'CRITICAL') AS critical,
+			COUNT(*) FILTER (WHERE severity = 'WARN') AS warn,
+			COUNT(*) FILTER (WHERE severity = 'WATCH') AS watch,
+			COUNT(*) FILTER (WHERE severity = 'INFO') AS info,
+			COUNT(*) AS total
+		FROM "AiVerdict"
+		WHERE "createdAt" >= $1 AND "createdAt" < $2`, from, to)
+	return c, err
+}
+
+// ClaimDailyMarker «يحجز» مفتاحاً بيوم معيّن — أول Loop يوصل يفوز
+// (`ON CONFLICT DO NOTHING`)، والباقي يرجعله false فما يكرر نفس
+// الشغلة بنفس اليوم. نفس جدول `AiMetric` الموجود، بدون جدول جديد —
+// scope="MARKER" يفصلها عن المؤشرات الحقيقية بوضوح.
+func (r *AiRepository) ClaimDailyMarker(metricKey, day string) (bool, error) {
+	anchor, err := time.Parse("2006-01-02", day)
+	if err != nil {
+		return false, err
+	}
+	res, err := r.db.Exec(`
+		INSERT INTO "AiMetric" (id, "metricKey", scope, "scopeId", "periodStart", "periodEnd", value, "sampleCount", details)
+		VALUES ($1, $2, 'MARKER', $3, $4, $4, 1, 0, '{}')
+		ON CONFLICT ("metricKey", scope, COALESCE("scopeId",''), "periodStart", "periodEnd") DO NOTHING
+	`, uuid.NewString(), metricKey, day, anchor)
+	if err != nil {
+		return false, err
+	}
+	n, _ := res.RowsAffected()
+	return n > 0, nil
+}
+
 // MonitorAgreementCounts شكد من أحكام ماتركس بفترة معيّنة وافق عليها
 // المراقب (OK) من أصل الي بتّ فيها. مقياس الدقة — بلا جدول جديد.
 func (r *AiRepository) MonitorAgreementCounts(from, to time.Time) (agreed, total int, err error) {
@@ -348,9 +393,11 @@ func (r *AiRepository) UpsertMetric(m model.AiMetric) error {
 
 func (r *AiRepository) ListMetrics(from, to time.Time) ([]model.AiMetric, error) {
 	rows := []model.AiMetric{}
+	// ⚠️ scope='MARKER' علامات داخلية (مثلاً «الفضفضة اليومية انرسلت
+	// اليوم») — مو مؤشراً حقيقياً، تُستثنى حتى ما تطلع كبطاقة بالواجهة.
 	err := r.db.Select(&rows, `
 		SELECT * FROM "AiMetric"
-		WHERE "periodStart" >= $1 AND "periodEnd" <= $2
+		WHERE "periodStart" >= $1 AND "periodEnd" <= $2 AND scope <> 'MARKER'
 		ORDER BY "metricKey", scope`, from, to)
 	return rows, err
 }
