@@ -36,6 +36,7 @@ const LabWorkbench = lazy(() => import('./lab/LabWorkbench'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
 const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
+const DuplicateReviewPage = lazy(() => import('./pages/DuplicateReviewPage'))
 const ExtraTasksPage = lazy(() => import('./pages/ExtraTasksPage'))
 const RolesGuidePage = lazy(() => import('./pages/RolesGuidePage'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
@@ -185,6 +186,7 @@ function App() {
           <Route path="partial-bookings" element={<Navigate to="/bookings" replace />} />
           <Route path="stage-buckets" element={<StageBucketsPage />} />
           <Route path="ai-insights" element={<AiInsightsPage />} />
+          <Route path="duplicate-review" element={<DuplicateReviewPage />} />
           <Route path="extra-tasks" element={<ExtraTasksPage />} />
           <Route path="roles-guide" element={<RolesGuidePage />} />
           <Route path="letters" element={<LettersPage />} />

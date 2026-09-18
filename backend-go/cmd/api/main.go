@@ -369,6 +369,23 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	aiBrainService.SetMonitorFeed(monitorReviewService)
 	bookingService.SetAiRecorder(aiRepo)
 	leaderInvoiceService.SetAiRecorder(aiRepo)
+
+	// ═══ تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ═══
+	// مسار مستقل عن AiSignal/صندوق المراقب عمداً (زوج التكرار علاقة
+	// بين صفّين، وذاك التصميم يفترض هوية واحدة لكل معرّف).
+	duplicateCandidateRepo := repository.NewDuplicateCandidateRepository(db)
+	duplicateCandidateService := service.NewDuplicateCandidateService(duplicateCandidateRepo)
+	duplicateCandidateHandler := handler.NewDuplicateCandidateHandler(duplicateCandidateService)
+	safeguard.Loop("كنسة تدقيق التكرار", 5*time.Minute, time.Hour, func() {
+		bookings, customers, err := duplicateCandidateService.RunScan()
+		if err != nil {
+			log.Printf("duplicate candidate scan: %v", err)
+			return
+		}
+		if bookings > 0 || customers > 0 {
+			log.Printf("[duplicate] حجوزات جديدة: %d، زبائن جدد: %d", bookings, customers)
+		}
+	})
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -1697,6 +1714,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.
 	mux.Handle("POST /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.List), requireAuth))
+	// تدقيق التكرار (ماتركس) — عرض وقرار "مو تكرار" حصراً، بلا حذف/دمج.
+	mux.Handle("GET /api/duplicate-candidates", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.List), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/duplicate-candidates/{id}/dismiss", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Dismiss), requireAuth, requireAdmin))
 
 	mux.Handle("GET /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.List), requireAuth, requireQuality))
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))

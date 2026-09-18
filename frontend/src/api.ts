@@ -3906,6 +3906,17 @@ export const api = {
   markBookingAsSurvey: (id: string, code: string) =>
     request<Booking>(`/bookings/${id}/mark-survey`, { method: 'PUT', body: JSON.stringify({ code }) }),
 
+  // ── تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ──
+  getDuplicateCandidates: (kind?: 'BOOKING' | 'CUSTOMER', status?: 'PENDING' | 'DISMISSED') => {
+    const params = new URLSearchParams()
+    if (kind) params.set('kind', kind)
+    if (status) params.set('status', status)
+    const qs = params.toString()
+    return request<DuplicateCandidate[]>(`/duplicate-candidates${qs ? `?${qs}` : ''}`)
+  },
+  dismissDuplicateCandidate: (id: string) =>
+    request<{ ok: boolean }>(`/duplicate-candidates/${id}/dismiss`, { method: 'PUT' }),
+
   /** تأجيل الموعد بطلب الزبون — السبب إجباري وينعد بعدد التأجيلات */
   /** الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري */
   /** كل طلعة صارت على الحجز — بتاريخها وكادرها */
@@ -5155,6 +5166,38 @@ export interface BookingSurveyReport {
   otherNotes: string | null
   createdAt: string
   employee?: { id: string; name: string } | null
+}
+
+export interface DuplicateBookingBrief {
+  id: string
+  code: string
+  customerName: string
+  customerPhone: string
+  customerCode: number
+  address: string | null
+  serviceName: string | null
+  scheduledAt: string | null
+}
+
+export interface DuplicateCustomerBrief {
+  id: string
+  name: string
+  phone: string
+  customerCode: number
+}
+
+export interface DuplicateCandidate {
+  id: string
+  kind: 'BOOKING' | 'CUSTOMER'
+  matchReason: string
+  status: 'PENDING' | 'DISMISSED'
+  reviewedAt: string | null
+  reviewedByName?: string | null
+  detectedAt: string
+  bookingA?: DuplicateBookingBrief | null
+  bookingB?: DuplicateBookingBrief | null
+  customerA?: DuplicateCustomerBrief | null
+  customerB?: DuplicateCustomerBrief | null
 }
 
 export interface SuggestedCrewMember {

@@ -353,6 +353,9 @@ func versionedMigrations() []Migration {
 	// 0290-0291: حجز «كشف» — زيارة معاينة بلا فاتورة ولا عُدّة، مع تقرير
 	// نتائج بسيط (شنو يريد الزبون، مساحة الموقع، تفاصيل حرة).
 	result = append(result, surveyBookingMigration()...)
+	// 0292-0293: تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط،
+	// يكتشفهم الكود ويعرضهم جنب بعض، بلا حذف أو دمج تلقائي.
+	result = append(result, duplicateCandidateMigration()...)
 	return result
 }
 
