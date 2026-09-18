@@ -34,11 +34,12 @@ export default function BookingEditPanel({
   const [bookingType, setBookingType] = useState(booking.bookingType)
   const [typeBusy, setTypeBusy] = useState(false)
 
-  const BOOKING_TYPES: { value: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'; label: string }[] = [
+  const BOOKING_TYPES: { value: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR' | 'SURVEY'; label: string }[] = [
     { value: 'REGULAR', label: '📋 حجز عادي' },
     { value: 'MAINTENANCE', label: '🔧 حجز صيانة' },
     { value: 'INTERNAL', label: '🏢 شغل داخل الشركة' },
     { value: 'SOLAR', label: '☀️ حجز طاقة شمسية' },
+    { value: 'SURVEY', label: '🔍 كشف (معاينة بلا فاتورة)' },
   ]
 
   const changeType = async (value: string) => {

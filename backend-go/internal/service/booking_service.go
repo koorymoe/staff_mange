@@ -918,6 +918,40 @@ func (s *BookingService) SetPartialJobLink(id, code string) (*model.Booking, err
 	return s.repo.FindByID(id)
 }
 
+// MarkAsSurveyRetroactively يأشّر حجزاً قديماً (فاته التصنيف وقت
+// التنسيق) كـ«كشف» بأثر رجعي من شاشة تدقيق الحسابات، ويربطه فوراً
+// بالحجز الحقيقي الي نتج عنه (لو موجود).
+//
+// ⚠️⚠️ **يتحقق من الكود قبل أي تعديل** — لا ينادي SetPartialJobLink
+// بعد ChangeType: `ChangeType`/`SetPartialJobBookingID` نداءان
+// منفصلان بلا معاملة مشتركة، فلو تحقّقنا من الكود **بعد** تغيير
+// النوع ورفضناه (كود ذاتي أو غير موجود)، الحجز يضل معلَّماً «كشف»
+// بلا رجوع رغم فشل الطلب كله ظاهرياً — بگ حقيقي طلع بالاختبار المحلي.
+func (s *BookingService) MarkAsSurveyRetroactively(id, byEmployeeID, code string) (*model.Booking, error) {
+	code = strings.TrimSpace(code)
+	var targetID *string
+	if code != "" {
+		target, err := s.repo.FindByCode(code)
+		if err != nil {
+			return nil, err
+		}
+		if target == nil {
+			return nil, errors.New("كود الحجز \"" + code + "\" غير موجود بالنظام")
+		}
+		if target.ID == id {
+			return nil, errors.New("ما تكدر تربط الحجز بنفسه")
+		}
+		targetID = &target.ID
+	}
+	if err := s.repo.ChangeType(id, "SURVEY", byEmployeeID); err != nil {
+		return nil, err
+	}
+	if err := s.repo.SetPartialJobBookingID(id, targetID); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
+}
+
 // Restore يرجّع حجز من الأرشيف للعمل.
 func (s *BookingService) Restore(id string) (*model.Booking, error) {
 	if err := s.repo.Restore(id); err != nil {

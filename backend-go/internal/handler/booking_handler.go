@@ -671,6 +671,24 @@ func (h *BookingHandler) SetPartialJobLink(w http.ResponseWriter, r *http.Reques
 	WriteJSON(w, http.StatusOK, b)
 }
 
+// PUT /api/bookings/{id}/mark-survey — تأشير حجز قديم ككشف بأثر رجعي
+// من شاشة تدقيق الحسابات + ربطه بالحجز الحقيقي (حراستها booking_partial_link).
+func (h *BookingHandler) MarkAsSurveyRetroactively(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Code string `json:"code"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	b, err := h.service.MarkAsSurveyRetroactively(r.PathValue("id"), middleware.EmployeeIDFromContext(r), body.Code)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
 // PUT /api/bookings/{id}/restore
 func (h *BookingHandler) RestoreBooking(w http.ResponseWriter, r *http.Request) {
 	b, err := h.service.Restore(r.PathValue("id"))
@@ -764,7 +782,7 @@ func (h *BookingHandler) ChangeType(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
 		return
 	}
-	allowed := map[string]bool{"REGULAR": true, "MAINTENANCE": true, "INTERNAL": true, "SOLAR": true}
+	allowed := map[string]bool{"REGULAR": true, "MAINTENANCE": true, "INTERNAL": true, "SOLAR": true, "SURVEY": true}
 	if !allowed[req.BookingType] {
 		WriteError(w, http.StatusBadRequest, "نوع حجز غير معروف")
 		return

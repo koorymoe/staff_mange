@@ -3900,6 +3900,11 @@ export const api = {
    *  فاضي يفك الربط. حراستها صلاحية `booking_partial_link` بالخادم. */
   setPartialJobLink: (id: string, code: string) =>
     request<Booking>(`/bookings/${id}/partial-job-link`, { method: 'PUT', body: JSON.stringify({ code }) }),
+  /** تأشير حجز قديم ككشف بأثر رجعي من شاشة تدقيق الحسابات + ربطه
+   *  بالحجز الحقيقي الي نتج عنه (code فاضي = بلا ربط). حراستها نفس
+   *  صلاحية `booking_partial_link`. */
+  markBookingAsSurvey: (id: string, code: string) =>
+    request<Booking>(`/bookings/${id}/mark-survey`, { method: 'PUT', body: JSON.stringify({ code }) }),
 
   /** تأجيل الموعد بطلب الزبون — السبب إجباري وينعد بعدد التأجيلات */
   /** الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري */
@@ -4117,9 +4122,16 @@ export const api = {
     request<Booking>(`/bookings/${id}/schedule-continuation`, {
       method: 'POST', body: JSON.stringify({ scheduledAt }),
     }),
+  // ── تقرير زيارة معاينة («كشف») ──
+  submitSurveyReport: (bookingId: string, body: SurveyReportBody) =>
+    request<BookingSurveyReport>('/booking-survey-reports', {
+      method: 'POST', body: JSON.stringify({ bookingId, ...body }),
+    }),
+  getBookingSurveyReports: (bookingId: string) =>
+    request<BookingSurveyReport[]>(`/booking-survey-reports?bookingId=${encodeURIComponent(bookingId)}`),
 
   /** تغيير نوع الحجز — للمالك ومدير النظام بس (السيرفر يرفض غيرهم) */
-  changeBookingType: (id: string, bookingType: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR') =>
+  changeBookingType: (id: string, bookingType: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR' | 'SURVEY') =>
     request<Booking>(`/bookings/${id}/type`, { method: 'PUT', body: JSON.stringify({ bookingType }) }),
 
   completeBooking: (
@@ -5124,6 +5136,25 @@ export interface BookingProgressReport {
   materialsUsed: string | null
   crewSnapshot: string | null
   createdAt: string
+}
+
+export interface SurveyReportBody {
+  customerWants: string
+  siteAreaSqm?: number | null
+  siteDetails?: string | null
+  otherNotes?: string | null
+}
+
+export interface BookingSurveyReport {
+  id: string
+  bookingId: string
+  employeeId: string
+  customerWants: string
+  siteAreaSqm: number | null
+  siteDetails: string | null
+  otherNotes: string | null
+  createdAt: string
+  employee?: { id: string; name: string } | null
 }
 
 export interface SuggestedCrewMember {

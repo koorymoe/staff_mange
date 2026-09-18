@@ -6,6 +6,7 @@ import { formatScheduleWindow } from '../utils/schedule'
 import CompletionBadge from '../components/CompletionBadge'
 import { api, type Booking, type PersonalTool } from '../api'
 import PartialCompleteDialog from '../components/PartialCompleteDialog'
+import SurveyReportDialog from '../components/SurveyReportDialog'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
@@ -270,7 +271,9 @@ export default function MyTasks() {
   // ⚠️ وما ننسى إن الجرد هو نفسه **بوابة بدء العمل**: فبهالخدمات
   // البدء يصير مباشرةً بلا مودال — إخفاء المودال بلا هالسطر يعني
   // زر «بدأنا بالعمل» ما يسوّي شي.
-  const noToolsCheck = (b: Booking) => !!b.service?.serviceKind
+  // ⚠️ حجز «كشف» (زيارة معاينة) ينضاف لنفس الاستثناء: الكادر ما يحتاج
+  // عدّة إطلاقاً — الزيارة معاينة بس، ما تحتاج تركيب ولا فاتورة.
+  const noToolsCheck = (b: Booking) => !!b.service?.serviceKind || b.bookingType === 'SURVEY'
 
   const openToolsCheck = async (booking: Booking, onlyTools: boolean) => {
     setToolsOnly(onlyTools)
@@ -334,6 +337,7 @@ export default function MyTasks() {
   const [paperwork, setPaperwork] = useState<{ booking: Booking; stopped: boolean } | null>(null)
   const [stopFor, setStopFor] = useState<Booking | null>(null)
   const [partialFor, setPartialFor] = useState<Booking | null>(null)
+  const [surveyReportFor, setSurveyReportFor] = useState<Booking | null>(null)
   const [stopReason, setStopReason] = useState('')
   const [stopping, setStopping] = useState(false)
   // ⚠️ الوقت ينثبت بفتح الشاشة مو بكل رندر — وفوق هنا لأن الخطّافات
@@ -678,6 +682,16 @@ export default function MyTasks() {
                           >
                             🔄 إنجاز جزئي (نكمل باچر)
                           </button>
+                          {/* حجز كشف: بلا فاتورة وبلا تقرير عمل — بس نتائج
+                              المعاينة لازم توصل (اختياري، ما يمنع «تم الإنجاز»). */}
+                          {b.bookingType === 'SURVEY' && (
+                            <button
+                              onClick={() => setSurveyReportFor(b)}
+                              className="rounded-lg border border-teal-400 bg-teal-50 px-4 py-3 text-sm font-bold text-teal-800 transition-all hover:bg-teal-100 sm:py-2"
+                            >
+                              📝 نتائج المعاينة
+                            </button>
+                          )}
                         </div>
                         {/* تقارير الأيام الفائتة — الكادر يقراها قبل ما يبدي */}
                         <BookingProgressTimeline bookingId={b.id} booking={b} />
@@ -794,6 +808,18 @@ export default function MyTasks() {
             // الحجز رجع للإداري — ما عاد بمهام هذا الموظف
             setBookings((prev) => prev.filter((x) => x.id !== partialFor.id))
             setPartialFor(null)
+          }}
+        />
+      )}
+
+      {surveyReportFor && (
+        <SurveyReportDialog
+          booking={surveyReportFor}
+          onClose={() => setSurveyReportFor(null)}
+          onDone={() => {
+            // الحجز يبقى بمهام الموظف — التقرير ما يغيّر حالته، ما
+            // مثل الإنجاز الجزئي الي يرجّع الحجز للإداري.
+            setSurveyReportFor(null)
           }}
         />
       )}

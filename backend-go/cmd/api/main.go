@@ -108,6 +108,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	employeeCommissionRepo := repository.NewEmployeeCommissionRepository(db)
 	gpsRepo := repository.NewGpsRepository(db)
 	workReportRepo := repository.NewWorkReportRepository(db)
+	surveyReportRepo := repository.NewBookingSurveyReportRepository(db)
 	statsRepo := repository.NewStatsRepository(db)
 	vehicleRepo := repository.NewVehicleRepository(db)
 	vehicleMissionRepo := repository.NewVehicleMissionRepository(db)
@@ -197,6 +198,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الخدمة مو على الفني. فحصان منفصلان يفترقان بأول تعديل.
 	paperworkGuard := service.NewPaperworkGuard(db)
 	workReportService := service.NewWorkReportService(workReportRepo, paperworkGuard)
+	surveyReportService := service.NewBookingSurveyReportService(surveyReportRepo)
 	statsService := service.NewStatsService(statsRepo)
 	vehicleService := service.NewVehicleService(vehicleRepo)
 	vehicleMissionService := service.NewVehicleMissionService(vehicleMissionRepo, vehicleRepo)
@@ -403,6 +405,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	designFormHandler := handler.NewDesignFormHandler(designFormService)
 	gpsHandler := handler.NewGpsHandler(gpsService)
 	workReportHandler := handler.NewWorkReportHandler(workReportService)
+	surveyReportHandler := handler.NewBookingSurveyReportHandler(surveyReportService)
 	// مهندس الجودة يراجع تقارير غيره بصلاحيته، مو بدوره.
 	workReportHandler.SetPermissions(permissionRepo)
 	statsHandler := handler.NewStatsHandler(statsService)
@@ -785,6 +788,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/bookings/{id}", middleware.Chain(http.HandlerFunc(bookingHandler.ArchiveBooking), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/restore", middleware.Chain(http.HandlerFunc(bookingHandler.RestoreBooking), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/bookings/{id}/partial-job-link", middleware.Chain(http.HandlerFunc(bookingHandler.SetPartialJobLink), requireAuth, requirePartialLink))
+	mux.Handle("PUT /api/bookings/{id}/mark-survey", middleware.Chain(http.HandlerFunc(bookingHandler.MarkAsSurveyRetroactively), requireAuth, requirePartialLink))
 	// الكنسة اليدوية للإدارة والفحص — التلقائية تشتغل بالخلفية
 	mux.Handle("POST /api/bookings/waiting-reminder-sweep", middleware.Chain(http.HandlerFunc(bookingHandler.RunWaitingReminderSweep), requireAuth, requireAdmin))
 	// باسورد مركز القيادة — المالك بس بهاي المرحلة
@@ -1690,6 +1694,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقارير العمل — الفني يرسل تقرير عن حجزه، المراقب/الجودة يشوفون كل التقارير
 	mux.Handle("POST /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/work-reports", middleware.Chain(http.HandlerFunc(workReportHandler.List), requireAuth))
+	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.
+	mux.Handle("POST /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.Create), requireAuth))
+	mux.Handle("GET /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.List), requireAuth))
 
 	mux.Handle("GET /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.List), requireAuth, requireQuality))
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))

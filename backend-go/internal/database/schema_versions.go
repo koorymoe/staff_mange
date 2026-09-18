@@ -350,6 +350,9 @@ func versionedMigrations() []Migration {
 	// 0289: ربط حجزين تاريخيين منفصلين كإنجاز جزئي لنفس الشغلة — شغلة
 	// طوّلت أكثر من يوم واستوردت كصفوف منفصلة، ما تنطابق مع تكرار حقيقي.
 	result = append(result, bookingPartialLinkMigration()...)
+	// 0290-0291: حجز «كشف» — زيارة معاينة بلا فاتورة ولا عُدّة، مع تقرير
+	// نتائج بسيط (شنو يريد الزبون، مساحة الموقع، تفاصيل حرة).
+	result = append(result, surveyBookingMigration()...)
 	return result
 }
 
