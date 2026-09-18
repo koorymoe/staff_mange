@@ -395,6 +395,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("daily debrief: %v", err)
 		}
 	})
+	// ═══ الاستكشاف الأسبوعي (ماتركس) ═══ — شبكة ٥ مقاييس × ٤ محاور
+	// تُحسب حتمياً ضد كل البيانات كل اثنين، وتنبّه المالك ومدير النظام
+	// حصراً بالأنماط الي عبرت بوابتي العيّنة والانحراف.
+	aiDiscoveryRepo := repository.NewAiDiscoveryRepository(db)
+	aiDiscoveryService := service.NewAiDiscoveryService(aiDiscoveryRepo, aiRepo, employeeRepo, notificationRepo)
+	if cfg.AnthropicAPIKey != "" {
+		aiDiscoveryService.SetNarrator(service.NewModelDiscoveryNarrator(cfg.AnthropicAPIKey, cfg.AIModel, cfg.AIDailyCap))
+	}
+	safeguard.Loop("الاستكشاف الأسبوعي", 15*time.Minute, 6*time.Hour, func() {
+		if err := aiDiscoveryService.RunWeeklyIfDue(); err != nil {
+			log.Printf("weekly discovery: %v", err)
+		}
+	})
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —

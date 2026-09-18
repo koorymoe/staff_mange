@@ -79,6 +79,8 @@ export default function AiInsightsPage() {
   }
 
   const analyzed = signals.filter((s) => s.verdict)
+  const companyMetrics = metrics.filter((m) => m.scope === 'COMPANY')
+  const discoveryMetrics = metrics.filter((m) => m.scope !== 'COMPANY')
 
   return (
     <div dir="rtl" className="space-y-5">
@@ -141,12 +143,13 @@ export default function AiInsightsPage() {
         </div>
       )}
 
-      {/* ═══ المؤشرات ═══ */}
-      {metrics.length > 0 && (
+      {/* ═══ المؤشرات ═══ — Scope=COMPANY حصراً؛ خلايا الاستكشاف
+          الأسبوعي (محاور ثانية) إلها قسمها المستقل تحت. */}
+      {companyMetrics.length > 0 && (
         <div className="rounded-2xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <h3 className="mb-3 font-bold text-[#0f2040]">📊 المؤشرات — آخر ٣٠ يوم</h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {metrics.map((m) => (
+            {companyMetrics.map((m) => (
               <div key={m.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
                 <p className="text-[11px] font-bold text-slate-500">
                   {AI_METRIC_LABELS[m.metricKey] || m.metricKey}
@@ -159,6 +162,35 @@ export default function AiInsightsPage() {
                 {/* ⚠️ عدد العيّنات ينعرض دائماً: «٥٠٪» من عيّنتين مو
                     مثل «٥٠٪» من مئتين، والقرار يختلف. */}
                 <p className="mt-0.5 text-[10.5px] text-slate-400">من {m.sampleCount} حالة</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ═══ الاستكشاف الأسبوعي ═══ — أنماط شاذة اكتشفها النظام
+          لحاله (بلا سؤال محدد)، كل اثنين، ضد كل البيانات. */}
+      {discoveryMetrics.length > 0 && (
+        <div className="rounded-2xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+          <h3 className="mb-1 font-bold text-[#0f2040]">🔎 الاستكشاف الأسبوعي</h3>
+          <p className="mb-3 text-xs text-slate-500">
+            أنماط شاذة عن المعدل العام — النظام فحصها لحاله بلا سؤال محدد، كل اثنين.
+          </p>
+          <div className="space-y-2">
+            {discoveryMetrics.map((m) => (
+              <div key={m.id} className="rounded-xl border border-slate-200 bg-slate-50/60 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-bold text-brand-800">
+                    {AI_METRIC_LABELS[m.metricKey] || m.metricKey}
+                  </span>
+                  <span className="text-xs font-bold text-slate-600">
+                    {m.details?.axisLabel} — {m.details?.valueLabel}
+                  </span>
+                  <span className="mr-auto text-[11px] text-slate-400">من {m.sampleCount} حالة</span>
+                </div>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  {m.details?.narration || `${m.value.toFixed(0)}% مقابل معدل عام ${(m.details?.overallAvg ?? 0).toFixed(0)}%`}
+                </p>
               </div>
             ))}
           </div>

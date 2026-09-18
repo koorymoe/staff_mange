@@ -214,6 +214,9 @@ type AiMetric struct {
 	ComputedAt  time.Time `db:"computedAt" json:"computedAt"`
 
 	ScopeName *string `db:"-" json:"scopeName,omitempty"`
+	// DetailsMap: نسخة مفكوكة من Details للواجهة — نفس نمط FactsMap
+	// بـAiEvidence. تُملى بالمستودع (ListMetrics)، مو هنا.
+	DetailsMap map[string]any `db:"-" json:"details,omitempty"`
 }
 
 // مفاتيح المؤشرات — تنحسب من الأدلة مو عدّادات خام.
@@ -246,6 +249,89 @@ func AiMetricLabel(key string) string {
 		return "نسبة التأخر بالخروج للزبون"
 	case AiMetricMonitorAgreement:
 		return "دقّة ماتركس — وافق المراقب على أحكامه"
+	}
+	return AiDiscoveryMetricLabel(key)
+}
+
+// ═══ الاستكشاف الأسبوعي — محاور وشبكة أنماط ═══
+//
+// ⚠️ هذا يجاوب «ما أريد أشرحله بالمضبوط، أريده يكتشف» — بس بمحاور
+// **موجودة أصلاً** بالجدول (يوم، منظومة، وردية، موظف مقابل زملائه)،
+// مو نموذجاً يخترع أسئلة جديدة (خطر حقن SQL وبيانات حساسة). شوف
+// خطة «الاستكشاف الأسبوعي» للتفصيل الكامل.
+const (
+	AiAxisDayOfWeek  = "DAY_OF_WEEK"
+	AiAxisSystemType = "SYSTEM_TYPE"
+	AiAxisShift      = "SHIFT"
+	AiAxisEmployee   = "EMPLOYEE"
+)
+
+func AiAxisLabel(axis string) string {
+	switch axis {
+	case AiAxisDayOfWeek:
+		return "يوم الأسبوع"
+	case AiAxisSystemType:
+		return "نوع المنظومة"
+	case AiAxisShift:
+		return "الوردية"
+	case AiAxisEmployee:
+		return "الموظف مقابل زملائه"
+	}
+	return axis
+}
+
+// AiDayOfWeekLabel يترجم ISODOW (١=الاثنين..٧=الأحد) لاسم عربي.
+func AiDayOfWeekLabel(isodow string) string {
+	switch isodow {
+	case "1":
+		return "الاثنين"
+	case "2":
+		return "الثلاثاء"
+	case "3":
+		return "الأربعاء"
+	case "4":
+		return "الخميس"
+	case "5":
+		return "الجمعة"
+	case "6":
+		return "السبت"
+	case "7":
+		return "الأحد"
+	}
+	return isodow
+}
+
+func AiShiftLabel(shift string) string {
+	switch shift {
+	case "MORNING":
+		return "صباحي"
+	case "EVENING":
+		return "مسائي"
+	}
+	return shift
+}
+
+// مفاتيح مؤشرات الشبكة — ٥ مقاييس تُفحص ضد الـ٤ محاور فوق.
+const (
+	AiDiscoveryLateStartRate     = "DISC_LATE_START_RATE"
+	AiDiscoveryWorkStopRate      = "DISC_WORK_STOP_RATE"
+	AiDiscoveryPartialRate       = "DISC_PARTIAL_RATE"
+	AiDiscoveryInvoiceAdjustRate = "DISC_INVOICE_ADJUST_RATE"
+	AiDiscoveryDisciplineRate    = "DISC_DISCIPLINE_RATE"
+)
+
+func AiDiscoveryMetricLabel(key string) string {
+	switch key {
+	case AiDiscoveryLateStartRate:
+		return "نسبة التأخر بالخروج"
+	case AiDiscoveryWorkStopRate:
+		return "نسبة توقف العمل"
+	case AiDiscoveryPartialRate:
+		return "نسبة الإنجاز الجزئي"
+	case AiDiscoveryInvoiceAdjustRate:
+		return "نسبة تعديل الفواتير"
+	case AiDiscoveryDisciplineRate:
+		return "نسبة المخالفات الانضباطية"
 	}
 	return key
 }

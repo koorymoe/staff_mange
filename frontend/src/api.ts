@@ -1747,6 +1747,8 @@ export interface AiMetric {
   /** عدد العيّنات — «٥٠٪» من عيّنتين مو مثل «٥٠٪» من مئتين */
   sampleCount: number
   computedAt: string
+  /** خلايا الاستكشاف الأسبوعي بس (scope غير COMPANY) — axisLabel/valueLabel/overallAvg/narration */
+  details?: { axisLabel?: string; valueLabel?: string; overallAvg?: number; narration?: string }
 }
 
 export const AI_METRIC_LABELS: Record<string, string> = {

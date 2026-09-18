@@ -399,7 +399,19 @@ func (r *AiRepository) ListMetrics(from, to time.Time) ([]model.AiMetric, error)
 		SELECT * FROM "AiMetric"
 		WHERE "periodStart" >= $1 AND "periodEnd" <= $2 AND scope <> 'MARKER'
 		ORDER BY "metricKey", scope`, from, to)
-	return rows, err
+	if err != nil {
+		return nil, err
+	}
+	for i := range rows {
+		if len(rows[i].Details) == 0 {
+			continue
+		}
+		var m map[string]any
+		if json.Unmarshal(rows[i].Details, &m) == nil {
+			rows[i].DetailsMap = m
+		}
+	}
+	return rows, nil
 }
 
 // itoa بسيط لبناء رقم المعامل بالاستعلام — بدون استيراد strconv لعملية وحدة.
