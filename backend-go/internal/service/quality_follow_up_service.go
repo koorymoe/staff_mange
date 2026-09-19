@@ -94,6 +94,7 @@ var validQualityFollowUpStatuses = map[string]bool{
 	"CONTACTED_OK":    true,
 	"CONTACTED_ISSUE": true,
 	"CONVERTED":       true,
+	"RECONTACT":       true,
 	"CLOSED":          true,
 }
 
@@ -102,4 +103,38 @@ func (s *QualityFollowUpService) Update(id, contactedByEmployeeID string, req mo
 		return nil, errors.New("حالة متابعة غير معروفة")
 	}
 	return s.repo.Update(id, req.Status, contactedByEmployeeID, req.ContactNotes)
+}
+
+// LinkToBooking تربط متابعة جودة بحجز صيانة حقيقي انسوّى لهذا الزبون —
+// نفس الحجز الي فتحه مهندس الجودة من شاشة المتابعة مباشرة.
+func (s *QualityFollowUpService) LinkToBooking(id, bookingID string) (*model.QualityFollowUp, error) {
+	if bookingID == "" {
+		return nil, errors.New("معرّف الحجز مطلوب")
+	}
+	return s.repo.LinkToBooking(id, bookingID)
+}
+
+// RunRecontactScan تُستدعى دورياً من الحلقة الخلفية: أي متابعة حجزها
+// المربوط اكتمل تنحوّل لـRECONTACT، ومهندس الجودة الأصلي يتنبّه
+// حتى يرجع يتصل بالزبون يتأكد الحل انسوى.
+func (s *QualityFollowUpService) RunRecontactScan() error {
+	rows, err := s.repo.RecontactDue()
+	if err != nil {
+		return err
+	}
+	if s.notifications == nil {
+		return nil
+	}
+	for _, q := range rows {
+		if q.ContactedByEmployeeID == nil {
+			continue
+		}
+		bookingCode := ""
+		if q.LinkedBooking != nil {
+			bookingCode = q.LinkedBooking.Code
+		}
+		_ = s.notifications.Create(*q.ContactedByEmployeeID, "quality_recontact",
+			"🔁 حجز الصيانة "+bookingCode+" اكتمل — اتصل بالزبون مرة ثانية تتأكد الحل انسوى")
+	}
+	return nil
 }

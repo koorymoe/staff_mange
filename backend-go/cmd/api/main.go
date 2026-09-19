@@ -416,6 +416,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	procurementService.SetMonitorFeed(monitorReviewService)
 	procurementService.SetNotificationRepository(notificationRepo)
 	qualityFollowUpService.SetMonitorFeed(monitorReviewService)
+	// حجز الصيانة المربوط بمتابعة جودة اكتمل؟ نبّه مهندس الجودة يرجع
+	// يتصل بالزبون مرة ثانية يتأكد الحل انسوى.
+	safeguard.Loop("كنسة اتصال الجودة الثاني", 5*time.Minute, 15*time.Minute, func() {
+		if err := qualityFollowUpService.RunRecontactScan(); err != nil {
+			log.Printf("quality recontact scan: %v", err)
+		}
+	})
 	gpsService.SetMonitorFeed(monitorReviewService)
 	networkCostHandler := handler.NewNetworkCostHandler(networkPriceRepo)
 	jobDurationHandler := handler.NewJobDurationHandler(jobDurationEstimatorService)
@@ -1170,6 +1177,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نفسها — الي يشوف المتابعة هو الي يحكم بيها.
 	mux.Handle("POST /api/quality-follow-ups/{id}/verdict", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Verdict), requireAuth, requireQuality))
 	mux.Handle("POST /api/quality-follow-ups/{id}/inspect", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.Inspect), requireAuth, requireQuality))
+	// بعد ما مهندس الجودة يفتح حجز صيانة حقيقي من شاشة المتابعة — يربطها
+	// بيه بدل ما تروح بالهوا (نفس صلاحية الحكم والكشف بالضبط).
+	mux.Handle("PUT /api/quality-follow-ups/{id}/link-booking", middleware.Chain(http.HandlerFunc(qualityFollowUpHandler.LinkBooking), requireAuth, requireQuality))
 
 	// التدريب — عرض متاح لأي مسجل دخول، التعيين وإدارة المواد لمدير النظام فقط
 	mux.Handle("GET /api/training/materials/mine", middleware.Chain(http.HandlerFunc(trainingHandler.MaterialsMine), requireAuth))

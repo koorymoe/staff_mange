@@ -45,7 +45,11 @@ export default function SalesBooking() {
     permissions.includes('booking_internal')
   const [services, setServices] = useState<Service[]>([])
 
-  const [bookingType, setBookingType] = useState<BookingType | null>(null)
+  // متابعة الجودة الي حوّلت لحجز صيانة توصل برابط `bookingType=MAINTENANCE`
+  // — نقرا رابط الصفحة مباشرة (مو hook الـsearchParams المصرَّح لاحقاً)
+  // حتى نقدر نعبّي القيمة الأولية بلا تأثير جانبي بعد أول رندر.
+  const [bookingType, setBookingType] = useState<BookingType | null>(() =>
+    new URLSearchParams(window.location.search).get('bookingType') === 'MAINTENANCE' ? 'MAINTENANCE' : null)
   // ═══ حجز طاقة شمسية ═══
   // المنظومة اختيارية: الزبون أحياناً يريد منظومة ولسه ما قرر أي وحدة،
   // فالمبيعات يسجّل الحجز والمنسّق يحدد المنظومة بعد المعاينة.
@@ -127,6 +131,11 @@ export default function SalesBooking() {
       }
     })
   }, [searchParams])
+
+  // متابعة الجودة الي حوّلت لحجز صيانة — بعد إنشاء الحجز فعلياً نربطه
+  // بالمتابعة (شوف onSubmit تحت). نوع الحجز نفسه انعبّى بالقيمة
+  // الأولية لـ`bookingType` فوق.
+  const qualityFollowUpId = searchParams.get('qualityFollowUpId')
 
   useEffect(() => {
     // Guard-clause reset when the typed phone isn't a valid lookup key yet.
@@ -352,6 +361,12 @@ export default function SalesBooking() {
         internalHeadId: bookingType === 'INTERNAL' && intHeadId ? intHeadId : undefined,
         internalApproved: bookingType === 'INTERNAL' ? intApproved : undefined,
       })
+      // ربط حجز الصيانة بمتابعة الجودة الي حوّلته — أفضل جهد: فشل
+      // الربط ما يوقف نجاح إنشاء الحجز نفسه، بس يبقى غير مربوط
+      // (نفس معالجة أي رابط ثانوي بالنظام).
+      if (qualityFollowUpId) {
+        api.linkQualityFollowUpBooking(qualityFollowUpId, booking.id).catch(() => {})
+      }
       setSuccess({ customerCode: customer.code, bookingCode: booking.code })
       setFirstName('')
       setFatherName('')

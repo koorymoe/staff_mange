@@ -356,6 +356,9 @@ func versionedMigrations() []Migration {
 	// 0292-0293: تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط،
 	// يكتشفهم الكود ويعرضهم جنب بعض، بلا حذف أو دمج تلقائي.
 	result = append(result, duplicateCandidateMigration()...)
+	// 0294: متابعة الجودة — ربط حقيقي بحجز صيانة لمّا الزبون عنده مشكلة،
+	// يبقى معلّق يم مهندس الجودة لحد ما ينجز وبعدها يرجعله اتصال ثانٍ.
+	result = append(result, qualityFollowUpConvertMigration()...)
 	return result
 }
 

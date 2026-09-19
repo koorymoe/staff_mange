@@ -918,15 +918,17 @@ export interface BookingExecutionDetail {
 
 export interface QualityFollowUp {
   id: string
-  status: 'PENDING' | 'CONTACTED_OK' | 'CONTACTED_ISSUE' | 'CONVERTED' | 'CLOSED'
+  status: 'PENDING' | 'CONTACTED_OK' | 'CONTACTED_ISSUE' | 'CONVERTED' | 'RECONTACT' | 'CLOSED'
   contactNotes: string | null
   contactedAt: string | null
   createdAt: string
   booking: Booking
   customer: Customer
   contactedByEmployee: { id: string; name: string } | null
+  /** حجز الصيانة المربوط — تبقى المتابعة معلّقة لحد ما ينجز، وقتها تتحول RECONTACT تلقائياً */
+  linkedBooking: { id: string; code: string; status: string } | null
   /** حكم الجودة */
-  reportType: 'POSITIVE' | 'NEGATIVE' | null
+  reportType: 'POSITIVE' | 'NEGATIVE' | 'STUBBORN' | null
   inspectionStatus: 'NONE' | 'PENDING' | 'DONE'
   inspectionResult: 'CUSTOMER_RIGHT' | 'CUSTOMER_WRONG' | null
   inspectionNotes: string | null
@@ -3820,13 +3822,21 @@ export const api = {
     request<{ employees: { id: string; name: string; position: string | null }[] }>('/assistant/conversations/employees'),
 
   getQualityFollowUps: () => request<QualityFollowUp[]>('/quality-follow-ups'),
-  /** حكم الجودة: إيجابي (ما يترتب عليه شي) أو سلبي (يخصم نقطة من الليدر،
-   *  إلا إذا طلبنا كشف — وقتها الخصم ينتظر النتيجة) */
-  qualityVerdict: (id: string, body: { reportType: 'POSITIVE' | 'NEGATIVE'; notes: string; needsInspection: boolean }) =>
+  /** حكم الجودة: إيجابي (ما يترتب عليه شي)، سلبي (يخصم نقطة من الليدر
+   *  إلا إذا طلبنا كشف — وقتها الخصم ينتظر النتيجة)، أو الزبون مارد
+   *  (ما نگدر نطلّع حكم — تنسكّر بلا خصم ولا تبرئة) */
+  qualityVerdict: (id: string, body: { reportType: 'POSITIVE' | 'NEGATIVE' | 'STUBBORN'; notes: string; needsInspection: boolean }) =>
     request<QualityFollowUp[]>(`/quality-follow-ups/${id}/verdict`, { method: 'POST', body: JSON.stringify(body) }),
   /** نتيجة الكشف الميداني: كلام الزبون صح (يتغرّم الليدر) أو كذب (علامة على الزبون) */
   qualityInspect: (id: string, body: { result: 'CUSTOMER_RIGHT' | 'CUSTOMER_WRONG'; notes: string }) =>
     request<QualityFollowUp[]>(`/quality-follow-ups/${id}/inspect`, { method: 'POST', body: JSON.stringify(body) }),
+  /** بعد ما يفتح حجز صيانة حقيقي من شاشة المتابعة — يربطها بيه بدل
+   *  ما تروح بالهوا. تبقى معلّقة لحد ما الحجز ينجز. */
+  linkQualityFollowUpBooking: (id: string, bookingId: string) =>
+    request<QualityFollowUp>(`/quality-follow-ups/${id}/link-booking`, {
+      method: 'PUT',
+      body: JSON.stringify({ bookingId }),
+    }),
 
   updateQualityFollowUp: (
     id: string,

@@ -3,18 +3,25 @@ package model
 import "time"
 
 type QualityFollowUp struct {
-	ID                    string     `db:"id" json:"id"`
-	BookingID             string     `db:"bookingId" json:"-"`
-	CustomerID            string     `db:"customerId" json:"-"`
-	Status                string     `db:"status" json:"status"` // PENDING | CONTACTED_OK | CONTACTED_ISSUE | CONVERTED | CLOSED
+	ID         string  `db:"id" json:"id"`
+	BookingID  string  `db:"bookingId" json:"-"`
+	CustomerID string  `db:"customerId" json:"-"`
+	Status     string  `db:"status" json:"status"` // PENDING | CONTACTED_OK | CONTACTED_ISSUE | CONVERTED | RECONTACT | CLOSED
 	ContactNotes          *string    `db:"contactNotes" json:"contactNotes"`
 	ContactedByEmployeeID *string    `db:"contactedByEmployeeId" json:"-"`
 	ContactedAt           *time.Time `db:"contactedAt" json:"contactedAt"`
 	CreatedAt             time.Time  `db:"createdAt" json:"createdAt"`
 
+	// ── تحويل حقيقي لحجز صيانة ──
+	// ⚠️ يبقى المتابعة معلّقة يم مهندس الجودة لحد ما هذا الحجز ينجز —
+	// وقتها كنسة خلفية (RunRecontactScan) تحوّل الحالة لـRECONTACT
+	// تلقائياً، حتى يرجع يتصل بالزبون مرة ثانية يتأكد الحل انسوى.
+	LinkedBookingID *string               `db:"linkedBookingId" json:"-"`
+	LinkedBooking   *QualityLinkedBooking `db:"-" json:"linkedBooking"`
+
 	// ── حكم الجودة ──
 	// ⚠️ أعمدة بالجدول → لازم حقول هنا (الجلب SELECT *).
-	ReportType          *string    `db:"reportType" json:"reportType"`             // POSITIVE | NEGATIVE
+	ReportType          *string    `db:"reportType" json:"reportType"`             // POSITIVE | NEGATIVE | STUBBORN
 	InspectionStatus    string     `db:"inspectionStatus" json:"inspectionStatus"` // NONE | PENDING | DONE
 	InspectionResult    *string    `db:"inspectionResult" json:"inspectionResult"` // CUSTOMER_RIGHT | CUSTOMER_WRONG
 	InspectionNotes     *string    `db:"inspectionNotes" json:"inspectionNotes"`
@@ -35,6 +42,14 @@ type QualityFollowUp struct {
 	// تفاصيل المشروع والمبالغ — مهندس الجودة يحتاجها وهو يتصل بالزبون حتى
 	// يعرف شنو انتفق عليه وشكد انستلم فعلاً، ويقدر يكتب تفاصيل الفارق.
 	Financials *QualityFollowUpFinancials `db:"-" json:"financials"`
+}
+
+// QualityLinkedBooking عرض مختصر لحجز الصيانة المربوط — الكود
+// وحالته بس، حتى يعرف مهندس الجودة وين وصل بلا فتح شاشة ثانية.
+type QualityLinkedBooking struct {
+	ID     string `db:"id" json:"id"`
+	Code   string `db:"code" json:"code"`
+	Status string `db:"status" json:"status"`
 }
 
 // QualityFollowUpFinancials صورة كاملة عن مشروع/حجز المتابعة وأمواله.

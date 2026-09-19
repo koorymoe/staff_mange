@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -48,6 +49,12 @@ func (r *QualityFollowUpRepository) hydrate(q *model.QualityFollowUp) {
 		var b model.EmployeeBrief
 		if err := r.db.Get(&b, `SELECT id, name FROM "Employee" WHERE id = $1`, *q.PenalizedEmployeeID); err == nil {
 			q.PenalizedEmployee = &b
+		}
+	}
+	if q.LinkedBookingID != nil {
+		var lb model.QualityLinkedBooking
+		if err := r.db.Get(&lb, `SELECT id, code, status::text AS status FROM "Booking" WHERE id = $1`, *q.LinkedBookingID); err == nil {
+			q.LinkedBooking = &lb
 		}
 	}
 }
@@ -133,6 +140,58 @@ func (r *QualityFollowUpRepository) Update(id, status string, contactedByEmploye
 	}
 	r.hydrate(&q)
 	return &q, nil
+}
+
+// LinkToBooking تربط متابعة جودة بحجز صيانة حقيقي انسوّى لهذا الزبون —
+// المتابعة تبقى معلّقة (CONVERTED) لحد ما هذا الحجز ينجز، وقتها
+// RecontactDue تحوّلها تلقائياً لـRECONTACT.
+//
+// ⚠️ الشرط `status = 'CONTACTED_ISSUE'` يمنع ربط متابعة انسكّرت أو
+// انربطت من قبل — الزر يظهر بالواجهة بس بهذي الحالة، وهذا يحرسها
+// من الخادم لو تكرر النداء أو انفتحت شاشتين.
+func (r *QualityFollowUpRepository) LinkToBooking(id, bookingID string) (*model.QualityFollowUp, error) {
+	var q model.QualityFollowUp
+	err := r.db.Get(&q, `
+		UPDATE "QualityFollowUp" SET
+			status = 'CONVERTED',
+			"linkedBookingId" = $2
+		WHERE id = $1 AND status = 'CONTACTED_ISSUE'
+		RETURNING *
+	`, id, bookingID)
+	if err != nil {
+		return nil, errors.New("المتابعة مو بحالة تسمح بالتحويل — يمكن انسكّرت أو انربطت من قبل")
+	}
+	r.hydrate(&q)
+	return &q, nil
+}
+
+// RecontactDue تدوّر على متابعات CONVERTED حجزها المربوط اكتمل، وتحوّلها
+// لـRECONTACT — هذا الي يرجّع مهندس الجودة يتصل بالزبون مرة ثانية.
+// ترجّع الصفوف الي انحوّلت (بعد الهيدريشن) حتى الخدمة تقدر تنبّه
+// الموظف الأصلي الي تواصل معه أول مرة.
+func (r *QualityFollowUpRepository) RecontactDue() ([]model.QualityFollowUp, error) {
+	ids := []string{}
+	if err := r.db.Select(&ids, `
+		UPDATE "QualityFollowUp" q SET status = 'RECONTACT'
+		FROM "Booking" b
+		WHERE q."linkedBookingId" = b.id
+		  AND q.status = 'CONVERTED'
+		  AND b.status = 'COMPLETED'
+		RETURNING q.id
+	`); err != nil {
+		return nil, err
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	items := []model.QualityFollowUp{}
+	if err := r.db.Select(&items, `SELECT * FROM "QualityFollowUp" WHERE id = ANY($1)`, pq.Array(ids)); err != nil {
+		return nil, err
+	}
+	for i := range items {
+		r.hydrate(&items[i])
+	}
+	return items, nil
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -247,6 +306,12 @@ func (r *QualityFollowUpRepository) Verdict(id, byEmployeeID string, req model.Q
 		if req.NeedsInspection {
 			inspection = "PENDING"
 		}
+	}
+	// الزبون مارد — ما نگدر نطلّع حكم واضح لا إيجابي ولا سلبي، فما
+	// نغرّم الليدر بناءً على تخمين ولا نبرّئه بناءً على تخمين. تنسكّر
+	// مباشرة بلا خصم ولا كشف — نفس روح «ما نعرف أشرف من تفسير مخترع».
+	if req.ReportType == "STUBBORN" {
+		status = "CLOSED"
 	}
 
 	// ── الخصم ──

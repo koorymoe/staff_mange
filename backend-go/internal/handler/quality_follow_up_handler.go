@@ -88,6 +88,27 @@ func (h *QualityFollowUpHandler) Update(w http.ResponseWriter, r *http.Request) 
 	WriteJSON(w, http.StatusOK, item)
 }
 
+// PUT /api/quality-follow-ups/{id}/link-booking — بعد ما مهندس الجودة
+// يفتح حجز صيانة حقيقي للزبون، تُربط متابعته بيه بدل ما تروح بالهوا.
+func (h *QualityFollowUpHandler) LinkBooking(w http.ResponseWriter, r *http.Request) {
+	if h.blockMonitorWrite(w, r) {
+		return
+	}
+	var req struct {
+		BookingID string `json:"bookingId"`
+	}
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	item, err := h.service.LinkToBooking(r.PathValue("id"), req.BookingID)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, item)
+}
+
 // POST /api/quality-follow-ups/{id}/verdict — حكم مهندس الجودة.
 //
 // تقرير إيجابي: ينسجّل وبس.
@@ -102,8 +123,8 @@ func (h *QualityFollowUpHandler) Verdict(w http.ResponseWriter, r *http.Request)
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
 		return
 	}
-	if req.ReportType != "POSITIVE" && req.ReportType != "NEGATIVE" {
-		WriteError(w, http.StatusBadRequest, "لازم تحدد التقرير: إيجابي أو سلبي")
+	if req.ReportType != "POSITIVE" && req.ReportType != "NEGATIVE" && req.ReportType != "STUBBORN" {
+		WriteError(w, http.StatusBadRequest, "لازم تحدد التقرير: إيجابي أو سلبي أو الزبون مارد")
 		return
 	}
 	// التقرير السلبي يخصم من موظف فعلياً — ما يصير ينزل بلا سبب مكتوب.

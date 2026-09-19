@@ -11,7 +11,8 @@ const statusLabels: Record<QualityFollowUp['status'], string> = {
   PENDING: 'بانتظار التواصل',
   CONTACTED_OK: 'تم التواصل - كله تمام',
   CONTACTED_ISSUE: 'تم التواصل - اكو مشكلة',
-  CONVERTED: 'تحول لحجز جديد',
+  CONVERTED: 'محوّلة لحجز صيانة — بانتظار الإنجاز',
+  RECONTACT: 'الصيانة اكتملت — يحتاج اتصال ثاني',
   CLOSED: 'مغلقة',
 }
 
@@ -20,6 +21,7 @@ const statusColors: Record<QualityFollowUp['status'], string> = {
   CONTACTED_OK: 'bg-green-100 text-green-800',
   CONTACTED_ISSUE: 'bg-red-100 text-red-800',
   CONVERTED: 'bg-blue-100 text-blue-800',
+  RECONTACT: 'bg-purple-100 text-purple-800',
   CLOSED: 'bg-gray-100 text-gray-800',
 }
 
@@ -70,7 +72,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
   // التقرير الإيجابي ما يترتب عليه شي. السلبي يخصم نقطة «شكوى الزبائن»
   // من الليدر — إلا إذا المهندس شك بالزبون وطلب كشف، وقتها الغرامة
   // تنتظر لحد ما يطلع أحد يشوف بعينه.
-  const verdict = async (id: string, reportType: 'POSITIVE' | 'NEGATIVE', needsInspection = false) => {
+  const verdict = async (id: string, reportType: 'POSITIVE' | 'NEGATIVE' | 'STUBBORN', needsInspection = false) => {
     const notes = (notesDraft[id] || '').trim()
     if (reportType === 'NEGATIVE' && notes.length < 5) {
       alert('اكتب شنو كالك الزبون — التقرير السلبي يخصم نقطة من الليدر')
@@ -268,9 +270,19 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                     >
                       🔍 سلبي — بس يحتاج كشف (بلا خصم الحين)
                     </button>
+                    {/* الزبون مارد — ما نگدر نطلّع حكم واضح، فما نغرّم
+                        الليدر بتخمين ولا نبرّئه بتخمين. تنسكّر بلا خصم. */}
+                    <button
+                      onClick={() => verdict(item.id, 'STUBBORN')}
+                      disabled={busy === item.id || !canContact}
+                      className="rounded-lg border border-slate-400 bg-slate-100 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-200 disabled:opacity-50"
+                    >
+                      🗿 الزبون مارد — ما يتعاون
+                    </button>
                   </div>
                   <p className="text-[11px] text-slate-400">
                     التقرير السلبي يخصم نقطة «شكوى الزبائن» من الليدر فوراً. لو تشك بالزبون، اختار «يحتاج كشف».
+                    ولو الزبون رفض يتعاون ما تكدر تطلّع منه معلومة، اختار «مارد» — تنسكّر بلا خصم ولا تبرئة.
                   </p>
                 </div>
               )}
@@ -310,8 +322,12 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
               {/* نتيجة الحكم بعد ما ينبتّ بيه */}
               {item.reportType && item.inspectionStatus !== 'PENDING' && (
                 <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs">
-                  <span className={`font-bold ${item.reportType === 'POSITIVE' ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {item.reportType === 'POSITIVE' ? '✅ تقرير إيجابي' : '⛔ تقرير سلبي'}
+                  <span className={`font-bold ${
+                    item.reportType === 'POSITIVE' ? 'text-emerald-700'
+                      : item.reportType === 'STUBBORN' ? 'text-slate-600' : 'text-red-700'
+                  }`}>
+                    {item.reportType === 'POSITIVE' ? '✅ تقرير إيجابي'
+                      : item.reportType === 'STUBBORN' ? '🗿 الزبون مارد — ما تعاون' : '⛔ تقرير سلبي'}
                   </span>
                   {item.penalizedEmployee && (
                     <span className="text-slate-600"> — انخصمت نقطة من {item.penalizedEmployee.name}</span>
@@ -327,18 +343,54 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
 
               {item.status === 'CONTACTED_ISSUE' && (
                 <div className="mt-4 flex flex-wrap items-center gap-2">
+                  {/* ⚠️ ما نأشّر CONVERTED هنا — هذا بس فتح شاشة الحجز.
+                      الربط الحقيقي يصير بعد ما الحجز ينخلق فعلاً
+                      (SalesBooking.tsx يستدعي linkQualityFollowUpBooking)،
+                      وإلا المتابعة تروح CONVERTED حتى لو الموظف طلع
+                      من الشاشة بلا ما يخلق حجز. */}
                   <Link
-                    to={`/sales?customerId=${item.customer.id}`}
-                    onClick={() => handleUpdate(item.id, 'CONVERTED')}
+                    to={`/sales?customerId=${item.customer.id}&bookingType=MAINTENANCE&qualityFollowUpId=${item.id}`}
                     className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2 text-sm font-medium text-white"
                   >
-                    تحويل لحجز جديد
+                    🔧 تحويل لحجز صيانة
                   </Link>
                   <button
                     onClick={() => handleUpdate(item.id, 'CLOSED')}
                     className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-600"
                   >
                     إغلاق بدون حجز
+                  </button>
+                </div>
+              )}
+
+              {/* الصيانة انخلقت وربطت — معلّقة يم مهندس الجودة لحد ما تنجز */}
+              {item.status === 'CONVERTED' && (
+                <p className="mt-4 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm font-bold text-blue-900">
+                  🔧 محوّلة لحجز صيانة {item.linkedBooking && <BookingCodeChip code={item.linkedBooking.code} />} —
+                  بانتظار إنجازه، وبعدها ترجعلك تلقائياً تتصل بالزبون مرة ثانية.
+                </p>
+              )}
+
+              {/* الصيانة اكتملت — دور الاتصال الثاني */}
+              {item.status === 'RECONTACT' && (
+                <div className="mt-4 rounded-xl border-2 border-purple-400 bg-purple-50 p-3">
+                  <p className="text-sm font-bold text-purple-900">
+                    🔁 حجز الصيانة {item.linkedBooking && <BookingCodeChip code={item.linkedBooking.code} />} اكتمل —
+                    اتصل بالزبون تتأكد الحل انسوى.
+                  </p>
+                  <textarea
+                    placeholder="ملاحظات الاتصال الثاني..."
+                    value={notesDraft[item.id] || ''}
+                    onChange={(e) => setNotesDraft({ ...notesDraft, [item.id]: e.target.value })}
+                    rows={2}
+                    className="mt-2 w-full rounded-lg border border-purple-300 px-3 py-2 text-right text-sm outline-none focus:border-purple-500"
+                  />
+                  <button
+                    onClick={() => handleUpdate(item.id, 'CLOSED')}
+                    disabled={!canContact}
+                    className="mt-2 rounded-lg bg-purple-600 px-4 py-2 text-sm font-bold text-white hover:bg-purple-700 disabled:opacity-50"
+                  >
+                    ✅ تم — انحل الموضوع، أغلق
                   </button>
                 </div>
               )}
