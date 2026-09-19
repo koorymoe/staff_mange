@@ -8,7 +8,9 @@
 
 import { api, ensureFileToken, entityModelUrl } from '../api'
 
-export const BUILTIN_MODEL = `${import.meta.env.BASE_URL}amani-tech-v5.glb`
+// النسخة المضغوطة محفوظة ضمن `public` حتى يخدمها nginx مباشرة. وجودها
+// هنا (مو داخل docs) ضروري حتى يقدر المتصفح يحمّلها عند تشغيل الكيان.
+export const BUILTIN_MODEL = `${import.meta.env.BASE_URL}amani-compact.glb`
 
 /**
  * رابط المجسّم الي يُعرض لهذا الموظف.
