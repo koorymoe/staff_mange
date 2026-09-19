@@ -170,6 +170,9 @@ function Lab() {
     const chosen = choices.find((m) => m.id === modelId) ?? choices[0]
     if (!chosen) return
     const url = chosen.url
+    // ⚠️ **اسم الملف الحقيقي مو اسم الزر**: المرفوع يُخدَم بمفتاح
+    // عشوائي (`models/abc.glb`)، والفرق بينه وبين التسمية هو الي
+    // يكشف «أي مجسّم معروض فعلاً».
     import('../components/entityAvatarEngine')
       .then((mod) => mod.mountAvatar(canvas, url, 'WALK_ALT', framing, { influencers: 8, motion: true }))
       .then((h) => {
