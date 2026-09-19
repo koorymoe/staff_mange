@@ -38,6 +38,7 @@ const LAB_ENABLED = true
  * مبرمج، وفعلاً ما انفهمت لمن طلبتها. والرفع من الشاشة يشيلها كلياً.
  */
 const BUILT_IN = [
+  { id: 'builtin:amani-compact', label: 'أماني Compact — شخصية النظام', file: 'amani-compact.glb' },
   { id: 'builtin:amani', label: 'أماني v5 — متحرّكة (١١ مقطع)', file: 'amani-tech-v5.glb' },
   { id: 'builtin:amani-v4', label: 'أماني v4 (الأقدم)', file: 'amani-tech-v4.glb' },
 ] as const
@@ -472,7 +473,7 @@ function Lab() {
                 <span className="text-emerald-700">
                   {uploaded === null
                     ? '…'
-                    : (uploaded.find((m) => m.isActive)?.label ?? 'أماني v5 المدمجة (متحرّكة)')}
+                    : (uploaded.find((m) => m.isActive)?.label ?? 'أماني Compact المدمجة')}
                 </span>
               </p>
               <p className="font-normal text-slate-500">
