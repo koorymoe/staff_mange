@@ -1512,6 +1512,8 @@ export interface DailyAuditRow {
   quotedPrice: number
   invoiceTotal: number | null
   invoiceCode: string | null
+  /** رقم الفاتورة بالنظام المحاسبي الثاني — يدخله المحاسب وقت الاعتماد */
+  invoiceExternalNumber: string | null
   /** فاتورة الحجز مؤشَّرة مجانية (ضمان/إعادة عمل/…) وسببها */
   invoiceIsFree: boolean
   invoiceFreeReason: string | null

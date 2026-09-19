@@ -15,6 +15,9 @@ type DailyAuditRow struct {
 	QuotedPrice    float64  `db:"quotedPrice" json:"quotedPrice"`
 	InvoiceTotal   *float64 `db:"invoiceTotal" json:"invoiceTotal"`
 	InvoiceCode    *string  `db:"invoiceCode" json:"invoiceCode"`
+	// رقم الفاتورة بالنظام المحاسبي الثاني — يدخله المحاسب إجبارياً
+	// وقت اعتماد فاتورة الليدر. المراقب يحتاجه للمطابقة بين النظامين.
+	InvoiceExternalNumber *string `db:"invoiceExternalNumber" json:"invoiceExternalNumber"`
 	// المجانية: شغل ما انستلم عليه فلوس **بقصد** (ضمان/إعادة عمل).
 	// بلا هالعلمين، «متوقع صفر» يشبه فاتورة منفضّية.
 	InvoiceIsFree     bool    `db:"invoiceIsFree" json:"invoiceIsFree"`

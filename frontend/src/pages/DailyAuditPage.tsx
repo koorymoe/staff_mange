@@ -366,6 +366,14 @@ export default function DailyAuditPage() {
                         ? <> · فاتورة الليدر: <b>{money(row.invoiceTotal)}</b> <span className="text-xs text-slate-400">({row.invoiceCode})</span></>
                         : <> · <span className="text-amber-700">ماكو فاتورة ليدر — المعتمد تقدير الإداري: <b>{money(row.quotedPrice)}</b></span></>}
                     </p>
+                    {/* رقم الفاتورة المحاسبية الي ثبّته المحاسب — المراقب
+                        يدقّق وراه، وبدون الرقم ما يكدر يطابق فاتورتنا
+                        بفاتورة النظام الخارجي. */}
+                    {row.invoiceExternalNumber && (
+                      <p className="mt-1.5 inline-block rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-bold text-emerald-800">
+                        🧾 رقم الفاتورة المحاسبية: <span className="font-mono">{row.invoiceExternalNumber}</span>
+                      </p>
+                    )}
                     {/* 🔴 بلا هاي الشريحة، «مستلم صفر وفاتورة صفر»
                         تشبه فاتورة أحد فضّاها — والمحاسب يأشّرها
                         «غير مطابق» فتنفتح مخالفة على شغل ضمان سليم. */}
