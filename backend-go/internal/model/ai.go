@@ -237,6 +237,10 @@ const (
 	// عليها (ما اكو مشكلة حقيقية) — هذا مقياس الدقة الي طلبه صاحب
 	// النظام: «وافق المراقب على ٨٢٪ من أحكام الأسبوع».
 	AiMetricMonitorAgreement = "MONITOR_AGREEMENT_RATE"
+	// AiMetricEnergyUsed: مؤشر الطاقة المستخدمة الشهري — نسبة (حجوزات
+	// + ساعات دوام + حجوزات صيانة) الموظف مقابل متوسط زملائه. ١ = نفس
+	// المعدل، فوق ١ = طاقة أعلى من المعتاد.
+	AiMetricEnergyUsed = "ENERGY_USED_SCORE"
 )
 
 func AiMetricLabel(key string) string {
@@ -255,6 +259,8 @@ func AiMetricLabel(key string) string {
 		return "نسبة التأخر بالخروج للزبون"
 	case AiMetricMonitorAgreement:
 		return "دقّة ماتركس — وافق المراقب على أحكامه"
+	case AiMetricEnergyUsed:
+		return "الطاقة المستخدمة الشهرية"
 	}
 	return AiDiscoveryMetricLabel(key)
 }

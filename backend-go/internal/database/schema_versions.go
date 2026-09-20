@@ -359,6 +359,10 @@ func versionedMigrations() []Migration {
 	// 0294: متابعة الجودة — ربط حقيقي بحجز صيانة لمّا الزبون عنده مشكلة،
 	// يبقى معلّق يم مهندس الجودة لحد ما ينجز وبعدها يرجعله اتصال ثانٍ.
 	result = append(result, qualityFollowUpConvertMigration()...)
+	// 0295: الإنجازات — تقرير يومي حر من أي موظف بأي دور، ربط بحجز
+	// اختياري، يوصل لمدير النظام والمالك حصراً (مساره الخاص، مو صندوق
+	// المراقب — MONITOR ما يوصله).
+	result = append(result, achievementMigration()...)
 	return result
 }
 

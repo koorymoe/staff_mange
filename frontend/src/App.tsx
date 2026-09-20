@@ -37,6 +37,8 @@ const LabWorkbench = lazy(() => import('./lab/LabWorkbench'))
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
 const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
 const DuplicateReviewPage = lazy(() => import('./pages/DuplicateReviewPage'))
+const AchievementsPage = lazy(() => import('./pages/AchievementsPage'))
+const MyAchievementsPage = lazy(() => import('./pages/MyAchievementsPage'))
 const ExtraTasksPage = lazy(() => import('./pages/ExtraTasksPage'))
 const RolesGuidePage = lazy(() => import('./pages/RolesGuidePage'))
 // الطلبات — كتاب رسمي من الموظف للإدارة، متاح لكل الموظفين
@@ -187,6 +189,8 @@ function App() {
           <Route path="stage-buckets" element={<StageBucketsPage />} />
           <Route path="ai-insights" element={<AiInsightsPage />} />
           <Route path="duplicate-review" element={<DuplicateReviewPage />} />
+          <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="my-achievements" element={<MyAchievementsPage />} />
           <Route path="extra-tasks" element={<ExtraTasksPage />} />
           <Route path="roles-guide" element={<RolesGuidePage />} />
           <Route path="letters" element={<LettersPage />} />

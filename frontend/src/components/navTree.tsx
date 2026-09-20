@@ -86,7 +86,7 @@ const icon = (d: string) => (
 // أدواته، ومهامه. كل شي غير هذا يختفي عنه — حتى لو انفتح بصلاحية
 // جماعية أو انضاف عنصر جديد للقائمة بعدين.
 const TECHNICIAN_NAV = [
-  '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/privacy-policy',
+  '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/privacy-policy',
 ]
 
 export const navItems: NavItem[] = [
@@ -102,6 +102,10 @@ export const navItems: NavItem[] = [
   //
   // أما **توجيه** المهام لغيره فيحتاج صلاحية extra_tasks_assign.
   { to: '/my-extra-tasks', label: 'مهامي الإضافية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
+  // الإنجازات: تقرير يومي حر بلا قيد دور — كل موظف يسوي شي، حتى لو
+  // مو شغله المباشر (المراقب يدقّق، المحاسب يطابق...). يوصل لمدير
+  // النظام والمالك حصراً — شوف backend `Achievement`.
+  { to: '/my-achievements', label: '📋 إنجازاتي اليوم', icon: <></> },
   // ⚠️ «حساب الكلفة» انشال من القائمة العلوية: كان يطلع مرتين —
   // مرة فوگ ومرة داخل «العمل» بعنوانين مختلفين لنفس الشاشة، فالليدر
   // يحتار أي وحدة يفتح.
@@ -232,6 +236,7 @@ export const navItems: NavItem[] = [
       { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
       { to: '/duplicate-review', label: '🔍 تدقيق التكرار', icon: <></>, roles: ['ADMIN'] },
+      { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
       { to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },

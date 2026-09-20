@@ -3931,6 +3931,20 @@ export const api = {
   dismissDuplicateCandidate: (id: string) =>
     request<{ ok: boolean }>(`/duplicate-candidates/${id}/dismiss`, { method: 'PUT' }),
 
+  // ── الإنجازات (ماتركس) — تقرير يومي حر من أي موظف بأي دور ──
+  createAchievement: (bookingId: string | null, reportText: string) =>
+    request<Achievement>('/achievements', { method: 'POST', body: JSON.stringify({ bookingId, reportText }) }),
+  getAchievements: (params?: { employeeId?: string; day?: string; limit?: number }) => {
+    const qs = new URLSearchParams()
+    if (params?.employeeId) qs.set('employeeId', params.employeeId)
+    if (params?.day) qs.set('day', params.day)
+    if (params?.limit) qs.set('limit', String(params.limit))
+    const s = qs.toString()
+    return request<Achievement[]>(`/achievements${s ? `?${s}` : ''}`)
+  },
+  reviewAchievement: (id: string, status: 'GOOD' | 'NEEDS_REVIEW', note: string) =>
+    request<Achievement>(`/achievements/${id}/review`, { method: 'PUT', body: JSON.stringify({ status, note }) }),
+
   /** تأجيل الموعد بطلب الزبون — السبب إجباري وينعد بعدد التأجيلات */
   /** الحجوزات المؤجلة بلا موعد — طابور قرارات الإداري */
   /** كل طلعة صارت على الحجز — بتاريخها وكادرها */
@@ -5212,6 +5226,22 @@ export interface DuplicateCandidate {
   bookingB?: DuplicateBookingBrief | null
   customerA?: DuplicateCustomerBrief | null
   customerB?: DuplicateCustomerBrief | null
+}
+
+export interface Achievement {
+  id: string
+  employeeId: string
+  employeeName?: string | null
+  role: string
+  bookingId: string | null
+  bookingCode?: string | null
+  reportText: string
+  reviewStatus: 'PENDING' | 'GOOD' | 'NEEDS_REVIEW'
+  reviewNote: string | null
+  reviewedById: string | null
+  reviewedByName?: string | null
+  reviewedAt: string | null
+  createdAt: string
 }
 
 export interface SuggestedCrewMember {

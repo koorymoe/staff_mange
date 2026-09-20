@@ -408,6 +408,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("weekly discovery: %v", err)
 		}
 	})
+	// ═══ ماتركس يمدح مو بس يعاتب ═══ — إشعار أسبوعي شخصي لكل موظف
+	// (له هو، مو للمالك) بتحسّنه — أول مسار إيجابي بكل إشارات الذكاء.
+	weeklyPraiseService := service.NewWeeklyPraiseService(aiRepo, employeeRepo, notificationRepo)
+	safeguard.Loop("مديح ماتركس الأسبوعي", 20*time.Minute, 6*time.Hour, func() {
+		if err := weeklyPraiseService.RunWeeklyIfDue(); err != nil {
+			log.Printf("weekly praise: %v", err)
+		}
+	})
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -430,6 +438,27 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// النقاط الكاملة بجدول الإحصاءات تجي من نفس حاسبة المخطط، حتى
 	// الرقم بالجدول والرقم بالمخطط ما يختلفون.
 	employeeMonthlyStatsService.SetSmartKpi(smartKpiService)
+	// ═══ مؤشر الطاقة المستخدمة الشهري (ماتركس) ═══ — مين استخدم طاقة
+	// أعلى من زملائه هذا الشهر (حجوزات + ساعات دوام + صيانات)، للمالك
+	// ومدير النظام حصراً.
+	energyUsageService := service.NewEnergyUsageService(aiRepo, employeeMonthlyStatsService, attendanceService, notificationRepo)
+	safeguard.Loop("طاقة ماتركس الشهرية", 25*time.Minute, 6*time.Hour, func() {
+		if err := energyUsageService.RunMonthlyIfDue(); err != nil {
+			log.Printf("monthly energy: %v", err)
+		}
+	})
+	// ═══ الإنجازات (ماتركس) ═══ — تقرير يومي حر من أي موظف بأي دور،
+	// ربط بحجز اختياري، يوصل لمدير النظام والمالك حصراً (مساره الخاص،
+	// مو صندوق المراقب — دور MONITOR ما يوصله).
+	achievementRepo := repository.NewAchievementRepository(db)
+	achievementService := service.NewAchievementService(achievementRepo, bookingRepo)
+	achievementHandler := handler.NewAchievementHandler(achievementService)
+	achievementDigestService := service.NewAchievementDigestService(achievementRepo, aiRepo, notificationRepo)
+	safeguard.Loop("ملخص الإنجازات اليومي", 12*time.Minute, 30*time.Minute, func() {
+		if err := achievementDigestService.RunIfDue(); err != nil {
+			log.Printf("achievement digest: %v", err)
+		}
+	})
 	employeeStatsHandler := handler.NewEmployeeStatsHandler(employeeMonthlyStatsService)
 	internalWorksRepo := repository.NewInternalWorksRepository(db)
 	statsManagementService := service.NewStatsManagementService(employeeRepo, bookingRepo, employeeCommissionRepo, projectRepo, leaderInvoiceRepo, attendanceRepo, employeeMonthlyStatsService, internalWorksRepo)
@@ -887,6 +916,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.GetWorkWindow), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.SetWorkWindow), requireAuth, requireAdmin))
+	// الإنجازات: أي موظف يرفع تقريره — العرض والمراجعة حصراً لمدير
+	// النظام والمالك (requireAdmin)، لا المراقب.
+	mux.Handle("POST /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.Create), requireAuth))
+	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireAdmin))
 	mux.Handle("GET /api/bookings/{id}/timeline", middleware.Chain(http.HandlerFunc(bookingHandler.Timeline), requireAuth))
 	mux.Handle("PUT /api/bookings/{id}/crew-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetCrewNotes), requireAuth, requireBookingCoord))
 	mux.Handle("PUT /api/bookings/{id}/project-notes", middleware.Chain(http.HandlerFunc(bookingHandler.SetProjectNotes), requireAuth, requireBookingCoord))

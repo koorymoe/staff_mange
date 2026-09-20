@@ -356,6 +356,20 @@ func (r *AiRepository) SignalCountForEmployee(kind, employeeID string, days int)
 	return n, err
 }
 
+// SignalCountForEmployeeBetween كم مرة تكررت نفس الإشارة لهذا الموظف
+// بين تاريخين — نفس `SignalCountForEmployee` بس بمدى صريح مو «آخر كذا
+// يوم من الآن»، حتى نقارن أسبوعين ببعض (مثلاً «هذا الأسبوع» مقابل
+// «الأسبوع الماضي») — أساس مديح ماتركس الأسبوعي.
+func (r *AiRepository) SignalCountForEmployeeBetween(kind, employeeID string, from, to time.Time) (int, error) {
+	var n int
+	err := r.db.Get(&n, `
+		SELECT COUNT(*) FROM "AiSignal"
+		WHERE kind = $1 AND "employeeId" = $2
+		  AND "occurredAt" >= $3 AND "occurredAt" < $4`,
+		kind, employeeID, from, to)
+	return n, err
+}
+
 // DaysSinceLastSignal شكد يوم مرّ من آخر إشارة من نفس الصنف لنفس
 // الموظف **قبل** لحظة معيّنة (عادة وقت الإشارة الحالية — نقارن
 // بالتاريخ الحقيقي للحدث مو بوقت معالجتها، لأن الكنسة ممكن تتأخر
