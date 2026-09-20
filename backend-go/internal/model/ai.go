@@ -38,6 +38,10 @@ const (
 	AiSignalInvoiceAdjusted = "INVOICE_ADJUSTED"
 	// إنجاز جزئي متكرر لنفس الحجز.
 	AiSignalRepeatPartial = "REPEAT_PARTIAL"
+	// تقرير إنجاز يدّعي شغلاً لحاله ("وحدي"/"لحالي") وكادر الحجز
+	// الحقيقي المسجّل أكثر من واحد — تناقض رقمي قابل للإثبات، مو حكماً
+	// على أسلوب الكتابة. شوف SelfReportMismatchEvidence تحت.
+	AiSignalSelfReportMismatch = "SELF_REPORT_MISMATCH"
 )
 
 func AiSignalLabel(kind string) string {
@@ -52,6 +56,8 @@ func AiSignalLabel(kind string) string {
 		return "تعديل مبالغ فاتورة"
 	case AiSignalRepeatPartial:
 		return "إنجاز جزئي متكرر"
+	case AiSignalSelfReportMismatch:
+		return "تقرير إنجاز يناقض كادر الحجز الحقيقي"
 	}
 	return kind
 }
@@ -159,6 +165,22 @@ type RepeatPartialEvidence struct {
 	LastPercentDone int    `json:"lastPercentDone"`
 	LastRemaining   string `json:"lastRemaining,omitempty"`
 	LastBlockers    string `json:"lastBlockers,omitempty"`
+}
+
+// SelfReportMismatchEvidence الأدلة لتقرير إنجاز يدّعي شغلاً لحاله
+// وكادر الحجز الحقيقي أكثر من واحد.
+//
+// 🔴 القيد الحاكم هنا: **ما نحكم على أسلوب الكتابة**. الدليل الوحيد
+// المقبول جملة صريحة صادفناها بالتقرير ("وحدي"/"لحالي"/"بروحي"/
+// "بمفردي") مقابل رقم حقيقي محسوب بالكود (كادر آخر طلعة). لو ماكو
+// جملة صريحة أو الكادر فعلاً واحد، ماكو إشارة أصلاً — صمت مو تخمين.
+type SelfReportMismatchEvidence struct {
+	// الجملة الي التقطناها من التقرير — دليل حرفي مو استنتاج.
+	ClaimPhrase string `json:"claimPhrase"`
+	ReportText  string `json:"reportText"`
+	// عدد الكادر الحقيقي المسجّل بآخر طلعة لهذا الحجز.
+	ActualCrewSize int    `json:"actualCrewSize"`
+	BookingCode    string `json:"bookingCode,omitempty"`
 }
 
 // ═══ الحكم ═══

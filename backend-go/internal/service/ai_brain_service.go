@@ -202,6 +202,12 @@ func (r RulesJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVer
 			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
 		}
 		return r.judgeRepeatPartial(sig, facts)
+	case model.AiSignalSelfReportMismatch:
+		var facts model.SelfReportMismatchEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeSelfReportMismatch(sig, facts)
 	}
 	return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
 }
@@ -416,6 +422,32 @@ func (RulesJudge) judgeRepeatPartial(sig model.AiSignal, ev model.RepeatPartialE
 		reason += " ⚠️ ثلاث مرات وأكثر يستاهل مراجعة الكشف الأولي — يمكن حجم الشغل انقدّر غلط من البداية."
 	}
 
+	v.Reasoning = &reason
+	v.Suggestion = &suggestion
+	return v, nil
+}
+
+// judgeSelfReportMismatch «تقرير إنجاز يناقض كادر الحجز الحقيقي».
+//
+// 🔴 القرار المتفق عليه صراحة (بدل كشف مبالغة من أسلوب الكتابة):
+// إشارة بلا لوم تلقائي — نفس فلسفة `judgeRepeatPartial`. تناقض رقمي
+// (ادّعى "وحدي" والكادر أكثر من واحد) يستاهل مراجعة بشرية، مو حكماً
+// جاهزاً على نية الموظف — يمكن الموظف يقصد "سويت الجزء الفني لحالي"
+// وزميله سوى شي ثاني بنفس الطلعة.
+func (RulesJudge) judgeSelfReportMismatch(sig model.AiSignal, ev model.SelfReportMismatchEvidence) (*model.AiVerdict, error) {
+	v := &model.AiVerdict{
+		Source:     model.AiSourceRules,
+		Headline:   "تقرير إنجاز يناقض كادر الحجز",
+		Severity:   model.AiSeverityWatch,
+		Confidence: 60,
+	}
+	reason := fmt.Sprintf(
+		"التقرير يذكر «%s» بينما كادر آخر طلعة لهذا الحجز %d أشخاص — تناقض رقمي يستاهل توضيح، مو تهمة.",
+		ev.ClaimPhrase, ev.ActualCrewSize)
+	if ev.BookingCode != "" {
+		reason += " الحجز: " + ev.BookingCode
+	}
+	suggestion := "اسأل الموظف يوضّح: شنو بالضبط سواه لحاله وشنو سواه الكادر الثاني بنفس الطلعة."
 	v.Reasoning = &reason
 	v.Suggestion = &suggestion
 	return v, nil

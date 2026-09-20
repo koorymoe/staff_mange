@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -28,10 +29,11 @@ import (
 // للمالك حتى لو النموذج غلط بتفسيرها.
 
 type AiEvidenceService struct {
-	db       *repository.AiRepository
-	bookings *repository.BookingRepository
-	invoices *repository.LeaderInvoiceRepository
-	progress *repository.BookingProgressRepository
+	db           *repository.AiRepository
+	bookings     *repository.BookingRepository
+	invoices     *repository.LeaderInvoiceRepository
+	progress     *repository.BookingProgressRepository
+	achievements *repository.AchievementRepository
 }
 
 func NewAiEvidenceService(
@@ -39,8 +41,9 @@ func NewAiEvidenceService(
 	bookings *repository.BookingRepository,
 	invoices *repository.LeaderInvoiceRepository,
 	progress *repository.BookingProgressRepository,
+	achievements *repository.AchievementRepository,
 ) *AiEvidenceService {
-	return &AiEvidenceService{db: db, bookings: bookings, invoices: invoices, progress: progress}
+	return &AiEvidenceService{db: db, bookings: bookings, invoices: invoices, progress: progress, achievements: achievements}
 }
 
 // CollectForWorkStop يجمع أدلة توقف العمل — المسار الي وصفه صاحب العمل.
@@ -134,6 +137,53 @@ func (s *AiEvidenceService) CollectForWorkStop(signal model.AiSignal) (*model.Ai
 	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
 }
 
+// selfReportSoloPhrases الجمل الصريحة الي تعتبر ادّعاء عمل لحاله —
+// نص حرفي بس، بلا أي تفسير لأسلوب الكتابة.
+var selfReportSoloPhrases = []string{"وحدي", "لحالي", "بروحي", "بمفردي"}
+
+// detectSoloClaim يدوّر أول جملة صريحة بالنص. فاضي يعني ماكو ادّعاء —
+// التقرير ما يذكر شي عن العدد، وهذا مختلف عن الادّعاء الصريح.
+func detectSoloClaim(text string) string {
+	for _, phrase := range selfReportSoloPhrases {
+		if strings.Contains(text, phrase) {
+			return phrase
+		}
+	}
+	return ""
+}
+
+// CollectForSelfReportMismatch أدلة تناقض التقرير الذاتي — الموظف
+// ادّعى عملاً لحاله بتقرير إنجاز مربوط بحجز، وكادر آخر طلعة أكثر من
+// واحد. EntityID هنا معرّف **الإنجاز** (`Achievement.ID`) مو الحجز.
+func (s *AiEvidenceService) CollectForSelfReportMismatch(signal model.AiSignal) (*model.AiEvidence, error) {
+	ev := model.SelfReportMismatchEvidence{}
+	gaps := []string{}
+
+	a, err := s.achievements.FindByID(signal.EntityID)
+	if err != nil || a == nil || a.BookingID == nil {
+		return nil, fmt.Errorf("الإنجاز أو ربطه بالحجز مو موجود")
+	}
+	ev.ReportText = a.ReportText
+	ev.ClaimPhrase = detectSoloClaim(a.ReportText)
+	if ev.ClaimPhrase == "" {
+		gaps = append(gaps, "ماكو جملة ادّعاء صريحة بالتقرير وقت الجمع")
+	}
+
+	crewSize, err := s.db.LatestVisitCrewSize(*a.BookingID)
+	if err != nil {
+		gaps = append(gaps, "ما قدرنا نقرا كادر آخر طلعة لهذا الحجز")
+	} else {
+		ev.ActualCrewSize = crewSize
+	}
+	if a.BookingCode != nil {
+		ev.BookingCode = *a.BookingCode
+	}
+
+	facts, _ := json.Marshal(ev)
+	gapsJSON, _ := json.Marshal(gaps)
+	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
+}
+
 // CollectFor يوزّع على الجامع الصحيح حسب صنف الإشارة. نقطة دخول واحدة
 // حتى البرين ما يحتاج يعرف تفاصيل كل صنف.
 func (s *AiEvidenceService) CollectFor(signal model.AiSignal) (*model.AiEvidence, error) {
@@ -148,6 +198,8 @@ func (s *AiEvidenceService) CollectFor(signal model.AiSignal) (*model.AiEvidence
 		return s.CollectForInvoiceAdjusted(signal)
 	case model.AiSignalRepeatPartial:
 		return s.CollectForRepeatPartial(signal)
+	case model.AiSignalSelfReportMismatch:
+		return s.CollectForSelfReportMismatch(signal)
 	}
 	return nil, fmt.Errorf("ماكو جامع أدلة لصنف %q", signal.Kind)
 }

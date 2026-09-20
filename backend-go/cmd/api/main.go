@@ -345,7 +345,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	simHandler := handler.NewSimHandler(simRepo)
 
 	aiRepo := repository.NewAiRepository(db)
-	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo, leaderInvoiceRepo, bookingProgressRepo)
+	// achievementRepo يُبنى هنا (بدل مكانه الطبيعي تحت مع بقية شغل
+	// الإنجازات) لأن جامع أدلة SELF_REPORT_MISMATCH يحتاجه.
+	achievementRepo := repository.NewAchievementRepository(db)
+	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo, leaderInvoiceRepo, bookingProgressRepo, achievementRepo)
 	aiBrainService := service.NewAiBrainService(aiRepo, aiEvidenceService)
 	aiMetricsService := service.NewAiMetricsService(aiRepo)
 	// ═══ توصيل النموذج ═══
@@ -450,8 +453,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ═══ الإنجازات (ماتركس) ═══ — تقرير يومي حر من أي موظف بأي دور،
 	// ربط بحجز اختياري، يوصل لمدير النظام والمالك حصراً (مساره الخاص،
 	// مو صندوق المراقب — دور MONITOR ما يوصله).
-	achievementRepo := repository.NewAchievementRepository(db)
 	achievementService := service.NewAchievementService(achievementRepo, bookingRepo)
+	// تناقض التقرير الذاتي (SELF_REPORT_MISMATCH) — ادّعى «وحدي» وكادر
+	// الحجز الحقيقي أكثر من واحد.
+	achievementService.SetAiRecorder(aiRepo)
+	achievementService.SetCrewSizer(aiRepo)
 	achievementHandler := handler.NewAchievementHandler(achievementService)
 	achievementDigestService := service.NewAchievementDigestService(achievementRepo, aiRepo, notificationRepo)
 	safeguard.Loop("ملخص الإنجازات اليومي", 12*time.Minute, 30*time.Minute, func() {

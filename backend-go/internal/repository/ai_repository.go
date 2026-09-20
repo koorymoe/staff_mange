@@ -395,6 +395,19 @@ func (r *AiRepository) DaysSinceLastSignal(kind, employeeID string, before time.
 	return &days, nil
 }
 
+// LatestVisitCrewSize عدد كادر آخر طلعة لحجز معيّن — أساس كشف
+// «تناقض التقرير الذاتي» (SELF_REPORT_MISMATCH): الموظف ادّعى إنه
+// سوى الشغل لحاله والكادر الحقيقي أكثر من واحد.
+func (r *AiRepository) LatestVisitCrewSize(bookingID string) (int, error) {
+	var n int
+	err := r.db.Get(&n, `
+		SELECT COUNT(*) FROM "BookingVisitCrew" vc
+		WHERE vc."visitId" = (
+			SELECT id FROM "BookingVisit" WHERE "bookingId" = $1 ORDER BY "visitNumber" DESC LIMIT 1
+		)`, bookingID)
+	return n, err
+}
+
 // ═══ ساعات الدوام ═══
 
 func (r *AiRepository) WorkWindow() (*model.AiWorkWindow, error) {
