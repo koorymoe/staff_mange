@@ -371,6 +371,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	aiHandler := handler.NewAiHandler(aiRepo, aiBrainService, aiMetricsService)
 	aiBrainService.SetMonitorFeed(monitorReviewService)
 	bookingService.SetAiRecorder(aiRepo)
+	// وصل كاشف شذوذ الوقود الموجود من زمان (VehicleService.CheckFuelAnomaly) بماتركس.
+	vehicleService.SetAiRecorder(aiRepo)
 	leaderInvoiceService.SetAiRecorder(aiRepo)
 
 	// ═══ تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ═══
@@ -434,6 +436,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	safeguard.Loop("فجوة التدريب الأسبوعية", 24*time.Minute, 6*time.Hour, func() {
 		if err := trainingGapService.RunWeeklyIfDue(); err != nil {
 			log.Printf("training gap: %v", err)
+		}
+	})
+	// ═══ صيانة المركبات مقابل الاستخدام الفعلي (ماتركس) ═══ — مركبة
+	// صيانتها متأخرة وبعدها تُرسل بمهام/حجوزات.
+	vehicleMaintenanceAlertService := service.NewVehicleMaintenanceAlertService(aiRepo, notificationRepo)
+	safeguard.Loop("تنبيه صيانة المركبات الأسبوعي", 26*time.Minute, 6*time.Hour, func() {
+		if err := vehicleMaintenanceAlertService.RunWeeklyIfDue(); err != nil {
+			log.Printf("vehicle maintenance alert: %v", err)
 		}
 	})
 	leaderInvoiceService.SetNotifications(notificationRepo)

@@ -324,6 +324,8 @@ func signalKindLabel(kind string) string {
 		return "إنجاز جزئي متكرر"
 	case model.AiSignalSelfReportMismatch:
 		return "تقرير إنجاز يناقض كادر الحجز الحقيقي"
+	case model.AiSignalFuelAnomaly:
+		return "شذوذ بتكلفة تعبئة وقود"
 	default:
 		return kind
 	}

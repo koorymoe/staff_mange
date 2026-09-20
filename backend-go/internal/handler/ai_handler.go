@@ -149,6 +149,8 @@ func (h *AiHandler) Catalog(w http.ResponseWriter, r *http.Request) {
 			"ينسجّل من ثاني إنجاز جزئي لنفس الحجز، مع آخر نسبة إنجاز والمعوّقات"},
 		{model.AiSignalSelfReportMismatch, model.AiSignalLabel(model.AiSignalSelfReportMismatch), true,
 			"ينسجّل من تقرير إنجاز مربوط بحجز يدّعي عملاً لحاله («وحدي»/«لحالي») وكادر آخر طلعة أكثر من واحد — بلا لوم تلقائي"},
+		{model.AiSignalFuelAnomaly, model.AiSignalLabel(model.AiSignalFuelAnomaly), true,
+			"ينسجّل عند تعبئة وقود تتجاوز متوسط آخر ٥ تعبئات لنفس المركبة بأكثر من ٤٠٪ (كاشف موجود من زمان)"},
 	}
 	metrics := []item{
 		{model.AiMetricStopRate, model.AiMetricLabel(model.AiMetricStopRate), false, "ينتظر: حاسبة المؤشرات"},

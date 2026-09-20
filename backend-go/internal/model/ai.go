@@ -42,7 +42,16 @@ const (
 	// الحقيقي المسجّل أكثر من واحد — تناقض رقمي قابل للإثبات، مو حكماً
 	// على أسلوب الكتابة. شوف SelfReportMismatchEvidence تحت.
 	AiSignalSelfReportMismatch = "SELF_REPORT_MISMATCH"
+	// شذوذ تكلفة تعبئة وقود — الكاشف (`VehicleService.CheckFuelAnomaly`)
+	// موجود من زمان، هذا وصله بخط أنابيب ماتركس.
+	AiSignalFuelAnomaly = "VEHICLE_FUEL_ANOMALY"
 )
+
+// ⚠️ «مركبة صيانتها متأخرة ولسه تُرسل» **ما ينحط** بخط أنابيب
+// AiSignal: هذا حالة مستمرة مو حدثاً لمرة وحدة، وإعادة الفحص الدوري
+// كل مرة تسجّل إشارة جديدة بمعرّف/وقت مختلف تغرق الصندوق بتكرار نفس
+// المشكلة. نفس سبب حماية الإرهاق ومؤشر الطاقة — تنبيه دوري مباشر
+// للمالك ومدير النظام، مو إشارة تحتاج "أوافق/عندي ملاحظة".
 
 func AiSignalLabel(kind string) string {
 	switch kind {
@@ -58,6 +67,8 @@ func AiSignalLabel(kind string) string {
 		return "إنجاز جزئي متكرر"
 	case AiSignalSelfReportMismatch:
 		return "تقرير إنجاز يناقض كادر الحجز الحقيقي"
+	case AiSignalFuelAnomaly:
+		return "شذوذ بتكلفة تعبئة وقود"
 	}
 	return kind
 }
@@ -187,6 +198,16 @@ type SelfReportMismatchEvidence struct {
 	// عدد الكادر الحقيقي المسجّل بآخر طلعة لهذا الحجز.
 	ActualCrewSize int    `json:"actualCrewSize"`
 	BookingCode    string `json:"bookingCode,omitempty"`
+}
+
+// FuelAnomalyEvidence أدلة شذوذ تكلفة تعبئة وقود — نفس منطق
+// `VehicleService.CheckFuelAnomaly` الموجود من زمان (متوسط آخر ٥
+// تعبئات)، بس محسوبة وقت الجمع للتحليل مو للعرض الفوري بس.
+type FuelAnomalyEvidence struct {
+	VehiclePlate string  `json:"vehiclePlate"`
+	NewCost      float64 `json:"newCost"`
+	AverageCost  float64 `json:"averageCost"`
+	PercentAbove float64 `json:"percentAbove"`
 }
 
 // ═══ الحكم ═══

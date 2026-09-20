@@ -224,6 +224,12 @@ func (r RulesJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVer
 			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
 		}
 		return r.judgeSelfReportMismatch(sig, facts)
+	case model.AiSignalFuelAnomaly:
+		var facts model.FuelAnomalyEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeFuelAnomaly(sig, facts)
 	}
 	return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
 }
@@ -469,6 +475,25 @@ func (RulesJudge) judgeSelfReportMismatch(sig model.AiSignal, ev model.SelfRepor
 		reason += " الحجز: " + ev.BookingCode
 	}
 	suggestion := "اسأل الموظف يوضّح: شنو بالضبط سواه لحاله وشنو سواه الكادر الثاني بنفس الطلعة."
+	v.Reasoning = &reason
+	v.Suggestion = &suggestion
+	return v, nil
+}
+
+// judgeFuelAnomaly «شذوذ بتكلفة تعبئة وقود» — كاشف موجود من زمان
+// (`VehicleService.CheckFuelAnomaly`)، هذا وصله بخط أنابيب ماتركس.
+func (RulesJudge) judgeFuelAnomaly(sig model.AiSignal, ev model.FuelAnomalyEvidence) (*model.AiVerdict, error) {
+	v := &model.AiVerdict{
+		Source:          model.AiSourceRules,
+		Headline:        "شذوذ بتكلفة تعبئة وقود",
+		Severity:        model.AiSeverityWarn,
+		Confidence:      65,
+		BlameEmployeeID: sig.EmployeeID,
+	}
+	reason := fmt.Sprintf(
+		"تعبئة وقود للمركبة %s بكلفة %.0f — أعلى من متوسط آخر ٥ تعبئات (%.0f) بنسبة %.0f٪.",
+		ev.VehiclePlate, ev.NewCost, ev.AverageCost, ev.PercentAbove)
+	suggestion := "راجع الإيصال مقابل السعر المسجّل، وتأكد ماكو خلط بتعبئة مركبة ثانية بالغلط."
 	v.Reasoning = &reason
 	v.Suggestion = &suggestion
 	return v, nil

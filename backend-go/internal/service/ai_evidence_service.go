@@ -201,6 +201,22 @@ func (s *AiEvidenceService) CollectForSelfReportMismatch(signal model.AiSignal) 
 	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
 }
 
+// CollectForFuelAnomaly أدلة شذوذ تعبئة وقود — EntityID هنا معرّف
+// سجل السيارة (`VehicleLog.ID`) مو المركبة.
+func (s *AiEvidenceService) CollectForFuelAnomaly(signal model.AiSignal) (*model.AiEvidence, error) {
+	ev, err := s.db.FuelAnomalySnapshot(signal.EntityID)
+	if err != nil {
+		return nil, fmt.Errorf("سجل تعبئة الوقود مو موجود: %w", err)
+	}
+	gaps := []string{}
+	if ev.AverageCost == 0 {
+		gaps = append(gaps, "ماكو تاريخ تعبئات كافٍ لهذي المركبة وقت الجمع")
+	}
+	facts, _ := json.Marshal(ev)
+	gapsJSON, _ := json.Marshal(gaps)
+	return s.db.SaveEvidence(signal.ID, facts, gapsJSON)
+}
+
 // CollectFor يوزّع على الجامع الصحيح حسب صنف الإشارة. نقطة دخول واحدة
 // حتى البرين ما يحتاج يعرف تفاصيل كل صنف.
 func (s *AiEvidenceService) CollectFor(signal model.AiSignal) (*model.AiEvidence, error) {
@@ -217,6 +233,8 @@ func (s *AiEvidenceService) CollectFor(signal model.AiSignal) (*model.AiEvidence
 		return s.CollectForRepeatPartial(signal)
 	case model.AiSignalSelfReportMismatch:
 		return s.CollectForSelfReportMismatch(signal)
+	case model.AiSignalFuelAnomaly:
+		return s.CollectForFuelAnomaly(signal)
 	}
 	return nil, fmt.Errorf("ماكو جامع أدلة لصنف %q", signal.Kind)
 }

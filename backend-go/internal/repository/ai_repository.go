@@ -447,6 +447,68 @@ func (r *AiRepository) TrainingGapCandidates(minStops, days int) ([]TrainingGapC
 	return rows, err
 }
 
+// FuelAnomalySnapshot أدلة شذوذ تعبئة وقود — يعيد حساب نفس منطق
+// `VehicleService.CheckFuelAnomaly` (متوسط آخر ٥ تعبئات قبل هذا
+// السجل) وقت التحليل، بدل الاعتماد على نتيجة لحظة الإدخال.
+func (r *AiRepository) FuelAnomalySnapshot(logID string) (*model.FuelAnomalyEvidence, error) {
+	var row struct {
+		VehicleID string    `db:"vehicleId"`
+		Cost      float64   `db:"cost"`
+		CreatedAt time.Time `db:"createdAt"`
+	}
+	if err := r.db.Get(&row, `SELECT "vehicleId", cost, "createdAt" FROM "VehicleLog" WHERE id = $1 AND cost IS NOT NULL`, logID); err != nil {
+		return nil, err
+	}
+	ev := &model.FuelAnomalyEvidence{NewCost: row.Cost}
+	_ = r.db.Get(&ev.VehiclePlate, `SELECT "plateNumber" FROM "Vehicle" WHERE id = $1`, row.VehicleID)
+	var avg sql.NullFloat64
+	_ = r.db.Get(&avg, `
+		SELECT AVG(cost) FROM (
+			SELECT cost FROM "VehicleLog"
+			WHERE "vehicleId" = $1 AND type = 'FUEL' AND cost IS NOT NULL AND "createdAt" < $2
+			ORDER BY "createdAt" DESC LIMIT 5
+		) recent`, row.VehicleID, row.CreatedAt)
+	if avg.Valid && avg.Float64 > 0 {
+		ev.AverageCost = avg.Float64
+		ev.PercentAbove = (row.Cost - avg.Float64) / avg.Float64 * 100
+	}
+	return ev, nil
+}
+
+// OverdueMaintenanceVehicle مركبة تجاوزت صيانتها المجدولة (تاريخاً أو
+// عداد كيلومترات) وبعدها تُرسل لمهمة جارية أو حجز معتمد.
+type OverdueMaintenanceVehicle struct {
+	VehicleName string `db:"vehicleName"`
+	PlateNumber string `db:"plateNumber"`
+}
+
+// OverdueMaintenanceVehiclesInUse: آخر سجل صيانة (`VehicleLog` نوع
+// MAINTENANCE) لكل مركبة يحدّد موعدها الجاي (`nextDueAt`) أو عداد
+// كيلومتراتها (`nextDueOdometer`) — لو تجاوزته المركبة **وبعدها**
+// مستمرة بمهمة جارية أو حجز معتمد لسه ما خلص، هذا يستاهل تنبيهاً.
+func (r *AiRepository) OverdueMaintenanceVehiclesInUse() ([]OverdueMaintenanceVehicle, error) {
+	rows := []OverdueMaintenanceVehicle{}
+	err := r.db.Select(&rows, `
+		WITH latest_maintenance AS (
+			SELECT DISTINCT ON ("vehicleId") "vehicleId", "nextDueAt", "nextDueOdometer"
+			FROM "VehicleLog"
+			WHERE type = 'MAINTENANCE'
+			ORDER BY "vehicleId", "performedAt" DESC
+		)
+		SELECT v.name AS "vehicleName", v."plateNumber" AS "plateNumber"
+		FROM latest_maintenance lm
+		JOIN "Vehicle" v ON v.id = lm."vehicleId"
+		WHERE (
+			(lm."nextDueAt" IS NOT NULL AND lm."nextDueAt" < now())
+			OR (lm."nextDueOdometer" IS NOT NULL AND v."currentOdometer" >= lm."nextDueOdometer")
+		)
+		AND (
+			EXISTS (SELECT 1 FROM "VehicleMission" vm WHERE vm."vehicleId" = v.id AND vm.status = 'IN_PROGRESS')
+			OR EXISTS (SELECT 1 FROM "VehicleBooking" vb WHERE vb."vehicleId" = v.id AND vb.status = 'APPROVED' AND vb."endAt" >= now())
+		)`)
+	return rows, err
+}
+
 // ═══ ساعات الدوام ═══
 
 func (r *AiRepository) WorkWindow() (*model.AiWorkWindow, error) {

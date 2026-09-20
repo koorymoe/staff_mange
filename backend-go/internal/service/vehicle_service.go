@@ -13,11 +13,17 @@ import (
 
 type VehicleService struct {
 	repo *repository.VehicleRepository
+	// ai: مسجّل إشارات ماتركس — اختياري. كاشف شذوذ الوقود موجود من زمان
+	// وكان معزولاً تماماً عن ماتركس، هذا سلك الوصل.
+	ai AiSignalRecorder
 }
 
 func NewVehicleService(repo *repository.VehicleRepository) *VehicleService {
 	return &VehicleService{repo: repo}
 }
+
+// SetAiRecorder يربط مسجّل إشارات ماتركس بعد البناء.
+func (s *VehicleService) SetAiRecorder(a AiSignalRecorder) { s.ai = a }
 
 func (s *VehicleService) List() ([]model.Vehicle, error) { return s.repo.List() }
 
@@ -96,11 +102,26 @@ func (s *VehicleService) CreateLog(vehicleID string, req model.CreateVehicleLogR
 		anomaly, _ = s.CheckFuelAnomaly(vehicleID, *req.Cost)
 	}
 
-	log, err := s.repo.CreateLog(vehicleID, req, recordedByID)
+	vlog, err := s.repo.CreateLog(vehicleID, req, recordedByID)
 	if err != nil {
 		return nil, err
 	}
-	result := &model.VehicleLogCreateResult{VehicleLog: log, FuelAnomaly: anomaly}
+	result := &model.VehicleLogCreateResult{VehicleLog: vlog, FuelAnomaly: anomaly}
+
+	// وصل كاشف شذوذ الوقود بماتركس — كان معزولاً تماماً، النتيجة تنحسب
+	// وما توصل أي مكان غير رد هذا الطلب.
+	if s.ai != nil && anomaly != nil && anomaly.IsAnomaly {
+		empID := recordedByID
+		if vlog.FilledByEmployeeID != nil && *vlog.FilledByEmployeeID != "" {
+			empID = *vlog.FilledByEmployeeID
+		}
+		_, _ = s.ai.RecordSignal(model.AiSignal{
+			Kind:       model.AiSignalFuelAnomaly,
+			EntityType: "VEHICLE_LOG",
+			EntityID:   vlog.ID,
+			EmployeeID: &empID,
+		})
+	}
 	return result, nil
 }
 
