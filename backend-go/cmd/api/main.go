@@ -348,7 +348,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// achievementRepo يُبنى هنا (بدل مكانه الطبيعي تحت مع بقية شغل
 	// الإنجازات) لأن جامع أدلة SELF_REPORT_MISMATCH يحتاجه.
 	achievementRepo := repository.NewAchievementRepository(db)
-	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo, leaderInvoiceRepo, bookingProgressRepo, achievementRepo)
+	aiEvidenceService := service.NewAiEvidenceService(aiRepo, bookingRepo, leaderInvoiceRepo, bookingProgressRepo, achievementRepo, employeeRepo)
 	aiBrainService := service.NewAiBrainService(aiRepo, aiEvidenceService)
 	aiMetricsService := service.NewAiMetricsService(aiRepo)
 	// ═══ توصيل النموذج ═══
@@ -417,6 +417,23 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	safeguard.Loop("مديح ماتركس الأسبوعي", 20*time.Minute, 6*time.Hour, func() {
 		if err := weeklyPraiseService.RunWeeklyIfDue(); err != nil {
 			log.Printf("weekly praise: %v", err)
+		}
+	})
+	// ═══ حماية الموظف من الإرهاق (ماتركس) ═══ — دوام متواصل بلا راحة
+	// + ارتفاع إشاراته بنفس الفترة → تنبيه حمائي للمالك ومدير النظام،
+	// مو ملاحظة أداء.
+	burnoutProtectionService := service.NewBurnoutProtectionService(aiRepo, employeeRepo, attendanceRepo, notificationRepo)
+	safeguard.Loop("حماية الإرهاق الأسبوعية", 22*time.Minute, 6*time.Hour, func() {
+		if err := burnoutProtectionService.RunWeeklyIfDue(); err != nil {
+			log.Printf("burnout protection: %v", err)
+		}
+	})
+	// ═══ ربط الأخطاء بفجوة تدريب حقيقية (ماتركس) ═══ — تكرار توقف
+	// العمل بخدمة معيّنة عند موظف ما تدرّب عليها → اقتراح تدريب.
+	trainingGapService := service.NewTrainingGapService(aiRepo, notificationRepo)
+	safeguard.Loop("فجوة التدريب الأسبوعية", 24*time.Minute, 6*time.Hour, func() {
+		if err := trainingGapService.RunWeeklyIfDue(); err != nil {
+			log.Printf("training gap: %v", err)
 		}
 	})
 	leaderInvoiceService.SetNotifications(notificationRepo)

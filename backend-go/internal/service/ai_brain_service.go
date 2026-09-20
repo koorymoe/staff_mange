@@ -164,6 +164,22 @@ func (s *AiBrainService) StartBackgroundLoop() {
 // (النمط المتكرر) موجود من زمان بعتبات كل قاعدة أدناه.
 const escalationCleanStreakDays = 14
 
+// newEmployeeGraceDays عدالة الموظف الجديد — منحنى تعلّم. موظف بأول
+// ٣ أسابيع معدل أخطائه الطبيعي أعلى من موظف خبير؛ نمط يستاهل
+// CRITICAL لموظف خبير يبقى WARN بس لموظف جديد (يستاهل مراجعة، مو
+// إنذاراً أحمر فوري).
+const newEmployeeGraceDays = 21
+
+// capSeverityForNewEmployee يخفّف خطورة CRITICAL لـWARN لو الموظف
+// بعده بفترة التجربة — نفس السبب يبقى بالنص، بس النبرة تختلف.
+func capSeverityForNewEmployee(v *model.AiVerdict, reason *string, tenureDays *int) {
+	if v.Severity != model.AiSeverityCritical || tenureDays == nil || *tenureDays >= newEmployeeGraceDays {
+		return
+	}
+	v.Severity = model.AiSeverityWarn
+	*reason += fmt.Sprintf(" ⚖️ بس الموظف جديد (%d يوم بالشركة) — النمط يستاهل مراجعة، مو إنذاراً حاداً لحد ما يكمّل فترة التجربة.", *tenureDays)
+}
+
 type RulesJudge struct{}
 
 func (RulesJudge) Name() string { return "rules-v1" }
@@ -289,6 +305,9 @@ func (RulesJudge) judgeWorkStop(sig model.AiSignal, ev model.WorkStopEvidence) (
 			*ev.DaysSinceLastStop)
 	}
 
+	// عدالة الموظف الجديد — قبل التخزين، بعد كل قرارات الخطورة فوق.
+	capSeverityForNewEmployee(v, &reason, ev.TenureDays)
+
 	// الفجوات تنزّل الثقة: حكم على أدلة ناقصة ما يستاهل نفس الوزن.
 	v.Reasoning = &reason
 	if suggestion != "" {
@@ -320,6 +339,8 @@ func (RulesJudge) judgeLateStart(sig model.AiSignal, ev model.LateStartEvidence)
 		reason += fmt.Sprintf(" ✅ وآخر تأخر لنفس الموظف كان من %d يوم — أول ملاحظة بعد فترة نظيفة، مو نمط متكرر.",
 			*ev.DaysSinceLastLate)
 	}
+
+	capSeverityForNewEmployee(v, &reason, ev.TenureDays)
 
 	v.Reasoning = &reason
 	v.Suggestion = &suggestion

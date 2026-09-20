@@ -115,6 +115,10 @@ type WorkStopEvidence struct {
 	// الموظف قبل هذا. nil يعني أول مرة إطلاقاً (ماكو فترة نظيفة
 	// نحچي عنها أصلاً).
 	DaysSinceLastStop *int `json:"daysSinceLastStop,omitempty"`
+	// TenureDays: عدالة الموظف الجديد — منحنى تعلّم. موظف بأول أسابيعه
+	// معدل أخطائه الطبيعي أعلى من موظف خبير، فالمقارنة بميزان وحد
+	// ظلم. nil يعني ماكو تاريخ تعيين مسجّل — «ما نعرف» مو «خبير».
+	TenureDays *int `json:"tenureDays,omitempty"`
 }
 
 // LateStartEvidence الأدلة لتأخر الخروج للحجز.
@@ -130,6 +134,8 @@ type LateStartEvidence struct {
 	LateCountLast30Days int `json:"lateCountLast30Days"`
 	// نفس فكرة `DaysSinceLastStop` أعلاه — بس لتأخر الخروج.
 	DaysSinceLastLate *int `json:"daysSinceLastLate,omitempty"`
+	// نفس `TenureDays` بـ`WorkStopEvidence` — عدالة الموظف الجديد.
+	TenureDays *int `json:"tenureDays,omitempty"`
 }
 
 // RepeatPostponeEvidence الأدلة لتأجيل نفس الحجز أكثر من مرة.

@@ -34,6 +34,7 @@ type AiEvidenceService struct {
 	invoices     *repository.LeaderInvoiceRepository
 	progress     *repository.BookingProgressRepository
 	achievements *repository.AchievementRepository
+	employees    *repository.EmployeeRepository
 }
 
 func NewAiEvidenceService(
@@ -42,8 +43,23 @@ func NewAiEvidenceService(
 	invoices *repository.LeaderInvoiceRepository,
 	progress *repository.BookingProgressRepository,
 	achievements *repository.AchievementRepository,
+	employees *repository.EmployeeRepository,
 ) *AiEvidenceService {
-	return &AiEvidenceService{db: db, bookings: bookings, invoices: invoices, progress: progress, achievements: achievements}
+	return &AiEvidenceService{db: db, bookings: bookings, invoices: invoices, progress: progress, achievements: achievements, employees: employees}
+}
+
+// tenureDaysFor عدالة الموظف الجديد — شكد يوم مرّ من تاريخ تعيينه.
+// nil يعني ماكو تاريخ تعيين مسجّل، مو صفر (بلا تخمين).
+func (s *AiEvidenceService) tenureDaysFor(employeeID string) *int {
+	emp, err := s.employees.FindByID(employeeID)
+	if err != nil || emp == nil || emp.HireDate == nil {
+		return nil
+	}
+	days := int(time.Since(*emp.HireDate).Hours() / 24)
+	if days < 0 {
+		days = 0
+	}
+	return &days
 }
 
 // CollectForWorkStop يجمع أدلة توقف العمل — المسار الي وصفه صاحب العمل.
@@ -128,6 +144,7 @@ func (s *AiEvidenceService) CollectForWorkStop(signal model.AiSignal) (*model.Ai
 		if days, err := s.db.DaysSinceLastSignal(model.AiSignalWorkStopped, *signal.EmployeeID, signal.OccurredAt); err == nil {
 			ev.DaysSinceLastStop = days
 		}
+		ev.TenureDays = s.tenureDaysFor(*signal.EmployeeID)
 	} else {
 		gaps = append(gaps, "الإشارة بلا موظف")
 	}
@@ -238,6 +255,7 @@ func (s *AiEvidenceService) CollectForLateStart(signal model.AiSignal) (*model.A
 		if days, err := s.db.DaysSinceLastSignal(model.AiSignalLateStart, *signal.EmployeeID, signal.OccurredAt); err == nil {
 			ev.DaysSinceLastLate = days
 		}
+		ev.TenureDays = s.tenureDaysFor(*signal.EmployeeID)
 	} else {
 		gaps = append(gaps, "الإشارة بلا موظف")
 	}

@@ -408,6 +408,45 @@ func (r *AiRepository) LatestVisitCrewSize(bookingID string) (int, error) {
 	return n, err
 }
 
+// TrainingGapCandidate موظف تكرر عنده توقف عمل بخدمة معيّنة ولسه ما
+// أخذ (أو ما نجح بـ) تدريب يغطّي هذي الخدمة — مادة إشارة «فجوة
+// تدريب» (يحوّل «منو غلط» لـ«شنو ناقص بالمنظومة»).
+type TrainingGapCandidate struct {
+	EmployeeID   string `db:"employeeId"`
+	EmployeeName string `db:"employeeName"`
+	ServiceID    string `db:"serviceId"`
+	ServiceName  string `db:"serviceName"`
+	StopCount    int    `db:"stopCount"`
+}
+
+// TrainingGapCandidates: موظفين عندهم `minStops` توقف عمل فأكثر بنفس
+// الخدمة خلال آخر `days` يوم، وما عندهم برنامج تدريب ناجح يغطّي
+// مهارة هذي الخدمة (`TrainingProgramSkill` → `Skill.serviceId`).
+func (r *AiRepository) TrainingGapCandidates(minStops, days int) ([]TrainingGapCandidate, error) {
+	rows := []TrainingGapCandidate{}
+	err := r.db.Select(&rows, `
+		SELECT s."employeeId" AS "employeeId", e.name AS "employeeName",
+		       b."serviceId" AS "serviceId", sv.name AS "serviceName",
+		       COUNT(*) AS "stopCount"
+		FROM "AiSignal" s
+		JOIN "Booking" b ON b.id = s."entityId" AND s."entityType" = 'BOOKING'
+		JOIN "Employee" e ON e.id = s."employeeId"
+		JOIN "Service" sv ON sv.id = b."serviceId"
+		WHERE s.kind = $1 AND s."occurredAt" > now() - ($2 || ' days')::interval
+		  AND s."employeeId" IS NOT NULL AND b."serviceId" IS NOT NULL
+		GROUP BY s."employeeId", e.name, b."serviceId", sv.name
+		HAVING COUNT(*) >= $3
+		  AND NOT EXISTS (
+		    SELECT 1 FROM "TrainingProgramParticipant" tpp
+		    JOIN "TrainingProgramSkill" tps ON tps."programId" = tpp."programId"
+		    JOIN "Skill" sk ON sk.id = tps."skillId"
+		    WHERE tpp."employeeId" = s."employeeId" AND tpp.passed = true AND sk."serviceId" = b."serviceId"
+		  )
+		ORDER BY "stopCount" DESC`,
+		model.AiSignalWorkStopped, days, minStops)
+	return rows, err
+}
+
 // ═══ ساعات الدوام ═══
 
 func (r *AiRepository) WorkWindow() (*model.AiWorkWindow, error) {
