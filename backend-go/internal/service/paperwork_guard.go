@@ -85,6 +85,11 @@ func (g *PaperworkGuard) Check(bookingID, employeeID, role string) error {
 	if count > 0 {
 		return nil
 	}
+	if ok, err := g.holdsServicePaperworkPermission(bookingID, employeeID); err != nil {
+		return err
+	} else if ok {
+		return nil
+	}
 	// ⚠️ الرسالة تقول **منو** يسويه مو بس «ممنوع»: الفني الي يقرا
 	// «ما عندك صلاحية» يتصل بالإدارة ويضيّع وقتاً — والي يقرا «الورق
 	// على مسؤول الخدمة» يعرف شنو يسوي بالضبط.
@@ -128,4 +133,30 @@ func (g *PaperworkGuard) IsManagerPaperwork(bookingID string) (bool, error) {
 		return false, nil
 	}
 	return managed, err
+}
+
+// holdsServicePaperworkPermission صاحب «فواتير وتقارير الجي بي اس/
+// الداش كام» يسوي ورق حجوزات نوع خدمته — (ع): «من انطيها للموظف يكدر
+// يسوي تقرير وفاتورة». نفس المفتاح القديم، فالي عندهم الصلاحية أصلاً
+// تشتغل عندهم تلقائياً بلا ما ينمنحون من جديد.
+//
+// ⚠️ مطابقة بالنوع: صاحب الجي بي اس ما يسوي ورق داش كام وبالعكس.
+func (g *PaperworkGuard) holdsServicePaperworkPermission(bookingID, employeeID string) (bool, error) {
+	var ok bool
+	err := g.db.Get(&ok, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM "Service" s
+			JOIN "Permission" p ON p.name = CASE s."serviceKind"
+				WHEN 'GPS' THEN 'invoice_gps'
+				WHEN 'DASHCAM' THEN 'invoice_dashcam'
+			END
+			JOIN "EmployeePermission" ep ON ep."permissionId" = p.id AND ep."employeeId" = $2
+			WHERE s.id IN (
+				SELECT "serviceId" FROM "Booking" WHERE id = $1 AND "serviceId" IS NOT NULL
+				UNION
+				SELECT "serviceId" FROM "BookingService" WHERE "bookingId" = $1
+			)
+		)`, bookingID, employeeID)
+	return ok, err
 }

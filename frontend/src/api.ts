@@ -1502,6 +1502,19 @@ export interface CoordinationAlertSummary {
 }
 
 /** التدقيق اليومي: حجوزات يوم واحد بمجاميعه الأربعة */
+export type SurveyPhotoOwner = { bookingId: string; projectId?: undefined } | { projectId: string; bookingId?: undefined }
+
+export interface SurveyPhoto {
+  id: string
+  bookingId: string | null
+  projectId: string | null
+  contentType: string
+  fileName: string
+  uploadedById: string
+  uploadedByName: string
+  createdAt: string
+}
+
 export interface DailyAuditRow {
   id: string
   code: string
@@ -4385,6 +4398,42 @@ export const api = {
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الملف')
     return res.json() as Promise<{ key: string; url: string; size: number; type: string }>
   },
+
+  // ═══ صور الكشف (حجز أو مشروع) ═══
+  // ⚠️ الصورة تنجلب بترويسة Authorization (blob) مو برابط <img> عام:
+  // الخادم يفحص الدور بكل طلب، فرابط مسرّب ما يفتح لغير المصرّح.
+  getSurveyPhotos: (owner: SurveyPhotoOwner) =>
+    request<SurveyPhoto[]>(`/survey-photos?${owner.bookingId ? `bookingId=${owner.bookingId}` : `projectId=${owner.projectId}`}`),
+  uploadSurveyPhoto: async (owner: SurveyPhotoOwner, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    if (owner.bookingId) form.append('bookingId', owner.bookingId)
+    if (owner.projectId) form.append('projectId', owner.projectId)
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/survey-photos`, {
+      method: 'POST', headers: token ? { Authorization: `Bearer ${token}` } : {}, body: form,
+    })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || describeHttpStatus(res.status))
+    return res.json() as Promise<SurveyPhoto>
+  },
+  surveyPhotoBlob: async (id: string, download = false) => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/survey-photos/${id}/file${download ? '?download=1' : ''}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || describeHttpStatus(res.status))
+    return res.blob()
+  },
+  deleteSurveyPhoto: async (id: string) => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/survey-photos/${id}`, {
+      method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || describeHttpStatus(res.status))
+  },
+  /** «كشف»: الإداري يطلّع ليدر يعاين الموقع — الحجز يصير كشف وينكلّف الليدر. */
+  sendBookingToSurvey: (id: string, leaderId: string) =>
+    request<Booking>(`/bookings/${id}/send-to-survey`, { method: 'PUT', body: JSON.stringify({ leaderId }) }),
 
   // ═══ مجسّمات الكيان ثلاثية الأبعاد ═══
   // ⚠️ **رفعها بمسار خاص مو `uploadFile` العام**: العام مفتوح لأي

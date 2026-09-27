@@ -689,6 +689,23 @@ func (h *BookingHandler) MarkAsSurveyRetroactively(w http.ResponseWriter, r *htt
 	WriteJSON(w, http.StatusOK, b)
 }
 
+// PUT /api/bookings/{id}/send-to-survey — {leaderId}
+func (h *BookingHandler) SendToSurvey(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		LeaderID string `json:"leaderId"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	b, err := h.service.SendToSurvey(r.PathValue("id"), body.LeaderID, middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
 // PUT /api/bookings/{id}/restore
 func (h *BookingHandler) RestoreBooking(w http.ResponseWriter, r *http.Request) {
 	b, err := h.service.Restore(r.PathValue("id"))

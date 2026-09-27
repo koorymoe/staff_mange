@@ -31,7 +31,14 @@ const emptyForm: ReportForm = {
 }
 
 export default function WorkReportPage() {
-  const { employee: currentUser } = useSession()
+  const { employee: currentUser, permissions } = useSession()
+  // «فواتير وتقارير الجي بي اس/الداش كام»: صاحب الصلاحية يسوي تقرير
+  // حجوزات نوع خدمته حتى لو ما طلع بيها.
+  const serviceKinds = [
+    ...(permissions.includes('invoice_gps') ? ['GPS' as const] : []),
+    ...(permissions.includes('invoice_dashcam') ? ['DASHCAM' as const] : []),
+  ]
+  const serviceKindsKey = serviceKinds.join(',')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [completedToday, setCompletedToday] = useState<Booking[]>([])
   const [reportedBookingIds, setReportedBookingIds] = useState<Set<string>>(new Set())
@@ -60,20 +67,25 @@ export default function WorkReportPage() {
       // تقريره يضل يطلع هنا لين يسويه، مو يختفي بس لأن اليوم تغيّر.
       api.getBookings({ status: 'COMPLETED' }),
       api.getWorkReports(currentUser.id),
+      Promise.all(serviceKinds.map((k) => api.getServicePaperwork(k).catch(() => [] as Booking[]))),
     ])
-      .then(([inProgress, completed, myReports]) => {
+      .then(([inProgress, completed, myReports, serviceLists]) => {
         const isMine = (b: Booking) =>
           b.assignments.some((a) => a.employee.id === currentUser.id) ||
           b.projectSupervisor?.id === currentUser.id
         setBookings(inProgress.filter(isMine))
-        setCompletedToday(completed.filter(isMine))
+        const mine = completed.filter(isMine)
+        const seen = new Set(mine.map((b) => b.id))
+        const service = serviceLists.flat().filter((b) => !b.hasReport && !seen.has(b.id) && seen.add(b.id))
+        setCompletedToday([...mine, ...service])
         setMyReports(myReports)
         setReportedBookingIds(new Set(myReports.map((r) => r.bookingId)))
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [currentUser])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, [currentUser, serviceKindsKey])
 
   const getForm = (id: string) => forms[id] || emptyForm
   const updateForm = (id: string, patch: Partial<ReportForm>) =>

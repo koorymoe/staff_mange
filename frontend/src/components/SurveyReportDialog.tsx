@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { api, type Booking, type BookingSurveyReport } from '../api'
 import BookingCodeChip from './BookingCodeChip'
+import SurveyPhotos from './SurveyPhotos'
 
 // ═══ نتائج زيارة معاينة («كشف») ═══
 //
@@ -85,6 +86,10 @@ export default function SurveyReportDialog({
           rows={2}
           className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
         />
+
+        {/* الصور تنرفع فوراً ومربوطة بالحجز — ما تنتظر زر التسجيل، فما
+            تضيع لو انقطع النت قبل ما يكمّل الكتابة. */}
+        <SurveyPhotos owner={{ bookingId: booking.id }} canUpload />
 
         {error && <p className="mt-3 rounded-lg bg-red-50 p-2 text-sm font-bold text-red-700">{error}</p>}
 

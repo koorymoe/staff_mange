@@ -1063,6 +1063,30 @@ func (s *BookingService) ChangeType(id, newType, byEmployeeID string) (*model.Bo
 	return s.repo.FindByID(id)
 }
 
+// SendToSurvey الإداري، وهو يستلم حجز ممكن يصير مشروع، يطلّع ليدر
+// يكشف على الموقع: الحجز يصير «كشف» (بلا فاتورة ولا عُدّة) وينكلّف
+// الليدر بخانة الكادر الأولى — نفس مسار التكليف العادي، فمهمة الميدان
+// وعدالة التوزيع يشتغلن بلا منطق جديد.
+func (s *BookingService) SendToSurvey(id, leaderID, byEmployeeID string) (*model.Booking, error) {
+	if leaderID == "" {
+		return nil, errors.New("اختار الليدر الي يطلع للكشف")
+	}
+	if err := s.ensureNotProjectLocked(id); err != nil {
+		return nil, err
+	}
+	leader, err := s.employees.FindByID(leaderID)
+	if err != nil || leader == nil {
+		return nil, errors.New("الموظف غير موجود")
+	}
+	if !leader.IsLeader {
+		return nil, errors.New("الكشف يطلعله ليدر")
+	}
+	if err := s.repo.ChangeType(id, "SURVEY", byEmployeeID); err != nil {
+		return nil, err
+	}
+	return s.Assign(id, model.AssignBookingRequest{EmployeeID: leaderID, Role: "TECH_1"}, byEmployeeID)
+}
+
 // ═══ تتبّع المراحل ═══
 
 // RecordCreator يسجّل منو أدخل الحجز — ينندى بعد الإنشاء مباشرة.

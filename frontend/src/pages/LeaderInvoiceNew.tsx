@@ -318,7 +318,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
     const load = internalMode
       ? api.getInternalBookings('COMPLETED')
       : serviceMode
-        ? api.getServicePaperwork(serviceKind)
+        // القائمة صارت «فواتير وتقارير»: حجز انفوتر ويبقى بيها لحد ما
+        // ينكتب تقريره — فهنا ينشال حتى ما ينفوتر مرتين.
+        ? api.getServicePaperwork(serviceKind).then((list) => list.filter((b) => !b.hasInvoice))
         : api.getBookings({ status: 'COMPLETED' })
     load.then(setCompletedBookings).catch(() => setCompletedBookings([]))
     // ⚠️ والمشاريع الموجّهة تنخفي بالوضعين: ماكو علاقة بين مشروع

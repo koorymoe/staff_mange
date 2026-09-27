@@ -16,6 +16,7 @@ import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_
 import PhoneActions from '../components/PhoneActions'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
+import SurveyPhotos from '../components/SurveyPhotos'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -361,6 +362,33 @@ export default function Coordinator() {
       load()
     } catch (e) {
       setSaveError(`تعذر تأشير «الزبون يرجع خبر»: ${e instanceof Error ? e.message : 'خطأ غير متوقع'}`)
+    }
+  }
+
+  // «كشف»: حجز ممكن يصير مشروع — الإداري يطلّع ليدر يعاين الموقع
+  // ويرفق صور، بدل ما يرسل فريق كامل بعُدّة لشغل ما انعرف حجمه.
+  // ⚠️ نفس حارس التكليف بالخادم (coordinator/crew_management): المراقب
+  // يشوف هاي الشاشة بدوره بلا الصلاحية، وضغطة تنرفض بالحارس تنحسب
+  // عليه مخالفة — فالزر ما يطلعله أصلاً.
+  const canSendToSurvey = currentUser?.role === 'ADMIN'
+    || permissions.includes('coordinator') || permissions.includes('crew_management')
+  const [surveyFor, setSurveyFor] = useState<Booking | null>(null)
+  const [surveyLeader, setSurveyLeader] = useState('')
+  const [surveyBusy, setSurveyBusy] = useState(false)
+  const sendToSurvey = async () => {
+    if (!surveyFor || !surveyLeader) return
+    setSurveyBusy(true)
+    try {
+      await api.sendBookingToSurvey(surveyFor.id, surveyLeader)
+      setSaveError(null)
+      alert(`الحجز ${surveyFor.code} صار «كشف» وانرسل لمهام الليدر`)
+      setSurveyFor(null)
+      setSurveyLeader('')
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر إرسال الحجز للكشف')
+    } finally {
+      setSurveyBusy(false)
     }
   }
 
@@ -848,6 +876,15 @@ export default function Coordinator() {
                         أصلاً: الحجز ينزاح لطابور «ما وصلت للتنفيذ»
                         ويبقى محفوظاً — يتصلون مرة ثانية، وإذا ما رد
                         يحذفونه. فمكانه زر مستقل مو خيار مدفون. */}
+                    {canSendToSurvey && booking.bookingType !== 'SURVEY' && (
+                      <button
+                        onClick={() => { setSurveyFor(booking); setSurveyLeader('') }}
+                        className="rounded-full bg-teal-50 px-3 py-1 text-xs font-bold text-teal-700 transition-colors hover:bg-teal-100"
+                        title="ممكن يصير مشروع؟ اطلّع ليدر يكشف على الموقع ويرفق صور"
+                      >
+                        🔍 كشف
+                      </button>
+                    )}
                     {canRequestDelete && (
                       <button
                         onClick={() => markNoAnswer(booking.id, booking.code)}
@@ -875,6 +912,7 @@ export default function Coordinator() {
                   </div>
                 </div>
 
+                {booking.bookingType === 'SURVEY' && <SurveyPhotos owner={{ bookingId: booking.id }} />}
                 <div className="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
                   <div>
                     <span className="text-slate-400">الزبون: </span>
@@ -1325,6 +1363,40 @@ export default function Coordinator() {
             )}
           </div>
         </>
+      )}
+      {surveyFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !surveyBusy && setSurveyFor(null)}>
+          <div className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-[#0f2040]">🔍 كشف على الموقع — حجز <BookingCodeChip code={surveyFor.code} /></h3>
+            <p className="mt-1 text-xs text-slate-500">
+              الحجز يصير «كشف» (بلا فاتورة ولا عُدّة) وينرسل لمهام الليدر. الليدر يكتب نتائج المعاينة ويرفق صور،
+              والمراقب والمحاسب والمدير وإداري الحجوزات يشوفونها وينزّلونها.
+            </p>
+            <label className="mt-4 block text-sm font-bold text-slate-700">الليدر الي يطلع للكشف</label>
+            <select
+              value={surveyLeader}
+              onChange={(e) => setSurveyLeader(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            >
+              <option value="">— اختار ليدر —</option>
+              {supervisors.filter((e) => e.isLeader).map((e) => (
+                <option key={e.id} value={e.id}>{e.name}{e.onDuty ? '' : ' (خارج الدوام)'}</option>
+              ))}
+            </select>
+            <div className="mt-4 flex gap-2">
+              <button
+                onClick={sendToSurvey}
+                disabled={!surveyLeader || surveyBusy}
+                className="flex-1 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50"
+              >
+                {surveyBusy ? 'جاري الإرسال…' : '🔍 أرسل للكشف'}
+              </button>
+              <button onClick={() => setSurveyFor(null)} disabled={surveyBusy} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

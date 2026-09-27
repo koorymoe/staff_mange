@@ -363,6 +363,8 @@ func versionedMigrations() []Migration {
 	// اختياري، يوصل لمدير النظام والمالك حصراً (مساره الخاص، مو صندوق
 	// المراقب — MONITOR ما يوصله).
 	result = append(result, achievementMigration()...)
+	// 0296: صور الكشف — للحجز والمشروع، تنزيلها محصور بأدوار محددة.
+	result = append(result, surveyPhotoMigration()...)
 	return result
 }
 

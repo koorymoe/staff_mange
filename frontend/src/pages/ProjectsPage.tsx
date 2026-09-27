@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
 import { matches } from '../utils/search'
 import BookingCodeChip from '../components/BookingCodeChip'
+import SurveyPhotos from '../components/SurveyPhotos'
 import { roleLabelShort } from '../roleLabels'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
@@ -1149,6 +1150,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const isReject = nextStage.includes('مرفوض')
   const toKashf = cur.includes('اتصال') && nextStage.includes('كشف')
   const toSer = cur.includes('كشف') && nextStage.includes('سعر')
+  const canUploadSurvey = useCanUploadProjectSurvey(project)
   const toContract = cur.includes('سعر') && nextStage.includes('عقد')
   const toExec = cur.includes('عقد') && nextStage.includes('تنفيذ')
   const toDone = cur.includes('تنفيذ') && nextStage.includes('مكتمل')
@@ -1255,6 +1257,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
             </div>
           ))}
           <Field label="المبلغ التخميني"><input className="inp" placeholder="المبلغ المقترح..." value={price} onChange={e => setPrice(e.target.value)} /></Field>
+          <SurveyPhotos owner={{ projectId: project.id }} canUpload={canUploadSurvey} />
         </div>
       )}
 
@@ -1297,10 +1300,21 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   )
 }
 
+// رفع صور كشف المشروع: منفّذ الكشف أو المسؤول أو الموجّه له، أو إدارة
+// المشاريع. الخادم يعيد نفس الفحص — هذا بس حتى ما يطلع زر يفشل.
+function useCanUploadProjectSurvey(project: Project) {
+  const { employee, permissions } = useSession()
+  if (!employee) return false
+  if (['ADMIN', 'PROJECT_MANAGER', 'HR_COORDINATOR'].includes(employee.role)) return true
+  if (permissions.includes('project_management')) return true
+  return [project.surveyorEmployeeId, project.responsibleEmployeeId, project.delegatedToEmployeeId].includes(employee.id)
+}
+
 // ---------------------------------------------------------------------------
 // Report modal (survey / visit)
 // ---------------------------------------------------------------------------
 function ReportModal({ type, project, onClose }: { type: 'survey' | 'visit'; project: Project; onClose: () => void }) {
+  const canUpload = useCanUploadProjectSurvey(project)
   return (
     <Modal onClose={onClose} title={type === 'survey' ? 'استمارة الكشف' : 'تقرير الزيارة'} wide>
       <div className="border-2 border-gray-800 p-5 bg-white text-gray-900">
@@ -1329,7 +1343,9 @@ function ReportModal({ type, project, onClose }: { type: 'survey' | 'visit'; pro
             </tbody>
           </table>
           </div>
-        ) : (
+        ) : null}
+        {type === 'survey' && <SurveyPhotos owner={{ projectId: project.id }} canUpload={canUpload} />}
+        {type === 'survey' ? null : (
           <div className="border border-gray-800 p-3 mt-2">
             <div className="grid grid-cols-2 gap-2 text-sm mb-3">
               <div><b>المسؤول:</b> {project.staff || 'غير محدد'}</div>

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { api, type Booking, type Expense } from '../api'
+import SurveyPhotos from '../components/SurveyPhotos'
 import { matches } from '../utils/search'
 import { useSession, canAuditFinance, canLinkPartialBooking } from '../session'
 import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
@@ -815,7 +816,9 @@ export default function Finance() {
                       وتفاصيل الموقع) تُسلَّم من شاشة مهامي.
                       {b.partialJobBooking && <> نتج عنه الحجز الحقيقي {b.partialJobBooking.code}.</>}
                     </p>
-                  ) : isPartialLinked(b) ? (
+                  ) : null}
+                  {isSurvey(b) && <SurveyPhotos owner={{ bookingId: b.id }} />}
+                  {isSurvey(b) ? null : isPartialLinked(b) ? (
                     <p className="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] text-violet-700">
                       🔗 هذا يوم إضافي بشغلة متعددة الأيام — فلوسه مو منفصلة (كلها بفاتورة
                       الحجز الأصلي {b.partialJobBooking?.code})، فما يطالبك بتدقيق أو فاتورة

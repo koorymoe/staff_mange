@@ -218,6 +218,9 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		  -- ذاك يجاوب «ورقه مكتمل؟» وهذا يجاوب «يستحق فاتورة يدوية؟»
 		  -- — سؤالان مختلفان، وخلطهما يخلي تعديل واحد يحرّك الاثنين.
 		  AND b.code NOT LIKE 'OLD-%'
+		  -- زيارة الكشف بلا فاتورة ولا تقرير أصلاً (isSurveySQL) — فما
+		  -- تطالب صاحب ورق الخدمة بشي.
+		  AND b."bookingType" <> 'SURVEY'
 		  -- 🔴 والي انسوّت إله فاتورة **يختفي**: (ع) «الموظف يسوي
 		  -- الفاتورة تروح للفواتير بس مجاي تختفي من عنده». وبلا
 		  -- هذا الشرط الحجز يبقى بالقائمة بعد الحفظ، فالموظف
@@ -228,9 +231,20 @@ func (r *BookingRepository) ListServicePaperworkByKind(kind string, limit int) (
 		  -- بالنظام تنحفظ بالمتصفح مو بالقاعدة، بس عمود الحالة
 		  -- افتراضه DRAFT — فلو انكتب صف ناقص
 		  -- يوماً، الحجز لازم **يبقى** ظاهراً حتى تنخلص فاتورته.
-		  AND NOT EXISTS (
-		      SELECT 1 FROM "LeaderInvoice" li
-		      WHERE li."bookingId" = b.id AND li.status <> 'DRAFT'
+		  --
+		  -- 🔴 وصارت «فواتير **وتقارير**» (٢٧ أيلول): الحجز يبقى لحد ما
+		  -- تنخلص فاتورته **وتقريره**. التقرير ينطلب بس من حجوزات
+		  -- اليوم وجاي — القديمة الي انفوترت ما ترجع للقائمة تطالب
+		  -- بتقرير شغل صار قبل ما ينطلب.
+		  AND (
+		      NOT EXISTS (
+		          SELECT 1 FROM "LeaderInvoice" li
+		          WHERE li."bookingId" = b.id AND li.status <> 'DRAFT'
+		      )
+		      OR (
+		          b."completedAt" >= '2026-09-27'
+		          AND NOT EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)
+		      )
 		  )
 		  AND EXISTS (
 		      SELECT 1 FROM "Service" s

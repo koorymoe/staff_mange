@@ -229,6 +229,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	fileStore := buildFileStore(cfg)
 	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
 	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret))
+	surveyPhotoHandler := handler.NewSurveyPhotoHandler(repository.NewSurveyPhotoRepository(db), permissionRepo, fileStore)
 	// مفاتيح إطفاء الميزات — جدول عام صغير، القراءة للكل والكتابة للمالك.
 	systemSwitchHandler := handler.NewSystemSwitchHandler(repository.NewSystemSwitchRepository(db))
 	entityModelHandler := handler.NewEntityModelHandler(
@@ -920,6 +921,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/bookings/{id}/settle-legacy", middleware.Chain(http.HandlerFunc(bookingHandler.SettleLegacy), requireAuth, requireOwner))
 	mux.Handle("PUT /api/bookings/{id}/resume", middleware.Chain(http.HandlerFunc(bookingHandler.ResumeFromWaiting), requireAuth, requireCoordinator))
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
+	// «كشف»: الإداري يطلّع ليدر يعاين الموقع قبل ما يصير مشروع.
+	mux.Handle("PUT /api/bookings/{id}/send-to-survey", middleware.Chain(http.HandlerFunc(bookingHandler.SendToSurvey), requireAuth, requireBookingCoord))
 	// إلغاء تكليف موظف — نفس حارس التكليف: الي يكدر يكلّف يكدر يشيل.
 	// حارس أشد يعني الإداري يكلّف بالغلط وينتظر المدير حتى يصلّحها.
 	mux.Handle("DELETE /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Unassign), requireAuth, requireBookingCoord))
@@ -1814,6 +1817,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقرير زيارة معاينة («كشف») — أي كادر مكلّف بالحجز يسلّمه، بلا حارس ورق محاسبي.
 	mux.Handle("POST /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.Create), requireAuth))
 	mux.Handle("GET /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.List), requireAuth))
+	// صور الكشف (حجز أو مشروع): الفحص بالهاندلر نفسه — العرض والتنزيل
+	// للمراقب والمحاسب والمدير وإداري الحجوزات والكادر الي رفعها.
+	mux.Handle("GET /api/survey-photos", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.List), requireAuth))
+	mux.Handle("POST /api/survey-photos", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.Upload), requireAuth))
+	mux.Handle("GET /api/survey-photos/{id}/file", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.File), requireAuth))
+	mux.Handle("DELETE /api/survey-photos/{id}", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.Delete), requireAuth))
 	// تدقيق التكرار (ماتركس) — عرض وقرار "مو تكرار" حصراً، بلا حذف/دمج.
 	mux.Handle("GET /api/duplicate-candidates", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.List), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/duplicate-candidates/{id}/dismiss", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Dismiss), requireAuth, requireAdmin))
