@@ -542,6 +542,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	requireAuth := middleware.RequireAuth(authService, employeeRepo)
 	requireAdmin := middleware.RequireRole(employeeRepo, notificationRepo, "ADMIN")
+	// صلاحية «إحصائيات الموظفين» تفتح الشاشتين — چانت تظهر البند والخادم يرفضه.
+	requireEmployeeStats := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_stats")
 	// حصراً لحساب المالك (OWNER) — أقوى من الأدمن العادي، ما يشوفها إلا هو
 	requireOwner := middleware.RequireRole(employeeRepo, notificationRepo, "OWNER")
 	// فتح الحسابات: المالك وحده، بلا تسجيل مخالفة على مدير النظام
@@ -1580,7 +1582,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الإدارة والصرف والتدقيق: صلاحية "الدوار" (المحاسب). أما رصيد الموظف
 	// نفسه ورفع تسويته فمفتوحين لأي موظف مسجّل دخول — كل واحد يشوف حركاته هو بس.
 	// حساب تكاليف الشد — تفصيلي لكل الكوادر، ضمن خانة الحسابات
-	mux.Handle("GET /api/finance/gps-install-costs", middleware.Chain(http.HandlerFunc(gpsInstallCostHandler.Summary), requireAuth, requireFinance))
+	// صلاحية «حساب تكاليف الشد» تظهر البند بالقائمة — فلازم تفتح المسار كمان،
+	// وإلا الموظف يضغط وينرفض ويتسجّل عليه تجاوز.
+	mux.Handle("GET /api/finance/gps-install-costs", middleware.Chain(http.HandlerFunc(gpsInstallCostHandler.Summary), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "FINANCE"}, "finance_audit", "gps_install_costs")))
 
 	// ── الإجازات ──────────────────────────────────────────────────────────────
 	// أي موظف يقدّم ويشوف طلباته. البت بالطلبات محصور بالمخوّل حسب مسار
@@ -1745,7 +1750,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (حتى فني بالميدان) يقدر يستدعيه مباشرة ويحصل على كل هذا رغم إن
 	// الواجهة (`StatsPage.tsx`) تقفل على غير ADMIN. الحارس هنا صار
 	// يطابق القفل الفعلي بالواجهة.
-	mux.Handle("GET /api/stats", middleware.Chain(http.HandlerFunc(statsHandler.Overview), requireAuth, requireAdmin))
+	mux.Handle("GET /api/stats", middleware.Chain(http.HandlerFunc(statsHandler.Overview), requireAuth, requireEmployeeStats))
 
 	// إدارة المركبات — وقود/تنظيف/تبديل زيت، أعطال وأضرار، حالة شهرية
 	// قائمة مبسطة لاختيار سيارة لحجز — بلا صلاحية إدارة الأسطول
@@ -1993,16 +1998,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// إحصائيات الموظفين الشهرية — حصراً للمالك/الأدمن (requireAdmin يسمح OWNER
 	// تلقائياً لأنه يتخطى أي قيد أدوار بـRequireRole).
-	mux.Handle("GET /api/employee-stats/monthly", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Monthly), requireAuth, requireAdmin))
-	mux.Handle("GET /api/employee-stats/monthly/export", middleware.Chain(http.HandlerFunc(employeeStatsHandler.MonthlyExport), requireAuth, requireAdmin))
-	mux.Handle("GET /api/employee-stats/range", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Range), requireAuth, requireAdmin))
-	mux.Handle("GET /api/employee-stats/curve/{employeeId}", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Curve), requireAuth, requireAdmin))
+	mux.Handle("GET /api/employee-stats/monthly", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Monthly), requireAuth, requireEmployeeStats))
+	mux.Handle("GET /api/employee-stats/monthly/export", middleware.Chain(http.HandlerFunc(employeeStatsHandler.MonthlyExport), requireAuth, requireEmployeeStats))
+	mux.Handle("GET /api/employee-stats/range", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Range), requireAuth, requireEmployeeStats))
+	mux.Handle("GET /api/employee-stats/curve/{employeeId}", middleware.Chain(http.HandlerFunc(employeeStatsHandler.Curve), requireAuth, requireEmployeeStats))
 
 	// إدارة الإحصائيات: يومية/أسبوعية/مشاريع — حصراً لمدير النظام.
-	mux.Handle("GET /api/stats-management/daily", middleware.Chain(http.HandlerFunc(statsManagementHandler.Daily), requireAuth, requireAdmin))
-	mux.Handle("GET /api/stats-management/weekly", middleware.Chain(http.HandlerFunc(statsManagementHandler.Weekly), requireAuth, requireAdmin))
-	mux.Handle("GET /api/stats-management/projects", middleware.Chain(http.HandlerFunc(statsManagementHandler.ProjectStages), requireAuth, requireAdmin))
-	mux.Handle("GET /api/stats-management/internal-works", middleware.Chain(http.HandlerFunc(statsManagementHandler.InternalWorks), requireAuth, requireAdmin))
+	mux.Handle("GET /api/stats-management/daily", middleware.Chain(http.HandlerFunc(statsManagementHandler.Daily), requireAuth, requireEmployeeStats))
+	mux.Handle("GET /api/stats-management/weekly", middleware.Chain(http.HandlerFunc(statsManagementHandler.Weekly), requireAuth, requireEmployeeStats))
+	mux.Handle("GET /api/stats-management/projects", middleware.Chain(http.HandlerFunc(statsManagementHandler.ProjectStages), requireAuth, requireEmployeeStats))
+	mux.Handle("GET /api/stats-management/internal-works", middleware.Chain(http.HandlerFunc(statsManagementHandler.InternalWorks), requireAuth, requireEmployeeStats))
 
 	// تقدير مدة العمل المتعلَّم (learned baseline) — قراءة فقط، متاح لأي مستخدم
 	// مسجّل دخول (يحتاجها المنسق قبل تثبيت موعد/فريق).

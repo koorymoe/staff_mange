@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react'
 import { api, type VipCustomer, type Customer } from '../api'
+import { useSession } from '../session'
 
 // قائمة الشخصيات المهمة — لمدير النظام حصراً (الراوت بالسيرفر محمي بـrequireAdmin).
 // تعرض تفاصيل الزبون ورقمه وشنو طلب من عدنا ومنو الموظف الي علّمه.
 export default function VipCustomersPage() {
+  // القائمة الكاملة (رقم الزبون، شنو طلب، منو علّمه) لمدير النظام حصراً —
+  // قرار (ع). صاحب «إضافة شخصية مهمة» يضيف بس: لو نجيب القائمة إله
+  // ينرفض ويتسجّل عليه تجاوز، وضغطات الحذف المرفوضة تقفل حسابه.
+  const isAdmin = useSession().employee?.role === 'ADMIN'
   const [items, setItems] = useState<VipCustomer[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -64,12 +69,13 @@ export default function VipCustomersPage() {
   }
 
   const load = () => {
+    if (!isAdmin) { setLoading(false); return }
     api.getVipCustomers()
       .then(setItems)
       .catch((e) => setError(e instanceof Error ? e.message : 'تعذر جلب القائمة'))
       .finally(() => setLoading(false))
   }
-  useEffect(load, [])
+  useEffect(load, [isAdmin])
 
   const remove = async (customerId: string) => {
     if (!confirm('إزالة تعليم "شخصية مهمة" عن هذا الزبون؟')) return
@@ -176,7 +182,12 @@ export default function VipCustomersPage() {
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
       {error && <p className="mt-4 rounded-lg bg-red-50 p-4 text-red-600">{error}</p>}
 
-      {!loading && !error && (
+      {!isAdmin && (
+        <p className="mt-6 rounded-lg bg-slate-50 p-4 text-sm text-slate-500">
+          قائمة الشخصيات المهمة وتفاصيلها لمدير النظام بس — إنت تكدر تضيف فقط.
+        </p>
+      )}
+      {isAdmin && !loading && !error && (
         <div className="mt-6 overflow-x-auto rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <table className="w-full min-w-[760px] text-sm">
             <thead>

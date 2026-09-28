@@ -781,8 +781,10 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
       const path = (item.to || '').split('?')[0]
       if (!TECHNICIAN_NAV.includes(path)) return false
     }
+    // 🔴 صلاحية الوحدة **تظهر الوحدة** بس، مو كل صفحاتها: الخادم ما يعرف
+    // صلاحيات unit_* أبداً، فالبند الي تفتحه الوحدة لحالها ينضغط وينرفض
+    // ويتسجّل تجاوز على الموظف. كل صفحة تحتاج دورها أو صلاحيتها هي.
     const granted =
-      (unitGranted && !item.requireOwnGrant) ||
       (!!item.unitPermission && (role === 'ADMIN' || ctx.permissions.includes(item.unitPermission)))
     if (!granted) {
       // الصلاحية الممنوحة فعلياً تكفي بحالها. قبل، العنصر كان يشترط الدور

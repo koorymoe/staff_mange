@@ -265,8 +265,8 @@ function App() {
           <Route path="unit-pr" element={<ComingSoonUnit title="وحدة الإعلام والعلاقات العامة" />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
           <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />
-          <Route path="employee-stats" element={<RequireAdmin><EmployeeMonthlyStatsPage /></RequireAdmin>} />
-          <Route path="stats-management" element={<RequireAdmin><StatsManagementPage /></RequireAdmin>} />
+          <Route path="employee-stats" element={<RequirePermission permission="employee_stats"><EmployeeMonthlyStatsPage /></RequirePermission>} />
+          <Route path="stats-management" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
           <Route path="performance-review" element={<PerformanceReviewPage />} />
           <Route path="missions" element={<MissionsPage />} />
           <Route path="procurement" element={<ProcurementPage />} />
