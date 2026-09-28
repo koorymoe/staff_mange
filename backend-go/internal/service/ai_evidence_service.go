@@ -241,6 +241,14 @@ func (s *AiEvidenceService) CollectFor(signal model.AiSignal) (*model.AiEvidence
 		return s.CollectForMaterialUsage(signal)
 	case model.AiSignalInvoiceWorkMismatch:
 		return s.CollectForInvoiceWorkMismatch(signal)
+	case model.AiSignalCustomerAtRisk:
+		return s.CollectForCustomerAtRisk(signal)
+	case model.AiSignalPriceOutlier:
+		return s.CollectForPriceOutlier(signal)
+	case model.AiSignalLatePaperwork:
+		return s.CollectForLatePaperwork(signal)
+	case model.AiSignalAttendanceWorkGap:
+		return s.CollectForAttendanceWorkGap(signal)
 	}
 	return nil, fmt.Errorf("ماكو جامع أدلة لصنف %q", signal.Kind)
 }

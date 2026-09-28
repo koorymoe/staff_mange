@@ -54,6 +54,14 @@ const (
 	// فاتورة ليدر أرقامها ما تطابق بيانات الحجز المنظّمة (عدد الأجهزة
 	// المسجّل بالحجز، أو المبلغ المقدّر).
 	AiSignalInvoiceWorkMismatch = "INVOICE_WORK_MISMATCH"
+	// زبون قرب يزعل: عاملين خطر أو أكثر (تأجيلات، تأخر، شكوى مفتوحة، تقييم واطي).
+	AiSignalCustomerAtRisk = "CUSTOMER_AT_RISK"
+	// صافي فاتورة ليدر شاذ عن وسيط فواتير نفس الخدمة (فوق ٢× أو تحت ٠.٤×).
+	AiSignalPriceOutlier = "PRICE_OUTLIER"
+	// حجوزات منجزة ناقصها فاتورة أو تقرير بعد ٤٨ ساعة — مجمّعة لكل ليدر بالأسبوع.
+	AiSignalLatePaperwork = "LATE_PAPERWORK"
+	// الحضور ما يطابق الشغل ليوم (حاضر بلا شغل، أو شغل بلا حضور) — ممكن نقص تسجيل.
+	AiSignalAttendanceWorkGap = "ATTENDANCE_WORK_GAP"
 )
 
 // ⚠️ «مركبة صيانتها متأخرة ولسه تُرسل» **ما ينحط** بخط أنابيب
@@ -86,6 +94,14 @@ func AiSignalLabel(kind string) string {
 		return "استهلاك مواد أقل من المعتاد"
 	case AiSignalInvoiceWorkMismatch:
 		return "فاتورة ما تطابق بيانات الحجز"
+	case AiSignalCustomerAtRisk:
+		return "زبون قرب يزعل"
+	case AiSignalPriceOutlier:
+		return "تسعير شاذ"
+	case AiSignalLatePaperwork:
+		return "الورق المتأخر"
+	case AiSignalAttendanceWorkGap:
+		return "الحضور مقابل الشغل"
 	}
 	return kind
 }
@@ -278,6 +294,56 @@ type InvoiceWorkFinding struct {
 	Kind     string  `json:"kind"`
 	Invoiced float64 `json:"invoiced"`
 	Booked   float64 `json:"booked"`
+}
+
+// CustomerAtRiskEvidence عوامل خطر زبون — أكواد وأرقام بس.
+type CustomerAtRiskEvidence struct {
+	CustomerCode      string               `json:"customerCode,omitempty"`
+	LatestBookingCode string               `json:"latestBookingCode,omitempty"`
+	Factors           []CustomerRiskFactor `json:"factors"`
+}
+
+// CustomerRiskFactor عامل واحد: Kind = POSTPONED | OVERDUE | OPEN_COMPLAINT | LOW_RATING.
+type CustomerRiskFactor struct {
+	Kind  string `json:"kind"`
+	Value int    `json:"value"`
+	Ref   string `json:"ref,omitempty"` // كود حجز لو ينطبق
+}
+
+// PriceOutlierEvidence صافي فاتورة مقابل وسيط نفس الخدمة.
+type PriceOutlierEvidence struct {
+	InvoiceID      string  `json:"invoiceId"`
+	AccountingCode string  `json:"accountingCode,omitempty"`
+	BookingCode    string  `json:"bookingCode,omitempty"`
+	ServiceID      string  `json:"serviceId,omitempty"`
+	NetTotal       float64 `json:"netTotal"`
+	Median         float64 `json:"median"`
+	Samples        int     `json:"samples"`
+	Ratio          float64 `json:"ratio"`
+	Direction      string  `json:"direction"` // HIGH | LOW | ""
+}
+
+// LatePaperworkEvidence حجوزات ليدر منجزة وورقها ناقص بعد ٤٨ ساعة.
+type LatePaperworkEvidence struct {
+	WeekStart string              `json:"weekStart"`
+	LateCount int                 `json:"lateCount"`
+	Bookings  []LatePaperworkItem `json:"bookings"`
+}
+
+type LatePaperworkItem struct {
+	BookingCode    string `json:"bookingCode" db:"bookingCode"`
+	MissingInvoice bool   `json:"missingInvoice" db:"missingInvoice"`
+	MissingReport  bool   `json:"missingReport" db:"missingReport"`
+	HoursSinceDone int    `json:"hoursSinceDone" db:"hoursSinceDone"`
+}
+
+// AttendanceWorkGapEvidence فرق حضور/شغل ليوم واحد.
+// Kind = PRESENT_NO_WORK (حاضر ≥٦ ساعات بلا تكليف) أو WORK_NO_ATTENDANCE.
+type AttendanceWorkGapEvidence struct {
+	Day             string   `json:"day"`
+	Kind            string   `json:"kind"`
+	AttendedMinutes int      `json:"attendedMinutes"`
+	BookingCodes    []string `json:"bookingCodes"`
 }
 
 // ═══ الحكم ═══

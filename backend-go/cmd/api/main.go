@@ -468,6 +468,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("sales opportunities alert: %v", err)
 		}
 	})
+	// ماتركس: فحوصات يومية (زبون قرب يزعل، الورق المتأخر، الحضور مقابل الشغل).
+	matrixScanService := service.NewMatrixScanService(aiRepo)
+	safeguard.Loop("فحوصات ماتركس اليومية", 41*time.Minute, time.Hour, func() {
+		if err := matrixScanService.RunDailyIfDue(); err != nil {
+			log.Printf("matrix daily scans: %v", err)
+		}
+	})
 	matrixForesightHandler := handler.NewMatrixForesightHandler(delayPredictionService, salesOpportunityService)
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)

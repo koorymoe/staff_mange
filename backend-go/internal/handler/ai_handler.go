@@ -159,6 +159,14 @@ func (h *AiHandler) Catalog(w http.ResponseWriter, r *http.Request) {
 			"ينسجّل عند فاتورة ليدر بكمية مادة أقل من ٠.٥× وسيط نفس الخدمة (آخر ١٨٠ يوم، ٥ عيّنات على الأقل)"},
 		{model.AiSignalInvoiceWorkMismatch, model.AiSignalLabel(model.AiSignalInvoiceWorkMismatch), true,
 			"ينسجّل عند فاتورة ليدر عدد أجهزتها يختلف عن المسجّل بالحجز (فرق ٢ فأكثر و١.٥×) أو صافيها ١.٥× فوق أو ٠.٥× تحت المبلغ المقدّر — يستاهل مراجعة قبل الاعتماد"},
+		{model.AiSignalCustomerAtRisk, model.AiSignalLabel(model.AiSignalCustomerAtRisk), true,
+			"فحص يومي: زبون بحجز فعّال أو منجز خلال ٣٠ يوم وعنده عاملين أو أكثر (تأجيل ٢+، تأخر يوم عن الموعد، شكوى مفتوحة ٣ أيام، تقييم ٢ أو أقل خلال ٦٠ يوم) — مرة بالأسبوع لكل زبون"},
+		{model.AiSignalPriceOutlier, model.AiSignalLabel(model.AiSignalPriceOutlier), true,
+			"ينسجّل عند فاتورة ليدر صافيها فوق ٢× أو تحت ٠.٤× وسيط فواتير نفس الخدمة (آخر ١٨٠ يوم، ٨ عيّنات على الأقل، بلا المجانية والمسودات)"},
+		{model.AiSignalLatePaperwork, model.AiSignalLabel(model.AiSignalLatePaperwork), true,
+			"فحص يومي: حجوزات منجزة (آخر ٣٠ يوم) ناقصها فاتورة أو تقرير بعد ٤٨ ساعة — إشارة وحدة لكل ليدر بالأسبوع، تذكير مو عقوبة"},
+		{model.AiSignalAttendanceWorkGap, model.AiSignalLabel(model.AiSignalAttendanceWorkGap), true,
+			"فحص يومي لليوم السابق: فني/ليدر حاضر ٦ ساعات بلا حجز، أو حجز بدا/خلص باسمه بلا حضور — ممكن نقص تسجيل مو اتهام"},
 	}
 	metrics := []item{
 		{model.AiMetricStopRate, model.AiMetricLabel(model.AiMetricStopRate), false, "ينتظر: حاسبة المؤشرات"},

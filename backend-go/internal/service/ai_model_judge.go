@@ -326,7 +326,8 @@ func signalKindLabel(kind string) string {
 		return "تقرير إنجاز يناقض كادر الحجز الحقيقي"
 	case model.AiSignalFuelAnomaly:
 		return "شذوذ بتكلفة تعبئة وقود"
-	case model.AiSignalCustomerRepeatComplaint, model.AiSignalMaterialOveruse, model.AiSignalMaterialUnderuse, model.AiSignalInvoiceWorkMismatch:
+	case model.AiSignalCustomerRepeatComplaint, model.AiSignalMaterialOveruse, model.AiSignalMaterialUnderuse, model.AiSignalInvoiceWorkMismatch,
+		model.AiSignalCustomerAtRisk, model.AiSignalPriceOutlier, model.AiSignalLatePaperwork, model.AiSignalAttendanceWorkGap:
 		return model.AiSignalLabel(kind)
 	default:
 		return kind

@@ -248,6 +248,30 @@ func (r RulesJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVer
 			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
 		}
 		return r.judgeInvoiceWorkMismatch(sig, facts)
+	case model.AiSignalCustomerAtRisk:
+		var facts model.CustomerAtRiskEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeCustomerAtRisk(sig, facts)
+	case model.AiSignalPriceOutlier:
+		var facts model.PriceOutlierEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgePriceOutlier(sig, facts)
+	case model.AiSignalLatePaperwork:
+		var facts model.LatePaperworkEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeLatePaperwork(sig, facts)
+	case model.AiSignalAttendanceWorkGap:
+		var facts model.AttendanceWorkGapEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeAttendanceWorkGap(sig, facts)
 	}
 	return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
 }
