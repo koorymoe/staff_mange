@@ -85,6 +85,89 @@ func (h *EmployeeHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // PUT /api/v1/employees/{id}
+// PUT /api/employees/{id}/identity — {name?, role?}
+//
+// صلاحية «تعديل اسم الموظف ودوره» (edit_employee_identity): (ع) يريد
+// ينطيها لموظف بدون ما يصير مدير نظام. ⚠️ الي عنده الصلاحية بس (مو
+// مدير) ما يلمس حسابات المدير/المالك، وما يمنح دور مدير أو مالك،
+// وما يغيّر دوره هو — وإلا الصلاحية تصير طريق للترقية الذاتية.
+func (h *EmployeeHandler) UpdateIdentity(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	var body struct {
+		Name *string `json:"name"`
+		Role *string `json:"role"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	if body.Name != nil {
+		n := strings.TrimSpace(*body.Name)
+		if n == "" {
+			WriteError(w, http.StatusBadRequest, "الاسم ما يكون فارغ")
+			return
+		}
+		body.Name = &n
+	}
+	role := middleware.RoleFromContext(r)
+	if role != "ADMIN" && role != "OWNER" {
+		target, err := h.service.Get(id)
+		if err != nil || target == nil {
+			WriteError(w, http.StatusNotFound, "الموظف غير موجود")
+			return
+		}
+		if target.Role == "ADMIN" || target.Role == "OWNER" {
+			WriteError(w, http.StatusForbidden, "حساب المدير والمالك يعدّله المدير بس")
+			return
+		}
+		if body.Role != nil {
+			if *body.Role == "ADMIN" || *body.Role == "OWNER" {
+				WriteError(w, http.StatusForbidden, "منح دور المدير أو المالك للمدير بس")
+				return
+			}
+			if id == middleware.EmployeeIDFromContext(r) {
+				WriteError(w, http.StatusForbidden, "ما تكدر تغيّر دورك إنت")
+				return
+			}
+		}
+	}
+	employee, err := h.service.Update(id, model.UpdateEmployeeRequest{Name: body.Name, Role: body.Role})
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, employee)
+}
+
+// PUT /api/employees/{id}/profile — حقول الملف بس لصاحب صلاحية «تعديل
+// ملف الموظف». 🔴 چانت الشاشة تعرض الحقول وتحفظها على مسار المدير،
+// فكل حفظ ينرفض وينحسب مخالفة — وخمس مخالفات تقفل حساب الموظف.
+// ⚠️ قائمة بيضاء: الاسم والدور وبيانات الدخول والحالة والصورة ما تمر.
+func (h *EmployeeHandler) UpdateProfile(w http.ResponseWriter, r *http.Request) {
+	var req model.UpdateEmployeeRequest
+	if err := DecodeJSON(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	req.Name, req.Role, req.Status, req.Username, req.Password, req.PhotoURL, req.SecondaryRoles = nil, nil, nil, nil, nil, nil, nil
+	id := r.PathValue("id")
+	if role := middleware.RoleFromContext(r); role != "ADMIN" && role != "OWNER" {
+		if target, err := h.service.Get(id); err != nil || target == nil {
+			WriteError(w, http.StatusNotFound, "الموظف غير موجود")
+			return
+		} else if target.Role == "ADMIN" || target.Role == "OWNER" {
+			WriteError(w, http.StatusForbidden, "ملف المدير والمالك يعدّله المدير بس")
+			return
+		}
+	}
+	employee, err := h.service.Update(id, req)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, employee)
+}
+
 func (h *EmployeeHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id := extractID(r.URL.Path, "/api/employees/")
 

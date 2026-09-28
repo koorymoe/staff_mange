@@ -779,6 +779,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// النظام الأكبر ويصير الحساب الواحد يفتح عالمين.
 	mux.Handle("POST /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.Create), requireAuth, requireOwnerAccounts))
 	mux.Handle("PUT /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/employees/{id}/identity", middleware.Chain(http.HandlerFunc(employeeHandler.UpdateIdentity), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "edit_employee_identity")))
+	mux.Handle("PUT /api/employees/{id}/profile", middleware.Chain(http.HandlerFunc(employeeHandler.UpdateProfile), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "edit_employee_profile")))
 	mux.Handle("POST /api/employees/{id}/link-historical", middleware.Chain(http.HandlerFunc(employeeHandler.LinkHistoricalRecords), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/skills", middleware.Chain(http.HandlerFunc(employeeHandler.SetSkills), requireAuth, requireStaffManagement))
 

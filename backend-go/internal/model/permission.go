@@ -14,6 +14,9 @@ type SetPermissionsRequest struct {
 var DefaultPermissions = []Permission{
 	{Name: "staff_management", Label: "إدارة الكوادر"},
 	{Name: "edit_employee_profile", Label: "تعديل ملف الموظف (الراتب/الدوام/الإجازات)"},
+	// (ع): «اريد اعدل دور الموظف او اسمه — هاي اريدها صلاحية». تنمنح
+	// فرد-فرد، وما تنضاف لأي دور افتراضي.
+	{Name: "edit_employee_identity", Label: "تعديل اسم الموظف ودوره"},
 	{Name: "kpi_management", Label: "تقييم الأداء (KPI)"},
 	{Name: "kpi_criteria_management", Label: "إدارة نقاط الكي بي اي (إضافة/حذف)"},
 	{Name: "inventory", Label: "جرد الأدوات"},

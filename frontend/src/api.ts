@@ -4241,6 +4241,13 @@ export const api = {
       password?: string
     },
   ) => request<Employee>(`/employees/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  /** «تعديل اسم الموظف ودوره» — لصاحب الصلاحية بدون ما يكون مدير. */
+  updateEmployeeIdentity: (id: string, data: { name?: string; role?: Employee['role'] }) =>
+    request<Employee>(`/employees/${id}/identity`, { method: 'PUT', body: JSON.stringify(data) }),
+  /** حقول الملف (راتب، دوام، إجازات…) لصاحب «تعديل ملف الموظف». الخادم
+   *  يشيل الاسم والدور وبيانات الدخول لو انرسلت. */
+  updateEmployeeProfile: (id: string, data: Record<string, unknown>) =>
+    request<Employee>(`/employees/${id}/profile`, { method: 'PUT', body: JSON.stringify(data) }),
   linkHistoricalRecords: (id: string) =>
     request<{ bookingsLinked: number; complaintsLinked: number }>(`/employees/${id}/link-historical`, { method: 'POST' }),
 

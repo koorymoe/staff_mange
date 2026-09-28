@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { api, DEPARTMENTS, REVIEW_GRADES, type Employee } from '../api'
+import { useSession } from '../session'
 
 // ═══ ملف الموارد البشرية ═══
 //
@@ -22,6 +23,8 @@ export default function EmployeeHRPanel({
   employee: Employee
   onUpdated: (e: Employee) => void
 }) {
+  // غير المدير يحفظ على مسار الملف — مسار المدير يرفضه وتنحسب مخالفة.
+  const isAdmin = useSession().employee?.role === 'ADMIN'
   const [saving, setSaving] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
@@ -29,7 +32,7 @@ export default function EmployeeHRPanel({
     setSaving(key)
     setErr(null)
     try {
-      onUpdated(await api.updateEmployee(employee.id, patch))
+      onUpdated(await (isAdmin ? api.updateEmployee(employee.id, patch) : api.updateEmployeeProfile(employee.id, patch)))
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر الحفظ')
     } finally {

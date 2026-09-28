@@ -53,6 +53,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const guard = useSaveGuard()
   const { employee: currentUser, permissions: userPermissions } = useSession()
   const isAdmin = currentUser?.role === 'ADMIN'
+  // «تعديل اسم الموظف ودوره» صلاحية مستقلة تنمنح فرد-فرد.
+  const canIdentity = isAdmin || userPermissions.includes('edit_employee_identity')
 
   // ═══ حفظ صورة موظف ═══
   // نحدّث القائمة والمختار بالجواب الراجع من السيرفر — مو بالقيمة الي
@@ -141,6 +143,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   })
 
   const selectedEmployee = [...employees, ...archivedEmployees].find((emp) => emp.id === selectedId) || null
+  const targetIsTop = selectedEmployee?.role === 'ADMIN' || selectedEmployee?.role === 'OWNER'
 
   // ⚠️ نفس قائمة الخادم بالضبط (main.go: ADMIN/OWNER/HR_COORDINATOR)،
   // والمالك يوصل بدوره المطبَّع ADMIN. والخادم يرفض تقييم النفس هم.
@@ -265,11 +268,18 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
 
   const handleFieldBlur = async <K extends keyof Employee>(field: K, value: Employee[K]) => {
     if (!selectedEmployee) return
+    if (field === 'name' && value === selectedEmployee.name) return
     try {
-      const updated = await api.updateEmployee(selectedEmployee.id, { [field]: value })
+      // 🔴 غير المدير ما يحفظ على مسار المدير: الرفض ينحسب مخالفة وخمسة
+      // تقفل الحساب. الاسم على مسار «اسم ودور»، والباقي على مسار الملف.
+      const updated = isAdmin
+        ? await api.updateEmployee(selectedEmployee.id, { [field]: value })
+        : field === 'name'
+          ? await api.updateEmployeeIdentity(selectedEmployee.id, { name: String(value) })
+          : await api.updateEmployeeProfile(selectedEmployee.id, { [field]: value })
       setEmployees((prev) => prev.map((emp) => (emp.id === updated.id ? { ...emp, ...updated } : emp)))
     } catch (e) {
-      console.error(e)
+      alert(e instanceof Error ? e.message : 'تعذر الحفظ')
     }
   }
 
@@ -615,8 +625,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                     )}
                   </div>
 
-                  {/* Admin/HR Fields */}
-                  {(isAdmin || userPermissions.includes('edit_employee_profile')) && (
+                  {/* Admin/HR Fields — غير المدير ما يعدّل ملف المدير أو المالك */}
+                  {(isAdmin || (userPermissions.includes('edit_employee_profile') && !targetIsTop)) && (
                     <div className="mt-5">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="h-1.5 w-1.5 rounded-full bg-[#2c5aad]"/>
@@ -626,8 +636,9 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                         <div>
                           <label className="mb-1 block text-xs font-medium text-slate-400">الاسم</label>
                           <input value={editName || selectedEmployee.name} onChange={(e) => setEditName(e.target.value)}
-                            onBlur={() => handleFieldBlur('name', editName || selectedEmployee.name)} placeholder="اسم الموظف"
-                            className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                            readOnly={!canIdentity} title={canIdentity ? undefined : 'تعديل الاسم يحتاج صلاحية «تعديل اسم الموظف ودوره»'}
+                            onBlur={() => canIdentity && handleFieldBlur('name', editName || selectedEmployee.name)} placeholder="اسم الموظف"
+                            className={`w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white ${canIdentity ? '' : 'cursor-not-allowed opacity-70'}`} />
                         </div>
                         <div>
                           <label className="mb-1 flex items-center gap-2 text-xs font-medium text-slate-400">
@@ -742,14 +753,26 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
 
                   {/* Role & Status */}
                   <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {isAdmin && (
+                    {/* صاحب «تعديل اسم الموظف ودوره» يشوف هذا بس لغير المدير
+                        والمالك ولغير نفسه، وبلا خيار المدير — نفس قيود الخادم. */}
+                    {!isAdmin && canIdentity && !targetIsTop && selectedEmployee.id !== currentUser?.id && !userPermissions.includes('edit_employee_profile') && (
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-slate-400">الاسم</label>
+                        <input value={editName || selectedEmployee.name} onChange={(e) => setEditName(e.target.value)}
+                          onBlur={() => handleFieldBlur('name', editName || selectedEmployee.name)} placeholder="اسم الموظف"
+                          className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white" />
+                      </div>
+                    )}
+                    {(isAdmin || (canIdentity && !targetIsTop && selectedEmployee.id !== currentUser?.id)) && (
                       <div>
                         <label className="mb-1 block text-xs font-medium text-slate-400">الصلاحية / الدور</label>
                         <select value={selectedEmployee.role}
                           onChange={async (e) => {
                             const nextRole = e.target.value as Employee['role']
                             try {
-                              const updated = await api.updateEmployee(selectedEmployee.id, { role: nextRole })
+                              const updated = isAdmin
+                                ? await api.updateEmployee(selectedEmployee.id, { role: nextRole })
+                                : await api.updateEmployeeIdentity(selectedEmployee.id, { role: nextRole })
                               setEmployees(prev => prev.map(emp => emp.id === updated.id ? { ...emp, ...updated } : emp))
                             } catch (err) {
                               alert(err instanceof Error ? err.message : 'تعذر تغيير الدور')
@@ -757,6 +780,7 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                           }}
                           className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2.5 text-sm outline-none transition-colors focus:border-[#2c5aad] focus:bg-white">
                           {(selectedEmployee.role === 'GPS_ADMIN' ? [...ASSIGNABLE_ROLES, 'GPS_ADMIN' as const] : ASSIGNABLE_ROLES)
+                            .filter((k) => isAdmin || (k !== 'ADMIN' && k !== 'OWNER'))
                             .map((k) => <option key={k} value={k}>{ROLE_LABELS[k]}</option>)}
                         </select>
                       </div>
