@@ -360,6 +360,9 @@ export const navItems: NavItem[] = [
           { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
           // لوحة الأسطول جانت تحت «وحدة المشتريات والمخازن» — ما إلها علاقة
           { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
+          // الحجز والمهمات — مساراتهم بالباك كلها requireVehicleMgmt
+          { to: '/vehicle-bookings', label: 'حجز المركبات', icon: <></>, permission: 'vehicle_management' },
+          { to: '/vehicle-missions', label: 'مهمات المركبات', icon: <></>, permission: 'vehicle_management' },
         ],
       },
     ],

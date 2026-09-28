@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react'
-import { api, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
+import { api, fileUrl, type VehicleDocument, type VehiclePart, type VehiclePhoto, type Vehicle, type VehicleLog, type VehicleIncident, type VehicleMonthlyStatus, type VehicleDailyRating, type Employee, type VehicleIncidentAttachment, type VehicleAlert, type VehicleExpenseSummary, type EmployeeFuelStat, type VehicleWashMonthly } from '../api'
 import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import type { SaveGuard } from '../useSaveGuard'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -83,7 +84,7 @@ export default function VehiclesPage() {
   const [incidentAttachments, setIncidentAttachments] = useState<Record<string, VehicleIncidentAttachment[]>>({})
   const [alerts, setAlerts] = useState<VehicleAlert[]>([])
   const [alertsOpen, setAlertsOpen] = useState(false)
-  const [tab, setTab] = useState<'logs' | 'oil' | 'incidents' | 'monthly' | 'rating' | 'washstats'>('logs')
+  const [tab, setTab] = useState<'logs' | 'oil' | 'incidents' | 'monthly' | 'rating' | 'washstats' | 'docs' | 'parts' | 'photos'>('logs')
   // ═══ إحصاء الغسل: كل سيارة × شهر ═══
   // ⚠️ الشهر إجباري بالواجهة هم — «كل التاريخ» مو إحصاء شهري.
   const [washMonth, setWashMonth] = useState(() => new Date().toISOString().slice(0, 7))
@@ -644,8 +645,8 @@ export default function VehiclesPage() {
 
               <div className="flex flex-wrap gap-2 rounded-xl border border-white bg-white p-2 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
                 {/* الوقود انفصل عن الزيت (كانوا تبويب واحد)، والتنظيف انتقل
-                    للتقييم اليومي. الوثائق والصور والإطارات/البطاريات انشالت
-                    من الواجهة — مو مطلوبة بهذي الصفحة. */}
+                    للتقييم اليومي. المستمسكات والقطع والصور رجعت كتبويبات —
+                    كل مساراتها ورا صلاحية vehicle_management نفس الصفحة. */}
                 {([
                   { key: 'logs', label: 'الوقود' },
                   { key: 'oil', label: 'الدهن (تبديل زيت)' },
@@ -653,6 +654,9 @@ export default function VehiclesPage() {
                   { key: 'monthly', label: 'الحالة الشهرية' },
                   { key: 'rating', label: 'التقييم اليومي والتنظيف' },
                   { key: 'washstats', label: '🧽 إحصائيات الغسل' },
+                  { key: 'docs', label: '📄 المستمسكات' },
+                  { key: 'parts', label: '🛞 القطع' },
+                  { key: 'photos', label: '📷 الصور' },
                 ] as const).map((t) => (
                   <button
                     key={t.key}
@@ -996,6 +1000,10 @@ export default function VehiclesPage() {
                 </div>
               )}
 
+              {tab === 'docs' && <VehicleDocumentsTab key={selectedVehicle.id} vehicleId={selectedVehicle.id} guard={guard} />}
+              {tab === 'parts' && <VehiclePartsTab key={selectedVehicle.id} vehicle={selectedVehicle} guard={guard} />}
+              {tab === 'photos' && <VehiclePhotosTab key={selectedVehicle.id} vehicleId={selectedVehicle.id} guard={guard} />}
+
               {/* ═══ إحصائيات الغسل: كل سيارة × شهر ═══
                   شكوى أبو الكميات: «النظام مال غسل السيارات جيد ولكن
                   يفتقر للإحصائيات المفصّلة — السيارة الأربيلية كم مرة
@@ -1247,5 +1255,345 @@ export default function VehiclesPage() {
       )}
     </div>
     </>
+  )
+}
+
+// ═══ تبويبات المستمسكات والقطع والصور ═══
+// ⚠️ كل الإضافة والحذف ورا requireVehicleMgmt بالباك — والصفحة نفسها
+// مقفولة بـRequirePermission vehicle_management، فالزر يطلع لكل من يوصل هنا.
+
+const CARD = 'rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]'
+const INPUT = 'rounded-lg border border-slate-300 px-3 py-2'
+const DAY_MS = 86_400_000
+
+const DOC_TYPE_LABELS: Record<VehicleDocument['documentType'], string> = {
+  INSURANCE: 'تأمين',
+  ANNUAL_LICENSE: 'سنوية',
+  INSPECTION: 'فحص',
+  OTHER: 'أخرى',
+}
+
+type DocRow = VehicleDocument & { daysLeft: number | null }
+
+function VehicleDocumentsTab({ vehicleId, guard }: { vehicleId: string; guard: SaveGuard }) {
+  const [docs, setDocs] = useState<DocRow[] | null>(null)
+  const [reload, setReload] = useState(0)
+  const [form, setForm] = useState({ documentType: 'INSURANCE' as VehicleDocument['documentType'], documentNumber: '', issueDate: '', expiryDate: '', notes: '' })
+  const [file, setFile] = useState<File | null>(null)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    api.getVehicleDocuments(vehicleId)
+      .then((list) => {
+        if (!alive) return
+        // الأيام الباقية تنحسب هنا مو بالرسم — Date.now ممنوعة وقت الرسم
+        const now = Date.now()
+        setDocs(list.map((d) => ({
+          ...d,
+          daysLeft: d.expiryDate ? Math.ceil((new Date(d.expiryDate).getTime() - now) / DAY_MS) : null,
+        })))
+      })
+      .catch(() => { if (alive) setDocs([]) })
+    return () => { alive = false }
+  }, [vehicleId, reload])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      let fileUrlValue: string | undefined
+      if (file) {
+        const up = await guard.run('رفع ملف المستمسك', () => api.uploadFile(file, 'vehicles'))
+        if (!up) return
+        fileUrlValue = up.url
+      }
+      const ok = await guard.run('إضافة المستمسك', () => api.createVehicleDocument(vehicleId, {
+        documentType: form.documentType,
+        documentNumber: form.documentNumber.trim() || undefined,
+        issueDate: form.issueDate || undefined,
+        expiryDate: form.expiryDate || undefined,
+        fileUrl: fileUrlValue,
+        notes: form.notes.trim() || undefined,
+      }))
+      if (!ok) return
+      setForm({ documentType: 'INSURANCE', documentNumber: '', issueDate: '', expiryDate: '', notes: '' })
+      setFile(null)
+      setReload((n) => n + 1)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async (d: DocRow) => {
+    if (!confirm(`حذف مستمسك «${DOC_TYPE_LABELS[d.documentType]}»؟`)) return
+    if (await guard.run('حذف المستمسك', () => api.deleteVehicleDocument(vehicleId, d.id))) setReload((n) => n + 1)
+  }
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={submit} className={`${CARD} grid grid-cols-1 gap-3 sm:grid-cols-3`}>
+        <select value={form.documentType} onChange={(e) => setForm({ ...form, documentType: e.target.value as VehicleDocument['documentType'] })} className={INPUT}>
+          {Object.entries(DOC_TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        </select>
+        <input placeholder="رقم المستمسك" value={form.documentNumber} onChange={(e) => setForm({ ...form, documentNumber: e.target.value })} className={INPUT} />
+        <input placeholder="ملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={INPUT} />
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">تاريخ الإصدار</label>
+          <input type="date" value={form.issueDate} onChange={(e) => setForm({ ...form, issueDate: e.target.value })} className={`w-full ${INPUT}`} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">تاريخ الانتهاء</label>
+          <input type="date" value={form.expiryDate} onChange={(e) => setForm({ ...form, expiryDate: e.target.value })} className={`w-full ${INPUT}`} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">صورة/ملف (اختياري)</label>
+          <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className={`w-full ${INPUT} text-sm`} />
+        </div>
+        <button type="submit" disabled={saving} className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+          {saving ? 'جاري الحفظ...' : '+ إضافة مستمسك'}
+        </button>
+      </form>
+
+      <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+        <table className="w-full text-right text-sm">
+          <thead className="bg-slate-50 text-slate-600">
+            <tr>
+              <th className="px-4 py-2">النوع</th>
+              <th className="px-4 py-2">الرقم</th>
+              <th className="px-4 py-2">الإصدار</th>
+              <th className="px-4 py-2">الانتهاء</th>
+              <th className="px-4 py-2">الملف</th>
+              <th className="px-4 py-2">إجراءات</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {docs === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل...</td></tr>}
+            {docs?.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">ماكو مستمسكات مسجلة</td></tr>}
+            {docs?.map((d) => {
+              const expired = d.daysLeft != null && d.daysLeft < 0
+              const soon = d.daysLeft != null && d.daysLeft >= 0 && d.daysLeft <= 30
+              return (
+                <tr key={d.id} className={expired ? 'bg-red-50' : soon ? 'bg-amber-50' : ''}>
+                  <td className="px-4 py-2 font-medium">{DOC_TYPE_LABELS[d.documentType] || d.documentType}</td>
+                  <td className="px-4 py-2 text-slate-500">{d.documentNumber || '-'}</td>
+                  <td className="px-4 py-2 text-slate-500">{d.issueDate ? new Date(d.issueDate).toLocaleDateString('ar-IQ') : '-'}</td>
+                  <td className="px-4 py-2">
+                    {d.expiryDate ? new Date(d.expiryDate).toLocaleDateString('ar-IQ') : '-'}
+                    {expired && <span className="mr-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">منتهي</span>}
+                    {soon && <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">باقي {d.daysLeft} يوم</span>}
+                  </td>
+                  <td className="px-4 py-2">
+                    {d.fileUrl ? <a href={fileUrl(d.fileUrl)} target="_blank" rel="noreferrer" className="text-xs font-bold text-brand-600 hover:underline">📎 فتح</a> : '-'}
+                  </td>
+                  <td className="px-4 py-2">
+                    <button onClick={() => remove(d)} className="rounded-lg bg-red-50 px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-100">🗑 حذف</button>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+const PART_TYPE_LABELS: Record<VehiclePart['partType'], string> = { TIRE: 'إطار', BATTERY: 'بطارية' }
+
+function VehiclePartsTab({ vehicle, guard }: { vehicle: Vehicle; guard: SaveGuard }) {
+  const [parts, setParts] = useState<VehiclePart[] | null>(null)
+  const [reload, setReload] = useState(0)
+  const [form, setForm] = useState({ partType: 'TIRE' as VehiclePart['partType'], installedAt: '', installedOdometer: '', lifeKm: '', lifeMonths: '', cost: '', notes: '' })
+  const [showReplaced, setShowReplaced] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    api.getVehicleParts(vehicle.id)
+      .then((list) => { if (alive) setParts(list) })
+      .catch(() => { if (alive) setParts([]) })
+    return () => { alive = false }
+  }, [vehicle.id, reload])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const ok = await guard.run('إضافة القطعة', () => api.createVehiclePart(vehicle.id, {
+      partType: form.partType,
+      installedAt: form.installedAt || undefined,
+      installedOdometer: Number(form.installedOdometer || vehicle.currentOdometer || 0),
+      expectedLifespanKm: form.lifeKm ? Number(form.lifeKm) : undefined,
+      expectedLifespanMonths: form.lifeMonths ? Number(form.lifeMonths) : undefined,
+      cost: form.cost ? Number(form.cost) : undefined,
+      notes: form.notes.trim() || undefined,
+    }))
+    if (!ok) return
+    setForm({ partType: form.partType, installedAt: '', installedOdometer: '', lifeKm: '', lifeMonths: '', cost: '', notes: '' })
+    setReload((n) => n + 1)
+  }
+
+  const replace = async (p: VehiclePart) => {
+    if (!confirm(`تأشير ${PART_TYPE_LABELS[p.partType]} كمبدَّل؟ بعدها سجّل القطعة الجديدة.`)) return
+    if (await guard.run('تبديل القطعة', () => api.replaceVehiclePart(p.id))) {
+      setForm((f) => ({ ...f, partType: p.partType }))
+      setReload((n) => n + 1)
+    }
+  }
+
+  const visible = (parts ?? []).filter((p) => showReplaced || !p.replacedAt)
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={submit} className={`${CARD} grid grid-cols-1 gap-3 sm:grid-cols-3`}>
+        <select value={form.partType} onChange={(e) => setForm({ ...form, partType: e.target.value as VehiclePart['partType'] })} className={INPUT}>
+          <option value="TIRE">🛞 إطار</option>
+          <option value="BATTERY">🔋 بطارية</option>
+        </select>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">تاريخ التركيب (فارغ = اليوم)</label>
+          <input type="date" value={form.installedAt} onChange={(e) => setForm({ ...form, installedAt: e.target.value })} className={`w-full ${INPUT}`} />
+        </div>
+        <div>
+          <label className="mb-1 block text-xs text-slate-500">عداد التركيب</label>
+          <input type="number" min="0" placeholder={String(vehicle.currentOdometer)} value={form.installedOdometer} onChange={(e) => setForm({ ...form, installedOdometer: e.target.value })} className={`w-full ${INPUT}`} />
+        </div>
+        <input type="number" min="0" placeholder="العمر المتوقع (كم)" value={form.lifeKm} onChange={(e) => setForm({ ...form, lifeKm: e.target.value })} className={INPUT} />
+        <input type="number" min="0" placeholder="العمر المتوقع (أشهر)" value={form.lifeMonths} onChange={(e) => setForm({ ...form, lifeMonths: e.target.value })} className={INPUT} />
+        <input type="number" min="0" placeholder="الكلفة" value={form.cost} onChange={(e) => setForm({ ...form, cost: e.target.value })} className={INPUT} />
+        <input placeholder="ملاحظات" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} className={`${INPUT} sm:col-span-3`} />
+        <button type="submit" className="sm:col-span-3 rounded-lg bg-brand-600 px-5 py-2 font-medium text-white">+ تسجيل قطعة</button>
+      </form>
+
+      <div className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+        <div className="flex items-center justify-between px-4 py-2">
+          <h4 className="font-bold text-slate-700">القطع المركّبة</h4>
+          <label className="flex items-center gap-2 text-xs text-slate-500">
+            <input type="checkbox" checked={showReplaced} onChange={(e) => setShowReplaced(e.target.checked)} /> اعرض المبدَّلة
+          </label>
+        </div>
+        <table className="w-full text-right text-sm">
+          <thead className="bg-slate-50 text-slate-600">
+            <tr>
+              <th className="px-4 py-2">القطعة</th>
+              <th className="px-4 py-2">تاريخ التركيب</th>
+              <th className="px-4 py-2">عداد التركيب</th>
+              <th className="px-4 py-2">العمر المتوقع</th>
+              <th className="px-4 py-2">الكلفة</th>
+              <th className="px-4 py-2">الحالة</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {parts === null && <tr><td colSpan={6} className="p-4 text-center text-slate-400">جاري التحميل...</td></tr>}
+            {parts !== null && visible.length === 0 && <tr><td colSpan={6} className="p-4 text-center text-slate-400">ماكو قطع مسجلة</td></tr>}
+            {visible.map((p) => (
+              <tr key={p.id} className={p.replacedAt ? 'text-slate-400' : p.dueSoon ? 'bg-amber-50' : ''}>
+                <td className="px-4 py-2 font-medium">{PART_TYPE_LABELS[p.partType]}{p.notes && <div className="text-xs text-slate-400">{p.notes}</div>}</td>
+                <td className="px-4 py-2">{new Date(p.installedAt).toLocaleDateString('ar-IQ')}</td>
+                <td className="px-4 py-2">{p.installedOdometer.toLocaleString()}</td>
+                <td className="px-4 py-2">
+                  {[p.expectedLifespanKm != null ? `${p.expectedLifespanKm.toLocaleString()} كم` : null, p.expectedLifespanMonths != null ? `${p.expectedLifespanMonths} شهر` : null].filter(Boolean).join(' · ') || '-'}
+                </td>
+                <td className="px-4 py-2">{p.cost != null ? p.cost.toLocaleString() : '-'}</td>
+                <td className="px-4 py-2">
+                  {p.replacedAt ? (
+                    <span className="text-xs">مبدَّلة {new Date(p.replacedAt).toLocaleDateString('ar-IQ')}</span>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {p.dueSoon && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">قرب موعدها</span>}
+                      <button onClick={() => replace(p)} className="rounded-lg bg-brand-50 px-2 py-1 text-xs font-bold text-brand-700 hover:bg-brand-100">🔄 تبديل</button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+function VehiclePhotosTab({ vehicleId, guard }: { vehicleId: string; guard: SaveGuard }) {
+  const [photos, setPhotos] = useState<VehiclePhoto[] | null>(null)
+  const [reload, setReload] = useState(0)
+  const [file, setFile] = useState<File | null>(null)
+  const [caption, setCaption] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [view, setView] = useState<VehiclePhoto | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    api.getVehiclePhotos(vehicleId)
+      .then((list) => { if (alive) setPhotos(list) })
+      .catch(() => { if (alive) setPhotos([]) })
+    return () => { alive = false }
+  }, [vehicleId, reload])
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!file) return
+    setUploading(true)
+    try {
+      const up = await guard.run('رفع الصورة', () => api.uploadFile(file, 'vehicles'))
+      if (!up) return
+      const ok = await guard.run('حفظ الصورة', () => api.createVehiclePhoto(vehicleId, { url: up.url, caption: caption.trim() || undefined }))
+      if (!ok) return
+      setFile(null); setCaption('')
+      ;(e.target as HTMLFormElement).reset()
+      setReload((n) => n + 1)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const remove = async (p: VehiclePhoto) => {
+    if (!confirm('حذف هاي الصورة؟')) return
+    if (await guard.run('حذف الصورة', () => api.deleteVehiclePhoto(vehicleId, p.id))) {
+      setView(null)
+      setReload((n) => n + 1)
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <form onSubmit={submit} className={`${CARD} grid grid-cols-1 gap-3 sm:grid-cols-3`}>
+        <input required type="file" accept="image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className={`${INPUT} text-sm`} />
+        <input placeholder="وصف الصورة (اختياري)" value={caption} onChange={(e) => setCaption(e.target.value)} className={INPUT} />
+        <button type="submit" disabled={uploading || !file} className="rounded-lg bg-brand-600 px-5 py-2 font-medium text-white disabled:opacity-50">
+          {uploading ? 'جاري الرفع...' : '📷 رفع صورة'}
+        </button>
+      </form>
+
+      <div className={CARD}>
+        {photos === null ? (
+          <p className="text-center text-sm text-slate-400">جاري التحميل...</p>
+        ) : photos.length === 0 ? (
+          <p className="text-center text-sm text-slate-400">ماكو صور لهاي السيارة</p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            {photos.map((p) => (
+              <div key={p.id} className="overflow-hidden rounded-lg border border-slate-100">
+                <button type="button" onClick={() => setView(p)} className="block w-full">
+                  <img src={fileUrl(p.url)} alt={p.caption || 'صورة السيارة'} className="h-32 w-full object-cover" loading="lazy" />
+                </button>
+                <div className="flex items-center justify-between gap-1 p-2 text-xs">
+                  <span className="truncate text-slate-500">{p.caption || new Date(p.createdAt).toLocaleDateString('ar-IQ')}</span>
+                  <button onClick={() => remove(p)} className="shrink-0 rounded bg-red-50 px-2 py-0.5 font-bold text-red-600 hover:bg-red-100">🗑</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {view && (
+        <div onClick={() => setView(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="max-h-full max-w-3xl overflow-auto rounded-2xl bg-white p-3">
+            <img src={fileUrl(view.url)} alt={view.caption || 'صورة السيارة'} className="max-w-full rounded-lg" />
+            {view.caption && <p className="mt-2 text-sm text-slate-600">{view.caption}</p>}
+            <button onClick={() => setView(null)} className="mt-3 w-full rounded-xl border border-slate-300 py-2 font-medium text-slate-600">إغلاق</button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }

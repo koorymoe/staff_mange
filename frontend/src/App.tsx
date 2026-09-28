@@ -126,6 +126,8 @@ const MonitorCrewBookingsPage = lazy(() => import('./pages/MonitorCrewBookingsPa
 const TrainingManagement = lazy(() => import('./pages/TrainingManagement'))
 const VehiclesPage = lazy(() => import('./pages/VehiclesPage'))
 const FleetDashboardPage = lazy(() => import('./pages/FleetDashboardPage'))
+const VehicleBookingsPage = lazy(() => import('./pages/VehicleBookingsPage'))
+const VehicleMissionsPage = lazy(() => import('./pages/VehicleMissionsPage'))
 const QualityPage = lazy(() => import('./pages/QualityPage'))
 const WorkReportsReview = lazy(() => import('./pages/WorkReportsReview'))
 const EmployeeMonthlyStatsPage = lazy(() => import('./pages/EmployeeMonthlyStatsPage'))
@@ -305,6 +307,9 @@ function App() {
           <Route path="training-management" element={<RequirePermission permission="content_technician" anyOf={['unit_technicians']}><TrainingManagement /></RequirePermission>} />
           <Route path="vehicles" element={<RequirePermission permission="vehicle_management"><VehiclesPage /></RequirePermission>} />
           <Route path="fleet-dashboard" element={<RequirePermission permission="vehicle_management"><FleetDashboardPage /></RequirePermission>} />
+          {/* الحجز والمهمات: كل كتاباتهم ورا requireVehicleMgmt بالباك */}
+          <Route path="vehicle-bookings" element={<RequirePermission permission="vehicle_management"><VehicleBookingsPage /></RequirePermission>} />
+          <Route path="vehicle-missions" element={<RequirePermission permission="vehicle_management"><VehicleMissionsPage /></RequirePermission>} />
           <Route path="quality" element={<RequirePermission permission="quality_control"><QualityPage /></RequirePermission>} />
           <Route path="crew-bookings-audit" element={<RequirePermission permission="crew_management"><MonitorCrewBookingsPage /></RequirePermission>} />
           <Route path="work-reports-review" element={<WorkReportsReview />} />

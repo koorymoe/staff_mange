@@ -2358,7 +2358,8 @@ export interface VehicleMission {
   createdAt: string
   vehicle: Vehicle | null
   driver: { id: string; name: string } | null
-  passengers: VehicleMissionPassenger[]
+  /** ⚠️ الخادم ما يرسلها لمن ماكو ركّاب — لازم ?? [] */
+  passengers?: VehicleMissionPassenger[]
   rating?: VehicleMissionRating | null
   // فقط عند إرجاع استجابة بدء مهمة جديدة (startVehicleMission) — يوجّه الواجهة
   // تعرض خطوة فحص أدوات المركبة العامة، ومقصور على الليدر (isLeader) فقط.
