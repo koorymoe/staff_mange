@@ -3661,6 +3661,9 @@ export const api = {
     })
     const { token, realm, ...employee } = result
     localStorage.setItem('authToken', token)
+    // وسم الملفات صار باسم الموظف — وسم الحساب السابق بنفس الجهاز ما ينفع.
+    fileToken = ''
+    fileTokenAt = 0
     // الطبقة تنخزن حتى إعادة فتح الصفحة ترجّعك لنفس النظام.
     // نفس اليوزر وباسورد ثاني = نظام ثاني (فكرة PPSK).
     localStorage.setItem('authRealm', realm || 'staff')

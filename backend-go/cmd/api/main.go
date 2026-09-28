@@ -228,7 +228,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نفس الواجهة فباقي النظام ما يعرف أيهم شغّال.
 	fileStore := buildFileStore(cfg)
 	log.Printf("[storage] تخزين الملفات: %s", fileStore.Kind())
-	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret))
+	fileHandler := handler.NewFileHandler(fileStore, []byte(cfg.JWTSecret), employeeRepo)
 	surveyPhotoHandler := handler.NewSurveyPhotoHandler(repository.NewSurveyPhotoRepository(db), permissionRepo, fileStore)
 	// مفاتيح إطفاء الميزات — جدول عام صغير، القراءة للكل والكتابة للمالك.
 	systemSwitchHandler := handler.NewSystemSwitchHandler(repository.NewSystemSwitchRepository(db))

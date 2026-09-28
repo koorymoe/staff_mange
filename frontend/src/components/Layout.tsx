@@ -5,6 +5,7 @@ import EmployeeAvatar from './EmployeeAvatar'
 import LiveAlerts from './LiveAlerts'
 import ThemeToggle from './ThemeToggle'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
 import { SessionContext } from '../session'
 import { roleLabel, roleGradient } from '../roleLabels'
@@ -632,7 +633,7 @@ export default function Layout() {
             </div>
           </header>
           <main>
-            <Outlet />
+            <ErrorBoundary inline key={location.pathname}><Outlet /></ErrorBoundary>
           </main>
         </div>
       </SessionContext.Provider>
@@ -763,7 +764,8 @@ export default function Layout() {
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">
-            <Outlet />
+            {/* خطأ بشاشة وحدة يبقى بيها — القائمة تبقى شغّالة */}
+            <ErrorBoundary inline key={location.pathname}><Outlet /></ErrorBoundary>
           </main>
         </div>
 
