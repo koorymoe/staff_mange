@@ -51,6 +51,9 @@ const (
 	AiSignalMaterialOveruse = "MATERIAL_OVERUSE"
 	// فاتورة ليدر بكمية مادة أقل من ٠.٥× وسيط نفس الخدمة.
 	AiSignalMaterialUnderuse = "MATERIAL_UNDERUSE"
+	// فاتورة ليدر أرقامها ما تطابق بيانات الحجز المنظّمة (عدد الأجهزة
+	// المسجّل بالحجز، أو المبلغ المقدّر).
+	AiSignalInvoiceWorkMismatch = "INVOICE_WORK_MISMATCH"
 )
 
 // ⚠️ «مركبة صيانتها متأخرة ولسه تُرسل» **ما ينحط** بخط أنابيب
@@ -81,6 +84,8 @@ func AiSignalLabel(kind string) string {
 		return "استهلاك مواد أعلى من المعتاد"
 	case AiSignalMaterialUnderuse:
 		return "استهلاك مواد أقل من المعتاد"
+	case AiSignalInvoiceWorkMismatch:
+		return "فاتورة ما تطابق بيانات الحجز"
 	}
 	return kind
 }
@@ -253,6 +258,26 @@ type MaterialUsageLine struct {
 	Quantity   float64 `json:"quantity" db:"quantity"`
 	Median     float64 `json:"median" db:"median"`
 	Samples    int     `json:"samples" db:"samples"`
+}
+
+// InvoiceWorkMismatchEvidence أدلة عدم مطابقة فاتورة ليدر لبيانات
+// حجزها المنظّمة — أرقام وأكواد بس، بلا اسم زبون أو هاتف.
+type InvoiceWorkMismatchEvidence struct {
+	InvoiceID          string               `json:"invoiceId"`
+	AccountingCode     string               `json:"accountingCode,omitempty"`
+	BookingCode        string               `json:"bookingCode,omitempty"`
+	InvoiceDeviceCount int                  `json:"invoiceDeviceCount"`
+	BookedDeviceCount  *int                 `json:"bookedDeviceCount,omitempty"`
+	InvoiceNetTotal    float64              `json:"invoiceNetTotal"`
+	QuotedPrice        *float64             `json:"quotedPrice,omitempty"`
+	Findings           []InvoiceWorkFinding `json:"findings"`
+}
+
+// InvoiceWorkFinding فرق واحد: Kind = DEVICE_COUNT | QUOTED_PRICE.
+type InvoiceWorkFinding struct {
+	Kind     string  `json:"kind"`
+	Invoiced float64 `json:"invoiced"`
+	Booked   float64 `json:"booked"`
 }
 
 // ═══ الحكم ═══

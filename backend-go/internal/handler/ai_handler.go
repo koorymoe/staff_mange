@@ -157,6 +157,8 @@ func (h *AiHandler) Catalog(w http.ResponseWriter, r *http.Request) {
 			"ينسجّل عند فاتورة ليدر بكمية مادة أكثر من ١.٥× وسيط نفس الخدمة (آخر ١٨٠ يوم، ٥ عيّنات على الأقل)"},
 		{model.AiSignalMaterialUnderuse, model.AiSignalLabel(model.AiSignalMaterialUnderuse), true,
 			"ينسجّل عند فاتورة ليدر بكمية مادة أقل من ٠.٥× وسيط نفس الخدمة (آخر ١٨٠ يوم، ٥ عيّنات على الأقل)"},
+		{model.AiSignalInvoiceWorkMismatch, model.AiSignalLabel(model.AiSignalInvoiceWorkMismatch), true,
+			"ينسجّل عند فاتورة ليدر عدد أجهزتها يختلف عن المسجّل بالحجز (فرق ٢ فأكثر و١.٥×) أو صافيها ١.٥× فوق أو ٠.٥× تحت المبلغ المقدّر — يستاهل مراجعة قبل الاعتماد"},
 	}
 	metrics := []item{
 		{model.AiMetricStopRate, model.AiMetricLabel(model.AiMetricStopRate), false, "ينتظر: حاسبة المؤشرات"},

@@ -242,6 +242,12 @@ func (r RulesJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVer
 			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
 		}
 		return r.judgeMaterialUsage(sig, facts)
+	case model.AiSignalInvoiceWorkMismatch:
+		var facts model.InvoiceWorkMismatchEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeInvoiceWorkMismatch(sig, facts)
 	}
 	return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
 }

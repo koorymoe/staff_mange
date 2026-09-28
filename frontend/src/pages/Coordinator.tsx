@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption } from '../api'
+import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption, type DelayRisk } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import { executionStarted } from '../bookingStage'
 import { useSession } from '../session'
@@ -53,6 +53,9 @@ const techRoles: { key: 'TECH_1' | 'TECH_2' | 'TECH_3'; label: string }[] = [
   { key: 'TECH_3', label: 'الفني الثالث' },
 ]
 
+// ساعات لأقرب نص ساعة («٢.٥»)
+const fmtRiskHours = (minutes: number) => String(Math.round(minutes / 30) / 2)
+
 export default function Coordinator() {
   const { employee: currentUser, permissions } = useSession()
   // منو يكدر يطلب حذف حجز — نفس قائمة شاشة الحجوزات بالضبط، حتى ما
@@ -63,6 +66,12 @@ export default function Coordinator() {
   // الحذف (الأرشفة) قرار إداري — المنسّق يأجّل ويحط بالانتظار، بس ما يحذف
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
   const [bookings, setBookings] = useState<Booking[]>([])
+  // ═══ ماتركس: توقع التأخير ═══ — نفس حارس الخادم بالضبط
+  // (RequireRoleOrPermission: ADMIN/HR_COORDINATOR/MONITOR أو coordinator).
+  const canSeeDelayRisks = ['ADMIN', 'HR_COORDINATOR', 'MONITOR'].includes(currentUser?.role ?? '')
+    || currentUser?.actualRole === 'OWNER' || (permissions ?? []).includes('coordinator')
+  const [delayRisks, setDelayRisks] = useState<Record<string, DelayRisk>>({})
+  const [delayReload, setDelayReload] = useState(0)
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
   // الحجز الي قيد التثبيت حالياً — الأزرار كانت بلا أي إشارة انتظار، فالمستخدم
   // يحس النظام بطيء أو معلّق ويضغط عدة مرات.
@@ -288,6 +297,8 @@ export default function Coordinator() {
         //
         const data = all.filter((b) => !executionStarted(b) && !!b.confirmedAt)
         setBookings(data)
+        // مواعيد/كوادر ممكن تغيّرت — نعيد حساب توقع التأخير وياها
+        setDelayReload((n) => n + 1)
         // حجز المشاريع **المفتوح** (وصل التنفيذ) ياخذ مرشحين مثل أي
         // حجز عادي — نفس كادر الشد هو الي راح ينفّذ. المقفول بس
         // ينستثنى لأنه لسه بإجراءات إدارة المشاريع.
@@ -310,6 +321,14 @@ export default function Coordinator() {
   }
 
   useEffect(load, [])
+  useEffect(() => {
+    if (!canSeeDelayRisks || delayReload === 0) return
+    let alive = true
+    api.getDelayRisks()
+      .then((rows) => { if (alive) setDelayRisks(Object.fromEntries(rows.map((r) => [r.bookingId, r]))) })
+      .catch(() => { if (alive) setDelayRisks({}) })
+    return () => { alive = false }
+  }, [canSeeDelayRisks, delayReload])
   useEffect(() => {
     // بيانات مساعدة (مشرفين/منتجات/مركبات): منسّق الحجوزات ممكن ما عنده
     // صلاحية المركبات أو المنتجات — وقتها نخلي القائمة فارغة بدل ما ينكسر
@@ -848,6 +867,16 @@ export default function Coordinator() {
                     {/* الفترة تبان وهو يوجّه: الكادر مقسوم صباحي ومسائي،
                         فما ينفع يختار فنياً مسائياً لشغل صباحي. */}
                     <ShiftBadge shift={booking.shift} className="mr-2" />
+                    {delayRisks[booking.id] && (
+                      <span
+                        className="mr-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800"
+                        title={delayRisks[booking.id].limitedBy === 'NEXT_BOOKING'
+                          ? `محسوب من ${delayRisks[booking.id].samples} حجز منجز · الحجز الجاي لنفس الليدر: ${delayRisks[booking.id].nextBookingCode ?? ''}`
+                          : `محسوب من ${delayRisks[booking.id].samples} حجز منجز · لحد نهاية الدوام`}
+                      >
+                        ⏱️ متوقع ياخذ ~{fmtRiskHours(delayRisks[booking.id].expectedMinutes)} ساعة — الوقت المحجوز {fmtRiskHours(delayRisks[booking.id].availableMinutes)}
+                      </span>
+                    )}
                     {booking.priority === 'URGENT' && (
                       <span className="mr-2 rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
                         عاجل

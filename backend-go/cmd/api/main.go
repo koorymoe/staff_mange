@@ -455,6 +455,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("lapsed customer alert: %v", err)
 		}
 	})
+	// ═══ ماتركس الاستباقي ═══ — التنبؤ بالتأخير (صباحاً) وفرص البيع (أسبوعياً).
+	delayPredictionService := service.NewDelayPredictionService(aiRepo, notificationRepo)
+	safeguard.Loop("تنبيه توقع التأخير الصباحي", 17*time.Minute, time.Hour, func() {
+		if err := delayPredictionService.RunMorningIfDue(); err != nil {
+			log.Printf("delay prediction alert: %v", err)
+		}
+	})
+	salesOpportunityService := service.NewSalesOpportunityService(aiRepo, notificationRepo)
+	safeguard.Loop("ملخص فرص البيع الأسبوعي", 33*time.Minute, 6*time.Hour, func() {
+		if err := salesOpportunityService.RunWeeklyIfDue(); err != nil {
+			log.Printf("sales opportunities alert: %v", err)
+		}
+	})
+	matrixForesightHandler := handler.NewMatrixForesightHandler(delayPredictionService, salesOpportunityService)
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -963,6 +977,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/ai/process", middleware.Chain(http.HandlerFunc(aiHandler.Process), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/metrics/recompute", middleware.Chain(http.HandlerFunc(aiHandler.RecomputeMetrics), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/metrics", middleware.Chain(http.HandlerFunc(aiHandler.Metrics), requireAuth, requireAdmin))
+	// توقع التأخير: نفس من يشوف «تنسيق الحجوزات» بالقائمة (أدوار ADMIN/HR_COORDINATOR/MONITOR أو صلاحية coordinator).
+	mux.Handle("GET /api/ai/delay-risks", middleware.Chain(http.HandlerFunc(matrixForesightHandler.DelayRisks), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "coordinator")))
+	// فرص البيع: المالك/مدير النظام أو صلاحية sales_booking (المبيعات بالافتراض).
+	mux.Handle("GET /api/ai/opportunities", middleware.Chain(http.HandlerFunc(matrixForesightHandler.Opportunities), requireAuth,
+		middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "sales_booking")))
 	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.GetWorkWindow), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.SetWorkWindow), requireAuth, requireAdmin))

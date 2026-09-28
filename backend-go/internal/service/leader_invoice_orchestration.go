@@ -240,6 +240,10 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 	if len(materialLines) > 0 {
 		recordMaterialUsage(s.ai, saved.ID, saved.EmployeeID)
 	}
+	// ماتركس: مطابقة الفاتورة مع بيانات الحجز المنظّمة — ما يوقف الفاتورة أبداً.
+	if saved.BookingID != nil && *saved.BookingID != "" {
+		recordInvoiceWorkMismatch(s.ai, saved.ID, saved.EmployeeID)
+	}
 
 	// الفاتورة توصل المراقب **قبل** ما يدققها المحاسب — يعني يشوف
 	// الأرقام الأصلية قبل أي تعديل، وهذا كل الفايدة.

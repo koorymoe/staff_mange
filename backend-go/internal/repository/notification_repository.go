@@ -2,6 +2,7 @@ package repository
 
 import (
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 
 	"staffmange-api/internal/model"
 )
@@ -75,5 +76,21 @@ func (r *NotificationRepository) CreateForPermission(permissionName, notifType, 
 		JOIN "Permission" p ON p.id = ep."permissionId"
 		WHERE p.name = $1 AND e.status = 'ACTIVE'
 	`, permissionName, notifType, message)
+	return err
+}
+
+// CreateForRolesOrPermission ينبّه كل موظف نشط دوره من الأدوار المعطاة
+// أو عنده الصلاحية — مرة وحدة للشخص حتى لو انطبق عليه الشرطين.
+func (r *NotificationRepository) CreateForRolesOrPermission(roles []string, permissionName, notifType, message string) error {
+	_, err := r.db.Exec(`
+		INSERT INTO "Notification" (id, "employeeId", type, message)
+		SELECT gen_random_uuid()::text, e.id, $3, $4
+		FROM "Employee" e
+		WHERE e.status = 'ACTIVE' AND (
+			e.role::text = ANY($1) OR EXISTS (
+				SELECT 1 FROM "EmployeePermission" ep
+				JOIN "Permission" p ON p.id = ep."permissionId"
+				WHERE ep."employeeId" = e.id AND p.name = $2))
+	`, pq.Array(roles), permissionName, notifType, message)
 	return err
 }

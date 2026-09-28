@@ -734,6 +734,33 @@ export interface JobDurationEstimate {
   minSamples: number
 }
 
+/** ماتركس — حجز متوقع ياخذ أكثر من وقته المحجوز (GET /ai/delay-risks) */
+export interface DelayRisk {
+  bookingId: string
+  bookingCode: string
+  scheduledAt: string
+  expectedMinutes: number
+  availableMinutes: number
+  samples: number
+  basis: 'LEADER' | 'SERVICE'
+  limitedBy: 'SHIFT_END' | 'NEXT_BOOKING'
+  nextBookingCode?: string
+}
+
+/** ماتركس — فرصة بيع (GET /ai/opportunities) */
+export interface SalesOpportunity {
+  reason: 'CROSS_SELL' | 'MAINTENANCE_DUE'
+  reasonLabel: string
+  customerId: string
+  customerCode: string
+  customerName: string
+  customerPhone: string
+  basedOnService: string
+  suggestedService: string
+  suggestedServiceId?: string
+  lastBookingCompleted: string
+}
+
 /** إحصائية الأعمال المنجزة داخل الشركة خلال شهر */
 export interface InternalWorksReport {
   month: string
@@ -5207,6 +5234,10 @@ export const api = {
     request<JobDurationEstimate>(
       `/job-duration-estimate?systemName=${encodeURIComponent(params.systemName)}&jobType=${params.jobType}&itemCount=${params.itemCount}&crewSize=${params.crewSize}`,
     ),
+
+  // ماتركس: توقع التأخير (أدوار/صلاحية تنسيق الحجوزات) وفرص البيع (sales_booking)
+  getDelayRisks: () => request<DelayRisk[]>('/ai/delay-risks'),
+  getSalesOpportunities: () => request<SalesOpportunity[]>('/ai/opportunities'),
 
   // إحصائيات الموظفين الشهرية — OWNER/ADMIN فقط
   getEmployeeMonthlyStats: (month: string) =>
