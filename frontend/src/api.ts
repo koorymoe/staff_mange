@@ -1502,6 +1502,60 @@ export interface CoordinationAlertSummary {
 }
 
 /** التدقيق اليومي: حجوزات يوم واحد بمجاميعه الأربعة */
+export type ItAssetKind = 'COMPUTER' | 'LAPTOP' | 'SERVER' | 'NETWORK' | 'PRINTER' | 'CAMERA' | 'PHONE' | 'OTHER'
+export type ItAssetStatus = 'ACTIVE' | 'REPAIR' | 'SPARE' | 'RETIRED'
+export const IT_KIND_LABELS: Record<ItAssetKind, string> = {
+  COMPUTER: '🖥️ حاسبة', LAPTOP: '💻 لابتوب', SERVER: '🗄️ مخدّم', NETWORK: '📡 شبكة',
+  PRINTER: '🖨️ طابعة', CAMERA: '📷 كاميرا', PHONE: '📱 هاتف', OTHER: '🔧 أخرى',
+}
+export const IT_STATUS_LABELS: Record<ItAssetStatus, string> = {
+  ACTIVE: 'شغّال', REPAIR: 'بالتصليح', SPARE: 'احتياط', RETIRED: 'مستبعد',
+}
+export const IT_LOG_LABELS: Record<string, string> = {
+  NOTE: 'ملاحظة', REPAIR: 'تصليح', MAINTENANCE: 'صيانة', MOVE: 'نقل', STATUS: 'تغيير حالة',
+}
+export interface ItAsset {
+  id: string
+  name: string
+  kind: ItAssetKind
+  status: ItAssetStatus
+  brand: string | null
+  model: string | null
+  serialNumber: string | null
+  ipAddress: string | null
+  location: string | null
+  assignedEmployeeId: string | null
+  assignedEmployeeName: string | null
+  purchaseDate: string | null
+  warrantyUntil: string | null
+  notes: string | null
+  createdAt: string
+  updatedAt: string
+  lastLogAt: string | null
+}
+export type ItAssetInput = Omit<ItAsset, 'id' | 'assignedEmployeeName' | 'createdAt' | 'updatedAt' | 'lastLogAt'>
+export interface ItAssetLog {
+  id: string
+  assetId: string
+  kind: string
+  note: string
+  cost: number | null
+  employeeName: string | null
+  assetName?: string | null
+  createdAt: string
+}
+export interface ItStats {
+  total: number
+  byKind: Record<string, number>
+  byStatus: Record<string, number>
+  warrantySoon: ItAsset[]
+  inRepair: ItAsset[]
+  repairCost90d: number
+  repairCount90d: number
+  unassigned: number
+  recentLogs: ItAssetLog[]
+}
+
 export type SurveyPhotoOwner = { bookingId: string; projectId?: undefined } | { projectId: string; bookingId?: undefined }
 
 export interface SurveyPhoto {
@@ -4405,6 +4459,20 @@ export const api = {
     if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع الملف')
     return res.json() as Promise<{ key: string; url: string; size: number; type: string }>
   },
+
+  // ═══ وحدة تقنية المعلومات ═══
+  getItAssets: () => request<ItAsset[]>('/it/assets'),
+  createItAsset: (data: ItAssetInput) => request<ItAsset>('/it/assets', { method: 'POST', body: JSON.stringify(data) }),
+  updateItAsset: (id: string, data: ItAssetInput) => request<ItAsset>(`/it/assets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteItAsset: async (id: string) => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/it/assets/${id}`, { method: 'DELETE', headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || describeHttpStatus(res.status))
+  },
+  getItAssetLogs: (id: string) => request<ItAssetLog[]>(`/it/assets/${id}/logs`),
+  addItAssetLog: (id: string, data: { kind: string; note: string; cost?: number | null }) =>
+    request<ItAssetLog>(`/it/assets/${id}/logs`, { method: 'POST', body: JSON.stringify(data) }),
+  getItStats: () => request<ItStats>('/it/stats'),
 
   // ═══ صور الكشف (حجز أو مشروع) ═══
   // ⚠️ الصورة تنجلب بترويسة Authorization (blob) مو برابط <img> عام:

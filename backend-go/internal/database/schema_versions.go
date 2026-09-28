@@ -365,6 +365,8 @@ func versionedMigrations() []Migration {
 	result = append(result, achievementMigration()...)
 	// 0296: صور الكشف — للحجز والمشروع، تنزيلها محصور بأدوار محددة.
 	result = append(result, surveyPhotoMigration()...)
+	// 0297: جرد أجهزة تقنية المعلومات وسجل صيانتها — دور الـIT چان بلا شاشة.
+	result = append(result, itAssetMigrations()...)
 	return result
 }
 

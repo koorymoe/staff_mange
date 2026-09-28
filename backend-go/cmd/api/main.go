@@ -1836,6 +1836,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/booking-survey-reports", middleware.Chain(http.HandlerFunc(surveyReportHandler.List), requireAuth))
 	// صور الكشف (حجز أو مشروع): الفحص بالهاندلر نفسه — العرض والتنزيل
 	// للمراقب والمحاسب والمدير وإداري الحجوزات والكادر الي رفعها.
+	// ═══ وحدة تقنية المعلومات ═══ — الجرد لصاحب it_assets، والإحصائيات
+	// لصاحب it_stats أو it_assets (الي يدير الأجهزة يشوف أرقامها).
+	itAssetHandler := handler.NewItAssetHandler(repository.NewItAssetRepository(db))
+	requireItAssets := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "it_assets")
+	requireItStats := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "it_stats", "it_assets")
+	mux.Handle("GET /api/it/assets", middleware.Chain(http.HandlerFunc(itAssetHandler.List), requireAuth, requireItAssets))
+	mux.Handle("POST /api/it/assets", middleware.Chain(http.HandlerFunc(itAssetHandler.Create), requireAuth, requireItAssets))
+	mux.Handle("PUT /api/it/assets/{id}", middleware.Chain(http.HandlerFunc(itAssetHandler.Update), requireAuth, requireItAssets))
+	mux.Handle("DELETE /api/it/assets/{id}", middleware.Chain(http.HandlerFunc(itAssetHandler.Delete), requireAuth, requireItAssets))
+	mux.Handle("GET /api/it/assets/{id}/logs", middleware.Chain(http.HandlerFunc(itAssetHandler.Logs), requireAuth, requireItAssets))
+	mux.Handle("POST /api/it/assets/{id}/logs", middleware.Chain(http.HandlerFunc(itAssetHandler.AddLog), requireAuth, requireItAssets))
+	mux.Handle("GET /api/it/stats", middleware.Chain(http.HandlerFunc(itAssetHandler.Stats), requireAuth, requireItStats))
 	mux.Handle("GET /api/survey-photos", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.List), requireAuth))
 	mux.Handle("POST /api/survey-photos", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.Upload), requireAuth))
 	mux.Handle("GET /api/survey-photos/{id}/file", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.File), requireAuth))

@@ -55,6 +55,8 @@ const KpiPage = lazy(() => import('./pages/KpiPage'))
 const DisciplinePage = lazy(() => import('./pages/DisciplinePage'))
 const ComplaintsPage = lazy(() => import('./pages/ComplaintsPage'))
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
+const ItAssetsPage = lazy(() => import('./pages/ItAssetsPage'))
+const ItStatsPage = lazy(() => import('./pages/ItStatsPage'))
 const MyInventory = lazy(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage'))
 const TeamInventoryCheckPage = lazy(() => import('./pages/TeamInventoryCheckPage'))
@@ -214,6 +216,8 @@ function App() {
               my-inventory؛ هاي تحتاج صلاحية «جرد الأدوات» حتى لو كتب
               رابطها بيده — نفس القيد المطبّق بالسيرفر. */}
           <Route path="inventory" element={<RequirePermission permission="inventory"><InventoryPage /></RequirePermission>} />
+          <Route path="it-assets" element={<RequirePermission permission="it_assets"><ItAssetsPage /></RequirePermission>} />
+          <Route path="it-stats" element={<RequirePermission permission="it_stats" anyOf={['it_assets']}><ItStatsPage /></RequirePermission>} />
           <Route path="my-inventory" element={<MyInventory />} />
           <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />
           {/* سجل الأقسام ومسؤوليها — «التعديل فقط لمالك ومدير النظام

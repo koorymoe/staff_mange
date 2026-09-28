@@ -601,6 +601,15 @@ export const navItems: NavItem[] = [
     ],
   },
   {
+    // وحدة الـIT: الدور والصلاحيات انبنت (0278) وما چانت إلها ولا شاشة.
+    to: '/unit-it', label: 'وحدة تقنية المعلومات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
+    unitPermission: 'unit_it',
+    children: [
+      { to: '/it-assets', label: '🖥️ جرد الأجهزة', icon: <></>, permission: 'it_assets' },
+      { to: '/it-stats', label: '📊 إحصائيات الـIT', icon: <></>, anyPermission: ['it_stats', 'it_assets'] },
+    ],
+  },
+  {
     to: '/unit-procurement', label: 'وحدة المشتريات والمخازن', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3h18v18H3z"/></svg>,
     unitPermission: 'unit_procurement',
     children: [
