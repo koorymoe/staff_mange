@@ -574,3 +574,121 @@ func itoa(n int) string {
 	}
 	return string(rune('0'+n/10)) + string(rune('0'+n%10))
 }
+
+// ═══ صحة الزبون (ماتركس ٩) ═══
+
+// complaintLeaderExpr: الليدر المنسوب للشكوى — relatedEmployeeId لو
+// محدد، وإلا الليدر (isLeader) من كادر حجز الشكوى.
+const complaintLeaderExpr = `COALESCE(c."relatedEmployeeId", (
+	SELECT ba."employeeId" FROM "BookingAssignment" ba
+	JOIN "Employee" e ON e.id = ba."employeeId"
+	WHERE ba."bookingId" = c."bookingId" AND e."isLeader" = true
+	ORDER BY ba."createdAt" LIMIT 1))`
+
+// ComplaintLeaderID يرجّع الليدر المنسوب للشكوى، أو "" لو ما ينعرف.
+func (r *AiRepository) ComplaintLeaderID(complaintID string) (string, error) {
+	var id sql.NullString
+	err := r.db.Get(&id, `SELECT `+complaintLeaderExpr+` FROM "Complaint" c WHERE c.id = $1`, complaintID)
+	if err != nil {
+		return "", err
+	}
+	return id.String, nil
+}
+
+// RepeatComplaintSnapshot شكاوى نفس الزبون بآخر windowDays يوم (لحد
+// وقت هذي الشكوى، ضمنها) المنسوبة لنفس الليدر.
+func (r *AiRepository) RepeatComplaintSnapshot(complaintID, leaderID string, windowDays int) (*model.RepeatComplaintEvidence, error) {
+	ev := &model.RepeatComplaintEvidence{WindowDays: windowDays, Complaints: []model.RepeatComplaintItem{}}
+	err := r.db.Select(&ev.Complaints, `
+		WITH c0 AS (SELECT "customerId", "createdAt" FROM "Complaint" WHERE id = $1)
+		SELECT id, "createdAt", "bookingCode", type FROM (
+			SELECT c.id, c."createdAt", COALESCE(b.code, '') AS "bookingCode", COALESCE(c.type::text, '') AS type,
+			       `+complaintLeaderExpr+` AS leader
+			FROM "Complaint" c
+			JOIN c0 ON c."customerId" = c0."customerId"
+			LEFT JOIN "Booking" b ON b.id = c."bookingId"
+			WHERE c."createdAt" > c0."createdAt" - ($3 || ' days')::interval
+			  AND c."createdAt" <= c0."createdAt"
+		) x WHERE leader = $2
+		ORDER BY "createdAt"`, complaintID, leaderID, windowDays)
+	if err != nil {
+		return nil, err
+	}
+	ev.Count = len(ev.Complaints)
+	var code sql.NullInt64
+	_ = r.db.Get(&code, `SELECT cu."customerCode" FROM "Complaint" c JOIN "Customer" cu ON cu.id = c."customerId" WHERE c.id = $1`, complaintID)
+	if code.Valid {
+		ev.CustomerCode = model.Customer{CustomerCode: int(code.Int64)}.FormatCode()
+	}
+	return ev, nil
+}
+
+// LapsedCustomer زبون عنده ≥٣ حجوزات مكتملة وما حجز من فترة.
+type LapsedCustomer struct {
+	CustomerCode   int `db:"customerCode"`
+	CompletedCount int `db:"completedCount"`
+}
+
+// LapsedLoyalCustomers زبائن عندهم ≥minCompleted حجز مكتمل وآخر حجز
+// انشأ قبل أكثر من idleDays يوم — الأكثر حجوزات أول.
+func (r *AiRepository) LapsedLoyalCustomers(minCompleted, idleDays int) ([]LapsedCustomer, error) {
+	rows := []LapsedCustomer{}
+	err := r.db.Select(&rows, `
+		SELECT cu."customerCode" AS "customerCode",
+		       COUNT(*) FILTER (WHERE b.status = 'COMPLETED') AS "completedCount"
+		FROM "Customer" cu
+		JOIN "Booking" b ON b."customerId" = cu.id
+		GROUP BY cu.id, cu."customerCode"
+		HAVING COUNT(*) FILTER (WHERE b.status = 'COMPLETED') >= $1
+		   AND MAX(b."createdAt") < now() - ($2 || ' days')::interval
+		ORDER BY "completedCount" DESC, MAX(b."createdAt") DESC`, minCompleted, idleDays)
+	return rows, err
+}
+
+// ═══ هدر المواد (ماتركس ١٠) ═══
+
+// MaterialUsageBaseline لكل مادة (بمعرّف) بالفاتورة: كميتها (مجموع
+// أسطرها)، ووسيط كمياتها بفواتير نفس الخدمة السابقة — آخر ١٨٠ يوم،
+// بلا المسودات وبلا هذي الفاتورة — وعدد العيّنات.
+func (r *AiRepository) MaterialUsageBaseline(invoiceID string) (serviceID string, lines []model.MaterialUsageLine, err error) {
+	var sid sql.NullString
+	if err = r.db.Get(&sid, `
+		SELECT b."serviceId" FROM "LeaderInvoice" li JOIN "Booking" b ON b.id = li."bookingId"
+		WHERE li.id = $1`, invoiceID); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil, nil
+		}
+		return "", nil, err
+	}
+	if !sid.Valid || sid.String == "" {
+		return "", nil, nil
+	}
+	lines = []model.MaterialUsageLine{}
+	err = r.db.Select(&lines, `
+		WITH cur AS (SELECT "createdAt" FROM "LeaderInvoice" WHERE id = $1),
+		cur_lines AS (
+			SELECT "materialId", SUM(quantity)::float8 AS qty
+			FROM "LeaderInvoiceMaterialItem"
+			WHERE "leaderInvoiceId" = $1 AND "materialId" IS NOT NULL
+			GROUP BY "materialId"
+		),
+		hist AS (
+			SELECT m."materialId", li.id AS inv, SUM(m.quantity)::float8 AS qty
+			FROM "LeaderInvoiceMaterialItem" m
+			JOIN "LeaderInvoice" li ON li.id = m."leaderInvoiceId"
+			JOIN "Booking" b ON b.id = li."bookingId"
+			CROSS JOIN cur
+			WHERE b."serviceId" = $2 AND li.id <> $1 AND li.status <> 'DRAFT'
+			  AND li."createdAt" >= cur."createdAt" - interval '180 days'
+			  AND li."createdAt" <= cur."createdAt"
+			  AND m."materialId" IN (SELECT "materialId" FROM cur_lines)
+			GROUP BY m."materialId", li.id
+		)
+		SELECT cl."materialId" AS "materialId", cl.qty AS quantity,
+		       COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY h.qty), 0)::float8 AS median,
+		       COUNT(h.inv)::int AS samples
+		FROM cur_lines cl LEFT JOIN hist h ON h."materialId" = cl."materialId"
+		GROUP BY cl."materialId", cl.qty
+		ORDER BY cl."materialId"`, invoiceID, sid.String)
+	return sid.String, lines, err
+}

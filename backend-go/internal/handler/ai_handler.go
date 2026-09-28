@@ -151,6 +151,12 @@ func (h *AiHandler) Catalog(w http.ResponseWriter, r *http.Request) {
 			"ينسجّل من تقرير إنجاز مربوط بحجز يدّعي عملاً لحاله («وحدي»/«لحالي») وكادر آخر طلعة أكثر من واحد — بلا لوم تلقائي"},
 		{model.AiSignalFuelAnomaly, model.AiSignalLabel(model.AiSignalFuelAnomaly), true,
 			"ينسجّل عند تعبئة وقود تتجاوز متوسط آخر ٥ تعبئات لنفس المركبة بأكثر من ٤٠٪ (كاشف موجود من زمان)"},
+		{model.AiSignalCustomerRepeatComplaint, model.AiSignalLabel(model.AiSignalCustomerRepeatComplaint), true,
+			"ينسجّل عند شكوى جديدة لو نفس الزبون اشتكى مرتين أو أكثر خلال ٦٠ يوم على شغل نفس الليدر — بلا لوم أبعد من الأرقام"},
+		{model.AiSignalMaterialOveruse, model.AiSignalLabel(model.AiSignalMaterialOveruse), true,
+			"ينسجّل عند فاتورة ليدر بكمية مادة أكثر من ١.٥× وسيط نفس الخدمة (آخر ١٨٠ يوم، ٥ عيّنات على الأقل)"},
+		{model.AiSignalMaterialUnderuse, model.AiSignalLabel(model.AiSignalMaterialUnderuse), true,
+			"ينسجّل عند فاتورة ليدر بكمية مادة أقل من ٠.٥× وسيط نفس الخدمة (آخر ١٨٠ يوم، ٥ عيّنات على الأقل)"},
 	}
 	metrics := []item{
 		{model.AiMetricStopRate, model.AiMetricLabel(model.AiMetricStopRate), false, "ينتظر: حاسبة المؤشرات"},

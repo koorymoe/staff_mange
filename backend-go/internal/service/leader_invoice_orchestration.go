@@ -236,6 +236,10 @@ func (s *LeaderInvoiceService) Create(employeeID string, req model.CreateLeaderI
 
 	s.computeAndSaveCommissions(saved)
 	s.recordDurationSample(saved)
+	// ماتركس ١٠: هدر/نقص مواد مقابل وسيط نفس الخدمة — ما يوقف الفاتورة أبداً.
+	if len(materialLines) > 0 {
+		recordMaterialUsage(s.ai, saved.ID, saved.EmployeeID)
+	}
 
 	// الفاتورة توصل المراقب **قبل** ما يدققها المحاسب — يعني يشوف
 	// الأرقام الأصلية قبل أي تعديل، وهذا كل الفايدة.

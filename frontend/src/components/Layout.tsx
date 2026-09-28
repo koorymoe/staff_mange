@@ -488,16 +488,24 @@ export default function Layout() {
 
     // Leaf
     if (depth === 0) {
+      // بنود لوحتي مدير النظام نفس المسار «/» ويفرّقهن ?board= — NavLink
+      // يقارن المسار بس، فبدون هذا الاثنين يضوون سوا.
+      const boardOf = (to: string) => new URLSearchParams(to.split('?')[1] || '').get('board')
+      const active = (isActive: boolean) => {
+        if (!item.to.includes('?board=')) return isActive
+        const cur = new URLSearchParams(location.search).get('board') || 'follow'
+        return location.pathname === '/' && boardOf(item.to) === cur
+      }
       return (
         <NavLink key={item.to} to={item.to} end={item.end}
-          className={({ isActive }) =>
+          className={({ isActive: rawActive }) => { const isActive = active(rawActive); return (
             `group relative flex items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-300 ${
               isActive
                 ? 'bg-gradient-to-l from-[#2563eb] to-[#1e40af] text-white shadow-[0_0_18px_rgba(59,130,246,0.45)] ring-1 ring-sky-400/40'
                 : 'bg-white/[0.04] text-blue-100/70 hover:bg-white/[0.08] hover:text-white hover:shadow-[0_0_12px_rgba(59,130,246,0.18)]'
-            }`
+            }`) }
           }>
-          {({ isActive }) => (
+          {({ isActive: rawActive }) => { const isActive = active(rawActive); return (
             <>
               {/* شريط أزرق على الحافة اليسرى للعنصر النشط */}
               {/* شعاع الإنارة على الحافة: يمشي مع العنصر النشط */}
@@ -517,7 +525,7 @@ export default function Layout() {
                 isActive ? 'bg-white/25 text-white' : 'bg-white/[0.07] text-blue-100/70 group-hover:bg-white/[0.12]'
               }`}>{item.icon}</span>
             </>
-          )}
+          ) }}
         </NavLink>
       )
     }

@@ -21,7 +21,7 @@ type AiSignal struct {
 	OccurredAt time.Time `db:"occurredAt" json:"occurredAt"`
 	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
 
-	EmployeeName *string    `db:"-" json:"employeeName,omitempty"`
+	EmployeeName *string     `db:"-" json:"employeeName,omitempty"`
 	Evidence     *AiEvidence `db:"-" json:"evidence,omitempty"`
 	Verdict      *AiVerdict  `db:"-" json:"verdict,omitempty"`
 }
@@ -45,6 +45,12 @@ const (
 	// شذوذ تكلفة تعبئة وقود — الكاشف (`VehicleService.CheckFuelAnomaly`)
 	// موجود من زمان، هذا وصله بخط أنابيب ماتركس.
 	AiSignalFuelAnomaly = "VEHICLE_FUEL_ANOMALY"
+	// زبون اشتكى مرتين أو أكثر خلال ٦٠ يوم على شغل نفس الليدر.
+	AiSignalCustomerRepeatComplaint = "CUSTOMER_REPEAT_COMPLAINT"
+	// فاتورة ليدر بكمية مادة أكثر من ١.٥× وسيط نفس الخدمة.
+	AiSignalMaterialOveruse = "MATERIAL_OVERUSE"
+	// فاتورة ليدر بكمية مادة أقل من ٠.٥× وسيط نفس الخدمة.
+	AiSignalMaterialUnderuse = "MATERIAL_UNDERUSE"
 )
 
 // ⚠️ «مركبة صيانتها متأخرة ولسه تُرسل» **ما ينحط** بخط أنابيب
@@ -69,6 +75,12 @@ func AiSignalLabel(kind string) string {
 		return "تقرير إنجاز يناقض كادر الحجز الحقيقي"
 	case AiSignalFuelAnomaly:
 		return "شذوذ بتكلفة تعبئة وقود"
+	case AiSignalCustomerRepeatComplaint:
+		return "شكاوى متكررة من نفس الزبون على نفس الليدر"
+	case AiSignalMaterialOveruse:
+		return "استهلاك مواد أعلى من المعتاد"
+	case AiSignalMaterialUnderuse:
+		return "استهلاك مواد أقل من المعتاد"
 	}
 	return kind
 }
@@ -210,6 +222,39 @@ type FuelAnomalyEvidence struct {
 	PercentAbove float64 `json:"percentAbove"`
 }
 
+// RepeatComplaintEvidence أدلة شكاوى متكررة — معرّفات وتواريخ وأكواد
+// حجوزات بس، بلا اسم أو هاتف زبون.
+type RepeatComplaintEvidence struct {
+	Count        int                   `json:"count"`
+	WindowDays   int                   `json:"windowDays"`
+	CustomerCode string                `json:"customerCode,omitempty"`
+	Complaints   []RepeatComplaintItem `json:"complaints"`
+}
+
+type RepeatComplaintItem struct {
+	ComplaintID string    `json:"complaintId" db:"id"`
+	CreatedAt   time.Time `json:"createdAt" db:"createdAt"`
+	BookingCode string    `json:"bookingCode,omitempty" db:"bookingCode"`
+	Type        string    `json:"type,omitempty" db:"type"`
+}
+
+// MaterialUsageEvidence أدلة استهلاك مواد شاذ بفاتورة ليدر — مقارنة
+// بوسيط فواتير نفس الخدمة (آخر ١٨٠ يوم، بلا المسودات).
+type MaterialUsageEvidence struct {
+	Direction          string              `json:"direction"` // OVER | UNDER
+	InvoiceID          string              `json:"invoiceId"`
+	ServiceID          string              `json:"serviceId,omitempty"`
+	Lines              []MaterialUsageLine `json:"lines"`
+	SameKindLast30Days int                 `json:"sameKindLast30Days"`
+}
+
+type MaterialUsageLine struct {
+	MaterialID string  `json:"materialId" db:"materialId"`
+	Quantity   float64 `json:"quantity" db:"quantity"`
+	Median     float64 `json:"median" db:"median"`
+	Samples    int     `json:"samples" db:"samples"`
+}
+
 // ═══ الحكم ═══
 
 type AiVerdict struct {
@@ -276,12 +321,12 @@ type AiMetric struct {
 
 // مفاتيح المؤشرات — تنحسب من الأدلة مو عدّادات خام.
 const (
-	AiMetricStopRate          = "STOP_RATE"           // نسبة الحجوزات الي وقّفت
-	AiMetricStopMinutesAvg    = "STOP_MINUTES_AVG"    // متوسط الوقت الضايع بالتوقف
-	AiMetricMaterialMissRate  = "MATERIAL_MISS_RATE"  // توقف بسبب مادة ما انطلبت
-	AiMetricScopeCreepRate    = "SCOPE_CREEP_RATE"    // الزبون طلب زيادة بالموقع
-	AiMetricProcurementDelay  = "PROCUREMENT_DELAY"   // تأخر إداري الكميات
-	AiMetricLateStartRate     = "LATE_START_RATE"     // نسبة التأخر بالخروج
+	AiMetricStopRate         = "STOP_RATE"          // نسبة الحجوزات الي وقّفت
+	AiMetricStopMinutesAvg   = "STOP_MINUTES_AVG"   // متوسط الوقت الضايع بالتوقف
+	AiMetricMaterialMissRate = "MATERIAL_MISS_RATE" // توقف بسبب مادة ما انطلبت
+	AiMetricScopeCreepRate   = "SCOPE_CREEP_RATE"   // الزبون طلب زيادة بالموقع
+	AiMetricProcurementDelay = "PROCUREMENT_DELAY"  // تأخر إداري الكميات
+	AiMetricLateStartRate    = "LATE_START_RATE"    // نسبة التأخر بالخروج
 	// AiMetricMonitorAgreement: شكد من أحكام ماتركس المراقب وافق
 	// عليها (ما اكو مشكلة حقيقية) — هذا مقياس الدقة الي طلبه صاحب
 	// النظام: «وافق المراقب على ٨٢٪ من أحكام الأسبوع».

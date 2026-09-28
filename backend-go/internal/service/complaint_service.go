@@ -10,7 +10,12 @@ import (
 
 type ComplaintService struct {
 	repo *repository.ComplaintRepository
+	// ai: مسجّل إشارات ماتركس (شكاوى متكررة) — اختياري.
+	ai AiSignalRecorder
 }
+
+// SetAiRecorder يربط مسجّل إشارات ماتركس بعد البناء.
+func (s *ComplaintService) SetAiRecorder(a AiSignalRecorder) { s.ai = a }
 
 func NewComplaintService(repo *repository.ComplaintRepository) *ComplaintService {
 	return &ComplaintService{repo: repo}
@@ -39,6 +44,8 @@ func (s *ComplaintService) Create(req model.CreateComplaintRequest) (*model.Comp
 		return nil, err
 	}
 	s.repo.AddEvent(c.ID, model.EventCreated, nil, req.CreatedByEmployeeID)
+	// ماتركس ٩: شكاوى متكررة على نفس الليدر — ما يوقف الشكوى أبداً.
+	recordRepeatComplaint(s.ai, c.ID)
 	return c, nil
 }
 

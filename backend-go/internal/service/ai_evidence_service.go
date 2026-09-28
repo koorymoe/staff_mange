@@ -235,6 +235,10 @@ func (s *AiEvidenceService) CollectFor(signal model.AiSignal) (*model.AiEvidence
 		return s.CollectForSelfReportMismatch(signal)
 	case model.AiSignalFuelAnomaly:
 		return s.CollectForFuelAnomaly(signal)
+	case model.AiSignalCustomerRepeatComplaint:
+		return s.CollectForRepeatComplaint(signal)
+	case model.AiSignalMaterialOveruse, model.AiSignalMaterialUnderuse:
+		return s.CollectForMaterialUsage(signal)
 	}
 	return nil, fmt.Errorf("ماكو جامع أدلة لصنف %q", signal.Kind)
 }

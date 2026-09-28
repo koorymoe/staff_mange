@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
+import AdminHome from '../components/AdminHome'
 import AttendancePage from './AttendancePage'
 import { api } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
@@ -66,7 +67,15 @@ function ProgressRing({ percent, size = 56, stroke = 5, color }: { percent: numb
   )
 }
 
+// مدير النظام له رئيسية خاصة (المتابعة + الإجراءات). الفحص بغلاف منفصل
+// لأن الرئيسية القديمة بيها عشرات الخطافات — ما ينفع return قبلها.
 export default function Dashboard() {
+  const { employee } = useSession()
+  if (employee?.role === 'ADMIN') return <AdminHome name={employee.name} />
+  return <StaffDashboard />
+}
+
+function StaffDashboard() {
   // كل حفظ بهاي الشاشة يمر من هنا — الفشل ينعرض بدل ما ينبلع
   const guard = useSaveGuard()
   const { employee, permissions, gpsServiceId } = useSession()

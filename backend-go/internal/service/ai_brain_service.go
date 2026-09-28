@@ -230,6 +230,18 @@ func (r RulesJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVer
 			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
 		}
 		return r.judgeFuelAnomaly(sig, facts)
+	case model.AiSignalCustomerRepeatComplaint:
+		var facts model.RepeatComplaintEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeRepeatComplaint(sig, facts)
+	case model.AiSignalMaterialOveruse, model.AiSignalMaterialUnderuse:
+		var facts model.MaterialUsageEvidence
+		if err := json.Unmarshal(ev.Facts, &facts); err != nil {
+			return nil, fmt.Errorf("أدلة مو مقروءة: %w", err)
+		}
+		return r.judgeMaterialUsage(sig, facts)
 	}
 	return nil, fmt.Errorf("محرّك القواعد ما يعرف صنف الإشارة %q", sig.Kind)
 }
