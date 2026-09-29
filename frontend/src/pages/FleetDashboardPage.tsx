@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { api, type FleetDashboardSummary } from '../api'
+import ReplacementSuggestionsPanel from '../components/ReplacementSuggestionsPanel'
 
 export default function FleetDashboardPage() {
   const [data, setData] = useState<FleetDashboardSummary | null>(null)
@@ -134,6 +135,11 @@ export default function FleetDashboardPage() {
                 </li>
               ))}
             </ul>
+          </div>
+          {/* ماتركس — الشاشة بحارس vehicle_management، ونفس الصلاحية تعبر حارس المسار */}
+          <div className="rounded-xl border border-slate-200 bg-white p-4">
+            <h3 className="mb-3 font-bold text-slate-800">🔁 مركبات مقترح استبدالها</h3>
+            <ReplacementSuggestionsPanel part="vehicles" />
           </div>
         </div>
       )}

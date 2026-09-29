@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, IT_KIND_LABELS, IT_LOG_LABELS, IT_STATUS_LABELS, type ItAssetKind, type ItAssetStatus, type ItStats } from '../api'
 import { useSession } from '../session'
+import ReplacementSuggestionsPanel from '../components/ReplacementSuggestionsPanel'
 
 // ═══ إحصائيات تقنية المعلومات ═══
 // شكد جهاز عدنا ومن أي نوع، شنو بالتصليح، شنو ضمانه قرب يخلص، وشكد
@@ -83,6 +84,11 @@ export default function ItStatsPage() {
               ))}
             </ul>
           )}
+          {/* ماتركس: جهاز تصلّح ٣ مرات فأكثر بـ١٨٠ يوم — يطلع بس لصاحب it_assets أو المدير */}
+          <div className="mt-3 border-t border-slate-100 pt-3">
+            <p className="mb-2 text-xs font-bold text-slate-500">🔁 اقتراح استبدال</p>
+            <ReplacementSuggestionsPanel part="it" />
+          </div>
         </section>
       </div>
 

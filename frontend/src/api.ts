@@ -761,6 +761,93 @@ export interface SalesOpportunity {
   lastBookingCompleted: string
 }
 
+/** ماتركس — مرشح كادر (GET /ai/crew-recommendation) */
+export interface CrewSuggestion {
+  employeeId: string
+  name: string
+  isLeader: boolean
+  score: number
+  hasSkill: boolean
+  doneCount: number
+  problemRatePct?: number
+  dayLoad: number
+  reasons: string[]
+}
+export interface CrewRecommendation {
+  bookingId: string
+  serviceName: string
+  day: string
+  insufficient: boolean
+  note?: string
+  leaders: CrewSuggestion[]
+  technicians: CrewSuggestion[]
+}
+
+/** ماتركس — منحنى الموظف الجديد (GET /ai/new-employee-curves) */
+export interface CurveWeek {
+  week: number
+  complete: boolean
+  completed: number
+  stops: number
+  complaints: number
+  paperDue: number
+  paperOk: number
+  paperPct?: number
+  score: number
+}
+export interface NewEmployeeCurve {
+  employeeId: string
+  name: string
+  isLeader: boolean
+  startDate: string
+  daysIn: number
+  weeks: CurveWeek[]
+  status: 'OK' | 'NEEDS_FOLLOWUP' | 'INSUFFICIENT'
+  statusNote: string
+}
+
+/** ماتركس — استهلاك المواد (GET /ai/stock-forecast) */
+export interface StockForecast {
+  stockTracked: boolean
+  note: string
+  windowDays: number
+  minUsages: number
+  horizonDays: number
+  items: { key: string; name: string; usages: number; totalQuantity: number; avgDaily: number; need14Days: number }[]
+}
+
+/** ماتركس — اقتراح استبدال (GET /ai/replacement-suggestions) */
+export interface ReplacementSuggestions {
+  itIncluded: boolean
+  vehiclesIncluded: boolean
+  it: { id: string; name: string; kind: string; status: string; repairCount: number; repairCost: number; reason: string }[]
+  vehicles: { id: string; name: string; plateNumber: string; cost12m: number; incidents180d: number; reasons: string[] }[]
+  fleetMedian?: number
+  fleetNote?: string
+}
+
+/** ماتركس — تقرير المالك الأسبوعي (GET /ai/weekly-report) */
+export interface WeekTotals {
+  completed: number
+  revenue: number
+  complaints: number
+  workStops: number
+  latePaperwork: number
+}
+export interface WeeklyMover { employeeId: string; name: string; thisScore: number; lastScore: number; delta: number; note: string }
+export interface WeeklyReport {
+  week: string
+  from: string
+  to: string
+  partial: boolean
+  this: WeekTotals
+  last: WeekTotals
+  improving: WeeklyMover[]
+  declining: WeeklyMover[]
+  openDecisions: { pendingLeaves: number; deleteRequests: number; unreviewedVerdicts: number }
+  weeks: string[]
+}
+
 /** إحصائية الأعمال المنجزة داخل الشركة خلال شهر */
 export interface InternalWorksReport {
   month: string
@@ -5238,6 +5325,15 @@ export const api = {
   // ماتركس: توقع التأخير (أدوار/صلاحية تنسيق الحجوزات) وفرص البيع (sales_booking)
   getDelayRisks: () => request<DelayRisk[]>('/ai/delay-risks'),
   getSalesOpportunities: () => request<SalesOpportunity[]>('/ai/opportunities'),
+  // ماتركس: الكادر الأنسب (حارس التكليف)، منحنى الجدد والتقرير الأسبوعي (ADMIN/OWNER)،
+  // المواد (inventory)، الاستبدال (ADMIN/OWNER أو it_assets/vehicle_management)
+  getCrewRecommendation: (bookingId: string) =>
+    request<CrewRecommendation>(`/ai/crew-recommendation?bookingId=${encodeURIComponent(bookingId)}`),
+  getNewEmployeeCurves: () => request<NewEmployeeCurve[]>('/ai/new-employee-curves'),
+  getStockForecast: () => request<StockForecast>('/ai/stock-forecast'),
+  getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
+  getWeeklyReport: (week?: string) =>
+    request<WeeklyReport>(`/ai/weekly-report${week ? `?week=${encodeURIComponent(week)}` : ''}`),
 
   // إحصائيات الموظفين الشهرية — OWNER/ADMIN فقط
   getEmployeeMonthlyStats: (month: string) =>

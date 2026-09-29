@@ -476,6 +476,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	matrixForesightHandler := handler.NewMatrixForesightHandler(delayPredictionService, salesOpportunityService)
+	// ماتركس: الكادر الأنسب، منحنى الجدد، المواد، الاستبدال، والتقرير الأسبوعي (أحد الصبح).
+	matrixInsightsService := service.NewMatrixInsightsService(aiRepo)
+	weeklyReportService := service.NewWeeklyReportService(aiRepo, notificationRepo)
+	safeguard.Loop("تقرير المالك الأسبوعي", 37*time.Minute, time.Hour, func() {
+		if err := weeklyReportService.RunSundayIfDue(); err != nil {
+			log.Printf("weekly owner report: %v", err)
+		}
+	})
+	matrixInsightsHandler := handler.NewMatrixInsightsHandler(matrixInsightsService, weeklyReportService, permissionRepo)
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -990,6 +999,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فرص البيع: المالك/مدير النظام أو صلاحية sales_booking (المبيعات بالافتراض).
 	mux.Handle("GET /api/ai/opportunities", middleware.Chain(http.HandlerFunc(matrixForesightHandler.Opportunities), requireAuth,
 		middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "sales_booking")))
+	// ═══ ماتركس — ميزات ٣/٧/١٠/١١/١٢: كلها GET ═══
+	// الكادر الأنسب: نفس حارس PUT /api/bookings/{id}/assign بالضبط.
+	mux.Handle("GET /api/ai/crew-recommendation", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.CrewRecommendation), requireAuth, requireBookingCoord))
+	mux.Handle("GET /api/ai/new-employee-curves", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.NewEmployeeCurves), requireAuth, requireAdmin))
+	// المواد: نفس حارس شاشة الجرد (صلاحية inventory؛ ADMIN/OWNER يمرّون).
+	mux.Handle("GET /api/ai/stock-forecast", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.StockForecast), requireAuth, requireInventoryView))
+	// الاستبدال: ADMIN/OWNER أو it_assets أو vehicle_management — والمعالج يفلتر الأقسام.
+	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
+		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "it_assets", "vehicle_management")))
+	mux.Handle("GET /api/ai/weekly-report", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.WeeklyReport), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.GetWorkWindow), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.SetWorkWindow), requireAuth, requireAdmin))

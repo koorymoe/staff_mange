@@ -7,10 +7,13 @@ import {
   type FinanceSummary,
   type InternalWorksReport,
   type MonitorDeskCounts,
+  type NewEmployeeCurve,
+  type StockForecast,
   type TechnicianKpi,
   type TodayPulse,
 } from '../api'
 import TodayBoard from './TodayBoard'
+import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
 //
@@ -80,6 +83,93 @@ function Missing() {
 
 function Loading() {
   return <div className="h-16 animate-pulse rounded-xl bg-slate-100" />
+}
+
+// ═══ ماتركس — منحنى تعلّم الموظف الجديد ═══
+// خط أسبوعي صغير لنقاط كل أسبوع (منجز − ٢×توقف − ٣×شكوى). الحالة
+// محسوبة بالخادم بقاعدة ثابتة: ٣ أسابيع مكتملة متتالية بلا تحسّن = يحتاج متابعة.
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return <span className="text-[11px] text-slate-400">—</span>
+  const w = 84, h = 22
+  const min = Math.min(...values), max = Math.max(...values)
+  const span = max - min || 1
+  const pts = values.map((v, i) => `${(i / (values.length - 1)) * w},${h - 2 - ((v - min) / span) * (h - 4)}`).join(' ')
+  return (
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="shrink-0" aria-hidden>
+      <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+const CURVE_TONE: Record<NewEmployeeCurve['status'], string> = {
+  OK: 'bg-emerald-50 text-emerald-700',
+  NEEDS_FOLLOWUP: 'bg-red-50 text-red-700',
+  INSUFFICIENT: 'bg-slate-100 text-slate-500',
+}
+const CURVE_LABEL: Record<NewEmployeeCurve['status'], string> = {
+  OK: 'ماشي طبيعي',
+  NEEDS_FOLLOWUP: 'يحتاج متابعة',
+  INSUFFICIENT: 'ماكو بيانات كافية بعد',
+}
+
+function NewEmployeeCurves() {
+  const curves = useLoad<NewEmployeeCurve[]>(() => api.getNewEmployeeCurves())
+  return (
+    <Section title="🌱 ماتركس — منحنى الموظفين الجدد (أول ٩٠ يوم)">
+      {curves === undefined ? <Loading /> : curves === null ? <Missing /> : curves.length === 0 ? (
+        <p className="text-sm text-slate-500">ماكو فنيين أو ليدرية جدد بآخر ٩٠ يوم.</p>
+      ) : (
+        <ul className="divide-y divide-slate-100">
+          {curves.map((c) => {
+            const last = [...c.weeks].reverse().find((w) => w.complete)
+            return (
+              <li key={c.employeeId} className="flex items-center justify-between gap-3 py-2">
+                <div className="min-w-0">
+                  <p className="truncate font-bold text-slate-700">{c.name}{c.isLeader ? ' · ليدر' : ''}</p>
+                  <p className="text-[11px] text-slate-400">
+                    يومه {fmt(c.daysIn)}
+                    {last && ` · آخر أسبوع: ${fmt(last.completed)} منجز، ${fmt(last.stops)} توقف، ${fmt(last.complaints)} شكوى${last.paperPct != null ? `، ورق ${last.paperPct}٪` : ''}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-brand-600" title="نقاط كل أسبوع"><Sparkline values={c.weeks.map((w) => w.score)} /></span>
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${CURVE_TONE[c.status]}`} title={c.statusNote}>{CURVE_LABEL[c.status]}</span>
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+      <p className="mt-2 text-[11px] text-slate-400">نقاط الأسبوع = منجز − ٢×توقف − ٣×شكوى. «يحتاج متابعة» = ٣ أسابيع مكتملة بلا تحسّن — للمتابعة والتدريب، مو عقوبة.</p>
+    </Section>
+  )
+}
+
+// ═══ ماتركس — المخزون قبل ما يخلص ═══
+function StockForecastSection() {
+  const f = useLoad<StockForecast>(() => api.getStockForecast())
+  return (
+    <Section title="📦 ماتركس — المواد قبل ما تخلص" to="/procurement" linkLabel="طلبات المواد ←">
+      {f === undefined ? <Loading /> : f === null ? <Missing /> : (
+        <>
+          <p className={`mb-2 rounded-xl px-3 py-2 text-xs ${f.stockTracked ? 'bg-slate-50 text-slate-600' : 'bg-amber-50 text-amber-800'}`}>{f.note}</p>
+          {f.items.length > 0 && (
+            <ul className="space-y-1 text-sm">
+              {f.items.slice(0, 8).map((m) => (
+                <li key={m.key} className="flex justify-between gap-2 text-slate-600">
+                  <span className="truncate">{m.name}</span>
+                  <span className="shrink-0 tabular-nums text-slate-500">
+                    {m.avgDaily.toLocaleString('en-US')}/يوم · يحتاج ~{fmt(m.need14Days)} لـ{f.horizonDays} يوم
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="mt-2 text-[11px] text-slate-400">من فواتير الليدرية آخر {f.windowDays} يوم، المواد الي انصرفت {f.minUsages} مرات فأكثر.</p>
+        </>
+      )}
+    </Section>
+  )
 }
 
 // ═══ لوحة المتابعة ═══
@@ -245,6 +335,8 @@ function FollowBoard() {
         )}
       </Section>
 
+      <NewEmployeeCurves />
+
       <TodayBoard finance={finance ?? null} />
     </div>
   )
@@ -288,6 +380,13 @@ function ActionsBoard() {
         <ActionTile to="/achievements" icon="📋" label="إنجازات بلا تقييم" hint="تقارير الموظفين اليومية" count={n(achievements, (x) => x.filter((a) => a.reviewStatus === 'PENDING').length)} />
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-2">
+        <StockForecastSection />
+        <Section title="🔁 ماتركس — مقترح استبداله" to="/it-stats" linkLabel="إحصائيات الـIT ←">
+          <ReplacementSuggestionsPanel part="any" compact />
+        </Section>
+      </div>
+
       <section className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <h3 className="mb-3 text-base font-extrabold text-[#0f2040]">⚡ إجراءات سريعة</h3>
         <div className="flex flex-wrap gap-2">
@@ -295,6 +394,7 @@ function ActionsBoard() {
             { to: '/extra-tasks', label: '➕ أعطي مهمة إضافية' },
             { to: '/sales', label: '📅 حجز جديد' },
             { to: '/coordinator', label: '🗂️ تنسيق الحجوزات' },
+            { to: '/weekly-report', label: '📊 التقرير الأسبوعي' },
             { to: '/finance', label: '🧾 تدقيق الحسابات' },
             { to: '/complaints', label: '📣 الشكاوى' },
             { to: '/staff-management-desk', label: '👥 إدارة الموظفين' },

@@ -42,6 +42,8 @@ const notifTargets: Record<string, string> = {
   extra_task: '/my-extra-tasks',
   extra_task_done: '/extra-tasks',
   extra_task_cancelled: '/my-extra-tasks',
+  // ماتركس — يوصل للمالك ومدير النظام بس
+  AI_WEEKLY_REPORT: '/weekly-report',
 }
 import AnnouncementTicker from './AnnouncementTicker'
 import { navItems, isNavVisible, isExtraForMonitor, type NavItem } from './navTree'

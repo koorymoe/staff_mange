@@ -3,6 +3,7 @@ import { api, type Booking, type Employee, type CartItem, type Product, type Job
 import { formatCustomerCode } from '../utils/identity'
 import { executionStarted } from '../bookingStage'
 import { useSession } from '../session'
+import CrewSuggestionChips from '../components/CrewSuggestionChips'
 import { LocationPicker } from '../components/MapLazy'
 import CompletionBadge from '../components/CompletionBadge'
 import BookingEditPanel from '../components/BookingEditPanel'
@@ -71,6 +72,12 @@ export default function Coordinator() {
   const canSeeDelayRisks = ['ADMIN', 'HR_COORDINATOR', 'MONITOR'].includes(currentUser?.role ?? '')
     || currentUser?.actualRole === 'OWNER' || (permissions ?? []).includes('coordinator')
   const [delayRisks, setDelayRisks] = useState<Record<string, DelayRisk>>({})
+  // ═══ ماتركس: الكادر الأنسب ═══ — نفس حارس PUT /api/bookings/{id}/assign
+  // (requireBookingCoord: coordinator أو crew_management؛ ADMIN/OWNER يعبرون).
+  const canCrewSuggest = currentUser?.role === 'ADMIN'
+    || (permissions ?? []).includes('coordinator') || (permissions ?? []).includes('crew_management')
+  // الاقتراح المختار ينتظر تثبيت المنسّق — ما يتكلّف بالضغطة.
+  const [crewPick, setCrewPick] = useState<{ bookingId: string; employeeId: string; name: string } | null>(null)
   const [delayReload, setDelayReload] = useState(0)
   const [matches, setMatches] = useState<Record<string, Employee[]>>({})
   // الحجز الي قيد التثبيت حالياً — الأزرار كانت بلا أي إشارة انتظار، فالمستخدم
@@ -1190,6 +1197,32 @@ export default function Coordinator() {
                     {/* الخانات تنعرض دائماً — قبل، لو ما وصلت قائمة
                         المطابقة (حجز بلا خدمة أو طلب فشل) تختفي خانات
                         الفنيين كلها وما يكدر يكلّف أحد. */}
+                    {canCrewSuggest && (
+                      <CrewSuggestionChips bookingId={booking.id}
+                        onPick={(sg) => setCrewPick({ bookingId: booking.id, employeeId: sg.employeeId, name: sg.name })} />
+                    )}
+                    {canCrewSuggest && crewPick?.bookingId === booking.id && (() => {
+                      const already = booking.assignments.some((a) => a.employee.id === crewPick.employeeId)
+                      const slot = techRoles.find((tr) => !booking.assignments.some((a) => a.role === tr.key))
+                      return (
+                        <div className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-violet-200 bg-white px-3 py-2 text-xs">
+                          {already ? (
+                            <span className="text-slate-600">{crewPick.name} مكلّف أصلاً بهالحجز.</span>
+                          ) : slot ? (
+                            <>
+                              <span className="text-slate-700">تكليف <b>{crewPick.name}</b> بخانة «{slot.label}»؟</span>
+                              <button type="button"
+                                onClick={async () => { const p = crewPick; setCrewPick(null); await handleAssign(booking, slot.key, p.employeeId) }}
+                                className="rounded-lg bg-violet-600 px-3 py-1 font-bold text-white hover:bg-violet-700">✔ ثبّت</button>
+                            </>
+                          ) : (
+                            <span className="text-slate-600">كل خانات الفنيين مليانة — فرّغ خانة أول.</span>
+                          )}
+                          <button type="button" onClick={() => setCrewPick(null)}
+                            className="rounded-lg px-2 py-1 font-bold text-slate-500 hover:bg-slate-100">إلغاء</button>
+                        </div>
+                      )
+                    })()}
                     {(
                       <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
                         {techRoles.map((tr) => {
