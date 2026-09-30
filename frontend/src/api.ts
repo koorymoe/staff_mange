@@ -846,6 +846,7 @@ export interface WeeklyReport {
   declining: WeeklyMover[]
   openDecisions: { pendingLeaves: number; deleteRequests: number; unreviewedVerdicts: number }
   weeks: string[]
+  matrix?: MatrixDecisions['accuracy']
 }
 
 /** إحصائية الأعمال المنجزة داخل الشركة خلال شهر */
@@ -5334,6 +5335,8 @@ export const api = {
   getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
   getMatrixDecisions: (day?: string) =>
     request<MatrixDecisions>(`/ai/decisions${day ? `?day=${encodeURIComponent(day)}` : ''}`),
+  resumeMatrixKind: (kind: string) =>
+    request<{ ok: boolean }>(`/ai/actions/kinds/${encodeURIComponent(kind)}/resume`, { method: 'POST' }),
   undoMatrixAction: (id: string) => request<{ ok: boolean }>(`/ai/actions/${encodeURIComponent(id)}/undo`, { method: 'POST' }),
   getWeeklyReport: (week?: string) =>
     request<WeeklyReport>(`/ai/weekly-report${week ? `?week=${encodeURIComponent(week)}` : ''}`),
@@ -5580,6 +5583,9 @@ export interface MatrixAction {
   createdAt: string
   undoneById: string | null
   undoneAt: string | null
+  details: Record<string, unknown> | null
+  resolvedAt: string | null
+  escalatedAt: string | null
 }
 export interface MatrixPendingDecision {
   id: string
@@ -5595,5 +5601,11 @@ export interface MatrixDecisions {
   done: MatrixAction[]
   pending: MatrixPendingDecision[]
   unstaffed: { id: string; code: string; scheduledAt: string }[]
+  escalated: MatrixAction[]
+  paused: { kind: string; reason: string; pausedAt: string }[]
+  accuracy: {
+    actions: number; resolved: number; escalated: number; rejected: number
+    delayPredicted: number; delayChecked: number; delayCorrect: number
+  }
   labels: Record<string, string>
 }

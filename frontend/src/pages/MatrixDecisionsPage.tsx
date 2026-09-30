@@ -14,15 +14,47 @@ const todayBaghdad = () => new Date().toLocaleDateString('en-CA', { timeZone: 'A
 function entityLink(type: string): string | null {
   if (type === 'BOOKING') return '/coordinator'
   if (type === 'IT_ASSET') return '/it-assets'
-  if (type === 'VEHICLE') return '/vehicles'
+  if (type === 'VEHICLE' || type === 'VEHICLE_DOCUMENT') return '/vehicles'
+  if (type === 'EXTRA_TASK') return '/extra-tasks'
   return null
 }
+
+// «ليش؟» — الأرقام الي بنى عليها ماتركس فعله، بشكل مقروء.
+function WhyBox({ details }: { details: Record<string, unknown> }) {
+  const show = (v: unknown): string => {
+    if (Array.isArray(v)) return v.map((x) => (typeof x === 'object' && x ? Object.values(x as object).join(' / ') : String(x))).join('، ')
+    if (typeof v === 'object' && v) return JSON.stringify(v)
+    if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T/.test(v)) return new Date(v).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad' })
+    return String(v)
+  }
+  return (
+    <dl className="mt-1 grid gap-x-3 gap-y-0.5 rounded-lg bg-slate-50 p-2 text-xs text-slate-600 sm:grid-cols-[auto_1fr]">
+      {Object.entries(details).map(([k, v]) => (
+        <div key={k} className="contents"><dt className="font-bold">{WHY_LABELS[k] || k}</dt><dd className="break-words">{show(v)}</dd></div>
+      ))}
+    </dl>
+  )
+}
+
+const WHY_LABELS: Record<string, string> = {
+  bookingCodes: 'الحجوزات', items: 'التفاصيل', bookingCode: 'الحجز', expectedMinutes: 'المتوقع (دقيقة)',
+  availableMinutes: 'المتاح (دقيقة)', samples: 'عدد العيّنات', basis: 'الأساس', limitedBy: 'المحدِّد',
+  customerCode: 'رقم الزبون', latestBooking: 'آخر حجز', factors: 'العلامات', scheduledAt: 'الموعد',
+  suggestedLeader: 'المقترح', repairCount: 'عدد التصليحات', repairCost: 'كلفة التصليح', reason: 'السبب',
+  cost12m: 'كلفة ١٢ شهر', incidents180d: 'حوادث ١٨٠ يوم', reasons: 'الأسباب', customer: 'الزبون',
+  subscriptionEnd: 'نهاية الاشتراك', daysLeft: 'باقي (يوم)', document: 'الوثيقة', vehicle: 'السيارة',
+  plate: 'اللوحة', expiryDate: 'تنتهي', title: 'المهمة', dueAt: 'الموعد', daysLate: 'متأخرة (يوم)',
+  tool: 'الأداة', available: 'المتوفر', total: 'الكلي', submittedAt: 'رُفعت', days: 'الأيام',
+}
+
+const pct = (a: number, b: number) => (b > 0 ? `${Math.round((a / b) * 100)}٪` : '—')
 
 export default function MatrixDecisionsPage() {
   const [day, setDay] = useState(todayBaghdad())
   const [data, setData] = useState<MatrixDecisions | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
 
   const [reload, setReload] = useState(0)
   const load = () => setReload((n) => n + 1)
@@ -49,6 +81,20 @@ export default function MatrixDecisionsPage() {
     }
   }
 
+  const resume = async (kind: string) => {
+    setBusy(kind)
+    try {
+      await api.resumeMatrixKind(kind)
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر الترجيع')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const waiting = data ? data.pending.length + data.unstaffed.length + data.escalated.length + data.paused.length : 0
+
   return (
     <div dir="rtl" className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -67,9 +113,27 @@ export default function MatrixDecisionsPage() {
       {data && (
         <>
           <section className="rounded-2xl border border-amber-200 bg-white p-4">
-            <h3 className="mb-3 font-extrabold text-[#0f2040]">⏳ ينتظر قرارك <span className="text-sm text-slate-500">({data.pending.length + data.unstaffed.length})</span></h3>
-            {data.pending.length === 0 && data.unstaffed.length === 0 ? <p className="text-sm text-slate-400">ماكو شي ينتظرك ✅</p> : (
+            <h3 className="mb-3 font-extrabold text-[#0f2040]">⏳ ينتظر قرارك <span className="text-sm text-slate-500">({waiting})</span></h3>
+            {waiting === 0 ? <p className="text-sm text-slate-400">ماكو شي ينتظرك ✅</p> : (
               <ul className="divide-y divide-slate-100 text-sm">
+                {data.paused.map((p) => (
+                  <li key={`p${p.kind}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                    <span>⏸️ وقّفت «<b>{data.labels[p.kind] || p.kind}</b>» لأنك {p.reason}. أرجّعه؟</span>
+                    <button disabled={busy === p.kind} onClick={() => resume(p.kind)} className="rounded-lg bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700 disabled:opacity-50">▶️ رجّعه</button>
+                  </li>
+                ))}
+                {data.escalated.map((a) => {
+                  const link = entityLink(a.entityType)
+                  return (
+                    <li key={`e${a.id}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                      <div>
+                        <p className="font-bold text-slate-800">⬆️ {a.summary}</p>
+                        <p className="text-xs text-slate-500">ذكّرت {a.targetLabel || '—'} يوم {new Date(a.createdAt).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })} وبعده ما انحل</p>
+                      </div>
+                      {link && <Link to={link} className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">افتح ←</Link>}
+                    </li>
+                  )
+                })}
                 {data.unstaffed.map((b) => (
                   <li key={`u${b.id}`} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <span>👷 حجز <b>{b.code}</b> باچر {new Date(b.scheduledAt).toLocaleTimeString('ar-IQ', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit' })} وماكو عليه كادر</span>
@@ -100,7 +164,13 @@ export default function MatrixDecisionsPage() {
                     <li key={a.id} className={`flex flex-wrap items-center justify-between gap-2 py-2 ${a.status === 'UNDONE' ? 'opacity-50' : ''}`}>
                       <div>
                         <p className="text-slate-800">{a.summary}{link && <> · <Link to={link} className="text-brand-700 underline">فتح</Link></>}</p>
-                        <p className="text-xs text-slate-500">{data.labels[a.kind] || a.kind} · إلى: {a.targetLabel || '—'} · {new Date(a.createdAt).toLocaleTimeString('ar-IQ', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit' })}</p>
+                        <p className="text-xs text-slate-500">
+                          {data.labels[a.kind] || a.kind} · إلى: {a.targetLabel || '—'} · {new Date(a.createdAt).toLocaleTimeString('ar-IQ', { timeZone: 'Asia/Baghdad', hour: '2-digit', minute: '2-digit' })}
+                          {a.resolvedAt && <span className="ms-2 rounded-full bg-emerald-50 px-2 text-emerald-700">✅ انحل</span>}
+                          {!a.resolvedAt && a.escalatedAt && <span className="ms-2 rounded-full bg-amber-50 px-2 text-amber-700">⬆️ صعد</span>}
+                          {a.details && <button onClick={() => setOpen(open === a.id ? null : a.id)} className="ms-2 text-brand-700 underline">ليش؟</button>}
+                        </p>
+                        {open === a.id && a.details && <WhyBox details={a.details} />}
                       </div>
                       {a.status === 'DONE'
                         ? <button disabled={busy === a.id} onClick={() => undo(a.id)} className="rounded-lg border border-red-200 px-3 py-1 text-xs font-bold text-red-600 hover:bg-red-50 disabled:opacity-50">🚫 لا تسوي هذا</button>
@@ -110,6 +180,26 @@ export default function MatrixDecisionsPage() {
                 })}
               </ul>
             )}
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
+            <h3 className="mb-3 font-extrabold text-[#0f2040]">🎯 دقة ماتركس <span className="text-xs font-normal text-slate-500">(آخر ٣٠ يوم)</span></h3>
+            <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+              {[
+                ['كل الأفعال', String(data.accuracy.actions)],
+                ['انحلت بعد التذكير', `${data.accuracy.resolved} (${pct(data.accuracy.resolved, data.accuracy.actions)})`],
+                ['صعدت إلك', String(data.accuracy.escalated)],
+                ['رفضتها', `${data.accuracy.rejected} (${pct(data.accuracy.rejected, data.accuracy.actions)})`],
+              ].map(([l, v]) => (
+                <div key={l} className="rounded-xl bg-slate-50 p-3"><p className="text-xs text-slate-500">{l}</p><p className="text-lg font-extrabold tabular-nums">{v}</p></div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs text-slate-600">
+              ⏱️ توقّعات التأخير: {data.accuracy.delayPredicted} توقّع
+              {data.accuracy.delayChecked > 0
+                ? <> · انفحص منها {data.accuracy.delayChecked} بعد ما خلصت، وصدق {data.accuracy.delayCorrect} ({pct(data.accuracy.delayCorrect, data.accuracy.delayChecked)})</>
+                : <> · بعد ماكو حجوزات خلصت حتى نقيس بيها — الرقم يطلع أول ما ينجزون.</>}
+            </p>
           </section>
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 text-sm">

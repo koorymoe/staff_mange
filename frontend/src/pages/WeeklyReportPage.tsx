@@ -119,6 +119,9 @@ export default function WeeklyReportPage() {
                 <li className="flex justify-between"><span>طلبات إجازة</span><b className="tabular-nums">{fmt(data.openDecisions.pendingLeaves)}</b></li>
                 <li className="flex justify-between"><span>طلبات حذف حجوزات</span><b className="tabular-nums">{fmt(data.openDecisions.deleteRequests)}</b></li>
                 <li className="flex justify-between"><span>أحكام ماتركس بلا مراجعة</span><b className="tabular-nums">{fmt(data.openDecisions.unreviewedVerdicts)}</b></li>
+                {data.matrix && data.matrix.actions > 0 && (
+                  <li className="border-t border-slate-100 pt-1 text-xs text-slate-600">🤖 ماتركس (٣٠ يوم): {fmt(data.matrix.actions)} تذكير · انحل {fmt(data.matrix.resolved)} · صعد {fmt(data.matrix.escalated)} · رفضت {fmt(data.matrix.rejected)}</li>
+                )}
               </ul>
             </Card>
           </div>

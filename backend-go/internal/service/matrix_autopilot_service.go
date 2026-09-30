@@ -1,6 +1,7 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"strings"
@@ -21,7 +22,7 @@ import (
 // كلشي بضغطة.
 
 const (
-	autopilotHour     = 9 // بعد فحوصات ماتركس (٨) وتوقّع التأخير (٧)
+	autopilotHour     = 10 // بعد فحوصات ماتركس (٨) وتوقّع التأخير (٧)، ووقت كافي لتسجيل الحضور
 	autopilotDailyCap = 30
 )
 
@@ -49,7 +50,7 @@ func (s *MatrixAutopilotService) Enabled() bool {
 	return all[model.SwitchMatrixAutopilot]
 }
 
-// RunIfDue مرة باليوم بعد ٩ الصبح بغداد.
+// RunIfDue مرة باليوم بعد ١٠ الصبح بغداد.
 func (s *MatrixAutopilotService) RunIfDue() error {
 	now := time.Now().In(debriefLoc)
 	if now.Hour() < autopilotHour {
@@ -62,6 +63,7 @@ func (s *MatrixAutopilotService) RunIfDue() error {
 	}
 	done := 0
 	if s.Enabled() {
+		s.followUp()
 		done = s.runActions(now)
 	}
 	return s.sendMorningSummary(done)
@@ -78,6 +80,12 @@ func (s *MatrixAutopilotService) runActions(now time.Time) int {
 		func() (int, error) { return s.customerFollowUps(week, dayStart) },
 		func() (int, error) { return s.unstaffedAlerts(now.AddDate(0, 0, 1).Format("2006-01-02"), dayStart) },
 		func() (int, error) { return s.replacementAlerts(week, dayStart) },
+		func() (int, error) { return s.gpsExpiry(week, dayStart) },
+		func() (int, error) { return s.vehicleDocs(week, dayStart) },
+		func() (int, error) { return s.overdueTasks(today, dayStart) },
+		func() (int, error) { return s.attendanceNudges(today, dayStart) },
+		func() (int, error) { return s.lowStock(week, dayStart) },
+		func() (int, error) { return s.staleInvoices(today, dayStart) },
 	}
 	for _, step := range steps {
 		c, err := step()
@@ -104,7 +112,14 @@ func (s *MatrixAutopilotService) act(a model.AiAction, dayStart time.Time, send 
 	return true
 }
 
-func strPtr(s string) *string { return &s }
+// why يحوّل أسباب الفعل لـJSON يطلع بزر «ليش؟».
+func why(v map[string]any) model.NullJSON {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return nil
+	}
+	return b
+}
 
 // ١. الورق المتأخر — تذكير لليدر نفسه، مرة بالأسبوع.
 func (s *MatrixAutopilotService) paperworkReminders(week string, dayStart time.Time) (int, error) {
@@ -114,6 +129,10 @@ func (s *MatrixAutopilotService) paperworkReminders(week string, dayStart time.T
 	}
 	n := 0
 	for leader, items := range groupLatePaperwork(rows) {
+		all := make([]string, 0, len(items))
+		for _, it := range items {
+			all = append(all, it.BookingCode)
+		}
 		codes := []string{}
 		for i, it := range items {
 			if i == 8 {
@@ -127,7 +146,8 @@ func (s *MatrixAutopilotService) paperworkReminders(week string, dayStart time.T
 		leaderID := leader
 		if s.act(model.AiAction{Kind: model.AiActionPaperworkReminder, EntityType: "EMPLOYEE", EntityID: leader,
 			Period: week, TargetEmployeeID: &leaderID, TargetLabel: s.actions.EmployeeName(leader),
-			Summary: fmt.Sprintf("ذكّر الليدر بـ%d حجز ناقصه ورق", len(items))}, dayStart,
+			Summary: fmt.Sprintf("ذكّر الليدر بـ%d حجز ناقصه ورق", len(items)),
+			Details: why(map[string]any{"bookingCodes": all, "items": items})}, dayStart,
 			func() error { return s.notif.Create(leaderID, "AI_AUTOPILOT", msg) }) {
 			n++
 		}
@@ -151,7 +171,9 @@ func (s *MatrixAutopilotService) delayWarnings(today string, dayStart time.Time)
 			r.BookingCode, fmtHours(r.ExpectedMinutes), fmtHours(r.AvailableMinutes))
 		if s.act(model.AiAction{Kind: model.AiActionDelayWarning, EntityType: "BOOKING", EntityID: r.BookingID,
 			Period: today, TargetEmployeeID: &leaderID, TargetLabel: s.actions.EmployeeName(leaderID),
-			Summary: fmt.Sprintf("نبّه الليدر إن حجز %s ممكن يطوّل", r.BookingCode)}, dayStart,
+			Summary: fmt.Sprintf("نبّه الليدر إن حجز %s ممكن يطوّل", r.BookingCode),
+			Details: why(map[string]any{"bookingCode": r.BookingCode, "expectedMinutes": r.ExpectedMinutes,
+				"availableMinutes": r.AvailableMinutes, "samples": r.Samples, "basis": r.Basis, "limitedBy": r.LimitedBy})}, dayStart,
 			func() error { return s.notif.Create(leaderID, "AI_AUTOPILOT", msg) }) {
 			n++
 		}
@@ -167,14 +189,16 @@ func (s *MatrixAutopilotService) customerFollowUps(week string, dayStart time.Ti
 	}
 	n := 0
 	for _, r := range rows {
-		if len(customerRiskFactors(r)) < riskMinFactors {
+		factors := customerRiskFactors(r)
+		if len(factors) < riskMinFactors {
 			continue
 		}
 		msg := fmt.Sprintf("🤖 ماتركس — الزبون رقم %d (آخر حجز %s) عليه أكثر من علامة زعل. اتصلوا بي اليوم واسألوا عن رضاه.",
 			r.CustomerCode, r.LatestBookingCode)
 		if s.act(model.AiAction{Kind: model.AiActionCustomerFollowUp, EntityType: "CUSTOMER", EntityID: r.CustomerID,
 			Period: week, TargetLabel: "الجودة",
-			Summary: fmt.Sprintf("طلب من الجودة تتصل بالزبون رقم %d", r.CustomerCode)}, dayStart,
+			Summary: fmt.Sprintf("طلب من الجودة تتصل بالزبون رقم %d", r.CustomerCode),
+			Details: why(map[string]any{"customerCode": r.CustomerCode, "latestBooking": r.LatestBookingCode, "factors": factors})}, dayStart,
 			func() error {
 				return s.notif.CreateForRolesOrPermission([]string{}, "quality_control", "AI_AUTOPILOT", msg)
 			}) {
@@ -192,15 +216,17 @@ func (s *MatrixAutopilotService) unstaffedAlerts(tomorrow string, dayStart time.
 	}
 	n := 0
 	for _, b := range rows {
-		hint := ""
+		hint, suggested := "", ""
 		if rec, err := s.insights.CrewRecommendation(b.ID); err == nil && rec != nil && len(rec.Leaders) > 0 {
-			hint = fmt.Sprintf(" الأنسب حسب ماتركس: %s.", rec.Leaders[0].Name)
+			suggested = rec.Leaders[0].Name
+			hint = fmt.Sprintf(" الأنسب حسب ماتركس: %s.", suggested)
 		}
 		msg := fmt.Sprintf("🤖 ماتركس — حجز %s باچر الساعة %s مثبّت وماكو عليه كادر.%s",
 			b.Code, b.ScheduledAt.In(debriefLoc).Format("15:04"), hint)
 		if s.act(model.AiAction{Kind: model.AiActionUnstaffedAlert, EntityType: "BOOKING", EntityID: b.ID,
 			Period: tomorrow, TargetLabel: "التنسيق",
-			Summary: fmt.Sprintf("نبّه التنسيق إن حجز %s باچر بلا كادر", b.Code)}, dayStart,
+			Summary: fmt.Sprintf("نبّه التنسيق إن حجز %s باچر بلا كادر", b.Code),
+			Details: why(map[string]any{"bookingCode": b.Code, "scheduledAt": b.ScheduledAt, "suggestedLeader": suggested})}, dayStart,
 			func() error {
 				return s.notif.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "AI_AUTOPILOT", msg)
 			}) {
@@ -220,7 +246,8 @@ func (s *MatrixAutopilotService) replacementAlerts(week string, dayStart time.Ti
 	for _, it := range rep.It {
 		msg := fmt.Sprintf("🤖 ماتركس — الجهاز «%s»: %s. فكّروا باستبداله بدل التصليح.", it.Name, it.Reason)
 		if s.act(model.AiAction{Kind: model.AiActionReplacementAlert, EntityType: "IT_ASSET", EntityID: it.ID,
-			Period: week, TargetLabel: "تقنية المعلومات", Summary: fmt.Sprintf("اقترح استبدال الجهاز «%s»", it.Name)}, dayStart,
+			Period: week, TargetLabel: "تقنية المعلومات", Summary: fmt.Sprintf("اقترح استبدال الجهاز «%s»", it.Name),
+			Details: why(map[string]any{"repairCount": it.RepairCount, "repairCost": it.RepairCost, "reason": it.Reason})}, dayStart,
 			func() error { return s.notif.CreateForPermission("it_assets", "AI_AUTOPILOT", msg) }) {
 			n++
 		}
@@ -228,7 +255,8 @@ func (s *MatrixAutopilotService) replacementAlerts(week string, dayStart time.Ti
 	for _, v := range rep.Vehicles {
 		msg := fmt.Sprintf("🤖 ماتركس — السيارة «%s» (%s): %s. فكّروا باستبدالها.", v.Name, v.PlateNumber, strings.Join(v.Reasons, "، "))
 		if s.act(model.AiAction{Kind: model.AiActionReplacementAlert, EntityType: "VEHICLE", EntityID: v.ID,
-			Period: week, TargetLabel: "الأسطول", Summary: fmt.Sprintf("اقترح استبدال السيارة «%s»", v.Name)}, dayStart,
+			Period: week, TargetLabel: "الأسطول", Summary: fmt.Sprintf("اقترح استبدال السيارة «%s»", v.Name),
+			Details: why(map[string]any{"cost12m": v.Cost12m, "incidents180d": v.Incidents180d, "reasons": v.Reasons})}, dayStart,
 			func() error { return s.notif.CreateForPermission("vehicle_management", "AI_AUTOPILOT", msg) }) {
 			n++
 		}
@@ -242,10 +270,12 @@ func (s *MatrixAutopilotService) sendMorningSummary(done int) error {
 	if err != nil {
 		return err
 	}
-	if done == 0 && len(pending) == 0 {
+	escalated, _ := s.actions.Escalated()
+	if done == 0 && len(pending) == 0 && len(escalated) == 0 {
 		return nil
 	}
-	msg := fmt.Sprintf("🤖 ماتركس — اليوم سوّيت %d تذكير لحالي، وأكو %d حكم ينتظر قرارك. افتح «صندوق قرارات ماتركس».", done, len(pending))
+	msg := fmt.Sprintf("🤖 ماتركس — اليوم سوّيت %d تذكير لحالي، وأكو %d حكم ينتظر قرارك، و%d تذكير ما انحل وصعدته إلك. افتح «صندوق قرارات ماتركس».",
+		done, len(pending), len(escalated))
 	if !s.Enabled() {
 		msg = fmt.Sprintf("🤖 ماتركس — التنفيذ التلقائي مطفي. أكو %d حكم ينتظر قرارك بصندوق القرارات.", len(pending))
 	}
@@ -260,6 +290,9 @@ type DecisionsBox struct {
 	Done             []model.AiAction          `json:"done"`
 	Pending          []model.PendingAiDecision `json:"pending"`
 	Unstaffed        []model.UnstaffedBooking  `json:"unstaffed"`
+	Escalated        []model.AiAction          `json:"escalated"`
+	Paused           []model.AiActionKindPause `json:"paused"`
+	Accuracy         *model.MatrixAccuracy     `json:"accuracy"`
 	Labels           map[string]string         `json:"labels"`
 }
 
@@ -282,8 +315,27 @@ func (s *MatrixAutopilotService) Decisions(day string) (*DecisionsBox, error) {
 	if err != nil {
 		return nil, err
 	}
+	escalated, err := s.actions.Escalated()
+	if err != nil {
+		return nil, err
+	}
+	paused, err := s.actions.ListPaused()
+	if err != nil {
+		return nil, err
+	}
+	acc, err := s.actions.Accuracy()
+	if err != nil {
+		return nil, err
+	}
 	return &DecisionsBox{Day: day, AutopilotEnabled: s.Enabled(), Done: done, Pending: pending,
-		Unstaffed: unstaffed, Labels: model.AiActionLabels}, nil
+		Unstaffed: unstaffed, Escalated: escalated, Paused: paused, Accuracy: acc, Labels: model.AiActionLabels}, nil
 }
 
-func (s *MatrixAutopilotService) Undo(id, by string) error { return s.actions.Undo(id, by) }
+// Undo المدير يرفض فعلاً — وماتركس يتعلّم منه.
+func (s *MatrixAutopilotService) Undo(id, by string) error {
+	if err := s.actions.Undo(id, by); err != nil {
+		return err
+	}
+	s.afterUndo(id)
+	return nil
+}

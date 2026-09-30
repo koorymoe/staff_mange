@@ -5,6 +5,7 @@ import (
 	"sort"
 	"time"
 
+	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
 )
 
@@ -46,12 +47,18 @@ type WeeklyReport struct {
 	Declining     []WeeklyMover            `json:"declining"`
 	OpenDecisions repository.OpenDecisions `json:"openDecisions"`
 	Weeks         []string                 `json:"weeks"`
+	// Matrix دقة ماتركس لآخر ٣٠ يوم — فاضي لو سجل الأفعال مو مربوط.
+	Matrix *model.MatrixAccuracy `json:"matrix,omitempty"`
 }
 
 type WeeklyReportService struct {
 	aiRepo    *repository.AiRepository
 	notifRepo *repository.NotificationRepository
+	actions   *repository.AiActionRepository
 }
+
+// SetActions يربط سجل أفعال ماتركس حتى التقرير يذكر دقته.
+func (s *WeeklyReportService) SetActions(a *repository.AiActionRepository) { s.actions = a }
 
 func NewWeeklyReportService(aiRepo *repository.AiRepository, notifRepo *repository.NotificationRepository) *WeeklyReportService {
 	return &WeeklyReportService{aiRepo: aiRepo, notifRepo: notifRepo}
@@ -185,8 +192,14 @@ func (s *WeeklyReportService) Report(week string) (*WeeklyReport, error) {
 	for i := 0; i < weeklyHistoryWeek; i++ {
 		weeks = append(weeks, isoWeekLabel(thisMon.AddDate(0, 0, -7*i)))
 	}
-	return &WeeklyReport{Week: week, From: curFrom, To: curTo, Partial: partial, This: *cur, Last: *prev,
-		Improving: up, Declining: down, OpenDecisions: *open, Weeks: weeks}, nil
+	rep := &WeeklyReport{Week: week, From: curFrom, To: curTo, Partial: partial, This: *cur, Last: *prev,
+		Improving: up, Declining: down, OpenDecisions: *open, Weeks: weeks}
+	if s.actions != nil {
+		if acc, err := s.actions.Accuracy(); err == nil {
+			rep.Matrix = acc
+		}
+	}
+	return rep, nil
 }
 
 // RunSundayIfDue كل أحد بعد ٨ الصبح بغداد — مرة وحدة بالأسبوع.
@@ -207,6 +220,9 @@ func (s *WeeklyReportService) RunSundayIfDue() error {
 		r.Week, r.This.Completed, r.Last.Completed, fmtIQD(r.This.Revenue), fmtIQD(r.Last.Revenue),
 		r.This.Complaints, r.Last.Complaints, r.This.WorkStops, r.This.LatePaperwork,
 		r.OpenDecisions.PendingLeaves, r.OpenDecisions.DeleteRequests, r.OpenDecisions.UnreviewedVerdicts)
+	if m := r.Matrix; m != nil && m.Actions > 0 {
+		msg += fmt.Sprintf(" 🤖 ماتركس بآخر ٣٠ يوم: %d تذكير، انحل منها %d، وصعد %d، ورفضت %d.", m.Actions, m.Resolved, m.Escalated, m.Rejected)
+	}
 	if err := s.notifRepo.CreateForRole("OWNER", "AI_WEEKLY_REPORT", msg); err != nil {
 		return err
 	}

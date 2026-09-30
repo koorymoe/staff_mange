@@ -31,5 +31,22 @@ func aiActionMigrations() []Migration {
 				CREATE INDEX IF NOT EXISTS "AiAction_createdAt_idx" ON "AiAction" ("createdAt" DESC);
 			`,
 		},
+		{
+			// المتابعة والتصعيد والتعلّم: «ليش؟» (details)، هل انحل، هل صعد،
+			// والأنواع الي ماتركس وقّفها لحاله لأن المدير رفضها مكرر.
+			Version: "0299_ai_action_followup",
+			SQL: `
+				ALTER TABLE "AiAction" ADD COLUMN IF NOT EXISTS details JSONB;
+				ALTER TABLE "AiAction" ADD COLUMN IF NOT EXISTS "resolvedAt" TIMESTAMPTZ;
+				ALTER TABLE "AiAction" ADD COLUMN IF NOT EXISTS "escalatedAt" TIMESTAMPTZ;
+				CREATE TABLE IF NOT EXISTS "AiActionKindPause" (
+					kind        TEXT PRIMARY KEY,
+					reason      TEXT NOT NULL,
+					"pausedAt"  TIMESTAMPTZ NOT NULL DEFAULT now(),
+					-- المدير رجّعه؟ الصف يبقى حتى الرفضات القديمة ما تنحسب مرة ثانية.
+					"resumedAt" TIMESTAMPTZ
+				);
+			`,
+		},
 	}
 }

@@ -486,7 +486,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	})
 	matrixInsightsHandler := handler.NewMatrixInsightsHandler(matrixInsightsService, weeklyReportService, permissionRepo)
 	// ماتركس «موظف ويانه»: تذكيرات وتنبيهات لحاله بعد ٩ الصبح + صندوق قرارات المدير.
-	matrixAutopilotService := service.NewMatrixAutopilotService(repository.NewAiActionRepository(db), aiRepo,
+	aiActionRepo := repository.NewAiActionRepository(db)
+	weeklyReportService.SetActions(aiActionRepo)
+	matrixAutopilotService := service.NewMatrixAutopilotService(aiActionRepo, aiRepo,
 		notificationRepo, repository.NewSystemSwitchRepository(db), delayPredictionService, matrixInsightsService)
 	safeguard.Loop("ماتركس التنفيذي", 41*time.Minute, 30*time.Minute, func() {
 		if err := matrixAutopilotService.RunIfDue(); err != nil {
@@ -1018,6 +1020,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
 		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "it_assets", "vehicle_management")))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))
+	mux.Handle("POST /api/ai/actions/kinds/{kind}/resume", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Resume), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/{id}/undo", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Undo), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/weekly-report", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.WeeklyReport), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))

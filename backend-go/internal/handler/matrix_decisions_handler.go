@@ -35,3 +35,12 @@ func (h *MatrixDecisionsHandler) Undo(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// POST /api/ai/actions/kinds/{kind}/resume — يرجّع نوع وقّفه ماتركس.
+func (h *MatrixDecisionsHandler) Resume(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.Resume(r.PathValue("kind")); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
