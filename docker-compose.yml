@@ -31,6 +31,10 @@ services:
       R2_ENDPOINT: ${R2_ENDPOINT:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_DAILY_CAP: ${GEMINI_DAILY_CAP:-300}
+      # ماتركس: نموذج Anthropic (اختياري). بلا مفتاح يبقى على القواعد.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      AI_MODEL: ${AI_MODEL:-claude-haiku-4-5}
+      AI_DAILY_CAP: ${AI_DAILY_CAP:-200}
       TUTORIALS_DIR: /app/tutorials
       # مجلد رفع الملفات — لازم يكون فوليوم دائم، مو داخل الصورة، وإلا
       # كل الصور والوصولات تروح مع أول إعادة نشر.
