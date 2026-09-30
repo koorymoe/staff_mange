@@ -41,6 +41,8 @@ type DelayRisk struct {
 	Basis            string    `json:"basis"`     // LEADER | SERVICE
 	LimitedBy        string    `json:"limitedBy"` // SHIFT_END | NEXT_BOOKING
 	NextBookingCode  string    `json:"nextBookingCode,omitempty"`
+	// LeaderID لتنبيه الليدر نفسه (ماتركس) — ما يطلع بالـJSON.
+	LeaderID string `json:"-"`
 }
 
 type DelayPredictionService struct {
@@ -144,7 +146,7 @@ func (s *DelayPredictionService) Risks(from, to string) ([]DelayRisk, error) {
 		r := DelayRisk{
 			BookingID: c.ID, BookingCode: c.Code, ScheduledAt: c.ScheduledAt,
 			ExpectedMinutes: int(expected + 0.5), AvailableMinutes: int(available + 0.5),
-			Samples: samples, Basis: basis, LimitedBy: by,
+			Samples: samples, Basis: basis, LimitedBy: by, LeaderID: c.LeaderID,
 		}
 		if by == "NEXT_BOOKING" {
 			r.NextBookingCode = nextCode

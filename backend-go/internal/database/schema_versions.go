@@ -367,6 +367,8 @@ func versionedMigrations() []Migration {
 	result = append(result, surveyPhotoMigration()...)
 	// 0297: جرد أجهزة تقنية المعلومات وسجل صيانتها — دور الـIT چان بلا شاشة.
 	result = append(result, itAssetMigrations()...)
+	// 0298: سجل أفعال ماتركس — التذكيرات الي يرسلها لحاله، والمدير يشوفها ويرفضها.
+	result = append(result, aiActionMigrations()...)
 	return result
 }
 

@@ -5332,6 +5332,9 @@ export const api = {
   getNewEmployeeCurves: () => request<NewEmployeeCurve[]>('/ai/new-employee-curves'),
   getStockForecast: () => request<StockForecast>('/ai/stock-forecast'),
   getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
+  getMatrixDecisions: (day?: string) =>
+    request<MatrixDecisions>(`/ai/decisions${day ? `?day=${encodeURIComponent(day)}` : ''}`),
+  undoMatrixAction: (id: string) => request<{ ok: boolean }>(`/ai/actions/${encodeURIComponent(id)}/undo`, { method: 'POST' }),
   getWeeklyReport: (week?: string) =>
     request<WeeklyReport>(`/ai/weekly-report${week ? `?week=${encodeURIComponent(week)}` : ''}`),
 
@@ -5561,4 +5564,36 @@ export interface GpsMonitorProblem {
   createdAt: string
   resolvedAt: string | null
   ageDays: number
+}
+
+// ═══ صندوق قرارات ماتركس (ADMIN/OWNER) ═══
+export interface MatrixAction {
+  id: string
+  kind: string
+  entityType: string
+  entityId: string
+  period: string
+  targetEmployeeId: string | null
+  targetLabel: string
+  summary: string
+  status: 'DONE' | 'UNDONE'
+  createdAt: string
+  undoneById: string | null
+  undoneAt: string | null
+}
+export interface MatrixPendingDecision {
+  id: string
+  entityType: string
+  entityId: string
+  title: string
+  summary: string | null
+  createdAt: string
+}
+export interface MatrixDecisions {
+  day: string
+  autopilotEnabled: boolean
+  done: MatrixAction[]
+  pending: MatrixPendingDecision[]
+  unstaffed: { id: string; code: string; scheduledAt: string }[]
+  labels: Record<string, string>
 }

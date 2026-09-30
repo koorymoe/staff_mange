@@ -21,6 +21,7 @@ const AssistantConversationsPage = lazy(() => import('./pages/AssistantConversat
 const Coordinator = lazy(() => import('./pages/Coordinator'))
 const SalesOpportunitiesPage = lazy(() => import('./pages/SalesOpportunitiesPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
+const MatrixDecisionsPage = lazy(() => import('./pages/MatrixDecisionsPage'))
 const BookingsArchive = lazy(() => import('./pages/BookingsArchive'))
 const SolarPage = lazy(() => import('./pages/SolarPage'))
 // مراقبة النسخ الاحتياطية — الصفحة نفسها تتحقق من actualRole === 'OWNER'
@@ -184,6 +185,7 @@ function App() {
           <Route path="sales-opportunities" element={<SalesOpportunitiesPage />} />
           {/* التقرير الأسبوعي: ADMIN/OWNER بس (نفس الخادم) */}
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
+          <Route path="matrix/decisions" element={<RequireAdmin><MatrixDecisionsPage /></RequireAdmin>} />
           <Route path="bookings-archive" element={<BookingsArchive />} />
           {/* ═══ «الحجوزات المؤجلة» انمرجت ═══
               كانت شاشة مستقلة تعرض **نفس** حجوزات سلّة «مؤجّلة» بشاشة

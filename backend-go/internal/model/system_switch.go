@@ -20,12 +20,15 @@ const (
 	SwitchEntity = "entity_enabled"
 	// SwitchAnnouncements شريط الإعلانات فوق كل الشاشات.
 	SwitchAnnouncements = "announcements_enabled"
+	// SwitchMatrixAutopilot ماتركس ينفّذ التذكيرات البسيطة لحاله.
+	SwitchMatrixAutopilot = "matrix_autopilot_enabled"
 )
 
 // SystemSwitchLabels الاسم العربي لكل مفتاح — للعرض وللسجل.
 var SystemSwitchLabels = map[string]string{
 	SwitchEntity:        "شخصية الكائن",
-	SwitchAnnouncements: "شريط الإعلانات",
+	SwitchAnnouncements:   "شريط الإعلانات",
+	SwitchMatrixAutopilot: "ماتركس ينفّذ التذكيرات لحاله",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟
@@ -41,7 +44,8 @@ func KnownSystemSwitch(key string) bool {
 // تشغيلي يومي، بينما شخصية الكائن مرتبطة بقرارات (ع) الشخصية
 // (الصور، الترخيص) وتبقى له حصراً حتى لو مدير النظام موجود.
 var systemSwitchAdminAllowed = map[string]bool{
-	SwitchAnnouncements: true,
+	SwitchAnnouncements:   true,
+	SwitchMatrixAutopilot: true,
 }
 
 // SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل

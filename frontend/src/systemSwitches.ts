@@ -13,6 +13,7 @@ import { api } from './api'
 
 export const SWITCH_ENTITY = 'entity_enabled'
 export const SWITCH_ANNOUNCEMENTS = 'announcements_enabled'
+export const SWITCH_MATRIX_AUTOPILOT = 'matrix_autopilot_enabled'
 
 type Switches = Record<string, boolean>
 

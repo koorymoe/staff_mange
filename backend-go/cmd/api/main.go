@@ -485,6 +485,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	matrixInsightsHandler := handler.NewMatrixInsightsHandler(matrixInsightsService, weeklyReportService, permissionRepo)
+	// ماتركس «موظف ويانه»: تذكيرات وتنبيهات لحاله بعد ٩ الصبح + صندوق قرارات المدير.
+	matrixAutopilotService := service.NewMatrixAutopilotService(repository.NewAiActionRepository(db), aiRepo,
+		notificationRepo, repository.NewSystemSwitchRepository(db), delayPredictionService, matrixInsightsService)
+	safeguard.Loop("ماتركس التنفيذي", 41*time.Minute, 30*time.Minute, func() {
+		if err := matrixAutopilotService.RunIfDue(); err != nil {
+			log.Printf("matrix autopilot: %v", err)
+		}
+	})
+	matrixDecisionsHandler := handler.NewMatrixDecisionsHandler(matrixAutopilotService)
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -1008,6 +1017,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الاستبدال: ADMIN/OWNER أو it_assets أو vehicle_management — والمعالج يفلتر الأقسام.
 	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
 		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "it_assets", "vehicle_management")))
+	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))
+	mux.Handle("POST /api/ai/actions/{id}/undo", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Undo), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/weekly-report", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.WeeklyReport), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/catalog", middleware.Chain(http.HandlerFunc(aiHandler.Catalog), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/work-window", middleware.Chain(http.HandlerFunc(aiHandler.GetWorkWindow), requireAuth, requireAdmin))

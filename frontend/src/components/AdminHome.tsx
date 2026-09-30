@@ -366,12 +366,14 @@ function ActionsBoard() {
   const desk = useLoad<MonitorDeskCounts>(() => api.getMonitorDeskCounts())
   const dups = useLoad(() => api.getDuplicateCandidates(undefined, 'PENDING'))
   const achievements = useLoad(() => api.getAchievements({ limit: 200 }))
+  const matrix = useLoad(() => api.getMatrixDecisions())
 
   const n = <T,>(v: T | null | undefined, f: (x: T) => number) => (v === undefined ? undefined : v === null ? null : f(v))
 
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ActionTile to="/matrix/decisions" icon="🤖" label="صندوق قرارات ماتركس" hint="شنو سوّى لحاله وشنو ينتظرك" count={n(matrix, (x) => x.pending.length + x.unstaffed.length)} />
         <ActionTile to="/leaves" icon="🌴" label="طلبات الإجازات" hint="تنتظر موافقتك" count={n(leaves, (x) => x.count)} />
         <ActionTile to="/staff-requests" icon="👷" label="طلبات الكادر" hint="المشاريع تطلب كادر" count={n(staff, (x) => x.filter((r) => r.status === 'PENDING').length)} />
         <ActionTile to="/booking-delete-requests" icon="🗑️" label="طلبات حذف الحجوزات" hint="تنتظر قرار" count={n(deletes, (x) => x.awaitingReview)} />

@@ -241,6 +241,8 @@ export const navItems: NavItem[] = [
       { to: '/ai-insights', label: '🧠 مؤشرات الذكاء الاصطناعي', icon: <></>, roles: ['ADMIN'] },
       // ماتركس — تقرير المالك الأسبوعي: نفس حارس GET /api/ai/weekly-report (ADMIN/OWNER بس).
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
+      // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
+      { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
       { to: '/duplicate-review', label: '🔍 تدقيق التكرار', icon: <></>, roles: ['ADMIN'] },
       { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
