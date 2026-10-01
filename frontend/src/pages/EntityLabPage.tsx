@@ -41,6 +41,9 @@ const BUILT_IN = [
   { id: 'builtin:amani-compact', label: 'أماني Compact — شخصية النظام', file: 'amani-compact.glb' },
   { id: 'builtin:amani', label: 'أماني v5 — متحرّكة (١١ مقطع)', file: 'amani-tech-v5.glb' },
   { id: 'builtin:amani-v4', label: 'أماني v4 (الأقدم)', file: 'amani-tech-v4.glb' },
+  // نسخة اختبار فقط: الشخصية الجديدة بخامات مضمنة وحركات ويب أساسية.
+  // تبقى خارج الشخصية الافتراضية إلى أن تُقاس داخل المختبر.
+  { id: 'builtin:cartoon-boy-web', label: 'Cartoon Boy — تجربة Web (٦ حركات)', file: 'cartoon-boy-web-ready.glb' },
 ] as const
 
 /** مجسّم بالقائمة: مدمج أو مرفوع — الشاشة تتعامل معهم بنفس الشكل. */
