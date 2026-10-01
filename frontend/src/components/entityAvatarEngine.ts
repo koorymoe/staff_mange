@@ -12,9 +12,12 @@ import { HemisphericLight } from '@babylonjs/core/Lights/hemisphericLight'
 import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { BoneLookController } from '@babylonjs/core/Bones/boneLookController'
-import { Color4 } from '@babylonjs/core/Maths/math.color'
+import { Color3, Color4 } from '@babylonjs/core/Maths/math.color'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
+import { StandardMaterial } from '@babylonjs/core/Materials/standardMaterial'
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader'
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
+import { MeshBuilder } from '@babylonjs/core/Meshes/meshBuilder'
 import type { AnimationGroup } from '@babylonjs/core/Animations/animationGroup'
 import type { Skeleton } from '@babylonjs/core/Bones/skeleton'
 import { buildMotionRig, neutralizeRootMotion, type MotionRig } from './entityMotion'
@@ -185,6 +188,29 @@ export async function mountAvatar(
   const result = await SceneLoader.ImportMeshAsync('', url, '', scene, null, '.glb')
   const groups: AnimationGroup[] = result.animationGroups
 
+  // بعض ملفات الأسواق تسمي «Pose» حركات، لكنها فعلياً لقطة مفردة
+  // (T-Pose أو وقفة ثابتة). لا نعتبرها حركة؛ وإلا تمنع تصحيح الذراعين
+  // وتطلع الشخصية كأنها مكسورة.
+  const onlyStaticPoses = groups.length > 0 && groups.every((group) =>
+    // ملف Cartoon Boy يضمّن مفتاحين متطابقين للوضعية، لذلك عدّ
+    // المفاتيح وحده لا يكفي. الاسم هنا دليل الملف نفسه: Pose / TPose.
+    /(?:^|[|_ -])t?pose(?:$|[|_ -])/i.test(group.name) ||
+    group.targetedAnimations.every((target) => target.animation.getKeys().length <= 1),
+  )
+
+  // خامات عين CC3 الأصلية تستخدم إعدادات شفافية/انعكاس ما تتطابق
+  // تماماً مع Babylon. نزيل خرائطها المتعارضة كي لا تتحول إلى بقع مضيئة.
+  for (const material of scene.materials) {
+    if (!(material instanceof PBRMaterial) || !/^Std_(Eye|Cornea)_/.test(material.name)) continue
+    material.metallic = 0
+    material.roughness = 0.55
+    material.albedoColor = new Color3(0.72, 0.46, 0.24)
+    material.albedoTexture = null
+    material.emissiveTexture = null
+    material.emissiveColor = Color3.Black()
+    material.alpha = 1
+  }
+
   // ⚠️ **التأثيرات قبل أي شي**: بابل افتراضه ٤ لكل رأس، وملفنا فيه
   // ثمانية. والقصّ يصير **صامتاً** — لا خطأ ولا تحذير، بس تشوّه
   // مختلف عند الكتف والكم. فنرفعها، ونخلي التغيير ممكناً للقياس.
@@ -230,6 +256,26 @@ export async function mountAvatar(
   const camera = new ArcRotateCamera('cam', Math.PI / 2, Math.PI / 2, 3.15, target, scene)
   camera.minZ = 0.05
   camera.fov = framing === 'full' ? 0.62 : 0.72
+
+  // بؤبؤان حقيقيان (مجسّمان صغيران، لا صورة) مربوطان بعظام العين.
+  // هذا يجعل العين مفهومة حتى لو خامة CC3 الأصلية غير مدعومة بالمتصفح.
+  if (skel && skinnedForAim && naming.eye('left') && naming.eye('right')) {
+    const pupilMaterial = new StandardMaterial('avatar-pupil-material', scene)
+    pupilMaterial.diffuseColor = new Color3(0.055, 0.025, 0.012)
+    pupilMaterial.specularColor = new Color3(0.16, 0.1, 0.06)
+    for (const side of ['left', 'right'] as const) {
+      const eye = skel.bones.find((bone) => bone.name === naming.eye(side))
+      if (!eye) continue
+      const pupil = MeshBuilder.CreateSphere(`avatar-pupil-${side}`, { diameter: 0.052, segments: 12 }, scene)
+      pupil.material = pupilMaterial
+      pupil.isPickable = false
+      scene.onBeforeRenderObservable.add(() => {
+        const eyePosition = eye.getAbsolutePosition(skinnedForAim)
+        // اتجاه الكاميرا هو الوجه المعروض؛ نزحزح البؤبؤ خارج سطح العين نحوه.
+        pupil.position.copyFrom(eyePosition.add(camera.position.subtract(eyePosition).normalize().scale(0.021)))
+      })
+    }
+  }
 
   /**
    * يؤطّر الشخصية من **صندوقها المحيط بالعالم ونسبة الكانفس**.
@@ -361,7 +407,7 @@ export async function mountAvatar(
   // ومتحكّمات بابل (`BoneLookController`) هي **الوحيدة** الي قياسها
   // أثبت إنها توصل للرسم (١٣.٠٩٪ من البكسلات بلفّة الرأس). وهذا
   // نفس سبب صفر الأصابع — المشكلة بالمكانيكية مو بالمحور.
-  if (groups.length === 0 && skeleton && skinned && naming.restArmDrop) {
+  if ((groups.length === 0 || onlyStaticPoses) && skeleton && skinned && naming.restArmDrop) {
     const mesh = skinned
     const holders: BoneLookController[] = []
     for (const hand of ['right', 'left'] as const) {
