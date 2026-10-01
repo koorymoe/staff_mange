@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MatrixDecisions } from '../api'
 import OwnerSwitch from '../components/OwnerSwitch'
+import MatrixGuideRules from '../components/MatrixGuideRules'
 import { SWITCH_MATRIX_AUTOPILOT } from '../systemSwitches'
 
 // ═══ صندوق قرارات ماتركس — للمالك ومدير النظام ═══
@@ -201,6 +202,8 @@ export default function MatrixDecisionsPage() {
                 : <> · بعد ماكو حجوزات خلصت حتى نقيس بيها — الرقم يطلع أول ما ينجزون.</>}
             </p>
           </section>
+
+          <MatrixGuideRules />
 
           <section className="rounded-2xl border border-slate-200 bg-white p-4 text-sm">
             <h3 className="mb-2 font-extrabold text-[#0f2040]">💡 اقتراحات</h3>

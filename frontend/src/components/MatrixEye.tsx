@@ -137,12 +137,33 @@ export default function MatrixEye() {
     const onSaw = () => {
       api.getMyWatch().then((w) => { setWatch(w); reveal(w) }).catch(() => { if (watchRef.current) reveal(watchRef.current) })
     }
+    // أي ضغطة زر بأي شاشة: ماتركس يسأل عقل التوجيه (تعليمات المدير +
+    // هايكو لو موجود). إذا عنده توجيه، العين تطلع وتحچيه. وبشاشة الشغل
+    // بلا تعليمة خاصة، تحچي بأرقام الشغل.
+    const showWith = (w: MatrixWatch, text: string) => {
+      lastReveal.current = Date.now()
+      setVisible(true)
+      setFlash(true)
+      window.setTimeout(() => setFlash(false), 1300)
+      speak(text)
+      window.clearTimeout(hideT.current)
+      hideT.current = window.setTimeout(() => setVisible(false), VISIBLE_MS)
+      void w
+    }
     const onClick = (e: MouseEvent) => {
       const t = e.target as HTMLElement | null
-      if (!t || !t.closest('main') || !t.closest('button, a, [role="button"], [role="tab"]')) return
-      if (Date.now() - lastReveal.current < 3000) return
+      const btn = t?.closest('button, a, [role="button"], [role="tab"]') as HTMLElement | null
+      if (!t || !btn || !t.closest('main')) return
+      if (Date.now() - lastReveal.current < 2500) return
       const w = watchRef.current
-      if (w) reveal(w)
+      if (!w) return
+      const p = currentPath()
+      const label = (btn.innerText || btn.getAttribute('aria-label') || btn.title || '').replace(/\s+/g, ' ').trim().slice(0, 60)
+      lastReveal.current = Date.now()
+      api.getMatrixGuide(p, label).then((g) => {
+        if (g.text) showWith(w, g.text)
+        else if (isWorkRoute(w, p) || w.mood === 'ANGRY') reveal(w)
+      }).catch(() => { if (isWorkRoute(w, p)) reveal(w) })
     }
     window.addEventListener('matrix-saw', onSaw)
     document.addEventListener('click', onClick, true)

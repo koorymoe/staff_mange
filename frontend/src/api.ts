@@ -5339,6 +5339,12 @@ export const api = {
   getStockForecast: () => request<StockForecast>('/ai/stock-forecast'),
   getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
   getMyWatch: () => request<MatrixWatch>('/ai/my-watch'),
+  getMatrixGuide: (path: string, label: string) =>
+    request<{ text: string; source: 'RULES' | 'MODEL' | 'NONE' }>(`/ai/guide?path=${encodeURIComponent(path)}&label=${encodeURIComponent(label)}`),
+  getGuideRules: () => request<{ rules: MatrixGuideRule[]; modelEnabled: boolean }>('/ai/guide-rules'),
+  createGuideRule: (r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>('/ai/guide-rules', { method: 'POST', body: JSON.stringify(r) }),
+  updateGuideRule: (id: string, r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>(`/ai/guide-rules/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(r) }),
+  deleteGuideRule: (id: string) => request<{ ok: boolean }>(`/ai/guide-rules/${encodeURIComponent(id)}`, { method: 'DELETE' }),
   getRoleWatch: () => request<{ group: string; employees: MatrixWatch[]; red: number; alert: number }[]>('/ai/role-watch'),
   getMatrixDecisions: (day?: string) =>
     request<MatrixDecisions>(`/ai/decisions${day ? `?day=${encodeURIComponent(day)}` : ''}`),
@@ -5628,4 +5634,17 @@ export interface MatrixWatch {
   id?: string
   open: number
   items: { summary: string; kind: string; label: string; escalated: boolean; since: string }[]
+}
+
+// تعليمات ماتركس — «الخطوات التعليمية» يعدّلها المدير.
+export interface MatrixGuideRule {
+  id: string
+  route: string
+  match: string
+  groups: string
+  text: string
+  onlyIfPending: boolean
+  priority: number
+  enabled: boolean
+  createdAt: string
 }

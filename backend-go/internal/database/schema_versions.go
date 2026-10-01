@@ -369,6 +369,8 @@ func versionedMigrations() []Migration {
 	result = append(result, itAssetMigrations()...)
 	// 0298: سجل أفعال ماتركس — التذكيرات الي يرسلها لحاله، والمدير يشوفها ويرفضها.
 	result = append(result, aiActionMigrations()...)
+	// 0300: تعليمات ماتركس — التوجيه ويا كل إجراء، يعدّلها المدير.
+	result = append(result, matrixGuideMigrations()...)
 	return result
 }
 

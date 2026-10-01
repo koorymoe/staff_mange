@@ -496,6 +496,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 	})
 	matrixDecisionsHandler := handler.NewMatrixDecisionsHandler(matrixAutopilotService)
+	// عقل التوجيه: تعليمات المدير + هايكو لو المفتاح موجود.
+	matrixGuideService := service.NewMatrixGuideService(repository.NewMatrixGuideRepository(db), matrixAutopilotService)
+	matrixGuideService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	matrixGuideHandler := handler.NewMatrixGuideHandler(matrixGuideService)
 	leaderInvoiceService.SetNotifications(notificationRepo)
 	leaderInvoiceService.SetMonitorFeed(monitorReviewService)
 	// بقية الأقسام: كل واحد بلحظة قراره الي ما ينراجع —
@@ -1020,6 +1024,11 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
 		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "it_assets", "vehicle_management")))
 	mux.Handle("GET /api/ai/my-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.MyWatch), requireAuth))
+	mux.Handle("GET /api/ai/guide", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Guide), requireAuth))
+	mux.Handle("GET /api/ai/guide-rules", middleware.Chain(http.HandlerFunc(matrixGuideHandler.List), requireAuth, requireAdmin))
+	mux.Handle("POST /api/ai/guide-rules", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Create), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/ai/guide-rules/{id}", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/ai/guide-rules/{id}", middleware.Chain(http.HandlerFunc(matrixGuideHandler.Delete), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/kinds/{kind}/resume", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Resume), requireAuth, requireAdmin))
