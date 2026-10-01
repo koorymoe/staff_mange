@@ -1,3 +1,4 @@
+import MatrixRoleEyes from './MatrixRoleEyes'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
@@ -27,7 +28,7 @@ import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 // ⚠️ كل قسم يجيب بياناته لحاله ويفشل لحاله: لو مسار وحد تعطّل، باقي
 // اللوحة تبقى تشتغل، والقسم يگول «ما وصل» بدل رقم صفر يكذب.
 
-type Board = 'follow' | 'actions'
+type Board = 'follow' | 'actions' | 'matrix'
 
 const fmt = (n: number) => n.toLocaleString('en-US')
 const money = (n: number) => `${fmt(Math.round(n))} د.ع`
@@ -415,7 +416,8 @@ function ActionsBoard() {
 
 export default function AdminHome({ name }: { name?: string }) {
   const [params, setParams] = useSearchParams()
-  const board: Board = params.get('board') === 'actions' ? 'actions' : 'follow'
+  const raw = params.get('board')
+  const board: Board = raw === 'actions' || raw === 'matrix' ? raw : 'follow'
   const tab = (b: Board, label: string) => (
     <button type="button" onClick={() => setParams(b === 'follow' ? {} : { board: b })}
       className={`rounded-xl px-4 py-2 text-sm font-extrabold transition-colors ${board === b ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>
@@ -432,9 +434,10 @@ export default function AdminHome({ name }: { name?: string }) {
         <div className="flex gap-2">
           {tab('follow', '📊 المتابعة')}
           {tab('actions', '⚡ الإجراءات')}
+          {tab('matrix', '👁️ ماتركس')}
         </div>
       </div>
-      {board === 'follow' ? <FollowBoard /> : <ActionsBoard />}
+      {board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : <MatrixRoleEyes />}
     </div>
   )
 }

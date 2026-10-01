@@ -5339,6 +5339,7 @@ export const api = {
   getStockForecast: () => request<StockForecast>('/ai/stock-forecast'),
   getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
   getMyWatch: () => request<MatrixWatch>('/ai/my-watch'),
+  getRoleWatch: () => request<{ group: string; employees: MatrixWatch[]; red: number; alert: number }[]>('/ai/role-watch'),
   getMatrixDecisions: (day?: string) =>
     request<MatrixDecisions>(`/ai/decisions${day ? `?day=${encodeURIComponent(day)}` : ''}`),
   resumeMatrixKind: (kind: string) =>
@@ -5617,8 +5618,14 @@ export interface MatrixDecisions {
 }
 
 // عين ماتركس — حالة الموظف نفسه.
+export interface MatrixWorkload { key: string; label: string; done: number; left: number; route: string; verb: string }
 export interface MatrixWatch {
   level: 'CALM' | 'ALERT' | 'RED'
+  mood: 'CALM' | 'PLEASED' | 'ALERT' | 'ANGRY'
+  group: string
+  workload: MatrixWorkload[]
+  name?: string
+  id?: string
   open: number
   items: { summary: string; kind: string; label: string; escalated: boolean; since: string }[]
 }

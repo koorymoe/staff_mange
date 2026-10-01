@@ -410,3 +410,98 @@ func (r *AiActionRepository) OpenForEmployee(employeeID string) ([]model.AiActio
 		ORDER BY "createdAt" DESC LIMIT 20`, employeeID)
 	return rows, err
 }
+
+// ═══ عين ماتركس: «شغلك اليوم» ═══
+
+// WatchSubject الموظف كما تحتاجه العين: دوره، وهل ليدر، وصلاحياته.
+type WatchSubject struct {
+	ID       string `db:"id"`
+	Name     string `db:"name"`
+	Role     string `db:"role"`
+	IsLeader bool   `db:"isLeader"`
+	Perms    []string
+}
+
+func (r *AiActionRepository) Subject(id string) (*WatchSubject, error) {
+	var s WatchSubject
+	if err := r.db.Get(&s, `SELECT id, name, role::text AS role, "isLeader" FROM "Employee" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	_ = r.db.Select(&s.Perms, `
+		SELECT p.name FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+		WHERE ep."employeeId" = $1`, id)
+	return &s, nil
+}
+
+// ActiveSubjects كل الموظفين الفعّالين — لتقرير المدير.
+func (r *AiActionRepository) ActiveSubjects() ([]WatchSubject, error) {
+	rows := []WatchSubject{}
+	if err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "isLeader" FROM "Employee" WHERE status = 'ACTIVE' ORDER BY name`); err != nil {
+		return nil, err
+	}
+	type pr struct {
+		EmployeeID string `db:"employeeId"`
+		Name       string `db:"name"`
+	}
+	perms := []pr{}
+	_ = r.db.Select(&perms, `SELECT ep."employeeId", p.name FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"`)
+	idx := map[string]int{}
+	for i := range rows {
+		idx[rows[i].ID] = i
+	}
+	for _, p := range perms {
+		if i, ok := idx[p.EmployeeID]; ok {
+			rows[i].Perms = append(rows[i].Perms, p.Name)
+		}
+	}
+	return rows, nil
+}
+
+func (r *AiActionRepository) count(q string, args ...any) int {
+	var n int
+	_ = r.db.Get(&n, q, args...)
+	return n
+}
+
+// AuditToday حجوزات اليوم المنجزة وورقها كامل: كم باقي ما تدقق.
+func (r *AiActionRepository) AuditLeftToday() int {
+	return r.count(`SELECT COUNT(*) FROM "Booking" b
+		WHERE b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL
+		  AND baghdad_date(b."completedAt") = baghdad_today()
+		  AND NOT b."amountVerified" AND ` + paperworkDoneSQL + BookingCountableAndSQL(`b`))
+}
+
+// AuditedByToday فواتير دققها هالموظف اليوم.
+func (r *AiActionRepository) AuditedByToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "LeaderInvoice" WHERE "auditedById" = $1 AND baghdad_date("auditedAt") = baghdad_today()`, id)
+}
+
+func (r *AiActionRepository) MonitorPending() int {
+	return r.count(`SELECT COUNT(*) FROM "MonitorReview" WHERE status = 'PENDING'`)
+}
+
+func (r *AiActionRepository) BookingsPendingConfirm() int {
+	return r.count(`SELECT COUNT(*) FROM "Booking" b WHERE b.status = 'PENDING'` + BookingCountableAndSQL(`b`))
+}
+
+// LeaderToday حجوزات الليدر اليوم: كلها، والمنجز منها.
+func (r *AiActionRepository) LeaderToday(id string) (total, done int) {
+	q := `SELECT COUNT(*) FROM "Booking" b JOIN "BookingAssignment" a ON a."bookingId" = b.id
+		WHERE a."employeeId" = $1 AND b."scheduledAt" IS NOT NULL
+		  AND baghdad_date(b."scheduledAt") = baghdad_today() AND b.status <> 'CANCELLED'`
+	total = r.count(q, id)
+	done = r.count(q+` AND b.status = 'COMPLETED'`, id)
+	return
+}
+
+func (r *AiActionRepository) InvoicesAwaitingApproval() int {
+	return r.count(`SELECT COUNT(*) FROM "LeaderInvoice" WHERE status = 'SUBMITTED'`)
+}
+
+func (r *AiActionRepository) ApprovedByToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "LeaderInvoice" WHERE "approvedByEmployeeId" = $1 AND baghdad_date("approvedAt") = baghdad_today()`, id)
+}
+
+func (r *AiActionRepository) QualityPending() int {
+	return r.count(`SELECT COUNT(*) FROM "QualityFollowUp" WHERE "inspectionStatus" = 'PENDING'`)
+}

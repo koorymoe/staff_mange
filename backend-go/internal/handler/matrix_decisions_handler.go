@@ -54,3 +54,13 @@ func (h *MatrixDecisionsHandler) MyWatch(w http.ResponseWriter, r *http.Request)
 	}
 	WriteJSON(w, http.StatusOK, st)
 }
+
+// GET /api/ai/role-watch — عيون المجموعات وتقريرها (ADMIN/OWNER).
+func (h *MatrixDecisionsHandler) RoleWatch(w http.ResponseWriter, r *http.Request) {
+	out, err := h.svc.RoleWatch()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب عيون ماتركس")
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}

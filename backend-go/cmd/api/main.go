@@ -1020,6 +1020,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
 		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "it_assets", "vehicle_management")))
 	mux.Handle("GET /api/ai/my-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.MyWatch), requireAuth))
+	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/kinds/{kind}/resume", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Resume), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/{id}/undo", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Undo), requireAuth, requireAdmin))

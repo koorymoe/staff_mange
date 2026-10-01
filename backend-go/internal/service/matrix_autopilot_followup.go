@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 )
 
 // ═══ ماتركس: التذكيرات الجديدة + المتابعة والتصعيد والتعلّم ═══
@@ -224,19 +225,43 @@ type WatchItem struct {
 }
 
 type WatchState struct {
-	Level string      `json:"level"` // CALM | ALERT | RED
-	Open  int         `json:"open"`
-	Items []WatchItem `json:"items"`
+	Level    string         `json:"level"` // CALM | ALERT | RED
+	Mood     string         `json:"mood"`  // CALM | PLEASED | ALERT | ANGRY — شعور ماتركس
+	Group    string         `json:"group"` // مجموعة الدور: تحدد شكل العين ولونها
+	Open     int            `json:"open"`
+	Items    []WatchItem    `json:"items"`
+	Workload []WorkloadItem `json:"workload"`
+	Name     string         `json:"name,omitempty"`
+	ID       string         `json:"id,omitempty"`
+}
+
+// WorkloadItem «شغلك اليوم»: منجز وباقي، وشاشته.
+type WorkloadItem struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Done  int    `json:"done"`
+	Left  int    `json:"left"`
+	Route string `json:"route"`
+	Verb  string `json:"verb"` // الفعل بالكلام: «دققت»، «اعتمدت»…
 }
 
 const watchRedOpen = 3
 
 func (s *MatrixAutopilotService) WatchState(employeeID string) (*WatchState, error) {
+	subj, err := s.actions.Subject(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	return s.watchFor(*subj)
+}
+
+func (s *MatrixAutopilotService) watchFor(subj repository.WatchSubject) (*WatchState, error) {
+	employeeID := subj.ID
 	rows, err := s.actions.OpenForEmployee(employeeID)
 	if err != nil {
 		return nil, err
 	}
-	out := &WatchState{Level: "CALM", Items: []WatchItem{}}
+	out := &WatchState{Level: "CALM", Items: []WatchItem{}, Group: WatchGroup(subj), Workload: s.workload(subj)}
 	escalated := false
 	for _, a := range rows {
 		esc := a.EscalatedAt != nil
@@ -250,6 +275,144 @@ func (s *MatrixAutopilotService) WatchState(employeeID string) (*WatchState, err
 		out.Level = "RED"
 	case out.Open > 0:
 		out.Level = "ALERT"
+	}
+	// الشعور: الغضب والانتباه من التذكيرات، والرضا لمن خلّص كل شغل اليوم.
+	switch out.Level {
+	case "RED":
+		out.Mood = "ANGRY"
+	case "ALERT":
+		out.Mood = "ALERT"
+	default:
+		out.Mood = "CALM"
+		done, left := 0, 0
+		for _, w := range out.Workload {
+			done += w.Done
+			left += w.Left
+		}
+		if done > 0 && left == 0 {
+			out.Mood = "PLEASED"
+		}
+	}
+	return out, nil
+}
+
+func hasPerm(subj repository.WatchSubject, names ...string) bool {
+	for _, p := range subj.Perms {
+		for _, n := range names {
+			if p == n {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// WatchGroup مجموعة الموظف — كل مجموعة إلها عين بلونها وشكلها.
+func WatchGroup(subj repository.WatchSubject) string {
+	switch {
+	case subj.Role == "OWNER" || subj.Role == "ADMIN":
+		return "ADMINS"
+	case subj.Role == "MONITOR":
+		return "MONITORS"
+	case subj.Role == "FINANCE":
+		return "FINANCE"
+	case subj.Role == "HR_COORDINATOR":
+		return "COORDINATORS"
+	case subj.Role == "QUALITY_ENGINEER" || hasPerm(subj, "quality_control"):
+		return "QUALITY"
+	case subj.Role == "IT_SUPPORT":
+		return "IT"
+	case subj.IsLeader || subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER":
+		return "FIELD"
+	case hasPerm(subj, "coordinator"):
+		return "COORDINATORS"
+	case hasPerm(subj, "finance_audit", "auditing"):
+		return "MONITORS"
+	default:
+		return "STAFF"
+	}
+}
+
+// workload «شغلك اليوم» حسب الدور والصلاحيات — أرقام حقيقية بس.
+func (s *MatrixAutopilotService) workload(subj repository.WatchSubject) []WorkloadItem {
+	out := []WorkloadItem{}
+	r := s.actions
+	if subj.Role == "MONITOR" || hasPerm(subj, "finance_audit", "auditing") {
+		out = append(out, WorkloadItem{Key: "AUDIT", Label: "تدقيق حجوزات اليوم", Verb: "دققت",
+			Done: r.AuditedByToday(subj.ID), Left: r.AuditLeftToday(), Route: "/daily-audit"})
+	}
+	if subj.Role == "MONITOR" {
+		out = append(out, WorkloadItem{Key: "MONITOR_INBOX", Label: "صندوق المراقب", Verb: "راجعت",
+			Left: r.MonitorPending(), Route: "/monitor-desk"})
+	}
+	if subj.Role == "HR_COORDINATOR" || hasPerm(subj, "coordinator") {
+		tomorrow := time.Now().In(debriefLoc).AddDate(0, 0, 1).Format("2006-01-02")
+		un, _ := r.UnstaffedOn(tomorrow)
+		out = append(out,
+			WorkloadItem{Key: "CONFIRM", Label: "حجوزات تنتظر التثبيت", Verb: "ثبّتت", Left: r.BookingsPendingConfirm(), Route: "/coordinator"},
+			WorkloadItem{Key: "STAFF", Label: "حجوزات باچر بلا كادر", Verb: "كلّفت", Left: len(un), Route: "/coordinator"})
+	}
+	if subj.Role == "FINANCE" || hasPerm(subj, "finance") {
+		out = append(out, WorkloadItem{Key: "APPROVE", Label: "فواتير تنتظر الاعتماد", Verb: "اعتمدت",
+			Done: r.ApprovedByToday(subj.ID), Left: r.InvoicesAwaitingApproval(), Route: "/leader-invoices"})
+	}
+	if subj.Role == "QUALITY_ENGINEER" || hasPerm(subj, "quality_control") {
+		out = append(out, WorkloadItem{Key: "QUALITY", Label: "متابعات جودة معلّقة", Verb: "تابعت",
+			Left: r.QualityPending(), Route: "/quality-follow-ups"})
+	}
+	if subj.IsLeader || subj.Role == "TECHNICIAN" {
+		total, done := r.LeaderToday(subj.ID)
+		if total > 0 {
+			out = append(out, WorkloadItem{Key: "JOBS", Label: "حجوزات اليوم", Verb: "أنجزت",
+				Done: done, Left: total - done, Route: "/my-tasks"})
+		}
+		if late, err := s.aiRepo.LatePaperworkRows(subj.ID); err == nil && len(late) > 0 {
+			out = append(out, WorkloadItem{Key: "PAPERWORK", Label: "حجوزات ناقصها ورق", Verb: "كمّلت",
+				Left: len(late), Route: "/leader-invoices/new"})
+		}
+	}
+	return out
+}
+
+// RoleGroupReport تقرير عين مجموعة للمدير.
+type RoleGroupReport struct {
+	Group     string        `json:"group"`
+	Employees []*WatchState `json:"employees"`
+	Red       int           `json:"red"`
+	Alert     int           `json:"alert"`
+}
+
+// RoleWatch كل المجموعات بموظفيها وعيونهم — ADMIN/OWNER.
+func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
+	subs, err := s.actions.ActiveSubjects()
+	if err != nil {
+		return nil, err
+	}
+	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "FIELD", "QUALITY", "IT", "ADMINS", "STAFF"}
+	byGroup := map[string]*RoleGroupReport{}
+	for _, g := range order {
+		byGroup[g] = &RoleGroupReport{Group: g, Employees: []*WatchState{}}
+	}
+	for _, sub := range subs {
+		w, err := s.watchFor(sub)
+		if err != nil {
+			continue
+		}
+		w.Name, w.ID = sub.Name, sub.ID
+		g := byGroup[w.Group]
+		g.Employees = append(g.Employees, w)
+		switch w.Level {
+		case "RED":
+			g.Red++
+		case "ALERT":
+			g.Alert++
+		}
+	}
+	out := []RoleGroupReport{}
+	for _, g := range order {
+		if len(byGroup[g].Employees) > 0 {
+			out = append(out, *byGroup[g])
+		}
 	}
 	return out, nil
 }

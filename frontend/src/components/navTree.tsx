@@ -97,6 +97,7 @@ export const navItems: NavItem[] = [
   // مدير النظام: «ميريد خانة اسمها الرئيسية» — لوحتين بدلها.
   { to: '/?board=follow', label: '📊 المتابعة', icon: icon('M3 3v18h18M7 14l4-4 4 4 5-6'), roles: ['ADMIN'] },
   { to: '/?board=actions', label: '⚡ الإجراءات', icon: icon('M13 2 3 14h9l-1 8 10-12h-9z'), roles: ['ADMIN'] },
+  { to: '/?board=matrix', label: '👁️ ماتركس', icon: icon('M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z'), roles: ['ADMIN'] },
   { to: '/attendance', label: 'جدول دوامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // ⚠️ مهامي الإضافية بلا قيد دور ولا صلاحية — هاي **مهام الموظف
   // نفسه**، مو مهام غيره. كانت محصورة بشاشة «مهامي» (فنيين فقط)،

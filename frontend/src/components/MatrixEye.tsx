@@ -1,91 +1,128 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api, type MatrixWatch } from '../api'
 import { useSession } from '../session'
+import MatrixEyeGraphic from './MatrixEyeGraphic'
+import { eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
 
 // ═══ عين ماتركس — «عين الرب» ═══
 //
-// عين حيّة بالهيدر بكل الشاشات، ويا إطار يومض بخفة حول النظام: الموظف
-// يعرف إن أكو متابعة. لونها حسب دوره، وحالتها حسب ماتركس الحقيقي:
-//   هادئة  — ماكو عليه تذكير مفتوح.
-//   منتبهة — عنده تذكير مفتوح (أصفر).
-//   حمرة   — تذكير صعد أو ٣ مفتوحة (حمرة، بؤبؤ مشقوق، إطار أقوى).
-// وكل ما يحفظ شي تنفتح وتتوهج لحظة: «شفتك».
+// قرار (ع): العين **ما تكون موجودة دايماً**. تطلع لما الموظف يشتغل على
+// شاشة شغله ويسوي إجراء — المراقب يدقق، المحاسب يعتمد، الليدر يكمّل
+// ورقه — وتحچي بأرقامه الحقيقية: «دققت ٢، باقي ٣». وتختفي بعد شوية.
+// والاستثناء: لو حالته **حمرة** (تذكير صعد أو ٣ مفتوحة)، تطلع بأي شاشة
+// يدخلها — التصعيد ما ينخفي.
 //
-// ⚠️ العين **تعكس بس** — ما تعاقب ولا تخترع. ضغطها يبين «ليش» بالضبط،
-// وترجع هادئة لحالها أول ما ينحل الشي.
+// ⚠️ تعكس بس — ما تعاقب ولا تخترع. كل جملة برقم من الخادم.
 
-type Level = MatrixWatch['level']
-
-// لون العين لكل دور — الحمرة محجوزة للتصعيد بس، فماكو دور أحمر.
-const ROLE_COLOR: Record<string, string> = {
-  OWNER: '#f5b301',
-  ADMIN: '#f5b301',
-  MONITOR: '#a855f7',
-  HR_COORDINATOR: '#22d3ee',
-  FINANCE: '#10b981',
-  IT_SUPPORT: '#3b82f6',
-  LEADER: '#fb923c',
-}
-const DEFAULT_COLOR = '#38bdf8'
-const ALERT_COLOR = '#facc15'
-const RED_COLOR = '#ef4444'
-
+const VISIBLE_MS = 12000
+const SPEAK_MS = 7000
 const POLL_MS = 5 * 60 * 1000
+
+function onRoute(path: string, route: string): boolean {
+  const base = route.split('?')[0]
+  return path === base || path.startsWith(base + '/')
+}
+
+// جملة ماتركس حسب الموقف — صارمة، برقم، بلا مدح فاضي.
+function speech(w: MatrixWatch, path: string, afterAction: boolean): string | null {
+  if (w.mood === 'ANGRY' && w.items.length > 0) {
+    const esc = w.items.find((i) => i.escalated) ?? w.items[0]
+    return w.items.some((i) => i.escalated)
+      ? `ذكّرتك وما انحل: ${esc.summary}. القضية وصلت للمدير.`
+      : `عندك ${w.open} تذكيرات مفتوحة وما انحلت. أولها: ${esc.summary}.`
+  }
+  const here = w.workload.find((x) => onRoute(path, x.route))
+  if (afterAction && here) {
+    if (here.left === 0) {
+      const all = w.workload.every((x) => x.left === 0)
+      return all
+        ? `${here.verb} ${here.done} اليوم وخلّصت كل الي عليك. مسجّل.`
+        : `خلّصت «${here.label}». باقي عليك: ${w.workload.filter((x) => x.left > 0).map((x) => `${x.left} ${x.label}`).join('، ')}.`
+    }
+    return here.done > 0
+      ? `${here.verb} ${here.done} اليوم. باقي ${here.left} من «${here.label}». كمّلها.`
+      : `باقي ${here.left} من «${here.label}». ماتركس يتابع.`
+  }
+  if (afterAction && w.open > 0) return `مسجّل. وعندك ${w.open} تذكير مفتوح بعده.`
+  return null
+}
 
 export default function MatrixEye() {
   const { employee } = useSession()
+  const location = useLocation()
+  const path = location.pathname
   const [watch, setWatch] = useState<MatrixWatch | null>(null)
-  const [saw, setSaw] = useState(0) // عدّاد «شفتك» — كل زيادة تشغّل الومضة
+  const [visible, setVisible] = useState(false)
   const [flash, setFlash] = useState(false)
-  const [open, setOpen] = useState(false)
   const [blink, setBlink] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [say, setSay] = useState<string | null>(null)
   const pupilRef = useRef<SVGGElement>(null)
   const boxRef = useRef<HTMLButtonElement>(null)
+  const hideT = useRef(0)
+  const sayT = useRef(0)
 
-  const role = employee?.actualRole === 'OWNER' ? 'OWNER' : employee?.isLeader ? 'LEADER' : (employee?.role ?? '')
-  const level: Level = watch?.level ?? 'CALM'
-  const base = ROLE_COLOR[role] ?? DEFAULT_COLOR
-  const color = level === 'RED' ? RED_COLOR : level === 'ALERT' ? ALERT_COLOR : base
+  const group = (watch?.group ?? 'STAFF') as EyeGroup
+  const mood = (watch?.mood ?? 'CALM') as EyeMood
+  const color = eyeColor(group, mood)
+  const angry = mood === 'ANGRY'
+  const shown = visible || angry || open
 
-  // الحالة: أول تحميل، وكل ٥ دقايق، وبعد كل حفظ (حتى تنطفي الحمرة أول ما ينحل).
-  useEffect(() => {
-    let alive = true
-    api.getMyWatch().then((w) => { if (alive) setWatch(w) }).catch(() => {})
-    const t = window.setInterval(() => {
-      api.getMyWatch().then((w) => { if (alive) setWatch(w) }).catch(() => {})
-    }, POLL_MS)
-    return () => { alive = false; window.clearInterval(t) }
-  }, [saw])
-
-  // «شفتك»: كل إجراء ناجح بأي شاشة.
-  useEffect(() => {
-    let timer = 0
-    const onSaw = () => {
-      setFlash(true)
-      window.clearTimeout(timer)
-      timer = window.setTimeout(() => { setFlash(false); setSaw((n) => n + 1) }, 1400)
-    }
-    window.addEventListener('matrix-saw', onSaw)
-    return () => { window.removeEventListener('matrix-saw', onSaw); window.clearTimeout(timer) }
+  const speak = useCallback((text: string | null) => {
+    window.clearTimeout(sayT.current)
+    setSay(text)
+    if (text) sayT.current = window.setTimeout(() => setSay(null), SPEAK_MS)
   }, [])
 
-  // رمشة كل كم ثانية — الحمرة ما ترمش (تحدّق).
+  // الحالة: أول تحميل وكل ٥ دقايق.
   useEffect(() => {
-    if (level === 'RED') return
+    let alive = true
+    const load = () => api.getMyWatch().then((w) => { if (alive) setWatch(w) }).catch(() => {})
+    load()
+    const t = window.setInterval(load, POLL_MS)
+    return () => { alive = false; window.clearInterval(t) }
+  }, [])
+
+  // الحمرة: أول ما يدخل أي شاشة، العين تحچي.
+  useEffect(() => {
+    if (!watch || watch.mood !== 'ANGRY') return
+    const t = window.setTimeout(() => speak(speech(watch, path, false)), 600)
+    return () => window.clearTimeout(t)
+  }, [path, watch, speak])
+
+  // «شفتك»: إجراء ناجح. بشاشة شغله (أو لو حمرة) العين تطلع وتحچي بالأرقام الجديدة.
+  useEffect(() => {
+    const onSaw = () => {
+      api.getMyWatch().then((w) => {
+        setWatch(w)
+        const relevant = w.workload.some((x) => onRoute(window.location.pathname.replace(/^\/staff_mange/, ''), x.route)) || w.mood === 'ANGRY'
+        if (!relevant) return
+        setVisible(true)
+        setFlash(true)
+        window.setTimeout(() => setFlash(false), 1300)
+        speak(speech(w, window.location.pathname.replace(/^\/staff_mange/, ''), true))
+        window.clearTimeout(hideT.current)
+        hideT.current = window.setTimeout(() => setVisible(false), VISIBLE_MS)
+      }).catch(() => {})
+    }
+    window.addEventListener('matrix-saw', onSaw)
+    return () => { window.removeEventListener('matrix-saw', onSaw); window.clearTimeout(hideT.current); window.clearTimeout(sayT.current) }
+  }, [speak])
+
+  // رمشة — الغاضبة ما ترمش، تحدّق.
+  useEffect(() => {
+    if (angry || !shown) return
     let t = 0
     const loop = () => {
-      t = window.setTimeout(() => {
-        setBlink(true)
-        window.setTimeout(() => setBlink(false), 140)
-        loop()
-      }, 3500 + Math.random() * 4000)
+      t = window.setTimeout(() => { setBlink(true); window.setTimeout(() => setBlink(false), 130); loop() }, 3000 + Math.random() * 3500)
     }
     loop()
     return () => window.clearTimeout(t)
-  }, [level])
+  }, [angry, shown])
 
-  // البؤبؤ يتبع الماوس — بالـDOM مباشرة حتى ما نعيد الرسم بكل حركة.
+  // البؤبؤ يتبع الماوس — بالـDOM مباشرة.
   useEffect(() => {
     let raf = 0
     const onMove = (e: MouseEvent) => {
@@ -97,8 +134,8 @@ export default function MatrixEye() {
         const dx = e.clientX - (box.left + box.width / 2)
         const dy = e.clientY - (box.top + box.height / 2)
         const d = Math.hypot(dx, dy) || 1
-        const k = Math.min(1, d / 300)
-        g.setAttribute('transform', `translate(${((dx / d) * 6 * k).toFixed(2)} ${((dy / d) * 3 * k).toFixed(2)})`)
+        const k = Math.min(1, d / 280)
+        g.setAttribute('transform', `translate(${((dx / d) * 9 * k).toFixed(2)} ${((dy / d) * 4.5 * k).toFixed(2)})`)
       })
     }
     window.addEventListener('mousemove', onMove)
@@ -107,74 +144,63 @@ export default function MatrixEye() {
 
   if (!employee) return null
 
-  // فتحة الجفن: ترمش → تنسد، شفتك → تنفتح واسعة، حمرة → ضيقة غاضبة.
-  const lid = blink ? 0.08 : flash ? 1.15 : level === 'RED' ? 0.62 : 0.9
-  const pupilW = level === 'RED' ? 1.6 : flash ? 3.2 : 4.4
-  const title = level === 'RED' ? 'ماتركس يراقبك عن قرب' : level === 'ALERT' ? 'ماتركس منتبه' : 'ماتركس يتابع'
+  const lid = !shown ? 0 : blink ? 0.06 : flash ? 1.15 : angry ? 0.6 : mood === 'PLEASED' ? 0.75 : 0.95
+  const title = angry ? 'ماتركس يراقبك عن قرب' : 'ماتركس'
 
   return (
     <>
-      {/* الإطار الومّاض حول الشاشة كلها — بالـbody مباشرة، لأن الهيدر
-          عنده تأثيرات تخلّي fixed ينحصر داخله. وما يمسك الضغطات أبداً. */}
-      {createPortal(
-        <div
-          aria-hidden
-          className={`matrix-eye-frame ${level === 'RED' ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`}
-          style={{ ['--eye' as string]: color }}
-        />,
+      {shown && createPortal(
+        <div aria-hidden className={`matrix-eye-frame ${angry ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`} style={{ ['--eye' as string]: color }} />,
         document.body,
       )}
 
-      <div className="relative">
+      <div className={`matrix-eye-slot ${shown ? 'is-shown' : ''}`}>
         <button
           ref={boxRef}
           type="button"
           onClick={() => setOpen((o) => !o)}
           title={title}
           aria-label={title}
-          className={`matrix-eye ${level === 'RED' ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`}
+          className={`matrix-eye ${angry ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`}
           style={{ ['--eye' as string]: color }}
         >
-          <svg viewBox="-30 -16 60 32" width="58" height="31">
-            <defs>
-              <radialGradient id="mx-iris" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#fff" stopOpacity="0.95" />
-                <stop offset="35%" stopColor={color} />
-                <stop offset="100%" stopColor="#020617" />
-              </radialGradient>
-              <clipPath id="mx-lid">
-                <path d={`M-27 0 Q0 ${-17 * lid} 27 0 Q0 ${17 * lid} -27 0Z`} />
-              </clipPath>
-            </defs>
-            {/* بياض العين داخل الجفن */}
-            <path d={`M-27 0 Q0 ${-17 * lid} 27 0 Q0 ${17 * lid} -27 0Z`} fill="#0b1220" stroke={color} strokeWidth="1.6" className="mx-lid" />
-            <g clipPath="url(#mx-lid)">
-              <g ref={pupilRef}>
-                <circle r="9.5" fill="url(#mx-iris)" />
-                <circle r="9.5" fill="none" stroke={color} strokeOpacity="0.7" strokeWidth="0.8" className="mx-ring" />
-                <ellipse rx={pupilW} ry="5.5" fill="#000" />
-                <circle cx="-3" cy="-3" r="1.6" fill="#fff" opacity="0.85" />
-              </g>
-            </g>
-            {/* حاجب غاضب بالحمرة */}
-            {level === 'RED' && <path d="M-24 -13 L-4 -8 M24 -13 L4 -8" stroke={RED_COLOR} strokeWidth="2.2" strokeLinecap="round" />}
-          </svg>
-          {watch && watch.open > 0 && (
-            <span className="absolute -top-1 -end-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-extrabold text-white" style={{ background: color === base ? RED_COLOR : color }}>{watch.open}</span>
+          <MatrixEyeGraphic ref={pupilRef} group={group} mood={mood} lid={lid} flash={flash} width={76} />
+          {watch && watch.open > 0 && shown && (
+            <span className="absolute -top-1 -end-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-extrabold text-white" style={{ background: angry ? '#ef4444' : '#ca8a04' }}>{watch.open}</span>
           )}
         </button>
 
+        {say && shown && !open && (
+          <div dir="rtl" className="matrix-eye-say" style={{ ['--eye' as string]: color }}>
+            <b>ماتركس:</b> {say}
+          </div>
+        )}
+
         {open && (
           <div dir="rtl" className="absolute start-0 top-full z-50 mt-2 w-80 max-w-[calc(100vw-2rem)] rounded-2xl border border-slate-200 bg-white p-3 text-sm shadow-xl">
-            <p className="font-extrabold" style={{ color: level === 'CALM' ? undefined : color }}>
-              {level === 'RED' ? '🔴 ماتركس يراقبك عن قرب' : level === 'ALERT' ? '🟡 ماتركس منتبه' : '👁️ ماتركس يتابع — كلشي تمام'}
+            <p className="font-extrabold" style={{ color: mood === 'CALM' ? undefined : color }}>
+              {angry ? '🔴 ماتركس يراقبك عن قرب' : mood === 'ALERT' ? '🟡 ماتركس منتبه' : mood === 'PLEASED' ? '🟢 ماتركس راضي عن شغلك اليوم' : '👁️ ماتركس يتابع'}
             </p>
-            {watch && watch.items.length > 0 ? (
-              <>
-                <p className="mb-2 text-xs text-slate-500">
-                  {level === 'RED' ? 'عندك أشياء ذكّرك بيها وما انحلت. العين ترجع هادئة أول ما تخلصها.' : 'عندك شي ذكّرك بي ماتركس:'}
-                </p>
-                <ul className="max-h-64 space-y-1.5 overflow-y-auto">
+            {watch && watch.workload.length > 0 && (
+              <div className="mt-2">
+                <p className="mb-1 text-xs font-bold text-slate-500">شغلك اليوم</p>
+                <ul className="space-y-1">
+                  {watch.workload.map((w) => (
+                    <li key={w.key} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5">
+                      <Link to={w.route} onClick={() => setOpen(false)} className="text-slate-800 hover:underline">{w.label}</Link>
+                      <span className="text-xs tabular-nums">
+                        {w.done > 0 && <span className="text-emerald-700">{w.verb} {w.done} · </span>}
+                        <b className={w.left > 0 ? 'text-amber-700' : 'text-emerald-700'}>{w.left > 0 ? `باقي ${w.left}` : 'خالص ✓'}</b>
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {watch && watch.items.length > 0 && (
+              <div className="mt-2">
+                <p className="mb-1 text-xs font-bold text-slate-500">تذكيرات ما انحلت</p>
+                <ul className="max-h-52 space-y-1.5 overflow-y-auto">
                   {watch.items.map((it, i) => (
                     <li key={i} className="rounded-lg bg-slate-50 p-2">
                       <p className="text-slate-800">{it.escalated && '⬆️ '}{it.summary}</p>
@@ -182,10 +208,9 @@ export default function MatrixEye() {
                     </li>
                   ))}
                 </ul>
-              </>
-            ) : (
-              <p className="mt-1 text-xs text-slate-500">ماكو عليك ولا تذكير مفتوح.</p>
+              </div>
             )}
+            {watch && watch.workload.length === 0 && watch.items.length === 0 && <p className="mt-1 text-xs text-slate-500">ماكو عليك شي مفتوح.</p>}
           </div>
         )}
       </div>
