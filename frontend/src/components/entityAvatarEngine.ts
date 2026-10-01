@@ -13,6 +13,8 @@ import { DirectionalLight } from '@babylonjs/core/Lights/directionalLight'
 import { Matrix, Vector3 } from '@babylonjs/core/Maths/math.vector'
 import { BoneLookController } from '@babylonjs/core/Bones/boneLookController'
 import { Color4 } from '@babylonjs/core/Maths/math.color'
+import { Color3 } from '@babylonjs/core/Maths/math.color'
+import { PBRMaterial } from '@babylonjs/core/Materials/PBR/pbrMaterial'
 import { SceneLoader } from '@babylonjs/core/Loading/sceneLoader'
 import { TransformNode } from '@babylonjs/core/Meshes/transformNode'
 import type { AnimationGroup } from '@babylonjs/core/Animations/animationGroup'
@@ -184,6 +186,24 @@ export async function mountAvatar(
   // هالوسيط ما يلگى محمّلاً ويفشل التحميل برسالة غامضة.
   const result = await SceneLoader.ImportMeshAsync('', url, '', scene, null, '.glb')
   const groups: AnimationGroup[] = result.animationGroups
+
+  // بعض ملفات الأسواق تسمي «Pose» حركات، لكنها فعلياً لقطة مفردة
+  // (T-Pose أو وقفة ثابتة). لا نعتبرها حركة؛ وإلا تمنع تصحيح الذراعين
+  // وتطلع الشخصية كأنها مكسورة.
+  const onlyStaticPoses = groups.length > 0 && groups.every((group) =>
+    group.targetedAnimations.every((target) => target.animation.getKeys().length <= 1),
+  )
+
+  // خامات عين CC3 الأصلية تستخدم إعدادات شفافية/انعكاس ما تتطابق
+  // تماماً مع Babylon. نثبتها كعين بنية مضاءة بخفة بدل تجاويف سوداء.
+  for (const material of scene.materials) {
+    if (!(material instanceof PBRMaterial) || !/^Std_(Eye|Cornea)_/.test(material.name)) continue
+    material.metallic = 0
+    material.roughness = 0.38
+    material.albedoColor = new Color3(0.72, 0.46, 0.24)
+    material.emissiveColor = new Color3(0.08, 0.045, 0.02)
+    material.alpha = 1
+  }
 
   // ⚠️ **التأثيرات قبل أي شي**: بابل افتراضه ٤ لكل رأس، وملفنا فيه
   // ثمانية. والقصّ يصير **صامتاً** — لا خطأ ولا تحذير، بس تشوّه
@@ -361,7 +381,7 @@ export async function mountAvatar(
   // ومتحكّمات بابل (`BoneLookController`) هي **الوحيدة** الي قياسها
   // أثبت إنها توصل للرسم (١٣.٠٩٪ من البكسلات بلفّة الرأس). وهذا
   // نفس سبب صفر الأصابع — المشكلة بالمكانيكية مو بالمحور.
-  if (groups.length === 0 && skeleton && skinned && naming.restArmDrop) {
+  if ((groups.length === 0 || onlyStaticPoses) && skeleton && skinned && naming.restArmDrop) {
     const mesh = skinned
     const holders: BoneLookController[] = []
     for (const hand of ['right', 'left'] as const) {
