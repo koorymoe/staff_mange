@@ -208,3 +208,48 @@ func (s *MatrixAutopilotService) afterUndo(actionID string) {
 }
 
 func (s *MatrixAutopilotService) Resume(kind string) error { return s.actions.Resume(kind) }
+
+// ═══ عين ماتركس ═══
+//
+// العين تعكس حالة حقيقية بس — ما تعاقب ولا تخترع. هادئة: ماكو شي
+// مفتوح. منتبهة: تذكير مفتوح. حمرة: تذكير صعد أو ٣ مفتوحة فأكثر.
+// والتنبيه اللحظي (حضور اليوم، خطر التأخير) ما ينحسب — هذني مو تقصير.
+
+type WatchItem struct {
+	Summary   string    `json:"summary"`
+	Kind      string    `json:"kind"`
+	Label     string    `json:"label"`
+	Escalated bool      `json:"escalated"`
+	Since     time.Time `json:"since"`
+}
+
+type WatchState struct {
+	Level string      `json:"level"` // CALM | ALERT | RED
+	Open  int         `json:"open"`
+	Items []WatchItem `json:"items"`
+}
+
+const watchRedOpen = 3
+
+func (s *MatrixAutopilotService) WatchState(employeeID string) (*WatchState, error) {
+	rows, err := s.actions.OpenForEmployee(employeeID)
+	if err != nil {
+		return nil, err
+	}
+	out := &WatchState{Level: "CALM", Items: []WatchItem{}}
+	escalated := false
+	for _, a := range rows {
+		esc := a.EscalatedAt != nil
+		escalated = escalated || esc
+		out.Items = append(out.Items, WatchItem{Summary: a.Summary, Kind: a.Kind,
+			Label: model.AiActionLabels[a.Kind], Escalated: esc, Since: a.CreatedAt})
+	}
+	out.Open = len(rows)
+	switch {
+	case escalated || out.Open >= watchRedOpen:
+		out.Level = "RED"
+	case out.Open > 0:
+		out.Level = "ALERT"
+	}
+	return out, nil
+}

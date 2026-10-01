@@ -1019,6 +1019,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الاستبدال: ADMIN/OWNER أو it_assets أو vehicle_management — والمعالج يفلتر الأقسام.
 	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
 		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "it_assets", "vehicle_management")))
+	mux.Handle("GET /api/ai/my-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.MyWatch), requireAuth))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/kinds/{kind}/resume", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Resume), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/actions/{id}/undo", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Undo), requireAuth, requireAdmin))

@@ -398,3 +398,15 @@ func (r *AiActionRepository) TaskAssigner(taskID string) string {
 	_ = r.db.Get(&id, `SELECT COALESCE("assignedById", '') FROM "ExtraTask" WHERE id = $1`, taskID)
 	return id
 }
+
+// OpenForEmployee تذكيرات ماتركس المفتوحة على موظف — حالة «عينه».
+func (r *AiActionRepository) OpenForEmployee(employeeID string) ([]model.AiAction, error) {
+	rows := []model.AiAction{}
+	err := r.db.Select(&rows, `
+		SELECT * FROM "AiAction"
+		WHERE "targetEmployeeId" = $1 AND status = 'DONE' AND "resolvedAt" IS NULL
+		  AND kind <> 'ATTENDANCE_NUDGE' AND kind <> 'DELAY_WARNING'
+		  AND "createdAt" > now() - interval '14 days'
+		ORDER BY "createdAt" DESC LIMIT 20`, employeeID)
+	return rows, err
+}

@@ -44,3 +44,13 @@ func (h *MatrixDecisionsHandler) Resume(w http.ResponseWriter, r *http.Request) 
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
+
+// GET /api/ai/my-watch — حالة عين ماتركس للموظف نفسه (كل موظف يشوف حالته بس).
+func (h *MatrixDecisionsHandler) MyWatch(w http.ResponseWriter, r *http.Request) {
+	st, err := h.svc.WatchState(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب حالة العين")
+		return
+	}
+	WriteJSON(w, http.StatusOK, st)
+}

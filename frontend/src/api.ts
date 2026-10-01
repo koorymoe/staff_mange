@@ -1173,6 +1173,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     const body = await res.json().catch(() => ({}))
     throw new Error(body.error || describeHttpStatus(res.status))
   }
+  // عين ماتركس: كل إجراء ناجح (حفظ/تعديل/حذف) تنتبهله العين لحظة.
+  const method = (options?.method || 'GET').toUpperCase()
+  if (method !== 'GET' && !path.startsWith('/auth') && typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('matrix-saw'))
+  }
   return res.json()
 }
 
@@ -5333,6 +5338,7 @@ export const api = {
   getNewEmployeeCurves: () => request<NewEmployeeCurve[]>('/ai/new-employee-curves'),
   getStockForecast: () => request<StockForecast>('/ai/stock-forecast'),
   getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
+  getMyWatch: () => request<MatrixWatch>('/ai/my-watch'),
   getMatrixDecisions: (day?: string) =>
     request<MatrixDecisions>(`/ai/decisions${day ? `?day=${encodeURIComponent(day)}` : ''}`),
   resumeMatrixKind: (kind: string) =>
@@ -5608,4 +5614,11 @@ export interface MatrixDecisions {
     delayPredicted: number; delayChecked: number; delayCorrect: number
   }
   labels: Record<string, string>
+}
+
+// عين ماتركس — حالة الموظف نفسه.
+export interface MatrixWatch {
+  level: 'CALM' | 'ALERT' | 'RED'
+  open: number
+  items: { summary: string; kind: string; label: string; escalated: boolean; since: string }[]
 }

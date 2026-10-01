@@ -4,6 +4,7 @@ import PrivacyPolicyGate from './PrivacyPolicyGate'
 import EmployeeAvatar from './EmployeeAvatar'
 import LiveAlerts from './LiveAlerts'
 import ThemeToggle from './ThemeToggle'
+import MatrixEye from './MatrixEye'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
@@ -682,6 +683,8 @@ export default function Layout() {
                   «أريد توصل إشعارات لأجهزتهم وإشعارات للحاسبات».
                   الزر يطلع لمن ما ينطلب الإذن بعد — وبعدها يختفي. */}
               <LiveAlerts />
+              {/* عين ماتركس — تتابع وتنتبه لكل إجراء، ولونها حسب الدور والحالة */}
+              <MatrixEye />
               {/* الوضع الليلي — اختياره ينحفظ بالجهاز */}
               <ThemeToggle />
               <div className="relative">
