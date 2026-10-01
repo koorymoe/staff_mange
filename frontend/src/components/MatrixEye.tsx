@@ -20,6 +20,29 @@ const VISIBLE_MS = 12000
 const SPEAK_MS = 7000
 const POLL_MS = 5 * 60 * 1000
 
+// شاشات الشغل الاحتياطية لكل مجموعة — لو الأرقام ما وصلت، العين تبقى تعرف
+// وين يشتغل الموظف.
+const FALLBACK_ROUTES: Record<string, string[]> = {
+  MONITORS: ['/monitor-desk', '/daily-audit', '/monitor-inbox', '/leader-invoices', '/audit-issues', '/finance', '/crew-bookings-audit'],
+  COORDINATORS: ['/coordinator', '/bookings', '/staff-requests', '/stage-buckets'],
+  FINANCE: ['/leader-invoices', '/finance', '/daily-audit', '/expenses', '/revolving-fund'],
+  FIELD: ['/my-tasks', '/leader-invoices/new', '/work-report', '/missions'],
+  QUALITY: ['/quality-follow-ups', '/quality', '/complaints'],
+  IT: ['/it-assets', '/it-stats'],
+  ADMINS: [],
+  STAFF: [],
+}
+
+function currentPath(): string {
+  return window.location.pathname.replace(/^\/staff_mange/, '') || '/'
+}
+
+function isWorkRoute(w: MatrixWatch | null, path: string): boolean {
+  if (!w) return false
+  if (w.workload.some((x) => onRoute(path, x.route))) return true
+  return (FALLBACK_ROUTES[w.group] ?? []).some((r) => onRoute(path, r))
+}
+
 function onRoute(path: string, route: string): boolean {
   const base = route.split('?')[0]
   return path === base || path.startsWith(base + '/')
@@ -46,6 +69,7 @@ function speech(w: MatrixWatch, path: string, afterAction: boolean): string | nu
       : `باقي ${here.left} من «${here.label}». ماتركس يتابع.`
   }
   if (afterAction && w.open > 0) return `مسجّل. وعندك ${w.open} تذكير مفتوح بعده.`
+  if (afterAction) return 'ماتركس يتابع شغلك هنا.'
   return null
 }
 
@@ -92,23 +116,42 @@ export default function MatrixEye() {
     return () => window.clearTimeout(t)
   }, [path, watch, speak])
 
-  // «شفتك»: إجراء ناجح. بشاشة شغله (أو لو حمرة) العين تطلع وتحچي بالأرقام الجديدة.
+  // الظهور: (١) حفظ ناجح (matrix-saw) — بأرقام جديدة من الخادم.
+  // (٢) أي ضغطة زر داخل محتوى شاشة شغله — فتح فاتورة، تدقيق، تفاصيل.
+  // وأول دخول للشاشة ما يطلّعها: «من يدخل ماموجودة، من يشتغل تطلع».
+  const watchRef = useRef<MatrixWatch | null>(null)
+  useEffect(() => { watchRef.current = watch }, [watch])
+  const lastReveal = useRef(0)
   useEffect(() => {
+    const reveal = (w: MatrixWatch) => {
+      const p = currentPath()
+      if (!isWorkRoute(w, p) && w.mood !== 'ANGRY') return
+      lastReveal.current = Date.now()
+      setVisible(true)
+      setFlash(true)
+      window.setTimeout(() => setFlash(false), 1300)
+      speak(speech(w, p, true))
+      window.clearTimeout(hideT.current)
+      hideT.current = window.setTimeout(() => setVisible(false), VISIBLE_MS)
+    }
     const onSaw = () => {
-      api.getMyWatch().then((w) => {
-        setWatch(w)
-        const relevant = w.workload.some((x) => onRoute(window.location.pathname.replace(/^\/staff_mange/, ''), x.route)) || w.mood === 'ANGRY'
-        if (!relevant) return
-        setVisible(true)
-        setFlash(true)
-        window.setTimeout(() => setFlash(false), 1300)
-        speak(speech(w, window.location.pathname.replace(/^\/staff_mange/, ''), true))
-        window.clearTimeout(hideT.current)
-        hideT.current = window.setTimeout(() => setVisible(false), VISIBLE_MS)
-      }).catch(() => {})
+      api.getMyWatch().then((w) => { setWatch(w); reveal(w) }).catch(() => { if (watchRef.current) reveal(watchRef.current) })
+    }
+    const onClick = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null
+      if (!t || !t.closest('main') || !t.closest('button, a, [role="button"], [role="tab"]')) return
+      if (Date.now() - lastReveal.current < 3000) return
+      const w = watchRef.current
+      if (w) reveal(w)
     }
     window.addEventListener('matrix-saw', onSaw)
-    return () => { window.removeEventListener('matrix-saw', onSaw); window.clearTimeout(hideT.current); window.clearTimeout(sayT.current) }
+    document.addEventListener('click', onClick, true)
+    return () => {
+      window.removeEventListener('matrix-saw', onSaw)
+      document.removeEventListener('click', onClick, true)
+      window.clearTimeout(hideT.current)
+      window.clearTimeout(sayT.current)
+    }
   }, [speak])
 
   // رمشة — الغاضبة ما ترمش، تحدّق.
