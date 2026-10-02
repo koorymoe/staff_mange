@@ -12,6 +12,7 @@ import { esc, printIdentityCss, printIdentityHtml } from '../utils/printIdentity
 import LocateHint from '../components/LocateHint'
 import FreeWorkBadge from '../components/FreeWorkBadge'
 import ServicePriceSuggestions from '../components/ServicePriceSuggestions'
+import { loadFailed } from '../netErrors'
 
 // ═══ طباعة فاتورة الليدر ═══
 //
@@ -412,7 +413,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
   // سجل تعديلات المحاسب — «شنو كان وشنو صار ومنو غيّره»
   const [adjustments, setAdjustments] = useState<LeaderInvoiceAdjustment[]>([])
 
-  const load = () => { api.getLeaderInvoices().then(setInvoices).finally(() => setLoading(false)) }
+  const load = () => { api.getLeaderInvoices().then(setInvoices).finally(() => setLoading(false)).catch(loadFailed) }
   useEffect(load, [])
 
   const handleApprove = async () => {

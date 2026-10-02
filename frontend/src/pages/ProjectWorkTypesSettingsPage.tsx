@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type ProjectWorkType } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import { loadFailed } from '../netErrors'
 
 // إعدادات وحدة إدارة المشاريع — أنواع الأعمال ("نوع العمل") صارت قابلة
 // للإضافة والحذف براحة المدير، بدل قائمة ثابتة بالكود. أي نوع تضيفه هنا
@@ -15,7 +16,7 @@ export default function ProjectWorkTypesSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const load = () => { api.getProjectWorkTypes().then(setTypes).finally(() => setLoading(false)) }
+  const load = () => { api.getProjectWorkTypes().then(setTypes).finally(() => setLoading(false)).catch(loadFailed) }
   useEffect(load, [])
 
   const handleAdd = async (e: React.FormEvent) => {

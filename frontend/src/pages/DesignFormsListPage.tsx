@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, type DesignForm } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import { loadFailed } from '../netErrors'
 
 const PRIMARY = '#47528f'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -58,7 +59,7 @@ export default function DesignFormsListPage() {
   const [creating, setCreating] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
 
-  const load = () => { api.getDesignForms().then(setForms).finally(() => setLoading(false)) }
+  const load = () => { api.getDesignForms().then(setForms).finally(() => setLoading(false)).catch(loadFailed) }
   useEffect(load, [])
 
   const handleCreate = async (e: React.FormEvent) => {

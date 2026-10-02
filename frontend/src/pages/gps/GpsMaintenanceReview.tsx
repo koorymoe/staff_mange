@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type GpsMaintenanceRequest } from '../../api'
+import { loadFailed } from '../../netErrors'
 
 const statusMap: Record<string, { label: string; className: string }> = {
   PENDING: { label: 'معلق', className: 'bg-amber-50 text-amber-700' },
@@ -17,7 +18,7 @@ export default function GpsMaintenanceReview({ embedded }: { embedded?: boolean 
   const [saving, setSaving] = useState(false)
 
   const load = () => {
-    api.getGpsMaintenance().then(setRequests).finally(() => setLoading(false))
+    api.getGpsMaintenance().then(setRequests).finally(() => setLoading(false)).catch(loadFailed)
   }
   useEffect(load, [])
 

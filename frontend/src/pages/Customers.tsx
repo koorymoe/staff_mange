@@ -6,6 +6,7 @@ import { matches } from '../utils/search'
 // تسمية الحالة من مصدر واحد للنظام كله
 import { bookingStatusLabel, bookingStatusColor } from '../bookingStatus'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { loadFailed } from '../netErrors'
 
 function splitFullName(fullName: string): [string, string, string, string] {
   const parts = fullName.trim().split(/\s+/).filter(Boolean)
@@ -160,7 +161,7 @@ export default function Customers() {
     api
       .getBookings({ customerId: selectedId })
       .then(setHistory)
-      .finally(() => setHistoryLoading(false))
+      .finally(() => setHistoryLoading(false)).catch(loadFailed)
   }, [selectedId])
 
   const activeList: Customer[] = tab === 'gps' ? gpsCustomers : customers

@@ -30,21 +30,32 @@ let lastShown = ''
 let lastShownAt = 0
 const QUIET_MS = 4000
 
+function show(reason: unknown, tag: string) {
+  const msg = humanize(reason)
+
+  // انتهاء الجلسة إله معالجته الخاصة بـapi.ts (يطلّع المستخدم لصفحة
+  // الدخول) — عرض رسالة ثانية فوگه بس يربك.
+  if (/يجب تسجيل الدخول|جلسة|انتهت صلاحية/.test(msg)) return
+
+  // نطبعه بالكونسول بعد حتى يكدر يشوفه المطور بالتفصيل
+  console.error(tag, reason)
+
+  const now = Date.now()
+  if (msg === lastShown && now - lastShownAt < QUIET_MS) return
+  lastShown = msg
+  lastShownAt = now
+  alert(msg)
+}
+
+/**
+ * loadFailed — ‎`.catch(loadFailed)` لكل جلب ما إله معالجة خاصة بمكانه.
+ * نفس رسالة الشبكة الآمنة، بس صريحة بالكود: الفشل ممسوك بمكانه مو
+ * طايح للمصيدة العامة. (أُضيفت لـ٧٨ مكان بالفحص الشامل — بند ١٢.)
+ */
+export function loadFailed(reason: unknown): void {
+  show(reason, '[load]')
+}
+
 export function installNetworkErrorTrap() {
-  window.addEventListener('unhandledrejection', (event) => {
-    const msg = humanize(event.reason)
-
-    // انتهاء الجلسة إله معالجته الخاصة بـapi.ts (يطلّع المستخدم لصفحة
-    // الدخول) — عرض رسالة ثانية فوگه بس يربك.
-    if (/يجب تسجيل الدخول/.test(msg)) return
-
-    const now = Date.now()
-    if (msg === lastShown && now - lastShownAt < QUIET_MS) return
-    lastShown = msg
-    lastShownAt = now
-
-    // نطبعه بالكونسول بعد حتى يكدر يشوفه المطور بالتفصيل
-    console.error('[unhandled]', event.reason)
-    alert(msg)
-  })
+  window.addEventListener('unhandledrejection', (event) => show(event.reason, '[unhandled]'))
 }

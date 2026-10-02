@@ -3,6 +3,7 @@ import { api, type WorkReport } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { loadFailed } from '../netErrors'
 
 export default function WorkReportsReview() {
   const [reports, setReports] = useState<WorkReport[]>([])
@@ -10,7 +11,7 @@ export default function WorkReportsReview() {
   const [filter, setFilter] = useState<'ALL' | 'COMPLETED' | 'STOPPED'>('ALL')
 
   useEffect(() => {
-    api.getWorkReports().then(setReports).finally(() => setLoading(false))
+    api.getWorkReports().then(setReports).finally(() => setLoading(false)).catch(loadFailed)
   }, [])
 
   const filtered = filter === 'ALL' ? reports : reports.filter((r) => r.workStatus === filter)

@@ -4,6 +4,7 @@ import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import type { SaveGuard } from '../useSaveGuard'
+import { loadFailed } from '../netErrors'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -188,13 +189,13 @@ export default function VehiclesPage() {
   // غسيل السيارات فنيّين عاديين بس — لا تيم ليدر، لا مصمم، لا مسؤول خدمة، لا إداري.
   const washableTechnicians = employees.filter((e) => e.role === 'TECHNICIAN' && !e.isLeader)
 
-  const loadVehicles = () => api.getVehicles().then(setVehicles)
+  const loadVehicles = () => api.getVehicles().then(setVehicles).catch(loadFailed)
 
-  const loadAlerts = () => api.getVehicleAlerts().then(setAlerts)
+  const loadAlerts = () => api.getVehicleAlerts().then(setAlerts).catch(loadFailed)
 
   useEffect(() => {
     loadVehicles()
-    api.getEmployees().then(setEmployees)
+    api.getEmployees().then(setEmployees).catch(loadFailed)
     loadAlerts()
   }, [])
 
@@ -204,22 +205,22 @@ export default function VehiclesPage() {
       list.forEach((inc) => {
         api.getVehicleIncidentAttachments(inc.id).then((atts) =>
           setIncidentAttachments((prev) => ({ ...prev, [inc.id]: atts }))
-        )
+        ).catch(loadFailed)
       })
-    })
+    }).catch(loadFailed)
   }
 
   useEffect(() => {
     if (!selectedId) return
-    api.getVehicleLogs(selectedId).then(setLogs)
+    api.getVehicleLogs(selectedId).then(setLogs).catch(loadFailed)
     loadIncidentsWithAttachments(selectedId)
-    api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
-    api.getVehicleDailyRatings(selectedId).then(setDailyRatings)
+    api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus).catch(loadFailed)
+    api.getVehicleDailyRatings(selectedId).then(setDailyRatings).catch(loadFailed)
   }, [selectedId])
 
   useEffect(() => {
     if (!selectedId) return
-    api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+    api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary).catch(loadFailed)
     api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
   }, [selectedId, expenseMonth])
 
@@ -318,8 +319,8 @@ export default function VehiclesPage() {
     }
     setLogOdometer(''); setLogCost(''); setLogNextDue(''); setLogNextDueOdometer(''); setLogNotes('')
     setLogLiters(''); setLogFilledBy(''); setLogReceiptNo(''); setLogStation(''); setLogReceiptPhoto('')
-    api.getVehicleLogs(selectedId).then(setLogs)
-    api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+    api.getVehicleLogs(selectedId).then(setLogs).catch(loadFailed)
+    api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary).catch(loadFailed)
     api.getEmployeeFuelStats({ vehicleId: selectedId, month: expenseMonth }).then(setFuelStats).catch(() => setFuelStats([]))
     loadAlerts()
   }
@@ -401,7 +402,7 @@ export default function VehiclesPage() {
     setIncDesc(''); setIncResponsible(''); setIncCost('')
     setIncLocation(''); setIncDriver(''); setIncPeoplePresent(''); setIncPoliceReport(''); setIncRepairCost('')
     loadIncidentsWithAttachments(selectedId)
-    if (selectedId) api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary)
+    if (selectedId) api.getVehicleExpenseSummary(selectedId, { month: expenseMonth }).then(setExpenseSummary).catch(loadFailed)
   }
 
   const handleResolveIncident = async (id: string) => {
@@ -437,7 +438,7 @@ export default function VehiclesPage() {
       month: monMonth, hasIssue: monHasIssue, issueDescription: monDesc || undefined, resolved: monResolved, notes: monNotes || undefined,
     })))) return
     setMonDesc(''); setMonNotes('')
-    api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus)
+    api.getVehicleMonthlyStatus(selectedId).then(setMonthlyStatus).catch(loadFailed)
   }
 
   const handleAddRating = async (e: React.FormEvent) => {

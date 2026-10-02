@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Employee, type Service, type TrainingMaterial } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import { loadFailed } from '../netErrors'
 
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
@@ -20,22 +21,22 @@ export default function TrainingManagement({ embedded }: { embedded?: boolean } 
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    api.getEmployees().then(setEmployees)
-    api.getServices().then(setServices)
+    api.getEmployees().then(setEmployees).catch(loadFailed)
+    api.getServices().then(setServices).catch(loadFailed)
   }, [])
 
   useEffect(() => {
     // Guard-clause reset when selection is cleared.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedEmployeeId) { setAssignedServiceIds([]); return }
-    api.getTrainingAssignments(selectedEmployeeId).then(list => setAssignedServiceIds(list.map(s => s.id)))
+    api.getTrainingAssignments(selectedEmployeeId).then(list => setAssignedServiceIds(list.map(s => s.id))).catch(loadFailed)
   }, [selectedEmployeeId])
 
   useEffect(() => {
     // Guard-clause reset when selection is cleared.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedServiceId) { setMaterials([]); return }
-    api.getTrainingMaterials(selectedServiceId).then(setMaterials)
+    api.getTrainingMaterials(selectedServiceId).then(setMaterials).catch(loadFailed)
   }, [selectedServiceId])
 
   const selectedEmployee = employees.find(e => e.id === selectedEmployeeId)

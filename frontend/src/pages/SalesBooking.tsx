@@ -6,6 +6,7 @@ import MultiSelect from '../components/MultiSelect'
 import { validateCustomerName, validateCustomerPhone } from '../validation'
 import { LocationPicker } from '../components/MapLazy'
 import PhoneActions from '../components/PhoneActions'
+import { loadFailed } from '../netErrors'
 
 type BookingType = 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR'
 type Urgency = 'ASAP' | 'BY_PRIORITY' | 'SPECIFIC_DATE'
@@ -148,7 +149,7 @@ export default function SalesBooking() {
     let active = true
     api.lookupCustomer(phone.trim()).then((c) => {
       if (active) setExistingCustomer(c)
-    })
+    }).catch(loadFailed)
     return () => {
       active = false
     }

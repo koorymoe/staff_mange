@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type Exhibition, type Employee, type EmployeeRole, fileUrl } from '../api'
 import { useSession } from '../session'
+import { loadFailed } from '../netErrors'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -56,10 +57,10 @@ export default function ExhibitionsPage({ embedded }: { embedded?: boolean } = {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const load = () => {
-    api.getExhibitions().then(setItems).finally(() => setLoading(false))
+    api.getExhibitions().then(setItems).finally(() => setLoading(false)).catch(loadFailed)
   }
   useEffect(load, [])
-  useEffect(() => { if (isAdmin) api.getEmployees().then(setEmployees) }, [isAdmin])
+  useEffect(() => { if (isAdmin) api.getEmployees().then(setEmployees).catch(loadFailed) }, [isAdmin])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()

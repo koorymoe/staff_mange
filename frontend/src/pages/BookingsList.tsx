@@ -16,6 +16,7 @@ import { promptChoice } from '../utils/promptChoice'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
+import { loadFailed } from '../netErrors'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -204,7 +205,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
       // بحكم كونه ليدراً مو بحكم مسمّاه.
       api.getEmployees().then((all) => setTechnicians(all.filter(
         (e) => e.isLeader || e.role === 'TECHNICIAN' || e.role === 'TECHNICAL' || e.role === 'ENGINEER',
-      )))
+      ))).catch(loadFailed)
       // المركبات بيانات مساعدة هنا — مو كل من يشوف الحجوزات عنده صلاحية
       // المركبات، فالرفض ما يجوز يكسر الصفحة (شوف Coordinator.tsx)
       api.getVehicleOptions().then(setVehicles).catch(() => setVehicles([]))

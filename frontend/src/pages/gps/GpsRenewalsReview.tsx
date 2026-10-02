@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type GpsRenewalRequest } from '../../api'
+import { loadFailed } from '../../netErrors'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 const subDays = (t: string) => t === 'THREE_MONTHS' ? 90 : t === 'SIX_MONTHS' ? 180 : 365
@@ -51,7 +52,7 @@ export default function GpsRenewalsReview({ embedded }: { embedded?: boolean } =
   const [approving, setApproving] = useState(false)
 
   const load = () => {
-    api.getGpsRenewals().then(all => setRenewals(all.filter(r => r.status === 'PENDING'))).finally(() => setLoading(false))
+    api.getGpsRenewals().then(all => setRenewals(all.filter(r => r.status === 'PENDING'))).finally(() => setLoading(false)).catch(loadFailed)
   }
   useEffect(load, [])
 

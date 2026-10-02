@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type QualityIssue, type Employee } from '../api'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
+import { loadFailed } from '../netErrors'
 
 const STATUS_LABELS: Record<string, string> = {
   OPEN: 'مفتوحة',
@@ -26,13 +27,13 @@ export default function QualityPage() {
   const [description, setDescription] = useState('')
   const [responsible, setResponsible] = useState('')
 
-  const load = () => api.getQualityIssues(filter === 'ALL' ? undefined : filter).then(setIssues)
+  const load = () => api.getQualityIssues(filter === 'ALL' ? undefined : filter).then(setIssues).catch(loadFailed)
 
   // `load` is redefined every render (not memoized) and already reflects `filter`
   // via closure; adding `load` itself as a dep would re-run this effect every render.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load() }, [filter])
-  useEffect(() => { api.getEmployees().then(setEmployees) }, [])
+  useEffect(() => { api.getEmployees().then(setEmployees).catch(loadFailed) }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

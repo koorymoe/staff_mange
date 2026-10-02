@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Employee, type MissingRoleDefault, type Permission } from '../api'
 import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
+import { loadFailed } from '../netErrors'
 
 export default function PermissionsPage() {
   // ═══ فحص الصلاحيات الناقصة ═══
@@ -293,7 +294,7 @@ export default function PermissionsPage() {
                 <button
                   onClick={() => {
                     api.applyDefaultPermissions(r.employeeId)
-                      .then(() => api.auditRoleDefaults().then(setAudit))
+                      .then(() => api.auditRoleDefaults().then(setAudit).catch(loadFailed))
                       .catch((e) => alert(e instanceof Error ? e.message : 'تعذر التطبيق'))
                   }}
                   className="shrink-0 rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-bold text-white">

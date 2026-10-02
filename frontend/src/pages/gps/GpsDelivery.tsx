@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type GpsDeviceRequest } from '../../api'
 import { matches } from '../../utils/search'
+import { loadFailed } from '../../netErrors'
 
 const subLabel = (t: string) => t === 'THREE_MONTHS' ? '3 أشهر' : t === 'SIX_MONTHS' ? '6 أشهر' : 'سنوي'
 
@@ -96,7 +97,7 @@ export default function GpsDelivery() {
     api.getGpsDevices().then(all => {
       setPending(all.filter(r => r.status === 'APPROVED' && !r.isDelivered))
       setDelivered(all.filter(r => r.isDelivered).slice(0, 20))
-    }).finally(() => setLoading(false))
+    }).finally(() => setLoading(false)).catch(loadFailed)
   }
   useEffect(load, [])
 

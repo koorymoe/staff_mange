@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { api, type TechShowcaseItem, fileUrl } from '../api'
 import { useSession } from '../session'
+import { loadFailed } from '../netErrors'
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -25,7 +26,7 @@ export default function TechShowcasePage({ embedded }: { embedded?: boolean } = 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const load = () => {
-    api.getTechShowcase().then(setItems).finally(() => setLoading(false))
+    api.getTechShowcase().then(setItems).finally(() => setLoading(false)).catch(loadFailed)
   }
   useEffect(load, [])
 

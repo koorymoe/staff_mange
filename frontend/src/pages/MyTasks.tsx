@@ -18,6 +18,7 @@ import { useSession } from '../session'
 import { useSaveGuard } from '../useSaveGuard'
 import SaveError from '../components/SaveError'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { loadFailed } from '../netErrors'
 
 // ═══ خيارات «مهامي» ═══
 // الحجوزات = شغلك · فواتيري = فواتير شغلك · تقاريري = تقارير شغلك ·
@@ -151,7 +152,7 @@ export default function MyTasks() {
     // على تلفونه حتى يشوف مهامه هو.
     api.getBookings({ assignedTo: 'me' })
       .then(setBookings)
-      .finally(() => setLoading(false))
+      .finally(() => setLoading(false)).catch(loadFailed)
   }
 
   useEffect(load, [])

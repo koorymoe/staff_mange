@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type ServiceStudy, type Employee } from '../api'
 import { useSession } from '../session'
+import { loadFailed } from '../netErrors'
 
 function splitList(v: string) {
   return v.split(',').map((s) => s.trim()).filter(Boolean)
@@ -22,9 +23,9 @@ export default function ServiceStudiesPage({ embedded }: { embedded?: boolean } 
   const [busyId, setBusyId] = useState<string | null>(null)
   const [reportDraft, setReportDraft] = useState<Record<string, string>>({})
 
-  const load = () => { api.getServiceStudies().then(setItems).finally(() => setLoading(false)) }
+  const load = () => { api.getServiceStudies().then(setItems).finally(() => setLoading(false)).catch(loadFailed) }
   useEffect(load, [])
-  useEffect(() => { if (isAdmin) api.getEmployees().then(setEmployees) }, [isAdmin])
+  useEffect(() => { if (isAdmin) api.getEmployees().then(setEmployees).catch(loadFailed) }, [isAdmin])
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()

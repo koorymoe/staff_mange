@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, Link } from 'react-router-dom'
 import { api, type DesignForm } from '../api'
+import { loadFailed } from '../netErrors'
 
 const PRIMARY = '#47528f'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -14,7 +15,7 @@ const PRIMARY_TEXT = 'var(--design-ink)'
 export default function DesignFormQuickAddPage() {
   const [forms, setForms] = useState<DesignForm[] | null>(null)
 
-  useEffect(() => { api.getDesignForms().then(setForms) }, [])
+  useEffect(() => { api.getDesignForms().then(setForms).catch(loadFailed) }, [])
 
   if (forms === null) return <p className="mt-6 text-slate-400">جاري التحميل...</p>
 

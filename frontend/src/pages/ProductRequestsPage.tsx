@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, fileUrl, type ProductRequest, type ProductProcurement, type PayerKind, type RevolvingFund } from '../api'
 import { useSession } from '../session'
+import { loadFailed } from '../netErrors'
 
 const money = (n: number) => n.toLocaleString('en-IQ')
 
@@ -35,7 +36,7 @@ export default function ProductRequestsPage({ embedded }: { embedded?: boolean }
   const [ff, setFf] = useState(emptyFulfill)
 
   const load = () => {
-    api.getProductRequests().then((rows) => setItems(rows ?? [])).finally(() => setLoading(false))
+    api.getProductRequests().then((rows) => setItems(rows ?? [])).finally(() => setLoading(false)).catch(loadFailed)
     if (canFulfill) {
       api.getProductProcurements().then((rows) => setProcurements(rows ?? [])).catch(() => setProcurements([]))
     }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type Expense, type Booking } from '../api'
 import { useSession } from '../session'
 import BookingCodeChip from '../components/BookingCodeChip'
+import { loadFailed } from '../netErrors'
 
 const statusLabels: Record<string, string> = {
   PENDING: 'بانتظار الاعتماد',
@@ -47,7 +48,7 @@ export default function MyExpenses() {
 
   const load = () => {
     if (!employee) return
-    api.getExpenses(employee.id).then(setExpenses)
+    api.getExpenses(employee.id).then(setExpenses).catch(loadFailed)
     // حجوزاته الشغالة بس. جان يسحب كل أرشيف الشركة (بكل زبائنه
     // وتعييناته) ويفلتره بالمتصفح حتى يلكه حجوزاته — يعني كل ما كبر
     // الأرشيف صارت صفحة مصاريفه أبطأ، وهو أصلاً ما إله علاقة بالباقي.
@@ -64,7 +65,7 @@ export default function MyExpenses() {
       // جزءاً من النموذج، التعارض يتحوّل من إزعاج لـ**نموذج ما
       // يگدر يرسله أبداً**.
       setCanExpense(active.some((b) => isResponsibleFor(b, employee)) || employee.isLeader)
-    })
+    }).catch(loadFailed)
   }
 
   useEffect(load, [employee])

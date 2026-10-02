@@ -18,6 +18,7 @@ import {
 } from '../api'
 import { readMoney } from '../utils/money'
 import EntityIdentity from '../components/EntityIdentity'
+import { loadFailed } from '../netErrors'
 
 // صفحة إنشاء فاتورة ليدر — تحل محل شيت جوجل "تكاليف المشروع" + "انشاء الفواتير":
 // اختيار حتى 3 منظومات، بنود تنفيذ لكل منظومة (عدد/ارتفاع/تسليك/طول كيبل/برمجة)،
@@ -281,7 +282,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const [estimateResult, setEstimateResult] = useState<EstimateExecutionCostResponse | null>(null)
 
   useEffect(() => {
-    api.getSystemPriceCatalog().then(setCatalog)
+    api.getSystemPriceCatalog().then(setCatalog).catch(loadFailed)
   }, [])
 
   // الحجوزات المكتملة الي يقدر الليدر يسويلها فاتورة — ما تنجلب بوضع الاستفسار
