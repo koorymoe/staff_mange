@@ -1307,3 +1307,67 @@ html.theme-amani-eye .text-\[var\(--color-brand-500\)\] { color: #22d3ee; }
 @keyframes mx-scan{0%{transform:translateY(-9px);opacity:0}20%{opacity:.4}80%{opacity:.4}100%{transform:translateY(9px);opacity:0}}
 @keyframes mx-pop{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.matrix-eye,.mx-orbit,.mx-ring,.mx-ring-rev,.mx-iris,.mx-scan,.mx-veins,.matrix-eye-frame,.matrix-eye-slot{animation:none!important;transition:none!important}}
+
+/* ═══ ماتركس — ألوان مركز القيادة حسب مظهر النظام ═══
+   نهاري: فاتح ونظيف. ليلي: رمادي غامق. عين الأماني: كحلي متوهج (تصميم (ع)).
+   ⚠️ عين الأماني تجي ويا `dark`، فبلوكها لازم يبقى بعد بلوك dark. */
+:root {
+  --mx-bg:      #eef3fa;
+  --mx-card:    #ffffff;
+  --mx-sunken:  #f5f8fc;
+  --mx-border:  rgba(37, 99, 235, 0.16);
+  --mx-glow:    0 1px 3px rgba(15, 32, 64, 0.08);
+  --mx-title:   #0f2040;
+  --mx-text:    #1f2937;
+  --mx-muted:   #64748b;
+  --mx-accent:  #1d4ed8;
+  --mx-tab-on:  rgba(245, 158, 11, 0.12);
+  --mx-tab-on-bd: #d97706;
+  --mx-tab-on-tx: #92400e;
+  --mx-ok:      #047857;
+  --mx-warn:    #b45309;
+  --mx-bad:     #b91c1c;
+  --mx-info:    #0369a1;
+  --mx-violet:  #6d28d9;
+  --mx-axis:    #94a3b8;
+}
+html.dark {
+  --mx-bg:      #10151f;
+  --mx-card:    #1a2130;
+  --mx-sunken:  #151b28;
+  --mx-border:  rgba(148, 163, 184, 0.18);
+  --mx-glow:    0 1px 4px rgba(0, 0, 0, 0.4);
+  --mx-title:   #f1f5f9;
+  --mx-text:    #d5dce9;
+  --mx-muted:   #94a3b8;
+  --mx-accent:  #7dd3fc;
+  --mx-tab-on:  rgba(245, 158, 11, 0.12);
+  --mx-tab-on-bd: #f59e0b;
+  --mx-tab-on-tx: #fcd34d;
+  --mx-ok:      #6ee7b7;
+  --mx-warn:    #fcd34d;
+  --mx-bad:     #fca5a5;
+  --mx-info:    #7dd3fc;
+  --mx-violet:  #c4b5fd;
+  --mx-axis:    #64748b;
+}
+html.theme-amani-eye {
+  --mx-bg:      #050d1f;
+  --mx-card:    rgba(11, 26, 51, 0.85);
+  --mx-sunken:  #0a1630;
+  --mx-border:  rgba(56, 189, 248, 0.22);
+  --mx-glow:    0 0 24px -8px rgba(56, 189, 248, 0.4);
+  --mx-title:   #ffffff;
+  --mx-text:    #dbe7f7;
+  --mx-muted:   #8fa3c4;
+  --mx-accent:  #bae6fd;
+  --mx-tab-on:  rgba(245, 158, 11, 0.1);
+  --mx-tab-on-bd: rgba(251, 191, 36, 0.7);
+  --mx-tab-on-tx: #fde68a;
+  --mx-ok:      #6ee7b7;
+  --mx-warn:    #fcd34d;
+  --mx-bad:     #fca5a5;
+  --mx-info:    #7dd3fc;
+  --mx-violet:  #c4b5fd;
+  --mx-axis:    #64748b;
+}

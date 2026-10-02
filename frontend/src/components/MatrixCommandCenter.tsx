@@ -16,7 +16,7 @@ import { GROUP_LABEL, eyeColor, type EyeGroup, type EyeMood } from './matrixEyeC
 type GroupRep = { group: string; employees: MatrixWatch[]; red: number; alert: number }
 type Focus = 'late' | 'perf' | 'profit'
 
-const card = 'rounded-2xl border border-sky-500/20 bg-[#0b1a33]/80 shadow-[0_0_24px_-8px_rgba(56,189,248,0.35)]'
+const card = 'rounded-2xl border border-[var(--mx-border)] bg-[var(--mx-card)] shadow-[var(--mx-glow)]'
 const fmtIQD = (n: number) => `${Math.round(n).toLocaleString('en-US')} د.ع`
 
 function groupMood(g: GroupRep): EyeMood {
@@ -35,10 +35,10 @@ function since(at: string) {
 // مؤشر الأداء للعرض بس — مو نقاط ولا تقييم رسمي.
 function perfIndex(score: number) { return Math.max(0, 100 - score * 3) }
 function perfStatus(i: number) {
-  if (i >= 90) return { t: 'ممتاز', c: 'bg-emerald-500/15 text-emerald-300' }
-  if (i >= 75) return { t: 'جيد', c: 'bg-sky-500/15 text-sky-300' }
-  if (i >= 60) return { t: 'يحتاج متابعة', c: 'bg-amber-500/15 text-amber-300' }
-  return { t: 'يحتاج دعم', c: 'bg-red-500/15 text-red-300' }
+  if (i >= 90) return { t: 'ممتاز', c: 'bg-emerald-500/15 text-[var(--mx-ok)]' }
+  if (i >= 75) return { t: 'جيد', c: 'bg-sky-500/15 text-[var(--mx-info)]' }
+  if (i >= 60) return { t: 'يحتاج متابعة', c: 'bg-amber-500/15 text-[var(--mx-warn)]' }
+  return { t: 'يحتاج دعم', c: 'bg-red-500/15 text-[var(--mx-bad)]' }
 }
 function confidence(samples: number) { return samples >= 20 ? 87 : samples >= 8 ? 72 : 50 }
 
@@ -73,7 +73,7 @@ export default function MatrixCommandCenter() {
   }, [loadAll])
 
   if (err) return <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>
-  if (!groups) return <p className="text-slate-400">ماتركس يجمع البيانات…</p>
+  if (!groups) return <p className="text-[var(--mx-muted)]">ماتركس يجمع البيانات…</p>
 
   const active = groups.filter((g) => g.employees.length > 0)
   const people = active.reduce((n, g) => n + g.employees.length, 0)
@@ -84,30 +84,30 @@ export default function MatrixCommandCenter() {
   const worst: EyeMood = red > 0 ? 'ANGRY' : attention > 0 ? 'ALERT' : 'PLEASED'
 
   return (
-    <div dir="rtl" className="space-y-4 rounded-3xl bg-[#050d1f] p-3 text-slate-100 sm:p-5">
+    <div dir="rtl" className="space-y-4 rounded-3xl bg-[var(--mx-bg)] p-3 text-[var(--mx-text)] sm:p-5">
       {/* ── الرأس ── */}
       <div className="grid items-center gap-4 lg:grid-cols-[1fr_auto]">
         <div className="flex flex-wrap items-center gap-4">
           <div className="shrink-0 drop-shadow-[0_0_30px_rgba(56,189,248,0.6)]"><MatrixEyeGraphic group="IT" mood={worst === 'PLEASED' ? 'CALM' : worst} width={190} /></div>
           <div>
-            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-0.5 text-[11px] text-emerald-300">
+            <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-0.5 text-[11px] text-[var(--mx-ok)]">
               <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-400" /> الذكاء التحليلي النشط الآن
             </span>
-            <h2 className="text-3xl font-black text-white sm:text-4xl">مركز قيادة <span className="bg-gradient-to-l from-sky-300 to-blue-500 bg-clip-text text-transparent">ماتركس</span></h2>
-            <p className="mt-1 text-sm text-slate-400">يراقب الأداء والموظفين والحجوزات والأرباح لحظياً</p>
+            <h2 className="text-3xl font-black text-[var(--mx-title)] sm:text-4xl">مركز قيادة <span className="bg-gradient-to-l from-sky-500 to-blue-600 bg-clip-text text-transparent">ماتركس</span></h2>
+            <p className="mt-1 text-sm text-[var(--mx-muted)]">يراقب الأداء والموظفين والحجوزات والأرباح لحظياً</p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Kpi value={`${stability}%`} label="استقرار النظام" tone="text-emerald-300" icon="〰️" />
-          <Kpi value={attention} label="حالات تحتاج انتباه" tone="text-red-300" icon="⚠️" />
-          <Kpi value={people} label="موظف تحت المراقبة" tone="text-sky-200" icon="👥" />
-          <Kpi value={tasks} label="مهمة اليوم" tone="text-sky-200" icon="📦" />
+          <Kpi value={`${stability}%`} label="استقرار النظام" tone="text-[var(--mx-ok)]" icon="〰️" />
+          <Kpi value={attention} label="حالات تحتاج انتباه" tone="text-[var(--mx-bad)]" icon="⚠️" />
+          <Kpi value={people} label="موظف تحت المراقبة" tone="text-[var(--mx-accent)]" icon="👥" />
+          <Kpi value={tasks} label="مهمة اليوم" tone="text-[var(--mx-accent)]" icon="📦" />
         </div>
       </div>
 
       {/* ── يركّز الآن على ── */}
       <div className={`${card} p-3`}>
-        <p className="mb-2 text-sm font-extrabold text-sky-200">🎯 ماتركس يركّز الآن على</p>
+        <p className="mb-2 text-sm font-extrabold text-[var(--mx-accent)]">🎯 ماتركس يركّز الآن على</p>
         <div className="grid gap-2 sm:grid-cols-3">
           <FocusTab on={focus === 'late'} onClick={() => setFocus('late')} icon="📅" title="الحجوزات المتأخرة" sub="رصد وتنبؤ بالأسباب" />
           <FocusTab on={focus === 'perf'} onClick={() => setFocus('perf')} icon="👥" title="أداء الموظفين" sub="متابعة الإنتاجية والالتزام" />
@@ -123,7 +123,7 @@ export default function MatrixCommandCenter() {
 
       {/* ── عيون ماتركس ── */}
       <div className={`${card} p-3`}>
-        <p className="mb-3 text-sm font-extrabold text-sky-200">👁️ عيون ماتركس <span className="text-[11px] font-normal text-slate-400">كل عين تراقب مجموعة من الموظفين — اضغطها لتقريرها</span></p>
+        <p className="mb-3 text-sm font-extrabold text-[var(--mx-accent)]">👁️ عيون ماتركس <span className="text-[11px] font-normal text-[var(--mx-muted)]">كل عين تراقب مجموعة من الموظفين — اضغطها لتقريرها</span></p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5 xl:grid-cols-9">
           {active.map((g) => {
             const grp = g.group as EyeGroup
@@ -132,12 +132,12 @@ export default function MatrixCommandCenter() {
             const bad = g.red > 0
             return (
               <button key={g.group} type="button" onClick={() => setSel(sel === g.group ? null : g.group)}
-                className="flex flex-col items-center gap-1 rounded-xl border bg-[#0a1630] p-2 text-center transition"
+                className="flex flex-col items-center gap-1 rounded-xl border bg-[var(--mx-sunken)] p-2 text-center transition"
                 style={{ borderColor: `color-mix(in srgb, ${color} ${sel === g.group ? 90 : 35}%, transparent)` }}>
                 <MatrixEyeGraphic group={grp} mood={mood} width={70} />
-                <span className="text-[12px] font-bold" style={{ color }}>عن {GROUP_LABEL[grp] ?? g.group}</span>
-                <span className="text-[11px] text-slate-400">{g.employees.length} موظف</span>
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${bad ? 'bg-red-500/15 text-red-300' : g.alert ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300'}`}>
+                <span className="text-[12px] font-bold" style={{ color: `color-mix(in srgb, ${color} 72%, var(--mx-title))` }}>عن {GROUP_LABEL[grp] ?? g.group}</span>
+                <span className="text-[11px] text-[var(--mx-muted)]">{g.employees.length} موظف</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${bad ? 'bg-red-500/15 text-[var(--mx-bad)]' : g.alert ? 'bg-amber-500/15 text-[var(--mx-warn)]' : 'bg-emerald-500/15 text-[var(--mx-ok)]'}`}>
                   ● {bad ? 'تحتاج انتباه' : g.alert ? 'منتبهة' : 'مستقر'}
                 </span>
               </button>
@@ -145,7 +145,7 @@ export default function MatrixCommandCenter() {
           })}
         </div>
       </div>
-      {sel && <div className="text-slate-900"><GroupPerf key={sel} group={sel} /></div>}
+      {sel && <div><GroupPerf key={sel} group={sel} /></div>}
 
       {/* ── الصف الأخير ── */}
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">
@@ -155,7 +155,7 @@ export default function MatrixCommandCenter() {
         <AskMatrix />
       </div>
 
-      <details className="rounded-2xl bg-white text-slate-900">
+      <details className="rounded-2xl border border-[var(--mx-border)] bg-[var(--mx-card)] text-[var(--mx-text)]">
         <summary className="cursor-pointer p-3 text-sm font-bold">💼 تفاصيل الأعمال والزبائن</summary>
         <div className="p-3 pt-0"><MatrixBusiness /></div>
       </details>
@@ -167,7 +167,7 @@ function Kpi({ value, label, tone, icon }: { value: string | number; label: stri
   return (
     <div className={`${card} min-w-[120px] p-3`}>
       <div className="flex items-start justify-between"><b className={`text-2xl ${tone}`}>{value}</b><span>{icon}</span></div>
-      <p className="mt-1 text-[11px] text-slate-400">{label}</p>
+      <p className="mt-1 text-[11px] text-[var(--mx-muted)]">{label}</p>
     </div>
   )
 }
@@ -175,8 +175,8 @@ function Kpi({ value, label, tone, icon }: { value: string | number; label: stri
 function FocusTab({ on, onClick, icon, title, sub }: { on: boolean; onClick: () => void; icon: string; title: string; sub: string }) {
   return (
     <button type="button" onClick={onClick}
-      className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-right transition ${on ? 'border-amber-400/70 bg-amber-500/10' : 'border-sky-500/20 bg-[#0a1630] hover:border-sky-400/50'}`}>
-      <span><b className={`block text-sm ${on ? 'text-amber-200' : 'text-slate-100'}`}>{title}</b><span className="text-[11px] text-slate-400">{sub}</span></span>
+      className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-right transition ${on ? 'border-[var(--mx-tab-on-bd)] bg-[var(--mx-tab-on)]' : 'border-[var(--mx-border)] bg-[var(--mx-sunken)] hover:border-[var(--mx-accent)]'}`}>
+      <span><b className={`block text-sm ${on ? 'text-[var(--mx-tab-on-tx)]' : 'text-[var(--mx-title)]'}`}>{title}</b><span className="text-[11px] text-[var(--mx-muted)]">{sub}</span></span>
       <span className="text-xl">{icon}</span>
     </button>
   )
@@ -232,18 +232,18 @@ function Discovery({ focus, late, perf, biz, proposal, onDone }: {
     try { await api.approveMatrixProposal(proposal.id); onDone() } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر التنفيذ') } finally { setBusy(false) }
   }
 
-  const sev = view?.severity === 'HIGH' ? ['أهمية عالية', 'border-red-400/40 text-red-300'] : view?.severity === 'MEDIUM' ? ['أهمية متوسطة', 'border-amber-400/40 text-amber-300'] : ['أهمية منخفضة', 'border-emerald-400/40 text-emerald-300']
+  const sev = view?.severity === 'HIGH' ? ['أهمية عالية', 'border-red-400/40 text-[var(--mx-bad)]'] : view?.severity === 'MEDIUM' ? ['أهمية متوسطة', 'border-amber-400/40 text-[var(--mx-warn)]'] : ['أهمية منخفضة', 'border-emerald-400/40 text-[var(--mx-ok)]']
   return (
     <section className={`${card} p-4`}>
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-extrabold text-sky-200">✨ ماتركس اكتشف</h3>
+        <h3 className="text-lg font-extrabold text-[var(--mx-accent)]">✨ ماتركس اكتشف</h3>
         {view && <span className={`rounded-full border px-2.5 py-0.5 text-[11px] ${sev[1]}`}>{sev[0]}</span>}
       </div>
-      {!view ? <p className="text-sm text-slate-400">ماتركس يحلّل…</p> : (
+      {!view ? <p className="text-sm text-[var(--mx-muted)]">ماتركس يحلّل…</p> : (
         <>
-          <div className="rounded-xl border border-sky-500/15 bg-[#0a1630] p-3">
-            <b className="block text-base text-white">{view.title}</b>
-            <p className="mt-1 text-sm text-slate-400">{view.sub}</p>
+          <div className="rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-3">
+            <b className="block text-base text-[var(--mx-title)]">{view.title}</b>
+            <p className="mt-1 text-sm text-[var(--mx-muted)]">{view.sub}</p>
           </div>
           <div className="mt-3 grid gap-2 md:grid-cols-3">
             <Box title="🔗 السبب المحتمل" text={view.cause} />
@@ -255,35 +255,35 @@ function Discovery({ focus, late, perf, biz, proposal, onDone }: {
               <button disabled={busy} onClick={approve} className="rounded-xl bg-gradient-to-l from-blue-500 to-blue-700 py-2.5 font-extrabold text-white shadow-[0_0_20px_rgba(59,130,246,0.5)] disabled:opacity-50">🚀 تنفيذ</button>
             ) : view.link ? (
               <Link to={view.link} className="rounded-xl bg-gradient-to-l from-blue-500 to-blue-700 py-2.5 text-center font-extrabold text-white">ودّيني ←</Link>
-            ) : <span className="rounded-xl bg-slate-700/40 py-2.5 text-center text-sm text-slate-400">ماكو شي يحتاج قرار</span>}
-            <button onClick={() => setModal('sim')} disabled={!proposal} className="rounded-xl border border-sky-500/30 py-2.5 font-bold text-sky-100 disabled:opacity-40">📊 محاكاة</button>
-            <button onClick={() => setModal('evidence')} className="rounded-xl border border-sky-500/30 py-2.5 font-bold text-sky-100">📄 عرض الأدلة</button>
+            ) : <span className="rounded-xl bg-[var(--mx-sunken)] py-2.5 text-center text-sm text-[var(--mx-muted)]">ماكو شي يحتاج قرار</span>}
+            <button onClick={() => setModal('sim')} disabled={!proposal} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)] disabled:opacity-40">📊 محاكاة</button>
+            <button onClick={() => setModal('evidence')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">📄 عرض الأدلة</button>
           </div>
         </>
       )}
       {modal && view && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setModal(null)}>
-          <div className="w-full max-w-lg rounded-2xl bg-[#0b1a33] p-5 text-slate-100" dir="rtl" onClick={(e) => e.stopPropagation()}>
+          <div className="w-full max-w-lg rounded-2xl bg-[var(--mx-card)] p-5 text-[var(--mx-text)]" dir="rtl" onClick={(e) => e.stopPropagation()}>
             {modal === 'evidence' ? (
               <>
                 <h4 className="mb-3 font-extrabold">📄 الأدلة (أرقام من النظام)</h4>
-                <dl className="space-y-1 text-sm">{Object.entries(view.evidence).map(([k, v]) => <div key={k} className="flex justify-between gap-3 border-b border-white/5 py-1"><dt className="text-slate-400">{k}</dt><dd className="font-bold">{String(v)}</dd></div>)}</dl>
-                {proposal?.evidence && <pre className="mt-3 max-h-40 overflow-auto rounded bg-black/30 p-2 text-[11px]" dir="ltr">{JSON.stringify(proposal.evidence, null, 1)}</pre>}
-                {view.link && <Link to={view.link} className="mt-3 inline-block text-sm font-bold text-sky-300">ودّيني للمشكلة ←</Link>}
+                <dl className="space-y-1 text-sm">{Object.entries(view.evidence).map(([k, v]) => <div key={k} className="flex justify-between gap-3 border-b border-[var(--mx-border)] py-1"><dt className="text-[var(--mx-muted)]">{k}</dt><dd className="font-bold">{String(v)}</dd></div>)}</dl>
+                {proposal?.evidence && <pre className="mt-3 max-h-40 overflow-auto rounded bg-[var(--mx-sunken)] p-2 text-[11px]" dir="ltr">{JSON.stringify(proposal.evidence, null, 1)}</pre>}
+                {view.link && <Link to={view.link} className="mt-3 inline-block text-sm font-bold text-[var(--mx-info)]">ودّيني للمشكلة ←</Link>}
               </>
             ) : proposal && (
               <>
                 <h4 className="mb-2 font-extrabold">📊 محاكاة — شنو راح يصير لو وافقت</h4>
-                <p className="mb-2 text-sm text-slate-300">{proposal.title}</p>
-                <div className="rounded-lg bg-black/30 p-3 text-sm">
+                <p className="mb-2 text-sm text-[var(--mx-text)]">{proposal.title}</p>
+                <div className="rounded-lg bg-[var(--mx-sunken)] p-3 text-sm">
                   {proposal.kind === 'PREDICTION' && <>ترسل هالرسالة للموظف (بس هو يشوفها):<br /><b>{String(proposal.payload?.message ?? '')}</b></>}
                   {proposal.kind === 'GUIDE_RULE' && <>تنضاف تعليمة لماتركس على شاشة <b dir="ltr">{String(proposal.payload?.route ?? '')}</b>:<br /><b>{String(proposal.payload?.text ?? '')}</b></>}
                   {proposal.kind === 'RULE_TUNE' && <>{proposal.payload?.enabled ? 'تتفعّل' : 'تتعطّل'} تعليمة موجودة.</>}
                 </div>
-                <p className="mt-2 text-[11px] text-slate-400">ماكو غرامات ولا نقاط — والمحاكاة ما غيّرت ولا شي.</p>
+                <p className="mt-2 text-[11px] text-[var(--mx-muted)]">ماكو غرامات ولا نقاط — والمحاكاة ما غيّرت ولا شي.</p>
               </>
             )}
-            <button onClick={() => setModal(null)} className="mt-4 rounded-lg border border-white/20 px-4 py-1.5 text-sm">سكّر</button>
+            <button onClick={() => setModal(null)} className="mt-4 rounded-lg border border-[var(--mx-border)] px-4 py-1.5 text-sm">سكّر</button>
           </div>
         </div>
       )}
@@ -293,36 +293,36 @@ function Discovery({ focus, late, perf, biz, proposal, onDone }: {
 
 function Box({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-xl border border-sky-500/15 bg-[#0a1630] p-3">
-      <b className="text-sm text-sky-300">{title}</b>
-      <p className="mt-1 text-[13px] leading-6 text-slate-300">{text}</p>
+    <div className="rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-3">
+      <b className="text-sm text-[var(--mx-info)]">{title}</b>
+      <p className="mt-1 text-[13px] leading-6 text-[var(--mx-text)]">{text}</p>
     </div>
   )
 }
 
 // ── البث المباشر ──
 const FEED_ICON: Record<MatrixFeedItem['kind'], [string, string, string]> = {
-  BOOKING: ['📅', 'text-sky-300', '/bookings'],
-  INVOICE: ['💵', 'text-emerald-300', '/leader-invoices'],
-  ACTION: ['🤖', 'text-violet-300', '/?board=matrix'],
-  ESCALATED: ['⚠️', 'text-red-300', '/?board=matrix'],
-  PROPOSAL: ['💡', 'text-amber-300', '/matrix/decisions'],
+  BOOKING: ['📅', 'text-[var(--mx-info)]', '/bookings'],
+  INVOICE: ['💵', 'text-[var(--mx-ok)]', '/leader-invoices'],
+  ACTION: ['🤖', 'text-[var(--mx-violet)]', '/?board=matrix'],
+  ESCALATED: ['⚠️', 'text-[var(--mx-bad)]', '/?board=matrix'],
+  PROPOSAL: ['💡', 'text-[var(--mx-warn)]', '/matrix/decisions'],
 }
 function Feed({ items }: { items: MatrixFeedItem[] }) {
   return (
     <section className={`${card} p-4`}>
-      <h3 className="text-lg font-extrabold text-sky-200">📡 البث المباشر لماتركس</h3>
-      <p className="mb-3 text-[11px] text-slate-400">مراقبة لحظية لأهم الأحداث في النظام</p>
-      {items.length === 0 ? <p className="text-sm text-slate-400">ماكو أحداث بآخر ٣ أيام.</p> : (
+      <h3 className="text-lg font-extrabold text-[var(--mx-accent)]">📡 البث المباشر لماتركس</h3>
+      <p className="mb-3 text-[11px] text-[var(--mx-muted)]">مراقبة لحظية لأهم الأحداث في النظام</p>
+      {items.length === 0 ? <p className="text-sm text-[var(--mx-muted)]">ماكو أحداث بآخر ٣ أيام.</p> : (
         <ul className="max-h-[330px] space-y-2 overflow-y-auto">
           {items.map((it, i) => {
             const [icon, cls, to] = FEED_ICON[it.kind]
             return (
               <li key={i}>
-                <Link to={to} className="flex items-center gap-3 rounded-xl border border-sky-500/10 bg-[#0a1630] p-2.5 hover:border-sky-400/40">
+                <Link to={to} className="flex items-center gap-3 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-2.5 hover:border-[var(--mx-accent)]">
                   <span className={`text-xl ${cls}`}>{icon}</span>
-                  <span className="min-w-0 flex-1"><b className="block truncate text-[13px] text-white">{it.title}</b><span className="block truncate text-[11px] text-slate-400">{it.sub} · {since(it.at)}</span></span>
-                  <span className="text-slate-500">‹</span>
+                  <span className="min-w-0 flex-1"><b className="block truncate text-[13px] text-[var(--mx-title)]">{it.title}</b><span className="block truncate text-[11px] text-[var(--mx-muted)]">{it.sub} · {since(it.at)}</span></span>
+                  <span className="text-[var(--mx-muted)]">‹</span>
                 </Link>
               </li>
             )
@@ -343,13 +343,13 @@ function TrendChart({ days }: { days: MatrixTrendDay[] }) {
   const onTime = days.map((d) => (d.scheduled ? (d.onTime / d.scheduled) * 100 : 0))
   return (
     <section className={`${card} p-4`}>
-      <h3 className="text-sm font-extrabold text-sky-200">📈 أداء الشركة (آخر ٣٠ يوم)</h3>
-      <div className="mt-1 flex gap-3 text-[10px] text-slate-400">
+      <h3 className="text-sm font-extrabold text-[var(--mx-accent)]">📈 أداء الشركة (آخر ٣٠ يوم)</h3>
+      <div className="mt-1 flex gap-3 text-[10px] text-[var(--mx-muted)]">
         <span><i className="inline-block h-2 w-2 rounded-full bg-sky-400" /> الحجوزات المنجزة</span>
         <span><i className="inline-block h-2 w-2 rounded-full bg-emerald-400" /> الأرباح</span>
         <span><i className="inline-block h-2 w-2 rounded-full bg-violet-400" /> الالتزام بالموعد</span>
       </div>
-      {days.length === 0 ? <p className="mt-6 text-sm text-slate-400">ماكو بيانات.</p> : (
+      {days.length === 0 ? <p className="mt-6 text-sm text-[var(--mx-muted)]">ماكو بيانات.</p> : (
         <svg viewBox={`0 0 ${W} ${H}`} className="mt-2 w-full">
           {days.map((d, i) => {
             const h = (d.completed / maxC) * (H - P * 2)
@@ -358,7 +358,7 @@ function TrendChart({ days }: { days: MatrixTrendDay[] }) {
           <defs><linearGradient id="cbar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#38bdf8" /><stop offset="1" stopColor="#1d4ed8" /></linearGradient></defs>
           <path d={line(days.map((d) => d.revenue), maxR)} fill="none" stroke="#34d399" strokeWidth="1.6" />
           <path d={line(onTime, 100)} fill="none" stroke="#a78bfa" strokeWidth="1.4" strokeDasharray="3 2" />
-          {days.map((d, i) => i % 5 === 0 && <text key={d.day} x={x(i)} y={H - 6} fontSize="8" fill="#64748b" textAnchor="middle">{d.day}</text>)}
+          {days.map((d, i) => i % 5 === 0 && <text key={d.day} x={x(i)} y={H - 6} fontSize="8" fill="var(--mx-axis)" textAnchor="middle">{d.day}</text>)}
         </svg>
       )}
     </section>
@@ -370,18 +370,18 @@ function WatchList({ perf }: { perf: GroupPerformance[] }) {
   const rows = perf.flatMap((g) => g.members.map((m) => ({ ...m, group: g.group }))).sort((a, b) => b.score - a.score).slice(0, 6)
   return (
     <section className={`${card} p-4`}>
-      <h3 className="mb-2 text-sm font-extrabold text-sky-200">👥 قائمة مراقبة الموظفين</h3>
-      {rows.length === 0 ? <p className="text-sm text-slate-400">ماتركس يحسب…</p> : (
+      <h3 className="mb-2 text-sm font-extrabold text-[var(--mx-accent)]">👥 قائمة مراقبة الموظفين</h3>
+      {rows.length === 0 ? <p className="text-sm text-[var(--mx-muted)]">ماتركس يحسب…</p> : (
         <table className="w-full text-[12px]">
-          <thead className="text-slate-400"><tr><th className="pb-1 text-right">الموظف</th><th className="text-right">القسم</th><th>مؤشر الأداء</th><th>الحالة</th></tr></thead>
+          <thead className="text-[var(--mx-muted)]"><tr><th className="pb-1 text-right">الموظف</th><th className="text-right">القسم</th><th>مؤشر الأداء</th><th>الحالة</th></tr></thead>
           <tbody>
             {rows.map((m) => {
               const idx = perfIndex(m.score)
               const st = perfStatus(idx)
               return (
-                <tr key={m.id} className="border-t border-white/5">
-                  <td className="py-1.5"><Link to={`/matrix/employee/${m.id}`} className="font-bold text-white hover:text-sky-300">{m.name}</Link></td>
-                  <td className="text-slate-400">{GROUP_LABEL[m.group as EyeGroup] ?? m.group}</td>
+                <tr key={m.id} className="border-t border-[var(--mx-border)]">
+                  <td className="py-1.5"><Link to={`/matrix/employee/${m.id}`} className="font-bold text-[var(--mx-title)] hover:text-[var(--mx-accent)]">{m.name}</Link></td>
+                  <td className="text-[var(--mx-muted)]">{GROUP_LABEL[m.group as EyeGroup] ?? m.group}</td>
                   <td className="text-center font-bold">{idx}%</td>
                   <td className="text-center"><span className={`rounded-full px-2 py-0.5 text-[10px] ${st.c}`}>● {st.t}</span></td>
                 </tr>
@@ -390,7 +390,7 @@ function WatchList({ perf }: { perf: GroupPerformance[] }) {
           </tbody>
         </table>
       )}
-      <p className="mt-2 text-[10px] text-slate-500">المؤشر للمتابعة بس — مو نقاط ولا تقييم.</p>
+      <p className="mt-2 text-[10px] text-[var(--mx-muted)]">المؤشر للمتابعة بس — مو نقاط ولا تقييم.</p>
     </section>
   )
 }
@@ -409,16 +409,16 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
   if (pred) items.push({ text: `${pred} توقّع ينتظر قرارك (موظفين ما يلحگون شغل اليوم)`, change: null, conf: 72 })
   return (
     <section className={`${card} p-4`}>
-      <h3 className="text-sm font-extrabold text-sky-200">📉 توقعات ماتركس</h3>
-      <p className="mb-2 text-[11px] text-slate-400">توقعات مبنية على تحليل البيانات الحالية</p>
+      <h3 className="text-sm font-extrabold text-[var(--mx-accent)]">📉 توقعات ماتركس</h3>
+      <p className="mb-2 text-[11px] text-[var(--mx-muted)]">توقعات مبنية على تحليل البيانات الحالية</p>
       <ul className="space-y-2">
         {items.map((it, i) => (
-          <li key={i} className="flex items-center gap-2 rounded-xl border border-sky-500/10 bg-[#0a1630] p-2">
-            <span className={`min-w-[60px] rounded-lg px-2 py-1 text-center text-xs font-bold ${it.change == null ? 'bg-slate-600/30 text-slate-300' : it.change >= 0 ? 'bg-emerald-500/15 text-emerald-300' : 'bg-red-500/15 text-red-300'}`}>
+          <li key={i} className="flex items-center gap-2 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-2">
+            <span className={`min-w-[60px] rounded-lg px-2 py-1 text-center text-xs font-bold ${it.change == null ? 'bg-slate-600/30 text-[var(--mx-text)]' : it.change >= 0 ? 'bg-emerald-500/15 text-[var(--mx-ok)]' : 'bg-red-500/15 text-[var(--mx-bad)]'}`}>
               {it.change == null ? '—' : `${it.change >= 0 ? '↗ +' : '↘ '}${it.change}%`}
             </span>
-            <span className="flex-1 text-[12px] text-slate-200">{it.text}</span>
-            <span className="rounded-full border border-sky-400/30 px-1.5 py-0.5 text-[10px] text-sky-200" title="الثقة حسب كمية البيانات">{it.conf}%{it.conf <= 50 && ' · بيانات قليلة'}</span>
+            <span className="flex-1 text-[12px] text-[var(--mx-text)]">{it.text}</span>
+            <span className="rounded-full border border-[var(--mx-border)] px-1.5 py-0.5 text-[10px] text-[var(--mx-accent)]" title="الثقة حسب كمية البيانات">{it.conf}%{it.conf <= 50 && ' · بيانات قليلة'}</span>
           </li>
         ))}
       </ul>
@@ -438,22 +438,22 @@ function AskMatrix() {
   }
   return (
     <section className={`${card} flex flex-col p-4`}>
-      <h3 className="text-sm font-extrabold text-sky-200">💬 اسأل ماتركس</h3>
-      <p className="mb-2 text-[11px] text-slate-400">اطرح سؤالك واحصل على تحليل فوري</p>
+      <h3 className="text-sm font-extrabold text-[var(--mx-accent)]">💬 اسأل ماتركس</h3>
+      <p className="mb-2 text-[11px] text-[var(--mx-muted)]">اطرح سؤالك واحصل على تحليل فوري</p>
       <form onSubmit={(e) => { e.preventDefault(); ask(q) }} className="flex gap-2">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="مثال: ما سبب تأخر الحجوزات؟" className="min-w-0 flex-1 rounded-xl border border-sky-500/20 bg-[#0a1630] px-3 py-2 text-sm text-white placeholder:text-slate-500" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="مثال: ما سبب تأخر الحجوزات؟" className="min-w-0 flex-1 rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] px-3 py-2 text-sm text-[var(--mx-title)] placeholder:text-[var(--mx-muted)]" />
         <button disabled={busy} className="rounded-xl bg-blue-600 px-3 text-white disabled:opacity-50">➤</button>
       </form>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {['تحليل الأرباح اليوم', 'أداء الموظفين', 'مقترحات التحسين', 'منو متأخر اليوم؟'].map((s) => (
-          <button key={s} onClick={() => { setQ(s); ask(s) }} className="rounded-full border border-sky-500/20 px-2.5 py-1 text-[11px] text-slate-300 hover:border-sky-400">{s}</button>
+          <button key={s} onClick={() => { setQ(s); ask(s) }} className="rounded-full border border-[var(--mx-border)] px-2.5 py-1 text-[11px] text-[var(--mx-text)] hover:border-[var(--mx-accent)]">{s}</button>
         ))}
       </div>
-      {busy && <p className="mt-3 text-xs text-slate-400">ماتركس يفكّر…</p>}
+      {busy && <p className="mt-3 text-xs text-[var(--mx-muted)]">ماتركس يفكّر…</p>}
       {a && (
-        <div className="mt-3 whitespace-pre-line rounded-xl border border-sky-500/15 bg-[#0a1630] p-3 text-[13px] leading-6 text-slate-200">
+        <div className="mt-3 whitespace-pre-line rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-3 text-[13px] leading-6 text-[var(--mx-text)]">
           {a.answer}
-          {a.source !== 'ERR' && <p className="mt-1 text-[10px] text-slate-500">{a.source === 'MODEL' ? 'تحليل بالنموذج (بلا أسماء)' : 'من أرقام النظام مباشرة'}</p>}
+          {a.source !== 'ERR' && <p className="mt-1 text-[10px] text-[var(--mx-muted)]">{a.source === 'MODEL' ? 'تحليل بالنموذج (بلا أسماء)' : 'من أرقام النظام مباشرة'}</p>}
         </div>
       )}
     </section>
