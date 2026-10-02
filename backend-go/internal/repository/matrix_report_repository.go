@@ -11,7 +11,9 @@ import (
 // MatrixReportRepository مادة تقرير الموظف اليومي وملف سلوكه.
 type MatrixReportRepository struct{ db *sqlx.DB }
 
-func NewMatrixReportRepository(db *sqlx.DB) *MatrixReportRepository { return &MatrixReportRepository{db: db} }
+func NewMatrixReportRepository(db *sqlx.DB) *MatrixReportRepository {
+	return &MatrixReportRepository{db: db}
+}
 
 type ReportEmployee struct {
 	ID            string         `db:"id"`
@@ -172,3 +174,80 @@ func (r *MatrixReportRepository) ResponseMinutes(id string) (avg float64, n int)
 }
 
 var _ = pq.Array
+
+type PerfJob struct {
+	ID       string `db:"id"`
+	Code     string `db:"code"`
+	Service  string `db:"service"`
+	Actual   int    `db:"actual"`
+	Expected int    `db:"expected"`
+}
+
+type PerfStats struct {
+	Total, Completed, Partial, Timed, Outliers int
+	AvgActual, AvgExpected                     float64
+	GroupPartialRate                           float64 // -1 = ما معروف
+	Slow                                       []PerfJob
+}
+
+const perfJobsCTE = `
+	WITH mine AS (
+		SELECT DISTINCT b.id, b.code, b.status::text AS status, b."partialCount", b."serviceId",
+		       COALESCE(s.name, '') AS service,
+		       EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60 AS actual
+		FROM "Booking" b
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		LEFT JOIN "Mission" m ON m."bookingId" = b.id
+		WHERE b."scheduledAt" >= now() - make_interval(days => $2 + 30)
+		  AND b."scheduledAt" <  now() - make_interval(days => $2)
+		  AND b.status::text <> 'CANCELLED'
+		  AND (EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = $1)
+		       OR m."leaderId" = $1 OR $1 = ANY(m."memberIds"))
+	), med AS (
+		SELECT b."serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60) AS expected
+		FROM "Booking" b
+		WHERE b."completedAt" IS NOT NULL AND b."startedAt" IS NOT NULL
+		  AND b."completedAt" > b."startedAt" AND b."completedAt" - b."startedAt" < interval '14 hours'
+		  AND b."completedAt" >= now() - interval '180 days'
+		GROUP BY b."serviceId" HAVING COUNT(*) >= 3
+	)`
+
+// Performance أداء الموظف بنافذة ٣٠ يوم تنتهي قبل offsetDays.
+func (r *MatrixReportRepository) Performance(id string, offsetDays int) (*PerfStats, error) {
+	var agg struct {
+		Total     int             `db:"total"`
+		Completed int             `db:"completed"`
+		Partial   int             `db:"partial"`
+		Timed     int             `db:"timed"`
+		Outliers  int             `db:"outliers"`
+		AvgAct    sql.NullFloat64 `db:"avg_act"`
+		AvgExp    sql.NullFloat64 `db:"avg_exp"`
+	}
+	err := r.db.Get(&agg, perfJobsCTE+`
+		SELECT COUNT(*) AS total,
+		       COUNT(*) FILTER (WHERE status = 'COMPLETED' AND "partialCount" = 0) AS completed,
+		       COUNT(*) FILTER (WHERE "partialCount" > 0) AS partial,
+		       COUNT(*) FILTER (WHERE actual > 0 AND actual < 840 AND med.expected IS NOT NULL) AS timed,
+		       COUNT(*) FILTER (WHERE actual >= 840) AS outliers,
+		       AVG(actual) FILTER (WHERE actual > 0 AND actual < 840 AND med.expected IS NOT NULL) AS avg_act,
+		       AVG(med.expected) FILTER (WHERE actual > 0 AND actual < 840) AS avg_exp
+		FROM mine LEFT JOIN med ON med."serviceId" = mine."serviceId"`, id, offsetDays)
+	if err != nil {
+		return nil, err
+	}
+	st := &PerfStats{Total: agg.Total, Completed: agg.Completed, Partial: agg.Partial, Timed: agg.Timed, Outliers: agg.Outliers,
+		AvgActual: agg.AvgAct.Float64, AvgExpected: agg.AvgExp.Float64, GroupPartialRate: -1, Slow: []PerfJob{}}
+	if offsetDays == 0 {
+		_ = r.db.Select(&st.Slow, perfJobsCTE+`
+			SELECT mine.id, mine.code, mine.service, ROUND(actual)::int AS actual, ROUND(med.expected)::int AS expected
+			FROM mine JOIN med ON med."serviceId" = mine."serviceId"
+			WHERE actual > 0 AND actual < 840 AND actual > med.expected * 1.25
+			ORDER BY actual / NULLIF(med.expected, 0) DESC LIMIT 5`, id, offsetDays)
+		var rate sql.NullFloat64
+		if r.db.Get(&rate, `SELECT AVG(("partialCount" > 0)::int) FROM "Booking"
+			WHERE "scheduledAt" >= now() - interval '30 days' AND status::text <> 'CANCELLED'`) == nil && rate.Valid {
+			st.GroupPartialRate = rate.Float64
+		}
+	}
+	return st, nil
+}

@@ -39,3 +39,18 @@ func (h *MatrixReportHandler) Business(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, v)
 }
+
+// GET /api/ai/group-performance?group= (ADMIN/OWNER)
+func (h *MatrixReportHandler) Group(w http.ResponseWriter, r *http.Request) {
+	g := r.URL.Query().Get("group")
+	if g == "" {
+		WriteError(w, http.StatusBadRequest, "group مطلوب")
+		return
+	}
+	v, err := h.reports.GroupPerformance(g)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حساب أداء المجموعة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, v)
+}

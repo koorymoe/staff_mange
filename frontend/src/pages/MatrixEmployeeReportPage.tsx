@@ -17,11 +17,40 @@ const TONE: Record<ReportLine['tone'], string> = {
 }
 const ICON: Record<ReportLine['tone'], string> = { OK: '✅', WARN: '⚠️', BAD: '🔴', INFO: 'ℹ️' }
 
-function Lines({ lines }: { lines: ReportLine[] }) {
+// كل مشكلة: «ودّيني» + حلول مقترحة، وزر يحوّل الحل تعليمة لماتركس
+// (تنحفظ معطّلة — المدير يفعّلها من تعليمات ماتركس، يعني اقتراح مو قرار).
+function Lines({ lines, group }: { lines: ReportLine[]; group?: string }) {
+  const [saved, setSaved] = useState<Record<string, boolean>>({})
   if (lines.length === 0) return <p className="text-xs text-slate-400">ماكو شي.</p>
+  const toRule = async (fix: string) => {
+    try {
+      await api.createGuideRule({ route: '/', match: '', groups: group ?? '', text: fix, enabled: false, priority: 5, onlyIfPending: false })
+      setSaved((x) => ({ ...x, [fix]: true }))
+    } catch { alert('تعذّر الحفظ') }
+  }
   return (
     <ul className="space-y-1.5">
-      {lines.map((l, i) => <li key={i} className={`rounded-lg border px-3 py-1.5 text-sm ${TONE[l.tone]}`}>{ICON[l.tone]} {l.text}</li>)}
+      {lines.map((l, i) => (
+        <li key={i} className={`rounded-lg border px-3 py-1.5 text-sm ${TONE[l.tone]}`}>
+          <div className="flex items-start justify-between gap-2">
+            <span>{ICON[l.tone]} {l.text}</span>
+            {l.link && <Link to={l.link} className="shrink-0 rounded bg-white/70 px-2 py-0.5 text-[11px] font-bold text-sky-700 hover:bg-white">ودّيني ←</Link>}
+          </div>
+          {l.fixes && l.fixes.length > 0 && (
+            <div className="mt-1.5 space-y-1 border-t border-black/5 pt-1.5">
+              <p className="text-[11px] font-bold opacity-70">💡 حلول مقترحة:</p>
+              {l.fixes.map((f) => (
+                <div key={f} className="flex items-center justify-between gap-2 text-xs">
+                  <span>• {f}</span>
+                  {saved[f]
+                    ? <span className="shrink-0 text-[10px] text-emerald-700">انحفظت معطّلة ✓</span>
+                    : <button onClick={() => toRule(f)} className="shrink-0 rounded border border-current/20 px-1.5 py-0.5 text-[10px] opacity-70 hover:opacity-100">🔁 حوّلها تعليمة</button>}
+                </div>
+              ))}
+            </div>
+          )}
+        </li>
+      ))}
     </ul>
   )
 }
@@ -76,7 +105,7 @@ export default function MatrixEmployeeReportPage() {
           </section>
 
           <div className="grid gap-4 lg:grid-cols-2">
-            <Section title="🕐 الدوام"><Lines lines={rep.attendance} /></Section>
+            <Section title="🕐 الدوام"><Lines lines={rep.attendance} group={rep.group} /></Section>
             <Section title="🌴 الإجازات"><Lines lines={rep.leaves} /></Section>
           </div>
 
@@ -101,8 +130,30 @@ export default function MatrixEmployeeReportPage() {
             )}
           </Section>
 
+          <Section title="📈 الأداء (آخر ٣٠ يوم)">
+            <Lines lines={rep.performance ?? []} group={rep.group} />
+            {rep.slowJobs?.length > 0 && (
+              <div className="mt-3">
+                <p className="mb-1 text-xs font-bold text-slate-600">🐢 أبطأ حجوزاته مقابل المتوقع لنفس الخدمة:</p>
+                <table className="w-full text-xs">
+                  <thead className="text-slate-400"><tr><th className="text-right">الحجز</th><th className="text-right">الخدمة</th><th>أخذ</th><th>المتوقع</th><th>الفرق</th></tr></thead>
+                  <tbody>
+                    {rep.slowJobs.map((j) => (
+                      <tr key={j.bookingId} className="border-t border-slate-100">
+                        <td className="py-1 font-mono">{j.code}</td><td>{j.service}</td>
+                        <td className="text-center">{Math.round(j.actual / 6) / 10} س</td>
+                        <td className="text-center">{Math.round(j.expected / 6) / 10} س</td>
+                        <td className="text-center font-bold text-red-600">×{(j.actual / Math.max(1, j.expected)).toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+
           <div className="grid gap-4 lg:grid-cols-2">
-            <Section title="🧭 شخصيته بالشغل (آخر ٣٠ يوم)"><Lines lines={rep.behavior} /></Section>
+            <Section title="🧭 شخصيته بالشغل (آخر ٣٠ يوم)"><Lines lines={rep.behavior} group={rep.group} /></Section>
             <Section title="🤖 تذكيرات ماتركس"><Lines lines={rep.reminders} /></Section>
           </div>
 

@@ -3761,6 +3761,13 @@ export const api = {
 
   getEmployees: () => request<Employee[]>('/employees'),
   getArchivedEmployees: () => request<Employee[]>('/employees/archived'),
+  getSuspendedEmployees: () => request<{ id: string; name: string; role: Employee['role']; status: string; reason: string; suspendedAt: string | null; suspendedBy: string }[]>('/employees/suspended'),
+  suspendEmployee: (id: string, reason: string) => request<{ ok: boolean }>(`/employees/${encodeURIComponent(id)}/suspend`, { method: 'PUT', body: JSON.stringify({ reason }) }),
+  reactivateEmployee: (id: string) => request<{ ok: boolean }>(`/employees/${encodeURIComponent(id)}/reactivate`, { method: 'PUT' }),
+  updateEmployeeAll: (id: string, data: Record<string, unknown>) => request<Employee>(`/employees/${encodeURIComponent(id)}/all`, { method: 'PUT', body: JSON.stringify(data) }),
+  getWorkSchedule: () => request<WorkScheduleRow[]>('/work-schedule'),
+  setEmployeeSchedule: (id: string, data: { shift?: string; shiftStart?: string; shiftEnd?: string }) =>
+    request<Employee>(`/employees/${encodeURIComponent(id)}/schedule`, { method: 'PUT', body: JSON.stringify(data) }),
   createEmployee: (
     data: Pick<Employee, 'name' | 'certificate' | 'position' | 'phone'> & {
       username?: string
@@ -5354,6 +5361,7 @@ export const api = {
   createGuideRule: (r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>('/ai/guide-rules', { method: 'POST', body: JSON.stringify(r) }),
   updateGuideRule: (id: string, r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>(`/ai/guide-rules/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(r) }),
   deleteGuideRule: (id: string) => request<{ ok: boolean }>(`/ai/guide-rules/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  getGroupPerformance: (group: string) => request<GroupPerformance>(`/ai/group-performance?group=${encodeURIComponent(group)}`),
   getRoleWatch: () => request<{ group: string; employees: MatrixWatch[]; red: number; alert: number }[]>('/ai/role-watch'),
   getMatrixDecisions: (day?: string) =>
     request<MatrixDecisions>(`/ai/decisions${day ? `?day=${encodeURIComponent(day)}` : ''}`),
@@ -5677,7 +5685,7 @@ export interface MatrixProposal {
 }
 
 // تقرير ماتركس المفصّل عن موظف.
-export interface ReportLine { text: string; tone: 'OK' | 'WARN' | 'BAD' | 'INFO' }
+export interface ReportLine { text: string; tone: 'OK' | 'WARN' | 'BAD' | 'INFO'; link?: string; fixes?: string[] }
 export interface EmployeeReport {
   employeeId: string
   name: string
@@ -5688,6 +5696,8 @@ export interface EmployeeReport {
   leaves: ReportLine[]
   behavior: ReportLine[]
   reminders: ReportLine[]
+  performance: ReportLine[]
+  slowJobs: { bookingId: string; code: string; service: string; actual: number; expected: number }[]
   summary: string
   summaryBy: 'RULES' | 'MODEL'
   workload: MatrixWorkload[] | null
@@ -5698,4 +5708,23 @@ export interface MatrixBusiness {
   forecast: { expected: number; expectedJobs: number; basis: string; insufficient: boolean }
   customers: { actual: number; inquiry: number; repeat: number; openOnly: number }
   inquirers: { id: string; name: string; archived: number; lastAt: string }[]
+}
+
+// جدول الدوام — كل موظف فعّال وحضوره اليوم.
+export interface WorkScheduleRow {
+  id: string
+  name: string
+  role: Employee['role']
+  isLeader: boolean
+  shift: string
+  shiftStart: string
+  shiftEnd: string
+  checkIn: string | null
+  checkOut: string | null
+}
+
+export interface GroupPerformance {
+  group: string
+  members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; jobs: number; completed: number; partial: number; open: number; speed: number | null; prevSpeed: number | null; score: number }[]
+  problems: { text: string; link?: string; fixes: string[] }[]
 }

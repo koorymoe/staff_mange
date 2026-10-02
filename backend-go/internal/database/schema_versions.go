@@ -371,6 +371,8 @@ func versionedMigrations() []Migration {
 	result = append(result, aiActionMigrations()...)
 	// 0300: تعليمات ماتركس — التوجيه ويا كل إجراء، يعدّلها المدير.
 	result = append(result, matrixGuideMigrations()...)
+	// 0302: إيقاف حساب موظف ترك الشركة — سبب ومنو ومتى، بلا حذف.
+	result = append(result, employeeSuspendMigrations()...)
 	return result
 }
 

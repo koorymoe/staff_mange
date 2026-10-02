@@ -18,7 +18,10 @@ function calcHours(start: string, end: string): number | null {
 
 const steps = ['الشعبة', 'الاسم', 'الشهادة والمنصب', 'الراتب', 'الدوام', 'الدور الوظيفي', 'بيانات الدخول', 'الصلاحيات'] as const
 
-export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+// limited: صاحب صلاحية «إضافة موظف» (مو المالك) — بلا دور مدير، وبلا خطوة
+// الصلاحيات (مسارها للمدير بس، والضغط عليها ينحسب مخالفة).
+export default function AddEmployeeWizard({ onClose, onCreated, limited = false }: { onClose: () => void; onCreated: () => void; limited?: boolean }) {
+  const roleChoices = limited ? creatableRoles.filter((r) => r !== 'ADMIN') : creatableRoles
   const [step, setStep] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -86,6 +89,12 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
         password,
       })
       setCreatedEmployee(created)
+      if (limited) {
+        // بلا خطوة صلاحيات: الحساب انفتح بصلاحيات دوره الافتراضية.
+        onCreated()
+        onClose()
+        return
+      }
       const perms = await api.getPermissions()
       setAllPermissions(perms)
       // نعرض تلقائياً الصلاحيات الافتراضية كبداية مقترحة، والمدير يعدّلها.
@@ -241,7 +250,7 @@ export default function AddEmployeeWizard({ onClose, onCreated }: { onClose: () 
                 <>
                   <label className="text-xs font-bold text-slate-500">الدور الوظيفي بالنظام</label>
                   <div className="grid grid-cols-2 gap-2">
-                    {creatableRoles.map(key => {
+                    {roleChoices.map(key => {
                       const label = ROLE_LABELS[key]
                       return (
                         <button key={key} type="button" onClick={() => setRole(key)}

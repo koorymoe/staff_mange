@@ -12,6 +12,7 @@ import TrainingPage from './pages/TrainingPage'
 // stay eager since they render on every route.
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Employees = lazy(() => import('./pages/Employees'))
+const WorkSchedulePage = lazy(() => import('./pages/WorkSchedulePage'))
 const Customers = lazy(() => import('./pages/Customers'))
 const Services = lazy(() => import('./pages/Services'))
 const SalesBooking = lazy(() => import('./pages/SalesBooking'))
@@ -160,6 +161,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Dashboard />} />
           <Route path="employees" element={<Employees />} />
+          <Route path="work-schedule" element={<WorkSchedulePage />} />
           <Route path="customers" element={<Customers />} />
           <Route path="services" element={<Services />} />
           <Route path="sales" element={<SalesBooking />} />

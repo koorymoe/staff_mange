@@ -55,6 +55,7 @@ type MatrixLearningService struct {
 	watch   *MatrixAutopilotService
 	client  *anthropic.Client
 	model   string
+	reports *MatrixEmployeeReportService
 }
 
 func NewMatrixLearningService(props *repository.MatrixProposalRepository, rules *repository.MatrixGuideRepository,
@@ -88,6 +89,14 @@ func (s *MatrixLearningService) RunIfDue() error {
 			if n > 0 {
 				_ = s.notif.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "", "AI_DECISIONS",
 					fmt.Sprintf("🤖 ماتركس — توقّعت %d موظف ما راح يخلّصون شغل اليوم بوتيرتهم. القرار إلك بصندوق القرارات.", n))
+			}
+		}
+	}
+	if now.Hour() >= declineHour && now.Weekday() != time.Friday {
+		if ok, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_DECLINE", now.Format("2006-01-02")); err == nil && ok {
+			if n := s.detectDeclines(); n > 0 {
+				_ = s.notif.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "", "AI_DECISIONS",
+					fmt.Sprintf("🤖 ماتركس — %d موظف نزلت سرعتهم بالحجوزات هالشهر. التفاصيل بصندوق القرارات.", n))
 			}
 		}
 	}

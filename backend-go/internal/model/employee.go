@@ -36,6 +36,11 @@ type Employee struct {
 	LockedAt          *time.Time `db:"lockedAt" json:"lockedAt"`
 	LockedReason      *string    `db:"lockedReason" json:"lockedReason"`
 	LockedDetail      *string    `db:"lockedDetail" json:"lockedDetail"`
+	// إيقاف الحساب (ترك الشركة) — ترحيل 0302. ⚠️ لازم تبقى هنا وإلا SELECT * يفشل
+	// وكل تسجيل دخول ينرفض.
+	SuspendedReason *string    `db:"suspendedReason" json:"suspendedReason,omitempty"`
+	SuspendedAt     *time.Time `db:"suspendedAt" json:"suspendedAt,omitempty"`
+	SuspendedByID   *string    `db:"suspendedById" json:"-"`
 	// أي توكن صدر قبل هذي اللحظة يُرفض (تغيير كلمة سر / حظر / إنهاء جلسات)
 	SessionsInvalidatedAt *time.Time `db:"sessionsInvalidatedAt" json:"-"`
 	Role                  string     `db:"role" json:"role"`

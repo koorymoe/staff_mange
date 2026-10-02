@@ -26,8 +26,18 @@ import (
 const lateGraceMin = 10
 
 type ReportLine struct {
-	Text string `json:"text"`
-	Tone string `json:"tone"` // OK | WARN | BAD | INFO
+	Text  string   `json:"text"`
+	Tone  string   `json:"tone"`            // OK | WARN | BAD | INFO
+	Link  string   `json:"link,omitempty"`  // «ودّيني» — مسار بالواجهة للمشكلة
+	Fixes []string `json:"fixes,omitempty"` // حلول مقترحة (قواعد ثابتة، بلا اسم)
+}
+
+func rl(text, tone string) ReportLine { return ReportLine{Text: text, Tone: tone} }
+
+// withFix يضيف رابط وحلول لسطر — نستعمله بس للسطور الي بيها مشكلة.
+func withFix(l ReportLine, link string, fixes ...string) ReportLine {
+	l.Link, l.Fixes = link, fixes
+	return l
 }
 
 type ReportStage struct {
@@ -45,18 +55,20 @@ type ReportJob struct {
 }
 
 type EmployeeReport struct {
-	EmployeeID string         `json:"employeeId"`
-	Name       string         `json:"name"`
-	Group      string         `json:"group"`
-	Day        string         `json:"day"`
-	Attendance []ReportLine   `json:"attendance"`
-	Jobs       []ReportJob    `json:"jobs"`
-	Leaves     []ReportLine   `json:"leaves"`
-	Behavior   []ReportLine   `json:"behavior"`
-	Reminders  []ReportLine   `json:"reminders"`
-	Summary    string         `json:"summary"`
-	SummaryBy  string         `json:"summaryBy"` // RULES | MODEL
-	Workload   []WorkloadItem `json:"workload"`
+	EmployeeID  string         `json:"employeeId"`
+	Name        string         `json:"name"`
+	Group       string         `json:"group"`
+	Day         string         `json:"day"`
+	Attendance  []ReportLine   `json:"attendance"`
+	Jobs        []ReportJob    `json:"jobs"`
+	Leaves      []ReportLine   `json:"leaves"`
+	Behavior    []ReportLine   `json:"behavior"`
+	Reminders   []ReportLine   `json:"reminders"`
+	Performance []ReportLine   `json:"performance"`
+	SlowJobs    []SlowJob      `json:"slowJobs"`
+	Summary     string         `json:"summary"`
+	SummaryBy   string         `json:"summaryBy"` // RULES | MODEL
+	Workload    []WorkloadItem `json:"workload"`
 }
 
 type MatrixEmployeeReportService struct {
@@ -126,7 +138,7 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 	}
 	subj, _ := s.watch.actions.Subject(employeeID)
 	rep := &EmployeeReport{EmployeeID: e.ID, Name: e.Name, Day: day,
-		Attendance: []ReportLine{}, Jobs: []ReportJob{}, Leaves: []ReportLine{}, Behavior: []ReportLine{}, Reminders: []ReportLine{}}
+		Attendance: []ReportLine{}, Jobs: []ReportJob{}, Leaves: []ReportLine{}, Behavior: []ReportLine{}, Reminders: []ReportLine{}, Performance: []ReportLine{}, SlowJobs: []SlowJob{}}
 	if subj != nil {
 		rep.Group = WatchGroup(*subj)
 		if day == time.Now().In(debriefLoc).Format("2006-01-02") {
@@ -143,13 +155,17 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 	att, _ := s.repo.Attendance(employeeID, day)
 	shiftMin := mins(atClock(dayT, end).Sub(atClock(dayT, start)))
 	if len(att) == 0 {
-		rep.Attendance = append(rep.Attendance, ReportLine{Fmt("ما سجّل حضور هاليوم. جدوله من %s لـ%s%s.", start, end, note), "BAD"})
+		rep.Attendance = append(rep.Attendance, rl(Fmt("ما سجّل حضور هاليوم. جدوله من %s لـ%s%s.", start, end, note), "BAD"))
+		if assumed {
+			rep.Attendance[len(rep.Attendance)-1].Link = "/work-schedule"
+		}
 	} else {
 		first := att[0].CheckIn
 		late := mins(first.Sub(atClock(dayT, start)))
-		line := ReportLine{Fmt("حضر الساعة %s، وجدوله يبدي %s%s.", hm(first), start, note), "OK"}
+		line := rl(Fmt("حضر الساعة %s، وجدوله يبدي %s%s.", hm(first), start, note), "OK")
 		if late > lateGraceMin {
-			line = ReportLine{Fmt("حضر الساعة %s وجدوله يبدي %s — تأخّر %s%s.", hm(first), start, durText(late), note), "WARN"}
+			line = rl(Fmt("حضر الساعة %s وجدوله يبدي %s — تأخّر %s%s.", hm(first), start, durText(late), note), "WARN")
+			line = withFix(line, "/work-schedule", "ذكّره قبل دوامه بساعة.", "إذا وقت بدايته ما يناسب شغله، عدّله من جدول الدوام.")
 		}
 		rep.Attendance = append(rep.Attendance, line)
 		worked := 0
@@ -161,13 +177,13 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 			}
 		}
 		if lastOut == "" {
-			rep.Attendance = append(rep.Attendance, ReportLine{"ما سجّل انصراف لحد هسه.", "WARN"})
+			rep.Attendance = append(rep.Attendance, rl("ما سجّل انصراف لحد هسه.", "WARN"))
 		} else {
 			tone := "OK"
 			if worked < shiftMin-30 {
 				tone = "WARN"
 			}
-			rep.Attendance = append(rep.Attendance, ReportLine{Fmt("انصرف الساعة %s. اشتغل %s من أصل %s بالجدول.", lastOut, durText(worked), durText(shiftMin)), tone})
+			rep.Attendance = append(rep.Attendance, rl(Fmt("انصرف الساعة %s. اشتغل %s من أصل %s بالجدول.", lastOut, durText(worked), durText(shiftMin)), tone))
 		}
 	}
 
@@ -220,23 +236,23 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 					}
 					reason = Fmt(" — المواد تجهّزت الساعة %s (جهّزها %s)، فالكادر طلع متأخر", hm(j.MaterialsReadyAt.Time), by)
 				}
-				rj.Lines = append(rj.Lines, ReportLine{Fmt("الكادر وصل متأخر %s عن الموعد%s.", durText(late), reason), "WARN"})
+				rj.Lines = append(rj.Lines, rl(Fmt("الكادر وصل متأخر %s عن الموعد%s.", durText(late), reason), "WARN"))
 			} else {
-				rj.Lines = append(rj.Lines, ReportLine{"الكادر وصل بالوقت.", "OK"})
+				rj.Lines = append(rj.Lines, rl("الكادر وصل بالوقت.", "OK"))
 			}
 		}
 		if j.StartedAt.Valid && j.CompletedAt.Valid {
 			work := mins(j.CompletedAt.Time.Sub(j.StartedAt.Time))
 			if work > 14*60 || work < 0 {
 				// رقم ما ينصدّق: الأرجح ضغطة «إنجاز» تأخرت أيام — ما نعرضه كوقت شغل.
-				rj.Lines = append(rj.Lines, ReportLine{Fmt("وقت الشغل ما ينحسب: بين ضغطة البدء (%s) وضغطة الإنجاز %s — الأرجح «إنجاز» انضغط متأخر.", hm(j.StartedAt.Time), durText(work)), "WARN"})
+				rj.Lines = append(rj.Lines, rl(Fmt("وقت الشغل ما ينحسب: بين ضغطة البدء (%s) وضغطة الإنجاز %s — الأرجح «إنجاز» انضغط متأخر.", hm(j.StartedAt.Time), durText(work)), "WARN"))
 			} else {
-				rj.Lines = append(rj.Lines, ReportLine{Fmt("وقت الشغل الفعلي (من ضغطة البدء للإنجاز): %s.", durText(work)), "INFO"})
+				rj.Lines = append(rj.Lines, rl(Fmt("وقت الشغل الفعلي (من ضغطة البدء للإنجاز): %s.", durText(work)), "INFO"))
 			}
 		} else if j.StartedAt.Valid {
-			rj.Lines = append(rj.Lines, ReportLine{Fmt("بدا العمل الساعة %s وبعده ما انضغط «إنجاز».", hm(j.StartedAt.Time)), "WARN"})
+			rj.Lines = append(rj.Lines, rl(Fmt("بدا العمل الساعة %s وبعده ما انضغط «إنجاز».", hm(j.StartedAt.Time)), "WARN"))
 		} else if j.Status == "CONFIRMED" || j.Status == "IN_PROGRESS" {
-			rj.Lines = append(rj.Lines, ReportLine{"بعد ما بدا العمل بهالحجز.", "INFO"})
+			rj.Lines = append(rj.Lines, rl("بعد ما بدا العمل بهالحجز.", "INFO"))
 		}
 		rep.Jobs = append(rep.Jobs, rj)
 	}
@@ -261,7 +277,7 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 	if mDays > e.MonthlyLeaves {
 		tone = "WARN"
 	}
-	rep.Leaves = append(rep.Leaves, ReportLine{Fmt("هالشهر طلب %d إجازة بمجموع %d يوم، والمسموح %d يوم.", mCount, mDays, e.MonthlyLeaves), tone})
+	rep.Leaves = append(rep.Leaves, rl(Fmt("هالشهر طلب %d إجازة بمجموع %d يوم، والمسموح %d يوم.", mCount, mDays, e.MonthlyLeaves), tone))
 	if len(lv) >= 3 {
 		var topDay time.Weekday
 		top := 0
@@ -271,11 +287,11 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 			}
 		}
 		if top*2 > len(lv) {
-			rep.Leaves = append(rep.Leaves, ReportLine{Fmt("نمط: %d من %d إجازاته (آخر ٩٠ يوم) تبدي يوم %s.", top, len(lv), weekdayAr(topDay)), "WARN"})
+			rep.Leaves = append(rep.Leaves, rl(Fmt("نمط: %d من %d إجازاته (آخر ٩٠ يوم) تبدي يوم %s.", top, len(lv), weekdayAr(topDay)), "WARN"))
 		}
 	}
 	if longest >= 4 {
-		rep.Leaves = append(rep.Leaves, ReportLine{Fmt("أطول إجازة بآخر ٩٠ يوم: %d أيام.", longest), "INFO"})
+		rep.Leaves = append(rep.Leaves, rl(Fmt("أطول إجازة بآخر ٩٠ يوم: %d أيام.", longest), "INFO"))
 	}
 
 	// ── شخصيته بالشغل (٣٠ يوم، أرقام بس) ──
@@ -315,9 +331,9 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 		if lateN > 0 {
 			line += Fmt(" متوسط تأخيره %s.", durText(lateSum/lateN))
 		}
-		rep.Behavior = append(rep.Behavior, ReportLine{line, t})
+		rep.Behavior = append(rep.Behavior, rl(line, t))
 		if noOut > 0 {
-			rep.Behavior = append(rep.Behavior, ReportLine{Fmt("ما سجّل انصراف %d يوم من %d.", noOut, days), "WARN"})
+			rep.Behavior = append(rep.Behavior, rl(Fmt("ما سجّل انصراف %d يوم من %d.", noOut, days), "WARN"))
 		}
 		if lateN >= 3 {
 			var wd time.Weekday
@@ -328,7 +344,7 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 				}
 			}
 			if top >= 2 {
-				rep.Behavior = append(rep.Behavior, ReportLine{Fmt("روتين التأخير: أكثر يوم يتأخر بي %s (%d مرات).", weekdayAr(wd), top), "INFO"})
+				rep.Behavior = append(rep.Behavior, rl(Fmt("روتين التأخير: أكثر يوم يتأخر بي %s (%d مرات).", weekdayAr(wd), top), "INFO"))
 			}
 		}
 	}
@@ -338,18 +354,18 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 			if avg > 60 {
 				t = "WARN"
 			}
-			rep.Behavior = append(rep.Behavior, ReportLine{Fmt("سرعة استجابته: من التكليف لتجهيز المواد بالمعدل %s (%d مهمة).", durText(int(avg)), n), t})
+			rep.Behavior = append(rep.Behavior, rl(Fmt("سرعة استجابته: من التكليف لتجهيز المواد بالمعدل %s (%d مهمة).", durText(int(avg)), n), t))
 		}
 		if adj := s.repo.AdjustedInvoices(employeeID); adj > 0 {
-			rep.Behavior = append(rep.Behavior, ReportLine{Fmt("%d من فواتيره انعدّلت بالتدقيق هالشهر.", adj), "WARN"})
+			rep.Behavior = append(rep.Behavior, rl(Fmt("%d من فواتيره انعدّلت بالتدقيق هالشهر.", adj), "WARN"))
 		}
 	}
 	if c := s.repo.Complaints(employeeID); c > 0 {
-		rep.Behavior = append(rep.Behavior, ReportLine{Fmt("%d شكوى مرتبطة بشغله بآخر ٣٠ يوم.", c), "BAD"})
+		rep.Behavior = append(rep.Behavior, rl(Fmt("%d شكوى مرتبطة بشغله بآخر ٣٠ يوم.", c), "BAD"))
 	}
 	if a, err := s.repo.Achievements(employeeID); err == nil {
 		if a.Total == 0 {
-			rep.Behavior = append(rep.Behavior, ReportLine{"ما كتب ولا إنجاز يومي بآخر ٣٠ يوم.", "WARN"})
+			rep.Behavior = append(rep.Behavior, rl("ما كتب ولا إنجاز يومي بآخر ٣٠ يوم.", "WARN"))
 		} else {
 			line := Fmt("الإنجازات اليومية: كتب %d يوم من ٣٠، بمعدل %d حرف.", a.Days, a.AvgLen)
 			t := "OK"
@@ -360,7 +376,7 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 			if a.Good+a.NeedsReview > 0 {
 				line += Fmt(" تقييمها: %d جيد، %d يحتاج مراجعة.", a.Good, a.NeedsReview)
 			}
-			rep.Behavior = append(rep.Behavior, ReportLine{line, t})
+			rep.Behavior = append(rep.Behavior, rl(line, t))
 		}
 	}
 
@@ -374,8 +390,10 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 		if r.TopKind.Valid {
 			line += Fmt(" أكثر شي يتكرر عليه: «%s» (%d).", model.AiActionLabels[r.TopKind.String], r.TopCount)
 		}
-		rep.Reminders = append(rep.Reminders, ReportLine{line, t})
+		rep.Reminders = append(rep.Reminders, rl(line, t))
 	}
+
+	s.performance(rep, employeeID)
 
 	rep.Summary, rep.SummaryBy = s.summary(rep), "RULES"
 	if s.client != nil {
@@ -396,7 +414,7 @@ func Fmt(f string, a ...any) string { return fmt.Sprintf(f, a...) }
 // summary خلاصة بالقواعد: أسوأ شي، وأحسن شي.
 func (s *MatrixEmployeeReportService) summary(r *EmployeeReport) string {
 	bad, warn, ok := []string{}, []string{}, 0
-	for _, sec := range [][]ReportLine{r.Attendance, r.Leaves, r.Behavior, r.Reminders} {
+	for _, sec := range [][]ReportLine{r.Attendance, r.Performance, r.Leaves, r.Behavior, r.Reminders} {
 		for _, l := range sec {
 			switch l.Tone {
 			case "BAD":
@@ -446,7 +464,7 @@ const reportSystemPrompt = `أنت «ماتركس»، عقل المتابعة ب
 func (s *MatrixEmployeeReportService) modelSummary(r *EmployeeReport) (string, error) {
 	var b strings.Builder
 	b.WriteString("المجموعة: " + r.Group + "\n")
-	for _, sec := range [][]ReportLine{r.Attendance, r.Leaves, r.Behavior, r.Reminders} {
+	for _, sec := range [][]ReportLine{r.Attendance, r.Performance, r.Leaves, r.Behavior, r.Reminders} {
 		for _, l := range sec {
 			b.WriteString("- " + strings.ReplaceAll(l.Text, r.Name, "الموظف") + "\n")
 		}
@@ -477,4 +495,96 @@ func (s *MatrixEmployeeReportService) modelSummary(r *EmployeeReport) (string, e
 		}
 	}
 	return strings.TrimSpace(out.String()), nil
+}
+
+// ═══ الأداء التفصيلي — آخر ٣٠ يوم مقابل الـ٣٠ الي قبلها ═══
+//
+// مثال (ع): «طلع لـ٢٠ حجز، كل وحدة تحتاج ساعتين، وهو طوّل ٤، ونصها ما كملت».
+// المتوقع = وسيط مدة نفس الخدمة عند كل الكادر (آخر ١٨٠ يوم)، والمدد الي
+// فوگ ١٤ ساعة تنعزل (غالباً نسى يسكّر الحجز) وما تدخل المعدل.
+
+type SlowJob struct {
+	BookingID string `json:"bookingId"`
+	Code      string `json:"code"`
+	Service   string `json:"service"`
+	Actual    int    `json:"actual"`
+	Expected  int    `json:"expected"`
+}
+
+func (s *MatrixEmployeeReportService) performance(rep *EmployeeReport, id string) {
+	cur, err := s.repo.Performance(id, 0)
+	if err != nil || cur.Total == 0 {
+		return
+	}
+	prev, _ := s.repo.Performance(id, 30)
+	p := &rep.Performance
+	line := Fmt("طلع لـ%d حجز: كمل %d", cur.Total, cur.Completed)
+	if cur.Partial > 0 {
+		line += Fmt("، جزئي %d", cur.Partial)
+	}
+	if open := cur.Total - cur.Completed - cur.Partial; open > 0 {
+		line += Fmt("، بعدها مفتوحة %d", open)
+	}
+	tone := "OK"
+	unfinished := cur.Total - cur.Completed
+	if cur.Total >= 4 && unfinished*2 >= cur.Total {
+		tone = "BAD"
+	} else if unfinished*4 >= cur.Total && cur.Total >= 4 {
+		tone = "WARN"
+	}
+	l := rl(line+".", tone)
+	if tone != "OK" {
+		l = withFix(l, "/bookings", "تأكد إن المواد والعدّة تتجهز قبل الطلعة — الجزئي غالباً من نقص مواد.",
+			"راجع الحجوزات المفتوحة ويّاه وحدد سبب كل وحدة.", "قلّل حجوزاته باليوم لحد ما ترجع نسبة الإكمال.")
+	}
+	*p = append(*p, l)
+
+	if cur.Timed > 0 && cur.AvgExpected > 0 {
+		ratio := cur.AvgActual / cur.AvgExpected
+		line := Fmt("المدة: المتوقع بالمعدل %s للحجز، وهو ياخذ %s (%d حجز موقوت)", durText(int(cur.AvgExpected)), durText(int(cur.AvgActual)), cur.Timed)
+		tone := "OK"
+		switch {
+		case ratio >= 1.6:
+			line += Fmt(" — يعني %.1f ضعف المتوقع.", ratio)
+			tone = "BAD"
+		case ratio >= 1.25:
+			line += Fmt(" — أبطأ بـ%d٪.", int((ratio-1)*100))
+			tone = "WARN"
+		case ratio <= 0.8:
+			line += " — أسرع من المعدل."
+		default:
+			line += " — ضمن الطبيعي."
+		}
+		l := rl(line, tone)
+		if tone != "OK" {
+			l = withFix(l, "", "وزّع حجوزاته الكبيرة على كادر أكبر.", "تدريب على الخدمات الي يطوّل بيها (شوف أبطأ الحجوزات تحت).",
+				"اسأله عن العوائق: طريق، مواد ناقصة، زبون غير جاهز.")
+		}
+		*p = append(*p, l)
+		if prev != nil && prev.Timed >= 3 && prev.AvgExpected > 0 {
+			pr := prev.AvgActual / prev.AvgExpected
+			delta := (ratio - pr) / pr * 100
+			switch {
+			case delta >= 20:
+				*p = append(*p, withFix(rl(Fmt("↓ صار يطوّل بالحجز %d٪ أكثر من الشهر الي قبله.", int(delta)), "WARN"), "",
+					"شوف إذا تغيّر نوع شغله أو فريقه هالشهر.", "جلسة قصيرة ويّاه تسأله شنو تغيّر."))
+			case delta <= -20:
+				*p = append(*p, rl(Fmt("↑ صار أسرع بـ%d٪ من الشهر الي قبله.", int(-delta)), "OK"))
+			}
+		}
+	}
+	if cur.Outliers > 0 {
+		*p = append(*p, withFix(rl(Fmt("%d حجز مدته فوگ ١٤ ساعة — انعزلت من الحساب (غالباً ما تسكّرت بوقتها).", cur.Outliers), "INFO"), "",
+			"ذكّره يسكّر الحجز أول ما يخلص حتى تطلع أرقامه صحيحة."))
+	}
+	if cur.GroupPartialRate >= 0 && cur.Total >= 4 {
+		mine := float64(cur.Partial) / float64(cur.Total)
+		if mine > cur.GroupPartialRate*1.5 && mine >= 0.2 {
+			*p = append(*p, withFix(rl(Fmt("نسبة الجزئي عنده %d٪ مقابل %d٪ لباقي الكادر.", int(mine*100), int(cur.GroupPartialRate*100)), "WARN"), "",
+				"تأكد من تجهيز المواد قبل الطلعة.", "راجع أسباب الجزئي المكتوبة بحجوزاته."))
+		}
+	}
+	for _, j := range cur.Slow {
+		rep.SlowJobs = append(rep.SlowJobs, SlowJob{BookingID: j.ID, Code: j.Code, Service: j.Service, Actual: j.Actual, Expected: j.Expected})
+	}
 }

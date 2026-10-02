@@ -515,6 +515,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixEmployeeReportService := service.NewMatrixEmployeeReportService(repository.NewMatrixReportRepository(db), matrixAutopilotService)
 	matrixEmployeeReportService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
 	matrixBusinessService := service.NewMatrixBusinessService(repository.NewMatrixBusinessRepository(db))
+	matrixLearningService.SetReportService(matrixEmployeeReportService)
 	matrixReportHandler := handler.NewMatrixReportHandler(matrixEmployeeReportService, matrixBusinessService)
 	bookingHandler.SetInquiryNotifier(func(customerID, employeeID string) {
 		if msg := matrixBusinessService.InquiryWarning(customerID); msg != "" && employeeID != "" {
@@ -845,7 +846,23 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فتح حساب جديد = المالك وحده. مدير النظام يدير كلشي بالنظام لكن
 	// **منو يدخل النظام** قرار المالك — وهذا يصير أهم بعد ما يجي
 	// النظام الأكبر ويصير الحساب الواحد يفتح عالمين.
-	mux.Handle("POST /api/employees", middleware.Chain(http.HandlerFunc(employeeHandler.Create), requireAuth, requireOwnerAccounts))
+	// (ع): «إضافة موظف» صارت صلاحية تنطى — المالك أو صاحب employee_create،
+	// والفحص بالمعالج (بلا أدوار عليا لغير المالك).
+	employeeAdminHandler := handler.NewEmployeeAdminHandler(employeeService, permissionRepo, employeeRepo)
+	_ = requireOwnerAccounts
+	mux.Handle("POST /api/employees", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Create), requireAuth))
+	mux.Handle("PUT /api/employees/{id}/all", middleware.Chain(http.HandlerFunc(employeeAdminHandler.UpdateAll), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_edit_all")))
+	mux.Handle("PUT /api/employees/{id}/suspend", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Suspend), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_suspend")))
+	mux.Handle("PUT /api/employees/{id}/reactivate", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Reactivate), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_suspend")))
+	mux.Handle("GET /api/employees/suspended", middleware.Chain(http.HandlerFunc(employeeAdminHandler.ListSuspended), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "employee_suspend")))
+	mux.Handle("PUT /api/employees/{id}/schedule", middleware.Chain(http.HandlerFunc(employeeAdminHandler.Schedule), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "work_schedule_manage")))
+	mux.Handle("GET /api/work-schedule", middleware.Chain(http.HandlerFunc(employeeAdminHandler.WorkSchedule), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR", "MONITOR"}, "work_schedule_manage", "staff_management")))
 	mux.Handle("PUT /api/employees/{id}", middleware.Chain(http.HandlerFunc(employeeHandler.Update), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/employees/{id}/identity", middleware.Chain(http.HandlerFunc(employeeHandler.UpdateIdentity), requireAuth,
 		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "edit_employee_identity")))
@@ -1054,6 +1071,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/ai/proposals/{id}/approve", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Approve), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/proposals/{id}/reject", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Reject), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/employee-report", middleware.Chain(http.HandlerFunc(matrixReportHandler.Employee), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/group-performance", middleware.Chain(http.HandlerFunc(matrixReportHandler.Group), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/business", middleware.Chain(http.HandlerFunc(matrixReportHandler.Business), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))

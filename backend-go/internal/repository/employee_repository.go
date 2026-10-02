@@ -1,6 +1,8 @@
 package repository
 
 import (
+	"database/sql"
+	"errors"
 	"sort"
 	"time"
 
@@ -485,4 +487,97 @@ func (r *EmployeeRepository) LinkHistoricalRecords(employeeID, employeeName stri
 	}
 
 	return bookingsLinked, complaintsLinked, nil
+}
+
+// SetSuspended يوقف حساب (ARCHIVED + السبب) أو يرجّعه ACTIVE — بلا حذف.
+func (r *EmployeeRepository) SetSuspended(id string, suspend bool, reason, byID string) error {
+	var res sql.Result
+	var err error
+	if suspend {
+		res, err = r.db.Exec(`UPDATE "Employee" SET status = 'ARCHIVED', "onDuty" = false, "suspendedReason" = $2, "suspendedAt" = now(), "suspendedById" = $3
+			WHERE id = $1 AND status = 'ACTIVE' AND role::text NOT IN ('ADMIN','OWNER')`, id, reason, byID)
+	} else {
+		res, err = r.db.Exec(`UPDATE "Employee" SET status = 'ACTIVE', "suspendedReason" = NULL, "suspendedAt" = NULL, "suspendedById" = NULL
+			WHERE id = $1 AND status::text IN ('ARCHIVED','SUSPENDED','INACTIVE')`, id)
+	}
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		if suspend {
+			return errors.New("الحساب موقوف أصلاً أو ما ينوقف")
+		}
+		return errors.New("الحساب مو موقوف")
+	}
+	return nil
+}
+
+type SuspendedEmployee struct {
+	ID          string         `db:"id" json:"id"`
+	Name        string         `db:"name" json:"name"`
+	Role        string         `db:"role" json:"role"`
+	Status      string         `db:"status" json:"status"`
+	Reason      sql.NullString `db:"reason" json:"-"`
+	ReasonText  string         `db:"-" json:"reason"`
+	SuspendedAt sql.NullTime   `db:"suspendedAt" json:"-"`
+	At          *string        `db:"-" json:"suspendedAt"`
+	ByName      sql.NullString `db:"byName" json:"-"`
+	By          string         `db:"-" json:"suspendedBy"`
+}
+
+func (r *EmployeeRepository) ListSuspended() ([]SuspendedEmployee, error) {
+	rows := []SuspendedEmployee{}
+	err := r.db.Select(&rows, `SELECT e.id, e.name, e.role::text AS role, e.status::text AS status, e."suspendedReason" AS reason, e."suspendedAt", b.name AS "byName"
+		FROM "Employee" e LEFT JOIN "Employee" b ON b.id = e."suspendedById"
+		WHERE e.status::text IN ('ARCHIVED','SUSPENDED','INACTIVE') AND e.role::text <> 'OWNER'
+		ORDER BY e."suspendedAt" DESC NULLS LAST, e.name`)
+	for i := range rows {
+		rows[i].ReasonText = rows[i].Reason.String
+		rows[i].By = rows[i].ByName.String
+		if rows[i].SuspendedAt.Valid {
+			s := rows[i].SuspendedAt.Time.Format("2006-01-02")
+			rows[i].At = &s
+		}
+	}
+	return rows, err
+}
+
+type ScheduleRow struct {
+	ID         string         `db:"id" json:"id"`
+	Name       string         `db:"name" json:"name"`
+	Role       string         `db:"role" json:"role"`
+	IsLeader   bool           `db:"isLeader" json:"isLeader"`
+	Shift      sql.NullString `db:"shift" json:"-"`
+	ShiftStart sql.NullString `db:"shiftStart" json:"-"`
+	ShiftEnd   sql.NullString `db:"shiftEnd" json:"-"`
+	CheckIn    sql.NullTime   `db:"checkIn" json:"-"`
+	CheckOut   sql.NullTime   `db:"checkOut" json:"-"`
+	// JSON
+	ShiftV string  `db:"-" json:"shift"`
+	StartV string  `db:"-" json:"shiftStart"`
+	EndV   string  `db:"-" json:"shiftEnd"`
+	InV    *string `db:"-" json:"checkIn"`
+	OutV   *string `db:"-" json:"checkOut"`
+}
+
+// WorkSchedule جدول كل الفعّالين + أول حضور وآخر انصراف اليوم.
+func (r *EmployeeRepository) WorkSchedule() ([]ScheduleRow, error) {
+	rows := []ScheduleRow{}
+	err := r.db.Select(&rows, `SELECT e.id, e.name, e.role::text AS role, e."isLeader", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
+		(SELECT MIN("checkIn") FROM "Attendance" a WHERE a."employeeId" = e.id AND baghdad_date(a."checkIn") = baghdad_today()) AS "checkIn",
+		(SELECT MAX("checkOut") FROM "Attendance" a WHERE a."employeeId" = e.id AND baghdad_date(a."checkIn") = baghdad_today()) AS "checkOut"
+		FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text <> 'OWNER' ORDER BY e.role, e.name`)
+	for i := range rows {
+		x := &rows[i]
+		x.ShiftV, x.StartV, x.EndV = x.Shift.String, x.ShiftStart.String, x.ShiftEnd.String
+		if x.CheckIn.Valid {
+			s := x.CheckIn.Time.UTC().Format("2006-01-02T15:04:05Z")
+			x.InV = &s
+		}
+		if x.CheckOut.Valid {
+			s := x.CheckOut.Time.UTC().Format("2006-01-02T15:04:05Z")
+			x.OutV = &s
+		}
+	}
+	return rows, err
 }

@@ -17,6 +17,11 @@ var DefaultPermissions = []Permission{
 	// (ع): «اريد اعدل دور الموظف او اسمه — هاي اريدها صلاحية». تنمنح
 	// فرد-فرد، وما تنضاف لأي دور افتراضي.
 	{Name: "edit_employee_identity", Label: "تعديل اسم الموظف ودوره"},
+	// (ع): صلاحيات تنطى لأي أحد — تنمنح فرد-فرد، ما تنضاف لأي دور افتراضي.
+	{Name: "employee_edit_all", Label: "تعديل كل بيانات الموظف"},
+	{Name: "employee_suspend", Label: "إيقاف وتفعيل حساب موظف"},
+	{Name: "employee_create", Label: "إضافة موظف جديد"},
+	{Name: "work_schedule_manage", Label: "تحديد جدول دوام الموظفين"},
 	{Name: "kpi_management", Label: "تقييم الأداء (KPI)"},
 	{Name: "kpi_criteria_management", Label: "إدارة نقاط الكي بي اي (إضافة/حذف)"},
 	{Name: "inventory", Label: "جرد الأدوات"},

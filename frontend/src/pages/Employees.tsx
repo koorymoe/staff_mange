@@ -55,6 +55,10 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   const isAdmin = currentUser?.role === 'ADMIN'
   // «تعديل اسم الموظف ودوره» صلاحية مستقلة تنمنح فرد-فرد.
   const canIdentity = isAdmin || userPermissions.includes('edit_employee_identity')
+  // (ع): صلاحيات تنطى لأي أحد — كل زر يطلع بس لمن الخادم يقبله.
+  const canEditAll = isAdmin || userPermissions.includes('employee_edit_all')
+  const canSuspend = isAdmin || userPermissions.includes('employee_suspend')
+  const [editAllOpen, setEditAllOpen] = useState(false)
 
   // ═══ حفظ صورة موظف ═══
   // نحدّث القائمة والمختار بالجواب الراجع من السيرفر — مو بالقيمة الي
@@ -74,7 +78,8 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   //
   // ⚠️ هذا إخفاء للزر بس — المنع الحقيقي بالسيرفر (RequireOwnerOnly على
   // POST /api/employees). إخفاء الزر لحاله ما يمنع أحد يدزّ الطلب بيده.
-  const canCreateAccounts = currentUser?.actualRole === 'OWNER'
+  const isOwnerUser = currentUser?.actualRole === 'OWNER'
+  const canCreateAccounts = isOwnerUser || userPermissions.includes('employee_create')
   const isHR = currentUser?.role === 'HR_COORDINATOR'
   const [employees, setEmployees] = useState<Employee[]>([])
   const [services, setServices] = useState<Service[]>([])
@@ -133,7 +138,9 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   }, [isHR])
   useEffect(() => {
     if (isAdmin && showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(() => setArchivedEmployees([]))
-  }, [isAdmin, showArchived])
+    // صاحب صلاحية الإيقاف (مو مدير): يشوف الموقوفين بس، من مساره هو.
+    else if (canSuspend && showArchived) api.getSuspendedEmployees().then((rows) => setArchivedEmployees(rows as unknown as Employee[])).catch(() => setArchivedEmployees([]))
+  }, [isAdmin, canSuspend, showArchived])
 
   const baseEmployees = showArchived ? archivedEmployees : (isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees)
   const visibleEmployees = baseEmployees.filter(emp => {
@@ -345,14 +352,14 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
               {uniqueRoles.map(r => <option key={r} value={r}>{roleLabel(r)}</option>)}
             </select>
           )}
-          {isAdmin && (
+          {(isAdmin || canSuspend) && (
             <button
               onClick={() => { setShowArchived(!showArchived); setSelectedId(null) }}
               className={`rounded-xl px-4 py-2.5 text-sm font-semibold shadow-[0_1px_3px_rgba(0,0,0,0.04),0_6px_16px_rgba(0,0,0,0.04)] transition-all ${
                 showArchived ? 'bg-slate-700 text-white' : 'bg-white text-slate-600'
               }`}
             >
-              {showArchived ? '↩ رجوع للنشطين' : '🗄️ المؤرشفون/المحذوفون/الموقوفين'}
+              {showArchived ? '↩ رجوع للنشطين' : isAdmin ? '🗄️ المؤرشفون/المحذوفون/الموقوفين' : '⛔ الحسابات الموقوفة'}
             </button>
           )}
           {canCreateAccounts && !showArchived && (
@@ -368,8 +375,16 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       </div>
 
       {/* Add Employee Wizard */}
+      {editAllOpen && selectedEmployee && (
+        <EditAllModal employee={selectedEmployee} allowRole={isAdmin || canIdentity}
+          onClose={() => setEditAllOpen(false)}
+          onSave={async (data) => {
+            if (await guard.run('حفظ البيانات', () => api.updateEmployeeAll(selectedEmployee.id, data))) { setEditAllOpen(false); load() }
+          }} />
+      )}
+
       {canCreateAccounts && showAddForm && (
-        <AddEmployeeWizard onClose={() => setShowAddForm(false)} onCreated={load} />
+        <AddEmployeeWizard onClose={() => setShowAddForm(false)} onCreated={load} limited={!isOwnerUser} />
       )}
 
       {loading && <div className="flex items-center justify-center py-20"><div className="h-8 w-8 animate-spin rounded-full border-4 border-[#2c5aad] border-t-transparent"/></div>}
@@ -526,6 +541,27 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
                             {generatingCharacter ? 'جاري توليد الشخصية...' : '🧬 ولّد شخصية الكيان'}
                           </button>
                         )}
+                      </div>
+                    )}
+                    {/* صلاحيات تنطى لأي أحد: تعديل كل البيانات + إيقاف/تفعيل الحساب
+                        (مو للمدير والمالك — الخادم يرفضها، فالزر ما يطلع). */}
+                    {(canEditAll || canSuspend) && (isAdmin || (selectedEmployee.role !== 'ADMIN' && selectedEmployee.role !== 'OWNER')) && (
+                      <div className="relative mt-4 flex flex-wrap gap-2">
+                        {canEditAll && selectedEmployee.status === 'ACTIVE' && (
+                          <button onClick={() => setEditAllOpen(true)} className="rounded-lg bg-sky-500/20 px-3 py-1.5 text-xs font-bold text-sky-100 hover:bg-sky-500/30">✏️ تعديل كل البيانات</button>
+                        )}
+                        {canSuspend && selectedEmployee.id !== currentUser?.id && (selectedEmployee.status === 'ACTIVE' ? (
+                          <button onClick={async () => {
+                            const reason = prompt(`سبب إيقاف حساب ${selectedEmployee.name}؟ (مثلاً: ترك الشركة)\nالحساب ما ينحذف — سجله وحجوزاته تبقى، ودخوله ينقطع فوراً.`)
+                            if (!reason || !reason.trim()) return
+                            if (await guard.run('إيقاف الحساب', () => api.suspendEmployee(selectedEmployee.id, reason.trim()))) { setSelectedId(null); load() }
+                          }} className="rounded-lg bg-red-500/20 px-3 py-1.5 text-xs font-bold text-red-100 hover:bg-red-500/30">⛔ إيقاف الحساب</button>
+                        ) : (
+                          <button onClick={async () => {
+                            if (!confirm(`ترجّع حساب ${selectedEmployee.name} فعّال؟`)) return
+                            if (await guard.run('إعادة التفعيل', () => api.reactivateEmployee(selectedEmployee.id))) { setShowArchived(false); setSelectedId(null); load() }
+                          }} className="rounded-lg bg-emerald-500/20 px-3 py-1.5 text-xs font-bold text-emerald-100 hover:bg-emerald-500/30">✅ إعادة تفعيل الحساب</button>
+                        ))}
                       </div>
                     )}
                     {isAdmin && (
@@ -1108,5 +1144,61 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
       )}
     </div>
     </>
+  )
+}
+
+// ═══ تعديل كل بيانات الموظف — صلاحية «employee_edit_all» ═══
+function EditAllModal({ employee, allowRole, onClose, onSave }: {
+  employee: Employee; allowRole: boolean; onClose: () => void; onSave: (data: Record<string, unknown>) => void
+}) {
+  const [f, setF] = useState({
+    name: employee.name ?? '', phone: employee.phone ?? '', certificate: employee.certificate ?? '',
+    position: employee.position ?? '', jobTitle: (employee as { jobTitle?: string | null }).jobTitle ?? '',
+    shift: (employee as { shift?: string | null }).shift ?? 'MORNING',
+    shiftStart: (employee as { shiftStart?: string | null }).shiftStart ?? '', shiftEnd: (employee as { shiftEnd?: string | null }).shiftEnd ?? '',
+    monthlyLeaves: String((employee as { monthlyLeaves?: number | null }).monthlyLeaves ?? 2),
+    hasDrivingLicense: !!(employee as { hasDrivingLicense?: boolean }).hasDrivingLicense,
+  })
+  const inp = 'w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm text-slate-800'
+  const field = (label: string, key: keyof typeof f, type = 'text') => (
+    <label className="text-xs text-slate-600">{label}
+      <input type={type} className={inp} value={String(f[key])} onChange={(e) => setF({ ...f, [key]: e.target.value })} />
+    </label>
+  )
+  void allowRole
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" dir="rtl" onClick={onClose}>
+      <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="mb-3 text-lg font-extrabold text-[#0f2040]">✏️ تعديل بيانات {employee.name}</h3>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {field('الاسم الكامل', 'name')}
+          {field('الهاتف', 'phone')}
+          {field('الشهادة', 'certificate')}
+          {field('المنصب', 'position')}
+          {field('المسمى الوظيفي', 'jobTitle')}
+          {field('الإجازات الشهرية (يوم)', 'monthlyLeaves', 'number')}
+          <label className="text-xs text-slate-600">الوجبة
+            <select className={inp} value={f.shift} onChange={(e) => setF({ ...f, shift: e.target.value })}>
+              <option value="MORNING">صباحي</option><option value="EVENING">مسائي</option>
+            </select>
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {field('يبدي', 'shiftStart', 'time')}
+            {field('ينتهي', 'shiftEnd', 'time')}
+          </div>
+          <label className="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" checked={f.hasDrivingLicense} onChange={(e) => setF({ ...f, hasDrivingLicense: e.target.checked })} /> عنده إجازة سوق</label>
+        </div>
+        <p className="mt-2 text-[11px] text-slate-400">الدور وبيانات الدخول والصورة تبقى بمساراتها الخاصة.</p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button onClick={onClose} className="rounded-lg border border-slate-300 px-4 py-1.5 text-sm">إلغاء</button>
+          <button onClick={() => onSave({
+            name: f.name.trim(), phone: f.phone.trim() || null, certificate: f.certificate.trim() || null,
+            position: f.position.trim() || null, jobTitle: f.jobTitle.trim() || null, shift: f.shift,
+            shiftStart: f.shiftStart || null, shiftEnd: f.shiftEnd || null,
+            monthlyLeaves: Number(f.monthlyLeaves) || 0, hasDrivingLicense: f.hasDrivingLicense,
+          })} className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-bold text-white">حفظ</button>
+        </div>
+      </div>
+    </div>
   )
 }
