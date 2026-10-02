@@ -516,6 +516,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixEmployeeReportService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
 	matrixBusinessService := service.NewMatrixBusinessService(repository.NewMatrixBusinessRepository(db))
 	matrixLearningService.SetReportService(matrixEmployeeReportService)
+	// سجل النشاط: كل حفظ ناجح ينكتب — «شنو سوّى اليوم» بتقرير الموظف.
+	employeeActivityService := service.NewEmployeeActivityService(repository.NewEmployeeActivityRepository(db))
+	middleware.SetActivityRecorder(employeeActivityService.Record)
+	matrixEmployeeReportService.SetActivity(employeeActivityService)
 	matrixCommandService := service.NewMatrixCommandService(repository.NewMatrixCommandRepository(db), matrixAutopilotService,
 		matrixEmployeeReportService, matrixBusinessService, repository.NewMatrixProposalRepository(db))
 	matrixCommandService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)

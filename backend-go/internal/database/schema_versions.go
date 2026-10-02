@@ -377,6 +377,8 @@ func versionedMigrations() []Migration {
 	result = append(result, matrixChatMigrations()...)
 	// 0304: رصيد المواد — جرد يدوي، والمصروف بعده ينطرح تلقائياً.
 	result = append(result, materialStockMigrations()...)
+	// 0305: سجل نشاط الموظف — «شنو سوّى اليوم» بتقرير ماتركس.
+	result = append(result, employeeActivityMigrations()...)
 	return result
 }
 

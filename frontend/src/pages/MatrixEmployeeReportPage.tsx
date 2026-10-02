@@ -104,6 +104,28 @@ export default function MatrixEmployeeReportPage() {
             <p className="text-base leading-8">{rep.summary}</p>
           </section>
 
+          <Section title={`📝 شنو سوّى ${rep.day === todayBaghdad() ? 'اليوم' : 'بهاليوم'} (${(rep.activity ?? []).reduce((n, a) => n + a.count, 0)} فعل)`}>
+            {(rep.activity ?? []).length === 0 ? (
+              <p className="text-xs text-slate-400">ما سجّل ولا فعل بالنظام هاليوم (حفظ، قرار، إضافة، تعديل).</p>
+            ) : (
+              <>
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {Object.entries((rep.activity ?? []).reduce<Record<string, number>>((m, a) => { m[a.area] = (m[a.area] ?? 0) + a.count; return m }, {}))
+                    .sort((a, b) => b[1] - a[1])
+                    .map(([area, n]) => <span key={area} className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800">{area}: {n}</span>)}
+                </div>
+                <ol className="max-h-80 space-y-1 overflow-y-auto border-r-2 border-sky-200 pr-3">
+                  {(rep.activity ?? []).map((a, i) => (
+                    <li key={i} className="flex gap-3 text-sm">
+                      <span className="w-12 shrink-0 font-mono text-xs text-slate-400">{a.at}</span>
+                      <span className="text-slate-800">{a.text}{a.count > 1 && <b className="mr-1 text-sky-700">×{a.count}</b>}</span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            )}
+          </Section>
+
           <div className="grid gap-4 lg:grid-cols-2">
             <Section title="🕐 الدوام"><Lines lines={rep.attendance} group={rep.group} /></Section>
             <Section title="🌴 الإجازات"><Lines lines={rep.leaves} /></Section>

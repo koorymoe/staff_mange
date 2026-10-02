@@ -90,6 +90,15 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 			ctx := context.WithValue(r.Context(), ContextEmployeeID, claims.EmployeeID)
 			ctx = context.WithValue(ctx, ContextRole, role)
 			ctx = context.WithValue(ctx, ContextRealm, realm)
+			// سجل النشاط: كل حفظ ناجح (مو قراءة) ينكتب — «شنو سوّى اليوم».
+			if activityRecorder != nil && r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
+				sw := &statusWriter{ResponseWriter: w, status: http.StatusOK}
+				next.ServeHTTP(sw, r.WithContext(ctx))
+				if sw.status < 400 {
+					go activityRecorder(claims.EmployeeID, r.Method, r.Pattern, r.URL.Path, sw.status)
+				}
+				return
+			}
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
@@ -619,3 +628,32 @@ func RequireCommandRealm() func(http.Handler) http.Handler {
 		})
 	}
 }
+
+// ═══ سجل النشاط ═══
+var activityRecorder func(employeeID, method, pattern, path string, status int)
+
+// SetActivityRecorder يربط مسجّل النشاط (يُنادى من main).
+func SetActivityRecorder(f func(employeeID, method, pattern, path string, status int)) {
+	activityRecorder = f
+}
+
+type statusWriter struct {
+	http.ResponseWriter
+	status int
+	wrote  bool
+}
+
+func (s *statusWriter) WriteHeader(code int) {
+	if !s.wrote {
+		s.status, s.wrote = code, true
+	}
+	s.ResponseWriter.WriteHeader(code)
+}
+
+func (s *statusWriter) Write(b []byte) (int, error) {
+	s.wrote = true
+	return s.ResponseWriter.Write(b)
+}
+
+// Unwrap حتى http.ResponseController يوصل للـFlusher وغيره.
+func (s *statusWriter) Unwrap() http.ResponseWriter { return s.ResponseWriter }

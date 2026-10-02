@@ -33,13 +33,23 @@ function since(at: string) {
 }
 
 // مؤشر الأداء للعرض بس — مو نقاط ولا تقييم رسمي.
-function perfIndex(score: number) { return Math.max(0, 100 - score * 3) }
-function perfStatus(i: number) {
-  if (i >= 90) return { t: 'ممتاز', c: 'bg-emerald-500/15 text-[var(--mx-ok)]' }
-  if (i >= 75) return { t: 'جيد', c: 'bg-sky-500/15 text-[var(--mx-info)]' }
-  if (i >= 60) return { t: 'يحتاج متابعة', c: 'bg-amber-500/15 text-[var(--mx-warn)]' }
-  return { t: 'يحتاج دعم', c: 'bg-red-500/15 text-[var(--mx-bad)]' }
+// نسبة الإنجاز (الجزئي بنص) − غياب/تأخير اليوم − البطء عن المتوقع.
+// ⚠️ چان «١٠٠ − score×٣» فكل من عنده حجوزات مفتوحة يطلع ٠٪ «يحتاج دعم».
+type Member = GroupPerformance['members'][number]
+function perfIndex(m: Member) {
+  let v = m.jobs > 0 ? ((m.completed + m.partial * 0.5) / m.jobs) * 100 : 90
+  if (m.absent) v -= 15
+  else if (m.late > 0) v -= Math.min(20, m.late / 3)
+  if (m.speed != null && m.speed > 1.15) v -= Math.min(25, (m.speed - 1) * 40)
+  return Math.max(0, Math.min(100, Math.round(v)))
 }
+function perfStatus(i: number) {
+  if (i >= 90) return { t: 'ممتاز', c: 'bg-emerald-500/15 text-[var(--mx-ok)]', bar: '#22c55e', dot: 'bg-emerald-500' }
+  if (i >= 75) return { t: 'جيد', c: 'bg-sky-500/15 text-[var(--mx-info)]', bar: '#3b82f6', dot: 'bg-blue-500' }
+  if (i >= 60) return { t: 'متابعة', c: 'bg-amber-500/15 text-[var(--mx-warn)]', bar: '#f59e0b', dot: 'bg-amber-500' }
+  return { t: 'يحتاج دعم', c: 'bg-red-500/15 text-[var(--mx-bad)]', bar: '#ef4444', dot: 'bg-red-500' }
+}
+const GROUP_ICON: Record<string, string> = { TECHS: '🔧', LEADERS: '🧭', MONITORS: '🔍', COORDINATORS: '🗂️', FINANCE: '💵', DESIGN: '🎨', QUALITY: '✅', IT: '💻', ADMINS: '👑', STAFF: '🏢' }
 function confidence(samples: number) { return samples >= 20 ? 87 : samples >= 8 ? 72 : 50 }
 
 export default function MatrixCommandCenter() {
@@ -365,32 +375,59 @@ function TrendChart({ days }: { days: MatrixTrendDay[] }) {
   )
 }
 
-// ── قائمة مراقبة الموظفين ──
+// ── قائمة مراقبة الموظفين (تصميم (ع)) ──
 function WatchList({ perf }: { perf: GroupPerformance[] }) {
-  const rows = perf.flatMap((g) => g.members.map((m) => ({ ...m, group: g.group }))).sort((a, b) => b.score - a.score).slice(0, 6)
+  const all = perf.flatMap((g) => g.members.map((m) => ({ ...m, group: g.group, idx: perfIndex(m) })))
+  const rows = [...all].sort((a, b) => a.idx - b.idx).slice(0, 6)
+  const good = all.filter((m) => m.idx >= 75).length
+  const support = all.filter((m) => m.idx < 60).length
   return (
-    <section className={`${card} p-4`}>
-      <h3 className="mb-2 text-sm font-extrabold text-[var(--mx-accent)]">👥 قائمة مراقبة الموظفين</h3>
+    <section className={`${card} flex flex-col p-4`}>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="grid h-10 w-10 place-items-center rounded-xl bg-sky-500/15 text-lg">👥</span>
+          <div>
+            <h3 className="text-base font-extrabold text-[var(--mx-title)]">قائمة مراقبة الموظفين</h3>
+            <p className="text-[11px] text-[var(--mx-muted)]">متابعة أداء الموظفين ومستويات الإنتاجية</p>
+          </div>
+        </div>
+        <span className="rounded-xl bg-sky-500/10 px-3 py-1 text-center"><b className="block text-lg text-[var(--mx-accent)]">{all.length}</b><span className="text-[10px] text-[var(--mx-muted)]">موظف</span></span>
+      </div>
       {rows.length === 0 ? <p className="text-sm text-[var(--mx-muted)]">ماتركس يحسب…</p> : (
         <table className="w-full text-[12px]">
-          <thead className="text-[var(--mx-muted)]"><tr><th className="pb-1 text-right">الموظف</th><th className="text-right">القسم</th><th>مؤشر الأداء</th><th>الحالة</th></tr></thead>
+          <thead><tr className="bg-[var(--mx-sunken)] text-[var(--mx-muted)]"><th className="rounded-r-lg p-2 text-right">الموظف</th><th className="text-right">القسم</th><th>مؤشر الأداء</th><th className="rounded-l-lg">الحالة</th></tr></thead>
           <tbody>
             {rows.map((m) => {
-              const idx = perfIndex(m.score)
-              const st = perfStatus(idx)
+              const st = perfStatus(m.idx)
               return (
-                <tr key={m.id} className="border-t border-[var(--mx-border)]">
-                  <td className="py-1.5"><Link to={`/matrix/employee/${m.id}`} className="font-bold text-[var(--mx-title)] hover:text-[var(--mx-accent)]">{m.name}</Link></td>
-                  <td className="text-[var(--mx-muted)]">{GROUP_LABEL[m.group as EyeGroup] ?? m.group}</td>
-                  <td className="text-center font-bold">{idx}%</td>
-                  <td className="text-center"><span className={`rounded-full px-2 py-0.5 text-[10px] ${st.c}`}>● {st.t}</span></td>
+                <tr key={m.id} className="border-b border-[var(--mx-border)]">
+                  <td className="py-2">
+                    <Link to={`/matrix/employee/${m.id}`} className="flex items-center gap-2 font-bold text-[var(--mx-title)] hover:text-[var(--mx-accent)]">
+                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky-500/15 text-[11px] text-[var(--mx-accent)]">{m.name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')}</span>
+                      <span className="truncate">{m.name}</span>
+                    </Link>
+                  </td>
+                  <td><span className="rounded-lg bg-[var(--mx-sunken)] px-2 py-0.5 text-[11px] text-[var(--mx-text)]">{GROUP_ICON[m.group] ?? ''} {GROUP_LABEL[m.group as EyeGroup] ?? m.group}</span></td>
+                  <td className="px-2">
+                    <b className="text-[var(--mx-title)]">{m.idx}%</b>
+                    <div className="mt-0.5 h-1.5 w-20 rounded-full bg-[var(--mx-sunken)]"><div className="h-1.5 rounded-full" style={{ width: `${m.idx}%`, background: st.bar }} /></div>
+                  </td>
+                  <td className="text-center"><span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${st.c}`}><i className={`h-1.5 w-1.5 rounded-full ${st.dot}`} />{st.t}</span></td>
                 </tr>
               )
             })}
           </tbody>
         </table>
       )}
-      <p className="mt-2 text-[10px] text-[var(--mx-muted)]">المؤشر للمتابعة بس — مو نقاط ولا تقييم.</p>
+      {all.length > 0 && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl bg-[var(--mx-sunken)] p-2.5">
+          <span className="text-lg">📊</span>
+          <div className="text-[11px]">
+            <b className="block text-[var(--mx-accent)]">{good} من أصل {all.length} موظف أداؤهم جيد أو ممتاز</b>
+            <span className="text-[var(--mx-muted)]">{support > 0 ? `يوجد ${support} يحتاج دعم إضافي لتحسين أدائه.` : 'ماكو أحد يحتاج دعم هسه.'} · المؤشر للمتابعة بس — مو نقاط.</span>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

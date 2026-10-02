@@ -65,6 +65,7 @@ type EmployeeReport struct {
 	Behavior    []ReportLine   `json:"behavior"`
 	Reminders   []ReportLine   `json:"reminders"`
 	Performance []ReportLine   `json:"performance"`
+	Activity    []ActivityLine `json:"activity"` // «شنو سوّى اليوم»
 	SlowJobs    []SlowJob      `json:"slowJobs"`
 	Summary     string         `json:"summary"`
 	SummaryBy   string         `json:"summaryBy"` // RULES | MODEL
@@ -72,15 +73,19 @@ type EmployeeReport struct {
 }
 
 type MatrixEmployeeReportService struct {
-	repo   *repository.MatrixReportRepository
-	watch  *MatrixAutopilotService
-	client *anthropic.Client
-	model  string
+	repo     *repository.MatrixReportRepository
+	watch    *MatrixAutopilotService
+	client   *anthropic.Client
+	model    string
+	activity *EmployeeActivityService
 }
 
 func NewMatrixEmployeeReportService(repo *repository.MatrixReportRepository, watch *MatrixAutopilotService) *MatrixEmployeeReportService {
 	return &MatrixEmployeeReportService{repo: repo, watch: watch}
 }
+
+// SetActivity يربط «شنو سوّى اليوم».
+func (s *MatrixEmployeeReportService) SetActivity(a *EmployeeActivityService) { s.activity = a }
 
 func (s *MatrixEmployeeReportService) EnableModel(apiKey, modelName string) {
 	if apiKey == "" {
@@ -394,6 +399,10 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 	}
 
 	s.performance(rep, employeeID)
+	rep.Activity = []ActivityLine{}
+	if s.activity != nil {
+		rep.Activity = s.activity.Day(employeeID, day)
+	}
 
 	rep.Summary, rep.SummaryBy = s.summary(rep), "RULES"
 	if s.client != nil {

@@ -5704,6 +5704,7 @@ export interface EmployeeReport {
   behavior: ReportLine[]
   reminders: ReportLine[]
   performance: ReportLine[]
+  activity: { at: string; text: string; count: number; area: string }[]
   slowJobs: { bookingId: string; code: string; service: string; actual: number; expected: number }[]
   summary: string
   summaryBy: 'RULES' | 'MODEL'
