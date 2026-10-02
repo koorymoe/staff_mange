@@ -61,16 +61,40 @@ func (h *VehicleHandler) Options(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, out)
 }
 
+// POST /api/vehicles — صلاحية الأسطول.
+//
+// 🔴 التفاصيل الفنية (موديل، سنة، شاصي...) تنحفظ هنا ويا الإنشاء. چانت
+// الواجهة ترسلها بطلب تعديل ثاني على مسار المدير بس، فكل إضافة مفصّلة من
+// مسؤول الأسطول تنرفض وتنحسب مخالفة — وبعد ٥ ينقفل حسابه.
 func (h *VehicleHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var req model.CreateVehicleRequest
-	if err := DecodeJSON(r, &req); err != nil {
+	var body struct {
+		model.CreateVehicleRequest
+		Model           *string `json:"model"`
+		Year            *int    `json:"year"`
+		ChassisNumber   *string `json:"chassisNumber"`
+		EngineNumber    *string `json:"engineNumber"`
+		FuelType        *string `json:"fuelType"`
+		CurrentOdometer *int    `json:"currentOdometer"`
+		Condition       *string `json:"condition"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
 		return
 	}
-	vehicle, err := h.service.Create(req)
+	vehicle, err := h.service.Create(body.CreateVehicleRequest)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
+	}
+	details := model.UpdateVehicleRequest{Model: body.Model, Year: body.Year, ChassisNumber: body.ChassisNumber,
+		EngineNumber: body.EngineNumber, FuelType: body.FuelType, CurrentOdometer: body.CurrentOdometer, Condition: body.Condition}
+	if details != (model.UpdateVehicleRequest{}) {
+		updated, err := h.service.Update(vehicle.ID, details)
+		if err != nil {
+			WriteError(w, http.StatusBadRequest, "انضافت السيارة بس التفاصيل ما انحفظت: "+err.Error())
+			return
+		}
+		vehicle = updated
 	}
 	WriteJSON(w, http.StatusCreated, vehicle)
 }

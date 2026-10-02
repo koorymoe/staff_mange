@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/lib/pq"
@@ -213,23 +214,37 @@ type MaterialConsumption struct {
 	Name     string  `db:"name"`
 	Usages   int     `db:"usages"`
 	Quantity float64 `db:"quantity"`
+	// الرصيد الباقي = آخر جرد − المصروف بعده (nil = ماكو جرد للمادة).
+	Remaining *float64   `db:"remaining"`
+	CountedAt *time.Time `db:"countedAt"`
 }
 
 // MaterialConsumptionSince المواد المستعملة ≥minUsages مرة من since.
 func (r *AiRepository) MaterialConsumptionSince(since time.Time, minUsages int) ([]MaterialConsumption, error) {
 	rows := []MaterialConsumption{}
 	err := r.db.Select(&rows, `
-		SELECT COALESCE(i."materialId", 'name:' || i.name) AS key,
-		       COALESCE(MAX(m.name), MAX(i.name)) AS name,
-		       COUNT(*) AS usages, COALESCE(SUM(i.quantity), 0)::float8 AS quantity
-		FROM "LeaderInvoiceMaterialItem" i
-		JOIN "LeaderInvoice" li ON li.id = i."leaderInvoiceId"
-		LEFT JOIN "Material" m ON m.id = i."materialId"
-		WHERE li."revokedAt" IS NULL AND i.quantity > 0
-		  AND (li."createdAt" AT TIME ZONE 'UTC') >= $1
-		GROUP BY 1
-		HAVING COUNT(*) >= $2
-		ORDER BY quantity DESC
+		WITH used AS (
+			SELECT COALESCE(i."materialId", 'name:' || i.name) AS key,
+			       COALESCE(MAX(m.name), MAX(i.name)) AS name,
+			       MAX(i."materialId") AS "materialId",
+			       COUNT(*) AS usages, COALESCE(SUM(i.quantity), 0)::float8 AS quantity
+			FROM "LeaderInvoiceMaterialItem" i
+			JOIN "LeaderInvoice" li ON li.id = i."leaderInvoiceId"
+			LEFT JOIN "Material" m ON m.id = i."materialId"
+			WHERE li."revokedAt" IS NULL AND i.quantity > 0
+			  AND (li."createdAt" AT TIME ZONE 'UTC') >= $1
+			GROUP BY 1
+			HAVING COUNT(*) >= $2
+		)
+		SELECT u.key, u.name, u.usages, u.quantity,
+		       m."stockQty" - COALESCE((
+		           SELECT SUM(i2.quantity) FROM "LeaderInvoiceMaterialItem" i2
+		           JOIN "LeaderInvoice" l2 ON l2.id = i2."leaderInvoiceId"
+		           WHERE i2."materialId" = m.id AND l2."revokedAt" IS NULL
+		             AND l2."createdAt" >= m."stockCountedAt"), 0)::float8 AS remaining,
+		       m."stockCountedAt" AS "countedAt"
+		FROM used u LEFT JOIN "Material" m ON m.id = u."materialId"
+		ORDER BY u.quantity DESC
 		LIMIT 30`, since, minUsages)
 	return rows, err
 }
@@ -289,4 +304,17 @@ func (r *AiRepository) VehicleCosts() ([]VehicleCostRow, error) {
 		WHERE v."isActive" = true
 		ORDER BY v.name`)
 	return rows, err
+}
+
+// SetMaterialStock جرد: الرصيد الحالي للمادة هسه.
+func (r *AiRepository) SetMaterialStock(materialID string, qty float64, byID string) error {
+	res, err := r.db.Exec(`UPDATE "Material" SET "stockQty" = $2, "stockCountedAt" = now(), "stockCountedById" = NULLIF($3, '') WHERE id = $1`,
+		materialID, qty, byID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

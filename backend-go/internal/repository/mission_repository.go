@@ -228,7 +228,9 @@ func (r *MissionRepository) FindByID(id string) (*model.Mission, error) {
 	if err := r.hydrate(&m, true, true); err != nil {
 		return nil, err
 	}
-	return &m, nil
+	one := []model.Mission{m}
+	r.attachLeaderAndMembers(one)
+	return &one[0], nil
 }
 
 func (r *MissionRepository) CountAll() (int, error) {
@@ -384,6 +386,8 @@ func (r *MissionRepository) ListForEmployee(employeeID string) ([]model.Mission,
 	if err := r.attachBookingsAndEvents(missions, true, false); err != nil {
 		return nil, err
 	}
+	// 🔴 بلاها «members» يوصل null وشاشة المهام الميدانية تنكسر عند الليدر.
+	r.attachLeaderAndMembers(missions)
 	return missions, nil
 }
 

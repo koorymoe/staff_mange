@@ -25,7 +25,8 @@ func NewVehicleMaintenanceAlertService(aiRepo *repository.AiRepository, notifRep
 // الاستكشاف الأسبوعي.
 func (s *VehicleMaintenanceAlertService) RunWeeklyIfDue() error {
 	now := time.Now().In(debriefLoc)
-	if now.Weekday() != time.Monday {
+	// يوم ثابت إله — حتى ما تتكدّس الملخصات على المالك يوم الاثنين
+	if now.Weekday() != time.Wednesday {
 		return nil
 	}
 	weekKey := now.Format("2006-01-02")
@@ -48,8 +49,5 @@ func (s *VehicleMaintenanceAlertService) RunWeeklyIfDue() error {
 	msg := fmt.Sprintf(
 		"🔧 ماتركس — صيانة متأخرة وبعدها بالخدمة: %s. صيانتها المجدولة فاتت وهي لسه تُرسل بمهام/حجوزات.",
 		joinArabicAnd(lines))
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_VEHICLE_MAINTENANCE_OVERDUE", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_VEHICLE_MAINTENANCE_OVERDUE", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_VEHICLE_MAINTENANCE_OVERDUE", msg)
 }

@@ -47,7 +47,7 @@ const notifTargets: Record<string, string> = {
   AI_WEEKLY_REPORT: '/weekly-report',
 }
 import AnnouncementTicker from './AnnouncementTicker'
-import { navItems, isNavVisible, isExtraForMonitor, type NavItem } from './navTree'
+import { navItems, isNavVisible, isExtraForMonitor, isPathAllowed, type NavItem } from './navTree'
 
 
 const loadStoredEmployee = (): Employee | null => {
@@ -636,7 +636,12 @@ export default function Layout() {
             </div>
           </header>
           <main>
-            <ErrorBoundary inline key={location.pathname}><Outlet /></ErrorBoundary>
+            <ErrorBoundary inline key={location.pathname}>
+              {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}
+              {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId }) === false
+                ? <NoAccess />
+                : <Outlet />}
+            </ErrorBoundary>
           </main>
         </div>
       </SessionContext.Provider>
@@ -770,7 +775,12 @@ export default function Layout() {
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">
             {/* خطأ بشاشة وحدة يبقى بيها — القائمة تبقى شغّالة */}
-            <ErrorBoundary inline key={location.pathname}><Outlet /></ErrorBoundary>
+            <ErrorBoundary inline key={location.pathname}>
+              {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}
+              {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId }) === false
+                ? <NoAccess />
+                : <Outlet />}
+            </ErrorBoundary>
           </main>
         </div>
 
@@ -971,5 +981,15 @@ export default function Layout() {
           الموظف. ⚠️ فوق الكيان بقصد: قصة العقوبة ما تنحجب وراه. */}
       <StoryScene />
     </SessionContext.Provider>
+  )
+}
+
+function NoAccess() {
+  return (
+    <div className="mx-auto mt-10 flex max-w-md flex-col items-center gap-3 rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
+      <span className="text-4xl">🚫</span>
+      <p className="text-lg font-bold text-red-700">ما عندك صلاحية لهاي الشاشة</p>
+      <p className="text-sm text-red-500">إذا تحتاجها بشغلك، اطلب الصلاحية من إدارة النظام.</p>
+    </div>
   )
 }

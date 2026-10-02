@@ -62,3 +62,15 @@ func (h *AchievementHandler) Review(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, a)
 }
+
+// GET /api/achievements/mine — الموظف يشوف إنجازاته هو بس. چانت شاشة
+// «إنجازاتي» تنادي قائمة المدير، فكل موظف ينرفض وما يشوف تاريخه.
+func (h *AchievementHandler) Mine(w http.ResponseWriter, r *http.Request) {
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	rows, err := h.service.List(middleware.EmployeeIDFromContext(r), "", limit)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإنجازات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}

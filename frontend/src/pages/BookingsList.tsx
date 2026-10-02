@@ -117,6 +117,8 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   const canEditCrew = isAdmin || owner
     || ['coordinator', 'crew_management'].some((p) => permissions.includes(p))
   // طلب حذف حجز: الإداري والمراقب ومدير النظام، أو أي واحد ينمنح الصلاحية
+  // «الزبون ما رد» / «يرجع خبر» = PUT /bookings/{id}/waiting، حارسه «coordinator» بس.
+  const canMarkWaiting = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
   const canRequestDelete = isAdmin || employee?.actualRole === 'OWNER' ||
     employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
     permissions.includes('booking_delete_request')
@@ -160,6 +162,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     // «الزبون ما رد» مسار مختلف تماماً: ما ينفتح طلب حذف ولا ينطر
     // قرار المراقب — الحجز ينزاح فوراً لطابور الانتظار الموجود أصلاً.
     if (requestType === BOOKING_NO_ANSWER_CHOICE) {
+      if (!canMarkWaiting) { alert('تأشير «الزبون ما رد» للمنسّق — اختار نوع طلب ثاني أو بلّغ التنسيق'); return }
       try {
         await api.markBookingWaiting(bookingId, reason.trim())
       alert('تأشّر «الزبون ما رد» — الحجز انزاح لطابور الانتظار، ترجّعه يدوياً وقت ما تريد')
@@ -688,7 +691,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                                 مدفوناً جوّا نموذج طلب الحذف فمحد يوصله.
                                 وهو مو حذف: الحجز ينزاح لطابور «ما وصلت
                                 للتنفيذ» ويبقى محفوظاً. */}
-                            {canRequestDelete && (
+                            {canMarkWaiting && (
                               <button
                                 onClick={() => markNoAnswer(b.id, b.code)}
                                 className="mt-1 mr-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
@@ -696,7 +699,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                                 📞 الزبون ما رد
                               </button>
                             )}
-                            {canRequestDelete && (
+                            {canMarkWaiting && (
                               <button
                                 onClick={() => markAwaitingCustomer(b.id, b.code)}
                                 className="mt-1 mr-2 rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100"

@@ -64,6 +64,10 @@ export default function Coordinator() {
   const canRequestDelete = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
     || currentUser?.role === 'HR_COORDINATOR' || currentUser?.role === 'MONITOR'
     || (permissions ?? []).includes('booking_delete_request')
+  // «الزبون ما رد» و«يرجع خبر» = PUT /bookings/{id}/waiting — حارسه صلاحية
+  // «coordinator» بس (مو طلب الحذف)، فالزر يطلع بنفس الشرط حتى ما ينحسب مخالفة.
+  const canMarkWaiting = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
+    || (permissions ?? []).includes('coordinator')
   // الحذف (الأرشفة) قرار إداري — المنسّق يأجّل ويحط بالانتظار، بس ما يحذف
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
   const [bookings, setBookings] = useState<Booking[]>([])
@@ -921,7 +925,7 @@ export default function Coordinator() {
                         🔍 كشف
                       </button>
                     )}
-                    {canRequestDelete && (
+                    {canMarkWaiting && (
                       <button
                         onClick={() => markNoAnswer(booking.id, booking.code)}
                         className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-200"
@@ -929,7 +933,7 @@ export default function Coordinator() {
                         📞 الزبون ما رد
                       </button>
                     )}
-                    {canRequestDelete && (
+                    {canMarkWaiting && (
                       <button
                         onClick={() => markAwaitingCustomer(booking.id, booking.code)}
                         className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100"

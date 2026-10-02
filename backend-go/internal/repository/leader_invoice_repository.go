@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 
 	"github.com/lib/pq"
 
@@ -111,7 +112,8 @@ func (r *LeaderInvoiceRepository) InheritBookingVerdict(invoiceID, bookingID str
 	}
 	// ⚠️ `auditedById` يبقى **المحاسب الي أشّر فعلاً** — مو الليدر الي
 	// رفع الفاتورة. نسبة الحكم لغير صاحبه تخرّب أي مساءلة بعدين.
-	_, _ = r.db.Exec(`
+	// ما نوقف الإنشاء (شوف فوگ)، بس الفشل لازم يبين بالسجل — چان يضيع بصمت.
+	if _, err := r.db.Exec(`
 		UPDATE "LeaderInvoice"
 		SET "auditVerdict" = $2,
 		    "auditNote" = NULLIF($3, ''),
@@ -119,7 +121,9 @@ func (r *LeaderInvoiceRepository) InheritBookingVerdict(invoiceID, bookingID str
 		    "auditedAt" = CURRENT_TIMESTAMP,
 		    "auditedAmount" = $5
 		WHERE id = $1 AND ("auditVerdict" IS NULL OR btrim("auditVerdict") = '')`,
-		invoiceID, verdict, note, byID, amount)
+		invoiceID, verdict, note, byID, amount); err != nil {
+		log.Printf("inherit booking verdict (invoice %s, booking %s): %v", invoiceID, bookingID, err)
+	}
 }
 
 func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix string) (int, error) {

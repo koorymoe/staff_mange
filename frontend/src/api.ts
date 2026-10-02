@@ -813,7 +813,7 @@ export interface StockForecast {
   windowDays: number
   minUsages: number
   horizonDays: number
-  items: { key: string; name: string; usages: number; totalQuantity: number; avgDaily: number; need14Days: number }[]
+  items: { key: string; name: string; usages: number; totalQuantity: number; avgDaily: number; need14Days: number; remaining?: number; daysLeft?: number; countedAt?: string }[]
 }
 
 /** ماتركس — اقتراح استبدال (GET /ai/replacement-suggestions) */
@@ -4133,6 +4133,7 @@ export const api = {
   // ── الإنجازات (ماتركس) — تقرير يومي حر من أي موظف بأي دور ──
   createAchievement: (bookingId: string | null, reportText: string) =>
     request<Achievement>('/achievements', { method: 'POST', body: JSON.stringify({ bookingId, reportText }) }),
+  getMyAchievements: (limit = 30) => request<Achievement[]>(`/achievements/mine?limit=${limit}`),
   getAchievements: (params?: { employeeId?: string; day?: string; limit?: number }) => {
     const qs = new URLSearchParams()
     if (params?.employeeId) qs.set('employeeId', params.employeeId)
@@ -4974,7 +4975,7 @@ export const api = {
    * فالقائمة المنسدلة جانت تطلع فاضية وما يكدر يحدد سيارة.
    */
   getVehicleOptions: () => request<VehicleOption[]>('/vehicles/options'),
-  createVehicle: (data: { name: string; plateNumber: string; color?: string; type?: string }) =>
+  createVehicle: (data: { name: string; plateNumber: string; color?: string; type?: string; [k: string]: string | number | undefined }) =>
     request<Vehicle>('/vehicles', { method: 'POST', body: JSON.stringify(data) }),
   getVehicleLogs: (vehicleId: string) => request<VehicleLog[]>(`/vehicles/${vehicleId}/logs`),
   createVehicleLog: (vehicleId: string, data: { type: 'FUEL' | 'CLEANING' | 'OIL_CHANGE' | 'MAINTENANCE'; performedAt?: string; nextDueAt?: string; nextDueOdometer?: number; odometer?: number; cost?: number; notes?: string; liters?: number; filledByEmployeeId?: string; receiptNumber?: string; stationName?: string; receiptPhotoBase64?: string }) =>
@@ -5345,6 +5346,8 @@ export const api = {
     request<CrewRecommendation>(`/ai/crew-recommendation?bookingId=${encodeURIComponent(bookingId)}`),
   getNewEmployeeCurves: () => request<NewEmployeeCurve[]>('/ai/new-employee-curves'),
   getStockForecast: () => request<StockForecast>('/ai/stock-forecast'),
+  setMaterialStock: (id: string, quantity: number) =>
+    request<{ ok: boolean }>(`/materials/${encodeURIComponent(id)}/stock`, { method: 'PUT', body: JSON.stringify({ quantity }) }),
   getReplacementSuggestions: () => request<ReplacementSuggestions>('/ai/replacement-suggestions'),
   getMyWatch: () => request<MatrixWatch>('/ai/my-watch'),
   getMatrixGuide: (path: string, label: string) =>

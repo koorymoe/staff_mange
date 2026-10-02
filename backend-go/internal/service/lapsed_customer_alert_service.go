@@ -39,6 +39,10 @@ func isoWeekMonday(t time.Time) string {
 // وترسل، والباقي يطلع بصمت.
 func (s *LapsedCustomerAlertService) RunWeeklyIfDue() error {
 	now := time.Now().In(debriefLoc)
+	// يوم ثابت إله — چان يطلع أول دورة بالأسبوع (الاثنين) ويا ست ملخصات ثانية.
+	if now.Weekday() != time.Saturday {
+		return nil
+	}
 	claimed, err := s.aiRepo.ClaimDailyMarker("WEEKLY_LAPSED_CUSTOMERS_SENT", isoWeekMonday(now))
 	if err != nil || !claimed {
 		return err
@@ -60,8 +64,5 @@ func (s *LapsedCustomerAlertService) RunWeeklyIfDue() error {
 	msg := fmt.Sprintf(
 		"🤝 ماتركس — %d زبون عندهم %d حجوزات مكتملة أو أكثر وما حجزوا من %d يوم. أبرزهم: %s. يستاهلون اتصال متابعة.",
 		len(rows), lapsedMinCompleted, lapsedIdleDays, strings.Join(codes, "، "))
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_LAPSED_CUSTOMERS", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_LAPSED_CUSTOMERS", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_LAPSED_CUSTOMERS", msg)
 }

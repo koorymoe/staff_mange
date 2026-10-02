@@ -104,3 +104,23 @@ func (h *MatrixInsightsHandler) WeeklyReport(w http.ResponseWriter, r *http.Requ
 	}
 	WriteJSON(w, http.StatusOK, out)
 }
+
+// PUT /api/materials/{id}/stock {quantity} — جرد مادة (صلاحية المخزن).
+func (h *MatrixInsightsHandler) SetMaterialStock(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Quantity *float64 `json:"quantity"`
+	}
+	if err := DecodeJSON(r, &body); err != nil || body.Quantity == nil {
+		WriteError(w, http.StatusBadRequest, "اكتب الرصيد")
+		return
+	}
+	if err := h.insights.SetMaterialStock(r.PathValue("id"), *body.Quantity, middleware.EmployeeIDFromContext(r)); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			WriteError(w, http.StatusNotFound, "المادة مو موجودة")
+			return
+		}
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}

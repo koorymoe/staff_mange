@@ -1,15 +1,22 @@
 import { useEffect, useState } from 'react'
 import { api, type Expense } from '../api'
+import { useSession } from '../session'
 
 export default function ExpensesReview() {
+  // الأزرار بس لمن الخادم يقبل — وإلا كل ضغطة تنحسب مخالفة.
+  const { employee, permissions } = useSession()
+  const canDecide = employee?.role === 'ADMIN' || employee?.role === 'OWNER' || employee?.role === 'FINANCE'
+    || permissions.includes('finance_audit') || permissions.includes('expenses_manage')
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'REJECTED'>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [loadErr, setLoadErr] = useState('')
 
   useEffect(() => {
     api.getExpenses()
       .then(setExpenses)
+      .catch((e) => setLoadErr(e instanceof Error ? e.message : 'تعذّر جلب المصاريف'))
       .finally(() => setLoading(false))
   }, [])
 
@@ -79,6 +86,7 @@ export default function ExpensesReview() {
       </div>
 
       {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {loadErr && <p className="mt-6 rounded-lg bg-red-50 p-3 text-sm text-red-700">{loadErr}</p>}
 
       {/* Expenses list */}
       <div className="mt-6 flex flex-col gap-3">
@@ -86,7 +94,7 @@ export default function ExpensesReview() {
           <div key={exp.id} className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
             <div className="flex items-center justify-between p-4">
               <div className="flex items-center gap-2">
-                {exp.status === 'PENDING' ? (
+                {exp.status === 'PENDING' && canDecide ? (
                   <>
                     <button onClick={() => handleAction(exp.id, 'REJECTED')} disabled={actionLoading === exp.id}
                       className="rounded-lg border border-red-200 bg-red-50 px-4 py-1.5 text-xs font-bold text-red-600 transition hover:bg-red-100 disabled:opacity-50">

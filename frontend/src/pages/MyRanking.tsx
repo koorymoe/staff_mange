@@ -58,9 +58,11 @@ export default function MyRanking() {
 
   const isTechnician = employee?.role === 'TECHNICIAN'
 
+  // /stats محمي بصلاحية «إحصائيات الموظفين» — بلاها الطلب ينرفض بلا فايدة.
+  const canStats = (permissions ?? []).includes('employee_stats')
   useEffect(() => {
-    if (isTechnician) api.getStats().then(setStats).catch(() => setStats(null))
-  }, [isTechnician])
+    if (isTechnician && canStats) api.getStats().then(setStats).catch(() => setStats(null))
+  }, [isTechnician, canStats])
 
   // ═══ التصنيف حسب الشغل مو حسب الدور ═══
   //

@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -49,25 +50,53 @@ func (s *MatrixAutopilotService) gpsExpiry(week string, dayStart time.Time) (int
 }
 
 // ٨. وثيقة سيارة تخلص خلال ٣٠ يوم — للأسطول، مرة بالأسبوع.
+//
+// 🔴 چانت كل وثيقة إشعار، وفوقها اقتراح الاستبدال بإشعار ثاني — نفس السيارة
+// تطلّع ٢-٣ إشعارات. هسه إشعار واحد لكل سيارة بكل وثائقها، وإذا انقترح
+// استبدالها بنفس الدورة، الوثائق تنضم لإشعار الاستبدال (vehicleNoted).
+// كل وثيقة تبقى فعل مستقل بالسجل، حتى المتابعة تعرف أي وحدة انحلت.
 func (s *MatrixAutopilotService) vehicleDocs(week string, dayStart time.Time) (int, error) {
 	rows, err := s.actions.VehicleDocsExpiring(30)
 	if err != nil {
 		return 0, err
 	}
+	type group struct {
+		name, plate string
+		parts       []string
+	}
+	order := []string{}
+	groups := map[string]*group{}
 	n := 0
 	for _, d := range rows {
 		state := "تخلص"
 		if d.ExpiryDate.Before(time.Now()) {
 			state = "خالصة من"
 		}
-		msg := fmt.Sprintf("🤖 ماتركس — %s السيارة «%s» (%s) %s %s. جدّدوها قبل ما تطلع بالشارع.",
-			d.DocumentType, d.VehicleName, d.PlateNumber, state, d.ExpiryDate.Format("2006-01-02"))
-		if s.act(model.AiAction{Kind: model.AiActionVehicleDocExpiry, EntityType: "VEHICLE_DOCUMENT", EntityID: d.ID,
+		part := fmt.Sprintf("%s %s %s", d.DocumentType, state, d.ExpiryDate.Format("2006-01-02"))
+		if !s.act(model.AiAction{Kind: model.AiActionVehicleDocExpiry, EntityType: "VEHICLE_DOCUMENT", EntityID: d.ID,
 			Period: week, TargetLabel: "الأسطول",
 			Summary: fmt.Sprintf("نبّه الأسطول: %s «%s» %s %s", d.DocumentType, d.VehicleName, state, d.ExpiryDate.Format("2006-01-02")),
 			Details: why(map[string]any{"document": d.DocumentType, "vehicle": d.VehicleName, "plate": d.PlateNumber, "expiryDate": d.ExpiryDate})}, dayStart,
-			func() error { return s.notif.CreateForPermission("vehicle_management", "AI_AUTOPILOT", msg) }) {
-			n++
+			func() error { return nil }) {
+			continue
+		}
+		n++
+		g, ok := groups[d.PlateNumber]
+		if !ok {
+			g = &group{name: d.VehicleName, plate: d.PlateNumber}
+			groups[d.PlateNumber] = g
+			order = append(order, d.PlateNumber)
+		}
+		g.parts = append(g.parts, part)
+	}
+	for _, plate := range order {
+		if s.vehicleNoted[plate] {
+			continue // انذكرت ويا إشعار الاستبدال
+		}
+		g := groups[plate]
+		msg := fmt.Sprintf("🤖 ماتركس — السيارة «%s» (%s): %s. جدّدوها قبل ما تطلع بالشارع.", g.name, g.plate, strings.Join(g.parts, "، "))
+		if err := s.notif.CreateForPermission("vehicle_management", "AI_AUTOPILOT", msg); err != nil {
+			log.Printf("[ai] تعذر إرسال وثائق السيارة %s: %v", plate, err)
 		}
 	}
 	return n, nil

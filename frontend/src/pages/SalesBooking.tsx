@@ -108,7 +108,8 @@ export default function SalesBooking() {
   const selectedDeptHeads = departments.find((d) => d.id === intDeptId)?.heads ?? []
 
   useEffect(() => {
-    api.getServices().then(setServices)
+    // بلا الخدمات ما ينحجز شي — الفشل لازم يبين، مو قائمة فاضية ساكتة.
+    api.getServices().then(setServices).catch((e) => alert(`تعذّر جلب الخدمات: ${e instanceof Error ? e.message : ''} — حدّث الصفحة.`))
     // الأقسام الفعّالة بس — ما ينحجز لقسم انلغى.
     // ⚠️ الفشل ما ينبلع: بلا الأقسام، منتقي «حجز داخل الشركة» يطلع
     // فارغاً والموظف يظن ماكو أقسام بينما السجل مليان.
@@ -129,7 +130,7 @@ export default function SalesBooking() {
         setGrandfatherName(gf)
         setFamilyName(fam)
       }
-    })
+    }).catch(() => { /* التعبئة التلقائية اختيارية — الموظف يكتب البيانات بيده */ })
   }, [searchParams])
 
   // متابعة الجودة الي حوّلت لحجز صيانة — بعد إنشاء الحجز فعلياً نربطه

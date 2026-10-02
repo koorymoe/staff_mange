@@ -200,6 +200,10 @@ func (s *SalesOpportunityService) List() ([]SalesOpportunity, error) {
 // RunWeeklyIfDue ملخص أسبوعي (أعداد بس، بلا أسماء) للمالك ومدير النظام.
 func (s *SalesOpportunityService) RunWeeklyIfDue() error {
 	now := time.Now().In(debriefLoc)
+	// يوم ثابت إله — چان يطلع أول دورة بالأسبوع (الاثنين) ويا ست ملخصات ثانية.
+	if now.Weekday() != time.Wednesday {
+		return nil
+	}
 	claimed, err := s.aiRepo.ClaimDailyMarker("WEEKLY_SALES_OPPORTUNITIES_SENT", isoWeekMonday(now))
 	if err != nil || !claimed {
 		return err
@@ -214,8 +218,5 @@ func (s *SalesOpportunityService) RunWeeklyIfDue() error {
 	}
 	msg := fmt.Sprintf("💡 ماتركس — فرص البيع هذا الأسبوع: %d خدمة مكمّلة، %d صيانة سنوية مستحقة. التفاصيل بشاشة «فرص البيع».",
 		counts[OpportunityCrossSell], counts[OpportunityMaintenanceDue])
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_SALES_OPPORTUNITIES", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_SALES_OPPORTUNITIES", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_SALES_OPPORTUNITIES", msg)
 }

@@ -27,12 +27,14 @@ const (
 )
 
 type MatrixAutopilotService struct {
-	actions  *repository.AiActionRepository
-	aiRepo   *repository.AiRepository
-	notif    *repository.NotificationRepository
-	switches *repository.SystemSwitchRepository
-	delay    *DelayPredictionService
-	insights *MatrixInsightsService
+	actions *repository.AiActionRepository
+	aiRepo  *repository.AiRepository
+	notif   *repository.NotificationRepository
+	// السيارات الي انذكرت وثائقها ويا إشعار الاستبدال بهالدورة — حتى ما يتكرر إشعارها.
+	vehicleNoted map[string]bool
+	switches     *repository.SystemSwitchRepository
+	delay        *DelayPredictionService
+	insights     *MatrixInsightsService
 	// proposals عدّاد اقتراحات ماتركس المعلّقة — للإشعار الصباحي والصندوق.
 	proposals func() int
 }
@@ -267,13 +269,25 @@ func (s *MatrixAutopilotService) replacementAlerts(week string, dayStart time.Ti
 			n++
 		}
 	}
+	// وثائق السيارة الي تخلص تنضم لنفس إشعار الاستبدال — إشعار واحد للسيارة.
+	s.vehicleNoted = map[string]bool{}
+	docs := map[string][]string{}
+	if rows, err := s.actions.VehicleDocsExpiring(30); err == nil {
+		for _, d := range rows {
+			docs[d.PlateNumber] = append(docs[d.PlateNumber], fmt.Sprintf("%s تخلص %s", d.DocumentType, d.ExpiryDate.Format("2006-01-02")))
+		}
+	}
 	for _, v := range rep.Vehicles {
 		msg := fmt.Sprintf("🤖 ماتركس — السيارة «%s» (%s): %s. فكّروا باستبدالها.", v.Name, v.PlateNumber, strings.Join(v.Reasons, "، "))
+		if d := docs[v.PlateNumber]; len(d) > 0 {
+			msg += " وكذلك: " + strings.Join(d, "، ") + "."
+		}
 		if s.act(model.AiAction{Kind: model.AiActionReplacementAlert, EntityType: "VEHICLE", EntityID: v.ID,
 			Period: week, TargetLabel: "الأسطول", Summary: fmt.Sprintf("اقترح استبدال السيارة «%s»", v.Name),
 			Details: why(map[string]any{"cost12m": v.Cost12m, "incidents180d": v.Incidents180d, "reasons": v.Reasons})}, dayStart,
 			func() error { return s.notif.CreateForPermission("vehicle_management", "AI_AUTOPILOT", msg) }) {
 			n++
+			s.vehicleNoted[v.PlateNumber] = true
 		}
 	}
 	return n, nil
@@ -292,6 +306,10 @@ func (s *MatrixAutopilotService) sendMorningSummary(done int) error {
 	}
 	msg := fmt.Sprintf("🤖 ماتركس — اليوم سوّيت %d تذكير لحالي، وأكو %d حكم ينتظر قرارك، و%d تذكير ما انحل وصعدته إلك، وعندي %d اقتراح. افتح «صندوق قرارات ماتركس».",
 		done, len(pending), len(escalated), props)
+	today := time.Now().In(debriefLoc).Format("2006-01-02")
+	if risks, err := s.delay.Risks(today, today); err == nil && len(risks) > 0 {
+		msg += fmt.Sprintf(" ⏱️ و%d حجز اليوم ممكن يطوّل — التنسيق والليدرية تبلّغوا.", len(risks))
+	}
 	if !s.Enabled() {
 		msg = fmt.Sprintf("🤖 ماتركس — التنفيذ التلقائي مطفي. أكو %d حكم ينتظر قرارك بصندوق القرارات.", len(pending))
 	}

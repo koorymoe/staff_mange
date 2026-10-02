@@ -139,7 +139,12 @@ export default function Employees({ embedded }: { embedded?: boolean } = {}) {
   useEffect(() => {
     if (isAdmin && showArchived) api.getArchivedEmployees().then(setArchivedEmployees).catch(() => setArchivedEmployees([]))
     // صاحب صلاحية الإيقاف (مو مدير): يشوف الموقوفين بس، من مساره هو.
-    else if (canSuspend && showArchived) api.getSuspendedEmployees().then((rows) => setArchivedEmployees(rows as unknown as Employee[])).catch(() => setArchivedEmployees([]))
+    else if (canSuspend && showArchived) api.getSuspendedEmployees().then((rows) => setArchivedEmployees(rows.map((r) => ({
+      // 🔴 مسار الموقوفين يرجّع شكل مختصر — چانت الشاشة تتعامل وياه كموظف كامل
+      // وتنكسر (skills غير موجودة) عند المراقب. نكمّل الحقول الناقصة بقيم فاضية.
+      ...({} as Employee), id: r.id, name: r.name, role: r.role, status: r.status as Employee['status'],
+      skills: [], secondaryRoles: [], position: r.reason ? `موقوف: ${r.reason}` : 'موقوف',
+    }) as Employee))).catch(() => setArchivedEmployees([]))
   }, [isAdmin, canSuspend, showArchived])
 
   const baseEmployees = showArchived ? archivedEmployees : (isHR ? employees.filter((emp) => emp.role === 'TECHNICIAN') : employees)

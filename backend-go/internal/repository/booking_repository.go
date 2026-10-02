@@ -881,11 +881,6 @@ func (r *BookingRepository) TouchLastEdited(id, editorID string) error {
 	return err
 }
 
-func (r *BookingRepository) SetStatus(id, status string) error {
-	_, err := r.db.Exec(`UPDATE "Booking" SET status = $2 WHERE id = $1`, id, status)
-	return err
-}
-
 // StartWithResponseTime يبدأ العمل ويحسب كم دقيقة أخذ الفنيون بعد ما تيم ليدر جهّز
 // المواد ولحد ما فعلاً بدأوا الشغل — حتى نعرف مين ضيّع وقت.
 func (r *BookingRepository) StartWithResponseTime(id string) error {

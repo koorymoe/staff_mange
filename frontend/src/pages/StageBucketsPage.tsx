@@ -151,6 +151,8 @@ export default function StageBucketsPage({ only }: Props = {}) {
   /** حجوزات انطلب حذفها بهاي الجلسة — الزر ينطفي بدل ما ينضغط مرتين. */
   const [deleteAsked, setDeleteAsked] = useState<Record<string, boolean>>({})
   const { employee, permissions } = useSession()
+  // «الزبون رد» و«ما رد» = مسارات waiting/resume، حارسها «coordinator» بس.
+  const canMarkWaiting = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
   /**
    * ⚠️ مطابق لحارس الخادم بالضبط (`requireDeleteRequest`):
    * ADMIN · OWNER · HR_COORDINATOR · MONITOR أو صلاحية
@@ -397,7 +399,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
                     {/* ⚠️ العمود يلتصق: قست على عرض ١٢٨٠ فطلع زر «مارد»
                         خارج الإطار (يساره −٦px) — يعني الإداري ما يشوف
                         الزر الي كل الشاشة مبنية عليه. */}
-                    {isNoAnswer && <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-bold">إجراء</th>}
+                    {isNoAnswer && canMarkWaiting && <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-bold">إجراء</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
@@ -515,7 +517,7 @@ export default function StageBucketsPage({ only }: Props = {}) {
                             </div>
                           ) : <span className="text-slate-300">—</span>}
                         </td>
-                        {isNoAnswer && (
+                        {isNoAnswer && canMarkWaiting && (
                           <td className="sticky left-0 z-10 bg-white px-4 py-3 shadow-[6px_0_8px_-6px_rgba(15,32,64,0.18)]">
                             <div className="flex flex-col gap-1.5">
                               <button

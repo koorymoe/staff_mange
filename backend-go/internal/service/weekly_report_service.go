@@ -223,8 +223,5 @@ func (s *WeeklyReportService) RunSundayIfDue() error {
 	if m := r.Matrix; m != nil && m.Actions > 0 {
 		msg += fmt.Sprintf(" 🤖 ماتركس بآخر ٣٠ يوم: %d تذكير، انحل منها %d، وصعد %d، ورفضت %d.", m.Actions, m.Resolved, m.Escalated, m.Rejected)
 	}
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_WEEKLY_REPORT", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_WEEKLY_REPORT", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_WEEKLY_REPORT", msg)
 }

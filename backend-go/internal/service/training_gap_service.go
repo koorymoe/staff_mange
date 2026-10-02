@@ -30,7 +30,8 @@ func NewTrainingGapService(aiRepo *repository.AiRepository, notifRepo *repositor
 // الاستكشاف الأسبوعي.
 func (s *TrainingGapService) RunWeeklyIfDue() error {
 	now := time.Now().In(debriefLoc)
-	if now.Weekday() != time.Monday {
+	// يوم ثابت إله — حتى ما تتكدّس الملخصات على المالك يوم الاثنين
+	if now.Weekday() != time.Thursday {
 		return nil
 	}
 	weekKey := now.Format("2006-01-02")
@@ -54,8 +55,5 @@ func (s *TrainingGapService) RunWeeklyIfDue() error {
 	msg := fmt.Sprintf(
 		"🎓 ماتركس — فجوة تدريب محتملة: %s. ما عندهم برنامج تدريب ناجح يغطّي هذي الخدمة — يمكن الفجوة بالتدريب مو تقصير.",
 		joinArabicAnd(lines))
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_TRAINING_GAP", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_TRAINING_GAP", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_TRAINING_GAP", msg)
 }

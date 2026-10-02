@@ -347,7 +347,7 @@ export const navItems: NavItem[] = [
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['leader_invoices_view', 'finance_audit'] },
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'] },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
         ],
       },
@@ -644,10 +644,11 @@ export const navItems: NavItem[] = [
       // ⚠️⚠️ مخفيّتان عن المراقب صراحة — راجع نفس التعليق بـ«إدارة
       // الحسابات» فوگ. شغل المحاسب الشخصي، والخادم يرفض المراقب لو
       // حاول يدقق حجزاً مباشرة أصلاً.
-      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
-      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], permission: 'finance', hideForRoles: ['MONITOR'] },
+      // ⚠️ نفس شروط نسخهن تحت «الإدارة» بالضبط (بند ١٣ بالفحص) — الشاشة الوحدة ما تطلع بمحل وتختفي بالثاني.
+      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'], hideForRoles: ['MONITOR'] },
+      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'], hideForRoles: ['MONITOR'] },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
-      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockPermission: 'audit_issues', hideForRoles: ['MONITOR'] },
+      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'], hideForRoles: ['MONITOR'] },
       // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
       { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
       { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
@@ -657,7 +658,7 @@ export const navItems: NavItem[] = [
       { to: '/camera-cost', label: '📷 حساب كلفة الكاميرات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'execution_cost' },
       // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
       // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockPermission: 'leader_invoices_view', hideForRoles: ['MONITOR'] },
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'], hideForRoles: ['MONITOR'] },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
       // المشاريع الموجّهة لي: محلها هنا للمحاسب — والنسخة العامة فوگ
       // منحجوبة عنه بـhideForRoles حتى ما تتكرر.
@@ -669,7 +670,8 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_hr',
     children: [
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
-      { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'work_schedule_manage' },
+      // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
+      { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
       { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'staff_requests' },
       { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'performance_review' },
@@ -911,3 +913,65 @@ export function collectMonitorExtraLinks(items: NavItem[], ctx: NavContext, unit
   return out
 }
 
+
+// ═══ حارس الرابط ═══
+//
+// القائمة تخفي الشاشة عن غير المخوّل، بس الرابط چان مفتوح: يكتبه بيده
+// فتنفتح الشاشة فاضية (الخادم يرفض بياناتها) أو بأزرار تنرفض. هنا نفس
+// قرار القائمة بالضبط على المسار — حتى ما يفترقون أبداً.
+//
+// يرجّع null إذا المسار مو بالقائمة أصلاً (شاشة تفاصيل، رابط داخلي...) —
+// وقتها ما نحكم ونخليها لحارس الشاشة نفسها والخادم.
+export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
+  const clean = (p: string) => (p.split('?')[0].replace(/\/+$/, '') || '/')
+  const target = clean(path)
+  if (target === '/') return null
+  const role = ctx.employee?.role
+  let found = false
+  let allowed = false
+  const walk = (items: NavItem[], unitGranted: boolean) => {
+    for (const item of items) {
+      const visible = isNavVisible(item, ctx, unitGranted)
+      if (item.to && clean(item.to) === target) {
+        found = true
+        if (visible) allowed = true
+      }
+      if (item.children) {
+        const granted = unitGranted ||
+          (!!item.unitPermission && (role === 'ADMIN' || ctx.permissions.includes(item.unitPermission)))
+        walk(item.children, granted)
+      }
+    }
+  }
+  walk(navItems, false)
+  if (found && allowed) return true
+  // شاشات تتكيّف لحالها حسب الشخص (مثلاً «تتبع المهام» تعرض للفني والليدر
+  // مهامه هو بس) وتنفتح من روابط داخلية حتى لو مو بقائمته.
+  const self = SELF_SCOPED[target]
+  if (self && (self.roles?.includes(role as EmployeeRole) || (self.leader && ctx.employee?.isLeader))) return true
+  if (found) return false
+  // شاشات مو بالقائمة (تنفتح من روابط داخلية) — شرطها نفس حارس الخادم بالضبط.
+  const rule = ROUTE_RULES[target]
+  if (!rule) return null
+  if (role === 'ADMIN' || (rule.roles ?? []).includes(role as EmployeeRole)) return true
+  if (rule.leader && ctx.employee?.isLeader) return true
+  return (rule.anyPermission ?? []).some((p) => ctx.permissions.includes(p))
+}
+
+const SELF_SCOPED: Record<string, RouteRule> = {
+  '/missions': { roles: ['TECHNICIAN', 'TECHNICAL'], leader: true }, // /missions/my/{id} — مهامه هو
+}
+
+// ⚠️ كل سطر = حارس GET الشاشة بـmain.go. إذا تغيّر الحارس هناك، غيّره هنا.
+type RouteRule = { roles?: EmployeeRole[]; anyPermission?: string[]; leader?: boolean }
+const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_system'] } // requireGpsData
+const ROUTE_RULES: Record<string, RouteRule> = {
+  '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
+  '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
+  '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
+  '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator
+  '/gps/customers': GPS_DATA,
+  '/gps/devices': GPS_DATA,
+  '/gps/sims': GPS_DATA,
+  '/gps/requests': GPS_DATA,
+}

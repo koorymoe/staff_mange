@@ -68,21 +68,7 @@ func (h *EmployeeHandler) Get(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, ViewEmployee(employee, middleware.RoleFromContext(r), middleware.EmployeeIDFromContext(r)))
 }
 
-// POST /api/v1/employees
-func (h *EmployeeHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var req model.CreateEmployeeRequest
-	if err := DecodeJSON(r, &req); err != nil {
-		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
-		return
-	}
-
-	employee, err := h.service.Create(req)
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	WriteJSON(w, http.StatusCreated, employee)
-}
+// (إنشاء الموظف انتقل لـEmployeeAdminHandler.Create — المالك أو صلاحية employee_create.)
 
 // PUT /api/v1/employees/{id}
 // PUT /api/employees/{id}/identity — {name?, role?}

@@ -1061,6 +1061,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/crew-recommendation", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.CrewRecommendation), requireAuth, requireBookingCoord))
 	mux.Handle("GET /api/ai/new-employee-curves", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.NewEmployeeCurves), requireAuth, requireAdmin))
 	// المواد: نفس حارس شاشة الجرد (صلاحية inventory؛ ADMIN/OWNER يمرّون).
+	mux.Handle("PUT /api/materials/{id}/stock", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.SetMaterialStock), requireAuth, requireInventoryView))
 	mux.Handle("GET /api/ai/stock-forecast", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.StockForecast), requireAuth, requireInventoryView))
 	// الاستبدال: ADMIN/OWNER أو it_assets أو vehicle_management — والمعالج يفلتر الأقسام.
 	mux.Handle("GET /api/ai/replacement-suggestions", middleware.Chain(http.HandlerFunc(matrixInsightsHandler.ReplacementSuggestions), requireAuth,
@@ -1092,6 +1093,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الإنجازات: أي موظف يرفع تقريره — العرض والمراجعة حصراً لمدير
 	// النظام والمالك (requireAdmin)، لا المراقب.
 	mux.Handle("POST /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.Create), requireAuth))
+	mux.Handle("GET /api/achievements/mine", middleware.Chain(http.HandlerFunc(achievementHandler.Mine), requireAuth))
 	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireAdmin))
 	mux.Handle("GET /api/bookings/{id}/timeline", middleware.Chain(http.HandlerFunc(bookingHandler.Timeline), requireAuth))
@@ -1230,7 +1232,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// المصاريف — أي موظف يقدر يرسل مصروف، الموافقة/الرفض للمحاسب ومدير النظام فقط
 	mux.Handle("GET /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.List), requireAuth))
 	mux.Handle("POST /api/expenses", middleware.Chain(http.HandlerFunc(expenseHandler.Create), requireAuth))
-	mux.Handle("PUT /api/expenses/{id}/status", middleware.Chain(http.HandlerFunc(expenseHandler.UpdateStatus), requireAuth, requireFinance))
+	// صلاحية «إدارة المصاريف (موافقة ورفض)» چانت ما تشتغل — الحارس ما يعرفها.
+	mux.Handle("PUT /api/expenses/{id}/status", middleware.Chain(http.HandlerFunc(expenseHandler.UpdateStatus), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "FINANCE"}, "finance_audit", "expenses_manage")))
 
 	// المخزون — أدوات شخصية / مركبات / أدوات مشتركة / طلبات الأدوات
 	mux.Handle("GET /api/inventory/personal", middleware.Chain(http.HandlerFunc(inventoryHandler.ListPersonalTools), requireAuth))
@@ -2037,7 +2041,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ⚠️ والإضافة **زيادة مو تبديل**: ولا حارس ينضيّق، فما تنكسر
 	// صلاحية ولا موظف شغّال.
 	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
-		"leader_basket", "finance", "finance_audit", "invoice_gps", "invoice_dashcam", "invoice_internal")
+		"leader_basket", "finance", "finance_audit", "invoice_gps", "invoice_dashcam", "invoice_internal",
+		// صلاحية «عرض فواتير الليدر» چانت تفتح البند بالقائمة والخادم ما يعرفها — فالشاشة تنرفض.
+		"leader_invoices_view")
 	// أسباب الشغل المجاني — يقراها أي موظف يسوي فاتورة
 	mux.Handle("GET /api/free-work-reasons", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FreeReasons), requireAuth))
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))

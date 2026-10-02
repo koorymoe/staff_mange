@@ -77,7 +77,11 @@ func (h *BookingAuditHandler) stampInvoiceVerdict(bookingID, verdict string, not
 		return
 	}
 	rows, err := h.invoices.ListByBooking(bookingID)
-	if err != nil || len(rows) == 0 {
+	if err != nil {
+		log.Printf("stamp invoice verdict: list invoices (booking %s): %v", bookingID, err)
+		return
+	}
+	if len(rows) == 0 {
 		return
 	}
 	latest := rows[len(rows)-1] // ListByBooking مرتبة تصاعدياً بالإنشاء
@@ -179,8 +183,13 @@ func (h *BookingAuditHandler) Audit(w http.ResponseWriter, r *http.Request) {
 	case model.AuditMismatch, model.AuditPriceError:
 		// المبلغ الي كتبه المحاسب ينحفظ حتى لو أشّر خطأ — هو الرقم
 		// الصحيح من الفاتورة، والفرق يبين للي راح يتابع.
+		// 🔴 چان الخطأ ينبلع والشاشة تگول «تم» — المحاسب يحسب المبلغ انحفظ.
 		if req.AmountCollected != nil || req.AdvancePaid != nil {
-			_ = h.repo.SetAmount(bookingID, req.AmountCollected, req.AdvancePaid)
+			if err := h.repo.SetAmount(bookingID, req.AmountCollected, req.AdvancePaid); err != nil {
+				log.Printf("audit set amount %s: %v", bookingID, err)
+				WriteError(w, http.StatusInternalServerError, "تعذر حفظ المبلغ الصحيح — ما تسجّل شي، جرّب مرة ثانية")
+				return
+			}
 		}
 		b, err := h.bookings.FindByID(bookingID)
 		if err != nil || b == nil {

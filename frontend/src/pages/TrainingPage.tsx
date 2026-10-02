@@ -22,7 +22,7 @@ export default function TrainingPage() {
       setServices(services)
       setMaterials(materials)
       if (services[0]) setActiveServiceId(services[0].id)
-    }).finally(() => setLoading(false))
+    }).catch((e) => alert(e instanceof Error ? e.message : 'تعذّر جلب التدريب')).finally(() => setLoading(false))
   }, [employee])
 
   const visibleMaterials = materials.filter(m => m.serviceId === activeServiceId)

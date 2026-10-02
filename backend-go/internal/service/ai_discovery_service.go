@@ -79,10 +79,7 @@ func (s *AiDiscoveryService) RunWeeklyIfDue() error {
 		"🔎 الاستكشاف الأسبوعي: %d نمط شاذ عن المعدل يستاهل مراجعة — التفاصيل بشاشة مؤشرات الذكاء الاصطناعي.",
 		len(flagged),
 	)
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_WEEKLY_DISCOVERY", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_WEEKLY_DISCOVERY", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_WEEKLY_DISCOVERY", msg)
 }
 
 type discoveryFetcher struct {

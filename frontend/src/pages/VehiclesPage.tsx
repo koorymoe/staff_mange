@@ -227,8 +227,7 @@ export default function VehiclesPage() {
 
   const handleAddVehicle = async (e: React.FormEvent) => {
     e.preventDefault()
-    const created = await guard.run('إضافة المركبة', () => api.createVehicle({ name: vName, plateNumber: vPlate, color: vColor || undefined, type: vType || undefined }))
-    if (!created) return
+    // التفاصيل تروح ويا الإنشاء نفسه (صلاحية الأسطول) — مو بطلب تعديل على مسار المدير.
     const extra: Record<string, string | number> = {}
     if (vModel) extra.model = vModel
     if (vYear) extra.year = Number(vYear)
@@ -237,9 +236,8 @@ export default function VehiclesPage() {
     if (vFuel) extra.fuelType = vFuel
     if (vOdometer) extra.currentOdometer = Number(vOdometer)
     if (vCondition) extra.condition = vCondition
-    if (Object.keys(extra).length > 0) {
-      await guard.run('حفظ تفاصيل المركبة', () => api.updateVehicle(created.id, extra))
-    }
+    const created = await guard.run('إضافة المركبة', () => api.createVehicle({ name: vName, plateNumber: vPlate, color: vColor || undefined, type: vType || undefined, ...extra }))
+    if (!created) return
     setVName(''); setVPlate(''); setVColor(''); setVType('')
     setVModel(''); setVYear(''); setVChassis(''); setVEngine(''); setVFuel(''); setVOdometer(''); setVCondition('')
     setShowAddVehicle(false)

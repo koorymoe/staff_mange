@@ -148,7 +148,19 @@ function NewEmployeeCurves() {
 
 // ═══ ماتركس — المخزون قبل ما يخلص ═══
 function StockForecastSection() {
-  const f = useLoad<StockForecast>(() => api.getStockForecast())
+  const [reload, setReload] = useState(0)
+  const [f, setF] = useState<StockForecast | null | undefined>(undefined)
+  useEffect(() => {
+    let alive = true
+    api.getStockForecast().then((r) => { if (alive) setF(r) }).catch(() => { if (alive) setF(null) })
+    return () => { alive = false }
+  }, [reload])
+  // جرد: الرصيد الموجود هسه — ماتركس يطرح المصروف بعده لحاله.
+  const count = async (id: string, name: string, current?: number) => {
+    const v = prompt(`جرد «${name}»: شگد موجود هسه بالمخزن؟`, current != null ? String(Math.max(0, Math.round(current))) : '')
+    if (v === null || v.trim() === '' || Number.isNaN(Number(v))) return
+    try { await api.setMaterialStock(id, Number(v)); setReload((x) => x + 1) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الحفظ') }
+  }
   return (
     <Section title="📦 ماتركس — المواد قبل ما تخلص" to="/procurement" linkLabel="طلبات المواد ←">
       {f === undefined ? <Loading /> : f === null ? <Missing /> : (
@@ -156,11 +168,18 @@ function StockForecastSection() {
           <p className={`mb-2 rounded-xl px-3 py-2 text-xs ${f.stockTracked ? 'bg-slate-50 text-slate-600' : 'bg-amber-50 text-amber-800'}`}>{f.note}</p>
           {f.items.length > 0 && (
             <ul className="space-y-1 text-sm">
-              {f.items.slice(0, 8).map((m) => (
-                <li key={m.key} className="flex justify-between gap-2 text-slate-600">
+              {f.items.slice(0, 10).map((m) => (
+                <li key={m.key} className="flex items-center justify-between gap-2 text-slate-600">
                   <span className="truncate">{m.name}</span>
-                  <span className="shrink-0 tabular-nums text-slate-500">
-                    {m.avgDaily.toLocaleString('en-US')}/يوم · يحتاج ~{fmt(m.need14Days)} لـ{f.horizonDays} يوم
+                  <span className="flex shrink-0 items-center gap-2 tabular-nums text-slate-500">
+                    {m.daysLeft != null ? (
+                      <b className={m.daysLeft <= 7 ? 'text-red-600' : m.daysLeft <= 14 ? 'text-amber-600' : 'text-emerald-700'}>
+                        باقي {fmt(Math.max(0, m.remaining ?? 0))} · يكفي ~{m.daysLeft} يوم
+                      </b>
+                    ) : <>{m.avgDaily.toLocaleString('en-US')}/يوم · يحتاج ~{fmt(m.need14Days)} لـ{f.horizonDays} يوم</>}
+                    {!m.key.startsWith('name:') && (
+                      <button onClick={() => count(m.key, m.name, m.remaining)} className="rounded border border-slate-200 px-1.5 text-[10px] text-slate-500 hover:bg-slate-50" title="سجّل الرصيد الموجود هسه">جرد</button>
+                    )}
                   </span>
                 </li>
               ))}

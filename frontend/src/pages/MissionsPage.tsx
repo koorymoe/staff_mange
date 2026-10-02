@@ -361,7 +361,7 @@ export default function MissionsPage() {
                 {/* Team */}
                 <div className="mb-3 flex flex-wrap gap-1">
                   <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">👤 {m.leader?.name || '---'} (ليدر)</span>
-                  {m.members.map(mem => (
+                  {(m.members ?? []).map(mem => (
                     <span key={mem.id} className="rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-600">{mem.name}</span>
                   ))}
                 </div>
@@ -545,7 +545,7 @@ export default function MissionsPage() {
               </div>
               <h4 className="font-bold text-slate-700">سجل الأحداث</h4>
               <div className="space-y-2">
-                {selectedMission.events.map(ev => (
+                {(selectedMission.events ?? []).map(ev => (
                   <div key={ev.id} className="flex items-center gap-3 rounded-lg bg-slate-50 p-2">
                     <span className="text-lg">{STAGES[ev.action]?.icon || '•'}</span>
                     <div>

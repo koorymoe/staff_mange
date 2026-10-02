@@ -188,7 +188,9 @@ func (s *DelayPredictionService) RunMorningIfDue() error {
 	}
 	msg := fmt.Sprintf("⏱️ ماتركس — %d حجز اليوم متوقع ياخذ أكثر من وقته المحجوز: %s. راجع الموعد أو الكادر قبل الطلعة.",
 		len(risks), strings.Join(parts, "، "))
-	return s.notifRepo.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "coordinator", "AI_DELAY_RISK", msg)
+	// المدير والمالك ما يوصلهم هذا — عددها يجي بملخص ماتركس الصباحي
+	// (چان يوصلهم مرتين). التنسيق الي يتصرف ياخذ التفاصيل، والليدر تنبيهه.
+	return s.notifRepo.CreateForRolesOrPermission([]string{"HR_COORDINATOR"}, "coordinator", "AI_DELAY_RISK", msg)
 }
 
 // fmtHours «٢.٥ ساعة» تقريباً لأقرب نص ساعة.

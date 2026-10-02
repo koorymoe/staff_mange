@@ -62,8 +62,5 @@ func (s *DailyDebriefService) RunIfDue() error {
 		"🧠 فضفضة ماتركس اليومية: %d حالة اليوم — %d حرجة، %d تنبيه، %d راقب، %d معلومة. التفاصيل بصندوق المراقب.",
 		counts.Total, counts.Critical, counts.Warn, counts.Watch, counts.Info,
 	)
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_DAILY_DEBRIEF", message); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_DAILY_DEBRIEF", message)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_DAILY_DEBRIEF", message)
 }

@@ -3,6 +3,7 @@ package repository
 import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
+	"log"
 
 	"staffmange-api/internal/model"
 )
@@ -15,13 +16,23 @@ func NewNotificationRepository(db *sqlx.DB) *NotificationRepository {
 	return &NotificationRepository{db: db}
 }
 
+// logFail — أغلب المستدعين (٥٠+ مكان) يكتبون `_ = notif.Create(...)`، فإذا
+// فشل الإرسال (قرار إجازة، طلب حذف، غرامة، تنبيه أمني) چان يضيع بلا أثر.
+// هسه كل فشل ينكتب بالسجل من مكان واحد.
+func logFail(kind, target, notifType string, err error) error {
+	if err != nil {
+		log.Printf("notification %s failed (target=%s type=%s): %v", kind, target, notifType, err)
+	}
+	return err
+}
+
 // Create ينشئ إشعاراً لموظف واحد.
 func (r *NotificationRepository) Create(employeeID, notifType, message string) error {
 	_, err := r.db.Exec(`
 		INSERT INTO "Notification" (id, "employeeId", type, message)
 		VALUES (gen_random_uuid()::text, $1, $2, $3)
 	`, employeeID, notifType, message)
-	return err
+	return logFail("Create", employeeID, notifType, err)
 }
 
 // CreateForRole يبث نفس الإشعار لكل الموظفين النشطين بدور معيّن (مثال: كل الفنيين
@@ -33,7 +44,7 @@ func (r *NotificationRepository) CreateForRole(role, notifType, message string) 
 		FROM "Employee"
 		WHERE role = $1 AND status = 'ACTIVE'
 	`, role, notifType, message)
-	return err
+	return logFail("CreateForRole", role, notifType, err)
 }
 
 func (r *NotificationRepository) ListForEmployee(employeeID string, limit int) ([]model.Notification, error) {
@@ -76,7 +87,7 @@ func (r *NotificationRepository) CreateForPermission(permissionName, notifType, 
 		JOIN "Permission" p ON p.id = ep."permissionId"
 		WHERE p.name = $1 AND e.status = 'ACTIVE'
 	`, permissionName, notifType, message)
-	return err
+	return logFail("CreateForPermission", permissionName, notifType, err)
 }
 
 // CreateForRolesOrPermission ينبّه كل موظف نشط دوره من الأدوار المعطاة
@@ -92,5 +103,5 @@ func (r *NotificationRepository) CreateForRolesOrPermission(roles []string, perm
 				JOIN "Permission" p ON p.id = ep."permissionId"
 				WHERE ep."employeeId" = e.id AND p.name = $2))
 	`, pq.Array(roles), permissionName, notifType, message)
-	return err
+	return logFail("CreateForRolesOrPermission", permissionName, notifType, err)
 }

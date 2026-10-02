@@ -41,7 +41,8 @@ func NewBurnoutProtectionService(
 // الاستكشاف الأسبوعي.
 func (s *BurnoutProtectionService) RunWeeklyIfDue() error {
 	now := time.Now().In(debriefLoc)
-	if now.Weekday() != time.Monday {
+	// يوم ثابت إله — حتى ما تتكدّس الملخصات على المالك يوم الاثنين
+	if now.Weekday() != time.Tuesday {
 		return nil
 	}
 	weekKey := now.Format("2006-01-02")
@@ -76,10 +77,7 @@ func (s *BurnoutProtectionService) RunWeeklyIfDue() error {
 	msg := fmt.Sprintf(
 		"🛡️ ماتركس — احتمال إرهاق: %s. يمكن هذا تعب مو تقصير — يستاهلون يوم راحة قبل ما يتصاعد.",
 		joinArabicAnd(atRisk))
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_BURNOUT_RISK", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_BURNOUT_RISK", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_BURNOUT_RISK", msg)
 }
 
 func (s *BurnoutProtectionService) signalTotal(employeeID string, from, to time.Time) int {

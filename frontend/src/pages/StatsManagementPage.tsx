@@ -34,10 +34,16 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 function DailyTab() {
   const [date, setDate] = useState(todayStr())
   const [stats, setStats] = useState<DailyStats | null>(null)
+  const [err, setErr] = useState('')
   useEffect(() => {
+    // ⚠️ جلب آمن: تغيير التاريخ بسرعة ما يخلي رد قديم يكتب فوگ الجديد،
+    // والفشل يطلع رسالة بدل «جاري التحميل» للأبد.
+    let alive = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStats(null)
-    api.getDailyStats(date).then(setStats)
+    setStats(null); setErr('')
+    api.getDailyStats(date).then((r) => { if (alive) setStats(r) })
+      .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذّر جلب الإحصائيات') })
+    return () => { alive = false }
   }, [date])
 
   return (
@@ -60,7 +66,8 @@ function DailyTab() {
         )}
       </div>
 
-      {!stats && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {err && <p style={{ color: 'var(--t-danger)', textAlign: 'center', padding: '40px' }}>{err}</p>}
+      {!stats && !err && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
 
       {stats && (
         <>
@@ -130,12 +137,16 @@ function WeeklyTab() {
   const [from, setFrom] = useState(initial.from)
   const [to, setTo] = useState(initial.to)
   const [stats, setStats] = useState<WeeklyStats | null>(null)
+  const [err, setErr] = useState('')
 
   useEffect(() => {
     if (!from || !to) return
+    let alive = true
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setStats(null)
-    api.getWeeklyStats(from, to).then(setStats)
+    setStats(null); setErr('')
+    api.getWeeklyStats(from, to).then((r) => { if (alive) setStats(r) })
+      .catch((e) => { if (alive) setErr(e instanceof Error ? e.message : 'تعذّر جلب الإحصائيات') })
+    return () => { alive = false }
   }, [from, to])
 
   return (
@@ -153,7 +164,8 @@ function WeeklyTab() {
         </button>
       </div>
 
-      {!stats && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
+      {err && <p style={{ color: 'var(--t-danger)', textAlign: 'center', padding: '40px' }}>{err}</p>}
+      {!stats && !err && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
 
       {stats && (
         <>
@@ -217,7 +229,11 @@ function WeeklyTab() {
 
 function ProjectsTab() {
   const [stats, setStats] = useState<ProjectStageStats[]>([])
-  useEffect(() => { api.getProjectStageStats().then(setStats) }, [])
+  useEffect(() => {
+    let alive = true
+    api.getProjectStageStats().then((r) => { if (alive) setStats(r) }).catch(() => { if (alive) setStats([]) })
+    return () => { alive = false }
+  }, [])
   const total = stats.reduce((s, r) => s + r.count, 0)
   return (
     <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>

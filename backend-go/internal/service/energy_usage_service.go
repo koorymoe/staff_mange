@@ -126,10 +126,7 @@ func (s *EnergyUsageService) RunMonthlyIfDue() error {
 	msg := fmt.Sprintf(
 		"⚡ ماتركس — طاقة الشهر: %s استخدموا طاقة أعلى بكثير من زملائهم هذا الشهر (حجوزات + ساعات دوام + صيانات). التفاصيل بمؤشرات الذكاء الاصطناعي.",
 		joinArabicAnd(standouts))
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_MONTHLY_ENERGY", msg); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_MONTHLY_ENERGY", msg)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_MONTHLY_ENERGY", msg)
 }
 
 func ratioComponent(value, avg float64) float64 {

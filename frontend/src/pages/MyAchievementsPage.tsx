@@ -26,7 +26,7 @@ export default function MyAchievementsPage() {
     queueMicrotask(() => { if (alive) setLoading(true) })
     void (async () => {
       try {
-        const rows = await api.getAchievements({ employeeId: employee.id, limit: 30 })
+        const rows = await api.getMyAchievements(30)
         if (alive) setMine(rows)
       } catch {
         // صامت — التاريخ إضافي، ما نعطّل الإرسال لأجله

@@ -26,6 +26,10 @@ type Material struct {
 	WholesalePrice float64   `db:"wholesalePrice" json:"wholesalePrice"` // سعر الجملة — profitPerUnit = sellPrice - wholesalePrice
 	ProfitPerUnit  float64   `db:"profitPerUnit" json:"profitPerUnit"`
 	CreatedAt      time.Time `db:"createdAt" json:"createdAt"`
+	// رصيد الجرد (0304). ⚠️ لازم تبقى هنا — SELECT * يفشل بلاها.
+	StockQty         *float64   `db:"stockQty" json:"stockQty,omitempty"`
+	StockCountedAt   *time.Time `db:"stockCountedAt" json:"stockCountedAt,omitempty"`
+	StockCountedByID *string    `db:"stockCountedById" json:"-"`
 }
 
 // ExecutionCostItem بند تنفيذ واحد (منظومة + عنصر) يدخل بحساب تكاليف التنفيذ.

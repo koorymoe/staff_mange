@@ -55,8 +55,5 @@ func (s *AchievementDigestService) RunIfDue() error {
 	message := fmt.Sprintf(
 		"📋 ماتركس — إنجازات اليوم: %d تقرير (%s). التفاصيل بشاشة الإنجازات.",
 		total, joinArabicAnd(parts))
-	if err := s.notifRepo.CreateForRole("OWNER", "AI_ACHIEVEMENT_DIGEST", message); err != nil {
-		return err
-	}
-	return s.notifRepo.CreateForRole("ADMIN", "AI_ACHIEVEMENT_DIGEST", message)
+	return notifyOwnerAndAdmin(s.notifRepo, "AI_ACHIEVEMENT_DIGEST", message)
 }

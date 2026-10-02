@@ -353,6 +353,10 @@ type StockItem struct {
 	TotalQuantity float64 `json:"totalQuantity"`
 	AvgDaily      float64 `json:"avgDaily"`
 	Need14Days    float64 `json:"need14Days"`
+	// من الجرد: الباقي، وكم يوم يكفي بالمعدل (nil = ماكو جرد للمادة).
+	Remaining *float64   `json:"remaining,omitempty"`
+	DaysLeft  *float64   `json:"daysLeft,omitempty"`
+	CountedAt *time.Time `json:"countedAt,omitempty"`
 }
 
 type StockForecast struct {
@@ -378,13 +382,34 @@ func (s *MatrixInsightsService) StockForecast() (*StockForecast, error) {
 	}
 	out := &StockForecast{
 		StockTracked: false,
-		Note:         "ماكو رصيد مخزون مسجّل للمواد بالنظام، فما نكدر نحسب «يخلص خلال كم يوم». هذي المواد الأكثر استهلاكاً ومعدلها — قارنها بالرف.",
+		Note:         "ماكو جرد مسجّل للمواد بعد، فما نكدر نحسب «يخلص خلال كم يوم». سجّل رصيد المادة (جرد) وماتركس يطرح المصروف بعده لحاله.",
 		WindowDays:   stockWindowDays, MinUsages: stockMinUsages, HorizonDays: stockHorizon, Items: []StockItem{},
 	}
+	tracked := 0
 	for _, r := range rows {
 		a := avgDaily(r.Quantity, stockWindowDays)
-		out.Items = append(out.Items, StockItem{Key: r.Key, Name: r.Name, Usages: r.Usages, TotalQuantity: r.Quantity,
-			AvgDaily: a, Need14Days: math.Ceil(a * stockHorizon)})
+		it := StockItem{Key: r.Key, Name: r.Name, Usages: r.Usages, TotalQuantity: r.Quantity,
+			AvgDaily: a, Need14Days: math.Ceil(a * stockHorizon), Remaining: r.Remaining, CountedAt: r.CountedAt}
+		if r.Remaining != nil {
+			tracked++
+			if a > 0 {
+				d := math.Floor(math.Max(*r.Remaining, 0) / a)
+				it.DaysLeft = &d
+			}
+		}
+		out.Items = append(out.Items, it)
+	}
+	// الي عندها جرد تطلع أول، مرتبة بالأقرب تخلص.
+	sort.SliceStable(out.Items, func(i, j int) bool {
+		a, b := out.Items[i].DaysLeft, out.Items[j].DaysLeft
+		if (a == nil) != (b == nil) {
+			return a != nil
+		}
+		return a != nil && *a < *b
+	})
+	if tracked > 0 {
+		out.StockTracked = true
+		out.Note = fmt.Sprintf("%d مادة إلها جرد — الباقي = آخر جرد ناقص المصروف بفواتير الليدرية بعده. المواد بلا جرد تطلع بمعدلها بس.", tracked)
 	}
 	if len(out.Items) == 0 {
 		out.Note = insufficientNote + fmt.Sprintf(" — ولا مادة انصرفت %d مرات بآخر %d يوم، وماكو رصيد مخزون للمواد أصلاً.", stockMinUsages, stockWindowDays)
@@ -509,4 +534,12 @@ func (s *MatrixInsightsService) Replacements(includeIT, includeVehicles bool) (*
 		}
 	}
 	return out, nil
+}
+
+// SetMaterialStock جرد مادة: الرصيد الموجود هسه بالرف.
+func (s *MatrixInsightsService) SetMaterialStock(materialID string, qty float64, byID string) error {
+	if qty < 0 {
+		return fmt.Errorf("الرصيد ما يكون سالب")
+	}
+	return s.aiRepo.SetMaterialStock(materialID, qty, byID)
 }
