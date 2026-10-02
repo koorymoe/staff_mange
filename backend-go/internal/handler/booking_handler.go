@@ -19,7 +19,12 @@ type BookingHandler struct {
 	reminders *service.BookingReminderService
 	// timeline اختياري — بدونه المسار يرجّع 503 بدل ما يطيح
 	timeline *service.BookingTimelineService
+	// inquiry اختياري — ماتركس ينبّه الي سجّل الحجز لو الزبون مستفسر متكرر.
+	inquiry func(customerID, employeeID string)
 }
+
+// SetInquiryNotifier يربط تنبيه «زبون مستفسر متكرر» بعد إنشاء الحجز.
+func (h *BookingHandler) SetInquiryNotifier(f func(customerID, employeeID string)) { h.inquiry = f }
 
 // SetTimelineService يربط خدمة الخط الزمني بعد البناء.
 func (h *BookingHandler) SetTimelineService(t *service.BookingTimelineService) { h.timeline = t }
@@ -272,6 +277,9 @@ func (h *BookingHandler) Create(w http.ResponseWriter, r *http.Request) {
 	// منو أدخل الحجز — «بانتظار التثبيت» كانت تعرضه بلا ما تگول
 	// لمنو ترجع لو المعلومة ناقصة.
 	h.service.RecordCreator(booking.ID, middleware.EmployeeIDFromContext(r))
+	if h.inquiry != nil {
+		h.inquiry(booking.CustomerID, middleware.EmployeeIDFromContext(r))
+	}
 	if fresh, err := h.service.Get(booking.ID); err == nil && fresh != nil {
 		booking = fresh
 	}

@@ -243,6 +243,15 @@ type WorkloadItem struct {
 	Left  int    `json:"left"`
 	Route string `json:"route"`
 	Verb  string `json:"verb"` // الفعل بالكلام: «دققت»، «اعتمدت»…
+	// Codes أكواد الحجوزات المعنية — العين تطلّعها أزرار تودّي للحجز نفسه.
+	Codes []string `json:"codes,omitempty"`
+	// Links لكل حجز رابط مباشر لشاشته (مثلاً فاتورته).
+	Links []WorkLink `json:"links,omitempty"`
+}
+
+type WorkLink struct {
+	Label string `json:"label"`
+	To    string `json:"to"`
 }
 
 const watchRedOpen = 3
@@ -322,8 +331,13 @@ func WatchGroup(subj repository.WatchSubject) string {
 		return "QUALITY"
 	case subj.Role == "IT_SUPPORT":
 		return "IT"
-	case subj.IsLeader || subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER":
-		return "FIELD"
+	case subj.Role == "DESIGNER":
+		return "DESIGN"
+	case subj.IsLeader:
+		return "LEADERS"
+	case subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER":
+		// الفني العادي: جرد وحضور وأداء — ماكو فواتير ولا تقارير.
+		return "TECHS"
 	case hasPerm(subj, "coordinator"):
 		return "COORDINATORS"
 	case hasPerm(subj, "finance_audit", "auditing"):
@@ -360,16 +374,58 @@ func (s *MatrixAutopilotService) workload(subj repository.WatchSubject) []Worklo
 		out = append(out, WorkloadItem{Key: "QUALITY", Label: "متابعات جودة معلّقة", Verb: "تابعت",
 			Left: r.QualityPending(), Route: "/quality-follow-ups"})
 	}
-	if subj.IsLeader || subj.Role == "TECHNICIAN" {
+	// الليدر: حجوزاته، وتجهيز المواد، والورق (فاتورة وتقرير) — هو بس.
+	if subj.IsLeader {
 		total, done := r.LeaderToday(subj.ID)
 		if total > 0 {
 			out = append(out, WorkloadItem{Key: "JOBS", Label: "حجوزات اليوم", Verb: "أنجزت",
 				Done: done, Left: total - done, Route: "/my-tasks"})
 		}
-		if late, err := s.aiRepo.LatePaperworkRows(subj.ID); err == nil && len(late) > 0 {
-			out = append(out, WorkloadItem{Key: "PAPERWORK", Label: "حجوزات ناقصها ورق", Verb: "كمّلت",
-				Left: len(late), Route: "/leader-invoices/new"})
+		if codes := r.LeaderMaterialsPending(subj.ID); len(codes) > 0 {
+			out = append(out, WorkloadItem{Key: "MATERIALS", Label: "حجوزات اليوم موادها ما تجهزت", Verb: "جهّزت",
+				Left: len(codes), Route: "/my-tasks", Codes: codes})
 		}
+		if late, err := s.aiRepo.LatePaperworkRows(subj.ID); err == nil && len(late) > 0 {
+			codes := make([]string, 0, len(late))
+			links := make([]WorkLink, 0, len(late))
+			for _, l := range late {
+				codes = append(codes, l.BookingCode)
+				what := "فاتورة"
+				to := "/leader-invoices/new?mode=booking&bookingId=" + l.BookingID
+				if !l.MissingInvoice && l.MissingReport {
+					what, to = "تقرير", "/work-reports"
+				}
+				if len(links) < 12 {
+					links = append(links, WorkLink{Label: l.BookingCode + " · " + what, To: to})
+				}
+			}
+			out = append(out, WorkloadItem{Key: "PAPERWORK", Label: "حجوزات ناقصها فاتورة أو تقرير", Verb: "كمّلت",
+				Left: len(late), Route: "/leader-invoices/new", Codes: codes, Links: links})
+		}
+	} else if subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER" {
+		// الفني العادي: حضور وانصراف، وحجوزاته، وعهدته — بلا ورق.
+		in, outd := r.CheckedInToday(subj.ID)
+		att := WorkloadItem{Key: "ATTEND", Label: "تسجيل الحضور اليوم", Verb: "سجّلت", Route: "/attendance"}
+		if in {
+			att.Done = 1
+		} else {
+			att.Left = 1
+		}
+		out = append(out, att)
+		total, done := r.LeaderToday(subj.ID)
+		if total > 0 {
+			out = append(out, WorkloadItem{Key: "JOBS", Label: "حجوزات اليوم", Verb: "أنجزت",
+				Done: done, Left: total - done, Route: "/my-tasks"})
+		}
+		if held := r.ToolsHeld(subj.ID); held > 0 {
+			out = append(out, WorkloadItem{Key: "TOOLS", Label: "أدوات بعهدتك (جرد)", Verb: "رجّعت",
+				Left: 0, Done: held, Route: "/my-inventory"})
+		}
+		_ = outd
+	}
+	if subj.Role == "DESIGNER" {
+		out = append(out, WorkloadItem{Key: "DESIGN", Label: "أعمال تصميم رفعتها اليوم", Verb: "رفعت",
+			Done: r.DesignUploadsToday(subj.ID), Route: "/design-gallery"})
 	}
 	return out
 }
@@ -388,7 +444,7 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "FIELD", "QUALITY", "IT", "ADMINS", "STAFF"}
+	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "DESIGN", "QUALITY", "IT", "ADMINS", "STAFF"}
 	byGroup := map[string]*RoleGroupReport{}
 	for _, g := range order {
 		byGroup[g] = &RoleGroupReport{Group: g, Employees: []*WatchState{}}

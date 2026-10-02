@@ -505,3 +505,31 @@ func (r *AiActionRepository) ApprovedByToday(id string) int {
 func (r *AiActionRepository) QualityPending() int {
 	return r.count(`SELECT COUNT(*) FROM "QualityFollowUp" WHERE "inspectionStatus" = 'PENDING'`)
 }
+
+// ═══ شغل الفني العادي والمصمم والليدر (عين ماتركس لكل دور) ═══
+
+// CheckedInToday سجّل حضور اليوم؟ وانصرف؟
+func (r *AiActionRepository) CheckedInToday(id string) (in bool, out bool) {
+	_ = r.db.Get(&in, `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = baghdad_today())`, id)
+	_ = r.db.Get(&out, `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = baghdad_today() AND "checkOut" IS NOT NULL)`, id)
+	return
+}
+
+// ToolsHeld أدوات بعهدته (موافق عليها وما رجعت).
+func (r *AiActionRepository) ToolsHeld(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "ToolRequest" WHERE "employeeId" = $1 AND status = 'APPROVED' AND "returnedAt" IS NULL`, id)
+}
+
+// DesignUploadsToday أعمال تصميم رفعها اليوم.
+func (r *AiActionRepository) DesignUploadsToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "DesignAsset" WHERE "uploadedById" = $1 AND baghdad_date("createdAt") = baghdad_today()`, id)
+}
+
+// LeaderMaterialsPending حجوزات الليدر اليوم وموادها ما تجهزت بعد — بأكوادها.
+func (r *AiActionRepository) LeaderMaterialsPending(id string) []string {
+	codes := []string{}
+	_ = r.db.Select(&codes, `SELECT b.code FROM "Booking" b JOIN "BookingAssignment" a ON a."bookingId" = b.id
+		WHERE a."employeeId" = $1 AND b."scheduledAt" IS NOT NULL AND baghdad_date(b."scheduledAt") = baghdad_today()
+		  AND b.status IN ('CONFIRMED','PENDING') AND b."materialsReadyAt" IS NULL ORDER BY b."scheduledAt"`, id)
+	return codes
+}

@@ -176,7 +176,7 @@ func (r *AiRepository) LatePaperworkRows(leaderID string) ([]LatePaperworkRow, e
 	rows := []LatePaperworkRow{}
 	err := r.db.Select(&rows, `
 		SELECT * FROM (
-			SELECT `+bookingLeaderExpr+` AS "leaderId", b.code AS "bookingCode",
+			SELECT `+bookingLeaderExpr+` AS "leaderId", b.code AS "bookingCode", b.id AS "bookingId",
 			       NOT `+hasInvoiceSQL+` AS "missingInvoice",
 			       NOT `+hasReportSQL+` AS "missingReport",
 			       FLOOR(EXTRACT(EPOCH FROM ((now() AT TIME ZONE 'UTC') - b."completedAt")) / 3600)::int AS "hoursSinceDone"

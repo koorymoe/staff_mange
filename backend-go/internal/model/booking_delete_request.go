@@ -38,12 +38,15 @@ const (
 	BookingDeleteTypeRecurringDuplicate = "RECURRING_DUPLICATE"
 	BookingDeleteTypeCustomerCancel     = "CUSTOMER_CANCEL"
 	BookingDeleteTypeDataCorrection     = "DATA_CORRECTION"
+	// استفسار زبون: سأل بس وما نفّذ — ماتركس يفرز منه الزبون الفعلي من المستفسر.
+	BookingDeleteTypeCustomerInquiry = "CUSTOMER_INQUIRY"
 )
 
 var BookingDeleteTypeLabels = map[string]string{
 	BookingDeleteTypeRecurringDuplicate: "حجز متكرر",
 	BookingDeleteTypeCustomerCancel:     "إلغاء من الزبون",
 	BookingDeleteTypeDataCorrection:     "تصحيح بيانات",
+	BookingDeleteTypeCustomerInquiry:    "استفسار زبون (ما نفّذ)",
 }
 
 type BookingDeleteRequest struct {

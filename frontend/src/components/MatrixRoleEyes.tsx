@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { api, type MatrixWatch } from '../api'
+import MatrixBusiness from './MatrixBusiness'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { GROUP_COLOR, GROUP_LABEL, eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
 
@@ -36,6 +38,7 @@ export default function MatrixRoleEyes() {
 
   return (
     <div className="space-y-4">
+      <MatrixBusiness />
       <section className="rounded-2xl bg-[#0b1220] p-4 shadow-sm">
         <h3 className="mb-1 text-base font-extrabold text-white">👁️ عيون ماتركس</h3>
         <p className="mb-4 text-xs text-slate-400">كل عين مسؤولة عن مجموعة. لونها يتبع أسوأ حالة بموظفيها. اضغطها حتى تشوف تقريرها.</p>
@@ -68,7 +71,7 @@ export default function MatrixRoleEyes() {
               <tbody>
                 {current.employees.map((e) => (
                   <tr key={e.id} className="border-t border-slate-100 align-top">
-                    <td className="p-2 font-bold text-slate-800">{e.name}</td>
+                    <td className="p-2 font-bold"><Link to={`/matrix/employee/${e.id}`} className="text-brand-700 hover:underline">{e.name} ←</Link></td>
                     <td className="p-2 whitespace-nowrap">{MOOD_LABEL[e.mood] ?? e.mood}</td>
                     <td className="p-2">
                       {e.workload.length === 0 ? <span className="text-slate-400">—</span> : (

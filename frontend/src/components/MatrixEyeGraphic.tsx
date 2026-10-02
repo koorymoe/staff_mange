@@ -34,7 +34,11 @@ function GroupMark({ group, color }: { group: EyeGroup; color: string }) {
       return <g opacity="0.85">{Array.from({ length: 12 }, (_, i) => { const a = (i / 12) * Math.PI * 2; return <circle key={i} cx={Math.cos(a) * 16} cy={Math.sin(a) * 16} r="0.9" fill={color} /> })}</g>
     case 'FINANCE': // حافة عملة
       return <g opacity="0.8"><circle r="16" fill="none" stroke={color} strokeWidth="0.6" />{ticks(36, 16, 17.6, 0.5)}</g>
-    case 'FIELD': // مثلثات
+    case 'TECHS': // مسامير عُدّة
+      return <g opacity="0.85">{ticks(8, 14.8, 17.4, 1.4)}<circle r="16" fill="none" stroke={color} strokeWidth="0.4" /></g>
+    case 'DESIGN': // ريشة/منحنيات
+      return <g opacity="0.85" fill="none" stroke={color} strokeWidth="0.7"><path d="M-16 6 Q-10 -18 0 -16 Q10 -18 16 6" /><path d="M-14 10 Q0 18 14 10" strokeDasharray="2 2" /></g>
+    case 'LEADERS': // مثلثات
       return <g opacity="0.85">{Array.from({ length: 6 }, (_, i) => { const a = (i / 6) * Math.PI * 2; const x = Math.cos(a) * 16.5, y = Math.sin(a) * 16.5; return <path key={i} d={`M${x} ${y - 1.4} L${x + 1.3} ${y + 1} L${x - 1.3} ${y + 1}Z`} fill={color} /> })}</g>
     case 'QUALITY': // تصويب
       return <g opacity="0.85" stroke={color} strokeWidth="0.7"><line x1="-18" y1="0" x2="-13" y2="0" /><line x1="13" y1="0" x2="18" y2="0" /><line x1="0" y1="-18" x2="0" y2="-13" /><line x1="0" y1="13" x2="0" y2="18" /><circle r="16" fill="none" strokeDasharray="4 3" /></g>

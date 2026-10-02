@@ -1531,7 +1531,7 @@ export const AUDIT_VERDICTS: { key: 'MATCHED' | 'MISMATCH' | 'PRICE_ERROR' | 'FR
 ]
 
 export type BookingDeleteChannel = 'WEBSITE' | 'MOBILE_APP' | 'CALL_CENTER'
-export type BookingDeleteRequestType = 'RECURRING_DUPLICATE' | 'CUSTOMER_CANCEL' | 'DATA_CORRECTION'
+export type BookingDeleteRequestType = 'RECURRING_DUPLICATE' | 'CUSTOMER_CANCEL' | 'DATA_CORRECTION' | 'CUSTOMER_INQUIRY'
 
 export const bookingDeleteChannelLabels: Record<BookingDeleteChannel, string> = {
   WEBSITE: 'موقع ويب',
@@ -1543,6 +1543,7 @@ export const bookingDeleteTypeLabels: Record<BookingDeleteRequestType, string> =
   RECURRING_DUPLICATE: 'حجز متكرر',
   CUSTOMER_CANCEL: 'إلغاء من الزبون',
   DATA_CORRECTION: 'تصحيح بيانات',
+  CUSTOMER_INQUIRY: 'استفسار زبون (ما نفّذ)',
 }
 
 /**
@@ -5341,6 +5342,9 @@ export const api = {
   getMyWatch: () => request<MatrixWatch>('/ai/my-watch'),
   getMatrixGuide: (path: string, label: string) =>
     request<{ text: string; source: 'RULES' | 'MODEL' | 'NONE' }>(`/ai/guide?path=${encodeURIComponent(path)}&label=${encodeURIComponent(label)}`),
+  getEmployeeReport: (employeeId: string, day?: string) =>
+    request<EmployeeReport>(`/ai/employee-report?employeeId=${encodeURIComponent(employeeId)}${day ? `&day=${day}` : ''}`),
+  getMatrixBusiness: () => request<MatrixBusiness>('/ai/business'),
   getMatrixProposals: (status = 'PENDING') => request<MatrixProposal[]>(`/ai/proposals?status=${encodeURIComponent(status)}`),
   approveMatrixProposal: (id: string, payload?: unknown) =>
     request<{ ok: boolean }>(`/ai/proposals/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify({ payload: payload ?? null }) }),
@@ -5630,7 +5634,7 @@ export interface MatrixDecisions {
 }
 
 // عين ماتركس — حالة الموظف نفسه.
-export interface MatrixWorkload { key: string; label: string; done: number; left: number; route: string; verb: string }
+export interface MatrixWorkload { key: string; label: string; done: number; left: number; route: string; verb: string; codes?: string[]; links?: { label: string; to: string }[] }
 export interface MatrixWatch {
   level: 'CALM' | 'ALERT' | 'RED'
   mood: 'CALM' | 'PLEASED' | 'ALERT' | 'ANGRY'
@@ -5670,4 +5674,28 @@ export interface MatrixProposal {
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
   note: string | null
   createdAt: string
+}
+
+// تقرير ماتركس المفصّل عن موظف.
+export interface ReportLine { text: string; tone: 'OK' | 'WARN' | 'BAD' | 'INFO' }
+export interface EmployeeReport {
+  employeeId: string
+  name: string
+  group: string
+  day: string
+  attendance: ReportLine[]
+  jobs: { code: string; service: string; status: string; stages: { label: string; at: string; gap: number }[]; lines: ReportLine[] }[]
+  leaves: ReportLine[]
+  behavior: ReportLine[]
+  reminders: ReportLine[]
+  summary: string
+  summaryBy: 'RULES' | 'MODEL'
+  workload: MatrixWorkload[] | null
+}
+export interface MatrixBusiness {
+  months: { month: string; bookings: number; revenue: number; invoiced: number }[]
+  mtd: { bookings: number; revenue: number; lastBookings: number; lastRevenue: number }
+  forecast: { expected: number; expectedJobs: number; basis: string; insufficient: boolean }
+  customers: { actual: number; inquiry: number; repeat: number; openOnly: number }
+  inquirers: { id: string; name: string; archived: number; lastAt: string }[]
 }

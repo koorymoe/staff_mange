@@ -140,6 +140,10 @@ func (s *MatrixAutopilotService) paperworkReminders(week string, dayStart time.T
 	}
 	n := 0
 	for leader, items := range groupLatePaperwork(rows) {
+		// حماية: الورق مسؤولية الليدر بس — الفني العادي ما يتذكّر بيه أبداً.
+		if sub, err := s.actions.Subject(leader); err != nil || !sub.IsLeader {
+			continue
+		}
 		all := make([]string, 0, len(items))
 		for _, it := range items {
 			all = append(all, it.BookingCode)

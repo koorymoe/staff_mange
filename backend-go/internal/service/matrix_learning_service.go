@@ -37,7 +37,7 @@ const (
 
 // شاشة الشغل لكل نوع تذكير — وين تنفع التعليمة المقترحة.
 var kindRoute = map[string]struct{ Route, Group string }{
-	model.AiActionPaperworkReminder: {"/leader-invoices/new", "FIELD"},
+	model.AiActionPaperworkReminder: {"/leader-invoices/new", "LEADERS"},
 	model.AiActionUnstaffedAlert:    {"/coordinator", "COORDINATORS"},
 	model.AiActionExtraTaskOverdue:  {"/my-extra-tasks", ""},
 	model.AiActionInvoiceApproval:   {"/leader-invoices", "FINANCE"},

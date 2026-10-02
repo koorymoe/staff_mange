@@ -332,6 +332,7 @@ type LatePaperworkEvidence struct {
 
 type LatePaperworkItem struct {
 	BookingCode    string `json:"bookingCode" db:"bookingCode"`
+	BookingID      string `json:"-" db:"bookingId"`
 	MissingInvoice bool   `json:"missingInvoice" db:"missingInvoice"`
 	MissingReport  bool   `json:"missingReport" db:"missingReport"`
 	HoursSinceDone int    `json:"hoursSinceDone" db:"hoursSinceDone"`

@@ -26,7 +26,9 @@ const FALLBACK_ROUTES: Record<string, string[]> = {
   MONITORS: ['/monitor-desk', '/daily-audit', '/monitor-inbox', '/leader-invoices', '/audit-issues', '/finance', '/crew-bookings-audit'],
   COORDINATORS: ['/coordinator', '/bookings', '/staff-requests', '/stage-buckets'],
   FINANCE: ['/leader-invoices', '/finance', '/daily-audit', '/expenses', '/revolving-fund'],
-  FIELD: ['/my-tasks', '/leader-invoices/new', '/work-report', '/missions'],
+  LEADERS: ['/my-tasks', '/leader-invoices/new', '/work-reports', '/missions'],
+  TECHS: ['/my-tasks', '/missions', '/my-inventory', '/attendance'],
+  DESIGN: ['/design-gallery', '/design-forms', '/unit-design'],
   QUALITY: ['/quality-follow-ups', '/quality', '/complaints'],
   IT: ['/it-assets', '/it-stats'],
   ADMINS: [],
@@ -250,12 +252,22 @@ export default function MatrixEye() {
                 <p className="mb-1 text-xs font-bold text-slate-500">شغلك اليوم</p>
                 <ul className="space-y-1">
                   {watch.workload.map((w) => (
-                    <li key={w.key} className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5">
-                      <Link to={w.route} onClick={() => setOpen(false)} className="text-slate-800 hover:underline">{w.label}</Link>
-                      <span className="text-xs tabular-nums">
-                        {w.done > 0 && <span className="text-emerald-700">{w.verb} {w.done} · </span>}
-                        <b className={w.left > 0 ? 'text-amber-700' : 'text-emerald-700'}>{w.left > 0 ? `باقي ${w.left}` : 'خالص ✓'}</b>
-                      </span>
+                    <li key={w.key} className="rounded-lg bg-slate-50 px-2 py-1.5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Link to={w.route} onClick={() => setOpen(false)} className="font-bold text-slate-800 hover:underline">{w.label} ←</Link>
+                        <span className="text-xs tabular-nums">
+                          {w.done > 0 && <span className="text-emerald-700">{w.verb} {w.done} · </span>}
+                          <b className={w.left > 0 ? 'text-amber-700' : 'text-emerald-700'}>{w.left > 0 ? `باقي ${w.left}` : 'خالص ✓'}</b>
+                        </span>
+                      </div>
+                      {/* أزرار تودّي للشي نفسه مباشرة — فاتورة هالحجز، مو قائمة عامة */}
+                      {(w.links?.length || w.codes?.length) ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {(w.links ?? (w.codes ?? []).map((c) => ({ label: c, to: w.route }))).slice(0, 12).map((l) => (
+                            <Link key={l.label} to={l.to} onClick={() => setOpen(false)} className="rounded-md bg-white px-1.5 py-0.5 text-[11px] font-bold text-brand-700 ring-1 ring-slate-200 hover:bg-brand-50">{l.label}</Link>
+                          ))}
+                        </div>
+                      ) : null}
                     </li>
                   ))}
                 </ul>
