@@ -77,7 +77,7 @@ export default function MatrixGuideRules() {
               <div className="min-w-0 flex-1">
                 <p className="text-slate-800">«{r.text}»</p>
                 <p className="text-[11px] text-slate-500" dir="rtl">
-                  <code dir="ltr">{r.route}</code>{r.match && <> · زر: {r.match}</>} · {r.groups ? GROUP_LABEL[r.groups as EyeGroup] ?? r.groups : 'كل الأدوار'}{r.onlyIfPending && ' · بس إذا متأخر'} · أولوية {r.priority}
+                  <code dir="ltr">{r.route}</code>{r.match && <> · زر: {r.match}</>} · {r.groups ? GROUP_LABEL[r.groups as EyeGroup] ?? r.groups : 'كل الأدوار'}{r.onlyIfPending && ' · بس إذا متأخر'} · أولوية {r.priority} · انطبقت {r.hits ?? 0} مرة{r.source === 'MATRIX' && ' · 🤖 من اقتراح ماتركس'}
                 </p>
               </div>
               <div className="flex gap-1">

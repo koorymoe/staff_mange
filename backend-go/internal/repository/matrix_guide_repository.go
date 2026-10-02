@@ -73,3 +73,26 @@ func (r *MatrixGuideRepository) Delete(id string) error {
 	_, err := r.db.Exec(`DELETE FROM "MatrixGuideRule" WHERE id=$1`, id)
 	return err
 }
+
+// Hit تعليمة انطبقت — عدّاد الاستعمال (يغذّي التعلّم).
+func (r *MatrixGuideRepository) Hit(id string) {
+	_, _ = r.db.Exec(`UPDATE "MatrixGuideRule" SET hits = hits + 1, "lastHitAt" = now() WHERE id = $1`, id)
+}
+
+// CreateFrom تعليمة جاية من اقتراح ماتركس — مصدرها ينحفظ.
+func (r *MatrixGuideRepository) CreateFrom(in model.MatrixGuideRule, source string) (*model.MatrixGuideRule, error) {
+	in, err := cleanGuideRule(in)
+	if err != nil {
+		return nil, err
+	}
+	var out model.MatrixGuideRule
+	err = r.db.Get(&out, `INSERT INTO "MatrixGuideRule" (id, route, match, groups, text, "onlyIfPending", priority, enabled, source)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,true,$8) RETURNING *`,
+		uuid.NewString(), in.Route, in.Match, in.Groups, in.Text, in.OnlyIfPending, in.Priority, source)
+	return &out, err
+}
+
+func (r *MatrixGuideRepository) SetEnabled(id string, on bool) error {
+	_, err := r.db.Exec(`UPDATE "MatrixGuideRule" SET enabled = $2 WHERE id = $1`, id, on)
+	return err
+}

@@ -38,5 +38,33 @@ func matrixGuideMigrations() []Migration {
 				ON CONFLICT (id) DO NOTHING;
 			`,
 		},
+		{
+			// ماتركس يقترح ويتعلّم: اقتراحات تنتظر قرار المدير، وعدّاد استعمال
+			// لكل تعليمة (يغذّي اقتراح وقف التعليمات الي ما تنفع).
+			Version: "0301_matrix_proposal",
+			SQL: `
+				ALTER TABLE "MatrixGuideRule" ADD COLUMN IF NOT EXISTS hits INT NOT NULL DEFAULT 0;
+				ALTER TABLE "MatrixGuideRule" ADD COLUMN IF NOT EXISTS "lastHitAt" TIMESTAMPTZ;
+				ALTER TABLE "MatrixGuideRule" ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'ADMIN';
+				CREATE TABLE IF NOT EXISTS "MatrixProposal" (
+					id            TEXT PRIMARY KEY,
+					kind          TEXT NOT NULL,
+					title         TEXT NOT NULL,
+					rationale     TEXT NOT NULL DEFAULT '',
+					evidence      JSONB,
+					payload       JSONB,
+					signature     TEXT NOT NULL,
+					source        TEXT NOT NULL DEFAULT 'RULES',
+					status        TEXT NOT NULL DEFAULT 'PENDING',
+					"decidedById" TEXT REFERENCES "Employee"(id) ON DELETE SET NULL,
+					"decidedAt"   TIMESTAMPTZ,
+					note          TEXT,
+					"createdAt"   TIMESTAMPTZ NOT NULL DEFAULT now()
+				);
+				CREATE UNIQUE INDEX IF NOT EXISTS "MatrixProposal_pending_sig"
+					ON "MatrixProposal" (signature) WHERE status = 'PENDING';
+				CREATE INDEX IF NOT EXISTS "MatrixProposal_status_idx" ON "MatrixProposal" (status, "createdAt" DESC);
+			`,
+		},
 	}
 }

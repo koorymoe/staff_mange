@@ -20,6 +20,7 @@ const (
 	AiActionAttendanceNudge   = "ATTENDANCE_NUDGE"   // الموظف: عنده شغل اليوم وما سجّل حضور
 	AiActionLowStock          = "LOW_STOCK"          // المخزن: أداة قربت تخلص
 	AiActionInvoiceApproval   = "INVOICE_APPROVAL"   // المحاسبة: فاتورة تنتظر اعتماد
+	AiActionPredictionNudge   = "PREDICTION_NUDGE"   // الموظف: توقّع ماتركس وافق عليه المدير
 )
 
 // AiActionEscalateAfter تذكير ما انحل بهالمدة يصعد للمدير.
@@ -46,6 +47,7 @@ var AiActionLabels = map[string]string{
 	AiActionAttendanceNudge:   "تذكير تسجيل الحضور",
 	AiActionLowStock:          "أداة قربت تخلص بالمخزن",
 	AiActionInvoiceApproval:   "فاتورة تنتظر اعتماد",
+	AiActionPredictionNudge:   "تذكير بعد توقّع",
 }
 
 // AiAction فعل واحد نفّذه ماتركس لحاله.

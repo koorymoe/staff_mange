@@ -374,7 +374,7 @@ function ActionsBoard() {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <ActionTile to="/matrix/decisions" icon="🤖" label="صندوق قرارات ماتركس" hint="شنو سوّى لحاله وشنو ينتظرك" count={n(matrix, (x) => x.pending.length + x.unstaffed.length)} />
+        <ActionTile to="/matrix/decisions" icon="🤖" label="صندوق قرارات ماتركس" hint="شنو سوّى لحاله وشنو ينتظرك" count={n(matrix, (x) => x.pending.length + x.unstaffed.length + (x.proposals ?? 0))} />
         <ActionTile to="/leaves" icon="🌴" label="طلبات الإجازات" hint="تنتظر موافقتك" count={n(leaves, (x) => x.count)} />
         <ActionTile to="/staff-requests" icon="👷" label="طلبات الكادر" hint="المشاريع تطلب كادر" count={n(staff, (x) => x.filter((r) => r.status === 'PENDING').length)} />
         <ActionTile to="/booking-delete-requests" icon="🗑️" label="طلبات حذف الحجوزات" hint="تنتظر قرار" count={n(deletes, (x) => x.awaitingReview)} />

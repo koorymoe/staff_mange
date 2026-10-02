@@ -160,6 +160,7 @@ func (s *MatrixGuideService) Guide(employeeID, path, label string) (*GuideResult
 		txt := strings.ReplaceAll(rule.Text, "{left}", fmt.Sprint(left))
 		txt = strings.ReplaceAll(txt, "{work}", work)
 		res = GuideResult{Text: txt, Source: "RULES", Rule: rule.ID}
+		s.rules.Hit(rule.ID)
 		if s.client != nil && s.takeQuota() {
 			if t, err := s.ask(w, path, label, rule.Text, work, left); err == nil && t != "" {
 				res.Text, res.Source = t, "MODEL"

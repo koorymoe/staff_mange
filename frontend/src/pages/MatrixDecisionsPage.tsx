@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api, type MatrixDecisions } from '../api'
 import OwnerSwitch from '../components/OwnerSwitch'
 import MatrixGuideRules from '../components/MatrixGuideRules'
+import MatrixProposals from '../components/MatrixProposals'
 import { SWITCH_MATRIX_AUTOPILOT } from '../systemSwitches'
 
 // ═══ صندوق قرارات ماتركس — للمالك ومدير النظام ═══
@@ -110,6 +111,8 @@ export default function MatrixDecisionsPage() {
 
       {err && <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>}
       {!data && !err && <p className="text-slate-400">جاري التحميل…</p>}
+
+      <MatrixProposals onChange={load} />
 
       {data && (
         <>

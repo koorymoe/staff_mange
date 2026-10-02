@@ -33,6 +33,17 @@ type MatrixAutopilotService struct {
 	switches *repository.SystemSwitchRepository
 	delay    *DelayPredictionService
 	insights *MatrixInsightsService
+	// proposals عدّاد اقتراحات ماتركس المعلّقة — للإشعار الصباحي والصندوق.
+	proposals func() int
+}
+
+func (s *MatrixAutopilotService) SetProposalCounter(f func() int) { s.proposals = f }
+
+func (s *MatrixAutopilotService) pendingProposals() int {
+	if s.proposals == nil {
+		return 0
+	}
+	return s.proposals()
 }
 
 func NewMatrixAutopilotService(actions *repository.AiActionRepository, aiRepo *repository.AiRepository,
@@ -271,11 +282,12 @@ func (s *MatrixAutopilotService) sendMorningSummary(done int) error {
 		return err
 	}
 	escalated, _ := s.actions.Escalated()
-	if done == 0 && len(pending) == 0 && len(escalated) == 0 {
+	props := s.pendingProposals()
+	if done == 0 && len(pending) == 0 && len(escalated) == 0 && props == 0 {
 		return nil
 	}
-	msg := fmt.Sprintf("🤖 ماتركس — اليوم سوّيت %d تذكير لحالي، وأكو %d حكم ينتظر قرارك، و%d تذكير ما انحل وصعدته إلك. افتح «صندوق قرارات ماتركس».",
-		done, len(pending), len(escalated))
+	msg := fmt.Sprintf("🤖 ماتركس — اليوم سوّيت %d تذكير لحالي، وأكو %d حكم ينتظر قرارك، و%d تذكير ما انحل وصعدته إلك، وعندي %d اقتراح. افتح «صندوق قرارات ماتركس».",
+		done, len(pending), len(escalated), props)
 	if !s.Enabled() {
 		msg = fmt.Sprintf("🤖 ماتركس — التنفيذ التلقائي مطفي. أكو %d حكم ينتظر قرارك بصندوق القرارات.", len(pending))
 	}
@@ -293,6 +305,7 @@ type DecisionsBox struct {
 	Escalated        []model.AiAction          `json:"escalated"`
 	Paused           []model.AiActionKindPause `json:"paused"`
 	Accuracy         *model.MatrixAccuracy     `json:"accuracy"`
+	Proposals        int                       `json:"proposals"`
 	Labels           map[string]string         `json:"labels"`
 }
 
@@ -328,7 +341,8 @@ func (s *MatrixAutopilotService) Decisions(day string) (*DecisionsBox, error) {
 		return nil, err
 	}
 	return &DecisionsBox{Day: day, AutopilotEnabled: s.Enabled(), Done: done, Pending: pending,
-		Unstaffed: unstaffed, Escalated: escalated, Paused: paused, Accuracy: acc, Labels: model.AiActionLabels}, nil
+		Unstaffed: unstaffed, Escalated: escalated, Paused: paused, Accuracy: acc, Labels: model.AiActionLabels,
+		Proposals: s.pendingProposals()}, nil
 }
 
 // Undo المدير يرفض فعلاً — وماتركس يتعلّم منه.

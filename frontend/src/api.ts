@@ -5341,6 +5341,11 @@ export const api = {
   getMyWatch: () => request<MatrixWatch>('/ai/my-watch'),
   getMatrixGuide: (path: string, label: string) =>
     request<{ text: string; source: 'RULES' | 'MODEL' | 'NONE' }>(`/ai/guide?path=${encodeURIComponent(path)}&label=${encodeURIComponent(label)}`),
+  getMatrixProposals: (status = 'PENDING') => request<MatrixProposal[]>(`/ai/proposals?status=${encodeURIComponent(status)}`),
+  approveMatrixProposal: (id: string, payload?: unknown) =>
+    request<{ ok: boolean }>(`/ai/proposals/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify({ payload: payload ?? null }) }),
+  rejectMatrixProposal: (id: string, note: string) =>
+    request<{ ok: boolean }>(`/ai/proposals/${encodeURIComponent(id)}/reject`, { method: 'POST', body: JSON.stringify({ note }) }),
   getGuideRules: () => request<{ rules: MatrixGuideRule[]; modelEnabled: boolean }>('/ai/guide-rules'),
   createGuideRule: (r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>('/ai/guide-rules', { method: 'POST', body: JSON.stringify(r) }),
   updateGuideRule: (id: string, r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>(`/ai/guide-rules/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(r) }),
@@ -5621,6 +5626,7 @@ export interface MatrixDecisions {
     delayPredicted: number; delayChecked: number; delayCorrect: number
   }
   labels: Record<string, string>
+  proposals: number
 }
 
 // عين ماتركس — حالة الموظف نفسه.
@@ -5646,5 +5652,22 @@ export interface MatrixGuideRule {
   onlyIfPending: boolean
   priority: number
   enabled: boolean
+  createdAt: string
+  hits?: number
+  lastHitAt?: string | null
+  source?: string
+}
+
+// اقتراح من ماتركس ينتظر قرار المدير.
+export interface MatrixProposal {
+  id: string
+  kind: 'GUIDE_RULE' | 'PREDICTION' | 'RULE_TUNE'
+  title: string
+  rationale: string
+  evidence: Record<string, unknown> | null
+  payload: Record<string, unknown> | null
+  source: 'RULES' | 'MODEL'
+  status: 'PENDING' | 'APPROVED' | 'REJECTED'
+  note: string | null
   createdAt: string
 }
