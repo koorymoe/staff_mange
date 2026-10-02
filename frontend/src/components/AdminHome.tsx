@@ -1,4 +1,4 @@
-import MatrixRoleEyes from './MatrixRoleEyes'
+import MatrixCommandCenter from './MatrixCommandCenter'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import {
@@ -437,7 +437,7 @@ export default function AdminHome({ name }: { name?: string }) {
           {tab('matrix', '👁️ ماتركس')}
         </div>
       </div>
-      {board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : <MatrixRoleEyes />}
+      {board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : <MatrixCommandCenter />}
     </div>
   )
 }

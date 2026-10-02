@@ -5361,6 +5361,10 @@ export const api = {
   createGuideRule: (r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>('/ai/guide-rules', { method: 'POST', body: JSON.stringify(r) }),
   updateGuideRule: (id: string, r: Partial<MatrixGuideRule>) => request<MatrixGuideRule>(`/ai/guide-rules/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(r) }),
   deleteGuideRule: (id: string) => request<{ ok: boolean }>(`/ai/guide-rules/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  getMatrixFeed: () => request<MatrixFeedItem[]>('/ai/feed'),
+  getMatrixTrend: () => request<MatrixTrendDay[]>('/ai/daily-trend'),
+  getLateFocus: () => request<LateFocus>('/ai/late-focus'),
+  askMatrix: (question: string) => request<{ answer: string; source: 'MODEL' | 'RULES' }>('/ai/ask', { method: 'POST', body: JSON.stringify({ question }) }),
   getGroupPerformance: (group: string) => request<GroupPerformance>(`/ai/group-performance?group=${encodeURIComponent(group)}`),
   getRoleWatch: () => request<{ group: string; employees: MatrixWatch[]; red: number; alert: number }[]>('/ai/role-watch'),
   getMatrixDecisions: (day?: string) =>
@@ -5727,4 +5731,13 @@ export interface GroupPerformance {
   group: string
   members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; jobs: number; completed: number; partial: number; open: number; speed: number | null; prevSpeed: number | null; score: number }[]
   problems: { text: string; link?: string; fixes: string[] }[]
+}
+
+// مركز قيادة ماتركس
+export interface MatrixFeedItem { kind: 'BOOKING' | 'INVOICE' | 'ACTION' | 'ESCALATED' | 'PROPOSAL'; title: string; sub: string; at: string; ref: string }
+export interface MatrixTrendDay { day: string; completed: number; revenue: number; onTime: number; scheduled: number }
+export interface LateWindow { total: number; late: number; unstaffed: number; partial: number; openNow: number }
+export interface LateFocus {
+  recent: LateWindow; previous: LateWindow; recentPct: number; prevPct: number; changePct: number | null
+  cause: string; impact: string; suggestion: string; severity: 'HIGH' | 'MEDIUM' | 'LOW'
 }

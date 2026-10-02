@@ -113,7 +113,7 @@ function speedCell(v: number | null, prev: number | null) {
   return <span className={cls} title="الوقت الفعلي ÷ المتوقع (١ = طبيعي)">×{v.toFixed(2)}{trend}</span>
 }
 
-function GroupPerf({ group }: { group: string }) {
+export function GroupPerf({ group }: { group: string }) {
   const [d, setD] = useState<GroupPerformance | null>(null)
   const [err, setErr] = useState('')
   useEffect(() => {

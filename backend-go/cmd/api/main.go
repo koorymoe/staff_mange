@@ -516,6 +516,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixEmployeeReportService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
 	matrixBusinessService := service.NewMatrixBusinessService(repository.NewMatrixBusinessRepository(db))
 	matrixLearningService.SetReportService(matrixEmployeeReportService)
+	matrixCommandService := service.NewMatrixCommandService(repository.NewMatrixCommandRepository(db), matrixAutopilotService,
+		matrixEmployeeReportService, matrixBusinessService, repository.NewMatrixProposalRepository(db))
+	matrixCommandService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	matrixCommandHandler := handler.NewMatrixCommandHandler(matrixCommandService)
 	matrixReportHandler := handler.NewMatrixReportHandler(matrixEmployeeReportService, matrixBusinessService)
 	bookingHandler.SetInquiryNotifier(func(customerID, employeeID string) {
 		if msg := matrixBusinessService.InquiryWarning(customerID); msg != "" && employeeID != "" {
@@ -1072,6 +1076,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/ai/proposals/{id}/reject", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Reject), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/employee-report", middleware.Chain(http.HandlerFunc(matrixReportHandler.Employee), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/group-performance", middleware.Chain(http.HandlerFunc(matrixReportHandler.Group), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/feed", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Feed), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/daily-trend", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Trend), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/late-focus", middleware.Chain(http.HandlerFunc(matrixCommandHandler.LateFocus), requireAuth, requireAdmin))
+	mux.Handle("POST /api/ai/ask", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Ask), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/business", middleware.Chain(http.HandlerFunc(matrixReportHandler.Business), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/role-watch", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.RoleWatch), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/decisions", middleware.Chain(http.HandlerFunc(matrixDecisionsHandler.Get), requireAuth, requireAdmin))

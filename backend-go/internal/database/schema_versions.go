@@ -373,6 +373,8 @@ func versionedMigrations() []Migration {
 	result = append(result, matrixGuideMigrations()...)
 	// 0302: إيقاف حساب موظف ترك الشركة — سبب ومنو ومتى، بلا حذف.
 	result = append(result, employeeSuspendMigrations()...)
+	// 0303: «اسأل ماتركس» — سجل الأسئلة والأجوبة.
+	result = append(result, matrixChatMigrations()...)
 	return result
 }
 
