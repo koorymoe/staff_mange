@@ -93,6 +93,7 @@ func (r *MonitorReviewRepository) List(stage, status, ownerRole string, limit in
 	}
 	r.hydrate(rows)
 	r.hydrateIdentity(rows)
+	r.hydrateLate(rows)
 	return rows, nil
 }
 
@@ -129,6 +130,7 @@ func (r *MonitorReviewRepository) Decide(id, monitorID string, req model.DecideM
 	rows := []model.MonitorReview{row}
 	r.hydrate(rows)
 	r.hydrateIdentity(rows)
+	r.hydrateLate(rows)
 	return &rows[0], nil
 }
 
@@ -190,6 +192,54 @@ func (r *MonitorReviewRepository) hydrate(rows []model.MonitorReview) {
 //
 // ⚠️ الفشل ما يوقف العرض: الهوية زينة مو شرط. لو الاستعلام طاح
 // يرجع الصندوق بلا هوية بدل ما يطيح كله.
+// hydrateLate يعبّي تفاصيل التأخر بالخروج لأحكام ماتركس (LATE_START).
+// السبب: آخر ملاحظة كتبها الكادر على طلعة المهمة، وإلا سبب التأجيل بالحجز.
+func (r *MonitorReviewRepository) hydrateLate(rows []model.MonitorReview) {
+	ids := []string{}
+	for _, x := range rows {
+		if x.EntityType == "AI_VERDICT" {
+			ids = append(ids, x.EntityID)
+		}
+	}
+	if len(ids) == 0 {
+		return
+	}
+	q, args, err := sqlx.In(`
+		SELECT v.id AS "verdictId", s."employeeId", e.name AS "employeeName",
+		       b.id AS "bookingId", b.code AS "bookingCode", b."scheduledAt", m."departedAt",
+		       (s.payload->>'minutesLate')::int AS "minutesLate",
+		       (s.payload->>'thresholdMinutes')::int AS threshold,
+		       (s.payload->>'lateCountLast30Days')::int AS count30d,
+		       COALESCE(
+		         (SELECT NULLIF(btrim(me.note), '') FROM "MissionEvent" me
+		           WHERE me."missionId" = m.id AND me.note IS NOT NULL AND btrim(me.note) <> ''
+		           ORDER BY me."createdAt" DESC LIMIT 1),
+		         NULLIF(btrim(b."postponeReason"), ''), NULLIF(btrim(m.notes), '')) AS reason
+		FROM "AiVerdict" v
+		JOIN "AiSignal" s ON s.id = v."signalId" AND s.kind = 'LATE_START'
+		LEFT JOIN "Employee" e ON e.id = s."employeeId"
+		LEFT JOIN "Booking" b ON s."entityType" = 'BOOKING' AND b.id = s."entityId"
+		LEFT JOIN LATERAL (SELECT * FROM "Mission" WHERE "bookingId" = b.id ORDER BY "assignedAt" DESC NULLS LAST LIMIT 1) m ON true
+		WHERE v.id IN (?)`, ids)
+	if err != nil {
+		return
+	}
+	found := []model.LateDetail{}
+	if err := r.db.Select(&found, r.db.Rebind(q), args...); err != nil {
+		return
+	}
+	by := map[string]model.LateDetail{}
+	for _, f := range found {
+		by[f.VerdictID] = f
+	}
+	for i := range rows {
+		if f, ok := by[rows[i].EntityID]; ok && rows[i].EntityType == "AI_VERDICT" {
+			c := f
+			rows[i].Late = &c
+		}
+	}
+}
+
 func (r *MonitorReviewRepository) hydrateIdentity(rows []model.MonitorReview) {
 	if len(rows) == 0 {
 		return

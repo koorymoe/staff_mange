@@ -29,6 +29,24 @@ type MonitorReview struct {
 	Identity *MonitorIdentity `db:"-" json:"identity,omitempty"`
 	// Urgent صف عاجل — يطلع بأول الصندوق بشارة حمرا.
 	Urgent bool `db:"urgent" json:"urgent"`
+	// Late تفاصيل «تأخر بالخروج للزبون» — منو، والموعد، ووكت الطلعة، وشكد، وليش.
+	Late *LateDetail `db:"-" json:"late,omitempty"`
+}
+
+// LateDetail لأحكام ماتركس عن التأخر بالخروج — (ع): «أريد يظهر الحجز واسم
+// الليدر، وزر يحوّلني عليه، وشكد تأخر، وشوكت الموعد، وشنو سبب التأخير».
+type LateDetail struct {
+	VerdictID    string     `db:"verdictId" json:"-"`
+	EmployeeID   *string    `db:"employeeId" json:"employeeId"`
+	EmployeeName *string    `db:"employeeName" json:"employeeName"`
+	BookingID    *string    `db:"bookingId" json:"bookingId"`
+	BookingCode  *string    `db:"bookingCode" json:"bookingCode"`
+	ScheduledAt  *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	DepartedAt   *time.Time `db:"departedAt" json:"departedAt"`
+	MinutesLate  *int       `db:"minutesLate" json:"minutesLate"`
+	Threshold    *int       `db:"threshold" json:"threshold"`
+	Count30d     *int       `db:"count30d" json:"count30d"`
+	Reason       *string    `db:"reason" json:"reason"`
 }
 
 // MonitorIdentity هوية الحجز وراء صف الصندوق — نفس حقول رأس الهوية
@@ -57,9 +75,9 @@ type MonitorIdentity struct {
 
 // محطات المراقبة — بالضبط الي طلبها صاحب العمل.
 const (
-	MonitorStageInvoiceBeforeAudit  = "INVOICE_BEFORE_AUDIT"
-	MonitorStageInvoiceAfterAudit   = "INVOICE_AFTER_AUDIT"
-	MonitorStageInvoiceAdjusted     = "INVOICE_ADJUSTED"
+	MonitorStageInvoiceBeforeAudit   = "INVOICE_BEFORE_AUDIT"
+	MonitorStageInvoiceAfterAudit    = "INVOICE_AFTER_AUDIT"
+	MonitorStageInvoiceAdjusted      = "INVOICE_ADJUSTED"
 	MonitorStageBookingBeforeConfirm = "BOOKING_BEFORE_CONFIRM"
 	MonitorStageBookingAfterConfirm  = "BOOKING_AFTER_CONFIRM"
 	MonitorStageBookingAfterComplete = "BOOKING_AFTER_COMPLETE"

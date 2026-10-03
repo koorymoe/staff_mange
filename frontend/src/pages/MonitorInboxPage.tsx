@@ -234,6 +234,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
                         🧾 رقم الفاتورة المحاسبية: <span className="font-mono">{row.identity.externalInvoiceNumber}</span>
                       </p>
                     )}
+                    {row.late && <LateBlock late={row.late} />}
                     {row.identity && (
                       <EntityIdentity
                         variant="full"
@@ -304,6 +305,48 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
           <Pager page={page} perPage={perPage} total={filtered.length} unit="صف" onPage={setPage} onPerPage={setPerPage} />
         </>
       )}
+    </div>
+  )
+}
+
+// ═══ تفاصيل «تأخر بالخروج للزبون» — (ع): الحجز، والليدر، وزر يودّي،
+// وشكد تأخر، وشوكت الموعد، وشنو السبب ═══
+const fmtDur = (m: number) => (m >= 60 ? `${Math.floor(m / 60)} س ${m % 60} د` : `${m} د`)
+const fmtAt = (s: string | null) => (s ? new Date(s).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'medium', timeStyle: 'short' }) : '—')
+function LateBlock({ late }: { late: NonNullable<MonitorReview['late']> }) {
+  const cards: { icon: string; label: string; value: string; tone?: string }[] = [
+    { icon: '⏰', label: 'شكد تأخر', value: late.minutesLate != null ? fmtDur(late.minutesLate) : '—', tone: 'text-red-700' },
+    { icon: '📅', label: 'الموعد المحدد', value: fmtAt(late.scheduledAt) },
+    { icon: '🚗', label: 'طلع الساعة', value: fmtAt(late.departedAt) },
+    { icon: '🔁', label: 'تأخر بآخر ٣٠ يوم', value: late.count30d != null ? `${late.count30d} مرة` : '—', tone: (late.count30d ?? 0) >= 4 ? 'text-red-700' : undefined },
+  ]
+  return (
+    <div className="mt-2 rounded-xl border border-red-100 bg-red-50/40 p-3">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        {late.employeeName && (
+          <Link to={late.employeeId ? `/matrix/employee/${late.employeeId}` : '#'} className="flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 font-bold text-[#0f2040] ring-1 ring-slate-200 hover:ring-sky-300">
+            <span className="grid h-6 w-6 place-items-center rounded-full bg-sky-100 text-[10px] text-sky-800">{late.employeeName.trim().split(/\s+/).slice(0, 2).map((w) => w[0]).join(' ')}</span>
+            👤 {late.employeeName}
+          </Link>
+        )}
+        {late.bookingCode && (
+          <Link to={late.bookingId ? `/bookings?focus=${late.bookingId}` : '/bookings'} className="rounded-full bg-amber-500 px-3 py-1 font-bold text-white hover:bg-amber-600">📋 الحجز {late.bookingCode} — ودّيني ←</Link>
+        )}
+        {late.threshold != null && <span className="text-[11px] text-slate-500">الحد المسموح {late.threshold} دقيقة</span>}
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+        {cards.map((c) => (
+          <div key={c.label} className="rounded-lg bg-white p-2 text-center ring-1 ring-slate-100">
+            <span>{c.icon}</span>
+            <p className="text-[10px] text-slate-500">{c.label}</p>
+            <b className={`text-xs ${c.tone ?? 'text-[#0f2040]'}`}>{c.value}</b>
+          </div>
+        ))}
+      </div>
+      <p className="mt-2 text-xs">
+        <b className="text-slate-600">💬 سبب التأخير: </b>
+        {late.reason ? <span className="text-slate-800">{late.reason}</span> : <span className="text-slate-400">ما كتب الكادر سبب — اسأله واكتبه بالملاحظة تحت.</span>}
+      </p>
     </div>
   )
 }

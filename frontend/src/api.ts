@@ -2180,6 +2180,8 @@ export interface MonitorReview {
     /** رقم الفاتورة المحاسبية — لصفوف الفواتير وتعديلاتها بس */
     externalInvoiceNumber?: string
   }
+  // تفاصيل «تأخر بالخروج للزبون» (أحكام ماتركس)
+  late?: { employeeId: string | null; employeeName: string | null; bookingId: string | null; bookingCode: string | null; scheduledAt: string | null; departedAt: string | null; minutesLate: number | null; threshold: number | null; count30d: number | null; reason: string | null }
 }
 
 /** ═══ تسعيرة الشبكات ═══
