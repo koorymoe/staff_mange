@@ -383,6 +383,8 @@ func versionedMigrations() []Migration {
 	result = append(result, remoteHoursMigrations()...)
 	// 0307: عدّاد ساعات البيت الحي + تصفير الفترة.
 	result = append(result, remoteTimerMigrations()...)
+	// 0308: ملاحظة إلغاء التقييم (التصفير الشهري).
+	result = append(result, monthlyResetMigrations()...)
 	return result
 }
 

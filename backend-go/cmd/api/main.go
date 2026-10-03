@@ -505,6 +505,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		repository.NewMatrixGuideRepository(db), aiActionRepo, aiRepo, notificationRepo, matrixAutopilotService)
 	matrixLearningService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
 	matrixAutopilotService.SetProposalCounter(matrixLearningService.PendingCount)
+	// التصفير الشهري: يوم ٢٧ الساعة ١١ بالليل — النقاط ترجع وساعات البيت تتصفّر (السجل يبقى).
+	monthlyResetService := service.NewMonthlyResetService(repository.NewKpiRepository(db), repository.NewRemoteHoursRepository(db), aiRepo, notificationRepo)
+	safeguard.Loop("التصفير الشهري", 10*time.Minute, 3*time.Minute, func() {
+		if err := monthlyResetService.RunIfDue(); err != nil {
+			log.Printf("monthly reset: %v", err)
+		}
+	})
 	safeguard.Loop("ماتركس يتعلّم", 47*time.Minute, 30*time.Minute, func() {
 		if err := matrixLearningService.RunIfDue(); err != nil {
 			log.Printf("matrix learning: %v", err)

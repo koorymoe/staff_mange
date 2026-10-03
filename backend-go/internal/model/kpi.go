@@ -12,6 +12,8 @@ type KpiEvaluation struct {
 	Cancelled             bool       `db:"cancelled" json:"cancelled"`
 	CancelledAt           *time.Time `db:"cancelledAt" json:"cancelledAt"`
 	CancelledByEmployeeID *string    `db:"cancelledByEmployeeId" json:"-"`
+	// MONTHLY_RESET = رجع بالتصفير الشهري (٢٧ بالشهر). ⚠️ لازم يبقى بالموديل — SELECT *.
+	CancelNote *string `db:"cancelNote" json:"cancelNote"`
 	CreatedAt             time.Time  `db:"createdAt" json:"createdAt"`
 
 	Employee            *EmployeeBrief `db:"-" json:"employee"`

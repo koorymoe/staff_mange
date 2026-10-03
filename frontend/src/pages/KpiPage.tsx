@@ -902,7 +902,7 @@ function AdministrativeTab() {
                         {ev.reason || '-'}
                         {ev.cancelled && (
                           <div className="mt-1 text-xs font-bold text-amber-600">
-                            ⚠ ملغاة {ev.cancelledByEmployee ? `(بواسطة ${ev.cancelledByEmployee.name})` : ''}
+                            {ev.cancelNote === 'MONTHLY_RESET' ? '↩️ رجعت بالتصفير الشهري' : <>⚠ ملغاة {ev.cancelledByEmployee ? `(بواسطة ${ev.cancelledByEmployee.name})` : ''}</>}
                             {ev.cancelledAt && ` — ${new Date(ev.cancelledAt).toLocaleDateString('ar-IQ')}`}
                           </div>
                         )}

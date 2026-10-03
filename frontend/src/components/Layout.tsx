@@ -5,6 +5,7 @@ import EmployeeAvatar from './EmployeeAvatar'
 import LiveAlerts from './LiveAlerts'
 import ThemeToggle from './ThemeToggle'
 import MatrixEye from './MatrixEye'
+import RemoteTimerChip from './RemoteTimerChip'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
@@ -692,6 +693,8 @@ export default function Layout() {
               <LiveAlerts />
               {/* عين ماتركس — تتابع وتنتبه لكل إجراء، ولونها حسب الدور والحالة */}
               <MatrixEye />
+              {/* عدّاد ساعات البيت — لصاحب الصلاحية، بكل الشاشات */}
+              <RemoteTimerChip />
               {/* الوضع الليلي — اختياره ينحفظ بالجهاز */}
               <ThemeToggle />
               <div className="relative">

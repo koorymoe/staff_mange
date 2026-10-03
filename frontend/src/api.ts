@@ -2772,6 +2772,7 @@ export interface KpiEvaluation {
   cancelled: boolean
   cancelledAt: string | null
   cancelledByEmployee: { id: string; name: string } | null
+  cancelNote?: string | null // MONTHLY_RESET = رجع بالتصفير الشهري
   createdAt: string
 }
 
