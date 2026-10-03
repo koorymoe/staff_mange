@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>فيديو تعليمي — مسؤول GPS</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0f172a;color:#e2e8f0;overflow:hidden;height:100vh;display:flex;flex-direction:column}
+.stage{flex:1;position:relative;overflow:hidden;display:flex}
+.sidebar{width:220px;background:#1e293b;border-left:1px solid #334155;display:flex;flex-direction:column;padding:12px 0;overflow-y:auto}
+.sidebar .logo{text-align:center;padding:10px;font-weight:700;font-size:15px;color:#2563eb;border-bottom:1px solid #334155;margin-bottom:8px}
+.sidebar a{display:flex;align-items:center;gap:8px;padding:9px 18px;color:#94a3b8;text-decoration:none;font-size:13px;transition:all .25s;border-radius:6px 0 0 6px;margin:1px 0}
+.sidebar a:hover,.sidebar a.active{background:#2563eb22;color:#60a5fa}
+.sidebar a.active{border-left:3px solid #2563eb;font-weight:600}
+.sidebar a .icon{font-size:16px;min-width:22px;text-align:center}
+.content{flex:1;display:flex;flex-direction:column;position:relative;background:#0f172a}
+.topbar{height:48px;background:#1e293b;border-bottom:1px solid #334155;display:flex;align-items:center;justify-content:space-between;padding:0 20px}
+.topbar .user-info{display:flex;align-items:center;gap:8px;font-size:13px;color:#94a3b8}
+.topbar .user-avatar{width:30px;height:30px;border-radius:50%;background:#2563eb;display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700}
+.topbar .page-title{font-size:15px;font-weight:600;color:#e2e8f0}
+.main-area{flex:1;padding:20px;overflow-y:auto;position:relative}
+.stats-row{display:flex;gap:14px;margin-bottom:18px;flex-wrap:wrap}
+.stat-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;flex:1;min-width:140px}
+.stat-card .label{font-size:11px;color:#64748b;margin-bottom:4px}
+.stat-card .value{font-size:22px;font-weight:700;color:#2563eb}
+.stat-card .sub{font-size:11px;color:#22c55e;margin-top:2px}
+.data-table{width:100%;border-collapse:collapse;font-size:12px;background:#1e293b;border-radius:8px;overflow:hidden}
+.data-table th{background:#334155;color:#94a3b8;padding:8px 10px;text-align:right;font-weight:600}
+.data-table td{padding:8px 10px;border-bottom:1px solid #1e293b55;color:#cbd5e1}
+.data-table tr:nth-child(even){background:#1e293b99}
+.data-table tr.highlight{background:#2563eb22;outline:2px solid #2563eb}
+.badge{display:inline-block;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
+.badge-green{background:#22c55e22;color:#22c55e}.badge-yellow{background:#eab30822;color:#eab308}.badge-red{background:#ef444422;color:#ef4444}.badge-blue{background:#2563eb22;color:#60a5fa}
+.section-title{font-size:16px;font-weight:700;color:#e2e8f0;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.modal-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:20;opacity:0;pointer-events:none;transition:opacity .4s}
+.modal-overlay.show{opacity:1;pointer-events:auto}
+.modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;width:480px;max-width:90%}
+.modal h3{color:#e2e8f0;margin-bottom:12px;font-size:15px}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:11px;color:#64748b;margin-bottom:3px}
+.form-row input,.form-row select,.form-row textarea{width:100%;padding:7px 10px;background:#0f172a;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px}
+.btn{padding:7px 18px;border:none;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-primary{background:#2563eb;color:#fff}.btn-danger{background:#ef4444;color:#fff}.btn-success{background:#22c55e;color:#fff}
+.login-screen{position:absolute;inset:0;background:#0f172a;display:flex;align-items:center;justify-content:center;z-index:30;transition:opacity .5s}
+.login-screen.hidden{opacity:0;pointer-events:none}
+.login-box{background:#1e293b;border:1px solid #334155;border-radius:14px;padding:36px;width:340px;text-align:center}
+.login-box h2{color:#2563eb;margin-bottom:6px;font-size:20px}
+.login-box p{color:#64748b;font-size:12px;margin-bottom:20px}
+.login-box .form-row{text-align:right}
+.cursor{position:absolute;width:24px;height:24px;z-index:100;pointer-events:none;transition:all .8s cubic-bezier(.4,0,.2,1);opacity:0}
+.cursor::before{content:'';position:absolute;width:0;height:0;border-style:solid;border-width:0 4px 18px 14px;border-color:transparent transparent #2563eb transparent;transform:rotate(-25deg)}
+.cursor::after{content:'';position:absolute;top:14px;right:6px;width:8px;height:8px;background:#2563eb;border-radius:50%;opacity:0;animation:click-ring .4s ease-out}
+.cursor.clicking::after{opacity:1}
+@keyframes click-ring{0%{transform:scale(0);opacity:1}100%{transform:scale(3);opacity:0}}
+.cursor.visible{opacity:1}
+.narration{position:absolute;bottom:70px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg,#1e293bee,#0f172aee);border:1px solid #2563eb55;border-radius:12px;padding:14px 24px;max-width:600px;width:90%;text-align:center;font-size:14px;color:#e2e8f0;line-height:1.8;z-index:50;backdrop-filter:blur(8px);opacity:0;transition:opacity .4s}
+.narration.show{opacity:1}
+.narration .step-num{display:inline-block;background:#2563eb;color:#fff;border-radius:50%;width:24px;height:24px;line-height:24px;font-size:11px;font-weight:700;margin-left:8px}
+.controls{height:52px;background:#1e293b;border-top:1px solid #334155;display:flex;align-items:center;gap:10px;padding:0 16px;z-index:60}
+.controls button{background:#334155;border:none;color:#e2e8f0;padding:6px 14px;border-radius:6px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px;transition:background .2s}
+.controls button:hover{background:#2563eb}
+.controls .progress-wrap{flex:1;height:6px;background:#334155;border-radius:3px;overflow:hidden;cursor:pointer}
+.controls .progress-bar{height:100%;background:#2563eb;border-radius:3px;transition:width .3s}
+.controls .counter{font-size:12px;color:#94a3b8;min-width:60px;text-align:center}
+.ai-chat{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;max-width:500px}
+.ai-msg{margin-bottom:10px;padding:8px 12px;border-radius:8px;font-size:12px;line-height:1.6}
+.ai-msg.user{background:#2563eb22;color:#60a5fa;margin-left:40px;text-align:left}
+.ai-msg.bot{background:#33415544;color:#cbd5e1;margin-right:40px}
+.typing-dots::after{content:'...';animation:dots 1s steps(3) infinite}
+@keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.info-item{background:#0f172a;border:1px solid #334155;border-radius:6px;padding:8px 10px}
+.info-item .lbl{font-size:10px;color:#64748b}
+.info-item .val{font-size:13px;color:#e2e8f0;font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="sidebar">
+    <div class="logo">نظام إدارة الموظفين</div>
+    <a href="#" class="active" data-page="home"><span class="icon">🏠</span>الرئيسية</a>
+    <a href="#" data-page="gps"><span class="icon">📡</span>نظام GPS</a>
+    <a href="#" data-page="gps-requests"><span class="icon">📋</span>طلبات GPS</a>
+    <a href="#" data-page="gps-renew"><span class="icon">🔄</span>تجديد GPS</a>
+    <a href="#" data-page="gps-maint"><span class="icon">🔧</span>صيانة GPS</a>
+    <a href="#" data-page="attendance"><span class="icon">⏰</span>الحضور</a>
+    <a href="#" data-page="profile"><span class="icon">👤</span>تصنيفي</a>
+  </div>
+
+  <div class="content">
+    <div class="topbar">
+      <span class="page-title" id="pageTitle">الرئيسية</span>
+      <div class="user-info"><span>hassan_gps</span><div class="user-avatar">ح</div></div>
+    </div>
+    <div class="main-area" id="mainArea"></div>
+    <div class="login-screen" id="loginScreen">
+      <div class="login-box">
+        <h2>تسجيل الدخول</h2><p>نظام إدارة الموظفين</p>
+        <div class="form-row"><label>اسم المستخدم</label><input id="loginUser" value="" readonly></div>
+        <div class="form-row"><label>كلمة المرور</label><input type="password" id="loginPass" value="" readonly></div>
+        <button class="btn btn-primary" style="width:100%;margin-top:12px">دخول</button>
+      </div>
+    </div>
+    <div class="modal-overlay" id="modalOverlay"><div class="modal" id="modalContent"></div></div>
+  </div>
+  <div class="cursor" id="cursor"></div>
+  <div class="narration" id="narration"></div>
+</div>
+
+<div class="controls">
+  <button id="btnPrev">⏮ السابق</button>
+  <button id="btnPlay">⏸ إيقاف</button>
+  <button id="btnNext">التالي ⏭</button>
+  <div class="progress-wrap" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="counter" id="counter">1 / 6</div>
+</div>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s),$$=s=>document.querySelectorAll(s);
+const cursor=$('#cursor'),narration=$('#narration'),mainArea=$('#mainArea'),pageTitle=$('#pageTitle'),loginScreen=$('#loginScreen'),modalOverlay=$('#modalOverlay'),modalContent=$('#modalContent'),progressBar=$('#progressBar'),counterEl=$('#counter');
+let currentScene=0,playing=true,sceneTimer=null;
+function sleep(ms){return new Promise(r=>sceneTimer=setTimeout(r,ms))}
+function showNarration(s,t){narration.innerHTML=`<span class="step-num">${s}</span> ${t}`;narration.classList.add('show')}
+function hideNarration(){narration.classList.remove('show')}
+function moveCursor(x,y){cursor.style.right=x+'px';cursor.style.top=y+'px';cursor.classList.add('visible')}
+function hideCursor(){cursor.classList.remove('visible')}
+function clickEffect(){cursor.classList.add('clicking');setTimeout(()=>cursor.classList.remove('clicking'),500)}
+function setActive(p){$$('.sidebar a').forEach(a=>a.classList.toggle('active',a.dataset.page===p))}
+function setPage(t){pageTitle.textContent=t}
+function showModal(h){modalContent.innerHTML=h;modalOverlay.classList.add('show')}
+function hideModal(){modalOverlay.classList.remove('show')}
+function updateControls(){counterEl.textContent=`${currentScene+1} / ${scenes.length}`;progressBar.style.width=((currentScene+1)/scenes.length*100)+'%'}
+
+const scenes=[
+  // 1 - Login
+  async function(){
+    loginScreen.classList.remove('hidden');mainArea.innerHTML='';hideModal();
+    showNarration(1,'مرحباً! سنسجل الدخول كمسؤول GPS باستخدام الحساب hassan_gps');
+    await sleep(1200);moveCursor(280,340);await sleep(600);$('#loginUser').value='hassan_gps';
+    await sleep(500);moveCursor(280,390);await sleep(400);$('#loginPass').value='••••••••';
+    await sleep(500);moveCursor(260,430);clickEffect();await sleep(800);
+    loginScreen.classList.add('hidden');setPage('الرئيسية');setActive('home');
+    mainArea.innerHTML=`<div class="stats-row">
+      <div class="stat-card"><div class="label">أجهزة نشطة</div><div class="value">342</div></div>
+      <div class="stat-card"><div class="label">طلبات معلقة</div><div class="value" style="color:#eab308">7</div></div>
+      <div class="stat-card"><div class="label">تجديدات قادمة</div><div class="value">12</div></div>
+      <div class="stat-card"><div class="label">صيانة معلقة</div><div class="value" style="color:#ef4444">3</div></div>
+    </div>`;
+    await sleep(2000);
+  },
+  // 2 - نظام GPS Dashboard
+  async function(){
+    showNarration(2,'نظام GPS — لوحة التحكم الرئيسية مع إحصائيات الأجهزة والاشتراكات');
+    moveCursor(140,80);await sleep(600);clickEffect();
+    setActive('gps');setPage('نظام GPS');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📡 لوحة تحكم GPS</div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">إجمالي الأجهزة</div><div class="value">342</div></div>
+        <div class="stat-card"><div class="label">اشتراكات نشطة</div><div class="value" style="color:#22c55e">298</div></div>
+        <div class="stat-card"><div class="label">منتهية</div><div class="value" style="color:#ef4444">44</div></div>
+        <div class="stat-card"><div class="label">شرائح SIM مخصصة</div><div class="value">310</div></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="label">تركيبات هذا الشهر</div><div class="value">18</div><div class="sub">↑ 25%</div></div>
+        <div class="stat-card"><div class="label">تجديدات هذا الشهر</div><div class="value">24</div></div>
+        <div class="stat-card"><div class="label">طلبات صيانة</div><div class="value">6</div></div>
+      </div>`;
+    await sleep(2500);
+  },
+  // 3 - طلبات GPS المعلقة
+  async function(){
+    showNarration(3,'طلبات GPS المعلقة — مراجعة الطلب وتعيين الشريحة وجدولة التركيب');
+    moveCursor(140,115);await sleep(600);clickEffect();
+    setActive('gps-requests');setPage('طلبات GPS المعلقة');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">📋 طلبات GPS المعلقة</div>
+      <table class="data-table"><tr><th>#</th><th>العميل</th><th>نوع الشراء</th><th>الاشتراك</th><th>الحالة</th><th>إجراء</th></tr>
+        <tr id="gpsReq1" class="highlight"><td>GPS-401</td><td>محمد الراشد</td><td>شراء جديد</td><td>سنوي</td><td><span class="badge badge-yellow">معلق</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px">مراجعة</button></td></tr>
+        <tr><td>GPS-402</td><td>فاطمة العتيبي</td><td>شراء جديد</td><td>6 أشهر</td><td><span class="badge badge-yellow">معلق</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px">مراجعة</button></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(350,220);clickEffect();
+    await sleep(600);
+    showModal(`<h3>مراجعة طلب GPS-401</h3>
+      <div class="info-grid">
+        <div class="info-item"><div class="lbl">العميل</div><div class="val">محمد الراشد</div></div>
+        <div class="info-item"><div class="lbl">الجوال</div><div class="val">0551234567</div></div>
+        <div class="info-item"><div class="lbl">نوع الشراء</div><div class="val">شراء جديد</div></div>
+        <div class="info-item"><div class="lbl">الاشتراك</div><div class="val">سنوي — 500 ر.س</div></div>
+        <div class="info-item"><div class="lbl">الهوية</div><div class="val">مرفقة ✓</div></div>
+        <div class="info-item"><div class="lbl">رخصة السيارة</div><div class="val">مرفقة ✓</div></div>
+      </div>
+      <div class="form-row"><label>رقم شريحة SIM</label><input value="SIM-8890012" readonly></div>
+      <div class="form-row"><label>موعد التركيب</label><input value="2026-07-24 — 10:00 ص" readonly></div>
+      <div class="form-row"><label>الفني المكلف</label><select><option>أحمد خالد</option></select></div>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-success">اعتماد الطلب ✓</button><button class="btn btn-danger">رفض</button></div>`);
+    showNarration(3,'نراجع بيانات العميل والمستندات، نعيّن شريحة SIM والفني، ونعتمد الطلب');
+    await sleep(2500);
+    moveCursor(340,520);clickEffect();await sleep(600);
+    hideModal();
+    await sleep(1500);
+  },
+  // 4 - تجديد GPS
+  async function(){
+    showNarration(4,'تجديد GPS — مراجعة طلبات التجديد وتحديث تاريخ الانتهاء');
+    moveCursor(140,150);await sleep(600);clickEffect();
+    setActive('gps-renew');setPage('تجديد GPS');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">🔄 طلبات تجديد GPS</div>
+      <table class="data-table"><tr><th>#</th><th>العميل</th><th>الجهاز</th><th>انتهاء الاشتراك</th><th>نوع التجديد</th><th>الحالة</th><th>إجراء</th></tr>
+        <tr class="highlight"><td>REN-201</td><td>سالم العمري</td><td>GT-1042</td><td>2026-07-30</td><td>سنوي</td><td><span class="badge badge-yellow">معلق</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px">تجديد</button></td></tr>
+        <tr><td>REN-202</td><td>هند الشهري</td><td>GT-1089</td><td>2026-08-05</td><td>6 أشهر</td><td><span class="badge badge-yellow">معلق</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px">تجديد</button></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(350,225);clickEffect();await sleep(600);
+    showModal(`<h3>تجديد اشتراك — REN-201</h3>
+      <div class="form-row"><label>العميل</label><input value="سالم العمري" readonly></div>
+      <div class="form-row"><label>تاريخ الانتهاء الحالي</label><input value="2026-07-30" readonly></div>
+      <div class="form-row"><label>تاريخ الانتهاء الجديد</label><input value="2027-07-30" readonly style="border-color:#22c55e"></div>
+      <div class="form-row"><label>المبلغ</label><input value="500 ر.س" readonly></div>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-success">تأكيد التجديد</button><button class="btn" style="background:#334155;color:#e2e8f0">إلغاء</button></div>`);
+    showNarration(4,'نحدث تاريخ الانتهاء من 2026-07-30 إلى 2027-07-30 ونؤكد التجديد');
+    await sleep(2000);
+    moveCursor(340,420);clickEffect();await sleep(600);hideModal();
+    await sleep(1500);
+  },
+  // 5 - صيانة GPS
+  async function(){
+    showNarration(5,'صيانة GPS — مراجعة طلبات الصيانة وإضافة ملاحظات وحل المشكلة');
+    moveCursor(140,185);await sleep(600);clickEffect();
+    setActive('gps-maint');setPage('صيانة GPS');
+    await sleep(400);
+    mainArea.innerHTML=`<div class="section-title">🔧 طلبات صيانة GPS</div>
+      <table class="data-table"><tr><th>#</th><th>العميل</th><th>الجهاز</th><th>المشكلة</th><th>الحالة</th><th>إجراء</th></tr>
+        <tr class="highlight"><td>MNT-301</td><td>عبدالرحمن فهد</td><td>GT-1055</td><td>الجهاز لا يرسل إشارة</td><td><span class="badge badge-red">مفتوح</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px">معالجة</button></td></tr>
+        <tr><td>MNT-302</td><td>نوال سعيد</td><td>GT-1078</td><td>بطارية ضعيفة</td><td><span class="badge badge-yellow">جاري</span></td><td><button class="btn btn-primary" style="font-size:10px;padding:3px 10px">متابعة</button></td></tr>
+      </table>`;
+    await sleep(1200);
+    moveCursor(350,225);clickEffect();await sleep(600);
+    showModal(`<h3>معالجة صيانة — MNT-301</h3>
+      <div class="form-row"><label>المشكلة</label><input value="الجهاز لا يرسل إشارة" readonly></div>
+      <div class="form-row"><label>ملاحظات الفحص</label><textarea readonly>تم فحص الشريحة — تحتاج استبدال. تم تركيب شريحة SIM جديدة رقم SIM-8890045</textarea></div>
+      <div class="form-row"><label>الحالة</label><select><option>تم الحل ✓</option></select></div>
+      <div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-success">حفظ وإغلاق</button></div>`);
+    showNarration(5,'نضيف ملاحظات الفحص ونحدد الحالة "تم الحل" ثم نحفظ');
+    await sleep(2000);
+    moveCursor(340,440);clickEffect();await sleep(600);hideModal();
+    await sleep(1500);
+  },
+  // 6 - الذكاء الاصطناعي
+  async function(){
+    showNarration(6,'الذكاء الاصطناعي — الاستفسار عن طلبات GPS المعلقة');
+    hideCursor();setActive('home');setPage('الذكاء الاصطناعي');
+    mainArea.innerHTML=`<div class="section-title">🤖 المدير الذكي</div><div class="ai-chat" id="aiChat"></div>`;
+    const chat=$('#aiChat');
+    await sleep(800);
+    chat.innerHTML+=`<div class="ai-msg user">كم عدد طلبات GPS المعلقة؟</div>`;
+    await sleep(1200);
+    chat.innerHTML+=`<div class="ai-msg bot"><span class="typing-dots">جاري البحث</span></div>`;
+    await sleep(1500);
+    chat.lastElementChild.innerHTML=`طلبات GPS المعلقة حالياً: <strong>7 طلبات</strong><br>- طلبات جديدة: 4<br>- طلبات تجديد: 2<br>- طلبات صيانة: 1<br>أقدم طلب معلق منذ: <span style="color:#eab308">3 أيام</span><br>التوصية: معالجة الطلبات المعلقة فوراً لتجنب تأخير العملاء`;
+    await sleep(3000);
+  }
+];
+
+async function playScene(i){if(i<0||i>=scenes.length)return;currentScene=i;updateControls();hideNarration();hideModal();await scenes[i]()}
+async function autoPlay(){while(playing&&currentScene<scenes.length){await playScene(currentScene);if(!playing)break;await sleep(1000);currentScene++}}
+$('#btnPlay').onclick=()=>{playing=!playing;$('#btnPlay').textContent=playing?'⏸ إيقاف':'▶ تشغيل';if(playing){currentScene=Math.min(currentScene,scenes.length-1);autoPlay()}else clearTimeout(sceneTimer)};
+$('#btnNext').onclick=()=>{playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.min(currentScene+1,scenes.length-1);playScene(currentScene)};
+$('#btnPrev').onclick=()=>{playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.max(currentScene-1,0);playScene(currentScene)};
+$('#progressWrap').onclick=e=>{const r=e.target.getBoundingClientRect();const p=(e.clientX-r.left)/r.width;playing=false;$('#btnPlay').textContent='▶ تشغيل';clearTimeout(sceneTimer);currentScene=Math.floor(p*scenes.length);playScene(currentScene)};
+updateControls();autoPlay();
+})();
+</script>
+</body>
+</html>
