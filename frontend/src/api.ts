@@ -3760,6 +3760,15 @@ export const api = {
     request<LocationPing[]>(`/location-pings/path?employeeId=${employeeId}${bookingId ? `&bookingId=${bookingId}` : ''}`),
 
   getEmployees: () => request<Employee[]>('/employees'),
+  // ساعات العمل من البيت — صلاحية remote_hours_manage
+  getRemoteHours: (month: string, employeeId = '') =>
+    request<{ entries: RemoteEntry[]; totalSeconds: number }>(`/remote-hours?month=${month}&employeeId=${encodeURIComponent(employeeId)}`),
+  getRemoteSummary: (month: string) => request<RemoteSummary[]>(`/remote-hours/summary?month=${month}`),
+  addRemoteHours: (b: { employeeId: string; date: string; hours: number; minutes: number; seconds: number; note?: string }) =>
+    request<{ id: string; seconds: number }>('/remote-hours', { method: 'POST', body: JSON.stringify(b) }),
+  deleteRemoteHours: (id: string) => request<{ ok: boolean }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  exportRemoteHours: (month: string, employeeId = '', label = '') =>
+    downloadFile(`/remote-hours/export?month=${month}&employeeId=${encodeURIComponent(employeeId)}`, `ساعات-البيت-${label ? label + '-' : ''}${month}.xlsx`),
   getArchivedEmployees: () => request<Employee[]>('/employees/archived'),
   getSuspendedEmployees: () => request<{ id: string; name: string; role: Employee['role']; status: string; reason: string; suspendedAt: string | null; suspendedBy: string }[]>('/employees/suspended'),
   suspendEmployee: (id: string, reason: string) => request<{ ok: boolean }>(`/employees/${encodeURIComponent(id)}/suspend`, { method: 'PUT', body: JSON.stringify({ reason }) }),
@@ -5745,3 +5754,6 @@ export interface LateFocus {
   recent: LateWindow; previous: LateWindow; recentPct: number; prevPct: number; changePct: number | null
   cause: string; impact: string; suggestion: string; severity: 'HIGH' | 'MEDIUM' | 'LOW'
 }
+
+export interface RemoteEntry { id: string; employeeId: string; employeeName: string; workDate: string; seconds: number; note: string | null; addedById: string | null; addedBy: string; createdAt: string }
+export interface RemoteSummary { employeeId: string; name: string; days: number; seconds: number }

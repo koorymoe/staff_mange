@@ -379,6 +379,8 @@ func versionedMigrations() []Migration {
 	result = append(result, materialStockMigrations()...)
 	// 0305: سجل نشاط الموظف — «شنو سوّى اليوم» بتقرير ماتركس.
 	result = append(result, employeeActivityMigrations()...)
+	// 0306: ساعات العمل من البيت.
+	result = append(result, remoteHoursMigrations()...)
 	return result
 }
 

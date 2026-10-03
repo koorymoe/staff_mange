@@ -13,6 +13,7 @@ import TrainingPage from './pages/TrainingPage'
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const Employees = lazy(() => import('./pages/Employees'))
 const WorkSchedulePage = lazy(() => import('./pages/WorkSchedulePage'))
+const RemoteHoursPage = lazy(() => import('./pages/RemoteHoursPage'))
 const Customers = lazy(() => import('./pages/Customers'))
 const Services = lazy(() => import('./pages/Services'))
 const SalesBooking = lazy(() => import('./pages/SalesBooking'))
@@ -162,6 +163,7 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="employees" element={<Employees />} />
           <Route path="work-schedule" element={<WorkSchedulePage />} />
+          <Route path="remote-hours" element={<RemoteHoursPage />} />
           <Route path="customers" element={<Customers />} />
           <Route path="services" element={<Services />} />
           <Route path="sales" element={<SalesBooking />} />

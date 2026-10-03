@@ -1097,6 +1097,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الإنجازات: أي موظف يرفع تقريره — العرض والمراجعة حصراً لمدير
 	// النظام والمالك (requireAdmin)، لا المراقب.
 	mux.Handle("POST /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.Create), requireAuth))
+	// ساعات العمل من البيت — صلاحية «remote_hours_manage».
+	remoteHoursHandler := handler.NewRemoteHoursHandler(repository.NewRemoteHoursRepository(db))
+	requireRemoteHours := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "remote_hours_manage")
+	mux.Handle("POST /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Create), requireAuth, requireRemoteHours))
+	mux.Handle("GET /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.List), requireAuth, requireRemoteHours))
+	mux.Handle("GET /api/remote-hours/summary", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Summary), requireAuth, requireRemoteHours))
+	mux.Handle("GET /api/remote-hours/export", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Export), requireAuth, requireRemoteHours))
+	mux.Handle("DELETE /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Delete), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/achievements/mine", middleware.Chain(http.HandlerFunc(achievementHandler.Mine), requireAuth))
 	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireAdmin))

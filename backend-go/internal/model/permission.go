@@ -22,6 +22,7 @@ var DefaultPermissions = []Permission{
 	{Name: "employee_suspend", Label: "إيقاف وتفعيل حساب موظف"},
 	{Name: "employee_create", Label: "إضافة موظف جديد"},
 	{Name: "work_schedule_manage", Label: "تحديد جدول دوام الموظفين"},
+	{Name: "remote_hours_manage", Label: "تسجيل ساعات العمل من البيت"},
 	{Name: "kpi_management", Label: "تقييم الأداء (KPI)"},
 	{Name: "kpi_criteria_management", Label: "إدارة نقاط الكي بي اي (إضافة/حذف)"},
 	{Name: "inventory", Label: "جرد الأدوات"},
