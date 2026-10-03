@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MatrixProposal } from '../api'
 import { GROUP_LABEL, type EyeGroup } from './matrixEyeColors'
+import { EV_LABEL, SEV, category, evidenceCards, severity } from './matrixEvidence'
 
 // ═══ اقتراحات ماتركس — هو يقترح، والمدير يقرر ═══
 // الموافَق يصير جزء منه (تعليمة، تعديل، أو تذكير للموظف)، والمرفوض
@@ -13,56 +14,7 @@ const KIND: Record<MatrixProposal['kind'], { icon: string; label: string; approv
   RULE_TUNE: { icon: '🛠️', label: 'تعديل تعليمة', approve: '✅ طبّق التعديل' },
 }
 
-const EV_LABEL: Record<string, string> = {
-  done: 'المنجز', left: 'الباقي', hoursElapsed: 'ساعات مضت', hoursRemaining: 'ساعات باقية', pace: 'الوتيرة/ساعة',
-  expected: 'المتوقع ينجز', total: 'كل التذكيرات', escalated: 'صعدت', resolved: 'انحلت', rejected: 'رفضتها',
-  kind: 'النوع', escalations30d: 'تصعيدات بشهر', group: 'المجموعة', hits: 'مرات الانطباق', lastHitAt: 'آخر انطباق',
-}
 
-// ── الأهمية والأدلة — محسوبة من أرقام الدليل بس، بلا تخمين ──
-type Sev = 'URGENT' | 'MEDIUM' | 'NORMAL'
-const SEV: Record<Sev, { t: string; c: string; icon: string }> = {
-  URGENT: { t: 'عاجل', c: 'bg-red-50 text-red-700 ring-red-200', icon: '⚠️' },
-  MEDIUM: { t: 'متوسط', c: 'bg-amber-50 text-amber-700 ring-amber-200', icon: '⏱️' },
-  NORMAL: { t: 'عادي', c: 'bg-sky-50 text-sky-700 ring-sky-200', icon: 'ℹ️' },
-}
-const num = (v: unknown) => (typeof v === 'number' ? v : Number(v) || 0)
-const isDecline = (p: MatrixProposal) => p.evidence != null && 'prevRatio' in p.evidence
-function severity(p: MatrixProposal): Sev {
-  const e = p.evidence ?? {}
-  if (isDecline(p)) {
-    const r = num(e.ratio), pr = num(e.prevRatio)
-    return pr > 0 && (r - pr) / pr >= 0.5 ? 'URGENT' : 'MEDIUM'
-  }
-  if (p.kind === 'PREDICTION') {
-    const left = num(e.left), exp = Math.max(1, num(e.expected))
-    return left >= exp * 3 ? 'URGENT' : left >= exp * 2 ? 'MEDIUM' : 'NORMAL'
-  }
-  return 'NORMAL'
-}
-function category(p: MatrixProposal) {
-  if (isDecline(p)) return 'الأداء والحجوزات'
-  if (p.kind === 'PREDICTION') return 'اعتماد الدوام'
-  return 'تعليمات ماتركس'
-}
-function evidenceCards(p: MatrixProposal): { label: string; value: string; icon: string }[] {
-  const e = p.evidence ?? {}
-  if (isDecline(p)) {
-    return [
-      { icon: '📈', label: 'معدّل الوقت هالشهر', value: `×${num(e.ratio).toFixed(2)} (${num(e.timed)} حجز)` },
-      { icon: '🕒', label: 'الشهر الي قبله', value: `×${num(e.prevRatio).toFixed(2)} (${num(e.prevTimed)} حجز)` },
-    ]
-  }
-  if (p.kind === 'PREDICTION') {
-    const left = num(e.left), pace = num(e.pace)
-    const hrs = pace > 0 ? Math.ceil(left / pace) : null
-    return [
-      { icon: '📋', label: 'المهام المعلّقة', value: `${left} مهمة` },
-      { icon: '⏰', label: 'موعد الإنجاز المتوقع', value: hrs == null ? 'غير معروف (ما بدأ)' : hrs > 24 ? `بعد ${Math.ceil(hrs / 24)} أيام` : `خلال ${hrs} ساعات` },
-    ]
-  }
-  return Object.entries(e).slice(0, 2).map(([k, v]) => ({ icon: '📊', label: EV_LABEL[k] ?? k, value: typeof v === 'object' ? JSON.stringify(v) : String(v) }))
-}
 function ago(at: string) {
   const m = Math.max(0, Math.round((Date.now() - new Date(at).getTime()) / 60000))
   return m < 60 ? `منذ ${m} دقيقة` : m < 1440 ? `منذ ${Math.round(m / 60)} ساعات` : `منذ ${Math.round(m / 1440)} يوم`

@@ -207,9 +207,12 @@ const perfJobsCTE = `
 		SELECT b."serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60) AS expected
 		FROM "Booking" b
 		WHERE b."completedAt" IS NOT NULL AND b."startedAt" IS NOT NULL
-		  AND b."completedAt" > b."startedAt" AND b."completedAt" - b."startedAt" < interval '14 hours'
+		  AND b."completedAt" - b."startedAt" >= interval '5 minutes' AND b."completedAt" - b."startedAt" < interval '14 hours'
 		  AND b."completedAt" >= now() - interval '180 days'
-		GROUP BY b."serviceId" HAVING COUNT(*) >= 3
+		GROUP BY b."serviceId"
+		-- ⚠️ خدمة وسيطها دقائق قليلة (تسجيل بدء/إنجاز بنفس اللحظة) چانت تطلّع
+		-- سرعة ×900 لأي حجز عادي — المتوقع لازم يكون ١٥ دقيقة فأكثر حتى ينحسب.
+		HAVING COUNT(*) >= 3 AND percentile_cont(0.5) WITHIN GROUP (ORDER BY EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60) >= 15
 	)`
 
 // Performance أداء الموظف بنافذة ٣٠ يوم تنتهي قبل offsetDays.
@@ -227,10 +230,10 @@ func (r *MatrixReportRepository) Performance(id string, offsetDays int) (*PerfSt
 		SELECT COUNT(*) AS total,
 		       COUNT(*) FILTER (WHERE status = 'COMPLETED' AND "partialCount" = 0) AS completed,
 		       COUNT(*) FILTER (WHERE "partialCount" > 0) AS partial,
-		       COUNT(*) FILTER (WHERE actual > 0 AND actual < 840 AND med.expected IS NOT NULL) AS timed,
+		       COUNT(*) FILTER (WHERE actual >= 5 AND actual < 840 AND med.expected IS NOT NULL) AS timed,
 		       COUNT(*) FILTER (WHERE actual >= 840) AS outliers,
-		       AVG(actual) FILTER (WHERE actual > 0 AND actual < 840 AND med.expected IS NOT NULL) AS avg_act,
-		       AVG(med.expected) FILTER (WHERE actual > 0 AND actual < 840) AS avg_exp
+		       AVG(actual) FILTER (WHERE actual >= 5 AND actual < 840 AND med.expected IS NOT NULL) AS avg_act,
+		       AVG(med.expected) FILTER (WHERE actual >= 5 AND actual < 840) AS avg_exp
 		FROM mine LEFT JOIN med ON med."serviceId" = mine."serviceId"`, id, offsetDays)
 	if err != nil {
 		return nil, err
@@ -241,7 +244,7 @@ func (r *MatrixReportRepository) Performance(id string, offsetDays int) (*PerfSt
 		_ = r.db.Select(&st.Slow, perfJobsCTE+`
 			SELECT mine.id, mine.code, mine.service, ROUND(actual)::int AS actual, ROUND(med.expected)::int AS expected
 			FROM mine JOIN med ON med."serviceId" = mine."serviceId"
-			WHERE actual > 0 AND actual < 840 AND actual > med.expected * 1.25
+			WHERE actual >= 5 AND actual < 840 AND actual > med.expected * 1.25
 			ORDER BY actual / NULLIF(med.expected, 0) DESC LIMIT 5`, id, offsetDays)
 		var rate sql.NullFloat64
 		if r.db.Get(&rate, `SELECT AVG(("partialCount" > 0)::int) FROM "Booking"

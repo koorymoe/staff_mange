@@ -98,7 +98,10 @@ export default function MatrixEye() {
   const mood = (watch?.mood ?? 'CALM') as EyeMood
   const color = eyeColor(group, mood)
   const angry = mood === 'ANGRY'
-  const shown = visible || angry || open
+  // المالك والمدير: العين ظاهرة دايماً وتنطيهم تقارير (طلب (ع)) —
+  // للموظفين تبقى تطلع عند الإجراء بس.
+  const isBoss = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const shown = visible || angry || open || isBoss
 
   const speak = useCallback((text: string | null) => {
     window.clearTimeout(sayT.current)
@@ -291,10 +294,47 @@ export default function MatrixEye() {
                 </ul>
               </div>
             )}
-            {watch && watch.workload.length === 0 && watch.items.length === 0 && <p className="mt-1 text-xs text-slate-500">ماكو عليك شي مفتوح.</p>}
+            {isBoss && <BossReport onGo={() => setOpen(false)} />}
+            {!isBoss && watch && watch.workload.length === 0 && watch.items.length === 0 && <p className="mt-1 text-xs text-slate-500">ماكو عليك شي مفتوح.</p>}
           </div>
         )}
       </div>
     </>
+  )
+}
+
+// ═══ تقرير المالك/المدير من العين — يتجمّع لمن تنفتح بس ═══
+function BossReport({ onGo }: { onGo: () => void }) {
+  const [r, setR] = useState<{ attention: number; red: number; people: number; props: number; latePct: number | null; lateOpen: number } | null>(null)
+  useEffect(() => {
+    let alive = true
+    Promise.all([
+      api.getRoleWatch().catch(() => []),
+      api.getMatrixProposals('PENDING').catch(() => []),
+      api.getLateFocus().catch(() => null),
+    ]).then(([g, p, l]) => {
+      if (!alive) return
+      setR({
+        attention: g.reduce((n, x) => n + x.red + x.alert, 0), red: g.reduce((n, x) => n + x.red, 0),
+        people: g.reduce((n, x) => n + x.employees.length, 0), props: p.length,
+        latePct: l ? l.recentPct : null, lateOpen: l ? l.recent.openNow : 0,
+      })
+    })
+    return () => { alive = false }
+  }, [])
+  if (!r) return <p className="mt-2 text-xs text-slate-400">ماتركس يجمع التقرير…</p>
+  const row = (icon: string, text: string, to: string, tone = 'text-slate-800') => (
+    <Link to={to} onClick={onGo} className={`flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-2 py-1.5 hover:bg-sky-50 ${tone}`}>
+      <span>{icon} {text}</span><span className="text-xs text-sky-700">←</span>
+    </Link>
+  )
+  return (
+    <div className="mt-2 space-y-1.5">
+      <p className="text-xs font-bold text-slate-500">📊 تقرير ماتركس الآن</p>
+      {row('👥', `${r.people} موظف تحت المراقبة — ${r.attention} يحتاجون انتباه${r.red ? ` (${r.red} حمر)` : ''}`, '/?board=matrix', r.red ? 'text-red-700' : 'text-slate-800')}
+      {row('💡', r.props ? `${r.props} اقتراح ينتظر قرارك` : 'ماكو اقتراحات تنتظرك', '/matrix/decisions', r.props ? 'text-amber-700' : 'text-slate-800')}
+      {r.latePct != null && row('⏰', `الحجوزات المتأخرة آخر ٣ أيام: ${r.latePct}%${r.lateOpen ? ` — ${r.lateOpen} مفتوحة وموعدها فات` : ''}`, '/?board=matrix', r.latePct >= 30 ? 'text-red-700' : 'text-slate-800')}
+      {row('👁️', 'افتح مركز قيادة ماتركس', '/?board=matrix', 'font-bold text-brand-700')}
+    </div>
   )
 }

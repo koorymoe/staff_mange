@@ -6,6 +6,7 @@ import {
 } from '../api'
 import MatrixBusiness from './MatrixBusiness'
 import OwnerSwitch from './OwnerSwitch'
+import { evidenceCards } from './matrixEvidence'
 import { SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { GroupPerf } from './MatrixRoleEyes'
@@ -132,7 +133,7 @@ export default function MatrixCommandCenter() {
 
       {/* ── اكتشف + البث ── */}
       <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
-        <Discovery focus={focus} late={late} perf={perf} biz={biz} proposal={props[0] ?? null} onDone={loadAll} />
+        <Discovery focus={focus} late={late} perf={perf} groups={active} biz={biz} proposal={props[0] ?? null} onDone={loadAll} />
         <Feed items={feed} />
       </div>
 
@@ -198,8 +199,8 @@ function FocusTab({ on, onClick, icon, title, sub }: { on: boolean; onClick: () 
 }
 
 // ── «ماتركس اكتشف» ──
-function Discovery({ focus, late, perf, biz, proposal, onDone }: {
-  focus: Focus; late: LateFocus | null; perf: GroupPerformance[]; biz: MatrixBusinessData | null; proposal: MatrixProposal | null; onDone: () => void
+function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
+  focus: Focus; late: LateFocus | null; perf: GroupPerformance[]; groups: GroupRep[]; biz: MatrixBusinessData | null; proposal: MatrixProposal | null; onDone: () => void
 }) {
   const [modal, setModal] = useState<'sim' | 'evidence' | null>(null)
   const [busy, setBusy] = useState(false)
@@ -225,7 +226,7 @@ function Discovery({ focus, late, perf, biz, proposal, onDone }: {
         title: p.text, sub: `بمجموعة ${GROUP_LABEL[p.group as EyeGroup] ?? p.group}. ${slow ? `${slow} موظف يطوّلون أكثر من المتوقع بـ٤٠٪+.` : ''}`,
         cause: 'من مقارنة وقت كل حجز بالمتوقع لنفس الخدمة، والحضور مقابل الجدول.', impact: 'تأخّر الحجوزات وضغط على باقي الكادر.',
         suggestion: p.fixes[0] ?? '—', severity: 'MEDIUM' as const, link: p.link ?? '',
-        evidence: Object.fromEntries(members.slice(0, 6).map((m) => [m.name, `حجوزات ${m.jobs}، جزئي ${m.partial}، مفتوح ${m.open}${m.speed ? `، ×${m.speed}` : ''}`])),
+        evidence: perfEvidence(p.group, perf, groups),
       }
     }
     if (!biz) return null
@@ -239,7 +240,7 @@ function Discovery({ focus, late, perf, biz, proposal, onDone }: {
       severity: (ch != null && ch <= -15 ? 'HIGH' : 'LOW') as 'HIGH' | 'LOW', link: '/leader-invoices',
       evidence: { 'حجوزات الشهر': biz.mtd.bookings, 'الإيراد': fmtIQD(biz.mtd.revenue), 'نفس الفترة قبل': fmtIQD(biz.mtd.lastRevenue), 'أساس التوقع': biz.forecast.basis } as Record<string, unknown>,
     }
-  }, [focus, late, perf, biz])
+  }, [focus, late, perf, groups, biz])
 
   const approve = async () => {
     if (!proposal || !confirm(`توافق على اقتراح ماتركس؟\n\n${proposal.title}`)) return
@@ -282,8 +283,25 @@ function Discovery({ focus, late, perf, biz, proposal, onDone }: {
             {modal === 'evidence' ? (
               <>
                 <h4 className="mb-3 font-extrabold">📄 الأدلة (أرقام من النظام)</h4>
-                <dl className="space-y-1 text-sm">{Object.entries(view.evidence).map(([k, v]) => <div key={k} className="flex justify-between gap-3 border-b border-[var(--mx-border)] py-1"><dt className="text-[var(--mx-muted)]">{k}</dt><dd className="font-bold">{String(v)}</dd></div>)}</dl>
-                {proposal?.evidence && <pre className="mt-3 max-h-40 overflow-auto rounded bg-[var(--mx-sunken)] p-2 text-[11px]" dir="ltr">{JSON.stringify(proposal.evidence, null, 1)}</pre>}
+                <dl className="space-y-1 text-sm">{Object.entries(view.evidence).map(([k, v]) => {
+                  const [label, id] = k.split('|')
+                  return (
+                    <div key={k} className="flex justify-between gap-3 border-b border-[var(--mx-border)] py-1">
+                      <dt className="text-[var(--mx-muted)]">{id ? <Link to={`/matrix/employee/${id}`} className="font-bold text-[var(--mx-accent)] hover:underline">{label} ←</Link> : label}</dt>
+                      <dd className="text-left font-bold">{String(v)}</dd>
+                    </div>
+                  )
+                })}</dl>
+                {proposal?.evidence && (
+                  <div className="mt-3">
+                    <p className="mb-1 text-xs font-bold text-[var(--mx-muted)]">💡 أدلة اقتراح ماتركس: {proposal.employeeName ?? ''}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {evidenceCards(proposal).map((c) => (
+                        <div key={c.label} className="rounded-lg bg-[var(--mx-sunken)] p-2 text-center"><span>{c.icon}</span><p className="text-[10px] text-[var(--mx-muted)]">{c.label}</p><b className="text-xs">{c.value}</b></div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 {view.link && <Link to={view.link} className="mt-3 inline-block text-sm font-bold text-[var(--mx-info)]">ودّيني للمشكلة ←</Link>}
               </>
             ) : proposal && (
@@ -500,4 +518,27 @@ function AskMatrix() {
       )}
     </section>
   )
+}
+
+// ═══ دليل «أداء الموظفين» حسب شغل كل واحد ═══
+// كادر الميدان (ليدرية وفنيين): الحجوزات والسرعة. الباقين (مراقب، محاسب،
+// تنسيق، جودة...): شغلهم اليوم من «شغلك اليوم» — مو «حجوزات 0» الي ما تعني شي.
+// المفتاح «الاسم|المعرّف» حتى النافذة تسوي الاسم رابط لتقريره.
+const FIELD_GROUPS = new Set(['TECHS', 'LEADERS'])
+function perfEvidence(group: string, perf: GroupPerformance[], groups: GroupRep[]): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  if (FIELD_GROUPS.has(group)) {
+    for (const m of (perf.find((g) => g.group === group)?.members ?? []).slice(0, 8)) {
+      const speed = m.speed == null ? '' : m.speed > 10 ? '، السرعة: بيانات تحتاج مراجعة' : `، السرعة ×${m.speed}`
+      out[`${m.name}|${m.id}`] = `حجوزات ${m.jobs}: منجز ${m.completed}، جزئي ${m.partial}، مفتوح ${m.open}${speed}${m.absent ? '، ما حضر اليوم' : m.late ? `، تأخّر ${m.late}د` : ''}`
+    }
+    return out
+  }
+  for (const e of (groups.find((g) => g.group === group)?.employees ?? []).slice(0, 8)) {
+    const work = e.workload.length
+      ? e.workload.map((w) => `${w.label}: ${w.done ? `${w.verb} ${w.done}، ` : ''}${w.left ? `باقي ${w.left}` : 'خالص ✓'}`).join(' · ')
+      : 'ماكو شغل مسجّل عليه اليوم'
+    out[`${e.name ?? '—'}|${e.id ?? ''}`] = work + (e.open ? ` · ${e.open} تذكير مفتوح` : '')
+  }
+  return out
 }
