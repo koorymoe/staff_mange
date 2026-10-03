@@ -533,3 +533,23 @@ func (r *AiActionRepository) LeaderMaterialsPending(id string) []string {
 		  AND b.status IN ('CONFIRMED','PENDING') AND b."materialsReadyAt" IS NULL ORDER BY b."scheduledAt"`, id)
 	return codes
 }
+
+// QualityEngineerForGps مهندس الجودة الأقل تذكيرات مفتوحة — له تنروح تذكيرات
+// تجديد الجي بي اس (قرار (ع): مو للبائع، والبائع بالاشتراكات القديمة هو المالك).
+func (r *AiActionRepository) QualityEngineerForGps() string {
+	var id string
+	_ = r.db.Get(&id, `SELECT e.id FROM "Employee" e
+		WHERE e.status = 'ACTIVE' AND (e.role = 'QUALITY_ENGINEER' OR EXISTS (
+			SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+			WHERE ep."employeeId" = e.id AND p.name = 'quality_control' AND e.role NOT IN ('ADMIN','OWNER','MONITOR')))
+		ORDER BY (SELECT COUNT(*) FROM "AiAction" a WHERE a."targetEmployeeId" = e.id AND a."resolvedAt" IS NULL), e.name
+		LIMIT 1`)
+	return id
+}
+
+// ReassignOpenGps ينقل تذكيرات التجديد المفتوحة الي على المالك/المدير لمهندس الجودة.
+func (r *AiActionRepository) ReassignOpenGps(kind, toID, label string) {
+	_, _ = r.db.Exec(`UPDATE "AiAction" a SET "targetEmployeeId" = $2, "targetLabel" = $3
+		FROM "Employee" e WHERE e.id = a."targetEmployeeId" AND a.kind = $1 AND a."resolvedAt" IS NULL
+		  AND e.role IN ('ADMIN', 'OWNER')`, kind, toID, label)
+}

@@ -5,6 +5,8 @@ import {
   type MatrixProposal, type MatrixTrendDay, type MatrixWatch,
 } from '../api'
 import MatrixBusiness from './MatrixBusiness'
+import OwnerSwitch from './OwnerSwitch'
+import { SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { GroupPerf } from './MatrixRoleEyes'
 import { GROUP_LABEL, eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
@@ -114,6 +116,9 @@ export default function MatrixCommandCenter() {
           <Kpi value={tasks} label="مهمة اليوم" tone="text-[var(--mx-accent)]" icon="📦" />
         </div>
       </div>
+
+      {/* مفتاح (ع): يطفي عين ماتركس عن الموظفين ويرجّعها وقت ما يريد */}
+      <div className="text-slate-900"><OwnerSwitch switchKey={SWITCH_MATRIX_STAFF_EYE} label="عين ماتركس عند الموظفين" hint="إذا انطفت، العين وتوجيهاتها تختفي من شاشات الموظفين. إنت والمدير تبقى عندكم، وماتركس يكمّل يحلّل." /></div>
 
       {/* ── يركّز الآن على ── */}
       <div className={`${card} p-3`}>

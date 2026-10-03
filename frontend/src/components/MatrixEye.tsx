@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Link, useLocation } from 'react-router-dom'
 import { api, type MatrixWatch } from '../api'
 import { useSession } from '../session'
+import { isEnabled, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
 
@@ -88,6 +89,9 @@ export default function MatrixEye() {
   const pupilRef = useRef<SVGGElement>(null)
   const boxRef = useRef<HTMLButtonElement>(null)
   const hideT = useRef(0)
+  // مفتاح (ع): «عين ماتركس عند الموظفين» — ينطفي ويرجع. المدير والمالك تبقى عندهم.
+  const [staffOff, setStaffOff] = useState(false)
+  useEffect(() => { isEnabled(SWITCH_MATRIX_STAFF_EYE).then((on) => setStaffOff(!on)).catch(() => {}) }, [path])
   const sayT = useRef(0)
 
   const group = (watch?.group ?? 'STAFF') as EyeGroup
@@ -209,6 +213,7 @@ export default function MatrixEye() {
   }, [])
 
   if (!employee) return null
+  if (staffOff && employee.role !== 'ADMIN' && employee.actualRole !== 'OWNER') return null
 
   const lid = !shown ? 0 : blink ? 0.06 : flash ? 1.15 : angry ? 0.6 : mood === 'PLEASED' ? 0.75 : 0.95
   const title = angry ? 'ماتركس يراقبك عن قرب' : 'ماتركس'

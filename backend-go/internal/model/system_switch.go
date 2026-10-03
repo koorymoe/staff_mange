@@ -22,6 +22,8 @@ const (
 	SwitchAnnouncements = "announcements_enabled"
 	// SwitchMatrixAutopilot ماتركس ينفّذ التذكيرات البسيطة لحاله.
 	SwitchMatrixAutopilot = "matrix_autopilot_enabled"
+	// SwitchMatrixStaffEye عين ماتركس بشاشات الموظفين (المدير والمالك تبقى عندهم).
+	SwitchMatrixStaffEye = "matrix_staff_eye_enabled"
 )
 
 // SystemSwitchLabels الاسم العربي لكل مفتاح — للعرض وللسجل.
@@ -29,6 +31,7 @@ var SystemSwitchLabels = map[string]string{
 	SwitchEntity:        "شخصية الكائن",
 	SwitchAnnouncements:   "شريط الإعلانات",
 	SwitchMatrixAutopilot: "ماتركس ينفّذ التذكيرات لحاله",
+	SwitchMatrixStaffEye:  "عين ماتركس عند الموظفين",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟
@@ -46,6 +49,7 @@ func KnownSystemSwitch(key string) bool {
 var systemSwitchAdminAllowed = map[string]bool{
 	SwitchAnnouncements:   true,
 	SwitchMatrixAutopilot: true,
+	SwitchMatrixStaffEye:  true,
 }
 
 // SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل

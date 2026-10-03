@@ -23,26 +23,41 @@ var followableKinds = []string{
 	model.AiActionGpsExpiry, model.AiActionVehicleDocExpiry, model.AiActionInvoiceApproval, model.AiActionLowStock,
 }
 
-// ٧. اشتراك جي بي اس يخلص خلال ١٤ يوم — للموظف الي باعه، مرة بالأسبوع.
+// ٧. اشتراك جي بي اس يخلص خلال ١٤ يوم — لمهندس الجودة، مرة بالأسبوع.
+//
+// قرار (ع): التذكير لمهندس الجودة (هو الي يتصل بالزبون)، مو للبائع — والبائع
+// بالاشتراكات المستوردة هو المالك، فچانت تتكدّس بعين المالك. إذا ماكو مهندس
+// جودة، يروح لصاحب صلاحية الجودة كإشعار بلا ما ينحسب على شخص.
 func (s *MatrixAutopilotService) gpsExpiry(week string, dayStart time.Time) (int, error) {
 	rows, err := s.actions.GpsExpiringSoon(14)
 	if err != nil {
 		return 0, err
 	}
+	qe := s.actions.QualityEngineerForGps()
+	if qe != "" {
+		s.actions.ReassignOpenGps(model.AiActionGpsExpiry, qe, s.actions.EmployeeName(qe))
+	}
 	n := 0
 	for _, r := range rows {
-		emp := r.EmployeeID
 		name := r.CustomerName
 		if name == "" {
 			name = "زبون بلا اسم"
 		}
-		msg := fmt.Sprintf("🤖 ماتركس — اشتراك جي بي اس للزبون «%s» يخلص بعد %d يوم (%s). اتصل بي للتجديد.",
+		msg := fmt.Sprintf("🤖 ماتركس — اشتراك جي بي اس للزبون «%s» يخلص بعد %d يوم (%s). اتصلوا بي للتجديد.",
 			name, r.DaysLeft, r.SubscriptionEnd.Format("2006-01-02"))
-		if s.act(model.AiAction{Kind: model.AiActionGpsExpiry, EntityType: "GPS_SUBSCRIPTION", EntityID: r.ID,
-			Period: week, TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp),
-			Summary: fmt.Sprintf("ذكّر البائع بتجديد اشتراك «%s» (%d يوم)", name, r.DaysLeft),
-			Details: why(map[string]any{"customer": name, "subscriptionEnd": r.SubscriptionEnd, "daysLeft": r.DaysLeft})}, dayStart,
-			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+		a := model.AiAction{Kind: model.AiActionGpsExpiry, EntityType: "GPS_SUBSCRIPTION", EntityID: r.ID,
+			Period: week, TargetLabel: "الجودة",
+			Summary: fmt.Sprintf("ذكّر الجودة بتجديد اشتراك «%s» (%d يوم)", name, r.DaysLeft),
+			Details: why(map[string]any{"customer": name, "subscriptionEnd": r.SubscriptionEnd, "daysLeft": r.DaysLeft})}
+		send := func() error {
+			return s.notif.CreateForRolesOrPermission([]string{"QUALITY_ENGINEER"}, "quality_control", "AI_AUTOPILOT", msg)
+		}
+		if qe != "" {
+			target := qe
+			a.TargetEmployeeID, a.TargetLabel = &target, s.actions.EmployeeName(qe)
+			send = func() error { return s.notif.Create(target, "AI_AUTOPILOT", msg) }
+		}
+		if s.act(a, dayStart, send) {
 			n++
 		}
 	}

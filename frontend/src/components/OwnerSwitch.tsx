@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../api'
 import { useSession } from '../session'
-import { getSwitches, forgetSwitches, SWITCH_ANNOUNCEMENTS, SWITCH_MATRIX_AUTOPILOT } from '../systemSwitches'
+import { getSwitches, forgetSwitches, SWITCH_ANNOUNCEMENTS, SWITCH_MATRIX_AUTOPILOT, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 
 // ═══ زر إطفاء ميزة — للمالك دايماً، ولمدير النظام بمفاتيح معيّنة ═══
 //
@@ -16,7 +16,7 @@ import { getSwitches, forgetSwitches, SWITCH_ANNOUNCEMENTS, SWITCH_MATRIX_AUTOPI
 // ⚠️ **من يقدر يبدّل شنو**: نفس القائمة البيضاء الي بالخادم
 // (`model.SystemSwitchAdminAllowed`) — شريط الإعلانات مفتوح لمدير
 // النظام كمان بطلب صريح من (ع)، وشخصية الكائن تبقى للمالك حصراً.
-const adminAllowedSwitches = new Set<string>([SWITCH_ANNOUNCEMENTS, SWITCH_MATRIX_AUTOPILOT])
+const adminAllowedSwitches = new Set<string>([SWITCH_ANNOUNCEMENTS, SWITCH_MATRIX_AUTOPILOT, SWITCH_MATRIX_STAFF_EYE])
 
 interface Props {
   /** مفتاح النظام — من `systemSwitches.ts`. */

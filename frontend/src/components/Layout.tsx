@@ -32,6 +32,8 @@ const notifTargets: Record<string, string> = {
   kpi_leaderboard: '/kpi',
   authz_violation: '/owner-security',
   job_duration_overrun: '/missions',
+  // توقعات ماتركس واقتراحاته — صندوق القرارات بي منو وليش
+  AI_DECISIONS: '/matrix/decisions',
   // ═══ قرارات الطلبات ═══
   // الإشعار بلا وجهة يخلي الموظف يقرا «انوافق على طلبك» ويضغط عليه
   // وما يصير شي — فيضطر يدوّر على الشاشة بنفسه.

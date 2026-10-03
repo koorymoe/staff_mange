@@ -56,6 +56,8 @@ type MatrixLearningService struct {
 	client  *anthropic.Client
 	model   string
 	reports *MatrixEmployeeReportService
+	// أسماء آخر توقع — تنذكر بالإشعار.
+	lastPredicted []string
 }
 
 func NewMatrixLearningService(props *repository.MatrixProposalRepository, rules *repository.MatrixGuideRepository,
@@ -88,7 +90,8 @@ func (s *MatrixLearningService) RunIfDue() error {
 			n := s.predict(now)
 			if n > 0 {
 				_ = s.notif.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "", "AI_DECISIONS",
-					fmt.Sprintf("🤖 ماتركس — توقّعت %d موظف ما راح يخلّصون شغل اليوم بوتيرتهم. القرار إلك بصندوق القرارات.", n))
+					fmt.Sprintf("🤖 ماتركس — توقّعت %d من الليدرية ما راح يخلّصون شغل اليوم بوتيرتهم: %s. اضغط حتى تشوف منو وليش، والقرار إلك.",
+						n, strings.Join(firstN(uniqueStrings(s.lastPredicted), 4), "، ")))
 			}
 		}
 	}
@@ -120,7 +123,12 @@ func (s *MatrixLearningService) predict(now time.Time) int {
 	elapsed := math.Max(hour-workdayStart, 1)
 	remaining := math.Max(workdayEnd-hour, 0)
 	n := 0
+	names := []string{}
 	for _, sub := range subs {
+		// قرار (ع): نتوقع لليدرية بس — الفنيين يتبعون الليدر، فالتوقع عليه.
+		if WatchGroup(sub) != "LEADERS" {
+			continue
+		}
 		for _, w := range s.watch.workload(sub) {
 			if w.Done == 0 && w.Left < predictMinLeft*2 { // بلا منجز ما نعرف وتيرة — بس لو الكومة كبيرة
 				continue
@@ -143,9 +151,11 @@ func (s *MatrixLearningService) predict(now time.Time) int {
 			})
 			if ok {
 				n++
+				names = append(names, sub.Name)
 			}
 		}
 	}
+	s.lastPredicted = names
 	return n
 }
 
@@ -367,3 +377,15 @@ func (s *MatrixLearningService) Reject(id, by, note string) error {
 }
 
 func (s *MatrixLearningService) PendingCount() int { return s.props.PendingCount() }
+
+func uniqueStrings(xs []string) []string {
+	seen := map[string]bool{}
+	out := []string{}
+	for _, x := range xs {
+		if !seen[x] {
+			seen[x] = true
+			out = append(out, x)
+		}
+	}
+	return out
+}

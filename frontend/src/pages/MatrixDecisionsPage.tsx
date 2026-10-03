@@ -4,7 +4,7 @@ import { api, type MatrixDecisions } from '../api'
 import OwnerSwitch from '../components/OwnerSwitch'
 import MatrixGuideRules from '../components/MatrixGuideRules'
 import MatrixProposals from '../components/MatrixProposals'
-import { SWITCH_MATRIX_AUTOPILOT } from '../systemSwitches'
+import { SWITCH_MATRIX_AUTOPILOT, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 
 // ═══ صندوق قرارات ماتركس — للمالك ومدير النظام ═══
 // ثلاث أقسام: شنو سوّى لحاله اليوم (تذكيرات بس، ويه زر «لا تسوي هذا»)،
@@ -107,6 +107,7 @@ export default function MatrixDecisionsPage() {
         <input type="date" value={day} onChange={(e) => setDay(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
       </div>
 
+      <OwnerSwitch switchKey={SWITCH_MATRIX_STAFF_EYE} label="عين ماتركس عند الموظفين" hint="إذا انطفت، العين وتوجيهاتها تختفي من شاشات الموظفين. إنت والمدير تبقى عندكم، وماتركس يكمّل يحلّل." />
       <OwnerSwitch switchKey={SWITCH_MATRIX_AUTOPILOT} label="ماتركس ينفّذ التذكيرات لحاله" hint="إذا انطفى، ماتركس يبقى يحلّل ويبلّغك بس، وما يرسل ولا تذكير للموظفين." />
 
       {err && <p className="rounded-lg bg-red-50 p-3 text-red-600">{err}</p>}
