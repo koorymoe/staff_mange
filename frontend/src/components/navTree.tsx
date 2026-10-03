@@ -952,8 +952,10 @@ export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
   if (found && allowed) return true
   // شاشات تتكيّف لحالها حسب الشخص (مثلاً «تتبع المهام» تعرض للفني والليدر
   // مهامه هو بس) وتنفتح من روابط داخلية حتى لو مو بقائمته.
+  if (OPEN_PATHS.has(target)) return null
   const self = SELF_SCOPED[target]
-  if (self && (self.roles?.includes(role as EmployeeRole) || (self.leader && ctx.employee?.isLeader))) return true
+  if (self && (self.roles?.includes(role as EmployeeRole) || (self.leader && ctx.employee?.isLeader)
+    || (self.anyPermission ?? []).some((p) => ctx.permissions.includes(p)))) return true
   if (found) return false
   // شاشات مو بالقائمة (تنفتح من روابط داخلية) — شرطها نفس حارس الخادم بالضبط.
   const rule = ROUTE_RULES[target]
@@ -965,7 +967,14 @@ export function isPathAllowed(path: string, ctx: NavContext): boolean | null {
 
 const SELF_SCOPED: Record<string, RouteRule> = {
   '/missions': { roles: ['TECHNICIAN', 'TECHNICAL'], leader: true }, // /missions/my/{id} — مهامه هو
+  // فاتورة الحجز من «مهامي» — نفس requireLeaderBasket بالخادم.
+  '/leader-invoices/new': { leader: true, anyPermission: ['leader_basket', 'invoice_gps', 'invoice_dashcam', 'invoice_internal', 'execution_cost', 'finance', 'finance_audit'] },
 }
+
+// شاشات ما يحكم عليها حارس الرابط: تتكيّف لحالها والخادم يقبل أي موظف مسجّل.
+// 🔴 «تقرير العمل» ينفتح من «مهامي» لكل كادر مكلّف — بند القائمة مقيّد بصلاحية
+// فواتير الجي بي اس، فالحارس چان يرفض الكادر وهو المفروض يكتب التقرير.
+const OPEN_PATHS = new Set(['/work-reports'])
 
 // ⚠️ كل سطر = حارس GET الشاشة بـmain.go. إذا تغيّر الحارس هناك، غيّره هنا.
 type RouteRule = { roles?: EmployeeRole[]; anyPermission?: string[]; leader?: boolean }
