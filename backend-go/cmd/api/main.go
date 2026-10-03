@@ -1218,6 +1218,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// نفسه (نفس صلاحية تنسيق الحجوزات coordinator المستخدمة أصلاً بـCoordinator.tsx).
 	// إرجاع حجز محوّل لإدارة المشاريع رجعة لكادر الشد — لمدير المشاريع لما
 	// يفتح التفاصيل ويلكاه مو مال مشروع.
+	// حجز «منجز» بالغلط يرجع للكادر حتى يسجّل إنجاز جزئي — صلاحية booking_reopen.
+	bookingReopenHandler := handler.NewBookingReopenHandler(repository.NewBookingReopenRepository(db), employeeRepo, notificationRepo)
+	mux.Handle("PUT /api/bookings/{id}/reopen", middleware.Chain(http.HandlerFunc(bookingReopenHandler.Reopen), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "booking_reopen")))
 	mux.Handle("PUT /api/bookings/{id}/return-to-crew", middleware.Chain(http.HandlerFunc(bookingHandler.ReturnToCrew), requireAuth, requireProjectMgmt))
 	mux.Handle("PUT /api/bookings/{id}/confirmation-contacted", middleware.Chain(http.HandlerFunc(bookingHandler.MarkConfirmationContacted), requireAuth, requireCoordinator))
 	// تدقيق المراقب على الحجوزات الموجّهة قبل التثبيت (crew_management، صلاحية جديدة

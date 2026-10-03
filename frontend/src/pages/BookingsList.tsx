@@ -119,6 +119,18 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
     || ['coordinator', 'crew_management'].some((p) => permissions.includes(p))
   // طلب حذف حجز: الإداري والمراقب ومدير النظام، أو أي واحد ينمنح الصلاحية
   // «الزبون ما رد» / «يرجع خبر» = PUT /bookings/{id}/waiting، حارسه «coordinator» بس.
+  // إرجاع حجز «منجز» بالغلط للكادر — نفس حارس PUT /bookings/{id}/reopen.
+  const canReopen = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('booking_reopen')
+  const reopen = async (b: Booking) => {
+    const reason = prompt(`ترجّع الحجز ${b.code} للكادر «قيد العمل» حتى يسجّلون إنجاز جزئي؟\nاكتب السبب (مثلاً: انضغط «تم الإنجاز» بالغلط والشغل ما كمل):`)
+    if (reason === null) return
+    if (reason.trim().length < 3) { alert('اكتب السبب'); return }
+    try {
+      const r = await api.reopenBooking(b.id, reason.trim())
+      alert(`رجع الحجز ${r.code} للكادر ✅ — انبلّغ ${r.notified} من الكادر.${r.warning ? '\n\n' + r.warning : ''}`)
+      setBookings((prev) => prev.map((x) => (x.id === b.id ? { ...x, status: 'IN_PROGRESS', completedAt: null } : x)))
+    } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر الإرجاع') }
+  }
   const canMarkWaiting = isAdmin || employee?.actualRole === 'OWNER' || permissions.includes('coordinator')
   const canRequestDelete = isAdmin || employee?.actualRole === 'OWNER' ||
     employee?.role === 'HR_COORDINATOR' || employee?.role === 'MONITOR' ||
@@ -692,6 +704,15 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
                                 مدفوناً جوّا نموذج طلب الحذف فمحد يوصله.
                                 وهو مو حذف: الحجز ينزاح لطابور «ما وصلت
                                 للتنفيذ» ويبقى محفوظاً. */}
+                            {canReopen && b.status === 'COMPLETED' && (
+                              <button
+                                onClick={() => reopen(b)}
+                                className="mt-1 mr-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800 transition-colors hover:bg-orange-200"
+                                title="انضغط «تم الإنجاز» بالغلط؟ رجّعه للكادر حتى يسجّل إنجاز جزئي"
+                              >
+                                ↩️ إرجاع للكادر (إنجاز جزئي)
+                              </button>
+                            )}
                             {canMarkWaiting && (
                               <button
                                 onClick={() => markNoAnswer(b.id, b.code)}

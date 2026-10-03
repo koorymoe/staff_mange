@@ -4180,6 +4180,9 @@ export const api = {
    *  - `NO_ANSWER` (افتراضي) اتصلنا وما رد → «ما وصلت للتنفيذ»
    *  - `CUSTOMER_DECISION` استفسر ورايح يرجعلنا خبر → «بانتظار موافقة الزبون»
    *  ⚠️ الافتراضي «ما رد» حتى أي نداء قديم يبقى بمعناه. */
+  // حجز «منجز» بالغلط يرجع للكادر حتى يسجّل إنجاز جزئي — صلاحية booking_reopen
+  reopenBooking: (id: string, reason: string) =>
+    request<{ ok: boolean; code: string; notified: number; warning: string }>(`/bookings/${encodeURIComponent(id)}/reopen`, { method: 'PUT', body: JSON.stringify({ reason }) }),
   markBookingWaiting: (id: string, note?: string, kind?: 'NO_ANSWER' | 'CUSTOMER_DECISION') =>
     request<Booking>(`/bookings/${id}/waiting`, {
       method: 'PUT',
