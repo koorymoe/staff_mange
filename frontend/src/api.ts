@@ -5713,6 +5713,10 @@ export interface MatrixProposal {
   status: 'PENDING' | 'APPROVED' | 'REJECTED'
   note: string | null
   createdAt: string
+  decidedAt?: string | null
+  employeeId?: string | null
+  employeeName?: string | null
+  employeeRole?: string | null
 }
 
 // تقرير ماتركس المفصّل عن موظف.

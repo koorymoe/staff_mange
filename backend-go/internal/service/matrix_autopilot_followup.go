@@ -33,10 +33,7 @@ func (s *MatrixAutopilotService) gpsExpiry(week string, dayStart time.Time) (int
 	if err != nil {
 		return 0, err
 	}
-	qe := s.actions.QualityEngineerForGps()
-	if qe != "" {
-		s.actions.ReassignOpenGps(model.AiActionGpsExpiry, qe, s.actions.EmployeeName(qe))
-	}
+	qe := s.ReassignGpsToQuality()
 	n := 0
 	for _, r := range rows {
 		name := r.CustomerName
@@ -515,4 +512,16 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 		}
 	}
 	return out, nil
+}
+
+// ReassignGpsToQuality تذكيرات التجديد المفتوحة على المالك/المدير تروح للجودة.
+// تنادى بكل دورة وعند تشغيل الخادم — مو بس وقت تذكير جديد.
+func (s *MatrixAutopilotService) ReassignGpsToQuality() string {
+	qe := s.actions.QualityEngineerForGps()
+	label := ""
+	if qe != "" {
+		label = s.actions.EmployeeName(qe)
+	}
+	s.actions.ReassignOpenGps(model.AiActionGpsExpiry, qe, label)
+	return qe
 }

@@ -45,7 +45,10 @@ func (r *MatrixProposalRepository) Create(p model.MatrixProposal) (bool, error) 
 
 func (r *MatrixProposalRepository) List(status string, limit int) ([]model.MatrixProposal, error) {
 	rows := []model.MatrixProposal{}
-	err := r.db.Select(&rows, `SELECT * FROM "MatrixProposal" WHERE ($1 = '' OR status = $1) ORDER BY "createdAt" DESC LIMIT $2`, status, limit)
+	err := r.db.Select(&rows, `SELECT p.*, e.id AS "employeeId", e.name AS "employeeName", e.role::text AS "employeeRole"
+		FROM "MatrixProposal" p
+		LEFT JOIN "Employee" e ON e.id = p.payload->>'employeeId'
+		WHERE ($1 = '' OR p.status = $1) ORDER BY p."createdAt" DESC LIMIT $2`, status, limit)
 	return rows, err
 }
 

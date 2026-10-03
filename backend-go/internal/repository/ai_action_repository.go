@@ -553,9 +553,15 @@ func (r *AiActionRepository) QualityEngineerForGps() string {
 	return id
 }
 
-// ReassignOpenGps ينقل تذكيرات التجديد المفتوحة الي على المالك/المدير لمهندس الجودة.
+// ReassignOpenGps ينقل تذكيرات التجديد المفتوحة الي على المالك/المدير:
+// لمهندس الجودة إذا موجود (toID)، وإلا تتشال من على الشخص (تبقى للجودة كقسم)
+// — بالحالتين ما تبقى بعين المالك. والنص القديم «ذكّر البائع» يتحدّث.
 func (r *AiActionRepository) ReassignOpenGps(kind, toID, label string) {
-	_, _ = r.db.Exec(`UPDATE "AiAction" a SET "targetEmployeeId" = $2, "targetLabel" = $3
+	if label == "" {
+		label = "الجودة"
+	}
+	_, _ = r.db.Exec(`UPDATE "AiAction" a SET "targetEmployeeId" = NULLIF($2, ''), "targetLabel" = $3,
+		summary = replace(a.summary, 'ذكّر البائع', 'ذكّر الجودة')
 		FROM "Employee" e WHERE e.id = a."targetEmployeeId" AND a.kind = $1 AND a."resolvedAt" IS NULL
 		  AND e.role IN ('ADMIN', 'OWNER')`, kind, toID, label)
 }
