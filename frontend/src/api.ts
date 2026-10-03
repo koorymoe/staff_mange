@@ -2154,7 +2154,7 @@ export interface Department {
 export interface MonitorReview {
   id: string
   stage: MonitorStage
-  entityType: 'BOOKING' | 'LEADER_INVOICE' | 'INVOICE_ADJUSTMENT' | 'PROCUREMENT' | 'QUALITY_FOLLOW_UP' | 'GPS_DEVICE'
+  entityType: 'BOOKING' | 'LEADER_INVOICE' | 'INVOICE_ADJUSTMENT' | 'PROCUREMENT' | 'QUALITY_FOLLOW_UP' | 'GPS_DEVICE' | 'AI_VERDICT'
   entityId: string
   title: string
   summary: string | null
@@ -4819,6 +4819,9 @@ export const api = {
   },
   getMonitorReviewCounts: () => request<{ stage: MonitorStage; count: number }[]>('/monitor-reviews/counts'),
   getMonitorDeskCounts: () => request<MonitorDeskCounts>('/monitor-desk/counts'),
+  // «اتخاذ إجراء» على صف بصندوق المراقب
+  monitorReviewAction: (id: string, action: 'NOTIFY' | 'JUSTIFY' | 'FOLLOW_UP' | 'ESCALATE', note: string) =>
+    request<{ done: string }>(`/monitor-reviews/${encodeURIComponent(id)}/action`, { method: 'POST', body: JSON.stringify({ action, note }) }),
   decideMonitorReview: (id: string, data: { flag: boolean; note: string }) =>
     request<MonitorReview>(`/monitor-reviews/${id}/decide`, { method: 'POST', body: JSON.stringify(data) }),
 

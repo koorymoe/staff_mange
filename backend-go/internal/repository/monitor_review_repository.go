@@ -373,3 +373,16 @@ func (r *MonitorReviewRepository) ByEntity(entityType string, entityIDs []string
 	r.hydrate(rows)
 	return rows, nil
 }
+
+// Get صف واحد مع كل تفاصيله (للإجراءات).
+func (r *MonitorReviewRepository) Get(id string) (*model.MonitorReview, error) {
+	var row model.MonitorReview
+	if err := r.db.Get(&row, `SELECT * FROM "MonitorReview" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	rows := []model.MonitorReview{row}
+	r.hydrate(rows)
+	r.hydrateIdentity(rows)
+	r.hydrateLate(rows)
+	return &rows[0], nil
+}

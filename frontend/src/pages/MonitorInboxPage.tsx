@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MonitorReview, type MonitorStage } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
@@ -291,6 +291,9 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
                     >
                       عندي ملاحظة ⚠️
                     </button>
+                    {(row.late?.employeeId || row.ownerEmployeeId || row.entityType === 'AI_VERDICT') && (
+                      <ActionMenu row={row} note={notes[row.id] || ''} />
+                    )}
                   </div>
                 ) : (
                   row.note && (
@@ -347,6 +350,48 @@ function LateBlock({ late }: { late: NonNullable<MonitorReview['late']> }) {
         <b className="text-slate-600">💬 سبب التأخير: </b>
         {late.reason ? <span className="text-slate-800">{late.reason}</span> : <span className="text-slate-400">ما كتب الكادر سبب — اسأله واكتبه بالملاحظة تحت.</span>}
       </p>
+    </div>
+  )
+}
+
+// ═══ «اتخاذ إجراء» — تنبيه، طلب تبرير، متابعة، إحالة (بلا غرامة ولا نقاط) ═══
+const ACTIONS: { key: 'NOTIFY' | 'JUSTIFY' | 'FOLLOW_UP' | 'ESCALATE'; icon: string; label: string; confirm: string }[] = [
+  { key: 'NOTIFY', icon: '🔔', label: 'تنبيه الموظف', confirm: 'ترسل تنبيه للموظف؟' },
+  { key: 'JUSTIFY', icon: '📝', label: 'طلب تبرير', confirm: 'تطلب من الموظف يبرّر؟' },
+  { key: 'FOLLOW_UP', icon: '📅', label: 'إنشاء متابعة', confirm: 'تسوي مهمة متابعة للموظف (موعدها باچر)؟' },
+  { key: 'ESCALATE', icon: '👥', label: 'إحالة للمسؤول', confirm: 'تحيلها للمدير والمالك؟' },
+]
+function ActionMenu({ row, note }: { row: MonitorReview; note: string }) {
+  const [open, setOpen] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [done, setDone] = useState<string | null>(null)
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const close = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', close)
+    return () => document.removeEventListener('mousedown', close)
+  }, [open])
+  const run = async (a: typeof ACTIONS[number]) => {
+    const who = row.late?.employeeName ? ` (${row.late.employeeName})` : ''
+    if (!confirm(a.confirm + who + (note.trim() ? `\n\nالملاحظة: ${note.trim()}` : ''))) return
+    setBusy(true); setOpen(false)
+    try { setDone((await api.monitorReviewAction(row.id, a.key, note)).done) } catch (e) { alert(e instanceof Error ? e.message : 'تعذّر') } finally { setBusy(false) }
+  }
+  return (
+    <div ref={ref} className="relative">
+      <button type="button" disabled={busy} onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 rounded-lg bg-[#1e3a8a] px-3 py-2 text-xs font-bold text-white disabled:opacity-50">
+        ⚡ اتخاذ إجراء <span className="text-[10px]">▾</span>
+      </button>
+      {open && (
+        <ul className="absolute bottom-full left-0 z-20 mb-1 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-lg">
+          {ACTIONS.map((a) => (
+            <li key={a.key}><button type="button" onClick={() => run(a)} className="flex w-full items-center gap-2 px-3 py-2 text-right text-xs text-slate-700 hover:bg-slate-50"><span>{a.icon}</span>{a.label}</button></li>
+          ))}
+        </ul>
+      )}
+      {done && <p className="absolute top-full left-0 mt-1 whitespace-nowrap text-[11px] font-bold text-emerald-700">✓ {done}</p>}
     </div>
   )
 }
