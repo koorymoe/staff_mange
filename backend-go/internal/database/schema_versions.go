@@ -381,6 +381,8 @@ func versionedMigrations() []Migration {
 	result = append(result, employeeActivityMigrations()...)
 	// 0306: ساعات العمل من البيت.
 	result = append(result, remoteHoursMigrations()...)
+	// 0307: عدّاد ساعات البيت الحي + تصفير الفترة.
+	result = append(result, remoteTimerMigrations()...)
 	return result
 }
 

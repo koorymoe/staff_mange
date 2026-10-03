@@ -110,6 +110,8 @@ export const navItems: NavItem[] = [
   // مو شغله المباشر (المراقب يدقّق، المحاسب يطابق...). يوصل لمدير
   // النظام والمالك حصراً — شوف backend `Achievement`.
   { to: '/my-achievements', label: '📋 إنجازاتي اليوم', icon: <></> },
+  // ساعات البيت لأي موظف عنده الصلاحية (لنفسه أو مسؤول) — بالقائمة الرئيسية حتى الفني يوصلها.
+  { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_self', 'remote_hours_manage'] },
   // ⚠️ «حساب الكلفة» انشال من القائمة العلوية: كان يطلع مرتين —
   // مرة فوگ ومرة داخل «العمل» بعنوانين مختلفين لنفس الشاشة، فالليدر
   // يحتار أي وحدة يفتح.
@@ -189,7 +191,7 @@ export const navItems: NavItem[] = [
       // ⚠️ المالك ومدير النظام يبقون بالدور — هما فوق نظام الصلاحيات
       // أصلاً، والخادم يعطيهما كل الشفتات (routesFor).
       { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
-      { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], permission: 'remote_hours_manage' },
+      { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
           // ⚠️ ADMIN بس — StatsPage.tsx نفسها تقفل على غير ADMIN
           // (role !== 'ADMIN')، وكان المراقب يشوف الرابط هنا ويفتح
           // دائماً على «غير مصرح». والخادم (`GET /api/stats`) صار
@@ -674,7 +676,7 @@ export const navItems: NavItem[] = [
       // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
       { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
       // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
-      { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], permission: 'remote_hours_manage' },
+      { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
       { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'staff_requests' },
       { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'performance_review' },

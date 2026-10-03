@@ -3761,12 +3761,20 @@ export const api = {
 
   getEmployees: () => request<Employee[]>('/employees'),
   // ساعات العمل من البيت — صلاحية remote_hours_manage
-  getRemoteHours: (month: string, employeeId = '') =>
-    request<{ entries: RemoteEntry[]; totalSeconds: number }>(`/remote-hours?month=${month}&employeeId=${encodeURIComponent(employeeId)}`),
-  getRemoteSummary: (month: string) => request<RemoteSummary[]>(`/remote-hours/summary?month=${month}`),
+  // الفترة المفتوحة (من آخر تصفير)
+  getRemoteHours: (employeeId = '') =>
+    request<{ entries: RemoteEntry[]; totalSeconds: number }>(`/remote-hours?employeeId=${encodeURIComponent(employeeId)}`),
+  getRemoteSummary: () => request<RemoteSummary[]>('/remote-hours/summary'),
   addRemoteHours: (b: { employeeId: string; date: string; hours: number; minutes: number; seconds: number; note?: string }) =>
     request<{ id: string; seconds: number }>('/remote-hours', { method: 'POST', body: JSON.stringify(b) }),
   deleteRemoteHours: (id: string) => request<{ ok: boolean }>(`/remote-hours/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+  resetRemoteHours: () => request<{ closed: number }>('/remote-hours/reset', { method: 'POST' }),
+  // الموظف لنفسه — صلاحية remote_hours_self
+  getMyRemote: () => request<{ entries: RemoteEntry[]; totalSeconds: number; timer: RemoteTimer }>('/remote-hours/mine'),
+  addMyRemote: (b: { date: string; hours: number; minutes: number; seconds: number; note?: string }) =>
+    request<{ id: string; seconds: number }>('/remote-hours/mine', { method: 'POST', body: JSON.stringify(b) }),
+  remoteTimer: (action: 'start' | 'pause' | 'finish', note?: string) =>
+    request<{ timer: RemoteTimer; saved?: number }>(`/remote-hours/timer/${action}`, { method: 'POST', body: JSON.stringify({ note }) }),
   exportRemoteHours: (month: string, employeeId = '', label = '') =>
     downloadFile(`/remote-hours/export?month=${month}&employeeId=${encodeURIComponent(employeeId)}`, `ساعات-البيت-${label ? label + '-' : ''}${month}.xlsx`),
   getArchivedEmployees: () => request<Employee[]>('/employees/archived'),
@@ -5761,5 +5769,6 @@ export interface LateFocus {
   cause: string; impact: string; suggestion: string; severity: 'HIGH' | 'MEDIUM' | 'LOW'
 }
 
-export interface RemoteEntry { id: string; employeeId: string; employeeName: string; workDate: string; seconds: number; note: string | null; addedById: string | null; addedBy: string; createdAt: string }
+export interface RemoteEntry { id: string; employeeId: string; employeeName: string; workDate: string; seconds: number; note: string | null; addedById: string | null; addedBy: string; createdAt: string; source: 'MANUAL' | 'TIMER'; closedAt: string | null }
+export interface RemoteTimer { running: boolean; elapsed: number; startedAt: string | null }
 export interface RemoteSummary { employeeId: string; name: string; days: number; seconds: number }

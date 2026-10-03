@@ -21,6 +21,8 @@ type RemoteEntry struct {
 	AddedByID    *string   `db:"addedById" json:"addedById"`
 	AddedBy      string    `db:"addedBy" json:"addedBy"`
 	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+	Source       string     `db:"source" json:"source"` // MANUAL | TIMER
+	ClosedAt     *time.Time `db:"closedAt" json:"closedAt"`
 }
 
 type RemoteSummary struct {
@@ -31,7 +33,7 @@ type RemoteSummary struct {
 }
 
 const remoteSelect = `SELECT r.id, r."employeeId", e.name AS "employeeName", r."workDate", r.seconds, r.note,
-	r."addedById", COALESCE(a.name, '') AS "addedBy", r."createdAt"
+	r."addedById", COALESCE(a.name, '') AS "addedBy", r."createdAt", r.source, r."closedAt"
 	FROM "RemoteWorkEntry" r JOIN "Employee" e ON e.id = r."employeeId" LEFT JOIN "Employee" a ON a.id = r."addedById"`
 
 // List سجلات شهر (month = YYYY-MM)؛ employeeID فارغ = الكل.
@@ -65,10 +67,66 @@ func (r *RemoteHoursRepository) EmployeeActive(id string) bool {
 }
 
 func (r *RemoteHoursRepository) Create(employeeID, date string, seconds int, note *string, byID string) (string, error) {
+	return r.CreateFrom(employeeID, date, seconds, note, byID, "MANUAL")
+}
+
+func (r *RemoteHoursRepository) CreateFrom(employeeID, date string, seconds int, note *string, byID, source string) (string, error) {
 	id := uuid.NewString()
-	_, err := r.db.Exec(`INSERT INTO "RemoteWorkEntry" (id, "employeeId", "workDate", seconds, note, "addedById") VALUES ($1,$2,$3::date,$4,$5,NULLIF($6,''))`,
-		id, employeeID, date, seconds, note, byID)
+	_, err := r.db.Exec(`INSERT INTO "RemoteWorkEntry" (id, "employeeId", "workDate", seconds, note, "addedById", source) VALUES ($1,$2,$3::date,$4,$5,NULLIF($6,''),$7)`,
+		id, employeeID, date, seconds, note, byID, source)
 	return id, err
+}
+
+// Open سجلات الفترة المفتوحة (من آخر تصفير) — employeeID فارغ = الكل.
+func (r *RemoteHoursRepository) Open(employeeID string) ([]RemoteEntry, error) {
+	rows := []RemoteEntry{}
+	err := r.db.Select(&rows, remoteSelect+`
+		WHERE r."closedAt" IS NULL AND ($1 = '' OR r."employeeId" = $1)
+		ORDER BY e.name, r."workDate", r."createdAt"`, employeeID)
+	return rows, err
+}
+
+func (r *RemoteHoursRepository) OpenSummary() ([]RemoteSummary, error) {
+	rows := []RemoteSummary{}
+	err := r.db.Select(&rows, `SELECT r."employeeId", e.name, COUNT(DISTINCT r."workDate") AS days, SUM(r.seconds)::int AS seconds
+		FROM "RemoteWorkEntry" r JOIN "Employee" e ON e.id = r."employeeId"
+		WHERE r."closedAt" IS NULL GROUP BY r."employeeId", e.name ORDER BY e.name`)
+	return rows, err
+}
+
+// CloseAll التصفير: يسكّر كل السجلات المفتوحة (ما يحذفها).
+func (r *RemoteHoursRepository) CloseAll(byID string) (int64, error) {
+	res, err := r.db.Exec(`UPDATE "RemoteWorkEntry" SET "closedAt" = now(), "closedById" = NULLIF($1,'') WHERE "closedAt" IS NULL`, byID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+// ── العدّاد الحي ──
+
+type RemoteTimer struct {
+	StartedAt   *time.Time `db:"startedAt" json:"startedAt"`
+	Accumulated int        `db:"accumulated" json:"accumulated"`
+}
+
+func (r *RemoteHoursRepository) Timer(employeeID string) RemoteTimer {
+	var t RemoteTimer
+	// ⚠️ بلا صف، sqlx يترك StartedAt مؤشر لوقت صفري (مو nil) — فالعدّاد
+	// ينحسب «شغّال من سنة ١» ويطلع مليارات الثواني. أي خطأ = عدّاد فاضي.
+	if err := r.db.Get(&t, `SELECT "startedAt", accumulated FROM "RemoteTimer" WHERE "employeeId" = $1`, employeeID); err != nil {
+		return RemoteTimer{}
+	}
+	if t.StartedAt != nil && t.StartedAt.IsZero() {
+		t.StartedAt = nil
+	}
+	return t
+}
+
+func (r *RemoteHoursRepository) SaveTimer(employeeID string, startedAt *time.Time, acc int) error {
+	_, err := r.db.Exec(`INSERT INTO "RemoteTimer" ("employeeId", "startedAt", accumulated, "updatedAt") VALUES ($1,$2,$3,now())
+		ON CONFLICT ("employeeId") DO UPDATE SET "startedAt" = $2, accumulated = $3, "updatedAt" = now()`, employeeID, startedAt, acc)
+	return err
 }
 
 func (r *RemoteHoursRepository) AddedBy(id string) (string, bool) {

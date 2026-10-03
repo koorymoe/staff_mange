@@ -1104,7 +1104,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/remote-hours", middleware.Chain(http.HandlerFunc(remoteHoursHandler.List), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours/summary", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Summary), requireAuth, requireRemoteHours))
 	mux.Handle("GET /api/remote-hours/export", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Export), requireAuth, requireRemoteHours))
-	mux.Handle("DELETE /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Delete), requireAuth, requireRemoteHours))
+	// الموظف لنفسه: صلاحية remote_hours_self (أو المسؤول).
+	requireRemoteSelf := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER"}, "remote_hours_self", "remote_hours_manage")
+	mux.Handle("GET /api/remote-hours/mine", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Mine), requireAuth, requireRemoteSelf))
+	mux.Handle("POST /api/remote-hours/mine", middleware.Chain(http.HandlerFunc(remoteHoursHandler.AddMine), requireAuth, requireRemoteSelf))
+	mux.Handle("POST /api/remote-hours/timer/{action}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.TimerAction), requireAuth, requireRemoteSelf))
+	mux.Handle("POST /api/remote-hours/reset", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Reset), requireAuth, requireRemoteHours))
+	// الحذف: للي سجّلها أو للمدير (يتفحص بالهاندلر) — للمسؤول والموظف لنفسه.
+	mux.Handle("DELETE /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Delete), requireAuth, requireRemoteSelf))
 	mux.Handle("GET /api/achievements/mine", middleware.Chain(http.HandlerFunc(achievementHandler.Mine), requireAuth))
 	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireAdmin))

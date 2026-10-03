@@ -16,7 +16,9 @@ import (
 // ═══ ساعات العمل من البيت ═══
 // صلاحية «remote_hours_manage»: المسؤول يضيف ساعات/دقائق/ثواني لموظف بيوم
 // معيّن، والنظام يجمع، وبنهاية الشهر ينزّل Excel. الحارس بـmain.go.
-type RemoteHoursHandler struct{ repo *repository.RemoteHoursRepository }
+type RemoteHoursHandler struct {
+	repo *repository.RemoteHoursRepository
+}
 
 func NewRemoteHoursHandler(r *repository.RemoteHoursRepository) *RemoteHoursHandler {
 	return &RemoteHoursHandler{repo: r}
@@ -37,20 +39,17 @@ func HMS(sec int) string {
 	return fmt.Sprintf("%d:%02d:%02d", sec/3600, (sec%3600)/60, sec%60)
 }
 
-// POST /api/remote-hours
-func (h *RemoteHoursHandler) Create(w http.ResponseWriter, r *http.Request) {
-	var b struct {
-		EmployeeID string  `json:"employeeId"`
-		Date       string  `json:"date"`
-		Hours      int     `json:"hours"`
-		Minutes    int     `json:"minutes"`
-		Seconds    int     `json:"seconds"`
-		Note       *string `json:"note"`
-	}
-	if err := DecodeJSON(r, &b); err != nil {
-		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
-		return
-	}
+type addBody struct {
+	EmployeeID string  `json:"employeeId"`
+	Date       string  `json:"date"`
+	Hours      int     `json:"hours"`
+	Minutes    int     `json:"minutes"`
+	Seconds    int     `json:"seconds"`
+	Note       *string `json:"note"`
+}
+
+// add التحقق والحفظ — مشترك بين المسؤول («لأي موظف») والموظف («لنفسه»).
+func (h *RemoteHoursHandler) add(w http.ResponseWriter, r *http.Request, b addBody) {
 	day, err := time.ParseInLocation("2006-01-02", b.Date, baghdad)
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, "التاريخ مو صحيح")
@@ -89,9 +88,142 @@ func (h *RemoteHoursHandler) Create(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusCreated, map[string]any{"id": id, "seconds": total})
 }
 
+// POST /api/remote-hours — المسؤول، لأي موظف.
+func (h *RemoteHoursHandler) Create(w http.ResponseWriter, r *http.Request) {
+	var b addBody
+	if err := DecodeJSON(r, &b); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	h.add(w, r, b)
+}
+
+// POST /api/remote-hours/mine — الموظف لنفسه بس (employeeId يتجاهل).
+func (h *RemoteHoursHandler) AddMine(w http.ResponseWriter, r *http.Request) {
+	var b addBody
+	if err := DecodeJSON(r, &b); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	b.EmployeeID = middleware.EmployeeIDFromContext(r)
+	h.add(w, r, b)
+}
+
+// GET /api/remote-hours/mine — سجلاتي بالفترة المفتوحة + العدّاد.
+func (h *RemoteHoursHandler) Mine(w http.ResponseWriter, r *http.Request) {
+	me := middleware.EmployeeIDFromContext(r)
+	rows, err := h.repo.Open(me)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الساعات")
+		return
+	}
+	total := 0
+	for _, x := range rows {
+		total += x.Seconds
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"entries": rows, "totalSeconds": total, "timer": h.timerView(me)})
+}
+
+// ── العدّاد الحي (محفوظ بالخادم — التحديث أو سد الجهاز ما يضيّعه) ──
+
+func (h *RemoteHoursHandler) timerView(emp string) map[string]any {
+	t := h.repo.Timer(emp)
+	elapsed := t.Accumulated
+	if t.StartedAt != nil {
+		elapsed += int(time.Since(*t.StartedAt).Seconds())
+	}
+	return map[string]any{"running": t.StartedAt != nil, "elapsed": elapsed, "startedAt": t.StartedAt}
+}
+
+// POST /api/remote-hours/timer/{action} — start | pause | finish
+func (h *RemoteHoursHandler) TimerAction(w http.ResponseWriter, r *http.Request) {
+	me := middleware.EmployeeIDFromContext(r)
+	t := h.repo.Timer(me)
+	now := time.Now()
+	switch r.PathValue("action") {
+	case "start":
+		if t.StartedAt == nil {
+			if err := h.repo.SaveTimer(me, &now, t.Accumulated); err != nil {
+				WriteError(w, http.StatusInternalServerError, "تعذر تشغيل العدّاد")
+				return
+			}
+		}
+	case "pause":
+		if t.StartedAt != nil {
+			acc := t.Accumulated + int(now.Sub(*t.StartedAt).Seconds())
+			if err := h.repo.SaveTimer(me, nil, acc); err != nil {
+				WriteError(w, http.StatusInternalServerError, "تعذر إيقاف العدّاد")
+				return
+			}
+		}
+	case "finish":
+		// إنهاء: الوقت ينضاف لجدول الساعات (بيوم اليوم) والعدّاد يتصفّر.
+		var b struct {
+			Note *string `json:"note"`
+		}
+		_ = DecodeJSON(r, &b)
+		total := t.Accumulated
+		if t.StartedAt != nil {
+			total += int(now.Sub(*t.StartedAt).Seconds())
+		}
+		if total <= 0 {
+			WriteError(w, http.StatusBadRequest, "العدّاد صفر — ماكو شي ينحفظ")
+			return
+		}
+		date := now.In(baghdad).Format("2006-01-02")
+		if room := 24*3600 - h.repo.DaySeconds(me, date); total > room {
+			total = room // ما يعدّي ٢٤ ساعة باليوم
+		}
+		if total > 0 {
+			if b.Note != nil {
+				n := strings.TrimSpace(*b.Note)
+				b.Note = &n
+			}
+			if _, err := h.repo.CreateFrom(me, date, total, b.Note, me, "TIMER"); err != nil {
+				WriteError(w, http.StatusInternalServerError, "تعذر حفظ الساعات")
+				return
+			}
+		}
+		if err := h.repo.SaveTimer(me, nil, 0); err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر تصفير العدّاد")
+			return
+		}
+		WriteJSON(w, http.StatusOK, map[string]any{"saved": total, "timer": h.timerView(me)})
+		return
+	default:
+		WriteError(w, http.StatusBadRequest, "إجراء غير معروف")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"timer": h.timerView(me)})
+}
+
+// ResetDay أول يوم بالشهر يطلع بي زر التصفير.
+const ResetDay = 27
+
+// POST /api/remote-hours/reset — المسؤول، من يوم ٢٧ وطالع.
+// ما يحذف: يسكّر الفترة، فالعدّادات تبدي من صفر والسجلات تبقى بالإكسل.
+func (h *RemoteHoursHandler) Reset(w http.ResponseWriter, r *http.Request) {
+	if time.Now().In(baghdad).Day() < ResetDay {
+		WriteError(w, http.StatusBadRequest, fmt.Sprintf("التصفير يصير من يوم %d بالشهر", ResetDay))
+		return
+	}
+	n, err := h.repo.CloseAll(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر التصفير")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"closed": n})
+}
+
 // GET /api/remote-hours?employeeId=&month=
 func (h *RemoteHoursHandler) List(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.repo.List(r.URL.Query().Get("employeeId"), remoteMonth(r))
+	var rows []repository.RemoteEntry
+	var err error
+	if r.URL.Query().Get("scope") == "month" {
+		rows, err = h.repo.List(r.URL.Query().Get("employeeId"), remoteMonth(r))
+	} else { // الفترة المفتوحة (من آخر تصفير)
+		rows, err = h.repo.Open(r.URL.Query().Get("employeeId"))
+	}
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الساعات")
 		return
@@ -105,7 +237,13 @@ func (h *RemoteHoursHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/remote-hours/summary?month=
 func (h *RemoteHoursHandler) Summary(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.repo.Summary(remoteMonth(r))
+	var rows []repository.RemoteSummary
+	var err error
+	if r.URL.Query().Get("scope") == "month" {
+		rows, err = h.repo.Summary(remoteMonth(r))
+	} else {
+		rows, err = h.repo.OpenSummary()
+	}
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الملخص")
 		return
