@@ -5640,6 +5640,12 @@ export interface MatrixPendingDecision {
   title: string
   summary: string | null
   createdAt: string
+  // منو وأي حجز (من الإشارة الأصلية)
+  employeeId?: string | null
+  employeeName?: string | null
+  bookingId?: string | null
+  bookingCode?: string | null
+  occurredAt?: string | null
 }
 export interface MatrixDecisions {
   day: string

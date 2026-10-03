@@ -59,6 +59,8 @@ export default function MatrixDecisionsPage() {
   const [open, setOpen] = useState<string | null>(null)
 
   const [reload, setReload] = useState(0)
+  // فلتر «ينتظر قرارك» بموظف واحد — كل الأحكام عليه سوا.
+  const [who, setWho] = useState('')
   const load = () => setReload((n) => n + 1)
 
   // جلب بمكان واحد مع alive: تبديل التاريخ بسرعة ما يخلّي جواب قديم يطمس الجديد.
@@ -118,7 +120,16 @@ export default function MatrixDecisionsPage() {
       {data && (
         <>
           <section className="rounded-2xl border border-amber-200 bg-white p-4">
-            <h3 className="mb-3 font-extrabold text-[#0f2040]">⏳ ينتظر قرارك <span className="text-sm text-slate-500">({waiting})</span></h3>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-extrabold text-[#0f2040]">⏳ ينتظر قرارك <span className="text-sm text-slate-500">({waiting})</span></h3>
+              {data.pending.some((p) => p.employeeId) && (
+                <select value={who} onChange={(e) => setWho(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1 text-xs">
+                  <option value="">كل الموظفين</option>
+                  {[...new Map(data.pending.filter((p) => p.employeeId && p.employeeName).map((p) => [p.employeeId as string, p.employeeName as string])).entries()]
+                    .map(([id, name]) => <option key={id} value={id}>{name} ({data.pending.filter((p) => p.employeeId === id).length})</option>)}
+                </select>
+              )}
+            </div>
             {waiting === 0 ? <p className="text-sm text-slate-400">ماكو شي ينتظرك ✅</p> : (
               <ul className="divide-y divide-slate-100 text-sm">
                 {data.paused.map((p) => (
@@ -145,10 +156,15 @@ export default function MatrixDecisionsPage() {
                     <Link to="/coordinator" className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">كلّف من التنسيق ←</Link>
                   </li>
                 ))}
-                {data.pending.map((p) => (
+                {data.pending.filter((p) => !who || p.employeeId === who).map((p) => (
                   <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <div>
-                      <p className="font-bold text-slate-800">🧠 {p.title}</p>
+                      <p className="font-bold text-slate-800">🧠 {p.title}{p.employeeName && <> — <span className="text-brand-700">{p.employeeName}</span></>}</p>
+                      <div className="my-1 flex flex-wrap gap-1.5 text-[11px]">
+                        {p.employeeId && p.employeeName && <Link to={`/matrix/employee/${p.employeeId}`} className="rounded-full bg-sky-50 px-2 py-0.5 font-bold text-sky-800 hover:bg-sky-100">👤 {p.employeeName} — تقريره ←</Link>}
+                        {p.bookingCode && <Link to="/bookings" className="rounded-full bg-amber-50 px-2 py-0.5 font-bold text-amber-800 hover:bg-amber-100">📋 الحجز {p.bookingCode}</Link>}
+                        {p.occurredAt && <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-600">📅 {new Date(p.occurredAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'medium', timeStyle: 'short' })}</span>}
+                      </div>
                       {p.summary && <p className="text-xs text-slate-500">{p.summary}</p>}
                     </div>
                     <Link to="/monitor" className="rounded-lg bg-brand-50 px-3 py-1 text-xs font-bold text-brand-700">راجع بالصندوق ←</Link>

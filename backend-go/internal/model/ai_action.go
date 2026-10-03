@@ -96,6 +96,12 @@ type PendingAiDecision struct {
 	Title      string    `db:"title" json:"title"`
 	Summary    *string   `db:"summary" json:"summary"`
 	CreatedAt  time.Time `db:"createdAt" json:"createdAt"`
+	// منو وأي حجز — من الإشارة الأصلية (للمدير والمالك بس).
+	EmployeeID   *string    `db:"employeeId" json:"employeeId"`
+	EmployeeName *string    `db:"employeeName" json:"employeeName"`
+	BookingID    *string    `db:"bookingId" json:"bookingId"`
+	BookingCode  *string    `db:"bookingCode" json:"bookingCode"`
+	OccurredAt   *time.Time `db:"occurredAt" json:"occurredAt"`
 }
 
 // UnstaffedBooking حجز مثبّت بلا أي كادر مكلّف.

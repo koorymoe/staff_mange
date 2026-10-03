@@ -92,10 +92,16 @@ func (r *AiActionRepository) Undo(id, byEmployeeID string) error {
 func (r *AiActionRepository) PendingAiVerdicts(limit int) ([]model.PendingAiDecision, error) {
 	rows := []model.PendingAiDecision{}
 	err := r.db.Select(&rows, `
-		SELECT id, "entityType", "entityId", title, summary, "createdAt"
-		FROM "MonitorReview"
-		WHERE stage = 'AI_VERDICT' AND status = 'PENDING'
-		ORDER BY "createdAt" DESC LIMIT $1`, limit)
+		SELECT mr.id, mr."entityType", mr."entityId", mr.title, mr.summary, mr."createdAt",
+		       COALESCE(sg."employeeId", v."blameEmployeeId") AS "employeeId", e.name AS "employeeName",
+		       b.id AS "bookingId", b.code AS "bookingCode", sg."occurredAt"
+		FROM "MonitorReview" mr
+		LEFT JOIN "AiVerdict" v ON mr."entityType" = 'AI_VERDICT' AND v.id = mr."entityId"
+		LEFT JOIN "AiSignal" sg ON sg.id = v."signalId"
+		LEFT JOIN "Employee" e ON e.id = COALESCE(sg."employeeId", v."blameEmployeeId")
+		LEFT JOIN "Booking" b ON sg."entityType" = 'BOOKING' AND b.id = sg."entityId"
+		WHERE mr.stage = 'AI_VERDICT' AND mr.status = 'PENDING'
+		ORDER BY mr."createdAt" DESC LIMIT $1`, limit)
 	return rows, err
 }
 
