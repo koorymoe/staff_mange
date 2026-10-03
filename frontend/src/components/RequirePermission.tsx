@@ -9,11 +9,12 @@ import { useSession } from '../session'
 // يشوف البند ويضغطه ويلگه «غير مصرح لك». البند الي ينضغط وينرفض أسوأ
 // من بند ما موجود.
 export default function RequirePermission(
-  { permission, anyOf, children }: { permission: string; anyOf?: string[]; children: ReactNode },
+  { permission, anyOf, roles, children }: { permission: string; anyOf?: string[]; roles?: string[]; children: ReactNode },
 ) {
   const { employee, permissions } = useSession()
 
   const allowed = employee?.role === 'ADMIN'
+    || (!!employee?.role && (roles ?? []).includes(employee.role))
     || permissions.includes(permission)
     || (anyOf ?? []).some((p) => permissions.includes(p))
 

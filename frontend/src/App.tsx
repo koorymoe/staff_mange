@@ -191,7 +191,8 @@ function App() {
           {/* التقرير الأسبوعي: ADMIN/OWNER بس (نفس الخادم) */}
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
           <Route path="matrix/decisions" element={<RequireAdmin><MatrixDecisionsPage /></RequireAdmin>} />
-          <Route path="matrix/employee/:id" element={<RequireAdmin><MatrixEmployeeReportPage /></RequireAdmin>} />
+          {/* المراقب كمان: شغله متابعة الموظف — نفس حارس GET /api/ai/employee-report. */}
+          <Route path="matrix/employee/:id" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><MatrixEmployeeReportPage /></RequirePermission>} />
           <Route path="bookings-archive" element={<BookingsArchive />} />
           {/* ═══ «الحجوزات المؤجلة» انمرجت ═══
               كانت شاشة مستقلة تعرض **نفس** حجوزات سلّة «مؤجّلة» بشاشة

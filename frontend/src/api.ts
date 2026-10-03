@@ -2181,7 +2181,10 @@ export interface MonitorReview {
     externalInvoiceNumber?: string
   }
   // تفاصيل «تأخر بالخروج للزبون» (أحكام ماتركس)
-  late?: { employeeId: string | null; employeeName: string | null; bookingId: string | null; bookingCode: string | null; scheduledAt: string | null; departedAt: string | null; minutesLate: number | null; threshold: number | null; count30d: number | null; reason: string | null }
+  late?: { employeeId: string | null; employeeName: string | null; bookingId: string | null; bookingCode: string | null; scheduledAt: string | null; departedAt: string | null; minutesLate: number | null; threshold: number | null; count30d: number | null; reason: string | null
+    /** «صارت قبل؟» — مرات تأخر نفس الموظف السابقة (٩٠ يوم، الأحدث أول). */
+    history?: { occurredAt: string; bookingId: string | null; bookingCode: string | null; minutesLate: number | null; reason: string | null; review: 'PENDING' | 'OK' | 'FLAGGED' | null; reviewNote: string | null }[]
+  }
 }
 
 /** ═══ تسعيرة الشبكات ═══

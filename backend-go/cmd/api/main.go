@@ -1088,7 +1088,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/proposals", middleware.Chain(http.HandlerFunc(matrixLearningHandler.List), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/proposals/{id}/approve", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Approve), requireAuth, requireAdmin))
 	mux.Handle("POST /api/ai/proposals/{id}/reject", middleware.Chain(http.HandlerFunc(matrixLearningHandler.Reject), requireAuth, requireAdmin))
-	mux.Handle("GET /api/ai/employee-report", middleware.Chain(http.HandlerFunc(matrixReportHandler.Employee), requireAuth, requireAdmin))
+	// المراقب يشوف تقرير الموظف (قراءة بس) — شغله المتابعة، ومن صندوقه يضغط اسم الموظف.
+	mux.Handle("GET /api/ai/employee-report", middleware.Chain(http.HandlerFunc(matrixReportHandler.Employee), requireAuth, requireMonitor))
 	mux.Handle("GET /api/ai/group-performance", middleware.Chain(http.HandlerFunc(matrixReportHandler.Group), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/feed", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Feed), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/daily-trend", middleware.Chain(http.HandlerFunc(matrixCommandHandler.Trend), requireAuth, requireAdmin))

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api, type EmployeeReport, type ReportLine } from '../api'
 import MatrixEyeGraphic from '../components/MatrixEyeGraphic'
 import { GROUP_LABEL, type EyeGroup } from '../components/matrixEyeColors'
+import { useSession } from '../session'
 
 // ═══ تقرير ماتركس عن موظف — بالعراقي، بأرقام حقيقية ═══
 // دوامه مقابل جدوله، وكل حجز بمراحله ومنو أخّر، وإجازاته ونمطها،
-// و«شخصيته بالشغل» من ٣٠ يوم. للمدير والمالك بس.
+// و«شخصيته بالشغل» من ٣٠ يوم. للمدير والمالك، والمراقب يقراه (بلا أزرار الإدارة).
 
 const todayBaghdad = () => new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
 const TONE: Record<ReportLine['tone'], string> = {
@@ -21,6 +22,8 @@ const ICON: Record<ReportLine['tone'], string> = { OK: '✅', WARN: '⚠️', BA
 // (تنحفظ معطّلة — المدير يفعّلها من تعليمات ماتركس، يعني اقتراح مو قرار).
 function Lines({ lines, group }: { lines: ReportLine[]; group?: string }) {
   const [saved, setSaved] = useState<Record<string, boolean>>({})
+  // «حوّلها تعليمة» = POST guide-rules (requireAdmin) — للمراقب ينخفي حتى ما ينسجل انتهاك.
+  const isAdmin = useSession().employee?.role === 'ADMIN'
   if (lines.length === 0) return <p className="text-xs text-slate-400">ماكو شي.</p>
   const toRule = async (fix: string) => {
     try {
@@ -44,7 +47,7 @@ function Lines({ lines, group }: { lines: ReportLine[]; group?: string }) {
                   <span>• {f}</span>
                   {saved[f]
                     ? <span className="shrink-0 text-[10px] text-emerald-700">انحفظت معطّلة ✓</span>
-                    : <button onClick={() => toRule(f)} className="shrink-0 rounded border border-current/20 px-1.5 py-0.5 text-[10px] opacity-70 hover:opacity-100">🔁 حوّلها تعليمة</button>}
+                    : isAdmin && <button onClick={() => toRule(f)} className="shrink-0 rounded border border-current/20 px-1.5 py-0.5 text-[10px] opacity-70 hover:opacity-100">🔁 حوّلها تعليمة</button>}
                 </div>
               ))}
             </div>
@@ -66,6 +69,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function MatrixEmployeeReportPage() {
   const { id = '' } = useParams()
+  const navigate = useNavigate()
+  const isAdmin = useSession().employee?.role === 'ADMIN'
   const [day, setDay] = useState(todayBaghdad())
   const [rep, setRep] = useState<EmployeeReport | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -89,7 +94,9 @@ export default function MatrixEmployeeReportPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link to="/?board=matrix" className="text-sm text-brand-700 underline">← عيون ماتركس</Link>
+          {isAdmin
+            ? <Link to="/?board=matrix" className="text-sm text-brand-700 underline">← عيون ماتركس</Link>
+            : <button onClick={() => navigate(-1)} className="text-sm text-brand-700 underline">← رجوع</button>}
           <input type="date" value={day} onChange={(e) => setDay(e.target.value)} className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
         </div>
       </div>

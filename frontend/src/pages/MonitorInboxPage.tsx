@@ -350,6 +350,43 @@ function LateBlock({ late }: { late: NonNullable<MonitorReview['late']> }) {
         <b className="text-slate-600">💬 سبب التأخير: </b>
         {late.reason ? <span className="text-slate-800">{late.reason}</span> : <span className="text-slate-400">ما كتب الكادر سبب — اسأله واكتبه بالملاحظة تحت.</span>}
       </p>
+      <LateHistory late={late} />
+    </div>
+  )
+}
+
+// (ع): «هل صارت هاي الحالة سابقاً؟» — آخر مرات تأخر نفس الموظف، وشنو انحكم عليها.
+const REVIEW_LABEL = {
+  OK: { text: '✓ سليم', cls: 'bg-emerald-100 text-emerald-700' },
+  FLAGGED: { text: '⚠️ ملاحظة', cls: 'bg-red-100 text-red-700' },
+  PENDING: { text: '⏳ ما انحكمت', cls: 'bg-slate-100 text-slate-600' },
+} as const
+function LateHistory({ late }: { late: NonNullable<MonitorReview['late']> }) {
+  const items = late.history ?? []
+  return (
+    <div className="mt-3 rounded-lg bg-white p-2 ring-1 ring-slate-100">
+      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+        <b className="text-xs text-slate-700">🔁 صارت قبل؟ <span className="font-normal text-slate-500">(آخر ٩٠ يوم)</span></b>
+        {late.employeeId && <Link to={`/matrix/employee/${late.employeeId}`} className="rounded-full bg-sky-50 px-2.5 py-0.5 text-[11px] font-bold text-sky-800 hover:bg-sky-100">📄 تقرير الموظف الكامل ←</Link>}
+      </div>
+      {items.length === 0
+        ? <p className="text-xs text-emerald-700">أول مرة ✅ — ما تأخر بالخروج قبلها.</p>
+        : (
+          <ul className="space-y-1.5">
+            {items.map((h) => {
+              const rv = REVIEW_LABEL[h.review ?? 'PENDING']
+              return (
+                <li key={h.occurredAt + (h.bookingId ?? '')} className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-slate-100 pb-1.5 text-[11px] last:border-0 last:pb-0">
+                  <span className="text-slate-500">{fmtAt(h.occurredAt)}</span>
+                  <b className="text-red-700">{h.minutesLate != null ? fmtDur(h.minutesLate) : '—'}</b>
+                  {h.bookingCode && <Link to={h.bookingId ? `/bookings?focus=${h.bookingId}` : '/bookings'} className="font-bold text-amber-700 hover:underline">📋 {h.bookingCode} ←</Link>}
+                  <span className={`rounded-full px-2 py-0.5 ${rv.cls}`}>{rv.text}</span>
+                  <span className="basis-full text-slate-700">💬 {h.reason ?? <span className="text-slate-400">بلا سبب مكتوب</span>}{h.reviewNote && <span className="text-slate-500"> — ملاحظة المراقب: {h.reviewNote}</span>}</span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
     </div>
   )
 }

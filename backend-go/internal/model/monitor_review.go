@@ -47,6 +47,22 @@ type LateDetail struct {
 	Threshold    *int       `db:"threshold" json:"threshold"`
 	Count30d     *int       `db:"count30d" json:"count30d"`
 	Reason       *string    `db:"reason" json:"reason"`
+	SignalID     string     `db:"signalId" json:"-"`
+	// «صارت قبل؟» — مرات تأخر نفس الموظف السابقة (الأحدث أول).
+	History []LateHistoryItem `db:"-" json:"history"`
+}
+
+// LateHistoryItem مرة تأخر سابقة لنفس الموظف، ويا حكم المراقب وقتها.
+type LateHistoryItem struct {
+	EmployeeID  string    `db:"employeeId" json:"-"`
+	SignalID    string    `db:"signalId" json:"-"`
+	OccurredAt  time.Time `db:"occurredAt" json:"occurredAt"`
+	BookingID   *string   `db:"bookingId" json:"bookingId"`
+	BookingCode *string   `db:"bookingCode" json:"bookingCode"`
+	MinutesLate *int      `db:"minutesLate" json:"minutesLate"`
+	Reason      *string   `db:"reason" json:"reason"`
+	Review      *string   `db:"review" json:"review"` // PENDING | OK | FLAGGED
+	ReviewNote  *string   `db:"reviewNote" json:"reviewNote"`
 }
 
 // MonitorIdentity هوية الحجز وراء صف الصندوق — نفس حقول رأس الهوية

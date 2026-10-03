@@ -205,11 +205,13 @@ func (r *MonitorReviewRepository) hydrateLate(rows []model.MonitorReview) {
 		return
 	}
 	q, args, err := sqlx.In(`
-		SELECT v.id AS "verdictId", s."employeeId", e.name AS "employeeName",
-		       b.id AS "bookingId", b.code AS "bookingCode", b."scheduledAt", m."departedAt",
-		       (s.payload->>'minutesLate')::int AS "minutesLate",
-		       (s.payload->>'thresholdMinutes')::int AS threshold,
-		       (s.payload->>'lateCountLast30Days')::int AS count30d,
+		SELECT v.id AS "verdictId", s.id AS "signalId", s."employeeId", e.name AS "employeeName",
+		       b.id AS "bookingId", b.code AS "bookingCode", b."scheduledAt",
+		       COALESCE(m."departedAt", b."startedAt") AS "departedAt",
+		       -- الأرقام بملف الأدلة (AiEvidence.facts) مو بالإشارة — چانت تطلع «—».
+		       COALESCE((ev.facts->>'minutesLate')::int, (s.payload->>'minutesLate')::int) AS "minutesLate",
+		       COALESCE((ev.facts->>'thresholdMinutes')::int, (s.payload->>'thresholdMinutes')::int) AS threshold,
+		       COALESCE((ev.facts->>'lateCountLast30Days')::int, (s.payload->>'lateCountLast30Days')::int) AS count30d,
 		       COALESCE(
 		         (SELECT NULLIF(btrim(me.note), '') FROM "MissionEvent" me
 		           WHERE me."missionId" = m.id AND me.note IS NOT NULL AND btrim(me.note) <> ''
@@ -217,6 +219,7 @@ func (r *MonitorReviewRepository) hydrateLate(rows []model.MonitorReview) {
 		         NULLIF(btrim(b."postponeReason"), ''), NULLIF(btrim(m.notes), '')) AS reason
 		FROM "AiVerdict" v
 		JOIN "AiSignal" s ON s.id = v."signalId" AND s.kind = 'LATE_START'
+		LEFT JOIN "AiEvidence" ev ON ev."signalId" = s.id
 		LEFT JOIN "Employee" e ON e.id = s."employeeId"
 		LEFT JOIN "Booking" b ON s."entityType" = 'BOOKING' AND b.id = s."entityId"
 		LEFT JOIN LATERAL (SELECT * FROM "Mission" WHERE "bookingId" = b.id ORDER BY "assignedAt" DESC NULLS LAST LIMIT 1) m ON true
@@ -228,8 +231,17 @@ func (r *MonitorReviewRepository) hydrateLate(rows []model.MonitorReview) {
 	if err := r.db.Select(&found, r.db.Rebind(q), args...); err != nil {
 		return
 	}
+	hist := r.lateHistory(found)
 	by := map[string]model.LateDetail{}
 	for _, f := range found {
+		f.History = []model.LateHistoryItem{}
+		if f.EmployeeID != nil {
+			for _, h := range hist[*f.EmployeeID] {
+				if h.SignalID != f.SignalID && len(f.History) < 5 {
+					f.History = append(f.History, h)
+				}
+			}
+		}
 		by[f.VerdictID] = f
 	}
 	for i := range rows {
@@ -385,4 +397,56 @@ func (r *MonitorReviewRepository) Get(id string) (*model.MonitorReview, error) {
 	r.hydrateIdentity(rows)
 	r.hydrateLate(rows)
 	return &rows[0], nil
+}
+
+// lateHistory — (ع): «هل صارت هاي الحالة سابقاً؟». آخر مرات تأخر الخروج لكل
+// موظف بالصفحة (٩٠ يوم)، باستعلام واحد، ويا حكم المراقب عليها إذا انحكمت.
+// الفشل يرجّع فارغ: السجل زينة مو شرط.
+func (r *MonitorReviewRepository) lateHistory(found []model.LateDetail) map[string][]model.LateHistoryItem {
+	out := map[string][]model.LateHistoryItem{}
+	emps := []string{}
+	for _, f := range found {
+		if f.EmployeeID != nil {
+			emps = append(emps, *f.EmployeeID)
+		}
+	}
+	if len(emps) == 0 {
+		return out
+	}
+	q, args, err := sqlx.In(`
+		SELECT * FROM (
+		  SELECT s."employeeId", s.id AS "signalId", s."occurredAt",
+		         b.id AS "bookingId", b.code AS "bookingCode",
+		         COALESCE((ev.facts->>'minutesLate')::int, (s.payload->>'minutesLate')::int) AS "minutesLate",
+		         COALESCE(
+		           (SELECT NULLIF(btrim(me.note), '') FROM "Mission" m JOIN "MissionEvent" me ON me."missionId" = m.id
+		             WHERE m."bookingId" = b.id AND me.note IS NOT NULL AND btrim(me.note) <> ''
+		             ORDER BY me."createdAt" DESC LIMIT 1),
+		           NULLIF(btrim(b."postponeReason"), '')) AS reason,
+		         mr.status AS review, NULLIF(btrim(mr.note), '') AS "reviewNote",
+		         ROW_NUMBER() OVER (PARTITION BY s."employeeId" ORDER BY s."occurredAt" DESC) AS rn
+		  FROM "AiSignal" s
+		  LEFT JOIN "AiEvidence" ev ON ev."signalId" = s.id
+		  LEFT JOIN "Booking" b ON s."entityType" = 'BOOKING' AND b.id = s."entityId"
+		  LEFT JOIN LATERAL (SELECT id FROM "AiVerdict" WHERE "signalId" = s.id ORDER BY "createdAt" DESC LIMIT 1) v ON true
+		  LEFT JOIN LATERAL (SELECT status, note FROM "MonitorReview" WHERE "entityType" = 'AI_VERDICT' AND "entityId" = v.id
+		                     ORDER BY "createdAt" DESC LIMIT 1) mr ON true
+		  WHERE s.kind = 'LATE_START' AND s."employeeId" IN (?)
+		    AND s."occurredAt" > NOW() - INTERVAL '90 days'
+		) x WHERE rn <= 6`, emps)
+	if err != nil {
+		return out
+	}
+	type row struct {
+		model.LateHistoryItem
+		Rn int `db:"rn"`
+	}
+	rows := []row{}
+	if err := r.db.Select(&rows, r.db.Rebind(q), args...); err != nil {
+		return out
+	}
+	for _, x := range rows {
+		out[x.EmployeeID] = append(out[x.EmployeeID], x.LateHistoryItem)
+	}
+	return out
 }
