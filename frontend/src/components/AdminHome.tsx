@@ -438,9 +438,10 @@ function ActionsBoard() {
 export default function AdminHome({ name }: { name?: string }) {
   const [params, setParams] = useSearchParams()
   const raw = params.get('board')
-  const board: Board = raw === 'actions' || raw === 'matrix' ? raw : 'follow'
-  const tab = (b: Board, label: string) => (
-    <button type="button" onClick={() => setParams(b === 'follow' ? {} : { board: b })}
+  // «مكتب المدير»: بلا اختيار ينفتح على الثلاثة سوية، وواحنا نختار.
+  const board: Board | 'desk' = raw === 'actions' || raw === 'matrix' || raw === 'follow' ? raw : 'desk'
+  const tab = (b: Board | 'desk', label: string) => (
+    <button type="button" onClick={() => setParams({ board: b })}
       className={`rounded-xl px-4 py-2 text-sm font-extrabold transition-colors ${board === b ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-600 ring-1 ring-slate-200 hover:bg-slate-50'}`}>
       {label}
     </button>
@@ -452,13 +453,30 @@ export default function AdminHome({ name }: { name?: string }) {
           <h2 className="text-2xl font-extrabold text-[#0f2040]">{name ? `هلا ${name}` : 'مدير النظام'}</h2>
           <p className="text-sm text-slate-500">كل شي بالشركة بمكان واحد — شوف وتحرك.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {tab('desk', '🏛️ مكتب المدير')}
           {tab('follow', '📊 المتابعة')}
           {tab('actions', '⚡ الإجراءات')}
           {tab('matrix', '👁️ ماتركس')}
         </div>
       </div>
-      {board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : <MatrixCommandCenter />}
+      {board === 'desk' ? (
+        <div className="grid gap-4 md:grid-cols-3">
+          {([
+            ['follow', '📊', 'المتابعة', 'الشركة بالأرقام، ومتابعة اليوم، والحسابات، والدوام، وترتيب الأداء.', 'from-sky-500 to-indigo-600'],
+            ['actions', '⚡', 'الإجراءات', 'كل شي ينتظر قرارك أو متابعة — بجدول واحد ويودّيك لشاشته.', 'from-amber-500 to-orange-600'],
+            ['matrix', '👁️', 'ماتركس', 'مركز قيادة ماتركس: شنو اكتشف، وعيون الموظفين، والتوقعات.', 'from-violet-500 to-fuchsia-600'],
+          ] as const).map(([b, icon, title, desc, grad]) => (
+            <button key={b} type="button" onClick={() => setParams({ board: b })}
+              className="group rounded-3xl border border-slate-200 bg-white p-6 text-right shadow-sm transition hover:-translate-y-1 hover:shadow-lg">
+              <span className={`grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br ${grad} text-3xl text-white shadow-md`}>{icon}</span>
+              <h3 className="mt-4 text-xl font-extrabold text-[#0f2040]">{title}</h3>
+              <p className="mt-1 text-sm text-slate-500">{desc}</p>
+              <p className="mt-4 text-sm font-bold text-brand-600 group-hover:underline">افتح ←</p>
+            </button>
+          ))}
+        </div>
+      ) : board === 'follow' ? <FollowBoard /> : board === 'actions' ? <ActionsBoard /> : <MatrixCommandCenter />}
     </div>
   )
 }

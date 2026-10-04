@@ -98,9 +98,9 @@ export const navItems: NavItem[] = [
   { to: '/nav-main-label', label: 'التنقل الرئيسي', icon: <></>, divider: true, plain: true },
   { to: '/', label: 'الرئيسية', end: true, icon: icon('M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10'), hideForRoles: ['ADMIN'] },
   // مدير النظام: «ميريد خانة اسمها الرئيسية» — لوحتين بدلها.
-  { to: '/?board=follow', label: '📊 المتابعة', icon: icon('M3 3v18h18M7 14l4-4 4 4 5-6'), roles: ['ADMIN'] },
-  { to: '/?board=actions', label: '⚡ الإجراءات', icon: icon('M13 2 3 14h9l-1 8 10-12h-9z'), roles: ['ADMIN'] },
-  { to: '/?board=matrix', label: '👁️ ماتركس', icon: icon('M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z'), roles: ['ADMIN'] },
+  // ترتيب (ع) 10-04: المتابعة والإجراءات وماتركس بند واحد «مكتب المدير» —
+  // ينفتح على الثلاثة واحنا نختار.
+  { to: '/?board=desk', label: '🏛️ مكتب المدير', icon: icon('M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6'), roles: ['ADMIN'] },
   { to: '/attendance', label: 'جدول دوامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // ⚠️ مهامي الإضافية بلا قيد دور ولا صلاحية — هاي **مهام الموظف
   // نفسه**، مو مهام غيره. كانت محصورة بشاشة «مهامي» (فنيين فقط)،

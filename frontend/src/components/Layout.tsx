@@ -6,6 +6,7 @@ import LiveAlerts from './LiveAlerts'
 import ThemeToggle from './ThemeToggle'
 import MatrixEye from './MatrixEye'
 import RemoteTimerChip from './RemoteTimerChip'
+import GlobalSearch from './GlobalSearch'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
@@ -695,6 +696,8 @@ export default function Layout() {
                   «أريد توصل إشعارات لأجهزتهم وإشعارات للحاسبات».
                   الزر يطلع لمن ما ينطلب الإذن بعد — وبعدها يختفي. */}
               <LiveAlerts />
+              {/* 🔍 البحث بكل النظام — شاشات (ويا طريقها)، حجوزات، زبائن، موظفين. Ctrl+K */}
+              <GlobalSearch />
               {/* عين ماتركس — تتابع وتنتبه لكل إجراء، ولونها حسب الدور والحالة */}
               <MatrixEye />
               {/* عدّاد ساعات البيت — لصاحب الصلاحية، بكل الشاشات */}
