@@ -57,6 +57,9 @@ export interface NavItem {
   // «الصلاحية الممنوحة تفتح العنصر». استعماله الوحيد: نفس الشاشة
   // موجودة بمحل أنسب لهذا الدور، فما نريدها تتكرر بالقائمة مرتين.
   hideForRoles?: EmployeeRole[]
+  /** يخفي البند من **قائمة** المراقب بس (ترتيب (ع) 10-04) — الرابط يبقى مسموح،
+   *  لأن الشاشة صارت تبويباً بشاشة ثانية (مكتب المراقب، الحجوزات، …). */
+  monitorMenuHide?: boolean
   // fieldStaffOnly: عكس hideFromFieldStaff — صندوق شغل الميدان. ما يطلع
   // لأي دور مكتبي مهما انمنحت له صلاحيات، لأن الصلاحية الوحدة (مثل
   // execution_cost) جانت تفتح أبناءه فيطلع للمحاسب «العمل» **مرتين**:
@@ -105,13 +108,15 @@ export const navItems: NavItem[] = [
   // يضيع. المهمة الي ما إلها مكان ثابت تنعرض بيه تنتنسى.
   //
   // أما **توجيه** المهام لغيره فيحتاج صلاحية extra_tasks_assign.
-  { to: '/my-extra-tasks', label: 'مهامي الإضافية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
+  { monitorMenuHide: true, to: '/my-extra-tasks', label: 'مهامي الإضافية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
   // الإنجازات: تقرير يومي حر بلا قيد دور — كل موظف يسوي شي، حتى لو
   // مو شغله المباشر (المراقب يدقّق، المحاسب يطابق...). يوصل لمدير
   // النظام والمالك حصراً — شوف backend `Achievement`.
-  { to: '/my-achievements', label: '📋 إنجازاتي اليوم', icon: <></> },
+  { monitorMenuHide: true, to: '/my-achievements', label: '📋 إنجازاتي اليوم', icon: <></> },
+  // ترتيب (ع) للمراقب: «مهامي الإضافية» و«إنجازاتي اليوم» شاشة وحدة بتبويبين.
+  { to: '/my-work', label: '📋 مهامي وإنجازاتي', icon: <></>, roles: ['MONITOR'] },
   // ساعات البيت لأي موظف عنده الصلاحية (لنفسه أو مسؤول) — بالقائمة الرئيسية حتى الفني يوصلها.
-  { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_self', 'remote_hours_manage'] },
+  { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_self', 'remote_hours_manage'] },
   // ⚠️ «حساب الكلفة» انشال من القائمة العلوية: كان يطلع مرتين —
   // مرة فوگ ومرة داخل «العمل» بعنوانين مختلفين لنفس الشاشة، فالليدر
   // يحتار أي وحدة يفتح.
@@ -129,7 +134,7 @@ export const navItems: NavItem[] = [
   // كانت مجموعة تنفتح على «تصنيفي» و«تقييم الأداء». صارت بند واحد
   // يفتح الشاشة، والاختيار بين «تقييمي وتصنيفي» و«تقييم فريقي» من
   // فوگ بالواجهة — نفس نمط «مهامي» و«الجرد».
-  { to: '/my-ranking', label: 'التقييم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  { monitorMenuHide: true, to: '/my-ranking', label: 'التقييم', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
     roles: ['ADMIN', 'SALES', 'HR_COORDINATOR', 'TECHNICIAN', 'MONITOR', 'FINANCE', 'GPS_ADMIN', 'QUALITY_ENGINEER', 'PROCUREMENT_ADMIN', 'TECHNICAL'] },
 
   // ── الإدارة ──
@@ -147,6 +152,9 @@ export const navItems: NavItem[] = [
         // مذكور بهذي القائمة (مثال حقيقي: PROCUREMENT_ADMIN مع صلاحية "جرد الأدوات").
         to: '/mgmt-employees', label: 'إدارة الموظفين', icon: <></>,
         children: [
+          // ترتيب (ع) للمراقب: ساعات البيت والتقييم ينزلن هنا بدل القائمة الرئيسية.
+          { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['MONITOR'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
+          { to: '/my-ranking', label: '⭐ التقييم', icon: <></>, roles: ['MONITOR'] },
           // ═══ الوصول بالصلاحية مو بالدور ═══
           //
           // «إداري الكوادر» كان ياخذ هاي الشاشات لمجرد إن دوره اسمه
@@ -191,7 +199,7 @@ export const navItems: NavItem[] = [
       // ⚠️ المالك ومدير النظام يبقون بالدور — هما فوق نظام الصلاحيات
       // أصلاً، والخادم يعطيهما كل الشفتات (routesFor).
       { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
-      { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
+      { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
           // ⚠️ ADMIN بس — StatsPage.tsx نفسها تقفل على غير ADMIN
           // (role !== 'ADMIN')، وكان المراقب يشوف الرابط هنا ويفتح
           // دائماً على «غير مصرح». والخادم (`GET /api/stats`) صار
@@ -228,12 +236,12 @@ export const navItems: NavItem[] = [
         },
       },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
-      { to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking' },
-      { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking' },
+      { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       // ⚠️ «📅 الحجوزات المؤجلة» انشالت: نفس حجوزاتها تطلع بسلّة
       // «حجوزات مؤجّلة» جوّا «ما وصلت للتنفيذ» بشاشة الحجوزات، مع
       // نفس إمكانية تحديد موعد جديد.
-      { to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
+      { monitorMenuHide: true, to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
       // ⚠️ «🔄 حجوزات تحتاج إكمال» انشالت: صارت محطة جوّا شاشة
       // الحجوزات بين «مكلّف» و«تم الإنجاز» — «ما أريدها بالقائمة
       // الجانبية، أريدها تطلع بجانب الحجوزات وحجوزات بانتظار
@@ -248,13 +256,13 @@ export const navItems: NavItem[] = [
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
-      { to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
+      { monitorMenuHide: true, to: '/duplicate-review', label: '🤖 ماتركس — التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
       { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
       { to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
-          { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
+          { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
           { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints', hideForRoles: ['MONITOR'] },
@@ -387,7 +395,7 @@ export const navItems: NavItem[] = [
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
   // المحفوظة والإشعارات.
-  { to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+  { monitorMenuHide: true, to: '/monitor', label: 'لوحة المراقبة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
@@ -525,13 +533,13 @@ export const navItems: NavItem[] = [
     unitPermission: 'unit_service',
     children: [
       { to: '/sales', label: 'حجز جديد', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'QUALITY_ENGINEER'], permission: 'sales_booking' },
-      { to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
+      { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       { to: '/bookings', label: 'الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'FINANCE'], permission: 'view_bookings' },
       { to: '/coordinator', label: 'تنسيق الحجوزات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'coordinator' },
-      { to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
+      { monitorMenuHide: true, to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
-      { to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
+      { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
     ],
   },
   {
@@ -605,7 +613,7 @@ export const navItems: NavItem[] = [
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط
   // المحفوظة والإشعارات.
-      { to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
+      { monitorMenuHide: true, to: '/monitor', label: 'لوحة المراقبة', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       { to: '/crew-bookings-audit', label: 'تدقيق تنسيق الحجوزات', icon: <></>, permission: 'crew_management' },
       { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints', hideForRoles: ['MONITOR'] },
       // إدارة سياسة الخصوصية (إضافة/تعديل النقاط) — صلاحية مستقلة تماماً عن
@@ -676,7 +684,7 @@ export const navItems: NavItem[] = [
       // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
       { to: '/work-schedule', label: '🕘 جدول الدوام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], unlockAnyPermission: ['work_schedule_manage', 'staff_management'] },
       // نفس حارس /api/remote-hours: المدير أو صلاحية «تسجيل ساعات العمل من البيت».
-      { to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
+      { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
       { to: '/kpi', label: 'نقاط الكي بي اي', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'kpi_management' },
       { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'staff_requests' },
       { to: '/performance-review', label: '⭐ تقييم الأداء', icon: <></>, roles: ['HR_COORDINATOR'], unlockPermission: 'performance_review' },

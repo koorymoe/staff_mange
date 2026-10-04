@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSession } from '../session'
@@ -8,6 +8,9 @@ import SalesBooking from './SalesBooking'
 import PartialBookings from './PartialBookings'
 import StageBucketsPage from './StageBucketsPage'
 import BookingDeleteRequestsPage from './BookingDeleteRequestsPage'
+const Customers = lazy(() => import('./Customers'))
+const BookingsArchive = lazy(() => import('./BookingsArchive'))
+const SalesOpportunitiesPage = lazy(() => import('./SalesOpportunitiesPage'))
 
 // ═══ «الحجوزات» — ثلاث شاشات بمدخل واحد ═══
 //
@@ -68,6 +71,10 @@ const TABS = [
   // ٩ — مخرج ثاني: انطلب حذفه وينتظر قرار المراقب
   // «الحجوزات الي ينحذفن أريدهن يترحّلن بعد، ما أريد يضلن بمكان واحد».
   { key: 'deleting' as const, label: 'بانتظار قرار الحذف', icon: '🗑️' },
+  // ترتيب (ع) 10-04: العملاء والأرشيف وفرص البيع ويا الحجوزات بشاشة وحدة.
+  { key: 'customers' as const, label: 'العملاء', icon: '👤' },
+  { key: 'archive' as const, label: 'أرشيف الحجوزات', icon: '🗄️' },
+  { key: 'opportunities' as const, label: 'فرص البيع', icon: '💡' },
 ]
 
 
@@ -146,8 +153,14 @@ export default function BookingsHub() {
     deleting: 'delete_pending', stuck: 'stuck',
     awaiting_customer: 'awaitingCustomer',
   }
+  // نفس حارس بنود القائمة القديمة بالضبط.
+  const isAdminLike = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  const canCustomers = isAdminLike || ['HR_COORDINATOR', 'MONITOR'].includes(employee?.role ?? '') || permissions.includes('manage_customers')
+  const canArchive = isAdminLike || employee?.role === 'MONITOR' || permissions.includes('bookings_archive')
+  const canOpps = isAdminLike || permissions.includes('sales_booking')
   const shown = TABS.filter((t) =>
-    (t.key === 'new' && canCreate)
+    (t.key === 'customers' && canCustomers) || (t.key === 'archive' && canArchive) || (t.key === 'opportunities' && canOpps)
+    || (t.key === 'new' && canCreate)
     || (t.key === 'coord' && canCoord)
     // «ما وصلت للتنفيذ» شغل تنسيق: منو يتابع الزبون الي ما رد
     || (t.key === 'stuck' && canCoord)
@@ -161,7 +174,7 @@ export default function BookingsHub() {
     || (t.key === 'projects' && canCoord)
     // ⚠️ باقي المحطات (بانتظار التثبيت · تم التثبيت · مكلّف · تم
     // الإنجاز) تحتاج صلاحية شاملة — چانت مفتوحة للكل بلا فحص.
-    || (canViewAll && t.key !== 'new' && t.key !== 'coord' && t.key !== 'stuck' && t.key !== 'partial' && t.key !== 'deleting' && t.key !== 'projects' && t.key !== 'awaiting_customer'),
+    || (canViewAll && !['new', 'coord', 'stuck', 'partial', 'deleting', 'projects', 'awaiting_customer', 'customers', 'archive', 'opportunities'].includes(t.key)),
   )
 
   // ⚠️ التبويب الافتراضي `pending` صار ممكن ما يكون ضمن المسموح —
@@ -245,6 +258,11 @@ export default function BookingsHub() {
         : <BookingsList key="deleting" bucket="delete_pending" />)}
       {activeTab === 'stuck' && <StageBucketsPage />}
       {activeTab === 'awaiting_customer' && <StageBucketsPage only="AWAITING_CUSTOMER_DECISION" />}
+      <Suspense fallback={<p className="text-slate-400">جاري التحميل…</p>}>
+        {activeTab === 'customers' && <Customers />}
+        {activeTab === 'archive' && <BookingsArchive />}
+        {activeTab === 'opportunities' && <SalesOpportunitiesPage />}
+      </Suspense>
       </>}
     </div>
   )

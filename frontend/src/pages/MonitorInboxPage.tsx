@@ -8,6 +8,8 @@ import { matches } from '../utils/search'
 import { useSaveGuard } from '../useSaveGuard'
 import PageHeader from '../components/PageHeader'
 import StatTile from '../components/StatTile'
+import { useSession } from '../session'
+import DuplicateReviewPage from './DuplicateReviewPage'
 import SearchBar from '../components/SearchBar'
 import EmptyState from '../components/EmptyState'
 import SaveError from '../components/SaveError'
@@ -53,6 +55,10 @@ interface EmbeddedProps { embedded?: boolean }
 
 export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
   const [stage, setStage] = useState<MonitorStage>('INVOICE_BEFORE_AUDIT')
+  // ترتيب (ع) 10-04: «تدقيق التكرار» تبويب لحاله جنب «أحكام ماتركس» — نفس الشاشة.
+  const { employee, permissions } = useSession()
+  const canDup = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER' || permissions.includes('duplicate_review')
+  const [dupMode, setDupMode] = useState(false)
   const [showDone, setShowDone] = useState(false)
   const [ownerRole, setOwnerRole] = useState('')
   const [query, setQuery] = useState('')
@@ -156,12 +162,12 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
         {STAGES.map((st) => (
           <button
             key={st.key}
-            onClick={() => { setStage(st.key); setPage(1) }}
+            onClick={() => { setStage(st.key); setPage(1); setDupMode(false) }}
             title={st.hint}
             className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${
-              stage === st.key ? 'border-brand-600 bg-brand-600 text-white' : ''
+              stage === st.key && !dupMode ? 'border-brand-600 bg-brand-600 text-white' : ''
             }`}
-            style={stage === st.key ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
+            style={stage === st.key && !dupMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}
           >
             {st.label}
             {counts[st.key] > 0 && (
@@ -171,8 +177,17 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
             )}
           </button>
         ))}
+        {canDup && (
+          <button onClick={() => setDupMode(true)} title="حجوزات وزبائن مكررة — ماتركس يكتشفها كل ساعة"
+            className={`rounded-lg border px-3 py-2 text-xs font-bold transition-colors ${dupMode ? 'border-violet-600 bg-violet-600 text-white' : ''}`}
+            style={dupMode ? undefined : { borderColor: 'var(--bd-line)', backgroundColor: 'var(--sf-card)', color: 'var(--t-body)' }}>
+            🤖 تدقيق التكرار
+          </button>
+        )}
       </div>
 
+      {dupMode && <DuplicateReviewPage />}
+      <div className={dupMode ? 'hidden' : 'contents'}>
       <SearchBar value={query} onChange={(v) => { setQuery(v); setPage(1) }} placeholder="ابحث بالعنوان أو الملخص أو صاحب الشغل...">
         <label className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--t-body)' }}>
           <input type="checkbox" checked={showDone} onChange={(e) => { setShowDone(e.target.checked); setPage(1) }} />
@@ -308,6 +323,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
           <Pager page={page} perPage={perPage} total={filtered.length} unit="صف" onPage={setPage} onPerPage={setPerPage} />
         </>
       )}
+      </div>
     </div>
   )
 }

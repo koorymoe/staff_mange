@@ -54,6 +54,7 @@ const BookingsHub = lazy(() => import('./pages/BookingsHub'))
 const MyTasks = lazy(() => import('./pages/MyTasks'))
 const MyRanking = lazy(() => import('./pages/MyRanking'))
 const MyExtraTasksPage = lazy(() => import('./pages/MyExtraTasksPage'))
+const MyWorkPage = lazy(() => import('./pages/MyWorkPage'))
 const MyExpenses = lazy(() => import('./pages/MyExpenses'))
 const Finance = lazy(() => import('./pages/Finance'))
 const ExpensesReview = lazy(() => import('./pages/ExpensesReview'))
@@ -223,6 +224,7 @@ function App() {
           <Route path="my-ranking" element={<MyRanking />} />
           {/* مهامي الإضافية — بلا حارس: هاي مهام الموظف نفسه */}
           <Route path="my-extra-tasks" element={<MyExtraTasksPage />} />
+          <Route path="my-work" element={<MyWorkPage />} />
           <Route path="my-expenses" element={<MyExpenses />} />
           <Route path="finance" element={<Finance />} />
           <Route path="expenses" element={<ExpensesReview />} />

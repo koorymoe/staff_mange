@@ -31,8 +31,10 @@ const LeaderInvoicesListPage = lazy(() => import('./LeaderInvoicesListPage'))
 const MonitorGpsPage = lazy(() => import('./MonitorGpsPage'))
 const MonitorInventoryPage = lazy(() => import('./MonitorInventoryPage'))
 const ComplaintsPage = lazy(() => import('./ComplaintsPage'))
+const MissionsPage = lazy(() => import('./MissionsPage'))
+const MonitorDashboard = lazy(() => import('./MonitorDashboard'))
 
-type SectionId = 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory'
+type SectionId = 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board'
 
 interface Section {
   id: SectionId
@@ -58,6 +60,9 @@ const SECTIONS: Section[] = [
   // يضيف ويحذف أدوات ويوافق على الطلبات). المراقب يشوف منو جرد ومنو
   // ما جرد وشنو ناقص وليش — ويحاسب، ما ينفّذ.
   { id: 'inventory', label: 'متابعة الجرد', icon: '📦', todo: 'منو جرد ومنو ما جرد، وشنو ناقص وليش' },
+  // ترتيب (ع) 10-04: «تتبع المهام» و«لوحة المراقبة» صارن هنا بدل القائمة.
+  { id: 'missions', label: 'تتبع المهام', icon: '🎯', todo: 'منو طلع، وليش تأخر، وليش ما خلص' },
+  { id: 'board', label: 'لوحة المراقبة', icon: '🖥️', todo: 'نظرة عامة على الحجوزات والكوادر' },
 ]
 
 // عدّاد كل قسم — واحد لكل طابور، من مسار عدّ واحد يجمع الخمسة
@@ -109,7 +114,9 @@ export default function MonitorDeskPage() {
   // تفسير يخلّي المراقب يظن النظام مكسوراً، وقسم يفتح ويرفض أسوأ.
   const shown = SECTIONS.filter((s) =>
     (s.id !== 'quality' || canQuality) && (s.id !== 'crew' || canCrew) && (s.id !== 'gps' || canGps)
-    && (s.id !== 'inventory' || canInventory))
+    && (s.id !== 'inventory' || canInventory)
+    && (s.id !== 'missions' || isMon || permissions.includes('mission_tracking'))
+    && (s.id !== 'board' || isMon || permissions.includes('monitoring')))
 
   const cur = shown.find((s) => s.id === active) ?? shown[0]
 
@@ -185,6 +192,8 @@ export default function MonitorDeskPage() {
         {active === 'crew' && canCrew && <MonitorCrewBookingsPage embedded />}
         {active === 'gps' && canGps && <MonitorGpsPage embedded />}
         {active === 'inventory' && canInventory && <MonitorInventoryPage embedded />}
+        {cur?.id === 'missions' && <MissionsPage />}
+        {cur?.id === 'board' && <MonitorDashboard />}
       </Suspense>
     </div>
   )

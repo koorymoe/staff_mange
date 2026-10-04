@@ -348,6 +348,8 @@ export default function Layout() {
     const out: PrunedItem[] = []
     for (const item of items) {
       if (!isVisible(item, unitGranted)) continue
+      // ترتيب (ع) لقائمة المراقب: البند صار تبويباً بشاشة ثانية — ينشال من القائمة بس.
+      if (item.monitorMenuHide && role === 'MONITOR') continue
       const granted =
         unitGranted ||
         (!!item.unitPermission && (role === 'ADMIN' || employeePermissions.includes(item.unitPermission)))
