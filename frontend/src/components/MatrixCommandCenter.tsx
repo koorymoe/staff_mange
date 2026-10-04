@@ -39,7 +39,16 @@ function since(at: string) {
 // نسبة الإنجاز (الجزئي بنص) − غياب/تأخير اليوم − البطء عن المتوقع.
 // ⚠️ چان «١٠٠ − score×٣» فكل من عنده حجوزات مفتوحة يطلع ٠٪ «يحتاج دعم».
 type Member = GroupPerformance['members'][number]
-function perfIndex(m: Member) {
+// غير الميدانيين: ما ينقاسون بحجوزات ولا سرعة — شغل دورهم بآخر ٣٠ يوم موجود
+// لو لا، وحضورهم على جدولهم الحقيقي بس (بلا جدول = بلا خصم).
+function perfIndex(m: Member, field = true) {
+  if (!field) {
+    const done = (m.metrics ?? []).reduce((a, x) => a + x.value, 0)
+    let d = done > 0 ? 90 : 55
+    if (m.absent) d -= 15
+    else if (m.late > 0) d -= Math.min(20, m.late / 3)
+    return Math.max(0, Math.min(100, Math.round(d)))
+  }
   let v = m.jobs > 0 ? ((m.completed + m.partial * 0.5) / m.jobs) * 100 : 90
   if (m.absent) v -= 15
   else if (m.late > 0) v -= Math.min(20, m.late / 3)
@@ -224,7 +233,10 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
       if (!p) return { title: 'أداء الكادر مستقر ✅', sub: `${members.length} موظف — ماكو مشكلة بارزة هسه.`, cause: '—', impact: '—', suggestion: 'كمّلوا بنفس الوتيرة.', severity: 'LOW' as const, link: '', evidence: { 'موظفين': members.length } }
       return {
         title: p.text, sub: `بمجموعة ${GROUP_LABEL[p.group as EyeGroup] ?? p.group}. ${slow ? `${slow} موظف يطوّلون أكثر من المتوقع بـ٤٠٪+.` : ''}`,
-        cause: 'من مقارنة وقت كل حجز بالمتوقع لنفس الخدمة، والحضور مقابل الجدول.', impact: 'تأخّر الحجوزات وضغط على باقي الكادر.',
+        cause: perf.find((g) => g.group === p.group)?.field === false
+          ? 'من شغل الدور المسجّل بالنظام بآخر ٣٠ يوم، والحضور مقابل الجدول المسجّل.'
+          : 'من مقارنة وقت كل حجز بالمتوقع لنفس الخدمة، والحضور مقابل الجدول.',
+        impact: perf.find((g) => g.group === p.group)?.field === false ? 'طابور الدور يتراكم ويتأخر على باقي الأقسام.' : 'تأخّر الحجوزات وضغط على باقي الكادر.',
         suggestion: p.fixes[0] ?? '—', severity: 'MEDIUM' as const, link: p.link ?? '',
         evidence: perfEvidence(p.group, perf, groups),
       }
@@ -400,8 +412,14 @@ function TrendChart({ days }: { days: MatrixTrendDay[] }) {
 
 // ── قائمة مراقبة الموظفين (تصميم (ع)) ──
 function WatchList({ perf }: { perf: GroupPerformance[] }) {
-  const all = perf.flatMap((g) => g.members.map((m) => ({ ...m, group: g.group, idx: perfIndex(m) })))
-  const rows = [...all].sort((a, b) => a.idx - b.idx).slice(0, 6)
+  // كل موظف ينقاس بشغل دوره، والترتيب داخل مجموعته: أضعف واحد من كل مجموعة أول،
+  // حتى ما ينقارن محاسب ويا فني بنفس المسطرة.
+  const all = perf.flatMap((g) => g.members.map((m) => ({ ...m, group: g.group, idx: perfIndex(m, g.field !== false) })))
+  const rank = new Map<string, number>()
+  for (const g of perf) {
+    [...g.members].map((m) => ({ id: m.id, i: perfIndex(m, g.field !== false) })).sort((a, b) => a.i - b.i).forEach((x, n) => rank.set(x.id, n))
+  }
+  const rows = [...all].sort((a, b) => (rank.get(a.id) ?? 0) - (rank.get(b.id) ?? 0) || a.idx - b.idx).slice(0, 6)
   const good = all.filter((m) => m.idx >= 75).length
   const support = all.filter((m) => m.idx < 60).length
   return (

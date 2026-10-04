@@ -5748,7 +5748,11 @@ export interface EmployeeReport {
   summary: string
   summaryBy: 'RULES' | 'MODEL'
   workload: MatrixWorkload[] | null
+  /** شغله حجوزات وطلعات؟ غير الميدانيين ينقاسون بشغل دورهم (role). */
+  field: boolean
+  role?: { title: string; metrics: RoleMetric[]; done: number; pending: number; lines: ReportLine[] }
 }
+export interface RoleMetric { label: string; value: number }
 export interface MatrixBusiness {
   months: { month: string; bookings: number; revenue: number; invoiced: number }[]
   mtd: { bookings: number; revenue: number; lastBookings: number; lastRevenue: number }
@@ -5772,7 +5776,10 @@ export interface WorkScheduleRow {
 
 export interface GroupPerformance {
   group: string
-  members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; jobs: number; completed: number; partial: number; open: number; speed: number | null; prevSpeed: number | null; score: number }[]
+  /** حجوزات وسرعة للميدانيين بس؛ الباقين بشغل دورهم (columns/metrics). */
+  field: boolean
+  columns?: string[]
+  members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; jobs: number; completed: number; partial: number; open: number; speed: number | null; prevSpeed: number | null; score: number; noSchedule?: boolean; metrics?: RoleMetric[]; pending?: number }[]
   problems: { text: string; link?: string; fixes: string[] }[]
 }
 

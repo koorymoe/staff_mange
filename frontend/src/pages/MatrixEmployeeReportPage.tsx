@@ -138,7 +138,8 @@ export default function MatrixEmployeeReportPage() {
             <Section title="🌴 الإجازات"><Lines lines={rep.leaves} /></Section>
           </div>
 
-          <Section title={`🔧 الحجوزات (${rep.jobs.length})`}>
+          {/* الحجوزات والسرعة للميدانيين بس — المحاسب والمراقب بشغل دورهم. */}
+          {rep.field !== false && <Section title={`🔧 الحجوزات (${rep.jobs.length})`}>
             {rep.jobs.length === 0 ? <p className="text-xs text-slate-400">ماكو حجوزات بهاليوم.</p> : (
               <div className="space-y-3">
                 {rep.jobs.map((j) => (
@@ -157,9 +158,23 @@ export default function MatrixEmployeeReportPage() {
                 ))}
               </div>
             )}
-          </Section>
+          </Section>}
 
-          <Section title="📈 الأداء (آخر ٣٠ يوم)">
+          {rep.field === false && rep.role && (
+            <Section title={`${rep.role.title} (آخر ٣٠ يوم)`}>
+              <div className="mb-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {rep.role.metrics.map((m) => (
+                  <div key={m.label} className="rounded-xl bg-slate-50 p-2 text-center ring-1 ring-slate-100">
+                    <b className="block text-xl text-[#0f2040]">{m.value}</b>
+                    <span className="text-[11px] text-slate-500">{m.label}</span>
+                  </div>
+                ))}
+              </div>
+              <Lines lines={rep.role.lines} group={rep.group} />
+            </Section>
+          )}
+
+          {rep.field !== false && <Section title="📈 الأداء (آخر ٣٠ يوم)">
             <Lines lines={rep.performance ?? []} group={rep.group} />
             {rep.slowJobs?.length > 0 && (
               <div className="mt-3">
@@ -179,7 +194,7 @@ export default function MatrixEmployeeReportPage() {
                 </table>
               </div>
             )}
-          </Section>
+          </Section>}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <Section title="🧭 شخصيته بالشغل (آخر ٣٠ يوم)"><Lines lines={rep.behavior} group={rep.group} /></Section>

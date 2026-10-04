@@ -565,3 +565,32 @@ func (r *AiActionRepository) ReassignOpenGps(kind, toID, label string) {
 		FROM "Employee" e WHERE e.id = a."targetEmployeeId" AND a.kind = $1 AND a."resolvedAt" IS NULL
 		  AND e.role IN ('ADMIN', 'OWNER')`, kind, toID, label)
 }
+
+// ═══ شغل كل دور بآخر N يوم — ماتركس يقيس كل موظف بشغل دوره هو ═══
+// (ع): «مو كل الموظفين ينحسبلهم حجوزات — عندي محاسب ومراقب ومدير».
+
+type RoleCounts struct {
+	InvoicesApproved int // فواتير اعتمدها (المحاسبة)
+	InvoicesAudited  int // فواتير دقّقها (المراقبة / تدقيق مالي)
+	Reviews          int // بنود حكم عليها بصندوق المراقب
+	ReviewsFlagged   int // منها «عليه ملاحظة»
+	BookingsCreated  int // حجوزات سجّلها (التنسيق / المبيعات)
+	QualityDone      int // متابعات جودة: اتصل أو فحص
+	DesignUploads    int // تصاميم رفعها
+	Actions          int // كل عملية حفظ بالنظام (سجل النشاط)
+}
+
+func (r *AiActionRepository) RoleCounts(id string, days int) RoleCounts {
+	since := `now() - make_interval(days => $2)`
+	return RoleCounts{
+		InvoicesApproved: r.count(`SELECT COUNT(*) FROM "LeaderInvoice" WHERE "approvedByEmployeeId" = $1 AND "approvedAt" >= `+since, id, days),
+		InvoicesAudited:  r.count(`SELECT COUNT(*) FROM "LeaderInvoice" WHERE "auditedById" = $1 AND "auditedAt" >= `+since, id, days),
+		Reviews:          r.count(`SELECT COUNT(*) FROM "MonitorReview" WHERE "reviewedById" = $1 AND "reviewedAt" >= `+since, id, days),
+		ReviewsFlagged:   r.count(`SELECT COUNT(*) FROM "MonitorReview" WHERE "reviewedById" = $1 AND status = 'FLAGGED' AND "reviewedAt" >= `+since, id, days),
+		BookingsCreated:  r.count(`SELECT COUNT(*) FROM "Booking" WHERE "createdById" = $1 AND "createdAt" >= `+since, id, days),
+		QualityDone: r.count(`SELECT COUNT(*) FROM "QualityFollowUp" WHERE ("inspectedById" = $1 AND "inspectedAt" >= `+since+`)
+			OR ("contactedByEmployeeId" = $1 AND "contactedAt" >= `+since+`)`, id, days),
+		DesignUploads: r.count(`SELECT COUNT(*) FROM "DesignAsset" WHERE "uploadedById" = $1 AND "createdAt" >= `+since, id, days),
+		Actions:       r.count(`SELECT COUNT(*) FROM "EmployeeActivity" WHERE "employeeId" = $1 AND "createdAt" >= `+since, id, days),
+	}
+}

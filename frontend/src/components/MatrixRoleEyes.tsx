@@ -139,24 +139,32 @@ export function GroupPerf({ group }: { group: string }) {
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead><tr className="text-right text-xs text-slate-500">
-            <th className="p-2">الموظف</th><th className="p-2">اليوم</th><th className="p-2">حجوزات</th><th className="p-2">منجز</th><th className="p-2">جزئي</th><th className="p-2">مفتوح</th><th className="p-2">السرعة</th>
+            <th className="p-2">الموظف</th><th className="p-2">اليوم</th>
+            {/* الميدانيين بحجوزاتهم؛ الباقين بأعمدة شغل دورهم من الخادم. */}
+            {d.field
+              ? <><th className="p-2">حجوزات</th><th className="p-2">منجز</th><th className="p-2">جزئي</th><th className="p-2">مفتوح</th><th className="p-2">السرعة</th></>
+              : (d.columns ?? []).map((c) => <th key={c} className="p-2 text-center">{c}</th>)}
           </tr></thead>
           <tbody>
             {d.members.map((m) => (
               <tr key={m.id} className={`border-t border-slate-100 ${m.score >= 10 ? 'bg-red-50/50' : ''}`}>
                 <td className="p-2 font-bold"><Link to={`/matrix/employee/${m.id}`} className="text-brand-700 hover:underline">{m.name} ←</Link></td>
-                <td className="p-2 text-xs">{m.absent ? <span className="font-bold text-red-600">ما حضر</span> : m.checkIn ? <span className={m.late ? 'text-amber-700' : 'text-emerald-700'}>{m.checkIn}{m.late ? ` (+${m.late}د)` : ''}</span> : '—'}</td>
-                <td className="p-2 text-center">{m.jobs}</td>
-                <td className="p-2 text-center text-emerald-700">{m.completed}</td>
-                <td className={`p-2 text-center ${m.partial ? 'font-bold text-amber-700' : ''}`}>{m.partial}</td>
-                <td className={`p-2 text-center ${m.open ? 'text-slate-700' : 'text-slate-400'}`}>{m.open}</td>
-                <td className="p-2 text-center">{speedCell(m.speed, m.prevSpeed)}</td>
+                <td className="p-2 text-xs">{m.absent ? <span className="font-bold text-red-600">ما حضر</span> : m.checkIn ? <span className={m.late ? 'text-amber-700' : 'text-emerald-700'}>{m.checkIn}{m.late ? ` (+${m.late}د)` : ''}</span> : m.noSchedule ? <span className="text-slate-400" title="ما عنده جدول دوام مسجّل">بلا جدول</span> : '—'}</td>
+                {d.field ? <>
+                  <td className="p-2 text-center">{m.jobs}</td>
+                  <td className="p-2 text-center text-emerald-700">{m.completed}</td>
+                  <td className={`p-2 text-center ${m.partial ? 'font-bold text-amber-700' : ''}`}>{m.partial}</td>
+                  <td className={`p-2 text-center ${m.open ? 'text-slate-700' : 'text-slate-400'}`}>{m.open}</td>
+                  <td className="p-2 text-center">{speedCell(m.speed, m.prevSpeed)}</td>
+                </> : (m.metrics ?? []).map((x) => <td key={x.label} className={`p-2 text-center ${x.value ? 'text-emerald-700' : 'text-slate-400'}`}>{x.value}</td>)}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] text-slate-400">السرعة = الوقت الفعلي ÷ المتوقع لنفس الخدمة (×١ طبيعي، أكبر = أبطأ). ↓ تراجع عن الشهر الي قبله، ↑ تحسّن.</p>
+      <p className="text-[11px] text-slate-400">{d.field
+        ? 'السرعة = الوقت الفعلي ÷ المتوقع لنفس الخدمة (×١ طبيعي، أكبر = أبطأ). ↓ تراجع عن الشهر الي قبله، ↑ تحسّن.'
+        : 'كل موظف بشغل دوره المسجّل بالنظام بآخر ٣٠ يوم — مو بالحجوزات. الحضور على الجدول المسجّل بس.'}</p>
     </section>
   )
 }

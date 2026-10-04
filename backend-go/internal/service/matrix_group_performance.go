@@ -28,6 +28,11 @@ type GroupMember struct {
 	Speed     *float64 `json:"speed"`     // الفعلي ÷ المتوقع (١ = طبيعي)
 	PrevSpeed *float64 `json:"prevSpeed"` // نفسه للشهر الي قبله
 	Score     int      `json:"score"`     // للترتيب بس — أعلى = يحتاج انتباه أكثر
+	// NoSchedule = ما عنده جدول دوام مسجّل، فما نحكم على حضوره وتأخيره.
+	NoSchedule bool `json:"noSchedule,omitempty"`
+	// غير الميدانيين: شغل دورهم بدل الحجوزات (نفس ترتيب Columns).
+	Metrics []RoleMetric `json:"metrics,omitempty"`
+	Pending int          `json:"pending,omitempty"`
 }
 
 type GroupProblem struct {
@@ -38,6 +43,8 @@ type GroupProblem struct {
 
 type GroupPerformance struct {
 	Group    string         `json:"group"`
+	Field    bool           `json:"field"`             // حجوزات وسرعة (ليدرية وفنيين)
+	Columns  []string       `json:"columns,omitempty"` // أعمدة شغل الدور لغير الميدانيين
 	Members  []GroupMember  `json:"members"`
 	Problems []GroupProblem `json:"problems"`
 }
@@ -58,16 +65,23 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 	now := time.Now().In(debriefLoc)
 	day := now.Format("2006-01-02")
 	dayT, _ := time.ParseInLocation("2006-01-02", day, debriefLoc)
-	out := &GroupPerformance{Group: group, Members: []GroupMember{}, Problems: []GroupProblem{}}
-	var late, absent, slow, partial []string
+	field := IsFieldGroup(group)
+	out := &GroupPerformance{Group: group, Field: field, Members: []GroupMember{}, Problems: []GroupProblem{}}
+	var late, absent, slow, partial, idle []string
 	for _, sub := range subs {
 		if WatchGroup(sub) != group {
 			continue
 		}
 		m := GroupMember{ID: sub.ID, Name: sub.Name}
 		if e, err := s.repo.Employee(sub.ID); err == nil {
-			start, _, _ := shiftWindow(e)
-			if att, _ := s.repo.Attendance(sub.ID, day); len(att) > 0 {
+			start, _, assumed := shiftWindow(e)
+			// بلا جدول مسجّل: نعرض وكت الحضور بس، بلا «غايب» ولا «متأخر».
+			m.NoSchedule = assumed
+			if att, _ := s.repo.Attendance(sub.ID, day); len(att) > 0 && assumed {
+				m.CheckIn = hm(att[0].CheckIn)
+			} else if assumed {
+				// لا شي
+			} else if len(att) > 0 {
 				m.CheckIn = hm(att[0].CheckIn)
 				if l := mins(att[0].CheckIn.Sub(atClock(dayT, start))); l > lateGraceMin {
 					m.Late = l
@@ -77,6 +91,25 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 				m.Absent = true
 				absent = append(absent, sub.Name)
 			}
+		}
+		if !field {
+			ro := s.watch.roleOutput(sub, 30)
+			m.Metrics, m.Pending = ro.Metrics, ro.Pending
+			if out.Columns == nil {
+				for _, x := range ro.Metrics {
+					out.Columns = append(out.Columns, x.Label)
+				}
+			}
+			m.Score = m.Late / 10
+			if m.Absent {
+				m.Score += 10
+			}
+			if ro.Done == 0 && group != "ADMINS" {
+				m.Score += 8
+				idle = append(idle, sub.Name)
+			}
+			out.Members = append(out.Members, m)
+			continue
 		}
 		if p, err := s.repo.Performance(sub.ID, 0); err == nil {
 			m.Jobs, m.Completed, m.Partial = p.Total, p.Completed, p.Partial
@@ -112,6 +145,7 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 	add(slow, "%d يطوّلون بالحجز أكثر من المتوقع بـ٤٠٪ أو أكثر: %v", "/bookings", "وزّع الحجوزات الكبيرة على كادر أكبر.", "تدريب على الخدمات الي يطوّلون بيها.")
 	add(partial, "%d ربع حجوزاتهم أو أكثر جزئية: %v", "/bookings", "تأكد من تجهيز المواد والعدّة قبل الطلعة.")
 	add(late, "%d تأخّروا اليوم: %v", "/work-schedule", "ذكّرهم قبل الدوام.", "راجع إذا وقت البداية يناسب شغلهم.")
+	add(idle, "%d ما سجّلوا شغل دورهم بآخر ٣٠ يوم: %v", "", "تأكد كل واحد يشتغل بحسابه هو.", "راجع إذا الصلاحيات تكفيه يسوي شغله.")
 	if len(out.Problems) > 3 {
 		out.Problems = out.Problems[:3]
 	}
@@ -136,6 +170,10 @@ func (s *MatrixLearningService) detectDeclines() int {
 	month := time.Now().In(debriefLoc).Format("2006-01")
 	n := 0
 	for _, sub := range subs {
+		// «صار يطوّل بالحجوزات» للميدانيين بس.
+		if !IsFieldGroup(WatchGroup(sub)) {
+			continue
+		}
 		cur, err1 := s.reports.repo.Performance(sub.ID, 0)
 		prev, err2 := s.reports.repo.Performance(sub.ID, 30)
 		if err1 != nil || err2 != nil || cur.Timed < 3 || prev.Timed < 3 || cur.AvgExpected <= 0 || prev.AvgExpected <= 0 {

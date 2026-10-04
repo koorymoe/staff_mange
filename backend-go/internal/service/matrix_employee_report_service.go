@@ -70,6 +70,10 @@ type EmployeeReport struct {
 	Summary     string         `json:"summary"`
 	SummaryBy   string         `json:"summaryBy"` // RULES | MODEL
 	Workload    []WorkloadItem `json:"workload"`
+	// Field = شغله حجوزات وطلعات (ليدرية وفنيين). غير الميدانيين ما ينحسبلهم
+	// حجوزات ولا سرعة — ينقاسون بشغل دورهم (Role).
+	Field bool        `json:"field"`
+	Role  *RoleOutput `json:"role,omitempty"`
 }
 
 type MatrixEmployeeReportService struct {
@@ -150,20 +154,29 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 			rep.Workload = s.watch.workload(*subj)
 		}
 	}
+	rep.Field = IsFieldGroup(rep.Group) || (rep.Group == "" && e.IsLeader)
+	if subj != nil && !rep.Field {
+		ro := s.watch.roleOutput(*subj, 30)
+		rep.Role = &ro
+	}
 
 	// ── الدوام ──
 	start, end, assumed := shiftWindow(e)
 	note := ""
-	if assumed {
-		note = " (الجدول افتراضي — ماكو جدول مسجّل إله)"
-	}
 	att, _ := s.repo.Attendance(employeeID, day)
 	shiftMin := mins(atClock(dayT, end).Sub(atClock(dayT, start)))
-	if len(att) == 0 {
-		rep.Attendance = append(rep.Attendance, rl(Fmt("ما سجّل حضور هاليوم. جدوله من %s لـ%s%s.", start, end, note), "BAD"))
-		if assumed {
-			rep.Attendance[len(rep.Attendance)-1].Link = "/work-schedule"
+	// بلا جدول مسجّل ما نحكم: «ما سجّل حضور» على جدول ٨–٤ مفترض چان يطلع
+	// BAD للمالك والمدير وكل واحد ما عنده جدول. الحكم على الجدول الحقيقي بس.
+	if assumed && len(att) == 0 {
+		line := rl("ما عنده جدول دوام مسجّل، وما سجّل حضور هاليوم.", "INFO")
+		if rep.Group != "ADMINS" {
+			line.Link = "/work-schedule"
 		}
+		rep.Attendance = append(rep.Attendance, line)
+	} else if assumed {
+		rep.Attendance = append(rep.Attendance, rl(Fmt("حضر الساعة %s (ما عنده جدول دوام مسجّل حتى نقيس التأخير).", hm(att[0].CheckIn)), "INFO"))
+	} else if len(att) == 0 {
+		rep.Attendance = append(rep.Attendance, rl(Fmt("ما سجّل حضور هاليوم. جدوله من %s لـ%s.", start, end), "BAD"))
 	} else {
 		first := att[0].CheckIn
 		late := mins(first.Sub(atClock(dayT, start)))
@@ -193,7 +206,10 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 	}
 
 	// ── الحجوزات ومراحلها ──
-	jobs, _ := s.repo.Jobs(employeeID, day)
+	jobs := []repository.DayJob{}
+	if rep.Field {
+		jobs, _ = s.repo.Jobs(employeeID, day)
+	}
 	for _, j := range jobs {
 		rj := ReportJob{Code: j.Code, Service: j.Service.String, Status: j.Status, Stages: []ReportStage{}, Lines: []ReportLine{}}
 		type st struct {
@@ -301,7 +317,7 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 
 	// ── شخصيته بالشغل (٣٠ يوم، أرقام بس) ──
 	rng, _ := s.repo.AttendanceRange(employeeID, 30)
-	if len(rng) > 0 {
+	if len(rng) > 0 && !assumed {
 		onTime, lateSum, lateN, noOut := 0, 0, 0, 0
 		lateDays := map[time.Weekday]int{}
 		seen := map[string]bool{}
@@ -368,7 +384,8 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 	if c := s.repo.Complaints(employeeID); c > 0 {
 		rep.Behavior = append(rep.Behavior, rl(Fmt("%d شكوى مرتبطة بشغله بآخر ٣٠ يوم.", c), "BAD"))
 	}
-	if a, err := s.repo.Achievements(employeeID); err == nil {
+	// الإنجاز اليومي مطلوب من الميدانيين — المحاسب والمراقب ما يكتبوه.
+	if a, err := s.repo.Achievements(employeeID); err == nil && (rep.Field || a.Total > 0) {
 		if a.Total == 0 {
 			rep.Behavior = append(rep.Behavior, rl("ما كتب ولا إنجاز يومي بآخر ٣٠ يوم.", "WARN"))
 		} else {
@@ -398,7 +415,11 @@ func (s *MatrixEmployeeReportService) Report(employeeID, day string) (*EmployeeR
 		rep.Reminders = append(rep.Reminders, rl(line, t))
 	}
 
-	s.performance(rep, employeeID)
+	if rep.Field {
+		s.performance(rep, employeeID)
+	} else if rep.Role != nil {
+		rep.Performance = rep.Role.Lines
+	}
 	rep.Activity = []ActivityLine{}
 	if s.activity != nil {
 		rep.Activity = s.activity.Day(employeeID, day)

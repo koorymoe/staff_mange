@@ -154,9 +154,24 @@ func (s *MatrixCommandService) buildContext() *askContext {
 				}
 				ctx.names = append(ctx.names, m.Name)
 				tag := fmt.Sprintf("موظف#%d", len(ctx.names))
-				line := fmt.Sprintf("  %s (%s): حجوزات ٣٠ يوم %d، منجز %d، جزئي %d، مفتوح %d", tag, g.Group, m.Jobs, m.Completed, m.Partial, m.Open)
-				if m.Speed != nil {
-					line += fmt.Sprintf("، السرعة ×%.2f", *m.Speed)
+				// كل موظف بشغل دوره: الحجوزات للميدانيين، والباقين بجداول دورهم.
+				var line string
+				if gp.Field {
+					line = fmt.Sprintf("  %s (%s): حجوزات ٣٠ يوم %d، منجز %d، جزئي %d، مفتوح %d", tag, g.Group, m.Jobs, m.Completed, m.Partial, m.Open)
+					if m.Speed != nil {
+						line += fmt.Sprintf("، السرعة ×%.2f", *m.Speed)
+					}
+				} else {
+					line = fmt.Sprintf("  %s (%s): شغل دوره ٣٠ يوم:", tag, g.Group)
+					for i, x := range m.Metrics {
+						if i > 0 {
+							line += "،"
+						}
+						line += fmt.Sprintf(" %s %d", x.Label, x.Value)
+					}
+					if m.Pending > 0 {
+						line += fmt.Sprintf("، طابور دوره هسه %d", m.Pending)
+					}
 				}
 				if m.Absent {
 					line += "، ما حضر اليوم"
@@ -274,6 +289,15 @@ func rulesAnswer(c *askContext, q string) string {
 		lines = pick("الحجوزات آخر", "تأخّر اليوم", "ما حضر")
 	case containsAny(q, "ربح", "أرباح", "ارباح", "إيراد", "ايراد", "فلوس", "مبيعات"):
 		lines = pick("هالشهر لحد اليوم")
+	// سؤال عن دور معيّن: سطور مجموعته بس، بشغل دورها.
+	case containsAny(q, "محاسب", "المحاسبة", "حسابات"):
+		lines = pick("(FINANCE)", "مجموعة FINANCE")
+	case containsAny(q, "مراقب", "المراقبة", "تدقيق"):
+		lines = pick("(MONITORS)", "مجموعة MONITORS")
+	case containsAny(q, "منسق", "تنسيق", "منسّق"):
+		lines = pick("(COORDINATORS)", "مجموعة COORDINATORS")
+	case containsAny(q, "ليدر", "فني", "فنيين", "كادر"):
+		lines = pick("(LEADERS)", "(TECHS)", "مجموعة LEADERS", "مجموعة TECHS")
 	case containsAny(q, "أداء", "اداء", "موظف", "منو", "مين", "سرعة", "جزئي"):
 		lines = pick("موظف#", "مجموعة")
 	case containsAny(q, "اقتراح", "مقترح", "تحسين", "شسوي", "حل"):
@@ -298,4 +322,3 @@ func containsAny(s string, keys ...string) bool {
 	}
 	return false
 }
-
