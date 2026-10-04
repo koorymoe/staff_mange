@@ -31,6 +31,7 @@ var roleTitle = map[string]string{
 	"FINANCE": "📈 شغل المحاسبة", "MONITORS": "📈 شغل المراقبة", "COORDINATORS": "📈 شغل التنسيق",
 	"QUALITY": "📈 شغل الجودة", "DESIGN": "📈 شغل التصميم", "IT": "📈 شغل الدعم الفني",
 	"ADMINS": "📈 الإدارة", "STAFF": "📈 شغله بالنظام",
+	"SALES": "📈 شغل المبيعات", "PROJECTS": "📈 شغل المشاريع", "GPS": "📈 شغل الجي بي اس",
 }
 
 // roleOutput شغل الموظف المكتبي بآخر days يوم + طابور دوره الحالي.
@@ -58,6 +59,13 @@ func (s *MatrixAutopilotService) roleOutput(subj repository.WatchSubject, days i
 		add("متابعات جودة سوّاها", c.QualityDone)
 	case "DESIGN":
 		add("تصاميم رفعها", c.DesignUploads)
+	case "SALES":
+		add("حجوزات سجّلها", c.BookingsCreated)
+	case "PROJECTS":
+		add("مشاريع سجّلها أو مسؤول عنها", c.Projects)
+	case "GPS":
+		add("طلبات جي بي اس سجّلها", c.GpsRequests)
+		add("اتصالات تجديد", c.GpsCalls)
 	}
 	// كل عملية حفظ بالنظام — المقياس الوحيد للأدوار بلا جدول شغل خاص.
 	out.Metrics = append(out.Metrics, RoleMetric{Label: "عمليات بالنظام", Value: c.Actions})

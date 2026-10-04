@@ -44,6 +44,12 @@ function GroupMark({ group, color }: { group: EyeGroup; color: string }) {
       return <g opacity="0.85" stroke={color} strokeWidth="0.7"><line x1="-18" y1="0" x2="-13" y2="0" /><line x1="13" y1="0" x2="18" y2="0" /><line x1="0" y1="-18" x2="0" y2="-13" /><line x1="0" y1="13" x2="0" y2="18" /><circle r="16" fill="none" strokeDasharray="4 3" /></g>
     case 'IT': // دوائر إلكترونية
       return <g opacity="0.85" stroke={color} strokeWidth="0.6" fill="none"><path d="M-17 -4 h4 v-3 M17 4 h-4 v3 M-4 17 v-4 h-3 M4 -17 v4 h3" /><circle cx="-17" cy="-4" r="0.9" fill={color} /><circle cx="17" cy="4" r="0.9" fill={color} /></g>
+    case 'SALES': // أسهم صاعدة
+      return <g opacity="0.85" fill={color}>{Array.from({ length: 4 }, (_, i) => { const a = (i / 4) * Math.PI * 2 + Math.PI / 4; const x = Math.cos(a) * 16.5, y = Math.sin(a) * 16.5; return <path key={i} d={`M${x - 1.6} ${y + 1} L${x} ${y - 1.6} L${x + 1.6} ${y + 1}Z`} /> })}<circle r="16" fill="none" stroke={color} strokeWidth="0.4" /></g>
+    case 'PROJECTS': // مربعات بناء
+      return <g opacity="0.85" fill="none" stroke={color} strokeWidth="0.7">{Array.from({ length: 6 }, (_, i) => { const a = (i / 6) * Math.PI * 2; return <rect key={i} x={Math.cos(a) * 16.5 - 1.2} y={Math.sin(a) * 16.5 - 1.2} width="2.4" height="2.4" /> })}</g>
+    case 'GPS': // موجات إشارة
+      return <g opacity="0.85" fill="none" stroke={color} strokeWidth="0.7"><path d="M-12 -12 A17 17 0 0 1 12 -12" /><path d="M-9 -15 A20 20 0 0 1 9 -15" strokeDasharray="2 1.5" /><path d="M-12 12 A17 17 0 0 0 12 12" /><circle cx="0" cy="-17" r="1" fill={color} /></g>
     default:
       return <circle r="16" fill="none" stroke={color} strokeWidth="0.5" strokeDasharray="2 3" opacity="0.7" />
   }

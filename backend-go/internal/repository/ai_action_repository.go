@@ -591,6 +591,9 @@ type RoleCounts struct {
 	BookingsCreated  int // حجوزات سجّلها (التنسيق / المبيعات)
 	QualityDone      int // متابعات جودة: اتصل أو فحص
 	DesignUploads    int // تصاميم رفعها
+	Projects         int // مشاريع سجّلها أو مسؤول عنها (مدير المشاريع)
+	GpsRequests      int // طلبات أجهزة/تجديد/صيانة جي بي اس سجّلها
+	GpsCalls         int // اتصالات متابعة تجديد الجي بي اس
 	Actions          int // كل عملية حفظ بالنظام (سجل النشاط)
 }
 
@@ -605,6 +608,12 @@ func (r *AiActionRepository) RoleCounts(id string, days int) RoleCounts {
 		QualityDone: r.count(`SELECT COUNT(*) FROM "QualityFollowUp" WHERE ("inspectedById" = $1 AND "inspectedAt" >= `+since+`)
 			OR ("contactedByEmployeeId" = $1 AND "contactedAt" >= `+since+`)`, id, days),
 		DesignUploads: r.count(`SELECT COUNT(*) FROM "DesignAsset" WHERE "uploadedById" = $1 AND "createdAt" >= `+since, id, days),
+		Projects: r.count(`SELECT COUNT(*) FROM "Project" WHERE ("createdByEmployeeId" = $1 OR "responsibleEmployeeId" = $1)
+			AND "createdAt" >= `+since, id, days),
+		GpsRequests: r.count(`SELECT (SELECT COUNT(*) FROM "GpsDeviceRequest" WHERE "employeeId" = $1 AND "createdAt" >= `+since+`)
+			+ (SELECT COUNT(*) FROM "GpsRenewalRequest" WHERE "employeeId" = $1 AND "createdAt" >= `+since+`)
+			+ (SELECT COUNT(*) FROM "GpsMaintenanceRequest" WHERE "employeeId" = $1 AND "createdAt" >= `+since+`)`, id, days),
+		GpsCalls: r.count(`SELECT COUNT(*) FROM "GpsRenewalFollowUp" WHERE "calledById" = $1 AND "calledAt" >= `+since, id, days),
 		Actions:       r.count(`SELECT COUNT(*) FROM "EmployeeActivity" WHERE "employeeId" = $1 AND "createdAt" >= `+since, id, days),
 	}
 }

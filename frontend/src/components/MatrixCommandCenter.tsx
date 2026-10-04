@@ -64,7 +64,7 @@ function perfStatus(i: number) {
   if (i >= 60) return { t: 'متابعة', c: 'bg-amber-500/15 text-[var(--mx-warn)]', bar: '#f59e0b', dot: 'bg-amber-500' }
   return { t: 'يحتاج دعم', c: 'bg-red-500/15 text-[var(--mx-bad)]', bar: '#ef4444', dot: 'bg-red-500' }
 }
-const GROUP_ICON: Record<string, string> = { TECHS: '🔧', LEADERS: '🧭', MONITORS: '🔍', COORDINATORS: '🗂️', FINANCE: '💵', DESIGN: '🎨', QUALITY: '✅', IT: '💻', ADMINS: '👑', STAFF: '🏢' }
+const GROUP_ICON: Record<string, string> = { TECHS: '🔧', LEADERS: '🧭', MONITORS: '🔍', COORDINATORS: '🗂️', FINANCE: '💵', DESIGN: '🎨', QUALITY: '✅', IT: '💻', SALES: '🛒', PROJECTS: '🏗️', GPS: '📡', ADMINS: '👑', STAFF: '🏢' }
 function confidence(samples: number) { return samples >= 20 ? 87 : samples >= 8 ? 72 : 50 }
 
 export default function MatrixCommandCenter() {

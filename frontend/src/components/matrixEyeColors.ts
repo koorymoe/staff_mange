@@ -1,6 +1,6 @@
 // ألوان وتسميات عيون ماتركس — مشتركة بين عين الهيدر وعيون المدير.
 
-export type EyeGroup = 'ADMINS' | 'MONITORS' | 'COORDINATORS' | 'FINANCE' | 'LEADERS' | 'TECHS' | 'DESIGN' | 'QUALITY' | 'IT' | 'STAFF'
+export type EyeGroup = 'ADMINS' | 'MONITORS' | 'COORDINATORS' | 'FINANCE' | 'LEADERS' | 'TECHS' | 'SALES' | 'PROJECTS' | 'GPS' | 'DESIGN' | 'QUALITY' | 'IT' | 'STAFF'
 export type EyeMood = 'CALM' | 'PLEASED' | 'ALERT' | 'ANGRY'
 
 export const GROUP_COLOR: Record<EyeGroup, string> = {
@@ -13,6 +13,9 @@ export const GROUP_COLOR: Record<EyeGroup, string> = {
   DESIGN: '#f472b6',
   QUALITY: '#38bdf8',
   IT: '#3b82f6',
+  SALES: '#facc15',
+  PROJECTS: '#84cc16',
+  GPS: '#14b8a6',
   STAFF: '#818cf8',
 }
 
@@ -26,6 +29,9 @@ export const GROUP_LABEL: Record<EyeGroup, string> = {
   DESIGN: 'المصممين',
   QUALITY: 'الجودة',
   IT: 'تقنية المعلومات',
+  SALES: 'المبيعات',
+  PROJECTS: 'مدراء المشاريع',
+  GPS: 'الجي بي اس',
   STAFF: 'بقية الموظفين',
 }
 

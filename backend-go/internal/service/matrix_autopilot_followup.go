@@ -406,6 +406,13 @@ func WatchGroup(subj repository.WatchSubject) string {
 		return "IT"
 	case subj.Role == "DESIGNER":
 		return "DESIGN"
+	// عيون خاصة (چانوا يوقعون بـSTAFF وينقاسون بعمليات النظام بس).
+	case subj.Role == "SALES":
+		return "SALES"
+	case subj.Role == "PROJECT_MANAGER":
+		return "PROJECTS"
+	case subj.Role == "GPS_ADMIN" || subj.Role == "GPS_ENGINEER":
+		return "GPS"
 	case subj.IsLeader:
 		return "LEADERS"
 	case subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER":
@@ -517,7 +524,7 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "DESIGN", "QUALITY", "IT", "ADMINS", "STAFF"}
+	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "SALES", "PROJECTS", "GPS", "DESIGN", "QUALITY", "IT", "ADMINS", "STAFF"}
 	byGroup := map[string]*RoleGroupReport{}
 	for _, g := range order {
 		byGroup[g] = &RoleGroupReport{Group: g, Employees: []*WatchState{}}

@@ -32,6 +32,9 @@ const FALLBACK_ROUTES: Record<string, string[]> = {
   DESIGN: ['/design-gallery', '/design-forms', '/unit-design'],
   QUALITY: ['/quality-follow-ups', '/quality', '/complaints'],
   IT: ['/it-assets', '/it-stats'],
+  SALES: ['/bookings', '/customers'],
+  PROJECTS: ['/projects', '/staff-requests'],
+  GPS: ['/gps', '/gps/devices', '/gps/customers', '/gps/sims'],
   ADMINS: [],
   STAFF: [],
 }
