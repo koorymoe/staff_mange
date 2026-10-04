@@ -186,10 +186,10 @@ type PerfJob struct {
 type PerfStats struct {
 	Total, Completed, Partial, Timed, Outliers int
 	// Unstarted مفتوحة وما بدا بيها أحد (ما انثبتت، تأجلت، انتقلت) — تنسيق، مو تقصير الكادر.
-	Unstarted int
-	AvgActual, AvgExpected                     float64
-	GroupPartialRate                           float64 // -1 = ما معروف
-	Slow                                       []PerfJob
+	Unstarted              int
+	AvgActual, AvgExpected float64
+	GroupPartialRate       float64 // -1 = ما معروف
+	Slow                   []PerfJob
 }
 
 const perfJobsCTE = `
