@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from '../session'
 import ExtraTasksPage from './ExtraTasksPage'
+import MatrixNote from '../components/MatrixNote'
 
 const API = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 async function request<T>(path: string, opts?: RequestInit): Promise<T> {
@@ -449,9 +450,11 @@ export default function MissionsPage() {
                   if (f.length === 0 && !last && !m.booking.crewNotes) return null
                   return (
                     <div className="mb-3 space-y-1 text-[12px]">
-                      {f.map((x) => (
-                        <p key={x.text} className={`rounded-lg px-2 py-1 ${x.tone === 'red' ? 'bg-red-50 text-red-800' : x.tone === 'amber' ? 'bg-amber-50 text-amber-900' : 'bg-slate-50 text-slate-700'}`}>📌 {x.text}</p>
-                      ))}
+                      {f.length > 0 && (
+                        <MatrixNote>
+                          <ul className="mt-0.5 space-y-0.5">{f.map((x) => <li key={x.text}>{x.tone === 'red' ? '🔴' : x.tone === 'amber' ? '🟠' : '•'} {x.text}</li>)}</ul>
+                        </MatrixNote>
+                      )}
                       {last && <p className="rounded-lg bg-sky-50 px-2 py-1 text-sky-900">💬 آخر ملاحظة من {who(last.employeeId)}: «{last.note}» — {dateTimeStr(last.createdAt)}</p>}
                       {m.booking.crewNotes && <p className="rounded-lg bg-slate-50 px-2 py-1 text-slate-700">🗒️ ملاحظة الإداري للكادر: {m.booking.crewNotes}</p>}
                     </div>

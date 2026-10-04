@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type CrewRecommendation, type CrewSuggestion } from '../api'
+import MatrixNote from './MatrixNote'
 
 // ═══ ماتركس — «مقترح ماتركس» للكادر ═══
 // ⚠️ الأب يرسمه بس لمن يعبر حارس التكليف (ADMIN/OWNER أو coordinator
@@ -19,7 +20,7 @@ export default function CrewSuggestionChips({ bookingId, onPick }: { bookingId: 
 
   if (data === undefined || data === null) return null
   if (data.insufficient) {
-    return <p className="mt-2 text-[11px] text-slate-400">🧠 مقترح ماتركس: {data.note || 'ماكو بيانات كافية'}</p>
+    return <MatrixNote className="mt-2 !text-[11px]">مقترحي: {data.note || 'ماكو بيانات كافية'}</MatrixNote>
   }
 
   const row = (label: string, list: CrewSuggestion[]) => list.length > 0 && (

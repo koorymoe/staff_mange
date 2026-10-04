@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type ReplacementSuggestions } from '../api'
 import { useSession } from '../session'
+import MatrixNote from './MatrixNote'
 
 // ═══ ماتركس — اقتراح استبدال ═══
 // نفس حارس GET /api/ai/replacement-suggestions: ADMIN (والمالك) أو
@@ -65,7 +66,7 @@ export default function ReplacementSuggestionsPanel({ part, compact = false }: {
       {showVeh && (data.fleetMedian != null
         ? <p className="text-[11px] text-slate-400">وسيط كلفة الأسطول (١٢ شهر): {fmt(data.fleetMedian)} د.ع</p>
         : data.fleetNote && <p className="text-[11px] text-slate-400">{data.fleetNote}</p>)}
-      <p className="text-[11px] text-slate-400">🧠 اقتراح ماتركس — القرار إلكم.</p>
+      <MatrixNote className="!py-1 !text-[11px]">هذا اقتراح — القرار إلكم.</MatrixNote>
     </div>
   )
 }

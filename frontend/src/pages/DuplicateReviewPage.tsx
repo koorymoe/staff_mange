@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type DuplicateCandidate } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
+import MatrixNote from '../components/MatrixNote'
 
 // ═══ تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ═══
 //
@@ -146,7 +147,7 @@ export default function DuplicateReviewPage() {
             </div>
 
             {r.analysis && tab !== 'DONE' && (
-              <p className="mt-2 rounded-lg bg-violet-50 p-2.5 text-[13px] leading-relaxed text-violet-900">🤖 <b>ماتركس:</b> {r.analysis}</p>
+              <MatrixNote className="mt-2">{r.analysis}</MatrixNote>
             )}
 
             {tab === 'DONE' ? (

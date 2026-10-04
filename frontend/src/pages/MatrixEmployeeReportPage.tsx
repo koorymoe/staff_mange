@@ -4,6 +4,7 @@ import { api, type EmployeeReport, type ReportLine } from '../api'
 import MatrixEyeGraphic from '../components/MatrixEyeGraphic'
 import { GROUP_LABEL, type EyeGroup } from '../components/matrixEyeColors'
 import { useSession } from '../session'
+import MatrixNote from '../components/MatrixNote'
 
 // ═══ تقرير ماتركس عن موظف — بالعراقي، بأرقام حقيقية ═══
 // دوامه مقابل جدوله، وكل حجز بمراحله ومنو أخّر، وإجازاته ونمطها،
@@ -106,10 +107,9 @@ export default function MatrixEmployeeReportPage() {
 
       {rep && (
         <>
-          <section className="rounded-2xl bg-[#0b1220] p-4 text-slate-100">
-            <p className="mb-1 text-xs text-slate-400">خلاصة ماتركس {rep.summaryBy === 'MODEL' ? '(🧠 هايكو)' : '(📏 القواعد)'}</p>
-            <p className="text-base leading-8">{rep.summary}</p>
-          </section>
+          <MatrixNote className="!p-4 !text-base !leading-8">
+            {rep.summary} <span className="text-[11px] opacity-60">{rep.summaryBy === 'MODEL' ? '(🧠 هايكو)' : '(📏 القواعد)'}</span>
+          </MatrixNote>
 
           <Section title={`📝 شنو سوّى ${rep.day === todayBaghdad() ? 'اليوم' : 'بهاليوم'} (${(rep.activity ?? []).reduce((n, a) => n + a.count, 0)} فعل)`}>
             {(rep.activity ?? []).length === 0 ? (

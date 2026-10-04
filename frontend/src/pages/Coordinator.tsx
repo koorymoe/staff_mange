@@ -880,12 +880,12 @@ export default function Coordinator() {
                     <ShiftBadge shift={booking.shift} className="mr-2" />
                     {delayRisks[booking.id] && (
                       <span
-                        className="mr-2 rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800"
+                        className="matrix-note mr-2 !rounded-full !px-3 !py-1 text-xs font-bold"
                         title={delayRisks[booking.id].limitedBy === 'NEXT_BOOKING'
                           ? `محسوب من ${delayRisks[booking.id].samples} حجز منجز · الحجز الجاي لنفس الليدر: ${delayRisks[booking.id].nextBookingCode ?? ''}`
                           : `محسوب من ${delayRisks[booking.id].samples} حجز منجز · لحد نهاية الدوام`}
                       >
-                        ⏱️ متوقع ياخذ ~{fmtRiskHours(delayRisks[booking.id].expectedMinutes)} ساعة — الوقت المحجوز {fmtRiskHours(delayRisks[booking.id].availableMinutes)}
+                        🤖 ماتركس: متوقع ياخذ ~{fmtRiskHours(delayRisks[booking.id].expectedMinutes)} ساعة — الوقت المحجوز {fmtRiskHours(delayRisks[booking.id].availableMinutes)}
                       </span>
                     )}
                     {booking.priority === 'URGENT' && (

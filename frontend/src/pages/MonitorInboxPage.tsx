@@ -15,6 +15,7 @@ import EmptyState from '../components/EmptyState'
 import SaveError from '../components/SaveError'
 import Pager from '../components/Pager'
 import { roleLabel, roleLabelShort } from '../roleLabels'
+import MatrixNote from '../components/MatrixNote'
 
 // ═══ صندوق المراقب ═══
 //
@@ -230,7 +231,9 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
                       </span>
                     )}
                     <Link to={linkOf(row)} className="font-bold underline" style={{ color: 'var(--t-title)' }}>{row.title}</Link>
-                    <p className="text-xs" style={{ color: 'var(--t-muted)' }}>{row.summary}</p>
+                    {row.entityType === 'AI_VERDICT'
+                      ? <MatrixNote className="mt-1">{row.summary}</MatrixNote>
+                      : <p className="text-xs" style={{ color: 'var(--t-muted)' }}>{row.summary}</p>}
                     <p className="mt-1 text-[11px]" style={{ color: 'var(--t-faint)' }}>
                       {row.ownerRole && <>شغل: {roleLabel(row.ownerRole)} </>}
                       {row.ownerEmployee && <>({row.ownerEmployee.name}) </>}
