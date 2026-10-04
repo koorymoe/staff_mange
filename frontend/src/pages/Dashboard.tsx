@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
+import MonitorHome from '../components/MonitorHome'
 import AdminHome from '../components/AdminHome'
 import AttendancePage from './AttendancePage'
 import { api } from '../api'
@@ -415,6 +416,9 @@ function StaffDashboard() {
     { title: 'أجهزة GPS', value: gpsStats?.totalDevices || 0, color: 'var(--t-warning)', bg: 'from-amber-500/10 to-amber-500/5', ring: 85, path: '/gps',
       icon: <><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></> },
   ]
+
+  // واجهة المراقب الرئيسية بتصميم (ع) — شاشة وحدة مرتبة بدل كل الأقسام.
+  if (isMonitorHome) return <MonitorHome />
 
   return (
     <>
