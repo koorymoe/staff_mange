@@ -85,12 +85,14 @@ func toJSON(v any) model.NullJSON {
 // RunIfDue: التوقعات يومياً بعد ١ الظهر، والتعلّم من النتائج أسبوعياً.
 func (s *MatrixLearningService) RunIfDue() error {
 	now := time.Now().In(debriefLoc)
+	// كل دورة: التوقعات القديمة والأرقام المستحيلة تنتهي من صندوق القرارات.
+	s.props.ExpireStalePredictions(now.Format("2006-01-02"))
 	if now.Hour() >= predictHour && now.Weekday() != time.Friday {
 		if ok, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_PREDICT", now.Format("2006-01-02")); err == nil && ok {
 			n := s.predict(now)
 			if n > 0 {
 				_ = s.notif.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "", "AI_DECISIONS",
-					fmt.Sprintf("🤖 ماتركس — توقّعت %d من الليدرية ما راح يخلّصون شغل اليوم بوتيرتهم: %s. اضغط حتى تشوف منو وليش، والقرار إلك.",
+					fmt.Sprintf("🤖 ماتركس — توقّعت %d موظف ما راح يخلّصون شغل اليوم بوتيرتهم: %s. اضغط حتى تشوف منو وليش، والقرار إلك.",
 						n, strings.Join(firstN(uniqueStrings(s.lastPredicted), 4), "، ")))
 			}
 		}
@@ -127,7 +129,18 @@ func (s *MatrixLearningService) predict(now time.Time) int {
 	// طوابير الأقسام المكتبية مشتركة (صندوق المراقب، التدقيق، الاعتماد…): نقسمها
 	// على عدد الي يشتغلون عليها، فكل واحد يتوقَّع على حصته بس — مو كل طابور القسم.
 	// (ع) 10-04: التوقع يشمل غير الليدرية؛ الفنيين يبقون يتبعون الليدر.
-	shared := map[string]bool{"AUDIT": true, "MONITOR_INBOX": true, "APPROVE": true, "CONFIRM": true, "QUALITY": true}
+	//
+	// 🔴 (ع) 10-04: «أريد حساب وتحليل حقيقي وواقعي». الأخطاء الي طلعت:
+	//   • ليدرية انتوقّع عليهم «اعتمدت 0 وباقي 410 فاتورة» — طابور اعتماد الشركة
+	//     كله، لأن عندهم صلاحية مالية جانبية. الطابور المشترك يتوقَّع بس لقسمه.
+	//   • «0 بـ5 ساعة → يخلّص 0»: بلا ولا منجز ماكو وتيرة نقيسها، فالتوقع تخمين.
+	// القاعدة هسه: الطابور لصاحبه (مقسوم على أهل القسم)، والليدر على شغله هو
+	// بس، ولازم منجز حقيقي (١ فأكثر) ووقت كافي (ساعتين) حتى تنحسب وتيرة.
+	owner := map[string]string{"AUDIT": "MONITORS", "MONITOR_INBOX": "MONITORS", "APPROVE": "FINANCE", "CONFIRM": "COORDINATORS", "QUALITY": "QUALITY"}
+	leaderOwn := map[string]bool{"JOBS": true, "MATERIALS": true, "PAPERWORK": true}
+	if elapsed < 2 {
+		return 0
+	}
 	workloads := map[string][]WorkloadItem{}
 	holders := map[string]int{}
 	for _, sub := range subs {
@@ -138,7 +151,7 @@ func (s *MatrixLearningService) predict(now time.Time) int {
 		ws := s.watch.workload(sub)
 		workloads[sub.ID] = ws
 		for _, w := range ws {
-			if shared[w.Key] {
+			if owner[w.Key] == g {
 				holders[w.Key]++
 			}
 		}
@@ -148,15 +161,20 @@ func (s *MatrixLearningService) predict(now time.Time) int {
 		if !ok {
 			continue
 		}
+		g := WatchGroup(sub)
 		for _, w := range ws {
-			if WatchGroup(sub) != "LEADERS" && !shared[w.Key] {
+			isShared := owner[w.Key] != ""
+			if isShared && owner[w.Key] != g {
+				continue // طابور قسم ثاني — مو شغله
+			}
+			if !isShared && !(g == "LEADERS" && leaderOwn[w.Key]) {
 				continue
 			}
-			if shared[w.Key] && holders[w.Key] > 1 {
+			if isShared && holders[w.Key] > 1 {
 				w.Left = (w.Left + holders[w.Key] - 1) / holders[w.Key] // حصته من الطابور
-				w.Label += fmt.Sprintf(" (حصتك من %d)", holders[w.Key])
+				w.Label += fmt.Sprintf(" (حصتك من %d بالقسم)", holders[w.Key])
 			}
-			if w.Done == 0 && w.Left < predictMinLeft*2 { // بلا منجز ما نعرف وتيرة — بس لو الكومة كبيرة
+			if w.Done < 1 { // بلا منجز ماكو وتيرة حقيقية — ما نتوقع
 				continue
 			}
 			pace := float64(w.Done) / elapsed

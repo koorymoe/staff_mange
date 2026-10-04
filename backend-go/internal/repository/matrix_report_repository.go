@@ -258,3 +258,18 @@ func (r *MatrixReportRepository) Performance(id string, offsetDays int) (*PerfSt
 	}
 	return st, nil
 }
+
+// SpeedMedian وسيط (الفعلي ÷ المتوقع) لكل حجز بنافذة ٣٠ يوم — مقاوم للحجز
+// الشاذ. حجز واحد مسجّل بدايته غلط (أيام) چان يخلّي المعدّل ×٤٢ ويطلّع
+// «صار يطوّل ٣٢٤٪». نقص كل حجز عند ×١٠ ونأخذ الوسيط مو المعدّل.
+func (r *MatrixReportRepository) SpeedMedian(id string, offsetDays int) (float64, int, error) {
+	var out struct {
+		Med sql.NullFloat64 `db:"med"`
+		N   int             `db:"n"`
+	}
+	err := r.db.Get(&out, perfJobsCTE+`
+		SELECT percentile_cont(0.5) WITHIN GROUP (ORDER BY LEAST(actual / med.expected, 10)) AS med, COUNT(*) AS n
+		FROM mine JOIN med ON med."serviceId" = mine."serviceId"
+		WHERE actual >= 5 AND actual < 840 AND med.expected > 0`, id, offsetDays)
+	return out.Med.Float64, out.N, err
+}

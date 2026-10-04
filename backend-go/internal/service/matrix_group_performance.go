@@ -176,12 +176,13 @@ func (s *MatrixLearningService) detectDeclines() int {
 		if !IsFieldGroup(WatchGroup(sub)) {
 			continue
 		}
-		cur, err1 := s.reports.repo.Performance(sub.ID, 0)
-		prev, err2 := s.reports.repo.Performance(sub.ID, 30)
-		if err1 != nil || err2 != nil || cur.Timed < 3 || prev.Timed < 3 || cur.AvgExpected <= 0 || prev.AvgExpected <= 0 {
+		// وسيط لكل حجز (مو معدّل)، و٥ حجوزات موقوتة على الأقل بكل شهر، والنسب
+		// بحدود معقولة (×٠٫٣–×٥) — غيرها بيانات أوقات غلط، مو تراجع أداء.
+		c, cn, err1 := s.reports.repo.SpeedMedian(sub.ID, 0)
+		p, pn, err2 := s.reports.repo.SpeedMedian(sub.ID, 30)
+		if err1 != nil || err2 != nil || cn < 5 || pn < 5 || c < 0.3 || p < 0.3 || c > 5 || p > 5 {
 			continue
 		}
-		c, p := cur.AvgActual/cur.AvgExpected, prev.AvgActual/prev.AvgExpected
 		drop := (c - p) / p * 100
 		if drop < 30 {
 			continue
@@ -189,8 +190,8 @@ func (s *MatrixLearningService) detectDeclines() int {
 		ok, _ := s.props.Create(model.MatrixProposal{
 			Kind: model.ProposalPrediction, Source: "RULES",
 			Title:     fmt.Sprintf("%s: صار يطوّل بالحجوزات %d٪ أكثر من الشهر الي قبله.", sub.Name, int(drop)),
-			Rationale: fmt.Sprintf("معدّل الفعلي ÷ المتوقع صار %.2f بعد ما چان %.2f (%d حجز موقوت مقابل %d). شوف تقريره: /matrix/employee/%s", c, p, cur.Timed, prev.Timed, sub.ID),
-			Evidence:  toJSON(map[string]any{"ratio": c, "prevRatio": p, "timed": cur.Timed, "prevTimed": prev.Timed}),
+			Rationale: fmt.Sprintf("وسيط (الفعلي ÷ المتوقع) لكل حجز صار ×%.2f بعد ما چان ×%.2f (%d حجز موقوت مقابل %d). شوف تقريره: /matrix/employee/%s", c, p, cn, pn, sub.ID),
+			Evidence:  toJSON(map[string]any{"ratio": c, "prevRatio": p, "timed": cn, "prevTimed": pn}),
 			Payload: toJSON(map[string]any{"employeeId": sub.ID, "route": "/matrix/employee/" + sub.ID,
 				"message": "🤖 ماتركس — لاحظت حجوزاتك هالشهر تاخذ وكت أكثر من قبل. إذا أكو عائق (مواد، طريق، فريق) گوله لمسؤولك حتى ينحل."}),
 			Signature: fmt.Sprintf("DECLINE|%s|%s", sub.ID, month),
