@@ -617,3 +617,37 @@ func (r *AiActionRepository) RoleCounts(id string, days int) RoleCounts {
 		Actions:       r.count(`SELECT COUNT(*) FROM "EmployeeActivity" WHERE "employeeId" = $1 AND "createdAt" >= `+since, id, days),
 	}
 }
+
+// ═══ «سوّيت اليوم» لكل دور — حتى عين ماتركس تشوف المنجز مو بس الباقي ═══
+
+func (r *AiActionRepository) ReviewedByToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "MonitorReview" WHERE "reviewedById" = $1 AND baghdad_date("reviewedAt") = baghdad_today()`, id)
+}
+
+func (r *AiActionRepository) ConfirmedByToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND baghdad_date("confirmedAt") = baghdad_today()`, id)
+}
+
+func (r *AiActionRepository) QualityDoneToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "QualityFollowUp" WHERE ("inspectedById" = $1 AND baghdad_date("inspectedAt") = baghdad_today())
+		OR ("contactedByEmployeeId" = $1 AND baghdad_date("contactedAt") = baghdad_today())`, id)
+}
+
+func (r *AiActionRepository) BookingsCreatedToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "Booking" WHERE "createdById" = $1 AND baghdad_date("createdAt") = baghdad_today()`, id)
+}
+
+func (r *AiActionRepository) GpsCallsToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "GpsRenewalFollowUp" WHERE "calledById" = $1 AND baghdad_date("calledAt") = baghdad_today()`, id)
+}
+
+// GpsExpiringCount اشتراكات جي بي اس تخلص خلال ١٤ يوم — طابور اتصالات التجديد.
+func (r *AiActionRepository) GpsExpiringCount() int {
+	return r.count(`SELECT COUNT(*) FROM "GpsDeviceRequest" WHERE "subscriptionEnd" BETWEEN now() AND now() + interval '14 days'`)
+}
+
+// ItLogsToday سجلات صيانة/تصليح أجهزة سجّلها اليوم (عن طريق سجل النشاط على مسارات it).
+func (r *AiActionRepository) ItLogsToday(id string) int {
+	return r.count(`SELECT COUNT(*) FROM "EmployeeActivity" WHERE "employeeId" = $1 AND path LIKE '/api/it%'
+		AND baghdad_date("createdAt") = baghdad_today()`, id)
+}

@@ -437,13 +437,13 @@ func (s *MatrixAutopilotService) workload(subj repository.WatchSubject) []Worklo
 	}
 	if subj.Role == "MONITOR" {
 		out = append(out, WorkloadItem{Key: "MONITOR_INBOX", Label: "صندوق المراقب", Verb: "راجعت",
-			Left: r.MonitorPending(), Route: "/monitor-desk"})
+			Done: r.ReviewedByToday(subj.ID), Left: r.MonitorPending(), Route: "/monitor-desk"})
 	}
 	if subj.Role == "HR_COORDINATOR" || hasPerm(subj, "coordinator") {
 		tomorrow := time.Now().In(debriefLoc).AddDate(0, 0, 1).Format("2006-01-02")
 		un, _ := r.UnstaffedOn(tomorrow)
 		out = append(out,
-			WorkloadItem{Key: "CONFIRM", Label: "حجوزات تنتظر التثبيت", Verb: "ثبّتت", Left: r.BookingsPendingConfirm(), Route: "/coordinator"},
+			WorkloadItem{Key: "CONFIRM", Label: "حجوزات تنتظر التثبيت", Verb: "ثبّتت", Done: r.ConfirmedByToday(subj.ID), Left: r.BookingsPendingConfirm(), Route: "/coordinator"},
 			WorkloadItem{Key: "STAFF", Label: "حجوزات باچر بلا كادر", Verb: "كلّفت", Left: len(un), Route: "/coordinator"})
 	}
 	if subj.Role == "FINANCE" || hasPerm(subj, "finance") {
@@ -452,7 +452,7 @@ func (s *MatrixAutopilotService) workload(subj repository.WatchSubject) []Worklo
 	}
 	if subj.Role == "QUALITY_ENGINEER" || hasPerm(subj, "quality_control") {
 		out = append(out, WorkloadItem{Key: "QUALITY", Label: "متابعات جودة معلّقة", Verb: "تابعت",
-			Left: r.QualityPending(), Route: "/quality-follow-ups"})
+			Done: r.QualityDoneToday(subj.ID), Left: r.QualityPending(), Route: "/quality-follow-ups"})
 	}
 	// الليدر: حجوزاته، وتجهيز المواد، والورق (فاتورة وتقرير) — هو بس.
 	if subj.IsLeader {
@@ -502,6 +502,23 @@ func (s *MatrixAutopilotService) workload(subj repository.WatchSubject) []Worklo
 				Left: 0, Done: held, Route: "/my-inventory"})
 		}
 		_ = outd
+	}
+	// المبيعات والجي بي اس والدعم الفني — چانوا بلا «شغلك اليوم» أصلاً.
+	if subj.Role == "SALES" {
+		out = append(out, WorkloadItem{Key: "SALES", Label: "حجوزات سجّلتها اليوم", Verb: "سجّلت",
+			Done: r.BookingsCreatedToday(subj.ID), Route: "/bookings"})
+	}
+	if subj.Role == "GPS_ADMIN" || subj.Role == "GPS_ENGINEER" {
+		out = append(out, WorkloadItem{Key: "GPS_RENEW", Label: "اشتراكات تخلص خلال ١٤ يوم", Verb: "اتصلت",
+			Done: r.GpsCallsToday(subj.ID), Left: r.GpsExpiringCount(), Route: "/gps/devices"})
+	}
+	if subj.Role == "IT_SUPPORT" {
+		heavy := 0
+		if rows, err := s.aiRepo.ItRepairCounts(30, 3); err == nil {
+			heavy = len(rows)
+		}
+		out = append(out, WorkloadItem{Key: "IT", Label: "أجهزة تتصلّح بكثرة (٣+ بالشهر)", Verb: "سجّلت",
+			Done: r.ItLogsToday(subj.ID), Left: heavy, Route: "/it-assets"})
 	}
 	if subj.Role == "DESIGNER" {
 		out = append(out, WorkloadItem{Key: "DESIGN", Label: "أعمال تصميم رفعتها اليوم", Verb: "رفعت",
