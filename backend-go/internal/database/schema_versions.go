@@ -385,6 +385,8 @@ func versionedMigrations() []Migration {
 	result = append(result, remoteTimerMigrations()...)
 	// 0308: ملاحظة إلغاء التقييم (التصفير الشهري).
 	result = append(result, monthlyResetMigrations()...)
+	// 0309: حل التكرار (دمج / طلب حذف) وملاحظته.
+	result = append(result, duplicateResolutionMigrations()...)
 	return result
 }
 

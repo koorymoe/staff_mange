@@ -4148,7 +4148,7 @@ export const api = {
     request<Booking>(`/bookings/${id}/mark-survey`, { method: 'PUT', body: JSON.stringify({ code }) }),
 
   // ── تدقيق التكرار (ماتركس) — حجوزات وزبائن مكررون بالغلط ──
-  getDuplicateCandidates: (kind?: 'BOOKING' | 'CUSTOMER', status?: 'PENDING' | 'DISMISSED') => {
+  getDuplicateCandidates: (kind?: 'BOOKING' | 'CUSTOMER', status?: 'PENDING' | 'DISMISSED' | 'RESOLVED') => {
     const params = new URLSearchParams()
     if (kind) params.set('kind', kind)
     if (status) params.set('status', status)
@@ -4157,6 +4157,14 @@ export const api = {
   },
   dismissDuplicateCandidate: (id: string) =>
     request<{ ok: boolean }>(`/duplicate-candidates/${id}/dismiss`, { method: 'PUT' }),
+  /** شنو راح ينتقل لو دمجنا الزبون الثاني بـkeep. */
+  duplicateMergePreview: (id: string, keep: string) =>
+    request<{ moves: { label: string; count: number }[] }>(`/duplicate-candidates/${id}/merge-preview?keep=${encodeURIComponent(keep)}`),
+  mergeDuplicateCustomers: (id: string, keepId: string) =>
+    request<{ ok: boolean; note: string }>(`/duplicate-candidates/${id}/merge`, { method: 'POST', body: JSON.stringify({ keepId }) }),
+  /** طلب حذف للحجز المكرر — ينتظر موافقة المراقب أو المدير. */
+  requestDuplicateBookingDelete: (id: string, bookingId: string) =>
+    request<{ ok: boolean; bookingCode: string }>(`/duplicate-candidates/${id}/request-delete`, { method: 'POST', body: JSON.stringify({ bookingId }) }),
 
   // ── الإنجازات (ماتركس) — تقرير يومي حر من أي موظف بأي دور ──
   createAchievement: (bookingId: string | null, reportText: string) =>
@@ -5550,7 +5558,9 @@ export interface DuplicateCandidate {
   id: string
   kind: 'BOOKING' | 'CUSTOMER'
   matchReason: string
-  status: 'PENDING' | 'DISMISSED'
+  status: 'PENDING' | 'DISMISSED' | 'RESOLVED'
+  resolution?: 'MERGED' | 'DELETE_REQUESTED'
+  resolutionNote?: string
   reviewedAt: string | null
   reviewedByName?: string | null
   detectedAt: string

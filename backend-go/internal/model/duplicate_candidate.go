@@ -5,15 +5,18 @@ import "time"
 // DuplicateCandidate زوج (حجزين أو زبونين) اكتشفهم فحص التكرار
 // الدوري — يكتشف بالكود، يعرض للمراجعة، بلا حذف أو دمج تلقائي.
 type DuplicateCandidate struct {
-	ID           string     `db:"id" json:"id"`
-	Kind         string     `db:"kind" json:"kind"` // BOOKING | CUSTOMER
-	EntityAID    string     `db:"entityAId" json:"-"`
-	EntityBID    string     `db:"entityBId" json:"-"`
-	MatchReason  string     `db:"matchReason" json:"matchReason"`
-	Status       string     `db:"status" json:"status"` // PENDING | DISMISSED
-	ReviewedByID *string    `db:"reviewedById" json:"-"`
-	ReviewedAt   *time.Time `db:"reviewedAt" json:"reviewedAt,omitempty"`
-	DetectedAt   time.Time  `db:"detectedAt" json:"detectedAt"`
+	ID          string `db:"id" json:"id"`
+	Kind        string `db:"kind" json:"kind"` // BOOKING | CUSTOMER
+	EntityAID   string `db:"entityAId" json:"-"`
+	EntityBID   string `db:"entityBId" json:"-"`
+	MatchReason string `db:"matchReason" json:"matchReason"`
+	Status      string `db:"status" json:"status"` // PENDING | DISMISSED | RESOLVED
+	// RESOLVED: MERGED (زبونين اندمجوا) | DELETE_REQUESTED (حجز مكرر انطلب حذفه)
+	Resolution     *string    `db:"resolution" json:"resolution,omitempty"`
+	ResolutionNote *string    `db:"resolutionNote" json:"resolutionNote,omitempty"`
+	ReviewedByID   *string    `db:"reviewedById" json:"-"`
+	ReviewedAt     *time.Time `db:"reviewedAt" json:"reviewedAt,omitempty"`
+	DetectedAt     time.Time  `db:"detectedAt" json:"detectedAt"`
 
 	ReviewedByName *string                 `db:"-" json:"reviewedByName,omitempty"`
 	BookingA       *DuplicateBookingBrief  `db:"-" json:"bookingA,omitempty"`

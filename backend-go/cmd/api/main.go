@@ -2022,6 +2022,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireDuplicateReview := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "duplicate_review")
 	mux.Handle("GET /api/duplicate-candidates", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.List), requireAuth, requireDuplicateReview))
 	mux.Handle("PUT /api/duplicate-candidates/{id}/dismiss", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Dismiss), requireAuth, requireDuplicateReview))
+	duplicateCandidateHandler.SetResolvers(duplicateCandidateRepo, bookingDeleteRepo, notificationRepo, employeeRepo)
+	mux.Handle("GET /api/duplicate-candidates/{id}/merge-preview", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.MergePreview), requireAuth, requireDuplicateReview))
+	mux.Handle("POST /api/duplicate-candidates/{id}/merge", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Merge), requireAuth, requireDuplicateReview))
+	mux.Handle("POST /api/duplicate-candidates/{id}/request-delete", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.RequestDelete), requireAuth, requireDuplicateReview))
 
 	mux.Handle("GET /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.List), requireAuth, requireQuality))
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))

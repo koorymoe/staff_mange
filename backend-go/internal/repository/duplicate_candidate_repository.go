@@ -143,3 +143,98 @@ func (r *DuplicateCandidateRepository) Dismiss(id, byEmployeeID string) error {
 	`, id, byEmployeeID)
 	return err
 }
+
+// Get زوج واحد.
+func (r *DuplicateCandidateRepository) Get(id string) (*model.DuplicateCandidate, error) {
+	var c model.DuplicateCandidate
+	if err := r.db.Get(&c, `SELECT * FROM "DuplicateCandidate" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	r.hydrate(&c)
+	return &c, nil
+}
+
+// Resolve يسجّل الحل على الزوج.
+func (r *DuplicateCandidateRepository) Resolve(id, byEmployeeID, resolution, note string) error {
+	_, err := r.db.Exec(`UPDATE "DuplicateCandidate"
+		SET status = 'RESOLVED', resolution = $3, "resolutionNote" = $4, "reviewedById" = $2, "reviewedAt" = now()
+		WHERE id = $1 AND status = 'PENDING'`, id, byEmployeeID, resolution, note)
+	return err
+}
+
+// جداول تشير لـ"Customer" (مفتاح أجنبي) — تنتقل كلها للأصلي بالدمج.
+// ⚠️ جداول الجي بي اس والشرائح عمودها "customerId" يشير لـ"GpsCustomer"
+// (زبائن منظومة الجي بي اس) مو لـ"Customer" — نقلها هنا يكسر المفتاح.
+var customerRefTables = []string{
+	"Booking", "Complaint", "QualityFollowUp", "SolarInstallation", "DeviceMaintenanceTicket",
+}
+
+// جداول صف واحد لكل زبون (فهرس فريد) — تنتقل بس إذا الأصلي ما عنده.
+var customerUniqueTables = []string{"CustomerGpsInfo", "VipCustomer"}
+
+// MergeCounts شكد صف راح ينتقل من المكرر — للعرض قبل التأكيد.
+func (r *DuplicateCandidateRepository) MergeCounts(dropID string) map[string]int {
+	out := map[string]int{}
+	for _, t := range append(append([]string{}, customerRefTables...), "CustomerServiceTag") {
+		var n int
+		if err := r.db.Get(&n, `SELECT COUNT(*) FROM "`+t+`" WHERE "customerId" = $1`, dropID); err == nil && n > 0 {
+			out[t] = n
+		}
+	}
+	return out
+}
+
+// MergeCustomers ينقل كل شي من dropID لـkeepID ويشيل dropID — بمعاملة وحدة:
+// أي خطأ يرجّع كلشي مثل ما چان.
+func (r *DuplicateCandidateRepository) MergeCustomers(keepID, dropID string) (map[string]int64, error) {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback()
+	moved := map[string]int64{}
+	for _, t := range customerRefTables {
+		res, err := tx.Exec(`UPDATE "`+t+`" SET "customerId" = $1 WHERE "customerId" = $2`, keepID, dropID)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", t, err)
+		}
+		if n, _ := res.RowsAffected(); n > 0 {
+			moved[t] = n
+		}
+	}
+	for _, t := range customerUniqueTables {
+		if _, err := tx.Exec(`UPDATE "`+t+`" SET "customerId" = $1 WHERE "customerId" = $2
+			AND NOT EXISTS (SELECT 1 FROM "`+t+`" WHERE "customerId" = $1)`, keepID, dropID); err != nil {
+			return nil, fmt.Errorf("%s: %w", t, err)
+		}
+		if _, err := tx.Exec(`DELETE FROM "`+t+`" WHERE "customerId" = $1`, dropID); err != nil {
+			return nil, fmt.Errorf("%s: %w", t, err)
+		}
+	}
+	if _, err := tx.Exec(`UPDATE "CustomerServiceTag" t SET "customerId" = $1 WHERE "customerId" = $2
+		AND NOT EXISTS (SELECT 1 FROM "CustomerServiceTag" k WHERE k."customerId" = $1 AND k.service = t.service)`, keepID, dropID); err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(`DELETE FROM "CustomerServiceTag" WHERE "customerId" = $1`, dropID); err != nil {
+		return nil, err
+	}
+	// الموقع والخريطة: الأصلي ياخذها بس إذا هو فاضي — ما نكتب فوگ شي موجود.
+	if _, err := tx.Exec(`UPDATE "Customer" k SET
+		  location = COALESCE(NULLIF(k.location, ''), d.location),
+		  "mapLatitude" = COALESCE(k."mapLatitude", d."mapLatitude"),
+		  "mapLongitude" = COALESCE(k."mapLongitude", d."mapLongitude"),
+		  "locationUrl" = COALESCE(NULLIF(k."locationUrl", ''), d."locationUrl")
+		FROM "Customer" d WHERE k.id = $1 AND d.id = $2`, keepID, dropID); err != nil {
+		return nil, err
+	}
+	// أزواج تكرار ثانية على المكرر تنتهي (الزبون انشال).
+	if _, err := tx.Exec(`UPDATE "DuplicateCandidate" SET status = 'DISMISSED', "reviewedAt" = now()
+		WHERE kind = 'CUSTOMER' AND status = 'PENDING' AND ("entityAId" = $1 OR "entityBId" = $1)
+		  AND NOT ("entityAId" = $2 OR "entityBId" = $2)`, dropID, keepID); err != nil {
+		return nil, err
+	}
+	if _, err := tx.Exec(`DELETE FROM "Customer" WHERE id = $1`, dropID); err != nil {
+		return nil, fmt.Errorf("حذف المكرر: %w", err)
+	}
+	return moved, tx.Commit()
+}
