@@ -15,6 +15,7 @@ interface Hit { key: string; icon: string; title: string; path: string; to: stri
 // تبويبات داخل الشاشات المدموجة — ما إلها بند بالقائمة، فنضيفها يدوياً بطريقها.
 const TAB_HITS: { title: string; path: string; to: string; words?: string }[] = [
   { title: 'المتابعة', path: 'مكتب المدير ← المتابعة', to: '/?board=follow' },
+  { title: 'المتصلين هسه', path: 'مكتب المدير ← المتابعة ← المتصلين هسه', to: '/?board=follow', words: 'متصل نشط فاتح اونلاين' },
   { title: 'الإجراءات', path: 'مكتب المدير ← الإجراءات', to: '/?board=actions' },
   { title: 'مركز قيادة ماتركس', path: 'مكتب المدير ← ماتركس', to: '/?board=matrix', words: 'ماتركس عين' },
   { title: 'العملاء', path: 'العمل ← الحجوزات ← تبويب العملاء', to: '/bookings', words: 'زبائن زبون' },

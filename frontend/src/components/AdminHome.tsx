@@ -166,6 +166,51 @@ function NewEmployeeCurves() {
   )
 }
 
+// ═══ «منو فاتح النظام هسه» — طلب (ع) 10-04 ═══
+// أخضر = استخدم النظام بآخر ٥ دقايق، رمادي = بآخر ساعة. يتحدّث كل دقيقة.
+function OnlineNow() {
+  const [rows, setRows] = useState<Awaited<ReturnType<typeof api.getOnlineEmployees>> | null | undefined>(undefined)
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    let alive = true
+    const load = () => api.getOnlineEmployees().then((r) => { if (alive) { setRows(r); setNow(Date.now()) } }).catch(() => { if (alive) setRows(null) })
+    load()
+    const t = window.setInterval(load, 60_000)
+    return () => { alive = false; window.clearInterval(t) }
+  }, [])
+  const mins = (s: string) => Math.max(0, Math.round((now - new Date(s).getTime()) / 60000))
+  const live = (rows ?? []).filter((r) => mins(r.lastSeenAt) <= 5)
+  const recent = (rows ?? []).filter((r) => mins(r.lastSeenAt) > 5)
+  return (
+    <Section title={`🟢 المتصلين هسه (${live.length})`}>
+      {rows === undefined ? <Loading /> : rows === null ? <Missing /> : rows.length === 0 ? (
+        <p className="text-sm text-slate-500">محد فاتح النظام هسه.</p>
+      ) : (
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {live.map((r) => (
+              <span key={r.id} className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-800">
+                <i className="h-2 w-2 rounded-full bg-emerald-500" />{r.name}<span className="font-normal text-emerald-600">{mins(r.lastSeenAt) <= 1 ? 'هسه' : `قبل ${mins(r.lastSeenAt)} د`}</span>
+              </span>
+            ))}
+          </div>
+          {recent.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11px] text-slate-400">ظهروا بآخر ساعة:</span>
+              {recent.map((r) => (
+                <span key={r.id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[11px] text-slate-600">
+                  <i className="h-1.5 w-1.5 rounded-full bg-slate-400" />{r.name} · قبل {mins(r.lastSeenAt)} د
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+      <p className="mt-2 text-[11px] text-slate-400">«متصل» = استخدم النظام بآخر ٥ دقايق (أي ضغطة أو فتح شاشة).</p>
+    </Section>
+  )
+}
+
 // ═══ ماتركس — المخزون قبل ما يخلص ═══
 function StockForecastSection() {
   const [reload, setReload] = useState(0)
@@ -367,6 +412,8 @@ function FollowBoard() {
           )}
         </Section>
       </div>
+
+      <OnlineNow />
 
       <Section title="🕒 سجل الدوام اليوم" to="/attendance" linkLabel="سجل الدوام ←">
         {attendance === undefined ? <Loading /> : attendance === null ? <Missing /> : (

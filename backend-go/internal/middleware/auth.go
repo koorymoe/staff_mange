@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"io"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"sync"
@@ -87,6 +87,9 @@ func RequireAuth(auth *service.AuthService, employees *repository.EmployeeReposi
 				return
 			}
 
+			if seenRecorder != nil {
+				seenRecorder(claims.EmployeeID)
+			}
 			ctx := context.WithValue(r.Context(), ContextEmployeeID, claims.EmployeeID)
 			ctx = context.WithValue(ctx, ContextRole, role)
 			ctx = context.WithValue(ctx, ContextRealm, realm)
@@ -612,7 +615,6 @@ func RoleFromContext(r *http.Request) string {
 	return role
 }
 
-
 // RequireCommandRealm يقبل توكنات مركز القيادة بس.
 //
 // العكس مقصود: توكن الموظف العادي ما يفتح مركز القيادة حتى لو صاحبه
@@ -631,6 +633,11 @@ func RequireCommandRealm() func(http.Handler) http.Handler {
 
 // ═══ سجل النشاط ═══
 var activityRecorder func(employeeID, method, pattern, path string, status int)
+
+var seenRecorder func(employeeID string)
+
+// SetSeenRecorder يربط «آخر ظهور» — يُنادى بكل طلب مسجّل (المسجِّل نفسه يخفف الكتابة).
+func SetSeenRecorder(f func(employeeID string)) { seenRecorder = f }
 
 // SetActivityRecorder يربط مسجّل النشاط (يُنادى من main).
 func SetActivityRecorder(f func(employeeID, method, pattern, path string, status int)) {

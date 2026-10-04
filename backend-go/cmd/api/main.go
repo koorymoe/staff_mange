@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -552,6 +554,20 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	employeeActivityService := service.NewEmployeeActivityService(repository.NewEmployeeActivityRepository(db))
 	// كل حفظ ناجح: ينسجل بالنشاط، وماتركس يفحص تذكيرات الموظف لحظياً
 	// (سجّل حضور ← التذكير ينسكّر والعين ترجع هادئة).
+	// آخر ظهور: كتابة وحدة لكل موظف بالدقيقة كحد أعلى (بالذاكرة)، بـgoroutine.
+	presenceRepo := repository.NewPresenceRepository(db)
+	var presenceMu sync.Mutex
+	presenceLast := map[string]time.Time{}
+	middleware.SetSeenRecorder(func(employeeID string) {
+		presenceMu.Lock()
+		if time.Since(presenceLast[employeeID]) < time.Minute {
+			presenceMu.Unlock()
+			return
+		}
+		presenceLast[employeeID] = time.Now()
+		presenceMu.Unlock()
+		go presenceRepo.Touch(employeeID)
+	})
 	middleware.SetActivityRecorder(func(employeeID, method, pattern, path string, status int) {
 		employeeActivityService.Record(employeeID, method, pattern, path, status)
 		matrixAutopilotService.ResolveFor(employeeID)
@@ -2160,6 +2176,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	monitorActionHandler := handler.NewMonitorActionHandler(monitorReviewRepo, notificationRepo, extraTaskRepo)
 	mux.Handle("POST /api/monitor-reviews/{id}/action", middleware.Chain(http.HandlerFunc(monitorActionHandler.Act), requireAuth, requireMonitor))
 	mux.Handle("POST /api/monitor-reviews/{id}/decide", middleware.Chain(http.HandlerFunc(monitorReviewHandler.Decide), requireAuth, requireMonitor))
+	// «منو فاتح النظام هسه» — المدير/المالك والمراقب.
+	mux.Handle("GET /api/presence/online", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rows, err := presenceRepo.Recent(60)
+		if err != nil {
+			http.Error(w, `{"error":"تعذر جلب المتصلين"}`, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(rows)
+	}), requireAuth, requireMonitor))
 	mux.Handle("GET /api/monitor-desk/counts", middleware.Chain(http.HandlerFunc(monitorDeskHandler.Counts), requireAuth, requireMonitor))
 
 	// ── تكلفة الشبكات ──

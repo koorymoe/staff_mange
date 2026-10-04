@@ -4504,6 +4504,8 @@ export const api = {
   getStockIntakes: (toolId?: string) =>
     request<StockIntake[]>(`/inventory/stock-intake${toolId ? '?toolId=' + toolId : ''}`),
   /** أرقام اللوحة الرئيسية — بدون سحب أرشيف الشركة كامل للمتصفح */
+  /** آخر ظهور بآخر ساعة — «منو فاتح النظام هسه» (المدير/المالك والمراقب). */
+  getOnlineEmployees: () => request<{ id: string; name: string; role: string; photoUrl: string | null; lastSeenAt: string }[]>('/presence/online'),
   getDashboardSummary: () => request<{ employeeCount: number; customerCount: number; bookingCount: number; gpsDeviceCount: number }>('/dashboard/summary'),
   /** أرقام يوم الإداري — كلها محسوبة بقاعدة البيانات. */
   getTodayPulse: () => request<TodayPulse>('/dashboard/today-pulse'),

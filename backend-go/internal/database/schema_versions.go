@@ -389,6 +389,8 @@ func versionedMigrations() []Migration {
 	result = append(result, duplicateResolutionMigrations()...)
 	// 0310: صندوق المراقب أبسط — المحطات المشالة تنسكّر.
 	result = append(result, monitorTrimMigrations()...)
+	// 0311: آخر ظهور لكل موظف — «منو فاتح النظام هسه».
+	result = append(result, presenceMigrations()...)
 	return result
 }
 
