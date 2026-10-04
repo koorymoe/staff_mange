@@ -22,6 +22,8 @@ export default function DuplicateReviewPage() {
   const [err, setErr] = useState<string | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+  const [report, setReport] = useState<Awaited<ReturnType<typeof api.getDuplicateReport>> | null>(null)
+  useEffect(() => { api.getDuplicateReport().then(setReport).catch(() => {}) }, [msg])
   const [merge, setMerge] = useState<{ row: DuplicateCandidate; keepId: string; moves: { label: string; count: number }[] | null } | null>(null)
 
   useEffect(() => {
@@ -87,6 +89,31 @@ export default function DuplicateReviewPage() {
         </p>
       </div>
 
+      {report && (
+        <section className="rounded-2xl border border-sky-100 bg-sky-50/60 p-4">
+          <h3 className="mb-2 font-extrabold text-[#0f2040]">🤖 تقرير ماتركس عن التكرار</h3>
+          <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+            {[['حجوزات مكررة معلّقة', report.pendingBookings], ['زبائن مكررين معلّقين', report.pendingCustomers], ['انكشف بآخر ٣٠ يوم', report.detected30], ['انحل بآخر ٣٠ يوم', report.resolved30]].map(([l, v]) => (
+              <div key={l as string} className="rounded-xl bg-white p-2"><b className="block text-xl text-[#0f2040]">{v}</b><span className="text-[11px] text-slate-500">{l}</span></div>
+            ))}
+          </div>
+          {report.byCreator.length > 0 && (
+            <div className="mt-3 text-sm">
+              <p className="mb-1 font-bold text-slate-700">منو سجّل الحجز الثاني (المكرر) بآخر ٣٠ يوم:</p>
+              <ul className="space-y-0.5">
+                {report.byCreator.map((c) => (
+                  <li key={c.name} className="flex justify-between gap-2 border-b border-sky-100 py-0.5">
+                    <span>👤 {c.name}</span>
+                    <span className="text-slate-600">{c.count} مرة{c.quick > 0 && <b className="mr-1 text-amber-700">· {c.quick} منها ضغط «احفظ» مرتين</b>}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-[11px] text-slate-500">للتوجيه بس — ماكو نقاط ولا غرامات.</p>
+            </div>
+          )}
+        </section>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {(['BOOKING', 'CUSTOMER', 'DONE'] as const).map((t) => (
           <button
@@ -118,6 +145,10 @@ export default function DuplicateReviewPage() {
               <span className="text-[11px] text-slate-400">{new Date(r.detectedAt).toLocaleString('en-GB')}</span>
             </div>
 
+            {r.analysis && tab !== 'DONE' && (
+              <p className="mt-2 rounded-lg bg-violet-50 p-2.5 text-[13px] leading-relaxed text-violet-900">🤖 <b>ماتركس:</b> {r.analysis}</p>
+            )}
+
             {tab === 'DONE' ? (
               <div className="mt-2 rounded-lg bg-slate-50 p-3 text-sm">
                 <b className={r.resolution === 'MERGED' ? 'text-sky-700' : r.resolution === 'DELETE_REQUESTED' ? 'text-red-700' : 'text-slate-600'}>
@@ -138,15 +169,22 @@ export default function DuplicateReviewPage() {
                           customerPhone: b.customerPhone, address: b.address || undefined, serviceName: b.serviceName || undefined, scheduledAt: b.scheduledAt,
                         }}
                       />
+                      <p className="text-[12px] text-slate-600">
+                        ✍️ سجّله <b>{b.createdByName ?? 'بلا اسم'}</b>{b.createdAt && <> · {new Date(b.createdAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'short', timeStyle: 'short' })}</>}
+                        {' · '}{b.started ? '🔧 بدا بي شغل' : 'ما بدا بي أحد'}{b.hasInvoice && ' · 🧾 عليه فاتورة'}
+                      </p>
                       <button onClick={() => requestDelete(r, b.id, b.code)} disabled={busyId === r.id}
-                        className={`${actBtn} w-full bg-red-50 text-red-700 hover:bg-red-100`}>🗑️ {b.code} هو المكرر — اطلب حذفه</button>
+                        className={`${actBtn} w-full ${r.suggested === b.id ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-50 text-red-700 hover:bg-red-100'}`}>
+                        🗑️ {b.code} هو المكرر — اطلب حذفه{r.suggested === b.id && ' (مقترح ماتركس)'}</button>
                     </div>
                   ))
                   : [r.customerA, r.customerB].map((c, i) => c && (
                     <div key={i} className="space-y-2">
                       <EntityIdentity variant="full" fields={{ customerCode: custCode(c.customerCode), customerName: c.name, customerPhone: c.phone }} />
+                      <p className="text-[12px] text-slate-600">📋 {c.bookings ?? 0} حجز{c.createdAt && <> · انسجّل {new Date(c.createdAt).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</>}</p>
                       <button onClick={() => void openMerge(r, c.id)} disabled={busyId === r.id}
-                        className={`${actBtn} w-full bg-sky-50 text-sky-800 hover:bg-sky-100`}>🔀 خلّي {custCode(c.customerCode)} الأصلي وادمج الثاني بيه</button>
+                        className={`${actBtn} w-full ${r.suggested?.startsWith(c.id + '|') ? 'bg-sky-700 text-white hover:bg-sky-800' : 'bg-sky-50 text-sky-800 hover:bg-sky-100'}`}>
+                        🔀 خلّي {custCode(c.customerCode)} الأصلي وادمج الثاني بيه{r.suggested?.startsWith(c.id + '|') && ' (مقترح ماتركس)'}</button>
                     </div>
                   ))}
               </div>

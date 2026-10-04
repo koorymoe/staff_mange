@@ -4158,6 +4158,8 @@ export const api = {
   dismissDuplicateCandidate: (id: string) =>
     request<{ ok: boolean }>(`/duplicate-candidates/${id}/dismiss`, { method: 'PUT' }),
   /** شنو راح ينتقل لو دمجنا الزبون الثاني بـkeep. */
+  getDuplicateReport: () =>
+    request<{ pendingBookings: number; pendingCustomers: number; resolved30: number; detected30: number; byCreator: { name: string; count: number; quick: number }[] }>('/duplicate-candidates/report'),
   duplicateMergePreview: (id: string, keep: string) =>
     request<{ moves: { label: string; count: number }[] }>(`/duplicate-candidates/${id}/merge-preview?keep=${encodeURIComponent(keep)}`),
   mergeDuplicateCustomers: (id: string, keepId: string) =>
@@ -5545,6 +5547,11 @@ export interface DuplicateBookingBrief {
   address: string | null
   serviceName: string | null
   scheduledAt: string | null
+  status?: string
+  createdAt?: string
+  createdByName?: string | null
+  started?: boolean
+  hasInvoice?: boolean
 }
 
 export interface DuplicateCustomerBrief {
@@ -5552,6 +5559,8 @@ export interface DuplicateCustomerBrief {
   name: string
   phone: string
   customerCode: number
+  createdAt?: string
+  bookings?: number
 }
 
 export interface DuplicateCandidate {
@@ -5561,6 +5570,10 @@ export interface DuplicateCandidate {
   status: 'PENDING' | 'DISMISSED' | 'RESOLVED'
   resolution?: 'MERGED' | 'DELETE_REQUESTED'
   resolutionNote?: string
+  /** تحليل ماتركس: ليش تكرار، وشنو الأرجح صار، والمقترح. */
+  analysis?: string
+  /** حجز: معرّف المرشّح للحذف. زبون: «الأصلي|المكرر». */
+  suggested?: string
   reviewedAt: string | null
   reviewedByName?: string | null
   detectedAt: string

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -391,6 +392,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		}
 		if bookings > 0 || customers > 0 {
 			log.Printf("[duplicate] حجوزات جديدة: %d، زبائن جدد: %d", bookings, customers)
+			// ماتركس يبلّغ: المالك والمدير وصاحب صلاحية تدقيق التكرار.
+			_ = notificationRepo.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "duplicate_review", "DUPLICATE",
+				fmt.Sprintf("🤖 ماتركس — لگيت تكرار جديد: %d زوج حجوزات و%d زوج زبائن. شوفهن بـ«تدقيق التكرار» واتخذ إجراء.", bookings, customers))
 		}
 	})
 
@@ -2023,6 +2027,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/duplicate-candidates", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.List), requireAuth, requireDuplicateReview))
 	mux.Handle("PUT /api/duplicate-candidates/{id}/dismiss", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Dismiss), requireAuth, requireDuplicateReview))
 	duplicateCandidateHandler.SetResolvers(duplicateCandidateRepo, bookingDeleteRepo, notificationRepo, employeeRepo)
+	mux.Handle("GET /api/duplicate-candidates/report", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Report), requireAuth, requireDuplicateReview))
 	mux.Handle("GET /api/duplicate-candidates/{id}/merge-preview", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.MergePreview), requireAuth, requireDuplicateReview))
 	mux.Handle("POST /api/duplicate-candidates/{id}/merge", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Merge), requireAuth, requireDuplicateReview))
 	mux.Handle("POST /api/duplicate-candidates/{id}/request-delete", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.RequestDelete), requireAuth, requireDuplicateReview))

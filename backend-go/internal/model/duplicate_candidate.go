@@ -23,6 +23,9 @@ type DuplicateCandidate struct {
 	BookingB       *DuplicateBookingBrief  `db:"-" json:"bookingB,omitempty"`
 	CustomerA      *DuplicateCustomerBrief `db:"-" json:"customerA,omitempty"`
 	CustomerB      *DuplicateCustomerBrief `db:"-" json:"customerB,omitempty"`
+	// تحليل ماتركس: ليش شافه تكرار، وشنو الأرجح صار، وشنو يقترح.
+	Analysis  string `db:"-" json:"analysis,omitempty"`
+	Suggested string `db:"-" json:"suggested,omitempty"` // معرّف الطرف الي يقترح ينشال/يندمج
 }
 
 const (
@@ -44,12 +47,21 @@ type DuplicateBookingBrief struct {
 	Address       *string    `db:"address" json:"address"`
 	ServiceName   *string    `db:"serviceName" json:"serviceName"`
 	ScheduledAt   *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	// منو سجّله ومتى، ووين وصل — (ع): «منو كررهن، منو عاد أنشأ حجز ثاني».
+	Status        string    `db:"status" json:"status"`
+	CreatedAt     time.Time `db:"createdAt" json:"createdAt"`
+	CreatedByID   *string   `db:"createdById" json:"-"`
+	CreatedByName *string   `db:"createdByName" json:"createdByName"`
+	Started       bool      `db:"started" json:"started"`
+	HasInvoice    bool      `db:"hasInvoice" json:"hasInvoice"`
 }
 
 // DuplicateCustomerBrief هوية زبون كافية لعرضه بجانب شقيقه المشتبه به.
 type DuplicateCustomerBrief struct {
-	ID           string `db:"id" json:"id"`
-	Name         string `db:"name" json:"name"`
-	Phone        string `db:"phone" json:"phone"`
-	CustomerCode int    `db:"customerCode" json:"customerCode"`
+	ID           string    `db:"id" json:"id"`
+	Name         string    `db:"name" json:"name"`
+	Phone        string    `db:"phone" json:"phone"`
+	CustomerCode int       `db:"customerCode" json:"customerCode"`
+	CreatedAt    time.Time `db:"createdAt" json:"createdAt"`
+	Bookings     int       `db:"bookings" json:"bookings"`
 }

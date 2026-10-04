@@ -198,3 +198,12 @@ func (h *DuplicateCandidateHandler) RequestDelete(w http.ResponseWriter, r *http
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true, "bookingCode": out.BookingCode})
 }
+
+// GET /api/duplicate-candidates/report — ملخص ماتركس: كم معلّق، ومنو ينتج التكرار.
+func (h *DuplicateCandidateHandler) Report(w http.ResponseWriter, r *http.Request) {
+	rep, err := h.repo.Report()
+	if err != nil {
+		log.Printf("duplicate report: %v", err)
+	}
+	WriteJSON(w, http.StatusOK, rep)
+}
