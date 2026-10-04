@@ -140,7 +140,6 @@ func (r *MatrixProposalRepository) RecentRejections(limit int) ([]model.MatrixPr
 	return rows, err
 }
 
-
 // ExpireStalePredictions توقع يوم فات ما إله معنى بعد — ينتهي بدل ما يضل معلّق
 // بصندوق القرارات («منذ ٢٤ ساعة… باقي 410»). وتراجع سرعة بأرقام مستحيلة
 // (أكثر من ×٥ المتوقع) ينتهي هم — بيانات أوقات غلط مو أداء.
