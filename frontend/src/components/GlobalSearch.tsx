@@ -125,12 +125,15 @@ export default function GlobalSearch() {
   const go = (h: Hit) => { setOpen(false); setQ(''); navigate(h.to) }
 
   return (
-    <>
-      <button type="button" onClick={() => setOpen(true)} title="دوّر بكل النظام (Ctrl+K)" aria-label="بحث"
+    // قرار (ع): بلا تظليل للشاشة — مستطيل ينزل تحت زر 🔍 بس، والنظام يبقى طبيعي.
+    <div className="relative">
+      <button type="button" onClick={() => setOpen((o) => !o)} title="دوّر بكل النظام (Ctrl+K)" aria-label="بحث"
         className="grid h-9 w-9 place-items-center rounded-xl text-lg text-slate-600 hover:bg-slate-100">🔍</button>
       {open && (
-        <div className="fixed inset-0 z-[80] flex items-start justify-center bg-black/40 p-4 pt-[10vh]" onClick={() => setOpen(false)}>
-          <div dir="rtl" className="w-full max-w-xl overflow-hidden rounded-2xl bg-white shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <>
+          {/* ضغطة برّا المستطيل تسكّره — طبقة شفافة بلا أي لون */}
+          <div className="fixed inset-0 z-[79]" onClick={() => setOpen(false)} />
+          <div dir="rtl" className="absolute end-0 top-full z-[80] mt-2 w-[min(34rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
             <div className="flex items-center gap-2 border-b border-slate-100 p-3">
               <span className="text-lg">🔍</span>
               <input ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)}
@@ -161,8 +164,8 @@ export default function GlobalSearch() {
               ))}
             </div>
           </div>
-        </div>
+        </>
       )}
-    </>
+    </div>
   )
 }
