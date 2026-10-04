@@ -157,6 +157,22 @@ export default function SalesBooking() {
 
   // إذا الزبون موجود مسبقاً وعنده موقع محفوظ من حجز سابق، نحمّله تلقائياً
   // (بس إذا الموظف لسه ما بدأ يعبي الموقع بنفسه) حتى ما يعيد نفس الشغل، مع خيار تغييره.
+  // 🔴 الزبون القديم: الاسم الي ينكتب هو الي ينحفظ على سجله (رباعي).
+  // چان createCustomer يرجّع الزبون بالاسم القديم (ثنائي) ويتجاهل المكتوب بصمت،
+  // إلا إذا الموظف ضغط «صحّح بياناته» — فيطلع الحجز باسم ثنائي، والموظف يرجع
+  // يسوي حجز ثاني حتى «يصحّح» الاسم → تكرار. هسه التصحيح تلقائي، والحقول
+  // تتعبّى من الاسم القديم إذا فاضية، والفحص الرباعي يجبر يكمّله.
+  useEffect(() => {
+    if (!existingCustomer) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setFixCustomer(true)
+    if (![firstName, fatherName, grandfatherName, familyName].some((x) => x.trim())) {
+      const [f, fa, gf, fam] = splitFullName(existingCustomer.name)
+      setFirstName(f); setFatherName(fa); setGrandfatherName(gf); setFamilyName(fam)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [existingCustomer])
+
   useEffect(() => {
     if (!existingCustomer) return
     if (addressDesc.trim() || mapPoint) return
@@ -309,6 +325,9 @@ export default function SalesBooking() {
       return
     }
 
+    // الزبون عنده حجز مفتوح؟ أكثر سبب للتكرار — نسأل قبل ما يصير حجز ثاني.
+    const open = existingCustomer?.openBookings ?? []
+    if (open.length > 0 && !confirm(`⚠️ هذا الزبون عنده ${open.length} حجز مفتوح (${open.map((b) => b.code).join('، ')}).\nإذا تريد تصحّح الاسم أو التفاصيل، عدّل على الحجز الموجود — مو حجز جديد.\n\nمتأكد تريد تسوي حجز ثاني؟`)) return
     setSubmitting(true)
     try {
       // الحجز الداخلي ما بيه زبون، بس السجل لازمه جهة يتعلّق بيها
@@ -557,6 +576,20 @@ export default function SalesBooking() {
                   <span className="text-xs text-brand-700">
                     {existingCustomer.name} (كود: {existingCustomer.code})
                   </span>
+                  {(existingCustomer.openBookings ?? []).length > 0 && (
+                    <div className="w-full rounded-lg border border-red-200 bg-red-50 p-2 text-xs text-red-800">
+                      <b>⚠️ عنده حجز مفتوح — لا تسوي حجز ثاني لنفس الشغلة:</b>
+                      <ul className="mt-1 space-y-0.5">
+                        {(existingCustomer.openBookings ?? []).map((b) => (
+                          <li key={b.id}>
+                            <a href={`${import.meta.env.BASE_URL}bookings?focus=${b.id}`} target="_blank" rel="noreferrer" className="font-bold underline">{b.code}</a>
+                            {' · '}{b.service ?? '—'}{b.scheduledAt ? ` · ${new Date(b.scheduledAt).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', dateStyle: 'short', timeStyle: 'short' })}` : ''}
+                            {b.createdBy ? ` · سجّله ${b.createdBy}` : ''}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {!fixCustomer ? (
                     <button
                       type="button"

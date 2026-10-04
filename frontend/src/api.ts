@@ -922,6 +922,8 @@ export interface Customer {
   mapLongitude: number | null
   services: string[]
   previousBookingsCount?: number
+  /** حجوزات الزبون المفتوحة — تنبيه قبل حجز ثاني (أكثر سبب للتكرار). */
+  openBookings?: { id: string; code: string; status: string; scheduledAt: string | null; address: string | null; service: string | null; createdBy: string | null; createdAt: string }[]
   locationUrl?: string | null
   position?: string | null
   /** كم مرة انكشف إن شكواه ما كانت صحيحة — المبيعات والإداري يشوفونها

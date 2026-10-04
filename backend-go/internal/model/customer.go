@@ -40,6 +40,20 @@ type CustomerResponse struct {
 	Services              []string `json:"services"`
 	Existed               *bool    `json:"existed,omitempty"`
 	PreviousBookingsCount *int     `json:"previousBookingsCount,omitempty"`
+	// حجوزات الزبون المفتوحة — موظف الحجز يشوفها قبل ما يسوي حجز ثاني
+	// (أكثر سبب للتكرار: الزبون اتصل مرتين، أو الموظف رجع يسجّل حتى يصحّح الاسم).
+	OpenBookings []CustomerOpenBooking `json:"openBookings,omitempty"`
+}
+
+type CustomerOpenBooking struct {
+	ID          string     `db:"id" json:"id"`
+	Code        string     `db:"code" json:"code"`
+	Status      string     `db:"status" json:"status"`
+	ScheduledAt *time.Time `db:"scheduledAt" json:"scheduledAt"`
+	Address     *string    `db:"address" json:"address"`
+	Service     *string    `db:"service" json:"service"`
+	CreatedBy   *string    `db:"createdBy" json:"createdBy"`
+	CreatedAt   time.Time  `db:"createdAt" json:"createdAt"`
 }
 
 func (c Customer) FormatCode() string {

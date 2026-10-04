@@ -76,6 +76,9 @@ func (s *CustomerService) Lookup(phone string) (*model.CustomerResponse, error) 
 	if err == nil {
 		resp.PreviousBookingsCount = &count
 	}
+	if open, err := s.repo.OpenBookings(c.ID); err == nil {
+		resp.OpenBookings = open
+	}
 	return &resp, nil
 }
 

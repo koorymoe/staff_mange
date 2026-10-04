@@ -248,3 +248,17 @@ func (r *CustomerRepository) FindOrCreateByPhone(phone, name string) (*model.Cus
 	}
 	return &c, nil
 }
+
+// OpenBookings حجوزات الزبون الي بعدها مفتوحة (مو منجزة ولا ملغية ولا مؤرشفة).
+func (r *CustomerRepository) OpenBookings(customerID string) ([]model.CustomerOpenBooking, error) {
+	rows := []model.CustomerOpenBooking{}
+	err := r.db.Select(&rows, `
+		SELECT b.id, b.code, b.status::text AS status, b."scheduledAt", b.address, s.name AS service,
+		       e.name AS "createdBy", b."createdAt"
+		FROM "Booking" b
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		LEFT JOIN "Employee" e ON e.id = b."createdById"
+		WHERE b."customerId" = $1 AND b.status::text NOT IN ('COMPLETED', 'CANCELLED') AND b."archivedAt" IS NULL
+		ORDER BY b."createdAt" DESC LIMIT 10`, customerID)
+	return rows, err
+}

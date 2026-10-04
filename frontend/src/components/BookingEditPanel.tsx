@@ -3,6 +3,7 @@ import MultiSelect from './MultiSelect'
 import { onEnter } from '../utils/enterKey'
 import { api, type Booking, type Service } from '../api'
 import { useSession } from '../session'
+import { validateCustomerName } from '../validation'
 
 // ═══ تعديل الحجز بمكان واحد ═══
 //
@@ -29,7 +30,7 @@ export default function BookingEditPanel({
   // وتكليفاته وتقاريره.
   //
   // ⚠️ role يتطبّع لـ'ADMIN' للمالك بالجلسة، فهذا الشرط يغطي الاثنين.
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
   const canChangeType = employee?.role === 'ADMIN'
   const [bookingType, setBookingType] = useState(booking.bookingType)
   const [typeBusy, setTypeBusy] = useState(false)
@@ -131,6 +132,12 @@ export default function BookingEditPanel({
     <div className="mt-3 rounded-xl border border-brand-200 bg-brand-50/40 p-4">
       <h4 className="mb-3 text-sm font-bold text-[#0f2040]">✏️ تعديل الحجز</h4>
 
+      {/* بيانات الزبون مباشرة من الحجز — بلا ما ينسوّى حجز ثاني حتى «يتصحّح» الاسم.
+          نفس حارس PUT /api/customers/{id}: manage_customers / sales_booking / coordinator. */}
+      {booking.customer && (employee?.role === 'ADMIN' || ['manage_customers', 'sales_booking', 'coordinator'].some((p) => permissions.includes(p))) && (
+        <CustomerQuickEdit customer={booking.customer} onSaved={(name, phone) => onSaved({ ...booking, customer: { ...booking.customer!, name, phone } })} />
+      )}
+
       {/* نوع الحجز — للمالك ومدير النظام بس */}
       {canChangeType && (
         <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3">
@@ -226,6 +233,38 @@ export default function BookingEditPanel({
         )}
         {msg && <span className={`text-xs font-bold ${msg.includes('✓') ? 'text-emerald-600' : 'text-red-600'}`}>{msg}</span>}
       </div>
+    </div>
+  )
+}
+
+// تعديل اسم الزبون (رباعي) وهاتفه — ينحفظ على سجل الزبون نفسه، فكل حجوزاته تتصحّح.
+function CustomerQuickEdit({ customer, onSaved }: { customer: { id: string; name: string; phone: string }; onSaved: (name: string, phone: string) => void }) {
+  const [name, setName] = useState(customer.name)
+  const [phone, setPhone] = useState(customer.phone)
+  const [busy, setBusy] = useState(false)
+  const [msg, setMsg] = useState<string | null>(null)
+  const dirty = name.trim() !== customer.name || phone.trim() !== customer.phone
+  const save = async () => {
+    const err = validateCustomerName(name.trim())
+    if (err) { setMsg(err); return }
+    setBusy(true); setMsg(null)
+    try {
+      await api.updateCustomer(customer.id, { name: name.trim(), phone: phone.trim() })
+      setMsg('✓ انحفظ على سجل الزبون — كل حجوزاته صارت بالاسم الجديد.')
+      onSaved(name.trim(), phone.trim())
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : 'تعذّر الحفظ')
+    } finally { setBusy(false) }
+  }
+  return (
+    <div className="mb-3 rounded-lg border border-sky-200 bg-sky-50 p-3">
+      <label className="mb-1 block text-xs font-bold text-sky-900">👤 بيانات الزبون <span className="font-normal text-sky-700">(الاسم رباعي — يتعدّل هنا، لا تسوي حجز ثاني)</span></label>
+      <div className="grid gap-2 sm:grid-cols-[1fr_160px_auto]">
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="الاسم الرباعي" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+        <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="الهاتف" dir="ltr" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm" />
+        <button type="button" disabled={!dirty || busy} onClick={() => void save()} className="rounded-lg bg-sky-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">{busy ? '…' : 'حفظ الزبون'}</button>
+      </div>
+      {msg && <p className={`mt-1 text-xs ${msg.startsWith('✓') ? 'text-emerald-700' : 'text-red-600'}`}>{msg}</p>}
     </div>
   )
 }
