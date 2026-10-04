@@ -118,10 +118,21 @@ func (r *MissionRepository) attachLeaderAndMembers(missions []model.Mission) {
 			briefs[id] = *b
 		}
 	}
+	ids := make([]string, 0, len(empIDs))
+	for id := range empIDs {
+		ids = append(ids, id)
+	}
+	leaders := []string{}
+	_ = r.db.Select(&leaders, `SELECT id FROM "Employee" WHERE id = ANY($1) AND "isLeader"`, pq.Array(ids))
+	isLeader := map[string]bool{}
+	for _, id := range leaders {
+		isLeader[id] = true
+	}
 	for i := range missions {
 		if b, ok := briefs[missions[i].LeaderID]; ok {
 			missions[i].Leader = &b
 		}
+		missions[i].LeaderIsLeader = isLeader[missions[i].LeaderID]
 		members := make([]model.EmployeeBrief, 0, len(missions[i].MemberIDs))
 		for _, id := range missions[i].MemberIDs {
 			if b, ok := briefs[id]; ok {

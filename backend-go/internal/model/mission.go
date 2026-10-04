@@ -38,6 +38,9 @@ type Mission struct {
 	Booking *Booking        `db:"-" json:"booking,omitempty"`
 	Events  []MissionEvent  `db:"-" json:"events"`
 	Leader  *EmployeeBrief  `db:"-" json:"leader,omitempty"`
+	// LeaderIsLeader: «ليدر» المهمة مؤشّر تيم ليدر صدك؟ لا = ماكو ليدر بالكادر
+	// وانحط أول فني مكلّف مكانه (EnsureForBooking) — المراقب لازم يدري.
+	LeaderIsLeader bool `db:"-" json:"leaderIsLeader"`
 	Members []EmployeeBrief `db:"-" json:"members"`
 }
 

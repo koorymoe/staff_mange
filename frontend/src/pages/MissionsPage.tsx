@@ -26,9 +26,12 @@ interface Mission {
   estimatedMinutes: number | null; actualMinutes: number | null; distanceKm: number | null
   stopReason: string | null; notes: string | null
   leader: { id: string; name: string } | null
+  /** «الليدر» مؤشّر تيم ليدر صدك؟ لا = ماكو ليدر بالكادر وانحط أول فني مكانه. */
+  leaderIsLeader?: boolean
   members: { id: string; name: string }[]
   booking: {
     id: string; code: string
+    scheduledAt?: string | null; status?: string; postponeReason?: string | null; crewNotes?: string | null
     customer: { name: string; phone: string; location: string | null }
     service: { name: string } | null
   }
@@ -120,10 +123,49 @@ function timeSince(dateStr: string) {
   return `${hrs} ساعة ${mins % 60} دقيقة`
 }
 
-function timeStr(dateStr: string | null) {
-  if (!dateStr) return '---'
-  return new Date(dateStr).toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
+// تاريخ ووقت كامل — «اريد تفاصيل تاريخ وموعد وكلشي».
+function dateTimeStr(dateStr: string | null | undefined) {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleString('ar-IQ', { timeZone: 'Asia/Baghdad', weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 }
+function minsBetween(a: string, b: string | number) {
+  return Math.round(((typeof b === 'number' ? b : new Date(b).getTime()) - new Date(a).getTime()) / 60000)
+}
+function durStr(m: number) {
+  const a = Math.abs(m)
+  if (a < 60) return `${a} دقيقة`
+  if (a < 1440) return `${Math.floor(a / 60)} ساعة${a % 60 ? ` و${a % 60} د` : ''}`
+  return `${Math.floor(a / 1440)} يوم و${Math.floor((a % 1440) / 60)} ساعة`
+}
+
+// «منو طلع، وليش تأخر، وليش لسه ما ضغط تم الإنجاز» — أسباب محسوبة من الأوقات
+// نفسها + آخر ملاحظة كتبها الكادر. ماكو تخمين ولا عقوبة.
+function missionFindings(m: Mission, now: number): { text: string; tone: 'red' | 'amber' | 'slate' }[] {
+  const out: { text: string; tone: 'red' | 'amber' | 'slate' }[] = []
+  const sched = m.booking.scheduledAt
+  const notLeft = ['ASSIGNED', 'MATERIALS_PREP', 'MATERIALS_READY'].includes(m.stage)
+  if (sched) {
+    if (notLeft && now > new Date(sched).getTime()) out.push({ text: `فات الموعد بـ${durStr(minsBetween(sched, now))} وبعده ما طلع.`, tone: 'red' })
+    if (m.departedAt) {
+      const late = minsBetween(sched, m.departedAt)
+      if (late > 15) out.push({ text: `طلع متأخر ${durStr(late)} عن الموعد.`, tone: 'amber' })
+    }
+  }
+  if (m.stage === 'WORK_STARTED' && m.workStartedAt) {
+    const w = minsBetween(m.workStartedAt, now)
+    if (w > 8 * 60) out.push({ text: `يشتغل من ${durStr(w)} وما ضغط «تم الإنجاز» — إما الشغل طويل صدك أو خلص ونسى يسجّل. اتصل بيه تتأكد.`, tone: 'red' })
+    else if (w > 4 * 60) out.push({ text: `يشتغل من ${durStr(w)} — أطول من المعتاد.`, tone: 'amber' })
+  }
+  if (m.stage === 'ARRIVED' && m.arrivedAt) {
+    const w = minsBetween(m.arrivedAt, now)
+    if (w > 60) out.push({ text: `وصل من ${durStr(w)} وما بدا العمل بالنظام.`, tone: 'amber' })
+  }
+  if (m.stopReason) out.push({ text: `متوقف — السبب: ${m.stopReason}`, tone: 'red' })
+  if (m.booking.postponeReason) out.push({ text: `سبب التأجيل بالحجز: ${m.booking.postponeReason}`, tone: 'slate' })
+  if (!m.leaderIsLeader) out.push({ text: 'الكادر بلا تيم ليدر — النظام حط أول فني مكلّف مكان الليدر. كلّف ليدر للحجز حتى يتحمّل الورق والإنجاز.', tone: 'amber' })
+  return out
+}
+
 
 export default function MissionsPage() {
   const { employee, permissions } = useSession()
@@ -360,8 +402,11 @@ export default function MissionsPage() {
 
                 {/* Team */}
                 <div className="mb-3 flex flex-wrap gap-1">
-                  <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">👤 {m.leader?.name || '---'} (ليدر)</span>
-                  {(m.members ?? []).map(mem => (
+                  {/* ⚠️ «(ليدر)» بس إذا مؤشّر تيم ليدر صدك — چان الفني يطلع للمراقب ليدر. */}
+                  {m.leaderIsLeader
+                    ? <span className="rounded-lg bg-blue-50 px-2 py-1 text-xs font-bold text-blue-700">👤 {m.leader?.name || '---'} (ليدر)</span>
+                    : <span className="rounded-lg bg-amber-50 px-2 py-1 text-xs font-bold text-amber-800" title="ماكو تيم ليدر بالكادر">⚠️ بلا ليدر · {m.leader?.name || '---'} (فني)</span>}
+                  {(m.members ?? []).filter((mem) => mem.id !== m.leaderId).map(mem => (
                     <span key={mem.id} className="rounded-lg bg-slate-50 px-2 py-1 text-xs text-slate-600">{mem.name}</span>
                   ))}
                 </div>
@@ -380,12 +425,38 @@ export default function MissionsPage() {
                   })}
                 </div>
 
-                {/* Times */}
-                <div className="mb-3 grid grid-cols-3 gap-2 text-center text-[11px]">
-                  <div><p className="text-slate-400">الإسناد</p><p className="font-bold">{timeStr(m.assignedAt)}</p></div>
-                  <div><p className="text-slate-400">الانطلاق</p><p className="font-bold">{timeStr(m.departedAt)}</p></div>
-                  <div><p className="text-slate-400">الوصول</p><p className="font-bold">{timeStr(m.arrivedAt)}</p></div>
+                {/* التواريخ كاملة — الموعد ثم كل مرحلة بيومها وساعتها */}
+                <div className="mb-3 rounded-xl bg-slate-50 p-2.5 text-[11px]">
+                  <div className="mb-1.5 flex items-center justify-between gap-2 border-b border-slate-200 pb-1.5">
+                    <span className="text-slate-500">📅 موعد الحجز</span>
+                    <b className="text-slate-800">{dateTimeStr(m.booking.scheduledAt)}</b>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                    {([
+                      ['الإسناد', m.assignedAt], ['المواد جاهزة', m.materialsReadyAt], ['الانطلاق', m.departedAt],
+                      ['الوصول', m.arrivedAt], ['بدء العمل', m.workStartedAt], ['الإنجاز', m.completedAt],
+                    ] as [string, string | null][]).map(([l, v]) => (
+                      <div key={l} className="flex justify-between gap-1"><span className="text-slate-400">{l}</span><span className={`font-bold ${v ? 'text-slate-700' : 'text-slate-300'}`}>{dateTimeStr(v)}</span></div>
+                    ))}
+                  </div>
                 </div>
+
+                {/* ليش متأخر / ليش ما خلص */}
+                {(() => {
+                  const f = missionFindings(m, now)
+                  const last = (m.events ?? []).filter((e) => e.note && e.note.trim()).slice(-1)[0]
+                  const who = (id: string) => (id === m.leaderId ? m.leader?.name : m.members.find((x) => x.id === id)?.name) ?? 'موظف'
+                  if (f.length === 0 && !last && !m.booking.crewNotes) return null
+                  return (
+                    <div className="mb-3 space-y-1 text-[12px]">
+                      {f.map((x) => (
+                        <p key={x.text} className={`rounded-lg px-2 py-1 ${x.tone === 'red' ? 'bg-red-50 text-red-800' : x.tone === 'amber' ? 'bg-amber-50 text-amber-900' : 'bg-slate-50 text-slate-700'}`}>📌 {x.text}</p>
+                      ))}
+                      {last && <p className="rounded-lg bg-sky-50 px-2 py-1 text-sky-900">💬 آخر ملاحظة من {who(last.employeeId)}: «{last.note}» — {dateTimeStr(last.createdAt)}</p>}
+                      {m.booking.crewNotes && <p className="rounded-lg bg-slate-50 px-2 py-1 text-slate-700">🗒️ ملاحظة الإداري للكادر: {m.booking.crewNotes}</p>}
+                    </div>
+                  )
+                })()}
 
                 {/* ETA info */}
                 {m.estimatedMinutes && (
