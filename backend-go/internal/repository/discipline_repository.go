@@ -271,6 +271,8 @@ func (r *DisciplineRepository) OverdueLeaderPaperwork(hours int) ([]OverdueLeade
 		  -- ⚠️ حجز «كشف» (زيارة معاينة) ما يحتاج فاتورة ولا تقرير أصلاً
 		  -- — قرار عمل، مو نقص. استثناء كامل، مو جزئي متل 'OLD-%'.
 		  AND b."bookingType" <> 'SURVEY'
+		  -- قرار (ع) 10-04: الحجز القديم (كوده يبدي بـOLD) منجز كامل، ما ينطلب منه ورق.
+		  AND upper(b.code) NOT LIKE 'OLD%'
 		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
 		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
 		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
@@ -329,6 +331,8 @@ func (r *DisciplineRepository) OverduePaperwork(hours int) ([]OverduePaperwork, 
 		  -- ⚠️ حجز «كشف» (زيارة معاينة) ما يحتاج فاتورة ولا تقرير أصلاً
 		  -- — قرار عمل، مو نقص. استثناء كامل، مو جزئي متل 'OLD-%'.
 		  AND b."bookingType" <> 'SURVEY'
+		  -- قرار (ع) 10-04: الحجز القديم (كوده يبدي بـOLD) منجز كامل، ما ينطلب منه ورق.
+		  AND upper(b.code) NOT LIKE 'OLD%'
 		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
 		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
 		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
@@ -409,6 +413,8 @@ func (r *DisciplineRepository) PendingPaperworkForEmployee(employeeID string) ([
 		  -- ⚠️ حجز «كشف» (زيارة معاينة) ما يحتاج فاتورة ولا تقرير أصلاً
 		  -- — قرار عمل، مو نقص. استثناء كامل، مو جزئي متل 'OLD-%'.
 		  AND b."bookingType" <> 'SURVEY'
+		  -- قرار (ع) 10-04: الحجز القديم (كوده يبدي بـOLD) منجز كامل، ما ينطلب منه ورق.
+		  AND upper(b.code) NOT LIKE 'OLD%'
 		  -- ⚠️⚠️ **ورق الخدمة المؤشّرة على مسؤولها مو على الكادر**:
 		  -- خدمات مثل الجي بي اس والداش كام (managerHandlesPaperwork)
 		  -- الفني فيها **ممنوع** يسوي الفاتورة أصلاً (PaperworkGuard
@@ -588,6 +594,8 @@ func (r *DisciplineRepository) OverdueManagedPaperwork(hours int) ([]OverdueMana
 		  AND b."completedAt" IS NOT NULL
 		  AND b."completedAt" < now() - ($1::text || ' hours')::interval
 		  AND b."completedAt" > (SELECT "startsAt" FROM "DisciplineConfig" WHERE id = 1)
+		  -- قرار (ع) 10-04: الحجز القديم (كوده يبدي بـOLD) منجز كامل، ما ينطلب منه ورق.
+		  AND upper(b.code) NOT LIKE 'OLD%'
 		  AND b."settledLegacyAt" IS NULL
 		  AND (
 		    NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)

@@ -95,7 +95,7 @@ func bucketCondition(bucket string) string {
 		return `b.status = 'COMPLETED' AND ` + paperworkDoneSQL
 	case "done_no_invoice":
 		return `b.status = 'COMPLETED' AND NOT ` + hasInvoiceSQL +
-			` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
+			` AND ` + hasReportSQL + ` AND NOT (` + isLegacyImportSQL + `) AND NOT ` + isSurveySQL
 	// ⚠️ التاريخي ينستثنى من محطتَي «ناقصه تقرير»: تقريره مستحيل، فبقاؤه
 	// هنا يعني طابوراً محد يگدر يفرغه. وحجز الكشف ينستثنى من الثلاثة:
 	// ما يحتاج فاتورة ولا تقرير أصلاً.
@@ -156,7 +156,12 @@ const hasReportSQL = `EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId"
 // ⚠️ وليش ما نأشّرهن «مسوّاة إدارياً» (settledLegacyAt) وخلص؟ لأن
 // التسوية تقفل الحجز **بلا مبلغ**، والمالك يريد يدقّق شكد انستلم من
 // كل حجز. فالفاتورة لازم تنكتب وتنحسب بالإيراد، والناقص هو التقرير بس.
-const isLegacyImportSQL = `b.code LIKE 'OLD-%'`
+//
+// 🔴 قرار (ع) 10-04: «أي حجز يبدي رقمه بـOLD ما يطلب ورق — يعتبر منجز بشكل
+// كامل». چانت الحجوزات القديمة تنطلب منها فاتورة، فـ«منجزة وناقصها ورق» وصل
+// ١٦٨٦ وأغلبه قديم. هسه القديم معفي من الفاتورة والتقرير سوة (مثل الكشف).
+// والعلامة أي كود يبدي بـOLD (بأي حروف/فاصلة) حتى ما يفلت «OLD123».
+const isLegacyImportSQL = `upper(b.code) LIKE 'OLD%'`
 
 // ═══ زيارة معاينة («كشف»): بلا فاتورة وبلا تقرير أصلاً — قرار عمل ═══
 // الإداري يأشّرها وقت التكليف: الكادر ما يسوي فاتورة ولا تقرير عمل
@@ -169,7 +174,7 @@ const isSurveySQL = `b."bookingType" = 'SURVEY'`
 //
 // ⚠️ ينكتب مرة وحدة وينستعمل بكل مكان يسأل «ناقصه ورق؟»: نسختان
 // تفترقان بأول تعديل، فتطلع الشاشة رقماً والطابور رقماً ثانياً.
-const paperworkDoneSQL = `((` + hasInvoiceSQL + ` AND (` + hasReportSQL + ` OR ` + isLegacyImportSQL + `)) OR ` + isSurveySQL + `)`
+const paperworkDoneSQL = `((` + hasInvoiceSQL + ` AND ` + hasReportSQL + `) OR ` + isLegacyImportSQL + ` OR ` + isSurveySQL + `)`
 
 // BookingPageQuery شنو تطلبه الشاشة.
 type BookingPageQuery struct {
