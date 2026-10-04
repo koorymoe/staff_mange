@@ -5795,6 +5795,7 @@ export interface LateWindow { total: number; late: number; unstaffed: number; pa
 export interface LateFocus {
   recent: LateWindow; previous: LateWindow; recentPct: number; prevPct: number; changePct: number | null
   cause: string; impact: string; suggestion: string; severity: 'HIGH' | 'MEDIUM' | 'LOW'
+  items?: { id: string; code: string; customer: string | null; service: string | null; status: string; scheduledAt: string; completedAt: string | null; leader: string | null; unstaffed: boolean; partial: boolean; daysLate: number; reason: string | null }[]
 }
 
 export interface RemoteEntry { id: string; employeeId: string; employeeName: string; workDate: string; seconds: number; note: string | null; addedById: string | null; addedBy: string; createdAt: string; source: 'MANUAL' | 'TIMER'; closedAt: string | null }

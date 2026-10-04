@@ -145,7 +145,9 @@ export default function MatrixCommandCenter() {
 
       {/* ── اكتشف + البث ── */}
       <div className="grid gap-4 xl:grid-cols-[3fr_2fr]">
-        <Discovery focus={focus} late={late} perf={perf} groups={active} biz={biz} proposal={props[0] ?? null} onDone={loadAll} />
+        {/* الاقتراح لازم يخص التركيز: چان أول اقتراح معلّق (جلال) يطلع بكل مكان. */}
+        <Discovery focus={focus} late={late} perf={perf} groups={active} biz={biz}
+          proposal={focus === 'perf' ? (props.find((p) => p.employeeId) ?? null) : null} onDone={loadAll} />
         <Feed items={feed} />
       </div>
 
@@ -214,7 +216,7 @@ function FocusTab({ on, onClick, icon, title, sub }: { on: boolean; onClick: () 
 function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
   focus: Focus; late: LateFocus | null; perf: GroupPerformance[]; groups: GroupRep[]; biz: MatrixBusinessData | null; proposal: MatrixProposal | null; onDone: () => void
 }) {
-  const [modal, setModal] = useState<'sim' | 'evidence' | null>(null)
+  const [modal, setModal] = useState<'sim' | 'evidence' | 'details' | null>(null)
   const [busy, setBusy] = useState(false)
 
   const view = useMemo(() => {
@@ -257,6 +259,24 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
     }
   }, [focus, late, perf, groups, biz])
 
+  // (ع): «من يگلي موظفين مقصرين يطلعلي منو، ووين مقصرين، واذا اكو سبب».
+  const weak = useMemo(() => perf.flatMap((g) => g.members.map((m) => {
+    const field = g.field !== false
+    const why: string[] = []
+    if (m.absent) why.push('ما سجّل حضور اليوم (عنده جدول)')
+    else if (m.late > 0) why.push(`تأخّر اليوم ${m.late} دقيقة عن جدوله`)
+    if (field) {
+      const stuck = m.open - (m.unstarted ?? 0)
+      if (stuck > 0) why.push(`${stuck} حجز بدا بي وما خلّصه`)
+      if (m.partial > 0) why.push(`${m.partial} حجز جزئي`)
+      if (m.speed != null && m.speed >= 1.4) why.push(`يطوّل ×${m.speed.toFixed(1)} عن المتوقع لنفس الخدمة`)
+    } else {
+      const done = (m.metrics ?? []).filter((x) => x.label !== 'عمليات بالنظام').reduce((a, x) => a + x.value, 0)
+      if ((m.metrics ?? []).length > 1 && done === 0) why.push('ما سجّل شغل دوره بآخر ٣٠ يوم')
+    }
+    return { ...m, group: g.group, idx: perfIndex(m, field), why }
+  })).filter((m) => m.idx < 75 && m.why.length > 0).sort((a, b) => a.idx - b.idx), [perf])
+
   const approve = async () => {
     if (!proposal || !confirm(`توافق على اقتراح ماتركس؟\n\n${proposal.title}`)) return
     setBusy(true)
@@ -281,13 +301,16 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
             <Box title="📊 التأثير المتوقع" text={view.impact} />
             <Box title="💡 اقتراح ماتركس" text={proposal ? proposal.title : view.suggestion} />
           </div>
-          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <div className={`mt-3 grid gap-2 ${proposal ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
             {proposal ? (
               <button disabled={busy} onClick={approve} className="rounded-xl bg-gradient-to-l from-blue-500 to-blue-700 py-2.5 font-extrabold text-white shadow-[0_0_20px_rgba(59,130,246,0.5)] disabled:opacity-50">🚀 تنفيذ</button>
             ) : view.link ? (
               <Link to={view.link} className="rounded-xl bg-gradient-to-l from-blue-500 to-blue-700 py-2.5 text-center font-extrabold text-white">ودّيني ←</Link>
             ) : <span className="rounded-xl bg-[var(--mx-sunken)] py-2.5 text-center text-sm text-[var(--mx-muted)]">ماكو شي يحتاج قرار</span>}
-            <button onClick={() => setModal('sim')} disabled={!proposal} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)] disabled:opacity-40">📊 محاكاة</button>
+            {focus !== 'profit' && <button onClick={() => setModal('details')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">
+              {focus === 'late' ? `📋 الحجوزات (${late?.items?.length ?? 0})` : `👥 منو؟ (${weak.length})`}
+            </button>}
+            {proposal && <button onClick={() => setModal('sim')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">📊 محاكاة</button>}
             <button onClick={() => setModal('evidence')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">📄 عرض الأدلة</button>
           </div>
         </>
@@ -295,7 +318,51 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
       {modal && view && (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4" onClick={() => setModal(null)}>
           <div className="w-full max-w-lg rounded-2xl bg-[var(--mx-card)] p-5 text-[var(--mx-text)]" dir="rtl" onClick={(e) => e.stopPropagation()}>
-            {modal === 'evidence' ? (
+            {modal === 'details' ? (
+              <div className="max-h-[70vh] overflow-y-auto">
+                {focus === 'late' ? (
+                  <>
+                    <h4 className="mb-3 font-extrabold">📋 الحجوزات المتأخرة (آخر ٣ أيام)</h4>
+                    {(late?.items ?? []).length === 0 ? <p className="text-sm text-[var(--mx-muted)]">ماكو ✅</p> : (
+                      <ul className="space-y-2 text-sm">
+                        {(late?.items ?? []).map((b) => (
+                          <li key={b.id} className="rounded-lg bg-[var(--mx-sunken)] p-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <Link to={`/bookings?focus=${b.id}`} className="font-extrabold text-[var(--mx-accent)] hover:underline">📋 {b.code} ←</Link>
+                              <span className="text-xs font-bold text-[var(--mx-bad)]">{b.status === 'COMPLETED' ? `خلص متأخر ${b.daysLate} يوم` : `مفتوح — فات موعده بـ${b.daysLate} يوم`}</span>
+                            </div>
+                            <p className="mt-1 text-xs text-[var(--mx-muted)]">
+                              {b.customer ?? '—'} · {b.service ?? '—'} · 📅 {new Date(b.scheduledAt).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })}
+                              {' · '}{b.unstaffed ? <b className="text-[var(--mx-warn)]">بلا كادر</b> : <>👷 {b.leader ?? 'بلا ليدر'}</>}
+                              {b.partial && <b className="text-[var(--mx-warn)]"> · جزئي</b>}
+                            </p>
+                            <p className="mt-0.5 text-xs">💬 {b.reason ?? <span className="text-[var(--mx-muted)]">ماكو سبب مكتوب</span>}</p>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <h4 className="mb-3 font-extrabold">👥 الموظفين الي يحتاجون متابعة، ووين</h4>
+                    {weak.length === 0 ? <p className="text-sm text-[var(--mx-muted)]">ماكو أحد يحتاج متابعة هسه ✅</p> : (
+                      <ul className="space-y-2 text-sm">
+                        {weak.map((m) => (
+                          <li key={m.id} className="rounded-lg bg-[var(--mx-sunken)] p-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <Link to={`/matrix/employee/${m.id}`} className="font-extrabold text-[var(--mx-accent)] hover:underline">👤 {m.name} — تقريره ←</Link>
+                              <span className="text-xs text-[var(--mx-muted)]">{GROUP_LABEL[m.group as EyeGroup] ?? m.group} · مؤشر {m.idx}%</span>
+                            </div>
+                            <ul className="mt-1 list-inside list-disc text-xs">{m.why.map((w) => <li key={w}>{w}</li>)}</ul>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <p className="mt-2 text-[11px] text-[var(--mx-muted)]">الأسباب أرقام من النظام — التفاصيل والسبب الي كتبه الموظف بتقريره. ماكو نقاط ولا غرامات.</p>
+                  </>
+                )}
+              </div>
+            ) : modal === 'evidence' ? (
               <>
                 <h4 className="mb-3 font-extrabold">📄 الأدلة (أرقام من النظام)</h4>
                 <dl className="space-y-1 text-sm">{Object.entries(view.evidence).map(([k, v]) => {

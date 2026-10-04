@@ -68,6 +68,7 @@ type LateFocus struct {
 	Impact     string                 `json:"impact"`
 	Suggestion string                 `json:"suggestion"`
 	Severity   string                 `json:"severity"` // HIGH | MEDIUM | LOW
+	Items      []repository.LateItem  `json:"items"`    // الحجوزات المتأخرة نفسها
 }
 
 func pct(a, b int) int {
@@ -87,6 +88,11 @@ func (s *MatrixCommandService) LateFocus() (*LateFocus, error) {
 		return nil, err
 	}
 	f := &LateFocus{Recent: cur, Previous: prev, RecentPct: pct(cur.Late, cur.Total), PrevPct: pct(prev.Late, prev.Total), Severity: "LOW"}
+	if items, err := s.repo.LateItems(2, 0, 50); err == nil {
+		f.Items = items
+	} else {
+		f.Items = []repository.LateItem{}
+	}
 	if prev.Total >= 3 && f.PrevPct > 0 {
 		c := pct(f.RecentPct-f.PrevPct, f.PrevPct)
 		f.ChangePct = &c

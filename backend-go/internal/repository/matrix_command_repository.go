@@ -110,3 +110,45 @@ func (r *MatrixCommandRepository) LogAsk(employeeID, q, a, source string) {
 	_, _ = r.db.Exec(`INSERT INTO "MatrixChatMessage" (id, "employeeId", question, answer, source) VALUES ($1,$2,$3,$4,$5)`,
 		uuid.NewString(), employeeID, q, a, source)
 }
+
+// LateItem حجز متأخر بآخر ٣ أيام — (ع): «من اضغط يوديني للحجوزات المتأخرة صدك».
+type LateItem struct {
+	ID          string     `db:"id" json:"id"`
+	Code        string     `db:"code" json:"code"`
+	Customer    *string    `db:"customer" json:"customer"`
+	Service     *string    `db:"service" json:"service"`
+	Status      string     `db:"status" json:"status"`
+	ScheduledAt time.Time  `db:"scheduledAt" json:"scheduledAt"`
+	CompletedAt *time.Time `db:"completedAt" json:"completedAt"`
+	Leader      *string    `db:"leader" json:"leader"`
+	Unstaffed   bool       `db:"unstaffed" json:"unstaffed"`
+	Partial     bool       `db:"partial" json:"partial"`
+	DaysLate    int        `db:"daysLate" json:"daysLate"`
+	Reason      *string    `db:"reason" json:"reason"`
+}
+
+// LateItems نفس تعريف «المتأخر» بـLateWindow بالضبط — الأحدث أول.
+func (r *MatrixCommandRepository) LateItems(from, to, limit int) ([]LateItem, error) {
+	rows := []LateItem{}
+	err := r.db.Select(&rows, `
+		SELECT b.id, b.code, c.name AS customer, s.name AS service, b.status::text AS status, b."scheduledAt", b."completedAt",
+		       (SELECT e.name FROM "Mission" m JOIN "Employee" e ON e.id = m."leaderId" WHERE m."bookingId" = b.id
+		         ORDER BY m."assignedAt" DESC NULLS LAST LIMIT 1) AS leader,
+		       NOT EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id) AS unstaffed,
+		       b."partialCount" > 0 AS partial,
+		       (COALESCE(baghdad_date(b."completedAt"), baghdad_today()) - baghdad_date(b."scheduledAt"))::int AS "daysLate",
+		       COALESCE(
+		         (SELECT NULLIF(btrim(me.note), '') FROM "Mission" m JOIN "MissionEvent" me ON me."missionId" = m.id
+		           WHERE m."bookingId" = b.id AND me.note IS NOT NULL AND btrim(me.note) <> ''
+		           ORDER BY me."createdAt" DESC LIMIT 1),
+		         NULLIF(btrim(b."postponeReason"), '')) AS reason
+		FROM "Booking" b
+		LEFT JOIN "Customer" c ON c.id = b."customerId"
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		WHERE baghdad_date(b."scheduledAt") BETWEEN baghdad_today() - $1::int AND baghdad_today() - $2::int
+		  AND b.status::text <> 'CANCELLED' AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
+		  AND ((b.status = 'COMPLETED' AND baghdad_date(b."completedAt") > baghdad_date(b."scheduledAt"))
+		       OR (b.status::text NOT IN ('COMPLETED','CANCELLED') AND baghdad_date(b."scheduledAt") < baghdad_today()))
+		ORDER BY b."scheduledAt" DESC LIMIT $3`, from, to, limit)
+	return rows, err
+}
