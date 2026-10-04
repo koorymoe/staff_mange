@@ -384,6 +384,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	duplicateCandidateRepo := repository.NewDuplicateCandidateRepository(db)
 	duplicateCandidateService := service.NewDuplicateCandidateService(duplicateCandidateRepo)
 	duplicateCandidateHandler := handler.NewDuplicateCandidateHandler(duplicateCandidateService)
+	baghdadLoc, _ := time.LoadLocation("Asia/Baghdad")
+	if baghdadLoc == nil {
+		baghdadLoc = time.FixedZone("Baghdad", 3*3600)
+	}
+	// إذا السيرفر اشتغل بعد ٩ الصبح، تقرير اليوم يعتبر انرسل (حتى إعادة التشغيل ما تكرره).
+	duplicateDailyDay := ""
+	if time.Now().In(baghdadLoc).Hour() >= 9 {
+		duplicateDailyDay = time.Now().In(baghdadLoc).Format("2006-01-02")
+	}
 	safeguard.Loop("كنسة تدقيق التكرار", 5*time.Minute, time.Hour, func() {
 		bookings, customers, err := duplicateCandidateService.RunScan()
 		if err != nil {
@@ -394,7 +403,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			log.Printf("[duplicate] حجوزات جديدة: %d، زبائن جدد: %d", bookings, customers)
 			// ماتركس يبلّغ: المالك والمدير وصاحب صلاحية تدقيق التكرار.
 			_ = notificationRepo.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "duplicate_review", "DUPLICATE",
-				fmt.Sprintf("🤖 ماتركس — لگيت تكرار جديد: %d زوج حجوزات و%d زوج زبائن. شوفهن بـ«تدقيق التكرار» واتخذ إجراء.", bookings, customers))
+				fmt.Sprintf("🤖 ماتركس — لگيت تكرار جديد: %d زوج حجوزات و%d زوج زبائن. شوفهن بـ«ماتركس — التكرار» واتخذ إجراء.", bookings, customers))
+		}
+		// تقرير ماتركس اليومي (٩ الصبح بغداد): كم تكرار بعده معلّق — حتى ما ينسى.
+		now := time.Now().In(baghdadLoc)
+		day := now.Format("2006-01-02")
+		if now.Hour() >= 9 && duplicateDailyDay != day {
+			duplicateDailyDay = day
+			if rep, err := duplicateCandidateRepo.Report(); err == nil && rep.PendingBookings+rep.PendingCustomers > 0 {
+				_ = notificationRepo.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "duplicate_review", "DUPLICATE",
+					fmt.Sprintf("🤖 ماتركس — فحص التكرار اليومي: %d حجز مكرر و%d زبون مكرر بعدهم ينتظرون إجراء.", rep.PendingBookings, rep.PendingCustomers))
+			}
 		}
 	})
 

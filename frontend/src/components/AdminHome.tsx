@@ -403,7 +403,7 @@ function ActionsBoard() {
         <ActionTile to="/staff-requests" icon="👷" label="طلبات الكادر" hint="المشاريع تطلب كادر" count={n(staff, (x) => x.filter((r) => r.status === 'PENDING').length)} />
         <ActionTile to="/booking-delete-requests" icon="🗑️" label="طلبات حذف الحجوزات" hint="تنتظر قرار" count={n(deletes, (x) => x.awaitingReview)} />
         <ActionTile to="/monitor" icon="🧠" label="صندوق المراقب" hint="بضمنه أحكام ماتركس" count={n(desk, (x) => x.inbox)} />
-        <ActionTile to="/duplicate-review" icon="👯" label="تكرارات مشتبه بيها" hint="حجوزات وزبائن" count={n(dups, (x) => x.length)} />
+        <ActionTile to="/duplicate-review" icon="🤖" label="ماتركس — تكرارات" hint="حجوزات وزبائن مكررة" count={n(dups, (x) => x.length)} />
         <ActionTile to="/achievements" icon="📋" label="إنجازات بلا تقييم" hint="تقارير الموظفين اليومية" count={n(achievements, (x) => x.filter((a) => a.reviewStatus === 'PENDING').length)} />
       </div>
 
