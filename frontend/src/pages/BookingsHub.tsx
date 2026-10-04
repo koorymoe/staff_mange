@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSession } from '../session'
 import BookingsList from './BookingsList'
@@ -105,7 +106,9 @@ export default function BookingsHub() {
   // نبدي بـ«بانتظار التثبيت» لأنها الي تحتاج تصرّف: «حجز جديد»
   // شاشة إدخال، وفتحها افتراضياً يعني الإداري يفتح النظام ويلگه
   // نموذج فاضي بدل شغله الي ينتظره.
-  const [tab, setTab] = useState<TabKey>('pending')
+  // ?tab= من روابط الصفحة الرئيسية (مثلاً «تنتظر تنسيق» ← coord).
+  const [params] = useSearchParams()
+  const [tab, setTab] = useState<TabKey>(() => (TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') as TabKey : 'pending'))
 
   // ═══ عدّاد على كل محطة ═══
   //

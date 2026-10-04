@@ -25,6 +25,7 @@ type GroupMember struct {
 	Completed int      `json:"completed"`
 	Partial   int      `json:"partial"`
 	Open      int      `json:"open"`
+	Unstarted int      `json:"unstarted"` // من المفتوح: ما بدا بيها أحد — ما تنحسب عليه
 	Speed     *float64 `json:"speed"`     // الفعلي ÷ المتوقع (١ = طبيعي)
 	PrevSpeed *float64 `json:"prevSpeed"` // نفسه للشهر الي قبله
 	Score     int      `json:"score"`     // للترتيب بس — أعلى = يحتاج انتباه أكثر
@@ -114,6 +115,7 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 		if p, err := s.repo.Performance(sub.ID, 0); err == nil {
 			m.Jobs, m.Completed, m.Partial = p.Total, p.Completed, p.Partial
 			m.Open = p.Total - p.Completed - p.Partial
+			m.Unstarted = p.Unstarted
 			m.Speed = speedOf(p.Timed, p.AvgActual, p.AvgExpected)
 			if m.Speed != nil && *m.Speed >= 1.4 {
 				slow = append(slow, sub.Name)
@@ -125,7 +127,7 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 		if pp, err := s.repo.Performance(sub.ID, 30); err == nil {
 			m.PrevSpeed = speedOf(pp.Timed, pp.AvgActual, pp.AvgExpected)
 		}
-		m.Score = m.Late/10 + m.Open*2 + m.Partial*3
+		m.Score = m.Late/10 + (m.Open-m.Unstarted)*2 + m.Partial*3
 		if m.Absent {
 			m.Score += 10
 		}

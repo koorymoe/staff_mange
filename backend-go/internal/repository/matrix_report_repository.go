@@ -185,6 +185,8 @@ type PerfJob struct {
 
 type PerfStats struct {
 	Total, Completed, Partial, Timed, Outliers int
+	// Unstarted مفتوحة وما بدا بيها أحد (ما انثبتت، تأجلت، انتقلت) — تنسيق، مو تقصير الكادر.
+	Unstarted int
 	AvgActual, AvgExpected                     float64
 	GroupPartialRate                           float64 // -1 = ما معروف
 	Slow                                       []PerfJob
@@ -193,7 +195,7 @@ type PerfStats struct {
 const perfJobsCTE = `
 	WITH mine AS (
 		SELECT DISTINCT b.id, b.code, b.status::text AS status, b."partialCount", b."serviceId",
-		       COALESCE(s.name, '') AS service,
+		       COALESCE(s.name, '') AS service, (b."startedAt" IS NOT NULL) AS started,
 		       EXTRACT(EPOCH FROM (b."completedAt" - b."startedAt")) / 60 AS actual
 		FROM "Booking" b
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
@@ -223,6 +225,7 @@ func (r *MatrixReportRepository) Performance(id string, offsetDays int) (*PerfSt
 		Partial   int             `db:"partial"`
 		Timed     int             `db:"timed"`
 		Outliers  int             `db:"outliers"`
+		Unstarted int             `db:"unstarted"`
 		AvgAct    sql.NullFloat64 `db:"avg_act"`
 		AvgExp    sql.NullFloat64 `db:"avg_exp"`
 	}
@@ -232,13 +235,14 @@ func (r *MatrixReportRepository) Performance(id string, offsetDays int) (*PerfSt
 		       COUNT(*) FILTER (WHERE "partialCount" > 0) AS partial,
 		       COUNT(*) FILTER (WHERE actual >= 5 AND actual < 840 AND med.expected IS NOT NULL) AS timed,
 		       COUNT(*) FILTER (WHERE actual >= 840) AS outliers,
+		       COUNT(*) FILTER (WHERE status <> 'COMPLETED' AND "partialCount" = 0 AND NOT started) AS unstarted,
 		       AVG(actual) FILTER (WHERE actual >= 5 AND actual < 840 AND med.expected IS NOT NULL) AS avg_act,
 		       AVG(med.expected) FILTER (WHERE actual >= 5 AND actual < 840) AS avg_exp
 		FROM mine LEFT JOIN med ON med."serviceId" = mine."serviceId"`, id, offsetDays)
 	if err != nil {
 		return nil, err
 	}
-	st := &PerfStats{Total: agg.Total, Completed: agg.Completed, Partial: agg.Partial, Timed: agg.Timed, Outliers: agg.Outliers,
+	st := &PerfStats{Total: agg.Total, Completed: agg.Completed, Partial: agg.Partial, Timed: agg.Timed, Outliers: agg.Outliers, Unstarted: agg.Unstarted,
 		AvgActual: agg.AvgAct.Float64, AvgExpected: agg.AvgExp.Float64, GroupPartialRate: -1, Slow: []PerfJob{}}
 	if offsetDays == 0 {
 		_ = r.db.Select(&st.Slow, perfJobsCTE+`

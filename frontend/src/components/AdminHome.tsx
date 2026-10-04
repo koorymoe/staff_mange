@@ -65,17 +65,22 @@ function Section({ title, to, linkLabel = 'التفاصيل ←', children }: { 
   )
 }
 
-function Stat({ label, value, hint, tone = 'slate' }: { label: string; value: ReactNode; hint?: ReactNode; tone?: 'slate' | 'green' | 'amber' | 'red' | 'blue' }) {
+// (ع): «من اضغط ع شي يوديني عليه حتى أشوف بصورة صحيحة» — كل مربع رقم يفتح
+// الشاشة الي تفصّله (to).
+function Stat({ label, value, hint, tone = 'slate', to }: { label: string; value: ReactNode; hint?: ReactNode; tone?: 'slate' | 'green' | 'amber' | 'red' | 'blue'; to?: string }) {
   const tones = {
     slate: 'text-slate-800', green: 'text-emerald-700', amber: 'text-amber-700', red: 'text-red-700', blue: 'text-brand-700',
   }
-  return (
-    <div className="rounded-xl bg-slate-50 px-3 py-2.5">
-      <p className="text-xs text-slate-500">{label}</p>
+  const body = (
+    <>
+      <p className="flex items-center justify-between gap-1 text-xs text-slate-500">{label}{to && <span className="text-[10px] text-brand-600 opacity-0 transition group-hover:opacity-100">ودّيني ←</span>}</p>
       <p className={`mt-0.5 text-xl font-extrabold tabular-nums ${tones[tone]}`}>{value}</p>
       {hint && <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>}
-    </div>
+    </>
   )
+  return to
+    ? <Link to={to} className="group block rounded-xl bg-slate-50 px-3 py-2.5 ring-1 ring-transparent transition hover:bg-white hover:ring-brand-200">{body}</Link>
+    : <div className="rounded-xl bg-slate-50 px-3 py-2.5">{body}</div>
 }
 
 function Missing() {
@@ -235,10 +240,10 @@ function FollowBoard() {
       <Section title="🏢 الشركة بالأرقام">
         {summary === undefined ? <Loading /> : summary === null ? <Missing /> : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <Stat label="الموظفين" value={fmt(summary.employeeCount)} />
-            <Stat label="الزبائن" value={fmt(summary.customerCount)} />
-            <Stat label="الحجوزات" value={fmt(summary.bookingCount)} />
-            <Stat label="أجهزة الجي بي اس" value={fmt(summary.gpsDeviceCount)} />
+            <Stat label="الموظفين" to="/employees" value={fmt(summary.employeeCount)} />
+            <Stat label="الزبائن" to="/customers" value={fmt(summary.customerCount)} />
+            <Stat label="الحجوزات" to="/bookings" value={fmt(summary.bookingCount)} />
+            <Stat label="أجهزة الجي بي اس" to="/gps/devices" value={fmt(summary.gpsDeviceCount)} />
           </div>
         )}
       </Section>
@@ -246,12 +251,12 @@ function FollowBoard() {
       <Section title="⏱️ اليوم" to="/missions" linkLabel="تتبع المهام ←">
         {pulse === undefined ? <Loading /> : pulse === null ? <Missing /> : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-            <Stat label="حجوزات اليوم" value={fmt(pulse.todayBookings)} hint={`أمس ${fmt(pulse.yesterdayBookings)}`} tone="blue" />
-            <Stat label="كوادر بالميدان" value={fmt(pulse.crewInField)} tone="green" />
-            <Stat label="مهام مفتوحة" value={fmt(pulse.openMissions)} />
-            <Stat label="متأخرة +٢٤ ساعة" value={fmt(pulse.overdueMissions)} tone={pulse.overdueMissions ? 'red' : 'slate'} />
-            <Stat label="تنتظر تنسيق" value={fmt(pulse.needsCoordination)} tone={pulse.needsCoordination ? 'amber' : 'slate'} />
-            <Stat label="شكاوى جديدة" value={fmt(pulse.newComplaints)} tone={pulse.newComplaints ? 'red' : 'slate'} />
+            <Stat label="حجوزات اليوم" to="/missions" value={fmt(pulse.todayBookings)} hint={`أمس ${fmt(pulse.yesterdayBookings)}`} tone="blue" />
+            <Stat label="كوادر بالميدان" to="/missions" value={fmt(pulse.crewInField)} tone="green" />
+            <Stat label="مهام مفتوحة" to="/missions" value={fmt(pulse.openMissions)} />
+            <Stat label="متأخرة +٢٤ ساعة" to="/missions" value={fmt(pulse.overdueMissions)} tone={pulse.overdueMissions ? 'red' : 'slate'} />
+            <Stat label="تنتظر تنسيق" to="/bookings?tab=coord" value={fmt(pulse.needsCoordination)} tone={pulse.needsCoordination ? 'amber' : 'slate'} />
+            <Stat label="شكاوى جديدة" to="/complaints" value={fmt(pulse.newComplaints)} tone={pulse.newComplaints ? 'red' : 'slate'} />
           </div>
         )}
       </Section>
@@ -260,12 +265,12 @@ function FollowBoard() {
         <Section title="💰 الحسابات" to="/finance">
           {finance === undefined ? <Loading /> : finance === null ? <Missing /> : (
             <div className="grid grid-cols-2 gap-2">
-              <Stat label="المحصّل (حجوزات منجزة)" value={money(finance.totalCollected)} tone="green" />
-              <Stat label="مدقّق" value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز`} />
-              <Stat label="بانتظار التدقيق" value={money(finance.unverifiedAmount)} hint={`${fmt(finance.unverifiedCount)} حجز`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
-              <Stat label="المصاريف" value={money(finance.totalExpenseValue)} hint={`${fmt(finance.pendingExpenses)} بانتظار الموافقة`} tone="red" />
-              <Stat label="أنجزت اليوم" value={fmt(finance.todayCompleted)} hint={`انفتح اليوم ${fmt(finance.todayCreated)}`} />
-              <Stat label="قيد التنفيذ" value={fmt(finance.inProgressCount)} hint={`مثبّتة ${fmt(finance.confirmedCount)} · معلّقة ${fmt(finance.pendingCount)}`} />
+              <Stat label="المحصّل (حجوزات منجزة)" to="/finance" value={money(finance.totalCollected)} tone="green" />
+              <Stat label="مدقّق" to="/daily-audit" value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز`} />
+              <Stat label="بانتظار التدقيق" to="/daily-audit" value={money(finance.unverifiedAmount)} hint={`${fmt(finance.unverifiedCount)} حجز`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
+              <Stat label="المصاريف" to="/expenses" value={money(finance.totalExpenseValue)} hint={`${fmt(finance.pendingExpenses)} بانتظار الموافقة`} tone="red" />
+              <Stat label="أنجزت اليوم" to="/bookings?tab=done" value={fmt(finance.todayCompleted)} hint={`انفتح اليوم ${fmt(finance.todayCreated)}`} />
+              <Stat label="قيد التنفيذ" to="/bookings?tab=assigned" value={fmt(finance.inProgressCount)} hint={`مثبّتة ${fmt(finance.confirmedCount)} · معلّقة ${fmt(finance.pendingCount)}`} />
             </div>
           )}
         </Section>
@@ -274,9 +279,9 @@ function FollowBoard() {
           {internal === undefined ? <Loading /> : internal === null ? <Missing /> : (
             <>
               <div className="grid grid-cols-3 gap-2">
-                <Stat label="داخل الشركة" value={fmt(internal.inHouseCount)} />
-                <Stat label="بالموقع" value={fmt(internal.onSiteCount)} />
-                <Stat label="المبلغ" value={money(internal.inHouseAmount)} tone="green" />
+                <Stat label="داخل الشركة" to="/stats-management" value={fmt(internal.inHouseCount)} />
+                <Stat label="بالموقع" to="/stats-management" value={fmt(internal.onSiteCount)} />
+                <Stat label="المبلغ" to="/stats-management" value={money(internal.inHouseAmount)} tone="green" />
               </div>
               {internal.services.length > 0 && (
                 <ul className="mt-3 space-y-1 text-sm">
@@ -336,9 +341,9 @@ function FollowBoard() {
         {attendance === undefined ? <Loading /> : attendance === null ? <Missing /> : (
           <>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              <Stat label="سجّلوا حضور اليوم" value={fmt(present)} />
-              <Stat label="بالدوام هسه" value={fmt(activeNow)} tone="green" />
-              <Stat label="طلعوا" value={fmt(present - activeNow)} />
+              <Stat label="سجّلوا حضور اليوم" to="/attendance" value={fmt(present)} />
+              <Stat label="بالدوام هسه" to="/attendance" value={fmt(activeNow)} tone="green" />
+              <Stat label="طلعوا" to="/attendance" value={fmt(present - activeNow)} />
             </div>
             {present > 0 && (
               <div className="mt-3 flex flex-wrap gap-1.5">

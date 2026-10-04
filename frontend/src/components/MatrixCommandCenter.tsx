@@ -49,7 +49,10 @@ function perfIndex(m: Member, field = true) {
     else if (m.late > 0) d -= Math.min(20, m.late / 3)
     return Math.max(0, Math.min(100, Math.round(d)))
   }
-  let v = m.jobs > 0 ? ((m.completed + m.partial * 0.5) / m.jobs) * 100 : 90
+  // الحجز المفتوح الي ما بدا بي أحد (ما انثبت، تأجّل، انتقل) ما ينحسب عليه:
+  // چان موظف عليه حجوزات معلّقة بلا ذنبه يطلع ٠٪ «يحتاج دعم».
+  const measured = m.jobs - (m.unstarted ?? 0)
+  let v = measured > 0 ? ((m.completed + m.partial * 0.5) / measured) * 100 : 90
   if (m.absent) v -= 15
   else if (m.late > 0) v -= Math.min(20, m.late / 3)
   if (m.speed != null && m.speed > 1.15) v -= Math.min(25, (m.speed - 1) * 40)

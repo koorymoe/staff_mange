@@ -5784,7 +5784,7 @@ export interface GroupPerformance {
   /** حجوزات وسرعة للميدانيين بس؛ الباقين بشغل دورهم (columns/metrics). */
   field: boolean
   columns?: string[]
-  members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; jobs: number; completed: number; partial: number; open: number; speed: number | null; prevSpeed: number | null; score: number; noSchedule?: boolean; metrics?: RoleMetric[]; pending?: number }[]
+  members: { id: string; name: string; checkIn?: string; late: number; absent: boolean; jobs: number; completed: number; partial: number; open: number; unstarted?: number; speed: number | null; prevSpeed: number | null; score: number; noSchedule?: boolean; metrics?: RoleMetric[]; pending?: number }[]
   problems: { text: string; link?: string; fixes: string[] }[]
 }
 
