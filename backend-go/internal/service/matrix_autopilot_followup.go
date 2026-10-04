@@ -406,13 +406,6 @@ func WatchGroup(subj repository.WatchSubject) string {
 		return "IT"
 	case subj.Role == "DESIGNER":
 		return "DESIGN"
-	// عيون خاصة (چانوا يوقعون بـSTAFF وينقاسون بعمليات النظام بس).
-	case subj.Role == "SALES":
-		return "SALES"
-	case subj.Role == "PROJECT_MANAGER":
-		return "PROJECTS"
-	case subj.Role == "GPS_ADMIN" || subj.Role == "GPS_ENGINEER":
-		return "GPS"
 	case subj.IsLeader:
 		return "LEADERS"
 	case subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER":
@@ -422,6 +415,14 @@ func WatchGroup(subj repository.WatchSubject) string {
 		return "COORDINATORS"
 	case hasPerm(subj, "finance_audit", "auditing"):
 		return "MONITORS"
+	// عيون خاصة (چانوا يوقعون بـSTAFF وينقاسون بعمليات النظام بس) — بعد
+	// صلاحيات الشغل: بائع عنده صلاحية التنسيق شغله تنسيق.
+	case subj.Role == "SALES":
+		return "SALES"
+	case subj.Role == "PROJECT_MANAGER":
+		return "PROJECTS"
+	case subj.Role == "GPS_ADMIN" || subj.Role == "GPS_ENGINEER":
+		return "GPS"
 	default:
 		return "STAFF"
 	}

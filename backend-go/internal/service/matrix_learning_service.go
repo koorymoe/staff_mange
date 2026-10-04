@@ -124,12 +124,38 @@ func (s *MatrixLearningService) predict(now time.Time) int {
 	remaining := math.Max(workdayEnd-hour, 0)
 	n := 0
 	names := []string{}
+	// طوابير الأقسام المكتبية مشتركة (صندوق المراقب، التدقيق، الاعتماد…): نقسمها
+	// على عدد الي يشتغلون عليها، فكل واحد يتوقَّع على حصته بس — مو كل طابور القسم.
+	// (ع) 10-04: التوقع يشمل غير الليدرية؛ الفنيين يبقون يتبعون الليدر.
+	shared := map[string]bool{"AUDIT": true, "MONITOR_INBOX": true, "APPROVE": true, "CONFIRM": true, "QUALITY": true}
+	workloads := map[string][]WorkloadItem{}
+	holders := map[string]int{}
 	for _, sub := range subs {
-		// قرار (ع): نتوقع لليدرية بس — الفنيين يتبعون الليدر، فالتوقع عليه.
-		if WatchGroup(sub) != "LEADERS" {
+		g := WatchGroup(sub)
+		if g == "TECHS" || g == "ADMINS" {
 			continue
 		}
-		for _, w := range s.watch.workload(sub) {
+		ws := s.watch.workload(sub)
+		workloads[sub.ID] = ws
+		for _, w := range ws {
+			if shared[w.Key] {
+				holders[w.Key]++
+			}
+		}
+	}
+	for _, sub := range subs {
+		ws, ok := workloads[sub.ID]
+		if !ok {
+			continue
+		}
+		for _, w := range ws {
+			if WatchGroup(sub) != "LEADERS" && !shared[w.Key] {
+				continue
+			}
+			if shared[w.Key] && holders[w.Key] > 1 {
+				w.Left = (w.Left + holders[w.Key] - 1) / holders[w.Key] // حصته من الطابور
+				w.Label += fmt.Sprintf(" (حصتك من %d)", holders[w.Key])
+			}
 			if w.Done == 0 && w.Left < predictMinLeft*2 { // بلا منجز ما نعرف وتيرة — بس لو الكومة كبيرة
 				continue
 			}

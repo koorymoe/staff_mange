@@ -614,7 +614,7 @@ func (r *AiActionRepository) RoleCounts(id string, days int) RoleCounts {
 			+ (SELECT COUNT(*) FROM "GpsRenewalRequest" WHERE "employeeId" = $1 AND "createdAt" >= `+since+`)
 			+ (SELECT COUNT(*) FROM "GpsMaintenanceRequest" WHERE "employeeId" = $1 AND "createdAt" >= `+since+`)`, id, days),
 		GpsCalls: r.count(`SELECT COUNT(*) FROM "GpsRenewalFollowUp" WHERE "calledById" = $1 AND "calledAt" >= `+since, id, days),
-		Actions:       r.count(`SELECT COUNT(*) FROM "EmployeeActivity" WHERE "employeeId" = $1 AND "createdAt" >= `+since, id, days),
+		Actions:  r.count(`SELECT COUNT(*) FROM "EmployeeActivity" WHERE "employeeId" = $1 AND "createdAt" >= `+since, id, days),
 	}
 }
 
