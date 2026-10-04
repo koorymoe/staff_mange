@@ -7,13 +7,13 @@ import {
   type EmployeeDailyAttendanceSummary,
   type FinanceSummary,
   type InternalWorksReport,
-  type MonitorDeskCounts,
   type NewEmployeeCurve,
   type StockForecast,
   type TechnicianKpi,
   type TodayPulse,
 } from '../api'
 import TodayBoard from './TodayBoard'
+import ActionsTable from './ActionsTable'
 import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 
 // ═══ رئيسية مدير النظام: لوحتين ═══
@@ -398,44 +398,11 @@ function FollowBoard() {
 }
 
 // ═══ لوحة الإجراءات ═══
-function ActionTile({ to, icon, label, count, hint }: { to: string; icon: string; label: string; count: number | null | undefined; hint: string }) {
-  const hot = typeof count === 'number' && count > 0
-  return (
-    <Link to={to}
-      className={`flex items-start justify-between gap-3 rounded-2xl border p-4 transition-colors ${hot ? 'border-amber-300 bg-amber-50 hover:bg-amber-100' : 'border-slate-200 bg-white hover:bg-slate-50'}`}>
-      <div>
-        <p className="font-extrabold text-[#0f2040]">{icon} {label}</p>
-        <p className="mt-0.5 text-xs text-slate-500">{hint}</p>
-      </div>
-      <span className={`min-w-10 rounded-xl px-2.5 py-1 text-center text-lg font-extrabold tabular-nums ${hot ? 'bg-amber-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
-        {count === undefined ? '…' : count === null ? '—' : fmt(count)}
-      </span>
-    </Link>
-  )
-}
-
 function ActionsBoard() {
-  const leaves = useLoad(() => api.getLeavePendingCount())
-  const staff = useLoad(() => api.getStaffRequests())
-  const deletes = useLoad(() => api.getBookingDeleteRequestCounts())
-  const desk = useLoad<MonitorDeskCounts>(() => api.getMonitorDeskCounts())
-  const dups = useLoad(() => api.getDuplicateCandidates(undefined, 'PENDING'))
-  const achievements = useLoad(() => api.getAchievements({ limit: 200 }))
-  const matrix = useLoad(() => api.getMatrixDecisions())
-
-  const n = <T,>(v: T | null | undefined, f: (x: T) => number) => (v === undefined ? undefined : v === null ? null : f(v))
-
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        <ActionTile to="/matrix/decisions" icon="🤖" label="صندوق قرارات ماتركس" hint="شنو سوّى لحاله وشنو ينتظرك" count={n(matrix, (x) => x.pending.length + x.unstaffed.length + (x.proposals ?? 0))} />
-        <ActionTile to="/leaves" icon="🌴" label="طلبات الإجازات" hint="تنتظر موافقتك" count={n(leaves, (x) => x.count)} />
-        <ActionTile to="/staff-requests" icon="👷" label="طلبات الكادر" hint="المشاريع تطلب كادر" count={n(staff, (x) => x.filter((r) => r.status === 'PENDING').length)} />
-        <ActionTile to="/booking-delete-requests" icon="🗑️" label="طلبات حذف الحجوزات" hint="تنتظر قرار" count={n(deletes, (x) => x.awaitingReview)} />
-        <ActionTile to="/monitor" icon="🧠" label="صندوق المراقب" hint="بضمنه أحكام ماتركس" count={n(desk, (x) => x.inbox)} />
-        <ActionTile to="/duplicate-review" icon="🤖" label="ماتركس — تكرارات" hint="حجوزات وزبائن مكررة" count={n(dups, (x) => x.length)} />
-        <ActionTile to="/achievements" icon="📋" label="إنجازات بلا تقييم" hint="تقارير الموظفين اليومية" count={n(achievements, (x) => x.filter((a) => a.reviewStatus === 'PENDING').length)} />
-      </div>
+      {/* جدول الإجراءات بتصميم (ع) 10-04 — بدل مربعات العدّادات */}
+      <ActionsTable />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <StockForecastSection />
