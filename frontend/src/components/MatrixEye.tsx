@@ -6,7 +6,6 @@ import { useSession } from '../session'
 import { isEnabled, SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
-import OwnerEyes from './OwnerEyes'
 
 // ═══ عين ماتركس — «عين الرب» ═══
 //
@@ -244,10 +243,7 @@ export default function MatrixEye() {
           className={`matrix-eye ${angry ? 'is-red' : ''} ${flash ? 'is-flash' : ''}`}
           style={{ ['--eye' as string]: color }}
         >
-          {/* حساب المالك: رينغان وشارنغان بدل العين — طلب (ع). نفس الزر ونفس التقرير. */}
-          {employee?.actualRole === 'OWNER'
-            ? <OwnerEyes ref={pupilRef} mood={mood} lid={lid} width={100} />
-            : <MatrixEyeGraphic ref={pupilRef} group={group} mood={mood} lid={lid} flash={flash} width={76} />}
+          <MatrixEyeGraphic ref={pupilRef} group={group} mood={mood} lid={lid} flash={flash} width={76} />
           {watch && watch.open > 0 && shown && (
             <span className="absolute -top-1 -end-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[10px] font-extrabold text-white" style={{ background: angry ? '#ef4444' : '#ca8a04' }}>{watch.open}</span>
           )}
