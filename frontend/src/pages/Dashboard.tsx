@@ -285,6 +285,10 @@ function StaffDashboard() {
   if (!employee) return null
 
   const isAdmin = employee.role === 'ADMIN'
+  // واجهة المراقب الرئيسية — قرار (ع) 10-04: تنشال «نظرة المراقب» (الأرقام،
+  // المنجزة اليوم، تنبيه التدقيق)، و«صلاحيات إضافية»، وجدول الدوام (له شاشته
+  // «جدول دوامي»). يبقى: الإجراءات السريعة ونبض اليوم (شكاوى، ميدان، تنسيق، حجوزات).
+  const isMonitorHome = !isAdmin && (employee.role === 'MONITOR' || permissions.includes('monitoring'))
   const pendingMaintenance = gpsStats?.devicesByStatus?.find((d) => d.status === 'MAINTENANCE')?.count || 0
 
   const quickCards = [
@@ -682,7 +686,7 @@ function StaffDashboard() {
       })()}
 
       {/* ═══ Monitor Overview Panel ═══ */}
-      {permissions.includes('monitoring') && !isAdmin && (() => {
+      {permissions.includes('monitoring') && !isAdmin && !isMonitorHome && (() => {
         // الأرقام من ملخّص السيرفر (محسوبة على الأرشيف الكامل)، والقوائم
         // من الشغل الحيّ ومن آخر ٢٠٠ منجز — للعرض بس.
         const inProgress = bookings.filter(b => b.status === 'IN_PROGRESS')
@@ -859,7 +863,7 @@ function StaffDashboard() {
           ⚠️ الروابط تُشتق من `navItems` نفسها (`collectMonitorExtraLinks`)
           بلا قائمة يدوية ثانية — أي صلاحية تُمنح له لاحقاً تظهر هنا
           تلقائياً بنفس الاسم والمسار الظاهرين بالقائمة الجانبية. */}
-      {(() => {
+      {!isMonitorHome && (() => {
         const extraLinks = collectMonitorExtraLinks(navItems, { employee, permissions, gpsServiceId })
         if (extraLinks.length === 0) return null
         return (
@@ -1080,7 +1084,7 @@ function StaffDashboard() {
           هنا بدل الشريط المصغّر القديم (تسجيل حضور/انصراف بس بلا
           بطاقات ولا جدول شهري). نفس نمط `embedded` المعتمد بشاشات
           ثانية — الحالة والحفظ يشتغلون بمكان واحد بس. */}
-      <AttendancePage embedded />
+      {!isMonitorHome && <AttendancePage embedded />}
 
       {/* ═══ شريط الفني: جرد أدواته + طلب إجازة ═══
           الفني ما إله شاشات إدارية يتنقل بيها، فالشغلتين الي يحتاجهن
