@@ -24,6 +24,7 @@ var DefaultPermissions = []Permission{
 	{Name: "work_schedule_manage", Label: "تحديد جدول دوام الموظفين"},
 	{Name: "remote_hours_manage", Label: "ساعات العمل من البيت — مسؤول (كل الموظفين + التصفير)"},
 	{Name: "booking_reopen", Label: "إرجاع حجز منجز للكادر (لتسجيل إنجاز جزئي)"},
+	{Name: "duplicate_review", Label: "تدقيق التكرار (حجوزات وزبائن مشتبه بيهم + زر «مو تكرار»)"},
 	{Name: "remote_hours_self", Label: "ساعات العمل من البيت — يسجّل ساعاته هو (عدّاد + يدوي)"},
 	{Name: "kpi_management", Label: "تقييم الأداء (KPI)"},
 	{Name: "kpi_criteria_management", Label: "إدارة نقاط الكي بي اي (إضافة/حذف)"},

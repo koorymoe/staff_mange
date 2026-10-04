@@ -2018,8 +2018,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/survey-photos/{id}/file", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.File), requireAuth))
 	mux.Handle("DELETE /api/survey-photos/{id}", middleware.Chain(http.HandlerFunc(surveyPhotoHandler.Delete), requireAuth))
 	// تدقيق التكرار (ماتركس) — عرض وقرار "مو تكرار" حصراً، بلا حذف/دمج.
-	mux.Handle("GET /api/duplicate-candidates", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.List), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/duplicate-candidates/{id}/dismiss", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Dismiss), requireAuth, requireAdmin))
+	// تدقيق التكرار: المدير/المالك أو صلاحية duplicate_review (طلب (ع): موظف يدقق بيهن).
+	requireDuplicateReview := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "duplicate_review")
+	mux.Handle("GET /api/duplicate-candidates", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.List), requireAuth, requireDuplicateReview))
+	mux.Handle("PUT /api/duplicate-candidates/{id}/dismiss", middleware.Chain(http.HandlerFunc(duplicateCandidateHandler.Dismiss), requireAuth, requireDuplicateReview))
 
 	mux.Handle("GET /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.List), requireAuth, requireQuality))
 	mux.Handle("POST /api/quality/issues", middleware.Chain(http.HandlerFunc(qualityHandler.Create), requireAuth, requireQuality))

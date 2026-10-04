@@ -248,7 +248,7 @@ export const navItems: NavItem[] = [
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
-      { to: '/duplicate-review', label: '🔍 تدقيق التكرار', icon: <></>, roles: ['ADMIN'] },
+      { to: '/duplicate-review', label: '🔍 تدقيق التكرار', icon: <></>, roles: ['ADMIN'], permission: 'duplicate_review' },
       { to: '/achievements', label: '📋 الإنجازات', icon: <></>, roles: ['ADMIN'] },
       // دليل الأدوار — يوضّح منو يوصل لوين، فمحله عند من يوزّع الصلاحيات
       { to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
