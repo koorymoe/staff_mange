@@ -24,10 +24,13 @@ func TestAssistantKnowledgeSearchRelevant_Live(t *testing.T) {
 
 	repo := NewAssistantKnowledgeRepository(db)
 
-	var empID string
-	if err := db.Get(&empID, `SELECT id FROM "Employee" LIMIT 1`); err != nil {
-		t.Fatalf("could not find sample employee: %v", err)
+	// موظف خاص بالاختبار: قاعدة الـCI فاضية، فـ«أول موظف» ما موجود وچان
+	// الاختبار يطيح ويخلي كل CI أحمر.
+	empID := "__test_assistant_knowledge_emp"
+	if _, err := db.Exec(`INSERT INTO "Employee"(id, name) VALUES ($1, 'موظف اختبار المعرفة') ON CONFLICT (id) DO NOTHING`, empID); err != nil {
+		t.Fatalf("create sample employee: %v", err)
 	}
+	defer db.Exec(`DELETE FROM "Employee" WHERE id = $1`, empID)
 
 	testTopic1 := "__test_إنفرترات_الطاقة_الشمسية"
 	testTopic2 := "__test_موضوع_غير_ذي_علاقة"

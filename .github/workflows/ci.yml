@@ -36,6 +36,7 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version-file: backend-go/go.mod
+          cache-dependency-path: backend-go/go.sum
 
       - name: Go build
         working-directory: backend-go
