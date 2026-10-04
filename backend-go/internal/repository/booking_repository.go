@@ -160,13 +160,15 @@ func (r *BookingRepository) ListManagerPaperwork(employeeID string, limit int) (
 // 🔴🔴 **انشالن شرطان چانن يفرّغون القائمة للكل** — وهاي علّتي:
 //
 // ① `s."managerHandlesPaperwork" = true` — وهذا العمود
-//    `DEFAULT false`، يعني ما يشتغل إلا إذا المالك أشّره بإيده
-//    لكل خدمة. وبقاعدة (ع) **ماكو ولا خدمة مؤشَّرة**، فالقائمة
-//    طلعت فاضية **للمالك ولمسؤول الخدمة سوه** (مقيس: صفر للاثنين
-//    بعد إطفاء العلامة بالمختبر).
+//
+//	`DEFAULT false`، يعني ما يشتغل إلا إذا المالك أشّره بإيده
+//	لكل خدمة. وبقاعدة (ع) **ماكو ولا خدمة مؤشَّرة**، فالقائمة
+//	طلعت فاضية **للمالك ولمسؤول الخدمة سوه** (مقيس: صفر للاثنين
+//	بعد إطفاء العلامة بالمختبر).
 //
 // ② `sm."employeeId" = $1` (تسجيل بجدول `ServiceManager`) — تسجيل
-//    ثالث منفصل، والمالك أصلاً مو مسجَّل بولا خدمة.
+//
+//	ثالث منفصل، والمالك أصلاً مو مسجَّل بولا خدمة.
 //
 // يعني چان لازم **ثلاث إعدادات** تتوافق حتى تطلع القائمة، وواحد
 // منهن مطفي افتراضياً. و(ع) ينطي صلاحية «فاتورة الجي بي اس»
@@ -2046,4 +2048,28 @@ func (r *BookingRepository) ListInternal(status, partyEmployeeID string, limit i
 		return nil, err
 	}
 	return rows, nil
+}
+
+// BookingMaterialPurchase طلب مواد مربوط بالحجز وانجهّز (انشترى).
+type BookingMaterialPurchase struct {
+	Code        string    `db:"code"`
+	FulfilledAt time.Time `db:"fulfilledAt"`
+	TotalCost   *float64  `db:"totalCost"`
+	Supplier    *string   `db:"supplier"`
+	By          *string   `db:"by"`
+	Items       *string   `db:"items"`
+}
+
+// MaterialPurchases — «مادة انشترت» تطلع بقصة الحجز بدل صندوق المراقب (قرار (ع) 10-04).
+func (r *BookingRepository) MaterialPurchases(bookingID string) ([]BookingMaterialPurchase, error) {
+	rows := []BookingMaterialPurchase{}
+	err := r.db.Select(&rows, `
+		SELECT p.code, p."fulfilledAt", p."totalCost", COALESCE(s."companyName", s."ownerName") AS supplier, e.name AS by,
+		       (SELECT string_agg(i."productName" || ' ×' || i.quantity, '، ') FROM "ProcurementItem" i WHERE i."requestId" = p.id) AS items
+		FROM "ProcurementRequest" p
+		LEFT JOIN "Supplier" s ON s.id = p."supplierId"
+		LEFT JOIN "Employee" e ON e.id = p."fulfilledById"
+		WHERE p."bookingId" = $1 AND p."fulfilledAt" IS NOT NULL
+		ORDER BY p."fulfilledAt"`, bookingID)
+	return rows, err
 }

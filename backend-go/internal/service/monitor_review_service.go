@@ -50,11 +50,23 @@ func (s *MonitorReviewService) Counts() ([]model.MonitorInboxCount, error) {
 	return s.repo.Counts()
 }
 
+// TrimmedMonitorStages محطات انشالت من صندوق المراقب — قرار (ع) 10-04:
+// «نريد نبسط الشغل مانعقده». الشغل نفسه يصير عادي، بس ما ينكتب بند بالصندوق:
+//   - المنظومة الشمسية والجهاز المسلّم: ما يحتاجهن.
+//   - المادة المشتراة: تطلع بقصة الحجز (BookingTimelineService).
+//   - تعديل مبالغ الفاتورة: ما يحتاجه هنا.
+//   - حكم الجودة: مكانه «الجودة والشكاوى» بمكتب المراقب.
+var TrimmedMonitorStages = map[string]bool{
+	model.MonitorStageSolarQuoted: true, model.MonitorStageGpsDeviceDone: true,
+	model.MonitorStageProcurementFulfilled: true, model.MonitorStageInvoiceAdjusted: true,
+	model.MonitorStageQualityVerdict: true,
+}
+
 // BookingStage يدزّ حجز لمحطة مراقبة.
 //
 // الخطأ ينتسجّل وما ينرجّع: فشل صف مراقبة ما يصير يمنع تثبيت حجز.
 func (s *MonitorReviewService) BookingStage(stage string, b *model.Booking, ownerRole string, ownerEmployeeID *string) {
-	if b == nil {
+	if b == nil || TrimmedMonitorStages[stage] {
 		return
 	}
 	when := "بلا موعد"
@@ -88,6 +100,9 @@ func (s *MonitorReviewService) Stage(stage, entityType, entityID, title, summary
 // StageUrgent نفس Stage بعلم العجلة — الصف العاجل يطلع أول المعلّق
 // بإطار أحمر (آلية موجودة أصلاً لمحطة الفواتير).
 func (s *MonitorReviewService) StageUrgent(stage, entityType, entityID, title, summary, ownerRole string, ownerEmployeeID *string, urgent bool) {
+	if TrimmedMonitorStages[stage] {
+		return
+	}
 	err := s.repo.Enqueue(model.EnqueueMonitorReview{
 		Stage:           stage,
 		EntityType:      entityType,
@@ -105,6 +120,9 @@ func (s *MonitorReviewService) StageUrgent(stage, entityType, entityID, title, s
 
 // InvoiceStage يدزّ فاتورة لمحطة مراقبة.
 func (s *MonitorReviewService) InvoiceStage(stage, invoiceID, title, summary, ownerRole string, ownerEmployeeID *string, urgent bool) {
+	if TrimmedMonitorStages[stage] {
+		return
+	}
 	err := s.repo.Enqueue(model.EnqueueMonitorReview{
 		Stage:           stage,
 		EntityType:      "LEADER_INVOICE",

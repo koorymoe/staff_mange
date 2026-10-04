@@ -387,6 +387,8 @@ func versionedMigrations() []Migration {
 	result = append(result, monthlyResetMigrations()...)
 	// 0309: حل التكرار (دمج / طلب حذف) وملاحظته.
 	result = append(result, duplicateResolutionMigrations()...)
+	// 0310: صندوق المراقب أبسط — المحطات المشالة تنسكّر.
+	result = append(result, monitorTrimMigrations()...)
 	return result
 }
 

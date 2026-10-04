@@ -17,7 +17,7 @@ import { api, type BookingTimeline as Timeline } from '../api'
 const ICONS: Record<string, string> = {
   CREATED: '📝', CONTACTED: '📞', CONFIRMED: '📌', ASSIGNED: '👷',
   SCHEDULE_CHANGE: '📅', STARTED: '🚗', WORK_STOPPED: '⏸️', PARTIAL: '🔄',
-  COMPLETED: '🏁', INVOICED: '🧾', INVOICE_APPROVED: '✅', QUALITY: '⭐',
+  COMPLETED: '🏁', INVOICED: '🧾', INVOICE_APPROVED: '✅', QUALITY: '⭐', MATERIALS_BOUGHT: '📦',
   MONITOR: '👁️', CANCELLED: '✖️', POSTPONED: '⏳', WAITING: '📵',
 }
 

@@ -146,6 +146,29 @@ func (s *BookingTimelineService) Build(bookingID string) (*model.BookingTimeline
 		}
 	}
 
+	// ═══ المواد الي انشترت للحجز ═══
+	if buys, err := s.bookings.MaterialPurchases(b.ID); err == nil {
+		for i := range buys {
+			p := buys[i]
+			detail := p.Code
+			if p.Items != nil && *p.Items != "" {
+				detail += " — " + *p.Items
+			}
+			if p.TotalCost != nil {
+				detail += fmt.Sprintf(" • الكلفة: %.0f د.ع", *p.TotalCost)
+			}
+			if p.Supplier != nil && *p.Supplier != "" {
+				detail += " • المورد: " + *p.Supplier
+			}
+			by := ""
+			if p.By != nil {
+				by = *p.By
+			}
+			at := p.FulfilledAt
+			add(&at, model.TimelineMaterials, "📦 انشترت مواد للحجز", detail, by)
+		}
+	}
+
 	// ═══ متابعة الجودة ═══
 	if q, err := s.quality.ByBooking(b.ID); err == nil && q != nil {
 		add(q.ContactedAt, model.TimelineQuality, "متابعة جودة — تواصل مع الزبون", "", "")

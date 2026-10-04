@@ -37,6 +37,7 @@ const (
 	TimelineInvoiced  = "INVOICED"
 	TimelineApproved  = "INVOICE_APPROVED"
 	TimelineQuality   = "QUALITY"
+	TimelineMaterials = "MATERIALS_BOUGHT" // مادة انشترت للحجز — انتقلت من صندوق المراقب
 	TimelineMonitor   = "MONITOR"
 	TimelineCancelled = "CANCELLED"
 	TimelinePostponed = "POSTPONED"
@@ -49,10 +50,10 @@ const (
 // وصل الفوترة ما إله «تأخر فوترة»، وعرضه صفراً يعني إنه انفوتر فوراً —
 // كذبة. الواجهة تخفي الـnil كلياً.
 type DelayMetric struct {
-	Key       string  `json:"key"`
-	Label     string  `json:"label"`
-	Minutes   *int    `json:"minutes"`
-	Owner     string  `json:"owner"`
+	Key     string `json:"key"`
+	Label   string `json:"label"`
+	Minutes *int   `json:"minutes"`
+	Owner   string `json:"owner"`
 	// ThresholdMinutes الحد المعلن — تجاوزه يتلوّن بالواجهة.
 	// ⚠️ معلن ومكتوب هنا، مو رقم مخبّى بالكود: صاحب العمل لازم يعرف
 	// على أي أساس انتأشّر موظفه «متأخر».
@@ -74,10 +75,10 @@ type BookingTimeline struct {
 // ⚠️ **عرض بس بهاي المرحلة**: ماكو غرامة تلقائية تنبني عليها. تجاوز
 // الحد يتلوّن ويُقرا، والقرار يبقى بيد الإدارة.
 const (
-	DelayConfirmMinutes  = 24 * 60      // من التسجيل للتثبيت: يوم
-	DelayAssignMinutes   = 12 * 60      // من التثبيت للتكليف: نص يوم
-	DelayDepartMinutes   = 60           // من الموعد للخروج: ساعة
-	DelayExecuteMinutes  = 8 * 60       // مدة التنفيذ: يوم عمل
-	DelayInvoiceMinutes  = 36 * 60      // من الإنجاز للفوترة: ٣٦ ساعة
-	DelayAuditMinutes    = 36 * 60      // من الفوترة للتدقيق: ٣٦ ساعة
+	DelayConfirmMinutes = 24 * 60 // من التسجيل للتثبيت: يوم
+	DelayAssignMinutes  = 12 * 60 // من التثبيت للتكليف: نص يوم
+	DelayDepartMinutes  = 60      // من الموعد للخروج: ساعة
+	DelayExecuteMinutes = 8 * 60  // مدة التنفيذ: يوم عمل
+	DelayInvoiceMinutes = 36 * 60 // من الإنجاز للفوترة: ٣٦ ساعة
+	DelayAuditMinutes   = 36 * 60 // من الفوترة للتدقيق: ٣٦ ساعة
 )
