@@ -527,7 +527,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixLearningService.SetReportService(matrixEmployeeReportService)
 	// سجل النشاط: كل حفظ ناجح ينكتب — «شنو سوّى اليوم» بتقرير الموظف.
 	employeeActivityService := service.NewEmployeeActivityService(repository.NewEmployeeActivityRepository(db))
-	middleware.SetActivityRecorder(employeeActivityService.Record)
+	// كل حفظ ناجح: ينسجل بالنشاط، وماتركس يفحص تذكيرات الموظف لحظياً
+	// (سجّل حضور ← التذكير ينسكّر والعين ترجع هادئة).
+	middleware.SetActivityRecorder(func(employeeID, method, pattern, path string, status int) {
+		employeeActivityService.Record(employeeID, method, pattern, path, status)
+		matrixAutopilotService.ResolveFor(employeeID)
+	})
 	matrixEmployeeReportService.SetActivity(employeeActivityService)
 	matrixCommandService := service.NewMatrixCommandService(repository.NewMatrixCommandRepository(db), matrixAutopilotService,
 		matrixEmployeeReportService, matrixBusinessService, repository.NewMatrixProposalRepository(db))

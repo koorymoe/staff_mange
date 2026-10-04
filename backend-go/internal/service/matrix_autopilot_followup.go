@@ -21,6 +21,38 @@ import (
 var followableKinds = []string{
 	model.AiActionPaperworkReminder, model.AiActionUnstaffedAlert, model.AiActionExtraTaskOverdue,
 	model.AiActionGpsExpiry, model.AiActionVehicleDocExpiry, model.AiActionInvoiceApproval, model.AiActionLowStock,
+	model.AiActionAttendanceNudge,
+}
+
+// ResolveFor فحص لحظي بعد كل عملية حفظ للموظف: التذكيرات الي نفّذها تنسكّر
+// وإشعارها يتعلّم مقروء، فالعين ترجع هادئة بنفس اللحظة.
+// (ع): «ينبّهه سجّل حضور، يسجّل، والإشعار ما يروح والعين ما تتغير».
+// محدود: مرة لكل موظف كل ١٠ ثواني حتى ما نضرب القاعدة بكل طلب.
+func (s *MatrixAutopilotService) ResolveFor(employeeID string) {
+	if employeeID == "" {
+		return
+	}
+	s.resolveMu.Lock()
+	if s.resolveLast == nil {
+		s.resolveLast = map[string]time.Time{}
+	}
+	if t, ok := s.resolveLast[employeeID]; ok && time.Since(t) < 10*time.Second {
+		s.resolveMu.Unlock()
+		return
+	}
+	s.resolveLast[employeeID] = time.Now()
+	s.resolveMu.Unlock()
+
+	open, err := s.actions.OpenFollowableFor(employeeID, followableKinds)
+	if err != nil {
+		return
+	}
+	for _, a := range open {
+		if ok, err := s.actions.IsResolved(a); err == nil && ok {
+			_ = s.actions.MarkResolved(a.ID)
+			_ = s.notif.MarkReadNear(employeeID, "AI_AUTOPILOT", a.CreatedAt, 2*time.Minute)
+		}
+	}
 }
 
 // ٧. اشتراك جي بي اس يخلص خلال ١٤ يوم — لمهندس الجودة، مرة بالأسبوع.

@@ -115,7 +115,9 @@ export default function MatrixEye() {
     const load = () => api.getMyWatch().then((w) => { if (alive) setWatch(w) }).catch(() => {})
     load()
     const t = window.setInterval(load, POLL_MS)
-    return () => { alive = false; window.clearInterval(t) }
+    // بعد كل حفظ: التذكير الي انحل ينسكّر بالخادم، فنعيد الحالة فوراً.
+    window.addEventListener('matrix-refresh', load)
+    return () => { alive = false; window.clearInterval(t); window.removeEventListener('matrix-refresh', load) }
   }, [])
 
   // الحمرة: أول ما يدخل أي شاشة، العين تحچي.

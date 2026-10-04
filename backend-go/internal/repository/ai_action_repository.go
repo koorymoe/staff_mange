@@ -138,6 +138,16 @@ func (r *AiActionRepository) OpenForFollowUp(kinds []string) ([]model.AiAction, 
 	return rows, err
 }
 
+// OpenFollowableFor تذكيرات موظف واحد المفتوحة (للفحص اللحظي بعد كل حفظ).
+func (r *AiActionRepository) OpenFollowableFor(employeeID string, kinds []string) ([]model.AiAction, error) {
+	rows := []model.AiAction{}
+	err := r.db.Select(&rows, `
+		SELECT * FROM "AiAction"
+		WHERE "targetEmployeeId" = $1 AND status = 'DONE' AND "resolvedAt" IS NULL AND kind = ANY($2)
+		  AND "createdAt" > now() - interval '30 days'`, employeeID, pq.Array(kinds))
+	return rows, err
+}
+
 func (r *AiActionRepository) MarkResolved(id string) error {
 	_, err := r.db.Exec(`UPDATE "AiAction" SET "resolvedAt" = now() WHERE id = $1 AND "resolvedAt" IS NULL`, id)
 	return err
@@ -183,6 +193,10 @@ func (r *AiActionRepository) IsResolved(a model.AiAction) (bool, error) {
 	case model.AiActionInvoiceApproval:
 		q = `SELECT NOT EXISTS (SELECT 1 FROM "LeaderInvoice" WHERE id = $1 AND status = 'SUBMITTED')`
 		args = []any{a.EntityID}
+	case model.AiActionAttendanceNudge:
+		// سجّل حضور بيوم التذكير.
+		q = `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = $2::date)`
+		args = []any{a.EntityID, a.Period}
 	case model.AiActionLowStock:
 		q = `SELECT NOT EXISTS (SELECT 1 FROM "OnDemandTool" WHERE id = $1
 		                        AND "availableQuantity" * 5 <= "totalQuantity")`

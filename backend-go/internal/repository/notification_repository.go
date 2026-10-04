@@ -4,6 +4,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
 	"log"
+	"time"
 
 	"staffmange-api/internal/model"
 )
@@ -66,6 +67,15 @@ func (r *NotificationRepository) UnreadCount(employeeID string) (int, error) {
 
 func (r *NotificationRepository) MarkRead(id, employeeID string) error {
 	_, err := r.db.Exec(`UPDATE "Notification" SET read = true WHERE id = $1 AND "employeeId" = $2`, id, employeeID)
+	return err
+}
+
+// MarkReadNear يعلّم مقروء إشعارات نوع معيّن انخلقت قرب وقت معيّن — إشعار
+// تذكير ماتركس ينخلق بنفس لحظة الفعل، فلمن ينحل التذكير يروح إشعاره وياه.
+func (r *NotificationRepository) MarkReadNear(employeeID, typ string, at time.Time, window time.Duration) error {
+	_, err := r.db.Exec(`UPDATE "Notification" SET read = true
+		WHERE "employeeId" = $1 AND type = $2 AND read = false
+		  AND "createdAt" BETWEEN $3 AND $4`, employeeID, typ, at.Add(-window), at.Add(window))
 	return err
 }
 

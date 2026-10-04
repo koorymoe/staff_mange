@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"sync"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -37,6 +38,9 @@ type MatrixAutopilotService struct {
 	insights     *MatrixInsightsService
 	// proposals عدّاد اقتراحات ماتركس المعلّقة — للإشعار الصباحي والصندوق.
 	proposals func() int
+	// ResolveFor: آخر فحص لكل موظف (حد ١٠ ثواني).
+	resolveMu   sync.Mutex
+	resolveLast map[string]time.Time
 }
 
 func (s *MatrixAutopilotService) SetProposalCounter(f func() int) { s.proposals = f }

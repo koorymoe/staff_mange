@@ -162,7 +162,9 @@ export default function Layout() {
     const load = () => api.getNotifications().then((r) => { setNotifications(r.notifications); setUnreadCount(r.unreadCount) }).catch(() => {})
     load()
     const interval = setInterval(load, 30000)
-    return () => clearInterval(interval)
+    // إشعار تذكير ماتركس يتعلّم مقروء لمن ينحل — العدد ينزل بعد الحفظ مباشرة.
+    window.addEventListener('matrix-refresh', load)
+    return () => { clearInterval(interval); window.removeEventListener('matrix-refresh', load) }
   }, [employee])
 
   // ═══ إغلاق قائمة الإشعارات ═══

@@ -1177,9 +1177,14 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const method = (options?.method || 'GET').toUpperCase()
   if (method !== 'GET' && !path.startsWith('/auth') && typeof window !== 'undefined') {
     window.dispatchEvent(new Event('matrix-saw'))
+    // وبعد ثانيتين (الخادم يفحص التذكيرات لحظة الحفظ): العين والجرس يتحدّثون،
+    // فلمن الموظف ينفّذ التذكير (يسجّل حضور مثلاً) العين ترجع هادئة فوراً.
+    window.clearTimeout(refreshTimer)
+    refreshTimer = window.setTimeout(() => window.dispatchEvent(new Event('matrix-refresh')), 2000)
   }
   return res.json()
 }
+let refreshTimer = 0
 
 // ═══ ليش نترجم رقم الحالة ═══
 //
