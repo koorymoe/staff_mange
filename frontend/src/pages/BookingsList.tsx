@@ -66,14 +66,15 @@ const techRoleLabels: Record<string, string> = {
 
 // ═══ سلال الحجوزات ═══
 // كل تبويب بشاشة «الحجوزات» يفتح نفس القائمة بسلّة مختلفة.
-export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucket } = {}) {
+// focus: رابط «ودّيني» لحجز معيّن (معرّف أو كود) — يفتح عليه مباشرة، بلا فلتر تاريخ.
+export default function BookingsList({ bucket = 'all', focus }: { bucket?: BookingBucket; focus?: string } = {}) {
   const { employee, permissions } = useSession()
   const canSeeStats = employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring')
   const [bookings, setBookings] = useState<Booking[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState('')
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [search, setSearch] = useState(focus ?? '')
+  const [expandedId, setExpandedId] = useState<string | null>(focus ?? null)
   // ═══ «بانتظار التثبيت» بلا فلتر تاريخ ═══
   //
   // «الحجوزات الجديدة ما يحتاج بيها فلاتر — أي حجز جديد يجي هنا».
@@ -83,7 +84,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   // الإداري يشوف «لا توجد حجوزات» ويظن ماكو شغل، والحجز يقعد بلا
   // متابعة لحد ما ينسى. الطابور الي ينتظر تصرّف ما ينفلتر بالتاريخ:
   // كله لازم ينشاف، أقدمه أول.
-  const [selectedDate, setSelectedDate] = useState<string | null>(bucket === 'pending' ? null : todayStr())
+  const [selectedDate, setSelectedDate] = useState<string | null>(bucket === 'pending' || focus ? null : todayStr())
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [doneFilter, setDoneFilter] = useState<DoneFilter>('ALL')
   // ═══ الترقيم بالسيرفر ═══
@@ -361,7 +362,7 @@ export default function BookingsList({ bucket = 'all' }: { bucket?: BookingBucke
   // ═══ البحث ينتظر ما تخلص كتابة ═══
   // البحث صار بالسيرفر، فنداء بكل حرف يعني عشر نداءات باسم زبون
   // واحد. نص ثانية سكوت تكفي.
-  const [searchQ, setSearchQ] = useState('')
+  const [searchQ, setSearchQ] = useState(focus ?? '')
   useEffect(() => {
     const t = setTimeout(() => { setSearchQ(search.trim()); setPage(1) }, 400)
     return () => clearTimeout(t)

@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -141,4 +142,32 @@ func (r *MatrixBusinessRepository) InquiryHistory(customerID string) (archived, 
 	_ = r.db.Get(&archived, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND "archivedAt" IS NOT NULL`, customerID)
 	_ = r.db.Get(&done, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND status = 'COMPLETED' AND "archivedAt" IS NULL`, customerID)
 	return
+}
+
+// UninvoicedItem حجز منجز هالشهر وما عليه فاتورة — إيراد ما انحسب بعد.
+type UninvoicedItem struct {
+	ID          string    `db:"id" json:"id"`
+	Code        string    `db:"code" json:"code"`
+	Customer    *string   `db:"customer" json:"customer"`
+	Service     *string   `db:"service" json:"service"`
+	CompletedAt time.Time `db:"completedAt" json:"completedAt"`
+	Leader      *string   `db:"leader" json:"leader"`
+}
+
+// Uninvoiced نفس استثناءات «ناقصها ورق»: القديم (OLD) والكشف ما يحتاجون فاتورة.
+func (r *MatrixBusinessRepository) Uninvoiced(limit int) ([]UninvoicedItem, error) {
+	rows := []UninvoicedItem{}
+	err := r.db.Select(&rows, `
+		SELECT b.id, b.code, c.name AS customer, s.name AS service, b."completedAt",
+		       (SELECT e.name FROM "Mission" m JOIN "Employee" e ON e.id = m."leaderId" WHERE m."bookingId" = b.id
+		         ORDER BY m."assignedAt" DESC NULLS LAST LIMIT 1) AS leader
+		FROM "Booking" b
+		LEFT JOIN "Customer" c ON c.id = b."customerId"
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		WHERE b.status = 'COMPLETED' AND b."completedAt" >= date_trunc('month', now() AT TIME ZONE 'Asia/Baghdad') AT TIME ZONE 'Asia/Baghdad'
+		  AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+		  AND upper(b.code) NOT LIKE 'OLD%' AND b."bookingType" IS DISTINCT FROM 'SURVEY'
+		  AND b."archivedAt" IS NULL
+		ORDER BY b."completedAt" DESC LIMIT $1`, limit)
+	return rows, err
 }

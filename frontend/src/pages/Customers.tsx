@@ -32,7 +32,8 @@ export default function Customers() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [history, setHistory] = useState<Booking[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
-  const [search, setSearch] = useState('')
+  // ?q= من روابط ماتركس («زبائن استفسروا وما حجزوا») — يفتح على الزبون.
+  const [search, setSearch] = useState(() => new URLSearchParams(window.location.search).get('q') ?? '')
   // ── ترتيب الشاشة الجديد ──
   const [showAdd, setShowAdd] = useState(false)
   const [locationFilter, setLocationFilter] = useState('')

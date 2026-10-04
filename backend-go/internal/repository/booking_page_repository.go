@@ -202,13 +202,14 @@ func (r *BookingRepository) ListPaged(q BookingPageQuery) ([]model.Booking, int,
 	// ⚠️ بدونه البحث يشتغل على **الصفحة الحالية بس** — الإداري يدوّر
 	// حجز موجود بصفحة ٧ ويطلعله «ماكو نتيجة».
 	if s := strings.TrimSpace(q.Search); s != "" {
-		args = append(args, "%"+s+"%")
-		i := len(args)
+		args = append(args, "%"+s+"%", s)
+		i := len(args) - 1
+		// + معرّف الحجز بالضبط: روابط «ودّيني» (?focus=<id>) من ماتركس والمراقب.
 		where = append(where, fmt.Sprintf(`(
-			b.code ILIKE $%d
+			b.id = $%d OR b.code ILIKE $%d
 			OR EXISTS (SELECT 1 FROM "Customer" c WHERE c.id = b."customerId"
 				AND (c.name ILIKE $%d OR c.phone ILIKE $%d OR c."customerCode"::text ILIKE $%d))
-		)`, i, i, i, i))
+		)`, i+1, i, i, i, i))
 	}
 
 	// التاريخ: نفس منطق «الموعد الفعلي» (الموعد، وإلا تاريخ التسجيل).

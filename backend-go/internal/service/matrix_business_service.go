@@ -25,6 +25,8 @@ type BusinessView struct {
 	Forecast  BusinessForecast             `json:"forecast"`
 	Customers *repository.CustomerSplit    `json:"customers"`
 	Inquirers []repository.InquiryCustomer `json:"inquirers"`
+	// حجوزات منجزة هالشهر بلا فاتورة — (ع): «من اضغط يوديني وين المشكلة».
+	Uninvoiced []repository.UninvoicedItem `json:"uninvoiced"`
 }
 
 type MatrixBusinessService struct {
@@ -56,7 +58,10 @@ func (s *MatrixBusinessService) View() (*BusinessView, error) {
 	if err != nil {
 		return nil, err
 	}
-	v := &BusinessView{Months: months, MTD: mtd, Customers: split, Inquirers: inq}
+	v := &BusinessView{Months: months, MTD: mtd, Customers: split, Inquirers: inq, Uninvoiced: []repository.UninvoicedItem{}}
+	if un, err := s.repo.Uninvoiced(50); err == nil {
+		v.Uninvoiced = un
+	}
 	if !fb.CompletionRate.Valid || !fb.AvgInvoice.Valid || fb.Samples < 10 {
 		v.Forecast = BusinessForecast{Insufficient: true, Expected: mtd.Revenue, ExpectedJobs: mtd.Bookings,
 			Basis: "البيانات ما تكفي للتوقع بعد (أقل من ١٠ فواتير بآخر ٩٠ يوم) — الرقم هو المنجز لحد هسه بس."}

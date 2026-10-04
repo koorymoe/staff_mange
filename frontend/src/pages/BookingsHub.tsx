@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import { useSession } from '../session'
 import BookingsList from './BookingsList'
@@ -108,6 +108,7 @@ export default function BookingsHub() {
   // نموذج فاضي بدل شغله الي ينتظره.
   // ?tab= من روابط الصفحة الرئيسية (مثلاً «تنتظر تنسيق» ← coord).
   const [params] = useSearchParams()
+  const focusParam = params.get('focus') || params.get('q') || ''
   const [tab, setTab] = useState<TabKey>(() => (TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') as TabKey : 'pending'))
 
   // ═══ عدّاد على كل محطة ═══
@@ -213,6 +214,17 @@ export default function BookingsHub() {
       {/* ⚠️ نبني الشاشة المختارة بس (مو نخفي الباقي بـCSS): الثلاثة
           تجيب بيانات من السيرفر، وبناؤهن كلهن يعني ثلاثة أضعاف
           النداءات بكل فتحة وشاشة ثقيلة على الموبايل. */}
+      {/* ?focus=<معرّف/كود> من روابط «ودّيني» (ماتركس، صندوق المراقب، التكرار):
+          نفتح الحجز نفسه بكل المحطات بلا فلتر تاريخ، بدل الشاشة العامة. */}
+      {focusParam && canViewAll ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900">
+            <b>🔎 الحجز المطلوب</b>
+            <Link to="/bookings" className="text-xs font-bold text-sky-700 hover:underline">كل الحجوزات ←</Link>
+          </div>
+          <BookingsList key={`focus-${focusParam}`} bucket="all" focus={focusParam} />
+        </div>
+      ) : <>
       {activeTab === 'new' && canCreate && <SalesBooking />}
       {activeTab === 'coord' && canCoord && <Coordinator />}
       {/* كل سلّة تفتح نفس القائمة بفلاترها (بحث · يوم · شهر) —
@@ -233,6 +245,7 @@ export default function BookingsHub() {
         : <BookingsList key="deleting" bucket="delete_pending" />)}
       {activeTab === 'stuck' && <StageBucketsPage />}
       {activeTab === 'awaiting_customer' && <StageBucketsPage only="AWAITING_CUSTOMER_DECISION" />}
+      </>}
     </div>
   )
 }

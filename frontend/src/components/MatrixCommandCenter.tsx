@@ -307,9 +307,9 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
             ) : view.link ? (
               <Link to={view.link} className="rounded-xl bg-gradient-to-l from-blue-500 to-blue-700 py-2.5 text-center font-extrabold text-white">ودّيني ←</Link>
             ) : <span className="rounded-xl bg-[var(--mx-sunken)] py-2.5 text-center text-sm text-[var(--mx-muted)]">ماكو شي يحتاج قرار</span>}
-            {focus !== 'profit' && <button onClick={() => setModal('details')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">
-              {focus === 'late' ? `📋 الحجوزات (${late?.items?.length ?? 0})` : `👥 منو؟ (${weak.length})`}
-            </button>}
+            <button onClick={() => setModal('details')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">
+              {focus === 'late' ? `📋 الحجوزات (${late?.items?.length ?? 0})` : focus === 'perf' ? `👥 منو؟ (${weak.length})` : `📋 وين الإيراد (${biz?.uninvoiced?.length ?? 0})`}
+            </button>
             {proposal && <button onClick={() => setModal('sim')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">📊 محاكاة</button>}
             <button onClick={() => setModal('evidence')} className="rounded-xl border border-[var(--mx-border)] py-2.5 font-bold text-[var(--mx-accent)]">📄 عرض الأدلة</button>
           </div>
@@ -340,6 +340,34 @@ function Discovery({ focus, late, perf, groups, biz, proposal, onDone }: {
                           </li>
                         ))}
                       </ul>
+                    )}
+                  </>
+                ) : focus === 'profit' ? (
+                  <>
+                    <h4 className="mb-2 font-extrabold">🧾 منجزة هالشهر وما عليها فاتورة</h4>
+                    <p className="mb-2 text-[11px] text-[var(--mx-muted)]">إيراد ما انحسب بعد — كل وحدة تنفتح على الحجز. (القديم OLD والكشف مستثنين.)</p>
+                    {(biz?.uninvoiced ?? []).length === 0 ? <p className="text-sm text-[var(--mx-muted)]">كلها مفوترة ✅</p> : (
+                      <ul className="space-y-1.5 text-sm">
+                        {(biz?.uninvoiced ?? []).map((b) => (
+                          <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-[var(--mx-sunken)] p-2">
+                            <Link to={`/bookings?focus=${b.id}`} className="font-extrabold text-[var(--mx-accent)] hover:underline">📋 {b.code} ←</Link>
+                            <span className="text-xs text-[var(--mx-muted)]">{b.customer ?? '—'} · {b.service ?? '—'} · 👷 {b.leader ?? 'بلا ليدر'} · خلص {new Date(b.completedAt).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {(biz?.inquirers ?? []).length > 0 && (
+                      <>
+                        <h4 className="mb-2 mt-4 font-extrabold">📞 زبائن استفسروا أكثر من مرة وما حجزوا</h4>
+                        <ul className="space-y-1.5 text-sm">
+                          {(biz?.inquirers ?? []).slice(0, 15).map((c) => (
+                            <li key={c.id} className="flex items-center justify-between gap-2 rounded-lg bg-[var(--mx-sunken)] p-2">
+                              <Link to={`/customers?q=${encodeURIComponent(c.name)}`} className="font-bold text-[var(--mx-accent)] hover:underline">👤 {c.name} ←</Link>
+                              <span className="text-xs text-[var(--mx-muted)]">{c.archived} استفسار · آخرها {new Date(c.lastAt).toLocaleDateString('ar-IQ', { timeZone: 'Asia/Baghdad' })}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </>
                     )}
                   </>
                 ) : (

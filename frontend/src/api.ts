@@ -5774,6 +5774,8 @@ export interface MatrixBusiness {
   forecast: { expected: number; expectedJobs: number; basis: string; insufficient: boolean }
   customers: { actual: number; inquiry: number; repeat: number; openOnly: number }
   inquirers: { id: string; name: string; archived: number; lastAt: string }[]
+  /** منجزة هالشهر بلا فاتورة (بدون OLD والكشف). */
+  uninvoiced?: { id: string; code: string; customer: string | null; service: string | null; completedAt: string; leader: string | null }[]
 }
 
 // جدول الدوام — كل موظف فعّال وحضوره اليوم.
