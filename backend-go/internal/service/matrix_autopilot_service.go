@@ -104,6 +104,8 @@ func (s *MatrixAutopilotService) runActions(now time.Time) int {
 		func() (int, error) { return s.lowStock(week, dayStart) },
 		func() (int, error) { return s.staleInvoices(today, dayStart) },
 		func() (int, error) { return s.crewRatings(today, dayStart) },
+		func() (int, error) { return s.afterInventory(today, dayStart) },
+		func() (int, error) { return s.monitorBacklog(today, dayStart) },
 	}
 	for _, step := range steps {
 		c, err := step()

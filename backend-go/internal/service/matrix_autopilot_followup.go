@@ -21,7 +21,8 @@ import (
 var followableKinds = []string{
 	model.AiActionPaperworkReminder, model.AiActionUnstaffedAlert, model.AiActionExtraTaskOverdue,
 	model.AiActionGpsExpiry, model.AiActionVehicleDocExpiry, model.AiActionInvoiceApproval, model.AiActionLowStock,
-	model.AiActionAttendanceNudge, model.AiActionCrewRating,
+	model.AiActionAttendanceNudge, model.AiActionCrewRating, model.AiActionAfterInventory,
+	model.AiActionMonitorBacklog,
 }
 
 // ResolveFor فحص لحظي بعد كل عملية حفظ للموظف: التذكيرات الي نفّذها تنسكّر
@@ -599,6 +600,61 @@ func (s *MatrixAutopilotService) crewRatings(today string, dayStart time.Time) (
 			Period: today, TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp),
 			Summary: fmt.Sprintf("ذكّر الليدر يقيّم فنيّيه (%d حجز)", len(r.Codes)),
 			Details: why(map[string]any{"bookingCodes": []string(r.Codes)})}, dayStart,
+			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// ١٤. الفني خلّص حجز ويا ليدر وما جرد عدّته بعده — طلب (ع) 10-05. مرة باليوم
+// لحد ما يجرد، وينحل لحاله أول ما يجرد.
+func (s *MatrixAutopilotService) afterInventory(today string, dayStart time.Time) (int, error) {
+	rows, err := s.actions.TechsPendingAfterInventory()
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, r := range rows {
+		emp := r.LeaderID
+		codes := strings.Join(r.Codes, "، ")
+		msg := fmt.Sprintf("🤖 ماتركس — خلّصت الحجوزات (%s) وبعدك ما جردت عدّتك بعدها. جردها من «مهامي» حتى إذا أكو شي ناقص ينعرف بوقته.", codes)
+		if s.act(model.AiAction{Kind: model.AiActionAfterInventory, EntityType: "EMPLOYEE", EntityID: emp,
+			Period: today, TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp),
+			Summary: fmt.Sprintf("ذكّر الفني يجرد عدّته بعد الحجز (%d حجز)", len(r.Codes)),
+			Details: why(map[string]any{"bookingCodes": []string(r.Codes)})}, dayStart,
+			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
+	}
+	return n, nil
+}
+
+// ١٥. ماتركس على المراقب — بنود بالصندوق تنتظر حكمه من أكثر من ٢٤ ساعة.
+// مرة باليوم لكل مراقب، وينحل لحاله أول ما الصندوق يفرغ من المتأخر.
+// (ع): «المدير راح يراقب المراقب من خلال ماتركس» — التذكير والنتيجة تطلع
+// بتقرير المراقبين للمدير والمالك.
+func (s *MatrixAutopilotService) monitorBacklog(today string, dayStart time.Time) (int, error) {
+	b, err := s.actions.MonitorBacklog()
+	if err != nil || b.Count == 0 {
+		return 0, err
+	}
+	monitors, err := s.actions.Monitors()
+	if err != nil {
+		return 0, err
+	}
+	age := ""
+	if b.Oldest != nil {
+		age = fmt.Sprintf("، أقدمها صارله %s", FmtMinutes(int(time.Since(*b.Oldest).Minutes())))
+	}
+	n := 0
+	for _, id := range monitors {
+		emp := id
+		msg := fmt.Sprintf("🤖 ماتركس — بصندوق المراقب %d بند ينتظر حكمك من أكثر من يوم%s. احكم عليهن حتى الشغل ما يوقف.", b.Count, age)
+		if s.act(model.AiAction{Kind: model.AiActionMonitorBacklog, EntityType: "EMPLOYEE", EntityID: emp,
+			Period: today, TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp),
+			Summary: fmt.Sprintf("ذكّر المراقب: %d بند متأخر بالصندوق", b.Count),
+			Details: why(map[string]any{"pending": b.Count, "oldest": b.Oldest})}, dayStart,
 			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
 			n++
 		}

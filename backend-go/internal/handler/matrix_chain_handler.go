@@ -13,8 +13,9 @@ import (
 
 // ═══ ماتركس ٢٠٥٠ — سلسلة الحجز وتقارير الأدوار وتقييم الفنيين ═══
 type MatrixChainHandler struct {
-	svc     *service.MatrixChainService
-	resolve func(employeeID string)
+	svc            *service.MatrixChainService
+	resolve        func(employeeID string)
+	notifyShortage func(msg string)
 }
 
 func NewMatrixChainHandler(svc *service.MatrixChainService, resolve func(string)) *MatrixChainHandler {
@@ -139,4 +140,64 @@ func (h *MatrixProjectHandler) Chain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, ch)
+}
+
+// ═══ جرد العدّة بعد الحجز ═══
+
+// SetShortageNotifier ينبّه صاحب صلاحية المخزن إذا الفني لگه نقص بعد الشغل.
+func (h *MatrixChainHandler) SetShortageNotifier(f func(msg string)) { h.notifyShortage = f }
+
+// GET /api/inventory/after-checks/pending — حجوزاتي المنجزة الي تنتظر جردي بعدها.
+func (h *MatrixChainHandler) AfterPending(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.svc.Repo().AfterInventoryPending(middleware.EmployeeIDFromContext(r))
+	if err != nil {
+		log.Printf("after inventory pending: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب الجرد")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+type afterInventoryInput struct {
+	BookingID    string  `json:"bookingId"`
+	Complete     bool    `json:"complete"`
+	MissingItems *string `json:"missingItems"`
+}
+
+// POST /api/inventory/after-checks — الفني يجرد عدّته بعد حجز هو مكلّف بيه.
+func (h *MatrixChainHandler) AfterSave(w http.ResponseWriter, r *http.Request) {
+	me := middleware.EmployeeIDFromContext(r)
+	var in afterInventoryInput
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil || in.BookingID == "" {
+		WriteError(w, http.StatusBadRequest, "بيانات الجرد ناقصة")
+		return
+	}
+	repo := h.svc.Repo()
+	if !repo.IsBookingTech(in.BookingID, me) {
+		WriteError(w, http.StatusForbidden, "تگدر تجرد بس بعد حجز إنت مكلّف بيه")
+		return
+	}
+	var missing *string
+	if in.MissingItems != nil {
+		if t := strings.TrimSpace(*in.MissingItems); t != "" {
+			missing = &t
+		}
+	}
+	if !in.Complete && missing == nil {
+		WriteError(w, http.StatusBadRequest, "اكتب شنو الناقص")
+		return
+	}
+	if err := repo.SaveAfterInventory(in.BookingID, me, in.Complete, missing); err != nil {
+		log.Printf("after inventory save: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الجرد")
+		return
+	}
+	if !in.Complete && h.notifyShortage != nil {
+		code, name := repo.BookingCodeAndEmployee(in.BookingID, me)
+		go h.notifyShortage("🧰 نقص بالعدّة بعد الحجز " + code + " (" + name + "): " + *missing)
+	}
+	if h.resolve != nil {
+		go h.resolve(me)
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }

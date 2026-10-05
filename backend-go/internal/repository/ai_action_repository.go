@@ -197,6 +197,13 @@ func (r *AiActionRepository) IsResolved(a model.AiAction) (bool, error) {
 		// سجّل حضور بيوم التذكير.
 		q = `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = $2::date)`
 		args = []any{a.EntityID, a.Period}
+	case model.AiActionMonitorBacklog:
+		// الصندوق صار بلا بنود متأخرة (+٢٤ ساعة).
+		q = `SELECT (` + monitorBacklogSQL + `) = 0`
+	case model.AiActionAfterInventory:
+		// جرد عدّته بعد كل حجوزاته المنجزة.
+		q = `SELECT NOT EXISTS (SELECT 1 FROM (` + afterPendingSQL + `) x)`
+		args = []any{a.EntityID}
 	case model.AiActionCrewRating:
 		// قيّم كل فنيّي حجوزاته المنجزة.
 		q = `SELECT NOT EXISTS (SELECT 1 FROM (` + pendingRatingSQL + `) x)`
@@ -659,4 +666,17 @@ func (r *AiActionRepository) ItLogsToday(id string) int {
 // LeadersPendingRating الليدرية الي ما قيّموا فنيّيهم — لتذكير ماتركس.
 func (r *AiActionRepository) LeadersPendingRating() ([]LeaderPending, error) {
 	return NewMatrixChainRepository(r.db).LeadersPendingRating()
+}
+
+// TechsPendingAfterInventory الفنيين الي ما جردوا بعد حجوزاتهم — لتذكير ماتركس.
+func (r *AiActionRepository) TechsPendingAfterInventory() ([]LeaderPending, error) {
+	return NewMatrixChainRepository(r.db).TechsPendingAfterInventory()
+}
+
+func (r *AiActionRepository) MonitorBacklog() (MonitorBacklog, error) {
+	return NewMatrixChainRepository(r.db).MonitorBacklog()
+}
+
+func (r *AiActionRepository) Monitors() ([]string, error) {
+	return NewMatrixChainRepository(r.db).Monitors()
 }

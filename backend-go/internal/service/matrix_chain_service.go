@@ -641,40 +641,50 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		add(st)
 	}
 
-	// ١١. جرد العدّة — لكل فني ويا ليدر
+	// ١١. جرد العدّة **بعد** الحجز — لكل فني طلع ويا ليدر.
 	{
 		st := ChainStation{Key: "INVENTORY", Role: ChainRoleTech}
-		inv := map[string]bool{}
+		inv, short := map[string]bool{}, map[string]bool{}
 		for _, id := range f.InventoryIDs {
 			inv[id] = true
 		}
-		if f.Solo || len(f.TechIDs) == 0 {
+		for _, id := range f.InventoryMiss {
+			short[id] = true
+		}
+		if f.Solo || len(f.TechIDs) == 0 || f.LeaderID == nil || survey || ch.Legacy {
 			st.Status = ChainNA
-			st.Verdict = "ماكو فنيين ويا ليدر."
+			st.Verdict = "ماكو فنيين ويا ليدر يجردون بعد الشغل."
 		} else {
-			missing := []string{}
+			missing, lacking := []string{}, []string{}
 			for _, id := range f.TechIDs {
-				if f.LeaderID != nil && id == *f.LeaderID {
+				if id == *f.LeaderID {
 					continue
 				}
 				o := s.owner(&id, nil)[0]
-				if inv[id] {
+				switch {
+				case inv[id] && short[id]:
+					o.Status = ChainIssue
+					lacking = append(lacking, o.Name)
+				case inv[id]:
 					o.Status = ChainOK
-				} else if done {
+				case done:
 					o.Status = ChainMissed
 					missing = append(missing, o.Name)
-				} else {
+				default:
 					o.Status = ChainWaiting
 				}
 				st.Owners = append(st.Owners, o)
 			}
+			if len(lacking) > 0 {
+				st.Issues = append(st.Issues, "لگوا نقص بعدّتهم بعد الشغل: "+strings.Join(lacking, "، ")+".")
+			}
 			switch {
 			case len(missing) > 0:
 				st.Status = ChainMissed
-				st.Verdict = "ما جردوا عدّتهم: " + strings.Join(missing, "، ") + "."
+				st.Verdict = "ما جردوا عدّتهم بعد الحجز: " + strings.Join(missing, "، ") + "."
 			case done:
 				st.Status = ChainOK
-				st.Verdict = "كل الفنيين جردوا."
+				st.Verdict = "كل الفنيين جردوا عدّتهم بعد الحجز."
 			default:
 				st.Status = ChainWaiting
 				st.Verdict = "ينتظر نهاية الحجز."

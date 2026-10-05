@@ -4360,6 +4360,9 @@ export const api = {
   getChainLearning: () => request<ChainLearning>('/ai/chain-learning'),
   getMatrixProjects: () => request<ProjectsReport>('/ai/projects'),
   getMatrixProject: (id: string) => request<ProjectChain>(`/ai/projects/${id}`),
+  getAfterInventoryPending: () => request<{ bookingId: string; bookingCode: string; completedAt: string }[]>('/inventory/after-checks/pending'),
+  saveAfterInventory: (bookingId: string, complete: boolean, missingItems?: string) =>
+    request<{ ok: boolean }>('/inventory/after-checks', { method: 'POST', body: JSON.stringify({ bookingId, complete, missingItems }) }),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

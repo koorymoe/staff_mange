@@ -22,6 +22,8 @@ const (
 	AiActionInvoiceApproval   = "INVOICE_APPROVAL"   // المحاسبة: فاتورة تنتظر اعتماد
 	AiActionPredictionNudge   = "PREDICTION_NUDGE"   // الموظف: توقّع ماتركس وافق عليه المدير
 	AiActionCrewRating        = "CREW_RATING"        // الليدر: خلّص حجز وما قيّم فنيّيه
+	AiActionAfterInventory    = "AFTER_INVENTORY"    // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
+	AiActionMonitorBacklog    = "MONITOR_BACKLOG"    // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
 )
 
 // AiActionEscalateAfter تذكير ما انحل بهالمدة يصعد للمدير.
@@ -50,6 +52,8 @@ var AiActionLabels = map[string]string{
 	AiActionInvoiceApproval:   "فاتورة تنتظر اعتماد",
 	AiActionPredictionNudge:   "تذكير بعد توقّع",
 	AiActionCrewRating:        "تقييم الفنيين بعد الحجز",
+	AiActionAfterInventory:    "جرد العدّة بعد الحجز",
+	AiActionMonitorBacklog:    "بنود متأخرة بصندوق المراقب",
 }
 
 // AiAction فعل واحد نفّذه ماتركس لحاله.

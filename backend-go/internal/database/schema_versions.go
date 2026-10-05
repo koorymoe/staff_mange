@@ -399,6 +399,8 @@ func versionedMigrations() []Migration {
 	result = append(result, achievementVoiceMigrations()...)
 	// 0315: تحليل الفويس (Whisper محلي) + قاموس اللهجة العراقية.
 	result = append(result, voiceAnalysisMigrations()...)
+	// 0316: جرد العدّة بعد الحجز.
+	result = append(result, afterInventoryMigrations()...)
 	return result
 }
 

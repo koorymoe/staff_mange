@@ -2209,6 +2209,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/chain-learning", middleware.Chain(http.HandlerFunc(matrixChainHandler.Learning), requireAuth, requireAdmin))
 	mux.Handle("GET /api/crew-ratings/pending", middleware.Chain(http.HandlerFunc(matrixChainHandler.Pending), requireAuth))
 	mux.Handle("POST /api/crew-ratings", middleware.Chain(http.HandlerFunc(matrixChainHandler.Rate), requireAuth))
+	// جرد العدّة بعد الحجز — الفني على حجزه هو بس، والنقص ينبّه صاحب صلاحية المخزن.
+	matrixChainHandler.SetShortageNotifier(func(msg string) { _ = notificationRepo.CreateForPermission("inventory", "INVENTORY", msg) })
+	mux.Handle("GET /api/inventory/after-checks/pending", middleware.Chain(http.HandlerFunc(matrixChainHandler.AfterPending), requireAuth))
+	mux.Handle("POST /api/inventory/after-checks", middleware.Chain(http.HandlerFunc(matrixChainHandler.AfterSave), requireAuth))
 	// عين ماتركس على المشاريع — المدير والمالك.
 	matrixProjectHandler := handler.NewMatrixProjectHandler(service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db)))
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))

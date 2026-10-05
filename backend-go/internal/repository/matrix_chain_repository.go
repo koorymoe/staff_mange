@@ -71,7 +71,8 @@ type ChainFacts struct {
 
 	RatedCount     int            `db:"ratedCount"`
 	RatedAt        *time.Time     `db:"ratedAt"`
-	InventoryIDs   pq.StringArray `db:"inventoryIds"`
+	InventoryIDs   pq.StringArray `db:"inventoryIds"`        // جردوا بعد الحجز
+	InventoryMiss  pq.StringArray `db:"inventoryMissingIds"` // جردوا ولگوا نقص
 	QualityAt      *time.Time     `db:"qualityAt"`
 	QualityByID    *string        `db:"qualityById"`
 	QualityBy      *string        `db:"qualityBy"`
@@ -119,7 +120,8 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        b."amountCollected" AS collected, b."amountVerified",
        (SELECT count(*) FROM "CrewRating" r WHERE r."bookingId" = b.id)::int AS "ratedCount",
        (SELECT min(r."createdAt") FROM "CrewRating" r WHERE r."bookingId" = b.id) AS "ratedAt",
-       COALESCE((SELECT array_agg(DISTINCT i."employeeId") FROM "InventoryCheck" i WHERE i."bookingId" = b.id), '{}') AS "inventoryIds",
+       COALESCE((SELECT array_agg(i."employeeId") FROM "BookingAfterInventory" i WHERE i."bookingId" = b.id), '{}') AS "inventoryIds",
+       COALESCE((SELECT array_agg(i."employeeId") FROM "BookingAfterInventory" i WHERE i."bookingId" = b.id AND NOT i.complete), '{}') AS "inventoryMissingIds",
        q."contactedAt" AS "qualityAt", q."contactedByEmployeeId" AS "qualityById", qe.name AS "qualityBy",
        q.status AS "qualityStatus", q."createdAt" AS "qualityCreated",
        COALESCE(mr.n, 0) AS "monitorRows", COALESCE(mr.pending, 0) AS "monitorPending",
@@ -319,4 +321,100 @@ func (r *MatrixChainRepository) LeadersPendingRating() ([]LeaderPending, error) 
 func (r *MatrixChainRepository) LeaderHasPending(leaderID string) bool {
 	rows, err := r.PendingRatings(leaderID)
 	return err == nil && len(rows) > 0
+}
+
+// ═══ جرد العدّة بعد الحجز ═══
+
+// afterPendingSQL حجوزات منجزة (آخر ١٤ يوم) الموظف مكلّف بيها كفني ويا ليدر
+// (مو ليدر، والخدمة مو فردية) وبعده ما جرد عدّته بعدها.
+const afterPendingSQL = `
+	SELECT b.id AS "bookingId", b.code AS "bookingCode", b."completedAt"
+	FROM "Booking" b
+	JOIN "BookingAssignment" a ON a."bookingId" = b.id AND a."employeeId" = $1
+	JOIN "Employee" me ON me.id = $1 AND NOT me."isLeader"
+	LEFT JOIN "Service" s ON s.id = b."serviceId"
+	WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
+	  AND b."completedAt" > now() - interval '14 days'
+	  AND upper(b.code) NOT LIKE 'OLD%' AND b."bookingType"::text <> 'SURVEY'
+	  AND NOT COALESCE(s."managerHandlesPaperwork", false)
+	  AND EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
+	              WHERE la."bookingId" = b.id AND le."isLeader")
+	  AND NOT EXISTS (SELECT 1 FROM "BookingAfterInventory" x WHERE x."bookingId" = b.id AND x."employeeId" = $1)
+	ORDER BY b."completedAt"`
+
+type AfterInventoryPending struct {
+	BookingID   string    `db:"bookingId" json:"bookingId"`
+	BookingCode string    `db:"bookingCode" json:"bookingCode"`
+	CompletedAt time.Time `db:"completedAt" json:"completedAt"`
+}
+
+func (r *MatrixChainRepository) AfterInventoryPending(employeeID string) ([]AfterInventoryPending, error) {
+	rows := []AfterInventoryPending{}
+	err := r.db.Select(&rows, afterPendingSQL, employeeID)
+	return rows, err
+}
+
+func (r *MatrixChainRepository) SaveAfterInventory(bookingID, employeeID string, complete bool, missing *string) error {
+	_, err := r.db.Exec(`INSERT INTO "BookingAfterInventory" ("bookingId", "employeeId", complete, "missingItems")
+		VALUES ($1, $2, $3, $4) ON CONFLICT ("bookingId", "employeeId") DO UPDATE
+		SET complete = EXCLUDED.complete, "missingItems" = EXCLUDED."missingItems", "checkedAt" = now()`,
+		bookingID, employeeID, complete, missing)
+	return err
+}
+
+// TechsPendingAfterInventory الفنيين الي عندهم حجوزات منجزة من ٦ ساعات أو أكثر
+// بلا جرد بعدها — لتذكير ماتركس.
+func (r *MatrixChainRepository) TechsPendingAfterInventory() ([]LeaderPending, error) {
+	rows := []LeaderPending{}
+	err := r.db.Select(&rows, `
+		SELECT a."employeeId" AS "leaderId", array_agg(DISTINCT b.code) AS codes
+		FROM "Booking" b
+		JOIN "BookingAssignment" a ON a."bookingId" = b.id
+		JOIN "Employee" t ON t.id = a."employeeId" AND NOT t."isLeader" AND t.status = 'ACTIVE'
+		LEFT JOIN "Service" s ON s.id = b."serviceId"
+		WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
+		  AND b."completedAt" BETWEEN now() - interval '14 days' AND now() - interval '6 hours'
+		  AND upper(b.code) NOT LIKE 'OLD%' AND b."bookingType"::text <> 'SURVEY'
+		  AND NOT COALESCE(s."managerHandlesPaperwork", false)
+		  AND EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
+		              WHERE la."bookingId" = b.id AND le."isLeader")
+		  AND NOT EXISTS (SELECT 1 FROM "BookingAfterInventory" x WHERE x."bookingId" = b.id AND x."employeeId" = a."employeeId")
+		GROUP BY a."employeeId"`)
+	return rows, err
+}
+
+// BookingCodeAndEmployee كود الحجز واسم الموظف — لرسالة النقص الداخلية.
+func (r *MatrixChainRepository) BookingCodeAndEmployee(bookingID, employeeID string) (string, string) {
+	var row struct {
+		Code string `db:"code"`
+		Name string `db:"name"`
+	}
+	_ = r.db.Get(&row, `SELECT b.code, e.name FROM "Booking" b, "Employee" e WHERE b.id = $1 AND e.id = $2`, bookingID, employeeID)
+	return row.Code, row.Name
+}
+
+// ═══ ماتركس على المراقب: بنود الصندوق المتأخرة ═══
+
+// monitorBacklogSQL بنود صندوق المراقب الي تنتظر حكم من أكثر من ٢٤ ساعة.
+const monitorBacklogSQL = `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND "createdAt" < now() - interval '24 hours'`
+
+type MonitorBacklog struct {
+	Count  int        `db:"n"`
+	Oldest *time.Time `db:"oldest"`
+}
+
+func (r *MatrixChainRepository) MonitorBacklog() (MonitorBacklog, error) {
+	var b MonitorBacklog
+	err := r.db.Get(&b, `SELECT count(*)::int AS n, min("createdAt") AS oldest FROM "MonitorReview"
+		WHERE status = 'PENDING' AND "createdAt" < now() - interval '24 hours'`)
+	return b, err
+}
+
+// Monitors المراقبين الفعّالين: دور MONITOR أو صلاحية monitoring/auditing (بلا المدير والمالك).
+func (r *MatrixChainRepository) Monitors() ([]string, error) {
+	ids := []string{}
+	err := r.db.Select(&ids, `SELECT e.id FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
+		AND (e.role::text = 'MONITOR' OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+		     WHERE ep."employeeId" = e.id AND p.name IN ('monitoring', 'auditing')))`)
+	return ids, err
 }
