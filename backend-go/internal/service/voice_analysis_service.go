@@ -268,6 +268,9 @@ const voiceSystemPrompt = `أنت «ماتركس» بنظام شركة الأم�
 - لا تحكم على الموظف ولا تقترح عقوبة أو نقاط.`
 
 func (s *VoiceAnalysisService) understand(ctx context.Context, text string) (*voiceUnderstanding, error) {
+	if !AIFeatureOn("VOICE") {
+		return nil, ErrAIFeatureOff
+	}
 	if s.client == nil {
 		return nil, errors.New("ماكو مفتاح هايكو")
 	}
@@ -292,6 +295,9 @@ func (s *VoiceAnalysisService) understand(ctx context.Context, text string) (*vo
 		System:    []anthropic.TextBlockParam{{Text: voiceSystemPrompt}},
 		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock("نص الفويس:\n" + text))},
 	})
+	if err == nil {
+		RecordAIUsage("VOICE", s.model, resp.Usage)
+	}
 	if err != nil {
 		return nil, err
 	}

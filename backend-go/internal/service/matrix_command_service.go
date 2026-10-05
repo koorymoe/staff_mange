@@ -255,6 +255,9 @@ func (s *MatrixCommandService) Ask(employeeID, question string) (*AskAnswer, err
 }
 
 func (s *MatrixCommandService) askModel(c *askContext, question string) (string, error) {
+	if !AIFeatureOn("ASK") {
+		return "", ErrAIFeatureOff
+	}
 	body := "الأرقام:\n" + c.anonymize(strings.Join(c.lines, "\n")) + "\n\nسؤال المدير: " + c.anonymize(question)
 	cx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
@@ -263,6 +266,9 @@ func (s *MatrixCommandService) askModel(c *askContext, question string) (string,
 		System:   []anthropic.TextBlockParam{{Text: askSystemPrompt, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 		Messages: []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(body))},
 	})
+	if err == nil {
+		RecordAIUsage("ASK", s.model, resp.Usage)
+	}
 	if err != nil {
 		return "", err
 	}

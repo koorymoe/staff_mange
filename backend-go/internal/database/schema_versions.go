@@ -403,6 +403,8 @@ func versionedMigrations() []Migration {
 	result = append(result, afterInventoryMigrations()...)
 	// 0317: اقتراحات ماتركس (موعد/كادر) وقياس دقتها.
 	result = append(result, matrixSuggestionMigrations()...)
+	// 0318: عدّاد كلفة الذكاء الاصطناعي.
+	result = append(result, aiUsageMigrations()...)
 	return result
 }
 

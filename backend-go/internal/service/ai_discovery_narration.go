@@ -140,6 +140,9 @@ func (n *ModelDiscoveryNarrator) Narrate(c DiscoveryCell) string {
 }
 
 func (n *ModelDiscoveryNarrator) ask(c DiscoveryCell) (string, error) {
+	if !AIFeatureOn("DISCOVERY") {
+		return "", ErrAIFeatureOff
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -162,6 +165,9 @@ func (n *ModelDiscoveryNarrator) ask(c DiscoveryCell) (string, error) {
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
 		},
 	})
+	if err == nil {
+		RecordAIUsage("DISCOVERY", n.model, resp.Usage)
+	}
 	if err != nil {
 		return "", err
 	}

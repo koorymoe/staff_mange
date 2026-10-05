@@ -2171,6 +2171,12 @@ export interface MatrixAutonomyStatus {
   monitorEscalate: { on: boolean; overdue: number }
   recent: { id: string; kind: string; summary: string; status: string; createdAt: string; details: unknown }[]
 }
+export interface AIUsageReport {
+  today: number; month: number; last30: number; forecast: number
+  features: { feature: string; label: string; calls: number; tokens: number; costToday: number; cost30: number }[]
+  switches: Record<string, string>
+  days: { day: string; cost: number }[]
+}
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
 export interface BookingTimeline {
@@ -4386,6 +4392,7 @@ export const api = {
   getMatrixAutonomy: () => request<MatrixAutonomyStatus>('/ai/autonomy'),
   getMatrixAutoCrew: () => request<{ actionId: string; bookingId: string; summary: string }[]>('/ai/autonomy/crew'),
   undoMatrixAutoCrew: (actionId: string) => request<{ ok: boolean }>(`/ai/autonomy/crew/${actionId}/undo`, { method: 'POST' }),
+  getAIUsage: () => request<AIUsageReport>('/ai/usage'),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

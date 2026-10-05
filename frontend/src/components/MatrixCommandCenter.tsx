@@ -16,6 +16,7 @@ import { MatrixLearning, MatrixProjectsEye } from './MatrixProjectsEye'
 import MatrixDialect from './MatrixDialect'
 import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
 import MatrixAutonomy from './MatrixAutonomy'
+import MatrixAICost from './MatrixAICost'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -186,6 +187,7 @@ export default function MatrixCommandCenter() {
       <MatrixRoleChains />
       <MatrixSuggestAccuracyPanel />
       <MatrixAutonomy />
+      <MatrixAICost />
       <MatrixProjectsEye />
       <MatrixLearning />
       <MatrixDialect />

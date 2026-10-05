@@ -289,6 +289,9 @@ var learnSchema = map[string]any{
 }
 
 func (s *MatrixLearningService) askModel() {
+	if !AIFeatureOn("LEARNING") {
+		return
+	}
 	if s.client == nil {
 		return
 	}
@@ -322,6 +325,9 @@ func (s *MatrixLearningService) askModel() {
 		OutputConfig: anthropic.OutputConfigParam{Format: anthropic.JSONOutputFormatParam{Schema: learnSchema}},
 		Messages:     []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(user))},
 	})
+	if err == nil {
+		RecordAIUsage("LEARNING", s.model, resp.Usage)
+	}
 	if err != nil {
 		log.Printf("[ai] اقتراحات النموذج: %v", err)
 		return

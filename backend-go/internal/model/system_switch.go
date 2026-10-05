@@ -30,6 +30,24 @@ const (
 	SwitchMatrixMonitorEscalate = "matrix_monitor_escalate"
 )
 
+// مفاتيح توفير الكلفة — كل ميزة تستعمل هايكو إلها مفتاح. المطفي يرجع للقواعد
+// (أو يحفظ النص بلا تحليل بالفويس)، فالكلفة تنزل بلا ما يوقف النظام.
+const (
+	SwitchAIGuide          = "ai_guide"
+	SwitchAIJudge          = "ai_judge"
+	SwitchAIDiscovery      = "ai_discovery"
+	SwitchAIVoice          = "ai_voice"
+	SwitchAIAsk            = "ai_ask"
+	SwitchAILearning       = "ai_learning"
+	SwitchAIEmployeeReport = "ai_employee_report"
+)
+
+// AIFeatureSwitch مفتاح كل ميزة (اسم الميزة بعدّاد الكلفة ← المفتاح).
+var AIFeatureSwitch = map[string]string{
+	"GUIDE": SwitchAIGuide, "JUDGE": SwitchAIJudge, "DISCOVERY": SwitchAIDiscovery, "VOICE": SwitchAIVoice,
+	"ASK": SwitchAIAsk, "LEARNING": SwitchAILearning, "EMPLOYEE_REPORT": SwitchAIEmployeeReport,
+}
+
 // systemSwitchDefaultOff مفاتيح **مطفية** لحد ما المالك يشغّلها بنفسه —
 // أفعال ماتركس التنفيذية (قرار (ع) 10-05: بأقفال أمان). الباقي شغّال افتراضياً.
 var systemSwitchDefaultOff = map[string]bool{
@@ -48,6 +66,13 @@ var SystemSwitchLabels = map[string]string{
 	SwitchMatrixStaffEye:        "عين ماتركس عند الموظفين",
 	SwitchMatrixAutoCrew:        "ماتركس يكلّف كادر حجز باچر لحاله",
 	SwitchMatrixMonitorEscalate: "ماتركس يصعّد بنود المراقب المتأخرة",
+	SwitchAIGuide:               "هايكو: توجيهات ماتركس للموظفين",
+	SwitchAIJudge:               "هايكو: أحكام ماتركس",
+	SwitchAIDiscovery:           "هايكو: ماتركس اكتشف",
+	SwitchAIVoice:               "هايكو: تحليل الفويس",
+	SwitchAIAsk:                 "هايكو: اسأل ماتركس",
+	SwitchAILearning:            "هايكو: توقعات ماتركس",
+	SwitchAIEmployeeReport:      "هايكو: تقارير الموظفين",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟
@@ -66,6 +91,9 @@ var systemSwitchAdminAllowed = map[string]bool{
 	SwitchAnnouncements:   true,
 	SwitchMatrixAutopilot: true,
 	SwitchMatrixStaffEye:  true,
+	// مفاتيح الكلفة: قرار تشغيلي — المدير كمان.
+	SwitchAIGuide: true, SwitchAIJudge: true, SwitchAIDiscovery: true, SwitchAIVoice: true,
+	SwitchAIAsk: true, SwitchAILearning: true, SwitchAIEmployeeReport: true,
 }
 
 // SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل

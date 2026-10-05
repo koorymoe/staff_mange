@@ -216,6 +216,9 @@ func (s *MatrixGuideService) guideSystem() []anthropic.TextBlockParam {
 }
 
 func (s *MatrixGuideService) ask(w *WatchState, path, label, rule, work string, left int) (string, error) {
+	if !AIFeatureOn("GUIDE") {
+		return "", ErrAIFeatureOff
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
 	if work == "" {
@@ -229,6 +232,9 @@ func (s *MatrixGuideService) ask(w *WatchState, path, label, rule, work string, 
 		System:    s.guideSystem(),
 		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(user))},
 	})
+	if err == nil {
+		RecordAIUsage("GUIDE", s.model, resp.Usage)
+	}
 	if err != nil {
 		return "", err
 	}

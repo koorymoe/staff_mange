@@ -186,6 +186,9 @@ func (j *ModelJudge) Judge(sig model.AiSignal, ev model.AiEvidence) (*model.AiVe
 }
 
 func (j *ModelJudge) ask(sig model.AiSignal, ev model.AiEvidence) (*modelVerdictOut, error) {
+	if !AIFeatureOn("JUDGE") {
+		return nil, ErrAIFeatureOff
+	}
 	// ⚠️ مهلة قصيرة: هاي كنسة خلفية مو طلب مستخدم ينتظر. طلب معلّق
 	// دقيقتين يوقف بقية الإشارات بالدور.
 	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
@@ -214,6 +217,9 @@ func (j *ModelJudge) ask(sig model.AiSignal, ev model.AiEvidence) (*modelVerdict
 			anthropic.NewUserMessage(anthropic.NewTextBlock(buildEvidencePrompt(sig, ev, examples))),
 		},
 	})
+	if err == nil {
+		RecordAIUsage("JUDGE", j.model, resp.Usage)
+	}
 	if err != nil {
 		return nil, err
 	}

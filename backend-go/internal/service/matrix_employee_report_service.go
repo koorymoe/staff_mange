@@ -492,6 +492,9 @@ const reportSystemPrompt = `أنت «ماتركس»، عقل المتابعة ب
 لا تخترع رقم، ولا تخمّن أسباب شخصية (مرض، سفر، ظروف)، ولا تقترح عقوبة. بلا مقدمات.`
 
 func (s *MatrixEmployeeReportService) modelSummary(r *EmployeeReport) (string, error) {
+	if !AIFeatureOn("EMPLOYEE_REPORT") {
+		return "", ErrAIFeatureOff
+	}
 	var b strings.Builder
 	b.WriteString("المجموعة: " + r.Group + "\n")
 	for _, sec := range [][]ReportLine{r.Attendance, r.Performance, r.Leaves, r.Behavior, r.Reminders} {
@@ -515,6 +518,9 @@ func (s *MatrixEmployeeReportService) modelSummary(r *EmployeeReport) (string, e
 		System:   []anthropic.TextBlockParam{{Text: reportSystemPrompt, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
 		Messages: []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(b.String()))},
 	})
+	if err == nil {
+		RecordAIUsage("EMPLOYEE_REPORT", s.model, resp.Usage)
+	}
 	if err != nil {
 		return "", err
 	}

@@ -512,6 +512,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixInsightsHandler := handler.NewMatrixInsightsHandler(matrixInsightsService, weeklyReportService, permissionRepo)
 	// ماتركس «موظف ويانه»: تذكيرات وتنبيهات لحاله بعد ٩ الصبح + صندوق قرارات المدير.
 	aiActionRepo := repository.NewAiActionRepository(db)
+	service.SetAIUsageRepo(repository.NewAiUsageRepository(db))
+	service.SetAISwitches(repository.NewSystemSwitchRepository(db))
 	weeklyReportService.SetActions(aiActionRepo)
 	matrixAutopilotService := service.NewMatrixAutopilotService(aiActionRepo, aiRepo,
 		notificationRepo, repository.NewSystemSwitchRepository(db), delayPredictionService, matrixInsightsService)
@@ -2231,6 +2233,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixAutonomyService.Start()
 	matrixAutonomyHandler := handler.NewMatrixAutonomyHandler(matrixAutonomyService)
 	mux.Handle("GET /api/ai/autonomy", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.Status), requireAuth, requireAdmin))
+	// عدّاد كلفة الذكاء الاصطناعي — المدير والمالك.
+	mux.Handle("GET /api/ai/usage", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		rep, err := service.AIUsageSummary()
+		if err != nil {
+			http.Error(w, `{"error":"تعذر حساب الكلفة"}`, http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(rep)
+	}), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/autonomy/crew", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.ActiveCrew), requireAuth, requireBookingCoord))
 	mux.Handle("POST /api/ai/autonomy/crew/{id}/undo", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.UndoCrew), requireAuth, requireBookingCoord))
 	// عين ماتركس على المشاريع — المدير والمالك.
