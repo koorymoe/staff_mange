@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { api } from '../api'
+import { api, type VoiceAnalysis } from '../api'
+import MatrixNote from './MatrixNote'
 
 // ═══ فويس مسج للإنجاز — طلب (ع) 10-05 ═══
 // يسجّل من المايك (لحد ٣ دقايق) ويبقى بسيرفرنا بس — ما يطلع لأي مزوّد.
@@ -68,12 +69,52 @@ export function VoiceRecorder({ value, onChange }: { value: { blob: Blob; second
         </>
       )}
       {err && <span className="text-xs text-red-600">{err}</span>}
-      <span className="w-full text-[11px] text-slate-400">الفويس يبقى بسيرفر الشركة ويسمعه المدير بس (لحد ٣ دقايق).</span>
+      <span className="w-full text-[11px] text-slate-400">الفويس يبقى بسيرفر الشركة (ما يطلع)، يسمعه المدير بس، وماتركس يحوّله لنص ويحسب شغلك منه (لحد ٣ دقايق).</span>
     </div>
   )
 }
 
 export function VoicePlayer({ achievementId, seconds }: { achievementId: string; seconds?: number | null }) {
+  return (
+    <div>
+      <VoicePlay achievementId={achievementId} seconds={seconds} />
+      <VoiceAnalysisView achievementId={achievementId} />
+    </div>
+  )
+}
+
+// شنو فهم ماتركس من الفويس — الصوت تحوّل لنص بسيرفرنا، وهايكو شاف النص بلا أسماء.
+function VoiceAnalysisView({ achievementId }: { achievementId: string }) {
+  const [res, setRes] = useState<{ a: VoiceAnalysis; enabled: boolean } | null>(null)
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    let alive = true
+    void api.getAchievementVoiceAnalysis(achievementId).then((r) => { if (alive) setRes({ a: r.analysis, enabled: r.enabled }) }).catch(() => {})
+    return () => { alive = false }
+  }, [achievementId, tick])
+  // ينتظر التحليل؟ نعيد السؤال كل ١٥ ثانية لحد ما يخلص.
+  useEffect(() => {
+    if (!res || !res.enabled || res.a.status !== 'PENDING') return
+    const t = window.setTimeout(() => setTick((n) => n + 1), 15000)
+    return () => window.clearTimeout(t)
+  }, [res])
+  if (!res || !res.enabled) return null
+  const a = res.a
+  if (a.status === 'PENDING') return <p className="mt-1 text-[11px] text-slate-400">⏳ ماتركس يسمع الفويس ويحلّله…</p>
+  if (a.status === 'FAILED') return <p className="mt-1 text-[11px] text-red-500">❌ ما گدر يحلّل الفويس{a.error ? `: ${a.error}` : ''}</p>
+  return (
+    <div className="mt-2 space-y-1 text-xs">
+      {a.summary && <MatrixNote>{a.summary}</MatrixNote>}
+      {a.tasks.length > 0 && <p className="font-bold text-slate-700">🧮 ماتركس حسب: {a.tasks.map((t) => `${t.count} ${t.what}`).join('، ')}</p>}
+      {a.style && <p className="text-slate-600">🗣️ طريقة الكلام: {a.style}</p>}
+      {a.transcript && (
+        <details><summary className="cursor-pointer text-slate-500">📝 النص كما انحچى</summary><p className="mt-1 whitespace-pre-wrap rounded-lg bg-slate-50 p-2 text-slate-700">{a.transcript}</p></details>
+      )}
+    </div>
+  )
+}
+
+function VoicePlay({ achievementId, seconds }: { achievementId: string; seconds?: number | null }) {
   const [url, setUrl] = useState('')
   const [busy, setBusy] = useState(false)
   useEffect(() => () => { if (url) URL.revokeObjectURL(url) }, [url])

@@ -9,6 +9,7 @@ import (
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/service"
 	"staffmange-api/internal/storage"
 )
 
@@ -21,8 +22,8 @@ import (
 const maxVoiceBytes = 3 << 20 // ٣ ميغا ≈ ٣ دقايق opus
 const maxVoiceSeconds = 180
 
-func (h *AchievementHandler) SetVoice(v *repository.AchievementVoiceRepository, s storage.Store) {
-	h.voices, h.store = v, s
+func (h *AchievementHandler) SetVoice(v *repository.AchievementVoiceRepository, s storage.Store, analyzer *service.VoiceAnalysisService) {
+	h.voices, h.store, h.analyzer = v, s, analyzer
 }
 
 func (h *AchievementHandler) attachVoices(rows []model.Achievement) {
@@ -118,7 +119,10 @@ func (h *AchievementHandler) UploadVoice(w http.ResponseWriter, r *http.Request)
 		WriteError(w, http.StatusInternalServerError, "تعذر حفظ الفويس")
 		return
 	}
-	WriteJSON(w, http.StatusCreated, map[string]any{"ok": true, "seconds": secs})
+	if h.analyzer != nil {
+		h.analyzer.Kick(id)
+	}
+	WriteJSON(w, http.StatusCreated, map[string]any{"ok": true, "seconds": secs, "analyzing": h.analyzer != nil && h.analyzer.Enabled()})
 }
 
 // GET /api/achievements/{id}/voice — صاحبه أو المدير/المالك.
@@ -146,4 +150,38 @@ func (h *AchievementHandler) Voice(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", ct)
 	w.Header().Set("Cache-Control", "private, no-store")
 	_, _ = w.Write(data)
+}
+
+// GET /api/achievements/{id}/voice/analysis — شنو فهم ماتركس من الفويس. صاحبه أو المدير.
+func (h *AchievementHandler) VoiceAnalysis(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	a, err := h.service.Repo().FindByID(id)
+	if err != nil || a == nil {
+		WriteError(w, http.StatusNotFound, "الإنجاز مو موجود")
+		return
+	}
+	role := middleware.RoleFromContext(r)
+	if a.EmployeeID != middleware.EmployeeIDFromContext(r) && role != "ADMIN" && role != "OWNER" {
+		WriteError(w, http.StatusForbidden, "التحليل لصاحبه والمدير بس")
+		return
+	}
+	v, err := h.voices.Analysis(id)
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "ماكو فويس")
+		return
+	}
+	enabled := h.analyzer != nil && h.analyzer.Enabled()
+	WriteJSON(w, http.StatusOK, map[string]any{"analysis": v, "enabled": enabled})
+}
+
+// GET /api/ai/dialect — قاموس اللهجة الي تعلّمه ماتركس. المدير والمالك.
+func (h *AchievementHandler) Dialect(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.voices.Phrases(200)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب القاموس")
+		return
+	}
+	done, pending := h.voices.AnalyzedCount()
+	enabled := h.analyzer != nil && h.analyzer.Enabled()
+	WriteJSON(w, http.StatusOK, map[string]any{"phrases": rows, "analyzed": done, "pending": pending, "enabled": enabled})
 }

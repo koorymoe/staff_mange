@@ -13,6 +13,7 @@ import { GroupPerf } from './MatrixRoleEyes'
 import { GROUP_LABEL, eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
 import MatrixRoleChains from './MatrixRoleChains'
 import { MatrixLearning, MatrixProjectsEye } from './MatrixProjectsEye'
+import MatrixDialect from './MatrixDialect'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -183,6 +184,7 @@ export default function MatrixCommandCenter() {
       <MatrixRoleChains />
       <MatrixProjectsEye />
       <MatrixLearning />
+      <MatrixDialect />
 
       {/* ── الصف الأخير ── */}
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">

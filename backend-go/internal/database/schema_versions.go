@@ -397,6 +397,8 @@ func versionedMigrations() []Migration {
 	result = append(result, projectStageLogMigrations()...)
 	// 0314: فويس مسج للإنجاز (يبقى عدنا).
 	result = append(result, achievementVoiceMigrations()...)
+	// 0315: تحليل الفويس (Whisper محلي) + قاموس اللهجة العراقية.
+	result = append(result, voiceAnalysisMigrations()...)
 	return result
 }
 

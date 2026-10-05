@@ -4247,6 +4247,8 @@ export const api = {
     if (!res.ok) throw new Error(describeHttpStatus(res.status))
     return res.blob()
   },
+  getAchievementVoiceAnalysis: (id: string) => request<{ analysis: VoiceAnalysis; enabled: boolean }>(`/achievements/${id}/voice/analysis`),
+  getMatrixDialect: () => request<{ phrases: { phrase: string; meaning: string; uses: number; lastSeen: string }[]; analyzed: number; pending: number; enabled: boolean }>('/ai/dialect'),
   reviewAchievement: (id: string, status: 'GOOD' | 'NEEDS_REVIEW', note: string) =>
     request<Achievement>(`/achievements/${id}/review`, { method: 'PUT', body: JSON.stringify({ status, note }) }),
 
@@ -5677,6 +5679,12 @@ export interface Achievement {
   reviewedAt: string | null
   createdAt: string
   voiceSeconds?: number | null
+}
+
+export interface VoiceAnalysis {
+  achievementId: string; status: 'PENDING' | 'DONE' | 'FAILED'
+  transcript: string | null; summary: string | null; tasks: { what: string; count: number }[]
+  style: string | null; error: string | null; analyzedAt: string | null
 }
 
 export interface SuggestedCrewMember {

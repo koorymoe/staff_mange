@@ -47,7 +47,11 @@ type MatrixGuideService struct {
 	used   int
 	day    string
 	cache  map[string]guideCached
+	// dialect عبارات عراقية تعلّمها ماتركس من فويسات الموظفين.
+	dialect func() string
 }
+
+func (s *MatrixGuideService) SetDialect(f func() string) { s.dialect = f }
 
 type guideCached struct {
 	res GuideResult
@@ -201,6 +205,16 @@ const guideSystemPrompt = `أنت «ماتركس»، عين المتابعة ب�
 - لا تهدد بعقوبة ولا غرامة ولا نقاط — إنت توجّه بس.
 - لا تذكر أسماء أشخاص. أقصى حد ٣٠ كلمة. بلا مقدمات ولا علامات تنصيص.`
 
+func (s *MatrixGuideService) guideSystem() []anthropic.TextBlockParam {
+	sys := []anthropic.TextBlockParam{{Text: guideSystemPrompt, CacheControl: anthropic.NewCacheControlEphemeralParam()}}
+	if s.dialect != nil {
+		if d := s.dialect(); d != "" {
+			sys = append(sys, anthropic.TextBlockParam{Text: d})
+		}
+	}
+	return sys
+}
+
 func (s *MatrixGuideService) ask(w *WatchState, path, label, rule, work string, left int) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
 	defer cancel()
@@ -212,7 +226,7 @@ func (s *MatrixGuideService) ask(w *WatchState, path, label, rule, work string, 
 	resp, err := s.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:     anthropic.Model(s.model),
 		MaxTokens: guideMaxTokens,
-		System:    []anthropic.TextBlockParam{{Text: guideSystemPrompt, CacheControl: anthropic.NewCacheControlEphemeralParam()}},
+		System:    s.guideSystem(),
 		Messages:  []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(user))},
 	})
 	if err != nil {

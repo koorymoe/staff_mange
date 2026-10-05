@@ -35,6 +35,8 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       AI_MODEL: ${AI_MODEL:-claude-haiku-4-5}
       AI_DAILY_CAP: ${AI_DAILY_CAP:-200}
+      # ماتركس يسمع الفويس: تحويل الصوت لنص بحاوية whisper الداخلية (الصوت ما يطلع).
+      WHISPER_URL: ${WHISPER_URL:-http://whisper:8080}
       TUTORIALS_DIR: /app/tutorials
       # مجلد رفع الملفات — لازم يكون فوليوم دائم، مو داخل الصورة، وإلا
       # كل الصور والوصولات تروح مع أول إعادة نشر.
@@ -54,6 +56,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # ═══ تحويل الصوت لنص — داخل السيرفر ═══
+  # بلا ports: يوصله الباك اند بس على الشبكة الداخلية. الحجم: WHISPER_MODEL
+  # (small افتراضي ~١GB رام، base أخف). إذا ما اشتغل، الفويس يبقى محفوظ بلا تحليل.
+  whisper:
+    build:
+      context: ./whisper
+      args:
+        WHISPER_MODEL: ${WHISPER_MODEL:-small}
+    restart: unless-stopped
+    mem_limit: ${WHISPER_MEM_LIMIT:-1500m}
 
   frontend:
     build: ./frontend

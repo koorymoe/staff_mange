@@ -17,9 +17,10 @@ import (
 // محميين بـ`requireAdmin` بمسارات `main.go` — الوجهة حصراً مدير النظام
 // والمالك.
 type AchievementHandler struct {
-	service *service.AchievementService
-	voices  *repository.AchievementVoiceRepository
-	store   storage.Store
+	service  *service.AchievementService
+	voices   *repository.AchievementVoiceRepository
+	store    storage.Store
+	analyzer *service.VoiceAnalysisService
 }
 
 func NewAchievementHandler(s *service.AchievementService) *AchievementHandler {

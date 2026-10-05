@@ -623,7 +623,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	achievementService.SetAiRecorder(aiRepo)
 	achievementService.SetCrewSizer(aiRepo)
 	achievementHandler := handler.NewAchievementHandler(achievementService)
-	achievementHandler.SetVoice(repository.NewAchievementVoiceRepository(db), fileStore)
+	// ماتركس يسمع الفويس: Whisper داخلي (الصوت ما يطلع) + هايكو على النص بلا أسماء.
+	achievementVoiceRepo := repository.NewAchievementVoiceRepository(db)
+	voiceAnalysisService := service.NewVoiceAnalysisService(achievementVoiceRepo, fileStore, cfg.WhisperURL)
+	voiceAnalysisService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	voiceAnalysisService.Start()
+	matrixGuideService.SetDialect(voiceAnalysisService.DialectHint)
+	achievementHandler.SetVoice(achievementVoiceRepo, fileStore, voiceAnalysisService)
 	achievementDigestService := service.NewAchievementDigestService(achievementRepo, aiRepo, notificationRepo)
 	safeguard.Loop("ملخص الإنجازات اليومي", 12*time.Minute, 30*time.Minute, func() {
 		if err := achievementDigestService.RunIfDue(); err != nil {
@@ -1171,6 +1177,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فويس مسج للإنجاز — يبقى بتخزيننا؛ صاحبه يرفع، وصاحبه أو المدير يسمع.
 	mux.Handle("POST /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.UploadVoice), requireAuth))
 	mux.Handle("GET /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.Voice), requireAuth))
+	mux.Handle("GET /api/achievements/{id}/voice/analysis", middleware.Chain(http.HandlerFunc(achievementHandler.VoiceAnalysis), requireAuth))
+	mux.Handle("GET /api/ai/dialect", middleware.Chain(http.HandlerFunc(achievementHandler.Dialect), requireAuth, requireAdmin))
 	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireAdmin))
 	mux.Handle("GET /api/bookings/{id}/timeline", middleware.Chain(http.HandlerFunc(bookingHandler.Timeline), requireAuth))

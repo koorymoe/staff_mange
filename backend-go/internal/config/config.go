@@ -33,6 +33,8 @@ type Config struct {
 	// ⚠️ وبلا مفتاح النظام **ما يوقف**: يبقى على محرّك القواعد. الميزة
 	// تنطفي، مو النظام.
 	AnthropicAPIKey string
+	// WhisperURL خدمة تحويل الصوت لنص **الداخلية** (حاوية whisper). فاضي = بلا تحليل فويس.
+	WhisperURL string
 	// AIModel من البيئة مو مكتوب بالكود: أسماء الموديلات تتبدّل،
 	// والترقية لموديل أقوى لازم تصير بتبديل متغيّر بيئة مو بنشر كود.
 	AIModel string
@@ -65,6 +67,7 @@ func Load() *Config {
 		// لو تبدّل الاسم بلا ما نعدّل كود.
 		GeminiImageModel: getEnv("GEMINI_IMAGE_MODEL", "gemini-2.5-flash-image"),
 		AnthropicAPIKey:  getEnv("ANTHROPIC_API_KEY", ""),
+		WhisperURL:       getEnv("WHISPER_URL", ""),
 		AIModel:          getEnv("AI_MODEL", "claude-haiku-4-5"),
 		// ٢٠٠ سقف واسع: حجم الشغل اليوم عشرات الإشارات باليوم، فالسقف
 		// ما يعترض الشغل الطبيعي ويمسك الانفجار.
