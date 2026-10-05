@@ -391,6 +391,8 @@ func versionedMigrations() []Migration {
 	result = append(result, monitorTrimMigrations()...)
 	// 0311: آخر ظهور لكل موظف — «منو فاتح النظام هسه».
 	result = append(result, presenceMigrations()...)
+	// 0312: تقييم الليدر لفنيّيه — «سلسلة الحجز» بماتركس.
+	result = append(result, crewRatingMigrations()...)
 	return result
 }
 

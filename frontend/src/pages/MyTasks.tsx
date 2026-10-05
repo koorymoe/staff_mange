@@ -10,6 +10,7 @@ import SurveyReportDialog from '../components/SurveyReportDialog'
 import BookingProgressTimeline from '../components/BookingProgressTimeline'
 import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
+import CrewRatingPrompt from '../components/CrewRatingPrompt'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
 import LeaderInvoiceNew from './LeaderInvoiceNew'
 import WorkReportPage from './WorkReportPage'
@@ -499,6 +500,7 @@ export default function MyTasks() {
           <div>
             {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
                 لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
+            <CrewRatingPrompt />
             <MyExtraTasks />
 
             <h3 className="mb-3 font-bold text-brand-800">المهام الحالية</h3>

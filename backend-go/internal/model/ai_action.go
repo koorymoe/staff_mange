@@ -21,6 +21,7 @@ const (
 	AiActionLowStock          = "LOW_STOCK"          // المخزن: أداة قربت تخلص
 	AiActionInvoiceApproval   = "INVOICE_APPROVAL"   // المحاسبة: فاتورة تنتظر اعتماد
 	AiActionPredictionNudge   = "PREDICTION_NUDGE"   // الموظف: توقّع ماتركس وافق عليه المدير
+	AiActionCrewRating        = "CREW_RATING"        // الليدر: خلّص حجز وما قيّم فنيّيه
 )
 
 // AiActionEscalateAfter تذكير ما انحل بهالمدة يصعد للمدير.
@@ -48,6 +49,7 @@ var AiActionLabels = map[string]string{
 	AiActionLowStock:          "أداة قربت تخلص بالمخزن",
 	AiActionInvoiceApproval:   "فاتورة تنتظر اعتماد",
 	AiActionPredictionNudge:   "تذكير بعد توقّع",
+	AiActionCrewRating:        "تقييم الفنيين بعد الحجز",
 }
 
 // AiAction فعل واحد نفّذه ماتركس لحاله.

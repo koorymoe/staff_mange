@@ -11,6 +11,7 @@ import { SWITCH_MATRIX_STAFF_EYE } from '../systemSwitches'
 import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { GroupPerf } from './MatrixRoleEyes'
 import { GROUP_LABEL, eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
+import MatrixRoleChains from './MatrixRoleChains'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -176,6 +177,9 @@ export default function MatrixCommandCenter() {
         </div>
       </div>
       {sel && <div><GroupPerf key={sel} group={sel} /></div>}
+
+      {/* ── ماتركس ٢٠٥٠: سلسلة الحجز — كل دور ومحطاته ── */}
+      <MatrixRoleChains />
 
       {/* ── الصف الأخير ── */}
       <div className="grid gap-4 lg:grid-cols-2 2xl:grid-cols-4">

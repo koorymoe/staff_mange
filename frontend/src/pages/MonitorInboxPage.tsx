@@ -4,6 +4,7 @@ import { api, type MonitorReview, type MonitorStage } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
 import { formatCustomerCode } from '../utils/identity'
 import BookingTimelineView from '../components/BookingTimeline'
+import BookingChainView from '../components/BookingChain'
 import { matches } from '../utils/search'
 import { useSaveGuard } from '../useSaveGuard'
 import PageHeader from '../components/PageHeader'
@@ -281,6 +282,7 @@ export default function MonitorInboxPage({ embedded }: EmbeddedProps = {}) {
                       🕒 شوف قصة الحجز والأوقات
                     </summary>
                     <BookingTimelineView bookingId={row.identity.bookingId} />
+                    <BookingChainView bookingId={row.identity.bookingId} />
                   </details>
                 )}
 

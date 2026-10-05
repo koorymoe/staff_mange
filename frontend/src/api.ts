@@ -2107,6 +2107,34 @@ export interface DelayMetric {
   breached: boolean
 }
 
+// ═══ ماتركس ٢٠٥٠ — سلسلة الحجز ═══
+export type ChainStatus = 'OK' | 'LATE' | 'MISSED' | 'WAITING' | 'ISSUE' | 'NA'
+export interface ChainStation {
+  no: number; key: string; title: string; role: string; roleTitle: string
+  owners: { id: string; name: string; status?: ChainStatus }[]
+  startAt: string | null; endAt: string | null; minutes: number | null; threshold: number | null
+  status: ChainStatus; verdict: string; issues: string[]; facts: string[]
+}
+export interface CrewRatingRow { bookingId: string; bookingCode: string; leaderId: string; leaderName: string; technicianId: string; score: number; note: string | null; createdAt: string }
+export interface BookingChain {
+  bookingId: string; code: string; service: string; solo: boolean; legacy: boolean
+  stations: ChainStation[]; summary: string
+  score: { ok: number; late: number; missed: number; issue: number; waiting: number }
+  ratings: CrewRatingRow[] | null
+}
+export interface ChainStationStat { key: string; title: string; count: number; ok: number; late: number; missed: number; issue: number; medianMin: number | null; avgMin: number | null; teamMedianMin: number | null }
+export interface ChainEmployeeReport {
+  id: string; name: string; total: number; onTime: number; late: number; missed: number; issues: number
+  onTimePct: number; prevPct: number | null; stations: ChainStationStat[]; worst: string
+  bad: { id: string; code: string; station: string; status: ChainStatus; note: string }[] | null
+  lateWeekday: string; lateHour: number | null; ratingAvg: number | null; ratingCount: number; ratingNotes: string[]; insights: string[]
+}
+export interface RoleChainReport {
+  role: string; title: string; days: number; bookings: number; teamPct: number; prevPct: number | null
+  stations: ChainStationStat[]; employees: ChainEmployeeReport[]; insights: string[]
+}
+export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
+
 export interface BookingTimeline {
   bookingId: string
   code: string
@@ -4286,6 +4314,13 @@ export const api = {
 
   /** قصة الحجز كاملة + التأخيرات */
   getBookingTimeline: (id: string) => request<BookingTimeline>(`/bookings/${id}/timeline`),
+  /** ماتركس ٢٠٥٠: سلسلة الحجز ١٤ محطة — المدير والمراقب */
+  getBookingChain: (id: string) => request<BookingChain>(`/ai/chain/${id}`),
+  getRoleChainRoles: () => request<{ key: string; title: string }[]>('/ai/role-chain/roles'),
+  getRoleChain: (role: string, days: number) => request<RoleChainReport>(`/ai/role-chain?role=${role}&days=${days}`),
+  getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
+  rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
+    request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),
 
   // ═══ المهام الإضافية ═══
   /** المدير يوجّه مهمة لموظف */

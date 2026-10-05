@@ -21,7 +21,7 @@ import (
 var followableKinds = []string{
 	model.AiActionPaperworkReminder, model.AiActionUnstaffedAlert, model.AiActionExtraTaskOverdue,
 	model.AiActionGpsExpiry, model.AiActionVehicleDocExpiry, model.AiActionInvoiceApproval, model.AiActionLowStock,
-	model.AiActionAttendanceNudge,
+	model.AiActionAttendanceNudge, model.AiActionCrewRating,
 }
 
 // ResolveFor فحص لحظي بعد كل عملية حفظ للموظف: التذكيرات الي نفّذها تنسكّر
@@ -581,4 +581,27 @@ func (s *MatrixAutopilotService) ReassignGpsToQuality() string {
 	}
 	s.actions.ReassignOpenGps(model.AiActionGpsExpiry, qe, label)
 	return qe
+}
+
+// ١٣. الليدر خلّص حجز وما قيّم فنيّيه — طلب (ع) 10-05: «ماتركس يبقى يذكّره
+// لحد ما يقيّم». مرة باليوم، وينحل لحاله أول ما يقيّم.
+func (s *MatrixAutopilotService) crewRatings(today string, dayStart time.Time) (int, error) {
+	rows, err := s.actions.LeadersPendingRating()
+	if err != nil {
+		return 0, err
+	}
+	n := 0
+	for _, r := range rows {
+		emp := r.LeaderID
+		codes := strings.Join(r.Codes, "، ")
+		msg := fmt.Sprintf("🤖 ماتركس — خلّصت الحجوزات (%s) وبعدك ما قيّمت الفنيين الي طلعوا وياك. قيّمهم من «مهامي» — تقييمك يبين بتقريرهم.", codes)
+		if s.act(model.AiAction{Kind: model.AiActionCrewRating, EntityType: "EMPLOYEE", EntityID: emp,
+			Period: today, TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp),
+			Summary: fmt.Sprintf("ذكّر الليدر يقيّم فنيّيه (%d حجز)", len(r.Codes)),
+			Details: why(map[string]any{"bookingCodes": []string(r.Codes)})}, dayStart,
+			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
+	}
+	return n, nil
 }

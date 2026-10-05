@@ -3,6 +3,7 @@ import MultiSelect from './MultiSelect'
 import { onEnter } from '../utils/enterKey'
 import { api, type Booking, type Service } from '../api'
 import { useSession } from '../session'
+import BookingChainView from './BookingChain'
 import { validateCustomerName } from '../validation'
 
 // ═══ تعديل الحجز بمكان واحد ═══
@@ -233,6 +234,13 @@ export default function BookingEditPanel({
         )}
         {msg && <span className={`text-xs font-bold ${msg.includes('✓') ? 'text-emerald-600' : 'text-red-600'}`}>{msg}</span>}
       </div>
+      {/* ماتركس ٢٠٥٠ — نفس حارس الخادم (requireMonitor): المدير والمراقب. */}
+      {(employee?.role === 'ADMIN' || employee?.role === 'MONITOR' || permissions.includes('monitoring') || permissions.includes('auditing')) && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-xs font-bold text-brand-700">🔗 سلسلة الحجز بعين ماتركس</summary>
+          <BookingChainView bookingId={booking.id} />
+        </details>
+      )}
     </div>
   )
 }

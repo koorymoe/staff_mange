@@ -197,6 +197,10 @@ func (r *AiActionRepository) IsResolved(a model.AiAction) (bool, error) {
 		// سجّل حضور بيوم التذكير.
 		q = `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = $2::date)`
 		args = []any{a.EntityID, a.Period}
+	case model.AiActionCrewRating:
+		// قيّم كل فنيّي حجوزاته المنجزة.
+		q = `SELECT NOT EXISTS (SELECT 1 FROM (` + pendingRatingSQL + `) x)`
+		args = []any{a.EntityID}
 	case model.AiActionLowStock:
 		q = `SELECT NOT EXISTS (SELECT 1 FROM "OnDemandTool" WHERE id = $1
 		                        AND "availableQuantity" * 5 <= "totalQuantity")`
@@ -650,4 +654,9 @@ func (r *AiActionRepository) GpsExpiringCount() int {
 func (r *AiActionRepository) ItLogsToday(id string) int {
 	return r.count(`SELECT COUNT(*) FROM "EmployeeActivity" WHERE "employeeId" = $1 AND path LIKE '/api/it%'
 		AND baghdad_date("createdAt") = baghdad_today()`, id)
+}
+
+// LeadersPendingRating الليدرية الي ما قيّموا فنيّيهم — لتذكير ماتركس.
+func (r *AiActionRepository) LeadersPendingRating() ([]LeaderPending, error) {
+	return NewMatrixChainRepository(r.db).LeadersPendingRating()
 }

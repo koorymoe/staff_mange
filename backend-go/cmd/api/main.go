@@ -2187,6 +2187,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		_ = json.NewEncoder(w).Encode(rows)
 	}), requireAuth, requireMonitor))
 	mux.Handle("GET /api/monitor-desk/counts", middleware.Chain(http.HandlerFunc(monitorDeskHandler.Counts), requireAuth, requireMonitor))
+	// ── ماتركس ٢٠٥٠: سلسلة الحجز (١٤ محطة) + تقارير الأدوار + تقييم الليدر لفنيّيه ──
+	matrixChainService := service.NewMatrixChainService(repository.NewMatrixChainRepository(db), aiActionRepo.EmployeeName)
+	matrixChainHandler := handler.NewMatrixChainHandler(matrixChainService, matrixAutopilotService.ResolveFor)
+	mux.Handle("GET /api/ai/chain/{bookingId}", middleware.Chain(http.HandlerFunc(matrixChainHandler.Chain), requireAuth, requireMonitor))
+	// تقارير الأدوار فيها «ماتركس على المراقب» — للمدير والمالك بس.
+	mux.Handle("GET /api/ai/role-chain", middleware.Chain(http.HandlerFunc(matrixChainHandler.RoleChain), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/role-chain/roles", middleware.Chain(http.HandlerFunc(matrixChainHandler.Roles), requireAuth, requireAdmin))
+	mux.Handle("GET /api/crew-ratings/pending", middleware.Chain(http.HandlerFunc(matrixChainHandler.Pending), requireAuth))
+	mux.Handle("POST /api/crew-ratings", middleware.Chain(http.HandlerFunc(matrixChainHandler.Rate), requireAuth))
 
 	// ── تكلفة الشبكات ──
 	// الاستمارة والحساب: نفس قيد حاسبة الكاميرات (صلاحية حساب التنفيذ).
