@@ -458,6 +458,10 @@ func (r *MatrixWatchRepository) PendingRequests() ([]PendingRow, error) {
 		SELECT 'COMPLAINT', c.id, 'شكوى زبون', e.name, c."assignedToEmployeeId", c."createdAt", 'الجودة / المكلّف بالشكوى'
 		  FROM "Complaint" c LEFT JOIN "Employee" e ON e.id = c."assignedToEmployeeId"
 		 WHERE c.status::text IN ('NEW', 'IN_PROGRESS') AND c."createdAt" < now() - interval '5 days'
+		UNION ALL
+		SELECT 'MEDIA', m.id, 'تصوير مشروع ' || p.name || ' (الإعلام)', NULL, NULL, m."createdAt", 'الإعلام والعلاقات العامة'
+		  FROM "MediaBrief" m JOIN "Project" p ON p.id = m."projectId"
+		 WHERE m.status = 'NEW' AND m."createdAt" < now() - interval '3 days'
 		ORDER BY since LIMIT 80`)
 	return rows, err
 }

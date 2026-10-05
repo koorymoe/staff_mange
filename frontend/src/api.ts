@@ -106,6 +106,7 @@ export type EmployeeRole =
   | 'DESIGNER'
   | 'SERVICE_MANAGER'
   | 'IT_SUPPORT'
+  | 'MEDIA'
   | 'OWNER'
 
 export interface Employee {
@@ -2182,6 +2183,14 @@ export interface MatrixEyesReport {
   eyes: { key: string; title: string; items: MatrixEyeItem[]; summary: string; high: number }[]
   customers: { employeeId: string; name: string; followUps: number; happy: number; unhappy: number; complaints: number; complaints30: number; avgRating: number | null; happyPct: number | null; notes: string[] }[]
   teamHappyPct: number | null; insights: string[]
+}
+export interface MediaBrief {
+  id: string; projectId: string; projectCode: string; projectName: string; workType: string | null; stage: string
+  location: string | null; locationUrl: string | null; lat: number | null; lng: number | null; deliveryDate: string | null; projectTask: string | null
+  engineerId: string | null; engineerName: string | null; engineerPhone: string | null
+  startAt: string | null; expectedEndAt: string | null; duration: string | null; notes: string | null
+  status: 'NEW' | 'SCHEDULED' | 'SHOT' | 'PUBLISHED' | 'CANCELLED'; shootAt: string | null
+  mediaEmployeeName: string | null; publishedUrl: string | null; mediaNotes: string | null; createdByName: string | null; createdAt: string
 }
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
@@ -4400,6 +4409,9 @@ export const api = {
   undoMatrixAutoCrew: (actionId: string) => request<{ ok: boolean }>(`/ai/autonomy/crew/${actionId}/undo`, { method: 'POST' }),
   getAIUsage: () => request<AIUsageReport>('/ai/usage'),
   getMatrixEyes: () => request<MatrixEyesReport>('/ai/watch'),
+  getMediaBriefs: () => request<MediaBrief[]>('/media/briefs'),
+  updateMediaBrief: (id: string, body: { status: string; shootAt?: string | null; publishedUrl?: string | null; mediaNotes?: string | null }) =>
+    request<MediaBrief>(`/media/briefs/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

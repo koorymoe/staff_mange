@@ -622,6 +622,14 @@ export const navItems: NavItem[] = [
     ],
   },
   {
+    // الإعلام والعلاقات العامة — قرار (ع) 10-05: المشاريع تتحوّل إلهم قبل التنفيذ حتى يصوّرون.
+    to: '/unit-media', label: 'الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+    unitPermission: 'media',
+    children: [
+      { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA'], anyPermission: ['media', 'project_management'] },
+    ],
+  },
+  {
     // وحدة الـIT: الدور والصلاحيات انبنت (0278) وما چانت إلها ولا شاشة.
     to: '/unit-it', label: 'وحدة تقنية المعلومات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>,
     unitPermission: 'unit_it',
@@ -990,6 +998,7 @@ const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_sy
 const ROUTE_RULES: Record<string, RouteRule> = {
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
+  '/media': { roles: ['MEDIA'], anyPermission: ['media', 'project_management'] }, // requireMediaView
   '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator
   '/gps/customers': GPS_DATA,

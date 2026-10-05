@@ -39,6 +39,7 @@ export const ROLE_LABELS: Record<EmployeeRole, string> = {
   DESIGNER: 'مصمم',
   SERVICE_MANAGER: 'مسؤول خدمة',
   IT_SUPPORT: 'الدعم التقني',
+  MEDIA: 'الإعلام والعلاقات العامة',
 }
 
 /**
@@ -61,6 +62,7 @@ const SHORT_LABELS: Partial<Record<EmployeeRole, string>> = {
   HR_COORDINATOR: 'كوادر',
   PROCUREMENT_ADMIN: 'مخازن',
   IT_SUPPORT: 'IT',
+  MEDIA: 'إعلام',
 }
 
 /**
@@ -132,6 +134,7 @@ export const ROLE_CHIP_COLORS: Record<EmployeeRole, { bg: string; text: string; 
   DESIGNER: { bg: 'bg-pink-50', text: 'text-pink-700', dot: 'bg-pink-500' },
   SERVICE_MANAGER: { bg: 'bg-teal-50', text: 'text-teal-700', dot: 'bg-teal-500' },
   IT_SUPPORT: { bg: 'bg-slate-100', text: 'text-slate-700', dot: 'bg-slate-600' },
+  MEDIA: { bg: 'bg-pink-100', text: 'text-pink-700', dot: 'bg-pink-600' },
 }
 
 const NEUTRAL_CHIP = { bg: 'bg-slate-50', text: 'text-slate-700', dot: 'bg-slate-500' }
@@ -164,6 +167,7 @@ export const ROLE_GRADIENTS: Record<EmployeeRole, string> = {
   DESIGNER: 'from-pink-500 to-rose-600',
   SERVICE_MANAGER: 'from-teal-500 to-emerald-600',
   IT_SUPPORT: 'from-slate-500 to-slate-700',
+  MEDIA: 'from-pink-500 to-rose-600',
 }
 
 export function roleGradient(role: string | null | undefined): string {

@@ -2245,6 +2245,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			}
 		}
 	}()
+	// ── الإعلام والعلاقات العامة (قرار (ع) 10-05) ──
+	// التحويل: من إدارة المشاريع. والقراءة والتحديث: دور الإعلام أو صلاحية media
+	// (والمدير والمالك). ومدير المشاريع يشوف التحويلات حتى يتابع.
+	requireMediaView := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA"}, "media", "project_management")
+	requireMedia := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA"}, "media")
+	mediaHandler := handler.NewMediaHandler(repository.NewMediaRepository(db), func(msg string) {
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"MEDIA"}, "media", "MEDIA", msg)
+	})
+	mux.Handle("POST /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.Transfer), requireAuth, requireProjectMgmt))
+	mux.Handle("GET /api/media/briefs", middleware.Chain(http.HandlerFunc(mediaHandler.List), requireAuth, requireMediaView))
+	mux.Handle("PUT /api/media/briefs/{id}", middleware.Chain(http.HandlerFunc(mediaHandler.Update), requireAuth, requireMedia))
 	mux.Handle("GET /api/ai/watch", middleware.Chain(http.HandlerFunc(handler.NewMatrixWatchHandler(matrixWatchService).Report), requireAuth, requireMonitor))
 	// عدّاد كلفة الذكاء الاصطناعي — المدير والمالك.
 	mux.Handle("GET /api/ai/usage", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

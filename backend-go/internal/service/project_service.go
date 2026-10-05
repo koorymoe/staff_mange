@@ -17,6 +17,7 @@ var projectStages = []string{
 	"2. مرحلة الكشف",
 	"3. عرض السعر",
 	"4. العقد",
+	ProjectMediaStage,
 	"5. البدء بالتنفيذ",
 	"✅ مكتمل",
 	"❌ مرفوض",
@@ -26,6 +27,9 @@ var projectStages = []string{
 // خلصت إجراءات المشروع (اتصال، كشف، عرض سعر، عقد) وصار جاهز للتنفيذ،
 // و**نفس كادر الشد** هو الي راح ينفّذ — فيرجع للتنسيق العادي.
 const ProjectExecutionStage = "5. البدء بالتنفيذ"
+
+// ProjectMediaStage قرار (ع) 10-05: قبل التنفيذ المشروع يتحوّل للإعلام حتى يصوّرون الشغل.
+const ProjectMediaStage = "📸 الإعلام"
 
 // stageUnlocksBooking المكتمل يفتح بعد، لو المشروع قفز المرحلة.
 func stageUnlocksBooking(stage string) bool {

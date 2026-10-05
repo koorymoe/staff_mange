@@ -63,6 +63,7 @@ const DisciplinePage = lazy(() => import('./pages/DisciplinePage'))
 const ComplaintsPage = lazy(() => import('./pages/ComplaintsPage'))
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const ItAssetsPage = lazy(() => import('./pages/ItAssetsPage'))
+const MediaPage = lazy(() => import('./pages/MediaPage'))
 const ItStatsPage = lazy(() => import('./pages/ItStatsPage'))
 const MyInventory = lazy(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage'))
@@ -236,6 +237,7 @@ function App() {
               رابطها بيده — نفس القيد المطبّق بالسيرفر. */}
           <Route path="inventory" element={<RequirePermission permission="inventory"><InventoryPage /></RequirePermission>} />
           <Route path="it-assets" element={<RequirePermission permission="it_assets"><ItAssetsPage /></RequirePermission>} />
+          <Route path="media" element={<RequirePermission permission="media" anyOf={['project_management']} roles={['MEDIA']}><MediaPage /></RequirePermission>} />
           <Route path="it-stats" element={<RequirePermission permission="it_stats" anyOf={['it_assets']}><ItStatsPage /></RequirePermission>} />
           <Route path="my-inventory" element={<MyInventory />} />
           <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />

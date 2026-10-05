@@ -91,6 +91,8 @@ const STAGES = [
   '2. مرحلة الكشف',
   '3. عرض السعر',
   '4. العقد',
+  // قرار (ع) 10-05: قبل التنفيذ المشروع يتحوّل للإعلام حتى يصوّرون الشغل.
+  '📸 الإعلام',
   '5. البدء بالتنفيذ',
   '✅ مكتمل',
   '❌ مرفوض',
@@ -773,7 +775,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   const isCompleted = p.stage.includes('مكتمل')
   const isContractStage = p.stage.includes('عقد')
   const stageIdx = STAGES.indexOf(p.stage)
-  const nextStage = STAGES[stageIdx + 1] && stageIdx <= 4 ? STAGES[stageIdx + 1] : null
+  const nextStage = STAGES[stageIdx + 1] && stageIdx <= 5 ? STAGES[stageIdx + 1] : null
   const [showContract, setShowContract] = useState(false)
 
   const handleAdvance = () => {
@@ -1152,7 +1154,12 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const toSer = cur.includes('كشف') && nextStage.includes('سعر')
   const canUploadSurvey = useCanUploadProjectSurvey(project)
   const toContract = cur.includes('سعر') && nextStage.includes('عقد')
-  const toExec = cur.includes('عقد') && nextStage.includes('تنفيذ')
+  const toExec = (cur.includes('عقد') || cur.includes('الإعلام')) && nextStage.includes('تنفيذ')
+  const toMedia = nextStage.includes('الإعلام')
+  const [mediaEngineer, setMediaEngineer] = useState(project.responsibleEmployeeId || project.delegatedToEmployeeId || project.surveyorEmployeeId || '')
+  const [mediaStart, setMediaStart] = useState('')
+  const [mediaEnd, setMediaEnd] = useState(project.deliveryDate || '')
+  const [mediaDuration, setMediaDuration] = useState(project.time || '')
   const toDone = cur.includes('تنفيذ') && nextStage.includes('مكتمل')
 
   const candidates = useProjectCandidates()
@@ -1173,6 +1180,18 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
 
   const save = async () => {
     if (isReject && !reason) { alert('اختر سبب الرفض!'); return }
+    if (toMedia) {
+      if (!mediaStart) { alert('حدد متى يبدي الشغل حتى الإعلام يعرف يجون يصوّرون.'); return }
+      setSaving(true)
+      try {
+        await request(`/projects/${project.id}/media`, { method: 'POST', body: JSON.stringify({
+          engineerId: mediaEngineer || null, startAt: mediaStart, expectedEndAt: mediaEnd || null,
+          duration: mediaDuration || null, notes: notes || null,
+        }) })
+        onSaved()
+      } catch (e) { alert((e as Error).message); setSaving(false) }
+      return
+    }
     const payload: Record<string, unknown> = { stage: nextStage }
     if (isReject) {
       let finalReason = reason
@@ -1268,6 +1287,24 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
         </div>
       )}
 
+      {/* عقد → الإعلام : تحويل كل التفاصيل للإعلام حتى يطلعون يصوّرون */}
+      {!isReject && toMedia && (
+        <div className="space-y-3">
+          <div className="rounded-lg bg-pink-50 p-3 text-center text-sm font-bold text-pink-700">📸 تحويل المشروع للإعلام والعلاقات العامة</div>
+          <p className="text-xs text-gray-600">ينرسل للإعلام: اسم المشروع ونوعه، الموقع والخريطة، المهندس المشرف ورقمه، متى يبدي الشغل وشكد ياخذ ومتى يخلص — حتى يطلعون يصوّرون الشغل وينشرونه.</p>
+          <Field label="المهندس المشرف">
+            <select className="inp" value={mediaEngineer} onChange={e => setMediaEngineer(e.target.value)}>
+              <option value="">-- اختر المهندس --</option>
+              <EmployeeOptions candidates={candidates} />
+            </select>
+          </Field>
+          <Field label="متى يبدي الشغل *"><input type="datetime-local" className="inp" value={mediaStart} onChange={e => setMediaStart(e.target.value)} /></Field>
+          <Field label="مدة الشغل (مثلاً: ٣ أيام)"><input className="inp" value={mediaDuration} onChange={e => setMediaDuration(e.target.value)} /></Field>
+          <Field label="متى يخلص المشروع"><input type="date" className="inp" value={mediaEnd} onChange={e => setMediaEnd(e.target.value)} /></Field>
+          <Field label="ملاحظات للإعلام (شنو يصوّرون، أوقات مناسبة…)"><textarea className="inp" rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></Field>
+        </div>
+      )}
+
       {/* عقد → تنفيذ : الفني المسؤول */}
       {!isReject && toExec && (
         <Field label="الفني المسؤول عن التنفيذ"><input className="inp" value={staff} onChange={e => setStaff(e.target.value)} /></Field>
@@ -1284,7 +1321,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       )}
 
       {/* fallback generic */}
-      {!isReject && !toKashf && !toSer && !toExec && !toDone && (
+      {!isReject && !toKashf && !toSer && !toExec && !toDone && !toMedia && (
         <div className="space-y-3">
           <Field label="الموظف المسؤول"><input className="inp" value={staff} onChange={e => setStaff(e.target.value)} /></Field>
           <Field label="الموعد"><input type="datetime-local" className="inp" value={time} onChange={e => setTime(e.target.value)} /></Field>

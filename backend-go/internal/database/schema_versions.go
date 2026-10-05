@@ -405,6 +405,8 @@ func versionedMigrations() []Migration {
 	result = append(result, matrixSuggestionMigrations()...)
 	// 0318: عدّاد كلفة الذكاء الاصطناعي.
 	result = append(result, aiUsageMigrations()...)
+	// 0319: الإعلام والعلاقات العامة (دور + مرحلة بالمشاريع).
+	result = append(result, mediaMigrations()...)
 	return result
 }
 
