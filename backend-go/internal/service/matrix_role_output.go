@@ -30,7 +30,7 @@ type RoleOutput struct {
 var roleTitle = map[string]string{
 	"FINANCE": "📈 شغل المحاسبة", "MONITORS": "📈 شغل المراقبة", "COORDINATORS": "📈 شغل التنسيق",
 	"QUALITY": "📈 شغل الجودة", "DESIGN": "📈 شغل التصميم", "IT": "📈 شغل الدعم الفني",
-	"ADMINS": "📈 الإدارة", "STAFF": "📈 شغل التقنيين", "MEDIA": "📈 شغل الإعلام",
+	"ADMINS": "📈 الإدارة", "STAFF": "📈 شغل التقنيين", "SUPERVISORS": "📈 شغل المشاريع", "MEDIA": "📈 شغل الإعلام",
 	"SALES": "📈 شغل المبيعات", "PROJECTS": "📈 شغل المشاريع", "GPS": "📈 شغل الجي بي اس",
 }
 

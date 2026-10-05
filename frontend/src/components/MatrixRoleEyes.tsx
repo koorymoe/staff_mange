@@ -73,7 +73,7 @@ export default function MatrixRoleEyes() {
               <tbody>
                 {current.employees.map((e) => (
                   <tr key={e.id} className="border-t border-slate-100 align-top">
-                    <td className="p-2 font-bold"><Link to={`/matrix/employee/${e.id}`} className="text-brand-700 hover:underline">{e.name} ←</Link></td>
+                    <td className="p-2 font-bold"><Link to={`/matrix/employee/${e.id}`} className="text-brand-700 hover:underline">{e.name} ←</Link>{e.projectMode && <span className="mr-1 rounded bg-green-100 px-1 text-[10px] text-green-800">🏗️ مشرف مشروع</span>}</td>
                     <td className="p-2 whitespace-nowrap">{MOOD_LABEL[e.mood] ?? e.mood}</td>
                     <td className="p-2">
                       {e.workload.length === 0 ? <span className="text-slate-400">—</span> : (

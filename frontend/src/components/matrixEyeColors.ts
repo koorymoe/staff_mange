@@ -1,6 +1,6 @@
 // ألوان وتسميات عيون ماتركس — مشتركة بين عين الهيدر وعيون المدير.
 
-export type EyeGroup = 'ADMINS' | 'MONITORS' | 'COORDINATORS' | 'FINANCE' | 'LEADERS' | 'TECHS' | 'SALES' | 'PROJECTS' | 'GPS' | 'DESIGN' | 'QUALITY' | 'IT' | 'STAFF' | 'MEDIA' | 'VEHICLES' | 'MATRIX'
+export type EyeGroup = 'ADMINS' | 'MONITORS' | 'COORDINATORS' | 'FINANCE' | 'LEADERS' | 'TECHS' | 'SALES' | 'PROJECTS' | 'GPS' | 'DESIGN' | 'QUALITY' | 'IT' | 'STAFF' | 'MEDIA' | 'SUPERVISORS' | 'VEHICLES' | 'MATRIX'
 export type EyeMood = 'CALM' | 'PLEASED' | 'ALERT' | 'ANGRY'
 
 export const GROUP_COLOR: Record<EyeGroup, string> = {
@@ -18,6 +18,7 @@ export const GROUP_COLOR: Record<EyeGroup, string> = {
   GPS: '#14b8a6',
   STAFF: '#818cf8',
   MEDIA: '#fb7185',
+  SUPERVISORS: '#22c55e',
   VEHICLES: '#f97316',
   MATRIX: '#c084fc',
 }
@@ -35,8 +36,10 @@ export const GROUP_LABEL: Record<EyeGroup, string> = {
   SALES: 'المبيعات',
   PROJECTS: 'مدراء المشاريع',
   GPS: 'الجي بي اس',
-  // قرار (ع) 10-05: «بقية الموظفين» همّه التقنيين (مسؤولي الخدمات) ومشرفي المشاريع.
-  STAFF: 'التقنيين ومشرفي المشاريع',
+  // قرار (ع) 10-05: «بقية الموظفين» همّه التقنيين ومسؤولي الخدمات، ومشرفي
+  // المشاريع إلهم عين خضرة خاصة — أي موظف ياخذها طول ما مشروعه مفتوح.
+  STAFF: 'التقنيين ومسؤولي الخدمات',
+  SUPERVISORS: 'مشرفي المشاريع',
   MEDIA: 'الإعلام',
   VEHICLES: 'السيارات',
   MATRIX: 'ماتركس نفسه',

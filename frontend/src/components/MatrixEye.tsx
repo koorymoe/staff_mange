@@ -97,7 +97,7 @@ export default function MatrixEye() {
   useEffect(() => { isEnabled(SWITCH_MATRIX_STAFF_EYE).then((on) => setStaffOff(!on)).catch(() => {}) }, [path])
   const sayT = useRef(0)
 
-  const group = (watch?.group ?? 'STAFF') as EyeGroup
+  const group = (watch?.projectMode ? 'SUPERVISORS' : watch?.group ?? 'STAFF') as EyeGroup
   const mood = (watch?.mood ?? 'CALM') as EyeMood
   const color = eyeColor(group, mood)
   const angry = mood === 'ANGRY'

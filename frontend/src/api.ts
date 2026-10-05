@@ -5913,6 +5913,8 @@ export interface MatrixWatch {
   level: 'CALM' | 'ALERT' | 'RED'
   mood: 'CALM' | 'PLEASED' | 'ALERT' | 'ANGRY'
   group: string
+  /** عنده مشروع مفتوح: العين خضرة (مشرف مشروع) وتراقب دوره ومشروعه. */
+  projectMode?: boolean
   workload: MatrixWorkload[]
   name?: string
   id?: string

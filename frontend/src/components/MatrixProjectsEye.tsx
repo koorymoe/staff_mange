@@ -35,6 +35,7 @@ export function MatrixProjectsEye() {
         <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> اعرض المكتملة والمرفوضة</label>
       </div>
       <MatrixNote>{rep.insights.join(' ')}</MatrixNote>
+      {rep.people.length > 0 && <p className="text-xs font-extrabold text-slate-700">👷 منو استلم مشاريع (الماشية والي خلصت)</p>}
       {rep.people.length > 0 && (
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
           {rep.people.map((p) => (

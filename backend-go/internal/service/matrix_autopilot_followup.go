@@ -299,14 +299,16 @@ type WatchItem struct {
 }
 
 type WatchState struct {
-	Level    string         `json:"level"` // CALM | ALERT | RED
-	Mood     string         `json:"mood"`  // CALM | PLEASED | ALERT | ANGRY — شعور ماتركس
-	Group    string         `json:"group"` // مجموعة الدور: تحدد شكل العين ولونها
-	Open     int            `json:"open"`
-	Items    []WatchItem    `json:"items"`
-	Workload []WorkloadItem `json:"workload"`
-	Name     string         `json:"name,omitempty"`
-	ID       string         `json:"id,omitempty"`
+	Level string `json:"level"` // CALM | ALERT | RED
+	Mood  string `json:"mood"`  // CALM | PLEASED | ALERT | ANGRY — شعور ماتركس
+	Group string `json:"group"` // مجموعة الدور: تحدد شكل العين ولونها
+	// ProjectMode عنده مشروع مفتوح: العين تاخذ لون «مشرف المشروع» وتراقب الاثنين.
+	ProjectMode bool           `json:"projectMode"`
+	Open        int            `json:"open"`
+	Items       []WatchItem    `json:"items"`
+	Workload    []WorkloadItem `json:"workload"`
+	Name        string         `json:"name,omitempty"`
+	ID          string         `json:"id,omitempty"`
 }
 
 // WorkloadItem «شغلك اليوم»: منجز وباقي، وشاشته.
@@ -359,6 +361,9 @@ func (s *MatrixAutopilotService) watchFor(subj repository.WatchSubject) (*WatchS
 		}
 		out.Items = append(out.Items, pItems...)
 		out.Workload = append(out.Workload, *pw)
+		// طلب (ع): لون العين يتحوّل لعين «مشرف مشروع» طول ما المشروع مفتوح،
+		// وترجع لون دوره من يخلص. المراقبة تبقى على الاثنين.
+		out.ProjectMode = true
 	}
 	out.Open = len(out.Items)
 	switch {
@@ -558,7 +563,7 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "SALES", "PROJECTS", "GPS", "DESIGN", "MEDIA", "QUALITY", "IT", "ADMINS", "STAFF"}
+	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "SALES", "PROJECTS", "GPS", "DESIGN", "MEDIA", "QUALITY", "IT", "ADMINS", "STAFF", "SUPERVISORS"}
 	duties := s.projectDuties()
 	byGroup := map[string]*RoleGroupReport{}
 	for _, g := range order {
@@ -571,10 +576,10 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 		}
 		w.Name, w.ID = sub.Name, sub.ID
 		groups := []string{w.Group}
-		// مشرف مشروع من دور ثاني (مصممة، مدير…) ينحسب كذلك ويا «التقنيين
-		// ومشرفي المشاريع» — يبقى بعين دوره، وهنا تنشاف مشاريعه.
-		if w.Group != "STAFF" && w.Group != "PROJECTS" && len(duties[sub.ID]) > 0 {
-			groups = append(groups, "STAFF")
+		// مشرف مشروع من أي دور (آيتي، مصممة…) يبقى بعين دوره، وينشاف
+		// هم بعين «مشرفي المشاريع» طول ما مشروعه مفتوح.
+		if w.Group != "PROJECTS" && len(duties[sub.ID]) > 0 {
+			groups = append(groups, "SUPERVISORS")
 		}
 		for _, gk := range groups {
 			g := byGroup[gk]
