@@ -22,7 +22,7 @@ var followableKinds = []string{
 	model.AiActionPaperworkReminder, model.AiActionUnstaffedAlert, model.AiActionExtraTaskOverdue,
 	model.AiActionGpsExpiry, model.AiActionVehicleDocExpiry, model.AiActionInvoiceApproval, model.AiActionLowStock,
 	model.AiActionAttendanceNudge, model.AiActionCrewRating, model.AiActionAfterInventory,
-	model.AiActionMonitorBacklog,
+	model.AiActionMonitorBacklog, model.AiActionToolReturn,
 }
 
 // ResolveFor فحص لحظي بعد كل عملية حفظ للموظف: التذكيرات الي نفّذها تنسكّر

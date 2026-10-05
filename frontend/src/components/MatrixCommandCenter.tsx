@@ -12,6 +12,7 @@ import MatrixEyeGraphic from './MatrixEyeGraphic'
 import { GroupPerf } from './MatrixRoleEyes'
 import { GROUP_LABEL, eyeColor, type EyeGroup, type EyeMood } from './matrixEyeColors'
 import MatrixRoleChains from './MatrixRoleChains'
+import MatrixWatchEyes from './MatrixWatchEyes'
 import { MatrixLearning, MatrixProjectsEye } from './MatrixProjectsEye'
 import MatrixDialect from './MatrixDialect'
 import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
@@ -185,6 +186,7 @@ export default function MatrixCommandCenter() {
 
       {/* ── ماتركس ٢٠٥٠: سلسلة الحجز — كل دور ومحطاته ── */}
       <MatrixRoleChains />
+      <MatrixWatchEyes />
       <MatrixSuggestAccuracyPanel />
       <MatrixAutonomy />
       <MatrixAICost />

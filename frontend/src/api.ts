@@ -2177,6 +2177,12 @@ export interface AIUsageReport {
   switches: Record<string, string>
   days: { day: string; cost: number }[]
 }
+export interface MatrixEyeItem { eye: string; kind: string; severity: 'HIGH' | 'MEDIUM' | 'LOW'; title: string; detail: string; advice: string; ownerId?: string; ownerName?: string; bookingId?: string; at?: string }
+export interface MatrixEyesReport {
+  eyes: { key: string; title: string; items: MatrixEyeItem[]; summary: string; high: number }[]
+  customers: { employeeId: string; name: string; followUps: number; happy: number; unhappy: number; complaints: number; complaints30: number; avgRating: number | null; happyPct: number | null; notes: string[] }[]
+  teamHappyPct: number | null; insights: string[]
+}
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
 export interface BookingTimeline {
@@ -4393,6 +4399,7 @@ export const api = {
   getMatrixAutoCrew: () => request<{ actionId: string; bookingId: string; summary: string }[]>('/ai/autonomy/crew'),
   undoMatrixAutoCrew: (actionId: string) => request<{ ok: boolean }>(`/ai/autonomy/crew/${actionId}/undo`, { method: 'POST' }),
   getAIUsage: () => request<AIUsageReport>('/ai/usage'),
+  getMatrixEyes: () => request<MatrixEyesReport>('/ai/watch'),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

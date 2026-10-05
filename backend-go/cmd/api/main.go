@@ -2233,6 +2233,19 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixAutonomyService.Start()
 	matrixAutonomyHandler := handler.NewMatrixAutonomyHandler(matrixAutonomyService)
 	mux.Handle("GET /api/ai/autonomy", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.Status), requireAuth, requireAdmin))
+	// عيون الرقابة: المخزن والسيارات ورأي الزبائن — للمراقب كمان (قرار (ع)).
+	matrixWatchService := service.NewMatrixWatchService(repository.NewMatrixWatchRepository(db), matrixAutopilotService, notificationRepo)
+	go func() {
+		for {
+			time.Sleep(30 * time.Minute)
+			now := time.Now().In(service.BaghdadLoc())
+			if now.Hour() >= 11 {
+				today := now.Format("2006-01-02")
+				matrixWatchService.Remind(today, service.BaghdadMidnight(today))
+			}
+		}
+	}()
+	mux.Handle("GET /api/ai/watch", middleware.Chain(http.HandlerFunc(handler.NewMatrixWatchHandler(matrixWatchService).Report), requireAuth, requireMonitor))
 	// عدّاد كلفة الذكاء الاصطناعي — المدير والمالك.
 	mux.Handle("GET /api/ai/usage", middleware.Chain(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rep, err := service.AIUsageSummary()

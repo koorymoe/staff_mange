@@ -197,6 +197,9 @@ func (r *AiActionRepository) IsResolved(a model.AiAction) (bool, error) {
 		// سجّل حضور بيوم التذكير.
 		q = `SELECT EXISTS (SELECT 1 FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = $2::date)`
 		args = []any{a.EntityID, a.Period}
+	case model.AiActionToolReturn:
+		q = `SELECT NOT EXISTS (SELECT 1 FROM "ToolRequest" WHERE id = $1 AND status::text = 'APPROVED' AND "returnedAt" IS NULL)`
+		args = []any{a.EntityID}
 	case model.AiActionMonitorBacklog:
 		// الصندوق صار بلا بنود متأخرة (+٢٤ ساعة).
 		q = `SELECT (` + monitorBacklogSQL + `) = 0`

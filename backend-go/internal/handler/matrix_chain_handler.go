@@ -256,3 +256,15 @@ func (h *MatrixAutonomyHandler) UndoCrew(w http.ResponseWriter, r *http.Request)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
+
+// ═══ عيون الرقابة (المخزن، السيارات، رأي الزبائن، …) ═══
+type MatrixWatchHandler struct{ svc *service.MatrixWatchService }
+
+func NewMatrixWatchHandler(svc *service.MatrixWatchService) *MatrixWatchHandler {
+	return &MatrixWatchHandler{svc: svc}
+}
+
+// GET /api/ai/watch — المراقب والمدير والمالك.
+func (h *MatrixWatchHandler) Report(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, h.svc.Report())
+}

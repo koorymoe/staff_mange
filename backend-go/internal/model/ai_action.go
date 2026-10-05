@@ -27,6 +27,8 @@ const (
 	// ── أفعال تنفيذية (المرحلة الثالثة) — كل وحدة بمفتاح المالك وتنرجع ──
 	AiActionAutoCrew        = "AUTO_CREW"        // ماتركس كلّف كادر حجز باچر (بعد بوابة الدقة)
 	AiActionMonitorEscalate = "MONITOR_ESCALATE" // بنود المراقب +٤٨ ساعة صعدت للمدير
+	AiActionToolReturn      = "TOOL_RETURN"      // الموظف: أداة ويّاه من +٧ أيام وما رجعها
+	AiActionWatchDigest     = "WATCH_DIGEST"     // المراقب: ملخّص عيون الرقابة المهمة
 )
 
 // AiActionEscalateAfter تذكير ما انحل بهالمدة يصعد للمدير.
@@ -59,6 +61,8 @@ var AiActionLabels = map[string]string{
 	AiActionMonitorBacklog:    "بنود متأخرة بصندوق المراقب",
 	AiActionAutoCrew:          "ماتركس كلّف كادر حجز باچر",
 	AiActionMonitorEscalate:   "تصعيد بنود المراقب للمدير",
+	AiActionToolReturn:        "تذكير بإرجاع أداة",
+	AiActionWatchDigest:       "ملخّص عيون الرقابة للمراقب",
 }
 
 // AiAction فعل واحد نفّذه ماتركس لحاله.
