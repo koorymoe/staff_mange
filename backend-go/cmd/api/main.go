@@ -2254,6 +2254,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"MEDIA"}, "media", "MEDIA", msg)
 	})
 	mux.Handle("POST /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.Transfer), requireAuth, requireProjectMgmt))
+	// سجل الانضباط الوظيفي — المدير والمالك بس (قرار (ع) 10-05).
+	disciplineRecordHandler := handler.NewDisciplineRecordHandler(service.NewDisciplineRecordService(repository.NewDisciplineRecordRepository(db)))
+	mux.Handle("GET /api/discipline-record", middleware.Chain(http.HandlerFunc(disciplineRecordHandler.Get), requireAuth, requireAdmin))
 	mux.Handle("GET /api/media/briefs", middleware.Chain(http.HandlerFunc(mediaHandler.List), requireAuth, requireMediaView))
 	mux.Handle("PUT /api/media/briefs/{id}", middleware.Chain(http.HandlerFunc(mediaHandler.Update), requireAuth, requireMedia))
 	mux.Handle("GET /api/ai/watch", middleware.Chain(http.HandlerFunc(handler.NewMatrixWatchHandler(matrixWatchService).Report), requireAuth, requireMonitor))

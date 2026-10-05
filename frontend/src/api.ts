@@ -2192,6 +2192,15 @@ export interface MediaBrief {
   status: 'NEW' | 'SCHEDULED' | 'SHOT' | 'PUBLISHED' | 'CANCELLED'; shootAt: string | null
   mediaEmployeeName: string | null; publishedUrl: string | null; mediaNotes: string | null; createdByName: string | null; createdAt: string
 }
+export interface DisciplineEntry {
+  source: 'KPI' | 'POINTS' | 'LEDGER'; id: string; employeeId: string; employeeName: string; amount: number; points: number
+  reason: string; kind: string | null; byName: string | null; bookingId: string | null; bookingCode: string | null
+  at: string; returned: boolean; returnedAt: string | null; returnNote: string | null
+}
+export interface DisciplineRecord {
+  employees: { employeeId: string; employeeName: string; count: number; amount: number; returned: number; net: number; pointsLost: number; pointsBack: number; thisMonth: number; lastMonth: number; topReason: string; last: string | null; insights: string[] }[]
+  entries: DisciplineEntry[]; totals: Record<string, number>; insights: string[]
+}
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
 export interface BookingTimeline {
@@ -4412,6 +4421,7 @@ export const api = {
   getMediaBriefs: () => request<MediaBrief[]>('/media/briefs'),
   updateMediaBrief: (id: string, body: { status: string; shootAt?: string | null; publishedUrl?: string | null; mediaNotes?: string | null }) =>
     request<MediaBrief>(`/media/briefs/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  getDisciplineRecord: () => request<DisciplineRecord>('/discipline-record'),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

@@ -64,6 +64,7 @@ const ComplaintsPage = lazy(() => import('./pages/ComplaintsPage'))
 const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const ItAssetsPage = lazy(() => import('./pages/ItAssetsPage'))
 const MediaPage = lazy(() => import('./pages/MediaPage'))
+const DisciplineRecordPage = lazy(() => import('./pages/DisciplineRecordPage'))
 const ItStatsPage = lazy(() => import('./pages/ItStatsPage'))
 const MyInventory = lazy(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage'))
@@ -192,6 +193,7 @@ function App() {
           <Route path="sales-opportunities" element={<SalesOpportunitiesPage />} />
           {/* التقرير الأسبوعي: ADMIN/OWNER بس (نفس الخادم) */}
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
+          <Route path="discipline-record" element={<RequireAdmin><DisciplineRecordPage /></RequireAdmin>} />
           <Route path="matrix/decisions" element={<RequireAdmin><MatrixDecisionsPage /></RequireAdmin>} />
           {/* المراقب كمان: شغله متابعة الموظف — نفس حارس GET /api/ai/employee-report. */}
           <Route path="matrix/employee/:id" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><MatrixEmployeeReportPage /></RequirePermission>} />

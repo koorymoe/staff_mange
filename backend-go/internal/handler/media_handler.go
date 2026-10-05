@@ -10,6 +10,7 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/repository"
+	"staffmange-api/internal/service"
 )
 
 // ═══ الإعلام والعلاقات العامة — طلب (ع) 10-05 ═══
@@ -137,4 +138,24 @@ func (h *MediaHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 	b, _ := h.repo.Get(r.PathValue("id"))
 	WriteJSON(w, http.StatusOK, b)
+}
+
+// ═══ سجل الانضباط الوظيفي (المدير والمالك) ═══
+type DisciplineRecordHandler struct {
+	svc *service.DisciplineRecordService
+}
+
+func NewDisciplineRecordHandler(svc *service.DisciplineRecordService) *DisciplineRecordHandler {
+	return &DisciplineRecordHandler{svc: svc}
+}
+
+// GET /api/discipline-record?employeeId=
+func (h *DisciplineRecordHandler) Get(w http.ResponseWriter, r *http.Request) {
+	rec, err := h.svc.Build(r.URL.Query().Get("employeeId"))
+	if err != nil {
+		log.Printf("discipline record: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر جلب سجل الانضباط")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rec)
 }

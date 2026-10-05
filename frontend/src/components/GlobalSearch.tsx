@@ -26,6 +26,7 @@ const TAB_HITS: { title: string; path: string; to: string; words?: string }[] = 
   { title: 'أحكام ماتركس', path: 'مكتب المراقب ← صندوق المراقب ← أحكام ماتركس', to: '/monitor-inbox', words: 'ماتركس' },
   { title: 'تدقيق التكرار', path: 'صندوق المراقب ← تدقيق التكرار', to: '/duplicate-review', words: 'تكرار مكرر ماتركس' },
   { title: 'مهامي الإضافية وإنجازاتي', path: 'مهامي وإنجازاتي', to: '/my-work', words: 'مهام انجاز' },
+  { title: 'سجل الانضباط الوظيفي', path: 'سجل الانضباط الوظيفي', to: '/discipline-record', words: 'خصم خصومات غرامة انضباط' },
   { title: 'تقرير ماتركس عن موظف', path: 'مكتب المدير ← ماتركس ← عيون ماتركس ← اسم الموظف', to: '/?board=matrix', words: 'ماتركس تقرير' },
 ]
 
