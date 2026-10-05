@@ -19,7 +19,7 @@ export default function MatrixSuggestAccuracyPanel() {
   return (
     <div dir="rtl" className="space-y-3 rounded-2xl border border-violet-200 bg-white p-3 text-slate-800">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-extrabold text-violet-900">🎯 دقة اقتراحات ماتركس <span className="text-[11px] font-normal text-slate-500">ماتركس يقترح الموعد والكادر — المنسق يقرر</span></p>
+        <p className="text-sm font-extrabold text-violet-900">🎯 دقة اقتراحات ماتركس <span className="text-[11px] font-normal text-slate-500">ماتركس يقترح الموعد والكادر، والمنسق يقرر</span></p>
         <select value={days} onChange={(e) => setDays(Number(e.target.value))} className="rounded-lg border border-slate-200 px-2 py-1 text-xs">
           {[7, 30, 90].map((d) => <option key={d} value={d}>آخر {d} يوم</option>)}
         </select>
@@ -29,10 +29,10 @@ export default function MatrixSuggestAccuracyPanel() {
         {a.kinds.map((k) => (
           <div key={k.kind} className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
             <b className="text-sm">{k.title}</b>
-            <p className="mt-1 text-2xl font-black text-violet-700">{k.decided ? `${k.acceptPct}%` : '—'}</p>
-            <p>✅ مشى عليه {k.accepted} · 🟡 جزء {k.partial} · ✏️ غيّره {k.changed}</p>
+            <p className="mt-1 text-2xl font-black text-violet-700">{k.decided ? `${k.acceptPct}%` : <span className="text-sm font-bold text-slate-400">بعد ماكو قرارات</span>}</p>
+            <p>✅ اعتمده {k.accepted} · 🟡 اعتمد جزء منه {k.partial} · ✏️ غيّره {k.changed}</p>
             {(k.onTimeAccepted != null || k.onTimeChanged != null) && (
-              <p className="mt-1 text-slate-600">طلع بوقته: لمن مشى عليه {k.onTimeAccepted ?? '—'}% ({k.sampleAccepted}) · لمن انغيّر {k.onTimeChanged ?? '—'}% ({k.sampleChanged})</p>
+              <p className="mt-1 text-slate-600">طلع بوقته: لمن اعتمدوه {k.onTimeAccepted ?? '—'}% ({k.sampleAccepted}) · لمن انغيّر {k.onTimeChanged ?? '—'}% ({k.sampleChanged})</p>
             )}
           </div>
         ))}

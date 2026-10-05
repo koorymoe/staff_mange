@@ -15,7 +15,7 @@ import (
 //
 // طلب (ع) 10-05: «الخطوة الاولى انو يراقب وينطيني تقارير وايفادات ومعلومات،
 // ولازم المعلومات ماتكون سهله ابد». كل حجز يتقسّم ١٤ محطة، ولكل محطة: منو
-// المسؤول، متى بدت، متى خلصت، شكد أخذت، وهل انسوّت صح. ومن المحطات تنبني
+// المسؤول، متى بدت، متى خلصت، شكد أخذت، وهل صارت صح. ومن المحطات تنبني
 // تقارير كل دور (الحجوزات، المنسقين، الليدرية، الفنيين، المحاسبة، الجودة،
 // المراقبين).
 //
@@ -24,11 +24,11 @@ import (
 // عينات كافية) بآخر ٩٠ يوم × ١٫٥، وبحد أدنى معقول. والحد يطلع ويا كل حكم.
 
 const (
-	ChainOK      = "OK"      // ✅ انسوّت بوقتها
-	ChainLate    = "LATE"    // 🟠 انسوّت بس متأخرة
-	ChainMissed  = "MISSED"  // 🔴 ما انسوّت ووقتها فات
+	ChainOK      = "OK"      // ✅ صارت بوقتها
+	ChainLate    = "LATE"    // 🟠 صارت بس متأخرة
+	ChainMissed  = "MISSED"  // 🔴 ما صارت ووقتها فات
 	ChainWaiting = "WAITING" // ⏳ بعدها، ووقتها ما فات
-	ChainIssue   = "ISSUE"   // ⚠️ انسوّت بس بيها غلط
+	ChainIssue   = "ISSUE"   // ⚠️ صارت بس بيها غلط
 	ChainNA      = "NA"      // ➖ ما تنطبق على هذا الحجز
 )
 
@@ -295,6 +295,8 @@ func latestOf(ts ...*time.Time) *time.Time {
 // FmtMinutes «٣ ساعات و١٠ دقايق» بشكل مختصر.
 func FmtMinutes(m int) string {
 	switch {
+	case m <= 0:
+		return "فوراً"
 	case m < 60:
 		return fmt.Sprintf("%d د", m)
 	case m < 24*60:
@@ -370,13 +372,13 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			st.Minutes = minsBetween(start, end)
 			if st.Minutes != nil && th > 0 && *st.Minutes > th {
 				st.Status = ChainLate
-				st.Verdict = fmt.Sprintf("أخذت %s — والمعتاد بالشركة لحد %s.", FmtMinutes(*st.Minutes), FmtMinutes(th))
+				st.Verdict = fmt.Sprintf("أخذت %s، والمعتاد بالشركة ما يتجاوز %s.", FmtMinutes(*st.Minutes), FmtMinutes(th))
 			} else {
 				st.Status = ChainOK
 				if st.Minutes != nil {
-					st.Verdict = fmt.Sprintf("انسوّت خلال %s (الحد %s).", FmtMinutes(*st.Minutes), FmtMinutes(th))
+					st.Verdict = fmt.Sprintf("صارت خلال %s (المعتاد ما يتجاوز %s).", FmtMinutes(*st.Minutes), FmtMinutes(th))
 				} else {
-					st.Verdict = "انسوّت."
+					st.Verdict = "صارت."
 				}
 			}
 			return
@@ -387,22 +389,22 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		}
 		if from == nil || cancelled {
 			st.Status = ChainNA
-			st.Verdict = "بعدها ما وصلت هالمحطة."
+			st.Verdict = "الحجز بعده ما وصل لهالمحطة."
 			return
 		}
 		// محطة قبل الإنجاز والحجز خلص بدونها — انتخطّت، مو «بعدها تنتظر».
 		if done && (st.Key == "CONTACT" || st.Key == "CONFIRM" || st.Key == "CREW" || st.Key == "RECEIVE" || st.Key == "WORK") {
 			st.Status = ChainMissed
-			st.Verdict = "الحجز خلص وهالمحطة ما انسجّلت بالنظام."
+			st.Verdict = "الحجز خلص، بس هالخطوة ما انسجّلت بالنظام."
 			return
 		}
 		el := int(now.Sub(*from).Minutes())
 		if el > th {
 			st.Status = ChainMissed
-			st.Verdict = fmt.Sprintf("ما انسوّت لحد هسه — صارلها %s والحد %s.", FmtMinutes(el), FmtMinutes(th))
+			st.Verdict = fmt.Sprintf("ما صارت لحد هسه. صارلها %s تنتظر، والمعتاد ما يتجاوز %s.", FmtMinutes(el), FmtMinutes(th))
 		} else {
 			st.Status = ChainWaiting
-			st.Verdict = fmt.Sprintf("تنتظر — صارلها %s من أصل %s.", FmtMinutes(maxInt(el, 0)), FmtMinutes(th))
+			st.Verdict = fmt.Sprintf("تنتظر. صارلها %s، والمعتاد ما يتجاوز %s.", FmtMinutes(maxInt(el, 0)), FmtMinutes(th))
 		}
 	}
 	add := func(st ChainStation) {
@@ -433,7 +435,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		st.Status = ChainOK
 		st.Verdict = "انسجّل."
 		if f.NameWords > 0 && f.NameWords < 3 {
-			st.Issues = append(st.Issues, fmt.Sprintf("اسم الزبون %d كلمة بس — مو ثلاثي.", f.NameWords))
+			st.Issues = append(st.Issues, fmt.Sprintf("اسم الزبون %d كلمة بس، مو ثلاثي.", f.NameWords))
 		}
 		if !f.HasAddress && !f.HasLocation {
 			st.Issues = append(st.Issues, "بلا عنوان ولا موقع.")
@@ -459,13 +461,13 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			judge(&st, &created, f.ContactedAt, s.threshold(f, "CONTACT"), nil)
 		} else if f.ConfirmedAt != nil {
 			// قرار (ع) 10-05: «الإداري الي يثبّت الحجز هو نفسه لازم يضغط تواصلت
-			// ويا الزبون — إذا ما ضغط يعني هو الي ما ضاغط». فالمحطة عليه وما انسوّت.
+			// ويا الزبون — إذا ما ضغط يعني هو الي ما ضاغط». فالمحطة عليه وما صارت.
 			st.Owners = s.owner(f.ConfirmedByID, f.ConfirmedBy)
 			st.StartAt, st.EndAt = &created, nil
 			th := s.threshold(f, "CONTACT")
 			st.Threshold = &th
 			st.Status = ChainMissed
-			st.Verdict = "ثبّت الحجز بدون ما يضغط «تواصلت ويا الزبون» — المحطة عليه."
+			st.Verdict = "ثبّت الحجز بدون ما يضغط «تواصلت ويا الزبون»، فهالخطوة محسوبة عليه."
 		} else {
 			judge(&st, &created, nil, s.threshold(f, "CONTACT"), nil)
 		}
@@ -498,7 +500,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		st := ChainStation{Key: "CREW", Role: ChainRoleCoordinator, Owners: s.owner(f.ConfirmedByID, f.ConfirmedBy)}
 		judge(&st, f.ConfirmedAt, f.FirstAssignAt, s.threshold(f, "CREW"), nil)
 		if f.FirstAssignAt != nil {
-			st.Facts = append(st.Facts, fmt.Sprintf("الكادر: %d.", len(f.CrewIDs)))
+			st.Facts = append(st.Facts, fmt.Sprintf("عدد الكادر: %d.", len(f.CrewIDs)))
 			if !f.Solo && !survey && f.LeaderID == nil {
 				st.Issues = append(st.Issues, "الكادر بلا ليدر.")
 			}
@@ -522,7 +524,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		start := firstOf(f.MissionAt, f.FirstAssignAt)
 		if f.MaterialsAt == nil && done {
 			st.Status = ChainNA
-			st.Verdict = "ما انسجّل وقت استلام/تجهيز — الحجز خلص بدونه."
+			st.Verdict = "الحجز خلص بدون ما ينسجّل وقت استلام المواد."
 			st.Issues = append(st.Issues, "ما أشّر «المواد جاهزة».")
 			st.StartAt = start
 			add(st)
@@ -538,16 +540,16 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		dep := firstOf(f.DepartedAt, f.StartedAt)
 		if f.ScheduledAt == nil {
 			st.Status = ChainNA
-			st.Verdict = "ماكو موعد نقيس عليه."
+			st.Verdict = "الحجز بلا موعد، فما نگدر نقيس التأخير."
 		} else {
 			judge(&st, f.ScheduledAt, dep, s.threshold(f, "ROUTE"), nil)
 			if dep != nil && st.Minutes != nil {
 				if *st.Minutes == 0 {
 					st.Verdict = "طلع بموعده أو قبله."
 				} else if st.Status == ChainOK {
-					st.Verdict = fmt.Sprintf("طلع بعد الموعد بـ%s (ضمن المعتاد %s).", FmtMinutes(*st.Minutes), FmtMinutes(*st.Threshold))
+					st.Verdict = fmt.Sprintf("طلع بعد الموعد بـ%s، وهذا ضمن المعتاد (لحد %s).", FmtMinutes(*st.Minutes), FmtMinutes(*st.Threshold))
 				} else {
-					st.Verdict = fmt.Sprintf("طلع متأخر عن الموعد بـ%s — المعتاد لحد %s.", FmtMinutes(*st.Minutes), FmtMinutes(*st.Threshold))
+					st.Verdict = fmt.Sprintf("طلع متأخر عن الموعد بـ%s، والمعتاد ما يتجاوز %s.", FmtMinutes(*st.Minutes), FmtMinutes(*st.Threshold))
 				}
 			}
 		}
@@ -629,7 +631,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		}
 		if f.Solo || f.LeaderID == nil || techs == 0 {
 			st.Status = ChainNA
-			st.Verdict = "ماكو ليدر وفنيين ينقيّمون."
+			st.Verdict = "ماكو ليدر وفنيين بهالحجز حتى ينقيّمون."
 		} else {
 			var end *time.Time
 			if f.RatedCount >= techs {
@@ -653,7 +655,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		}
 		if f.Solo || len(f.TechIDs) == 0 || f.LeaderID == nil || survey || ch.Legacy {
 			st.Status = ChainNA
-			st.Verdict = "ماكو فنيين ويا ليدر يجردون بعد الشغل."
+			st.Verdict = "ماكو فنيين طالعين ويا ليدر بهالحجز."
 		} else {
 			missing, lacking := []string{}, []string{}
 			for _, id := range f.TechIDs {
@@ -702,7 +704,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		st := ChainStation{Key: "ACCOUNT", Role: ChainRoleAccountant, Owners: owners}
 		if f.InvoiceAt == nil {
 			st.Status = ChainNA
-			st.Verdict = "ماكو فاتورة توصل المحاسب."
+			st.Verdict = "بعد ماكو فاتورة حتى توصل للمحاسب."
 		} else {
 			judge(&st, f.InvoiceAt, f.ApprovedAt, s.threshold(f, "ACCOUNT"), f.InvoiceAt)
 			if f.AuditedAt != nil {
@@ -713,7 +715,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			if f.InvoiceNet != nil && f.Collected != nil {
 				diff := math.Abs(*f.InvoiceNet - *f.Collected)
 				if diff >= 1000 {
-					st.Issues = append(st.Issues, fmt.Sprintf("المستلم %.0f والفاتورة %.0f — فرق %.0f د.ع.", *f.Collected, *f.InvoiceNet, diff))
+					st.Issues = append(st.Issues, fmt.Sprintf("المبلغ المستلم %.0f والفاتورة %.0f، يعني أكو فرق %.0f د.ع.", *f.Collected, *f.InvoiceNet, diff))
 				} else {
 					st.Facts = append(st.Facts, "المستلم مطابق للفاتورة.")
 				}
@@ -760,17 +762,17 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 				v := int(*f.MonitorMinutes)
 				st.Minutes = &v
 			}
-			st.Facts = append(st.Facts, fmt.Sprintf("%d بند، %d بعده ينتظر.", f.MonitorRows, f.MonitorPending))
+			st.Facts = append(st.Facts, fmt.Sprintf("%d بند، منها %d بعدها تنتظر حكم.", f.MonitorRows, f.MonitorPending))
 			switch {
 			case f.MonitorPending > 0 && f.MonitorFirstAt != nil && now.Sub(*f.MonitorFirstAt).Minutes() > float64(th):
 				st.Status = ChainMissed
-				st.Verdict = fmt.Sprintf("بنود ما انحكمت والحد %s.", FmtMinutes(th))
+				st.Verdict = fmt.Sprintf("أكو بنود ما انحكمت، وفاتها المعتاد (%s).", FmtMinutes(th))
 			case f.MonitorPending > 0:
 				st.Status = ChainWaiting
-				st.Verdict = "بنود تنتظر حكمه."
+				st.Verdict = "أكو بنود تنتظر حكم المراقب."
 			case st.Minutes != nil && *st.Minutes > th:
 				st.Status = ChainLate
-				st.Verdict = fmt.Sprintf("حكم بمعدل %s — المعتاد لحد %s.", FmtMinutes(*st.Minutes), FmtMinutes(th))
+				st.Verdict = fmt.Sprintf("حكم بمعدل %s، والمعتاد ما يتجاوز %s.", FmtMinutes(*st.Minutes), FmtMinutes(th))
 			default:
 				st.Status = ChainOK
 				st.Verdict = "حكم على كل البنود بوقتها."
@@ -995,12 +997,12 @@ func (s *MatrixChainService) collect(facts []repository.ChainFacts, role string,
 				continue
 			}
 			if len(st.Owners) == 0 {
-				// محطة فاتت/تأخرت وما معروف منو مسؤولها (ما انسوّت أصلاً) —
+				// محطة فاتت/تأخرت وما معروف منو مسؤولها (ما صارت أصلاً) —
 				// تنحسب على الفريق وتطلع بالقائمة «بلا مسؤول».
 				if per[""] == nil {
 					per[""] = newAgg()
 				}
-				names[""] = "— بلا مسؤول محدد (ما انسوّت أصلاً)"
+				names[""] = "— ما معروف منو المسؤول (الخطوة ما انسجّلت)"
 				per[""].add(ch, st, st.Status)
 				team.add(ch, st, st.Status)
 				continue
@@ -1114,8 +1116,8 @@ func (s *MatrixChainService) RoleReport(role string, days int) (*RoleChainReport
 		}
 		sort.Slice(a.bad, func(i, j int) bool { return a.bad[i].Code > a.bad[j].Code })
 		e.Bad = a.bad
-		if len(e.Bad) > 15 {
-			e.Bad = e.Bad[:15]
+		if len(e.Bad) > 300 {
+			e.Bad = e.Bad[:300]
 		}
 		// النمط: إذا ٤٠٪ أو أكثر من تأخيراته بنفس اليوم/الساعة.
 		lates := a.late + a.missed
@@ -1168,49 +1170,49 @@ func employeeInsights(e *ChainEmployeeReport, teamPct int) []string {
 	out := []string{}
 	if e.Total < 3 {
 		if e.Total > 0 {
-			out = append(out, fmt.Sprintf("عيّنته قليلة (%d قياس) — الحكم عليه بعده مبكر.", e.Total))
+			out = append(out, fmt.Sprintf("شغله بهالفترة قليل (%d خطوة)، فبعد وكت نحكم عليه.", e.Total))
 		}
 	} else {
 		d := e.OnTimePct - teamPct
 		switch {
 		case d <= -15:
-			out = append(out, fmt.Sprintf("أقل من فريقه بـ%d نقطة (%d٪ مقابل %d٪).", -d, e.OnTimePct, teamPct))
+			out = append(out, fmt.Sprintf("التزامه بالوقت أقل من زملائه بـ%d نقطة (%d٪، والفريق %d٪).", -d, e.OnTimePct, teamPct))
 		case d >= 15:
-			out = append(out, fmt.Sprintf("أحسن من فريقه بـ%d نقطة (%d٪ مقابل %d٪).", d, e.OnTimePct, teamPct))
+			out = append(out, fmt.Sprintf("التزامه بالوقت أحسن من زملائه بـ%d نقطة (%d٪، والفريق %d٪).", d, e.OnTimePct, teamPct))
 		}
 	}
 	if e.PrevPct != nil && e.Total >= 3 {
 		d := e.OnTimePct - *e.PrevPct
 		if d >= 10 {
-			out = append(out, fmt.Sprintf("📈 تحسّن من %d٪ للفترة السابقة إلى %d٪.", *e.PrevPct, e.OnTimePct))
+			out = append(out, fmt.Sprintf("📈 تحسّن: الفترة الفاتت چان %d٪ وهسه %d٪.", *e.PrevPct, e.OnTimePct))
 		} else if d <= -10 {
-			out = append(out, fmt.Sprintf("📉 تراجع من %d٪ للفترة السابقة إلى %d٪.", *e.PrevPct, e.OnTimePct))
+			out = append(out, fmt.Sprintf("📉 تراجع: الفترة الفاتت چان %d٪ وهسه %d٪.", *e.PrevPct, e.OnTimePct))
 		}
 	}
 	for _, st := range e.Stations {
 		if st.MedianMin != nil && st.TeamMed != nil && *st.TeamMed > 0 && st.Count >= 3 {
 			r := float64(*st.MedianMin) / float64(*st.TeamMed)
 			if r >= 1.5 {
-				out = append(out, fmt.Sprintf("بـ«%s» ياخذ %s والفريق %s — أبطأ ×%.1f.", st.Title, FmtMinutes(*st.MedianMin), FmtMinutes(*st.TeamMed), r))
+				out = append(out, fmt.Sprintf("بـ«%s» ياخذ %s، وزملاؤه ياخذون %s، يعني أبطأ منهم %.1f مرة.", st.Title, FmtMinutes(*st.MedianMin), FmtMinutes(*st.TeamMed), r))
 			} else if r <= 0.6 {
-				out = append(out, fmt.Sprintf("بـ«%s» أسرع من الفريق (%s مقابل %s).", st.Title, FmtMinutes(*st.MedianMin), FmtMinutes(*st.TeamMed)))
+				out = append(out, fmt.Sprintf("بـ«%s» أسرع من زملائه: ياخذ %s وهم %s.", st.Title, FmtMinutes(*st.MedianMin), FmtMinutes(*st.TeamMed)))
 			}
 		}
 		if st.Missed >= 2 {
-			out = append(out, fmt.Sprintf("«%s» ما انسوّت %d مرات.", st.Title, st.Missed))
+			out = append(out, fmt.Sprintf("«%s» ما صارت %d مرات.", st.Title, st.Missed))
 		}
 	}
 	if e.LateWeekday != "" {
-		out = append(out, "تأخيره يتركّز يوم "+e.LateWeekday+".")
+		out = append(out, "أغلب تأخيره يصير يوم "+e.LateWeekday+".")
 	}
 	if e.LateHour != nil {
-		out = append(out, fmt.Sprintf("وأغلبه بالساعة %d:00.", *e.LateHour))
+		out = append(out, fmt.Sprintf("وبالذات حوالي الساعة %d:00.", *e.LateHour))
 	}
 	if e.Issues >= 2 {
-		out = append(out, fmt.Sprintf("%d مرة الشغل بوقته بس بيه نقص (شوف الحجوزات).", e.Issues))
+		out = append(out, fmt.Sprintf("%d مرة خلّص بوقته بس الشغل بيه نقص (الحجوزات مذكورة تحت).", e.Issues))
 	}
 	if e.RatingAvg != nil {
-		out = append(out, fmt.Sprintf("تقييم الليدرية إله %.1f/5 من %d حجز.", *e.RatingAvg, e.RatingCount))
+		out = append(out, fmt.Sprintf("الليدرية قيّموه %.1f من 5 (على %d حجز).", *e.RatingAvg, e.RatingCount))
 	}
 	return out
 }
@@ -1225,9 +1227,9 @@ func teamInsights(rep *RoleChainReport) []string {
 		measured += st.Count
 	}
 	if measured == 0 {
-		return append(out, fmt.Sprintf("%d حجز بآخر %d يوم — بعد ماكو محطة وصلت لـ%s حتى تنقاس.", rep.Bookings, rep.Days, rep.Title))
+		return append(out, fmt.Sprintf("%d حجز بآخر %d يوم، وبعد ماكو شغل وصل لـ%s حتى نقيسه.", rep.Bookings, rep.Days, rep.Title))
 	}
-	out = append(out, fmt.Sprintf("%d حجز بآخر %d يوم — %d قياس على %s، بوقتها %d٪.", rep.Bookings, rep.Days, measured, rep.Title, rep.TeamPct))
+	out = append(out, fmt.Sprintf("%d حجز بآخر %d يوم. %s مسؤولين عن %d خطوة، صار منها بوقتها %d٪.", rep.Bookings, rep.Days, rep.Title, measured, rep.TeamPct))
 	if rep.PrevPct != nil {
 		d := rep.TeamPct - *rep.PrevPct
 		if d != 0 {
@@ -1235,7 +1237,7 @@ func teamInsights(rep *RoleChainReport) []string {
 			if d < 0 {
 				arrow = "📉"
 			}
-			out = append(out, fmt.Sprintf("%s الفترة السابقة چانت %d٪.", arrow, *rep.PrevPct))
+			out = append(out, fmt.Sprintf("%s الفترة الفاتت چانت %d٪.", arrow, *rep.PrevPct))
 		}
 	}
 	// أضعف محطة بالفريق.
@@ -1250,7 +1252,7 @@ func teamInsights(rep *RoleChainReport) []string {
 		}
 	}
 	if worst != "" && wr > 0 {
-		out = append(out, fmt.Sprintf("أضعف محطة: «%s» — %d٪ منها متأخرة أو ما انسوّت.", worst, int(math.Round(wr*100))))
+		out = append(out, fmt.Sprintf("أضعف خطوة: «%s»، %d٪ منها تأخرت أو ما صارت.", worst, int(math.Round(wr*100))))
 	}
 	return out
 }
@@ -1287,11 +1289,11 @@ func (s *MatrixChainService) Learning() ChainLearning {
 		case d.Key == "QUALITY":
 			l.Source = "قرار (ع): يومين بعد الإنجاز"
 		case l.Samples == 0:
-			l.Source = "ماكو عينات بعد — حد أدنى افتراضي"
+			l.Source = "بعد ماكو حجوزات كافية، فحطّينا حد أدنى"
 		case l.LimitMin == d.Floor && l.MedianMin*3/2 < d.Floor:
-			l.Source = "الوسيط صغير — انطبق الحد الأدنى"
+			l.Source = "الشغل سريع بالعادة، فانطبق الحد الأدنى"
 		default:
-			l.Source = "تعلّمه من الوسيط × ١٫٥"
+			l.Source = "تعلّمه من المعتاد بالشركة × ١٫٥"
 		}
 		out.Stations = append(out.Stations, l)
 	}

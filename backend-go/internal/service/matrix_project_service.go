@@ -193,7 +193,7 @@ func (s *MatrixProjectService) Report() (*ProjectsReport, error) {
 			}
 		}
 	}
-	// الأسوأ أول: الي ما انسوّت، بعدين المتأخر، بعدين النواقص.
+	// الأسوأ أول: الي ما صارت، بعدين المتأخر، بعدين النواقص.
 	rank := map[string]int{ChainMissed: 0, ChainLate: 1, ChainIssue: 2, ChainOK: 3, ChainNA: 4}
 	sort.SliceStable(rep.Projects, func(i, j int) bool {
 		return rank[rep.Projects[i].Status] < rank[rep.Projects[j].Status]

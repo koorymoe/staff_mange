@@ -435,7 +435,7 @@ func (s *MatrixSuggestService) Accuracy(days int) (*SuggestAccuracy, error) {
 		onA, nA, onC, nC int
 	}
 	m := map[string]*acc{"SCHEDULE": {st: SuggestKindStats{Kind: "SCHEDULE", Title: titles["SCHEDULE"]}}, "CREW": {st: SuggestKindStats{Kind: "CREW", Title: titles["CREW"]}}}
-	outLabel := map[string]string{"ACCEPTED": "✅ مشى عليه", "PARTIAL": "🟡 أخذ جزء", "CHANGED": "✏️ غيّره"}
+	outLabel := map[string]string{"ACCEPTED": "✅ اعتمده", "PARTIAL": "🟡 اعتمد جزء منه", "CHANGED": "✏️ غيّره"}
 	for i, r := range rows {
 		a := m[r.Kind]
 		if a == nil {
@@ -485,14 +485,14 @@ func (s *MatrixSuggestService) Accuracy(days int) (*SuggestAccuracy, error) {
 		}
 		out.Kinds = append(out.Kinds, a.st)
 		if a.st.Decided == 0 {
-			out.Insights = append(out.Insights, fmt.Sprintf("%s: بعد ماكو اقتراح انحسم.", a.st.Title))
+			out.Insights = append(out.Insights, fmt.Sprintf("%s: لحد هسه ماكو اقتراح قرر بيه المنسق.", a.st.Title))
 			continue
 		}
-		line := fmt.Sprintf("%s: المنسقين مشوا عليه %d مرة من %d (%d٪).", a.st.Title, a.st.Accepted, a.st.Decided, a.st.AcceptPct)
+		line := fmt.Sprintf("%s: المنسقين اعتمدوه %d مرة من أصل %d (%d٪).", a.st.Title, a.st.Accepted, a.st.Decided, a.st.AcceptPct)
 		if a.st.OnTimeAcc != nil && a.st.OnTimeChg != nil && a.nA >= 5 && a.nC >= 5 {
-			line += fmt.Sprintf(" الحجوزات الي مشت على اقتراحه طلعت بوقتها %d٪، والي انغيّرت %d٪.", *a.st.OnTimeAcc, *a.st.OnTimeChg)
+			line += fmt.Sprintf(" الحجوزات الي اعتمدوا بيها اقتراحه طلعت بوقتها %d٪، والي غيّروه %d٪.", *a.st.OnTimeAcc, *a.st.OnTimeChg)
 		} else if a.st.Decided < 20 {
-			line += " العينة بعدها صغيرة — الحكم على دقته يحتاج ٢٠ اقتراح على الأقل."
+			line += " العدد بعده قليل، نحتاج ٢٠ اقتراح على الأقل حتى نحكم على دقته."
 		}
 		out.Insights = append(out.Insights, line)
 	}
