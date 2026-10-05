@@ -24,14 +24,30 @@ const (
 	SwitchMatrixAutopilot = "matrix_autopilot_enabled"
 	// SwitchMatrixStaffEye عين ماتركس بشاشات الموظفين (المدير والمالك تبقى عندهم).
 	SwitchMatrixStaffEye = "matrix_staff_eye_enabled"
+	// SwitchMatrixAutoCrew ماتركس يكلّف كادر لحجز باچر ما انحدد (المرحلة الثالثة).
+	SwitchMatrixAutoCrew = "matrix_auto_crew"
+	// SwitchMatrixMonitorEscalate ماتركس يصعّد بنود المراقب المتأخرة للمدير.
+	SwitchMatrixMonitorEscalate = "matrix_monitor_escalate"
 )
+
+// systemSwitchDefaultOff مفاتيح **مطفية** لحد ما المالك يشغّلها بنفسه —
+// أفعال ماتركس التنفيذية (قرار (ع) 10-05: بأقفال أمان). الباقي شغّال افتراضياً.
+var systemSwitchDefaultOff = map[string]bool{
+	SwitchMatrixAutoCrew:        true,
+	SwitchMatrixMonitorEscalate: true,
+}
+
+// SystemSwitchDefault الحالة لمّا ماكو صف بالجدول.
+func SystemSwitchDefault(key string) bool { return !systemSwitchDefaultOff[key] }
 
 // SystemSwitchLabels الاسم العربي لكل مفتاح — للعرض وللسجل.
 var SystemSwitchLabels = map[string]string{
-	SwitchEntity:        "شخصية الكائن",
-	SwitchAnnouncements:   "شريط الإعلانات",
-	SwitchMatrixAutopilot: "ماتركس ينفّذ التذكيرات لحاله",
-	SwitchMatrixStaffEye:  "عين ماتركس عند الموظفين",
+	SwitchEntity:                "شخصية الكائن",
+	SwitchAnnouncements:         "شريط الإعلانات",
+	SwitchMatrixAutopilot:       "ماتركس ينفّذ التذكيرات لحاله",
+	SwitchMatrixStaffEye:        "عين ماتركس عند الموظفين",
+	SwitchMatrixAutoCrew:        "ماتركس يكلّف كادر حجز باچر لحاله",
+	SwitchMatrixMonitorEscalate: "ماتركس يصعّد بنود المراقب المتأخرة",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟

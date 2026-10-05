@@ -27,7 +27,7 @@ func (r *SystemSwitchRepository) All() (map[string]bool, error) {
 	}
 	out := make(map[string]bool, len(model.SystemSwitchLabels))
 	for key := range model.SystemSwitchLabels {
-		out[key] = true
+		out[key] = model.SystemSwitchDefault(key)
 	}
 	for _, row := range rows {
 		if model.KnownSystemSwitch(row.Key) {

@@ -41,6 +41,16 @@ type MatrixAutopilotService struct {
 	// ResolveFor: آخر فحص لكل موظف (حد ١٠ ثواني).
 	resolveMu   sync.Mutex
 	resolveLast map[string]time.Time
+	// undoHooks: الأفعال التنفيذية ترجّع الي سوّته لمن المدير يتراجع.
+	undoHooks map[string]func(a model.AiAction) error
+}
+
+// OnUndo يربط ترجيع فعل تنفيذي بنوعه (ماتركس كلّف كادر ← يشيل التكليف).
+func (s *MatrixAutopilotService) OnUndo(kind string, f func(a model.AiAction) error) {
+	if s.undoHooks == nil {
+		s.undoHooks = map[string]func(model.AiAction) error{}
+	}
+	s.undoHooks[kind] = f
 }
 
 func (s *MatrixAutopilotService) SetProposalCounter(f func() int) { s.proposals = f }
@@ -118,6 +128,11 @@ func (s *MatrixAutopilotService) runActions(now time.Time) int {
 }
 
 // act يسجّل الفعل وبعدين ينفّذه — بحد يومي لكل نوع.
+// Act نفس act للخدمات الثانية (الأفعال التنفيذية).
+func (s *MatrixAutopilotService) Act(a model.AiAction, dayStart time.Time, send func() error) bool {
+	return s.act(a, dayStart, send)
+}
+
 func (s *MatrixAutopilotService) act(a model.AiAction, dayStart time.Time, send func() error) bool {
 	if c, err := s.actions.CountSince(a.Kind, dayStart); err != nil || c >= autopilotDailyCap {
 		return false
@@ -376,8 +391,16 @@ func (s *MatrixAutopilotService) Decisions(day string) (*DecisionsBox, error) {
 
 // Undo المدير يرفض فعلاً — وماتركس يتعلّم منه.
 func (s *MatrixAutopilotService) Undo(id, by string) error {
+	a, _ := s.actions.Find(id)
 	if err := s.actions.Undo(id, by); err != nil {
 		return err
+	}
+	if a != nil {
+		if hook := s.undoHooks[a.Kind]; hook != nil {
+			if err := hook(*a); err != nil {
+				log.Printf("[ai] ترجيع %s: %v", a.Kind, err)
+			}
+		}
 	}
 	s.afterUndo(id)
 	return nil

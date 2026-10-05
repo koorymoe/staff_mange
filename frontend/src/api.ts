@@ -2165,6 +2165,12 @@ export interface MatrixSuggestAccuracy {
   kinds: { kind: string; title: string; decided: number; accepted: number; partial: number; changed: number; acceptPct: number; onTimeAccepted: number | null; onTimeChanged: number | null; sampleAccepted: number; sampleChanged: number }[]
   recent: { bookingId: string; code: string; kind: string; outcome: string; at: string }[]
 }
+export interface MatrixAutonomyStatus {
+  autopilotOn: boolean
+  autoCrew: { on: boolean; decided: number; accepted: number; pct: number; eligible: boolean; needDecided: number; needPct: number }
+  monitorEscalate: { on: boolean; overdue: number }
+  recent: { id: string; kind: string; summary: string; status: string; createdAt: string; details: unknown }[]
+}
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
 export interface BookingTimeline {
@@ -4377,6 +4383,9 @@ export const api = {
     request<{ ok: boolean }>('/inventory/after-checks', { method: 'POST', body: JSON.stringify({ bookingId, complete, missingItems }) }),
   getMatrixSuggestion: (bookingId: string) => request<MatrixBookingSuggestion>(`/ai/suggest/${bookingId}`),
   getMatrixSuggestAccuracy: (days = 30) => request<MatrixSuggestAccuracy>(`/ai/suggest-accuracy?days=${days}`),
+  getMatrixAutonomy: () => request<MatrixAutonomyStatus>('/ai/autonomy'),
+  getMatrixAutoCrew: () => request<{ actionId: string; bookingId: string; summary: string }[]>('/ai/autonomy/crew'),
+  undoMatrixAutoCrew: (actionId: string) => request<{ ok: boolean }>(`/ai/autonomy/crew/${actionId}/undo`, { method: 'POST' }),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

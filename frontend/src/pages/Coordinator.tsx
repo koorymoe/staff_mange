@@ -74,6 +74,17 @@ export default function Coordinator() {
   // اقتراح ماتركس: نفس حارس الخادم (requireBookingCoord) — حتى المراقب الي يشوف
   // الصفحة ما يضغط زر ينرفض ويتسجّل عليه مخالفة.
   const canMatrixSuggest = isAdmin || (permissions ?? []).some((p) => p === 'coordinator' || p === 'crew_management')
+  // تكليفات ماتركس الحية — شارة «🤖 ماتركس كلّف» ويا تراجع (المرحلة الثالثة).
+  const [autoCrew, setAutoCrew] = useState<Record<string, string>>({})
+  const [autoCrewTick, setAutoCrewTick] = useState(0)
+  useEffect(() => {
+    if (!canMatrixSuggest) return
+    let alive = true
+    void api.getMatrixAutoCrew().then((rows) => {
+      if (alive) setAutoCrew(Object.fromEntries(rows.map((r) => [r.bookingId, r.actionId])))
+    }).catch(() => {})
+    return () => { alive = false }
+  }, [canMatrixSuggest, autoCrewTick])
   const [bookings, setBookings] = useState<Booking[]>([])
   // ═══ ماتركس: توقع التأخير ═══ — نفس حارس الخادم بالضبط
   // (RequireRoleOrPermission: ADMIN/HR_COORDINATOR/MONITOR أو coordinator).
@@ -993,6 +1004,23 @@ export default function Coordinator() {
                   />
                 )}
 
+                {autoCrew[booking.id] && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 rounded-lg border border-violet-200 bg-violet-50 px-3 py-2 text-xs">
+                    <span className="font-bold text-violet-900">🤖 ماتركس كلّف كادر هذا الحجز (محد كلّفه لحد المسا)</span>
+                    <button type="button" className="rounded-lg border border-rose-300 bg-white px-2 py-0.5 font-bold text-rose-700"
+                      onClick={async () => {
+                        if (!window.confirm('تتراجع عن تكليف ماتركس؟ ينشال بس الي كلّفه هو وبعده ما تغيّر.')) return
+                        try {
+                          await api.undoMatrixAutoCrew(autoCrew[booking.id])
+                          setSaveError(null)
+                          load()
+                        } catch (e) {
+                          setSaveError(e instanceof Error ? e.message : 'تعذر التراجع')
+                        }
+                        setAutoCrewTick((n) => n + 1)
+                      }}>تراجع</button>
+                  </div>
+                )}
                 {canMatrixSuggest && (!booking.scheduledAt || (!booking.projectSupervisor && !(booking.assignments || []).length)) && (
                   <MatrixSuggestBox bookingId={booking.id}
                     onSchedule={(v) => handleScheduleChange(booking, v)}

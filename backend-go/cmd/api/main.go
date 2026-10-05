@@ -2225,6 +2225,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixSuggestHandler := handler.NewMatrixSuggestHandler(matrixSuggestService)
 	mux.Handle("GET /api/ai/suggest/{bookingId}", middleware.Chain(http.HandlerFunc(matrixSuggestHandler.Suggest), requireAuth, requireBookingCoord))
 	mux.Handle("GET /api/ai/suggest-accuracy", middleware.Chain(http.HandlerFunc(matrixSuggestHandler.Accuracy), requireAuth, requireAdmin))
+	// المرحلة الثالثة: ماتركس ينفّذ البسيط — مفاتيح المالك مطفية افتراضياً + بوابة دقة + تراجع.
+	matrixAutonomyService := service.NewMatrixAutonomyService(matrixAutopilotService, aiActionRepo, notificationRepo,
+		repository.NewSystemSwitchRepository(db), matrixSuggestService, bookingService)
+	matrixAutonomyService.Start()
+	matrixAutonomyHandler := handler.NewMatrixAutonomyHandler(matrixAutonomyService)
+	mux.Handle("GET /api/ai/autonomy", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.Status), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/autonomy/crew", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.ActiveCrew), requireAuth, requireBookingCoord))
+	mux.Handle("POST /api/ai/autonomy/crew/{id}/undo", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.UndoCrew), requireAuth, requireBookingCoord))
 	// عين ماتركس على المشاريع — المدير والمالك.
 	matrixProjectHandler := handler.NewMatrixProjectHandler(service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db)))
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))

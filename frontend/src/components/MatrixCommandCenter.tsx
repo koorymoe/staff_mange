@@ -15,6 +15,7 @@ import MatrixRoleChains from './MatrixRoleChains'
 import { MatrixLearning, MatrixProjectsEye } from './MatrixProjectsEye'
 import MatrixDialect from './MatrixDialect'
 import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
+import MatrixAutonomy from './MatrixAutonomy'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -184,6 +185,7 @@ export default function MatrixCommandCenter() {
       {/* ── ماتركس ٢٠٥٠: سلسلة الحجز — كل دور ومحطاته ── */}
       <MatrixRoleChains />
       <MatrixSuggestAccuracyPanel />
+      <MatrixAutonomy />
       <MatrixProjectsEye />
       <MatrixLearning />
       <MatrixDialect />

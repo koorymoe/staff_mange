@@ -24,6 +24,9 @@ const (
 	AiActionCrewRating        = "CREW_RATING"        // الليدر: خلّص حجز وما قيّم فنيّيه
 	AiActionAfterInventory    = "AFTER_INVENTORY"    // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
 	AiActionMonitorBacklog    = "MONITOR_BACKLOG"    // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
+	// ── أفعال تنفيذية (المرحلة الثالثة) — كل وحدة بمفتاح المالك وتنرجع ──
+	AiActionAutoCrew        = "AUTO_CREW"        // ماتركس كلّف كادر حجز باچر (بعد بوابة الدقة)
+	AiActionMonitorEscalate = "MONITOR_ESCALATE" // بنود المراقب +٤٨ ساعة صعدت للمدير
 )
 
 // AiActionEscalateAfter تذكير ما انحل بهالمدة يصعد للمدير.
@@ -54,6 +57,8 @@ var AiActionLabels = map[string]string{
 	AiActionCrewRating:        "تقييم الفنيين بعد الحجز",
 	AiActionAfterInventory:    "جرد العدّة بعد الحجز",
 	AiActionMonitorBacklog:    "بنود متأخرة بصندوق المراقب",
+	AiActionAutoCrew:          "ماتركس كلّف كادر حجز باچر",
+	AiActionMonitorEscalate:   "تصعيد بنود المراقب للمدير",
 }
 
 // AiAction فعل واحد نفّذه ماتركس لحاله.

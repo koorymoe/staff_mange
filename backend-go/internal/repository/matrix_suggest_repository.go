@@ -225,3 +225,17 @@ func (r *MatrixSuggestRepository) Decided(days int) ([]DecidedRow, error) {
 		ORDER BY m."decidedAt" DESC`, days)
 	return rows, err
 }
+
+// AssignmentRoles الدور ← الموظف بتكليفات الحجز الحالية.
+func (r *MatrixSuggestRepository) AssignmentRoles(bookingID string) map[string]string {
+	rows := []struct {
+		Role string `db:"role"`
+		Emp  string `db:"employeeId"`
+	}{}
+	_ = r.db.Select(&rows, `SELECT role::text AS role, "employeeId" FROM "BookingAssignment" WHERE "bookingId" = $1`, bookingID)
+	out := map[string]string{}
+	for _, x := range rows {
+		out[x.Role] = x.Emp
+	}
+	return out
+}

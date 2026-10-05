@@ -230,3 +230,29 @@ func (h *MatrixSuggestHandler) Accuracy(w http.ResponseWriter, r *http.Request) 
 	}
 	WriteJSON(w, http.StatusOK, a)
 }
+
+// ═══ المرحلة الثالثة: ماتركس ينفّذ ═══
+type MatrixAutonomyHandler struct{ svc *service.MatrixAutonomyService }
+
+func NewMatrixAutonomyHandler(svc *service.MatrixAutonomyService) *MatrixAutonomyHandler {
+	return &MatrixAutonomyHandler{svc: svc}
+}
+
+// GET /api/ai/autonomy — المفاتيح وبوابة الدقة وآخر الأفعال. المدير والمالك.
+func (h *MatrixAutonomyHandler) Status(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, h.svc.Status())
+}
+
+// GET /api/ai/autonomy/crew — تكليفات ماتركس الحية (شارة المنسق).
+func (h *MatrixAutonomyHandler) ActiveCrew(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, h.svc.ActiveAutoCrew())
+}
+
+// POST /api/ai/autonomy/crew/{id}/undo — المنسق يتراجع عن تكليف ماتركس.
+func (h *MatrixAutonomyHandler) UndoCrew(w http.ResponseWriter, r *http.Request) {
+	if err := h.svc.UndoAutoCrew(r.PathValue("id"), middleware.EmployeeIDFromContext(r)); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}

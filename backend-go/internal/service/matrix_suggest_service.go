@@ -498,3 +498,28 @@ func (s *MatrixSuggestService) Accuracy(days int) (*SuggestAccuracy, error) {
 	}
 	return out, nil
 }
+
+// CrewFor اقتراح الكادر لحجز بموعده الحالي — للفعل التنفيذي (بلا تسجيل اقتراح).
+func (s *MatrixSuggestService) CrewFor(bookingID string) (*repository.SuggestBooking, *SuggestedCrew, []string, error) {
+	b, err := s.repo.Booking(bookingID)
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("الحجز مو موجود")
+	}
+	if b.ScheduledAt == nil {
+		return b, nil, nil, fmt.Errorf("الحجز بلا موعد")
+	}
+	per, all := s.repo.ServiceDurations()
+	durOf := func(sid *string) int {
+		if sid != nil {
+			if v, ok := per[*sid]; ok {
+				return v
+			}
+		}
+		return all
+	}
+	crew, why := s.suggestCrew(b, *b.ScheduledAt, s.duration(b.ServiceID), durOf)
+	return b, crew, why, nil
+}
+
+// Repo للخدمات الثانية.
+func (s *MatrixSuggestService) Repo() *repository.MatrixSuggestRepository { return s.repo }

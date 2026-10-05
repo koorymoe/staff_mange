@@ -15,6 +15,9 @@ export const SWITCH_ENTITY = 'entity_enabled'
 export const SWITCH_ANNOUNCEMENTS = 'announcements_enabled'
 export const SWITCH_MATRIX_AUTOPILOT = 'matrix_autopilot_enabled'
 export const SWITCH_MATRIX_STAFF_EYE = 'matrix_staff_eye_enabled'
+// المرحلة الثالثة — مطفية افتراضياً بالخادم (المالك يشغّلها).
+export const SWITCH_MATRIX_AUTO_CREW = 'matrix_auto_crew'
+export const SWITCH_MATRIX_MONITOR_ESCALATE = 'matrix_monitor_escalate'
 
 type Switches = Record<string, boolean>
 

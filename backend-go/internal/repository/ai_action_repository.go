@@ -680,3 +680,31 @@ func (r *AiActionRepository) MonitorBacklog() (MonitorBacklog, error) {
 func (r *AiActionRepository) Monitors() ([]string, error) {
 	return NewMatrixChainRepository(r.db).Monitors()
 }
+
+// Find فعل واحد — للتراجع عن الأفعال التنفيذية.
+func (r *AiActionRepository) Find(id string) (*model.AiAction, error) {
+	var a model.AiAction
+	if err := r.db.Get(&a, `SELECT * FROM "AiAction" WHERE id = $1`, id); err != nil {
+		return nil, err
+	}
+	return &a, nil
+}
+
+// Forget يمسح فعل انحجز وفشل تنفيذه — حتى ما يبين بالسجل كأنه صار.
+func (r *AiActionRepository) Forget(kind, entityID, period string) {
+	_, _ = r.db.Exec(`DELETE FROM "AiAction" WHERE kind = $1 AND "entityId" = $2 AND period = $3 AND status = 'DONE'`, kind, entityID, period)
+}
+
+// RecentOfKinds آخر أفعال أنواع معيّنة.
+func (r *AiActionRepository) RecentOfKinds(kinds []string, limit int) ([]model.AiAction, error) {
+	rows := []model.AiAction{}
+	err := r.db.Select(&rows, `SELECT * FROM "AiAction" WHERE kind = ANY($1) ORDER BY "createdAt" DESC LIMIT $2`, pq.Array(kinds), limit)
+	return rows, err
+}
+
+// MonitorOverdue بنود صندوق المراقب +٤٨ ساعة بلا حكم.
+func (r *AiActionRepository) MonitorOverdue() (int, error) {
+	var n int
+	err := r.db.Get(&n, `SELECT count(*) FROM "MonitorReview" WHERE status = 'PENDING' AND "createdAt" < now() - interval '48 hours'`)
+	return n, err
+}
