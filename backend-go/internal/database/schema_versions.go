@@ -401,6 +401,8 @@ func versionedMigrations() []Migration {
 	result = append(result, voiceAnalysisMigrations()...)
 	// 0316: جرد العدّة بعد الحجز.
 	result = append(result, afterInventoryMigrations()...)
+	// 0317: اقتراحات ماتركس (موعد/كادر) وقياس دقتها.
+	result = append(result, matrixSuggestionMigrations()...)
 	return result
 }
 

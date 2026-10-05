@@ -2213,6 +2213,18 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	matrixChainHandler.SetShortageNotifier(func(msg string) { _ = notificationRepo.CreateForPermission("inventory", "INVENTORY", msg) })
 	mux.Handle("GET /api/inventory/after-checks/pending", middleware.Chain(http.HandlerFunc(matrixChainHandler.AfterPending), requireAuth))
 	mux.Handle("POST /api/inventory/after-checks", middleware.Chain(http.HandlerFunc(matrixChainHandler.AfterSave), requireAuth))
+	// المرحلة الثانية: ماتركس يقترح الموعد والكادر، والمنسق يقرر. كل ساعة يحسم
+	// الاقتراحات الي صار بحجزها قرار (حتى تنقاس دقته).
+	matrixSuggestService := service.NewMatrixSuggestService(repository.NewMatrixSuggestRepository(db))
+	go func() {
+		for {
+			time.Sleep(time.Hour)
+			matrixSuggestService.Evaluate()
+		}
+	}()
+	matrixSuggestHandler := handler.NewMatrixSuggestHandler(matrixSuggestService)
+	mux.Handle("GET /api/ai/suggest/{bookingId}", middleware.Chain(http.HandlerFunc(matrixSuggestHandler.Suggest), requireAuth, requireBookingCoord))
+	mux.Handle("GET /api/ai/suggest-accuracy", middleware.Chain(http.HandlerFunc(matrixSuggestHandler.Accuracy), requireAuth, requireAdmin))
 	// عين ماتركس على المشاريع — المدير والمالك.
 	matrixProjectHandler := handler.NewMatrixProjectHandler(service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db)))
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))

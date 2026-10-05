@@ -109,7 +109,7 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        (SELECT count(*) FROM "ScheduleChangeLog" l WHERE l."bookingId" = b.id)::int AS "scheduleMoves",
        b."contactAttempts" AS "contactTries",
        asg."firstAssignAt", COALESCE(asg.crew, '{}') AS "crewIds", COALESCE(asg.techs, '{}') AS "techIds",
-       COALESCE(asg.leader, m."leaderId") AS "leaderId", le.name AS "leaderName",
+       COALESCE(b."projectSupervisorId", asg.leader, m."leaderId") AS "leaderId", le.name AS "leaderName",
        m."assignedAt" AS "missionAt", COALESCE(m."materialsReadyAt", b."materialsReadyAt") AS "materialsAt",
        m."departedAt", COALESCE(m."arrivedAt", b."arrivedAt") AS "arrivedAt", m."workStartedAt" AS "workStartAt",
        b."startedAt", b."completedAt", b."workStoppedAt" AS "stoppedAt", b."partialCount",
@@ -144,7 +144,7 @@ LEFT JOIN LATERAL (
 LEFT JOIN LATERAL (
 	SELECT * FROM "Mission" mm WHERE mm."bookingId" = b.id ORDER BY mm."assignedAt" DESC LIMIT 1
 ) m ON true
-LEFT JOIN "Employee" le ON le.id = COALESCE(asg.leader, m."leaderId")
+LEFT JOIN "Employee" le ON le.id = COALESCE(b."projectSupervisorId", asg.leader, m."leaderId")
 LEFT JOIN LATERAL (
 	SELECT li."createdAt", li."employeeId", li."netTotal", li."auditedAt", li."auditedById",
 	       li."approvedAt", li."approvedByEmployeeId"
@@ -226,7 +226,8 @@ const pendingRatingSQL = `
 	WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
 	  AND b."completedAt" > now() - interval '30 days'
 	  AND upper(b.code) NOT LIKE 'OLD%'
-	  AND (EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
+	  AND (b."projectSupervisorId" = $1
+	       OR EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
 	               WHERE la."bookingId" = b.id AND la."employeeId" = $1 AND le."isLeader")
 	       OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id AND m."leaderId" = $1))
 	  AND NOT EXISTS (SELECT 1 FROM "CrewRating" r WHERE r."bookingId" = b.id AND r."technicianId" = a."employeeId")
@@ -249,7 +250,8 @@ func (r *MatrixChainRepository) PendingRatings(leaderID string) ([]PendingCrewRa
 // IsBookingLeader الموظف ليدر هذا الحجز؟
 func (r *MatrixChainRepository) IsBookingLeader(bookingID, employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
+	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" WHERE id = $1 AND "projectSupervisorId" = $2)
+	                OR EXISTS (SELECT 1 FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
 	                     WHERE a."bookingId" = $1 AND a."employeeId" = $2 AND e."isLeader")
 	                OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = $1 AND m."leaderId" = $2)`, bookingID, employeeID)
 	return ok
@@ -299,7 +301,7 @@ func (r *MatrixChainRepository) LeadersPendingRating() ([]LeaderPending, error) 
 	rows := []LeaderPending{}
 	err := r.db.Select(&rows, `
 		WITH lb AS (
-			SELECT DISTINCT b.id, b.code, COALESCE(la."employeeId", m."leaderId") AS "leaderId"
+			SELECT DISTINCT b.id, b.code, COALESCE(b."projectSupervisorId", la."employeeId", m."leaderId") AS "leaderId"
 			FROM "Booking" b
 			LEFT JOIN LATERAL (SELECT a."employeeId" FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
 			                   WHERE a."bookingId" = b.id AND e."isLeader" ORDER BY a."createdAt" LIMIT 1) la ON true
@@ -331,14 +333,14 @@ const afterPendingSQL = `
 	SELECT b.id AS "bookingId", b.code AS "bookingCode", b."completedAt"
 	FROM "Booking" b
 	JOIN "BookingAssignment" a ON a."bookingId" = b.id AND a."employeeId" = $1
-	JOIN "Employee" me ON me.id = $1 AND NOT me."isLeader"
+	JOIN "Employee" me ON me.id = $1 AND NOT me."isLeader" AND b."projectSupervisorId" IS DISTINCT FROM $1
 	LEFT JOIN "Service" s ON s.id = b."serviceId"
 	WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
 	  AND b."completedAt" > now() - interval '14 days'
 	  AND upper(b.code) NOT LIKE 'OLD%' AND b."bookingType"::text <> 'SURVEY'
 	  AND NOT COALESCE(s."managerHandlesPaperwork", false)
-	  AND EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
-	              WHERE la."bookingId" = b.id AND le."isLeader")
+	  AND (b."projectSupervisorId" IS NOT NULL OR EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
+	              WHERE la."bookingId" = b.id AND le."isLeader"))
 	  AND NOT EXISTS (SELECT 1 FROM "BookingAfterInventory" x WHERE x."bookingId" = b.id AND x."employeeId" = $1)
 	ORDER BY b."completedAt"`
 
@@ -371,13 +373,14 @@ func (r *MatrixChainRepository) TechsPendingAfterInventory() ([]LeaderPending, e
 		FROM "Booking" b
 		JOIN "BookingAssignment" a ON a."bookingId" = b.id
 		JOIN "Employee" t ON t.id = a."employeeId" AND NOT t."isLeader" AND t.status = 'ACTIVE'
+		     AND b."projectSupervisorId" IS DISTINCT FROM t.id
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
 		  AND b."completedAt" BETWEEN now() - interval '14 days' AND now() - interval '6 hours'
 		  AND upper(b.code) NOT LIKE 'OLD%' AND b."bookingType"::text <> 'SURVEY'
 		  AND NOT COALESCE(s."managerHandlesPaperwork", false)
-		  AND EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
-		              WHERE la."bookingId" = b.id AND le."isLeader")
+		  AND (b."projectSupervisorId" IS NOT NULL OR EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
+		              WHERE la."bookingId" = b.id AND le."isLeader"))
 		  AND NOT EXISTS (SELECT 1 FROM "BookingAfterInventory" x WHERE x."bookingId" = b.id AND x."employeeId" = a."employeeId")
 		GROUP BY a."employeeId"`)
 	return rows, err

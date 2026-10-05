@@ -2153,6 +2153,18 @@ export interface ProjectChain {
   delegations: { employeeId: string; name: string | null; action: string; by: string | null; at: string }[]
   order: string[]
 }
+export interface MatrixSuggestedPerson { id: string; name: string; why: string[]; score: number; isLeader: boolean }
+export interface MatrixBookingSuggestion {
+  bookingId: string; code: string
+  schedule: { at: string; durationMin: number; freeLeaders: number } | null; scheduleWhy: string[]
+  crew: { leader: MatrixSuggestedPerson | null; techs: MatrixSuggestedPerson[]; altLeaders: MatrixSuggestedPerson[]; altTechs: MatrixSuggestedPerson[]; for: string; crewSize: number; solo: boolean } | null
+  crewWhy: string[]; note: string
+}
+export interface MatrixSuggestAccuracy {
+  days: number; pending: number; insights: string[]
+  kinds: { kind: string; title: string; decided: number; accepted: number; partial: number; changed: number; acceptPct: number; onTimeAccepted: number | null; onTimeChanged: number | null; sampleAccepted: number; sampleChanged: number }[]
+  recent: { bookingId: string; code: string; kind: string; outcome: string; at: string }[]
+}
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
 export interface BookingTimeline {
@@ -4363,6 +4375,8 @@ export const api = {
   getAfterInventoryPending: () => request<{ bookingId: string; bookingCode: string; completedAt: string }[]>('/inventory/after-checks/pending'),
   saveAfterInventory: (bookingId: string, complete: boolean, missingItems?: string) =>
     request<{ ok: boolean }>('/inventory/after-checks', { method: 'POST', body: JSON.stringify({ bookingId, complete, missingItems }) }),
+  getMatrixSuggestion: (bookingId: string) => request<MatrixBookingSuggestion>(`/ai/suggest/${bookingId}`),
+  getMatrixSuggestAccuracy: (days = 30) => request<MatrixSuggestAccuracy>(`/ai/suggest-accuracy?days=${days}`),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

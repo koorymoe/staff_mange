@@ -18,6 +18,7 @@ import PhoneActions from '../components/PhoneActions'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
 import SurveyPhotos from '../components/SurveyPhotos'
+import MatrixSuggestBox from '../components/MatrixSuggestBox'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
   (Object.entries(bookingDeleteChannelLabels) as [BookingDeleteChannel, string][])
@@ -70,6 +71,9 @@ export default function Coordinator() {
     || (permissions ?? []).includes('coordinator')
   // الحذف (الأرشفة) قرار إداري — المنسّق يأجّل ويحط بالانتظار، بس ما يحذف
   const isAdmin = currentUser?.role === 'ADMIN' || currentUser?.actualRole === 'OWNER'
+  // اقتراح ماتركس: نفس حارس الخادم (requireBookingCoord) — حتى المراقب الي يشوف
+  // الصفحة ما يضغط زر ينرفض ويتسجّل عليه مخالفة.
+  const canMatrixSuggest = isAdmin || (permissions ?? []).some((p) => p === 'coordinator' || p === 'crew_management')
   const [bookings, setBookings] = useState<Booking[]>([])
   // ═══ ماتركس: توقع التأخير ═══ — نفس حارس الخادم بالضبط
   // (RequireRoleOrPermission: ADMIN/HR_COORDINATOR/MONITOR أو coordinator).
@@ -987,6 +991,13 @@ export default function Coordinator() {
                     canArchive={isAdmin}
                     onChanged={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? u : x)))}
                   />
+                )}
+
+                {canMatrixSuggest && (!booking.scheduledAt || (!booking.projectSupervisor && !(booking.assignments || []).length)) && (
+                  <MatrixSuggestBox bookingId={booking.id}
+                    onSchedule={(v) => handleScheduleChange(booking, v)}
+                    onLeader={(id) => handleSupervisorChange(booking, id)}
+                    onTech={(role, id) => handleAssign(booking, role, id)} />
                 )}
 
                 <div className="mt-3 grid grid-cols-1 gap-3 rounded-lg bg-slate-50 p-4 sm:grid-cols-2">

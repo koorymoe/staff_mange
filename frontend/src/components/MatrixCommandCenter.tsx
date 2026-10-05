@@ -14,6 +14,7 @@ import { GROUP_LABEL, eyeColor, type EyeGroup, type EyeMood } from './matrixEyeC
 import MatrixRoleChains from './MatrixRoleChains'
 import { MatrixLearning, MatrixProjectsEye } from './MatrixProjectsEye'
 import MatrixDialect from './MatrixDialect'
+import MatrixSuggestAccuracyPanel from './MatrixSuggestAccuracy'
 
 // ═══ مركز قيادة ماتركس — شاشة المدير (تصميم (ع)) ═══
 // كل رقم من بيانات حقيقية؛ لو ما تكفي نگول «بيانات قليلة» بدل رقم وهمي.
@@ -182,6 +183,7 @@ export default function MatrixCommandCenter() {
 
       {/* ── ماتركس ٢٠٥٠: سلسلة الحجز — كل دور ومحطاته ── */}
       <MatrixRoleChains />
+      <MatrixSuggestAccuracyPanel />
       <MatrixProjectsEye />
       <MatrixLearning />
       <MatrixDialect />

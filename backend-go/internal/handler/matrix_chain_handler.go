@@ -201,3 +201,32 @@ func (h *MatrixChainHandler) AfterSave(w http.ResponseWriter, r *http.Request) {
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
+
+// ═══ ماتركس يقترح (المرحلة الثانية) ═══
+type MatrixSuggestHandler struct{ svc *service.MatrixSuggestService }
+
+func NewMatrixSuggestHandler(svc *service.MatrixSuggestService) *MatrixSuggestHandler {
+	return &MatrixSuggestHandler{svc: svc}
+}
+
+// GET /api/ai/suggest/{bookingId} — اقتراح الموعد والكادر للمنسق.
+func (h *MatrixSuggestHandler) Suggest(w http.ResponseWriter, r *http.Request) {
+	s, err := h.svc.Suggest(r.PathValue("bookingId"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, s)
+}
+
+// GET /api/ai/suggest-accuracy?days= — دقة اقتراحات ماتركس. المدير والمالك.
+func (h *MatrixSuggestHandler) Accuracy(w http.ResponseWriter, r *http.Request) {
+	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+	a, err := h.svc.Accuracy(days)
+	if err != nil {
+		log.Printf("suggest accuracy: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر حساب الدقة")
+		return
+	}
+	WriteJSON(w, http.StatusOK, a)
+}
