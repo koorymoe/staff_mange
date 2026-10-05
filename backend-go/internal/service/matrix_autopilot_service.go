@@ -43,6 +43,9 @@ type MatrixAutopilotService struct {
 	resolveLast map[string]time.Time
 	// undoHooks: الأفعال التنفيذية ترجّع الي سوّته لمن المدير يتراجع.
 	undoHooks map[string]func(a model.AiAction) error
+	// projectsSrc: عين المشروع فوق عين الدور.
+	projectsSrc func() (*ProjectsReport, error)
+	projCache   projectDutiesCache
 }
 
 // OnUndo يربط ترجيع فعل تنفيذي بنوعه (ماتركس كلّف كادر ← يشيل التكليف).

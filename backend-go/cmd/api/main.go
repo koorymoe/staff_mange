@@ -2291,7 +2291,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/autonomy/crew", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.ActiveCrew), requireAuth, requireBookingCoord))
 	mux.Handle("POST /api/ai/autonomy/crew/{id}/undo", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.UndoCrew), requireAuth, requireBookingCoord))
 	// عين ماتركس على المشاريع — المدير والمالك.
-	matrixProjectHandler := handler.NewMatrixProjectHandler(service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db)))
+	matrixProjectService := service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db))
+	matrixAutopilotService.SetProjectDuties(matrixProjectService.Report)
+	matrixProjectHandler := handler.NewMatrixProjectHandler(matrixProjectService)
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/projects/{id}", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Chain), requireAuth, requireAdmin))
 

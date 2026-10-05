@@ -352,7 +352,15 @@ func (s *MatrixAutopilotService) watchFor(subj repository.WatchSubject) (*WatchS
 		out.Items = append(out.Items, WatchItem{Summary: a.Summary, Kind: a.Kind,
 			Label: model.AiActionLabels[a.Kind], Escalated: esc, Since: a.CreatedAt})
 	}
-	out.Open = len(rows)
+	// ضوابط المشروع فوق ضوابط الدور.
+	if pItems, pw := projectWatch(s.projectDuties()[employeeID]); pw != nil {
+		for _, it := range pItems {
+			escalated = escalated || it.Escalated
+		}
+		out.Items = append(out.Items, pItems...)
+		out.Workload = append(out.Workload, *pw)
+	}
+	out.Open = len(out.Items)
 	switch {
 	case escalated || out.Open >= watchRedOpen:
 		out.Level = "RED"
@@ -407,6 +415,11 @@ func WatchGroup(subj repository.WatchSubject) string {
 		return "IT"
 	case subj.Role == "DESIGNER":
 		return "DESIGN"
+	case subj.Role == "MEDIA":
+		return "MEDIA"
+	// قرار (ع) 10-05: مسؤولي الخدمات همّه التقنيين — مجموعة «التقنيين ومشرفي المشاريع».
+	case subj.Role == "SERVICE_MANAGER":
+		return "STAFF"
 	case subj.IsLeader:
 		return "LEADERS"
 	case subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER":
@@ -543,7 +556,7 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 	if err != nil {
 		return nil, err
 	}
-	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "SALES", "PROJECTS", "GPS", "DESIGN", "QUALITY", "IT", "ADMINS", "STAFF"}
+	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "SALES", "PROJECTS", "GPS", "DESIGN", "MEDIA", "QUALITY", "IT", "ADMINS", "STAFF"}
 	byGroup := map[string]*RoleGroupReport{}
 	for _, g := range order {
 		byGroup[g] = &RoleGroupReport{Group: g, Employees: []*WatchState{}}

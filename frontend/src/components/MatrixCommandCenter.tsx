@@ -71,7 +71,7 @@ function perfStatus(i: number) {
   if (i >= 60) return { t: 'متابعة', c: 'bg-amber-500/15 text-[var(--mx-warn)]', bar: '#f59e0b', dot: 'bg-amber-500' }
   return { t: 'يحتاج دعم', c: 'bg-red-500/15 text-[var(--mx-bad)]', bar: '#ef4444', dot: 'bg-red-500' }
 }
-const GROUP_ICON: Record<string, string> = { TECHS: '🔧', LEADERS: '🧭', MONITORS: '🔍', COORDINATORS: '🗂️', FINANCE: '💵', DESIGN: '🎨', QUALITY: '✅', IT: '💻', SALES: '🛒', PROJECTS: '🏗️', GPS: '📡', ADMINS: '👑', STAFF: '🏢' }
+const GROUP_ICON: Record<string, string> = { TECHS: '🔧', LEADERS: '🧭', MONITORS: '🔍', COORDINATORS: '🗂️', FINANCE: '💵', DESIGN: '🎨', QUALITY: '✅', IT: '💻', SALES: '🛒', PROJECTS: '🏗️', GPS: '📡', ADMINS: '👑', STAFF: '🛠️', MEDIA: '📸' }
 function confidence(samples: number) { return samples >= 20 ? 87 : samples >= 8 ? 72 : 50 }
 
 export default function MatrixCommandCenter() {
@@ -84,6 +84,7 @@ export default function MatrixCommandCenter() {
   const [perf, setPerf] = useState<GroupPerformance[]>([])
   const [focus, setFocus] = useState<Focus>('late')
   const [sel, setSel] = useState<string | null>(null)
+  const [vehicles, setVehicles] = useState<{ n: number; high: number } | null>(null)
   const [err, setErr] = useState('')
 
   const loadAll = useCallback(() => {
@@ -97,6 +98,7 @@ export default function MatrixCommandCenter() {
     api.getLateFocus().then(setLate).catch(() => {})
     api.getMatrixBusiness().then(setBiz).catch(() => {})
     api.getMatrixProposals('PENDING').then(setProps).catch(() => {})
+    api.getMatrixEyes().then((r) => { const v = r.eyes.find((e) => e.key === 'VEHICLES'); setVehicles({ n: v?.items.length ?? 0, high: v?.high ?? 0 }) }).catch(() => {})
   }, [])
   useEffect(() => {
     loadAll()
@@ -180,9 +182,27 @@ export default function MatrixCommandCenter() {
               </button>
             )
           })}
+          {/* عين السيارات وعين ماتركس نفسه — بنفس الشبكة (طلب (ع) 10-05). */}
+          {([['VEHICLES', vehicles ? `${vehicles.n} بند` : '…', vehicles?.high ? 'ANGRY' : vehicles?.n ? 'ALERT' : 'CALM'], ['MATRIX', 'شغله ودقته وكلفته', 'CALM']] as const).map(([k, sub, mood]) => {
+            const color = eyeColor(k, mood)
+            return (
+              <button key={k} type="button" onClick={() => setSel(sel === k ? null : k)}
+                className="flex flex-col items-center gap-1 rounded-xl border bg-[var(--mx-sunken)] p-2 text-center transition"
+                style={{ borderColor: `color-mix(in srgb, ${color} ${sel === k ? 90 : 35}%, transparent)` }}>
+                <MatrixEyeGraphic group={k} mood={mood} width={70} />
+                <span className="text-[12px] font-bold" style={{ color: `color-mix(in srgb, ${color} 72%, var(--mx-title))` }}>عن {GROUP_LABEL[k]}</span>
+                <span className="text-[11px] text-[var(--mx-muted)]">{sub}</span>
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${mood === 'ANGRY' ? 'bg-red-500/15 text-[var(--mx-bad)]' : mood === 'ALERT' ? 'bg-amber-500/15 text-[var(--mx-warn)]' : 'bg-emerald-500/15 text-[var(--mx-ok)]'}`}>
+                  ● {mood === 'ANGRY' ? 'تحتاج انتباه' : mood === 'ALERT' ? 'منتبهة' : 'مستقر'}
+                </span>
+              </button>
+            )
+          })}
         </div>
       </div>
-      {sel && <div><GroupPerf key={sel} group={sel} /></div>}
+      {sel === 'VEHICLES' && <MatrixWatchEyes key="v" initialTab="VEHICLES" />}
+      {sel === 'MATRIX' && <div className="space-y-4"><MatrixAutonomy /><MatrixSuggestAccuracyPanel /><MatrixAICost /></div>}
+      {sel && sel !== 'VEHICLES' && sel !== 'MATRIX' && <div><GroupPerf key={sel} group={sel} /></div>}
 
       {/* ── ماتركس ٢٠٥٠: سلسلة الحجز — كل دور ومحطاته ── */}
       <MatrixRoleChains />

@@ -14,9 +14,9 @@ const SEV: Record<string, { cls: string; label: string }> = {
   LOW: { cls: 'border-slate-200 bg-slate-50', label: '🔵 للعلم' },
 }
 
-export default function MatrixWatchEyes() {
+export default function MatrixWatchEyes({ initialTab = 'STOCK' }: { initialTab?: string } = {}) {
   const [r, setR] = useState<MatrixEyesReport | null>(null)
-  const [tab, setTab] = useState('STOCK')
+  const [tab, setTab] = useState(initialTab)
   const [all, setAll] = useState(false)
   useEffect(() => { void api.getMatrixEyes().then(setR).catch(() => {}) }, [])
   if (!r) return <p className="text-xs text-slate-400">ماتركس يفحص…</p>
