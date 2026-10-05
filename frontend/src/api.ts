@@ -4468,6 +4468,18 @@ export const api = {
     request<WorkplaceIssueDetail>(`/workplace-issues/${id}/decide`, { method: 'POST', body: JSON.stringify({ decision, status, followUpAt }) }),
   issuePartyFollowup: (id: string, better: boolean, text: string) =>
     request<{ ok: boolean }>(`/workplace-issues/${id}/party-followup`, { method: 'POST', body: JSON.stringify({ better, text }) }),
+  // ═══ تقييم الموظفين: ماتركس ٦٠٪ + البشر ٤٠٪ ═══
+  getStaffScoreBoard: (month = '') => request<StaffScoreBoard>(`/staff-score${month ? `?month=${month}` : ''}`),
+  getStaffScore: (id: string, month = '') => request<StaffScoreDetail>(`/staff-score/${id}${month ? `?month=${month}` : ''}`),
+  getMyScore: () => request<{ score: StaffScoreDetail; on: boolean } | null>('/staff-score/me'),
+  runStaffScore: () => request<{ added: number }>('/staff-score/run', { method: 'POST' }),
+  cancelMatrixScore: (id: string, note: string) => request<{ ok: boolean }>(`/matrix-score/${id}/cancel`, { method: 'POST', body: JSON.stringify({ note }) }),
+  getCoordPendingRatings: () => request<PendingStaffRating[]>('/staff-ratings/coord-pending'),
+  getAuditPendingRatings: () => request<PendingStaffRating[]>('/staff-ratings/audit-pending'),
+  getBookingRatingState: (bookingId: string, stage: StaffRatingStage) => request<{ parties: PendingStaffRating[]; mine: Record<string, number> }>(`/staff-ratings/booking/${bookingId}?stage=${stage}`),
+  getPeriodicRatings: () => request<{ period: string; people: { id: string; name: string; role: string }[]; mine: Record<string, number> }>('/staff-ratings/periodic'),
+  rateStaff: (stage: 'coord' | 'audit' | 'quality' | 'periodic', body: { bookingId?: string; rateeId: string; score: number; note?: string }) =>
+    request<{ ok: boolean }>(`/staff-ratings/${stage}`, { method: 'POST', body: JSON.stringify(body) }),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),
@@ -6024,3 +6036,22 @@ export interface LateFocus {
 export interface RemoteEntry { id: string; employeeId: string; employeeName: string; workDate: string; seconds: number; note: string | null; addedById: string | null; addedBy: string; createdAt: string; source: 'MANUAL' | 'TIMER'; closedAt: string | null }
 export interface RemoteTimer { running: boolean; elapsed: number; startedAt: string | null }
 export interface RemoteSummary { employeeId: string; name: string; days: number; seconds: number }
+
+// ═══ تقييم الموظفين (قرار (ع) 10-05) ═══
+export type StaffRatingStage = 'COORD_LEADER' | 'AUDIT' | 'QUALITY_CALL'
+export interface PendingStaffRating { bookingId: string; code: string; rateeId: string; rateeName: string; role: 'LEADER' | 'COORDINATOR' }
+export interface RuleLoss { rule: string; title: string; lost: number; count: number; advice: string }
+export interface StaffScore {
+  id: string; name: string; role: string
+  earned: number; max: number; matrixPct: number | null
+  humanAvg: number | null; humanCount: number; humanPct: number | null
+  final: number | null; prevFinal: number | null; noHuman: boolean
+  topLosses: RuleLoss[]; bySource: Record<string, [number, number]>
+}
+export interface StaffScoreBoard { month: string; on: boolean; staff: StaffScore[]; insights: string[] }
+export interface MatrixScorePoint {
+  id: string; employeeId: string; source: string; sourceId: string; sourceLabel: string | null; rule: string
+  points: number; maxPoints: number; reason: string; at: string; cancelledAt: string | null; cancelNote: string | null
+}
+export interface HumanRatingRow { raterName: string | null; stage: string; code: string | null; score: number; note: string | null; at: string }
+export interface StaffScoreDetail extends StaffScore { month: string; points: MatrixScorePoint[]; human: HumanRatingRow[] }

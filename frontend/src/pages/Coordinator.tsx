@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { StaffRatingQueue } from '../components/StaffRating'
 import { api, type Booking, type Employee, type CartItem, type Product, type JobDurationEstimate, type VehicleOption, type DelayRisk } from '../api'
 import { formatCustomerCode } from '../utils/identity'
 import { executionStarted } from '../bookingStage'
@@ -676,6 +677,10 @@ export default function Coordinator() {
   return (
     <div>
       <h2 className="text-2xl font-bold text-brand-900">تنسيق الحجوزات (الإداري)</h2>
+      {/* قرار (ع) 10-05: الإداري يقيّم الليدر لمن يرجع — يدخل بالتقييم النهائي. */}
+      {(currentUser?.role === 'ADMIN' || permissions.includes('coordinator') || permissions.includes('crew_management')) && (
+        <div className="mt-3"><StaffRatingQueue kind="coord" /></div>
+      )}
 
       {/* ⚠️ الشريط لاصق بأعلى الشاشة (sticky): الفشل يصير غالباً وأنت
           بنص القائمة عند حجز بعيد عن الرأس، ورسالة تطلع فوگ برّا مجال

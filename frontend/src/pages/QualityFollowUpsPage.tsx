@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { BookingStaffRating } from '../components/StaffRating'
 import { Link } from 'react-router-dom'
 import { api, type QualityFollowUp } from '../api'
 import EntityIdentity from '../components/EntityIdentity'
@@ -31,7 +32,8 @@ const statusColors: Record<QualityFollowUp['status'], string> = {
 interface EmbeddedProps { embedded?: boolean }
 
 export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
+  const canRate = employee?.role === 'ADMIN' || permissions.includes('quality_control')
   // مهندس الجودة (والأدمن) يتواصلون مع الزبون مباشرة ويشوفون تفاصيله كاملة.
   // المراقب المدقق يشوف بس تقرير عام (كم متابعة قيد الانتظار وكم فيها مشكلة).
   // ⚠️⚠️ حاجزان مو واحد.
@@ -236,6 +238,7 @@ export default function QualityFollowUpsPage({ embedded }: EmbeddedProps = {}) {
                 </p>
               )}
 
+              {item.status !== 'PENDING' && canRate && <BookingStaffRating bookingId={item.booking.id} />}
               {item.status === 'PENDING' && (
                 <div className="mt-4 space-y-3">
                   <textarea

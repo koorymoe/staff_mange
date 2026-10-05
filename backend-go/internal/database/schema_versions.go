@@ -409,6 +409,8 @@ func versionedMigrations() []Migration {
 	result = append(result, mediaMigrations()...)
 	// 0320: صوت الموظفين (الفضفضة الأسبوعية) + المشاكل الوظيفية.
 	result = append(result, peerVoiceMigrations()...)
+	// 0321: تقييم ماتركس (نقاط بلا فلوس) + تقييمات البشر بالسلسلة.
+	result = append(result, matrixScoreMigrations()...)
 	return result
 }
 

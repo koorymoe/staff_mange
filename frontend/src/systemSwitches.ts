@@ -18,6 +18,7 @@ export const SWITCH_MATRIX_STAFF_EYE = 'matrix_staff_eye_enabled'
 // المرحلة الثالثة — مطفية افتراضياً بالخادم (المالك يشغّلها).
 export const SWITCH_MATRIX_AUTO_CREW = 'matrix_auto_crew'
 export const SWITCH_MATRIX_MONITOR_ESCALATE = 'matrix_monitor_escalate'
+export const SWITCH_MATRIX_SCORING = 'matrix_scoring'
 
 type Switches = Record<string, boolean>
 

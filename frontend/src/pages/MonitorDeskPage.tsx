@@ -35,9 +35,11 @@ const MissionsPage = lazy(() => import('./MissionsPage'))
 const MonitorDashboard = lazy(() => import('./MonitorDashboard'))
 const MatrixWatchEyes = lazy(() => import('../components/MatrixWatchEyes'))
 const PeerVoicePage = lazy(() => import('./PeerVoicePage'))
+const StaffScorePage = lazy(() => import('./StaffScorePage'))
+const PeriodicRatings = lazy(() => import('../components/StaffRating').then((m) => ({ default: m.PeriodicRatings })))
 const WorkplaceIssuesPage = lazy(() => import('./WorkplaceIssuesPage'))
 
-type SectionId = 'eyes' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board'
+type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board'
 
 interface Section {
   id: SectionId
@@ -50,6 +52,8 @@ interface Section {
 const SECTIONS: Section[] = [
   // طلب (ع) 10-05: «لازم اكو رقابه بكل مكان… وتروح للمراقب ويا تحليل ماتركس».
   { id: 'eyes', label: 'عيون الرقابة', icon: '🔎', todo: 'المخزن والسيارات ورأي الزبائن والآيتي والطلبات المعلّقة — ويا اقتراح ماتركس' },
+  { id: 'ratings', label: 'تقييماتي', icon: '⭐', todo: 'قيّم الليدر والإداري للحجوزات الي خلصت، وقيّم شغل المكاتب كل نص شهر' },
+  { id: 'scores', label: 'تقييم الموظفين', icon: '🏅', todo: 'ماتركس ٦٠٪ + البشر ٤٠٪ — شوف منو نازل وليش' },
   { id: 'peer', label: 'صوت الموظفين', icon: '🗣️', todo: 'تقارير ماتركس عن مشاكل الموظفين ويا زملائهم' },
   { id: 'wissues', label: 'المشاكل الوظيفية', icon: '🤝', todo: 'سجّل الإفادات وخلّي ماتركس يقترح' },
   { id: 'inbox', label: 'صندوق المراقب', icon: '👁️', todo: 'كل صف: سليم أو عندي ملاحظة' },
@@ -186,6 +190,8 @@ export default function MonitorDeskPage() {
 
       <Suspense fallback={<p className="py-16 text-center text-slate-400">جاري التحميل…</p>}>
         {active === 'eyes' && <MatrixWatchEyes />}
+        {active === 'ratings' && <PeriodicRatings />}
+        {active === 'scores' && <StaffScorePage />}
         {active === 'peer' && <PeerVoicePage />}
         {active === 'wissues' && <WorkplaceIssuesPage />}
         {active === 'inbox' && <MonitorInboxPage embedded />}

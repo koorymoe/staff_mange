@@ -2297,6 +2297,32 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/projects/{id}", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Chain), requireAuth, requireAdmin))
 
+	// ── تقييم الموظفين: ماتركس ٦٠٪ + البشر ٤٠٪ (قرار (ع) 10-05) ──
+	// ⚠️ درجة تقييم بس — بلا فلوس. المفتاح matrix_scoring مطفي لحد ما المالك يشغّله.
+	matrixScoreService := service.NewMatrixScoreService(repository.NewMatrixScoreRepository(db), matrixChainService,
+		repository.NewSystemSwitchRepository(db), matrixProjectService.Report)
+	safeguard.Loop("تقييم ماتركس", 13*time.Minute, 20*time.Minute, func() {
+		if err := matrixScoreService.RunIfDue(); err != nil {
+			log.Printf("matrix score: %v", err)
+		}
+	})
+	staffScoreHandler := handler.NewStaffScoreHandler(matrixScoreService)
+	mux.Handle("GET /api/staff-score", middleware.Chain(http.HandlerFunc(staffScoreHandler.Board), requireAuth, requireMonitor))
+	mux.Handle("GET /api/staff-score/me", middleware.Chain(http.HandlerFunc(staffScoreHandler.Mine), requireAuth))
+	mux.Handle("GET /api/staff-score/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.Detail), requireAuth, requireMonitor))
+	mux.Handle("POST /api/staff-score/run", middleware.Chain(http.HandlerFunc(staffScoreHandler.Run), requireAuth, requireAdmin))
+	mux.Handle("POST /api/matrix-score/{id}/cancel", middleware.Chain(http.HandlerFunc(staffScoreHandler.Cancel), requireAuth, requireAdmin))
+	mux.Handle("GET /api/staff-ratings/coord-pending", middleware.Chain(http.HandlerFunc(staffScoreHandler.CoordPending), requireAuth, requireBookingCoord))
+	mux.Handle("POST /api/staff-ratings/coord", middleware.Chain(staffScoreHandler.RateCoord(), requireAuth, requireBookingCoord))
+	mux.Handle("GET /api/staff-ratings/audit-pending", middleware.Chain(http.HandlerFunc(staffScoreHandler.AuditPending), requireAuth, requireMonitor))
+	mux.Handle("POST /api/staff-ratings/audit", middleware.Chain(staffScoreHandler.RateAudit(), requireAuth, requireMonitor))
+	mux.Handle("POST /api/staff-ratings/quality", middleware.Chain(staffScoreHandler.RateQuality(), requireAuth, requireQuality))
+	mux.Handle("GET /api/staff-ratings/periodic", middleware.Chain(http.HandlerFunc(staffScoreHandler.PeriodicState), requireAuth, requireMonitor))
+	mux.Handle("POST /api/staff-ratings/periodic", middleware.Chain(staffScoreHandler.RatePeriodic(), requireAuth, requireMonitor))
+	requireRater := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"},
+		"monitoring", "auditing", "quality_control", "coordinator", "crew_management")
+	mux.Handle("GET /api/staff-ratings/booking/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.BookingState), requireAuth, requireRater))
+
 	// ── تكلفة الشبكات ──
 	// الاستمارة والحساب: نفس قيد حاسبة الكاميرات (صلاحية حساب التنفيذ).
 	// أما تعديل الأسعار فمحصور بالمالك ومدير النظام — سعر يتغيّر يعني

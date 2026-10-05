@@ -28,6 +28,8 @@ const (
 	SwitchMatrixAutoCrew = "matrix_auto_crew"
 	// SwitchMatrixMonitorEscalate ماتركس يصعّد بنود المراقب المتأخرة للمدير.
 	SwitchMatrixMonitorEscalate = "matrix_monitor_escalate"
+	// SwitchMatrixScoring ماتركس يقيّم الموظفين بنقاط (درجة تقييم بس، بلا فلوس).
+	SwitchMatrixScoring = "matrix_scoring"
 )
 
 // مفاتيح توفير الكلفة — كل ميزة تستعمل هايكو إلها مفتاح. المطفي يرجع للقواعد
@@ -54,6 +56,7 @@ var AIFeatureSwitch = map[string]string{
 var systemSwitchDefaultOff = map[string]bool{
 	SwitchMatrixAutoCrew:        true,
 	SwitchMatrixMonitorEscalate: true,
+	SwitchMatrixScoring:         true,
 }
 
 // SystemSwitchDefault الحالة لمّا ماكو صف بالجدول.
@@ -67,6 +70,7 @@ var SystemSwitchLabels = map[string]string{
 	SwitchMatrixStaffEye:        "عين ماتركس عند الموظفين",
 	SwitchMatrixAutoCrew:        "ماتركس يكلّف كادر حجز باچر لحاله",
 	SwitchMatrixMonitorEscalate: "ماتركس يصعّد بنود المراقب المتأخرة",
+	SwitchMatrixScoring:         "ماتركس يقيّم الموظفين بالنقاط",
 	SwitchAIGuide:               "هايكو: توجيهات ماتركس للموظفين",
 	SwitchAIJudge:               "هايكو: أحكام ماتركس",
 	SwitchAIDiscovery:           "هايكو: ماتركس اكتشف",

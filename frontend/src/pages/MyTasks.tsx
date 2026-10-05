@@ -12,6 +12,7 @@ import EntityIdentity from '../components/EntityIdentity'
 import MyExtraTasks from '../components/MyExtraTasks'
 import CrewRatingPrompt from '../components/CrewRatingPrompt'
 import PeerCheckinCard from '../components/PeerCheckinCard'
+import MyScoreCard from '../components/MyScoreCard'
 import AfterInventoryPrompt from '../components/AfterInventoryPrompt'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
 import LeaderInvoiceNew from './LeaderInvoiceNew'
@@ -502,6 +503,7 @@ export default function MyTasks() {
           <div>
             {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
                 لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
+            <MyScoreCard />
             <PeerCheckinCard />
             <CrewRatingPrompt />
             <AfterInventoryPrompt />
