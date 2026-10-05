@@ -40,12 +40,13 @@ const (
 	SwitchAIAsk            = "ai_ask"
 	SwitchAILearning       = "ai_learning"
 	SwitchAIEmployeeReport = "ai_employee_report"
+	SwitchAIPeer           = "ai_peer"
 )
 
 // AIFeatureSwitch مفتاح كل ميزة (اسم الميزة بعدّاد الكلفة ← المفتاح).
 var AIFeatureSwitch = map[string]string{
 	"GUIDE": SwitchAIGuide, "JUDGE": SwitchAIJudge, "DISCOVERY": SwitchAIDiscovery, "VOICE": SwitchAIVoice,
-	"ASK": SwitchAIAsk, "LEARNING": SwitchAILearning, "EMPLOYEE_REPORT": SwitchAIEmployeeReport,
+	"ASK": SwitchAIAsk, "LEARNING": SwitchAILearning, "EMPLOYEE_REPORT": SwitchAIEmployeeReport, "PEER": SwitchAIPeer,
 }
 
 // systemSwitchDefaultOff مفاتيح **مطفية** لحد ما المالك يشغّلها بنفسه —
@@ -73,6 +74,7 @@ var SystemSwitchLabels = map[string]string{
 	SwitchAIAsk:                 "هايكو: اسأل ماتركس",
 	SwitchAILearning:            "هايكو: توقعات ماتركس",
 	SwitchAIEmployeeReport:      "هايكو: تقارير الموظفين",
+	SwitchAIPeer:                "هايكو: صوت الموظفين والمشاكل الوظيفية",
 }
 
 // KnownSystemSwitch هل هذا مفتاح نعرفه؟
@@ -93,7 +95,7 @@ var systemSwitchAdminAllowed = map[string]bool{
 	SwitchMatrixStaffEye:  true,
 	// مفاتيح الكلفة: قرار تشغيلي — المدير كمان.
 	SwitchAIGuide: true, SwitchAIJudge: true, SwitchAIDiscovery: true, SwitchAIVoice: true,
-	SwitchAIAsk: true, SwitchAILearning: true, SwitchAIEmployeeReport: true,
+	SwitchAIAsk: true, SwitchAILearning: true, SwitchAIEmployeeReport: true, SwitchAIPeer: true,
 }
 
 // SystemSwitchAdminAllowed هل مدير النظام (ADMIN) مسموح له يبدّل

@@ -93,6 +93,7 @@ var AIFeatureLabels = map[string]string{
 	"ASK":             "اسأل ماتركس",
 	"LEARNING":        "توقعات ماتركس",
 	"EMPLOYEE_REPORT": "تقارير الموظفين",
+	"PEER":            "صوت الموظفين والمشاكل الوظيفية",
 }
 
 type AIUsageFeature struct {

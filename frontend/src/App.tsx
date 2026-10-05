@@ -65,6 +65,8 @@ const InventoryPage = lazy(() => import('./pages/InventoryPage'))
 const ItAssetsPage = lazy(() => import('./pages/ItAssetsPage'))
 const MediaPage = lazy(() => import('./pages/MediaPage'))
 const DisciplineRecordPage = lazy(() => import('./pages/DisciplineRecordPage'))
+const PeerVoicePage = lazy(() => import('./pages/PeerVoicePage'))
+const WorkplaceIssuesPage = lazy(() => import('./pages/WorkplaceIssuesPage'))
 const ItStatsPage = lazy(() => import('./pages/ItStatsPage'))
 const MyInventory = lazy(() => import('./pages/MyInventory'))
 const DeviceMaintenancePage = lazy(() => import('./pages/DeviceMaintenancePage'))
@@ -193,6 +195,8 @@ function App() {
           <Route path="sales-opportunities" element={<SalesOpportunitiesPage />} />
           {/* التقرير الأسبوعي: ADMIN/OWNER بس (نفس الخادم) */}
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
+          <Route path="peer-voice" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><PeerVoicePage /></RequirePermission>} />
+          <Route path="workplace-issues" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><WorkplaceIssuesPage /></RequirePermission>} />
           <Route path="discipline-record" element={<RequireAdmin><DisciplineRecordPage /></RequireAdmin>} />
           <Route path="matrix/decisions" element={<RequireAdmin><MatrixDecisionsPage /></RequireAdmin>} />
           {/* المراقب كمان: شغله متابعة الموظف — نفس حارس GET /api/ai/employee-report. */}

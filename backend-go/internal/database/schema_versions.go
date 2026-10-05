@@ -407,6 +407,8 @@ func versionedMigrations() []Migration {
 	result = append(result, aiUsageMigrations()...)
 	// 0319: الإعلام والعلاقات العامة (دور + مرحلة بالمشاريع).
 	result = append(result, mediaMigrations()...)
+	// 0320: صوت الموظفين (الفضفضة الأسبوعية) + المشاكل الوظيفية.
+	result = append(result, peerVoiceMigrations()...)
 	return result
 }
 

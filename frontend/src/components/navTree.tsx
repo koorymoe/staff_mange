@@ -255,6 +255,9 @@ export const navItems: NavItem[] = [
       { to: '/weekly-report', label: '📊 التقرير الأسبوعي', icon: <></>, roles: ['ADMIN'] },
       // قرار (ع) 10-05: كل خصم من أول يوم بالنظام — للمدير والمالك بس.
       { to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
+      // قرار (ع) 10-05: الفضفضة والمشاكل الوظيفية — نفس حارس requireMonitor.
+      { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
@@ -1000,6 +1003,8 @@ const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_sy
 const ROUTE_RULES: Record<string, RouteRule> = {
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
+  '/peer-voice': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
+  '/workplace-issues': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/media': { roles: ['MEDIA'], anyPermission: ['media', 'project_management'] }, // requireMediaView
   '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator

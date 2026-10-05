@@ -2201,6 +2201,33 @@ export interface DisciplineRecord {
   employees: { employeeId: string; employeeName: string; count: number; amount: number; returned: number; net: number; pointsLost: number; pointsBack: number; thisMonth: number; lastMonth: number; topReason: string; last: string | null; insights: string[] }[]
   entries: DisciplineEntry[]; totals: Record<string, number>; insights: string[]
 }
+export interface PeerNote {
+  id: string; authorId: string; authorName: string; targetId: string; targetName: string; score: number; kind: 'GOOD' | 'NOTE' | 'PROBLEM'
+  text: string | null; needsFollowup: boolean; fWhat: string | null; fWhy: string | null; fWish: string | null; suggestion: string | null
+  accepted: boolean | null; acceptNote: string | null; severity: 'NORMAL' | 'ATTENTION' | 'URGENT'; reportedAt: string | null; createdAt: string
+}
+export interface WorkplaceIssue {
+  id: string; title: string; partyAId: string; partyAName: string; partyBId: string | null; partyBName: string | null; openedByName: string | null
+  description: string; severity: 'NORMAL' | 'ATTENTION' | 'URGENT'; status: 'OPEN' | 'IN_PROGRESS' | 'RESOLVED'; aiSummary: string | null
+  decision: string | null; decidedByName: string | null; decidedAt: string | null; followUpAt: string | null; createdAt: string
+}
+export interface WorkplaceIssueDetail extends WorkplaceIssue {
+  entries: { id: string; authorName: string | null; kind: string; text: string; createdAt: string }[]
+  context: { sharedBookings: number; aComplaints: number; bComplaints: number; aPeerAvg: number | null; bPeerAvg: number | null }
+}
+export interface MyPeerState {
+  open: boolean; week: string
+  checkin: { id: string; mood: number | null; worry: string | null; suggestion: string | null; nothing: boolean } | null
+  notes: PeerNote[]; colleagues: { id: string; name: string; worked: boolean }[]; followups: WorkplaceIssue[]
+}
+export interface PeerVoiceReport {
+  full: boolean; insights: string[]
+  mood: { week: string; avg: number | null; count: number }[]
+  scores: { employeeId: string; name: string; avg: number; count: number; problems: number; prevAvg: number | null }[]
+  tensions: { aId: string; aName: string; bId: string; bName: string; aToB: number; bToA: number }[]
+  notes: PeerNote[]
+  checkins: { id: string; employeeId: string; name: string; mood: number | null; worry: string | null; suggestion: string | null; urgent: boolean; createdAt: string }[]
+}
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
 export interface BookingTimeline {
@@ -4422,6 +4449,25 @@ export const api = {
   updateMediaBrief: (id: string, body: { status: string; shootAt?: string | null; publishedUrl?: string | null; mediaNotes?: string | null }) =>
     request<MediaBrief>(`/media/briefs/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
   getDisciplineRecord: () => request<DisciplineRecord>('/discipline-record'),
+  getMyPeer: () => request<MyPeerState>('/peer/me'),
+  submitPeer: (body: { mood: number | null; worry: string; suggestion: string; nothing: boolean; notes: { targetId: string; score: number; kind: string; text: string }[] }) =>
+    request<MyPeerState>('/peer/me', { method: 'POST', body: JSON.stringify(body) }),
+  peerFollowup: (id: string, what: string, why: string, wish: string) =>
+    request<PeerNote>(`/peer/notes/${id}/followup`, { method: 'POST', body: JSON.stringify({ What: what, Why: why, Wish: wish }) }),
+  peerAccept: (id: string, accepted: boolean, note: string) =>
+    request<PeerNote>(`/peer/notes/${id}/accept`, { method: 'POST', body: JSON.stringify({ accepted, note }) }),
+  getPeerVoice: () => request<PeerVoiceReport>('/peer/voice'),
+  getWorkplaceIssues: () => request<WorkplaceIssue[]>('/workplace-issues'),
+  getWorkplaceIssue: (id: string) => request<WorkplaceIssueDetail>(`/workplace-issues/${id}`),
+  openWorkplaceIssue: (body: { title: string; partyAId: string; partyBId: string | null; description: string; severity: string; sourceNoteId?: string | null }) =>
+    request<{ id: string }>('/workplace-issues', { method: 'POST', body: JSON.stringify(body) }),
+  addIssueEntry: (id: string, kind: string, text: string) =>
+    request<WorkplaceIssueDetail>(`/workplace-issues/${id}/entries`, { method: 'POST', body: JSON.stringify({ Kind: kind, Text: text }) }),
+  analyzeIssue: (id: string) => request<WorkplaceIssueDetail>(`/workplace-issues/${id}/analyze`, { method: 'POST' }),
+  decideIssue: (id: string, decision: string, status: string, followUpAt: string | null) =>
+    request<WorkplaceIssueDetail>(`/workplace-issues/${id}/decide`, { method: 'POST', body: JSON.stringify({ decision, status, followUpAt }) }),
+  issuePartyFollowup: (id: string, better: boolean, text: string) =>
+    request<{ ok: boolean }>(`/workplace-issues/${id}/party-followup`, { method: 'POST', body: JSON.stringify({ better, text }) }),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),

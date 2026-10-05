@@ -2257,6 +2257,24 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// سجل الانضباط الوظيفي — المدير والمالك بس (قرار (ع) 10-05).
 	disciplineRecordHandler := handler.NewDisciplineRecordHandler(service.NewDisciplineRecordService(repository.NewDisciplineRecordRepository(db)))
 	mux.Handle("GET /api/discipline-record", middleware.Chain(http.HandlerFunc(disciplineRecordHandler.Get), requireAuth, requireAdmin))
+	// ── صوت الموظفين + المشاكل الوظيفية (قرارات (ع) 10-05) ──
+	peerVoiceService := service.NewPeerVoiceService(repository.NewPeerVoiceRepository(db),
+		repository.NewAchievementVoiceRepository(db).Names,
+		func(roles []string, perm, msg string) { _ = notificationRepo.CreateForRolesOrPermission(roles, perm, "MATRIX_PEER", msg) })
+	peerVoiceService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
+	peerHandler := handler.NewPeerVoiceHandler(peerVoiceService)
+	mux.Handle("GET /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Mine), requireAuth))
+	mux.Handle("POST /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Submit), requireAuth))
+	mux.Handle("POST /api/peer/notes/{id}/followup", middleware.Chain(http.HandlerFunc(peerHandler.Followup), requireAuth))
+	mux.Handle("POST /api/peer/notes/{id}/accept", middleware.Chain(http.HandlerFunc(peerHandler.Accept), requireAuth))
+	mux.Handle("GET /api/peer/voice", middleware.Chain(http.HandlerFunc(peerHandler.Report), requireAuth, requireMonitor))
+	mux.Handle("GET /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.Issues), requireAuth, requireMonitor))
+	mux.Handle("POST /api/workplace-issues", middleware.Chain(http.HandlerFunc(peerHandler.OpenIssue), requireAuth, requireMonitor))
+	mux.Handle("GET /api/workplace-issues/{id}", middleware.Chain(http.HandlerFunc(peerHandler.Issue), requireAuth, requireMonitor))
+	mux.Handle("POST /api/workplace-issues/{id}/entries", middleware.Chain(http.HandlerFunc(peerHandler.AddEntry), requireAuth, requireMonitor))
+	mux.Handle("POST /api/workplace-issues/{id}/analyze", middleware.Chain(http.HandlerFunc(peerHandler.Analyze), requireAuth, requireMonitor))
+	mux.Handle("POST /api/workplace-issues/{id}/decide", middleware.Chain(http.HandlerFunc(peerHandler.Decide), requireAuth, requireMonitor))
+	mux.Handle("POST /api/workplace-issues/{id}/party-followup", middleware.Chain(http.HandlerFunc(peerHandler.PartyFollowup), requireAuth))
 	mux.Handle("GET /api/media/briefs", middleware.Chain(http.HandlerFunc(mediaHandler.List), requireAuth, requireMediaView))
 	mux.Handle("PUT /api/media/briefs/{id}", middleware.Chain(http.HandlerFunc(mediaHandler.Update), requireAuth, requireMedia))
 	mux.Handle("GET /api/ai/watch", middleware.Chain(http.HandlerFunc(handler.NewMatrixWatchHandler(matrixWatchService).Report), requireAuth, requireMonitor))
