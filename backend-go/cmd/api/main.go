@@ -623,6 +623,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	achievementService.SetAiRecorder(aiRepo)
 	achievementService.SetCrewSizer(aiRepo)
 	achievementHandler := handler.NewAchievementHandler(achievementService)
+	achievementHandler.SetVoice(repository.NewAchievementVoiceRepository(db), fileStore)
 	achievementDigestService := service.NewAchievementDigestService(achievementRepo, aiRepo, notificationRepo)
 	safeguard.Loop("ملخص الإنجازات اليومي", 12*time.Minute, 30*time.Minute, func() {
 		if err := achievementDigestService.RunIfDue(); err != nil {
@@ -1167,6 +1168,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الحذف: للي سجّلها أو للمدير (يتفحص بالهاندلر) — للمسؤول والموظف لنفسه.
 	mux.Handle("DELETE /api/remote-hours/{id}", middleware.Chain(http.HandlerFunc(remoteHoursHandler.Delete), requireAuth, requireRemoteSelf))
 	mux.Handle("GET /api/achievements/mine", middleware.Chain(http.HandlerFunc(achievementHandler.Mine), requireAuth))
+	// فويس مسج للإنجاز — يبقى بتخزيننا؛ صاحبه يرفع، وصاحبه أو المدير يسمع.
+	mux.Handle("POST /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.UploadVoice), requireAuth))
+	mux.Handle("GET /api/achievements/{id}/voice", middleware.Chain(http.HandlerFunc(achievementHandler.Voice), requireAuth))
 	mux.Handle("GET /api/achievements", middleware.Chain(http.HandlerFunc(achievementHandler.List), requireAuth, requireAdmin))
 	mux.Handle("PUT /api/achievements/{id}/review", middleware.Chain(http.HandlerFunc(achievementHandler.Review), requireAuth, requireAdmin))
 	mux.Handle("GET /api/bookings/{id}/timeline", middleware.Chain(http.HandlerFunc(bookingHandler.Timeline), requireAuth))
@@ -2194,8 +2198,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقارير الأدوار فيها «ماتركس على المراقب» — للمدير والمالك بس.
 	mux.Handle("GET /api/ai/role-chain", middleware.Chain(http.HandlerFunc(matrixChainHandler.RoleChain), requireAuth, requireAdmin))
 	mux.Handle("GET /api/ai/role-chain/roles", middleware.Chain(http.HandlerFunc(matrixChainHandler.Roles), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/chain-learning", middleware.Chain(http.HandlerFunc(matrixChainHandler.Learning), requireAuth, requireAdmin))
 	mux.Handle("GET /api/crew-ratings/pending", middleware.Chain(http.HandlerFunc(matrixChainHandler.Pending), requireAuth))
 	mux.Handle("POST /api/crew-ratings", middleware.Chain(http.HandlerFunc(matrixChainHandler.Rate), requireAuth))
+	// عين ماتركس على المشاريع — المدير والمالك.
+	matrixProjectHandler := handler.NewMatrixProjectHandler(service.NewMatrixProjectService(repository.NewMatrixProjectRepository(db)))
+	mux.Handle("GET /api/ai/projects", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Report), requireAuth, requireAdmin))
+	mux.Handle("GET /api/ai/projects/{id}", middleware.Chain(http.HandlerFunc(matrixProjectHandler.Chain), requireAuth, requireAdmin))
 
 	// ── تكلفة الشبكات ──
 	// الاستمارة والحساب: نفس قيد حاسبة الكاميرات (صلاحية حساب التنفيذ).

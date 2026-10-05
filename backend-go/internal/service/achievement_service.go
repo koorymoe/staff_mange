@@ -90,3 +90,5 @@ func (s *AchievementService) Review(id, reviewerID string, req model.ReviewAchie
 	}
 	return s.repo.Review(id, reviewerID, req.Status, req.Note)
 }
+
+func (s *AchievementService) Repo() *repository.AchievementRepository { return s.repo }

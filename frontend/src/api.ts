@@ -2133,6 +2133,26 @@ export interface RoleChainReport {
   role: string; title: string; days: number; bookings: number; teamPct: number; prevPct: number | null
   stations: ChainStationStat[]; employees: ChainEmployeeReport[]; insights: string[]
 }
+export interface ChainLearning {
+  stations: { key: string; title: string; samples: number; medianMin: number; limitMin: number; source: string }[]
+  servicesOwnLimits: number; learnedAt: string
+}
+export interface ProjectVerdict {
+  id: string; code: string; name: string; stage: string; workType: string | null; deliveryDate: string | null
+  ownerId: string; ownerName: string; daysInStage: number; stageLimit: number; idleDays: number
+  status: ChainStatus; problems: string[]; verdict: string; touchers: number; lastActivityBy: string | null; bookingCode: string | null
+}
+export interface ProjectsReport {
+  projects: ProjectVerdict[]
+  people: { id: string; name: string; owned: number; open: number; stuck: number; done: number; avgIdle: number; insights: string[] }[]
+  stageMedianDays: Record<string, number>; insights: string[]
+}
+export interface ProjectChain {
+  verdict: ProjectVerdict
+  touchers: { employeeId: string; name: string; role: string; firstAt: string; lastAt: string; actions: number }[]
+  delegations: { employeeId: string; name: string | null; action: string; by: string | null; at: string }[]
+  order: string[]
+}
 export interface PendingCrewRating { bookingId: string; bookingCode: string; completedAt: string; techs: { id: string; name: string }[] }
 
 export interface BookingTimeline {
@@ -4210,6 +4230,23 @@ export const api = {
     const s = qs.toString()
     return request<Achievement[]>(`/achievements${s ? `?${s}` : ''}`)
   },
+  /** فويس مسج للإنجاز — يبقى بسيرفرنا (multipart) */
+  uploadAchievementVoice: async (id: string, blob: Blob, seconds: number) => {
+    const fd = new FormData()
+    fd.append('file', blob, 'voice')
+    fd.append('seconds', String(Math.round(seconds)))
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/achievements/${id}/voice`, { method: 'POST', body: fd, headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.error || describeHttpStatus(res.status)) }
+    return res.json() as Promise<{ ok: boolean; seconds: number }>
+  },
+  /** يجيب الفويس كـBlob (المسار محمي بالترويسة، فما يصير src مباشر) */
+  getAchievementVoice: async (id: string) => {
+    const token = currentToken()
+    const res = await fetch(`${API_URL}/achievements/${id}/voice`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
+    if (!res.ok) throw new Error(describeHttpStatus(res.status))
+    return res.blob()
+  },
   reviewAchievement: (id: string, status: 'GOOD' | 'NEEDS_REVIEW', note: string) =>
     request<Achievement>(`/achievements/${id}/review`, { method: 'PUT', body: JSON.stringify({ status, note }) }),
 
@@ -4318,6 +4355,9 @@ export const api = {
   getBookingChain: (id: string) => request<BookingChain>(`/ai/chain/${id}`),
   getRoleChainRoles: () => request<{ key: string; title: string }[]>('/ai/role-chain/roles'),
   getRoleChain: (role: string, days: number) => request<RoleChainReport>(`/ai/role-chain?role=${role}&days=${days}`),
+  getChainLearning: () => request<ChainLearning>('/ai/chain-learning'),
+  getMatrixProjects: () => request<ProjectsReport>('/ai/projects'),
+  getMatrixProject: (id: string) => request<ProjectChain>(`/ai/projects/${id}`),
   getPendingCrewRatings: () => request<PendingCrewRating[]>('/crew-ratings/pending'),
   rateCrew: (bookingId: string, ratings: { technicianId: string; score: number; note?: string }[]) =>
     request<{ ok: boolean }>('/crew-ratings', { method: 'POST', body: JSON.stringify({ bookingId, ratings }) }),
@@ -5636,6 +5676,7 @@ export interface Achievement {
   reviewedByName?: string | null
   reviewedAt: string | null
   createdAt: string
+  voiceSeconds?: number | null
 }
 
 export interface SuggestedCrewMember {

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type Achievement } from '../api'
+import { VoicePlayer } from '../components/VoiceNote'
 
 // ═══ الإنجازات (ماتركس) — للمالك ومدير النظام حصراً ═══
 //
@@ -83,6 +84,7 @@ export default function AchievementsPage() {
               <span className="text-[11px] text-slate-400">{new Date(a.createdAt).toLocaleString('en-GB')}</span>
             </div>
             <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{a.reportText}</p>
+            {a.voiceSeconds != null && <VoicePlayer achievementId={a.id} seconds={a.voiceSeconds} />}
 
             {a.reviewStatus === 'PENDING' ? (
               <div className="mt-3 flex justify-end gap-2">

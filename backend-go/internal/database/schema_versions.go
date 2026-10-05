@@ -393,6 +393,10 @@ func versionedMigrations() []Migration {
 	result = append(result, presenceMigrations()...)
 	// 0312: تقييم الليدر لفنيّيه — «سلسلة الحجز» بماتركس.
 	result = append(result, crewRatingMigrations()...)
+	// 0313: سجل مراحل المشروع — عين ماتركس على المشاريع.
+	result = append(result, projectStageLogMigrations()...)
+	// 0314: فويس مسج للإنجاز (يبقى عدنا).
+	result = append(result, achievementVoiceMigrations()...)
 	return result
 }
 

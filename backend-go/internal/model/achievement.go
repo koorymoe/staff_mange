@@ -30,6 +30,8 @@ type Achievement struct {
 	EmployeeName   *string `db:"-" json:"employeeName,omitempty"`
 	BookingCode    *string `db:"-" json:"bookingCode,omitempty"`
 	ReviewedByName *string `db:"-" json:"reviewedByName,omitempty"`
+	// فويس مسج مرفق (جدول AchievementVoice) — يتعبّى بالمعالج.
+	VoiceSeconds *int `db:"-" json:"voiceSeconds,omitempty"`
 }
 
 const (

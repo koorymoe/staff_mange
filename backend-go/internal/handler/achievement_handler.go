@@ -6,7 +6,9 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
+	"staffmange-api/internal/storage"
 )
 
 // AchievementHandler الإنجازات — تقرير يومي حر من أي موظف بأي دور.
@@ -16,6 +18,8 @@ import (
 // والمالك.
 type AchievementHandler struct {
 	service *service.AchievementService
+	voices  *repository.AchievementVoiceRepository
+	store   storage.Store
 }
 
 func NewAchievementHandler(s *service.AchievementService) *AchievementHandler {
@@ -45,6 +49,7 @@ func (h *AchievementHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإنجازات")
 		return
 	}
+	h.attachVoices(rows)
 	WriteJSON(w, http.StatusOK, rows)
 }
 
@@ -72,5 +77,6 @@ func (h *AchievementHandler) Mine(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب الإنجازات")
 		return
 	}
+	h.attachVoices(rows)
 	WriteJSON(w, http.StatusOK, rows)
 }

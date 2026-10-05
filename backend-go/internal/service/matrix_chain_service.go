@@ -139,6 +139,9 @@ type MatrixChainService struct {
 	thAt     time.Time
 	thGlobal map[string]int
 	thSvc    map[string]map[string]int
+	thMed    map[string]int
+	thN      map[string]int
+	thSvcN   int
 }
 
 func NewMatrixChainService(repo *repository.MatrixChainRepository, names func(string) string) *MatrixChainService {
@@ -216,9 +219,11 @@ func (s *MatrixChainService) thresholds() (map[string]int, map[string]map[string
 		}
 		return th
 	}
-	s.thGlobal = map[string]int{}
+	s.thGlobal, s.thMed, s.thN = map[string]int{}, map[string]int{}, map[string]int{}
 	for _, d := range chainStations {
 		s.thGlobal[d.Key] = mk(d.Key, g[d.Key])
+		s.thMed[d.Key] = chainMedian(g[d.Key])
+		s.thN[d.Key] = len(g[d.Key])
 	}
 	// الجودة: قرار (ع) — «بعد يوم من الإنجاز». حد ثابت يومين، مو وسيط.
 	s.thGlobal["QUALITY"] = 48 * 60
@@ -230,6 +235,12 @@ func (s *MatrixChainService) thresholds() (map[string]int, map[string]map[string
 			if len(vals) >= 8 && k != "QUALITY" {
 				s.thSvc[svc][k] = mk(k, vals)
 			}
+		}
+	}
+	s.thSvcN = 0
+	for _, m := range s.thSvc {
+		if len(m) > 0 {
+			s.thSvcN++
 		}
 	}
 	s.thAt = time.Now()
@@ -447,10 +458,14 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			st.Owners = s.owner(f.ContactedByID, f.ContactedBy)
 			judge(&st, &created, f.ContactedAt, s.threshold(f, "CONTACT"), nil)
 		} else if f.ConfirmedAt != nil {
-			// ثبّت بلا ما يأشّر «تواصلت» — نقيس للتثبيت ونأشّرها.
+			// قرار (ع) 10-05: «الإداري الي يثبّت الحجز هو نفسه لازم يضغط تواصلت
+			// ويا الزبون — إذا ما ضغط يعني هو الي ما ضاغط». فالمحطة عليه وما انسوّت.
 			st.Owners = s.owner(f.ConfirmedByID, f.ConfirmedBy)
-			judge(&st, &created, f.ConfirmedAt, s.threshold(f, "CONTACT"), nil)
-			st.Issues = append(st.Issues, "ثبّت الحجز بدون ما يسجّل التواصل ويا الزبون.")
+			st.StartAt, st.EndAt = &created, nil
+			th := s.threshold(f, "CONTACT")
+			st.Threshold = &th
+			st.Status = ChainMissed
+			st.Verdict = "ثبّت الحجز بدون ما يضغط «تواصلت ويا الزبون» — المحطة عليه."
 		} else {
 			judge(&st, &created, nil, s.threshold(f, "CONTACT"), nil)
 		}
@@ -1226,6 +1241,49 @@ func teamInsights(rep *RoleChainReport) []string {
 	}
 	if worst != "" && wr > 0 {
 		out = append(out, fmt.Sprintf("أضعف محطة: «%s» — %d٪ منها متأخرة أو ما انسوّت.", worst, int(math.Round(wr*100))))
+	}
+	return out
+}
+
+// ═══ «شنو تعلّم ماتركس» ═══
+// الحدود مو مكتوبة بالكود: ماتركس يتعلّمها من شغل الشركة الحقيقي (آخر ٩٠ يوم)
+// ويعيد حسابها كل ساعة. هنا يعرضها: الوسيط، الحد، وعدد العينات.
+type ChainLearned struct {
+	Key       string `json:"key"`
+	Title     string `json:"title"`
+	Samples   int    `json:"samples"`
+	MedianMin int    `json:"medianMin"`
+	LimitMin  int    `json:"limitMin"`
+	Source    string `json:"source"`
+}
+
+type ChainLearning struct {
+	Stations       []ChainLearned `json:"stations"`
+	ServicesOwnLim int            `json:"servicesOwnLimits"`
+	LearnedAt      time.Time      `json:"learnedAt"`
+}
+
+func (s *MatrixChainService) Learning() ChainLearning {
+	g, _ := s.thresholds()
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := ChainLearning{Stations: []ChainLearned{}, ServicesOwnLim: s.thSvcN, LearnedAt: s.thAt}
+	for _, d := range chainStations {
+		if d.Key == "CREATE" || d.Key == "INVENTORY" {
+			continue
+		}
+		l := ChainLearned{Key: d.Key, Title: d.Title, Samples: s.thN[d.Key], MedianMin: s.thMed[d.Key], LimitMin: g[d.Key]}
+		switch {
+		case d.Key == "QUALITY":
+			l.Source = "قرار (ع): يومين بعد الإنجاز"
+		case l.Samples == 0:
+			l.Source = "ماكو عينات بعد — حد أدنى افتراضي"
+		case l.LimitMin == d.Floor && l.MedianMin*3/2 < d.Floor:
+			l.Source = "الوسيط صغير — انطبق الحد الأدنى"
+		default:
+			l.Source = "تعلّمه من الوسيط × ١٫٥"
+		}
+		out.Stations = append(out.Stations, l)
 	}
 	return out
 }

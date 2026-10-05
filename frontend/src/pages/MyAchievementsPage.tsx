@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSession } from '../session'
 import { api, type Achievement } from '../api'
+import { VoicePlayer, VoiceRecorder } from '../components/VoiceNote'
 
 // ═══ الإنجازات — تقرير يومي حر (ماتركس) ═══
 //
@@ -15,6 +16,7 @@ export default function MyAchievementsPage() {
   const { employee } = useSession()
   const [reportText, setReportText] = useState('')
   const [bookingCode, setBookingCode] = useState('')
+  const [voice, setVoice] = useState<{ blob: Blob; seconds: number } | null>(null)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [mine, setMine] = useState<Achievement[]>([])
@@ -38,16 +40,25 @@ export default function MyAchievementsPage() {
   }, [employee])
 
   const submit = async () => {
-    if (!reportText.trim()) {
-      setErr('يرجى كتابة شنو سويت اليوم')
+    if (!reportText.trim() && !voice) {
+      setErr('اكتب أو سجّل فويس بشنو سويت اليوم')
       return
     }
     setSaving(true)
     setErr(null)
     try {
-      const created = await api.createAchievement(bookingCode.trim() || null, reportText.trim())
+      const created = await api.createAchievement(bookingCode.trim() || null, reportText.trim() || '🎙️ فويس مسج')
+      if (voice) {
+        try {
+          const r = await api.uploadAchievementVoice(created.id, voice.blob, voice.seconds)
+          created.voiceSeconds = r.seconds
+        } catch (e) {
+          setErr('انرسل التقرير بس الفويس ما انرفع: ' + (e instanceof Error ? e.message : ''))
+        }
+      }
       setMine((prev) => [created, ...prev])
       setReportText('')
+      setVoice(null)
       setBookingCode('')
     } catch (e) {
       setErr(e instanceof Error ? e.message : 'تعذر الإرسال')
@@ -85,6 +96,7 @@ export default function MyAchievementsPage() {
           placeholder="كود الحجز المربوط (اختياري)"
           className="w-full rounded-xl border border-slate-200 p-2.5 text-sm focus:border-brand-500 focus:outline-none"
         />
+        <VoiceRecorder value={voice} onChange={setVoice} />
         {err && <p className="text-sm text-red-600">{err}</p>}
         <button
           onClick={submit}
@@ -109,6 +121,7 @@ export default function MyAchievementsPage() {
                 {statusBadge(a)}
               </div>
               <p className="mt-1 text-sm text-slate-700">{a.reportText}</p>
+              {a.voiceSeconds != null && <VoicePlayer achievementId={a.id} seconds={a.voiceSeconds} />}
               {a.bookingCode && <p className="mt-1 text-[11px] text-slate-400">مربوط بحجز: {a.bookingCode}</p>}
               {a.reviewNote && (
                 <p className="mt-1 rounded-lg bg-amber-50 p-2 text-[12px] text-amber-800">ملاحظة {a.reviewedByName || ''}: {a.reviewNote}</p>

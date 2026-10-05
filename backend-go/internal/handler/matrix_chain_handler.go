@@ -43,6 +43,11 @@ func (h *MatrixChainHandler) RoleChain(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, rep)
 }
 
+// GET /api/ai/chain-learning — الحدود الي تعلّمها ماتركس.
+func (h *MatrixChainHandler) Learning(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, h.svc.Learning())
+}
+
 // GET /api/ai/role-chain/roles — قائمة الأدوار بالترتيب.
 func (h *MatrixChainHandler) Roles(w http.ResponseWriter, r *http.Request) {
 	out := []map[string]string{}
@@ -106,4 +111,32 @@ func (h *MatrixChainHandler) Rate(w http.ResponseWriter, r *http.Request) {
 		go h.resolve(me)
 	}
 	WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+// ═══ عين ماتركس على المشاريع ═══
+type MatrixProjectHandler struct{ svc *service.MatrixProjectService }
+
+func NewMatrixProjectHandler(svc *service.MatrixProjectService) *MatrixProjectHandler {
+	return &MatrixProjectHandler{svc: svc}
+}
+
+// GET /api/ai/projects — كل المشاريع بحكم ماتركس + الأشخاص.
+func (h *MatrixProjectHandler) Report(w http.ResponseWriter, r *http.Request) {
+	rep, err := h.svc.Report()
+	if err != nil {
+		log.Printf("matrix projects: %v", err)
+		WriteError(w, http.StatusInternalServerError, "تعذر تحليل المشاريع")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rep)
+}
+
+// GET /api/ai/projects/{id} — ترتيب العمل بمشروع واحد.
+func (h *MatrixProjectHandler) Chain(w http.ResponseWriter, r *http.Request) {
+	ch, err := h.svc.Chain(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, ch)
 }
