@@ -417,11 +417,13 @@ func WatchGroup(subj repository.WatchSubject) string {
 		return "DESIGN"
 	case subj.Role == "MEDIA":
 		return "MEDIA"
-	// قرار (ع) 10-05: مسؤولي الخدمات همّه التقنيين — مجموعة «التقنيين ومشرفي المشاريع».
-	case subj.Role == "SERVICE_MANAGER":
-		return "STAFF"
 	case subj.IsLeader:
 		return "LEADERS"
+	// قرار (ع) 10-05: مسؤولي الخدمات همّه التقنيين — مجموعة «التقنيين ومشرفي
+	// المشاريع». المسؤول ينعرف من جدول ServiceManager (أغلبهم دورهم فني أو
+	// مهندس)، مو بس الي دوره SERVICE_MANAGER — هيچ چانوا يوقعون بالفنيين.
+	case subj.Role == "SERVICE_MANAGER" || subj.IsServiceManager:
+		return "STAFF"
 	case subj.Role == "TECHNICIAN" || subj.Role == "ENGINEER":
 		// الفني العادي: جرد وحضور وأداء — ماكو فواتير ولا تقارير.
 		return "TECHS"
@@ -557,6 +559,7 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 		return nil, err
 	}
 	order := []string{"MONITORS", "COORDINATORS", "FINANCE", "LEADERS", "TECHS", "SALES", "PROJECTS", "GPS", "DESIGN", "MEDIA", "QUALITY", "IT", "ADMINS", "STAFF"}
+	duties := s.projectDuties()
 	byGroup := map[string]*RoleGroupReport{}
 	for _, g := range order {
 		byGroup[g] = &RoleGroupReport{Group: g, Employees: []*WatchState{}}
@@ -567,13 +570,21 @@ func (s *MatrixAutopilotService) RoleWatch() ([]RoleGroupReport, error) {
 			continue
 		}
 		w.Name, w.ID = sub.Name, sub.ID
-		g := byGroup[w.Group]
-		g.Employees = append(g.Employees, w)
-		switch w.Level {
-		case "RED":
-			g.Red++
-		case "ALERT":
-			g.Alert++
+		groups := []string{w.Group}
+		// مشرف مشروع من دور ثاني (مصممة، مدير…) ينحسب كذلك ويا «التقنيين
+		// ومشرفي المشاريع» — يبقى بعين دوره، وهنا تنشاف مشاريعه.
+		if w.Group != "STAFF" && w.Group != "PROJECTS" && len(duties[sub.ID]) > 0 {
+			groups = append(groups, "STAFF")
+		}
+		for _, gk := range groups {
+			g := byGroup[gk]
+			g.Employees = append(g.Employees, w)
+			switch w.Level {
+			case "RED":
+				g.Red++
+			case "ALERT":
+				g.Alert++
+			}
 		}
 	}
 	out := []RoleGroupReport{}

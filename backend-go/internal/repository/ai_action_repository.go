@@ -453,12 +453,14 @@ type WatchSubject struct {
 	Name     string `db:"name"`
 	Role     string `db:"role"`
 	IsLeader bool   `db:"isLeader"`
-	Perms    []string
+	// IsServiceManager مسجّل مسؤول خدمة بجدول "ServiceManager" — مهما چان دوره.
+	IsServiceManager bool `db:"isServiceManager"`
+	Perms            []string
 }
 
 func (r *AiActionRepository) Subject(id string) (*WatchSubject, error) {
 	var s WatchSubject
-	if err := r.db.Get(&s, `SELECT id, name, role::text AS role, "isLeader" FROM "Employee" WHERE id = $1`, id); err != nil {
+	if err := r.db.Get(&s, `SELECT id, name, role::text AS role, "isLeader", EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager" FROM "Employee" WHERE id = $1`, id); err != nil {
 		return nil, err
 	}
 	_ = r.db.Select(&s.Perms, `
@@ -470,7 +472,7 @@ func (r *AiActionRepository) Subject(id string) (*WatchSubject, error) {
 // ActiveSubjects كل الموظفين الفعّالين — لتقرير المدير.
 func (r *AiActionRepository) ActiveSubjects() ([]WatchSubject, error) {
 	rows := []WatchSubject{}
-	if err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "isLeader" FROM "Employee" WHERE status = 'ACTIVE' ORDER BY name`); err != nil {
+	if err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "isLeader", EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager" FROM "Employee" WHERE status = 'ACTIVE' ORDER BY name`); err != nil {
 		return nil, err
 	}
 	type pr struct {

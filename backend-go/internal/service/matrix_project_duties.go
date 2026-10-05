@@ -18,7 +18,9 @@ type projectDutiesCache struct {
 }
 
 // SetProjectDuties يربط مصدر المشاريع (MatrixProjectService.Report).
-func (s *MatrixAutopilotService) SetProjectDuties(f func() (*ProjectsReport, error)) { s.projectsSrc = f }
+func (s *MatrixAutopilotService) SetProjectDuties(f func() (*ProjectsReport, error)) {
+	s.projectsSrc = f
+}
 
 // projectDuties المشاريع المفتوحة لكل مسؤول — مخزّنة دقيقتين حتى عين الهيدر ما تثقل.
 func (s *MatrixAutopilotService) projectDuties() map[string][]ProjectVerdict {

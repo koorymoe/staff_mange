@@ -10,6 +10,9 @@ func TestWatchGroupTechs(t *testing.T) {
 	if g := WatchGroup(repository.WatchSubject{Role: "SERVICE_MANAGER"}); g != "STAFF" {
 		t.Fatalf("service manager → %s", g)
 	}
+	if g := WatchGroup(repository.WatchSubject{Role: "TECHNICIAN", IsServiceManager: true}); g != "STAFF" {
+		t.Fatalf("technician service manager → %s", g)
+	}
 	if g := WatchGroup(repository.WatchSubject{Role: "MEDIA"}); g != "MEDIA" {
 		t.Fatalf("media → %s", g)
 	}
