@@ -143,6 +143,9 @@ type MatrixChainService struct {
 	thMed    map[string]int
 	thN      map[string]int
 	thSvcN   int
+	// contactSince أول استعمال لزر التواصل (يتحسب مرة بكل تحديث للحدود).
+	contactSince *time.Time
+	contactAt    time.Time
 }
 
 func NewMatrixChainService(repo *repository.MatrixChainRepository, names func(string) string) *MatrixChainService {
@@ -271,6 +274,17 @@ func crewStart(f *repository.ChainFacts) *time.Time {
 		return f.ProjectExecAt
 	}
 	return f.ConfirmedAt
+}
+
+// contactBefore الحجز انسجّل قبل ما زر التواصل يصير موجود (أو ماكو استعمال إله أصلاً).
+func (s *MatrixChainService) contactBefore(created time.Time) bool {
+	s.mu.Lock()
+	if time.Since(s.contactAt) > time.Hour {
+		s.contactSince, s.contactAt = s.repo.ContactFeatureSince(), time.Now()
+	}
+	t := s.contactSince
+	s.mu.Unlock()
+	return t == nil || created.Before(*t)
 }
 
 func minsBetween(from, to *time.Time) *int {
@@ -473,6 +487,12 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		if f.ContactedAt != nil {
 			st.Owners = s.owner(f.ContactedByID, f.ContactedBy)
 			judge(&st, &created, f.ContactedAt, s.threshold(f, "CONTACT"), nil)
+		} else if f.ConfirmedAt != nil && s.contactBefore(f.CreatedAt) {
+			// قرار (ع) 10-06 (عدالة): الحجز أقدم من زر التواصل نفسه — ما ينحسب على أحد.
+			st.Owners = s.owner(f.ConfirmedByID, f.ConfirmedBy)
+			st.StartAt = &created
+			st.Status = ChainNA
+			st.Verdict = "الحجز أقدم من زر «تواصلت ويا الزبون»، فما ينحسب على أحد."
 		} else if f.ConfirmedAt != nil {
 			// قرار (ع) 10-05: «الإداري الي يثبّت الحجز هو نفسه لازم يضغط تواصلت
 			// ويا الزبون — إذا ما ضغط يعني هو الي ما ضاغط». فالمحطة عليه وما صارت.

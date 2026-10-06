@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // ═══ تقييم ماتركس + تقييمات البشر ═══
@@ -182,6 +183,38 @@ func (r *MatrixScoreRepository) DropStation(bookingID, rule string) error {
 	return err
 }
 
+// DropStations نفس DropStation بس دفعة وحدة (حجز+محطة) — للمحطات الي صارت «ما تنطبق».
+func (r *MatrixScoreRepository) DropStations(bookingIDs, rules []string) error {
+	if len(bookingIDs) == 0 {
+		return nil
+	}
+	_, err := r.db.Exec(`DELETE FROM "MatrixScore" m USING unnest($1::text[], $2::text[]) AS x(b, rule)
+		WHERE m.source = 'BOOKING' AND m."sourceId" = x.b AND m.rule = x.rule AND m."cancelledAt" IS NULL`,
+		pq.Array(bookingIDs), pq.Array(rules))
+	return err
+}
+
+// DropGoneBookings نقاط حجوزات انلغت أو تأرشفت أو انطلب حذفها — ما تنحسب على أحد.
+func (r *MatrixScoreRepository) DropGoneBookings() error {
+	_, err := r.db.Exec(`DELETE FROM "MatrixScore" m WHERE m.source = 'BOOKING' AND m."cancelledAt" IS NULL
+		AND EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = m."sourceId"
+		            AND (b.status::text = 'CANCELLED' OR NOT (` + BookingCountableSQL("b") + `)))`)
+	return err
+}
+
+// SoleHolder الموظف الوحيد الفعّال بهالدور ("" إذا ماكو أو أكثر من واحد).
+// المحطة الي ما اشتغل عليها أحد تنحسب على صاحب الدور إذا هو وحده المسؤول.
+func (r *MatrixScoreRepository) SoleHolder(role, perm string) string {
+	ids := []string{}
+	_ = r.db.Select(&ids, `SELECT DISTINCT e.id FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER')
+		AND (e.role::text = $1 OR EXISTS (SELECT 1 FROM "EmployeePermission" ep JOIN "Permission" p ON p.id = ep."permissionId"
+		     WHERE ep."employeeId" = e.id AND p.name = $2)) LIMIT 2`, role, perm)
+	if len(ids) == 1 {
+		return ids[0]
+	}
+	return ""
+}
+
 func (r *MatrixScoreRepository) Cancel(id, byID, note string) error {
 	_, err := r.db.Exec(`UPDATE "MatrixScore" SET "cancelledAt" = now(), "cancelledById" = $2, "cancelNote" = $3
 		WHERE id = $1 AND "cancelledAt" IS NULL`, id, byID, note)
@@ -207,7 +240,7 @@ func (r *MatrixScoreRepository) PendingCoordLeader(raterID string) ([]PendingSta
 		FROM "Booking" b
 		JOIN "Employee" l ON l.id = COALESCE(b."projectSupervisorId",
 			(SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
-			 WHERE ba."bookingId" = b.id AND x."isLeader" LIMIT 1))
+			 WHERE ba."bookingId" = b.id AND x."isLeader" ORDER BY ba."createdAt" LIMIT 1))
 		WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND l.role::text NOT IN ('ADMIN', 'OWNER')
 		  AND b."updatedAt" >= now() - interval '7 days'
 		  AND (b."confirmedByEmployeeId" = $1 OR b."createdById" = $1)
@@ -227,7 +260,7 @@ func (r *MatrixScoreRepository) BookingParties(bookingID string) ([]PendingStaff
 			SELECT e.id, e.name, 'LEADER' AS role FROM "Employee" e
 			WHERE e.id = COALESCE(b."projectSupervisorId",
 				(SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
-				 WHERE ba."bookingId" = b.id AND x."isLeader" LIMIT 1)) AND e.role::text NOT IN ('ADMIN', 'OWNER')
+				 WHERE ba."bookingId" = b.id AND x."isLeader" ORDER BY ba."createdAt" LIMIT 1)) AND e.role::text NOT IN ('ADMIN', 'OWNER')
 			UNION
 			SELECT e.id, e.name, 'COORDINATOR' FROM "Employee" e WHERE e.id = COALESCE(b."confirmedByEmployeeId", b."createdById") AND e.role::text NOT IN ('ADMIN', 'OWNER')
 		) p ON true
@@ -277,7 +310,7 @@ func (r *MatrixScoreRepository) PendingAudit(raterID string) ([]PendingStaffRati
 			SELECT e.id, e.name, 'LEADER' AS role FROM "Employee" e
 			WHERE e.id = COALESCE(b."projectSupervisorId",
 				(SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
-				 WHERE ba."bookingId" = b.id AND x."isLeader" LIMIT 1)) AND e.role::text NOT IN ('ADMIN', 'OWNER')
+				 WHERE ba."bookingId" = b.id AND x."isLeader" ORDER BY ba."createdAt" LIMIT 1)) AND e.role::text NOT IN ('ADMIN', 'OWNER')
 			UNION
 			SELECT e.id, e.name, 'COORDINATOR' FROM "Employee" e WHERE e.id = COALESCE(b."confirmedByEmployeeId", b."createdById") AND e.role::text NOT IN ('ADMIN', 'OWNER')
 		) p ON true

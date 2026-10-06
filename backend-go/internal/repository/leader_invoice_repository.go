@@ -130,7 +130,7 @@ func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix 
 	var count int
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "LeaderInvoice"
-		WHERE "employeeId" = $1 AND to_char("createdAt", 'YYYY-MM') = $2
+		WHERE "revokedAt" IS NULL AND "employeeId" = $1 AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -142,16 +142,14 @@ func (r *LeaderInvoiceRepository) CountForEmployeeMonth(employeeID, monthPrefix 
 // كل الموظفين = مجموع الفواتير بالضبط. ولهذا هاي الي تنقاس عليها
 // تغطية الراتب للليدر.
 //
-// ⚠️ **وماكو مرشّح حالة — بقصد**: فحصت المستودع فماكو حالة إلغاء
-// لفاتورة الليدر إطلاقاً (الحالات المستخدمة `SUBMITTED` و`APPROVED`
-// بس). فكل فاتورة مرفوعة مبلغ وصل، وأي مرشّح «ملغاة» يكون حماية
-// من حالة ما توجد — أي شرط ميت يضلّل من يقرا الكود بعدين.
+// ⚠️ الفاتورة المسحوبة (`revokedAt`) ما تنحسب — تنسحب وتنعاد، فحسابها
+// يضاعف المبلغ. والشهر بتوقيت بغداد مو UTC.
 func (r *LeaderInvoiceRepository) SumNetTotalForEmployeeMonth(employeeID, monthPrefix string) (float64, error) {
 	var total *float64
 	err := r.db.Get(&total, `
 		SELECT SUM("netTotal") FROM "LeaderInvoice"
-		WHERE "employeeId" = $1
-		  AND to_char("createdAt", 'YYYY-MM') = $2
+		WHERE "revokedAt" IS NULL AND "employeeId" = $1
+		  AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
 	`, employeeID, monthPrefix)
 	if err != nil || total == nil {
 		return 0, err
@@ -165,7 +163,7 @@ func (r *LeaderInvoiceRepository) CountForEmployeeRange(employeeID, from, to str
 	var count int
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "LeaderInvoice"
-		WHERE "employeeId" = $1 AND baghdad_date("createdAt") BETWEEN $2::date AND $3::date
+		WHERE "revokedAt" IS NULL AND "employeeId" = $1 AND baghdad_date("createdAt") BETWEEN $2::date AND $3::date
 	`, employeeID, from, to)
 	return count, err
 }
@@ -175,7 +173,7 @@ func (r *LeaderInvoiceRepository) CountForEmployeeRange(employeeID, from, to str
 func (r *LeaderInvoiceRepository) SumNetTotalForRange(from, to string) (float64, error) {
 	var total sql.NullFloat64
 	err := r.db.Get(&total, `
-		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE "revokedAt" IS NULL AND baghdad_date("createdAt") BETWEEN $1::date AND $2::date
 	`, from, to)
 	if err != nil {
 		return 0, err
@@ -189,13 +187,13 @@ func (r *LeaderInvoiceRepository) SumNetTotalMorningEveningForRange(from, to str
 	var m, e sql.NullFloat64
 	if err = r.db.Get(&m, `
 		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
-		WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") < 12
+		WHERE "revokedAt" IS NULL AND baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt" + interval '3 hours') < 12
 	`, from, to); err != nil {
 		return 0, 0, err
 	}
 	if err = r.db.Get(&e, `
 		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice"
-		WHERE baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt") >= 12
+		WHERE "revokedAt" IS NULL AND baghdad_date("createdAt") BETWEEN $1::date AND $2::date AND EXTRACT(HOUR FROM "createdAt" + interval '3 hours') >= 12
 	`, from, to); err != nil {
 		return 0, 0, err
 	}
@@ -207,7 +205,7 @@ func (r *LeaderInvoiceRepository) SumNetTotalMorningEveningForRange(from, to str
 func (r *LeaderInvoiceRepository) SumNetTotalForDate(date string) (float64, error) {
 	var total sql.NullFloat64
 	err := r.db.Get(&total, `
-		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE baghdad_date("createdAt") = $1::date
+		SELECT COALESCE(SUM("netTotal"), 0) FROM "LeaderInvoice" WHERE "revokedAt" IS NULL AND baghdad_date("createdAt") = $1::date
 	`, date)
 	return total.Float64, err
 }

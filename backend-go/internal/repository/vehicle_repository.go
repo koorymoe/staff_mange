@@ -232,7 +232,7 @@ func (r *VehicleRepository) EmployeeFuelStats(vehicleID, month string) ([]model.
 		WHERE l.type = 'FUEL'
 			AND l."filledByEmployeeId" IS NOT NULL
 			AND ($1 = '' OR l."vehicleId" = $1)
-			AND ($2 = '' OR to_char(l."performedAt", 'YYYY-MM') = $2)
+			AND ($2 = '' OR to_char(baghdad_date(l."performedAt"), 'YYYY-MM') = $2)
 		GROUP BY l."filledByEmployeeId", e.name
 		ORDER BY "fillCount" DESC
 	`, vehicleID, month)

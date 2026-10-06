@@ -427,3 +427,11 @@ func (r *MatrixChainRepository) Monitors() ([]string, error) {
 		     WHERE ep."employeeId" = e.id AND p.name IN ('monitoring', 'auditing')))`)
 	return ids, err
 }
+
+// ContactFeatureSince أول مرة انضغط «تواصلت ويا الزبون» بالنظام — الحجوزات
+// الأقدم ما ينحاسب عليها أحد (الزر ما چان موجود).
+func (r *MatrixChainRepository) ContactFeatureSince() *time.Time {
+	var t *time.Time
+	_ = r.db.Get(&t, `SELECT min("confirmationContactedAt") FROM "Booking"`)
+	return t
+}

@@ -57,7 +57,7 @@ func (r *VehicleMissionRatingRepository) GetCleanlinessAvgForDriverMonth(employe
 		SELECT COUNT(mr.id) AS count, AVG(mr.cleanliness) AS avg
 		FROM "VehicleMission" m
 		JOIN "VehicleMissionRating" mr ON mr."missionId" = m.id
-		WHERE m."driverId" = $1 AND to_char(m."startedAt", 'YYYY-MM') = $2
+		WHERE m."driverId" = $1 AND to_char(baghdad_date(m."startedAt"), 'YYYY-MM') = $2
 	`, employeeID, monthPrefix)
 	if err != nil {
 		return nil, 0, err

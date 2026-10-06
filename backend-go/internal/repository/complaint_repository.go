@@ -254,7 +254,7 @@ func (r *ComplaintRepository) CountForEmployeeMonth(employeeID, monthPrefix stri
 	var count int
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "Complaint"
-		WHERE "relatedEmployeeId" = $1 AND to_char("createdAt", 'YYYY-MM') = $2
+		WHERE "relatedEmployeeId" = $1 AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
 	`, employeeID, monthPrefix)
 	return count, err
 }

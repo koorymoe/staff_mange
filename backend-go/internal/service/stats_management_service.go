@@ -41,7 +41,7 @@ func NewStatsManagementService(
 // الشهر الحالي افتراضياً.
 func (s *StatsManagementService) InternalWorks(month string) (*model.InternalWorksReport, error) {
 	if month == "" {
-		month = time.Now().Format("2006-01")
+		month = time.Now().In(debriefLoc).Format("2006-01")
 	}
 	return s.internalWorks.Monthly(month)
 }
@@ -50,7 +50,7 @@ func (s *StatsManagementService) InternalWorks(month string) (*model.InternalWor
 // ما تحدد تاريخ، حتى تكدر ترجع لأي يوم سابق وتشوف نفس الإحصائية بالضبط.
 func (s *StatsManagementService) Daily(date string) (*model.DailyStats, error) {
 	if date == "" {
-		date = time.Now().Format("2006-01-02")
+		date = time.Now().In(debriefLoc).Format("2006-01-02")
 	}
 
 	employees, err := s.employees.List()
@@ -116,8 +116,9 @@ func (s *StatsManagementService) Daily(date string) (*model.DailyStats, error) {
 // الأسبوع (بدون تعديل "عدد الخدمات" — هذا خاص بالشهرية فقط).
 func (s *StatsManagementService) Weekly(from, to string) (*model.WeeklyStats, error) {
 	if from == "" || to == "" {
-		to = time.Now().Format("2006-01-02")
-		from = time.Now().AddDate(0, 0, -7).Format("2006-01-02")
+		// ٧ أيام بالضبط (اليوم + ٦ قبله) بتوقيت بغداد — چانت ٨.
+		to = time.Now().In(debriefLoc).Format("2006-01-02")
+		from = time.Now().In(debriefLoc).AddDate(0, 0, -6).Format("2006-01-02")
 	}
 
 	morning, evening, err := s.leaderInvoices.SumNetTotalMorningEveningForRange(from, to)

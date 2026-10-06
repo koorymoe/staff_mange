@@ -44,7 +44,7 @@ func (r *EmployeeCommissionRepository) SumForEmployeeMonth(employeeID, monthPref
 	var total sql64
 	err := r.db.Get(&total, `
 		SELECT COALESCE(SUM("totalCommission"), 0) FROM "EmployeeCommission"
-		WHERE "employeeId" = $1 AND to_char("createdAt", 'YYYY-MM') = $2
+		WHERE "employeeId" = $1 AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
 	`, employeeID, monthPrefix)
 	return float64(total), err
 }

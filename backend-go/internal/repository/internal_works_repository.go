@@ -44,7 +44,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 			COALESCE(SUM(b."amountCollected") FILTER (WHERE b."workLocation" = 'IN_HOUSE'), 0) AS "inHouseAmount"
 		FROM "Booking" b
 		WHERE b.status = 'COMPLETED'
-		  AND to_char(b."completedAt", 'YYYY-MM') = $1
+		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 	`, month); err != nil {
 		return nil, err
 	}
@@ -58,7 +58,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE b.status = 'COMPLETED'
 		  AND b."workLocation" = 'IN_HOUSE'
-		  AND to_char(b."completedAt", 'YYYY-MM') = $1
+		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 		GROUP BY s.name
 		ORDER BY count DESC
 	`, month); err != nil {
@@ -73,7 +73,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 		JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE b.status = 'COMPLETED'
 		  AND b."workLocation" = 'IN_HOUSE'
-		  AND to_char(b."completedAt", 'YYYY-MM') = $1
+		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 		GROUP BY e.name
 		ORDER BY count DESC
 	`, month); err != nil {
@@ -88,7 +88,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE b.status = 'COMPLETED'
 		  AND b."workLocation" = 'IN_HOUSE'
-		  AND to_char(b."completedAt", 'YYYY-MM') = $1
+		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
 		ORDER BY b."completedAt" DESC
 		LIMIT 500
 	`, month); err != nil {

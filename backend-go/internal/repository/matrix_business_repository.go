@@ -24,9 +24,8 @@ type MonthRevenue struct {
 	ProjectRevenue float64 `db:"-" json:"projectRevenue"`
 }
 
-// completedCountable حجوزات منجزة تنحسب (مو داخلية، مو مؤرشفة).
-const completedCountable = `b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
-	AND NOT EXISTS (SELECT 1 FROM "Project" pj JOIN "ProjectPayment" pp ON pp."projectId" = pj.id AND pp."cancelledAt" IS NULL WHERE pj."bookingId" = b.id)`
+// completedCountable حجز منجز ينحسب بالإيراد — نفس تعريف RevenueBookingSQL.
+var completedCountable = RevenueBookingSQL("b") + ` AND b."completedAt" IS NOT NULL`
 
 // projectByMonth دفعات المشاريع لكل شهر (قرار (ع) 10-06: فلوس المشاريع ما چانت تنحسب).
 func (r *MatrixBusinessRepository) projectByMonth(n int) (map[string]float64, error) {
@@ -52,10 +51,10 @@ func (r *MatrixBusinessRepository) Monthly(n int) ([]MonthRevenue, error) {
 	err := r.db.Select(&rows, `
 		SELECT to_char(date_trunc('month', baghdad_date(b."completedAt")), 'YYYY-MM') AS month,
 		       COUNT(*) AS bookings,
-		       COALESCE(SUM(li."netTotal"), 0) AS revenue,
+		       COALESCE(SUM(`+RevenueAmountSQL("b")+`), 0) AS revenue,
 		       COUNT(li.id) AS invoiced
 		FROM "Booking" b
-		LEFT JOIN LATERAL (SELECT id, "netTotal" FROM "LeaderInvoice" WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1) li ON true
+		LEFT JOIN LATERAL (SELECT id FROM "LeaderInvoice" WHERE "bookingId" = b.id AND "revokedAt" IS NULL ORDER BY "createdAt" DESC LIMIT 1) li ON true
 		WHERE `+completedCountable+`
 		  AND baghdad_date(b."completedAt") >= (date_trunc('month', baghdad_today()) - make_interval(months => $1 - 1))::date
 		GROUP BY 1 ORDER BY 1`, n)
@@ -96,9 +95,8 @@ func (r *MatrixBusinessRepository) MTD() (*MonthToDate, error) {
 	var m MonthToDate
 	err := r.db.Get(&m, `
 		WITH x AS (
-		  SELECT baghdad_date(b."completedAt") AS d, COALESCE(li."netTotal",0) AS net
+		  SELECT baghdad_date(b."completedAt") AS d, `+RevenueAmountSQL("b")+` AS net
 		  FROM "Booking" b
-		  LEFT JOIN LATERAL (SELECT "netTotal" FROM "LeaderInvoice" WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1) li ON true
 		  WHERE `+completedCountable+`)
 		SELECT
 		  COUNT(*) FILTER (WHERE d >= date_trunc('month', baghdad_today())::date) AS bookings,
@@ -139,8 +137,8 @@ func (r *MatrixBusinessRepository) Forecast() (*ForecastBase, error) {
 		  (SELECT COUNT(*) FILTER (WHERE status = 'COMPLETED')::float / NULLIF(COUNT(*),0)
 		     FROM "Booking" WHERE "confirmedAt" > now() - interval '90 days' AND "confirmedAt" < now() - interval '7 days'
 		       AND "bookingType" IS DISTINCT FROM 'INTERNAL') AS "completionRate",
-		  (SELECT AVG("netTotal") FROM "LeaderInvoice" WHERE "createdAt" > now() - interval '90 days' AND "netTotal" > 0) AS "avgInvoice",
-		  (SELECT COUNT(*) FROM "LeaderInvoice" WHERE "createdAt" > now() - interval '90 days' AND "netTotal" > 0) AS samples`)
+		  (SELECT AVG("netTotal") FROM "LeaderInvoice" WHERE "createdAt" > now() - interval '90 days' AND "netTotal" > 0 AND "revokedAt" IS NULL) AS "avgInvoice",
+		  (SELECT COUNT(*) FROM "LeaderInvoice" WHERE "createdAt" > now() - interval '90 days' AND "netTotal" > 0 AND "revokedAt" IS NULL) AS samples`)
 	return &f, err
 }
 

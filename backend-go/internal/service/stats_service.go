@@ -22,7 +22,8 @@ func (s *StatsService) Overview() (*model.StatsOverview, error) {
 		return nil, err
 	}
 
-	now := time.Now()
+	// يوم وشهر بتوقيت بغداد — مو توقيت السيرفر.
+	now := time.Now().In(debriefLoc)
 	startOfToday := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	startOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location())
 

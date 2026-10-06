@@ -75,7 +75,7 @@ func (r *JobDurationSampleRepository) EmployeeSpeedRatio(employeeID, month strin
 			JOIN "Booking" b ON b.id = j."bookingId"
 			JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 			WHERE ba."employeeId" = $1
-			  AND to_char(j."createdAt", 'YYYY-MM') = $2
+			  AND to_char(baghdad_date(j."createdAt"), 'YYYY-MM') = $2
 		)
 		SELECT AVG(a.avg_effort / NULLIF(m.effort, 0))::float8 AS ratio,
 		       COUNT(*)::int AS samples

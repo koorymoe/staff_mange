@@ -57,11 +57,11 @@ func (r *StatsRepository) Totals() (*model.StatsTotals, error) {
 	if err != nil {
 		return nil, err
 	}
-	revenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL` + BookingCountableAndSQL(`"Booking"`) + notPaidAsProjectSQL)
+	revenue, err := r.sum(`SELECT COALESCE(SUM(` + RevenueAmountSQL(`"Booking"`) + `), 0) FROM "Booking" WHERE ` + RevenueBookingSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
-	unverifiedRevenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL AND "amountVerified" = false` + BookingCountableAndSQL(`"Booking"`) + notPaidAsProjectSQL)
+	unverifiedRevenue, err := r.sum(`SELECT COALESCE(SUM(` + RevenueAmountSQL(`"Booking"`) + `), 0) FROM "Booking" WHERE "amountVerified" = false AND ` + RevenueBookingSQL(`"Booking"`))
 	if err != nil {
 		return nil, err
 	}
@@ -89,11 +89,6 @@ func (r *StatsRepository) Totals() (*model.StatsTotals, error) {
 		ProjectRevenue:    projectRevenue,
 	}, nil
 }
-
-// notPaidAsProjectSQL حجز تحوّل لمشروع وعلى المشروع دفعات: فلوسه تنحسب من
-// الدفعات، فمبلغ الحجز ما ينعاد (ماكو حساب مرتين).
-const notPaidAsProjectSQL = ` AND NOT EXISTS (SELECT 1 FROM "Project" p JOIN "ProjectPayment" pp ON pp."projectId" = p.id
-	AND pp."cancelledAt" IS NULL WHERE p."bookingId" = "Booking".id)`
 
 func (r *StatsRepository) SalesStats(startOfToday, startOfMonth time.Time) ([]model.SalesStat, error) {
 	type row struct {
@@ -197,15 +192,16 @@ func (r *StatsRepository) TechnicianStats() ([]model.TechnicianStat, error) {
 		completed, err := r.count(`
 			SELECT COUNT(*) FROM "BookingVisitCrew" vc
 			JOIN "BookingVisit" v ON v.id = vc."visitId"
-			WHERE vc."employeeId" = $1
+			JOIN "Booking" b ON b.id = v."bookingId"
+			WHERE vc."employeeId" = $1 AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+`
 		`, e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
 		revenue, err := r.sum(`
-			SELECT COALESCE(SUM(b."amountCollected"), 0) FROM "BookingAssignment" a
-			JOIN "Booking" b ON b.id = a."bookingId"
-			WHERE a."employeeId" = $1 AND b.status = 'COMPLETED'
+			SELECT COALESCE(SUM(`+RevenueAmountSQL("b")+`), 0) FROM "Booking" b
+			WHERE `+RevenueBookingSQL("b")+`
+			  AND EXISTS (SELECT 1 FROM "BookingAssignment" a WHERE a."bookingId" = b.id AND a."employeeId" = $1)
 		`, e.EmployeeID)
 		if err != nil {
 			return nil, err
@@ -238,7 +234,7 @@ func (r *StatsRepository) ServiceBreakdown() ([]model.ServiceBreakdownEntry, err
 	err := r.db.Select(&rows, `
 		WITH per_booking AS (
 			SELECT b.id, b."serviceId", b."createdAt",
-			       COALESCE(b."amountCollected", 0) + COALESCE(b."advancePaid", 0) AS collected,
+			       CASE WHEN `+RevenueBookingSQL("b")+` THEN `+RevenueAmountSQL("b")+` ELSE 0 END AS collected,
 			       COALESCE((
 			           SELECT SUM(ci.quantity * COALESCE(p."wholesalePrice", 0))
 			           FROM "CartItem" ci

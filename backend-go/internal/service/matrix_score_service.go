@@ -28,7 +28,7 @@ import (
 const (
 	ScoreMatrixWeight = 0.6
 	ScoreHumanWeight  = 0.4
-	scoreLookbackDays = 30
+	scoreLookbackDays = 60
 )
 
 // StationPoints نقاط حكم محطة. ok=false: ما تنحسب (بعدها أو ما تنطبق).
@@ -142,16 +142,27 @@ func (s *MatrixScoreService) scoreBookings(now time.Time, add func(repository.Ma
 	if err != nil {
 		return err
 	}
+	_ = s.repo.DropGoneBookings()
+	// المحطة الي ما اشتغل عليها أحد: إذا دورها إله موظف واحد بس، هو المسؤول.
+	sole := map[string]string{
+		ChainRoleAccountant: s.repo.SoleHolder("FINANCE", "finance_audit"),
+		ChainRoleQuality:    s.repo.SoleHolder("QUALITY_ENGINEER", "quality_control"),
+		ChainRoleMonitor:    s.repo.SoleHolder("MONITOR", "monitoring"),
+	}
+	var dropB, dropR []string
+	defer func() { _ = s.repo.DropStations(dropB, dropR) }()
 	for i := range facts {
 		f := &facts[i]
 		ch := s.chain.chainOf(f, now)
 		label := "حجز " + ch.Code
 		for _, st := range ch.Stations {
-			if st.Status == ChainNA {
-				if ch.Project {
-					_ = s.repo.DropStation(f.ID, st.Key)
-				}
+			if st.Status == ChainNA || st.Status == ChainWaiting {
+				dropB, dropR = append(dropB, f.ID), append(dropR, st.Key)
 				continue
+			}
+			if len(st.Owners) == 0 && st.Status == ChainMissed && sole[st.Role] != "" {
+				st.Owners = []ChainOwner{{ID: sole[st.Role]}}
+				st.Verdict += " (محسوبة على المسؤول الوحيد بهالدور.)"
 			}
 			at := f.CreatedAt
 			if t := latestOf(st.EndAt, st.StartAt); t != nil {
@@ -203,7 +214,7 @@ func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.Matrix
 		key := day.Format("2006-01-02")
 		label := "يوم " + key
 		for _, p := range people {
-			if leave[p.ID] || p.CreatedAt.After(day.Add(24*time.Hour)) {
+			if leave[p.ID] || p.CreatedAt.After(day.Add(9*time.Hour)) {
 				continue
 			}
 			r := repository.MatrixScoreRow{EmployeeID: p.ID, Source: "DAY", SourceID: key, SourceLabel: &label,

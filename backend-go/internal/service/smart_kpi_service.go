@@ -41,6 +41,21 @@ func getMonthRange(month string) (start, end time.Time, year, mon int) {
 	return start, end, year, mon
 }
 
+// getWorkingDaysSoFar أيام الدوام (عدا الجمعة) بالشهر لحد اليوم — بنص الشهر
+// الموظف الملتزم ياخذ العلامة كاملة، مو نسبة من شهر بعده ما خلص.
+func getWorkingDaysSoFar(year, month int, today time.Time) int {
+	if today.Year() != year || int(today.Month()) != month {
+		return getWorkingDays(year, month)
+	}
+	n := 0
+	for d := 1; d <= today.Day(); d++ {
+		if time.Date(year, time.Month(month), d, 0, 0, 0, 0, time.UTC).Weekday() != time.Friday {
+			n++
+		}
+	}
+	return n
+}
+
 func getWorkingDays(year, month int) int {
 	daysInMonth := time.Date(year, time.Month(month+1), 0, 0, 0, 0, 0, time.UTC).Day()
 	workDays := 0
@@ -55,6 +70,9 @@ func getWorkingDays(year, month int) int {
 
 func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*model.SmartKpiResult, error) {
 	start, end, year, mon := getMonthRange(month)
+	// حدود الشهر بتوقيت بغداد: أعمدة الوقت مخزونة UTC، فالشهر يبدي ٢١:٠٠
+	// من آخر يوم بالشهر الي قبله. (عمود date بالحضور تاريخ بغداد أصلاً.)
+	tsStart, tsEnd := start.Add(-3*time.Hour), end.Add(-3*time.Hour)
 
 	employee, err := s.repo.GetEmployeeForKpi(employeeID)
 	if err != nil {
@@ -65,7 +83,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	}
 
 	// 1. Completed bookings via assignments
-	bCreated, bCompleted, err := s.repo.CompletedBookingTimes(employeeID, start, end)
+	bCreated, bCompleted, err := s.repo.CompletedBookingTimes(employeeID, tsStart, tsEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +93,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	// 2. Completion speed
 	totalMinutes := 0.0
 	speedEntries := 0
-	mAssigned, mCompleted, err := s.repo.MissionTimes(employeeID, start, end)
+	mAssigned, mCompleted, err := s.repo.MissionTimes(employeeID, tsStart, tsEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +125,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	}
 
 	// 3. Work reports
-	fullReports, totalReports, err := s.repo.WorkReportFlags(employeeID, start, end)
+	fullReports, totalReports, err := s.repo.WorkReportFlags(employeeID, tsStart, tsEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +137,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	if err != nil {
 		return nil, err
 	}
-	totalDays := getWorkingDays(year, mon)
+	totalDays := getWorkingDaysSoFar(year, mon, time.Now().In(debriefLoc))
 	attendanceRatio := 0.0
 	if totalDays > 0 {
 		attendanceRatio = float64(daysPresent) / float64(totalDays)
@@ -132,7 +150,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	}
 
 	// 5. Complaints
-	complaintsCount, err := s.repo.ComplaintsCount(employeeID, start, end)
+	complaintsCount, err := s.repo.ComplaintsCount(employeeID, tsStart, tsEnd)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +160,7 @@ func (s *SmartKpiService) CalculateTechnicianKpi(employeeID, month string) (*mod
 	}
 
 	// 6. Manual KPI deductions
-	manualDeductionPoints, manualDeductionCount, err := s.repo.ManualDeductionPoints(employeeID, start, end)
+	manualDeductionPoints, manualDeductionCount, err := s.repo.ManualDeductionPoints(employeeID, tsStart, tsEnd)
 	if err != nil {
 		return nil, err
 	}

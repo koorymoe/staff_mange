@@ -36,15 +36,17 @@ func (r *SmartKpiRepository) ListActiveTechnicianIDs() ([]string, error) {
 
 func (r *SmartKpiRepository) CompletedBookingTimes(employeeID string, start, end time.Time) (createdAt, completedAt []time.Time, err error) {
 	type row struct {
+		ID          string    `db:"id"`
 		CreatedAt   time.Time `db:"createdAt"`
 		CompletedAt time.Time `db:"completedAt"`
 	}
 	var rows []row
 	err = r.db.Select(&rows, `
-		SELECT b."createdAt", b."completedAt"
+		SELECT DISTINCT b.id, b."createdAt", b."completedAt"
 		FROM "BookingAssignment" a
 		JOIN "Booking" b ON b.id = a."bookingId"
 		WHERE a."employeeId" = $1 AND b.status = 'COMPLETED' AND b."completedAt" >= $2 AND b."completedAt" < $3
+		  AND b."bookingType" IS DISTINCT FROM 'INTERNAL' AND upper(b.code) NOT LIKE 'OLD%'`+BookingCountableAndSQL("b")+`
 	`, employeeID, start, end)
 	if err != nil {
 		return nil, nil, err
@@ -103,7 +105,7 @@ func (r *SmartKpiRepository) WorkReportFlags(employeeID string, start, end time.
 func (r *SmartKpiRepository) AttendanceDaysPresent(employeeID string, start, end time.Time) (int, error) {
 	var count int
 	err := r.db.Get(&count, `
-		SELECT COUNT(*) FROM "Attendance" WHERE "employeeId" = $1 AND date >= $2 AND date < $3
+		SELECT COUNT(DISTINCT date::date) FROM "Attendance" WHERE "employeeId" = $1 AND date >= $2 AND date < $3
 	`, employeeID, start, end)
 	return count, err
 }
@@ -111,7 +113,7 @@ func (r *SmartKpiRepository) AttendanceDaysPresent(employeeID string, start, end
 func (r *SmartKpiRepository) ComplaintsCount(employeeID string, start, end time.Time) (int, error) {
 	var count int
 	err := r.db.Get(&count, `
-		SELECT COUNT(*) FROM "Complaint" WHERE "assignedToEmployeeId" = $1 AND "createdAt" >= $2 AND "createdAt" < $3
+		SELECT COUNT(*) FROM "Complaint" WHERE "relatedEmployeeId" = $1 AND "createdAt" >= $2 AND "createdAt" < $3
 	`, employeeID, start, end)
 	return count, err
 }

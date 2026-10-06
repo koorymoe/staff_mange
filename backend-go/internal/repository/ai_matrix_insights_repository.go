@@ -167,9 +167,8 @@ func (r *AiRepository) WeekTotals(from, to time.Time) (*WeekTotals, error) {
 		  (SELECT COUNT(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL
 		     AND NOT (`+isLegacyImportSQL+`) AND b."settledLegacyAt" IS NULL
 		     AND (b."completedAt" AT TIME ZONE 'UTC') >= $1 AND (b."completedAt" AT TIME ZONE 'UTC') < $2) AS completed,
-		  (SELECT COALESCE(SUM(b."amountCollected"), 0) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL
+		  (SELECT COALESCE(SUM(`+RevenueAmountSQL("b")+`), 0) FROM "Booking" b WHERE `+RevenueBookingSQL("b")+`
 		     AND NOT (`+isLegacyImportSQL+`) AND b."settledLegacyAt" IS NULL
-		     AND NOT EXISTS (SELECT 1 FROM "Project" pj JOIN "ProjectPayment" pp ON pp."projectId" = pj.id AND pp."cancelledAt" IS NULL WHERE pj."bookingId" = b.id)
 		     AND (b."completedAt" AT TIME ZONE 'UTC') >= $1 AND (b."completedAt" AT TIME ZONE 'UTC') < $2)
 		  + (SELECT COALESCE(SUM(pp.amount), 0) FROM "ProjectPayment" pp WHERE pp."cancelledAt" IS NULL
 		     AND pp."paidAt" >= baghdad_date($1::timestamptz) AND pp."paidAt" < baghdad_date($2::timestamptz)) AS revenue,

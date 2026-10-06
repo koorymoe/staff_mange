@@ -1180,7 +1180,9 @@ func (r *BookingRepository) CountCompletedForEmployeeMonth(employeeID, monthPref
 	err := r.db.Get(&count, `
 		SELECT COUNT(*) FROM "BookingVisitCrew" vc
 		JOIN "BookingVisit" v ON v.id = vc."visitId"
-		WHERE vc."employeeId" = $1 AND to_char(v."occurredAt", 'YYYY-MM') = $2
+		JOIN "Booking" b ON b.id = v."bookingId"
+		WHERE vc."employeeId" = $1 AND to_char(baghdad_date(v."occurredAt"), 'YYYY-MM') = $2
+		  AND b.status::text <> 'CANCELLED'`+BookingCountableAndSQL("b")+`
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -1200,7 +1202,7 @@ func (r *BookingRepository) CountInHouseForEmployeeMonth(employeeID, monthPrefix
 		WHERE ba."employeeId" = $1
 		  AND b.status = 'COMPLETED'
 		  AND b."workLocation" = 'IN_HOUSE'
-		  AND to_char(b."completedAt", 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
 		GROUP BY s.name
 		ORDER BY n DESC
 	`, employeeID, monthPrefix)
@@ -1228,7 +1230,7 @@ func (r *BookingRepository) CountAssignedForEmployeeMonth(employeeID, monthPrefi
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1
-			AND to_char(COALESCE(b."completedAt", b."createdAt"), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+			AND to_char(baghdad_date(COALESCE(b."completedAt", b."createdAt")), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -1241,7 +1243,7 @@ func (r *BookingRepository) CountMaintenanceForEmployeeMonth(employeeID, monthPr
 		SELECT COUNT(DISTINCT b.id) FROM "Booking" b
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
-			AND to_char(COALESCE(b."completedAt", b."createdAt"), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+			AND to_char(baghdad_date(COALESCE(b."completedAt", b."createdAt")), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
 	`, employeeID, monthPrefix)
 	return count, err
 }
@@ -1255,7 +1257,7 @@ func (r *BookingRepository) CountFreeMaintenanceForEmployeeMonth(employeeID, mon
 		JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
 		WHERE ba."employeeId" = $1 AND b."bookingType" = 'MAINTENANCE'
 			AND (b."quotedPrice" IS NULL OR b."quotedPrice" = 0)
-			AND to_char(COALESCE(b."completedAt", b."createdAt"), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
+			AND to_char(baghdad_date(COALESCE(b."completedAt", b."createdAt")), 'YYYY-MM') = $2`+BookingCountableAndSQL(`b`)+`
 	`, employeeID, monthPrefix)
 	return count, err
 }

@@ -101,7 +101,7 @@ func (r *KpiRepository) SumPointsForEmployeeMonth(employeeID, monthPrefix string
 	var total int
 	err := r.db.Get(&total, `
 		SELECT COALESCE(SUM(points), 0) FROM "KpiEvaluation"
-		WHERE "employeeId" = $1 AND cancelled = false AND to_char("createdAt", 'YYYY-MM') = $2
+		WHERE "employeeId" = $1 AND cancelled = false AND to_char(baghdad_date("createdAt"), 'YYYY-MM') = $2
 	`, employeeID, monthPrefix)
 	return total, err
 }
