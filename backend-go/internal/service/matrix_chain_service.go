@@ -124,6 +124,7 @@ type BookingChain struct {
 	Ratings   []repository.CrewRatingRow `json:"ratings"`
 	// Trail منو سوّى شنو ومتى — دليل لكل حكم (طلب (ع) 10-06).
 	Trail []string `json:"trail"`
+	Who   ChainWho `json:"who"`
 }
 
 type ChainScore struct {
@@ -857,7 +858,74 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 	}
 	ch.Summary = chainSummary(ch)
 	ch.Trail = s.trail(f)
+	ch.Who = s.who(f)
 	return ch
+}
+
+// who نفس السجل بس بحقول منفصلة.
+func (s *MatrixChainService) who(f *repository.ChainFacts) ChainWho {
+	when := func(t *time.Time) string {
+		if t == nil {
+			return ""
+		}
+		return t.In(debriefLoc).Format("01-02 15:04")
+	}
+	name := func(id, n *string) string {
+		if n != nil && *n != "" {
+			return *n
+		}
+		if id != nil && *id != "" && s.names != nil {
+			return s.names(*id)
+		}
+		return ""
+	}
+	w := ChainWho{CreatedBy: name(f.CreatedByID, f.CreatedByName), CreatedAt: when(&f.CreatedAt), Tries: f.ContactTries,
+		ContactedAt: when(f.ContactedAt), ConfirmedAt: when(f.ConfirmedAt), ScheduledAt: when(f.ScheduledAt), Status: bookingStatusAr[f.Status]}
+	if f.ContactedAt != nil {
+		w.ContactedBy = name(f.ContactedByID, f.ContactedBy)
+	}
+	if f.ConfirmedAt != nil {
+		w.ConfirmedBy = name(f.ConfirmedByID, f.ConfirmedBy)
+	}
+	if f.LeaderName != nil {
+		w.Leader = *f.LeaderName
+	}
+	return w
+}
+
+// explainStation جملة واضحة: شنو صار بالضبط بهالخطوة.
+func explainStation(key, status string, w *ChainWho, verdict string) string {
+	creator := w.CreatedBy
+	if creator == "" {
+		creator = "شخص ما معروف"
+	}
+	switch key {
+	case "CONTACT":
+		if w.ContactedAt == "" {
+			if w.ConfirmedAt != "" {
+				return "انثبّت بدون ما أحد يضغط «تواصلت ويا الزبون» — يعني ما انسجّل منو حچى ويا الزبون ومتى."
+			}
+			return "محد ضغط «تواصلت ويا الزبون» من انسجّل الحجز (" + w.CreatedAt + ")."
+		}
+	case "CONFIRM":
+		if w.ConfirmedAt == "" {
+			if w.Status == "منجز" || w.Status == "منجز جزئياً" {
+				return "الحجز خلص بدون ما أحد يضغط «تثبيت» — انتخطت خطوة التثبيت. سجّله " + creator + "."
+			}
+			if w.Status == "ملغي" {
+				return "انلغى قبل ما ينثبّت."
+			}
+			if w.Status == "مثبّت" || w.Status == "قيد التنفيذ" || w.Status == "بالانتظار" {
+				return "الحجز مثبّت بس ما انسجّل منو ثبّته ومتى — انثبّت من طريق ما يسجّل الاسم (مثلاً انضاف مثبّت مباشرة). سجّله " + creator + "."
+			}
+			return "بعده ما انثبّت من " + w.CreatedAt + " — الحجز واگف بانتظار التثبيت."
+		}
+	case "CREW":
+		if status == ChainIssue {
+			return "انحدد الكادر بس بيه نقص: " + verdict
+		}
+	}
+	return verdict
 }
 
 var bookingStatusAr = map[string]string{
@@ -994,6 +1062,22 @@ type ChainCodeRef struct {
 	Note    string `json:"note"`
 	// Trail الدليل: منو سجّل الحجز ومنو تواصل ومنو ثبّت ومتى، وحالته هسه.
 	Trail []string `json:"trail"`
+	Who   ChainWho `json:"who"`
+}
+
+// ChainWho منو سوّى كل خطوة ومتى — أعمدة جدول الدليل.
+type ChainWho struct {
+	CreatedBy   string `json:"createdBy"`
+	CreatedAt   string `json:"createdAt"`
+	ContactedBy string `json:"contactedBy"`
+	ContactedAt string `json:"contactedAt"`
+	Tries       int    `json:"tries"`
+	ConfirmedBy string `json:"confirmedBy"`
+	ConfirmedAt string `json:"confirmedAt"`
+	ScheduledAt string `json:"scheduledAt"`
+	Leader      string `json:"leader"`
+	Status      string `json:"status"`
+	Explain     string `json:"explain"` // شنو صار بجملة عراقية واضحة
 }
 
 type ChainEmployeeReport struct {
@@ -1080,7 +1164,9 @@ func (a *chainAgg) add(ch *BookingChain, st *ChainStation, status string) {
 		if status == ChainIssue {
 			note = strings.Join(st.Issues, " ")
 		}
-		a.bad = append(a.bad, ChainCodeRef{ID: ch.BookingID, Code: ch.Code, Station: st.Title, Status: status, Note: note, Trail: ch.Trail})
+		who := ch.Who
+		who.Explain = explainStation(st.Key, status, &ch.Who, note)
+		a.bad = append(a.bad, ChainCodeRef{ID: ch.BookingID, Code: ch.Code, Station: st.Title, Status: status, Note: note, Trail: ch.Trail, Who: who})
 		if status != ChainIssue && st.StartAt != nil {
 			t := st.StartAt.In(debriefLoc)
 			a.wd[t.Weekday()]++

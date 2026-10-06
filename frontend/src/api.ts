@@ -2131,7 +2131,8 @@ export interface ChainStationStat { key: string; title: string; count: number; o
 export interface ChainEmployeeReport {
   id: string; name: string; total: number; onTime: number; late: number; missed: number; issues: number
   onTimePct: number; prevPct: number | null; stations: ChainStationStat[]; worst: string
-  bad: { id: string; code: string; station: string; status: ChainStatus; note: string; trail?: string[] }[] | null
+  bad: { id: string; code: string; station: string; status: ChainStatus; note: string; trail?: string[]
+    who?: { createdBy: string; createdAt: string; contactedBy: string; contactedAt: string; tries: number; confirmedBy: string; confirmedAt: string; scheduledAt: string; leader: string; status: string; explain: string } }[] | null
   lateWeekday: string; lateHour: number | null; ratingAvg: number | null; ratingCount: number; ratingNotes: string[]; insights: string[]
 }
 export interface RoleChainReport {
