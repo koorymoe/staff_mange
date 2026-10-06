@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { api, type MatrixEyesReport } from '../api'
 import MatrixNote from './MatrixNote'
+import { useSession } from '../session'
 
 // ═══ عيون الرقابة — المخزن، السيارات، رأي الزبائن، الآيتي، الطلبات المعلّقة ═══
 // طلب (ع) 10-05: «لازم اكو رقابه بكل مكان» و«تروح للمراقب ويا تحليل ماتركس».
 // كل بند: شنو الغلط بالأرقام، منو يخصه، وشنو يقترح ماتركس.
 
-const ICON: Record<string, string> = { REVENUE: '💰', STOCK: '📦', VEHICLES: '🚗', CUSTOMERS: '⭐', IT: '🖥️', PENDING: '⏳' }
+const ICON: Record<string, string> = { REVENUE: '💰', INTEGRITY: '🧮', STOCK: '📦', VEHICLES: '🚗', CUSTOMERS: '⭐', IT: '🖥️', PENDING: '⏳' }
 const SEV: Record<string, { cls: string; label: string }> = {
   HIGH: { cls: 'border-red-300 bg-red-50', label: '🔴 مهم' },
   MEDIUM: { cls: 'border-amber-300 bg-amber-50', label: '🟠 يحتاج متابعة' },
@@ -18,7 +19,22 @@ export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab
   const [r, setR] = useState<MatrixEyesReport | null>(null)
   const [tab, setTab] = useState(initialTab)
   const [all, setAll] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [ran, setRan] = useState('')
+  const { employee } = useSession()
+  const isBoss = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   useEffect(() => { void api.getMatrixEyes().then(setR).catch(() => {}) }, [])
+  // «احسب كلشي وخلي يتاكد من كل شي» — نقاط ماتركس + كل العيون من جديد.
+  const checkAll = async () => {
+    setBusy(true); setRan('')
+    try {
+      const sc = await api.runStaffScore().catch(() => ({ added: 0 }))
+      const rep = await api.getMatrixEyes()
+      setR(rep)
+      const high = rep.eyes.reduce((a, e) => a + e.high, 0)
+      setRan(`✅ ماتركس حسب ${sc.added} نقطة تقييم جديدة وفحص كل العيون: ${high ? `${high} شغلة مهمة` : 'ماكو شي مهم'}.`)
+    } finally { setBusy(false) }
+  }
   if (!r) return <p className="text-xs text-slate-400">ماتركس يفحص…</p>
   const eye = r.eyes.find((e) => e.key === tab) ?? r.eyes[0]
   const items = all ? eye.items : eye.items.slice(0, 12)
@@ -26,11 +42,15 @@ export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab
   return (
     <div dir="rtl" className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 text-slate-800 sm:p-4">
       <div>
-        <p className="text-base font-extrabold text-[#0f2040]">👁️ عيون الرقابة</p>
-        <p className="text-[11px] text-slate-500">الفلوس والإيرادات، المخزن، السيارات، رأي الزبائن، الآيتي، والطلبات المعلّقة. ماتركس يفحصها كل يوم بالقواعد (بلا كلفة).</p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-base font-extrabold text-[#0f2040]">👁️ عيون الرقابة</p>
+          {isBoss && <button type="button" disabled={busy} onClick={() => void checkAll()} className="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">{busy ? 'ماتركس يحسب…' : '🧮 احسب وافحص كلشي هسه'}</button>}
+        </div>
+        {ran && <p className="mt-1 text-xs font-bold text-emerald-700">{ran}</p>}
+        <p className="text-[11px] text-slate-500">الفلوس والإيرادات، تطابق الأرقام، المخزن، السيارات، رأي الزبائن، الآيتي، والطلبات المعلّقة. ماتركس يفحصها كل يوم بالقواعد (بلا كلفة).</p>
       </div>
       <MatrixNote>{r.insights.join(' ')}</MatrixNote>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
         {r.eyes.map((e) => (
           <button key={e.key} type="button" onClick={() => { setTab(e.key); setAll(false) }}
             className={`rounded-xl border p-2.5 text-right transition ${tab === e.key ? 'border-[#0f2040] bg-white shadow' : 'border-slate-200 bg-white/70 hover:bg-white'}`}>

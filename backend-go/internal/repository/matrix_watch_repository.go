@@ -519,3 +519,72 @@ func (r *MatrixWatchRepository) AutoCheckouts() ([]AutoCheckoutRow, error) {
 		GROUP BY 1, 2 HAVING count(*) >= 2 ORDER BY 3 DESC`)
 	return rows, err
 }
+
+// ═══ 🧮 تطابق الأرقام (قرار (ع) 10-06: «احسب كلشي وخلي يتاكد من كل شي») ═══
+// فحوصات سلامة: كل صف رقم يطلع شي ما منطقي بالبيانات — ماتركس يكشفه قبل
+// ما يوصل للإحصائيات.
+
+type IntegrityRow struct {
+	Kind  string   `db:"kind"`
+	Ref   string   `db:"ref"`
+	Label string   `db:"label"`
+	Num   *float64 `db:"num"`
+	Num2  *float64 `db:"num2"`
+	Who   *string  `db:"who"`
+	WhoID *string  `db:"whoId"`
+}
+
+func (r *MatrixWatchRepository) Integrity() ([]IntegrityRow, error) {
+	rows := []IntegrityRow{}
+	err := r.db.Select(&rows, `
+	-- فلوس على حجز ملغي
+	SELECT 'MONEY_ON_CANCELLED' AS kind, b.id AS ref, b.code AS label, `+RevenueAmountSQL("b")+`::float8 AS num, NULL::float8 AS num2,
+	       NULL::text AS who, NULL::text AS "whoId"
+	FROM "Booking" b WHERE b.status::text = 'CANCELLED' AND `+RevenueAmountSQL("b")+` > 0 AND b."archivedAt" IS NULL
+	UNION ALL
+	-- منجز بلا وقت إنجاز، أو إنجاز قبل التسجيل
+	SELECT 'BAD_COMPLETION', b.id, b.code, NULL, NULL, NULL, NULL
+	FROM "Booking" b WHERE b.status::text IN ('COMPLETED','PARTIAL') AND b."archivedAt" IS NULL
+	  AND upper(b.code) NOT LIKE 'OLD%' AND (b."completedAt" IS NULL OR b."completedAt" < b."createdAt" - interval '1 minute')
+	UNION ALL
+	-- مبلغ سالب
+	SELECT 'NEGATIVE', b.id, b.code, `+RevenueAmountSQL("b")+`::float8, NULL, NULL, NULL
+	FROM "Booking" b WHERE COALESCE(b."amountCollected",0) < 0 OR COALESCE(b."advancePaid",0) < 0
+	UNION ALL
+	-- أكثر من فاتورة فعّالة لنفس الحجز
+	SELECT 'DUP_INVOICE', li."bookingId", b.code, count(*)::float8, SUM(li."netTotal")::float8, NULL, NULL
+	FROM "LeaderInvoice" li JOIN "Booking" b ON b.id = li."bookingId"
+	WHERE li."revokedAt" IS NULL GROUP BY li."bookingId", b.code HAVING count(*) > 1
+	UNION ALL
+	-- فاتورة على حجز ملغي
+	SELECT 'INVOICE_ON_CANCELLED', b.id, b.code, li."netTotal"::float8, NULL, NULL, NULL
+	FROM "LeaderInvoice" li JOIN "Booking" b ON b.id = li."bookingId"
+	WHERE li."revokedAt" IS NULL AND b.status::text = 'CANCELLED'
+	UNION ALL
+	-- حضور مفتوح أكثر من ٢٤ ساعة، أو انصراف قبل الدخول
+	SELECT 'ATTENDANCE_BAD', a.id, e.name, EXTRACT(EPOCH FROM (COALESCE(a."checkOut", now()::timestamp) - a."checkIn"))/3600, NULL, e.name, e.id
+	FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
+	WHERE (a."checkOut" IS NULL AND a."checkIn" < now() - interval '24 hours') OR a."checkOut" < a."checkIn"
+	UNION ALL
+	-- دفعة مشروع أكبر من قيمة العقد بكثير (صفر زايد؟)
+	SELECT 'PAYMENT_OVER', p.id, p.name, pp.paid::float8, COALESCE(cv.amount, NULLIF(regexp_replace(COALESCE(p.price,''), '\D', '', 'g'), '')::numeric)::float8, NULL, NULL
+	FROM "Project" p
+	JOIN (SELECT "projectId", SUM(amount) AS paid FROM "ProjectPayment" WHERE "cancelledAt" IS NULL GROUP BY 1) pp ON pp."projectId" = p.id
+	LEFT JOIN "ProjectContractValue" cv ON cv."projectId" = p.id
+	WHERE COALESCE(cv.amount, NULLIF(regexp_replace(COALESCE(p.price,''), '\D', '', 'g'), '')::numeric) > 0
+	  AND pp.paid > 1.2 * COALESCE(cv.amount, NULLIF(regexp_replace(COALESCE(p.price,''), '\D', '', 'g'), '')::numeric)
+	UNION ALL
+	-- مبلغ حجز شاذ: أكبر من ١٠ أضعاف وسيط نفس الخدمة (غلط طباعة؟)
+	SELECT 'OUTLIER', b.id, b.code, `+RevenueAmountSQL("b")+`::float8, m.med::float8, NULL, NULL
+	FROM "Booking" b JOIN (
+	  SELECT "serviceId", percentile_cont(0.5) WITHIN GROUP (ORDER BY "amountCollected") AS med, count(*) AS n
+	  FROM "Booking" WHERE "amountCollected" > 0 AND status::text = 'COMPLETED' GROUP BY 1) m ON m."serviceId" = b."serviceId"
+	WHERE m.n >= 10 AND m.med > 0 AND `+RevenueAmountSQL("b")+` > 10 * m.med AND b."completedAt" > now() - interval '60 days'
+	UNION ALL
+	-- نقاط ماتركس على المالك أو مدير النظام (ما لازم)
+	SELECT 'SCORE_ON_ADMIN', e.id, e.name, count(*)::float8, NULL, e.name, e.id
+	FROM "MatrixScore" ms JOIN "Employee" e ON e.id = ms."employeeId"
+	WHERE e.role::text IN ('ADMIN','OWNER') GROUP BY e.id, e.name
+	LIMIT 300`)
+	return rows, err
+}

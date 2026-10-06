@@ -432,7 +432,7 @@ func (s *MatrixWatchService) pendingEye() EyeGroup {
 
 func (s *MatrixWatchService) Report() *EyesReport {
 	cust, scores, team := s.customerEye()
-	rep := &EyesReport{Eyes: []EyeGroup{s.revenueEye(), s.stockEye(), s.vehicleEye(), cust, s.itEye(), s.pendingEye()}, Customers: scores, TeamHappy: team, Insights: []string{}}
+	rep := &EyesReport{Eyes: []EyeGroup{s.revenueEye(), s.integrityEye(), s.stockEye(), s.vehicleEye(), cust, s.itEye(), s.pendingEye()}, Customers: scores, TeamHappy: team, Insights: []string{}}
 	high := 0
 	for _, e := range rep.Eyes {
 		high += e.High
@@ -583,4 +583,81 @@ func (s *MatrixWatchService) revenueEye() EyeGroup {
 		}
 	}
 	return finishEye(eye, "كل الفلوس مسجّلة: ماكو حجز منجز بلا مبلغ ولا مشروع بالتنفيذ بلا دفعات.")
+}
+
+// ═══ 🧮 تطابق الأرقام — ماتركس يتأكد من كل رقم ═══
+func (s *MatrixWatchService) integrityEye() EyeGroup {
+	eye := EyeGroup{Key: "INTEGRITY", Title: "تطابق الأرقام", Items: []EyeItem{}}
+	rows, err := s.repo.Integrity()
+	if err != nil {
+		eye.Items = append(eye.Items, EyeItem{Eye: eye.Key, Kind: "CHECK_FAILED", Severity: WatchMedium,
+			Title: "ماتركس ما گدر يكمّل فحص الأرقام", Detail: err.Error(), Advice: "بلّغ المبرمج."})
+		return finishEye(eye, "")
+	}
+	f := func(p *float64) string {
+		if p == nil {
+			return "—"
+		}
+		return fmtIQD(*p)
+	}
+	for _, r := range rows {
+		it := EyeItem{Eye: eye.Key, Kind: r.Kind}
+		if r.WhoID != nil {
+			it.OwnerID = *r.WhoID
+		}
+		if r.Who != nil {
+			it.OwnerName = *r.Who
+		}
+		switch r.Kind {
+		case "MONEY_ON_CANCELLED":
+			it.Severity, it.BookingID = WatchHigh, r.Ref
+			it.Title = "حجز " + r.Label + " ملغي وعليه فلوس " + f(r.Num)
+			it.Detail = "الحجز الملغي ما ينحسب بالإيراد، فهالمبلغ ضايع من الإحصائيات."
+			it.Advice = "إذا الشغل صار فعلاً رجّع الحجز منجز، وإذا ما صار رجّع الفلوس للزبون وصفّر المبلغ."
+		case "BAD_COMPLETION":
+			it.Severity, it.BookingID = WatchMedium, r.Ref
+			it.Title = "حجز " + r.Label + ": منجز بس وقت إنجازه غلط أو ناقص"
+			it.Detail = "يا ماكو وقت إنجاز، يا الإنجاز قبل تسجيل الحجز."
+			it.Advice = "المراقب يصحّح وقت الإنجاز حتى ينحسب بيومه الصحيح."
+		case "NEGATIVE":
+			it.Severity, it.BookingID = WatchHigh, r.Ref
+			it.Title = "حجز " + r.Label + ": مبلغ بالسالب"
+			it.Detail = "مبلغ مستلم أو دفعة مقدّمة أقل من صفر."
+			it.Advice = "غلط إدخال — يتصحّح فوراً."
+		case "DUP_INVOICE":
+			it.Severity, it.BookingID = WatchHigh, r.Ref
+			it.Title = fmt.Sprintf("حجز %s عليه %s فاتورة فعّالة", r.Label, num(*r.Num))
+			it.Detail = "مجموعها " + f(r.Num2) + ". المفروض فاتورة وحدة لكل حجز."
+			it.Advice = "المحاسب يسحب الفاتورة الزايدة."
+		case "INVOICE_ON_CANCELLED":
+			it.Severity, it.BookingID = WatchHigh, r.Ref
+			it.Title = "حجز " + r.Label + " ملغي وعليه فاتورة " + f(r.Num)
+			it.Detail = "فاتورة فعّالة على حجز ما صار."
+			it.Advice = "المحاسب يسحب الفاتورة أو يرجّع الحجز إذا الشغل صار."
+		case "ATTENDANCE_BAD":
+			it.Severity = WatchLow
+			it.Title = fmt.Sprintf("حضور %s: جلسة غير منطقية (%s ساعة)", r.Label, num(math.Round(*r.Num)))
+			it.Detail = "جلسة مفتوحة أكثر من يوم، أو انصراف قبل الدخول."
+			it.Advice = "المراقب يصحّح الجلسة من سجل الحضور."
+		case "PAYMENT_OVER":
+			it.Severity = WatchHigh
+			it.Title = "مشروع «" + r.Label + "»: المدفوع " + f(r.Num) + " أكبر من العقد " + f(r.Num2)
+			it.Detail = "المدفوع أكثر من قيمة العقد بـ٢٠٪ أو أكثر — يمكن صفر زايد بدفعة."
+			it.Advice = "المحاسب يراجع الدفعات ويا الوصولات."
+		case "OUTLIER":
+			it.Severity, it.BookingID = WatchMedium, r.Ref
+			it.Title = "حجز " + r.Label + ": مبلغ " + f(r.Num) + " أكبر من ١٠ أضعاف المعتاد (" + f(r.Num2) + ")"
+			it.Detail = "يمكن غلط طباعة (صفر زايد)."
+			it.Advice = "المحاسب يتأكد ويا الليدر والفاتورة."
+		case "SCORE_ON_ADMIN":
+			it.Severity = WatchLow
+			it.Title = "نقاط تقييم على " + r.Label + " (ما ينقيّم)"
+			it.Detail = fmt.Sprintf("%s نقطة انحسبت عليه.", num(*r.Num))
+			it.Advice = "بلّغ المبرمج — المالك والمدير مستثنين."
+		default:
+			continue
+		}
+		eye.Items = append(eye.Items, it)
+	}
+	return finishEye(eye, "✅ كل الأرقام متطابقة: ماكو فلوس على ملغي، ولا فواتير مكررة، ولا مبالغ شاذة، ولا حضور غلط.")
 }
