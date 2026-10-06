@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -314,4 +315,47 @@ func (h *AttendanceHandler) Gate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, g)
+}
+
+// POST /api/attendance/auto/{id}/answer — «شنو صار بعد ما خلص دوامك؟»
+func (h *AttendanceHandler) AnswerAuto(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Kind  string `json:"kind"`
+		Until string `json:"until"` // RFC3339
+		Note  string `json:"note"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&in)
+	var until *time.Time
+	if t, err := time.Parse(time.RFC3339, in.Until); err == nil {
+		until = &t
+	}
+	msg, err := h.service.AnswerAuto(middleware.EmployeeIDFromContext(r), r.PathValue("id"), in.Kind, until, in.Note, time.Now())
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"message": msg})
+}
+
+// GET /api/attendance/claims?status=PENDING — للمراقب.
+func (h *AttendanceHandler) Claims(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.Claims(r.URL.Query().Get("status"))
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// POST /api/attendance/claims/{id}/decide
+func (h *AttendanceHandler) DecideClaim(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Approve bool `json:"approve"`
+	}
+	_ = json.NewDecoder(r.Body).Decode(&in)
+	if err := h.service.DecideClaim(r.PathValue("id"), middleware.EmployeeIDFromContext(r), in.Approve); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

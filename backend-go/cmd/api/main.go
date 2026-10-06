@@ -539,6 +539,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// قرار (ع) 10-06: الي ما يسجّل انصراف ينسكّر تلقائياً بعد شفته بـ٣ ساعات.
 	safeguard.Loop("الانصراف التلقائي", 7*time.Minute, 15*time.Minute, func() {
 		n, err := attendanceService.AutoCheckout(time.Now(), func(id, msg string) { _ = notificationRepo.Create(id, "ATTENDANCE", msg) })
+		attendanceService.ExtendAutoByEvidence(time.Now())
 		if err != nil {
 			log.Printf("auto checkout: %v", err)
 		} else if n > 0 {
@@ -1405,6 +1406,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقييم الأداء اليدوي (KPI)
 	mux.Handle("POST /api/attendance/checkin", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckIn), requireAuth))
 	mux.Handle("POST /api/attendance/checkout", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckOut), requireAuth))
+	mux.Handle("POST /api/attendance/auto/{id}/answer", middleware.Chain(http.HandlerFunc(attendanceHandler.AnswerAuto), requireAuth))
+	mux.Handle("GET /api/attendance/claims", middleware.Chain(http.HandlerFunc(attendanceHandler.Claims), requireAuth, requireMonitor))
+	mux.Handle("POST /api/attendance/claims/{id}/decide", middleware.Chain(http.HandlerFunc(attendanceHandler.DecideClaim), requireAuth, requireMonitor))
 	mux.Handle("GET /api/attendance/gate", middleware.Chain(http.HandlerFunc(attendanceHandler.Gate), requireAuth))
 	mux.Handle("GET /api/attendance/mine", middleware.Chain(http.HandlerFunc(attendanceHandler.Mine), requireAuth))
 	mux.Handle("GET /api/attendance/open", middleware.Chain(http.HandlerFunc(attendanceHandler.OpenSession), requireAuth))

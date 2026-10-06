@@ -10,6 +10,7 @@ import GlobalSearch from './GlobalSearch'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import AttendanceGate from './AttendanceGate'
 import LastBookingPrompt from './LastBookingPrompt'
+import AutoCheckoutPrompt from './AutoCheckoutPrompt'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
 import { SessionContext } from '../session'
@@ -786,6 +787,7 @@ export default function Layout() {
           {/* شريط الإعلانات — يشوفه كل موظف تحت الهيدر مباشرة */}
           <AnnouncementTicker />
           <LastBookingPrompt />
+          <AutoCheckoutPrompt />
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">

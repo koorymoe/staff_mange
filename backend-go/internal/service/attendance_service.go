@@ -1,7 +1,9 @@
 package service
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -152,6 +154,14 @@ type AttendanceGate struct {
 	ShiftEnd   time.Time `json:"shiftEnd"`
 	EndLabel   string    `json:"endLabel"`
 	Evening    bool      `json:"evening"`
+	// AutoClosed انسكّر انصرافه تلقائياً وماتركس ينتظر جوابه «شنو صار؟».
+	AutoClosed *AutoClosedInfo `json:"autoClosed,omitempty"`
+}
+
+type AutoClosedInfo struct {
+	ID    string    `json:"id"`
+	At    time.Time `json:"at"`
+	Label string    `json:"label"`
 }
 
 // Gate حالة الموظف هسه. المالك ومدير النظام والي بإجازة معتمدة ما ينطلب منهم.
@@ -173,6 +183,11 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 	out := &AttendanceGate{Open: g.HasOpen, ShiftStart: from, ShiftEnd: to, EndLabel: clockLabel(to),
 		Evening: g.Shift != nil && *g.Shift == "EVENING"}
 	out.Required = !exempt && !g.OnLeave && !g.HasOpen && !g.HadToday
+	if !exempt && !g.HasOpen {
+		if a, err := s.repo.AutoClosedUnanswered(employeeID); err == nil && a != nil {
+			out.AutoClosed = &AutoClosedInfo{ID: a.ID, At: a.CheckOut, Label: clockLabel(a.CheckOut)}
+		}
+	}
 	out.AfterShift = !exempt && g.HasOpen && !now.Before(to)
 	return out, nil
 }
@@ -204,4 +219,101 @@ func (s *AttendanceService) AutoCheckout(now time.Time, notify func(employeeID, 
 		}
 	}
 	return n, nil
+}
+
+// ═══ «شنو صار بعد ما خلص دوامك؟» — قرار (ع) 10-06 ═══
+
+const evidenceSlack = 30 * time.Minute
+
+// AnswerAuto جواب الموظف على الانصراف التلقائي.
+//   - ACK: خلص وطلع.
+//   - BACK: رجع يشتغل هسه ← جلسة جديدة.
+//   - WORKED: چان يشتغل لحد until ← ماتركس يدوّر دليل بالنظام؛ الدليل يصحّح
+//     الوقت لحاله (لحد الدليل + نص ساعة)، والي بلا دليل يروح للمراقب.
+func (s *AttendanceService) AnswerAuto(employeeID, attendanceID, kind string, until *time.Time, note string, now time.Time) (string, error) {
+	a, err := s.repo.AutoClosedUnanswered(employeeID)
+	if err != nil || a == nil || a.ID != attendanceID {
+		return "", errors.New("ماكو انصراف تلقائي ينتظر جوابك")
+	}
+	c := repository.AttendanceClaimIn{AttendanceID: a.ID, EmployeeID: employeeID, Kind: kind, AutoAt: a.CheckOut, Note: &note, Status: "OK"}
+	switch kind {
+	case "ACK":
+		return "تمام — انصرافك يبقى الساعة " + clockLabel(a.CheckOut) + ".", s.repo.SaveClaim(c)
+	case "BACK":
+		if _, err := s.repo.CheckIn(employeeID); err != nil {
+			return "", err
+		}
+		return "انسجّل رجوعك هسه — لا تنسى تسجّل انصرافك من تخلص.", s.repo.SaveClaim(c)
+	case "WORKED":
+		if until == nil || !until.After(a.CheckOut) || until.After(now) {
+			return "", errors.New("حدد لحد يمته چنت تشتغل (بعد " + clockLabel(a.CheckOut) + " ولحد هسه)")
+		}
+		if strings.TrimSpace(note) == "" {
+			return "", errors.New("اكتب شنو چنت تشتغل")
+		}
+		c.ClaimedUntil = until
+		ev, _ := s.repo.LastEvidence(employeeID, a.CheckOut, *until)
+		if ev != nil {
+			c.EvidenceAt, c.Evidence = &ev.At, &ev.Label
+		}
+		switch {
+		case ev != nil && !ev.At.Add(evidenceSlack).Before(*until):
+			// الدليل يغطي الوقت كله — يتصحّح لحاله.
+			if err := s.repo.SetCheckOut(a.ID, *until); err != nil {
+				return "", err
+			}
+			return "✅ لگيت الدليل (" + ev.Label + ") — صحّحت انصرافك للساعة " + clockLabel(*until) + ".", s.repo.SaveClaim(c)
+		case ev != nil:
+			// دليل لحد وقت معيّن: لحده يتصحّح، والباقي للمراقب.
+			if err := s.repo.SetCheckOut(a.ID, ev.At.Add(evidenceSlack)); err != nil {
+				return "", err
+			}
+			c.Status = "PENDING"
+			return "لگيت دليل لحد الساعة " + clockLabel(ev.At) + " (" + ev.Label + ") وصحّحت لحده. الباقي راح للمراقب يقرر.", s.repo.SaveClaim(c)
+		default:
+			c.Status = "PENDING"
+			return "ما لگيت شغل مسجّل بالنظام بعد " + clockLabel(a.CheckOut) + " — طلبك راح للمراقب يقرر.", s.repo.SaveClaim(c)
+		}
+	}
+	return "", errors.New("جواب غير معروف")
+}
+
+// ExtendAutoByEvidence الي انسكّر تلقائياً وبعدين خلّص شغل (حجز، فاتورة…)
+// قبل ما يجاوب — الانصراف يتمدّد لحاله لحد آخر دليل.
+func (s *AttendanceService) ExtendAutoByEvidence(now time.Time) int {
+	rows, err := s.repo.ExtendableAuto()
+	if err != nil {
+		return 0
+	}
+	n := 0
+	for _, r := range rows {
+		ev, _ := s.repo.LastEvidence(r.EmployeeID, r.CheckOut, now)
+		if ev == nil {
+			continue
+		}
+		if err := s.repo.SetCheckOut(r.ID, ev.At); err == nil {
+			s.repo.NoteAuto(r.ID, "ما سجّل انصراف — تمدّد لحد آخر شغل بالنظام: "+ev.Label+" ("+clockLabel(ev.At)+").")
+			n++
+		}
+	}
+	return n
+}
+
+func (s *AttendanceService) Claims(status string) ([]repository.AttendanceClaimRow, error) {
+	return s.repo.Claims(status)
+}
+
+// DecideClaim المراقب يقرر طلب «چنت أشتغل» الي ماله دليل كافي.
+func (s *AttendanceService) DecideClaim(id, byID string, approve bool) error {
+	c, err := s.repo.Claim(id)
+	if err != nil || c.Status != "PENDING" {
+		return errors.New("الطلب مو موجود أو انحسم")
+	}
+	if approve && c.ClaimedUntil != nil {
+		if err := s.repo.SetCheckOut(c.AttendanceID, *c.ClaimedUntil); err != nil {
+			return err
+		}
+		return s.repo.DecideClaim(id, byID, "APPROVED")
+	}
+	return s.repo.DecideClaim(id, byID, "REJECTED")
 }

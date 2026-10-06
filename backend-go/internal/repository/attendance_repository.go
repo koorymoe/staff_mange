@@ -281,7 +281,7 @@ func (r *AttendanceRepository) AutoClose(id, employeeID string, at time.Time, re
 		return err
 	}
 	defer func() { _ = tx.Rollback() }()
-	res, err := tx.Exec(`UPDATE "Attendance" SET "checkOut" = $2 WHERE id = $1 AND "checkOut" IS NULL`, id, at)
+	res, err := tx.Exec(`UPDATE "Attendance" SET "checkOut" = ($2::timestamptz AT TIME ZONE 'UTC') WHERE id = $1 AND "checkOut" IS NULL`, id, at)
 	if err != nil {
 		return err
 	}
@@ -308,4 +308,140 @@ func (r *AttendanceRepository) AutoCountSince(since time.Time) (map[string]int, 
 		out[x.EmployeeID] = x.N
 	}
 	return out, err
+}
+
+// ═══ ما بعد الانصراف التلقائي: سؤال الموظف والدليل ═══
+
+// AutoClosedOpen آخر جلسة انسكّرت تلقائياً خلال ٢٠ ساعة وماكو جواب عليها.
+type AutoClosedSession struct {
+	ID       string    `db:"id"`
+	CheckIn  time.Time `db:"checkIn"`
+	CheckOut time.Time `db:"checkOut"`
+}
+
+func (r *AttendanceRepository) AutoClosedUnanswered(employeeID string) (*AutoClosedSession, error) {
+	var s AutoClosedSession
+	err := r.db.Get(&s, `SELECT a.id, a."checkIn", a."checkOut" FROM "Attendance" a
+		JOIN "AttendanceAuto" au ON au."attendanceId" = a.id
+		WHERE a."employeeId" = $1 AND au."createdAt" > now() - interval '20 hours'
+		  AND NOT EXISTS (SELECT 1 FROM "AttendanceClaim" c WHERE c."attendanceId" = a.id)
+		ORDER BY a."checkOut" DESC LIMIT 1`, employeeID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &s, err
+}
+
+// WorkEvidence آخر دليل شغل للموظف بين وقتين: حجز خلّصه، فاتورة، تقرير، مهمة.
+type WorkEvidence struct {
+	At    time.Time `db:"at"`
+	Label string    `db:"label"`
+}
+
+func (r *AttendanceRepository) LastEvidence(employeeID string, from, to time.Time) (*WorkEvidence, error) {
+	var e WorkEvidence
+	err := r.db.Get(&e, `SELECT at, label FROM (
+		SELECT (b."completedAt" AT TIME ZONE 'UTC') AS at, 'خلّص حجز ' || b.code AS label
+		  FROM "Booking" b JOIN "BookingAssignment" ba ON ba."bookingId" = b.id
+		  WHERE ba."employeeId" = $1 AND b."completedAt" IS NOT NULL
+		UNION ALL
+		SELECT (li."createdAt" AT TIME ZONE 'UTC'), 'رفع فاتورة حجز ' || b.code
+		  FROM "LeaderInvoice" li JOIN "Booking" b ON b.id = li."bookingId" WHERE li."employeeId" = $1
+		UNION ALL
+		SELECT (w."createdAt" AT TIME ZONE 'UTC'), 'كتب تقرير حجز ' || b.code
+		  FROM "WorkReport" w JOIN "Booking" b ON b.id = w."bookingId" WHERE w."employeeId" = $1
+		UNION ALL
+		SELECT t."doneAt", 'خلّص مهمة «' || t.title || '»' FROM "ExtraTask" t WHERE t."assignedToId" = $1 AND t."doneAt" IS NOT NULL
+	) x WHERE at > $2 AND at <= $3 ORDER BY at DESC LIMIT 1`, employeeID, from, to)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &e, err
+}
+
+type AttendanceClaimIn struct {
+	AttendanceID string
+	EmployeeID   string
+	Kind         string
+	AutoAt       time.Time
+	ClaimedUntil *time.Time
+	EvidenceAt   *time.Time
+	Evidence     *string
+	Note         *string
+	Status       string
+}
+
+func (r *AttendanceRepository) SaveClaim(c AttendanceClaimIn) error {
+	_, err := r.db.Exec(`INSERT INTO "AttendanceClaim" ("attendanceId", "employeeId", kind, "autoAt", "claimedUntil", "evidenceAt", evidence, note, status)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9) ON CONFLICT ("attendanceId") DO NOTHING`,
+		c.AttendanceID, c.EmployeeID, c.Kind, c.AutoAt, c.ClaimedUntil, c.EvidenceAt, c.Evidence, c.Note, c.Status)
+	return err
+}
+
+// SetCheckOut يصحّح وقت الانصراف (بدليل أو بقرار المراقب).
+func (r *AttendanceRepository) SetCheckOut(id string, at time.Time) error {
+	_, err := r.db.Exec(`UPDATE "Attendance" SET "checkOut" = ($2::timestamptz AT TIME ZONE 'UTC') WHERE id = $1`, id, at)
+	return err
+}
+
+type AttendanceClaimRow struct {
+	ID           string     `db:"id" json:"id"`
+	AttendanceID string     `db:"attendanceId" json:"attendanceId"`
+	EmployeeID   string     `db:"employeeId" json:"employeeId"`
+	Name         string     `db:"name" json:"name"`
+	Kind         string     `db:"kind" json:"kind"`
+	AutoAt       time.Time  `db:"autoAt" json:"autoAt"`
+	ClaimedUntil *time.Time `db:"claimedUntil" json:"claimedUntil"`
+	EvidenceAt   *time.Time `db:"evidenceAt" json:"evidenceAt"`
+	Evidence     *string    `db:"evidence" json:"evidence"`
+	Note         *string    `db:"note" json:"note"`
+	Status       string     `db:"status" json:"status"`
+	CreatedAt    time.Time  `db:"createdAt" json:"createdAt"`
+}
+
+func (r *AttendanceRepository) Claims(status string) ([]AttendanceClaimRow, error) {
+	rows := []AttendanceClaimRow{}
+	err := r.db.Select(&rows, `SELECT c.id, c."attendanceId", c."employeeId", e.name, c.kind, c."autoAt", c."claimedUntil",
+		c."evidenceAt", c.evidence, c.note, c.status, c."createdAt"
+		FROM "AttendanceClaim" c JOIN "Employee" e ON e.id = c."employeeId"
+		WHERE ($1 = '' OR c.status = $1) ORDER BY c."createdAt" DESC LIMIT 200`, status)
+	return rows, err
+}
+
+func (r *AttendanceRepository) Claim(id string) (*AttendanceClaimRow, error) {
+	var c AttendanceClaimRow
+	err := r.db.Get(&c, `SELECT c.id, c."attendanceId", c."employeeId", e.name, c.kind, c."autoAt", c."claimedUntil",
+		c."evidenceAt", c.evidence, c.note, c.status, c."createdAt"
+		FROM "AttendanceClaim" c JOIN "Employee" e ON e.id = c."employeeId" WHERE c.id = $1`, id)
+	return &c, err
+}
+
+func (r *AttendanceRepository) DecideClaim(id, byID, status string) error {
+	_, err := r.db.Exec(`UPDATE "AttendanceClaim" SET status = $3, "decidedById" = $2, "decidedAt" = now()
+		WHERE id = $1 AND status = 'PENDING'`, id, byID, status)
+	return err
+}
+
+// ExtendableAuto جلسات انسكّرت تلقائياً بآخر ٢٠ ساعة وماكو جواب — حتى إذا
+// خلّص شغل بعدها، الانصراف يتمدّد لحاله لحد الدليل.
+func (r *AttendanceRepository) ExtendableAuto() ([]struct {
+	ID         string    `db:"id"`
+	EmployeeID string    `db:"employeeId"`
+	CheckOut   time.Time `db:"checkOut"`
+}, error) {
+	rows := []struct {
+		ID         string    `db:"id"`
+		EmployeeID string    `db:"employeeId"`
+		CheckOut   time.Time `db:"checkOut"`
+	}{}
+	err := r.db.Select(&rows, `SELECT a.id, a."employeeId", (a."checkOut" AT TIME ZONE 'UTC') AS "checkOut" FROM "Attendance" a
+		JOIN "AttendanceAuto" au ON au."attendanceId" = a.id
+		WHERE au."createdAt" > now() - interval '20 hours'
+		  AND NOT EXISTS (SELECT 1 FROM "AttendanceClaim" c WHERE c."attendanceId" = a.id)
+		  AND NOT EXISTS (SELECT 1 FROM "Attendance" o WHERE o."employeeId" = a."employeeId" AND o."checkOut" IS NULL)`)
+	return rows, err
+}
+
+func (r *AttendanceRepository) NoteAuto(id, reason string) {
+	_, _ = r.db.Exec(`UPDATE "AttendanceAuto" SET reason = $2 WHERE "attendanceId" = $1`, id, reason)
 }

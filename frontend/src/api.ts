@@ -5191,6 +5191,10 @@ export const api = {
   checkIn: () => request<AttendanceRecord>('/attendance/checkin', { method: 'POST' }),
   checkOut: () => request<AttendanceRecord>('/attendance/checkout', { method: 'POST' }),
   getAttendanceGate: () => request<AttendanceGateState>('/attendance/gate'),
+  answerAutoCheckout: (id: string, kind: 'ACK' | 'WORKED' | 'BACK', until?: string, note?: string) =>
+    request<{ message: string }>(`/attendance/auto/${id}/answer`, { method: 'POST', body: JSON.stringify({ kind, until, note }) }),
+  getAttendanceClaims: (status = 'PENDING') => request<AttendanceClaim[]>(`/attendance/claims?status=${status}`),
+  decideAttendanceClaim: (id: string, approve: boolean) => request<{ ok: boolean }>(`/attendance/claims/${id}/decide`, { method: 'POST', body: JSON.stringify({ approve }) }),
   getProjectPayments: (projectId: string) => request<ProjectPaymentsState>(`/projects/${projectId}/payments`),
   addProjectPayment: (projectId: string, body: { amount: number; paidAt: string; method: string; receiptNo?: string; note?: string }) =>
     request<ProjectPaymentsState>(`/projects/${projectId}/payments`, { method: 'POST', body: JSON.stringify(body) }),
@@ -6072,7 +6076,12 @@ export interface HumanRatingRow { raterName: string | null; stage: string; code:
 export interface StaffScoreDetail extends StaffScore { month: string; points: MatrixScorePoint[]; human: HumanRatingRow[] }
 
 // ═══ الحضور الإجباري (قرار (ع) 10-06) ═══
-export interface AttendanceGateState { required: boolean; open: boolean; afterShift: boolean; shiftStart: string; shiftEnd: string; endLabel: string; evening: boolean }
+export interface AttendanceGateState { required: boolean; open: boolean; afterShift: boolean; shiftStart: string; shiftEnd: string; endLabel: string; evening: boolean; autoClosed?: { id: string; at: string; label: string } }
+export interface AttendanceClaim {
+  id: string; attendanceId: string; employeeId: string; name: string; kind: 'ACK' | 'WORKED' | 'BACK'
+  autoAt: string; claimedUntil: string | null; evidenceAt: string | null; evidence: string | null; note: string | null
+  status: 'OK' | 'PENDING' | 'APPROVED' | 'REJECTED'; createdAt: string
+}
 
 // ═══ دفعات المشاريع (قرار (ع) 10-06) ═══
 export interface ProjectMoney {

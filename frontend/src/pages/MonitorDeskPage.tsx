@@ -36,6 +36,7 @@ const MonitorDashboard = lazy(() => import('./MonitorDashboard'))
 const MatrixWatchEyes = lazy(() => import('../components/MatrixWatchEyes'))
 const PeerVoicePage = lazy(() => import('./PeerVoicePage'))
 const StaffScorePage = lazy(() => import('./StaffScorePage'))
+const AttendanceClaims = lazy(() => import('../components/AttendanceClaims'))
 const PeriodicRatings = lazy(() => import('../components/StaffRating').then((m) => ({ default: m.PeriodicRatings })))
 const WorkplaceIssuesPage = lazy(() => import('./WorkplaceIssuesPage'))
 
@@ -52,7 +53,7 @@ interface Section {
 const SECTIONS: Section[] = [
   // طلب (ع) 10-05: «لازم اكو رقابه بكل مكان… وتروح للمراقب ويا تحليل ماتركس».
   { id: 'eyes', label: 'عيون الرقابة', icon: '🔎', todo: 'المخزن والسيارات ورأي الزبائن والآيتي والطلبات المعلّقة — ويا اقتراح ماتركس' },
-  { id: 'ratings', label: 'تقييماتي', icon: '⭐', todo: 'قيّم الليدر والإداري للحجوزات الي خلصت، وقيّم شغل المكاتب كل نص شهر' },
+  { id: 'ratings', label: 'تقييماتي والانصراف', icon: '⭐', todo: 'طلبات تصحيح الانصراف، وقيّم الليدر والإداري، وشغل المكاتب كل نص شهر' },
   { id: 'scores', label: 'تقييم الموظفين', icon: '🏅', todo: 'ماتركس ٦٠٪ + البشر ٤٠٪ — شوف منو نازل وليش' },
   { id: 'peer', label: 'صوت الموظفين', icon: '🗣️', todo: 'تقارير ماتركس عن مشاكل الموظفين ويا زملائهم' },
   { id: 'wissues', label: 'المشاكل الوظيفية', icon: '🤝', todo: 'سجّل الإفادات وخلّي ماتركس يقترح' },
@@ -190,7 +191,7 @@ export default function MonitorDeskPage() {
 
       <Suspense fallback={<p className="py-16 text-center text-slate-400">جاري التحميل…</p>}>
         {active === 'eyes' && <MatrixWatchEyes />}
-        {active === 'ratings' && <PeriodicRatings />}
+        {active === 'ratings' && <div className="space-y-4"><AttendanceClaims /><PeriodicRatings /></div>}
         {active === 'scores' && <StaffScorePage />}
         {active === 'peer' && <PeerVoicePage />}
         {active === 'wissues' && <WorkplaceIssuesPage />}
