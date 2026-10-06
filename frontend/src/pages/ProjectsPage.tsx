@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
-import { api, type ProjectMoney } from '../api'
+import { api, apiRequest, type ProjectMoney } from '../api'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
@@ -9,24 +9,8 @@ import BookingCodeChip from '../components/BookingCodeChip'
 import SurveyPhotos from '../components/SurveyPhotos'
 import { roleLabelShort } from '../roleLabels'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
-
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const token = localStorage.getItem('authToken')
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(options?.headers || {}),
-    },
-  })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}))
-    throw new Error(body.error || `Request failed: ${res.status}`)
-  }
-  return res.json()
-}
+// ⚠️ چانت عندها طريقة اتصال خاصة (من أصلها كنظام منفصل) — هسه الموحدة.
+const request = apiRequest
 
 // ---------------------------------------------------------------------------
 // Types & constants
@@ -1287,6 +1271,13 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const [task, setTask] = useState(project.task || '')
   const [price, setPrice] = useState(project.price || '')
   const [survey, setSurvey] = useState<string[]>(SURVEY.map((s, i) => project.survey?.[i] || s.opts[0]))
+  // القائمة تنزل بلا استمارة الكشف (حتى تخف) — نجيبها هنا إذا بنحتاجها.
+  useEffect(() => {
+    if (!toSer) return
+    void request<Project>(`/projects/${project.id}`).then((full) => {
+      if (full.survey?.length) setSurvey(SURVEY.map((s, i) => full.survey?.[i] || s.opts[0]))
+    }).catch(() => {})
+  }, [toSer, project.id])
   const [reason, setReason] = useState('')
   const [otherReason, setOtherReason] = useState('')
   const [notes, setNotes] = useState('')
@@ -1486,7 +1477,11 @@ function useCanUploadProjectSurvey(project: Project) {
 // ---------------------------------------------------------------------------
 // Report modal (survey / visit)
 // ---------------------------------------------------------------------------
-function ReportModal({ type, project, onClose }: { type: 'survey' | 'visit'; project: Project; onClose: () => void }) {
+function ReportModal({ type, project: listProject, onClose }: { type: 'survey' | 'visit'; project: Project; onClose: () => void }) {
+  // القائمة بلا استمارة الكشف — نجيب المشروع كامل لمن تنفتح.
+  const [full, setFull] = useState<Project | null>(null)
+  useEffect(() => { void request<Project>(`/projects/${listProject.id}`).then(setFull).catch(() => {}) }, [listProject.id])
+  const project = full ?? listProject
   const canUpload = useCanUploadProjectSurvey(project)
   return (
     <Modal onClose={onClose} title={type === 'survey' ? 'استمارة الكشف' : 'تقرير الزيارة'} wide>

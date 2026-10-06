@@ -41,8 +41,9 @@ func prefixed(cols, alias string) string {
 	return strings.Join(out, ", ")
 }
 
+// ⚠️ القائمة بلا استمارة الكشف (١٧ جواب لكل مشروع) — تنزل بس من ينفتح المشروع.
 const projectListColumns = `id, code, name, rep, phone, location, "locationUrl", "mapLatitude", "mapLongitude",
-	"workType", "refPerson", stage, price, staff, time, task, priority, "deliveryDate", survey,
+	"workType", "refPerson", stage, price, staff, time, task, priority, "deliveryDate", (NULL::jsonb) AS survey,
 	"bookingId", "responsibleEmployeeId", "surveyorEmployeeId", "createdByEmployeeId", "createdAt", "updatedAt",
 	"delegatedToEmployeeId", "delegatedByEmployeeId", "delegatedAt",
 	("contractPdfBase64" IS NOT NULL) AS "hasContract",

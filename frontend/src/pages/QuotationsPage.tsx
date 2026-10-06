@@ -34,10 +34,15 @@ export default function QuotationsPage() {
   const [search, setSearch] = useState('')
   /** العرض الي انفتح تاريخه — واحد بس، حتى الجدول ما يتمدّد كله. */
   const [historyId, setHistoryId] = useState<string | null>(null)
+  // قرار (ع) 10-06: «صلح عروض الاسعار بتقسيم الشاشه» — ٥٠ عرض بالصفحة، بلا
+  // بنود ولا صور (چانت تنزل كل العروض وصور منتجاتها مرة وحدة).
+  const [page, setPage] = useState(1)
+  const [pages, setPages] = useState(1)
+  const [total, setTotal] = useState(0)
 
-  const load = (searchValue: string) => {
-    api.getQuotations(searchValue)
-      .then(setQuotations)
+  const load = (searchValue: string, p = page) => {
+    api.getQuotationsPage(p, searchValue)
+      .then((r) => { setQuotations(r.items); setPages(Math.max(1, r.pages)); setTotal(r.total) })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false))
   }
@@ -45,9 +50,10 @@ export default function QuotationsPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true)
-    const t = setTimeout(() => load(search), 300)
+    const t = setTimeout(() => load(search, page), 300)
     return () => clearTimeout(t)
-  }, [search])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, page])
 
   const handleDelete = async (id: string) => {
     if (!confirm('هل أنت متأكد من حذف عرض السعر؟')) return
@@ -98,7 +104,7 @@ export default function QuotationsPage() {
         <input
           type="text"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1) }}
           placeholder="ابحث باسم الزبون أو المشروع أو رقم العرض..."
           style={{
             width: '100%', maxWidth: '420px', padding: '10px 16px',
@@ -231,6 +237,15 @@ export default function QuotationsPage() {
               )}
             </tbody>
           </table>
+          {pages > 1 && (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '12px', borderTop: `1px solid ${PRIMARY}` }}>
+              <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}
+                style={{ padding: '6px 14px', borderRadius: '8px', border: `1px solid ${PRIMARY}`, background: 'transparent', color: PRIMARY_TEXT, cursor: 'pointer', opacity: page <= 1 ? 0.4 : 1 }}>→ السابقة</button>
+              <span style={{ fontSize: '13px', color: PRIMARY_TEXT }}>صفحة {page} من {pages} · {total} عرض</span>
+              <button type="button" disabled={page >= pages} onClick={() => setPage(page + 1)}
+                style={{ padding: '6px 14px', borderRadius: '8px', border: `1px solid ${PRIMARY}`, background: 'transparent', color: PRIMARY_TEXT, cursor: 'pointer', opacity: page >= pages ? 0.4 : 1 }}>التالية ←</button>
+            </div>
+          )}
         </div>
       )}
     </div>

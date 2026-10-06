@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strconv"
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
@@ -18,6 +19,24 @@ func NewQuotationHandler(s *service.QuotationService) *QuotationHandler {
 
 // GET /api/quotations?search=...
 func (h *QuotationHandler) List(w http.ResponseWriter, r *http.Request) {
+	// ?page= — القائمة المقسّمة الخفيفة (بلا بنود ولا صور).
+	if p := r.URL.Query().Get("page"); p != "" {
+		page, _ := strconv.Atoi(p)
+		if page < 1 {
+			page = 1
+		}
+		limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+		if limit < 1 || limit > 100 {
+			limit = 50
+		}
+		res, err := h.service.ListPage(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), r.URL.Query().Get("search"), page, limit)
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر جلب عروض الأسعار")
+			return
+		}
+		WriteJSON(w, http.StatusOK, res)
+		return
+	}
 	quotations, err := h.service.List(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r), r.URL.Query().Get("search"))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب عروض الأسعار")

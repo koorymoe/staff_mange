@@ -1189,6 +1189,10 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 let refreshTimer = 0
 
+// apiRequest نفس طريقة الاتصال الموحدة (الجلسة المنتهية، رسائل الأخطاء بالعراقي،
+// تحديث عين ماتركس) — للشاشات الي چانت عندها طريقة خاصة بيها.
+export const apiRequest = request
+
 // ═══ ليش نترجم رقم الحالة ═══
 //
 // «Request failed: 413» ما يگول للموظف ولا شي. هو يعرف إنه ضغط زر
@@ -4960,6 +4964,9 @@ export const api = {
     }),
 
   getQuotation: (id: string) => request<Quotation>(`/quotations/${id}`),
+  // القائمة المقسّمة الخفيفة — بلا بنود ولا صور (تنزل بس من ينفتح العرض).
+  getQuotationsPage: (page: number, search = '') =>
+    request<{ items: Quotation[]; total: number; page: number; pages: number }>(`/quotations?page=${page}&limit=50${search ? `&search=${encodeURIComponent(search)}` : ''}`),
   /** النسخ القديمة المؤرشفة — الأحدث أولاً */
   getQuotationVersions: (id: string) =>
     request<QuotationVersion[]>(`/quotations/${id}/versions`),

@@ -146,3 +146,22 @@ func (s *QuotationService) Delete(id string) error {
 func (s *QuotationService) Versions(id string) ([]model.QuotationVersion, error) {
 	return s.repo.Versions(id)
 }
+
+// ListPage نفس صلاحيات List، بس صفحة بصفحة وبلا بنود ولا صور.
+func (s *QuotationService) ListPage(actorID, role, search string, page, limit int) (*repository.QuotationPage, error) {
+	owner := ""
+	if role != "ADMIN" && role != "OWNER" {
+		hasManageAll, hasEditOwn, err := s.actorPerms(actorID)
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case hasManageAll:
+		case hasEditOwn:
+			owner = actorID
+		default:
+			return &repository.QuotationPage{Items: []model.Quotation{}, Page: page}, nil
+		}
+	}
+	return s.repo.ListPage(search, owner, page, limit)
+}

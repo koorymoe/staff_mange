@@ -375,3 +375,63 @@ func (r *QuotationRepository) Versions(quotationID string) ([]model.QuotationVer
 		ORDER BY v.version DESC`, quotationID)
 	return rows, err
 }
+
+// ═══ قائمة العروض مقسّمة (قرار (ع) 10-06: «صلح عروض الاسعار بتقسيم الشاشه») ═══
+// القائمة القديمة چانت تجيب كل العروض من أول يوم ويا بنودها وصور منتجاتها
+// (نص base64 طويل) حتى تعرض أسماء وأرقام بس. هسه: صفحة بصفحة، بلا بنود ولا
+// صور — البنود والصور تنزل بس من ينفتح العرض (FindByID).
+
+type QuotationPage struct {
+	Items []model.Quotation `json:"items"`
+	Total int               `json:"total"`
+	Page  int               `json:"page"`
+	Pages int               `json:"pages"`
+}
+
+// ListPage صفحة من العروض. ownerID غير فارغ = عروض هالموظف بس.
+func (r *QuotationRepository) ListPage(search, ownerID string, page, limit int) (*QuotationPage, error) {
+	where := `WHERE ($1 = '' OR "customerName" ILIKE '%' || $1 || '%' OR "projectName" ILIKE '%' || $1 || '%'
+		OR "quotationNumber" ILIKE '%' || $1 || '%') AND ($2 = '' OR "createdByEmployeeId" = $2)`
+	out := &QuotationPage{Items: []model.Quotation{}, Page: page}
+	if err := r.db.Get(&out.Total, `SELECT count(*) FROM "Quotation" `+where, search, ownerID); err != nil {
+		return nil, err
+	}
+	out.Pages = (out.Total + limit - 1) / limit
+	if err := r.db.Select(&out.Items, `SELECT * FROM "Quotation" `+where+` ORDER BY "createdAt" DESC LIMIT $3 OFFSET $4`,
+		search, ownerID, limit, (page-1)*limit); err != nil {
+		return nil, err
+	}
+	// أسماء المنشئين بس — بلا بنود.
+	empIDs := map[string]bool{}
+	for i := range out.Items {
+		out.Items[i].Items = []model.QuotationItem{}
+		if out.Items[i].CreatedByEmployeeID != "" {
+			empIDs[out.Items[i].CreatedByEmployeeID] = true
+		}
+	}
+	if len(empIDs) > 0 {
+		list := make([]string, 0, len(empIDs))
+		for id := range empIDs {
+			list = append(list, id)
+		}
+		briefs := []model.EmployeeBrief{}
+		q, args, err := sqlx.In(`SELECT id, name FROM "Employee" WHERE id IN (?)`, list)
+		if err != nil {
+			return nil, err
+		}
+		if err := r.db.Select(&briefs, r.db.Rebind(q), args...); err != nil {
+			return nil, err
+		}
+		by := map[string]model.EmployeeBrief{}
+		for _, b := range briefs {
+			by[b.ID] = b
+		}
+		for i := range out.Items {
+			if b, ok := by[out.Items[i].CreatedByEmployeeID]; ok {
+				c := b
+				out.Items[i].CreatedByEmployee = &c
+			}
+		}
+	}
+	return out, nil
+}
