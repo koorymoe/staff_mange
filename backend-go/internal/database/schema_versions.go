@@ -417,6 +417,8 @@ func versionedMigrations() []Migration {
 	result = append(result, projectPaymentMigrations()...)
 	// 0324: الانصراف التلقائي — ماتركس يسأل ويتأكد بالدليل.
 	result = append(result, attendanceClaimMigrations()...)
+	// 0325: موردين التقنيين — التقني يضيف، والمدير يختار لكل تقني.
+	result = append(result, techSupplierMigrations()...)
 	return result
 }
 

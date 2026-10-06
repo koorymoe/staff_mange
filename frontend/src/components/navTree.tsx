@@ -345,6 +345,8 @@ export const navItems: NavItem[] = [
       },
       // قرار (ع) 10-06: «المشاريع الموجّهة لي» مباشرة تحت «العمل» جنب «إضافة مشروع».
       { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true },
+      // قرار (ع) 10-06: موردين التقنيين — التقني يضيف والمدير يختار لكل تقني.
+      { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers' },
       {
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
         // ⚠️ محجوبة عن المحاسب: محتواها **نفسه** محتوى «العمل» مالته
@@ -418,6 +420,8 @@ export const navItems: NavItem[] = [
     fieldStaffOnly: true,
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
+      // موردين التقنيين للفني الي عنده الصلاحية (مسؤول خدمة مثلاً).
+      { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, permission: 'tech_suppliers' },
       // ⚠️ «التقارير» و«فواتير الليدر» انشالن من هنا عن قصد — صاروا
       // خيارين جوّا شاشة «مهامي» نفسها.
       //

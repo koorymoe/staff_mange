@@ -14,6 +14,7 @@ import MyExtraTasks from '../components/MyExtraTasks'
 import CrewRatingPrompt from '../components/CrewRatingPrompt'
 import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
+import TechSuppliersLink from '../components/TechSuppliersLink'
 import AfterInventoryPrompt from '../components/AfterInventoryPrompt'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
 import LeaderInvoiceNew from './LeaderInvoiceNew'
@@ -506,6 +507,7 @@ export default function MyTasks() {
             {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
                 لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
             <MyScoreCard />
+            <TechSuppliersLink />
             <PeerCheckinCard />
             <CrewRatingPrompt />
             <AfterInventoryPrompt />

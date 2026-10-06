@@ -1738,6 +1738,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بحث المناطق يمر من سيرفرنا — خدمة الخرائط تحجب المتصفحات
 	mux.Handle("GET /api/geo/search", middleware.Chain(http.HandlerFunc(geoHandler.Search), requireAuth))
 
+	// ── موردين التقنيين (قرار (ع) 10-06): التقني يضيف، والمدير يختار لكل تقني ──
+	techSupplierHandler := handler.NewTechSupplierHandler(repository.NewTechSupplierRepository(db))
+	mux.Handle("GET /api/tech-suppliers/can", middleware.Chain(http.HandlerFunc(techSupplierHandler.Can), requireAuth))
+	mux.Handle("GET /api/tech-suppliers/mine", middleware.Chain(http.HandlerFunc(techSupplierHandler.Mine), requireAuth))
+	mux.Handle("POST /api/tech-suppliers", middleware.Chain(http.HandlerFunc(techSupplierHandler.Create), requireAuth))
+	mux.Handle("GET /api/tech-suppliers", middleware.Chain(http.HandlerFunc(techSupplierHandler.All), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/tech-suppliers/{id}", middleware.Chain(http.HandlerFunc(techSupplierHandler.Update), requireAuth, requireAdmin))
+	mux.Handle("DELETE /api/tech-suppliers/{id}", middleware.Chain(http.HandlerFunc(techSupplierHandler.Delete), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/tech-suppliers/access/{employeeId}", middleware.Chain(http.HandlerFunc(techSupplierHandler.SetAccess), requireAuth, requireAdmin))
 	mux.Handle("GET /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.List), requireAuth))
 	mux.Handle("POST /api/suppliers", middleware.Chain(http.HandlerFunc(supplierHandler.Create), requireAuth, requireSuppliersMgmt))
 	mux.Handle("PUT /api/suppliers/{id}", middleware.Chain(http.HandlerFunc(supplierHandler.Update), requireAuth, requireSuppliersMgmt))

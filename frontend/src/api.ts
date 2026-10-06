@@ -5191,6 +5191,13 @@ export const api = {
   checkIn: () => request<AttendanceRecord>('/attendance/checkin', { method: 'POST' }),
   checkOut: () => request<AttendanceRecord>('/attendance/checkout', { method: 'POST' }),
   getAttendanceGate: () => request<AttendanceGateState>('/attendance/gate'),
+  techSuppliersCan: () => request<{ can: boolean }>('/tech-suppliers/can'),
+  getMyTechSuppliers: () => request<TechSupplier[]>('/tech-suppliers/mine'),
+  addTechSupplier: (body: TechSupplierIn) => request<{ id: string; message: string }>('/tech-suppliers', { method: 'POST', body: JSON.stringify(body) }),
+  getAllTechSuppliers: () => request<{ suppliers: TechSupplier[]; people: { id: string; name: string; role: string; kind: string }[] }>('/tech-suppliers'),
+  updateTechSupplier: (id: string, body: TechSupplierIn) => request<{ ok: boolean }>(`/tech-suppliers/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
+  deleteTechSupplier: (id: string) => request<{ ok: boolean }>(`/tech-suppliers/${id}`, { method: 'DELETE' }),
+  setTechSupplierAccess: (employeeId: string, supplierIds: string[]) => request<{ ok: boolean }>(`/tech-suppliers/access/${employeeId}`, { method: 'PUT', body: JSON.stringify({ supplierIds }) }),
   answerAutoCheckout: (id: string, kind: 'ACK' | 'WORKED' | 'BACK', until?: string, note?: string) =>
     request<{ message: string }>(`/attendance/auto/${id}/answer`, { method: 'POST', body: JSON.stringify({ kind, until, note }) }),
   getAttendanceClaims: (status = 'PENDING') => request<AttendanceClaim[]>(`/attendance/claims?status=${status}`),
@@ -6095,3 +6102,10 @@ export interface ProjectPayment {
   verifiedBy: string | null; verifiedAt: string | null; cancelledAt: string | null; cancelReason: string | null
 }
 export interface ProjectPaymentsState { money: ProjectMoney; payments: ProjectPayment[]; canVerify: boolean; canValue: boolean }
+
+// ═══ موردين التقنيين (قرار (ع) 10-06) ═══
+export interface TechSupplierIn { companyName: string; ownerName?: string; phone: string; address?: string; locationUrl?: string; specialty?: string; notes?: string }
+export interface TechSupplier {
+  id: string; companyName: string; ownerName: string | null; phone: string; address: string | null; locationUrl: string | null
+  specialty: string | null; notes: string | null; createdBy: string | null; createdAt: string; assignedTo: string[]
+}
