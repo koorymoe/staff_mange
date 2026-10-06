@@ -172,4 +172,6 @@ type UpdateProjectRequest struct {
 	// الحذف محصور بالأدمن (الراوت DELETE محمي بـrequireAdmin).
 	ClearContract       bool `json:"-"`
 	ClearSignedContract bool `json:"-"`
+	// UnpaidNote سبب الباقي لمن المشروع يكتمل وفلوسه مو كاملة (قرار (ع) 10-06).
+	UnpaidNote *string `json:"unpaidNote"`
 }

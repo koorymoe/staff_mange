@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
+import { api, type ProjectMoney } from '../api'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
@@ -902,6 +903,9 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
         </div>
       </div>
 
+      {canManage && p.stage.includes('تنفيذ') && (
+        <p className="mt-2 text-center text-xs text-emerald-800">🤖 المشروع ما يكتمل بدون الفلوس — سجّل الدفعات من «💰 الدفعات» أول بأول.</p>
+      )}
       <div className="mt-3 text-center text-xs text-gray-500 bg-gray-50 rounded-lg py-2">🕐 تاريخ الإضافة: {addedDate}</div>
 
       {showContract && (
@@ -1257,6 +1261,18 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
   const [mediaEnd, setMediaEnd] = useState(project.deliveryDate || '')
   const [mediaDuration, setMediaDuration] = useState(project.time || '')
   const toDone = cur.includes('تنفيذ') && nextStage.includes('مكتمل')
+  // قرار (ع) 10-06: «مينتهي المشروع بدون ميكتبون» — الفلوس لازم تنسجّل قبل الإكمال.
+  const toComplete = nextStage.includes('مكتمل')
+  const [money, setMoney] = useState<ProjectMoney | null>(null)
+  const [showPay, setShowPay] = useState(false)
+  const [unpaidNote, setUnpaidNote] = useState('')
+  const [moneyTick, setMoneyTick] = useState(0)
+  useEffect(() => {
+    if (toComplete) void api.getProjectPayments(project.id).then((s) => setMoney(s.money)).catch(() => {})
+  }, [toComplete, project.id, moneyTick])
+  const leftToPay = money?.contractValue != null ? money.contractValue - money.paid : null
+  const moneyBlock = toComplete && (!money || money.contractValue == null || money.contractValue <= 0 || money.payments === 0)
+  const needNote = toComplete && !moneyBlock && leftToPay != null && leftToPay > 0
 
   const candidates = useProjectCandidates()
   // تحديد المسؤول ومنفّذ الكشف يصير هنا (عند الترحيل لمرحلة الكشف)، مو بفورمة
@@ -1299,6 +1315,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
       if (location) payload.location = location
       if (task) payload.task = task
       if (price) payload.price = price
+      if (needNote) payload.unpaidNote = unpaidNote
       if (toSer) payload.survey = survey
       if (toKashf) {
         payload.responsibleEmployeeId = responsibleEmployeeId
@@ -1406,6 +1423,27 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
         <Field label="الفني المسؤول عن التنفيذ"><input className="inp" value={staff} onChange={e => setStaff(e.target.value)} /></Field>
       )}
 
+      {/* 💰 قفل الإكمال: الفلوس قبل التسليم */}
+      {!isReject && toComplete && (
+        <div className={`mb-3 rounded-lg p-3 text-sm ${moneyBlock ? 'bg-red-50 text-red-800' : needNote ? 'bg-amber-50 text-amber-900' : 'bg-emerald-50 text-emerald-800'}`}>
+          {!money ? <p>🤖 ماتركس يفحص فلوس المشروع…</p> : (
+            <>
+              <p className="font-bold">🤖 فلوس المشروع: المدفوع {money.paid.toLocaleString('en-US')} من {money.contractValue != null ? money.contractValue.toLocaleString('en-US') : '—'} د.ع</p>
+              {moneyBlock && <p className="mt-1">{money.contractValue == null ? 'ماكو قيمة عقد مسجّلة.' : 'ماكو ولا دفعة مسجّلة.'} المشروع ما يكتمل لحد ما تنسجّل الفلوس الي انقبضت.</p>}
+              {needNote && (
+                <Field label={`باقي ${leftToPay!.toLocaleString('en-US')} د.ع — ليش؟ *`}>
+                  <input className="inp" value={unpaidNote} onChange={e => setUnpaidNote(e.target.value)} placeholder="مثلاً: الزبون يدفع الباقي بعد شهر / خصم متفق عليه" />
+                </Field>
+              )}
+              {(moneyBlock || needNote) && (
+                <button type="button" onClick={() => setShowPay(true)} className="mt-2 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white">💰 سجّل الدفعات</button>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {showPay && <ProjectPaymentsModal projectId={project.id} title={project.name} onClose={() => { setShowPay(false); setMoneyTick((n) => n + 1) }} />}
+
       {/* تنفيذ → مكتمل : التسليم النهائي */}
       {!isReject && toDone && (
         <div className="space-y-3">
@@ -1425,7 +1463,7 @@ function MoveModal({ project, nextStage, onClose, onSaved }: {
         </div>
       )}
 
-      <button onClick={save} disabled={saving}
+      <button onClick={save} disabled={saving || moneyBlock || (needNote && unpaidNote.trim().length < 3)}
         className="w-full mt-3 py-2.5 rounded-lg bg-green-700 text-white font-bold disabled:opacity-50">
         {saving ? 'جارٍ الحفظ...' : 'تأكيد ✅'}
       </button>

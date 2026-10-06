@@ -49,6 +49,25 @@ type ProjectService struct {
 	// vipRepo يُحقن من main — أي مشروع ينضاف يرحّل صاحبه للشخصيات المهمة
 	vipRepo      *repository.VipCustomerRepository
 	customerRepo *repository.CustomerRepository
+	// money فلوس المشروع — المشروع ما يكتمل بدون ما تنسجّل (قرار (ع) 10-06).
+	money *repository.ProjectPaymentRepository
+}
+
+// SetPaymentChecker يربط دفعات المشاريع بقفل الإكمال.
+func (s *ProjectService) SetPaymentChecker(r *repository.ProjectPaymentRepository) { s.money = r }
+
+// ProjectCompletionBlock سبب منع إكمال المشروع بسبب الفلوس ("" = يمشي).
+// «مينتهي المشروع بدون ميكتبون» — الموظفين لازم يسجّلون الدفعات بأنفسهم.
+func ProjectCompletionBlock(value *float64, paid float64, payments int, unpaidNote string) string {
+	switch {
+	case value == nil || *value <= 0:
+		return "سجّل قيمة العقد من «💰 الدفعات» قبل ما يكتمل المشروع."
+	case payments == 0:
+		return "ماكو ولا دفعة مسجّلة على هالمشروع — سجّل الفلوس الي انقبضت من «💰 الدفعات» قبل ما يكتمل."
+	case paid < *value && strings.TrimSpace(unpaidNote) == "":
+		return fmt.Sprintf("باقي %s ما انسجّل — سجّل الدفعة، أو اكتب ليش أكو باقي.", fmtIQD(*value-paid))
+	}
+	return ""
 }
 
 func NewProjectService(repo *repository.ProjectRepository) *ProjectService {
@@ -286,6 +305,28 @@ func (s *ProjectService) Get(id string) (*model.Project, error) {
 func (s *ProjectService) Update(id string, req model.UpdateProjectRequest) (*model.Project, error) {
 	req.ResponsibleEmployeeID = emptyToNil(req.ResponsibleEmployeeID)
 	req.SurveyorEmployeeID = emptyToNil(req.SurveyorEmployeeID)
+	if s.money != nil && req.Stage != nil && strings.Contains(*req.Stage, "مكتمل") {
+		if cur, err := s.repo.GetByID(id); err == nil && cur != nil && !strings.Contains(cur.Stage, "مكتمل") {
+			m, err := s.money.Money(id)
+			if err != nil {
+				return nil, errors.New("تعذر فحص فلوس المشروع")
+			}
+			note := ""
+			if req.UnpaidNote != nil {
+				note = *req.UnpaidNote
+			}
+			if why := ProjectCompletionBlock(m.ContractValue, m.Paid, m.Payments, note); why != "" {
+				return nil, errors.New(why)
+			}
+			if m.ContractValue != nil && m.Paid < *m.ContractValue {
+				line := fmt.Sprintf("اكتمل وباقي %s: %s", fmtIQD(*m.ContractValue-m.Paid), strings.TrimSpace(note))
+				if req.Task != nil && *req.Task != "" {
+					line = *req.Task + " | " + line
+				}
+				req.Task = &line
+			}
+		}
+	}
 	p, err := s.repo.Update(id, req)
 	if err != nil {
 		return nil, err

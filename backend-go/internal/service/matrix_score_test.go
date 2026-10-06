@@ -109,3 +109,22 @@ func TestProjectBookingChain(t *testing.T) {
 		t.Fatal("حجز عادي ما يتأثر")
 	}
 }
+
+func TestProjectCompletionBlock(t *testing.T) {
+	v := 1000.0
+	if ProjectCompletionBlock(nil, 0, 0, "") == "" {
+		t.Fatal("بلا قيمة = رفض")
+	}
+	if ProjectCompletionBlock(&v, 0, 0, "") == "" {
+		t.Fatal("بلا دفعات = رفض")
+	}
+	if ProjectCompletionBlock(&v, 400, 1, "") == "" {
+		t.Fatal("باقي بلا سبب = رفض")
+	}
+	if ProjectCompletionBlock(&v, 400, 1, "يدفع بعد شهر") != "" {
+		t.Fatal("باقي بسبب = يمشي")
+	}
+	if ProjectCompletionBlock(&v, 1000, 2, "") != "" {
+		t.Fatal("مدفوع كامل = يمشي")
+	}
+}

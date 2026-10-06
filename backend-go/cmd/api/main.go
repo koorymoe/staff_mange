@@ -2267,6 +2267,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── دفعات المشاريع (قرار (ع) 10-06): الصلاحية بالمعالج — المحاسب، إدارة المشاريع، ومشرف المشروع ──
 	projectPaymentRepo := repository.NewProjectPaymentRepository(db)
 	projectPaymentHandler := handler.NewProjectPaymentHandler(projectPaymentRepo, permissionRepo)
+	projectService.SetPaymentChecker(projectPaymentRepo)
 	mux.Handle("GET /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.List), requireAuth))
 	mux.Handle("POST /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Add), requireAuth))
 	mux.Handle("PUT /api/projects/{id}/contract-value", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetValue), requireAuth))
