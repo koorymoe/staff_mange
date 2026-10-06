@@ -57,6 +57,9 @@ export interface NavItem {
   // «الصلاحية الممنوحة تفتح العنصر». استعماله الوحيد: نفس الشاشة
   // موجودة بمحل أنسب لهذا الدور، فما نريدها تتكرر بالقائمة مرتين.
   hideForRoles?: EmployeeRole[]
+  // hideIfAnyPermission: يختفي إذا عنده وحدة من هالصلاحيات — لأن نفس الشاشة
+  // تطلعله بمكان ثاني (مثلاً «المشاريع الموجّهة لي» داخل «العمل»).
+  hideIfAnyPermission?: string[]
   /** يخفي البند من **قائمة** المراقب بس (ترتيب (ع) 10-04) — الرابط يبقى مسموح،
    *  لأن الشاشة صارت تبويباً بشاشة ثانية (مكتب المراقب، الحجوزات، …). */
   monitorMenuHide?: boolean
@@ -340,6 +343,8 @@ export const navItems: NavItem[] = [
           { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
         ],
       },
+      // قرار (ع) 10-06: «المشاريع الموجّهة لي» مباشرة تحت «العمل» جنب «إضافة مشروع».
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true },
       {
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
         // ⚠️ محجوبة عن المحاسب: محتواها **نفسه** محتوى «العمل» مالته
@@ -479,7 +484,7 @@ export const navItems: NavItem[] = [
   // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
   // المشاريع الموجّهة لي: أي موظف ينوجّهله مشروع يشوفه هنا بكل مراحله — بدون
   // ما ننطيه صلاحية إدارة المشاريع العامة. الصفحة تطلع فاضية لو ماكو شي.
-  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, permission: 'my_projects', hideForRoles: ['FINANCE'] },
+  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, permission: 'my_projects', hideForRoles: ['FINANCE'], hideIfAnyPermission: ['project_management', 'project_create_only'] },
 
   // ═══ فاتورة خدمة (جي بي اس / داش كام) ═══
   //
@@ -798,6 +803,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     // يفتح»: الفاصل يرجّع true بلا فحص، والصلاحية ترجّع العنصر وتخلي
     // الشاشة تتكرر بمحلين بقائمة نفس الموظف.
     if (item.hideForRoles && role && item.hideForRoles.includes(role as EmployeeRole)) return false
+    if (item.hideIfAnyPermission && item.hideIfAnyPermission.some((p) => ctx.permissions.includes(p))) return false
 
     if (item.divider) return true
     if (item.fieldStaffOnly && role !== 'ADMIN' && !(role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
