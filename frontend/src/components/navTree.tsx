@@ -331,7 +331,7 @@ export const navItems: NavItem[] = [
         // إدارة المشاريع صارت صلاحية: أي موظف عنده project_management يشوفها بغض النظر عن دوره
         to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
         children: [
-          { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
+          { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management', labelFor: projectsLabel },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
           { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
@@ -711,7 +711,7 @@ export const navItems: NavItem[] = [
     to: '/unit-projects', label: 'وحدة إدارة المشاريع', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>,
     unitPermission: 'unit_projects',
     children: [
-      { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management' },
+      { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management', labelFor: projectsLabel },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
       { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
@@ -770,6 +770,12 @@ export const navItems: NavItem[] = [
   },
 ]
 
+
+// «المشاريع» لصاحب «إضافة مشروع بس» تفتح نموذج الإضافة بس — فاسمها يگول هالشي (قرار (ع) 10-06).
+function projectsLabel(ctx: NavContext): string {
+  const role = ctx.employee?.role ?? ''
+  return ctx.permissions.includes('project_management') || role === 'ADMIN' || role === 'PROJECT_MANAGER' ? '🏗️ المشاريع' : '➕ إضافة مشروع'
+}
 
 export type NavContext = {
   employee: Employee | null | undefined

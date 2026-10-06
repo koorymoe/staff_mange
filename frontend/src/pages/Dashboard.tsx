@@ -7,7 +7,7 @@ import MyFundBalance from '../components/MyFundBalance'
 import TodayBoard from '../components/TodayBoard'
 import MonitorHome from '../components/MonitorHome'
 import AdminHome from '../components/AdminHome'
-import AttendancePage from './AttendancePage'
+import ShiftEndCard from '../components/ShiftEndCard'
 import { api } from '../api'
 import type { Booking, Expense, StaffRequest, LeaveRequest, InventoryCheck, FinanceSummary, DailyAuditReport, TodayPulse, Employee } from '../api'
 import { useSession, hasGpsSkill } from '../session'
@@ -1094,7 +1094,9 @@ function StaffDashboard() {
           هنا بدل الشريط المصغّر القديم (تسجيل حضور/انصراف بس بلا
           بطاقات ولا جدول شهري). نفس نمط `embedded` المعتمد بشاشات
           ثانية — الحالة والحفظ يشتغلون بمكان واحد بس. */}
-      {!isMonitorHome && <AttendancePage embedded />}
+      {/* قرار (ع) 10-06: الدوام كله بـ«جدول دوامي». الرئيسية بس تطلب الانصراف
+          لمن الشفت يخلص — والحضور ينطلب أصلاً بشاشة ماتركس الإجبارية. */}
+      {!isMonitorHome && <ShiftEndCard />}
 
       {/* ═══ شريط الفني: جرد أدواته + طلب إجازة ═══
           الفني ما إله شاشات إدارية يتنقل بيها، فالشغلتين الي يحتاجهن
