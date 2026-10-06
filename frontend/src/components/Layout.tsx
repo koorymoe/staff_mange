@@ -8,6 +8,8 @@ import MatrixEye from './MatrixEye'
 import RemoteTimerChip from './RemoteTimerChip'
 import GlobalSearch from './GlobalSearch'
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom'
+import AttendanceGate from './AttendanceGate'
+import LastBookingPrompt from './LastBookingPrompt'
 import ErrorBoundary from './ErrorBoundary'
 import { api, type Employee } from '../api'
 import { SessionContext } from '../session'
@@ -648,7 +650,7 @@ export default function Layout() {
               {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}
               {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId }) === false
                 ? <NoAccess />
-                : <Outlet />}
+                : <AttendanceGate><Outlet /></AttendanceGate>}
             </ErrorBoundary>
           </main>
         </div>
@@ -783,6 +785,7 @@ export default function Layout() {
 
           {/* شريط الإعلانات — يشوفه كل موظف تحت الهيدر مباشرة */}
           <AnnouncementTicker />
+          <LastBookingPrompt />
 
           {/* Content */}
           <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-5 lg:p-8">
@@ -791,7 +794,7 @@ export default function Layout() {
               {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}
               {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId }) === false
                 ? <NoAccess />
-                : <Outlet />}
+                : <AttendanceGate><Outlet /></AttendanceGate>}
             </ErrorBoundary>
           </main>
         </div>

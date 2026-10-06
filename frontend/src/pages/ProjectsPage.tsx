@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import LocationFields from '../components/LocationFields'
@@ -779,6 +780,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   const nextStage = isContractStage ? STAGES[5] : STAGES[stageIdx + 1] && stageIdx <= 5 ? STAGES[stageIdx + 1] : null
   const [showContract, setShowContract] = useState(false)
   const [showMedia, setShowMedia] = useState(false)
+  const [showPay, setShowPay] = useState(false)
   const inMedia = useMediaOpen().has(p.id)
 
   const handleAdvance = () => {
@@ -874,6 +876,11 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
               📄 العقد{p.hasContract ? (p.hasSignedContract ? ' (مرفوع وموقّع)' : ' (مرفوع)') : ''}
             </button>
           )}
+          {/* 💰 الدفعات: فلوس المشروع تنسجّل وتدخل بالإيرادات (قرار (ع) 10-06) */}
+          {canManage && !isRejected && (
+            <button onClick={() => setShowPay(true)}
+              className="text-sm px-3 py-1.5 rounded-lg bg-emerald-700 text-white font-bold hover:brightness-110">💰 الدفعات</button>
+          )}
           {/* 📸 إعلام: تحويل المشروع للإعلام والعلاقات العامة حتى يصوّرون الشغل */}
           {canManage && !isRejected && !isCompleted && stageIdx >= 3 && (
             <button onClick={() => setShowMedia(true)}
@@ -900,6 +907,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
       {showContract && (
         <ContractModal project={p} onClose={() => setShowContract(false)} onSaved={() => { setShowContract(false); onRefresh() }} />
       )}
+      {showPay && <ProjectPaymentsModal projectId={p.id} title={p.name} onClose={() => setShowPay(false)} />}
       {showMedia && (
         <MediaTransferModal project={p} onClose={() => setShowMedia(false)} onSaved={() => { setShowMedia(false); onRefresh() }} />
       )}

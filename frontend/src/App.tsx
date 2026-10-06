@@ -67,6 +67,7 @@ const MediaPage = lazy(() => import('./pages/MediaPage'))
 const DisciplineRecordPage = lazy(() => import('./pages/DisciplineRecordPage'))
 const PeerVoicePage = lazy(() => import('./pages/PeerVoicePage'))
 const StaffScorePage = lazy(() => import('./pages/StaffScorePage'))
+const ProjectPaymentsPage = lazy(() => import('./pages/ProjectPaymentsPage'))
 const WorkplaceIssuesPage = lazy(() => import('./pages/WorkplaceIssuesPage'))
 const ItStatsPage = lazy(() => import('./pages/ItStatsPage'))
 const MyInventory = lazy(() => import('./pages/MyInventory'))
@@ -196,6 +197,7 @@ function App() {
           <Route path="sales-opportunities" element={<SalesOpportunitiesPage />} />
           {/* التقرير الأسبوعي: ADMIN/OWNER بس (نفس الخادم) */}
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
+          <Route path="project-payments" element={<RequirePermission permission="finance" anyOf={['finance_audit', 'project_management', 'monitoring']} roles={['FINANCE', 'PROJECT_MANAGER', 'MONITOR']}><ProjectPaymentsPage /></RequirePermission>} />
           <Route path="staff-score" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScorePage /></RequirePermission>} />
           <Route path="peer-voice" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><PeerVoicePage /></RequirePermission>} />
           <Route path="workplace-issues" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><WorkplaceIssuesPage /></RequirePermission>} />

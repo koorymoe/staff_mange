@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { bookingDone } from '../bookingDone'
 import { api, type Booking, type BookingProgressReport } from '../api'
 import BookingCodeChip from './BookingCodeChip'
 
@@ -45,6 +46,7 @@ export default function PartialCompleteDialog({
         amountCollected: amount ? Number(amount) : undefined,
       })
       onDone(report)
+      bookingDone()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'تعذر تسجيل الإنجاز الجزئي')
     } finally {

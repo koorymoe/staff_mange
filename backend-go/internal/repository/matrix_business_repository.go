@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"sort"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -19,10 +20,31 @@ type MonthRevenue struct {
 	Bookings int     `db:"bookings" json:"bookings"`
 	Revenue  float64 `db:"revenue" json:"revenue"`
 	Invoiced int     `db:"invoiced" json:"invoiced"`
+	// ProjectRevenue دفعات المشاريع بهالشهر (داخلة بـRevenue).
+	ProjectRevenue float64 `db:"-" json:"projectRevenue"`
 }
 
 // completedCountable حجوزات منجزة تنحسب (مو داخلية، مو مؤرشفة).
-const completedCountable = `b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'`
+const completedCountable = `b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL AND b."archivedAt" IS NULL AND b."bookingType" IS DISTINCT FROM 'INTERNAL'
+	AND NOT EXISTS (SELECT 1 FROM "Project" pj JOIN "ProjectPayment" pp ON pp."projectId" = pj.id AND pp."cancelledAt" IS NULL WHERE pj."bookingId" = b.id)`
+
+// projectByMonth دفعات المشاريع لكل شهر (قرار (ع) 10-06: فلوس المشاريع ما چانت تنحسب).
+func (r *MatrixBusinessRepository) projectByMonth(n int) (map[string]float64, error) {
+	type row struct {
+		Month string  `db:"month"`
+		Sum   float64 `db:"sum"`
+	}
+	rows := []row{}
+	err := r.db.Select(&rows, `SELECT to_char(date_trunc('month', "paidAt"), 'YYYY-MM') AS month, SUM(amount)::float8 AS sum
+		FROM "ProjectPayment" WHERE "cancelledAt" IS NULL
+		  AND "paidAt" >= (date_trunc('month', baghdad_today()) - make_interval(months => $1 - 1))::date
+		GROUP BY 1`, n)
+	out := map[string]float64{}
+	for _, x := range rows {
+		out[x.Month] = x.Sum
+	}
+	return out, err
+}
 
 // Monthly آخر n أشهر: حجوزات منجزة، وصافي فواتيرها (آخر فاتورة لكل حجز).
 func (r *MatrixBusinessRepository) Monthly(n int) ([]MonthRevenue, error) {
@@ -37,7 +59,26 @@ func (r *MatrixBusinessRepository) Monthly(n int) ([]MonthRevenue, error) {
 		WHERE `+completedCountable+`
 		  AND baghdad_date(b."completedAt") >= (date_trunc('month', baghdad_today()) - make_interval(months => $1 - 1))::date
 		GROUP BY 1 ORDER BY 1`, n)
-	return rows, err
+	if err != nil {
+		return rows, err
+	}
+	proj, err := r.projectByMonth(n)
+	if err != nil {
+		return rows, err
+	}
+	seen := map[string]bool{}
+	for i := range rows {
+		rows[i].ProjectRevenue = proj[rows[i].Month]
+		rows[i].Revenue += proj[rows[i].Month]
+		seen[rows[i].Month] = true
+	}
+	for m, v := range proj {
+		if !seen[m] {
+			rows = append(rows, MonthRevenue{Month: m, Revenue: v, ProjectRevenue: v})
+		}
+	}
+	sort.Slice(rows, func(i, j int) bool { return rows[i].Month < rows[j].Month })
+	return rows, nil
 }
 
 type MonthToDate struct {
@@ -45,6 +86,9 @@ type MonthToDate struct {
 	Revenue      float64 `db:"revenue" json:"revenue"`
 	LastBookings int     `db:"lastBookings" json:"lastBookings"`
 	LastRevenue  float64 `db:"lastRevenue" json:"lastRevenue"`
+	// دفعات المشاريع (داخلة بـRevenue/LastRevenue).
+	ProjectRevenue     float64 `db:"projectRevenue" json:"projectRevenue"`
+	LastProjectRevenue float64 `db:"lastProjectRevenue" json:"lastProjectRevenue"`
 }
 
 // MTD هالشهر لحد اليوم مقابل نفس الفترة الشهر الماضي.
@@ -64,6 +108,16 @@ func (r *MatrixBusinessRepository) MTD() (*MonthToDate, error) {
 		  COALESCE(SUM(net) FILTER (WHERE d >= (date_trunc('month', baghdad_today()) - interval '1 month')::date
 		                     AND d <= (baghdad_today() - interval '1 month')::date),0) AS "lastRevenue"
 		FROM x`)
+	if err != nil {
+		return &m, err
+	}
+	err = r.db.Get(&m, `SELECT
+		  COALESCE(SUM(amount) FILTER (WHERE "paidAt" >= date_trunc('month', baghdad_today())::date), 0)::float8 AS "projectRevenue",
+		  COALESCE(SUM(amount) FILTER (WHERE "paidAt" >= (date_trunc('month', baghdad_today()) - interval '1 month')::date
+		                     AND "paidAt" <= (baghdad_today() - interval '1 month')::date), 0)::float8 AS "lastProjectRevenue"
+		FROM "ProjectPayment" WHERE "cancelledAt" IS NULL`)
+	m.Revenue += m.ProjectRevenue
+	m.LastRevenue += m.LastProjectRevenue
 	return &m, err
 }
 

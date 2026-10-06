@@ -225,3 +225,87 @@ func (r *AttendanceRepository) Correct(id string, checkIn, checkOut *time.Time) 
 	r.hydrate(&a)
 	return &a, nil
 }
+
+// ═══ الحضور الإجباري + الانصراف التلقائي ═══
+
+// GateInfo شفت الموظف وحالته اليوم.
+type GateInfo struct {
+	Role       string  `db:"role"`
+	Shift      *string `db:"shift"`
+	ShiftStart *string `db:"shiftStart"`
+	ShiftEnd   *string `db:"shiftEnd"`
+	HasOpen    bool    `db:"hasOpen"`
+	HadToday   bool    `db:"hadToday"`
+	OnLeave    bool    `db:"onLeave"`
+}
+
+func (r *AttendanceRepository) Gate(employeeID string) (*GateInfo, error) {
+	var g GateInfo
+	err := r.db.Get(&g, `
+		SELECT e.role::text AS role, e.shift::text AS shift, e."shiftStart", e."shiftEnd",
+		       EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND a."checkOut" IS NULL) AS "hasOpen",
+		       EXISTS (SELECT 1 FROM "Attendance" a WHERE a."employeeId" = e.id AND a.date = baghdad_today()) AS "hadToday",
+		       EXISTS (SELECT 1 FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status = 'APPROVED'
+		               AND baghdad_today()::date BETWEEN l."startDate" AND l."endDate") AS "onLeave"
+		FROM "Employee" e WHERE e.id = $1`, employeeID)
+	return &g, err
+}
+
+// OpenWithShift الجلسات المفتوحة ويا شفت أصحابها وآخر حجز خلّصوه بعد الدخول.
+type OpenWithShift struct {
+	ID           string     `db:"id"`
+	EmployeeID   string     `db:"employeeId"`
+	Name         string     `db:"name"`
+	CheckIn      time.Time  `db:"checkIn"`
+	Shift        *string    `db:"shift"`
+	ShiftStart   *string    `db:"shiftStart"`
+	ShiftEnd     *string    `db:"shiftEnd"`
+	LastActivity *time.Time `db:"lastActivity"`
+}
+
+func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
+	rows := []OpenWithShift{}
+	err := r.db.Select(&rows, `
+		SELECT a.id, a."employeeId", e.name, a."checkIn", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
+		       (SELECT max(b."completedAt") FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
+		        WHERE ba."employeeId" = a."employeeId" AND b."completedAt" >= a."checkIn") AS "lastActivity"
+		FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
+		WHERE a."checkOut" IS NULL`)
+	return rows, err
+}
+
+// AutoClose يسكّر جلسة بوقت محدد ويعلّمها «انصراف تلقائي».
+func (r *AttendanceRepository) AutoClose(id, employeeID string, at time.Time, reason string) error {
+	tx, err := r.db.Beginx()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	res, err := tx.Exec(`UPDATE "Attendance" SET "checkOut" = $2 WHERE id = $1 AND "checkOut" IS NULL`, id, at)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return nil
+	}
+	if _, err := tx.Exec(`INSERT INTO "AttendanceAuto" ("attendanceId", "employeeId", reason) VALUES ($1, $2, $3)
+		ON CONFLICT DO NOTHING`, id, employeeID, reason); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// AutoCountSince كم مرة انسكّر انصرافه تلقائياً من تاريخ.
+func (r *AttendanceRepository) AutoCountSince(since time.Time) (map[string]int, error) {
+	type row struct {
+		EmployeeID string `db:"employeeId"`
+		N          int    `db:"n"`
+	}
+	rows := []row{}
+	err := r.db.Select(&rows, `SELECT "employeeId", count(*)::int AS n FROM "AttendanceAuto" WHERE "createdAt" >= $1 GROUP BY 1`, since)
+	out := map[string]int{}
+	for _, x := range rows {
+		out[x.EmployeeID] = x.N
+	}
+	return out, err
+}

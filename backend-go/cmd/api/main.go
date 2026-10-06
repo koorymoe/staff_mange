@@ -536,6 +536,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	go matrixAutopilotService.ReassignGpsToQuality()
 	// التصفير الشهري: يوم ٢٧ الساعة ١١ بالليل — النقاط ترجع وساعات البيت تتصفّر (السجل يبقى).
 	monthlyResetService := service.NewMonthlyResetService(repository.NewKpiRepository(db), repository.NewRemoteHoursRepository(db), aiRepo, notificationRepo)
+	// قرار (ع) 10-06: الي ما يسجّل انصراف ينسكّر تلقائياً بعد شفته بـ٣ ساعات.
+	safeguard.Loop("الانصراف التلقائي", 7*time.Minute, 15*time.Minute, func() {
+		n, err := attendanceService.AutoCheckout(time.Now(), func(id, msg string) { _ = notificationRepo.Create(id, "ATTENDANCE", msg) })
+		if err != nil {
+			log.Printf("auto checkout: %v", err)
+		} else if n > 0 {
+			log.Printf("auto checkout: %d جلسة", n)
+		}
+	})
 	safeguard.Loop("التصفير الشهري", 10*time.Minute, 3*time.Minute, func() {
 		if err := monthlyResetService.RunIfDue(); err != nil {
 			log.Printf("monthly reset: %v", err)
@@ -1396,6 +1405,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// تقييم الأداء اليدوي (KPI)
 	mux.Handle("POST /api/attendance/checkin", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckIn), requireAuth))
 	mux.Handle("POST /api/attendance/checkout", middleware.Chain(http.HandlerFunc(attendanceHandler.CheckOut), requireAuth))
+	mux.Handle("GET /api/attendance/gate", middleware.Chain(http.HandlerFunc(attendanceHandler.Gate), requireAuth))
 	mux.Handle("GET /api/attendance/mine", middleware.Chain(http.HandlerFunc(attendanceHandler.Mine), requireAuth))
 	mux.Handle("GET /api/attendance/open", middleware.Chain(http.HandlerFunc(attendanceHandler.OpenSession), requireAuth))
 	mux.Handle("GET /api/attendance/today", middleware.Chain(http.HandlerFunc(attendanceHandler.Today), requireAuth, requireMonitor))
@@ -2235,6 +2245,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/ai/autonomy", middleware.Chain(http.HandlerFunc(matrixAutonomyHandler.Status), requireAuth, requireAdmin))
 	// عيون الرقابة: المخزن والسيارات ورأي الزبائن — للمراقب كمان (قرار (ع)).
 	matrixWatchService := service.NewMatrixWatchService(repository.NewMatrixWatchRepository(db), matrixAutopilotService, notificationRepo)
+	matrixWatchService.SetProjectMoney(repository.NewProjectPaymentRepository(db))
 	go func() {
 		for {
 			time.Sleep(30 * time.Minute)
@@ -2253,6 +2264,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mediaHandler := handler.NewMediaHandler(repository.NewMediaRepository(db), func(msg string) {
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"MEDIA"}, "media", "MEDIA", msg)
 	})
+	// ── دفعات المشاريع (قرار (ع) 10-06): الصلاحية بالمعالج — المحاسب، إدارة المشاريع، ومشرف المشروع ──
+	projectPaymentRepo := repository.NewProjectPaymentRepository(db)
+	projectPaymentHandler := handler.NewProjectPaymentHandler(projectPaymentRepo, permissionRepo)
+	mux.Handle("GET /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.List), requireAuth))
+	mux.Handle("POST /api/projects/{id}/payments", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Add), requireAuth))
+	mux.Handle("PUT /api/projects/{id}/contract-value", middleware.Chain(http.HandlerFunc(projectPaymentHandler.SetValue), requireAuth))
+	mux.Handle("POST /api/project-payments/{id}/verify", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Verify), requireAuth))
+	mux.Handle("POST /api/project-payments/{id}/cancel", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Cancel), requireAuth))
+	mux.Handle("GET /api/project-payments/overview", middleware.Chain(http.HandlerFunc(projectPaymentHandler.Overview), requireAuth))
 	mux.Handle("GET /api/projects/media/open", middleware.Chain(http.HandlerFunc(mediaHandler.OpenProjects), requireAuth, requireProjectMgmt))
 	mux.Handle("GET /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.ForProject), requireAuth, requireProjectMgmt))
 	mux.Handle("POST /api/projects/{id}/media", middleware.Chain(http.HandlerFunc(mediaHandler.Transfer), requireAuth, requireProjectMgmt))

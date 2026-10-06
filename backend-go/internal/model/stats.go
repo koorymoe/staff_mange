@@ -12,6 +12,8 @@ type StatsTotals struct {
 	UrgentPending     int     `json:"urgentPending"`
 	TotalRevenue      float64 `json:"totalRevenue"`
 	UnverifiedRevenue float64 `json:"unverifiedRevenue"`
+	BookingRevenue    float64 `json:"bookingRevenue"`
+	ProjectRevenue    float64 `json:"projectRevenue"` // دفعات المشاريع
 }
 
 type SalesStat struct {

@@ -57,11 +57,20 @@ func (r *StatsRepository) Totals() (*model.StatsTotals, error) {
 	if err != nil {
 		return nil, err
 	}
-	revenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL` + BookingCountableAndSQL(`"Booking"`))
+	revenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL` + BookingCountableAndSQL(`"Booking"`) + notPaidAsProjectSQL)
 	if err != nil {
 		return nil, err
 	}
-	unverifiedRevenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL AND "amountVerified" = false` + BookingCountableAndSQL(`"Booking"`))
+	unverifiedRevenue, err := r.sum(`SELECT COALESCE(SUM("amountCollected"), 0) FROM "Booking" WHERE "amountCollected" IS NOT NULL AND "amountVerified" = false` + BookingCountableAndSQL(`"Booking"`) + notPaidAsProjectSQL)
+	if err != nil {
+		return nil, err
+	}
+	// قرار (ع) 10-06: فلوس المشاريع (الدفعات) تدخل بالإيرادات — چانت ما تنحسب أصلاً.
+	projectRevenue, err := r.sum(`SELECT COALESCE(SUM(amount), 0) FROM "ProjectPayment" WHERE "cancelledAt" IS NULL`)
+	if err != nil {
+		return nil, err
+	}
+	projectUnverified, err := r.sum(`SELECT COALESCE(SUM(amount), 0) FROM "ProjectPayment" WHERE "cancelledAt" IS NULL AND "verifiedAt" IS NULL`)
 	if err != nil {
 		return nil, err
 	}
@@ -74,10 +83,17 @@ func (r *StatsRepository) Totals() (*model.StatsTotals, error) {
 		CompletedBookings: completed,
 		CancelledBookings: cancelled,
 		UrgentPending:     urgentPending,
-		TotalRevenue:      revenue,
-		UnverifiedRevenue: unverifiedRevenue,
+		TotalRevenue:      revenue + projectRevenue,
+		UnverifiedRevenue: unverifiedRevenue + projectUnverified,
+		BookingRevenue:    revenue,
+		ProjectRevenue:    projectRevenue,
 	}, nil
 }
+
+// notPaidAsProjectSQL حجز تحوّل لمشروع وعلى المشروع دفعات: فلوسه تنحسب من
+// الدفعات، فمبلغ الحجز ما ينعاد (ماكو حساب مرتين).
+const notPaidAsProjectSQL = ` AND NOT EXISTS (SELECT 1 FROM "Project" p JOIN "ProjectPayment" pp ON pp."projectId" = p.id
+	AND pp."cancelledAt" IS NULL WHERE p."bookingId" = "Booking".id)`
 
 func (r *StatsRepository) SalesStats(startOfToday, startOfMonth time.Time) ([]model.SalesStat, error) {
 	type row struct {

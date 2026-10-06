@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { bookingDone } from '../bookingDone'
 import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
 import { useNavigate } from 'react-router-dom'
@@ -283,6 +284,7 @@ function StaffDashboard() {
       advancePaid: taskAdvances[b.id] ? Number(taskAdvances[b.id]) : undefined,
     })))) return
     setMyTasks(prev => prev.filter(t => t.id !== b.id))
+    bookingDone()
   }
 
   if (!employee) return null

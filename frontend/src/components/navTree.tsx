@@ -257,6 +257,8 @@ export const navItems: NavItem[] = [
       { to: '/discipline-record', label: '📒 سجل الانضباط الوظيفي', icon: <></>, roles: ['ADMIN'] },
       // قرار (ع) 10-05: الفضفضة والمشاكل الوظيفية — نفس حارس requireMonitor.
       // قرار (ع) 10-05: ماتركس ٦٠٪ + البشر ٤٠٪ — نفس حارس GET /api/staff-score (requireMonitor).
+      // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
+      { to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
       { to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
@@ -1005,6 +1007,7 @@ const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_sy
 const ROUTE_RULES: Record<string, RouteRule> = {
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
+  '/project-payments': { roles: ['FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
   '/staff-score': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/peer-voice': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/workplace-issues': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor

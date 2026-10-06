@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { bookingDone } from '../bookingDone'
 import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -373,6 +374,7 @@ export default function MyTasks() {
     })))) return
     setBookings((prev) => prev.filter((b) => b.id !== booking.id))
     setPaperwork({ booking, stopped: false })
+    bookingDone()
   }
 
   // توقف العمل: السبب إجباري، وبعده ينطلب تقرير — والتقرير يتأجل إذا حب.

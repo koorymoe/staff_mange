@@ -33,6 +33,7 @@ interface StatsData {
     urgentPending: number
     totalRevenue: number
     unverifiedRevenue: number
+    projectRevenue?: number
   }
   salesStats: { employeeId: string; name: string; totalTransferred: number; confirmed: number; today: number; thisMonth: number }[]
   coordinatorStats: { employeeId: string; name: string; totalConfirmed: number; today: number; thisMonth: number }[]
@@ -127,6 +128,7 @@ export default function StatsPage() {
               <MiniCard label="ملغاة" value={stats.totals.cancelledBookings} className="text-red-600" />
               <MiniCard label="عاجلة معلقة" value={stats.totals.urgentPending} className="text-orange-600" />
               <MiniCard label="إجمالي الإيرادات" value={`${(stats.totals.totalRevenue / 1000).toFixed(0)}K`} className="text-green-700" />
+              <MiniCard label="منها إيرادات المشاريع" value={`${((stats.totals.projectRevenue ?? 0) / 1000).toFixed(0)}K`} className="text-emerald-700" />
               <MiniCard label="غير مدققة" value={`${(stats.totals.unverifiedRevenue / 1000).toFixed(0)}K`} className="text-amber-600" />
             </div>
           </div>

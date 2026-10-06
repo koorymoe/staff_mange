@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"staffmange-api/internal/model"
@@ -58,6 +59,7 @@ type EyesReport struct {
 }
 
 type MatrixWatchService struct {
+	money *repository.ProjectPaymentRepository
 	repo  *repository.MatrixWatchRepository
 	auto  *MatrixAutopilotService
 	notif *repository.NotificationRepository
@@ -430,13 +432,13 @@ func (s *MatrixWatchService) pendingEye() EyeGroup {
 
 func (s *MatrixWatchService) Report() *EyesReport {
 	cust, scores, team := s.customerEye()
-	rep := &EyesReport{Eyes: []EyeGroup{s.stockEye(), s.vehicleEye(), cust, s.itEye(), s.pendingEye()}, Customers: scores, TeamHappy: team, Insights: []string{}}
+	rep := &EyesReport{Eyes: []EyeGroup{s.revenueEye(), s.stockEye(), s.vehicleEye(), cust, s.itEye(), s.pendingEye()}, Customers: scores, TeamHappy: team, Insights: []string{}}
 	high := 0
 	for _, e := range rep.Eyes {
 		high += e.High
 	}
 	if high == 0 {
-		rep.Insights = append(rep.Insights, "ماكو شي خطير بالمخزن والسيارات ورأي الزبائن والآيتي والطلبات.")
+		rep.Insights = append(rep.Insights, "ماكو شي خطير بالفلوس والمخزن والسيارات ورأي الزبائن والآيتي والطلبات.")
 	} else {
 		rep.Insights = append(rep.Insights, fmt.Sprintf("أكو %d شغلة مهمة تحتاج قرار.", high))
 	}
@@ -481,3 +483,104 @@ func (s *MatrixWatchService) Remind(today string, dayStart time.Time) {
 // BaghdadLoc وَBaghdadMidnight للمؤقّتات بـmain.
 func BaghdadLoc() *time.Location           { return debriefLoc }
 func BaghdadMidnight(day string) time.Time { return baghdadMidnight(day) }
+
+// ═══ 💰 عين الإيرادات — قرار (ع) 10-06 ═══
+// «ليش عندي مشاريع لحد الان مامرفوعات فلوسهن… اذا مادخل الموظف الايرادات
+// معناها الموظف ماعليه رقابه». ماتركس يدوّر بكل فرع على فلوس ما انسجّلت.
+
+// SetProjectMoney يربط دفعات المشاريع بعين الإيرادات.
+func (s *MatrixWatchService) SetProjectMoney(repo *repository.ProjectPaymentRepository) {
+	s.money = repo
+}
+
+func (s *MatrixWatchService) revenueEye() EyeGroup {
+	eye := EyeGroup{Key: "REVENUE", Title: "الإيرادات والفلوس", Items: []EyeItem{}}
+	if s.money != nil {
+		if rows, err := s.money.AllMoney(); err == nil {
+			for _, p := range rows {
+				it := EyeItem{Eye: eye.Key, Kind: "PROJECT_MONEY"}
+				if p.OwnerID != nil {
+					it.OwnerID = *p.OwnerID
+				}
+				if p.OwnerName != nil {
+					it.OwnerName = *p.OwnerName
+				}
+				name := fmt.Sprintf("مشروع «%s» (%s)", p.Name, p.Code)
+				exec := strings.Contains(p.Stage, "تنفيذ")
+				done := strings.Contains(p.Stage, "مكتمل")
+				switch {
+				case (exec || done) && p.Payments == 0:
+					it.Severity = WatchHigh
+					it.Title = name + ": " + map[bool]string{true: "مكتمل", false: "بالتنفيذ"}[done] + " وماكو ولا دفعة مسجّلة"
+					it.Detail = "المشروع وصل " + p.Stage + " وفلوسه صفر بالنظام."
+					if p.ContractValue != nil {
+						it.Detail += " قيمة العقد " + fmtIQD(*p.ContractValue) + "."
+					}
+					it.Advice = "منو استلم الفلوس؟ ماتركس يقترح المشرف أو المحاسب يسجّل الدفعات من زر «💰 الدفعات» بالمشروع اليوم."
+				case done && p.ContractValue != nil && p.Paid < *p.ContractValue:
+					it.Severity = WatchMedium
+					it.Title = fmt.Sprintf("%s: مكتمل وباقي %s ما انسجّل", name, fmtIQD(*p.ContractValue-p.Paid))
+					it.Detail = fmt.Sprintf("قيمة العقد %s والمسجّل %s.", fmtIQD(*p.ContractValue), fmtIQD(p.Paid))
+					it.Advice = "إذا الزبون دفع الباقي، سجّله. وإذا ما دفع، تابع التحصيل."
+				case (exec || done || strings.Contains(p.Stage, "عقد")) && p.ContractValue == nil:
+					it.Severity = WatchLow
+					it.Title = name + ": ماكو قيمة عقد كرقم"
+					it.Detail = "السعر مكتوب نص ما ينقرا كرقم، فما نگدر نعرف شكد باقي."
+					it.Advice = "سجّل قيمة العقد من نافذة «💰 الدفعات»."
+				default:
+					continue
+				}
+				eye.Items = append(eye.Items, it)
+			}
+		}
+		if rows, err := s.money.StaleUnverified(); err == nil {
+			for _, p := range rows {
+				days := int(time.Since(p.CreatedAt).Hours() / 24)
+				by := ""
+				if p.CreatedBy != nil {
+					by = " (سجّلها " + *p.CreatedBy + ")"
+				}
+				eye.Items = append(eye.Items, EyeItem{Eye: eye.Key, Kind: "PAYMENT_UNVERIFIED", Severity: WatchMedium,
+					Title:  fmt.Sprintf("دفعة %s على مشروع صارلها %d يوم ما تأكدت%s", fmtIQD(p.Amount), days, by),
+					Detail: "الدفعة مسجّلة بس المحاسب بعد ما أكد إنها وصلت.",
+					Advice: "المحاسب يطابقها ويا الوصل ويأكدها، أو يلغيها بسبب.", At: ptr(p.CreatedAt)})
+			}
+		}
+	}
+	if rows, err := s.repo.MoneyGaps(); err == nil {
+		for _, g := range rows {
+			it := EyeItem{Eye: eye.Key, Kind: "BOOKING_MONEY", BookingID: g.BookingID, At: ptr(g.CompletedAt)}
+			if g.LeaderID != nil {
+				it.OwnerID = *g.LeaderID
+			}
+			if g.LeaderName != nil {
+				it.OwnerName = *g.LeaderName
+			}
+			if g.InvoiceNet == nil {
+				it.Severity = WatchHigh
+				it.Title = "حجز " + g.Code + ": منجز وماكو مبلغ محصّل ولا فاتورة"
+				it.Detail = "صارله " + fmt.Sprint(int(time.Since(g.CompletedAt).Hours())) + " ساعة من الإنجاز."
+				it.Advice = "إذا الشغل مجاني سجّله «صيانة مجانية»، وإذا انقبضت فلوس لازم تنسجّل اليوم."
+			} else {
+				it.Severity = WatchMedium
+				it.Title = fmt.Sprintf("حجز %s: المحصّل %s والفاتورة %s", g.Code, fmtIQD(*g.Collected), fmtIQD(*g.InvoiceNet))
+				it.Detail = "فرق " + fmtIQD(math.Abs(*g.Collected-*g.InvoiceNet)) + " بين الي انقبض والفاتورة."
+				it.Advice = "المحاسب يدقق الفرق ويا الليدر."
+			}
+			eye.Items = append(eye.Items, it)
+		}
+	}
+	if rows, err := s.repo.AutoCheckouts(); err == nil {
+		for _, a := range rows {
+			sev := WatchLow
+			if a.N >= 3 {
+				sev = WatchMedium
+			}
+			eye.Items = append(eye.Items, EyeItem{Eye: eye.Key, Kind: "AUTO_CHECKOUT", Severity: sev, OwnerID: a.EmployeeID, OwnerName: a.Name,
+				Title:  fmt.Sprintf("%s ما سجّل انصراف %d مرات هالأسبوع", a.Name, a.N),
+				Detail: "النظام سجّله انصراف تلقائي بعد نهاية شفته.",
+				Advice: "ذكّره يسجّل انصرافه بنفسه — ساعات الدوام لازم تكون حقيقية."})
+		}
+	}
+	return finishEye(eye, "كل الفلوس مسجّلة: ماكو حجز منجز بلا مبلغ ولا مشروع بالتنفيذ بلا دفعات.")
+}

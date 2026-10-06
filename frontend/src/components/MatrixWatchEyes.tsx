@@ -7,14 +7,14 @@ import MatrixNote from './MatrixNote'
 // طلب (ع) 10-05: «لازم اكو رقابه بكل مكان» و«تروح للمراقب ويا تحليل ماتركس».
 // كل بند: شنو الغلط بالأرقام، منو يخصه، وشنو يقترح ماتركس.
 
-const ICON: Record<string, string> = { STOCK: '📦', VEHICLES: '🚗', CUSTOMERS: '⭐', IT: '🖥️', PENDING: '⏳' }
+const ICON: Record<string, string> = { REVENUE: '💰', STOCK: '📦', VEHICLES: '🚗', CUSTOMERS: '⭐', IT: '🖥️', PENDING: '⏳' }
 const SEV: Record<string, { cls: string; label: string }> = {
   HIGH: { cls: 'border-red-300 bg-red-50', label: '🔴 مهم' },
   MEDIUM: { cls: 'border-amber-300 bg-amber-50', label: '🟠 يحتاج متابعة' },
   LOW: { cls: 'border-slate-200 bg-slate-50', label: '🔵 للعلم' },
 }
 
-export default function MatrixWatchEyes({ initialTab = 'STOCK' }: { initialTab?: string } = {}) {
+export default function MatrixWatchEyes({ initialTab = 'REVENUE' }: { initialTab?: string } = {}) {
   const [r, setR] = useState<MatrixEyesReport | null>(null)
   const [tab, setTab] = useState(initialTab)
   const [all, setAll] = useState(false)
@@ -27,10 +27,10 @@ export default function MatrixWatchEyes({ initialTab = 'STOCK' }: { initialTab?:
     <div dir="rtl" className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/60 p-3 text-slate-800 sm:p-4">
       <div>
         <p className="text-base font-extrabold text-[#0f2040]">👁️ عيون الرقابة</p>
-        <p className="text-[11px] text-slate-500">المخزن، السيارات، رأي الزبائن، الآيتي، والطلبات المعلّقة. ماتركس يفحصها كل يوم بالقواعد (بلا كلفة).</p>
+        <p className="text-[11px] text-slate-500">الفلوس والإيرادات، المخزن، السيارات، رأي الزبائن، الآيتي، والطلبات المعلّقة. ماتركس يفحصها كل يوم بالقواعد (بلا كلفة).</p>
       </div>
       <MatrixNote>{r.insights.join(' ')}</MatrixNote>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
         {r.eyes.map((e) => (
           <button key={e.key} type="button" onClick={() => { setTab(e.key); setAll(false) }}
             className={`rounded-xl border p-2.5 text-right transition ${tab === e.key ? 'border-[#0f2040] bg-white shadow' : 'border-slate-200 bg-white/70 hover:bg-white'}`}>

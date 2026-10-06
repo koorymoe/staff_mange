@@ -5183,6 +5183,14 @@ export const api = {
   // Attendance
   checkIn: () => request<AttendanceRecord>('/attendance/checkin', { method: 'POST' }),
   checkOut: () => request<AttendanceRecord>('/attendance/checkout', { method: 'POST' }),
+  getAttendanceGate: () => request<AttendanceGateState>('/attendance/gate'),
+  getProjectPayments: (projectId: string) => request<ProjectPaymentsState>(`/projects/${projectId}/payments`),
+  addProjectPayment: (projectId: string, body: { amount: number; paidAt: string; method: string; receiptNo?: string; note?: string }) =>
+    request<ProjectPaymentsState>(`/projects/${projectId}/payments`, { method: 'POST', body: JSON.stringify(body) }),
+  verifyProjectPayment: (id: string) => request<ProjectPaymentsState>(`/project-payments/${id}/verify`, { method: 'POST' }),
+  cancelProjectPayment: (id: string, reason: string) => request<ProjectPaymentsState>(`/project-payments/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  setProjectContractValue: (projectId: string, amount: number) => request<ProjectPaymentsState>(`/projects/${projectId}/contract-value`, { method: 'PUT', body: JSON.stringify({ amount }) }),
+  getProjectMoneyOverview: () => request<ProjectMoney[]>('/project-payments/overview'),
   getMyAttendanceToday: () => request<AttendanceRecord | null>('/attendance/mine'),
   getMyOpenSession: () => request<OpenSessionResponse>('/attendance/open'),
   getTodayAttendance: () => request<AttendanceRecord[]>('/attendance/today'),
@@ -6055,3 +6063,19 @@ export interface MatrixScorePoint {
 }
 export interface HumanRatingRow { raterName: string | null; stage: string; code: string | null; score: number; note: string | null; at: string }
 export interface StaffScoreDetail extends StaffScore { month: string; points: MatrixScorePoint[]; human: HumanRatingRow[] }
+
+// ═══ الحضور الإجباري (قرار (ع) 10-06) ═══
+export interface AttendanceGateState { required: boolean; open: boolean; afterShift: boolean; shiftStart: string; shiftEnd: string; endLabel: string; evening: boolean }
+
+// ═══ دفعات المشاريع (قرار (ع) 10-06) ═══
+export interface ProjectMoney {
+  projectId: string; code: string; name: string; stage: string; priceText: string | null
+  contractValue: number | null; valueFromText: boolean; paid: number; unverified: number; payments: number
+  lastPaidAt: string | null; ownerId: string | null; ownerName: string | null
+}
+export interface ProjectPayment {
+  id: string; projectId: string; amount: number; paidAt: string; method: 'CASH' | 'TRANSFER' | 'CHEQUE'
+  receiptNo: string | null; note: string | null; createdBy: string | null; createdAt: string
+  verifiedBy: string | null; verifiedAt: string | null; cancelledAt: string | null; cancelReason: string | null
+}
+export interface ProjectPaymentsState { money: ProjectMoney; payments: ProjectPayment[]; canVerify: boolean; canValue: boolean }

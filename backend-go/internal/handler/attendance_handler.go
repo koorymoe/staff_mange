@@ -305,3 +305,13 @@ func (h *AttendanceHandler) ExportToday(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 }
+
+// GET /api/attendance/gate — هل لازم يسجّل حضور هسه؟ وهل خلص دوامه؟
+func (h *AttendanceHandler) Gate(w http.ResponseWriter, r *http.Request) {
+	g, err := h.service.Gate(middleware.EmployeeIDFromContext(r), time.Now())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, g)
+}

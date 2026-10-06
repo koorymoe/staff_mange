@@ -169,7 +169,10 @@ func (r *AiRepository) WeekTotals(from, to time.Time) (*WeekTotals, error) {
 		     AND (b."completedAt" AT TIME ZONE 'UTC') >= $1 AND (b."completedAt" AT TIME ZONE 'UTC') < $2) AS completed,
 		  (SELECT COALESCE(SUM(b."amountCollected"), 0) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL
 		     AND NOT (`+isLegacyImportSQL+`) AND b."settledLegacyAt" IS NULL
-		     AND (b."completedAt" AT TIME ZONE 'UTC') >= $1 AND (b."completedAt" AT TIME ZONE 'UTC') < $2) AS revenue,
+		     AND NOT EXISTS (SELECT 1 FROM "Project" pj JOIN "ProjectPayment" pp ON pp."projectId" = pj.id AND pp."cancelledAt" IS NULL WHERE pj."bookingId" = b.id)
+		     AND (b."completedAt" AT TIME ZONE 'UTC') >= $1 AND (b."completedAt" AT TIME ZONE 'UTC') < $2)
+		  + (SELECT COALESCE(SUM(pp.amount), 0) FROM "ProjectPayment" pp WHERE pp."cancelledAt" IS NULL
+		     AND pp."paidAt" >= baghdad_date($1::timestamptz) AND pp."paidAt" < baghdad_date($2::timestamptz)) AS revenue,
 		  (SELECT COUNT(*) FROM "Complaint" c
 		     WHERE (c."createdAt" AT TIME ZONE 'UTC') >= $1 AND (c."createdAt" AT TIME ZONE 'UTC') < $2) AS complaints,
 		  (SELECT COUNT(*) FROM "AiSignal" s WHERE s.kind = 'WORK_STOPPED'

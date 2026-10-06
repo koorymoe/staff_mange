@@ -465,3 +465,57 @@ func (r *MatrixWatchRepository) PendingRequests() ([]PendingRow, error) {
 		ORDER BY since LIMIT 80`)
 	return rows, err
 }
+
+// ═══ عين الإيرادات (قرار (ع) 10-06): «ماتركس راح يكون العروق مال الشجره» ═══
+
+// MoneyGap حجز منجز بيه مشكلة فلوس.
+type MoneyGap struct {
+	BookingID   string    `db:"bookingId"`
+	Code        string    `db:"code"`
+	CompletedAt time.Time `db:"completedAt"`
+	Collected   *float64  `db:"collected"`
+	InvoiceNet  *float64  `db:"invoiceNet"`
+	LeaderID    *string   `db:"leaderId"`
+	LeaderName  *string   `db:"leaderName"`
+}
+
+// MoneyGaps حجوزات منجزة بآخر ٦٠ يوم (مو قديمة، مو داخلية): بلا مبلغ ولا فاتورة
+// من +٢٤ ساعة، أو المحصّل يختلف عن صافي الفاتورة. حجوزات المشاريع المدفوعة
+// كمشروع مستثناة (فلوسها بالدفعات).
+func (r *MatrixWatchRepository) MoneyGaps() ([]MoneyGap, error) {
+	rows := []MoneyGap{}
+	err := r.db.Select(&rows, `
+		SELECT b.id AS "bookingId", b.code, b."completedAt", b."amountCollected"::float8 AS collected,
+		       li."netTotal"::float8 AS "invoiceNet",
+		       COALESCE(b."projectSupervisorId", ld."employeeId") AS "leaderId", le.name AS "leaderName"
+		FROM "Booking" b
+		LEFT JOIN LATERAL (SELECT "netTotal" FROM "LeaderInvoice" WHERE "bookingId" = b.id ORDER BY "createdAt" DESC LIMIT 1) li ON true
+		LEFT JOIN LATERAL (SELECT ba."employeeId" FROM "BookingAssignment" ba JOIN "Employee" x ON x.id = ba."employeeId"
+		                   WHERE ba."bookingId" = b.id AND x."isLeader" LIMIT 1) ld ON true
+		LEFT JOIN "Employee" le ON le.id = COALESCE(b."projectSupervisorId", ld."employeeId")
+		WHERE b.status = 'COMPLETED' AND b."completedAt" IS NOT NULL AND b."archivedAt" IS NULL
+		  AND b."bookingType" IS DISTINCT FROM 'INTERNAL' AND upper(b.code) NOT LIKE 'OLD%'
+		  AND b."completedAt" >= now() - interval '60 days'
+		  AND NOT EXISTS (SELECT 1 FROM "Project" pj JOIN "ProjectPayment" pp ON pp."projectId" = pj.id AND pp."cancelledAt" IS NULL WHERE pj."bookingId" = b.id)
+		  AND (
+		    (b."completedAt" < now() - interval '24 hours' AND COALESCE(b."amountCollected", 0) = 0 AND li."netTotal" IS NULL)
+		    OR (b."amountCollected" IS NOT NULL AND li."netTotal" IS NOT NULL AND abs(b."amountCollected" - li."netTotal") >= 1000)
+		  )
+		ORDER BY b."completedAt" DESC LIMIT 200`)
+	return rows, err
+}
+
+// AutoCheckouts كم انصراف تلقائي لكل موظف بآخر ٧ أيام (٢ وأكثر).
+type AutoCheckoutRow struct {
+	EmployeeID string `db:"employeeId"`
+	Name       string `db:"name"`
+	N          int    `db:"n"`
+}
+
+func (r *MatrixWatchRepository) AutoCheckouts() ([]AutoCheckoutRow, error) {
+	rows := []AutoCheckoutRow{}
+	err := r.db.Select(&rows, `SELECT a."employeeId", e.name, count(*)::int AS n FROM "AttendanceAuto" a
+		JOIN "Employee" e ON e.id = a."employeeId" WHERE a."createdAt" >= now() - interval '7 days'
+		GROUP BY 1, 2 HAVING count(*) >= 2 ORDER BY 3 DESC`)
+	return rows, err
+}

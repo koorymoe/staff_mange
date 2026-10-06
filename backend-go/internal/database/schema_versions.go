@@ -411,6 +411,10 @@ func versionedMigrations() []Migration {
 	result = append(result, peerVoiceMigrations()...)
 	// 0321: تقييم ماتركس (نقاط بلا فلوس) + تقييمات البشر بالسلسلة.
 	result = append(result, matrixScoreMigrations()...)
+	// 0322: الانصراف التلقائي (الحضور الإجباري بالشفتات).
+	result = append(result, attendanceAutoMigrations()...)
+	// 0323: دفعات المشاريع + قيمة العقد كرقم.
+	result = append(result, projectPaymentMigrations()...)
 	return result
 }
 
