@@ -775,8 +775,11 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
   const isCompleted = p.stage.includes('مكتمل')
   const isContractStage = p.stage.includes('عقد')
   const stageIdx = STAGES.indexOf(p.stage)
-  const nextStage = STAGES[stageIdx + 1] && stageIdx <= 5 ? STAGES[stageIdx + 1] : null
+  // قرار (ع) 10-06: الإعلام زر بخطوات المشروع، مو مرحلة توقفه — العقد يترحّل للتنفيذ مباشرة.
+  const nextStage = isContractStage ? STAGES[5] : STAGES[stageIdx + 1] && stageIdx <= 5 ? STAGES[stageIdx + 1] : null
   const [showContract, setShowContract] = useState(false)
+  const [showMedia, setShowMedia] = useState(false)
+  const inMedia = useMediaOpen().has(p.id)
 
   const handleAdvance = () => {
     if (isContractStage && !p.hasContract) {
@@ -871,6 +874,13 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
               📄 العقد{p.hasContract ? (p.hasSignedContract ? ' (مرفوع وموقّع)' : ' (مرفوع)') : ''}
             </button>
           )}
+          {/* 📸 إعلام: تحويل المشروع للإعلام والعلاقات العامة حتى يصوّرون الشغل */}
+          {canManage && !isRejected && !isCompleted && stageIdx >= 3 && (
+            <button onClick={() => setShowMedia(true)}
+              className={`text-sm px-3 py-1.5 rounded-lg font-bold hover:brightness-110 ${inMedia ? 'border border-pink-400 bg-pink-50 text-pink-700' : 'bg-pink-600 text-white'}`}>
+              {inMedia ? '📸 بالإعلام ✓' : '📸 إعلام'}
+            </button>
+          )}
           {canManage && !isRejected && !isCompleted && nextStage && (
             <button onClick={handleAdvance}
               className="text-sm px-4 py-1.5 rounded-full bg-gray-800 text-white font-bold hover:brightness-110">ترحيل ⮕</button>
@@ -889,6 +899,9 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
 
       {showContract && (
         <ContractModal project={p} onClose={() => setShowContract(false)} onSaved={() => { setShowContract(false); onRefresh() }} />
+      )}
+      {showMedia && (
+        <MediaTransferModal project={p} onClose={() => setShowMedia(false)} onSaved={() => { setShowMedia(false); onRefresh() }} />
       )}
     </div>
   )
@@ -1138,6 +1151,81 @@ function EditModal({ project, onClose, onSaved }: { project: Project; onClose: (
         className="w-full mt-5 py-2.5 rounded-lg bg-[var(--color-brand-500)] text-white font-bold disabled:opacity-50">
         {saving ? 'جارٍ الحفظ...' : 'حفظ التعديلات ✅'}
       </button>
+    </Modal>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 📸 إعلام — تحويل المشروع للإعلام (قرار (ع) 10-06: زر بخطوات المشروع)
+// ---------------------------------------------------------------------------
+let mediaOpenCache: Promise<Set<string>> | null = null
+function useMediaOpen(): Set<string> {
+  const [set, setSet] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    if (!mediaOpenCache) mediaOpenCache = request<string[]>('/projects/media/open').then((ids) => new Set(ids)).catch(() => new Set<string>())
+    let alive = true
+    void mediaOpenCache.then((s) => { if (alive) setSet(s) })
+    return () => { alive = false }
+  }, [])
+  return set
+}
+
+interface OpenBrief { engineerId: string | null; startAt: string | null; expectedEndAt: string | null; duration: string | null; notes: string | null; status: string }
+const localDT = (iso: string | null) => (iso ? new Date(new Date(iso).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '')
+
+function MediaTransferModal({ project, onClose, onSaved }: { project: Project; onClose: () => void; onSaved: () => void }) {
+  const candidates = useProjectCandidates()
+  const [existing, setExisting] = useState<OpenBrief | null>(null)
+  const [engineer, setEngineer] = useState(project.responsibleEmployeeId || project.delegatedToEmployeeId || project.surveyorEmployeeId || '')
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState(project.deliveryDate || '')
+  const [duration, setDuration] = useState(project.time || '')
+  const [notes, setNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  useEffect(() => {
+    void request<OpenBrief | null>(`/projects/${project.id}/media`).then((b) => {
+      if (!b) return
+      setExisting(b)
+      if (b.engineerId) setEngineer(b.engineerId)
+      setStart(localDT(b.startAt))
+      if (b.expectedEndAt) setEnd(b.expectedEndAt.slice(0, 10))
+      setDuration(b.duration || '')
+      setNotes(b.notes || '')
+    }).catch(() => {})
+  }, [project.id])
+  const save = async () => {
+    if (!start) { alert('حدد متى يبدي الشغل حتى الإعلام يعرف يجون يصوّرون.'); return }
+    setSaving(true)
+    try {
+      await request(`/projects/${project.id}/media`, { method: 'POST', body: JSON.stringify({
+        engineerId: engineer || null, startAt: start, expectedEndAt: end || null, duration: duration || null, notes: notes || null,
+      }) })
+      mediaOpenCache = null
+      onSaved()
+    } catch (e) { alert((e as Error).message); setSaving(false) }
+  }
+  return (
+    <Modal onClose={onClose} title={`📸 إعلام: ${project.name}`}>
+      <div className="space-y-3">
+        <div className="rounded-lg bg-pink-50 p-3 text-center text-sm font-bold text-pink-700">
+          {existing ? '📸 المشروع محوّل للإعلام — تكدر تحدّث التفاصيل' : '📸 تحويل المشروع للإعلام والعلاقات العامة'}
+        </div>
+        <p className="text-xs text-gray-600">ينرسل للإعلام: اسم المشروع ونوعه، الموقع والخريطة، المهندس المشرف ورقمه، متى يبدي الشغل وشكد ياخذ ومتى يخلص — حتى يطلعون يصوّرون الشغل وينشرونه. المشروع يكمّل مراحله عادي.</p>
+        <Field label="المهندس المشرف">
+          <select className="inp" value={engineer} onChange={e => setEngineer(e.target.value)}>
+            <option value="">-- اختر المهندس --</option>
+            <EmployeeOptions candidates={candidates} />
+          </select>
+        </Field>
+        <Field label="متى يبدي الشغل *"><input type="datetime-local" className="inp" value={start} onChange={e => setStart(e.target.value)} /></Field>
+        <Field label="مدة الشغل (مثلاً: ٣ أيام)"><input className="inp" value={duration} onChange={e => setDuration(e.target.value)} /></Field>
+        <Field label="متى يخلص المشروع"><input type="date" className="inp" value={end} onChange={e => setEnd(e.target.value)} /></Field>
+        <Field label="ملاحظات للإعلام (شنو يصوّرون، أوقات مناسبة…)"><textarea className="inp" rows={3} value={notes} onChange={e => setNotes(e.target.value)} /></Field>
+        <button onClick={() => void save()} disabled={saving}
+          className="w-full rounded-lg bg-pink-600 py-2.5 font-bold text-white hover:brightness-110 disabled:opacity-50">
+          {saving ? 'جاري الإرسال…' : existing ? 'حدّث التفاصيل' : 'حوّل للإعلام 📸'}
+        </button>
+      </div>
     </Modal>
   )
 }

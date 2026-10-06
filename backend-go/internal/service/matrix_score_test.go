@@ -86,3 +86,26 @@ func TestPeriodKey(t *testing.T) {
 		t.Fatal(k)
 	}
 }
+
+func TestProjectBookingChain(t *testing.T) {
+	conf := time.Date(2026, 9, 1, 10, 0, 0, 0, time.UTC)
+	exec := conf.AddDate(0, 0, 20)
+	f := &repository.ChainFacts{Status: "CONFIRMED", ToProjects: true, ConfirmedAt: &conf}
+	if !AtProjects(f) {
+		t.Fatal("محوّل وما وصل التنفيذ = عند المشاريع")
+	}
+	if !crewStart(f).Equal(conf) {
+		t.Fatal("قبل التنفيذ يبقى التثبيت")
+	}
+	f.ProjectExecAt = &exec
+	if AtProjects(f) {
+		t.Fatal("وصل التنفيذ = رجع للإداري")
+	}
+	if !crewStart(f).Equal(exec) {
+		t.Fatal("الكادر ينحسب من رجوعه، مو من التثبيت")
+	}
+	plain := &repository.ChainFacts{Status: "CONFIRMED", ConfirmedAt: &conf}
+	if AtProjects(plain) || !crewStart(plain).Equal(conf) {
+		t.Fatal("حجز عادي ما يتأثر")
+	}
+}

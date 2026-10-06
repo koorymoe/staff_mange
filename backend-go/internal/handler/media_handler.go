@@ -65,23 +65,33 @@ func (h *MediaHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 	projectID := r.PathValue("id")
 	var in mediaTransferInput
 	_ = json.NewDecoder(r.Body).Decode(&in)
-	if existing := h.repo.OpenForProject(projectID); existing != "" {
-		WriteError(w, http.StatusConflict, "هالمشروع محوّل للإعلام من قبل وبعده مفتوح عندهم")
-		return
-	}
 	eng := trimPtr(in.EngineerID)
 	if eng == nil {
 		eng = h.repo.ProjectEngineer(projectID)
 	}
-	id, err := h.repo.Create(repository.MediaCreate{ProjectID: projectID, CreatedByID: middleware.EmployeeIDFromContext(r),
+	c := repository.MediaCreate{ProjectID: projectID, CreatedByID: middleware.EmployeeIDFromContext(r),
 		EngineerID: eng, StartAt: parseTime(in.StartAt), ExpectedEndAt: parseTime(in.ExpectedEndAt),
-		Duration: trimPtr(in.Duration), Notes: trimPtr(in.Notes)})
+		Duration: trimPtr(in.Duration), Notes: trimPtr(in.Notes)}
+	// زر «📸 إعلام» مرة ثانية: يحدّث التحويل المفتوح بدل ما يكرره.
+	if existing := h.repo.OpenForProject(projectID); existing != "" {
+		if err := h.repo.UpdateBrief(existing, c); err != nil {
+			WriteError(w, http.StatusBadRequest, "تعذر تحديث التحويل")
+			return
+		}
+		WriteJSON(w, http.StatusOK, map[string]any{"id": existing, "updated": true})
+		return
+	}
+	id, err := h.repo.Create(c)
 	if err != nil {
 		log.Printf("media transfer: %v", err)
 		WriteError(w, http.StatusBadRequest, "تعذر التحويل للإعلام — تأكد إن المشروع موجود")
 		return
 	}
-	_ = h.repo.SetProjectStage(projectID, mediaStage)
+	// قرار (ع) 10-06: الإعلام زر بخطوات المشروع، مو مرحلة توقفه. المرحلة
+	// تصير «📸 الإعلام» بس إذا المشروع بالعقد؛ إذا بالتنفيذ يبقى بمرحلته.
+	if strings.Contains(h.repo.ProjectStage(projectID), "عقد") {
+		_ = h.repo.SetProjectStage(projectID, mediaStage)
+	}
 	if b, err := h.repo.Get(id); err == nil && h.notify != nil {
 		when := ""
 		if b.StartAt != nil {
@@ -158,4 +168,29 @@ func (h *DisciplineRecordHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, rec)
+}
+
+// GET /api/projects/media/open — المشاريع المحوّلة للإعلام (علامة ✓ على الزر).
+func (h *MediaHandler) OpenProjects(w http.ResponseWriter, r *http.Request) {
+	ids, err := h.repo.OpenProjects()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر")
+		return
+	}
+	WriteJSON(w, http.StatusOK, ids)
+}
+
+// GET /api/projects/{id}/media — التحويل المفتوح لهالمشروع (لتعبئة النافذة).
+func (h *MediaHandler) ForProject(w http.ResponseWriter, r *http.Request) {
+	id := h.repo.OpenForProject(r.PathValue("id"))
+	if id == "" {
+		WriteJSON(w, http.StatusOK, nil)
+		return
+	}
+	b, err := h.repo.Get(id)
+	if err != nil {
+		WriteJSON(w, http.StatusOK, nil)
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
 }

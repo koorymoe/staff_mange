@@ -36,6 +36,10 @@ type ChainFacts struct {
 	ConfirmedByID *string    `db:"confirmedById"`
 	ConfirmedBy   *string    `db:"confirmedBy"`
 	ScheduledAt   *time.Time `db:"scheduledAt"`
+	// حجز محوّل لإدارة المشاريع: ينقفل عندهم لحد «البدء بالتنفيذ».
+	ToProjects    bool       `db:"toProjects"`
+	ProjectExecAt *time.Time `db:"projectExecAt"`
+	ProjectStage  *string    `db:"projectStage"`
 	PostponeCount int        `db:"postponeCount"`
 	ScheduleMoves int        `db:"scheduleMoves"`
 	ContactTries  int        `db:"contactTries"`
@@ -106,6 +110,8 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        b."confirmationContactedAt" AS "contactedAt", b."confirmationContactedById" AS "contactedById", ke.name AS "contactedBy",
        b."confirmedAt", b."confirmedByEmployeeId" AS "confirmedById", fe.name AS "confirmedBy",
        b."scheduledAt", b."postponeCount",
+       COALESCE(b."transferToProjects", false) AS "toProjects", b."projectExecutionAt" AS "projectExecAt",
+       (SELECT p.stage FROM "Project" p WHERE p."bookingId" = b.id ORDER BY p."createdAt" DESC LIMIT 1) AS "projectStage",
        (SELECT count(*) FROM "ScheduleChangeLog" l WHERE l."bookingId" = b.id)::int AS "scheduleMoves",
        b."contactAttempts" AS "contactTries",
        asg."firstAssignAt", COALESCE(asg.crew, '{}') AS "crewIds", COALESCE(asg.techs, '{}') AS "techIds",

@@ -174,6 +174,14 @@ func (r *MatrixScoreRepository) Scores(from, to time.Time, employeeID string) ([
 	return rows, err
 }
 
+// DropStation يشيل نقاط محطة صار حكمها «ما تنطبق» (مثلاً الحجز تحوّل
+// لإدارة المشاريع بعد ما انحسبت). الملغية بيد المدير تبقى بالسجل.
+func (r *MatrixScoreRepository) DropStation(bookingID, rule string) error {
+	_, err := r.db.Exec(`DELETE FROM "MatrixScore" WHERE source = 'BOOKING' AND "sourceId" = $1 AND rule = $2 AND "cancelledAt" IS NULL`,
+		bookingID, rule)
+	return err
+}
+
 func (r *MatrixScoreRepository) Cancel(id, byID, note string) error {
 	_, err := r.db.Exec(`UPDATE "MatrixScore" SET "cancelledAt" = now(), "cancelledById" = $2, "cancelNote" = $3
 		WHERE id = $1 AND "cancelledAt" IS NULL`, id, byID, note)

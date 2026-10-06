@@ -94,6 +94,28 @@ func (r *MediaRepository) Create(c MediaCreate) (string, error) {
 	return id, err
 }
 
+// UpdateBrief تحديث تفاصيل تحويل مفتوح (من زر «📸 إعلام» مرة ثانية).
+func (r *MediaRepository) UpdateBrief(id string, c MediaCreate) error {
+	_, err := r.db.Exec(`UPDATE "MediaBrief" SET "engineerId" = COALESCE($2, "engineerId"), "startAt" = COALESCE($3, "startAt"),
+		"expectedEndAt" = $4, duration = $5, notes = $6, "updatedAt" = now() WHERE id = $1`,
+		id, c.EngineerID, c.StartAt, c.ExpectedEndAt, c.Duration, c.Notes)
+	return err
+}
+
+// OpenProjects المشاريع الي عندها تحويل مفتوح بالإعلام — لعلامة ✓ على الزر.
+func (r *MediaRepository) OpenProjects() ([]string, error) {
+	ids := []string{}
+	err := r.db.Select(&ids, `SELECT DISTINCT "projectId" FROM "MediaBrief" WHERE status NOT IN ('PUBLISHED', 'CANCELLED')`)
+	return ids, err
+}
+
+// ProjectStage مرحلة المشروع الحالية.
+func (r *MediaRepository) ProjectStage(projectID string) string {
+	var st string
+	_ = r.db.Get(&st, `SELECT stage FROM "Project" WHERE id = $1`, projectID)
+	return st
+}
+
 type MediaUpdate struct {
 	Status       string
 	ShootAt      *time.Time

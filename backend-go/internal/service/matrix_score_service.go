@@ -147,6 +147,12 @@ func (s *MatrixScoreService) scoreBookings(now time.Time, add func(repository.Ma
 		ch := s.chain.chainOf(f, now)
 		label := "حجز " + ch.Code
 		for _, st := range ch.Stations {
+			if st.Status == ChainNA {
+				if ch.Project {
+					_ = s.repo.DropStation(f.ID, st.Key)
+				}
+				continue
+			}
 			at := f.CreatedAt
 			if t := latestOf(st.EndAt, st.StartAt); t != nil {
 				at = *t

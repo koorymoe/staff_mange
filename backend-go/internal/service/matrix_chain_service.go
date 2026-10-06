@@ -113,6 +113,7 @@ type ChainStation struct {
 
 type BookingChain struct {
 	BookingID string                     `json:"bookingId"`
+	Project   bool                       `json:"project"` // حجز محوّل لإدارة المشاريع
 	Code      string                     `json:"code"`
 	Service   string                     `json:"service"`
 	Solo      bool                       `json:"solo"`
@@ -166,7 +167,7 @@ func rawMinutes(f *repository.ChainFacts) map[string]*int {
 	m := map[string]*int{}
 	m["CONTACT"] = minsBetween(&f.CreatedAt, f.ContactedAt)
 	m["CONFIRM"] = minsBetween(firstOf(f.ContactedAt, &f.CreatedAt), f.ConfirmedAt)
-	m["CREW"] = minsBetween(f.ConfirmedAt, f.FirstAssignAt)
+	m["CREW"] = minsBetween(crewStart(f), f.FirstAssignAt)
 	m["RECEIVE"] = minsBetween(firstOf(f.MissionAt, f.FirstAssignAt), f.MaterialsAt)
 	m["ROUTE"] = minsBetween(f.ScheduledAt, firstOf(f.DepartedAt, f.StartedAt))
 	m["WORK"] = minsBetween(firstOf(f.WorkStartAt, f.StartedAt, f.ArrivedAt), f.CompletedAt)
@@ -258,6 +259,19 @@ func (s *MatrixChainService) threshold(f *repository.ChainFacts, key string) int
 }
 
 // ═══ أدوات الوقت ═══
+
+// AtProjects الحجز بعده عند إدارة المشاريع (ما وصل التنفيذ).
+func AtProjects(f *repository.ChainFacts) bool {
+	return f.ToProjects && f.ProjectExecAt == nil && f.Status != "COMPLETED" && f.Status != "CANCELLED"
+}
+
+// crewStart بداية محطة الكادر: التثبيت — وبحجز المشروع وقت رجوعه للإداري.
+func crewStart(f *repository.ChainFacts) *time.Time {
+	if f.ToProjects && f.ProjectExecAt != nil {
+		return f.ProjectExecAt
+	}
+	return f.ConfirmedAt
+}
 
 func minsBetween(from, to *time.Time) *int {
 	if from == nil || to == nil || from.IsZero() || to.IsZero() {
@@ -498,7 +512,10 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 	// ٤. الكادر
 	{
 		st := ChainStation{Key: "CREW", Role: ChainRoleCoordinator, Owners: s.owner(f.ConfirmedByID, f.ConfirmedBy)}
-		judge(&st, f.ConfirmedAt, f.FirstAssignAt, s.threshold(f, "CREW"), nil)
+		judge(&st, crewStart(f), f.FirstAssignAt, s.threshold(f, "CREW"), nil)
+		if f.ToProjects && f.ProjectExecAt != nil {
+			st.Facts = append(st.Facts, "حجز مشروع: الوقت ينحسب من رجوعه من إدارة المشاريع (البدء بالتنفيذ)، مو من التثبيت.")
+		}
 		if f.FirstAssignAt != nil {
 			st.Facts = append(st.Facts, fmt.Sprintf("عدد الكادر: %d.", len(f.CrewIDs)))
 			if !f.Solo && !survey && f.LeaderID == nil {
@@ -779,6 +796,27 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			}
 		}
 		add(st)
+	}
+
+	// حجز عند إدارة المشاريع: من «تحديد الكادر» وطالع ما ينحسب على أحد —
+	// الإداري ممنوع يلمسه لحد ما المشروع يوصل التنفيذ (ensureNotProjectLocked).
+	if AtProjects(f) {
+		stage := "بمراحلها"
+		if f.ProjectStage != nil && *f.ProjectStage != "" {
+			stage = "بمرحلة «" + *f.ProjectStage + "»"
+		}
+		ch.Project = true
+		for i := range ch.Stations {
+			st := &ch.Stations[i]
+			if st.Key == "CREATE" || st.Key == "CONTACT" || st.Key == "CONFIRM" {
+				continue
+			}
+			st.Status = ChainNA
+			st.Verdict = "الحجز عند إدارة المشاريع " + stage + " — ما ينحسب على أحد لحد ما يوصل التنفيذ."
+			st.Issues = []string{}
+		}
+	} else if f.ToProjects {
+		ch.Project = true
 	}
 
 	for _, st := range ch.Stations {

@@ -28,7 +28,7 @@ export default function BookingChainView({ bookingId }: { bookingId: string }) {
   return (
     <div dir="rtl" className="mt-3 rounded-xl border border-slate-200 bg-white p-4">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h4 className="text-sm font-bold text-[#0f2040]">🔗 سلسلة الحجز {ch.code}{ch.service && <span className="font-normal text-slate-500"> · {ch.service}{ch.solo ? ' (فني وحده)' : ''}</span>}</h4>
+        <h4 className="text-sm font-bold text-[#0f2040]">🔗 سلسلة الحجز {ch.code}{ch.service && <span className="font-normal text-slate-500"> · {ch.service}{ch.solo ? ' (فني وحده)' : ''}</span>}{ch.project && <span className="mr-1 rounded bg-lime-100 px-1.5 text-[11px] font-bold text-lime-800">🏗️ حجز مشروع</span>}</h4>
         <div className="flex flex-wrap gap-1 text-[11px]">
           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-emerald-800">✅ {s.ok}</span>
           {s.issue > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-amber-800">⚠️ {s.issue}</span>}

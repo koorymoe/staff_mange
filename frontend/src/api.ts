@@ -2118,7 +2118,7 @@ export interface ChainStation {
 }
 export interface CrewRatingRow { bookingId: string; bookingCode: string; leaderId: string; leaderName: string; technicianId: string; score: number; note: string | null; createdAt: string }
 export interface BookingChain {
-  bookingId: string; code: string; service: string; solo: boolean; legacy: boolean
+  bookingId: string; code: string; service: string; solo: boolean; legacy: boolean; project?: boolean
   stations: ChainStation[]; summary: string
   score: { ok: number; late: number; missed: number; issue: number; waiting: number }
   ratings: CrewRatingRow[] | null
