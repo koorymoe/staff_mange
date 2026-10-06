@@ -112,8 +112,8 @@ export function PeriodicRatings() {
     <div dir="rtl" className="space-y-3">
       <StaffRatingQueue kind="audit" />
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
-        <p className="text-sm font-extrabold text-slate-800">⭐ تقييمك لشغل الموظفين بهالنص شهر</p>
-        <p className="mb-2 text-[11px] text-slate-500">قيّمت {rated} من {st.people.length}. قيّم كل واحد حسب شغله (المحاسب بالتدقيق، المصممة بالتصاميم، التقنيين بالخدمات…). تنعاد كل نص شهر.</p>
+        <p className="text-sm font-extrabold text-slate-800">⭐ تقييمك الدوري بهالنص شهر</p>
+        <p className="mb-2 text-[11px] text-slate-500">قيّمت {rated} من {st.people.length}. كل واحد حسب شغله. الفنيين يقيّمهم ليدرهم، والليدرية بالحجوزات — فما يطلعون هنا. تنعاد كل نص شهر.</p>
         <div className="grid gap-1.5 sm:grid-cols-2">
           {st.people.map((p) => (
             <div key={p.id} className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${st.mine[p.id] ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>

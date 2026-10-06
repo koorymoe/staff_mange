@@ -281,20 +281,24 @@ type RuleLoss struct {
 }
 
 type StaffScore struct {
-	ID         string            `json:"id"`
-	Name       string            `json:"name"`
-	Role       string            `json:"role"`
-	Earned     int               `json:"earned"`
-	Max        int               `json:"max"`
-	MatrixPct  *float64          `json:"matrixPct"`
-	HumanAvg   *float64          `json:"humanAvg"`
-	HumanCount int               `json:"humanCount"`
-	HumanPct   *float64          `json:"humanPct"`
-	Final      *float64          `json:"final"`
-	PrevFinal  *float64          `json:"prevFinal"`
-	NoHuman    bool              `json:"noHuman"`
-	TopLosses  []RuleLoss        `json:"topLosses"`
-	BySource   map[string][2]int `json:"bySource"` // مكسوب/أقصى لكل مصدر
+	Group       string            `json:"group"`
+	GroupLabel  string            `json:"groupLabel"`
+	Reliability *float64          `json:"reliability"`
+	RelParts    []ReliabilityPart `json:"reliabilityParts"`
+	ID          string            `json:"id"`
+	Name        string            `json:"name"`
+	Role        string            `json:"role"`
+	Earned      int               `json:"earned"`
+	Max         int               `json:"max"`
+	MatrixPct   *float64          `json:"matrixPct"`
+	HumanAvg    *float64          `json:"humanAvg"`
+	HumanCount  int               `json:"humanCount"`
+	HumanPct    *float64          `json:"humanPct"`
+	Final       *float64          `json:"final"`
+	PrevFinal   *float64          `json:"prevFinal"`
+	NoHuman     bool              `json:"noHuman"`
+	TopLosses   []RuleLoss        `json:"topLosses"`
+	BySource    map[string][2]int `json:"bySource"` // مكسوب/أقصى لكل مصدر
 }
 
 type StaffScoreBoard struct {
@@ -418,21 +422,27 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 	if err != nil {
 		return nil, err
 	}
-	return BuildScores(people, pts, hum), nil
+	rel, _ := s.repo.ReliabilityFacts(from, to)
+	return BuildScores(people, pts, hum, rel), nil
 }
 
 // BuildScores يجمع النقاط والتقييمات لكل موظف (منفصلة حتى تنفحص).
-func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, hum []repository.HumanRow) []StaffScore {
+func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, hum []repository.HumanRow, rel map[string]repository.ReliabilityFact) []StaffScore {
+	groupOf := map[string]string{}
+	for _, p := range people {
+		groupOf[p.ID] = ScoreGroup(p)
+	}
 	type acc struct {
 		earned, max int
 		loss        map[string]*RuleLoss
 		src         map[string][2]int
+		rules       map[string][2]int
 		hSum, hN    int
 	}
 	by := map[string]*acc{}
 	get := func(id string) *acc {
 		if by[id] == nil {
-			by[id] = &acc{loss: map[string]*RuleLoss{}, src: map[string][2]int{}}
+			by[id] = &acc{loss: map[string]*RuleLoss{}, src: map[string][2]int{}, rules: map[string][2]int{}}
 		}
 		return by[id]
 	}
@@ -445,6 +455,8 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		a.max += p.MaxPoints
 		v := a.src[p.Source]
 		a.src[p.Source] = [2]int{v[0] + p.Points, v[1] + p.MaxPoints}
+		rv := a.rules[p.Rule]
+		a.rules[p.Rule] = [2]int{rv[0] + p.Points, rv[1] + p.MaxPoints}
 		if lost := p.MaxPoints - p.Points; lost > 0 {
 			l := a.loss[p.Rule]
 			if l == nil {
@@ -456,6 +468,10 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		}
 	}
 	for _, h := range hum {
+		// قرار (ع) 10-06: كل مجموعة ينحسبلها بس مقيّميها المسموحين.
+		if g, ok := groupOf[h.RateeID]; ok && !groupRaterStages[g][h.Stage] {
+			continue
+		}
 		a := get(h.RateeID)
 		a.hSum += h.Score
 		a.hN++
@@ -463,8 +479,10 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 	out := make([]StaffScore, 0, len(people))
 	for _, p := range people {
 		a := get(p.ID)
+		g := groupOf[p.ID]
 		s := StaffScore{ID: p.ID, Name: p.Name, Role: p.Role, Earned: a.earned, Max: a.max, HumanCount: a.hN,
-			TopLosses: []RuleLoss{}, BySource: a.src}
+			TopLosses: []RuleLoss{}, BySource: a.src, Group: g, GroupLabel: ScoreGroupLabels[g]}
+		s.RelParts, s.Reliability = BuildReliability(a.rules, rel[p.ID])
 		if a.max > 0 {
 			v := float64(a.earned) * 100 / float64(a.max)
 			s.MatrixPct = &v
@@ -587,7 +605,7 @@ func (s *MatrixScoreService) RateOnBooking(stage, raterID, bookingID, rateeID st
 }
 
 // RatePeriodic المراقب يقيّم المكاتب (المحاسب، المصممة، التقنيين…) كل نص شهر.
-func (s *MatrixScoreService) RatePeriodic(raterID, rateeID string, score int, note *string) error {
+func (s *MatrixScoreService) RatePeriodic(raterID, raterRole, rateeID string, score int, note *string) error {
 	if err := validScore(score); err != nil {
 		return err
 	}
@@ -600,7 +618,11 @@ func (s *MatrixScoreService) RatePeriodic(raterID, rateeID string, score int, no
 	}
 	for _, p := range people {
 		if p.ID == rateeID {
-			return s.repo.SaveRating(repository.StaffRatingInput{RaterID: raterID, RateeID: rateeID, Stage: "MONITOR_PERIODIC",
+			stage := periodicStage(raterRole)
+			if !periodicAllowed(stage, p) {
+				return errors.New("هذا الموظف يقيّمه غيرك (حسب مجموعته)")
+			}
+			return s.repo.SaveRating(repository.StaffRatingInput{RaterID: raterID, RateeID: rateeID, Stage: stage,
 				Period: PeriodKey(time.Now()), Score: score, Note: note})
 		}
 	}
@@ -636,17 +658,18 @@ type PeriodicState struct {
 	Mine   map[string]int        `json:"mine"`
 }
 
-func (s *MatrixScoreService) Periodic(raterID string) (*PeriodicState, error) {
+func (s *MatrixScoreService) Periodic(raterID, raterRole string) (*PeriodicState, error) {
 	people, err := s.repo.Scorables()
 	if err != nil {
 		return nil, err
 	}
 	out := &PeriodicState{Period: PeriodKey(time.Now()), People: []repository.Scorable{}}
+	stage := periodicStage(raterRole)
 	for _, p := range people {
-		if p.ID != raterID {
+		if p.ID != raterID && periodicAllowed(stage, p) {
 			out.People = append(out.People, p)
 		}
 	}
-	out.Mine, err = s.repo.PeriodicRated(raterID, out.Period)
+	out.Mine, err = s.repo.StageRated(raterID, stage, out.Period)
 	return out, err
 }

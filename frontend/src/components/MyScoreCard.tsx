@@ -16,7 +16,7 @@ export default function MyScoreCard() {
       <button type="button" onClick={() => setOpen(!open)} className="flex w-full items-center justify-between gap-3 text-right">
         <span>
           <b className="text-sm text-slate-800">🏅 تقييمي هالشهر</b>
-          <span className="block text-[11px] text-slate-500">ماتركس ٦٠٪ + تقييم مسؤوليك ٤٠٪{tip && <> · أكثر شي نزّله: <b>{tip.title}</b></>}</span>
+          <span className="block text-[11px] text-slate-500">ماتركس ٦٠٪ + تقييم مسؤوليك ٤٠٪{d.reliability != null && <> · 🛡️ الاعتمادية <b>{Math.round(d.reliability)}%</b></>}{tip && <> · أكثر شي نزّله: <b>{tip.title}</b></>}</span>
         </span>
         <b className="text-2xl" style={{ color }}>{d.final == null ? '—' : `${Math.round(d.final)}%`}</b>
       </button>

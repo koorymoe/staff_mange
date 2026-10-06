@@ -108,7 +108,7 @@ func (h *StaffScoreHandler) rate(stage string) http.HandlerFunc {
 		me := middleware.EmployeeIDFromContext(r)
 		var err error
 		if stage == "MONITOR_PERIODIC" {
-			err = h.svc.RatePeriodic(me, in.RateeID, in.Score, in.Note)
+			err = h.svc.RatePeriodic(me, middleware.RoleFromContext(r), in.RateeID, in.Score, in.Note)
 		} else {
 			err = h.svc.RateOnBooking(stage, me, in.BookingID, in.RateeID, in.Score, in.Note)
 		}
@@ -147,7 +147,7 @@ func (h *StaffScoreHandler) CoordPending(w http.ResponseWriter, r *http.Request)
 
 // GET /api/staff-ratings/periodic
 func (h *StaffScoreHandler) PeriodicState(w http.ResponseWriter, r *http.Request) {
-	st, err := h.svc.Periodic(middleware.EmployeeIDFromContext(r))
+	st, err := h.svc.Periodic(middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر")
 		return

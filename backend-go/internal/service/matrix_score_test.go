@@ -61,8 +61,8 @@ func TestBuildScores(t *testing.T) {
 		{EmployeeID: "a", Source: "DAY", Rule: "ATTENDANCE", Points: 2, MaxPoints: 2},
 		{EmployeeID: "a", Source: "DAY", Rule: "ATTENDANCE", Points: 0, MaxPoints: 2, CancelledAt: &now},
 	}
-	hum := []repository.HumanRow{{RateeID: "a", Score: 4}, {RateeID: "a", Score: 2}}
-	out := BuildScores(people, pts, hum)
+	hum := []repository.HumanRow{{RateeID: "a", Score: 4, Stage: "MONITOR_PERIODIC"}, {RateeID: "a", Score: 2, Stage: "MONITOR_PERIODIC"}, {RateeID: "a", Score: 1, Stage: "LEADER_CREW"}}
+	out := BuildScores(people, pts, hum, nil)
 	a := out[0]
 	if a.Earned != 3 || a.Max != 4 || *a.MatrixPct != 75 || *a.HumanPct != 60 {
 		t.Fatalf("%+v", a)
@@ -126,5 +126,47 @@ func TestProjectCompletionBlock(t *testing.T) {
 	}
 	if ProjectCompletionBlock(&v, 1000, 2, "") != "" {
 		t.Fatal("مدفوع كامل = يمشي")
+	}
+}
+
+func TestScoreGroups(t *testing.T) {
+	cases := []struct {
+		p    repository.Scorable
+		want string
+	}{
+		{repository.Scorable{Role: "SALES"}, GroupSales},
+		{repository.Scorable{Role: "TECHNICIAN"}, GroupTechs},
+		{repository.Scorable{Role: "TECHNICIAN", IsLeader: true}, GroupLeaders},
+		{repository.Scorable{Role: "TECHNICIAN", IsServiceManager: true}, GroupTechnical},
+		{repository.Scorable{Role: "MONITOR"}, GroupMonitors},
+		{repository.Scorable{Role: "FINANCE"}, GroupFinance},
+		{repository.Scorable{Role: "ENGINEER"}, GroupTechnical},
+	}
+	for _, c := range cases {
+		if g := ScoreGroup(c.p); g != c.want {
+			t.Fatalf("%+v → %s want %s", c.p, g, c.want)
+		}
+	}
+	// الفني ما ينحسبله تقييم المراقب الدوري — بس الليدر.
+	people := []repository.Scorable{{ID: "t", Role: "TECHNICIAN"}}
+	hum := []repository.HumanRow{{RateeID: "t", Score: 1, Stage: "MONITOR_PERIODIC"}, {RateeID: "t", Score: 5, Stage: "LEADER_CREW"}}
+	out := BuildScores(people, nil, hum, nil)
+	if out[0].HumanCount != 1 || *out[0].HumanAvg != 5 {
+		t.Fatalf("tech human %+v", out[0])
+	}
+	if periodicAllowed("MONITOR_PERIODIC", repository.Scorable{Role: "MONITOR"}) || !periodicAllowed("ADMIN_PERIODIC", repository.Scorable{Role: "MONITOR"}) {
+		t.Fatal("المراقب يقيّمه المدير بس")
+	}
+}
+
+func TestReliability(t *testing.T) {
+	rules := map[string][2]int{"ATTENDANCE": {16, 20}, "INVENTORY": {4, 4}}
+	parts, v := BuildReliability(rules, repository.ReliabilityFact{Sessions: 10, Auto: 2, Complaints: 1})
+	if v == nil || len(parts) != 4 {
+		t.Fatalf("parts %d", len(parts))
+	}
+	// (80 + 80 + 100 + 75) / 4
+	if *v < 83.74 || *v > 83.76 {
+		t.Fatalf("got %v", *v)
 	}
 }

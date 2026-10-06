@@ -6073,6 +6073,8 @@ export interface StaffScore {
   humanAvg: number | null; humanCount: number; humanPct: number | null
   final: number | null; prevFinal: number | null; noHuman: boolean
   topLosses: RuleLoss[]; bySource: Record<string, [number, number]>
+  group: string; groupLabel: string
+  reliability: number | null; reliabilityParts: { key: string; label: string; pct: number; detail: string }[]
 }
 export interface StaffScoreBoard { month: string; on: boolean; staff: StaffScore[]; insights: string[] }
 export interface MatrixScorePoint {

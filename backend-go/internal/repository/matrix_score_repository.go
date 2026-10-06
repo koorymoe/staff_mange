@@ -51,16 +51,19 @@ func (r *MatrixScoreRepository) Add(s MatrixScoreRow) (bool, error) {
 
 // Scorable الموظفين الي ينقيّمون — الكل عدا المالك ومدير النظام.
 type Scorable struct {
-	ID        string    `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	Role      string    `db:"role" json:"role"`
-	CreatedAt time.Time `db:"createdAt" json:"-"`
+	ID               string    `db:"id" json:"id"`
+	Name             string    `db:"name" json:"name"`
+	Role             string    `db:"role" json:"role"`
+	CreatedAt        time.Time `db:"createdAt" json:"-"`
+	IsLeader         bool      `db:"isLeader" json:"isLeader"`
+	IsServiceManager bool      `db:"isServiceManager" json:"isServiceManager"`
 }
 
 func (r *MatrixScoreRepository) Scorables() ([]Scorable, error) {
 	rows := []Scorable{}
-	err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "createdAt" FROM "Employee"
-		WHERE status = 'ACTIVE' AND role::text NOT IN ('ADMIN', 'OWNER') ORDER BY name`)
+	err := r.db.Select(&rows, `SELECT id, name, role::text AS role, "createdAt", COALESCE("isLeader", false) AS "isLeader",
+		EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = "Employee".id) AS "isServiceManager"
+		FROM "Employee" WHERE status = 'ACTIVE' AND role::text NOT IN ('ADMIN', 'OWNER') ORDER BY name`)
 	return rows, err
 }
 
@@ -286,13 +289,18 @@ func (r *MatrixScoreRepository) RatedOn(raterID, bookingID, stage string) (map[s
 
 // PeriodicRated تقييمات المراقب الدورية لهالفترة.
 func (r *MatrixScoreRepository) PeriodicRated(raterID, period string) (map[string]int, error) {
+	return r.StageRated(raterID, "MONITOR_PERIODIC", period)
+}
+
+// StageRated تقييمات دورية لهالمقيّم بمحطة وفترة.
+func (r *MatrixScoreRepository) StageRated(raterID, stage, period string) (map[string]int, error) {
 	type row struct {
 		RateeID string `db:"rateeId"`
 		Score   int    `db:"score"`
 	}
 	rows := []row{}
-	err := r.db.Select(&rows, `SELECT "rateeId", score FROM "StaffRating" WHERE "raterId" = $1 AND stage = 'MONITOR_PERIODIC' AND period = $2`,
-		raterID, period)
+	err := r.db.Select(&rows, `SELECT "rateeId", score FROM "StaffRating" WHERE "raterId" = $1 AND stage = $2 AND period = $3`,
+		raterID, stage, period)
 	out := map[string]int{}
 	for _, x := range rows {
 		out[x.RateeID] = x.Score
@@ -322,4 +330,31 @@ func (r *MatrixScoreRepository) PendingAudit(raterID string) ([]PendingStaffRati
 		                  AND s.stage = 'AUDIT' AND s."rateeId" = p.id)
 		ORDER BY b."updatedAt" DESC, p.role DESC LIMIT 60`, raterID)
 	return rows, err
+}
+
+// ReliabilityFacts وقائع الاعتمادية بفترة: جلسات الحضور، الانصراف التلقائي، الشكاوى.
+type ReliabilityFact struct {
+	Sessions   int `db:"sessions"`
+	Auto       int `db:"auto"`
+	Complaints int `db:"complaints"`
+}
+
+func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string]ReliabilityFact, error) {
+	type row struct {
+		ID string `db:"id"`
+		ReliabilityFact
+	}
+	rows := []row{}
+	err := r.db.Select(&rows, `SELECT e.id,
+		(SELECT count(*) FROM "Attendance" a WHERE a."employeeId" = e.id AND a."checkIn" >= ($1::timestamptz AT TIME ZONE 'UTC') AND a."checkIn" < ($2::timestamptz AT TIME ZONE 'UTC') AND a."checkOut" IS NOT NULL)::int AS sessions,
+		(SELECT count(*) FROM "AttendanceAuto" au JOIN "Attendance" a ON a.id = au."attendanceId"
+		  WHERE au."employeeId" = e.id AND a."checkIn" >= ($1::timestamptz AT TIME ZONE 'UTC') AND a."checkIn" < ($2::timestamptz AT TIME ZONE 'UTC')
+		    AND NOT EXISTS (SELECT 1 FROM "AttendanceClaim" c WHERE c."attendanceId" = a.id AND c.status IN ('OK','APPROVED') AND c.kind = 'WORKED'))::int AS auto,
+		(SELECT count(*) FROM "Complaint" c WHERE c."relatedEmployeeId" = e.id AND c."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND c."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS complaints
+		FROM "Employee" e WHERE e.status = 'ACTIVE'`, from, to)
+	out := map[string]ReliabilityFact{}
+	for _, x := range rows {
+		out[x.ID] = x.ReliabilityFact
+	}
+	return out, err
 }

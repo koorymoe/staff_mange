@@ -18,6 +18,13 @@ const ROLE_AR: Record<string, string> = {
   SALES: 'مبيعات', MEDIA: 'إعلام', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع',
 }
 
+const GROUP_ORDER = ['LEADERS', 'TECHS', 'COORDINATORS', 'SALES', 'TECHNICAL', 'FINANCE', 'MONITORS', 'OTHERS']
+const RATERS: Record<string, string> = {
+  TECHS: 'الليدر مالتهم بعد كل حجز', LEADERS: 'المراقب + الإداري + الجودة', COORDINATORS: 'المراقب + الجودة',
+  SALES: 'المراقب (كل نص شهر)', TECHNICAL: 'المراقب (كل نص شهر)', FINANCE: 'المراقب (كل نص شهر)',
+  MONITORS: 'المدير والمالك (كل نص شهر)', OTHERS: 'المراقب (كل نص شهر)',
+}
+
 function ScoreBadge({ v, big }: { v: number | null; big?: boolean }) {
   return <b className={big ? 'text-3xl' : 'text-lg'} style={{ color: tone(v) }}>{pct(v)}</b>
 }
@@ -39,6 +46,18 @@ export function ScoreBreakdown({ d, admin, onChange }: { d: StaffScoreDetail; ad
         <div className="rounded-xl bg-violet-50 p-2"><p className="text-[11px] text-slate-500">ماتركس (٦٠٪)</p><ScoreBadge v={d.matrixPct} /><p className="text-[11px] text-slate-500">{d.earned} من {d.max} نقطة</p></div>
         <div className="rounded-xl bg-amber-50 p-2"><p className="text-[11px] text-slate-500">البشر (٤٠٪)</p><ScoreBadge v={d.humanPct} /><p className="text-[11px] text-slate-500">{d.humanCount ? `${d.humanAvg?.toFixed(1)}★ من ${d.humanCount} تقييم` : 'محد قيّمه بعد'}</p></div>
       </div>
+      {d.reliabilityParts.length > 0 && (
+        <div className="rounded-xl border border-sky-200 bg-sky-50/50 p-2">
+          <p className="mb-1 flex items-center justify-between text-xs font-extrabold text-sky-900"><span>🛡️ الاعتمادية (رقم منفصل، مو داخل التقييم)</span><ScoreBadge v={d.reliability} /></p>
+          <div className="grid gap-1 sm:grid-cols-2">
+            {d.reliabilityParts.map((p) => (
+              <p key={p.key} className="flex items-center justify-between gap-2 rounded-lg bg-white px-2 py-1 text-xs">
+                <span>{p.label} <span className="text-slate-400">· {p.detail}</span></span><b style={{ color: tone(p.pct) }}>{Math.round(p.pct)}%</b>
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2 text-xs">
         {Object.entries(d.bySource).map(([k, [e, m]]) => (
           <span key={k} className="rounded-full bg-slate-100 px-2 py-1">{SRC[k] ?? k}: <b>{e}/{m}</b></span>
@@ -90,6 +109,7 @@ export default function StaffScorePage() {
   const [d, setD] = useState<StaffScoreDetail | null>(null)
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
+  const [tab, setTab] = useState('')
   const load = useCallback(() => { void api.getStaffScoreBoard(month).then(setB).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [month])
   useEffect(load, [load])
   useEffect(() => { if (sel) void api.getStaffScore(sel, month).then(setD).catch(() => {}) }, [sel, month])
@@ -98,6 +118,10 @@ export default function StaffScorePage() {
 
   if (err) return <p className="text-red-600">{err}</p>
   if (!b) return <p className="text-slate-400">ماتركس يحسب…</p>
+  // قرار (ع) 10-06: كل مجموعة ترتيبها وحدها (الليدرية، الفنيين، المبيعات…).
+  const groups = GROUP_ORDER.filter((g) => b.staff.some((s) => s.group === g))
+  const g = groups.includes(tab) ? tab : groups[0] ?? ''
+  const shown = b.staff.filter((s) => s.group === g)
   const trend = (s: StaffScore) => s.final == null || s.prevFinal == null ? '' : s.final > s.prevFinal + 2 ? ' ↑' : s.final < s.prevFinal - 2 ? ' ↓' : ''
 
   return (
@@ -115,9 +139,18 @@ export default function StaffScorePage() {
       {admin && <OwnerSwitch switchKey={SWITCH_MATRIX_SCORING} label="ماتركس يقيّم الموظفين بالنقاط لحاله" hint="شغّال = يحسب كل ساعة. مطفي = ما يحسب لحاله (تقدر تحسب يدوي بزر «احسب هسه» حتى تجرّب)." />}
       {!b.on && <p className="rounded-xl bg-amber-50 p-2 text-xs text-amber-900">⏸️ الحساب التلقائي مطفي. الأرقام هنا من آخر حساب يدوي.</p>}
       <MatrixNote>{b.insights.join(' ')}</MatrixNote>
+      <div className="flex flex-wrap gap-1.5">
+        {groups.map((k) => (
+          <button key={k} type="button" onClick={() => { setTab(k); setSel(null) }}
+            className={`rounded-full px-3 py-1 text-sm font-bold ${g === k ? 'bg-[#0f2040] text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>
+            {b.staff.find((s) => s.group === k)?.groupLabel} <span className="text-xs opacity-70">{b.staff.filter((s) => s.group === k).length}</span>
+          </button>
+        ))}
+      </div>
+      {g && <p className="text-xs text-slate-500">👥 منو يقيّم {b.staff.find((s) => s.group === g)?.groupLabel}: {RATERS[g]}</p>}
       <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-1.5">
-          {b.staff.map((s, i) => (
+          {shown.map((s, i) => (
             <button key={s.id} type="button" onClick={() => setSel(sel === s.id ? null : s.id)}
               className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-right ${sel === s.id ? 'border-[#0f2040] bg-white shadow' : 'border-slate-200 bg-white/80 hover:bg-white'}`}>
               <span className="flex items-center gap-2">
@@ -127,6 +160,7 @@ export default function StaffScorePage() {
               </span>
               <span className="flex items-center gap-3 text-xs">
                 <span className="hidden text-slate-500 sm:inline">ماتركس {pct(s.matrixPct)} · بشر {pct(s.humanPct)}</span>
+                <span title="الاعتمادية" className="rounded-full px-2 py-0.5 font-bold" style={{ color: tone(s.reliability), background: 'var(--sf-sunken, #f1f5f9)' }}>🛡️ {pct(s.reliability)}</span>
                 <span className="w-14 text-left"><ScoreBadge v={s.final} />{trend(s)}</span>
               </span>
             </button>
