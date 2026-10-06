@@ -118,6 +118,7 @@ type ProjectStats struct {
 	Survey   int `json:"كشف"`
 	Price    int `json:"سعر"`
 	Contract int `json:"عقد"`
+	Media    int `json:"الإعلام"` // 📸 الإعلام — بين العقد والتنفيذ
 	Execute  int `json:"تنفيذ"`
 	Done     int `json:"مكتمل"`
 	Rejected int `json:"مرفوض"`

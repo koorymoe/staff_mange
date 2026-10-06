@@ -85,7 +85,7 @@ interface TransferredBooking {
 }
 
 interface Stats {
-  اتصال: number; كشف: number; سعر: number; عقد: number; تنفيذ: number; مكتمل: number; مرفوض: number
+  اتصال: number; كشف: number; سعر: number; عقد: number; الإعلام?: number; تنفيذ: number; مكتمل: number; مرفوض: number
 }
 
 const STAGES = [
@@ -170,6 +170,8 @@ const STAGE_CARDS = [
   { key: 'كشف', label: 'كشف', icon: '🔍', color: 'bg-green-700' },
   { key: 'سعر', label: 'سعر', icon: '💰', color: 'bg-amber-500' },
   { key: 'عقد', label: 'عقد', icon: '📄', color: 'bg-purple-600' },
+  // قرار (ع) 10-06: الإعلام بين العقد والتنفيذ.
+  { key: 'الإعلام', label: 'إعلام', icon: '📸', color: 'bg-pink-600' },
   { key: 'تنفيذ', label: 'تنفيذ', icon: '🛠️', color: 'bg-red-600' },
   { key: 'مكتمل', label: 'مكتمل', icon: '✅', color: 'bg-blue-600' },
   { key: 'مرفوض', label: 'مرفوض', icon: '❌', color: 'bg-gray-500' },
@@ -676,7 +678,7 @@ function MainView(props: {
   onDelegate?: (p: Project) => void
 }) {
   const { projects, totalCount, stats, canManage } = props
-  const maxStat = Math.max(1, ...STAGE_CARDS.map(c => stats[c.key as keyof Stats]))
+  const maxStat = Math.max(1, ...STAGE_CARDS.map(c => stats[c.key as keyof Stats] ?? 0))
   const workTypes = useProjectWorkTypes()
 
   return (
@@ -709,7 +711,7 @@ function MainView(props: {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-3 sm:grid-cols-7 gap-2">
+      <div className="grid grid-cols-3 sm:grid-cols-9 gap-2">
         <button onClick={() => { props.setFilterStage(''); props.setSearch('') }}
           className="bg-gray-800 text-white rounded-xl p-3 flex flex-col items-center justify-center hover:brightness-110 transition">
           <span className="text-xl">🗂️</span>
@@ -721,7 +723,7 @@ function MainView(props: {
             className={`${c.color} text-white rounded-xl p-3 flex flex-col items-center justify-center hover:brightness-110 transition`}>
             <span className="text-xl">{c.icon}</span>
             <span className="text-xs mt-1">{c.label}</span>
-            <span className="text-lg font-bold">{stats[c.key as keyof Stats]}</span>
+            <span className="text-lg font-bold">{stats[c.key as keyof Stats] ?? 0}</span>
           </button>
         ))}
       </div>
@@ -735,9 +737,9 @@ function MainView(props: {
               <span className="text-xs w-16 text-gray-600">{c.icon} {c.label}</span>
               <div className="flex-1 h-5 bg-gray-100 rounded-full overflow-hidden">
                 <div className={`h-full ${c.color} rounded-full transition-all`}
-                  style={{ width: `${(stats[c.key as keyof Stats] / maxStat) * 100}%` }} />
+                  style={{ width: `${((stats[c.key as keyof Stats] ?? 0) / maxStat) * 100}%` }} />
               </div>
-              <span className="text-xs font-bold w-8">{stats[c.key as keyof Stats]}</span>
+              <span className="text-xs font-bold w-8">{stats[c.key as keyof Stats] ?? 0}</span>
             </div>
           ))}
         </div>

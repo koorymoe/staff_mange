@@ -124,6 +124,8 @@ func computeProjectStats(projects []model.Project) model.ProjectStats {
 			stats.Price++
 		case strings.Contains(s, "عقد"):
 			stats.Contract++
+		case strings.Contains(s, "الإعلام"):
+			stats.Media++
 		case strings.Contains(s, "تنفيذ"):
 			stats.Execute++
 		case strings.Contains(s, "مكتمل"):
