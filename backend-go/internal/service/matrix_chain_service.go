@@ -122,6 +122,8 @@ type BookingChain struct {
 	Summary   string                     `json:"summary"`
 	Score     ChainScore                 `json:"score"`
 	Ratings   []repository.CrewRatingRow `json:"ratings"`
+	// Trail منو سوّى شنو ومتى — دليل لكل حكم (طلب (ع) 10-06).
+	Trail []string `json:"trail"`
 }
 
 type ChainScore struct {
@@ -854,7 +856,68 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		}
 	}
 	ch.Summary = chainSummary(ch)
+	ch.Trail = s.trail(f)
 	return ch
+}
+
+var bookingStatusAr = map[string]string{
+	"PENDING": "بانتظار التثبيت", "CONFIRMED": "مثبّت", "IN_PROGRESS": "قيد التنفيذ", "WAITING": "بالانتظار",
+	"PARTIAL": "منجز جزئياً", "COMPLETED": "منجز", "CANCELLED": "ملغي",
+}
+
+// trail سجل «منو سوّى شنو ومتى» لكل حجز — الدليل وراء أحكام السلسلة.
+func (s *MatrixChainService) trail(f *repository.ChainFacts) []string {
+	when := func(t *time.Time) string {
+		if t == nil {
+			return ""
+		}
+		return t.In(debriefLoc).Format("2006-01-02 15:04")
+	}
+	name := func(id, n *string) string {
+		if n != nil && *n != "" {
+			return *n
+		}
+		if id != nil && *id != "" && s.names != nil {
+			if v := s.names(*id); v != "" {
+				return v
+			}
+		}
+		return "ما معروف"
+	}
+	out := []string{"📝 سجّله: " + name(f.CreatedByID, f.CreatedByName) + " · " + when(&f.CreatedAt)}
+	if f.ContactedAt != nil {
+		out = append(out, "📞 تواصل ويا الزبون: "+name(f.ContactedByID, f.ContactedBy)+" · "+when(f.ContactedAt))
+	} else {
+		line := "📞 تواصل ويا الزبون: محد ضغط «تواصلت ويا الزبون»"
+		if f.ContactTries > 0 {
+			line += fmt.Sprintf(" (انسجّلت %d محاولة اتصال)", f.ContactTries)
+		}
+		out = append(out, line)
+	}
+	if f.ConfirmedAt != nil {
+		out = append(out, "✅ ثبّته: "+name(f.ConfirmedByID, f.ConfirmedBy)+" · "+when(f.ConfirmedAt))
+	} else {
+		out = append(out, "✅ التثبيت: ما انثبّت لحد هسه")
+	}
+	if f.ScheduledAt != nil {
+		out = append(out, "📅 الموعد: "+when(f.ScheduledAt))
+	}
+	if f.FirstAssignAt != nil {
+		crew := fmt.Sprintf("👷 الكادر: انحدد %s (%d شخص)", when(f.FirstAssignAt), len(f.CrewIDs))
+		if f.LeaderName != nil {
+			crew += " · الليدر " + *f.LeaderName
+		}
+		out = append(out, crew)
+	}
+	if f.ToProjects {
+		out = append(out, "🏗️ محوّل لإدارة المشاريع")
+	}
+	st := bookingStatusAr[f.Status]
+	if st == "" {
+		st = f.Status
+	}
+	out = append(out, "📌 حالته هسه: "+st)
+	return out
 }
 
 func qualityStatusLabel(s string) string {
@@ -929,6 +992,8 @@ type ChainCodeRef struct {
 	Station string `json:"station"`
 	Status  string `json:"status"`
 	Note    string `json:"note"`
+	// Trail الدليل: منو سجّل الحجز ومنو تواصل ومنو ثبّت ومتى، وحالته هسه.
+	Trail []string `json:"trail"`
 }
 
 type ChainEmployeeReport struct {
@@ -1015,7 +1080,7 @@ func (a *chainAgg) add(ch *BookingChain, st *ChainStation, status string) {
 		if status == ChainIssue {
 			note = strings.Join(st.Issues, " ")
 		}
-		a.bad = append(a.bad, ChainCodeRef{ID: ch.BookingID, Code: ch.Code, Station: st.Title, Status: status, Note: note})
+		a.bad = append(a.bad, ChainCodeRef{ID: ch.BookingID, Code: ch.Code, Station: st.Title, Status: status, Note: note, Trail: ch.Trail})
 		if status != ChainIssue && st.StartAt != nil {
 			t := st.StartAt.In(debriefLoc)
 			a.wd[t.Weekday()]++

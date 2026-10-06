@@ -38,6 +38,11 @@ export default function BookingChainView({ bookingId }: { bookingId: string }) {
         </div>
       </div>
       <MatrixNote className="mb-3">{ch.summary}</MatrixNote>
+      {ch.trail && ch.trail.length > 0 && (
+        <ul className="mb-3 grid gap-0.5 rounded-lg bg-slate-50 p-2 text-xs text-slate-700 sm:grid-cols-2">
+          {ch.trail.map((t, i) => <li key={i}>{t}</li>)}
+        </ul>
+      )}
       <ol className="space-y-2">
         {ch.stations.map((st) => {
           const t = CHAIN_TONE[st.status]

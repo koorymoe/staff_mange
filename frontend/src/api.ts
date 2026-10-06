@@ -2122,7 +2122,7 @@ export interface ChainStation {
 }
 export interface CrewRatingRow { bookingId: string; bookingCode: string; leaderId: string; leaderName: string; technicianId: string; score: number; note: string | null; createdAt: string }
 export interface BookingChain {
-  bookingId: string; code: string; service: string; solo: boolean; legacy: boolean; project?: boolean
+  bookingId: string; code: string; service: string; solo: boolean; legacy: boolean; project?: boolean; trail?: string[]
   stations: ChainStation[]; summary: string
   score: { ok: number; late: number; missed: number; issue: number; waiting: number }
   ratings: CrewRatingRow[] | null
@@ -2131,7 +2131,7 @@ export interface ChainStationStat { key: string; title: string; count: number; o
 export interface ChainEmployeeReport {
   id: string; name: string; total: number; onTime: number; late: number; missed: number; issues: number
   onTimePct: number; prevPct: number | null; stations: ChainStationStat[]; worst: string
-  bad: { id: string; code: string; station: string; status: ChainStatus; note: string }[] | null
+  bad: { id: string; code: string; station: string; status: ChainStatus; note: string; trail?: string[] }[] | null
   lateWeekday: string; lateHour: number | null; ratingAvg: number | null; ratingCount: number; ratingNotes: string[]; insights: string[]
 }
 export interface RoleChainReport {

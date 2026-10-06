@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import BookingChainView from './BookingChain'
 import { Link } from 'react-router-dom'
 import { api, type ChainEmployeeReport, type ChainStationStat, type RoleChainReport } from '../api'
 import MatrixNote from './MatrixNote'
@@ -97,6 +98,8 @@ function Compare({ s }: { s: ChainStationStat }) {
 // الحجوزات الي تعثّر بيها — مجمّعة حسب الخطوة، رقائق أكواد قابلة للضغط.
 function Broken({ bad }: { bad: NonNullable<ChainEmployeeReport['bad']> }) {
   const [all, setAll] = useState<Record<string, boolean>>({})
+  // الضغط على الكود يفتح الدليل تحته: ليش، ومنو سجّل وتواصل وثبّت ومتى (طلب (ع) 10-06).
+  const [openKey, setOpenKey] = useState<string | null>(null)
   const groups = useMemo(() => {
     const m = new Map<string, typeof bad>()
     for (const b of bad) m.set(b.station, [...(m.get(b.station) ?? []), b])
@@ -106,15 +109,16 @@ function Broken({ bad }: { bad: NonNullable<ChainEmployeeReport['bad']> }) {
     <div className="space-y-2">
       {groups.map(([station, rows]) => {
         const shown = all[station] ? rows : rows.slice(0, 6)
+        const opened = rows.find((b, i) => openKey === station + i + b.id)
         return (
           <div key={station} className="rounded-lg border border-slate-200 bg-white p-2.5">
             <p className="mb-1.5 text-xs font-bold text-slate-700">{station} <span className="font-normal text-slate-500">— {rows.length} حجز</span></p>
             <div className="flex flex-wrap gap-1.5">
               {shown.map((b, i) => (
-                <Link key={i} to={`/bookings?focus=${b.id}`} title={b.note}
-                  className={`rounded-full border px-2 py-0.5 text-[11px] font-bold hover:underline ${CHAIN_TONE[b.status].cls}`}>
+                <button type="button" key={i} onClick={() => setOpenKey(openKey === station + i + b.id ? null : station + i + b.id)} title={b.note}
+                  className={`rounded-full border px-2 py-0.5 text-[11px] font-bold hover:underline ${CHAIN_TONE[b.status].cls} ${openKey === station + i + b.id ? 'ring-2 ring-sky-400' : ''}`}>
                   {CHAIN_TONE[b.status].icon} {b.code}
-                </Link>
+                </button>
               ))}
               {rows.length > 6 && !all[station] && (
                 <button type="button" onClick={() => setAll((a) => ({ ...a, [station]: true }))} className="rounded-full px-2 py-0.5 text-[11px] text-sky-700 hover:underline">
@@ -122,10 +126,22 @@ function Broken({ bad }: { bad: NonNullable<ChainEmployeeReport['bad']> }) {
                 </button>
               )}
             </div>
+            {opened && (
+              <div className="mt-2 space-y-1.5 rounded-lg border border-sky-200 bg-sky-50/60 p-2.5 text-xs text-slate-700">
+                <p className="font-bold">🔎 حجز {opened.code} · {station}: <span className="font-normal">{opened.note || '—'}</span></p>
+                {opened.trail && opened.trail.length > 0 && (
+                  <ul className="space-y-0.5">{opened.trail.map((t, k) => <li key={k}>{t}</li>)}</ul>
+                )}
+                <div className="flex flex-wrap gap-3">
+                  <Link to={`/bookings?focus=${opened.id}`} className="font-bold text-sky-700 underline">افتح الحجز ←</Link>
+                </div>
+                <details><summary className="cursor-pointer font-bold text-violet-800">🔗 سلسلة الحجز كاملة (كل الخطوات ومنو سواها)</summary><div className="mt-2"><BookingChainView bookingId={opened.id} /></div></details>
+              </div>
+            )}
           </div>
         )
       })}
-      <p className="text-[11px] text-slate-400">مرّر الماوس على الكود حتى تشوف السبب، واضغطه حتى يفتح الحجز.</p>
+      <p className="text-[11px] text-slate-400">اضغط على أي كود حتى يطلع الدليل: ليش، ومنو سجّل الحجز ومنو تواصل ومنو ثبّت ومتى.</p>
     </div>
   )
 }
