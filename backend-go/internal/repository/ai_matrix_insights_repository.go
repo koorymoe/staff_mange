@@ -164,7 +164,7 @@ func (r *AiRepository) WeekTotals(from, to time.Time) (*WeekTotals, error) {
 	var out WeekTotals
 	err := r.db.Get(&out, `
 		SELECT
-		  (SELECT COUNT(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL
+		  (SELECT COUNT(*) FROM "Booking" b WHERE b.status = 'COMPLETED' AND `+BookingCountableSQL("b")+`
 		     AND NOT (`+isLegacyImportSQL+`) AND b."settledLegacyAt" IS NULL
 		     AND (b."completedAt" AT TIME ZONE 'UTC') >= $1 AND (b."completedAt" AT TIME ZONE 'UTC') < $2) AS completed,
 		  (SELECT COALESCE(SUM(`+RevenueAmountSQL("b")+`), 0) FROM "Booking" b WHERE `+RevenueBookingSQL("b")+`

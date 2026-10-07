@@ -110,16 +110,17 @@ func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request
 			(SELECT COUNT(DISTINCT ba."employeeId") FROM "BookingAssignment" ba
 			  JOIN "Booking" b2 ON b2.id = ba."bookingId"
 			  WHERE b2.status = 'IN_PROGRESS')                                          AS "activeCrewCount",
-			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
-			         FILTER (WHERE b.status = 'COMPLETED' AND b."bookingType" <> 'INTERNAL'), 0) AS "totalCollected",
+			-- 🔴 قرار (ع) 10-07 «توحيد الأرقام»: الإيراد هنا بنفس تعريف الإحصائيات
+			-- وكارت ماتركس (revenue_sql.go): المنجز كامل وجزئي، وحجز المشروع المدفوع
+			-- ينحسب من دفعاته — ودفعات المشاريع تنضاف تحت.
+			COALESCE(SUM(`+repository.RevenueAmountSQL("b")+`) FILTER (WHERE `+repository.RevenueBookingSQL("b")+`), 0)
+			  + (SELECT COALESCE(SUM(pp.amount), 0) FROM "ProjectPayment" pp WHERE pp."cancelledAt" IS NULL) AS "totalCollected",
 			-- ⚠️ «غير مدققة»/«مدققة» بنفس نطاق totalCollected أعلاه
 			-- (COMPLETED فعلاً، شامل المقدم) — لا تحسب Booking.amountCollected
 			-- الخام بلا فلترة حالة (هذاك مصدر رقم مختلف بـstats_repository.go
 			-- كان يعطي رقماً غير هذا لنفس المفهوم).
-			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
-			         FILTER (WHERE b.status = 'COMPLETED' AND NOT b."amountVerified" AND b."bookingType" <> 'INTERNAL'), 0) AS "unverifiedAmount",
-			COALESCE(SUM(COALESCE(b."amountCollected",0) + COALESCE(b."advancePaid",0))
-			         FILTER (WHERE b.status = 'COMPLETED' AND b."amountVerified" AND b."bookingType" <> 'INTERNAL'), 0) AS "verifiedAmount",
+			COALESCE(SUM(`+repository.RevenueAmountSQL("b")+`) FILTER (WHERE `+repository.RevenueBookingSQL("b")+` AND NOT b."amountVerified"), 0) AS "unverifiedAmount",
+			COALESCE(SUM(`+repository.RevenueAmountSQL("b")+`) FILTER (WHERE `+repository.RevenueBookingSQL("b")+` AND b."amountVerified"), 0) AS "verifiedAmount",
 			COALESCE(SUM(COALESCE(b."quotedPrice",0))
 			         FILTER (WHERE b.status = 'COMPLETED' AND b."bookingType" <> 'INTERNAL'), 0) AS "totalQuoted",
 			(SELECT COALESCE(SUM(ci."totalPrice"), 0) FROM "CartItem" ci

@@ -237,10 +237,10 @@ type InquiryCustomer struct {
 }
 
 // customerKind: زبون فعلي = عنده حجز منجز. مستفسر = كل حجوزاته مؤرشفة بلا منجز.
-const inquiryCTE = `
+var inquiryCTE = `
 	WITH c AS (
 	  SELECT b."customerId" AS id,
-	         COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND b."archivedAt" IS NULL) AS done,
+	         COUNT(*) FILTER (WHERE b.status = 'COMPLETED' AND `+BookingCountableSQL("b")+`) AS done,
 	         COUNT(*) FILTER (WHERE b."archivedAt" IS NOT NULL) AS archived,
 	         COUNT(*) FILTER (WHERE b."archivedAt" IS NULL AND b.status <> 'COMPLETED' AND b.status <> 'CANCELLED') AS open,
 	         MAX(b."createdAt") AS "lastAt"
@@ -279,7 +279,7 @@ func (r *MatrixBusinessRepository) Split() (*CustomerSplit, error) {
 // InquiryHistory للزبون: كم مرة استفسر وما نفّذ (لتنبيه الإداري وقت الحجز).
 func (r *MatrixBusinessRepository) InquiryHistory(customerID string) (archived, done int) {
 	_ = r.db.Get(&archived, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND "archivedAt" IS NOT NULL`, customerID)
-	_ = r.db.Get(&done, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND status = 'COMPLETED' AND "archivedAt" IS NULL`, customerID)
+	_ = r.db.Get(&done, `SELECT COUNT(*) FROM "Booking" WHERE "customerId" = $1 AND status = 'COMPLETED' AND `+BookingCountableSQL(`"Booking"`), customerID)
 	return
 }
 

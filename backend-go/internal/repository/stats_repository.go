@@ -149,11 +149,11 @@ func (r *StatsRepository) CoordinatorStats(startOfToday, startOfMonth time.Time)
 			return nil, err
 		}
 		// ⚠️ باغداد لا توقيت عملية الخادم — نفس فحص المبيعات أعلاه.
-		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND baghdad_date("createdAt") = baghdad_today()`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID)
+		today, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND baghdad_date("confirmedAt") = baghdad_today()`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID)
 		if err != nil {
 			return nil, err
 		}
-		thisMonth, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND "createdAt" >= $2`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID, startOfMonth)
+		thisMonth, err := r.count(`SELECT COUNT(*) FROM "Booking" WHERE "confirmedByEmployeeId" = $1 AND "confirmedAt" >= ($2::timestamptz AT TIME ZONE 'UTC')`+BookingCountableAndSQL(`"Booking"`), e.EmployeeID, startOfMonth)
 		if err != nil {
 			return nil, err
 		}
