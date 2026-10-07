@@ -40,7 +40,7 @@ export default function MatrixBusiness() {
         </div>
       </div>
       <div className="mt-4">
-        <p className="mb-1 text-xs font-bold text-slate-500">الإيراد آخر ٦ أشهر (صافي فواتير الحجوزات المنجزة)</p>
+        <p className="mb-1 text-xs font-bold text-slate-500">الإيراد آخر ٦ أشهر (الفلوس المقبوضة فعلاً: الحجوزات المنجزة + دفعات المشاريع)</p>
         <div className="space-y-1">
           {b.months.map((m) => (
             <div key={m.month} className="flex items-center gap-2 text-xs">
