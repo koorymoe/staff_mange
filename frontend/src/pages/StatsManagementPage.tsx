@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { api, type DailyStats, type WeeklyStats, type ProjectStageStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
 import BookingCodeChip from '../components/BookingCodeChip'
-import { roleLabelShort } from '../roleLabels'
+import RoleSplit, { MiniMetric, SummaryCard } from '../components/RoleSplit'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -23,12 +23,7 @@ function todayStr() {
 }
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div style={{ background: 'var(--sf-card)', border: '1px solid var(--bd-line)', borderRadius: '10px', padding: '14px' }}>
-      <div style={{ fontSize: '12px', color: 'var(--t-faint)' }}>{label}</div>
-      <div style={{ fontSize: '20px', fontWeight: 'bold', color: PRIMARY_TEXT, marginTop: '4px' }}>{value}</div>
-    </div>
-  )
+  return <SummaryCard label={label} value={value} />
 }
 
 function DailyTab() {
@@ -71,7 +66,7 @@ function DailyTab() {
 
       {stats && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+          <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
             <StatCard label="إجمالي الحجوزات" value={stats.totalBookings} />
             <StatCard label="حجوزات صباحية" value={stats.morningBookings} />
             <StatCard label="حجوزات مسائية" value={stats.eveningBookings} />
@@ -82,39 +77,36 @@ function DailyTab() {
             <StatCard label="إجمالي الأرباح" value={`${fmt(stats.totalProfitAmount)} د.ع`} />
           </div>
 
-          <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الموظف</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>الدور</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>حجوزات ترحّلت له</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>نفّذ منهن</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>ما نفّذ</th>
-                  <th style={{ padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY }}>سجّل حضور؟</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.employees.map((e) => (
-                  <tr key={e.employeeId}>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{e.employeeName}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{e.role}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>{e.bookingsAssigned}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)', color: 'var(--t-success)', fontWeight: 'bold' }}>{e.bookingsCompleted}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)', color: 'var(--t-danger)' }}>{e.bookingsAssigned - e.bookingsCompleted}</td>
-                    <td style={{ padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }}>
-                      {e.checkedIn
-                        ? <span style={{ color: 'var(--t-success)', fontWeight: 'bold' }}>✔ إي</span>
-                        : <span style={{ color: 'var(--t-danger)', fontWeight: 'bold' }}>✘ لا</span>}
-                    </td>
-                  </tr>
-                ))}
-                {stats.employees.length === 0 && (
-                  <tr><td colSpan={6} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>لا يوجد نشاط بهذا اليوم</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {stats.employees.length === 0 && <p className="rounded-xl bg-white p-8 text-center text-slate-400">لا يوجد نشاط بهذا اليوم</p>}
+          <RoleSplit items={stats.employees}>
+            {(list) => (
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {list.map((e) => {
+                  const pct = e.bookingsAssigned > 0 ? Math.round((e.bookingsCompleted / e.bookingsAssigned) * 100) : null
+                  return (
+                    <div key={e.employeeId} className="flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="truncate font-extrabold text-slate-800">{e.employeeName}</p>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-bold ${e.checkedIn ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'}`}>
+                          {e.checkedIn ? '✔ سجّل حضور' : '✘ ما سجّل حضور'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        <MiniMetric label="ترحّلت له" value={e.bookingsAssigned} />
+                        <MiniMetric label="نفّذ" value={e.bookingsCompleted} tone={e.bookingsCompleted > 0 ? 'good' : undefined} />
+                        <MiniMetric label="ما نفّذ" value={e.bookingsAssigned - e.bookingsCompleted} tone={e.bookingsAssigned - e.bookingsCompleted > 0 ? 'bad' : undefined} />
+                      </div>
+                      {pct !== null && (
+                        <div className="h-1.5 overflow-hidden rounded-full bg-slate-100" title={`نفّذ ${pct}٪`}>
+                          <div className="h-full bg-emerald-500" style={{ width: `${pct}%` }} />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </RoleSplit>
         </>
       )}
     </div>
@@ -129,8 +121,6 @@ function defaultWeekRange() {
   return { from, to }
 }
 
-const weeklyThStyle: React.CSSProperties = { padding: '10px 12px', textAlign: 'right', fontSize: '13px', color: 'white', background: PRIMARY, whiteSpace: 'nowrap' }
-const weeklyTdStyle: React.CSSProperties = { padding: '10px 12px', fontSize: '13px', borderBottom: '1px solid var(--bd-line)' }
 
 function WeeklyTab() {
   const initial = defaultWeekRange()
@@ -169,58 +159,43 @@ function WeeklyTab() {
 
       {stats && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <StatCard label="مبيعات صباحية" value={`${fmt(stats.morningSalesAmount)} د.ع`} />
             <StatCard label="مبيعات مسائية" value={`${fmt(stats.eveningSalesAmount)} د.ع`} />
             <StatCard label="إجمالي حجم المبيعات" value={`${fmt(stats.totalSalesAmount)} د.ع`} />
           </div>
 
-          <div>
-            <h3 style={{ color: PRIMARY_TEXT, marginBottom: '10px' }}>أداء كل موظف خلال المدى المحدد</h3>
-            <div style={{ overflowX: 'auto', background: 'var(--sf-card)', borderRadius: '12px', border: '1px solid var(--bd-line)' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={weeklyThStyle}>الموظف</th>
-                    <th style={weeklyThStyle}>الدور</th>
-                    <th style={weeklyThStyle}>نقاط الكي بي اي</th>
-                    <th style={weeklyThStyle}>سرعة العمل</th>
-                    <th style={weeklyThStyle}>نظافة السيارة</th>
-                    <th style={weeklyThStyle}>الشكاوى</th>
-                    <th style={weeklyThStyle}>عدد المبيعات</th>
-                    <th style={weeklyThStyle}>الحجوزات المكتملة</th>
-                    <th style={weeklyThStyle}>كل الحجوزات المسندة</th>
-                    <th style={weeklyThStyle}>حجوزات الصيانة</th>
-                    <th style={weeklyThStyle}>صيانات مجانية</th>
-                    <th style={weeklyThStyle}>قيمة نقاط الكي بي اي</th>
-                    <th style={weeklyThStyle}>إجمالي العمولة (حجم المبيعات)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.employees.map((r) => (
-                    <tr key={r.employeeId}>
-                      <td style={weeklyTdStyle}>{r.employeeName}</td>
-                      <td style={weeklyTdStyle}>{roleLabelShort(r.role)}</td>
-                      <td style={weeklyTdStyle}>{r.kpiPoints}</td>
-                      <td style={weeklyTdStyle}>{r.workSpeedScore != null ? r.workSpeedScore.toFixed(2) : '—'}</td>
-                      <td style={weeklyTdStyle}>{r.vehicleCleanlinessScore != null ? `${r.vehicleCleanlinessScore.toFixed(2)} (${r.vehicleRatingsCount})` : '—'}</td>
-                      <td style={weeklyTdStyle}>{r.complaintsCount}</td>
-                      <td style={weeklyTdStyle}>{r.salesCount}</td>
-                      <td style={weeklyTdStyle}>{r.completedBookingsCount}</td>
-                      <td style={weeklyTdStyle}>{r.totalBookingsCount}</td>
-                      <td style={weeklyTdStyle}>{r.maintenanceBookingsCount}</td>
-                      <td style={weeklyTdStyle}>{r.freeMaintenanceCount}</td>
-                      <td style={weeklyTdStyle}>{fmt(r.kpiPointsValue)} د.ع</td>
-                      <td style={{ ...weeklyTdStyle, fontWeight: 'bold', color: GOLD_TEXT }}>{fmt(r.totalCommission)} د.ع</td>
-                    </tr>
-                  ))}
-                  {stats.employees.length === 0 && (
-                    <tr><td colSpan={13} style={{ padding: '30px', textAlign: 'center', color: 'var(--t-faint)' }}>لا يوجد نشاط بهذا المدى</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <h3 className="font-bold text-slate-700">أداء كل موظف خلال المدى المحدد</h3>
+          {stats.employees.length === 0 && <p className="rounded-xl bg-white p-8 text-center text-slate-400">لا يوجد نشاط بهذا المدى</p>}
+          <RoleSplit items={stats.employees}>
+            {(list) => (
+              <div className="grid gap-3 lg:grid-cols-2">
+                {[...list].sort((a, b) => b.kpiPoints - a.kpiPoints).map((r) => (
+                  <div key={r.employeeId} className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="truncate text-base font-extrabold text-slate-800">{r.employeeName}</p>
+                      {/* لون محايد: مقياس الشهر (١٠٠ نقطة) ما يصح على أسبوع. */}
+                      <span className="shrink-0 rounded-xl bg-brand-50 px-3 py-1 text-center text-brand-800">
+                        <span className="block text-lg font-extrabold leading-none tabular-nums">{r.kpiPoints}</span>
+                        <span className="text-[10px] font-bold">نقاط KPI</span>
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                      <MiniMetric label="الحجوزات المكتملة" value={`${r.completedBookingsCount} من ${r.totalBookingsCount}`} />
+                      <MiniMetric label="حجوزات الصيانة" value={r.maintenanceBookingsCount} />
+                      <MiniMetric label="صيانات مجانية" value={r.freeMaintenanceCount} />
+                      <MiniMetric label="المبيعات" value={r.salesCount} />
+                      <MiniMetric label="سرعة العمل" value={r.workSpeedScore != null ? r.workSpeedScore.toFixed(2) : '—'} tone={r.workSpeedScore == null ? undefined : r.workSpeedScore >= 1 ? 'good' : 'bad'} hint="فوق ١ أسرع من المتوسط" />
+                      <MiniMetric label="نظافة السيارة" value={r.vehicleCleanlinessScore != null ? `${r.vehicleCleanlinessScore.toFixed(2)} (${r.vehicleRatingsCount})` : '—'} />
+                      <MiniMetric label="الشكاوى" value={r.complaintsCount} tone={r.complaintsCount > 0 ? 'bad' : undefined} />
+                      <MiniMetric label="قيمة نقاط الكي بي اي" value={`${fmt(r.kpiPointsValue)} د.ع`} />
+                      <MiniMetric label="العمولة" value={`${fmt(r.totalCommission)} د.ع`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </RoleSplit>
         </>
       )}
     </div>
