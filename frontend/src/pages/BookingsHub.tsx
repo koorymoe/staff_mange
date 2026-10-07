@@ -163,7 +163,10 @@ export default function BookingsHub() {
   const isAdminLike = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
   const canCustomers = isAdminLike || ['HR_COORDINATOR', 'MONITOR'].includes(employee?.role ?? '') || permissions.includes('manage_customers')
   const canArchive = isAdminLike || employee?.role === 'MONITOR' || permissions.includes('bookings_archive')
-  const canOpps = isAdminLike || permissions.includes('sales_booking')
+  // قرار (ع) 10-07: فرص البيع ما تطلع للتقني ومسؤول الخدمة — حتى لو عندهم
+  // صلاحية تسجيل الحجز (sales_booking)، شغلهم مو متابعة البيع.
+  const canOpps = (isAdminLike || permissions.includes('sales_booking'))
+    && !['TECHNICAL', 'SERVICE_MANAGER'].includes(employee?.role ?? '')
   const shown = TABS.filter((t) =>
     (t.key === 'customers' && canCustomers) || (t.key === 'archive' && canArchive) || (t.key === 'opportunities' && canOpps)
     || (t.key === 'new' && canCreate)
