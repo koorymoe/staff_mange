@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useDeferredValue, useEffect, useMemo, useState } from 'react'
 import ProjectPaymentsModal from '../components/ProjectPaymentsModal'
 import { api, apiRequest, type ProjectMoney } from '../api'
 import { useNavigate } from 'react-router-dom'
@@ -380,14 +380,17 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
     return () => { alive = false }
   }, [reload, delegatedMode])
 
+  // البحث يتأخر شوية عن الكتابة: الحقل يبقى سريع، والفلترة تلحگه (قياس ١٠-٧: ٨٠٠
+  // مشروع چانت تاخذ نص ثانية بكل حرف).
+  const deferredSearch = useDeferredValue(search)
   const filtered = useMemo(() => {
     return projects.filter(p => {
-      const matchSearch = matches([p.name, p.code, p.phone, p.location, p.rep, p.stage], search)
+      const matchSearch = matches([p.name, p.code, p.phone, p.location, p.rep, p.stage], deferredSearch)
       const matchWork = !filterWorkType || p.workType === filterWorkType
       const matchStage = !filterStage || p.stage.includes(filterStage)
       return matchSearch && matchWork && matchStage
     })
-  }, [projects, search, filterWorkType, filterStage])
+  }, [projects, deferredSearch, filterWorkType, filterStage])
 
   const rejectedCount = projects.filter(p => p.stage.includes('مرفوض')).length
 
@@ -645,6 +648,8 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
 // ---------------------------------------------------------------------------
 // Main dashboard view
 // ---------------------------------------------------------------------------
+const PAGE = 30
+
 function MainView(props: {
   projects: Project[]
   totalCount: number
@@ -661,6 +666,10 @@ function MainView(props: {
   onRefresh: () => void
   onDelegate?: (p: Project) => void
 }) {
+  // عدد البطاقات المعروضة — يرجع لأول دفعة كل ما تغيّر البحث أو الفلتر.
+  const sig = `${props.search}|${props.filterStage}|${props.filterWorkType}`
+  const [shown, setShown] = useState({ sig, n: PAGE })
+  const shownCount = shown.sig === sig ? shown.n : PAGE
   const { projects, totalCount, stats, canManage } = props
   const maxStat = Math.max(1, ...STAGE_CARDS.map(c => stats[c.key as keyof Stats] ?? 0))
   const workTypes = useProjectWorkTypes()
@@ -736,14 +745,21 @@ function MainView(props: {
         </button>
       )}
 
-      {/* Project cards */}
+      {/* Project cards — نرسم أول دفعة بس (قياس ١٠-٧: ٨٠٠ بطاقة = ٣٠ ألف عنصر و٥-٧ ثواني
+          فتح). البيانات كلها بالذاكرة، فالعدّادات والفلاتر والبحث تشمل الكل. */}
       <div className="space-y-4">
         {projects.length === 0 && <p className="text-center text-gray-400 py-12 text-lg">لا توجد مشاريع</p>}
-        {projects.map(p => (
+        {projects.slice(0, shownCount).map(p => (
           <ProjectCard key={p.id} p={p} canManage={canManage}
             onEdit={props.onEdit} onMove={props.onMove} onReport={props.onReport} onDelete={props.onDelete}
             onRefresh={props.onRefresh} onDelegate={props.onDelegate} />
         ))}
+        {projects.length > shownCount && (
+          <button type="button" onClick={() => setShown({ sig, n: shownCount + PAGE })}
+            className="w-full rounded-xl border border-gray-300 bg-white py-3 text-sm font-bold text-gray-700 hover:bg-gray-50">
+            اعرض {Math.min(PAGE, projects.length - shownCount)} ثانية · معروض {shownCount} من {projects.length}
+          </button>
+        )}
       </div>
     </>
   )
