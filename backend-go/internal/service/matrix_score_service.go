@@ -149,15 +149,17 @@ func (s *MatrixScoreService) scoreBookings(now time.Time, add func(repository.Ma
 		ChainRoleQuality:    s.repo.SoleHolder("QUALITY_ENGINEER", "quality_control"),
 		ChainRoleMonitor:    s.repo.SoleHolder("MONITOR", "monitoring"),
 	}
-	var dropB, dropR []string
-	defer func() { _ = s.repo.DropStations(dropB, dropR) }()
+	// كل حجز: نخلي بس (محطة، موظف) المحسوبة هسه — غيرها ينمسح (صاحب تغيّر،
+	// محطة انشالت بالترحيل للتقني، أو رجعت تنتظر).
+	var seen, keep []string
+	defer func() { _ = s.repo.KeepOnlyStations(seen, keep) }()
 	for i := range facts {
 		f := &facts[i]
+		seen = append(seen, f.ID)
 		ch := s.chain.chainOf(f, now)
 		label := "حجز " + ch.Code
 		for _, st := range ch.Stations {
 			if st.Status == ChainNA || st.Status == ChainWaiting {
-				dropB, dropR = append(dropB, f.ID), append(dropR, st.Key)
 				continue
 			}
 			if len(st.Owners) == 0 && st.Status == ChainMissed && sole[st.Role] != "" {
@@ -177,6 +179,7 @@ func (s *MatrixScoreService) scoreBookings(now time.Time, add func(repository.Ma
 				if !ok || o.ID == "" {
 					continue
 				}
+				keep = append(keep, f.ID+"|"+st.Key+"|"+o.ID)
 				add(repository.MatrixScoreRow{EmployeeID: o.ID, Source: "BOOKING", SourceID: f.ID, SourceLabel: &label,
 					Rule: st.Key, Points: pts, MaxPoints: 2, At: at,
 					Reason: fmt.Sprintf("%s · %s: %s", label, st.Title, scoreVerdict(status, st.Verdict))})
@@ -218,7 +221,7 @@ func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.Matrix
 				continue
 			}
 			r := repository.MatrixScoreRow{EmployeeID: p.ID, Source: "DAY", SourceID: key, SourceLabel: &label,
-				Rule: "ATTENDANCE", MaxPoints: 2, At: day.Add(12 * time.Hour)}
+				Rule: "ATTENDANCE", MaxPoints: 2, At: day.Add(12 * time.Hour).UTC()}
 			if _, ok := present[p.ID]; ok {
 				r.Points, r.Reason = 2, label+": سجّل حضور."
 			} else {
@@ -427,6 +430,9 @@ func (s *MatrixScoreService) compute(people []repository.Scorable, from, to time
 }
 
 // BuildScores يجمع النقاط والتقييمات لكل موظف (منفصلة حتى تنفحص).
+// reliabilityOnlyRules قواعد تدخل بالاعتمادية بس (حضور، جرد) — ما تنزّل التقييم.
+var reliabilityOnlyRules = map[string]bool{"ATTENDANCE": true, "INVENTORY": true}
+
 func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, hum []repository.HumanRow, rel map[string]repository.ReliabilityFact) []StaffScore {
 	groupOf := map[string]string{}
 	for _, p := range people {
@@ -451,12 +457,16 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 			continue
 		}
 		a := get(p.EmployeeID)
+		rv := a.rules[p.Rule]
+		a.rules[p.Rule] = [2]int{rv[0] + p.Points, rv[1] + p.MaxPoints}
+		// قرار (ع) 10-06: الاعتمادية رقم منفصل — الحضور والجرد يدخلون بيها بس، مو بالتقييم.
+		if reliabilityOnlyRules[p.Rule] {
+			continue
+		}
 		a.earned += p.Points
 		a.max += p.MaxPoints
 		v := a.src[p.Source]
 		a.src[p.Source] = [2]int{v[0] + p.Points, v[1] + p.MaxPoints}
-		rv := a.rules[p.Rule]
-		a.rules[p.Rule] = [2]int{rv[0] + p.Points, rv[1] + p.MaxPoints}
 		if lost := p.MaxPoints - p.Points; lost > 0 {
 			l := a.loss[p.Rule]
 			if l == nil {
@@ -585,6 +595,17 @@ func (s *MatrixScoreService) RateOnBooking(stage, raterID, bookingID, rateeID st
 	}
 	if rateeID == raterID {
 		return errors.New("ما تقدر تقيّم نفسك")
+	}
+	// نفس شروط الطوابير: الحجز خالص، والإداري يقيّم بس ليدر حجز هو ثبّته أو سجّله.
+	done, handled, err := s.repo.BookingRateState(bookingID, raterID)
+	if err != nil {
+		return errors.New("الحجز مو موجود")
+	}
+	if !done {
+		return errors.New("الحجز بعده ما خلص — التقييم بعد الإنجاز")
+	}
+	if stage == "COORD_LEADER" && !handled {
+		return errors.New("تقيّم بس ليدرية الحجوزات الي إنت ثبّتها أو سجّلتها")
 	}
 	parties, err := s.repo.BookingParties(bookingID)
 	if err != nil {

@@ -65,7 +65,7 @@ func (r *AchievementRepository) List(employeeID, day string, limit int) ([]model
 	}
 	if day != "" {
 		args = append(args, day)
-		q += ` AND "createdAt"::date = $` + itoa(len(args))
+		q += ` AND baghdad_date("createdAt") = $` + itoa(len(args)) + `::date`
 	}
 	args = append(args, limit)
 	q += ` ORDER BY "createdAt" DESC LIMIT $` + itoa(len(args))
@@ -113,13 +113,13 @@ type RoleCount struct {
 // نفس أساس ملخص "الفضفضة اليومية" — بلا جدول ثاني.
 func (r *AchievementRepository) CountsForDay(day time.Time) (total int, byRole []RoleCount, err error) {
 	dayStr := day.Format("2006-01-02")
-	if err = r.db.Get(&total, `SELECT COUNT(*) FROM "Achievement" WHERE "createdAt"::date = $1`, dayStr); err != nil {
+	if err = r.db.Get(&total, `SELECT COUNT(*) FROM "Achievement" WHERE baghdad_date("createdAt") = $1::date`, dayStr); err != nil {
 		return 0, nil, err
 	}
 	byRole = []RoleCount{}
 	err = r.db.Select(&byRole, `
 		SELECT role, COUNT(*) AS count FROM "Achievement"
-		WHERE "createdAt"::date = $1
+		WHERE baghdad_date("createdAt") = $1::date
 		GROUP BY role ORDER BY count DESC`, dayStr)
 	return total, byRole, err
 }

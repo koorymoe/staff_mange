@@ -8,7 +8,8 @@ import { useSession } from '../session'
 // الي بعدها». الكل عدا المالك ومدير النظام والي بإجازة معتمدة (يقرره الخادم).
 // إذا الطلب فشل (شبكة) ما نقفل النظام — الحضور مو أهم من شغل الزبون.
 
-const SKIP_KEY = 'attendance-offer-skip'
+// «لا» تنحفظ لليوم بس (بتوقيت بغداد) — باچر يرجع يسأله.
+const SKIP_KEY = 'attendance-offer-skip:' + new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Baghdad' })
 
 export default function AttendanceGate({ children }: { children: ReactNode }) {
   const { employee } = useSession()
@@ -20,6 +21,13 @@ export default function AttendanceGate({ children }: { children: ReactNode }) {
 
   const load = useCallback(() => { if (!exempt) void api.getAttendanceGate().then(setGate).catch(() => setGate(null)) }, [exempt])
   useEffect(load, [load])
+  // الوقت يمشي: اللي فتح ٦:٣٠ (برّا الدوام) لازم تطلعله البوابة الإجبارية من ٧.
+  useEffect(() => {
+    if (exempt) return
+    const t = window.setInterval(load, 5 * 60 * 1000)
+    window.addEventListener('focus', load)
+    return () => { window.clearInterval(t); window.removeEventListener('focus', load) }
+  }, [exempt, load])
 
   const [skipped, setSkipped] = useState(() => { try { return sessionStorage.getItem(SKIP_KEY) === '1' } catch { return false } })
   const skip = () => { try { sessionStorage.setItem(SKIP_KEY, '1') } catch { /* ما يهم */ } setSkipped(true) }

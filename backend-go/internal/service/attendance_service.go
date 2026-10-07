@@ -72,7 +72,7 @@ func (s *AttendanceService) MonthlyReport(employeeID, month string) (*model.Mont
 	var start time.Time
 	var err error
 	if month == "" {
-		now := time.Now()
+		now := time.Now().In(debriefLoc)
 		start = time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	} else {
 		start, err = time.Parse("2006-01", month)
@@ -92,8 +92,17 @@ func (s *AttendanceService) MonthlyReport(employeeID, month string) (*model.Mont
 		Month:      start.Format("2006-01"),
 		Days:       groupByCalendarDate(records),
 	}
-	for _, day := range report.Days {
+	g, _ := s.repo.Gate(employeeID)
+	for i := range report.Days {
+		day := &report.Days[i]
 		report.TotalMinutes += day.TotalMinutes
+		if g != nil && (g.ShiftStart != nil || g.Shift != nil) {
+			if d, err := time.ParseInLocation("2006-01-02", day.Date, debriefLoc); err == nil {
+				from, _ := ShiftWindow(g.Shift, g.ShiftStart, g.ShiftEnd, d)
+				late := day.FirstCheckIn.After(from.Add(lateGrace))
+				day.Late = &late
+			}
+		}
 	}
 	report.DaysPresent = len(report.Days)
 	return report, nil
@@ -101,6 +110,14 @@ func (s *AttendanceService) MonthlyReport(employeeID, month string) (*model.Mont
 
 // countSession يحسب دقايق الجلسة بالقاعدة ويعلّمها إذا انقطع منها شي.
 func countSession(a *model.Attendance, now time.Time) int {
+	if a.ApprovedOut && a.CheckOut != nil {
+		// انصراف معتمد (دليل، موافقة المراقب، أو تصحيح يدوي) — ينحسب مثل ما هو.
+		a.CountedMinutes = int(a.CheckOut.Sub(a.CheckIn).Minutes())
+		if a.CountedMinutes < 0 {
+			a.CountedMinutes = 0
+		}
+		return a.CountedMinutes
+	}
 	end, assumed, why := CountedEnd(a.CheckIn, a.CheckOut, a.LastActivity, now)
 	a.CountedMinutes = int(end.Sub(a.CheckIn).Minutes())
 	if assumed {
@@ -108,6 +125,9 @@ func countSession(a *model.Attendance, now time.Time) int {
 	}
 	return a.CountedMinutes
 }
+
+// lateGrace نفس سماحية الواجهة: ١٠ دقايق.
+const lateGrace = 10 * time.Minute
 
 // groupByCalendarDate يجمّع صفوف الحضور (ممكن أكثر من صف باليوم الواحد بعد
 // دعم الجلسات المتعددة) بصف واحد لكل تاريخ تقويمي.
@@ -197,7 +217,8 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 		StartLabel: clockLabel(from), Evening: IsEveningShift(from)}
 	// قرار (ع) 10-07: بوقت دوامه إجباري، وبرّاه نسأله بس.
 	need := !exempt && !g.OnLeave && !g.HasOpen && !g.HadToday
-	in := InShift(from, to, now)
+	// الجمعة عطلة: ما ينجبر أحد — نسأله بس إذا فتح.
+	in := InShift(from, to, now) && now.In(debriefLoc).Weekday() != time.Friday
 	out.Required = need && in
 	out.Offer = need && !in
 	if !exempt && !g.HasOpen {

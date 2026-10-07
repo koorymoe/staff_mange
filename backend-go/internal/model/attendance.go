@@ -10,6 +10,7 @@ type Attendance struct {
 	Date       time.Time  `db:"date" json:"date"`
 	// الساعات المحسوبة (0327): الحد حسب ساعة الحضور، والباقي يلغى.
 	LastActivity   *time.Time `db:"lastActivity" json:"-"`
+	ApprovedOut    bool       `db:"approvedOut" json:"approvedOut"`
 	CountedMinutes int        `db:"-" json:"countedMinutes"`
 	AssumedNote    string     `db:"-" json:"assumedNote,omitempty"`
 
@@ -40,6 +41,9 @@ type DailyAttendance struct {
 	TotalMinutes int          `json:"totalMinutes"`
 	// Assumed بيه انصراف مفترض (انقطع من الحساب).
 	Assumed bool `json:"assumed"`
+	// Late متأخر عن بداية دوامه الفعلية (بعد تصحيح الأوقات المكتوبة بنظام ١٢ ساعة)
+	// بأكثر من ١٠ دقايق. nil = ماكو دوام محدد.
+	Late *bool `json:"late,omitempty"`
 }
 
 // EmployeeDailyAttendanceSummary يمثل ملخص حضور موظف واحد ليوم واحد (لجدول

@@ -37,6 +37,7 @@ func (r *MatrixBusinessRepository) projectByMonth(n int) (map[string]float64, er
 	err := r.db.Select(&rows, `SELECT to_char(date_trunc('month', "paidAt"), 'YYYY-MM') AS month, SUM(amount)::float8 AS sum
 		FROM "ProjectPayment" WHERE "cancelledAt" IS NULL
 		  AND "paidAt" >= (date_trunc('month', baghdad_today()) - make_interval(months => $1 - 1))::date
+		  AND "paidAt" <= baghdad_today()
 		GROUP BY 1`, n)
 	out := map[string]float64{}
 	for _, x := range rows {
@@ -110,10 +111,13 @@ func (r *MatrixBusinessRepository) MTD() (*MonthToDate, error) {
 		return &m, err
 	}
 	err = r.db.Get(&m, `SELECT
-		  COALESCE(SUM(amount) FILTER (WHERE "paidAt" >= date_trunc('month', baghdad_today())::date), 0)::float8 AS "projectRevenue",
+		  COALESCE(SUM(amount) FILTER (WHERE "paidAt" >= date_trunc('month', baghdad_today())::date AND "paidAt" <= baghdad_today()), 0)::float8 AS "projectRevenue",
 		  COALESCE(SUM(amount) FILTER (WHERE "paidAt" >= (date_trunc('month', baghdad_today()) - interval '1 month')::date
 		                     AND "paidAt" <= (baghdad_today() - interval '1 month')::date), 0)::float8 AS "lastProjectRevenue"
 		FROM "ProjectPayment" WHERE "cancelledAt" IS NULL`)
+	if err != nil {
+		return &m, err
+	}
 	m.Revenue += m.ProjectRevenue
 	m.LastRevenue += m.LastProjectRevenue
 	return &m, err
@@ -217,7 +221,7 @@ func (r *MatrixBusinessRepository) Uninvoiced(limit int) ([]UninvoicedItem, erro
 		LEFT JOIN "Customer" c ON c.id = b."customerId"
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE b.status = 'COMPLETED' AND b."completedAt" >= date_trunc('month', now() AT TIME ZONE 'Asia/Baghdad') AT TIME ZONE 'Asia/Baghdad'
-		  AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)
+		  AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL)
 		  AND upper(b.code) NOT LIKE 'OLD%' AND b."bookingType" IS DISTINCT FROM 'SURVEY'
 		  AND b."archivedAt" IS NULL
 		ORDER BY b."completedAt" DESC LIMIT $1`, limit)

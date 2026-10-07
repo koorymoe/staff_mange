@@ -217,7 +217,7 @@ func (r *MatrixChainRepository) Since(from time.Time) ([]ChainFacts, error) {
 	rows := []ChainFacts{}
 	err := r.db.Select(&rows, chainFactsSQL+`
 		WHERE b."createdAt" >= $1 AND upper(b.code) NOT LIKE 'OLD%' AND b.status::text <> 'CANCELLED'
-		  AND b."bookingType"::text <> 'INTERNAL'
+		  AND b."bookingType"::text <> 'INTERNAL'`+BookingCountableAndSQL("b")+`
 		ORDER BY b."createdAt"`, from)
 	return rows, err
 }

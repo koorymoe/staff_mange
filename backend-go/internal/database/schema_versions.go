@@ -423,6 +423,8 @@ func versionedMigrations() []Migration {
 	result = append(result, techHandoverMigrations()...)
 	// 0327: الساعات المحسوبة — حد حسب ساعة الحضور، والباقي يلغى.
 	result = append(result, attendanceCountedMigrations()...)
+	// 0328: جلسة مفتوحة وحدة + الانصراف المعتمد ينحسب مثل ما هو.
+	result = append(result, attendanceFixMigrations()...)
 	return result
 }
 

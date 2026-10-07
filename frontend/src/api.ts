@@ -20,6 +20,8 @@ export interface DailyAttendance {
   stillOpen: boolean
   totalMinutes: number
   assumed?: boolean
+  /** الخادم يحسبه من بداية الدوام الفعلية (بتوقيت بغداد). */
+  late?: boolean
 }
 
 export interface MonthlyAttendanceReport {

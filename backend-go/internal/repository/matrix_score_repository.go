@@ -197,11 +197,30 @@ func (r *MatrixScoreRepository) DropStations(bookingIDs, rules []string) error {
 	return err
 }
 
+// KeepOnlyStations يمسح نقاط الحجوزات الي ما عادت بالحساب الحالي: محطة صارت
+// NA/تنتظر، أو انشالت (حجز مرحّل للتقني)، أو صاحبها تغيّر. keep = "حجز|قاعدة|موظف".
+// الملغية يدوياً (cancelledAt) تبقى.
+func (r *MatrixScoreRepository) KeepOnlyStations(bookingIDs, keep []string) error {
+	if len(bookingIDs) == 0 {
+		return nil
+	}
+	_, err := r.db.Exec(`DELETE FROM "MatrixScore" m WHERE m.source = 'BOOKING' AND m."cancelledAt" IS NULL
+		AND m."sourceId" = ANY($1) AND NOT (m."sourceId" || '|' || m.rule || '|' || m."employeeId" = ANY($2))`,
+		pq.Array(bookingIDs), pq.Array(keep))
+	return err
+}
+
 // DropGoneBookings نقاط حجوزات انلغت أو تأرشفت أو انطلب حذفها — ما تنحسب على أحد.
 func (r *MatrixScoreRepository) DropGoneBookings() error {
 	_, err := r.db.Exec(`DELETE FROM "MatrixScore" m WHERE m.source = 'BOOKING' AND m."cancelledAt" IS NULL
 		AND EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = m."sourceId"
 		            AND (b.status::text = 'CANCELLED' OR NOT (` + BookingCountableSQL("b") + `)))`)
+	if err != nil {
+		return err
+	}
+	// والمهام الملغية أو المحذوفة بعد ما انحسبت.
+	_, err = r.db.Exec(`DELETE FROM "MatrixScore" m WHERE m.source = 'TASK' AND m."cancelledAt" IS NULL
+		AND NOT EXISTS (SELECT 1 FROM "ExtraTask" t WHERE t.id = m."sourceId" AND t.status <> 'CANCELLED')`)
 	return err
 }
 
@@ -251,6 +270,18 @@ func (r *MatrixScoreRepository) PendingCoordLeader(raterID string) ([]PendingSta
 		  AND NOT EXISTS (SELECT 1 FROM "StaffRating" s WHERE s."raterId" = $1 AND s."bookingId" = b.id AND s.stage = 'COORD_LEADER')
 		ORDER BY b."updatedAt" DESC LIMIT 20`, raterID)
 	return rows, err
+}
+
+// BookingRateState الحجز خالص؟ والمقيّم هو مثبّته أو مسجّله؟
+func (r *MatrixScoreRepository) BookingRateState(bookingID, raterID string) (done, handled bool, err error) {
+	var x struct {
+		Done    bool `db:"done"`
+		Handled bool `db:"handled"`
+	}
+	err = r.db.Get(&x, `SELECT b.status::text IN ('COMPLETED', 'PARTIAL') AS done,
+		(b."confirmedByEmployeeId" = $2 OR b."createdById" = $2) IS TRUE AS handled
+		FROM "Booking" b WHERE b.id = $1`, bookingID, raterID)
+	return x.Done, x.Handled, err
 }
 
 // BookingParties الليدر والإداري لحجز — للتقييم بالتدقيق واتصال الجودة.

@@ -34,6 +34,7 @@ export const LATE_GRACE_MINUTES = 10
 
 /** هل هذا اليوم تأخير؟ يحتاج وقت بداية دوام معرّف للموظف. */
 export function isLateDay(day: DailyAttendance, shiftStart: string | null): boolean {
+  if (typeof day.late === 'boolean') return day.late
   const start = minutesOfDay(shiftStart)
   if (start === null) return false // ماكو دوام محدد = ماكو تأخير نحكم بيه
   const came = minutesOfIso(day.firstCheckIn)

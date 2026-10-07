@@ -174,11 +174,11 @@ func (h *DashboardHandler) TodayPulse(w http.ResponseWriter, r *http.Request) {
 		SELECT
 			(SELECT COUNT(*) FROM "Booking"
 			  WHERE "archivedAt" IS NULL`+repository.NotDeletePendingSQL(`"Booking"`)+`
-			    AND "scheduledAt"::date = CURRENT_DATE)                              AS "todayBookings",
+			    AND baghdad_date("scheduledAt") = baghdad_today())                            AS "todayBookings",
 			-- أمس للمقارنة: رقم بلا مرجع ما يگول شي. ١٢ حجز زين لو خبل؟
 			(SELECT COUNT(*) FROM "Booking"
 			  WHERE "archivedAt" IS NULL`+repository.NotDeletePendingSQL(`"Booking"`)+`
-			    AND "scheduledAt"::date = CURRENT_DATE - 1)                          AS "yesterdayBookings",
+			    AND baghdad_date("scheduledAt") = baghdad_today() - 1)                          AS "yesterdayBookings",
 			-- المهام المفتوحة: الي لسه بالميدان، مو المنجزة ولا المتوقفة
 			(SELECT COUNT(*) FROM "Mission"
 			  WHERE stage NOT IN ('COMPLETED','STOPPED'))                            AS "openMissions",

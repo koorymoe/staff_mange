@@ -64,10 +64,14 @@ func TestBuildScores(t *testing.T) {
 	hum := []repository.HumanRow{{RateeID: "a", Score: 4, Stage: "MONITOR_PERIODIC"}, {RateeID: "a", Score: 2, Stage: "MONITOR_PERIODIC"}, {RateeID: "a", Score: 1, Stage: "LEADER_CREW"}}
 	out := BuildScores(people, pts, hum, nil)
 	a := out[0]
-	if a.Earned != 3 || a.Max != 4 || *a.MatrixPct != 75 || *a.HumanPct != 60 {
+	// الحضور يدخل بالاعتمادية بس، مو بالتقييم (قرار (ع) 10-06).
+	if a.Earned != 1 || a.Max != 2 || *a.MatrixPct != 50 || *a.HumanPct != 60 {
 		t.Fatalf("%+v", a)
 	}
-	if *a.Final < 68.99 || *a.Final > 69.01 { // 0.6*75 + 0.4*60
+	if a.Reliability == nil || len(a.RelParts) == 0 || a.RelParts[0].Key != "ATTENDANCE" || a.RelParts[0].Pct != 100 {
+		t.Fatalf("reliability %+v", a.RelParts)
+	}
+	if *a.Final < 53.99 || *a.Final > 54.01 { // 0.6*50 + 0.4*60
 		t.Fatalf("final %v", *a.Final)
 	}
 	if len(a.TopLosses) != 1 || a.TopLosses[0].Rule != "PAPER" {

@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -49,7 +50,7 @@ func (r *AttendanceRepository) FindToday(employeeID string) (*model.Attendance, 
 func (r *AttendanceRepository) FindOpenSession(employeeID string) (*model.Attendance, error) {
 	var a model.Attendance
 	err := r.db.Get(&a, `
-		SELECT * FROM "Attendance"
+		SELECT *, att_last_activity("employeeId", "checkIn", "checkOut") AS "lastActivity" FROM "Attendance"
 		WHERE "employeeId" = $1 AND "checkOut" IS NULL
 		ORDER BY "checkIn" DESC LIMIT 1
 	`, employeeID)
@@ -67,7 +68,7 @@ func (r *AttendanceRepository) FindOpenSession(employeeID string) (*model.Attend
 func (r *AttendanceRepository) TodaySessions(employeeID string) ([]model.Attendance, error) {
 	records := []model.Attendance{}
 	if err := r.db.Select(&records, `
-		SELECT * FROM "Attendance"
+		SELECT *, att_last_activity("employeeId", "checkIn", "checkOut") AS "lastActivity" FROM "Attendance"
 		WHERE "employeeId" = $1 AND date = baghdad_today()
 		ORDER BY "checkIn" ASC
 	`, employeeID); err != nil {
@@ -91,9 +92,13 @@ func (r *AttendanceRepository) CheckIn(employeeID string) (*model.Attendance, er
 	var a model.Attendance
 	err = r.db.Get(&a, `
 		INSERT INTO "Attendance" (id, "employeeId", "checkIn", date)
-		VALUES (gen_random_uuid()::text, $1, now(), baghdad_today())
+		VALUES (gen_random_uuid()::text, $1, now() AT TIME ZONE 'UTC', baghdad_today())
 		RETURNING *
 	`, employeeID)
+	// ضغطتين سوه: الفهرس الفريد (0328) يرفض الثانية.
+	if err != nil && strings.Contains(err.Error(), "Attendance_one_open_idx") {
+		return nil, errors.New("عندك تسجيل حضور مفتوح، سجل انصراف أول")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +109,7 @@ func (r *AttendanceRepository) CheckIn(employeeID string) (*model.Attendance, er
 func (r *AttendanceRepository) CheckOut(employeeID string) (*model.Attendance, error) {
 	var a model.Attendance
 	err := r.db.Get(&a, `
-		UPDATE "Attendance" SET "checkOut" = now()
+		UPDATE "Attendance" SET "checkOut" = now() AT TIME ZONE 'UTC'
 		WHERE id = (
 			SELECT id FROM "Attendance"
 			WHERE "employeeId" = $1 AND "checkOut" IS NULL
@@ -207,8 +212,10 @@ func (r *AttendanceRepository) Correct(id string, checkIn, checkOut *time.Time) 
 	var a model.Attendance
 	err := r.db.Get(&a, `
 		UPDATE "Attendance" SET
-			"checkIn" = COALESCE($2, "checkIn"),
-			"checkOut" = COALESCE($3, "checkOut")
+			"checkIn" = COALESCE(($2::timestamptz AT TIME ZONE 'UTC'), "checkIn"),
+			"checkOut" = COALESCE(($3::timestamptz AT TIME ZONE 'UTC'), "checkOut"),
+			date = baghdad_date(COALESCE(($2::timestamptz AT TIME ZONE 'UTC'), "checkIn")),
+			"approvedOut" = "approvedOut" OR $3::timestamptz IS NOT NULL
 		WHERE id = $1
 		RETURNING *
 	`, id, checkIn, checkOut)
@@ -379,7 +386,7 @@ func (r *AttendanceRepository) SaveClaim(c AttendanceClaimIn) error {
 
 // SetCheckOut يصحّح وقت الانصراف (بدليل أو بقرار المراقب).
 func (r *AttendanceRepository) SetCheckOut(id string, at time.Time) error {
-	_, err := r.db.Exec(`UPDATE "Attendance" SET "checkOut" = ($2::timestamptz AT TIME ZONE 'UTC') WHERE id = $1`, id, at)
+	_, err := r.db.Exec(`UPDATE "Attendance" SET "checkOut" = ($2::timestamptz AT TIME ZONE 'UTC'), "approvedOut" = true WHERE id = $1`, id, at)
 	return err
 }
 
