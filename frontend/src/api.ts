@@ -4636,6 +4636,12 @@ export const api = {
     request<BookingSurveyReport[]>(`/booking-survey-reports?bookingId=${encodeURIComponent(bookingId)}`),
 
   /** تغيير نوع الحجز — للمالك ومدير النظام بس (السيرفر يرفض غيرهم) */
+  /** تسعير الأعمال الداخلية القديمة (مؤقت — قرار (ع) 10-07). */
+  getInternalBackfill: () => request<{ id: string; code: string; department: string | null; notes: string | null }[]>('/internal-backfill'),
+  priceInternalBackfill: (id: string, work: string, price: number) =>
+    request<unknown>(`/internal-backfill/${id}`, { method: 'POST', body: JSON.stringify({ work, price }) }),
+  /** طابور الإداري: أعمال داخلية خلصت وناقصها فاتورة أو تقرير. */
+  getInternalPaperwork: () => request<{ id: string; code: string; department: string | null; hasInvoice: boolean; hasReport: boolean; doneAt: string | null }[]>('/bookings/internal-paperwork'),
   changeBookingType: (id: string, bookingType: 'REGULAR' | 'MAINTENANCE' | 'INTERNAL' | 'SOLAR' | 'SURVEY') =>
     request<Booking>(`/bookings/${id}/type`, { method: 'PUT', body: JSON.stringify({ bookingType }) }),
 

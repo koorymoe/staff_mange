@@ -1,3 +1,4 @@
+import { useSearchParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { api, type Booking, type WorkReport } from '../api'
 import { useSession } from '../session'
@@ -55,7 +56,9 @@ export default function WorkReportPage() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [focusParams] = useSearchParams()
+  const focusId = focusParams.get('bookingId') || ''
+  const [expandedId, setExpandedId] = useState<string | null>(focusId || null)
   const [forms, setForms] = useState<Record<string, ReportForm>>({})
   const [submitting, setSubmitting] = useState(false)
 
@@ -74,7 +77,8 @@ export default function WorkReportPage() {
           b.assignments.some((a) => a.employee.id === currentUser.id) ||
           b.projectSupervisor?.id === currentUser.id
         setBookings(inProgress.filter(isMine))
-        const mine = completed.filter(isMine)
+        // قرار (ع) 10-07: الإداري يسوي تقرير العمل الداخلي — يجي من طابوره بـ?bookingId=.
+        const mine = completed.filter((b) => isMine(b) || (b.id === focusId && b.bookingType === 'INTERNAL'))
         const seen = new Set(mine.map((b) => b.id))
         const service = serviceLists.flat().filter((b) => !b.hasReport && !seen.has(b.id) && seen.add(b.id))
         setCompletedToday([...mine, ...service])

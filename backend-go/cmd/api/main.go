@@ -2202,6 +2202,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// فاتورة الشغل داخل الشركة: صلاحية وحدة ينطيها المالك للليدر
 	// **أو** لإداري الكوادر — إداري الكوادر مو ليدر فحارس الفاتورة
 	// العادية يرفضه، والفاتورة اليدوية تفتح له كل الفواتير الحرة.
+	// قرار (ع) 10-07: تسعير الأعمال الداخلية القديمة (مؤقت) + طابور ورق الإداري.
+	internalBackfillHandler := handler.NewInternalBackfillHandler(db, leaderInvoiceService)
+	requireBackfill := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "FINANCE", "MONITOR"}, "finance", "finance_audit", "monitoring")
+	mux.Handle("GET /api/internal-backfill", middleware.Chain(http.HandlerFunc(internalBackfillHandler.List), requireAuth, requireBackfill))
+	mux.Handle("POST /api/internal-backfill/{id}", middleware.Chain(http.HandlerFunc(internalBackfillHandler.Price), requireAuth, requireBackfill))
+	mux.Handle("GET /api/bookings/internal-paperwork", middleware.Chain(http.HandlerFunc(internalBackfillHandler.CoordinatorQueue), requireAuth,
+		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "coordinator", "invoice_internal")))
 	mux.Handle("POST /api/leader-invoices/internal", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CreateInternalInvoice), requireAuth,
 		middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "invoice_internal")))
 	// حساب تقريبي بدون حفظ لما زبون يستفسر — نفس صلاحية إنشاء الفاتورة (الليدر)

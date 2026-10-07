@@ -8,6 +8,7 @@ import InternalDepartmentContacts from '../components/InternalDepartmentContacts
 import BookingCodeChip from '../components/BookingCodeChip'
 import EntityIdentity from '../components/EntityIdentity'
 import MoneyNoInvoice from '../components/MoneyNoInvoice'
+import { askForm } from '../utils/dialog'
 
 export default function Finance() {
   // ⚠️⚠️ هاي الشاشة چانت **بلا أي فحص**: أزرار «مطابق» و«غير مطابق»
@@ -34,6 +35,46 @@ export default function Finance() {
    *  فما يطلع بـ«الكل» ولا بطابور التدقيق — إله بطاقته لحاله. */
   const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'internal' | 'partial_linked' | 'survey'>('all')
   const [search, setSearch] = useState('')
+  // قرار (ع) 10-07: تسعير الأعمال الداخلية القديمة (مؤقت) — للمحاسب والمراقب والمالك.
+  const canBackfill = canDecide || isOwner || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  const [backfill, setBackfill] = useState<Set<string>>(new Set())
+  const loadBackfill = () => {
+    if (!canBackfill) return
+    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(() => {})
+  }
+  useEffect(() => {
+    if (!canBackfill) return
+    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(() => {})
+  }, [canBackfill])
+  const priceOld = async (b: Booking) => {
+    const ans = await askForm(`سعّر العمل الداخلي ${b.code} (قديم)`, [
+      { kind: 'text', key: 'work', label: 'شنو انعمل؟', placeholder: 'مثلاً: نصب كاميرتين بالمخزن وسحب كيبل' },
+      { kind: 'text', key: 'price', label: 'السعر (دينار)', placeholder: '50000' },
+    ], 'سوّي الفاتورة')
+    if (!ans) return
+    const price = Number(String(ans.price).replace(/[^0-9.]/g, ''))
+    if (!price || price <= 0) { alert('اكتب سعر صحيح أكبر من صفر'); return }
+    try {
+      await api.priceInternalBackfill(b.id, ans.work, price)
+      alert(`انسوّت فاتورة الحجز ${b.code}`)
+      loadBackfill(); load()
+    } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+  }
+  // قرار (ع) 10-07: حجز زبون انحسب «داخل الشركة» بالغلط — المالك بس يرجّعه.
+  const returnToCustomer = async (b: Booking) => {
+    const ok = await askForm(`ترجّع ${b.code} حجز زبون؟`, [
+      { kind: 'choice', key: 'c', label: 'الحجز يطلع من «داخل الشركة» ويرجع لحجوزات الزبائن والإيرادات.', options: [['yes', '↩️ إي، رجّعه حجز زبون']] },
+    ], 'تأكيد')
+    if (!ok) return
+    try {
+      await api.changeBookingType(b.id, 'REGULAR')
+      alert(`الحجز ${b.code} رجع حجز زبون`)
+      load()
+    } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+  }
+  // مشكوك إنه حجز زبون: ماكو قسم، أو عليه مبلغ مستلم من زبون.
+  const looksLikeCustomer = (b: Booking) =>
+    (!b.internalDepartmentId && !(b.internalDepartment ?? '').trim()) || (b.amountCollected ?? 0) > 0
 
   const load = () => {
     Promise.all([
@@ -390,6 +431,11 @@ export default function Finance() {
         </p>
       )}
 
+      {filter === 'internal' && canBackfill && backfill.size > 0 && (
+        <p className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm font-bold text-indigo-900">
+          ⏳ باقي {backfill.size} عمل داخلي قديم بلا سعر — افتح الحجز واضغط «💰 سعّر (قديم)»، تنسوّى فاتورته.
+        </p>
+      )}
       <div className="mt-6 flex flex-col gap-4">
         {filtered.map((b) => {
           const isOpen = expanded[b.id] ?? false
@@ -550,6 +596,21 @@ export default function Finance() {
                   />
                   {/* الشغل داخل الشركة: ماكو زبون — القسم ومسؤولوه محلّه،
                       وأرقامهم لازم تكون بالإيد لمن يدقّق أو يتصل. */}
+                  {isInternal(b) && (looksLikeCustomer(b) || backfill.has(b.id) || isOwner) && (
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {looksLikeCustomer(b) && (
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800" title="ماكو قسم مسجّل، أو عليه مبلغ مستلم من زبون">⚠️ يمكن حجز زبون مو داخل الشركة</span>
+                      )}
+                      {canBackfill && backfill.has(b.id) && (
+                        <button type="button" onClick={() => void priceOld(b)}
+                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white">💰 سعّر (قديم)</button>
+                      )}
+                      {isOwner && (
+                        <button type="button" onClick={() => void returnToCustomer(b)}
+                          className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800">↩️ رجّعه حجز زبون</button>
+                      )}
+                    </div>
+                  )}
                   {isInternal(b) && (
                     <div className="mb-3">
                       <InternalDepartmentContacts

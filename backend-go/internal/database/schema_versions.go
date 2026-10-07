@@ -429,6 +429,8 @@ func versionedMigrations() []Migration {
 	result = append(result, forecastLogMigrations()...)
 	// 0330: قرار التقني بعد التواصل (بالتلفون / زيارة بموعد) ووقت وصوله.
 	result = append(result, techVisitMigrations()...)
+	// 0331: إداريّو الحجوزات يسوّون فاتورة الشغل الداخلي.
+	result = append(result, internalPaperworkMigrations()...)
 	return result
 }
 

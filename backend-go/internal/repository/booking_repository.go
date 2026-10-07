@@ -1805,6 +1805,13 @@ func (r *BookingRepository) ChangeType(id, newType, byEmployeeID string) error {
 	`, id, newType); err != nil {
 		return err
 	}
+	// قرار (ع) 10-07: حجز زبون انحسب داخلي بالغلط ويرجع — يطلع من «داخل الشركة»
+	// بكل الإحصائيات (تقرير الأعمال الداخلية يعتمد مكان الشغل).
+	if old.Type == "INTERNAL" && newType != "INTERNAL" {
+		if _, err := tx.Exec(`UPDATE "Booking" SET "workLocation" = 'ON_SITE' WHERE id = $1`, id); err != nil {
+			return err
+		}
+	}
 
 	// السجل يحتاج newTime وهو NOT NULL — نحط موعد الحجز نفسه (ما
 	// تغيّر)، لأن المقصود توثيق **منو غيّر النوع ومتى** مو الموعد.

@@ -16,6 +16,7 @@ import BookingTimelineView from '../components/BookingTimeline'
 import { askForm } from '../utils/dialog'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 import PhoneActions from '../components/PhoneActions'
+import InternalPaperworkQueue from '../components/InternalPaperworkQueue'
 import HandoverDialog, { HandoverBadge } from '../components/HandoverDialog'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
@@ -688,6 +689,10 @@ export default function Coordinator() {
       {/* قرار (ع) 10-05: الإداري يقيّم الليدر لمن يرجع — يدخل بالتقييم النهائي. */}
       {(currentUser?.role === 'ADMIN' || permissions.includes('coordinator') || permissions.includes('crew_management')) && (
         <div className="mt-3"><StaffRatingQueue kind="coord" /></div>
+      )}
+      {/* قرار (ع) 10-07: ورق الأعمال داخل الشركة مسؤولية الإداري. */}
+      {(currentUser?.role === 'ADMIN' || currentUser?.role === 'HR_COORDINATOR' || permissions.includes('coordinator') || permissions.includes('invoice_internal')) && (
+        <div className="mt-3"><InternalPaperworkQueue /></div>
       )}
 
       {/* ⚠️ الشريط لاصق بأعلى الشاشة (sticky): الفشل يصير غالباً وأنت
