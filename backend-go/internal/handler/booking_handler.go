@@ -941,7 +941,9 @@ func (h *BookingHandler) Handover(w http.ResponseWriter, r *http.Request) {
 // PUT /api/bookings/{id}/tech/{step} — خطوات التقني: contacted · diagnosis · crew · resolve.
 func (h *BookingHandler) TechStep(w http.ResponseWriter, r *http.Request) {
 	var body struct {
-		Text string `json:"text"`
+		Text     string `json:"text"`
+		Decision string `json:"decision"`
+		VisitAt  string `json:"visitAt"`
 	}
 	_ = DecodeJSON(r, &body)
 	id, me := r.PathValue("id"), middleware.EmployeeIDFromContext(r)
@@ -950,6 +952,10 @@ func (h *BookingHandler) TechStep(w http.ResponseWriter, r *http.Request) {
 	switch r.PathValue("step") {
 	case "contacted":
 		b, err = h.service.TechContacted(id, me)
+	case "decide":
+		b, err = h.service.TechDecide(id, me, body.Decision, body.Text, body.VisitAt)
+	case "visited":
+		b, err = h.service.TechVisited(id, me)
 	case "diagnosis":
 		b, err = h.service.TechDiagnose(id, me, body.Text)
 	case "crew":

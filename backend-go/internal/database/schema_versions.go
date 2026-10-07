@@ -427,6 +427,8 @@ func versionedMigrations() []Migration {
 	result = append(result, attendanceFixMigrations()...)
 	// 0329: سجل توقع الإيراد اليومي — نقيس دقة ماتركس بنهاية كل شهر.
 	result = append(result, forecastLogMigrations()...)
+	// 0330: قرار التقني بعد التواصل (بالتلفون / زيارة بموعد) ووقت وصوله.
+	result = append(result, techVisitMigrations()...)
 	return result
 }
 

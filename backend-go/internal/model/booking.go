@@ -230,6 +230,12 @@ type Booking struct {
 	TechDiagnosis       *string        `db:"techDiagnosis" json:"techDiagnosis,omitempty"`
 	TechDiagnosedAt     *time.Time     `db:"techDiagnosedAt" json:"techDiagnosedAt,omitempty"`
 	TechCrewRequestedAt *time.Time     `db:"techCrewRequestedAt" json:"techCrewRequestedAt,omitempty"`
+	// قرار التقني (0330): PHONE انحلّت بالتلفون · VISIT يحتاج كشف/زيارة بموعد.
+	TechDecision   *string    `db:"techDecision" json:"techDecision,omitempty"`
+	TechDecidedAt  *time.Time `db:"techDecidedAt" json:"techDecidedAt,omitempty"`
+	TechVisitAt    *time.Time `db:"techVisitAt" json:"techVisitAt,omitempty"`
+	TechVisitedAt  *time.Time `db:"techVisitedAt" json:"techVisitedAt,omitempty"`
+	TechVisitMoves int        `db:"techVisitMoves" json:"techVisitMoves"`
 	HandoverTo          *EmployeeBrief `db:"-" json:"handoverTo,omitempty"`
 	HandoverBy          *EmployeeBrief `db:"-" json:"handoverBy,omitempty"`
 

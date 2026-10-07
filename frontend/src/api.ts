@@ -644,6 +644,11 @@ export interface Booking {
   techDiagnosis?: string | null
   techDiagnosedAt?: string | null
   techCrewRequestedAt?: string | null
+  techDecision?: 'PHONE' | 'VISIT' | null
+  techDecidedAt?: string | null
+  techVisitAt?: string | null
+  techVisitedAt?: string | null
+  techVisitMoves?: number
   // وقت تحويل الحجز لتنسيق الحجوزات (التثبيت)
   confirmedAt: string | null
   // الموقع: عنوان كلامي + نقطة على الخريطة + رابط (الرابط يغني عن التحديد)
@@ -4910,8 +4915,11 @@ export const api = {
   handoverBooking: (id: string, employeeId: string, reason: string) =>
     request<Booking>(`/bookings/${id}/handover`, { method: 'PUT', body: JSON.stringify({ employeeId, reason }) }),
   /** خطوات التقني على الحجز المرحّل إله. */
-  techStep: (id: string, step: 'contacted' | 'diagnosis' | 'crew' | 'resolve', text = '') =>
+  techStep: (id: string, step: 'contacted' | 'diagnosis' | 'crew' | 'resolve' | 'visited', text = '') =>
     request<Booking>(`/bookings/${id}/tech/${step}`, { method: 'PUT', body: JSON.stringify({ text }) }),
+  /** قرار التقني بعد التواصل: انحلّت بالتلفون، لو زيارة بموعد (بتوقيت بغداد «YYYY-MM-DDTHH:mm»). */
+  techDecide: (id: string, decision: 'PHONE' | 'VISIT', text: string, visitAt = '') =>
+    request<Booking>(`/bookings/${id}/tech/decide`, { method: 'PUT', body: JSON.stringify({ decision, text, visitAt }) }),
 
   // ═══ مجسّمات الكيان ثلاثية الأبعاد ═══
   // ⚠️ **رفعها بمسار خاص مو `uploadFile` العام**: العام مفتوح لأي

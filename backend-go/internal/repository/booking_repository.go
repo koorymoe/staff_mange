@@ -2086,7 +2086,8 @@ func (r *BookingRepository) MaterialPurchases(bookingID string) ([]BookingMateri
 func (r *BookingRepository) Handover(id, toID, byID, reason string) error {
 	_, err := r.db.Exec(`UPDATE "Booking" SET "handoverToId" = $2, "handoverById" = $3, "handoverAt" = now(),
 		"handoverReason" = $4, "techContactedAt" = NULL, "techDiagnosis" = NULL, "techDiagnosedAt" = NULL,
-		"techCrewRequestedAt" = NULL, "updatedAt" = now() WHERE id = $1`, id, toID, byID, reason)
+		"techCrewRequestedAt" = NULL, "techDecision" = NULL, "techDecidedAt" = NULL, "techVisitAt" = NULL,
+		"techVisitedAt" = NULL, "techVisitMoves" = 0, "updatedAt" = now() WHERE id = $1`, id, toID, byID, reason)
 	return err
 }
 
@@ -2109,5 +2110,25 @@ func (r *BookingRepository) TechRequestCrew(id string) error {
 func (r *BookingRepository) TechResolve(id, notes string) error {
 	_, err := r.db.Exec(`UPDATE "Booking" SET status = 'COMPLETED', "completedAt" = now(),
 		"completionNotes" = $2, "updatedAt" = now() WHERE id = $1`, id, notes)
+	return err
+}
+
+// TechDecide قرار التقني بعد التواصل. VISIT ويا موعد: الموعد يصير موعد الحجز هم
+// (حتى يطلع بالجداول)، وتغيير موعد سابق ينعد.
+func (r *BookingRepository) TechDecide(id, decision string, visitAt *time.Time) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "techDecision" = $2,
+		"techDecidedAt" = COALESCE("techDecidedAt", now() AT TIME ZONE 'UTC'),
+		"techContactedAt" = COALESCE("techContactedAt", now() AT TIME ZONE 'UTC'),
+		"techVisitMoves" = "techVisitMoves" + CASE WHEN "techVisitAt" IS NOT NULL AND $3::timestamptz IS NOT NULL
+		                    AND "techVisitAt" <> ($3::timestamptz AT TIME ZONE 'UTC') THEN 1 ELSE 0 END,
+		"techVisitAt" = COALESCE(($3::timestamptz AT TIME ZONE 'UTC'), "techVisitAt"),
+		"scheduledAt" = COALESCE(($3::timestamptz AT TIME ZONE 'UTC'), "scheduledAt"),
+		"updatedAt" = now() WHERE id = $1`, id, decision, visitAt)
+	return err
+}
+
+func (r *BookingRepository) TechVisited(id string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "techVisitedAt" = COALESCE("techVisitedAt", now() AT TIME ZONE 'UTC'),
+		"updatedAt" = now() WHERE id = $1`, id)
 	return err
 }

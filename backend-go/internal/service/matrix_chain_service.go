@@ -69,6 +69,8 @@ var chainStations = []chainStationDef{
 	{"CREW", "تحديد الكادر", 60},
 	{"HANDOFF", "ترحيل الحجز للتقني", 30},
 	{"TECH_CONTACT", "التقني يتواصل ويا الزبون", 60},
+	{"TECH_DECIDE", "التقني يقرر: بالتلفون لو زيارة", 60},
+	{"TECH_VISIT", "التقني يوصل بموعد الزيارة", 30},
 	{"TECH_DIAG", "التقني يكتب الكشف", 24 * 60},
 	{"TECH_FIX", "التقني يعالج المشكلة", 3 * 24 * 60},
 	{"RECEIVE", "الاستلام وتجهيز المواد", 60},
@@ -180,9 +182,14 @@ func rawMinutes(f *repository.ChainFacts) map[string]*int {
 	m["CREW"] = minsBetween(crewStart(f), f.FirstAssignAt)
 	m["HANDOFF"] = minsBetween(firstOf(f.ContactedAt, &f.CreatedAt), f.HandoverAt)
 	m["TECH_CONTACT"] = minsBetween(f.HandoverAt, f.TechContactedAt)
-	m["TECH_DIAG"] = minsBetween(firstOf(f.TechContactedAt, f.HandoverAt), f.TechDiagnosedAt)
+	m["TECH_DECIDE"] = minsBetween(firstOf(f.TechContactedAt, f.HandoverAt), f.TechDecidedAt)
+	if f.TechVisitAt != nil && f.TechVisitedAt != nil && f.TechVisitedAt.After(*f.TechVisitAt) {
+		v := int(f.TechVisitedAt.Sub(*f.TechVisitAt).Minutes())
+		m["TECH_VISIT"] = &v
+	}
+	m["TECH_DIAG"] = minsBetween(firstOf(f.TechVisitedAt, f.TechContactedAt, f.HandoverAt), f.TechDiagnosedAt)
 	if f.HandoverAt != nil {
-		m["TECH_FIX"] = minsBetween(firstOf(f.TechDiagnosedAt, f.HandoverAt), f.CompletedAt)
+		m["TECH_FIX"] = minsBetween(firstOf(f.TechDiagnosedAt, f.TechDecidedAt, f.HandoverAt), f.CompletedAt)
 	}
 	m["RECEIVE"] = minsBetween(firstOf(f.MissionAt, f.FirstAssignAt), f.MaterialsAt)
 	m["ROUTE"] = minsBetween(f.ScheduledAt, firstOf(f.DepartedAt, f.StartedAt))
@@ -434,7 +441,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			return
 		}
 		// محطة قبل الإنجاز والحجز خلص بدونها — انتخطّت، مو «بعدها تنتظر».
-		if done && (st.Key == "TECH_CONTACT" || st.Key == "TECH_DIAG" || st.Key == "CONTACT" || st.Key == "CONFIRM" || st.Key == "CREW" || st.Key == "RECEIVE" || st.Key == "WORK") {
+		if done && (st.Key == "TECH_DECIDE" || st.Key == "TECH_VISIT" || st.Key == "TECH_CONTACT" || st.Key == "TECH_DIAG" || st.Key == "CONTACT" || st.Key == "CONFIRM" || st.Key == "CREW" || st.Key == "RECEIVE" || st.Key == "WORK") {
 			st.Status = ChainMissed
 			st.Verdict = "الحجز خلص، بس هالخطوة ما انسجّلت بالنظام."
 			return
@@ -556,11 +563,38 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		tc := ChainStation{Key: "TECH_CONTACT", Role: ChainRoleTech, Owners: tech}
 		judge(&tc, f.HandoverAt, f.TechContactedAt, s.threshold(f, "TECH_CONTACT"), nil)
 		add(tc)
-		td := ChainStation{Key: "TECH_DIAG", Role: ChainRoleTech, Owners: tech}
-		judge(&td, firstOf(f.TechContactedAt, f.HandoverAt), f.TechDiagnosedAt, s.threshold(f, "TECH_DIAG"), nil)
-		add(td)
+		// قرار (ع) 10-07: بعد التواصل يقرر — انحلّت بالتلفون، لو زيارة بموعد.
+		dec := ChainStation{Key: "TECH_DECIDE", Role: ChainRoleTech, Owners: tech}
+		judge(&dec, firstOf(f.TechContactedAt, f.HandoverAt), f.TechDecidedAt, s.threshold(f, "TECH_DECIDE"), nil)
+		phone := f.TechDecision != nil && *f.TechDecision == "PHONE"
+		if phone {
+			dec.Facts = append(dec.Facts, "القرار: انحلّت بالتلفون.")
+		} else if f.TechVisitAt != nil {
+			dec.Facts = append(dec.Facts, "القرار: زيارة كشف يوم "+f.TechVisitAt.In(debriefLoc).Format("2006-01-02 15:04")+".")
+			if f.TechVisitMoves > 0 {
+				dec.Facts = append(dec.Facts, fmt.Sprintf("موعد الزيارة انتغيّر %d مرة.", f.TechVisitMoves))
+			}
+		}
+		add(dec)
+		if f.TechDecision != nil && *f.TechDecision == "VISIT" && f.TechVisitAt != nil {
+			// الزيارة: يوصل بموعده — التأخير ينحسب من الموعد نفسه.
+			tv := ChainStation{Key: "TECH_VISIT", Role: ChainRoleTech, Owners: tech}
+			th := s.threshold(f, "TECH_VISIT")
+			judge(&tv, f.TechVisitAt, f.TechVisitedAt, th, f.TechVisitAt)
+			if f.TechVisitedAt != nil && !f.TechVisitedAt.After(*f.TechVisitAt) {
+				tv.Status, tv.Verdict = ChainOK, "وصل بموعده أو قبله."
+				z := 0
+				tv.Minutes = &z
+			}
+			add(tv)
+		}
+		if !phone {
+			td := ChainStation{Key: "TECH_DIAG", Role: ChainRoleTech, Owners: tech}
+			judge(&td, firstOf(f.TechVisitedAt, f.TechContactedAt, f.HandoverAt), f.TechDiagnosedAt, s.threshold(f, "TECH_DIAG"), nil)
+			add(td)
+		}
 		tf := ChainStation{Key: "TECH_FIX", Role: ChainRoleTech, Owners: tech}
-		judge(&tf, firstOf(f.TechDiagnosedAt, f.HandoverAt), f.CompletedAt, s.threshold(f, "TECH_FIX"), nil)
+		judge(&tf, firstOf(f.TechDiagnosedAt, f.TechDecidedAt, f.HandoverAt), f.CompletedAt, s.threshold(f, "TECH_FIX"), nil)
 		if f.TechCrewAt != nil {
 			tf.Facts = append(tf.Facts, "طلب طاقم "+f.TechCrewAt.In(debriefLoc).Format("01-02 15:04")+".")
 		}

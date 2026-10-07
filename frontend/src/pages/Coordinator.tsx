@@ -13,7 +13,7 @@ import { COMPLETION_ORDER, completionLabel } from '../components/completionState
 import { matches as searchMatches } from '../utils/search'
 import EntityIdentity from '../components/EntityIdentity'
 import BookingTimelineView from '../components/BookingTimeline'
-import { promptChoice } from '../utils/promptChoice'
+import { askForm } from '../utils/dialog'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 import PhoneActions from '../components/PhoneActions'
 import HandoverDialog, { HandoverBadge } from '../components/HandoverDialog'
@@ -443,12 +443,16 @@ export default function Coordinator() {
   }
 
   const requestDelete = async (booking: Booking) => {
-    const reason = prompt(`سبب طلب حذف الحجز ${booking.code}؟ (تجريبي، ملغى، مكرر...)`)
-    if (!reason || !reason.trim()) return
-    const channel = promptChoice('من وين اجه طلب الحذف؟', DELETE_CHANNEL_OPTIONS)
-    if (!channel) return
-    const requestType = promptChoice('شنو نوع الطلب؟', DELETE_TYPE_OPTIONS)
-    if (!requestType) return
+    // قرار (ع) 10-07: الأسئلة بنافذة من النظام مو بنافذة المتصفح وأرقام.
+    const ans = await askForm(`طلب حذف الحجز ${booking.code}`, [
+      { kind: 'text', key: 'reason', label: 'سبب الطلب', placeholder: 'تجريبي، ملغى، مكرر…' },
+      { kind: 'choice', key: 'channel', label: 'من وين اجه الطلب؟', options: DELETE_CHANNEL_OPTIONS },
+      { kind: 'choice', key: 'type', label: 'شنو نوع الطلب؟', options: DELETE_TYPE_OPTIONS },
+    ], 'ارفع الطلب')
+    if (!ans) return
+    const reason = ans.reason
+    const channel = ans.channel as BookingDeleteChannel
+    const requestType = ans.type as BookingDeleteRequestType
     // «الزبون ما رد» مسار مختلف تماماً: ما ينفتح طلب حذف ولا ينطر
     // قرار المراقب — الحجز ينزاح فوراً لطابور الانتظار الموجود أصلاً.
     if (requestType === BOOKING_NO_ANSWER_CHOICE) {

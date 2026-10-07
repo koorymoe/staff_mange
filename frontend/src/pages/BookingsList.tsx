@@ -12,7 +12,7 @@ import { BUCKET_HEADINGS, DONE_FILTERS, type BookingBucket, type DoneFilter } fr
 import Pager from '../components/Pager'
 import BookingLocator from '../components/BookingLocator'
 import LocateHint from '../components/LocateHint'
-import { promptChoice } from '../utils/promptChoice'
+import { askForm } from '../utils/dialog'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
@@ -168,12 +168,16 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   }
 
   const requestDelete = async (bookingId: string, code: string) => {
-    const reason = prompt(`سبب طلب حذف الحجز ${code}؟ (تجريبي، ملغى، مكرر...)`)
-    if (!reason || !reason.trim()) return
-    const channel = promptChoice('من وين اجه طلب الحذف؟', DELETE_CHANNEL_OPTIONS)
-    if (!channel) return
-    const requestType = promptChoice('شنو نوع الطلب؟', DELETE_TYPE_OPTIONS)
-    if (!requestType) return
+    // قرار (ع) 10-07: الأسئلة بنافذة من النظام مو بنافذة المتصفح وأرقام.
+    const ans = await askForm(`طلب حذف الحجز ${code}`, [
+      { kind: 'text', key: 'reason', label: 'سبب الطلب', placeholder: 'تجريبي، ملغى، مكرر…' },
+      { kind: 'choice', key: 'channel', label: 'من وين اجه الطلب؟', options: DELETE_CHANNEL_OPTIONS },
+      { kind: 'choice', key: 'type', label: 'شنو نوع الطلب؟', options: DELETE_TYPE_OPTIONS },
+    ], 'ارفع الطلب')
+    if (!ans) return
+    const reason = ans.reason
+    const channel = ans.channel as BookingDeleteChannel
+    const requestType = ans.type as BookingDeleteRequestType
     // «الزبون ما رد» مسار مختلف تماماً: ما ينفتح طلب حذف ولا ينطر
     // قرار المراقب — الحجز ينزاح فوراً لطابور الانتظار الموجود أصلاً.
     if (requestType === BOOKING_NO_ANSWER_CHOICE) {

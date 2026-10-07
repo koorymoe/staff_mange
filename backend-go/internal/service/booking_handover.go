@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"staffmange-api/internal/model"
 )
@@ -14,7 +15,6 @@ import (
 // مرة ثانية، يكتب الكشف، ويعالج بنفسه — أو يطلب طاقم من الإداريين.
 
 var ErrNotHandoverOwner = errors.New("هذا الحجز مو مرحّل إلك")
-
 
 func (s *BookingService) Handover(id, toID, reason, byID string) (*model.Booking, error) {
 	reason = strings.TrimSpace(reason)
@@ -77,8 +77,15 @@ func (s *BookingService) TechDiagnose(id, empID, diagnosis string) (*model.Booki
 	if len([]rune(diagnosis)) < 10 {
 		return nil, errors.New("اكتب الكشف بالتفصيل: شنو المشكلة وشنو الحل")
 	}
-	if _, err := s.handoverOwned(id, empID); err != nil {
+	b, err := s.handoverOwned(id, empID)
+	if err != nil {
 		return nil, err
+	}
+	if b.TechDecision == nil || *b.TechDecision != "VISIT" {
+		return nil, errors.New("حدد أول: انحلّت بالتلفون لو تحتاج زيارة")
+	}
+	if b.TechVisitedAt == nil {
+		return nil, errors.New("سجّل وصولك للزبون أول، بعدين اكتب الكشف")
 	}
 	if err := s.repo.TechDiagnose(id, diagnosis); err != nil {
 		return nil, err
@@ -131,4 +138,80 @@ func (s *BookingService) TechResolve(id, empID, notes string) (*model.Booking, e
 
 func (s *BookingService) HandoverCandidates() ([]model.EmployeeBrief, error) {
 	return s.employees.HandoverCandidates()
+}
+
+// TechDecide بعد التواصل (قرار (ع) 10-07): PHONE = انحلّت بالتلفون (يكتب شلون
+// ويتسكّر الحجز)، VISIT = يحتاج كشف/زيارة ويحدد موعد. visitAt بتوقيت بغداد
+// «2006-01-02T15:04» أو RFC3339.
+func (s *BookingService) TechDecide(id, empID, decision, text, visitAt string) (*model.Booking, error) {
+	b, err := s.handoverOwned(id, empID)
+	if err != nil {
+		return nil, err
+	}
+	if b.TechContactedAt == nil {
+		return nil, errors.New("تواصل ويا الزبون أول")
+	}
+	text = strings.TrimSpace(text)
+	switch decision {
+	case "PHONE":
+		if len([]rune(text)) < 10 {
+			return nil, errors.New("اكتب شلون انحلّت بالتلفون (شنو المشكلة وشنو سوّيت)")
+		}
+		if err := s.repo.TechDecide(id, "PHONE", nil); err != nil {
+			return nil, err
+		}
+		if err := s.repo.TechDiagnose(id, text); err != nil {
+			return nil, err
+		}
+		if err := s.repo.TechResolve(id, "انحلّت بالتلفون: "+text); err != nil {
+			return nil, err
+		}
+		if s.qualityFollowUps != nil {
+			_ = s.qualityFollowUps.CreateForBooking(b.ID, b.CustomerID)
+		}
+		return s.repo.FindByID(id)
+	case "VISIT":
+		at, err := parseVisitAt(visitAt)
+		if err != nil {
+			return nil, err
+		}
+		if at.Before(time.Now().Add(-time.Hour)) {
+			return nil, errors.New("الموعد لازم يكون من هسه وطالع")
+		}
+		if err := s.repo.TechDecide(id, "VISIT", &at); err != nil {
+			return nil, err
+		}
+		if s.notifications != nil {
+			_ = s.notifications.CreateForRole("HR_COORDINATOR", "booking_tech_visit",
+				fmt.Sprintf("🔍 التقني حدد زيارة كشف للحجز %s يوم %s", b.Code, at.In(debriefLoc).Format("2006-01-02 15:04")))
+		}
+		return s.repo.FindByID(id)
+	}
+	return nil, errors.New("اختار: انحلّت بالتلفون لو تحتاج زيارة")
+}
+
+func parseVisitAt(v string) (time.Time, error) {
+	v = strings.TrimSpace(v)
+	if t, err := time.Parse(time.RFC3339, v); err == nil {
+		return t, nil
+	}
+	if t, err := time.ParseInLocation("2006-01-02T15:04", v, debriefLoc); err == nil {
+		return t, nil
+	}
+	return time.Time{}, errors.New("حدد موعد الزيارة (اليوم والساعة)")
+}
+
+// TechVisited التقني وصل للزبون بموعد الزيارة.
+func (s *BookingService) TechVisited(id, empID string) (*model.Booking, error) {
+	b, err := s.handoverOwned(id, empID)
+	if err != nil {
+		return nil, err
+	}
+	if b.TechDecision == nil || *b.TechDecision != "VISIT" {
+		return nil, errors.New("ماكو زيارة محددة لهالحجز")
+	}
+	if err := s.repo.TechVisited(id); err != nil {
+		return nil, err
+	}
+	return s.repo.FindByID(id)
 }

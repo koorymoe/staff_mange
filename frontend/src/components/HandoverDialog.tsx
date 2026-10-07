@@ -56,7 +56,18 @@ export function HandoverBadge({ booking }: { booking: Booking }) {
   if (!booking.handoverTo) return null
   return (
     <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800" title={booking.handoverReason ?? ''}>
-      🛠️ عند {booking.handoverTo.name}{booking.techDiagnosedAt ? ' · انكشف' : booking.techContactedAt ? ' · تواصل' : ''}
+      🛠️ عند {booking.handoverTo.name}{handoverStage(booking)}
     </span>
   )
+}
+
+// handoverStage وين واصل التقني — حتى الإداري والمراقب يفتهمون بنظرة.
+function handoverStage(b: Booking): string {
+  if (b.techDiagnosedAt) return ' · انكشف'
+  if (b.techVisitedAt) return ' · وصل للزبون'
+  if (b.techDecision === 'VISIT' && b.techVisitAt) {
+    return ' · زيارة ' + new Date(b.techVisitAt).toLocaleString('en-GB', { timeZone: 'Asia/Baghdad', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  }
+  if (b.techContactedAt) return ' · تواصل'
+  return ' · ما تواصل بعد'
 }
