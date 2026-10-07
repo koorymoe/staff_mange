@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import { useSession } from '../session'
 import { api, type Product, type ProductAvailability, type Service, fileUrl } from '../api'
 
 const PRIMARY = '#1a237e'
@@ -24,6 +25,11 @@ const needLabel = (v: ProductAvailability) => NEED.find((n) => n.value === v)?.l
 // ⚠️ `embedded`: الشاشة تنعرض جوّا تبويب بمدخل موحّد — فترويستها
 // الخاصة تنشال حتى ما تتكرر ترويستان فوگ بعض.
 export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) {
+  const { employee } = useSession()
+  const { permissions } = useSession()
+  const isAdmin = employee?.role === 'ADMIN' || employee?.actualRole === 'OWNER'
+  // الإضافة والتعديل بصلاحية «محتوى تقني» (نفس حارس الخادم) — غيره يتصفح بس.
+  const canEdit = isAdmin || permissions.includes('content_technician')
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -147,7 +153,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
       </div>
       )}
 
-      <form
+      {canEdit && <form
         onSubmit={handleAdd}
         style={{
           background: 'var(--sf-card)', border: `2px solid ${PRIMARY}`, borderRadius: '12px',
@@ -237,7 +243,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
         >
           {submitting ? 'جاري الإضافة...' : 'إضافة منتج'}
         </button>
-      </form>
+      </form>}
 
       {loading && <p style={{ color: 'var(--t-faint)', textAlign: 'center', padding: '40px' }}>جاري التحميل...</p>}
       {error && (
@@ -287,7 +293,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
                 )}
 
                 {/* الحاجة — زر واحد يقلب بين الخيارين */}
-                <button
+                {canEdit && <button
                   disabled={busyId === product.id}
                   onClick={() => patch(product.id, {
                     availability: product.availability === 'IN_STOCK' ? 'ON_DEMAND' : 'IN_STOCK',
@@ -302,9 +308,10 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
                   }}
                 >
                   {needLabel(product.availability)}
-                </button>
+                </button>}
 
-                <button
+                {/* الحذف للمدير بس (نفس حارس الخادم) — ضغطة مرفوضة تنحسب مخالفة. */}
+                {isAdmin && <button
                   onClick={() => handleDelete(product.id)}
                   style={{
                     width: '100%', background: 'var(--sf-danger)', color: 'var(--t-danger)', border: 'none',
@@ -312,7 +319,7 @@ export default function ProductsPage({ embedded }: { embedded?: boolean } = {}) 
                   }}
                 >
                   حذف المنتج
-                </button>
+                </button>}
               </div>
             </div>
           ))}

@@ -91,6 +91,10 @@ const icon = (d: string) => (
 // الفني ما يشوف إلا شغله: الرئيسية، الحضور، الإجازات، تصنيفي، جرد
 // أدواته، ومهامه. كل شي غير هذا يختفي عنه — حتى لو انفتح بصلاحية
 // جماعية أو انضاف عنصر جديد للقائمة بعدين.
+// قرار (ع) 10-07: التقني ومسؤول الخدمة إلهم ترتيب خاص بـ«العمل» (الحجوزات،
+// إدارة الخدمات بفواتيرها، والمشاريع). قائمة المدير والباقين ما تتغيّر.
+const TECH_ROLES: EmployeeRole[] = ['TECHNICAL', 'SERVICE_MANAGER']
+
 const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/privacy-policy',
   // قرار (ع) 10-07: الحجوزات المرحّلة للتقني.
@@ -240,8 +244,9 @@ export const navItems: NavItem[] = [
           return canViewAll ? '📋 الحجوزات' : '＋ إنشاء حجز'
         },
       },
+      { to: '/my-handovers', label: '🛠️ الحجوزات', icon: <></>, roles: TECH_ROLES },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
-      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking' },
+      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: TECH_ROLES },
       { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       // ⚠️ «📅 الحجوزات المؤجلة» انشالت: نفس حجوزاتها تطلع بسلّة
       // «حجوزات مؤجّلة» جوّا «ما وصلت للتنفيذ» بشاشة الحجوزات، مع
@@ -321,8 +326,14 @@ export const navItems: NavItem[] = [
           //
           // ⚠️ الشاشات نفسها ما انلمست — نفس الملفات تنعرض بـ`embedded`،
           // ومسارتها القديمة باقية شغّالة فما ينكسر رابط محفوظ.
-          { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
-          { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR'] },
+          { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
+          // للتقني ومسؤول الخدمة: بند واحد «جي بي اس» — الطلبات صارت تبويب جوّاه.
+          { to: '/gps', label: '📡 جي بي اس', icon: <></>, permission: 'gps_system', roles: TECH_ROLES },
+          { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
+          // فواتير وتقارير الخدمة جوّا «إدارة الخدمات» للتقني ومسؤول الخدمة (مو طايفة برّا).
+          { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
+          { to: '/work-reports', label: '📝 تقرير خدمة', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
+          { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
           // ⚠️ متابعة التجديد بند مستقل **بعد** لمهندس الجودة: هو عنده
           // `quality_control` بلا `gps_system`، فلو انشال البند يفقد
           // شغله كله — والتبويب جوّا «نظام GPS» ما يوصله.
@@ -335,6 +346,7 @@ export const navItems: NavItem[] = [
       {
         // إدارة المشاريع صارت صلاحية: أي موظف عنده project_management يشوفها بغض النظر عن دوره
         to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
+        hideForRoles: TECH_ROLES,
         children: [
           { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management', labelFor: projectsLabel },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
@@ -345,8 +357,18 @@ export const navItems: NavItem[] = [
           { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
         ],
       },
+      // قرار (ع) 10-07: للتقني ومسؤول الخدمة «المشاريع» بدل «إدارة المشاريع».
+      {
+        to: '/tech-projects', label: '🏗️ المشاريع', icon: <></>, roles: TECH_ROLES,
+        children: [
+          { to: '/projects?add=1', label: '➕ إضافة مشروع جديد', icon: <></>, anyPermission: ['project_management', 'project_create_only'], roles: TECH_ROLES },
+          { to: '/quotations/new', label: '📄 إنشاء عرض سعر جديد', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'], roles: TECH_ROLES },
+          { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'], roles: TECH_ROLES },
+          { to: '/my-projects', label: '📥 المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true, roles: TECH_ROLES },
+        ],
+      },
       // قرار (ع) 10-06: «المشاريع الموجّهة لي» مباشرة تحت «العمل» جنب «إضافة مشروع».
-      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true },
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true, hideForRoles: TECH_ROLES },
       // قرار (ع) 10-06: موردين التقنيين — التقني يضيف والمدير يختار لكل تقني.
       { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers' },
       {
@@ -434,6 +456,7 @@ export const navItems: NavItem[] = [
       // (المحاسب والمراقب والمدير إلهم بندهم الخاص بمجموعة الحسابات
       // — ذاك يشوف فواتير **الكل**، وهذا يشوف فواتيره هو.)
       { to: '/my-tasks', label: 'مهامي', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'] },
+      { to: '/my-handovers', label: '🛠️ الحجوزات', icon: <></>, roles: ['TECHNICAL'] },
       // ⚠️ «مصاريفي» انشالت من هنا — صارت خيار جوّا «مهامي» ويّا
       // الحجوزات والفواتير والتقارير. الأربعة يخصّون نفس الشغل:
       // حجزك، وفاتورة حجزك، وتقرير حجزك، ومصاريف حجزك.
@@ -520,18 +543,16 @@ export const navItems: NavItem[] = [
   // ⚠️ وما انكسر لبندين: (ع) رفض التكرار بالقائمة صراحةً («ماريد
   // تطلع بخانة وحدها»)، والي عنده الاثنين راح يشوف بندين لنفس
   // الشاشة. والنوع ينختار جوّا الشاشة، وهي **تعرض المسموح وبس**.
-  // قرار (ع) 10-07: «الحجوزات» — الي يرحّلها الإداري للتقني أو مسؤول الخدمة. بندين
-  // لنفس الصفحة لأن مسؤول الخدمة ينعرف بصلاحية الفواتير مو بدوره؛ الي يطابق
-  // الاثنين يشوفه مرة وحدة (التكرار ينشال بالقائمة).
-  { to: '/my-handovers', label: '🛠️ الحجوزات', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), roles: ['TECHNICAL', 'SERVICE_MANAGER'] },
-  { to: '/my-handovers', label: '🛠️ الحجوزات', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },
-  { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: icon('M12 2v4M12 18v4M2 12h4M18 12h4M7.8 7.8 4.9 4.9M16.2 7.8l2.9-2.9M7.8 16.2l-2.9 2.9M16.2 16.2l2.9 2.9'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },
+  // قرار (ع) 10-07: «الحجوزات» المرحّلة — التقني ومسؤول الخدمة يشوفونها جوّا «العمل»؛
+  // هذا البند لمسؤول خدمة دوره غير (ينعرف بصلاحية الفواتير).
+  { to: '/my-handovers', label: '🛠️ الحجوزات', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: ['ADMIN', ...TECH_ROLES] },
+  { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: icon('M12 2v4M12 18v4M2 12h4M18 12h4M7.8 7.8 4.9 4.9M16.2 7.8l2.9-2.9M7.8 16.2l-2.9 2.9M16.2 16.2l2.9 2.9'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
   // «فواتير **وتقارير**»: نفس الصلاحيتين يسوّون تقرير حجوزات نوعهم.
-  { to: '/work-reports', label: '📝 تقرير خدمة', icon: icon('M9 12h6M9 16h6M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },
+  { to: '/work-reports', label: '📝 تقرير خدمة', icon: icon('M9 12h6M9 16h6M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
   // وفواتيره هو: بلا هذا يحفظ الفاتورة ويشوف رقمها **مرة وحدة** وخلاص.
   // ⚠️ والخادم يقصّر القائمة على فواتير صاحبها حصراً (`List` يفرض
   // معرّف الطالب لكل من ما يملك مراجعة) — فما يشوف فواتير غيره.
-  { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', icon: icon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },
+  { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', icon: icon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
   // ═══ فاتورة الشغل داخل الشركة ═══
   //
   // «لازم الليدر يسوي فاتورة حتى للحجوزات داخل الشركة — ياما يقدرها

@@ -283,7 +283,8 @@ export default function ProjectsPage({ mode: initialMode = 'all' }: { mode?: 'al
   const [filterStage, setFilterStage] = useState('')
 
   // modals
-  const [showAdd, setShowAdd] = useState(false)
+  // «➕ إضافة مشروع جديد» من قائمة التقني (/projects?add=1) تفتح النافذة مباشرة.
+  const [showAdd, setShowAdd] = useState(() => new URLSearchParams(window.location.search).get('add') === '1')
   const [editProject, setEditProject] = useState<Project | null>(null)
   const [moveTarget, setMoveTarget] = useState<{ project: Project; nextStage: string } | null>(null)
   const [report, setReport] = useState<{ type: 'survey' | 'visit'; project: Project } | null>(null)

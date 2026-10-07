@@ -4,6 +4,7 @@ import { api, type GpsStats, type GpsDeviceRequest, type GpsSimCard } from '../.
 import PageHeader from '../../components/PageHeader'
 import GpsSims from './GpsSims'
 import GpsFollowUp from './GpsFollowUp'
+import GpsRequestsHub from './GpsRequestsHub'
 
 type SubscriptionStatus = 'unknown' | 'active' | 'expiring' | 'expired40' | 'expired80'
 
@@ -16,7 +17,7 @@ export default function GpsDashboard() {
   const [sims, setSims] = useState<GpsSimCard[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [tab, setTab] = useState<'overview' | 'subscriptions' | 'sims' | 'followup'>('overview')
+  const [tab, setTab] = useState<'overview' | 'subscriptions' | 'sims' | 'followup' | 'requests'>('overview')
   const [filter, setFilter] = useState('all')
   const [selectedDevice, setSelectedDevice] = useState<GpsDeviceRequest | null>(null)
 
@@ -74,6 +75,8 @@ export default function GpsDashboard() {
     { key: 'subscriptions', label: 'الاشتراكات', icon: '📋' },
     { key: 'sims', label: 'شرائح GPS', icon: '📶' },
     { key: 'followup', label: 'متابعة التجديد', icon: '🔄' },
+    // قرار (ع) 10-07: كل الجي بي اس بمكان واحد — الطلبات تبويب هنا هم.
+    { key: 'requests', label: 'الطلبات', icon: '📥' },
   ]
 
   const expiringSoon = devices.filter(d => {
@@ -96,7 +99,7 @@ export default function GpsDashboard() {
       </div>
 
       {/* Tabs */}
-      <div className="mb-6 flex gap-2">
+      <div className="mb-6 flex flex-wrap gap-2">
         {tabs.map(t => (
           <button
             key={t.key}
@@ -318,6 +321,7 @@ export default function GpsDashboard() {
           نفسها** تبويباً هنا، وحدة تنصلح ووحدة تنعرض. */}
       {tab === 'sims' && <GpsSims embedded />}
       {tab === 'followup' && <GpsFollowUp embedded />}
+      {tab === 'requests' && <GpsRequestsHub embedded />}
 
     </div>
   )

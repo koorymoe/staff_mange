@@ -23,14 +23,16 @@ const TABS = [
   { key: 'maintenance' as const, label: 'طلبات صيانة', icon: '🔧' },
 ]
 
-export default function GpsRequestsHub() {
+export default function GpsRequestsHub({ embedded }: { embedded?: boolean } = {}) {
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('pending')
 
   return (
     <div dir="rtl">
-      <div className="mb-6">
-        <PageHeader title="📥 طلبات GPS" subtitle="الطلبات الواصلة من المبيعات — تنبتّ من هنا" />
-      </div>
+      {!embedded && (
+        <div className="mb-6">
+          <PageHeader title="📥 طلبات GPS" subtitle="الطلبات الواصلة من المبيعات — تنبتّ من هنا" />
+        </div>
+      )}
 
       <div className="sticky top-0 z-30 mb-4 grid grid-cols-3 gap-1.5 rounded-2xl border border-slate-200 bg-white/95 p-1.5 shadow-[0_2px_12px_rgba(15,32,64,0.08)] backdrop-blur sm:inline-flex sm:gap-2">
         {TABS.map((t) => (
