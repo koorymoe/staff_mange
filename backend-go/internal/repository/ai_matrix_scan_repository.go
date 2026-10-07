@@ -223,14 +223,14 @@ func (r *AiRepository) AttendanceWorkGaps(day string, minMinutes int, employeeID
 	err := r.db.Select(&rows, `
 		SELECT * FROM (
 			SELECT e.id AS "employeeId", 'PRESENT_NO_WORK' AS kind,
-			       SUM(EXTRACT(EPOCH FROM (a."checkOut" - a."checkIn")) / 60)::int AS "attendedMinutes",
+			       SUM(att_counted_minutes(a."employeeId", a."checkIn", a."checkOut"))::int AS "attendedMinutes",
 			       '{}'::text[] AS "bookingCodes"
 			FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
 			WHERE a.date = $1::date AND a."checkOut" IS NOT NULL
 			  AND e.status = 'ACTIVE' AND (e.role = 'TECHNICIAN' OR e."isLeader")
 			  AND NOT EXISTS (`+workOnDaySQL+`)
 			GROUP BY e.id
-			HAVING SUM(EXTRACT(EPOCH FROM (a."checkOut" - a."checkIn")) / 60) >= $2
+			HAVING SUM(att_counted_minutes(a."employeeId", a."checkIn", a."checkOut")) >= $2
 			UNION ALL
 			SELECT e.id, 'WORK_NO_ATTENDANCE', 0,
 			       ARRAY(SELECT b.code FROM "Booking" b

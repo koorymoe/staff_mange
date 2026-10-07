@@ -39,14 +39,14 @@ type DayAttendance struct {
 
 func (r *MatrixReportRepository) Attendance(id, day string) ([]DayAttendance, error) {
 	rows := []DayAttendance{}
-	err := r.db.Select(&rows, `SELECT "checkIn", "checkOut" FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = $2::date ORDER BY "checkIn"`, id, day)
+	err := r.db.Select(&rows, `SELECT "checkIn", CASE WHEN "checkOut" IS NULL THEN NULL ELSE att_counted_end("employeeId", "checkIn", "checkOut") END AS "checkOut" FROM "Attendance" WHERE "employeeId" = $1 AND baghdad_date("checkIn") = $2::date ORDER BY "checkIn"`, id, day)
 	return rows, err
 }
 
 // AttendanceRange حضور فترة — لملف السلوك.
 func (r *MatrixReportRepository) AttendanceRange(id string, days int) ([]DayAttendance, error) {
 	rows := []DayAttendance{}
-	err := r.db.Select(&rows, `SELECT "checkIn", "checkOut" FROM "Attendance" WHERE "employeeId" = $1 AND "checkIn" > now() - make_interval(days => $2) ORDER BY "checkIn"`, id, days)
+	err := r.db.Select(&rows, `SELECT "checkIn", CASE WHEN "checkOut" IS NULL THEN NULL ELSE att_counted_end("employeeId", "checkIn", "checkOut") END AS "checkOut" FROM "Attendance" WHERE "employeeId" = $1 AND "checkIn" > now() - make_interval(days => $2) ORDER BY "checkIn"`, id, days)
 	return rows, err
 }
 

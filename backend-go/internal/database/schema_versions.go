@@ -421,6 +421,8 @@ func versionedMigrations() []Migration {
 	result = append(result, techSupplierMigrations()...)
 	// 0326: ترحيل الحجز للتقني — الإداري يرحّل، والتقني يتحمّل الباقي.
 	result = append(result, techHandoverMigrations()...)
+	// 0327: الساعات المحسوبة — حد حسب ساعة الحضور، والباقي يلغى.
+	result = append(result, attendanceCountedMigrations()...)
 	return result
 }
 

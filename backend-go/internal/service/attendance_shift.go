@@ -12,17 +12,6 @@ import (
 
 const autoCheckoutGrace = 3 * time.Hour
 
-// requiredWork ساعات الشغل المطلوبة باليوم — قرار (ع) 10-07: الانصراف التلقائي
-// ما ينسجّل قبل ما يكمّل الموظف ٨ ساعات من وقت حضوره.
-const requiredWork = 8 * time.Hour
-
-// RequiredEnd الأبعد بين نهاية الشفت وحضوره + ٨ ساعات.
-func RequiredEnd(checkIn, shiftEnd time.Time) time.Time {
-	if e := checkIn.Add(requiredWork); e.After(shiftEnd) {
-		return e
-	}
-	return shiftEnd
-}
 
 func parseClock(s *string) (int, int, bool) {
 	if s == nil {
@@ -54,6 +43,14 @@ func ShiftWindow(shift, start, end *string, day time.Time) (time.Time, time.Time
 			eh = 24
 		}
 	}
+	// دوام مكتوب بنظام ١٢ ساعة (مثل 04:00–12:00): ماكو دوام يبدي الفجر،
+	// فالمقصود عصر وليل (16:00–24:00).
+	if okS && okE && sh >= 1 && sh <= 6 && eh <= 12 {
+		sh += 12
+		if eh < 12 {
+			eh += 12
+		}
+	}
 	// «12:00» كنهاية لشفت يبدي الظهر أو بعده = ١٢ بالليل (غلط إدخال شائع).
 	if okE && eh == 12 && em == 0 && sh >= 12 {
 		eh = 24
@@ -70,21 +67,79 @@ func ShiftWindow(shift, start, end *string, day time.Time) (time.Time, time.Time
 	return from, to
 }
 
-// AutoCheckoutAt وقت الانصراف التلقائي لجلسة: نهاية الشفت (أو حضوره + ٨ ساعات إذا أبعد)، أو آخر نشاط إذا
-// بعدها. ok=false: بعد ما فات وقت السماح (٣ ساعات بعد الشفت).
-func AutoCheckoutAt(checkIn time.Time, shiftEnd time.Time, lastActivity *time.Time, now time.Time) (time.Time, bool) {
-	shiftEnd = RequiredEnd(checkIn, shiftEnd)
-	if now.Before(shiftEnd.Add(autoCheckoutGrace)) {
+// ═══ الساعات المحسوبة — قرار (ع) 10-07 ═══
+// «إذا بدا من ٨ الصبح ينحسبله الى ٤، وإذا من ٣ مساءً أو الأربعة ينحسبله الى
+// ١٢، وبقية الساعات يلغن». الحد حسب ساعة الحضور (بتوقيت بغداد):
+//   - قبل ٦ الصبح (بعد نص الليل): ما ينحسب شي إلا إذا خلّص حجز.
+//   - قبل ٣ العصر: لحد ٤ العصر.
+//   - من ٣ العصر وطالع: لحد ١٢ بالليل.
+// وإذا خلّص حجز بعد الحد، ينحسبله لحد خلوص الحجز (تأخّر بالشغل).
+// نفس القاعدة بالـSQL: attendance_counted_end (0327).
+
+// CountCap حد الساعات المحسوبة لحضور معيّن (قبل تمديد الحجز).
+func CountCap(checkIn time.Time) time.Time {
+	l := checkIn.In(debriefLoc)
+	base := time.Date(l.Year(), l.Month(), l.Day(), 0, 0, 0, 0, debriefLoc)
+	switch {
+	case l.Hour() < 6:
+		return base
+	case l.Hour() < 15:
+		return base.Add(16 * time.Hour)
+	default:
+		return base.Add(24 * time.Hour)
+	}
+}
+
+// countLimit الحد ويا تمديد آخر حجز خلّصه.
+func countLimit(checkIn time.Time, lastActivity *time.Time) time.Time {
+	c := CountCap(checkIn)
+	if lastActivity != nil && lastActivity.After(c) {
+		c = *lastActivity
+	}
+	if c.Before(checkIn) {
+		c = checkIn
+	}
+	return c
+}
+
+// CountedEnd نهاية الجلسة المحسوبة. assumed=true إذا انقطع من الانصراف
+// (ما سجّل انصراف، أو سجّله بعد الحد)، ويا السبب.
+func CountedEnd(checkIn time.Time, checkOut *time.Time, lastActivity *time.Time, now time.Time) (time.Time, bool, string) {
+	end := now
+	if checkOut != nil {
+		end = *checkOut
+	}
+	lim := countLimit(checkIn, lastActivity)
+	if !end.After(lim) {
+		if end.Before(checkIn) {
+			return checkIn, false, ""
+		}
+		return end, false, ""
+	}
+	if checkOut == nil && now.Before(lim.Add(autoCheckoutGrace)) {
+		return now, false, "" // بعده بالدوام
+	}
+	why := "سجّل انصراف بعد وقت الدوام"
+	if checkOut == nil {
+		why = "ما سجّل انصراف"
+	}
+	if lastActivity != nil && lim.Equal(*lastActivity) {
+		return lim, true, why + " — انحسبله لحد آخر حجز خلّصه (" + clockLabel(lim) + ")."
+	}
+	if lim.Equal(checkIn) {
+		return lim, true, why + " — حضور بعد نص الليل ما ينحسب."
+	}
+	return lim, true, why + " — انحسبله لحد " + clockLabel(lim) + "."
+}
+
+// AutoCheckoutAt وقت الانصراف التلقائي: حد الساعات المحسوبة. ok=false لحد
+// ما تفوت ٣ ساعات سماح بعد الحد.
+func AutoCheckoutAt(checkIn time.Time, lastActivity *time.Time, now time.Time) (time.Time, bool) {
+	lim := countLimit(checkIn, lastActivity)
+	if now.Before(lim.Add(autoCheckoutGrace)) {
 		return time.Time{}, false
 	}
-	at := shiftEnd
-	if lastActivity != nil && lastActivity.After(at) && lastActivity.Before(now) {
-		at = *lastActivity
-	}
-	if at.Before(checkIn) {
-		at = checkIn
-	}
-	return at, true
+	return lim, true
 }
 
 func clockLabel(t time.Time) string {

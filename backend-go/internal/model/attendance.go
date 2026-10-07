@@ -8,6 +8,10 @@ type Attendance struct {
 	CheckIn    time.Time  `db:"checkIn" json:"checkIn"`
 	CheckOut   *time.Time `db:"checkOut" json:"checkOut"`
 	Date       time.Time  `db:"date" json:"date"`
+	// الساعات المحسوبة (0327): الحد حسب ساعة الحضور، والباقي يلغى.
+	LastActivity   *time.Time `db:"lastActivity" json:"-"`
+	CountedMinutes int        `db:"-" json:"countedMinutes"`
+	AssumedNote    string     `db:"-" json:"assumedNote,omitempty"`
 
 	Employee *EmployeeBrief `db:"-" json:"employee"`
 }
@@ -34,6 +38,8 @@ type DailyAttendance struct {
 	LastCheckOut *time.Time   `json:"lastCheckOut"`
 	StillOpen    bool         `json:"stillOpen"`
 	TotalMinutes int          `json:"totalMinutes"`
+	// Assumed بيه انصراف مفترض (انقطع من الحساب).
+	Assumed bool `json:"assumed"`
 }
 
 // EmployeeDailyAttendanceSummary يمثل ملخص حضور موظف واحد ليوم واحد (لجدول

@@ -33,7 +33,7 @@ func (r *AttendanceRepository) hydrate(a *model.Attendance) {
 func (r *AttendanceRepository) FindToday(employeeID string) (*model.Attendance, error) {
 	var a model.Attendance
 	err := r.db.Get(&a, `
-		SELECT * FROM "Attendance"
+		SELECT *, att_last_activity("employeeId", "checkIn", "checkOut") AS "lastActivity" FROM "Attendance"
 		WHERE "employeeId" = $1 AND date = baghdad_today()
 	`, employeeID)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -151,9 +151,7 @@ func (r *AttendanceRepository) DaySummary(date string) ([]model.EmployeeDailyAtt
 			MIN("checkIn") AS "firstCheckIn",
 			CASE WHEN bool_or("checkOut" IS NULL) THEN NULL ELSE MAX("checkOut") END AS "lastCheckOut",
 			bool_or("checkOut" IS NULL) AS "currentlyActive",
-			SUM(
-				EXTRACT(EPOCH FROM (COALESCE("checkOut", now()) - "checkIn")) / 60
-			)::int AS "totalMinutes"
+			SUM(att_counted_minutes("employeeId", "checkIn", "checkOut"))::int AS "totalMinutes"
 		FROM "Attendance"
 		WHERE date = $1::date
 		GROUP BY "employeeId"
@@ -176,9 +174,7 @@ func (r *AttendanceRepository) daySummary(dateExpr string) ([]model.EmployeeDail
 			MIN("checkIn") AS "firstCheckIn",
 			CASE WHEN bool_or("checkOut" IS NULL) THEN NULL ELSE MAX("checkOut") END AS "lastCheckOut",
 			bool_or("checkOut" IS NULL) AS "currentlyActive",
-			SUM(
-				EXTRACT(EPOCH FROM (COALESCE("checkOut", now()) - "checkIn")) / 60
-			)::int AS "totalMinutes"
+			SUM(att_counted_minutes("employeeId", "checkIn", "checkOut"))::int AS "totalMinutes"
 		FROM "Attendance"
 		WHERE date = `+dateExpr+`
 		GROUP BY "employeeId"
@@ -195,7 +191,7 @@ func (r *AttendanceRepository) daySummary(dateExpr string) ([]model.EmployeeDail
 func (r *AttendanceRepository) ForEmployeeInRange(employeeID string, from, to string) ([]model.Attendance, error) {
 	records := []model.Attendance{}
 	if err := r.db.Select(&records, `
-		SELECT * FROM "Attendance"
+		SELECT *, att_last_activity("employeeId", "checkIn", "checkOut") AS "lastActivity" FROM "Attendance"
 		WHERE "employeeId" = $1 AND date >= $2::date AND date < $3::date
 		ORDER BY date ASC
 	`, employeeID, from, to); err != nil {
@@ -268,8 +264,7 @@ func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
 	rows := []OpenWithShift{}
 	err := r.db.Select(&rows, `
 		SELECT a.id, a."employeeId", e.name, a."checkIn", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
-		       (SELECT max(b."completedAt") FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
-		        WHERE ba."employeeId" = a."employeeId" AND b."completedAt" >= a."checkIn") AS "lastActivity",
+		       att_last_activity(a."employeeId", a."checkIn", NULL) AS "lastActivity",
 		       EXISTS (SELECT 1 FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
 		        WHERE ba."employeeId" = a."employeeId" AND b.status = 'IN_PROGRESS'
 		          AND b."updatedAt" >= a."checkIn") AS busy

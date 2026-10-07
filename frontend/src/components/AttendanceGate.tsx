@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
-import { useLocation } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { api, type AttendanceGateState } from '../api'
 import { useSession } from '../session'
 
@@ -23,10 +23,11 @@ export default function AttendanceGate({ children }: { children: ReactNode }) {
 
   const [skipped, setSkipped] = useState(() => { try { return sessionStorage.getItem(SKIP_KEY) === '1' } catch { return false } })
   const skip = () => { try { sessionStorage.setItem(SKIP_KEY, '1') } catch { /* ما يهم */ } setSkipped(true) }
+  const unskip = () => { try { sessionStorage.removeItem(SKIP_KEY) } catch { /* ما يهم */ } setSkipped(false) }
   const span = gate ? `${gate.evening ? 'المسائي' : 'الصباحي'} من ${gate.startLabel ?? ''} لـ ${gate.endLabel}` : ''
 
   if (exempt || !gate || location.pathname.startsWith('/attendance')) return <>{children}</>
-  if (!gate.required && !(gate.offer && !skipped)) return <>{children}</>
+  if (!gate.required && !gate.offer) return <>{children}</>
 
   const checkIn = async () => {
     setBusy(true); setErr('')
@@ -36,20 +37,37 @@ export default function AttendanceGate({ children }: { children: ReactNode }) {
       load()
     } catch (e) { setErr(e instanceof Error ? e.message : 'تعذر') } finally { setBusy(false) }
   }
-  // برّا وقت دوامه (قرار (ع) 10-07): نسأله بس، ما نقفل.
+  // برّا وقت دوامه (قرار (ع) 10-07): «اليوم متغيّر شفت دوامك؟» — نعم يسجّل
+  // حضور، ولا يشوف جدول دوامه بس (كل الصفحات الثانية تنقفل).
   if (!gate.required) {
-    return (
-      <>
-        <div dir="rtl" className="mx-auto mb-3 mt-2 flex max-w-3xl flex-wrap items-center justify-between gap-2 rounded-2xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm">
-          <span className="text-violet-900">🤖 هسه مو وقت دوامك (دوامك {span}). تريد تسجّل حضور؟</span>
-          {err && <span className="text-xs text-red-600">{err}</span>}
-          <span className="flex gap-2">
-            <button type="button" disabled={busy} onClick={() => void checkIn()} className="rounded-xl bg-emerald-600 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-60">✅ سجّل حضوري</button>
-            <button type="button" onClick={skip} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-600">لا، بس أتصفح</button>
-          </span>
+    if (skipped) {
+      return (
+        <div dir="rtl" className="flex min-h-[60vh] items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 text-center shadow-xl">
+            <div className="text-5xl">🤖</div>
+            <p className="mt-2 text-lg font-extrabold text-[#0f2040]">هسه مو وقت دوامك</p>
+            <p className="mt-1 text-sm text-slate-600">دوامك {span}. تكدر تشوف جدول دوامك بس.</p>
+            <Link to="/attendance" className="mt-4 block w-full rounded-2xl bg-[#0f2040] py-3 font-extrabold text-white">🗓️ جدول دوامي</Link>
+            <button type="button" onClick={unskip} className="mt-2 text-xs text-violet-700 underline">لا، شفتي اليوم متغيّر — أريد أسجّل حضور</button>
+          </div>
         </div>
-        {children}
-      </>
+      )
+    }
+    return (
+      <div dir="rtl" className="flex min-h-[70vh] items-center justify-center p-4">
+        <div className="w-full max-w-md rounded-3xl border border-violet-200 bg-white p-6 text-center shadow-xl">
+          <div className="text-5xl">🤖</div>
+          <p className="mt-2 text-lg font-extrabold text-[#0f2040]">هسه مو وقت دوامك</p>
+          <p className="mt-1 text-sm text-slate-600">دوامك {span}.</p>
+          <p className="mt-3 text-base font-bold text-violet-900">اليوم متغيّر شفت دوامك؟</p>
+          {err && <p className="mt-2 text-sm text-red-600">{err}</p>}
+          <button type="button" disabled={busy} onClick={() => void checkIn()}
+            className="mt-4 w-full rounded-2xl bg-gradient-to-l from-emerald-600 to-emerald-700 py-3 text-lg font-extrabold text-white shadow disabled:opacity-60">
+            {busy ? '…' : '✅ إي، سجّل حضوري'}
+          </button>
+          <button type="button" onClick={skip} className="mt-2 w-full rounded-2xl border border-slate-300 py-2.5 font-bold text-slate-600">لا — بس أشوف جدول دوامي</button>
+        </div>
+      </div>
     )
   }
   const h = new Date().getHours()

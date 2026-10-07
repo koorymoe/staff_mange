@@ -23,38 +23,60 @@ func TestShiftWindow(t *testing.T) {
 	}
 }
 
-func TestAutoCheckoutAt(t *testing.T) {
-	end := time.Date(2026, 10, 6, 16, 0, 0, 0, debriefLoc)
-	in := end.Add(-8 * time.Hour)
-	if _, ok := AutoCheckoutAt(in, end, nil, end.Add(2*time.Hour)); ok {
-		t.Fatal("قبل ٣ ساعات ما يسكّر")
+func TestCountedEnd(t *testing.T) {
+	day := time.Date(2026, 10, 2, 0, 0, 0, 0, debriefLoc)
+	at := func(h, m int) time.Time { return day.Add(time.Duration(h)*time.Hour + time.Duration(m)*time.Minute) }
+	now := day.AddDate(0, 0, 3)
+	// ٨ الصبح وبلا انصراف لحد بعد يومين → لحد ٤ العصر.
+	if e, ok, why := CountedEnd(at(8, 0), nil, nil, now); !ok || !e.Equal(at(16, 0)) || why == "" {
+		t.Fatalf("morning: %v %v %q", e, ok, why)
 	}
-	if at, ok := AutoCheckoutAt(in, end, nil, end.Add(4*time.Hour)); !ok || !at.Equal(end) {
-		t.Fatal("يسكّر بنهاية الشفت")
+	// ٣:١٥ العصر وانصراف بعد يومين (الـ٥٥ ساعة) → لحد ١٢ بالليل.
+	out := at(15, 15).Add(55 * time.Hour)
+	if e, ok, _ := CountedEnd(at(15, 15), &out, nil, now); !ok || !e.Equal(at(24, 0)) {
+		t.Fatalf("55h: %v", e)
 	}
-	last := end.Add(90 * time.Minute)
-	if at, _ := AutoCheckoutAt(in, end, &last, end.Add(4*time.Hour)); !at.Equal(last) {
-		t.Fatal("آخر حجز بعد الشفت = وقت الانصراف")
+	// ٨:٥٠ بالليل → لحد ١٢ بالليل.
+	if e, _, _ := CountedEnd(at(20, 50), nil, nil, now); !e.Equal(at(24, 0)) {
+		t.Fatalf("night: %v", e)
+	}
+	// حجز خلص ٧:٣٠ المسا لحضور صباحي → لحده.
+	last := at(19, 30)
+	if e, _, _ := CountedEnd(at(8, 0), nil, &last, now); !e.Equal(last) {
+		t.Fatalf("booking: %v", e)
+	}
+	// انصراف فعلي ٢ الظهر → كما هو، بلا تعليم.
+	o := at(14, 0)
+	if e, ok, _ := CountedEnd(at(8, 0), &o, nil, now); ok || !e.Equal(o) {
+		t.Fatalf("real: %v %v", e, ok)
+	}
+	// بعده بالدوام: ما ينقطع.
+	if e, ok, _ := CountedEnd(at(8, 0), nil, nil, at(17, 0)); ok || !e.Equal(at(17, 0)) {
+		t.Fatalf("live: %v %v", e, ok)
 	}
 }
 
-func TestAutoCheckoutRequiresEightHours(t *testing.T) {
+func TestAutoCheckoutAt(t *testing.T) {
+	day := time.Date(2026, 10, 6, 0, 0, 0, 0, debriefLoc)
+	in := day.Add(8 * time.Hour)
+	end := day.Add(16 * time.Hour)
+	if _, ok := AutoCheckoutAt(in, nil, end.Add(2*time.Hour)); ok {
+		t.Fatal("قبل ٣ ساعات ما يسكّر")
+	}
+	if at, ok := AutoCheckoutAt(in, nil, end.Add(4*time.Hour)); !ok || !at.Equal(end) {
+		t.Fatal("يسكّر ٤ العصر")
+	}
+	night := day.Add(20*time.Hour + 50*time.Minute)
+	if at, ok := AutoCheckoutAt(night, nil, day.Add(28*time.Hour)); !ok || !at.Equal(day.Add(24*time.Hour)) {
+		t.Fatalf("حضور ٨:٥٠ بالليل يسكّر ١٢ مو بنفس الدقيقة: %v", at)
+	}
+}
+
+func TestShiftWindowTwelveHourTypo(t *testing.T) {
 	day := time.Date(2026, 10, 7, 0, 0, 0, 0, debriefLoc)
-	_, end := ShiftWindow(nil, nil, nil, day)
-	late := day.Add(10 * time.Hour)
-	if at, ok := AutoCheckoutAt(late, end, nil, end.Add(6*time.Hour)); !ok || !at.Equal(late.Add(8*time.Hour)) {
-		t.Fatalf("late check-in should end at +8h, got %v", at)
-	}
-	if _, ok := AutoCheckoutAt(late, end, nil, end.Add(4*time.Hour)); ok {
-		t.Fatal("grace must count from the 8h end")
-	}
-	early := day.Add(7 * time.Hour)
-	if at, _ := AutoCheckoutAt(early, end, nil, end.Add(4*time.Hour)); !at.Equal(end) {
-		t.Fatalf("early check-in should end at shift end, got %v", at)
-	}
-	last := day.Add(19*time.Hour + 30*time.Minute)
-	if at, _ := AutoCheckoutAt(late, end, &last, end.Add(8*time.Hour)); !at.Equal(last) {
-		t.Fatalf("booking finished later wins, got %v", at)
+	f, to := ShiftWindow(nil, sp("04:00"), sp("12:00"), day)
+	if !f.Equal(day.Add(16*time.Hour)) || !to.Equal(day.Add(24*time.Hour)) {
+		t.Fatalf("04:00–12:00 = 16:00–24:00, got %v–%v", f, to)
 	}
 }
 
@@ -68,7 +90,7 @@ func TestShiftWindowEveningNoonTypo(t *testing.T) {
 		t.Fatal("should be evening")
 	}
 	// غلط إدخال يطلّع شفت طويل يرجع للافتراضي.
-	f, to = ShiftWindow(nil, sp("04:00"), sp("23:00"), day)
+	f, to = ShiftWindow(nil, sp("07:00"), sp("23:30"), day)
 	if !f.Equal(day.Add(8*time.Hour)) || !to.Equal(day.Add(16*time.Hour)) {
 		t.Fatalf("19h shift should fall back to default, got %v–%v", f, to)
 	}

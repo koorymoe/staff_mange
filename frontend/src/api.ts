@@ -7,6 +7,9 @@ export interface AttendanceRecord {
   checkOut: string | null
   date: string
   employee: { id: string; name: string } | null
+  /** الساعات المحسوبة (حد حسب ساعة الحضور) وسبب الانصراف المفترض إذا انقطع شي. */
+  countedMinutes?: number
+  assumedNote?: string
 }
 
 export interface DailyAttendance {
@@ -16,6 +19,7 @@ export interface DailyAttendance {
   lastCheckOut: string | null
   stillOpen: boolean
   totalMinutes: number
+  assumed?: boolean
 }
 
 export interface MonthlyAttendanceReport {

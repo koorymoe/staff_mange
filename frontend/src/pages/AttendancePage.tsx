@@ -547,6 +547,15 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStar
                     {d.sessions.length > 1 && (
                       <span className="mr-1 text-[11px] text-slate-400">({d.sessions.length} جلسات)</span>
                     )}
+                    {d.assumed && (
+                      <span className="mr-1 cursor-help rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700"
+                        title={d.sessions.map((x) => x.assumedNote).filter(Boolean).join('\n')}>
+                        ⚠️ انصراف مفترض
+                      </span>
+                    )}
+                    {d.assumed && (
+                      <span className="block text-[10px] text-amber-700">{d.sessions.find((x) => x.assumedNote)?.assumedNote}</span>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <span className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${badge.cls}`}>

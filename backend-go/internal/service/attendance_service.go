@@ -58,11 +58,9 @@ func (s *AttendanceService) TodaySessions(employeeID string) ([]model.Attendance
 	total := 0
 	open := false
 	now := time.Now()
-	for _, sess := range sessions {
-		if sess.CheckOut != nil {
-			total += int(sess.CheckOut.Sub(sess.CheckIn).Minutes())
-		} else {
-			total += int(now.Sub(sess.CheckIn).Minutes())
+	for i := range sessions {
+		total += countSession(&sessions[i], now)
+		if sessions[i].CheckOut == nil {
 			open = true
 		}
 	}
@@ -101,6 +99,16 @@ func (s *AttendanceService) MonthlyReport(employeeID, month string) (*model.Mont
 	return report, nil
 }
 
+// countSession يحسب دقايق الجلسة بالقاعدة ويعلّمها إذا انقطع منها شي.
+func countSession(a *model.Attendance, now time.Time) int {
+	end, assumed, why := CountedEnd(a.CheckIn, a.CheckOut, a.LastActivity, now)
+	a.CountedMinutes = int(end.Sub(a.CheckIn).Minutes())
+	if assumed {
+		a.AssumedNote = why
+	}
+	return a.CountedMinutes
+}
+
 // groupByCalendarDate يجمّع صفوف الحضور (ممكن أكثر من صف باليوم الواحد بعد
 // دعم الجلسات المتعددة) بصف واحد لكل تاريخ تقويمي.
 func groupByCalendarDate(records []model.Attendance) []model.DailyAttendance {
@@ -124,10 +132,12 @@ func groupByCalendarDate(records []model.Attendance) []model.DailyAttendance {
 			if day.LastCheckOut == nil || rec.CheckOut.After(*day.LastCheckOut) {
 				day.LastCheckOut = rec.CheckOut
 			}
-			day.TotalMinutes += int(rec.CheckOut.Sub(rec.CheckIn).Minutes())
 		} else {
 			day.StillOpen = true
-			day.TotalMinutes += int(now.Sub(rec.CheckIn).Minutes())
+		}
+		day.TotalMinutes += countSession(&day.Sessions[len(day.Sessions)-1], now)
+		if day.Sessions[len(day.Sessions)-1].AssumedNote != "" {
+			day.Assumed = true
 		}
 	}
 
@@ -207,22 +217,18 @@ func (s *AttendanceService) AutoCheckout(now time.Time, notify func(employeeID, 
 	}
 	n := 0
 	for _, r := range rows {
-		_, to := ShiftWindow(r.Shift, r.ShiftStart, r.ShiftEnd, r.CheckIn)
-		// جلسة بدت قبل بداية الشفت بيوم (مسائي بعد نص الليل): نفس الشفت.
-		at, ok := AutoCheckoutAt(r.CheckIn, to, r.LastActivity, now)
+		at, ok := AutoCheckoutAt(r.CheckIn, r.LastActivity, now)
 		if !ok {
 			continue
 		}
-		req := RequiredEnd(r.CheckIn, to)
-		// بنص حجز بعده ما خلص: ننطيه لحد ١٢ ساعة بعد المطلوب، بعدين ينسكر.
-		if r.Busy && now.Before(req.Add(12*time.Hour)) {
+		// بنص حجز بعده ما خلص: ننطيه لحد ١٢ ساعة بعد الحد، بعدين ينسكر.
+		if r.Busy && now.Before(at.Add(12*time.Hour)) {
 			continue
 		}
-		reason := "ما سجّل انصراف — انسكّر بنهاية الشفت (" + clockLabel(to) + ")."
-		if req.After(to) && !at.After(req) {
-			reason = "ما سجّل انصراف — انسكّر بعد ما كمّل ٨ ساعات من حضوره (" + clockLabel(at) + ")."
-		} else if at.After(req) {
-			reason = "ما سجّل انصراف — انسكّر بوقت آخر حجز خلّصه (" + clockLabel(at) + ")."
+		_, _, why := CountedEnd(r.CheckIn, nil, r.LastActivity, now)
+		reason := "ما سجّل انصراف — انسكّر الساعة " + clockLabel(at) + "."
+		if why != "" {
+			reason = why
 		}
 		if err := s.repo.AutoClose(r.ID, r.EmployeeID, at, reason); err != nil {
 			continue
