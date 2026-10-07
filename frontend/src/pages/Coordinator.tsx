@@ -419,6 +419,30 @@ export default function Coordinator() {
   const canSendToSurvey = currentUser?.role === 'ADMIN'
     || permissions.includes('coordinator') || permissions.includes('crew_management')
   const [surveyFor, setSurveyFor] = useState<Booking | null>(null)
+  // ترحيل للتقني (قرار (ع) 10-07): مشكلة ما يعرفون الفنيين يحلّوها.
+  const [handFor, setHandFor] = useState<Booking | null>(null)
+  const [handTo, setHandTo] = useState('')
+  const [handWhy, setHandWhy] = useState('')
+  const [handBusy, setHandBusy] = useState(false)
+  const [handPeople, setHandPeople] = useState<{ id: string; name: string; position: string }[]>([])
+  const openHandover = (b: Booking) => {
+    setHandFor(b); setHandTo(''); setHandWhy('')
+    if (handPeople.length === 0) void api.getHandoverCandidates().then(setHandPeople).catch(() => {})
+  }
+  const doHandover = async () => {
+    if (!handFor || !handTo || !handWhy.trim()) return
+    setHandBusy(true)
+    try {
+      await api.handoverBooking(handFor.id, handTo, handWhy.trim())
+      alert(`الحجز ${handFor.code} انرحّل — صار برقبة التقني`)
+      setHandFor(null)
+      load()
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'تعذر الترحيل')
+    } finally {
+      setHandBusy(false)
+    }
+  }
   const [surveyLeader, setSurveyLeader] = useState('')
   const [surveyBusy, setSurveyBusy] = useState(false)
   const sendToSurvey = async () => {
@@ -936,6 +960,20 @@ export default function Coordinator() {
                         أصلاً: الحجز ينزاح لطابور «ما وصلت للتنفيذ»
                         ويبقى محفوظاً — يتصلون مرة ثانية، وإذا ما رد
                         يحذفونه. فمكانه زر مستقل مو خيار مدفون. */}
+                    {canSendToSurvey && !booking.handoverToId && (
+                      <button
+                        onClick={() => openHandover(booking)}
+                        className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-700 transition-colors hover:bg-orange-100"
+                        title="مشكلة ما يعرفون الفنيين يحلّوها؟ رحّل الحجز لتقني أو مسؤول خدمة — يصير برقبته"
+                      >
+                        🛠️ رحّل للتقني
+                      </button>
+                    )}
+                    {booking.handoverTo && (
+                      <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800" title={booking.handoverReason ?? ''}>
+                        🛠️ عند {booking.handoverTo.name}{booking.techDiagnosedAt ? ' · انكشف' : booking.techContactedAt ? ' · تواصل' : ''}
+                      </span>
+                    )}
                     {canSendToSurvey && booking.bookingType !== 'SURVEY' && (
                       <button
                         onClick={() => { setSurveyFor(booking); setSurveyLeader('') }}
@@ -1473,6 +1511,30 @@ export default function Coordinator() {
             )}
           </div>
         </>
+      )}
+      {handFor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !handBusy && setHandFor(null)}>
+          <div dir="rtl" className="w-full max-w-md rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-bold text-[#0f2040]">🛠️ رحّل للتقني — حجز <BookingCodeChip code={handFor.code} /></h3>
+            <p className="mt-1 text-xs text-slate-500">
+              الحجز يطلع من مسؤوليتك ويصير برقبة التقني: يتواصل ويا الزبون، يكتب الكشف، ويعالج.
+              إنت تنحسب على سرعة تواصلك وسرعة الترحيل. {handFor.confirmationContactedAt ? '' : '⚠️ لازم تضغط «تواصلت ويا الزبون» أول.'}
+            </p>
+            <label className="mt-4 block text-sm font-bold text-slate-700">شنو مشكلة الزبون؟</label>
+            <textarea value={handWhy} onChange={(e) => setHandWhy(e.target.value)} rows={3} className="mt-1 w-full rounded-lg border border-slate-300 p-2 text-sm" placeholder="مثلاً: الكاميرات تنطفي بالليل والفنيين ما لگوا السبب" />
+            <label className="mt-3 block text-sm font-bold text-slate-700">التقني</label>
+            <select value={handTo} onChange={(e) => setHandTo(e.target.value)} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+              <option value="">— اختار تقني أو مسؤول خدمة —</option>
+              {handPeople.map((p) => <option key={p.id} value={p.id}>{p.name} ({p.position})</option>)}
+            </select>
+            <div className="mt-4 flex gap-2">
+              <button onClick={() => void doHandover()} disabled={!handTo || !handWhy.trim() || handBusy} className="flex-1 rounded-lg bg-orange-600 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                {handBusy ? 'جاري الترحيل…' : '🛠️ رحّل'}
+              </button>
+              <button onClick={() => setHandFor(null)} disabled={handBusy} className="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-bold text-slate-600">إلغاء</button>
+            </div>
+          </div>
+        </div>
       )}
       {surveyFor && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => !surveyBusy && setSurveyFor(null)}>

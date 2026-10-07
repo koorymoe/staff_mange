@@ -16,6 +16,7 @@ import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
 import TechSuppliersLink from '../components/TechSuppliersLink'
 import AfterInventoryPrompt from '../components/AfterInventoryPrompt'
+import TechHandovers from '../components/TechHandovers'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
 import LeaderInvoiceNew from './LeaderInvoiceNew'
 import WorkReportPage from './WorkReportPage'
@@ -506,6 +507,7 @@ export default function MyTasks() {
           <div>
             {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
                 لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
+            <TechHandovers bookings={bookings} me={employee?.id} onChange={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)))} />
             <MyScoreCard />
             <TechSuppliersLink />
             <PeerCheckinCard />

@@ -628,6 +628,16 @@ export interface Booking {
   arrivedAt: string | null
   startedAt: string | null
   confirmationContactedAt: string | null
+  // ترحيل للتقني (0326)
+  handoverToId?: string | null
+  handoverAt?: string | null
+  handoverReason?: string | null
+  handoverTo?: { id: string; name: string } | null
+  handoverBy?: { id: string; name: string } | null
+  techContactedAt?: string | null
+  techDiagnosis?: string | null
+  techDiagnosedAt?: string | null
+  techCrewRequestedAt?: string | null
   // وقت تحويل الحجز لتنسيق الحجوزات (التثبيت)
   confirmedAt: string | null
   // الموقع: عنوان كلامي + نقطة على الخريطة + رابط (الرابط يغني عن التحديد)
@@ -4889,6 +4899,13 @@ export const api = {
   /** «كشف»: الإداري يطلّع ليدر يعاين الموقع — الحجز يصير كشف وينكلّف الليدر. */
   sendBookingToSurvey: (id: string, leaderId: string) =>
     request<Booking>(`/bookings/${id}/send-to-survey`, { method: 'PUT', body: JSON.stringify({ leaderId }) }),
+  /** ترحيل الحجز لتقني أو مسؤول خدمة — الحجز يصير برقبته. */
+  getHandoverCandidates: () => request<{ id: string; name: string; position: string }[]>('/bookings/handover-candidates'),
+  handoverBooking: (id: string, employeeId: string, reason: string) =>
+    request<Booking>(`/bookings/${id}/handover`, { method: 'PUT', body: JSON.stringify({ employeeId, reason }) }),
+  /** خطوات التقني على الحجز المرحّل إله. */
+  techStep: (id: string, step: 'contacted' | 'diagnosis' | 'crew' | 'resolve', text = '') =>
+    request<Booking>(`/bookings/${id}/tech/${step}`, { method: 'PUT', body: JSON.stringify({ text }) }),
 
   // ═══ مجسّمات الكيان ثلاثية الأبعاد ═══
   // ⚠️ **رفعها بمسار خاص مو `uploadFile` العام**: العام مفتوح لأي

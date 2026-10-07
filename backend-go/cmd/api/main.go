@@ -1100,6 +1100,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Assign), requireAuth, requireBookingCoord))
 	// «كشف»: الإداري يطلّع ليدر يعاين الموقع قبل ما يصير مشروع.
 	mux.Handle("PUT /api/bookings/{id}/send-to-survey", middleware.Chain(http.HandlerFunc(bookingHandler.SendToSurvey), requireAuth, requireBookingCoord))
+	// ترحيل للتقني (قرار (ع) 10-07): الإداري يرحّل، والتقني المرحّل إله بس يكمّل الخطوات.
+	mux.Handle("GET /api/bookings/handover-candidates", middleware.Chain(http.HandlerFunc(bookingHandler.HandoverCandidates), requireAuth, requireBookingCoord))
+	mux.Handle("PUT /api/bookings/{id}/handover", middleware.Chain(http.HandlerFunc(bookingHandler.Handover), requireAuth, requireBookingCoord))
+	mux.Handle("PUT /api/bookings/{id}/tech/{step}", middleware.Chain(http.HandlerFunc(bookingHandler.TechStep), requireAuth))
 	// إلغاء تكليف موظف — نفس حارس التكليف: الي يكدر يكلّف يكدر يشيل.
 	// حارس أشد يعني الإداري يكلّف بالغلط وينتظر المدير حتى يصلّحها.
 	mux.Handle("DELETE /api/bookings/{id}/assign", middleware.Chain(http.HandlerFunc(bookingHandler.Unassign), requireAuth, requireBookingCoord))

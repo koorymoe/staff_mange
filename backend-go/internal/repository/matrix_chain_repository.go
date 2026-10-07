@@ -44,6 +44,17 @@ type ChainFacts struct {
 	ScheduleMoves int        `db:"scheduleMoves"`
 	ContactTries  int        `db:"contactTries"`
 
+	// ترحيل للتقني (0326)
+	HandoverAt      *time.Time `db:"handoverAt"`
+	HandoverByID    *string    `db:"handoverById"`
+	HandoverBy      *string    `db:"handoverBy"`
+	HandoverToID    *string    `db:"handoverToId"`
+	HandoverTo      *string    `db:"handoverTo"`
+	HandoverReason  *string    `db:"handoverReason"`
+	TechContactedAt *time.Time `db:"techContactedAt"`
+	TechDiagnosedAt *time.Time `db:"techDiagnosedAt"`
+	TechCrewAt      *time.Time `db:"techCrewRequestedAt"`
+
 	FirstAssignAt *time.Time     `db:"firstAssignAt"`
 	CrewIDs       pq.StringArray `db:"crewIds"`
 	TechIDs       pq.StringArray `db:"techIds"`
@@ -114,6 +125,8 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        (SELECT p.stage FROM "Project" p WHERE p."bookingId" = b.id ORDER BY p."createdAt" DESC LIMIT 1) AS "projectStage",
        (SELECT count(*) FROM "ScheduleChangeLog" l WHERE l."bookingId" = b.id)::int AS "scheduleMoves",
        b."contactAttempts" AS "contactTries",
+       b."handoverAt", b."handoverById", hbe.name AS "handoverBy", b."handoverToId", hte.name AS "handoverTo",
+       b."handoverReason", b."techContactedAt", b."techDiagnosedAt", b."techCrewRequestedAt",
        asg."firstAssignAt", COALESCE(asg.crew, '{}') AS "crewIds", COALESCE(asg.techs, '{}') AS "techIds",
        COALESCE(b."projectSupervisorId", asg.leader, m."leaderId") AS "leaderId", le.name AS "leaderName",
        m."assignedAt" AS "missionAt", COALESCE(m."materialsReadyAt", b."materialsReadyAt") AS "materialsAt",
@@ -139,6 +152,8 @@ LEFT JOIN "Service" s ON s.id = b."serviceId"
 LEFT JOIN "Employee" ce ON ce.id = b."createdById"
 LEFT JOIN "Employee" ke ON ke.id = b."confirmationContactedById"
 LEFT JOIN "Employee" fe ON fe.id = b."confirmedByEmployeeId"
+LEFT JOIN "Employee" hbe ON hbe.id = b."handoverById"
+LEFT JOIN "Employee" hte ON hte.id = b."handoverToId"
 LEFT JOIN LATERAL (
 	SELECT min(a."createdAt") AS "firstAssignAt",
 	       array_agg(a."employeeId") AS crew,

@@ -105,7 +105,8 @@ func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int
 		WHERE b."archivedAt" IS NULL
 		  AND (ba."employeeId" = $1
 		   OR b."projectSupervisorId" = $1
-		   OR b."expenseResponsibleId" = $1)
+		   OR b."expenseResponsibleId" = $1
+		   OR b."handoverToId" = $1)
 		ORDER BY b."createdAt" DESC
 		LIMIT $2
 	`, employeeID, limit)
@@ -436,6 +437,8 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		addEmp(b.ExpenseResponsibleID)
 		addEmp(b.MaterialsReadyByID)
 		addEmp(b.ConfirmationContactedByID)
+		addEmp(b.HandoverToID)
+		addEmp(b.HandoverByID)
 		addEmp(b.LastEditedByID)
 		addEmp(b.CreatedByID)
 		addEmp(b.CrewNotesByID)
@@ -666,6 +669,8 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		b.ExpenseResponsible = getEmp(b.ExpenseResponsibleID)
 		b.MaterialsReadyBy = getEmpBrief(b.MaterialsReadyByID)
 		b.ConfirmationContactedBy = getEmpBrief(b.ConfirmationContactedByID)
+		b.HandoverTo = getEmpBrief(b.HandoverToID)
+		b.HandoverBy = getEmpBrief(b.HandoverByID)
 		b.LastEditedBy = getEmpBrief(b.LastEditedByID)
 
 		// أسماء المراحل — الاسم لحاله يكفي بالعرض، ما نرجّع الموظف كله
@@ -2074,4 +2079,35 @@ func (r *BookingRepository) MaterialPurchases(bookingID string) ([]BookingMateri
 		WHERE p."bookingId" = $1 AND p."fulfilledAt" IS NOT NULL
 		ORDER BY p."fulfilledAt"`, bookingID)
 	return rows, err
+}
+
+// ═══ ترحيل الحجز للتقني (0326) ═══
+
+func (r *BookingRepository) Handover(id, toID, byID, reason string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "handoverToId" = $2, "handoverById" = $3, "handoverAt" = now(),
+		"handoverReason" = $4, "techContactedAt" = NULL, "techDiagnosis" = NULL, "techDiagnosedAt" = NULL,
+		"techCrewRequestedAt" = NULL, "updatedAt" = now() WHERE id = $1`, id, toID, byID, reason)
+	return err
+}
+
+func (r *BookingRepository) TechContacted(id string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "techContactedAt" = COALESCE("techContactedAt", now()), "updatedAt" = now() WHERE id = $1`, id)
+	return err
+}
+
+func (r *BookingRepository) TechDiagnose(id, diagnosis string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "techDiagnosis" = $2, "techDiagnosedAt" = COALESCE("techDiagnosedAt", now()),
+		"techContactedAt" = COALESCE("techContactedAt", now()), "updatedAt" = now() WHERE id = $1`, id, diagnosis)
+	return err
+}
+
+func (r *BookingRepository) TechRequestCrew(id string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET "techCrewRequestedAt" = now(), "updatedAt" = now() WHERE id = $1`, id)
+	return err
+}
+
+func (r *BookingRepository) TechResolve(id, notes string) error {
+	_, err := r.db.Exec(`UPDATE "Booking" SET status = 'COMPLETED', "completedAt" = now(),
+		"completionNotes" = $2, "updatedAt" = now() WHERE id = $1`, id, notes)
+	return err
 }

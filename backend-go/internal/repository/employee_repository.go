@@ -581,3 +581,11 @@ func (r *EmployeeRepository) WorkSchedule() ([]ScheduleRow, error) {
 	}
 	return rows, err
 }
+
+// HandoverCandidates التقنيين ومسؤولي الخدمات الفعّالين — لترحيل الحجز (0326).
+func (r *EmployeeRepository) HandoverCandidates() ([]model.EmployeeBrief, error) {
+	rows := []model.EmployeeBrief{}
+	err := r.db.Select(&rows, `SELECT id, name, CASE role WHEN 'SERVICE_MANAGER' THEN 'مسؤول خدمة' ELSE 'تقني' END AS position
+		FROM "Employee" WHERE status = 'ACTIVE' AND role IN ('TECHNICIAN', 'SERVICE_MANAGER') ORDER BY role DESC, name`)
+	return rows, err
+}

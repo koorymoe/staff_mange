@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -907,4 +908,67 @@ func (h *BookingHandler) Timeline(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, tl)
+}
+
+// ═══ ترحيل الحجز للتقني (0326) ═══
+
+func (h *BookingHandler) handoverReply(w http.ResponseWriter, b *model.Booking, err error) {
+	if errors.Is(err, service.ErrNotHandoverOwner) {
+		WriteError(w, http.StatusForbidden, err.Error())
+		return
+	}
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, b)
+}
+
+// PUT /api/bookings/{id}/handover — الإداري يرحّل الحجز لتقني أو مسؤول خدمة.
+func (h *BookingHandler) Handover(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		EmployeeID string `json:"employeeId"`
+		Reason     string `json:"reason"`
+	}
+	if err := DecodeJSON(r, &body); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات الطلب غير صحيحة")
+		return
+	}
+	b, err := h.service.Handover(r.PathValue("id"), body.EmployeeID, body.Reason, middleware.EmployeeIDFromContext(r))
+	h.handoverReply(w, b, err)
+}
+
+// PUT /api/bookings/{id}/tech/{step} — خطوات التقني: contacted · diagnosis · crew · resolve.
+func (h *BookingHandler) TechStep(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Text string `json:"text"`
+	}
+	_ = DecodeJSON(r, &body)
+	id, me := r.PathValue("id"), middleware.EmployeeIDFromContext(r)
+	var b *model.Booking
+	var err error
+	switch r.PathValue("step") {
+	case "contacted":
+		b, err = h.service.TechContacted(id, me)
+	case "diagnosis":
+		b, err = h.service.TechDiagnose(id, me, body.Text)
+	case "crew":
+		b, err = h.service.TechRequestCrew(id, me, body.Text)
+	case "resolve":
+		b, err = h.service.TechResolve(id, me, body.Text)
+	default:
+		WriteError(w, http.StatusNotFound, "خطوة مو معروفة")
+		return
+	}
+	h.handoverReply(w, b, err)
+}
+
+// GET /api/bookings/handover-candidates — التقنيين ومسؤولي الخدمات.
+func (h *BookingHandler) HandoverCandidates(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.service.HandoverCandidates()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
 }

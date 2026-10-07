@@ -221,6 +221,18 @@ type Booking struct {
 	LastEditedAt              *time.Time     `db:"lastEditedAt" json:"lastEditedAt,omitempty"`
 	LastEditedBy              *EmployeeBrief `db:"-" json:"lastEditedBy,omitempty"`
 
+	// ترحيل للتقني (0326): الحجز صار برقبة تقني أو مسؤول خدمة.
+	HandoverToID        *string        `db:"handoverToId" json:"handoverToId,omitempty"`
+	HandoverByID        *string        `db:"handoverById" json:"-"`
+	HandoverAt          *time.Time     `db:"handoverAt" json:"handoverAt,omitempty"`
+	HandoverReason      *string        `db:"handoverReason" json:"handoverReason,omitempty"`
+	TechContactedAt     *time.Time     `db:"techContactedAt" json:"techContactedAt,omitempty"`
+	TechDiagnosis       *string        `db:"techDiagnosis" json:"techDiagnosis,omitempty"`
+	TechDiagnosedAt     *time.Time     `db:"techDiagnosedAt" json:"techDiagnosedAt,omitempty"`
+	TechCrewRequestedAt *time.Time     `db:"techCrewRequestedAt" json:"techCrewRequestedAt,omitempty"`
+	HandoverTo          *EmployeeBrief `db:"-" json:"handoverTo,omitempty"`
+	HandoverBy          *EmployeeBrief `db:"-" json:"handoverBy,omitempty"`
+
 	Customer *Customer `db:"-" json:"customer,omitempty"`
 	// Service الخدمة الرئيسية (توافق مع الشاشات القديمة)، و Services كل
 	// الخدمات المطلوبة بنفس الحجز — الزبون ممكن يطلب أكثر من منظومة سوة.

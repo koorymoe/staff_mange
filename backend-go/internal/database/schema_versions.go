@@ -419,6 +419,8 @@ func versionedMigrations() []Migration {
 	result = append(result, attendanceClaimMigrations()...)
 	// 0325: موردين التقنيين — التقني يضيف، والمدير يختار لكل تقني.
 	result = append(result, techSupplierMigrations()...)
+	// 0326: ترحيل الحجز للتقني — الإداري يرحّل، والتقني يتحمّل الباقي.
+	result = append(result, techHandoverMigrations()...)
 	return result
 }
 

@@ -67,6 +67,10 @@ var chainStations = []chainStationDef{
 	{"CONTACT", "التواصل ويا الزبون", 30},
 	{"CONFIRM", "التثبيت والموعد", 60},
 	{"CREW", "تحديد الكادر", 60},
+	{"HANDOFF", "ترحيل الحجز للتقني", 30},
+	{"TECH_CONTACT", "التقني يتواصل ويا الزبون", 60},
+	{"TECH_DIAG", "التقني يكتب الكشف", 24 * 60},
+	{"TECH_FIX", "التقني يعالج المشكلة", 3 * 24 * 60},
 	{"RECEIVE", "الاستلام وتجهيز المواد", 60},
 	{"ROUTE", "الانطلاق والطريق", 30},
 	{"WORK", "العمل", 60},
@@ -174,6 +178,12 @@ func rawMinutes(f *repository.ChainFacts) map[string]*int {
 	m["CONTACT"] = minsBetween(&f.CreatedAt, f.ContactedAt)
 	m["CONFIRM"] = minsBetween(firstOf(f.ContactedAt, &f.CreatedAt), f.ConfirmedAt)
 	m["CREW"] = minsBetween(crewStart(f), f.FirstAssignAt)
+	m["HANDOFF"] = minsBetween(firstOf(f.ContactedAt, &f.CreatedAt), f.HandoverAt)
+	m["TECH_CONTACT"] = minsBetween(f.HandoverAt, f.TechContactedAt)
+	m["TECH_DIAG"] = minsBetween(firstOf(f.TechContactedAt, f.HandoverAt), f.TechDiagnosedAt)
+	if f.HandoverAt != nil {
+		m["TECH_FIX"] = minsBetween(firstOf(f.TechDiagnosedAt, f.HandoverAt), f.CompletedAt)
+	}
 	m["RECEIVE"] = minsBetween(firstOf(f.MissionAt, f.FirstAssignAt), f.MaterialsAt)
 	m["ROUTE"] = minsBetween(f.ScheduledAt, firstOf(f.DepartedAt, f.StartedAt))
 	m["WORK"] = minsBetween(firstOf(f.WorkStartAt, f.StartedAt, f.ArrivedAt), f.CompletedAt)
@@ -424,7 +434,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			return
 		}
 		// محطة قبل الإنجاز والحجز خلص بدونها — انتخطّت، مو «بعدها تنتظر».
-		if done && (st.Key == "CONTACT" || st.Key == "CONFIRM" || st.Key == "CREW" || st.Key == "RECEIVE" || st.Key == "WORK") {
+		if done && (st.Key == "TECH_CONTACT" || st.Key == "TECH_DIAG" || st.Key == "CONTACT" || st.Key == "CONFIRM" || st.Key == "CREW" || st.Key == "RECEIVE" || st.Key == "WORK") {
 			st.Status = ChainMissed
 			st.Verdict = "الحجز خلص، بس هالخطوة ما انسجّلت بالنظام."
 			return
@@ -438,7 +448,20 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			st.Verdict = fmt.Sprintf("تنتظر. صارلها %s، والمعتاد ما يتجاوز %s.", FmtMinutes(maxInt(el, 0)), FmtMinutes(th))
 		}
 	}
+	// حجز مرحّل للتقني: التثبيت والكادر والميدان مو على الإداري ولا الليدر —
+	// إلا إذا التقني طلب طاقم وانحدد فعلاً.
+	handed := f.HandoverAt != nil
+	crewAfter := handed && f.FirstAssignAt != nil && !f.FirstAssignAt.Before(*f.HandoverAt)
+	handedSkip := map[string]bool{"CONFIRM": true, "CREW": true}
+	if handed && !crewAfter {
+		for _, k := range []string{"RECEIVE", "ROUTE", "WORK", "COMPLETE", "PAPER", "RATING", "INVENTORY"} {
+			handedSkip[k] = true
+		}
+	}
 	add := func(st ChainStation) {
+		if handed && handedSkip[st.Key] {
+			return
+		}
 		st.No = len(ch.Stations) + 1
 		st.Title = chainStationTitle(st.Key)
 		st.RoleTitle = ChainRoleTitles[st.Role]
@@ -512,6 +535,32 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 			st.Facts = append(st.Facts, fmt.Sprintf("حاول %d مرات (الزبون ما رد).", f.ContactTries))
 		}
 		add(st)
+	}
+
+	// ٢ب. ترحيل للتقني — الإداري ينحاسب على الترحيل، والتقني على الباقي.
+	if handed {
+		st := ChainStation{Key: "HANDOFF", Role: ChainRoleCoordinator, Owners: s.owner(f.HandoverByID, f.HandoverBy)}
+		judge(&st, firstOf(f.ContactedAt, &f.CreatedAt), f.HandoverAt, s.threshold(f, "HANDOFF"), nil)
+		if f.HandoverTo != nil {
+			st.Facts = append(st.Facts, "انرحّل إلى "+*f.HandoverTo+".")
+		}
+		if f.HandoverReason != nil {
+			st.Facts = append(st.Facts, "السبب: "+*f.HandoverReason)
+		}
+		add(st)
+		tech := s.owner(f.HandoverToID, f.HandoverTo)
+		tc := ChainStation{Key: "TECH_CONTACT", Role: ChainRoleTech, Owners: tech}
+		judge(&tc, f.HandoverAt, f.TechContactedAt, s.threshold(f, "TECH_CONTACT"), nil)
+		add(tc)
+		td := ChainStation{Key: "TECH_DIAG", Role: ChainRoleTech, Owners: tech}
+		judge(&td, firstOf(f.TechContactedAt, f.HandoverAt), f.TechDiagnosedAt, s.threshold(f, "TECH_DIAG"), nil)
+		add(td)
+		tf := ChainStation{Key: "TECH_FIX", Role: ChainRoleTech, Owners: tech}
+		judge(&tf, firstOf(f.TechDiagnosedAt, f.HandoverAt), f.CompletedAt, s.threshold(f, "TECH_FIX"), nil)
+		if f.TechCrewAt != nil {
+			tf.Facts = append(tf.Facts, "طلب طاقم "+f.TechCrewAt.In(debriefLoc).Format("01-02 15:04")+".")
+		}
+		add(tf)
 	}
 
 	// ٣. التثبيت
