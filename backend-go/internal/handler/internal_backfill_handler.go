@@ -18,8 +18,9 @@ import (
 const internalBackfillCutoff = "2026-10-08"
 
 // internalWorkPaperSQL حجز داخلي مخلّص ناقصه ورق — نفس شروط «ناقصه ورق».
+// فاتورة الفني العادية ما تكفي — المطلوب الفاتورة الداخلية (وصف + سعر).
 const internalNeedsInvoiceSQL = `b."bookingType" = 'INTERNAL' AND b.status = 'COMPLETED' AND b."archivedAt" IS NULL
-	AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL)`
+	AND NOT EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%')`
 
 type InternalBackfillHandler struct {
 	db       *sqlx.DB
@@ -91,7 +92,7 @@ func (h *InternalBackfillHandler) CoordinatorQueue(w http.ResponseWriter, r *htt
 	rows := []row{}
 	if err := h.db.Select(&rows, `SELECT * FROM (
 		SELECT b.id, b.code, b."internalDepartment" AS department,
-		       EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL) AS "hasInvoice",
+		       EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%') AS "hasInvoice",
 		       EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id) AS "hasReport",
 		       to_char(b."completedAt" + interval '3 hours', 'YYYY-MM-DD HH24:MI') AS "doneAt"
 		FROM "Booking" b
