@@ -36,6 +36,10 @@ type ChainFacts struct {
 	ConfirmedByID *string    `db:"confirmedById"`
 	ConfirmedBy   *string    `db:"confirmedBy"`
 	ScheduledAt   *time.Time `db:"scheduledAt"`
+	// «المثبّت الفعلي» (قرار (ع) 10-07): ضغط تثبيت ← حط الموعد ← سجّل الحجز.
+	EffConfirmerID   *string `db:"effConfirmerId"`
+	EffConfirmerName *string `db:"effConfirmerName"`
+	EffConfirmerVia  string  `db:"effConfirmerVia"`
 	// حجز محوّل لإدارة المشاريع: ينقفل عندهم لحد «البدء بالتنفيذ».
 	ToProjects    bool       `db:"toProjects"`
 	ProjectExecAt *time.Time `db:"projectExecAt"`
@@ -121,6 +125,11 @@ SELECT b.id, b.code, b.status::text AS status, b."bookingType"::text AS "booking
        b."confirmationContactedAt" AS "contactedAt", b."confirmationContactedById" AS "contactedById", ke.name AS "contactedBy",
        b."confirmedAt", b."confirmedByEmployeeId" AS "confirmedById", fe.name AS "confirmedBy",
        b."scheduledAt", b."postponeCount",
+       COALESCE(b."confirmedByEmployeeId", sl."changedById", b."createdById") AS "effConfirmerId",
+       COALESCE(fe.name, sle.name, ce.name) AS "effConfirmerName",
+       CASE WHEN b."confirmedByEmployeeId" IS NOT NULL THEN 'CONFIRM'
+            WHEN sl."changedById" IS NOT NULL THEN 'SCHEDULE'
+            WHEN b."createdById" IS NOT NULL THEN 'CREATE' ELSE '' END AS "effConfirmerVia",
        COALESCE(b."transferToProjects", false) AS "toProjects", b."projectExecutionAt" AS "projectExecAt",
        (SELECT p.stage FROM "Project" p WHERE p."bookingId" = b.id ORDER BY p."createdAt" DESC LIMIT 1) AS "projectStage",
        (SELECT count(*) FROM "ScheduleChangeLog" l WHERE l."bookingId" = b.id)::int AS "scheduleMoves",
@@ -153,6 +162,10 @@ LEFT JOIN "Employee" ce ON ce.id = b."createdById"
 LEFT JOIN "Employee" ke ON ke.id = b."confirmationContactedById"
 LEFT JOIN "Employee" fe ON fe.id = b."confirmedByEmployeeId"
 LEFT JOIN "Employee" hbe ON hbe.id = b."handoverById"
+LEFT JOIN LATERAL (
+	SELECT l."changedById" FROM "ScheduleChangeLog" l WHERE l."bookingId" = b.id ORDER BY l."createdAt" LIMIT 1
+) sl ON true
+LEFT JOIN "Employee" sle ON sle.id = sl."changedById"
 LEFT JOIN "Employee" hte ON hte.id = b."handoverToId"
 LEFT JOIN LATERAL (
 	SELECT min(a."createdAt") AS "firstAssignAt",

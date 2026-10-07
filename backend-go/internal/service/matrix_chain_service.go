@@ -513,21 +513,25 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 		if f.ContactedAt != nil {
 			st.Owners = s.owner(f.ContactedByID, f.ContactedBy)
 			judge(&st, &created, f.ContactedAt, s.threshold(f, "CONTACT"), nil)
-		} else if f.ConfirmedAt != nil && s.contactBefore(f.CreatedAt) {
+		} else if (f.ConfirmedAt != nil || done) && s.contactBefore(f.CreatedAt) {
 			// قرار (ع) 10-06 (عدالة): الحجز أقدم من زر التواصل نفسه — ما ينحسب على أحد.
 			st.Owners = s.owner(f.ConfirmedByID, f.ConfirmedBy)
 			st.StartAt = &created
 			st.Status = ChainNA
 			st.Verdict = "الحجز أقدم من زر «تواصلت ويا الزبون»، فما ينحسب على أحد."
-		} else if f.ConfirmedAt != nil {
+		} else if f.ConfirmedAt != nil || done {
 			// قرار (ع) 10-05: «الإداري الي يثبّت الحجز هو نفسه لازم يضغط تواصلت
 			// ويا الزبون — إذا ما ضغط يعني هو الي ما ضاغط». فالمحطة عليه وما صارت.
-			st.Owners = s.owner(f.ConfirmedByID, f.ConfirmedBy)
+			// و10-07: إذا ما معروف منو ضغط تثبيت، على المثبّت الفعلي.
+			st.Owners = s.owner(f.EffConfirmerID, f.EffConfirmerName)
 			st.StartAt, st.EndAt = &created, nil
 			th := s.threshold(f, "CONTACT")
 			st.Threshold = &th
 			st.Status = ChainMissed
 			st.Verdict = "ثبّت الحجز بدون ما يضغط «تواصلت ويا الزبون»، فهالخطوة محسوبة عليه."
+			if f.ConfirmedByID == nil {
+				st.Verdict = "الحجز مشى بدون ما أحد يضغط «تواصلت ويا الزبون» — " + effWhy(f)
+			}
 		} else {
 			judge(&st, &created, nil, s.threshold(f, "CONTACT"), nil)
 		}
@@ -565,8 +569,13 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 
 	// ٣. التثبيت
 	{
-		st := ChainStation{Key: "CONFIRM", Role: ChainRoleCoordinator, Owners: s.owner(f.ConfirmedByID, f.ConfirmedBy)}
+		st := ChainStation{Key: "CONFIRM", Role: ChainRoleCoordinator, Owners: s.owner(f.EffConfirmerID, f.EffConfirmerName)}
 		judge(&st, firstOf(f.ContactedAt, &f.CreatedAt), f.ConfirmedAt, s.threshold(f, "CONFIRM"), nil)
+		if st.Status == ChainMissed && f.ConfirmedAt == nil && done {
+			st.Verdict = "الحجز خلص بدون ما ينضغط «تثبيت» — " + effWhy(f)
+		} else if f.ConfirmedAt != nil && f.ConfirmedByID == nil {
+			st.Facts = append(st.Facts, "ما انسجّل منو ضغط «تثبيت» — "+effWhy(f))
+		}
 		if f.ScheduledAt != nil {
 			st.Facts = append(st.Facts, "الموعد: "+f.ScheduledAt.In(debriefLoc).Format("2006-01-02 15:04"))
 		} else if f.ConfirmedAt != nil {
@@ -583,7 +592,7 @@ func (s *MatrixChainService) chainOf(f *repository.ChainFacts, now time.Time) *B
 
 	// ٤. الكادر
 	{
-		st := ChainStation{Key: "CREW", Role: ChainRoleCoordinator, Owners: s.owner(f.ConfirmedByID, f.ConfirmedBy)}
+		st := ChainStation{Key: "CREW", Role: ChainRoleCoordinator, Owners: s.owner(f.EffConfirmerID, f.EffConfirmerName)}
 		judge(&st, crewStart(f), f.FirstAssignAt, s.threshold(f, "CREW"), nil)
 		if f.ToProjects && f.ProjectExecAt != nil {
 			st.Facts = append(st.Facts, "حجز مشروع: الوقت ينحسب من رجوعه من إدارة المشاريع (البدء بالتنفيذ)، مو من التثبيت.")
@@ -942,8 +951,17 @@ func (s *MatrixChainService) who(f *repository.ChainFacts) ChainWho {
 	return w
 }
 
-// explainStation جملة واضحة: شنو صار بالضبط بهالخطوة.
+// explainStation جملة واضحة: شنو صار بالضبط بهالخطوة، وعلى منو انحسبت إذا
+// انحسبت على المثبّت الفعلي (قرار (ع) 10-07).
 func explainStation(key, status string, w *ChainWho, verdict string) string {
+	out := explainBase(key, status, w, verdict)
+	if i := strings.Index(verdict, "انحسبت على"); i >= 0 && !strings.Contains(out, "انحسبت على") {
+		out += " " + verdict[i:]
+	}
+	return out
+}
+
+func explainBase(key, status string, w *ChainWho, verdict string) string {
 	creator := w.CreatedBy
 	if creator == "" {
 		creator = "شخص ما معروف"
@@ -1556,4 +1574,21 @@ func (s *MatrixChainService) Learning() ChainLearning {
 		out.Stations = append(out.Stations, l)
 	}
 	return out
+}
+
+// effWhy ليش انحسبت الخطوة على المثبّت الفعلي (قرار (ع) 10-07).
+func effWhy(f *repository.ChainFacts) string {
+	name := "ما معروف"
+	if f.EffConfirmerName != nil {
+		name = *f.EffConfirmerName
+	}
+	switch f.EffConfirmerVia {
+	case "SCHEDULE":
+		return "انحسبت على " + name + " لأنه هو الي حط الموعد (يعني هو الي ثبّت)."
+	case "CREATE":
+		return "انحسبت على " + name + " لأنه هو الي سجّل الحجز ومشّاه بلا تثبيت."
+	case "CONFIRM":
+		return "انحسبت على " + name + " لأنه هو الي ثبّت."
+	}
+	return "ما معروف منو ثبّته."
 }
