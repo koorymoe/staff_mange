@@ -93,6 +93,8 @@ const icon = (d: string) => (
 // جماعية أو انضاف عنصر جديد للقائمة بعدين.
 const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/privacy-policy',
+  // قرار (ع) 10-07: الحجوزات المرحّلة للتقني.
+  '/my-handovers',
 ]
 
 export const navItems: NavItem[] = [
@@ -518,6 +520,11 @@ export const navItems: NavItem[] = [
   // ⚠️ وما انكسر لبندين: (ع) رفض التكرار بالقائمة صراحةً («ماريد
   // تطلع بخانة وحدها»)، والي عنده الاثنين راح يشوف بندين لنفس
   // الشاشة. والنوع ينختار جوّا الشاشة، وهي **تعرض المسموح وبس**.
+  // قرار (ع) 10-07: «الحجوزات» — الي يرحّلها الإداري للتقني أو مسؤول الخدمة. بندين
+  // لنفس الصفحة لأن مسؤول الخدمة ينعرف بصلاحية الفواتير مو بدوره؛ الي يطابق
+  // الاثنين يشوفه مرة وحدة (التكرار ينشال بالقائمة).
+  { to: '/my-handovers', label: '🛠️ الحجوزات', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), roles: ['TECHNICAL', 'SERVICE_MANAGER'] },
+  { to: '/my-handovers', label: '🛠️ الحجوزات', icon: icon('M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },
   { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: icon('M12 2v4M12 18v4M2 12h4M18 12h4M7.8 7.8 4.9 4.9M16.2 7.8l2.9-2.9M7.8 16.2l-2.9 2.9M16.2 16.2l2.9 2.9'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },
   // «فواتير **وتقارير**»: نفس الصلاحيتين يسوّون تقرير حجوزات نوعهم.
   { to: '/work-reports', label: '📝 تقرير خدمة', icon: icon('M9 12h6M9 16h6M7 3h7l5 5v11a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z'), anyPermission: ['invoice_gps', 'invoice_dashcam'] },

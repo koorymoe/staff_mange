@@ -1,3 +1,4 @@
+import StaffScorePage from './StaffScorePage'
 import { useEffect, useState } from 'react'
 import type { Employee } from '../api'
 import { useSession } from '../session'
@@ -55,7 +56,7 @@ export default function StatsPage() {
   const [stats, setStats] = useState<StatsData | null>(null)
   const [employees, setEmployees] = useState<Employee[]>([])
   const [inventory, setInventory] = useState<InventoryItem[]>([])
-  const [tab, setTab] = useState<'overview' | 'sales' | 'technicians' | 'coordinators'>('overview')
+  const [tab, setTab] = useState<'overview' | 'sales' | 'technicians' | 'coordinators' | 'scores'>('overview')
 
   useEffect(() => {
     if (role !== 'ADMIN') return
@@ -75,6 +76,8 @@ export default function StatsPage() {
     { key: 'sales' as const, label: 'المبيعات' },
     { key: 'technicians' as const, label: 'الفنيون' },
     { key: 'coordinators' as const, label: 'المنسقون' },
+    // قرار (ع) 10-07: المدير يشوف كل دور وموظفينه وتقييمهم — نفس تقييم ماتركس.
+    { key: 'scores' as const, label: '⭐ التقييم حسب الدور' },
   ]
 
   return (
@@ -90,6 +93,8 @@ export default function StatsPage() {
           </button>
         ))}
       </div>
+
+      {tab === 'scores' && <StaffScorePage />}
 
       {tab === 'overview' && (
         <div className="space-y-6">

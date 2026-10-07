@@ -52,6 +52,7 @@ const LettersPage = lazy(() => import('./pages/LettersPage'))
 const TrainingPrograms = lazy(() => import('./pages/TrainingPrograms'))
 const BookingsHub = lazy(() => import('./pages/BookingsHub'))
 const MyTasks = lazy(() => import('./pages/MyTasks'))
+const MyHandoversPage = lazy(() => import('./pages/MyHandoversPage'))
 const MyRanking = lazy(() => import('./pages/MyRanking'))
 const MyExtraTasksPage = lazy(() => import('./pages/MyExtraTasksPage'))
 const MyWorkPage = lazy(() => import('./pages/MyWorkPage'))
@@ -234,6 +235,7 @@ function App() {
               لمن عنده رابط محفوظ أو إشعار قديم يوديه لها. */}
           <Route path="bookings" element={<BookingsHub />} />
           <Route path="my-tasks" element={<MyTasks />} />
+          <Route path="my-handovers" element={<MyHandoversPage />} />
           <Route path="my-ranking" element={<MyRanking />} />
           {/* مهامي الإضافية — بلا حارس: هاي مهام الموظف نفسه */}
           <Route path="my-extra-tasks" element={<MyExtraTasksPage />} />

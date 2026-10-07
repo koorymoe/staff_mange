@@ -585,7 +585,16 @@ func (r *EmployeeRepository) WorkSchedule() ([]ScheduleRow, error) {
 // HandoverCandidates التقنيين ومسؤولي الخدمات الفعّالين — لترحيل الحجز (0326).
 func (r *EmployeeRepository) HandoverCandidates() ([]model.EmployeeBrief, error) {
 	rows := []model.EmployeeBrief{}
-	err := r.db.Select(&rows, `SELECT id, name, CASE role WHEN 'SERVICE_MANAGER' THEN 'مسؤول خدمة' ELSE 'تقني' END AS position
-		FROM "Employee" WHERE status = 'ACTIVE' AND role IN ('TECHNICIAN', 'SERVICE_MANAGER') ORDER BY role DESC, name`)
+	err := r.db.Select(&rows, `SELECT id, name, CASE WHEN role = 'TECHNICAL' THEN 'تقني' ELSE 'مسؤول خدمة' END AS position
+		FROM "Employee" e WHERE status = 'ACTIVE' AND (role IN ('TECHNICAL', 'SERVICE_MANAGER')
+		  OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)) ORDER BY position DESC, name`)
 	return rows, err
+}
+
+// IsHandoverTarget تقني أو مسؤول خدمة (بدوره أو مسجّل بجدول مسؤولي الخدمات).
+func (r *EmployeeRepository) IsHandoverTarget(id string) bool {
+	var ok bool
+	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Employee" e WHERE e.id = $1 AND e.status = 'ACTIVE'
+		AND (e.role IN ('TECHNICAL', 'SERVICE_MANAGER') OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)))`, id)
+	return ok
 }

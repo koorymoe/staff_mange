@@ -16,7 +16,6 @@ import PeerCheckinCard from '../components/PeerCheckinCard'
 import MyScoreCard from '../components/MyScoreCard'
 import TechSuppliersLink from '../components/TechSuppliersLink'
 import AfterInventoryPrompt from '../components/AfterInventoryPrompt'
-import TechHandovers from '../components/TechHandovers'
 import LeaderInvoicesListPage from './LeaderInvoicesListPage'
 import LeaderInvoiceNew from './LeaderInvoiceNew'
 import WorkReportPage from './WorkReportPage'
@@ -507,7 +506,13 @@ export default function MyTasks() {
           <div>
             {/* المهام الموجّهة من المدير فوق مهام الحجوزات: شغل موجّه
                 لك بالاسم، ولو انحط بأسفل الصفحة راح ينتنسى. */}
-            <TechHandovers bookings={bookings} me={employee?.id} onChange={(u) => setBookings((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...u } : x)))} />
+            {/* الحجوزات المرحّلة صار إلها بند «الحجوزات» (قرار (ع) 10-07) — هنا تذكير بس. */}
+            {bookings.some((b) => b.handoverToId === employee?.id && b.status !== 'COMPLETED' && b.status !== 'CANCELLED') && (
+              <button type="button" onClick={() => navigate('/my-handovers')}
+                className="mb-3 w-full rounded-xl border-2 border-orange-200 bg-orange-50 px-4 py-3 text-right text-sm font-bold text-orange-900">
+                🛠️ عندك حجوزات مرحّلة إلك ← افتح «الحجوزات»
+              </button>
+            )}
             <MyScoreCard />
             <TechSuppliersLink />
             <PeerCheckinCard />

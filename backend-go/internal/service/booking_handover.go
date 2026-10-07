@@ -15,9 +15,6 @@ import (
 
 var ErrNotHandoverOwner = errors.New("هذا الحجز مو مرحّل إلك")
 
-func isHandoverRole(role string) bool {
-	return role == "TECHNICIAN" || role == "SERVICE_MANAGER"
-}
 
 func (s *BookingService) Handover(id, toID, reason, byID string) (*model.Booking, error) {
 	reason = strings.TrimSpace(reason)
@@ -37,9 +34,8 @@ func (s *BookingService) Handover(id, toID, reason, byID string) (*model.Booking
 	if b.ConfirmationContactedAt == nil {
 		return nil, errors.New("تواصل ويا الزبون أول واضغط «تواصلت ويا الزبون»، بعدين رحّله")
 	}
-	emp, err := s.employees.FindByID(toID)
-	if err != nil || emp == nil || !isHandoverRole(emp.Role) {
-		return nil, errors.New("اختار تقني أو مسؤول خدمة")
+	if !s.employees.IsHandoverTarget(toID) {
+		return nil, errors.New("اختار تقني أو مسؤول خدمة (مو فني ميداني)")
 	}
 	if err := s.repo.Handover(id, toID, byID, reason); err != nil {
 		return nil, err
