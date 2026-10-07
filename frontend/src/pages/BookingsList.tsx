@@ -16,6 +16,7 @@ import { promptChoice } from '../utils/promptChoice'
 import { bookingDeleteChannelLabels, bookingDeleteTypeLabels, BOOKING_NO_ANSWER_CHOICE, bookingNoAnswerLabel, type BookingDeleteChannel, type BookingDeleteRequestType } from '../api'
 import BookingCodeChip from '../components/BookingCodeChip'
 import ShiftBadge from '../components/ShiftBadge'
+import HandoverDialog, { HandoverBadge } from '../components/HandoverDialog'
 import { loadFailed } from '../netErrors'
 
 const DELETE_CHANNEL_OPTIONS: [BookingDeleteChannel, string][] =
@@ -271,6 +272,10 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   // المنسّق يشوف حجوزات ما أحد حچى وية زبونها بعد، ويبدي يدوّر
   // مواعيد وكوادر لشغل يمكن ما يصير أصلاً.
   const [flowBusy, setFlowBusy] = useState<string | null>(null)
+  // ترحيل للتقني (قرار (ع) 10-07) — نفس حارس الخادم (coordinator/crew_management).
+  const [handFor, setHandFor] = useState<Booking | null>(null)
+  const canHandover = isAdmin || employee?.actualRole === 'OWNER'
+    || permissions.includes('coordinator') || permissions.includes('crew_management')
 
   const markContacted = async (booking: Booking) => {
     setFlowBusy(booking.id)
@@ -443,6 +448,10 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
 
   return (
     <div>
+      {handFor && (
+        <HandoverDialog booking={handFor} onClose={() => setHandFor(null)}
+          onDone={(u) => { setHandFor(null); setBookings((prev) => prev.map((x) => (x.id === u.id ? { ...x, ...u } : x))) }} />
+      )}
       <h2 className="text-2xl font-bold text-brand-900">{BUCKET_HEADINGS[bucket].title}</h2>
       <p className="mt-1 text-slate-500">
         {BUCKET_HEADINGS[bucket].next}
@@ -627,7 +636,9 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                           لأنها الوحيدة الي هذي الخطوات تعني بيها شي. */}
                       {bucket === 'pending' && canEditDetails && (
                         <div className="mb-1.5 flex flex-wrap gap-1">
-                          {!b.confirmationContactedAt ? (
+                          {b.handoverTo ? (
+                            <HandoverBadge booking={b} />
+                          ) : !b.confirmationContactedAt ? (
                             <button
                               onClick={() => markContacted(b)}
                               disabled={flowBusy === b.id}
@@ -654,6 +665,16 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
                               >
                                 🏗 ثبّت ورحّل لإدارة المشاريع
                               </button>
+                              {canHandover && (
+                                <button
+                                  onClick={() => setHandFor(b)}
+                                  disabled={flowBusy === b.id}
+                                  title="مشكلة ما يعرفون الفنيين يحلّوها؟ رحّل الحجز لتقني أو مسؤول خدمة — يصير برقبته"
+                                  className="rounded-lg bg-orange-600 px-2.5 py-1 text-[11px] font-bold text-white hover:bg-orange-700 disabled:opacity-50"
+                                >
+                                  🛠️ رحّل للتقني
+                                </button>
+                              )}
                             </>
                           )}
                         </div>
