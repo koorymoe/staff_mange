@@ -31,7 +31,11 @@ export default function MatrixBusiness() {
         <div className="rounded-xl bg-violet-50 p-3">
           <p className="text-xs text-violet-700">🔮 توقع نهاية الشهر</p>
           <p className="text-xl font-extrabold tabular-nums text-violet-900">{iqd(b.forecast.expected)}</p>
+          {b.forecast.low != null && b.forecast.high != null && (
+            <p className="text-xs font-bold text-violet-800 tabular-nums">المدى المتوقع: {iqd(b.forecast.low)} – {iqd(b.forecast.high)}</p>
+          )}
           <p className="text-[11px] text-violet-800">{b.forecast.expectedJobs} حجز · {b.forecast.basis}</p>
+          {b.forecast.accuracy && <p className="mt-1 rounded-lg bg-white/60 px-2 py-1 text-[11px] text-violet-900">🎯 {b.forecast.accuracy}</p>}
         </div>
         <div className="rounded-xl bg-slate-50 p-3">
           <p className="text-xs text-slate-500">الزبائن</p>

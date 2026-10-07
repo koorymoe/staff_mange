@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"sort"
 	"time"
 
@@ -123,27 +124,109 @@ func (r *MatrixBusinessRepository) MTD() (*MonthToDate, error) {
 	return &m, err
 }
 
-type ForecastBase struct {
-	PendingThisMonth int             `db:"pendingThisMonth" json:"pendingThisMonth"`
-	CompletionRate   sql.NullFloat64 `db:"completionRate" json:"-"`
-	AvgInvoice       sql.NullFloat64 `db:"avgInvoice" json:"-"`
-	Samples          int             `db:"samples" json:"samples"`
+// ═══ أساس التوقع (قرار (ع) 10-07: «التوقع قريب من النتائج النهائية») ═══
+// قبل: المثبّت × نسبة الإنجاز × معدل **فاتورة الليدر** — والإيراد نفسه **فلوس
+// مقبوضة**، فالتوقع چان يقيس شي ثاني. هسه كل شي بنفس عملة الإيراد:
+
+// Pipeline الحجوزات المفتوحة الي موعدها هالشهر (حتى المتأخرة عن موعدها)، كل
+// وحدة بقيمتها المتوقعة = نسبة إنجاز خدمتها × معدل المقبوض لخدمتها (آخر ٩٠
+// يوم؛ الخدمة الي عيّناتها قليلة تاخذ معدل الشركة).
+type Pipeline struct {
+	Jobs     int             `db:"jobs"`
+	ExpJobs  sql.NullFloat64 `db:"expJobs"`
+	Value    sql.NullFloat64 `db:"value"`
+	Samples  int             `db:"samples"`
+	AvgValue sql.NullFloat64 `db:"avgValue"`
+	Rate     sql.NullFloat64 `db:"rate"`
 }
 
-// Forecast أساس التوقع: المثبّت المتبقي هالشهر، ونسبة إنجاز المثبّت (٩٠ يوم)، ومعدل الفاتورة.
-func (r *MatrixBusinessRepository) Forecast() (*ForecastBase, error) {
-	var f ForecastBase
-	err := r.db.Get(&f, `
-		SELECT
-		  (SELECT COUNT(*) FROM "Booking" b WHERE b.status IN ('CONFIRMED','IN_PROGRESS','PENDING') AND b."archivedAt" IS NULL
-		     AND b."bookingType" IS DISTINCT FROM 'INTERNAL' AND b."scheduledAt" IS NOT NULL
-		     AND baghdad_date(b."scheduledAt") BETWEEN baghdad_today() AND (date_trunc('month', baghdad_today()) + interval '1 month - 1 day')::date) AS "pendingThisMonth",
-		  (SELECT COUNT(*) FILTER (WHERE status = 'COMPLETED')::float / NULLIF(COUNT(*),0)
-		     FROM "Booking" WHERE "confirmedAt" > now() - interval '90 days' AND "confirmedAt" < now() - interval '7 days'
-		       AND "bookingType" IS DISTINCT FROM 'INTERNAL') AS "completionRate",
-		  (SELECT AVG("netTotal") FROM "LeaderInvoice" WHERE "createdAt" > now() - interval '90 days' AND "netTotal" > 0 AND "revokedAt" IS NULL) AS "avgInvoice",
-		  (SELECT COUNT(*) FROM "LeaderInvoice" WHERE "createdAt" > now() - interval '90 days' AND "netTotal" > 0 AND "revokedAt" IS NULL) AS samples`)
-	return &f, err
+func (r *MatrixBusinessRepository) Pipeline() (*Pipeline, error) {
+	var p Pipeline
+	err := r.db.Get(&p, `
+		WITH hist AS (
+		  SELECT b."serviceId" AS sid, `+RevenueAmountSQL("b")+` AS v
+		  FROM "Booking" b WHERE `+completedCountable+`
+		    AND b."completedAt" > (now() AT TIME ZONE 'UTC') - interval '90 days' AND `+RevenueAmountSQL("b")+` > 0
+		), hs AS (SELECT sid, AVG(v) AS av, COUNT(*) AS n FROM hist GROUP BY sid),
+		hg AS (SELECT AVG(v) AS av, COUNT(*) AS n FROM hist),
+		conf AS (
+		  SELECT "serviceId" AS sid, (status::text IN ('COMPLETED', 'PARTIAL')) AS ok FROM "Booking"
+		  WHERE "confirmedAt" > (now() AT TIME ZONE 'UTC') - interval '90 days'
+		    AND "confirmedAt" < (now() AT TIME ZONE 'UTC') - interval '7 days'
+		    AND "bookingType" IS DISTINCT FROM 'INTERNAL'
+		), rs AS (SELECT sid, AVG(ok::int)::float8 AS r, COUNT(*) AS n FROM conf GROUP BY sid),
+		rg AS (SELECT AVG(ok::int)::float8 AS r FROM conf),
+		pend AS (
+		  SELECT b."serviceId" AS sid FROM "Booking" b
+		  WHERE b.status::text IN ('CONFIRMED', 'IN_PROGRESS', 'PENDING') AND b."scheduledAt" IS NOT NULL
+		    AND b."bookingType" IS DISTINCT FROM 'INTERNAL'`+BookingCountableAndSQL("b")+`
+		    AND baghdad_date(b."scheduledAt") >= date_trunc('month', baghdad_today())::date
+		    AND baghdad_date(b."scheduledAt") <= (date_trunc('month', baghdad_today()) + interval '1 month - 1 day')::date
+		)
+		SELECT COUNT(pend.*)::int AS jobs,
+		       SUM(COALESCE(CASE WHEN rs.n >= 8 THEN rs.r END, rg.r)) AS "expJobs",
+		       SUM(COALESCE(CASE WHEN rs.n >= 8 THEN rs.r END, rg.r) * COALESCE(CASE WHEN hs.n >= 5 THEN hs.av END, hg.av)) AS value,
+		       COALESCE(MAX(hg.n), (SELECT n FROM hg))::int AS samples,
+		       COALESCE(MAX(hg.av), (SELECT av FROM hg)) AS "avgValue",
+		       COALESCE(MAX(rg.r), (SELECT r FROM rg)) AS rate
+		FROM hg CROSS JOIN rg LEFT JOIN pend ON true
+		LEFT JOIN hs ON hs.sid = pend.sid LEFT JOIN rs ON rs.sid = pend.sid`)
+	return &p, err
+}
+
+// PaceMonth شهر سابق: إيراده الكلي، وشكد چان واصل لحد نفس يوم هالشهر.
+type PaceMonth struct {
+	Month string  `db:"month"`
+	Total float64 `db:"total"`
+	Upto  float64 `db:"upto"`
+}
+
+// Pace آخر ٣ أشهر كاملة — منحنى «شكد يوصل الإيراد لحد اليوم N من الشهر».
+func (r *MatrixBusinessRepository) Pace() ([]PaceMonth, error) {
+	rows := []PaceMonth{}
+	err := r.db.Select(&rows, `
+		WITH ev AS (
+		  SELECT baghdad_date(b."completedAt") AS d, `+RevenueAmountSQL("b")+` AS v FROM "Booking" b WHERE `+completedCountable+`
+		  UNION ALL
+		  SELECT "paidAt", amount FROM "ProjectPayment" WHERE "cancelledAt" IS NULL
+		), m AS (
+		  SELECT k, (date_trunc('month', baghdad_today()) - make_interval(months => k))::date AS ms FROM generate_series(1, 3) k
+		)
+		SELECT to_char(m.ms, 'YYYY-MM') AS month,
+		       COALESCE(SUM(ev.v) FILTER (WHERE ev.d >= m.ms AND ev.d < (m.ms + interval '1 month')::date), 0)::float8 AS total,
+		       COALESCE(SUM(ev.v) FILTER (WHERE ev.d >= m.ms AND ev.d < LEAST((m.ms + interval '1 month')::date,
+		                 m.ms + extract(day FROM baghdad_today())::int)), 0)::float8 AS upto
+		FROM m LEFT JOIN ev ON ev.d >= m.ms AND ev.d < (m.ms + interval '1 month')::date
+		GROUP BY m.ms ORDER BY m.ms DESC`)
+	return rows, err
+}
+
+// LogForecast يحفظ توقع اليوم (مرة باليوم — آخر قيمة تغلب).
+func (r *MatrixBusinessRepository) LogForecast(expected, pipeline float64, pace *float64, mtd float64) error {
+	_, err := r.db.Exec(`INSERT INTO "MatrixForecastLog" (day, month, expected, pipeline, pace, mtd)
+		VALUES (baghdad_today(), to_char(baghdad_today(), 'YYYY-MM'), $1, $2, $3, $4)
+		ON CONFLICT (day) DO UPDATE SET expected = EXCLUDED.expected, pipeline = EXCLUDED.pipeline,
+		  pace = EXCLUDED.pace, mtd = EXCLUDED.mtd`, expected, pipeline, pace, mtd)
+	return err
+}
+
+// ForecastCheck دقة توقع الشهر الماضي: التوقع بنص الشهر مقابل النتيجة الفعلية.
+type ForecastCheck struct {
+	Month    string          `db:"month" json:"month"`
+	Day      string          `db:"day" json:"day"`
+	Expected float64         `db:"expected" json:"expected"`
+	Actual   sql.NullFloat64 `db:"-" json:"-"`
+}
+
+func (r *MatrixBusinessRepository) LastMonthForecast() (*ForecastCheck, error) {
+	var c ForecastCheck
+	err := r.db.Get(&c, `SELECT month, to_char(day, 'YYYY-MM-DD') AS day, expected FROM "MatrixForecastLog"
+		WHERE month = to_char(baghdad_today() - interval '1 month', 'YYYY-MM')
+		ORDER BY abs(extract(day FROM day) - 15), day LIMIT 1`)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	return &c, err
 }
 
 type InquiryCustomer struct {

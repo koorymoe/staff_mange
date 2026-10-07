@@ -6044,7 +6044,7 @@ export interface RoleMetric { label: string; value: number }
 export interface MatrixBusiness {
   months: { month: string; bookings: number; revenue: number; invoiced: number }[]
   mtd: { bookings: number; revenue: number; lastBookings: number; lastRevenue: number }
-  forecast: { expected: number; expectedJobs: number; basis: string; insufficient: boolean }
+  forecast: { expected: number; expectedJobs: number; basis: string; insufficient: boolean; low?: number; high?: number; accuracy?: string }
   customers: { actual: number; inquiry: number; repeat: number; openOnly: number }
   inquirers: { id: string; name: string; archived: number; lastAt: string }[]
   /** منجزة هالشهر بلا فاتورة (بدون OLD والكشف). */

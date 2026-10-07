@@ -425,6 +425,8 @@ func versionedMigrations() []Migration {
 	result = append(result, attendanceCountedMigrations()...)
 	// 0328: جلسة مفتوحة وحدة + الانصراف المعتمد ينحسب مثل ما هو.
 	result = append(result, attendanceFixMigrations()...)
+	// 0329: سجل توقع الإيراد اليومي — نقيس دقة ماتركس بنهاية كل شهر.
+	result = append(result, forecastLogMigrations()...)
 	return result
 }
 
