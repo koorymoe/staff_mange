@@ -370,7 +370,8 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-06: «المشاريع الموجّهة لي» مباشرة تحت «العمل» جنب «إضافة مشروع».
       { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true, hideForRoles: TECH_ROLES },
       // قرار (ع) 10-06: موردين التقنيين — التقني يضيف والمدير يختار لكل تقني.
-      { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers' },
+      // قرار (ع) 10-07: مكانه «وحدة التقنيين» — هنا يبقى بس للي ما عنده الوحدة.
+      { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers', hideForRoles: ['ADMIN'], hideIfAnyPermission: ['unit_technicians'] },
       {
         to: '/mgmt-finance', label: 'إدارة الحسابات', icon: <></>,
         // ⚠️ محجوبة عن المحاسب: محتواها **نفسه** محتوى «العمل» مالته
@@ -445,7 +446,7 @@ export const navItems: NavItem[] = [
     to: '/tech-work-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>,
     children: [
       // موردين التقنيين للفني الي عنده الصلاحية (مسؤول خدمة مثلاً).
-      { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, permission: 'tech_suppliers' },
+      { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, permission: 'tech_suppliers', hideIfAnyPermission: ['unit_technicians'] },
       // ⚠️ «التقارير» و«فواتير الليدر» انشالن من هنا عن قصد — صاروا
       // خيارين جوّا شاشة «مهامي» نفسها.
       //
@@ -613,6 +614,8 @@ export const navItems: NavItem[] = [
       // المفردة باقية شغّالة فما ينكسر رابط محفوظ.
       { to: '/tech-products', label: '📦 المنتجات والمعارض', icon: <></>, permission: 'unit_technicians' },
       { to: '/tech-content', label: '📚 المحتوى التقني', icon: <></>, anyPermission: ['unit_technicians', 'content_technician'] },
+      // قرار (ع) 10-07: «موردين التقنيين» داخل وحدة التقنيين.
+      { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers' },
     ],
   },
   // وحدتان فارغتان مؤقتاً (بانتظار تحديد آلية العمل والصلاحيات المطلوبة لكل
