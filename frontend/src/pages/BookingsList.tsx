@@ -177,7 +177,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
     if (!ans) return
     const reason = ans.reason
     const channel = ans.channel as BookingDeleteChannel
-    const requestType = ans.type as BookingDeleteRequestType
+    const requestType = ans.type as DeleteTypeChoice
     // «الزبون ما رد» مسار مختلف تماماً: ما ينفتح طلب حذف ولا ينطر
     // قرار المراقب — الحجز ينزاح فوراً لطابور الانتظار الموجود أصلاً.
     if (requestType === BOOKING_NO_ANSWER_CHOICE) {
