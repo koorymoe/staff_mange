@@ -74,14 +74,17 @@ func bucketCondition(bucket string) string {
 	// محطة مستقلة: عند إدارة المشاريع لحد ما يوصل التنفيذ
 	case "at_projects":
 		return atProjectsSQL + ` AND NOT ` + deletePendingSQL
+	// محطة مستقلة: مرحّل للتقني لحد ما يخلص
+	case "at_tech":
+		return atTechSQL + ` AND NOT ` + deletePendingSQL
 	// ١ — انسجّل وما انثبّت بعد: ولا كادر ولا تنفيذ
 	case "pending":
 		return `b."confirmedAt" IS NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting + notStuck
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting + notStuck + ` AND NOT ` + atTechSQL
 	// ٢ — انثبّت وينتظر موعداً وكادراً
 	case "confirmed":
 		return `b."confirmedAt" IS NOT NULL AND NOT ` + hasCrewSQL + ` AND NOT ` + startedSQL + `
-			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting + notStuck
+			AND b.status NOT IN ('CANCELLED', 'COMPLETED')` + notDeleting + notStuck + ` AND NOT ` + atTechSQL
 	// ٤ — عليه كادر أو بدا التنفيذ، وما خلص
 	// ⚠️ «أو» مو «و»: حجز باشر بيه الليدر بلا تكليف رسمي لازم يبقى مرئي.
 	case "assigned":
@@ -138,6 +141,10 @@ var deletePendingSQL = BookingDeletePendingSQL("b")
 // الشرط يصير كذباً لحاله، فيرجع لمحطته الطبيعية تلقائياً.
 const atProjectsSQL = `(b."transferToProjects" AND b."projectExecutionAt" IS NULL
 	AND b.status NOT IN ('CANCELLED', 'COMPLETED'))`
+
+// atTechSQL مرحّل للتقني أو مسؤول الخدمة وبعده مفتوح (قرار (ع) 10-07): صار برقبته،
+// فيطلع من طابور الإداري لمحطة «عند إدارة التقنيين».
+const atTechSQL = `(b."handoverToId" IS NOT NULL AND b.status NOT IN ('CANCELLED', 'COMPLETED'))`
 
 const hasInvoiceSQL = `EXISTS (SELECT 1 FROM "LeaderInvoice" li WHERE li."bookingId" = b.id)`
 const hasReportSQL = `EXISTS (SELECT 1 FROM "WorkReport" wr WHERE wr."bookingId" = b.id)`
@@ -279,7 +286,7 @@ func (r *BookingRepository) ListPaged(q BookingPageQuery) ([]model.Booking, int,
 // شاشة (ومع كل تحديث تلقائي) تصير حملاً أثقل من الي شلناه بالترقيم.
 // `COUNT(*) FILTER` يخلّي القاعدة تمرّ على الجدول مرة وحدة.
 func (r *BookingRepository) StationCounts() (map[string]int, error) {
-	buckets := []string{"pending", "confirmed", "assigned", "done", "at_projects", "delete_pending"}
+	buckets := []string{"pending", "confirmed", "assigned", "done", "at_projects", "at_tech", "delete_pending"}
 	sel := []string{}
 	for _, b := range buckets {
 		// نفس شروط المحطات بالضبط — من نفس المصدر، حتى ما يصير العدّاد
@@ -374,6 +381,7 @@ func (r *BookingRepository) Locate(term string) ([]BookingLocation, error) {
 	stations := []struct{ key, label string }{
 		{"delete_pending", "بانتظار قرار الحذف"},
 		{"at_projects", "عند إدارة المشاريع"},
+		{"at_tech", "عند إدارة التقنيين"},
 		{"pending", "بانتظار التثبيت — بحاجة لتنسيق"},
 		{"confirmed", "تم التثبيت — بحاجة لكادر"},
 		{"assigned", "مكلّف — بانتظار التنفيذ"},

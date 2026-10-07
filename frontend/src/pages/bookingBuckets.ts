@@ -9,7 +9,7 @@
 //
 // ⚠️ بملف منفصل عن الشاشة حتى يضل التحديث السريع (Fast Refresh)
 // شغّال بالتطوير — نفس سبب `completionStates.ts`.
-export type BookingBucket = 'all' | 'pending' | 'confirmed' | 'assigned' | 'done' | 'delete_pending' | 'at_projects'
+export type BookingBucket = 'all' | 'pending' | 'confirmed' | 'assigned' | 'done' | 'delete_pending' | 'at_projects' | 'at_tech'
 
 // ⚠️ «منجز جزئي» انشال من هنا: صارله محطة مستقلة («تحتاج إكمال»)،
 // وخيار بالاثنين يعني نفس الحجز بمكانين.
@@ -51,6 +51,10 @@ export const BUCKET_HEADINGS: Record<BookingBucket, { title: string; next: strin
   at_projects: {
     title: '🏗️ عند إدارة المشاريع',
     next: 'حجوزات انرحّلت لإدارة المشاريع ومقفولة عليك لحد ما المشرف يوصلها مرحلة التنفيذ. أول ما توصل، ترجع لـ«تنسيق الحجوزات» لحالها.',
+  },
+  at_tech: {
+    title: '🛠️ عند إدارة التقنيين',
+    next: 'حجوزات رحّلها الإداري لتقني أو مسؤول خدمة — صارت برقبته: هو يتواصل ويا الزبون ويكتب الكشف ويعالج. أول ما يخلّصها تروح لـ«تم الإنجاز».',
   },
   delete_pending: {
     title: '🗑️ بانتظار قرار الحذف',

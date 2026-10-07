@@ -63,7 +63,8 @@ const TABS = [
   // ٨ — والاتجاه الثاني: الي ما وصل
   // «اكو حجوزات ما توصل — الزبون يلغي أو ما يرد، لازم تترتب».
   // محبوس عند إدارة المشاريع — يرجع لحاله أول ما يوصل التنفيذ
-  { key: 'projects' as const, label: 'عند إدارة المشاريع', icon: '🏗️' },
+  // قرار (ع) 10-07: «مرحّل لإدارة أخرى» — جوّاه إدارة المشاريع وإدارة التقنيين.
+  { key: 'transferred' as const, label: 'مرحّل لإدارة أخرى', icon: '↗️' },
   { key: 'stuck' as const, label: 'ما وصلت للتنفيذ', icon: '🚫' },
   // ٨ب — «الزبون يستفسر وبعدين يرجع خبر»: خانة وحدها، مو جوّا «ما
   // وصلت للتنفيذ». الفرق شغل مو تسمية: هذا ننتظر خبره، وذاك نلحقه.
@@ -116,7 +117,12 @@ export default function BookingsHub() {
   // ?tab= من روابط الصفحة الرئيسية (مثلاً «تنتظر تنسيق» ← coord).
   const [params] = useSearchParams()
   const focusParam = params.get('focus') || params.get('q') || ''
-  const [tab, setTab] = useState<TabKey>(() => (TABS.some((t) => t.key === params.get('tab')) ? params.get('tab') as TabKey : 'pending'))
+  // الرابط القديم ?tab=projects يفتح «مرحّل لإدارة أخرى» على المشاريع.
+  const [tab, setTab] = useState<TabKey>(() => {
+    const p = params.get('tab') === 'projects' ? 'transferred' : params.get('tab')
+    return TABS.some((t) => t.key === p) ? p as TabKey : 'pending'
+  })
+  const [dept, setDept] = useState<'at_projects' | 'at_tech'>(() => (params.get('dept') === 'tech' ? 'at_tech' : 'at_projects'))
 
   // ═══ عدّاد على كل محطة ═══
   //
@@ -133,7 +139,7 @@ export default function BookingsHub() {
     if (!canViewAll) return
     let alive = true
     const load = () => api.getBookingStationCounts()
-      .then((c) => { if (alive) setCounts(c) })
+      .then((c) => { if (alive) setCounts({ ...c, transferred: (c.at_projects ?? 0) + (c.at_tech ?? 0) }) })
       .catch(() => {})
     const t = setTimeout(load, 0)
     // ⚠️ تحديث كل دقيقة: الحجز الجديد يوصل والإداري ما يعيد تحميل
@@ -149,7 +155,7 @@ export default function BookingsHub() {
   // مفتاح العدّاد لكل محطة (الي ما إلها عدّاد ما تعرض رقم)
   const countKey: Partial<Record<TabKey, string>> = {
     pending: 'pending', confirmed: 'confirmed', assigned: 'assigned',
-    done: 'done', partial: 'partial', projects: 'at_projects',
+    done: 'done', partial: 'partial', transferred: 'transferred',
     deleting: 'delete_pending', stuck: 'stuck',
     awaiting_customer: 'awaitingCustomer',
   }
@@ -171,10 +177,10 @@ export default function BookingsHub() {
     // متابعة طلبات الحذف شغل تنسيق/إشراف
     || (t.key === 'deleting' && canCoord)
     // متابعة المحبوس عند المشاريع شغل تنسيق
-    || (t.key === 'projects' && canCoord)
+    || (t.key === 'transferred' && canCoord)
     // ⚠️ باقي المحطات (بانتظار التثبيت · تم التثبيت · مكلّف · تم
     // الإنجاز) تحتاج صلاحية شاملة — چانت مفتوحة للكل بلا فحص.
-    || (canViewAll && !['new', 'coord', 'stuck', 'partial', 'deleting', 'projects', 'awaiting_customer', 'customers', 'archive', 'opportunities'].includes(t.key)),
+    || (canViewAll && !['new', 'coord', 'stuck', 'partial', 'deleting', 'transferred', 'awaiting_customer', 'customers', 'archive', 'opportunities'].includes(t.key)),
   )
 
   // ⚠️ التبويب الافتراضي `pending` صار ممكن ما يكون ضمن المسموح —
@@ -248,7 +254,19 @@ export default function BookingsHub() {
       {activeTab === 'assigned' && <BookingsList key="assigned" bucket="assigned" />}
       {activeTab === 'partial' && <PartialBookings />}
       {activeTab === 'done' && <BookingsList key="done" bucket="done" />}
-      {activeTab === 'projects' && <BookingsList key="projects" bucket="at_projects" />}
+      {activeTab === 'transferred' && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {([['at_projects', '🏗️ إدارة المشاريع'], ['at_tech', '🛠️ إدارة التقنيين']] as const).map(([k, label]) => (
+              <button key={k} type="button" onClick={() => setDept(k)}
+                className={`rounded-xl px-4 py-2 text-sm font-bold transition ${dept === k ? 'bg-brand-700 text-white shadow' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}>
+                {label}{counts[k] != null && <span className="ms-1.5 rounded-full bg-white/25 px-1.5 text-xs tabular-nums">{counts[k]}</span>}
+              </button>
+            ))}
+          </div>
+          <BookingsList key={dept} bucket={dept} />
+        </div>
+      )}
       {/* ⚠️ خانة وحدة بدل بندين: منو عنده صلاحية البتّ يشوف **شاشة
           القرار** (وافق/ارفض/اطلب معلومات) — الي چانت بالقائمة
           الجانبية. وغيره يشوف قائمة الحجوزات المطلوب حذفها بس.
