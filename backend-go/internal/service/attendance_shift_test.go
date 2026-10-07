@@ -37,3 +37,23 @@ func TestAutoCheckoutAt(t *testing.T) {
 		t.Fatal("آخر حجز بعد الشفت = وقت الانصراف")
 	}
 }
+
+func TestAutoCheckoutRequiresEightHours(t *testing.T) {
+	day := time.Date(2026, 10, 7, 0, 0, 0, 0, debriefLoc)
+	_, end := ShiftWindow(nil, nil, nil, day)
+	late := day.Add(10 * time.Hour)
+	if at, ok := AutoCheckoutAt(late, end, nil, end.Add(6*time.Hour)); !ok || !at.Equal(late.Add(8*time.Hour)) {
+		t.Fatalf("late check-in should end at +8h, got %v", at)
+	}
+	if _, ok := AutoCheckoutAt(late, end, nil, end.Add(4*time.Hour)); ok {
+		t.Fatal("grace must count from the 8h end")
+	}
+	early := day.Add(7 * time.Hour)
+	if at, _ := AutoCheckoutAt(early, end, nil, end.Add(4*time.Hour)); !at.Equal(end) {
+		t.Fatalf("early check-in should end at shift end, got %v", at)
+	}
+	last := day.Add(19*time.Hour + 30*time.Minute)
+	if at, _ := AutoCheckoutAt(late, end, &last, end.Add(8*time.Hour)); !at.Equal(last) {
+		t.Fatalf("booking finished later wins, got %v", at)
+	}
+}

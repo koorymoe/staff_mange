@@ -12,6 +12,18 @@ import (
 
 const autoCheckoutGrace = 3 * time.Hour
 
+// requiredWork ساعات الشغل المطلوبة باليوم — قرار (ع) 10-07: الانصراف التلقائي
+// ما ينسجّل قبل ما يكمّل الموظف ٨ ساعات من وقت حضوره.
+const requiredWork = 8 * time.Hour
+
+// RequiredEnd الأبعد بين نهاية الشفت وحضوره + ٨ ساعات.
+func RequiredEnd(checkIn, shiftEnd time.Time) time.Time {
+	if e := checkIn.Add(requiredWork); e.After(shiftEnd) {
+		return e
+	}
+	return shiftEnd
+}
+
 func parseClock(s *string) (int, int, bool) {
 	if s == nil {
 		return 0, 0, false
@@ -50,9 +62,10 @@ func ShiftWindow(shift, start, end *string, day time.Time) (time.Time, time.Time
 	return from, to
 }
 
-// AutoCheckoutAt وقت الانصراف التلقائي لجلسة: نهاية الشفت، أو آخر نشاط إذا
+// AutoCheckoutAt وقت الانصراف التلقائي لجلسة: نهاية الشفت (أو حضوره + ٨ ساعات إذا أبعد)، أو آخر نشاط إذا
 // بعدها. ok=false: بعد ما فات وقت السماح (٣ ساعات بعد الشفت).
 func AutoCheckoutAt(checkIn time.Time, shiftEnd time.Time, lastActivity *time.Time, now time.Time) (time.Time, bool) {
+	shiftEnd = RequiredEnd(checkIn, shiftEnd)
 	if now.Before(shiftEnd.Add(autoCheckoutGrace)) {
 		return time.Time{}, false
 	}

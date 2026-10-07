@@ -206,8 +206,15 @@ func (s *AttendanceService) AutoCheckout(now time.Time, notify func(employeeID, 
 		if !ok {
 			continue
 		}
+		req := RequiredEnd(r.CheckIn, to)
+		// بنص حجز بعده ما خلص: ننطيه لحد ١٢ ساعة بعد المطلوب، بعدين ينسكر.
+		if r.Busy && now.Before(req.Add(12*time.Hour)) {
+			continue
+		}
 		reason := "ما سجّل انصراف — انسكّر بنهاية الشفت (" + clockLabel(to) + ")."
-		if at.After(to) {
+		if req.After(to) && !at.After(req) {
+			reason = "ما سجّل انصراف — انسكّر بعد ما كمّل ٨ ساعات من حضوره (" + clockLabel(at) + ")."
+		} else if at.After(req) {
 			reason = "ما سجّل انصراف — انسكّر بوقت آخر حجز خلّصه (" + clockLabel(at) + ")."
 		}
 		if err := s.repo.AutoClose(r.ID, r.EmployeeID, at, reason); err != nil {

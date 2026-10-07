@@ -261,6 +261,7 @@ type OpenWithShift struct {
 	ShiftStart   *string    `db:"shiftStart"`
 	ShiftEnd     *string    `db:"shiftEnd"`
 	LastActivity *time.Time `db:"lastActivity"`
+	Busy         bool       `db:"busy"`
 }
 
 func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
@@ -268,7 +269,10 @@ func (r *AttendanceRepository) OpenWithShift() ([]OpenWithShift, error) {
 	err := r.db.Select(&rows, `
 		SELECT a.id, a."employeeId", e.name, a."checkIn", e.shift::text AS shift, e."shiftStart", e."shiftEnd",
 		       (SELECT max(b."completedAt") FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
-		        WHERE ba."employeeId" = a."employeeId" AND b."completedAt" >= a."checkIn") AS "lastActivity"
+		        WHERE ba."employeeId" = a."employeeId" AND b."completedAt" >= a."checkIn") AS "lastActivity",
+		       EXISTS (SELECT 1 FROM "BookingAssignment" ba JOIN "Booking" b ON b.id = ba."bookingId"
+		        WHERE ba."employeeId" = a."employeeId" AND b.status = 'IN_PROGRESS'
+		          AND b."updatedAt" >= a."checkIn") AS busy
 		FROM "Attendance" a JOIN "Employee" e ON e.id = a."employeeId"
 		WHERE a."checkOut" IS NULL`)
 	return rows, err
