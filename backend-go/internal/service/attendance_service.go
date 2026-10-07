@@ -153,7 +153,10 @@ type AttendanceGate struct {
 	ShiftStart time.Time `json:"shiftStart"`
 	ShiftEnd   time.Time `json:"shiftEnd"`
 	EndLabel   string    `json:"endLabel"`
+	StartLabel string    `json:"startLabel"`
 	Evening    bool      `json:"evening"`
+	// Offer برّا وقت دوامه: نسأله «تريد تسجّل حضور؟» بدل ما نجبره.
+	Offer bool `json:"offer"`
 	// AutoClosed انسكّر انصرافه تلقائياً وماتركس ينتظر جوابه «شنو صار؟».
 	AutoClosed *AutoClosedInfo `json:"autoClosed,omitempty"`
 }
@@ -181,8 +184,12 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 	}
 	exempt := g.Role == "ADMIN" || g.Role == "OWNER"
 	out := &AttendanceGate{Open: g.HasOpen, ShiftStart: from, ShiftEnd: to, EndLabel: clockLabel(to),
-		Evening: g.Shift != nil && *g.Shift == "EVENING"}
-	out.Required = !exempt && !g.OnLeave && !g.HasOpen && !g.HadToday
+		StartLabel: clockLabel(from), Evening: IsEveningShift(from)}
+	// قرار (ع) 10-07: بوقت دوامه إجباري، وبرّاه نسأله بس.
+	need := !exempt && !g.OnLeave && !g.HasOpen && !g.HadToday
+	in := InShift(from, to, now)
+	out.Required = need && in
+	out.Offer = need && !in
 	if !exempt && !g.HasOpen {
 		if a, err := s.repo.AutoClosedUnanswered(employeeID); err == nil && a != nil {
 			out.AutoClosed = &AutoClosedInfo{ID: a.ID, At: a.CheckOut, Label: clockLabel(a.CheckOut)}

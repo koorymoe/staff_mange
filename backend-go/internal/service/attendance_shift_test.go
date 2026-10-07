@@ -57,3 +57,33 @@ func TestAutoCheckoutRequiresEightHours(t *testing.T) {
 		t.Fatalf("booking finished later wins, got %v", at)
 	}
 }
+
+func TestShiftWindowEveningNoonTypo(t *testing.T) {
+	day := time.Date(2026, 10, 7, 0, 0, 0, 0, debriefLoc)
+	f, to := ShiftWindow(sp("EVENING"), sp("16:00"), sp("12:00"), day)
+	if !to.Equal(day.Add(24*time.Hour)) || !f.Equal(day.Add(16*time.Hour)) {
+		t.Fatalf("16:00–12:00 should end at midnight, got %v–%v", f, to)
+	}
+	if !IsEveningShift(f) {
+		t.Fatal("should be evening")
+	}
+	// غلط إدخال يطلّع شفت طويل يرجع للافتراضي.
+	f, to = ShiftWindow(nil, sp("04:00"), sp("23:00"), day)
+	if !f.Equal(day.Add(8*time.Hour)) || !to.Equal(day.Add(16*time.Hour)) {
+		t.Fatalf("19h shift should fall back to default, got %v–%v", f, to)
+	}
+}
+
+func TestInShift(t *testing.T) {
+	day := time.Date(2026, 10, 7, 0, 0, 0, 0, debriefLoc)
+	f, to := ShiftWindow(nil, nil, nil, day)
+	if InShift(f, to, day.Add(6*time.Hour)) {
+		t.Fatal("6am is outside an 8–16 shift")
+	}
+	if !InShift(f, to, day.Add(7*time.Hour+30*time.Minute)) || !InShift(f, to, day.Add(8*time.Hour+30*time.Minute)) {
+		t.Fatal("7:30 and 8:30 are inside")
+	}
+	if InShift(f, to, day.Add(16*time.Hour)) {
+		t.Fatal("16:00 is after the shift")
+	}
+}

@@ -6103,7 +6103,7 @@ export interface HumanRatingRow { raterName: string | null; stage: string; code:
 export interface StaffScoreDetail extends StaffScore { month: string; points: MatrixScorePoint[]; human: HumanRatingRow[] }
 
 // ═══ الحضور الإجباري (قرار (ع) 10-06) ═══
-export interface AttendanceGateState { required: boolean; open: boolean; afterShift: boolean; shiftStart: string; shiftEnd: string; endLabel: string; evening: boolean; autoClosed?: { id: string; at: string; label: string } }
+export interface AttendanceGateState { required: boolean; open: boolean; afterShift: boolean; shiftStart: string; shiftEnd: string; endLabel: string; startLabel?: string; evening: boolean; offer?: boolean; autoClosed?: { id: string; at: string; label: string } }
 export interface AttendanceClaim {
   id: string; attendanceId: string; employeeId: string; name: string; kind: 'ACK' | 'WORKED' | 'BACK'
   autoAt: string; claimedUntil: string | null; evidenceAt: string | null; evidence: string | null; note: string | null

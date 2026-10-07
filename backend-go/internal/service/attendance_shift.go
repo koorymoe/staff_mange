@@ -54,10 +54,18 @@ func ShiftWindow(shift, start, end *string, day time.Time) (time.Time, time.Time
 			eh = 24
 		}
 	}
+	// «12:00» كنهاية لشفت يبدي الظهر أو بعده = ١٢ بالليل (غلط إدخال شائع).
+	if okE && eh == 12 && em == 0 && sh >= 12 {
+		eh = 24
+	}
 	from := base.Add(time.Duration(sh)*time.Hour + time.Duration(sm)*time.Minute)
 	to := base.Add(time.Duration(eh)*time.Hour + time.Duration(em)*time.Minute)
 	if !to.After(from) {
 		to = to.Add(24 * time.Hour)
+	}
+	// شفت أطول من ١٦ ساعة = غلط إدخال: نرجع للافتراضي حتى ما يقفل على أحد.
+	if to.Sub(from) > 16*time.Hour {
+		return ShiftWindow(shift, nil, nil, day)
 	}
 	return from, to
 }
@@ -85,4 +93,14 @@ func clockLabel(t time.Time) string {
 		return "١٢ بالليل"
 	}
 	return t.Format("15:04")
+}
+
+// InShift الوقت ضمن الدوام (من ساعة قبل البداية لحد النهاية).
+func InShift(from, to, now time.Time) bool {
+	return !now.Before(from.Add(-time.Hour)) && now.Before(to)
+}
+
+// IsEveningShift الشفت يبدي من ١٢ الظهر وطالع.
+func IsEveningShift(from time.Time) bool {
+	return from.In(debriefLoc).Hour() >= 12
 }
