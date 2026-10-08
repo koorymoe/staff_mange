@@ -59,7 +59,11 @@ export const RANKING_FAMILIES: Family[] = [
   { label: 'المبيعات', icon: '🤝', roles: ['SALES'] },
   { label: 'الليدريه', icon: '👑', roles: ['TECHNICIAN'], leader: '1', division: 'ENGINEERING' },
   { label: 'الفنيون', icon: '🔧', roles: ['TECHNICIAN'], leader: '0', division: 'ENGINEERING' },
-  { label: 'الحسابات والرقابة', icon: '💰', roles: ['FINANCE', 'MONITOR', 'IT_SUPPORT', 'GPS_ADMIN'] },
+  // قرار (ع) 10-08: «المحاسب وحد والمراقب وحد — كل دور وحد».
+  { label: 'الحسابات', icon: '💰', roles: ['FINANCE'] },
+  { label: 'الرقابة والتدقيق', icon: '👁️', roles: ['MONITOR'] },
+  { label: 'تقنية المعلومات', icon: '💻', roles: ['IT_SUPPORT'] },
+  { label: 'نظام GPS', icon: '📡', roles: ['GPS_ADMIN'] },
   { label: 'المهندسون', icon: '📐', roles: ['ENGINEER', 'QUALITY_ENGINEER', 'PROJECT_MANAGER', 'DESIGNER'] },
   { label: 'الكوادر', icon: '👥', roles: ['HR_COORDINATOR'] },
 ]
@@ -125,8 +129,8 @@ export function tracksFor(permissions: string[], role?: string, isLeader?: boole
     (t) => permissions.includes(t.permission) && !FAMILY_OWNED_PERMISSIONS.includes(t.permission),
   )
   if (!family) return byWork
+  // قرار (ع) 10-08: كل دور يتقيّم وحده — مسارات «حسب الشغل» تخلط الأدوار، فما تطلع لصاحب عائلة.
   return [
     { permission: '__family__', label: family.label, icon: family.icon, strictRoles: family.roles, leader: family.leader, division: family.division },
-    ...byWork,
   ]
 }

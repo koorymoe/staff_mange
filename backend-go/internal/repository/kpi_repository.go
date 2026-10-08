@@ -286,7 +286,16 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, sco
 				WHERE x."assignedToId" = e.id AND x.status = 'DONE'
 				  AND x."doneAt" >= $2::timestamp
 				  AND ($3 = '' OR x."doneAt" < $3::timestamp)
-			), 0) AS "extraTasksDone"
+			), 0) AS "extraTasksDone",
+			(COALESCE((SELECT COUNT(*) FROM "MonitorReview" mr WHERE mr."reviewedById" = e.id
+				  AND mr."reviewedAt" >= $2::timestamptz AND ($3 = '' OR mr."reviewedAt" < $3::timestamptz)), 0)
+			 + COALESCE((SELECT COUNT(*) FROM "StaffRating" sr WHERE sr."raterId" = e.id AND sr.stage IN ('AUDIT', 'MONITOR_PERIODIC')
+				  AND sr."createdAt" >= $2::timestamptz AND ($3 = '' OR sr."createdAt" < $3::timestamptz)), 0)
+			 + COALESCE((SELECT COUNT(*) FROM "Complaint" c WHERE c."auditedById" = e.id
+				  AND c."auditedAt" >= $2::timestamp AND ($3 = '' OR c."auditedAt" < $3::timestamp)), 0)
+			)::int AS "monitorAudits",
+			COALESCE((SELECT COUNT(*) FROM "LeaderInvoice" li WHERE li."auditedById" = e.id
+				  AND li."auditedAt" >= $2::timestamptz AND ($3 = '' OR li."auditedAt" < $3::timestamptz)), 0) AS "invoiceAudits"
 		FROM "Employee" e
 		LEFT JOIN "KpiEvaluation" k
 		       ON k."employeeId" = e.id

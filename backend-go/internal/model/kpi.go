@@ -58,6 +58,11 @@ type KpiLeaderboardEntry struct {
 	// الهندسية، والمهام الإضافية الي خلّصها بالفترة.
 	CreatedBookings int `db:"createdBookings" json:"createdBookings"`
 	ExtraTasksDone  int `db:"extraTasksDone" json:"extraTasksDone"`
+	// قرار (ع) 10-08 — تقييم المراقب على تدقيقه: مراجعات محطات السلسلة
+	// (صندوق المراقب) وتقييمات التدقيق والدوري وتدقيق الشكاوى. وتدقيق
+	// الفواتير ينحسب إضافي برقم لحاله.
+	MonitorAudits int `db:"monitorAudits" json:"monitorAudits"`
+	InvoiceAudits int `db:"invoiceAudits" json:"invoiceAudits"`
 
 	// فروقات عن الفترة السابقة — تنحسب بالخدمة مو بقاعدة البيانات.
 	// ⚠️ RankDelta موجب = تقدّم (٣ → ١ يرجّع +2)، لأن نزول رقم المركز

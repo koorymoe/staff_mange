@@ -39,8 +39,9 @@ const StaffScorePage = lazy(() => import('./StaffScorePage'))
 const AttendanceClaims = lazy(() => import('../components/AttendanceClaims'))
 const PeriodicRatings = lazy(() => import('../components/StaffRating').then((m) => ({ default: m.PeriodicRatings })))
 const WorkplaceIssuesPage = lazy(() => import('./WorkplaceIssuesPage'))
+const ProjectPaymentsPage = lazy(() => import('./ProjectPaymentsPage'))
 
-type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board'
+type SectionId = 'eyes' | 'ratings' | 'scores' | 'peer' | 'wissues' | 'inbox' | 'issues' | 'crew' | 'quality' | 'invoices' | 'gps' | 'inventory' | 'missions' | 'board' | 'projects'
 
 interface Section {
   id: SectionId
@@ -67,6 +68,8 @@ const SECTIONS: Section[] = [
   // ⚠️ الجي بي اس **نتائج بس**: ست شاشات تشغيلية انخفت عن المراقب
   // بالقائمة، وصارت تبويباً واحداً هنا. وما انزادت ولا محطة بصندوقه —
   // «ما تخلي وحدة هيج، ماريد أزيد ازدحامها».
+  // قرار (ع) 10-08: «فلوس المشاريع» صارت تدقيق مشاريع بالمكتب — من البداية لحد ما المشرف يستلم الفلوس ويگول تم.
+  { id: 'projects', label: 'تدقيق المشاريع', icon: '🏗️', todo: 'كل مشروع من البداية لحد ما المشرف يستلم الفلوس ويگول تم' },
   { id: 'gps', label: 'الجي بي اس', icon: '📡', todo: 'اشتراكات قربت تنتهي ومشاكل مفتوحة — عرض بلا تنفيذ' },
   // ⚠️ **متابعة** الجرد، مو شاشة `/inventory` مال أبو الكميات (الي
   // يضيف ويحذف أدوات ويوافق على الطلبات). المراقب يشوف منو جرد ومنو
@@ -211,6 +214,7 @@ export default function MonitorDeskPage() {
         {active === 'inventory' && canInventory && <MonitorInventoryPage embedded />}
         {cur?.id === 'missions' && <MissionsPage />}
         {cur?.id === 'board' && <MonitorDashboard />}
+        {cur?.id === 'projects' && <ProjectPaymentsPage />}
       </Suspense>
     </div>
   )

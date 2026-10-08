@@ -152,6 +152,8 @@ export const navItems: NavItem[] = [
     hideFromFieldStaff: true, // تقرير ١ (D4): بنود TECH_ROLES هنا تطلع لمسؤول الخدمة بس — التقني ياخذ «العمل» مالته (/tech-work-group).
     to: '/admin-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
     children: [
+      // قرار (ع) 10-08: مكتب المراقب جوّا «العمل» — أول بند.
+      { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       {
         // بدون قيد أدوار هنا أيضاً — نفس مبدأ مجموعة "الإدارة" الأعلى: قيد على المجموعة
         // الوسيطة يمنع ظهورها بالكامل حتى لو ابن معيّن مسموح لدور/صلاحية موظف غير
@@ -275,7 +277,7 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-05: الفضفضة والمشاكل الوظيفية — نفس حارس requireMonitor.
       // قرار (ع) 10-05: ماتركس ٦٠٪ + البشر ٤٠٪ — نفس حارس GET /api/staff-score (requireMonitor).
       // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
-      { to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
+      { monitorMenuHide: true, to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
@@ -336,7 +338,7 @@ export const navItems: NavItem[] = [
           // ومسارتها القديمة باقية شغّالة فما ينكسر رابط محفوظ.
           { to: '/gps', label: '📡 نظام GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
           // للتقني ومسؤول الخدمة: بند واحد «جي بي اس» — الطلبات صارت تبويب جوّاه.
-          { to: '/gps', label: '📡 جي بي اس', icon: <></>, permission: 'gps_system', roles: TECH_ROLES },
+          { to: '/gps', label: '📡 جي بي اس', icon: <></>, permission: 'gps_system', roles: TECH_ROLES, hideForRoles: ['MONITOR'] }, // المراقب: الجي بي اس تبويب بمكتبه
           { to: '/gps/requests-hub', label: '📥 طلبات GPS', icon: <></>, permission: 'gps_system', hideForRoles: ['MONITOR', ...TECH_ROLES] },
           // فواتير وتقارير الخدمة جوّا «إدارة الخدمات» للتقني ومسؤول الخدمة (مو طايفة برّا).
           { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
@@ -440,7 +442,6 @@ export const navItems: NavItem[] = [
   // الشاشات تفرّج بس.
   // ⚠️ المكتب **أول** بند: هو الباب الي نريد المراقب يدخل منه، وحطّه
   // بالآخر يخلّيه يفتح الأبواب القديمة بالعادة ولا يشوفه أبداً.
-  { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
   // ⚠️ «صندوق المراقب» انشال من القائمة — هو **نفس الشاشة** الي تنعرض
   // كأول تبويب بمكتب المراقب (بخاصية embedded). بندان يودّيان لنفس
   // الشي = تكرار صرف. والمسار `/monitor-inbox` يبقى شغّالاً للروابط

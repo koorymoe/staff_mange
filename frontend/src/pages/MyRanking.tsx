@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { type KpiLeaderboardEntry } from '../api'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession } from '../session'
 import { roleLabel as arabicRole } from '../roleLabels'
@@ -22,6 +23,37 @@ const BOOKINGS_PER_RANK = 10
 // بأغلب الواجهات».
 //
 // نفس نمط «مهامي» و«الجرد»: بند واحد بالقائمة، والخيارات من فوگ.
+type BoardCol = { label: string; icon: string; get: (e: KpiLeaderboardEntry) => number }
+/** قرار (ع) 10-08: أدوار تتقيّم على شغلها هي مو على نقاط KPI — كل دور وحده. */
+const CUSTOM_BOARDS: Record<string, { cols: BoardCol[]; explain: [string, string][]; sortNote: string }> = {
+  SALES: {
+    cols: [
+      { label: 'الحجوزات المرحّلة', icon: '🗂️', get: (e) => e.createdBookings ?? 0 },
+      { label: 'المهام الإضافية', icon: '📋', get: (e) => e.extraTasksDone ?? 0 },
+    ],
+    explain: [
+      ['🗂️ الحجوزات المرحّلة', 'الحجوزات الي سجّلتها ورحّلتها للشعبة الهندسية بالفترة (الملغاة ما تنحسب).'],
+      ['🕐 الالتزام بالدوام', 'من بصمات حضورك وانصرافك — أيام الحضور من أيام العمل.'],
+      ['📋 المهام الإضافية', 'المهام الي توجّهت إلك من مسؤولك وخلّصتها.'],
+    ],
+    sortNote: 'الترتيب على الحجوزات المرحّلة، وبعدها المهام، وعند التساوي الالتزام بالدوام.',
+  },
+  MONITOR: {
+    cols: [
+      { label: 'التدقيقات', icon: '🔎', get: (e) => e.monitorAudits ?? 0 },
+      { label: 'تدقيق الفواتير (إضافي)', icon: '🧾', get: (e) => e.invoiceAudits ?? 0 },
+      { label: 'المهام الإضافية', icon: '📋', get: (e) => e.extraTasksDone ?? 0 },
+    ],
+    explain: [
+      ['🔎 التدقيقات', 'شغلك اليومي: تراجع محطات الحجوزات بصندوق المراقب (توجيه الكوادر، تقييم الإداري لليدرية، اتصال الجودة، اعتماد الفواتير، شغل التقني)، وتقييمات التدقيق والدوري، وتدقيق الشكاوى.'],
+      ['🧾 تدقيق الفواتير', 'إضافي — الفواتير الي دقّقتها بنفسك. ما ينقارن بالمحاسب، كل دور لحاله.'],
+      ['🕐 الالتزام بالدوام', 'من بصمات حضورك وانصرافك.'],
+      ['📋 المهام الإضافية', 'المهام الي توجّهت إلك وخلّصتها.'],
+    ],
+    sortNote: 'الترتيب على التدقيقات، وبعدها تدقيق الفواتير والمهام، وعند التساوي الالتزام بالدوام.',
+  },
+}
+
 export default function MyRanking() {
   const { employee, permissions } = useSession()
   // «تقييم الموظفين» ما يطلع إلا لمن يقيّم فعلاً — الليدر أو من عنده
@@ -119,11 +151,15 @@ export default function MyRanking() {
 
   // قرار (ع) 10-08: المبيعات يتقيّمون على الحجوزات الي رحّلوها للشعبة الهندسية،
   // والالتزام بالحضور، والمهام الإضافية — بس. بلا نقاط KPI ولا حجوزات منجزة.
-  const isSales = activeTrack?.strictRoles?.length === 1 && activeTrack.strictRoles[0] === 'SALES'
+  // وكل دور يتقيّم على شغله هو: المراقب على تدقيقه (قرار 10-08).
+  const custom = activeTrack?.strictRoles?.length === 1 ? CUSTOM_BOARDS[activeTrack.strictRoles[0]] : undefined
+  const isSales = !!custom
   const rawList = board ? (period === 'weekly' ? board.weekly : board.monthly) : []
-  const list = isSales
-    ? [...rawList].sort((a, b) => (b.createdBookings ?? 0) - (a.createdBookings ?? 0)
-      || b.attendedDays - a.attendedDays || (b.extraTasksDone ?? 0) - (a.extraTasksDone ?? 0))
+  const list = custom
+    ? [...rawList].sort((a, b) => {
+      for (const c of custom.cols) { const d = c.get(b) - c.get(a); if (d) return d }
+      return b.attendedDays - a.attendedDays
+    })
     : rawList
   const myIndex = list.findIndex((e) => e.employeeId === employee?.id)
   const myEntry = myIndex >= 0 ? list[myIndex] : null
@@ -344,8 +380,9 @@ export default function MyRanking() {
           note={myRank === 1 ? '🎉 حافظ على مركزك!' : myRank ? `من ${list.length}` : undefined}
         />
         {isSales ? (<>
-        <RankCard icon="🗂️" label="الحجوزات المرحّلة" value={myEntry ? String(myEntry.createdBookings ?? 0) : '—'} tone="sky" />
-        <RankCard icon="📋" label="المهام الإضافية المنجزة" value={myEntry ? String(myEntry.extraTasksDone ?? 0) : '—'} tone="amber" />
+        {custom!.cols.slice(0, 2).map((c, i) => (
+          <RankCard key={c.label} icon={c.icon} label={c.label} value={myEntry ? String(c.get(myEntry)) : '—'} tone={i === 0 ? 'sky' : 'amber'} />
+        ))}
         <RankCard icon="🕐" label="أيام الحضور" value={myEntry ? String(myEntry.attendedDays) : '—'} tone="violet" />
         </>) : (<>
         <RankCard
@@ -412,7 +449,7 @@ export default function MyRanking() {
                   </p>
                   <div className="shrink-0 text-left sm:text-center">
                     <p className={`text-2xl font-black leading-none ${place === 1 ? 'text-amber-600' : 'text-slate-600'} sm:mt-1`}>
-                      {isSales ? (e.createdBookings ?? 0) : e.points}
+                      {custom ? custom.cols[0].get(e) : e.points}
                     </p>
                     {!isSales && e.pointsDelta !== 0 && (
                       <p className={`text-[10px] font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -477,8 +514,7 @@ export default function MyRanking() {
                   <th className="px-4 py-2.5 font-bold">#</th>
                   <th className="px-4 py-2.5 font-bold">الموظف</th>
                   {isSales ? (<>
-                    <th className="px-4 py-2.5 font-bold">الحجوزات المرحّلة</th>
-                    <th className="px-4 py-2.5 font-bold">المهام الإضافية</th>
+                    {custom!.cols.map((c) => <th key={c.label} className="px-4 py-2.5 font-bold">{c.label}</th>)}
                     <th className="px-4 py-2.5 font-bold">الالتزام</th>
                   </>) : (<>
                     <th className="px-4 py-2.5 font-bold">نقاط التقييم</th>
@@ -515,8 +551,7 @@ export default function MyRanking() {
                         {e.employeeName}{isMe && <span className="mr-1 text-[10px] text-sky-600">(أنت)</span>}
                       </td>
                       {isSales ? (<>
-                        <td className="px-4 py-3 font-black text-slate-800">{e.createdBookings ?? 0}</td>
-                        <td className="px-4 py-3 text-slate-600">{e.extraTasksDone ?? 0}</td>
+                        {custom!.cols.map((c, ci) => <td key={c.label} className={`px-4 py-3 ${ci === 0 ? 'font-black text-slate-800' : 'text-slate-600'}`}>{c.get(e)}</td>)}
                       </>) : (<>
                         <td className={`px-4 py-3 font-black ${e.points < 0 ? 'text-red-600' : 'text-slate-800'}`}>{e.points}</td>
                         <td className="px-4 py-3 text-slate-600">{e.completedBookings}</td>
@@ -557,19 +592,13 @@ export default function MyRanking() {
                 ما إلها تأثير، ويفقد ثقته بالشاشة أول ما يكتشف. */}
             {isSales ? (
             <div className="space-y-2.5 text-[11px]">
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                <p className="font-bold text-slate-700">🗂️ الحجوزات المرحّلة</p>
-                <p className="mt-0.5 leading-relaxed text-slate-500">الحجوزات الي سجّلتها ورحّلتها للشعبة الهندسية بالفترة (الملغاة ما تنحسب).</p>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                <p className="font-bold text-slate-700">🕐 الالتزام بالدوام</p>
-                <p className="mt-0.5 leading-relaxed text-slate-500">من بصمات حضورك وانصرافك — أيام الحضور من أيام العمل.</p>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                <p className="font-bold text-slate-700">📋 المهام الإضافية</p>
-                <p className="mt-0.5 leading-relaxed text-slate-500">المهام الي توجّهت إلك من مسؤولك وخلّصتها.</p>
-              </div>
-              <p className="rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-800">الترتيب على <b>الحجوزات المرحّلة</b>، وعند التساوي الالتزام بالدوام ثم المهام.</p>
+              {custom!.explain.map(([t, d]) => (
+                <div key={t} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                  <p className="font-bold text-slate-700">{t}</p>
+                  <p className="mt-0.5 leading-relaxed text-slate-500">{d}</p>
+                </div>
+              ))}
+              <p className="rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-800">{custom!.sortNote}</p>
             </div>
             ) : (<>
             <div className="space-y-2.5 text-[11px]">
@@ -612,8 +641,9 @@ export default function MyRanking() {
                   ok={myEntry.attendedDays > 0}
                 />
                 {isSales ? (<>
-                <Achievement icon="🗂️" label="حجوزات مرحّلة" value={`${myEntry.createdBookings ?? 0}`} ok={(myEntry.createdBookings ?? 0) > 0} />
-                <Achievement icon="📋" label="مهام إضافية" value={`${myEntry.extraTasksDone ?? 0}`} ok={(myEntry.extraTasksDone ?? 0) > 0} />
+                {custom!.cols.slice(0, 2).map((c) => (
+                  <Achievement key={c.label} icon={c.icon} label={c.label} value={`${c.get(myEntry)}`} ok={c.get(myEntry) > 0} />
+                ))}
                 </>) : (<>
                 <Achievement
                   icon="⚡" label="معدل الإنجاز"

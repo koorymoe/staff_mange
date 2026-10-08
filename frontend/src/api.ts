@@ -2799,6 +2799,10 @@ export interface KpiLeaderboardEntry {
   createdBookings?: number
   /** المهام الإضافية الي خلّصها بالفترة. */
   extraTasksDone?: number
+  /** المراقب: التدقيقات (صندوق المراقب + تقييمات التدقيق + الشكاوى). */
+  monitorAudits?: number
+  /** المراقب: تدقيق الفواتير (إضافي). */
+  invoiceAudits?: number
   /** فرق النقاط عن الفترة السابقة. */
   pointsDelta: number
   /** فرق الترتيب — موجب = تقدّم (٣ → ١ يرجّع +2). */
