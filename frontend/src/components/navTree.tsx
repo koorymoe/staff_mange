@@ -356,11 +356,12 @@ export const navItems: NavItem[] = [
         ],
       },
       // قرار (ع) 10-07: للتقني ومسؤول الخدمة «المشاريع» بدل «إدارة المشاريع».
+      // قرار (ع) 10-08: «عروض الأسعار» بدل «إنشاء عرض سعر» حتى يشوفون عروضهم القديمة — الإنشاء زر داخلها.
       {
         to: '/tech-projects', label: '🏗️ المشاريع', icon: <></>, roles: TECH_ROLES,
         children: [
           { to: '/projects?add=1', label: '➕ إضافة مشروع جديد', icon: <></>, anyPermission: ['project_management', 'project_create_only'], roles: TECH_ROLES },
-          { to: '/quotations/new', label: '📄 إنشاء عرض سعر جديد', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'], roles: TECH_ROLES },
+          { to: '/quotations', label: '📄 عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'], roles: TECH_ROLES },
           { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'], roles: TECH_ROLES },
           { to: '/my-projects', label: '📥 المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', roles: TECH_ROLES },
         ],
