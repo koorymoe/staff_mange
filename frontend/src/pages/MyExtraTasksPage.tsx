@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api, EXTRA_TASK_STATUS, type ExtraTask } from '../api'
+import { useSession } from '../session'
 
 // ═══ مهامي الإضافية — لكل موظف ═══
 //
@@ -58,6 +60,11 @@ function whenLabel(iso: string | undefined, now: Date): string {
 }
 
 export default function MyExtraTasksPage() {
+  const { employee, permissions } = useSession()
+  const navigate = useNavigate()
+  // «إضافة مهمة» لمن يوجّه مهام لغيره بس — الموظف ما يضيف لنفسه.
+  const canAssign = employee?.role === 'ADMIN' || permissions.includes('extra_tasks_assign')
+  const [openRow, setOpenRow] = useState<string | null>(null)
   const [tasks, setTasks] = useState<ExtraTask[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
@@ -132,6 +139,12 @@ export default function MyExtraTasksPage() {
       inProgress: tasks.filter((t) => t.status === 'IN_PROGRESS').length,
       waiting: tasks.filter((t) => t.status === 'NEW').length,
       doneWeek: tasks.filter((t) => t.status === 'DONE' && t.doneAt && new Date(t.doneAt) >= weekAgo).length,
+      active: tasks.filter((t) => t.status === 'NEW' || t.status === 'IN_PROGRESS').length,
+      weekTotal: tasks.filter((t) => t.status !== 'CANCELLED' && new Date(t.createdAt) >= weekAgo).length,
+      total: tasks.length,
+      done: tasks.filter((t) => t.status === 'DONE').length,
+      overdue: tasks.filter((t) => t.overdue).length,
+      urgent: tasks.filter((t) => t.priority === 'URGENT' && (t.status === 'NEW' || t.status === 'IN_PROGRESS')).length,
     }
   }, [tasks, now])
 
@@ -183,22 +196,28 @@ export default function MyExtraTasksPage() {
           <h1 className="text-xl font-black text-[#0f2040] sm:text-2xl">مهامي الإضافية</h1>
           <p className="text-[11px] text-slate-500 sm:text-xs">المهام الموجّهة إليك من المدير خارج الحجوزات العادية</p>
         </div>
+        {canAssign && (
+          <button onClick={() => navigate('/extra-tasks')}
+            className="mr-auto shrink-0 rounded-xl bg-[#2c5aad] px-4 py-2.5 text-sm font-bold text-white shadow-md hover:bg-[#24488c]">
+            ＋ إضافة مهمة
+          </button>
+        )}
       </div>
 
       {/* ═══ الأرقام الأربعة ═══ */}
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3 lg:grid-cols-4">
-        <StatCard label="مهام اليوم" hint="مهام مستحقة اليوم" value={stats.today} icon="📅" tone="sky" />
-        <StatCard label="قيد التنفيذ" hint="مهام" value={stats.inProgress} icon="🔄" tone="violet" />
-        <StatCard label="بانتظار البدء" hint="مهام" value={stats.waiting} icon="⏱" tone="amber" />
-        <StatCard label="مكتملة هذا الأسبوع" hint="مهام منجزة" value={stats.doneWeek} icon="✅" tone="emerald" />
+        <StatCard label="مهام اليوم" value={stats.today} of={stats.active} icon="📅" tone="sky" />
+        <StatCard label="قيد التنفيذ" value={stats.inProgress} of={stats.active} icon="🔄" tone="violet" />
+        <StatCard label="بانتظار البدء" value={stats.waiting} of={stats.active} icon="⏱" tone="amber" />
+        <StatCard label="مكتملة هذا الأسبوع" value={stats.doneWeek} of={stats.weekTotal} icon="✅" tone="emerald" />
       </div>
 
       {/* ═══ التصفية ═══
           تشتغل **مباشرة** بلا زر «طبّق»: الموظف يغيّر الحالة ويشوف
           النتيجة، مو يغيّر ويستنى ويتساءل ليش ما تغيّر شي. */}
       <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_2px_12px_rgba(15,32,64,0.05)]">
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 lg:grid-cols-5">
-          <div className="lg:col-span-2">
+        <div className="grid grid-cols-2 items-end gap-2.5 lg:grid-cols-6">
+          <div className="col-span-2">
             <label className="mb-1 block text-[10px] font-bold text-slate-500">بحث</label>
             <input
               value={q}
@@ -242,17 +261,13 @@ export default function MyExtraTasksPage() {
               <option value="CANCELLED">ملغاة</option>
             </select>
           </div>
+          <button onClick={clearFilters}
+            className="rounded-lg border border-slate-300 px-3 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50">
+            ⟳ إعادة تعيين
+          </button>
         </div>
         {filtersOn && (
-          <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-[11px] text-slate-500">التصفية شغّالة — {filtered.length} من {tasks.length} مهمة</p>
-            <button
-              onClick={clearFilters}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-[11px] font-bold text-slate-600 hover:bg-slate-50"
-            >
-              ✖ مسح التصفية
-            </button>
-          </div>
+          <p className="mt-2.5 text-[11px] text-slate-500">التصفية شغّالة — {filtered.length} من {tasks.length} مهمة</p>
         )}
       </div>
 
@@ -278,7 +293,60 @@ export default function MyExtraTasksPage() {
             </p>
           )}
 
-          <div className="divide-y divide-slate-100">
+          {/* الحاسبة: جدول مثل التصميم — «⋯» يفتح التفاصيل والإجراءات تحت السطر */}
+          {shown.length > 0 && (
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full text-right text-sm">
+                <thead className="bg-slate-50 text-xs text-slate-500">
+                  <tr>
+                    <th className="px-3 py-2.5 font-semibold">#</th>
+                    <th className="px-3 py-2.5 font-semibold">عنوان المهمة</th>
+                    <th className="px-3 py-2.5 font-semibold">التاريخ</th>
+                    <th className="px-3 py-2.5 font-semibold">الأولوية</th>
+                    <th className="px-3 py-2.5 font-semibold">الحالة</th>
+                    <th className="px-3 py-2.5 font-semibold">مكلّف من</th>
+                    <th className="px-3 py-2.5 font-semibold">إجراءات</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {shown.map((t, i) => (
+                    <Fragment key={t.id}>
+                      <tr className={`hover:bg-slate-50 ${t.overdue ? 'bg-red-50/40' : ''}`}>
+                        <td className="px-3 py-3 text-xs text-slate-400">{(safePage - 1) * perPage + i + 1}</td>
+                        <td className="px-3 py-3 font-bold text-[#0f2040]">
+                          {t.title}
+                          {t.overdue && <span className="mr-1.5 rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-bold text-white">فات موعدها</span>}
+                        </td>
+                        <td className="whitespace-nowrap px-3 py-3 text-xs text-slate-500">📅 {t.dueAt ? new Date(t.dueAt).toLocaleDateString('en-GB') : '—'}</td>
+                        <td className="px-3 py-3">
+                          <span className={`whitespace-nowrap rounded-lg border px-2 py-0.5 text-[11px] font-bold ${t.priority === 'URGENT' ? 'border-red-200 bg-red-50 text-red-700' : 'border-sky-200 bg-sky-50 text-sky-700'}`}>
+                            {t.priority === 'URGENT' ? '⚠ عالية' : '○ عادية'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={`whitespace-nowrap rounded-lg border px-2 py-0.5 text-[11px] font-bold ${STATUS_STYLE[t.status]}`}>{STATUS_LABEL[t.status]}</span>
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-600">{t.assignedByName ?? '—'}</td>
+                        <td className="px-3 py-3">
+                          <button onClick={() => setOpenRow(openRow === t.id ? null : t.id)} aria-label="التفاصيل"
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-white">⋯</button>
+                        </td>
+                      </tr>
+                      {openRow === t.id && (
+                        <tr><td colSpan={7} className="bg-slate-50/60 px-3">
+                          <TaskRow task={t} now={now} busy={busy === t.id} defaultOpen
+                            onStart={() => start(t)} onComplete={() => { setDoneFor(t); setDoneNote(''); setErr(null) }} />
+                        </td></tr>
+                      )}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* الموبايل: البطاقات */}
+          <div className="divide-y divide-slate-100 md:hidden">
             {shown.map((t) => (
               <TaskRow
                 key={t.id}
@@ -373,13 +441,33 @@ export default function MyExtraTasksPage() {
           </div>
 
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_12px_rgba(15,32,64,0.05)]">
-            <h3 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-[#0f2040]">
-              ✏️ ملاحظات سريعة
+            <h3 className="mb-2.5 flex items-center gap-1.5 text-sm font-bold text-[#0f2040]">
+              💡 ملاحظات هامة
             </h3>
-            <p className="text-[11px] leading-relaxed text-slate-500">
-              احرص على تحديث حالة المهام باستمرار وإضافة الملاحظات عند الحاجة لتسهيل المتابعة.
-              الي تكتبه بخانة «شنو سويت» يوصل المدير مباشرة — فما يحتاج يتصل بيك يسأل.
-            </p>
+            <ul className="space-y-2 text-[11px] leading-relaxed text-slate-500">
+              <li className="flex gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-sky-500" />حدّث حالة المهمة أول ما تبدي بيها وأول ما تخلصها.</li>
+              <li className="flex gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />الي تكتبه بخانة «شنو سويت» يوصل المدير مباشرة — فما يحتاج يتصل بيك يسأل.</li>
+              <li className="flex gap-2"><span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-500" />استعمل البحث والتصفية حتى توصل لمهامك بسرعة.</li>
+            </ul>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-[0_2px_12px_rgba(15,32,64,0.05)]">
+            <h3 className="mb-2.5 flex items-center gap-1.5 text-sm font-bold text-[#0f2040]">📊 إحصائيات سريعة</h3>
+            <div className="space-y-2 text-xs">
+              {([
+                ['📋', 'إجمالي المهام', stats.total, 'text-slate-800'],
+                ['✅', 'المهام المكتملة', stats.done, 'text-emerald-700'],
+                ['🔄', 'قيد التنفيذ', stats.inProgress, 'text-sky-700'],
+                ['⏱', 'بانتظار البدء', stats.waiting, 'text-amber-700'],
+                ['🔺', 'فات موعدها', stats.overdue, 'text-red-700'],
+                ['⚠', 'مهام عالية الأولوية', stats.urgent, 'text-red-700'],
+              ] as const).map(([ic, l, v, c]) => (
+                <div key={l} className="flex items-center justify-between">
+                  <span className="text-slate-600">{ic} {l}</span>
+                  <b className={`tabular-nums ${c}`}>{v}</b>
+                </div>
+              ))}
+            </div>
           </div>
         </aside>
       </div>
@@ -429,20 +517,27 @@ const TONES: Record<string, string> = {
   emerald: 'bg-emerald-50 text-emerald-600',
 }
 
-function StatCard({ label, hint, value, icon, tone }: {
-  label: string; hint: string; value: number; icon: string; tone: string
+const BAR: Record<string, string> = { sky: 'bg-sky-500', violet: 'bg-violet-500', amber: 'bg-amber-500', emerald: 'bg-emerald-500' }
+
+function StatCard({ label, value, of, icon, tone }: {
+  label: string; value: number; of: number; icon: string; tone: string
 }) {
+  const pct = of > 0 ? Math.min(100, Math.round((value / of) * 100)) : 0
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-[0_2px_12px_rgba(15,32,64,0.05)] sm:p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className="truncate text-[10px] font-bold text-slate-500 sm:text-[11px]">{label}</p>
           <p className="mt-1 text-2xl font-black text-[#0f2040] sm:text-3xl">{value}</p>
-          <p className="text-[10px] text-slate-400">{hint}</p>
+          <p className="text-[10px] text-slate-400">من {of} مهمة</p>
         </div>
         <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-sm sm:h-10 sm:w-10 sm:text-base ${TONES[tone]}`}>
           {icon}
         </span>
+      </div>
+      <div className="mt-2 flex items-center gap-2">
+        <div className="h-1.5 flex-1 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${BAR[tone]}`} style={{ width: `${pct}%` }} /></div>
+        <span className="text-[10px] font-bold text-slate-500 tabular-nums">{pct}%</span>
       </div>
     </div>
   )
@@ -452,10 +547,10 @@ function StatCard({ label, hint, value, icon, tone }: {
    ⚠️ مكوّن **برّا** المكوّن الأب مو جوّاه: التعريف جوّا الأب يخلي React
    يحسبه نوع جديد بكل رندر، فيهدم الصف ويعيد بناءه — والنتيجة إن أي
    خانة كتابة جوّاه تفقد التركيز بعد أول حرف. */
-function TaskRow({ task: t, now, busy, onStart, onComplete }: {
-  task: ExtraTask; now: Date; busy: boolean; onStart: () => void; onComplete: () => void
+function TaskRow({ task: t, now, busy, onStart, onComplete, defaultOpen = false }: {
+  task: ExtraTask; now: Date; busy: boolean; onStart: () => void; onComplete: () => void; defaultOpen?: boolean
 }) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(defaultOpen)
   const actionable = t.status === 'NEW' || t.status === 'IN_PROGRESS'
 
   return (
