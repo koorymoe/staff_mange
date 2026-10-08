@@ -1,8 +1,10 @@
+# syntax=docker/dockerfile:1
 # مرحلة البناء
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-RUN npm ci
+# كاش npm دائم (10-08): ما ينزّل الحزم من النت كل مرة.
+RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline --no-audit --no-fund
 COPY . .
 # بالسيرفر الفعلي الموقع يكون على جذر الدومين مباشرة، والباك إند وراء نفس
 # الدومين على /api (يتعامل معه nginx كـ reverse proxy)
