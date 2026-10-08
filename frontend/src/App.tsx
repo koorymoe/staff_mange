@@ -68,6 +68,7 @@ const MediaPage = lazy(() => import('./pages/MediaPage'))
 const DisciplineRecordPage = lazy(() => import('./pages/DisciplineRecordPage'))
 const PeerVoicePage = lazy(() => import('./pages/PeerVoicePage'))
 const StaffScorePage = lazy(() => import('./pages/StaffScorePage'))
+const EmployeeIndicatorsPage = lazy(() => import('./pages/EmployeeIndicatorsPage'))
 const TechSuppliersPage = lazy(() => import('./pages/TechSuppliersPage'))
 const ProjectPaymentsPage = lazy(() => import('./pages/ProjectPaymentsPage'))
 const WorkplaceIssuesPage = lazy(() => import('./pages/WorkplaceIssuesPage'))
@@ -201,6 +202,7 @@ function App() {
           <Route path="weekly-report" element={<RequireAdmin><WeeklyReportPage /></RequireAdmin>} />
           <Route path="project-payments" element={<RequirePermission permission="finance" anyOf={['finance_audit', 'project_management', 'monitoring']} roles={['FINANCE', 'PROJECT_MANAGER', 'MONITOR']}><ProjectPaymentsPage /></RequirePermission>} />
           <Route path="tech-suppliers" element={<TechSuppliersPage />} />
+          <Route path="employee-indicators" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><EmployeeIndicatorsPage /></RequirePermission>} />
           <Route path="staff-score" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><StaffScorePage /></RequirePermission>} />
           <Route path="peer-voice" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><PeerVoicePage /></RequirePermission>} />
           <Route path="workplace-issues" element={<RequirePermission permission="monitoring" anyOf={['auditing']} roles={['MONITOR']}><WorkplaceIssuesPage /></RequirePermission>} />
@@ -251,7 +253,7 @@ function App() {
               رابطها بيده — نفس القيد المطبّق بالسيرفر. */}
           <Route path="inventory" element={<RequirePermission permission="inventory"><InventoryPage /></RequirePermission>} />
           <Route path="it-assets" element={<RequirePermission permission="it_assets"><ItAssetsPage /></RequirePermission>} />
-          <Route path="media" element={<RequirePermission permission="media" anyOf={['project_management']} roles={['MEDIA']}><MediaPage /></RequirePermission>} />
+          <Route path="media" element={<RequirePermission permission="media" anyOf={['project_management']} roles={['MEDIA', 'PUBLIC_RELATIONS']}><MediaPage /></RequirePermission>} />
           <Route path="it-stats" element={<RequirePermission permission="it_stats" anyOf={['it_assets']}><ItStatsPage /></RequirePermission>} />
           <Route path="my-inventory" element={<MyInventory />} />
           <Route path="permissions" element={<RequireAdmin><PermissionsPage /></RequireAdmin>} />

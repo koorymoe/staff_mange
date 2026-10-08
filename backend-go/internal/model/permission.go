@@ -220,6 +220,7 @@ var RoleDefaultPermissions = map[string][]string{
 	"IT_SUPPORT": {"unit_it", "it_assets", "it_stats"},
 	// الإعلام: يشوف المشاريع المحوّلة إلهم بتفاصيلها حتى يصوّرون — وبس.
 	"MEDIA": {"media"},
+	"PUBLIC_RELATIONS": {"media", "unit_pr"},
 }
 
 // SecondaryRoleForbidden الأدوار الي **ما تنمنح أبداً** كدور ثانوي.

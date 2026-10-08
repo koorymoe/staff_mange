@@ -302,6 +302,10 @@ type StaffScore struct {
 	NoHuman     bool              `json:"noHuman"`
 	TopLosses   []RuleLoss        `json:"topLosses"`
 	BySource    map[string][2]int `json:"bySource"` // مكسوب/أقصى لكل مصدر
+	// معلومات تنعرض بـ«مؤشرات أداء الموظف» وما تدخل بالنسبة (قرار (ع) 10-08).
+	Skills     int  `json:"skills"`
+	HasLicense bool `json:"hasLicense"`
+	IsLeader   bool `json:"isLeader"`
 }
 
 type StaffScoreBoard struct {
@@ -493,6 +497,7 @@ func BuildScores(people []repository.Scorable, pts []repository.MatrixScoreRow, 
 		s := StaffScore{ID: p.ID, Name: p.Name, Role: p.Role, Earned: a.earned, Max: a.max, HumanCount: a.hN,
 			TopLosses: []RuleLoss{}, BySource: a.src, Group: g, GroupLabel: ScoreGroupLabels[g]}
 		s.RelParts, s.Reliability = BuildReliability(a.rules, rel[p.ID])
+		s.Skills, s.HasLicense, s.IsLeader = rel[p.ID].Skills, rel[p.ID].HasLicense, p.IsLeader
 		if a.max > 0 {
 			v := float64(a.earned) * 100 / float64(a.max)
 			s.MatrixPct = &v

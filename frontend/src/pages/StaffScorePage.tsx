@@ -15,7 +15,7 @@ const SRC: Record<string, string> = { BOOKING: 'الحجوزات', DAY: 'الح�
 const STAGE: Record<string, string> = { LEADER_CREW: 'الليدر', COORD_LEADER: 'الإداري', AUDIT: 'المراقب', QUALITY_CALL: 'الجودة', MONITOR_PERIODIC: 'المراقب (دوري)' }
 const ROLE_AR: Record<string, string> = {
   FINANCE: 'محاسب', DESIGNER: 'مصمم', IT_SUPPORT: 'آيتي', TECHNICIAN: 'فني', ENGINEER: 'مهندس', HR_COORDINATOR: 'إداري',
-  SALES: 'مبيعات', MEDIA: 'إعلام', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع',
+  SALES: 'مبيعات', MEDIA: 'إعلام', PUBLIC_RELATIONS: 'علاقات عامة', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع',
 }
 
 const GROUP_ORDER = ['LEADERS', 'TECHS', 'COORDINATORS', 'SALES', 'TECHNICAL', 'FINANCE', 'MONITORS', 'OTHERS']

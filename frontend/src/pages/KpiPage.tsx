@@ -5,6 +5,7 @@ import KpiBreakdownChart from '../components/KpiBreakdownChart'
 import Pager from '../components/Pager'
 import SearchBar from '../components/SearchBar'
 import { matches } from '../utils/search'
+import { useRoleTabs } from '../components/RoleSplit'
 
 // نقاط الكي بي اي صارت تتحمّل من الباك إند (قابلة للإضافة والحذف من الواجهة
 // بدل ما تكون مثبتة هنا بالكود) — راجع KpiCriterion بـ api.ts.
@@ -281,6 +282,7 @@ function AdministrativeTab() {
   // ملخص الأسبوع چان يعرض كل موظف نشط — ٤٥ صف أغلبهم 8/8 وبلا خصم،
   // وهذا الجدار هو الي يخلي الصفحة تنزل قبل ما توصل للسجل.
   const [showAllWeekly, setShowAllWeekly] = useState(false)
+  const [weeklyRole, setWeeklyRole] = useState('')
   const [historyQuery, setHistoryQuery] = useState('')
   const [historyPage, setHistoryPage] = useState(1)
   const [historyPerPage, setHistoryPerPage] = useState(10)
@@ -362,8 +364,10 @@ function AdministrativeTab() {
       return { emp, deducted, remaining: POINTS_PER_WEEK - deducted, iqd: data?.totalIQD || 0 }
     })
     .sort((a, b) => b.deducted - a.deducted)
-  const cleanWeeklyCount = allWeeklyRows.filter((r) => r.deducted === 0).length
-  const weeklyRows = showAllWeekly ? allWeeklyRows : allWeeklyRows.filter((r) => r.deducted > 0)
+  // قرار (ع) 10-08: كل دور ينفصل عن الثاني.
+  const weeklyTabs = useRoleTabs(allWeeklyRows.map((r) => ({ ...r, role: r.emp.role })), weeklyRole, setWeeklyRole)
+  const cleanWeeklyCount = weeklyTabs.list.filter((r) => r.deducted === 0).length
+  const weeklyRows = showAllWeekly ? weeklyTabs.list : weeklyTabs.list.filter((r) => r.deducted > 0)
 
   const myWeekly = currentUser ? weeklyByEmployee[currentUser.id] : null
   const myDeductedPoints = myWeekly?.totalPoints || 0
@@ -695,6 +699,7 @@ function AdministrativeTab() {
           <div className="mt-6 overflow-hidden rounded-2xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
             <div className="p-5">
               <h3 className="text-lg font-bold text-brand-800">ملخص الأسبوع</h3>
+              <div className="mt-3">{weeklyTabs.tabs}</div>
             </div>
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200 text-right">

@@ -420,7 +420,7 @@ func WatchGroup(subj repository.WatchSubject) string {
 		return "IT"
 	case subj.Role == "DESIGNER":
 		return "DESIGN"
-	case subj.Role == "MEDIA":
+	case subj.Role == "MEDIA", subj.Role == "PUBLIC_RELATIONS":
 		return "MEDIA"
 	case subj.IsLeader:
 		return "LEADERS"

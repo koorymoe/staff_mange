@@ -34,6 +34,14 @@ const arrowBtnStyle = (disabled: boolean): React.CSSProperties => ({
   color: disabled ? 'var(--bd-line)' : 'var(--t-muted)',
 })
 
+const DEFAULT_TERMS = [
+  'الأسعار المذكورة أعلاه لا تشمل أجور النقل والتركيب ما لم يُذكر خلاف ذلك.',
+  'عرض السعر ساري المفعول لمدة 15 يوم من تاريخه.',
+  'الدفع: 50% مقدم والباقي عند التسليم.',
+  'مدة التنفيذ تبدأ من تاريخ استلام الدفعة الأولى.',
+  'الأسعار قابلة للتغيير حسب تقلبات السوق.',
+]
+
 export default function QuotationNew() {
   const { employee } = useSession()
   const { id } = useParams()
@@ -52,6 +60,9 @@ export default function QuotationNew() {
   const solarSystemId = searchParams.get('solarSystemId')
   // HTML المعاينة (نسخة الطباعة) — لما تنملي تنعرض بنافذة داخل النظام
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  // الشروط والأحكام من الإعدادات (قرار (ع) 10-08) — الثابتة احتياط إذا ما وصلت.
+  const [terms, setTerms] = useState<string[]>(DEFAULT_TERMS)
+  useEffect(() => { api.getQuotationTerms().then((r) => { if (r.length) setTerms(r.map((t) => t.text)) }).catch(() => {}) }, [])
   // نطلب المعاينة بعد ما تنحمّل البيانات — البناء يحتاج الحقول تكون جاهزة
   const [wantsPreview, setWantsPreview] = useState(false)
   const [products, setProducts] = useState<Product[]>([])
@@ -603,13 +614,7 @@ body { background: #fff; margin: 0; padding: 0; -webkit-print-color-adjust: exac
       return pageShell(inner)
     }).join('\n')
 
-    const termsHtml = [
-      'الأسعار المذكورة أعلاه لا تشمل أجور النقل والتركيب ما لم يُذكر خلاف ذلك.',
-      'عرض السعر ساري المفعول لمدة 15 يوم من تاريخه.',
-      'الدفع: 50% مقدم والباقي عند التسليم.',
-      'مدة التنفيذ تبدأ من تاريخ استلام الدفعة الأولى.',
-      'الأسعار قابلة للتغيير حسب تقلبات السوق.',
-    ].map((t, i) => `<li><span class="num">${i + 1}.</span>${t}</li>`).join('')
+    const termsHtml = terms.map((t, i) => `<li><span class="num">${i + 1}.</span>${esc(t)}</li>`).join('')
 
     const notesText = notes.trim() || 'لا توجد ملاحظات'
 

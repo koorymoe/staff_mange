@@ -34,6 +34,8 @@ type MediaBrief struct {
 	Notes         *string    `db:"notes" json:"notes"`
 	Status        string     `db:"status" json:"status"`
 	ShootAt       *time.Time `db:"shootAt" json:"shootAt"`
+	CustomerRep   *string    `db:"customerRep" json:"customerRep"`
+	CustomerPhone *string    `db:"customerPhone" json:"customerPhone"`
 	MediaEmpID    *string    `db:"mediaEmployeeId" json:"mediaEmployeeId"`
 	MediaEmpName  *string    `db:"mediaEmployeeName" json:"mediaEmployeeName"`
 	PublishedURL  *string    `db:"publishedUrl" json:"publishedUrl"`
@@ -48,6 +50,7 @@ const mediaSelect = `
 	       p.location, p."locationUrl", p."mapLatitude" AS lat, p."mapLongitude" AS lng, p."deliveryDate", p.task AS "projectTask",
 	       m."engineerId", en.name AS "engineerName", en.phone AS "engineerPhone",
 	       m."startAt", m."expectedEndAt", m.duration, m.notes, m.status, m."shootAt",
+	       p.rep AS "customerRep", p.phone AS "customerPhone",
 	       m."mediaEmployeeId", me.name AS "mediaEmployeeName", m."publishedUrl", m."mediaNotes",
 	       cb.name AS "createdByName", m."createdAt", m."updatedAt"
 	FROM "MediaBrief" m JOIN "Project" p ON p.id = m."projectId"

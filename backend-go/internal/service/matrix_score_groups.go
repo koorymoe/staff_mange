@@ -125,7 +125,7 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact) ([]
 	pw := rules["PAPER"]
 	add(ratioPart("PAPER", "يخلّص ورقه بوقته", pw[0], pw[1], "حجز"))
 	t := rules["TASK_DUE"]
-	add(ratioPart("TASK_DUE", "يخلّص مهامه بوقتها", t[0], t[1], "مهمة"))
+	add(ratioPart("TASK_DUE", "يلتزم بتوجيهات مسؤوليه ومهامه بوقتها", t[0], t[1], "مهمة"))
 	c := 100 - 25*f.Complaints
 	if c < 0 {
 		c = 0
@@ -135,6 +135,31 @@ func BuildReliability(rules map[string][2]int, f repository.ReliabilityFact) ([]
 		detail = fmt.Sprintf("%d شكوى من زبون", f.Complaints)
 	}
 	parts = append(parts, ReliabilityPart{Key: "COMPLAINTS", Label: "بلا شكاوى", Pct: float64(c), Detail: detail})
+	// قرار (ع) 10-08: الغيابات والإجازات، المشاكل ويا الزملاء، العدّة، الـKPI.
+	penalty := func(key, label string, n, per int, zero, unit string) {
+		v := 100 - per*n
+		if v < 0 {
+			v = 0
+		}
+		d := zero
+		if n > 0 {
+			d = fmt.Sprintf("%d %s", n, unit)
+		}
+		parts = append(parts, ReliabilityPart{Key: key, Label: label, Pct: float64(v), Detail: d})
+	}
+	extraLeave := f.LeaveDays - 2 // يومين بالشهر طبيعي
+	if extraLeave < 0 {
+		extraLeave = 0
+	}
+	leaveDetail := "ماكو إجازات"
+	if f.LeaveDays > 0 {
+		leaveDetail = fmt.Sprintf("%d يوم إجازة", f.LeaveDays)
+	}
+	parts = append(parts, ReliabilityPart{Key: "LEAVES", Label: "ماعنده غيابات وإجازات كثيرة",
+		Pct: float64(max(0, 100-10*extraLeave)), Detail: leaveDetail})
+	penalty("PEERS", "ماعنده مشاكل ويا زملائه", f.Issues, 25, "ماكو مشاكل", "مشكلة وظيفية")
+	penalty("TOOLS", "محافظ على عدّته", f.ToolLosses, 25, "ماكو ضياع ولا تلف", "عدّة ضاعت أو تلفت")
+	penalty("KPI", "تقييم الـKPI", f.KpiHits, 20, "ماكو عليه نقاط", "نقطة KPI عليه")
 	if len(parts) <= 1 && f.Complaints == 0 && a[1] == 0 {
 		return parts, nil // ماكو بيانات كافية
 	}

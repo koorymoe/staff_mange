@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { api, type PendingStaffRating } from '../api'
+import { useRoleTabs } from './RoleSplit'
 
 // ═══ تقييمات البشر بمحطاتها (قرار (ع) 10-05) ═══
 // الإداري يقيّم الليدر لمن يرجع · المراقب يقيّم الليدر والإداري · الجودة بعد
@@ -89,7 +90,7 @@ export function BookingStaffRating({ bookingId }: { bookingId: string }) {
 
 const ROLE_AR: Record<string, string> = {
   FINANCE: 'محاسب', DESIGNER: 'مصمم', IT_SUPPORT: 'آيتي', TECHNICIAN: 'فني', ENGINEER: 'مهندس', HR_COORDINATOR: 'إداري',
-  SALES: 'مبيعات', MEDIA: 'إعلام', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع',
+  SALES: 'مبيعات', MEDIA: 'إعلام', PUBLIC_RELATIONS: 'علاقات عامة', QUALITY_ENGINEER: 'جودة', MONITOR: 'مراقب', PROJECT_MANAGER: 'مدير مشاريع',
   SERVICE_MANAGER: 'مسؤول خدمة', GPS_ADMIN: 'جي بي اس', GPS_ENGINEER: 'جي بي اس',
 }
 
@@ -97,6 +98,9 @@ const ROLE_AR: Record<string, string> = {
 export function PeriodicRatings() {
   const [st, setSt] = useState<{ period: string; people: { id: string; name: string; role: string }[]; mine: Record<string, number> } | null>(null)
   const [err, setErr] = useState('')
+  const [role, setRole] = useState('')
+  // قرار (ع) 10-08: كل دور ينفصل عن الثاني — الهوك قبل أي return مبكّر.
+  const roleTabs = useRoleTabs(st?.people ?? [], role, setRole)
   useEffect(() => { void api.getPeriodicRatings().then(setSt).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [])
   if (err) return <p className="text-sm text-red-600">{err}</p>
   if (!st) return <p className="text-xs text-slate-400">…</p>
@@ -114,8 +118,9 @@ export function PeriodicRatings() {
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
         <p className="text-sm font-extrabold text-slate-800">⭐ تقييمك الدوري بهالنص شهر</p>
         <p className="mb-2 text-[11px] text-slate-500">قيّمت {rated} من {st.people.length}. كل واحد حسب شغله. الفنيين يقيّمهم ليدرهم، والليدرية بالحجوزات — فما يطلعون هنا. تنعاد كل نص شهر.</p>
+        <div className="mb-2">{roleTabs.tabs}</div>
         <div className="grid gap-1.5 sm:grid-cols-2">
-          {st.people.map((p) => (
+          {roleTabs.list.map((p) => (
             <div key={p.id} className={`flex items-center justify-between gap-2 rounded-xl border px-3 py-2 text-sm ${st.mine[p.id] ? 'border-emerald-200 bg-emerald-50/50' : 'border-slate-200'}`}>
               <span><b>{p.name}</b> <span className="text-xs text-slate-500">{ROLE_AR[p.role] ?? p.role}</span></span>
               <Stars value={st.mine[p.id] ?? 0} onPick={(n) => void rate(p.id, n)} />

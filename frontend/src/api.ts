@@ -113,6 +113,7 @@ export type EmployeeRole =
   | 'SERVICE_MANAGER'
   | 'IT_SUPPORT'
   | 'MEDIA'
+  | 'PUBLIC_RELATIONS'
   | 'OWNER'
 
 export interface Employee {
@@ -2216,6 +2217,7 @@ export interface MediaBrief {
   engineerId: string | null; engineerName: string | null; engineerPhone: string | null
   startAt: string | null; expectedEndAt: string | null; duration: string | null; notes: string | null
   status: 'NEW' | 'SCHEDULED' | 'SHOT' | 'PUBLISHED' | 'CANCELLED'; shootAt: string | null
+  customerRep: string | null; customerPhone: string | null
   mediaEmployeeName: string | null; publishedUrl: string | null; mediaNotes: string | null; createdByName: string | null; createdAt: string
 }
 export interface DisciplineEntry {
@@ -4471,6 +4473,9 @@ export const api = {
   undoMatrixAutoCrew: (actionId: string) => request<{ ok: boolean }>(`/ai/autonomy/crew/${actionId}/undo`, { method: 'POST' }),
   getAIUsage: () => request<AIUsageReport>('/ai/usage'),
   getMatrixEyes: () => request<MatrixEyesReport>('/ai/watch'),
+  getQuotationTerms: () => request<{ id: string; text: string; sortOrder: number }[]>('/quotation-terms'),
+  saveQuotationTerms: (terms: string[]) =>
+    request<{ id: string; text: string; sortOrder: number }[]>('/quotation-terms', { method: 'PUT', body: JSON.stringify({ terms }) }),
   getMediaBriefs: () => request<MediaBrief[]>('/media/briefs'),
   updateMediaBrief: (id: string, body: { status: string; shootAt?: string | null; publishedUrl?: string | null; mediaNotes?: string | null }) =>
     request<MediaBrief>(`/media/briefs/${id}`, { method: 'PUT', body: JSON.stringify(body) }),
@@ -6113,6 +6118,7 @@ export interface StaffScore {
   topLosses: RuleLoss[]; bySource: Record<string, [number, number]>
   group: string; groupLabel: string
   reliability: number | null; reliabilityParts: { key: string; label: string; pct: number; detail: string }[]
+  skills?: number; hasLicense?: boolean; isLeader?: boolean
 }
 export interface StaffScoreBoard { month: string; on: boolean; staff: StaffScore[]; insights: string[] }
 export interface MatrixScorePoint {

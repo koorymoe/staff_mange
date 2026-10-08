@@ -166,11 +166,24 @@ func TestScoreGroups(t *testing.T) {
 func TestReliability(t *testing.T) {
 	rules := map[string][2]int{"ATTENDANCE": {16, 20}, "INVENTORY": {4, 4}}
 	parts, v := BuildReliability(rules, repository.ReliabilityFact{Sessions: 10, Auto: 2, Complaints: 1})
-	if v == nil || len(parts) != 4 {
+	// + الإجازات والزملاء والعدّة والـKPI (قرار 10-08) — كلها ١٠٠ بلا وقائع.
+	if v == nil || len(parts) != 8 {
 		t.Fatalf("parts %d", len(parts))
 	}
-	// (80 + 80 + 100 + 75) / 4
-	if *v < 83.74 || *v > 83.76 {
+	// (80 + 80 + 100 + 75 + 100×4) / 8
+	if *v < 91.87 || *v > 91.88 {
 		t.Fatalf("got %v", *v)
+	}
+}
+
+func TestReliabilityLeavesAndTools(t *testing.T) {
+	rules := map[string][2]int{"ATTENDANCE": {20, 20}}
+	parts, _ := BuildReliability(rules, repository.ReliabilityFact{LeaveDays: 5, ToolLosses: 1})
+	got := map[string]float64{}
+	for _, p := range parts {
+		got[p.Key] = p.Pct
+	}
+	if got["LEAVES"] != 70 || got["TOOLS"] != 75 {
+		t.Fatalf("got %v", got)
 	}
 }

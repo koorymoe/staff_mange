@@ -1802,6 +1802,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			guard.ServeHTTP(w, r)
 		})
 	}
+	// شروط وأحكام عرض السعر: يقراها أي واحد يسوي عرض، ويعدّلها صاحب صلاحية عرض السعر بس.
+	quotationTermsHandler := handler.NewQuotationTermsHandler(db)
+	mux.Handle("GET /api/quotation-terms", middleware.Chain(http.HandlerFunc(quotationTermsHandler.List), requireAuth, allowQuotationOrDelegate))
+	mux.Handle("PUT /api/quotation-terms", middleware.Chain(http.HandlerFunc(quotationTermsHandler.Save), requireAuth, requireQuotationAccess))
 	mux.Handle("POST /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.Create), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("PUT /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Update), requireAuth, allowQuotationOrDelegate))
 	mux.Handle("DELETE /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Delete), requireAuth, requireAdmin))
@@ -2287,7 +2291,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireMediaView := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA"}, "media", "project_management")
 	requireMedia := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA"}, "media")
 	mediaHandler := handler.NewMediaHandler(repository.NewMediaRepository(db), func(msg string) {
-		_ = notificationRepo.CreateForRolesOrPermission([]string{"MEDIA"}, "media", "MEDIA", msg)
+		_ = notificationRepo.CreateForRolesOrPermission([]string{"MEDIA", "PUBLIC_RELATIONS"}, "media", "MEDIA", msg)
 	})
 	// ── دفعات المشاريع (قرار (ع) 10-06): الصلاحية بالمعالج — المحاسب، إدارة المشاريع، ومشرف المشروع ──
 	projectPaymentRepo := repository.NewProjectPaymentRepository(db)

@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { api, type MediaBrief } from '../api'
 import { useSession } from '../session'
+import { askChoice } from '../utils/dialog'
 
-// ═══ الإعلام والعلاقات العامة — طلب (ع) 10-05 ═══
+// ═══ الإعلام والعلاقات العامة — طلب (ع) 10-05، فرع مو مسار 10-08 ═══
+// الترحيل للإعلام ما يغيّر مرحلة المشروع: صاحبه يكمل للتنفيذ، والإعلام
+// ياخذون المعلومات ويحجزون موعد تصوير بس.
 // المشاريع الي توصل مرحلة «📸 الإعلام» قبل التنفيذ تتحوّل هنا بكل تفاصيلها:
 // منو المهندس المشرف، شنو المشروع، وين الموقع، متى يبدي وشكد ياخذ ومتى
 // يخلص — حتى فريق الإعلام يطلع يصوّر الشغل وينشره.
@@ -33,7 +36,7 @@ function BriefCard({ b, canEdit, onSaved }: { b: MediaBrief; canEdit: boolean; o
   }
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-2xl border border-slate-200 border-r-4 border-r-pink-500 bg-white p-4 shadow-sm">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div>
           <p className="text-base font-extrabold text-slate-800">{b.projectName} <span className="text-xs font-normal text-slate-500">· {b.projectCode}</span></p>
@@ -49,6 +52,8 @@ function BriefCard({ b, canEdit, onSaved }: { b: MediaBrief; canEdit: boolean; o
         <p>🚀 <b>يبدي الشغل:</b> {dt(b.startAt)}</p>
         <p>⏱️ <b>المدة:</b> {b.duration ?? '—'}</p>
         <p>🏁 <b>يخلص تقريباً:</b> {b.expectedEndAt ? d(b.expectedEndAt) : (b.deliveryDate ?? '—')}</p>
+        <p>🙋 <b>ممثل الزبون:</b> {b.customerRep ?? '—'}
+          {b.customerPhone && <> · <a href={`tel:${b.customerPhone}`} className="font-bold text-sky-700 underline" dir="ltr">{b.customerPhone}</a></>}</p>
         <p>📌 <b>مرحلة المشروع هسه:</b> {b.stage}</p>
       </div>
       {(b.notes || b.projectTask) && (
@@ -77,7 +82,7 @@ function BriefCard({ b, canEdit, onSaved }: { b: MediaBrief; canEdit: boolean; o
             </div>
           )}
           <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="ملاحظات الإعلام (اختياري)" className="w-full rounded-lg border border-slate-200 p-2 text-xs" />
-          <button type="button" disabled={busy} onClick={() => { if (window.confirm('تلغي تصوير هالمشروع؟')) void save('CANCELLED') }} className="text-xs text-slate-500 hover:text-red-600">✖ إلغاء</button>
+          <button type="button" disabled={busy} onClick={() => { void askChoice('تلغي تصوير هالمشروع؟', [['yes', '✖ إي ألغيه']]).then((a) => { if (a) void save('CANCELLED') }) }} className="text-xs text-slate-500 hover:text-red-600">✖ إلغاء</button>
           {err && <p className="text-xs text-red-600">{err}</p>}
         </div>
       )}
@@ -87,27 +92,34 @@ function BriefCard({ b, canEdit, onSaved }: { b: MediaBrief; canEdit: boolean; o
 
 export default function MediaPage() {
   const { employee, permissions } = useSession()
-  const canEdit = employee?.role === 'ADMIN' || employee?.role === 'MEDIA' || permissions.includes('media')
+  const canEdit = employee?.role === 'ADMIN' || employee?.role === 'MEDIA' || employee?.role === 'PUBLIC_RELATIONS' || permissions.includes('media')
   const [rows, setRows] = useState<MediaBrief[] | null>(null)
   const [err, setErr] = useState('')
-  const [showDone, setShowDone] = useState(false)
+  const [tab, setTab] = useState<MediaBrief['status']>('NEW')
   useEffect(() => { void api.getMediaBriefs().then(setRows).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [])
-  const list = (rows ?? []).filter((b) => showDone || (b.status !== 'PUBLISHED' && b.status !== 'CANCELLED'))
+  const list = (rows ?? []).filter((b) => b.status === tab)
+  const count = (st: MediaBrief['status']) => (rows ?? []).filter((b) => b.status === st).length
 
   return (
     <div dir="rtl" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-2xl font-bold text-brand-900">📸 الإعلام والعلاقات العامة</h2>
-          <p className="text-sm text-slate-500">المشاريع المحوّلة للتصوير بكل تفاصيلها. حدد موعد التصوير، وبعدها «صوّرنا»، وبالأخير «نشرنا» ويا الرابط.</p>
-        </div>
-        <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={showDone} onChange={(e) => setShowDone(e.target.checked)} /> اعرض المنشور والملغي</label>
+      <div className="rounded-2xl bg-gradient-to-l from-pink-600 to-fuchsia-700 p-5 text-white shadow">
+        <h2 className="text-2xl font-extrabold">📸 الإعلام والعلاقات العامة</h2>
+        <p className="mt-1 text-sm text-pink-50">المشاريع المرحّلة إلكم بكل تفاصيلها — احجزوا موعد التصوير، وبعدها «صوّرنا»، وبالأخير «نشرنا» ويا الرابط.</p>
+        <p className="mt-1 text-xs text-pink-100">ℹ️ الترحيل إلكم فرع من المشروع: صاحب المشروع يكمل للتنفيذ عادي، وانتم تنسّقون موعدكم وياه.</p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {(Object.keys(STATUS) as MediaBrief['status'][]).map((st) => (
+          <button key={st} type="button" onClick={() => setTab(st)}
+            className={`rounded-xl px-4 py-2 text-sm font-bold ${tab === st ? 'bg-pink-600 text-white shadow' : 'bg-white text-slate-600 border border-slate-200'}`}>
+            {STATUS[st].label} <span className="mr-1 rounded-full bg-black/10 px-2 text-xs">{count(st)}</span>
+          </button>
+        ))}
       </div>
       {err && <p className="text-sm text-red-600">{err}</p>}
       {rows === null && !err ? <p className="text-slate-400">جاري التحميل…</p> : (
         <div className="grid gap-3 lg:grid-cols-2">
           {list.map((b) => <BriefCard key={b.id} b={b} canEdit={canEdit} onSaved={(n) => setRows((r) => (r ?? []).map((x) => (x.id === n.id ? n : x)))} />)}
-          {list.length === 0 && <p className="rounded-xl bg-white p-6 text-center text-sm text-slate-400">ماكو مشاريع محوّلة للإعلام هسه.</p>}
+          {list.length === 0 && <p className="rounded-xl bg-white p-6 text-center text-sm text-slate-400">ماكو مشاريع بهالتبويب.</p>}
         </div>
       )}
     </div>

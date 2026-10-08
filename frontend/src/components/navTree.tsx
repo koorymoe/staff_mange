@@ -270,6 +270,7 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
       { to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
       { to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       { to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
@@ -675,7 +676,7 @@ export const navItems: NavItem[] = [
     to: '/unit-media', label: 'الإعلام والعلاقات العامة', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
     unitPermission: 'media',
     children: [
-      { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA'], anyPermission: ['media', 'project_management'] },
+      { to: '/media', label: '📸 مشاريع للتصوير', icon: <></>, roles: ['ADMIN', 'MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] },
     ],
   },
   {
@@ -1056,9 +1057,10 @@ const ROUTE_RULES: Record<string, RouteRule> = {
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
   '/project-payments': { roles: ['FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
   '/staff-score': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
+  '/employee-indicators': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // نفس /api/staff-score
   '/peer-voice': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/workplace-issues': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
-  '/media': { roles: ['MEDIA'], anyPermission: ['media', 'project_management'] }, // requireMediaView
+  '/media': { roles: ['MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] }, // requireMediaView
   '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator
   '/gps/customers': GPS_DATA,

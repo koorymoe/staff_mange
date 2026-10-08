@@ -87,11 +87,8 @@ func (h *MediaHandler) Transfer(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, http.StatusBadRequest, "تعذر التحويل للإعلام — تأكد إن المشروع موجود")
 		return
 	}
-	// قرار (ع) 10-06: الإعلام زر بخطوات المشروع، مو مرحلة توقفه. المرحلة
-	// تصير «📸 الإعلام» بس إذا المشروع بالعقد؛ إذا بالتنفيذ يبقى بمرحلته.
-	if strings.Contains(h.repo.ProjectStage(projectID), "عقد") {
-		_ = h.repo.SetProjectStage(projectID, mediaStage)
-	}
+	// قرار (ع) 10-08: الإعلام **فرع** من المشروع مو مسار — ياخذون المعلومات
+	// ويحجزون موعد تصوير، وصاحب المشروع يكمل للتنفيذ. فالمرحلة ما تتغير.
 	if b, err := h.repo.Get(id); err == nil && h.notify != nil {
 		when := ""
 		if b.StartAt != nil {

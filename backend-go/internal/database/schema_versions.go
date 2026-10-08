@@ -431,6 +431,10 @@ func versionedMigrations() []Migration {
 	result = append(result, techVisitMigrations()...)
 	// 0331: إداريّو الحجوزات يسوّون فاتورة الشغل الداخلي.
 	result = append(result, internalPaperworkMigrations()...)
+	// 0332: دور العلاقات العامة.
+	result = append(result, publicRelationsMigrations()...)
+	// 0333: شروط وأحكام عرض السعر قابلة للتعديل.
+	result = append(result, quotationTermsMigrations()...)
 	return result
 }
 

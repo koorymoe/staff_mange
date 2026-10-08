@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, type Quotation } from '../api'
 import { useSession } from '../session'
 import QuotationVersions from '../components/QuotationVersions'
+import QuotationTermsEditor from '../components/QuotationTermsEditor'
 
 const PRIMARY = '#1a237e'
 // ⚠️ نسخة **النص** تنقلب بالوضع الليلي، والأصل يبقى للأسطح:
@@ -26,7 +27,10 @@ const fmt = (n: number) => n.toLocaleString('en-IQ')
 
 export default function QuotationsPage() {
   const navigate = useNavigate()
-  const { employee } = useSession()
+  const { employee, permissions } = useSession()
+  const [showTerms, setShowTerms] = useState(false)
+  const canTerms = employee?.role === 'ADMIN' || employee?.role === 'OWNER'
+    || ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'].some((p) => permissions.includes(p))
   const isAdmin = employee?.role === 'ADMIN'
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
@@ -82,6 +86,13 @@ export default function QuotationsPage() {
           <h1 style={{ margin: 0, fontSize: '24px' }}>عروض الأسعار</h1>
           <span style={{ color: GOLD_TEXT, fontSize: '14px' }}>إدارة ومتابعة عروض الأسعار</span>
         </div>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {canTerms && (
+          <button onClick={() => setShowTerms(true)}
+            style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,.5)', padding: '10px 16px', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', fontSize: '14px' }}>
+            ⚙️ الشروط والأحكام
+          </button>
+        )}
         <button
           onClick={() => navigate('/quotations/new')}
           style={{
@@ -98,6 +109,8 @@ export default function QuotationsPage() {
         >
           + عرض سعر جديد
         </button>
+        </div>
+        {showTerms && <QuotationTermsEditor onClose={() => setShowTerms(false)} />}
       </div>
 
       <div style={{ marginBottom: '20px' }}>

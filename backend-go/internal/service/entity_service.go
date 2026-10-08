@@ -574,7 +574,7 @@ var roleLabels = map[string]string{
 	"HR_COORDINATOR": "إداري الكوادر", "TECHNICIAN": "فني", "TECHNICAL": "تقني",
 	"PROJECT_MANAGER": "مدير مشاريع", "MONITOR": "مراقب", "FINANCE": "محاسب",
 	"GPS_ADMIN": "مسؤول GPS", "QUALITY_ENGINEER": "مهندس جودة", "ENGINEER": "مهندس",
-	"PROCUREMENT_ADMIN": "إداري الكميات", "DESIGNER": "مصمم", "SERVICE_MANAGER": "مسؤول خدمة", "MEDIA": "الإعلام",
+	"PROCUREMENT_ADMIN": "إداري الكميات", "DESIGNER": "مصمم", "SERVICE_MANAGER": "مسؤول خدمة", "MEDIA": "الإعلام", "PUBLIC_RELATIONS": "العلاقات العامة",
 	"IT_SUPPORT": "الدعم التقني",
 }
 

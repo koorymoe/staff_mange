@@ -368,6 +368,15 @@ type ReliabilityFact struct {
 	Sessions   int `db:"sessions"`
 	Auto       int `db:"auto"`
 	Complaints int `db:"complaints"`
+	// قرار (ع) 10-08 — «مؤشرات أداء الموظف»: الإجازات، المشاكل ويا الزملاء،
+	// العدّة (ضياع/تلف)، خصومات KPI. ومعلومات تنعرض بس (ما تدخل بالنسبة):
+	// المهارات، إجازة السوق.
+	LeaveDays   int  `db:"leaveDays"`
+	Issues      int  `db:"issues"`
+	ToolLosses  int  `db:"toolLosses"`
+	KpiHits     int  `db:"kpiHits"`
+	Skills      int  `db:"skills"`
+	HasLicense  bool `db:"hasLicense"`
 }
 
 func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string]ReliabilityFact, error) {
@@ -381,7 +390,17 @@ func (r *MatrixScoreRepository) ReliabilityFacts(from, to time.Time) (map[string
 		(SELECT count(*) FROM "AttendanceAuto" au JOIN "Attendance" a ON a.id = au."attendanceId"
 		  WHERE au."employeeId" = e.id AND a."checkIn" >= ($1::timestamptz AT TIME ZONE 'UTC') AND a."checkIn" < ($2::timestamptz AT TIME ZONE 'UTC')
 		    AND NOT EXISTS (SELECT 1 FROM "AttendanceClaim" c WHERE c."attendanceId" = a.id AND c.status IN ('OK','APPROVED') AND c.kind = 'WORKED'))::int AS auto,
-		(SELECT count(*) FROM "Complaint" c WHERE c."relatedEmployeeId" = e.id AND c."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND c."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS complaints
+		(SELECT count(*) FROM "Complaint" c WHERE c."relatedEmployeeId" = e.id AND c."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND c."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS complaints,
+		(SELECT COALESCE(sum(GREATEST(0, LEAST(l."endDate", ($2::timestamptz AT TIME ZONE 'Asia/Baghdad')::date - 1) - GREATEST(l."startDate", ($1::timestamptz AT TIME ZONE 'Asia/Baghdad')::date) + 1)), 0)
+		   FROM "LeaveRequest" l WHERE l."employeeId" = e.id AND l.status::text = 'APPROVED')::int AS "leaveDays",
+		(SELECT count(*) FROM "WorkplaceIssue" wi WHERE (wi."partyAId" = e.id OR wi."partyBId" = e.id)
+		   AND wi."createdAt" >= $1::timestamptz AND wi."createdAt" < $2::timestamptz)::int AS issues,
+		(SELECT count(*) FROM "PersonalToolEvent" pe WHERE pe."employeeId" = e.id AND pe."toStatus" IN ('LOST','DAMAGED')
+		   AND pe."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND pe."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS "toolLosses",
+		(SELECT count(*) FROM "KpiEvaluation" k WHERE k."employeeId" = e.id AND k.points < 0
+		   AND k."createdAt" >= ($1::timestamptz AT TIME ZONE 'UTC') AND k."createdAt" < ($2::timestamptz AT TIME ZONE 'UTC'))::int AS "kpiHits",
+		(SELECT count(*) FROM "EmployeeSkill" es WHERE es."employeeId" = e.id AND es."canPerform")::int AS skills,
+		e."hasDrivingLicense" AS "hasLicense"
 		FROM "Employee" e WHERE e.status = 'ACTIVE'`, from, to)
 	out := map[string]ReliabilityFact{}
 	for _, x := range rows {
