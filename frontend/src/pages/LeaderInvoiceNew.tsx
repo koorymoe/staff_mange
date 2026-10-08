@@ -859,7 +859,8 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   }
 
   return (
-    <div className="mx-auto max-w-4xl" dir="rtl">
+    // ترتيب (ع) 10-08: تملي شاشة الحاسبة، ومبسّطة بالموبايل.
+    <div className="mx-auto w-full max-w-7xl" dir="rtl">
       <div className="flex items-center gap-3">
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-lg sm:h-11 sm:w-11 sm:text-xl">🧮</span>
         <div className="min-w-0">
@@ -882,7 +883,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
 
           ⚠️ والموظف العادي يشوف **بطاقتين وبس**: الزائدة تطلع
           لصاحب صلاحيتها حصراً. */}
-      <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {([
           { k: 'estimate', icon: '💬', title: 'استفسار زبون', desc: 'رقم تقريبي بس — ما ينحفظ ولا ينربط بحجز', show: true },
           { k: 'booking',  icon: '🔖', title: 'فاتورة لحجز',  desc: 'الحساب من جدول الكلفة، وتترحّل للمحاسب', show: canBookingInvoice },
@@ -893,7 +894,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           <button
             key={o.k}
             onClick={() => pickWorkKind(o.k)}
-            className={`rounded-2xl border-2 p-3.5 text-right transition ${
+            className={`rounded-2xl border-2 p-3 text-right transition sm:min-w-[220px] sm:flex-1 ${
               workKind === o.k
                 ? 'border-[#2c5aad] bg-sky-50 shadow-md'
                 : 'border-slate-200 bg-white hover:border-slate-300'
@@ -904,7 +905,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
                 <p className={`text-sm font-extrabold ${workKind === o.k ? 'text-[#0f2040]' : 'text-slate-700'}`}>
                   {o.icon} {o.title}
                 </p>
-                <p className="mt-0.5 text-[10px] leading-relaxed text-slate-500 sm:text-[11px]">{o.desc}</p>
+                <p className="mt-0.5 hidden text-[11px] leading-relaxed text-slate-500 sm:block">{o.desc}</p>
               </div>
               <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 ${
                 workKind === o.k ? 'border-[#2c5aad] bg-[#2c5aad]' : 'border-slate-300'
@@ -916,11 +917,6 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
         ))}
       </div>
 
-      <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-[11px] leading-relaxed text-slate-500">
-        {estimateOnly
-          ? 'ⓘ استفسار: اختر نوع العمل وأضف العناصر وتطلعلك الكلفة — نفس محرك الفاتورة بالضبط، بس بلا حفظ ولا ربط.'
-          : 'ⓘ مربوط بحجز: اختر الحجز أول، وبيانات الزبون تنملي لحالها، والفاتورة تترحّل للمحاسب.'}
-      </p>
 
       {/* ═══ فاتورة بكلفة يدوية ═══
           للشغل الي ماكو إله بند بجدول الكلفة. تظهر بس لصاحب صلاحية
@@ -1128,7 +1124,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           سبب للدوخة الي شكى منها (ع). */
       }
       {!internalMode && !manualMode && !serviceMode && (
-      <ol className="mt-4 flex items-center gap-1 overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3 sm:gap-2">
+      <ol className="mt-4 hidden items-center gap-2 rounded-2xl border border-slate-200 bg-white p-3 sm:flex">
         {[
           { n: 1, label: 'اختيار نوع العمل', done: systems.length > 0 },
           { n: 2, label: 'إضافة العناصر', done: items.length > 0 },
@@ -1163,7 +1159,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
           بالتصميم الملخّص جنب الحقول مو تحتهن — لأن الليدر يحتاج يشوف
           الرقم وهو يعبّي. وبالموبايل ينقلب عمود واحد والملخّص فوگ
           (order-first) حتى يبقى بأول الشاشة بلا ما ينزّل ويطلع. */}
-      <div className="mt-5 grid gap-4 lg:grid-cols-[1fr_300px] lg:items-start">
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_360px] lg:items-start">
         <div className="min-w-0 space-y-4">
 
       {/* اختيار الحجز المكتمل — الليدر يلكه أسماء حجوزاته المكتملة ويسويلها
