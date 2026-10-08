@@ -1121,32 +1121,6 @@ export function isTokenExpired(): boolean {
   return exp !== null && Date.now() >= exp
 }
 
-/** مجسّم كيان مرفوع من داخل النظام. */
-export interface EntityAvatarModel {
-  id: string
-  label: string
-  /** مفتاح التخزين — يُحوَّل لرابط بـ`entityModelUrl`. */
-  fileKey: string
-  fileType: string
-  sizeBytes: number
-  uploadedById: string | null
-  archivedAt: string | null
-  /** شخصية النظام الحالية — الي يشوفها كل موظف بالودجة وورقة القصة. */
-  isActive: boolean
-  createdAt: string
-}
-
-/**
- * رابط تحميل المجسّم — يحمل وسم الملفات بنفسه.
- *
- * ⚠️ `fileUrl` يتعامل مع قيم تبدي بـ`/api/files/`، والمجسّم مخزون
- * كـ**مفتاح** خام (`models/abc.glb`) فنبني المسار هنا.
- */
-export function entityModelUrl(fileKey: string): string {
-  const base = API_URL.replace(/\/api$/, '')
-  return `${base}/api/files/${fileKey}${fileToken ? `?ft=${encodeURIComponent(fileToken)}` : ''}`
-}
-
 // وسم الملفات: ينجاب مرة وحدة ويتجدد قبل ما ينتهي. وسم <img> ما يرسل
 // ترويسة Authorization، فالرابط لازم يحمل الوسم بنفسه.
 let fileToken = ''
@@ -1994,96 +1968,6 @@ export interface AiWorkWindow {
 /** ═══ المهام الإضافية ═══
  *  شغل موجّه من المدير لموظف، مو مربوط بحجز: «خرّج فواتير الشهر»،
  *  «رتّب المخزن». تطلع عند الموظف الي انتوجّهت له. */
-// ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
-//
-// ⚠️ كل رقم بهذي الأنواع محسوب بالخادم من نفس بيانات الغرامة الفعلية
-// (مهلة الورق، قيمة النقطة بالدينار، رصيد الانضباط). الواجهة تعرض
-// بس — ما تحسب غرامة ولا مهلة بنفسها، حتى ما يفترق كلام الكيان عن
-// الي راح ينزل فعلاً.
-/** ⚠️ `POSITIVE` = نظيف **وصار شي إيجابي بآخر ٢٤ ساعة** (نقطة
- *  رجعتله أو ورق حجز انخلص). بلا سبب حقيقي يبقى `HAPPY` — الخادم
- *  هو الي يقرر، والواجهة تعرض بس. */
-export type EntityMood = 'HAPPY' | 'POSITIVE' | 'WATCHING' | 'ANGRY'
-
-export interface EntityLine {
-  kind: 'PAPERWORK' | 'EXTRA_TASK' | 'BOOKING' | 'DISCIPLINE'
-  text: string
-  link?: string
-  /** الغرامة نزلت فعلاً أو المهلة خلصت — يهزّ الكيان ويقلبه غاضب. */
-  urgent: boolean
-}
-
-export interface EntityBriefing {
-  mood: EntityMood
-  greeting: string
-  persona?: string
-  points: number
-  dinarAtRisk: number
-  lines: EntityLine[]
-  calmUrl?: string
-  happyUrl?: string
-  angryUrl?: string
-  characterState: 'NONE' | 'PENDING' | 'READY' | 'FAILED'
-}
-
-// ═══ قصص الكيان ═══
-//
-// الكيان ما يعرض تنبيهاً ويخلص — ينفّذ **مشهداً**: شخصية المراقب
-// تدخل من الحافة حاملة ورقة، تسلّمها، والأفتار يفتحها ويقراها.
-//
-// ⚠️ **المشهد يجي من الخادم**: الواجهة **تنفّذ** ما تبني. مصدر واحد
-// للمشهد يعني تعديل خطوة يوصل كل الأجهزة بلا نشر واجهة جديدة.
-export type StoryStatus =
-  | 'QUEUED' | 'DELIVERED' | 'PLAYING' | 'SEEN' | 'OPENED' | 'ACKNOWLEDGED' | 'FAILED'
-
-export interface StoryStep {
-  action: string
-  /** MESSENGER = شخصية المُرسِل · SELF = أفتار الموظف نفسه. */
-  actor: 'MESSENGER' | 'SELF'
-  durationMs: number
-  /** نقطة استئناف آمنة: انقطع الاتصال ← نرجع لهنا مو لأول المشهد. */
-  checkpoint: boolean
-}
-
-export interface StoryInstance {
-  id: string
-  eventId: string
-  eventKind: string
-  storyType: string
-  senderEmployeeId?: string
-  /** ⚠️ اسم المُرسِل ظاهر بقصد — قرار صاحب النظام: الموظف يعرف منو خصمه. */
-  senderName: string
-  /** ⚠️ يصير null لو انحذف الحساب — والصف يبقى بدليله المنسوخ. */
-  recipientEmployeeId?: string
-  recipientRef: string
-  recipientName: string
-  status: StoryStatus
-  priority: number
-  /** false = تجاوز السقف اليومي ← تنعرض هادئة بالصندوق بلا مشهد. */
-  physical: boolean
-  currentStep: number
-  payload: Record<string, unknown>
-  deliveredAt?: string
-  seenAt?: string
-  openedAt?: string
-  acknowledgedAt?: string
-  createdAt: string
-}
-
-export interface StoryWithScene extends StoryInstance {
-  scene: StoryStep[]
-  label: string
-}
-
-export interface EmployeeCharacter {
-  id: string
-  employeeId: string
-  persona: string | null
-  status: 'PENDING' | 'READY' | 'FAILED'
-  error: string | null
-  generatedAt: string | null
-}
-
 export interface ExtraTask {
   id: string
   title: string
@@ -3705,92 +3589,7 @@ export interface SaveTrainingProgramInput {
 export const DEPARTMENTS = ['الفنية', 'المبيعات', 'الصيانة', 'الإدارة', 'المستودع']
 export const REVIEW_GRADES = ['ممتاز', 'جيد جداً', 'جيد', 'يحتاج تحسين']
 
-/** ═══ مختبر المحاكاة — للمالك وحده بهالمرحلة ═══
- *  الأنواع التفصيلية بـ`src/sim/types.ts` (المحرّك يقراها). هنا بس
- *  الي تحتاجه دوال النداء. */
-export type {
-  SimCategory, SimDevice, SimExercise, SimLesson, SimAttempt,
-} from './sim/types'
-import type {
-  SimCategory as SimCat, SimExercise as SimEx, SimLesson as SimLes,
-  SimAttempt as SimAtt, SimEvent, BoardState,
-} from './sim/types'
-
-export interface SimProgressBody {
-  state: BoardState
-  stepsPassed: number
-  hintsUsed: number
-  wrongCount: number
-  events: SimEvent[]
-}
-export interface SimFinishBody extends SimProgressBody {
-  durationSec: number
-}
-
-/** صف بقائمة مراجعة المحتوى. */
-export interface SimReviewRow {
-  kind: 'devices' | 'exercises' | string
-  id: string
-  title: string
-  status: string
-  verified: boolean
-  sourceRef?: string
-  localPractice?: string
-  verifiedAt?: string
-}
-
-/** مخطط محفوظ بمساحة العمل. */
-export interface SimProject {
-  id: string
-  employeeId: string
-  name: string
-  domain: string
-  doc: unknown
-  notes?: string
-  createdAt: string
-  updatedAt: string
-}
-
 export const api = {
-  // ── مختبر المحاكاة: للمالك وحده ──
-  // المسارات محمية بـRequireOwner وترجّع 404 لأي حساب ثاني (حتى ADMIN) —
-  // مقصود، حتى ما ينكشف وجود الميزة أصلاً.
-  getSimCategories: () => request<SimCat[]>('/sim/categories'),
-  getSimExercises: (categoryId: string) => request<SimEx[]>(`/sim/categories/${categoryId}/exercises`),
-  getSimLessons: (categoryId: string) => request<SimLes[]>(`/sim/categories/${categoryId}/lessons`),
-  getSimExercise: (id: string) => request<SimEx>(`/sim/exercises/${id}`),
-  startSimAttempt: (exerciseId: string) =>
-    request<SimAtt>(`/sim/exercises/${exerciseId}/attempts`, { method: 'POST' }),
-  saveSimProgress: (attemptId: string, body: SimProgressBody) =>
-    request<{ ok: boolean }>(`/sim/attempts/${attemptId}/progress`, { method: 'PUT', body: JSON.stringify(body) }),
-  finishSimAttempt: (attemptId: string, body: SimFinishBody) =>
-    request<SimAtt>(`/sim/attempts/${attemptId}/finish`, { method: 'PUT', body: JSON.stringify(body) }),
-  getMySimAttempts: (limit?: number) =>
-    request<SimAtt[]>(`/sim/attempts/mine${limit ? `?limit=${limit}` : ''}`),
-
-  // ── مخططات مساحة العمل ──
-  // ⚠️ السيرفر يجبر مالك المخطط من التوكن مو من الجسم، فالحفظ ما يگدر
-  // ينكتب باسم موظف ثاني حتى لو انبعث `employeeId`.
-  listSimProjects: () => request<SimProject[]>('/sim/projects'),
-  getSimProject: (id: string) => request<SimProject>(`/sim/projects/${id}`),
-  saveSimProject: (body: { id?: string; name: string; domain: string; doc: unknown }) =>
-    request<SimProject>('/sim/projects', { method: 'POST', body: JSON.stringify(body) }),
-  deleteSimProject: (id: string) =>
-    request<{ ok: boolean }>(`/sim/projects/${id}`, { method: 'DELETE' }),
-
-  // ── الاعتماد والنشر ──
-  // ⚠️ هاي **الإجراءات الوحيدة** الي تخلّي محتوى المختبر يوصل متدرّباً:
-  // استعلامات المستودع تشترط `verified = TRUE` و`status = 'PUBLISHED'`.
-  getSimReview: () => request<SimReviewRow[]>('/sim/review'),
-  setSimVerified: (kind: string, id: string, verified: boolean, note?: string) =>
-    request<{ ok: boolean }>(`/sim/${kind}/${id}/verify`, {
-      method: 'PATCH', body: JSON.stringify({ verified, note: note ?? '' }),
-    }),
-  setSimPublished: (kind: string, id: string, published: boolean) =>
-    request<{ ok: boolean }>(`/sim/${kind}/${id}/publish`, {
-      method: 'PATCH', body: JSON.stringify({ published }),
-    }),
-
   getMe: () => request<Employee>('/auth/me'),
   // تغيير كلمة السر يبطل كل الجلسات القديمة — بضمنها توكن الجهاز الحالي.
   // السيرفر يرجّع توكن جديد ولازم نخزنه فوراً، وإلا كل طلب بعدها يطلع
@@ -4151,33 +3950,6 @@ export const api = {
     request<{ reply: string }>('/assistant/ask', { method: 'POST', body: JSON.stringify({ message }) }),
   managerChatAssistant: (message: string, history: { role: 'user' | 'assistant'; text: string }[]) =>
     request<{ reply: string }>('/assistant/manager-chat', { method: 'POST', body: JSON.stringify({ message, history }) }),
-
-  // ═══ الكيان ═══
-  /** تقرير الكيان لصاحب التوكن — بياناته هو بس (ماكو معامل موظف بقصد). */
-  getEntityBriefing: () => request<EntityBriefing>('/entity/briefing'),
-  getMyEntityCharacter: () => request<EmployeeCharacter | null>('/entity/character/me'),
-
-  // ═══ قصص الكيان — كلها لصاحب الجلسة حصراً ═══
-  /** القصة الي دورها الآن (وحدة بس) وعدد الي ينتظر. */
-  getNextStory: () => request<{ story: StoryWithScene | null; pending: number }>('/stories/next'),
-  /** صندوق القصص — سجل مقروء حتى بعد ما ينتهي المشهد. */
-  getMyStories: (limit = 50) => request<StoryInstance[]>(`/stories/mine?limit=${limit}`),
-  /**
-   * تحجز القصة لهذي النافذة.
-   *
-   * ⚠️ `claimed:false` **مو خطأ** — يعني نافذة ثانية لنفس الموظف
-   * سبقتنا. بلا الحجز، التبويبان يعرضان نفس العقوبة مرتين.
-   */
-  claimStory: (id: string) =>
-    request<{ claimed: boolean }>(`/stories/${id}/claim`, { method: 'POST' }),
-  /** ⚠️ `ACKNOWLEDGED` إقرار الموظف بضغطة — مو استنتاج من إن المشهد انعرض. */
-  advanceStory: (id: string, status: StoryStatus, step: number) =>
-    request<{ ok: boolean }>(`/stories/${id}/advance`, {
-      method: 'POST',
-      body: JSON.stringify({ status, step }),
-    }),
-  generateEntityCharacter: (employeeId: string) =>
-    request<EmployeeCharacter>(`/entity/character/${employeeId}/generate`, { method: 'POST' }),
 
   getAssistantConversations: (params: { employeeId?: string; from?: string; to?: string; limit?: number; offset?: number }) => {
     const q = new URLSearchParams()
@@ -4931,53 +4703,6 @@ export const api = {
   /** قرار التقني بعد التواصل: انحلّت بالتلفون، لو زيارة بموعد (بتوقيت بغداد «YYYY-MM-DDTHH:mm»). */
   techDecide: (id: string, decision: 'PHONE' | 'VISIT', text: string, visitAt = '') =>
     request<Booking>(`/bookings/${id}/tech/decide`, { method: 'PUT', body: JSON.stringify({ decision, text, visitAt }) }),
-
-  // ═══ مجسّمات الكيان ثلاثية الأبعاد ═══
-  // ⚠️ **رفعها بمسار خاص مو `uploadFile` العام**: العام مفتوح لأي
-  // موظف مسجّل، والمجسّم يوصل ١٠ م.ب — فالرفع مقيَّد بالمالك بالخادم.
-  getEntityModels: () => request<EntityAvatarModel[]>('/entity/models'),
-  uploadEntityModel: async (file: File, label: string) => {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('label', label)
-    const token = currentToken()
-    // ماكو Content-Type: المتصفح يحطه بنفسه مع حدود multipart
-    const res = await fetch(`${API_URL}/entity/models`, {
-      method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
-      body: form,
-    })
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'تعذر رفع المجسّم')
-    return res.json() as Promise<EntityAvatarModel>
-  },
-  archiveEntityModel: (id: string) =>
-    request<{ ok: boolean }>(`/entity/models/${id}/archive`, { method: 'PUT' }),
-  /**
-   * شخصية النظام النشطة، أو `null` لو ماكو.
-   *
-   * ⚠️ **مكتوبة بـ`fetch` مو بـ`request`**: الخادم يرجّع **٢٠٤ بلا
-   * جسم** لمّا ماكو مجسّم نشط (وهاي حالة طبيعية)، و`request` ينادي
-   * `res.json()` دائماً — فيرمي على جسم فاضي ويطلع كأنه خطأ.
-   *
-   * 🔴 و**أي فشل يرجّع `null` مو استثناءً**: المستدعي هو الودجة الي
-   * يشوفها كل موظف، والفشل لازم يعني «استخدم المجسّم المدمج» مو
-   * «شخصية مكسورة». وبالذات لو الخادم أقدم من الواجهة (٤٠٤).
-   */
-  getActiveEntityModel: async (): Promise<EntityAvatarModel | null> => {
-    try {
-      const token = currentToken()
-      const res = await fetch(`${API_URL}/entity/models/active`, {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      })
-      if (res.status === 204 || !res.ok) return null
-      return (await res.json()) as EntityAvatarModel
-    } catch {
-      return null
-    }
-  },
-  /** `id` = `builtin` يعني رجوعاً للمجسّم المدمج. */
-  activateEntityModel: (id: string) =>
-    request<{ ok: boolean }>(`/entity/models/${id}/activate`, { method: 'PUT' }),
 
   // المضاف من شاشة «إضافة منتج» بس — بدون كتالوج عروض الأسعار القديم
   getAddedProducts: () => request<Product[]>('/products?added=1'),

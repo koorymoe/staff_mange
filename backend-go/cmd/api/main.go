@@ -235,8 +235,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	surveyPhotoHandler := handler.NewSurveyPhotoHandler(repository.NewSurveyPhotoRepository(db), permissionRepo, fileStore)
 	// مفاتيح إطفاء الميزات — جدول عام صغير، القراءة للكل والكتابة للمالك.
 	systemSwitchHandler := handler.NewSystemSwitchHandler(repository.NewSystemSwitchRepository(db))
-	entityModelHandler := handler.NewEntityModelHandler(
-		repository.NewEntityModelRepository(db), fileStore)
 	cartHandler := handler.NewCartHandler(cartService)
 	expenseHandler := handler.NewExpenseHandler(expenseService, permissionRepo)
 	inventoryHandler := handler.NewInventoryHandler(inventoryService)
@@ -333,20 +331,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	extraTaskRepo := repository.NewExtraTaskRepository(db)
 	extraTaskHandler := handler.NewExtraTaskHandler(extraTaskRepo, notificationRepo)
 	extraTaskHandler.SetStories(storyService)
-
-	// ═══ الكيان — مراقب ومساعد شخصي لكل موظف ═══
-	// «كيان يهابه الموظف، يرحّب بيه، ويحذّره قبل ما تنزل الغرامة».
-	// ⚠️ يُبنى بعد extraTaskRepo لأنه يقرا منه، وكل أرقامه من مصادر
-	// موجودة (الانضباط، المهام، الحجوزات) — ما يخترع رقماً.
-	entityCharacterRepo := repository.NewEmployeeCharacterRepository(db)
-	entityService := service.NewEntityService(entityCharacterRepo, employeeRepo, disciplineRepo,
-		extraTaskRepo, bookingRepo, kpiRepo, permissionRepo, assistantService, fileStore,
-		cfg.GeminiAPIKey, cfg.GeminiImageModel)
-	entityHandler := handler.NewEntityHandler(entityService)
-
-	// مختبر المحاكاة — للمالك وحده بهالمرحلة (شوف مسارات /api/sim تحت).
-	simRepo := repository.NewSimRepository(db)
-	simHandler := handler.NewSimHandler(simRepo)
 
 	aiRepo := repository.NewAiRepository(db)
 	// achievementRepo يُبنى هنا (بدل مكانه الطبيعي تحت مع بقية شغل
@@ -858,24 +842,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// العرض ما يمر بـrequireAuth لأن <img> ما يرسل ترويسة Authorization —
 	// التحقق يصير بالوسم الموقّع بالمعالج نفسه.
 	mux.Handle("GET /api/files/", http.HandlerFunc(fileHandler.Serve))
-
-	// ═══ مجسّمات الكيان ثلاثية الأبعاد ═══
-	// القائمة لأي موظف مسجّل (العارض يحتاجها)، والرفع والأرشفة
-	// **للمالك حصراً**: الملف يوصل ١٠ م.ب، ولو فتحناه لكل موظف
-	// يتحوّل تخزيننا لمكب ملفات.
-	requireOwnerModels := middleware.RequireOwnerOnly("رفع المجسّمات للمالك وحده")
-	mux.Handle("GET /api/entity/models", middleware.Chain(
-		http.HandlerFunc(entityModelHandler.List), requireAuth))
-	mux.Handle("POST /api/entity/models", middleware.Chain(
-		http.HandlerFunc(entityModelHandler.Create), requireAuth, requireOwnerModels))
-	// شخصية النظام النشطة: القراءة لكل موظف (الودجة تحتاجها بكل تحميل)،
-	// والتفعيل **للمالك حصراً** لأنه يبدّل الي يشوفه كل موظف.
-	mux.Handle("GET /api/entity/models/active", middleware.Chain(
-		http.HandlerFunc(entityModelHandler.Active), requireAuth))
-	mux.Handle("PUT /api/entity/models/{id}/activate", middleware.Chain(
-		http.HandlerFunc(entityModelHandler.Activate), requireAuth, requireOwnerModels))
-	mux.Handle("PUT /api/entity/models/{id}/archive", middleware.Chain(
-		http.HandlerFunc(entityModelHandler.Archive), requireAuth, requireOwnerModels))
 
 	// ═══ مفاتيح النظام ═══
 	//
@@ -1449,9 +1415,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/assistant/manager-chat", middleware.Chain(http.HandlerFunc(assistantHandler.ManagerChat), requireAuth, requireMonitor))
 	mux.Handle("GET /api/assistant/conversations", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversations), requireAuth, requireOwner))
 	mux.Handle("GET /api/assistant/conversations/employees", middleware.Chain(http.HandlerFunc(assistantHandler.ListConversationEmployees), requireAuth, requireOwner))
-	// ═══ الكيان ═══
-	// ⚠️ التقرير والشخصية **للموظف نفسه** — الهوية من التوكن بلا أي
-	// معامل، فما اكو طريق يجيب فيها موظف تقرير زميله.
 	// قصص الكيان — كلها **لصاحب الجلسة حصراً**، ماكو ولا مسار ياخذ
 	// رقم موظف من الرابط. الهوية من التوكن وحده.
 	mux.Handle("GET /api/stories/next", middleware.Chain(http.HandlerFunc(storyHandler.Next), requireAuth))
@@ -1459,11 +1422,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/stories/{id}/claim", middleware.Chain(http.HandlerFunc(storyHandler.Claim), requireAuth))
 	mux.Handle("POST /api/stories/{id}/advance", middleware.Chain(http.HandlerFunc(storyHandler.Advance), requireAuth))
 
-	mux.Handle("GET /api/entity/briefing", middleware.Chain(http.HandlerFunc(entityHandler.Briefing), requireAuth))
-	mux.Handle("GET /api/entity/character/me", middleware.Chain(http.HandlerFunc(entityHandler.MyCharacter), requireAuth))
-	// ⚠️ التوليد بيد المالك/المدير بس: ينادي مولّد صور خارجي ثلاث مرات
-	// لكل موظف، وسقف المزوّد اليومي محدود.
-	mux.Handle("POST /api/entity/character/{employeeId}/generate", middleware.Chain(http.HandlerFunc(entityHandler.GenerateCharacter), requireAuth, requireAdmin))
 	mux.Handle("POST /api/kpi-criteria", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Create), requireAuth, requireKpiCriteria))
 	mux.Handle("DELETE /api/kpi-criteria/{id}", middleware.Chain(http.HandlerFunc(kpiCriterionHandler.Delete), requireAuth, requireKpiCriteria))
 
@@ -1924,35 +1882,6 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// ═══ مختبر المحاكاة — للمالك وحده ═══
 	//
-	// «أريد محاكيات… بس هذا أريده يظهر فقط عند المالك حتى مدير النظام
-	// ما أريده يظهر عنده إلى أن يكتمل بصورة كاملة».
-	//
-	// ⚠️ `RequireOwner()` ترجّع **404** مو 403: أي حساب ثاني — حتى ADMIN —
-	// ما يعرف إن هذي المسارات موجودة أصلاً. وما تسجّل مخالفة، فمدير يضغط
-	// زراً قديماً ما ينحظر حسابه.
-	//
-	// ⚠️ لا تستبدلها بصلاحية: كل وسائط الصلاحيات بالنظام
-	// (RequirePermission/RequireAnyPermission/RequireRole) تمرّر ADMIN بلا
-	// شرط، يعني الصلاحية ما تگدر تخفي شي عن مدير النظام أبداً.
-	simOwner := middleware.RequireOwner()
-	mux.Handle("GET /api/sim/categories", middleware.Chain(http.HandlerFunc(simHandler.ListCategories), requireAuth, simOwner))
-	mux.Handle("GET /api/sim/categories/{id}/exercises", middleware.Chain(http.HandlerFunc(simHandler.ListExercises), requireAuth, simOwner))
-	mux.Handle("GET /api/sim/categories/{id}/lessons", middleware.Chain(http.HandlerFunc(simHandler.ListLessons), requireAuth, simOwner))
-	mux.Handle("GET /api/sim/exercises/{id}", middleware.Chain(http.HandlerFunc(simHandler.GetExercise), requireAuth, simOwner))
-	mux.Handle("POST /api/sim/exercises/{id}/attempts", middleware.Chain(http.HandlerFunc(simHandler.StartAttempt), requireAuth, simOwner))
-	mux.Handle("PUT /api/sim/attempts/{id}/progress", middleware.Chain(http.HandlerFunc(simHandler.SaveProgress), requireAuth, simOwner))
-	mux.Handle("PUT /api/sim/attempts/{id}/finish", middleware.Chain(http.HandlerFunc(simHandler.FinishAttempt), requireAuth, simOwner))
-	mux.Handle("GET /api/sim/attempts/mine", middleware.Chain(http.HandlerFunc(simHandler.MyAttempts), requireAuth, simOwner))
-	// مخططات مساحة العمل — نفس البوابة: المالك وحده بهالمرحلة.
-	mux.Handle("GET /api/sim/projects", middleware.Chain(http.HandlerFunc(simHandler.ListProjects), requireAuth, simOwner))
-	mux.Handle("GET /api/sim/projects/{id}", middleware.Chain(http.HandlerFunc(simHandler.GetProject), requireAuth, simOwner))
-	mux.Handle("POST /api/sim/projects", middleware.Chain(http.HandlerFunc(simHandler.SaveProject), requireAuth, simOwner))
-	mux.Handle("DELETE /api/sim/projects/{id}", middleware.Chain(http.HandlerFunc(simHandler.DeleteProject), requireAuth, simOwner))
-	// الاعتماد والنشر — الإجراء الوحيد الي يخلّي المحتوى يوصل متدرّباً.
-	mux.Handle("GET /api/sim/review", middleware.Chain(http.HandlerFunc(simHandler.PendingReview), requireAuth, simOwner))
-	mux.Handle("PATCH /api/sim/{kind}/{id}/verify", middleware.Chain(http.HandlerFunc(simHandler.SetVerified), requireAuth, simOwner))
-	mux.Handle("PATCH /api/sim/{kind}/{id}/publish", middleware.Chain(http.HandlerFunc(simHandler.SetPublished), requireAuth, simOwner))
-
 	mux.Handle("GET /api/funds", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ListFunds), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/{id}", middleware.Chain(http.HandlerFunc(revolvingFundHandler.UpdateFund), requireAuth, requireFundAmount))
 	mux.Handle("POST /api/funds/{id}/topup", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Topup), requireAuth, requireFundAmount))
@@ -2326,7 +2255,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── صوت الموظفين + المشاكل الوظيفية (قرارات (ع) 10-05) ──
 	peerVoiceService := service.NewPeerVoiceService(repository.NewPeerVoiceRepository(db),
 		repository.NewAchievementVoiceRepository(db).Names,
-		func(roles []string, perm, msg string) { _ = notificationRepo.CreateForRolesOrPermission(roles, perm, "MATRIX_PEER", msg) })
+		func(roles []string, perm, msg string) {
+			_ = notificationRepo.CreateForRolesOrPermission(roles, perm, "MATRIX_PEER", msg)
+		})
 	peerVoiceService.EnableModel(cfg.AnthropicAPIKey, cfg.AIModel)
 	peerHandler := handler.NewPeerVoiceHandler(peerVoiceService)
 	mux.Handle("GET /api/peer/me", middleware.Chain(http.HandlerFunc(peerHandler.Mine), requireAuth))

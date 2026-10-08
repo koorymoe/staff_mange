@@ -94,7 +94,7 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	// النوع ينحدد من محتوى الملف نفسه — الترويسة المرسلة تنزوّر بسهولة
 	contentType := storage.SniffContentType(data)
 	if !storage.AllowedContentTypes[contentType] {
-		WriteError(w, http.StatusBadRequest, "نوع الملف مو مسموح — صور (JPG/PNG/WEBP) أو PDF أو مجسّم (GLB)")
+		WriteError(w, http.StatusBadRequest, "نوع الملف مو مسموح — صور (JPG/PNG/WEBP) أو PDF")
 		return
 	}
 
@@ -165,11 +165,7 @@ func (h *FileHandler) Serve(w http.ResponseWriter, r *http.Request) {
 var allowedFolders = map[string]bool{
 	"products": true, "receipts": true, "vehicles": true, "projects": true,
 	"reports": true, "exhibitions": true, "gps": true, "incidents": true,
-	// صور شخصيات الكيان المولّدة
-	"characters": true,
-	// مجسّمات الكيان ثلاثية الأبعاد (.glb) — الرفع للمالك حصراً
-	"models": true,
-	"misc":   true, "sim": true,
+	"misc": true, "sim": true,
 }
 
 func safeFolder(f string) string {

@@ -19,8 +19,6 @@ import { ensureFileToken } from '../api'
 import Login from '../pages/Login'
 import CommandApp from '../command/CommandApp'
 import TrainingPage from '../pages/TrainingPage'
-import EntityCompanion from './EntityCompanion'
-import StoryScene from './StoryScene'
 import SettingsPanel from './SettingsPanel'
 
 // وجهة كل نوع إشعار: ضغطة على الإشعار توديك للشاشة الي تخصه بدل ما
@@ -620,59 +618,6 @@ export default function Layout() {
     )
   }
 
-  // ═══ المختبر: عالم معزول جوّا النظام ═══
-  //
-  // «أريد المختبر يكون فدشي معزول عن النظام بداخل النظام».
-  //
-  // ⚠️ **معزول بالقشرة مو بالصلاحية**: نفس `SessionContext` ونفس
-  // التحقق من الدخول ونفس البوابات — يتغيّر **بس** الي حواليه. لو
-  // عزلناه بمسار برّا `Layout` چان انقطع عنه فحص الدخول وبوابة
-  // الخصوصية، ويصير باباً خلفياً بلا ما ننتبه.
-  //
-  // ⚠️ ليش أصلاً: المختبر **حالة ذهنية ثانية**. الموظف داخله يتدرّب
-  // ويغلط عمداً ويجرّب — وشريط جانبي فيه «الحجوزات» و«الرواتب»
-  // وإشعارات تنطّ يسحبه برّا التمرين كل دقيقة. أدوات التدريب الجدّية
-  // كلها تاخذ الشاشة كاملة لنفس السبب.
-  if (location.pathname.startsWith('/simulator-lab')) {
-    return (
-      <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
-        <PrivacyPolicyGate />
-        <div dir="rtl" className="min-h-screen bg-[#070c14] text-slate-200">
-          <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-slate-800 bg-[#0b1220]/95 px-4 backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              <span className="text-[15px] font-extrabold tracking-tight text-white">
-                🧪 مختبر المحاكاة
-              </span>
-              <span className="rounded-full bg-sky-500/15 px-2 py-0.5 text-[10.5px] font-bold text-sky-300 ring-1 ring-sky-500/30">
-                بيئة تدريب — ماكو أي أثر على بيانات الشركة
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[12px] text-slate-400">{employee.name}</span>
-              {/* ⚠️ **مخرج واضح** إجباري: شاشة كاملة بلا طريق رجوع
-                  تحبس الموظف، ويطلع منها بزر الرجوع أو بإعادة تحميل —
-                  ويضيّع شغله. */}
-              <button
-                onClick={() => navigate('/')}
-                className="rounded-lg bg-slate-800 px-3 py-1.5 text-[12px] font-bold text-slate-300 hover:bg-slate-700"
-              >
-                ← رجوع للنظام
-              </button>
-            </div>
-          </header>
-          <main>
-            <ErrorBoundary inline key={location.pathname}>
-              {/* حارس الرابط: نفس قرار القائمة — الشاشة الي ما تطلعلك بالقائمة ما تنفتح بالرابط */}
-              {employee?.actualRole !== 'OWNER' && isPathAllowed(location.pathname, { employee, permissions: employeePermissions, gpsServiceId }) === false
-                ? <NoAccess />
-                : <AttendanceGate><Outlet /></AttendanceGate>}
-            </ErrorBoundary>
-          </main>
-        </div>
-      </SessionContext.Provider>
-    )
-  }
-
   return (
     <SessionContext.Provider value={{ employee, setEmployee, permissions: employeePermissions, gpsServiceId }}>
       {/* سياسة الخصوصية: تنعرض أول دخول ولما تنضاف نقاط جديدة */}
@@ -1004,13 +949,6 @@ export default function Layout() {
           </div>
         </aside>
       </div>
-      {/* ═══ الكيان ═══ يحل محل البوتين القديمين (المساعد الذكي ومساعد
-          المدير) — بوت واحد بالشاشة مو اثنين، والمحادثة جوّاه تروح
-          لنفس المسارين حسب الدور بلا تغيير سلوك. */}
-      <EntityCompanion />
-      {/* مشهد القصة — يظهر بس لمّا يكون بالطابور شي، وينغلق بإقرار
-          الموظف. ⚠️ فوق الكيان بقصد: قصة العقوبة ما تنحجب وراه. */}
-      <StoryScene />
     </SessionContext.Provider>
   )
 }
