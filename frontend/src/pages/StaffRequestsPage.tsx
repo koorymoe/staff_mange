@@ -28,7 +28,8 @@ const statusStyle: Record<string, string> = {
 
 export default function StaffRequestsPage({ embedded }: { embedded?: boolean } = {}) {
   const { employee, permissions } = useSession()
-  const isHandler = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR'
+  // تقرير ١ (B5): صلاحية «طلبات الكادر» تبت بالطلب هم (الخادم يقبلها).
+  const isHandler = employee?.role === 'ADMIN' || employee?.role === 'HR_COORDINATOR' || permissions.includes('staff_requests')
   const canRequest = employee?.role === 'ADMIN' || permissions.includes('project_management')
 
   const [requests, setRequests] = useState<StaffRequest[]>([])

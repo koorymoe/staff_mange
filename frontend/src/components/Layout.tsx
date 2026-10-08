@@ -259,7 +259,7 @@ export default function Layout() {
     const autoExpand = (items: NavItem[]) => {
       items.forEach((item) => {
         if (item.children && hasActiveChild(item, location.pathname)) {
-          setExpandedGroups((prev) => ({ ...prev, [item.label]: true }))
+          setExpandedGroups((prev) => ({ ...prev, [item.to || item.label]: true }))
           autoExpand(item.children)
         }
       })
@@ -348,6 +348,19 @@ export default function Layout() {
   // «الشاشة تظهر بأول محل بس» — لأن محتواها كله موجود أصلاً تحت
   // «الإدارة»، فالقاعدة جانت تفرّغ الوحدات وتشيلها كاملة عن مدير
   // النظام. الوحدة باب مستقل يلمّ شغل قسم معيّن، مو تكرار.
+  // تقرير ١ (A1/A2): الشاشة الي تطلع للشخص داخل وحدة عنده، ما تتكرر تحت «العمل».
+  const unitPaths = new Set<string>()
+  const collectUnit = (items: NavItem[], granted: boolean, inUnit: boolean) => {
+    for (const it of items) {
+      if (!isVisible(it, granted)) continue
+      if (it.monitorMenuHide && role === 'MONITOR') continue
+      const g = granted || (!!it.unitPermission && (role === 'ADMIN' || employeePermissions.includes(it.unitPermission)))
+      if (it.children) collectUnit(it.children, g, inUnit || !!it.unitPermission)
+      else if (inUnit && it.to) unitPaths.add(it.to)
+    }
+  }
+  collectUnit(navItems, false, false)
+
   const prune = (items: NavItem[], unitGranted: boolean, seen: Set<string>, depth = 0, insideUnit = false): PrunedItem[] => {
     const out: PrunedItem[] = []
     for (const item of items) {
@@ -386,6 +399,7 @@ export default function Layout() {
       // ‎/leader-invoices/new‎ فاتورة مربوطة بحجز.
       const key = item.to || ''
       if (!insideUnit) {
+        if (key && unitPaths.has(key)) continue
         if (key && seen.has(key)) continue
         if (key) seen.add(key)
       }
@@ -440,14 +454,14 @@ export default function Layout() {
 
     if (item.children) {
       const kids = item.children
-      const open = expandedGroups[item.label]
+      const open = expandedGroups[item.to || item.label]
       const active = hasActiveChild(item, location.pathname)
 
       if (depth === 0) {
         return (
           <div key={item.to || item.label}>
             <button
-              onClick={() => toggle(item.label)}
+              onClick={() => toggle(item.to || item.label)}
               className={`group relative flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-[13px] font-bold transition-all duration-300 ${
                 active
                   ? 'bg-gradient-to-l from-[#2563eb] to-[#1e40af] text-white shadow-[0_0_18px_rgba(59,130,246,0.45)] ring-1 ring-sky-400/40'
@@ -480,7 +494,7 @@ export default function Layout() {
       return (
         <div key={item.to || item.label}>
           <button
-            onClick={() => toggle(item.label)}
+            onClick={() => toggle(item.to || item.label)}
             className={`group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] font-bold transition-all duration-200 ${
               active ? 'bg-white/[0.08] text-white' : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-200'
             }`}

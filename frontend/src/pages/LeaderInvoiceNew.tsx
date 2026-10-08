@@ -53,6 +53,9 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
   const canGps = isTopAdmin || permissions.includes('invoice_gps')
   const canDashcam = isTopAdmin || permissions.includes('invoice_dashcam')
   const canServiceInvoice = canGps || canDashcam
+  // تقرير ١ (B14): فاتورة الحجز يحفظها الخادم لليدر ومسؤول خدمة الحجز بس
+  // (requireLeaderOrServiceManager) — غيرهم كانت ترجعله 403.
+  const canBookingInvoice = !!employee?.isLeader || ['ADMIN', 'OWNER', 'SERVICE_MANAGER', 'TECHNICAL'].includes(employee?.role ?? '')
   /**
    * ⚠️ **يفتح من الرابط `?service=1`**: بند القائمة مال صاحب صلاحية
    * الفاتورة يوصله لهالشاشة، وهي شاشة **حساب كلفة** أصلاً — فلو
@@ -882,7 +885,7 @@ export default function LeaderInvoiceNew({ initialMode }: { initialMode?: 'estim
       <div className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
         {([
           { k: 'estimate', icon: '💬', title: 'استفسار زبون', desc: 'رقم تقريبي بس — ما ينحفظ ولا ينربط بحجز', show: true },
-          { k: 'booking',  icon: '🔖', title: 'فاتورة لحجز',  desc: 'الحساب من جدول الكلفة، وتترحّل للمحاسب', show: true },
+          { k: 'booking',  icon: '🔖', title: 'فاتورة لحجز',  desc: 'الحساب من جدول الكلفة، وتترحّل للمحاسب', show: canBookingInvoice },
           { k: 'service',  icon: '🛰️', title: 'فاتورة خدمة', desc: 'جي بي اس أو داش كام — السعر تحطّه أنت', show: canServiceInvoice },
           { k: 'manual',   icon: '✍️', title: 'كلفة يدوية',   desc: 'شغل ماكو إله بند بجدول الكلفة', show: canManualInvoice },
           { k: 'internal', icon: '🏢', title: 'شغل داخل الشركة', desc: 'ماكو زبون — المبلغ تقدير', show: canInternalInvoice },

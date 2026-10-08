@@ -68,12 +68,6 @@ export interface NavItem {
   // execution_cost) جانت تفتح أبناءه فيطلع للمحاسب «العمل» **مرتين**:
   // واحدة مالته وواحدة مال الفني. مدير النظام ما ينتأثر.
   fieldStaffOnly?: boolean
-  // requireOwnGrant: يمنع هذا العنصر تحديداً من "المرور المجاني" لمن
-  // عنده صلاحية الوحدة كاملة (`unitPermission`) — يحتاج منح صلاحيته
-  // هو بالإيد، حتى لو الموظف عنده كل صلاحيات الوحدة. الاستثناء
-  // الوحيد على قاعدة "الوحدة تفتح كل أبناءها" — لعنصر حسّاس صاحب
-  // النظام يريد يتحكم فيه شخص-شخص، مو دفعة وحدة مع الوحدة.
-  requireOwnGrant?: boolean
   children?: NavItem[]
   divider?: boolean
   /** عنوان قسم بلا خطوط جانبية — «التنقل الرئيسي» بأعلى القائمة */
@@ -97,9 +91,13 @@ const TECH_ROLES: EmployeeRole[] = ['TECHNICAL', 'SERVICE_MANAGER']
 
 const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/privacy-policy',
-  // قرار (ع) 10-07: الحجوزات المرحّلة للتقني.
-  '/my-handovers',
 ]
+
+// تقرير ١ (A6): نفس الشاشة بأسمين — الاسم يتبع الشخص: صاحب صلاحية الحسابات
+// يشوف «فواتير الليدر» (الكل)، والباقين «فواتير الخدمة مالتي».
+const leaderInvoicesLabel = (ctx: NavContext) =>
+  ctx.employee?.role === 'ADMIN' || ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'].some((p) => ctx.permissions.includes(p))
+    ? '🧾 فواتير الليدر' : '🧾 فواتير الخدمة مالتي'
 
 export const navItems: NavItem[] = [
   // عنوان القسم — يفصل التنقل عن رأس القائمة (الشعار وبطاقة الموظف)،
@@ -152,7 +150,7 @@ export const navItems: NavItem[] = [
     // حتى أي موظف ينمنح صلاحية إدارية (مثل إدارة المشاريع) توصله من دون تغيير دوره.
     // ما تطلع لكادر الميدان أبداً — الفني ما إله شغل بيها، والتيم ليدر
     // شغله الإداري (المشاريع، طلبات المواد) محله مجموعة «العمل» مالته.
-    hideFromFieldStaff: true,
+    hideFromFieldStaff: true, // تقرير ١ (D4): بنود TECH_ROLES هنا تطلع لمسؤول الخدمة بس — التقني ياخذ «العمل» مالته (/tech-work-group).
     to: '/admin-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
     children: [
       {
@@ -208,7 +206,6 @@ export const navItems: NavItem[] = [
       // ⚠️ المالك ومدير النظام يبقون بالدور — هما فوق نظام الصلاحيات
       // أصلاً، والخادم يعطيهما كل الشفتات (routesFor).
       { to: '/leaves', label: '🗓️ طلبات الإجازات', icon: <></>, roles: ['ADMIN', 'OWNER'], anyPermission: ['leave_approve_morning', 'leave_approve_evening'] },
-      { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_manage', 'remote_hours_self'] },
           // ⚠️ ADMIN بس — StatsPage.tsx نفسها تقفل على غير ADMIN
           // (role !== 'ADMIN')، وكان المراقب يشوف الرابط هنا ويفتح
           // دائماً على «غير مصرح». والخادم (`GET /api/stats`) صار
@@ -269,10 +266,10 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-05: ماتركس ٦٠٪ + البشر ٤٠٪ — نفس حارس GET /api/staff-score (requireMonitor).
       // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
       { to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
-      { to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
@@ -334,7 +331,7 @@ export const navItems: NavItem[] = [
           // فواتير وتقارير الخدمة جوّا «إدارة الخدمات» للتقني ومسؤول الخدمة (مو طايفة برّا).
           { to: '/leader-invoices/new?service=1', label: '🛰️ فاتورة خدمة', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
           { to: '/work-reports', label: '📝 تقرير خدمة', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
-          { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', icon: <></>, anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
+          { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', icon: <></>, labelFor: leaderInvoicesLabel,  anyPermission: ['invoice_gps', 'invoice_dashcam'], roles: TECH_ROLES },
           // ⚠️ متابعة التجديد بند مستقل **بعد** لمهندس الجودة: هو عنده
           // `quality_control` بلا `gps_system`، فلو انشال البند يفقد
           // شغله كله — والتبويب جوّا «نظام GPS» ما يوصله.
@@ -355,7 +352,7 @@ export const navItems: NavItem[] = [
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
           { to: '/staff-requests', label: 'طلبات الكادر', icon: <></>, permission: 'project_management' },
           { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
-          { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
+          { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'] },
         ],
       },
       // قرار (ع) 10-07: للتقني ومسؤول الخدمة «المشاريع» بدل «إدارة المشاريع».
@@ -365,11 +362,11 @@ export const navItems: NavItem[] = [
           { to: '/projects?add=1', label: '➕ إضافة مشروع جديد', icon: <></>, anyPermission: ['project_management', 'project_create_only'], roles: TECH_ROLES },
           { to: '/quotations/new', label: '📄 إنشاء عرض سعر جديد', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'], roles: TECH_ROLES },
           { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'], roles: TECH_ROLES },
-          { to: '/my-projects', label: '📥 المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true, roles: TECH_ROLES },
+          { to: '/my-projects', label: '📥 المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', roles: TECH_ROLES },
         ],
       },
       // قرار (ع) 10-06: «المشاريع الموجّهة لي» مباشرة تحت «العمل» جنب «إضافة مشروع».
-      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true, hideForRoles: TECH_ROLES },
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', hideForRoles: TECH_ROLES },
       // قرار (ع) 10-06: موردين التقنيين — التقني يضيف والمدير يختار لكل تقني.
       // قرار (ع) 10-07: مكانه «وحدة التقنيين» — هنا يبقى بس للي ما عنده الوحدة.
       { to: '/tech-suppliers', label: '🏪 موردين التقنيين', icon: <></>, roles: ['ADMIN', 'ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER'], unlockPermission: 'tech_suppliers', hideForRoles: ['ADMIN'], hideIfAnyPermission: ['unit_technicians'] },
@@ -400,7 +397,7 @@ export const navItems: NavItem[] = [
           { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
           // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
           // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'] },
+          { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel,  roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'] },
           { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
         ],
       },
@@ -513,9 +510,6 @@ export const navItems: NavItem[] = [
   // منفصلة هنا حتى ما تتكرر بالقائمة.
   // ملاحظة: وحدات "الإعلام والعلاقات العامة" و"التصميم" و"التقنيات (IT)" ما
   // ضفناها لأنه ما عندها صفحات مبنية بالنظام بعد — تحتاج طلب منفصل لبنائها.
-  // المشاريع الموجّهة لي: أي موظف ينوجّهله مشروع يشوفه هنا بكل مراحله — بدون
-  // ما ننطيه صلاحية إدارة المشاريع العامة. الصفحة تطلع فاضية لو ماكو شي.
-  { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M9 15l2 2 4-4"/></svg>, permission: 'my_projects', hideForRoles: ['FINANCE'], hideIfAnyPermission: ['project_management', 'project_create_only'] },
 
   // ═══ فاتورة خدمة (جي بي اس / داش كام) ═══
   //
@@ -554,7 +548,7 @@ export const navItems: NavItem[] = [
   // وفواتيره هو: بلا هذا يحفظ الفاتورة ويشوف رقمها **مرة وحدة** وخلاص.
   // ⚠️ والخادم يقصّر القائمة على فواتير صاحبها حصراً (`List` يفرض
   // معرّف الطالب لكل من ما يملك مراجعة) — فما يشوف فواتير غيره.
-  { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', icon: icon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
+  { to: '/leader-invoices', label: '🧾 فواتير الخدمة مالتي', labelFor: leaderInvoicesLabel, icon: icon('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6'), anyPermission: ['invoice_gps', 'invoice_dashcam'], hideForRoles: TECH_ROLES },
   // ═══ فاتورة الشغل داخل الشركة ═══
   //
   // «لازم الليدر يسوي فاتورة حتى للحجوزات داخل الشركة — ياما يقدرها
@@ -713,7 +707,7 @@ export const navItems: NavItem[] = [
       // ⚠️⚠️ مخفيّتان عن المراقب صراحة — راجع نفس التعليق بـ«إدارة
       // الحسابات» فوگ. شغل المحاسب الشخصي، والخادم يرفض المراقب لو
       // حاول يدقق حجزاً مباشرة أصلاً.
-      // ⚠️ نفس شروط نسخهن تحت «الإدارة» بالضبط (بند ١٣ بالفحص) — الشاشة الوحدة ما تطلع بمحل وتختفي بالثاني.
+      // ⚠️ نفس شروط نسخهن تحت «الإدارة»، إلا hideForRoles:[MONITOR] هنا (المراقب يشوفهن بمكتبه — تقرير ١ A12).
       { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'], hideForRoles: ['MONITOR'] },
       { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'], hideForRoles: ['MONITOR'] },
       { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
@@ -727,11 +721,11 @@ export const navItems: NavItem[] = [
       { to: '/camera-cost', label: '📷 حساب كلفة الكاميرات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'execution_cost' },
       // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
       // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
-      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'], hideForRoles: ['MONITOR'] },
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel,  roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'], hideForRoles: ['MONITOR'] },
       { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
       // المشاريع الموجّهة لي: محلها هنا للمحاسب — والنسخة العامة فوگ
       // منحجوبة عنه بـhideForRoles حتى ما تتكرر.
-      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects', requireOwnGrant: true },
+      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects' },
     ],
   },
   {
@@ -757,7 +751,7 @@ export const navItems: NavItem[] = [
       { to: '/project-statistics', label: '📊 إحصائيات المشاريع', icon: <></>, permission: 'project_management' },
       { to: '/checklists', label: 'الكشوفات', icon: <></>, permission: 'project_management' },
       { to: '/quotations', label: 'عروض الأسعار', icon: <></>, anyPermission: ['quotation_create', 'quotation_edit_own', 'quotation_manage_all', 'quotation_system'] },
-      { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system'] },
+      { to: '/products', label: '📦 المنتجات', icon: <></>, anyPermission: ['quotation_manage_all', 'quotation_system', 'content_technician', 'quotation_create'] },
     ],
   },
 
@@ -842,7 +836,8 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     if (item.hideIfAnyPermission && item.hideIfAnyPermission.some((p) => ctx.permissions.includes(p))) return false
 
     if (item.divider) return true
-    if (item.fieldStaffOnly && role !== 'ADMIN' && !(role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
+    // تقرير ١ (A7): حتى المدير — «العمل» مال الفني يطلعله مجموعة ثالثة اسمها «العمل».
+    if (item.fieldStaffOnly && !(role === 'TECHNICIAN' || role === 'TECHNICAL')) return false
 
     // ═══ قاعدة تعلو على كل شي: الصلاحية الممنوحة صراحةً تفتح العنصر ═══
     //
@@ -913,7 +908,6 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     }
     if (item.children) return item.children.some((c) => isNavVisible(c, ctx, granted))
     return true
-  return true
 }
 
 // ═══ عزل شغل المراقب الأساسي عن الصلاحيات الإضافية ═══
@@ -1047,7 +1041,8 @@ const SELF_SCOPED: Record<string, RouteRule> = {
 // شاشات ما يحكم عليها حارس الرابط: تتكيّف لحالها والخادم يقبل أي موظف مسجّل.
 // 🔴 «تقرير العمل» ينفتح من «مهامي» لكل كادر مكلّف — بند القائمة مقيّد بصلاحية
 // فواتير الجي بي اس، فالحارس چان يرفض الكادر وهو المفروض يكتب التقرير.
-const OPEN_PATHS = new Set(['/work-reports'])
+// تقرير ١ (B10): سياسة الخصوصية والإجازات روابطهن عند كل موظف، والصفحة تفرّق القراءة عن الإدارة.
+const OPEN_PATHS = new Set(['/work-reports', '/privacy-policy', '/leaves'])
 
 // ⚠️ كل سطر = حارس GET الشاشة بـmain.go. إذا تغيّر الحارس هناك، غيّره هنا.
 type RouteRule = { roles?: EmployeeRole[]; anyPermission?: string[]; leader?: boolean }
@@ -1055,16 +1050,18 @@ const GPS_DATA: RouteRule = { roles: ['OWNER', 'SALES'], anyPermission: ['gps_sy
 const ROUTE_RULES: Record<string, RouteRule> = {
   '/booking-delete-requests': { roles: ['OWNER', 'MONITOR'], anyPermission: ['booking_delete_approve'] }, // requireDeleteApprove
   '/extra-tasks': { anyPermission: ['extra_tasks_assign'] }, // requireExtraTaskAssign
-  '/project-payments': { roles: ['FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
-  '/staff-score': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
-  '/employee-indicators': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // نفس /api/staff-score
-  '/peer-voice': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
-  '/workplace-issues': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
-  '/media': { roles: ['MEDIA', 'PUBLIC_RELATIONS'], anyPermission: ['media', 'project_management'] }, // requireMediaView
   '/monitor-inbox': { roles: ['MONITOR'], anyPermission: ['monitoring', 'auditing'] }, // requireMonitor
   '/stage-buckets': { anyPermission: ['coordinator'] }, // requireCoordinator
   '/gps/customers': GPS_DATA,
   '/gps/devices': GPS_DATA,
   '/gps/sims': GPS_DATA,
   '/gps/requests': GPS_DATA,
+  // تقرير ١ (B11): التجديد والصيانة ببيانات الزبائن — نفس requireGpsData.
+  '/gps/renewals': GPS_DATA,
+  '/gps/maintenance': GPS_DATA,
+  '/gps/renewals-review': GPS_DATA,
+  '/gps/maintenance-review': GPS_DATA,
+  // تقرير ١ (B15): نفس حراس الخادم.
+  '/map': { anyPermission: ['coordinator', 'crew_management', 'view_bookings', 'mission_tracking', 'sales_booking'] }, // requireBookingEdit
+  '/team-inventory': { roles: ['MONITOR', 'HR_COORDINATOR', 'PROCUREMENT_ADMIN'], leader: true, anyPermission: ['inventory_follow', 'inventory'] }, // requireInventoryFollow
 }

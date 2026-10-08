@@ -4,6 +4,8 @@ import { roleLabel } from '../roleLabels'
 import { matches } from '../utils/search'
 import { loadFailed } from '../netErrors'
 
+const DEAD_PERMISSIONS = new Set(['work_reports', 'leave_approve_field', 'leave_approve_admin', 'manage_services'])
+
 export default function PermissionsPage() {
   // ═══ فحص الصلاحيات الناقصة ═══
   //
@@ -38,7 +40,8 @@ export default function PermissionsPage() {
     Promise.all([api.getEmployees(), api.getPermissions(), api.getRoleDefaults()])
       .then(([emps, perms, defaults]) => {
         setEmployees(emps)
-        setPermissions(perms)
+        // تقرير ١ (B20): صلاحيات ما تفتح ولا تقفل شي — ما تطلع حتى ما يتصور المدير إنه انطى إذن.
+        setPermissions(perms.filter((p) => !DEAD_PERMISSIONS.has(p.name)))
         setRoleDefaults(defaults)
       })
       .catch((e) => setError(e.message))

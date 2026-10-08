@@ -741,6 +741,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// (ممنوحة من صفحة الصلاحيات، مثلاً PROCUREMENT_ADMIN) — توسيع وصول، مو تضييق.
 	requireHROrInventory := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "inventory")
 	requireLeader := middleware.RequireLeader(employeeRepo, notificationRepo)
+	// تقرير ١ (B2): صلاحية «صيانة الأجهزة» تفتح البند لغير الليدر — الخادم يقبلها هم.
+	requireDeviceMaint := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, "device_maintenance")
 	requireLeaderOrServiceManager := middleware.RequireLeaderOrBookingServiceManager(
 		employeeRepo, notificationRepo, paperworkGuard.IsBookingManager)
 	requireInventoryView := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "inventory")
@@ -823,6 +825,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// صلاحية complaint_contact يكدر يتصل ويأشر النتيجة باسمه.
 	requireComplaintContact := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "OWNER", "QUALITY_ENGINEER", "MONITOR"}, "complaint_contact")
 	requireGpsSystem := middleware.RequirePermission(permissionRepo, employeeRepo, notificationRepo, "gps_system")
+	// تقرير ١ (B1): المبيعات يطلعلهم «طلب GPS/تسليم/تجديد/صيانة» — الإرسال يقبلهم
+	// (ويا صاحب gps_requests) بدل ما يرجع 403 وينقفل الحساب.
+	requireGpsRequest := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER", "SALES"}, "gps_system", "gps_requests")
 	// متابعة تجديد اشتراكات الجي بي اس تخص الاثنين: مهندس الجودة يتصل
 	// بالزبائن، ومسؤول الجي بي اس يشوف منو خلصت مهلته وشريحته تحتاج حرق.
 	requireGpsOrQuality := middleware.RequireAnyPermission(permissionRepo, employeeRepo, notificationRepo, "gps_system", "quality_control")
@@ -1019,7 +1025,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// `complaints` مو `manage_customers` — بدونهن تنكسر شاشة شغّالة.
 	requireCustomerRead := middleware.RequireRoleOrAnyPermission(
 		permissionRepo, employeeRepo, notificationRepo,
-		[]string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE"},
+		[]string{"ADMIN", "OWNER", "HR_COORDINATOR", "MONITOR", "FINANCE", "SALES"}, // SALES: تقرير ١ (B13)
 		"manage_customers", "sales_booking", "coordinator",
 		"complaints", "quality_control", "monitoring")
 	mux.Handle("GET /api/customers", middleware.Chain(http.HandlerFunc(customerHandler.List), requireAuth, requireCustomerRead))
@@ -1276,13 +1282,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// لبقية شاشات المراقبة، وبنفس منفذ monitoring/auditing.
 	mux.Handle("GET /api/audit-issues", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ListIssues), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
-			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing")))
+			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing", "audit_issues", "finance_audit")))
 	// ⚠️⚠️ جان حارسه `requireAuth` **وبس** — أي موظف مسجّل دخول، حتى
 	// فني بالميدان، يكدر يحلّ بلاغ خطأ تدقيق ويغلقه. نفس حارس القراءة
 	// فوق بالضبط.
 	mux.Handle("PUT /api/audit-issues/{id}/resolve", middleware.Chain(http.HandlerFunc(bookingAuditHandler.ResolveIssue), requireAuth,
 		middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
-			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing", "finance_audit")))
+			[]string{"ADMIN", "OWNER", "MONITOR", "QUALITY_ENGINEER", "HR_COORDINATOR", "FINANCE"}, "monitoring", "auditing", "finance_audit", "audit_issues")))
 	mux.Handle("PUT /api/bookings/{id}/verify", middleware.Chain(http.HandlerFunc(bookingHandler.Verify), requireAuth, requireVerifyBooking))
 	// إرجاع الحجز للتدقيق: التدقيق جان قرار نهائي ما إله رجعة. مدير
 	// النظام حصراً يكدر يفتحه من جديد حتى ينصلّح أي غلط بالمبلغ.
@@ -1579,8 +1585,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// مو بهذا المسار، فما يتأثر.)
 	mux.Handle("POST /api/vip-customers", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Mark), requireAuth, requireVipManualAdd))
 	mux.Handle("DELETE /api/vip-customers/{customerId}", middleware.Chain(http.HandlerFunc(vipCustomerHandler.Unmark), requireAuth, requireAdmin))
-	mux.Handle("POST /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Create), requireAuth, requireProjectManager))
-	mux.Handle("DELETE /api/project-work-types/{id}", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Delete), requireAuth, requireProjectManager))
+	mux.Handle("POST /api/project-work-types", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Create), requireAuth, requireProjectMgmt))
+	mux.Handle("DELETE /api/project-work-types/{id}", middleware.Chain(http.HandlerFunc(projectWorkTypeHandler.Delete), requireAuth, requireProjectMgmt))
 
 	// الكشوفات: فورمات فارغة يطبعها المهندس، يمليها بالموقع، وبعدين يرفع صور
 	// الفورمة المالية — أي موظف مسجل دخول يقدر ينشئ/يرفع (مو حصراً مدير مشاريع).
@@ -1676,11 +1682,13 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// طلبات الكادر — مدير المشاريع (أو صاحب صلاحية إدارة المشاريع) يطلب، وإدارة الكوادر تلبي
 	mux.Handle("POST /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.Create), requireAuth, requireProjectMgmtPerm))
 	mux.Handle("GET /api/staff-requests", middleware.Chain(http.HandlerFunc(staffRequestHandler.List), requireAuth))
-	mux.Handle("PUT /api/staff-requests/{id}/status", middleware.Chain(http.HandlerFunc(staffRequestHandler.UpdateStatus), requireAuth, requireHR))
+	mux.Handle("PUT /api/staff-requests/{id}/status", middleware.Chain(http.HandlerFunc(staffRequestHandler.UpdateStatus), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "HR_COORDINATOR"}, "staff_requests")))
 
 	// مسؤول خدمة عام (تعميم فكرة أبو الجي بي اس لأي مجموعة خدمات) — الأدمن فقط يحدد المسؤوليات
 	mux.Handle("GET /api/service-managers", middleware.Chain(http.HandlerFunc(serviceManagerHandler.List), requireAuth))
-	mux.Handle("PUT /api/service-managers", middleware.Chain(http.HandlerFunc(serviceManagerHandler.Set), requireAuth, requireAdmin))
+	mux.Handle("PUT /api/service-managers", middleware.Chain(http.HandlerFunc(serviceManagerHandler.Set), requireAuth,
+		middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "service_managers")))
 
 	// تتبع الموقع الحي للفرق الميدانية
 	// إرسال نقطة موقع مفتوح لأي موظف مسجل دخول (يرسل موقعه هو بس، محمي داخل الهاندلر
@@ -1824,7 +1832,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// إدارية، وموظف المبيعات (GpsPurchase.tsx) لازم يقدر يسجل بيانات الزبون وهو
 	// يرسل طلب شراء جهاز GPS جديد، قبل حتى ما يوصل الطلب لإداري GPS للموافقة.
 	mux.Handle("GET /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.ListCustomers), requireAuth, requireGpsData))
-	mux.Handle("POST /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.CreateCustomer), requireAuth, requireGpsSystem))
+	mux.Handle("POST /api/gps/customers", middleware.Chain(http.HandlerFunc(gpsHandler.CreateCustomer), requireAuth, requireGpsRequest))
 	mux.Handle("PUT /api/gps/customers/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateCustomer), requireAuth, requireGpsSystem))
 
 	// ── الدوار ────────────────────────────────────────────────────────────────
@@ -1886,10 +1894,14 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("PUT /api/training-programs/{id}/complete", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Complete), requireAuth, requireTrainingManage))
 	mux.Handle("DELETE /api/training-programs/{id}", middleware.Chain(http.HandlerFunc(trainingProgramHandler.Delete), requireAuth, requireTrainingManage))
 
-	mux.Handle("GET /api/solar/stats", middleware.Chain(http.HandlerFunc(solarHandler.Stats), requireAuth))
-	mux.Handle("GET /api/solar/low-stock", middleware.Chain(http.HandlerFunc(solarHandler.LowStock), requireAuth))
+	// تقرير ١ (B12): تركيبات الزبائن وأسعارها والمخزن — لأصحاب الطاقة الشمسية بس.
+	// (كتالوج المنظومات /solar/systems يبقى مفتوح لأن الحجز وعرض السعر يقرونه.)
+	requireSolarView := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo,
+		[]string{"ADMIN", "OWNER", "MONITOR", "TECHNICIAN", "SERVICE_MANAGER"}, "solar_system")
+	mux.Handle("GET /api/solar/stats", middleware.Chain(http.HandlerFunc(solarHandler.Stats), requireAuth, requireSolarView))
+	mux.Handle("GET /api/solar/low-stock", middleware.Chain(http.HandlerFunc(solarHandler.LowStock), requireAuth, requireSolarView))
 
-	mux.Handle("GET /api/solar/components", middleware.Chain(http.HandlerFunc(solarHandler.ListComponents), requireAuth))
+	mux.Handle("GET /api/solar/components", middleware.Chain(http.HandlerFunc(solarHandler.ListComponents), requireAuth, requireSolarView))
 	mux.Handle("POST /api/solar/components", middleware.Chain(http.HandlerFunc(solarHandler.CreateComponent), requireAuth, requireSolar))
 	mux.Handle("PUT /api/solar/components/{id}", middleware.Chain(http.HandlerFunc(solarHandler.UpdateComponent), requireAuth, requireSolar))
 	mux.Handle("DELETE /api/solar/components/{id}", middleware.Chain(http.HandlerFunc(solarHandler.DeleteComponent), requireAuth, requireSolar))
@@ -1902,7 +1914,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// التجهيز يخصم من المخزن فعلياً — صلاحية إجبارية
 	mux.Handle("POST /api/solar/systems/{id}/process", middleware.Chain(http.HandlerFunc(solarHandler.ProcessSystem), requireAuth, requireSolar))
-	mux.Handle("GET /api/solar/installations", middleware.Chain(http.HandlerFunc(solarHandler.ListInstallations), requireAuth))
+	mux.Handle("GET /api/solar/installations", middleware.Chain(http.HandlerFunc(solarHandler.ListInstallations), requireAuth, requireSolarView))
 	mux.Handle("PUT /api/solar/installations/{id}/contacted", middleware.Chain(http.HandlerFunc(solarHandler.MarkContacted), requireAuth, requireSolar))
 
 	// ── مراقبة النسخ الاحتياطية — للمالك وحده ──
@@ -1978,15 +1990,15 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// مفعّل فعلياً، فتقييد الإنشاء بصلاحية gps_system كان يمنع بالضبط سيناريو تقديم
 	// الطلب من موظف مبيعات ما عنده هذي الصلاحية. الموافقة (PUT) تبقى محمية.
 	mux.Handle("GET /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.ListDevices), requireAuth, requireGpsData))
-	mux.Handle("POST /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.CreateDevice), requireAuth, requireGpsSystem))
-	mux.Handle("PUT /api/gps/devices/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateDevice), requireAuth, requireGpsSystem))
+	mux.Handle("POST /api/gps/devices", middleware.Chain(http.HandlerFunc(gpsHandler.CreateDevice), requireAuth, requireGpsRequest))
+	mux.Handle("PUT /api/gps/devices/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateDevice), requireAuth, requireGpsRequest))
 
-	mux.Handle("GET /api/gps/renewals", middleware.Chain(http.HandlerFunc(gpsHandler.ListRenewals), requireAuth))
-	mux.Handle("POST /api/gps/renewals", middleware.Chain(http.HandlerFunc(gpsHandler.CreateRenewal), requireAuth, requireGpsSystem))
+	mux.Handle("GET /api/gps/renewals", middleware.Chain(http.HandlerFunc(gpsHandler.ListRenewals), requireAuth, requireGpsData))
+	mux.Handle("POST /api/gps/renewals", middleware.Chain(http.HandlerFunc(gpsHandler.CreateRenewal), requireAuth, requireGpsRequest))
 	mux.Handle("PUT /api/gps/renewals/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateRenewal), requireAuth, requireGpsSystem))
 
-	mux.Handle("GET /api/gps/maintenance", middleware.Chain(http.HandlerFunc(gpsHandler.ListMaintenance), requireAuth))
-	mux.Handle("POST /api/gps/maintenance", middleware.Chain(http.HandlerFunc(gpsHandler.CreateMaintenance), requireAuth, requireGpsSystem))
+	mux.Handle("GET /api/gps/maintenance", middleware.Chain(http.HandlerFunc(gpsHandler.ListMaintenance), requireAuth, requireGpsData))
+	mux.Handle("POST /api/gps/maintenance", middleware.Chain(http.HandlerFunc(gpsHandler.CreateMaintenance), requireAuth, requireGpsRequest))
 	mux.Handle("PUT /api/gps/maintenance/{id}", middleware.Chain(http.HandlerFunc(gpsHandler.UpdateMaintenance), requireAuth, requireGpsSystem))
 
 	mux.Handle("GET /api/gps/settings", middleware.Chain(http.HandlerFunc(gpsHandler.ListSettings), requireAuth))
@@ -2118,9 +2130,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 
 	// صيانة الأجهزة العامة (شيت "صيانة الاجهزة") — حصراً للـليدر (isLeader فريش من
 	// قاعدة البيانات بكل طلب، مو من التوكن)
-	mux.Handle("GET /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.List), requireAuth, requireLeader))
-	mux.Handle("POST /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Create), requireAuth, requireLeader))
-	mux.Handle("PUT /api/device-maintenance/{id}", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Update), requireAuth, requireLeader))
+	mux.Handle("GET /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.List), requireAuth, requireDeviceMaint))
+	mux.Handle("POST /api/device-maintenance", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Create), requireAuth, requireDeviceMaint))
+	mux.Handle("PUT /api/device-maintenance/{id}", middleware.Chain(http.HandlerFunc(deviceMaintenanceHandler.Update), requireAuth, requireDeviceMaint))
 
 	// جرد الفريق ("جرد العدد") — حصراً للـليدر أيضاً
 	// ═══ قراءة الجرد: الليدر أو منو انمنح متابعة الجرد ═══
@@ -2172,7 +2184,9 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireLeaderBasket := middleware.RequireLeaderOrAnyPermission(permissionRepo, employeeRepo, notificationRepo,
 		"leader_basket", "finance", "finance_audit", "invoice_gps", "invoice_dashcam", "invoice_internal",
 		// صلاحية «عرض فواتير الليدر» چانت تفتح البند بالقائمة والخادم ما يعرفها — فالشاشة تنرفض.
-		"leader_invoices_view")
+		"leader_invoices_view",
+		// تقرير ١ (B9): تبويب «الفواتير» بمكتب المراقب — قراءة بس.
+		"monitoring")
 	// أسباب الشغل المجاني — يقراها أي موظف يسوي فاتورة
 	mux.Handle("GET /api/free-work-reasons", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.FreeReasons), requireAuth))
 	mux.Handle("GET /api/system-price-catalog", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.ListCatalog), requireAuth))
@@ -2381,10 +2395,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// كل فاتورة جاية تتغير معاه.
 	mux.Handle("GET /api/network-cost/items", middleware.Chain(http.HandlerFunc(networkCostHandler.ListActive), requireAuth, requireExecutionCost))
 	mux.Handle("POST /api/network-cost/calculate", middleware.Chain(http.HandlerFunc(networkCostHandler.Calculate), requireAuth, requireExecutionCost))
-	mux.Handle("GET /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.ListAll), requireAuth, requireAdmin))
-	mux.Handle("POST /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.CreatePrice), requireAuth, requireAdmin))
-	mux.Handle("PUT /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.UpdatePrice), requireAuth, requireAdmin))
-	mux.Handle("DELETE /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.DeactivatePrice), requireAuth, requireAdmin))
+	// تقرير ١ (B3): صلاحية «أسعار الشبكات» تفتح الشاشة — الخادم يقبلها.
+	requireNetPrices := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN"}, "network_prices")
+	mux.Handle("GET /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.ListAll), requireAuth, requireNetPrices))
+	mux.Handle("POST /api/network-cost/prices", middleware.Chain(http.HandlerFunc(networkCostHandler.CreatePrice), requireAuth, requireNetPrices))
+	mux.Handle("PUT /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.UpdatePrice), requireAuth, requireNetPrices))
+	mux.Handle("DELETE /api/network-cost/prices/{id}", middleware.Chain(http.HandlerFunc(networkCostHandler.DeactivatePrice), requireAuth, requireNetPrices))
 	mux.Handle("GET /api/leader-invoices/camera-cost/options", middleware.Chain(http.HandlerFunc(leaderInvoiceHandler.CameraCostOptions), requireAuth, requireExecutionCost))
 	// الاعتماد محصور بمدير/محاسب فقط — الليدر ما يقدر يعتمد فاتورته بنفسه
 	// البحث بالفاتورة المحاسبية — لازم يجي قبل مسار {id} حتى ما ينحسب

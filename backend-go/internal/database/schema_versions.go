@@ -435,6 +435,8 @@ func versionedMigrations() []Migration {
 	result = append(result, publicRelationsMigrations()...)
 	// 0333: شروط وأحكام عرض السعر قابلة للتعديل.
 	result = append(result, quotationTermsMigrations()...)
+	// 0334: تقرير ١ — الممنوحين quotation_system ياخذون quotation_manage_all.
+	result = append(result, report1FixMigrations()...)
 	return result
 }
 

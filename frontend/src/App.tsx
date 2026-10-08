@@ -125,7 +125,6 @@ const TechShowcasePage = lazy(() => import('./pages/TechShowcasePage'))
 const ExhibitionsPage = lazy(() => import('./pages/ExhibitionsPage'))
 const ProductRequestsPage = lazy(() => import('./pages/ProductRequestsPage'))
 const ServiceStudiesPage = lazy(() => import('./pages/ServiceStudiesPage'))
-const ComingSoonUnit = lazy(() => import('./pages/ComingSoonUnit'))
 const DesignFormsListPage = lazy(() => import('./pages/DesignFormsListPage'))
 const DesignFormQuickAddPage = lazy(() => import('./pages/DesignFormQuickAddPage'))
 const DesignFormBuilderPage = lazy(() => import('./pages/DesignFormBuilderPage'))
@@ -297,15 +296,15 @@ function App() {
           {/* ⚠️ چانن كلهن `RequireAdmin` — يعني حتى بعد ما ينفتح
               الخادم للمصممة، الواجهة تحجبها قبل ما يوصل النداء.
               صارت الصلاحية نفسها الي يفحصها الخادم. */}
-          <Route path="unit-design" element={<RequirePermission permission="design_forms"><DesignFormsListPage /></RequirePermission>} />
+          <Route path="unit-design" element={<Navigate to="/design-forms" replace />} />
           <Route path="design-forms" element={<RequirePermission permission="design_forms"><DesignFormsListPage /></RequirePermission>} />
           <Route path="design-forms/quick-add" element={<RequirePermission permission="design_forms"><DesignFormQuickAddPage /></RequirePermission>} />
           <Route path="design-forms/:formId" element={<RequirePermission permission="design_forms"><DesignFormBuilderPage /></RequirePermission>} />
           <Route path="design-forms/:formId/submissions" element={<RequirePermission permission="design_forms"><DesignFormSubmissionsPage /></RequirePermission>} />
           <Route path="design-gallery" element={<RequirePermission permission="design_gallery" anyOf={['unit_design']}><DesignGalleryPage /></RequirePermission>} />
-          <Route path="unit-pr" element={<ComingSoonUnit title="وحدة الإعلام والعلاقات العامة" />} />
+          <Route path="unit-pr" element={<Navigate to="/media" replace />} />
           <Route path="staff-requests" element={<StaffRequestsPage />} />
-          <Route path="service-managers" element={<RequireAdmin><ServiceManagersPage /></RequireAdmin>} />
+          <Route path="service-managers" element={<RequirePermission permission="service_managers"><ServiceManagersPage /></RequirePermission>} />
           <Route path="employee-stats" element={<RequirePermission permission="employee_stats"><EmployeeMonthlyStatsPage /></RequirePermission>} />
           <Route path="stats-management" element={<RequirePermission permission="employee_stats"><StatsManagementPage /></RequirePermission>} />
           <Route path="performance-review" element={<PerformanceReviewPage />} />
