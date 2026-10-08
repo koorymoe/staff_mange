@@ -324,6 +324,8 @@ function BookingReviewCard({ booking, onSaved }: { booking: BookingAwaitingRevie
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <span className="text-[10px] text-slate-400">رقم الحجز</span>
           <span className="font-mono text-sm font-black text-[#0f2040]"><BookingCodeChip code={booking.code} /></span>
+          {/* قرار (ع) 10-08: من الزبون بس الاسم — الجوال والعنوان ما يحتاجهن التقييم. */}
+          <span className="text-xs font-bold text-slate-700">👤 {booking.customerName}</span>
           {booking.serviceName && <span className="text-xs text-slate-600">🔧 {booking.serviceName}</span>}
           <span className="text-xs text-slate-500">📅 {when}{time && ` · ${time}`}</span>
           <span className="rounded-lg bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700">مكتمل</span>
@@ -333,16 +335,6 @@ function BookingReviewCard({ booking, onSaved }: { booking: BookingAwaitingRevie
         }`}>
           {done ? '✅ تم التقييم' : `⏳ بانتظار التقييم — باقي ${booking.crew.filter((c) => !c.rating).length} من ${booking.crew.length}`}
         </span>
-      </div>
-
-      {/* ── هوية الزبون ──
-          ⚠️ مو زينة: الليدر يتذكّر الشغلة من العنوان أسرع بكثير ما
-          يتذكرها من كود الحجز، وتقييم بلا ما يتذكر الشغلة تقييم
-          مخمّن. */}
-      <div className="grid grid-cols-1 gap-2 border-b border-slate-100 px-3 py-2.5 text-[11px] sm:grid-cols-3 sm:px-4">
-        <Field icon="👤" label="اسم العميل" value={booking.customerName} />
-        <Field icon="📞" label="الجوال" value={booking.customerPhone || '—'} />
-        <Field icon="📍" label="العنوان" value={booking.customerAddress || '—'} />
       </div>
 
       {done && !expanded ? (
@@ -512,15 +504,6 @@ function StarRow({ label, value, onPick }: {
 }
 
 /* ───── قطع صغيرة ───── */
-
-function Field({ icon, label, value }: { icon: string; label: string; value: string }) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[10px] text-slate-400">{icon} {label}</p>
-      <p className="truncate font-bold text-slate-700">{value}</p>
-    </div>
-  )
-}
 
 function AvgChip({ label, value }: { label: string; value: string | null }) {
   // ⚠️ الي ما انطّاه نجوم ما يطلع «0.0/5» — يطلع «—». صفر يعني تقييم
