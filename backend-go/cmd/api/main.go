@@ -2288,8 +2288,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// ── الإعلام والعلاقات العامة (قرار (ع) 10-05) ──
 	// التحويل: من إدارة المشاريع. والقراءة والتحديث: دور الإعلام أو صلاحية media
 	// (والمدير والمالك). ومدير المشاريع يشوف التحويلات حتى يتابع.
-	requireMediaView := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA"}, "media", "project_management")
-	requireMedia := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA"}, "media")
+	requireMediaView := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA", "PUBLIC_RELATIONS"}, "media", "project_management")
+	requireMedia := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MEDIA", "PUBLIC_RELATIONS"}, "media")
 	mediaHandler := handler.NewMediaHandler(repository.NewMediaRepository(db), func(msg string) {
 		_ = notificationRepo.CreateForRolesOrPermission([]string{"MEDIA", "PUBLIC_RELATIONS"}, "media", "MEDIA", msg)
 	})
