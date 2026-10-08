@@ -206,7 +206,7 @@ var RoleDefaultPermissions = map[string][]string{
 	"TECHNICIAN":        {"expenses"},
 	"PROJECT_MANAGER":   {"project_management", "expenses", "mission_tracking"},
 	"MONITOR":           {"staff_management", "edit_employee_profile", "kpi_management", "view_bookings", "manage_customers", "manage_services", "mission_tracking", "inventory", "complaints", "finance", "monitoring", "auditing", "quality_control", "gps_system"},
-	"FINANCE":           {"finance", "view_bookings"},
+	"FINANCE":           {"finance", "view_bookings", "unit_finance"}, // unit_finance: تقرير ٢ — شاشات التدقيق جوّا الوحدة
 	"GPS_ADMIN":         {"gps_system"},
 	"QUALITY_ENGINEER":  {"auditing", "complaints", "quality_control", "sales_booking", "kpi_management"},
 	"ENGINEER":          {"expenses", "quotation_manage_all", "project_management"},
@@ -220,7 +220,9 @@ var RoleDefaultPermissions = map[string][]string{
 	"IT_SUPPORT": {"unit_it", "it_assets", "it_stats"},
 	// الإعلام: يشوف المشاريع المحوّلة إلهم بتفاصيلها حتى يصوّرون — وبس.
 	"MEDIA": {"media"},
-	"PUBLIC_RELATIONS": {"media", "unit_pr"},
+	"PUBLIC_RELATIONS": {"media", "unit_pr", "vip_manual_add"}, // قرار (ع) 10-08: يضيف شخصيات مهمة
+	// تقرير ٢: التقني كان يأخذ صلاحياته من migrate.go بس، وما يقبله الدور الثانوي.
+	"TECHNICAL": {"unit_technicians", "content_technician"},
 }
 
 // SecondaryRoleForbidden الأدوار الي **ما تنمنح أبداً** كدور ثانوي.

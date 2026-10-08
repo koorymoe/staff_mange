@@ -266,10 +266,10 @@ export const navItems: NavItem[] = [
       // قرار (ع) 10-05: ماتركس ٦٠٪ + البشر ٤٠٪ — نفس حارس GET /api/staff-score (requireMonitor).
       // قرار (ع) 10-06: فلوس المشاريع — نفس حارس GET /api/project-payments/overview.
       { to: '/project-payments', label: '💰 فلوس المشاريع', icon: <></>, roles: ['ADMIN', 'FINANCE', 'PROJECT_MANAGER', 'MONITOR'], anyPermission: ['finance', 'finance_audit', 'project_management', 'monitoring'] },
-      { monitorMenuHide: true, to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
-      { monitorMenuHide: true, to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/staff-score', label: '🏅 تقييم الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/employee-indicators', label: '📈 مؤشرات أداء الموظف', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/peer-voice', label: '🗣️ صوت الموظفين', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
+      { monitorMenuHide: true, hideForRoles: ['QUALITY_ENGINEER'], to: '/workplace-issues', label: '🤝 المشاكل الوظيفية', icon: <></>, roles: ['ADMIN', 'MONITOR'], anyPermission: ['monitoring', 'auditing'] },
       // ماتركس — صندوق القرارات: نفس حارس GET /api/ai/decisions (ADMIN/OWNER بس).
       { to: '/matrix/decisions', label: '🤖 صندوق قرارات ماتركس', icon: <></>, roles: ['ADMIN'] },
       // نفس منطق الأعلى: تحليل تكرار حجوزات/زبائن بيد موظف ثاني حساس بنفس الطريقة
@@ -439,6 +439,8 @@ export const navItems: NavItem[] = [
   // "خريطة المواقع" انشالت من القائمة — الفني هسه يشوف طريق مهمته مباشرة
   // من صفحة "مهامي" (بوب-أب داخل نفس الصفحة، بدون تحويل لصفحة ثانية).
   // مدير المشاريع مدير مو فني: ما عنده مهام تنستلم ولا تقييم ولا تصنيف ولا تقارير عمل
+  // تقرير ٢: «مصاريفي» لمدير المشاريع — چانت جوّا «العمل» مال الميدان (fieldStaffOnly) فما تطلعله.
+  { to: '/my-expenses', label: 'مصاريفي', icon: icon('M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'), roles: ['PROJECT_MANAGER'] },
   {
     // مجموعة "العمل" للفني/الليدر — مهامه اليومية ومصاريفه وتقاريره وفواتيره
     fieldStaffOnly: true,
@@ -463,7 +465,6 @@ export const navItems: NavItem[] = [
       //
       // (مدير المشاريع ما عنده «مهامي»، فيبقى بنده هنا — بدونه
       // يفقد الوصول لمصاريفه نهائياً.)
-      { to: '/my-expenses', label: 'مصاريفي', icon: <></>, roles: ['PROJECT_MANAGER'] },
       // حسبتان مختلفتان بنفس المحرك:
       //  • «استفسار زبون» = رقم بس، ما ينحفظ ولا ينربط بحجز — للزبون
       //    الي يسأل عن السعر قبل ما يحجز.
@@ -789,7 +790,9 @@ export type NavContext = {
 export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false): boolean {
   const role = ctx.employee?.role
   const hasMonitor = role === 'MONITOR' || ctx.permissions.includes('monitoring')
-  const hasAudit = ctx.permissions.includes('auditing')
+  // قرار (ع) 10-08: مهندس الجودة يشوف شغله بس — صلاحية auditing ما تعامله كمراقب بالقائمة
+  // (وشاشات المراقب نفسها عليها hideForRoles: QUALITY_ENGINEER).
+  const hasAudit = ctx.permissions.includes('auditing') && role !== 'QUALITY_ENGINEER'
   // الفني والتقني العادي (مو ليدر) — قائمتهم مقفلة على شغلهم.
   // التقني نفس الفني بالميدان، بس يتولى أكثر من خدمة — فما إله شغل
   // بالشاشات الإدارية مثل ما ما إله شغل الفني.
