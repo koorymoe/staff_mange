@@ -1,8 +1,8 @@
-import { useEffect, useState, useCallback } from 'react'
+import { Fragment, useEffect, useMemo, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSession } from '../session'
 import { api, LEAVE_KINDS, type MonthlyAttendanceReport, type EmployeeDailyAttendanceSummary, type OpenSessionResponse, type DailyAttendance, type LeaveRequest, type LeaveKind } from '../api'
-import { countAbsentDays, countLateDays, isLateDay, movementsOf, type Movement } from '../attendanceStats'
+import { countAbsentDays, countLateDays, isLateDay, isWeekend, movementsOf, type Movement } from '../attendanceStats'
 
 /* ───── helpers ───── */
 
@@ -42,10 +42,6 @@ function monthLabel(month: string): string {
   return new Date(y, m - 1, 1).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long' })
 }
 
-function dayLabel(iso: string): string {
-  return new Date(iso).toLocaleDateString('ar-IQ', { weekday: 'long', day: 'numeric', month: 'short' })
-}
-
 /* ───── Component ───── */
 
 export default function AttendancePage({ embedded }: { embedded?: boolean } = {}) {
@@ -65,6 +61,7 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
   // «عرض السجل» و«عرض التفاصيل» يفتحون نفس اللوحة — الحركات الكاملة
   const [showAllMovements, setShowAllMovements] = useState(false)
   const [myLeaves, setMyLeaves] = useState<LeaveRequest[]>([])
+  const [panel, setPanel] = useState<'att' | 'sum' | 'leave' | null>(null)
 
   const loadMyLeaves = useCallback(() => {
     api.getMyLeaves().then(setMyLeaves).catch(() => setMyLeaves([]))
@@ -186,26 +183,27 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
         <div className="rounded-xl border-2 border-red-300 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</div>
       )}
 
-      {/* ═══ البطاقات الأربع ═══ */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          icon="🛡️" label="حالة اليوم"
-          value={today ? 'متواجد' : 'غير مسجّل'}
-          tone={today ? 'emerald' : 'slate'}
+      {/* ═══ ترتيب (ع) 10-08: ثلاث بطاقات تنفتح — الحضور، ملخص اليوم، طلب إجازة ═══ */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <ActionCard
+          tone="emerald" icon="👆" title={today ? 'متواجد بالشركة' : 'تسجيل حضور'}
+          subtitle={today ? `من ${fmtTime(today.checkIn)} · ${elapsed}` : 'اضغط لتسجيل حضورك الآن'}
+          open={panel === 'att'} onClick={() => setPanel(panel === 'att' ? null : 'att')}
         />
-        <StatCard icon="🕐" label="وقت الحضور" value={fmtTime(todayRecord?.firstCheckIn ?? today?.checkIn ?? null)} tone="sky" />
-        <StatCard icon="⏱️" label="إجمالي الساعات هذا الشهر" value={report ? fmtHours(report.totalMinutes) : '—'} tone="violet" />
-        <StatCard icon="📅" label="أيام الحضور هذا الشهر" value={report ? `${report.daysPresent} أيام` : '—'} tone="amber" />
+        <ActionCard
+          tone="sky" icon="📄" title="ملخص اليوم"
+          subtitle={`${fmtHours(todayMinutes)} · ${todayRecord ? todayRecord.sessions.length : 0} جلسات`}
+          open={panel === 'sum'} onClick={() => setPanel(panel === 'sum' ? null : 'sum')}
+        />
+        <ActionCard
+          tone="amber" icon="✈️" title="طلب إجازة"
+          subtitle="قدّم طلب إجازة جديد أو راجع طلباتك السابقة"
+          open={panel === 'leave'} onClick={() => setPanel(panel === 'leave' ? null : 'leave')}
+        />
       </div>
 
-      {/* ═══ حالة الحضور + ملخص اليوم + طلب إجازة ═══ */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
-        {/* اللوحة الكبيرة */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm lg:col-span-2">
-          <h2 className="mb-5 flex items-center gap-2 text-base font-extrabold text-[#0f2040]">
-            🕐 حالة الحضور
-          </h2>
-
+      {panel === 'att' && (
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-col items-center gap-5 sm:flex-row-reverse sm:items-center sm:justify-between">
             {/* الدائرة */}
             <div className="relative flex h-40 w-40 shrink-0 items-center justify-center">
@@ -275,48 +273,34 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
             </div>
           </div>
         </div>
+      )}
 
-        {/* ملخص اليوم */}
-        <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-extrabold text-[#0f2040]">📋 ملخص اليوم</h2>
-          <div className="space-y-2.5">
-            <SummaryRow icon="🕐" label="إجمالي ساعات اليوم" value={fmtHours(todayMinutes)} />
-            <SummaryRow
-              icon="⏱️" label="الجلسة الحالية"
-              value={today ? `${fmtTime(today.checkIn)} — الآن` : 'ماكو جلسة مفتوحة'}
-            />
-            <SummaryRow
-              icon="🔁" label="عدد جلسات اليوم"
-              value={todayRecord ? `${todayRecord.sessions.length}` : '0'}
-            />
+      {panel === 'sum' && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="space-y-2.5">
+              <SummaryRow icon="🕐" label="إجمالي ساعات اليوم" value={fmtHours(todayMinutes)} />
+              <SummaryRow
+                icon="⏱️" label="الجلسة الحالية"
+                value={today ? `${fmtTime(today.checkIn)} — الآن` : 'ماكو جلسة مفتوحة'}
+              />
+              <SummaryRow icon="🔁" label="عدد جلسات اليوم" value={todayRecord ? `${todayRecord.sessions.length}` : '0'} />
+            </div>
           </div>
-          <button
-            onClick={() => setShowAllMovements((v) => !v)}
-            className="mt-4 flex w-full items-center justify-between rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600 transition hover:bg-slate-50"
-          >
-            <span>{showAllMovements ? 'إخفاء التفاصيل' : 'عرض التفاصيل'}</span>
-            <span>{showAllMovements ? '⌄' : '‹'}</span>
-          </button>
+          <MovementsPanel movements={movements} expanded={showAllMovements} onToggle={() => setShowAllMovements((v) => !v)} />
         </div>
+      )}
 
-        {/* ═══ طلب الإجازة — من جوّا الصفحة ═══
-            «طلب الإجازة يكون من داخل، ماريده يكون بالخارج».
-            الإجازة جزء من جدول دوامك — تطلبها وأنت تشوف رصيدك
-            وحضورك قدامك، مو تروح لشاشة ثانية وترجع. */}
-        <LeavePanel onSubmitted={loadMyLeaves} leaves={myLeaves} />
-      </div>
+      {/* «طلب الإجازة يكون من داخل» — جزء من جدول دوامك. */}
+      {panel === 'leave' && <LeavePanel onSubmitted={loadMyLeaves} leaves={myLeaves} />}
 
-      {/* ═══ سجل الدوام الشهري + آخر الحركات ═══ */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <MonthlyView
-            month={month} setMonth={setMonth} report={report}
-            employeeId={targetEmployeeId} canExport={canExport}
-            shiftStart={shiftStart} lateDays={lateDays} absentDays={absentDays}
-          />
-        </div>
-        <MovementsPanel movements={movements} expanded={showAllMovements} onToggle={() => setShowAllMovements((v) => !v)} />
-      </div>
+      {/* ═══ سجل الدوام الشهري — كل أيام الشهر بجدول واحد ═══ */}
+      <MonthlyView
+        month={month} setMonth={setMonth} report={report}
+        employeeId={targetEmployeeId} canExport={canExport}
+        shiftStart={shiftStart} lateDays={lateDays} absentDays={absentDays}
+        leaves={viewedEmployeeId ? [] : myLeaves}
+      />
 
       {/* Employee picker for admins */}
       {isAdmin && (
@@ -341,27 +325,28 @@ export default function AttendancePage({ embedded }: { embedded?: boolean } = {}
   )
 }
 
-/* ───── بطاقة رقم علوية ───── */
+/* ───── بطاقة تنفتح (ترتيب 10-08) ───── */
 
-function StatCard({ icon, label, value, tone }: {
-  icon: string; label: string; value: string
-  tone: 'emerald' | 'sky' | 'violet' | 'amber' | 'slate'
+const ACTION_TONES = {
+  emerald: { card: 'border-emerald-200 bg-emerald-50/70', icon: 'bg-emerald-100 text-emerald-700', title: 'text-emerald-900' },
+  sky: { card: 'border-sky-200 bg-sky-50/70', icon: 'bg-sky-100 text-sky-700', title: 'text-sky-900' },
+  amber: { card: 'border-amber-200 bg-amber-50/70', icon: 'bg-amber-100 text-amber-700', title: 'text-amber-900' },
+} as const
+
+function ActionCard({ tone, icon, title, subtitle, open, onClick }: {
+  tone: keyof typeof ACTION_TONES; icon: string; title: string; subtitle: string; open: boolean; onClick: () => void
 }) {
-  const tones: Record<string, string> = {
-    emerald: 'text-emerald-600 bg-emerald-50',
-    sky: 'text-sky-600 bg-sky-50',
-    violet: 'text-violet-600 bg-violet-50',
-    amber: 'text-amber-600 bg-amber-50',
-    slate: 'text-slate-500 bg-slate-100',
-  }
+  const t = ACTION_TONES[tone]
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[11px] font-medium text-slate-500">{label}</p>
-        <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sm ${tones[tone]}`}>{icon}</span>
-      </div>
-      <p className={`mt-1.5 text-lg font-black ${tones[tone].split(' ')[0]}`}>{value}</p>
-    </div>
+    <button type="button" onClick={onClick} aria-expanded={open}
+      className={`flex items-center gap-3 rounded-2xl border p-4 text-right shadow-sm transition hover:shadow-md ${t.card} ${open ? 'ring-2 ring-offset-1 ring-slate-300' : ''}`}>
+      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl ${t.icon}`}>{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className={`block text-base font-extrabold ${t.title}`}>{title}</span>
+        <span className="block truncate text-xs text-slate-500">{subtitle}</span>
+      </span>
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm transition ${open ? 'rotate-180' : ''}`}>⌄</span>
+    </button>
   )
 }
 
@@ -436,7 +421,57 @@ function MovementsPanel({ movements, expanded, onToggle }: {
 
 /* ───── Monthly attendance table ───── */
 
-function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStart, lateDays, absentDays }: {
+type DayRow = {
+  key: string; date: Date; rec: DailyAttendance | null
+  kind: 'present' | 'open' | 'late' | 'weekend' | 'leave' | 'leavePending' | 'absent'
+  note: string
+}
+const DAY_BADGE: Record<DayRow['kind'], { text: string; cls: string }> = {
+  present: { text: 'مكتمل', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  open: { text: 'قيد العمل', cls: 'bg-sky-50 text-sky-700 border-sky-200' },
+  late: { text: 'متأخر', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  weekend: { text: 'إجازة أسبوعية', cls: 'bg-rose-50 text-rose-600 border-rose-200' },
+  leave: { text: 'إجازة', cls: 'bg-orange-50 text-orange-700 border-orange-200' },
+  leavePending: { text: 'إجازة (بانتظار)', cls: 'bg-orange-50 text-orange-600 border-orange-200' },
+  absent: { text: 'بلا بصمة', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+}
+const FILTERS: [string, string][] = [['all', 'كل الأيام'], ['present', 'حضور'], ['late', 'تأخير'], ['leave', 'إجازات'], ['absent', 'بلا بصمة']]
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+/** كل أيام الشهر (لحد اليوم إذا الشهر الحالي) — الحضور والجمعة والإجازات والأيام بلا بصمة. */
+function buildDays(report: MonthlyAttendanceReport | null, month: string, shiftStart: string | null, leaves: LeaveRequest[]): DayRow[] {
+  const [y, m] = month.split('-').map(Number)
+  if (!y || !m) return []
+  const byDay = new Map((report?.days ?? []).map((d) => [d.date.slice(0, 10), d]))
+  const now = new Date()
+  const isCurrent = now.getFullYear() === y && now.getMonth() + 1 === m
+  const last = isCurrent ? now.getDate() : new Date(y, m, 0).getDate()
+  const rows: DayRow[] = []
+  for (let day = 1; day <= last; day++) {
+    const date = new Date(y, m - 1, day)
+    const key = ymd(date)
+    const rec = byDay.get(key) ?? null
+    const lv = leaves.find((l) => l.startDate.slice(0, 10) <= key && l.endDate.slice(0, 10) >= key && (l.status === 'APPROVED' || l.status === 'PRELIMINARY' || l.status === 'PENDING'))
+    let kind: DayRow['kind']
+    let note = ''
+    if (rec) {
+      kind = rec.stillOpen ? 'open' : isLateDay(rec, shiftStart) ? 'late' : 'present'
+      if (rec.sessions.length > 1) note = `${rec.sessions.length} جلسات`
+      if (rec.assumed) note = [note, '⚠️ انصراف مفترض'].filter(Boolean).join(' · ')
+    } else if (lv) {
+      kind = lv.status === 'APPROVED' ? 'leave' : 'leavePending'
+      note = [lv.kindLabel, lv.reason].filter(Boolean).join(' — ')
+    } else if (isWeekend(date)) {
+      kind = 'weekend'
+    } else {
+      kind = 'absent'
+    }
+    rows.push({ key, date, rec, kind, note })
+  }
+  return rows
+}
+
+function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStart, lateDays, absentDays, leaves }: {
   canExport: boolean
   month: string
   setMonth: (m: string) => void
@@ -445,9 +480,18 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStar
   shiftStart: string | null
   lateDays: number
   absentDays: number
+  leaves: LeaveRequest[]
 }) {
   const canGoForward = month < currentMonthKey()
   const [exporting, setExporting] = useState(false)
+  const [filter, setFilter] = useState('all')
+  const [openKey, setOpenKey] = useState<string | null>(null)
+  const days = useMemo(() => buildDays(report, month, shiftStart, leaves), [report, month, shiftStart, leaves])
+  const shown = days.filter((d) => filter === 'all'
+    || (filter === 'present' && (d.kind === 'present' || d.kind === 'open' || d.kind === 'late'))
+    || (filter === 'late' && d.kind === 'late')
+    || (filter === 'leave' && (d.kind === 'leave' || d.kind === 'leavePending' || d.kind === 'weekend'))
+    || (filter === 'absent' && d.kind === 'absent'))
 
   const handleExport = async () => {
     if (!employeeId) return
@@ -459,37 +503,41 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStar
     }
   }
 
-  return (
-    <div className="overflow-hidden rounded-2xl bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
-      <div className="flex items-center justify-between bg-gradient-to-l from-[#0f2040] to-[#2c5aad] px-8 py-5 text-white">
-        <button onClick={() => setMonth(shiftMonth(month, -1))} className="rounded-lg p-2 hover:bg-white/10" aria-label="الشهر السابق">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
-        </button>
-        <div className="text-center">
-          <h2 className="text-xl font-bold">سجل الدوام الشهري</h2>
-          <p className="text-sm text-blue-200">{monthLabel(month)}</p>
-        </div>
-        <button
-          onClick={() => canGoForward && setMonth(shiftMonth(month, 1))}
-          disabled={!canGoForward}
-          className="rounded-lg p-2 hover:bg-white/10 disabled:opacity-30"
-          aria-label="الشهر التالي"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6" /></svg>
-        </button>
-      </div>
+  const badge = (d: DayRow) => {
+    const b = DAY_BADGE[d.kind]
+    const text = d.kind === 'leave' && d.note ? d.note.split(' — ')[0] : b.text
+    return <span className={`inline-block whitespace-nowrap rounded-lg border px-2.5 py-1 text-[11px] font-bold ${b.cls}`}>{text}</span>
+  }
+  const sessionsOf = (d: DayRow) => d.rec && (
+    <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-xs text-slate-600">
+      {d.rec.sessions.map((x, i) => (
+        <p key={i}>🔁 {fmtTime(x.checkIn)} ← {x.checkOut ? fmtTime(x.checkOut) : 'مفتوحة'}{x.assumedNote ? ` · ${x.assumedNote}` : ''}</p>
+      ))}
+    </div>
+  )
 
-      {canExport && (
-        <div className="flex items-center justify-between border-b border-gray-100 px-8 py-3">
-          <button
-            onClick={handleExport}
-            disabled={exporting || !report || report.days.length === 0}
-            className="rounded-lg bg-emerald-50 px-4 py-1.5 text-xs font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-40"
-          >
-            {exporting ? 'جارٍ التصدير...' : 'تصدير Excel'}
-          </button>
+  return (
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      {/* الرأس: العنوان يمين، والتنقل والتصفية يسار */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-4 sm:px-6">
+        <h2 className="flex items-center gap-2 text-lg font-extrabold text-[#0f2040]">🗓️ سجل الدوام الشهري</h2>
+        <div className="flex flex-wrap items-center gap-2">
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="تصفية"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-600">
+            {FILTERS.map(([k, l]) => <option key={k} value={k}>⚲ {l}</option>)}
+          </select>
+          <span className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-700">📅 {monthLabel(month)}</span>
+          <button onClick={() => setMonth(shiftMonth(month, -1))} className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-50" aria-label="الشهر السابق">›</button>
+          <button onClick={() => canGoForward && setMonth(shiftMonth(month, 1))} disabled={!canGoForward}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 hover:bg-slate-50 disabled:opacity-30" aria-label="الشهر التالي">‹</button>
+          {canExport && (
+            <button onClick={handleExport} disabled={exporting || !report || report.days.length === 0}
+              className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-900 hover:bg-emerald-100 disabled:opacity-40">
+              {exporting ? 'جارٍ التصدير...' : '⬇️ Excel'}
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* الأرقام الأربعة */}
       {report && (
@@ -511,63 +559,74 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStar
         </div>
       )}
 
-      {!report || report.days.length === 0 ? (
-        <p className="p-8 text-center text-gray-400">لا توجد سجلات حضور بهذا الشهر</p>
+      {shown.length === 0 ? (
+        <p className="p-8 text-center text-gray-400">ماكو أيام بهالتصفية</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full text-right text-sm">
-            <thead className="bg-gray-50 text-gray-600">
-              <tr>
-                <th className="px-6 py-3 font-semibold">اليوم</th>
-                <th className="px-6 py-3 font-semibold">وقت الحضور</th>
-                <th className="px-6 py-3 font-semibold">وقت الانصراف</th>
-                <th className="px-6 py-3 font-semibold">عدد الساعات</th>
-                <th className="px-6 py-3 font-semibold">الحالة</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {report.days.map((d) => {
-                // الحالة: لسه شغّال / تأخر / مكتمل. التأخير يطلع بعموده
-                // حتى يعرف الموظف أي يوم بالضبط انحسب عليه.
-                const late = isLateDay(d, shiftStart)
-                const badge = d.stillOpen
-                  ? { text: 'مفتوح', cls: 'bg-sky-50 text-sky-700' }
-                  : late
-                    ? { text: 'متأخر', cls: 'bg-amber-50 text-amber-700' }
-                    : { text: 'مكتمل', cls: 'bg-emerald-50 text-emerald-700' }
-                return (
-                <tr key={d.date} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 font-medium text-gray-800">{dayLabel(d.firstCheckIn)}</td>
-                  <td className="px-6 py-4 text-gray-600">{fmtTime(d.firstCheckIn)}</td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {d.stillOpen ? <span className="text-amber-600 font-semibold">لم يسجل انصراف بعد</span> : fmtTime(d.lastCheckOut)}
-                  </td>
-                  <td className="px-6 py-4 text-gray-600">
-                    {fmtHours(d.totalMinutes)}
-                    {d.sessions.length > 1 && (
-                      <span className="mr-1 text-[11px] text-slate-400">({d.sessions.length} جلسات)</span>
-                    )}
-                    {d.assumed && (
-                      <span className="mr-1 cursor-help rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-bold text-amber-700"
-                        title={d.sessions.map((x) => x.assumedNote).filter(Boolean).join('\n')}>
-                        ⚠️ انصراف مفترض
-                      </span>
-                    )}
-                    {d.assumed && (
-                      <span className="block text-[10px] text-amber-700">{d.sessions.find((x) => x.assumedNote)?.assumedNote}</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`inline-block rounded-full px-2.5 py-1 text-[11px] font-bold ${badge.cls}`}>
-                      ● {badge.text}
-                    </span>
-                  </td>
+        <>
+          {/* الحاسبة: جدول */}
+          <div className="hidden overflow-x-auto md:block">
+            <table className="w-full text-right text-sm">
+              <thead className="bg-slate-50 text-xs text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 font-semibold">اليوم</th>
+                  <th className="px-4 py-3 font-semibold">التاريخ</th>
+                  <th className="px-4 py-3 font-semibold">وقت الحضور</th>
+                  <th className="px-4 py-3 font-semibold">وقت الانصراف</th>
+                  <th className="px-4 py-3 font-semibold">عدد الساعات</th>
+                  <th className="px-4 py-3 font-semibold">الحالة</th>
+                  <th className="px-4 py-3 font-semibold">ملاحظات</th>
+                  <th className="px-2 py-3" />
                 </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {shown.map((d) => (
+                  <Fragment key={d.key}>
+                    <tr className={`hover:bg-slate-50 ${d.kind === 'open' ? 'bg-sky-50/50' : ''}`}>
+                      <td className="px-4 py-3 font-bold text-slate-800">{d.date.toLocaleDateString('ar-IQ', { weekday: 'long' })}</td>
+                      <td className="px-4 py-3 font-mono text-slate-500" dir="ltr">{d.key.split('-').reverse().join('/')}</td>
+                      <td className="px-4 py-3 text-slate-600">{d.rec ? fmtTime(d.rec.firstCheckIn) : '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{d.rec ? (d.rec.stillOpen ? <span className="font-semibold text-sky-700">لسه</span> : fmtTime(d.rec.lastCheckOut)) : '—'}</td>
+                      <td className="px-4 py-3 text-slate-600">{d.rec ? fmtHours(d.rec.totalMinutes) : '—'}</td>
+                      <td className="px-4 py-3">{badge(d)}</td>
+                      <td className="max-w-[16rem] truncate px-4 py-3 text-xs text-slate-500" title={d.note}>{d.note || '—'}</td>
+                      <td className="px-2 py-3">
+                        {d.rec && (
+                          <button onClick={() => setOpenKey(openKey === d.key ? null : d.key)} aria-label="التفاصيل"
+                            className="flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 text-slate-500 hover:bg-white">⋯</button>
+                        )}
+                      </td>
+                    </tr>
+                    {openKey === d.key && <tr><td colSpan={8} className="px-4 pb-3">{sessionsOf(d)}</td></tr>}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* الموبايل: بطاقة لكل يوم */}
+          <div className="divide-y divide-slate-100 md:hidden">
+            {shown.map((d) => (
+              <div key={d.key} className={`px-4 py-3 ${d.kind === 'open' ? 'bg-sky-50/50' : ''}`}>
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{d.date.toLocaleDateString('ar-IQ', { weekday: 'long' })}</p>
+                    <p className="font-mono text-[11px] text-slate-400" dir="ltr">{d.key.split('-').reverse().join('/')}</p>
+                  </div>
+                  {badge(d)}
+                </div>
+                {d.rec && (
+                  <button onClick={() => setOpenKey(openKey === d.key ? null : d.key)} className="mt-2 grid w-full grid-cols-3 gap-2 text-center text-xs">
+                    <span className="rounded-lg bg-slate-50 py-1.5"><span className="block text-[10px] text-slate-400">حضور</span>{fmtTime(d.rec.firstCheckIn)}</span>
+                    <span className="rounded-lg bg-slate-50 py-1.5"><span className="block text-[10px] text-slate-400">انصراف</span>{d.rec.stillOpen ? 'لسه' : fmtTime(d.rec.lastCheckOut)}</span>
+                    <span className="rounded-lg bg-slate-50 py-1.5"><span className="block text-[10px] text-slate-400">ساعات</span>{fmtHours(d.rec.totalMinutes)}</span>
+                  </button>
+                )}
+                {d.note && <p className="mt-1.5 text-[11px] text-slate-500">{d.note}</p>}
+                {openKey === d.key && <div className="mt-2">{sessionsOf(d)}</div>}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   )
