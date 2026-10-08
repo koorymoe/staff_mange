@@ -483,10 +483,7 @@ export default function RevolvingFundPage() {
             المبلغ المصروف: <span className="font-bold">{money(viewReceipt.spentAmount)}</span>
             {' · '}المرتجع: <span className="font-bold">{money(viewReceipt.returnedAmount)}</span>
           </p>
-          {viewReceipt.receiptImage && (
-            <img src={fileUrl(viewReceipt.receiptImage)} alt="صورة الوصل"
-              className="mb-3 max-h-[50vh] w-full rounded-lg border border-slate-200 object-contain" />
-          )}
+          {viewReceipt.receiptImage && <ReceiptImage txnId={viewReceipt.id} src={viewReceipt.receiptImage} />}
           <textarea value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} rows={2}
             placeholder="ملاحظة التدقيق (اختياري)"
             className="w-full rounded-lg border border-gray-300 px-4 py-3 text-right outline-none focus:border-brand-500" />
@@ -522,4 +519,16 @@ function ModalActions({ busy, onConfirm, onCancel, confirmLabel }: { busy: boole
       <button onClick={onCancel} className="rounded-lg border border-slate-300 px-4 py-3 font-medium text-slate-700">إلغاء</button>
     </div>
   )
+}
+
+// الوصل ما يجي ويا القائمة (ثقيل) — ينجاب لحاله لمن ينفتح.
+function ReceiptImage({ txnId, src }: { txnId: string; src: string }) {
+  const [img, setImg] = useState<string | null>(src === 'inline' ? null : src)
+  useEffect(() => {
+    if (src !== 'inline') return
+    api.getFundTxnReceipt(txnId).then((r) => setImg(r.receiptImage)).catch(() => setImg(''))
+  }, [txnId, src])
+  if (img === null) return <p className="mb-3 text-sm text-slate-400">جاري تحميل الوصل…</p>
+  if (!img) return <p className="mb-3 text-sm text-red-600">تعذر تحميل الوصل</p>
+  return <img src={fileUrl(img)} alt="صورة الوصل" className="mb-3 max-h-[50vh] w-full rounded-lg border border-slate-200 object-contain" />
 }

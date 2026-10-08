@@ -4546,6 +4546,7 @@ export const api = {
   disburseFund: (data: { fundId: string; employeeId: string; amount: number; bookingId?: string | null; requestId?: string | null; notes?: string | null }) =>
     request<RevolvingFundTxn>('/funds/disburse', { method: 'POST', body: JSON.stringify(data) }),
   getFundBalances: () => request<EmployeeFundBalance[]>('/funds/balances'),
+  getFundTxnReceipt: (id: string) => request<{ receiptImage: string }>(`/funds/transactions/${id}/receipt`),
   getFundTransactions: (params?: { employeeId?: string; status?: string }) => {
     const q = new URLSearchParams()
     if (params?.employeeId) q.set('employeeId', params.employeeId)

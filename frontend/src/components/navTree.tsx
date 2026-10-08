@@ -152,6 +152,10 @@ export const navItems: NavItem[] = [
     hideFromFieldStaff: true, // تقرير ١ (D4): بنود TECH_ROLES هنا تطلع لمسؤول الخدمة بس — التقني ياخذ «العمل» مالته (/tech-work-group).
     to: '/admin-group', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9"/></svg>,
     children: [
+      // قرار (ع) 10-08: المحاسب — «العمل» وحدة: التدقيق والدوار، حساب الكلفة، فواتير الليدر.
+      { to: '/finance-desk', label: '🧾 التدقيق والدوار', icon: <></>, roles: ['FINANCE'] },
+      { to: '/cost-calc', label: '🧮 حساب الكلفة', icon: <></>, roles: ['FINANCE'] },
+      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, roles: ['FINANCE'] },
       // قرار (ع) 10-08: مكتب المراقب جوّا «العمل» — أول بند.
       { to: '/monitor-desk', label: '🗂️ مكتب المراقب', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'monitoring' },
       {
@@ -291,7 +295,7 @@ export const navItems: NavItem[] = [
       { to: '/roles-guide', label: '📋 دليل الأدوار والصلاحيات', icon: <></>, roles: ['ADMIN'] },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
-          { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
+          { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
           // الشكاوى ومتابعة الجودة جانن تحت «إدارة الموظفين» — وهنّ شغل
           // على الزبون مو على ملف الموظف. محلهن هنا مع باقي شغل العمل.
           { to: '/complaints', label: '⚠️ الشكاوى', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'complaints', hideForRoles: ['MONITOR'] },
@@ -595,7 +599,7 @@ export const navItems: NavItem[] = [
       { monitorMenuHide: true, to: '/bookings-archive', label: 'أرشيف الحجوزات', icon: <></>, roles: ['ADMIN', 'MONITOR'], permission: 'bookings_archive' },
       { to: '/solar', label: '☀️ الطاقة الشمسية', icon: <></>, roles: ['ADMIN', 'OWNER', 'MONITOR', 'TECHNICIAN', 'SERVICE_MANAGER'], permission: 'solar_system' },
       { to: '/training-programs', label: '🎓 برامج التدريب', icon: <></>, roles: ['ADMIN', 'OWNER'], permission: 'training_manage' },
-      { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking' },
+      { monitorMenuHide: true, to: '/missions', label: 'تتبع المهام', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'mission_tracking', hideForRoles: ['FINANCE'] },
     ],
   },
   {
@@ -715,28 +719,15 @@ export const navItems: NavItem[] = [
     // ينتأثرون — الي انتغيّر العنوان ومحتوياته بس.
     // ما تتصادم وية «العمل» مال الفني (فوگ): كل أبناء ذيچ مقيّدين
     // بـTECHNICIAN/TECHNICAL، فما تطلع للمحاسب أبداً.
+    // قرار (ع) 10-08: للمحاسب «العمل» وحدة بس — بنوده انتقلت لـ«العمل» العامة.
+    hideForRoles: ['FINANCE'],
     to: '/unit-finance', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
     unitPermission: 'unit_finance',
     children: [
-      // ⚠️⚠️ مخفيّتان عن المراقب صراحة — راجع نفس التعليق بـ«إدارة
-      // الحسابات» فوگ. شغل المحاسب الشخصي، والخادم يرفض المراقب لو
-      // حاول يدقق حجزاً مباشرة أصلاً.
-      // ⚠️ نفس شروط نسخهن تحت «الإدارة»، إلا hideForRoles:[MONITOR] هنا (المراقب يشوفهن بمكتبه — تقرير ١ A12).
-      { to: '/finance', label: 'تدقيق الحسابات', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'], hideForRoles: ['MONITOR'] },
-      { to: '/daily-audit', label: '📅 التدقيق اليومي', icon: <></>, roles: ['ADMIN', 'FINANCE', 'MONITOR'], unlockAnyPermission: ['finance', 'finance_audit'], hideForRoles: ['MONITOR'] },
-      { to: '/revolving-fund', label: '💵 الدوار', icon: <></>, permission: 'revolving_fund' },
-      { to: '/audit-issues', label: '💸 بلاغات أخطاء التدقيق', icon: <></>, roles: ['ADMIN', 'MONITOR', 'QUALITY_ENGINEER', 'FINANCE'], unlockAnyPermission: ['audit_issues', 'finance_audit'], hideForRoles: ['MONITOR'] },
-      // موجودة بالقائمة الرئيسية كمان — منحطة هنا لأن محلها المنطقي الحسابات
-      { to: '/leader-invoices/new', label: '🧮 حساب الكلفة', icon: <></>, permission: 'execution_cost' },
-      { to: '/gps-install-costs', label: '🔧 حساب تكاليف الشد', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'gps_install_costs' },
-      // الشبكات والكاميرات: حاسبات مستقلة بمعادلات خاصة. جانن بمجموعة
-      // الميدان بس، فالمحاسب ما يوصلهن — وهو الي يطلع فاتورة الشبكات.
-      { to: '/network-cost', label: '🌐 حساب كلفة الشبكات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'execution_cost' },
-      { to: '/camera-cost', label: '📷 حساب كلفة الكاميرات', icon: <></>, roles: ['ADMIN', 'FINANCE'], permission: 'execution_cost' },
-      // شاشة مراجعة كل الفواتير — للمحاسب والمراقب والمدير والمالك.
-      // الليدر إله بنده الخاص تحت (يشوف فواتيره هو بس).
+      // قرار (ع) 10-08: «ماريد هذا العدد من الخيارات» — شاشتين بتبويبات بدل تسع بنود.
+      { to: '/finance-desk', label: '🧾 التدقيق والدوار', icon: <></>, roles: ['ADMIN', 'FINANCE'], anyPermission: ['finance', 'finance_audit', 'revolving_fund', 'expenses_manage', 'audit_issues'], hideForRoles: ['MONITOR'] },
+      { to: '/cost-calc', label: '🧮 حساب الكلفة', icon: <></>, roles: ['ADMIN', 'FINANCE'], anyPermission: ['execution_cost', 'gps_install_costs'] },
       { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel,  roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'], hideForRoles: ['MONITOR'] },
-      { to: '/expenses', label: 'إدارة المصاريف', icon: <></>, roles: ['ADMIN', 'FINANCE'], unlockPermission: 'expenses_manage' },
       // المشاريع الموجّهة لي: محلها هنا للمحاسب — والنسخة العامة فوگ
       // منحجوبة عنه بـhideForRoles حتى ما تتكرر.
       { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects' },

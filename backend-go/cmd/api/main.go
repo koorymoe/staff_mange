@@ -1888,6 +1888,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/funds/disburse", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Disburse), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/balances", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Balances), requireAuth, requireFund))
 	mux.Handle("GET /api/funds/transactions", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Txns), requireAuth, requireFund))
+	mux.Handle("GET /api/funds/transactions/{id}/receipt", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Receipt), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/settlements/{id}/review", middleware.Chain(http.HandlerFunc(revolvingFundHandler.ReviewSettlement), requireAuth, requireFund))
 	mux.Handle("PUT /api/funds/settlements/{id}/discharge", middleware.Chain(http.HandlerFunc(revolvingFundHandler.Discharge), requireAuth, requireDischarge))
 	mux.Handle("GET /api/funds/discharge-accounts", middleware.Chain(http.HandlerFunc(revolvingFundHandler.DischargeAccounts), requireAuth, requireFund))

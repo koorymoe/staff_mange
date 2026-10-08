@@ -443,7 +443,26 @@ func (r *RevolvingFundRepository) ListTxns(employeeID, status string) ([]model.R
 	if err := r.db.Select(&rows, q, args...); err != nil {
 		return nil, err
 	}
+	// ⚠️ صورة الوصل (base64) ما تنرسل بالقائمة — ٥٠٠ حركة بصورها چانت
+	// ميگات وتخلي شاشة الدوار تاخذ دقيقة (شكوى (ع) 10-08). تنجاب لحالها
+	// لمن المحاسب يضغط «شوف الوصل».
+	inline := "inline"
+	for i := range rows {
+		if rows[i].ReceiptImage != nil && strings.HasPrefix(*rows[i].ReceiptImage, "data:") {
+			rows[i].ReceiptImage = &inline
+		}
+	}
 	return decorateTxns(rows), nil
+}
+
+// TxnReceipt صورة وصل حركة وحدة.
+func (r *RevolvingFundRepository) TxnReceipt(id string) (string, error) {
+	var img *string
+	err := r.db.Get(&img, `SELECT "receiptImage" FROM "RevolvingFundTxn" WHERE id = $1`, id)
+	if img == nil {
+		return "", err
+	}
+	return *img, err
 }
 
 func deref(s *string) string {

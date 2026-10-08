@@ -124,6 +124,16 @@ func (h *RevolvingFundHandler) Txns(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, rows)
 }
 
+// GET /api/funds/transactions/{id}/receipt — صورة الوصل لحالها.
+func (h *RevolvingFundHandler) Receipt(w http.ResponseWriter, r *http.Request) {
+	img, err := h.repo.TxnReceipt(r.PathValue("id"))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, "ماكو وصل")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"receiptImage": img})
+}
+
 // POST /api/funds/settlements — الموظف يرفع تسوية (صرف + مرتجع + وصل)
 func (h *RevolvingFundHandler) SubmitSettlement(w http.ResponseWriter, r *http.Request) {
 	var req model.SettlementRequest
