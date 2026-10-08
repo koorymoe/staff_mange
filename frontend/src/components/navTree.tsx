@@ -501,7 +501,8 @@ export const navItems: NavItem[] = [
       // ⚠️ المدخل ‎/my-projects‎ لأن الفني الي ما عنده إدارة مشاريع
       // ما يشوف إلا الموجّهة له، والشاشة تفتح عليها مباشرة. ومن عنده
       // الإدارة يلگه الخيارين من فوگ.
-      { to: '/my-projects', label: '🏗️ المشاريع', icon: <></>, roles: ['TECHNICIAN', 'TECHNICAL'], unlockPermission: 'my_projects' },
+      // قرار (ع) 10-08: «خيار المشاريع ما يطلع لليدر ولا للفني» — التقني بس (أو منح my_projects بالإيد).
+      { to: '/my-projects', label: '🏗️ المشاريع', icon: <></>, roles: ['TECHNICAL'], unlockPermission: 'my_projects' },
     ],
   },
   { to: '/gps/employee', label: 'لوحتي GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>, roles: ['TECHNICIAN'], gpsSkillOnly: true },
