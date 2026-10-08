@@ -124,9 +124,40 @@ function MyHours({ meId }: { meId: string }) {
   )
 }
 
+// قرار (ع) 10-08: عرضين — «حسب الجلسات» (كل توقف وبدء) و«حسب الأيام» (مجموع كل يوم).
 function EntriesTable({ entries, canDelete, onDelete, showWho }: { entries: RemoteEntry[]; canDelete: (e: RemoteEntry) => boolean; onDelete: (e: RemoteEntry) => void; showWho: boolean }) {
+  const [view, setView] = useState<'sessions' | 'days'>('sessions')
+  const days = useMemo(() => {
+    const m = new Map<string, { seconds: number; n: number }>()
+    entries.forEach((e) => {
+      const d = e.workDate.slice(0, 10)
+      const cur = m.get(d) ?? { seconds: 0, n: 0 }
+      m.set(d, { seconds: cur.seconds + e.seconds, n: cur.n + 1 })
+    })
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  }, [entries])
   if (entries.length === 0) return <p className="mt-2 text-sm text-slate-400">ماكو ساعات بعد.</p>
+  const tab = (k: 'sessions' | 'days', label: string) => (
+    <button type="button" onClick={() => setView(k)}
+      className={`rounded-lg px-3 py-1 text-xs font-bold ${view === k ? 'bg-sky-700 text-white' : 'bg-slate-100 text-slate-600'}`}>{label}</button>
+  )
   return (
+    <>
+    <div className="mt-3 flex gap-2">{tab('sessions', '⏱️ حسب الجلسات')}{tab('days', '📅 حسب الأيام')}</div>
+    {view === 'days' ? (
+      <table className="mt-2 w-full text-sm">
+        <thead className="text-xs text-slate-500"><tr><th className="text-right">اليوم</th><th>مجموع الساعات</th><th className="text-right">عدد الجلسات</th></tr></thead>
+        <tbody>
+          {days.map(([d, v]) => (
+            <tr key={d} className="border-t border-slate-100">
+              <td className="py-1">{d}</td>
+              <td className="text-center font-mono font-bold" dir="ltr">{hms(v.seconds)}</td>
+              <td className="text-xs text-slate-500">{v.n}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    ) : (
     <table className="mt-2 w-full text-sm">
       <thead className="text-xs text-slate-500"><tr><th className="text-right">اليوم</th><th>المدة</th><th className="text-right">ملاحظة</th>{showWho && <th className="text-right">سجّلها</th>}<th /></tr></thead>
       <tbody>
@@ -141,6 +172,8 @@ function EntriesTable({ entries, canDelete, onDelete, showWho }: { entries: Remo
         ))}
       </tbody>
     </table>
+    )}
+    </>
   )
 }
 
