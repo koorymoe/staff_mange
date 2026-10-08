@@ -52,7 +52,7 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
   if (loading) return <p className="p-6 text-center text-slate-400">جارٍ التحميل...</p>
 
   return (
-    <div dir="rtl" className="mx-auto max-w-3xl space-y-4">
+    <div dir="rtl" className={`space-y-4 ${embedded ? '' : 'mx-auto max-w-5xl'}`}>
       {/* مدمجة جوّا «الجرد»؟ ما نعيد الرأس — الشاشة أصلاً بيها رأس
           وعنوان التبويب، وتكراره يدفع المحتوى للأسفل بلا فايدة. */}
       {!embedded && (
@@ -79,8 +79,10 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
         </div>
       ) : (
         <>
+          {/* ترتيب (ع) 10-08: بالحاسبة الحجز والأرقام جنب بعض، وبالموبايل فوك بعض. */}
+          <div className="grid gap-3 lg:grid-cols-3">
           {/* ── الحجز — يطلع لحاله ── */}
-          <div className="rounded-2xl border-2 border-brand-200 bg-brand-50/50 p-4">
+          <div className="rounded-2xl border-2 border-brand-200 bg-brand-50/50 p-4 lg:col-span-2">
             <p className="text-[11px] font-bold text-brand-700">🔧 الحجز الي استلمته</p>
             <p className="mt-1 font-black text-[#0f2040]">
               {booking.code && <span className="font-mono"><BookingCodeChip code={booking.code} /> · </span>}
@@ -117,16 +119,17 @@ export default function TeamInventoryCheckPage({ embedded }: { embedded?: boolea
           </div>
 
           {/* ── الأرقام ── */}
-          <div className="grid grid-cols-3 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5 self-stretch">
             <Stat label="الفريق" value={crew.length} tone="slate" />
             <Stat label="جردوا" value={doneCount} tone="emerald" />
             <Stat label="عدهم نقص" value={shortCount} tone="red" />
           </div>
+          </div>
 
-          {/* ── الفريق ── */}
-          <div className="space-y-2">
+          {/* ── الفريق ── بطاقات بعمودين/ثلاثة بالحاسبة */}
+          <div className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
             {crew.length === 0 && (
-              <p className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400">
+              <p className="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm text-slate-400">
                 ما انكلّف كادر لهذا الحجز بعد.
               </p>
             )}
@@ -194,7 +197,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone: 'sla
     red: 'text-red-700',
   }
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm">
+    <div className="flex flex-col justify-center rounded-2xl border border-slate-200 bg-white p-3 text-center shadow-sm">
       <p className={`text-2xl font-black ${tones[tone]}`}>{value}</p>
       <p className="text-[10px] text-slate-500">{label}</p>
     </div>

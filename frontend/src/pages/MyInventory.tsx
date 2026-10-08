@@ -207,12 +207,13 @@ export default function MyInventory() {
       <p className="mt-1 text-slate-500">تأكد من أدواتك قبل الخروج واطلب ما تحتاجه</p>
 
       {/* Tabs */}
-      <div className="mt-6 flex gap-1 rounded-xl bg-slate-100 p-1">
+      {/* بالموبايل التبويبات تنسحب أفقياً بدل ما تنضغط. */}
+      <div className="mt-6 flex gap-1 overflow-x-auto rounded-xl bg-slate-100 p-1">
         {tabs.map((tab) => (
           <button
             key={tab.key}
             onClick={() => setActiveTab(tab.key)}
-            className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
+            className={`flex-1 shrink-0 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-all ${
               activeTab === tab.key
                 ? 'bg-gradient-to-l from-brand-500 to-brand-800 text-white shadow-md'
                 : 'text-slate-600 hover:text-brand-700'
