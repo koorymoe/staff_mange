@@ -71,7 +71,7 @@ export default function MyRanking() {
   // يظهر بتصنيفين.
   // ⚠️ الدور ينمرّر: عائلته هي المسار الأول — بلاه يرجع الترشيح
   // بالصلاحية وحدها وتطلع علّة «إداري الكوادر بتقييمات المبيعات».
-  const myTracks = tracksFor(permissions, employee?.role)
+  const myTracks = tracksFor(permissions, employee?.role, employee?.isLeader, employee?.division)
   const [trackIdx, setTrackIdx] = useState(0)
   const activeTrack = myTracks[trackIdx] ?? null
 
@@ -86,7 +86,7 @@ export default function MyRanking() {
     // الصارم بدل ترتيب الصلاحية.
     const p = activeTrack?.strictRoles?.length
       // العائلة تنرسل مفصولة بفاصلة — الخادم يرشّح `role = ANY(...)`
-      ? api.getRoleKpiLeaderboard(activeTrack.strictRoles.join(','))
+      ? api.getRoleKpiLeaderboard(activeTrack.strictRoles.join(','), { leader: activeTrack.leader, division: activeTrack.division })
       : activeTrack
       ? api.getPermissionKpiLeaderboard(activeTrack.permission)
       // 🔴 **والإداري العليا ما ننادي إله أصلاً**: الخادم يرفض
@@ -96,7 +96,8 @@ export default function MyRanking() {
       // بأخطاء متوقّعة **تخبّي الأخطاء الحقيقية**.
       : isTopAdmin
       ? null
-      : api.getRoleKpiLeaderboard(employee.role)
+      // الديكور: لوحتهم لحالهم، ما يختلطون ويا الشعبة الهندسية (قرار 10-08).
+      : api.getRoleKpiLeaderboard(employee.role, employee.division === 'DECOR' ? { division: 'DECOR' } : undefined)
     if (!p) { return }
     p.then(setBoard).catch(() => setBoard(null))
   }, [employee, activeTrack, isTopAdmin])

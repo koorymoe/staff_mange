@@ -8,6 +8,7 @@ import (
 
 	"staffmange-api/internal/middleware"
 	"staffmange-api/internal/model"
+	"staffmange-api/internal/repository"
 	"staffmange-api/internal/service"
 )
 
@@ -78,7 +79,14 @@ func (h *KpiHandler) RoleLeaderboard(w http.ResponseWriter, r *http.Request) {
 			roles = append(roles, p)
 		}
 	}
-	board, err := h.service.RoleLeaderboard(roles)
+	scope := repository.LeaderboardScope{Leader: r.URL.Query().Get("leader"), Division: r.URL.Query().Get("division")}
+	if scope.Leader != "" && scope.Leader != "0" && scope.Leader != "1" {
+		scope.Leader = ""
+	}
+	if scope.Division != "" && scope.Division != "ENGINEERING" && scope.Division != "DECOR" {
+		scope.Division = ""
+	}
+	board, err := h.service.RoleLeaderboard(roles, scope)
 	if err != nil {
 		// ⚠️ ADMIN/OWNER مرفوضان بقصد (RoleLeaderboard) — ٤٠٠ لا ٥٠٠،
 		// هذا رفض منطقي مو عطل بالخادم.

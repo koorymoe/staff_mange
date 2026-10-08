@@ -5193,7 +5193,13 @@ export const api = {
     request<TechnicianKpi>(`/smart-kpi/technician/${employeeId}${month ? `?month=${month}` : ''}`),
   getKpiLeaderboard: (month?: string) =>
     request<TechnicianKpi[]>(`/smart-kpi/leaderboard${month ? `?month=${month}` : ''}`),
-  getRoleKpiLeaderboard: (role: string) => request<RoleKpiLeaderboard>(`/kpi/leaderboard/${role}`),
+  getRoleKpiLeaderboard: (role: string, scope?: { leader?: string; division?: string }) => {
+    const q = new URLSearchParams()
+    if (scope?.leader) q.set('leader', scope.leader)
+    if (scope?.division) q.set('division', scope.division)
+    const qs = q.toString()
+    return request<RoleKpiLeaderboard>(`/kpi/leaderboard/${role}${qs ? `?${qs}` : ''}`)
+  },
   /** «تقييم بين الإداريين» — ترتيب ADMIN/OWNER/MONITOR/HR_COORDINATOR حسب
    *  عدد الحجوزات الي راجعوها. `points`/`evaluationCount` هنا عدد
    *  المراجعات لا نقاط KPI. */

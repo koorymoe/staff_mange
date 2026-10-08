@@ -31,6 +31,9 @@ export type RankingTrack = {
    * المسارات تبقى «حسب الشغل» متل ما هي.
    */
   strictRoles?: string[]
+  /** قرار (ع) 10-08: الليدرية لحالهم والفنيين لحالهم، والديكور برّا الشعبة الهندسية. */
+  leader?: '0' | '1'
+  division?: 'ENGINEERING' | 'DECOR'
 }
 
 /**
@@ -48,17 +51,26 @@ export type RankingTrack = {
  * `e.role = ANY(...)` — فالمحاسب والمراقب يطلعون بنفس اللوحة فعلاً
  * مو بلوحتين متشابهتين.
  */
-export const RANKING_FAMILIES: { label: string; icon: string; roles: string[] }[] = [
+type Family = { label: string; icon: string; roles: string[]; leader?: '0' | '1'; division?: 'ENGINEERING' | 'DECOR' }
+
+// قرار (ع) 10-08: «لازم الليدريه ينعزلون عن الفنيين العاديين، وأي أحد من الديكور
+// ما يطلع ويا الشعبة الهندسية» — الديكور إلهم تقييم خاص بعدين (ما يطلعلهم هسه).
+export const RANKING_FAMILIES: Family[] = [
   { label: 'المبيعات', icon: '🤝', roles: ['SALES'] },
-  { label: 'الفنيون والليدريه', icon: '🔧', roles: ['TECHNICIAN'] },
+  { label: 'الليدريه', icon: '👑', roles: ['TECHNICIAN'], leader: '1', division: 'ENGINEERING' },
+  { label: 'الفنيون', icon: '🔧', roles: ['TECHNICIAN'], leader: '0', division: 'ENGINEERING' },
   { label: 'الحسابات والرقابة', icon: '💰', roles: ['FINANCE', 'MONITOR', 'IT_SUPPORT', 'GPS_ADMIN'] },
   { label: 'المهندسون', icon: '📐', roles: ['ENGINEER', 'QUALITY_ENGINEER', 'PROJECT_MANAGER', 'DESIGNER'] },
   { label: 'الكوادر', icon: '👥', roles: ['HR_COORDINATOR'] },
 ]
 
 /** عائلة الموظف حسب دوره — أو null لو دوره مو مصنّفاً. */
-export function familyForRole(role?: string): { label: string; icon: string; roles: string[] } | null {
+export function familyForRole(role?: string, isLeader?: boolean, division?: string): Family | null {
   if (!role) return null
+  if (role === 'TECHNICIAN') {
+    if (division === 'DECOR') return null // الديكور: تقييم خاص بعدين
+    return RANKING_FAMILIES.find((f) => f.roles.includes(role) && f.leader === (isLeader ? '1' : '0')) ?? null
+  }
   return RANKING_FAMILIES.find((f) => f.roles.includes(role)) ?? null
 }
 
@@ -107,14 +119,14 @@ export const RANKING_TRACKS: RankingTrack[] = [
  */
 const FAMILY_OWNED_PERMISSIONS = ['sales_booking', 'finance', 'monitoring']
 
-export function tracksFor(permissions: string[], role?: string): RankingTrack[] {
-  const family = familyForRole(role)
+export function tracksFor(permissions: string[], role?: string, isLeader?: boolean, division?: string): RankingTrack[] {
+  const family = familyForRole(role, isLeader, division)
   const byWork = RANKING_TRACKS.filter(
     (t) => permissions.includes(t.permission) && !FAMILY_OWNED_PERMISSIONS.includes(t.permission),
   )
   if (!family) return byWork
   return [
-    { permission: '__family__', label: family.label, icon: family.icon, strictRoles: family.roles },
+    { permission: '__family__', label: family.label, icon: family.icon, strictRoles: family.roles, leader: family.leader, division: family.division },
     ...byWork,
   ]
 }

@@ -182,7 +182,7 @@ func (s *KpiService) Cancel(id, cancelledByEmployeeID string) (*model.KpiEvaluat
 // العمق: حتى نداء مباشر بلا فتح الواجهة يُرفض.
 // roles عائلة أدوار تتنافس سوه (مثلاً المحاسب والمراقب). قائمة
 // بعنصر واحد = السلوك القديم بالضبط.
-func (s *KpiService) RoleLeaderboard(roles []string) (*model.RoleKpiLeaderboard, error) {
+func (s *KpiService) RoleLeaderboard(roles []string, scope repository.LeaderboardScope) (*model.RoleKpiLeaderboard, error) {
 	if len(roles) == 0 {
 		return nil, errors.New("ماكو دور للتصنيف")
 	}
@@ -201,19 +201,19 @@ func (s *KpiService) RoleLeaderboard(roles []string) (*model.RoleKpiLeaderboard,
 	twoWeeksAgo := now.AddDate(0, 0, -14).Format(day)
 	twoMonthsAgo := now.AddDate(0, -2, 0).Format(day)
 
-	weekly, err := s.repo.RoleLeaderboard(roles, weekAgo, "")
+	weekly, err := s.repo.RoleLeaderboard(roles, weekAgo, "", scope)
 	if err != nil {
 		return nil, err
 	}
-	monthly, err := s.repo.RoleLeaderboard(roles, monthAgo, "")
+	monthly, err := s.repo.RoleLeaderboard(roles, monthAgo, "", scope)
 	if err != nil {
 		return nil, err
 	}
-	prevWeekly, err := s.repo.RoleLeaderboard(roles, twoWeeksAgo, weekAgo)
+	prevWeekly, err := s.repo.RoleLeaderboard(roles, twoWeeksAgo, weekAgo, scope)
 	if err != nil {
 		return nil, err
 	}
-	prevMonthly, err := s.repo.RoleLeaderboard(roles, twoMonthsAgo, monthAgo)
+	prevMonthly, err := s.repo.RoleLeaderboard(roles, twoMonthsAgo, monthAgo, scope)
 	if err != nil {
 		return nil, err
 	}

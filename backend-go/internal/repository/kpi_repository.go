@@ -225,7 +225,15 @@ func (r *KpiRepository) PermissionLeaderboard(permission string, since, until st
 // والمراقب لازم يطلعون بنفس اللوحة، ودور واحد ما يمثّل عائلة.
 //
 // والقائمة بعنصر واحد تشتغل مثل قبل بالضبط — فما ينكسر نداء قائم.
-func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string) ([]model.KpiLeaderboardEntry, error) {
+// LeaderboardScope قرار (ع) 10-08: الليدرية ينعزلون عن الفنيين العاديين، والديكور
+// ما يطلع ويا الشعبة الهندسية. Leader: "1" ليدرية بس، "0" غير الليدرية، "" الكل.
+// Division: "ENGINEERING" (الفارغ ينحسب هندسة) أو "DECOR" أو "" الكل.
+type LeaderboardScope struct {
+	Leader   string
+	Division string
+}
+
+func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, scope LeaderboardScope) ([]model.KpiLeaderboardEntry, error) {
 	entries := []model.KpiLeaderboardEntry{}
 	err := r.db.Select(&entries, `
 		SELECT
@@ -271,9 +279,11 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string) ([]
 		      AND ($3 = '' OR k."createdAt" < $3::timestamp)
 		      AND k.cancelled = false
 		WHERE e.role = ANY($1) AND e.status = 'ACTIVE'
+		  AND ($4 = '' OR e."isLeader" = ($4 = '1'))
+		  AND ($5 = '' OR COALESCE(NULLIF(e.division, ''), 'ENGINEERING') = $5)
 		GROUP BY e.id, e.name
 		ORDER BY points DESC, "completedBookings" DESC
-	`, pq.Array(roles), since, until)
+	`, pq.Array(roles), since, until, scope.Leader, scope.Division)
 	return entries, err
 }
 
