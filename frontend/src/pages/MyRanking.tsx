@@ -117,7 +117,14 @@ export default function MyRanking() {
     : []
   const myPosition = sortedTechs.findIndex((s) => s.employeeId === employee?.id)
 
-  const list = board ? (period === 'weekly' ? board.weekly : board.monthly) : []
+  // قرار (ع) 10-08: المبيعات يتقيّمون على الحجوزات الي رحّلوها للشعبة الهندسية،
+  // والالتزام بالحضور، والمهام الإضافية — بس. بلا نقاط KPI ولا حجوزات منجزة.
+  const isSales = activeTrack?.strictRoles?.length === 1 && activeTrack.strictRoles[0] === 'SALES'
+  const rawList = board ? (period === 'weekly' ? board.weekly : board.monthly) : []
+  const list = isSales
+    ? [...rawList].sort((a, b) => (b.createdBookings ?? 0) - (a.createdBookings ?? 0)
+      || b.attendedDays - a.attendedDays || (b.extraTasksDone ?? 0) - (a.extraTasksDone ?? 0))
+    : rawList
   const myIndex = list.findIndex((e) => e.employeeId === employee?.id)
   const myEntry = myIndex >= 0 ? list[myIndex] : null
 
@@ -336,6 +343,11 @@ export default function MyRanking() {
           deltaSuffix="مركز"
           note={myRank === 1 ? '🎉 حافظ على مركزك!' : myRank ? `من ${list.length}` : undefined}
         />
+        {isSales ? (<>
+        <RankCard icon="🗂️" label="الحجوزات المرحّلة" value={myEntry ? String(myEntry.createdBookings ?? 0) : '—'} tone="sky" />
+        <RankCard icon="📋" label="المهام الإضافية المنجزة" value={myEntry ? String(myEntry.extraTasksDone ?? 0) : '—'} tone="amber" />
+        <RankCard icon="🕐" label="أيام الحضور" value={myEntry ? String(myEntry.attendedDays) : '—'} tone="violet" />
+        </>) : (<>
         <RankCard
           icon="⭐" label="نقاط التقييم"
           value={myEntry ? String(myEntry.points) : '—'}
@@ -356,6 +368,7 @@ export default function MyRanking() {
           note={completionRate === null ? 'ماكو حجوزات بالفترة' : undefined}
           bar={completionRate ?? undefined}
         />
+        </>)}
       </div>
 
       {/* ═══ أعلى ٣ ═══ */}
@@ -399,9 +412,9 @@ export default function MyRanking() {
                   </p>
                   <div className="shrink-0 text-left sm:text-center">
                     <p className={`text-2xl font-black leading-none ${place === 1 ? 'text-amber-600' : 'text-slate-600'} sm:mt-1`}>
-                      {e.points}
+                      {isSales ? (e.createdBookings ?? 0) : e.points}
                     </p>
-                    {e.pointsDelta !== 0 && (
+                    {!isSales && e.pointsDelta !== 0 && (
                       <p className={`text-[10px] font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
                         {e.pointsDelta > 0 ? '▲' : '▼'} {Math.abs(e.pointsDelta)}
                       </p>
@@ -463,10 +476,16 @@ export default function MyRanking() {
                 <tr>
                   <th className="px-4 py-2.5 font-bold">#</th>
                   <th className="px-4 py-2.5 font-bold">الموظف</th>
-                  <th className="px-4 py-2.5 font-bold">نقاط التقييم</th>
-                  <th className="px-4 py-2.5 font-bold">الحجوزات المنجزة</th>
-                  <th className="px-4 py-2.5 font-bold">الالتزام</th>
-                  <th className="px-4 py-2.5 font-bold">التغيير</th>
+                  {isSales ? (<>
+                    <th className="px-4 py-2.5 font-bold">الحجوزات المرحّلة</th>
+                    <th className="px-4 py-2.5 font-bold">المهام الإضافية</th>
+                    <th className="px-4 py-2.5 font-bold">الالتزام</th>
+                  </>) : (<>
+                    <th className="px-4 py-2.5 font-bold">نقاط التقييم</th>
+                    <th className="px-4 py-2.5 font-bold">الحجوزات المنجزة</th>
+                    <th className="px-4 py-2.5 font-bold">الالتزام</th>
+                    <th className="px-4 py-2.5 font-bold">التغيير</th>
+                  </>)}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -495,14 +514,19 @@ export default function MyRanking() {
                       <td className="px-4 py-3 font-bold text-slate-800">
                         {e.employeeName}{isMe && <span className="mr-1 text-[10px] text-sky-600">(أنت)</span>}
                       </td>
-                      <td className={`px-4 py-3 font-black ${e.points < 0 ? 'text-red-600' : 'text-slate-800'}`}>{e.points}</td>
-                      <td className="px-4 py-3 text-slate-600">{e.completedBookings}</td>
+                      {isSales ? (<>
+                        <td className="px-4 py-3 font-black text-slate-800">{e.createdBookings ?? 0}</td>
+                        <td className="px-4 py-3 text-slate-600">{e.extraTasksDone ?? 0}</td>
+                      </>) : (<>
+                        <td className={`px-4 py-3 font-black ${e.points < 0 ? 'text-red-600' : 'text-slate-800'}`}>{e.points}</td>
+                        <td className="px-4 py-3 text-slate-600">{e.completedBookings}</td>
+                      </>)}
                       <td className="px-4 py-3">
                         <span className={`rounded-md px-2 py-0.5 text-[10px] font-bold ${commit.cls}`} title={`${e.attendedDays} يوم حضور`}>
                           {commit.text}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
+                      {!isSales && <td className="px-4 py-3">
                         {e.pointsDelta === 0 ? (
                           <span className="text-slate-400">0 —</span>
                         ) : (
@@ -510,7 +534,7 @@ export default function MyRanking() {
                             {e.pointsDelta > 0 ? '▲' : '▼'} {e.pointsDelta > 0 ? '+' : ''}{e.pointsDelta}
                           </span>
                         )}
-                      </td>
+                      </td>}
                     </tr>
                   )
                 })}
@@ -531,6 +555,23 @@ export default function MyRanking() {
                 النظام **ما يشتغل بيها**. النقاط تجي من تقييم المدير
                 اليدوي. عرض معادلة ما تنطبق يخلي الموظف يشتغل على أرقام
                 ما إلها تأثير، ويفقد ثقته بالشاشة أول ما يكتشف. */}
+            {isSales ? (
+            <div className="space-y-2.5 text-[11px]">
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                <p className="font-bold text-slate-700">🗂️ الحجوزات المرحّلة</p>
+                <p className="mt-0.5 leading-relaxed text-slate-500">الحجوزات الي سجّلتها ورحّلتها للشعبة الهندسية بالفترة (الملغاة ما تنحسب).</p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                <p className="font-bold text-slate-700">🕐 الالتزام بالدوام</p>
+                <p className="mt-0.5 leading-relaxed text-slate-500">من بصمات حضورك وانصرافك — أيام الحضور من أيام العمل.</p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
+                <p className="font-bold text-slate-700">📋 المهام الإضافية</p>
+                <p className="mt-0.5 leading-relaxed text-slate-500">المهام الي توجّهت إلك من مسؤولك وخلّصتها.</p>
+              </div>
+              <p className="rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-800">الترتيب على <b>الحجوزات المرحّلة</b>، وعند التساوي الالتزام بالدوام ثم المهام.</p>
+            </div>
+            ) : (<>
             <div className="space-y-2.5 text-[11px]">
               <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
                 <p className="font-bold text-slate-700">⭐ نقاط التقييم</p>
@@ -555,6 +596,7 @@ export default function MyRanking() {
             <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-800">
               الترتيب على <b>نقاط التقييم</b>، وعند التساوي الأكثر إنجازاً يتقدّم.
             </p>
+            </>)}
           </div>
 
           {/* إنجازاتك بالفترة */}
@@ -569,6 +611,10 @@ export default function MyRanking() {
                   value={`${myEntry.attendedDays}`}
                   ok={myEntry.attendedDays > 0}
                 />
+                {isSales ? (<>
+                <Achievement icon="🗂️" label="حجوزات مرحّلة" value={`${myEntry.createdBookings ?? 0}`} ok={(myEntry.createdBookings ?? 0) > 0} />
+                <Achievement icon="📋" label="مهام إضافية" value={`${myEntry.extraTasksDone ?? 0}`} ok={(myEntry.extraTasksDone ?? 0) > 0} />
+                </>) : (<>
                 <Achievement
                   icon="⚡" label="معدل الإنجاز"
                   value={completionRate !== null ? `${completionRate}%` : '—'}
@@ -579,6 +625,7 @@ export default function MyRanking() {
                   value={`${myEntry.evaluationCount}`}
                   ok={myEntry.points >= 0}
                 />
+                </>)}
               </div>
             </div>
           )}

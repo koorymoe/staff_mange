@@ -243,7 +243,18 @@ export const navItems: NavItem[] = [
       },
       { to: '/my-handovers', label: '🛠️ الحجوزات', icon: <></>, roles: TECH_ROLES },
       // ماتركس — فرص البيع: نفس حارس GET /api/ai/opportunities (ADMIN/OWNER أو sales_booking).
-      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: TECH_ROLES },
+      { monitorMenuHide: true, to: '/sales-opportunities', label: '💡 فرص البيع', icon: <></>, roles: ['ADMIN'], permission: 'sales_booking', hideForRoles: [...TECH_ROLES, 'SALES'] }, // قرار (ع) 10-08: ما تطلع للمبيعات
+      // قرار (ع) 10-08: طلبات GPS للمبيعات صارت جوّا «العمل».
+      {
+        to: '/gps-group', label: '📡 GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+        roles: ['SALES'],
+        children: [
+          { to: '/gps/purchase', label: 'طلب GPS جديد', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
+          { to: '/gps/delivery', label: 'تسليم أجهزة GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
+          { to: '/gps/renewal', label: 'طلب تجديد GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
+          { to: '/gps/maintenance-request', label: 'طلب صيانة GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
+        ],
+      },
       { monitorMenuHide: true, to: '/customers', label: 'العملاء', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'manage_customers' },
       // ⚠️ «📅 الحجوزات المؤجلة» انشالت: نفس حجوزاتها تطلع بسلّة
       // «حجوزات مؤجّلة» جوّا «ما وصلت للتنفيذ» بشاشة الحجوزات، مع
@@ -759,20 +770,9 @@ export const navItems: NavItem[] = [
   },
 
   // ── اختصارات سريعة (أهم إجراءات المبيعات) ──
-  { to: '/sales', label: 'حجز جديد', icon: icon('M12 5v14M5 12h14'), roles: ['SALES'], unlockPermission: 'create_booking' },
+  // قرار (ع) 10-08: «حجز جديد» مكرر ويا «＋ إنشاء حجز» جوّا «العمل» — يبقى واحد.
   { to: '/complaints', label: '⚠️ الشكاوى', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>, roles: ['SALES'] },
 
-  // ── مجموعة GPS (تلم كل طلبات الـ GPS الخاصة بالمبيعات تحت باب وحد) ──
-  {
-    to: '/gps-group', label: 'GPS', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-    roles: ['SALES'],
-    children: [
-      { to: '/gps/purchase', label: 'طلب GPS جديد', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
-      { to: '/gps/delivery', label: 'تسليم أجهزة GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
-      { to: '/gps/renewal', label: 'طلب تجديد GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
-      { to: '/gps/maintenance-request', label: 'طلب صيانة GPS', icon: <></>, roles: ['SALES'], unlockPermission: 'gps_requests' },
-    ],
-  },
 ]
 
 

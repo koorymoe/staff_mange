@@ -54,6 +54,10 @@ type KpiLeaderboardEntry struct {
 	AssignedBookings int `db:"assignedBookings" json:"assignedBookings"`
 	// أيام حضوره بالفترة — أساس «الالتزام بالدوام»
 	AttendedDays int `db:"attendedDays" json:"attendedDays"`
+	// قرار (ع) 10-08 — تقييم المبيعات: الحجوزات الي سجّلها ورحّلها للشعبة
+	// الهندسية، والمهام الإضافية الي خلّصها بالفترة.
+	CreatedBookings int `db:"createdBookings" json:"createdBookings"`
+	ExtraTasksDone  int `db:"extraTasksDone" json:"extraTasksDone"`
 
 	// فروقات عن الفترة السابقة — تنحسب بالخدمة مو بقاعدة البيانات.
 	// ⚠️ RankDelta موجب = تقدّم (٣ → ١ يرجّع +2)، لأن نزول رقم المركز

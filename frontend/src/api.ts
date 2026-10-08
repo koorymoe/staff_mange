@@ -2795,6 +2795,10 @@ export interface KpiLeaderboardEntry {
   assignedBookings: number
   /** أيام حضوره بالفترة — أساس الالتزام بالدوام. */
   attendedDays: number
+  /** المبيعات: الحجوزات الي سجّلها بالفترة. */
+  createdBookings?: number
+  /** المهام الإضافية الي خلّصها بالفترة. */
+  extraTasksDone?: number
   /** فرق النقاط عن الفترة السابقة. */
   pointsDelta: number
   /** فرق الترتيب — موجب = تقدّم (٣ → ١ يرجّع +2). */

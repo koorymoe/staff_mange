@@ -271,7 +271,22 @@ func (r *KpiRepository) RoleLeaderboard(roles []string, since, until string, sco
 				WHERE a."employeeId" = e.id
 				  AND a.date >= $2::date
 				  AND ($3 = '' OR a.date < $3::date)
-			), 0) AS "attendedDays"
+			), 0) AS "attendedDays",
+			-- المبيعات: الحجوزات الي سجّلها (مو الملغاة) بالفترة.
+			COALESCE((
+				SELECT COUNT(*) FROM "Booking" b
+				WHERE b."createdById" = e.id
+				  AND b."createdAt" >= $2::timestamp
+				  AND ($3 = '' OR b."createdAt" < $3::timestamp)
+				  AND b.status <> 'CANCELLED'
+				  AND `+BookingCountableSQL("b")+`
+			), 0) AS "createdBookings",
+			COALESCE((
+				SELECT COUNT(*) FROM "ExtraTask" x
+				WHERE x."assignedToId" = e.id AND x.status = 'DONE'
+				  AND x."doneAt" >= $2::timestamp
+				  AND ($3 = '' OR x."doneAt" < $3::timestamp)
+			), 0) AS "extraTasksDone"
 		FROM "Employee" e
 		LEFT JOIN "KpiEvaluation" k
 		       ON k."employeeId" = e.id
