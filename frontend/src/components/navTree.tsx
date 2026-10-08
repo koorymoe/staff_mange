@@ -90,7 +90,7 @@ const icon = (d: string) => (
 const TECH_ROLES: EmployeeRole[] = ['TECHNICAL', 'SERVICE_MANAGER']
 
 const TECHNICIAN_NAV = [
-  '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/privacy-policy',
+  '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/my-work', '/privacy-policy',
 ]
 
 // تقرير ١ (A6): نفس الشاشة بأسمين — الاسم يتبع الشخص: صاحب صلاحية الحسابات
@@ -115,13 +115,12 @@ export const navItems: NavItem[] = [
   // يضيع. المهمة الي ما إلها مكان ثابت تنعرض بيه تنتنسى.
   //
   // أما **توجيه** المهام لغيره فيحتاج صلاحية extra_tasks_assign.
-  { monitorMenuHide: true, to: '/my-extra-tasks', label: 'مهامي الإضافية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
   // الإنجازات: تقرير يومي حر بلا قيد دور — كل موظف يسوي شي، حتى لو
   // مو شغله المباشر (المراقب يدقّق، المحاسب يطابق...). يوصل لمدير
   // النظام والمالك حصراً — شوف backend `Achievement`.
-  { monitorMenuHide: true, to: '/my-achievements', label: '📋 إنجازاتي اليوم', icon: <></> },
   // ترتيب (ع) للمراقب: «مهامي الإضافية» و«إنجازاتي اليوم» شاشة وحدة بتبويبين.
-  { to: '/my-work', label: '📋 مهامي وإنجازاتي', icon: <></>, roles: ['MONITOR'] },
+  // قرار (ع) 10-08: نفس الشي لكل الأدوار — خانة وحدة «مهامي وإنجازاتي».
+  { to: '/my-work', label: 'مهامي وإنجازاتي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="m9 14 2 2 4-4"/></svg> },
   // ساعات البيت لأي موظف عنده الصلاحية (لنفسه أو مسؤول) — بالقائمة الرئيسية حتى الفني يوصلها.
   { monitorMenuHide: true, to: '/remote-hours', label: '🏠 ساعات العمل من البيت', icon: <></>, roles: ['ADMIN'], anyPermission: ['remote_hours_self', 'remote_hours_manage'] },
   // ⚠️ «حساب الكلفة» انشال من القائمة العلوية: كان يطلع مرتين —
