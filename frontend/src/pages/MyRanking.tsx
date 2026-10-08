@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { type KpiLeaderboardEntry } from '../api'
+import { type KpiLeaderboardEntry, type StaffScoreDetail } from '../api'
 import { api, type Stats, type RoleKpiLeaderboard } from '../api'
 import { useSession } from '../session'
 import { roleLabel as arabicRole } from '../roleLabels'
@@ -54,6 +54,52 @@ const CUSTOM_BOARDS: Record<string, { cols: BoardCol[]; explain: [string, string
   },
 }
 
+const pct = (v: number | null | undefined) => (v == null ? '—' : `${Math.round(v)}%`)
+
+/** «؟» صغيرة — تفتح طريقة الحساب مختصرة (قرار (ع) 10-08). */
+function HelpDot({ lines }: { lines: string[] }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <span className="relative inline-block">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-label="شلون ينحسب؟"
+        className="flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-[11px] font-black text-slate-500 hover:bg-slate-50">؟</button>
+      {open && (
+        <span className="absolute right-0 top-7 z-20 block w-72 rounded-xl border border-slate-200 bg-white p-3 text-[11px] font-normal leading-relaxed text-slate-600 shadow-lg">
+          {lines.map((l) => <span key={l} className="block py-0.5">{l}</span>)}
+        </span>
+      )}
+    </span>
+  )
+}
+
+/** تقييم ماتركس الي يخص الموظف نفسه: الرقم، وشنو خسّره نقاط ونصيحته. */
+function MatrixMine({ score }: { score: StaffScoreDetail | null }) {
+  if (!score) return null
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-extrabold text-[#0f2040]">🤖 ماتركس يقيّمك</h3>
+        <span className="text-2xl font-black text-sky-700">{pct(score.final)}</span>
+      </div>
+      <p className="mt-1 text-[11px] text-slate-500">
+        {score.max > 0 ? `انحسبلك ${Math.round(score.earned / 2)} من ${Math.round(score.max / 2)} بشغلك هالشهر` : 'بعد ماكو شغل كافي ينحسب هالشهر'}
+        {score.humanCount > 0 && ` · ${score.humanCount} تقييم من مسؤوليك`}
+      </p>
+      {score.topLosses.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <p className="text-[11px] font-bold text-slate-600">شنو نزّل تقييمك:</p>
+          {score.topLosses.slice(0, 3).map((l) => (
+            <div key={l.rule} className="rounded-xl bg-red-50/60 px-3 py-2 text-[11px]">
+              <p className="font-bold text-red-800">{l.title} ({l.count} مرة)</p>
+              {l.advice && <p className="mt-0.5 text-slate-600">💡 {l.advice}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function MyRanking() {
   const { employee, permissions } = useSession()
   // «تقييم الموظفين» ما يطلع إلا لمن يقيّم فعلاً — الليدر أو من عنده
@@ -74,6 +120,12 @@ export default function MyRanking() {
   const [view, setView] = useState<'mine' | 'team' | 'evaluators'>('mine')
   const [stats, setStats] = useState<Stats | null>(null)
   const [board, setBoard] = useState<RoleKpiLeaderboard | null>(null)
+  const [peers, setPeers] = useState<Map<string, number | null>>(new Map())
+  const [myScore, setMyScore] = useState<StaffScoreDetail | null>(null)
+  useEffect(() => {
+    api.getStaffScorePeers().then((r) => setPeers(new Map(r.map((x) => [x.id, x.final])))).catch(() => {})
+    api.getMyScore().then((r) => setMyScore(r?.score ?? null)).catch(() => {})
+  }, [])
   const [evalBoard, setEvalBoard] = useState<RoleKpiLeaderboard | null>(null)
   const [evalPeriod, setEvalPeriod] = useState<'weekly' | 'monthly'>('weekly')
   const [period, setPeriod] = useState<'weekly' | 'monthly'>('weekly')
@@ -160,7 +212,8 @@ export default function MyRanking() {
       for (const c of custom.cols) { const d = c.get(b) - c.get(a); if (d) return d }
       return b.attendedDays - a.attendedDays
     })
-    : rawList
+    // قرار (ع) 10-08: الترتيب على تقييم ماتركس (يحسب الشغل الفعلي) بدل نقاط KPI اليدوية.
+    : [...rawList].sort((a, b) => (peers.get(b.employeeId) ?? -1) - (peers.get(a.employeeId) ?? -1) || b.points - a.points)
   const myIndex = list.findIndex((e) => e.employeeId === employee?.id)
   const myEntry = myIndex >= 0 ? list[myIndex] : null
 
@@ -386,11 +439,9 @@ export default function MyRanking() {
         <RankCard icon="🕐" label="أيام الحضور" value={myEntry ? String(myEntry.attendedDays) : '—'} tone="violet" />
         </>) : (<>
         <RankCard
-          icon="⭐" label="نقاط التقييم"
-          value={myEntry ? String(myEntry.points) : '—'}
+          icon="🤖" label="تقييم ماتركس"
+          value={pct(myScore?.final ?? (employee ? peers.get(employee.id) : null))}
           tone="amber"
-          delta={myEntry?.pointsDelta ?? 0}
-          deltaSuffix="نقطة"
         />
         <RankCard
           icon="🗂️" label="حجوزات منجزة"
@@ -449,7 +500,7 @@ export default function MyRanking() {
                   </p>
                   <div className="shrink-0 text-left sm:text-center">
                     <p className={`text-2xl font-black leading-none ${place === 1 ? 'text-amber-600' : 'text-slate-600'} sm:mt-1`}>
-                      {custom ? custom.cols[0].get(e) : e.points}
+                      {custom ? custom.cols[0].get(e) : pct(peers.get(e.employeeId))}
                     </p>
                     {!isSales && e.pointsDelta !== 0 && (
                       <p className={`text-[10px] font-bold ${e.pointsDelta > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -505,7 +556,14 @@ export default function MyRanking() {
         {/* الترتيب الكامل */}
         <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:col-span-2">
           <div className="border-b border-slate-100 px-5 py-4">
-            <h3 className="text-sm font-extrabold text-[#0f2040]">👥 ترتيب {roleLabel}</h3>
+            <h3 className="flex items-center gap-2 text-sm font-extrabold text-[#0f2040]">👥 ترتيب {roleLabel}
+              <HelpDot lines={custom ? custom.explain.map(([t, d]) => `${t}: ${d.split(' — ')[0]}`) : [
+                '🤖 تقييم ماتركس: يقيّم شغلك تلقائياً — شنو سوّيت بوقته، وشنو تركت، والأخطاء.',
+                '🗂️ الحجوزات المنجزة: الي انكلّفت بيها وخلصت.',
+                '🕐 الالتزام: أيام حضورك من أيام الفترة.',
+                'الترتيب على تقييم ماتركس.',
+              ]} />
+            </h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-right text-xs">
@@ -517,7 +575,7 @@ export default function MyRanking() {
                     {custom!.cols.map((c) => <th key={c.label} className="px-4 py-2.5 font-bold">{c.label}</th>)}
                     <th className="px-4 py-2.5 font-bold">الالتزام</th>
                   </>) : (<>
-                    <th className="px-4 py-2.5 font-bold">نقاط التقييم</th>
+                    <th className="px-4 py-2.5 font-bold">🤖 تقييم ماتركس</th>
                     <th className="px-4 py-2.5 font-bold">الحجوزات المنجزة</th>
                     <th className="px-4 py-2.5 font-bold">الالتزام</th>
                     <th className="px-4 py-2.5 font-bold">التغيير</th>
@@ -528,7 +586,7 @@ export default function MyRanking() {
                 {list.map((e, i) => {
                   const isMe = e.employeeId === employee?.id
                   // الالتزام = أيام الحضور من أيام الفترة (عدا الجمع)
-                  const workDays = period === 'weekly' ? 6 : 26
+                  const workDays = period === 'weekly' ? 7 : 30 // ماكو عطلة أسبوعية (قرار 10-08)
                   const rate = Math.min(100, Math.round((e.attendedDays / workDays) * 100))
                   const commit = rate >= 90
                     ? { text: 'ممتاز', cls: 'bg-emerald-50 text-emerald-700' }
@@ -553,7 +611,7 @@ export default function MyRanking() {
                       {isSales ? (<>
                         {custom!.cols.map((c, ci) => <td key={c.label} className={`px-4 py-3 ${ci === 0 ? 'font-black text-slate-800' : 'text-slate-600'}`}>{c.get(e)}</td>)}
                       </>) : (<>
-                        <td className={`px-4 py-3 font-black ${e.points < 0 ? 'text-red-600' : 'text-slate-800'}`}>{e.points}</td>
+                        <td className="px-4 py-3 font-black text-slate-800">{pct(peers.get(e.employeeId))}</td>
                         <td className="px-4 py-3 text-slate-600">{e.completedBookings}</td>
                       </>)}
                       <td className="px-4 py-3">
@@ -583,50 +641,8 @@ export default function MyRanking() {
 
         {/* ═══ كيف تنحسب النقاط — الحقيقة مو معادلة مزيّنة ═══ */}
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="mb-3 text-sm font-extrabold text-[#0f2040]">⚖️ شلون تنحسب النقاط؟</h3>
-
-            {/* ⚠️ ما نعرض معادلة أوزان (٤٠٪ حجوزات + ٢٠٪ استجابة...) لأن
-                النظام **ما يشتغل بيها**. النقاط تجي من تقييم المدير
-                اليدوي. عرض معادلة ما تنطبق يخلي الموظف يشتغل على أرقام
-                ما إلها تأثير، ويفقد ثقته بالشاشة أول ما يكتشف. */}
-            {isSales ? (
-            <div className="space-y-2.5 text-[11px]">
-              {custom!.explain.map(([t, d]) => (
-                <div key={t} className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                  <p className="font-bold text-slate-700">{t}</p>
-                  <p className="mt-0.5 leading-relaxed text-slate-500">{d}</p>
-                </div>
-              ))}
-              <p className="rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-800">{custom!.sortNote}</p>
-            </div>
-            ) : (<>
-            <div className="space-y-2.5 text-[11px]">
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                <p className="font-bold text-slate-700">⭐ نقاط التقييم</p>
-                <p className="mt-0.5 leading-relaxed text-slate-500">
-                  تجي من تقييم المدير المباشر — يزيد نقاط على الشغل الزين، ويخصم على المخالفة مع سبب مكتوب.
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                <p className="font-bold text-slate-700">🗂️ الحجوزات المنجزة</p>
-                <p className="mt-0.5 leading-relaxed text-slate-500">
-                  تنعدّ تلقائياً من النظام — الحجوزات الي انكلّفت بيها ووصلت «منجز».
-                </p>
-              </div>
-              <div className="rounded-xl border border-slate-100 bg-slate-50/60 p-3">
-                <p className="font-bold text-slate-700">🕐 الالتزام بالدوام</p>
-                <p className="mt-0.5 leading-relaxed text-slate-500">
-                  من بصمات حضورك — أيام الحضور من أيام العمل بالفترة.
-                </p>
-              </div>
-            </div>
-
-            <p className="mt-3 rounded-lg bg-sky-50 px-3 py-2 text-[10px] leading-relaxed text-sky-800">
-              الترتيب على <b>نقاط التقييم</b>، وعند التساوي الأكثر إنجازاً يتقدّم.
-            </p>
-            </>)}
-          </div>
+          {/* قرار (ع) 10-08: ماتركس يقيّم كل موظف ويشوف شغله — شكد سوّى وشكد ترك وشنو الأخطاء. */}
+          <MatrixMine score={myScore} />
 
           {/* إنجازاتك بالفترة */}
           {myEntry && (

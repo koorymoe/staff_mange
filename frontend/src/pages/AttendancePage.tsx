@@ -554,7 +554,7 @@ function MonthlyView({ month, setMonth, report, employeeId, canExport, shiftStar
             icon="🚫" label="أيام بلا بصمة"
             value={`${absentDays} يوم`}
             tone={absentDays > 0 ? 'text-red-700' : 'text-slate-600'}
-            hint="عدا الجمعة — وممكن تكون إجازة مصدّقة"
+            hint="كل الأيام دوام — وممكن تكون إجازة مصدّقة"
           />
         </div>
       )}

@@ -52,6 +52,25 @@ func (h *StaffScoreHandler) Detail(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, d)
 }
 
+// GET /api/staff-score/peers — قرار (ع) 10-08: كل موظف يشوف تقييم ماتركس
+// لزملائه بالترتيب (الاسم والرقم بس، بلا التفاصيل).
+func (h *StaffScoreHandler) Peers(w http.ResponseWriter, r *http.Request) {
+	b, err := h.svc.Board("")
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر حساب التقييم")
+		return
+	}
+	type peer struct {
+		ID    string   `json:"id"`
+		Final *float64 `json:"final"`
+	}
+	out := make([]peer, 0, len(b.Staff))
+	for _, s := range b.Staff {
+		out = append(out, peer{ID: s.ID, Final: s.Final})
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 // GET /api/staff-score/me
 func (h *StaffScoreHandler) Mine(w http.ResponseWriter, r *http.Request) {
 	d, err := h.svc.Detail(middleware.EmployeeIDFromContext(r), r.URL.Query().Get("month"))

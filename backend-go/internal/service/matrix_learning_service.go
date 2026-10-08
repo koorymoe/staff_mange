@@ -87,7 +87,7 @@ func (s *MatrixLearningService) RunIfDue() error {
 	now := time.Now().In(debriefLoc)
 	// كل دورة: التوقعات القديمة والأرقام المستحيلة تنتهي من صندوق القرارات.
 	s.props.ExpireStalePredictions(now.Format("2006-01-02"))
-	if now.Hour() >= predictHour && now.Weekday() != time.Friday {
+	if now.Hour() >= predictHour {
 		if ok, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_PREDICT", now.Format("2006-01-02")); err == nil && ok {
 			n := s.predict(now)
 			if n > 0 {
@@ -97,7 +97,7 @@ func (s *MatrixLearningService) RunIfDue() error {
 			}
 		}
 	}
-	if now.Hour() >= declineHour && now.Weekday() != time.Friday {
+	if now.Hour() >= declineHour {
 		if ok, err := s.aiRepo.ClaimDailyMarker("DAILY_MATRIX_DECLINE", now.Format("2006-01-02")); err == nil && ok {
 			if n := s.detectDeclines(); n > 0 {
 				_ = s.notif.CreateForRolesOrPermission([]string{"OWNER", "ADMIN"}, "", "AI_DECISIONS",

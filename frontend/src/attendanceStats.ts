@@ -47,8 +47,10 @@ export function isLateDay(day: DailyAttendance, shiftStart: string | null): bool
  *
  * getDay(): 0 أحد ... 5 جمعة، 6 سبت.
  */
+// قرار (ع) 10-08: «ماعدنه إجازة أسبوعية — يومياً دوام، وإجازاتنا تنطلب بس».
 export function isWeekend(d: Date): boolean {
-  return d.getDay() === 5
+  void d
+  return false
 }
 
 /**

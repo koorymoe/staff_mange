@@ -197,7 +197,7 @@ func scoreVerdict(status, verdict string) string {
 	return head + " — " + verdict
 }
 
-// scoreDays الحضور لآخر ٣ أيام دوام (الجمعة عطلة، والإجازة المعتمدة ما تنحسب).
+// scoreDays الحضور لآخر ٣ أيام (ماكو عطلة أسبوعية — قرار (ع) 10-08؛ الإجازة المعتمدة ما تنحسب).
 func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.MatrixScoreRow)) error {
 	people, err := s.repo.Scorables()
 	if err != nil {
@@ -206,9 +206,6 @@ func (s *MatrixScoreService) scoreDays(now time.Time, add func(repository.Matrix
 	today := now.In(debriefLoc)
 	for back := 1; back <= 3; back++ {
 		d := today.AddDate(0, 0, -back)
-		if d.Weekday() == time.Friday {
-			continue
-		}
 		day := time.Date(d.Year(), d.Month(), d.Day(), 0, 0, 0, 0, debriefLoc)
 		present, leave, err := s.repo.DayFacts(day)
 		if err != nil {

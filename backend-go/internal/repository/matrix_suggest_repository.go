@@ -98,7 +98,7 @@ func (r *MatrixSuggestRepository) WorkHours() (from, to int, offDays []int) {
 			}
 		}
 	} else {
-		offDays = []int{5} // الجمعة — لحد ما تتجمع بيانات كافية
+		offDays = []int{} // قرار (ع) 10-08: ماكو عطلة أسبوعية
 	}
 	return
 }

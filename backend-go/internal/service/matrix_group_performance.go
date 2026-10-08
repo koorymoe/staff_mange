@@ -88,7 +88,7 @@ func (s *MatrixEmployeeReportService) GroupPerformance(group string) (*GroupPerf
 					m.Late = l
 					late = append(late, sub.Name)
 				}
-			} else if now.After(atClock(dayT, start).Add(time.Hour)) && now.Weekday() != time.Friday {
+			} else if now.After(atClock(dayT, start).Add(time.Hour)) {
 				m.Absent = true
 				absent = append(absent, sub.Name)
 			}

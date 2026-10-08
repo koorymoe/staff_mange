@@ -217,8 +217,8 @@ func (s *AttendanceService) Gate(employeeID string, now time.Time) (*AttendanceG
 		StartLabel: clockLabel(from), Evening: IsEveningShift(from)}
 	// قرار (ع) 10-07: بوقت دوامه إجباري، وبرّاه نسأله بس.
 	need := !exempt && !g.OnLeave && !g.HasOpen && !g.HadToday
-	// الجمعة عطلة: ما ينجبر أحد — نسأله بس إذا فتح.
-	in := InShift(from, to, now) && now.In(debriefLoc).Weekday() != time.Friday
+	// قرار (ع) 10-08: ماكو إجازة أسبوعية — الدوام يومي والإجازات بالطلب بس.
+	in := InShift(from, to, now)
 	out.Required = need && in
 	out.Offer = need && !in
 	if !exempt && !g.HasOpen {

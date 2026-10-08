@@ -56,7 +56,7 @@ var AIFeatureSwitch = map[string]string{
 var systemSwitchDefaultOff = map[string]bool{
 	SwitchMatrixAutoCrew:        true,
 	SwitchMatrixMonitorEscalate: true,
-	SwitchMatrixScoring:         true,
+	// قرار (ع) 10-08: «ماتركس لازم يقيّم كل موظف» — التقييم درجة بس بلا فلوس، فصار شغّال افتراضياً.
 }
 
 // SystemSwitchDefault الحالة لمّا ماكو صف بالجدول.

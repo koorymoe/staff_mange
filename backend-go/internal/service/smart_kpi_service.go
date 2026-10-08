@@ -41,7 +41,7 @@ func getMonthRange(month string) (start, end time.Time, year, mon int) {
 	return start, end, year, mon
 }
 
-// getWorkingDaysSoFar أيام الدوام (عدا الجمعة) بالشهر لحد اليوم — بنص الشهر
+// getWorkingDaysSoFar أيام الدوام (كل الأيام — ماكو عطلة أسبوعية) بالشهر لحد اليوم — بنص الشهر
 // الموظف الملتزم ياخذ العلامة كاملة، مو نسبة من شهر بعده ما خلص.
 func getWorkingDaysSoFar(year, month int, today time.Time) int {
 	if today.Year() != year || int(today.Month()) != month {
@@ -49,9 +49,7 @@ func getWorkingDaysSoFar(year, month int, today time.Time) int {
 	}
 	n := 0
 	for d := 1; d <= today.Day(); d++ {
-		if time.Date(year, time.Month(month), d, 0, 0, 0, 0, time.UTC).Weekday() != time.Friday {
-			n++
-		}
+		n++ // قرار (ع) 10-08: ماكو عطلة أسبوعية
 	}
 	return n
 }
@@ -60,10 +58,7 @@ func getWorkingDays(year, month int) int {
 	daysInMonth := time.Date(year, time.Month(month+1), 0, 0, 0, 0, 0, time.UTC).Day()
 	workDays := 0
 	for d := 1; d <= daysInMonth; d++ {
-		day := time.Date(year, time.Month(month), d, 0, 0, 0, 0, time.UTC).Weekday()
-		if day != time.Friday {
-			workDays++
-		}
+		workDays++ // قرار (ع) 10-08: ماكو عطلة أسبوعية
 	}
 	return workDays
 }

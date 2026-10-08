@@ -2307,6 +2307,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	staffScoreHandler := handler.NewStaffScoreHandler(matrixScoreService)
 	mux.Handle("GET /api/staff-score", middleware.Chain(http.HandlerFunc(staffScoreHandler.Board), requireAuth, requireMonitor))
 	mux.Handle("GET /api/staff-score/me", middleware.Chain(http.HandlerFunc(staffScoreHandler.Mine), requireAuth))
+	mux.Handle("GET /api/staff-score/peers", middleware.Chain(http.HandlerFunc(staffScoreHandler.Peers), requireAuth))
 	mux.Handle("GET /api/staff-score/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.Detail), requireAuth, requireMonitor))
 	mux.Handle("POST /api/staff-score/run", middleware.Chain(http.HandlerFunc(staffScoreHandler.Run), requireAuth, requireAdmin))
 	mux.Handle("POST /api/matrix-score/{id}/cancel", middleware.Chain(http.HandlerFunc(staffScoreHandler.Cancel), requireAuth, requireAdmin))
