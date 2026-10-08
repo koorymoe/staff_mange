@@ -31,14 +31,6 @@ const SolarPage = lazy(() => import('./pages/SolarPage'))
 // والمسار بالباك إند يرجّع 404 لأي حساب ثاني.
 const OwnerBackups = lazy(() => import('./pages/OwnerBackups'))
 const CommandCodePage = lazy(() => import('./pages/CommandCodePage'))
-// مختبر المحاكاة — للمالك وحده بهالمرحلة. الصفحة نفسها تتحقق من
-// actualRole === 'OWNER' (sim/SimGate.tsx) والمسار بالباك إند يرجّع 404.
-const SimLab = lazy(() => import('./pages/SimLab'))
-// ⚠️ مختبر الكائن: تجربة معزولة **للمالك وحده وقابلة للإطفاء**
-// (`LAB_ENABLED` داخل الملف). ما ينضاف للقائمة — يُفتح بالرابط.
-const EntityLabPage = lazy(() => import('./pages/EntityLabPage'))
-const SimExercisePage = lazy(() => import('./pages/SimExercisePage'))
-const LabWorkbench = lazy(() => import('./lab/LabWorkbench'))
 // حجوزات انجز منها جزء وتحتاج يوم جديد — شاشة إداري الحجوزات
 const StageBucketsPage = lazy(() => import('./pages/StageBucketsPage'))
 const AiInsightsPage = lazy(() => import('./pages/AiInsightsPage'))
@@ -152,7 +144,6 @@ const BookingDeleteRequestsPage = lazy(() => import('./pages/BookingDeleteReques
 const AuditIssuesPage = lazy(() => import('./pages/AuditIssuesPage'))
 const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
-const LessonPage = lazy(() => import('./lesson/LessonPage'))
 const MonitorDeskPage = lazy(() => import('./pages/MonitorDeskPage'))
 const StaffManagementDeskPage = lazy(() => import('./pages/StaffManagementDeskPage'))
 
@@ -186,14 +177,6 @@ function App() {
               مسار يعني صفحة بيضاء بلا تفسير. */}
           <Route path="monitor-desk" element={<MonitorDeskPage />} />
           <Route path="staff-management-desk" element={<StaffManagementDeskPage />} />
-          <Route path="entity-lab" element={<EntityLabPage />} />
-          <Route path="simulator-lab" element={<SimLab />} />
-          <Route path="simulator-lab/exercise/:id" element={<SimExercisePage />} />
-          <Route path="simulator-lab/workbench" element={<LabWorkbench />} />
-          {/* ⚠️ الدرس قبل التطبيق: صفحة وحدة بمرحلتين، مو مسارين.
-              مسار منفصل للتطبيق يعني رابطاً يتخطّى الشرح — والفصل
-              الي بنيناه ينهدم بأول رابط ينحفظ بالمتصفح. */}
-          <Route path="simulator-lab/lesson/:id" element={<LessonPage />} />
           <Route path="assistant-conversations" element={<AssistantConversationsPage />} />
           <Route path="coordinator" element={<Coordinator />} />
           {/* فرص البيع: الصفحة نفسها تفحص ADMIN/OWNER أو sales_booking (نفس الخادم) */}
