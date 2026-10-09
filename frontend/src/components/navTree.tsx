@@ -718,30 +718,13 @@ export const navItems: NavItem[] = [
       // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
     ],
   },
-  {
-    // ⚠️ الاسم «العمل» مو «وحدة الحسابات» — بطلب صاحب العمل: المحاسب
-    // ما يريد باب اسمه وحدة ويگعد يدور جوّاه؛ يريد شغله كله تحت «العمل».
-    // صلاحية الوحدة نفسها (unit_finance) ما انتغيّرت، فالمنوحين ما
-    // ينتأثرون — الي انتغيّر العنوان ومحتوياته بس.
-    // ما تتصادم وية «العمل» مال الفني (فوگ): كل أبناء ذيچ مقيّدين
-    // بـTECHNICIAN/TECHNICAL، فما تطلع للمحاسب أبداً.
-    // قرار (ع) 10-08: للمحاسب «العمل» وحدة بس — بنوده انتقلت لـ«العمل» العامة.
-    hideForRoles: ['FINANCE'],
-    to: '/unit-finance', label: 'العمل', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-    unitPermission: 'unit_finance',
-    children: [
-      // قرار (ع) 10-08: «ماريد هذا العدد من الخيارات» — شاشتين بتبويبات بدل تسع بنود.
-      { to: '/finance-desk', label: '🧾 التدقيق والدوار', icon: <></>, roles: ['ADMIN', 'FINANCE'], anyPermission: ['finance', 'finance_audit', 'revolving_fund', 'expenses_manage', 'audit_issues'], hideForRoles: ['MONITOR'] },
-      { to: '/cost-calc', label: '🧮 حساب الكلفة', icon: <></>, roles: ['ADMIN', 'FINANCE'], anyPermission: ['execution_cost', 'gps_install_costs'] },
-      { to: '/leader-invoices', label: '🧾 فواتير الليدر', icon: <></>, labelFor: leaderInvoicesLabel,  roles: ['ADMIN'], anyPermission: ['leader_invoices_view', 'finance', 'finance_audit', 'leader_basket'], hideForRoles: ['MONITOR'] },
-      // المشاريع الموجّهة لي: محلها هنا للمحاسب — والنسخة العامة فوگ
-      // منحجوبة عنه بـhideForRoles حتى ما تتكرر.
-      { to: '/my-projects', label: 'المشاريع الموجّهة لي', icon: <></>, permission: 'my_projects' },
-    ],
-  },
+  // قرار (ع) 10-09: «العمل» الثانية (وحدة الحسابات unit_finance) انشالت — كل بنودها
+  // موجودة بـ«إدارة الحسابات» جوّا العمل، فچانت تطلع مرتين.
   {
     to: '/unit-hr', label: 'وحدة الكوادر التنفيذية', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/></svg>,
     unitPermission: 'unit_hr',
+    // قرار (ع) 10-09: «ما يخص هذا الموظف» — إداري الكميات ما تطلعله
+    hideForRoles: ['PROCUREMENT_ADMIN'],
     children: [
       { to: '/employees', label: 'إدارة الكوادر', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR'], permission: 'staff_management' },
       // نفس حارس GET /api/work-schedule: الأدوار الثلاثة، أو صلاحية الجدول أو إدارة الكوادر.
@@ -822,7 +805,8 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
         (!!item.unlockAnyPermission && item.unlockAnyPermission.some((p) => ctx.permissions.includes(p))) ||
         (!!item.permission && ctx.permissions.includes(item.permission)) ||
         (!!item.anyPermission && item.anyPermission.some((p) => ctx.permissions.includes(p))) ||
-        (!!item.unitPermission && ctx.permissions.includes(item.unitPermission))
+        // ⚠️ صلاحية الوحدة لحالها ما تطلّع مجموعة فاضية — الوحدة تطلع إذا بيها بند مسموح
+        (!!item.unitPermission && !item.children && ctx.permissions.includes(item.unitPermission))
       if (grantedExplicitly) return true
     }
     if (item.ownerOnly && ctx.employee?.actualRole !== 'OWNER') return false
