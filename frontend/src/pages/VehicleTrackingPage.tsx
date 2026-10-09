@@ -166,6 +166,9 @@ export default function VehicleTrackingPage() {
           <button onClick={() => setPeriod(shiftPeriod(period, -1))} className="rounded-lg bg-white/15 px-3 py-1.5 font-bold">›</button>
           <span className="rounded-lg bg-white/15 px-3 py-1.5 font-bold">الفترة: {data ? `${data.from} ← ${data.to}` : period}</span>
           <button onClick={() => setPeriod(shiftPeriod(period, 1))} className="rounded-lg bg-white/15 px-3 py-1.5 font-bold">‹</button>
+          <button
+            onClick={() => { api.exportVehicleTracking(period).catch((e) => setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذر التصدير' })) }}
+            className="rounded-lg bg-emerald-500 px-3 py-1.5 font-bold text-white hover:bg-emerald-600">⬇️ تصدير إكسل</button>
         </div>
       </div>
 

@@ -16,7 +16,9 @@ import (
 // كل سيارة بنفس أعمدة شيت «الإحصائيات». الغسل: «تم» = 4، «لم يتم» = 0.
 type VehicleTrackingHandler struct{ db *sqlx.DB }
 
-func NewVehicleTrackingHandler(db *sqlx.DB) *VehicleTrackingHandler { return &VehicleTrackingHandler{db: db} }
+func NewVehicleTrackingHandler(db *sqlx.DB) *VehicleTrackingHandler {
+	return &VehicleTrackingHandler{db: db}
+}
 
 // أوزان البنود العشرة (بدون الغسل) — نفس الملف. الغسل وزنه 8% بالشهري.
 var trackItems = []struct {
@@ -183,7 +185,8 @@ func (h *VehicleTrackingHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ratings := []model.VehicleDailyRating{}
-	if err := h.db.Select(&ratings, `SELECT * FROM "VehicleDailyRating" WHERE "ratedDate" BETWEEN $1::date AND $2::date ORDER BY "ratedDate", "createdAt"`,
+	if err := h.db.Select(&ratings, `SELECT r.* FROM "VehicleDailyRating" r JOIN "Vehicle" v ON v.id = r."vehicleId" AND v."isActive"
+		WHERE r."ratedDate" BETWEEN $1::date AND $2::date ORDER BY r."ratedDate", r."createdAt"`,
 		from.Format("2006-01-02"), to.Format("2006-01-02")); err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب التقييمات")
 		return

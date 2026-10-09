@@ -4552,6 +4552,7 @@ export const api = {
   getVehicleTracking: (period: string) => request<VehicleTracking>(`/vehicles/tracking?period=${period}`),
   mergeTrackingVehicle: (fromId: string, toId: string) =>
     request<{ ok: boolean }>('/vehicles/tracking/merge', { method: 'POST', body: JSON.stringify({ fromId, toId }) }),
+  exportVehicleTracking: (period: string) => downloadFile(`/vehicles/tracking/export?period=${period}`, `متابعة-السيارات-${period}.xlsx`),
   getCarWash: (date?: string) => request<{ date: string; vehicles: CarWashVehicle[] }>(`/car-wash${date ? `?date=${date}` : ''}`),
   markCarWashed: (vehicleId: string) => request<{ ok: boolean }>(`/car-wash/${vehicleId}`, { method: 'POST' }),
   unmarkCarWashed: (vehicleId: string) => request<{ ok: boolean }>(`/car-wash/${vehicleId}`, { method: 'DELETE' }),

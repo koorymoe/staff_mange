@@ -2010,6 +2010,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("DELETE /api/car-wash/{vehicleId}", middleware.Chain(http.HandlerFunc(carWashHandler.Unmark), requireAuth, requireCarWash))
 	mux.Handle("GET /api/vehicles/tracking", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Get), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/tracking/merge", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Merge), requireAuth, requireVehicleMgmt))
+	mux.Handle("GET /api/vehicles/tracking/export", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Export), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicles/tracking/day", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.SaveDay), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/ratings/vehicle-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleScoreSummaries), requireAuth, requireMonitor))
 	mux.Handle("GET /api/vehicles/ratings/technician-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.TechnicianWashSummaries), requireAuth, requireMonitor))

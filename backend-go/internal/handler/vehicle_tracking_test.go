@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"staffmange-api/internal/model"
 )
@@ -30,5 +32,26 @@ func TestTrackStatsWashAndGrade(t *testing.T) {
 	// (50×0.08 + 100×0.92) / 1 = 96 → ممتاز
 	if st.Weighted == nil || *st.Weighted < 95.99 || *st.Weighted > 96.01 || st.Grade != "ممتاز" {
 		t.Fatalf("weighted %v %s", st.Weighted, st.Grade)
+	}
+}
+
+func TestTrackingWorkbook(t *testing.T) {
+	i := func(v int) *int { return &v }
+	d, _ := time.Parse("2006-01-02", "2026-10-07")
+	r := model.VehicleDailyRating{VehicleID: "a", RatedDate: d, Wash: i(4), ExteriorClean: i(4), TechnicalFaults: i(2)}
+	f, err := BuildTrackingWorkbook("2026-09-17", "2026-10-16", []trackVehicle{{ID: "a", Name: "ستاركس"}}, []model.VehicleDailyRating{r})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := f.GetSheetList(); len(got) != 2 || got[0] != "النظام الشهري" || got[1] != "الإحصائيات" {
+		t.Fatalf("sheets = %v", got)
+	}
+	rows, _ := f.GetRows("النظام الشهري")
+	if len(rows) != 2 || rows[1][2] != "ستاركس" || rows[1][3] != "تم" {
+		t.Fatalf("daily rows = %v", rows)
+	}
+	want := fmt.Sprintf("%.1f%%", *DailyScore(&r))
+	if last := rows[1][len(rows[1])-1]; last != want {
+		t.Fatalf("score cell = %q want %q", last, want)
 	}
 }
