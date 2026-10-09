@@ -266,7 +266,7 @@ const pendingRatingSQL = `
 	WHERE b.status::text IN ('COMPLETED', 'PARTIAL') AND b."completedAt" IS NOT NULL
 	  AND b."completedAt" > now() - interval '30 days'
 	  AND upper(b.code) NOT LIKE 'OLD%'
-	  AND (b."projectSupervisorId" = $1
+	  AND ((b."projectSupervisorId" = $1 AND EXISTS (SELECT 1 FROM "Employee" se WHERE se.id = $1 AND se."isLeader"))
 	       OR EXISTS (SELECT 1 FROM "BookingAssignment" la JOIN "Employee" le ON le.id = la."employeeId"
 	               WHERE la."bookingId" = b.id AND la."employeeId" = $1 AND le."isLeader")
 	       OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = b.id AND m."leaderId" = $1))
@@ -290,7 +290,7 @@ func (r *MatrixChainRepository) PendingRatings(leaderID string) ([]PendingCrewRa
 // IsBookingLeader الموظف ليدر هذا الحجز؟
 func (r *MatrixChainRepository) IsBookingLeader(bookingID, employeeID string) bool {
 	var ok bool
-	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" WHERE id = $1 AND "projectSupervisorId" = $2)
+	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Booking" b JOIN "Employee" se ON se.id = b."projectSupervisorId" AND se."isLeader" WHERE b.id = $1 AND b."projectSupervisorId" = $2)
 	                OR EXISTS (SELECT 1 FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
 	                     WHERE a."bookingId" = $1 AND a."employeeId" = $2 AND e."isLeader")
 	                OR EXISTS (SELECT 1 FROM "Mission" m WHERE m."bookingId" = $1 AND m."leaderId" = $2)`, bookingID, employeeID)
@@ -341,7 +341,7 @@ func (r *MatrixChainRepository) LeadersPendingRating() ([]LeaderPending, error) 
 	rows := []LeaderPending{}
 	err := r.db.Select(&rows, `
 		WITH lb AS (
-			SELECT DISTINCT b.id, b.code, COALESCE(b."projectSupervisorId", la."employeeId", m."leaderId") AS "leaderId"
+			SELECT DISTINCT b.id, b.code, COALESCE(la."employeeId", m."leaderId", b."projectSupervisorId") AS "leaderId"
 			FROM "Booking" b
 			LEFT JOIN LATERAL (SELECT a."employeeId" FROM "BookingAssignment" a JOIN "Employee" e ON e.id = a."employeeId"
 			                   WHERE a."bookingId" = b.id AND e."isLeader" ORDER BY a."createdAt" LIMIT 1) la ON true
@@ -351,7 +351,8 @@ func (r *MatrixChainRepository) LeadersPendingRating() ([]LeaderPending, error) 
 			  AND upper(b.code) NOT LIKE 'OLD%'
 		)
 		SELECT lb."leaderId", array_agg(lb.code ORDER BY lb.code) AS codes
-		FROM lb JOIN "Employee" le ON le.id = lb."leaderId" AND le.status = 'ACTIVE'
+		-- (ع) 10-09: التذكير لليدر بس — مسؤول الخدمة/التقني (projectSupervisorId) ما يقيّم
+		FROM lb JOIN "Employee" le ON le.id = lb."leaderId" AND le.status = 'ACTIVE' AND le."isLeader"
 		WHERE EXISTS (SELECT 1 FROM "BookingAssignment" a JOIN "Employee" t ON t.id = a."employeeId"
 		              WHERE a."bookingId" = lb.id AND NOT t."isLeader" AND t.id <> lb."leaderId"
 		                AND NOT EXISTS (SELECT 1 FROM "CrewRating" r WHERE r."bookingId" = lb.id AND r."technicianId" = t.id))
