@@ -860,6 +860,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
             <button
               onClick={() => {
                 const q = new URLSearchParams({
+                  projectId: p.id,
                   customerName: p.name,
                   ...(p.phone ? { customerPhone: p.phone } : {}),
                   ...(p.location ? { customerAddress: p.location } : {}),
@@ -871,7 +872,7 @@ function ProjectCard({ p, canManage, onEdit, onMove, onReport, onDelete, onRefre
                 navigate(`/quotations/new?${q.toString()}`)
               }}
               className="text-sm px-3 py-1.5 rounded-lg bg-cyan-600 text-white font-bold hover:brightness-110">
-              🧾 اعمل عرض سعر
+              🧾 عرض السعر
             </button>
           )}
           {canManage && (isContractStage || p.hasContract) && (

@@ -9,6 +9,7 @@ type Quotation struct {
 	CustomerPhone       *string   `db:"customerPhone" json:"customerPhone"`
 	CustomerAddress     *string   `db:"customerAddress" json:"customerAddress"`
 	ProjectName         *string   `db:"projectName" json:"projectName"`
+	ProjectID           *string   `db:"projectId" json:"projectId"`
 	GrandTotal          float64   `db:"grandTotal" json:"grandTotal"`
 	DiscountPercent     float64   `db:"discountPercent" json:"discountPercent"`
 	DiscountValue       float64   `db:"discountValue" json:"discountValue"`
@@ -54,6 +55,7 @@ type CreateQuotationRequest struct {
 	CustomerPhone       *string              `json:"customerPhone"`
 	CustomerAddress     *string              `json:"customerAddress"`
 	ProjectName         *string              `json:"projectName"`
+	ProjectID           *string              `json:"projectId"`
 	Items               []QuotationItemInput `json:"items"`
 	DiscountPercent     *float64             `json:"discountPercent"`
 	Notes               *string              `json:"notes"`

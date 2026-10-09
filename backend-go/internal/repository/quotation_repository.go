@@ -147,6 +147,19 @@ func (r *QuotationRepository) FindByID(id string) (*model.Quotation, error) {
 	return &q, nil
 }
 
+// FindByProject يرجّع عرض المشروع (الأحدث إذا أكو مكررات قديمة) أو nil.
+func (r *QuotationRepository) FindByProject(projectID string) (*model.Quotation, error) {
+	var id string
+	err := r.db.Get(&id, `SELECT id FROM "Quotation" WHERE "projectId" = $1 ORDER BY "createdAt" DESC LIMIT 1`, projectID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	return r.FindByID(id)
+}
+
 func (r *QuotationRepository) nextQuotationNumber(year int) (string, error) {
 	prefix := "AM-" + strconv.Itoa(year) + "-"
 	var lastNumber string
@@ -223,10 +236,10 @@ func (r *QuotationRepository) Create(req model.CreateQuotationRequest) (*model.Q
 
 	var q model.Quotation
 	err = tx.Get(&q, `
-		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId")
-		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		INSERT INTO "Quotation" (id, "quotationNumber", "customerName", "customerPhone", "customerAddress", "projectName", "discountPercent", "discountValue", "grandTotal", "netTotal", notes, duration, "createdByEmployeeId", "projectId")
+		VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING *
-	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID)
+	`, quotationNumber, req.CustomerName, req.CustomerPhone, req.CustomerAddress, req.ProjectName, discountPercent, discountValue, grandTotal, netTotal, req.Notes, req.Duration, req.CreatedByEmployeeID, req.ProjectID)
 	if err != nil {
 		return nil, err
 	}

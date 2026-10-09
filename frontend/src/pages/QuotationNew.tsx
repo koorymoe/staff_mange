@@ -1,11 +1,12 @@
 import { useEffect, useState, useRef } from 'react'
 import { readMoney, money as fmtMoney } from '../utils/money'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
-import { api, type Product, fileUrl } from '../api'
+import { api, type Product, type Quotation, fileUrl } from '../api'
 import { useSession } from '../session'
 import vstripUrl from '../assets/print/quotation-vstrip.png'
 import bannerUrl from '../assets/print/quotation-banner.png'
 import { matches } from '../utils/search'
+import QuotationHistoryPicker from '../components/QuotationHistoryPicker'
 
 interface ItemRow {
   productName: string
@@ -60,6 +61,8 @@ export default function QuotationNew() {
   const solarSystemId = searchParams.get('solarSystemId')
   // HTML المعاينة (نسخة الطباعة) — لما تنملي تنعرض بنافذة داخل النظام
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  // النسخة المعروضة من الهيستوري (null = الحالية)
+  const [viewSnap, setViewSnap] = useState<{ snap: Quotation; version: number } | null>(null)
   // الشروط والأحكام من الإعدادات (قرار (ع) 10-08) — الثابتة احتياط إذا ما وصلت.
   const [terms, setTerms] = useState<string[]>(DEFAULT_TERMS)
   useEffect(() => { api.getQuotationTerms().then((r) => { if (r.length) setTerms(r.map((t) => t.text)) }).catch(() => {}) }, [])
@@ -156,6 +159,15 @@ export default function QuotationNew() {
   useEffect(() => {
     api.getProducts().then((rows) => setProducts(rows ?? [])).catch(() => {})
   }, [])
+
+  // من إدارة المشاريع: إذا المشروع عنده عرض نفتحه للتعديل بدل عرض جديد
+  useEffect(() => {
+    const pid = searchParams.get('projectId')
+    if (id || !pid) return
+    api.getQuotationByProject(pid).then((q) => {
+      if (q) navigate(`/quotations/${q.id}/edit${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`, { replace: true })
+    }).catch(() => {})
+  }, [id, searchParams, navigate, returnTo])
 
   useEffect(() => {
     if (!id) return
@@ -292,7 +304,8 @@ export default function QuotationNew() {
         })
         showStatus('تم حفظ التعديلات بنجاح ✓', 'ok')
       } else {
-        await api.createQuotation({
+        const created = await api.createQuotation({
+          projectId: searchParams.get('projectId') || undefined,
           customerName,
           customerPhone: customerPhone || undefined,
           customerAddress: customerAddress || undefined,
@@ -307,6 +320,8 @@ export default function QuotationNew() {
           createdByEmployeeId: employee?.id,
         })
         showStatus('تم الحفظ بنجاح ✓', 'ok')
+        // بعد أول حفظ نصير على نفس العرض — الحفظ الثاني يعدّله مو يسوي عرض جديد
+        navigate(`/quotations/${created.id}/edit${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ''}`, { replace: true })
       }
     } catch (err) {
       showStatus('خطأ: ' + (err instanceof Error ? err.message : 'حدث خطأ'), 'err')
@@ -345,7 +360,23 @@ export default function QuotationNew() {
 
   // buildPrintHtml يبني نفس النسخة الي تنطبع بالضبط — نستعملها للطباعة
   // وللمعاينة سوه، حتى المعاينة تكون طبق الأصل للمطبوع مو شي ثاني.
-  const buildPrintHtml = (withImages = true): string | null => {
+  const buildPrintHtml = (withImages = true, snap: Quotation | null = null): string | null => {
+    // snap = نسخة قديمة من الهيستوري: نبني طباعتها بنفس الشكل بدون ما نلمس الحالة
+    const cur = snap
+      ? {
+          customerName: snap.customerName, customerPhone: snap.customerPhone || '', customerAddress: snap.customerAddress || '',
+          projectName: snap.projectName || '', quotationNumber: snap.quotationNumber, discountPercent: snap.discountPercent,
+          notes: snap.notes || '', grandTotal: snap.grandTotal, discountValue: snap.discountValue,
+          netTotal: snap.netTotal, today: (snap.createdAt || '').slice(0, 10) || today,
+          items: (snap.items ?? []).map((it): ItemRow => ({ imageBase64: it.imageBase64 || '', productName: it.productName, unit: it.unit || '', quantity: it.quantity, unitPrice: it.unitPrice, totalPrice: it.totalPrice })),
+        }
+      : { customerName, customerPhone, customerAddress, projectName, quotationNumber, discountPercent, notes, grandTotal, discountValue, netTotal, today, items }
+    return buildPrintHtmlFrom(withImages, cur.customerName, cur.customerPhone, cur.customerAddress, cur.projectName, cur.quotationNumber,
+      cur.discountPercent, cur.notes, cur.grandTotal, cur.discountValue, cur.netTotal, cur.today, cur.items)
+  }
+  const buildPrintHtmlFrom = (withImages: boolean, customerName: string, customerPhone: string, customerAddress: string,
+    projectName: string, quotationNumber: string, discountPercent: number, notes: string,
+    grandTotal: number, discountValue: number, netTotal: number, today: string, items: ItemRow[]): string | null => {
     if (!customerName.trim()) {
       showStatus('الرجاء إدخال اسم الزبون قبل الطباعة', 'err')
       return null
@@ -666,8 +697,8 @@ ${pageShell(`
   const _IMG_VSTRIP = new URL(vstripUrl, window.location.origin).href
   const _IMG_FBANNER = new URL(bannerUrl, window.location.origin).href
 
-  const handlePrint = (withImages = true) => {
-    const html = buildPrintHtml(withImages)
+  const handlePrint = (withImages = true, snap: Quotation | null = null) => {
+    const html = buildPrintHtml(withImages, snap)
     if (!html) return
     const printWindow = window.open('', '_blank')
     if (!printWindow) return
@@ -709,6 +740,11 @@ ${pageShell(`
 
   const openPreview = () => {
     const html = buildPrintHtml(true)
+    if (html) setPreviewHtml(html)
+  }
+  const pickVersion = (snap: Quotation | null, version: number | null) => {
+    setViewSnap(snap && version != null ? { snap, version } : null)
+    const html = buildPrintHtml(true, snap)
     if (html) setPreviewHtml(html)
   }
 
@@ -1074,6 +1110,7 @@ ${pageShell(`
           fontWeight: 700, fontSize: '14px', fontFamily: 'inherit', flex: 1, opacity: submitting ? 0.6 : 1,
           display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
         }}>💾 {isEdit ? 'حفظ التعديلات' : 'حفظ العرض'}</button>
+        {isEdit && id && <QuotationHistoryPicker key={quotationNumber + String(submitting)} quotationId={id} selected={null} onPick={pickVersion} />}
         {returnTo && (
           <button onClick={openPreview} style={{
             background: 'linear-gradient(135deg, #2e7d32, #43a047)', color: 'white', border: 'none',
@@ -1214,9 +1251,10 @@ ${pageShell(`
             background: 'var(--sf-card)', padding: '12px', borderRadius: '12px',
           }}>
             <span style={{ fontWeight: 800, color: 'var(--t-title)', alignSelf: 'center', marginLeft: 'auto' }}>
-              👁️ معاينة العرض (نسخة الطباعة)
+              👁️ معاينة العرض (نسخة الطباعة){viewSnap && <span style={{ color: '#6a1b9a' }}> — نسخة {viewSnap.version} القديمة (للعرض بس)</span>}
             </span>
-            <button onClick={() => setPreviewHtml(null)} style={{
+            {isEdit && id && <QuotationHistoryPicker quotationId={id} selected={viewSnap?.version ?? null} onPick={pickVersion} />}
+            <button onClick={() => { setPreviewHtml(null); setViewSnap(null) }} style={{
               background: '#1565c0', color: 'white', border: 'none', padding: '10px 18px',
               borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
             }}>✏️ تعديل هذا العرض</button>
@@ -1224,7 +1262,7 @@ ${pageShell(`
               background: '#00838f', color: 'white', border: 'none', padding: '10px 18px',
               borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
             }}>➕ عرض سعر جديد</button>
-            <button onClick={() => handlePrint(true)} style={{
+            <button onClick={() => handlePrint(true, viewSnap?.snap ?? null)} style={{
               background: '#e65100', color: 'white', border: 'none', padding: '10px 18px',
               borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontFamily: 'inherit',
             }}>🖨️ طباعة</button>

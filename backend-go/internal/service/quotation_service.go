@@ -109,7 +109,26 @@ func (s *QuotationService) Create(req model.CreateQuotationRequest) (*model.Quot
 			return nil, errors.New("سعر الوحدة ما يصير يكون بالسالب")
 		}
 	}
+	// عرض واحد لكل مشروع: إذا المشروع عنده عرض نرجّعه بدل ما نسوي ثاني.
+	if req.ProjectID != nil && *req.ProjectID != "" {
+		existing, err := s.repo.FindByProject(*req.ProjectID)
+		if err != nil {
+			return nil, err
+		}
+		if existing != nil {
+			return existing, nil
+		}
+	}
 	return s.repo.Create(req)
+}
+
+// ByProject يرجّع عرض المشروع (nil إذا ما عنده) بنفس فحص الاطلاع مال Get.
+func (s *QuotationService) ByProject(projectID, actorID, role string) (*model.Quotation, error) {
+	q, err := s.repo.FindByProject(projectID)
+	if err != nil || q == nil {
+		return nil, err
+	}
+	return s.Get(q.ID, actorID, role)
 }
 
 // Update يتحقق: manage_all/أدمن يعدّل أي عرض، edit_own يعدّل بس عروضه هو

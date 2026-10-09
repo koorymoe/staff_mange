@@ -55,6 +55,16 @@ func (h *QuotationHandler) Get(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, quotation)
 }
 
+// GET /api/quotation-by-project/{projectId} — عرض المشروع أو null
+func (h *QuotationHandler) ByProject(w http.ResponseWriter, r *http.Request) {
+	q, err := h.service.ByProject(r.PathValue("projectId"), middleware.EmployeeIDFromContext(r), middleware.RoleFromContext(r))
+	if err != nil {
+		WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, q)
+}
+
 // POST /api/quotations
 func (h *QuotationHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req model.CreateQuotationRequest

@@ -123,6 +123,20 @@ export default function VehicleTrackingPage() {
     } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذر الحفظ' }) } finally { setBusy(false) }
   }
 
+  const [mergeTo, setMergeTo] = useState<Record<string, string>>({})
+  const merge = async (fromId: string) => {
+    const toId = mergeTo[fromId]
+    if (!toId) return
+    setBusy(true); setMsg(null)
+    try {
+      await api.mergeTrackingVehicle(fromId, toId)
+      setMsg({ ok: true, t: '✅ اندمجت السيارتين — التقييمات صارت على سيارة النظام' })
+      load()
+    } catch (e) { setMsg({ ok: false, t: e instanceof Error ? e.message : 'تعذر الدمج' }) } finally { setBusy(false) }
+  }
+  const temps = data?.vehicles.filter((v) => v.temp) ?? []
+  const realCars = data?.vehicles.filter((v) => !v.temp) ?? []
+
   const days = useMemo(() => {
     if (!data) return []
     return [...new Set(data.ratings.map((r) => r.date))].sort().reverse()
@@ -151,6 +165,27 @@ export default function VehicleTrackingPage() {
             className={`shrink-0 rounded-xl border px-4 py-2 text-sm font-bold ${tab === k ? 'border-[#2c5aad] bg-[#2c5aad] text-white' : 'border-slate-200 bg-white text-slate-600'}`}>{l}</button>
         ))}
       </div>
+      {temps.length > 0 && (
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm">
+          <b className="text-amber-800">🔗 سيارات انضافت من الإكسل برقم مؤقت — إذا هي نفس سيارة موجودة بالنظام اختارها وادمج:</b>
+          <div className="mt-2 space-y-2">
+            {temps.map((t) => (
+              <div key={t.id} className="flex flex-wrap items-center gap-2">
+                <span className="min-w-[10rem] font-bold text-slate-700">{t.name}</span>
+                <span className="text-slate-500">هي نفس:</span>
+                <select value={mergeTo[t.id] ?? ''} onChange={(e) => setMergeTo((m) => ({ ...m, [t.id]: e.target.value }))}
+                  className="rounded-lg border border-slate-300 bg-white px-2 py-1.5">
+                  <option value="">— اختار سيارة النظام —</option>
+                  {realCars.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+                <button disabled={busy || !mergeTo[t.id]} onClick={() => void merge(t.id)}
+                  className="rounded-lg bg-amber-600 px-3 py-1.5 font-bold text-white disabled:opacity-40">دمج</button>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-amber-700">السيارة المؤقتة ما تنمسح — بس تنطفي، وتقييماتها تنتقل.</p>
+        </div>
+      )}
       {msg && <p className={`rounded-xl px-4 py-2 text-sm font-bold ${msg.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'}`}>{msg.t}</p>}
       {!data ? <p className="text-slate-400">جاري التحميل…</p> : tab === 'day' ? (
         <div className="space-y-3">
@@ -179,7 +214,7 @@ export default function VehicleTrackingPage() {
                   <div className="mt-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2">
                     {ITEMS.map((it) => (
                       <div key={it.key} className="flex items-center justify-between gap-2">
-                        <span className="text-xs text-slate-600">{it.label}</span>
+                        <span className="text-xs text-slate-600">{it.label} <b className="text-[10px] text-sky-700">{Math.round(it.w * 100)}%</b></span>
                         <ScorePicker value={d[it.key] as number | null | undefined} onPick={(n) => set(v.id, it.key, n)} />
                       </div>
                     ))}
@@ -203,7 +238,7 @@ export default function VehicleTrackingPage() {
               <tr>
                 <th className="px-3 py-2.5">السيارة</th><th className="px-3 py-2.5">التقييمات</th><th className="px-3 py-2.5">النقاط</th>
                 <th className="px-3 py-2.5">النسبة الخام</th><th className="px-3 py-2.5">تم الغسل %</th>
-                {ITEMS.map((it) => <th key={it.key} className="px-3 py-2.5">{it.label} %</th>)}
+                {ITEMS.map((it) => <th key={it.key} className="px-3 py-2.5">{it.label}<span className="block text-[10px] font-normal text-sky-700">وزنه {Math.round(it.w * 100)}%</span></th>)}
                 <th className="px-3 py-2.5">النتيجة الموزونة</th><th className="px-3 py-2.5">التقدير</th>
                 <th className="px-3 py-2.5">تم الغسل</th><th className="px-3 py-2.5">لم يتم</th>
               </tr>

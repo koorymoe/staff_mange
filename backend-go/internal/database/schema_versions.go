@@ -439,6 +439,7 @@ func versionedMigrations() []Migration {
 	result = append(result, report1FixMigrations()...)
 	// 0336: متابعة السيارات — بيانات ملف الإكسل.
 	result = append(result, vehicleTrackingImportMigrations()...)
+	result = append(result, quotationProjectMigrations()...)
 	return result
 }
 

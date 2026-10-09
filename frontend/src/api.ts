@@ -2387,6 +2387,7 @@ export interface QuotationItem {
 export interface Quotation {
   id: string
   quotationNumber: string
+  projectId?: string | null
   customerName: string
   customerPhone: string | null
   customerAddress: string | null
@@ -4548,6 +4549,8 @@ export const api = {
     request<RevolvingFundTxn>('/funds/disburse', { method: 'POST', body: JSON.stringify(data) }),
   getFundBalances: () => request<EmployeeFundBalance[]>('/funds/balances'),
   getVehicleTracking: (period: string) => request<VehicleTracking>(`/vehicles/tracking?period=${period}`),
+  mergeTrackingVehicle: (fromId: string, toId: string) =>
+    request<{ ok: boolean }>('/vehicles/tracking/merge', { method: 'POST', body: JSON.stringify({ fromId, toId }) }),
   saveVehicleTrackingDay: (date: string, rows: Record<string, unknown>[]) =>
     request<{ ok: boolean }>('/vehicles/tracking/day', { method: 'PUT', body: JSON.stringify({ date, rows }) }),
   getFundTxnReceipt: (id: string) => request<{ receiptImage: string }>(`/funds/transactions/${id}/receipt`),
@@ -4751,7 +4754,9 @@ export const api = {
   /** النسخ القديمة المؤرشفة — الأحدث أولاً */
   getQuotationVersions: (id: string) =>
     request<QuotationVersion[]>(`/quotations/${id}/versions`),
+  getQuotationByProject: (projectId: string) => request<Quotation | null>(`/quotation-by-project/${projectId}`),
   createQuotation: (data: {
+    projectId?: string
     customerName: string
     customerPhone?: string
     customerAddress?: string
@@ -5912,5 +5917,5 @@ export interface VehicleTrackStats {
   washPct: number | null; items: Record<string, number | null>; weighted: number | null; grade: string; washDone: number; washNot: number
 }
 export interface VehicleTracking {
-  from: string; to: string; vehicles: { id: string; name: string }[]; ratings: VehicleTrackRating[]; stats: VehicleTrackStats[]
+  from: string; to: string; vehicles: { id: string; name: string; temp: boolean }[]; ratings: VehicleTrackRating[]; stats: VehicleTrackStats[]
 }

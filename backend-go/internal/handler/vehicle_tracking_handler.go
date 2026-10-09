@@ -175,8 +175,10 @@ func (h *VehicleTrackingHandler) Get(w http.ResponseWriter, r *http.Request) {
 	vehicles := []struct {
 		ID   string `db:"id" json:"id"`
 		Name string `db:"name" json:"name"`
+		// Temp = سيارة انضافت من الإكسل برقم مؤقت — يگدر يدمجها ويا سيارة النظام
+		Temp bool `db:"temp" json:"temp"`
 	}{}
-	if err := h.db.Select(&vehicles, `SELECT id, name FROM "Vehicle" WHERE "isActive" ORDER BY "createdAt", name`); err != nil {
+	if err := h.db.Select(&vehicles, `SELECT id, name, "plateNumber" LIKE 'بلا-رقم-%' AS temp FROM "Vehicle" WHERE "isActive" ORDER BY "createdAt", name`); err != nil {
 		WriteError(w, http.StatusInternalServerError, "تعذر جلب السيارات")
 		return
 	}
@@ -200,6 +202,48 @@ func (h *VehicleTrackingHandler) Get(w http.ResponseWriter, r *http.Request) {
 		"from": from.Format("2006-01-02"), "to": to.Format("2006-01-02"),
 		"vehicles": vehicles, "ratings": rows, "stats": stats,
 	})
+}
+
+// POST /api/vehicles/tracking/merge {fromId, toId}
+// (ع) 10-09: سيارات الإكسل الي اسمها غير عن اسمها بالنظام انضافت مرتين. أبو
+// الكميات يختار «هاي نفس سيارة …» فتنتقل تقييماتها لسيارة النظام (اليوم
+// المسجّل أصلاً ما يتكرر) والمؤقتة تنطفي (isActive=false) — ما تنمسح.
+// بس السيارة المؤقتة (رقم «بلا-رقم-») تنقبل كمصدر.
+func (h *VehicleTrackingHandler) Merge(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		FromID string `json:"fromId"`
+		ToID   string `json:"toId"`
+	}
+	if err := DecodeJSON(r, &req); err != nil || req.FromID == "" || req.ToID == "" || req.FromID == req.ToID {
+		WriteError(w, http.StatusBadRequest, "اختار السيارتين")
+		return
+	}
+	tx, err := h.db.Beginx()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الدمج")
+		return
+	}
+	defer tx.Rollback()
+	var ok bool
+	if err := tx.Get(&ok, `SELECT EXISTS(SELECT 1 FROM "Vehicle" WHERE id=$1 AND "plateNumber" LIKE 'بلا-رقم-%')
+		AND EXISTS(SELECT 1 FROM "Vehicle" WHERE id=$2 AND "isActive")`, req.FromID, req.ToID); err != nil || !ok {
+		WriteError(w, http.StatusBadRequest, "الدمج بس للسيارات المضافة من الإكسل")
+		return
+	}
+	if _, err := tx.Exec(`UPDATE "VehicleDailyRating" r SET "vehicleId"=$2 WHERE r."vehicleId"=$1
+		AND NOT EXISTS (SELECT 1 FROM "VehicleDailyRating" x WHERE x."vehicleId"=$2 AND x."ratedDate"=r."ratedDate")`, req.FromID, req.ToID); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر نقل التقييمات")
+		return
+	}
+	if _, err := tx.Exec(`UPDATE "Vehicle" SET "isActive"=false WHERE id=$1`, req.FromID); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الدمج")
+		return
+	}
+	if err := tx.Commit(); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الدمج")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 type trackDayRow struct {

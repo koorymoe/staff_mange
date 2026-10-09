@@ -1729,6 +1729,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("GET /api/quotations", middleware.Chain(http.HandlerFunc(quotationHandler.List), requireAuth))
 	mux.Handle("GET /api/quotations/{id}", middleware.Chain(http.HandlerFunc(quotationHandler.Get), requireAuth))
 	// النسخ المؤرشفة — نفس حارس قراءة العرض: الي يشوف العرض يشوف تاريخه
+	mux.Handle("GET /api/quotation-by-project/{projectId}", middleware.Chain(http.HandlerFunc(quotationHandler.ByProject), requireAuth))
 	mux.Handle("GET /api/quotations/{id}/versions", middleware.Chain(http.HandlerFunc(quotationHandler.Versions), requireAuth))
 
 	// ═══ تعلّم أسعار الخدمات ═══
@@ -2002,6 +2003,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// متابعة السيارات الشهرية (ملف الإكسل) — أبو الكميات.
 	vehicleTrackingHandler := handler.NewVehicleTrackingHandler(db)
 	mux.Handle("GET /api/vehicles/tracking", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Get), requireAuth, requireVehicleMgmt))
+	mux.Handle("POST /api/vehicles/tracking/merge", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Merge), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicles/tracking/day", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.SaveDay), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/ratings/vehicle-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleScoreSummaries), requireAuth, requireMonitor))
 	mux.Handle("GET /api/vehicles/ratings/technician-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.TechnicianWashSummaries), requireAuth, requireMonitor))
