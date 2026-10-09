@@ -194,7 +194,7 @@ export default function ProjectStatisticsPage() {
                   </tr>
                 ))}
                 {projects.length === 0 && (
-                  <tr><td colSpan={9} className="p-6 text-center text-slate-400">لا توجد نتائج</td></tr>
+                  <tr><td colSpan={10} className="p-6 text-center text-slate-400">لا توجد نتائج</td></tr>
                 )}
               </tbody>
             </table>
