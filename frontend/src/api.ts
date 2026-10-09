@@ -4715,6 +4715,7 @@ export const api = {
   sendBookingToSurvey: (id: string, leaderId: string) =>
     request<Booking>(`/bookings/${id}/send-to-survey`, { method: 'PUT', body: JSON.stringify({ leaderId }) }),
   /** ترحيل الحجز لتقني أو مسؤول خدمة — الحجز يصير برقبته. */
+  getTechHandovers: () => request<Booking[]>('/bookings?handover=all'),
   getHandoverCandidates: () => request<{ id: string; name: string; position: string }[]>('/bookings/handover-candidates'),
   handoverBooking: (id: string, employeeId: string, reason: string) =>
     request<Booking>(`/bookings/${id}/handover`, { method: 'PUT', body: JSON.stringify({ employeeId, reason }) }),

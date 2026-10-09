@@ -147,6 +147,7 @@ const FinanceDeskPage = lazy(() => import('./pages/FinanceDeskPage'))
 const CostCalcPage = lazy(() => import('./pages/CostCalcPage'))
 const VehicleTrackingPage = lazy(() => import('./pages/VehicleTrackingPage'))
 const CarWashPage = lazy(() => import('./pages/CarWashPage'))
+const TechBookingsPage = lazy(() => import('./pages/TechBookingsPage'))
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
 const MonitorDeskPage = lazy(() => import('./pages/MonitorDeskPage'))
 const StaffManagementDeskPage = lazy(() => import('./pages/StaffManagementDeskPage'))
@@ -167,6 +168,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Home />} />
           <Route path="car-wash" element={<CarWashPage />} />
+          <Route path="tech-bookings" element={<RequireAdmin><TechBookingsPage /></RequireAdmin>} />
           <Route path="employees" element={<Employees />} />
           <Route path="work-schedule" element={<WorkSchedulePage />} />
           <Route path="remote-hours" element={<RemoteHoursPage />} />

@@ -632,6 +632,8 @@ export const navItems: NavItem[] = [
       //
       // ⚠️ الشاشات نفسها ما انلمست — تنعرض بـ`embedded`، ومسارتها
       // المفردة باقية شغّالة فما ينكسر رابط محفوظ.
+      // قرار (ع) 10-09: المالك والمدير يتابعون الحجوزات المرحّلة للتقنيين
+      { to: '/tech-bookings', label: '🛠️ حجوزات التقنيين', icon: <></>, roles: ['ADMIN'] },
       { to: '/tech-products', label: '📦 المنتجات والمعارض', icon: <></>, permission: 'unit_technicians' },
       { to: '/tech-content', label: '📚 المحتوى التقني', icon: <></>, anyPermission: ['unit_technicians', 'content_technician'] },
       // قرار (ع) 10-07: «موردين التقنيين» داخل وحدة التقنيين.

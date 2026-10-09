@@ -232,6 +232,16 @@ func (h *BookingHandler) List(w http.ResponseWriter, r *http.Request) {
 		WriteJSON(w, http.StatusOK, bookings)
 		return
 	}
+	// ?handover=all — حجوزات التقنيين المرحّلة (المالك والمدير)
+	if r.URL.Query().Get("handover") == "all" {
+		bookings, err := h.service.ListHandovers()
+		if err != nil {
+			WriteError(w, http.StatusInternalServerError, "تعذر جلب حجوزات التقنيين")
+			return
+		}
+		WriteJSON(w, http.StatusOK, bookings)
+		return
+	}
 	// limit اختياري: الشاشة الي تعرض «آخر كذا حجز» تطلب عددها بس، بدل ما
 	// يمشي أرشيف الشركة كله بالشبكة كل مرة تنفتح.
 	limit := 0

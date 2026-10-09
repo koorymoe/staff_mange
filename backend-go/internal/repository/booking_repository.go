@@ -92,6 +92,24 @@ func (r *BookingRepository) List(status, customerID, date string, limit int) ([]
 
 // ListForAssignedEmployee يرجّع الحجوزات اللي الموظف معيّن عليها بـ BookingAssignment
 // (مثلاً موظف مبيعات أو فني مرتبط بيها) — يستخدمها المساعد الذكي لعرض "حجوزاتي".
+// ListHandovers كل الحجوزات المرحّلة للتقنيين (آخر ٩٠ يوم) — شاشة «حجوزات
+// التقنيين» للمالك والمدير (قرار (ع) 10-09).
+func (r *BookingRepository) ListHandovers() ([]model.Booking, error) {
+	bookings := []model.Booking{}
+	if err := r.db.Select(&bookings, `
+		SELECT b.* FROM "Booking" b
+		WHERE b."archivedAt" IS NULL AND b."handoverToId" IS NOT NULL
+		  AND COALESCE(b."handoverAt", b."createdAt") > now() - interval '90 days'
+		ORDER BY COALESCE(b."handoverAt", b."createdAt") DESC
+		LIMIT 500`); err != nil {
+		return nil, err
+	}
+	if err := r.hydrateAll(toPointers(bookings)); err != nil {
+		return nil, err
+	}
+	return bookings, nil
+}
+
 func (r *BookingRepository) ListForAssignedEmployee(employeeID string, limit int) ([]model.Booking, error) {
 	// ⚠️ التيم ليدر ما ينحفظ بجدول التعيينات — ينحفظ بعمود
 	// projectSupervisorId على الحجز نفسه. فالاستعلام الي يشوف

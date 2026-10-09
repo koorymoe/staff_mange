@@ -85,7 +85,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
   // الإداري يشوف «لا توجد حجوزات» ويظن ماكو شغل، والحجز يقعد بلا
   // متابعة لحد ما ينسى. الطابور الي ينتظر تصرّف ما ينفلتر بالتاريخ:
   // كله لازم ينشاف، أقدمه أول.
-  const [selectedDate, setSelectedDate] = useState<string | null>(bucket === 'pending' || focus ? null : todayStr())
+  const [selectedDate, setSelectedDate] = useState<string | null>(bucket === 'pending' || bucket === 'at_tech' || focus ? null : todayStr())
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null)
   const [doneFilter, setDoneFilter] = useState<DoneFilter>('ALL')
   // ═══ الترقيم بالسيرفر ═══

@@ -118,6 +118,8 @@ func (s *BookingService) List(status, customerID, date string, limit int) ([]mod
 // ListAssignedTo يرجّع حجوزات الموظف المعيّن عليها فقط. حد أعلى ٢٠٠
 // حجز — الفني ما يحتاج أرشيفه كامل بلوحة المهام، ويمنع طلب واحد ثقيل
 // لو موظف قديم عليه آلاف المهام.
+func (s *BookingService) ListHandovers() ([]model.Booking, error) { return s.repo.ListHandovers() }
+
 func (s *BookingService) ListAssignedTo(employeeID string) ([]model.Booking, error) {
 	if employeeID == "" {
 		return []model.Booking{}, nil
