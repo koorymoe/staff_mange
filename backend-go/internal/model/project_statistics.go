@@ -15,6 +15,10 @@ type ProjectValueRow struct {
 	Priority        string   `db:"priority" json:"priority"`
 	PriceRaw        *string  `db:"price" json:"priceRaw"`
 	PriceValue      *float64 `db:"priceValue" json:"priceValue"`
+	// قرار (ع) 10-09: الدفعات وعرض السعر جنب السعر المكتوب
+	QuotedAmount     *float64 `db:"quotedAmount" json:"quotedAmount"`
+	PaidAmount       float64  `db:"paidAmount" json:"paidAmount"`
+	UnverifiedAmount float64  `db:"unverifiedAmount" json:"unverifiedAmount"`
 	CreatedByName   *string  `db:"createdByName" json:"createdByName"`
 	ResponsibleName *string  `db:"responsibleName" json:"responsibleName"`
 	SurveyorName    *string  `db:"surveyorName" json:"surveyorName"`

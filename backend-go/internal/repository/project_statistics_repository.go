@@ -12,6 +12,8 @@ func (r *ProjectRepository) ProjectValueRows() ([]model.ProjectValueRow, error) 
 	err := r.db.Select(&rows, `
 		SELECT p.id, p.code, p.name, p.stage, p."workType", p.priority, p.price,
 			`+priceValueExpr+` AS "priceValue",
+			(SELECT q."netTotal" FROM "Quotation" q WHERE q."projectId" = p.id ORDER BY q."createdAt" DESC LIMIT 1) AS "quotedAmount",
+			COALESCE(pp.paid, 0) AS "paidAmount", COALESCE(pp.unverified, 0) AS "unverifiedAmount",
 			c.name AS "createdByName",
 			resp.name AS "responsibleName",
 			surv.name AS "surveyorName",
@@ -23,7 +25,9 @@ func (r *ProjectRepository) ProjectValueRows() ([]model.ProjectValueRow, error) 
 		LEFT JOIN "Employee" resp  ON resp.id = p."responsibleEmployeeId"
 		LEFT JOIN "Employee" surv  ON surv.id = p."surveyorEmployeeId"
 		LEFT JOIN "Employee" deleg ON deleg.id = p."delegatedToEmployeeId"
-		ORDER BY `+priceValueExpr+` DESC NULLS LAST, p."createdAt" DESC`)
+		LEFT JOIN LATERAL (SELECT SUM(amount) AS paid, SUM(amount) FILTER (WHERE "verifiedAt" IS NULL) AS unverified
+			FROM "ProjectPayment" WHERE "projectId" = p.id AND "cancelledAt" IS NULL) pp ON true
+		ORDER BY `+priceValueExpr+` DESC NULLS LAST, COALESCE(pp.paid, 0) DESC, p."createdAt" DESC`)
 	return rows, err
 }
 

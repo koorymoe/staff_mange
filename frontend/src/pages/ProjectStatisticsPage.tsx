@@ -17,6 +17,7 @@ interface ProjectRow {
   id: string; code: string; name: string; stage: string
   workType: string | null; priority: string
   priceRaw: string | null; priceValue: number | null
+  quotedAmount: number | null; paidAmount: number; unverifiedAmount: number
   createdByName: string | null; responsibleName: string | null
   surveyorName: string | null; delegatedToName: string | null
   hasSurvey: boolean; createdAt: string
@@ -156,6 +157,7 @@ export default function ProjectStatisticsPage() {
                   <th className="p-2">المرحلة</th>
                   <th className="p-2">نوع العمل</th>
                   <th className="p-2">القيمة المالية</th>
+                  <th className="p-2">المستلم</th>
                   <th className="p-2">المسؤول</th>
                   <th className="p-2">منفّذ الكشف</th>
                   <th className="p-2">موجّه إلى</th>
@@ -170,7 +172,13 @@ export default function ProjectStatisticsPage() {
                     <td className="p-2 text-xs">{p.stage}</td>
                     <td className="p-2 text-xs text-slate-500">{p.workType || '—'}</td>
                     <td className="p-2 font-bold text-emerald-700">
-                      {p.priceValue != null ? `${money(p.priceValue)} د.ع` : <span className="text-slate-500">غير مُسعَّر</span>}
+                      {p.priceValue != null ? `${money(p.priceValue)} د.ع`
+                        : p.quotedAmount != null ? <>{money(p.quotedAmount)} د.ع<span className="block text-[10px] font-normal text-slate-400">من عرض السعر</span></>
+                        : <span className="text-slate-500">غير مُسعَّر</span>}
+                    </td>
+                    <td className="p-2 font-bold text-sky-700">
+                      {p.paidAmount > 0 ? `${money(p.paidAmount)} د.ع` : <span className="text-slate-400">—</span>}
+                      {p.unverifiedAmount > 0 && <span className="block text-[10px] font-bold text-amber-600">⏳ {money(p.unverifiedAmount)} تنتظر تأكيد المحاسب</span>}
                     </td>
                     <td className="p-2 text-xs">{p.responsibleName || '—'}</td>
                     <td className="p-2 text-xs">
