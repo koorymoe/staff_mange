@@ -120,7 +120,8 @@ func (r *TechSupplierRepository) Eligible() ([]TechPerson, error) {
 	rows := []TechPerson{}
 	err := r.db.Select(&rows, `SELECT e.id, e.name, e.role::text AS role,
 		CASE WHEN EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id) OR e.role::text = 'SERVICE_MANAGER' THEN 'مسؤول خدمة'
-		     WHEN e.role::text IN ('ENGINEER', 'TECHNICAL') THEN 'تقني' ELSE 'بالصلاحية' END AS kind
+		     WHEN e.role::text = 'ENGINEER' THEN 'مهندس'
+		     WHEN e.role::text = 'TECHNICAL' THEN 'تقني' ELSE 'بالصلاحية' END AS kind
 		FROM "Employee" e WHERE e.status = 'ACTIVE' AND e.role::text NOT IN ('ADMIN', 'OWNER') AND (
 		  e.role::text IN ('ENGINEER', 'TECHNICAL', 'SERVICE_MANAGER')
 		  OR EXISTS (SELECT 1 FROM "ServiceManager" sm WHERE sm."employeeId" = e.id)
