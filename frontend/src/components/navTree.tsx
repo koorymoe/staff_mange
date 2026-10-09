@@ -432,6 +432,8 @@ export const navItems: NavItem[] = [
         to: '/mgmt-vehicles', label: 'المركبات والأسطول', icon: <></>,
         children: [
           { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
+      { to: '/vehicle-tracking', label: '🚗 متابعة السيارات', icon: <></>, permission: 'vehicle_management' },
+          { to: '/vehicle-tracking', label: '🚗 متابعة السيارات', icon: <></>, permission: 'vehicle_management' },
           // لوحة الأسطول جانت تحت «وحدة المشتريات والمخازن» — ما إلها علاقة
           { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
           // الحجز والمهمات — مساراتهم بالباك كلها requireVehicleMgmt

@@ -1999,6 +1999,10 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// بدور المراقب/الأدمن حصراً، لأنهم يعرضون راتب مقترح للفنيين (بيانات حساسة
 	// ماريد الفني نفسه يشوفها). لا تحولها لصلاحية "vehicle_management" العامة —
 	// هذي الصلاحية ممكن تنمنح لفنيين لتسجيل صيانة مركبات عادية بدون قصد كشف رواتب.
+	// متابعة السيارات الشهرية (ملف الإكسل) — أبو الكميات.
+	vehicleTrackingHandler := handler.NewVehicleTrackingHandler(db)
+	mux.Handle("GET /api/vehicles/tracking", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Get), requireAuth, requireVehicleMgmt))
+	mux.Handle("PUT /api/vehicles/tracking/day", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.SaveDay), requireAuth, requireVehicleMgmt))
 	mux.Handle("GET /api/vehicles/ratings/vehicle-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.VehicleScoreSummaries), requireAuth, requireMonitor))
 	mux.Handle("GET /api/vehicles/ratings/technician-summary", middleware.Chain(http.HandlerFunc(vehicleHandler.TechnicianWashSummaries), requireAuth, requireMonitor))
 	// إحصاء الغسل لكل سيارة بشهر: كم مرة انغسلت ومنو غسلها.

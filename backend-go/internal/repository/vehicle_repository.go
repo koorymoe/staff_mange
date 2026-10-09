@@ -347,7 +347,8 @@ var vehicleRatingWeights = []struct {
 func computeWeightedScore(r *model.VehicleDailyRating) *float64 {
 	var num, den float64
 	any := false
-	for _, item := range vehicleRatingWeights {
+	// قرار (ع) 10-09: نفس ملف الإكسل — الغسل (أول بند) ما يدخل بنسبة اليوم، يدخل بالشهري بس.
+	for _, item := range vehicleRatingWeights[1:] {
 		if v := item.get(r); v != nil {
 			num += float64(*v) * item.weight
 			den += 4 * item.weight

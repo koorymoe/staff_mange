@@ -144,6 +144,7 @@ const AuditIssuesPage = lazy(() => import('./pages/AuditIssuesPage'))
 const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
 const FinanceDeskPage = lazy(() => import('./pages/FinanceDeskPage'))
 const CostCalcPage = lazy(() => import('./pages/CostCalcPage'))
+const VehicleTrackingPage = lazy(() => import('./pages/VehicleTrackingPage'))
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
 const MonitorDeskPage = lazy(() => import('./pages/MonitorDeskPage'))
 const StaffManagementDeskPage = lazy(() => import('./pages/StaffManagementDeskPage'))
@@ -309,6 +310,7 @@ function App() {
           <Route path="daily-audit" element={<DailyAuditPage />} />
           <Route path="finance-desk" element={<FinanceDeskPage />} />
           <Route path="cost-calc" element={<CostCalcPage />} />
+          <Route path="vehicle-tracking" element={<RequirePermission permission="vehicle_management"><VehicleTrackingPage /></RequirePermission>} />
           <Route path="announcements" element={<RequireAdmin><AnnouncementsPage /></RequireAdmin>} />
           <Route path="gps-install-costs" element={<GpsInstallCostsPage />} />
           <Route path="gps/renewals" element={<GpsRenewals />} />

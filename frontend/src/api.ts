@@ -4547,6 +4547,9 @@ export const api = {
   disburseFund: (data: { fundId: string; employeeId: string; amount: number; bookingId?: string | null; requestId?: string | null; notes?: string | null }) =>
     request<RevolvingFundTxn>('/funds/disburse', { method: 'POST', body: JSON.stringify(data) }),
   getFundBalances: () => request<EmployeeFundBalance[]>('/funds/balances'),
+  getVehicleTracking: (period: string) => request<VehicleTracking>(`/vehicles/tracking?period=${period}`),
+  saveVehicleTrackingDay: (date: string, rows: Record<string, unknown>[]) =>
+    request<{ ok: boolean }>('/vehicles/tracking/day', { method: 'PUT', body: JSON.stringify({ date, rows }) }),
   getFundTxnReceipt: (id: string) => request<{ receiptImage: string }>(`/funds/transactions/${id}/receipt`),
   getFundTransactions: (params?: { employeeId?: string; status?: string }) => {
     const q = new URLSearchParams()
@@ -5895,4 +5898,19 @@ export interface TechSupplierIn { companyName: string; ownerName?: string; phone
 export interface TechSupplier {
   id: string; companyName: string; ownerName: string | null; phone: string; address: string | null; locationUrl: string | null
   specialty: string | null; notes: string | null; createdBy: string | null; createdAt: string; assignedTo: string[]
+}
+
+// ═══ متابعة السيارات (ملف الإكسل — قرار (ع) 10-09) ═══
+export interface VehicleTrackRating {
+  id: string; vehicleId: string; date: string; score: number | null
+  wash: number | null; exteriorClean: number | null; exteriorCondition: number | null; tireCondition: number | null
+  glassClean: number | null; lightsCondition: number | null; technicalFaults: number | null; faultDescription: string | null
+  interiorClean: number | null; seatsCondition: number | null; interiorDirt: number | null; smell: number | null
+}
+export interface VehicleTrackStats {
+  vehicleId: string; vehicleName: string; completed: number; rawSum: number; rawMax: number; rawPct: number | null
+  washPct: number | null; items: Record<string, number | null>; weighted: number | null; grade: string; washDone: number; washNot: number
+}
+export interface VehicleTracking {
+  from: string; to: string; vehicles: { id: string; name: string }[]; ratings: VehicleTrackRating[]; stats: VehicleTrackStats[]
 }

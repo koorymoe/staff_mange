@@ -437,6 +437,8 @@ func versionedMigrations() []Migration {
 	result = append(result, quotationTermsMigrations()...)
 	// 0334: تقرير ١ — الممنوحين quotation_system ياخذون quotation_manage_all.
 	result = append(result, report1FixMigrations()...)
+	// 0336: متابعة السيارات — بيانات ملف الإكسل.
+	result = append(result, vehicleTrackingImportMigrations()...)
 	return result
 }
 
