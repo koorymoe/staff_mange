@@ -138,7 +138,9 @@ func (r *ProjectPaymentRepository) SetContractValue(projectID, byID string, amou
 func (r *ProjectPaymentRepository) IsSupervisor(projectID, employeeID string) bool {
 	var ok bool
 	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "Project" WHERE id = $1
-		AND $2 IN (COALESCE("responsibleEmployeeId", ''), COALESCE("delegatedToEmployeeId", ''), COALESCE("surveyorEmployeeId", '')))`,
+		AND ($2 IN (COALESCE("responsibleEmployeeId", ''), COALESCE("delegatedToEmployeeId", ''), COALESCE("surveyorEmployeeId", ''))
+		     -- (ع) 10-09: مشرف الحجز المربوط بالمشروع يرفع فلوسه هم
+		     OR EXISTS (SELECT 1 FROM "Booking" b WHERE b.id = "Project"."bookingId" AND b."projectSupervisorId" = $2)))`,
 		projectID, employeeID)
 	return ok
 }

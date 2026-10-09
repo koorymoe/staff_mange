@@ -149,6 +149,26 @@ func (r *EmployeeRepository) SetCommandPassword(id, hashedPassword string) error
 	return err
 }
 
+// CommandAccount حساب عنده رمز مركز القيادة.
+type CommandAccount struct {
+	ID       string     `db:"id" json:"id"`
+	Name     string     `db:"name" json:"name"`
+	Username *string    `db:"username" json:"username"`
+	SetAt    *time.Time `db:"setAt" json:"setAt"`
+}
+
+func (r *EmployeeRepository) ListCommandAccounts() ([]CommandAccount, error) {
+	rows := []CommandAccount{}
+	err := r.db.Select(&rows, `SELECT id, name, username, "commandPasswordSetAt" AS "setAt" FROM "Employee"
+		WHERE "commandPassword" IS NOT NULL AND "commandPassword" <> '' ORDER BY name`)
+	return rows, err
+}
+
+func (r *EmployeeRepository) ClearCommandPassword(id string) error {
+	_, err := r.db.Exec(`UPDATE "Employee" SET "commandPassword" = NULL, "commandPasswordSetAt" = NULL WHERE id = $1`, id)
+	return err
+}
+
 // SetAttendanceIcon يحدّث الأيقونة الشخصية لموظف معيّن — بعد موافقة الإداري
 // على طلب تغيير الرمز.
 func (r *EmployeeRepository) SetAttendanceIcon(id, icon string) error {

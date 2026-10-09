@@ -3388,6 +3388,10 @@ export interface FinanceSummary {
   inProgressCount: number
   activeCrewCount: number
   totalCollected: number
+  /** قرار (ع) 10-09: المحصّل من الحجوزات بس */
+  bookingsCollected?: number
+  /** دفعات المشاريع */
+  projectsCollected?: number
   /** غير مدققة — بنفس نطاق totalCollected (COMPLETED فعلاً، شامل المقدم) */
   unverifiedAmount: number
   /** مدققة — بنفس نطاق totalCollected */
@@ -3789,10 +3793,14 @@ export const api = {
   },
   /** الطبقة الحالية — staff = نظام الشركة، command = مركز القيادة */
   currentRealm: () => localStorage.getItem('authRealm') || 'staff',
-  setCommandPassword: (newPassword: string) =>
+  setCommandPassword: (newPassword: string, employeeId?: string) =>
     request<{ ok: boolean }>('/auth/command-password', {
-      method: 'PUT', body: JSON.stringify({ newPassword }),
+      method: 'PUT', body: JSON.stringify({ newPassword, employeeId }),
     }),
+  getCommandAccounts: () =>
+    request<{ id: string; name: string; username: string | null; setAt: string | null }[]>('/auth/command-accounts'),
+  clearCommandPassword: (employeeId: string) =>
+    request<{ ok: boolean }>(`/auth/command-password/${employeeId}`, { method: 'DELETE' }),
   updateEmployeeSkills: (id: string, skills: { skillId: string; canPerform: boolean }[]) =>
     request<Employee>(`/employees/${id}/skills`, {
       method: 'PUT',

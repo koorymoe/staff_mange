@@ -94,19 +94,43 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/auth/command-password — يحط أو يغيّر باسورد مركز القيادة.
 //
-// كل واحد يحطه لنفسه بس (المعرّف من التوكن مو من الجسم) — حتى ما
-// يقدر أحد يحط باسورد قيادة لحساب غيره ويفتح الطبقة العليا باسمه.
+// قرار (ع) 10-09: المالك يختار أي حساب موجود وينطيه الرمز الثاني. المسار
+// محروس بـRequireOwner، فغير المالك ما يوصل له أصلاً؛ وبلا employeeId يصير
+// لحساب المالك نفسه مثل قبل.
 func (h *AuthHandler) SetCommandPassword(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		NewPassword string `json:"newPassword"`
+		EmployeeID  string `json:"employeeId"`
 	}
 	if err := DecodeJSON(r, &req); err != nil {
 		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
 		return
 	}
 	employeeID, _ := r.Context().Value(middleware.ContextEmployeeID).(string)
+	if req.EmployeeID != "" {
+		employeeID = req.EmployeeID
+	}
 	if err := h.auth.SetCommandPassword(employeeID, req.NewPassword); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// GET /api/auth/command-accounts — الحسابات الي تفتح مركز القيادة (للمالك)
+func (h *AuthHandler) CommandAccounts(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.auth.CommandAccounts()
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الجلب")
+		return
+	}
+	WriteJSON(w, http.StatusOK, rows)
+}
+
+// DELETE /api/auth/command-password/{employeeId} — يسكّر مركز القيادة عن حساب
+func (h *AuthHandler) ClearCommandPassword(w http.ResponseWriter, r *http.Request) {
+	if err := h.auth.ClearCommandPassword(r.PathValue("employeeId")); err != nil {
+		WriteError(w, http.StatusInternalServerError, "تعذر الشيل")
 		return
 	}
 	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})

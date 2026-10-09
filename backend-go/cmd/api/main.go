@@ -1052,6 +1052,8 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	mux.Handle("POST /api/bookings/waiting-reminder-sweep", middleware.Chain(http.HandlerFunc(bookingHandler.RunWaitingReminderSweep), requireAuth, requireAdmin))
 	// باسورد مركز القيادة — المالك بس بهاي المرحلة
 	mux.Handle("PUT /api/auth/command-password", middleware.Chain(http.HandlerFunc(authHandler.SetCommandPassword), requireAuth, middleware.RequireOwner()))
+	mux.Handle("GET /api/auth/command-accounts", middleware.Chain(http.HandlerFunc(authHandler.CommandAccounts), requireAuth, middleware.RequireOwner()))
+	mux.Handle("DELETE /api/auth/command-password/{employeeId}", middleware.Chain(http.HandlerFunc(authHandler.ClearCommandPassword), requireAuth, middleware.RequireOwner()))
 	// المؤجلة بلا موعد: قائمة مستقلة لأنها منزاحة عن جدول اليوم قصداً
 	mux.Handle("GET /api/bookings/postponed", middleware.Chain(http.HandlerFunc(bookingHandler.ListPostponed), requireAuth, requireCoordinator))
 	// التأجيل والانتظار شغل المنسّق — هو الي يتصل بالزبون

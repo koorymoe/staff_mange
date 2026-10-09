@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { api } from '../api'
+import { useCallback, useEffect, useState } from 'react'
+import { api, type Employee } from '../api'
 import { useSession } from '../session'
 
 // ═══ رمز مركز القيادة ═══
@@ -24,6 +24,16 @@ export default function CommandCodePage() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<string | null>(null)
   const [err, setErr] = useState<string | null>(null)
+  // قرار (ع) 10-09: يختار أي حساب موجود وينطيه الرمز الثاني
+  const [employees, setEmployees] = useState<Employee[]>([])
+  const [target, setTarget] = useState('')
+  const [accounts, setAccounts] = useState<{ id: string; name: string; username: string | null; setAt: string | null }[]>([])
+  const loadAccounts = useCallback(() => { api.getCommandAccounts().then(setAccounts).catch(() => {}) }, [])
+  useEffect(() => {
+    if (employee?.actualRole !== 'OWNER') return
+    api.getEmployees().then((r) => setEmployees(r.filter((e) => e.status === 'ACTIVE' && e.username))).catch(() => {})
+    loadAccounts()
+  }, [employee?.actualRole, loadAccounts])
 
   const isOwner = employee?.actualRole === 'OWNER'
   if (!isOwner) {
@@ -47,8 +57,11 @@ export default function CommandCodePage() {
     }
     setBusy(true)
     try {
-      await api.setCommandPassword(code)
-      setMsg('انحفظ. سجّل خروج وادخل بنفس اسم المستخدم وبهذا الرمز — يفتحلك مركز القيادة.')
+      const who = target || employee?.id || ''
+      await api.setCommandPassword(code, who)
+      const name = employees.find((e) => e.id === who)?.username || employee?.username
+      setMsg(`انحفظ. اليوزر «${name}» بهذا الرمز يفتح مركز القيادة، وبرمزه العادي نظام الشركة.`)
+      loadAccounts()
       setCode('')
       setConfirmCode('')
     } catch (e) {
@@ -67,11 +80,16 @@ export default function CommandCodePage() {
 
       <div className="mt-5 rounded-2xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
         <label className="mb-1 block text-xs font-bold text-slate-500">اسم المستخدم</label>
-        <input
-          value={employee?.username || ''}
-          disabled
-          className="mb-4 w-full rounded-xl border border-slate-200 bg-slate-100 px-3 py-2.5 text-sm text-slate-500"
-        />
+        <select
+          value={target || employee?.id || ''}
+          onChange={(e) => setTarget(e.target.value)}
+          className="mb-4 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm"
+        >
+          {employee && <option value={employee.id}>{employee.username} — حسابي</option>}
+          {employees.filter((e) => e.id !== employee?.id).map((e) => (
+            <option key={e.id} value={e.id}>{e.username} — {e.name}</option>
+          ))}
+        </select>
 
         <label className="mb-1 block text-xs font-bold text-slate-500">الرمز الثاني</label>
         <input
@@ -102,6 +120,24 @@ export default function CommandCodePage() {
         >
           {busy ? 'جاري الحفظ...' : 'احفظ الرمز'}
         </button>
+
+        {accounts.length > 0 && (
+          <div className="mt-4 border-t border-slate-100 pt-3">
+            <p className="mb-2 text-xs font-bold text-slate-600">الحسابات الي تفتح مركز القيادة</p>
+            {accounts.map((a) => (
+              <div key={a.id} className="flex items-center justify-between gap-2 border-b border-slate-50 py-1.5 text-sm">
+                <span><b>{a.username}</b> · {a.name}{a.setAt && <span className="ms-2 text-[11px] text-slate-400">{new Date(a.setAt).toLocaleDateString('ar-IQ')}</span>}</span>
+                <button
+                  onClick={() => {
+                    if (!window.confirm(`تسكّر مركز القيادة عن «${a.username}»؟`)) return
+                    api.clearCommandPassword(a.id).then(loadAccounts).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر'))
+                  }}
+                  className="text-xs font-bold text-red-600 hover:underline"
+                >شيل</button>
+              </div>
+            ))}
+          </div>
+        )}
 
         <p className="mt-4 border-t border-slate-100 pt-3 text-xs leading-6 text-slate-500">
           • ماكو زر «بدّل النظام» — الفرق بالرمز بس، والي يشوف شاشة الدخول ما يعرف إن الطبقة الثانية موجودة.

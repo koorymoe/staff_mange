@@ -9,7 +9,8 @@ package repository
 //	المبلغ المستلم + الدفعة المقدّمة، لحجز منجز (تام أو جزئي)، مو داخلي،
 //	مو مؤرشف، مو مطلوب حذفه — + دفعات المشاريع.
 //
-// وحجز المشروع الي على مشروعه دفعات ينحسب من الدفعات بس (ماكو حساب مرتين).
+// قرار (ع) 10-09: دفعات المشروع **تنضاف** على مبلغ الحجز — قبل جانت تحل محله
+// (أول دفعة تشيل مبلغ الحجز)، فالمشرف يرفع فلوس والمجموع ما يزيد.
 // فواتير الليدر رقم ثاني «المفوتر»، والفرق بينهم يراقبه ماتركس.
 
 // RevenueAmountSQL مبلغ الحجز المستلم.
@@ -20,7 +21,5 @@ func RevenueAmountSQL(q string) string {
 // RevenueBookingSQL شرط «حجز ينحسب بالإيراد» (بلا AND بادئة).
 func RevenueBookingSQL(q string) string {
 	return q + `.status::text IN ('COMPLETED', 'PARTIAL') AND ` + BookingCountableSQL(q) +
-		` AND ` + q + `."bookingType" IS DISTINCT FROM 'INTERNAL'` +
-		` AND NOT EXISTS (SELECT 1 FROM "Project" rp JOIN "ProjectPayment" rpp ON rpp."projectId" = rp.id
-			AND rpp."cancelledAt" IS NULL WHERE rp."bookingId" = ` + q + `.id)`
+		` AND ` + q + `."bookingType" IS DISTINCT FROM 'INTERNAL'`
 }

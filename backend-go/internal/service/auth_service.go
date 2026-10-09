@@ -271,6 +271,14 @@ func HashPassword(password string) (string, error) {
 }
 
 
+func (s *AuthService) CommandAccounts() ([]repository.CommandAccount, error) {
+	return s.employees.ListCommandAccounts()
+}
+
+func (s *AuthService) ClearCommandPassword(employeeID string) error {
+	return s.employees.ClearCommandPassword(employeeID)
+}
+
 // SetCommandPassword يحط أو يغيّر باسورد مركز القيادة.
 //
 // ⚠️ لازم يختلف عن الباسورد العادي — لو تطابقن انلغى الفصل كله:
@@ -285,7 +293,7 @@ func (s *AuthService) SetCommandPassword(employeeID, newPassword string) error {
 	}
 	if employee.Password != nil &&
 		bcrypt.CompareHashAndPassword([]byte(*employee.Password), []byte(newPassword)) == nil {
-		return errors.New("باسورد مركز القيادة لازم يكون مختلف عن باسوردك العادي")
+		return errors.New("رمز مركز القيادة لازم يكون مختلف عن الرمز العادي لهذا الحساب")
 	}
 	hashed, err := HashPassword(newPassword)
 	if err != nil {

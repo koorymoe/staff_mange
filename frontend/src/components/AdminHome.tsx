@@ -31,7 +31,8 @@ import ReplacementSuggestionsPanel from './ReplacementSuggestionsPanel'
 type Board = 'follow' | 'actions' | 'matrix'
 
 const fmt = (n: number) => n.toLocaleString('en-US')
-const money = (n: number) => `${fmt(Math.round(n))} د.ع`
+// قرار (ع) 10-09: المبالغ تقريبية لأقرب ألف — بلا كسور مثل ٨٣٢
+const money = (n: number) => `${fmt(Math.round(n / 1000) * 1000)} د.ع`
 const monthKey = () => new Date().toISOString().slice(0, 7)
 
 const SEVERITY: Record<string, { label: string; rank: number; cls: string }> = {
@@ -325,7 +326,9 @@ function FollowBoard() {
         <Section title="💰 الحسابات" to="/finance">
           {finance === undefined ? <Loading /> : finance === null ? <Missing /> : (
             <div className="grid grid-cols-2 gap-2">
-              <Stat icon="💳" label="المحصّل (حجوزات منجزة)" to="/finance" value={money(finance.totalCollected)} tone="green" />
+              {/* قرار (ع) 10-09: فلوس الحجوزات مفصولة عن فلوس المشاريع */}
+              <Stat icon="💳" label="المحصّل من الحجوزات" to="/finance" value={money(finance.bookingsCollected ?? finance.totalCollected)} hint={`المجموع ويا المشاريع ${money(finance.totalCollected)}`} tone="green" />
+              <Stat icon="🏗️" label="المحصّل من المشاريع" to="/project-payments" value={money(finance.projectsCollected ?? 0)} tone="green" />
               <Stat icon="🪙" tone="blue" label="مدقّق" to="/daily-audit" value={money(finance.verifiedAmount)} hint={`${fmt(finance.verifiedCount)} حجز`} />
               <Stat icon="⏰" label="بانتظار التدقيق" to="/daily-audit" value={money(finance.unverifiedAmount)} hint={`${fmt(finance.unverifiedCount)} حجز`} tone={finance.unverifiedCount ? 'amber' : 'slate'} />
               <Stat icon="🧾" label="المصاريف" to="/expenses" value={money(finance.totalExpenseValue)} hint={`${fmt(finance.pendingExpenses)} بانتظار الموافقة`} tone="red" />

@@ -72,6 +72,9 @@ type financeSummary struct {
 	InProgressCount   int     `db:"inProgressCount" json:"inProgressCount"`
 	ActiveCrewCount   int     `db:"activeCrewCount" json:"activeCrewCount"`
 	TotalCollected    float64 `db:"totalCollected" json:"totalCollected"`
+	// قرار (ع) 10-09: فصل فلوس الحجوزات عن فلوس المشاريع
+	BookingsCollected float64 `db:"bookingsCollected" json:"bookingsCollected"`
+	ProjectsCollected float64 `db:"projectsCollected" json:"projectsCollected"`
 	UnverifiedAmount  float64 `db:"unverifiedAmount" json:"unverifiedAmount"`
 	VerifiedAmount    float64 `db:"verifiedAmount" json:"verifiedAmount"`
 	TotalQuoted       float64 `db:"totalQuoted" json:"totalQuoted"`
@@ -115,6 +118,8 @@ func (h *DashboardHandler) FinanceSummary(w http.ResponseWriter, r *http.Request
 			-- ينحسب من دفعاته — ودفعات المشاريع تنضاف تحت.
 			COALESCE(SUM(`+repository.RevenueAmountSQL("b")+`) FILTER (WHERE `+repository.RevenueBookingSQL("b")+`), 0)
 			  + (SELECT COALESCE(SUM(pp.amount), 0) FROM "ProjectPayment" pp WHERE pp."cancelledAt" IS NULL) AS "totalCollected",
+			COALESCE(SUM(`+repository.RevenueAmountSQL("b")+`) FILTER (WHERE `+repository.RevenueBookingSQL("b")+`), 0) AS "bookingsCollected",
+			(SELECT COALESCE(SUM(pp.amount), 0) FROM "ProjectPayment" pp WHERE pp."cancelledAt" IS NULL) AS "projectsCollected",
 			-- ⚠️ «غير مدققة»/«مدققة» بنفس نطاق totalCollected أعلاه
 			-- (COMPLETED فعلاً، شامل المقدم) — لا تحسب Booking.amountCollected
 			-- الخام بلا فلترة حالة (هذاك مصدر رقم مختلف بـstats_repository.go
