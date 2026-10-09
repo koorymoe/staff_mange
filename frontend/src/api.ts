@@ -569,6 +569,8 @@ export type CompletionState =
   | 'DONE_FULL'        // تم الإنجاز بشكل كامل
 
 export interface Booking {
+  /** قرار (ع) 10-09: قيمة الشغل الداخلي من فواتيره الداخلية */
+  internalInvoiceTotal?: number
   /** كم مرة انأجّل الحجز لليوم الجاي بسبب إنجاز جزئي */
   partialCount: number
   lastPartialAt: string | null

@@ -588,6 +588,35 @@ func (r *BookingRepository) hydrateAll(bookings []*model.Booking) error {
 		}
 	}
 
+	// قيمة الشغل الداخلي: فواتيره الداخلية (زر «سعّر» أو الفاتورة الداخلية) —
+	// المبلغ ما ينكتب على الحجز، فبدون هذا الحجز يطلع بلا فلوس.
+	internalIDs := []string{}
+	for _, b := range bookings {
+		if b.BookingType == "INTERNAL" {
+			internalIDs = append(internalIDs, b.ID)
+		}
+	}
+	if len(internalIDs) > 0 {
+		rows := []struct {
+			BookingID string  `db:"bookingId"`
+			Total     float64 `db:"total"`
+		}{}
+		if err := r.db.Select(&rows, `SELECT "bookingId", SUM("netTotal") AS total FROM "LeaderInvoice"
+			WHERE "bookingId" = ANY($1) AND "revokedAt" IS NULL AND systems::text LIKE '%شغل داخل الشركة%'
+			GROUP BY "bookingId"`, pq.Array(internalIDs)); err == nil {
+			totals := map[string]float64{}
+			for _, x := range rows {
+				totals[x.BookingID] = x.Total
+			}
+			for _, b := range bookings {
+				if t, ok := totals[b.ID]; ok {
+					v := t
+					b.InternalInvoiceTotal = &v
+				}
+			}
+		}
+	}
+
 	cartItemsByBooking := map[string][]model.CartItem{}
 	if len(bookingIDs) > 0 {
 		rows := []model.CartItem{}

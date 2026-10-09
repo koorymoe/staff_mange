@@ -32,6 +32,8 @@ type Booking struct {
 	// ProjectLocked محسوب مو عمود: عند المشاريع وما وصل التنفيذ.
 	// المنسّق يشوفه بس ما يكدر يلمسه.
 	ProjectLocked          bool       `db:"-" json:"projectLocked"`
+	// قرار (ع) 10-09: قيمة الشغل الداخلي = مجموع فواتيره الداخلية (مو amountCollected)
+	InternalInvoiceTotal *float64 `db:"-" json:"internalInvoiceTotal,omitempty"`
 	ConfirmedByName        *string    `db:"confirmedByName" json:"confirmedByName,omitempty"`
 	AdminNotes             *string    `db:"adminNotes" json:"adminNotes,omitempty"`
 	AssignedVehicle        *string    `db:"assignedVehicle" json:"assignedVehicle,omitempty"`

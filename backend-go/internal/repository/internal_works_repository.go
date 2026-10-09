@@ -37,11 +37,12 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 		Works:    []model.InternalWorkRow{},
 	}
 
+	// قرار (ع) 10-09: مبلغ الشغل = المستلم + فواتيره الداخلية («سعّر» أو الفاتورة الداخلية)
 	if err := r.db.Get(rep, `
 		SELECT
 			COUNT(*) FILTER (WHERE b."workLocation" = 'IN_HOUSE')                AS "inHouseCount",
 			COUNT(*) FILTER (WHERE b."workLocation" <> 'IN_HOUSE')               AS "onSiteCount",
-			COALESCE(SUM(b."amountCollected") FILTER (WHERE b."workLocation" = 'IN_HOUSE'), 0) AS "inHouseAmount"
+			COALESCE(SUM((COALESCE(b."amountCollected", 0) + COALESCE((SELECT SUM(li."netTotal") FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%'), 0))) FILTER (WHERE b."workLocation" = 'IN_HOUSE'), 0) AS "inHouseAmount"
 		FROM "Booking" b
 		WHERE b.status = 'COMPLETED'
 		  AND to_char(baghdad_date(b."completedAt"), 'YYYY-MM') = $1
@@ -53,7 +54,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 	if err := r.db.Select(&rep.Services, `
 		SELECT COALESCE(s.name, 'بلا خدمة') AS name,
 		       COUNT(*) AS count,
-		       COALESCE(SUM(b."amountCollected"), 0) AS amount
+		       COALESCE(SUM((COALESCE(b."amountCollected", 0) + COALESCE((SELECT SUM(li."netTotal") FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%'), 0))), 0) AS amount
 		FROM "Booking" b
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE b.status = 'COMPLETED'
@@ -83,7 +84,7 @@ func (r *InternalWorksRepository) Monthly(month string) (*model.InternalWorksRep
 	// تفاصيل الأعمال نفسها — بلا معلومات الزبون، الإحصائية ما تحتاجها
 	if err := r.db.Select(&rep.Works, `
 		SELECT b.code, b."completedAt", COALESCE(s.name, '—') AS "serviceName",
-		       COALESCE(b."amountCollected", 0) AS amount
+		       (COALESCE(b."amountCollected", 0) + COALESCE((SELECT SUM(li."netTotal") FROM "LeaderInvoice" li WHERE li."bookingId" = b.id AND li."revokedAt" IS NULL AND li.systems::text LIKE '%شغل داخل الشركة%'), 0)) AS amount
 		FROM "Booking" b
 		LEFT JOIN "Service" s ON s.id = b."serviceId"
 		WHERE b.status = 'COMPLETED'

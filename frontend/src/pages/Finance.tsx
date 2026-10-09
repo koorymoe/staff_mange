@@ -511,6 +511,14 @@ export default function Finance() {
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {/* قرار (ع) 10-09: قيمة الشغل الداخلي من فاتورته الداخلية */}
+                  {isInternal(b) && (b.internalInvoiceTotal != null ? (
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-800" title="من الفاتورة الداخلية">
+                      🏭 {Math.round(b.internalInvoiceTotal).toLocaleString('en-US')} د.ع
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">بلا سعر</span>
+                  ))}
                   {isSurvey(b) ? (
                     <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-700">
                       🔍 زيارة كشف — بلا فاتورة
