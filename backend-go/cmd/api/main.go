@@ -2002,6 +2002,12 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// هذي الصلاحية ممكن تنمنح لفنيين لتسجيل صيانة مركبات عادية بدون قصد كشف رواتب.
 	// متابعة السيارات الشهرية (ملف الإكسل) — أبو الكميات.
 	vehicleTrackingHandler := handler.NewVehicleTrackingHandler(db)
+	// 🧽 غسل السيارات: عامل الغسل يأشّر، وصاحب إدارة المركبات يشوف ويتراجع
+	carWashHandler := handler.NewCarWashHandler(db)
+	requireCarWash := middleware.RequireRoleOrPermission(permissionRepo, employeeRepo, notificationRepo, []string{"CAR_WASHER"}, "vehicle_management")
+	mux.Handle("GET /api/car-wash", middleware.Chain(http.HandlerFunc(carWashHandler.List), requireAuth, requireCarWash))
+	mux.Handle("POST /api/car-wash/{vehicleId}", middleware.Chain(http.HandlerFunc(carWashHandler.Mark), requireAuth, requireCarWash))
+	mux.Handle("DELETE /api/car-wash/{vehicleId}", middleware.Chain(http.HandlerFunc(carWashHandler.Unmark), requireAuth, requireCarWash))
 	mux.Handle("GET /api/vehicles/tracking", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Get), requireAuth, requireVehicleMgmt))
 	mux.Handle("POST /api/vehicles/tracking/merge", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.Merge), requireAuth, requireVehicleMgmt))
 	mux.Handle("PUT /api/vehicles/tracking/day", middleware.Chain(http.HandlerFunc(vehicleTrackingHandler.SaveDay), requireAuth, requireVehicleMgmt))

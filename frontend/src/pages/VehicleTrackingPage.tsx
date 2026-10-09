@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { api, type VehicleTracking, type VehicleTrackRating } from '../api'
+import { api, type CarWashVehicle, type VehicleTracking, type VehicleTrackRating } from '../api'
 
 // ═══ 🚗 متابعة السيارات — نفس ملف إكسل (ع) 10-09 ═══
 // أبو الكميات يعبّي كل يوم جدول لكل السيارات (الغسل + عشر بنود من 0 لـ4 + وصف
@@ -93,17 +93,27 @@ export default function VehicleTrackingPage() {
   }, [period])
   useEffect(load, [load])
 
-  // تعبئة جدول اليوم من المسجّل أصلاً
+  // 🧽 غسل عامل الغسل لهذا اليوم (قرار (ع) 10-09)
+  const [washes, setWashes] = useState<Record<string, CarWashVehicle>>({})
+  useEffect(() => {
+    let alive = true
+    api.getCarWash(date).then((r) => {
+      if (alive) setWashes(Object.fromEntries(r.vehicles.filter((v) => v.washedAt).map((v) => [v.vehicleId, v])))
+    }).catch(() => { if (alive) setWashes({}) })
+    return () => { alive = false }
+  }, [date])
+
+  // تعبئة جدول اليوم من المسجّل أصلاً — والي غسلها عامل الغسل ينأشّر «تم» لحاله
   useEffect(() => {
     if (!data) return
     const next: Record<string, Draft> = {}
     for (const v of data.vehicles) {
       const r = data.ratings.find((x) => x.vehicleId === v.id && x.date === date)
-      next[v.id] = r ? { ...r } : {}
+      next[v.id] = r ? { ...r } : washes[v.id] ? { wash: 4 } : {}
     }
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDrafts(next)
-  }, [data, date])
+  }, [data, date, washes])
 
   const set = (vid: string, key: keyof VehicleTrackRating, val: number | string | null) =>
     setDrafts((d) => ({ ...d, [vid]: { ...d[vid], [key]: val } }))
@@ -205,6 +215,11 @@ export default function VehicleTrackingPage() {
                     <p className="text-base font-extrabold text-[#0f2040]">🚙 {v.name}</p>
                     <span className={`text-xl font-black ${scoreTone(s)}`}>{pct(s)}</span>
                   </div>
+                  {washes[v.id]?.washedAt && (
+                    <p className="mt-1 text-xs font-bold text-cyan-700">
+                      🧽 غسلها {washes[v.id].washedBy ?? '—'} {new Date(washes[v.id].washedAt!).toLocaleTimeString('ar-IQ', { hour: 'numeric', minute: '2-digit' })}
+                    </p>
+                  )}
                   <div className="mt-2 flex gap-2">
                     {([[4, '🧽 تم الغسل', 'bg-emerald-600'], [0, '✖ لم يتم الغسل', 'bg-red-500']] as const).map(([val, l, cls]) => (
                       <button key={val} type="button" onClick={() => set(v.id, 'wash', d.wash === val ? null : val)}

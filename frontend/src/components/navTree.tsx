@@ -89,6 +89,9 @@ const icon = (d: string) => (
 // إدارة الخدمات بفواتيرها، والمشاريع). قائمة المدير والباقين ما تتغيّر.
 const TECH_ROLES: EmployeeRole[] = ['TECHNICAL', 'SERVICE_MANAGER']
 
+// قرار (ع) 10-09: عامل الغسل قائمته مقفلة على غسل السيارات + دوامه وتقييمه.
+export const CAR_WASHER_NAV = ['/', '/car-wash', '/attendance', '/leaves', '/my-ranking', '/privacy-policy']
+
 const TECHNICIAN_NAV = [
   '/', '/attendance', '/leaves', '/my-ranking', '/my-tasks', '/my-extra-tasks', '/my-inventory', '/my-achievements', '/my-work', '/privacy-policy',
 ]
@@ -108,6 +111,7 @@ export const navItems: NavItem[] = [
   // ترتيب (ع) 10-04: المتابعة والإجراءات وماتركس بند واحد «مكتب المدير» —
   // ينفتح على الثلاثة واحنا نختار.
   { to: '/?board=desk', label: '🏛️ مكتب المدير', icon: icon('M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6'), roles: ['ADMIN'] },
+  { to: '/car-wash', label: '🧽 غسل السيارات', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17h14l-1.5-6h-11z"/><circle cx="8" cy="18" r="1.5"/><circle cx="16" cy="18" r="1.5"/><path d="M9 7c0-1 1-2 1-3M13 7c0-1 1-2 1-3"/></svg>, roles: ['CAR_WASHER'] },
   { to: '/attendance', label: 'جدول دوامي', icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> },
   // ⚠️ مهامي الإضافية بلا قيد دور ولا صلاحية — هاي **مهام الموظف
   // نفسه**، مو مهام غيره. كانت محصورة بشاشة «مهامي» (فنيين فقط)،
@@ -361,6 +365,8 @@ export const navItems: NavItem[] = [
         // إدارة المشاريع صارت صلاحية: أي موظف عنده project_management يشوفها بغض النظر عن دوره
         to: '/mgmt-projects', label: 'إدارة المشاريع', icon: <></>,
         hideForRoles: TECH_ROLES,
+        // قرار (ع) 10-09: الي عنده «إضافة مشروع» أو «عرض سعر» بس يشوفها «المشاريع»
+        labelFor: (ctx) => (ctx.permissions.includes('project_management') || ['ADMIN', 'PROJECT_MANAGER'].includes(ctx.employee?.role ?? '') ? 'إدارة المشاريع' : 'المشاريع'),
         children: [
           { to: '/projects', label: '🏗️ المشاريع', icon: <></>, anyPermission: ['project_management', 'project_create_only'], unlockPermission: 'project_management', labelFor: projectsLabel },
           { to: '/project-work-types', label: 'إعدادات: أنواع الأعمال', icon: <></>, permission: 'project_management' },
@@ -429,13 +435,12 @@ export const navItems: NavItem[] = [
       },
       {
         // إدارة المركبات ما تظل معزولة بره قائمة الإدارة — صارت مجموعة فرعية هنا
-        to: '/mgmt-vehicles', label: 'المركبات والأسطول', icon: <></>,
+        to: '/mgmt-vehicles', label: 'المركبات', icon: <></>,
         children: [
           { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
-      { to: '/vehicle-tracking', label: '🚗 متابعة السيارات', icon: <></>, permission: 'vehicle_management' },
           { to: '/vehicle-tracking', label: '🚗 متابعة السيارات', icon: <></>, permission: 'vehicle_management' },
           // لوحة الأسطول جانت تحت «وحدة المشتريات والمخازن» — ما إلها علاقة
-          { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management' },
+          { to: '/fleet-dashboard', label: 'لوحة تحكم الأسطول', icon: <></>, permission: 'vehicle_management', hideForRoles: ['PROCUREMENT_ADMIN'] },
           // الحجز والمهمات — مساراتهم بالباك كلها requireVehicleMgmt
           { to: '/vehicle-bookings', label: 'حجز المركبات', icon: <></>, permission: 'vehicle_management' },
           { to: '/vehicle-missions', label: 'مهمات المركبات', icon: <></>, permission: 'vehicle_management' },
@@ -709,8 +714,7 @@ export const navItems: NavItem[] = [
       { to: '/procurement', label: 'طلبات المواد', icon: <></>, roles: ['ADMIN', 'MONITOR', 'PROJECT_MANAGER', 'TECHNICIAN', 'PROCUREMENT_ADMIN'], permission: 'procurement' },
       { to: '/suppliers', label: 'الموردون', icon: <></>, anyPermission: ['suppliers_management'] },
       { to: '/inventory', label: 'جرد الأدوات', icon: <></>, roles: ['ADMIN', 'HR_COORDINATOR', 'MONITOR', 'PROCUREMENT_ADMIN'], permission: 'inventory', hideForRoles: ['MONITOR'] },
-      // إدارة المركبات تظهر هنا كمان (مو بس بمجموعتها) — المخازن مسؤولة عنها
-      { to: '/vehicles', label: 'إدارة المركبات', icon: <></>, permission: 'vehicle_management' },
+      // قرار (ع) 10-09: إدارة المركبات انشالت من هنا — محلها «المركبات» جوّا العمل
       // لوحة تحكم الأسطول محلها هنا — المخازن هيه المسؤولة عن الأسطول
     ],
   },
@@ -837,6 +841,7 @@ export function isNavVisible(item: NavItem, ctx: NavContext, unitGranted = false
     // الفني العادي: قائمة مقفلة على شغله. العنصر الي إله رابط (مو
     // مجموعة) لازم يكون بالقائمة المسموحة، أو ينفتح بصلاحية منحها
     // المدير بيده — مو بصلاحية جات تلقائياً مع الدور.
+    if (role === 'CAR_WASHER' && !item.children && !item.divider && !CAR_WASHER_NAV.includes((item.to || '').split('?')[0])) return false
     if (isPlainTechnician && !item.children && !item.divider && !unitGranted) {
       const path = (item.to || '').split('?')[0]
       if (!TECHNICIAN_NAV.includes(path)) return false

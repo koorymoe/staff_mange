@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout'
 import RequireAdmin from './components/RequireAdmin'
 import RequirePermission from './components/RequirePermission'
+import { useSession } from './session'
 // TrainingPage is left as a regular eager import: Layout.tsx already imports it statically
 // (rendered directly, outside the router, for trainee accounts), so lazy-loading it here
 // wouldn't split it out of the main bundle anyway — it would just add a redundant chunk boundary.
@@ -145,6 +146,7 @@ const DailyAuditPage = lazy(() => import('./pages/DailyAuditPage'))
 const FinanceDeskPage = lazy(() => import('./pages/FinanceDeskPage'))
 const CostCalcPage = lazy(() => import('./pages/CostCalcPage'))
 const VehicleTrackingPage = lazy(() => import('./pages/VehicleTrackingPage'))
+const CarWashPage = lazy(() => import('./pages/CarWashPage'))
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'))
 const MonitorDeskPage = lazy(() => import('./pages/MonitorDeskPage'))
 const StaffManagementDeskPage = lazy(() => import('./pages/StaffManagementDeskPage'))
@@ -163,7 +165,8 @@ function App() {
       <Routes>
         <Route path="design-forms/public/:token" element={<PublicDesignFormPage />} />
         <Route path="/" element={<Layout />}>
-          <Route index element={<Dashboard />} />
+          <Route index element={<Home />} />
+          <Route path="car-wash" element={<CarWashPage />} />
           <Route path="employees" element={<Employees />} />
           <Route path="work-schedule" element={<WorkSchedulePage />} />
           <Route path="remote-hours" element={<RemoteHoursPage />} />
@@ -345,3 +348,9 @@ function App() {
 }
 
 export default App
+
+// عامل الغسل صفحته الرئيسية غسل السيارات — اللوحة العامة تنادي مسارات مو إله.
+function Home() {
+  const { employee } = useSession()
+  return employee?.role === 'CAR_WASHER' ? <Navigate to="/car-wash" replace /> : <Dashboard />
+}

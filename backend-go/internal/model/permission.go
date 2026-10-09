@@ -101,12 +101,12 @@ var DefaultPermissions = []Permission{
 	{Name: "project_management", Label: "إدارة المشاريع (كاملة)"},
 	// صلاحية مبسّطة: يضيف مشروع وتفاصيله فقط — ما يشوف الإحصائيات ولا التقارير
 	// ولا استمارة الكشف ولا يقدر يرحّل مراحل. تُمنح لأي موظف (حتى ليدر).
-	{Name: "project_create_only", Label: "إضافة مشروع فقط (بدون إحصائيات ولا تقارير)"},
+	{Name: "project_create_only", Label: "إضافة مشروع (تطلع «المشاريع ← إضافة مشروع» بالعمل)"},
 	// عروض الأسعار: ثلاث درجات متدرجة (يُمنح واحدة منهن للموظف عادةً، مو أكثر
 	// من وحدة مع بعض) — "quotation_system" القديمة تبقى تشتغل بمفعول
 	// quotation_manage_all لأي موظف كانت ممنوحة له سابقاً، بس ما تظهر هنا
 	// كخيار جديد حتى ما تختلط الدرجات على المدير.
-	{Name: "quotation_create", Label: "عروض الأسعار: إضافة فقط (بدون اطلاع على العروض القديمة)"},
+	{Name: "quotation_create", Label: "عمل عرض سعر (يطلع «عروض الأسعار» داخل المشاريع)"},
 	{Name: "quotation_edit_own", Label: "عروض الأسعار: إضافة وتعديل (عروضي فقط)"},
 	{Name: "quotation_manage_all", Label: "عروض الأسعار: إضافة وتعديل واطلاع (كل العروض)"},
 	{Name: "finance", Label: "المالية"},
@@ -211,6 +211,7 @@ var RoleDefaultPermissions = map[string][]string{
 	"QUALITY_ENGINEER":  {"auditing", "complaints", "quality_control", "sales_booking", "kpi_management"},
 	"ENGINEER":          {"expenses", "quotation_manage_all", "project_management"},
 	"PROCUREMENT_ADMIN": {"procurement", "inventory", "tool_requests_approve"},
+	"CAR_WASHER":        {},
 	// ⚠️ بلا `view_bookings`: قراره الصريح إن المصممة **ما تشوف
 	// الحجوزات** — شغلها الفورمة والتصاميم والمهام الموجّهة لها.
 	"DESIGNER":        {"design_forms", "design_gallery", "unit_design"},

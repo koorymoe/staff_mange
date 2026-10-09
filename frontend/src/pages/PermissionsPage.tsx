@@ -83,6 +83,15 @@ export default function PermissionsPage() {
 
   const selectedEmployee = employees.find((e) => e.id === selectedEmployeeId)
   const defaults = selectedEmployee ? (roleDefaults[selectedEmployee.role] || []) : []
+  // (ع) 10-09: «ماناطي صلاحية شون تطلعله؟» — الصلاحيات الزايدة على دوره (ودوره
+  // الثانوي) تبقى من منح قديم أو دور سابق، و«تطبيق الافتراضي» يضيف بس ما يشيل.
+  const allDefaults = selectedEmployee
+    ? [selectedEmployee.role, ...(selectedEmployee.secondaryRoles ?? [])].flatMap((r) => roleDefaults[r] || [])
+    : []
+  const extras = selectedEmployee && selectedEmployee.role !== 'ADMIN' && selectedEmployee.role !== 'OWNER'
+    ? employeePerms.filter((n) => !allDefaults.includes(n))
+    : []
+  const labelOf = (n: string) => permissions.find((p) => p.name === n)?.label ?? n
 
   // درجات عروض الأسعار الثلاث متبادلة (راديو) — تفعيل وحدة يلغي البقية تلقائياً
   // حتى ما ينمنح موظف أكثر من مستوى وحدة بالغلط.
@@ -388,6 +397,26 @@ export default function PermissionsPage() {
                   </button>
                 )}
               </div>
+
+              {extras.length > 0 && !permsLoadFailed && (
+                <div className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm">
+                  <p className="font-bold text-amber-900">⚠️ عنده {extras.length} صلاحية زايدة على دوره ({roleLabel(selectedEmployee.role)}):</p>
+                  <p className="mt-1 text-xs leading-relaxed text-amber-800">{extras.map(labelOf).join(' · ')}</p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => {
+                        if (!window.confirm(`تنشال هاي الصلاحيات من ${selectedEmployee.name}:\n\n${extras.map(labelOf).join('\n')}\n\nوبعدين اضغط «حفظ».`)) return
+                        setEmployeePerms((prev) => prev.filter((n) => allDefaults.includes(n)))
+                        setSuccessMsg('انشال الزايد — راجع وأشّر الي تريده، وبعدين اضغط «حفظ»')
+                      }}
+                      className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-700"
+                    >
+                      شيل الزايد
+                    </button>
+                    <span className="text-[11px] text-amber-700">ما ينحفظ إلا تضغط «حفظ».</span>
+                  </div>
+                </div>
+              )}
 
               {/* 🔴 الجلب فشل: الحفظ **استبدال** فيمسح كل صلاحياته */}
               {permsLoadFailed && (

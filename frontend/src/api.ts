@@ -114,6 +114,7 @@ export type EmployeeRole =
   | 'IT_SUPPORT'
   | 'MEDIA'
   | 'PUBLIC_RELATIONS'
+  | 'CAR_WASHER'
   | 'OWNER'
 
 export interface Employee {
@@ -4551,6 +4552,9 @@ export const api = {
   getVehicleTracking: (period: string) => request<VehicleTracking>(`/vehicles/tracking?period=${period}`),
   mergeTrackingVehicle: (fromId: string, toId: string) =>
     request<{ ok: boolean }>('/vehicles/tracking/merge', { method: 'POST', body: JSON.stringify({ fromId, toId }) }),
+  getCarWash: (date?: string) => request<{ date: string; vehicles: CarWashVehicle[] }>(`/car-wash${date ? `?date=${date}` : ''}`),
+  markCarWashed: (vehicleId: string) => request<{ ok: boolean }>(`/car-wash/${vehicleId}`, { method: 'POST' }),
+  unmarkCarWashed: (vehicleId: string) => request<{ ok: boolean }>(`/car-wash/${vehicleId}`, { method: 'DELETE' }),
   saveVehicleTrackingDay: (date: string, rows: Record<string, unknown>[]) =>
     request<{ ok: boolean }>('/vehicles/tracking/day', { method: 'PUT', body: JSON.stringify({ date, rows }) }),
   getFundTxnReceipt: (id: string) => request<{ receiptImage: string }>(`/funds/transactions/${id}/receipt`),
@@ -5918,4 +5922,10 @@ export interface VehicleTrackStats {
 }
 export interface VehicleTracking {
   from: string; to: string; vehicles: { id: string; name: string; temp: boolean }[]; ratings: VehicleTrackRating[]; stats: VehicleTrackStats[]
+}
+
+// 🧽 غسل السيارات (عامل الغسل — (ع) 10-09)
+export interface CarWashVehicle {
+  vehicleId: string; name: string; plateNumber: string
+  washedAt: string | null; washedBy: string | null; washedById: string | null
 }

@@ -135,10 +135,27 @@ export default function MyInventory() {
 
   // تبديل الحجز يرجّع الشاشة لحالة «ما جردت» — وإلا الفني يجرد لحجز
   // ويبدّل لحجز ثاني ويلگاه مأشّر «انحفظ»، فيطلع بلا جرد.
+  // (ع) 10-09: الجرد قبل الحجز جان يعرض الأدوات القديمة بعد ما تنعدّل — القائمة
+  // تنجلب مرة وحدة وقت فتح الشاشة. هسه تنجلب من جديد بكل اختيار حجز وبكل رجعة
+  // للشاشة، مثل الجرد اليومي بالضبط.
+  const refreshTools = () => {
+    if (!employee) return
+    api.getPersonalTools(employee.id).then((pt) => {
+      setPersonalTools(pt)
+      setCheckMap(Object.fromEntries(pt.map((t) => [t.id, true])))
+    }).catch(() => {})
+  }
+  useEffect(() => {
+    const onFocus = () => { if (document.visibilityState === 'visible') refreshTools() }
+    document.addEventListener('visibilitychange', onFocus)
+    return () => document.removeEventListener('visibilitychange', onFocus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee])
   const pickBooking = (bookingId: string) => {
     setForBooking(bookingId)
     setCheckDone(false)
     setCheckMap(Object.fromEntries(personalTools.map((t) => [t.id, true])))
+    refreshTools()
     loadCrew(bookingId)
   }
 
