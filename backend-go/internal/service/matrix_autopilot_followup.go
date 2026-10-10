@@ -897,3 +897,24 @@ func (s *MatrixAutopilotService) procurementWatch(today, week string, dayStart t
 	}
 	return n, nil
 }
+
+// ١٩. دفعات مشاريع ما أكدها المحاسب من +٤٨ ساعة — طلب (ع) 10-10: «لازم المحاسب
+// يفحصهن». مرة باليوم للمحاسبين، لحد ما تتأكد أو تنلغي.
+func (s *MatrixAutopilotService) paymentsUnverified(today string, dayStart time.Time) (int, error) {
+	n, sum, top, err := s.actions.UnverifiedProjectPayments()
+	if err != nil || n == 0 {
+		return 0, err
+	}
+	msg := fmt.Sprintf("🤖 ماتركس — %d دفعة مشاريع بمجموع %.0f د.ع صارلها أكثر من يومين تنتظر تأكيدك", n, sum)
+	if top != "" {
+		msg += "، أكبرها بمشروع " + top
+	}
+	msg += ". افتح «💰 فلوس المشاريع ← ⏳ تنتظر تأكيد» واضغط «✔ وصلت» على الي وصلت فعلاً."
+	if s.act(model.AiAction{Kind: model.AiActionPaymentsUnverified, EntityType: "PAYMENTS", EntityID: "all", Period: today,
+		Summary: fmt.Sprintf("ذكّر المحاسب: %d دفعة مشاريع ما تأكدت", n),
+		Details: why(map[string]any{"count": n, "sum": sum, "top": top})}, dayStart,
+		func() error { return s.notif.CreateForRolesOrPermission([]string{"FINANCE"}, "finance_audit", "AI_AUTOPILOT", msg) }) {
+		return 1, nil
+	}
+	return 0, nil
+}

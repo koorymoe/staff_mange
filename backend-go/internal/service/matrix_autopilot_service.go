@@ -123,6 +123,7 @@ func (s *MatrixAutopilotService) runActions(now time.Time) int {
 		func() (int, error) { return s.projectIdleToday(today, dayStart) },
 		func() (int, error) { return s.projectOverLimit(today, dayStart) },
 		func() (int, error) { return s.procurementWatch(today, week, dayStart) },
+		func() (int, error) { return s.paymentsUnverified(today, dayStart) },
 	}
 	for _, step := range steps {
 		c, err := step()

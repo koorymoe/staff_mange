@@ -9,28 +9,29 @@ import (
 // أنواع أفعال ماتركس — كلها تذكيرات وتنبيهات، ماكو فعل يلمس فلوس أو
 // عقوبة أو تكليف كادر.
 const (
-	AiActionPaperworkReminder = "PAPERWORK_REMINDER"  // الليدر: ورق متأخر
-	AiActionDelayWarning      = "DELAY_WARNING"       // الليدر: حجز اليوم متوقع يطوّل
-	AiActionCustomerFollowUp  = "CUSTOMER_FOLLOWUP"   // الجودة: زبون قريب يزعل
-	AiActionUnstaffedAlert    = "UNSTAFFED_ALERT"     // التنسيق: حجز باچر بلا كادر
-	AiActionReplacementAlert  = "REPLACEMENT_ALERT"   // الآيتي/الأسطول: جهاز أو سيارة تكلّف
-	AiActionGpsExpiry         = "GPS_EXPIRY"          // البائع: اشتراك جي بي اس قرب يخلص
-	AiActionVehicleDocExpiry  = "VEHICLE_DOC_EXPIRY"  // الأسطول: وثيقة سيارة قربت تخلص
-	AiActionExtraTaskOverdue  = "EXTRA_TASK_OVERDUE"  // الموظف: مهمة إضافية فات موعدها
-	AiActionAttendanceNudge   = "ATTENDANCE_NUDGE"    // الموظف: عنده شغل اليوم وما سجّل حضور
-	AiActionLowStock          = "LOW_STOCK"           // المخزن: أداة قربت تخلص
-	AiActionInvoiceApproval   = "INVOICE_APPROVAL"    // المحاسبة: فاتورة تنتظر اعتماد
-	AiActionPredictionNudge   = "PREDICTION_NUDGE"    // الموظف: توقّع ماتركس وافق عليه المدير
-	AiActionCrewRating        = "CREW_RATING"         // الليدر: خلّص حجز وما قيّم فنيّيه
-	AiActionAfterInventory    = "AFTER_INVENTORY"     // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
-	AiActionProjectIdleToday  = "PROJECT_IDLE_TODAY"  // مسؤول مشاريع ما سوّى شي اليوم
-	AiActionProjectOverLimit  = "PROJECT_OVER_LIMIT"  // مشروع تجاوز حد مرحلته بلا سبب مكتوب
-	AiActionProcPending       = "PROC_PENDING"        // أبو الكميات: طلبات مواد/أدوات معلّقة
-	AiActionVehiclesUnrated   = "VEHICLES_UNRATED"    // أبو الكميات: سيارات ما انقيّمت اليوم
-	AiActionShortageOpen      = "SHORTAGE_OPEN"       // أبو الكميات: نواقص جرد ما انحلت
-	AiActionFleetOverdue      = "FLEET_OVERDUE"       // أبو الكميات: صيانة أو وثيقة فات موعدها
-	AiActionInternalNoInvoice = "INTERNAL_NO_INVOICE" // المراقب: أعمال داخلية خلصت وبلا فاتورة من إداري الكوادر
-	AiActionMonitorBacklog    = "MONITOR_BACKLOG"     // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
+	AiActionPaperworkReminder  = "PAPERWORK_REMINDER"  // الليدر: ورق متأخر
+	AiActionDelayWarning       = "DELAY_WARNING"       // الليدر: حجز اليوم متوقع يطوّل
+	AiActionCustomerFollowUp   = "CUSTOMER_FOLLOWUP"   // الجودة: زبون قريب يزعل
+	AiActionUnstaffedAlert     = "UNSTAFFED_ALERT"     // التنسيق: حجز باچر بلا كادر
+	AiActionReplacementAlert   = "REPLACEMENT_ALERT"   // الآيتي/الأسطول: جهاز أو سيارة تكلّف
+	AiActionGpsExpiry          = "GPS_EXPIRY"          // البائع: اشتراك جي بي اس قرب يخلص
+	AiActionVehicleDocExpiry   = "VEHICLE_DOC_EXPIRY"  // الأسطول: وثيقة سيارة قربت تخلص
+	AiActionExtraTaskOverdue   = "EXTRA_TASK_OVERDUE"  // الموظف: مهمة إضافية فات موعدها
+	AiActionAttendanceNudge    = "ATTENDANCE_NUDGE"    // الموظف: عنده شغل اليوم وما سجّل حضور
+	AiActionLowStock           = "LOW_STOCK"           // المخزن: أداة قربت تخلص
+	AiActionInvoiceApproval    = "INVOICE_APPROVAL"    // المحاسبة: فاتورة تنتظر اعتماد
+	AiActionPredictionNudge    = "PREDICTION_NUDGE"    // الموظف: توقّع ماتركس وافق عليه المدير
+	AiActionCrewRating         = "CREW_RATING"         // الليدر: خلّص حجز وما قيّم فنيّيه
+	AiActionAfterInventory     = "AFTER_INVENTORY"     // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
+	AiActionProjectIdleToday   = "PROJECT_IDLE_TODAY"  // مسؤول مشاريع ما سوّى شي اليوم
+	AiActionProjectOverLimit   = "PROJECT_OVER_LIMIT"  // مشروع تجاوز حد مرحلته بلا سبب مكتوب
+	AiActionProcPending        = "PROC_PENDING"        // أبو الكميات: طلبات مواد/أدوات معلّقة
+	AiActionVehiclesUnrated    = "VEHICLES_UNRATED"    // أبو الكميات: سيارات ما انقيّمت اليوم
+	AiActionShortageOpen       = "SHORTAGE_OPEN"       // أبو الكميات: نواقص جرد ما انحلت
+	AiActionFleetOverdue       = "FLEET_OVERDUE"       // أبو الكميات: صيانة أو وثيقة فات موعدها
+	AiActionPaymentsUnverified = "PAYMENTS_UNVERIFIED" // المحاسب: دفعات مشاريع ما تأكدت +٤٨ ساعة
+	AiActionInternalNoInvoice  = "INTERNAL_NO_INVOICE" // المراقب: أعمال داخلية خلصت وبلا فاتورة من إداري الكوادر
+	AiActionMonitorBacklog     = "MONITOR_BACKLOG"     // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
 	// ── أفعال تنفيذية (المرحلة الثالثة) — كل وحدة بمفتاح المالك وتنرجع ──
 	AiActionAutoCrew        = "AUTO_CREW"        // ماتركس كلّف كادر حجز باچر (بعد بوابة الدقة)
 	AiActionMonitorEscalate = "MONITOR_ESCALATE" // بنود المراقب +٤٨ ساعة صعدت للمدير
@@ -51,32 +52,33 @@ const (
 
 // AiActionLabels اسم الفعل للعرض.
 var AiActionLabels = map[string]string{
-	AiActionPaperworkReminder: "تذكير بالورق المتأخر",
-	AiActionDelayWarning:      "تنبيه تأخير لليدر",
-	AiActionCustomerFollowUp:  "متابعة زبون قريب يزعل",
-	AiActionUnstaffedAlert:    "حجز باچر بلا كادر",
-	AiActionReplacementAlert:  "اقتراح استبدال",
-	AiActionGpsExpiry:         "اشتراك جي بي اس يخلص",
-	AiActionVehicleDocExpiry:  "وثيقة سيارة تخلص",
-	AiActionExtraTaskOverdue:  "مهمة إضافية متأخرة",
-	AiActionAttendanceNudge:   "تذكير تسجيل الحضور",
-	AiActionLowStock:          "أداة قربت تخلص بالمخزن",
-	AiActionInvoiceApproval:   "فاتورة تنتظر اعتماد",
-	AiActionPredictionNudge:   "تذكير بعد توقّع",
-	AiActionCrewRating:        "تقييم الفنيين بعد الحجز",
-	AiActionAfterInventory:    "جرد العدّة بعد الحجز",
-	AiActionMonitorBacklog:    "بنود متأخرة بصندوق المراقب",
-	AiActionInternalNoInvoice: "أعمال داخلية بلا فاتورة",
-	AiActionProcPending:       "طلبات مواد وأدوات معلّقة",
-	AiActionVehiclesUnrated:   "سيارات ما انقيّمت اليوم",
-	AiActionShortageOpen:      "نواقص جرد ما انحلت",
-	AiActionFleetOverdue:      "صيانة أو وثيقة سيارة فات موعدها",
-	AiActionProjectIdleToday:  "ما اشتغل اليوم على مشاريعه",
-	AiActionProjectOverLimit:  "مشروع تجاوز حد المرحلة",
-	AiActionAutoCrew:          "ماتركس كلّف كادر حجز باچر",
-	AiActionMonitorEscalate:   "تصعيد بنود المراقب للمدير",
-	AiActionToolReturn:        "تذكير بإرجاع أداة",
-	AiActionWatchDigest:       "ملخّص عيون الرقابة للمراقب",
+	AiActionPaperworkReminder:  "تذكير بالورق المتأخر",
+	AiActionDelayWarning:       "تنبيه تأخير لليدر",
+	AiActionCustomerFollowUp:   "متابعة زبون قريب يزعل",
+	AiActionUnstaffedAlert:     "حجز باچر بلا كادر",
+	AiActionReplacementAlert:   "اقتراح استبدال",
+	AiActionGpsExpiry:          "اشتراك جي بي اس يخلص",
+	AiActionVehicleDocExpiry:   "وثيقة سيارة تخلص",
+	AiActionExtraTaskOverdue:   "مهمة إضافية متأخرة",
+	AiActionAttendanceNudge:    "تذكير تسجيل الحضور",
+	AiActionLowStock:           "أداة قربت تخلص بالمخزن",
+	AiActionInvoiceApproval:    "فاتورة تنتظر اعتماد",
+	AiActionPredictionNudge:    "تذكير بعد توقّع",
+	AiActionCrewRating:         "تقييم الفنيين بعد الحجز",
+	AiActionAfterInventory:     "جرد العدّة بعد الحجز",
+	AiActionMonitorBacklog:     "بنود متأخرة بصندوق المراقب",
+	AiActionInternalNoInvoice:  "أعمال داخلية بلا فاتورة",
+	AiActionPaymentsUnverified: "دفعات مشاريع تنتظر تأكيد المحاسب",
+	AiActionProcPending:        "طلبات مواد وأدوات معلّقة",
+	AiActionVehiclesUnrated:    "سيارات ما انقيّمت اليوم",
+	AiActionShortageOpen:       "نواقص جرد ما انحلت",
+	AiActionFleetOverdue:       "صيانة أو وثيقة سيارة فات موعدها",
+	AiActionProjectIdleToday:   "ما اشتغل اليوم على مشاريعه",
+	AiActionProjectOverLimit:   "مشروع تجاوز حد المرحلة",
+	AiActionAutoCrew:           "ماتركس كلّف كادر حجز باچر",
+	AiActionMonitorEscalate:    "تصعيد بنود المراقب للمدير",
+	AiActionToolReturn:         "تذكير بإرجاع أداة",
+	AiActionWatchDigest:        "ملخّص عيون الرقابة للمراقب",
 }
 
 // AiAction فعل واحد نفّذه ماتركس لحاله.

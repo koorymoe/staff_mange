@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { matches } from '../utils/search'
+import { Link } from 'react-router-dom'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -84,6 +85,10 @@ export default function ProjectStatisticsPage() {
   if (!data) return null
 
   const ov = data.overview
+  // قرار (ع) 10-10: الفلوس المستلمة والي تنتظر تأكيد المحاسب — من الدفعات نفسها
+  const received = data.projects.reduce((a, p) => a + (p.paidAmount || 0), 0)
+  const pendingAmt = data.projects.reduce((a, p) => a + (p.unverifiedAmount || 0), 0)
+  const pendingProjects = data.projects.filter((p) => (p.unverifiedAmount || 0) > 0).length
   const maxStage = Math.max(1, ...STAGE_ORDER.map((s) => ov.stageBreakdown[s] || 0))
 
   return (
@@ -96,9 +101,16 @@ export default function ProjectStatisticsPage() {
       {/* أرقام عامة */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card label="عدد المشاريع" value={ov.totalProjects.toLocaleString()} tone="brand" />
-        <Card label="القيمة الإجمالية" value={`${money(ov.totalValue)} د.ع`} tone="green"
-          hint={`${ov.pricedProjects} مشروع مُسعَّر من ${ov.totalProjects}`} />
-        <Card label="معدّل قيمة المشروع" value={`${money(ov.averageValue)} د.ع`} tone="amber" />
+        <Card label="القيمة الإجمالية (من السعر المكتوب)" value={`${money(ov.totalValue)} د.ع`} tone="green"
+          hint={`⚠️ بس ${ov.pricedProjects} مشروع مكتوب سعره من ${ov.totalProjects}`} />
+        <Card label="معدّل قيمة المشروع" value={`${money(ov.averageValue)} د.ع`} tone="amber"
+          hint={`معدّل الـ${ov.pricedProjects} المُسعّرة بس`} />
+        <Card label="💰 المستلم من المشاريع" value={`${money(received)} د.ع`} tone="green"
+          hint={`من دفعات ${data.projects.filter((p) => (p.paidAmount || 0) > 0).length} مشروع`} />
+        <Link to="/project-payments?tab=pending" className="block">
+          <Card label="⏳ تنتظر تأكيد المحاسب" value={`${money(pendingAmt)} د.ع`} tone="amber"
+            hint={pendingProjects ? `${pendingProjects} مشروع — اضغط حتى تأكدها` : 'كلها متأكدة ✅'} />
+        </Link>
         <Card label="مشاريع موجّهة لموظفين" value={ov.delegatedCount.toLocaleString()} tone="violet" />
         <Card label="قيد التنفيذ" value={ov.activeCount.toLocaleString()} tone="blue"
           hint={`بقيمة ${money(ov.inProgressValue)} د.ع`} />

@@ -703,6 +703,20 @@ func (r *AiActionRepository) VehiclesUnratedToday() ([]string, error) {
 	return r.procScore().VehiclesUnratedToday()
 }
 func (r *AiActionRepository) FleetOverdue() ([]string, error) { return r.procScore().FleetOverdue() }
+// UnverifiedProjectPayments دفعات مشاريع ما أكدها المحاسب من +٤٨ ساعة (قرار (ع) 10-10).
+func (r *AiActionRepository) UnverifiedProjectPayments() (int, float64, string, error) {
+	var n int
+	var sum float64
+	var top string
+	err := r.db.QueryRow(`SELECT count(*), COALESCE(sum(pp.amount), 0),
+		COALESCE((SELECT p.name || ' (' || p.code || ')' FROM "ProjectPayment" x JOIN "Project" p ON p.id = x."projectId"
+		  WHERE x."verifiedAt" IS NULL AND x."cancelledAt" IS NULL AND x."createdAt" < now() - interval '48 hours'
+		  GROUP BY p.id, p.name, p.code ORDER BY sum(x.amount) DESC LIMIT 1), '')
+		FROM "ProjectPayment" pp WHERE pp."verifiedAt" IS NULL AND pp."cancelledAt" IS NULL AND pp."createdAt" < now() - interval '48 hours'`).
+		Scan(&n, &sum, &top)
+	return n, sum, top, err
+}
+
 func (r *AiActionRepository) ProcurementAdmins() ([]string, error) {
 	ids := []string{}
 	err := r.db.Select(&ids, `SELECT id FROM "Employee" WHERE status = 'ACTIVE' AND role::text = 'PROCUREMENT_ADMIN'`)
