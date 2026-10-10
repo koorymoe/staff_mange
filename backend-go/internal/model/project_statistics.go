@@ -7,24 +7,25 @@ package model
 
 // ProjectValueRow مشروع واحد بقيمته المالية والأشخاص المرتبطين بيه.
 type ProjectValueRow struct {
-	ID              string   `db:"id" json:"id"`
-	Code            string   `db:"code" json:"code"`
-	Name            string   `db:"name" json:"name"`
-	Stage           string   `db:"stage" json:"stage"`
-	WorkType        *string  `db:"workType" json:"workType"`
-	Priority        string   `db:"priority" json:"priority"`
-	PriceRaw        *string  `db:"price" json:"priceRaw"`
-	PriceValue      *float64 `db:"priceValue" json:"priceValue"`
+	ID         string   `db:"id" json:"id"`
+	Code       string   `db:"code" json:"code"`
+	Name       string   `db:"name" json:"name"`
+	Stage      string   `db:"stage" json:"stage"`
+	WorkType   *string  `db:"workType" json:"workType"`
+	Priority   string   `db:"priority" json:"priority"`
+	PriceRaw   *string  `db:"price" json:"priceRaw"`
+	PriceValue *float64 `db:"priceValue" json:"priceValue"`
 	// قرار (ع) 10-09: الدفعات وعرض السعر جنب السعر المكتوب
 	QuotedAmount     *float64 `db:"quotedAmount" json:"quotedAmount"`
 	PaidAmount       float64  `db:"paidAmount" json:"paidAmount"`
 	UnverifiedAmount float64  `db:"unverifiedAmount" json:"unverifiedAmount"`
-	CreatedByName   *string  `db:"createdByName" json:"createdByName"`
-	ResponsibleName *string  `db:"responsibleName" json:"responsibleName"`
-	SurveyorName    *string  `db:"surveyorName" json:"surveyorName"`
-	DelegatedToName *string  `db:"delegatedToName" json:"delegatedToName"`
-	HasSurvey       bool     `db:"hasSurvey" json:"hasSurvey"`
-	CreatedAt       string   `db:"createdAt" json:"createdAt"`
+	CreatedByName    *string  `db:"createdByName" json:"createdByName"`
+	ResponsibleName  *string  `db:"responsibleName" json:"responsibleName"`
+	ResponsibleID    *string  `db:"responsibleId" json:"responsibleId"`
+	SurveyorName     *string  `db:"surveyorName" json:"surveyorName"`
+	DelegatedToName  *string  `db:"delegatedToName" json:"delegatedToName"`
+	HasSurvey        bool     `db:"hasSurvey" json:"hasSurvey"`
+	CreatedAt        string   `db:"createdAt" json:"createdAt"`
 }
 
 // ProjectEmployeeStatRow إحصائية موظف واحد داخل المشاريع.

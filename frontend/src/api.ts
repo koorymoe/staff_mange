@@ -5025,6 +5025,8 @@ export const api = {
     request<ProjectPaymentsState>(`/projects/${projectId}/payments`, { method: 'POST', body: JSON.stringify(body) }),
   verifyProjectPayment: (id: string) => request<ProjectPaymentsState>(`/project-payments/${id}/verify`, { method: 'POST' }),
   cancelProjectPayment: (id: string, reason: string) => request<ProjectPaymentsState>(`/project-payments/${id}/cancel`, { method: 'POST', body: JSON.stringify({ reason }) }),
+  fillProjectInfo: (projectId: string, body: { price?: string; responsibleId?: string }) =>
+    request<{ ok: boolean }>(`/projects/${projectId}/fill-info`, { method: 'PUT', body: JSON.stringify(body) }),
   setProjectContractValue: (projectId: string, amount: number) => request<ProjectPaymentsState>(`/projects/${projectId}/contract-value`, { method: 'PUT', body: JSON.stringify({ amount }) }),
   getProjectMoneyOverview: () => request<ProjectMoney[]>('/project-payments/overview'),
   getMyAttendanceToday: () => request<AttendanceRecord | null>('/attendance/mine'),

@@ -1,6 +1,10 @@
 package repository
 
-import "staffmange-api/internal/model"
+import (
+	"database/sql"
+
+	"staffmange-api/internal/model"
+)
 
 // priceValueExpr يحوّل عمود السعر (نص حر يكتبه المستخدم مثل "1,500,000 د.ع")
 // لرقم: نشيل كل شي مو رقم، ولو ما ضل شي نرجّع NULL بدل ما نطيح الاستعلام.
@@ -15,7 +19,7 @@ func (r *ProjectRepository) ProjectValueRows() ([]model.ProjectValueRow, error) 
 			(SELECT q."netTotal" FROM "Quotation" q WHERE q."projectId" = p.id ORDER BY q."createdAt" DESC LIMIT 1) AS "quotedAmount",
 			COALESCE(pp.paid, 0) AS "paidAmount", COALESCE(pp.unverified, 0) AS "unverifiedAmount",
 			c.name AS "createdByName",
-			resp.name AS "responsibleName",
+			resp.name AS "responsibleName", p."responsibleEmployeeId" AS "responsibleId",
 			surv.name AS "surveyorName",
 			deleg.name AS "delegatedToName",
 			(p.survey IS NOT NULL) AS "hasSurvey",
@@ -60,4 +64,21 @@ func (r *ProjectRepository) ProjectEmployeeStats() ([]model.ProjectEmployeeStatR
 		}
 	}
 	return active, nil
+}
+
+// FillInfo يكمّل معلومات المشروع الناقصة من الإحصائيات — طلب (ع) 10-10:
+// «كل المعلومات المبهمة تنكتب لمرة وحدة». الفارغ ما يمسح الموجود.
+func (r *ProjectRepository) FillInfo(id string, price, responsibleID *string) error {
+	res, err := r.db.Exec(`UPDATE "Project" SET
+		price = COALESCE(NULLIF(btrim($2), ''), price),
+		"responsibleEmployeeId" = COALESCE(NULLIF($3, ''), "responsibleEmployeeId"),
+		"updatedAt" = now()
+		WHERE id = $1`, id, price, responsibleID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

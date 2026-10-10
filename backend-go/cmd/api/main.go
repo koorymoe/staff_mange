@@ -1507,6 +1507,7 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// صلاحية project_management الممنوحة يدوياً، وهذا المسار كان الوحيد المقيّد
 	// بالدور — فمهندس عنده الصلاحية يشوف رابط "إحصائيات المشاريع" بقائمته ويوكع بـ403.
 	mux.Handle("GET /api/projects/statistics", middleware.Chain(http.HandlerFunc(projectHandler.Statistics), requireAuth, requireProjectMgmt))
+	mux.Handle("PUT /api/projects/{id}/fill-info", middleware.Chain(http.HandlerFunc(projectHandler.FillInfo), requireAuth, requireProjectMgmt))
 	mux.Handle("GET /api/projects/{id}/delegation-log", middleware.Chain(http.HandlerFunc(projectHandler.DelegationLog), requireAuth, requireProjectManager))
 	// التسليم/السحب بيد مدير المشاريع بس — الموظف المُسلَّم إله ما يقدر يسلّمه لغيره
 	mux.Handle("PUT /api/projects/{id}/delegate", middleware.Chain(http.HandlerFunc(projectHandler.Delegate), requireAuth, requireProjectManager))

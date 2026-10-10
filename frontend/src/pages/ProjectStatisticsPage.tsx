@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { matches } from '../utils/search'
 import { Link } from 'react-router-dom'
+import ProjectFillInfo from '../components/ProjectFillInfo'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api'
 
@@ -19,7 +20,7 @@ interface ProjectRow {
   workType: string | null; priority: string
   priceRaw: string | null; priceValue: number | null
   quotedAmount: number | null; paidAmount: number; unverifiedAmount: number
-  createdByName: string | null; responsibleName: string | null
+  createdByName: string | null; responsibleName: string | null; responsibleId: string | null
   surveyorName: string | null; delegatedToName: string | null
   hasSurvey: boolean; createdAt: string
 }
@@ -53,12 +54,18 @@ const STAGE_ICON: Record<string, string> = {
   اتصال: '📞', كشف: '🔍', سعر: '💰', عقد: '📄', تنفيذ: '🛠️', مكتمل: '✅', مرفوض: '❌',
 }
 
+// ناقص = ماكو سعر مكتوب أو ماكو مسؤول (المرفوض ما يهم)
+const isMissing = (p: ProjectRow) => !p.stage.includes('مرفوض') && (p.priceValue == null || !p.responsibleId)
+
 export default function ProjectStatisticsPage() {
   const [data, setData] = useState<StatsResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<'projects' | 'employees'>('projects')
   const [search, setSearch] = useState('')
+  const [onlyMissing, setOnlyMissing] = useState(false)
+  const [editing, setEditing] = useState<ProjectRow | null>(null)
+  const [reload, setReload] = useState(0)
   // ترتيب جدول الموظفين حسب العمود الي يهم المدير هالوقت
   const [empSort, setEmpSort] = useState<keyof EmployeeRow>('responsibleCount')
 
@@ -67,14 +74,15 @@ export default function ProjectStatisticsPage() {
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : 'تعذر جلب الإحصائيات'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [reload])
 
   const projects = useMemo(() => {
     if (!data) return []
-    if (!search.trim()) return data.projects
-    return data.projects.filter((p) =>
+    const base = onlyMissing ? data.projects.filter(isMissing) : data.projects
+    if (!search.trim()) return base
+    return base.filter((p) =>
       matches([p.code, p.name, p.stage, p.workType, p.responsibleName, p.surveyorName, p.delegatedToName, p.createdByName], search))
-  }, [data, search])
+  }, [data, search, onlyMissing])
 
   const employees = useMemo(() => {
     if (!data) return []
@@ -153,14 +161,25 @@ export default function ProjectStatisticsPage() {
         </button>
       </div>
 
+      {editing && <ProjectFillInfo p={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); setReload((r) => r + 1) }} />}
+
       {tab === 'projects' && (
         <div className="rounded-xl border border-white bg-white p-5 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="🔍 بحث بالكود، الاسم، المرحلة، أو اسم الموظف..."
-            className="mb-4 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm outline-none focus:border-[var(--color-brand-500)]"
+            className="mb-3 w-full rounded-lg border border-slate-300 px-4 py-2 text-sm outline-none focus:border-[var(--color-brand-500)]"
           />
+          {(() => {
+            const n = data.projects.filter(isMissing).length
+            return n > 0 || onlyMissing ? (
+              <button type="button" onClick={() => setOnlyMissing((v) => !v)}
+                className={`mb-4 rounded-lg px-3 py-1.5 text-xs font-bold ${onlyMissing ? 'bg-amber-500 text-white' : 'border border-amber-300 bg-amber-50 text-amber-800'}`}>
+                {onlyMissing ? '✕ اعرض الكل' : `⚠️ المشاريع الناقصة (${n}) — ناقصها سعر أو مسؤول`}
+              </button>
+            ) : null
+          })()}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-right text-sm">
               <thead>
@@ -175,6 +194,7 @@ export default function ProjectStatisticsPage() {
                   <th className="p-2">منفّذ الكشف</th>
                   <th className="p-2">موجّه إلى</th>
                   <th className="p-2">أضافه</th>
+                  <th className="p-2"></th>
                 </tr>
               </thead>
               <tbody>
@@ -204,10 +224,16 @@ export default function ProjectStatisticsPage() {
                     </td>
                     <td className="p-2 text-xs text-violet-700">{p.delegatedToName || '—'}</td>
                     <td className="p-2 text-xs text-slate-500">{p.createdByName || '—'}</td>
+                    <td className="p-2">
+                      <button type="button" onClick={() => setEditing(p)}
+                        className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-bold ${isMissing(p) ? 'bg-amber-500 text-white' : 'border border-slate-300 text-slate-600'}`}>
+                        ✏️ {isMissing(p) ? 'أكمل' : 'عدّل'}
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {projects.length === 0 && (
-                  <tr><td colSpan={10} className="p-6 text-center text-slate-400">لا توجد نتائج</td></tr>
+                  <tr><td colSpan={11} className="p-6 text-center text-slate-400">لا توجد نتائج</td></tr>
                 )}
               </tbody>
             </table>

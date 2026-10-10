@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"staffmange-api/internal/middleware"
@@ -82,6 +83,24 @@ func (h *ProjectHandler) Statistics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	WriteJSON(w, http.StatusOK, res)
+}
+
+// PUT /api/projects/{id}/fill-info — يكمّل السعر والمسؤول من الإحصائيات.
+func (h *ProjectHandler) FillInfo(w http.ResponseWriter, r *http.Request) {
+	var in struct {
+		Price         *string `json:"price"`
+		ResponsibleID *string `json:"responsibleId"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+		WriteError(w, http.StatusBadRequest, "بيانات غير صالحة")
+		return
+	}
+	if err := h.service.FillInfo(r.PathValue("id"), in.Price, in.ResponsibleID); err != nil {
+		log.Printf("project fill-info failed: %v", err)
+		WriteError(w, http.StatusBadRequest, "تعذر حفظ المعلومات")
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
 // GET /api/projects/{id}/delegation-log — سجل تسليم مشروع معيّن.

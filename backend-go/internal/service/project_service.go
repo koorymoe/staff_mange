@@ -385,3 +385,8 @@ func (s *ProjectService) SetBookingUnlocker(b BookingUnlocker) { s.bookings = b 
 func (s *ProjectService) Delete(id string) error {
 	return s.repo.Delete(id)
 }
+
+// FillInfo يكمّل السعر والمسؤول من شاشة الإحصائيات.
+func (s *ProjectService) FillInfo(id string, price, responsibleID *string) error {
+	return s.repo.FillInfo(id, price, responsibleID)
+}
