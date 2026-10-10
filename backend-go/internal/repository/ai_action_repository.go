@@ -682,6 +682,10 @@ func (r *AiActionRepository) MonitorBacklog() (MonitorBacklog, error) {
 	return NewMatrixChainRepository(r.db).MonitorBacklog()
 }
 
+func (r *AiActionRepository) InternalNoInvoice() ([]string, error) {
+	return NewMatrixChainRepository(r.db).InternalNoInvoice()
+}
+
 func (r *AiActionRepository) Monitors() ([]string, error) {
 	return NewMatrixChainRepository(r.db).Monitors()
 }

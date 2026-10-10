@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, type DailyStats, type WeeklyStats, type ProjectStageStats, type Stats, type InternalWorksReport } from '../api'
 import EmployeeMonthlyStatsPage from './EmployeeMonthlyStatsPage'
+import MonthCompare from '../components/MonthCompare'
 import BookingCodeChip from '../components/BookingCodeChip'
 import RoleSplit, { MiniMetric, SummaryCard } from '../components/RoleSplit'
 
@@ -377,12 +378,13 @@ function InternalWorksTab() {
 }
 
 export default function StatsManagementPage() {
-  const [tab, setTab] = useState<'daily' | 'weekly' | 'monthly' | 'internal' | 'services' | 'projects'>('daily')
+  const [tab, setTab] = useState<'daily' | 'weekly' | 'monthly' | 'compare' | 'internal' | 'services' | 'projects'>('daily')
 
   const tabs: { key: typeof tab; label: string }[] = [
     { key: 'daily', label: 'يومية' },
     { key: 'weekly', label: 'أسبوعية' },
     { key: 'monthly', label: 'شهرية' },
+    { key: 'compare', label: '📅 مقارنة الأشهر' },
     { key: 'internal', label: 'داخل الشركة' },
     { key: 'services', label: 'أكثر خدمة مطلوبة' },
     { key: 'projects', label: 'المشاريع' },
@@ -419,6 +421,7 @@ export default function StatsManagementPage() {
       {tab === 'daily' && <DailyTab />}
       {tab === 'weekly' && <WeeklyTab />}
       {tab === 'monthly' && <EmployeeMonthlyStatsPage />}
+      {tab === 'compare' && <MonthCompare />}
       {tab === 'internal' && <InternalWorksTab />}
       {tab === 'services' && <ServicesTab />}
       {tab === 'projects' && <ProjectsTab />}

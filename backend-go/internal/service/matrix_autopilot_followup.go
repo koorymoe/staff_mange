@@ -690,3 +690,38 @@ func (s *MatrixAutopilotService) monitorBacklog(today string, dayStart time.Time
 	}
 	return n, nil
 }
+
+// ١٥. أعمال داخل الشركة خلصت وما انسوّتلها فاتورة — طلب (ع) 10-10: «ماتركس
+// ينبّه المراقب إذا إداري الكوادر ما سوّه فواتير لحجوزات داخل الشركة».
+// مرة باليوم لكل مراقب، لحد ما الفواتير تنسوّى.
+func (s *MatrixAutopilotService) internalNoInvoice(today string, dayStart time.Time) (int, error) {
+	codes, err := s.actions.InternalNoInvoice()
+	if err != nil || len(codes) == 0 {
+		return 0, err
+	}
+	monitors, err := s.actions.Monitors()
+	if err != nil {
+		return 0, err
+	}
+	shown := codes
+	if len(shown) > 10 {
+		shown = shown[:10]
+	}
+	list := strings.Join(shown, "، ")
+	if len(codes) > len(shown) {
+		list += fmt.Sprintf(" و%d غيرهن", len(codes)-len(shown))
+	}
+	n := 0
+	for _, id := range monitors {
+		emp := id
+		msg := fmt.Sprintf("🤖 ماتركس — %d عمل داخل الشركة خلص من أكثر من يوم وبعده بلا فاتورة (%s). الورق مسؤولية إداري الحجوزات — تابعه.", len(codes), list)
+		if s.act(model.AiAction{Kind: model.AiActionInternalNoInvoice, EntityType: "EMPLOYEE", EntityID: emp,
+			Period: today, TargetEmployeeID: &emp, TargetLabel: s.actions.EmployeeName(emp),
+			Summary: fmt.Sprintf("نبّه المراقب: %d عمل داخلي بلا فاتورة", len(codes)),
+			Details: why(map[string]any{"bookingCodes": codes})}, dayStart,
+			func() error { return s.notif.Create(emp, "AI_AUTOPILOT", msg) }) {
+			n++
+		}
+	}
+	return n, nil
+}

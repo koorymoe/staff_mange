@@ -3799,6 +3799,7 @@ export const api = {
     request<{ ok: boolean }>('/auth/command-password', {
       method: 'PUT', body: JSON.stringify({ newPassword, employeeId }),
     }),
+  getMonthCompare: (months: string[]) => request<MonthStats[]>(`/stats-management/month-compare?months=${months.join(',')}`),
   getCommandAccounts: () =>
     request<{ id: string; name: string; username: string | null; setAt: string | null }[]>('/auth/command-accounts'),
   clearCommandPassword: (employeeId: string) =>
@@ -5940,4 +5941,10 @@ export interface VehicleTracking {
 export interface CarWashVehicle {
   vehicleId: string; name: string; plateNumber: string
   washedAt: string | null; washedBy: string | null; washedById: string | null
+}
+
+// ═══ مقارنة الأشهر (قرار (ع) 10-10) ═══
+export interface MonthStats {
+  month: string; bookingsCreated: number; bookingsCompleted: number; bookingsCancelled: number; internalWorks: number
+  projectsCreated: number; newCustomers: number; complaints: number; bookingsRevenue: number; projectsRevenue: number; expenses: number
 }

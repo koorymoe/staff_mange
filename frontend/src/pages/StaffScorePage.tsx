@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api, type StaffScore, type StaffScoreBoard, type StaffScoreDetail } from '../api'
 import MatrixNote from '../components/MatrixNote'
 import OwnerSwitch from '../components/OwnerSwitch'
+import { GroupRanking, PairCompare } from '../components/StaffCompare'
 import { SWITCH_MATRIX_SCORING } from '../systemSwitches'
 import { useSession } from '../session'
 
@@ -110,6 +111,10 @@ export default function StaffScorePage() {
   const [err, setErr] = useState('')
   const [busy, setBusy] = useState(false)
   const [tab, setTab] = useState('')
+  // قرار (ع) 10-10: «مقارنة» — ترتيب الأفضل للأسوأ، و«قارن بموظف آخر»
+  const [view, setView] = useState<'list' | 'compare'>('list')
+  const [cmpA, setCmpA] = useState<string | null>(null)
+  const [cmpB, setCmpB] = useState<string | null>(null)
   const load = useCallback(() => { void api.getStaffScoreBoard(month).then(setB).catch((e) => setErr(e instanceof Error ? e.message : 'تعذر')) }, [month])
   useEffect(load, [load])
   useEffect(() => { if (sel) void api.getStaffScore(sel, month).then(setD).catch(() => {}) }, [sel, month])
@@ -147,11 +152,19 @@ export default function StaffScorePage() {
           </button>
         ))}
       </div>
+      <div className="flex gap-1.5">
+        {([['list', '📋 القائمة'], ['compare', '⚖️ المقارنة']] as const).map(([k, l]) => (
+          <button key={k} type="button" onClick={() => setView(k)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-bold ${view === k ? 'bg-violet-700 text-white' : 'bg-white text-slate-700 ring-1 ring-slate-200'}`}>{l}</button>
+        ))}
+      </div>
+      {view === 'compare' && <GroupRanking staff={shown} />}
       {g && <p className="text-xs text-slate-500">👥 منو يقيّم {b.staff.find((s) => s.group === g)?.groupLabel}: {RATERS[g]}</p>}
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+      {view === 'list' && <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-1.5">
           {shown.map((s, i) => (
-            <button key={s.id} type="button" onClick={() => setSel(sel === s.id ? null : s.id)}
+            <div key={s.id} className="flex items-stretch gap-1">
+            <button type="button" onClick={() => { setCmpA(null); setSel(sel === s.id ? null : s.id) }}
               className={`flex w-full items-center justify-between gap-2 rounded-xl border px-3 py-2 text-right ${sel === s.id ? 'border-[#0f2040] bg-white shadow' : 'border-slate-200 bg-white/80 hover:bg-white'}`}>
               <span className="flex items-center gap-2">
                 <span className="w-5 text-xs text-slate-400">{s.final == null ? '' : i + 1}</span>
@@ -164,14 +177,20 @@ export default function StaffScorePage() {
                 <span className="w-14 text-left"><ScoreBadge v={s.final} />{trend(s)}</span>
               </span>
             </button>
+            <button type="button" title="قارن بموظف آخر" onClick={() => { setSel(null); setCmpA(s.id); setCmpB(null) }}
+              className={`shrink-0 rounded-xl border px-2 text-xs font-bold ${cmpA === s.id ? 'border-violet-600 bg-violet-600 text-white' : 'border-slate-200 bg-white text-violet-700 hover:bg-violet-50'}`}>⚖️<span className="hidden sm:inline"> قارن</span></button>
+            </div>
           ))}
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-3 lg:sticky lg:top-4 lg:self-start">
-          {!sel && <p className="p-6 text-center text-sm text-slate-400">اختار موظف حتى تشوف شلون انحسب تقييمه، نقطة بنقطة.</p>}
+          {cmpA && shown.some((s) => s.id === cmpA) ? (
+            <PairCompare a={shown.find((s) => s.id === cmpA)!} b={shown.find((s) => s.id === cmpB) ?? null}
+              peers={shown} onPick={(id) => setCmpB(id || null)} onClose={() => setCmpA(null)} />
+          ) : !sel && <p className="p-6 text-center text-sm text-slate-400">اختار موظف حتى تشوف شلون انحسب تقييمه، نقطة بنقطة — أو اضغط «⚖️ قارن» جنب اسمه.</p>}
           {sel && d?.id !== sel && <p className="text-xs text-slate-400">…</p>}
-          {d && d.id === sel && <><p className="mb-2 text-base font-extrabold">{d.name}</p><ScoreBreakdown d={d} admin={admin} onChange={reloadDetail} /></>}
+          {!cmpA && d && d.id === sel && <><p className="mb-2 text-base font-extrabold">{d.name}</p><ScoreBreakdown d={d} admin={admin} onChange={reloadDetail} /></>}
         </div>
-      </div>
+      </div>}
     </div>
   )
 }

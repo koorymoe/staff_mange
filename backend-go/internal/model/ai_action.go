@@ -9,21 +9,22 @@ import (
 // أنواع أفعال ماتركس — كلها تذكيرات وتنبيهات، ماكو فعل يلمس فلوس أو
 // عقوبة أو تكليف كادر.
 const (
-	AiActionPaperworkReminder = "PAPERWORK_REMINDER" // الليدر: ورق متأخر
-	AiActionDelayWarning      = "DELAY_WARNING"      // الليدر: حجز اليوم متوقع يطوّل
-	AiActionCustomerFollowUp  = "CUSTOMER_FOLLOWUP"  // الجودة: زبون قريب يزعل
-	AiActionUnstaffedAlert    = "UNSTAFFED_ALERT"    // التنسيق: حجز باچر بلا كادر
-	AiActionReplacementAlert  = "REPLACEMENT_ALERT"  // الآيتي/الأسطول: جهاز أو سيارة تكلّف
-	AiActionGpsExpiry         = "GPS_EXPIRY"         // البائع: اشتراك جي بي اس قرب يخلص
-	AiActionVehicleDocExpiry  = "VEHICLE_DOC_EXPIRY" // الأسطول: وثيقة سيارة قربت تخلص
-	AiActionExtraTaskOverdue  = "EXTRA_TASK_OVERDUE" // الموظف: مهمة إضافية فات موعدها
-	AiActionAttendanceNudge   = "ATTENDANCE_NUDGE"   // الموظف: عنده شغل اليوم وما سجّل حضور
-	AiActionLowStock          = "LOW_STOCK"          // المخزن: أداة قربت تخلص
-	AiActionInvoiceApproval   = "INVOICE_APPROVAL"   // المحاسبة: فاتورة تنتظر اعتماد
-	AiActionPredictionNudge   = "PREDICTION_NUDGE"   // الموظف: توقّع ماتركس وافق عليه المدير
-	AiActionCrewRating        = "CREW_RATING"        // الليدر: خلّص حجز وما قيّم فنيّيه
-	AiActionAfterInventory    = "AFTER_INVENTORY"    // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
-	AiActionMonitorBacklog    = "MONITOR_BACKLOG"    // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
+	AiActionPaperworkReminder = "PAPERWORK_REMINDER"  // الليدر: ورق متأخر
+	AiActionDelayWarning      = "DELAY_WARNING"       // الليدر: حجز اليوم متوقع يطوّل
+	AiActionCustomerFollowUp  = "CUSTOMER_FOLLOWUP"   // الجودة: زبون قريب يزعل
+	AiActionUnstaffedAlert    = "UNSTAFFED_ALERT"     // التنسيق: حجز باچر بلا كادر
+	AiActionReplacementAlert  = "REPLACEMENT_ALERT"   // الآيتي/الأسطول: جهاز أو سيارة تكلّف
+	AiActionGpsExpiry         = "GPS_EXPIRY"          // البائع: اشتراك جي بي اس قرب يخلص
+	AiActionVehicleDocExpiry  = "VEHICLE_DOC_EXPIRY"  // الأسطول: وثيقة سيارة قربت تخلص
+	AiActionExtraTaskOverdue  = "EXTRA_TASK_OVERDUE"  // الموظف: مهمة إضافية فات موعدها
+	AiActionAttendanceNudge   = "ATTENDANCE_NUDGE"    // الموظف: عنده شغل اليوم وما سجّل حضور
+	AiActionLowStock          = "LOW_STOCK"           // المخزن: أداة قربت تخلص
+	AiActionInvoiceApproval   = "INVOICE_APPROVAL"    // المحاسبة: فاتورة تنتظر اعتماد
+	AiActionPredictionNudge   = "PREDICTION_NUDGE"    // الموظف: توقّع ماتركس وافق عليه المدير
+	AiActionCrewRating        = "CREW_RATING"         // الليدر: خلّص حجز وما قيّم فنيّيه
+	AiActionAfterInventory    = "AFTER_INVENTORY"     // الفني: خلّص حجز ويا ليدر وما جرد عدّته بعده
+	AiActionInternalNoInvoice = "INTERNAL_NO_INVOICE" // المراقب: أعمال داخلية خلصت وبلا فاتورة من إداري الكوادر
+	AiActionMonitorBacklog    = "MONITOR_BACKLOG"     // المراقب: بنود بالصندوق تنتظر حكمه من +٢٤ ساعة
 	// ── أفعال تنفيذية (المرحلة الثالثة) — كل وحدة بمفتاح المالك وتنرجع ──
 	AiActionAutoCrew        = "AUTO_CREW"        // ماتركس كلّف كادر حجز باچر (بعد بوابة الدقة)
 	AiActionMonitorEscalate = "MONITOR_ESCALATE" // بنود المراقب +٤٨ ساعة صعدت للمدير
@@ -59,6 +60,7 @@ var AiActionLabels = map[string]string{
 	AiActionCrewRating:        "تقييم الفنيين بعد الحجز",
 	AiActionAfterInventory:    "جرد العدّة بعد الحجز",
 	AiActionMonitorBacklog:    "بنود متأخرة بصندوق المراقب",
+	AiActionInternalNoInvoice: "أعمال داخلية بلا فاتورة",
 	AiActionAutoCrew:          "ماتركس كلّف كادر حجز باچر",
 	AiActionMonitorEscalate:   "تصعيد بنود المراقب للمدير",
 	AiActionToolReturn:        "تذكير بإرجاع أداة",
