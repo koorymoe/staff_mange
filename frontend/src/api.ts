@@ -3799,6 +3799,16 @@ export const api = {
     request<{ ok: boolean }>('/auth/command-password', {
       method: 'PUT', body: JSON.stringify({ newPassword, employeeId }),
     }),
+  commandGoals: () => request<CommandGoal[]>('/command/goals'),
+  commandAddGoal: (g: { title: string; category: string; ownerLabel: string; targetDate: string; description: string }) =>
+    request<CommandGoal[]>('/command/goals', { method: 'POST', body: JSON.stringify(g) }),
+  commandUpdateGoal: (id: string, g: Pick<CommandGoal, 'title' | 'description' | 'category' | 'ownerLabel' | 'targetDate' | 'status'>) =>
+    request<CommandGoal[]>(`/command/goals/${id}`, { method: 'PUT', body: JSON.stringify(g) }),
+  commandDeleteGoal: (id: string) => request<CommandGoal[]>(`/command/goals/${id}`, { method: 'DELETE' }),
+  commandAddStep: (goalId: string, title: string, dueDate: string) =>
+    request<CommandGoal[]>(`/command/goals/${goalId}/steps`, { method: 'POST', body: JSON.stringify({ title, dueDate }) }),
+  commandToggleStep: (id: string) => request<CommandGoal[]>(`/command/steps/${id}/toggle`, { method: 'PUT' }),
+  commandDeleteStep: (id: string) => request<CommandGoal[]>(`/command/steps/${id}`, { method: 'DELETE' }),
   getCommandAccounts: () =>
     request<{ id: string; name: string; username: string | null; setAt: string | null }[]>('/auth/command-accounts'),
   clearCommandPassword: (employeeId: string) =>
@@ -5940,4 +5950,11 @@ export interface VehicleTracking {
 export interface CarWashVehicle {
   vehicleId: string; name: string; plateNumber: string
   washedAt: string | null; washedBy: string | null; washedById: string | null
+}
+
+// ═══ مركز القيادة: الأهداف والخطة (قرار (ع) 10-10) ═══
+export interface CommandGoalStep { id: string; goalId: string; title: string; dueDate: string | null; doneAt: string | null }
+export interface CommandGoal {
+  id: string; title: string; description: string | null; category: string; ownerLabel: string | null
+  targetDate: string | null; status: 'ACTIVE' | 'DONE' | 'PAUSED' | 'DROPPED'; createdAt: string; steps: CommandGoalStep[]
 }

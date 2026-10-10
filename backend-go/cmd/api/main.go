@@ -1051,6 +1051,23 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	// الكنسة اليدوية للإدارة والفحص — التلقائية تشتغل بالخلفية
 	mux.Handle("POST /api/bookings/waiting-reminder-sweep", middleware.Chain(http.HandlerFunc(bookingHandler.RunWaitingReminderSweep), requireAuth, requireAdmin))
 	// باسورد مركز القيادة — المالك بس بهاي المرحلة
+	// ═══ مركز القيادة: الأهداف والخطة — توكن القيادة بس ═══
+	commandGoalsHandler := handler.NewCommandGoalsHandler(db)
+	requireCommand := middleware.RequireCommandRealm()
+	for _, rt := range []struct {
+		p string
+		h http.HandlerFunc
+	}{
+		{"GET /api/command/goals", commandGoalsHandler.List},
+		{"POST /api/command/goals", commandGoalsHandler.Create},
+		{"PUT /api/command/goals/{id}", commandGoalsHandler.Update},
+		{"DELETE /api/command/goals/{id}", commandGoalsHandler.Delete},
+		{"POST /api/command/goals/{id}/steps", commandGoalsHandler.AddStep},
+		{"PUT /api/command/steps/{id}/toggle", commandGoalsHandler.ToggleStep},
+		{"DELETE /api/command/steps/{id}", commandGoalsHandler.DeleteStep},
+	} {
+		mux.Handle(rt.p, middleware.Chain(rt.h, requireAuth, requireCommand))
+	}
 	mux.Handle("PUT /api/auth/command-password", middleware.Chain(http.HandlerFunc(authHandler.SetCommandPassword), requireAuth, middleware.RequireOwner()))
 	mux.Handle("GET /api/auth/command-accounts", middleware.Chain(http.HandlerFunc(authHandler.CommandAccounts), requireAuth, middleware.RequireOwner()))
 	mux.Handle("DELETE /api/auth/command-password/{employeeId}", middleware.Chain(http.HandlerFunc(authHandler.ClearCommandPassword), requireAuth, middleware.RequireOwner()))

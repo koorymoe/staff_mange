@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import './theme.css'
+import GoalsBoard from './GoalsBoard'
 
 // ═══ مركز القيادة — الهيكل ═══
 //
@@ -18,10 +19,17 @@ import './theme.css'
 // تكتب بأسفلها شنو تنتظر — حتى ما تنقري «معطّلة» ولا «مكسورة».
 
 type Panel = { title: string; sub: string; pending: string }
-type Tab = { key: string; label: string; tiles?: string[]; panels: Panel[] }
+type Tab = { key: string; label: string; tiles?: string[]; panels: Panel[]; view?: 'goals' }
 type Section = { key: string; label: string; icon: string; tabs: Tab[] }
 
 const SECTIONS: Section[] = [
+  // قرار (ع) 10-10: أول قسم بيانات حقيقية — شي جديد ما موجود بنظام الشركة
+  {
+    key: 'goals',
+    label: 'الأهداف والخطة',
+    icon: '◎',
+    tabs: [{ key: 'goals', label: 'الأهداف', panels: [], view: 'goals' }],
+  },
   {
     key: 'overview',
     label: 'نظرة عامة',
@@ -306,6 +314,7 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
           {/* المفتاح يشمل القسم والتبويب: بدونه React يعيد استعمال نفس
               العقدة عند تبديل التبويب فما تنعاد حركة الدخول. */}
           <div className="cmd-page" key={`${active}/${tab}`}>
+            {current.view === 'goals' && <GoalsBoard />}
             {current.tiles && (
               <div className="cmd-tiles">
                 {current.tiles.map((k) => (
@@ -323,9 +332,11 @@ export default function CommandApp({ onExit }: { onExit: () => void }) {
               {current.panels.map((p) => <PanelCard p={p} key={p.title} />)}
             </div>
 
-            <p style={{ marginTop: 20, fontSize: 11.5, color: 'rgba(255,255,255,0.32)' }}>
-              الهيكل جاهز والشاشات فارغة قصداً — ماكو أي بيانات تنتقل من نظام الشركة لحد الان، مثل ما اتفقنا.
-            </p>
+            {!current.view && (
+              <p style={{ marginTop: 20, fontSize: 11.5, color: 'rgba(255,255,255,0.32)' }}>
+                الهيكل جاهز والشاشات فارغة قصداً — ماكو أي بيانات تنتقل من نظام الشركة لحد الان، مثل ما اتفقنا.
+              </p>
+            )}
           </div>
         </main>
       </div>

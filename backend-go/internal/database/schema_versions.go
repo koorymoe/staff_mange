@@ -441,6 +441,7 @@ func versionedMigrations() []Migration {
 	result = append(result, vehicleTrackingImportMigrations()...)
 	result = append(result, quotationProjectMigrations()...)
 	result = append(result, carWasherMigrations()...)
+	result = append(result, commandGoalsMigrations()...)
 	return result
 }
 
