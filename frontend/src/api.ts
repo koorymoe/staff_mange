@@ -3808,6 +3808,12 @@ export const api = {
   setStageLimit: (stage: string, days: number | null) =>
     request<StageLimitRow[]>('/projects/stage-limits', { method: 'PUT', body: JSON.stringify({ stage, days }) }),
   getProcurementWatch: () => request<ProcurementWatch>('/monitor/procurement-watch'),
+  getMatrixChats: () => request<{ chats: MatrixChatRow[]; enabled: boolean }>('/matrix/chats'),
+  createMatrixChat: () => request<MatrixChatRow>('/matrix/chats', { method: 'POST' }),
+  getMatrixChat: (id: string) => request<MatrixChatMessage[]>(`/matrix/chats/${id}`),
+  deleteMatrixChat: (id: string) => request<{ ok: boolean }>(`/matrix/chats/${id}`, { method: 'DELETE' }),
+  sendMatrixChat: (id: string, text: string) =>
+    request<MatrixChatMessage>(`/matrix/chats/${id}/messages`, { method: 'POST', body: JSON.stringify({ text }) }),
   getMonthCompare: (months: string[]) => request<MonthStats[]>(`/stats-management/month-compare?months=${months.join(',')}`),
   getCommandAccounts: () =>
     request<{ id: string; name: string; username: string | null; setAt: string | null }[]>('/auth/command-accounts'),
@@ -5974,3 +5980,7 @@ export interface ProcurementWatch {
   since: string; materials: ProcDecision[]; tools: ProcDecision[]; shortages: ProcDecision[]
   vehicleDays: { day: string; total: number; rated: number }[]; unratedToday: string[]; fleetOverdue: string[]
 }
+
+// ═══ دردشة ماتركس (قرار (ع) 10-10) ═══
+export interface MatrixChatRow { id: string; title: string; updatedAt: string }
+export interface MatrixChatMessage { id: string; role: 'USER' | 'ASSISTANT'; text: string; steps: string | null; createdAt: string }

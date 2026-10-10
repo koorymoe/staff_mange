@@ -2356,6 +2356,17 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 			Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo(),
 		})
 		matrixCommandService.SetAgent(agent)
+		// صوت ماتركس: كل تنبيه بأسلوب جديد (وأي فشل يرجّع الأصل)
+		repository.SetNotificationRewriter(func(emp, msg string) string {
+			return agent.Rewrite(notificationRepo.RecentAutopilotMessages(emp, 3), msg)
+		})
+		// 💬 دردشة ماتركس — المالك والمدير
+		chatHandler := handler.NewMatrixChatHandler(db, agent)
+		mux.Handle("GET /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.List), requireAuth, requireAdmin))
+		mux.Handle("POST /api/matrix/chats", middleware.Chain(http.HandlerFunc(chatHandler.Create), requireAuth, requireAdmin))
+		mux.Handle("GET /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Messages), requireAuth, requireAdmin))
+		mux.Handle("DELETE /api/matrix/chats/{id}", middleware.Chain(http.HandlerFunc(chatHandler.Delete), requireAuth, requireAdmin))
+		mux.Handle("POST /api/matrix/chats/{id}/messages", middleware.Chain(http.HandlerFunc(chatHandler.Send), requireAuth, requireAdmin))
 	}
 
 	// ── تكلفة الشبكات ──

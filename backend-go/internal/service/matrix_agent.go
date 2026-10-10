@@ -197,6 +197,17 @@ var ErrAgentOff = errors.New("الوكيل مطفي")
 
 // Run يشغّل الوكيل على طلب: هايكو يقرر الأدوات، والكود ينفذ ويخفي ويرجّع.
 func (a *MatrixAgent) Run(feature, system, task string) (*AgentRun, error) {
+	return a.Chat(feature, system, nil, task)
+}
+
+// ChatTurn رسالة سابقة بمحادثة (USER أو ASSISTANT) — بالأسماء الحقيقية.
+type AgentTurn struct {
+	Role string
+	Text string
+}
+
+// Chat محادثة: التاريخ + الرسالة الجديدة، وهايكو يرد ويفتح أدواته إذا يحتاج.
+func (a *MatrixAgent) Chat(feature, system string, history []AgentTurn, message string) (*AgentRun, error) {
 	if !a.Enabled(feature) {
 		return nil, ErrAgentOff
 	}
@@ -217,7 +228,19 @@ func (a *MatrixAgent) Run(feature, system, task string) (*AgentRun, error) {
 	if len(tools) > 0 {
 		tools[len(tools)-1].OfTool.CacheControl = anthropic.NewCacheControlEphemeralParam()
 	}
-	msgs := []anthropic.MessageParam{anthropic.NewUserMessage(anthropic.NewTextBlock(mask.Hide(task)))}
+	msgs := []anthropic.MessageParam{}
+	for _, t := range history {
+		if strings.TrimSpace(t.Text) == "" {
+			continue
+		}
+		block := anthropic.NewTextBlock(mask.Hide(t.Text))
+		if t.Role == "ASSISTANT" {
+			msgs = append(msgs, anthropic.NewAssistantMessage(block))
+		} else {
+			msgs = append(msgs, anthropic.NewUserMessage(block))
+		}
+	}
+	msgs = append(msgs, anthropic.NewUserMessage(anthropic.NewTextBlock(mask.Hide(message))))
 	ctx, cancel := context.WithTimeout(context.Background(), agentTimeout)
 	defer cancel()
 	run := &AgentRun{}

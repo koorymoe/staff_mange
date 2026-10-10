@@ -44,4 +44,4 @@ export async function isEnabled(key: string): Promise<boolean> {
 }
 
 // مفاتيح توفير الكلفة — كل ميزة تستعمل هايكو (المطفي يرجع للقواعد). المدير والمالك.
-export const AI_COST_SWITCHES = ['ai_guide', 'ai_judge', 'ai_discovery', 'ai_voice', 'ai_ask', 'ai_learning', 'ai_employee_report', 'ai_peer']
+export const AI_COST_SWITCHES = ['ai_guide', 'ai_judge', 'ai_discovery', 'ai_voice', 'ai_ask', 'ai_learning', 'ai_employee_report', 'ai_peer', 'ai_tone', 'ai_chat']

@@ -27,8 +27,27 @@ func logFail(kind, target, notifType string, err error) error {
 	return err
 }
 
+// ═══ صوت ماتركس (قرار (ع) 10-10) ═══
+// تنبيهات ماتركس (AI_AUTOPILOT) تمر على مُعيد صياغة يغيّر الأسلوب كل مرة —
+// مكان واحد بدل ما نلمس كل الأماكن الي ترسل. أي فشل يرجّع النص الأصلي.
+var notifRewriter func(employeeID, message string) string
+
+// SetNotificationRewriter يربط مُعيد الصياغة (هايكو) بتنبيهات ماتركس.
+func SetNotificationRewriter(f func(employeeID, message string) string) { notifRewriter = f }
+
+// RecentAutopilotMessages آخر رسائل ماتركس للموظف — حتى الصياغة الجديدة ما تكرر.
+func (r *NotificationRepository) RecentAutopilotMessages(employeeID string, n int) []string {
+	out := []string{}
+	_ = r.db.Select(&out, `SELECT message FROM "Notification" WHERE "employeeId" = $1 AND type = 'AI_AUTOPILOT'
+		ORDER BY "createdAt" DESC LIMIT $2`, employeeID, n)
+	return out
+}
+
 // Create ينشئ إشعاراً لموظف واحد.
 func (r *NotificationRepository) Create(employeeID, notifType, message string) error {
+	if notifType == "AI_AUTOPILOT" && notifRewriter != nil {
+		message = notifRewriter(employeeID, message)
+	}
 	_, err := r.db.Exec(`
 		INSERT INTO "Notification" (id, "employeeId", type, message)
 		VALUES (gen_random_uuid()::text, $1, $2, $3)
