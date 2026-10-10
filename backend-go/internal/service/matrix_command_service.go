@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"regexp"
 	"sort"
@@ -34,7 +35,22 @@ type MatrixCommandService struct {
 	props    *repository.MatrixProposalRepository
 	client   *anthropic.Client
 	model    string
+	agent    *MatrixAgent
 }
+
+// SetAgent يربط ماتركس الوكيل — «اسأل ماتركس» يصير يفتش بنفسه بالأدوات.
+func (s *MatrixCommandService) SetAgent(a *MatrixAgent) { s.agent = a }
+
+// Client للوكيل — نفس عميل هايكو ونفس الموديل.
+func (s *MatrixCommandService) Client() (*anthropic.Client, string) { return s.client, s.model }
+
+const agentAskPrompt = `أنت «ماتركس»، عقل المتابعة والرقابة بشركة الأماني (العراق). المالك أو المدير يسألك أو يطلب فحص.
+عندك أدوات تفتح بيها النظام وتشوف بعينك: الفلوس، الفواتير، الحجوزات المتأخرة، أداء الفرق، ملف أي موظف، الحضور، تأخير المشاريع، شغل المخازن، التقييم.
+- قرر بنفسك شنو تفحص وبأي ترتيب. افحص أكثر من مصدر إذا السؤال يحتاج، واربط بين الأرقام.
+- جاوب باللهجة العراقية، مرتّب: الخلاصة أول سطر، بعدها نقاط قصيرة بالأرقام، وآخر شي اقتراح عملي واحد أو اثنين.
+- الموظفين يجوك كرموز «موظف#n» — استعمل نفس الرمز بالضبط، ولا تخمّن الأسماء.
+- لا تخترع رقم ما شفته بأداة. إذا ما تكدر تتأكد گول بصراحة.
+- لا تقترح غرامة أو خصم فلوس، ولا تخمّن أسباب شخصية (مرض، ظروف).`
 
 func NewMatrixCommandService(repo *repository.MatrixCommandRepository, watch *MatrixAutopilotService,
 	reports *MatrixEmployeeReportService, business *MatrixBusinessService, props *repository.MatrixProposalRepository) *MatrixCommandService {
@@ -124,8 +140,9 @@ func (s *MatrixCommandService) LateFocus() (*LateFocus, error) {
 // ── اسأل ماتركس ──
 
 type AskAnswer struct {
-	Answer string `json:"answer"`
-	Source string `json:"source"` // MODEL | RULES
+	Answer string   `json:"answer"`
+	Source string   `json:"source"` // AGENT | MODEL | RULES
+	Steps  []string `json:"steps,omitempty"`
 }
 
 type askContext struct {
@@ -239,6 +256,16 @@ func (s *MatrixCommandService) Ask(employeeID, question string) (*AskAnswer, err
 	}
 	if s.repo.AsksToday(employeeID) >= askDailyLimit {
 		return nil, ErrAskLimit
+	}
+	// قرار (ع) 10-10: ماتركس الوكيل يفتش بنفسه بالأدوات، وإذا تعذّر يرجع للطريقة القديمة.
+	if s.agent.Enabled("ASK") {
+		if run, err := s.agent.Run("ASK", agentAskPrompt, question); err == nil && run.Answer != "" {
+			out := &AskAnswer{Answer: run.Answer, Source: "AGENT", Steps: run.Steps}
+			s.repo.LogAsk(employeeID, question, out.Answer, out.Source)
+			return out, nil
+		} else if err != nil {
+			log.Printf("matrix agent ask: %v", err)
+		}
 	}
 	ctx := s.buildContext()
 	out := &AskAnswer{Source: "RULES"}

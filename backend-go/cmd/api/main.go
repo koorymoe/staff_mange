@@ -2347,6 +2347,16 @@ func NewHandler(cfg *config.Config, db *sqlx.DB, startedAt time.Time) http.Handl
 	requireRater := middleware.RequireRoleOrAnyPermission(permissionRepo, employeeRepo, notificationRepo, []string{"ADMIN", "MONITOR"},
 		"monitoring", "auditing", "quality_control", "coordinator", "crew_management")
 	mux.Handle("GET /api/staff-ratings/booking/{id}", middleware.Chain(http.HandlerFunc(staffScoreHandler.BookingState), requireAuth, requireRater))
+	// ═══ ماتركس الوكيل (قرار (ع) 10-10): هايكو يفتش بنفسه بأدوات قراءة ═══
+	{
+		client, model := matrixCommandService.Client()
+		agent := service.NewMatrixAgent(db, client, model)
+		agent.RegisterReadTools(service.AgentDeps{
+			Command: matrixCommandService, Projects: matrixProjectService.Report,
+			Scores: matrixScoreService.Board, ScoreRepo: matrixScoreService.Repo(),
+		})
+		matrixCommandService.SetAgent(agent)
+	}
 
 	// ── تكلفة الشبكات ──
 	// الاستمارة والحساب: نفس قيد حاسبة الكاميرات (صلاحية حساب التنفيذ).

@@ -74,6 +74,13 @@ function perfStatus(i: number) {
 const GROUP_ICON: Record<string, string> = { TECHS: '🔧', LEADERS: '🧭', MONITORS: '🔍', COORDINATORS: '🗂️', FINANCE: '💵', DESIGN: '🎨', QUALITY: '✅', IT: '💻', SALES: '🛒', PROJECTS: '🏗️', GPS: '📡', ADMINS: '👑', STAFF: '🛠️', MEDIA: '📸', SUPERVISORS: '🏗️' }
 function confidence(samples: number) { return samples >= 20 ? 87 : samples >= 8 ? 72 : 50 }
 
+// قرار (ع) 10-10: أسماء أدوات ماتركس الوكيل بالعربي — حتى تعرف شنو فتّش
+const AGENT_TOOL_AR: Record<string, string> = {
+  money_month: 'فلوس الشهر', invoices_status: 'الفواتير', late_bookings: 'الحجوزات المتأخرة', team_performance: 'أداء الفرق',
+  employee_profile: 'ملف موظف', attendance_today: 'دوام اليوم', project_delays: 'تأخير المشاريع', procurement_watch: 'شغل المخازن',
+  staff_scores: 'التقييم',
+}
+
 export default function MatrixCommandCenter() {
   const [groups, setGroups] = useState<GroupRep[] | null>(null)
   const [feed, setFeed] = useState<MatrixFeedItem[]>([])
@@ -643,7 +650,7 @@ function Predictions({ biz, late, props }: { biz: MatrixBusinessData | null; lat
 // ── اسأل ماتركس (للمدير — قراءة بس) ──
 function AskMatrix() {
   const [q, setQ] = useState('')
-  const [a, setA] = useState<{ answer: string; source: string } | null>(null)
+  const [a, setA] = useState<{ answer: string; source: string; steps?: string[] } | null>(null)
   const [busy, setBusy] = useState(false)
   const ask = async (text: string) => {
     if (!text.trim() || busy) return
@@ -667,7 +674,7 @@ function AskMatrix() {
       {a && (
         <div className="mt-3 whitespace-pre-line rounded-xl border border-[var(--mx-border)] bg-[var(--mx-sunken)] p-3 text-[13px] leading-6 text-[var(--mx-text)]">
           {a.answer}
-          {a.source !== 'ERR' && <p className="mt-1 text-[10px] text-[var(--mx-muted)]">{a.source === 'MODEL' ? 'تحليل بالنموذج (بلا أسماء)' : 'من أرقام النظام مباشرة'}</p>}
+          {a.source !== 'ERR' && <p className="mt-1 text-[10px] text-[var(--mx-muted)]">{a.source === 'AGENT' ? `🤖 ماتركس فتّش بنفسه (بلا أسماء): ${[...new Set(a.steps ?? [])].map((s) => AGENT_TOOL_AR[s] ?? s).join('، ') || 'من معلوماته'}` : a.source === 'MODEL' ? 'تحليل بالنموذج (بلا أسماء)' : 'من أرقام النظام مباشرة'}</p>}
         </div>
       )}
     </section>

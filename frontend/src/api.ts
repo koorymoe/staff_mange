@@ -5456,7 +5456,7 @@ export const api = {
   getMatrixFeed: () => request<MatrixFeedItem[]>('/ai/feed'),
   getMatrixTrend: () => request<MatrixTrendDay[]>('/ai/daily-trend'),
   getLateFocus: () => request<LateFocus>('/ai/late-focus'),
-  askMatrix: (question: string) => request<{ answer: string; source: 'MODEL' | 'RULES' }>('/ai/ask', { method: 'POST', body: JSON.stringify({ question }) }),
+  askMatrix: (question: string) => request<{ answer: string; source: 'AGENT' | 'MODEL' | 'RULES'; steps?: string[] }>('/ai/ask', { method: 'POST', body: JSON.stringify({ question }) }),
   getGroupPerformance: (group: string) => request<GroupPerformance>(`/ai/group-performance?group=${encodeURIComponent(group)}`),
   getRoleWatch: () => request<{ group: string; employees: MatrixWatch[]; red: number; alert: number }[]>('/ai/role-watch'),
   getMatrixDecisions: (day?: string) =>
