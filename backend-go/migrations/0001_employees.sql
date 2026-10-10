@@ -1,0 +1,25 @@
+-- هذا الجدول موجود مسبقاً بقاعدة البيانات (تم إنشاؤه عبر Prisma بالباك إند الحالي)
+-- هذا الملف للتوثيق فقط ولضمان توافق الـ Go backend مع نفس البنية، وليس لإعادة الإنشاء
+--
+-- CREATE TABLE "Employee" (
+--     id TEXT PRIMARY KEY,
+--     name TEXT NOT NULL,
+--     certificate TEXT,
+--     position TEXT,
+--     phone TEXT,
+--     status TEXT NOT NULL DEFAULT 'ACTIVE',
+--     role TEXT NOT NULL DEFAULT 'TECHNICIAN',
+--     "onDuty" BOOLEAN NOT NULL DEFAULT true,
+--     username TEXT UNIQUE,
+--     password TEXT,
+--     "hasDrivingLicense" BOOLEAN NOT NULL DEFAULT false,
+--     "hasSafetyCertificate" BOOLEAN NOT NULL DEFAULT false,
+--     salary DOUBLE PRECISION,
+--     shift TEXT DEFAULT 'MORNING',
+--     "monthlyLeaves" INTEGER NOT NULL DEFAULT 2,
+--     "jobTitle" TEXT,
+--     "leaderSkillLevel" INTEGER NOT NULL DEFAULT 0,
+--     "isLeader" BOOLEAN NOT NULL DEFAULT false,
+--     "isTrainee" BOOLEAN NOT NULL DEFAULT false,
+--     "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+-- );

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>فحص النظام — الخلاصة النهائية</title>
+<style>
+:root{
+  --bg:#f7f7f5; --surface:#fff; --border:#e5e3dd; --text:#1a1a18; --muted:#6b6862;
+  --high:#b42318; --high-bg:#fef3f2; --med:#b54708; --med-bg:#fffaeb;
+  --low:#175cd3; --low-bg:#eff8ff; --ok:#067647; --ok-bg:#ecfdf3; --accent:#3a3a36;
+}
+:root:not([data-theme="light"]){@media (prefers-color-scheme:dark){
+  :root{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+  --high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+  --low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+}}
+:root[data-theme="dark"]{--bg:#141413;--surface:#1c1c1a;--border:#2f2f2c;--text:#ececea;--muted:#9a978f;
+--high:#f97066;--high-bg:#2d1513;--med:#fdb022;--med-bg:#2b1d0a;
+--low:#53b1fd;--low-bg:#0f1e30;--ok:#47cd89;--ok-bg:#0d2419;--accent:#d8d6d0;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);
+ font-family:"Segoe UI","Noto Naskh Arabic",Tahoma,system-ui,sans-serif;line-height:1.75}
+.wrap{max-width:900px;margin:0 auto;padding:48px 16px 80px}
+header{border-bottom:2px solid var(--border);padding-bottom:24px;margin-bottom:36px}
+h1{font-size:2rem;margin:0 0 8px;letter-spacing:-.01em}
+.sub{color:var(--muted);font-size:.95rem;margin:0}
+h2{font-size:1.35rem;margin:48px 0 16px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin:28px 0}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px}
+.stat b{display:block;font-size:1.7rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.stat span{color:var(--muted);font-size:.82rem}
+.f{background:var(--surface);border:1px solid var(--border);border-inline-start:4px solid var(--border);
+ border-radius:10px;padding:20px 22px;margin:18px 0}
+.f.high{border-inline-start-color:var(--high)}
+.f.med{border-inline-start-color:var(--med)}
+.f.low{border-inline-start-color:var(--low)}
+.f h3{margin:0 0 6px;font-size:1.08rem;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.tag{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;letter-spacing:.02em}
+.tag.high{background:var(--high-bg);color:var(--high)}
+.tag.med{background:var(--med-bg);color:var(--med)}
+.tag.low{background:var(--low-bg);color:var(--low)}
+.f p{margin:10px 0}
+.f .lbl{font-weight:700;color:var(--accent);font-size:.9rem}
+code{background:var(--bg);border:1px solid var(--border);border-radius:5px;
+ padding:1px 6px;font-size:.87em;direction:ltr;display:inline-block;
+ font-family:ui-monospace,"SF Mono",Menlo,monospace}
+pre{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;
+ overflow-x:auto;direction:ltr;text-align:left;font-size:.84rem;margin:12px 0}
+ul{padding-inline-start:22px;margin:10px 0}
+li{margin:5px 0}
+.clean{background:var(--ok-bg);border:1px solid var(--border);border-radius:10px;padding:20px 24px}
+.clean ul{columns:2;column-gap:32px}
+.clean li{break-inside:avoid;color:var(--text)}
+@media(max-width:640px){.clean ul{columns:1}.wrap{padding:28px 16px 60px}h1{font-size:1.5rem}}
+table{width:100%;border-collapse:collapse;margin:16px 0;font-size:.92rem}
+th,td{text-align:right;padding:9px 12px;border-bottom:1px solid var(--border)}
+th{color:var(--muted);font-weight:600;font-size:.85rem}
+.note{background:var(--low-bg);border:1px solid var(--border);border-radius:10px;padding:16px 20px;margin:24px 0}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--border);color:var(--muted);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>فحص النظام — الخلاصة النهائية</h1>
+  <p class="sub">١٤٦٫٦٠٠ سطر · ٧٠٠ ملف · ٧٨٣ رفعة · فرع <code>avg</code> · ١٦ أيلول ٢٠٢٦</p>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>١٦</b><span>ملاحظة مفتوحة</span></div>
+  <div class="stat"><b>٤</b><span>عالية</span></div>
+  <div class="stat"><b>٨</b><span>متوسطة</span></div>
+  <div class="stat"><b>٤</b><span>منخفضة</span></div>
+  <div class="stat"><b>٢</b><span>انصلّحن</span></div>
+  <div class="stat"><b>٣٢</b><span>نقطة نظيفة</span></div>
+</div>
+
+<h2>الخلاصة بجملة وحدة</h2>
+<div class="note" style="border-inline-start:4px solid var(--ok)">
+<p style="font-size:1.15rem;margin:0"><strong>نظام مبني زين من واحد يفهم — والي ينقصه مو المهارة،
+بل الشبكة الي تمسك الي ينفلت من الانتباه.</strong></p>
+</div>
+<p>كل ملاحظة عالية بهذا الفحص هي <strong>تطبيق ناقص لقاعدة صحيحة</strong>، مو قاعدة غلط:</p>
+<table>
+<thead><tr><th>القاعدة الصحيحة الموجودة</th><th>الي انفلت منها</th></tr></thead>
+<tbody>
+<tr><td>تعريف «الحجز الي ينعدّ» بملف واحد</td><td><b>٩ عدّادات</b> ما تناديه</td></tr>
+<tr><td><code>hydrateAll</code> المجمّعة مكتوبة</td><td><b>٨ مستودعات</b> يستعملون الفردية</td></tr>
+<tr><td>حارس الملكية بثلاث دوال بملف المخزون</td><td><b>رابعة</b> انفلتت</td></tr>
+<tr><td>حارس السباق مكتوب (<code>SalesBooking.tsx:131</code>)</td><td><b>٣١ موضع</b> بلا حارس</td></tr>
+<tr><td>«ما انجلبت ≠ ماكو» موثَّق</td><td><b>٧٧ موضع</b> يسوّون العكس</td></tr>
+<tr><td><code>baghdad_date()</code> بـ٥٧ موضع</td><td><b>٧ مواضع</b> <code>::date</code> خام</td></tr>
+<tr><td>منع الاستيلاء على حساب المالك ببيانات الدخول</td><td><b>تنزيل دوره</b> مفتوح</td></tr>
+<tr><td>حارس فشل الجلب بصفحة الصلاحيات</td><td><b>السباق</b> يمرّ بمسار النجاح</td></tr>
+</tbody>
+</table>
+
+<h2>🔴 الاكتشاف الأهم بكل الفحص</h2>
+<p>قارنت <strong>كم مرة انتعدّل الملف</strong> مقابل <strong>هل بيه ملاحظة</strong>:</p>
+<table>
+<thead><tr><th>الملف</th><th>تعديلات</th><th>الملاحظة</th></tr></thead>
+<tbody>
+<tr><td><code>storage/token.go</code></td><td><b>١</b></td><td>A-02 — عالي</td></tr>
+<tr><td><code>components/StoryScene.tsx</code></td><td><b>٣</b></td><td>C-01 — عالي (انصلّحت)</td></tr>
+<tr><td><code>handler/inventory_handler.go</code></td><td>١٢</td><td>A-03 — متوسط</td></tr>
+<tr><td><code>service/employee_service.go</code></td><td>١٦</td><td>A-01 — عالي</td></tr>
+<tr><td><code>middleware/auth.go</code></td><td>٢٢</td><td>A-04 — متوسط</td></tr>
+<tr><td><code>pages/PermissionsPage.tsx</code></td><td><b>٢٣</b></td><td>F-01 — عالي</td></tr>
+<tr><td><code>repository/booking_repository.go</code></td><td><b>٥٤</b></td><td>B-01 — عالي</td></tr>
+</tbody>
+</table>
+<p><strong>الملاحظات تتجمّع بالطرفين — مو بالوسط.</strong>
+<code>token.go</code> انكتب <b>مرة وحدة وما رجعله أحد</b>، فالثغرة عاشت من يوم كتابتها.
+و<code>booking_repository.go</code> انتعدّل <b>٥٤ مرة</b> ونجت منهن كلهن.
+و<code>PermissionsPage.tsx</code> انتعدّل <b>٢٣ مرة</b>، وبوحدة منهن انكتب حارس صريح
+للخطر نفسه — ونجت.</p>
+<p><strong>يعني: لا كثرة المراجعة تحمي، ولا قِدَم الملف يحمي.</strong>
+الي يحمي شي واحد بس — اختبار يفشل لمن تنكسر القاعدة. وتغطية <code>repository</code> <b>صفر</b>.</p>
+
+<h2>منو بنى النظام</h2>
+<table>
+<thead><tr><th>المساهم</th><th>الرفعات</th><th>الحصة</th></tr></thead>
+<tbody>
+<tr><td>Claude</td><td>٧٣٩</td><td>٩٤٫٤٪</td></tr>
+<tr><td>koorymoe</td><td>٢٤</td><td>٣٫١٪</td></tr>
+<tr><td>Alamani</td><td>٢٠</td><td>٢٫٦٪</td></tr>
+</tbody>
+</table>
+<p>٩٧ يوماً · ٨ رفعات باليوم · وتيرة ثابتة ما انقطعت
+(حزيران ١٠٨ · تموز ٢٤٥ · آب ٢٨٠ · أيلول ١٥٠). وأكثر يوم شغل: <b>السبت</b>.</p>
+
+<h2>ثقافة التوثيق — أقوى شي بالمستودع</h2>
+<table>
+<thead><tr><th>المقياس</th><th>هذا المستودع</th><th>المعتاد</th></tr></thead>
+<tbody>
+<tr><td>متوسط طول رسالة الكومِت</td><td><b>٢٠ سطر</b></td><td>٣-٥ أسطر</td></tr>
+<tr><td>تحذيرات ⚠️ مكتوبة بالرسائل</td><td><b>٤٦٧</b></td><td>—</td></tr>
+<tr><td>علل معلَّمة بـ🔴</td><td><b>٦٥</b></td><td>—</td></tr>
+</tbody>
+</table>
+<p>الرسائل ما تقول <em>شنو</em> انتغيّر — تقول <strong>ليش</strong>، وتنقل كلام صاحب النظام حرفياً،
+وتوثّق العلّة وشلون انقاست. وهذا <strong>سرّع فحصي بمرات</strong>: أكثر من مرة فتحت ملفاً
+ولگيت التعليق يشرح الفخ قبل ما أوصله. هاي مو تفصيلاً تجميلياً — هي الي خلّت نظاماً
+بـ١٤٦ ألف سطر قابلاً للفهم من واحد برّا الفريق بيوم واحد.</p>
+
+<h2>مناطق الهشاشة — ملفات «الإله»</h2>
+<table>
+<thead><tr><th>الملف</th><th>تعديلات</th><th>الأسطر</th></tr></thead>
+<tbody>
+<tr><td><code>frontend/src/api.ts</code></td><td><b>٢٤٤</b></td><td>٥٫١٧٠</td></tr>
+<tr><td><code>backend-go/cmd/api/main.go</code></td><td><b>٢٣٣</b></td><td>١٫٨٥٤</td></tr>
+<tr><td><code>frontend/src/components/Layout.tsx</code></td><td><b>١٩٠</b></td><td>٩٦٠</td></tr>
+</tbody>
+</table>
+<p>مجموع تعديلاتهن <b>٦٦٧</b> — يعني <b>٨٥٪ من رفعات المستودع</b> تلمس واحداً منهن.
+كل ميزة جديدة تمرّ بيهن حتماً: <code>api.ts</code> لأن كل نداء خادم ينكتب بيه،
+<code>main.go</code> لأن كل مسار ينسجّل بيه، <code>Layout.tsx</code> لأن كل شاشة تنضاف لقائمته.</p>
+<p>هذا <strong>مو خطأ تصميم بالضرورة</strong> — هو ثمن مركزية مقصودة.
+بس يعني: أي تعديل بيهن يلمس كل النظام، وأي تعارض دمج يصير فيهن.</p>
+
+<h2>خطة الإصلاح</h2>
+
+<div class="f high">
+  <h3><span class="tag high">الجولة ١</span> ساعة وحدة · أعلى أثر</h3>
+  <table>
+  <thead><tr><th>#</th><th>الشغلة</th><th>الجهد</th></tr></thead>
+  <tbody>
+  <tr><td>A-01</td><td>فحص «الهدف مالك» قبل تغيير الدور والحالة</td><td><b>٥ سطور</b></td></tr>
+  <tr><td>F-01</td><td>حارس <code>alive</code> بصفحة الصلاحيات</td><td><b>٣ سطور</b></td></tr>
+  <tr><td>B-01</td><td><code>BookingCountableAndSQL</code> للتسعة</td><td><b>٩ سطور</b></td></tr>
+  <tr><td>A-03</td><td>حارس الملكية لـ<code>ToolEvents</code></td><td><b>٣ سطور</b></td></tr>
+  </tbody>
+  </table>
+  <p><strong>أربع ملاحظات عالية/متوسطة بـ٢٠ سطراً تقريباً.</strong></p>
+</div>
+
+<div class="f med">
+  <h3><span class="tag med">الجولة ٢</span> الشبكة — هاي الي تمنع التكرار</h3>
+  <p><b>B-02</b> — اختبار لكل قاعدة: «حجز محذوف ما ينعدّ» · «غير المخوّل ما يشوف غير ماله» ·
+  «الفاتورة تطابق الشيت».<br>
+  <b>F-04</b> — تنظيف الـ٥ أخطاء حته يشتغل شرط <code>AGENTS.md</code> فعلاً.</p>
+  <p>⚠️ <strong>الجولة ٢ أهم من الجولة ١ على المدى البعيد.</strong>
+  الجولة ١ تصلّح ١٦ ملاحظة، والجولة ٢ تمنع الـ١٦ الجاية.</p>
+</div>
+
+<div class="f low">
+  <h3><span class="tag low">الجولة ٣</span> الباقي</h3>
+  <p>A-02 (يحتاج تنسيقاً مع (م)) · A-04 · A-05 · B-03 · B-04 · F-02 · F-03 · A-06 · B-05 · F-05</p>
+</div>
+
+<h2>لو ما تسوي غير شي واحد</h2>
+<div class="note">
+<p><strong>اكتب ثلاثة اختبارات.</strong> مو ثلاثين — ثلاثة:</p>
+<ol>
+<li><b>«حجز محذوف ما ينعدّ»</b> — يمسك B-01 وكل عائلته للأبد</li>
+<li><b>«موظف بلا صلاحية ما يشوف بيانات غيره»</b> — يمسك A-03 وA-02 وF-01</li>
+<li><b>«الفاتورة تطابق الشيت»</b> — يحرس الفلوس</li>
+</ol>
+<p>و<code>safeguard</code> بـ<b>٩١٫٧٪</b> تغطية يثبت إن الفريق يعرف يكتبهن لمن يقرر.
+<strong>المشكلة مو القدرة — القرار.</strong></p>
+</div>
+
+<footer>
+تقرير المرحلة ٤ من ٤ — الأخير · فرع <code>avg</code><br>
+التفاصيل الكاملة بتقارير المراحل ١ و٢ و٣ · وجدول الحالة الحيّ بـ<code>README.md</code><br>
+⚠️ ما انعدّل ولا سطر كود بالمراحل الأربع — التعديل يبدي بطلبك.
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,1014 @@
+import { Link } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { api, type Booking, type Expense } from '../api'
+import SurveyPhotos from '../components/SurveyPhotos'
+import { matches } from '../utils/search'
+import { useSession, canAuditFinance, canLinkPartialBooking } from '../session'
+import InternalDepartmentContacts from '../components/InternalDepartmentContacts'
+import BookingCodeChip from '../components/BookingCodeChip'
+import EntityIdentity from '../components/EntityIdentity'
+import MoneyNoInvoice from '../components/MoneyNoInvoice'
+import { askForm } from '../utils/dialog'
+
+export default function Finance() {
+  // ⚠️⚠️ هاي الشاشة چانت **بلا أي فحص**: أزرار «مطابق» و«غير مطابق»
+  // و«خطأ بالسعر» تُعرض لأي واحد يفتحها، والرفض يجي من الخادم بعد
+  // الضغط. ومنو يصدر القرار هسه محسوم بالمفتاح مو بالدور.
+  const { employee, permissions } = useSession()
+  const canDecide = canAuditFinance(employee?.role, permissions)
+  /** ⚠️ المالك وحده — حذف (أرشفة) حجوزات مكررة/خطأ من هالشاشة مباشرة،
+   *  بلا طلب/موافقة (نفس نمط `returnToAccountant` بـ`LeaderInvoicesListPage`). */
+  const isOwner = employee?.actualRole === 'OWNER'
+  /** ⚠️ صلاحية مستقلة مو حصراً بالمالك — «سوي الزر صلاحية واني انطي
+   *  بعدين» (طلب صاحب النظام). ربط حجزين تاريخيين منفصلين كإنجاز
+   *  جزئي لنفس الشغلة (شغلة طوّلت أكثر من يوم واستوردت كصفوف منفصلة). */
+  const canLinkPartial = canLinkPartialBooking(employee?.role, permissions)
+  const [archiveBusyId, setArchiveBusyId] = useState<string | null>(null)
+  const [partialLinkBusyId, setPartialLinkBusyId] = useState<string | null>(null)
+  const [surveyMarkBusyId, setSurveyMarkBusyId] = useState<string | null>(null)
+  const [bookings, setBookings] = useState<Booking[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  /** ⚠️ `internal` **معزول**: الشغل داخل الشركة ما ينحسب إيراد زبون،
+   *  فما يطلع بـ«الكل» ولا بطابور التدقيق — إله بطاقته لحاله. */
+  const [filter, setFilter] = useState<'all' | 'pending' | 'verified' | 'internal' | 'partial_linked' | 'survey'>('all')
+  const [search, setSearch] = useState('')
+  // قرار (ع) 10-07: تسعير الأعمال الداخلية القديمة (مؤقت) — للمحاسب والمراقب والمالك.
+  const canBackfill = canDecide || isOwner || employee?.role === 'MONITOR' || permissions.includes('monitoring')
+  const [backfill, setBackfill] = useState<Set<string>>(new Set())
+  const loadBackfill = () => {
+    if (!canBackfill) return
+    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(() => {})
+  }
+  useEffect(() => {
+    if (!canBackfill) return
+    api.getInternalBackfill().then((rows) => setBackfill(new Set(rows.map((r) => r.id)))).catch(() => {})
+  }, [canBackfill])
+  const priceOld = async (b: Booking) => {
+    const ans = await askForm(`سعّر العمل الداخلي ${b.code} (قديم)`, [
+      { kind: 'text', key: 'work', label: 'شنو انعمل؟', placeholder: 'مثلاً: نصب كاميرتين بالمخزن وسحب كيبل' },
+      { kind: 'text', key: 'price', label: 'السعر (دينار)', placeholder: '50000' },
+    ], 'سوّي الفاتورة')
+    if (!ans) return
+    const price = Number(String(ans.price).replace(/[^0-9.]/g, ''))
+    if (!price || price <= 0) { alert('اكتب سعر صحيح أكبر من صفر'); return }
+    try {
+      await api.priceInternalBackfill(b.id, ans.work, price)
+      alert(`انسوّت فاتورة الحجز ${b.code}`)
+      loadBackfill(); load()
+    } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+  }
+  // قرار (ع) 10-07: حجز زبون انحسب «داخل الشركة» بالغلط — المالك بس يرجّعه.
+  const returnToCustomer = async (b: Booking) => {
+    const ok = await askForm(`ترجّع ${b.code} حجز زبون؟`, [
+      { kind: 'choice', key: 'c', label: 'الحجز يطلع من «داخل الشركة» ويرجع لحجوزات الزبائن والإيرادات.', options: [['yes', '↩️ إي، رجّعه حجز زبون']] },
+    ], 'تأكيد')
+    if (!ok) return
+    try {
+      await api.changeBookingType(b.id, 'REGULAR')
+      alert(`الحجز ${b.code} رجع حجز زبون`)
+      load()
+    } catch (e) { alert(e instanceof Error ? e.message : 'تعذر') }
+  }
+  // مشكوك إنه حجز زبون: ماكو قسم، أو عليه مبلغ مستلم من زبون.
+  const looksLikeCustomer = (b: Booking) =>
+    (!b.internalDepartmentId && !(b.internalDepartment ?? '').trim()) || (b.amountCollected ?? 0) > 0
+
+  const load = () => {
+    Promise.all([
+      api.getBookings({ status: 'COMPLETED' }),
+      api.getExpenses(),
+    ])
+      .then(([b, e]) => {
+        setBookings(b)
+        setExpenses(e)
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false))
+  }
+
+  useEffect(load, [])
+
+  // مبلغ الفاتورة الي يكتبه المحاسب لكل حجز — لازم للحجوزات القديمة
+  // المستوردة بقيم صفر: يفتح فاتورة النظام القديم ويكتب سعرها هنا.
+  const [invoiceAmounts, setInvoiceAmounts] = useState<Record<string, string>>({})
+  const [auditBusy, setAuditBusy] = useState<string | null>(null)
+
+  const amountFor = (b: Booking) => {
+    const typed = invoiceAmounts[b.id]
+    if (typed !== undefined && typed !== '') return Number(typed)
+    return b.amountCollected ?? 0
+  }
+
+  /** ⚠️ للمالك وحده — حذف مباشر (أرشفة) لحجز مكرر أو خطأ، بلا طلب/
+   *  موافقة. يستخدم نفس مسار الأرشفة الموجود أصلاً (`DELETE /api/
+   *  bookings/{id}`) — السبب إجباري بالخادم، والحجز يختفي من هالقائمة
+   *  ويبقى بالأرشيف (`/bookings/archived`) لا يُمحى فعلياً. */
+  const archiveBooking = async (b: Booking) => {
+    const reason = window.prompt(`سبب حذف الحجز ${b.code} (يُحفظ بالأرشيف):`)
+    if (reason === null) return
+    if (!reason.trim()) { window.alert('اكتب سبب الحذف'); return }
+    setArchiveBusyId(b.id)
+    try {
+      await api.archiveBooking(b.id, reason.trim())
+      setBookings((prev) => prev.filter((x) => x.id !== b.id))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'تعذر حذف الحجز')
+    } finally {
+      setArchiveBusyId(null)
+    }
+  }
+
+  /** ربط هذا الحجز بحجز آخر كإنجاز جزئي لنفس الشغلة (شغلة طوّلت
+   *  أكثر من يوم واستوردت كصفوف منفصلة — مو تكرار حقيقي). صاحب
+   *  النظام يكتب كود الحجز الآخر الي يشوفه بالشاشة؛ الخادم يحل الكود
+   *  ويرفض لو ماكو حجز بهذا الكود أو لو حاول ربط الحجز بنفسه. حقل
+   *  فاضي يفك الربط. */
+  const setPartialLink = async (b: Booking) => {
+    const code = window.prompt(
+      'كود الحجز الأصلي لنفس الشغلة (اتركه فاضي لإزالة الربط):\nمثال: OLD-355f9a5eb1f1',
+      b.partialJobBooking?.code || '',
+    )
+    if (code === null) return
+    setPartialLinkBusyId(b.id)
+    try {
+      const updated = await api.setPartialJobLink(b.id, code.trim())
+      setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'تعذر ربط الحجز')
+    } finally {
+      setPartialLinkBusyId(null)
+    }
+  }
+
+  /** تأشير حجز قديم ككشف بأثر رجعي (فاته التصنيف وقت التنسيق) —
+   *  الزيارة كانت معاينة بس مو شغل حقيقي، بلا فاتورة ولا تقرير. يسأل
+   *  "كشف لأي حجز بالضبط؟" ويربطه بالحجز الحقيقي الي نتج عنه (لو
+   *  موجود). لو الحجز أصلاً كشف، نعدّل الربط بس (نفس مسار الإنجاز
+   *  الجزئي) لأن الخادم يرفض تأشير نوع مكرر. */
+  const markAsSurvey = async (b: Booking) => {
+    const code = window.prompt(
+      'كشف لأي حجز بالضبط؟ (كود الحجز الحقيقي الي نتج عن هذي المعاينة — اتركه فاضي لو ما صار عمل بعد):',
+      b.partialJobBooking?.code || '',
+    )
+    if (code === null) return
+    setSurveyMarkBusyId(b.id)
+    try {
+      const updated = b.bookingType === 'SURVEY'
+        ? await api.setPartialJobLink(b.id, code.trim())
+        : await api.markBookingAsSurvey(b.id, code.trim())
+      setBookings((prev) => prev.map((x) => (x.id === b.id ? updated : x)))
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'تعذر تأشير الحجز ككشف')
+    } finally {
+      setSurveyMarkBusyId(null)
+    }
+  }
+
+  const doAudit = async (b: Booking, action: 'VERIFY' | 'MISMATCH' | 'PRICE_ERROR' | 'FREE') => {
+    const typed = invoiceAmounts[b.id]
+    const amount = typed !== undefined && typed !== '' ? Number(typed) : undefined
+
+    // ═══ صيانة مجانية ═══
+    // ماكو مبلغ ولا سبب إجباري. وبلا هذا الطريق كان المحاسب مجبوراً
+    // يكتب مبلغاً ما انستلم، أو يأشّر «غير مطابق» فتنفتح مخالفة على
+    // شغل ضمان سليم.
+    // ⚠️ وشريحة سبب المجانية محلها «التدقيق اليومي»: الحجز نفسه ما
+    // يحمل علم مجانية الفاتورة، وصفّ التدقيق اليومي يحمله بجوينه.
+    if (action === 'FREE') {
+      setAuditBusy(b.id)
+      try {
+        await api.auditBooking(b.id, { action })
+        load()
+      } catch (e) {
+        alert(e instanceof Error ? e.message : 'تعذر تأشير الصيانة المجانية')
+      } finally {
+        setAuditBusy(null)
+      }
+      return
+    }
+
+    if (action === 'VERIFY' && amountFor(b) <= 0) {
+      alert('اكتب المبلغ من الفاتورة أول — ما ينفع تدقق حجز بلا مبلغ')
+      return
+    }
+    let note: string | undefined
+    if (action !== 'VERIFY') {
+      const answer = prompt(action === 'MISMATCH'
+        ? 'شنو الفرق بالضبط؟ (يروح للرقابة والجودة)'
+        : 'شنو الغلط بالسعر؟ (يروح للرقابة والإداري)')
+      if (answer === null) return
+      note = answer.trim() || undefined
+    }
+
+    setAuditBusy(b.id)
+    try {
+      await api.auditBooking(b.id, { action, amountCollected: amount, note })
+      if (action !== 'VERIFY') {
+        alert('انسجّل البلاغ وانوجّه للمعني — الحجز يبقى غير مدقق لحد ما ينحسم')
+      }
+      setInvoiceAmounts((prev) => ({ ...prev, [b.id]: '' }))
+      // ⚠️ **إعادة تحميل مو ترقيع محلي**: الترقيع يحدّث الحجز بس،
+      // والمصاريف والمواد تبقى قديمة طول الجلسة — فالمحاسب يشوف
+      // إجمالياً محسوباً على بيانات عمرها ساعات ويقرّر عليه.
+      load()
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'تعذر تنفيذ التدقيق')
+    } finally {
+      setAuditBusy(null)
+    }
+  }
+
+  const toggle = (id: string) =>
+    setExpanded((prev) => ({ ...prev, [id]: !prev[id] }))
+
+  const isInternal = (b: Booking) => b.bookingType === 'INTERNAL'
+  /** حجز كشف — زيارة معاينة بلا فاتورة ولا عُدّة ولا تقرير عمل، مؤشَّر
+   *  وقت التكليف أو بأثر رجعي من هالشاشة (زر 🔍). */
+  const isSurvey = (b: Booking) => b.bookingType === 'SURVEY'
+  /** ⚠️ «ما اخذت فلوس منفصلة باليوم الثاني — الفلوس كلها بفاتورة اليوم
+   *  الأول» — حجز مربوط (يوم إضافي بشغلة متعددة الأيام) ماله مبلغ
+   *  مستقل يُدقَّق، فما يصح يطالبنا الشاشة بتدقيقه أو نحسبه معلّقاً.
+   *  العزل هنا **بس بهالشاشة** (نفس تنبيه صاحب النظام صراحة) — ما
+   *  يغيّر amountVerified الحقيقي ولا أي حساب ثاني بالنظام.
+   *  🔴 حجز الكشف نفسه **مستثنى من هذا التعريف**: `partialJobBooking`
+   *  عليه يعني «كشف لهذا الحجز» لا «يوم إضافي له» — معنى مختلف كلياً
+   *  رغم إنه نفس العمود بالخادم (بالحفاظ على انفراد النوعين ببعضهم). */
+  const isPartialLinked = (b: Booking) => !isSurvey(b) && !!b.partialJobBooking
+
+  // ═══ حجز اليوم الأول لشغلة متعددة الأيام / الحجز الي عليه كشف مسبق ═══
+  // «ما اكدر احذف الحجز الأول لان محسوب علي» — هذا الحساب المحلي (بلا
+  // نداء خادم إضافي) يجمع كل الحجوزات المُشار إليها كـ«أصل» من حجوزات
+  // أخرى محمّلة أصلاً بالشاشة، حتى يطمّن صاحب النظام إنه ما يحتاج يحذفه
+  // — هذا بالضبط سبب طلبه. مقسومة بنوع الحجز **المُشير** لأن المعنى
+  // يختلف: يوم إضافي بشغلة، أو كشف سبق هذا الحجز الحقيقي.
+  const { continuationAnchorIds, surveyAnchorIds } = useMemo(() => {
+    const continuation = new Set<string>()
+    const survey = new Set<string>()
+    for (const b of bookings) {
+      if (!b.partialJobBooking?.id) continue
+      if (isSurvey(b)) survey.add(b.partialJobBooking.id)
+      else continuation.add(b.partialJobBooking.id)
+    }
+    return { continuationAnchorIds: continuation, surveyAnchorIds: survey }
+  }, [bookings])
+
+  // بحث بكود الحجز، كود الزبون، رقم هاتفه، أو اسمه
+  const matchesSearch = (b: Booking) => {
+    return matches([b.code, b.customer?.code, b.customer?.phone, b.customer?.name], search)
+  }
+  const filtered = bookings.filter((b) => {
+    if (!matchesSearch(b)) return false
+    if (filter === 'internal') return isInternal(b)
+    if (filter === 'partial_linked') return isPartialLinked(b)
+    if (filter === 'survey') return isSurvey(b)
+    // 🔴 العزل حقيقي مو شكلي: الداخلي والمربوط جزئياً والكشف ينشالون
+    // من كل البطاقات الثانية — نفس مبدأ عزل «داخل الشركة» تماماً.
+    if (isInternal(b)) return false
+    if (isPartialLinked(b)) return false
+    if (isSurvey(b)) return false
+    if (filter === 'pending') return !b.amountVerified
+    if (filter === 'verified') return b.amountVerified
+    return true
+  })
+
+  const internalCount = bookings.filter(isInternal).length
+  const partialLinkedCount = bookings.filter(isPartialLinked).length
+  const surveyCount = bookings.filter(isSurvey).length
+  const external = bookings.filter((b) => !isInternal(b) && !isPartialLinked(b) && !isSurvey(b))
+  const pendingCount = external.filter((b) => !b.amountVerified).length
+  const verifiedCount = external.filter((b) => b.amountVerified).length
+
+  // ═══ مصاريف الحجز ═══
+  //
+  // ⚠️⚠️ **هنا چان أخطر خطأ بالشاشة.** قبل هالتعديل، المصاريف چانت
+  // تنتنسب **بالموظف مو بالحجز**:
+  //
+  //     e.employeeId === b.expenseResponsibleId
+  //
+  // يعني كل مصاريف الليدر المعتمدة تنحسب على **كل حجز** هو مسؤول عنه.
+  // ليدر عنده ١٠ حجوزات ومصروف واحد بـ٥٠ ألف ← المصروف ينحسب **١٠
+  // مرات**، فيطلع «نقص» بحجوزات مبالغها سليمة تماماً — والمحاسب يدوّر
+  // على فلوس **ما ضاعت**.
+  //
+  // هسه المصروف عنده `bookingId` حقيقي يختاره الليدر وقت التسجيل.
+  const getBookingExpenses = (b: Booking): Expense[] =>
+    expenses.filter((e) => e.bookingId === b.id && e.status === 'APPROVED')
+
+  // ═══ المصاريف القديمة — تظهر ولا تنحسب ═══
+  //
+  // ⚠️⚠️ المسجّلة قبل الربط ما إلها `bookingId`. واكو ثلاث طرق،
+  // اثنتان منها **تكذبان**:
+  //   • نحسبها بالطريقة القديمة ← نبقّي الخطأ بالبيانات القديمة
+  //   • نتجاهلها بصمت ← أرقام تاريخية تتغيّر بلا ما يعرف أحد
+  // فالصح: تنعرض بجدول منفصل بعنوان صريح، والمحاسب يشوفها ويعرف ليش
+  // برّا الحساب.
+  const legacyExpenses = (b: Booking): Expense[] => {
+    if (!b.expenseResponsibleId) return []
+    return expenses.filter(
+      (e) => !e.bookingId && e.employeeId === b.expenseResponsibleId && e.status === 'APPROVED',
+    )
+  }
+
+  return (
+    <div dir="rtl" className="space-y-4">
+      {/* ═══ الترويسة ═══
+          ⚠️ **نفس هوية التدقيق اليومي** (نفس التدرّج): الشاشتان شغل
+          واحد، واختلاف الهوية بينهما يخلّي المحاسب يحس إنه انتقل
+          لنظام ثاني. */}
+      <div
+        className="relative overflow-hidden rounded-2xl p-6 shadow-md"
+        style={{ background: 'linear-gradient(135deg, #1a3a5c 0%, #24507e 55%, #2f6ba8 100%)' }}
+      >
+        <span aria-hidden className="pointer-events-none absolute -left-16 -top-24 h-64 w-64 rounded-full opacity-20"
+          style={{ background: 'radial-gradient(circle, #c8a45a 0%, transparent 70%)' }} />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-black text-white">📊 تدقيق الحسابات</h1>
+            {/* ⚠️ **يوضّح متى تستعمل أي شاشة**: شاشتان تسوّيان نفس
+                القرار بلا ما تقول أيّهما لأي شي تخلّي المحاسب يشتغل
+                بوحدة ويظن الثانية مكسورة. */}
+            <p className="mt-1 max-w-2xl text-sm text-blue-100">
+              <b className="text-white">كل الأرشيف</b> بتفاصيله الكاملة — المواد والمصاريف ومطابقة المبالغ.
+              وللشغل اليومي استعمل <b className="text-white">التدقيق اليومي</b>.
+            </p>
+          </div>
+          <Link to="/daily-audit"
+            className="rounded-xl bg-white/15 px-4 py-2 text-sm font-bold text-white ring-1 ring-white/25 backdrop-blur hover:bg-white/25">
+            📅 التدقيق اليومي ←
+          </Link>
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+        <button
+          onClick={() => setFilter('all')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'all'
+              ? 'border-brand-500 bg-brand-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-brand-900">{external.length}</p>
+          <p className="text-xs text-slate-500">الكل</p>
+        </button>
+        <button
+          onClick={() => setFilter('pending')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'pending'
+              ? 'border-amber-400 bg-amber-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-amber-600">{pendingCount}</p>
+          <p className="text-xs text-slate-500">بانتظار التدقيق</p>
+        </button>
+        <button
+          onClick={() => setFilter('verified')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'verified'
+              ? 'border-emerald-400 bg-emerald-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-emerald-600">{verifiedCount}</p>
+          <p className="text-xs text-slate-500">تم التدقيق</p>
+        </button>
+        <button
+          onClick={() => setFilter('internal')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'internal'
+              ? 'border-indigo-400 bg-indigo-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-indigo-600">{internalCount}</p>
+          <p className="text-xs text-slate-500">🏢 داخل الشركة</p>
+        </button>
+        <button
+          onClick={() => setFilter('partial_linked')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'partial_linked'
+              ? 'border-violet-400 bg-violet-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-violet-600">{partialLinkedCount}</p>
+          <p className="text-xs text-slate-500">🔗 مربوطة بشغلة أخرى</p>
+        </button>
+        <button
+          onClick={() => setFilter('survey')}
+          className={`rounded-xl border p-3 text-center transition-all ${
+            filter === 'survey'
+              ? 'border-teal-400 bg-teal-50 shadow-sm'
+              : 'border-slate-200 bg-[var(--sf-card)]'
+          }`}
+        >
+          <p className="text-2xl font-bold text-teal-600">{surveyCount}</p>
+          <p className="text-xs text-slate-500">🔍 زيارات كشف</p>
+        </button>
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-[var(--sf-card)] p-4 shadow-[0_4px_20px_rgba(15,32,64,0.06)]">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="🔍 بحث بكود الحجز، كود الزبون، رقم الهاتف، أو اسم الزبون..."
+          className="w-full rounded-lg border border-slate-300 px-4 py-2.5 outline-none focus:border-brand-500"
+        />
+        {search.trim() && (
+          <p className="mt-2 text-xs text-slate-500">النتائج: {filtered.length} حجز</p>
+        )}
+      </div>
+
+      {loading && <p className="mt-6 text-slate-400">جاري التحميل...</p>}
+      {error && (
+        <p className="mt-6 rounded-lg bg-red-50 p-4 text-red-600">
+          تعذر الاتصال بالخادم: {error}
+        </p>
+      )}
+
+      {filter === 'internal' && canBackfill && backfill.size > 0 && (
+        <p className="mt-6 rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm font-bold text-indigo-900">
+          ⏳ باقي {backfill.size} عمل داخلي قديم بلا سعر — افتح الحجز واضغط «💰 سعّر (قديم)»، تنسوّى فاتورته.
+        </p>
+      )}
+      <div className="mt-6 flex flex-col gap-4">
+        {filtered.map((b) => {
+          const isOpen = expanded[b.id] ?? false
+          const cartTotal = (b.cartItems ?? []).reduce(
+            (sum, c) => sum + c.totalPrice,
+            0,
+          )
+          const bookingExpenses = getBookingExpenses(b)
+          const legacyRows = legacyExpenses(b)
+          const expensesTotal = bookingExpenses.reduce(
+            (sum, e) => sum + e.amount,
+            0,
+          )
+          const totalCollected =
+            (b.amountCollected || 0) + (b.advancePaid || 0)
+          const expectedTotal =
+            (b.quotedPrice || 0) + cartTotal + expensesTotal
+          const diff = totalCollected - expectedTotal
+
+          return (
+            <div
+              key={b.id}
+              className="overflow-hidden rounded-xl border border-white bg-white shadow-[0_4px_20px_rgba(15,32,64,0.06)]"
+            >
+              {/* Header - always visible */}
+              <div className="flex items-center">
+              <button
+                onClick={() => toggle(b.id)}
+                className="flex flex-1 items-center justify-between p-4 text-start transition-colors hover:bg-slate-50"
+              >
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="font-mono text-sm font-semibold text-brand-600">
+                    <BookingCodeChip code={b.code} />
+                  </span>
+                  <span className="text-sm font-medium text-brand-800">
+                    {b.customer?.name}
+                  </span>
+                  {b.service && (
+                    <span className="rounded-md bg-slate-100 px-2 py-0.5 text-xs text-slate-600">
+                      {b.service.name}
+                    </span>
+                  )}
+                  {/* التاريخ وموعد الانتهاء ظاهرين بالسطر — الباقي داخل التفاصيل */}
+                  <span className="rounded-md bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    📅 الحجز: {b.scheduledAt ? new Date(b.scheduledAt).toLocaleDateString('ar-IQ') : new Date(b.createdAt).toLocaleDateString('ar-IQ')}
+                  </span>
+                  <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${
+                    b.completedAt ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                  }`}>
+                    🏁 الانتهاء: {b.completedAt ? new Date(b.completedAt).toLocaleDateString('ar-IQ') : 'لم ينتهِ بعد'}
+                  </span>
+                  {/* ⚠️ الحل لمشكلة «هذا مكرر لو لأ بنظرة وحدة» — بدون فتح
+                      التفاصيل: شارة على الحجز التابع (فيها كود الأصل)،
+                      وشارة عكسية على الحجز الأصل نفسه («ما تحتاج تحذفني»).
+                      نفس العمود يخدم معنيين مختلفين حسب نوع الحجز
+                      المُشير: يوم إضافي بشغلة، أو كشف سبق حجزاً حقيقياً. */}
+                  {b.partialJobBooking && (
+                    <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                      {isSurvey(b)
+                        ? `🔍 كشف لهذا الحجز: ${b.partialJobBooking.code}`
+                        : `🔗 يوم إضافي — الأصل: ${b.partialJobBooking.code}`}
+                    </span>
+                  )}
+                  {continuationAnchorIds.has(b.id) && (
+                    <span className="rounded-md bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                      🔗 مرتبط بأيام إضافية — لا تحذفه
+                    </span>
+                  )}
+                  {surveyAnchorIds.has(b.id) && (
+                    <span className="rounded-md bg-teal-50 px-2 py-0.5 text-xs font-medium text-teal-700">
+                      🔍 عليه كشف مسبق — راجع نتائجه
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* قرار (ع) 10-09: قيمة الشغل الداخلي من فاتورته الداخلية */}
+                  {isInternal(b) && (b.internalInvoiceTotal != null ? (
+                    <span className="rounded-full bg-indigo-100 px-3 py-1 text-xs font-bold text-indigo-800" title="من الفاتورة الداخلية">
+                      🏭 {Math.round(b.internalInvoiceTotal).toLocaleString('en-US')} د.ع
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">بلا سعر</span>
+                  ))}
+                  {isSurvey(b) ? (
+                    <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-bold text-teal-700">
+                      🔍 زيارة كشف — بلا فاتورة
+                    </span>
+                  ) : isPartialLinked(b) ? (
+                    <span className="rounded-full bg-violet-100 px-3 py-1 text-xs font-bold text-violet-700">
+                      🔗 ضمن شغلة {b.partialJobBooking?.code}
+                    </span>
+                  ) : (
+                    <span
+                      className={`rounded-full px-3 py-1 text-xs font-bold ${
+                        b.amountVerified
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}
+                    >
+                      {b.amountVerified ? 'تم التدقيق' : 'بانتظار التدقيق'}
+                    </span>
+                  )}
+                  <svg
+                    className={`h-5 w-5 text-slate-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19 9l-7 7-7-7"
+                    />
+                  </svg>
+                </div>
+              </button>
+              {canLinkPartial && (
+                <button
+                  onClick={() => setPartialLink(b)}
+                  disabled={partialLinkBusyId === b.id}
+                  title="ربط بحجز آخر كإنجاز جزئي لنفس الشغلة (شغلة طوّلت أكثر من يوم)"
+                  className="mx-2 shrink-0 rounded-lg border border-violet-300 bg-violet-50 px-2.5 py-1.5 text-sm text-violet-700 hover:bg-violet-100 disabled:opacity-50"
+                >
+                  🔗
+                </button>
+              )}
+              {canLinkPartial && (
+                <button
+                  onClick={() => markAsSurvey(b)}
+                  disabled={surveyMarkBusyId === b.id}
+                  title="تأشير ككشف بأثر رجعي + ربطه بالحجز الحقيقي الي نتج عنه"
+                  className="mx-2 shrink-0 rounded-lg border border-teal-300 bg-teal-50 px-2.5 py-1.5 text-sm text-teal-700 hover:bg-teal-100 disabled:opacity-50"
+                >
+                  🔍
+                </button>
+              )}
+              {isOwner && (
+                <button
+                  onClick={() => archiveBooking(b)}
+                  disabled={archiveBusyId === b.id}
+                  title="حذف الحجز (للمالك حصراً)"
+                  className="mx-2 shrink-0 rounded-lg border border-red-300 bg-red-50 px-2.5 py-1.5 text-sm text-red-700 hover:bg-red-100 disabled:opacity-50"
+                >
+                  🗑️
+                </button>
+              )}
+              </div>
+
+              {/* Expanded details */}
+              {isOpen && (
+                <div className="border-t border-slate-100 p-4">
+                  {/* 🔴 القصة الكاملة أول شي بالتفاصيل: كود الحجز وكود
+                      الزبون وهاتفه، **والليدر المسؤول والإداري الي
+                      أكّد**. نفس رأس الهوية الي بتسع شاشات، فالمحاسب
+                      يقرا نفس الترتيب بكل مكان. */}
+                  <EntityIdentity booking={b} variant="full" className="mb-3" />
+                  {/* «ليش جايبة فلوس بدون فاتورة» — الجواب بالحقائق:
+                      منو يلازم يسوّيها ورقمه، مو رسالة عامة. */}
+                  <MoneyNoInvoice
+                    collected={(b.amountCollected ?? 0) + (b.advancePaid ?? 0)}
+                    hasInvoice={b.hasInvoice}
+                    leaderName={b.projectSupervisor?.name}
+                    leaderPhone={b.projectSupervisor?.phone}
+                    className="mb-3"
+                  />
+                  {/* الشغل داخل الشركة: ماكو زبون — القسم ومسؤولوه محلّه،
+                      وأرقامهم لازم تكون بالإيد لمن يدقّق أو يتصل. */}
+                  {isInternal(b) && (looksLikeCustomer(b) || backfill.has(b.id) || isOwner) && (
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      {looksLikeCustomer(b) && (
+                        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800" title="ماكو قسم مسجّل، أو عليه مبلغ مستلم من زبون">⚠️ يمكن حجز زبون مو داخل الشركة</span>
+                      )}
+                      {canBackfill && backfill.has(b.id) && (
+                        <button type="button" onClick={() => void priceOld(b)}
+                          className="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white">💰 سعّر (قديم)</button>
+                      )}
+                      {isOwner && (
+                        <button type="button" onClick={() => void returnToCustomer(b)}
+                          className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-bold text-amber-800">↩️ رجّعه حجز زبون</button>
+                      )}
+                    </div>
+                  )}
+                  {isInternal(b) && (
+                    <div className="mb-3">
+                      <InternalDepartmentContacts
+                        departmentId={b.internalDepartmentId}
+                        departmentName={b.internalDepartment}
+                        requesterName={b.internalEmployeeName}
+                        requesterPhone={b.internalEmployeePhone}
+                      />
+                    </div>
+                  )}
+                  {/* Booking info */}
+                  <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+                    <InfoRow label="رقم الزبون" value={b.customer ? `CUST-${String(b.customer.customerCode).padStart(5, '0')}` : 'زبون غير معروف'} />
+                    <InfoRow label="هاتف الزبون" value={b.customer?.phone || '-'} />
+                    <InfoRow
+                      label="تاريخ الحجز"
+                      value={new Date(b.createdAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    />
+                    <InfoRow
+                      label="موعد التنفيذ"
+                      value={b.scheduledAt ? new Date(b.scheduledAt).toLocaleString('ar-IQ') : 'غير محدد'}
+                    />
+                    <InfoRow
+                      label="تاريخ الإنجاز"
+                      value={
+                        b.completedAt
+                          ? new Date(b.completedAt).toLocaleDateString('ar-IQ', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric',
+                            })
+                          : 'غير محدد'
+                      }
+                    />
+                    <InfoRow label="العنوان" value={b.address || 'غير محدد'} />
+                    <InfoRow
+                      label="من دقّق الحجز مالياً"
+                      value={
+                        b.financeAuditedByName
+                          ? `${b.financeAuditedByName}${b.financeAuditedAt ? ' — ' + new Date(b.financeAuditedAt).toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' }) : ''}`
+                          : 'لم يُدقّق بعد بشاشة التدقيق (أو صُحّح بتسوية جماعية)'
+                      }
+                    />
+                    {b.partialJobBooking && (
+                      <InfoRow
+                        label={isSurvey(b) ? 'كشف لحجز حقيقي' : 'جزء من شغلة متعددة الأيام'}
+                        value={
+                          isSurvey(b)
+                            ? `الحجز الحقيقي الي نتج عن المعاينة: ${b.partialJobBooking.code}`
+                            : `اليوم الأول (أو الحجز الأصلي): ${b.partialJobBooking.code}`
+                        }
+                      />
+                    )}
+                    {b.completionNotes && (
+                      <div className="col-span-full">
+                        <InfoRow label="ملاحظات الفني" value={b.completionNotes} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Cart Items */}
+                  {(b.cartItems ?? []).length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="mb-2 text-sm font-bold text-brand-900">
+                        المواد المستخدمة
+                      </h4>
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-50 text-slate-600">
+                            <tr>
+                              <th className="p-2 text-start font-medium">المنتج</th>
+                              <th className="p-2 text-center font-medium">الكمية</th>
+                              <th className="p-2 text-center font-medium">سعر الوحدة</th>
+                              <th className="p-2 text-center font-medium">المجموع</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(b.cartItems ?? []).map((item) => (
+                              <tr
+                                key={item.id}
+                                className="border-t border-slate-100"
+                              >
+                                <td className="p-2 text-slate-700">
+                                  {item.productName}
+                                  {item.notes && (
+                                    <span className="mr-1 text-xs text-slate-400">
+                                      ({item.notes})
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-center text-slate-600">
+                                  {item.quantity}
+                                </td>
+                                <td className="p-2 text-center text-slate-600">
+                                  {item.unitPrice.toLocaleString()}
+                                </td>
+                                <td className="p-2 text-center font-medium text-slate-800">
+                                  {item.totalPrice.toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t-2 border-slate-300 bg-slate-50">
+                              <td
+                                colSpan={3}
+                                className="p-2 text-start font-bold text-slate-700"
+                              >
+                                مجموع المواد
+                              </td>
+                              <td className="p-2 text-center font-bold text-brand-700">
+                                {cartTotal.toLocaleString()}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Leader Expenses */}
+                  {bookingExpenses.length > 0 && (
+                    <div className="mt-4">
+                      <h4 className="mb-2 text-sm font-bold text-brand-900">
+                        مصاريف هذا الحجز
+                        {b.expenseResponsible && (
+                          <span className="mr-2 text-xs font-normal text-slate-500">
+                            ({b.expenseResponsible.name})
+                          </span>
+                        )}
+                      </h4>
+                      <div className="overflow-hidden rounded-lg border border-slate-200">
+                        <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-slate-50 text-slate-600">
+                            <tr>
+                              <th className="p-2 text-start font-medium">الوصف</th>
+                              <th className="p-2 text-center font-medium">المبلغ</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {bookingExpenses.map((exp) => (
+                              <tr
+                                key={exp.id}
+                                className="border-t border-slate-100"
+                              >
+                                <td className="p-2 text-slate-700">
+                                  {exp.description || 'بدون وصف'}
+                                </td>
+                                <td className="p-2 text-center text-slate-600">
+                                  {exp.amount.toLocaleString()}
+                                </td>
+                              </tr>
+                            ))}
+                            <tr className="border-t-2 border-slate-300 bg-slate-50">
+                              <td className="p-2 text-start font-bold text-slate-700">
+                                مجموع المصاريف
+                              </td>
+                              <td className="p-2 text-center font-bold text-brand-700">
+                                {expensesTotal.toLocaleString()}
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ═══ مصاريف قديمة بلا حجز ═══
+                      ⚠️ **تظهر ولا تنحسب**: مسجّلة قبل ما ينربط
+                      المصروف بحجزه. حسابها يبقّي الخطأ القديم،
+                      وإخفاؤها يغيّر أرقاماً تاريخية بصمت. */}
+                  {legacyRows.length > 0 && (
+                    <div className="mt-4 rounded-lg border-2 border-dashed border-amber-300 bg-amber-50/60 p-4">
+                      <h4 className="text-sm font-bold text-amber-900">
+                        ⚠️ مصاريف قديمة بلا حجز ({legacyRows.length})
+                      </h4>
+                      <p className="mt-0.5 text-xs leading-relaxed text-amber-800">
+                        مسجّلة قبل ما يصير المصروف مربوطاً بحجزه — <b>ما تنحسب بالإجمالي</b>،
+                        لأن ماكو دليل إنها تخص هذا الحجز بالذات. تحتاج ربطاً يدوياً.
+                      </p>
+                      <div className="mt-2 space-y-1">
+                        {legacyRows.map((exp) => (
+                          <div key={exp.id} className="flex items-center justify-between rounded-lg bg-white/70 px-3 py-1.5 text-xs">
+                            <span className="font-bold tabular-nums text-amber-900">
+                              {exp.amount.toLocaleString()} د.ع
+                            </span>
+                            <span className="text-slate-600">{exp.description || 'بدون وصف'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Cost Breakdown */}
+                  <div className="mt-4 rounded-lg border border-brand-200 bg-brand-50/50 p-4">
+                    <h4 className="mb-3 text-sm font-bold text-brand-900">
+                      ملخص التكاليف
+                    </h4>
+                    <div className="space-y-2 text-sm">
+                      <SummaryRow
+                        label="التكلفة المقدرة (الإداري)"
+                        value={b.quotedPrice}
+                      />
+                      {cartTotal > 0 && (
+                        <SummaryRow
+                          label="مجموع المواد المستخدمة"
+                          value={cartTotal}
+                        />
+                      )}
+                      {expensesTotal > 0 && (
+                        <SummaryRow
+                          label="مصاريف الليدر"
+                          value={expensesTotal}
+                        />
+                      )}
+                      <div className="border-t border-brand-200 pt-2">
+                        <SummaryRow
+                          label="الإجمالي المتوقع"
+                          value={expectedTotal}
+                          bold
+                        />
+                      </div>
+                      <div className="border-t border-brand-200 pt-2">
+                        <SummaryRow
+                          label="الدفعة المقدمة"
+                          value={b.advancePaid ?? 0}
+                        />
+                        <SummaryRow
+                          label="المبلغ المستلم (الفني)"
+                          value={b.amountCollected}
+                        />
+                        <SummaryRow
+                          label="إجمالي المحصّل"
+                          value={totalCollected}
+                          bold
+                        />
+                      </div>
+                      {expectedTotal > 0 && (
+                        <div className="border-t border-brand-200 pt-2">
+                          {diff === 0 ? (
+                            <p className="text-sm font-medium text-emerald-600">
+                              المبلغ مطابق للتكلفة المتوقعة
+                            </p>
+                          ) : diff > 0 ? (
+                            <p className="text-sm font-bold text-emerald-600">
+                              زيادة بمقدار {diff.toLocaleString()}
+                            </p>
+                          ) : (
+                            <p className="text-sm font-bold text-red-600">
+                              نقص بمقدار {Math.abs(diff).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {isSurvey(b) ? (
+                    <p className="mt-4 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-[11px] text-teal-700">
+                      🔍 هذا حجز كشف (زيارة معاينة) — بلا فاتورة ولا عُدّة ولا تقرير عمل،
+                      فما يطالبك بتدقيق أو فاتورة هنا. نتائج المعاينة (شنو يريد الزبون
+                      وتفاصيل الموقع) تُسلَّم من شاشة مهامي.
+                      {b.partialJobBooking && <> نتج عنه الحجز الحقيقي {b.partialJobBooking.code}.</>}
+                    </p>
+                  ) : null}
+                  {isSurvey(b) && <SurveyPhotos owner={{ bookingId: b.id }} />}
+                  {isSurvey(b) ? null : isPartialLinked(b) ? (
+                    <p className="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-[11px] text-violet-700">
+                      🔗 هذا يوم إضافي بشغلة متعددة الأيام — فلوسه مو منفصلة (كلها بفاتورة
+                      الحجز الأصلي {b.partialJobBooking?.code})، فما يطالبك بتدقيق أو فاتورة
+                      أو تقرير مستقل. الإعفاء هنا بس بشاشة تدقيق الحسابات.
+                    </p>
+                  ) : (
+                    <>
+                      {!b.amountVerified && !canDecide && (
+                        <p className="mt-4 rounded-xl border px-3 py-2 text-[11px]"
+                          style={{ borderColor: 'var(--bd-line)', color: 'var(--t-muted)' }}>
+                          👁️ عرض فقط — قرار التدقيق (مطابق / غير مطابق / خطأ بالسعر) بيد المحاسب،
+                          <b>إلا إذا المالك نطاك صلاحية «تدقيق ومطابقة الحسابات (بدل المحاسب)»</b>.
+                        </p>
+                      )}
+
+                      {/* التدقيق: مبلغ الفاتورة إجباري، أو بلاغ خطأ ينوجّه للمعني */}
+                      {!b.amountVerified && canDecide && (
+                        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                          <label className="mb-1 block text-xs font-bold text-slate-600">
+                            المبلغ حسب الفاتورة *
+                          </label>
+                          <input
+                            type="number" min="0" inputMode="numeric"
+                            value={invoiceAmounts[b.id] ?? ''}
+                            onChange={(e) => setInvoiceAmounts((prev) => ({ ...prev, [b.id]: e.target.value }))}
+                            placeholder={b.amountCollected ? String(b.amountCollected) : 'اكتب المبلغ من الفاتورة'}
+                            className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          />
+                          {(b.amountCollected ?? 0) === 0 && (
+                            <p className="mt-1 text-xs text-amber-700">
+                              ⚠️ هذا الحجز بلا مبلغ (مستورد من النظام القديم) — اكتب المبلغ بالخانة فوگ واضغط «مطابق — أكّد التدقيق» مباشرة.
+                            </p>
+                          )}
+
+                          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'FREE')}
+                              className="rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+                            >
+                              🎁 صيانة مجانية
+                            </button>
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'VERIFY')}
+                              className="rounded-lg bg-gradient-to-l from-brand-500 to-brand-800 px-4 py-2.5 text-sm font-medium text-white shadow-md transition-all hover:shadow-lg disabled:opacity-50"
+                            >
+                              ✔ مطابق — أكّد التدقيق
+                            </button>
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'MISMATCH')}
+                              className="rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white hover:bg-amber-600 disabled:opacity-50"
+                            >
+                              ⚠️ غير مطابق
+                            </button>
+                            <button
+                              disabled={auditBusy === b.id}
+                              onClick={() => doAudit(b, 'PRICE_ERROR')}
+                              className="rounded-lg bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            >
+                              ✕ خطأ بالسعر
+                            </button>
+                          </div>
+                          <p className="mt-2 text-[11px] text-slate-400">
+                            «صيانة مجانية» تغلق الحجز بصفر بلا بلاغ · «غير مطابق» يروح للرقابة والجودة · «خطأ بالسعر» للرقابة والإداري
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+        {/* ⚠️ **القائمة المرشّحة مو الكاملة**: قبل هيچ، ترشيح على
+            «تم التدقيق» وماكو ولا واحد يعطي **صفحة بيضاء بلا رسالة** —
+            والمحاسب يظن الشاشة مكسورة. */}
+        {!loading && filtered.length === 0 && (
+          <p className="text-slate-400">{bookings.length === 0
+              ? 'لا توجد حجوزات منجزة بعد.'
+              : search.trim()
+                ? `ماكو نتيجة لـ«${search}» بهذا الترشيح.`
+                : filter === 'pending' ? '✅ ماكو حجز بانتظار التدقيق — كلها مدققة.'
+                  : filter === 'verified' ? 'ماكو حجز مدقق بعد.'
+                    : 'ماكو حجوزات.'}</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <p className="text-slate-600">
+      <span className="text-slate-400">{label}: </span>
+      {value}
+    </p>
+  )
+}
+
+function SummaryRow({
+  label,
+  value,
+  bold,
+}: {
+  label: string
+  value: number | null | undefined
+  bold?: boolean
+}) {
+  return (
+    <div className="flex items-center justify-between">
+      <span className={`text-slate-600 ${bold ? 'font-bold' : ''}`}>
+        {label}
+      </span>
+      <span
+        className={`font-mono ${bold ? 'text-base font-bold text-brand-900' : 'text-slate-800'}`}
+      >
+        {value != null ? value.toLocaleString() : 'غير محدد'}
+      </span>
+    </div>
+  )
+}

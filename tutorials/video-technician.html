@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>شرح نظام الفني — دليل تفاعلي</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--pr:#2563eb;--pr-d:#1d4ed8;--pr-l:#dbeafe;--bg:#f1f5f9;--card:#fff;--text:#1e293b;--text2:#64748b;--border:#e2e8f0;--green:#16a34a;--red:#ef4444;--orange:#f59e0b;--radius:12px}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#0f172a;color:var(--text);overflow:hidden;height:100vh;display:flex;flex-direction:column}
+#sim-container{flex:1;position:relative;overflow:hidden;display:flex;justify-content:center;align-items:center}
+#sim-screen{width:100%;max-width:1200px;height:calc(100vh - 70px);background:var(--bg);position:relative;overflow:hidden;border-radius:0}
+/* System UI */
+#sys-header{height:56px;background:var(--pr);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:relative;z-index:5}
+#sys-header .logo{font-size:18px;font-weight:700}
+#sys-header .user-info{display:flex;align-items:center;gap:10px;font-size:14px}
+#sys-header .badge{background:rgba(255,255,255,.2);padding:2px 10px;border-radius:20px;font-size:12px}
+#sys-sidebar{position:absolute;top:56px;right:0;width:220px;height:calc(100% - 56px);background:#1e293b;color:#fff;z-index:4;display:flex;flex-direction:column;padding-top:12px}
+.nav-item{padding:12px 20px;cursor:pointer;font-size:14px;display:flex;align-items:center;gap:10px;transition:background .3s;border-radius:8px 0 0 8px;margin-left:0}
+.nav-item:hover,.nav-item.active{background:var(--pr)}
+.nav-item .icon{width:20px;text-align:center}
+#sys-content{position:absolute;top:56px;right:220px;left:0;bottom:0;padding:24px;overflow-y:auto;z-index:3}
+/* Login screen */
+#login-screen{position:absolute;inset:0;background:linear-gradient(135deg,#1e3a5f,#2563eb);display:flex;justify-content:center;align-items:center;z-index:50}
+.login-box{background:#fff;border-radius:16px;padding:40px;width:380px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-box h2{color:var(--pr);margin-bottom:8px;font-size:24px}
+.login-box p{color:var(--text2);margin-bottom:24px;font-size:14px}
+.login-field{width:100%;padding:12px 16px;border:2px solid var(--border);border-radius:8px;font-size:15px;margin-bottom:12px;text-align:right;direction:rtl;outline:none;transition:border-color .3s}
+.login-field:focus{border-color:var(--pr)}
+.login-btn{width:100%;padding:12px;background:var(--pr);color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-weight:600;transition:background .3s}
+.login-btn:hover{background:var(--pr-d)}
+/* Cards */
+.card{background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--border)}
+.card-title{font-size:16px;font-weight:700;margin-bottom:8px;color:var(--text)}
+.status-badge{display:inline-block;padding:3px 12px;border-radius:20px;font-size:12px;font-weight:600}
+.status-confirmed{background:#dcfce7;color:#166534}
+.status-progress{background:#fef3c7;color:#92400e}
+.status-pending{background:#fef3c7;color:#92400e}
+.status-complete{background:#dcfce7;color:#166534}
+/* Form elements */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:var(--text)}
+.form-input,.form-select,.form-textarea{width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:8px;font-size:14px;direction:rtl;outline:none;font-family:inherit;transition:border-color .3s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--pr)}
+.form-textarea{min-height:80px;resize:none}
+.checkbox-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:14px}
+.checkbox-row input[type=checkbox]{width:18px;height:18px;accent-color:var(--pr)}
+.btn{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .3s;font-family:inherit}
+.btn-primary{background:var(--pr);color:#fff}
+.btn-primary:hover{background:var(--pr-d)}
+.btn-success{background:var(--green);color:#fff}
+.btn-danger{background:var(--red);color:#fff}
+/* Success overlay */
+.success-msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;padding:30px 50px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.3);z-index:100;text-align:center;animation:popIn .4s ease}
+.success-msg .check{font-size:48px;color:var(--green);margin-bottom:8px}
+@keyframes popIn{from{transform:translate(-50%,-50%) scale(.5);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+/* Tools table */
+.tools-table{width:100%;border-collapse:collapse;margin-top:12px}
+.tools-table th,.tools-table td{padding:10px 14px;text-align:right;border-bottom:1px solid var(--border);font-size:14px}
+.tools-table th{background:var(--pr-l);color:var(--pr-d);font-weight:600}
+/* Ranking */
+.rank-card{text-align:center;padding:30px}
+.rank-num{font-size:64px;font-weight:800;color:var(--pr)}
+.rank-sub{font-size:16px;color:var(--text2);margin-top:4px}
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px}
+.kpi-item{background:var(--pr-l);border-radius:var(--radius);padding:16px;text-align:center}
+.kpi-val{font-size:28px;font-weight:700;color:var(--pr)}
+.kpi-label{font-size:12px;color:var(--text2);margin-top:4px}
+/* Training */
+.train-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+.train-card{background:var(--card);border-radius:var(--radius);overflow:hidden;border:1px solid var(--border);cursor:pointer;transition:transform .2s}
+.train-card:hover{transform:translateY(-2px)}
+.train-thumb{height:120px;background:linear-gradient(135deg,#1e3a5f,#2563eb);display:flex;align-items:center;justify-content:center;color:#fff;font-size:40px}
+.train-info{padding:12px}
+.train-info h4{font-size:14px;margin-bottom:4px}
+.train-info p{font-size:12px;color:var(--text2)}
+/* Video player placeholder */
+.video-player{background:#000;border-radius:var(--radius);height:300px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:48px;position:relative}
+.video-player .play-icon{width:70px;height:70px;background:rgba(255,255,255,.2);border-radius:50%;display:flex;align-items:center;justify-content:center}
+/* AI Widget */
+#ai-widget{position:absolute;bottom:20px;left:20px;z-index:30}
+#ai-btn{width:56px;height:56px;background:var(--pr);color:#fff;border:none;border-radius:50%;font-size:24px;cursor:pointer;box-shadow:0 4px 15px rgba(37,99,235,.4);transition:transform .3s}
+#ai-btn:hover{transform:scale(1.1)}
+#ai-chat{position:absolute;bottom:70px;left:0;width:340px;background:#fff;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.2);overflow:hidden;display:none}
+#ai-chat-header{background:var(--pr);color:#fff;padding:14px 18px;font-weight:600;font-size:15px}
+#ai-chat-body{padding:16px;min-height:200px;max-height:300px;overflow-y:auto}
+.ai-msg{margin-bottom:12px;display:flex}
+.ai-msg.user{justify-content:flex-end}
+.ai-msg .bubble{max-width:80%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.6}
+.ai-msg.user .bubble{background:var(--pr);color:#fff;border-bottom-left-radius:4px}
+.ai-msg.bot .bubble{background:#f1f5f9;color:var(--text);border-bottom-right-radius:4px}
+#ai-chat-input{display:flex;border-top:1px solid var(--border);padding:10px}
+#ai-chat-input input{flex:1;border:none;outline:none;font-size:14px;padding:8px;font-family:inherit}
+#ai-chat-input button{background:var(--pr);color:#fff;border:none;border-radius:8px;padding:8px 16px;cursor:pointer;font-family:inherit}
+/* Attendance button */
+.attend-btn{padding:14px 32px;font-size:16px;border-radius:12px;font-weight:700}
+/* Dashboard stats */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px}
+.stat-card{background:var(--card);border-radius:var(--radius);padding:20px;text-align:center;border:1px solid var(--border)}
+.stat-val{font-size:32px;font-weight:800;color:var(--pr)}
+.stat-label{font-size:13px;color:var(--text2);margin-top:4px}
+/* Cursor */
+#cursor{position:absolute;width:24px;height:24px;border-radius:50%;background:rgba(37,99,235,.5);border:3px solid var(--pr);z-index:200;pointer-events:none;transition:none;transform:translate(-50%,-50%)}
+#cursor::after{content:'';position:absolute;top:-4px;right:-4px;width:10px;height:10px;background:var(--pr);border-radius:50%;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}}
+#cursor.clicking{transform:translate(-50%,-50%) scale(.7);background:rgba(37,99,235,.8)}
+/* Narration */
+#narration{position:absolute;bottom:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:14px 28px;border-radius:12px;font-size:15px;z-index:150;max-width:600px;text-align:center;opacity:0;transition:opacity .4s;line-height:1.8;backdrop-filter:blur(10px)}
+#narration.visible{opacity:1}
+/* Controls */
+#controls{height:70px;background:#1e293b;display:flex;align-items:center;justify-content:center;gap:16px;padding:0 20px;flex-shrink:0}
+.ctrl-btn{width:44px;height:44px;background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:50%;font-size:18px;cursor:pointer;transition:background .3s;display:flex;align-items:center;justify-content:center}
+.ctrl-btn:hover{background:rgba(255,255,255,.2)}
+.ctrl-btn.active{background:var(--pr)}
+#progress-wrap{flex:1;max-width:500px;height:6px;background:rgba(255,255,255,.15);border-radius:3px;cursor:pointer;position:relative}
+#progress-bar{height:100%;background:var(--pr);border-radius:3px;transition:width .3s}
+#scene-label{color:rgba(255,255,255,.7);font-size:13px;min-width:100px;text-align:center}
+/* Detail view */
+.detail-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.detail-back{background:none;border:none;color:var(--pr);font-size:14px;cursor:pointer;font-family:inherit;font-weight:600}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.info-item{padding:12px;background:var(--bg);border-radius:8px}
+.info-item .lbl{font-size:11px;color:var(--text2);margin-bottom:4px}
+.info-item .val{font-size:14px;font-weight:600}
+/* Expenses */
+.expense-item{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--border)}
+.expense-item:last-child{border-bottom:none}
+/* Transitions */
+.fade-in{animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+/* Page title */
+.page-title{font-size:22px;font-weight:700;margin-bottom:20px;color:var(--text);display:flex;align-items:center;gap:10px}
+.page-title .icon{color:var(--pr)}
+</style>
+</head>
+<body>
+<div id="sim-container">
+<div id="sim-screen">
+<!-- Login Screen -->
+<div id="login-screen">
+<div class="login-box">
+<h2>نظام إدارة الموظفين</h2>
+<p>سجل دخولك للمتابعة</p>
+<input class="login-field" id="login-user" type="text" placeholder="اسم المستخدم" autocomplete="off">
+<input class="login-field" id="login-pass" type="password" placeholder="كلمة المرور" autocomplete="off">
+<button class="login-btn" id="login-btn">تسجيل الدخول</button>
+</div>
+</div>
+
+<!-- System Header -->
+<div id="sys-header" style="display:none">
+<div class="logo">نظام إدارة الموظفين</div>
+<div class="user-info">
+<span class="badge">فني</span>
+<span>سعد الفني</span>
+<span style="font-size:24px">👷</span>
+</div>
+</div>
+
+<!-- Sidebar -->
+<div id="sys-sidebar" style="display:none">
+<div class="nav-item active" data-nav="home"><span class="icon">🏠</span> الرئيسية</div>
+<div class="nav-item" data-nav="tasks"><span class="icon">📋</span> مهامي</div>
+<div class="nav-item" data-nav="reports"><span class="icon">📝</span> تقارير العمل</div>
+<div class="nav-item" data-nav="tools"><span class="icon">🔧</span> جرد أدواتي</div>
+<div class="nav-item" data-nav="expenses"><span class="icon">💰</span> مصاريفي</div>
+<div class="nav-item" data-nav="attendance"><span class="icon">⏰</span> الحضور</div>
+<div class="nav-item" data-nav="ranking"><span class="icon">⭐</span> تصنيفي</div>
+<div class="nav-item" data-nav="training"><span class="icon">🎓</span> التدريب</div>
+</div>
+
+<!-- Content Area -->
+<div id="sys-content" style="display:none"></div>
+
+<!-- AI Widget -->
+<div id="ai-widget" style="display:none">
+<div id="ai-chat">
+<div id="ai-chat-header">🤖 المساعد الذكي</div>
+<div id="ai-chat-body"></div>
+<div id="ai-chat-input">
+<button>إرسال</button>
+<input type="text" placeholder="اكتب سؤالك..." id="ai-input">
+</div>
+</div>
+<button id="ai-btn">🤖</button>
+</div>
+
+<!-- Cursor -->
+<div id="cursor"></div>
+
+<!-- Narration -->
+<div id="narration"></div>
+</div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+<button class="ctrl-btn" id="btn-prev" title="السابق">⏮</button>
+<button class="ctrl-btn active" id="btn-play" title="تشغيل/إيقاف">⏸</button>
+<button class="ctrl-btn" id="btn-next" title="التالي">⏭</button>
+<div id="progress-wrap"><div id="progress-bar" style="width:0%"></div></div>
+<div id="scene-label">1 / 10</div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const wait = ms => new Promise(r => setTimeout(r, ms));
+const cursor = $('#cursor');
+const narration = $('#narration');
+const content = $('#sys-content');
+
+let playing = true;
+let currentScene = 0;
+const totalScenes = 10;
+
+// Cursor animation
+async function moveTo(x, y, duration = 600) {
+  const rect = $('#sim-screen').getBoundingClientRect();
+  const startX = parseFloat(cursor.style.left) || rect.width/2;
+  const startY = parseFloat(cursor.style.top) || rect.height/2;
+  const steps = Math.ceil(duration / 16);
+  for (let i = 1; i <= steps; i++) {
+    if (!playing) await waitForPlay();
+    const t = i / steps;
+    const ease = t < .5 ? 2*t*t : -1+(4-2*t)*t;
+    cursor.style.left = (startX + (x - startX) * ease) + 'px';
+    cursor.style.top = (startY + (y - startY) * ease) + 'px';
+    await wait(16);
+  }
+}
+
+async function click() {
+  cursor.classList.add('clicking');
+  await wait(200);
+  cursor.classList.remove('clicking');
+  await wait(200);
+}
+
+async function typeText(el, text, speed = 80) {
+  el.value = '';
+  for (const ch of text) {
+    if (!playing) await waitForPlay();
+    el.value += ch;
+    el.dispatchEvent(new Event('input'));
+    await wait(speed);
+  }
+}
+
+async function typeInner(el, text, speed = 60) {
+  el.textContent = '';
+  for (const ch of text) {
+    if (!playing) await waitForPlay();
+    el.textContent += ch;
+    await wait(speed);
+  }
+}
+
+function showNarration(text) {
+  narration.textContent = text;
+  narration.classList.add('visible');
+}
+function hideNarration() { narration.classList.remove('visible'); }
+
+function setNav(name) {
+  $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.nav === name));
+}
+
+function setContent(html) {
+  content.innerHTML = '<div class="fade-in">' + html + '</div>';
+}
+
+function showSuccess(text) {
+  const d = document.createElement('div');
+  d.className = 'success-msg';
+  d.innerHTML = '<div class="check">✓</div><div style="font-size:18px;font-weight:600">' + text + '</div>';
+  $('#sim-screen').appendChild(d);
+  return d;
+}
+
+async function getElCenter(selector) {
+  const el = typeof selector === 'string' ? $(selector) : selector;
+  if (!el) return { x: 400, y: 300 };
+  const r = el.getBoundingClientRect();
+  const sr = $('#sim-screen').getBoundingClientRect();
+  return { x: r.left - sr.left + r.width/2, y: r.top - sr.top + r.height/2 };
+}
+
+function waitForPlay() {
+  return new Promise(resolve => {
+    const check = () => { if (playing) resolve(); else setTimeout(check, 100); };
+    check();
+  });
+}
+
+function updateProgress() {
+  $('#progress-bar').style.width = ((currentScene + 1) / totalScenes * 100) + '%';
+  $('#scene-label').textContent = (currentScene + 1) + ' / ' + totalScenes;
+}
+
+// SCENES
+async function scene0() { // Login
+  currentScene = 0; updateProgress();
+  $('#login-screen').style.display = 'flex';
+  $('#sys-header').style.display = 'none';
+  $('#sys-sidebar').style.display = 'none';
+  content.style.display = 'none';
+  $('#ai-widget').style.display = 'none';
+  showNarration('سجل دخولك بحسابك الخاص');
+  await wait(800);
+  let p = await getElCenter('#login-user');
+  await moveTo(p.x, p.y); await click();
+  await typeText($('#login-user'), 'saad_tech', 100);
+  await wait(300);
+  p = await getElCenter('#login-pass');
+  await moveTo(p.x, p.y); await click();
+  await typeText($('#login-pass'), '••••••••', 80);
+  await wait(300);
+  p = await getElCenter('#login-btn');
+  await moveTo(p.x, p.y); await click();
+  await wait(400);
+  $('#login-screen').style.display = 'none';
+  $('#sys-header').style.display = 'flex';
+  $('#sys-sidebar').style.display = 'flex';
+  content.style.display = 'block';
+  $('#ai-widget').style.display = 'block';
+  hideNarration();
+  await wait(300);
+}
+
+async function scene1() { // Dashboard + Attendance
+  currentScene = 1; updateProgress();
+  setNav('home');
+  setContent(`
+    <div class="page-title"><span class="icon">🏠</span> الصفحة الرئيسية</div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">2</div><div class="stat-label">مهام اليوم</div></div>
+      <div class="stat-card"><div class="stat-val">15</div><div class="stat-label">مهام مكتملة</div></div>
+      <div class="stat-card"><div class="stat-val">#3</div><div class="stat-label">ترتيبك</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">مهام اليوم</div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border)">حجز #BK-0421 — محمد أحمد — طاقة شمسية <span class="status-badge status-confirmed">مؤكد</span></div>
+      <div style="padding:8px 0">حجز #BK-0418 — علي كريم — كاميرات <span class="status-badge status-progress">قيد التنفيذ</span></div>
+    </div>
+    <div style="text-align:center;margin-top:20px">
+      <button class="btn btn-success attend-btn" id="attend-in">⏰ تسجيل الحضور</button>
+    </div>
+  `);
+  showNarration('أول شي — سجل حضورك قبل ما تبدأ شغلك');
+  await wait(1500);
+  let p = await getElCenter('#attend-in');
+  await moveTo(p.x, p.y); await click();
+  const s = showSuccess('تم تسجيل الحضور بنجاح');
+  await wait(2000);
+  s.remove();
+  hideNarration();
+  await wait(500);
+}
+
+async function scene2() { // Tasks
+  currentScene = 2; updateProgress();
+  showNarration('شوف مهامك لليوم — اضغط على أي حجز لتفاصيل أكثر');
+  let navEl = $$('.nav-item')[1];
+  let p = await getElCenter(navEl);
+  await moveTo(p.x, p.y); await click();
+  setNav('tasks');
+  setContent(`
+    <div class="page-title"><span class="icon">📋</span> مهامي</div>
+    <div class="card" id="task1" style="cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="card-title">حجز #BK-0421</div><div style="color:var(--text2);font-size:13px">محمد أحمد — طاقة شمسية — الكرادة</div></div>
+        <span class="status-badge status-confirmed">مؤكد</span>
+      </div>
+    </div>
+    <div class="card" id="task2" style="cursor:pointer">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div><div class="card-title">حجز #BK-0418</div><div style="color:var(--text2);font-size:13px">علي كريم — كاميرات — المنصور</div></div>
+        <span class="status-badge status-progress">قيد التنفيذ</span>
+      </div>
+    </div>
+  `);
+  await wait(1500);
+  p = await getElCenter('#task1');
+  await moveTo(p.x, p.y); await click();
+  setContent(`
+    <div class="page-title"><span class="detail-back" id="back-tasks">→ رجوع</span> تفاصيل الحجز #BK-0421</div>
+    <div class="card">
+      <div class="info-grid">
+        <div class="info-item"><div class="lbl">الزبون</div><div class="val">محمد أحمد</div></div>
+        <div class="info-item"><div class="lbl">الخدمة</div><div class="val">طاقة شمسية</div></div>
+        <div class="info-item"><div class="lbl">العنوان</div><div class="val">الكرادة — شارع 52</div></div>
+        <div class="info-item"><div class="lbl">الهاتف</div><div class="val">0770 123 4567</div></div>
+        <div class="info-item"><div class="lbl">الفريق</div><div class="val">سعد، أحمد، مصطفى</div></div>
+        <div class="info-item"><div class="lbl">الحالة</div><div class="val"><span class="status-badge status-confirmed">مؤكد</span></div></div>
+      </div>
+    </div>
+    <div class="card" style="text-align:center;background:var(--pr-l)">
+      <div style="font-size:14px;color:var(--pr-d)">📍 الموقع على الخريطة — الكرادة، بغداد</div>
+    </div>
+  `);
+  await wait(3000);
+  hideNarration();
+  await wait(500);
+}
+
+async function scene3() { // Work Reports
+  currentScene = 3; updateProgress();
+  showNarration('بعد ما تخلص شغلك — لازم تسوي تقرير عمل');
+  let navEl = $$('.nav-item')[2];
+  let p = await getElCenter(navEl);
+  await moveTo(p.x, p.y); await click();
+  setNav('reports');
+  setContent(`
+    <div class="page-title"><span class="icon">📝</span> تقارير العمل</div>
+    <div style="margin-bottom:16px"><button class="btn btn-primary" id="new-report">+ تقرير جديد</button></div>
+    <div class="card"><div style="color:var(--text2);text-align:center;padding:20px">لا توجد تقارير سابقة لليوم</div></div>
+  `);
+  await wait(1000);
+  p = await getElCenter('#new-report');
+  await moveTo(p.x, p.y); await click();
+  setContent(`
+    <div class="page-title"><span class="icon">📝</span> تقرير عمل جديد</div>
+    <div class="card">
+      <div class="form-group"><label>الحجز</label><select class="form-select" id="rpt-booking"><option>حجز #BK-0421 — محمد أحمد</option><option>حجز #BK-0418 — علي كريم</option></select></div>
+      <div class="form-group"><label>حالة العمل</label><select class="form-select" id="rpt-status"><option>مكتمل ✓</option><option>غير مكتمل</option><option>يحتاج زيارة ثانية</option></select></div>
+      <div class="form-group"><label>ملاحظات / أحداث</label><textarea class="form-textarea" id="rpt-notes"></textarea></div>
+      <div class="form-group"><label>قائمة التحقق</label>
+        <div class="checkbox-row"><input type="checkbox" id="chk1"><label for="chk1">نظفت الموقع</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="chk2"><label for="chk2">أعطيت المعلومات للزبون</label></div>
+        <div class="checkbox-row"><input type="checkbox" id="chk3"><label for="chk3">صورت العمل</label></div>
+      </div>
+      <button class="btn btn-primary" id="submit-report">إرسال التقرير</button>
+    </div>
+  `);
+  await wait(800);
+  p = await getElCenter('#rpt-notes');
+  await moveTo(p.x, p.y); await click();
+  await typeText($('#rpt-notes'), 'تم التركيب بنجاح بدون مشاكل', 60);
+  await wait(400);
+  // Check boxes
+  for (const id of ['#chk1','#chk2','#chk3']) {
+    p = await getElCenter(id);
+    await moveTo(p.x, p.y); await click();
+    $(id).checked = true;
+    await wait(300);
+  }
+  p = await getElCenter('#submit-report');
+  await moveTo(p.x, p.y); await click();
+  const s = showSuccess('تم إرسال التقرير بنجاح');
+  await wait(2000);
+  s.remove();
+  hideNarration();
+  await wait(500);
+}
+
+async function scene4() { // Tools Inventory
+  currentScene = 4; updateProgress();
+  showNarration('كل يوم لازم تسوي جرد لأدواتك — لو اكو شي ناقص بلّغ');
+  let navEl = $$('.nav-item')[3];
+  let p = await getElCenter(navEl);
+  await moveTo(p.x, p.y); await click();
+  setNav('tools');
+  setContent(`
+    <div class="page-title"><span class="icon">🔧</span> جرد أدواتي</div>
+    <div class="card">
+      <table class="tools-table">
+        <thead><tr><th>الأداة</th><th>الحالة</th><th>ملاحظات</th></tr></thead>
+        <tbody>
+          <tr><td>مثقاب كهربائي</td><td><input type="checkbox" class="tool-chk" id="t1"></td><td><input class="form-input" style="width:140px" id="tn1" placeholder="—"></td></tr>
+          <tr><td>مفك براغي</td><td><input type="checkbox" class="tool-chk" id="t2"></td><td><input class="form-input" style="width:140px" id="tn2" placeholder="—"></td></tr>
+          <tr><td>ميزان ليزري</td><td><input type="checkbox" class="tool-chk" id="t3"></td><td><input class="form-input" style="width:140px" id="tn3" placeholder="—"></td></tr>
+          <tr><td>شنطة عدة</td><td><input type="checkbox" class="tool-chk" id="t4"></td><td><input class="form-input" style="width:140px" id="tn4" placeholder="—"></td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:16px;text-align:center"><button class="btn btn-primary" id="submit-tools">تأكيد الجرد اليومي</button></div>
+    </div>
+  `);
+  await wait(800);
+  // Check tools
+  for (const id of ['#t1','#t2','#t3']) {
+    p = await getElCenter(id);
+    await moveTo(p.x, p.y); await click();
+    $(id).checked = true;
+    await wait(400);
+  }
+  // t4 missing
+  p = await getElCenter('#tn4');
+  await moveTo(p.x, p.y); await click();
+  await typeText($('#tn4'), 'مفقود من أمس', 70);
+  await wait(400);
+  p = await getElCenter('#submit-tools');
+  await moveTo(p.x, p.y); await click();
+  const s = showSuccess('تم تأكيد الجرد');
+  await wait(2000);
+  s.remove();
+  hideNarration();
+  await wait(500);
+}
+
+async function scene5() { // Expenses
+  currentScene = 5; updateProgress();
+  showNarration('أي مصروف من جيبك — سجله هنا وراح يوصل للمحاسب');
+  let navEl = $$('.nav-item')[4];
+  let p = await getElCenter(navEl);
+  await moveTo(p.x, p.y); await click();
+  setNav('expenses');
+  setContent(`
+    <div class="page-title"><span class="icon">💰</span> مصاريفي</div>
+    <div style="margin-bottom:16px"><button class="btn btn-primary" id="new-expense">+ مصروف جديد</button></div>
+    <div class="card">
+      <div class="card-title">المصاريف السابقة</div>
+      <div class="expense-item"><div><div style="font-weight:600">وقود — مشوار المنصور</div><div style="font-size:12px;color:var(--text2)">20 يوليو 2026</div></div><div><span style="font-weight:700">15,000 د.ع</span> <span class="status-badge status-complete">مقبول</span></div></div>
+      <div class="expense-item"><div><div style="font-weight:600">مسامير إضافية</div><div style="font-size:12px;color:var(--text2)">18 يوليو 2026</div></div><div><span style="font-weight:700">8,000 د.ع</span> <span class="status-badge status-complete">مقبول</span></div></div>
+    </div>
+  `);
+  await wait(1000);
+  p = await getElCenter('#new-expense');
+  await moveTo(p.x, p.y); await click();
+  setContent(`
+    <div class="page-title"><span class="icon">💰</span> مصروف جديد</div>
+    <div class="card">
+      <div class="form-group"><label>المبلغ (د.ع)</label><input class="form-input" id="exp-amount" type="text"></div>
+      <div class="form-group"><label>الوصف</label><input class="form-input" id="exp-desc" type="text"></div>
+      <button class="btn btn-primary" id="save-expense">حفظ المصروف</button>
+    </div>
+  `);
+  await wait(500);
+  p = await getElCenter('#exp-amount');
+  await moveTo(p.x, p.y); await click();
+  await typeText($('#exp-amount'), '25000', 100);
+  p = await getElCenter('#exp-desc');
+  await moveTo(p.x, p.y); await click();
+  await typeText($('#exp-desc'), 'وقود للسيارة — مشوار الكرادة', 50);
+  await wait(300);
+  p = await getElCenter('#save-expense');
+  await moveTo(p.x, p.y); await click();
+  const s = showSuccess('تم حفظ المصروف');
+  await wait(1500);
+  s.remove();
+  hideNarration();
+  await wait(500);
+}
+
+async function scene6() { // Ranking
+  currentScene = 6; updateProgress();
+  showNarration('شوف ترتيبك بين الفنيين — حاول تحافظ على ترتيب عالي');
+  let navEl = $$('.nav-item')[6];
+  let p = await getElCenter(navEl);
+  await moveTo(p.x, p.y); await click();
+  setNav('ranking');
+  setContent(`
+    <div class="page-title"><span class="icon">⭐</span> تصنيفي</div>
+    <div class="card rank-card">
+      <div class="rank-num">#3</div>
+      <div class="rank-sub">من أصل 12 فني</div>
+      <div class="kpi-grid">
+        <div class="kpi-item"><div class="kpi-val">87</div><div class="kpi-label">نقاط الأداء</div></div>
+        <div class="kpi-item"><div class="kpi-val">+12</div><div class="kpi-label">نقاط مكتسبة</div></div>
+        <div class="kpi-item"><div class="kpi-val" style="color:var(--red)">-3</div><div class="kpi-label">خصومات</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">تفاصيل التقييم</div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">✓ إكمال المهام بالوقت — <span style="color:var(--green)">+5</span></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">✓ تقييم العملاء — <span style="color:var(--green)">+4</span></div>
+      <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:14px">✓ تقارير مكتملة — <span style="color:var(--green)">+3</span></div>
+      <div style="padding:8px 0;font-size:14px">✗ تأخير يوم 19 يوليو — <span style="color:var(--red)">-3</span></div>
+    </div>
+  `);
+  await wait(4000);
+  hideNarration();
+  await wait(500);
+}
+
+async function scene7() { // Training
+  currentScene = 7; updateProgress();
+  showNarration('شاهد الفيديوات التدريبية للخدمات المطلوبة منك');
+  let navEl = $$('.nav-item')[7];
+  let p = await getElCenter(navEl);
+  await moveTo(p.x, p.y); await click();
+  setNav('training');
+  setContent(`
+    <div class="page-title"><span class="icon">🎓</span> التدريب</div>
+    <div class="train-grid">
+      <div class="train-card" id="train1"><div class="train-thumb">☀️</div><div class="train-info"><h4>تركيب الطاقة الشمسية</h4><p>12 دقيقة — مطلوب</p></div></div>
+      <div class="train-card"><div class="train-thumb">📹</div><div class="train-info"><h4>تركيب كاميرات المراقبة</h4><p>8 دقائق — مطلوب</p></div></div>
+      <div class="train-card"><div class="train-thumb">🔌</div><div class="train-info"><h4>التمديدات الكهربائية</h4><p>15 دقيقة — اختياري</p></div></div>
+      <div class="train-card"><div class="train-thumb">🛡️</div><div class="train-info"><h4>السلامة المهنية</h4><p>10 دقائق — مطلوب</p></div></div>
+    </div>
+  `);
+  await wait(1200);
+  p = await getElCenter('#train1');
+  await moveTo(p.x, p.y); await click();
+  setContent(`
+    <div class="page-title"><span class="detail-back">→ رجوع</span> تركيب الطاقة الشمسية</div>
+    <div class="video-player"><div class="play-icon">▶</div></div>
+    <div class="card" style="margin-top:16px"><div class="card-title">وصف الفيديو</div><p style="font-size:14px;color:var(--text2);line-height:1.8">شرح مفصل لخطوات تركيب ألواح الطاقة الشمسية على الأسطح السكنية، يشمل التوصيلات والفحص النهائي.</p></div>
+  `);
+  await wait(3000);
+  hideNarration();
+  await wait(500);
+}
+
+async function scene8() { // AI
+  currentScene = 8; updateProgress();
+  showNarration('اسأل الذكاء الاصطناعي عن مهامك وأداءك');
+  let p = await getElCenter('#ai-btn');
+  await moveTo(p.x, p.y); await click();
+  $('#ai-chat').style.display = 'block';
+  $('#ai-chat-body').innerHTML = '';
+  await wait(600);
+  p = await getElCenter('#ai-input');
+  await moveTo(p.x, p.y); await click();
+  await typeText($('#ai-input'), 'شنو مهامي باجر؟', 80);
+  await wait(400);
+  // Send
+  const userMsg = document.createElement('div');
+  userMsg.className = 'ai-msg user';
+  userMsg.innerHTML = '<div class="bubble">شنو مهامي باجر؟</div>';
+  $('#ai-chat-body').appendChild(userMsg);
+  $('#ai-input').value = '';
+  await wait(1000);
+  const botMsg = document.createElement('div');
+  botMsg.className = 'ai-msg bot';
+  botMsg.innerHTML = '<div class="bubble">عندك مهمتين باجر:<br>1. حجز #BK-0425 — تركيب كاميرات — الجادرية<br>2. حجز #BK-0430 — صيانة طاقة شمسية — زيونة<br>الموعد الأول الساعة 9 صباحاً</div>';
+  $('#ai-chat-body').appendChild(botMsg);
+  await wait(3500);
+  $('#ai-chat').style.display = 'none';
+  hideNarration();
+  await wait(500);
+}
+
+async function scene9() { // Check out
+  currentScene = 9; updateProgress();
+  showNarration('بنهاية الدوام — سجل انصرافك');
+  let navEl = $$('.nav-item')[0];
+  let p = await getElCenter(navEl);
+  await moveTo(p.x, p.y); await click();
+  setNav('home');
+  setContent(`
+    <div class="page-title"><span class="icon">🏠</span> الصفحة الرئيسية</div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val">2</div><div class="stat-label">مهام مكتملة</div></div>
+      <div class="stat-card"><div class="stat-val">1</div><div class="stat-label">تقرير مرسل</div></div>
+      <div class="stat-card"><div class="stat-val">#3</div><div class="stat-label">ترتيبك</div></div>
+    </div>
+    <div style="text-align:center;margin-top:30px">
+      <button class="btn btn-danger attend-btn" id="attend-out">🚪 تسجيل الانصراف</button>
+    </div>
+  `);
+  await wait(1500);
+  p = await getElCenter('#attend-out');
+  await moveTo(p.x, p.y); await click();
+  const s = showSuccess('تم تسجيل الانصراف — يوم موفق!');
+  await wait(3000);
+  s.remove();
+  hideNarration();
+}
+
+const scenes = [scene0, scene1, scene2, scene3, scene4, scene5, scene6, scene7, scene8, scene9];
+
+async function runAll(startFrom = 0) {
+  for (let i = startFrom; i < scenes.length; i++) {
+    if (!playing) await waitForPlay();
+    await scenes[i]();
+    await wait(500);
+  }
+}
+
+// Controls
+$('#btn-play').addEventListener('click', () => {
+  playing = !playing;
+  $('#btn-play').textContent = playing ? '⏸' : '▶';
+  $('#btn-play').classList.toggle('active', playing);
+});
+
+$('#btn-next').addEventListener('click', async () => {
+  if (currentScene < totalScenes - 1) {
+    playing = true;
+    $('#btn-play').textContent = '⏸';
+    $('#btn-play').classList.toggle('active', true);
+    await scenes[currentScene + 1]();
+  }
+});
+
+$('#btn-prev').addEventListener('click', async () => {
+  if (currentScene > 0) {
+    playing = true;
+    $('#btn-play').textContent = '⏸';
+    $('#btn-play').classList.toggle('active', true);
+    await scenes[currentScene - 1]();
+  }
+});
+
+$('#progress-wrap').addEventListener('click', async (e) => {
+  const rect = $('#progress-wrap').getBoundingClientRect();
+  const pct = (e.clientX - rect.left) / rect.width;
+  const target = Math.floor(pct * totalScenes);
+  if (target >= 0 && target < totalScenes) {
+    playing = true;
+    $('#btn-play').textContent = '⏸';
+    // Need to set up UI state for non-login scenes
+    if (target > 0) {
+      $('#login-screen').style.display = 'none';
+      $('#sys-header').style.display = 'flex';
+      $('#sys-sidebar').style.display = 'flex';
+      content.style.display = 'block';
+      $('#ai-widget').style.display = 'block';
+    }
+    await scenes[target]();
+  }
+});
+
+// Init cursor position
+cursor.style.left = '400px';
+cursor.style.top = '300px';
+
+// Start
+runAll();
+</script>
+</body>
+</html>
