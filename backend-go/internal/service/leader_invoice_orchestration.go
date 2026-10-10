@@ -436,14 +436,17 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	if current == nil {
 		return nil, fmt.Errorf("الفاتورة غير موجودة")
 	}
-	if current.AuditVerdict == nil || strings.TrimSpace(*current.AuditVerdict) == "" {
+	// قرار (ع) 10-10: الشغل داخل الشركة ما إله زبون ولا فاتورة بالنظام الثاني —
+	// ينعتمد بضغطة وحدة، بلا تدقيق ولا رقم.
+	internal := s.invoices.IsInternal(id)
+	if !internal && (current.AuditVerdict == nil || strings.TrimSpace(*current.AuditVerdict) == "") {
 		// ⚠️ الرسالة تقول **شنو يسوي** مو «ممنوع»: المحاسب الي يقرا
 		// «ما عندك صلاحية» يتصل بالإدارة، والي يقرا «دقّق أول» يعرف
 		// الخطوة الجاية بلا ما يسأل أحداً.
 		return nil, fmt.Errorf("دقّق الفاتورة أول — اختر مطابق أو غير مطابق أو خطأ بالسعر، وبعدها تنتقل لطابور الاعتماد")
 	}
 	// قرار (ع) 10-10: الفاتورة المجانية ما إلها فاتورة بالنظام الثاني، فتنعتمد بلا رقم.
-	free := current.IsFree || *current.AuditVerdict == model.AuditVerdictFree
+	free := internal || current.IsFree || (current.AuditVerdict != nil && *current.AuditVerdict == model.AuditVerdictFree)
 	if externalNumber == "" && !free {
 		return nil, fmt.Errorf("رقم الفاتورة المحاسبية مطلوب قبل الاعتماد")
 	}
@@ -465,7 +468,7 @@ func (s *LeaderInvoiceService) Approve(id, approverEmployeeID, externalNumber st
 	if s.monitor != nil {
 		title, summary := monitorInvoiceSummary(inv)
 		s.monitor.InvoiceStage(model.MonitorStageInvoiceAfterAudit, inv.ID, title,
-			summary+approveNote(externalNumber), "FINANCE", &approverEmployeeID, false)
+			summary+approveNote(externalNumber, internal), "FINANCE", &approverEmployeeID, false)
 	}
 	return inv, nil
 }
@@ -1011,7 +1014,10 @@ func (s *LeaderInvoiceService) CreateInternalInvoice(employeeID string, req mode
 	return s.CreateManualInvoice(employeeID, manual)
 }
 
-func approveNote(number string) string {
+func approveNote(number string, internal bool) string {
+	if number == "" && internal {
+		return " • 🏭 شغل داخل الشركة — انعتمد بلا فاتورة محاسبية"
+	}
 	if number == "" {
 		return " • 🎁 مجانية — انعتمدت بلا فاتورة محاسبية"
 	}

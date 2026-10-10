@@ -25,5 +25,17 @@ func matrixChatMigrations() []Migration {
 			);
 			CREATE INDEX IF NOT EXISTS "MatrixTalkMessage_chat" ON "MatrixTalkMessage"("chatId", "createdAt");
 		`,
+	}, {
+		// قرار (ع) 10-10: فواتير الشغل داخل الشركة تنعتمد بلا رقم فاتورة محاسبية
+		Version: "0345_internal_invoice_no_number",
+		SQL: `
+			ALTER TABLE "LeaderInvoice" DROP CONSTRAINT IF EXISTS leader_invoice_approved_needs_number;
+			ALTER TABLE "LeaderInvoice" ADD CONSTRAINT leader_invoice_approved_needs_number CHECK (
+				status <> 'APPROVED'
+				OR ("externalInvoiceNumber" IS NOT NULL AND btrim("externalInvoiceNumber") <> '')
+				OR "isFree" OR COALESCE("auditVerdict", '') = 'FREE'
+				OR systems::text LIKE '%شغل داخل الشركة%'
+			) NOT VALID;
+		`,
 	}}
 }

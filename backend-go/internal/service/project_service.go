@@ -177,11 +177,23 @@ func (s *ProjectService) Statistics() (*model.ProjectStatisticsResponse, error) 
 
 	ov := model.ProjectStatisticsOverview{TotalProjects: len(projects)}
 	for _, p := range projects {
-		val := 0.0
-		if p.PriceValue != nil {
-			val = *p.PriceValue
-			ov.TotalValue += val
-			ov.PricedProjects++
+		rejected := strings.Contains(p.Stage, "مرفوض")
+		// قيمة العقد: السعر المكتوب، وإذا ماكو فصافي عرض السعر — والمرفوض ما ينحسب
+		if !rejected {
+			if p.PriceValue != nil {
+				ov.TotalValue += *p.PriceValue
+				ov.PricedProjects++
+			} else if p.QuotedAmount != nil {
+				ov.TotalValue += *p.QuotedAmount
+				ov.PricedProjects++
+			}
+		}
+		// الفلوس: المستلم فعلاً من الدفعات
+		val := p.PaidAmount
+		ov.ReceivedTotal += p.PaidAmount
+		ov.UnverifiedTotal += p.UnverifiedAmount
+		if p.PaidAmount > 0 {
+			ov.PaidProjects++
 		}
 		if p.DelegatedToName != nil {
 			ov.DelegatedCount++
@@ -202,6 +214,10 @@ func (s *ProjectService) Statistics() (*model.ProjectStatisticsResponse, error) 
 	}
 	if ov.PricedProjects > 0 {
 		ov.AverageValue = ov.TotalValue / float64(ov.PricedProjects)
+	}
+	ov.VerifiedTotal = ov.ReceivedTotal - ov.UnverifiedTotal
+	if ov.PaidProjects > 0 {
+		ov.AverageReceived = ov.ReceivedTotal / float64(ov.PaidProjects)
 	}
 	// نعيد استخدام نفس دالة توزيع المراحل المستخدمة بصفحة المشاريع حتى
 	// الرقمين ما يختلفون بين الصفحتين

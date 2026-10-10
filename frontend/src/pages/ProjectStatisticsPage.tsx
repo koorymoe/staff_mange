@@ -36,6 +36,7 @@ interface EmployeeRow {
 interface StatsResponse {
   overview: {
     totalProjects: number; totalValue: number; pricedProjects: number
+    receivedTotal: number; verifiedTotal: number; unverifiedTotal: number; paidProjects: number; averageReceived: number
     averageValue: number; completedCount: number; rejectedCount: number
     activeCount: number; delegatedCount: number; surveysFilled: number
     completedValue: number; inProgressValue: number
@@ -86,8 +87,6 @@ export default function ProjectStatisticsPage() {
 
   const ov = data.overview
   // قرار (ع) 10-10: الفلوس المستلمة والي تنتظر تأكيد المحاسب — من الدفعات نفسها
-  const received = data.projects.reduce((a, p) => a + (p.paidAmount || 0), 0)
-  const pendingAmt = data.projects.reduce((a, p) => a + (p.unverifiedAmount || 0), 0)
   const pendingProjects = data.projects.filter((p) => (p.unverifiedAmount || 0) > 0).length
   const maxStage = Math.max(1, ...STAGE_ORDER.map((s) => ov.stageBreakdown[s] || 0))
 
@@ -100,23 +99,25 @@ export default function ProjectStatisticsPage() {
 
       {/* أرقام عامة */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Card label="عدد المشاريع" value={ov.totalProjects.toLocaleString()} tone="brand" />
-        <Card label="القيمة الإجمالية (من السعر المكتوب)" value={`${money(ov.totalValue)} د.ع`} tone="green"
-          hint={`⚠️ بس ${ov.pricedProjects} مشروع مكتوب سعره من ${ov.totalProjects}`} />
-        <Card label="معدّل قيمة المشروع" value={`${money(ov.averageValue)} د.ع`} tone="amber"
-          hint={`معدّل الـ${ov.pricedProjects} المُسعّرة بس`} />
-        <Card label="💰 المستلم من المشاريع" value={`${money(received)} د.ع`} tone="green"
-          hint={`من دفعات ${data.projects.filter((p) => (p.paidAmount || 0) > 0).length} مشروع`} />
+        {/* قرار (ع) 10-10: الفلوس من المبالغ المستلمة فعلاً (الدفعات)، مو من السعر المكتوب */}
+        <Card label="💰 المستلم من المشاريع" value={`${money(ov.receivedTotal)} د.ع`} tone="green"
+          hint={`من دفعات ${ov.paidProjects} مشروع`} />
+        <Card label="✅ مؤكد من المحاسب" value={`${money(ov.verifiedTotal)} د.ع`} tone="green" />
         <Link to="/project-payments?tab=pending" className="block">
-          <Card label="⏳ تنتظر تأكيد المحاسب" value={`${money(pendingAmt)} د.ع`} tone="amber"
+          <Card label="⏳ تنتظر تأكيد المحاسب" value={`${money(ov.unverifiedTotal)} د.ع`} tone="amber"
             hint={pendingProjects ? `${pendingProjects} مشروع — اضغط حتى تأكدها` : 'كلها متأكدة ✅'} />
         </Link>
-        <Card label="مشاريع موجّهة لموظفين" value={ov.delegatedCount.toLocaleString()} tone="violet" />
+        <Card label="معدّل المستلم للمشروع" value={`${money(ov.averageReceived)} د.ع`} tone="amber"
+          hint={`على ${ov.paidProjects} مشروع بيه دفعات`} />
+        <Card label="عدد المشاريع" value={ov.totalProjects.toLocaleString()} tone="brand" />
+        <Card label="قيمة العقود المكتوبة" value={`${money(ov.totalValue)} د.ع`} tone="slate"
+          hint={`⚠️ بس ${ov.pricedProjects} مشروع (غير المرفوض) مكتوب سعره أو إله عرض سعر`} />
         <Card label="قيد التنفيذ" value={ov.activeCount.toLocaleString()} tone="blue"
-          hint={`بقيمة ${money(ov.inProgressValue)} د.ع`} />
+          hint={`المستلم منها ${money(ov.inProgressValue)} د.ع`} />
         <Card label="مكتملة" value={ov.completedCount.toLocaleString()} tone="green"
-          hint={`بقيمة ${money(ov.completedValue)} د.ع`} />
+          hint={`المستلم منها ${money(ov.completedValue)} د.ع`} />
         <Card label="مرفوضة" value={ov.rejectedCount.toLocaleString()} tone="slate" />
+        <Card label="مشاريع موجّهة لموظفين" value={ov.delegatedCount.toLocaleString()} tone="violet" />
         <Card label="استمارات كشف مملوءة" value={ov.surveysFilled.toLocaleString()} tone="brand" />
       </div>
 

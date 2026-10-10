@@ -65,6 +65,12 @@ type ProjectStatisticsOverview struct {
 	StageBreakdown  ProjectStats `json:"stageBreakdown"`
 	CompletedValue  float64      `json:"completedValue"`
 	InProgressValue float64      `json:"inProgressValue"`
+	// قرار (ع) 10-10: الفلوس من الدفعات المستلمة فعلاً، مو من السعر المكتوب
+	ReceivedTotal   float64 `json:"receivedTotal"`
+	VerifiedTotal   float64 `json:"verifiedTotal"`
+	UnverifiedTotal float64 `json:"unverifiedTotal"`
+	PaidProjects    int     `json:"paidProjects"`
+	AverageReceived float64 `json:"averageReceived"`
 }
 
 // ProjectStatisticsResponse الرد الكامل لصفحة الإحصائيات.

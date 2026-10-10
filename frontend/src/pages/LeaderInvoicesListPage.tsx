@@ -130,7 +130,9 @@ function printInvoice(inv: LeaderInvoice, adjustments: LeaderInvoiceAdjustment[]
  *  يشوف صفاً بشاشة ومحلولاً بالثانية ويفقد الثقة بالاثنتين. */
 interface EmbeddedProps { embedded?: boolean }
 
-const isFreeInv = (inv: LeaderInvoice) => inv.isFree || inv.auditVerdict === 'FREE'
+// قرار (ع) 10-10: الشغل داخل الشركة ما إله فاتورة بالنظام الثاني — ينعتمد بضغطة بلا رقم ولا تدقيق
+const isInternalInv = (inv: LeaderInvoice) => (inv.systems ?? []).includes('شغل داخل الشركة')
+const isFreeInv = (inv: LeaderInvoice) => inv.isFree || inv.auditVerdict === 'FREE' || isInternalInv(inv)
 
 export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {}) {
   const [params] = useSearchParams()
@@ -816,7 +818,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                           الحقيقي بالخادم (نداء مباشر يتخطّى أي إخفاء).
                           والي نكسبه هنا إن الشاشة ما تعرض زراً يفشل —
                           زر يفشل يخلّي المحاسب يظن النظام خربان. */}
-                      {canApprove && inv.status !== 'APPROVED' && audited(inv) && (
+                      {canApprove && inv.status !== 'APPROVED' && (audited(inv) || isInternalInv(inv)) && (
                         <button
                           onClick={() => { setApproveFor(inv); setInvoiceNo(''); setApproveErr(null) }}
                           disabled={busyId === inv.id}
@@ -863,7 +865,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
                       {/* ⚠️ وبدل ما يختفي الزر بلا تفسير: سطر يقول
                           **ليش** والخطوة الجاية. زر يختفي بصمت يخلّي
                           المحاسب يدوّر عليه. */}
-                      {canApprove && inv.status !== 'APPROVED' && !audited(inv) && (
+                      {canApprove && inv.status !== 'APPROVED' && !audited(inv) && !isInternalInv(inv) && (
                         <span className="rounded-lg bg-sky-50 px-3 py-1.5 text-xs font-bold text-sky-700 ring-1 ring-sky-200">
                           دقّقها أول
                         </span>
@@ -1198,7 +1200,7 @@ export default function LeaderInvoicesListPage({ embedded }: EmbeddedProps = {})
 
             {/* قرار (ع) 10-10: المجانية ما إلها فاتورة بالنظام الثاني — تنعتمد بلا رقم */}
             {isFreeInv(approveFor) && (
-              <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">🎁 فاتورة مجانية — تنعتمد بلا رقم فاتورة محاسبية.</p>
+              <p className="mt-4 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-bold text-emerald-800">{isInternalInv(approveFor) ? '🏭 شغل داخل الشركة — ينعتمد بلا رقم فاتورة محاسبية.' : '🎁 فاتورة مجانية — تنعتمد بلا رقم فاتورة محاسبية.'}</p>
             )}
             {!isFreeInv(approveFor) && <>
             <label className="mt-4 block text-sm font-medium text-slate-600">

@@ -1007,6 +1007,7 @@ func (r *LeaderInvoiceRepository) ListApprovedWithoutNumber() ([]model.LeaderInv
 		  AND ("externalInvoiceNumber" IS NULL OR btrim("externalInvoiceNumber") = '')
 		  -- قرار (ع) 10-10: المجانية ما إلها فاتورة بالنظام الثاني — مو نقص
 		  AND NOT "isFree" AND COALESCE("auditVerdict", '') <> 'FREE'
+		  AND systems::text NOT LIKE '%شغل داخل الشركة%'
 		ORDER BY "approvedAt" DESC NULLS LAST`)
 	if err != nil {
 		return nil, err
@@ -1015,4 +1016,11 @@ func (r *LeaderInvoiceRepository) ListApprovedWithoutNumber() ([]model.LeaderInv
 		_ = r.hydrate(&rows[i])
 	}
 	return rows, nil
+}
+
+// IsInternal فاتورة شغل داخل الشركة؟ (قرار (ع) 10-10: تنعتمد بلا رقم ولا تدقيق)
+func (r *LeaderInvoiceRepository) IsInternal(id string) bool {
+	var ok bool
+	_ = r.db.Get(&ok, `SELECT EXISTS (SELECT 1 FROM "LeaderInvoice" WHERE id = $1 AND systems::text LIKE '%شغل داخل الشركة%')`, id)
+	return ok
 }
