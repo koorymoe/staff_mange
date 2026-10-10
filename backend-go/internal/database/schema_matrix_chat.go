@@ -37,5 +37,14 @@ func matrixChatMigrations() []Migration {
 				OR systems::text LIKE '%شغل داخل الشركة%'
 			) NOT VALID;
 		`,
+	}, {
+		// شكوى (ع) 10-10: حجوزات انثبّتت وهي بالانتظار وبقى بيها waitingSince،
+		// فعالقة بـ«بانتظار موافقة الزبون/ما رد» ومخفية عن الحجوزات
+		Version: "0346_clear_stale_waiting",
+		SQL: `
+			UPDATE "Booking" SET "waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
+				"waitingKind" = NULL, "lastWaitingReminderAt" = NULL, "waitingReminderCount" = 0
+			WHERE "waitingSince" IS NOT NULL AND status NOT IN ('WAITING', 'CANCELLED');
+		`,
 	}}
 }

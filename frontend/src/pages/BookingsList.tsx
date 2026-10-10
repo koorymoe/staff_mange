@@ -996,7 +996,7 @@ export default function BookingsList({ bucket = 'all', focus }: { bucket?: Booki
               وقتها ندوّر عليه بباقي المحطات ونگول وين هو. */}
           {filtered.length === 0 && searchQ.length >= 2 && (
             <div className="px-4 pb-2">
-              <BookingLocator term={searchQ} currentStation={BUCKET_HEADINGS[bucket].title} />
+              <BookingLocator term={searchQ} currentStation={BUCKET_HEADINGS[bucket].title} canResume={canMarkWaiting} />
             </div>
           )}
 

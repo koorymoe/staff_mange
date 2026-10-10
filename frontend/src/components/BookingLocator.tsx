@@ -15,13 +15,34 @@ import BookingCodeChip from './BookingCodeChip'
 // ⚠️ ما نطلع إلا لمن يكون البحث **ما لگه شي بالمحطة الحالية**: مساعدة
 // تطلع وانت لاگي طلبك تصير إزعاج.
 
-export default function BookingLocator({ term, currentStation }: {
+// المحطات الي «الزبون رد» يطلّع منها الحجز — شكوى (ع) 10-10: الزبون يرجع
+// خبر والحجز يبقى عالق، فنخلي الرجوع من نفس مكان البحث.
+const RESUMABLE = ['بانتظار موافقة الزبون', 'ما وصلت للتنفيذ']
+
+export default function BookingLocator({ term, currentStation, canResume = false }: {
   term: string
+  /** منسّق/مدير — نفس حارس الخادم على «الزبون رد» */
+  canResume?: boolean
   /** اسم المحطة الحالية — حتى ما نگول «موجود هنا» وهو مو هنا */
   currentStation: string
 }) {
-  const [found, setFound] = useState<{ code: string; customerName: string | null; station: string }[]>([])
+  const [found, setFound] = useState<{ id: string; code: string; customerName: string | null; station: string }[]>([])
   const [loading, setLoading] = useState(false)
+  const [tick, setTick] = useState(0)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  const resume = async (id: string, name: string | null) => {
+    if (!confirm(`الزبون «${name ?? ''}» رد؟ الحجز يرجع للحجوزات.`)) return
+    setBusy(id)
+    setErr(null)
+    try {
+      await api.resumeBooking(id)
+      setTick((t) => t + 1)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'تعذر إرجاع الحجز')
+    } finally { setBusy(null) }
+  }
 
   useEffect(() => {
     const q = term.trim()
@@ -36,7 +57,7 @@ export default function BookingLocator({ term, currentStation }: {
         .finally(() => { if (alive) setLoading(false) })
     }, 350)
     return () => { alive = false; clearTimeout(t) }
-  }, [term])
+  }, [term, tick])
 
   if (term.trim().length < 2) return null
   if (loading) return <p className="mt-3 text-xs text-slate-400">جاري البحث بباقي المحطات...</p>
@@ -68,9 +89,16 @@ export default function BookingLocator({ term, currentStation }: {
             <span className="mr-auto rounded-full bg-amber-100 px-2.5 py-0.5 text-[11px] font-black text-amber-900">
               📍 {f.station}
             </span>
+            {canResume && RESUMABLE.some((r) => f.station.includes(r)) && (
+              <button type="button" disabled={busy === f.id} onClick={() => resume(f.id, f.customerName)}
+                className="rounded-lg bg-emerald-600 px-2.5 py-1 text-[11px] font-black text-white hover:bg-emerald-700 disabled:opacity-50">
+                📞 الزبون رد — رجّعه للحجوزات
+              </button>
+            )}
           </div>
         ))}
       </div>
+      {err && <p className="mt-2 text-xs font-bold text-red-700">{err}</p>}
       <p className="mt-2 text-[11px] text-amber-700">
         افتح المحطة المذكورة من الخيارات فوق — الحجز بيها.
       </p>

@@ -871,7 +871,11 @@ func (r *BookingRepository) Confirm(id string, req model.ConfirmBookingRequest, 
 			"scheduledEndAt" = COALESCE($8::timestamp + interval '1 hour', "scheduledEndAt"),
 			-- نفس القاعدة: أي مكان يحط موعد يلغي علم الانتظار
 			"awaitingReschedule" = CASE WHEN $8::timestamp IS NULL
-			                            THEN "awaitingReschedule" ELSE false END
+			                            THEN "awaitingReschedule" ELSE false END,
+			-- التثبيت يعني الزبون رد: يطلع من «بانتظار موافقة الزبون/ما رد»
+			-- وبلاها يبقى عالق بالمحطة ومخفي عن الحجوزات (شكوى (ع) 10-10)
+			"waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
+			"waitingKind" = NULL, "lastWaitingReminderAt" = NULL, "waitingReminderCount" = 0
 		WHERE id = $1
 	`, id, req.ConfirmedByName, req.ConfirmedByEmployeeID, req.AdminNotes, req.TransferToProjects, req.QuotedPrice, req.Address, scheduledAt)
 	return err
@@ -1754,7 +1758,8 @@ func (r *BookingRepository) MarkWaiting(id, note, byEmployeeID, kind string) err
 func (r *BookingRepository) ResumeFromWaiting(id string) error {
 	res, err := r.db.Exec(`
 		UPDATE "Booking"
-		SET status = CASE WHEN "confirmedAt" IS NOT NULL THEN 'CONFIRMED'::"BookingStatus"
+		SET status = CASE WHEN status <> 'WAITING' THEN status
+		                  WHEN "confirmedAt" IS NOT NULL THEN 'CONFIRMED'::"BookingStatus"
 		                  ELSE 'PENDING'::"BookingStatus" END,
 		    "waitingSince" = NULL, "waitingNote" = NULL, "waitingById" = NULL,
 		    -- ⚠️ النوع ينمسح معاهم: بلاها الحجز يرجع لطابور الشغل
@@ -1762,7 +1767,10 @@ func (r *BookingRepository) ResumeFromWaiting(id string) error {
 		    "waitingKind" = NULL,
 		    "lastWaitingReminderAt" = NULL, "waitingReminderCount" = 0,
 		    "updatedAt" = now()
-		WHERE id = $1 AND status = 'WAITING'`, id)
+		-- المحطة تنقرا من waitingSince؛ فحجز تغيّرت حالته وبقى بيه علم
+		-- الانتظار لازم «الزبون رد» يطلّعه هم، مو يقول «مو بالانتظار»
+		WHERE id = $1 AND status <> 'CANCELLED'
+		  AND (status = 'WAITING' OR "waitingSince" IS NOT NULL)`, id)
 	if err != nil {
 		return err
 	}
